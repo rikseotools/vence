@@ -13,8 +13,33 @@ import type { AnalyticsResponse, ProblematicQuestion, FrequentlyFailedQuestion, 
 async function getProblematicQuestions(limit = 15): Promise<ProblematicQuestion[]> {
   const db = getDb()
 
-  // Step 1: Get aggregated abandonment stats per question (last 180 days)
-  const statsRows = await db.execute<{
+  const statsRows = await db.execute(sql`
+    WITH resolved AS (
+      SELECT DISTINCT question_id FROM problematic_questions_tracking WHERE status = 'resolved'
+    )
+    SELECT
+      tq.question_id,
+      SUBSTRING(tq.question_text FROM 1 FOR 100) AS question_text,
+      COALESCE(tq.law_name, 'Sin ley') AS law,
+      COALESCE(tq.article_number, 'Sin artículo') AS article,
+      COUNT(*)::int AS total_appearances,
+      COUNT(*) FILTER (WHERE t.is_completed = false)::int AS abandoned_at,
+      ROUND(COUNT(*) FILTER (WHERE t.is_completed = false)::numeric / NULLIF(COUNT(*), 0) * 100)::int AS abandonment_rate,
+      ROUND(AVG(tq.question_order))::int AS avg_question_order,
+      COUNT(DISTINCT tq.test_id)::int AS unique_tests_count,
+      COUNT(DISTINCT t.user_id) FILTER (WHERE t.is_completed = false)::int AS unique_users_abandoned_count
+    FROM test_questions tq
+    JOIN tests t ON t.id = tq.test_id
+    JOIN questions q ON q.id = tq.question_id AND q.is_active = true
+    WHERE tq.question_id IS NOT NULL
+      AND tq.question_id NOT IN (SELECT question_id FROM resolved WHERE question_id IS NOT NULL)
+    GROUP BY tq.question_id, SUBSTRING(tq.question_text FROM 1 FOR 100), tq.law_name, tq.article_number
+    HAVING COUNT(*) >= 2
+      AND COUNT(*) FILTER (WHERE t.is_completed = false) >= 2
+      AND ROUND(COUNT(*) FILTER (WHERE t.is_completed = false)::numeric / NULLIF(COUNT(*), 0) * 100) >= 40
+    ORDER BY COUNT(DISTINCT t.user_id) FILTER (WHERE t.is_completed = false) DESC
+    LIMIT ${limit}
+  `) as unknown as Array<{
     question_id: string
     question_text: string
     law: string
@@ -25,46 +50,12 @@ async function getProblematicQuestions(limit = 15): Promise<ProblematicQuestion[
     avg_question_order: number
     unique_tests_count: number
     unique_users_abandoned_count: number
-  }>(sql`
-    WITH resolved AS (
-      SELECT DISTINCT question_id FROM problematic_questions_tracking WHERE status = 'resolved'
-    ),
-    question_stats AS (
-      SELECT
-        tq.question_id,
-        SUBSTRING(tq.question_text FROM 1 FOR 100) AS question_text,
-        COALESCE(tq.law_name, 'Sin ley') AS law,
-        COALESCE(tq.article_number, 'Sin artículo') AS article,
-        COUNT(*)::int AS total_appearances,
-        COUNT(*) FILTER (WHERE t.is_completed = false)::int AS abandoned_at,
-        ROUND(
-          COUNT(*) FILTER (WHERE t.is_completed = false)::numeric
-          / NULLIF(COUNT(*), 0) * 100
-        )::int AS abandonment_rate,
-        ROUND(AVG(tq.question_order))::int AS avg_question_order,
-        COUNT(DISTINCT tq.test_id)::int AS unique_tests_count,
-        COUNT(DISTINCT t.user_id) FILTER (WHERE t.is_completed = false)::int AS unique_users_abandoned_count
-      FROM test_questions tq
-      JOIN tests t ON t.id = tq.test_id
-      WHERE tq.question_id IS NOT NULL
-        AND tq.question_id NOT IN (SELECT question_id FROM resolved WHERE question_id IS NOT NULL)
-        AND EXISTS (SELECT 1 FROM questions q WHERE q.id = tq.question_id AND q.is_active = true)
-        AND t.started_at >= NOW() - INTERVAL '180 days'
-      GROUP BY tq.question_id, SUBSTRING(tq.question_text FROM 1 FOR 100), tq.law_name, tq.article_number
-      HAVING COUNT(*) >= 2
-        AND COUNT(*) FILTER (WHERE t.is_completed = false) >= 2
-    )
-    SELECT * FROM question_stats
-    WHERE abandonment_rate >= 40
-    ORDER BY unique_users_abandoned_count DESC
-    LIMIT ${limit}
-  `)
+  }>
 
   if (!statsRows.length) return []
 
   const questionIds = statsRows.map(r => r.question_id)
 
-  // Step 2: Get full question data + review history in parallel
   const [fullDataRows, reviewRows] = await Promise.all([
     getFullQuestionData(questionIds),
     getReviewHistory(questionIds),
@@ -99,7 +90,36 @@ async function getProblematicQuestions(limit = 15): Promise<ProblematicQuestion[
 async function getFrequentlyFailedQuestions(limit = 15): Promise<FrequentlyFailedQuestion[]> {
   const db = getDb()
 
-  const statsRows = await db.execute<{
+  const statsRows = await db.execute(sql`
+    WITH resolved AS (
+      SELECT DISTINCT question_id FROM problematic_questions_tracking WHERE status = 'resolved'
+    )
+    SELECT
+      tq.question_id,
+      SUBSTRING(tq.question_text FROM 1 FOR 100) AS question_text,
+      COALESCE(tq.law_name, 'Sin ley') AS law,
+      COALESCE(tq.article_number, 'Sin artículo') AS article,
+      COUNT(*)::int AS total_attempts,
+      COUNT(*) FILTER (WHERE tq.is_correct = false)::int AS incorrect_attempts,
+      COUNT(*) FILTER (WHERE tq.is_correct = true)::int AS correct_attempts,
+      ROUND(COUNT(*) FILTER (WHERE tq.is_correct = false)::numeric / NULLIF(COUNT(*), 0) * 100)::int AS failure_rate,
+      COALESCE(ROUND(AVG(tq.time_spent_seconds))::int, 0) AS avg_time_spent,
+      COUNT(DISTINCT t.user_id) FILTER (WHERE tq.is_correct = false)::int AS unique_users_wrong_count,
+      COUNT(DISTINCT t.user_id) FILTER (WHERE tq.is_correct = true)::int AS unique_users_correct_count,
+      COUNT(DISTINCT tq.test_id)::int AS unique_tests_count,
+      ROUND(COUNT(*) FILTER (WHERE tq.confidence_level IN ('unsure', 'guessing'))::numeric / NULLIF(COUNT(*), 0) * 100)::int AS low_confidence_rate
+    FROM test_questions tq
+    JOIN tests t ON t.id = tq.test_id
+    JOIN questions q ON q.id = tq.question_id AND q.is_active = true
+    WHERE tq.question_id IS NOT NULL
+      AND tq.question_id NOT IN (SELECT question_id FROM resolved WHERE question_id IS NOT NULL)
+    GROUP BY tq.question_id, SUBSTRING(tq.question_text FROM 1 FOR 100), tq.law_name, tq.article_number
+    HAVING COUNT(*) >= 3
+      AND COUNT(DISTINCT t.user_id) FILTER (WHERE tq.is_correct = false) >= 2
+      AND ROUND(COUNT(*) FILTER (WHERE tq.is_correct = false)::numeric / NULLIF(COUNT(*), 0) * 100) >= 60
+    ORDER BY COUNT(DISTINCT t.user_id) FILTER (WHERE tq.is_correct = false) DESC
+    LIMIT ${limit}
+  `) as unknown as Array<{
     question_id: string
     question_text: string
     law: string
@@ -113,46 +133,7 @@ async function getFrequentlyFailedQuestions(limit = 15): Promise<FrequentlyFaile
     unique_users_correct_count: number
     unique_tests_count: number
     low_confidence_rate: number
-  }>(sql`
-    WITH resolved AS (
-      SELECT DISTINCT question_id FROM problematic_questions_tracking WHERE status = 'resolved'
-    ),
-    question_stats AS (
-      SELECT
-        tq.question_id,
-        SUBSTRING(tq.question_text FROM 1 FOR 100) AS question_text,
-        COALESCE(tq.law_name, 'Sin ley') AS law,
-        COALESCE(tq.article_number, 'Sin artículo') AS article,
-        COUNT(*)::int AS total_attempts,
-        COUNT(*) FILTER (WHERE tq.is_correct = false)::int AS incorrect_attempts,
-        COUNT(*) FILTER (WHERE tq.is_correct = true)::int AS correct_attempts,
-        ROUND(
-          COUNT(*) FILTER (WHERE tq.is_correct = false)::numeric
-          / NULLIF(COUNT(*), 0) * 100
-        )::int AS failure_rate,
-        COALESCE(ROUND(AVG(tq.time_spent_seconds))::int, 0) AS avg_time_spent,
-        COUNT(DISTINCT t.user_id) FILTER (WHERE tq.is_correct = false)::int AS unique_users_wrong_count,
-        COUNT(DISTINCT t.user_id) FILTER (WHERE tq.is_correct = true)::int AS unique_users_correct_count,
-        COUNT(DISTINCT tq.test_id)::int AS unique_tests_count,
-        ROUND(
-          COUNT(*) FILTER (WHERE tq.confidence_level IN ('unsure', 'guessing'))::numeric
-          / NULLIF(COUNT(*), 0) * 100
-        )::int AS low_confidence_rate
-      FROM test_questions tq
-      JOIN tests t ON t.id = tq.test_id
-      WHERE tq.question_id IS NOT NULL
-        AND tq.question_id NOT IN (SELECT question_id FROM resolved WHERE question_id IS NOT NULL)
-        AND EXISTS (SELECT 1 FROM questions q WHERE q.id = tq.question_id AND q.is_active = true)
-        AND t.started_at >= NOW() - INTERVAL '180 days'
-      GROUP BY tq.question_id, SUBSTRING(tq.question_text FROM 1 FOR 100), tq.law_name, tq.article_number
-      HAVING COUNT(*) >= 3
-        AND COUNT(DISTINCT t.user_id) FILTER (WHERE tq.is_correct = false) >= 2
-    )
-    SELECT * FROM question_stats
-    WHERE failure_rate >= 60
-    ORDER BY unique_users_wrong_count DESC
-    LIMIT ${limit}
-  `)
+  }>
 
   if (!statsRows.length) return []
 
@@ -208,7 +189,6 @@ async function getFullQuestionData(questionIds: string[]): Promise<FullQuestionR
   if (!questionIds.length) return []
   const db = getDb()
 
-  // Build a VALUES list for the IN clause
   const idList = questionIds.map(id => `'${id}'::uuid`).join(', ')
 
   const rows = await db.execute(sql.raw(`
@@ -324,17 +304,35 @@ function mapFullData(row: FullQuestionRow | undefined): FullQuestionData | null 
 }
 
 // ============================================
+// IN-MEMORY CACHE (admin page, 5 min TTL)
+// ============================================
+
+let cachedResult: AnalyticsResponse | null = null
+let cacheTimestamp = 0
+const CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
+
+// ============================================
 // MAIN EXPORT
 // ============================================
 
 export async function getAnalyticsData(): Promise<AnalyticsResponse> {
-  try {
-    const [problematicQuestions, frequentlyFailedQuestions] = await Promise.all([
-      getProblematicQuestions(15),
-      getFrequentlyFailedQuestions(15),
-    ])
+  // Return cached result if fresh
+  if (cachedResult && Date.now() - cacheTimestamp < CACHE_TTL_MS) {
+    return cachedResult
+  }
 
-    return { problematicQuestions, frequentlyFailedQuestions }
+  try {
+    // Run sequentially to avoid Supabase connection contention
+    const problematicQuestions = await getProblematicQuestions(15)
+    const frequentlyFailedQuestions = await getFrequentlyFailedQuestions(15)
+
+    const result = { problematicQuestions, frequentlyFailedQuestions }
+
+    // Cache the result
+    cachedResult = result
+    cacheTimestamp = Date.now()
+
+    return result
   } catch (error) {
     console.error('❌ [AdminAnalytics] Error fetching analytics data:', error)
     throw error

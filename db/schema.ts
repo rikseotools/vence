@@ -1755,7 +1755,7 @@ export const emailEvents = pgTable("email_events", {
   WHERE ((user_profiles.id = auth.uid()) AND ((user_profiles.plan_type = 'admin'::text) OR (user_profiles.email = 'ilovetestpro@gmail.com'::text)))))` }),
 	pgPolicy("Users can view own email events", { as: "permissive", for: "select", to: ["public"] }),
 	pgPolicy("Allow insert email events", { as: "permissive", for: "insert", to: ["public"] }),
-	check("email_events_email_type_check", sql`email_type = ANY (ARRAY['welcome'::text, 'reactivation'::text, 'urgent_reactivation'::text, 'motivation'::text, 'achievement'::text, 'streak_danger'::text, 'newsletter'::text, 'system'::text, 'bienvenida_inmediato'::text, 'impugnacion_respuesta'::text, 'soporte_respuesta'::text])`),
+	check("email_events_email_type_check", sql`email_type = ANY (ARRAY['welcome'::text, 'reactivation'::text, 'urgent_reactivation'::text, 'motivation'::text, 'achievement'::text, 'streak_danger'::text, 'newsletter'::text, 'system'::text, 'bienvenida_inmediato'::text, 'impugnacion_respuesta'::text, 'soporte_respuesta'::text, 'reactivacion'::text, 'urgente'::text, 'bienvenida_motivacional'::text, 'resumen_semanal'::text, 'topic_unlock'::text, 'medal_congratulation'::text, 'modal_articulos_mejora'::text, 'mejoras_producto'::text, 'lanzamiento_premium'::text, 'recordatorio_renovacion'::text, 'pago_fallido'::text, 'admin_notification'::text, 'newsletter_oposicion'::text])`),
 	check("email_events_event_type_check", sql`event_type = ANY (ARRAY['sent'::text, 'delivered'::text, 'opened'::text, 'clicked'::text, 'bounced'::text, 'complained'::text, 'unsubscribed'::text])`),
 ]);
 
