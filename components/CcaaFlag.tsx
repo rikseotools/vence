@@ -81,6 +81,16 @@ const FLAG_PATHS: Record<string, ReactNode> = {
       <rect y="9.33" width="20" height="4.67" fill="#1a1a1a"/>
     </>
   ),
+  // Comunitat Valenciana: Senyera - 4 franjas rojas sobre fondo amarillo (dorado)
+  auxiliar_administrativo_valencia: (
+    <>
+      <rect width="20" height="14" fill="#FCDD09"/>
+      <rect y="0" width="20" height="1.75" fill="#DA121A"/>
+      <rect y="3.5" width="20" height="1.75" fill="#DA121A"/>
+      <rect y="7" width="20" height="1.75" fill="#DA121A"/>
+      <rect y="10.5" width="20" height="1.75" fill="#DA121A"/>
+    </>
+  ),
   // Andalucía: franjas verde-blanco-verde horizontales
   auxiliar_administrativo_andalucia: (
     <>

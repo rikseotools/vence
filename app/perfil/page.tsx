@@ -422,6 +422,16 @@ function PerfilPageContent() {
         categoria: 'C2',
         administracion: 'Autonómica'
       }
+    },
+    {
+      value: 'auxiliar_administrativo_valencia',
+      label: 'Auxiliar Administrativo Generalitat Valenciana',
+      data: {
+        name: 'Auxiliar Administrativo Generalitat Valenciana',
+        slug: 'auxiliar-administrativo-valencia',
+        categoria: 'C2',
+        administracion: 'Autonómica'
+      }
     }
   ]
 

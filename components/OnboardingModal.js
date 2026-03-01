@@ -208,6 +208,13 @@ const OFFICIAL_OPOSICIONES = [
     icon: '🏰'
   },
   {
+    id: 'auxiliar_administrativo_valencia',
+    nombre: 'Auxiliar Administrativo Generalitat Valenciana',
+    categoria: 'C2',
+    administracion: 'Autonómica',
+    icon: '🍊'
+  },
+  {
     id: 'auxiliar_comunidad_autonoma',
     nombre: 'Auxiliar Administrativo Comunidad Autónoma',
     categoria: 'C2',

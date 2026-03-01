@@ -795,6 +795,70 @@ export const OPOSICIONES: Oposicion[] = [
   },
 
   // ========================================
+  // AUXILIAR ADMINISTRATIVO GENERALITAT VALENCIANA (C2)
+  // ========================================
+  {
+    id: 'auxiliar_administrativo_valencia',
+    slug: 'auxiliar-administrativo-valencia',
+    positionType: 'auxiliar_administrativo_valencia',
+    name: 'Auxiliar Administrativo Generalitat Valenciana',
+    shortName: 'Aux. Valencia',
+    emoji: '🍊',
+    badge: 'C2',
+    color: 'red',
+    administracion: 'autonomica',
+    blocks: [
+      {
+        id: 'bloque1',
+        title: 'Materias Comunes',
+        subtitle: 'Constitucion, Estatuto CV, UE, Igualdad',
+        icon: '🏛️',
+        themes: [
+          { id: 1, name: 'CE: Titulo Preliminar, Titulo I, Titulo X' },
+          { id: 2, name: 'CE: Titulo II Corona, Titulo III Cortes' },
+          { id: 3, name: 'CE: Titulo IV Gobierno, Titulo V' },
+          { id: 4, name: 'CE: Titulo VI Poder Judicial, Titulo IX TC' },
+          { id: 5, name: 'CE: Titulo VIII Organizacion territorial' },
+          { id: 6, name: 'Estatuto de Autonomia de la Comunitat Valenciana' },
+          { id: 7, name: 'Ley 5/1983 del Consell (I)' },
+          { id: 8, name: 'Ley 5/1983 del Consell (II)' },
+          { id: 9, name: 'Derecho de la UE' },
+          { id: 10, name: 'Igualdad: LO 3/2007, Ley 9/2003 GVA, LO 1/2004' },
+        ],
+      },
+      {
+        id: 'bloque2',
+        title: 'Materias Especificas',
+        subtitle: 'Procedimiento, Contratos, Funcion Publica, Presupuestos',
+        icon: '⚖️',
+        themes: [
+          { id: 11, name: 'Ley 39/2015 (I): Disposiciones generales' },
+          { id: 12, name: 'Ley 39/2015 (II): Actos administrativos' },
+          { id: 13, name: 'Ley 39/2015 (III): Nulidad y anulabilidad' },
+          { id: 14, name: 'Ley 39/2015 (IV): Procedimiento administrativo' },
+          { id: 15, name: 'Ley 39/2015 (V): Revision en via administrativa' },
+          { id: 16, name: 'Organos AAPP: competencia, delegacion' },
+          { id: 17, name: 'Contratos del Sector Publico' },
+          { id: 18, name: 'Admin electronica CV + Proteccion de datos' },
+          { id: 19, name: 'Funcion Publica Valenciana (I)' },
+          { id: 20, name: 'Funcion Publica Valenciana (II)' },
+          { id: 21, name: 'Presupuestos: concepto, principios, ciclo' },
+          { id: 22, name: 'Ejecucion presupuestaria' },
+          { id: 23, name: 'Gestion presupuestaria GVA' },
+          { id: 24, name: 'LibreOffice 6.1: Writer, Calc, Base' },
+        ],
+      },
+    ],
+    totalTopics: 24,
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/auxiliar-administrativo-valencia', label: 'Mi Oposicion', icon: '🍊', featured: true },
+      { href: '/auxiliar-administrativo-valencia/temario', label: 'Temario', icon: '📚' },
+      { href: '/auxiliar-administrativo-valencia/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
   // AUXILIO JUDICIAL (C2)
   // ========================================
   {

@@ -334,6 +334,35 @@ export default function OposicionesPage() {
       href: '/auxiliar-administrativo-extremadura',
     },
     {
+      id: 'auxiliar-administrativo-valencia',
+      name: 'Auxiliar Administrativo Generalitat Valenciana',
+      shortName: 'Aux. Admin. Valencia',
+      badge: 'C2',
+      icon: '🍊',
+      color: 'red',
+      description: 'Oposicion para trabajar en la Generalitat Valenciana como Auxiliar Administrativo. 245 plazas OPE 2026 turno libre. 24 temas en 2 bloques.',
+      category: 'Comunidades Autónomas',
+      level: 'Grupo C, Subgrupo C2',
+      temarios: 24,
+      tests: 0,
+      difficulty: 'Intermedio',
+      duration: '6-12 meses',
+      salary: '18.000€ - 22.000€',
+      features: [
+        'Temario oficial DOGV (24 temas)',
+        'Tests por temas y bloques',
+        'Materias Comunes + Materias Especificas',
+        'Seguimiento de progreso',
+        'Estadisticas detalladas'
+      ],
+      requirements: [
+        'Titulo de Graduado en ESO o equivalente',
+        'Nacionalidad espanola o UE',
+        'Tener 16 anos y no exceder edad jubilacion'
+      ],
+      href: '/auxiliar-administrativo-valencia',
+    },
+    {
       id: 'administrativo-castilla-leon',
       name: 'Administrativo Junta de Castilla y León',
       shortName: 'Administrativo CyL',
