@@ -666,6 +666,135 @@ export const OPOSICIONES: Oposicion[] = [
   },
 
   // ========================================
+  // AUXILIAR ADMINISTRATIVO JUNTA DE CASTILLA-LA MANCHA (C2)
+  // ========================================
+  {
+    id: 'auxiliar_administrativo_clm',
+    slug: 'auxiliar-administrativo-clm',
+    positionType: 'auxiliar_administrativo_clm',
+    name: 'Auxiliar Administrativo Junta de Castilla-La Mancha',
+    shortName: 'Aux. CLM',
+    emoji: '🏰',
+    badge: 'C2',
+    color: 'orange',
+    administracion: 'autonomica',
+    blocks: [
+      {
+        id: 'bloque1',
+        title: 'Bloque I: Organización Administrativa',
+        subtitle: 'Constitución, Administración, Derecho Administrativo, CLM',
+        icon: '🏛️',
+        themes: [
+          { id: 1, name: 'La Constitución Española de 1978' },
+          { id: 2, name: 'Ley 39/2015 del Procedimiento Administrativo Común (I)' },
+          { id: 3, name: 'Ley 40/2015 de Régimen Jurídico del Sector Público (I)' },
+          { id: 4, name: 'Ley 40/2015 de Régimen Jurídico del Sector Público (II)' },
+          { id: 5, name: 'Calidad de los servicios públicos en la JCCM' },
+          { id: 6, name: 'Transparencia en la JCCM' },
+          { id: 7, name: 'Seguridad de la información y protección de datos' },
+          { id: 8, name: 'Personal al servicio de la JCCM' },
+          { id: 9, name: 'El presupuesto de la JCCM' },
+          { id: 10, name: 'Estatuto de Autonomía de Castilla-La Mancha' },
+          { id: 11, name: 'CLM: características históricas, geográficas, culturales y económicas' },
+          { id: 12, name: 'Igualdad efectiva de mujeres y hombres' },
+        ],
+      },
+      {
+        id: 'bloque2',
+        title: 'Bloque II: Ofimática',
+        subtitle: 'Windows, Office 2019, Internet, Teams',
+        icon: '💻',
+        themes: [
+          { id: 13, name: 'Informática básica' },
+          { id: 14, name: 'Windows 10: entorno gráfico' },
+          { id: 15, name: 'El Explorador de Windows' },
+          { id: 16, name: 'Word 2019 (I)' },
+          { id: 17, name: 'Word 2019 (II)' },
+          { id: 18, name: 'Word 2019 (III)' },
+          { id: 19, name: 'Excel 2019 (I)' },
+          { id: 20, name: 'Excel 2019 (II)' },
+          { id: 21, name: 'Excel 2019 (III)' },
+          { id: 22, name: 'Internet: protocolos y servicios' },
+          { id: 23, name: 'Outlook 2019' },
+          { id: 24, name: 'OneDrive y Microsoft Teams' },
+        ],
+      },
+    ],
+    totalTopics: 24,
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/auxiliar-administrativo-clm', label: 'Mi Oposición', icon: '🏰', featured: true },
+      { href: '/auxiliar-administrativo-clm/temario', label: 'Temario', icon: '📚' },
+      { href: '/auxiliar-administrativo-clm/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
+  // AUXILIAR ADMINISTRATIVO JUNTA DE EXTREMADURA (C2)
+  // ========================================
+  {
+    id: 'auxiliar_administrativo_extremadura',
+    slug: 'auxiliar-administrativo-extremadura',
+    positionType: 'auxiliar_administrativo_extremadura',
+    name: 'Auxiliar Administrativo Junta de Extremadura',
+    shortName: 'Aux. Extremadura',
+    emoji: '🌿',
+    badge: 'C2',
+    color: 'teal',
+    administracion: 'autonomica',
+    blocks: [
+      {
+        id: 'bloque1',
+        title: 'Bloque I: Empleo Publico y Organizacion',
+        subtitle: 'TREBEP, Funcion Publica Extremadura, PRL, Igualdad',
+        icon: '🏛️',
+        themes: [
+          { id: 1, name: 'Gobierno y Administracion de la CAE (I)' },
+          { id: 2, name: 'Gobierno y Administracion de la CAE (II)' },
+          { id: 3, name: 'Estatuto Basico del Empleado Publico' },
+          { id: 4, name: 'Funcion Publica de Extremadura (I)' },
+          { id: 5, name: 'Funcion Publica de Extremadura (II)' },
+          { id: 6, name: 'Funcion Publica de Extremadura (III)' },
+          { id: 7, name: 'Funcion Publica de Extremadura (IV)' },
+          { id: 8, name: 'Funcion Publica de Extremadura (V)' },
+          { id: 9, name: 'Funcion Publica de Extremadura (VI)' },
+          { id: 10, name: 'Personal Laboral CC (I)' },
+          { id: 11, name: 'Personal Laboral CC (II)' },
+          { id: 12, name: 'Personal Laboral CC (III)' },
+          { id: 13, name: 'Prevencion de Riesgos Laborales' },
+          { id: 14, name: 'Igualdad y violencia de genero en Extremadura' },
+        ],
+      },
+      {
+        id: 'bloque2',
+        title: 'Bloque II: Derecho Administrativo y Ofimatica',
+        subtitle: 'Ley 40/2015, Ley 39/2015, Contratos, Windows, Office',
+        icon: '💻',
+        themes: [
+          { id: 15, name: 'Regimen Juridico del Sector Publico (I)' },
+          { id: 16, name: 'Regimen Juridico del Sector Publico (II)' },
+          { id: 17, name: 'Procedimiento Administrativo Comun (I)' },
+          { id: 18, name: 'Procedimiento Administrativo Comun (II)' },
+          { id: 19, name: 'Procedimiento Administrativo Comun (III)' },
+          { id: 20, name: 'Contratacion del Sector Publico' },
+          { id: 21, name: 'Documento, registro y archivo' },
+          { id: 22, name: 'Administracion electronica Extremadura (I)' },
+          { id: 23, name: 'Administracion electronica Extremadura (II)' },
+          { id: 24, name: 'Windows 10' },
+          { id: 25, name: 'Office 365: Word y Excel' },
+        ],
+      },
+    ],
+    totalTopics: 25,
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/auxiliar-administrativo-extremadura', label: 'Mi Oposicion', icon: '🌿', featured: true },
+      { href: '/auxiliar-administrativo-extremadura/temario', label: 'Temario', icon: '📚' },
+      { href: '/auxiliar-administrativo-extremadura/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
   // AUXILIO JUDICIAL (C2)
   // ========================================
   {

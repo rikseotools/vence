@@ -62,6 +62,25 @@ const FLAG_PATHS: Record<string, ReactNode> = {
       <rect x="13.33" width="6.67" height="14" fill="#FECB00"/>
     </>
   ),
+  // Castilla-La Mancha: cuartelada rojo con castillo dorado / blanco con escudo
+  auxiliar_administrativo_clm: (
+    <>
+      <rect width="10" height="7" fill="#BF0000"/>
+      <rect x="10" width="10" height="7" fill="#fff"/>
+      <rect y="7" width="10" height="7" fill="#fff"/>
+      <rect x="10" y="7" width="10" height="7" fill="#BF0000"/>
+      <rect x="3.5" y="1.5" width="3" height="4" rx="0.3" fill="#F5C400" opacity="0.8"/>
+      <rect x="13.5" y="8.5" width="3" height="4" rx="0.3" fill="#F5C400" opacity="0.8"/>
+    </>
+  ),
+  // Extremadura: franjas verde-blanco-negro horizontales
+  auxiliar_administrativo_extremadura: (
+    <>
+      <rect width="20" height="4.67" fill="#007844"/>
+      <rect y="4.67" width="20" height="4.67" fill="#fff"/>
+      <rect y="9.33" width="20" height="4.67" fill="#1a1a1a"/>
+    </>
+  ),
   // Andalucía: franjas verde-blanco-verde horizontales
   auxiliar_administrativo_andalucia: (
     <>

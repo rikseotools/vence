@@ -22,6 +22,8 @@ const KNOWN_SLUGS = [
   'auxiliar-administrativo-andalucia',
   'auxiliar-administrativo-madrid',
   'auxiliar-administrativo-canarias',
+  'auxiliar-administrativo-clm',
+  'auxiliar-administrativo-extremadura',
 ]
 
 const KNOWN_POSITION_TYPES = [
@@ -34,21 +36,23 @@ const KNOWN_POSITION_TYPES = [
   'auxiliar_administrativo_andalucia',
   'auxiliar_administrativo_madrid',
   'auxiliar_administrativo_canarias',
+  'auxiliar_administrativo_clm',
+  'auxiliar_administrativo_extremadura',
 ]
 
 describe('Config central de oposiciones', () => {
-  test('ALL_OPOSICION_SLUGS contiene las 9 oposiciones conocidas', () => {
+  test('ALL_OPOSICION_SLUGS contiene las 11 oposiciones conocidas', () => {
     for (const slug of KNOWN_SLUGS) {
       expect(ALL_OPOSICION_SLUGS).toContain(slug)
     }
-    expect(ALL_OPOSICION_SLUGS.length).toBe(9)
+    expect(ALL_OPOSICION_SLUGS.length).toBe(11)
   })
 
-  test('ALL_POSITION_TYPES contiene los 9 positionTypes conocidos', () => {
+  test('ALL_POSITION_TYPES contiene los 11 positionTypes conocidos', () => {
     for (const pt of KNOWN_POSITION_TYPES) {
       expect(ALL_POSITION_TYPES).toContain(pt)
     }
-    expect(ALL_POSITION_TYPES.length).toBe(9)
+    expect(ALL_POSITION_TYPES.length).toBe(11)
   })
 
   test('SLUG_TO_POSITION_TYPE mapea correctamente cada slug', () => {
@@ -61,6 +65,8 @@ describe('Config central de oposiciones', () => {
     expect(SLUG_TO_POSITION_TYPE['auxiliar-administrativo-andalucia']).toBe('auxiliar_administrativo_andalucia')
     expect(SLUG_TO_POSITION_TYPE['auxiliar-administrativo-madrid']).toBe('auxiliar_administrativo_madrid')
     expect(SLUG_TO_POSITION_TYPE['auxiliar-administrativo-canarias']).toBe('auxiliar_administrativo_canarias')
+    expect(SLUG_TO_POSITION_TYPE['auxiliar-administrativo-clm']).toBe('auxiliar_administrativo_clm')
+    expect(SLUG_TO_POSITION_TYPE['auxiliar-administrativo-extremadura']).toBe('auxiliar_administrativo_extremadura')
   })
 
   test('OPOSICION_SLUGS_ENUM funciona con z.enum()', () => {
@@ -99,7 +105,7 @@ describe('Config central de oposiciones', () => {
     const byAdmin = (admin: string) => OPOSICIONES.filter(o => o.administracion === admin)
     expect(byAdmin('estado').length).toBe(2)
     expect(byAdmin('justicia').length).toBe(2)
-    expect(byAdmin('autonomica').length).toBe(5)
+    expect(byAdmin('autonomica').length).toBe(7)
   })
 
   test('getOposicionBySlug() devuelve datos correctos', () => {

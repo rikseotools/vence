@@ -402,6 +402,26 @@ function PerfilPageContent() {
         categoria: 'C2',
         administracion: 'Autonómica'
       }
+    },
+    {
+      value: 'auxiliar_administrativo_clm',
+      label: 'Auxiliar Administrativo Junta de Castilla-La Mancha',
+      data: {
+        name: 'Auxiliar Administrativo Junta de Castilla-La Mancha',
+        slug: 'auxiliar-administrativo-clm',
+        categoria: 'C2',
+        administracion: 'Autonómica'
+      }
+    },
+    {
+      value: 'auxiliar_administrativo_extremadura',
+      label: 'Auxiliar Administrativo Junta de Extremadura',
+      data: {
+        name: 'Auxiliar Administrativo Junta de Extremadura',
+        slug: 'auxiliar-administrativo-extremadura',
+        categoria: 'C2',
+        administracion: 'Autonómica'
+      }
     }
   ]
 

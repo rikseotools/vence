@@ -194,6 +194,20 @@ const OFFICIAL_OPOSICIONES = [
     icon: '🏛️'
   },
   {
+    id: 'auxiliar_administrativo_clm',
+    nombre: 'Auxiliar Administrativo Junta de Castilla-La Mancha',
+    categoria: 'C2',
+    administracion: 'Autonómica',
+    icon: '🏰'
+  },
+  {
+    id: 'auxiliar_administrativo_extremadura',
+    nombre: 'Auxiliar Administrativo Junta de Extremadura',
+    categoria: 'C2',
+    administracion: 'Autonómica',
+    icon: '🏰'
+  },
+  {
     id: 'auxiliar_comunidad_autonoma',
     nombre: 'Auxiliar Administrativo Comunidad Autónoma',
     categoria: 'C2',
