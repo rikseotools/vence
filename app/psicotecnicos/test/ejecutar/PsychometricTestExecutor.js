@@ -51,14 +51,14 @@ function MultipleCategoriesPsychometricTestContent() {
 
         // Mapear categorías del frontend a question_subtypes
         const categoryToSubtypes = {
-          'capacidad-administrativa': ['bar_chart', 'pie_chart', 'line_chart', 'mixed_chart', 'data_table'],
-          'capacidad-ortografica': ['error_detection', 'text_question', 'word_analysis'],
+          'capacidad-administrativa': ['bar_chart', 'pie_chart', 'line_chart', 'mixed_chart', 'data_tables', 'code_equivalence', 'coding'],
+          'capacidad-ortografica': ['error_detection', 'text_question', 'word_analysis', 'alphabetical_order'],
           'series-numericas': ['sequence_numeric'],
           'series-alfanumericas': ['sequence_alphanumeric'],
           'series-letras': ['sequence_letter'],
-          'razonamiento-numerico': ['calculation', 'logic'],
-          'razonamiento-verbal': ['analogy', 'comprehension'],
-          'pruebas-instrucciones': ['pattern', 'attention']
+          'razonamiento-numerico': ['calculation', 'percentage', 'probability'],
+          'razonamiento-verbal': ['synonym', 'antonym', 'analogy', 'definition', 'classification', 'alphabetical'],
+          'pruebas-instrucciones': []
         }
 
         // Obtener todos los subtypes para las categorías seleccionadas

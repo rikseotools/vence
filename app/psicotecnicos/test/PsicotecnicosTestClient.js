@@ -129,33 +129,48 @@ export default function PsicotecnicosTestClient() {
         return
       }
 
-      // Contar por categorías reales basadas en category_id y question_subtype
+      // Mapeo de question_subtype a categoría del frontend
+      const subtypeToCategory = {
+        'bar_chart': 'capacidad-administrativa',
+        'pie_chart': 'capacidad-administrativa',
+        'line_chart': 'capacidad-administrativa',
+        'mixed_chart': 'capacidad-administrativa',
+        'data_tables': 'capacidad-administrativa',
+        'code_equivalence': 'capacidad-administrativa',
+        'coding': 'capacidad-administrativa',
+        'error_detection': 'capacidad-ortografica',
+        'text_question': 'capacidad-ortografica',
+        'word_analysis': 'capacidad-ortografica',
+        'alphabetical_order': 'capacidad-ortografica',
+        'calculation': 'razonamiento-numerico',
+        'percentage': 'razonamiento-numerico',
+        'probability': 'razonamiento-numerico',
+        'synonym': 'razonamiento-verbal',
+        'antonym': 'razonamiento-verbal',
+        'analogy': 'razonamiento-verbal',
+        'definition': 'razonamiento-verbal',
+        'classification': 'razonamiento-verbal',
+        'alphabetical': 'razonamiento-verbal',
+        'sequence_alphanumeric': 'series-alfanumericas',
+        'sequence_letter': 'series-letras',
+        'sequence_numeric': 'series-numericas',
+      }
+
+      // Contar por categorías usando el mapeo
       const counts = {
-        'capacidad-administrativa': data.filter(q => 
-          q.question_subtype === 'bar_chart' || 
-          q.question_subtype === 'pie_chart' || 
-          q.question_subtype === 'line_chart' ||
-          q.question_subtype === 'mixed_chart' ||
-          q.question_subtype === 'data_tables'
-        ).length,
-        'capacidad-ortografica': data.filter(q => 
-          q.question_subtype === 'error_detection' ||
-          q.question_subtype === 'text_question' ||
-          q.question_subtype === 'word_analysis'
-        ).length,
+        'capacidad-administrativa': 0,
+        'capacidad-ortografica': 0,
         'pruebas-instrucciones': 0,
         'razonamiento-numerico': 0,
         'razonamiento-verbal': 0,
-        'series-alfanumericas': data.filter(q => 
-          q.question_subtype === 'sequence_alphanumeric'
-        ).length,
-        'series-letras': data.filter(q => 
-          q.question_subtype === 'sequence_letter'
-        ).length,
-        'series-numericas': data.filter(q => 
-          q.question_subtype === 'sequence_numeric'
-        ).length
+        'series-alfanumericas': 0,
+        'series-letras': 0,
+        'series-numericas': 0,
       }
+      data.forEach(q => {
+        const cat = subtypeToCategory[q.question_subtype]
+        if (cat) counts[cat]++
+      })
 
       setCategoryQuestionCounts(counts)
       setCountsLoaded(true)
@@ -197,53 +212,33 @@ export default function PsicotecnicosTestClient() {
         })
       }
 
-      // Contar preguntas según la categoría y question_subtype
+      // Mapeo de question_subtype a subcategoría del frontend
+      const subtypeToSection = {
+        'capacidad-administrativa': {
+          'bar_chart': 'graficos', 'pie_chart': 'graficos', 'line_chart': 'graficos', 'mixed_chart': 'graficos',
+          'data_tables': 'tablas',
+          'code_equivalence': 'equivalencias', 'coding': 'equivalencias',
+        },
+        'capacidad-ortografica': {
+          'error_detection': 'ortografia', 'text_question': 'ortografia',
+          'word_analysis': 'vocabulario', 'alphabetical_order': 'vocabulario',
+        },
+        'razonamiento-numerico': {
+          'calculation': 'operaciones', 'percentage': 'porcentajes', 'probability': 'probabilidad',
+        },
+        'razonamiento-verbal': {
+          'synonym': 'sinonimos', 'antonym': 'antonimos', 'analogy': 'analogias',
+          'definition': 'comprension', 'classification': 'comprension', 'alphabetical': 'comprension',
+        },
+        'series-numericas': { 'sequence_numeric': 'series-numericas' },
+        'series-letras': { 'sequence_letter': 'series-letras-correlativas' },
+        'series-alfanumericas': { 'sequence_alphanumeric': 'series-mixtas' },
+      }
+
+      const mapping = subtypeToSection[categoryKey] || {}
       data.forEach(question => {
-        // SOLO asignar a capacidad-administrativa si realmente es una pregunta de gráficos o tablas
-        if (categoryKey === 'capacidad-administrativa') {
-          if (question.question_subtype === 'bar_chart' || 
-              question.question_subtype === 'pie_chart' || 
-              question.question_subtype === 'line_chart' ||
-              question.question_subtype === 'mixed_chart') {
-            // Todas las preguntas de gráficos van a la subcategoría 'graficos'
-            counts['graficos'] = (counts['graficos'] || 0) + 1
-          } else if (question.question_subtype === 'data_tables') {
-            // Las preguntas de tablas van a la subcategoría 'tablas'
-            counts['tablas'] = (counts['tablas'] || 0) + 1
-          }
-        }
-        // Asignar preguntas de capacidad ortográfica
-        else if (categoryKey === 'capacidad-ortografica') {
-          if (question.question_subtype === 'error_detection' ||
-              question.question_subtype === 'text_question' ||
-              question.question_subtype === 'word_analysis') {
-            // Todas las preguntas de ortografía van a la subcategoría 'ortografia'
-            counts['ortografia'] = (counts['ortografia'] || 0) + 1
-          }
-        }
-        // Asignar preguntas de series numéricas
-        else if (categoryKey === 'series-numericas') {
-          if (question.question_subtype === 'sequence_numeric') {
-            // Todas las preguntas de series numéricas van a la subcategoría 'series-numericas'
-            counts['series-numericas'] = (counts['series-numericas'] || 0) + 1
-          }
-        }
-        // Asignar preguntas de series de letras
-        else if (categoryKey === 'series-letras') {
-          if (question.question_subtype === 'sequence_letter') {
-            // Todas las preguntas de series de letras van a la subcategoría 'series-letras-correlativas'
-            counts['series-letras-correlativas'] = (counts['series-letras-correlativas'] || 0) + 1
-          }
-        }
-        // Asignar preguntas de series alfanuméricas
-        else if (categoryKey === 'series-alfanumericas') {
-          if (question.question_subtype === 'sequence_alphanumeric') {
-            // Todas las preguntas de series alfanuméricas van a la subcategoría 'series-mixtas'
-            counts['series-mixtas'] = (counts['series-mixtas'] || 0) + 1
-          }
-        }
-        // Para otras categorías, NO asignar preguntas aleatorias - solo si realmente corresponden
-        // Por ahora no tenemos preguntas específicas para estas categorías
+        const section = mapping[question.question_subtype]
+        if (section) counts[section] = (counts[section] || 0) + 1
       })
 
       console.log('📊 Conteos calculados para', categoryKey, ':', counts)
