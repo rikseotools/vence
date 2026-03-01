@@ -1,5 +1,16 @@
 // lib/config/oposiciones.ts - Fuente de verdad centralizada para configuración de oposiciones
 // Todos los datos de oposiciones (IDs, slugs, nombres, bloques, temas) deben importarse de aquí.
+//
+// IMPORTANTE sobre theme.id vs theme.displayNumber:
+// - theme.id DEBE coincidir con el topic_number real en la tabla `topics` de la BD.
+//   Es lo que usan las APIs para buscar preguntas (topic_scope, filtered-questions, etc.)
+// - theme.displayNumber es OPCIONAL. Solo se necesita cuando el topic_number de la BD
+//   no coincide con el número que el usuario espera ver en la UI.
+//   Ejemplo: administrativo-estado tiene topic_numbers 201-204 en BD (bloque 2),
+//   pero el temario oficial los numera como Temas 12-15 (secuencial).
+//   Sin displayNumber, la UI mostraría "T201" en vez de "T12".
+// - Si no se pone displayNumber, la UI muestra theme.id directamente.
+//   Esto funciona bien cuando los IDs ya son user-friendly (ej: 1-37, 1-16, 101-112).
 import { z } from 'zod'
 
 // ============================================
@@ -7,8 +18,9 @@ import { z } from 'zod'
 // ============================================
 
 const ThemeSchema = z.object({
-  id: z.number(),
+  id: z.number(),          // topic_number en BD (usado por las APIs)
   name: z.string(),
+  displayNumber: z.number().optional(), // número visible al usuario (si difiere del id)
 })
 
 const BlockSchema = z.object({
@@ -163,10 +175,10 @@ export const OPOSICIONES: Oposicion[] = [
         subtitle: 'Atención ciudadana, Registros, Archivos',
         icon: '📋',
         themes: [
-          { id: 201, name: 'Atención al Público' },
-          { id: 202, name: 'Documento, Registro y Archivo' },
-          { id: 203, name: 'Administración Electrónica' },
-          { id: 204, name: 'Protección de Datos Personales' },
+          { id: 201, name: 'Atención al Público', displayNumber: 12 },
+          { id: 202, name: 'Documento, Registro y Archivo', displayNumber: 13 },
+          { id: 203, name: 'Administración Electrónica', displayNumber: 14 },
+          { id: 204, name: 'Protección de Datos Personales', displayNumber: 15 },
         ],
       },
       {
@@ -175,13 +187,13 @@ export const OPOSICIONES: Oposicion[] = [
         subtitle: 'Procedimiento, Contratos, Responsabilidad',
         icon: '⚖️',
         themes: [
-          { id: 301, name: 'Las Fuentes del Derecho Administrativo' },
-          { id: 302, name: 'El Acto Administrativo' },
-          { id: 303, name: 'Las Leyes del Procedimiento Administrativo' },
-          { id: 304, name: 'Los Contratos del Sector Público' },
-          { id: 305, name: 'Procedimientos y Formas de la Actividad Administrativa' },
-          { id: 306, name: 'La Responsabilidad Patrimonial' },
-          { id: 307, name: 'Políticas de Igualdad' },
+          { id: 301, name: 'Las Fuentes del Derecho Administrativo', displayNumber: 16 },
+          { id: 302, name: 'El Acto Administrativo', displayNumber: 17 },
+          { id: 303, name: 'Las Leyes del Procedimiento Administrativo', displayNumber: 18 },
+          { id: 304, name: 'Los Contratos del Sector Público', displayNumber: 19 },
+          { id: 305, name: 'Procedimientos y Formas de la Actividad Administrativa', displayNumber: 20 },
+          { id: 306, name: 'La Responsabilidad Patrimonial', displayNumber: 21 },
+          { id: 307, name: 'Políticas de Igualdad', displayNumber: 22 },
         ],
       },
       {
@@ -190,15 +202,15 @@ export const OPOSICIONES: Oposicion[] = [
         subtitle: 'Empleo público, Derechos, Deberes',
         icon: '👥',
         themes: [
-          { id: 401, name: 'El Personal al Servicio de las Administraciones Públicas' },
-          { id: 402, name: 'Selección de Personal' },
-          { id: 403, name: 'El Personal Funcionario' },
-          { id: 404, name: 'Adquisición y Pérdida de la Condición de Funcionario' },
-          { id: 405, name: 'Provisión de Puestos de Trabajo' },
-          { id: 406, name: 'Las Incompatibilidades y Régimen Disciplinario' },
-          { id: 407, name: 'El Régimen de la Seguridad Social de los Funcionarios' },
-          { id: 408, name: 'El Personal Laboral' },
-          { id: 409, name: 'El Régimen de la Seguridad Social del Personal Laboral' },
+          { id: 401, name: 'El Personal al Servicio de las Administraciones Públicas', displayNumber: 23 },
+          { id: 402, name: 'Selección de Personal', displayNumber: 24 },
+          { id: 403, name: 'El Personal Funcionario', displayNumber: 25 },
+          { id: 404, name: 'Adquisición y Pérdida de la Condición de Funcionario', displayNumber: 26 },
+          { id: 405, name: 'Provisión de Puestos de Trabajo', displayNumber: 27 },
+          { id: 406, name: 'Las Incompatibilidades y Régimen Disciplinario', displayNumber: 28 },
+          { id: 407, name: 'El Régimen de la Seguridad Social de los Funcionarios', displayNumber: 29 },
+          { id: 408, name: 'El Personal Laboral', displayNumber: 30 },
+          { id: 409, name: 'El Régimen de la Seguridad Social del Personal Laboral', displayNumber: 31 },
         ],
       },
       {
@@ -207,12 +219,12 @@ export const OPOSICIONES: Oposicion[] = [
         subtitle: 'Presupuestos, Gastos, Retribuciones',
         icon: '💰',
         themes: [
-          { id: 501, name: 'El Presupuesto' },
-          { id: 502, name: 'El Presupuesto del Estado en España' },
-          { id: 503, name: 'El Procedimiento de Ejecución del Presupuesto de Gasto' },
-          { id: 504, name: 'Las Retribuciones e Indemnizaciones' },
-          { id: 505, name: 'Gastos para la Compra de Bienes y Servicios' },
-          { id: 506, name: 'Gestión Económica y Financiera' },
+          { id: 501, name: 'El Presupuesto', displayNumber: 32 },
+          { id: 502, name: 'El Presupuesto del Estado en España', displayNumber: 33 },
+          { id: 503, name: 'El Procedimiento de Ejecución del Presupuesto de Gasto', displayNumber: 34 },
+          { id: 504, name: 'Las Retribuciones e Indemnizaciones', displayNumber: 35 },
+          { id: 505, name: 'Gastos para la Compra de Bienes y Servicios', displayNumber: 36 },
+          { id: 506, name: 'Gestión Económica y Financiera', displayNumber: 37 },
         ],
       },
       {
@@ -221,14 +233,14 @@ export const OPOSICIONES: Oposicion[] = [
         subtitle: 'Windows, Office, Internet',
         icon: '💻',
         themes: [
-          { id: 601, name: 'Informática Básica' },
-          { id: 602, name: 'Sistema Operativo Windows' },
-          { id: 603, name: 'El Explorador de Windows' },
-          { id: 604, name: 'Procesadores de Texto: Word 365' },
-          { id: 605, name: 'Hojas de Cálculo: Excel 365' },
-          { id: 606, name: 'Bases de Datos: Access 365' },
-          { id: 607, name: 'Correo Electrónico: Outlook 365' },
-          { id: 608, name: 'La Red Internet' },
+          { id: 601, name: 'Informática Básica', displayNumber: 38 },
+          { id: 602, name: 'Sistema Operativo Windows', displayNumber: 39 },
+          { id: 603, name: 'El Explorador de Windows', displayNumber: 40 },
+          { id: 604, name: 'Procesadores de Texto: Word 365', displayNumber: 41 },
+          { id: 605, name: 'Hojas de Cálculo: Excel 365', displayNumber: 42 },
+          { id: 606, name: 'Bases de Datos: Access 365', displayNumber: 43 },
+          { id: 607, name: 'Correo Electrónico: Outlook 365', displayNumber: 44 },
+          { id: 608, name: 'La Red Internet', displayNumber: 45 },
         ],
       },
     ],

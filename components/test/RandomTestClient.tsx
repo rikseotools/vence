@@ -25,6 +25,7 @@ const useAuth = (): AuthContextValue => {
 interface EnrichedTheme {
   id: number
   name: string
+  displayNumber?: number
   questionCount: number
   officialCount: number
 }
@@ -469,7 +470,7 @@ export default function RandomTestClient({
                                         </svg>
                                       )}
                                     </div>
-                                    <span className="font-medium text-gray-800 text-xs">T{theme.id}</span>
+                                    <span className="font-medium text-gray-800 text-xs">T{theme.displayNumber ?? theme.id}</span>
                                   </div>
                                   <p className="text-xs text-gray-600 mb-1 leading-tight line-clamp-2">{theme.name}</p>
                                   <div className="flex justify-between items-center">
