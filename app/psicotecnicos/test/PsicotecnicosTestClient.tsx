@@ -330,19 +330,9 @@ export default function PsicotecnicosTestClient() {
                   {getSelectionText()}
                 </p>
                 <button
+                  disabled={totalSelectedQuestions === 0}
                   onClick={() => {
                     const selectedCatKeys = Object.keys(selectedCategories).filter(k => selectedCategories[k])
-
-                    if (selectedCatKeys.length === 0) {
-                      alert('Por favor, selecciona al menos una categoría')
-                      return
-                    }
-
-                    if (totalSelectedQuestions === 0) {
-                      alert('No hay preguntas disponibles para las categorías seleccionadas')
-                      return
-                    }
-
                     const adjustedNum = Math.min(numQuestionsPsico, totalSelectedQuestions)
 
                     const urlParams = new URLSearchParams({
@@ -352,11 +342,13 @@ export default function PsicotecnicosTestClient() {
 
                     router.push(`/psicotecnicos/test/ejecutar?${urlParams.toString()}`)
                   }}
-                  className="bg-white text-blue-600 px-6 py-3 rounded-lg font-bold hover:bg-gray-100 transition-all duration-300 transform hover:scale-105 hover:shadow-lg active:scale-95 focus:outline-none focus:ring-4 focus:ring-white/50 group"
+                  className={`px-6 py-3 rounded-lg font-bold transition-all duration-300 focus:outline-none ${
+                    totalSelectedQuestions === 0
+                      ? 'bg-white/50 text-white/70 cursor-not-allowed'
+                      : 'bg-white text-blue-600 hover:bg-gray-100 transform hover:scale-105 hover:shadow-lg active:scale-95 focus:ring-4 focus:ring-white/50'
+                  }`}
                 >
-                  <span className="inline-flex items-center justify-center">
-                    Empezar Test Psicotécnico
-                  </span>
+                  Empezar Test Psicotécnico
                 </button>
               </div>
             </div>
