@@ -58,8 +58,9 @@ export default function ChartQuestion({
 }: ChartQuestionProps) {
   const { user } = useAuth() as { user: { id: string; user_metadata?: { full_name?: string } } | null }
   const [showZoomModal, setShowZoomModal] = useState(false)
+  const [zoomLevel, setZoomLevel] = useState(1.5)
 
-  const closeZoomModal = useCallback(() => setShowZoomModal(false), [])
+  const closeZoomModal = useCallback(() => { setShowZoomModal(false); setZoomLevel(1.5) }, [])
 
   useEffect(() => {
     if (!showZoomModal) return
@@ -181,23 +182,48 @@ export default function ChartQuestion({
       {/* Modal de zoom - solo desktop */}
       {showZoomModal && chartComponent && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm"
           onClick={closeZoomModal}
         >
+          {/* Barra de controles */}
           <div
-            className="bg-white rounded-xl max-w-6xl w-full max-h-[90vh] overflow-auto p-6 relative"
+            className="flex items-center gap-3 mb-3 bg-white rounded-full px-4 py-2 shadow-lg"
             onClick={(e) => e.stopPropagation()}
           >
             <button
+              onClick={() => setZoomLevel(z => Math.max(1, z - 0.25))}
+              disabled={zoomLevel <= 1}
+              className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 disabled:opacity-30 transition-colors text-gray-700 font-bold text-lg"
+            >
+              -
+            </button>
+            <span className="text-sm font-medium text-gray-600 min-w-[3.5rem] text-center">
+              {Math.round(zoomLevel * 100)}%
+            </span>
+            <button
+              onClick={() => setZoomLevel(z => Math.min(3, z + 0.25))}
+              disabled={zoomLevel >= 3}
+              className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 disabled:opacity-30 transition-colors text-gray-700 font-bold text-lg"
+            >
+              +
+            </button>
+            <div className="w-px h-5 bg-gray-300" />
+            <button
               onClick={closeZoomModal}
-              className="absolute top-3 right-3 w-9 h-9 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors z-10"
+              className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
               title="Cerrar"
             >
-              <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
-            <div className="pt-2">
+          </div>
+          {/* Contenedor con scroll del grafico ampliado */}
+          <div
+            className="bg-white rounded-xl max-w-[95vw] max-h-[85vh] overflow-auto p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ zoom: zoomLevel, transformOrigin: 'top left' }}>
               {chartComponent}
             </div>
           </div>
