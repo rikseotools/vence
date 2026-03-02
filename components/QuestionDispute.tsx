@@ -199,23 +199,14 @@ export default function QuestionDispute({
         return
       }
 
-      // Email admin (fire-and-forget)
-      if (result.data) {
-        import('../lib/notifications/adminEmailNotifications')
-          .then(({ sendAdminDisputeNotification }) =>
-            sendAdminDisputeNotification({
-              id: result.data.id,
-              question_id: questionId!,
-              user_id: user.id,
-              user_email: user.email || 'Usuario anónimo',
-              user_name: user.user_metadata?.full_name || 'Sin nombre',
-              dispute_type: disputeType,
-              description: desc,
-              created_at: result.data.createdAt,
-            })
-          )
-          .catch((err) => console.error('Error enviando email admin:', err))
-      }
+      // Email admin deshabilitado - saturaba el correo
+      // if (result.data) {
+      //   import('../lib/notifications/adminEmailNotifications')
+      //     .then(({ sendAdminDisputeNotification }) =>
+      //       sendAdminDisputeNotification({...})
+      //     )
+      //     .catch((err) => console.error('Error enviando email admin:', err))
+      // }
 
       setSubmitted(true)
       setDescription('')

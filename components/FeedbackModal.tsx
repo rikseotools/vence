@@ -383,24 +383,15 @@ export default function FeedbackModal({
           return
         }
 
-        // Enviar email de notificación al admin
-        if (result.data) {
-          try {
-            const { sendAdminDisputeNotification } = await import('../lib/notifications/adminEmailNotifications')
-            await sendAdminDisputeNotification({
-              id: result.data.id,
-              question_id: detectedQuestionId,
-              user_id: user!.id,
-              user_email: user!.email || 'Usuario anónimo',
-              user_name: user!.user_metadata?.full_name || 'Sin nombre',
-              dispute_type: formData.disputeType,
-              description: description,
-              created_at: result.data.createdAt
-            })
-          } catch (emailError) {
-            console.error('Error enviando email admin:', emailError)
-          }
-        }
+        // Email admin deshabilitado - saturaba el correo
+        // if (result.data) {
+        //   try {
+        //     const { sendAdminDisputeNotification } = await import('../lib/notifications/adminEmailNotifications')
+        //     await sendAdminDisputeNotification({...})
+        //   } catch (emailError) {
+        //     console.error('Error enviando email admin:', emailError)
+        //   }
+        // }
 
         // Éxito
         setSuccess(true)
