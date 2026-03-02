@@ -19,10 +19,11 @@ import {
   createDetailedTestSession, 
   updateTestScore 
 } from '../utils/testSession'
-import { 
-  saveDetailedAnswer, 
-  calculateConfidence, 
-  createDetailedAnswer 
+import {
+  saveDetailedAnswer,
+  saveDetailedAnswerWithRetry,
+  calculateConfidence,
+  createDetailedAnswer
 } from '../utils/testAnswers.js'
 import { 
   completeDetailedTest, 
@@ -1138,19 +1139,19 @@ export default function TestLayout({
           
           if (session) {
             console.log('💾 Guardando respuesta ÚNICA en sesión:', session.id)
-            const saveSuccess = await saveDetailedAnswer(
-              session.id,
-              currentQ,
-              detailedAnswer,
+            const saveSuccess = await saveDetailedAnswerWithRetry({
+              sessionId: session.id,
+              questionData: currentQ,
+              answerData: detailedAnswer,
               tema,
-              newConfidence,
+              confidenceLevel: newConfidence,
               interactionCount,
               questionStartTime,
               firstInteractionTime,
-              testTracker.interactionEvents,
-              testTracker.mouseEvents,
-              testTracker.scrollEvents
-            )
+              interactionEvents: testTracker.interactionEvents,
+              mouseEvents: testTracker.mouseEvents,
+              scrollEvents: testTracker.scrollEvents
+            })
             // 🔴 FIX CRÍTICO: Verificar success === true, no solo question_id
             if (saveSuccess && saveSuccess.success === true && saveSuccess.question_id) {
               setCurrentQuestionUuid(saveSuccess.question_id)
