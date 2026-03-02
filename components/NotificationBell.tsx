@@ -978,12 +978,12 @@ export default function NotificationBell() {
                           </div>
                           
                           {/* 📈 Mostrar detalles específicos según tipo */}
-                          {notification.type === 'problematic_articles' && notification.accuracy && (
+                          {notification.type === 'problematic_articles' && notification.accuracy != null && (
                             <div className="mb-2 text-xs">
                               <span className="bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 px-2 py-1 rounded-full">
                                 📉 {notification.accuracy}% aciertos
                               </span>
-                              {notification.attempts && (
+                              {notification.attempts != null && notification.attempts > 0 && (
                                 <span className="ml-2 text-gray-500 dark:text-gray-400">
                                   ({notification.attempts} intentos)
                                 </span>

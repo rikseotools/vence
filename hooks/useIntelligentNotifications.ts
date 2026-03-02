@@ -1122,17 +1122,10 @@ export function useIntelligentNotifications(): UseIntelligentNotificationsReturn
           // ✅ Solo agregar si no está descartada
           if (!dismissedNotifications.has(notificationId)) {
             console.log(`✅ Creando notificación para ${finalShortName} con ${articlesAfterCooldown.length} artículos`)
-            
-            // 🆕 GUARDAR COOLDOWN PARA TODOS LOS ARTÍCULOS DE ESTA NOTIFICACIÓN
-            articlesAfterCooldown.forEach(article => {
-              saveProblematicArticleCooldown(
-                user.id, 
-                finalShortName, 
-                article.article_number, 
-                totalTestsCompleted
-              )
-            })
-            
+
+            // ⚠️ NO guardar cooldown aquí (al crear) - se guarda cuando el usuario actúa
+            // El cooldown se activa en markAsRead/executeAction para no ocultar las demás
+
             notifications.push({
               id: notificationId,
               type: 'problematic_articles',
@@ -1709,7 +1702,18 @@ export function useIntelligentNotifications(): UseIntelligentNotificationsReturn
         if (notification) {
           switch (notification.type) {
             case 'problematic_articles':
-              setProblematicArticles(prev => 
+              // Guardar cooldown AHORA (al actuar), no al crear la notificación
+              if (user?.id && notification.articlesList) {
+                notification.articlesList.forEach((article: { article_number: string; law_short_name?: string }) => {
+                  saveProblematicArticleCooldown(
+                    user.id,
+                    notification.law_short_name || '',
+                    article.article_number,
+                    0 // testsCompleted no es crítico aquí, el cooldown por tiempo es suficiente
+                  )
+                })
+              }
+              setProblematicArticles(prev =>
                 prev.filter(n => n.id !== notificationId)
               );
               break;
@@ -1780,9 +1784,24 @@ export function useIntelligentNotifications(): UseIntelligentNotificationsReturn
       })
     }
     
+    // Guardar cooldown para artículos problemáticos al descartar
+    if (user?.id && notificationId.startsWith('problematic-law-')) {
+      const notification = allNotifications.find(n => n.id === notificationId)
+      if (notification?.articlesList) {
+        notification.articlesList.forEach((article: { article_number: string; law_short_name?: string }) => {
+          saveProblematicArticleCooldown(
+            user.id,
+            notification.law_short_name || '',
+            article.article_number,
+            0
+          )
+        })
+      }
+    }
+
     // ✅ NUEVO: Guardar en localStorage para persistencia
     saveDismissedNotification(notificationId)
-    
+
     // 🧪 Manejar notificaciones de testing con estado global
     if (process.env.NODE_ENV === 'development') {
       const updatedTestNotifications = globalTestNotifications.filter(n => n.id !== notificationId)
