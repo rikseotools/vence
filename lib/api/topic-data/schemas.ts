@@ -1,6 +1,7 @@
 // lib/api/topic-data/schemas.ts - Schemas de validación para datos de tema
 import { z } from 'zod'
 import {
+  OPOSICIONES,
   OPOSICION_SLUGS_ENUM,
   SLUG_TO_POSITION_TYPE,
 } from '@/lib/config/oposiciones'
@@ -162,93 +163,43 @@ export function safeParseGetTopicDataResponse(data: unknown) {
 // Mapa de posición a position_type en BD (re-export desde config central)
 export { SLUG_TO_POSITION_TYPE as OPOSICION_TO_POSITION_TYPE } from '@/lib/config/oposiciones'
 
-// Rangos válidos de temas por oposición
-export const VALID_TOPIC_RANGES = {
-  'auxiliar-administrativo-estado': {
-    bloque1: { min: 1, max: 16 },
-    bloque2: { min: 101, max: 112 },
-  },
-  'administrativo-estado': {
-    bloque1: { min: 1, max: 11 },
-    bloque2: { min: 201, max: 204 },
-    bloque3: { min: 301, max: 307 },
-    bloque4: { min: 401, max: 409 },
-    bloque5: { min: 501, max: 506 },
-    bloque6: { min: 601, max: 608 },
-  },
-  'tramitacion-procesal': {
-    bloque1: { min: 1, max: 15 },   // Organización del Estado y Administración de Justicia
-    bloque2: { min: 16, max: 31 },  // Derecho Procesal
-    bloque3: { min: 32, max: 37 },  // Informática
-  },
-  'auxilio-judicial': {
-    bloque1: { min: 1, max: 5 },    // Derecho Constitucional y Organización del Estado
-    bloque2: { min: 6, max: 15 },   // Organización Judicial y Funcionarios
-    bloque3: { min: 16, max: 26 },  // Procedimientos y Actos Procesales
-  },
-  'auxiliar-administrativo-carm': {
-    bloque1: { min: 1, max: 9 },    // Derecho Constitucional y Administrativo
-    bloque2: { min: 10, max: 16 },  // Gestión y Administración Pública
-  },
-  'auxiliar-administrativo-cyl': {
-    bloque1: { min: 1, max: 19 },   // Grupo I: Organización Política y Administrativa
-    bloque2: { min: 20, max: 28 },  // Grupo II: Competencias
-  },
-  'auxiliar-administrativo-andalucia': {
-    bloque1: { min: 1, max: 12 },   // Bloque I: Área Jurídico Administrativa General
-    bloque2: { min: 13, max: 22 },  // Bloque II: Organización y Gestión Administrativa
-  },
-  'auxiliar-administrativo-madrid': {
-    bloque1: { min: 1, max: 15 },   // Bloque I: Organización Política
-    bloque2: { min: 16, max: 21 },  // Bloque II: Ofimática
-  },
-  'auxiliar-administrativo-canarias': {
-    bloque1: { min: 1, max: 20 },   // Parte General
-    bloque2: { min: 21, max: 40 },  // Parte Práctica
-  },
-  'auxiliar-administrativo-clm': {
-    bloque1: { min: 1, max: 12 },   // Organización Administrativa
-    bloque2: { min: 13, max: 24 },  // Ofimática
-  },
-  'auxiliar-administrativo-extremadura': {
-    bloque1: { min: 1, max: 14 },   // Empleo Público y Organización
-    bloque2: { min: 15, max: 25 },  // Derecho Administrativo y Ofimática
-  },
-  'auxiliar-administrativo-valencia': {
-    bloque1: { min: 1, max: 10 },   // Materias Comunes
-    bloque2: { min: 11, max: 24 },  // Materias Específicas
-  },
-  'auxiliar-administrativo-galicia': {
-    bloque1: { min: 1, max: 13 },   // Parte General
-    bloque2: { min: 14, max: 17 },  // Parte Específica
-  },
-  'auxiliar-administrativo-aragon': {
-    bloque1: { min: 1, max: 15 },   // Materias Comunes
-    bloque2: { min: 16, max: 20 },  // Materias Específicas
-  },
-  'auxiliar-administrativo-asturias': {
-    bloque1: { min: 1, max: 6 },    // Derecho Constitucional y Organización
-    bloque2: { min: 7, max: 20 },   // Derecho Administrativo y Comunitario
-    bloque3: { min: 21, max: 25 },  // Ofimática
-  },
-  'auxiliar-administrativo-baleares': {
-    bloque1: { min: 1, max: 20 },   // Materias Comunes
-    bloque2: { min: 21, max: 36 },  // Ofimática
-  },
-} as const
+// Rangos válidos de temas por oposición - derivados automáticamente de la config central
+// Esto garantiza que al añadir una oposición en lib/config/oposiciones.ts,
+// los rangos se actualizan sin necesidad de tocar este archivo.
+function buildTopicRanges(): Record<string, Record<string, { min: number; max: number }>> {
+  const ranges: Record<string, Record<string, { min: number; max: number }>> = {}
+  for (const opo of OPOSICIONES) {
+    const bloques: Record<string, { min: number; max: number }> = {}
+    for (const block of opo.blocks) {
+      const ids = block.themes.map(t => t.id)
+      if (ids.length > 0) {
+        bloques[block.id] = { min: Math.min(...ids), max: Math.max(...ids) }
+      }
+    }
+    ranges[opo.slug] = bloques
+  }
+  return ranges
+}
 
-export type OposicionKey = keyof typeof VALID_TOPIC_RANGES
+export const VALID_TOPIC_RANGES = buildTopicRanges()
+
+// Set de IDs válidos por oposición (más preciso que rangos min/max)
+const VALID_TOPIC_IDS = new Map<string, Set<number>>()
+for (const opo of OPOSICIONES) {
+  const ids = new Set<number>()
+  for (const block of opo.blocks) {
+    for (const theme of block.themes) {
+      ids.add(theme.id)
+    }
+  }
+  VALID_TOPIC_IDS.set(opo.slug, ids)
+}
+
+export type OposicionKey = string
 
 // Función para validar si un tema es válido para una oposición
 export function isValidTopicNumber(topicNumber: number, oposicion: OposicionKey): boolean {
-  const ranges = VALID_TOPIC_RANGES[oposicion as keyof typeof VALID_TOPIC_RANGES]
-  if (!ranges) return false
-
-  for (const range of Object.values(ranges)) {
-    if (topicNumber >= range.min && topicNumber <= range.max) {
-      return true
-    }
-  }
-
-  return false
+  const validIds = VALID_TOPIC_IDS.get(oposicion)
+  if (!validIds) return false
+  return validIds.has(topicNumber)
 }
