@@ -2,20 +2,19 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import { useAdminNotifications } from '@/hooks/useAdminNotifications'
-import AdminNotificationBadge from '@/components/AdminNotificationBadge'
 import AdminActivityChart from '@/components/AdminActivityChart'
 import AdminRegistrationsChart from '@/components/AdminRegistrationsChart'
 
 export default function AdminDashboard() {
   const { supabase } = useAuth()
-  const adminNotifications = useAdminNotifications()
   const [stats, setStats] = useState(null)
   const [emailStats, setEmailStats] = useState(null)
   const [users, setUsers] = useState([])
   const [recentActivity, setRecentActivity] = useState([])
   const [activeUsersLastWeekAtThisHour, setActiveUsersLastWeekAtThisHour] = useState(0)
   const [activeUsersYesterday, setActiveUsersYesterday] = useState(0)
+  const [onlineUsers, setOnlineUsers] = useState([])
+  const [showActivity, setShowActivity] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -188,6 +187,61 @@ export default function AdminDashboard() {
 
         console.log('📅 Usuarios activos ayer:', activeUsersYesterdayCount)
 
+        // 5d. Usuarios "online" - respuestas en últimos 15 min vía test_questions → tests
+        const fifteenMinAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString()
+        const { data: recentAnswers } = await supabase
+          .from('test_questions')
+          .select('test_id, created_at')
+          .gte('created_at', fifteenMinAgo)
+          .order('created_at', { ascending: false })
+          .limit(500)
+
+        let onlineUsersData = []
+        if (recentAnswers && recentAnswers.length > 0) {
+          // test_ids únicos con su última actividad
+          const testLastSeen = new Map()
+          recentAnswers.forEach(q => {
+            if (!testLastSeen.has(q.test_id)) testLastSeen.set(q.test_id, q.created_at)
+          })
+
+          // Obtener user_ids de esos tests
+          const { data: onlineTests } = await supabase
+            .from('tests')
+            .select('id, user_id')
+            .in('id', [...testLastSeen.keys()])
+
+          if (onlineTests && onlineTests.length > 0) {
+            // Agrupar por user_id con última actividad
+            const userLastSeen = new Map()
+            onlineTests.forEach(t => {
+              const lastSeen = testLastSeen.get(t.id)
+              if (!userLastSeen.has(t.user_id) || lastSeen > userLastSeen.get(t.user_id)) {
+                userLastSeen.set(t.user_id, lastSeen)
+              }
+            })
+
+            // Traer perfiles
+            const onlineUserIds = [...userLastSeen.keys()]
+            const { data: onlineProfiles } = await supabase
+              .from('user_profiles')
+              .select('id, full_name, email, plan_type')
+              .in('id', onlineUserIds)
+
+            onlineUsersData = onlineUserIds.map(uid => {
+              const profile = onlineProfiles?.find(p => p.id === uid)
+              return {
+                user_id: uid,
+                full_name: profile?.full_name || null,
+                email: profile?.email || null,
+                is_premium: profile?.plan_type === 'premium',
+                last_seen: userLastSeen.get(uid)
+              }
+            })
+          }
+        }
+
+        console.log('🟢 Usuarios online (últimos 15 min):', onlineUsersData.length)
+
         // 6. Hacer JOIN con user_profiles (TODOS los usuarios, no solo admins)
         let finalTodayActivity = []
 
@@ -228,6 +282,7 @@ export default function AdminDashboard() {
         setRecentActivity(finalTodayActivity)
         setActiveUsersLastWeekAtThisHour(activeUsersLastWeekAtThisHour)
         setActiveUsersYesterday(activeUsersYesterdayCount)
+        setOnlineUsers(onlineUsersData)
 
         console.log('✅ Dashboard cargado:', processedStats)
         console.log('📅 Tests hoy encontrados:', finalTodayActivity?.length || 0)
@@ -1006,6 +1061,12 @@ export default function AdminDashboard() {
                   <span className="text-xs text-gray-500">
                     vs {activeUsersLastWeekAtThisHour} sem. pasada
                   </span>
+                  {onlineUsers.length > 0 && (
+                    <span className="text-xs font-medium text-green-600 flex items-center gap-1">
+                      <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse inline-block"></span>
+                      {onlineUsers.length} online
+                    </span>
+                  )}
                   {(() => {
                     const today = [...new Set(recentActivity.map(a => a.user_id))].length
                     const lastWeek = activeUsersLastWeekAtThisHour
@@ -1095,6 +1156,31 @@ export default function AdminDashboard() {
                 <div className="text-xs text-gray-500 mt-2 pt-1 border-t border-gray-200 dark:border-gray-600">
                   Ayer total: {stats.newUsersYesterday}
                 </div>
+                {/* Usuarios online ahora */}
+                {onlineUsers.length > 0 && (
+                  <div className="mt-2 pt-1 border-t border-gray-200 dark:border-gray-600">
+                    <div className="flex items-center gap-1 text-xs font-medium text-green-600 dark:text-green-400 mb-1">
+                      <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                      {onlineUsers.length} usuarios online
+                    </div>
+                    <div className="space-y-0.5">
+                      {onlineUsers.map(user => (
+                        <div key={user.user_id} className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-300">
+                          <span className="truncate">
+                            {user.full_name?.split(' ')[0] || user.email?.split('@')[0] || 'Usuario'}
+                          </span>
+                          {user.is_premium && <span className="text-amber-600">💎</span>}
+                          <span className="text-gray-400 ml-auto flex-shrink-0">
+                            {(() => {
+                              const ago = Math.round((Date.now() - new Date(user.last_seen).getTime()) / 60000)
+                              return ago < 1 ? 'ahora' : `${ago}m`
+                            })()}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="w-8 h-8 sm:w-12 sm:h-12 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
                 <span className="text-lg sm:text-2xl">📝</span>
@@ -1105,7 +1191,6 @@ export default function AdminDashboard() {
 
         </div>
       )}
-
 
       {/* Métricas de actividad y emails - Responsive */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
@@ -1287,131 +1372,74 @@ export default function AdminDashboard() {
       {/* Gráfico de registros por día */}
       <AdminRegistrationsChart />
 
-      {/* Gestión de Feedback e Impugnaciones - Movido arriba para mayor visibilidad */}
+      {/* Actividad reciente - On-demand: solo se muestra al pulsar el botón */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow border p-4 sm:p-6">
-        <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          💬 Feedback e Impugnaciones
-        </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-          <AdminNotificationBadge count={adminNotifications?.feedback}>
-            <a 
-              href="/admin/feedback"
-              className={`block bg-cyan-50 dark:bg-cyan-900/20 border border-cyan-200 dark:border-cyan-800 rounded-lg p-3 sm:p-4 hover:bg-cyan-100 dark:hover:bg-cyan-900/30 transition-colors ${
-                adminNotifications?.feedback > 0 ? 'ring-2 ring-red-400 ring-opacity-50 animate-pulse' : ''
-              }`}
-            >
-              <div className="flex items-center space-x-3">
-                <span className="text-xl sm:text-2xl">💬</span>
-                <div className="min-w-0">
-                  <div className="flex items-center space-x-2">
-                    <h4 className="font-medium text-cyan-900 dark:text-cyan-100 text-sm sm:text-base">Feedback</h4>
-                    {adminNotifications?.feedback > 0 && (
-                      <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full animate-pulse">
-                        {adminNotifications?.feedback} pendientes
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs sm:text-sm text-cyan-600 dark:text-cyan-400">Gestionar comentarios</p>
-                </div>
-              </div>
-            </a>
-          </AdminNotificationBadge>
-
-          <AdminNotificationBadge count={adminNotifications?.impugnaciones}>
-            <a 
-              href="/admin/impugnaciones"
-              className={`block bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-3 sm:p-4 hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-colors ${
-                adminNotifications?.impugnaciones > 0 ? 'ring-2 ring-red-400 ring-opacity-50 animate-pulse' : ''
-              }`}
-            >
-              <div className="flex items-center space-x-3">
-                <span className="text-xl sm:text-2xl">📋</span>
-                <div className="min-w-0">
-                  <div className="flex items-center space-x-2">
-                    <h4 className="font-medium text-orange-900 dark:text-orange-100 text-sm sm:text-base">Impugnaciones</h4>
-                    {adminNotifications?.impugnaciones > 0 && (
-                      <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full animate-pulse">
-                        {adminNotifications?.impugnaciones} pendientes
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs sm:text-sm text-orange-600 dark:text-orange-400">Gestionar disputas</p>
-                </div>
-              </div>
-            </a>
-          </AdminNotificationBadge>
-        </div>
-      </div>
-
-      {/* Actividad reciente - CORREGIDA: Solo mostrar si hay actividad */}
-      {recentActivity.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow border p-4 sm:p-6">
-          <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
             ⚡ Actividad Reciente (Hoy)
           </h3>
-          
-          <div className="space-y-3">
-            {recentActivity.map((activity, index) => (
-              <div key={activity.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                <div className="flex items-center space-x-3 min-w-0 flex-1">
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <span className="text-green-600 text-sm sm:text-lg">✅</span>
-                  </div>
-                  <div className="min-w-0">
-                    <div className="font-medium text-gray-900 dark:text-white text-sm sm:text-base truncate">
-                      {activity.user_profiles?.full_name?.split(' ')[0] || activity.user_profiles?.email?.split('@')[0] || 'Usuario anónimo'}
-                    </div>
-                    <div className="text-xs sm:text-sm text-gray-500">
-                      {(() => {
-                        const s = Number(activity.score)
-                        const t = Number(activity.total_questions)
-                        if (t <= 0) return '0/0 preguntas'
-                        // Si score > total_questions, score es porcentaje (no conteo)
-                        if (s > t) {
-                          const correct = Math.round(s * t / 100)
-                          return `${correct}/${t} preguntas`
-                        }
-                        return `${s}/${t} preguntas`
-                      })()}
-                    </div>
-                  </div>
-                </div>
-                <div className="text-right flex-shrink-0 ml-2">
-                  <div className="text-sm sm:text-lg font-semibold text-green-600">
-                    {(() => {
-                      const s = Number(activity.score)
-                      const t = Number(activity.total_questions)
-                      if (t <= 0) return '0%'
-                      // Si score > total_questions, score ya ES el porcentaje
-                      if (s > t) return `${Math.min(100, s)}%`
-                      return `${Math.round((s / t) * 100)}%`
-                    })()}
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    {formatTimeAgo(activity.completed_at || activity.started_at || activity.created_at)}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+          <button
+            onClick={() => setShowActivity(!showActivity)}
+            className="text-xs sm:text-sm px-3 py-1.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-lg hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors font-medium"
+          >
+            {showActivity ? 'Ocultar' : `Ver ${recentActivity.length} tests`}
+          </button>
         </div>
-      )}
 
-      {/* Si no hay actividad hoy, mostrar mensaje diferente */}
-      {recentActivity.length === 0 && stats && stats.testsCompletedToday === 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow border p-4 sm:p-6">
-          <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            ⚡ Actividad de Hoy
-          </h3>
-          <div className="text-center py-6 sm:py-8">
-            <div className="text-3xl sm:text-4xl mb-4">😴</div>
-            <p className="text-gray-500 text-sm sm:text-base">No hay tests completados hoy</p>
-            <p className="text-xs sm:text-sm text-gray-400 mt-1">
-              Los tests completados hoy aparecerán aquí
-            </p>
+        {showActivity && (
+          <div className="mt-4">
+            {recentActivity.length > 0 ? (
+              <div className="space-y-3">
+                {recentActivity.map((activity, index) => (
+                  <div key={activity.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                    <div className="flex items-center space-x-3 min-w-0 flex-1">
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <span className="text-green-600 text-sm sm:text-lg">✅</span>
+                      </div>
+                      <div className="min-w-0">
+                        <div className="font-medium text-gray-900 dark:text-white text-sm sm:text-base truncate">
+                          {activity.user_profiles?.full_name?.split(' ')[0] || activity.user_profiles?.email?.split('@')[0] || 'Usuario anónimo'}
+                        </div>
+                        <div className="text-xs sm:text-sm text-gray-500">
+                          {(() => {
+                            const s = Number(activity.score)
+                            const t = Number(activity.total_questions)
+                            if (t <= 0) return '0/0 preguntas'
+                            if (s > t) {
+                              const correct = Math.round(s * t / 100)
+                              return `${correct}/${t} preguntas`
+                            }
+                            return `${s}/${t} preguntas`
+                          })()}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right flex-shrink-0 ml-2">
+                      <div className="text-sm sm:text-lg font-semibold text-green-600">
+                        {(() => {
+                          const s = Number(activity.score)
+                          const t = Number(activity.total_questions)
+                          if (t <= 0) return '0%'
+                          if (s > t) return `${Math.min(100, s)}%`
+                          return `${Math.round((s / t) * 100)}%`
+                        })()}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {formatTimeAgo(activity.completed_at || activity.started_at || activity.created_at)}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-6 sm:py-8">
+                <div className="text-3xl sm:text-4xl mb-4">😴</div>
+                <p className="text-gray-500 text-sm sm:text-base">No hay tests completados hoy</p>
+              </div>
+            )}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Tabla de usuarios - Responsive */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow border overflow-hidden">
@@ -1534,78 +1562,6 @@ export default function AdminDashboard() {
       </div>
 
 
-      {/* Acciones rápidas - Mobile responsive */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow border p-4 sm:p-6">
-        <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          ⚡ Acciones Rápidas
-        </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-          <a
-            href="/admin/configuracion"
-            className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-3 sm:p-4 hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors"
-          >
-            <div className="flex items-center space-x-3">
-              <span className="text-xl sm:text-2xl">📧</span>
-              <div className="min-w-0">
-                <h4 className="font-medium text-purple-900 dark:text-purple-100 text-sm sm:text-base">Emails</h4>
-                <p className="text-xs sm:text-sm text-purple-600 dark:text-purple-400">Campañas automáticas</p>
-              </div>
-            </div>
-          </a>
-
-          <a
-            href="/admin/notificaciones"
-            className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-3 sm:p-4 hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-colors"
-          >
-            <div className="flex items-center space-x-3">
-              <span className="text-xl sm:text-2xl">🔔</span>
-              <div className="min-w-0">
-                <h4 className="font-medium text-orange-900 dark:text-orange-100 text-sm sm:text-base">Notificaciones</h4>
-                <p className="text-xs sm:text-sm text-orange-600 dark:text-orange-400">Tracking Push & Email</p>
-              </div>
-            </div>
-          </a>
-
-          <a
-            href="/admin/ai"
-            className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg p-3 sm:p-4 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors"
-          >
-            <div className="flex items-center space-x-3">
-              <span className="text-xl sm:text-2xl">🤖</span>
-              <div className="min-w-0">
-                <h4 className="font-medium text-emerald-900 dark:text-emerald-100 text-sm sm:text-base">Configurar IA</h4>
-                <p className="text-xs sm:text-sm text-emerald-600 dark:text-emerald-400">APIs, modelos y uso</p>
-              </div>
-            </div>
-          </a>
-
-          <a
-            href="/admin/monitoreo"
-            className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-lg p-3 sm:p-4 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors"
-          >
-            <div className="flex items-center space-x-3">
-              <span className="text-xl sm:text-2xl">📋</span>
-              <div className="min-w-0">
-                <h4 className="font-medium text-indigo-900 dark:text-indigo-100 text-sm sm:text-base">Verificar Leyes</h4>
-                <p className="text-xs sm:text-sm text-indigo-600 dark:text-indigo-400">Comparar con BOE</p>
-              </div>
-            </div>
-          </a>
-
-          <a
-            href="/admin/fraudes"
-            className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 sm:p-4 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
-          >
-            <div className="flex items-center space-x-3">
-              <span className="text-xl sm:text-2xl">🚨</span>
-              <div className="min-w-0">
-                <h4 className="font-medium text-red-900 dark:text-red-100 text-sm sm:text-base">Fraudes</h4>
-                <p className="text-xs sm:text-sm text-red-600 dark:text-red-400">Cuentas compartidas</p>
-              </div>
-            </div>
-          </a>
-        </div>
-      </div>
 
     </div>
   )
