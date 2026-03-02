@@ -1061,12 +1061,6 @@ export default function AdminDashboard() {
                   <span className="text-xs text-gray-500">
                     vs {activeUsersLastWeekAtThisHour} sem. pasada
                   </span>
-                  {onlineUsers.length > 0 && (
-                    <span className="text-xs font-medium text-green-600 flex items-center gap-1">
-                      <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse inline-block"></span>
-                      {onlineUsers.length} online
-                    </span>
-                  )}
                   {(() => {
                     const today = [...new Set(recentActivity.map(a => a.user_id))].length
                     const lastWeek = activeUsersLastWeekAtThisHour
