@@ -976,6 +976,79 @@ export const OPOSICIONES: Oposicion[] = [
   },
 
   // ========================================
+  // AUXILIAR ADMINISTRATIVO PRINCIPADO DE ASTURIAS (C2)
+  // ========================================
+  {
+    id: 'auxiliar_administrativo_asturias',
+    slug: 'auxiliar-administrativo-asturias',
+    positionType: 'auxiliar_administrativo_asturias',
+    name: 'Auxiliar Administrativo del Principado de Asturias',
+    shortName: 'Aux. Asturias',
+    emoji: '⛰️',
+    badge: 'C2',
+    color: 'indigo',
+    administracion: 'autonomica',
+    blocks: [
+      {
+        id: 'bloque1',
+        title: 'Bloque I: Derecho Constitucional y Organización Administrativa',
+        subtitle: 'CE, AGE, Estatuto Asturias, Gobierno Asturias',
+        icon: '🏛️',
+        themes: [
+          { id: 1, name: 'La Constitución Española de 1978 (I)' },
+          { id: 2, name: 'La Constitución Española de 1978 (II)' },
+          { id: 3, name: 'La Constitución Española de 1978 (III)' },
+          { id: 4, name: 'La Administración General del Estado' },
+          { id: 5, name: 'El Estatuto de Autonomía del Principado de Asturias' },
+          { id: 6, name: 'El Presidente y Consejo de Gobierno del Principado' },
+        ],
+      },
+      {
+        id: 'bloque2',
+        title: 'Bloque II: Derecho Administrativo y Comunitario',
+        subtitle: 'UE, LPAC, LRJSP, TREBEP, LGSS, Igualdad, Transparencia',
+        icon: '⚖️',
+        themes: [
+          { id: 7, name: 'El Tratado de la Unión Europea' },
+          { id: 8, name: 'Ley 39/2015 de Procedimiento Administrativo Común' },
+          { id: 9, name: 'Ley 40/2015 de Régimen Jurídico del Sector Público' },
+          { id: 10, name: 'Régimen Jurídico de la Administración del Principado' },
+          { id: 11, name: 'El Estatuto Básico del Empleado Público' },
+          { id: 12, name: 'Función Pública del Principado de Asturias' },
+          { id: 13, name: 'Convenio Colectivo del personal laboral del Principado' },
+          { id: 14, name: 'Régimen Económico y Presupuestario del Principado' },
+          { id: 15, name: 'La Ley General de la Seguridad Social (I)' },
+          { id: 16, name: 'La Ley General de la Seguridad Social (II)' },
+          { id: 17, name: 'Atención Ciudadana en el Principado de Asturias' },
+          { id: 18, name: 'La documentación administrativa' },
+          { id: 19, name: 'Protección de datos y transparencia' },
+          { id: 20, name: 'Igualdad y discapacidad' },
+        ],
+      },
+      {
+        id: 'bloque3',
+        title: 'Bloque III: Ofimática',
+        subtitle: 'Windows, Word, Excel, Access',
+        icon: '💻',
+        themes: [
+          { id: 21, name: 'Sistema operativo Windows' },
+          { id: 22, name: 'Explorador de Windows' },
+          { id: 23, name: 'Procesador de textos Word' },
+          { id: 24, name: 'Hoja de cálculo Excel' },
+          { id: 25, name: 'Base de datos Access' },
+        ],
+      },
+    ],
+    totalTopics: 25,
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/auxiliar-administrativo-asturias', label: 'Mi Oposición', icon: '⛰️', featured: true },
+      { href: '/auxiliar-administrativo-asturias/temario', label: 'Temario', icon: '📚' },
+      { href: '/auxiliar-administrativo-asturias/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
   // AUXILIO JUDICIAL (C2)
   // ========================================
   {

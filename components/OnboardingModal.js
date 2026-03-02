@@ -229,6 +229,13 @@ const OFFICIAL_OPOSICIONES = [
     icon: '🏔️'
   },
   {
+    id: 'auxiliar_administrativo_asturias',
+    nombre: 'Auxiliar Administrativo del Principado de Asturias',
+    categoria: 'C2',
+    administracion: 'Autonómica',
+    icon: '⛰️'
+  },
+  {
     id: 'auxiliar_comunidad_autonoma',
     nombre: 'Auxiliar Administrativo Comunidad Autónoma',
     categoria: 'C2',

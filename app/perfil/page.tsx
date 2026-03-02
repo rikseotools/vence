@@ -452,6 +452,16 @@ function PerfilPageContent() {
         categoria: 'C2',
         administracion: 'Autonómica'
       }
+    },
+    {
+      value: 'auxiliar_administrativo_asturias',
+      label: 'Auxiliar Administrativo del Principado de Asturias',
+      data: {
+        name: 'Auxiliar Administrativo del Principado de Asturias',
+        slug: 'auxiliar-administrativo-asturias',
+        categoria: 'C2',
+        administracion: 'Autonómica'
+      }
     }
   ]
 

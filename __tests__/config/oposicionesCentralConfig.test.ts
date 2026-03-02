@@ -27,6 +27,7 @@ const KNOWN_SLUGS = [
   'auxiliar-administrativo-valencia',
   'auxiliar-administrativo-galicia',
   'auxiliar-administrativo-aragon',
+  'auxiliar-administrativo-asturias',
 ]
 
 const KNOWN_POSITION_TYPES = [
@@ -44,6 +45,7 @@ const KNOWN_POSITION_TYPES = [
   'auxiliar_administrativo_valencia',
   'auxiliar_administrativo_galicia',
   'auxiliar_administrativo_aragon',
+  'auxiliar_administrativo_asturias',
 ]
 
 describe('Config central de oposiciones', () => {
@@ -51,14 +53,14 @@ describe('Config central de oposiciones', () => {
     for (const slug of KNOWN_SLUGS) {
       expect(ALL_OPOSICION_SLUGS).toContain(slug)
     }
-    expect(ALL_OPOSICION_SLUGS.length).toBe(14)
+    expect(ALL_OPOSICION_SLUGS.length).toBe(15)
   })
 
   test('ALL_POSITION_TYPES contiene los 11 positionTypes conocidos', () => {
     for (const pt of KNOWN_POSITION_TYPES) {
       expect(ALL_POSITION_TYPES).toContain(pt)
     }
-    expect(ALL_POSITION_TYPES.length).toBe(14)
+    expect(ALL_POSITION_TYPES.length).toBe(15)
   })
 
   test('SLUG_TO_POSITION_TYPE mapea correctamente cada slug', () => {
@@ -76,6 +78,7 @@ describe('Config central de oposiciones', () => {
     expect(SLUG_TO_POSITION_TYPE['auxiliar-administrativo-valencia']).toBe('auxiliar_administrativo_valencia')
     expect(SLUG_TO_POSITION_TYPE['auxiliar-administrativo-galicia']).toBe('auxiliar_administrativo_galicia')
     expect(SLUG_TO_POSITION_TYPE['auxiliar-administrativo-aragon']).toBe('auxiliar_administrativo_aragon')
+    expect(SLUG_TO_POSITION_TYPE['auxiliar-administrativo-asturias']).toBe('auxiliar_administrativo_asturias')
   })
 
   test('OPOSICION_SLUGS_ENUM funciona con z.enum()', () => {
@@ -114,7 +117,7 @@ describe('Config central de oposiciones', () => {
     const byAdmin = (admin: string) => OPOSICIONES.filter(o => o.administracion === admin)
     expect(byAdmin('estado').length).toBe(2)
     expect(byAdmin('justicia').length).toBe(2)
-    expect(byAdmin('autonomica').length).toBe(10)
+    expect(byAdmin('autonomica').length).toBe(11)
   })
 
   test('getOposicionBySlug() devuelve datos correctos', () => {

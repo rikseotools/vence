@@ -421,6 +421,35 @@ export default function OposicionesPage() {
       href: '/auxiliar-administrativo-aragon',
     },
     {
+      id: 'auxiliar-administrativo-asturias',
+      name: 'Auxiliar Administrativo del Principado de Asturias',
+      shortName: 'Aux. Admin. Asturias',
+      badge: 'C2',
+      icon: '⛰️',
+      color: 'indigo',
+      description: 'Oposicion para trabajar en el Principado de Asturias como Auxiliar Administrativo. 7 plazas OPE 2025. 25 temas en 3 bloques. Concurso-oposicion.',
+      category: 'Comunidades Autónomas',
+      level: 'Grupo C, Subgrupo C2',
+      temarios: 25,
+      tests: 0,
+      difficulty: 'Intermedio-Alto',
+      duration: '8-14 meses',
+      salary: '18.000€ - 22.000€',
+      features: [
+        'Temario oficial BOPA (25 temas)',
+        'Tests por temas y bloques',
+        'Derecho Constitucional + Administrativo + Ofimatica',
+        'Seguimiento de progreso',
+        'Estadisticas detalladas'
+      ],
+      requirements: [
+        'Titulo de Graduado en ESO o equivalente',
+        'Nacionalidad espanola o UE',
+        'Tener 16 anos y no exceder edad jubilacion'
+      ],
+      href: '/auxiliar-administrativo-asturias',
+    },
+    {
       id: 'administrativo-castilla-leon',
       name: 'Administrativo Junta de Castilla y León',
       shortName: 'Administrativo CyL',

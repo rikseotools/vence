@@ -109,6 +109,14 @@ const FLAG_PATHS: Record<string, ReactNode> = {
       <rect y="10.89" width="20" height="1.56" fill="#DA121A"/>
     </>
   ),
+  // Asturias: fondo azul con Cruz de la Victoria dorada
+  auxiliar_administrativo_asturias: (
+    <>
+      <rect width="20" height="14" fill="#0054A6"/>
+      <rect x="9" y="1" width="2" height="12" fill="#FFC300"/>
+      <rect x="4" y="4" width="12" height="2" fill="#FFC300"/>
+    </>
+  ),
   // Andalucía: franjas verde-blanco-verde horizontales
   auxiliar_administrativo_andalucia: (
     <>
