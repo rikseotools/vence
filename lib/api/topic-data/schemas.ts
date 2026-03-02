@@ -202,13 +202,47 @@ export const VALID_TOPIC_RANGES = {
     bloque1: { min: 1, max: 15 },   // Bloque I: Organización Política
     bloque2: { min: 16, max: 21 },  // Bloque II: Ofimática
   },
+  'auxiliar-administrativo-canarias': {
+    bloque1: { min: 1, max: 20 },   // Parte General
+    bloque2: { min: 21, max: 40 },  // Parte Práctica
+  },
+  'auxiliar-administrativo-clm': {
+    bloque1: { min: 1, max: 12 },   // Organización Administrativa
+    bloque2: { min: 13, max: 24 },  // Ofimática
+  },
+  'auxiliar-administrativo-extremadura': {
+    bloque1: { min: 1, max: 14 },   // Empleo Público y Organización
+    bloque2: { min: 15, max: 25 },  // Derecho Administrativo y Ofimática
+  },
+  'auxiliar-administrativo-valencia': {
+    bloque1: { min: 1, max: 10 },   // Materias Comunes
+    bloque2: { min: 11, max: 24 },  // Materias Específicas
+  },
+  'auxiliar-administrativo-galicia': {
+    bloque1: { min: 1, max: 13 },   // Parte General
+    bloque2: { min: 14, max: 17 },  // Parte Específica
+  },
+  'auxiliar-administrativo-aragon': {
+    bloque1: { min: 1, max: 15 },   // Materias Comunes
+    bloque2: { min: 16, max: 20 },  // Materias Específicas
+  },
+  'auxiliar-administrativo-asturias': {
+    bloque1: { min: 1, max: 6 },    // Derecho Constitucional y Organización
+    bloque2: { min: 7, max: 20 },   // Derecho Administrativo y Comunitario
+    bloque3: { min: 21, max: 25 },  // Ofimática
+  },
+  'auxiliar-administrativo-baleares': {
+    bloque1: { min: 1, max: 20 },   // Materias Comunes
+    bloque2: { min: 21, max: 36 },  // Ofimática
+  },
 } as const
 
 export type OposicionKey = keyof typeof VALID_TOPIC_RANGES
 
 // Función para validar si un tema es válido para una oposición
 export function isValidTopicNumber(topicNumber: number, oposicion: OposicionKey): boolean {
-  const ranges = VALID_TOPIC_RANGES[oposicion]
+  const ranges = VALID_TOPIC_RANGES[oposicion as keyof typeof VALID_TOPIC_RANGES]
+  if (!ranges) return false
 
   for (const range of Object.values(ranges)) {
     if (topicNumber >= range.min && topicNumber <= range.max) {
