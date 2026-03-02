@@ -1049,6 +1049,82 @@ export const OPOSICIONES: Oposicion[] = [
   },
 
   // ========================================
+  // AUXILIAR ADMINISTRATIVO ILLES BALEARS (C2)
+  // ========================================
+  {
+    id: 'auxiliar_administrativo_baleares',
+    slug: 'auxiliar-administrativo-baleares',
+    positionType: 'auxiliar_administrativo_baleares',
+    name: 'Auxiliar Administrativo de la CAIB',
+    shortName: 'Aux. Baleares',
+    emoji: '🏝️',
+    badge: 'C2',
+    color: 'cyan',
+    administracion: 'autonomica',
+    blocks: [
+      {
+        id: 'bloque1',
+        title: 'Bloque I: Materias Comunes',
+        subtitle: 'CE, Estatuto Baleares, LPAC, LRJSP, TREBEP, Contratación, Transparencia, Igualdad',
+        icon: '🏛️',
+        themes: [
+          { id: 1, name: 'CE y Estatuto de Autonomía de las Illes Balears' },
+          { id: 2, name: 'Parlamento, Presidente y Gobierno de las Illes Balears' },
+          { id: 3, name: 'Régimen Jurídico del Sector Público y organización administrativa' },
+          { id: 4, name: 'Fuentes del derecho y jerarquía normativa' },
+          { id: 5, name: 'Procedimiento Administrativo Común (I): disposiciones generales' },
+          { id: 6, name: 'Procedimiento Administrativo Común (II): plazos, actos y recursos' },
+          { id: 7, name: 'Procedimiento Administrativo Común (III): procedimiento' },
+          { id: 8, name: 'El Butlletí Oficial de les Illes Balears' },
+          { id: 9, name: 'Archivos y gestión documental' },
+          { id: 10, name: 'Relaciones electrónicas y atención a la ciudadanía' },
+          { id: 11, name: 'Oficinas de asistencia en materia de registros' },
+          { id: 12, name: 'Contratación administrativa' },
+          { id: 13, name: 'Personal funcionario: adquisición y procesos selectivos' },
+          { id: 14, name: 'Derechos, deberes e incompatibilidades de los funcionarios' },
+          { id: 15, name: 'Presupuestos generales de las Illes Balears' },
+          { id: 16, name: 'Prevención de riesgos laborales' },
+          { id: 17, name: 'Transparencia y acceso a la información pública' },
+          { id: 18, name: 'Funcionamiento electrónico del sector público' },
+          { id: 19, name: 'Igualdad, no discriminación y violencia de género' },
+          { id: 20, name: 'Herramientas de administración digital de la CAIB' },
+        ],
+      },
+      {
+        id: 'bloque2',
+        title: 'Bloque II: Ofimática',
+        subtitle: 'Microsoft Word y Microsoft Excel',
+        icon: '💻',
+        themes: [
+          { id: 21, name: 'Word: conceptos básicos de edición de texto' },
+          { id: 22, name: 'Word: formato de fuente y párrafo' },
+          { id: 23, name: 'Word: estilos' },
+          { id: 24, name: 'Word: formato de página, encabezados y pies' },
+          { id: 25, name: 'Word: imágenes y tablas' },
+          { id: 26, name: 'Word: tabla de contenidos y notas al pie' },
+          { id: 27, name: 'Word: combinación de correspondencia' },
+          { id: 28, name: 'Word: corrección ortográfica y comparación' },
+          { id: 29, name: 'Word: formularios con controles de contenido' },
+          { id: 30, name: 'Excel: operaciones básicas y formato de celdas' },
+          { id: 31, name: 'Excel: tablas, gráficos y filtrado' },
+          { id: 32, name: 'Excel: diseño de página e impresión' },
+          { id: 33, name: 'Excel: fórmulas y funciones estadísticas' },
+          { id: 34, name: 'Excel: ortografía y protección de documentos' },
+          { id: 35, name: 'Excel: vistas y zoom' },
+          { id: 36, name: 'Excel: tablas dinámicas y análisis de escenarios' },
+        ],
+      },
+    ],
+    totalTopics: 36,
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/auxiliar-administrativo-baleares', label: 'Mi Oposición', icon: '🏝️', featured: true },
+      { href: '/auxiliar-administrativo-baleares/temario', label: 'Temario', icon: '📚' },
+      { href: '/auxiliar-administrativo-baleares/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
   // AUXILIO JUDICIAL (C2)
   // ========================================
   {

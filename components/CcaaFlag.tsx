@@ -117,6 +117,18 @@ const FLAG_PATHS: Record<string, ReactNode> = {
       <rect x="4" y="4" width="12" height="2" fill="#FFC300"/>
     </>
   ),
+  // Illes Balears: Senyera con castillo morado en el cantón
+  auxiliar_administrativo_baleares: (
+    <>
+      <rect width="20" height="14" fill="#FCDD09"/>
+      <rect y="0" width="20" height="1.75" fill="#DA121A"/>
+      <rect y="3.5" width="20" height="1.75" fill="#DA121A"/>
+      <rect y="7" width="20" height="1.75" fill="#DA121A"/>
+      <rect y="10.5" width="20" height="1.75" fill="#DA121A"/>
+      <rect x="0" y="0" width="7" height="7" fill="#7B2D8B" opacity="0.8"/>
+      <rect x="2.5" y="1" width="2" height="5" rx="0.3" fill="#fff" opacity="0.7"/>
+    </>
+  ),
   // Andalucía: franjas verde-blanco-verde horizontales
   auxiliar_administrativo_andalucia: (
     <>

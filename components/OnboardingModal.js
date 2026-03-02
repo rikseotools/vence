@@ -236,6 +236,13 @@ const OFFICIAL_OPOSICIONES = [
     icon: '⛰️'
   },
   {
+    id: 'auxiliar_administrativo_baleares',
+    nombre: 'Auxiliar Administrativo de la CAIB',
+    categoria: 'C2',
+    administracion: 'Autonómica',
+    icon: '🏝️'
+  },
+  {
     id: 'auxiliar_comunidad_autonoma',
     nombre: 'Auxiliar Administrativo Comunidad Autónoma',
     categoria: 'C2',

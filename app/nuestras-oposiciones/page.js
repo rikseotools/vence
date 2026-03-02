@@ -450,6 +450,36 @@ export default function OposicionesPage() {
       href: '/auxiliar-administrativo-asturias',
     },
     {
+      id: 'auxiliar-administrativo-baleares',
+      name: 'Auxiliar Administrativo de la CAIB',
+      shortName: 'Aux. Admin. Baleares',
+      badge: 'C2',
+      icon: '🏝️',
+      color: 'cyan',
+      description: 'Oposicion para trabajar en la Comunitat Autonoma de les Illes Balears como Auxiliar Administrativo. 128 plazas OPE 2022-2024. 36 temas en 2 bloques. Requisito catalan B2.',
+      category: 'Comunidades Autónomas',
+      level: 'Grupo C, Subgrupo C2',
+      temarios: 36,
+      tests: 0,
+      difficulty: 'Intermedio-Alto',
+      duration: '10-16 meses',
+      salary: '18.000€ - 22.000€',
+      features: [
+        'Temario oficial BOIB (36 temas)',
+        'Tests por temas y bloques',
+        'Materias Comunes + Ofimatica',
+        'Seguimiento de progreso',
+        'Estadisticas detalladas'
+      ],
+      requirements: [
+        'Titulo de Graduado en ESO o equivalente',
+        'Nacionalidad espanola o UE',
+        'Certificado catalan B2',
+        'Tener 16 anos y no exceder edad jubilacion'
+      ],
+      href: '/auxiliar-administrativo-baleares',
+    },
+    {
       id: 'administrativo-castilla-leon',
       name: 'Administrativo Junta de Castilla y León',
       shortName: 'Administrativo CyL',

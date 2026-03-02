@@ -462,6 +462,16 @@ function PerfilPageContent() {
         categoria: 'C2',
         administracion: 'Autonómica'
       }
+    },
+    {
+      value: 'auxiliar_administrativo_baleares',
+      label: 'Auxiliar Administrativo de la CAIB (C2)',
+      data: {
+        name: 'Auxiliar Administrativo de la CAIB',
+        slug: 'auxiliar-administrativo-baleares',
+        categoria: 'C2',
+        administracion: 'Autonómica'
+      }
     }
   ]
 
