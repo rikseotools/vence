@@ -126,6 +126,102 @@ BLOQUE VI - Informática Básica y Ofimática (8 temas):
   T608: La Red Internet [5c687f25]
 ```
 
+### Tramitación Procesal
+`position_type: 'tramitacion_procesal'`
+
+| Bloque | Topics | Descripción |
+|--------|--------|-------------|
+| **Bloque I** | T1-T15 | Organización del Estado y Justicia |
+| **Bloque II** | T16-T31 | Derecho Procesal y Registral |
+| **Bloque III** | T32-T37 | Informática y Ofimática |
+
+**Detalle de topics:**
+```
+BLOQUE I - Organización del Estado y Justicia (15 temas):
+  T1:  La Constitución Española de 1978 [a6351c86]
+  T2:  Igualdad y no discriminación por razón de género [06c477d8]
+  T3:  El Gobierno y la Administración [a03d6129]
+  T4:  Organización territorial del Estado [3c612900]
+  T5:  La Unión Europea [30210e71]
+  T6:  El Poder Judicial [31d21a36]
+  T7:  Organización y competencia de los órganos judiciales (I) [4b1c1304]
+  T8:  Organización y competencia de los órganos judiciales (II) [95fe0811]
+  T9:  Carta de Derechos de los Ciudadanos ante la Justicia [d6a9235e]
+  T10: La modernización de la oficina judicial [3a4b2f43]
+  T11: El Letrado de la Administración de Justicia [f5c65f8b]
+  T12: Los Cuerpos de funcionarios al servicio de la Administración de Justicia [d907ed53]
+  T13: Ingreso y promoción en los Cuerpos Generales [52b48079]
+  T14: Situaciones administrativas de los funcionarios [01d4eb8c]
+  T15: Libertad sindical [d7f9e00d]
+
+BLOQUE II - Derecho Procesal y Registral (16 temas):
+  T16: Los procedimientos declarativos en la LEC [f835d5dd]
+  T17: Los procedimientos de ejecución en la LEC [0d009a83]
+  T18: Los procesos especiales en la LEC [a6a3254e]
+  T19: La jurisdicción voluntaria [75bad5e6]
+  T20: Los procedimientos penales en la LECrim (I) [e49ea815]
+  T21: Los procedimientos penales en la LECrim (II) [b4968b59]
+  T22: El recurso contencioso-administrativo [1324b6cc]
+  T23: El proceso laboral [0aaa1da5]
+  T24: Los recursos [59c8d846]
+  T25: Los actos procesales [c5515577]
+  T26: Las resoluciones de los órganos judiciales [118fe411]
+  T27: Los actos de comunicación con otros tribunales y autoridades [f39d2db8]
+  T28: Los actos de comunicación a las partes [b4c78d91]
+  T29: El Registro Civil (I) [0ec311d3]
+  T30: El Registro Civil (II) [fd78eafd]
+  T31: El archivo judicial y la documentación [0f3cafc9]
+
+BLOQUE III - Informática y Ofimática (6 temas):
+  T32: Informática básica [ed9b6e44]
+  T33: Introducción al sistema operativo Windows [4901e831]
+  T34: El explorador de Windows [ceea82be]
+  T35: Procesadores de texto: Word 365 [e9eb6f92]
+  T36: Correo electrónico: Outlook 365 [8c874c7d]
+  T37: La Red Internet [8947cfd0]
+```
+
+### Auxilio Judicial
+`position_type: 'auxilio_judicial'`
+
+| Bloque | Topics | Descripción |
+|--------|--------|-------------|
+| **Bloque I** | T1-T15 | Organización del Estado y Justicia |
+| **Bloque II** | T16-T26 | Derecho Procesal y Registral |
+
+**Detalle de topics:**
+```
+BLOQUE I - Organización del Estado y Justicia (15 temas):
+  T1:  La Constitución Española de 1978 [4bf6ccf5]
+  T2:  Igualdad y no discriminación [d4fe0edb]
+  T3:  El Gobierno y la Administración [7cbe8d56]
+  T4:  Organización territorial del Estado [674e5d04]
+  T5:  La Unión Europea [5519bc68]
+  T6:  El Poder Judicial [66a1f0ed]
+  T7:  Órganos jurisdiccionales superiores [ad3bbe59]
+  T8:  Órganos jurisdiccionales de instancia [d4107574]
+  T9:  Derechos de los ciudadanos ante la Justicia [585aa83f]
+  T10: Modernización de la oficina judicial [7aebca12]
+  T11: El Letrado de la Administración de Justicia [427d62c1]
+  T12: Los Cuerpos de Funcionarios [fbc4a6e6]
+  T13: Ingreso y carrera de los funcionarios [96e85e2e]
+  T14: Situaciones administrativas y régimen disciplinario [4042e561]
+  T15: Libertad sindical y prevención de riesgos [91eb2578]
+
+BLOQUE II - Derecho Procesal y Registral (11 temas):
+  T16: Procedimientos civiles declarativos [43ea0b27]
+  T17: Procedimientos civiles de ejecución [4d175e02]
+  T18: Procedimientos penales [77729553]
+  T19: Procedimientos contencioso-administrativos [b0e6fb5f]
+  T20: El proceso laboral [6a7e9c4d]
+  T21: Los actos procesales [4eedf505]
+  T22: Resoluciones de órganos judiciales [bb3e639b]
+  T23: Comunicación con tribunales y autoridades [fcc6769e]
+  T24: Comunicación con las partes [0c8be0cf]
+  T25: El Registro Civil [42fa985e]
+  T26: El archivo judicial [5fb7d1e8]
+```
+
 ## 2. Topic Scope
 
 Cada topic tiene uno o más `topic_scope` que definen qué leyes y artículos lo componen.
@@ -369,7 +465,7 @@ El agente escribe en las mismas tablas que la web:
 - correct_option_should_be: si answerOk=false (A/B/C/D)
 - explanation_fix: si explanationOk=false
 - ai_provider: 'claude_code'
-- ai_model: 'claude-opus-4-5' (o el modelo actual)
+- ai_model: 'claude-opus-4-6' (o el modelo actual)
 - verified_at: timestamp
 ```
 

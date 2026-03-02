@@ -40,7 +40,7 @@ Cada JSON tiene estructura:
 }
 ```
 
-## Proceso Completo (5 Fases)
+## Proceso Completo (6 Fases)
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -56,7 +56,9 @@ Cada JSON tiene estructura:
 │  Fase 3: Importar directo a BD + actualizar topic_scope         │
 │     ↓                                                           │
 │  Fase 4: Revisar preguntas importadas con agentes               │
-│          (ver: revisar-temas-con-agente.md)                     │
+│     ↓    (ver: revisar-temas-con-agente.md)                     │
+│  Fase 5: Verificar topic_scope vs epígrafe oficial              │
+│          (ver: verificar-epigrafe-topic-scope.md)               │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -401,6 +403,84 @@ console.log(result)
 
 ---
 
+### Fase 5: Verificar Topic Scope vs Epígrafe
+
+**Después de importar y revisar**, verificar que el `topic_scope` sea coherente con el epígrafe oficial del tema.
+
+Ver: **[verificar-epigrafe-topic-scope.md](./verificar-epigrafe-topic-scope.md)**
+
+#### 5.1 Obtener el epígrafe y el scope actual
+
+```javascript
+// Epígrafe del tema
+const { data: topic } = await supabase
+  .from('topics')
+  .select('id, title, description')
+  .eq('topic_number', NUMERO_TEMA)
+  .eq('position_type', 'tramitacion_procesal')
+  .single();
+
+console.log('Epígrafe:', topic.description);
+
+// Scope actual
+const { data: scope } = await supabase
+  .from('topic_scope')
+  .select('id, law_id, article_numbers, laws!inner(short_name)')
+  .eq('topic_id', topic.id);
+
+for (const s of scope) {
+  console.log(s.laws.short_name + ': ' + s.article_numbers.length + ' arts');
+}
+```
+
+#### 5.2 Qué verificar
+
+| Pregunta | Acción si NO |
+|----------|-------------|
+| ¿Cada ley del scope es relevante para el epígrafe? | Considerar eliminar la entry o mover preguntas a otro tema |
+| ¿Falta alguna ley que el epígrafe menciona? | Añadir entry al scope con artículos relevantes |
+| ¿Los artículos cubren los rangos completos de capítulos/títulos relevantes? | Añadir artículos faltantes del rango |
+| ¿Hay artículos que pertenecen claramente a otro tema? | Marcar para revisión (no eliminar sin mover preguntas) |
+
+#### 5.3 Problemas comunes
+
+1. **Scope demasiado amplio**: El scope auto-generado incluye TODOS los artículos referenciados por preguntas. Algunas preguntas del test bank cubren temas tangenciales. Esto es aceptable si las preguntas son relevantes para el opositor, pero vale la pena documentar.
+
+2. **Leyes faltantes**: El epígrafe menciona conceptos (ej: "mediación") pero no hay ley correspondiente en scope. Añadir la ley con los artículos del capítulo/título relevante.
+
+3. **Solapamiento con otros temas**: Artículos generales (partes procesales, competencia, prueba) pueden aparecer en varios temas. Esto es normal y aceptable.
+
+#### 5.4 Actualizar topic_scope
+
+**IMPORTANTE:** La tabla `topic_scope` NO tiene constraint unique en `(topic_id, law_id)`. No usar `upsert` con `onConflict`. Usar insert/update manual:
+
+```javascript
+// Verificar si existe
+const { data: existing } = await supabase
+  .from('topic_scope')
+  .select('id, article_numbers')
+  .eq('topic_id', TOPIC_ID)
+  .eq('law_id', lawId)
+  .maybeSingle();
+
+if (existing) {
+  // Merge artículos
+  const merged = [...new Set([...existing.article_numbers, ...newArticles])];
+  await supabase.from('topic_scope')
+    .update({ article_numbers: merged })
+    .eq('id', existing.id);
+} else {
+  // Insertar nuevo
+  await supabase.from('topic_scope').insert({
+    topic_id: TOPIC_ID,
+    law_id: lawId,
+    article_numbers: newArticles,
+  });
+}
+```
+
+---
+
 ## Checklist por Tema
 
 - [ ] **Fase 0**: Identificar todas las leyes en los JSONs
@@ -413,6 +493,9 @@ console.log(result)
 - [ ] **Fase 3**: Actualizar topic_scope con artículos nuevos
 - [ ] **Fase 4**: Revisar preguntas importadas con agentes (ver revisar-temas-con-agente.md)
 - [ ] **Fase 4**: Si hay `wrong_article`, crear leyes faltantes con BOE y reasignar (ver 4.1)
+- [ ] **Fase 5**: Verificar topic_scope vs epígrafe (ver verificar-epigrafe-topic-scope.md)
+- [ ] **Fase 5**: Añadir leyes/artículos faltantes que el epígrafe requiera
+- [ ] **Fase 5**: Documentar solapamientos con otros temas si los hay
 
 ---
 
@@ -457,17 +540,19 @@ const LAWS = {
 
 ## Notas Importantes
 
-1. **Artículo 0 CE**: Usar para preguntas de estructura (cuántos títulos, disposiciones, fechas)
+1. **Artículo 0 CE**: Usar para preguntas de estructura de la CE (cuántos títulos, disposiciones, fechas)
 
-2. **Preguntas sin artículo**: Si referencia una ley que no está en la BD, volver a **Fase 0**
+2. **Preguntas sin artículo**: Si referencia una ley que no está en la BD, volver a **Fase 0**. Si no existe ningún artículo que responda la pregunta (ej: preguntas sobre estructura de la ley, cuántos capítulos tiene un título, etc.), **NO asignar un artículo genérico como chapuza**. En su lugar, importar con `is_active: false` y reportar al usuario.
 
-3. **Duplicados**: El sistema detecta por `question_text`. Las existentes no se reimportan
+3. **Preguntas con respuesta incorrecta/incompleta**: Importar con `is_active: false` y reportar al usuario.
 
-4. **Confianza IA**: Revisar manualmente las de `confidence: low`
+4. **Duplicados**: El sistema detecta por `question_text`. Las existentes no se reimportan
 
-5. **Tags**: Siempre incluir `['Tema X', 'subtema', 'Tramitación Procesal', 'IA-Verified']`
+5. **Confianza IA**: Revisar manualmente las de `confidence: low`
 
-6. **Leyes sin texto consolidado en BOE**: Algunos reglamentos del CGPJ (como el Reglamento 3/1995 de Jueces de Paz) no tienen texto consolidado individual en el BOE - están dentro de un documento más grande. Para estos casos:
+6. **Tags**: Siempre incluir `['Tema X', 'subtema', 'Tramitación Procesal', 'IA-Verified']`
+
+7. **Leyes sin texto consolidado en BOE**: Algunos reglamentos del CGPJ (como el Reglamento 3/1995 de Jueces de Paz) no tienen texto consolidado individual en el BOE - están dentro de un documento más grande. Para estos casos:
    - La API `syncArticlesFromBoe` NO funcionará (devolverá 0 artículos)
    - **Insertar artículos manualmente** obteniendo el texto de fuentes oficiales (PDF del CGPJ, leyprocesal.com)
    - Marcar la ley con `no_consolidated_text: true` en `last_verification_summary`

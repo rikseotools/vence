@@ -27,7 +27,12 @@ export {
   getSlugByShortName,
   generateSlugFromShortName,
   invalidateSlugCache,
+  loadSlugMappingCache,
   // Laws with counts
   getLawsWithQuestionCounts,
   getLawsBasic,
 } from './queries'
+
+// Cache warming: importar desde '@/lib/api/laws/warmCache'
+// No se re-exporta aquí para evitar incluir Supabase en imports que solo necesitan tipos.
+// Uso: import { warmSlugCache } from '@/lib/api/laws/warmCache'

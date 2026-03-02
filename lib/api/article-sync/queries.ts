@@ -99,7 +99,7 @@ export async function getDbArticles(lawId: string): Promise<DbArticle[]> {
 export async function syncArticlesFromBoe(
   params: SyncArticlesRequest
 ): Promise<SyncArticlesResponse> {
-  const { lawId } = params
+  const { lawId, includeDisposiciones } = params
 
   try {
     // 1. Obtener la ley
@@ -136,9 +136,12 @@ export async function syncArticlesFromBoe(
     // 3. Extraer artículos usando el extractor apropiado
     let boeArticles: ExtractedArticle[]
     if (isEurLex) {
-      boeArticles = extractArticlesFromEurLex(html)
+      // mainDocumentOnly solo aplica a TUE/TFUE consolidados (para excluir protocolos)
+      // Para otros documentos EUR-Lex (Reglamentos, Decisiones), extraer todo
+      const isConsolidatedTreaty = law.boeUrl.includes('12016M/TXT') || law.boeUrl.includes('12016E/TXT')
+      boeArticles = extractArticlesFromEurLex(html, { mainDocumentOnly: isConsolidatedTreaty })
     } else {
-      boeArticles = extractArticlesFromBOE(html)
+      boeArticles = extractArticlesFromBOE(html, { includeDisposiciones })
     }
     console.log(`📄 [ArticleSync] Artículos encontrados en ${sourceName}: ${boeArticles.length}`)
 
@@ -238,6 +241,11 @@ export async function syncArticlesFromBoe(
     for (const [normalizedNum, dbArt] of dbArticleMap.entries()) {
       // Saltar artículos de estructura - estos son intencionales
       if (isStructureArticle(dbArt.articleNumber)) {
+        continue
+      }
+
+      // Si no incluimos disposiciones, no desactivar las que ya existan en BD
+      if (!includeDisposiciones && dbArt.articleNumber.startsWith('DA_')) {
         continue
       }
 

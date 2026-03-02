@@ -92,7 +92,7 @@ function PremiumAdsContent() {
       // Redirigir a Stripe
       const { loadStripe } = await import('@stripe/stripe-js')
       const stripe = await loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
-      
+
       const { error: stripeError } = await stripe.redirectToCheckout({
         sessionId: data.sessionId,
       })

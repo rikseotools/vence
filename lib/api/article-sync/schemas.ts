@@ -23,6 +23,7 @@ export function isStructureArticle(articleNumber: string): boolean {
 export const syncArticlesRequestSchema = z.object({
   lawId: z.string().uuid('lawId debe ser un UUID válido'),
   mode: z.enum(['sync', 'replace']).default('sync'),
+  includeDisposiciones: z.boolean().default(false),
 })
 
 export type SyncArticlesRequest = z.infer<typeof syncArticlesRequestSchema>

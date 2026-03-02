@@ -8,7 +8,7 @@ const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
 
-const BASE_URL = 'https://aula.opositatest.com/classroom/test-configurator?mainContentId=33';
+const BASE_URL = 'https://aula.opositatest.com/classroom/test-configurator?mainContentId=7'; // Tramitación Procesal
 const OUTPUT_DIR = '/home/manuel/Documentos/github/vence/preguntas-para-subir';
 const USER_DATA_DIR = path.join(__dirname, '.opositatest-session');
 const PROGRESS_FILE = path.join(__dirname, 'scrape-progress.json');
@@ -281,29 +281,30 @@ async function goToConfigurator(force = false) {
   }
 }
 
-// Obtener estructura de bloques (solo los que tienen nombre y botón "Configurar temas")
+// Obtener estructura - soporta tanto "Configurar temas" como "Configurar epígrafes"
 async function getStructure() {
-  const bloques = await page.evaluate(() => {
+  const estructura = await page.evaluate(() => {
     const results = [];
-
-    // Buscar todos los botones "Configurar temas" y sus contenedores padre
     const buttons = document.querySelectorAll('button');
     let btnIndex = 0;
 
     buttons.forEach((btn) => {
-      if (btn.textContent.trim() === 'Configurar temas') {
-        // Encontrar el contenedor del bloque
+      const btnText = btn.textContent.trim();
+      // Soportar ambos tipos de estructura
+      if (btnText === 'Configurar temas' || btnText === 'Configurar epígrafes') {
         const container = btn.closest('[data-testid^="list-item-"]');
         if (container) {
           const title = container.querySelector('.ContentSelectorItem-title')?.textContent?.trim() || '';
           const text = container.textContent || '';
-          const temasMatch = text.match(/(\d+)\/(\d+)\s*[Tt]emas/);
+          // Buscar tanto "temas" como "epígrafes"
+          const countMatch = text.match(/(\d+)\/(\d+)\s*(temas|epígrafes)/i);
 
-          if (title) {  // Solo bloques con título
+          if (title) {
             results.push({
               index: btnIndex,
               title: title,
-              temasCount: temasMatch ? parseInt(temasMatch[2]) : 0
+              childCount: countMatch ? parseInt(countMatch[2]) : 0,
+              buttonType: btnText // Guardar tipo de botón
             });
           }
           btnIndex++;
@@ -314,7 +315,7 @@ async function getStructure() {
     return results;
   });
 
-  return bloques;
+  return estructura;
 }
 
 // Extraer preguntas de la página de resultados (usando selectores del scraper original)

@@ -31,7 +31,7 @@ function isCacheValid(): boolean {
  * Carga el mapeo slug ↔ short_name desde la BD
  * Se ejecuta una vez y se cachea en memoria
  */
-async function loadSlugMappingCache(): Promise<SlugMappingCache> {
+export async function loadSlugMappingCache(): Promise<SlugMappingCache> {
   if (isCacheValid() && slugMappingCache) {
     return slugMappingCache
   }

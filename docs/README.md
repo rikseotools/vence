@@ -21,6 +21,9 @@
 ### **🚀 Roadmaps**
 - **[PWA](roadmaps/pwa.md)** - Progressive Web App roadmap
 
+### **🔧 Scraping**
+- **[OpositaTest API Manual](scraping/opositatest-api-manual.md)** - Documentación de API, flujos de scraping y auditoría de seguridad
+
 ### **🔧 Mantenimiento**
 - **[Curar Preguntas](maintenance/curar-preguntas.md)** - Curación y limpieza de preguntas
 - **[Google Ads](maintenance/google-ads.md)** - Configuración Google Ads

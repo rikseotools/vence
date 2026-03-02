@@ -15,7 +15,7 @@ El topic_scope determina qué preguntas se muestran para un tema. Si el scope es
 ```
 topics (description = epígrafe oficial)
    ↓ topic_id
-topic_scope (law_id + article_numbers + weight)
+topic_scope (law_id + article_numbers)
    ↓ law_id + article_numbers
 articles (contenido legal)
    ↓ primary_article_id
@@ -59,14 +59,12 @@ El campo `description` contiene el epígrafe oficial del BOE. Es lo que se muest
 ```js
 const { data: scope } = await supabase
   .from('topic_scope')
-  .select('id, article_numbers, weight, laws:law_id(short_name, name)')
-  .eq('topic_id', topic.id)
-  .order('weight', { ascending: false });
+  .select('id, article_numbers, laws:law_id(short_name, name)')
+  .eq('topic_id', topic.id);
 
 for (const s of scope) {
   console.log(
     s.laws.short_name,
-    '(weight:', s.weight + ')',
     'articles:', (s.article_numbers || []).length,
     '[' + (s.article_numbers || []).join(',') + ']'
   );
@@ -95,18 +93,6 @@ Dos casos especiales:
 | `[]` (vacío) | **Sin artículos** — No incluye nada de esa ley. Si una ley aparece con array vacío, o se eliminan los artículos específicos que correspondan, o se elimina la entrada del scope. |
 | `["1","2","3"]` | **Artículos específicos** — Solo incluye las preguntas vinculadas a esos artículos de esa ley. |
 
-### Paso 5: Revisar los weights
-
-Los weights determinan la probabilidad de que salgan preguntas de cada ley en tests aleatorios:
-
-| Weight | Significado | Uso típico |
-|---|---|---|
-| 1.0 | Ley principal del tema | Ley que el epígrafe menciona directamente |
-| 0.5 | Ley complementaria relevante | Desarrollo normativo de la ley principal |
-| 0.2-0.3 | Ley tangencial | Referencias menores, contexto |
-
-Verificar que los weights sean coherentes con la importancia de cada ley según el epígrafe.
-
 ## Cómo Corregir un Topic Scope
 
 ### Eliminar una entrada
@@ -121,21 +107,13 @@ SET article_numbers = ARRAY['14', '15', '16', '17', '19']
 WHERE id = 'uuid-de-la-entry';
 ```
 
-### Cambiar el weight
-```sql
-UPDATE topic_scope
-SET weight = 0.3
-WHERE id = 'uuid-de-la-entry';
-```
-
 ### Añadir una nueva entrada
 ```sql
-INSERT INTO topic_scope (topic_id, law_id, article_numbers, weight)
+INSERT INTO topic_scope (topic_id, law_id, article_numbers)
 VALUES (
   'topic-uuid',
   'law-uuid',
-  ARRAY['1', '2', '3'],
-  1.0
+  ARRAY['1', '2', '3']
 );
 ```
 
@@ -180,17 +158,15 @@ const supabase = createClient(
 
   const { data: scope } = await supabase
     .from('topic_scope')
-    .select('id, article_numbers, weight, laws:law_id(short_name)')
-    .eq('topic_id', topic.id)
-    .order('weight', { ascending: false });
+    .select('id, article_numbers, laws:law_id(short_name)')
+    .eq('topic_id', topic.id);
 
   console.log('\n=== TOPIC SCOPE (' + scope.length + ' entries) ===');
   for (const s of scope) {
     const arts = s.article_numbers || [];
     const isNull = s.article_numbers === null;
     console.log(
-      s.laws.short_name,
-      '(w:' + s.weight + '):',
+      s.laws.short_name + ':',
       isNull ? 'null (ley virtual completa)' : arts.length + ' arts [' + arts.join(',') + ']'
     );
   }
@@ -200,9 +176,9 @@ const supabase = createClient(
 ## Checklist de Verificación
 
 - [ ] El `description` del topic coincide con el epígrafe oficial del BOE
-- [ ] Las leyes principales del epígrafe están cubiertas con weight >= 1.0
+- [ ] Cada concepto del epígrafe tiene artículos que lo cubren en el scope
 - [ ] No hay leyes/artículos que vayan claramente fuera del epígrafe
 - [ ] No hay entries con `article_numbers: []` vacío (o se eliminan, o se ponen artículos concretos)
-- [ ] Los weights son coherentes (principales=1, complementarias=0.3-0.5)
+- [ ] Los artículos incluyen rangos completos de capítulos relevantes (no solo los que tienen preguntas)
 - [ ] El conteo de preguntas mostrado en la página es razonable para el tema
 - [ ] Si un tema similar existe en varias oposiciones, cada una tiene su propio scope adaptado a su epígrafe

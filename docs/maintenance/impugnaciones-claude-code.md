@@ -541,6 +541,32 @@ supabase
 
 **Importante:** Siempre explicar con detalle por qué se rechaza, citando el artículo relevante.
 
+### 12.1 Rechazo Silencioso (Impugnaciones Auto-Detectadas por IA)
+
+Las impugnaciones con descripción que empieza por `[AUTO-DETECTADO POR IA]` son generadas automáticamente por el sistema de detección de errores, no por usuarios reales. Se rechazan **sin notificación** al usuario:
+
+```javascript
+supabase
+  .from('question_disputes')
+  .update({
+    status: 'rejected',
+    admin_response: null,   // → trigger dispara pero API NO envía email
+    is_read: true,          // → NO aparece en la campana del usuario
+    resolved_at: new Date().toISOString()
+  })
+  .eq('id', disputeId);
+```
+
+**Por qué funciona:**
+- `admin_response: null` → el endpoint `/api/send-dispute-email` comprueba `if (!dispute.admin_response?.trim())` y salta el envío
+- `is_read: true` → el hook `useDisputeNotifications` filtra por `.eq('is_read', false)`, así que no aparece en la campana
+
+**Flujo para impugnaciones auto-detectadas:**
+1. Verificar si la IA tiene razón o es falso positivo
+2. Si la pregunta es correcta → rechazar silenciosamente (este método)
+3. Si la pregunta tiene error → corregirla y rechazar silenciosamente igualmente (el usuario no sabe que existe la impugnación)
+4. Siempre mejorar la explicación si es pobre, independientemente del resultado
+
 ---
 
 ## 13. Consejos
