@@ -372,7 +372,119 @@ export const createDetailedAnswer = (currentQuestion, answerIndex, correctAnswer
   }
 }
 
-// 🔄 NUEVA FUNCIÓN: Guardar con reintentos automáticos
+// 🆕 V2: Guardar respuesta via API server-side (mas fiable que insert directo)
+export const saveDetailedAnswerV2 = async (params) => {
+  const {
+    sessionId,
+    questionData,
+    answerData,
+    tema,
+    confidenceLevel,
+    interactionCount,
+    questionStartTime,
+    firstInteractionTime,
+    interactionEvents,
+    mouseEvents,
+    scrollEvents
+  } = params
+
+  try {
+    if (!sessionId || !questionData || !answerData) {
+      return { success: false, error: 'Datos faltantes', action: 'error' }
+    }
+
+    // Obtener token de autenticacion
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.access_token) {
+      console.error('❌ [V2] No hay sesion activa')
+      return { success: false, error: 'No autenticado', action: 'error' }
+    }
+
+    // Recoger device info del navegador
+    const deviceInfo = typeof window !== 'undefined' ? {
+      userAgent: navigator.userAgent || 'unknown',
+      screenResolution: `${window.screen?.width || 0}x${window.screen?.height || 0}`,
+      deviceType: /Mobile|Android|iPhone/.test(navigator.userAgent) ? 'mobile' :
+                  /Tablet|iPad/.test(navigator.userAgent) ? 'tablet' : 'desktop',
+      browserLanguage: navigator.language || 'es',
+      timezone: Intl?.DateTimeFormat?.()?.resolvedOptions?.()?.timeZone || 'Europe/Madrid'
+    } : undefined
+
+    // Construir body
+    const body = {
+      sessionId,
+      questionData: {
+        id: questionData.id || null,
+        question: questionData.question || '',
+        options: questionData.options || [],
+        tema: parseInt(questionData.tema || tema) || 0,
+        questionType: questionData.question_type === 'psychometric' ? 'psychometric' : 'legislative',
+        article: questionData.article || null,
+        metadata: questionData.metadata || null,
+        explanation: questionData.explanation || null
+      },
+      answerData: {
+        questionIndex: answerData.questionIndex || 0,
+        selectedAnswer: answerData.selectedAnswer ?? -1,
+        correctAnswer: answerData.correctAnswer || 0,
+        isCorrect: answerData.isCorrect || false,
+        timeSpent: answerData.timeSpent || 0
+      },
+      tema: parseInt(questionData.tema || tema) || 0,
+      confidenceLevel: confidenceLevel || 'unknown',
+      interactionCount: interactionCount || 1,
+      questionStartTime: questionStartTime || 0,
+      firstInteractionTime: firstInteractionTime || 0,
+      interactionEvents: (interactionEvents || []).slice(-10),
+      mouseEvents: (mouseEvents || []).slice(-50),
+      scrollEvents: (scrollEvents || []).slice(-50),
+      deviceInfo
+    }
+
+    console.log('💾 [V2] Guardando respuesta via API...', {
+      sessionId,
+      questionIndex: answerData.questionIndex,
+      isCorrect: answerData.isCorrect
+    })
+
+    const response = await fetch('/api/test/save-answer', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`
+      },
+      body: JSON.stringify(body)
+    })
+
+    const result = await response.json()
+
+    if (result.success) {
+      console.log('✅ [V2] Respuesta guardada:', result.action)
+      // Notificar al Header para refrescar la racha
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('refreshUserStreak'))
+      }
+    } else {
+      console.error('❌ [V2] Error del servidor:', result.error)
+    }
+
+    return {
+      success: result.success,
+      question_id: result.question_id || null,
+      action: result.action || 'error',
+      error: result.error
+    }
+  } catch (error) {
+    console.error('❌ [V2] Error de red:', error)
+    return {
+      success: false,
+      error: error.message,
+      action: 'error'
+    }
+  }
+}
+
+// 🔄 Guardar con reintentos automaticos (usa V2 API → fallback a V1 directo)
 export const saveDetailedAnswerWithRetry = async (params, maxRetries = 3) => {
   const {
     sessionId,
@@ -415,19 +527,31 @@ export const saveDetailedAnswerWithRetry = async (params, maxRetries = 3) => {
 
   while (attempts < maxRetries) {
     try {
-      const result = await saveDetailedAnswer(
-        sessionId,
-        questionData,
-        answerData,
-        tema,
-        confidenceLevel,
-        interactionCount,
-        questionStartTime,
-        firstInteractionTime,
-        interactionEvents,
-        mouseEvents,
-        scrollEvents
-      );
+      // Intentar V2 (API server-side) primero, fallback a V1 (Supabase directo)
+      const useV2 = attempts === 0; // Primer intento siempre V2
+      let result;
+
+      if (useV2) {
+        console.log('💾 Intentando guardar via API (V2)...');
+        result = await saveDetailedAnswerV2(params);
+
+        // Si V2 falla por error de red/auth, intentar V1 en el mismo intento
+        if (!result.success && result.action === 'error') {
+          console.warn('⚠️ V2 fallo, intentando V1 (Supabase directo)...');
+          result = await saveDetailedAnswer(
+            sessionId, questionData, answerData, tema,
+            confidenceLevel, interactionCount, questionStartTime,
+            firstInteractionTime, interactionEvents, mouseEvents, scrollEvents
+          );
+        }
+      } else {
+        // Reintentos posteriores usan V1 directo (mas simple)
+        result = await saveDetailedAnswer(
+          sessionId, questionData, answerData, tema,
+          confidenceLevel, interactionCount, questionStartTime,
+          firstInteractionTime, interactionEvents, mouseEvents, scrollEvents
+        );
+      }
 
       if (result.success === true) {
         // Marcar como sincronizado en el backup local
@@ -439,7 +563,7 @@ export const saveDetailedAnswerWithRetry = async (params, maxRetries = 3) => {
       }
 
       // Si es duplicado, no reintentar
-      if (result.action === 'prevented_duplicate') {
+      if (result.action === 'prevented_duplicate' || result.action === 'already_saved') {
         console.warn('⚠️ Respuesta duplicada detectada, no se reintentará');
         return result;
       }
