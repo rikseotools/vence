@@ -392,6 +392,35 @@ export default function OposicionesPage() {
       href: '/auxiliar-administrativo-galicia',
     },
     {
+      id: 'auxiliar-administrativo-aragon',
+      name: 'Auxiliar Administrativo de Aragón',
+      shortName: 'Aux. Admin. Aragón',
+      badge: 'C2',
+      icon: '🏔️',
+      color: 'yellow',
+      description: 'Oposicion para trabajar en la Diputacion General de Aragon como Auxiliar Administrativo. 28 plazas (OPE 2023-2025, BOA 23/12/2025). 20 temas en 2 bloques. Examenes previstos 2026.',
+      category: 'Comunidades Autónomas',
+      level: 'Grupo C, Subgrupo C2',
+      temarios: 20,
+      tests: 0,
+      difficulty: 'Intermedio',
+      duration: '6-12 meses',
+      salary: '18.000€ - 22.000€',
+      features: [
+        'Temario oficial BOA diciembre 2025 (20 temas)',
+        'Tests por temas y bloques',
+        'Materias Comunes + Materias Especificas',
+        'Seguimiento de progreso',
+        'Estadisticas detalladas'
+      ],
+      requirements: [
+        'Titulo de Graduado en ESO o equivalente',
+        'Nacionalidad espanola o UE',
+        'Tener 16 anos y no exceder edad jubilacion'
+      ],
+      href: '/auxiliar-administrativo-aragon',
+    },
+    {
       id: 'administrativo-castilla-leon',
       name: 'Administrativo Junta de Castilla y León',
       shortName: 'Administrativo CyL',

@@ -442,6 +442,16 @@ function PerfilPageContent() {
         categoria: 'C2',
         administracion: 'Autonómica'
       }
+    },
+    {
+      value: 'auxiliar_administrativo_aragon',
+      label: 'Auxiliar Administrativo de Aragón',
+      data: {
+        name: 'Auxiliar Administrativo de Aragón',
+        slug: 'auxiliar-administrativo-aragon',
+        categoria: 'C2',
+        administracion: 'Autonómica'
+      }
     }
   ]
 

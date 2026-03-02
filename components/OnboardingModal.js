@@ -222,6 +222,13 @@ const OFFICIAL_OPOSICIONES = [
     icon: '🐚'
   },
   {
+    id: 'auxiliar_administrativo_aragon',
+    nombre: 'Auxiliar Administrativo de Aragón',
+    categoria: 'C2',
+    administracion: 'Autonómica',
+    icon: '🏔️'
+  },
+  {
     id: 'auxiliar_comunidad_autonoma',
     nombre: 'Auxiliar Administrativo Comunidad Autónoma',
     categoria: 'C2',

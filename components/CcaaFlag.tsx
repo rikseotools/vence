@@ -99,6 +99,16 @@ const FLAG_PATHS: Record<string, ReactNode> = {
       <line x1="0" y1="14" x2="20" y2="0" stroke="#fff" strokeWidth="3"/>
     </>
   ),
+  // Aragón: Senyera aragonesa - 4 franjas rojas (gules) sobre fondo dorado (oro)
+  auxiliar_administrativo_aragon: (
+    <>
+      <rect width="20" height="14" fill="#FCDD09"/>
+      <rect y="1.56" width="20" height="1.56" fill="#DA121A"/>
+      <rect y="4.67" width="20" height="1.56" fill="#DA121A"/>
+      <rect y="7.78" width="20" height="1.56" fill="#DA121A"/>
+      <rect y="10.89" width="20" height="1.56" fill="#DA121A"/>
+    </>
+  ),
   // Andalucía: franjas verde-blanco-verde horizontales
   auxiliar_administrativo_andalucia: (
     <>

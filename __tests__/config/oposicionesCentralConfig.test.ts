@@ -26,6 +26,7 @@ const KNOWN_SLUGS = [
   'auxiliar-administrativo-extremadura',
   'auxiliar-administrativo-valencia',
   'auxiliar-administrativo-galicia',
+  'auxiliar-administrativo-aragon',
 ]
 
 const KNOWN_POSITION_TYPES = [
@@ -42,6 +43,7 @@ const KNOWN_POSITION_TYPES = [
   'auxiliar_administrativo_extremadura',
   'auxiliar_administrativo_valencia',
   'auxiliar_administrativo_galicia',
+  'auxiliar_administrativo_aragon',
 ]
 
 describe('Config central de oposiciones', () => {
@@ -49,14 +51,14 @@ describe('Config central de oposiciones', () => {
     for (const slug of KNOWN_SLUGS) {
       expect(ALL_OPOSICION_SLUGS).toContain(slug)
     }
-    expect(ALL_OPOSICION_SLUGS.length).toBe(13)
+    expect(ALL_OPOSICION_SLUGS.length).toBe(14)
   })
 
   test('ALL_POSITION_TYPES contiene los 11 positionTypes conocidos', () => {
     for (const pt of KNOWN_POSITION_TYPES) {
       expect(ALL_POSITION_TYPES).toContain(pt)
     }
-    expect(ALL_POSITION_TYPES.length).toBe(13)
+    expect(ALL_POSITION_TYPES.length).toBe(14)
   })
 
   test('SLUG_TO_POSITION_TYPE mapea correctamente cada slug', () => {
@@ -73,6 +75,7 @@ describe('Config central de oposiciones', () => {
     expect(SLUG_TO_POSITION_TYPE['auxiliar-administrativo-extremadura']).toBe('auxiliar_administrativo_extremadura')
     expect(SLUG_TO_POSITION_TYPE['auxiliar-administrativo-valencia']).toBe('auxiliar_administrativo_valencia')
     expect(SLUG_TO_POSITION_TYPE['auxiliar-administrativo-galicia']).toBe('auxiliar_administrativo_galicia')
+    expect(SLUG_TO_POSITION_TYPE['auxiliar-administrativo-aragon']).toBe('auxiliar_administrativo_aragon')
   })
 
   test('OPOSICION_SLUGS_ENUM funciona con z.enum()', () => {
@@ -111,7 +114,7 @@ describe('Config central de oposiciones', () => {
     const byAdmin = (admin: string) => OPOSICIONES.filter(o => o.administracion === admin)
     expect(byAdmin('estado').length).toBe(2)
     expect(byAdmin('justicia').length).toBe(2)
-    expect(byAdmin('autonomica').length).toBe(9)
+    expect(byAdmin('autonomica').length).toBe(10)
   })
 
   test('getOposicionBySlug() devuelve datos correctos', () => {

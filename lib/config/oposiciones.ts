@@ -916,6 +916,66 @@ export const OPOSICIONES: Oposicion[] = [
   },
 
   // ========================================
+  // AUXILIAR ADMINISTRATIVO DGA ARAGÓN (C2)
+  // ========================================
+  {
+    id: 'auxiliar_administrativo_aragon',
+    slug: 'auxiliar-administrativo-aragon',
+    positionType: 'auxiliar_administrativo_aragon',
+    name: 'Auxiliar Administrativo de Aragón',
+    shortName: 'Aux. Aragón',
+    emoji: '🏔️',
+    badge: 'C2',
+    color: 'yellow',
+    administracion: 'autonomica',
+    blocks: [
+      {
+        id: 'bloque1',
+        title: 'Materias Comunes',
+        subtitle: 'CE, Estatuto Aragón, Gobierno Aragón, LPAC, LRJSP, Igualdad, Transparencia',
+        icon: '🏛️',
+        themes: [
+          { id: 1, name: 'La Constitución Española de 1978' },
+          { id: 2, name: 'La organización territorial del Estado' },
+          { id: 3, name: 'La Unión Europea' },
+          { id: 4, name: 'El Estatuto de Autonomía de Aragón' },
+          { id: 5, name: 'Los órganos de gobierno de la Comunidad Autónoma de Aragón' },
+          { id: 6, name: 'El derecho administrativo. Ley 39/2015' },
+          { id: 7, name: 'Disposiciones y actos administrativos' },
+          { id: 8, name: 'Eficacia y validez de los actos administrativos' },
+          { id: 9, name: 'Protección de datos personales' },
+          { id: 10, name: 'Igualdad efectiva de mujeres y hombres' },
+          { id: 11, name: 'Información y atención al público' },
+          { id: 12, name: 'Los documentos administrativos' },
+          { id: 13, name: 'Gobierno Abierto y transparencia' },
+          { id: 14, name: 'Prevención de Riesgos Laborales' },
+          { id: 15, name: 'Administración electrónica' },
+        ],
+      },
+      {
+        id: 'bloque2',
+        title: 'Materias Específicas',
+        subtitle: 'Informática, Windows, Word, Excel, Correo e Internet',
+        icon: '💻',
+        themes: [
+          { id: 16, name: 'Informática básica' },
+          { id: 17, name: 'Sistema operativo Windows' },
+          { id: 18, name: 'Procesador de textos Word' },
+          { id: 19, name: 'Hoja de cálculo Excel' },
+          { id: 20, name: 'Correo electrónico e Internet' },
+        ],
+      },
+    ],
+    totalTopics: 20,
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/auxiliar-administrativo-aragon', label: 'Mi Oposición', icon: '🏔️', featured: true },
+      { href: '/auxiliar-administrativo-aragon/temario', label: 'Temario', icon: '📚' },
+      { href: '/auxiliar-administrativo-aragon/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
   // AUXILIO JUDICIAL (C2)
   // ========================================
   {
