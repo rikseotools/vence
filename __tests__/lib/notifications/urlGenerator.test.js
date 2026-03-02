@@ -95,6 +95,7 @@ describe('generateNotificationActionUrl', () => {
       expect(url).toContain('/test/rapido')
       expect(url).toContain('mode=intensive')
       expect(url).toContain('articles=21%2C22')
+      expect(url).toContain('law_short_name=LPAC')
       expect(url).toContain('law=ley-39-2015')
     })
 
@@ -119,6 +120,7 @@ describe('generateNotificationActionUrl', () => {
       expect(url).toContain('/test/rapido')
       expect(url).toContain('mode=recovery')
       expect(url).toContain('n=15')
+      expect(url).toContain('law_short_name=CE')
       expect(url).toContain('law=ce')
     })
   })

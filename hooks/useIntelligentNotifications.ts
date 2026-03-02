@@ -639,7 +639,10 @@ export function useIntelligentNotifications(): UseIntelligentNotificationsReturn
             baseParams.append('mode', 'intensive')
             baseParams.append('n', Math.min((notification.articlesCount ?? 1) * 2, 10).toString())
 
-            // 🎯 Añadir parámetro de ley para filtrado interno
+            // 🎯 Pasar short_name directo (evita roundtrip slug→short_name que puede fallar)
+            if (notification.law_short_name) {
+              baseParams.append('law_short_name', notification.law_short_name)
+            }
             const lawSlug = generateLawSlug(notification.law_short_name ?? '')
             baseParams.append('law', lawSlug)
             
@@ -673,8 +676,11 @@ export function useIntelligentNotifications(): UseIntelligentNotificationsReturn
             console.log('🚀 HOOK CORREGIDO - level_regression')
             baseParams.append('mode', 'recovery')
             baseParams.append('n', '15')
-            
-            // 🎯 Añadir parámetro de ley para filtrado interno
+
+            // 🎯 Pasar short_name directo (evita roundtrip slug→short_name que puede fallar)
+            if (notification.law_short_name) {
+              baseParams.append('law_short_name', notification.law_short_name)
+            }
             const lawSlug = generateLawSlug(notification.law_short_name ?? '')
             baseParams.append('law', lawSlug)
 
