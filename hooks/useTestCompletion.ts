@@ -1,12 +1,21 @@
-// hooks/useTestCompletion.js - HOOK PARA MANEJAR COMPLETION DE TESTS Y ACTUALIZAR PROGRESO
+// hooks/useTestCompletion.ts - HOOK PARA MANEJAR COMPLETION DE TESTS Y ACTUALIZAR PROGRESO
 'use client'
 import { useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useTopicUnlock } from './useTopicUnlock'
 import { useMedalChecker } from './useMedalChecker'
 
+interface TestData {
+  tema: number
+  questions: any[]
+  answers: any[]
+  score: number
+  totalTime: number
+  testType?: string
+}
+
 // Lista de nombres de temas para personalización
-const TOPIC_NAMES = {
+const TOPIC_NAMES: Record<number, string> = {
   1: "La Constitución Española de 1978",
   2: "Los Derechos Fundamentales y Libertades Públicas", 
   3: "La Corona",
@@ -18,7 +27,7 @@ const TOPIC_NAMES = {
 }
 
 // Función para enviar email de desbloqueo personalizado
-async function sendUnlockEmail(user, completedTopic, unlockedTopic, accuracy) {
+async function sendUnlockEmail(user: any, completedTopic: number, unlockedTopic: number, accuracy: number) {
   if (!user?.email) {
     console.log('❌ No se puede enviar email: usuario sin email')
     return
@@ -54,7 +63,7 @@ async function sendUnlockEmail(user, completedTopic, unlockedTopic, accuracy) {
 }
 
 export function useTestCompletion() {
-  const { user, supabase } = useAuth()
+  const { user, supabase } = useAuth() as any
   const { updateTopicProgress } = useTopicUnlock()
   const { checkMedalsAfterTest } = useMedalChecker()
 
@@ -78,7 +87,7 @@ export function useTestCompletion() {
       }
 
       // Guardar notificación como descartada
-      const saveDismissedNotification = (notificationId) => {
+      const saveDismissedNotification = (notificationId: string) => {
         try {
           if (typeof window === 'undefined') return
           
@@ -110,7 +119,7 @@ export function useTestCompletion() {
   }, [])
 
   // Función para manejar la completion de un test
-  const handleTestCompletion = useCallback(async (testData) => {
+  const handleTestCompletion = useCallback(async (testData: TestData) => {
     if (!user || !supabase) {
       console.log('No user or supabase for test completion')
       return
@@ -163,8 +172,8 @@ export function useTestCompletion() {
       try {
         console.log('🏆 Verificando medallas de ranking...')
         const newMedals = await checkMedalsAfterTest()
-        if (newMedals.length > 0) {
-          console.log(`🎉 ¡${newMedals.length} nueva(s) medalla(s) conseguida(s)!`, newMedals.map(m => m.title))
+        if (newMedals && newMedals.length > 0) {
+          console.log(`🎉 ¡${newMedals.length} nueva(s) medalla(s) conseguida(s)!`, newMedals.map((m: any) => m.title))
         }
       } catch (medalError) {
         console.error('❌ Error verificando medallas:', medalError)
@@ -180,7 +189,7 @@ export function useTestCompletion() {
       // Actualizar progreso de desbloqueo
       if (tema && typeof tema === 'number') {
         console.log(`🔄 Actualizando progreso de desbloqueo para tema ${tema}`)
-        await updateTopicProgress(tema)
+        await updateTopicProgress()
         
         // Si el usuario alcanzó el threshold, mostrar notificación de desbloqueo
         if (accuracy >= 70 && questions.length >= 10) {
@@ -221,7 +230,7 @@ export function useTestCompletion() {
         nextTopicUnlocked: accuracy >= 70 && questions.length >= 10
       }
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error in handleTestCompletion:', error)
       return {
         success: false,
@@ -231,8 +240,8 @@ export function useTestCompletion() {
   }, [user, supabase, updateTopicProgress, checkMedalsAfterTest])
 
   // Función simplificada para tests que ya tienen la lógica de guardado
-  const notifyTestCompletion = useCallback(async (tema, accuracy, questionCount) => {
-    if (!user || !tema) return
+  const notifyTestCompletion = useCallback(async (tema?: number, accuracy?: number, questionCount?: number) => {
+    if (!user || !tema || accuracy == null || questionCount == null) return
 
     console.log(`📊 Notificando completion: Tema ${tema}, ${accuracy}% accuracy`)
 
@@ -241,8 +250,8 @@ export function useTestCompletion() {
       try {
         console.log('🏆 Verificando medallas de ranking (notify)...')
         const newMedals = await checkMedalsAfterTest()
-        if (newMedals.length > 0) {
-          console.log(`🎉 ¡${newMedals.length} nueva(s) medalla(s) conseguida(s)!`, newMedals.map(m => m.title))
+        if (newMedals && newMedals.length > 0) {
+          console.log(`🎉 ¡${newMedals.length} nueva(s) medalla(s) conseguida(s)!`, newMedals.map((m: any) => m.title))
         }
       } catch (medalError) {
         console.error('❌ Error verificando medallas:', medalError)
@@ -256,7 +265,7 @@ export function useTestCompletion() {
       }
 
       // Solo actualizar progreso de desbloqueo
-      await updateTopicProgress(tema)
+      await updateTopicProgress()
 
       // Mostrar notificación si se desbloqueó el siguiente tema
       if (accuracy >= 70 && questionCount >= 10) {
@@ -290,7 +299,7 @@ export function useTestCompletion() {
       }
 
       return { success: true, nextTopicUnlocked: accuracy >= 70 && questionCount >= 10 }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error in notifyTestCompletion:', error)
       return { success: false, error: error.message }
     }

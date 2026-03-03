@@ -1,4 +1,4 @@
-// hooks/useMedalChecker.js
+// hooks/useMedalChecker.ts
 // Hook para verificar y otorgar medallas automáticamente
 
 import { useEffect, useCallback } from 'react'
@@ -6,7 +6,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { checkAndNotifyNewMedals } from '../lib/services/rankingMedals'
 
 export function useMedalChecker() {
-  const { user, supabase } = useAuth()
+  const { user, supabase } = useAuth() as any
 
   // Función para verificar medallas después de completar un test
   const checkMedalsAfterTest = useCallback(async () => {
@@ -48,14 +48,14 @@ export function useTestMedalIntegration() {
   const { checkMedalsAfterTest } = useMedalChecker()
 
   // Función que debe llamarse después de completar un test
-  const onTestCompleted = useCallback(async (testData) => {
+  const onTestCompleted = useCallback(async (testData: any) => {
     // Pequeño delay para asegurar que los datos del test se han guardado
     setTimeout(async () => {
       try {
         const newMedals = await checkMedalsAfterTest()
         
         // Opcional: Mostrar modal de celebración si hay medallas nuevas
-        if (newMedals.length > 0) {
+        if (newMedals && newMedals.length > 0) {
           // Implementar modal de celebración aquí si lo deseas
           console.log('🎊 ¡Deberías mostrar una celebración por las nuevas medallas!')
         }

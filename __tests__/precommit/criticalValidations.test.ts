@@ -152,9 +152,9 @@ Por: .replace(/\\s+/g, '-').replace(/\\//g, '-')
   describe('Validación de tests de regresión', () => {
     test('CRÍTICO: Tests de law slug generation deben existir', () => {
       const testFiles = [
-        '__tests__/utils/lawSlugGeneration.test.js',
-        '__tests__/components/openArticleModal.test.js', 
-        '__tests__/integration/lawSlugsValidation.test.js'
+        '__tests__/utils/lawSlugGeneration.test.ts',
+        '__tests__/components/openArticleModal.test.tsx',
+        '__tests__/integration/lawSlugsValidation.test.ts'
       ]
 
       testFiles.forEach(testFile => {

@@ -1,4 +1,4 @@
-// hooks/useLawChanges.js
+// hooks/useLawChanges.ts
 'use client'
 
 import { useState, useEffect } from 'react'

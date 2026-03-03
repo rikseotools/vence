@@ -1,18 +1,27 @@
-// hooks/useBotDetection.js
+// hooks/useBotDetection.ts
 // Detección de bots y automatización para usuarios autenticados
 'use client'
 
 import { useEffect, useState, useRef, useCallback } from 'react'
+
+declare global {
+  interface Window {
+    _phantom?: unknown
+    __nightmare?: unknown
+    callPhantom?: unknown
+    __puppeteer_evaluation_script__?: unknown
+  }
+}
 
 /**
  * Hook para detectar bots y automatización en tests
  * Solo se activa para usuarios autenticados
  * NO afecta a crawlers de SEO en páginas públicas
  */
-export function useBotDetection(userId) {
+export function useBotDetection(userId: string | null) {
   const [isBot, setIsBot] = useState(false)
   const [botScore, setBotScore] = useState(0)
-  const [botEvidence, setBotEvidence] = useState([])
+  const [botEvidence, setBotEvidence] = useState<string[]>([])
   const detectionRan = useRef(false)
   const reportedRef = useRef(false)
 
@@ -69,7 +78,7 @@ export function useBotDetection(userId) {
         }
 
         // 8. Detectar Chrome sin chrome object (headless)
-        if (/Chrome/.test(navigator.userAgent) && !window.chrome) {
+        if (/Chrome/.test(navigator.userAgent) && !(window as any).chrome) {
           score += 25
           evidence.push('chrome_without_chrome_object')
         }
@@ -92,13 +101,13 @@ export function useBotDetection(userId) {
         try {
           const { load } = await import('@fingerprintjs/botd')
           const botd = await load()
-          const result = await botd.detect()
+          const result: any = await botd.detect()
 
           if (result.bot) {
             score += 60
             evidence.push(`botd:${result.botKind || 'unknown'}`)
           }
-        } catch (e) {
+        } catch (e: any) {
           console.warn('BotD detection failed:', e.message)
         }
 
@@ -131,7 +140,7 @@ export function useBotDetection(userId) {
   }, [userId])
 
   // Función para reportar bot al servidor
-  const reportBot = useCallback(async (additionalEvidence = {}) => {
+  const reportBot = useCallback(async (additionalEvidence: { forceReport?: boolean; extra?: string[] } = {}) => {
     if (!userId || reportedRef.current) return
     if (botScore < 40 && !additionalEvidence.forceReport) return
 
@@ -181,12 +190,18 @@ export function useBotDetection(userId) {
  * - Tiempos mecánicamente consistentes (varianza casi 0)
  * - Alto volumen de preguntas en poco tiempo
  */
-export function useBehaviorAnalysis(userId) {
+interface AnswerTiming {
+  time: number
+  timestamp: number
+  correct?: boolean
+}
+
+export function useBehaviorAnalysis(userId: string | null) {
   const [suspicionScore, setSuspicionScore] = useState(0)
-  const answerTimesRef = useRef([])
+  const answerTimesRef = useRef<AnswerTiming[]>([])
   const reportedBehaviorRef = useRef(false)
 
-  const recordAnswer = useCallback((responseTimeMs) => {
+  const recordAnswer = useCallback((responseTimeMs: number) => {
     answerTimesRef.current.push({ time: responseTimeMs, timestamp: Date.now() })
 
     let newSuspicion = 0
@@ -272,7 +287,7 @@ export function useBehaviorAnalysis(userId) {
 }
 
 // Función helper para reportar comportamiento sospechoso
-async function reportSuspiciousBehavior(userId, score, answerData) {
+async function reportSuspiciousBehavior(userId: string, score: number, answerData: AnswerTiming[]) {
   try {
     const recentAnswers = answerData.slice(-20)
     const avgTime = recentAnswers.reduce((sum, a) => sum + a.time, 0) / recentAnswers.length

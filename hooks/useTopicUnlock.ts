@@ -1,18 +1,33 @@
-// hooks/useTopicUnlock.js - Hook para obtener progreso del usuario por tema
+// hooks/useTopicUnlock.ts - Hook para obtener progreso del usuario por tema
 // NOTA: Simplificado - ya no hay sistema de bloqueo, solo tracking de progreso
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 
-/**
- * Hook para obtener progreso del usuario por tema
- * @param {Object} options - Opciones del hook
- * @param {string} options.positionType - Tipo de oposición para filtrar (ej: 'auxiliar_administrativo')
- */
-export function useTopicUnlock({ positionType } = {}) {
-  const { user, supabase } = useAuth()
-  const [topicProgress, setTopicProgress] = useState({})
-  const [weakArticlesByTopic, setWeakArticlesByTopic] = useState({})
+interface TopicProgress {
+  accuracy: number
+  questionsAnswered: number
+  masteryLevel: string | null
+  lastStudy: Date | null
+}
+
+interface WeakArticle {
+  lawName: string
+  articleNumber: string
+  failedCount: number
+  totalAttempts: number
+  correctCount: number
+  avgSuccessRate: number
+}
+
+interface UseTopicUnlockOptions {
+  positionType?: string | null
+}
+
+export function useTopicUnlock({ positionType }: UseTopicUnlockOptions = {}) {
+  const { user, supabase } = useAuth() as any
+  const [topicProgress, setTopicProgress] = useState<Record<number, TopicProgress>>({})
+  const [weakArticlesByTopic, setWeakArticlesByTopic] = useState<Record<number, WeakArticle[]>>({})
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -47,10 +62,10 @@ export function useTopicUnlock({ positionType } = {}) {
       }
 
       // Procesar progreso por tema
-      const progress = {}
+      const progress: Record<number, TopicProgress> = {}
 
       if (themeStatsData && themeStatsData.length > 0) {
-        themeStatsData.forEach(row => {
+        themeStatsData.forEach((row: any) => {
           const temaNumber = row.tema_number
           if (typeof temaNumber !== 'number') return
 
@@ -80,7 +95,7 @@ export function useTopicUnlock({ positionType } = {}) {
   }
 
   // Obtener progreso de un tema específico
-  const getTopicProgress = (topicNumber) => {
+  const getTopicProgress = (topicNumber: number) => {
     return topicProgress[topicNumber] || {
       accuracy: 0,
       questionsAnswered: 0,
@@ -89,7 +104,7 @@ export function useTopicUnlock({ positionType } = {}) {
   }
 
   // Obtener artículos débiles de un tema específico
-  const getWeakArticles = (topicNumber) => {
+  const getWeakArticles = (topicNumber: number) => {
     return weakArticlesByTopic[topicNumber] || []
   }
 

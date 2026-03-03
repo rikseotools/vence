@@ -1,16 +1,22 @@
-// hooks/useAdminNotifications.js - Hook para detectar elementos pendientes en admin
+// hooks/useAdminNotifications.ts - Hook para detectar elementos pendientes en admin
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 
+interface AdminNotificationState {
+  feedback: number
+  impugnaciones: number
+  loading: boolean
+}
+
 export function useAdminNotifications() {
-  const { supabase } = useAuth()
-  const [notifications, setNotifications] = useState({
+  const { supabase } = useAuth() as any
+  const [notifications, setNotifications] = useState<AdminNotificationState>({
     feedback: 0,
     impugnaciones: 0,
     loading: true
   })
-  const originalTitle = useRef(null)
+  const originalTitle = useRef<string | null>(null)
 
   // Efecto para actualizar el título del tab
   useEffect(() => {
@@ -101,7 +107,7 @@ export function useAdminNotifications() {
       // También contar conversaciones sin mensajes (vacías) que no estén cerradas
       if (conversationsResult.status === 'fulfilled') {
         const conversations = conversationsResult.value.data || []
-        conversations.forEach(conv => {
+        conversations.forEach((conv: any) => {
           const msgs = conv.feedback_messages || []
 
           // Conversación vacía no cerrada = necesita atención del admin
@@ -111,7 +117,7 @@ export function useAdminNotifications() {
           }
 
           // Ordenar por fecha descendente para obtener el último
-          const sorted = msgs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+          const sorted = msgs.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
           const lastMsg = sorted[0]
           // Si el último mensaje NO es del admin, necesita respuesta
           if (lastMsg && lastMsg.is_admin === false) {
@@ -125,7 +131,7 @@ export function useAdminNotifications() {
       // Contar feedbacks sin conversación
       if (feedbacksResult.status === 'fulfilled') {
         const feedbacks = feedbacksResult.value.data || []
-        feedbacks.forEach(fb => {
+        feedbacks.forEach((fb: any) => {
           const hasConversation = fb.feedback_conversations && fb.feedback_conversations.length > 0
           if (!hasConversation) {
             pendingFeedback++

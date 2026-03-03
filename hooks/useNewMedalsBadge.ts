@@ -1,4 +1,4 @@
-// hooks/useNewMedalsBadge.js
+// hooks/useNewMedalsBadge.ts
 // Hook para detectar medallas nuevas y mostrar badge en el icono del header
 'use client'
 import { useState, useEffect } from 'react'
@@ -6,7 +6,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { getUserRankingMedals } from '../lib/services/rankingMedals'
 
 export function useNewMedalsBadge() {
-  const { user, supabase } = useAuth()
+  const { user, supabase } = useAuth() as any
   const [hasNewMedals, setHasNewMedals] = useState(false)
   const [newMedalsCount, setNewMedalsCount] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -27,7 +27,7 @@ export function useNewMedalsBadge() {
       
       const lastViewedTime = new Date(lastViewed)
       const now = new Date()
-      const hoursSinceLastViewed = (now - lastViewedTime) / (1000 * 60 * 60)
+      const hoursSinceLastViewed = (now.getTime() - lastViewedTime.getTime()) / (1000 * 60 * 60)
       
       const inCooldown = hoursSinceLastViewed < MEDALS_BADGE_COOLDOWN_HOURS
       
@@ -77,7 +77,7 @@ export function useNewMedalsBadge() {
         return
       }
 
-      const storedMedalIds = new Set(storedMedals?.map(m => m.medal_id) || [])
+      const storedMedalIds = new Set(storedMedals?.map((m: any) => m.medal_id) || [])
       
       // Medallas que existen pero no están almacenadas = nuevas
       const newMedals = currentMedals.filter(medal => 
@@ -85,7 +85,7 @@ export function useNewMedalsBadge() {
       )
 
       // También verificar medallas almacenadas pero no vistas
-      const unviewedStoredMedals = storedMedals?.filter(stored => 
+      const unviewedStoredMedals = storedMedals?.filter((stored: any) =>
         stored.viewed === false || stored.viewed === null
       ) || []
 
@@ -144,7 +144,7 @@ export function useNewMedalsBadge() {
   }, [user?.id, supabase])
 
   // Función de debug temporal
-  const debugUserMedals = async (supabase, userId) => {
+  const debugUserMedals = async (supabase: any, userId: string) => {
     console.log('🔍 === DEBUG AUTOMÁTICO DE MEDALLAS ===')
     console.log('🔍 Usuario:', userId)
     
@@ -177,8 +177,8 @@ export function useNewMedalsBadge() {
       console.log(`🔍 Total respuestas HOY:`, responses?.length || 0)
 
       // Procesar por usuario
-      const userStats = {}
-      responses?.forEach(response => {
+      const userStats: Record<string, any> = {}
+      responses?.forEach((response: any) => {
         const responseUserId = response.tests.user_id
         if (!userStats[responseUserId]) {
           userStats[responseUserId] = {
@@ -187,7 +187,7 @@ export function useNewMedalsBadge() {
             correctAnswers: 0
           }
         }
-        
+
         userStats[responseUserId].totalQuestions++
         if (response.is_correct) {
           userStats[responseUserId].correctAnswers++
@@ -196,12 +196,12 @@ export function useNewMedalsBadge() {
 
       // Calcular ranking
       const ranking = Object.values(userStats)
-        .filter(user => user.totalQuestions >= 5)
-        .map(user => ({
-          ...user,
-          accuracy: Math.round((user.correctAnswers / user.totalQuestions) * 100)
+        .filter((u: any) => u.totalQuestions >= 5)
+        .map((u: any) => ({
+          ...u,
+          accuracy: Math.round((u.correctAnswers / u.totalQuestions) * 100)
         }))
-        .sort((a, b) => {
+        .sort((a: any, b: any) => {
           if (b.accuracy !== a.accuracy) return b.accuracy - a.accuracy
           return b.totalQuestions - a.totalQuestions
         })
@@ -209,7 +209,7 @@ export function useNewMedalsBadge() {
       console.log(`🔍 Ranking HOY completo:`, ranking)
       console.log(`🔍 Total usuarios en ranking:`, ranking.length)
 
-      const userRank = ranking.findIndex(user => user.userId === userId) + 1
+      const userRank = ranking.findIndex((u: any) => u.userId === userId) + 1
       console.log(`🔍 TU POSICIÓN: ${userRank} (${userRank === 0 ? 'No estás en el ranking' : '#' + userRank})`)
 
       if (userRank > 0) {
@@ -233,7 +233,7 @@ export function useNewMedalsBadge() {
         .eq('user_id', userId)
 
       console.log('🔍 Medallas almacenadas:', storedMedals?.length || 0)
-      storedMedals?.forEach(medal => {
+      storedMedals?.forEach((medal: any) => {
         console.log(`🏆 ${medal.medal_id} - Visto: ${medal.viewed}`)
       })
 

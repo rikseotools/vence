@@ -1,4 +1,4 @@
-// hooks/useOnboarding.js
+// hooks/useOnboarding.ts
 // Hook para detectar si el usuario necesita completar el onboarding
 'use client'
 import { useState, useEffect } from 'react'
@@ -11,7 +11,7 @@ const supabase = getSupabaseClient()
 const ONBOARDING_SESSION_SHOWN_KEY = 'onboarding_session_shown'
 
 export function useOnboarding() {
-  const { user, userProfile, loading: authLoading } = useAuth()
+  const { user, userProfile, loading: authLoading } = useAuth() as any
   const [needsOnboarding, setNeedsOnboarding] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [checking, setChecking] = useState(true)
@@ -89,7 +89,7 @@ export function useOnboarding() {
   }
 
   // Función para verificar si debe mostrar según recordatorios (ahora usa BD)
-  const shouldShowModal = async (profile) => {
+  const shouldShowModal = async (profile: any) => {
     if (typeof window === 'undefined') return false
 
     try {
@@ -114,7 +114,7 @@ export function useOnboarding() {
       if (lastSkip) {
         const lastSkipDate = new Date(lastSkip)
         const now = new Date()
-        const hoursSinceSkip = (now - lastSkipDate) / (1000 * 60 * 60)
+        const hoursSinceSkip = (now.getTime() - lastSkipDate.getTime()) / (1000 * 60 * 60)
         const daysSinceSkip = hoursSinceSkip / 24
 
         // Primer skip: volver a mostrar después de 5 minutos

@@ -1,10 +1,11 @@
-// hooks/useDeviceTracking.js
+// hooks/useDeviceTracking.ts
 // Sistema de tracking de device_id para detectar fraude multi-cuenta
 // Solo se activa para usuarios en la lista de vigilancia (fraud_watch_list)
 
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 const DEVICE_ID_KEY = 'vence_device_id'
 
@@ -20,8 +21,8 @@ const DEVICE_ID_KEY = 'vence_device_id'
  * Si 2+ usuarios comparten el mismo device_id = fraude confirmado.
  */
 export function useDeviceTracking() {
-  const { user, supabase } = useAuth()
-  const [deviceId, setDeviceId] = useState(null)
+  const { user, supabase } = useAuth() as any
+  const [deviceId, setDeviceId] = useState<string | null>(null)
   const [isWatched, setIsWatched] = useState(false)
   const [loading, setLoading] = useState(true)
 
@@ -105,7 +106,7 @@ export function useDeviceTracking() {
  * Función independiente para obtener device_id sin hook
  * Útil para el SessionTracker que puede no tener acceso al contexto
  */
-export async function getDeviceIdForUser(supabase, userId) {
+export async function getDeviceIdForUser(supabase: SupabaseClient, userId: string) {
   if (!userId || !supabase) return null
 
   try {

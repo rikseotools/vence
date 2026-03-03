@@ -1,4 +1,4 @@
-// hooks/useDailyQuestionLimit.js
+// hooks/useDailyQuestionLimit.ts
 // Hook para gestionar el limite diario de preguntas (25/dia para usuarios FREE)
 'use client'
 
@@ -6,13 +6,24 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { trackLimitReached } from '../lib/services/conversionTracker'
 
+interface DailyLimitStatus {
+  questionsToday: number
+  questionsRemaining: number
+  dailyLimit: number
+  isLimitReached: boolean
+  isPremiumUser: boolean
+  resetTime: string | null
+  loading: boolean
+  error: string | null
+}
+
 const DAILY_LIMIT = 25
 const CACHE_TTL = 60000 // 1 minuto
 
 export function useDailyQuestionLimit() {
-  const { user, userProfile, isPremium, isLegacy, supabase } = useAuth()
+  const { user, userProfile, isPremium, isLegacy, supabase } = useAuth() as any
 
-  const [status, setStatus] = useState({
+  const [status, setStatus] = useState<DailyLimitStatus>({
     questionsToday: 0,
     questionsRemaining: DAILY_LIMIT,
     dailyLimit: DAILY_LIMIT,
@@ -85,7 +96,7 @@ export function useDailyQuestionLimit() {
           dailyLimit: result.daily_limit || DAILY_LIMIT,
           isLimitReached: result.is_limit_reached || false,
           isPremiumUser: result.is_premium || false,
-          resetTime: result.reset_time ? new Date(result.reset_time) : null,
+          resetTime: result.reset_time ?? null,
           loading: false,
           error: null
         })
@@ -93,7 +104,7 @@ export function useDailyQuestionLimit() {
 
       lastFetchRef.current = now
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching daily limit status:', error)
       if (isMountedRef.current) {
         setStatus(prev => ({
@@ -133,7 +144,7 @@ export function useDailyQuestionLimit() {
           dailyLimit: DAILY_LIMIT,
           isLimitReached: result.is_limit_reached,
           isPremiumUser: result.is_premium,
-          resetTime: result.reset_time ? new Date(result.reset_time) : null,
+          resetTime: result.reset_time ?? null,
           loading: false,
           error: null
         }
@@ -177,7 +188,7 @@ export function useDailyQuestionLimit() {
 
       return { success: true, canContinue: true }
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error recording answer:', error)
       return { success: false, error: error.message }
     }
@@ -195,11 +206,11 @@ export function useDailyQuestionLimit() {
 
   // Escuchar eventos de sincronización de otros componentes
   useEffect(() => {
-    const handleLimitUpdate = (event) => {
-      if (isMountedRef.current && event.detail) {
+    const handleLimitUpdate = (event: Event) => {
+      if (isMountedRef.current && (event as CustomEvent).detail) {
         setStatus(prev => ({
           ...prev,
-          ...event.detail
+          ...(event as CustomEvent).detail
         }))
       }
     }
@@ -223,9 +234,9 @@ export function useDailyQuestionLimit() {
 
     const checkReset = () => {
       const now = new Date()
-      const resetTime = new Date(status.resetTime)
+      const resetTime = new Date(status.resetTime as string)
 
-      if (now >= resetTime) {
+      if (now.getTime() >= resetTime.getTime()) {
         console.log('Daily limit reset detected - refreshing status')
         fetchStatus(true)
       }
