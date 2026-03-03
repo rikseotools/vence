@@ -152,9 +152,13 @@ export default function LawArticlesClient({ params, searchParams }: LawArticlesC
 
         setLawData(data as LawData)
 
-        // Cargar secciones de la ley para determinar si mostrar filtro
+        // Cargar secciones reutilizando datos de ley (evita query redundante a laws)
         try {
-          const sectionsData = await fetchLawSections(lawSlug)
+          const sectionsData = await fetchLawSections(lawSlug, {
+            lawId: data.law?.id,
+            lawName: data.law?.name,
+            lawShortName: data.law?.short_name,
+          })
           setAvailableSections(sectionsData.sections || [])
           console.log('📚 Secciones cargadas para', lawSlug, ':', sectionsData.sections?.length || 0)
         } catch (sectionsError: unknown) {
