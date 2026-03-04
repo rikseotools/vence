@@ -194,7 +194,7 @@ export async function syncArticlesFromBoe(
         try {
           await db.insert(articles).values({
             lawId: lawId,
-            articleNumber: boeArt.article_number,
+            articleNumber: normalizeArticleNumber(boeArt.article_number),
             title: boeArt.title || null,
             content: boeArt.content,
             contentHash: newHash,

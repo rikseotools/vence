@@ -5,6 +5,7 @@
 
 import dotenv from 'dotenv'
 import https from 'https'
+import { normalizeArticleNumber as boeNormalize } from '@/lib/boe-extractor'
 
 dotenv.config({ path: '.env.local', override: true })
 
@@ -207,6 +208,20 @@ describeIfDb('Integridad topic_scope', () => {
         const law = lawName.get(scope.law_id) ?? scope.law_id
         const topic = topicName.get(scope.topic_id) ?? scope.topic_id
         errors.push(`[${law}] ${topic}: scope con ${arts.length} artículos pero 0 preguntas alcanzables`)
+      }
+    }
+
+    expect(errors).toEqual([])
+  })
+
+  test('todos los article_number en BD están en formato normalizado', () => {
+    const errors: string[] = []
+
+    for (const a of articles) {
+      const normalized = boeNormalize(a.article_number)
+      if (normalized !== a.article_number) {
+        const law = lawName.get(a.law_id) ?? a.law_id
+        errors.push(`[${law}] article "${a.article_number}" debería ser "${normalized}" (id: ${a.id})`)
       }
     }
 
