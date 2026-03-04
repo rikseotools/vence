@@ -41,6 +41,7 @@ export default {
     '<rootDir>/node_modules/',
     '<rootDir>/scripts/',
     'configDbIntegrity', // Requiere BD real, ejecutar con: npx jest configDbIntegrity
+    'topicScopeIntegrity', // Requiere BD real, ejecutar con: npx jest topicScopeIntegrity
   ],
   // Timeout para tests async
   testTimeout: 10000,
