@@ -17,6 +17,7 @@ import PsychometricRegistrationManager from './PsychometricRegistrationManager'
 import PsychometricQuestionDispute from './v2/PsychometricQuestionDispute'
 import PsychometricQuestionEvolution from './PsychometricQuestionEvolution'
 import MarkdownExplanation from './MarkdownExplanation'
+import PsychometricAIHelpButton from './PsychometricAIHelpButton'
 import { getDifficultyInfo, formatDifficultyDisplay, isFirstAttempt } from '../lib/psychometricDifficulty'
 import { useInteractionTracker } from '../hooks/useInteractionTracker'
 
@@ -721,22 +722,10 @@ export default function PsychometricTestLayout({
                   content={verifiedExplanation}
                   className="text-blue-700"
                 />
-                {/* Botón para abrir IA - siempre visible */}
-                <button
-                  onClick={() => {
-                    window.dispatchEvent(new CustomEvent('openAIChat', {
-                      detail: {
-                        message: `Explícame paso a paso cómo resolver esta pregunta: "${currentQ.question_text}"\n\nLas opciones son:\nA) ${currentQ.option_a}\nB) ${currentQ.option_b}\nC) ${currentQ.option_c}\nD) ${currentQ.option_d}`,
-                        suggestion: 'explicar_psico'
-                      }
-                    }))
-                  }}
-                  className="mt-4 flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium"
-                >
-                  <span>🤖</span>
-                  <span>¿Necesitas ayuda?</span>
-                </button>
               </div>
+            )}
+            {showResult && (
+              <PsychometricAIHelpButton question={currentQ} className="mt-4" />
             )}
           </div>
         )

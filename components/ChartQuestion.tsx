@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback, type ReactNode } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import MarkdownExplanation from './MarkdownExplanation'
+import PsychometricAIHelpButton from './PsychometricAIHelpButton'
 
 interface ChartQuestionData {
   id: string
@@ -351,50 +352,7 @@ export default function ChartQuestion({
                   {question.psychometric_sections.psychometric_categories.display_name.toUpperCase()}: {question.psychometric_sections.display_name?.toUpperCase()}
                 </h4>
               )}
-              {/* Botón para abrir IA - oculto en exámenes oficiales */}
-              {!hideAIChat && <button
-                  onClick={() => {
-                    // Determinar el tipo de pregunta para el mensaje
-                    const isErrorDetection = question.content_data?.chart_type === 'error_detection' || question.question_subtype === 'error_detection'
-                    const isDataTable = question.question_subtype === 'data_tables' || !!question.content_data?.table_data
-                    const questionType = isErrorDetection ? 'ortografía' : isDataTable ? 'tablas' : 'gráficos'
-
-                    // Para error_detection, incluir la frase original
-                    let additionalContext = ''
-                    if (isErrorDetection && question.content_data?.original_text) {
-                      additionalContext = `\n\nFrase a analizar: "${question.content_data.original_text}"`
-                    }
-
-                    // Para tablas, incluir los datos de la tabla
-                    if (isDataTable && question.content_data?.table_data) {
-                      const td = question.content_data.table_data
-                      const tableName = question.content_data.table_name || td.title || 'Tabla de datos'
-                      let tableText = `\n\n📊 ${tableName}:\n`
-                      if (td.headers && td.rows) {
-                        tableText += td.headers.join(' | ') + '\n'
-                        tableText += td.headers.map(() => '---').join(' | ') + '\n'
-                        td.rows.forEach((row: string[]) => {
-                          tableText += row.join(' | ') + '\n'
-                        })
-                      }
-                      additionalContext = tableText
-                    }
-
-                    window.dispatchEvent(new CustomEvent('openAIChat', {
-                      detail: {
-                        message: `Explícame paso a paso cómo resolver esta pregunta de ${questionType}: "${question.question_text}"${additionalContext}\n\nLas opciones son:\nA) ${question.option_a}\nB) ${question.option_b}\nC) ${question.option_c}\nD) ${question.option_d}`,
-                        suggestion: 'explicar_psico'
-                      }
-                    }))
-                  }}
-                  className="flex items-center gap-2 px-3 py-1.5 ml-auto bg-blue-900 text-white rounded-lg hover:bg-blue-950 transition-colors text-sm font-medium"
-                >
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M9.5 2l1.5 3.5L14.5 7l-3.5 1.5L9.5 12l-1.5-3.5L4.5 7l3.5-1.5L9.5 2z"/>
-                    <path d="M18 8l1 2.5 2.5 1-2.5 1-1 2.5-1-2.5L14.5 11l2.5-1L18 8z"/>
-                  </svg>
-                  <span>¿Necesitas ayuda?</span>
-                </button>}
+              {!hideAIChat && <PsychometricAIHelpButton question={question} className="ml-auto" />}
             </div>
 
 
