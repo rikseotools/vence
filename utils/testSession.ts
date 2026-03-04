@@ -94,7 +94,13 @@ export interface QuestionInput {
   primary_article_id?: string
   explanation?: string
   correct_option?: number
-  articles?: unknown
+  articles?: {
+    id?: string
+    article_number?: string
+    laws?: {
+      short_name?: string
+    }
+  }
   // Estructura anidada (legacy)
   metadata?: {
     id?: string
@@ -467,10 +473,10 @@ export async function createDetailedTestSession(
     // Preparar metadata de preguntas (soporta estructura plana y anidada)
     const questionsMetadata = {
       question_ids: validatedParams.questions.map(q => q.id || q.metadata?.id || `temp_${Date.now()}_${Math.random()}`),
-      article_ids: validatedParams.questions.map(q => q.article?.id || null),
-      article_numbers: validatedParams.questions.map(q => q.article?.number || 'unknown'),
+      article_ids: validatedParams.questions.map(q => q.article?.id || q.articles?.id || q.primary_article_id || null),
+      article_numbers: validatedParams.questions.map(q => q.article?.number || q.articles?.article_number || 'unknown'),
       difficulties: validatedParams.questions.map(q => q.difficulty || q.metadata?.difficulty || 'medium'),
-      laws: validatedParams.questions.map(q => q.article?.law_short_name || 'unknown'),
+      laws: validatedParams.questions.map(q => q.article?.law_short_name || q.articles?.laws?.short_name || 'unknown'),
       total_questions: validatedParams.questions.length,
       estimated_duration: validatedParams.questions.length * 60,
     }

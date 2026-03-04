@@ -532,28 +532,10 @@ export default function ExamLayout({
         console.log('✅ Test session creada con ID:', testSessionData.id)
         currentTestSessionRef.current = testSessionData
 
-        if (questions?.length > 0) {
-          console.log('💾 Guardando todas las preguntas del examen...', questions.length, 'preguntas')
-          try {
-            const initResponse = await fetch('/api/exam/init', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                testId: testSessionData.id,
-                questions: questions,
-                userId: user?.id
-              })
-            })
-            const initResult = await initResponse.json()
-            if (initResult.success) {
-              console.log(`✅ ${initResult.savedCount} preguntas guardadas para reanudar`)
-            } else {
-              console.error('❌ Error guardando preguntas:', initResult.error)
-            }
-          } catch (initError) {
-            console.error('❌ Error en init de preguntas:', initError)
-          }
-        }
+        // Las preguntas se guardan en test_questions solo cuando el usuario responde
+        // (via saveAnswer en /api/exam/answer). La lista de question_ids se preserva
+        // en tests.questions_metadata para poder reanudar el examen.
+        console.log(`✅ Examen iniciado con ${questions?.length ?? 0} preguntas (question_ids en metadata)`)
       }
 
       setCurrentTestSession(testSessionData)

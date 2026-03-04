@@ -149,6 +149,47 @@ export function validateCompleteExamRequest(data: unknown): CompleteExamRequest 
   return completeExamRequestSchema.parse(data)
 }
 
+// ============================================
+// REANUDAR EXAMEN
+// ============================================
+
+export const resumeExamRequestSchema = z.object({
+  testId: z.string().uuid('ID de test inválido'),
+  userId: z.string().uuid('ID de usuario inválido').optional(),
+})
+
+export type ResumeExamRequest = z.infer<typeof resumeExamRequestSchema>
+
+export const resumedQuestionSchema = z.object({
+  id: z.string().uuid(),
+  question_text: z.string(),
+  option_a: z.string(),
+  option_b: z.string(),
+  option_c: z.string(),
+  option_d: z.string(),
+  difficulty: z.string().nullable().optional(),
+  is_official_exam: z.boolean().nullable().optional(),
+  primary_article_id: z.string().uuid().nullable().optional(),
+  articles: z.any().nullable().optional(),
+})
+
+export const resumeExamResponseSchema = z.object({
+  success: z.boolean(),
+  testId: z.string().uuid().optional(),
+  temaNumber: z.number().nullable().optional(),
+  totalQuestions: z.number().optional(),
+  answeredCount: z.number().optional(),
+  questions: z.array(resumedQuestionSchema).optional(),
+  savedAnswers: z.record(z.string(), z.string()).optional(),
+  error: z.string().optional(),
+})
+
+export type ResumeExamResponse = z.infer<typeof resumeExamResponseSchema>
+
+// ============================================
+// VALIDADORES HELPER
+// ============================================
+
 // Validador seguro que retorna resultado en vez de lanzar error
 export function safeParseSaveAnswerRequest(data: unknown) {
   return saveAnswerRequestSchema.safeParse(data)
@@ -156,4 +197,8 @@ export function safeParseSaveAnswerRequest(data: unknown) {
 
 export function safeParseGetExamProgressRequest(data: unknown) {
   return getExamProgressRequestSchema.safeParse(data)
+}
+
+export function safeParseResumeExamRequest(data: unknown) {
+  return resumeExamRequestSchema.safeParse(data)
 }

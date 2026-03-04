@@ -177,10 +177,11 @@ export async function saveAnswer(params: SaveAnswerParams): Promise<SaveAnswerRe
         isCorrect,
       }
     } else {
-      // Si no tenemos correctAnswer, intentar obtenerlo de la BD
-      // Esto maneja la condición de carrera donde el usuario responde antes de que /api/exam/init complete
+      // Path principal para exámenes: la fila no existe aún en test_questions
+      // porque ya no se pre-crean al abrir el examen (eliminadas ghost rows).
+      // Se obtiene correctAnswer directamente de la BD.
       if (!correctAnswer && params.questionId) {
-        console.log(`🔍 [saveAnswer] Pregunta no existe en test_questions, obteniendo correctAnswer de BD para ${params.questionId}`)
+        console.log(`🔍 [saveAnswer] Creando fila en test_questions, obteniendo correctAnswer de BD para ${params.questionId}`)
         const questionResult = await db
           .select({ correctOption: questions.correctOption })
           .from(questions)
@@ -205,7 +206,7 @@ export async function saveAnswer(params: SaveAnswerParams): Promise<SaveAnswerRe
 
       const isCorrect = params.userAnswer.toLowerCase() === correctAnswer.toLowerCase()
 
-      // Insertar o actualizar respuesta (UPSERT para manejar race conditions con /api/exam/init)
+      // Insertar respuesta (UPSERT para manejar posibles race conditions con doble-click)
       const result = await db
         .insert(testQuestions)
         .values({
@@ -429,8 +430,11 @@ export async function getPendingExams(
       })
     )
 
-    // Filtrar solo los que tienen al menos una respuesta (exámenes realmente empezados)
-    const startedExams = examsWithProgress.filter(e => e.answeredQuestions > 0)
+    // Exámenes tipo 'exam' siempre se muestran en pendientes (pueden tener 0 respuestas
+    // porque ya no se pre-crean ghost rows). Practice necesita ≥1 respuesta.
+    const startedExams = examsWithProgress.filter(e =>
+      e.testType === 'exam' || e.answeredQuestions > 0
+    )
 
     return {
       success: true,
@@ -708,13 +712,14 @@ export async function getResumedExamData(testId: string): Promise<GetResumedExam
   try {
     const db = getDb()
 
-    // Obtener info del test
+    // Obtener info del test incluyendo questionsMetadata
     const testResult = await db
       .select({
         id: tests.id,
         temaNumber: tests.temaNumber,
         totalQuestions: tests.totalQuestions,
         isCompleted: tests.isCompleted,
+        questionsMetadata: tests.questionsMetadata,
       })
       .from(tests)
       .where(eq(tests.id, testId))
@@ -736,43 +741,125 @@ export async function getResumedExamData(testId: string): Promise<GetResumedExam
       }
     }
 
-    // Obtener preguntas y respuestas guardadas
-    const questionsResult = await db
-      .select({
-        questionOrder: testQuestions.questionOrder,
-        questionId: testQuestions.questionId,
-        userAnswer: testQuestions.userAnswer,
-        correctAnswer: testQuestions.correctAnswer,
-        questionText: testQuestions.questionText,
-      })
-      .from(testQuestions)
-      .where(eq(testQuestions.testId, testId))
-      .orderBy(testQuestions.questionOrder)
+    // Extraer question_ids de metadata
+    const metadata = test.questionsMetadata as {
+      question_ids?: string[]
+      article_ids?: (string | null)[]
+      article_numbers?: string[]
+      laws?: string[]
+    } | null
 
-    // Contar solo las que tienen respuesta (no vacía)
-    const answeredCount = questionsResult.filter(q => q.userAnswer && q.userAnswer.trim() !== '').length
+    const metadataQuestionIds = metadata?.question_ids ?? []
 
-    return {
-      success: true,
-      testId: test.id,
-      temaNumber: test.temaNumber,
-      totalQuestions: test.totalQuestions,
-      answeredCount,
-      isCompleted: test.isCompleted ?? false,
-      questions: questionsResult.map(q => ({
-        questionOrder: q.questionOrder,
-        questionId: q.questionId,
-        userAnswer: q.userAnswer,
-        correctAnswer: q.correctAnswer,
-        questionText: q.questionText,
-      })),
+    // Si metadata tiene question_ids, usar path nuevo
+    if (metadataQuestionIds.length > 0) {
+      return getResumedExamDataFromMetadata(testId, test, metadataQuestionIds)
     }
+
+    // Fallback legacy: leer de test_questions (exámenes viejos pre-migración)
+    console.log(`⚠️ [getResumedExamData] Fallback legacy para test ${testId} - sin metadata question_ids`)
+    return getResumedExamDataLegacy(testId, test)
   } catch (error) {
     console.error('Error obteniendo datos para reanudar:', error)
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Error desconocido',
     }
+  }
+}
+
+/**
+ * Path nuevo: lee question_ids de tests.questionsMetadata y
+ * hace merge con respuestas reales de test_questions.
+ */
+async function getResumedExamDataFromMetadata(
+  testId: string,
+  test: { id: string; temaNumber: number | null; totalQuestions: number; isCompleted: boolean | null },
+  questionIds: string[]
+): Promise<GetResumedExamResponse> {
+  const db = getDb()
+
+  // Obtener solo filas con respuestas reales de test_questions
+  const answeredRows = await db
+    .select({
+      questionOrder: testQuestions.questionOrder,
+      questionId: testQuestions.questionId,
+      userAnswer: testQuestions.userAnswer,
+      correctAnswer: testQuestions.correctAnswer,
+      questionText: testQuestions.questionText,
+    })
+    .from(testQuestions)
+    .where(eq(testQuestions.testId, testId))
+    .orderBy(testQuestions.questionOrder)
+
+  // Crear mapa de respuestas por questionId
+  const answersMap = new Map<string, typeof answeredRows[0]>()
+  for (const row of answeredRows) {
+    if (row.questionId && row.userAnswer && row.userAnswer.trim() !== '') {
+      answersMap.set(row.questionId, row)
+    }
+  }
+
+  // Construir lista completa: todos los question_ids de metadata con respuestas parciales
+  const allQuestions: ResumedExamQuestion[] = questionIds.map((qId, index) => {
+    const answered = answersMap.get(qId)
+    return {
+      questionOrder: index + 1,
+      questionId: qId,
+      userAnswer: answered?.userAnswer || null,
+      correctAnswer: answered?.correctAnswer || '',
+      questionText: answered?.questionText || '',
+    }
+  })
+
+  return {
+    success: true,
+    testId: test.id,
+    temaNumber: test.temaNumber,
+    totalQuestions: questionIds.length,
+    answeredCount: answersMap.size,
+    isCompleted: test.isCompleted ?? false,
+    questions: allQuestions,
+  }
+}
+
+/**
+ * Fallback legacy: lee preguntas de test_questions (exámenes viejos con ghost rows).
+ */
+async function getResumedExamDataLegacy(
+  testId: string,
+  test: { id: string; temaNumber: number | null; totalQuestions: number; isCompleted: boolean | null }
+): Promise<GetResumedExamResponse> {
+  const db = getDb()
+
+  const questionsResult = await db
+    .select({
+      questionOrder: testQuestions.questionOrder,
+      questionId: testQuestions.questionId,
+      userAnswer: testQuestions.userAnswer,
+      correctAnswer: testQuestions.correctAnswer,
+      questionText: testQuestions.questionText,
+    })
+    .from(testQuestions)
+    .where(eq(testQuestions.testId, testId))
+    .orderBy(testQuestions.questionOrder)
+
+  const answeredCount = questionsResult.filter(q => q.userAnswer && q.userAnswer.trim() !== '').length
+
+  return {
+    success: true,
+    testId: test.id,
+    temaNumber: test.temaNumber,
+    totalQuestions: test.totalQuestions,
+    answeredCount,
+    isCompleted: test.isCompleted ?? false,
+    questions: questionsResult.map(q => ({
+      questionOrder: q.questionOrder,
+      questionId: q.questionId,
+      userAnswer: q.userAnswer,
+      correctAnswer: q.correctAnswer,
+      questionText: q.questionText,
+    })),
   }
 }
 
