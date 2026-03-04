@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext'
 interface AdminNotificationState {
   feedback: number
   impugnaciones: number
+  ventas: number
   loading: boolean
 }
 
@@ -14,6 +15,7 @@ export function useAdminNotifications() {
   const [notifications, setNotifications] = useState<AdminNotificationState>({
     feedback: 0,
     impugnaciones: 0,
+    ventas: 0,
     loading: true
   })
   const originalTitle = useRef<string | null>(null)
@@ -27,7 +29,7 @@ export function useAdminNotifications() {
       originalTitle.current = document.title || 'Vence Admin'
     }
 
-    const totalPending = notifications.feedback + notifications.impugnaciones
+    const totalPending = notifications.feedback + notifications.impugnaciones + notifications.ventas
 
     if (totalPending > 0) {
       document.title = `(${totalPending}) ${originalTitle.current}`
@@ -41,7 +43,7 @@ export function useAdminNotifications() {
         document.title = originalTitle.current
       }
     }
-  }, [notifications.feedback, notifications.impugnaciones, notifications.loading])
+  }, [notifications.feedback, notifications.impugnaciones, notifications.ventas, notifications.loading])
 
   useEffect(() => {
     if (!supabase) return
@@ -95,13 +97,21 @@ export function useAdminNotifications() {
           new Promise((_, reject) =>
             setTimeout(() => reject(new Error('Timeout')), 10000)
           )
+        ]),
+        // 4. Obtener ventas no leídas
+        Promise.race([
+          fetch('/api/v2/admin/unread-sales').then(r => r.json()),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Timeout')), 10000)
+          )
         ])
       ])
 
-      const [conversationsResult, feedbacksResult, impugnacionesApiResult] = results
+      const [conversationsResult, feedbacksResult, impugnacionesApiResult, salesResult] = results
 
       let pendingFeedback = 0
       let pendingImpugnaciones = 0
+      let pendingVentas = 0
 
       // Contar conversaciones donde el último mensaje es del USUARIO (necesita respuesta del admin)
       // También contar conversaciones sin mensajes (vacías) que no estén cerradas
@@ -153,9 +163,17 @@ export function useAdminNotifications() {
         console.warn('Error cargando impugnaciones:', impugnacionesApiResult.reason?.message)
       }
 
+      // Obtener ventas no leídas
+      if (salesResult.status === 'fulfilled') {
+        pendingVentas = salesResult.value.count || 0
+      } else {
+        console.warn('Error cargando ventas:', salesResult.reason?.message)
+      }
+
       setNotifications({
         feedback: pendingFeedback,
         impugnaciones: pendingImpugnaciones,
+        ventas: pendingVentas,
         loading: false
       })
 
@@ -165,8 +183,18 @@ export function useAdminNotifications() {
     }
   }
 
+  const markSalesRead = async () => {
+    try {
+      await fetch('/api/v2/admin/unread-sales', { method: 'POST' })
+      setNotifications(prev => ({ ...prev, ventas: 0 }))
+    } catch (error) {
+      console.warn('Error marcando ventas como leídas:', error)
+    }
+  }
+
   return {
     ...notifications,
-    refresh: loadPendingCounts
+    refresh: loadPendingCounts,
+    markSalesRead
   }
 }

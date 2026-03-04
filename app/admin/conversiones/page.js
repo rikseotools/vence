@@ -5,6 +5,11 @@ import { useAuth } from '@/contexts/AuthContext'
 
 export default function ConversionesPage() {
   const { supabase } = useAuth()
+
+  // Marcar ventas como leídas al montar
+  useEffect(() => {
+    fetch('/api/v2/admin/unread-sales', { method: 'POST' }).catch(() => {})
+  }, [])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [activeTab, setActiveTab] = useState('funnel') // 'funnel' | 'ab-testing' | 'predictions'

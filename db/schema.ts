@@ -3536,3 +3536,8 @@ export const adminShareAnalytics = pgView("admin_share_analytics", {	fecha: time
 	usuariosUnicos: bigint("usuarios_unicos", { mode: "number" }),
 	notaPromedioCompartida: numeric("nota_promedio_compartida"),
 }).as(sql`SELECT date_trunc('day'::text, created_at) AS fecha, share_type, platform, count(*) AS total_shares, count(DISTINCT user_id) AS usuarios_unicos, avg(score) AS nota_promedio_compartida FROM share_events GROUP BY (date_trunc('day'::text, created_at)), share_type, platform ORDER BY (date_trunc('day'::text, created_at)) DESC`);
+
+export const adminReadMarkers = pgTable("admin_read_markers", {
+	id: text().primaryKey().notNull(),
+	lastReadAt: timestamp("last_read_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+});

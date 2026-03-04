@@ -1,12 +1,10 @@
-// app/admin/layout.js - Layout base para área administrativa CORREGIDO
+// app/admin/layout.tsx - Layout base para área administrativa
 'use client'
 import ProtectedRoute from '@/components/Admin/ProtectedRoute'
 import { useAdminNotifications } from '@/hooks/useAdminNotifications'
 import { useLawChanges } from '@/hooks/useLawChanges'
 
-// Metadata moved to page components since this is now a client component
-
-export default function AdminLayout({ children }) {
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const adminNotifications = useAdminNotifications()
   const { hasUnreviewedChanges } = useLawChanges()
 
@@ -165,10 +163,17 @@ export default function AdminLayout({ children }) {
                   </a>
                   <a
                     href="/admin/conversiones"
-                    className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1"
+                    className={`text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1 relative ${
+                      adminNotifications?.ventas > 0 ? 'animate-pulse' : ''
+                    }`}
                   >
                     <span>💰</span>
                     <span>Conversiones</span>
+                    {adminNotifications?.ventas > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-green-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold animate-pulse">
+                        {adminNotifications.ventas}
+                      </span>
+                    )}
                   </a>
                   <a
                     href="/admin/fraudes"

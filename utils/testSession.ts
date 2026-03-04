@@ -146,6 +146,15 @@ const questionSchema = z.object({
     number: z.string().optional(),
     law_short_name: z.string().optional(),
   }).optional(),
+  // Estructura anidada alternativa (fetchers con join a articles/laws)
+  articles: z.object({
+    id: z.string().optional(),
+    article_number: z.string().optional(),
+    laws: z.object({
+      short_name: z.string().optional(),
+    }).optional(),
+  }).optional(),
+  primary_article_id: z.string().optional(),
 }).passthrough() // Permitir campos adicionales
 
 const createTestSessionSchema = z.object({
