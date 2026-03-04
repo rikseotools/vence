@@ -3,6 +3,12 @@
  * Verifica logica de insert con mocks de DB
  */
 
+/** Simula la estructura real de errores Drizzle (wraps Postgres error in .cause) */
+function makeDrizzleError(pgCode: string, detail?: string): Error {
+  const pgError = Object.assign(new Error(detail || 'pg error'), { code: pgCode, detail })
+  return Object.assign(new Error(`Failed query`), { cause: pgError })
+}
+
 // Setup mocks before any imports
 jest.mock('@/db/client', () => {
   const chainable: Record<string, jest.Mock> = {}
@@ -119,15 +125,22 @@ describe('insertTestAnswer', () => {
 
   // --- Constraint unico (duplicado) ---
 
-  it('debe retornar already_saved para error 23505', async () => {
+  it('debe retornar already_saved para error 23505 directo', async () => {
     chainable.values.mockRejectedValueOnce({ code: '23505' })
     const result = await insertTestAnswer(makeRequest(), userId)
     expect(result.success).toBe(true)
     expect(result.action).toBe('already_saved')
   })
 
+  it('debe retornar already_saved para error 23505 wrapeado por Drizzle (cause)', async () => {
+    chainable.values.mockRejectedValueOnce(makeDrizzleError('23505', 'Key already exists'))
+    const result = await insertTestAnswer(makeRequest(), userId)
+    expect(result.success).toBe(true)
+    expect(result.action).toBe('already_saved')
+  })
+
   it('debe retornar error para otros codigos de error DB', async () => {
-    chainable.values.mockRejectedValueOnce({ code: '23503', message: 'FK violation' })
+    chainable.values.mockRejectedValueOnce(makeDrizzleError('23503', 'FK violation'))
     const result = await insertTestAnswer(makeRequest(), userId)
     expect(result.success).toBe(false)
     expect(result.action).toBe('error')

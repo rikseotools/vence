@@ -195,7 +195,9 @@ export async function insertTestAnswer(
     }
   } catch (error: any) {
     // Constraint unico = ya guardado (no es error)
-    if (error?.code === '23505') {
+    // El código 23505 puede estar en error.code (Postgres directo) o error.cause.code (wrapping de Drizzle)
+    const pgCode = error?.code || error?.cause?.code
+    if (pgCode === '23505') {
       return {
         success: true,
         question_id: req.questionData.id || null,
