@@ -24,6 +24,7 @@ import {
   FEEDBACK_TYPES,
   STATUS_CONFIG,
 } from '@/types/feedback'
+import MarkdownExplanation from '@/components/MarkdownExplanation'
 
 // Tipo local para imágenes subidas (no usado actualmente pero mantenido por compatibilidad)
 interface UploadedImage {
@@ -2230,7 +2231,11 @@ export default function AdminFeedbackPage() {
                               ? 'bg-blue-600 text-white'
                               : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 shadow-sm'
                           }`}>
-                            <p className="text-sm whitespace-pre-wrap">{linkifyText(msg.message, msg.is_admin)}</p>
+                            {msg.is_admin ? (
+                              <MarkdownExplanation content={msg.message} className="text-sm text-inherit prose-p:my-1 prose-ul:my-1 prose-li:my-0 prose-strong:text-inherit" />
+                            ) : (
+                              <p className="text-sm whitespace-pre-wrap">{linkifyText(msg.message, false)}</p>
+                            )}
                             <div className={`text-xs mt-1 text-right ${msg.is_admin ? 'text-blue-200' : 'text-gray-400'}`}>
                               {new Date(msg.created_at).toLocaleString('es-ES', {
                                 day: 'numeric',
@@ -2668,7 +2673,11 @@ export default function AdminFeedbackPage() {
                         {message.is_admin ? '👨‍💼 Tú (Admin)' : `👤 ${getSenderInfo(message.sender)?.full_name || getSenderInfo(message.sender)?.email || 'Usuario'}`}
                       </div>
                       <div className="text-xs sm:text-sm">
-                        {renderMessageWithImages(message.message)}
+                        {message.is_admin ? (
+                          <MarkdownExplanation content={message.message} className="text-sm text-inherit prose-p:my-1 prose-ul:my-1 prose-li:my-0 prose-strong:text-inherit" />
+                        ) : (
+                          renderMessageWithImages(message.message)
+                        )}
                       </div>
                       <div className="flex items-center justify-between text-xs mt-1 opacity-70">
                         <span>

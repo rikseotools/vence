@@ -772,8 +772,12 @@ function SoporteContent() {
                             : (msg.senderName || (user as any).user_metadata?.full_name || user.email?.split('@')[0] || 'Tú')
                           }
                         </div>
-                        <div className="text-sm whitespace-pre-wrap break-words leading-relaxed">
-                          {renderMessageWithImages(msg.message)}
+                        <div className="text-sm break-words leading-relaxed">
+                          {msg.isAdmin ? (
+                            <MarkdownExplanation content={msg.message} className="text-sm text-inherit prose-p:my-1 prose-ul:my-1 prose-li:my-0 prose-strong:text-inherit" />
+                          ) : (
+                            <span className="whitespace-pre-wrap">{renderMessageWithImages(msg.message)}</span>
+                          )}
                         </div>
                         <div className={`text-[10px] mt-1 ${msg.isAdmin ? 'text-gray-400 dark:text-gray-500' : 'text-blue-200'}`}>
                           {msg.createdAt && new Date(msg.createdAt).toLocaleString('es-ES', {
