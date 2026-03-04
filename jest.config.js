@@ -42,6 +42,7 @@ export default {
     '<rootDir>/scripts/',
     'configDbIntegrity', // Requiere BD real, ejecutar con: npx jest configDbIntegrity
     'topicScopeIntegrity', // Requiere BD real, ejecutar con: npx jest topicScopeIntegrity
+    'salesBadge.integration', // Requiere BD real, ejecutar con: npx jest salesBadge.integration
   ],
   // Timeout para tests async
   testTimeout: 10000,
