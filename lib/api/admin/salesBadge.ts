@@ -11,7 +11,7 @@ export async function getUnreadSalesCount(): Promise<number> {
 
   const result = await db
     .select({
-      count: sql<number>`count(ce.id)::int`,
+      count: sql<number>`count(${conversionEvents.id})::int`,
     })
     .from(conversionEvents)
     .innerJoin(
