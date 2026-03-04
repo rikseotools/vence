@@ -197,69 +197,62 @@ function isHotArticleForUserOposicion(targetOposicion, userOposicionSlug) {
 }
 
 // 🔒 FUNCIÓN: Validar respuesta de forma segura via API
-// Fase 2 de migración: usa API con fallback a validación local
-async function validateAnswerSecure(questionId, userAnswer, localCorrectAnswer) {
-  // Si no hay questionId válido, usar fallback local
+// Sin fallback local: correct_option no se envía al cliente
+async function validateAnswerSecure(questionId, userAnswer) {
+  // Si no hay questionId válido, devolver error
   if (!questionId || typeof questionId !== 'string' || questionId.length < 10) {
-    console.log('⚠️ [SecureAnswer] Sin questionId válido, usando fallback local')
-    return {
-      isCorrect: userAnswer === localCorrectAnswer,
-      correctAnswer: localCorrectAnswer,
-      explanation: null,
-      usedFallback: true
+    console.warn('⚠️ [SecureAnswer] Sin questionId válido')
+    return { success: false, error: 'NO_QUESTION_ID' }
+  }
+
+  // Intentar hasta 2 veces (1 retry con 1s delay)
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      if (attempt > 0) {
+        console.log('🔄 [SecureAnswer] Reintentando validación (intento 2/2)...')
+        await new Promise(resolve => setTimeout(resolve, 1000))
+      }
+
+      const response = await fetch('/api/answer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ questionId, userAnswer })
+      })
+
+      if (!response.ok) {
+        console.warn(`⚠️ [SecureAnswer] API error HTTP ${response.status} (intento ${attempt + 1}/2)`)
+        continue // Reintentar
+      }
+
+      const data = await response.json()
+
+      if (data.success) {
+        console.log('✅ [SecureAnswer] Respuesta validada via API')
+        return {
+          isCorrect: data.isCorrect,
+          correctAnswer: data.correctAnswer,
+          explanation: data.explanation,
+          articleNumber: data.articleNumber,
+          lawShortName: data.lawShortName,
+          usedFallback: false
+        }
+      }
+
+      // API respondió pero no encontró la pregunta
+      console.warn('⚠️ [SecureAnswer] Pregunta no encontrada en API')
+      return { success: false, error: 'QUESTION_NOT_FOUND' }
+
+    } catch (error) {
+      console.error(`❌ [SecureAnswer] Error llamando API (intento ${attempt + 1}/2):`, error)
+      // Si es el último intento, devolver error
+      if (attempt === 1) {
+        return { success: false, error: 'API_ERROR', message: error.message }
+      }
     }
   }
 
-  try {
-    const response = await fetch('/api/answer', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ questionId, userAnswer })
-    })
-
-    if (!response.ok) {
-      console.warn('⚠️ [SecureAnswer] API error, usando fallback local')
-      return {
-        isCorrect: userAnswer === localCorrectAnswer,
-        correctAnswer: localCorrectAnswer,
-        explanation: null,
-        usedFallback: true
-      }
-    }
-
-    const data = await response.json()
-
-    if (data.success) {
-      console.log('✅ [SecureAnswer] Respuesta validada via API')
-      return {
-        isCorrect: data.isCorrect,
-        correctAnswer: data.correctAnswer,
-        explanation: data.explanation,
-        articleNumber: data.articleNumber,
-        lawShortName: data.lawShortName,
-        usedFallback: false
-      }
-    }
-
-    // Si la API no encuentra la pregunta, fallback
-    console.warn('⚠️ [SecureAnswer] Pregunta no encontrada en API, usando fallback')
-    return {
-      isCorrect: userAnswer === localCorrectAnswer,
-      correctAnswer: localCorrectAnswer,
-      explanation: null,
-      usedFallback: true
-    }
-
-  } catch (error) {
-    console.error('❌ [SecureAnswer] Error llamando API:', error)
-    // Fallback a validación local en caso de error
-    return {
-      isCorrect: userAnswer === localCorrectAnswer,
-      correctAnswer: localCorrectAnswer,
-      explanation: null,
-      usedFallback: true
-    }
-  }
+  // No debería llegar aquí, pero por seguridad
+  return { success: false, error: 'API_ERROR', message: 'Agotados reintentos' }
 }
 
 export default function TestLayout({
@@ -346,6 +339,7 @@ export default function TestLayout({
 
   // Estados anti-duplicados
   const [processingAnswer, setProcessingAnswer] = useState(false)
+  const [validationError, setValidationError] = useState(null)
   const [lastProcessedAnswer, setLastProcessedAnswer] = useState(null)
 
   // Estado para configuración de scroll automático
@@ -969,13 +963,41 @@ export default function TestLayout({
         const timeSpent = Math.round((Date.now() - questionStartTime) / 1000)
         const responseTimeMs = Date.now() - questionStartTime
 
-        // 🔒 Validar respuesta de forma segura (API con fallback local)
-        // Fase 2: La API valida, pero tenemos fallback por si falla
+        // 🔒 Validar respuesta de forma segura via API (sin fallback local)
         const validationResult = await validateAnswerSecure(
           currentQ.id,           // questionId (UUID)
-          answerIndex,           // userAnswer (0-3)
-          currentQ.correct       // localCorrectAnswer (fallback)
+          answerIndex            // userAnswer (0-3)
         )
+
+        // Si la API falló, NO marcar como incorrecto — dejar reintentar
+        if (validationResult.error) {
+          console.error('❌ [SecureAnswer] Validación fallida:', validationResult.error)
+          setValidationError('Error temporal al validar tu respuesta. Inténtalo de nuevo.')
+          setSelectedAnswer(null)
+          setProcessingAnswer(false)
+          setLastProcessedAnswer(null)
+          // Enviar notificación admin (async, no bloquea)
+          fetch('/api/emails/send-admin-notification', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: 'api_error',
+              adminEmail: 'manueltrader@gmail.com',
+              data: {
+                questionId: currentQ.id,
+                userAnswer: answerIndex,
+                errorType: validationResult.error,
+                errorMessage: validationResult.message || validationResult.error,
+                userId: user?.id || 'anonymous',
+                timestamp: new Date().toISOString()
+              }
+            })
+          }).catch(e => console.warn('⚠️ No se pudo enviar notificación admin:', e))
+          return
+        }
+
+        // Limpiar error de validación previo si existe
+        if (validationError) setValidationError(null)
 
         const isCorrect = validationResult.isCorrect
         const apiCorrectAnswer = validationResult.correctAnswer // 🔒 Respuesta verificada por API
@@ -1908,6 +1930,13 @@ export default function TestLayout({
                   </button>
                 ))}
               </div>
+
+              {/* Error de validación API */}
+              {validationError && !showResult && (
+                <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-300 text-sm text-center">
+                  {validationError}
+                </div>
+              )}
 
               {/* Botones de respuesta rápida A/B/C/D + Compartir - Solo si no se ha respondido */}
               {!showResult && currentQ?.options && (

@@ -38,6 +38,9 @@ export async function POST(request: Request) {
       case 'boe_change':
         emailContent = generateBOEChangeEmailHTML(data)
         break
+      case 'api_error':
+        emailContent = generateApiErrorEmailHTML(data)
+        break
       default:
         return NextResponse.json(
           { success: false, error: 'Tipo de notificación no válido' },
@@ -297,6 +300,44 @@ function generateNewPurchaseEmailHTML(data: Record<string, unknown>) {
             <a href="${data.adminUrl}" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
               Ver Panel de Conversiones
             </a>
+          </div>
+          <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 14px;">
+            <p style="margin: 0;">Vence Pro - Sistema de Notificaciones Admin</p>
+          </div>
+        </div>
+      </body>
+    </html>`,
+  }
+}
+
+function generateApiErrorEmailHTML(data: Record<string, unknown>) {
+  const timestamp = data.timestamp ? new Date(data.timestamp as string).toLocaleString('es-ES', {
+    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  }) : ''
+
+  return {
+    subject: `Error en validación de respuesta - ${data.errorType}`,
+    html: `
+    <!DOCTYPE html>
+    <html>
+      <head><meta charset="utf-8"><title>Error en Validación</title></head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; margin: 0; padding: 20px; background-color: #f5f5f5;">
+        <div style="max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+          <div style="text-align: center; border-bottom: 2px solid #dc2626; padding-bottom: 20px; margin-bottom: 20px;">
+            <h1 style="color: #dc2626; margin: 0;">Error en /api/answer</h1>
+          </div>
+          <div style="background: #fef2f2; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #dc2626;">
+            <h2 style="color: #991b1b; margin: 0 0 10px 0;">Validación de respuesta fallida</h2>
+            <p style="margin: 5px 0;">Un usuario no pudo validar su respuesta tras 2 intentos.</p>
+          </div>
+          <div style="background: #f9fafb; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+            <h3 style="color: #374151; margin: 0 0 10px 0;">Detalles:</h3>
+            <p style="margin: 5px 0;"><strong>Question ID:</strong> <code style="background: #e0e7ff; padding: 2px 6px; border-radius: 3px; font-size: 12px;">${data.questionId}</code></p>
+            <p style="margin: 5px 0;"><strong>Respuesta del usuario:</strong> ${data.userAnswer}</p>
+            <p style="margin: 5px 0;"><strong>Tipo de error:</strong> ${data.errorType}</p>
+            <p style="margin: 5px 0;"><strong>Mensaje:</strong> ${data.errorMessage}</p>
+            <p style="margin: 5px 0;"><strong>User ID:</strong> <code style="background: #e0e7ff; padding: 2px 6px; border-radius: 3px; font-size: 12px;">${data.userId}</code></p>
+            <p style="margin: 5px 0;"><strong>Fecha:</strong> ${timestamp}</p>
           </div>
           <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 14px;">
             <p style="margin: 0;">Vence Pro - Sistema de Notificaciones Admin</p>

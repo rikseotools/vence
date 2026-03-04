@@ -1,15 +1,79 @@
-// lib/notifications/adminEmailNotifications.js
+// lib/notifications/adminEmailNotifications.ts
 // Sistema de notificaciones automáticas por email para admin
 
 const ADMIN_EMAIL = 'manueltrader@gmail.com'
 
-/**
- * Envía email al admin cuando hay nuevo feedback
- */
-export async function sendAdminFeedbackNotification(feedbackData) {
+interface NotificationResult {
+  success: boolean
+  error?: string
+  message?: string
+  emailId?: string
+  type?: string
+}
+
+interface FeedbackData {
+  id: string
+  user_id: string
+  user_email?: string
+  user_name?: string
+  feedback_type: string
+  message: string
+  rating?: number | null
+  created_at?: string
+}
+
+interface DisputeData {
+  id: string
+  question_id: string
+  user_id: string
+  user_email?: string
+  user_name?: string
+  dispute_type: string
+  description: string
+  question_text?: string
+  created_at?: string
+}
+
+interface UserData {
+  id: string
+  email: string
+  user_metadata?: { full_name?: string }
+  app_metadata?: { provider?: string }
+  created_at?: string
+}
+
+interface ChatData {
+  conversation_id: string
+  user_id: string
+  user_email?: string
+  user_name?: string
+  message: string
+  feedback_id?: string
+  created_at?: string
+}
+
+interface PurchaseData {
+  userId: string
+  userEmail: string
+  userName?: string
+  amount: number
+  currency?: string
+  plan?: string
+  stripeCustomerId: string
+  createdAt?: string
+}
+
+interface ApiErrorData {
+  questionId: string
+  userAnswer: number
+  errorType: string
+  errorMessage: string
+  userId: string
+  timestamp?: string
+}
+
+export async function sendAdminFeedbackNotification(feedbackData: FeedbackData): Promise<NotificationResult> {
   try {
-    const { supabase } = await import('../supabase')
-    
     const response = await fetch('/api/emails/send-admin-notification', {
       method: 'POST',
       headers: {
@@ -26,7 +90,6 @@ export async function sendAdminFeedbackNotification(feedbackData) {
           message: feedbackData.message,
           rating: feedbackData.rating,
           createdAt: feedbackData.created_at || new Date().toISOString(),
-          // URL directa al feedback en admin
           adminUrl: `https://www.vence.es/admin#feedback-${feedbackData.id}`
         }
       })
@@ -42,14 +105,11 @@ export async function sendAdminFeedbackNotification(feedbackData) {
 
   } catch (error) {
     console.error('❌ Error enviando email admin feedback:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: (error as Error).message }
   }
 }
 
-/**
- * Envía email al admin cuando hay nueva impugnación
- */
-export async function sendAdminDisputeNotification(disputeData) {
+export async function sendAdminDisputeNotification(disputeData: DisputeData): Promise<NotificationResult> {
   try {
     const response = await fetch('/api/emails/send-admin-notification', {
       method: 'POST',
@@ -69,7 +129,6 @@ export async function sendAdminDisputeNotification(disputeData) {
           description: disputeData.description,
           questionText: disputeData.question_text || 'Texto no disponible',
           createdAt: disputeData.created_at || new Date().toISOString(),
-          // URL directa a la impugnación en admin
           adminUrl: `https://www.vence.es/admin/impugnaciones#dispute-${disputeData.id}`
         }
       })
@@ -85,14 +144,11 @@ export async function sendAdminDisputeNotification(disputeData) {
 
   } catch (error) {
     console.error('❌ Error enviando email admin impugnación:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: (error as Error).message }
   }
 }
 
-/**
- * Envía email al admin cuando se registra nuevo usuario
- */
-export async function sendAdminNewUserNotification(userData) {
+export async function sendAdminNewUserNotification(userData: UserData): Promise<NotificationResult> {
   try {
     const response = await fetch('/api/emails/send-admin-notification', {
       method: 'POST',
@@ -108,7 +164,6 @@ export async function sendAdminNewUserNotification(userData) {
           userName: userData.user_metadata?.full_name || 'Sin nombre',
           registrationMethod: userData.app_metadata?.provider || 'email',
           createdAt: userData.created_at || new Date().toISOString(),
-          // URL directa al usuario en admin
           adminUrl: `https://www.vence.es/admin`
         }
       })
@@ -124,14 +179,11 @@ export async function sendAdminNewUserNotification(userData) {
 
   } catch (error) {
     console.error('❌ Error enviando email admin nuevo usuario:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: (error as Error).message }
   }
 }
 
-/**
- * Envía notificación al admin cuando usuario responde en chat de soporte
- */
-export async function sendAdminChatResponseNotification(chatData) {
+export async function sendAdminChatResponseNotification(chatData: ChatData): Promise<NotificationResult> {
   try {
     const response = await fetch('/api/emails/send-admin-notification', {
       method: 'POST',
@@ -149,7 +201,6 @@ export async function sendAdminChatResponseNotification(chatData) {
           message: chatData.message,
           feedbackId: chatData.feedback_id,
           createdAt: chatData.created_at || new Date().toISOString(),
-          // URL directa al chat en admin
           adminUrl: `https://www.vence.es/admin/feedback#conversation-${chatData.conversation_id}`
         }
       })
@@ -165,14 +216,11 @@ export async function sendAdminChatResponseNotification(chatData) {
 
   } catch (error) {
     console.error('❌ Error enviando email admin respuesta chat:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: (error as Error).message }
   }
 }
 
-/**
- * Envía email al admin cuando hay una nueva compra premium
- */
-export async function sendAdminNewPurchaseNotification(purchaseData) {
+export async function sendAdminNewPurchaseNotification(purchaseData: PurchaseData): Promise<NotificationResult> {
   try {
     const response = await fetch('/api/emails/send-admin-notification', {
       method: 'POST',
@@ -206,25 +254,61 @@ export async function sendAdminNewPurchaseNotification(purchaseData) {
 
   } catch (error) {
     console.error('❌ Error enviando email admin nueva compra:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: (error as Error).message }
   }
 }
 
-/**
- * Función genérica para enviar cualquier notificación admin
- */
-export async function sendAdminNotification(type, data) {
+export async function sendAdminApiErrorNotification(errorData: ApiErrorData): Promise<NotificationResult> {
+  try {
+    const response = await fetch('/api/emails/send-admin-notification', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        type: 'api_error',
+        adminEmail: ADMIN_EMAIL,
+        data: {
+          questionId: errorData.questionId,
+          userAnswer: errorData.userAnswer,
+          errorType: errorData.errorType,
+          errorMessage: errorData.errorMessage,
+          userId: errorData.userId,
+          timestamp: errorData.timestamp || new Date().toISOString()
+        }
+      })
+    })
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+
+    const result = await response.json()
+    console.log('✅ Email admin API error enviado:', result)
+    return result
+
+  } catch (error) {
+    console.error('❌ Error enviando email admin API error:', error)
+    return { success: false, error: (error as Error).message }
+  }
+}
+
+type NotificationType = 'feedback' | 'dispute' | 'new_user' | 'chat_response' | 'new_purchase' | 'api_error'
+
+export async function sendAdminNotification(type: NotificationType, data: unknown): Promise<NotificationResult> {
   switch (type) {
     case 'feedback':
-      return await sendAdminFeedbackNotification(data)
+      return await sendAdminFeedbackNotification(data as FeedbackData)
     case 'dispute':
-      return await sendAdminDisputeNotification(data)
+      return await sendAdminDisputeNotification(data as DisputeData)
     case 'new_user':
-      return await sendAdminNewUserNotification(data)
+      return await sendAdminNewUserNotification(data as UserData)
     case 'chat_response':
-      return await sendAdminChatResponseNotification(data)
+      return await sendAdminChatResponseNotification(data as ChatData)
     case 'new_purchase':
-      return await sendAdminNewPurchaseNotification(data)
+      return await sendAdminNewPurchaseNotification(data as PurchaseData)
+    case 'api_error':
+      return await sendAdminApiErrorNotification(data as ApiErrorData)
     default:
       console.error('❌ Tipo de notificación admin no reconocido:', type)
       return { success: false, error: 'Tipo de notificación no válido' }
