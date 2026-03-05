@@ -72,6 +72,7 @@ export interface ChatResponseMetadata {
   sources?: ArticleSource[]
   verificationResult?: VerificationResult
   processingTime?: number
+  tokensUsed?: number
 }
 
 export interface ArticleSource {

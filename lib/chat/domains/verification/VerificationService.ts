@@ -74,6 +74,7 @@ export interface VerificationResult {
   disputeResult?: DisputeResult
   sources: ArticleSource[]
   processingTime: number
+  tokensUsed?: number
 }
 
 // Tipo para artículo detectado dinámicamente en la explicación
@@ -297,7 +298,7 @@ export async function verifyAnswer(
 
   // 5. Generar respuesta con verificación (pasando TODO el contexto)
   // Pasar LOS TRES artículos posibles para que GPT pueda comparar
-  const response = await generateVerificationResponse(
+  const verificationGenResult = await generateVerificationResponse(
     questionForPrompt,
     allArticles,
     context.isPremium,
@@ -307,6 +308,8 @@ export async function verifyAnswer(
     articleFromQuestion, // Artículo citado en la pregunta
     context.messages // Historial de conversación para follow-ups
   )
+  const response = verificationGenResult.content
+  const tokensUsed = verificationGenResult.tokensUsed
 
   // 4. Detectar si hay error
   const errorResult = detectErrorInResponse(response)
@@ -380,6 +383,7 @@ export async function verifyAnswer(
     disputeResult,
     sources,
     processingTime: Date.now() - startTime,
+    tokensUsed,
   }
 }
 
@@ -396,7 +400,7 @@ async function generateVerificationResponse(
   articleFromExplanation?: ArticleFromExplanation,
   articleFromQuestion?: ArticleFromExplanation,
   conversationHistory?: Array<{ role: string; content: string }>
-): Promise<string> {
+): Promise<{ content: string; tokensUsed?: number }> {
   const openai = await getOpenAI()
   const model = isPremium ? CHAT_MODEL_PREMIUM : CHAT_MODEL
 
@@ -642,10 +646,13 @@ ${analysisInstructions}`
       max_tokens: 1500,
     })
 
-    return completion.choices[0]?.message?.content || 'No pude generar una verificación.'
+    return {
+      content: completion.choices[0]?.message?.content || 'No pude generar una verificación.',
+      tokensUsed: completion.usage?.total_tokens,
+    }
   } catch (error) {
     logger.error('Error generating verification response', error, { domain: 'verification' })
-    return 'Hubo un error al verificar la respuesta. Por favor, intenta de nuevo.'
+    return { content: 'Hubo un error al verificar la respuesta. Por favor, intenta de nuevo.' }
   }
 }
 

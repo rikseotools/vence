@@ -152,6 +152,10 @@ export class VerificationDomain implements ChatDomain {
       .text(result.response)
       .processingTime(Date.now() - startTime)
 
+    if (result.tokensUsed) {
+      builder.tokensUsed(result.tokensUsed)
+    }
+
     // Añadir fuentes a metadata (sin mostrar al usuario)
     if (result.sources.length > 0) {
       builder.addSources(result.sources)

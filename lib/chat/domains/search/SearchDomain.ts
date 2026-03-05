@@ -230,13 +230,17 @@ export class SearchDomain implements ChatDomain {
     }
 
     // 3. Generar respuesta con OpenAI
-    const response = await this.generateResponse(context, searchResult, tracer)
+    const { content: responseText, tokensUsed } = await this.generateResponse(context, searchResult, tracer)
 
     // 4. Construir respuesta final
     const builder = new ChatResponseBuilder()
       .domain('search')
-      .text(response)
+      .text(responseText)
       .processingTime(Date.now() - startTime)
+
+    if (tokensUsed) {
+      builder.tokensUsed(tokensUsed)
+    }
 
     // Añadir fuentes
     if (searchResult.articles.length > 0) {
@@ -280,7 +284,7 @@ Puedo ayudarte con:
     context: ChatContext,
     searchResult: Awaited<ReturnType<typeof searchArticles>>,
     tracer?: AITracerInterface
-  ): Promise<string> {
+  ): Promise<{ content: string; tokensUsed?: number }> {
     const openai = await getOpenAI()
     const model = context.isPremium ? CHAT_MODEL_PREMIUM : CHAT_MODEL
 
@@ -370,6 +374,7 @@ ${articlesContext}`
       })
 
       const content = completion.choices[0]?.message?.content || 'No pude generar una respuesta.'
+      const totalTokens = completion.usage?.total_tokens
 
       // Finalizar span LLM - COMPLETO
       llmSpan?.setOutput({
@@ -379,7 +384,7 @@ ${articlesContext}`
         // Uso de tokens
         promptTokens: completion.usage?.prompt_tokens,
         completionTokens: completion.usage?.completion_tokens,
-        totalTokens: completion.usage?.total_tokens,
+        totalTokens,
       })
       llmSpan?.addMetadata('tokensIn', completion.usage?.prompt_tokens)
       llmSpan?.addMetadata('tokensOut', completion.usage?.completion_tokens)
@@ -387,13 +392,13 @@ ${articlesContext}`
       llmSpan?.addMetadata('responseLength', content.length)
       llmSpan?.end()
 
-      return content
+      return { content, tokensUsed: totalTokens }
     } catch (error) {
       llmSpan?.setError(error instanceof Error ? error.message : 'Unknown error')
       llmSpan?.end()
 
       logger.error('Error generating response with OpenAI', error, { domain: 'search' })
-      return 'Hubo un error al procesar tu consulta. Por favor, intenta de nuevo.'
+      return { content: 'Hubo un error al procesar tu consulta. Por favor, intenta de nuevo.' }
     }
   }
 

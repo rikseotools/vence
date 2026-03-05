@@ -15,8 +15,9 @@ import {
   hasUncertaintyIndicators,
   reanalyzeWithSuperiorModel,
 } from '@/lib/chat/domains/verification'
+import { insertChatLog } from '@/lib/api/ai-chat-logs'
 
-// Cliente Supabase para logging (la tabla ai_chat_logs no está en Drizzle schema)
+// Cliente Supabase para queries que no están en Drizzle (getUserDailyMessageCount, getUserName)
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -151,84 +152,6 @@ async function getUserDailyMessageCount(userId: string): Promise<number> {
   }
 }
 
-/**
- * Guardar log de la interacción
- * @param logId - ID opcional pre-generado para vincular con traces
- */
-async function logChatInteraction(data: {
-  logId?: string | null  // ID pre-generado para vincular traces
-  userId?: string | null
-  message: string
-  response?: string | null
-  sources?: string[]
-  questionContextId?: string | null
-  questionContextLaw?: string | null
-  suggestionUsed?: string | null
-  responseTimeMs?: number | null
-  tokensUsed?: number | null
-  hadError?: boolean
-  errorMessage?: string | null
-  userOposicion?: string | null
-  detectedLaws?: string[]
-  // Nuevos campos para discrepancia y re-análisis
-  hadDiscrepancy?: boolean
-  aiSuggestedAnswer?: string | null
-  dbAnswer?: string | null
-  reanalysisResponse?: string | null
-}): Promise<string | null> {
-  try {
-    // Asegurar que los campos JSONB sean arrays válidos (evita PGRST102)
-    const sourcesArray = Array.isArray(data.sources) ? data.sources : []
-    const detectedLawsArray = Array.isArray(data.detectedLaws) ? data.detectedLaws : []
-
-    const insertData: Record<string, unknown> = {
-      user_id: data.userId || null,
-      message: data.message || '',
-      response_preview: data.response?.substring(0, 500) || null,
-      full_response: data.response || null,
-      sources_used: sourcesArray,
-      question_context_id: data.questionContextId || null,
-      question_context_law: data.questionContextLaw || null,
-      suggestion_used: data.suggestionUsed || null,
-      response_time_ms: data.responseTimeMs || null,
-      tokens_used: data.tokensUsed || null,
-      had_error: data.hadError || false,
-      error_message: data.errorMessage || null,
-      user_oposicion: data.userOposicion || null,
-      detected_laws: detectedLawsArray,
-    }
-
-    // Añadir ID pre-generado si existe
-    if (data.logId) {
-      insertData.id = data.logId
-    }
-
-    // Campos de discrepancia (si la tabla los soporta)
-    if (data.hadDiscrepancy !== undefined) {
-      insertData.had_discrepancy = data.hadDiscrepancy
-      insertData.ai_suggested_answer = data.aiSuggestedAnswer || null
-      insertData.db_answer = data.dbAnswer || null
-      insertData.reanalysis_response = data.reanalysisResponse || null
-    }
-
-    const { data: result, error } = await getSupabase()
-      .from('ai_chat_logs')
-      .insert(insertData)
-      .select('id')
-      .single()
-
-    if (error) {
-      logger.error('Error logging chat interaction', error)
-      return null
-    }
-
-    return result?.id || null
-  } catch (error) {
-    logger.error('Error logging chat interaction', error)
-    return null
-  }
-}
-
 export async function POST(request: NextRequest) {
   const startTime = Date.now()
   logger.info('Chat v2 request started', { domain: 'api' })
@@ -355,6 +278,10 @@ export async function POST(request: NextRequest) {
       // Capturar el questionContext normalizado para usarlo en flush
       const qContext = normalizedQuestionContext
 
+      // Variables para capturar metadata del SSE (sources, tokens)
+      let capturedSources: string[] = []
+      let capturedTokensUsed: number | null = null
+
       const transformStream = new TransformStream({
         transform(chunk, controller) {
           // Pasar el chunk al cliente
@@ -369,6 +296,13 @@ export async function POST(request: NextRequest) {
               const parsed = JSON.parse(match[1])
               if (parsed.content) {
                 fullResponse += parsed.content
+              }
+              // Capturar metadata (sources, tokensUsed) del chunk tipo 'meta'
+              if (parsed.type === 'meta' && parsed.sources) {
+                capturedSources = parsed.sources.map((s: { law?: string; article?: string }) =>
+                  `${s.law || ''} Art. ${s.article || ''}`
+                )
+                capturedTokensUsed = parsed.tokensUsed || null
               }
             } catch {
               // Ignorar chunks que no son JSON válido
@@ -462,13 +396,16 @@ export async function POST(request: NextRequest) {
 
           // Cuando termina el stream, loguear la respuesta completa
           // Usar el logId pre-generado para vincular con los traces
-          const savedLogId = await logChatInteraction({
+          const savedLogId = await insertChatLog({
             logId,  // ID pre-generado para vincular traces
             userId: data.userId,
             message: data.message,
             response: fullResponse || null,
-            questionContextId: data.questionContext?.questionId,
-            questionContextLaw: data.questionContext?.lawName,
+            sources: capturedSources,
+            detectedLaws: [...new Set(capturedSources.map(s => s.split(' Art.')[0]).filter(Boolean))],
+            tokensUsed: capturedTokensUsed,
+            questionContextId: qContext?.questionId || null,
+            questionContextLaw: qContext?.lawName || data.questionContext?.lawName || null,
             suggestionUsed: data.suggestionUsed,
             userOposicion: data.userOposicion,
             responseTimeMs: Date.now() - startTime,
@@ -506,14 +443,17 @@ export async function POST(request: NextRequest) {
       })
 
       // Log - usar el logId pre-generado para vincular con los traces
-      await logChatInteraction({
+      const responseSources = response.metadata?.sources?.map(s => `${s.lawName} Art. ${s.articleNumber}`) || []
+      await insertChatLog({
         logId,  // ID pre-generado para vincular traces
         userId: data.userId,
         message: data.message,
         response: response.content,
-        sources: response.metadata?.sources?.map(s => `${s.lawName} Art. ${s.articleNumber}`) || [],
-        questionContextId: data.questionContext?.questionId,
-        questionContextLaw: data.questionContext?.lawName,
+        sources: responseSources,
+        detectedLaws: [...new Set(responseSources.map(s => s.split(' Art.')[0]).filter(Boolean))],
+        tokensUsed: response.metadata?.tokensUsed ?? null,
+        questionContextId: normalizedQuestionContext?.questionId || null,
+        questionContextLaw: normalizedQuestionContext?.lawName || data.questionContext?.lawName || null,
         suggestionUsed: data.suggestionUsed,
         responseTimeMs: Date.now() - startTime,
         userOposicion: data.userOposicion,

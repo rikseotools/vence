@@ -86,6 +86,14 @@ export class ChatResponseBuilder {
   }
 
   /**
+   * Establece el número de tokens usados
+   */
+  tokensUsed(n: number): this {
+    this.metadata.tokensUsed = n
+    return this
+  }
+
+  /**
    * Establece el tiempo de procesamiento
    */
   processingTime(ms: number): this {
@@ -169,6 +177,7 @@ export class StreamEncoder {
         })) || [],
         searchMethod: metadata.domain,
         detectedPattern: null,
+        tokensUsed: metadata.tokensUsed || null,
       })
     }
     return this.encode({ type: 'metadata', metadata })

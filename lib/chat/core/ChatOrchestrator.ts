@@ -423,6 +423,7 @@ export class ChatOrchestrator {
     })
 
     const content = completion.choices[0]?.message?.content || 'No pude generar una respuesta.'
+    const totalTokens = completion.usage?.total_tokens
 
     // Finalizar span LLM - COMPLETO sin truncar
     llmSpan?.setOutput({
@@ -430,7 +431,7 @@ export class ChatOrchestrator {
       finishReason: completion.choices[0]?.finish_reason,
       promptTokens: completion.usage?.prompt_tokens,
       completionTokens: completion.usage?.completion_tokens,
-      totalTokens: completion.usage?.total_tokens,
+      totalTokens,
     })
     llmSpan?.addMetadata('tokensIn', completion.usage?.prompt_tokens)
     llmSpan?.addMetadata('tokensOut', completion.usage?.completion_tokens)
@@ -438,11 +439,16 @@ export class ChatOrchestrator {
     llmSpan?.addMetadata('responseLength', content.length)
     llmSpan?.end()
 
-    return new ChatResponseBuilder()
+    const builder = new ChatResponseBuilder()
       .domain('fallback')
       .text(content)
       .processingTime(Date.now() - startTime)
-      .build()
+
+    if (totalTokens) {
+      builder.tokensUsed(totalTokens)
+    }
+
+    return builder.build()
   }
 
   /**
