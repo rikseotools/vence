@@ -324,10 +324,10 @@ export function AuthProvider({ children, initialUser = null }) {
             console.log('✅ AuthProvider: Usuario encontrado:', user.email)
             setUser(user)
             
-            // Cargar perfil completo en background - NO BLOQUEAR
+            // Cargar perfil completo - ESPERAR para evitar flash de isPremium=false
             if (!userProfile || userProfile.id !== user.id) {
-              console.log('🔄 Cargando perfil en background...')
-              loadUserProfile(user.id).catch(err => {
+              console.log('🔄 Cargando perfil...')
+              await loadUserProfile(user.id).catch(err => {
                 console.warn('⚠️ Error cargando perfil (no crítico):', err)
               })
             } else {
@@ -342,9 +342,9 @@ export function AuthProvider({ children, initialUser = null }) {
           console.log('✅ AuthProvider: Usuario inicial recibido:', initialUser.email)
           setUser(initialUser)
           
-          // Cargar perfil en background - NO BLOQUEAR
-          console.log('🔄 Cargando perfil inicial en background...')
-          loadUserProfile(initialUser.id).catch(err => {
+          // Cargar perfil inicial - ESPERAR para evitar flash de isPremium=false
+          console.log('🔄 Cargando perfil inicial...')
+          await loadUserProfile(initialUser.id).catch(err => {
             console.warn('⚠️ Error cargando perfil inicial (no crítico):', err)
           })
         }
@@ -401,12 +401,13 @@ export function AuthProvider({ children, initialUser = null }) {
             }, 1000) // Pequeño delay para que termine de cargar
           }
           
-          // Cargar perfil en background - ensureUserProfile ya tiene protección interna
+          // Cargar perfil - ESPERAR para evitar flash de isPremium=false
           let profile = userProfile?.id === newUser.id ? userProfile : null
           if (!profile) {
+            setLoading(true) // Mostrar loading mientras carga el perfil
             console.log('🔄 Cargando perfil onAuthStateChange...')
             // Primero intentar cargar, solo crear si no existe
-            loadUserProfile(newUser.id).then(loadedProfile => {
+            await loadUserProfile(newUser.id).then(loadedProfile => {
               if (!loadedProfile) {
                 // Solo llamar ensureUserProfile si loadUserProfile no encontró perfil
                 console.log('🆕 Perfil no encontrado, asegurando creación...')
