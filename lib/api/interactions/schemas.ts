@@ -42,7 +42,10 @@ export const trackInteractionRequestSchema = z.object({
   elementText: z.string().max(200).optional().nullable(),
 
   // Métricas
-  responseTimeMs: z.number().int().min(0).optional().nullable(),
+  responseTimeMs: z.preprocess(
+    (val) => typeof val === 'number' && val > 2147483647 ? 2147483647 : val,
+    z.number().int().min(0).max(2147483647).optional().nullable()
+  ),
 
   // Dispositivo - acepta objeto o string (para compatibilidad con datos de localStorage/sendBeacon)
   deviceInfo: z.preprocess(
