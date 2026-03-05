@@ -37,8 +37,12 @@ export async function getLawsForBoeCheck(): Promise<LawForCheck[]> {
     ))
 
   // Filtrar y mapear a LawForCheck
+  // Excluir URLs doc.php: son documentos puntuales del BOE (resoluciones, órdenes)
+  // que no tienen texto consolidado ni "Última actualización publicada el DD/MM/YYYY",
+  // por lo que el extractor de fecha siempre falla y genera descargas completas innecesarias.
+  // Solo las URLs act.php (leyes consolidadas) son monitorizables.
   return result
-    .filter((law) => law.boeUrl !== null && law.boeUrl.length > 0)
+    .filter((law) => law.boeUrl !== null && law.boeUrl.length > 0 && !law.boeUrl.includes('/doc.php'))
     .map((law) => ({
       id: law.id,
       shortName: law.shortName,
