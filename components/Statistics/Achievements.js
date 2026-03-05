@@ -2,24 +2,26 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
-import { getUserRankingMedals } from '../../lib/services/rankingMedals'
 
 export default function Achievements({ achievements }) {
-  const { user, supabase } = useAuth()
+  const { user } = useAuth()
   const [rankingMedals, setRankingMedals] = useState([])
   const [medalsLoading, setMedalsLoading] = useState(true)
 
-  // Cargar medallas de ranking
+  // Cargar medallas de ranking via API
   useEffect(() => {
     async function loadRankingMedals() {
-      if (!user || !supabase) {
+      if (!user) {
         setMedalsLoading(false)
         return
       }
 
       try {
-        const medals = await getUserRankingMedals(supabase, user.id)
-        setRankingMedals(medals)
+        const res = await fetch(`/api/medals?userId=${user.id}`)
+        const data = await res.json()
+        if (data.success) {
+          setRankingMedals(data.medals || [])
+        }
       } catch (error) {
         console.error('Error loading ranking medals:', error)
       } finally {
@@ -28,7 +30,7 @@ export default function Achievements({ achievements }) {
     }
 
     loadRankingMedals()
-  }, [user, supabase])
+  }, [user])
 
   // Combinar logros de IA existentes con medallas de ranking
   const allAchievements = [

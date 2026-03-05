@@ -9,7 +9,7 @@ import RankingModal from '@/components/RankingModal'
 import FeedbackButton from '@/components/FeedbackButton'
 import QuestionDispute from '@/components/QuestionDispute'
 import { useNewMedalsBadge } from '@/hooks/useNewMedalsBadge'
-import '@/lib/debug/medalDebug' // Cargar funciones de debug
+
 import { LogoHorizontal, LogoIcon } from '@/components/Logo'
 import { useOposicion } from '../contexts/OposicionContext'
 import { useAuth } from '../contexts/AuthContext'
