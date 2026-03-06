@@ -1,7 +1,8 @@
-// app/Header.js - VERSIÓN CON ENLACE DE ADMIN Y LOGO SEPARADO EN MÓVIL
+// app/Header.tsx - Typed version
 'use client'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
+import type { MouseEvent } from 'react'
 import { usePathname } from 'next/navigation'
 import UserAvatar from '@/components/UserAvatar'
 import NotificationBell from '@/components/NotificationBell'
@@ -15,10 +16,34 @@ import { useOposicion } from '../contexts/OposicionContext'
 import { useAuth } from '../contexts/AuthContext'
 import { useUserOposicion } from '../components/useUserOposicion'
 import { getOposicion } from '@/lib/config/oposiciones'
-// import { calculateUserStreak } from '@/utils/streakCalculator' // 🚫 YA NO NECESARIO
 import { useAdminNotifications } from '@/hooks/useAdminNotifications'
 import { useInteractionTracker } from '@/hooks/useInteractionTracker'
 import { useSentryIssues } from '@/hooks/useSentryIssues'
+
+// ── Types ────────────────────────────────────────────────────────
+
+interface NavLink {
+  href: string
+  label: string
+  icon: string
+  featured?: boolean
+}
+
+interface MobileNavLink extends NavLink {
+  isAdmin?: boolean
+  badge?: number | null
+  sentryBadge?: number | null
+}
+
+interface PendingExam {
+  id: string
+  title?: string | null
+  temaNumber?: number | null
+  answeredQuestions: number
+  totalQuestions: number
+}
+
+// ── Component ────────────────────────────────────────────────────
 
 export default function HeaderES() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -28,10 +53,10 @@ export default function HeaderES() {
   const [showQuestionDispute, setShowQuestionDispute] = useState(false)
   const [userStreak, setUserStreak] = useState(0)
   const [pendingFeedbacks, setPendingFeedbacks] = useState(0)
-  const [pendingExams, setPendingExams] = useState([])
+  const [pendingExams, setPendingExams] = useState<PendingExam[]>([])
   const [showPendingExamsDropdown, setShowPendingExamsDropdown] = useState(false)
-  const [discardingExamId, setDiscardingExamId] = useState(null)
-  const [confirmingDiscardId, setConfirmingDiscardId] = useState(null)
+  const [discardingExamId, setDiscardingExamId] = useState<string | null>(null)
+  const [confirmingDiscardId, setConfirmingDiscardId] = useState<string | null>(null)
   const { hasNewMedals, newMedalsCount, markMedalsAsViewed } = useNewMedalsBadge()
   const pathname = usePathname()
 
@@ -53,7 +78,9 @@ export default function HeaderES() {
   const hasOposicion = oposicionContext?.hasOposicion || false
   const userOposicion = oposicionContext?.userOposicion || null
   const showNotification = oposicionContext?.showNotification || false
-  const notificationData = oposicionContext?.notificationData || null
+  const notificationData = (oposicionContext?.notificationData || null) as {
+    type?: string; name?: string; message?: string
+  } | null
   const dismissNotification = oposicionContext?.dismissNotification || (() => {})
 
   // 🆕 CARGAR RACHA DEL USUARIO
@@ -99,9 +126,7 @@ export default function HeaderES() {
   }, [user, supabase])
 
 
-  // Función de cálculo de racha movida a utils/streakCalculator.js para evitar duplicación
-
-  // 🆕 VERIFICAR SI ES ADMIN
+  // Verificar si es admin
   useEffect(() => {
     async function checkAdminStatus() {
       if (!user || !supabase) {
@@ -165,15 +190,15 @@ export default function HeaderES() {
     return () => window.removeEventListener('examCompleted', handleExamCompleted)
   }, [user, authLoading])
 
-  // Mostrar confirmación inline para descartar
-  function handleDiscardExam(examId, e) {
+  // Mostrar confirmacion inline para descartar
+  function handleDiscardExam(examId: string, e?: MouseEvent) {
     e?.preventDefault()
     e?.stopPropagation()
     setConfirmingDiscardId(examId)
   }
 
-  // Descartar examen permanentemente (después de confirmar)
-  async function confirmDiscardExam(examId) {
+  // Descartar examen permanentemente (despues de confirmar)
+  async function confirmDiscardExam(examId: string) {
     if (!user?.id || !examId) return
 
     try {
@@ -187,7 +212,7 @@ export default function HeaderES() {
       const result = await response.json()
 
       if (result.success) {
-        setPendingExams(prev => prev.filter(e => e.id !== examId))
+        setPendingExams(prev => prev.filter(ex => ex.id !== examId))
       } else {
         console.error('Error descartando examen:', result.error)
       }
@@ -237,10 +262,11 @@ export default function HeaderES() {
       const interval = setInterval(checkPendingFeedbacks, 30000)
       return () => clearInterval(interval)
     }
+    return undefined
   }, [user, supabase, authLoading, isAdmin])
 
   // Enlaces simplificados para usuarios logueados
-  const getLoggedInNavLinks = () => {
+  const getLoggedInNavLinks = (): NavLink[] => {
     if (!hasOposicion || loading) {
       return [
         { href: '/auxiliar-administrativo-estado/test', label: 'Test', icon: '🎯' },
@@ -278,7 +304,7 @@ export default function HeaderES() {
   }
 
   // Enlaces para usuarios NO logueados
-  const getGuestNavLinks = () => {
+  const getGuestNavLinks = (): NavLink[] => {
     return [
       { href: '/auxiliar-administrativo-estado/test', label: 'Test', icon: '🎯' },
       { href: '/auxiliar-administrativo-estado/temario', label: 'Temario', icon: '📚' },
@@ -290,9 +316,9 @@ export default function HeaderES() {
   }
 
   // 🆕 ENLACES PARA MÓVIL (incluye Admin si es admin)
-  const getMobileNavLinks = () => {
-    const baseLinks = user ? getLoggedInNavLinks() : getGuestNavLinks()
-    
+  const getMobileNavLinks = (): MobileNavLink[] => {
+    const baseLinks: MobileNavLink[] = user ? getLoggedInNavLinks() : getGuestNavLinks()
+
     // Agregar enlace de Admin si es admin
     if (user && isAdmin && !adminLoading) {
       return [
@@ -307,7 +333,7 @@ export default function HeaderES() {
         }
       ]
     }
-    
+
     return baseLinks
   }
 
@@ -316,15 +342,14 @@ export default function HeaderES() {
     setIsMobileMenuOpen(false)
   }, [pathname])
 
-  const handleLinkClick = (linkName) => {
-    // 📊 Tracking de click en navegación
+  const handleLinkClick = (linkName?: string) => {
     if (linkName) {
       trackClick('Header', 'nav_click', { linkName })
     }
     setIsMobileMenuOpen(false)
   }
 
-  const toggleMobileMenu = (e) => {
+  const toggleMobileMenu = (e: MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
     // 📊 Tracking de toggle menú móvil
@@ -332,26 +357,26 @@ export default function HeaderES() {
     setIsMobileMenuOpen(!isMobileMenuOpen)
   }
 
-  // Función para obtener el enlace a tests de la oposición objetivo
-  const getTestsLink = () => {
+  // Funcion para obtener el enlace a tests de la oposicion objetivo
+  const getTestsLink = (): string => {
     // hookUserOposicion puede ser un string JSON o un objeto
-    let oposicionData = hookUserOposicion
+    let oposicionData: Record<string, unknown> | null = hookUserOposicion as Record<string, unknown> | null
     if (typeof hookUserOposicion === 'string') {
       try {
         oposicionData = JSON.parse(hookUserOposicion)
-      } catch (e) {
+      } catch {
         oposicionData = null
       }
     }
-    const oposicionId = oposicionData?.id || oposicionData?.slug
+    const oposicionId = (oposicionData?.id || oposicionData?.slug) as string | undefined
     if (!oposicionId) return '/'
 
     const oposicion = getOposicion(oposicionId)
     return oposicion ? `/${oposicion.slug}/test` : '/'
   }
 
-  // Obtener color dinámico
-  const getColorClasses = (isActive) => {
+  // Obtener color dinamico
+  const getColorClasses = (isActive: boolean): string => {
     const baseColor = oposicionMenu?.color || 'blue'
     
     if (isActive) {
@@ -380,7 +405,7 @@ export default function HeaderES() {
             <div className="flex items-center">
               {/* Logo solo icono en móvil - extra grande con más espacio */}
               <div className="xl:hidden py-3">
-                  <LogoIcon size={48} onClick={handleLinkClick} />
+                  <LogoIcon size={48} />
               </div>
               {/* Logo horizontal solo en desktop */}
               <div className="hidden xl:block">
@@ -414,10 +439,8 @@ export default function HeaderES() {
                     // Establecer tab rachas cuando se abra el modal desde la racha
                     setTimeout(() => {
                       // Buscar el botón de rachas y hacer click
-                      const rachaBtnElement = document.querySelector('[data-tab="rachas"]')
-                      if (rachaBtnElement) {
-                        rachaBtnElement.click()
-                      }
+                      const rachaBtnElement = document.querySelector<HTMLElement>('[data-tab="rachas"]')
+                      rachaBtnElement?.click()
                     }, 100)
                   }}
                   className={`flex items-center justify-center hover:opacity-80 transition-opacity ${userStreak === 0 ? 'opacity-60' : ''}`}
@@ -508,11 +531,11 @@ export default function HeaderES() {
               <div className="flex items-center">
                 {/* Logo solo icono en móvil - tamaño reducido */}
                 <div className="xl:hidden py-1">
-                    <LogoIcon size={48} onClick={handleLinkClick} />
+                    <LogoIcon size={48} />
                 </div>
-                {/* Logo horizontal solo en desktop - 25% más grande */}
+                {/* Logo horizontal solo en desktop - 25% mas grande */}
                 <div className="hidden xl:block">
-                  <LogoHorizontal className="scale-125" onClick={handleLinkClick} />
+                  <LogoHorizontal className="scale-125" />
                 </div>
               </div>
             </div>
@@ -601,10 +624,8 @@ export default function HeaderES() {
                         await markMedalsAsViewed()
                         // Establecer tab ranking cuando se abra desde medallas
                         setTimeout(() => {
-                          const rankingBtnElement = document.querySelector('[data-tab="ranking"]')
-                          if (rankingBtnElement) {
-                            rankingBtnElement.click()
-                          }
+                          const rankingBtnElement = document.querySelector<HTMLElement>('[data-tab="ranking"]')
+                          rankingBtnElement?.click()
                         }, 100)
                       }}
                       className="relative p-2 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg transition-colors"
@@ -628,10 +649,8 @@ export default function HeaderES() {
                         setShowRankingModal(true)
                         // Establecer tab ranking cuando se abra desde medallas
                         setTimeout(() => {
-                          const rankingBtnElement = document.querySelector('[data-tab="ranking"]')
-                          if (rankingBtnElement) {
-                            rankingBtnElement.click()
-                          }
+                          const rankingBtnElement = document.querySelector<HTMLElement>('[data-tab="ranking"]')
+                          rankingBtnElement?.click()
                         }, 100)
                       }}
                       className="relative p-2 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg transition-colors"
@@ -654,10 +673,8 @@ export default function HeaderES() {
                     setShowRankingModal(true)
                     // Establecer tab rachas cuando se abra el modal desde la racha
                     setTimeout(() => {
-                      const rachaBtnElement = document.querySelector('[data-tab="rachas"]')
-                      if (rachaBtnElement) {
-                        rachaBtnElement.click()
-                      }
+                      const rachaBtnElement = document.querySelector<HTMLElement>('[data-tab="rachas"]')
+                      rachaBtnElement?.click()
                     }, 100)
                   }}
                   className={`hidden xl:flex items-center p-2 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg transition-colors ${userStreak === 0 ? 'opacity-60' : ''}`}
@@ -779,7 +796,7 @@ export default function HeaderES() {
                            'bg-blue-50 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800')
                         : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100 active:bg-gray-100 dark:active:bg-gray-700'
                     }`}
-                    onClick={handleLinkClick}
+                    onClick={() => handleLinkClick(link.label)}
                   >
                     <span className="text-2xl">{link.icon}</span>
                     <div className="flex-1 relative">

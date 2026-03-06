@@ -1,11 +1,35 @@
-// components/Statistics/Achievements.js
+// components/Statistics/Achievements.tsx
 'use client'
 import { useState, useEffect } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
+import type { UserMedal } from '@/lib/api/medals/schemas'
 
-export default function Achievements({ achievements }) {
-  const { user } = useAuth()
-  const [rankingMedals, setRankingMedals] = useState([])
+interface Achievement {
+  id: string
+  title: string
+  description: string
+  category: string
+  progress: string
+  unlocked: boolean
+  rank?: number
+  period?: string
+  emailTemplate?: string
+  stats?: {
+    userId?: string
+    accuracy: number
+    totalQuestions: number
+    correctAnswers?: number
+  } | null
+  unlockedAt?: string
+}
+
+interface AchievementsProps {
+  achievements?: Achievement[]
+}
+
+export default function Achievements({ achievements }: AchievementsProps) {
+  const { user } = useAuth() as { user: { id: string } | null }
+  const [rankingMedals, setRankingMedals] = useState<UserMedal[]>([])
   const [medalsLoading, setMedalsLoading] = useState(true)
 
   // Cargar medallas de ranking via API
@@ -33,7 +57,7 @@ export default function Achievements({ achievements }) {
   }, [user])
 
   // Combinar logros de IA existentes con medallas de ranking
-  const allAchievements = [
+  const allAchievements: Achievement[] = [
     ...rankingMedals,
     ...(achievements || [])
   ]
@@ -61,8 +85,8 @@ export default function Achievements({ achievements }) {
       {!medalsLoading && allAchievements.length > 0 && (
         <>
           {/* Medallas de ranking recientes */}
-          {rankingMedals.filter(medal => medal.unlockedAt && 
-            new Date() - new Date(medal.unlockedAt) < 7 * 24 * 60 * 60 * 1000
+          {rankingMedals.filter(medal => medal.unlockedAt &&
+            Date.now() - new Date(medal.unlockedAt).getTime() < 7 * 24 * 60 * 60 * 1000
           ).length > 0 && (
             <div className="mb-6">
               <h4 className="text-lg font-semibold text-gray-700 mb-3 flex items-center">
@@ -71,8 +95,8 @@ export default function Achievements({ achievements }) {
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {rankingMedals
-                  .filter(medal => medal.unlockedAt && 
-                    new Date() - new Date(medal.unlockedAt) < 7 * 24 * 60 * 60 * 1000
+                  .filter(medal => medal.unlockedAt &&
+                    Date.now() - new Date(medal.unlockedAt).getTime() < 7 * 24 * 60 * 60 * 1000
                   )
                   .map((achievement) => (
                     <MedalCard key={achievement.id} achievement={achievement} isNew={true} />
@@ -102,14 +126,18 @@ export default function Achievements({ achievements }) {
   )
 }
 
-// Componente para mostrar una medalla individual
-function MedalCard({ achievement, isNew = false }) {
+interface MedalCardProps {
+  achievement: Achievement
+  isNew?: boolean
+}
+
+function MedalCard({ achievement, isNew = false }: MedalCardProps) {
   const isRankingMedal = achievement.rank !== undefined
-  
+
   return (
-    <div 
+    <div
       className={`p-4 rounded-lg border relative ${
-        achievement.unlocked 
+        achievement.unlocked
           ? isRankingMedal
             ? 'bg-gradient-to-r from-blue-50 to-purple-50 border-blue-300'
             : 'bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-300'
@@ -121,32 +149,32 @@ function MedalCard({ achievement, isNew = false }) {
           ¡Nuevo!
         </div>
       )}
-      
+
       <div className="flex items-center justify-between mb-3">
         <div className={`text-2xl ${achievement.unlocked ? '' : 'grayscale opacity-50'}`}>
           {achievement.title.split(' ')[0]}
         </div>
         <div className={`text-xs px-2 py-1 rounded-full font-medium ${
-          achievement.unlocked 
-            ? 'bg-green-100 text-green-700' 
+          achievement.unlocked
+            ? 'bg-green-100 text-green-700'
             : 'bg-gray-200 text-gray-600'
         }`}>
           {achievement.unlocked ? '✅ Desbloqueado' : '🔒 Bloqueado'}
         </div>
       </div>
-      
+
       <div className="font-bold text-gray-800 mb-1">
         {achievement.title.includes(' ') ? achievement.title.substring(2) : achievement.title}
       </div>
-      
+
       <div className="text-sm text-gray-600 mb-2">
         {achievement.description}
       </div>
-      
+
       <div className="text-xs font-medium text-purple-600 mb-1">
         📊 {achievement.progress}
       </div>
-      
+
       <div className="text-xs text-gray-500">
         Categoría: {achievement.category}
       </div>
