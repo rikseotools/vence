@@ -1,14 +1,26 @@
-// @ts-nocheck
 // components/TestConfigurator.tsx - CON FILTRO DE PREGUNTAS OFICIALES POR TEMA CORREGIDO
 'use client'
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import SectionFilterModal from './SectionFilterModal';
 import { fetchLawSections } from '../lib/teoriaFetchers';
 import { getCanonicalSlug } from '../lib/lawMappingUtils';
+import type {
+  TestConfiguratorProps,
+  TestStartConfig,
+  LawData,
+  ArticleItem,
+  EssentialArticleItem,
+  FailedQuestionsData,
+  FailedQuestionItem,
+  SavedFavorite,
+  DifficultyMode,
+  TotalQuestions,
+  SectionFilter,
+} from './TestConfigurator.types';
 
-const TestConfigurator = ({
+const TestConfigurator: React.FC<TestConfiguratorProps> = ({
   tema = 7,
-  temaDisplayName = null, // 🆕 Nombre visible del tema (ej: "Tema 9: Hojas de cálculo: Excel")
+  temaDisplayName = null,
   totalQuestions = 100,
   onStartTest,
   userStats = null,
@@ -19,8 +31,8 @@ const TestConfigurator = ({
   hideOfficialQuestions = false,
   hideEssentialArticles = false,
   officialQuestionsCount = 0,
-  testMode = 'practica', // 🆕 'practica' o 'examen'
-  positionType = 'auxiliar_administrativo' // 🔧 FIX: Permitir especificar el position_type
+  testMode = 'practica',
+  positionType = 'auxiliar_administrativo'
 }) => {
   // Estados de configuración
   const [selectedQuestions, setSelectedQuestions] = useState(25);
@@ -38,29 +50,29 @@ const TestConfigurator = ({
   const [adaptiveMode, setAdaptiveMode] = useState(true); // ✨ Activado por defecto
   const [onlyFailedQuestions, setOnlyFailedQuestions] = useState(false); // 🆕 Solo preguntas falladas
   const [showFailedQuestionsModal, setShowFailedQuestionsModal] = useState(false); // 🆕 Modal preguntas falladas
-  const [failedQuestionsData, setFailedQuestionsData] = useState(null); // 🆕 Datos de preguntas falladas
-  const [failedQuestionsCount, setFailedQuestionsCount] = useState(25); // 🆕 Cantidad de preguntas falladas
-  const [selectedFailedOrder, setSelectedFailedOrder] = useState(null); // 🆕 Orden seleccionado
-  
+  const [failedQuestionsData, setFailedQuestionsData] = useState<FailedQuestionsData | null>(null);
+  const [failedQuestionsCount, setFailedQuestionsCount] = useState<number | 'all'>(25);
+  const [selectedFailedOrder, setSelectedFailedOrder] = useState<string | null>(null);
+
   // 🆕 Estados para filtro de leyes
-  const [selectedLaws, setSelectedLaws] = useState(new Set());
+  const [selectedLaws, setSelectedLaws] = useState<Set<string>>(new Set());
   const [showLawsFilter, setShowLawsFilter] = useState(!tema && lawsData?.length > 1);
   const [lawSearchQuery, setLawSearchQuery] = useState('');
-  
+
   // 🆕 Estados para filtro de artículos
-  const [selectedArticlesByLaw, setSelectedArticlesByLaw] = useState(new Map());
+  const [selectedArticlesByLaw, setSelectedArticlesByLaw] = useState<Map<string, Set<string | number>>>(new Map());
   const [showArticleModal, setShowArticleModal] = useState(false);
-  const [currentLawForArticles, setCurrentLawForArticles] = useState(null);
-  const [availableArticlesByLaw, setAvailableArticlesByLaw] = useState(new Map());
+  const [currentLawForArticles, setCurrentLawForArticles] = useState<string | null>(null);
+  const [availableArticlesByLaw, setAvailableArticlesByLaw] = useState<Map<string, ArticleItem[]>>(new Map());
   const [loadingArticles, setLoadingArticles] = useState(false);
 
   // 🆕 Estados para filtro de títulos/secciones (MULTI-SELECT)
   const [isSectionModalOpen, setIsSectionModalOpen] = useState(false);
-  const [selectedSectionFilters, setSelectedSectionFilters] = useState([]); // 🔄 Array para selección múltiple
-  const [availableSectionsByLaw, setAvailableSectionsByLaw] = useState(new Map());
+  const [selectedSectionFilters, setSelectedSectionFilters] = useState<SectionFilter[]>([]);
+  const [availableSectionsByLaw, setAvailableSectionsByLaw] = useState<Map<string, any[]>>(new Map());
 
   // 💾 Estados para favoritos (configuraciones guardadas)
-  const [savedFavorites, setSavedFavorites] = useState([]);
+  const [savedFavorites, setSavedFavorites] = useState<SavedFavorite[]>([]);
   const [loadingFavorites, setLoadingFavorites] = useState(false);
   const [showSaveFavoriteModal, setShowSaveFavoriteModal] = useState(false);
   const [showLoadFavoriteModal, setShowLoadFavoriteModal] = useState(false);
@@ -75,9 +87,9 @@ const TestConfigurator = ({
   // Estados para artículos imprescindibles
   const [essentialArticlesCount, setEssentialArticlesCount] = useState(0);
   const [loadingEssentialCount, setLoadingEssentialCount] = useState(false);
-  const [essentialArticlesList, setEssentialArticlesList] = useState([]);
+  const [essentialArticlesList, setEssentialArticlesList] = useState<EssentialArticleItem[]>([]);
   const [essentialQuestionsCount, setEssentialQuestionsCount] = useState(0);
-  const [essentialQuestionsByDifficulty, setEssentialQuestionsByDifficulty] = useState({});
+  const [essentialQuestionsByDifficulty, setEssentialQuestionsByDifficulty] = useState<Record<string, number>>({});
 
   // officialQuestionsCount ahora viene como prop desde la página principal
 
@@ -127,7 +139,7 @@ const TestConfigurator = ({
   };
 
   // Función para manejar el cambio de artículos imprescindibles
-  const handleEssentialArticlesChange = (checked) => {
+  const handleEssentialArticlesChange = (checked: boolean) => {
     setFocusEssentialArticles(checked);
     
     // 🔄 Si se activa, desactivar preguntas oficiales
@@ -197,7 +209,7 @@ const TestConfigurator = ({
 
     try {
       const favoriteData = {
-        userId: currentUser.id,
+        userId: currentUser!.id,
         name: favoriteName.trim(),
         description: favoriteDescription.trim() || null,
         selectedLaws: Array.from(selectedLaws),
@@ -230,7 +242,7 @@ const TestConfigurator = ({
         console.error('❌ [Favorites] Error de validación:', result);
         // Mostrar detalles de validación si existen
         if (result.details && Array.isArray(result.details)) {
-          const detailMsg = result.details.map(d => d.message || d.path?.join('.')).join(', ');
+          const detailMsg = result.details.map((d: any) => d.message || d.path?.join('.')).join(', ');
           setFavoriteError(detailMsg || result.error || 'Error al guardar');
         } else {
           setFavoriteError(result.error || 'Error al guardar el favorito');
@@ -245,7 +257,7 @@ const TestConfigurator = ({
   };
 
   // 💾 Función para cargar un favorito guardado
-  const loadFavorite = (favorite) => {
+  const loadFavorite = (favorite: SavedFavorite) => {
     console.log('📂 [Favorites] Cargando favorito:', favorite.name);
 
     // Cargar leyes seleccionadas
@@ -253,10 +265,10 @@ const TestConfigurator = ({
 
     // Cargar artículos seleccionados por ley
     // 🔧 FIX: Mantener artículos como strings para coincidir con article.article_number de la BD
-    const articlesMap = new Map();
+    const articlesMap = new Map<string, Set<string | number>>();
     if (favorite.selectedArticlesByLaw) {
       Object.entries(favorite.selectedArticlesByLaw).forEach(([lawId, articles]) => {
-        articlesMap.set(lawId, new Set(articles.map(a => String(a))));
+        articlesMap.set(lawId, new Set(articles.map((a: string | number) => String(a))));
       });
     }
     setSelectedArticlesByLaw(articlesMap);
@@ -274,11 +286,11 @@ const TestConfigurator = ({
   };
 
   // 💾 Función para eliminar un favorito
-  const deleteFavoriteHandler = async (favoriteId, favoriteNameToDelete) => {
+  const deleteFavoriteHandler = async (favoriteId: string, favoriteNameToDelete: string) => {
     if (!confirm(`¿Eliminar el favorito "${favoriteNameToDelete}"?`)) return;
 
     try {
-      const response = await fetch(`/api/profile/test-favorites?id=${favoriteId}&userId=${currentUser.id}`, {
+      const response = await fetch(`/api/profile/test-favorites?id=${favoriteId}&userId=${currentUser!.id}`, {
         method: 'DELETE'
       });
 
@@ -324,9 +336,9 @@ const TestConfigurator = ({
   // Estados y funciones existentes...
 
   // 🆕 Estado para estimación del servidor (null = aún no cargada)
-  const [apiEstimate, setApiEstimate] = useState(null);
+  const [apiEstimate, setApiEstimate] = useState<number | null>(null);
   const [loadingEstimate, setLoadingEstimate] = useState(false);
-  const estimateAbortRef = useRef(null);
+  const estimateAbortRef = useRef<AbortController | null>(null);
 
   // availableQuestions: prefiere estimación del servidor, fallback a totalQuestions prop
   const availableQuestions = useMemo(() => {
@@ -370,7 +382,7 @@ const TestConfigurator = ({
         }
 
         // Añadir artículos seleccionados (como JSON)
-        const articlesByLawObj = {};
+        const articlesByLawObj: Record<string, (string | number)[]> = {};
         for (const [lawName, articlesSet] of selectedArticlesByLaw) {
           if (articlesSet.size > 0) {
             articlesByLawObj[lawName] = Array.from(articlesSet);
@@ -397,7 +409,7 @@ const TestConfigurator = ({
           console.warn('⚠️ Error en estimación v2:', data.error);
           // En caso de error del API, no tocar apiEstimate — fallback a totalQuestions prop
         }
-      } catch (error) {
+      } catch (error: any) {
         if (error.name !== 'AbortError') {
           console.error('❌ Error fetching estimate:', error);
         }
@@ -513,7 +525,7 @@ const TestConfigurator = ({
   }, [selectedLaws]);
 
   // 🆕 Funciones para manejar filtro de leyes
-  const toggleLawSelection = (lawShortName) => {
+  const toggleLawSelection = (lawShortName: string) => {
     const newSelectedLaws = new Set(selectedLaws);
     if (newSelectedLaws.has(lawShortName)) {
       newSelectedLaws.delete(lawShortName);
@@ -537,7 +549,7 @@ const TestConfigurator = ({
   };
 
   // 🆕 Función para cargar artículos disponibles por ley (con dedup de requests en vuelo)
-  const loadArticlesForLaw = async (lawShortName) => {
+  const loadArticlesForLaw = async (lawShortName: string): Promise<ArticleItem[]> => {
     // Si ya hay una request en vuelo para esta ley, reusar la misma promise
     if (articlesInFlightRef.current.has(lawShortName)) {
       console.log(`⏳ Reutilizando request en vuelo para ${lawShortName}`);
@@ -554,7 +566,7 @@ const TestConfigurator = ({
     }
   };
 
-  const _loadArticlesForLawImpl = async (lawShortName) => {
+  const _loadArticlesForLawImpl = async (lawShortName: string): Promise<ArticleItem[]> => {
     setLoadingArticles(true);
     try {
       console.log(`📋 Cargando artículos para ley ${lawShortName} (tema: ${tema || 'configurador específico'}) (v2)...`);
@@ -586,7 +598,7 @@ const TestConfigurator = ({
   };
 
   // 🆕 Función para cargar secciones de una ley específica (con dedup de requests en vuelo)
-  const loadSectionsForLaw = async (lawSlug) => {
+  const loadSectionsForLaw = async (lawSlug: string) => {
     // Si ya hay una request en vuelo para este slug, reusar la misma promise
     if (sectionsInFlightRef.current.has(lawSlug)) {
       console.log(`⏳ Reutilizando request de secciones en vuelo para ${lawSlug}`);
@@ -671,21 +683,21 @@ const TestConfigurator = ({
   }
 
   // 🆕 Función para iniciar test de preguntas falladas con orden específico
-  const startFailedQuestionsTest = (sortOrder) => {
+  const startFailedQuestionsTest = (sortOrder: string) => {
     if (!failedQuestionsData || !currentUser) return
-    
+
     // Ordenar las preguntas según la opción elegida
     let sortedQuestions = [...failedQuestionsData.questions]
-    
+
     switch (sortOrder) {
       case 'most_failed':
         sortedQuestions.sort((a, b) => b.failedCount - a.failedCount)
         break
       case 'recent_failed':
-        sortedQuestions.sort((a, b) => new Date(b.lastFailed) - new Date(a.lastFailed))
+        sortedQuestions.sort((a, b) => new Date(b.lastFailed).getTime() - new Date(a.lastFailed).getTime())
         break
       case 'oldest_failed':
-        sortedQuestions.sort((a, b) => new Date(a.firstFailed) - new Date(b.firstFailed))
+        sortedQuestions.sort((a, b) => new Date(a.firstFailed).getTime() - new Date(b.firstFailed).getTime())
         break
       case 'random':
         // Mezclar aleatoriamente
@@ -739,7 +751,7 @@ const TestConfigurator = ({
     
     try {
       // Enviar configuración al componente padre
-      onStartTest(config)
+      onStartTest?.(config as TestStartConfig)
       console.log('✅ Test de preguntas falladas iniciado')
       
     } catch (error) {
@@ -749,7 +761,7 @@ const TestConfigurator = ({
   }
 
   // 🆕 Funciones para manejar filtro de artículos
-  const openArticleModal = async (lawShortName) => {
+  const openArticleModal = async (lawShortName: string) => {
     setCurrentLawForArticles(lawShortName);
     setShowArticleModal(true);
 
@@ -763,7 +775,7 @@ const TestConfigurator = ({
       });
 
       // Inicializar todos los artículos como seleccionados
-      const articleNumbers = new Set(articles.map(art => art.article_number));
+      const articleNumbers = new Set<string | number>(articles.map((art: ArticleItem) => art.article_number));
       setSelectedArticlesByLaw(prev => {
         const newMap = new Map(prev);
         newMap.set(lawShortName, articleNumbers);
@@ -774,8 +786,8 @@ const TestConfigurator = ({
       const currentSelection = selectedArticlesByLaw.get(lawShortName);
       if (!currentSelection || currentSelection.size === 0) {
         // Si no hay artículos seleccionados, seleccionar todos por defecto (mejor UX)
-        const articles = availableArticlesByLaw.get(lawShortName);
-        const articleNumbers = new Set(articles.map(art => art.article_number));
+        const articles = availableArticlesByLaw.get(lawShortName) || [];
+        const articleNumbers = new Set<string | number>(articles.map((art: ArticleItem) => art.article_number));
         setSelectedArticlesByLaw(prev => {
           const newMap = new Map(prev);
           newMap.set(lawShortName, articleNumbers);
@@ -790,7 +802,7 @@ const TestConfigurator = ({
     setCurrentLawForArticles(null);
   };
 
-  const toggleArticleSelection = (lawShortName, articleNumber) => {
+  const toggleArticleSelection = (lawShortName: string, articleNumber: string | number) => {
     // Limpiar filtro de títulos cuando se selecciona filtro de artículos
     setSelectedSectionFilters([]);
 
@@ -821,7 +833,7 @@ const TestConfigurator = ({
     });
   };
 
-  const selectAllArticlesForLaw = (lawShortName) => {
+  const selectAllArticlesForLaw = (lawShortName: string) => {
     // Limpiar filtro de títulos cuando se selecciona filtro de artículos
     setSelectedSectionFilters([]);
 
@@ -834,7 +846,7 @@ const TestConfigurator = ({
           return newMap;
         });
         // Seleccionar todos después de cargar
-        const allArticles = new Set(articles.map(art => art.article_number));
+        const allArticles = new Set<string | number>(articles.map((art: ArticleItem) => art.article_number));
         setSelectedArticlesByLaw(prev => {
           const newMap = new Map(prev);
           newMap.set(lawShortName, allArticles);
@@ -845,7 +857,7 @@ const TestConfigurator = ({
     }
 
     const articles = availableArticlesByLaw.get(lawShortName) || [];
-    const allArticles = new Set(articles.map(art => art.article_number));
+    const allArticles = new Set<string | number>(articles.map((art: ArticleItem) => art.article_number));
     setSelectedArticlesByLaw(prev => {
       const newMap = new Map(prev);
       newMap.set(lawShortName, allArticles);
@@ -853,7 +865,7 @@ const TestConfigurator = ({
     });
   };
 
-  const deselectAllArticlesForLaw = (lawShortName) => {
+  const deselectAllArticlesForLaw = (lawShortName: string) => {
     // Limpiar filtro de títulos cuando se selecciona filtro de artículos
     setSelectedSectionFilters([]);
 
@@ -937,7 +949,7 @@ const TestConfigurator = ({
 
     try {
       // ✅ Pasar configuración al componente padre
-      onStartTest(config)
+      onStartTest?.(config as TestStartConfig)
       console.log('✅ Configuración enviada al componente padre')
       
     } catch (error) {
@@ -2403,7 +2415,7 @@ const TestConfigurator = ({
                   <div className="grid grid-cols-5 gap-1 sm:gap-2 mb-4">
                     {(() => {
                       const totalQuestions = failedQuestionsData.totalQuestions;
-                      const options = [];
+                      const options: (number | 'all')[] = [];
                       
                       // Solo añadir opciones que sean menores al total disponible
                       if (totalQuestions > 10) options.push(10);
@@ -2691,12 +2703,12 @@ const TestConfigurator = ({
         isOpen={isSectionModalOpen}
         onClose={() => setIsSectionModalOpen(false)}
         lawSlug={preselectedLaw || (selectedLaws.size === 1 ? Array.from(selectedLaws)[0] : (lawsData.length === 1 ? lawsData[0].law_short_name : null))}
-        selectedSections={selectedSectionFilters}
-        onSectionSelect={(sections) => {
+        selectedSections={selectedSectionFilters as any}
+        onSectionSelect={(sections: SectionFilter[]) => {
           console.log('📚 TestConfigurator - Recibiendo selección del modal:', {
             sections,
             count: sections.length,
-            titles: sections.map(s => s.title)
+            titles: sections.map((s: SectionFilter) => s.title)
           })
           setSelectedSectionFilters(sections);
           // Limpiar filtro de artículos cuando se selecciona filtro de títulos
