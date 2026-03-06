@@ -1,11 +1,72 @@
-// lib/services/adaptiveDifficulty.js
+// lib/services/adaptiveDifficulty.ts
 'use client'
 
 import { getSupabaseClient } from '@/lib/supabase'
 
-const supabase = getSupabaseClient()
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SupabaseClientAny = any
+
+type DifficultyLabel = 'easy' | 'medium' | 'hard' | 'extreme'
+type TrendLabel = 'stable' | 'improving' | 'declining'
+
+interface PersonalDifficulty {
+  personal_difficulty: DifficultyLabel | string
+  success_rate: number | null
+  total_attempts: number
+  trend: TrendLabel | string
+  is_personal: boolean
+}
+
+interface DifficultyMetrics {
+  avg_personal_difficulty: number
+  total_questions_attempted: number
+  questions_mastered: number
+  questions_struggling: number
+  accuracy_trend: TrendLabel | string
+  user_id?: string
+  [key: string]: unknown
+}
+
+interface DifficultyBreakdown {
+  easy: number
+  medium: number
+  hard: number
+  extreme: number
+  total: number
+  [key: string]: number
+}
+
+interface QuestionResult {
+  question_id: string
+  success_rate: number
+  total_attempts: number
+  personal_difficulty: string
+  trend?: string
+  questions: {
+    question_text: string
+  }
+}
+
+interface ProgressTrends {
+  improving: number
+  declining: number
+  stable: number
+  total: number
+  [key: string]: unknown
+}
+
+interface MigrationResult {
+  success: boolean
+  recordsProcessed: number
+  message: string
+}
+
+const supabase: SupabaseClientAny = getSupabaseClient()
 
 export class AdaptiveDifficultyService {
+  difficultyMapping: Record<string, number>
+  difficultyLabels: Record<number, string>
+
   constructor() {
     this.difficultyMapping = {
       'easy': 1,
@@ -22,11 +83,7 @@ export class AdaptiveDifficultyService {
     }
   }
 
-  /**
-   * Obtiene la dificultad personal de una pregunta para un usuario
-   * UPDATED: Calcula desde test_questions en lugar de user_question_history
-   */
-  async getPersonalDifficulty(userId, questionId) {
+  async getPersonalDifficulty(userId: string, questionId: string): Promise<PersonalDifficulty> {
     try {
       // Calcular desde test_questions
       const { data, error } = await supabase
@@ -60,11 +117,11 @@ export class AdaptiveDifficultyService {
 
       // Calcular estadísticas
       const totalAttempts = data.length
-      const correctAttempts = data.filter(d => d.is_correct).length
+      const correctAttempts = data.filter((d: { is_correct: boolean }) => d.is_correct).length
       const successRate = (correctAttempts / totalAttempts) * 100
 
       // Determinar dificultad personal basada en éxito
-      let personalDifficulty = 'medium'
+      let personalDifficulty: DifficultyLabel = 'medium'
       if (successRate >= 80) personalDifficulty = 'easy'
       else if (successRate >= 60) personalDifficulty = 'medium'
       else if (successRate >= 40) personalDifficulty = 'hard'
@@ -89,11 +146,7 @@ export class AdaptiveDifficultyService {
     }
   }
 
-  /**
-   * Obtiene el historial de dificultades de un usuario
-   * UPDATED: Usa RPC para calcular desde test_questions
-   */
-  async getUserDifficultyHistory(userId, options = {}) {
+  async getUserDifficultyHistory(userId: string, _options: Record<string, unknown> = {}): Promise<unknown[]> {
     try {
       // Por ahora retornar array vacío ya que no tenemos tabla de historial
       // Se podría implementar calculando desde test_questions si es necesario
@@ -104,11 +157,7 @@ export class AdaptiveDifficultyService {
     }
   }
 
-  /**
-   * Obtiene estadísticas agregadas de dificultad del usuario
-   * UPDATED: Usa RPC en lugar de tabla user_difficulty_metrics
-   */
-  async getUserDifficultyMetrics(userId) {
+  async getUserDifficultyMetrics(userId: string): Promise<DifficultyMetrics> {
     try {
       const { data, error } = await supabase
         .rpc('get_user_difficulty_metrics', { p_user_id: userId })
@@ -145,10 +194,7 @@ export class AdaptiveDifficultyService {
     }
   }
 
-  /**
-   * Ya no necesitamos crear métricas iniciales porque la RPC las calcula
-   */
-  async createInitialUserMetrics(userId) {
+  async createInitialUserMetrics(userId: string): Promise<DifficultyMetrics> {
     // No hacer nada, la RPC maneja todo
     return {
       user_id: userId,
@@ -160,11 +206,7 @@ export class AdaptiveDifficultyService {
     }
   }
 
-  /**
-   * Obtiene preguntas por dificultad personal para un usuario
-   * UPDATED: Simplificado, no depende de tabla de historial
-   */
-  async getQuestionsByPersonalDifficulty(userId, difficulty, options = {}) {
+  async getQuestionsByPersonalDifficulty(userId: string, _difficulty: string, _options: Record<string, unknown> = {}): Promise<unknown[]> {
     try {
       // Por ahora retornar array vacío
       // Se podría implementar calculando desde test_questions si es necesario
@@ -175,11 +217,7 @@ export class AdaptiveDifficultyService {
     }
   }
 
-  /**
-   * Calcula la distribución de dificultades personales para un usuario
-   * UPDATED: Calcula desde test_questions
-   */
-  async getPersonalDifficultyBreakdown(userId) {
+  async getPersonalDifficultyBreakdown(userId: string): Promise<DifficultyBreakdown> {
     try {
       // Obtener todas las preguntas respondidas por el usuario
       const { data: testData, error: testError } = await supabase
@@ -199,7 +237,7 @@ export class AdaptiveDifficultyService {
         }
       }
 
-      const testIds = testData.map(t => t.id)
+      const testIds = testData.map((t: { id: string }) => t.id)
 
       const { data, error } = await supabase
         .from('test_questions')
@@ -209,8 +247,8 @@ export class AdaptiveDifficultyService {
       if (error) throw error
 
       // Agrupar por pregunta y calcular éxito
-      const questionStats = {}
-      data?.forEach(item => {
+      const questionStats: Record<string, { correct: number; total: number }> = {}
+      data?.forEach((item: { question_id: string; is_correct: boolean }) => {
         if (!questionStats[item.question_id]) {
           questionStats[item.question_id] = { correct: 0, total: 0 }
         }
@@ -218,7 +256,7 @@ export class AdaptiveDifficultyService {
         if (item.is_correct) questionStats[item.question_id].correct++
       })
 
-      const breakdown = {
+      const breakdown: DifficultyBreakdown = {
         easy: 0,
         medium: 0,
         hard: 0,
@@ -258,11 +296,7 @@ export class AdaptiveDifficultyService {
     }
   }
 
-  /**
-   * Obtiene las preguntas más difíciles para un usuario
-   * UPDATED: Usa RPC
-   */
-  async getStrugglingQuestions(userId, limit = 10) {
+  async getStrugglingQuestions(userId: string, limit: number = 10): Promise<QuestionResult[]> {
     try {
       const { data, error } = await supabase
         .rpc('get_struggling_questions', {
@@ -273,7 +307,7 @@ export class AdaptiveDifficultyService {
       if (error) throw error
 
       // Transformar el resultado para mantener compatibilidad
-      return data?.map(item => ({
+      return data?.map((item: { question_id: string; success_rate: number; total_attempts: number; personal_difficulty: string; trend: string; question_text: string }) => ({
         question_id: item.question_id,
         success_rate: item.success_rate / 100, // Convertir a decimal
         total_attempts: item.total_attempts,
@@ -289,11 +323,7 @@ export class AdaptiveDifficultyService {
     }
   }
 
-  /**
-   * Obtiene las preguntas dominadas por un usuario
-   * UPDATED: Usa RPC
-   */
-  async getMasteredQuestions(userId, limit = 10) {
+  async getMasteredQuestions(userId: string, limit: number = 10): Promise<QuestionResult[]> {
     try {
       const { data, error } = await supabase
         .rpc('get_mastered_questions', {
@@ -304,7 +334,7 @@ export class AdaptiveDifficultyService {
       if (error) throw error
 
       // Transformar el resultado para mantener compatibilidad
-      return data?.map(item => ({
+      return data?.map((item: { question_id: string; success_rate: number; total_attempts: number; personal_difficulty: string; question_text: string }) => ({
         question_id: item.question_id,
         success_rate: item.success_rate / 100, // Convertir a decimal
         total_attempts: item.total_attempts,
@@ -319,11 +349,7 @@ export class AdaptiveDifficultyService {
     }
   }
 
-  /**
-   * Obtiene tendencias de progreso del usuario
-   * UPDATED: Usa RPC
-   */
-  async getUserProgressTrends(userId) {
+  async getUserProgressTrends(userId: string): Promise<ProgressTrends> {
     try {
       const { data, error } = await supabase
         .rpc('get_user_progress_trends', { p_user_id: userId })
@@ -354,11 +380,7 @@ export class AdaptiveDifficultyService {
     }
   }
 
-  /**
-   * Ejecuta la migración de datos existentes
-   * YA NO ES NECESARIA
-   */
-  async runDataMigration() {
+  async runDataMigration(): Promise<MigrationResult> {
     return {
       success: true,
       recordsProcessed: 0,
@@ -366,11 +388,8 @@ export class AdaptiveDifficultyService {
     }
   }
 
-  /**
-   * Obtiene recomendaciones personalizadas para el usuario
-   * UPDATED: Usa RPC
-   */
-  async getPersonalizedRecommendations(userId) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async getPersonalizedRecommendations(userId: string): Promise<any[]> {
     try {
       const { data, error } = await supabase
         .rpc('get_personalized_recommendations', { p_user_id: userId })
