@@ -349,7 +349,7 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
       if (selectedLaws.size === 0) return 0;
       return lawsData
         .filter(law => selectedLaws.has(law.law_short_name))
-        .reduce((sum, law) => sum + law.questions_count, 0);
+        .reduce((sum, law) => sum + (law.questions_count || 0), 0);
     }
 
     // Fallback desde totalQuestions prop (mientras el API no haya respondido)
