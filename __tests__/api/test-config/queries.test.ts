@@ -103,6 +103,41 @@ describe('getArticlesForLaw', () => {
     expect(result.articles![1].article_number).toBe(14)
   })
 
+  test('articulos del scope sin preguntas devuelven question_count=0 (LEFT JOIN)', async () => {
+    setupMockDb([
+      // 1. law lookup
+      [{ id: 'law-id-1' }],
+      // 2. topic_scope lookup — 5 artículos en scope
+      [{ articleNumbers: ['1', '4', '10', '35', '38'], lawId: 'law-id-1', lawShortName: 'LPRL' }],
+      // 3. LEFT JOIN result — incluye artículos con 0 preguntas
+      [
+        { articleNumber: '1', title: 'Normativa sobre PRL', questionCount: 0 },
+        { articleNumber: '4', title: 'Definiciones', questionCount: 5 },
+        { articleNumber: '10', title: 'Vigilancia salud', questionCount: 0 },
+        { articleNumber: '35', title: 'Delegados prevención', questionCount: 3 },
+        { articleNumber: '38', title: 'Comité seguridad', questionCount: 2 },
+      ],
+    ])
+
+    const result = await getArticlesForLaw({
+      lawShortName: 'LPRL',
+      topicNumber: 15,
+      positionType: 'auxiliar_administrativo',
+      includeOfficialCount: false,
+    })
+
+    expect(result.success).toBe(true)
+    expect(result.articles).toHaveLength(5)
+    // Artículos con preguntas
+    expect(result.articles![1].article_number).toBe(4)
+    expect(result.articles![1].question_count).toBe(5)
+    // Artículos sin preguntas (question_count = 0)
+    expect(result.articles![0].article_number).toBe(1)
+    expect(result.articles![0].question_count).toBe(0)
+    expect(result.articles![2].article_number).toBe(10)
+    expect(result.articles![2].question_count).toBe(0)
+  })
+
   test('ley no encontrada devuelve error', async () => {
     setupMockDb([
       // 1. law lookup — empty

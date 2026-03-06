@@ -110,10 +110,10 @@ export async function getArticlesForLaw(
       validArticleNumbers = mappings[0].articleNumbers || []
     }
 
-    // Query: artículos con conteo de preguntas
+    // Query: artículos con conteo de preguntas (LEFT JOIN para incluir artículos sin preguntas)
     const articleConditions = [
-      eq(questions.isActive, true),
       eq(articles.lawId, lawId),
+      eq(articles.isActive, true),
     ]
 
     if (validArticleNumbers) {
@@ -126,8 +126,11 @@ export async function getArticlesForLaw(
         title: articles.title,
         questionCount: sql<number>`count(${questions.id})`,
       })
-      .from(questions)
-      .innerJoin(articles, eq(questions.primaryArticleId, articles.id))
+      .from(articles)
+      .leftJoin(questions, and(
+        eq(questions.primaryArticleId, articles.id),
+        eq(questions.isActive, true),
+      ))
       .where(and(...articleConditions))
       .groupBy(articles.articleNumber, articles.title)
       .orderBy(sql`NULLIF(regexp_replace(${articles.articleNumber}, '[^0-9]', '', 'g'), '')::int NULLS LAST, ${articles.articleNumber} NULLS LAST`)

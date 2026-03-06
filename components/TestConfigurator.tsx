@@ -812,6 +812,11 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
   };
 
   const toggleArticleSelection = (lawShortName: string, articleNumber: string | number) => {
+    // Ignorar artículos sin preguntas
+    const articles = availableArticlesByLaw.get(lawShortName) || [];
+    const article = articles.find((a: ArticleItem) => a.article_number === articleNumber);
+    if (article && article.question_count === 0) return;
+
     // Limpiar filtro de títulos cuando se selecciona filtro de artículos
     setSelectedSectionFilters([]);
 
@@ -854,8 +859,10 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
           newMap.set(lawShortName, articles);
           return newMap;
         });
-        // Seleccionar todos después de cargar
-        const allArticles = new Set<string | number>(articles.map((art: ArticleItem) => art.article_number));
+        // Seleccionar todos después de cargar (solo con preguntas)
+        const allArticles = new Set<string | number>(
+          articles.filter((art: ArticleItem) => art.question_count > 0).map((art: ArticleItem) => art.article_number)
+        );
         setSelectedArticlesByLaw(prev => {
           const newMap = new Map(prev);
           newMap.set(lawShortName, allArticles);
@@ -866,7 +873,9 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
     }
 
     const articles = availableArticlesByLaw.get(lawShortName) || [];
-    const allArticles = new Set<string | number>(articles.map((art: ArticleItem) => art.article_number));
+    const allArticles = new Set<string | number>(
+      articles.filter((art: ArticleItem) => art.question_count > 0).map((art: ArticleItem) => art.article_number)
+    );
     setSelectedArticlesByLaw(prev => {
       const newMap = new Map(prev);
       newMap.set(lawShortName, allArticles);
@@ -2243,27 +2252,35 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
                   {/* Lista de artículos */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-96 overflow-y-auto">
                     {(availableArticlesByLaw.get(currentLawForArticles) || []).map((article) => {
-                      const isSelected = selectedArticlesByLaw.get(currentLawForArticles)?.has(article.article_number) || false;
+                      const hasQuestions = article.question_count > 0;
+                      const isSelected = hasQuestions && (selectedArticlesByLaw.get(currentLawForArticles)?.has(article.article_number) || false);
                       return (
                         <label
                           key={article.article_number}
-                          className={`flex items-center space-x-2 p-2 rounded border cursor-pointer transition-colors ${
-                            isSelected ? 'bg-blue-50 border-blue-200' : 'bg-white hover:bg-gray-50'
+                          className={`flex items-center space-x-2 p-2 rounded border transition-colors ${
+                            !hasQuestions
+                              ? 'opacity-50 cursor-not-allowed bg-gray-50 border-gray-200'
+                              : isSelected
+                                ? 'bg-blue-50 border-blue-200 cursor-pointer'
+                                : 'bg-white hover:bg-gray-50 cursor-pointer'
                           }`}
                         >
                           <input
                             type="checkbox"
                             checked={isSelected}
+                            disabled={!hasQuestions}
                             onChange={() => toggleArticleSelection(currentLawForArticles, article.article_number)}
                             className="text-blue-600 focus:ring-blue-500"
                           />
                           <div className="flex-1">
-                            <div className="font-medium text-sm text-gray-900">
+                            <div className={`font-medium text-sm ${hasQuestions ? 'text-gray-900' : 'text-gray-400'}`}>
                               Art. {article.article_number}
-                              {article.title && <span className="font-normal text-gray-600"> - {article.title}</span>}
+                              {article.title && <span className={`font-normal ${hasQuestions ? 'text-gray-600' : 'text-gray-400'}`}> - {article.title}</span>}
                             </div>
-                            <div className="text-xs text-gray-600">
-                              {article.question_count} pregunta{article.question_count > 1 ? 's' : ''}
+                            <div className={`text-xs ${hasQuestions ? 'text-gray-600' : 'text-gray-400 italic'}`}>
+                              {hasQuestions
+                                ? `${article.question_count} pregunta${article.question_count > 1 ? 's' : ''}`
+                                : 'Sin preguntas aún'}
                             </div>
                           </div>
                         </label>
@@ -2274,7 +2291,7 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
                   {/* Resumen */}
                   <div className="mt-4 p-3 bg-blue-50 rounded-lg">
                     <div className="text-sm text-blue-800">
-                      ✓ {selectedArticlesByLaw.get(currentLawForArticles)?.size || 0} de {availableArticlesByLaw.get(currentLawForArticles)?.length || 0} artículos seleccionados
+                      ✓ {selectedArticlesByLaw.get(currentLawForArticles)?.size || 0} de {(availableArticlesByLaw.get(currentLawForArticles) || []).filter(art => art.question_count > 0).length} artículos seleccionados
                     </div>
                     <div className="text-xs text-blue-600 mt-1">
                       Preguntas estimadas: {(availableArticlesByLaw.get(currentLawForArticles) || [])
