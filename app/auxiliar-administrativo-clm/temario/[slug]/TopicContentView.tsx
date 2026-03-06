@@ -1,5 +1,5 @@
-// app/auxiliar-administrativo-canarias/temario/[slug]/TopicContentView.tsx
-// Reuses the CyL TopicContentView with Canarias-specific block ranges
+// app/auxiliar-administrativo-clm/temario/[slug]/TopicContentView.tsx
+// Reuses the CyL TopicContentView with CLM-specific block ranges
 'use client'
 
 import { useState } from 'react'
@@ -17,14 +17,14 @@ const topicVideoCourses: Record<number, {
   totalDurationMinutes: number
   description: string
 }> = {
-  37: {
+  14: {
     slug: 'windows-11',
     title: 'Curso de Windows 11',
     totalLessons: 3,
     totalDurationMinutes: 192,
     description: '38 lecciones en video: escritorio, configuracion, herramientas y utilidades de Windows 11.',
   },
-  38: {
+  15: {
     slug: 'windows-11',
     title: 'Curso de Windows 11',
     totalLessons: 3,
@@ -38,17 +38,17 @@ interface TopicContentViewProps {
   oposicion?: string
 }
 
-// Determinar el bloque segun el numero de tema (Auxiliar Administrativo Canarias)
+// Determinar el bloque segun el numero de tema (Auxiliar Administrativo CLM)
 function getBlockInfo(topicNumber: number): { block: string; displayNum: number } {
-  if (topicNumber >= 1 && topicNumber <= 20) {
-    return { block: 'Parte General', displayNum: topicNumber }
-  } else if (topicNumber >= 21 && topicNumber <= 40) {
-    return { block: 'Parte Practica', displayNum: topicNumber }
+  if (topicNumber >= 1 && topicNumber <= 12) {
+    return { block: 'Organizacion Administrativa', displayNum: topicNumber }
+  } else if (topicNumber >= 13 && topicNumber <= 24) {
+    return { block: 'Ofimatica', displayNum: topicNumber }
   }
   return { block: '', displayNum: topicNumber }
 }
 
-export default function TopicContentView({ content, oposicion = 'auxiliar-administrativo-canarias' }: TopicContentViewProps) {
+export default function TopicContentView({ content, oposicion = 'auxiliar-administrativo-clm' }: TopicContentViewProps) {
   const [expandedLaws, setExpandedLaws] = useState<Set<string>>(
     new Set(content.laws.map((l) => l.law.id))
   )
@@ -290,7 +290,7 @@ export default function TopicContentView({ content, oposicion = 'auxiliar-admini
               </p>
               <div className="space-y-3">
                 <Link
-                  href="/login?oposicion=auxiliar_administrativo_canarias&return_to=/auxiliar-administrativo-canarias/temario"
+                  href="/login?oposicion=auxiliar_administrativo_clm&return_to=/auxiliar-administrativo-clm/temario"
                   className="block w-full py-3 px-4 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors"
                 >
                   Registrarse gratis

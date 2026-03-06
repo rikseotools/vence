@@ -16,6 +16,20 @@ const topicVideoCourses: Record<number, {
   totalDurationMinutes: number
   description: string
 }> = {
+  602: {
+    slug: 'windows-11',
+    title: 'Curso de Windows 11',
+    totalLessons: 3,
+    totalDurationMinutes: 192,
+    description: '38 lecciones en video: escritorio, configuración, herramientas y utilidades de Windows 11.',
+  },
+  603: {
+    slug: 'windows-11',
+    title: 'Curso de Windows 11',
+    totalLessons: 3,
+    totalDurationMinutes: 192,
+    description: '38 lecciones en video: escritorio, configuración, herramientas y utilidades de Windows 11.',
+  },
   604: {
     slug: 'word-365',
     title: 'Curso de Word 365',
