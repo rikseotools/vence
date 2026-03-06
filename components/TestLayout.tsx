@@ -1,4 +1,4 @@
-// components/TestLayout.js - FIX COMPLETO ANTI-DUPLICADOS
+// components/TestLayout.tsx - FIX COMPLETO ANTI-DUPLICADOS
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
@@ -13,12 +13,13 @@ import InteractiveBreadcrumbs from './InteractiveBreadcrumbs'
 import MarkdownExplanation from './MarkdownExplanation'
 
 // Imports modularizados
-import { 
-  getDeviceInfo, 
-  createUserSession, 
-  createDetailedTestSession, 
-  updateTestScore 
+import {
+  getDeviceInfo,
+  createUserSession,
+  createDetailedTestSession,
+  updateTestScore
 } from '../utils/testSession'
+import type { TestSession, UserSession } from '../utils/testSession'
 import {
   saveDetailedAnswer,
   saveDetailedAnswerWithRetry,
@@ -39,8 +40,27 @@ import AdSenseComponent from './AdSenseComponent'
 import UpgradeLimitModal from './UpgradeLimitModal'
 import { useUserOposicion } from './useUserOposicion'
 
+import type {
+  TestQuestion,
+  TestLayoutProps,
+  TestLayoutConfig,
+  AdaptiveCatalog,
+  AdaptiveQuestionsInput,
+  AnsweredQuestionEntry,
+  DetailedAnswerEntry,
+  HotArticleInfo,
+  ValidateAnswerResponse,
+  CompactStats,
+  HotArticleOposicionMap,
+} from './TestLayout.types'
+
+// Type guard para distinguir entre TestQuestion[] y AdaptiveQuestionsInput
+function isAdaptiveInput(q: TestQuestion[] | AdaptiveQuestionsInput): q is AdaptiveQuestionsInput {
+  return !Array.isArray(q) && (q as AdaptiveQuestionsInput).isAdaptive === true
+}
+
 // Helper para convertir índice de respuesta a letra (0='A', 1='B', etc.)
-function answerToLetter(index) {
+function answerToLetter(index: number | null | undefined): string {
   if (index === null || index === undefined) return '?'
   const letters = ['A', 'B', 'C', 'D']
   return letters[index] || '?'
@@ -48,7 +68,7 @@ function answerToLetter(index) {
 
 // 🏛️ Helper para verificar si una pregunta oficial es de la oposición del usuario
 // MEJORADO: Usa exam_position (estructurado) como primera opción, fallback a exam_source (texto libre)
-function isOfficialForUserOposicion(examSource, userOposicionSlug, examPosition = null) {
+function isOfficialForUserOposicion(examSource: string | null, userOposicionSlug: string | null, examPosition: string | null = null): boolean {
   if (!userOposicionSlug) return true // Si no hay oposición de usuario, mostrar todo
 
   const normalizedUserSlug = userOposicionSlug.toLowerCase().replace(/-/g, '_')
@@ -57,7 +77,7 @@ function isOfficialForUserOposicion(examSource, userOposicionSlug, examPosition 
   if (examPosition) {
     const normalizedExamPosition = examPosition.toLowerCase()
     // Mapeo de exam_position a slugs de URL válidos
-    const positionToSlugs = {
+    const positionToSlugs: Record<string, string[]> = {
       'auxiliar_administrativo_estado': ['auxiliar_administrativo', 'auxiliar_administrativo_estado'],
       'auxiliar_administrativo': ['auxiliar_administrativo', 'auxiliar_administrativo_estado'],
       'tramitacion_procesal': ['tramitacion_procesal'],
@@ -102,7 +122,7 @@ function isOfficialForUserOposicion(examSource, userOposicionSlug, examPosition 
 
 // 🏛️ Helper para formatear exam_source según la oposición del usuario
 // Evita mostrar "Tramitación Procesal" a usuarios de Auxiliar Administrativo
-function formatExamSource(examSource, userOposicionSlug) {
+function formatExamSource(examSource: string, userOposicionSlug: string | null): string | null {
   if (!examSource) return null
 
   // Mapeo de patrones a slugs de oposición
@@ -148,7 +168,7 @@ const NON_LEGAL_CONTENT = [
 ]
 
 // 🔍 FUNCIÓN: Verificar si es contenido legal (artículo de ley real)
-function isLegalArticle(lawShortName) {
+function isLegalArticle(lawShortName: string | null): boolean {
   if (!lawShortName) return false
   return !NON_LEGAL_CONTENT.includes(lawShortName)
 }
@@ -157,7 +177,7 @@ function isLegalArticle(lawShortName) {
 // Mapeo de slugs de URL a valores de target_oposicion en hot_articles
 // Mapeo de slugs de oposición del usuario a valores válidos en hot_articles.target_oposicion
 // Los valores en BD están normalizados con guiones: auxiliar-administrativo-estado, administrativo-estado, etc.
-const HOT_ARTICLE_OPOSICION_MAP = {
+const HOT_ARTICLE_OPOSICION_MAP: HotArticleOposicionMap = {
   // Auxiliar Administrativo del Estado (C2)
   'auxiliar-administrativo-estado': ['auxiliar-administrativo-estado'],
   'auxiliar_administrativo_estado': ['auxiliar-administrativo-estado'],
@@ -184,7 +204,7 @@ const HOT_ARTICLE_OPOSICION_MAP = {
   'gestion_procesal': ['gestion-estado'],
 }
 
-function isHotArticleForUserOposicion(targetOposicion, userOposicionSlug) {
+function isHotArticleForUserOposicion(targetOposicion: string | null, userOposicionSlug: string | null): boolean {
   // Si no hay target_oposicion definido, es válido para todas (legacy)
   if (!targetOposicion) return true
   // Si no hay oposición de usuario, mostrar todos
@@ -198,7 +218,7 @@ function isHotArticleForUserOposicion(targetOposicion, userOposicionSlug) {
 
 // 🔒 FUNCIÓN: Validar respuesta de forma segura via API
 // Sin fallback local: correct_option no se envía al cliente
-async function validateAnswerSecure(questionId, userAnswer) {
+async function validateAnswerSecure(questionId: string, userAnswer: number): Promise<ValidateAnswerResponse> {
   // Si no hay questionId válido, devolver error
   if (!questionId || typeof questionId !== 'string' || questionId.length < 10) {
     console.warn('⚠️ [SecureAnswer] Sin questionId válido')
@@ -246,7 +266,7 @@ async function validateAnswerSecure(questionId, userAnswer) {
       console.error(`❌ [SecureAnswer] Error llamando API (intento ${attempt + 1}/2):`, error)
       // Si es el último intento, devolver error
       if (attempt === 1) {
-        return { success: false, error: 'API_ERROR', message: error.message }
+        return { success: false, error: 'API_ERROR', message: (error as Error).message }
       }
     }
   }
@@ -261,7 +281,7 @@ export default function TestLayout({
   config,
   questions,
   children
-}) {
+}: TestLayoutProps) {
   const { user, loading: authLoading, supabase, isPremium } = useAuth()
   const { setQuestionContext, clearQuestionContext } = useQuestionContext()
   const { notifyTestCompletion } = useTestCompletion()
@@ -276,11 +296,11 @@ export default function TestLayout({
   } = useDailyQuestionLimit()
 
   // 🤖 Detección de bots y análisis de comportamiento (solo usuarios autenticados)
-  const { isBot, botScore } = useBotDetection(user?.id)
+  const { isBot, botScore } = useBotDetection(user?.id ?? null)
   const {
     suspicionScore,
     recordAnswer: recordBehavior
-  } = useBehaviorAnalysis(user?.id)
+  } = useBehaviorAnalysis(user?.id ?? null)
 
   // 📊 Tracking de interacciones de usuario
   const { trackTestAction } = useInteractionTracker()
@@ -290,68 +310,68 @@ export default function TestLayout({
   const userOposicionSlug = userOposicion?.slug || null
 
   // Estados del test básicos
-  const [currentQuestion, setCurrentQuestion] = useState(0)
-  const [selectedAnswer, setSelectedAnswer] = useState(null)
-  const [showResult, setShowResult] = useState(false)
-  const [verifiedCorrectAnswer, setVerifiedCorrectAnswer] = useState(null) // 🔒 Respuesta correcta validada por API
-  const [score, setScore] = useState(0)
-  const [answeredQuestions, setAnsweredQuestions] = useState([])
-  const [startTime, setStartTime] = useState(Date.now())
-  
+  const [currentQuestion, setCurrentQuestion] = useState<number>(0)
+  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null)
+  const [showResult, setShowResult] = useState<boolean>(false)
+  const [verifiedCorrectAnswer, setVerifiedCorrectAnswer] = useState<number | null>(null) // 🔒 Respuesta correcta validada por API
+  const [score, setScore] = useState<number>(0)
+  const [answeredQuestions, setAnsweredQuestions] = useState<AnsweredQuestionEntry[]>([])
+  const [startTime, setStartTime] = useState<number>(Date.now())
+
   // Estado del modo adaptativo
-  const [isAdaptiveMode, setIsAdaptiveMode] = useState(false)
-  
+  const [isAdaptiveMode, setIsAdaptiveMode] = useState<boolean>(false)
+
   // Estados de tracking avanzado
-  const [questionStartTime, setQuestionStartTime] = useState(Date.now())
-  const [firstInteractionTime, setFirstInteractionTime] = useState(null)
-  const [interactionCount, setInteractionCount] = useState(0)
-  const [confidenceLevel, setConfidenceLevel] = useState(null)
-  const [detailedAnswers, setDetailedAnswers] = useState([])
-  
+  const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now())
+  const [firstInteractionTime, setFirstInteractionTime] = useState<number | null>(null)
+  const [interactionCount, setInteractionCount] = useState<number>(0)
+  const [confidenceLevel, setConfidenceLevel] = useState<string | null>(null)
+  const [detailedAnswers, setDetailedAnswers] = useState<DetailedAnswerEntry[]>([])
+
   // Estados de sesión - SIMPLIFICADOS
-  const [currentTestSession, setCurrentTestSession] = useState(null)
-  const [userSession, setUserSession] = useState(null)
-  const [saveStatus, setSaveStatus] = useState(null)
-  
+  const [currentTestSession, setCurrentTestSession] = useState<TestSession | null>(null)
+  const [userSession, setUserSession] = useState<UserSession | null>(null)
+  const [saveStatus, setSaveStatus] = useState<'saving' | 'saved' | 'error' | null>(null)
+
   // Control explícito de finalización
-  const [isExplicitlyCompleted, setIsExplicitlyCompleted] = useState(false)
-  
+  const [isExplicitlyCompleted, setIsExplicitlyCompleted] = useState<boolean>(false)
+
   // Estado para notificación de guardado exitoso
-  const [showSuccessMessage, setShowSuccessMessage] = useState(false)
-  const [successMessage, setSuccessMessage] = useState('')
-  
+  const [showSuccessMessage, setShowSuccessMessage] = useState<boolean>(false)
+  const [successMessage, setSuccessMessage] = useState<string>('')
+
   // Estados para hot articles
-  const [hotArticleInfo, setHotArticleInfo] = useState(null)
-  const [showHotAlert, setShowHotAlert] = useState(false)
+  const [hotArticleInfo, setHotArticleInfo] = useState<HotArticleInfo | null>(null)
+  const [showHotAlert, setShowHotAlert] = useState<boolean>(false)
 
   // 📤 Estado para compartir pregunta
-  const [showShareQuestion, setShowShareQuestion] = useState(false)
+  const [showShareQuestion, setShowShareQuestion] = useState<boolean>(false)
 
   // 🧠 Estados para modo adaptativo
-  const [adaptiveMode, setAdaptiveMode] = useState(false)
-  const [activeQuestions, setActiveQuestions] = useState([])
-  const [questionPool, setQuestionPool] = useState([])
-  const [adaptiveCatalog, setAdaptiveCatalog] = useState(null)
-  const [currentDifficulty, setCurrentDifficulty] = useState('medium')
-  const [showCuriosityDetails, setShowCuriosityDetails] = useState(false)
-  const [currentQuestionUuid, setCurrentQuestionUuid] = useState(null)
-  const [lastAdaptedQuestion, setLastAdaptedQuestion] = useState(-999) // 🔥 Evitar adaptaciones múltiples seguidas
+  const [adaptiveMode, setAdaptiveMode] = useState<boolean>(false)
+  const [activeQuestions, setActiveQuestions] = useState<TestQuestion[]>([])
+  const [questionPool, setQuestionPool] = useState<TestQuestion[]>([])
+  const [adaptiveCatalog, setAdaptiveCatalog] = useState<AdaptiveCatalog | null>(null)
+  const [currentDifficulty, setCurrentDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium')
+  const [showCuriosityDetails, setShowCuriosityDetails] = useState<boolean>(false)
+  const [currentQuestionUuid, setCurrentQuestionUuid] = useState<string | null>(null)
+  const [lastAdaptedQuestion, setLastAdaptedQuestion] = useState<number>(-999) // 🔥 Evitar adaptaciones múltiples seguidas
 
   // Estados anti-duplicados
-  const [processingAnswer, setProcessingAnswer] = useState(false)
-  const [validationError, setValidationError] = useState(null)
-  const [lastProcessedAnswer, setLastProcessedAnswer] = useState(null)
+  const [processingAnswer, setProcessingAnswer] = useState<boolean>(false)
+  const [validationError, setValidationError] = useState<string | null>(null)
+  const [lastProcessedAnswer, setLastProcessedAnswer] = useState<string | null>(null)
 
   // Estado para configuración de scroll automático
-  const [autoScrollEnabled, setAutoScrollEnabled] = useState(true)
-  const [showScrollFeedback, setShowScrollFeedback] = useState(false)
+  const [autoScrollEnabled, setAutoScrollEnabled] = useState<boolean>(true)
+  const [showScrollFeedback, setShowScrollFeedback] = useState<boolean>(false)
 
   // Refs para tracking y control
-  const pageLoadTime = useRef(Date.now())
-  const explanationRef = useRef(null)
-  const questionHeaderRef = useRef(null)
-  const sessionCreationRef = useRef(new Set())
-  const registrationProcessingRef = useRef(new Set())
+  const pageLoadTime = useRef<number>(Date.now())
+  const explanationRef = useRef<HTMLDivElement | null>(null)
+  const questionHeaderRef = useRef<HTMLDivElement | null>(null)
+  const sessionCreationRef = useRef<Set<string>>(new Set())
+  const registrationProcessingRef = useRef<Set<string>>(new Set())
 
   // Hook para obtener la URL actual
   const pathname = usePathname()
@@ -361,12 +381,15 @@ export default function TestLayout({
 
   // ✅ MOVER CÁLCULO DE ESTADOS DERIVADOS DESPUÉS DE DECLARACIONES
   // Estados calculados - MOVIDO AQUÍ PARA EVITAR ERRORES DE ORDEN
-  const effectiveQuestions = adaptiveMode ? activeQuestions : questions
-  const isTestCompleted = isExplicitlyCompleted || (currentQuestion === effectiveQuestions?.length - 1 && showResult)
-  const currentQ = effectiveQuestions?.[currentQuestion]
+  // Type narrowing: en modo adaptativo usa activeQuestions (state), en normal usa questions (si es array)
+  const effectiveQuestions: TestQuestion[] = adaptiveMode
+    ? activeQuestions
+    : (Array.isArray(questions) ? questions : questions.activeQuestions)
+  const isTestCompleted = isExplicitlyCompleted || (currentQuestion === effectiveQuestions.length - 1 && showResult)
+  const currentQ = effectiveQuestions[currentQuestion] as TestQuestion | undefined
 
   // Helper para formatear nombre de tema (101 → "Bloque II - Tema 1", 1 → "Tema 1")
-  const formatTemaName = (temaNumber) => {
+  const formatTemaName = (temaNumber: number | null | undefined): string => {
     if (!temaNumber) return 'Tema'
     if (temaNumber >= 101) {
       return `Bloque II - Tema ${temaNumber - 100}`
@@ -378,7 +401,7 @@ export default function TestLayout({
   const PENDING_TEST_KEY = 'vence_pending_test'
 
   // Guardar estado del test en localStorage (solo para usuarios no logueados)
-  const savePendingTestState = (newAnsweredQuestions, newScore, newDetailedAnswers) => {
+  const savePendingTestState = (newAnsweredQuestions: AnsweredQuestionEntry[], newScore: number, newDetailedAnswers: DetailedAnswerEntry[]): void => {
     if (user) return // No guardar si ya está logueado
 
     try {
@@ -410,7 +433,7 @@ export default function TestLayout({
   }
 
   // Limpiar test pendiente (cuando se completa o el usuario se loguea)
-  const clearPendingTest = () => {
+  const clearPendingTest = (): void => {
     try {
       localStorage.removeItem(PENDING_TEST_KEY)
       console.log('🗑️ Test pendiente eliminado de localStorage')
@@ -449,15 +472,15 @@ export default function TestLayout({
 
   // 🧠 CONFIGURAR CATÁLOGO ADAPTATIVO SI ESTÁ DISPONIBLE
   useEffect(() => {
-    if (questions?.adaptiveCatalog && questions?.isAdaptive) {
+    if (isAdaptiveInput(questions) && questions.adaptiveCatalog) {
       console.log('🧠 DETECTADO CATÁLOGO ADAPTATIVO - Configurando sistema inteligente')
       setAdaptiveCatalog(questions.adaptiveCatalog)
       setAdaptiveMode(true)
 
       console.log('🧠 Catálogo recibido:', {
-        neverSeenEasy: questions.adaptiveCatalog.neverSeen.easy.length,
-        neverSeenMedium: questions.adaptiveCatalog.neverSeen.medium.length,
-        neverSeenHard: questions.adaptiveCatalog.neverSeen.hard.length
+        neverSeenEasy: questions.adaptiveCatalog.neverSeen.easy?.length ?? 0,
+        neverSeenMedium: questions.adaptiveCatalog.neverSeen.medium?.length ?? 0,
+        neverSeenHard: questions.adaptiveCatalog.neverSeen.hard?.length ?? 0
       })
     }
   }, [questions])
@@ -465,7 +488,7 @@ export default function TestLayout({
   // Validación de props al inicio
   useEffect(() => {
 
-    if (!questions || questions.length === 0) {
+    if (!questions || (Array.isArray(questions) && questions.length === 0)) {
       console.error('❌ TestLayout: No hay preguntas disponibles')
       return
     }
@@ -477,7 +500,7 @@ export default function TestLayout({
     }
 
     // 🧠 Inicializar modo adaptativo si detectado
-    if (questions.isAdaptive) {
+    if (isAdaptiveInput(questions)) {
       console.log('🧠 Modo adaptativo disponible (pool cargado)')
       setAdaptiveMode(true)
       setIsAdaptiveMode(false) // 🔥 NO MOSTRAR INDICADOR AL INICIO
@@ -489,7 +512,7 @@ export default function TestLayout({
       // Modo normal
       setAdaptiveMode(false)
       setIsAdaptiveMode(false)
-      setActiveQuestions(questions)
+      setActiveQuestions(questions as TestQuestion[])
       setQuestionPool([])
     }
 
@@ -545,10 +568,10 @@ export default function TestLayout({
         // 🔒 Solo exponer la respuesta correcta después de responder
         correct: showResult ? verifiedCorrectAnswer : null,
         explanation: currentQ.explanation,
-        law: currentQ.law || currentQ.article?.law?.short_name || currentQ.article?.law?.name || currentQ.article?.law_short_name || currentQ.article?.law_name,
+        law: (currentQ.law || currentQ.article?.law?.short_name || currentQ.article?.law?.name || currentQ.article?.law_short_name || currentQ.article?.law_name) as string | null,
         article_number: currentQ.article_number || currentQ.article?.article_number || currentQ.article?.number,
-        difficulty: currentQ.difficulty || currentQ.metadata?.difficulty,
-        source: currentQ.source || currentQ.metadata?.exam_source
+        difficulty: (currentQ.difficulty || currentQ.metadata?.difficulty) as string | null,
+        source: (currentQ.source || currentQ.metadata?.exam_source) as string | null
       })
     }
 
@@ -559,7 +582,7 @@ export default function TestLayout({
   }, [currentQuestion, effectiveQuestions, setQuestionContext, clearQuestionContext, showResult, verifiedCorrectAnswer])
 
   // Guardar respuestas previas al registrarse
-  const savePreviousAnswersOnRegistration = async (userId, previousAnswers) => {
+  const savePreviousAnswersOnRegistration = async (userId: string, previousAnswers: DetailedAnswerEntry[]): Promise<boolean> => {
     try {
       
       if (previousAnswers.length === 0) {
@@ -584,8 +607,8 @@ export default function TestLayout({
 
       try {
         // Crear sesión de test - usar activeQuestions si es modo adaptativo
-        const questionsToSave = questions.isAdaptive ? questions.activeQuestions : questions
-        const session = await createDetailedTestSession(userId, tema, testNumber, questionsToSave, config, startTime, pageLoadTime.current)
+        const questionsToSave = isAdaptiveInput(questions) ? questions.activeQuestions : questions
+        const session = await createDetailedTestSession(userId, tema, testNumber, questionsToSave as any, config as any, startTime, pageLoadTime.current)
         if (!session) {
           console.error('❌ No se pudo crear sesión para respuestas previas')
           return false
@@ -656,7 +679,7 @@ export default function TestLayout({
   }
 
   // Función para verificar artículos hot
-  const checkHotArticle = async (articleId, userId, isOfficialExam = false) => {
+  const checkHotArticle = async (articleId: string, userId: string, isOfficialExam: boolean = false): Promise<void> => {
     if (!articleId || !userId) return
 
     try {
@@ -713,7 +736,7 @@ export default function TestLayout({
   }
 
   // Función para hacer scroll suave al resultado
-  const scrollToResult = () => {
+  const scrollToResult = (): void => {
     if (!autoScrollEnabled) return // 🎯 Respetar preferencia del usuario
 
     setTimeout(() => {
@@ -729,7 +752,7 @@ export default function TestLayout({
   }
 
   // 🎯 Toggle para activar/desactivar scroll automático
-  const toggleAutoScroll = () => {
+  const toggleAutoScroll = (): void => {
     const newValue = !autoScrollEnabled
     setAutoScrollEnabled(newValue)
     localStorage.setItem('autoScrollEnabled', String(newValue))
@@ -743,7 +766,7 @@ export default function TestLayout({
   }
 
   // 🔄 NUEVA FUNCIÓN: Guardar respuestas faltantes en segundo plano
-  const saveAnswersInBackground = async (sessionId, allAnswers, questions, temaId, testStartTime) => {
+  const saveAnswersInBackground = async (sessionId: string, allAnswers: DetailedAnswerEntry[], questions: TestQuestion[], temaId: number, testStartTime: number): Promise<void> => {
     console.log('💾 ═══════════════════════════════════════════')
     console.log('💾 GUARDADO EN SEGUNDO PLANO INICIADO')
     console.log('💾 ═══════════════════════════════════════════')
@@ -755,7 +778,7 @@ export default function TestLayout({
         .select('question_order')
         .eq('test_id', sessionId)
 
-      const savedOrders = new Set(savedQuestions?.map(q => q.question_order) || [])
+      const savedOrders = new Set<number>(savedQuestions?.map((q: any) => q.question_order as number) || [])
       console.log(`📊 Question_orders ya guardados:`, Array.from(savedOrders).sort((a, b) => a - b))
 
       let savedCount = 0
@@ -832,15 +855,14 @@ export default function TestLayout({
       console.log(`   - Errores: ${errorCount}`)
       console.log('💾 ═══════════════════════════════════════════')
 
-      return { success: true, savedCount, errorCount }
+      // return value not used — fire and forget
     } catch (error) {
       console.error('❌ Error en guardado en segundo plano:', error)
-      return { success: false, error }
     }
   }
 
   // Compartir rápido sin abrir modal
-  const handleQuickShare = async (platform) => {
+  const handleQuickShare = async (platform: string): Promise<void> => {
     const currentQ = effectiveQuestions?.[currentQuestion]
     if (!currentQ) return
 
@@ -899,7 +921,7 @@ export default function TestLayout({
   }
 
   // Manejar respuesta con protección anti-duplicados
-  const handleAnswerClick = async (answerIndex) => {
+  const handleAnswerClick = async (answerIndex: number): Promise<void> => {
     if (showResult || processingAnswer) return
 
     // Verificar limite diario para usuarios FREE
@@ -1006,7 +1028,7 @@ export default function TestLayout({
         // 🔒 Guardar respuesta correcta verificada para el UI
         // IMPORTANTE: Setear verifiedCorrectAnswer ANTES de showResult
         // para evitar parpadeo de emoticono incorrecto
-        setVerifiedCorrectAnswer(apiCorrectAnswer)
+        setVerifiedCorrectAnswer(apiCorrectAnswer ?? null)
         setShowResult(true)
         scrollToResult()
 
@@ -1041,10 +1063,10 @@ export default function TestLayout({
           interactionCount
         )
         
-        const newAnsweredQuestions = [...answeredQuestions, {
+        const newAnsweredQuestions: AnsweredQuestionEntry[] = [...answeredQuestions, {
           question: currentQuestion,
           selectedAnswer: answerIndex,
-          correct: isCorrect,
+          correct: !!isCorrect,
           timestamp: new Date().toISOString()
         }]
         
@@ -1148,7 +1170,7 @@ export default function TestLayout({
               sessionCreationRef.current.add(sessionKey)
               
               try {
-                session = await createDetailedTestSession(user.id, tema, testNumber, effectiveQuestions, config, startTime, pageLoadTime.current)
+                session = await createDetailedTestSession(user.id, tema, testNumber, effectiveQuestions as any, config as any, startTime, pageLoadTime.current)
                 if (session) {
                   setCurrentTestSession(session)
                   console.log('✅ Nueva sesión PROTEGIDA creada:', session.id)
@@ -1175,11 +1197,12 @@ export default function TestLayout({
               scrollEvents: testTracker.scrollEvents
             })
             // 🔴 FIX CRÍTICO: Verificar success === true, no solo question_id
-            if (saveSuccess && saveSuccess.success === true && saveSuccess.question_id) {
-              setCurrentQuestionUuid(saveSuccess.question_id)
+            const saveResult = saveSuccess as any
+            if (saveResult && saveResult.success === true && saveResult.question_id) {
+              setCurrentQuestionUuid(saveResult.question_id)
               // Guardar en localStorage para detección de feedback
               try {
-                localStorage.setItem('currentQuestionId', saveSuccess.question_id)
+                localStorage.setItem('currentQuestionId', saveResult.question_id)
               } catch (e) {
                 console.warn('⚠️ No se pudo guardar question_id en localStorage:', e)
               }
@@ -1233,7 +1256,7 @@ export default function TestLayout({
           setIsExplicitlyCompleted(true)
 
           // 📊 Tracking de test completado
-          trackTestAction('test_completed', null, {
+          trackTestAction('test_completed', undefined, {
             totalQuestions: effectiveQuestions.length,
             correctAnswers: newScore,
             accuracy: Math.round((newScore / effectiveQuestions.length) * 100),
@@ -1284,7 +1307,7 @@ export default function TestLayout({
               testTracker.interactionEvents,
               userSession
             )
-            setSaveStatus(result.status)
+            setSaveStatus(result.status as 'saving' | 'saved' | 'error')
             console.log('✅ Test completado en BD:', result.status)
 
             // 🔓 NOTIFICAR COMPLETION PARA SISTEMA DE DESBLOQUEO
@@ -1308,9 +1331,9 @@ export default function TestLayout({
         }
 
         // Hot article check - solo para contenido legal (no informática)
-        const questionLawName = currentQ.law_short_name || currentQ.article?.law_short_name || currentQ.law
+        const questionLawName = (currentQ.law_short_name || currentQ.article?.law_short_name || currentQ.law) as string | null
         if (user && currentQ.primary_article_id && isLegalArticle(questionLawName)) {
-          await checkHotArticle(currentQ.primary_article_id, user.id, currentQ.is_official_exam || currentQ.metadata?.is_official_exam)
+          await checkHotArticle(currentQ.primary_article_id, user.id, !!(currentQ.is_official_exam || currentQ.metadata?.is_official_exam))
         }
         
       } catch (error) {
@@ -1326,7 +1349,7 @@ export default function TestLayout({
   }
 
   // Navegación a siguiente pregunta con scroll específico
-  const handleNextQuestion = () => {
+  const handleNextQuestion = (): void => {
     // Prevenir navegación si ya está completado
     if (isExplicitlyCompleted) {
       console.warn('⚠️ Test ya completado, ignorando navegación')
@@ -1389,7 +1412,7 @@ export default function TestLayout({
   }
 
   // Función para calcular estadísticas compactas
-  const calculateCompactStats = () => {
+  const calculateCompactStats = (): CompactStats => {
     const totalTime = Math.floor((Date.now() - startTime) / 1000)
     const avgTimePerQuestion = Math.round(totalTime / effectiveQuestions.length)
     const percentage = Math.round((score / effectiveQuestions.length) * 100)
@@ -1400,7 +1423,7 @@ export default function TestLayout({
     const slowestTime = timeStats.length > 0 ? Math.max(...timeStats) : 0
     
     // Análisis de confianza
-    const confidenceStats = detailedAnswers.reduce((acc, answer) => {
+    const confidenceStats = detailedAnswers.reduce<Record<string, number>>((acc, answer) => {
       const conf = answer.confidence || 'unknown'
       acc[conf] = (acc[conf] || 0) + 1
       return acc
@@ -1438,7 +1461,7 @@ export default function TestLayout({
   }
 
   // Función para formatear tiempo
-  const formatTime = (seconds) => {
+  const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
     if (mins === 0) return `${secs}s`
@@ -1523,7 +1546,7 @@ export default function TestLayout({
   }, [currentQuestion])
 
   // 🧠 Función INTELIGENTE para adaptar dificultad respetando nunca vistas
-  const adaptDifficulty = (direction = 'easier') => {
+  const adaptDifficulty = (direction: 'easier' | 'harder' = 'easier'): void => {
     try {
       if (!adaptiveCatalog) {
         console.log('🧠 Sin catálogo adaptativo - usando sistema legacy')
@@ -1541,7 +1564,7 @@ export default function TestLayout({
       console.log(`🔍 Preguntas ya en test: ${existingQuestionIds.size} IDs`)
 
       // Determinar dificultad objetivo
-      let targetDifficulty = direction === 'easier' ? 'easy' : 'medium'
+      let targetDifficulty: 'easy' | 'medium' | 'hard' = direction === 'easier' ? 'easy' : 'medium'
 
       console.log(`🧠 ADAPTACIÓN INTELIGENTE: Necesita preguntas ${targetDifficulty}`)
 
@@ -1624,13 +1647,13 @@ export default function TestLayout({
   }
   
   // 🔄 Sistema legacy para compatibilidad
-  const adaptDifficultyLegacy = (direction) => {
+  const adaptDifficultyLegacy = (direction: 'easier' | 'harder'): void => {
     console.log('🧠 Usando sistema adaptativo legacy')
     // Aquí iría el código original si es necesario
   }
 
   // Verificación de datos antes de renderizar
-  if (!questions || questions.length === 0) {
+  if (!questions || (Array.isArray(questions) && questions.length === 0)) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
         <div className="text-center">
@@ -1659,7 +1682,7 @@ export default function TestLayout({
   }
 
   // Componente de notificación hot article
-  const HotArticleNotification = () => {
+  const HotArticleNotification = (): React.ReactElement | null => {
 
     if (!showHotAlert || !hotArticleInfo) return null
 
@@ -1675,30 +1698,30 @@ export default function TestLayout({
           <div className="flex-1">
             {/* Título principal según tipo */}
             <div className="font-bold mb-2 text-lg">
-              {hotArticleInfo.display_title}
+              {String(hotArticleInfo.display_title ?? '')}
             </div>
             
             {/* Mensaje específico */}
             <div className="mb-2 text-sm opacity-90 whitespace-pre-line">
-              {hotArticleInfo.hot_message}
+              {hotArticleInfo.hot_message as string}
             </div>
-            
+
             {/* Botón expandible para curiosidad */}
             {hotArticleInfo.also_appears_in_other_oposiciones && hotArticleInfo.curiosity_message && (
               <div className="mt-3">
-                <button 
+                <button
                   onClick={() => setShowCuriosityDetails(!showCuriosityDetails)}
                   className="text-sm underline opacity-90 hover:opacity-100 transition-opacity flex items-center space-x-2"
                 >
                   <span>{showCuriosityDetails ? '🔼' : '🔽'}</span>
                   <span>{showCuriosityDetails ? 'Ocultar curiosidad' : 'Ver en qué otras oposiciones aparece'}</span>
                 </button>
-                
+
                 {/* Contenido expandible */}
                 {showCuriosityDetails && (
                  <div className="mt-3 p-3 bg-black/20 dark:bg-black/40 rounded-lg text-sm">
                     <div className="opacity-95">
-                      {hotArticleInfo.curiosity_message}
+                      {hotArticleInfo.curiosity_message as string}
                     </div>
                   </div>
                 )}
@@ -1850,7 +1873,7 @@ export default function TestLayout({
             {/* Contenido principal con dark mode */}
             <div 
               className="bg-white dark:bg-gray-800 rounded-xl shadow-lg dark:shadow-gray-900/20 p-8 mb-8 border border-gray-100 dark:border-gray-700"
-              data-question-id={currentQuestionUuid || questions[currentQuestion]?.id}
+              data-question-id={currentQuestionUuid || effectiveQuestions[currentQuestion]?.id}
             >
               
               {/* Pregunta actual con dark mode */}
@@ -1995,7 +2018,7 @@ export default function TestLayout({
                     </div>
 
                     {/* Explicación con dark mode - Anti-copia */}
-                    {currentQ?.explanation && (
+                    {Boolean(currentQ?.explanation) && (
                       <div
                         className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg p-4 mb-4 select-none"
                         onCopy={(e) => e.preventDefault()}
@@ -2024,7 +2047,7 @@ export default function TestLayout({
                         </div>
 
                         <MarkdownExplanation
-                          content={currentQ.explanation}
+                          content={currentQ!.explanation as string}
                           className="text-blue-700 dark:text-blue-400 text-sm"
                         />
 
@@ -2049,7 +2072,7 @@ export default function TestLayout({
                     )}
 
                     {/* Información de procedencia oficial - Solo si es de la oposición del usuario */}
-                      {currentQ?.metadata?.is_official_exam && isOfficialForUserOposicion(currentQ?.metadata?.exam_source, userOposicionSlug, currentQ?.metadata?.exam_position) && (
+                      {!!currentQ?.metadata?.is_official_exam && isOfficialForUserOposicion(currentQ?.metadata?.exam_source as string | null, userOposicionSlug, currentQ?.metadata?.exam_position as string | null) && (
                         <div className="bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border border-purple-200 dark:border-purple-700 rounded-lg p-4 mb-4">
                           <div className="flex items-start space-x-3">
                             <div className="text-2xl">🏛️</div>
@@ -2058,22 +2081,22 @@ export default function TestLayout({
                                 Pregunta de Examen Oficial Real
                               </h4>
                               <div className="space-y-1 text-sm text-purple-700 dark:text-purple-400">
-                                {currentQ.metadata.exam_source && (
+                                {!!currentQ.metadata!.exam_source && (
                                   <div className="flex items-center space-x-2">
                                     <span>📋</span>
-                                    <span><strong>Examen:</strong> {formatExamSource(currentQ.metadata.exam_source, userOposicionSlug)}</span>
+                                    <span><strong>Examen:</strong> {formatExamSource(currentQ.metadata!.exam_source as string, userOposicionSlug)}</span>
                                   </div>
                                 )}
-                                {currentQ.metadata.exam_date && (
+                                {!!currentQ.metadata!.exam_date && (
                                   <div className="flex items-center space-x-2">
                                     <span>📅</span>
-                                    <span><strong>Año:</strong> {new Date(currentQ.metadata.exam_date).getFullYear()}</span>
+                                    <span><strong>Año:</strong> {new Date(currentQ.metadata!.exam_date as string).getFullYear()}</span>
                                   </div>
                                 )}
-                                {currentQ.metadata.exam_entity && (
+                                {!!currentQ.metadata!.exam_entity && (
                                   <div className="flex items-center space-x-2">
                                     <span>🏢</span>
-                                    <span><strong>Oposición:</strong> {currentQ.metadata.exam_entity}</span>
+                                    <span><strong>Oposición:</strong> {currentQ.metadata!.exam_entity as string}</span>
                                   </div>
                                 )}
                                 <div className="mt-3 p-2 bg-purple-100 dark:bg-purple-800/30 rounded text-xs text-purple-800 dark:text-purple-300">
@@ -2114,7 +2137,7 @@ export default function TestLayout({
 
                     {/* Botón de impugnación */}
                     <QuestionDispute
-                      questionId={currentQuestionUuid || questions[currentQuestion]?.id}
+                      questionId={currentQuestionUuid || effectiveQuestions[currentQuestion]?.id}
                       user={user}
                     />
 
@@ -2396,7 +2419,7 @@ export default function TestLayout({
                     )}
 
                     {/* Información del artículo desplegable (solo si es contenido legal) */}
-                    {currentQ?.article?.full_text && isLegalArticle(currentQ.article.law_short_name) && (
+                    {currentQ?.article?.full_text && isLegalArticle(currentQ.article.law_short_name ?? null) && (
                       <ArticleDropdown
                         article={currentQ.article}
                         currentQuestion={currentQ}
@@ -2420,7 +2443,6 @@ export default function TestLayout({
       {effectiveQuestions && effectiveQuestions[currentQuestion] && (
         <ShareQuestion
           question={effectiveQuestions[currentQuestion]}
-          lawName={config?.title || ''}
           isOpen={showShareQuestion}
           onClose={() => setShowShareQuestion(false)}
         />
@@ -2444,12 +2466,17 @@ export default function TestLayout({
 }
 
 // Componente para mostrar artículo desplegable con resaltado inteligente
-function ArticleDropdown({ article, currentQuestion }) {
-  const [isOpen, setIsOpen] = useState(false)
+interface ArticleDropdownProps {
+  article: NonNullable<import('./TestLayout.types').LegacyQuestion['article']>
+  currentQuestion: TestQuestion
+}
+
+function ArticleDropdown({ article, currentQuestion }: ArticleDropdownProps) {
+  const [isOpen, setIsOpen] = useState<boolean>(false)
 
   // Función para extraer palabras clave de la pregunta y respuesta correcta
-  const extractKeywords = (question, correctAnswer, options) => {
-    const keywords = new Set()
+  const extractKeywords = (question: string | undefined, correctAnswer: number | null | undefined, options: string[] | undefined): string[] => {
+    const keywords = new Set<string>()
     
     // Extraer palabras clave de la pregunta (filtrar palabras comunes)
     const questionWords = question
@@ -2464,22 +2491,22 @@ function ArticleDropdown({ article, currentQuestion }) {
     questionWords.forEach(word => keywords.add(word))
     
     // Extraer palabras clave de la respuesta correcta
-    const correctAnswerText = options?.[correctAnswer]
+    const correctAnswerText = correctAnswer != null ? options?.[correctAnswer] : undefined
     if (correctAnswerText) {
       const answerWords = correctAnswerText
         .toLowerCase()
         .replace(/[,.:;]/g, ' ')
         .split(/\s+/)
-        .filter(word => word.length > 3)
-      
-      answerWords.forEach(word => keywords.add(word))
+        .filter((word: string) => word.length > 3)
+
+      answerWords.forEach((word: string) => keywords.add(word))
     }
     
     return Array.from(keywords).filter(word => word.length > 2)
   }
 
   // Función para formatear texto plano a HTML legible con resaltado inteligente
-  const formatTextContent = (content, question, correctAnswer, options) => {
+  const formatTextContent = (content: string | null | undefined, question: string | undefined, correctAnswer: number | null | undefined, options: string[] | undefined): string => {
     if (!content) return 'Contenido no disponible'
     
     let formattedContent = content
@@ -2617,10 +2644,10 @@ function ArticleDropdown({ article, currentQuestion }) {
               className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed space-y-2"
               dangerouslySetInnerHTML={{ 
                 __html: formatTextContent(
-                  article.full_text || article.content || 'Contenido no disponible',
+                  article.full_text || (article as any).content || 'Contenido no disponible',
                   currentQuestion?.question,
                   currentQuestion?.correct,
-                  currentQuestion?.options
+                  currentQuestion?.options as string[] | undefined
                 ) 
               }}
             />
@@ -2649,7 +2676,7 @@ function ArticleDropdown({ article, currentQuestion }) {
 }
 
 // Helper function para generar ID único de pregunta
-function generateQuestionId(questionData, tema, questionIndex) {
+function generateQuestionId(questionData: TestQuestion | null | undefined, tema: number, questionIndex: number): string {
   // Genera un ID único basado en el contenido de la pregunta
   const content = questionData?.question || questionData?.question_text || ''
   const articleInfo = questionData?.article?.display_number || questionData?.primary_article_id || ''
