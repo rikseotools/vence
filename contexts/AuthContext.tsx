@@ -363,17 +363,81 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
     const checkUser = async () => {
       try {
         if (!initialUser) {
-          const { data: { user }, error } = await supabase.auth.getUser()
-          if (!error && user) {
-            console.log('✅ AuthProvider: Usuario encontrado:', user.email)
+          // 🚀 Fast path: leer sesión de localStorage (sin lock de auth-js)
+          // getUser() usa _acquireLock que compite con _initialize(),
+          // causando timeouts de 10s+. localStorage es instantáneo.
+          let user = null
+          try {
+            const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+            if (supabaseUrl) {
+              const storageKey = `sb-${supabaseUrl.split('://')[1]?.split('.')[0]}-auth`
+              const raw = localStorage.getItem(storageKey)
+              if (raw) {
+                const parsed = JSON.parse(raw)
+                if (parsed?.user?.id && parsed?.access_token) {
+                  user = parsed.user
+                  console.log('✅ AuthProvider: Usuario encontrado (localStorage fast path):', user.email)
+                }
+              }
+            }
+          } catch {
+            // localStorage no disponible, caer al método normal
+          }
+
+          // Fallback: getUser() si localStorage no tenía sesión
+          if (!user) {
+            const { data, error } = await supabase.auth.getUser()
+            if (!error && data?.user) {
+              user = data.user
+              console.log('✅ AuthProvider: Usuario encontrado (getUser):', user.email)
+            }
+          }
+
+          if (user) {
             setUser(user)
 
             // Cargar perfil completo - ESPERAR para evitar flash de isPremium=false
             if (!userProfileRef.current || userProfileRef.current.id !== user.id) {
               console.log('🔄 Cargando perfil...')
-              await loadUserProfile(user.id).catch((err: any) => {
-                console.warn('⚠️ Error cargando perfil (no crítico):', err)
-              })
+              // 🚀 Fast path: si tenemos access_token de localStorage, fetch directo
+              // sin pasar por el cliente Supabase (que usa _acquireLock internamente)
+              let profileLoaded = false
+              try {
+                const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+                const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+                const storageKey = `sb-${supabaseUrl?.split('://')[1]?.split('.')[0]}-auth`
+                const raw = localStorage.getItem(storageKey)
+                const token = raw ? JSON.parse(raw)?.access_token : null
+
+                if (supabaseUrl && supabaseKey && token) {
+                  const res = await fetch(
+                    `${supabaseUrl}/rest/v1/user_profiles?id=eq.${user.id}&select=*`,
+                    {
+                      headers: {
+                        'apikey': supabaseKey,
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/json',
+                      },
+                    }
+                  )
+                  if (res.ok) {
+                    const profiles = await res.json()
+                    if (profiles?.[0]) {
+                      console.log('✅ Perfil cargado (fast path):', profiles[0].email, 'Tipo:', profiles[0].plan_type)
+                      updateUserProfile(profiles[0] as unknown as UserProfileRow)
+                      profileLoaded = true
+                    }
+                  }
+                }
+              } catch {
+                // Fast path falló, caer al método normal
+              }
+
+              if (!profileLoaded) {
+                await loadUserProfile(user.id).catch((err: any) => {
+                  console.warn('⚠️ Error cargando perfil (no crítico):', err)
+                })
+              }
             } else {
               console.log('✅ Perfil ya cargado, reutilizando')
             }
