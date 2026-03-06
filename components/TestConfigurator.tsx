@@ -2249,6 +2249,13 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
                     </button>
                   </div>
 
+                  {/* Aviso de artículos sin preguntas */}
+                  {(availableArticlesByLaw.get(currentLawForArticles) || []).some(art => art.question_count === 0) && (
+                    <div className="mb-3 p-2.5 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700">
+                      Los artículos en gris no tienen preguntas disponibles.
+                    </div>
+                  )}
+
                   {/* Lista de artículos */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-96 overflow-y-auto">
                     {(availableArticlesByLaw.get(currentLawForArticles) || []).map((article) => {
