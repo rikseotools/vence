@@ -1,4 +1,4 @@
-// app/auth/callback/page.js - Auth callback simplificado (v2: server-side processing)
+// app/auth/callback/page.tsx - Auth callback con PKCE exchange explícito (sin race condition)
 'use client'
 import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -9,9 +9,9 @@ import { getMetaParams, isFromMeta, trackMetaRegistration, isFromGoogle, getGoog
 function AuthCallbackContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [status, setStatus] = useState('loading')
+  const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
   const [message, setMessage] = useState('Verificando tu cuenta de Google...')
-  const [returnUrl, setReturnUrl] = useState(null)
+  const [returnUrl, setReturnUrl] = useState<string | null>(null)
 
   const { events } = useGoogleAds()
 
@@ -29,7 +29,7 @@ function AuthCallbackContent() {
         }
 
         // 1. Determinar URL de retorno
-        const determineReturnUrl = () => {
+        const determineReturnUrl = (): string => {
           let url = searchParams.get('return_to')
           if (url) {
             console.log('📍 [CALLBACK] URL de retorno desde query param:', url)
@@ -73,38 +73,23 @@ function AuthCallbackContent() {
           }
         }
 
-        // 2. Esperar sesion via onAuthStateChange (sin bloquearse por el lock PKCE)
-        console.log('🔍 [CALLBACK] Esperando sesion via onAuthStateChange...')
+        // 2. Exchange PKCE explícito — sin polling, sin listener, sin race condition
+        console.log('🔍 [CALLBACK] Intercambiando código PKCE...')
 
-        const session = await new Promise((resolve, reject) => {
-          let resolved = false
+        const code = new URLSearchParams(window.location.search).get('code')
+        if (!code) {
+          throw new Error('No auth code in URL')
+        }
 
-          const done = (s) => {
-            if (resolved) return
-            resolved = true
-            clearTimeout(timeout)
-            try { subscription?.unsubscribe() } catch(e) {}
-            resolve(s)
-          }
+        const { data: exchangeData, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
+        if (exchangeError) {
+          throw new Error(`PKCE exchange failed: ${exchangeError.message}`)
+        }
+        const session = exchangeData.session
 
-          const timeout = setTimeout(() => {
-            if (!resolved) {
-              resolved = true
-              try { subscription?.unsubscribe() } catch(e) {}
-              reject(new Error('Timeout: sesion no establecida en 10s'))
-            }
-          }, 10000)
-
-          let subscription = null
-
-          const { data } = supabase.auth.onAuthStateChange((event, session) => {
-            console.log('🔍 [CALLBACK] Auth event:', event, !!session?.user)
-            if (session?.user) {
-              done(session)
-            }
-          })
-          subscription = data.subscription
-        })
+        if (!session?.user) {
+          throw new Error('No session returned from PKCE exchange')
+        }
 
         console.log('✅ [CALLBACK] Usuario autenticado:', session.user.email)
         setStatus('success')
@@ -129,7 +114,7 @@ function AuthCallbackContent() {
 
         // 4. Llamar API server-side (1 fetch — sin locks, instantaneo)
         setMessage('Configurando tu perfil...')
-        let apiResult = { success: true, isNewUser: false, redirectUrl: finalReturnUrl }
+        let apiResult: { success: boolean; isNewUser?: boolean; redirectUrl?: string } = { success: true, isNewUser: false, redirectUrl: finalReturnUrl }
 
         try {
           const response = await fetch('/api/v2/auth/process-callback', {
@@ -228,7 +213,7 @@ function AuthCallbackContent() {
       } catch (error) {
         console.error('❌ [CALLBACK] Error procesando callback:', error)
         setStatus('error')
-        setMessage(`Error: ${error.message}`)
+        setMessage(`Error: ${error instanceof Error ? error.message : String(error)}`)
       }
     }
 
