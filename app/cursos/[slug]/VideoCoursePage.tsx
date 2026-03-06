@@ -313,6 +313,11 @@ export default function VideoCoursePage({ course, lessons }: VideoCoursePageProp
   // Handle video end
   const handleVideoEnded = () => {
     if (!currentLesson) return
+    // Cancel any pending periodic save to prevent it from overwriting completed=true
+    if (saveProgressTimeout.current) {
+      clearTimeout(saveProgressTimeout.current)
+      saveProgressTimeout.current = null
+    }
     saveProgress(currentLesson.id, videoRef.current?.duration || 0, true)
     setProgress(prev => ({
       ...prev,
@@ -410,8 +415,7 @@ export default function VideoCoursePage({ course, lessons }: VideoCoursePageProp
                   ref={videoRef}
                   src={videoUrl}
                   controls
-                  controlsList="nodownload noplaybackrate"
-                  disablePictureInPicture
+                  controlsList="nodownload"
                   playsInline
                   className={`w-full h-full transition-opacity duration-200 ${isTransitioning ? 'opacity-80' : 'opacity-100'}`}
                   onTimeUpdate={handleTimeUpdate}
