@@ -1,15 +1,84 @@
-// utils/testAnalytics.js - Todo el análisis y completar test
-import { createClient } from '@supabase/supabase-js'
+// utils/testAnalytics.ts - Análisis y completar test
 import { getDeviceInfo } from './testSession'
-
 import { getSupabaseClient } from '../lib/supabase'
+
 const supabase = getSupabaseClient()
 
-// Completar test con análisis completo
-export const completeDetailedTest = async (sessionId, finalScore, allAnswers, questions, startTime, interactionEvents, userSession) => {
+// ============================================
+// TIPOS
+// ============================================
+
+interface AnswerQuestionData {
+  id?: string
+  metadata?: {
+    difficulty?: string
+    question_type?: string
+    tags?: string[]
+    [key: string]: unknown
+  }
+  article?: {
+    id?: string
+    number?: string | number
+    law_short_name?: string
+    [key: string]: unknown
+  }
+  [key: string]: unknown
+}
+
+interface DetailedAnswer {
+  isCorrect: boolean
+  timeSpent?: number
+  confidence?: string
+  interactions?: number
+  questionIndex?: number
+  selectedAnswer?: number | null
+  questionData?: AnswerQuestionData
+  [key: string]: unknown
+}
+
+interface Question {
+  length?: number
+  [key: string]: unknown
+}
+
+interface UserSession {
+  user_id?: string
+  id?: string
+}
+
+interface InteractionEvent {
+  [key: string]: unknown
+}
+
+interface CompleteTestResult {
+  success: boolean
+  status: string
+}
+
+interface ArticleStat {
+  article_id: string
+  total: number
+  correct: number
+  time_spent: number
+  law_name: string
+}
+
+// ============================================
+// COMPLETAR TEST
+// ============================================
+
+export const completeDetailedTest = async (
+  sessionId: string,
+  finalScore: number,
+  allAnswers: DetailedAnswer[],
+  questions: Question[],
+  startTime: number,
+  interactionEvents: InteractionEvent[],
+  userSession?: UserSession | null
+): Promise<CompleteTestResult> => {
   try {
     console.log('🏁 Completando test con análisis completo...', sessionId)
-    
+
     if (!sessionId) {
       console.error('❌ No se puede completar: sessionId faltante')
       return { success: false, status: 'error' }
@@ -19,39 +88,40 @@ export const completeDetailedTest = async (sessionId, finalScore, allAnswers, qu
       console.error('❌ No se puede completar: sin respuestas')
       return { success: false, status: 'error' }
     }
-    
+
     const totalTime = Math.round((Date.now() - startTime) / 1000)
     const avgTimePerQuestion = Math.round(totalTime / questions.length)
     const correctAnswers = allAnswers.filter(a => a.isCorrect)
     const incorrectAnswers = allAnswers.filter(a => !a.isCorrect)
-    
-    const difficultyStats = {
+
+    const difficultyStats: Record<string, DetailedAnswer[]> = {
       easy: allAnswers.filter(a => a.questionData?.metadata?.difficulty === 'easy'),
-      medium: allAnswers.filter(a => a.questionData?.metadata?.difficulty === 'medium'), 
+      medium: allAnswers.filter(a => a.questionData?.metadata?.difficulty === 'medium'),
       hard: allAnswers.filter(a => a.questionData?.metadata?.difficulty === 'hard'),
       extreme: allAnswers.filter(a => a.questionData?.metadata?.difficulty === 'extreme')
     }
-    
-    const articleStats = {}
+
+    const articleStats: Record<string, ArticleStat> = {}
     allAnswers.forEach(answer => {
       const articleId = answer.questionData?.article?.id
       const articleNumber = answer.questionData?.article?.number
       if (articleId && articleNumber) {
-        if (!articleStats[articleNumber]) {
-          articleStats[articleNumber] = {
+        const key = String(articleNumber)
+        if (!articleStats[key]) {
+          articleStats[key] = {
             article_id: articleId,
             total: 0,
             correct: 0,
             time_spent: 0,
-            law_name: answer.questionData?.article?.law_short_name || 'unknown'
+            law_name: (answer.questionData?.article?.law_short_name as string) || 'unknown'
           }
         }
-        articleStats[articleNumber].total++
-        if (answer.isCorrect) articleStats[articleNumber].correct++
-        articleStats[articleNumber].time_spent += answer.timeSpent || 0
+        articleStats[key].total++
+        if (answer.isCorrect) articleStats[key].correct++
+        articleStats[key].time_spent += answer.timeSpent || 0
       }
     })
-    
+
     const confidenceAnalysis = {
       very_sure_correct: allAnswers.filter(a => a.confidence === 'very_sure' && a.isCorrect).length,
       very_sure_incorrect: allAnswers.filter(a => a.confidence === 'very_sure' && !a.isCorrect).length,
@@ -66,7 +136,7 @@ export const completeDetailedTest = async (sessionId, finalScore, allAnswers, qu
       interaction_efficiency: allAnswers.length > 0 ? Math.round((allAnswers.filter(a => (a.interactions || 1) === 1).length / allAnswers.length) * 100) : 0
     }
 
-    // 🔴 NUEVA VALIDACIÓN: Verificar que todas las preguntas se guardaron antes de completar
+    // Verificar que todas las preguntas se guardaron antes de completar
     const { data: savedQuestions, error: verifyError } = await supabase
       .from('test_questions')
       .select('question_order')
@@ -79,7 +149,7 @@ export const completeDetailedTest = async (sessionId, finalScore, allAnswers, qu
     const savedCount = savedQuestions?.length || 0
     const expectedCount = questions.length
 
-    // 🔴 Detectar si hay preguntas perdidas
+    // Detectar si hay preguntas perdidas
     if (savedCount < expectedCount) {
       console.warn('⚠️ TEST INCOMPLETO DETECTADO', {
         testId: sessionId,
@@ -89,9 +159,8 @@ export const completeDetailedTest = async (sessionId, finalScore, allAnswers, qu
         porcentajePerdido: Math.round(((expectedCount - savedCount) / expectedCount) * 100) + '%'
       })
 
-      // Identificar exactamente qué preguntas faltan
       const savedOrders = new Set(savedQuestions?.map(q => q.question_order) || [])
-      const missingOrders = []
+      const missingOrders: number[] = []
       for (let i = 1; i <= expectedCount; i++) {
         if (!savedOrders.has(i)) {
           missingOrders.push(i)
@@ -100,15 +169,6 @@ export const completeDetailedTest = async (sessionId, finalScore, allAnswers, qu
 
       if (missingOrders.length > 0) {
         console.error('❌ Números de pregunta faltantes:', missingOrders)
-
-        // TODO: Aquí podríamos intentar recuperar las preguntas desde localStorage
-        // if (typeof window !== 'undefined') {
-        //   const backup = new TestBackupSystem(testId)
-        //   const unsynced = backup.getUnsyncedAnswers()
-        //   if (unsynced.length > 0) {
-        //     console.log('💾 Intentando recuperar desde backup local...')
-        //   }
-        // }
       }
     }
 
@@ -116,9 +176,9 @@ export const completeDetailedTest = async (sessionId, finalScore, allAnswers, qu
       .from('tests')
       .update({
         score: finalScore,
-        total_questions: savedCount, // 🔴 FIX: Usar el número real de preguntas guardadas, no las esperadas
+        total_questions: savedCount,
         completed_at: new Date().toISOString(),
-        is_completed: true, // 🔴 FIX: Si se llama a finalizar, el test está completado
+        is_completed: true,
         total_time_seconds: totalTime,
         average_time_per_question: avgTimePerQuestion,
         detailed_analytics: JSON.stringify({
@@ -128,17 +188,17 @@ export const completeDetailedTest = async (sessionId, finalScore, allAnswers, qu
             avg_time_per_question: avgTimePerQuestion,
             questions_attempted: allAnswers.length
           },
-          
+
           difficulty_breakdown: Object.keys(difficultyStats).map(diff => ({
             difficulty: diff,
             total: difficultyStats[diff].length,
             correct: difficultyStats[diff].filter(a => a.isCorrect).length,
-            accuracy: difficultyStats[diff].length > 0 ? 
+            accuracy: difficultyStats[diff].length > 0 ?
               Math.round((difficultyStats[diff].filter(a => a.isCorrect).length / difficultyStats[diff].length) * 100) : 0,
             avg_time: difficultyStats[diff].length > 0 ?
               Math.round(difficultyStats[diff].reduce((sum, a) => sum + (a.timeSpent || 0), 0) / difficultyStats[diff].length) : 0
           })).filter(item => item.total > 0),
-          
+
           article_performance: Object.keys(articleStats).map(artNum => ({
             article_number: artNum,
             article_id: articleStats[artNum].article_id,
@@ -149,20 +209,20 @@ export const completeDetailedTest = async (sessionId, finalScore, allAnswers, qu
             total_time: articleStats[artNum].time_spent,
             avg_time: Math.round(articleStats[artNum].time_spent / articleStats[artNum].total)
           })),
-          
+
           time_analysis: {
             fastest_question: allAnswers.length > 0 ? Math.min(...allAnswers.map(a => a.timeSpent || 0)) : 0,
             slowest_question: allAnswers.length > 0 ? Math.max(...allAnswers.map(a => a.timeSpent || 0)) : 0,
-            avg_correct_time: correctAnswers.length > 0 ? 
+            avg_correct_time: correctAnswers.length > 0 ?
               Math.round(correctAnswers.reduce((sum, a) => sum + (a.timeSpent || 0), 0) / correctAnswers.length) : 0,
-            avg_incorrect_time: incorrectAnswers.length > 0 ? 
+            avg_incorrect_time: incorrectAnswers.length > 0 ?
               Math.round(incorrectAnswers.reduce((sum, a) => sum + (a.timeSpent || 0), 0) / incorrectAnswers.length) : 0,
             time_distribution: allAnswers.map(a => a.timeSpent || 0)
           },
-          
+
           confidence_analysis: confidenceAnalysis,
           learning_patterns: learningPatterns,
-          
+
           improvement_areas: incorrectAnswers.map(a => ({
             question_order: (a.questionIndex || 0) + 1,
             article_number: a.questionData?.article?.number || 'unknown',
@@ -171,10 +231,10 @@ export const completeDetailedTest = async (sessionId, finalScore, allAnswers, qu
             time_spent: a.timeSpent || 0,
             confidence: a.confidence || 'unknown',
             interactions: a.interactions || 1,
-            priority: a.confidence === 'very_sure' ? 'high' : 
+            priority: a.confidence === 'very_sure' ? 'high' :
                      (a.timeSpent || 0) > avgTimePerQuestion * 1.5 ? 'medium' : 'low'
           })),
-          
+
           session_metadata: {
             device_info: getDeviceInfo(),
             total_interactions: interactionEvents.length,
@@ -182,7 +242,7 @@ export const completeDetailedTest = async (sessionId, finalScore, allAnswers, qu
                             learningPatterns.interaction_efficiency > 60 ? 'good' : 'needs_improvement'
           }
         }),
-        
+
         performance_metrics: JSON.stringify({
           completion_rate: 100,
           engagement_score: Math.min(100, interactionEvents.length * 2),
@@ -197,19 +257,15 @@ export const completeDetailedTest = async (sessionId, finalScore, allAnswers, qu
       console.error('❌ Error completando test:', error)
       return { success: false, status: 'error' }
     }
-    
+
     console.log('✅ Test completado con análisis completo')
 
-    // 🆕 REGISTRAR EN USER_QUESTION_HISTORY (para estadísticas de artículos débiles)
-    // ⚠️ DESACTIVADO 2026-01-28: El trigger 'trigger_update_user_question_history' ya maneja esto
-    // automáticamente en cada INSERT/UPDATE de test_questions. Tener ambos activos causaba
-    // que se duplicaran los intentos (total_attempts +1 extra por cada test completado).
-    // Ver: database/migrations/fix_user_question_history_trigger.sql
+    // DESACTIVADO 2026-01-28: El trigger 'trigger_update_user_question_history' ya maneja esto
+    // automáticamente en cada INSERT/UPDATE de test_questions.
     // await registerQuestionsInHistory(userSession?.user_id, allAnswers, questions)
 
-    // 🔥 ACTUALIZAR USER_PROGRESS - REPARADO CON MÉTODO DIRECTO
     await updateUserProgressDirect(userSession?.user_id, sessionId, finalScore, allAnswers.length)
-    
+
     // Actualizar sesión de usuario (solo si tenemos el ID de la sesión)
     if (userSession?.id) {
       await supabase
@@ -226,17 +282,25 @@ export const completeDetailedTest = async (sessionId, finalScore, allAnswers, qu
         })
         .eq('id', userSession.id)
     }
-    
+
     return { success: true, status: 'saved' }
-    
+
   } catch (error) {
     console.error('❌ Error completando test completo:', error)
     return { success: false, status: 'error' }
   }
 }
 
-// 🔧 FUNCIÓN REPARADA: Actualizar user_progress directamente (SIN RPC rota)
-export const updateUserProgressDirect = async (userId, sessionId, correctAnswers, totalQuestions) => {
+// ============================================
+// ACTUALIZAR USER_PROGRESS
+// ============================================
+
+export const updateUserProgressDirect = async (
+  userId: string | undefined,
+  sessionId: string,
+  correctAnswers: number,
+  totalQuestions: number
+): Promise<void> => {
   if (!userId || !sessionId) {
     console.log('ℹ️ Saltando update user_progress - faltan datos básicos')
     return
@@ -245,7 +309,6 @@ export const updateUserProgressDirect = async (userId, sessionId, correctAnswers
   try {
     console.log('🎯 Actualizando user_progress directamente...', { userId, sessionId, correctAnswers, totalQuestions })
 
-    // 1. Obtener el tema del test desde la tabla tests
     const { data: testData, error: testError } = await supabase
       .from('tests')
       .select('tema_number, test_type')
@@ -259,17 +322,15 @@ export const updateUserProgressDirect = async (userId, sessionId, correctAnswers
 
     console.log('📊 Test encontrado:', { tema_number: testData.tema_number, test_type: testData.test_type })
 
-    // 1.5 Obtener topic_id desde la tabla topics usando tema_number
-    // Intentar con varios position_type posibles (mapeo URL -> DB)
     const positionTypesToTry = [
-      'auxiliar_administrativo',      // DB usa este
-      'auxiliar_administrativo_estado', // URL usa este
+      'auxiliar_administrativo',
+      'auxiliar_administrativo_estado',
       'administrativo',
       'tramitacion_procesal',
       'auxilio_judicial'
     ]
 
-    let topicData = null
+    let topicData: { id: string } | null = null
     for (const posType of positionTypesToTry) {
       const { data, error } = await supabase
         .from('topics')
@@ -293,7 +354,6 @@ export const updateUserProgressDirect = async (userId, sessionId, correctAnswers
     const topicId = topicData.id
     console.log('📊 Topic encontrado:', { topic_id: topicId, tema_number: testData.tema_number })
 
-    // 2. Verificar si ya existe registro de user_progress para este usuario y tema
     const { data: existingProgress, error: checkError } = await supabase
       .from('user_progress')
       .select('*')
@@ -310,7 +370,6 @@ export const updateUserProgressDirect = async (userId, sessionId, correctAnswers
     const now = new Date().toISOString()
 
     if (existingProgress) {
-      // 3A. Actualizar registro existente
       const newTotalAttempts = existingProgress.total_attempts + totalQuestions
       const newCorrectAttempts = existingProgress.correct_attempts + correctAnswers
       const newAccuracy = Math.round((newCorrectAttempts / newTotalAttempts) * 100)
@@ -335,7 +394,6 @@ export const updateUserProgressDirect = async (userId, sessionId, correctAnswers
       }
 
     } else {
-      // 3B. Crear nuevo registro
       const { error: insertError } = await supabase
         .from('user_progress')
         .insert({
@@ -362,9 +420,16 @@ export const updateUserProgressDirect = async (userId, sessionId, correctAnswers
   }
 }
 
-// 🆕 FUNCIÓN: Registrar preguntas en user_question_history
-// Registra TODAS las preguntas, incluyendo las no contestadas como falladas
-export const registerQuestionsInHistory = async (userId, allAnswers, questions) => {
+// ============================================
+// REGISTRAR PREGUNTAS EN HISTORY (DESACTIVADA)
+// ============================================
+
+/** @deprecated Desactivada 2026-01-28: El trigger DB ya maneja esto automáticamente */
+export const registerQuestionsInHistory = async (
+  userId: string | undefined,
+  allAnswers: DetailedAnswer[],
+  _questions: Question[]
+): Promise<void> => {
   if (!userId) {
     console.log('ℹ️ Saltando registro en history - no hay userId')
     return
@@ -382,9 +447,8 @@ export const registerQuestionsInHistory = async (userId, allAnswers, questions) 
       const questionId = answer.questionData?.id
       if (!questionId) continue
 
-      // Determinar si fue contestada o no
       const wasAnswered = answer.selectedAnswer !== -1 && answer.selectedAnswer !== null
-      const isCorrect = wasAnswered ? answer.isCorrect : false // No contestada = fallada
+      const isCorrect = wasAnswered ? answer.isCorrect : false
 
       if (wasAnswered) {
         answeredCount++
@@ -392,7 +456,6 @@ export const registerQuestionsInHistory = async (userId, allAnswers, questions) 
         unansweredCount++
       }
 
-      // Buscar registro existente
       const { data: existing, error: fetchError } = await supabase
         .from('user_question_history')
         .select('id, total_attempts, correct_attempts')
@@ -401,13 +464,11 @@ export const registerQuestionsInHistory = async (userId, allAnswers, questions) 
         .single()
 
       if (fetchError && fetchError.code !== 'PGRST116') {
-        // PGRST116 = no rows returned (esperado si no existe)
         console.error(`❌ Error buscando history para ${questionId}:`, fetchError)
         continue
       }
 
       if (existing) {
-        // Actualizar registro existente
         const newTotal = existing.total_attempts + 1
         const newCorrect = isCorrect ? existing.correct_attempts + 1 : existing.correct_attempts
         const successRate = newTotal > 0 ? (newCorrect / newTotal).toFixed(2) : '0.00'
@@ -424,7 +485,6 @@ export const registerQuestionsInHistory = async (userId, allAnswers, questions) 
 
         if (!updateError) updatedCount++
       } else {
-        // Crear nuevo registro
         const { error: insertError } = await supabase
           .from('user_question_history')
           .insert({
@@ -451,8 +511,11 @@ export const registerQuestionsInHistory = async (userId, allAnswers, questions) 
   }
 }
 
-// Función para formatear tiempo
-export const formatTime = (seconds) => {
+// ============================================
+// UTILIDADES
+// ============================================
+
+export const formatTime = (seconds: number): string => {
   const mins = Math.floor(seconds / 60)
   const secs = seconds % 60
   if (mins === 0) return `${secs} segundo${secs !== 1 ? 's' : ''}`
