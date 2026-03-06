@@ -316,14 +316,14 @@ export default function TopicContentView({ content, oposicion = 'administrativo-
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                   </svg>
-                  Tema {content.topicNumber - 1}
+                  Tema {getBlockInfo(content.topicNumber - 1).displayNum}
                 </Link>
               )}
               <Link
                 href={`${basePath}/temario/tema-${content.topicNumber + 1}`}
                 className="flex items-center gap-2 px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 border border-gray-300 dark:border-gray-600 rounded-md transition-colors"
               >
-                Tema {content.topicNumber + 1}
+                Tema {getBlockInfo(content.topicNumber + 1).displayNum}
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
