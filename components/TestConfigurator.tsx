@@ -16,7 +16,6 @@ import type {
   DifficultyMode,
   TotalQuestions,
   SectionFilter,
-  SectionFilterConfig,
 } from './TestConfigurator.types';
 
 const TestConfigurator: React.FC<TestConfiguratorProps> = ({
@@ -69,7 +68,7 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
 
   // 🆕 Estados para filtro de títulos/secciones (MULTI-SELECT)
   const [isSectionModalOpen, setIsSectionModalOpen] = useState(false);
-  const [selectedSectionFilters, setSelectedSectionFilters] = useState<SectionFilterConfig[]>([]);
+  const [selectedSectionFilters, setSelectedSectionFilters] = useState<SectionFilter[]>([]);
   const [availableSectionsByLaw, setAvailableSectionsByLaw] = useState<Map<string, any[]>>(new Map());
 
   // 💾 Estados para favoritos (configuraciones guardadas)
