@@ -130,7 +130,7 @@ export async function getArticlesForLaw(
       .innerJoin(articles, eq(questions.primaryArticleId, articles.id))
       .where(and(...articleConditions))
       .groupBy(articles.articleNumber, articles.title)
-      .orderBy(sql`CAST(${articles.articleNumber} AS INTEGER) NULLS LAST`)
+      .orderBy(sql`NULLIF(regexp_replace(${articles.articleNumber}, '[^0-9]', '', 'g'), '')::int NULLS LAST, ${articles.articleNumber} NULLS LAST`)
 
     // Construir resultado
     const result = articleData.map(row => ({
