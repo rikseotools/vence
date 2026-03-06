@@ -43,13 +43,14 @@ describe('GET /api/ranking', () => {
   test('timeFilter=today -> 200', async () => {
     mockSafeParse.mockReturnValue({
       success: true,
-      data: { timeFilter: 'today', minQuestions: 5, limit: 100 },
+      data: { timeFilter: 'today', minQuestions: 5, limit: 50, offset: 0 },
     } as any)
     mockGetRanking.mockResolvedValue({
       success: true,
       ranking: [
-        { userId: 'u1', totalQuestions: 20, correctAnswers: 16, accuracy: 80, rank: 1 },
+        { userId: 'u1', totalQuestions: 20, correctAnswers: 16, accuracy: 80, rank: 1, name: 'User', ciudad: null, avatar: null },
       ],
+      hasMore: false,
       generatedAt: '2026-03-05T14:30:00.000Z',
     })
 
@@ -59,17 +60,19 @@ describe('GET /api/ranking', () => {
     const body = await response.json()
     expect(body.success).toBe(true)
     expect(body.ranking).toHaveLength(1)
+    expect(body.hasMore).toBe(false)
   })
 
   test('con userId -> incluye userPosition', async () => {
     mockSafeParse.mockReturnValue({
       success: true,
-      data: { timeFilter: 'today', userId: 'u1', minQuestions: 5, limit: 100 },
+      data: { timeFilter: 'today', userId: 'u1', minQuestions: 5, limit: 50, offset: 0 },
     } as any)
     mockGetRanking.mockResolvedValue({
       success: true,
       ranking: [],
       userPosition: { rank: 3, totalQuestions: 20, correctAnswers: 16, accuracy: 80, totalUsers: 10 },
+      hasMore: false,
       generatedAt: '2026-03-05T14:30:00.000Z',
     })
 
@@ -78,6 +81,25 @@ describe('GET /api/ranking', () => {
 
     expect(body.userPosition).toBeDefined()
     expect(body.userPosition.rank).toBe(3)
+  })
+
+  test('con offset -> lo pasa al parser', async () => {
+    mockSafeParse.mockReturnValue({
+      success: true,
+      data: { timeFilter: 'today', minQuestions: 5, limit: 50, offset: 100 },
+    } as any)
+    mockGetRanking.mockResolvedValue({
+      success: true,
+      ranking: [],
+      hasMore: false,
+      generatedAt: '2026-03-05T14:30:00.000Z',
+    })
+
+    await GET(makeRequest({ timeFilter: 'today', offset: '100' }))
+
+    expect(mockSafeParse).toHaveBeenCalledWith(
+      expect.objectContaining({ offset: 100 })
+    )
   })
 
   test('timeFilter invalido -> 400', async () => {
@@ -90,7 +112,7 @@ describe('GET /api/ranking', () => {
   test('error interno -> 500', async () => {
     mockSafeParse.mockReturnValue({
       success: true,
-      data: { timeFilter: 'today', minQuestions: 5, limit: 100 },
+      data: { timeFilter: 'today', minQuestions: 5, limit: 50, offset: 0 },
     } as any)
     mockGetRanking.mockResolvedValue({
       success: false,
@@ -119,11 +141,12 @@ describe('GET /api/ranking', () => {
   test('respuesta incluye header Cache-Control', async () => {
     mockSafeParse.mockReturnValue({
       success: true,
-      data: { timeFilter: 'today', minQuestions: 5, limit: 100 },
+      data: { timeFilter: 'today', minQuestions: 5, limit: 50, offset: 0 },
     } as any)
     mockGetRanking.mockResolvedValue({
       success: true,
       ranking: [],
+      hasMore: false,
       generatedAt: '2026-03-05T14:30:00.000Z',
     })
 
@@ -131,24 +154,25 @@ describe('GET /api/ranking', () => {
     expect(response.headers.get('Cache-Control')).toContain('s-maxage=60')
   })
 
-  test('minQuestions y limit se pasan como numeros', async () => {
+  test('minQuestions, limit y offset se pasan como numeros', async () => {
     mockSafeParse.mockReturnValue({
       success: true,
-      data: { timeFilter: 'today', minQuestions: 10, limit: 50 },
+      data: { timeFilter: 'today', minQuestions: 10, limit: 25, offset: 50 },
     } as any)
     mockGetRanking.mockResolvedValue({
       success: true,
       ranking: [],
+      hasMore: false,
       generatedAt: '2026-03-05T14:30:00.000Z',
     })
 
-    await GET(makeRequest({ timeFilter: 'today', minQuestions: '10', limit: '50' }))
+    await GET(makeRequest({ timeFilter: 'today', minQuestions: '10', limit: '25', offset: '50' }))
 
-    // Verificar que safeParse recibio numeros
     expect(mockSafeParse).toHaveBeenCalledWith(
       expect.objectContaining({
         minQuestions: 10,
-        limit: 50,
+        limit: 25,
+        offset: 50,
       })
     )
   })

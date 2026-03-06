@@ -1,25 +1,23 @@
-// app/api/ranking/route.ts - API endpoint para ranking
+// app/api/ranking/streaks/route.ts - API endpoint para ranking de rachas
 import { NextRequest, NextResponse } from 'next/server'
 import {
-  safeParseGetRankingRequest,
-  getRanking,
+  safeParseGetStreakRankingRequest,
+  getStreakRanking,
 } from '@/lib/api/ranking'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
 // ============================================
-// GET: Obtener ranking
+// GET: Obtener ranking de rachas
 // ============================================
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const timeFilter = searchParams.get('timeFilter')
+    const category = searchParams.get('category') || undefined
     const userId = searchParams.get('userId') || undefined
-    const minQuestions = searchParams.get('minQuestions')
-      ? Number(searchParams.get('minQuestions'))
-      : undefined
     const limit = searchParams.get('limit')
       ? Number(searchParams.get('limit'))
       : undefined
@@ -27,11 +25,10 @@ export async function GET(request: NextRequest) {
       ? Number(searchParams.get('offset'))
       : undefined
 
-    // Validar request con Zod
-    const parseResult = safeParseGetRankingRequest({
+    const parseResult = safeParseGetStreakRankingRequest({
       timeFilter,
+      category,
       userId,
-      minQuestions,
       limit,
       offset,
     })
@@ -43,7 +40,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const result = await getRanking(parseResult.data)
+    const result = await getStreakRanking(parseResult.data)
 
     if (!result.success) {
       return NextResponse.json(result, { status: 500 })
@@ -55,7 +52,7 @@ export async function GET(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error('❌ [API/ranking] Error GET:', error)
+    console.error('❌ [API/ranking/streaks] Error GET:', error)
     return NextResponse.json(
       { success: false, error: 'Error interno del servidor' },
       { status: 500 }

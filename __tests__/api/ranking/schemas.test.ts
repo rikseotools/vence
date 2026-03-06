@@ -7,6 +7,11 @@ import {
   userPositionSchema,
   getRankingResponseSchema,
   safeParseGetRankingRequest,
+  avatarSchema,
+  getStreakRankingRequestSchema,
+  streakEntrySchema,
+  getStreakRankingResponseSchema,
+  safeParseGetStreakRankingRequest,
 } from '../../../lib/api/ranking/schemas'
 
 describe('getRankingRequestSchema', () => {
@@ -73,10 +78,10 @@ describe('getRankingRequestSchema', () => {
     expect(result.success).toBe(false)
   })
 
-  test('limit default es 100', () => {
+  test('limit default es 50', () => {
     const result = getRankingRequestSchema.safeParse({ timeFilter: 'today' })
     expect(result.success).toBe(true)
-    if (result.success) expect(result.data.limit).toBe(100)
+    if (result.success) expect(result.data.limit).toBe(50)
   })
 
   test('userId UUID valido', () => {
@@ -100,6 +105,61 @@ describe('getRankingRequestSchema', () => {
     expect(result.success).toBe(true)
     if (result.success) expect(result.data.userId).toBeUndefined()
   })
+
+  test('offset numero valido', () => {
+    const result = getRankingRequestSchema.safeParse({ timeFilter: 'today', offset: 50 })
+    expect(result.success).toBe(true)
+    if (result.success) expect(result.data.offset).toBe(50)
+  })
+
+  test('offset negativo es rechazado', () => {
+    const result = getRankingRequestSchema.safeParse({ timeFilter: 'today', offset: -1 })
+    expect(result.success).toBe(false)
+  })
+
+  test('offset default es 0', () => {
+    const result = getRankingRequestSchema.safeParse({ timeFilter: 'today' })
+    expect(result.success).toBe(true)
+    if (result.success) expect(result.data.offset).toBe(0)
+  })
+})
+
+describe('avatarSchema', () => {
+  test('avatar automatico valido', () => {
+    const result = avatarSchema.safeParse({
+      type: 'automatic',
+      emoji: '🦊',
+      profile: 'fox',
+    })
+    expect(result.success).toBe(true)
+  })
+
+  test('avatar predefinido valido', () => {
+    const result = avatarSchema.safeParse({
+      type: 'predefined',
+      emoji: '👨‍💻',
+      color: 'from-blue-500 to-green-500',
+    })
+    expect(result.success).toBe(true)
+  })
+
+  test('avatar uploaded valido', () => {
+    const result = avatarSchema.safeParse({
+      type: 'uploaded',
+      url: 'https://example.com/avatar.jpg',
+    })
+    expect(result.success).toBe(true)
+  })
+
+  test('avatar null es valido', () => {
+    const result = avatarSchema.safeParse(null)
+    expect(result.success).toBe(true)
+  })
+
+  test('tipo invalido es rechazado', () => {
+    const result = avatarSchema.safeParse({ type: 'invalid' })
+    expect(result.success).toBe(false)
+  })
 })
 
 describe('rankingEntrySchema', () => {
@@ -110,6 +170,9 @@ describe('rankingEntrySchema', () => {
       correctAnswers: 40,
       accuracy: 80,
       rank: 1,
+      name: 'Test User',
+      ciudad: 'Madrid',
+      avatar: null,
     })
     expect(result.success).toBe(true)
   })
@@ -120,6 +183,9 @@ describe('rankingEntrySchema', () => {
       correctAnswers: 40,
       accuracy: 80,
       rank: 1,
+      name: 'Test',
+      ciudad: null,
+      avatar: null,
     })
     expect(result.success).toBe(false)
   })
@@ -131,6 +197,9 @@ describe('rankingEntrySchema', () => {
       correctAnswers: 40,
       accuracy: 101,
       rank: 1,
+      name: 'Test',
+      ciudad: null,
+      avatar: null,
     })
     expect(result.success).toBe(false)
   })
@@ -142,8 +211,25 @@ describe('rankingEntrySchema', () => {
       correctAnswers: 40,
       accuracy: 80,
       rank: 0,
+      name: 'Test',
+      ciudad: null,
+      avatar: null,
     })
     expect(result.success).toBe(false)
+  })
+
+  test('entrada con avatar completo', () => {
+    const result = rankingEntrySchema.safeParse({
+      userId: '550e8400-e29b-41d4-a716-446655440000',
+      totalQuestions: 50,
+      correctAnswers: 40,
+      accuracy: 80,
+      rank: 1,
+      name: 'Test User',
+      ciudad: 'Barcelona',
+      avatar: { type: 'automatic', emoji: '🦊' },
+    })
+    expect(result.success).toBe(true)
   })
 })
 
@@ -183,7 +269,7 @@ describe('userPositionSchema', () => {
 })
 
 describe('getRankingResponseSchema', () => {
-  test('respuesta exitosa con ranking', () => {
+  test('respuesta exitosa con ranking y hasMore', () => {
     const result = getRankingResponseSchema.safeParse({
       success: true,
       ranking: [
@@ -193,8 +279,12 @@ describe('getRankingResponseSchema', () => {
           correctAnswers: 40,
           accuracy: 80,
           rank: 1,
+          name: 'User',
+          ciudad: null,
+          avatar: null,
         },
       ],
+      hasMore: true,
       generatedAt: new Date().toISOString(),
     })
     expect(result.success).toBe(true)
@@ -219,7 +309,120 @@ describe('getRankingResponseSchema', () => {
         accuracy: 80,
         totalUsers: 20,
       },
+      hasMore: false,
       generatedAt: new Date().toISOString(),
+    })
+    expect(result.success).toBe(true)
+  })
+})
+
+describe('getStreakRankingRequestSchema', () => {
+  test('timeFilter "week" es valido', () => {
+    const result = getStreakRankingRequestSchema.safeParse({ timeFilter: 'week' })
+    expect(result.success).toBe(true)
+  })
+
+  test('timeFilter "month" es valido', () => {
+    const result = getStreakRankingRequestSchema.safeParse({ timeFilter: 'month' })
+    expect(result.success).toBe(true)
+  })
+
+  test('timeFilter "all" es valido', () => {
+    const result = getStreakRankingRequestSchema.safeParse({ timeFilter: 'all' })
+    expect(result.success).toBe(true)
+  })
+
+  test('timeFilter "today" es rechazado', () => {
+    const result = getStreakRankingRequestSchema.safeParse({ timeFilter: 'today' })
+    expect(result.success).toBe(false)
+  })
+
+  test('category default es "all"', () => {
+    const result = getStreakRankingRequestSchema.safeParse({ timeFilter: 'week' })
+    expect(result.success).toBe(true)
+    if (result.success) expect(result.data.category).toBe('all')
+  })
+
+  test('category "principiantes" es valido', () => {
+    const result = getStreakRankingRequestSchema.safeParse({ timeFilter: 'week', category: 'principiantes' })
+    expect(result.success).toBe(true)
+  })
+
+  test('category "veteranos" es valido', () => {
+    const result = getStreakRankingRequestSchema.safeParse({ timeFilter: 'week', category: 'veteranos' })
+    expect(result.success).toBe(true)
+  })
+
+  test('offset y limit validos', () => {
+    const result = getStreakRankingRequestSchema.safeParse({ timeFilter: 'week', offset: 10, limit: 25 })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.offset).toBe(10)
+      expect(result.data.limit).toBe(25)
+    }
+  })
+
+  test('defaults: offset 0, limit 50', () => {
+    const result = getStreakRankingRequestSchema.safeParse({ timeFilter: 'week' })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.offset).toBe(0)
+      expect(result.data.limit).toBe(50)
+    }
+  })
+})
+
+describe('streakEntrySchema', () => {
+  test('entrada valida', () => {
+    const result = streakEntrySchema.safeParse({
+      userId: '550e8400-e29b-41d4-a716-446655440000',
+      streak: 5,
+      rank: 1,
+      name: 'Test User',
+      ciudad: null,
+      avatar: null,
+      isNovato: false,
+    })
+    expect(result.success).toBe(true)
+  })
+
+  test('requiere isNovato', () => {
+    const result = streakEntrySchema.safeParse({
+      userId: '550e8400-e29b-41d4-a716-446655440000',
+      streak: 5,
+      rank: 1,
+      name: 'Test',
+      ciudad: null,
+      avatar: null,
+    })
+    expect(result.success).toBe(false)
+  })
+})
+
+describe('getStreakRankingResponseSchema', () => {
+  test('respuesta exitosa con streaks y hasMore', () => {
+    const result = getStreakRankingResponseSchema.safeParse({
+      success: true,
+      streaks: [
+        {
+          userId: '550e8400-e29b-41d4-a716-446655440000',
+          streak: 7,
+          rank: 1,
+          name: 'User',
+          ciudad: 'Madrid',
+          avatar: null,
+          isNovato: true,
+        },
+      ],
+      hasMore: false,
+    })
+    expect(result.success).toBe(true)
+  })
+
+  test('respuesta fallida', () => {
+    const result = getStreakRankingResponseSchema.safeParse({
+      success: false,
+      error: 'Error',
     })
     expect(result.success).toBe(true)
   })
@@ -233,6 +436,18 @@ describe('safeParseGetRankingRequest', () => {
 
   test('wrapper funciona correctamente para datos invalidos', () => {
     const result = safeParseGetRankingRequest({ timeFilter: 'xxx' })
+    expect(result.success).toBe(false)
+  })
+})
+
+describe('safeParseGetStreakRankingRequest', () => {
+  test('wrapper funciona para datos validos', () => {
+    const result = safeParseGetStreakRankingRequest({ timeFilter: 'week' })
+    expect(result.success).toBe(true)
+  })
+
+  test('wrapper funciona para datos invalidos', () => {
+    const result = safeParseGetStreakRankingRequest({ timeFilter: 'invalid' })
     expect(result.success).toBe(false)
   })
 })
