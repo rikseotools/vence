@@ -73,23 +73,43 @@ function AuthCallbackContent() {
           }
         }
 
-        // 2. Esperar a que _initialize() complete el intercambio PKCE
-        // detectSessionInUrl: true hace que _initialize() intercambie el code
-        // dentro de su lock, ANTES de que getUser() u otros métodos puedan
-        // borrar el code verifier de storage. Sin polling, sin race conditions.
-        console.log('🔍 [CALLBACK] Esperando intercambio PKCE via initialize()...')
+        // 2. Obtener sesión — escuchar el evento SIGNED_IN del singleton
+        // El singleton ya detecta el ?code= y hace el intercambio PKCE.
+        // Ni getSession() ni initialize() son fiables aquí porque ambos
+        // esperan un lock interno que puede colgarse tras el auto-init.
+        // Solución: escuchar onAuthStateChange que SÍ dispara SIGNED_IN.
+        console.log('🔍 [CALLBACK] Esperando sesión via onAuthStateChange...')
 
-        const { error: initError } = await supabase.auth.initialize()
+        const SESSION_TIMEOUT_MS = 15000
 
-        if (initError) {
-          throw new Error(`Error de autenticación: ${initError.message}`)
-        }
+        const session = await new Promise<Awaited<ReturnType<typeof supabase.auth.getSession>>['data']['session']>((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            subscription.unsubscribe()
+            reject(new Error('Timeout: no se recibió sesión en 15s'))
+          }, SESSION_TIMEOUT_MS)
 
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+          // Escuchar eventos de auth — SIGNED_IN trae la sesión
+          const { data: { subscription } } = supabase.auth.onAuthStateChange((event: string, sess: any) => {
+            if (sess?.user) {
+              console.log(`✅ [CALLBACK] Sesión recibida via ${event}:`, sess.user.email)
+              clearTimeout(timeout)
+              subscription.unsubscribe()
+              resolve(sess)
+            }
+          })
 
-        if (sessionError) {
-          throw new Error(`Error obteniendo sesión: ${sessionError.message}`)
-        }
+          // También intentar getSession por si ya se resolvió
+          supabase.auth.getSession().then(({ data }: any) => {
+            if (data.session?.user) {
+              console.log('✅ [CALLBACK] Sesión encontrada via getSession:', data.session.user.email)
+              clearTimeout(timeout)
+              subscription.unsubscribe()
+              resolve(data.session)
+            }
+          }).catch(() => {
+            // Ignorar — el listener lo capturará
+          })
+        })
 
         if (!session?.user) {
           throw new Error('No se estableció sesión tras la autenticación')

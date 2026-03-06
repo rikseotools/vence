@@ -107,7 +107,7 @@ interface AuthValue {
 
 // --- Test helper component ---
 function AuthConsumer({ onRender }: { onRender: (value: Record<string, unknown>) => void }) {
-  const auth = useAuth() as AuthValue
+  const auth = useAuth() as unknown as AuthValue
   onRender({
     loading: auth.loading,
     isPremium: auth.isPremium,

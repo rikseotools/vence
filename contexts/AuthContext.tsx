@@ -1,6 +1,8 @@
-// contexts/AuthContext.js - CONTEXTO GLOBAL CON SISTEMA DUAL
+// contexts/AuthContext.tsx - CONTEXTO GLOBAL CON SISTEMA DUAL
 'use client'
-import { createContext, useState, useEffect, useContext, useCallback } from 'react'
+import { createContext, useState, useEffect, useContext, useCallback, useRef } from 'react'
+import type { User, Session } from '@supabase/supabase-js'
+import type { UserProfileRow } from '@/types/database.types'
 
 import { getSupabaseClient } from '../lib/supabase'
 import notificationTracker from '../lib/services/notificationTracker'
@@ -10,11 +12,34 @@ import { GoogleAdsEvents } from '../utils/googleAds'
 import { useSessionControl } from '../hooks/useSessionControl'
 import SessionWarningModal from '../components/SessionWarningModal'
 
-const AuthContext = createContext({})
+interface AccessCheckResult {
+  can_access: boolean
+  user_type: string
+  message: string
+}
+
+export interface AuthContextValue {
+  user: User | null
+  userProfile: UserProfileRow | null
+  loading: boolean
+  initialized: boolean
+  signOut: () => Promise<void>
+  refreshUser: () => Promise<User | null>
+  checkAccess: () => Promise<AccessCheckResult>
+  activatePremium: (stripeCustomerId: string) => Promise<boolean>
+  isAuthenticated: boolean
+  isPremium: boolean
+  isLegacy: boolean
+  requiresPayment: boolean
+  registrationSource: string
+  supabase: ReturnType<typeof getSupabaseClient>
+}
+
+const AuthContext = createContext<AuthContextValue | null>(null)
 
 // 🎯 TRACKING DE IP Y LOCALIDAD - Fire and forget, no bloquea UI
 // También envía device_id si existe (para usuarios bajo vigilancia de fraude)
-const trackSessionIP = (userId, sessionId = null) => {
+const trackSessionIP = (userId: string, sessionId: string | null = null) => {
   if (typeof window === 'undefined') return
 
   // Obtener device_id si existe (solo para usuarios vigilados)
@@ -35,7 +60,7 @@ const trackSessionIP = (userId, sessionId = null) => {
   })
 }
 
-export const useAuth = () => {
+export const useAuth = (): AuthContextValue => {
   const context = useContext(AuthContext)
   if (!context) {
     throw new Error('useAuth debe usarse dentro de AuthProvider')
@@ -43,13 +68,32 @@ export const useAuth = () => {
   return context
 }
 
-export function AuthProvider({ children, initialUser = null }) {
-  const [user, setUser] = useState(initialUser)
-  const [userProfile, setUserProfile] = useState(null)
+interface AuthProviderProps {
+  children: React.ReactNode
+  initialUser?: User | null
+}
+
+export function AuthProvider({ children, initialUser = null }: AuthProviderProps) {
+  const [user, setUser] = useState<User | null>(initialUser)
+  const [userProfile, setUserProfile] = useState<UserProfileRow | null>(null)
   const [loading, setLoading] = useState(true)
   const [initialized, setInitialized] = useState(false)
   const [profileLoading, setProfileLoading] = useState(false) // ✨ Evita llamadas concurrentes
-  
+
+  // 🔧 Refs para evitar stale closures en onAuthStateChange/loadUserProfile
+  const userProfileRef = useRef<UserProfileRow | null>(null)
+  const profileLoadingRef = useRef(false)
+
+  const updateUserProfile = (profile: UserProfileRow | null) => {
+    userProfileRef.current = profile
+    setUserProfile(profile)
+  }
+
+  const updateProfileLoading = (val: boolean) => {
+    profileLoadingRef.current = val
+    setProfileLoading(val)
+  }
+
   const supabase = getSupabaseClient()
 
   // Configurar instancia de Supabase en los trackers
@@ -61,40 +105,40 @@ export function AuthProvider({ children, initialUser = null }) {
   }, [supabase])
 
   // 🎯 NUEVA FUNCIÓN: Detectar fuente de registro
-  const detectRegistrationSource = () => {
+  const detectRegistrationSource = (): string => {
     if (typeof window === 'undefined') return 'organic'
-    
+
     const currentPath = window.location.pathname
     const searchParams = new URLSearchParams(window.location.search)
-    
+
     // 1. Detectar por URL de landing
     if (currentPath.includes('/premium-ads') || currentPath.includes('/premium-edu')) {
       console.log('🎯 Detectado: Usuario viene de Google Ads')
       return 'google_ads'
     }
-    
+
     // 2. Detectar por parámetros UTM
     const utmSource = searchParams.get('utm_source')
-    const utmMedium = searchParams.get('utm_medium') 
+    const utmMedium = searchParams.get('utm_medium')
     const utmCampaign = searchParams.get('utm_campaign')
     const campaign = searchParams.get('campaign')
     const fbclid = searchParams.get('fbclid') // Facebook Click ID
-    
+
     console.log('🏷️ DETECCIÓN DE FUENTE:', { utmSource, utmMedium, utmCampaign, campaign, fbclid })
     console.log('🌍 URL completa:', window.location.href)
-    
+
     // Google Ads
     if (utmSource === 'google' && utmMedium === 'cpc') {
       console.log('🎯 Detectado: Usuario viene de Google Ads (UTM)')
       return 'google_ads'
     }
-    
+
     // Meta/Facebook Ads - Detección ampliada
-    if (fbclid || 
-        utmSource === 'facebook' || 
-        utmSource === 'instagram' || 
+    if (fbclid ||
+        utmSource === 'facebook' ||
+        utmSource === 'instagram' ||
         utmSource === 'meta' ||
-        (utmSource && utmSource.includes('fb')) || 
+        (utmSource && utmSource.includes('fb')) ||
         (utmSource && utmSource.includes('meta')) ||
         (utmMedium && utmMedium.includes('facebook')) ||
         (utmMedium && utmMedium.includes('meta')) ||
@@ -104,13 +148,13 @@ export function AuthProvider({ children, initialUser = null }) {
       console.log('🎯 Detectado: Usuario viene de Meta/Facebook Ads', { utmSource, utmMedium, campaign })
       return 'meta_ads'
     }
-    
+
     // Otras campañas de pago
     if (campaign && (campaign.includes('ads') || campaign.includes('google'))) {
       console.log('🎯 Detectado: Usuario viene de campaña de pago')
       return 'google_ads'
     }
-    
+
     // 3. Verificar localStorage para return_to
     try {
       const returnUrl = localStorage.getItem('auth_return_url_backup')
@@ -121,29 +165,29 @@ export function AuthProvider({ children, initialUser = null }) {
     } catch (e) {
       console.warn('No se pudo acceder a localStorage')
     }
-    
+
     console.log('🌐 Detectado: Usuario orgánico')
     return 'organic'
   }
 
   // 🎯 OPTIMIZADA: Cargar perfil con timeout, reintentos y mejor manejo
-  const loadUserProfile = useCallback(async (userId, retryCount = 0) => {
+  const loadUserProfile = useCallback(async (userId: string, retryCount = 0): Promise<UserProfileRow | null> => {
     const MAX_RETRIES = 3
 
-    // ✨ Evitar llamadas concurrentes
-    if (profileLoading && retryCount === 0) {
+    // ✨ Evitar llamadas concurrentes (usar refs para evitar stale closures)
+    if (profileLoadingRef.current && retryCount === 0) {
       console.log('📄 Ya cargando perfil, esperando...')
-      return userProfile
+      return userProfileRef.current
     }
 
     // Si ya tenemos el perfil del usuario correcto, no recargar
-    if (userProfile && userProfile.id === userId && retryCount === 0) {
+    if (userProfileRef.current && userProfileRef.current.id === userId && retryCount === 0) {
       console.log('✅ Perfil ya cargado para este usuario, reutilizando')
-      return userProfile
+      return userProfileRef.current
     }
 
     if (retryCount === 0) {
-      setProfileLoading(true)
+      updateProfileLoading(true)
     }
 
     try {
@@ -164,7 +208,7 @@ export function AuthProvider({ children, initialUser = null }) {
 
       if (error) {
         // Si es abort/timeout, reintentar si no hemos excedido el límite
-        if (error.name === 'AbortError' || error.code === 'ABORT_ERR') {
+        if ((error as any).name === 'AbortError' || error.code === 'ABORT_ERR') {
           if (retryCount < MAX_RETRIES - 1) {
             console.warn(`⏱️ Timeout en consulta de perfil, reintentando... (${retryCount + 1}/${MAX_RETRIES})`)
             const delay = 1000 * Math.pow(2, retryCount) // 1s, 2s, 4s
@@ -172,7 +216,7 @@ export function AuthProvider({ children, initialUser = null }) {
             return loadUserProfile(userId, retryCount + 1)
           }
           console.warn('⏱️ Timeout en consulta de perfil (8s) tras reintentos, continuando sin perfil')
-          setUserProfile(null)
+          updateUserProfile(null)
           return null
         }
 
@@ -204,13 +248,13 @@ export function AuthProvider({ children, initialUser = null }) {
 
       if (profile) {
         console.log('✅ Perfil cargado:', profile.email, 'Tipo:', profile.plan_type)
-        setUserProfile(profile)
-        return profile
+        updateUserProfile(profile as unknown as UserProfileRow)
+        return profile as unknown as UserProfileRow
       }
 
       return null
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Error en loadUserProfile:', error)
 
       // 🆕 Reintentar en errores de red/timeout
@@ -224,20 +268,20 @@ export function AuthProvider({ children, initialUser = null }) {
       // Si es abort/timeout final, continuar sin perfil
       if (error.name === 'AbortError') {
         console.warn('⏱️ Timeout en loadUserProfile tras reintentos, continuando...')
-        setUserProfile(null)
+        updateUserProfile(null)
       }
 
       return null
     } finally {
       if (retryCount === 0 || retryCount >= MAX_RETRIES - 1) {
-        setProfileLoading(false)
+        updateProfileLoading(false)
       }
     }
   }, [supabase])
 
   // 🎯 NUEVA FUNCIÓN: Crear/actualizar perfil según fuente
   // 🔧 FIX: Verificar si el perfil ya existe ANTES de llamar RPCs para no resetear plan_type
-  const ensureUserProfile = async (authUser) => {
+  const ensureUserProfile = async (authUser: User): Promise<UserProfileRow | null> => {
     try {
       console.log('👤 Verificando perfil existente para:', authUser.email)
 
@@ -306,7 +350,7 @@ export function AuthProvider({ children, initialUser = null }) {
 
   useEffect(() => {
     console.log('🔐 AuthProvider: Inicializando sistema dual...')
-    
+
     // 🔒 Timeout de seguridad - evitar loading infinito (extendido)
     const timeoutId = setTimeout(() => {
       if (loading) {
@@ -315,7 +359,7 @@ export function AuthProvider({ children, initialUser = null }) {
         setInitialized(true)
       }
     }, 10000) // 10 segundos máximo (más tiempo para consultas lentas)
-    
+
     const checkUser = async () => {
       try {
         if (!initialUser) {
@@ -323,11 +367,11 @@ export function AuthProvider({ children, initialUser = null }) {
           if (!error && user) {
             console.log('✅ AuthProvider: Usuario encontrado:', user.email)
             setUser(user)
-            
+
             // Cargar perfil completo - ESPERAR para evitar flash de isPremium=false
-            if (!userProfile || userProfile.id !== user.id) {
+            if (!userProfileRef.current || userProfileRef.current.id !== user.id) {
               console.log('🔄 Cargando perfil...')
-              await loadUserProfile(user.id).catch(err => {
+              await loadUserProfile(user.id).catch((err: any) => {
                 console.warn('⚠️ Error cargando perfil (no crítico):', err)
               })
             } else {
@@ -336,22 +380,22 @@ export function AuthProvider({ children, initialUser = null }) {
           } else {
             console.log('👤 AuthProvider: Sin usuario inicial')
             setUser(null)
-            setUserProfile(null)
+            updateUserProfile(null)
           }
         } else {
           console.log('✅ AuthProvider: Usuario inicial recibido:', initialUser.email)
           setUser(initialUser)
-          
+
           // Cargar perfil inicial - ESPERAR para evitar flash de isPremium=false
           console.log('🔄 Cargando perfil inicial...')
-          await loadUserProfile(initialUser.id).catch(err => {
+          await loadUserProfile(initialUser.id).catch((err: any) => {
             console.warn('⚠️ Error cargando perfil inicial (no crítico):', err)
           })
         }
       } catch (error) {
         console.error('❌ AuthProvider: Error verificando usuario:', error)
         setUser(null)
-        setUserProfile(null)
+        updateUserProfile(null)
       } finally {
         setLoading(false)
         setInitialized(true)
@@ -363,15 +407,15 @@ export function AuthProvider({ children, initialUser = null }) {
 
     // Escuchar cambios de autenticación
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      async (event: string, session: Session | null) => {
         // Solo log eventos importantes, no TOKEN_REFRESHED
         if (event !== 'TOKEN_REFRESHED') {
           console.log('🔄 AuthProvider: Auth state cambió:', event, session?.user?.email)
         }
-        
+
         const newUser = session?.user || null
         setUser(newUser)
-        
+
         if (newUser) {
           // Usuario logueado - asegurar perfil y cargar datos
           console.log('👤 Usuario logueado, procesando perfil...')
@@ -390,21 +434,25 @@ export function AuthProvider({ children, initialUser = null }) {
               console.warn('⚠️ Error tracking Google Ads signup:', error)
             }
           }
-          
+
           // 🆕 VERIFICAR SI DEBE FORZAR CHECKOUT (COOKIES DE CAMPAÑA)
           if (shouldForceCheckout(newUser, supabase)) {
             console.log('💰 Forzando checkout por cookies de campaña')
             setTimeout(() => {
-              forceCampaignCheckout(newUser, supabase).catch(err => {
+              forceCampaignCheckout(newUser, supabase).catch((err: any) => {
                 console.error('❌ Error forzando checkout:', err)
               })
             }, 1000) // Pequeño delay para que termine de cargar
           }
-          
+
           // Cargar perfil - ESPERAR para evitar flash de isPremium=false
-          let profile = userProfile?.id === newUser.id ? userProfile : null
+          // 🔧 Usar ref para evitar stale closure (este callback se captura una sola vez)
+          let profile = userProfileRef.current?.id === newUser.id ? userProfileRef.current : null
           if (!profile) {
-            setLoading(true) // Mostrar loading mientras carga el perfil
+            // Solo mostrar loading para login real, NO para refresh de token (evita flash del Header)
+            if (event !== 'TOKEN_REFRESHED') {
+              setLoading(true)
+            }
             console.log('🔄 Cargando perfil onAuthStateChange...')
             // Primero intentar cargar, solo crear si no existe
             await loadUserProfile(newUser.id).then(loadedProfile => {
@@ -414,25 +462,26 @@ export function AuthProvider({ children, initialUser = null }) {
                 return ensureUserProfile(newUser)
               }
               console.log('✅ Perfil cargado:', loadedProfile.plan_type)
-            }).catch(err => {
+              return undefined
+            }).catch((err: any) => {
               console.warn('⚠️ Error en flujo de perfil (no crítico):', err)
             })
           } else {
             console.log('✅ Perfil ya en memoria:', profile.plan_type)
           }
-          
+
         } else {
           // Usuario deslogueado
           console.log('👋 Usuario deslogueado')
-          setUserProfile(null)
+          updateUserProfile(null)
         }
-        
+
         setLoading(false)
-        
+
         // Disparar evento personalizado
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('authStateChanged', {
-            detail: { event, user: newUser, profile: userProfile }
+            detail: { event, user: newUser, profile: userProfileRef.current }
           }))
         }
       }
@@ -448,9 +497,9 @@ export function AuthProvider({ children, initialUser = null }) {
   // 🆕 ESCUCHAR EVENTOS DE SINCRONIZACIÓN ENTRE PESTAÑAS
   useEffect(() => {
     if (typeof window === 'undefined') return
-    
-    const handleAuthSync = (event) => {
-      const { session, source, isIOSSafari } = event.detail
+
+    const handleAuthSync = (event: Event) => {
+      const { session, source, isIOSSafari } = (event as CustomEvent).detail
 
       console.log(`🔄 AuthContext: Sincronización desde ${source}${isIOSSafari ? ' (iOS Safari)' : ''}`)
 
@@ -476,7 +525,7 @@ export function AuthProvider({ children, initialUser = null }) {
         if (user) {
           console.log('👋 Limpiando usuario desde sync')
           setUser(null)
-          setUserProfile(null)
+          updateUserProfile(null)
         }
       }
     }
@@ -488,7 +537,7 @@ export function AuthProvider({ children, initialUser = null }) {
     const handleProfileUpdated = () => {
       console.log('🔄 Perfil actualizado, forzando recarga...')
       if (user?.id) {
-        setUserProfile(null)
+        updateUserProfile(null)
         loadUserProfile(user.id)
       }
     }
@@ -501,25 +550,25 @@ export function AuthProvider({ children, initialUser = null }) {
   }, [user?.id, loadUserProfile])
 
   // 🎯 NUEVA FUNCIÓN: Verificar acceso del usuario
-  const checkAccess = async () => {
+  const checkAccess = async (): Promise<AccessCheckResult> => {
     if (!user) {
       return { can_access: false, user_type: 'not_logged_in', message: 'Usuario no logueado' }
     }
-    
+
     try {
       const { data, error } = await supabase.rpc('check_user_access', {
         user_id: user.id
       })
-      
+
       if (error) {
         console.error('❌ Error verificando acceso:', error)
         return { can_access: false, user_type: 'error', message: 'Error verificando acceso' }
       }
-      
-      const result = data[0]
-      
+
+      const result = (data as any)[0]
+
       return result
-      
+
     } catch (error) {
       console.error('❌ Error en checkAccess:', error)
       return { can_access: false, user_type: 'error', message: 'Error en verificación' }
@@ -527,17 +576,17 @@ export function AuthProvider({ children, initialUser = null }) {
   }
 
   // 🎯 NUEVA FUNCIÓN: Activar premium después del pago
-  const activatePremium = async (stripeCustomerId) => {
+  const activatePremium = async (stripeCustomerId: string): Promise<boolean> => {
     if (!user) return false
-    
+
     try {
       console.log('💳 Activando premium para usuario:', user.email)
-      
+
       await supabase.rpc('activate_premium_user', {
         user_id: user.id,
         stripe_customer_id: stripeCustomerId
       })
-      
+
       // Recargar perfil
       if (!userProfile || userProfile.id !== user.id) {
         if (!userProfile || userProfile.id !== user.id) {
@@ -548,10 +597,10 @@ export function AuthProvider({ children, initialUser = null }) {
       } else {
         console.log('✅ Perfil ya cargado, reutilizando')
       }
-      
+
       console.log('✅ Premium activado exitosamente')
       return true
-      
+
     } catch (error) {
       console.error('❌ Error activando premium:', error)
       return false
@@ -559,71 +608,71 @@ export function AuthProvider({ children, initialUser = null }) {
   }
 
   // Funciones auxiliares existentes
-  const signOut = async () => {
+  const signOut = async (): Promise<void> => {
     try {
       console.log('🚪 AuthProvider: Cerrando sesión...')
-      
+
       // 1. Cerrar sesión en Supabase
       const { error } = await supabase.auth.signOut()
       if (error) {
         console.error('❌ Error en logout de Supabase:', error)
         throw error
       }
-      
+
       // 2. Limpiar localStorage
       if (typeof window !== 'undefined') {
         localStorage.removeItem('auth_return_url_backup')
         localStorage.removeItem('auth_return_timestamp')
         // Limpiar cualquier otro dato de localStorage que uses para auth
       }
-      
+
       // 3. Limpiar estados locales
       setUser(null)
-      setUserProfile(null)
+      updateUserProfile(null)
       setLoading(false)
-      
+
       // 4. Disparar evento global para notificar a otros componentes
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('authStateChanged', {
-          detail: { 
+          detail: {
             event: 'SIGNED_OUT',
             user: null,
             profile: null
           }
         }))
       }
-      
+
       console.log('✅ AuthProvider: Sesión cerrada exitosamente')
-      
+
       // 5. Redirigir a página de inicio - DETECTAR ENTORNO AUTOMÁTICAMENTE
       if (typeof window !== 'undefined') {
         const baseUrl = window.location.origin  // http://localhost:3000 o https://www.vence.es
         const redirectUrl = `${baseUrl}/`
-        
+
         console.log('🔄 Redirigiendo a:', redirectUrl)
         window.location.href = redirectUrl
       }
-      
+
     } catch (error) {
       console.error('❌ AuthProvider: Error cerrando sesión:', error)
-      
+
       // Forzar logout local aunque falle el remoto
       setUser(null)
-      setUserProfile(null)
+      updateUserProfile(null)
       setLoading(false)
-      
+
       // Redirigir aunque haya fallado el logout remoto
       if (typeof window !== 'undefined') {
         const baseUrl = window.location.origin
         const redirectUrl = `${baseUrl}/`
-        
+
         console.log('🔄 Forzando redirección a:', redirectUrl)
         window.location.href = redirectUrl
       }
     }
   }
 
-  const refreshUser = async () => {
+  const refreshUser = async (): Promise<User | null> => {
     try {
       console.log('🔄 AuthProvider: Refrescando usuario...')
       const { data: { user }, error } = await supabase.auth.getUser()
@@ -633,20 +682,20 @@ export function AuthProvider({ children, initialUser = null }) {
       if (user) {
         // Forzar recarga del perfil (limpiar cache para que loadUserProfile no lo salte)
         console.log('🔄 Forzando recarga de perfil...')
-        setUserProfile(null)
-        loadUserProfile(user.id).catch(err => {
+        updateUserProfile(null)
+        loadUserProfile(user.id).catch((err: any) => {
           console.warn('⚠️ Error refrescando perfil (no crítico):', err)
         })
       } else {
-        setUserProfile(null)
+        updateUserProfile(null)
       }
-      
+
       console.log('✅ AuthProvider: Usuario refrescado:', user?.email)
       return user
     } catch (error) {
       console.error('❌ AuthProvider: Error refrescando usuario:', error)
       setUser(null)
-      setUserProfile(null)
+      updateUserProfile(null)
       return null
     }
   }
@@ -664,7 +713,7 @@ export function AuthProvider({ children, initialUser = null }) {
   }
 
   // 🎯 VALOR DEL CONTEXTO EXPANDIDO
-  const value = {
+  const value: AuthContextValue = {
     user,
     userProfile,
     loading,
@@ -695,10 +744,10 @@ export function AuthProvider({ children, initialUser = null }) {
 }
 
 // HOC actualizado para componentes que requieren autenticación
-export function withAuth(Component) {
-  return function AuthenticatedComponent(props) {
+export function withAuth<P extends object>(Component: React.ComponentType<P>) {
+  return function AuthenticatedComponent(props: P) {
     const { user, loading } = useAuth()
-    
+
     if (loading) {
       return (
         <div className="min-h-screen flex items-center justify-center">
@@ -709,7 +758,7 @@ export function withAuth(Component) {
         </div>
       )
     }
-    
+
     if (!user) {
       return (
         <div className="min-h-screen flex items-center justify-center">
@@ -723,19 +772,19 @@ export function withAuth(Component) {
         </div>
       )
     }
-    
+
     return <Component {...props} />
   }
 }
 
 // 🎯 NUEVO HOC: Para componentes que requieren premium
-export function withPremium(Component) {
-  return function PremiumComponent(props) {
+export function withPremium<P extends object>(Component: React.ComponentType<P>) {
+  return function PremiumComponent(props: P) {
     const { user, userProfile, loading, checkAccess } = useAuth()
     const [accessLoading, setAccessLoading] = useState(true)
     const [canAccess, setCanAccess] = useState(false)
-    const [accessInfo, setAccessInfo] = useState(null)
-    
+    const [accessInfo, setAccessInfo] = useState<AccessCheckResult | null>(null)
+
     useEffect(() => {
       const verifyAccess = async () => {
         if (user && userProfile) {
@@ -745,12 +794,12 @@ export function withPremium(Component) {
         }
         setAccessLoading(false)
       }
-      
+
       if (!loading) {
         verifyAccess()
       }
     }, [user, userProfile, loading])
-    
+
     if (loading || accessLoading) {
       return (
         <div className="min-h-screen flex items-center justify-center">
@@ -761,7 +810,7 @@ export function withPremium(Component) {
         </div>
       )
     }
-    
+
     if (!user) {
       return (
         <div className="min-h-screen flex items-center justify-center">
@@ -775,13 +824,13 @@ export function withPremium(Component) {
         </div>
       )
     }
-    
+
     if (!canAccess) {
       // Mostrar paywall - redirigir a premium
       window.location.href = '/premium'
       return null
     }
-    
+
     return <Component {...props} />
   }
 }

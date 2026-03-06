@@ -11,7 +11,42 @@
 import { InferSelectModel, InferInsertModel } from 'drizzle-orm'
 import * as schema from '@/db/schema'
 
-// Tipos de SELECT (lectura)
+// Tipo snake_case para respuestas directas del Supabase client
+// (supabase.from('user_profiles').select('*') devuelve snake_case)
+export interface UserProfileRow {
+  id: string
+  email: string
+  full_name: string | null
+  avatar_url: string | null
+  preferred_language: string | null
+  study_goal: number | null
+  created_at: string | null
+  updated_at: string | null
+  target_oposicion: string | null
+  target_oposicion_data: unknown
+  first_oposicion_detected_at: string | null
+  is_active_student: boolean | null
+  first_test_completed_at: string | null
+  plan_type: string | null
+  registration_date: string | null
+  trial_end_date: string | null
+  stripe_customer_id: string | null
+  registration_source: string | null
+  requires_payment: boolean | null
+  nickname: string | null
+  age: number | null
+  gender: string | null
+  daily_study_hours: number | null
+  onboarding_completed_at: string | null
+  ciudad: string | null
+  onboarding_skip_count: number | null
+  onboarding_last_skip_at: string | null
+  registration_ip: string | null
+  registration_funnel: string | null
+  registration_url: string | null
+}
+
+// Tipos de SELECT (lectura) — camelCase vía Drizzle ORM
 export type UserProfile = InferSelectModel<typeof schema.userProfiles>
 export type Question = InferSelectModel<typeof schema.questions>
 export type Test = InferSelectModel<typeof schema.tests>
