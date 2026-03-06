@@ -1,13 +1,26 @@
-// lib/stripe-checkout-validators.js
+// lib/stripe-checkout-validators.ts
 // Validadores para el endpoint de crear checkout
 
-/**
- * Valida los parámetros de creación de checkout
- * @param {Object} params - { priceId, userId, mode }
- * @returns {{ valid: boolean, errors: string[] }}
- */
-export function validateCheckoutParams(params) {
-  const errors = []
+interface CheckoutParams {
+  priceId?: string
+  userId?: string
+  mode?: string
+}
+
+interface CheckoutUser {
+  email?: string | null
+  plan_type?: string | null
+  registration_source?: string | null
+}
+
+interface StripeMetadata {
+  supabase_user_id: string
+  registration_source: string
+  plan_type: string
+}
+
+export function validateCheckoutParams(params: CheckoutParams | null | undefined): { valid: boolean; errors: string[] } {
+  const errors: string[] = []
 
   if (!params?.priceId) {
     errors.push('Price ID is required')
@@ -34,12 +47,7 @@ export function validateCheckoutParams(params) {
   }
 }
 
-/**
- * Valida que un usuario puede hacer checkout
- * @param {Object} user - { plan_type, email }
- * @returns {{ canCheckout: boolean, reason: string | null }}
- */
-export function validateUserCanCheckout(user) {
+export function validateUserCanCheckout(user: CheckoutUser | null | undefined): { canCheckout: boolean; reason: string | null } {
   if (!user) {
     return { canCheckout: false, reason: 'User not found' }
   }
@@ -59,13 +67,7 @@ export function validateUserCanCheckout(user) {
   return { canCheckout: true, reason: null }
 }
 
-/**
- * Construye el objeto metadata para el customer de Stripe
- * @param {string} userId
- * @param {Object} user
- * @returns {Object}
- */
-export function buildCustomerMetadata(userId, user) {
+export function buildCustomerMetadata(userId: string, user: CheckoutUser | null | undefined): StripeMetadata {
   return {
     supabase_user_id: userId,
     registration_source: user?.registration_source || 'unknown',
@@ -73,13 +75,7 @@ export function buildCustomerMetadata(userId, user) {
   }
 }
 
-/**
- * Construye el objeto metadata para la subscription
- * @param {string} userId
- * @param {Object} user
- * @returns {Object}
- */
-export function buildSubscriptionMetadata(userId, user) {
+export function buildSubscriptionMetadata(userId: string, user: CheckoutUser | null | undefined): StripeMetadata {
   return {
     supabase_user_id: userId,
     registration_source: user?.registration_source || 'unknown',
@@ -87,56 +83,26 @@ export function buildSubscriptionMetadata(userId, user) {
   }
 }
 
-/**
- * Construye la URL de success para el checkout
- * @param {string} baseUrl
- * @returns {string}
- */
-export function buildSuccessUrl(baseUrl) {
+export function buildSuccessUrl(baseUrl: string): string {
   return `${baseUrl}/premium/success?session_id={CHECKOUT_SESSION_ID}`
 }
 
-/**
- * Construye la URL de cancel para el checkout
- * @param {string} baseUrl
- * @returns {string}
- */
-export function buildCancelUrl(baseUrl) {
+export function buildCancelUrl(baseUrl: string): string {
   return `${baseUrl}/premium?cancelled=true`
 }
 
-/**
- * Valida un Stripe customer ID
- * @param {string} customerId
- * @returns {boolean}
- */
-export function isValidStripeCustomerId(customerId) {
+export function isValidStripeCustomerId(customerId: string): boolean {
   return typeof customerId === 'string' && customerId.startsWith('cus_')
 }
 
-/**
- * Valida un Stripe price ID
- * @param {string} priceId
- * @returns {boolean}
- */
-export function isValidStripePriceId(priceId) {
+export function isValidStripePriceId(priceId: string): boolean {
   return typeof priceId === 'string' && priceId.startsWith('price_')
 }
 
-/**
- * Valida un Stripe subscription ID
- * @param {string} subscriptionId
- * @returns {boolean}
- */
-export function isValidStripeSubscriptionId(subscriptionId) {
+export function isValidStripeSubscriptionId(subscriptionId: string): boolean {
   return typeof subscriptionId === 'string' && subscriptionId.startsWith('sub_')
 }
 
-/**
- * Valida un Stripe checkout session ID
- * @param {string} sessionId
- * @returns {boolean}
- */
-export function isValidStripeSessionId(sessionId) {
+export function isValidStripeSessionId(sessionId: string): boolean {
   return typeof sessionId === 'string' && sessionId.startsWith('cs_')
 }
