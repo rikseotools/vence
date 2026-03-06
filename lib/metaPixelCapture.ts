@@ -1,18 +1,54 @@
-// lib/metaPixelCapture.js
+// lib/metaPixelCapture.ts
 // Captura fbclid, gclid y parámetros UTM cuando el usuario llega desde Meta/Google Ads
 // Debe ejecutarse en el cliente (navegador)
 
 'use client'
 
+interface CapturedParams {
+  fbclid: string | null
+  gclid: string | null
+  utm_source: string | null
+  utm_medium: string | null
+  utm_campaign: string | null
+  utm_content: string | null
+  utm_term: string | null
+  landing_page: string
+  timestamp: number
+}
+
+interface MetaParams {
+  fbclid: string | null
+  fbc?: string | null
+  fbp?: string | null
+  utm_source: string | null
+  utm_campaign: string | null
+  utm_medium: string | null
+  [key: string]: unknown
+}
+
+interface GoogleParams {
+  gclid: string | null
+  utm_source: string | null
+  utm_campaign: string | null
+  utm_medium: string | null
+  [key: string]: unknown
+}
+
+interface MetaTrackResult {
+  success: boolean
+  eventId?: string
+  error?: string
+}
+
 /**
  * Captura y guarda los parámetros de Meta y Google cuando el usuario llega a la página
  * Llamar esto en el layout principal o _app
  */
-export function captureMetaParams() {
+export function captureMetaParams(): CapturedParams | null {
   if (typeof window === 'undefined') return null
 
   const url = new URL(window.location.href)
-  const params = {
+  const params: CapturedParams = {
     fbclid: url.searchParams.get('fbclid'),
     gclid: url.searchParams.get('gclid'),
     utm_source: url.searchParams.get('utm_source'),
@@ -26,10 +62,10 @@ export function captureMetaParams() {
 
   // Detectar origen
   const isFromMetaAds = params.fbclid ||
-    ['facebook', 'fb', 'instagram', 'ig', 'meta'].includes(params.utm_source?.toLowerCase())
+    ['facebook', 'fb', 'instagram', 'ig', 'meta'].includes(params.utm_source?.toLowerCase() || '')
 
   const isFromGoogleAds = params.gclid ||
-    ['google', 'googleads', 'google_ads', 'adwords', 'gads'].includes(params.utm_source?.toLowerCase())
+    ['google', 'googleads', 'google_ads', 'adwords', 'gads'].includes(params.utm_source?.toLowerCase() || '')
 
   // Guardar en cookies (30 días)
   const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toUTCString()
@@ -92,7 +128,7 @@ export function captureMetaParams() {
 /**
  * Obtiene los parámetros de Meta guardados
  */
-export function getMetaParams() {
+export function getMetaParams(): MetaParams | null {
   if (typeof window === 'undefined') return null
 
   // Intentar sessionStorage primero
@@ -106,7 +142,7 @@ export function getMetaParams() {
   }
 
   // Fallback: leer cookies
-  const cookies = document.cookie.split(';').reduce((acc, c) => {
+  const cookies: Record<string, string> = document.cookie.split(';').reduce((acc: Record<string, string>, c) => {
     const [key, val] = c.trim().split('=')
     acc[key] = val
     return acc
@@ -129,7 +165,7 @@ export function getMetaParams() {
 /**
  * Obtiene los parámetros de Google Ads guardados
  */
-export function getGoogleParams() {
+export function getGoogleParams(): GoogleParams | null {
   if (typeof window === 'undefined') return null
 
   // Intentar sessionStorage primero
@@ -143,7 +179,7 @@ export function getGoogleParams() {
   }
 
   // Fallback: leer cookies
-  const cookies = document.cookie.split(';').reduce((acc, c) => {
+  const cookies: Record<string, string> = document.cookie.split(';').reduce((acc: Record<string, string>, c) => {
     const [key, val] = c.trim().split('=')
     acc[key] = val
     return acc
@@ -164,29 +200,29 @@ export function getGoogleParams() {
 /**
  * Verifica si el usuario viene de Meta
  */
-export function isFromMeta() {
+export function isFromMeta(): boolean {
   const params = getMetaParams()
   if (!params) return false
 
   return !!(params.fbclid || params.fbc ||
-    ['facebook', 'fb', 'instagram', 'ig', 'meta'].includes(params.utm_source?.toLowerCase()))
+    ['facebook', 'fb', 'instagram', 'ig', 'meta'].includes(params.utm_source?.toLowerCase() || ''))
 }
 
 /**
  * Verifica si el usuario viene de Google Ads
  */
-export function isFromGoogle() {
+export function isFromGoogle(): boolean {
   const params = getGoogleParams()
   if (!params) return false
 
   return !!(params.gclid ||
-    ['google', 'googleads', 'google_ads', 'adwords', 'gads'].includes(params.utm_source?.toLowerCase()))
+    ['google', 'googleads', 'google_ads', 'adwords', 'gads'].includes(params.utm_source?.toLowerCase() || ''))
 }
 
 /**
  * Limpia los parámetros de Meta (después de conversión exitosa)
  */
-export function clearMetaParams() {
+export function clearMetaParams(): void {
   if (typeof window === 'undefined') return
 
   sessionStorage.removeItem('meta_params')
@@ -203,7 +239,7 @@ export function clearMetaParams() {
 /**
  * Envía evento de registro a Meta CAPI
  */
-export async function trackMetaRegistration(userId, email) {
+export async function trackMetaRegistration(userId: string, email: string): Promise<MetaTrackResult | null> {
   const params = getMetaParams()
 
   if (!params && !isFromMeta()) {
@@ -244,7 +280,7 @@ export async function trackMetaRegistration(userId, email) {
 /**
  * Envía evento de PageView a Meta CAPI
  */
-export async function trackMetaPageView() {
+export async function trackMetaPageView(): Promise<MetaTrackResult | null> {
   const params = getMetaParams()
 
   if (!params && !isFromMeta()) return null
