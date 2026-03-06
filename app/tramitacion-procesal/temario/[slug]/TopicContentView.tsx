@@ -6,6 +6,7 @@ import Link from 'next/link'
 import type { TopicContent, LawWithArticles, Article } from '@/lib/api/temario/schemas'
 import { useAuth } from '@/contexts/AuthContext'
 import { getCanonicalSlug } from '@/lib/lawMappingUtils'
+import { isVirtualLaw } from '@/lib/isVirtualLaw'
 import VideoCourseBanner from '@/components/VideoCourseBanner'
 import TopicNavFooter from '@/components/TopicNavFooter'
 
@@ -279,13 +280,17 @@ export default function TopicContentView({ content, oposicion = 'administrativo-
         {/* Laws and articles */}
         <div className="space-y-6">
           {content.laws.map((lawData, index) => (
-            <LawSection
-              key={lawData.law.id}
-              lawData={lawData}
-              isExpanded={expandedLaws.has(lawData.law.id)}
-              onToggle={() => toggleLaw(lawData.law.id)}
-              isFirst={index === 0}
-            />
+            isVirtualLaw(lawData.law.description) ? (
+              <VirtualLawCard key={lawData.law.id} lawData={lawData} />
+            ) : (
+              <LawSection
+                key={lawData.law.id}
+                lawData={lawData}
+                isExpanded={expandedLaws.has(lawData.law.id)}
+                onToggle={() => toggleLaw(lawData.law.id)}
+                isFirst={index === 0}
+              />
+            )
           ))}
         </div>
 
@@ -359,6 +364,34 @@ export default function TopicContentView({ content, oposicion = 'administrativo-
         </div>
       )}
     </>
+  )
+}
+
+// Virtual law card - simplified display without accordion for non-legislative content
+function VirtualLawCard({ lawData }: { lawData: LawWithArticles }) {
+  const { law, articleCount } = lawData
+  return (
+    <section className="no-print rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+            {law.shortName}
+          </h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+            {articleCount} {articleCount === 1 ? 'pregunta disponible' : 'preguntas disponibles'}
+          </p>
+        </div>
+        <Link
+          href={`/leyes/${getCanonicalSlug(law.shortName)}`}
+          className="inline-flex items-center gap-1 px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
+        >
+          Hacer test
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </Link>
+      </div>
+    </section>
   )
 }
 

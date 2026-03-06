@@ -100,6 +100,7 @@ async function getTopicContentBaseInternal(
       id: laws.id,
       shortName: laws.shortName,
       name: laws.name,
+      description: laws.description,
       year: laws.year,
       boeUrl: laws.boeUrl,
     })
@@ -228,6 +229,7 @@ async function getTopicContentBaseInternal(
         id: law.id,
         shortName: law.shortName,
         name: law.name,
+        description: law.description ?? null,
         year: law.year,
         boeUrl: law.boeUrl,
       },

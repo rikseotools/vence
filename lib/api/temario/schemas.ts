@@ -22,6 +22,7 @@ export const LawSchema = z.object({
   id: z.string().uuid(),
   shortName: z.string(),
   name: z.string(),
+  description: z.string().nullable(),
   year: z.number().nullable(),
   boeUrl: z.string().nullable(),
 })
