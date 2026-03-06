@@ -1,29 +1,41 @@
-// lib/notifications/urlGenerator.js
+// lib/notifications/urlGenerator.ts
 // Funciones para generar URLs de acciones de notificaciones
 
-/**
- * Genera un slug de ley a partir del nombre
- * @param {string|undefined} lawName - Nombre de la ley
- * @returns {string} - Slug de la ley
- */
-function generateLawSlug(lawName) {
-  if (!lawName) return 'unknown'
+interface ArticleItem {
+  article_number: string
+  [key: string]: unknown
+}
 
-  const specialCases = {
-    'Ley 19/2013': 'ley-19-2013',
-    'Ley 50/1997': 'ley-50-1997',
-    'Ley 40/2015': 'ley-40-2015',
-    'LRJSP': 'ley-40-2015',
-    'Ley 7/1985': 'ley-7-1985',
-    'Ley 2/2014': 'ley-2-2014',
-    'Ley 25/2014': 'ley-25-2014',
-    'Ley 38/2015': 'ley-38-2015',
-    'LPAC': 'ley-39-2015',
-    'CE': 'ce',
-    'Constitución Española': 'ce',
-    'TUE': 'tue',
-    'TFUE': 'tfue'
-  }
+interface NotificationInput {
+  id: string
+  type: string
+  campaign?: string
+  disputeId?: string
+  law_short_name?: string
+  articlesList?: ArticleItem[]
+  articlesCount?: number
+  context_data?: { conversation_id?: string; [key: string]: unknown }
+  data?: { conversation_id?: string; [key: string]: unknown }
+}
+
+const specialCases: Record<string, string> = {
+  'Ley 19/2013': 'ley-19-2013',
+  'Ley 50/1997': 'ley-50-1997',
+  'Ley 40/2015': 'ley-40-2015',
+  'LRJSP': 'ley-40-2015',
+  'Ley 7/1985': 'ley-7-1985',
+  'Ley 2/2014': 'ley-2-2014',
+  'Ley 25/2014': 'ley-25-2014',
+  'Ley 38/2015': 'ley-38-2015',
+  'LPAC': 'ley-39-2015',
+  'CE': 'ce',
+  'Constitución Española': 'ce',
+  'TUE': 'tue',
+  'TFUE': 'tfue'
+}
+
+export function generateLawSlug(lawName: string | undefined): string {
+  if (!lawName) return 'unknown'
 
   if (specialCases[lawName]) {
     return specialCases[lawName]
@@ -39,22 +51,7 @@ function generateLawSlug(lawName) {
     .replace(/^-|-$/g, '')
 }
 
-/**
- * Genera la URL de acción para una notificación
- * @param {Object} notification - Los datos de la notificación
- * @param {string} notification.id - ID de la notificación
- * @param {string} notification.type - Tipo de notificación
- * @param {string} [notification.campaign] - Campaña de la notificación
- * @param {string} [notification.disputeId] - ID de la disputa (para dispute_update)
- * @param {string} [notification.law_short_name] - Nombre corto de la ley
- * @param {Array} [notification.articlesList] - Lista de artículos
- * @param {number} [notification.articlesCount] - Número de artículos
- * @param {Object} [notification.context_data] - Datos de contexto
- * @param {Object} [notification.data] - Datos adicionales
- * @param {string} actionType - El tipo de acción (view_dispute, directed_test, etc.)
- * @returns {string} - La URL generada
- */
-function generateNotificationActionUrl(notification, actionType) {
+export function generateNotificationActionUrl(notification: NotificationInput, actionType: string): string {
   const baseParams = new URLSearchParams({
     utm_source: 'notification',
     utm_campaign: notification.campaign || 'general',
@@ -164,9 +161,4 @@ function generateNotificationActionUrl(notification, actionType) {
 
   // Default fallback
   return `/test/rapido?${baseParams.toString()}`
-}
-
-module.exports = {
-  generateLawSlug,
-  generateNotificationActionUrl
 }
