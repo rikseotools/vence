@@ -1,4 +1,4 @@
-// app/auth/callback/page.tsx - Auth callback con PKCE exchange explícito (sin race condition)
+// app/auth/callback/page.tsx - Auth callback con initialize() + getSession() (sin lock contention)
 'use client'
 import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -73,42 +73,58 @@ function AuthCallbackContent() {
           }
         }
 
-        // 2. Obtener sesión — escuchar el evento SIGNED_IN del singleton
-        // El singleton ya detecta el ?code= y hace el intercambio PKCE.
-        // Ni getSession() ni initialize() son fiables aquí porque ambos
-        // esperan un lock interno que puede colgarse tras el auto-init.
-        // Solución: escuchar onAuthStateChange que SÍ dispara SIGNED_IN.
-        console.log('🔍 [CALLBACK] Esperando sesión via onAuthStateChange...')
+        // 2. Esperar sesion via polling de localStorage
+        // El singleton (detectSessionInUrl: true) hace el exchange PKCE
+        // automaticamente en _initialize(). Pero sus metodos (getSession,
+        // exchangeCodeForSession) usan _acquireLock que causa cascadas con
+        // AuthContext via pendingInLock (puede superar 15s).
+        // Solucion: leer localStorage directamente — sin locks.
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+        const storageKey = `sb-${supabaseUrl.split('://')[1]?.split('.')[0]}-auth`
 
-        const SESSION_TIMEOUT_MS = 15000
+        console.log('🔑 [CALLBACK] Esperando sesion via localStorage polling...')
 
-        const session = await new Promise<Awaited<ReturnType<typeof supabase.auth.getSession>>['data']['session']>((resolve, reject) => {
+        const SESSION_TIMEOUT_MS = 30000
+        const POLL_INTERVAL_MS = 150
+
+        const session = await new Promise<any>((resolve, reject) => {
           const timeout = setTimeout(() => {
-            subscription.unsubscribe()
-            reject(new Error('Timeout: no se recibió sesión en 15s'))
+            clearInterval(interval)
+            reject(new Error('Timeout: no se recibio sesion en 30s'))
           }, SESSION_TIMEOUT_MS)
 
-          // Escuchar eventos de auth — SIGNED_IN trae la sesión
-          const { data: { subscription } } = supabase.auth.onAuthStateChange((event: string, sess: any) => {
-            if (sess?.user) {
-              console.log(`✅ [CALLBACK] Sesión recibida via ${event}:`, sess.user.email)
-              clearTimeout(timeout)
-              subscription.unsubscribe()
-              resolve(sess)
+          const interval = setInterval(() => {
+            try {
+              const raw = localStorage.getItem(storageKey)
+              if (raw) {
+                const parsed = JSON.parse(raw)
+                if (parsed?.access_token && parsed?.user) {
+                  clearInterval(interval)
+                  clearTimeout(timeout)
+                  console.log('✅ [CALLBACK] Sesion encontrada en localStorage:', parsed.user.email)
+                  resolve(parsed)
+                }
+              }
+            } catch {
+              // JSON parse error — ignorar, seguir polling
             }
-          })
+          }, POLL_INTERVAL_MS)
 
-          // También intentar getSession por si ya se resolvió
-          supabase.auth.getSession().then(({ data }: any) => {
-            if (data.session?.user) {
-              console.log('✅ [CALLBACK] Sesión encontrada via getSession:', data.session.user.email)
-              clearTimeout(timeout)
-              subscription.unsubscribe()
-              resolve(data.session)
+          // Check inmediato (por si ya esta)
+          try {
+            const raw = localStorage.getItem(storageKey)
+            if (raw) {
+              const parsed = JSON.parse(raw)
+              if (parsed?.access_token && parsed?.user) {
+                clearInterval(interval)
+                clearTimeout(timeout)
+                console.log('✅ [CALLBACK] Sesion encontrada inmediatamente:', parsed.user.email)
+                resolve(parsed)
+              }
             }
-          }).catch(() => {
-            // Ignorar — el listener lo capturará
-          })
+          } catch {
+            // ignorar
+          }
         })
 
         if (!session?.user) {
@@ -119,7 +135,7 @@ function AuthCallbackContent() {
         setStatus('success')
         setMessage('¡Autenticacion exitosa!')
 
-        // 3. Detectar origen en cliente (cookies/sessionStorage)
+        // 4. Detectar origen en cliente (cookies/sessionStorage)
         const isGoogleAdsFromUrl = finalReturnUrl.includes('/premium-ads') ||
                                    finalReturnUrl.includes('start_checkout=true')
         const googleParams = getGoogleParams()
@@ -136,7 +152,7 @@ function AuthCallbackContent() {
           oposicion: oposicionParam, funnel: funnelParam,
         })
 
-        // 4. Llamar API server-side (1 fetch — sin locks, instantaneo)
+        // 5. Llamar API server-side (1 fetch — sin locks, instantaneo)
         setMessage('Configurando tu perfil...')
         let apiResult: { success: boolean; isNewUser?: boolean; redirectUrl?: string } = { success: true, isNewUser: false, redirectUrl: finalReturnUrl }
 
@@ -168,7 +184,7 @@ function AuthCallbackContent() {
           console.warn('⚠️ [CALLBACK] API error (continuando con redirect):', apiError)
         }
 
-        // 5. Client-side tracking (necesitan browser/pixels)
+        // 6. Client-side tracking (necesitan browser/pixels)
         if (isGoogleAds) {
           events.SIGNUP('google_ads')
         } else if (isMetaAds) {
@@ -185,7 +201,7 @@ function AuthCallbackContent() {
           events.SIGNUP('google')
         }
 
-        // 6. Detectar test pendiente en localStorage
+        // 7. Detectar test pendiente en localStorage
         let redirectUrl = apiResult.redirectUrl || finalReturnUrl
         const PENDING_TEST_KEY = 'vence_pending_test'
 
@@ -209,7 +225,7 @@ function AuthCallbackContent() {
           console.warn('⚠️ [CALLBACK] Error procesando test pendiente:', e)
         }
 
-        // 7. Eventos globales
+        // 8. Eventos globales
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('supabaseAuthSuccess', {
             detail: { user: session.user, session: { user: session.user }, returnUrl: finalReturnUrl }
@@ -220,7 +236,7 @@ function AuthCallbackContent() {
           }))
         }
 
-        // 8. Redirect
+        // 9. Redirect
         setMessage(redirectUrl === '/test-recuperado'
           ? '¡Encontramos tu test! Guardando tu progreso...'
           : 'Redirigiendo de vuelta al test...')

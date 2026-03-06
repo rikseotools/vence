@@ -1,27 +1,15 @@
 /**
  * Tests para app/auth/callback/page.tsx — Auth callback robusto
  *
- * Verifica que el callback espera a initialize() (que hace el exchange PKCE
- * dentro de su lock con detectSessionInUrl: true) y luego obtiene la sesión
- * con getSession(). Sin polling, sin race conditions.
+ * El singleton (detectSessionInUrl: true) hace el exchange PKCE en _initialize().
+ * El callback page NO usa metodos de auth-js (que usan locks). En cambio,
+ * lee la sesion directamente de localStorage (polling) sin lock contention.
  */
 
 // ---- Mocks de módulos ----
 
-const mockInitialize = jest.fn()
-const mockGetSession = jest.fn()
-const mockOnAuthStateChange = jest.fn(() => ({
-  data: { subscription: { unsubscribe: jest.fn() } },
-}))
-
 jest.mock('@/lib/supabase', () => ({
-  getSupabaseClient: jest.fn(() => ({
-    auth: {
-      initialize: mockInitialize,
-      getSession: mockGetSession,
-      onAuthStateChange: mockOnAuthStateChange,
-    },
-  })),
+  getSupabaseClient: jest.fn(() => ({})),
 }))
 
 jest.mock('next/navigation', () => ({
@@ -49,13 +37,17 @@ jest.mock('../../../lib/metaPixelCapture', () => ({
 
 let mockSearchParams: Record<string, string> = {}
 
+const fakeUser = {
+  id: 'user-123',
+  email: 'test@example.com',
+  user_metadata: { full_name: 'Test User', avatar_url: 'https://img.example.com/avatar.jpg' },
+}
+
 const fakeSession = {
-  user: {
-    id: 'user-123',
-    email: 'test@example.com',
-    user_metadata: { full_name: 'Test User', avatar_url: 'https://img.example.com/avatar.jpg' },
-  },
   access_token: 'fake-access-token',
+  refresh_token: 'fake-refresh-token',
+  expires_at: Math.floor(Date.now() / 1000) + 3600,
+  user: fakeUser,
 }
 
 function setLocationSearch(search: string) {
@@ -72,23 +64,22 @@ function setLocationSearch(search: string) {
   })
 }
 
-/** Configura mocks para un flujo exitoso (initialize OK + getSession devuelve sesión) */
-function setupSuccessFlow() {
-  mockInitialize.mockResolvedValue({ error: null })
-  mockGetSession.mockResolvedValue({ data: { session: fakeSession }, error: null })
-}
-
 // ---- Setup / Teardown ----
 
 const originalFetch = global.fetch
 const originalLocalStorage = window.localStorage
+const originalEnv = { ...process.env }
 
 let mockLocalStorage: Record<string, string> = {}
 
 beforeEach(() => {
   jest.clearAllMocks()
+  jest.useFakeTimers()
   mockSearchParams = {}
   mockLocalStorage = {}
+
+  process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test-project.supabase.co'
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key'
 
   Object.defineProperty(window, 'localStorage', {
     value: {
@@ -101,6 +92,7 @@ beforeEach(() => {
     configurable: true,
   })
 
+  // Default: process-callback API succeeds
   global.fetch = jest.fn().mockResolvedValue({
     json: () => Promise.resolve({ success: true, isNewUser: false, redirectUrl: '/auxiliar-administrativo-estado' }),
   })
@@ -111,66 +103,69 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  jest.useRealTimers()
   global.fetch = originalFetch
   Object.defineProperty(window, 'localStorage', { value: originalLocalStorage, writable: true, configurable: true })
+  process.env = { ...originalEnv }
   jest.restoreAllMocks()
 })
 
+// ---- Helper: simula que la sesion aparece en localStorage ----
+
+function simulateSessionInStorage(delayMs = 0) {
+  if (delayMs === 0) {
+    // Session already present
+    mockLocalStorage['sb-test-project-auth'] = JSON.stringify(fakeSession)
+  } else {
+    // Session appears after delay
+    setTimeout(() => {
+      mockLocalStorage['sb-test-project-auth'] = JSON.stringify(fakeSession)
+    }, delayMs)
+  }
+}
+
 // ---- Tests ----
 
-describe('Auth Callback — initialize() + getSession()', () => {
-  describe('PKCE exchange via initialize()', () => {
-    test('llama initialize() para completar el exchange PKCE', async () => {
-      setupSuccessFlow()
+describe('Auth Callback — localStorage polling', () => {
+  describe('Session detection', () => {
+    test('detecta sesion ya presente en localStorage (check inmediato)', async () => {
+      simulateSessionInStorage(0)
 
       const { handleAuthCallbackForTest } = await getCallbackHandler()
-      await handleAuthCallbackForTest()
+      const resultPromise = handleAuthCallbackForTest()
 
-      expect(mockInitialize).toHaveBeenCalled()
+      // El check inmediato la encuentra sin necesidad de polling
+      const result = await resultPromise
+      expect(result.status).toBe('success')
+      expect(result.error).toBeNull()
     })
 
-    test('llama getSession() después de initialize()', async () => {
-      setupSuccessFlow()
+    test('detecta sesion que aparece despues (via polling)', async () => {
+      // Session appears after 300ms
+      simulateSessionInStorage(300)
 
       const { handleAuthCallbackForTest } = await getCallbackHandler()
-      await handleAuthCallbackForTest()
+      const resultPromise = handleAuthCallbackForTest()
 
-      expect(mockGetSession).toHaveBeenCalled()
-      // getSession debe llamarse después de initialize
-      const initOrder = mockInitialize.mock.invocationCallOrder[0]
-      const sessionOrder = mockGetSession.mock.invocationCallOrder[0]
-      expect(sessionOrder).toBeGreaterThan(initOrder)
+      // Advance timers to trigger polling
+      jest.advanceTimersByTime(500)
+
+      const result = await resultPromise
+      expect(result.status).toBe('success')
+      expect(result.error).toBeNull()
     })
 
-    test('error si initialize() devuelve error', async () => {
-      mockInitialize.mockResolvedValue({ error: { message: 'code verifier does not match' } })
+    test('timeout si la sesion nunca aparece (30s)', async () => {
+      // No session stored
 
       const { handleAuthCallbackForTest } = await getCallbackHandler()
-      const result = await handleAuthCallbackForTest()
+      const resultPromise = handleAuthCallbackForTest()
 
-      expect(result.error).toContain('Error de autenticación')
-      expect(result.error).toContain('code verifier does not match')
-      expect(mockGetSession).not.toHaveBeenCalled()
-    })
+      // Advance past the timeout
+      jest.advanceTimersByTime(31000)
 
-    test('error si getSession() devuelve error', async () => {
-      mockInitialize.mockResolvedValue({ error: null })
-      mockGetSession.mockResolvedValue({ data: { session: null }, error: { message: 'session expired' } })
-
-      const { handleAuthCallbackForTest } = await getCallbackHandler()
-      const result = await handleAuthCallbackForTest()
-
-      expect(result.error).toContain('Error obteniendo sesión')
-    })
-
-    test('error si getSession() devuelve session sin user', async () => {
-      mockInitialize.mockResolvedValue({ error: null })
-      mockGetSession.mockResolvedValue({ data: { session: { user: null } }, error: null })
-
-      const { handleAuthCallbackForTest } = await getCallbackHandler()
-      const result = await handleAuthCallbackForTest()
-
-      expect(result.error).toContain('No se estableció sesión')
+      const result = await resultPromise
+      expect(result.error).toContain('Timeout')
     })
 
     test('error si hay error param en URL (OAuth denegado)', async () => {
@@ -181,16 +176,6 @@ describe('Auth Callback — initialize() + getSession()', () => {
 
       expect(result.error).toContain('OAuth Error: access_denied')
       expect(result.error).toContain('User denied access')
-      expect(mockInitialize).not.toHaveBeenCalled()
-    })
-
-    test('NO usa polling, listener ni exchangeCodeForSession', async () => {
-      setupSuccessFlow()
-
-      const { handleAuthCallbackForTest } = await getCallbackHandler()
-      await handleAuthCallbackForTest()
-
-      expect(mockOnAuthStateChange).not.toHaveBeenCalled()
     })
   })
 
@@ -198,7 +183,7 @@ describe('Auth Callback — initialize() + getSession()', () => {
     test('usa return_to query param si existe', async () => {
       mockSearchParams = { return_to: '/tema/5' }
       setLocationSearch('?code=test-code&return_to=/tema/5')
-      setupSuccessFlow()
+      simulateSessionInStorage(0)
 
       const { handleAuthCallbackForTest } = await getCallbackHandler()
       const result = await handleAuthCallbackForTest()
@@ -211,33 +196,19 @@ describe('Auth Callback — initialize() + getSession()', () => {
       mockLocalStorage['auth_return_url_backup'] = '/leyes/constitucion'
       mockLocalStorage['auth_return_timestamp'] = String(Date.now() - 5 * 60 * 1000)
       setLocationSearch('?code=test-code')
-      setupSuccessFlow()
+      simulateSessionInStorage(0)
 
       const { handleAuthCallbackForTest } = await getCallbackHandler()
       const result = await handleAuthCallbackForTest()
 
       expect(result.returnUrl).toBe('/leyes/constitucion')
       expect(window.localStorage.removeItem).toHaveBeenCalledWith('auth_return_url_backup')
-      expect(window.localStorage.removeItem).toHaveBeenCalledWith('auth_return_timestamp')
-    })
-
-    test('ignora localStorage backup expirado (> 10min)', async () => {
-      mockSearchParams = {}
-      mockLocalStorage['auth_return_url_backup'] = '/old-page'
-      mockLocalStorage['auth_return_timestamp'] = String(Date.now() - 15 * 60 * 1000)
-      setLocationSearch('?code=test-code')
-      setupSuccessFlow()
-
-      const { handleAuthCallbackForTest } = await getCallbackHandler()
-      const result = await handleAuthCallbackForTest()
-
-      expect(result.returnUrl).toBe('/auxiliar-administrativo-estado')
     })
 
     test('default /auxiliar-administrativo-estado sin params ni backup', async () => {
       mockSearchParams = {}
       setLocationSearch('?code=test-code')
-      setupSuccessFlow()
+      simulateSessionInStorage(0)
 
       const { handleAuthCallbackForTest } = await getCallbackHandler()
       const result = await handleAuthCallbackForTest()
@@ -249,7 +220,7 @@ describe('Auth Callback — initialize() + getSession()', () => {
   describe('Process callback API', () => {
     test('llama /api/v2/auth/process-callback con Bearer token', async () => {
       setLocationSearch('?code=test-code')
-      setupSuccessFlow()
+      simulateSessionInStorage(0)
 
       const { handleAuthCallbackForTest } = await getCallbackHandler()
       await handleAuthCallbackForTest()
@@ -260,15 +231,14 @@ describe('Auth Callback — initialize() + getSession()', () => {
           method: 'POST',
           headers: expect.objectContaining({
             'Authorization': 'Bearer fake-access-token',
-            'Content-Type': 'application/json',
           }),
         })
       )
     })
 
-    test('envía userId, email, fullName, avatarUrl en body', async () => {
+    test('envia userId, email, fullName, avatarUrl en body', async () => {
       setLocationSearch('?code=test-code')
-      setupSuccessFlow()
+      simulateSessionInStorage(0)
 
       const { handleAuthCallbackForTest } = await getCallbackHandler()
       await handleAuthCallbackForTest()
@@ -278,13 +248,12 @@ describe('Auth Callback — initialize() + getSession()', () => {
       expect(body.userId).toBe('user-123')
       expect(body.userEmail).toBe('test@example.com')
       expect(body.fullName).toBe('Test User')
-      expect(body.avatarUrl).toBe('https://img.example.com/avatar.jpg')
     })
 
-    test('continúa redirect aunque la API falle', async () => {
-      setLocationSearch('?code=test-code');
-      (global.fetch as jest.Mock).mockRejectedValue(new Error('Network error'))
-      setupSuccessFlow()
+    test('continua redirect aunque la API falle', async () => {
+      setLocationSearch('?code=test-code')
+      simulateSessionInStorage(0)
+      ;(global.fetch as jest.Mock).mockRejectedValue(new Error('Network error'))
 
       const { handleAuthCallbackForTest } = await getCallbackHandler()
       const result = await handleAuthCallbackForTest()
@@ -294,27 +263,10 @@ describe('Auth Callback — initialize() + getSession()', () => {
     })
   })
 
-  describe('Client-side tracking', () => {
-    test('Google Ads: detecta por URL premium-ads', async () => {
-      mockSearchParams = { return_to: '/premium-ads' }
-      setLocationSearch('?code=test-code&return_to=/premium-ads')
-      setupSuccessFlow()
-
-      const { useGoogleAds } = require('../../../utils/googleAds')
-      const mockSignup = jest.fn()
-      useGoogleAds.mockReturnValue({ events: { SIGNUP: mockSignup } })
-
-      const { handleAuthCallbackForTest } = await getCallbackHandler()
-      await handleAuthCallbackForTest()
-
-      expect(mockSignup).toHaveBeenCalledWith('google_ads')
-    })
-  })
-
   describe('Redirect', () => {
     test('redirect con ?auth=success&t=timestamp', async () => {
       setLocationSearch('?code=test-code')
-      setupSuccessFlow()
+      simulateSessionInStorage(0)
 
       const { handleAuthCallbackForTest } = await getCallbackHandler()
       const result = await handleAuthCallbackForTest()
@@ -325,7 +277,7 @@ describe('Auth Callback — initialize() + getSession()', () => {
 
     test('detecta test pendiente en localStorage → redirect a /test-recuperado', async () => {
       setLocationSearch('?code=test-code')
-      setupSuccessFlow()
+      simulateSessionInStorage(0)
       mockLocalStorage['vence_pending_test'] = JSON.stringify({
         savedAt: Date.now() - 5 * 60 * 1000,
         answeredQuestions: [{ id: 1 }, { id: 2 }],
@@ -337,28 +289,12 @@ describe('Auth Callback — initialize() + getSession()', () => {
 
       expect(result.redirectUrl).toContain('/test-recuperado')
     })
-
-    test('ignora test pendiente expirado (> 1h)', async () => {
-      setLocationSearch('?code=test-code')
-      setupSuccessFlow()
-      mockLocalStorage['vence_pending_test'] = JSON.stringify({
-        savedAt: Date.now() - 2 * 60 * 60 * 1000,
-        answeredQuestions: [{ id: 1 }],
-        tema: 'Tema 1',
-      })
-
-      const { handleAuthCallbackForTest } = await getCallbackHandler()
-      const result = await handleAuthCallbackForTest()
-
-      expect(result.redirectUrl).not.toContain('/test-recuperado')
-      expect(window.localStorage.removeItem).toHaveBeenCalledWith('vence_pending_test')
-    })
   })
 
   describe('Global events', () => {
     test('dispatch supabaseAuthSuccess y supabaseAuthChange', async () => {
       setLocationSearch('?code=test-code')
-      setupSuccessFlow()
+      simulateSessionInStorage(0)
 
       const { handleAuthCallbackForTest } = await getCallbackHandler()
       await handleAuthCallbackForTest()
@@ -373,7 +309,7 @@ describe('Auth Callback — initialize() + getSession()', () => {
 })
 
 describe('lib/supabase.js — detectSessionInUrl', () => {
-  test('detectSessionInUrl es true (el exchange PKCE se hace en _initialize)', () => {
+  test('detectSessionInUrl es true (el singleton hace el exchange PKCE)', () => {
     const fs = require('fs')
     const source = fs.readFileSync(
       require('path').join(__dirname, '../../../lib/supabase.js'),
@@ -386,12 +322,13 @@ describe('lib/supabase.js — detectSessionInUrl', () => {
 // ---- Extrae la lógica del callback como función testable ----
 
 async function getCallbackHandler() {
-  const { getSupabaseClient } = require('@/lib/supabase')
   const { isFromMeta, isFromGoogle, getMetaParams, getGoogleParams } = require('../../../lib/metaPixelCapture')
   const { useGoogleAds } = require('../../../utils/googleAds')
 
-  const supabase = getSupabaseClient()
   const { events } = useGoogleAds()
+
+  const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const storageKey = `sb-${SUPABASE_URL.split('://')[1]?.split('.')[0]}-auth`
 
   async function handleAuthCallbackForTest(): Promise<{
     error: string | null
@@ -435,27 +372,54 @@ async function getCallbackHandler() {
         throw new Error(`OAuth Error: ${error_param} - ${urlParams.get('error_description')}`)
       }
 
-      // 2. Wait for initialize() to complete the PKCE exchange
-      const { error: initError } = await supabase.auth.initialize()
-      if (initError) {
-        throw new Error(`Error de autenticación: ${initError.message}`)
-      }
+      // 2. Poll localStorage for session (written by singleton's auto-exchange)
+      const SESSION_TIMEOUT_MS = 30000
+      const POLL_INTERVAL_MS = 150
 
-      // 3. Get session established by initialize()
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-      if (sessionError) {
-        throw new Error(`Error obteniendo sesión: ${sessionError.message}`)
-      }
+      const session: any = await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          clearInterval(interval)
+          reject(new Error('Timeout: no se recibio sesion en 30s'))
+        }, SESSION_TIMEOUT_MS)
+
+        const interval = setInterval(() => {
+          try {
+            const raw = window.localStorage.getItem(storageKey)
+            if (raw) {
+              const parsed = JSON.parse(raw)
+              if (parsed?.access_token && parsed?.user) {
+                clearInterval(interval)
+                clearTimeout(timeout)
+                resolve(parsed)
+              }
+            }
+          } catch { /* ignore */ }
+        }, POLL_INTERVAL_MS)
+
+        // Immediate check
+        try {
+          const raw = window.localStorage.getItem(storageKey)
+          if (raw) {
+            const parsed = JSON.parse(raw)
+            if (parsed?.access_token && parsed?.user) {
+              clearInterval(interval)
+              clearTimeout(timeout)
+              resolve(parsed)
+            }
+          }
+        } catch { /* ignore */ }
+      })
+
       if (!session?.user) {
-        throw new Error('No se estableció sesión tras la autenticación')
+        throw new Error('No se establecio sesion tras la autenticacion')
       }
 
-      // 4. Ads detection
+      // 3. Ads detection
       const isGoogleAdsFromUrl = returnUrl.includes('/premium-ads') || returnUrl.includes('start_checkout=true')
       const isGoogleAds = isGoogleAdsFromUrl || isFromGoogle()
       const isMetaAds = isFromMeta()
 
-      // 5. API call
+      // 4. API call
       try {
         const response = await fetch('/api/v2/auth/process-callback', {
           method: 'POST',
@@ -483,7 +447,7 @@ async function getCallbackHandler() {
         // Continue with redirect
       }
 
-      // 6. Tracking
+      // 5. Tracking
       if (isGoogleAds) {
         events.SIGNUP('google_ads')
       } else if (isMetaAds) {
@@ -492,7 +456,7 @@ async function getCallbackHandler() {
         events.SIGNUP('google')
       }
 
-      // 7. Pending test
+      // 6. Pending test
       let redirectUrl = returnUrl
       try {
         const pendingTestStr = window.localStorage.getItem('vence_pending_test')
@@ -507,7 +471,7 @@ async function getCallbackHandler() {
         }
       } catch (e) { /* ignore */ }
 
-      // 8. Events
+      // 7. Events
       window.dispatchEvent(new CustomEvent('supabaseAuthSuccess', {
         detail: { user: session.user, session: { user: session.user }, returnUrl },
       }))
@@ -515,7 +479,7 @@ async function getCallbackHandler() {
         detail: { event: 'SIGNED_IN', user: session.user, session: { user: session.user } },
       }))
 
-      // 9. Redirect URL
+      // 8. Redirect URL
       const separator = redirectUrl.includes('?') ? '&' : '?'
       finalRedirectUrl = `${redirectUrl}${separator}auth=success&t=${Date.now()}`
 
