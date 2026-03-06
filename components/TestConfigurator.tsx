@@ -340,16 +340,25 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
   const [loadingEstimate, setLoadingEstimate] = useState(false);
   const estimateAbortRef = useRef<AbortController | null>(null);
 
-  // availableQuestions: prefiere estimación del servidor, fallback a totalQuestions prop
+  // availableQuestions: prefiere estimación del servidor, fallback a cálculo local
   const availableQuestions = useMemo(() => {
     if (apiEstimate !== null) return apiEstimate;
+
+    // Sin tema (modo por-leyes): calcular desde lawsData + selectedLaws
+    if (!tema && lawsData && lawsData.length > 0) {
+      if (selectedLaws.size === 0) return 0;
+      return lawsData
+        .filter(law => selectedLaws.has(law.law_short_name))
+        .reduce((sum, law) => sum + law.questions_count, 0);
+    }
+
     // Fallback desde totalQuestions prop (mientras el API no haya respondido)
     if (typeof totalQuestions === 'number') return totalQuestions;
     if (typeof totalQuestions === 'object' && totalQuestions !== null) {
       return Object.values(totalQuestions).reduce((sum, count) => sum + count, 0);
     }
     return 0;
-  }, [apiEstimate, totalQuestions]);
+  }, [apiEstimate, totalQuestions, tema, lawsData, selectedLaws]);
 
   // 🆕 Fetch estimación de preguntas disponibles desde v2 API (fuente única de verdad)
   useEffect(() => {
