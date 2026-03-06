@@ -308,11 +308,11 @@ describe('Auth Callback — localStorage polling', () => {
   })
 })
 
-describe('lib/supabase.js — detectSessionInUrl', () => {
+describe('lib/supabase.ts — detectSessionInUrl', () => {
   test('detectSessionInUrl es true (el singleton hace el exchange PKCE)', () => {
     const fs = require('fs')
     const source = fs.readFileSync(
-      require('path').join(__dirname, '../../../lib/supabase.js'),
+      require('path').join(__dirname, '../../../lib/supabase.ts'),
       'utf-8'
     )
     expect(source).toContain('detectSessionInUrl: true')

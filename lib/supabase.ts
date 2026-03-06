@@ -1,17 +1,32 @@
-// lib/supabase.js - MÉTODO OFICIAL RECOMENDADO POR SUPABASE
+// lib/supabase.ts - MÉTODO OFICIAL RECOMENDADO POR SUPABASE
 
 import { createClient } from '@supabase/supabase-js'
+import type { SupabaseClient, User } from '@supabase/supabase-js'
+
+declare global {
+  interface Window {
+    MSStream?: unknown
+    supabaseDebug?: {
+      getInstance: () => SupabaseClient | null
+      getInstanceCount: () => number
+      getURL: () => string
+      signInGoogle: typeof signInWithGoogle
+      getCurrentUser: typeof getCurrentUser
+      clearInstance: () => void
+    }
+  }
+}
 
 // ✅ FUNCIÓN OFICIAL CON SOPORTE WWW
-const getURL = () => {
-  let url = 
+const getURL = (): string => {
+  let url =
     process?.env?.NEXT_PUBLIC_SITE_URL ?? // Configurado en producción
     process?.env?.NEXT_PUBLIC_VERCEL_URL ?? // Automático de Vercel
     'http://localhost:3000/' // Fallback desarrollo
-  
+
   // Asegurar protocolo https (excepto localhost)
   url = url.startsWith('http') ? url : `https://${url}`
-  
+
   // 🎯 ASEGURAR CONSISTENCIA CON WWW en producción
   if (typeof window !== 'undefined' && window.location.hostname.startsWith('www.')) {
     const urlObj = new URL(url)
@@ -20,42 +35,41 @@ const getURL = () => {
       url = urlObj.toString()
     }
   }
-  
+
   // Asegurar trailing slash
   url = url.endsWith('/') ? url : `${url}/`
-  
+
   console.log('🌐 URL final generada:', url)
   return url
 }
 
 // ✅ SINGLETON ESTRICTO
-let supabaseInstance = null
+// NOTE: El return type es `any` (no SupabaseClient) porque postgrest-js tiene un type-level
+// select parser que infiere tipos de las cadenas .select() y rompe los 58+ consumidores
+// que asumían `any`. La implementación interna sí usa SupabaseClient tipado.
+// TODO: Cuando se defina un Database schema tipado, cambiar return a SupabaseClient<Database>.
+let supabaseInstance: SupabaseClient | null = null
 let isInitializing = false
 
-export const getSupabaseClient = () => {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const getSupabaseClient = (): any => {
   if (isInitializing) {
     console.log('⏳ Esperando inicialización de Supabase...')
-    return new Promise((resolve) => {
-      const checkInterval = setInterval(() => {
-        if (supabaseInstance && !isInitializing) {
-          clearInterval(checkInterval)
-          resolve(supabaseInstance)
-        }
-      }, 10)
-    })
+    // NOTE: En la práctica isInitializing nunca es true cuando se llama externamente
+    // porque la inicialización es síncrona (createClient no es async).
+    return supabaseInstance!
   }
 
   if (!supabaseInstance) {
     isInitializing = true
-    
+
     console.log('🔧 Creando instancia ÚNICA de Supabase...')
-    
+
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-      console.error('❌ Variables de entorno de Supabase faltantes')
       isInitializing = false
-      return null
+      throw new Error('❌ Variables de entorno de Supabase faltantes (NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY)')
     }
-    
+
     supabaseInstance = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
@@ -76,39 +90,39 @@ export const getSupabaseClient = () => {
         }
       }
     )
-    
+
     console.log('✅ Instancia única de Supabase creada exitosamente')
-    
+
     supabaseInstance.auth.onAuthStateChange((event, session) => {
       if (process.env.NODE_ENV === 'development') {
         console.log(`🔄 [SINGLETON AUTH] ${event}:`, session?.user?.email || 'No user')
       }
-      
+
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('supabaseAuthChange', {
           detail: { event, session, user: session?.user }
         }))
       }
     })
-    
+
     // 🆕 SESSION SYNC ENTRE PESTAÑAS
     if (typeof window !== 'undefined') {
       const storageKey = `sb-${process.env.NEXT_PUBLIC_SUPABASE_URL?.split('://')[1]?.split('.')[0]}-auth`
-      
+
       window.addEventListener('storage', async (e) => {
         if (e.key === storageKey) {
           console.log('🔄 Detectado cambio de sesión en otra pestaña')
-          
+
           try {
             // Obtener nueva sesión
-            const { data: { session }, error } = await supabaseInstance.auth.getSession()
-            
+            const { data: { session }, error } = await supabaseInstance!.auth.getSession()
+
             if (!error) {
               // Disparar evento para que AuthContext se actualice
               window.dispatchEvent(new CustomEvent('supabaseAuthSync', {
                 detail: { session, source: 'storage_sync' }
               }))
-              
+
               console.log('✅ Sesión sincronizada entre pestañas')
             }
           } catch (error) {
@@ -116,7 +130,7 @@ export const getSupabaseClient = () => {
           }
         }
       })
-      
+
       // 🔍 DETECTAR CUANDO LA PESTAÑA VUELVE A SER VISIBLE
       // 🐛 FIX iOS Safari + Android PWA: Debounce + verificación robusta para evitar falsos logouts
 
@@ -133,7 +147,7 @@ export const getSupabaseClient = () => {
 
       // Detectar si estamos en modo PWA standalone
       const isPWAStandalone = window.matchMedia('(display-mode: standalone)').matches ||
-                              window.navigator.standalone === true ||
+                              (navigator as Navigator & { standalone?: boolean }).standalone === true ||
                               document.referrer.includes('android-app://')
 
       // Aplicar fix para iOS Safari O Android Chrome en PWA
@@ -143,7 +157,7 @@ export const getSupabaseClient = () => {
         console.log('🔧 [AUTH] Modo robusto activado:', { isIOSSafari, isAndroidChrome, isPWAStandalone })
       }
 
-      let visibilityDebounceTimer = null
+      let visibilityDebounceTimer: ReturnType<typeof setTimeout> | null = null
       let lastVisibilityCheck = 0
       const VISIBILITY_DEBOUNCE_MS = needsSessionFix ? 2000 : 500 // Más conservador en iOS/Android PWA
       const VISIBILITY_MIN_INTERVAL_MS = needsSessionFix ? 5000 : 1000 // Más conservador en iOS/Android PWA
@@ -169,18 +183,18 @@ export const getSupabaseClient = () => {
             lastVisibilityCheck = Date.now()
 
             try {
-              const { data: { session }, error } = await supabaseInstance.auth.getSession()
+              const { data: { session }, error } = await supabaseInstance!.auth.getSession()
 
               // 🐛 FIX iOS Safari + Android PWA: Si hay error o no hay sesión, verificar con getUser()
               if (needsSessionFix && (error || !session)) {
                 console.log('⚠️ [PWA Fix] getSession() devolvió vacío, verificando con getUser()...')
-                const { data: { user }, error: userError } = await supabaseInstance.auth.getUser()
+                const { data: { user }, error: userError } = await supabaseInstance!.auth.getUser()
 
                 if (user && !userError) {
                   // Hay usuario válido pero getSession() falló - NO limpiar sesión
                   console.log('✅ [PWA Fix] Usuario válido encontrado, manteniendo sesión')
                   // Intentar refrescar la sesión
-                  await supabaseInstance.auth.refreshSession()
+                  await supabaseInstance!.auth.refreshSession()
                   return
                 }
               }
@@ -201,23 +215,18 @@ export const getSupabaseClient = () => {
         }
       })
     }
-    
+
     isInitializing = false
-    
-  } else {
+
   }
-  
-  return supabaseInstance
+
+  return supabaseInstance!
 }
 
 // ✅ LOGIN CON MÉTODO OFICIAL RECOMENDADO
 // options: { funnel?: string } - opcional para trackear el origen del registro
-export const signInWithGoogle = async (options = {}) => {
+export const signInWithGoogle = async (options: { funnel?: string } = {}): Promise<{ success: boolean; data?: unknown; error?: string }> => {
   const client = getSupabaseClient()
-
-  if (!client) {
-    throw new Error('Cliente de Supabase no disponible')
-  }
 
   try {
     console.log('🚀 Iniciando Google OAuth (método oficial)...')
@@ -247,10 +256,10 @@ export const signInWithGoogle = async (options = {}) => {
       callbackUrl += `&funnel=${encodeURIComponent(options.funnel)}`
       console.log('📋 Funnel de registro:', options.funnel)
     }
-    
+
     console.log('📍 Base URL (window.location.origin):', baseUrl)
     console.log('🔄 Callback URL:', callbackUrl)
-    
+
     // ✅ MÉTODO ESTÁNDAR RECOMENDADO
     const { data, error } = await client.auth.signInWithOAuth({
       provider: 'google',
@@ -264,33 +273,31 @@ export const signInWithGoogle = async (options = {}) => {
         }
       }
     })
-    
+
     if (error) {
       console.error('❌ Error OAuth:', error)
       throw error
     }
-    
+
     console.log('✅ OAuth iniciado correctamente')
     return { success: true, data }
-    
-  } catch (error) {
+
+  } catch (error: unknown) {
     console.error('❌ Error en signInWithGoogle:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error instanceof Error ? error.message : String(error) }
   }
 }
 
-export const getCurrentUser = async () => {
+export const getCurrentUser = async (): Promise<User | null> => {
   try {
     const client = getSupabaseClient()
-    if (!client) return null
-    
     const { data: { user }, error } = await client.auth.getUser()
-    
+
     if (error) {
       console.warn('Warning obteniendo usuario:', error.message)
       return null
     }
-    
+
     return user
   } catch (error) {
     console.error('Error en getCurrentUser:', error)
