@@ -24,11 +24,12 @@ export async function GET(request: NextRequest) {
     const rawData = {
       topicNumber: searchParams.get('topicNumber') ? Number(searchParams.get('topicNumber')) : null,
       positionType: searchParams.get('positionType') || undefined,
-      selectedLaws: searchParams.getAll('selectedLaws').length > 0
-        ? searchParams.getAll('selectedLaws')
-        : searchParams.get('selectedLaws')
-          ? searchParams.get('selectedLaws')!.split(',')
-          : [],
+      selectedLaws: (() => {
+        const all = searchParams.getAll('selectedLaws')
+        if (all.length > 1) return all // Multiple repeated params: ?selectedLaws=CE&selectedLaws=LO
+        if (all.length === 1) return all[0].split(',') // Single comma-separated: ?selectedLaws=CE,LO
+        return []
+      })(),
       selectedArticlesByLaw,
       selectedSectionFilters,
       onlyOfficialQuestions: searchParams.get('onlyOfficialQuestions') === 'true',

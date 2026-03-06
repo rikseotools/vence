@@ -322,17 +322,21 @@ const TestConfigurator = ({
 
   // Estados y funciones existentes...
 
-  // 🆕 Estado para preguntas disponibles (fuente de verdad: servidor v2)
-  const [availableQuestions, setAvailableQuestions] = useState(() => {
-    // Valor inicial basado en totalQuestions prop
+  // 🆕 Estado para estimación del servidor (null = aún no cargada)
+  const [apiEstimate, setApiEstimate] = useState(null);
+  const [loadingEstimate, setLoadingEstimate] = useState(false);
+  const estimateAbortRef = useRef(null);
+
+  // availableQuestions: prefiere estimación del servidor, fallback a totalQuestions prop
+  const availableQuestions = useMemo(() => {
+    if (apiEstimate !== null) return apiEstimate;
+    // Fallback desde totalQuestions prop (mientras el API no haya respondido)
     if (typeof totalQuestions === 'number') return totalQuestions;
     if (typeof totalQuestions === 'object' && totalQuestions !== null) {
       return Object.values(totalQuestions).reduce((sum, count) => sum + count, 0);
     }
     return 0;
-  });
-  const [loadingEstimate, setLoadingEstimate] = useState(false);
-  const estimateAbortRef = useRef(null);
+  }, [apiEstimate, totalQuestions]);
 
   // 🆕 Fetch estimación de preguntas disponibles desde v2 API (fuente única de verdad)
   useEffect(() => {
@@ -387,9 +391,10 @@ const TestConfigurator = ({
 
         if (data.success) {
           console.log('📊 Estimación v2:', data.count, 'preguntas disponibles', data.byLaw);
-          setAvailableQuestions(data.count || 0);
+          setApiEstimate(data.count ?? 0);
         } else {
           console.warn('⚠️ Error en estimación v2:', data.error);
+          // En caso de error del API, no tocar apiEstimate — fallback a totalQuestions prop
         }
       } catch (error) {
         if (error.name !== 'AbortError') {
