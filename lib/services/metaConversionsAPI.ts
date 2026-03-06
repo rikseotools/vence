@@ -1,4 +1,4 @@
-// lib/services/metaConversionsAPI.js
+// lib/services/metaConversionsAPI.ts
 // Meta Conversions API (CAPI) - Server-side tracking para Facebook/Instagram Ads
 // Docs: https://developers.facebook.com/docs/marketing-api/conversions-api
 
@@ -9,27 +9,120 @@ const META_ACCESS_TOKEN = process.env.META_ACCESS_TOKEN
 const META_API_VERSION = 'v21.0'
 const META_API_URL = `https://graph.facebook.com/${META_API_VERSION}/${META_PIXEL_ID}/events`
 
-/**
- * Hash SHA256 para datos de usuario (requerido por Meta)
- */
-function hashData(data) {
+interface MetaUserData {
+  email?: string
+  phone?: string
+  firstName?: string
+  lastName?: string
+  city?: string
+  country?: string
+  externalId?: string
+}
+
+interface MetaEventParams {
+  eventName: string
+  userData?: MetaUserData
+  customData?: Record<string, unknown>
+  eventSourceUrl?: string
+  fbclid?: string | null
+  fbc?: string | null
+  fbp?: string | null
+  clientIpAddress?: string | null
+  clientUserAgent?: string | null
+  actionSource?: string
+}
+
+interface MetaEventResult {
+  success: boolean
+  error?: string
+  eventId?: string
+  result?: unknown
+}
+
+interface MetaRegistrationParams {
+  email?: string
+  userId?: string
+  registrationSource?: string
+  fbclid?: string | null
+  fbc?: string | null
+  fbp?: string | null
+  clientIpAddress?: string | null
+  clientUserAgent?: string | null
+  eventSourceUrl?: string
+}
+
+interface MetaLeadParams {
+  email?: string
+  userId?: string
+  source?: string
+  fbclid?: string | null
+  fbc?: string | null
+  fbp?: string | null
+  clientIpAddress?: string | null
+  clientUserAgent?: string | null
+  eventSourceUrl?: string
+}
+
+interface MetaPurchaseParams {
+  email?: string
+  userId?: string
+  value?: number
+  currency?: string
+  orderId?: string
+  productName?: string
+  fbclid?: string | null
+  fbc?: string | null
+  fbp?: string | null
+  clientIpAddress?: string | null
+  clientUserAgent?: string | null
+  eventSourceUrl?: string
+}
+
+interface MetaCheckoutParams {
+  email?: string
+  userId?: string
+  value?: number
+  currency?: string
+  productName?: string
+  fbclid?: string | null
+  fbc?: string | null
+  fbp?: string | null
+  clientIpAddress?: string | null
+  clientUserAgent?: string | null
+  eventSourceUrl?: string
+}
+
+interface MetaTrafficParams {
+  fbclid?: string | null
+  fbc?: string | null
+  fbp?: string | null
+  utmSource?: string | null
+}
+
+interface MetaExtractedParams {
+  fbclid: string | null
+  fbc: string | null
+  fbp: string | null
+  utmSource: string | null
+  utmMedium: string | null
+  utmCampaign: string | null
+  clientIpAddress: string | null
+  clientUserAgent: string | null
+  isFromMeta: boolean
+}
+
+function hashData(data: string | null | undefined): string | null {
   if (!data) return null
   const normalized = String(data).toLowerCase().trim()
   return crypto.createHash('sha256').update(normalized).digest('hex')
 }
 
-/**
- * Normaliza email antes de hashear
- */
-function normalizeEmail(email) {
+function normalizeEmail(email: string | null | undefined): string | null {
   if (!email) return null
   return email.toLowerCase().trim()
 }
 
-/**
- * Normaliza teléfono a formato E.164
- */
-function normalizePhone(phone) {
+function normalizePhone(phone: string | null | undefined): string | null {
   if (!phone) return null
   // Eliminar todo excepto números y +
   let normalized = phone.replace(/[^\d+]/g, '')
@@ -40,26 +133,10 @@ function normalizePhone(phone) {
   return normalized
 }
 
-/**
- * Genera un event_id único para deduplicación
- */
-function generateEventId() {
+function generateEventId(): string {
   return `${Date.now()}-${crypto.randomBytes(8).toString('hex')}`
 }
 
-/**
- * Envía un evento a Meta Conversions API
- * @param {object} params - Parámetros del evento
- * @param {string} params.eventName - Nombre del evento (Lead, CompleteRegistration, Purchase, etc.)
- * @param {object} params.userData - Datos del usuario (email, phone, etc.)
- * @param {object} params.customData - Datos personalizados del evento
- * @param {string} params.eventSourceUrl - URL donde ocurrió el evento
- * @param {string} params.fbclid - Facebook click ID (si está disponible)
- * @param {string} params.fbc - Cookie _fbc (si está disponible)
- * @param {string} params.fbp - Cookie _fbp (si está disponible)
- * @param {string} params.clientIpAddress - IP del cliente
- * @param {string} params.clientUserAgent - User agent del cliente
- */
 export async function sendMetaEvent({
   eventName,
   userData = {},
@@ -71,7 +148,7 @@ export async function sendMetaEvent({
   clientIpAddress,
   clientUserAgent,
   actionSource = 'website'
-}) {
+}: MetaEventParams): Promise<MetaEventResult> {
   // Validar configuración
   if (!META_PIXEL_ID || !META_ACCESS_TOKEN) {
     console.warn('⚠️ Meta CAPI: Faltan credenciales (META_PIXEL_ID o META_ACCESS_TOKEN)')
@@ -82,7 +159,7 @@ export async function sendMetaEvent({
   const eventTime = Math.floor(Date.now() / 1000)
 
   // Construir datos de usuario hasheados
-  const userDataHashed = {}
+  const userDataHashed: Record<string, unknown> = {}
 
   if (userData.email) {
     userDataHashed.em = [hashData(normalizeEmail(userData.email))]
@@ -127,7 +204,7 @@ export async function sendMetaEvent({
   }
 
   // Construir payload
-  const payload = {
+  const payload: Record<string, unknown> = {
     data: [
       {
         event_name: eventName,
@@ -179,13 +256,10 @@ export async function sendMetaEvent({
 
   } catch (error) {
     console.error('❌ Meta CAPI Exception:', error)
-    return { success: false, error: error.message, eventId }
+    return { success: false, error: (error as Error).message, eventId }
   }
 }
 
-/**
- * Evento: Registro completado (Lead/CompleteRegistration)
- */
 export async function trackMetaRegistration({
   email,
   userId,
@@ -196,7 +270,7 @@ export async function trackMetaRegistration({
   clientIpAddress,
   clientUserAgent,
   eventSourceUrl
-}) {
+}: MetaRegistrationParams): Promise<MetaEventResult> {
   return sendMetaEvent({
     eventName: 'CompleteRegistration',
     userData: {
@@ -217,9 +291,6 @@ export async function trackMetaRegistration({
   })
 }
 
-/**
- * Evento: Lead (usuario inicia proceso de registro)
- */
 export async function trackMetaLead({
   email,
   userId,
@@ -230,7 +301,7 @@ export async function trackMetaLead({
   clientIpAddress,
   clientUserAgent,
   eventSourceUrl
-}) {
+}: MetaLeadParams): Promise<MetaEventResult> {
   return sendMetaEvent({
     eventName: 'Lead',
     userData: {
@@ -250,9 +321,6 @@ export async function trackMetaLead({
   })
 }
 
-/**
- * Evento: Compra completada
- */
 export async function trackMetaPurchase({
   email,
   userId,
@@ -266,7 +334,7 @@ export async function trackMetaPurchase({
   clientIpAddress,
   clientUserAgent,
   eventSourceUrl
-}) {
+}: MetaPurchaseParams): Promise<MetaEventResult> {
   return sendMetaEvent({
     eventName: 'Purchase',
     userData: {
@@ -289,9 +357,6 @@ export async function trackMetaPurchase({
   })
 }
 
-/**
- * Evento: Inicio de checkout
- */
 export async function trackMetaInitiateCheckout({
   email,
   userId,
@@ -304,7 +369,7 @@ export async function trackMetaInitiateCheckout({
   clientIpAddress,
   clientUserAgent,
   eventSourceUrl
-}) {
+}: MetaCheckoutParams): Promise<MetaEventResult> {
   return sendMetaEvent({
     eventName: 'InitiateCheckout',
     userData: {
@@ -327,10 +392,7 @@ export async function trackMetaInitiateCheckout({
   })
 }
 
-/**
- * Detecta si el tráfico viene de Meta basándose en parámetros
- */
-export function isMetaTraffic({ fbclid, fbc, fbp, utmSource }) {
+export function isMetaTraffic({ fbclid, fbc, fbp, utmSource }: MetaTrafficParams): boolean {
   // fbclid es el indicador más claro
   if (fbclid) return true
 
@@ -345,10 +407,7 @@ export function isMetaTraffic({ fbclid, fbc, fbp, utmSource }) {
   return false
 }
 
-/**
- * Extrae fbclid y cookies de Meta desde request headers y cookies
- */
-export function extractMetaParams(request) {
+export function extractMetaParams(request: Request): MetaExtractedParams {
   const url = new URL(request.url)
   const fbclid = url.searchParams.get('fbclid')
   const utmSource = url.searchParams.get('utm_source')
