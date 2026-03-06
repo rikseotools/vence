@@ -1,24 +1,25 @@
 /**
- * Tests para app/auth/callback/page.tsx — PKCE exchange explícito
+ * Tests para app/auth/callback/page.tsx — Auth callback robusto
  *
- * Verifica que el callback usa exchangeCodeForSession en lugar de
- * detectSessionInUrl (que causaba race conditions / deadlocks).
+ * Verifica que el callback espera a initialize() (que hace el exchange PKCE
+ * dentro de su lock con detectSessionInUrl: true) y luego obtiene la sesión
+ * con getSession(). Sin polling, sin race conditions.
  */
 
 // ---- Mocks de módulos ----
 
-const mockExchangeCodeForSession = jest.fn()
+const mockInitialize = jest.fn()
+const mockGetSession = jest.fn()
 const mockOnAuthStateChange = jest.fn(() => ({
   data: { subscription: { unsubscribe: jest.fn() } },
 }))
-const mockGetSession = jest.fn()
 
 jest.mock('@/lib/supabase', () => ({
   getSupabaseClient: jest.fn(() => ({
     auth: {
-      exchangeCodeForSession: mockExchangeCodeForSession,
-      onAuthStateChange: mockOnAuthStateChange,
+      initialize: mockInitialize,
       getSession: mockGetSession,
+      onAuthStateChange: mockOnAuthStateChange,
     },
   })),
 }))
@@ -47,8 +48,6 @@ jest.mock('../../../lib/metaPixelCapture', () => ({
 // ---- Helpers ----
 
 let mockSearchParams: Record<string, string> = {}
-let mockLocationSearch = ''
-let mockLocationHref = ''
 
 const fakeSession = {
   user: {
@@ -60,7 +59,6 @@ const fakeSession = {
 }
 
 function setLocationSearch(search: string) {
-  mockLocationSearch = search
   Object.defineProperty(window, 'location', {
     value: {
       ...window.location,
@@ -74,6 +72,12 @@ function setLocationSearch(search: string) {
   })
 }
 
+/** Configura mocks para un flujo exitoso (initialize OK + getSession devuelve sesión) */
+function setupSuccessFlow() {
+  mockInitialize.mockResolvedValue({ error: null })
+  mockGetSession.mockResolvedValue({ data: { session: fakeSession }, error: null })
+}
+
 // ---- Setup / Teardown ----
 
 const originalFetch = global.fetch
@@ -85,9 +89,7 @@ beforeEach(() => {
   jest.clearAllMocks()
   mockSearchParams = {}
   mockLocalStorage = {}
-  mockLocationHref = ''
 
-  // Mock localStorage
   Object.defineProperty(window, 'localStorage', {
     value: {
       getItem: jest.fn((key: string) => mockLocalStorage[key] ?? null),
@@ -99,15 +101,12 @@ beforeEach(() => {
     configurable: true,
   })
 
-  // Mock fetch
   global.fetch = jest.fn().mockResolvedValue({
     json: () => Promise.resolve({ success: true, isNewUser: false, redirectUrl: '/auxiliar-administrativo-estado' }),
   })
 
-  // Mock window.dispatchEvent
   jest.spyOn(window, 'dispatchEvent').mockImplementation(() => true)
 
-  // Default: URL con code PKCE
   setLocationSearch('?code=pkce-test-code')
 })
 
@@ -119,57 +118,59 @@ afterEach(() => {
 
 // ---- Tests ----
 
-describe('Auth Callback — PKCE Exchange', () => {
-  describe('exchangeCodeForSession', () => {
-    test('llama exchangeCodeForSession con el code de la URL', async () => {
-      setLocationSearch('?code=abc123')
-      mockExchangeCodeForSession.mockResolvedValue({
-        data: { session: fakeSession },
-        error: null,
-      })
+describe('Auth Callback — initialize() + getSession()', () => {
+  describe('PKCE exchange via initialize()', () => {
+    test('llama initialize() para completar el exchange PKCE', async () => {
+      setupSuccessFlow()
 
       const { handleAuthCallbackForTest } = await getCallbackHandler()
       await handleAuthCallbackForTest()
 
-      expect(mockExchangeCodeForSession).toHaveBeenCalledWith('abc123')
+      expect(mockInitialize).toHaveBeenCalled()
     })
 
-    test('error si no hay code en la URL', async () => {
-      setLocationSearch('')
-      mockExchangeCodeForSession.mockResolvedValue({ data: { session: null }, error: null })
+    test('llama getSession() después de initialize()', async () => {
+      setupSuccessFlow()
+
+      const { handleAuthCallbackForTest } = await getCallbackHandler()
+      await handleAuthCallbackForTest()
+
+      expect(mockGetSession).toHaveBeenCalled()
+      // getSession debe llamarse después de initialize
+      const initOrder = mockInitialize.mock.invocationCallOrder[0]
+      const sessionOrder = mockGetSession.mock.invocationCallOrder[0]
+      expect(sessionOrder).toBeGreaterThan(initOrder)
+    })
+
+    test('error si initialize() devuelve error', async () => {
+      mockInitialize.mockResolvedValue({ error: { message: 'code verifier does not match' } })
 
       const { handleAuthCallbackForTest } = await getCallbackHandler()
       const result = await handleAuthCallbackForTest()
 
-      expect(result.error).toContain('No auth code in URL')
-      expect(mockExchangeCodeForSession).not.toHaveBeenCalled()
-    })
-
-    test('error si exchangeCodeForSession falla (código expirado)', async () => {
-      setLocationSearch('?code=expired-code')
-      mockExchangeCodeForSession.mockResolvedValue({
-        data: { session: null },
-        error: { message: 'code verifier does not match' },
-      })
-
-      const { handleAuthCallbackForTest } = await getCallbackHandler()
-      const result = await handleAuthCallbackForTest()
-
-      expect(result.error).toContain('PKCE exchange failed')
+      expect(result.error).toContain('Error de autenticación')
       expect(result.error).toContain('code verifier does not match')
+      expect(mockGetSession).not.toHaveBeenCalled()
     })
 
-    test('error si exchangeCodeForSession devuelve session sin user', async () => {
-      setLocationSearch('?code=valid-code')
-      mockExchangeCodeForSession.mockResolvedValue({
-        data: { session: { user: null, access_token: 'tok' } },
-        error: null,
-      })
+    test('error si getSession() devuelve error', async () => {
+      mockInitialize.mockResolvedValue({ error: null })
+      mockGetSession.mockResolvedValue({ data: { session: null }, error: { message: 'session expired' } })
 
       const { handleAuthCallbackForTest } = await getCallbackHandler()
       const result = await handleAuthCallbackForTest()
 
-      expect(result.error).toContain('No session returned')
+      expect(result.error).toContain('Error obteniendo sesión')
+    })
+
+    test('error si getSession() devuelve session sin user', async () => {
+      mockInitialize.mockResolvedValue({ error: null })
+      mockGetSession.mockResolvedValue({ data: { session: { user: null } }, error: null })
+
+      const { handleAuthCallbackForTest } = await getCallbackHandler()
+      const result = await handleAuthCallbackForTest()
+
+      expect(result.error).toContain('No se estableció sesión')
     })
 
     test('error si hay error param en URL (OAuth denegado)', async () => {
@@ -180,22 +181,16 @@ describe('Auth Callback — PKCE Exchange', () => {
 
       expect(result.error).toContain('OAuth Error: access_denied')
       expect(result.error).toContain('User denied access')
-      expect(mockExchangeCodeForSession).not.toHaveBeenCalled()
+      expect(mockInitialize).not.toHaveBeenCalled()
     })
 
-    test('NO usa polling ni listener (sin onAuthStateChange)', async () => {
-      setLocationSearch('?code=direct-code')
-      mockExchangeCodeForSession.mockResolvedValue({
-        data: { session: fakeSession },
-        error: null,
-      })
+    test('NO usa polling, listener ni exchangeCodeForSession', async () => {
+      setupSuccessFlow()
 
       const { handleAuthCallbackForTest } = await getCallbackHandler()
       await handleAuthCallbackForTest()
 
-      // onAuthStateChange no debería llamarse en el flujo del callback
       expect(mockOnAuthStateChange).not.toHaveBeenCalled()
-      expect(mockGetSession).not.toHaveBeenCalled()
     })
   })
 
@@ -203,7 +198,7 @@ describe('Auth Callback — PKCE Exchange', () => {
     test('usa return_to query param si existe', async () => {
       mockSearchParams = { return_to: '/tema/5' }
       setLocationSearch('?code=test-code&return_to=/tema/5')
-      mockExchangeCodeForSession.mockResolvedValue({ data: { session: fakeSession }, error: null })
+      setupSuccessFlow()
 
       const { handleAuthCallbackForTest } = await getCallbackHandler()
       const result = await handleAuthCallbackForTest()
@@ -214,9 +209,9 @@ describe('Auth Callback — PKCE Exchange', () => {
     test('fallback a localStorage backup (si < 10min)', async () => {
       mockSearchParams = {}
       mockLocalStorage['auth_return_url_backup'] = '/leyes/constitucion'
-      mockLocalStorage['auth_return_timestamp'] = String(Date.now() - 5 * 60 * 1000) // 5 min ago
+      mockLocalStorage['auth_return_timestamp'] = String(Date.now() - 5 * 60 * 1000)
       setLocationSearch('?code=test-code')
-      mockExchangeCodeForSession.mockResolvedValue({ data: { session: fakeSession }, error: null })
+      setupSuccessFlow()
 
       const { handleAuthCallbackForTest } = await getCallbackHandler()
       const result = await handleAuthCallbackForTest()
@@ -229,9 +224,9 @@ describe('Auth Callback — PKCE Exchange', () => {
     test('ignora localStorage backup expirado (> 10min)', async () => {
       mockSearchParams = {}
       mockLocalStorage['auth_return_url_backup'] = '/old-page'
-      mockLocalStorage['auth_return_timestamp'] = String(Date.now() - 15 * 60 * 1000) // 15 min ago
+      mockLocalStorage['auth_return_timestamp'] = String(Date.now() - 15 * 60 * 1000)
       setLocationSearch('?code=test-code')
-      mockExchangeCodeForSession.mockResolvedValue({ data: { session: fakeSession }, error: null })
+      setupSuccessFlow()
 
       const { handleAuthCallbackForTest } = await getCallbackHandler()
       const result = await handleAuthCallbackForTest()
@@ -242,7 +237,7 @@ describe('Auth Callback — PKCE Exchange', () => {
     test('default /auxiliar-administrativo-estado sin params ni backup', async () => {
       mockSearchParams = {}
       setLocationSearch('?code=test-code')
-      mockExchangeCodeForSession.mockResolvedValue({ data: { session: fakeSession }, error: null })
+      setupSuccessFlow()
 
       const { handleAuthCallbackForTest } = await getCallbackHandler()
       const result = await handleAuthCallbackForTest()
@@ -254,7 +249,7 @@ describe('Auth Callback — PKCE Exchange', () => {
   describe('Process callback API', () => {
     test('llama /api/v2/auth/process-callback con Bearer token', async () => {
       setLocationSearch('?code=test-code')
-      mockExchangeCodeForSession.mockResolvedValue({ data: { session: fakeSession }, error: null })
+      setupSuccessFlow()
 
       const { handleAuthCallbackForTest } = await getCallbackHandler()
       await handleAuthCallbackForTest()
@@ -273,7 +268,7 @@ describe('Auth Callback — PKCE Exchange', () => {
 
     test('envía userId, email, fullName, avatarUrl en body', async () => {
       setLocationSearch('?code=test-code')
-      mockExchangeCodeForSession.mockResolvedValue({ data: { session: fakeSession }, error: null })
+      setupSuccessFlow()
 
       const { handleAuthCallbackForTest } = await getCallbackHandler()
       await handleAuthCallbackForTest()
@@ -289,12 +284,11 @@ describe('Auth Callback — PKCE Exchange', () => {
     test('continúa redirect aunque la API falle', async () => {
       setLocationSearch('?code=test-code');
       (global.fetch as jest.Mock).mockRejectedValue(new Error('Network error'))
-      mockExchangeCodeForSession.mockResolvedValue({ data: { session: fakeSession }, error: null })
+      setupSuccessFlow()
 
       const { handleAuthCallbackForTest } = await getCallbackHandler()
       const result = await handleAuthCallbackForTest()
 
-      // No debería marcar error, solo warn
       expect(result.error).toBeNull()
       expect(result.status).toBe('success')
     })
@@ -304,7 +298,7 @@ describe('Auth Callback — PKCE Exchange', () => {
     test('Google Ads: detecta por URL premium-ads', async () => {
       mockSearchParams = { return_to: '/premium-ads' }
       setLocationSearch('?code=test-code&return_to=/premium-ads')
-      mockExchangeCodeForSession.mockResolvedValue({ data: { session: fakeSession }, error: null })
+      setupSuccessFlow()
 
       const { useGoogleAds } = require('../../../utils/googleAds')
       const mockSignup = jest.fn()
@@ -320,7 +314,7 @@ describe('Auth Callback — PKCE Exchange', () => {
   describe('Redirect', () => {
     test('redirect con ?auth=success&t=timestamp', async () => {
       setLocationSearch('?code=test-code')
-      mockExchangeCodeForSession.mockResolvedValue({ data: { session: fakeSession }, error: null })
+      setupSuccessFlow()
 
       const { handleAuthCallbackForTest } = await getCallbackHandler()
       const result = await handleAuthCallbackForTest()
@@ -331,7 +325,7 @@ describe('Auth Callback — PKCE Exchange', () => {
 
     test('detecta test pendiente en localStorage → redirect a /test-recuperado', async () => {
       setLocationSearch('?code=test-code')
-      mockExchangeCodeForSession.mockResolvedValue({ data: { session: fakeSession }, error: null })
+      setupSuccessFlow()
       mockLocalStorage['vence_pending_test'] = JSON.stringify({
         savedAt: Date.now() - 5 * 60 * 1000,
         answeredQuestions: [{ id: 1 }, { id: 2 }],
@@ -346,9 +340,9 @@ describe('Auth Callback — PKCE Exchange', () => {
 
     test('ignora test pendiente expirado (> 1h)', async () => {
       setLocationSearch('?code=test-code')
-      mockExchangeCodeForSession.mockResolvedValue({ data: { session: fakeSession }, error: null })
+      setupSuccessFlow()
       mockLocalStorage['vence_pending_test'] = JSON.stringify({
-        savedAt: Date.now() - 2 * 60 * 60 * 1000, // 2h ago
+        savedAt: Date.now() - 2 * 60 * 60 * 1000,
         answeredQuestions: [{ id: 1 }],
         tema: 'Tema 1',
       })
@@ -364,7 +358,7 @@ describe('Auth Callback — PKCE Exchange', () => {
   describe('Global events', () => {
     test('dispatch supabaseAuthSuccess y supabaseAuthChange', async () => {
       setLocationSearch('?code=test-code')
-      mockExchangeCodeForSession.mockResolvedValue({ data: { session: fakeSession }, error: null })
+      setupSuccessFlow()
 
       const { handleAuthCallbackForTest } = await getCallbackHandler()
       await handleAuthCallbackForTest()
@@ -379,15 +373,13 @@ describe('Auth Callback — PKCE Exchange', () => {
 })
 
 describe('lib/supabase.js — detectSessionInUrl', () => {
-  test('detectSessionInUrl es false para evitar race condition PKCE', () => {
-    // Leemos el archivo fuente para verificar la config
+  test('detectSessionInUrl es true (el exchange PKCE se hace en _initialize)', () => {
     const fs = require('fs')
     const source = fs.readFileSync(
       require('path').join(__dirname, '../../../lib/supabase.js'),
       'utf-8'
     )
-    expect(source).toContain('detectSessionInUrl: false')
-    expect(source).not.toMatch(/detectSessionInUrl:\s*true/)
+    expect(source).toContain('detectSessionInUrl: true')
   })
 })
 
@@ -395,7 +387,7 @@ describe('lib/supabase.js — detectSessionInUrl', () => {
 
 async function getCallbackHandler() {
   const { getSupabaseClient } = require('@/lib/supabase')
-  const { isFromMeta, isFromGoogle, getMetaParams, getGoogleParams, trackMetaRegistration } = require('../../../lib/metaPixelCapture')
+  const { isFromMeta, isFromGoogle, getMetaParams, getGoogleParams } = require('../../../lib/metaPixelCapture')
   const { useGoogleAds } = require('../../../utils/googleAds')
 
   const supabase = getSupabaseClient()
@@ -443,28 +435,27 @@ async function getCallbackHandler() {
         throw new Error(`OAuth Error: ${error_param} - ${urlParams.get('error_description')}`)
       }
 
-      // 2. PKCE exchange
-      const code = urlParams.get('code')
-      if (!code) {
-        throw new Error('No auth code in URL')
+      // 2. Wait for initialize() to complete the PKCE exchange
+      const { error: initError } = await supabase.auth.initialize()
+      if (initError) {
+        throw new Error(`Error de autenticación: ${initError.message}`)
       }
 
-      const { data: exchangeData, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
-      if (exchangeError) {
-        throw new Error(`PKCE exchange failed: ${exchangeError.message}`)
+      // 3. Get session established by initialize()
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      if (sessionError) {
+        throw new Error(`Error obteniendo sesión: ${sessionError.message}`)
       }
-
-      const session = exchangeData.session
       if (!session?.user) {
-        throw new Error('No session returned from PKCE exchange')
+        throw new Error('No se estableció sesión tras la autenticación')
       }
 
-      // 3. Ads detection
+      // 4. Ads detection
       const isGoogleAdsFromUrl = returnUrl.includes('/premium-ads') || returnUrl.includes('start_checkout=true')
       const isGoogleAds = isGoogleAdsFromUrl || isFromGoogle()
       const isMetaAds = isFromMeta()
 
-      // 4. API call
+      // 5. API call
       try {
         const response = await fetch('/api/v2/auth/process-callback', {
           method: 'POST',
@@ -492,7 +483,7 @@ async function getCallbackHandler() {
         // Continue with redirect
       }
 
-      // 5. Tracking
+      // 6. Tracking
       if (isGoogleAds) {
         events.SIGNUP('google_ads')
       } else if (isMetaAds) {
@@ -501,7 +492,7 @@ async function getCallbackHandler() {
         events.SIGNUP('google')
       }
 
-      // 6. Pending test
+      // 7. Pending test
       let redirectUrl = returnUrl
       try {
         const pendingTestStr = window.localStorage.getItem('vence_pending_test')
@@ -516,7 +507,7 @@ async function getCallbackHandler() {
         }
       } catch (e) { /* ignore */ }
 
-      // 7. Events
+      // 8. Events
       window.dispatchEvent(new CustomEvent('supabaseAuthSuccess', {
         detail: { user: session.user, session: { user: session.user }, returnUrl },
       }))
@@ -524,7 +515,7 @@ async function getCallbackHandler() {
         detail: { event: 'SIGNED_IN', user: session.user, session: { user: session.user } },
       }))
 
-      // 8. Redirect URL
+      // 9. Redirect URL
       const separator = redirectUrl.includes('?') ? '&' : '?'
       finalRedirectUrl = `${redirectUrl}${separator}auth=success&t=${Date.now()}`
 

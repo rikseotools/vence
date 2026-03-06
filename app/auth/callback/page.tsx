@@ -73,22 +73,26 @@ function AuthCallbackContent() {
           }
         }
 
-        // 2. Exchange PKCE explícito — sin polling, sin listener, sin race condition
-        console.log('🔍 [CALLBACK] Intercambiando código PKCE...')
+        // 2. Esperar a que _initialize() complete el intercambio PKCE
+        // detectSessionInUrl: true hace que _initialize() intercambie el code
+        // dentro de su lock, ANTES de que getUser() u otros métodos puedan
+        // borrar el code verifier de storage. Sin polling, sin race conditions.
+        console.log('🔍 [CALLBACK] Esperando intercambio PKCE via initialize()...')
 
-        const code = new URLSearchParams(window.location.search).get('code')
-        if (!code) {
-          throw new Error('No auth code in URL')
+        const { error: initError } = await supabase.auth.initialize()
+
+        if (initError) {
+          throw new Error(`Error de autenticación: ${initError.message}`)
         }
 
-        const { data: exchangeData, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
-        if (exchangeError) {
-          throw new Error(`PKCE exchange failed: ${exchangeError.message}`)
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+
+        if (sessionError) {
+          throw new Error(`Error obteniendo sesión: ${sessionError.message}`)
         }
-        const session = exchangeData.session
 
         if (!session?.user) {
-          throw new Error('No session returned from PKCE exchange')
+          throw new Error('No se estableció sesión tras la autenticación')
         }
 
         console.log('✅ [CALLBACK] Usuario autenticado:', session.user.email)

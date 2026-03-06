@@ -1,26 +1,9 @@
 // components/TestConfigurator.js - CON FILTRO DE PREGUNTAS OFICIALES POR TEMA CORREGIDO
 'use client'
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { getSupabaseClient } from '../lib/supabase';
 import SectionFilterModal from './SectionFilterModal';
 import { fetchLawSections } from '../lib/teoriaFetchers';
 import { getCanonicalSlug } from '../lib/lawMappingUtils';
-
-// 🏛️ Mapeo de positionType a valores válidos de exam_position en la BD
-const EXAM_POSITION_MAP = {
-  'auxiliar_administrativo': ['auxiliar_administrativo_estado', 'auxiliar_administrativo'],
-  'administrativo': ['administrativo_estado', 'administrativo', 'cuerpo_general_administrativo'],
-  'tramitacion_procesal': ['tramitacion_procesal'],
-  'auxilio_judicial': ['auxilio_judicial'],
-  'gestion_procesal': ['gestion_procesal'],
-  'gestion_administracion_civil': ['cuerpo_gestion_administracion_civil'],
-}
-
-// Helper para obtener los valores de exam_position válidos para una oposición
-const getValidExamPositions = (positionType) => {
-  const normalized = positionType?.toLowerCase().replace(/-/g, '_') || 'auxiliar_administrativo'
-  return EXAM_POSITION_MAP[normalized] || [normalized]
-}
 
 const TestConfigurator = ({
   tema = 7,
@@ -38,8 +21,6 @@ const TestConfigurator = ({
   testMode = 'practica', // 🆕 'practica' o 'examen'
   positionType = 'auxiliar_administrativo' // 🔧 FIX: Permitir especificar el position_type
 }) => {
-  const supabase = getSupabaseClient();
-
   // Estados de configuración
   const [selectedQuestions, setSelectedQuestions] = useState(25);
   const [showPrioritizationModal, setShowPrioritizationModal] = useState(false);
@@ -100,122 +81,39 @@ const TestConfigurator = ({
   // officialQuestionsCount ahora viene como prop desde la página principal
 
 
-  // Cargar conteo de artículos imprescindibles POR TEMA
+  // Cargar conteo de artículos imprescindibles POR TEMA (v2 API)
   const loadEssentialArticlesCount = async () => {
-    if (!supabase) return;
-    
+    if (!tema) return;
+
     setLoadingEssentialCount(true);
     try {
-      console.log(`⭐ Cargando artículos imprescindibles para tema ${tema}...`);
-      
-      // 1️⃣ OBTENER MAPEO DEL TEMA DESDE TOPIC_SCOPE
-      const { data: mappings, error: mappingError } = await supabase
-        .from('topic_scope')
-        .select(`
-          article_numbers,
-          laws!inner(short_name, id),
-          topics!inner(topic_number, position_type)
-        `)
-        .eq('topics.topic_number', tema)
-        .eq('topics.position_type', positionType);
+      console.log(`⭐ Cargando artículos imprescindibles para tema ${tema} (v2)...`);
 
-      if (mappingError) {
-        console.error('❌ Error obteniendo mapeo del tema:', mappingError);
+      const params = new URLSearchParams({
+        topicNumber: String(tema),
+        positionType,
+      });
+
+      const res = await fetch(`/api/v2/test-config/essential-articles?${params}`);
+      const data = await res.json();
+
+      if (!data.success) {
+        console.error('❌ Error API essential-articles:', data.error);
         setEssentialArticlesCount(0);
+        setEssentialArticlesList([]);
+        setEssentialQuestionsCount(0);
+        setEssentialQuestionsByDifficulty({});
         return;
       }
 
-      if (!mappings || mappings.length === 0) {
-        console.warn(`⚠️ No se encontró mapeo para tema ${tema}`);
-        setEssentialArticlesCount(0);
-        return;
-      }
+      console.log(`⭐ Total artículos imprescindibles tema ${tema}: ${data.essentialCount}`);
+      console.log(`📋 Total preguntas de artículos imprescindibles tema ${tema}: ${data.totalQuestions}`);
+      console.log(`📊 Distribución por dificultad:`, data.byDifficulty);
 
-      console.log(`📋 Mapeo encontrado para tema ${tema}:`, mappings);
-
-      // 2️⃣ PARA CADA LEY MAPEADA, CONTAR ARTÍCULOS IMPRESCINDIBLES Y SUS PREGUNTAS
-      // Un artículo es "imprescindible" si tiene al menos 1 pregunta oficial
-      let totalEssentialCount = 0;
-      let essentialArticles = [];
-      let totalEssentialQuestions = 0;
-
-      for (const mapping of mappings) {
-        console.log(`🔍 Contando artículos imprescindibles de ${mapping.laws.short_name}, artículos:`, mapping.article_numbers);
-        
-        // Para cada artículo, contar cuántas preguntas oficiales tiene (FILTRADO POR OPOSICIÓN)
-        const validPositions = getValidExamPositions(positionType)
-        console.log(`🏛️ Filtrando por exam_position IN:`, validPositions)
-
-        for (const articleNumber of mapping.article_numbers) {
-          const { count, error: countError } = await supabase
-            .from('questions')
-            .select('id, articles!inner(laws!inner(short_name))', { count: 'exact', head: true })
-            .eq('is_active', true)
-            .eq('is_official_exam', true)
-            .eq('articles.laws.short_name', mapping.laws.short_name)
-            .eq('articles.article_number', articleNumber)
-            .in('exam_position', validPositions); // 🏛️ FILTRAR POR OPOSICIÓN
-
-          if (countError) {
-            console.error(`❌ Error contando preguntas del artículo ${articleNumber}:`, countError);
-            continue;
-          }
-
-          // Si el artículo tiene 1 o más preguntas oficiales, es "imprescindible"
-          if (count >= 1) {
-            totalEssentialCount++;
-            essentialArticles.push({
-              number: articleNumber,
-              law: mapping.laws.short_name,
-              questionsCount: count
-            });
-            console.log(`⭐ Artículo ${articleNumber} de ${mapping.laws.short_name} es imprescindible (${count} preguntas oficiales de ${positionType})`);
-          }
-        }
-      }
-
-      // 3️⃣ CONTAR TOTAL DE PREGUNTAS DE ARTÍCULOS IMPRESCINDIBLES POR DIFICULTAD
-      const difficultyBreakdown = {};
-      
-      for (const article of essentialArticles) {
-        // Contar total de preguntas de este artículo
-        const { count: totalQuestionsCount, error: totalCountError } = await supabase
-          .from('questions')
-          .select('id, articles!inner(laws!inner(short_name))', { count: 'exact', head: true })
-          .eq('is_active', true)
-          .eq('articles.laws.short_name', article.law)
-          .eq('articles.article_number', article.number);
-
-        if (!totalCountError && totalQuestionsCount > 0) {
-          totalEssentialQuestions += totalQuestionsCount;
-        }
-        
-        // 🔥 NUEVO: Contar por dificultad para este artículo
-        const difficulties = ['easy', 'medium', 'hard', 'extreme'];
-        for (const difficulty of difficulties) {
-          const { count: difficultyCount, error: diffError } = await supabase
-            .from('questions')
-            .select('id, articles!inner(laws!inner(short_name))', { count: 'exact', head: true })
-            .eq('is_active', true)
-            .eq('difficulty', difficulty)
-            .eq('articles.laws.short_name', article.law)
-            .eq('articles.article_number', article.number);
-
-          if (!diffError && difficultyCount > 0) {
-            difficultyBreakdown[difficulty] = (difficultyBreakdown[difficulty] || 0) + difficultyCount;
-          }
-        }
-      }
-      
-      console.log(`📊 Distribución por dificultad de artículos imprescindibles tema ${tema}:`, difficultyBreakdown);
-
-      console.log(`⭐ Total artículos imprescindibles tema ${tema}: ${totalEssentialCount}`);
-      console.log(`📋 Total preguntas de artículos imprescindibles tema ${tema}: ${totalEssentialQuestions}`);
-      setEssentialArticlesCount(totalEssentialCount);
-      setEssentialArticlesList(essentialArticles);
-      setEssentialQuestionsCount(totalEssentialQuestions);
-      setEssentialQuestionsByDifficulty(difficultyBreakdown);
-
+      setEssentialArticlesCount(data.essentialCount || 0);
+      setEssentialArticlesList(data.essentialArticles || []);
+      setEssentialQuestionsCount(data.totalQuestions || 0);
+      setEssentialQuestionsByDifficulty(data.byDifficulty || {});
     } catch (error) {
       console.error('❌ Error general cargando artículos imprescindibles:', error);
       setEssentialArticlesCount(0);
@@ -424,212 +322,91 @@ const TestConfigurator = ({
 
   // Estados y funciones existentes...
 
-  const baseQuestionCount = useMemo(() => {
-
-    // 🔥 PRIORIDAD 1: Artículos imprescindibles (si está activado)
-    if (focusEssentialArticles) {
-      // Si hay filtro de dificultad específico, usar ese conteo
-      if (difficultyMode !== 'random' && essentialQuestionsByDifficulty[difficultyMode]) {
-        console.log(`📊 Usando ${essentialQuestionsByDifficulty[difficultyMode]} preguntas de artículos imprescindibles con dificultad "${difficultyMode}"`);
-        return essentialQuestionsByDifficulty[difficultyMode];
-      }
-      // Si no, usar el total
-      return essentialQuestionsCount;
-    }
-    
-    // 🔥 PRIORIDAD 2: Solo preguntas oficiales
-    if (onlyOfficialQuestions) {
-      console.log(`📊 Usando ${officialQuestionsCount} preguntas oficiales`);
-      return officialQuestionsCount;
-    }
-    
-    // 🎯 CALCULAR SEGÚN TIPO DE DATOS
+  // 🆕 Estado para preguntas disponibles (fuente de verdad: servidor v2)
+  const [availableQuestions, setAvailableQuestions] = useState(() => {
+    // Valor inicial basado en totalQuestions prop
+    if (typeof totalQuestions === 'number') return totalQuestions;
     if (typeof totalQuestions === 'object' && totalQuestions !== null) {
-      // Si totalQuestions es un objeto con stats por dificultad
-      if (difficultyMode !== 'random') {
-        // Filtro específico de dificultad
-        switch (difficultyMode) {
-          case 'easy': 
-            console.log(`📊 Usando ${totalQuestions.easy || 0} preguntas fáciles`);
-            return totalQuestions.easy || 0;
-          case 'medium': 
-            console.log(`📊 Usando ${totalQuestions.medium || 0} preguntas medias`);
-            return totalQuestions.medium || 0;
-          case 'hard': 
-            console.log(`📊 Usando ${totalQuestions.hard || 0} preguntas difíciles`);
-            return totalQuestions.hard || 0;
-          case 'extreme': 
-            console.log(`📊 Usando ${totalQuestions.extreme || 0} preguntas extremas`);
-            return totalQuestions.extreme || 0;
-          default: 
-            const defaultTotal = Object.values(totalQuestions).reduce((sum, count) => sum + count, 0);
-            console.log(`📊 Usando ${defaultTotal} preguntas (default case)`);
-            return defaultTotal;
-        }
-      } else {
-        // Modo random: sumar todas las dificultades
-        const randomTotal = Object.values(totalQuestions).reduce((sum, count) => sum + count, 0);
-        console.log(`📊 Usando ${randomTotal} preguntas (modo random, sumando todas las dificultades)`);
-        return randomTotal;
-      }
+      return Object.values(totalQuestions).reduce((sum, count) => sum + count, 0);
     }
-    
-    // Fallback: usar el total como número (para casos legacy)
-    const result = typeof totalQuestions === 'number' ? totalQuestions : 0;
-    console.log(`📊 Usando fallback: ${result} preguntas (número directo o 0)`);
-    // Validar que no sea NaN
-    if (isNaN(result)) {
-      console.warn('⚠️ baseQuestionCount es NaN:', { totalQuestions, result });
-      return 0;
-    }
-    return result;
-  }, [focusEssentialArticles, essentialQuestionsCount, essentialQuestionsByDifficulty, difficultyMode, onlyOfficialQuestions, officialQuestionsCount, totalQuestions]);
+    return 0;
+  });
+  const [loadingEstimate, setLoadingEstimate] = useState(false);
+  const estimateAbortRef = useRef(null);
 
-  // 🆕 Calcular preguntas disponibles considerando leyes y artículos seleccionados
-  const availableQuestions = useMemo(() => {
-    console.log('🔍 Calculando availableQuestions:', { 
-      lawsData: lawsData?.length, 
-      selectedLawsSize: selectedLaws.size, 
-      baseQuestionCount,
-      selectedLaws: Array.from(selectedLaws),
-      preselectedLaw
-    });
-    
-    // Si no hay datos de leyes, usar el cálculo base
-    if (!lawsData || lawsData.length === 0) {
-      console.log('📊 Usando baseQuestionCount (sin datos de leyes):', baseQuestionCount);
-      return baseQuestionCount;
-    }
-    
-    // ✅ PARA TEMAS NORMALES: solo usar baseQuestionCount si no hay filtros activos
-    if (!preselectedLaw && !showLawsFilter && selectedLaws.size === 0) {
-      console.log('📊 Tema normal (sin filtros activos), usando baseQuestionCount:', baseQuestionCount);
-      return baseQuestionCount;
-    }
-    
-    // ✅ CORREGIDO: Para temas normales, no requerir selección de leyes
-    if (selectedLaws.size === 0) {
-      // Si es un configurador específico de ley (preselectedLaw), usar questions_count directamente
-      if (preselectedLaw && lawsData.length === 1) {
-        const law = lawsData[0];
-        console.log('🎯 Configurador específico de ley sin selectedLaws inicializados, usando questions_count:', law.questions_count);
-        return law.questions_count || 0;
-      }
-      // Para temas normales, usar baseQuestionCount automáticamente
-      console.log('📊 Tema normal sin leyes seleccionadas, usando baseQuestionCount:', baseQuestionCount);
-      return baseQuestionCount;
-    }
-    
-    // Para modo de ley específica (LawTestConfigurator), usar directamente el questions_count
-    if (preselectedLaw && selectedLaws.size === 1 && lawsData.length === 1) {
-      const law = lawsData[0];
-      
-      // 📚 Si hay filtro de secciones activo, estimar preguntas del rango combinado
-      if (selectedSectionFilters && selectedSectionFilters.length > 0) {
-        // Calcular el total de artículos en todas las secciones seleccionadas
-        let totalArticlesInSections = 0;
-        selectedSectionFilters.forEach(section => {
-          if (section.articleRange) {
-            totalArticlesInSections += section.articleRange.end - section.articleRange.start + 1;
-          }
-        });
-        const estimatedQuestions = Math.round((law.questions_count || 0) * (totalArticlesInSections / 169)); // 169 = total artículos CE
-        const sectionNames = selectedSectionFilters.map(s => s.title).join(', ');
-        console.log(`📚 Filtro de secciones activo (${sectionNames}): estimando ${estimatedQuestions} preguntas de ${totalArticlesInSections} artículos`);
-        return Math.max(1, estimatedQuestions); // Mínimo 1 pregunta
-      }
-      
-      // 📄 Si hay filtro de artículos específicos activo, calcular preguntas específicas
-      const selectedArticlesForLaw = selectedArticlesByLaw.get(law.law_short_name);
-      console.log(`🔍 DEBUG availableQuestions - selectedArticlesForLaw para ${law.law_short_name}:`, selectedArticlesForLaw?.size || 0, 'artículos');
-      if (selectedArticlesForLaw && selectedArticlesForLaw.size > 0) {
-        const articlesForLaw = availableArticlesByLaw.get(law.law_short_name);
-        console.log(`🔍 DEBUG availableQuestions - articlesForLaw para ${law.law_short_name}:`, articlesForLaw?.length || 0, 'datos cargados');
-        if (articlesForLaw) {
-          // Datos de artículos disponibles - contar preguntas específicas
-          const questionsFromSelectedArticles = articlesForLaw
-            .filter(article => selectedArticlesForLaw.has(article.article_number))
-            .reduce((sum, article) => sum + (article.question_count || 0), 0);
-          console.log(`📄 Filtro de artículos específicos activo: ${questionsFromSelectedArticles} preguntas de ${selectedArticlesForLaw.size} artículos (calculado desde datos reales)`);
-          return Math.max(1, questionsFromSelectedArticles); // Mínimo 1 pregunta
-        } else {
-          // Datos de artículos aún no disponibles - estimación conservadora
-          const estimatedQuestions = selectedArticlesForLaw.size * 3;
-          console.log(`📄 Filtro de artículos específicos (datos cargando): estimando ${estimatedQuestions} preguntas de ${selectedArticlesForLaw.size} artículos`);
-          return Math.max(1, estimatedQuestions);
-        }
-      }
-      
-      console.log('🎯 Configurador específico de ley, usando questions_count:', law.questions_count);
-      return law.questions_count || 0;
-    }
-    
-    // ✅ Si todas las leyes están seleccionadas y no hay filtros de artículos/secciones específicos, usar baseQuestionCount
-    const allLawsSelected = lawsData.length > 0 && selectedLaws.size === lawsData.length;
-    const hasSpecificArticleFilters = Array.from(selectedArticlesByLaw.values()).some(articles => articles.size > 0);
-    const hasSectionFilters = selectedSectionFilters && selectedSectionFilters.length > 0;
+  // 🆕 Fetch estimación de preguntas disponibles desde v2 API (fuente única de verdad)
+  useEffect(() => {
+    // Solo llamar al API cuando hay tema (para configurador standalone sin tema, usar totalQuestions prop)
+    if (!tema) return;
 
-    if (allLawsSelected && !hasSpecificArticleFilters && !hasSectionFilters) {
-      console.log('📊 Todas las leyes seleccionadas sin filtros específicos, usando baseQuestionCount:', baseQuestionCount);
-      return baseQuestionCount;
+    // Abortar fetch anterior si hay uno en vuelo
+    if (estimateAbortRef.current) {
+      estimateAbortRef.current.abort();
     }
-    
-    // Para modo multi-ley o con filtros de artículos específicos
-    let totalQuestions = 0;
+    const controller = new AbortController();
+    estimateAbortRef.current = controller;
 
-    for (const law of lawsData) {
-      if (!selectedLaws.has(law.law_short_name)) continue;
-
-      const articlesForLaw = availableArticlesByLaw.get(law.law_short_name);
-      const selectedArticlesForLaw = selectedArticlesByLaw.get(law.law_short_name);
-
-      // 📚 PRIMERO: Verificar si hay filtro de secciones activo para esta ley
-      const sectionsForThisLaw = selectedSectionFilters?.filter(s => s.lawShortName === law.law_short_name) || [];
-
-      if (sectionsForThisLaw.length > 0) {
-        // Calcular preguntas basándose en las secciones seleccionadas
-        let totalArticlesInSections = 0;
-        sectionsForThisLaw.forEach(section => {
-          if (section.articleRange) {
-            totalArticlesInSections += section.articleRange.end - section.articleRange.start + 1;
-          }
+    const fetchEstimate = async () => {
+      setLoadingEstimate(true);
+      try {
+        // Construir params para la API
+        const params = new URLSearchParams({
+          topicNumber: String(tema),
+          positionType,
+          onlyOfficialQuestions: String(onlyOfficialQuestions),
+          focusEssentialArticles: String(focusEssentialArticles),
+          difficultyMode,
         });
 
-        // Calcular proporción de artículos en secciones vs total de artículos de la ley
-        const totalArticlesInLaw = law.total_articles || 169; // 169 para CE por defecto
-        const estimatedQuestions = Math.round((law.questions_count || 0) * (totalArticlesInSections / totalArticlesInLaw));
-        const sectionNames = sectionsForThisLaw.map(s => s.title).join(', ');
-        console.log(`📚 Filtro de secciones para ${law.law_short_name} (${sectionNames}): estimando ${estimatedQuestions} preguntas de ${totalArticlesInSections} artículos`);
-        totalQuestions += Math.max(1, estimatedQuestions);
-      } else if (selectedArticlesForLaw && selectedArticlesForLaw.size > 0) {
-        // Hay artículos específicos seleccionados
-        if (articlesForLaw) {
-          // Datos de artículos disponibles - contar preguntas específicas
-          const questionsFromSelectedArticles = articlesForLaw
-            .filter(article => selectedArticlesForLaw.has(article.article_number))
-            .reduce((sum, article) => sum + (article.question_count || 0), 0);
-
-          totalQuestions += questionsFromSelectedArticles;
-          console.log('📊 Preguntas de artículos específicos de', law.law_short_name, ':', questionsFromSelectedArticles);
-        } else {
-          // Datos de artículos aún no disponibles - estimación conservadora
-          // Asumir promedio de ~3 preguntas por artículo seleccionado
-          const estimatedQuestions = selectedArticlesForLaw.size * 3;
-          totalQuestions += estimatedQuestions;
-          console.log('📊 Estimación de preguntas para', law.law_short_name, '(datos de artículos cargando):', estimatedQuestions, 'preguntas para', selectedArticlesForLaw.size, 'artículos');
+        // Añadir leyes seleccionadas
+        const selectedLawsArray = Array.from(selectedLaws);
+        if (selectedLawsArray.length > 0) {
+          params.set('selectedLaws', selectedLawsArray.join(','));
         }
-      } else {
-        // Si no hay filtro de artículos específico, usar proporción del baseQuestionCount
-        const lawProportion = (law.articles_with_questions || 0) / lawsData.reduce((sum, l) => sum + (l.articles_with_questions || 0), 0);
-        const lawQuestions = Math.round(baseQuestionCount * lawProportion);
-        console.log('📊 Proporción estimada para', law.law_short_name, ':', lawQuestions, 'preguntas');
-        totalQuestions += lawQuestions;
-      }
-    }
 
-    console.log('✅ Total preguntas calculadas:', totalQuestions);
-    return totalQuestions;
-  }, [baseQuestionCount, lawsData, selectedLaws, availableArticlesByLaw, selectedArticlesByLaw, selectedSectionFilters]);
+        // Añadir artículos seleccionados (como JSON)
+        const articlesByLawObj = {};
+        for (const [lawName, articlesSet] of selectedArticlesByLaw) {
+          if (articlesSet.size > 0) {
+            articlesByLawObj[lawName] = Array.from(articlesSet);
+          }
+        }
+        if (Object.keys(articlesByLawObj).length > 0) {
+          params.set('selectedArticlesByLaw', JSON.stringify(articlesByLawObj));
+        }
+
+        // Añadir filtros de secciones (como JSON)
+        if (selectedSectionFilters && selectedSectionFilters.length > 0) {
+          params.set('selectedSectionFilters', JSON.stringify(selectedSectionFilters));
+        }
+
+        const res = await fetch(`/api/v2/test-config/estimate?${params}`, {
+          signal: controller.signal,
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          console.log('📊 Estimación v2:', data.count, 'preguntas disponibles', data.byLaw);
+          setAvailableQuestions(data.count || 0);
+        } else {
+          console.warn('⚠️ Error en estimación v2:', data.error);
+        }
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          console.error('❌ Error fetching estimate:', error);
+        }
+      } finally {
+        setLoadingEstimate(false);
+      }
+    };
+
+    // Debounce: esperar 150ms antes de fetch para evitar ráfagas
+    const timer = setTimeout(fetchEstimate, 150);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [tema, positionType, onlyOfficialQuestions, focusEssentialArticles, difficultyMode, selectedLaws, selectedArticlesByLaw, selectedSectionFilters]);
 
   const maxQuestions = useMemo(() => {
     const result = Math.min(selectedQuestions, availableQuestions);
@@ -755,8 +532,6 @@ const TestConfigurator = ({
 
   // 🆕 Función para cargar artículos disponibles por ley (con dedup de requests en vuelo)
   const loadArticlesForLaw = async (lawShortName) => {
-    if (!supabase) return [];
-
     // Si ya hay una request en vuelo para esta ley, reusar la misma promise
     if (articlesInFlightRef.current.has(lawShortName)) {
       console.log(`⏳ Reutilizando request en vuelo para ${lawShortName}`);
@@ -776,117 +551,26 @@ const TestConfigurator = ({
   const _loadArticlesForLawImpl = async (lawShortName) => {
     setLoadingArticles(true);
     try {
-      console.log(`📋 Cargando artículos para ley ${lawShortName} (tema: ${tema || 'configurador específico'})...`);
-      
-      // Si es configurador específico (tema null), cargar artículos directamente
-      if (!tema) {
-        console.log(`📋 Configurador específico - cargando artículos directamente para ${lawShortName}`);
-        
-        // Primero buscar law_id usando lawShortName
-        const { data: law, error: lawError } = await supabase
-          .from('laws')
-          .select('id')
-          .eq('short_name', lawShortName)
-          .single();
-        
-        if (lawError) {
-          console.error('❌ Error buscando law_id:', lawError);
-          return [];
-        }
-        
-        // Ahora cargar artículos usando law_id
-        const { data: articles, error } = await supabase
-          .from('articles')
-          .select(`
-            article_number,
-            title,
-            questions!inner(id)
-          `)
-          .eq('law_id', law.id)
-          .eq('questions.is_active', true);
-        
-        if (error) {
-          console.error('❌ Error cargando artículos directamente:', error);
-          return [];
-        }
-        
-        // Agrupar por artículo y contar preguntas
-        const articleCounts = articles.reduce((acc, item) => {
-          const articleNum = item.article_number;
-          if (!acc[articleNum]) {
-            acc[articleNum] = { article_number: articleNum, title: item.title, question_count: 0 };
-          }
-          acc[articleNum].question_count++;
-          return acc;
-        }, {});
-        
-        const result = Object.values(articleCounts).sort((a, b) => {
-          const aNum = parseInt(a.article_number) || 0;
-          const bNum = parseInt(b.article_number) || 0;
-          return aNum - bNum;
-        });
-        
-        console.log(`✅ ${result.length} artículos cargados directamente para ${lawShortName}`);
-        return result;
-      }
-      
-      // Obtener mapeo del tema desde topic_scope (solo para temas normales)
-      const { data: mappings, error: mappingError } = await supabase
-        .from('topic_scope')
-        .select(`
-          article_numbers,
-          laws!inner(short_name, id),
-          topics!inner(topic_number, position_type)
-        `)
-        .eq('topics.topic_number', tema)
-        .eq('topics.position_type', positionType)
-        .eq('laws.short_name', lawShortName);
+      console.log(`📋 Cargando artículos para ley ${lawShortName} (tema: ${tema || 'configurador específico'}) (v2)...`);
 
-      if (mappingError || !mappings || mappings.length === 0) {
-        console.warn('⚠️ No se encontraron mappings para la ley:', lawShortName);
-        return [];
-      }
-
-      const mapping = mappings[0];
-      
-      // Obtener artículos con preguntas para esta ley
-      const { data: articlesData, error } = await supabase
-        .from('questions')
-        .select(`
-          articles!inner(
-            article_number,
-            title,
-            laws!inner(short_name)
-          )
-        `)
-        .eq('is_active', true)
-        .eq('articles.laws.short_name', lawShortName)
-        .in('articles.article_number', mapping.article_numbers);
-
-      if (error) {
-        console.error('❌ Error cargando artículos:', error);
-        return [];
-      }
-
-      // Obtener artículos únicos y conteo de preguntas
-      const articleCounts = {};
-      articlesData.forEach(q => {
-        const artNum = q.articles.article_number;
-        if (!articleCounts[artNum]) {
-          articleCounts[artNum] = { count: 0, title: q.articles.title };
-        }
-        articleCounts[artNum].count++;
+      const params = new URLSearchParams({
+        lawShortName,
+        positionType,
       });
+      if (tema) {
+        params.set('topicNumber', String(tema));
+      }
 
-      const articles = Object.entries(articleCounts).map(([articleNumber, data]) => ({
-        article_number: parseInt(articleNumber),
-        title: data.title,
-        question_count: data.count
-      })).sort((a, b) => a.article_number - b.article_number);
+      const res = await fetch(`/api/v2/test-config/articles?${params}`);
+      const data = await res.json();
 
-      console.log(`✅ Cargados ${articles.length} artículos para ${lawShortName}`);
-      return articles;
-      
+      if (!data.success) {
+        console.error('❌ Error API articles:', data.error);
+        return [];
+      }
+
+      console.log(`✅ Cargados ${data.articles.length} artículos para ${lawShortName} (v2)`);
+      return data.articles || [];
     } catch (error) {
       console.error('❌ Error cargando artículos:', error);
       return [];
