@@ -6,29 +6,8 @@ import { getSupabaseClient } from '@/lib/supabase'
 import { useGoogleAds } from '../../../utils/googleAds'
 import { getMetaParams, isFromMeta, trackMetaRegistration, isFromGoogle, getGoogleParams } from '../../../lib/metaPixelCapture'
 
-// 🆕 Helper para reintentos con backoff exponencial
-const withRetry = async (fn, options = {}) => {
-  const { maxRetries = 3, baseDelay = 1000, onRetry = null } = options
-  let lastError = null
-
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      return await fn()
-    } catch (error) {
-      lastError = error
-      console.warn(`⚠️ [RETRY] Intento ${attempt}/${maxRetries} falló:`, error.message)
-
-      if (attempt < maxRetries) {
-        const delay = baseDelay * Math.pow(2, attempt - 1) // 1s, 2s, 4s
-        console.log(`⏳ [RETRY] Esperando ${delay}ms antes del reintento...`)
-        if (onRetry) onRetry(attempt, delay)
-        await new Promise(resolve => setTimeout(resolve, delay))
-      }
-    }
-  }
-
-  throw lastError
-}
+// Helper: esperar N ms
+const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 
 function AuthCallbackContent() {
   const router = useRouter()
@@ -88,105 +67,73 @@ function AuthCallbackContent() {
         const finalReturnUrl = determineReturnUrl()
         setReturnUrl(finalReturnUrl)
         
-        await new Promise(resolve => setTimeout(resolve, 500))
-        
-        // Verificar sesión (con reintentos para PWA/móvil)
-        console.log('🔍 [CALLBACK] Verificando sesión...')
-        const { data: sessionData, error: sessionError } = await withRetry(
-          () => supabase.auth.getSession(),
-          { maxRetries: 2, baseDelay: 500 }
-        )
-
-        console.log('🔍 [DEBUG] Resultado de getSession:', {
-          hasSession: !!sessionData?.session,
-          hasUser: !!sessionData?.session?.user,
-          userEmail: sessionData?.session?.user?.email,
-          sessionError: sessionError?.message || null,
-          sessionErrorCode: sessionError?.code || null
-        })
-        
-        if (sessionError) {
-          console.error('❌ [CALLBACK] Error obteniendo sesión:', sessionError)
-          throw new Error(`Error de sesión: ${sessionError.message}`)
-        }
-
-        if (sessionData.session && sessionData.session.user) {
-          console.log('✅ [CALLBACK] Usuario autenticado:', sessionData.session.user.email)
-          await processAuthenticatedUser(sessionData.session.user, finalReturnUrl, supabase)
-          return
-        }
-        
-        // Método alternativo: intercambiar código OAuth
+        // Verificar si hay error OAuth en la URL
         if (typeof window !== 'undefined') {
           const urlParams = new URLSearchParams(window.location.search)
-          const code = urlParams.get('code')
           const error_param = urlParams.get('error')
-          const error_description = urlParams.get('error_description')
-          
-          console.log('🔍 [DEBUG] Parámetros de URL:', {
-            hasCode: !!code,
-            codeLength: code?.length || 0,
-            hasError: !!error_param,
-            error: error_param,
-            errorDescription: error_description,
-            fullURL: window.location.href
-          })
-          
           if (error_param) {
-            throw new Error(`OAuth Error: ${error_param} - ${error_description}`)
-          }
-          
-          if (code) {
-            console.log('🔍 [CALLBACK] Procesando código OAuth...')
-            setMessage('Procesando código de autorización...')
-
-            try {
-              // 🆕 Con reintentos para redes inestables (móvil/PWA)
-              const { data, error } = await withRetry(
-                () => supabase.auth.exchangeCodeForSession(code),
-                {
-                  maxRetries: 3,
-                  baseDelay: 1000,
-                  onRetry: (attempt, delay) => {
-                    setMessage(`Reintentando conexión (${attempt}/3)...`)
-                  }
-                }
-              )
-
-              console.log('🔍 [DEBUG] Resultado de exchangeCodeForSession:', {
-                hasData: !!data,
-                hasSession: !!data?.session,
-                hasUser: !!data?.session?.user,
-                userEmail: data?.session?.user?.email,
-                errorMessage: error?.message || null,
-                errorCode: error?.code || null
-              })
-
-              if (error) {
-                console.error('❌ [CALLBACK] Error intercambiando código:', error)
-                throw new Error(`Error intercambiando código: ${error.message}`)
-              }
-
-              if (data.session && data.session.user) {
-                console.log('✅ [CALLBACK] Sesión establecida desde código OAuth')
-                await processAuthenticatedUser(data.session.user, finalReturnUrl, supabase)
-                return
-              } else {
-                console.error('❌ [CALLBACK] exchangeCodeForSession no devolvió sesión válida')
-                throw new Error('exchangeCodeForSession no devolvió sesión válida')
-              }
-            } catch (codeError) {
-              console.error('❌ [CALLBACK] Error procesando código OAuth:', codeError)
-              throw codeError
-            }
-          } else {
-            console.error('❌ [CALLBACK] No se encontró código OAuth en la URL')
-            throw new Error('No se encontró código OAuth en la URL')
+            throw new Error(`OAuth Error: ${error_param} - ${urlParams.get('error_description')}`)
           }
         }
-        
-        throw new Error('No se pudo establecer la sesión de usuario')
-        
+
+        // Estrategia: Supabase con detectSessionInUrl:true auto-intercambia el ?code=
+        // Durante ese proceso, getSession() se BLOQUEA esperando el lock interno.
+        // Usamos onAuthStateChange que se dispara sin bloquearse cuando la sesión está lista.
+        console.log('🔍 [CALLBACK] Esperando sesión via onAuthStateChange...')
+
+        const session = await new Promise((resolve, reject) => {
+          let resolved = false
+
+          const done = (s) => {
+            if (resolved) return
+            resolved = true
+            clearTimeout(timeout)
+            try { subscription?.unsubscribe() } catch(e) {}
+            resolve(s)
+          }
+
+          const timeout = setTimeout(() => {
+            if (!resolved) {
+              resolved = true
+              try { subscription?.unsubscribe() } catch(e) {}
+              reject(new Error('Timeout: sesión no establecida en 10s'))
+            }
+          }, 10000)
+
+          let subscription = null
+
+          // onAuthStateChange emite INITIAL_SESSION (async) cuando la sesión se resuelve
+          // y SIGNED_IN cuando el code exchange completa
+          const { data } = supabase.auth.onAuthStateChange((event, session) => {
+            console.log('🔍 [CALLBACK] Auth event:', event, !!session?.user)
+            if (session?.user) {
+              done(session)
+            }
+          })
+          subscription = data.subscription
+        })
+
+        console.log('✅ [CALLBACK] Usuario autenticado:', session.user.email)
+        setStatus('success')
+        setMessage('¡Autenticación exitosa!')
+
+        // SAFETY NET: redirect garantizado en 3s incluso si processAuthenticatedUser se cuelga
+        const safetySep = finalReturnUrl.includes('?') ? '&' : '?'
+        const safetyUrl = `${finalReturnUrl}${safetySep}auth=success&t=${Date.now()}`
+        const safetyTimer = setTimeout(() => {
+          console.warn('⚠️ [CALLBACK] Safety redirect: profile processing tardó >3s')
+          window.location.href = safetyUrl
+        }, 3000)
+
+        try {
+          await processAuthenticatedUser(session.user, finalReturnUrl, supabase)
+        } catch(e) {
+          console.warn('⚠️ [CALLBACK] Profile processing error:', e.message)
+          // Safety timer se encarga del redirect
+        }
+        // Si processAuthenticatedUser completó, su redirect interno ya se activó
+        // El safetyTimer se cancelará cuando el navegador navegue a la nueva URL
+
       } catch (error) {
         console.error('❌ [CALLBACK] Error procesando callback:', error)
         setStatus('error')
@@ -209,36 +156,29 @@ function AuthCallbackContent() {
     const processAuthenticatedUser = async (user, finalReturnUrl, supabase) => {
       try {
         console.log('✅ [CALLBACK] Procesando usuario autenticado:', user.email)
-        setStatus('success')
-        setMessage('¡Autenticación exitosa!')
-        
-        console.log('📝 [CALLBACK] Actualizando perfil...')
         setMessage('Configurando tu perfil...')
-        
+
         const userId = user.id
         const userEmail = user.email
-        
-        // 🆕 DETECCIÓN DE USUARIO NUEVO
-        console.log('🔍 [CALLBACK] === INICIANDO DETECCIÓN DE USUARIO NUEVO ===')
-        
-        const { data: existingWelcomeEmails, error: emailCheckError } = await supabase
-          .from('email_logs')
-          .select('id')
-          .eq('user_id', userId)
-          .eq('email_type', 'bienvenida_inmediato')
-          .limit(1)
 
+        // Helper: query con timeout (evitar cuelgues del lock interno de Supabase)
+        const queryWithTimeout = (promise, ms = 2000) =>
+          Promise.race([promise, wait(ms).then(() => ({ data: null, error: { message: 'timeout' } }))])
+
+        // Detección de usuario nuevo (con timeout para no colgarse)
         let isNewUser = false
-        if (!existingWelcomeEmails || existingWelcomeEmails.length === 0) {
-          isNewUser = true
+        try {
+          const { data: existingWelcomeEmails } = await queryWithTimeout(
+            supabase.from('email_logs').select('id').eq('user_id', userId).eq('email_type', 'bienvenida_inmediato').limit(1)
+          )
+          if (!existingWelcomeEmails || existingWelcomeEmails.length === 0) {
+            isNewUser = true
+          }
+        } catch(e) {
+          console.warn('⚠️ [CALLBACK] email_logs check failed, asumiendo usuario existente')
         }
 
-        console.log('🎯 [CALLBACK] Detección usuario nuevo:', {
-          userId,
-          userEmail,
-          isNewUser,
-          emailCheckError: emailCheckError?.code
-        })
+        console.log('🎯 [CALLBACK] Detección usuario nuevo:', { userId, isNewUser })
         
         // 🎯 DETECTAR OPOSICIÓN OBJETIVO (desde modal de PDF o URL)
         const oposicionParam = searchParams.get('oposicion')
@@ -280,12 +220,10 @@ function AuthCallbackContent() {
           } : null
         })
         
-        // 🔧 FIX: Verificar primero si el perfil ya existe para NO sobrescribir plan_type
-        const { data: existingProfile, error: existingError } = await supabase
-          .from('user_profiles')
-          .select('id, plan_type, registration_source, registration_url, registration_funnel')
-          .eq('id', userId)
-          .single()
+        // Verificar si perfil ya existe (con timeout)
+        const { data: existingProfile } = await queryWithTimeout(
+          supabase.from('user_profiles').select('id, plan_type, registration_source, registration_url, registration_funnel').eq('id', userId).single()
+        )
 
         if (existingProfile) {
           // 🛡️ PERFIL EXISTE - Solo actualizar campos NO sensibles
@@ -326,22 +264,15 @@ function AuthCallbackContent() {
             }
           }
 
-          const { error: updateError } = await supabase
-            .from('user_profiles')
-            .update(updateData)
-            .eq('id', userId)
+          const { error: updateError } = await queryWithTimeout(
+            supabase.from('user_profiles').update(updateData).eq('id', userId)
+          )
 
           if (updateError) {
-            console.error('❌ [CALLBACK] Error actualizando perfil:', updateError)
-            throw updateError
+            console.warn('⚠️ [CALLBACK] Error actualizando perfil:', updateError.message)
+          } else {
+            console.log('✅ [CALLBACK] Perfil actualizado')
           }
-
-          console.log('✅ [CALLBACK] Perfil actualizado (plan_type preservado:', existingProfile.plan_type, ')')
-          console.log('🎯 [CALLBACK] Configuración final:', {
-            planType: existingProfile.plan_type,
-            registrationSource: updateData.registration_source || existingProfile.registration_source,
-            isGoogleAds
-          })
         } else {
           // 🆕 PERFIL NO EXISTE - Crear nuevo
           console.log('🆕 [CALLBACK] Perfil no existe, creando nuevo...')
@@ -401,22 +332,16 @@ function AuthCallbackContent() {
             console.log('📍 [CALLBACK] URL de registro:', finalReturnUrl)
           }
 
-          const { error: profileError } = await supabase
-            .from('user_profiles')
-            .insert(newProfileData)
+          const { error: profileError } = await queryWithTimeout(
+            supabase.from('user_profiles').insert(newProfileData),
+            3000
+          )
 
           if (profileError) {
-            console.error('❌ [CALLBACK] Error creando perfil:', profileError)
-            throw profileError
+            console.warn('⚠️ [CALLBACK] Error creando perfil:', profileError.message)
+          } else {
+            console.log('✅ [CALLBACK] Perfil creado exitosamente')
           }
-
-          console.log('✅ [CALLBACK] Perfil creado exitosamente')
-          console.log('🎯 [CALLBACK] Configuración aplicada:', {
-            planType,
-            registrationSource,
-            requiresPayment,
-            isGoogleAds
-          })
         }
         
         // Trackear registro
@@ -541,9 +466,8 @@ function AuthCallbackContent() {
           }))
         }
         
-        // REDIRECCIÓN - usar window.location.href como método principal
-        // router.push dentro de setTimeout/async no funciona fiablemente
-        const delay = redirectUrl.includes('/premium-ads') ? 1500 : 800
+        // REDIRECCIÓN - usar window.location.href (router.push no funciona en async/setTimeout)
+        const delay = redirectUrl.includes('/premium-ads') ? 1000 : 200
 
         console.log('⏰ [CALLBACK] Configurando redirección con delay:', delay, 'ms')
 
