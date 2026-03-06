@@ -7,6 +7,7 @@ import type { TopicContent, LawWithArticles, Article } from '@/lib/api/temario/s
 import { useAuth } from '@/contexts/AuthContext'
 import { getCanonicalSlug } from '@/lib/lawMappingUtils'
 import VideoCourseBanner from '@/components/VideoCourseBanner'
+import TopicNavFooter from '@/components/TopicNavFooter'
 
 // Mapping de temas a cursos de video
 const topicVideoCourses: Record<number, {
@@ -317,44 +318,11 @@ export default function TopicContentView({ content, oposicion = 'administrativo-
           </div>
         )}
 
-        {/* Footer */}
-        <footer className="no-print mt-12 pt-8 border-t border-gray-200 dark:border-gray-700">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            {/* Navigation */}
-            <div className="flex gap-3">
-              {content.topicNumber > 1 && (
-                <Link
-                  href={`${basePath}/temario/tema-${content.topicNumber - 1}`}
-                  className="flex items-center gap-2 px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 border border-gray-300 dark:border-gray-600 rounded-md transition-colors"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                  </svg>
-                  Tema {getBlockInfo(content.topicNumber - 1).displayNum}
-                </Link>
-              )}
-              <Link
-                href={`${basePath}/temario/tema-${content.topicNumber + 1}`}
-                className="flex items-center gap-2 px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 border border-gray-300 dark:border-gray-600 rounded-md transition-colors"
-              >
-                Tema {getBlockInfo(content.topicNumber + 1).displayNum}
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </Link>
-            </div>
-
-            <Link
-              href={`${basePath}/test/tema/${content.topicNumber}`}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
-            >
-              Practicar este tema
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </Link>
-          </div>
-        </footer>
+        <TopicNavFooter
+          topicNumber={content.topicNumber}
+          basePath={basePath}
+          getDisplayNum={(n) => getBlockInfo(n).displayNum}
+        />
       </main>
 
       {/* Modal de registro para imprimir */}
