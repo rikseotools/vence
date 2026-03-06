@@ -38,7 +38,7 @@ export default function HeaderES() {
   const { user, loading: authLoading, supabase, isPremium, isLegacy, userProfile } = useAuth()
   const oposicionContext = useOposicion()
   const { userOposicion: hookUserOposicion } = useUserOposicion() // Hook que SÍ funciona
-  const adminNotifications = useAdminNotifications()
+  const adminNotifications = useAdminNotifications(isAdmin && !adminLoading)
   const { issuesCount: sentryIssuesCount } = useSentryIssues(isAdmin && !adminLoading)
 
   // 📊 Tracking de interacciones de usuario

@@ -1,6 +1,6 @@
 // hooks/useAdminNotifications.ts - Hook para detectar elementos pendientes en admin
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 
 interface AdminNotificationState {
@@ -10,19 +10,30 @@ interface AdminNotificationState {
   loading: boolean
 }
 
-export function useAdminNotifications() {
+const EMPTY_STATE: AdminNotificationState = {
+  feedback: 0,
+  impugnaciones: 0,
+  ventas: 0,
+  loading: false
+}
+
+/**
+ * Hook para cargar conteos de notificaciones admin.
+ * @param enabled - Solo ejecuta queries cuando es true (pasar isAdmin)
+ */
+export function useAdminNotifications(enabled = false) {
   const { supabase } = useAuth() as any
   const [notifications, setNotifications] = useState<AdminNotificationState>({
-    feedback: 0,
-    impugnaciones: 0,
-    ventas: 0,
-    loading: true
+    ...EMPTY_STATE,
+    loading: enabled
   })
   const originalTitle = useRef<string | null>(null)
+  const enabledRef = useRef(enabled)
+  enabledRef.current = enabled
 
   // Efecto para actualizar el título del tab
   useEffect(() => {
-    if (typeof window === 'undefined') return
+    if (typeof window === 'undefined' || !enabled) return
 
     // Guardar título original solo una vez
     if (originalTitle.current === null) {
@@ -43,29 +54,10 @@ export function useAdminNotifications() {
         document.title = originalTitle.current
       }
     }
-  }, [notifications.feedback, notifications.impugnaciones, notifications.ventas, notifications.loading])
+  }, [notifications.feedback, notifications.impugnaciones, notifications.ventas, notifications.loading, enabled])
 
-  useEffect(() => {
-    if (!supabase) return
-
-    loadPendingCounts()
-
-    // Polling fijo cada 30s - NO depender de notifications para evitar
-    // ciclo de re-renders (loadPendingCounts actualiza notifications,
-    // que re-dispararía este effect, causando stack overflow en iOS WebKit)
-    const interval = setInterval(loadPendingCounts, 30000)
-
-    return () => {
-      clearInterval(interval)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [supabase])
-
-  const loadPendingCounts = async () => {
-    if (!supabase) {
-      console.warn('⚠️ Supabase client no disponible')
-      return
-    }
+  const loadPendingCounts = useCallback(async () => {
+    if (!supabase || !enabledRef.current) return
 
     try {
       // Usar Promise.allSettled para manejar errores independientemente
@@ -77,7 +69,7 @@ export function useAdminNotifications() {
             .select('id, status, feedback_messages(id, is_admin, created_at)')
             .neq('status', 'closed'),
           new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Timeout')), 10000)
+            setTimeout(() => reject(new Error('Timeout')), 8000)
           )
         ]),
         // 2. Contar feedbacks pending/in_progress sin conversación
@@ -87,22 +79,21 @@ export function useAdminNotifications() {
             .select('id, feedback_conversations(id)')
             .in('status', ['pending', 'in_progress']),
           new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Timeout')), 10000)
+            setTimeout(() => reject(new Error('Timeout')), 8000)
           )
         ]),
         // 3. Obtener impugnaciones via API (usa SERVICE_ROLE para bypass RLS)
-        // Esto incluye tanto normales como psicotécnicas
         Promise.race([
           fetch('/api/admin/pending-counts').then(r => r.json()),
           new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Timeout')), 10000)
+            setTimeout(() => reject(new Error('Timeout')), 8000)
           )
         ]),
         // 4. Obtener ventas no leídas
         Promise.race([
           fetch('/api/v2/admin/unread-sales').then(r => r.json()),
           new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Timeout')), 10000)
+            setTimeout(() => reject(new Error('Timeout')), 8000)
           )
         ])
       ])
@@ -114,22 +105,18 @@ export function useAdminNotifications() {
       let pendingVentas = 0
 
       // Contar conversaciones donde el último mensaje es del USUARIO (necesita respuesta del admin)
-      // También contar conversaciones sin mensajes (vacías) que no estén cerradas
       if (conversationsResult.status === 'fulfilled') {
         const conversations = conversationsResult.value.data || []
         conversations.forEach((conv: any) => {
           const msgs = conv.feedback_messages || []
 
-          // Conversación vacía no cerrada = necesita atención del admin
           if (msgs.length === 0) {
             pendingFeedback++
             return
           }
 
-          // Ordenar por fecha descendente para obtener el último
           const sorted = msgs.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
           const lastMsg = sorted[0]
-          // Si el último mensaje NO es del admin, necesita respuesta
           if (lastMsg && lastMsg.is_admin === false) {
             pendingFeedback++
           }
@@ -151,23 +138,17 @@ export function useAdminNotifications() {
         console.warn('Error cargando feedbacks:', feedbacksResult.reason?.message)
       }
 
-      // Obtener conteo de impugnaciones desde la API (incluye normales + psicotécnicas)
+      // Obtener conteo de impugnaciones desde la API
       if (impugnacionesApiResult.status === 'fulfilled') {
         const apiData = impugnacionesApiResult.value
         if (apiData.success) {
           pendingImpugnaciones = apiData.impugnaciones || 0
-        } else {
-          console.warn('Error en API impugnaciones:', apiData.error)
         }
-      } else {
-        console.warn('Error cargando impugnaciones:', impugnacionesApiResult.reason?.message)
       }
 
       // Obtener ventas no leídas
       if (salesResult.status === 'fulfilled') {
         pendingVentas = salesResult.value.count || 0
-      } else {
-        console.warn('Error cargando ventas:', salesResult.reason?.message)
       }
 
       setNotifications({
@@ -181,7 +162,24 @@ export function useAdminNotifications() {
       console.error('❌ Error cargando notificaciones admin:', error)
       setNotifications(prev => ({ ...prev, loading: false }))
     }
-  }
+  }, [supabase])
+
+  useEffect(() => {
+    if (!supabase || !enabled) {
+      // Si no es admin, devolver estado vacío inmediatamente
+      setNotifications(EMPTY_STATE)
+      return
+    }
+
+    loadPendingCounts()
+
+    // Polling cada 30s
+    const interval = setInterval(loadPendingCounts, 30000)
+
+    return () => {
+      clearInterval(interval)
+    }
+  }, [supabase, enabled, loadPendingCounts])
 
   const markSalesRead = async () => {
     try {

@@ -75,7 +75,7 @@ export default function AdministrativoEstado() {
   const faqs = [
     {
       pregunta: "¿Cuándo es el examen de Administrativo del Estado 2026?",
-      respuesta: "La convocatoria fue publicada en BOE el 22/12/2025. Según el INAP, el examen está previsto para el 23 de mayo de 2026. Inscripciones hasta el 22 de enero de 2026."
+      respuesta: "La convocatoria fue publicada en BOE el 22/12/2025. Según el INAP, el examen está previsto para el 23 de mayo de 2026."
     },
     {
       pregunta: "¿Cuántas plazas hay para Administrativo del Estado 2026?",
@@ -246,8 +246,8 @@ export default function AdministrativoEstado() {
             </h1>
 
             <p className="text-lg text-gray-600 mb-4 max-w-2xl mx-auto">
-              <span className="inline-block bg-red-100 text-red-700 px-3 py-1 rounded-full font-bold animate-pulse">
-                ¡Convocatoria oficial publicada! Inscríbete hasta el 22 de enero de 2026
+              <span className="inline-block bg-blue-100 text-blue-700 px-3 py-1 rounded-full font-bold">
+                Convocatoria oficial publicada - Examen previsto 23 de mayo de 2026
               </span>
             </p>
             <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
@@ -362,7 +362,7 @@ export default function AdministrativoEstado() {
             <div className="bg-white bg-opacity-20 rounded-lg p-4 mb-4">
               <h3 className="font-bold mb-2">📋 BOE-A-2025-26262 (22 de diciembre de 2025)</h3>
               <p className="text-blue-100 text-sm">
-                <strong>Plazo de inscripción: hasta el 22 de enero de 2026.</strong> Inscripción online mediante sistema IPS y Cl@ve.
+                <strong>Plazo de inscripción cerrado.</strong> Examen previsto para el 23 de mayo de 2026.
               </p>
             </div>
             <p className="text-blue-100 text-sm">

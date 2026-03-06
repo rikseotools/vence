@@ -541,8 +541,9 @@ function AuthCallbackContent() {
           }))
         }
         
-        // REDIRECCIÓN SIMPLIFICADA - SIN VARIABLES EXTERNAS
-        const delay = redirectUrl.includes('/premium-ads') ? 1500 : 1000
+        // REDIRECCIÓN - usar window.location.href como método principal
+        // router.push dentro de setTimeout/async no funciona fiablemente
+        const delay = redirectUrl.includes('/premium-ads') ? 1500 : 800
 
         console.log('⏰ [CALLBACK] Configurando redirección con delay:', delay, 'ms')
 
@@ -551,7 +552,7 @@ function AuthCallbackContent() {
           const urlWithSuccess = `${redirectUrl}${separator}auth=success&t=${Date.now()}`
 
           console.log('🔄 [CALLBACK] Redirigiendo finalmente a:', urlWithSuccess)
-          router.push(urlWithSuccess)
+          window.location.href = urlWithSuccess
         }, delay)
         
       } catch (profileErr) {
@@ -572,13 +573,13 @@ function AuthCallbackContent() {
           <>
             <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-600 border-t-transparent mx-auto mb-6"></div>
             <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-3">
-              🔐 Completando registro...
+              🔐 Iniciando sesión...
             </h2>
             <p className="text-gray-600 dark:text-gray-400 mb-4">{message}</p>
             <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg p-4">
               <p className="text-sm text-blue-700 dark:text-blue-400">
                 ✅ Autenticación con Google en proceso...<br/>
-                🔄 Configurando tu cuenta...<br/>
+                🔄 Preparando tu sesión...<br/>
                 {returnUrl && returnUrl.includes('/premium-ads') && (
                   <span className="text-green-600 font-bold">
                     🎯 Configurando acceso premium...
@@ -599,7 +600,7 @@ function AuthCallbackContent() {
           <>
             <div className="text-6xl mb-6">🎉</div>
             <h2 className="text-2xl font-bold text-green-800 dark:text-green-200 mb-3">
-              ¡Registro Exitoso!
+              ¡Sesión iniciada!
             </h2>
             <p className="text-gray-600 dark:text-gray-400 mb-4">{message}</p>
             <div className="bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded-lg p-4">

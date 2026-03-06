@@ -130,8 +130,8 @@ export default function AuxiliarAdministrativoEstado() {
             </h1>
 
             <p className="text-lg text-gray-600 mb-6 max-w-2xl mx-auto">
-              <span className="inline-block bg-red-100 text-red-700 px-3 py-1 rounded-full font-bold animate-pulse">
-                ¡Convocatoria oficial publicada! Inscríbete hasta el 22 de enero de 2026
+              <span className="inline-block bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full font-bold">
+                Convocatoria oficial publicada - Examen previsto primer semestre 2026
               </span>
             </p>
             <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
@@ -208,7 +208,7 @@ export default function AuxiliarAdministrativoEstado() {
             <div className="bg-white bg-opacity-20 rounded-lg p-4 mb-4">
               <h3 className="font-bold mb-2">📋 BOE-A-2025-26262 (22 de diciembre de 2025)</h3>
               <p className="text-green-100 text-sm">
-                <strong>Plazo de inscripción: hasta el 22 de enero de 2026.</strong> Inscripción online mediante sistema IPS y Cl@ve.
+                <strong>Plazo de inscripción cerrado.</strong> Examen previsto para el primer semestre de 2026.
               </p>
             </div>
             <p className="text-green-100 text-sm">

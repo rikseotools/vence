@@ -13,7 +13,7 @@ export default function UserAvatar() {
   const [showDropdown, setShowDropdown] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
   const [adminLoading, setAdminLoading] = useState(true)
-  const adminNotifications = useAdminNotifications()
+  const adminNotifications = useAdminNotifications(isAdmin && !adminLoading)
   const { issuesCount: sentryIssuesCount } = useSentryIssues(isAdmin && !adminLoading)
   const [userStats, setUserStats] = useState({
     streak: 0,

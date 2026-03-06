@@ -5,7 +5,7 @@ import { useAdminNotifications } from '@/hooks/useAdminNotifications'
 import { useLawChanges } from '@/hooks/useLawChanges'
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const adminNotifications = useAdminNotifications()
+  const adminNotifications = useAdminNotifications(true)
   const { hasUnreviewedChanges } = useLawChanges()
 
   return (
