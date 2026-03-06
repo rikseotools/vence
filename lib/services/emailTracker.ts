@@ -1,10 +1,57 @@
-// lib/services/emailTracker.js - SERVICIO PARA TRACKING DE EMAILS
+// lib/services/emailTracker.ts - SERVICIO PARA TRACKING DE EMAILS
 'use client'
 import { getSupabaseClient } from '../supabase'
 import notificationTracker from './notificationTracker'
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SupabaseClientAny = any
+
+interface EmailSentData {
+  userId: string
+  emailType: string
+  emailAddress?: string
+  subject?: string
+  templateId?: string
+  campaignId?: string
+  contentPreview?: string
+}
+
+interface EmailOpenData {
+  emailType: string
+  templateId?: string | null
+  campaignId?: string | null
+}
+
+interface EmailClickData {
+  emailType: string
+  linkClicked?: string
+  templateId?: string | null
+  campaignId?: string | null
+}
+
+interface EmailTrackingUrlData {
+  emailType: string
+  campaignId?: string
+  templateId?: string
+  userId?: string
+}
+
+interface EmailBounceData {
+  [key: string]: unknown
+}
+
+interface EmailUnsubscribeData {
+  [key: string]: unknown
+}
+
+declare global {
+  interface Window {
+    emailTracker: EmailTracker
+  }
+}
+
 // Instancia global de Supabase
-let supabaseInstance = null
+let supabaseInstance: SupabaseClientAny = null
 
 class EmailTracker {
   constructor() {
@@ -12,27 +59,27 @@ class EmailTracker {
   }
 
   // Método para obtener instancia de Supabase
-  getSupabase() {
+  getSupabase(): SupabaseClientAny {
     return supabaseInstance || getSupabaseClient()
   }
 
   // Método para configurar instancia desde el contexto de Auth
-  setSupabaseInstance(supabase) {
+  setSupabaseInstance(supabase: SupabaseClientAny): void {
     supabaseInstance = supabase
   }
 
   // Configurar tracking automático de clicks en emails
-  setupEmailClickTracking() {
+  setupEmailClickTracking(): void {
     if (typeof window === 'undefined') return
 
     // Escuchar clicks en links que vengan de emails
     document.addEventListener('click', (event) => {
-      const link = event.target.closest('a')
+      const link = (event.target as HTMLElement).closest('a')
       if (!link) return
 
       const href = link.href
       const urlParams = new URLSearchParams(new URL(href).search)
-      
+
       // Detectar si viene de un email (parámetros comunes)
       if (urlParams.has('utm_source') && urlParams.get('utm_source') === 'email') {
         this.trackEmailClick({
@@ -49,7 +96,7 @@ class EmailTracker {
   }
 
   // Configurar tracking de apertura de emails
-  setupOpenTracking() {
+  setupOpenTracking(): void {
     // Buscar parámetros de email en la URL
     const urlParams = new URLSearchParams(window.location.search)
     if (urlParams.has('email_opened')) {
@@ -62,7 +109,7 @@ class EmailTracker {
   }
 
   // Track when email is sent (llamado desde el servidor)
-  async trackEmailSent(data) {
+  async trackEmailSent(data: EmailSentData): Promise<void> {
     try {
       const eventData = {
         user_id: data.userId,
@@ -77,6 +124,8 @@ class EmailTracker {
         client_name: 'system'
       }
 
+      // NOTE: bug existente en el JS original — usa `supabase` libre en vez de `this.getSupabase()`
+      const supabase = this.getSupabase()
       const { error } = await supabase
         .from('email_events')
         .insert(eventData)
@@ -92,12 +141,12 @@ class EmailTracker {
   }
 
   // Track when email is delivered
-  async trackEmailDelivered(data) {
+  async trackEmailDelivered(data: EmailBounceData): Promise<void> {
     await notificationTracker.trackEmailDelivered(data)
   }
 
   // Track when email is opened
-  async trackEmailOpen(data) {
+  async trackEmailOpen(data: EmailOpenData): Promise<void> {
     try {
       const supabase = this.getSupabase()
       const { user } = await supabase.auth.getUser()
@@ -135,7 +184,7 @@ class EmailTracker {
   }
 
   // Track when email link is clicked
-  async trackEmailClick(data) {
+  async trackEmailClick(data: EmailClickData): Promise<void> {
     try {
       const supabase = this.getSupabase()
       const { user } = await supabase.auth.getUser()
@@ -174,34 +223,34 @@ class EmailTracker {
   }
 
   // Track when email bounces
-  async trackEmailBounced(data) {
+  async trackEmailBounced(data: EmailBounceData): Promise<void> {
     await notificationTracker.trackEmailBounced(data)
   }
 
   // Track when user unsubscribes
-  async trackEmailUnsubscribed(data) {
+  async trackEmailUnsubscribed(data: EmailUnsubscribeData): Promise<void> {
     await notificationTracker.trackEmailUnsubscribed(data)
   }
 
   // Métodos auxiliares
-  getDeviceType() {
+  getDeviceType(): string {
     const ua = navigator.userAgent
     if (/tablet|ipad|playbook|silk/i.test(ua)) return 'tablet'
     if (/mobile|iphone|ipod|android|blackberry|opera|mini|windows\sce|palm|smartphone|iemobile/i.test(ua)) return 'mobile'
     return 'desktop'
   }
 
-  getEmailClient() {
+  getEmailClient(): string {
     const ua = navigator.userAgent
     if (ua.includes('Outlook')) return 'Outlook'
-    if (ua.includes('Gmail')) return 'Gmail' 
+    if (ua.includes('Gmail')) return 'Gmail'
     if (ua.includes('Yahoo')) return 'Yahoo'
     if (ua.includes('Apple Mail')) return 'Apple Mail'
     if (ua.includes('Thunderbird')) return 'Thunderbird'
     return 'Unknown'
   }
 
-  async getUserIP() {
+  async getUserIP(): Promise<string | null> {
     try {
       const response = await fetch('https://api.ipify.org?format=json')
       const data = await response.json()
@@ -213,19 +262,19 @@ class EmailTracker {
   }
 
   // Generar URLs con tracking para emails
-  generateTrackingUrl(baseUrl, emailData) {
+  generateTrackingUrl(baseUrl: string, emailData: EmailTrackingUrlData): string {
     const url = new URL(baseUrl, window.location.origin)
-    
+
     // Agregar parámetros de tracking
     url.searchParams.set('utm_source', 'email')
     url.searchParams.set('utm_medium', 'email')
     url.searchParams.set('utm_campaign', emailData.campaignId || emailData.emailType)
     url.searchParams.set('email_type', emailData.emailType)
-    
+
     if (emailData.templateId) {
       url.searchParams.set('template_id', emailData.templateId)
     }
-    
+
     if (emailData.campaignId) {
       url.searchParams.set('campaign_id', emailData.campaignId)
     }
@@ -234,11 +283,11 @@ class EmailTracker {
   }
 
   // Generar pixel de tracking para apertura de emails
-  generateOpenTrackingPixel(emailData) {
+  generateOpenTrackingPixel(emailData: EmailTrackingUrlData): string {
     const baseUrl = window.location.origin
     const pixelUrl = new URL('/api/email/track-open', baseUrl)
-    
-    pixelUrl.searchParams.set('user_id', emailData.userId)
+
+    pixelUrl.searchParams.set('user_id', emailData.userId || '')
     pixelUrl.searchParams.set('email_type', emailData.emailType)
     pixelUrl.searchParams.set('campaign_id', emailData.campaignId || '')
     pixelUrl.searchParams.set('template_id', emailData.templateId || '')
@@ -248,7 +297,7 @@ class EmailTracker {
   }
 
   // Para manejo de unsubscribe desde emails
-  async handleUnsubscribeClick(data) {
+  async handleUnsubscribeClick(data: EmailUnsubscribeData): Promise<void> {
     try {
       // Track the unsubscribe
       await this.trackEmailUnsubscribed(data)
