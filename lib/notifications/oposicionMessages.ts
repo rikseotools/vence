@@ -1,6 +1,31 @@
 // Sistema de mensajes motivacionales para oposiciones
 // Contexto: Preparación Auxiliar Administrativo del Estado
 
+type TimeOfDay = 'morning' | 'afternoon' | 'evening' | 'night'
+type AchievementSubcategory = 'streak_milestones' | 'score_achievements' | 'knowledge_milestones'
+
+interface MessageContext {
+  subcategory?: AchievementSubcategory | string
+  streak?: number
+  daysInactive?: number
+  score?: number
+  totalQuestions?: number
+  weakTopic?: string
+  strongTopic?: string
+  daysUntilExam?: number | null
+  motivationLevel?: 'low' | 'medium' | 'high'
+  timeOfDay?: TimeOfDay | string
+  dayOfWeek?: string
+  userGender?: 'male' | 'female' | 'neutral'
+}
+
+interface UrgencyContext {
+  daysInactive?: number
+  streak?: number
+  daysUntilExam?: number | null
+  riskLevel?: 'low' | 'medium' | 'high' | 'critical'
+}
+
 export const oposicionMessageTemplates = {
   // 🔥 MANTENER RACHA - Motivación positiva
   streak_danger: {
@@ -61,7 +86,7 @@ export const oposicionMessageTemplates = {
       "🌙 Quienes estudian de noche serán quienes triunfen mañana. 🔬 Harvard: Repasar antes de dormir mejora retención 40%",
       "💫 Termina el día como empezaste: pensando en tu oposición. 🎯 Rutina nocturna = hábito de éxito automático"
     ]
-  },
+  } as Record<string, string[]>,
 
   // 🌟 REGRESO después de inactividad
   comeback: {
@@ -110,7 +135,7 @@ export const oposicionMessageTemplates = {
       "⚡ Velocidad mental: {avg_time}s por pregunta. ¡Increíble! ⚡ Rapidez + precisión = automatización del saber",
       "🎓 Nivel experto alcanzado en {strong_areas}. 💪 Fortalezas identificadas = ventaja competitiva clara"
     ]
-  },
+  } as Record<string, string[]>,
 
   // 🎯 PROXIMIDAD DEL EXAMEN
   exam_proximity: {
@@ -189,10 +214,10 @@ export const oposicionMessageTemplates = {
     "💖 Tu sueño profesional te está esperando pacientemente. ¡Vamos juntos! 🎯 Metas dormidas despiertan con primer paso",
     "🌅 Cada día es una nueva oportunidad. ¡Hoy puede ser tu día! ⚡ Momento presente = único momento de acción real"
   ]
-};
+}
 
 // Función para seleccionar mensaje contextual
-export function selectContextualMessage(category, context = {}) {
+export function selectContextualMessage(category: string, context: MessageContext = {}): string {
   const {
     subcategory,
     streak = 0,
@@ -204,25 +229,23 @@ export function selectContextualMessage(category, context = {}) {
     daysUntilExam = null,
     motivationLevel = 'medium',
     timeOfDay = 'morning',
-    dayOfWeek = 'monday',
-    userGender = 'neutral' // 'male', 'female', 'neutral'
   } = context;
 
-  let messagePool = [];
-  
+  let messagePool: string[] = [];
+
   // Seleccionar pool de mensajes según categoría
   switch (category) {
     case 'streak_danger':
-      messagePool = motivationLevel === 'high' ? 
-        oposicionMessageTemplates.streak_danger.urgent : 
+      messagePool = motivationLevel === 'high' ?
+        oposicionMessageTemplates.streak_danger.urgent :
         oposicionMessageTemplates.streak_danger.motivational;
       break;
-      
+
     case 'daily_motivation':
-      messagePool = oposicionMessageTemplates.daily_motivation[timeOfDay] || 
+      messagePool = (oposicionMessageTemplates.daily_motivation as Record<string, string[]>)[timeOfDay] ||
         oposicionMessageTemplates.daily_motivation.morning;
       break;
-      
+
     case 'comeback':
       if (daysInactive <= 2) {
         messagePool = oposicionMessageTemplates.comeback.short_break;
@@ -232,61 +255,61 @@ export function selectContextualMessage(category, context = {}) {
         messagePool = oposicionMessageTemplates.comeback.long_break;
       }
       break;
-      
+
     case 'achievement':
-      messagePool = oposicionMessageTemplates.achievement[subcategory] || 
+      messagePool = (oposicionMessageTemplates.achievement as Record<string, string[]>)[subcategory || 'streak_milestones'] ||
         oposicionMessageTemplates.achievement.streak_milestones;
       break;
-      
+
     case 'exam_proximity':
-      if (daysUntilExam <= 30) {
+      if (daysUntilExam !== null && daysUntilExam <= 30) {
         messagePool = oposicionMessageTemplates.exam_proximity.very_close;
-      } else if (daysUntilExam <= 90) {
+      } else if (daysUntilExam !== null && daysUntilExam <= 90) {
         messagePool = oposicionMessageTemplates.exam_proximity.close;
       } else {
         messagePool = oposicionMessageTemplates.exam_proximity.moderate;
       }
       break;
-      
+
     case 'weakness_focus':
       messagePool = oposicionMessageTemplates.weakness_focus;
       break;
-      
+
     case 'emergency':
       messagePool = oposicionMessageTemplates.emergency_motivation;
       break;
-      
+
     default:
       messagePool = oposicionMessageTemplates.daily_motivation.morning;
   }
 
   // Seleccionar mensaje aleatorio del pool
   const randomMessage = messagePool[Math.floor(Math.random() * messagePool.length)];
-  
+
   // Reemplazar variables en el mensaje
   return randomMessage
-    .replace('{streak}', streak)
-    .replace('{days_inactive}', daysInactive)
-    .replace('{score}', score)
-    .replace('{total_questions}', totalQuestions)
+    .replace('{streak}', String(streak))
+    .replace('{days_inactive}', String(daysInactive))
+    .replace('{score}', String(score))
+    .replace('{total_questions}', String(totalQuestions))
     .replace('{weak_topic}', weakTopic)
     .replace('{strong_topic}', strongTopic)
-    .replace('{days_until_exam}', daysUntilExam)
-    .replace('{months_until_exam}', Math.ceil(daysUntilExam / 30))
-    .replace('{weak_percentage}', Math.round(Math.random() * 30 + 40)) // Simular porcentaje débil
-    .replace('{strong_percentage}', Math.round(Math.random() * 20 + 80)) // Simular porcentaje fuerte
-    .replace('{improvement}', Math.round(Math.random() * 15 + 5))
-    .replace('{time_improvement}', Math.round(Math.random() * 5 + 1))
-    .replace('{accuracy_improvement}', Math.round(Math.random() * 10 + 3))
-    .replace('{correct_streak}', Math.round(Math.random() * 8 + 3))
-    .replace('{active_users}', Math.round(Math.random() * 500 + 100));
+    .replace('{days_until_exam}', String(daysUntilExam))
+    .replace('{months_until_exam}', String(Math.ceil((daysUntilExam || 0) / 30)))
+    .replace('{weak_percentage}', String(Math.round(Math.random() * 30 + 40)))
+    .replace('{strong_percentage}', String(Math.round(Math.random() * 20 + 80)))
+    .replace('{improvement}', String(Math.round(Math.random() * 15 + 5)))
+    .replace('{time_improvement}', String(Math.round(Math.random() * 5 + 1)))
+    .replace('{accuracy_improvement}', String(Math.round(Math.random() * 10 + 3)))
+    .replace('{correct_streak}', String(Math.round(Math.random() * 8 + 3)))
+    .replace('{active_users}', String(Math.round(Math.random() * 500 + 100)));
 }
 
 // Función para determinar urgencia del mensaje
-export function calculateMessageUrgency(context) {
-  const { 
-    daysInactive = 0, 
-    streak = 0, 
+export function calculateMessageUrgency(context: UrgencyContext): number {
+  const {
+    daysInactive = 0,
+    streak = 0,
     daysUntilExam = null,
     riskLevel = 'low'
   } = context;
