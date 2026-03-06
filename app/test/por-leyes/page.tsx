@@ -8,6 +8,7 @@ import Link from 'next/link'
 import TestConfigurator from '@/components/TestConfigurator'
 import { useAuth } from '@/contexts/AuthContext'
 import type { LawData } from '@/lib/api/laws-configurator'
+import type { TestStartConfig } from '@/components/TestConfigurator.types'
 
 function TestConfiguradorContent() {
   const router = useRouter()
@@ -66,27 +67,7 @@ function TestConfiguradorContent() {
   const totalQuestionsAvailable = lawsData.reduce((sum, law) => sum + law.questions_count, 0)
 
   // Manejar inicio del test
-  const handleStartTest = (config: {
-    tema?: number | null
-    numQuestions: number
-    excludeRecent?: boolean
-    recentDays?: number
-    difficultyMode: string
-    adaptiveMode?: boolean
-    timeLimit?: number | null
-    onlyFailedQuestions?: boolean
-    failedQuestionIds?: string[]
-    failedQuestionsOrder?: string
-    selectedLaws?: string[]
-    selectedArticlesByLaw?: Record<string, (string | number)[]>
-    selectedSectionFilters?: Array<{
-      law: string
-      title: string
-      articleRange: { from: number; to: number }
-    }>
-    onlyOfficialQuestions?: boolean
-    focusEssentialArticles?: boolean
-  }) => {
+  const handleStartTest = (config: TestStartConfig) => {
     console.log('🚀 [Configurar] Iniciando test con config:', config)
 
     // Construir parámetros para el test

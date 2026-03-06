@@ -35,6 +35,15 @@ export type DifficultyMode = 'random' | 'easy' | 'medium' | 'hard' | 'extreme' |
 export type TestMode = 'practica' | 'examen'
 export type FailedQuestionsOrder = 'most_failed' | 'recent_failed' | 'oldest_failed' | 'random'
 
+/** SectionFilter flexible: acepta tanto el schema Zod (start/end) como el formato legacy (from/to + law) */
+export interface SectionFilterConfig {
+  title: string
+  law?: string
+  articleRange?: { start?: number; end?: number; from?: number; to?: number }
+  sectionNumber?: string
+  sectionType?: string
+}
+
 /** totalQuestions puede ser un número directo o un objeto { easy: N, medium: N, ... } */
 export type TotalQuestions = number | Record<string, number>
 
@@ -75,7 +84,7 @@ export interface TestStartConfig {
   failedQuestionsOrder?: FailedQuestionsOrder
   selectedLaws: string[]
   selectedArticlesByLaw: Record<string, (string | number)[]>
-  selectedSectionFilters: SectionFilter[]
+  selectedSectionFilters: SectionFilterConfig[]
   timeLimit: number | null
   configSource: string
   configTimestamp: string
