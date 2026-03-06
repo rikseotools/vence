@@ -18,7 +18,7 @@ import PsychometricQuestionDispute from './v2/PsychometricQuestionDispute'
 import PsychometricQuestionEvolution from './PsychometricQuestionEvolution'
 import MarkdownExplanation from './MarkdownExplanation'
 import PsychometricAIHelpButton from './PsychometricAIHelpButton'
-import { getDifficultyInfo, formatDifficultyDisplay, isFirstAttempt } from '../lib/psychometricDifficulty'
+import { getDifficultyInfo, formatDifficultyDisplay, isFirstAttempt, type DifficultyInfo } from '../lib/psychometricDifficulty'
 import { useInteractionTracker } from '../hooks/useInteractionTracker'
 
 // ============================================
@@ -233,7 +233,7 @@ export default function PsychometricTestLayout({
   const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now())
 
   // Estados para dificultad adaptativa
-  const [difficultyInfo, setDifficultyInfo] = useState<Record<string, unknown> | null>(null)
+  const [difficultyInfo, setDifficultyInfo] = useState<DifficultyInfo | null>(null)
   const [isFirstTime, setIsFirstTime] = useState<boolean>(true)
 
   // 🔒 SEGURIDAD: Estado para respuesta correcta validada por API
@@ -303,7 +303,7 @@ export default function PsychometricTestLayout({
         console.log('🎯 Loading difficulty info for question:', currentQ.id)
         
         // Cargar información de dificultad
-        const diffInfo = await getDifficultyInfo(supabase, currentQ.id, user.id) as Record<string, unknown> | null
+        const diffInfo = await getDifficultyInfo(supabase, currentQ.id, user.id)
         setDifficultyInfo(diffInfo)
         
         // Verificar si es primera vez para este usuario
