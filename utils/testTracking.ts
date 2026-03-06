@@ -1,57 +1,76 @@
-// utils/testTracking.js - Todo el sistema de tracking de interacciones
-export class TestTracker {
-  constructor() {
-    this.interactionEvents = []
-    this.mouseEvents = []
-    this.scrollEvents = []
-  }
+// utils/testTracking.ts - Sistema de tracking de interacciones de test
 
-  // Tracking de interacciones
-  trackInteraction(type, details = {}, currentQuestion) {
-    const event = {
+interface InteractionEvent {
+  timestamp: number
+  type: string
+  question_number: number
+  [key: string]: unknown
+}
+
+interface MouseEvent {
+  timestamp: number
+  x: number
+  y: number
+  question: number
+}
+
+interface ScrollEvent {
+  timestamp: number
+  scrollY: number
+  question: number
+}
+
+export interface TrackingData {
+  interactionEvents: InteractionEvent[]
+  mouseEvents: MouseEvent[]
+  scrollEvents: ScrollEvent[]
+}
+
+export class TestTracker {
+  interactionEvents: InteractionEvent[] = []
+  mouseEvents: MouseEvent[] = []
+  scrollEvents: ScrollEvent[] = []
+
+  trackInteraction(type: string, details: Record<string, unknown> = {}, currentQuestion?: number) {
+    const event: InteractionEvent = {
       timestamp: Date.now(),
-      type: type,
-      question_number: currentQuestion + 1,
+      type,
+      question_number: (currentQuestion || 0) + 1,
       ...details
     }
-    
+
     this.interactionEvents.push(event)
-    
-    // Mantener solo los últimos 50 eventos para performance
+
     if (this.interactionEvents.length > 50) {
       this.interactionEvents = this.interactionEvents.slice(-50)
     }
   }
 
-  // Tracking de mouse
-  trackMouseMove(e, currentQuestion) {
+  trackMouseMove(e: { clientX: number; clientY: number }, currentQuestion: number) {
     this.mouseEvents.push({
       timestamp: Date.now(),
       x: e.clientX,
       y: e.clientY,
       question: currentQuestion + 1
     })
-    
-    // Mantener solo los últimos 20 eventos
+
     if (this.mouseEvents.length > 20) {
       this.mouseEvents = this.mouseEvents.slice(-20)
     }
   }
 
-  // Tracking de scroll
-  trackScroll(currentQuestion) {
+  trackScroll(currentQuestion: number) {
     this.scrollEvents.push({
       timestamp: Date.now(),
       scrollY: window.scrollY,
       question: currentQuestion + 1
     })
-    
+
     if (this.scrollEvents.length > 10) {
       this.scrollEvents = this.scrollEvents.slice(-10)
     }
   }
 
-  // Tracking de cambio de visibilidad
   trackVisibilityChange() {
     this.trackInteraction('visibility_change', {
       hidden: document.hidden,
@@ -59,7 +78,6 @@ export class TestTracker {
     })
   }
 
-  // Reset para nuevo test
   reset() {
     this.interactionEvents = []
     this.mouseEvents = []
@@ -67,8 +85,7 @@ export class TestTracker {
     this.trackInteraction('test_restart')
   }
 
-  // Obtener datos actuales
-  getData() {
+  getData(): TrackingData {
     return {
       interactionEvents: this.interactionEvents,
       mouseEvents: this.mouseEvents,
@@ -76,11 +93,10 @@ export class TestTracker {
     }
   }
 
-  // Configurar event listeners del navegador
-  setupBrowserTracking(currentQuestion, trackInteractionCallback) {
+  setupBrowserTracking(currentQuestion: number, trackInteractionCallback: (type: string, details: Record<string, unknown>) => void): () => void {
     if (typeof window === 'undefined') return () => {}
 
-    const handleMouseMove = (e) => {
+    const handleMouseMove = (e: globalThis.MouseEvent) => {
       this.trackMouseMove(e, currentQuestion)
     }
 
@@ -96,12 +112,10 @@ export class TestTracker {
       })
     }
 
-    // Agregar listeners
     window.addEventListener('mousemove', handleMouseMove, { passive: true })
     window.addEventListener('scroll', handleScroll, { passive: true })
     document.addEventListener('visibilitychange', handleVisibilityChange)
 
-    // Función de cleanup
     return () => {
       window.removeEventListener('mousemove', handleMouseMove)
       window.removeEventListener('scroll', handleScroll)
