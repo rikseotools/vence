@@ -25,11 +25,11 @@ import {
   calculateConfidence,
   createDetailedAnswer
 } from '../utils/testAnswers.js'
-import { 
-  completeDetailedTest, 
-  formatTime 
-} from '../utils/testAnalytics.js'
-import { testTracker } from '../utils/testTracking.js'
+import {
+  completeDetailedTest,
+  formatTime
+} from '../utils/testAnalytics'
+import { testTracker } from '../utils/testTracking'
 import { useTestCompletion } from '../hooks/useTestCompletion'
 import { useDailyQuestionLimit } from '../hooks/useDailyQuestionLimit'
 import { useBotDetection, useBehaviorAnalysis } from '../hooks/useBotDetection'

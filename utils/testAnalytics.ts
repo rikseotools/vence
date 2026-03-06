@@ -159,7 +159,7 @@ export const completeDetailedTest = async (
         porcentajePerdido: Math.round(((expectedCount - savedCount) / expectedCount) * 100) + '%'
       })
 
-      const savedOrders = new Set(savedQuestions?.map(q => q.question_order) || [])
+      const savedOrders = new Set(savedQuestions?.map((q: any) => q.question_order) || [])
       const missingOrders: number[] = []
       for (let i = 1; i <= expectedCount; i++) {
         if (!savedOrders.has(i)) {

@@ -44,7 +44,7 @@ import {
 import {
   completeDetailedTest,
   formatTime
-} from '../utils/testAnalytics.js'
+} from '../utils/testAnalytics'
 
 // ============================================================================
 // TYPES & INTERFACES
@@ -846,8 +846,8 @@ export default function ExamLayout({
         const result = await completeDetailedTest(
           currentTestSession.id,
           correctCount,
-          allAnswers,
-          effectiveQuestions,
+          allAnswers as any[],
+          effectiveQuestions as any[],
           startTime,
           [],
           { user_id: user?.id }
