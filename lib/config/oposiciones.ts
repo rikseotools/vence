@@ -384,8 +384,21 @@ export const OPOSICIONES: Oposicion[] = [
           { id: 16, name: 'Igualdad, Transparencia y Protección de datos' },
         ],
       },
+      {
+        id: 'segunda_parte',
+        title: 'Segunda parte: Herramientas informáticas',
+        subtitle: null,
+        icon: '💻',
+        themes: [
+          { id: 17, name: 'Presentaciones con PowerPoint 2016' },
+          { id: 18, name: 'Hoja de cálculo Excel 2016' },
+          { id: 19, name: 'Firma electrónica y certificados digitales' },
+          { id: 20, name: 'Procesador de textos Word 2016' },
+          { id: 21, name: 'Outlook 365' },
+        ],
+      },
     ],
-    totalTopics: 16,
+    totalTopics: 21,
     navLinks: [
       { href: '/es', label: 'Inicio', icon: '🏠' },
       { href: '/auxiliar-administrativo-carm', label: 'Mi Oposición', icon: '🏛️', featured: true },
