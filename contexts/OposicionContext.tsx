@@ -1,17 +1,57 @@
-// contexts/OposicionContext.js
-// 🎯 Context Provider para gestionar la oposición del usuario globalmente
+// contexts/OposicionContext.tsx
+// Context Provider para gestionar la oposición del usuario globalmente
 
 'use client'
-import { createContext, useContext, useState, useEffect } from 'react'
+import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
 import { usePathname } from 'next/navigation'
 import { getSupabaseClient } from '../lib/supabase'
-import { useAuth } from './AuthContext' // ← USAR AuthContext
-import { OPOSICIONES } from '@/lib/config/oposiciones'
+import { useAuth } from './AuthContext'
+import { OPOSICIONES, type NavLink } from '@/lib/config/oposiciones'
 
 const supabase = getSupabaseClient()
 
-// 📋 Configuración de menús por oposición - generado desde config central
-const OPOSICION_MENUS = Object.fromEntries(
+// ============================================
+// TIPOS
+// ============================================
+
+export interface OposicionMenu {
+  name: string
+  shortName: string
+  badge: string
+  color: string
+  icon: string
+  navLinks: NavLink[]
+}
+
+export interface OposicionData {
+  id: string
+  name: string
+}
+
+export interface NotificationData {
+  type?: string
+  name?: string
+  message?: string
+}
+
+export interface OposicionContextValue {
+  userOposicion: OposicionData | null
+  oposicionId: string | null
+  oposicionMenu: OposicionMenu
+  loading: boolean
+  hasOposicion: boolean
+  showNotification: boolean
+  notificationData: NotificationData | null
+  dismissNotification: () => void
+  changeOposicion: (newOposicionId: string, showNotificationFlag?: boolean) => Promise<boolean>
+  showOposicionChangeNotification: (oposicionName: string) => void
+}
+
+// ============================================
+// CONFIGURACIÓN DE MENÚS
+// ============================================
+
+const OPOSICION_MENUS: Record<string, OposicionMenu> = Object.fromEntries(
   OPOSICIONES.map(o => [o.id, {
     name: o.name,
     shortName: o.shortName,
@@ -22,8 +62,7 @@ const OPOSICION_MENUS = Object.fromEntries(
   }])
 )
 
-// 📋 Menú genérico para usuarios sin oposición
-const DEFAULT_MENU = {
+const DEFAULT_MENU: OposicionMenu = {
   name: 'Explorar Oposiciones',
   shortName: 'Explorar',
   badge: '🎯',
@@ -38,37 +77,44 @@ const DEFAULT_MENU = {
   ]
 }
 
-// 🎯 Crear el contexto
-const OposicionContext = createContext({
+// ============================================
+// CONTEXT
+// ============================================
+
+const OposicionContext = createContext<OposicionContextValue>({
   userOposicion: null,
+  oposicionId: null,
   oposicionMenu: DEFAULT_MENU,
   loading: true,
   hasOposicion: false,
   showNotification: false,
   notificationData: null,
   dismissNotification: () => {},
-  changeOposicion: () => {}
+  changeOposicion: async () => false,
+  showOposicionChangeNotification: () => {}
 })
 
-// 🎯 Provider del contexto - ARREGLADO PARA USAR AuthContext
-export function OposicionProvider({ children }) {
-  const { user, loading: authLoading } = useAuth() // ← USAR AuthContext
-  const pathname = usePathname() // Para detectar cambios de ruta
-  const [userOposicion, setUserOposicion] = useState(null)
-  const [oposicionId, setOposicionId] = useState(null) // ID de la oposición (ej: 'auxiliar_administrativo_estado')
-  const [oposicionMenu, setOposicionMenu] = useState(DEFAULT_MENU)
+// ============================================
+// PROVIDER
+// ============================================
+
+export function OposicionProvider({ children }: { children: ReactNode }) {
+  const { user, loading: authLoading } = useAuth()
+  const pathname = usePathname()
+  const [userOposicion, setUserOposicion] = useState<OposicionData | null>(null)
+  const [oposicionId, setOposicionId] = useState<string | null>(null)
+  const [oposicionMenu, setOposicionMenu] = useState<OposicionMenu>(DEFAULT_MENU)
   const [loading, setLoading] = useState(true)
   const [showNotification, setShowNotification] = useState(false)
-  const [notificationData, setNotificationData] = useState(null)
+  const [notificationData, setNotificationData] = useState<NotificationData | null>(null)
 
-  // 🔄 Cargar oposición del usuario cuando cambie el user del AuthContext
+  // Cargar oposición del usuario cuando cambie el user del AuthContext
   useEffect(() => {
     async function loadUserOposicion() {
       try {
         setLoading(true)
 
         if (!user) {
-          // Usuario no autenticado - menú genérico
           setUserOposicion(null)
           setOposicionId(null)
           setOposicionMenu(DEFAULT_MENU)
@@ -76,7 +122,6 @@ export function OposicionProvider({ children }) {
           return
         }
 
-        // 2. Cargar oposición asignada
         const { data: profile, error: profileError } = await supabase
           .from('user_profiles')
           .select('target_oposicion, target_oposicion_data')
@@ -84,20 +129,17 @@ export function OposicionProvider({ children }) {
           .single()
 
         if (profileError || !profile?.target_oposicion) {
-          // Usuario sin oposición - menú genérico
           setUserOposicion(null)
           setOposicionId(null)
           setOposicionMenu(DEFAULT_MENU)
         } else {
-          // 3. Usuario con oposición asignada
           const opoId = profile.target_oposicion
           // NOTA: target_oposicion_data es JSONB, Supabase lo devuelve como objeto
-          const oposicionData = profile.target_oposicion_data || null
+          const oposicionData = (profile.target_oposicion_data as OposicionData | null) || null
 
           setUserOposicion(oposicionData)
-          setOposicionId(opoId) // Guardar el ID (ej: 'auxiliar_administrativo_estado')
+          setOposicionId(opoId)
 
-          // 4. Configurar menú personalizado
           const menuConfig = OPOSICION_MENUS[opoId] || DEFAULT_MENU
           setOposicionMenu(menuConfig)
         }
@@ -112,23 +154,22 @@ export function OposicionProvider({ children }) {
       }
     }
 
-    // Solo cargar cuando authLoading termine
     if (!authLoading) {
       loadUserOposicion()
     }
-  }, [user, authLoading, pathname]) // Recargar también cuando cambia la ruta
+  }, [user, authLoading, pathname])
 
   // Verificar si hay notificación de cambio de oposición pendiente
   useEffect(() => {
     // Notificación de onboarding (asignación inicial)
     const newAssignment = localStorage.getItem('newOposicionAssigned')
     if (newAssignment) {
-      const data = JSON.parse(newAssignment)
+      const data = JSON.parse(newAssignment) as { timestamp: number }
       const timeDiff = Date.now() - data.timestamp
 
       if (timeDiff < 5 * 60 * 1000) {
         setShowNotification(true)
-        setNotificationData(data)
+        setNotificationData(data as NotificationData)
 
         setTimeout(() => {
           localStorage.removeItem('newOposicionAssigned')
@@ -142,10 +183,10 @@ export function OposicionProvider({ children }) {
     // Notificación de cambio de oposición desde breadcrumbs
     const oposicionChanged = localStorage.getItem('oposicionChanged')
     if (oposicionChanged) {
-      const data = JSON.parse(oposicionChanged)
+      const data = JSON.parse(oposicionChanged) as { timestamp: number; message?: string }
       const timeDiff = Date.now() - data.timestamp
 
-      if (timeDiff < 30 * 1000) { // 30 segundos de validez
+      if (timeDiff < 30 * 1000) {
         localStorage.removeItem('oposicionChanged')
         setShowNotification(true)
         setNotificationData({
@@ -153,7 +194,6 @@ export function OposicionProvider({ children }) {
           message: data.message
         })
 
-        // Ocultar después de 5 segundos
         setTimeout(() => {
           setShowNotification(false)
         }, 5000)
@@ -161,19 +201,18 @@ export function OposicionProvider({ children }) {
         localStorage.removeItem('oposicionChanged')
       }
     }
-  }, [pathname]) // Se ejecuta cada vez que cambia la ruta
+  }, [pathname])
 
-  const changeOposicion = async (newOposicionId, showNotificationFlag = true) => {
+  const changeOposicion = async (newOposicionId: string, showNotificationFlag = true): Promise<boolean> => {
     if (!user) {
       return false
     }
 
     try {
-      // Obtener nombre legible de la oposición
       const menuConfig = OPOSICION_MENUS[newOposicionId]
       const oposicionName = menuConfig?.name || 'Nueva Oposición'
 
-      const newOposicionData = {
+      const newOposicionData: OposicionData = {
         id: newOposicionId,
         name: oposicionName
       }
@@ -189,11 +228,9 @@ export function OposicionProvider({ children }) {
 
       if (error) throw error
 
-      // Oposición actualizada en BD
       setUserOposicion(newOposicionData)
       setOposicionMenu(menuConfig || DEFAULT_MENU)
 
-      // Guardar en localStorage para mostrar notificación después de navegación
       if (showNotificationFlag) {
         localStorage.setItem('oposicionChanged', JSON.stringify({
           name: oposicionName,
@@ -214,8 +251,7 @@ export function OposicionProvider({ children }) {
     localStorage.removeItem('oposicionChanged')
   }
 
-  // Función para mostrar notificación de cambio de oposición directamente
-  const showOposicionChangeNotification = (oposicionName) => {
+  const showOposicionChangeNotification = (oposicionName: string) => {
     setShowNotification(true)
     setNotificationData({
       type: 'oposicionChanged',
@@ -223,16 +259,15 @@ export function OposicionProvider({ children }) {
       message: `Tu oposición objetivo se ha cambiado a ${oposicionName}`
     })
 
-    // Auto-ocultar después de 5 segundos
     setTimeout(() => {
       setShowNotification(false)
       setNotificationData(null)
     }, 5000)
   }
 
-  const value = {
+  const value: OposicionContextValue = {
     userOposicion,
-    oposicionId, // ID de la oposición (ej: 'auxiliar_administrativo_estado')
+    oposicionId,
     oposicionMenu,
     loading,
     hasOposicion: !!userOposicion,
@@ -250,13 +285,13 @@ export function OposicionProvider({ children }) {
   )
 }
 
-// 🎯 Hook para usar el contexto
-export function useOposicion() {
+// Hook para usar el contexto
+export function useOposicion(): OposicionContextValue {
   const context = useContext(OposicionContext)
-  
+
   if (context === undefined) {
     throw new Error('useOposicion debe usarse dentro de un OposicionProvider')
   }
-  
+
   return context
 }
