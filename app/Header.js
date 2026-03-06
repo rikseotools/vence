@@ -406,7 +406,7 @@ export default function HeaderES() {
             
             {/* 🔥 SEGUNDA LÍNEA MÓVIL - RACHA + LEYES + SOPORTE */}
             {user && (
-              <div className="xl:hidden absolute top-full left-0 flex items-center gap-4 mt-1 mb-2 pl-4">
+              <div className="xl:hidden absolute top-full left-0 right-0 flex items-center gap-4 mt-1 mb-2 pl-4 pr-4 overflow-x-auto scrollbar-hide">
                 {/* 🔥 ICONO DE RACHA */}
                 <button
                   onClick={() => {

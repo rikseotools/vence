@@ -158,7 +158,7 @@ export default function ChartQuestion({
 
       {/* Gráfico - Componente específico (solo si existe) */}
       {chartComponent && (
-        <div className="relative mb-4 -mx-6 -my-2 sm:-mt-2 -mt-8">
+        <div className="relative mb-4 -mx-2 sm:-mx-6 -my-2 sm:-mt-2 -mt-8 overflow-x-hidden">
           <div
             className="sm:cursor-pointer"
             onClick={() => {
