@@ -1,4 +1,5 @@
-// components/TestConfigurator.js - CON FILTRO DE PREGUNTAS OFICIALES POR TEMA CORREGIDO
+// @ts-nocheck
+// components/TestConfigurator.tsx - CON FILTRO DE PREGUNTAS OFICIALES POR TEMA CORREGIDO
 'use client'
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import SectionFilterModal from './SectionFilterModal';
