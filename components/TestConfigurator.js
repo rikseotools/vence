@@ -659,6 +659,8 @@ const TestConfigurator = ({
   // 🆕 Inicializar leyes seleccionadas SOLO la primera vez que lawsData tiene datos
   // 🔧 FIX: Usar ref para evitar resetear la selección del usuario cada vez que lawsData cambie
   const lawsInitializedRef = useRef(false);
+  const articlesInFlightRef = useRef(new Map()); // Dedup: promises en vuelo por ley
+  const sectionsInFlightRef = useRef(new Map()); // Dedup: promises en vuelo por ley
 
   useEffect(() => {
     // Solo inicializar si lawsData tiene datos Y no se ha inicializado antes
@@ -751,10 +753,27 @@ const TestConfigurator = ({
     setSelectedSectionFilters([]); // Limpiar títulos al deseleccionar leyes
   };
 
-  // 🆕 Función para cargar artículos disponibles por ley
+  // 🆕 Función para cargar artículos disponibles por ley (con dedup de requests en vuelo)
   const loadArticlesForLaw = async (lawShortName) => {
     if (!supabase) return [];
-    
+
+    // Si ya hay una request en vuelo para esta ley, reusar la misma promise
+    if (articlesInFlightRef.current.has(lawShortName)) {
+      console.log(`⏳ Reutilizando request en vuelo para ${lawShortName}`);
+      return articlesInFlightRef.current.get(lawShortName);
+    }
+
+    const promise = _loadArticlesForLawImpl(lawShortName);
+    articlesInFlightRef.current.set(lawShortName, promise);
+
+    try {
+      return await promise;
+    } finally {
+      articlesInFlightRef.current.delete(lawShortName);
+    }
+  };
+
+  const _loadArticlesForLawImpl = async (lawShortName) => {
     setLoadingArticles(true);
     try {
       console.log(`📋 Cargando artículos para ley ${lawShortName} (tema: ${tema || 'configurador específico'})...`);
@@ -876,15 +895,30 @@ const TestConfigurator = ({
     }
   };
 
-  // 🆕 Función para cargar secciones de una ley específica
+  // 🆕 Función para cargar secciones de una ley específica (con dedup de requests en vuelo)
   const loadSectionsForLaw = async (lawSlug) => {
+    // Si ya hay una request en vuelo para este slug, reusar la misma promise
+    if (sectionsInFlightRef.current.has(lawSlug)) {
+      console.log(`⏳ Reutilizando request de secciones en vuelo para ${lawSlug}`);
+      return sectionsInFlightRef.current.get(lawSlug);
+    }
+
+    const promise = (async () => {
+      try {
+        console.log('📚 Cargando secciones para ley:', lawSlug);
+        const data = await fetchLawSections(lawSlug);
+        return data.sections || [];
+      } catch (error) {
+        console.error('❌ Error cargando secciones:', error);
+        return [];
+      }
+    })();
+
+    sectionsInFlightRef.current.set(lawSlug, promise);
     try {
-      console.log('📚 Cargando secciones para ley:', lawSlug);
-      const data = await fetchLawSections(lawSlug);
-      return data.sections || [];
-    } catch (error) {
-      console.error('❌ Error cargando secciones:', error);
-      return [];
+      return await promise;
+    } finally {
+      sectionsInFlightRef.current.delete(lawSlug);
     }
   };
 

@@ -58,6 +58,11 @@ Sentry.init({
     // Instagram/Meta WebView internal errors (not our code)
     /enableDidUserTypeOnKeyboardLogging/,
     /Java object is gone/,
+    // React DOM removeChild error caused by browser extensions (Google Translate, Grammarly, etc.)
+    // that modify the DOM and break React's reconciliation during navigation
+    /removeChild.*Node/,
+    // window.print() stale callback in Edge (browser-level timing issue)
+    /execute 'print' on 'Window'/,
   ],
 
   // Environment tag
