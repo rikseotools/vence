@@ -6,14 +6,14 @@ const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
 
 export const metadata = {
   title: 'Auxiliar Administrativo CARM (Murcia) 2026 | Temario Oficial y Tests',
-  description: 'Oposiciones Auxiliar Administrativo CARM 2026: 58 plazas, temario oficial 16 temas BORM 17/10/2016. Comunidad Autónoma de la Región de Murcia.',
+  description: 'Oposiciones Auxiliar Administrativo CARM 2026: 58 plazas, temario oficial 21 temas BORM. Comunidad Autónoma de la Región de Murcia.',
   keywords: [
     'auxiliar administrativo carm',
     'oposiciones auxiliar administrativo murcia',
     'temario auxiliar carm',
     'oposiciones murcia 2026',
     'auxiliar administrativo region de murcia',
-    '16 temas auxiliar carm',
+    '21 temas auxiliar carm',
     'requisitos auxiliar carm',
     'plazas auxiliar administrativo murcia'
   ].join(', '),
@@ -21,7 +21,7 @@ export const metadata = {
   metadataBase: new URL(SITE_URL),
   openGraph: {
     title: 'Auxiliar Administrativo CARM (Murcia) 2026 | 58 Plazas',
-    description: 'Oposiciones Auxiliar Administrativo CARM: temario oficial 16 temas. Comunidad Autónoma de la Región de Murcia.',
+    description: 'Oposiciones Auxiliar Administrativo CARM: temario oficial 21 temas. Comunidad Autónoma de la Región de Murcia.',
     url: `${SITE_URL}/auxiliar-administrativo-carm`,
     siteName: 'Vence',
     locale: 'es_ES',
@@ -30,7 +30,7 @@ export const metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'Auxiliar Administrativo CARM (Murcia) 2026',
-    description: '58 plazas. Temario 16 temas BORM 17/10/2016. Región de Murcia.'
+    description: '58 plazas. Temario 21 temas BORM. Región de Murcia.'
   },
   alternates: {
     canonical: `${SITE_URL}/auxiliar-administrativo-carm`,
@@ -40,8 +40,8 @@ export const metadata = {
 export default function AuxiliarAdministrativoCarm() {
   const estadisticas = [
     { numero: "58", texto: "Plazas", color: "text-amber-600" },
-    { numero: "16", texto: "Temas oficiales", color: "text-green-600" },
-    { numero: "2", texto: "Bloques", color: "text-blue-600" },
+    { numero: "21", texto: "Temas oficiales", color: "text-green-600" },
+    { numero: "3", texto: "Bloques", color: "text-blue-600" },
     { numero: "ESO", texto: "Título requerido", color: "text-orange-600" }
   ]
 
@@ -49,8 +49,8 @@ export default function AuxiliarAdministrativoCarm() {
     {
       icon: "📚",
       titulo: "Programa Oficial BORM",
-      descripcion: "El temario consta de 16 temas distribuidos en 2 bloques temáticos según BORM 17/10/2016.",
-      stats: "16 temas \u2022 2 bloques"
+      descripcion: "El temario consta de 21 temas: 16 de teoría en 2 bloques y 5 de herramientas informáticas según BORM.",
+      stats: "21 temas \u2022 3 bloques"
     },
     {
       icon: "📋",
@@ -73,7 +73,7 @@ export default function AuxiliarAdministrativoCarm() {
     },
     {
       pregunta: "¿Cuál es el programa oficial de Auxiliar Administrativo CARM?",
-      respuesta: "El programa según BORM 17/10/2016 consta de 16 temas en 2 bloques: Derecho Constitucional y Administrativo (9 temas) y Gestión y Administración Pública (7 temas)."
+      respuesta: "El programa según BORM consta de 21 temas: Primera parte con 16 temas en 2 bloques (Derecho Constitucional y Administrativo, 9 temas, y Gestión y Administración Pública, 7 temas) y Segunda parte con 5 temas de herramientas informáticas (PowerPoint, Excel, Firma electrónica, Word y Outlook)."
     },
     {
       pregunta: "¿Qué requisitos necesito para opositar?",
@@ -115,6 +115,18 @@ export default function AuxiliarAdministrativoCarm() {
         "15. Prevención de Riesgos Laborales",
         "16. Igualdad, Transparencia y Protección de datos"
       ]
+    },
+    {
+      titulo: "Segunda parte: Herramientas informáticas",
+      temas: "5 temas (17-21)",
+      color: "border-purple-500",
+      temasLista: [
+        "17. Presentaciones con PowerPoint 2016",
+        "18. Hoja de cálculo Excel 2016",
+        "19. Firma electrónica y certificados digitales",
+        "20. Procesador de textos Word 2016",
+        "21. Outlook 365"
+      ]
     }
   ]
 
@@ -130,7 +142,7 @@ export default function AuxiliarAdministrativoCarm() {
     },
     "courseCode": "AUX-ADMIN-CARM-2026",
     "educationalLevel": "Graduado en ESO",
-    "teaches": "16 temas oficiales del programa de Auxiliar Administrativo CARM según BORM 17/10/2016"
+    "teaches": "21 temas oficiales del programa de Auxiliar Administrativo CARM según BORM"
   }
 
   return (
@@ -207,7 +219,7 @@ export default function AuxiliarAdministrativoCarm() {
           {/* Temario Oficial */}
           <section className="mb-12">
             <h2 className="text-2xl font-bold text-center mb-2">📋 Temario Oficial BORM 17/10/2016</h2>
-            <p className="text-center text-gray-600 mb-8">16 temas en 2 bloques</p>
+            <p className="text-center text-gray-600 mb-8">21 temas en 3 bloques</p>
             <div className="grid md:grid-cols-2 gap-6">
               {bloquesTematicos.map((bloque, index) => (
                 <div key={index} className={`bg-white rounded-xl shadow-lg p-5 border-l-4 ${bloque.color}`}>

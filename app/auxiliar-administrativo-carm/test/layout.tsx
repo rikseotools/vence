@@ -1,8 +1,8 @@
 const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
 
 export const metadata = {
-  title: 'Tests Auxiliar Administrativo CARM 2026 | 16 Temas Oficiales | Vence',
-  description: 'Tests de Auxiliar Administrativo CARM con los 16 temas oficiales del BORM. Preguntas personalizables, estadísticas por tema y seguimiento de progreso. Grupo C2.',
+  title: 'Tests Auxiliar Administrativo CARM 2026 | 21 Temas Oficiales | Vence',
+  description: 'Tests de Auxiliar Administrativo CARM con los 21 temas oficiales del BORM. Preguntas personalizables, estadísticas por tema y seguimiento de progreso. Grupo C2.',
   keywords: [
     'test auxiliar administrativo carm',
     'tests auxiliar carm murcia',
@@ -11,7 +11,7 @@ export const metadata = {
     'tests oposiciones carm',
     'preguntas auxiliar administrativo murcia',
     'examen auxiliar carm',
-    '16 temas auxiliar carm',
+    '21 temas auxiliar carm',
     'C2 region de murcia'
   ].join(', '),
   authors: [{ name: 'Vence' }],
@@ -19,8 +19,8 @@ export const metadata = {
   publisher: 'Vence',
   metadataBase: new URL(SITE_URL),
   openGraph: {
-    title: 'Tests Auxiliar Administrativo CARM - 16 Temas Oficiales | Vence',
-    description: 'Practica con tests de Auxiliar Administrativo CARM. 16 temas oficiales en 2 bloques, estadísticas personalizadas y seguimiento de progreso.',
+    title: 'Tests Auxiliar Administrativo CARM - 21 Temas Oficiales | Vence',
+    description: 'Practica con tests de Auxiliar Administrativo CARM. 21 temas oficiales en 3 bloques, estadísticas personalizadas y seguimiento de progreso.',
     url: `${SITE_URL}/auxiliar-administrativo-carm/test`,
     siteName: 'Vence',
     locale: 'es_ES',
@@ -37,7 +37,7 @@ export const metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'Tests Auxiliar Administrativo CARM | Vence',
-    description: 'Tests de los 16 temas oficiales del BORM. Estadísticas por tema y progreso personalizado.',
+    description: 'Tests de los 21 temas oficiales del BORM. Estadísticas por tema y progreso personalizado.',
     images: ['/twitter-image-es.jpg'],
   },
   alternates: {

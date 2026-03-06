@@ -9,8 +9,8 @@ export const revalidate = false
 
 // Pre-generar todos los temas en build time
 export async function generateStaticParams() {
-  // CARM tiene 16 temas
-  return Array.from({ length: 16 }, (_, i) => ({
+  // CARM tiene 21 temas (16 teoría + 5 informática)
+  return Array.from({ length: 21 }, (_, i) => ({
     slug: `tema-${i + 1}`
   }))
 }

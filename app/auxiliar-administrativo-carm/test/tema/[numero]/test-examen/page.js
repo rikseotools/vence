@@ -179,8 +179,8 @@ function TestExamenContent({ params }) {
     )
   }
 
-  // CARM: 16 temas (1-16)
-  if (isNaN(temaNumber) || temaNumber < 1 || temaNumber > 16) {
+  // CARM: 21 temas (1-16 teoría + 17-21 informática)
+  if (isNaN(temaNumber) || temaNumber < 1 || temaNumber > 21) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="max-w-md mx-auto text-center p-6">

@@ -170,8 +170,8 @@ export default function TemaCarmPage({ params }: PageProps) {
       setResolvedParams(resolved)
       setTemaNumber(tema)
 
-      // CARM: 16 temas (1-16)
-      if (isNaN(tema) || tema < 1 || tema > 16) {
+      // CARM: 21 temas (1-16 teoría + 17-21 informática)
+      if (isNaN(tema) || tema < 1 || tema > 21) {
         setTemaNotFound(true)
         setLoading(false)
         return

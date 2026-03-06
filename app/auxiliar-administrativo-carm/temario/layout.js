@@ -2,7 +2,7 @@ const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
 
 export const metadata = {
   title: 'Temario Auxiliar Administrativo CARM 2026 | Vence',
-  description: 'Temario completo de Auxiliar Administrativo CARM actualizado 2026. 16 temas oficiales organizados en 2 bloques con teoría.',
+  description: 'Temario completo de Auxiliar Administrativo CARM actualizado 2026. 21 temas oficiales organizados en 3 bloques con teoría.',
   keywords: [
     'temario auxiliar administrativo carm',
     'temario auxiliar carm 2026',
@@ -18,7 +18,7 @@ export const metadata = {
   metadataBase: new URL(SITE_URL),
   openGraph: {
     title: 'Temario Auxiliar Administrativo CARM 2026 | Teoría Oficial',
-    description: 'Accede al temario completo y actualizado de Auxiliar Administrativo CARM. 16 temas oficiales con teoría completa.',
+    description: 'Accede al temario completo y actualizado de Auxiliar Administrativo CARM. 21 temas oficiales con teoría completa.',
     url: `${SITE_URL}/auxiliar-administrativo-carm/temario`,
     siteName: 'Vence',
     locale: 'es_ES',
@@ -35,7 +35,7 @@ export const metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'Temario Auxiliar Administrativo CARM | Vence',
-    description: 'Temario completo y actualizado 2026. 16 temas oficiales con teoría.',
+    description: 'Temario completo y actualizado 2026. 21 temas oficiales con teoría.',
     images: ['/twitter-image-es.jpg'],
   },
   alternates: {

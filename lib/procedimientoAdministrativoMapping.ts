@@ -1,8 +1,30 @@
-// lib/procedimientoAdministrativoMapping.js
+// lib/procedimientoAdministrativoMapping.ts
 // Mapeo de secciones de procedimiento administrativo a leyes y artículos específicos
 
+interface LawMapping {
+  articles: string[]
+  description: string
+}
+
+interface SectionMapping {
+  name: string
+  description: string
+  laws: Record<string, LawMapping>
+}
+
+interface SectionArticle {
+  lawShortName: string
+  articleNumber: string
+  description: string
+}
+
+interface SectionStats {
+  articlesCount: number
+  lawsCount: number
+}
+
 // Mapeo de cada sección a los artículos específicos de las leyes
-export const PROCEDIMIENTO_MAPPING = {
+export const PROCEDIMIENTO_MAPPING: Record<string, SectionMapping> = {
   'conceptos-generales': {
     name: 'Conceptos Generales',
     description: 'Principios generales, capacidad de obrar y conceptos fundamentales del procedimiento administrativo común',
@@ -21,7 +43,7 @@ export const PROCEDIMIENTO_MAPPING = {
       }
     }
   },
-  
+
   'el-procedimiento-administrativo': {
     name: 'El Procedimiento Administrativo',
     description: 'Fases del procedimiento: iniciación, ordenación, instrucción y finalización',
@@ -32,7 +54,7 @@ export const PROCEDIMIENTO_MAPPING = {
       }
     }
   },
-  
+
   'responsabilidad-patrimonial': {
     name: 'La Responsabilidad Patrimonial',
     description: 'Responsabilidad patrimonial de las Administraciones Públicas',
@@ -47,7 +69,7 @@ export const PROCEDIMIENTO_MAPPING = {
       }
     }
   },
-  
+
   'terminos-plazos': {
     name: 'Términos y Plazos',
     description: 'Cómputo de plazos, términos y calendario administrativo',
@@ -58,7 +80,7 @@ export const PROCEDIMIENTO_MAPPING = {
       }
     }
   },
-  
+
   'actos-administrativos': {
     name: 'De los Actos Administrativos',
     description: 'Concepto, elementos y clases de actos administrativos',
@@ -69,7 +91,7 @@ export const PROCEDIMIENTO_MAPPING = {
       }
     }
   },
-  
+
   'eficacia-validez-actos': {
     name: 'Eficacia y Validez de los Actos Administrativos',
     description: 'Eficacia, suspensión, revocación y rectificación de actos',
@@ -80,7 +102,7 @@ export const PROCEDIMIENTO_MAPPING = {
       }
     }
   },
-  
+
   'nulidad-anulabilidad': {
     name: 'Nulidad y Anulabilidad',
     description: 'Nulidad de pleno derecho y anulabilidad de los actos administrativos',
@@ -91,7 +113,7 @@ export const PROCEDIMIENTO_MAPPING = {
       }
     }
   },
-  
+
   'revision-oficio': {
     name: 'Revisión de Oficio',
     description: 'Revisión de los actos en vía administrativa',
@@ -102,7 +124,7 @@ export const PROCEDIMIENTO_MAPPING = {
       }
     }
   },
-  
+
   'recursos-administrativos': {
     name: 'Los Recursos Administrativos',
     description: 'Recurso de alzada, reposición y recurso extraordinario de revisión',
@@ -113,7 +135,7 @@ export const PROCEDIMIENTO_MAPPING = {
       }
     }
   },
-  
+
   'jurisdiccion-contencioso': {
     name: 'La Jurisdicción Contencioso Administrativo',
     description: 'Principios y regulación de la jurisdicción contencioso-administrativa',
@@ -182,16 +204,16 @@ export const PROCEDIMIENTO_MAPPING = {
 }
 
 // Función para obtener el mapeo de una sección específica
-export function getSectionMapping(sectionSlug) {
+export function getSectionMapping(sectionSlug: string): SectionMapping | null {
   return PROCEDIMIENTO_MAPPING[sectionSlug] || null
 }
 
 // Función para obtener todos los artículos de una sección
-export function getSectionArticles(sectionSlug) {
+export function getSectionArticles(sectionSlug: string): SectionArticle[] {
   const mapping = getSectionMapping(sectionSlug)
   if (!mapping) return []
-  
-  const articles = []
+
+  const articles: SectionArticle[] = []
   Object.entries(mapping.laws).forEach(([lawShortName, lawData]) => {
     lawData.articles.forEach(articleNumber => {
       articles.push({
@@ -201,36 +223,36 @@ export function getSectionArticles(sectionSlug) {
       })
     })
   })
-  
+
   return articles
 }
 
 // Función para obtener estadísticas de una sección
-export function getSectionStats(sectionSlug) {
+export function getSectionStats(sectionSlug: string): SectionStats {
   const mapping = getSectionMapping(sectionSlug)
   if (!mapping) return { articlesCount: 0, lawsCount: 0 }
-  
+
   const lawsCount = Object.keys(mapping.laws).length
   const articlesCount = Object.values(mapping.laws)
     .reduce((total, lawData) => total + lawData.articles.length, 0)
-  
+
   return { articlesCount, lawsCount }
 }
 
 // Función para obtener todas las leyes usadas en procedimiento administrativo
-export function getProcedimientoLaws() {
-  const laws = new Set()
-  
+export function getProcedimientoLaws(): string[] {
+  const laws = new Set<string>()
+
   Object.values(PROCEDIMIENTO_MAPPING).forEach(section => {
     Object.keys(section.laws).forEach(lawShortName => {
       laws.add(lawShortName)
     })
   })
-  
+
   return Array.from(laws)
 }
 
 // Validar si una sección es válida
-export function isValidSection(sectionSlug) {
+export function isValidSection(sectionSlug: string): boolean {
   return Object.keys(PROCEDIMIENTO_MAPPING).includes(sectionSlug)
 }

@@ -37,6 +37,19 @@ const BLOQUES = [
       { id: 15, titulo: 'Prevención de Riesgos Laborales', descripcion: 'LPRL. Derechos y obligaciones. Servicios de prevención. Delegados de prevención.' },
       { id: 16, titulo: 'Igualdad, Transparencia y Protección de datos', descripcion: 'LO 3/2007 de igualdad. Ley 19/2013 de transparencia. LOPDGDD y RGPD.' }
     ]
+  },
+  {
+    id: 'segunda_parte',
+    titulo: 'Segunda parte: Herramientas informáticas',
+    icon: '💻',
+    count: 5,
+    temas: [
+      { id: 17, titulo: 'Presentaciones con PowerPoint 2016', descripcion: 'Acceso a la aplicación. Vistas. Edición y diseño de diapositivas. Hipervínculos.' },
+      { id: 18, titulo: 'Hoja de cálculo Excel 2016', descripcion: 'Introducción. Libros y hojas. Tablas y gráficos. Fórmulas y funciones. Macros.' },
+      { id: 19, titulo: 'Firma electrónica y certificados digitales', descripcion: 'Cifrado. Certificados digitales. FNMT. Cl@ve. AutoFirma.' },
+      { id: 20, titulo: 'Procesador de textos Word 2016', descripcion: 'Nociones básicas. Administrar documentos. Diseño avanzado.' },
+      { id: 21, titulo: 'Outlook 365', descripcion: 'Correo electrónico. Calendario. Contactos. Tareas.' }
+    ]
   }
 ]
 
