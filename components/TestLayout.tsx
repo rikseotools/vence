@@ -25,7 +25,7 @@ import {
   saveDetailedAnswerWithRetry,
   calculateConfidence,
   createDetailedAnswer
-} from '../utils/testAnswers.js'
+} from '../utils/testAnswers'
 import {
   completeDetailedTest,
   formatTime
@@ -632,14 +632,14 @@ export default function TestLayout({
           }
           
           const success = await saveDetailedAnswer(
-            session.id, 
-            answer.questionData, 
-            answer, 
-            tema, 
-            answer.confidence, 
-            answer.interactions, 
-            questionStartTime, 
-            firstInteractionTime, 
+            session.id,
+            (answer.questionData || {}) as Parameters<typeof saveDetailedAnswer>[1],
+            answer as unknown as Parameters<typeof saveDetailedAnswer>[2],
+            tema,
+            answer.confidence ?? 'unknown',
+            answer.interactions ?? 0,
+            questionStartTime,
+            firstInteractionTime,
             testTracker.interactionEvents,
             testTracker.mouseEvents,
             testTracker.scrollEvents
@@ -1055,21 +1055,21 @@ export default function TestLayout({
         const detailedAnswer = createDetailedAnswer(
           currentQuestion,
           answerIndex,
-          apiCorrectAnswer,
-          isCorrect,
+          apiCorrectAnswer ?? 0,
+          isCorrect ?? false,
           timeSpent,
           currentQ,
           newConfidence,
           interactionCount
-        )
-        
+        ) as unknown as DetailedAnswerEntry
+
         const newAnsweredQuestions: AnsweredQuestionEntry[] = [...answeredQuestions, {
           question: currentQuestion,
           selectedAnswer: answerIndex,
           correct: !!isCorrect,
           timestamp: new Date().toISOString()
         }]
-        
+
         const newDetailedAnswers = [...detailedAnswers, detailedAnswer]
         
         setAnsweredQuestions(newAnsweredQuestions)
@@ -1186,7 +1186,7 @@ export default function TestLayout({
             const saveSuccess = await saveDetailedAnswerWithRetry({
               sessionId: session.id,
               questionData: currentQ,
-              answerData: detailedAnswer,
+              answerData: detailedAnswer as unknown as Parameters<typeof saveDetailedAnswerWithRetry>[0]['answerData'],
               tema,
               confidenceLevel: newConfidence,
               interactionCount,
@@ -1301,7 +1301,7 @@ export default function TestLayout({
             const result = await completeDetailedTest(
               currentTestSession.id,
               newScore,
-              newDetailedAnswers,
+              newDetailedAnswers as unknown as Parameters<typeof completeDetailedTest>[2],
               effectiveQuestions,
               startTime,
               testTracker.interactionEvents,

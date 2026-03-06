@@ -1,20 +1,91 @@
-// utils/testAnswers.js - ACTUALIZADO CON FIX ANTI-DUPLICADOS Y SISTEMA DE REINTENTOS
+// utils/testAnswers.ts - ACTUALIZADO CON FIX ANTI-DUPLICADOS Y SISTEMA DE REINTENTOS
+import type { User, SupabaseClient } from '@supabase/supabase-js'
 import { getSupabaseClient } from '../lib/supabase'
 import { getDeviceInfo } from './testSession'
 import { TestBackupSystem } from './testBackup'
+import type { BackupAnswerData, SyncResults } from './testBackup'
 
-const supabase = getSupabaseClient()
+// --- Types ---
+
+interface QuestionArticle {
+  id?: string | null
+  number?: string | null
+  law_id?: string | null
+  law_short_name?: string | null
+  law_name?: string | null
+  full_text?: string | null
+}
+
+interface QuestionDataInput {
+  id?: string | null
+  question?: string
+  question_text?: string
+  options?: (string | undefined)[]
+  tema?: number | string
+  question_type?: string
+  explanation?: string | null
+  difficulty?: string | null
+  article?: QuestionArticle | null
+  metadata?: Record<string, unknown> | null
+  [key: string]: unknown
+}
+
+interface AnswerDataInput {
+  questionIndex: number
+  selectedAnswer: number
+  correctAnswer: number
+  isCorrect: boolean
+  timeSpent: number
+  questionData?: QuestionDataInput | null
+  confidence?: string | null
+  interactions?: number
+  timestamp?: string
+}
+
+interface SaveResult {
+  success: boolean
+  question_id?: string | null
+  action: string
+  error?: string | unknown
+  attempts?: number
+  hasLocalBackup?: boolean
+}
+
+interface SaveAnswerParams {
+  sessionId: string
+  questionData: QuestionDataInput
+  answerData: AnswerDataInput
+  tema: number | string
+  confidenceLevel: string
+  interactionCount: number
+  questionStartTime: number | null
+  firstInteractionTime: number | null
+  interactionEvents: unknown[]
+  mouseEvents: unknown[]
+  scrollEvents: unknown[]
+}
+
+interface UserProfile {
+  id: string
+  target_oposicion: string | null
+}
+
+type ConfidenceLevel = 'very_sure' | 'sure' | 'unsure' | 'guessing'
+
+// --- Module state ---
+
+const supabase: SupabaseClient = getSupabaseClient()
 
 // 🛡️ CACHE DE USUARIO (evitar múltiples llamadas a getUser)
-let cachedUser = null
-let userCacheTime = 0
+let cachedUser: User | null = null
+let userCacheTime: number = 0
 const USER_CACHE_TTL = 60000 // 1 minuto
 
 // 🆕 CACHE DE PERFIL DE USUARIO (para obtener oposición)
-let cachedUserProfile = null
-let userProfileCacheTime = 0
+let cachedUserProfile: UserProfile | null = null
+let userProfileCacheTime: number = 0
 
-async function getCachedUser() {
+async function getCachedUser(): Promise<User | null> {
   const now = Date.now()
   if (cachedUser && (now - userCacheTime) < USER_CACHE_TTL) {
     return cachedUser
@@ -29,7 +100,7 @@ async function getCachedUser() {
 }
 
 // 🆕 OBTENER PERFIL CON CACHE (para oposición objetivo)
-async function getCachedUserProfile(userId) {
+async function getCachedUserProfile(userId: string): Promise<UserProfile | null> {
   const now = Date.now()
   if (cachedUserProfile && cachedUserProfile.id === userId && (now - userProfileCacheTime) < USER_CACHE_TTL) {
     return cachedUserProfile
@@ -42,14 +113,14 @@ async function getCachedUserProfile(userId) {
     .single()
 
   if (!error && profile) {
-    cachedUserProfile = profile
+    cachedUserProfile = profile as UserProfile
     userProfileCacheTime = now
   }
-  return profile
+  return profile as UserProfile | null
 }
 
 // 🆕 RESOLVER TEMA VIA API CENTRALIZADA (lib/api/tema-resolver)
-async function resolveTemaViaAPI(questionData, oposicionId) {
+async function resolveTemaViaAPI(questionData: QuestionDataInput, oposicionId: string): Promise<number | null> {
   try {
     const params = new URLSearchParams()
 
@@ -81,62 +152,62 @@ async function resolveTemaViaAPI(questionData, oposicionId) {
 
     console.log('⚠️ [TemaResolver API] No se pudo resolver tema:', result.reason || result.error)
     return null
-  } catch (error) {
-    console.warn('⚠️ [TemaResolver API] Error:', error.message)
+  } catch (error: unknown) {
+    console.warn('⚠️ [TemaResolver API] Error:', error instanceof Error ? error.message : String(error))
     return null
   }
 }
 
 // 🔧 FUNCIÓN PARA GENERAR question_id CONSISTENTE
-const generateQuestionId = (questionData, tema, questionOrder) => {
+const generateQuestionId = (questionData: QuestionDataInput, tema: number | string, questionOrder: number): string => {
   // Si ya tiene ID en metadata, usarlo
   if (questionData.metadata?.id) {
-    return questionData.metadata.id
+    return questionData.metadata.id as string
   }
-  
+
   // ✅ GENERAR ID CONSISTENTE basado en contenido (sin timestamp ni random)
   // Esto asegura que la misma pregunta siempre tenga el mismo ID
-  
+
   // Hash del texto completo para identificar la pregunta específica
-  const fullText = (questionData.question || '').trim() + 
-                  (questionData.options?.join('') || '') + 
-                  (questionData.article?.number || '') + 
+  const fullText = (questionData.question || '').trim() +
+                  (questionData.options?.join('') || '') +
+                  (questionData.article?.number || '') +
                   (questionData.article?.law_short_name || '')
-  
+
   // Crear hash simple pero consistente del contenido
   let hash = 0
   for (let i = 0; i < fullText.length; i++) {
     const char = fullText.charCodeAt(i)
     hash = ((hash << 5) - hash + char) & 0xffffffff
   }
-  
+
   // Convertir a string positivo
   const contentHash = Math.abs(hash).toString(36)
-  
+
   // ID consistente basado en contenido + tema + artículo
   const baseId = `tema-${tema}-art-${questionData.article?.number || 'unknown'}-${questionData.article?.law_short_name || 'unknown'}`
-  
+
   return `${baseId}-${contentHash}`
 }
 
 // 🔧 FUNCIÓN PARA GENERAR article_id ÚNICO
-const generateArticleId = (questionData, tema) => {
+const generateArticleId = (questionData: QuestionDataInput, tema: number | string): string => {
   // Si ya tiene ID en article, usarlo
   if (questionData.article?.id) {
     return questionData.article.id
   }
-  
+
   // Si no, generar basado en datos del artículo
   if (questionData.article?.number && questionData.article?.law_short_name) {
     return `${questionData.article.law_short_name}-art-${questionData.article.number}`
   }
-  
+
   // Fallback: usar tema
   return `tema-${tema}-article-unknown`
 }
 
 // 🛡️ GUARDAR RESPUESTA (SIMPLIFICADO Y PROFESIONAL)
-export const saveDetailedAnswer = async (sessionId, questionData, answerData, tema, confidenceLevel, interactionCount, questionStartTime, firstInteractionTime, interactionEvents, mouseEvents, scrollEvents) => {
+export const saveDetailedAnswer = async (sessionId: string, questionData: QuestionDataInput, answerData: AnswerDataInput, tema: number | string, confidenceLevel: string, interactionCount: number, questionStartTime: number | null, firstInteractionTime: number | null, interactionEvents: unknown[], mouseEvents: unknown[], scrollEvents: unknown[]): Promise<SaveResult> => {
   try {
     console.log('💾 Guardando respuesta...', {
       sessionId,
@@ -147,11 +218,11 @@ export const saveDetailedAnswer = async (sessionId, questionData, answerData, te
 
     if (!sessionId || !questionData || !answerData) {
       console.error('❌ No se puede guardar: datos faltantes')
-      return { success: false, error: 'Datos faltantes' }
+      return { success: false, error: 'Datos faltantes', action: 'error' }
     }
 
     // 🎯 CALCULAR TEMA ANTES DE USAR
-    let calculatedTema = parseInt(questionData?.tema || tema) || 0
+    let calculatedTema = parseInt(String(questionData?.tema || tema)) || 0
 
     // 🆕 Si el tema es 0, intentar resolverlo via API centralizada
     if (calculatedTema === 0 && questionData) {
@@ -166,13 +237,13 @@ export const saveDetailedAnswer = async (sessionId, questionData, answerData, te
             console.log('🎯 [TemaFix] Tema asignado automáticamente:', calculatedTema)
           }
         }
-      } catch (error) {
-        console.warn('⚠️ [TemaFix] Error resolviendo tema:', error.message)
+      } catch (error: unknown) {
+        console.warn('⚠️ [TemaFix] Error resolviendo tema:', error instanceof Error ? error.message : String(error))
       }
     }
 
     const hesitationTime = firstInteractionTime ?
-      Math.max(0, firstInteractionTime - questionStartTime) : 0
+      Math.max(0, firstInteractionTime - (questionStartTime || 0)) : 0
 
     // ✅ USAR ID REAL DE LA BASE DE DATOS O GENERAR COMO FALLBACK
     const questionId = questionData.id || generateQuestionId(questionData, tema, answerData.questionIndex)
@@ -185,7 +256,7 @@ export const saveDetailedAnswer = async (sessionId, questionData, answerData, te
       console.error('❌ No se puede obtener usuario autenticado')
       throw new Error('Usuario no autenticado')
     }
-        
+
     // ✅ OBTENER INFO DE DISPOSITIVO CORRECTAMENTE
     const deviceInfo = getDeviceInfo()
 
@@ -193,7 +264,7 @@ export const saveDetailedAnswer = async (sessionId, questionData, answerData, te
     const isPsychometric = questionData.question_type === 'psychometric'
 
     // ✅ DATOS CON NOMBRES EXACTOS DE LA BD Y CORRECCIONES
-    const insertData = {
+    const insertData: Record<string, unknown> = {
           // Campos obligatorios
           test_id: sessionId,
           question_order: (answerData.questionIndex || 0) + 1,
@@ -211,35 +282,34 @@ export const saveDetailedAnswer = async (sessionId, questionData, answerData, te
           article_number: questionData.article?.number || 'unknown',
           law_name: questionData.article?.law_short_name || 'unknown',
           tema_number: calculatedTema,
-          question_type: isPsychometric ? 'psychometric' : 'legislative',
-          
+
           // Campos de respuesta y tiempo
           confidence_level: confidenceLevel || 'unknown',
           time_spent_seconds: answerData.timeSpent || 0,
           time_to_first_interaction: hesitationTime,
           time_hesitation: Math.max(0, (answerData.timeSpent || 0) - hesitationTime),
           interaction_count: interactionCount || 1,
-          
+
           // Metadatos de pregunta
-          difficulty: questionData.metadata?.difficulty === 'auto' ? 'medium' : 
+          difficulty: questionData.metadata?.difficulty === 'auto' ? 'medium' :
              (questionData.metadata?.difficulty || 'medium'),
           question_type: questionData.metadata?.question_type || 'single',
           tags: questionData.metadata?.tags || [],
-          
+
           // Campos de aprendizaje (opcionales por ahora)
           previous_attempts_this_article: 0,
           historical_accuracy_this_article: 0,
           knowledge_retention_score: null,
           learning_efficiency_score: null,
-          
+
           // ✅ DATOS DE DISPOSITIVO - CORREGIDOS
           user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
           screen_resolution: typeof window !== 'undefined' ? `${window.screen.width}x${window.screen.height}` : 'unknown',
-          device_type: deviceInfo?.device_type || deviceInfo?.type || deviceInfo?.model || 'unknown',
+          device_type: deviceInfo?.device_model || 'unknown',
           browser_language: 'es',
-          timezone: typeof Intl !== 'undefined' ? 
+          timezone: typeof Intl !== 'undefined' ?
             Intl.DateTimeFormat().resolvedOptions().timeZone : 'Europe/Madrid',
-          
+
           // ✅ DATOS JSON (JSONB)
           full_question_context: {
             options: questionData.options || [],
@@ -252,22 +322,22 @@ export const saveDetailedAnswer = async (sessionId, questionData, answerData, te
               generation_method: questionData.metadata?.id ? 'metadata' : 'generated'
             }
           },
-          
+
           user_behavior_data: {
-            interaction_events: (interactionEvents || []).slice(-10),
-            mouse_activity: (mouseEvents || []).length,
-            scroll_activity: (scrollEvents || []).length,
+            interaction_events: (interactionEvents as unknown[] || []).slice(-10),
+            mouse_activity: (mouseEvents as unknown[] || []).length,
+            scroll_activity: (scrollEvents as unknown[] || []).length,
             confidence_evolution: confidenceLevel || 'unknown',
             answer_changes: Math.max(0, (interactionCount || 1) - 1)
           },
-          
+
           learning_analytics: {
             response_pattern: answerData.isCorrect ? 'correct' : 'incorrect',
-            time_efficiency: (answerData.timeSpent || 0) <= 30 ? 'fast' : 
+            time_efficiency: (answerData.timeSpent || 0) <= 30 ? 'fast' :
                             (answerData.timeSpent || 0) <= 60 ? 'normal' : 'slow',
             confidence_accuracy_match: ((confidenceLevel === 'very_sure' || confidenceLevel === 'sure') === answerData.isCorrect),
             hesitation_pattern: hesitationTime > 10 ? 'high' : hesitationTime > 5 ? 'medium' : 'low',
-            interaction_pattern: (interactionCount || 1) > 2 ? 'hesitant' : 
+            interaction_pattern: (interactionCount || 1) > 2 ? 'hesitant' :
                                 (interactionCount || 1) === 1 ? 'decisive' : 'normal'
           }
     }
@@ -282,7 +352,7 @@ export const saveDetailedAnswer = async (sessionId, questionData, answerData, te
         console.warn('⚠️ Respuesta duplicada (ya guardada):', {
           test_id: sessionId,
           question_order: insertData.question_order,
-          constraint: error.constraint
+          constraint: error.message
         })
         // Devolver success=true porque la respuesta YA está guardada
         return {
@@ -310,9 +380,9 @@ export const saveDetailedAnswer = async (sessionId, questionData, answerData, te
         correct_answer: insertData.correct_answer,
         confidence_level: insertData.confidence_level,
         device_type: insertData.device_type,
-        full_question_context_keys: Object.keys(insertData.full_question_context || {}),
-        user_behavior_data_keys: Object.keys(insertData.user_behavior_data || {}),
-        learning_analytics_keys: Object.keys(insertData.learning_analytics || {})
+        full_question_context_keys: Object.keys(insertData.full_question_context as object || {}),
+        user_behavior_data_keys: Object.keys(insertData.user_behavior_data as object || {}),
+        learning_analytics_keys: Object.keys(insertData.learning_analytics as object || {})
       })
 
       // Guardar en localStorage para retry posterior
@@ -340,25 +410,25 @@ export const saveDetailedAnswer = async (sessionId, questionData, answerData, te
       action: 'saved_new'
     }
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ Error en saveDetailedAnswer:', error)
     return {
       success: false,
-      error: error.message,
+      error: error instanceof Error ? error.message : String(error),
       action: 'error'
     }
   }
 }
 
 // Calcular confianza basada en tiempo e interacciones
-export const calculateConfidence = (timeToDecide, interactionCount) => {
+export const calculateConfidence = (timeToDecide: number, interactionCount: number): ConfidenceLevel => {
   return timeToDecide < 10000 && interactionCount === 0 ? 'very_sure' :
          timeToDecide < 20000 && interactionCount <= 1 ? 'sure' :
          timeToDecide < 40000 && interactionCount <= 2 ? 'unsure' : 'guessing'
 }
 
 // Crear objeto de respuesta detallada
-export const createDetailedAnswer = (currentQuestion, answerIndex, correctAnswer, isCorrect, timeSpent, questionData, confidence, interactions) => {
+export const createDetailedAnswer = (currentQuestion: number, answerIndex: number, correctAnswer: number, isCorrect: boolean, timeSpent: number, questionData: QuestionDataInput | null, confidence: string | null, interactions: number): AnswerDataInput => {
   return {
     questionIndex: currentQuestion,
     selectedAnswer: answerIndex,
@@ -373,7 +443,7 @@ export const createDetailedAnswer = (currentQuestion, answerIndex, correctAnswer
 }
 
 // 🆕 V2: Guardar respuesta via API server-side (mas fiable que insert directo)
-export const saveDetailedAnswerV2 = async (params) => {
+export const saveDetailedAnswerV2 = async (params: SaveAnswerParams): Promise<SaveResult> => {
   const {
     sessionId,
     questionData,
@@ -417,7 +487,7 @@ export const saveDetailedAnswerV2 = async (params) => {
         id: questionData.id || null,
         question: questionData.question || '',
         options: questionData.options || [],
-        tema: parseInt(questionData.tema || tema) || 0,
+        tema: parseInt(String(questionData.tema || tema)) || 0,
         questionType: questionData.question_type === 'psychometric' ? 'psychometric' : 'legislative',
         article: questionData.article || null,
         metadata: questionData.metadata || null,
@@ -430,7 +500,7 @@ export const saveDetailedAnswerV2 = async (params) => {
         isCorrect: answerData.isCorrect || false,
         timeSpent: answerData.timeSpent || 0
       },
-      tema: parseInt(questionData.tema || tema) || 0,
+      tema: parseInt(String(questionData.tema || tema)) || 0,
       confidenceLevel: confidenceLevel || 'unknown',
       interactionCount: interactionCount || 1,
       questionStartTime: questionStartTime || 0,
@@ -474,18 +544,18 @@ export const saveDetailedAnswerV2 = async (params) => {
       action: result.action || 'error',
       error: result.error
     }
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ [V2] Error de red:', error)
     return {
       success: false,
-      error: error.message,
+      error: error instanceof Error ? error.message : String(error),
       action: 'error'
     }
   }
 }
 
 // 🔄 Guardar con reintentos automaticos (usa V2 API → fallback a V1 directo)
-export const saveDetailedAnswerWithRetry = async (params, maxRetries = 3) => {
+export const saveDetailedAnswerWithRetry = async (params: SaveAnswerParams, maxRetries: number = 3): Promise<SaveResult> => {
   const {
     sessionId,
     questionData,
@@ -501,18 +571,18 @@ export const saveDetailedAnswerWithRetry = async (params, maxRetries = 3) => {
   } = params;
 
   let attempts = 0;
-  let lastError = null;
-  let testBackup = null;
+  let lastError: SaveResult | unknown = null;
+  let testBackup: TestBackupSystem | null = null;
 
   // Inicializar sistema de backup si tenemos un sessionId
   if (sessionId && typeof window !== 'undefined') {
     testBackup = new TestBackupSystem(sessionId);
 
     // Guardar en local primero (como respaldo)
-    const backupData = {
-      questionData,
-      answerData,
-      tema,
+    const backupData: BackupAnswerData = {
+      questionData: questionData as unknown as Record<string, unknown>,
+      answerData: answerData as unknown as Record<string, unknown>,
+      tema: parseInt(String(tema)) || 0,
       confidenceLevel,
       interactionCount,
       timeData: {
@@ -529,7 +599,7 @@ export const saveDetailedAnswerWithRetry = async (params, maxRetries = 3) => {
     try {
       // Intentar V2 (API server-side) primero, fallback a V1 (Supabase directo)
       const useV2 = attempts === 0; // Primer intento siempre V2
-      let result;
+      let result: SaveResult;
 
       if (useV2) {
         console.log('💾 Intentando guardar via API (V2)...');
@@ -578,7 +648,7 @@ export const saveDetailedAnswerWithRetry = async (params, maxRetries = 3) => {
         await new Promise(resolve => setTimeout(resolve, delay));
       }
 
-    } catch (error) {
+    } catch (error: unknown) {
       lastError = error;
       attempts++;
       console.error(`❌ Error en intento ${attempts}:`, error);
@@ -603,7 +673,7 @@ export const saveDetailedAnswerWithRetry = async (params, maxRetries = 3) => {
 }
 
 // 🔄 NUEVA FUNCIÓN: Sincronizar respuestas pendientes desde backup local
-export const syncPendingAnswers = async (sessionId) => {
+export const syncPendingAnswers = async (sessionId: string): Promise<SyncResults | { success: boolean; error?: string; synced?: number }> => {
   if (typeof window === 'undefined' || !sessionId) {
     return { success: false, error: 'No se puede sincronizar en el servidor' };
   }
@@ -622,13 +692,13 @@ export const syncPendingAnswers = async (sessionId) => {
     // Reconstruir los parámetros desde el backup
     return await saveDetailedAnswer(
       sessionId,
-      answer.questionData,
-      answer.answerData,
+      answer.questionData as unknown as QuestionDataInput,
+      answer.answerData as unknown as AnswerDataInput,
       answer.tema,
       answer.confidenceLevel,
       answer.interactionCount,
-      answer.timeData?.questionStartTime,
-      answer.timeData?.firstInteractionTime,
+      answer.timeData?.questionStartTime || 0,
+      answer.timeData?.firstInteractionTime || 0,
       [], // No tenemos eventos guardados
       [],
       []
@@ -643,3 +713,6 @@ export const syncPendingAnswers = async (sessionId) => {
 
   return results;
 }
+
+// Export types for consumers
+export type { QuestionDataInput, AnswerDataInput, SaveResult, SaveAnswerParams, ConfidenceLevel }

@@ -1,16 +1,53 @@
 // Sistema de respaldo local para respuestas de test
 // Previene pérdida de datos cuando hay fallos de red o servidor
 
+export interface BackupAnswerData {
+  questionData: Record<string, unknown>
+  answerData: Record<string, unknown>
+  tema: number
+  confidenceLevel: string
+  interactionCount: number
+  timeData?: { questionStartTime: number | null; firstInteractionTime: number | null }
+  timestamp?: string
+  synced?: boolean
+  syncedAt?: string
+  [key: string]: unknown
+}
+
+export interface BackupData {
+  testId: string
+  answers: Record<string, BackupAnswerData>
+  createdAt: string
+  lastModified: string
+}
+
+export interface SyncResults {
+  success: number
+  failed: number
+  errors: Array<{ questionNumber: number; error: string }>
+}
+
+export interface BackupStats {
+  total: number
+  synced: number
+  unsynced: number
+  createdAt: string
+  lastModified: string
+}
+
 class TestBackupSystem {
-  constructor(testId) {
+  testId: string
+  storageKey: string
+
+  constructor(testId: string) {
     this.testId = testId;
     this.storageKey = `test_backup_${testId}`;
     this.initBackup();
   }
 
-  initBackup() {
+  initBackup(): void {
     if (!this.getBackup().testId) {
-      const initialBackup = {
+      const initialBackup: BackupData = {
         testId: this.testId,
         answers: {},
         createdAt: new Date().toISOString(),
@@ -25,7 +62,7 @@ class TestBackupSystem {
   }
 
   // Guardar respuesta localmente ANTES de enviar a BD
-  saveLocally(questionNumber, answerData) {
+  saveLocally(questionNumber: number, answerData: BackupAnswerData): boolean {
     try {
       const backup = this.getBackup();
       backup.answers[questionNumber] = {
@@ -38,13 +75,20 @@ class TestBackupSystem {
       localStorage.setItem(this.storageKey, JSON.stringify(backup));
       console.log(`💾 Respuesta #${questionNumber} guardada localmente`);
       return true;
-    } catch (e) {
+    } catch (e: unknown) {
       console.error('❌ Error guardando backup local:', e);
       // Si localStorage está lleno, intentar limpiar backups antiguos
-      if (e.name === 'QuotaExceededError') {
+      if (e instanceof DOMException && e.name === 'QuotaExceededError') {
         this.cleanOldBackups();
         // Reintentar una vez
         try {
+          const backup = this.getBackup();
+          backup.answers[questionNumber] = {
+            ...answerData,
+            timestamp: new Date().toISOString(),
+            synced: false
+          };
+          backup.lastModified = new Date().toISOString();
           localStorage.setItem(this.storageKey, JSON.stringify(backup));
           return true;
         } catch (retryError) {
@@ -56,7 +100,7 @@ class TestBackupSystem {
   }
 
   // Recuperar respuestas no sincronizadas
-  getUnsyncedAnswers() {
+  getUnsyncedAnswers(): Array<BackupAnswerData & { questionNumber: number }> {
     const backup = this.getBackup();
     return Object.entries(backup.answers)
       .filter(([_, data]) => !data.synced)
@@ -67,7 +111,7 @@ class TestBackupSystem {
   }
 
   // Marcar como sincronizado
-  markAsSynced(questionNumber) {
+  markAsSynced(questionNumber: number): boolean {
     try {
       const backup = this.getBackup();
       if (backup.answers[questionNumber]) {
@@ -85,7 +129,7 @@ class TestBackupSystem {
   }
 
   // Obtener el backup actual
-  getBackup() {
+  getBackup(): BackupData {
     try {
       const stored = localStorage.getItem(this.storageKey);
       return stored ? JSON.parse(stored) : {
@@ -106,7 +150,7 @@ class TestBackupSystem {
   }
 
   // Obtener estadísticas del backup
-  getStats() {
+  getStats(): BackupStats {
     const backup = this.getBackup();
     const total = Object.keys(backup.answers).length;
     const synced = Object.values(backup.answers).filter(a => a.synced).length;
@@ -122,7 +166,7 @@ class TestBackupSystem {
   }
 
   // Limpiar este backup
-  clear() {
+  clear(): boolean {
     try {
       localStorage.removeItem(this.storageKey);
       console.log(`🗑️ Backup del test ${this.testId} eliminado`);
@@ -134,7 +178,7 @@ class TestBackupSystem {
   }
 
   // Limpiar backups antiguos (más de 7 días)
-  cleanOldBackups() {
+  cleanOldBackups(): void {
     try {
       const now = new Date();
       const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -142,7 +186,7 @@ class TestBackupSystem {
       Object.keys(localStorage).forEach(key => {
         if (key.startsWith('test_backup_')) {
           try {
-            const backup = JSON.parse(localStorage.getItem(key));
+            const backup = JSON.parse(localStorage.getItem(key) || '{}');
             const lastModified = new Date(backup.lastModified || backup.createdAt);
 
             if (lastModified < sevenDaysAgo) {
@@ -161,9 +205,9 @@ class TestBackupSystem {
   }
 
   // Intentar sincronizar todas las respuestas pendientes
-  async syncPending(saveFunction) {
+  async syncPending(saveFunction: (answer: BackupAnswerData & { questionNumber: number }) => Promise<{ success: boolean; error?: unknown }>): Promise<SyncResults> {
     const unsynced = this.getUnsyncedAnswers();
-    const results = {
+    const results: SyncResults = {
       success: 0,
       failed: 0,
       errors: []
@@ -179,14 +223,14 @@ class TestBackupSystem {
           results.failed++;
           results.errors.push({
             questionNumber: answer.questionNumber,
-            error: result.error || 'Unknown error'
+            error: String(result.error || 'Unknown error')
           });
         }
-      } catch (error) {
+      } catch (error: unknown) {
         results.failed++;
         results.errors.push({
           questionNumber: answer.questionNumber,
-          error: error.message
+          error: error instanceof Error ? error.message : String(error)
         });
       }
     }
