@@ -1,89 +1,205 @@
-// components/UserAvatar.js - FIXED VERSION using useAuth context
+// components/UserAvatar.tsx - Typed version with reliability fixes
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, type ReactNode } from 'react'
 import Link from 'next/link'
-import { useAuth } from '../contexts/AuthContext' // Using context instead of local instance
+import { useAuth } from '../contexts/AuthContext'
 import { useAdminNotifications } from '@/hooks/useAdminNotifications'
 import { useSentryIssues } from '@/hooks/useSentryIssues'
-// import { calculateUserStreak } from '@/utils/streakCalculator' // 🚫 YA NO NECESARIO
+
+// ── Types ────────────────────────────────────────────────────────
+
+interface UserStats {
+  streak: number
+  accuracy: number
+  weeklyQuestions: number
+  totalQuestions: number
+  userRegisteredDate: Date
+}
+
+interface PendingExam {
+  id: string
+  title?: string
+  temaNumber?: number
+  answeredQuestions: number
+  totalQuestions: number
+}
+
+interface RpcUserStats {
+  current_streak?: number
+  global_accuracy?: number
+  questions_this_week?: number
+  today_questions?: number
+  total_questions?: number
+}
+
+interface AvatarDisplay {
+  type: 'custom' | 'photo' | 'initial'
+  element: ReactNode
+  elementLarge: ReactNode
+  fallback?: boolean
+}
+
+const EMPTY_STATS: UserStats = {
+  streak: 0,
+  accuracy: 0,
+  weeklyQuestions: 0,
+  totalQuestions: 0,
+  userRegisteredDate: new Date(),
+}
+
+// ── Component ────────────────────────────────────────────────────
 
 export default function UserAvatar() {
-  // Using Auth context instead of local state
   const { user, loading: authLoading, signOut, supabase, isPremium } = useAuth()
   const [showDropdown, setShowDropdown] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
   const [adminLoading, setAdminLoading] = useState(true)
   const adminNotifications = useAdminNotifications(isAdmin && !adminLoading)
   const { issuesCount: sentryIssuesCount } = useSentryIssues(isAdmin && !adminLoading)
-  const [userStats, setUserStats] = useState({
-    streak: 0,
-    accuracy: 0,
-    weeklyQuestions: 0,
-    totalQuestions: 0,
-    userRegisteredDate: new Date()
-  })
+  const [userStats, setUserStats] = useState<UserStats>(EMPTY_STATS)
   const [statsLoading, setStatsLoading] = useState(false)
-  // 🆕 Estado para exámenes pendientes
-  const [pendingExams, setPendingExams] = useState([])
+  const [pendingExams, setPendingExams] = useState<PendingExam[]>([])
   const [pendingExamsExpanded, setPendingExamsExpanded] = useState(false)
 
-  // 🆕 Cargar exámenes pendientes cuando se abre el dropdown
+  // ── Pending exams: load on dropdown open, with AbortController ──
+
   useEffect(() => {
-    if (showDropdown && user?.id) {
-      loadPendingExams()
-    }
-    // Reset expanded state when dropdown closes
     if (!showDropdown) {
       setPendingExamsExpanded(false)
+      return
     }
-  }, [showDropdown, user?.id])
+    if (!user?.id) return
 
-  async function loadPendingExams() {
+    const controller = new AbortController()
+    loadPendingExams(controller.signal)
+    return () => controller.abort()
+  }, [showDropdown, user?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function loadPendingExams(signal?: AbortSignal) {
     try {
-      const response = await fetch(`/api/exam/pending?userId=${user.id}&testType=exam&limit=10`)
+      const response = await fetch(
+        `/api/exam/pending?userId=${user!.id}&testType=exam&limit=10`,
+        { signal },
+      )
+      if (signal?.aborted) return
       const data = await response.json()
       if (data.success) {
         setPendingExams(data.exams || [])
       }
     } catch (err) {
-      console.error('Error cargando exámenes pendientes:', err)
+      if (err instanceof DOMException && err.name === 'AbortError') return
+      console.error('Error cargando examenes pendientes:', err)
       setPendingExams([])
     }
   }
 
   const pendingExamsCount = pendingExams.length
 
-  useEffect(() => {
-    // Only load stats if user is available and not loading
-    if (user && !authLoading && !statsLoading && supabase) {
-      loadUserStats(user.id)
-    } else if (!authLoading && !user) {
-      setUserStats({
-        streak: 0,
-        accuracy: 0,
-        weeklyQuestions: 0,
-        totalQuestions: 0,
-        userRegisteredDate: new Date()
-      })
-    }
-  }, [user, authLoading, supabase]) // Context dependencies
+  // ── Stats: load with unmount protection ──
 
-  // Escuchar evento de examen completado para refrescar stats
+  useEffect(() => {
+    if (!user || authLoading || !supabase) {
+      if (!authLoading && !user) setUserStats(EMPTY_STATS)
+      return
+    }
+
+    let cancelled = false
+
+    async function load() {
+      if (statsLoading) return
+      if (!user || !user.created_at) return
+
+      const userCreatedAt = new Date(user.created_at)
+
+      try {
+        setStatsLoading(true)
+
+        console.log('UserAvatar: Loading stats for userId:', user.id)
+
+        const { data: rpcStats, error: rpcError } = await supabase.rpc(
+          'get_user_public_stats',
+          { p_user_id: user.id },
+        )
+
+        if (cancelled) return
+
+        console.log('UserAvatar: RPC Response:', { rpcStats, rpcError })
+
+        // Fix: only treat as real error if it has message or code.
+        // Supabase sometimes returns error: {} (empty object, truthy but meaningless).
+        if (rpcError && (rpcError.message || rpcError.code)) {
+          console.error('UserAvatar: RPC error:', rpcError.message || rpcError.code)
+          // Preserve previous stats instead of resetting to zero
+          return
+        }
+
+        // If error was empty {} AND data is null/empty, preserve previous stats
+        const statsRow = (rpcStats as RpcUserStats[] | null)?.[0]
+        if (!statsRow && rpcError) {
+          // Meaningless error + no data → keep previous stats
+          return
+        }
+
+        const stats: RpcUserStats = statsRow || {}
+        const weeklyQuestions = stats.questions_this_week || stats.today_questions || 0
+
+        setUserStats({
+          streak: Number(stats.current_streak) || 0,
+          accuracy: Number(stats.global_accuracy) || 0,
+          weeklyQuestions,
+          totalQuestions: Number(stats.total_questions) || 0,
+          userRegisteredDate: userCreatedAt,
+        })
+      } catch (error) {
+        if (cancelled) return
+        console.warn('Error loading stats:', error)
+        // Preserve previous stats on network/unexpected errors too
+      } finally {
+        if (!cancelled) setStatsLoading(false)
+      }
+    }
+
+    load()
+    return () => { cancelled = true }
+  }, [user, authLoading, supabase]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Refresh stats on exam-completed event ──
+
   useEffect(() => {
     const handleExamCompleted = () => {
-      if (user?.id) {
-        console.log('🔄 UserAvatar: Refrescando stats después de examen completado')
-        loadUserStats(user.id)
-        loadPendingExams() // También refrescar exámenes pendientes
+      if (!user?.id) return
+      console.log('UserAvatar: Refrescando stats despues de examen completado')
+      // Re-trigger the stats useEffect by forcing a state update won't work cleanly,
+      // so we call load inline. The AbortController for pending exams is separate.
+      loadPendingExams()
+      // Stats will reload on next dropdown open or we can trigger manually:
+      // For simplicity, directly call RPC here
+      if (supabase && user.created_at) {
+        supabase
+          .rpc('get_user_public_stats', { p_user_id: user.id })
+          .then(({ data, error }: { data: RpcUserStats[] | null; error: { message?: string; code?: string } | null }) => {
+            if (error && (error.message || error.code)) return
+            const stats: RpcUserStats = data?.[0] || {}
+            setUserStats({
+              streak: Number(stats.current_streak) || 0,
+              accuracy: Number(stats.global_accuracy) || 0,
+              weeklyQuestions: stats.questions_this_week || stats.today_questions || 0,
+              totalQuestions: Number(stats.total_questions) || 0,
+              userRegisteredDate: new Date(user.created_at!),
+            })
+          })
       }
     }
 
     window.addEventListener('exam-completed', handleExamCompleted)
     return () => window.removeEventListener('exam-completed', handleExamCompleted)
-  }, [user?.id])
+  }, [user?.id, supabase]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Verificar si es admin
+  // ── Admin check ──
+
   useEffect(() => {
+    if (authLoading) return
+
     async function checkAdminStatus() {
       if (!user || !supabase) {
         setIsAdmin(false)
@@ -93,7 +209,6 @@ export default function UserAvatar() {
 
       try {
         const { data, error } = await supabase.rpc('is_current_user_admin')
-
         if (error) {
           console.error('Error verificando admin status:', error)
           setIsAdmin(false)
@@ -101,91 +216,17 @@ export default function UserAvatar() {
           setIsAdmin(data === true)
         }
       } catch (err) {
-        console.error('Error en verificación de admin:', err)
+        console.error('Error en verificacion de admin:', err)
         setIsAdmin(false)
       } finally {
         setAdminLoading(false)
       }
     }
 
-    if (!authLoading) {
-      checkAdminStatus()
-    }
+    checkAdminStatus()
   }, [user, supabase, authLoading])
 
-  // Load user statistics using RPC function
-  const loadUserStats = async (userId) => {
-    if (statsLoading) return // Prevenir cargas concurrentes
-
-    try {
-      setStatsLoading(true)
-
-      // Verify we have the user before proceeding
-      if (!user || !user.created_at) {
-        return
-      }
-
-      // Get user registration date
-      const userCreatedAt = new Date(user.created_at)
-
-      console.log('🔍 UserAvatar: Loading stats for userId:', userId)
-
-      // Usar función RPC que consolida todas las fuentes de datos
-      const { data: rpcStats, error: rpcError } = await supabase.rpc('get_user_public_stats', {
-        p_user_id: userId
-      })
-
-      console.log('🔍 UserAvatar: RPC Response:', { rpcStats, rpcError })
-
-      if (rpcError) {
-        console.error('❌ UserAvatar: Error loading user stats from RPC:', rpcError)
-        setUserStats({
-          streak: 0,
-          accuracy: 0,
-          weeklyQuestions: 0,
-          totalQuestions: 0,
-          userRegisteredDate: userCreatedAt
-        })
-        return
-      }
-
-      const stats = rpcStats?.[0] || {}
-      console.log('🔍 UserAvatar: Stats object:', stats)
-
-      // Usar questions_this_week si está disponible (nueva RPC), si no usar today_questions como fallback
-      const weeklyQuestions = stats.questions_this_week || stats.today_questions || 0
-
-      console.log('🔍 UserAvatar: Calculated values:', {
-        current_streak: stats.current_streak,
-        global_accuracy: stats.global_accuracy,
-        questions_this_week: stats.questions_this_week,
-        today_questions: stats.today_questions,
-        weeklyQuestions: weeklyQuestions,
-        total_questions: stats.total_questions
-      })
-
-      setUserStats({
-        streak: Number(stats.current_streak) || 0,
-        accuracy: Number(stats.global_accuracy) || 0,
-        weeklyQuestions: weeklyQuestions,
-        totalQuestions: Number(stats.total_questions) || 0,
-        userRegisteredDate: userCreatedAt
-      })
-    } catch (error) {
-      console.warn('Error loading stats:', error)
-      setUserStats({
-        streak: 0,
-        accuracy: 0,
-        weeklyQuestions: 0,
-        totalQuestions: 0,
-        userRegisteredDate: user?.created_at ? new Date(user.created_at) : new Date()
-      })
-    } finally {
-      setStatsLoading(false)
-    }
-  }
-
-  // Función de cálculo de racha movida a utils/streakCalculator.js para evitar duplicación
+  // ── Handlers ──
 
   const handleSignOut = () => {
     setShowDropdown(false)
@@ -196,8 +237,9 @@ export default function UserAvatar() {
     setShowDropdown(false)
   }
 
-  // Get avatar (priority: custom > Google > initial)
-  const getAvatarDisplay = () => {
+  // ── Memoised avatar display ──
+
+  const avatarDisplay = useMemo<AvatarDisplay>(() => {
     // 1. Custom avatar (icons from AvatarChanger)
     if (user?.user_metadata?.avatar_type === 'predefined' && user?.user_metadata?.avatar_emoji) {
       return {
@@ -211,13 +253,13 @@ export default function UserAvatar() {
           <div className={`w-12 h-12 bg-gradient-to-r ${user.user_metadata.avatar_color} rounded-full flex items-center justify-center text-white text-2xl`}>
             {user.user_metadata.avatar_emoji}
           </div>
-        )
+        ),
       }
     }
 
-    // 2. Google/provider photo (if available)
+    // 2. Google/provider photo
     if (user?.user_metadata?.avatar_url || user?.user_metadata?.picture) {
-      const avatarUrl = user.user_metadata.avatar_url || user.user_metadata.picture
+      const avatarUrl = user!.user_metadata!.avatar_url || user!.user_metadata!.picture
       return {
         type: 'photo',
         element: (
@@ -226,9 +268,11 @@ export default function UserAvatar() {
             alt="Avatar"
             className="w-10 h-10 rounded-full border-2 border-green-500 object-cover"
             onError={(e) => {
-              // If image fails, show initial
-              e.target.style.display = 'none'
-              e.target.nextSibling.style.display = 'flex'
+              const target = e.currentTarget
+              target.style.display = 'none'
+              if (target.nextElementSibling instanceof HTMLElement) {
+                target.nextElementSibling.style.display = 'flex'
+              }
             }}
           />
         ),
@@ -239,13 +283,15 @@ export default function UserAvatar() {
             className="w-12 h-12 rounded-full object-cover"
           />
         ),
-        fallback: true
+        fallback: true,
       }
     }
 
     // 3. Name/email initial
-    const initial = user?.user_metadata?.full_name?.charAt(0).toUpperCase() ||
-                   user?.email?.charAt(0).toUpperCase() || 'U'
+    const initial =
+      user?.user_metadata?.full_name?.charAt(0).toUpperCase() ||
+      user?.email?.charAt(0).toUpperCase() ||
+      'U'
 
     return {
       type: 'initial',
@@ -258,19 +304,19 @@ export default function UserAvatar() {
         <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center text-white font-bold text-xl">
           {initial}
         </div>
-      )
+      ),
     }
-  }
+  }, [user?.user_metadata?.avatar_type, user?.user_metadata?.avatar_emoji, user?.user_metadata?.avatar_color, user?.user_metadata?.avatar_url, user?.user_metadata?.picture, user?.user_metadata?.full_name, user?.email])
 
-  // Get display name
-  const getDisplayName = () => {
-    if (user?.user_metadata?.full_name) {
-      return user.user_metadata.full_name
-    }
+  // ── Memoised display name ──
+
+  const displayName = useMemo(() => {
+    if (user?.user_metadata?.full_name) return user.user_metadata.full_name
     return user?.email || 'Usuario'
-  }
+  }, [user?.user_metadata?.full_name, user?.email])
 
-  // If loading, show skeleton
+  // ── Render: loading ──
+
   if (authLoading) {
     return (
       <div className="animate-pulse">
@@ -279,19 +325,20 @@ export default function UserAvatar() {
     )
   }
 
-  // If no user, show login button
+  // ── Render: no user ──
+
   if (!user) {
     return (
-      <Link 
+      <Link
         href="/login"
         className="bg-gradient-to-r from-green-700 to-green-800 text-white px-4 py-2 rounded-lg hover:from-green-800 hover:to-green-900 transition-all duration-200 font-medium text-sm"
       >
-        Iniciar Sesión
+        Iniciar Sesion
       </Link>
     )
   }
 
-  const avatarDisplay = getAvatarDisplay()
+  // ── Render: authenticated ──
 
   return (
     <div className="relative">
@@ -300,7 +347,6 @@ export default function UserAvatar() {
         onClick={() => setShowDropdown(!showDropdown)}
         className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-100 transition-colors"
       >
-        {/* Avatar with fallback for photos */}
         <div className="relative">
           {avatarDisplay.element}
           {avatarDisplay.fallback && (
@@ -309,11 +355,11 @@ export default function UserAvatar() {
               style={{ display: 'none' }}
             >
               {user?.user_metadata?.full_name?.charAt(0).toUpperCase() ||
-               user?.email?.charAt(0).toUpperCase() || 'U'}
+                user?.email?.charAt(0).toUpperCase() || 'U'}
             </div>
           )}
 
-          {/* Premium crown - centered on top */}
+          {/* Premium crown */}
           {isPremium && (
             <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-lg drop-shadow-md" title="Premium">
               👑
@@ -324,10 +370,10 @@ export default function UserAvatar() {
           <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
         </div>
 
-        {/* Name (optional, only on large screens) */}
+        {/* Name (only on large screens) */}
         <div className="hidden md:block text-left">
           <div className="text-sm font-medium text-gray-900">
-            {getDisplayName()}
+            {displayName}
           </div>
           {isPremium ? (
             <div className="text-xs text-amber-600 font-semibold">⭐ Premium</div>
@@ -337,10 +383,10 @@ export default function UserAvatar() {
         </div>
 
         {/* Dropdown arrow */}
-        <svg 
+        <svg
           className={`w-4 h-4 text-gray-500 transition-transform ${showDropdown ? 'rotate-180' : ''}`}
-          fill="none" 
-          stroke="currentColor" 
+          fill="none"
+          stroke="currentColor"
           viewBox="0 0 24 24"
         >
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -351,12 +397,12 @@ export default function UserAvatar() {
       {showDropdown && (
         <>
           {/* Overlay to close */}
-          <div 
-            className="fixed inset-0 z-10" 
+          <div
+            className="fixed inset-0 z-10"
             onClick={() => setShowDropdown(false)}
           ></div>
-          
-          {/* Dropdown menu */}
+
+          {/* Dropdown content */}
           <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-20">
             {/* User header */}
             <div className="p-4 border-b border-gray-200">
@@ -374,12 +420,11 @@ export default function UserAvatar() {
                 </Link>
                 <div>
                   <div className="font-semibold text-gray-900">
-                    {getDisplayName()}
+                    {displayName}
                   </div>
                   <div className="text-sm text-gray-600">
                     {user.email}
                   </div>
-                  {/* Premium badge */}
                   {isPremium && (
                     <div className="inline-flex items-center gap-1 bg-gradient-to-r from-amber-400 to-amber-500 text-white text-xs font-bold px-2 py-0.5 rounded-full mt-1">
                       ⭐ Premium
@@ -389,40 +434,44 @@ export default function UserAvatar() {
               </div>
             </div>
 
-            {/* Enhanced stats with streak and accuracy */}
+            {/* Stats */}
             <div className="p-4 border-b border-gray-200">
               <div className="text-sm font-medium text-gray-700 mb-3">📊 Tu Progreso</div>
               <div className="grid grid-cols-2 gap-3 text-xs">
-                {/* Streak */}
                 <div className="bg-orange-50 p-3 rounded-lg text-center">
                   <div className="text-orange-600 text-xs mb-1">🔥 Racha</div>
-                  <div className="font-bold text-orange-700 text-xl">{userStats.streak > 30 ? '30+' : userStats.streak}</div>
-                  <div className="text-orange-600 text-xs">días consecutivos</div>
+                  <div className="font-bold text-orange-700 text-xl" data-testid="stat-streak">
+                    {userStats.streak > 30 ? '30+' : userStats.streak}
+                  </div>
+                  <div className="text-orange-600 text-xs">dias consecutivos</div>
                 </div>
-                
-                {/* Success percentage */}
+
                 <div className="bg-green-50 p-3 rounded-lg text-center">
-                  <div className="text-green-600 text-xs mb-1">🎯 Precisión</div>
-                  <div className="font-bold text-green-700 text-xl">{userStats.accuracy}%</div>
+                  <div className="text-green-600 text-xs mb-1">🎯 Precision</div>
+                  <div className="font-bold text-green-700 text-xl" data-testid="stat-accuracy">
+                    {userStats.accuracy}%
+                  </div>
                   <div className="text-green-600 text-xs">de aciertos</div>
                 </div>
-                
-                {/* Questions this week */}
+
                 <div className="bg-blue-50 p-3 rounded-lg text-center">
                   <div className="text-blue-600 text-xs mb-1">📝 Esta semana</div>
-                  <div className="font-bold text-blue-700 text-xl">{userStats.weeklyQuestions}</div>
+                  <div className="font-bold text-blue-700 text-xl" data-testid="stat-weekly">
+                    {userStats.weeklyQuestions}
+                  </div>
                   <div className="text-blue-600 text-xs">preguntas hechas</div>
                 </div>
-                
-                {/* Questions since registration */}
+
                 <div className="bg-purple-50 p-3 rounded-lg text-center">
                   <div className="text-purple-600 text-xs mb-1">📚 Total preguntas hechas</div>
-                  <div className="font-bold text-purple-700 text-xl">{userStats.totalQuestions}</div>
+                  <div className="font-bold text-purple-700 text-xl" data-testid="stat-total">
+                    {userStats.totalQuestions}
+                  </div>
                   <div className="text-purple-600 text-xs">
-                    desde {userStats.userRegisteredDate.toLocaleDateString('es-ES', { 
-                      day: 'numeric', 
+                    desde {userStats.userRegisteredDate.toLocaleDateString('es-ES', {
+                      day: 'numeric',
                       month: 'short',
-                      year: 'numeric'
+                      year: 'numeric',
                     })}
                   </div>
                 </div>
@@ -446,10 +495,10 @@ export default function UserAvatar() {
                 className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg flex items-center space-x-3 block"
               >
                 <span>📊</span>
-                <span>Mis Estadísticas</span>
+                <span>Mis Estadisticas</span>
               </Link>
 
-              {/* 🆕 Exámenes pendientes - Expandible */}
+              {/* Pending exams */}
               {pendingExamsCount > 0 && (
                 <div>
                   <button
@@ -457,7 +506,7 @@ export default function UserAvatar() {
                     className="w-full text-left px-3 py-2 text-sm text-amber-700 hover:bg-amber-50 rounded-lg flex items-center space-x-3"
                   >
                     <span>📝</span>
-                    <span>Exámenes pendientes</span>
+                    <span>Examenes pendientes</span>
                     <span className="ml-auto flex items-center gap-1">
                       <span className="bg-amber-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
                         {pendingExamsCount > 9 ? '9+' : pendingExamsCount}
@@ -473,10 +522,9 @@ export default function UserAvatar() {
                     </span>
                   </button>
 
-                  {/* Lista expandida de exámenes */}
                   {pendingExamsExpanded && (
                     <div className="ml-6 mt-1 space-y-1 border-l-2 border-amber-200 pl-3">
-                      {pendingExams.map(exam => {
+                      {pendingExams.map((exam) => {
                         const progress = exam.totalQuestions > 0
                           ? Math.round((exam.answeredQuestions / exam.totalQuestions) * 100)
                           : 0
@@ -520,7 +568,7 @@ export default function UserAvatar() {
                 <span>Soporte</span>
               </Link>
 
-              {/* Enlace Admin */}
+              {/* Admin link */}
               {isAdmin && !adminLoading && (
                 <>
                   <hr className="my-2" />
@@ -548,13 +596,13 @@ export default function UserAvatar() {
               )}
 
               <hr className="my-2" />
-              
+
               <button
                 onClick={handleSignOut}
                 className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg flex items-center space-x-3"
               >
                 <span>🚪</span>
-                <span>Cerrar Sesión</span>
+                <span>Cerrar Sesion</span>
               </button>
             </div>
           </div>
