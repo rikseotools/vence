@@ -5,6 +5,9 @@
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
+import QuestionDispute from './QuestionDispute'
+import MarkdownExplanation from './MarkdownExplanation'
+import { useAuth } from '@/contexts/AuthContext'
 import type {
   ReviewQuestion,
   TestInfo,
@@ -45,6 +48,7 @@ export default function ExamReviewLayout({
   oposicionSlug = 'auxiliar-administrativo-estado',
   parte
 }: ExamReviewLayoutProps) {
+  const { user } = useAuth()
   const [filter, setFilter] = useState<FilterType>('all')
   // Start with incorrect and blank questions expanded by default
   const [expandedQuestions, setExpandedQuestions] = useState<Set<number>>(() => {
@@ -398,11 +402,31 @@ export default function ExamReviewLayout({
                         <h4 className="font-semibold text-blue-800 dark:text-blue-300 mb-2">
                           Explicación
                         </h4>
-                        <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                          {question.explanation}
-                        </p>
+                        <MarkdownExplanation
+                          content={question.explanation}
+                          className="text-blue-800 dark:text-blue-200"
+                        />
+                        <button
+                          onClick={() => {
+                            window.dispatchEvent(new CustomEvent('openAIChat', {
+                              detail: {
+                                message: `Explícame por qué la respuesta correcta es "${question.correctAnswer}" en la pregunta: "${question.questionText.substring(0, 100)}..."`,
+                                suggestion: 'explicar_respuesta'
+                              }
+                            }))
+                          }}
+                          className="mt-3 flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+                        >
+                          <span>✨</span>
+                          <span>Explicación con chat IA</span>
+                        </button>
                       </div>
                     )}
+
+                    {/* Impugnar pregunta */}
+                    <div className="flex flex-wrap gap-2 items-center mt-4">
+                      <QuestionDispute questionId={question.id} user={user} />
+                    </div>
 
                     {/* Artículo */}
                     {question.article && (

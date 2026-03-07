@@ -1,7 +1,7 @@
 // lib/api/test-review/queries.ts - Queries tipadas para revisión de tests completados
 import { getDb } from '@/db/client'
-import { tests, testQuestions } from '@/db/schema'
-import { eq, asc } from 'drizzle-orm'
+import { tests, testQuestions, questions } from '@/db/schema'
+import { eq, asc, inArray } from 'drizzle-orm'
 import type {
   GetTestReviewRequest,
   GetTestReviewResponse,
@@ -77,20 +77,58 @@ export async function getTestReview(
       .where(eq(testQuestions.testId, testId))
       .orderBy(asc(testQuestions.questionOrder))
 
+    // 2b. Fallback: cargar opciones/explicación de la tabla questions cuando full_question_context está vacío
+    const questionIdsNeedingContext = answers
+      .filter(a => {
+        const ctx = a.fullQuestionContext as Record<string, unknown> | null
+        return !ctx || !Array.isArray((ctx as Record<string, unknown>).options) || ((ctx as Record<string, unknown>).options as unknown[]).length === 0
+      })
+      .map(a => a.questionId)
+      .filter((id): id is string => !!id)
+
+    const questionDataMap = new Map<string, { options: string[]; explanation: string | null }>()
+
+    if (questionIdsNeedingContext.length > 0) {
+      const questionRows = await db
+        .select({
+          id: questions.id,
+          optionA: questions.optionA,
+          optionB: questions.optionB,
+          optionC: questions.optionC,
+          optionD: questions.optionD,
+          explanation: questions.explanation,
+        })
+        .from(questions)
+        .where(inArray(questions.id, questionIdsNeedingContext))
+
+      for (const q of questionRows) {
+        questionDataMap.set(q.id, {
+          options: [q.optionA, q.optionB, q.optionC, q.optionD],
+          explanation: q.explanation,
+        })
+      }
+
+      console.log(`🔄 [DRIZZLE] Loaded ${questionRows.length} questions as fallback for missing full_question_context`)
+    }
+
     // 3. Transformar datos para la respuesta
-    const questions: ReviewQuestion[] = answers.map((a, index) => {
+    const reviewQuestions: ReviewQuestion[] = answers.map((a, index) => {
       const context = (a.fullQuestionContext as Record<string, unknown>) || {}
+      const fallback = a.questionId ? questionDataMap.get(a.questionId) : undefined
+      const contextOptions = Array.isArray(context.options) && (context.options as string[]).length > 0
+        ? (context.options as string[])
+        : null
 
       return {
         id: a.questionId || a.psychometricQuestionId || a.id,
         order: a.questionOrder ?? index + 1,
         questionText: a.questionText || (context.question_text as string) || 'Pregunta no disponible',
-        options: (context.options as string[]) || [],
+        options: contextOptions || fallback?.options || [],
         difficulty: a.difficulty || 'medium',
         tema: a.temaNumber,
         articleNumber: a.articleNumber,
         lawName: a.lawName,
-        explanation: (context.explanation as string) || null,
+        explanation: (context.explanation as string) || fallback?.explanation || null,
         article: typeof context.article_full === 'string'
           ? context.article_full
           : (context.article_full as Record<string, unknown>)?.full_text as string || null,
@@ -104,15 +142,15 @@ export async function getTestReview(
     })
 
     // 4. Calcular estadísticas
-    const totalQuestions = questions.length
-    const correctCount = questions.filter(q => q.isCorrect).length
-    const incorrectCount = questions.filter(q => !q.isCorrect && q.userAnswer).length
-    const blankCount = questions.filter(q => !q.userAnswer).length
+    const totalQuestions = reviewQuestions.length
+    const correctCount = reviewQuestions.filter(q => q.isCorrect).length
+    const incorrectCount = reviewQuestions.filter(q => !q.isCorrect && q.userAnswer).length
+    const blankCount = reviewQuestions.filter(q => !q.userAnswer).length
     const percentage = totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) : 0
 
     // 5. Agrupar por tema para resumen
     const byTema: Record<number, { total: number; correct: number }> = {}
-    questions.forEach(q => {
+    reviewQuestions.forEach(q => {
       if (q.tema) {
         if (!byTema[q.tema]) {
           byTema[q.tema] = { total: 0, correct: 0 }
@@ -133,7 +171,7 @@ export async function getTestReview(
 
     // 6. Agrupar por dificultad
     const byDifficulty: Record<string, { total: number; correct: number }> = {}
-    questions.forEach(q => {
+    reviewQuestions.forEach(q => {
       const diff = q.difficulty || 'medium'
       if (!byDifficulty[diff]) {
         byDifficulty[diff] = { total: 0, correct: 0 }
@@ -174,7 +212,7 @@ export async function getTestReview(
       },
       temaBreakdown,
       difficultyBreakdown,
-      questions,
+      questions: reviewQuestions,
     }
   } catch (error) {
     console.error('❌ [DRIZZLE] Error getting test review:', error)
