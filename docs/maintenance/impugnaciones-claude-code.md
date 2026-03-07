@@ -178,7 +178,9 @@ Según el artículo Y de la Ley Z:
 **D) INCORRECTA** - Razón...
 ```
 
-**Evitar:** Texto corrido sin saltos de línea ni formato.
+**Evitar:**
+- Texto corrido sin saltos de línea ni formato.
+- Secciones tipo "Truco", "Consejo", "Tip" o similares. El resumen final debe integrarse como un párrafo natural, no como una sección aparte.
 
 ### 5.2 Explicación (tabla `questions`)
 ```javascript

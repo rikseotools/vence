@@ -7,6 +7,7 @@ interface AdminNotificationState {
   feedback: number
   impugnaciones: number
   ventas: number
+  calidad: number
   loading: boolean
 }
 
@@ -14,6 +15,7 @@ const EMPTY_STATE: AdminNotificationState = {
   feedback: 0,
   impugnaciones: 0,
   ventas: 0,
+  calidad: 0,
   loading: false
 }
 
@@ -40,7 +42,7 @@ export function useAdminNotifications(enabled = false) {
       originalTitle.current = document.title || 'Vence Admin'
     }
 
-    const totalPending = notifications.feedback + notifications.impugnaciones + notifications.ventas
+    const totalPending = notifications.feedback + notifications.impugnaciones + notifications.ventas + notifications.calidad
 
     if (totalPending > 0) {
       document.title = `(${totalPending}) ${originalTitle.current}`
@@ -54,7 +56,7 @@ export function useAdminNotifications(enabled = false) {
         document.title = originalTitle.current
       }
     }
-  }, [notifications.feedback, notifications.impugnaciones, notifications.ventas, notifications.loading, enabled])
+  }, [notifications.feedback, notifications.impugnaciones, notifications.ventas, notifications.calidad, notifications.loading, enabled])
 
   const loadPendingCounts = useCallback(async () => {
     if (!supabase || !enabledRef.current) return
@@ -95,14 +97,22 @@ export function useAdminNotifications(enabled = false) {
           new Promise((_, reject) =>
             setTimeout(() => reject(new Error('Timeout')), 8000)
           )
+        ]),
+        // 5. Obtener problemas de calidad de preguntas
+        Promise.race([
+          fetch('/api/admin/question-quality?count_only=true').then(r => r.json()),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Timeout')), 8000)
+          )
         ])
       ])
 
-      const [conversationsResult, feedbacksResult, impugnacionesApiResult, salesResult] = results
+      const [conversationsResult, feedbacksResult, impugnacionesApiResult, salesResult, calidadResult] = results
 
       let pendingFeedback = 0
       let pendingImpugnaciones = 0
       let pendingVentas = 0
+      let pendingCalidad = 0
 
       // Contar conversaciones donde el último mensaje es del USUARIO (necesita respuesta del admin)
       if (conversationsResult.status === 'fulfilled') {
@@ -151,10 +161,19 @@ export function useAdminNotifications(enabled = false) {
         pendingVentas = salesResult.value.count || 0
       }
 
+      // Obtener problemas de calidad
+      if (calidadResult.status === 'fulfilled') {
+        const calidadData = calidadResult.value
+        if (calidadData.success) {
+          pendingCalidad = calidadData.totalIssues || 0
+        }
+      }
+
       setNotifications({
         feedback: pendingFeedback,
         impugnaciones: pendingImpugnaciones,
         ventas: pendingVentas,
+        calidad: pendingCalidad,
         loading: false
       })
 
