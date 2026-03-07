@@ -24,12 +24,13 @@ interface PendingExam {
   totalQuestions: number
 }
 
-interface RpcUserStats {
-  current_streak?: number
-  global_accuracy?: number
-  questions_this_week?: number
-  today_questions?: number
-  total_questions?: number
+interface V2StatsResponse {
+  success: boolean
+  totalQuestions?: number
+  globalAccuracy?: number
+  currentStreak?: number
+  questionsThisWeek?: number
+  error?: string
 }
 
 interface AvatarDisplay {
@@ -95,10 +96,10 @@ export default function UserAvatar() {
 
   const pendingExamsCount = pendingExams.length
 
-  // ── Stats: load with unmount protection ──
+  // ── Stats: load with unmount protection (v2 API) ──
 
   useEffect(() => {
-    if (!user || authLoading || !supabase) {
+    if (!user || authLoading) {
       if (!authLoading && !user) setUserStats(EMPTY_STATS)
       return
     }
@@ -114,46 +115,26 @@ export default function UserAvatar() {
       try {
         setStatsLoading(true)
 
-        console.log('UserAvatar: Loading stats for userId:', user.id)
-
-        const { data: rpcStats, error: rpcError } = await supabase.rpc(
-          'get_user_public_stats',
-          { p_user_id: user.id },
-        )
-
+        const res = await fetch(`/api/v2/user-stats?userId=${user.id}`)
         if (cancelled) return
 
-        console.log('UserAvatar: RPC Response:', { rpcStats, rpcError })
+        const data: V2StatsResponse = await res.json()
 
-        // Fix: only treat as real error if it has message or code.
-        // Supabase sometimes returns error: {} (empty object, truthy but meaningless).
-        if (rpcError && (rpcError.message || rpcError.code)) {
-          console.error('UserAvatar: RPC error:', rpcError.message || rpcError.code)
-          // Preserve previous stats instead of resetting to zero
+        if (!data.success) {
+          console.error('UserAvatar: v2 stats error:', data.error)
           return
         }
-
-        // If error was empty {} AND data is null/empty, preserve previous stats
-        const statsRow = (rpcStats as RpcUserStats[] | null)?.[0]
-        if (!statsRow && rpcError) {
-          // Meaningless error + no data → keep previous stats
-          return
-        }
-
-        const stats: RpcUserStats = statsRow || {}
-        const weeklyQuestions = stats.questions_this_week || stats.today_questions || 0
 
         setUserStats({
-          streak: Number(stats.current_streak) || 0,
-          accuracy: Number(stats.global_accuracy) || 0,
-          weeklyQuestions,
-          totalQuestions: Number(stats.total_questions) || 0,
+          streak: data.currentStreak ?? 0,
+          accuracy: data.globalAccuracy ?? 0,
+          weeklyQuestions: data.questionsThisWeek ?? 0,
+          totalQuestions: data.totalQuestions ?? 0,
           userRegisteredDate: userCreatedAt,
         })
       } catch (error) {
         if (cancelled) return
         console.warn('Error loading stats:', error)
-        // Preserve previous stats on network/unexpected errors too
       } finally {
         if (!cancelled) setStatsLoading(false)
       }
@@ -161,39 +142,35 @@ export default function UserAvatar() {
 
     load()
     return () => { cancelled = true }
-  }, [user, authLoading, supabase]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [user, authLoading]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Refresh stats on exam-completed event ──
 
   useEffect(() => {
     const handleExamCompleted = () => {
-      if (!user?.id) return
+      if (!user?.id || !user.created_at) return
       console.log('UserAvatar: Refrescando stats despues de examen completado')
-      // Re-trigger the stats useEffect by forcing a state update won't work cleanly,
-      // so we call load inline. The AbortController for pending exams is separate.
       loadPendingExams()
-      // Stats will reload on next dropdown open or we can trigger manually:
-      // For simplicity, directly call RPC here
-      if (supabase && user.created_at) {
-        supabase
-          .rpc('get_user_public_stats', { p_user_id: user.id })
-          .then(({ data, error }: { data: RpcUserStats[] | null; error: { message?: string; code?: string } | null }) => {
-            if (error && (error.message || error.code)) return
-            const stats: RpcUserStats = data?.[0] || {}
-            setUserStats({
-              streak: Number(stats.current_streak) || 0,
-              accuracy: Number(stats.global_accuracy) || 0,
-              weeklyQuestions: stats.questions_this_week || stats.today_questions || 0,
-              totalQuestions: Number(stats.total_questions) || 0,
-              userRegisteredDate: new Date(user.created_at!),
-            })
+
+      const userCreatedAt = new Date(user.created_at)
+      fetch(`/api/v2/user-stats?userId=${user.id}`)
+        .then(res => res.json())
+        .then((data: V2StatsResponse) => {
+          if (!data.success) return
+          setUserStats({
+            streak: data.currentStreak ?? 0,
+            accuracy: data.globalAccuracy ?? 0,
+            weeklyQuestions: data.questionsThisWeek ?? 0,
+            totalQuestions: data.totalQuestions ?? 0,
+            userRegisteredDate: userCreatedAt,
           })
-      }
+        })
+        .catch(() => {})
     }
 
     window.addEventListener('exam-completed', handleExamCompleted)
     return () => window.removeEventListener('exam-completed', handleExamCompleted)
-  }, [user?.id, supabase]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [user?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Admin check ──
 

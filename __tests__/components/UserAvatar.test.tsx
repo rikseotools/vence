@@ -7,10 +7,9 @@ import '@testing-library/jest-dom'
 // ============================================
 
 const mockSignOut = jest.fn()
-const mockRpc = jest.fn()
 
 const mockSupabase = {
-  rpc: mockRpc,
+  rpc: jest.fn().mockResolvedValue({ data: true, error: null }),
 }
 
 const mockUser = {
@@ -61,6 +60,20 @@ import UserAvatar from '../../components/UserAvatar'
 // HELPERS
 // ============================================
 
+function mockStatsResponse(stats: { currentStreak?: number; globalAccuracy?: number; questionsThisWeek?: number; totalQuestions?: number }) {
+  return {
+    ok: true,
+    json: () => Promise.resolve({ success: true, ...stats }),
+  }
+}
+
+function mockPendingExamsResponse(exams: unknown[] = []) {
+  return {
+    ok: true,
+    json: () => Promise.resolve({ success: true, exams }),
+  }
+}
+
 beforeEach(() => {
   jest.clearAllMocks()
   mockAuthReturn = {
@@ -70,10 +83,16 @@ beforeEach(() => {
     supabase: mockSupabase,
     isPremium: false,
   }
-  // Default: RPC returns empty stats
-  mockRpc.mockResolvedValue({ data: [{ current_streak: 5, global_accuracy: 80, questions_this_week: 42, total_questions: 300 }], error: null })
-  // Default: no pending exams
-  mockFetch.mockResolvedValue({ json: () => Promise.resolve({ success: true, exams: [] }) })
+  // Default fetch: route based
+  mockFetch.mockImplementation((url: string) => {
+    if (url.includes('/api/v2/user-stats')) {
+      return Promise.resolve(mockStatsResponse({ currentStreak: 5, globalAccuracy: 80, questionsThisWeek: 42, totalQuestions: 300 }))
+    }
+    if (url.includes('/api/exam/pending')) {
+      return Promise.resolve(mockPendingExamsResponse())
+    }
+    return Promise.resolve({ ok: true, json: () => Promise.resolve({}) })
+  })
 })
 
 // ============================================
@@ -195,19 +214,19 @@ describe('UserAvatar', () => {
     expect(mockSignOut).toHaveBeenCalledTimes(1)
   })
 
-  test('RPC error {} (empty object) does NOT reset stats', async () => {
+  test('API error does NOT reset stats', async () => {
     // First render loads stats successfully
-    mockRpc.mockResolvedValueOnce({
-      data: [{ current_streak: 10, global_accuracy: 90, questions_this_week: 50, total_questions: 500 }],
-      error: null,
+    mockFetch.mockImplementation((url: string) => {
+      if (url.includes('/api/v2/user-stats')) {
+        return Promise.resolve(mockStatsResponse({ currentStreak: 10, globalAccuracy: 90, questionsThisWeek: 50, totalQuestions: 500 }))
+      }
+      if (url.includes('/api/exam/pending')) {
+        return Promise.resolve(mockPendingExamsResponse())
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) })
     })
 
     const { rerender } = render(<UserAvatar />)
-
-    // Wait for initial stats to load
-    await waitFor(() => {
-      // Open dropdown to see stats
-    })
 
     // Open dropdown to verify initial stats
     const button = screen.getByRole('button')
@@ -218,17 +237,24 @@ describe('UserAvatar', () => {
       expect(screen.getByTestId('stat-accuracy')).toHaveTextContent('90%')
     })
 
-    // Now simulate RPC returning error: {} (empty object, truthy but meaningless)
-    mockRpc.mockResolvedValue({
-      data: null,
-      error: {}, // Empty error object — the bug we're fixing
+    // Now simulate API returning error
+    mockFetch.mockImplementation((url: string) => {
+      if (url.includes('/api/v2/user-stats')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ success: false, error: 'Error interno' }),
+        })
+      }
+      if (url.includes('/api/exam/pending')) {
+        return Promise.resolve(mockPendingExamsResponse())
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) })
     })
 
-    // Trigger re-render by changing user reference
+    // Trigger re-render
     const updatedUser = { ...mockUser, id: 'user-123' }
     mockAuthReturn = { ...mockAuthReturn, user: updatedUser }
 
-    // Force a re-render (simulating what happens when authContext refreshes)
     await act(async () => { rerender(<UserAvatar />) })
 
     // Stats should still be the previous values, NOT reset to 0
