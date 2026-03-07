@@ -1,31 +1,151 @@
-// lib/testFetchers.js - FETCHERS MODULARES PARA TODOS LOS TIPOS DE TEST - CON SOPORTE MULTI-LEY
+// lib/testFetchers.ts - FETCHERS MODULARES PARA TODOS LOS TIPOS DE TEST - CON SOPORTE MULTI-LEY
 import { getSupabaseClient } from './supabase'
 import { mapLawSlugToShortName } from './lawMappingUtils'
+import { buildExamPositionFilter } from './config/exam-positions'
+
+type SearchParamsLike = URLSearchParams | Record<string, string | undefined> | null | undefined
+
+interface FetchConfig {
+  testType?: string
+  numQuestions?: number
+  positionType?: string
+  defaultConfig?: { numQuestions?: number }
+  focusWeakAreas?: boolean
+  onlyOfficialQuestions?: boolean
+  difficultyMode?: string
+  failedQuestionIds?: string[]
+  selectedLaws?: string[]
+  selectedArticlesByLaw?: Record<string, (string | number)[]>
+  selectedSectionFilters?: SectionFilterItem[]
+  [key: string]: unknown
+}
+
+interface SectionFilterItem {
+  title: string
+  articleRange?: { start: number; end: number }
+  [key: string]: unknown
+}
+
+interface BatchedQueryOptions {
+  gte?: { column: string; value: string }
+  order?: { column: string; ascending: boolean }
+  limit?: number
+}
+
+interface CacheEntry {
+  usedQuestionIds: Set<string>
+  timestamp: number
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SupabaseQuestionAny = any
+
+interface TransformedQuestion {
+  id: string
+  question: string
+  options: string[]
+  explanation: string | null
+  primary_article_id: string | null
+  tema?: number | string
+  article: {
+    id: string | undefined
+    number: string
+    title: string
+    full_text: string
+    law_name: string
+    law_short_name: string
+    display_number: string
+  }
+  metadata: {
+    id: string
+    difficulty: string
+    question_type: string
+    tags: string[]
+    is_active: boolean
+    created_at: string
+    updated_at: string | null
+    is_official_exam: boolean | null
+    exam_source: string | null
+    exam_date: string | null
+    exam_entity: string | null
+    official_difficulty_level: string | null
+  }
+}
+
+interface AdaptiveResult {
+  isAdaptive: true
+  activeQuestions: TransformedQuestion[]
+  questionPool: TransformedQuestion[]
+  poolSize?: number
+  requestedCount?: number
+  adaptiveCatalog?: AdaptiveCatalog
+}
+
+interface AdaptiveCatalog {
+  neverSeen: DifficultyBuckets
+  answered: DifficultyBuckets
+}
+
+interface DifficultyBuckets {
+  easy: TransformedQuestion[]
+  medium: TransformedQuestion[]
+  hard: TransformedQuestion[]
+  extreme: TransformedQuestion[]
+}
+
+interface TopicMapping {
+  article_numbers: string[]
+  laws: {
+    id?: string
+    name: string
+    short_name: string
+    slug?: string
+  }
+  topics?: {
+    topic_number: number
+    position_type: string
+  }
+}
+
+interface ContentScopeConfig {
+  articleIds: string[]
+  sectionInfo: { name: string; [key: string]: unknown }
+}
+
+interface CountResult {
+  count: number
+  byLaw: Record<string, number>
+}
+
+interface QuestionHistoryItem {
+  questionId: string
+  lastAnsweredAt: string
+}
 
 const supabase = getSupabaseClient()
 
 // =================================================================
-// 🔧 HELPER: SAFE PARAM GETTER (URLSearchParams o objeto plano)
+// HELPER: SAFE PARAM GETTER (URLSearchParams o objeto plano)
 // =================================================================
-// Algunos fetchers reciben searchParams desde hooks (URLSearchParams)
-// y otros desde server components (objeto plano). Este helper maneja ambos.
-function getParam(searchParams, key, defaultValue = null) {
+function getParam(searchParams: SearchParamsLike, key: string): string | null
+function getParam(searchParams: SearchParamsLike, key: string, defaultValue: string): string
+function getParam(searchParams: SearchParamsLike, key: string, defaultValue: string | null = null): string | null {
   if (!searchParams) return defaultValue
 
   // Si es URLSearchParams (desde hook useSearchParams)
-  if (typeof searchParams.get === 'function') {
-    return searchParams.get(key) || defaultValue
+  if (typeof (searchParams as URLSearchParams).get === 'function') {
+    return (searchParams as URLSearchParams).get(key) || defaultValue
   }
 
   // Si es objeto plano (desde server component o props)
-  return searchParams[key] || defaultValue
+  return (searchParams as Record<string, string | undefined>)[key] || defaultValue
 }
 
-// 🔥 CACHE GLOBAL DE SESIÓN para evitar duplicados entre llamadas
-const sessionQuestionCache = new Map()
+// CACHE GLOBAL DE SESIÓN para evitar duplicados entre llamadas
+const sessionQuestionCache = new Map<string, CacheEntry>()
 
 // Función para limpiar cache viejo (prevenimos memory leaks)
-function cleanOldCacheEntries() {
+function cleanOldCacheEntries(): void {
   const now = Date.now()
   for (const [key, data] of sessionQuestionCache.entries()) {
     // Limpiar entradas de más de 30 minutos
@@ -35,8 +155,8 @@ function cleanOldCacheEntries() {
   }
 }
 
-// 🔥 FUNCIÓN PÚBLICA para limpiar cache de sesión específica
-export function clearSessionQuestionCache(userId, tema) {
+// FUNCIÓN PÚBLICA para limpiar cache de sesión específica
+export function clearSessionQuestionCache(userId: string | null, tema: number | string): void {
   const sessionKey = userId ? `${userId}-${tema}-session` : `anon-${tema}-session`
   if (sessionQuestionCache.has(sessionKey)) {
     sessionQuestionCache.delete(sessionKey)
@@ -44,17 +164,14 @@ export function clearSessionQuestionCache(userId, tema) {
   }
 }
 
-// 🏛️ MAPEO: positionType → valores válidos de exam_position (centralizado)
-const { buildExamPositionFilter } = require('./config/exam-positions')
-
 // =================================================================
-// 🔧 HELPER: BATCHED QUERIES PARA EVITAR URLs MUY LARGAS
+// HELPER: BATCHED QUERIES PARA EVITAR URLs MUY LARGAS
 // =================================================================
 // Supabase convierte .in() queries a GET con URL params - si hay muchos IDs, la URL excede límites
 // Esta función divide las queries en lotes paralelos y combina resultados
 const BATCH_SIZE = 50 // 50 UUIDs por lote para evitar límites de URL
 
-async function batchedTestQuestionsQuery(testIds, selectFields, options = {}) {
+async function batchedTestQuestionsQuery(testIds: string[], selectFields: string, options: BatchedQueryOptions = {}): Promise<{ data: SupabaseQuestionAny[] | null; error: SupabaseQuestionAny }> {
   if (!testIds || testIds.length === 0) {
     return { data: [], error: null }
   }
@@ -109,7 +226,7 @@ async function batchedTestQuestionsQuery(testIds, selectFields, options = {}) {
   )
 
   // Combinar resultados
-  let allData = []
+  let allData: SupabaseQuestionAny[] = []
   for (const result of results) {
     if (result.error) {
       return { data: null, error: result.error }
@@ -121,10 +238,12 @@ async function batchedTestQuestionsQuery(testIds, selectFields, options = {}) {
 
   // Ordenar si es necesario
   if (options.order) {
-    allData.sort((a, b) => {
-      const aVal = a[options.order.column]
-      const bVal = b[options.order.column]
-      if (options.order.ascending) {
+    const orderCol = options.order.column
+    const ascending = options.order.ascending
+    allData.sort((a: SupabaseQuestionAny, b: SupabaseQuestionAny) => {
+      const aVal = a[orderCol]
+      const bVal = b[orderCol]
+      if (ascending) {
         return aVal > bVal ? 1 : aVal < bVal ? -1 : 0
       }
       return aVal < bVal ? 1 : aVal > bVal ? -1 : 0
@@ -142,7 +261,7 @@ async function batchedTestQuestionsQuery(testIds, selectFields, options = {}) {
 // =================================================================
 // 🔧 FUNCIÓN DE TRANSFORMACIÓN COMÚN
 // =================================================================
-export function transformQuestions(supabaseQuestions) {
+export function transformQuestions(supabaseQuestions: SupabaseQuestionAny[] | null | undefined): TransformedQuestion[] {
   if (!supabaseQuestions || !Array.isArray(supabaseQuestions)) {
     console.error('❌ transformQuestions: Datos inválidos recibidos')
     return []
@@ -201,7 +320,7 @@ export function transformQuestions(supabaseQuestions) {
 // =================================================================
 // 🔧 FUNCIÓN AUXILIAR: Mezclar arrays
 // =================================================================
-function shuffleArray(array) {
+function shuffleArray<T>(array: T[]): T[] {
   const shuffled = [...array]
   for (let i = shuffled.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -214,7 +333,7 @@ function shuffleArray(array) {
 // 🚀 HELPER: Obtener historial de preguntas del usuario (API optimizada)
 // Reemplaza el patrón lento de IN clause con 250+ UUIDs
 // =================================================================
-async function fetchUserQuestionHistory(userId, onlyActiveQuestions = true) {
+async function fetchUserQuestionHistory(userId: string, onlyActiveQuestions = true): Promise<{ history: QuestionHistoryItem[]; error: string | null }> {
   try {
     if (!userId) return { history: [], error: null }
 
@@ -234,15 +353,15 @@ async function fetchUserQuestionHistory(userId, onlyActiveQuestions = true) {
 
     return { history: data.history || [], error: null }
   } catch (error) {
-    console.warn('⚠️ Error en fetchUserQuestionHistory:', error.message)
-    return { history: [], error: error.message }
+    console.warn('⚠️ Error en fetchUserQuestionHistory:', (error as Error).message)
+    return { history: [], error: (error as Error).message }
   }
 }
 
 // =================================================================
 // 🚀 HELPER: Obtener preguntas recientes para exclusión (API optimizada)
 // =================================================================
-async function fetchRecentQuestions(userId, days = 7) {
+async function fetchRecentQuestions(userId: string, days = 7): Promise<{ questionIds: string[]; error: string | null }> {
   try {
     if (!userId) return { questionIds: [], error: null }
 
@@ -262,15 +381,15 @@ async function fetchRecentQuestions(userId, days = 7) {
 
     return { questionIds: data.questionIds || [], error: null }
   } catch (error) {
-    console.warn('⚠️ Error en fetchRecentQuestions:', error.message)
-    return { questionIds: [], error: error.message }
+    console.warn('⚠️ Error en fetchRecentQuestions:', (error as Error).message)
+    return { questionIds: [], error: (error as Error).message }
   }
 }
 
 // =================================================================
 // 🎲 FETCHER: TEST ALEATORIO
 // =================================================================
-export async function fetchRandomQuestions(tema, searchParams, config) {
+export async function fetchRandomQuestions(tema: number, searchParams: SearchParamsLike, config: FetchConfig): Promise<TransformedQuestion[] | AdaptiveResult> {
   try {
     console.log('🎲 Cargando test aleatorio para tema:', tema)
 
@@ -320,7 +439,7 @@ export async function fetchRandomQuestions(tema, searchParams, config) {
 // =================================================================
 // ⚡ FETCHER: TEST RÁPIDO - USA API CENTRALIZADA
 // =================================================================
-export async function fetchQuickQuestions(tema, searchParams, config) {
+export async function fetchQuickQuestions(tema: number, searchParams: SearchParamsLike, config: FetchConfig): Promise<TransformedQuestion[]> {
   try {
     // Calentar cache BD → lawMappingUtils (no-op si ya cargado)
     try { const { warmSlugCache } = await import('./api/laws/warmCache'); await warmSlugCache() } catch {}
@@ -338,7 +457,7 @@ export async function fetchQuickQuestions(tema, searchParams, config) {
     // Preferir law_short_name directo (desde notificaciones) sobre slug → short_name
     const lawShortName = lawShortNameDirect || (lawParam ? mapLawSlugToShortName(lawParam) : null)
     const selectedLaws = lawShortName ? [lawShortName] : []
-    const selectedArticlesByLaw = {}
+    const selectedArticlesByLaw: Record<string, number[]> = {}
 
     if (articlesParam && lawShortName) {
       const articleNumbers = articlesParam.split(',').map(a => parseInt(a.trim())).filter(Boolean)
@@ -384,7 +503,7 @@ export async function fetchQuickQuestions(tema, searchParams, config) {
 // =================================================================
 // 🏛️ FETCHER: TEST OFICIAL - USA API CENTRALIZADA
 // =================================================================
-export async function fetchOfficialQuestions(tema, searchParams, config) {
+export async function fetchOfficialQuestions(tema: number, searchParams: SearchParamsLike, config: FetchConfig): Promise<TransformedQuestion[]> {
   try {
     console.log('🏛️ Cargando test oficial via API centralizada, tema:', tema)
 
@@ -431,13 +550,13 @@ export async function fetchOfficialQuestions(tema, searchParams, config) {
 // =================================================================
 // 🎛️ FETCHER: TEST PERSONALIZADO - MONO-LEY (Tema 7, etc.)
 // =================================================================
-export async function fetchPersonalizedQuestions(tema, searchParams, config) {
+export async function fetchPersonalizedQuestions(tema: number, searchParams: SearchParamsLike, config: FetchConfig): Promise<TransformedQuestion[]> {
   try {
     const timestamp = new Date().toLocaleTimeString()
     console.log(`🎛️🔥 EJECUTANDO fetchPersonalizedQuestions para tema ${tema} - TIMESTAMP: ${timestamp}`)
-    console.log(`🎛️🔥 STACK TRACE CORTO:`, new Error().stack.split('\n')[2]?.trim())
-    
-    // 🔥 LIMPIAR CACHE VIEJO Y CREAR CLAVE DE SESIÓN
+    console.log(`🎛️🔥 STACK TRACE CORTO:`, new Error().stack?.split('\n')[2]?.trim())
+
+    // LIMPIAR CACHE VIEJO Y CREAR CLAVE DE SESIÓN
     cleanOldCacheEntries()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
@@ -456,7 +575,7 @@ export async function fetchPersonalizedQuestions(tema, searchParams, config) {
     } else {
       const existingCache = sessionQuestionCache.get(sessionKey)
       console.log(`♻️🎛️ USANDO SESIÓN PERSONALIZADA EXISTENTE: ${sessionKey}`)
-      console.log(`♻️🎛️ IDs ya usados en esta sesión: ${Array.from(existingCache.usedQuestionIds).slice(0, 5).join(', ')}...`)
+      console.log(`♻️🎛️ IDs ya usados en esta sesión: ${Array.from(existingCache!.usedQuestionIds).slice(0, 5).join(', ')}...`)
     }
 
     // Leer parámetros de configuración (usando helper para URLSearchParams u objeto)
@@ -468,16 +587,16 @@ export async function fetchPersonalizedQuestions(tema, searchParams, config) {
       // customDifficulty eliminado
       onlyOfficialQuestions: getParam(searchParams, 'only_official') === 'true',
       focusWeakAreas: getParam(searchParams, 'focus_weak') === 'true',
-      timeLimit: getParam(searchParams, 'time_limit') ? parseInt(getParam(searchParams, 'time_limit')) : null
+      timeLimit: getParam(searchParams, 'time_limit') ? parseInt(getParam(searchParams, 'time_limit')!) : null
     }
 
     console.log('🎛️ Configuración personalizada MONO-LEY:', configParams)
 
     // 🔥 PASO 1: Obtener preguntas a excluir
-    let excludedQuestionIds = []
+    let excludedQuestionIds: string[] = []
     if (configParams.excludeRecent && user) {
       console.log(`🚫 Excluyendo preguntas respondidas en los últimos ${configParams.recentDays} días`)
-      
+
       const cutoffDate = new Date(Date.now() - configParams.recentDays * 24 * 60 * 60 * 1000).toISOString()
 
       // ✅ OPTIMIZACIÓN: Query en dos pasos para evitar timeout
@@ -486,7 +605,7 @@ export async function fetchPersonalizedQuestions(tema, searchParams, config) {
         .select('id')
         .eq('user_id', user.id)
 
-      const testIds = userTests?.map(t => t.id) || []
+      const testIds = userTests?.map((t: any) => t.id) || []
 
       const { data: recentAnswers, error: recentError } = await batchedTestQuestionsQuery(
         testIds,
@@ -494,8 +613,8 @@ export async function fetchPersonalizedQuestions(tema, searchParams, config) {
         { gte: { column: 'created_at', value: cutoffDate } }
       )
 
-      if (!recentError && recentAnswers?.length > 0) {
-        excludedQuestionIds = [...new Set(recentAnswers.map(answer => answer.question_id))]
+      if (!recentError && recentAnswers && recentAnswers.length > 0) {
+        excludedQuestionIds = [...new Set(recentAnswers.map((answer: any) => answer.question_id))] as string[]
         console.log(`📊 Total de preguntas a excluir: ${excludedQuestionIds.length}`)
       }
     }
@@ -562,19 +681,19 @@ export async function fetchPersonalizedQuestions(tema, searchParams, config) {
     
     // Filtrar exclusiones por fecha
     if (excludedQuestionIds.length > 0) {
-      const excludedSet = new Set(excludedQuestionIds.map(id => String(id)))
-      filteredQuestions = allQuestions.filter(question => {
+      const excludedSet = new Set(excludedQuestionIds.map((id: any) => String(id)))
+      filteredQuestions = allQuestions.filter((question: any) => {
         const questionId = String(question.id)
         return !excludedSet.has(questionId)
       })
       console.log(`✅ Después de exclusión por fecha: ${filteredQuestions.length} preguntas disponibles`)
     }
-    
+
     // Filtrar preguntas ya usadas en esta sesión
-    const sessionCache = sessionQuestionCache.get(sessionKey)
+    const sessionCache = sessionQuestionCache.get(sessionKey)!
     const sessionUsedIds = sessionCache.usedQuestionIds
     
-    filteredQuestions = filteredQuestions.filter(question => {
+    filteredQuestions = filteredQuestions.filter((question: any) => {
       return !sessionUsedIds.has(question.id)
     })
     
@@ -594,7 +713,7 @@ export async function fetchPersonalizedQuestions(tema, searchParams, config) {
       .select('id')
       .eq('user_id', user.id)
 
-    const testIds = userTests?.map(t => t.id) || []
+    const testIds = userTests?.map((t: any) => t.id) || []
 
     const { data: userAnswers, error: answersError } = await batchedTestQuestionsQuery(
       testIds,
@@ -603,13 +722,13 @@ export async function fetchPersonalizedQuestions(tema, searchParams, config) {
     )
 
     if (answersError) {
-      console.warn('⚠️🎛️ Error obteniendo historial, usando selección aleatoria:', answersError.message)
+      console.warn('⚠️🎛️ Error obteniendo historial, usando selección aleatoria:', (answersError as any).message)
       // Fallback a selección aleatoria
       const shuffledQuestions = shuffleArray(filteredQuestions)
       const finalQuestions = shuffledQuestions.slice(0, configParams.numQuestions)
-      
+
       // Agregar al cache de sesión
-      finalQuestions.forEach(q => sessionUsedIds.add(q.id))
+      finalQuestions.forEach((q: any) => sessionUsedIds.add(q.id))
       
       console.log('✅🎛️ Test personalizado MONO-LEY cargado (fallback):', finalQuestions.length, 'preguntas')
       return transformQuestions(finalQuestions)
@@ -631,11 +750,11 @@ export async function fetchPersonalizedQuestions(tema, searchParams, config) {
       })
     }
 
-    const neverSeenQuestions = filteredQuestions.filter(q => !answeredQuestionIds.has(q.id))
-    const answeredQuestions = filteredQuestions.filter(q => answeredQuestionIds.has(q.id))
+    const neverSeenQuestions = filteredQuestions.filter((q: any) => !answeredQuestionIds.has(q.id))
+    const answeredQuestions = filteredQuestions.filter((q: any) => answeredQuestionIds.has(q.id))
 
     // Ordenar respondidas por fecha (más antiguas primero para spaced repetition)
-    answeredQuestions.sort((a, b) => {
+    answeredQuestions.sort((a: any, b: any) => {
       const dateA = questionLastAnswered.get(a.id) || new Date(0)
       const dateB = questionLastAnswered.get(b.id) || new Date(0)
       return dateA - dateB
@@ -701,11 +820,11 @@ export async function fetchPersonalizedQuestions(tema, searchParams, config) {
 // =================================================================
 
 // =================================================================
-export async function fetchQuestionsByTopicScope(tema, searchParams, config) {
+export async function fetchQuestionsByTopicScope(tema: number, searchParams: SearchParamsLike, config: FetchConfig): Promise<TransformedQuestion[] | AdaptiveResult> {
   try {
     const timestamp = new Date().toLocaleTimeString()
     console.log(`🎯🔥 EJECUTANDO fetchQuestionsByTopicScope para tema ${tema} - TIMESTAMP: ${timestamp}`)
-    console.log(`🎯🔥 STACK TRACE CORTO:`, new Error().stack.split('\n')[2]?.trim())
+    console.log(`🎯🔥 STACK TRACE CORTO:`, new Error().stack?.split('\n')[2]?.trim())
     
     // 🔥 OBTENER USUARIO PARA ALGORITMO DE HISTORIAL
     const { data: { user } } = await supabase.auth.getUser()
@@ -747,7 +866,7 @@ export async function fetchQuestionsByTopicScope(tema, searchParams, config) {
       difficultyMode,
       focusEssentialArticles,
       adaptiveMode, // 🧠 NUEVO
-      focusWeakAreas, // 🎯 NUEVO
+      // focusWeakAreas already logged above
       onlyFailedQuestions, // 🆕 NUEVO
       failedQuestionIds: failedQuestionIds?.length || 0, // 🆕 NUEVO
       failedQuestionsOrder, // 🆕 NUEVO
@@ -788,8 +907,8 @@ export async function fetchQuestionsByTopicScope(tema, searchParams, config) {
         
         // Ordenar las preguntas según la lista de IDs (mantener el orden elegido por el usuario)
         const orderedQuestions = failedQuestionIds
-          .map(id => specificQuestions.find(q => q.id === id))
-          .filter(q => q) // Filtrar preguntas no encontradas
+          .map((id: any) => specificQuestions.find((q: any) => q.id === id))
+          .filter((q: any) => q) // Filtrar preguntas no encontradas
         
         // Tomar solo el número solicitado
         const finalQuestions = orderedQuestions.slice(0, numQuestions)
@@ -839,7 +958,7 @@ export async function fetchQuestionsByTopicScope(tema, searchParams, config) {
             .eq('law_id', mapping.laws.id)
             .order('article_number')
 
-          const articleNumbers = allArticles?.map(a => a.article_number) || []
+          const articleNumbers = allArticles?.map((a: any) => a.article_number) || []
           // console.log(`📚 Ley virtual ${mapping.laws.short_name}: ${articleNumbers.length} artículos obtenidos`)
 
           mappings.push({
@@ -882,7 +1001,7 @@ export async function fetchQuestionsByTopicScope(tema, searchParams, config) {
             .order('article_number')
           
           if (!articlesError && allArticles) {
-            articleNumbers = allArticles.map(a => a.article_number)
+            articleNumbers = allArticles.map((a: any) => a.article_number)
           }
         }
         
@@ -925,8 +1044,8 @@ export async function fetchQuestionsByTopicScope(tema, searchParams, config) {
         if (selectedArticles && selectedArticles.length > 0) {
           // Filtrar solo los artículos seleccionados
           // 🔧 FIX: Convertir selectedArticles a strings para comparar con article_numbers (que son strings)
-          const selectedArticlesAsStrings = selectedArticles.map(num => String(num))
-          const filteredArticleNumbers = mapping.article_numbers.filter(articleNum => {
+          const selectedArticlesAsStrings = selectedArticles.map((num: any) => String(num))
+          const filteredArticleNumbers = mapping.article_numbers.filter((articleNum: any) => {
             return selectedArticlesAsStrings.includes(articleNum)
           })
           console.log(`🔧 Ley ${mapping.laws.short_name}: ${filteredArticleNumbers.length}/${mapping.article_numbers.length} artículos seleccionados`)
@@ -946,7 +1065,7 @@ export async function fetchQuestionsByTopicScope(tema, searchParams, config) {
       // Extraer todos los rangos de las secciones seleccionadas
       const ranges = selectedSectionFilters
         .filter(s => s.articleRange)
-        .map(s => ({ start: s.articleRange.start, end: s.articleRange.end, title: s.title }))
+        .map(s => ({ start: s.articleRange!.start, end: s.articleRange!.end, title: s.title }))
 
       if (ranges.length > 0) {
         const rangeDescriptions = ranges.map(r => `${r.title} (${r.start}-${r.end})`).join(', ')
@@ -954,7 +1073,7 @@ export async function fetchQuestionsByTopicScope(tema, searchParams, config) {
 
         filteredMappings = filteredMappings.map(mapping => {
           // Filtrar artículos que estén dentro de AL MENOS UNO de los rangos seleccionados
-          const filteredArticleNumbers = mapping.article_numbers.filter(articleNum => {
+          const filteredArticleNumbers = mapping.article_numbers.filter((articleNum: any) => {
             const num = parseInt(articleNum)
             return ranges.some(range => num >= range.start && num <= range.end)
           })
@@ -974,7 +1093,7 @@ export async function fetchQuestionsByTopicScope(tema, searchParams, config) {
     }
 
     // 2. Obtener usuario actual para exclusiones
-    let excludedQuestionIds = []
+    let excludedQuestionIds: string[] = []
     if (excludeRecent) {
       try {
         // Reutilizar la variable user ya declarada en la línea 485
@@ -989,7 +1108,7 @@ export async function fetchQuestionsByTopicScope(tema, searchParams, config) {
             .select('id')
             .eq('user_id', user.id)
 
-          const testIds = userTests?.map(t => t.id) || []
+          const testIds = userTests?.map((t: any) => t.id) || []
 
           const { data: recentAnswers, error: recentError } = await batchedTestQuestionsQuery(
             testIds,
@@ -997,13 +1116,13 @@ export async function fetchQuestionsByTopicScope(tema, searchParams, config) {
             { gte: { column: 'created_at', value: cutoffDate } }
           )
 
-          if (!recentError && recentAnswers?.length > 0) {
-            excludedQuestionIds = [...new Set(recentAnswers.map(answer => answer.question_id))]
+          if (!recentError && recentAnswers && recentAnswers.length > 0) {
+            excludedQuestionIds = [...new Set(recentAnswers.map((answer: any) => answer.question_id))] as string[]
             console.log(`📊 Total de preguntas a excluir: ${excludedQuestionIds.length}`)
           }
         }
       } catch (userError) {
-        console.log('⚠️ No se pudo obtener usuario para exclusiones:', userError.message)
+        console.log('⚠️ No se pudo obtener usuario para exclusiones:', (userError as Error).message)
       }
     }
 
@@ -1120,7 +1239,7 @@ export async function fetchQuestionsByTopicScope(tema, searchParams, config) {
       console.log('⭐ Aplicando filtro de artículos imprescindibles...')
 
       // CORRECCIÓN: Identificar artículos imprescindibles consultando TODA la base de datos
-      const articleOfficialCount = {}
+      const articleOfficialCount: Record<string, number> = {}
 
       // Obtener todos los artículos que tienen preguntas oficiales para los artículos FILTRADOS
       // 🔧 FIX: Usar filteredMappings en lugar de mappings para solo contar artículos seleccionados
@@ -1153,8 +1272,8 @@ export async function fetchQuestionsByTopicScope(tema, searchParams, config) {
       console.log('📊 Artículos con preguntas oficiales (CORREGIDO):', articleOfficialCount)
       
       // Separar preguntas por si son de artículos imprescindibles o no
-      const essentialQuestions = []
-      const nonEssentialQuestions = []
+      const essentialQuestions: SupabaseQuestionAny[] = []
+      const nonEssentialQuestions: SupabaseQuestionAny[] = []
       
       filteredQuestions.forEach(question => {
         if (question.articles?.article_number) {
@@ -1173,8 +1292,8 @@ export async function fetchQuestionsByTopicScope(tema, searchParams, config) {
       console.log(`📝 Artículos normales: ${nonEssentialQuestions.length} preguntas`)
       
       // 🔍 DEBUG: Verificar dificultades de preguntas imprescindibles
-      const difficultyStats = {}
-      essentialQuestions.forEach(q => {
+      const difficultyStats: Record<string, number> = {}
+      essentialQuestions.forEach((q: any) => {
         const difficulty = q.difficulty || 'unknown'
         difficultyStats[difficulty] = (difficultyStats[difficulty] || 0) + 1
       })
@@ -1248,8 +1367,8 @@ export async function fetchQuestionsByTopicScope(tema, searchParams, config) {
         })
         
         // 3. Separar preguntas por prioridad
-        const neverSeenQuestions = []
-        const answeredQuestions = []
+        const neverSeenQuestions: SupabaseQuestionAny[] = []
+        const answeredQuestions: SupabaseQuestionAny[] = []
         
         questionsToProcess.forEach(question => {
           if (answeredQuestionIds.has(question.id)) {
@@ -1382,13 +1501,13 @@ export async function fetchQuestionsByTopicScope(tema, searchParams, config) {
     }
     
     // 6. Log de resumen
-    const lawDistribution = finalQuestions.reduce((acc, q) => {
+    const lawDistribution = finalQuestions.reduce((acc: Record<string, number>, q: SupabaseQuestionAny) => {
       const law = q.articles?.laws?.short_name || 'N/A'
       acc[law] = (acc[law] || 0) + 1
       return acc
     }, {})
-    
-    const officialCount = finalQuestions.filter(q => q.is_official_exam).length
+
+    const officialCount = finalQuestions.filter((q: SupabaseQuestionAny) => q.is_official_exam).length
     
     console.log(`\n✅ Tema ${tema} MULTI-LEY cargado: ${finalQuestions.length} preguntas de ${mappings.length} leyes`)
     console.log(`📊 Distribución por ley:`, lawDistribution)
@@ -1398,8 +1517,8 @@ export async function fetchQuestionsByTopicScope(tema, searchParams, config) {
     }
     
     // 🔍 DEBUG: Verificar dificultades de preguntas finales
-    const finalDifficultyStats = {}
-    finalQuestions.forEach(q => {
+    const finalDifficultyStats: Record<string, number> = {}
+    finalQuestions.forEach((q: any) => {
       const difficulty = q.difficulty || 'unknown'
       finalDifficultyStats[difficulty] = (finalDifficultyStats[difficulty] || 0) + 1
     })
@@ -1424,7 +1543,7 @@ export async function fetchQuestionsByTopicScope(tema, searchParams, config) {
       // Re-obtener articleOfficialCount para el debug (ya se calculó antes)
       // 🏛️ FIX: Filtrar por exam_position para evitar contar preguntas de otras oposiciones
       const examPositionFilterForDebug = buildExamPositionFilter(positionType)
-      const debugArticleOfficialCount = {}
+      const debugArticleOfficialCount: Record<string, number> = {}
       for (const mapping of mappings) {
         for (const articleNumber of mapping.article_numbers) {
           let debugCountQuery = supabase
@@ -1459,8 +1578,8 @@ export async function fetchQuestionsByTopicScope(tema, searchParams, config) {
       allEssentialArticles.forEach(article => console.log(`   • ${article}`))
       
       // Analizar artículos que realmente aparecen en el test
-      const testArticleStats = {}
-      finalQuestions.forEach(q => {
+      const testArticleStats: Record<string, { count: number; isEssential: boolean; officialCount: number }> = {}
+      finalQuestions.forEach((q: any) => {
         if (q.articles?.article_number) {
           const articleDisplay = `Art. ${q.articles.article_number} ${q.articles.laws.short_name}`
           const articleKey = `${q.articles.laws.short_name}-${q.articles.article_number}`
@@ -1485,7 +1604,7 @@ export async function fetchQuestionsByTopicScope(tema, searchParams, config) {
           const essentialInfo = stats.isEssential ? ` (${stats.officialCount} oficiales)` : ' (NO imprescindible)'
           console.log(`   ${marker} ${article}: ${stats.count} preguntas${essentialInfo}`)
         })
-      
+
       const essentialInTest = Object.values(testArticleStats).filter(s => s.isEssential).length
       const totalInTest = Object.keys(testArticleStats).length
       
@@ -1543,7 +1662,7 @@ export async function fetchQuestionsByTopicScope(tema, searchParams, config) {
         .select('id')
         .eq('user_id', user.id)
 
-      const testIds = userTests?.map(t => t.id) || []
+      const testIds = userTests?.map((t: any) => t.id) || []
 
       const { data: userAnswers, error: answersError } = await batchedTestQuestionsQuery(
         testIds,
@@ -1570,8 +1689,8 @@ export async function fetchQuestionsByTopicScope(tema, searchParams, config) {
       }
 
       // Separar nunca vistas vs ya respondidas
-      const neverSeenQuestions = []
-      const answeredQuestions = []
+      const neverSeenQuestions: SupabaseQuestionAny[] = []
+      const answeredQuestions: SupabaseQuestionAny[] = []
 
       questionsToProcess.forEach(question => {
         if (answeredQuestionIds.has(question.id)) {
@@ -1591,16 +1710,16 @@ export async function fetchQuestionsByTopicScope(tema, searchParams, config) {
       // Clasificar por dificultad (prioriza global_difficulty_category, fallback a difficulty)
       const catalogByDifficulty = {
         neverSeen: {
-          easy: neverSeenQuestions.filter(q => (q.global_difficulty_category || q.difficulty) === 'easy'),
-          medium: neverSeenQuestions.filter(q => (q.global_difficulty_category || q.difficulty) === 'medium'),
-          hard: neverSeenQuestions.filter(q => (q.global_difficulty_category || q.difficulty) === 'hard'),
-          extreme: neverSeenQuestions.filter(q => (q.global_difficulty_category || q.difficulty) === 'extreme')
+          easy: neverSeenQuestions.filter((q: any) => (q.global_difficulty_category || q.difficulty) === 'easy'),
+          medium: neverSeenQuestions.filter((q: any) => (q.global_difficulty_category || q.difficulty) === 'medium'),
+          hard: neverSeenQuestions.filter((q: any) => (q.global_difficulty_category || q.difficulty) === 'hard'),
+          extreme: neverSeenQuestions.filter((q: any) => (q.global_difficulty_category || q.difficulty) === 'extreme')
         },
         answered: {
-          easy: answeredQuestions.filter(q => (q.global_difficulty_category || q.difficulty) === 'easy'),
-          medium: answeredQuestions.filter(q => (q.global_difficulty_category || q.difficulty) === 'medium'),
-          hard: answeredQuestions.filter(q => (q.global_difficulty_category || q.difficulty) === 'hard'),
-          extreme: answeredQuestions.filter(q => (q.global_difficulty_category || q.difficulty) === 'extreme')
+          easy: answeredQuestions.filter((q: any) => (q.global_difficulty_category || q.difficulty) === 'easy'),
+          medium: answeredQuestions.filter((q: any) => (q.global_difficulty_category || q.difficulty) === 'medium'),
+          hard: answeredQuestions.filter((q: any) => (q.global_difficulty_category || q.difficulty) === 'hard'),
+          extreme: answeredQuestions.filter((q: any) => (q.global_difficulty_category || q.difficulty) === 'extreme')
         }
       }
 
@@ -1661,7 +1780,7 @@ export async function fetchQuestionsByTopicScope(tema, searchParams, config) {
       }
 
       // Retornar estructura adaptativa completa
-      const adaptiveResult = {
+      const adaptiveResult: AdaptiveResult = {
         isAdaptive: true,
         activeQuestions: initialQuestions,
         questionPool: initialQuestions, // Pool inicial = preguntas activas
@@ -1676,7 +1795,7 @@ export async function fetchQuestionsByTopicScope(tema, searchParams, config) {
     return transformQuestions(finalSessionQuestions)
     
   } catch (error) {
-    console.warn(`⚠️ Error en fetchQuestionsByTopicScope tema ${tema}:`, error?.message || 'Error desconocido')
+    console.warn(`⚠️ Error en fetchQuestionsByTopicScope tema ${tema}:`, (error as Error)?.message || 'Error desconocido')
     throw error
   }
 }
@@ -1684,7 +1803,7 @@ export async function fetchQuestionsByTopicScope(tema, searchParams, config) {
 // =================================================================
 // 🔧 FUNCIÓN AUXILIAR: Contar preguntas por tema multi-ley
 // =================================================================
-export async function countQuestionsByTopicScope(tema) {
+export async function countQuestionsByTopicScope(tema: number): Promise<number> {
   try {
     // 1. Obtener mapeo del tema
     const { data: mappings } = await supabase
@@ -1730,29 +1849,29 @@ export async function countQuestionsByTopicScope(tema) {
 // =================================================================
 // 🎯 FETCHER PRINCIPAL: TEST DE ARTÍCULOS DIRIGIDO POR LEY ESPECÍFICA - CORREGIDO
 // =================================================================
-export async function fetchArticulosDirigido(lawName, searchParams, config) {
+export async function fetchArticulosDirigido(lawName: string, searchParams: SearchParamsLike, config: FetchConfig): Promise<TransformedQuestion[]> {
   console.log('🎯 INICIO fetchArticulosDirigido:', { lawName, timestamp: new Date().toISOString() })
 
   // Calentar cache BD → lawMappingUtils (no-op si ya cargado)
   try { const { warmSlugCache } = await import('./api/laws/warmCache'); await warmSlugCache() } catch {}
 
   try {
-    // ✅ MANEJAR searchParams como objeto plano o URLSearchParams
-    const getParam = (key, defaultValue = null) => {
+    // MANEJAR searchParams como objeto plano o URLSearchParams
+    const getLocalParam = (key: string, defaultValue: string | null = null): string | null => {
       if (!searchParams) return defaultValue
-      
+
       // Si es URLSearchParams (desde hook)
-      if (typeof searchParams.get === 'function') {
-        return searchParams.get(key) || defaultValue
+      if (typeof (searchParams as URLSearchParams).get === 'function') {
+        return (searchParams as URLSearchParams).get(key) || defaultValue
       }
-      
+
       // Si es objeto plano (desde server component)
-      return searchParams[key] || defaultValue
+      return (searchParams as Record<string, string | undefined>)[key] || defaultValue
     }
     
-    const articles = getParam('articles')
-    const mode = getParam('mode', 'intensive')
-    const requestedCount = parseInt(getParam('n', '10'))
+    const articles = getLocalParam('articles')
+    const mode = getLocalParam('mode', 'intensive')
+    const requestedCount = parseInt(getLocalParam('n', '10') || '10')
     
     console.log('📋 Parámetros extraídos:', { 
       lawName, 
@@ -1824,7 +1943,7 @@ export async function fetchArticulosDirigido(lawName, searchParams, config) {
             console.log(`❌ Sin resultados para: "${testLawName}" (${questions?.length || 0} preguntas)`)
           }
         } catch (err) {
-          console.log(`❌ Error probando "${testLawName}":`, err.message)
+          console.log(`❌ Error probando "${testLawName}":`, (err as Error).message)
         }
       }
       
@@ -1844,10 +1963,10 @@ export async function fetchArticulosDirigido(lawName, searchParams, config) {
         
         if (!specificError && specificQuestions && specificQuestions.length > 0) {
           // 🧪 Log detallado de qué artículos encontró
-          const foundArticles = [...new Set(specificQuestions.map(q => q.articles.article_number))].sort((a, b) => a - b)
+          const foundArticles = [...new Set(specificQuestions.map((q: any) => q.articles.article_number))].sort((a: any, b: any) => a - b)
           console.log('📋 Artículos encontrados en preguntas:', foundArticles)
-          console.log('🎯 Preguntas por artículo:', 
-            foundArticles.map(art => `Art.${art}: ${specificQuestions.filter(q => q.articles.article_number === art).length} preguntas`).join(', ')
+          console.log('🎯 Preguntas por artículo:',
+            foundArticles.map((art: any) => `Art.${art}: ${specificQuestions.filter((q: any) => q.articles.article_number === art).length} preguntas`).join(', ')
           )
           
           const shuffled = shuffleArray(specificQuestions).slice(0, requestedCount)
@@ -1858,7 +1977,7 @@ export async function fetchArticulosDirigido(lawName, searchParams, config) {
           console.log('   Razón: specificError =', !!specificError, ', questionsLength =', specificQuestions?.length || 0)
         }
       } catch (specificErr) {
-        console.log('⚠️ Error en búsqueda específica:', specificErr.message)
+        console.log('⚠️ Error en búsqueda específica:', (specificErr as Error).message)
       }
     }
 
@@ -1912,7 +2031,7 @@ export async function fetchArticulosDirigido(lawName, searchParams, config) {
           console.log(`❌ FALLBACK sin resultados para: "${testLawName}"`)
         }
       } catch (err) {
-        console.log(`❌ FALLBACK error con "${testLawName}":`, err.message)
+        console.log(`❌ FALLBACK error con "${testLawName}":`, (err as Error).message)
       }
     }
     
@@ -1923,7 +2042,7 @@ export async function fetchArticulosDirigido(lawName, searchParams, config) {
         return transformQuestions(shuffled)
       }
     } catch (lawErr) {
-      console.log('⚠️ Error en búsqueda por ley:', lawErr.message)
+      console.log('⚠️ Error en búsqueda por ley:', (lawErr as Error).message)
     }
 
     // 🔄 ESTRATEGIA 3: Fallback final - test rápido
@@ -1954,7 +2073,7 @@ export async function fetchArticulosDirigido(lawName, searchParams, config) {
 
   } catch (error) {
     console.error('❌ Error en fetchArticulosDirigido:', error)
-    throw new Error(`Error cargando test dirigido: ${error.message}`)
+    throw new Error(`Error cargando test dirigido: ${(error as Error).message}`)
   }
 }
 
@@ -1969,7 +2088,7 @@ export async function fetchArticulosDirigido(lawName, searchParams, config) {
 // =================================================================
 // 🚀 FETCHER: MANTENER RACHA - VERSIÓN UNIVERSAL INTELIGENTE
 // =================================================================
-export async function fetchMantenerRacha(tema, searchParams, config) {
+export async function fetchMantenerRacha(tema: number, searchParams: SearchParamsLike, config: FetchConfig): Promise<TransformedQuestion[]> {
   try {
     console.log('🚀 Cargando test inteligente para mantener racha')
 
@@ -2005,18 +2124,18 @@ export async function fetchMantenerRacha(tema, searchParams, config) {
       return await fetchMantenerRachaFallback(n, user)
     }
 
-    console.log('🎯 Temas estudiados detectados:', temasEstudiados.map(t => `Tema ${t.tema_number} (${t.tests_count} tests, ${Math.round(t.avg_score)}%)`))
+    console.log('🎯 Temas estudiados detectados:', temasEstudiados.map((t: any) => `Tema ${t.tema_number} (${t.tests_count} tests, ${Math.round(t.avg_score)}%)`))
 
     // 🔥 PASO 3: Estrategia inteligente de selección
     // Priorizar temas con mejor rendimiento para mantener motivación
     const temasParaRacha = temasEstudiados
-      .filter(t => t.avg_score >= 50) // Solo temas con rendimiento decente
+      .filter((t: any) => t.avg_score >= 50) // Solo temas con rendimiento decente
       .slice(0, 3) // Máximo 3 temas para mantener enfoque
-      .map(t => t.tema_number)
+      .map((t: any) => t.tema_number)
 
     if (temasParaRacha.length === 0) {
       // Si no hay temas con buen rendimiento, usar todos los estudiados
-      temasParaRacha.push(...temasEstudiados.map(t => t.tema_number))
+      temasParaRacha.push(...temasEstudiados.map((t: any) => t.tema_number))
     }
 
     console.log('🎯 Temas seleccionados para racha:', temasParaRacha)
@@ -2054,21 +2173,22 @@ export async function fetchMantenerRacha(tema, searchParams, config) {
     const finalQuestions = shuffledQuestions.slice(0, n)
 
     console.log(`✅ Mantener racha INTELIGENTE: ${finalQuestions.length} preguntas de ${temasParaRacha.length} temas estudiados`)
-    console.log(`📊 Distribución final: ${finalQuestions.map(q => q.articles?.laws?.short_name || 'N/A').reduce((acc, law) => {
+    console.log(`📊 Distribución final: ${JSON.stringify(finalQuestions.map((q: any) => q.articles?.laws?.short_name || 'N/A').reduce((acc: Record<string, number>, law: string) => {
       acc[law] = (acc[law] || 0) + 1
       return acc
-    }, {})}`)
+    }, {} as Record<string, number>))}`)
 
     return transformQuestions(finalQuestions)
 
   } catch (error) {
     console.error('❌ Error en fetchMantenerRacha inteligente:', error)
-    return await fetchMantenerRachaFallback(n, user || null)
+    const fallbackN = parseInt(getParam(searchParams, 'n', '5'))
+    return await fetchMantenerRachaFallback(fallbackN, null)
   }
 }
 
 // 🔄 FUNCIÓN FALLBACK UNIVERSAL INTELIGENTE
-async function fetchMantenerRachaFallback(n, user) {
+async function fetchMantenerRachaFallback(n: number, user: { id: string } | null): Promise<TransformedQuestion[]> {
   try {
     console.log('🔄 Ejecutando fallback universal inteligente')
     
@@ -2085,7 +2205,7 @@ async function fetchMantenerRachaFallback(n, user) {
         .select('id')
         .eq('user_id', user.id)
 
-      const testIds = userTests?.map(t => t.id) || []
+      const testIds = userTests?.map((t: any) => t.id) || []
 
       const { data: userQuestionHistory, error: historyError } = await batchedTestQuestionsQuery(
         testIds,
@@ -2093,7 +2213,7 @@ async function fetchMantenerRachaFallback(n, user) {
         { limit: 10000 }
       )
 
-      if (!historyError && userQuestionHistory?.length > 0) {
+      if (!historyError && userQuestionHistory && userQuestionHistory.length > 0) {
         // Extraer leyes únicas del historial
         const lawsFromHistory = [...new Set(
           userQuestionHistory
@@ -2117,13 +2237,13 @@ async function fetchMantenerRachaFallback(n, user) {
         
         if (userProfile?.target_oposicion) {
           // Mapear oposición a leyes principales
-          const oposicionLaws = {
+          const oposicionLaws: Record<string, string[]> = {
             'auxiliar_administrativo_estado': ['Ley 19/2013', 'LRJSP', 'CE'],
             'auxiliar_administrativo': ['Ley 19/2013', 'LRJSP', 'CE'],
             'tecnico_hacienda': ['LRJSP', 'CE', 'Ley 7/1985'],
             // Agregar más mapeos según oposiciones disponibles
           }
-          
+
           studiedLaws = oposicionLaws[userProfile.target_oposicion] || null
           if (studiedLaws) {
             console.log(`🎯 Leyes detectadas por oposición (${userProfile.target_oposicion}):`, studiedLaws)
@@ -2198,11 +2318,11 @@ async function fetchMantenerRachaFallback(n, user) {
     const shuffledQuestions = shuffleArray(fallbackData)
     const finalQuestions = shuffledQuestions.slice(0, n)
 
-    const lawDistribution = finalQuestions.reduce((acc, q) => {
+    const lawDistribution = finalQuestions.reduce((acc: Record<string, number>, q: any) => {
       const law = q.articles?.laws?.short_name || 'N/A'
       acc[law] = (acc[law] || 0) + 1
       return acc
-    }, {})
+    }, {} as Record<string, number>)
 
     console.log(`✅ Fallback inteligente: ${finalQuestions.length} preguntas`)
     console.log(`📊 Distribución por ley:`, lawDistribution)
@@ -2220,7 +2340,7 @@ async function fetchMantenerRachaFallback(n, user) {
 // =================================================================
 // 🔍 FETCHER: EXPLORAR CONTENIDO (Nuevo contenido añadido)
 // =================================================================
-export async function fetchExplorarContenido(tema, searchParams, config) {
+export async function fetchExplorarContenido(tema: number, searchParams: SearchParamsLike, config: FetchConfig): Promise<TransformedQuestion[]> {
   try {
     console.log('🔍 Cargando contenido nuevo para explorar')
 
@@ -2265,7 +2385,7 @@ export async function fetchExplorarContenido(tema, searchParams, config) {
 // =================================================================
 
 // Convertir porcentaje a dificultad
-function getDifficultyFromPercentage(percentage) {
+function getDifficultyFromPercentage(percentage: number): string {
   if (percentage <= 25) return 'easy'
   if (percentage <= 50) return 'medium'
   if (percentage <= 75) return 'hard'
@@ -2275,7 +2395,7 @@ function getDifficultyFromPercentage(percentage) {
 // =================================================================
 // 🎲 FETCHER: TEST ALEATORIO MULTI-TEMA - MIGRADO A API CENTRALIZADA
 // =================================================================
-export async function fetchAleatorioMultiTema(themes, searchParams, config) {
+export async function fetchAleatorioMultiTema(themes: number[], searchParams: SearchParamsLike, config: FetchConfig): Promise<TransformedQuestion[]> {
   try {
     console.log('🎲 fetchAleatorioMultiTema via API centralizada, temas:', themes)
 
@@ -2336,7 +2456,7 @@ export async function fetchAleatorioMultiTema(themes, searchParams, config) {
 // =================================================================
 // 📋 FETCHEER PARA CONTENT_SCOPE - NUEVO
 // =================================================================
-export async function fetchContentScopeQuestions(config = {}, contentScopeConfig) {
+export async function fetchContentScopeQuestions(config: FetchConfig = {}, contentScopeConfig: ContentScopeConfig): Promise<TransformedQuestion[]> {
   try {
     console.log('📋 Iniciando fetchContentScopeQuestions')
     console.log('📝 Config:', config)
@@ -2396,23 +2516,24 @@ export async function fetchContentScopeQuestions(config = {}, contentScopeConfig
 // 🚀 NUEVO: FETCHER VIA API (Drizzle + Zod)
 // Reemplaza la lógica duplicada de queries Supabase
 // =================================================================
-export async function fetchQuestionsViaAPI(tema, searchParams, config) {
+export async function fetchQuestionsViaAPI(tema: number, searchParams: SearchParamsLike, config: FetchConfig): Promise<TransformedQuestion[]> {
   try {
     console.log(`🚀 fetchQuestionsViaAPI para tema ${tema}`)
 
     // Extraer configuración de searchParams y config
-    const numQuestions = parseInt(searchParams?.get?.('n')) || config?.numQuestions || 25
-    const onlyOfficialQuestions = searchParams?.get?.('only_official') === 'true' || config?.onlyOfficialQuestions || false
-    const difficultyMode = searchParams?.get?.('difficulty_mode') || config?.difficultyMode || 'random'
+    const numQuestions = parseInt(getParam(searchParams, 'n', '25')) || config?.numQuestions || 25
+    const onlyOfficialQuestions = getParam(searchParams, 'only_official') === 'true' || config?.onlyOfficialQuestions || false
+    const difficultyMode = getParam(searchParams, 'difficulty_mode') || config?.difficultyMode || 'random'
     const positionType = config?.positionType || 'auxiliar_administrativo'
 
     // 🔄 Filtro de preguntas falladas
-    const onlyFailedQuestions = searchParams?.get?.('only_failed') === 'true' || config?.onlyFailedQuestions || false
+    const onlyFailedQuestions = getParam(searchParams, 'only_failed') === 'true' || config?.onlyFailedQuestions || false
     let failedQuestionIds = config?.failedQuestionIds || []
     // También intentar parsear de searchParams si viene como string JSON
-    if (failedQuestionIds.length === 0 && searchParams?.get?.('failed_question_ids')) {
+    const failedIdsParam = getParam(searchParams, 'failed_question_ids')
+    if (failedQuestionIds.length === 0 && failedIdsParam) {
       try {
-        failedQuestionIds = JSON.parse(searchParams.get('failed_question_ids'))
+        failedQuestionIds = JSON.parse(failedIdsParam)
       } catch (e) {
         console.warn('⚠️ Error parseando failed_question_ids:', e)
       }
@@ -2425,12 +2546,12 @@ export async function fetchQuestionsViaAPI(tema, searchParams, config) {
 
     // Convertir selectedArticlesByLaw a formato esperado por la API
     // La API espera: { "CE": [1, 2, 3] } con números
-    const articlesForAPI = {}
+    const articlesForAPI: Record<string, number[]> = {}
     for (const [lawName, articles] of Object.entries(selectedArticlesByLaw)) {
-      if (articles && (Array.isArray(articles) ? articles.length > 0 : articles.size > 0)) {
+      if (articles && (Array.isArray(articles) ? articles.length > 0 : (articles as any).size > 0)) {
         // Convertir Set a Array si es necesario y asegurar que son números
-        const articlesArray = Array.isArray(articles) ? articles : Array.from(articles)
-        articlesForAPI[lawName] = articlesArray.map(a => parseInt(a, 10)).filter(n => !isNaN(n))
+        const articlesArray = Array.isArray(articles) ? articles : Array.from(articles as any)
+        articlesForAPI[lawName] = articlesArray.map((a: any) => parseInt(a, 10)).filter((num: number) => !isNaN(num))
       }
     }
 
@@ -2485,7 +2606,7 @@ export async function fetchQuestionsViaAPI(tema, searchParams, config) {
 // 🔢 NUEVO: CONTAR PREGUNTAS VIA API
 // Para UI del configurador
 // =================================================================
-export async function countQuestionsViaAPI(tema, config) {
+export async function countQuestionsViaAPI(tema: number, config: FetchConfig): Promise<CountResult> {
   try {
     const positionType = config?.positionType || 'auxiliar_administrativo'
     const selectedLaws = config?.selectedLaws || []
