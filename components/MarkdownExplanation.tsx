@@ -28,7 +28,13 @@ export default function MarkdownExplanation({ content, className = '' }: Markdow
         ${className}
       `}
     >
-      <ReactMarkdown>{content}</ReactMarkdown>
+      <ReactMarkdown
+        components={{
+          a: ({ href, children }) => (
+            <a href={href} target="_blank" rel="noopener noreferrer">{children}</a>
+          ),
+        }}
+      >{content}</ReactMarkdown>
     </div>
   )
 }
