@@ -50,15 +50,9 @@ export default function ExamReviewLayout({
 }: ExamReviewLayoutProps) {
   const { user } = useAuth()
   const [filter, setFilter] = useState<FilterType>('all')
-  // Start with incorrect and blank questions expanded by default
+  // Start with all questions expanded by default
   const [expandedQuestions, setExpandedQuestions] = useState<Set<number>>(() => {
-    const initialExpanded = new Set<number>()
-    questions.forEach(q => {
-      if (!q.isCorrect) {
-        initialExpanded.add(q.order)
-      }
-    })
-    return initialExpanded
+    return new Set(questions.map(q => q.order))
   })
   const [showArticle, setShowArticle] = useState<string | null>(null)
 

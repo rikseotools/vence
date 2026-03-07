@@ -1236,6 +1236,10 @@ export default function EstadisticasRevolucionarias() {
                   month: '2-digit',
                   year: 'numeric',
                   timeZone: 'Europe/Madrid'
+                }) + ' ' + new Date(t.completedAt).toLocaleTimeString('es-ES', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  timeZone: 'Europe/Madrid'
                 }),
                 time: t.timeSeconds > 3600
                   ? `${Math.floor(t.timeSeconds / 3600)}h ${Math.floor((t.timeSeconds % 3600) / 60)}m`
