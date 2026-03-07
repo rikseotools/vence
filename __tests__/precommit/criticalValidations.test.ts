@@ -89,7 +89,7 @@ Este sistema es crítico para debuggear problemas de carga de artículos.
         'app/auxiliar-administrativo-estado/test/tema/[numero]/page.tsx',
         'components/ArticleModal.js',
         'lib/lawMappingUtils.ts',
-        'lib/teoriaFetchers.js'
+        'lib/teoriaFetchers.ts'
       ]
 
       criticalFiles.forEach(filePath => {

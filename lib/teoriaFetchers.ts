@@ -1,14 +1,136 @@
-// lib/teoriaFetchers.js - FETCHERS PARA SISTEMA DE TEORÍA
+// lib/teoriaFetchers.ts - FETCHERS PARA SISTEMA DE TEORÍA
 import { getSupabaseClient } from './supabase'
 import { mapLawSlugToShortName, generateLawSlug, getCanonicalSlug } from './lawMappingUtils'
 
-const supabase = getSupabaseClient()
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SupabaseClientAny = any
+
+interface LawWithStats {
+  id: string
+  name: string
+  short_name: string
+  description: string | null
+  articleCount: number
+  slug: string
+}
+
+interface LawInfo {
+  id: string
+  name: string
+  short_name: string
+  description?: string | null
+  slug?: string
+}
+
+interface ProcessedArticle {
+  id: string
+  article_number: string
+  title: string | null
+  content: string
+  contentLength: number
+  contentPreview: string
+  hasRichContent: boolean
+  law: LawInfo
+}
+
+interface LawArticlesResult {
+  articles: ProcessedArticle[]
+  law: LawInfo | null
+  notFound?: boolean
+  message?: string
+}
+
+interface ArticleContentResult {
+  id: string
+  article_number: string
+  title: string | null
+  content: string
+  contentLength: number
+  cleanContent: string
+  hasRichContent: boolean
+  created_at: string
+  updated_at: string | null
+  law: LawInfo
+}
+
+interface OfficialQuestion {
+  id: string
+  primary_article_id?: string
+  is_official_exam: boolean
+  exam_source: string | null
+  exam_date: string | null
+  exam_entity: string | null
+  official_difficulty_level: string | null
+}
+
+interface ExamData {
+  hasOfficialExams: boolean
+  totalOfficialQuestions: number
+  latestExamDate: string | null
+  examSources: string[]
+  examEntities: string[]
+  difficultyLevels: string[]
+  questions: OfficialQuestion[]
+}
+
+interface ExamDataAccumulator {
+  hasOfficialExams: boolean
+  totalOfficialQuestions: number
+  latestExamDate: string | null
+  examSources: Set<string>
+  examEntities: Set<string>
+  difficultyLevels: Set<string>
+  questions: OfficialQuestion[]
+}
+
+interface SearchResult {
+  id: string
+  article_number: string
+  title: string | null
+  contentPreview: string
+  law: {
+    name: string
+    short_name: string
+    slug: string
+  }
+}
+
+interface RelatedArticle {
+  article_number: string
+  title: string | null
+  contentPreview: string
+  lawSlug: string
+}
+
+export interface LawSection {
+  id: string
+  slug: string
+  title: string
+  description: string | null
+  articleRange: { start: number; end: number } | null
+  sectionNumber: number | null
+  sectionType: string | null
+  orderPosition: number
+}
+
+interface LawSectionsResult {
+  law: LawInfo & { slug: string }
+  sections: LawSection[]
+}
+
+interface FetchLawSectionsOptions {
+  lawId?: string
+  lawName?: string
+  lawShortName?: string
+}
+
+const supabase: SupabaseClientAny = getSupabaseClient()
 
 // ================================================================
 // 🏛️ FETCHER: Lista de leyes con contenido de teoría disponible
 // ================================================================
 // 🚀 OPTIMIZADO: No traer content (17MB+), solo contar artículos válidos
-export async function fetchLawsList() {
+export async function fetchLawsList(): Promise<LawWithStats[]> {
   try {
     console.log('📚 Cargando lista de leyes con teoría disponible...')
     console.time('⏱️ fetchLawsList')
@@ -30,10 +152,11 @@ export async function fetchLawsList() {
     }
 
     // Procesar en JS - filtrar artículos numéricos válidos
-    const lawsWithStats = data
-      .map(law => {
+    const lawsWithStats: LawWithStats[] = data
+      .map((law: Record<string, unknown>) => {
         // Filtrar solo artículos numéricos (1, 2, 10, etc.)
-        const validArticles = (law.articles || []).filter(article => {
+        const articles = (law.articles || []) as Array<{ article_number: string }>
+        const validArticles = articles.filter((article: { article_number: string }) => {
           const articleNum = article.article_number
           if (!articleNum || articleNum.trim() === '') return false
           // Solo números puros (excluir T1, C1, etc.)
@@ -41,16 +164,16 @@ export async function fetchLawsList() {
         })
 
         return {
-          id: law.id,
-          name: law.name,
-          short_name: law.short_name,
-          description: law.description,
+          id: law.id as string,
+          name: law.name as string,
+          short_name: law.short_name as string,
+          description: law.description as string | null,
           articleCount: validArticles.length,
-          slug: generateLawSlug(law.short_name)
+          slug: generateLawSlug(law.short_name as string)
         }
       })
-      .filter(law => law.articleCount > 0)
-      .sort((a, b) => b.articleCount - a.articleCount)
+      .filter((law: LawWithStats) => law.articleCount > 0)
+      .sort((a: LawWithStats, b: LawWithStats) => b.articleCount - a.articleCount)
 
     console.timeEnd('⏱️ fetchLawsList')
     console.log(`✅ ${lawsWithStats.length} leyes con teoría`)
@@ -58,14 +181,14 @@ export async function fetchLawsList() {
 
   } catch (error) {
     console.error('❌ Error en fetchLawsList:', error)
-    throw new Error(`Error cargando leyes: ${error.message}`)
+    throw new Error(`Error cargando leyes: ${(error as Error).message}`)
   }
 }
 
 // ================================================================
 // 📄 FETCHER: Lista de artículos de una ley específica
 // ================================================================
-export async function fetchLawArticles(lawSlug) {
+export async function fetchLawArticles(lawSlug: string): Promise<LawArticlesResult> {
   // Calentar cache BD → lawMappingUtils (no-op si ya cargado)
   try { const { warmSlugCache } = await import('./api/laws/warmCache'); await warmSlugCache() } catch {}
 
@@ -114,12 +237,12 @@ export async function fetchLawArticles(lawSlug) {
       .not('article_number', 'is', null)
       .neq('article_number', '')
       .order('article_number')
-    
+
     if (error) {
       console.error('❌ Error cargando artículos:', error)
       throw error
     }
-    
+
     if (!data || data.length === 0) {
       // Retornar objeto vacío en lugar de lanzar error - permite manejar 404 gracefully
       return {
@@ -129,21 +252,20 @@ export async function fetchLawArticles(lawSlug) {
         message: `No se encontró la ley: ${lawShortName}`
       }
     }
-    
+
     // Filtrar solo artículos reales (excluir títulos, capítulos, etc.)
-    const articlesOnly = data.filter(item => {
-      const articleNum = item.article_number
+    const articlesOnly = data.filter((item: Record<string, unknown>) => {
+      const articleNum = item.article_number as string
       // Excluir si es null, vacío
-      if (!articleNum || articleNum.trim() === '') return false
-      
+      if (!articleNum || (articleNum as string).trim() === '') return false
+
       // Solo permitir números puros (1, 2, 3, 10, 100, etc.)
-      // Excluir cualquier cosa que contenga letras (T1, T1C1, etc.)
-      const isNumericOnly = /^\d+$/.test(articleNum.trim())
+      const isNumericOnly = /^\d+$/.test((articleNum as string).trim())
       if (!isNumericOnly) return false
-      
+
       // Excluir títulos y capítulos comunes por título
-      const lowerTitle = (item.title || '').toLowerCase()
-      if (lowerTitle.includes('título') || 
+      const lowerTitle = ((item.title as string) || '').toLowerCase()
+      if (lowerTitle.includes('título') ||
           lowerTitle.includes('titulo') ||
           lowerTitle.includes('capítulo') ||
           lowerTitle.includes('capitulo') ||
@@ -151,44 +273,47 @@ export async function fetchLawArticles(lawSlug) {
           lowerTitle.includes('preambulo')) {
         return false
       }
-      
+
       return true
     })
-    
+
     // Ordenar artículos numéricamente por article_number
-    const sortedData = articlesOnly.sort((a, b) => {
-      const numA = parseInt(a.article_number) || 0
-      const numB = parseInt(b.article_number) || 0
+    const sortedData = articlesOnly.sort((a: Record<string, unknown>, b: Record<string, unknown>) => {
+      const numA = parseInt(a.article_number as string) || 0
+      const numB = parseInt(b.article_number as string) || 0
       return numA - numB
     })
-    
+
     // Procesar artículos
-    const processedArticles = sortedData.map(article => ({
-      id: article.id,
-      article_number: article.article_number,
-      title: article.title,
-      content: article.content,
-      contentLength: article.content?.length || 0,
-      contentPreview: extractContentPreview(article.content),
-      hasRichContent: isRichContent(article.content),
-      law: {
-        id: article.laws.id,
-        name: article.laws.name,
-        short_name: article.laws.short_name,
-        description: article.laws.description,
-        slug: generateLawSlug(article.laws.short_name)
+    const processedArticles: ProcessedArticle[] = sortedData.map((article: Record<string, unknown>) => {
+      const laws = article.laws as Record<string, unknown>
+      return {
+        id: article.id as string,
+        article_number: article.article_number as string,
+        title: article.title as string | null,
+        content: article.content as string,
+        contentLength: (article.content as string)?.length || 0,
+        contentPreview: extractContentPreview(article.content as string),
+        hasRichContent: isRichContent(article.content as string),
+        law: {
+          id: laws.id as string,
+          name: laws.name as string,
+          short_name: laws.short_name as string,
+          description: laws.description as string | null,
+          slug: generateLawSlug(laws.short_name as string)
+        }
       }
-    }))
-    
+    })
+
     console.log(`✅ ${processedArticles.length} artículos cargados`)
     return {
       articles: processedArticles,
       law: processedArticles[0].law
     }
-    
+
   } catch (error) {
     console.error('❌ Error en fetchLawArticles:', error)
-    throw new Error(`Error cargando artículos: ${error.message}`)
+    throw new Error(`Error cargando artículos: ${(error as Error).message}`)
   }
 }
 
@@ -196,16 +321,16 @@ export async function fetchLawArticles(lawSlug) {
 // 📑 FETCHER: Contenido completo de un artículo específico - CORREGIDO
 // ================================================================
 
-export async function fetchArticleContent(lawSlug, articleNumber) {
+export async function fetchArticleContent(lawSlug: string, articleNumber: string | number): Promise<ArticleContentResult> {
   try {
     console.log(`📑 Cargando artículo: ${lawSlug}/articulo-${articleNumber}`)
-    
+
     const lawShortName = mapLawSlugToShortName(lawSlug)
-    
+
     if (!lawShortName) {
       throw new Error(`LEY_NO_RECONOCIDA: Ley "${lawSlug}" no es válida`)
     }
-    
+
     const { data, error } = await supabase
       .from('articles')
       .select(`
@@ -225,10 +350,10 @@ export async function fetchArticleContent(lawSlug, articleNumber) {
       .eq('laws.short_name', lawShortName)
       .eq('article_number', articleNumber.toString())
       .single()
-    
+
     if (error) {
       console.error('❌ Error cargando artículo:', error)
-      
+
       // 🔍 Si el artículo no existe (error PGRST116)
       if (error.code === 'PGRST116') {
         // Buscar artículos disponibles para dar contexto
@@ -239,28 +364,28 @@ export async function fetchArticleContent(lawSlug, articleNumber) {
           .eq('laws.short_name', lawShortName)
           .order('article_number')
           .limit(5)
-        
+
         const suggestions = availableArticles && availableArticles.length > 0
-          ? `Artículos disponibles: ${availableArticles.map(a => a.article_number).join(', ')}`
+          ? `Artículos disponibles: ${availableArticles.map((a: { article_number: string }) => a.article_number).join(', ')}`
           : 'No hay artículos disponibles para esta ley'
-        
+
         throw new Error(`ARTICULO_NO_ENCONTRADO: El artículo ${articleNumber} no existe en ${lawShortName}. ${suggestions}`)
       }
-      
+
       throw new Error(`ERROR_BD: ${error.message}`)
     }
-    
+
     if (!data) {
       throw new Error(`ARTICULO_NO_ENCONTRADO: Artículo ${articleNumber} no encontrado en ${lawShortName}`)
     }
-    
+
     // Verificar que el contenido existe y no está vacío
     if (!data.content || data.content.trim().length === 0) {
       throw new Error(`CONTENIDO_VACIO: El artículo ${articleNumber} de ${lawShortName} no tiene contenido`)
     }
-    
+
     // Procesar contenido
-    const processedArticle = {
+    const processedArticle: ArticleContentResult = {
       id: data.id,
       article_number: data.article_number,
       title: data.title,
@@ -278,10 +403,10 @@ export async function fetchArticleContent(lawSlug, articleNumber) {
         slug: generateLawSlug(data.laws.short_name)
       }
     }
-    
+
     console.log(`✅ Artículo cargado: ${processedArticle.title}`)
     return processedArticle
-    
+
   } catch (error) {
     console.error('❌ Error en fetchArticleContent:', error)
     // Propagar el error original para que el componente lo maneje
@@ -294,7 +419,7 @@ export async function fetchArticleContent(lawSlug, articleNumber) {
 // ================================================================
 
 // Mapeo de slugs de oposición a patrones en exam_source
-const OPOSICION_EXAM_SOURCE_PATTERNS = {
+const OPOSICION_EXAM_SOURCE_PATTERNS: Record<string, string[]> = {
   'auxiliar-administrativo-estado': ['Auxiliar Administrativo', 'Auxiliar Estado', 'AGE'],
   'auxiliar_administrativo_estado': ['Auxiliar Administrativo', 'Auxiliar Estado', 'AGE'],
   'tramitacion-procesal': ['Tramitaci'],
@@ -308,7 +433,7 @@ const OPOSICION_EXAM_SOURCE_PATTERNS = {
 }
 
 // Función auxiliar para verificar si un exam_source corresponde a una oposición
-function examSourceMatchesOposicion(examSource, oposicionSlug) {
+function examSourceMatchesOposicion(examSource: string | null, oposicionSlug: string | null): boolean {
   if (!examSource || !oposicionSlug) return true
 
   const patterns = OPOSICION_EXAM_SOURCE_PATTERNS[oposicionSlug]
@@ -317,7 +442,7 @@ function examSourceMatchesOposicion(examSource, oposicionSlug) {
   return patterns.some(pattern => examSource.includes(pattern))
 }
 
-export async function fetchArticleOfficialExamData(articleId, userOposicion = null) {
+export async function fetchArticleOfficialExamData(articleId: string | null, userOposicion: string | null = null): Promise<ExamData | null> {
   try {
     if (!articleId) return null
 
@@ -364,8 +489,8 @@ export async function fetchArticleOfficialExamData(articleId, userOposicion = nu
     }
 
     // Filtrar preguntas por oposición del usuario
-    const filteredData = oposicionSlug
-      ? data.filter(q => examSourceMatchesOposicion(q.exam_source, oposicionSlug))
+    const filteredData: OfficialQuestion[] = oposicionSlug
+      ? data.filter((q: OfficialQuestion) => examSourceMatchesOposicion(q.exam_source, oposicionSlug))
       : data
 
     if (filteredData.length === 0) {
@@ -374,13 +499,13 @@ export async function fetchArticleOfficialExamData(articleId, userOposicion = nu
     }
 
     // Procesar datos de exámenes oficiales (solo los de la oposición del usuario)
-    const examData = {
+    const examData: ExamData = {
       hasOfficialExams: true,
       totalOfficialQuestions: filteredData.length,
       latestExamDate: filteredData[0].exam_date,
-      examSources: [...new Set(filteredData.map(q => q.exam_source).filter(Boolean))],
-      examEntities: [...new Set(filteredData.map(q => q.exam_entity).filter(Boolean))],
-      difficultyLevels: [...new Set(filteredData.map(q => q.official_difficulty_level).filter(Boolean))],
+      examSources: [...new Set(filteredData.map(q => q.exam_source).filter((s): s is string => !!s))],
+      examEntities: [...new Set(filteredData.map(q => q.exam_entity).filter((s): s is string => !!s))],
+      difficultyLevels: [...new Set(filteredData.map(q => q.official_difficulty_level).filter((s): s is string => !!s))],
       questions: filteredData
     }
 
@@ -396,7 +521,7 @@ export async function fetchArticleOfficialExamData(articleId, userOposicion = nu
 // ================================================================
 // 🏛️ FETCHER: Datos de examen oficial para múltiples artículos
 // ================================================================
-export async function fetchMultipleArticlesOfficialExamData(articleNumbers, lawShortName, userOposicion = null) {
+export async function fetchMultipleArticlesOfficialExamData(articleNumbers: string[], lawShortName: string, userOposicion: string | null = null): Promise<Record<string, ExamData>> {
   try {
     if (!articleNumbers || articleNumbers.length === 0) return {}
 
@@ -435,12 +560,12 @@ export async function fetchMultipleArticlesOfficialExamData(articleNumbers, lawS
     }
 
     // Crear mapeo de article_number -> id
-    const articleIdMap = {}
-    articlesData.forEach(article => {
-      articleIdMap[article.article_number] = article.id
+    const articleIdMap: Record<string, string> = {}
+    articlesData.forEach((article: Record<string, unknown>) => {
+      articleIdMap[article.article_number as string] = article.id as string
     })
 
-    const articleIds = articlesData.map(a => a.id)
+    const articleIds = articlesData.map((a: Record<string, unknown>) => a.id)
 
     // Query para obtener preguntas oficiales de estos artículos
     const { data, error } = await supabase
@@ -458,19 +583,19 @@ export async function fetchMultipleArticlesOfficialExamData(articleNumbers, lawS
       .eq('is_official_exam', true)
       .eq('is_active', true)
       .order('exam_date', { ascending: false })
-    
+
     if (error) {
       console.error('❌ Error obteniendo datos de examen oficial:', error)
       return {}
     }
-    
+
     if (!data || data.length === 0) {
       return {}
     }
 
     // Filtrar preguntas por oposición del usuario
-    const filteredData = oposicionSlug
-      ? data.filter(q => examSourceMatchesOposicion(q.exam_source, oposicionSlug))
+    const filteredData: OfficialQuestion[] = oposicionSlug
+      ? data.filter((q: OfficialQuestion) => examSourceMatchesOposicion(q.exam_source, oposicionSlug))
       : data
 
     if (filteredData.length === 0) {
@@ -479,14 +604,14 @@ export async function fetchMultipleArticlesOfficialExamData(articleNumbers, lawS
     }
 
     // Agrupar por artículo
-    const examDataByArticle = {}
+    const examDataByArticle: Record<string, ExamDataAccumulator> = {}
 
-    filteredData.forEach(question => {
+    filteredData.forEach((question: OfficialQuestion) => {
       const articleId = question.primary_article_id
       const articleNumber = Object.keys(articleIdMap).find(key => articleIdMap[key] === articleId)
-      
+
       if (!articleNumber) return
-      
+
       if (!examDataByArticle[articleNumber]) {
         examDataByArticle[articleNumber] = {
           hasOfficialExams: true,
@@ -498,30 +623,37 @@ export async function fetchMultipleArticlesOfficialExamData(articleNumbers, lawS
           questions: []
         }
       }
-      
+
       const articleData = examDataByArticle[articleNumber]
       articleData.totalOfficialQuestions++
       articleData.questions.push(question)
-      
+
       if (question.exam_date && (!articleData.latestExamDate || question.exam_date > articleData.latestExamDate)) {
         articleData.latestExamDate = question.exam_date
       }
-      
+
       if (question.exam_source) articleData.examSources.add(question.exam_source)
       if (question.exam_entity) articleData.examEntities.add(question.exam_entity)
       if (question.official_difficulty_level) articleData.difficultyLevels.add(question.official_difficulty_level)
     })
-    
+
     // Convertir Sets a arrays
-    Object.values(examDataByArticle).forEach(data => {
-      data.examSources = Array.from(data.examSources)
-      data.examEntities = Array.from(data.examEntities)
-      data.difficultyLevels = Array.from(data.difficultyLevels)
-    })
-    
-    console.log(`✅ Datos de examen oficial cargados para ${Object.keys(examDataByArticle).length} artículos (${oposicionSlug || 'todas las oposiciones'})`)
-    return examDataByArticle
-    
+    const result: Record<string, ExamData> = {}
+    for (const [key, acc] of Object.entries(examDataByArticle)) {
+      result[key] = {
+        hasOfficialExams: acc.hasOfficialExams,
+        totalOfficialQuestions: acc.totalOfficialQuestions,
+        latestExamDate: acc.latestExamDate,
+        examSources: Array.from(acc.examSources),
+        examEntities: Array.from(acc.examEntities),
+        difficultyLevels: Array.from(acc.difficultyLevels),
+        questions: acc.questions
+      }
+    }
+
+    console.log(`✅ Datos de examen oficial cargados para ${Object.keys(result).length} artículos (${oposicionSlug || 'todas las oposiciones'})`)
+    return result
+
   } catch (error) {
     console.error('❌ Error en fetchMultipleArticlesOfficialExamData:', error)
     return {}
@@ -531,12 +663,12 @@ export async function fetchMultipleArticlesOfficialExamData(articleNumbers, lawS
 // ================================================================
 // 🔗 FETCHER: Artículos relacionados (mismo tema/ley) - CORREGIDO
 // ================================================================
-export async function fetchRelatedArticles(lawSlug, currentArticleNumber, limit = 5) {
+export async function fetchRelatedArticles(lawSlug: string, currentArticleNumber: string | number, limit: number = 5): Promise<RelatedArticle[]> {
   try {
     console.log(`🔗 Cargando artículos relacionados para: ${lawSlug}`)
-    
+
     const lawShortName = mapLawSlugToShortName(lawSlug)
-    
+
     const { data, error } = await supabase
       .from('articles')
       .select(`
@@ -550,22 +682,24 @@ export async function fetchRelatedArticles(lawSlug, currentArticleNumber, limit 
       .eq('laws.short_name', lawShortName)
       .neq('article_number', currentArticleNumber.toString()) // 🔥 CONVERTIR A STRING
       .not('content', 'is', null)
-      //.gte('content', 'length', 100)
       .order('article_number')
       .limit(limit)
-    
+
     if (error) throw error
-    
-    const relatedArticles = data.map(article => ({
-      article_number: article.article_number,
-      title: article.title,
-      contentPreview: extractContentPreview(article.content),
-      lawSlug: generateLawSlug(article.laws.short_name)
-    }))
-    
+
+    const relatedArticles: RelatedArticle[] = data.map((article: Record<string, unknown>) => {
+      const laws = article.laws as Record<string, unknown>
+      return {
+        article_number: article.article_number as string,
+        title: article.title as string | null,
+        contentPreview: extractContentPreview(article.content as string),
+        lawSlug: generateLawSlug(laws.short_name as string)
+      }
+    })
+
     console.log(`✅ ${relatedArticles.length} artículos relacionados cargados`)
     return relatedArticles
-    
+
   } catch (error) {
     console.error('❌ Error en fetchRelatedArticles:', error)
     return [] // No fallar si no hay relacionados
@@ -576,43 +710,40 @@ export async function fetchRelatedArticles(lawSlug, currentArticleNumber, limit 
 // 🛠️ FUNCIONES AUXILIARES
 // ================================================================
 
-// Generar slug limpio para URLs
-
-
 // Extraer preview del contenido
-function extractContentPreview(content, maxLength = 200) {
+function extractContentPreview(content: string | null, maxLength: number = 200): string {
   if (!content) return ''
-  
+
   // Limpiar HTML básico
   const cleanText = content
     .replace(/<[^>]*>/g, ' ')       // Quitar tags HTML
     .replace(/\s+/g, ' ')           // Espacios múltiples a uno
     .trim()
-  
+
   if (cleanText.length <= maxLength) {
     return cleanText
   }
-  
+
   return cleanText.substring(0, maxLength).trim() + '...'
 }
 
 // Detectar si el contenido tiene formato rico (HTML)
-function isRichContent(content) {
+function isRichContent(content: string | null): boolean {
   if (!content) return false
-  
+
   const htmlTags = /<(div|header|h[1-6]|p|ul|ol|li|strong|em|br)\s*[^>]*>/i
   return htmlTags.test(content)
 }
 
 // Limpiar contenido HTML para mostrar
-function cleanArticleContent(content) {
+function cleanArticleContent(content: string | null): string {
   if (!content) return ''
-  
+
   // Si no tiene HTML, devolverlo como está
   if (!isRichContent(content)) {
     return content
   }
-  
+
   // Para contenido con HTML, preservar estructura básica
   return content
     .replace(/<div class="article-content"[^>]*>/g, '')
@@ -628,10 +759,10 @@ function cleanArticleContent(content) {
 // ================================================================
 // 🔍 FETCHER: Buscar artículos por texto
 // ================================================================
-export async function searchArticles(query, lawSlug = null, limit = 10) {
+export async function searchArticles(query: string, lawSlug: string | null = null, limit: number = 10): Promise<SearchResult[]> {
   try {
     console.log(`🔍 Buscando artículos: "${query}"`)
-    
+
     let supabaseQuery = supabase
       .from('articles')
       .select(`
@@ -643,37 +774,40 @@ export async function searchArticles(query, lawSlug = null, limit = 10) {
       `)
       .eq('is_active', true)
       .not('content', 'is', null)
-    
+
     // Filtrar por ley si se especifica
     if (lawSlug) {
       const lawShortName = mapLawSlugToShortName(lawSlug)
       supabaseQuery = supabaseQuery.eq('laws.short_name', lawShortName)
     }
-    
+
     // Buscar en título y contenido
     supabaseQuery = supabaseQuery
       .or(`title.ilike.%${query}%,content.ilike.%${query}%`)
       .limit(limit)
-    
+
     const { data, error } = await supabaseQuery
-    
+
     if (error) throw error
-    
-    const results = data.map(article => ({
-      id: article.id,
-      article_number: article.article_number,
-      title: article.title,
-      contentPreview: extractContentPreview(article.content),
-      law: {
-        name: article.laws.name,
-        short_name: article.laws.short_name,
-        slug: generateLawSlug(article.laws.short_name)
+
+    const results: SearchResult[] = data.map((article: Record<string, unknown>) => {
+      const laws = article.laws as Record<string, unknown>
+      return {
+        id: article.id as string,
+        article_number: article.article_number as string,
+        title: article.title as string | null,
+        contentPreview: extractContentPreview(article.content as string),
+        law: {
+          name: laws.name as string,
+          short_name: laws.short_name as string,
+          slug: generateLawSlug(laws.short_name as string)
+        }
       }
-    }))
-    
+    })
+
     console.log(`✅ ${results.length} resultados encontrados`)
     return results
-    
+
   } catch (error) {
     console.error('❌ Error en searchArticles:', error)
     return []
@@ -683,7 +817,7 @@ export async function searchArticles(query, lawSlug = null, limit = 10) {
 // ================================================================
 // 📚 FETCHER: Secciones/Títulos de una ley específica
 // ================================================================
-export async function fetchLawSections(lawSlugOrShortName, options = {}) {
+export async function fetchLawSections(lawSlugOrShortName: string, options: FetchLawSectionsOptions = {}): Promise<LawSectionsResult> {
   try {
     console.log(`📚 Cargando secciones de ley: ${lawSlugOrShortName}`)
 
@@ -702,7 +836,7 @@ export async function fetchLawSections(lawSlugOrShortName, options = {}) {
     }
 
     // Si nos pasan lawId, reutilizarlo en vez de consultar de nuevo
-    let lawData
+    let lawData: { id: string; name: string; short_name: string }
     if (options.lawId) {
       console.log(`⚡ Reutilizando lawId=${options.lawId} (skip query a laws)`)
       lawData = {
@@ -723,7 +857,7 @@ export async function fetchLawSections(lawSlugOrShortName, options = {}) {
       }
       lawData = queryResult
     }
-    
+
     // Obtener secciones de la ley
     const { data: sectionsData, error: sectionsError } = await supabase
       .from('law_sections')
@@ -731,27 +865,27 @@ export async function fetchLawSections(lawSlugOrShortName, options = {}) {
       .eq('law_id', lawData.id)
       .eq('is_active', true)
       .order('order_position')
-    
+
     if (sectionsError) {
       throw sectionsError
     }
-    
+
     // Transformar datos para la interfaz
-    const sections = sectionsData.map(section => ({
-      id: section.id,
-      slug: section.slug,
-      title: section.title,
-      description: section.description,
-      articleRange: section.article_range_start && section.article_range_end 
-        ? { start: section.article_range_start, end: section.article_range_end }
+    const sections: LawSection[] = sectionsData.map((section: Record<string, unknown>) => ({
+      id: section.id as string,
+      slug: section.slug as string,
+      title: section.title as string,
+      description: section.description as string | null,
+      articleRange: section.article_range_start && section.article_range_end
+        ? { start: section.article_range_start as number, end: section.article_range_end as number }
         : null,
-      sectionNumber: section.section_number,
-      sectionType: section.section_type,
-      orderPosition: section.order_position
+      sectionNumber: section.section_number as number | null,
+      sectionType: section.section_type as string | null,
+      orderPosition: section.order_position as number
     }))
-    
+
     console.log(`✅ ${sections.length} secciones cargadas para ${lawShortName}`)
-    
+
     // Generar slug correcto (si recibimos short_name, convertir a slug)
     const slug = lawSlugOrShortName.includes('/')
       ? getCanonicalSlug(lawShortName) || lawSlugOrShortName.toLowerCase().replace(/[^a-z0-9]+/g, '-')
@@ -766,9 +900,9 @@ export async function fetchLawSections(lawSlugOrShortName, options = {}) {
       },
       sections
     }
-    
+
   } catch (error) {
     console.error('❌ Error en fetchLawSections:', error)
-    throw new Error(`Error cargando secciones: ${error.message}`)
+    throw new Error(`Error cargando secciones: ${(error as Error).message}`)
   }
 }

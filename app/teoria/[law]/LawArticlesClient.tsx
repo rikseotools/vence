@@ -2,7 +2,7 @@
 'use client'
 
 import { useState, useEffect, MouseEvent } from 'react'
-import { fetchLawArticles, fetchMultipleArticlesOfficialExamData, fetchLawSections } from '@/lib/teoriaFetchers'
+import { fetchLawArticles, fetchMultipleArticlesOfficialExamData, fetchLawSections, type LawSection } from '@/lib/teoriaFetchers'
 import { useAuth } from '@/contexts/AuthContext'
 import Link from 'next/link'
 import ArticleModal from '@/components/ArticleModal'
@@ -37,10 +37,7 @@ interface LawData {
   message?: string
 }
 
-interface Section {
-  title: string
-  articleRange?: { start: number; end: number }
-}
+type Section = LawSection
 
 interface OfficialExamInfo {
   hasOfficialExams: boolean
