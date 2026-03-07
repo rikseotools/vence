@@ -1,7 +1,7 @@
 // lib/chat/domains/verification/ReanalysisService.ts
 // Servicio para re-analizar preguntas psicotécnicas con modelo superior
 
-import OpenAI from 'openai'
+import { getOpenAI } from '../../shared/openai'
 import { logger } from '../../shared/logger'
 
 const REANALYSIS_MODEL = 'gpt-4o'
@@ -30,7 +30,7 @@ interface ReanalysisResult {
 export async function reanalyzeWithSuperiorModel(
   input: ReanalysisInput
 ): Promise<ReanalysisResult> {
-  const openai = new OpenAI()
+  const openai = await getOpenAI()
 
   logger.info('Starting reanalysis with superior model', {
     domain: 'verification',
