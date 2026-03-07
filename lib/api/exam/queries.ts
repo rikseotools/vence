@@ -401,34 +401,45 @@ export async function getPendingExams(
       .orderBy(desc(tests.createdAt))
       .limit(limit)
 
-    // Para cada test, contar las preguntas respondidas (userAnswer no vacío)
-    const examsWithProgress = await Promise.all(
-      pendingTests.map(async (test) => {
-        const answersCount = await db
-          .select({ count: count() })
-          .from(testQuestions)
-          .where(and(
-            eq(testQuestions.testId, test.id),
-            sql`${testQuestions.userAnswer} IS NOT NULL AND ${testQuestions.userAnswer} != ''`
-          ))
+    // Contar preguntas respondidas para TODOS los tests en un solo query (evita N+1)
+    const testIds = pendingTests.map(t => t.id)
+    const answeredCountsMap = new Map<string, number>()
 
-        const answered = answersCount[0]?.count ?? 0
-        const total = test.totalQuestions
-        const progress = total > 0 ? Math.round((answered / total) * 100) : 0
+    if (testIds.length > 0) {
+      const answeredCounts = await db
+        .select({
+          testId: testQuestions.testId,
+          count: count(),
+        })
+        .from(testQuestions)
+        .where(and(
+          inArray(testQuestions.testId, testIds),
+          sql`${testQuestions.userAnswer} IS NOT NULL AND ${testQuestions.userAnswer} != ''`
+        ))
+        .groupBy(testQuestions.testId)
 
-        return {
-          id: test.id,
-          title: test.title,
-          testType: test.testType ?? 'exam',
-          totalQuestions: total,
-          answeredQuestions: answered,
-          score: Number(test.score) || 0,
-          createdAt: test.createdAt ?? new Date().toISOString(),
-          temaNumber: test.temaNumber,
-          progress,
-        }
-      })
-    )
+      for (const row of answeredCounts) {
+        answeredCountsMap.set(row.testId, row.count)
+      }
+    }
+
+    const examsWithProgress = pendingTests.map((test) => {
+      const answered = answeredCountsMap.get(test.id) ?? 0
+      const total = test.totalQuestions
+      const progress = total > 0 ? Math.round((answered / total) * 100) : 0
+
+      return {
+        id: test.id,
+        title: test.title,
+        testType: test.testType ?? 'exam',
+        totalQuestions: total,
+        answeredQuestions: answered,
+        score: Number(test.score) || 0,
+        createdAt: test.createdAt ?? new Date().toISOString(),
+        temaNumber: test.temaNumber,
+        progress,
+      }
+    })
 
     // Exámenes tipo 'exam' siempre se muestran en pendientes (pueden tener 0 respuestas
     // porque ya no se pre-crean ghost rows). Practice necesita ≥1 respuesta.
