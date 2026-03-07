@@ -419,7 +419,7 @@ export async function getPendingExams(
         .groupBy(testQuestions.testId)
 
       for (const row of answeredCounts) {
-        answeredCountsMap.set(row.testId, row.count)
+        if (row.testId) answeredCountsMap.set(row.testId, row.count)
       }
     }
 
