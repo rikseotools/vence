@@ -22,6 +22,7 @@ export const conversionEvents = pgTable("conversion_events", {
 }, (table) => [
 	index("idx_conversion_created_at").using("btree", table.createdAt.desc().nullsFirst().op("timestamptz_ops")),
 	index("idx_conversion_event_type").using("btree", table.eventType.asc().nullsLast().op("text_ops")),
+	index("idx_conversion_event_type_created").using("btree", table.eventType.asc().nullsLast().op("text_ops"), table.createdAt.desc().nullsFirst().op("timestamptz_ops")),
 	index("idx_conversion_limit_reached_user").using("btree", table.userId.asc().nullsLast().op("timestamptz_ops"), table.createdAt.asc().nullsLast().op("uuid_ops")).where(sql`(event_type = 'limit_reached'::text)`),
 	index("idx_conversion_source").using("btree", table.registrationSource.asc().nullsLast().op("text_ops")),
 	index("idx_conversion_user_id").using("btree", table.userId.asc().nullsLast().op("uuid_ops")),
@@ -1620,6 +1621,7 @@ export const questionDisputes = pgTable("question_disputes", {
 	appealSubmittedAt: timestamp("appeal_submitted_at", { withTimezone: true, mode: 'string' }),
 }, (table) => [
 	index("idx_question_disputes_appeal_submitted").using("btree", table.appealSubmittedAt.asc().nullsLast().op("timestamptz_ops")).where(sql`(appeal_text IS NOT NULL)`),
+	index("idx_question_disputes_status").using("btree", table.status.asc().nullsLast().op("text_ops")),
 	foreignKey({
 			columns: [table.adminUserId],
 			foreignColumns: [userProfiles.id],
