@@ -1969,7 +1969,7 @@ export default function EstadisticasRevolucionarias() {
       </div>
 
       {/* NAVEGACIÓN STICKY CON TABS COMPACTOS */}
-      <div className="sticky top-0 z-50 bg-gradient-to-br from-purple-50 to-indigo-50 border-b border-purple-200 shadow-sm py-2 md:py-4">
+      <div className="sticky top-0 z-40 bg-gradient-to-br from-purple-50 to-indigo-50 border-b border-purple-200 shadow-sm py-2 md:py-4">
         <div className="container mx-auto px-4">
           {/* Tabs horizontales compactos y sticky */}
           <div className="bg-white rounded-lg shadow-md p-2">

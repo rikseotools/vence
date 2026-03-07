@@ -375,12 +375,12 @@ export default function UserAvatar() {
         <>
           {/* Overlay to close */}
           <div
-            className="fixed inset-0 z-10"
+            className="fixed inset-0 z-[60]"
             onClick={() => setShowDropdown(false)}
           ></div>
 
           {/* Dropdown content */}
-          <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-20">
+          <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-[70]">
             {/* User header */}
             <div className="p-4 border-b border-gray-200">
               <div className="flex items-center space-x-3">

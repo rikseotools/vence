@@ -70,60 +70,56 @@ export default function RecentTests({ recentTests, onInfoClick }: RecentTestsPro
       </div>
       <div className="space-y-4">
         {visibleTests.map((test) => (
-          <div key={test.id} className={`p-4 rounded-lg border ${getScoreBg(test.percentage)}`}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <div className="text-3xl">
-                  {test.percentage >= 85 ? '\u{1F3C6}' :
-                   test.percentage >= 70 ? '\u{1F3AF}' :
-                   test.percentage >= 50 ? '\u{1F4DA}' : '\u{1F4AA}'}
-                </div>
-                <div>
-                  <div className="font-bold text-gray-800">{test.title}</div>
-                  <div className="text-sm text-gray-600">
-                    {test.date} &bull; {test.time} &bull; {test.avgTimePerQuestion}s/pregunta
+          <Link key={test.id} href={`/revisar/${test.id}`} className="block">
+            <div className={`p-4 rounded-lg border ${getScoreBg(test.percentage)} hover:shadow-md transition-shadow cursor-pointer`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <div className="text-3xl">
+                    {test.percentage >= 85 ? '\u{1F3C6}' :
+                     test.percentage >= 70 ? '\u{1F3AF}' :
+                     test.percentage >= 50 ? '\u{1F4DA}' : '\u{1F4AA}'}
                   </div>
-                  {(test.engagementScore ?? 0) > 0 && (
-                    <div className="text-xs text-purple-600 mt-1">
-                      Engagement: {test.engagementScore}% &bull; Focus: {test.focusScore}%
+                  <div>
+                    <div className="font-bold text-gray-800">{test.title}</div>
+                    <div className="text-sm text-gray-600">
+                      {test.date} &bull; {test.time} &bull; {test.avgTimePerQuestion}s/pregunta
                     </div>
-                  )}
-                </div>
-              </div>
-              <div className="text-right flex flex-col items-end">
-                <div className={`text-2xl font-bold ${getScoreColor(test.percentage)}`}>
-                  {test.score}/{test.total}
-                </div>
-                <div className={`text-lg font-bold ${getScoreColor(test.percentage)}`}>
-                  {test.percentage}%
-                </div>
-                <Link
-                  href={`/revisar/${test.id}`}
-                  className="mt-2 inline-flex items-center gap-1 px-3 py-1 text-xs font-medium text-blue-700 bg-blue-100 hover:bg-blue-200 rounded-full transition-colors"
-                >
-                  Ver detalle &rarr;
-                </Link>
-              </div>
-            </div>
-
-            {/* Desglose por Dificultad */}
-            {test.difficultyBreakdown && test.difficultyBreakdown.length > 0 && (
-              <div className="mt-3 pt-3 border-t border-gray-200">
-                <div className="text-xs text-gray-600 mb-2">Analisis por Dificultad:</div>
-                <div className="flex space-x-4">
-                  {test.difficultyBreakdown.map((diff, idx) => (
-                    <div key={idx} className="text-center">
-                      <div className="text-xs font-medium capitalize">{diff.difficulty}</div>
-                      <div className="text-sm font-bold">{diff.correct}/{diff.total}</div>
-                      <div className={`text-xs ${getScoreColor(diff.accuracy)}`}>
-                        {diff.accuracy}%
+                    {(test.engagementScore ?? 0) > 0 && (
+                      <div className="text-xs text-purple-600 mt-1">
+                        Engagement: {test.engagementScore}% &bull; Focus: {test.focusScore}%
                       </div>
-                    </div>
-                  ))}
+                    )}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className={`text-2xl font-bold ${getScoreColor(test.percentage)}`}>
+                    {test.score}/{test.total}
+                  </div>
+                  <div className={`text-lg font-bold ${getScoreColor(test.percentage)}`}>
+                    {test.percentage}%
+                  </div>
                 </div>
               </div>
-            )}
-          </div>
+
+              {/* Desglose por Dificultad */}
+              {test.difficultyBreakdown && test.difficultyBreakdown.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-gray-200">
+                  <div className="text-xs text-gray-600 mb-2">Analisis por Dificultad:</div>
+                  <div className="flex space-x-4">
+                    {test.difficultyBreakdown.map((diff, idx) => (
+                      <div key={idx} className="text-center">
+                        <div className="text-xs font-medium capitalize">{diff.difficulty}</div>
+                        <div className="text-sm font-bold">{diff.correct}/{diff.total}</div>
+                        <div className={`text-xs ${getScoreColor(diff.accuracy)}`}>
+                          {diff.accuracy}%
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </Link>
         ))}
       </div>
 
