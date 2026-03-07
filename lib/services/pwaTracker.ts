@@ -1,14 +1,68 @@
-// lib/services/pwaTracker.js - SERVICIO PARA TRACKING DE PWA
+// lib/services/pwaTracker.ts - SERVICIO PARA TRACKING DE PWA
 'use client'
 import { getSupabaseClient } from '../supabase'
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SupabaseClientAny = any
+
+interface PWAInfo {
+  isStandalone?: boolean
+  displayMode?: string
+  orientation?: string
+  installPromptAvailable?: boolean
+  isIOS?: boolean
+  isAndroid?: boolean
+  supportsServiceWorker?: boolean
+  viewport?: {
+    width: number
+    height: number
+    ratio: number
+  }
+}
+
+interface DeviceInfoData {
+  platform?: string
+  userAgent?: string
+  language?: string
+  languages?: readonly string[]
+  cookieEnabled?: boolean
+  onLine?: boolean
+  hardwareConcurrency?: number
+  deviceMemory?: number | null
+  connection?: { effectiveType?: string; downlink?: number; rtt?: number } | null
+  screen?: {
+    width: number
+    height: number
+    colorDepth: number
+    orientation: string
+  }
+}
+
+interface CurrentPWAInfo {
+  isStandalone: boolean | undefined
+  displayMode: string | undefined
+  sessionActive: boolean
+  sessionDuration: number
+  pageVisits: number
+  actions: number
+}
+
+declare global {
+  interface Navigator {
+    getInstalledRelatedApps?: () => Promise<Array<{ id?: string; platform?: string; url?: string }>>
+  }
+  interface Window {
+    pwaTracker?: PWATracker
+  }
+}
+
 // Instancia global de Supabase
-let supabaseInstance = null
+let supabaseInstance: SupabaseClientAny = null
 
 // Detectar información específica de PWA
-const getPWAInfo = () => {
+const getPWAInfo = (): PWAInfo => {
   if (typeof window === 'undefined') return {}
-  
+
   return {
     isStandalone: window.matchMedia('(display-mode: standalone)').matches ||
                   window.navigator.standalone === true ||
@@ -30,14 +84,12 @@ const getPWAInfo = () => {
 }
 
 // Detectar información del dispositivo
-const getDeviceInfo = () => {
+const getDeviceInfo = (): DeviceInfoData => {
   if (typeof window === 'undefined') return {}
-  
-  const ua = navigator.userAgent
-  
+
   return {
     platform: navigator.platform,
-    userAgent: ua,
+    userAgent: navigator.userAgent,
     language: navigator.language,
     languages: navigator.languages,
     cookieEnabled: navigator.cookieEnabled,
@@ -59,6 +111,13 @@ const getDeviceInfo = () => {
 }
 
 class PWATracker {
+  private deviceInfo: DeviceInfoData
+  private pwaInfo: PWAInfo
+  private sessionId: string | null
+  private sessionStartTime: Date | null
+  private pageVisitCount: number
+  private actionCount: number
+
   constructor() {
     this.deviceInfo = getDeviceInfo()
     this.pwaInfo = getPWAInfo()
@@ -70,21 +129,21 @@ class PWATracker {
   }
 
   // Método para obtener instancia de Supabase
-  getSupabase() {
+  getSupabase(): SupabaseClientAny {
     return supabaseInstance || getSupabaseClient()
   }
 
   // Método para configurar instancia desde el contexto de Auth
-  setSupabaseInstance(supabase) {
+  setSupabaseInstance(supabase: SupabaseClientAny): void {
     supabaseInstance = supabase
   }
 
   // Configurar listeners para eventos PWA
-  setupEventListeners() {
+  setupEventListeners(): void {
     if (typeof window === 'undefined') return
 
     // Listener para detectar cuándo se puede instalar la PWA
-    window.addEventListener('beforeinstallprompt', (e) => {
+    window.addEventListener('beforeinstallprompt', () => {
       console.log('📱 PWA install prompt available')
       this.trackPWAEvent('install_prompt_shown', {
         canInstall: true,
@@ -93,7 +152,7 @@ class PWATracker {
     })
 
     // Listener para detectar instalación exitosa
-    window.addEventListener('appinstalled', (e) => {
+    window.addEventListener('appinstalled', () => {
       console.log('🎉 PWA installed successfully!')
       this.trackPWAEvent('pwa_installed', {
         installMethod: 'browser_prompt',
@@ -131,7 +190,7 @@ class PWATracker {
   }
 
   // Detectar si el usuario ya tiene PWA instalada (usuarios existentes)
-  async detectExistingPWAUser() {
+  async detectExistingPWAUser(): Promise<void> {
     if (typeof window === 'undefined') return
 
     try {
@@ -142,11 +201,11 @@ class PWATracker {
 
       if (isStandalone) {
         console.log('🔍 Usuario PWA existente detectado!')
-        
+
         // Verificar si ya tenemos registrado este evento de instalación
         const supabase = this.getSupabase()
         const { data: { user } } = await supabase.auth.getUser()
-        
+
         if (!user) return
 
         // Buscar si ya hay un evento de instalación registrado
@@ -159,7 +218,7 @@ class PWATracker {
 
         if (!existingInstall || existingInstall.length === 0) {
           console.log('📱 Registrando instalación PWA existente...')
-          
+
           // Registrar como instalación existente (retroactiva)
           await this.trackPWAEvent('pwa_installed', {
             installMethod: 'existing_detected',
@@ -183,12 +242,13 @@ class PWATracker {
 
     } catch (error) {
       // Error silencioso para no afectar la experiencia
-      console.log('🔍 PWA detection check (silent):', error.message?.includes('relation') ? 'tables not ready' : error.message)
+      const msg = (error as Error).message
+      console.log('🔍 PWA detection check (silent):', msg?.includes('relation') ? 'tables not ready' : msg)
     }
   }
 
   // Verificar si PWA está instalada usando técnicas avanzadas
-  async checkPWAInstallationStatus() {
+  async checkPWAInstallationStatus(): Promise<void> {
     if (typeof window === 'undefined') return
 
     try {
@@ -197,12 +257,12 @@ class PWATracker {
       let detectionMethod = 'unknown'
 
       // Si NO se dispara beforeinstallprompt, podría estar instalada
-      const promptTimeout = new Promise(resolve => {
+      const promptTimeout = new Promise<boolean>(resolve => {
         const timer = setTimeout(() => {
           resolve(false) // No se disparó el prompt
         }, 2000)
 
-        window.addEventListener('beforeinstallprompt', (e) => {
+        window.addEventListener('beforeinstallprompt', () => {
           clearTimeout(timer)
           resolve(true) // Prompt disponible = no instalada
         }, { once: true })
@@ -217,7 +277,7 @@ class PWATracker {
       }
 
       // Método 2: Verificar getInstalledRelatedApps (Chrome/Edge)
-      if ('getInstalledRelatedApps' in navigator) {
+      if ('getInstalledRelatedApps' in navigator && navigator.getInstalledRelatedApps) {
         try {
           const relatedApps = await navigator.getInstalledRelatedApps()
           if (relatedApps && relatedApps.length > 0) {
@@ -231,14 +291,14 @@ class PWATracker {
       }
 
       // Método 3: Heurística de uso frecuente
-      const visitCount = localStorage.getItem('vence_visit_count') || 0
+      const visitCount = localStorage.getItem('vence_visit_count') || '0'
       const hasNotifications = Notification.permission === 'granted'
-      const hasServiceWorker = 'serviceWorker' in navigator && navigator.serviceWorker.controller
+      const hasServiceWorker = 'serviceWorker' in navigator && !!navigator.serviceWorker.controller
 
-      if (visitCount > 10 && hasNotifications && hasServiceWorker) {
+      if (parseInt(visitCount) > 10 && hasNotifications && hasServiceWorker) {
         // Usuario frecuente con características de PWA
         console.log('🤔 Usuario con patrón de uso PWA detectado')
-        
+
         // No registrar automáticamente, pero loggear para análisis
         await this.trackPWAEvent('potential_pwa_user', {
           visitCount: parseInt(visitCount),
@@ -249,11 +309,9 @@ class PWATracker {
       }
 
       if (pwaInstalled && detectionMethod !== 'unknown') {
-        // PWA detectada - método: detectionMethod
-        
         const supabase = this.getSupabase()
         const { data: { user } } = await supabase.auth.getUser()
-        
+
         if (user) {
           // Verificar si ya está registrada
           const { data: existingInstall } = await supabase
@@ -275,14 +333,14 @@ class PWATracker {
       }
 
     } catch (error) {
-      console.log('🔍 PWA installation check (silent):', error.message)
+      console.log('🔍 PWA installation check (silent):', (error as Error).message)
     }
   }
 
   // Trackear navegación en SPA
-  setupNavigationTracking() {
+  setupNavigationTracking(): void {
     let currentPath = window.location.pathname
-    
+
     // Observar cambios de URL
     const observer = new MutationObserver(() => {
       if (window.location.pathname !== currentPath) {
@@ -291,9 +349,9 @@ class PWATracker {
         this.actionCount++
       }
     })
-    
+
     observer.observe(document, { subtree: true, childList: true })
-    
+
     // También escuchar eventos de navegación
     window.addEventListener('popstate', () => {
       this.pageVisitCount++
@@ -302,10 +360,10 @@ class PWATracker {
   }
 
   // Registrar evento de PWA
-  async trackPWAEvent(eventType, additionalData = {}) {
+  async trackPWAEvent(eventType: string, additionalData: Record<string, unknown> = {}): Promise<void> {
     try {
       const supabase = this.getSupabase()
-      
+
       // Obtener usuario actual
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
@@ -333,7 +391,7 @@ class PWATracker {
         user_agent: navigator.userAgent,
         referrer: document.referrer || null,
         created_at: new Date().toISOString(),
-        ...cleanAdditionalData  // Usar los datos limpios sin sessionId
+        ...cleanAdditionalData
       }
 
       const { error } = await supabase
@@ -354,14 +412,13 @@ class PWATracker {
   }
 
   // Iniciar sesión PWA
-  async startSession() {
+  async startSession(): Promise<void> {
     if (this.sessionId) return // Ya hay sesión activa
-    
+
     try {
       // Incrementar contador de visitas para heurística
       const visitCount = parseInt(localStorage.getItem('vence_visit_count') || '0') + 1
       localStorage.setItem('vence_visit_count', visitCount.toString())
-      // Visita registrada silenciosamente
 
       const supabase = this.getSupabase()
       const { data: { user } } = await supabase.auth.getUser()
@@ -388,7 +445,6 @@ class PWATracker {
         .select()
 
       if (error) {
-        // Si la tabla no existe, solo hacer log silencioso
         const errorMsg = error.message || error.code || JSON.stringify(error)
         if (errorMsg.includes('relation') && errorMsg.includes('does not exist')) {
           console.log('📱 PWA tracking tables not created yet (optional feature)')
@@ -402,7 +458,7 @@ class PWATracker {
       } else {
         this.sessionId = data[0]?.id
         console.log(`📱 PWA session started: ${this.pwaInfo.isStandalone ? 'PWA' : 'Web'} mode`)
-        
+
         // Trackear inicio de sesión como evento
         await this.trackPWAEvent('session_started', {
           sessionId: this.sessionId,
@@ -416,13 +472,13 @@ class PWATracker {
   }
 
   // Finalizar sesión PWA
-  async endSession() {
+  async endSession(): Promise<void> {
     if (!this.sessionId || !this.sessionStartTime) return
 
     try {
       const supabase = this.getSupabase()
       const sessionEnd = new Date()
-      const durationMinutes = Math.round((sessionEnd - this.sessionStartTime) / 60000)
+      const durationMinutes = Math.round((sessionEnd.getTime() - this.sessionStartTime.getTime()) / 60000)
 
       const { error } = await supabase
         .from('pwa_sessions')
@@ -435,7 +491,6 @@ class PWATracker {
         .eq('id', this.sessionId)
 
       if (error) {
-        // Si la tabla no existe, solo hacer log silencioso
         const errorMsg = error.message || error.code || JSON.stringify(error)
         if (errorMsg.includes('relation') && errorMsg.includes('does not exist')) {
           console.log('📱 PWA tracking tables not created yet (optional feature)')
@@ -453,16 +508,16 @@ class PWATracker {
       this.sessionStartTime = null
       this.pageVisitCount = 0
       this.actionCount = 0
-      
+
     } catch (error) {
       console.error('Error in endSession:', error)
     }
   }
 
   // Incrementar contador de acciones
-  trackAction(actionType = 'user_interaction') {
+  trackAction(actionType: string = 'user_interaction'): void {
     this.actionCount++
-    
+
     // Trackear acciones importantes como eventos
     if (['test_started', 'question_answered', 'test_completed'].includes(actionType)) {
       this.trackPWAEvent('user_action', {
@@ -474,7 +529,7 @@ class PWATracker {
   }
 
   // Detectar navegador
-  getBrowserName() {
+  getBrowserName(): string {
     const ua = navigator.userAgent
     if (ua.includes('Chrome') && !ua.includes('Edg')) return 'Chrome'
     if (ua.includes('Firefox')) return 'Firefox'
@@ -484,46 +539,46 @@ class PWATracker {
   }
 
   // Detectar versión del navegador
-  getBrowserVersion() {
+  getBrowserVersion(): string {
     const ua = navigator.userAgent
     const match = ua.match(/(Chrome|Firefox|Safari|Edge)\/([0-9.]+)/)
     return match ? match[2] : 'Unknown'
   }
 
   // Obtener información actual de PWA
-  getCurrentPWAInfo() {
+  getCurrentPWAInfo(): CurrentPWAInfo {
     return {
       isStandalone: this.pwaInfo.isStandalone,
       displayMode: this.pwaInfo.displayMode,
       sessionActive: !!this.sessionId,
-      sessionDuration: this.sessionStartTime ? Math.round((Date.now() - this.sessionStartTime) / 60000) : 0,
+      sessionDuration: this.sessionStartTime ? Math.round((Date.now() - this.sessionStartTime.getTime()) / 60000) : 0,
       pageVisits: this.pageVisitCount,
       actions: this.actionCount
     }
   }
 
   // Métodos específicos para eventos comunes
-  async trackInstallPromptShown() {
+  async trackInstallPromptShown(): Promise<void> {
     await this.trackPWAEvent('install_prompt_shown')
   }
 
-  async trackPWAInstalled() {
+  async trackPWAInstalled(): Promise<void> {
     await this.trackPWAEvent('pwa_installed')
   }
 
-  async trackPWALaunched() {
+  async trackPWALaunched(): Promise<void> {
     await this.trackPWAEvent('pwa_launched_standalone')
   }
 
-  async trackTestStarted() {
+  async trackTestStarted(): Promise<void> {
     this.trackAction('test_started')
   }
 
-  async trackQuestionAnswered() {
+  async trackQuestionAnswered(): Promise<void> {
     this.trackAction('question_answered')
   }
 
-  async trackTestCompleted() {
+  async trackTestCompleted(): Promise<void> {
     this.trackAction('test_completed')
   }
 }
