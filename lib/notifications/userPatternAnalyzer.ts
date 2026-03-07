@@ -3,8 +3,101 @@
 
 import { getSupabaseClient } from '../supabase'
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SupabaseClientAny = any
+
+interface SessionRecord {
+  created_at: string
+  duration?: number
+  score?: number
+}
+
+interface AnswerRecord {
+  question_id: string
+  is_correct: boolean
+  response_time: number | null
+  confidence_level: number | null
+  topic: string | null
+  created_at: string
+}
+
+interface TimePatterns {
+  preferredHours: number[]
+  activeDays: number[]
+  studyPattern: string
+  avgSessionDuration: number
+  totalSessions: number
+  peakHour: number
+  consistency: number
+}
+
+interface StreakPatterns {
+  currentStreak: number
+  maxStreak: number
+  avgBreakLength?: number
+  avgStreakLength?: number
+  streakStability: string
+  riskOfBreaking?: string
+}
+
+interface PerformancePatterns {
+  accuracy: number
+  avgResponseTime: number
+  totalAnswers: number
+  weakAreas: string[]
+  strongAreas: string[]
+  improvementTrend: string
+  confidenceLevel: string
+}
+
+interface RiskAssessment {
+  level: string
+  score: number
+  factors: string[]
+  daysSinceLastSession?: number
+}
+
+interface MessagePreferences {
+  urgency: string
+  tone: string
+  frequency: string
+  context?: string
+}
+
+interface MotivationProfile {
+  type: string
+  preferences: MessagePreferences
+  bestTimeForNotifications: number
+  responseToUrgency?: string
+}
+
+interface UserPatterns {
+  timePatterns: TimePatterns
+  streakPatterns: StreakPatterns
+  performancePatterns: PerformancePatterns
+  riskAssessment: RiskAssessment
+  motivationProfile: MotivationProfile
+  lastAnalyzed?: string
+}
+
+interface CacheEntry {
+  data: UserPatterns
+  timestamp: number
+}
+
+interface TopicPerformanceEntry {
+  correct: number
+  total: number
+  avgTime: number
+}
+
 export class UserPatternAnalyzer {
-  constructor(userId) {
+  private userId: string
+  private analysisCache: Map<string, CacheEntry>
+  private cacheTimeout: number
+  private supabase: SupabaseClientAny
+
+  constructor(userId: string) {
     this.userId = userId
     this.analysisCache = new Map()
     this.cacheTimeout = 30 * 60 * 1000 // 30 minutos
@@ -12,10 +105,10 @@ export class UserPatternAnalyzer {
   }
 
   // Análisis completo de patrones del usuario
-  async analyzeUserPatterns() {
+  async analyzeUserPatterns(): Promise<UserPatterns> {
     const cacheKey = `patterns_${this.userId}`
     const cached = this.analysisCache.get(cacheKey)
-    
+
     if (cached && Date.now() - cached.timestamp < this.cacheTimeout) {
       return cached.data
     }
@@ -35,7 +128,7 @@ export class UserPatternAnalyzer {
         this.buildMotivationProfile()
       ])
 
-      const patterns = {
+      const patterns: UserPatterns = {
         timePatterns,
         streakPatterns,
         performancePatterns,
@@ -61,7 +154,7 @@ export class UserPatternAnalyzer {
   }
 
   // Analizar patrones temporales
-  async analyzeTimePatterns() {
+  async analyzeTimePatterns(): Promise<TimePatterns> {
     const { data: sessions } = await this.supabase
       .from('test_sessions')
       .select('created_at, duration')
@@ -74,11 +167,11 @@ export class UserPatternAnalyzer {
     }
 
     // Analizar horarios preferidos
-    const hourCounts = {}
-    const dayCounts = {}
-    const weekdayPatterns = Array(7).fill(0)
-    
-    sessions.forEach(session => {
+    const hourCounts: Record<number, number> = {}
+    const dayCounts: Record<number, number> = {}
+    const weekdayPatterns = Array(7).fill(0) as number[]
+
+    sessions.forEach((session: SessionRecord) => {
       const date = new Date(session.created_at)
       const hour = date.getHours()
       const day = date.getDate()
@@ -91,26 +184,26 @@ export class UserPatternAnalyzer {
 
     // Encontrar horas pico
     const preferredHours = Object.entries(hourCounts)
-      .sort(([,a], [,b]) => b - a)
+      .sort(([, a], [, b]) => (b as number) - (a as number))
       .slice(0, 3)
       .map(([hour]) => parseInt(hour))
       .sort((a, b) => a - b)
 
     // Encontrar días más activos
     const activeDays = weekdayPatterns
-      .map((count, index) => ({ day: index, count }))
+      .map((count: number, index: number) => ({ day: index, count }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 5)
       .map(item => item.day)
       .sort()
 
     // Determinar patrón de estudio
-    const morningCount = sessions.filter(s => new Date(s.created_at).getHours() < 12).length
-    const afternoonCount = sessions.filter(s => {
+    const morningCount = sessions.filter((s: SessionRecord) => new Date(s.created_at).getHours() < 12).length
+    const afternoonCount = sessions.filter((s: SessionRecord) => {
       const hour = new Date(s.created_at).getHours()
       return hour >= 12 && hour < 18
     }).length
-    const eveningCount = sessions.filter(s => new Date(s.created_at).getHours() >= 18).length
+    const eveningCount = sessions.filter((s: SessionRecord) => new Date(s.created_at).getHours() >= 18).length
 
     let studyPattern = 'mixed'
     if (morningCount > afternoonCount && morningCount > eveningCount) {
@@ -122,7 +215,7 @@ export class UserPatternAnalyzer {
     }
 
     // Calcular duración promedio
-    const avgDuration = sessions.reduce((sum, s) => sum + (s.duration || 15), 0) / sessions.length
+    const avgDuration = sessions.reduce((sum: number, s: SessionRecord) => sum + (s.duration || 15), 0) / sessions.length
 
     return {
       preferredHours,
@@ -131,37 +224,37 @@ export class UserPatternAnalyzer {
       avgSessionDuration: Math.round(avgDuration),
       totalSessions: sessions.length,
       peakHour: preferredHours[0] || 9,
-      consistency: this.calculateConsistency(sessions)
+      consistency: this.calculateConsistency(sessions as SessionRecord[])
     }
   }
 
   // Analizar patrones de racha
-  async analyzeStreakPatterns() {
+  async analyzeStreakPatterns(): Promise<StreakPatterns> {
     const { data: sessions } = await this.supabase
       .from('test_sessions')
       .select('created_at, score')
       .eq('user_id', this.userId)
       .order('created_at', { ascending: false })
-.limit(500)
+      .limit(500)
 
     if (!sessions || sessions.length === 0) {
       return { currentStreak: 0, maxStreak: 0, avgBreakLength: 0, streakStability: 'unknown' }
     }
 
-    const streaks = this.calculateStreaks(sessions)
-    const currentStreak = this.calculateCurrentStreak(sessions)
+    const streaks = this.calculateStreaks(sessions as SessionRecord[])
+    const currentStreak = this.calculateCurrentStreak(sessions as SessionRecord[])
 
     return {
       currentStreak,
       maxStreak: Math.max(...streaks, 0),
       avgStreakLength: streaks.length ? streaks.reduce((a, b) => a + b) / streaks.length : 0,
       streakStability: this.assessStreakStability(streaks),
-      riskOfBreaking: this.assessStreakRisk(currentStreak, sessions)
+      riskOfBreaking: this.assessStreakRisk(currentStreak, sessions as SessionRecord[])
     }
   }
 
   // Analizar patrones de rendimiento
-  async analyzePerformancePatterns() {
+  async analyzePerformancePatterns(): Promise<PerformancePatterns> {
     const { data: answers } = await this.supabase
       .from('detailed_answers')
       .select('question_id, is_correct, response_time, confidence_level, topic, created_at')
@@ -174,13 +267,13 @@ export class UserPatternAnalyzer {
     }
 
     // Calcular métricas de rendimiento
-    const correctAnswers = answers.filter(a => a.is_correct).length
+    const correctAnswers = answers.filter((a: AnswerRecord) => a.is_correct).length
     const accuracy = (correctAnswers / answers.length) * 100
-    const avgResponseTime = answers.reduce((sum, a) => sum + (a.response_time || 30), 0) / answers.length
+    const avgResponseTime = answers.reduce((sum: number, a: AnswerRecord) => sum + (a.response_time || 30), 0) / answers.length
 
     // Analizar por temas
-    const topicPerformance = {}
-    answers.forEach(answer => {
+    const topicPerformance: Record<string, TopicPerformanceEntry> = {}
+    answers.forEach((answer: AnswerRecord) => {
       const topic = answer.topic || 'general'
       if (!topicPerformance[topic]) {
         topicPerformance[topic] = { correct: 0, total: 0, avgTime: 0 }
@@ -214,13 +307,13 @@ export class UserPatternAnalyzer {
       totalAnswers: answers.length,
       weakAreas: weakAreas.map(a => a.topic),
       strongAreas: strongAreas.map(a => a.topic),
-      improvementTrend: this.calculateImprovementTrend(answers),
-      confidenceLevel: this.calculateAvgConfidence(answers)
+      improvementTrend: this.calculateImprovementTrend(answers as AnswerRecord[]),
+      confidenceLevel: this.calculateAvgConfidence(answers as AnswerRecord[])
     }
   }
 
   // Evaluar nivel de riesgo de abandono
-  async assessRiskLevel() {
+  async assessRiskLevel(): Promise<RiskAssessment> {
     const now = new Date()
     const { data: lastSession } = await this.supabase
       .from('test_sessions')
@@ -235,11 +328,11 @@ export class UserPatternAnalyzer {
     }
 
     const daysSinceLastSession = Math.floor(
-      (now - new Date(lastSession.created_at)) / (1000 * 60 * 60 * 24)
+      (now.getTime() - new Date(lastSession.created_at).getTime()) / (1000 * 60 * 60 * 24)
     )
 
     let riskScore = 0
-    const riskFactors = []
+    const riskFactors: string[] = []
 
     // Factor: días sin actividad
     if (daysSinceLastSession >= 7) {
@@ -262,7 +355,7 @@ export class UserPatternAnalyzer {
       .limit(5)
 
     if (recentSessions && recentSessions.length > 0) {
-      const avgRecentScore = recentSessions.reduce((sum, s) => sum + (s.score || 0), 0) / recentSessions.length
+      const avgRecentScore = recentSessions.reduce((sum: number, s: SessionRecord) => sum + (s.score || 0), 0) / recentSessions.length
       if (avgRecentScore < 50) {
         riskScore += 2
         riskFactors.push('low_performance')
@@ -291,7 +384,7 @@ export class UserPatternAnalyzer {
   }
 
   // Construir perfil motivacional
-  async buildMotivationProfile() {
+  async buildMotivationProfile(): Promise<MotivationProfile> {
     const patterns = await Promise.all([
       this.analyzeTimePatterns(),
       this.analyzeStreakPatterns(),
@@ -302,7 +395,7 @@ export class UserPatternAnalyzer {
 
     // Determinar tipo motivacional basado en comportamiento
     let motivationType = 'balanced'
-    
+
     if (streakPatterns.currentStreak > 10 && performancePatterns.accuracy > 80) {
       motivationType = 'high_achiever'
     } else if (streakPatterns.currentStreak > 5 && timePatterns.consistency > 0.7) {
@@ -314,7 +407,7 @@ export class UserPatternAnalyzer {
     }
 
     // Determinar preferencias de mensaje
-    const messagePreferences = {
+    const messagePreferences: MessagePreferences = {
       urgency: motivationType === 'needs_support' ? 'high' : 'medium',
       tone: motivationType === 'high_achiever' ? 'achievement' : 'encouraging',
       frequency: motivationType === 'consistent_learner' ? 'regular' : 'adaptive',
@@ -330,27 +423,27 @@ export class UserPatternAnalyzer {
   }
 
   // Métodos de cálculo auxiliares
-  calculateConsistency(sessions) {
+  calculateConsistency(sessions: SessionRecord[]): number {
     if (sessions.length < 3) return 0
 
     const dates = sessions.map(s => new Date(s.created_at).toDateString())
     const uniqueDates = new Set(dates).size
-    const daySpan = Math.max(1, (new Date(sessions[0].created_at) - new Date(sessions[sessions.length - 1].created_at)) / (1000 * 60 * 60 * 24))
-    
+    const daySpan = Math.max(1, (new Date(sessions[0].created_at).getTime() - new Date(sessions[sessions.length - 1].created_at).getTime()) / (1000 * 60 * 60 * 24))
+
     return Math.min(uniqueDates / daySpan, 1)
   }
 
-  calculateStreaks(sessions) {
-    const streaks = []
+  calculateStreaks(sessions: SessionRecord[]): number[] {
+    const streaks: number[] = []
     let currentStreak = 0
-    let lastDate = null
+    let lastDate: string | null = null
 
-    sessions.reverse().forEach(session => {
+    sessions.reverse().forEach((session: SessionRecord) => {
       const sessionDate = new Date(session.created_at).toDateString()
-      
+
       if (lastDate && sessionDate !== lastDate) {
-        const dayDiff = Math.floor((new Date(sessionDate) - new Date(lastDate)) / (1000 * 60 * 60 * 24))
-        
+        const dayDiff = Math.floor((new Date(sessionDate).getTime() - new Date(lastDate).getTime()) / (1000 * 60 * 60 * 24))
+
         if (dayDiff === 1) {
           currentStreak++
         } else {
@@ -360,7 +453,7 @@ export class UserPatternAnalyzer {
       } else if (!lastDate) {
         currentStreak = 1
       }
-      
+
       lastDate = sessionDate
     })
 
@@ -368,19 +461,16 @@ export class UserPatternAnalyzer {
     return streaks
   }
 
-  calculateCurrentStreak(sessions) {
+  calculateCurrentStreak(sessions: SessionRecord[]): number {
     if (!sessions.length) return 0
 
-    const today = new Date().toDateString()
-    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toDateString()
-    
     let streak = 0
-    let checkDate = new Date()
-    
+    const checkDate = new Date()
+
     for (const session of sessions) {
       const sessionDate = new Date(session.created_at).toDateString()
       const targetDate = checkDate.toDateString()
-      
+
       if (sessionDate === targetDate) {
         streak++
         checkDate.setDate(checkDate.getDate() - 1)
@@ -392,57 +482,57 @@ export class UserPatternAnalyzer {
     return streak
   }
 
-  calculateImprovementTrend(answers) {
+  calculateImprovementTrend(answers: AnswerRecord[]): string {
     if (answers.length < 10) return 'insufficient_data'
 
     const first5 = answers.slice(-5).filter(a => a.is_correct).length / 5
     const last5 = answers.slice(0, 5).filter(a => a.is_correct).length / 5
-    
+
     const improvement = last5 - first5
-    
+
     if (improvement > 0.2) return 'improving'
     if (improvement < -0.2) return 'declining'
     return 'stable'
   }
 
-  calculateAvgConfidence(answers) {
+  calculateAvgConfidence(answers: AnswerRecord[]): string {
     const confidenceAnswers = answers.filter(a => a.confidence_level !== null)
     if (confidenceAnswers.length === 0) return 'unknown'
-    
-    const avgConfidence = confidenceAnswers.reduce((sum, a) => sum + a.confidence_level, 0) / confidenceAnswers.length
-    
+
+    const avgConfidence = confidenceAnswers.reduce((sum, a) => sum + (a.confidence_level || 0), 0) / confidenceAnswers.length
+
     if (avgConfidence >= 4) return 'high'
     if (avgConfidence >= 3) return 'medium'
     return 'low'
   }
 
-  assessStreakStability(streaks) {
+  assessStreakStability(streaks: number[]): string {
     if (streaks.length < 3) return 'unknown'
-    
+
     const variance = this.calculateVariance(streaks)
     const mean = streaks.reduce((a, b) => a + b) / streaks.length
-    
+
     const stabilityRatio = variance / (mean || 1)
-    
+
     if (stabilityRatio < 0.5) return 'very_stable'
     if (stabilityRatio < 1) return 'stable'
     if (stabilityRatio < 2) return 'moderate'
     return 'unstable'
   }
 
-  assessStreakRisk(currentStreak, sessions) {
+  assessStreakRisk(currentStreak: number, sessions: SessionRecord[]): string {
     if (currentStreak === 0) return 'no_risk'
     if (currentStreak < 3) return 'low_risk'
-    
+
     const lastSessionTime = new Date(sessions[0]?.created_at || Date.now())
-    const hoursSinceLastSession = (Date.now() - lastSessionTime) / (1000 * 60 * 60)
-    
+    const hoursSinceLastSession = (Date.now() - lastSessionTime.getTime()) / (1000 * 60 * 60)
+
     if (hoursSinceLastSession > 48) return 'high_risk'
     if (hoursSinceLastSession > 24) return 'medium_risk'
     return 'low_risk'
   }
 
-  assessUrgencyResponse(streakPatterns, performancePatterns) {
+  assessUrgencyResponse(streakPatterns: StreakPatterns, performancePatterns: PerformancePatterns): string {
     if (streakPatterns.currentStreak > 10 && performancePatterns.accuracy > 80) {
       return 'responds_well_to_achievement'
     }
@@ -452,13 +542,13 @@ export class UserPatternAnalyzer {
     return 'responds_to_standard_motivation'
   }
 
-  calculateVariance(numbers) {
+  calculateVariance(numbers: number[]): number {
     const mean = numbers.reduce((a, b) => a + b) / numbers.length
     return numbers.reduce((sum, num) => sum + Math.pow(num - mean, 2), 0) / numbers.length
   }
 
   // Guardar patrones en base de datos
-  async savePatternsToDB(patterns) {
+  async savePatternsToDB(patterns: UserPatterns): Promise<void> {
     try {
       await this.supabase
         .from('user_activity_patterns')
@@ -488,7 +578,7 @@ export class UserPatternAnalyzer {
   }
 
   // Patrones por defecto
-  getDefaultPatterns() {
+  getDefaultPatterns(): UserPatterns {
     return {
       timePatterns: this.getDefaultTimePatterns(),
       streakPatterns: { currentStreak: 0, maxStreak: 0, avgBreakLength: 0, streakStability: 'unknown' },
@@ -502,7 +592,7 @@ export class UserPatternAnalyzer {
     }
   }
 
-  getDefaultTimePatterns() {
+  getDefaultTimePatterns(): TimePatterns {
     return {
       preferredHours: [9, 14, 20],
       activeDays: [1, 2, 3, 4, 5],
@@ -514,7 +604,7 @@ export class UserPatternAnalyzer {
     }
   }
 
-  getDefaultPerformancePatterns() {
+  getDefaultPerformancePatterns(): PerformancePatterns {
     return {
       accuracy: 0,
       avgResponseTime: 30,

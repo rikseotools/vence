@@ -3,13 +3,30 @@
  * Extraídas de /app/api/verify-articles/route.js para testing
  */
 
+interface CompareResult {
+  match: boolean
+  similarity: number
+}
+
+interface ExtractedArticle {
+  article_number: string
+  title: string | null
+  content: string
+}
+
+interface ParsedArticle {
+  base: number
+  suffix: number
+  subnum: number
+}
+
 /**
  * Convierte texto de número español a dígito
  * Soporta desde "primero" hasta "trescientos y pico"
  * También soporta sufijos: "bis", "ter", "quater", etc.
  * Ej: "primero" -> "1", "ciento ochenta y siete bis" -> "187 bis"
  */
-function spanishTextToNumber(text) {
+export function spanishTextToNumber(text: string | null | undefined): string | null {
   if (!text) return null
 
   // Eliminar punto final antes de procesar
@@ -17,47 +34,47 @@ function spanishTextToNumber(text) {
 
   // Separar posible sufijo (bis, ter, etc.)
   const suffixMatch = text.match(/^(.+?)\s+(bis|ter|quater|quinquies|sexies|septies)\.?$/i)
-  let mainText = suffixMatch ? suffixMatch[1].trim() : text.trim()
+  const mainText = suffixMatch ? suffixMatch[1].trim() : text.trim()
   const suffix = suffixMatch ? suffixMatch[2].toLowerCase() : ''
 
   const normalized = mainText.toLowerCase().trim()
 
   // Mapas base
-  const ordinals = {
+  const ordinals: Record<string, number> = {
     'primero': 1, 'segundo': 2, 'tercero': 3, 'cuarto': 4, 'quinto': 5,
     'sexto': 6, 'séptimo': 7, 'septimo': 7, 'octavo': 8, 'noveno': 9
   }
 
-  const units = {
+  const units: Record<string, number> = {
     'uno': 1, 'una': 1, 'dos': 2, 'tres': 3, 'cuatro': 4, 'cinco': 5,
     'seis': 6, 'siete': 7, 'ocho': 8, 'nueve': 9
   }
 
-  const teens = {
+  const teens: Record<string, number> = {
     'diez': 10, 'once': 11, 'doce': 12, 'trece': 13, 'catorce': 14,
     'quince': 15, 'dieciséis': 16, 'dieciseis': 16, 'diecisiete': 17,
     'dieciocho': 18, 'diecinueve': 19
   }
 
-  const twenties = {
+  const twenties: Record<string, number> = {
     'veinte': 20, 'veintiuno': 21, 'veintiuna': 21, 'veintidós': 22, 'veintidos': 22,
     'veintitrés': 23, 'veintitres': 23, 'veinticuatro': 24, 'veinticinco': 25,
     'veintiséis': 26, 'veintiseis': 26, 'veintisiete': 27, 'veintiocho': 28,
     'veintinueve': 29
   }
 
-  const tens = {
+  const tens: Record<string, number> = {
     'treinta': 30, 'cuarenta': 40, 'cincuenta': 50, 'sesenta': 60,
     'setenta': 70, 'ochenta': 80, 'noventa': 90
   }
 
-  const hundreds = {
+  const hundreds: Record<string, number> = {
     'cien': 100, 'ciento': 100, 'doscientos': 200, 'doscientas': 200,
     'trescientos': 300, 'trescientas': 300
   }
 
   // Función auxiliar para convertir la parte numérica
-  function convertPart(str) {
+  function convertPart(str: string): number | null {
     str = str.toLowerCase().trim()
 
     // Ordinales (primero, segundo, etc.)
@@ -116,7 +133,7 @@ function spanishTextToNumber(text) {
  * Normaliza número de artículo para comparación
  * Ej: "55bis" → "55 bis", "4 BIS" → "4 bis", "22 quáter" → "22 quater", "216 bis 2" → "216 bis 2"
  */
-function normalizeArticleNumber(num) {
+export function normalizeArticleNumber(num: string | null | undefined): string {
   if (!num) return ''
   return num
     .toLowerCase()
@@ -129,7 +146,7 @@ function normalizeArticleNumber(num) {
 /**
  * Normaliza texto para comparación
  */
-function normalizeText(text) {
+export function normalizeText(text: string | null | undefined): string {
   if (!text) return ''
   return text
     .toLowerCase()
@@ -144,7 +161,7 @@ function normalizeText(text) {
  * Compara dos textos de contenido y determina si son similares
  * Usa un umbral de similitud para permitir pequeñas diferencias
  */
-function compareContent(boeContent, dbContent) {
+export function compareContent(boeContent: string, dbContent: string): CompareResult {
   const boeNorm = normalizeText(boeContent)
   const dbNorm = normalizeText(dbContent)
 
@@ -177,8 +194,8 @@ function compareContent(boeContent, dbContent) {
 /**
  * Extrae los artículos del HTML del BOE (título Y contenido)
  */
-function extractArticlesFromBOE(html) {
-  const articles = []
+export function extractArticlesFromBOE(html: string): ExtractedArticle[] {
+  const articles: ExtractedArticle[] = []
 
   const articleBlockRegex = /<div[^>]*class="bloque"[^>]*id="(?:a|art)[^"]*"[^>]*>([\s\S]*?)(?=<div[^>]*class="bloque"|$)/gi
 
@@ -186,7 +203,7 @@ function extractArticlesFromBOE(html) {
   while ((match = articleBlockRegex.exec(html)) !== null) {
     const blockContent = match[1]
 
-    let articleNumber = null
+    let articleNumber: string | null = null
     let title = ''
 
     // Formato numérico: "Artículo 1.", "Art. 1.", "Artículo 4 bis.", etc.
@@ -219,7 +236,7 @@ function extractArticlesFromBOE(html) {
     }
 
     // Extraer contenido
-    let content = blockContent
+    const content = blockContent
       .replace(/<h5[^>]*class="articulo"[^>]*>[\s\S]*?<\/h5>/gi, '')
       .replace(/<p[^>]*class="bloque"[^>]*>.*?<\/p>/gi, '')
       .replace(/<p[^>]*class="nota_pie"[^>]*>[\s\S]*?<\/p>/gi, '')
@@ -249,16 +266,16 @@ function extractArticlesFromBOE(html) {
   }
 
   // Ordenar por número de artículo
-  const suffixOrder = { '': 0, 'bis': 1, 'ter': 2, 'quater': 3, 'quinquies': 4, 'sexies': 5, 'septies': 6, 'octies': 7, 'nonies': 8, 'decies': 9 }
+  const suffixOrder: Record<string, number> = { '': 0, 'bis': 1, 'ter': 2, 'quater': 3, 'quinquies': 4, 'sexies': 5, 'septies': 6, 'octies': 7, 'nonies': 8, 'decies': 9 }
   articles.sort((a, b) => {
-    const parseArticle = (num) => {
-      const normalized = num.replace(/quáter/gi, 'quater')
-      const match = normalized.match(/^(\d+)(?:\s+([a-z]+))?(?:\s+(\d+))?$/i)
-      if (!match) return { base: 0, suffix: 0, subnum: 0 }
+    const parseArticle = (num: string): ParsedArticle => {
+      const norm = num.replace(/quáter/gi, 'quater')
+      const m = norm.match(/^(\d+)(?:\s+([a-z]+))?(?:\s+(\d+))?$/i)
+      if (!m) return { base: 0, suffix: 0, subnum: 0 }
       return {
-        base: parseInt(match[1]) || 0,
-        suffix: suffixOrder[match[2]?.toLowerCase() || ''] || 0,
-        subnum: parseInt(match[3]) || 0
+        base: parseInt(m[1]) || 0,
+        suffix: suffixOrder[m[2]?.toLowerCase() || ''] || 0,
+        subnum: parseInt(m[3]) || 0
       }
     }
     const parsedA = parseArticle(a.article_number)
@@ -269,12 +286,4 @@ function extractArticlesFromBOE(html) {
   })
 
   return articles
-}
-
-module.exports = {
-  spanishTextToNumber,
-  normalizeArticleNumber,
-  normalizeText,
-  compareContent,
-  extractArticlesFromBOE
 }

@@ -1,27 +1,139 @@
-// lib/procedimientoAdministrativoSSR.js
+// lib/procedimientoAdministrativoSSR.ts
 // Funciones para SSR del Procedimiento Administrativo
 
 import { createClient } from '@supabase/supabase-js'
-import { 
-  PROCEDIMIENTO_MAPPING, 
-  getSectionMapping, 
-  getSectionArticles, 
+import {
+  getSectionMapping,
   getSectionStats,
-  getProcedimientoLaws 
+  getProcedimientoLaws
 } from './procedimientoAdministrativoMapping'
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SupabaseClientAny = any
+
+interface LawInfo {
+  short_name: string
+  name: string
+}
+
+interface ContentScopeLawMapping {
+  description: string
+  articles: string[]
+}
+
+interface ContentScopeMapping {
+  laws: Record<string, ContentScopeLawMapping>
+}
+
+interface TransformedSection {
+  id: string
+  section_number: number | null
+  name: string
+  description: string | null
+  slug: string
+  icon: string | null
+  articlesCount: number
+  lawsCount: number
+  hasMapping: boolean
+}
+
+interface ProcedimientoStats {
+  totalSections: number
+  totalQuestions: number
+  totalArticles: number
+  lawsUsed?: LawInfo[]
+}
+
+interface ProcedimientoData {
+  sections: TransformedSection[]
+  stats: ProcedimientoStats
+}
+
+interface SectionCollection {
+  name: string
+  slug: string
+}
+
+interface SectionConfig {
+  name: string
+  description: string | null
+  slug: string
+  section_number: number | null
+  icon: string | null
+  collection: SectionCollection
+  mapping: ContentScopeMapping | { name: string; description: string; laws: Record<string, { articles: string[]; description: string }> } | null
+  articles: string[]
+  hasMapping: boolean
+  usingContentScope: boolean
+}
+
+interface SectionStats {
+  questionsCount: number
+  articlesCount: number
+  lawsCount: number
+}
+
+interface SectionData {
+  config: SectionConfig
+  stats: SectionStats
+}
+
+interface QuestionLoadOptions {
+  limit?: number
+  offset?: number
+  onlyOfficial?: boolean
+}
+
+interface LoadedQuestion {
+  id: string
+  question_text: string
+  option_a: string
+  option_b: string
+  option_c: string
+  option_d: string
+  correct_option: number
+  explanation: string | null
+  difficulty_level: string | null
+  is_official: boolean
+  created_at: string
+  articles: Record<string, unknown>
+}
+
+interface QuestionsResult {
+  questions: LoadedQuestion[]
+  error: string | null
+  totalFound?: number
+  mapping?: ReturnType<typeof getSectionMapping>
+}
+
+interface SectionMetadata {
+  title: string
+  description: string
+  keywords: string
+  openGraph: {
+    title: string
+    description: string
+    type: string
+  }
+  twitter: {
+    card: string
+    title: string
+    description: string
+  }
+}
+
 // Cliente de Supabase para uso en servidor (usando service role key)
-function getServerSupabaseClient() {
+function getServerSupabaseClient(): SupabaseClientAny {
   return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 }
 
 // Cargar datos del Procedimiento Administrativo para SSR
-export async function loadProcedimientoAdministrativoData() {
+export async function loadProcedimientoAdministrativoData(): Promise<ProcedimientoData> {
   const supabase = getServerSupabaseClient()
-  
+
   try {
     // Obtener la colección de Procedimiento Administrativo
     const { data: collectionData, error: collectionError } = await supabase
@@ -55,17 +167,17 @@ export async function loadProcedimientoAdministrativoData() {
     }
 
     // Transformar datos para la interfaz, enriqueciendo con mapeo real
-    const transformedSections = sectionsData.map(section => {
-      const mapping = getSectionMapping(section.slug)
-      const sectionStats = getSectionStats(section.slug)
-      
+    const transformedSections: TransformedSection[] = sectionsData.map((section: Record<string, unknown>) => {
+      const mapping = getSectionMapping(section.slug as string)
+      const sectionStats = getSectionStats(section.slug as string)
+
       return {
-        id: section.id,
-        section_number: section.section_number,
-        name: section.name,
-        description: section.description,
-        slug: section.slug,
-        icon: section.icon,
+        id: section.id as string,
+        section_number: section.section_number as number | null,
+        name: section.name as string,
+        description: section.description as string | null,
+        slug: section.slug as string,
+        icon: section.icon as string | null,
         // Añadir estadísticas reales
         articlesCount: sectionStats.articlesCount,
         lawsCount: sectionStats.lawsCount,
@@ -76,12 +188,12 @@ export async function loadProcedimientoAdministrativoData() {
     // Calcular estadísticas reales basadas en el mapeo
     const totalArticles = transformedSections.reduce((total, section) => total + section.articlesCount, 0)
     const procedimientoLaws = getProcedimientoLaws()
-    
+
     // Obtener count real de preguntas relacionadas con procedimiento administrativo
     let totalQuestions = 0
-    
+
     // Obtener información de las leyes utilizadas en content_scope
-    let lawsUsed = []
+    let lawsUsed: LawInfo[] = []
     try {
       const { data: contentScopes } = await supabase
         .from('content_scope')
@@ -92,21 +204,22 @@ export async function loadProcedimientoAdministrativoData() {
             name
           )
         `)
-        .in('section_id', sectionsData.map(s => s.id))
-      
+        .in('section_id', sectionsData.map((s: Record<string, unknown>) => s.id))
+
       if (contentScopes) {
         // Obtener leyes únicas
-        const uniqueLaws = contentScopes.reduce((acc, scope) => {
-          if (!acc.find(l => l.short_name === scope.laws.short_name)) {
+        const uniqueLaws = contentScopes.reduce((acc: LawInfo[], scope: Record<string, unknown>) => {
+          const laws = scope.laws as LawInfo
+          if (!acc.find((l: LawInfo) => l.short_name === laws.short_name)) {
             acc.push({
-              short_name: scope.laws.short_name,
-              name: scope.laws.name
+              short_name: laws.short_name,
+              name: laws.name
             })
           }
           return acc
-        }, [])
-        
-        lawsUsed = uniqueLaws.sort((a, b) => a.short_name.localeCompare(b.short_name))
+        }, [] as LawInfo[])
+
+        lawsUsed = uniqueLaws.sort((a: LawInfo, b: LawInfo) => a.short_name.localeCompare(b.short_name))
       }
 
       // Buscar preguntas que mencionen las leyes de procedimiento administrativo
@@ -115,13 +228,13 @@ export async function loadProcedimientoAdministrativoData() {
         .select('id', { count: 'exact', head: true })
         .or('question_text.ilike.%Ley 39/2015%,question_text.ilike.%Ley 40/2015%,question_text.ilike.%procedimiento administrativo%,question_text.ilike.%acto administrativo%')
         .eq('is_active', true)
-      
+
       totalQuestions = count || 0
     } catch (error) {
-      console.log('⚠️ Error calculando preguntas:', error.message)
+      console.log('⚠️ Error calculando preguntas:', (error as Error).message)
     }
 
-    const stats = {
+    const stats: ProcedimientoStats = {
       totalSections: sectionsData?.length || 0,
       totalQuestions,
       totalArticles,
@@ -143,9 +256,9 @@ export async function loadProcedimientoAdministrativoData() {
 }
 
 // Cargar datos de una sección específica para SSR
-export async function loadProcedimientoSectionData(sectionSlug) {
+export async function loadProcedimientoSectionData(sectionSlug: string): Promise<SectionData | null> {
   const supabase = getServerSupabaseClient()
-  
+
   try {
     // Cargar configuración de la sección desde content_sections
     const { data: sectionData, error: sectionError } = await supabase
@@ -167,14 +280,14 @@ export async function loadProcedimientoSectionData(sectionSlug) {
     }
 
     // Obtener mapeo real desde content_scope en la base de datos
-    let contentScopeMapping = null
+    let contentScopeMapping: ContentScopeMapping | null = null
     let hasContentScope = false
-    
+
     // Cargar content_scope para esta sección
     const { data: contentScopes } = await supabase
       .from('content_scope')
       .select(`
-        law_id, 
+        law_id,
         article_numbers,
         laws!inner (
           short_name,
@@ -189,35 +302,35 @@ export async function loadProcedimientoSectionData(sectionSlug) {
       contentScopeMapping = {
         laws: {}
       }
-      
+
       for (const scope of contentScopes) {
-        const lawKey = scope.laws.short_name
+        const lawKey = scope.laws.short_name as string
         if (!contentScopeMapping.laws[lawKey]) {
           contentScopeMapping.laws[lawKey] = {
-            description: scope.laws.name,
+            description: scope.laws.name as string,
             articles: []
           }
         }
         // Añadir artículos únicos
-        for (const articleNum of scope.article_numbers) {
+        for (const articleNum of scope.article_numbers as string[]) {
           if (!contentScopeMapping.laws[lawKey].articles.includes(articleNum)) {
             contentScopeMapping.laws[lawKey].articles.push(articleNum)
           }
         }
       }
-      
+
       // Ordenar artículos numéricamente
       for (const lawKey in contentScopeMapping.laws) {
-        contentScopeMapping.laws[lawKey].articles.sort((a, b) => parseInt(a) - parseInt(b))
+        contentScopeMapping.laws[lawKey].articles.sort((a: string, b: string) => parseInt(a) - parseInt(b))
       }
     }
-    
+
     // Fallback al mapeo estático si no hay content_scope
     const fallbackMapping = getSectionMapping(sectionSlug)
     const finalMapping = contentScopeMapping || fallbackMapping
-    
+
     // Configurar datos de la sección con mapeo real
-    const config = {
+    const config: SectionConfig = {
       name: sectionData.name,
       description: sectionData.description,
       slug: sectionData.slug,
@@ -229,20 +342,20 @@ export async function loadProcedimientoSectionData(sectionSlug) {
       },
       // Añadir información del mapeo
       mapping: finalMapping,
-      articles: finalMapping ? Object.values(finalMapping.laws).flatMap(law => law.articles) : [],
+      articles: finalMapping ? Object.values(finalMapping.laws).flatMap((law: { articles: string[] }) => law.articles) : [],
       hasMapping: hasContentScope || !!fallbackMapping,
       usingContentScope: hasContentScope
     }
 
     // Calcular estadísticas reales
     let questionsCount = 0
-    
+
     if (hasContentScope && contentScopes) {
       try {
         // Usar content_scope ya cargado para encontrar preguntas de esta sección
         for (const scope of contentScopes) {
           // Para cada artículo específico en el scope
-          for (const articleNumber of scope.article_numbers) {
+          for (const articleNumber of scope.article_numbers as string[]) {
             // Obtener el ID del artículo específico
             const { data: article } = await supabase
               .from('articles')
@@ -250,7 +363,7 @@ export async function loadProcedimientoSectionData(sectionSlug) {
               .eq('law_id', scope.law_id)
               .eq('article_number', articleNumber)
               .single()
-            
+
             if (article) {
               // Contar preguntas vinculadas a este artículo específico
               const { count } = await supabase
@@ -258,13 +371,13 @@ export async function loadProcedimientoSectionData(sectionSlug) {
                 .select('id', { count: 'exact', head: true })
                 .eq('primary_article_id', article.id)
                 .eq('is_active', true)
-              
+
               questionsCount += count || 0
             }
           }
         }
       } catch (error) {
-        console.log('⚠️ Error calculando preguntas de sección:', error.message)
+        console.log('⚠️ Error calculando preguntas de sección:', (error as Error).message)
       }
     } else if (finalMapping) {
       try {
@@ -274,29 +387,29 @@ export async function loadProcedimientoSectionData(sectionSlug) {
           .select('id', { count: 'exact', head: true })
           .ilike('question_text', '%Ley 39/2015%')
           .eq('is_active', true)
-        
+
         questionsCount = count || 0
       } catch (error) {
-        console.log('⚠️ Error calculando preguntas de sección (fallback):', error.message)
+        console.log('⚠️ Error calculando preguntas de sección (fallback):', (error as Error).message)
       }
     }
 
     // Calcular estadísticas reales basadas en content_scope o fallback
     let articlesCount = 0
     let lawsCount = 0
-    
+
     if (hasContentScope && contentScopeMapping) {
       // Calcular desde content_scope real
       lawsCount = Object.keys(contentScopeMapping.laws).length
-      articlesCount = Object.values(contentScopeMapping.laws).reduce((total, law) => total + law.articles.length, 0)
+      articlesCount = Object.values(contentScopeMapping.laws).reduce((total: number, law: ContentScopeLawMapping) => total + law.articles.length, 0)
     } else {
       // Usar estadísticas del mapeo estático como fallback
-      const sectionStats = getSectionStats(sectionSlug)
-      articlesCount = sectionStats.articlesCount
-      lawsCount = sectionStats.lawsCount
+      const sectionStatsData = getSectionStats(sectionSlug)
+      articlesCount = sectionStatsData.articlesCount
+      lawsCount = sectionStatsData.lawsCount
     }
 
-    const stats = {
+    const stats: SectionStats = {
       questionsCount,
       articlesCount,
       lawsCount
@@ -311,27 +424,27 @@ export async function loadProcedimientoSectionData(sectionSlug) {
 }
 
 // Cargar preguntas específicas de una sección
-export async function loadProcedimientoSectionQuestions(sectionSlug, options = {}) {
+export async function loadProcedimientoSectionQuestions(sectionSlug: string, options: QuestionLoadOptions = {}): Promise<QuestionsResult> {
   const supabase = getServerSupabaseClient()
   const mapping = getSectionMapping(sectionSlug)
-  
+
   if (!mapping) {
     return { questions: [], error: 'Sección no encontrada en el mapeo' }
   }
 
   const { limit = 50, offset = 0, onlyOfficial = false } = options
-  
+
   try {
-    let query = supabase
+    const query = supabase
       .from('questions')
       .select(`
-        id, 
-        question_text, 
-        option_a, 
-        option_b, 
-        option_c, 
-        option_d, 
-        correct_option, 
+        id,
+        question_text,
+        option_a,
+        option_b,
+        option_c,
+        option_d,
+        correct_option,
         explanation,
         difficulty_level,
         is_official,
@@ -351,11 +464,11 @@ export async function loadProcedimientoSectionQuestions(sectionSlug, options = {
 
     // Filtrar por las leyes y artículos específicos de la sección
     const lawsInSection = Object.keys(mapping.laws)
-    let filteredQuestions = []
-    
+    let filteredQuestions: LoadedQuestion[] = []
+
     for (const lawShortName of lawsInSection) {
       const articleNumbers = mapping.laws[lawShortName].articles
-      
+
       for (const articleNumber of articleNumbers) {
         const { data, error } = await query
           .eq('articles.laws.short_name', lawShortName)
@@ -367,21 +480,21 @@ export async function loadProcedimientoSectionQuestions(sectionSlug, options = {
         }
 
         if (data && data.length > 0) {
-          filteredQuestions = filteredQuestions.concat(data)
+          filteredQuestions = filteredQuestions.concat(data as LoadedQuestion[])
         }
       }
     }
 
     // Filtrar solo oficiales si se solicita
     if (onlyOfficial) {
-      filteredQuestions = filteredQuestions.filter(q => q.is_official)
+      filteredQuestions = filteredQuestions.filter((q: LoadedQuestion) => q.is_official)
     }
 
     // Limitar resultados finales
     filteredQuestions = filteredQuestions.slice(0, limit)
 
-    return { 
-      questions: filteredQuestions, 
+    return {
+      questions: filteredQuestions,
       error: null,
       totalFound: filteredQuestions.length,
       mapping
@@ -389,13 +502,13 @@ export async function loadProcedimientoSectionQuestions(sectionSlug, options = {
 
   } catch (error) {
     console.error('Error cargando preguntas de sección:', error)
-    return { questions: [], error: error.message }
+    return { questions: [], error: (error as Error).message }
   }
 }
 
 // Función para obtener keywords de búsqueda específicos para cada sección
-function getSectionKeywords(sectionSlug) {
-  const keywords = {
+function getSectionKeywords(sectionSlug: string): string[] {
+  const keywords: Record<string, string[]> = {
     'conceptos-generales': [
       'Ley 39/2015',
       'principios de actuación',
@@ -405,7 +518,7 @@ function getSectionKeywords(sectionSlug) {
     ],
     'el-procedimiento-administrativo': [
       'iniciación del procedimiento',
-      'ordenación del procedimiento', 
+      'ordenación del procedimiento',
       'instrucción del procedimiento',
       'finalización del procedimiento',
       'tramitación'
@@ -454,7 +567,7 @@ function getSectionKeywords(sectionSlug) {
     ],
     'recursos-administrativos': [
       'recurso de alzada',
-      'recurso de reposición', 
+      'recurso de reposición',
       'recurso administrativo',
       'recurso extraordinario',
       'impugnación'
@@ -467,17 +580,17 @@ function getSectionKeywords(sectionSlug) {
       'recurso contencioso'
     ]
   }
-  
+
   return keywords[sectionSlug] || []
 }
 
 // Generar metadata dinámica para secciones
-export function generateProcedimientoSectionMetadata(sectionConfig) {
+export function generateProcedimientoSectionMetadata(sectionConfig: { name: string; description: string | null; slug: string }): SectionMetadata {
   const baseTitle = `Test ${sectionConfig.name} - Procedimiento Administrativo`
   const baseDescription = `${sectionConfig.description}. `
-  
+
   const oposicionesInfo = 'Oposiciones Auxiliar Administrativo, AGE, Técnico Gestión, Administración Local, Justicia.'
-  
+
   return {
     title: baseTitle,
     description: `${baseDescription}${oposicionesInfo}`,
