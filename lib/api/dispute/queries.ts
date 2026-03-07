@@ -1,7 +1,7 @@
 // lib/api/dispute/queries.ts - Queries tipadas para impugnaciones de preguntas
 import { getDb } from '@/db/client'
 import { questionDisputes, questions } from '@/db/schema'
-import { eq, and } from 'drizzle-orm'
+import { eq, and, inArray } from 'drizzle-orm'
 import type { CreateDisputeResponse, DisputeData, GetExistingDisputeResponse, AppealDisputeResponse } from './schemas'
 
 // ============================================
@@ -27,7 +27,8 @@ export async function getExistingDispute(
       .where(
         and(
           eq(questionDisputes.questionId, questionId),
-          eq(questionDisputes.userId, userId)
+          eq(questionDisputes.userId, userId),
+          inArray(questionDisputes.status, ['pending', 'reviewing'])
         )
       )
       .limit(1)
@@ -67,20 +68,21 @@ export async function createDispute(
       return { success: false, error: 'Pregunta no encontrada' }
     }
 
-    // Verificar que el usuario no haya impugnado ya esta pregunta
+    // Verificar que el usuario no tenga una impugnación activa (pending/reviewing)
     const [existing] = await db
       .select({ id: questionDisputes.id })
       .from(questionDisputes)
       .where(
         and(
           eq(questionDisputes.questionId, questionId),
-          eq(questionDisputes.userId, userId)
+          eq(questionDisputes.userId, userId),
+          inArray(questionDisputes.status, ['pending', 'reviewing'])
         )
       )
       .limit(1)
 
     if (existing) {
-      return { success: false, error: 'Ya has impugnado esta pregunta anteriormente' }
+      return { success: false, error: 'Ya tienes una impugnación activa para esta pregunta' }
     }
 
     // Insertar la impugnación
