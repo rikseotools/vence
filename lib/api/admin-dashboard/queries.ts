@@ -68,7 +68,7 @@ async function queryUserStats(dates: ReturnType<typeof getMadridDates>) {
   const [counts] = await db
     .select({
       totalUsers: sql<number>`count(*)::int`,
-      activeUsers: sql<number>`count(*) filter (where ${userProfiles.planType} in ('legacy_free','free','trial','premium'))::int`,
+      activeUsers: sql<number>`(select count(distinct ${tests.userId})::int from ${tests})`,
       newUsersToday: sql<number>`count(*) filter (where ${userProfiles.createdAt} >= ${dates.startOfToday})::int`,
       newUsersYesterday: sql<number>`count(*) filter (where ${userProfiles.createdAt} >= ${dates.startOfYesterday} and ${userProfiles.createdAt} < ${dates.startOfToday})::int`,
       newUsersThisWeek: sql<number>`count(*) filter (where ${userProfiles.createdAt} >= ${dates.thisMonday})::int`,
