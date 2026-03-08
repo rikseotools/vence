@@ -120,7 +120,17 @@ export class SearchDomain implements ChatDomain {
     if (pattern) return true
 
     // Verificar indicadores de búsqueda
-    return searchIndicators.some(regex => regex.test(msg))
+    if (searchIndicators.some(regex => regex.test(msg))) return true
+
+    // Patrones de recomendación de estudio (usan hot_articles)
+    const studyPatterns = [
+      /qu[eé]\s+(ejercicio|tema|ley|materia)s?\s+.*\b(recomend|important|priorit|imprescindible)/i,
+      /\b(recomend|important|priorit|imprescindible).*\b(ejercicio|tema|ley|materia|estudiar|preparar)/i,
+      /qu[eé]\s+(debo|tengo\s+que|hay\s+que)\s+(estudiar|preparar|repasar)/i,
+      /\b(m[aá]s\s+important|lo\s+esencial|lo\s+b[aá]sico).*\b(estudi|prepar|oposici)/i,
+      /por\s+d[oó]nde\s+(empiezo|empezar|inicio)/i,
+    ]
+    return studyPatterns.some(regex => regex.test(msg))
   }
 
   /**
@@ -650,6 +660,12 @@ ${responseGuidelines}
       /art[ií]culos?\s+importantes?\s+.*ex[aá]men/i,
       /qu[eé]\s+(tipo|clase)\s+de\s+preguntas?\s+.*\bcaer?\b/i, // "qué tipo de preguntas suelen caer"
       /preguntas?\s+.*\b(suelen|pueden)\s+caer\b/i,             // "preguntas que suelen caer"
+      // Recomendaciones de estudio (implica analizar exámenes oficiales)
+      /qu[eé]\s+(ejercicio|tema|ley|materia)s?\s+.*\b(recomend|important|priorit|imprescindible)/i,
+      /\b(recomend|important|priorit|imprescindible).*\b(ejercicio|tema|ley|materia|estudiar|preparar)/i,
+      /qu[eé]\s+(debo|tengo\s+que|hay\s+que)\s+(estudiar|preparar|repasar)/i,
+      /\b(m[aá]s\s+important|lo\s+esencial|lo\s+b[aá]sico).*\b(estudi|prepar|oposici)/i,
+      /por\s+d[oó]nde\s+(empiezo|empezar|inicio)/i,
     ]
 
     const isExamQuery = examPatterns.some(p => p.test(message))
