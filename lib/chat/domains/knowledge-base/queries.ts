@@ -294,6 +294,8 @@ export function isPlatformQuery(message: string): boolean {
     /\bprograma\s+(de\s+)?(la\s+)?oposici[oó]n/i,
     /entra.*\b(temario|programa)\b/i,
     /\b(temario|programa)\b.*entra/i,
+    /\bbloque\s+(I{1,3}|IV|V|\d+)\b/i,
+    /\bver\s+(todos\s+)?(los\s+)?temas\b/i,
   ]
   if (temarioPatterns.some(p => p.test(message))) {
     return false
@@ -357,6 +359,8 @@ export function isPlatformQuery(message: string): boolean {
     // Convocatorias
     /convocatoria/i,
     /plazas?\s+(disponible|ofertada|publicada)/i,
+    // Problemas de suscripcion / billing
+    /(ya\s+)?pagu[eé]|he\s+pagado/i,
   ]
 
   return platformIndicators.some(p => p.test(message))

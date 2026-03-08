@@ -210,6 +210,22 @@ export function generateKBSuggestions(category: KBCategory | null): string[] {
 export function getPredefinedResponse(message: string): string | null {
   const msgLower = message.toLowerCase()
 
+  // Problema de suscripcion / ya pagué pero no soy premium
+  if (/(ya\s+)?pagu[eé]|he\s+pagado|hice\s+el\s+pago/i.test(msgLower) && /(no\s+(soy|eres|es)\s+premium|no\s+me\s+(deja|aparece|sale)|suscr[ií]b|no\s+tengo\s+premium|pone\s+free|sigue\s+(free|gratis))/i.test(msgLower)) {
+    return `**Problema con tu suscripcion**
+
+Si has realizado el pago pero no apareces como Premium, puede deberse a un retraso en la activacion.
+
+**Pasos a seguir:**
+1. Cierra sesion y vuelve a entrar
+2. Comprueba en **[tu perfil](/perfil)** si aparece tu suscripcion
+3. Si el problema persiste, contacta con soporte:
+
+📧 **soporte@vence.pro**
+
+Incluye tu email de registro y el comprobante de pago para que podamos resolverlo lo antes posible.`
+  }
+
   // Psicotécnicos - pero NO cuando piden explicación de una pregunta específica
   // Si el usuario está pidiendo que expliquemos una pregunta, no devolver respuesta predefinida
   const isAskingForExplanation = /expl[ií]c(a|ame|ar)|resolver\s+(esta|la)\s+pregunta|c[oó]mo\s+se\s+resuelve|paso\s+a\s+paso|ayud(a|ame)\s+con\s+(esta|la)/i.test(msgLower)

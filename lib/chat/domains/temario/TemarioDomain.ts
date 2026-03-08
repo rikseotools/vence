@@ -46,6 +46,12 @@ const TEMARIO_PATTERNS = [
   // "entra X en el temario" / "X esta en el temario"
   /entra.*\b(temario|programa)\b/i,
   /\b(temario|programa)\b.*entra/i,
+
+  // "bloque I/II/1/2" - referencia a bloques del temario
+  /\bbloque\s+(I{1,3}|IV|V|\d+)\b/i,
+  // "temas del bloque" / "ver los temas"
+  /\btemas\s+del\s+bloque/i,
+  /\bver\s+(todos\s+)?(los\s+)?temas\b/i,
 ]
 
 /** Patrones de temas conceptuales (el usuario pregunta por un concepto y quiere saber en que tema esta) */
@@ -250,13 +256,15 @@ export class TemarioDomain implements ChatDomain {
       return 'specific_topic'
     }
 
-    // "que temas hay", "cuantos temas", "temario completo", "dame el temario"
+    // "que temas hay", "cuantos temas", "temario completo", "dame el temario", "bloque II"
     if (/qu[eé]\s+temas\s+(hay|tiene)/i.test(msg) ||
         /cu[aá]ntos\s+temas/i.test(msg) ||
         /temario\s+(completo|entero)/i.test(msg) ||
         /^temario$/i.test(msg.trim()) ||
         /dame.*temario/i.test(msg) ||
-        /mu[eé]strame.*temario/i.test(msg)) {
+        /mu[eé]strame.*temario/i.test(msg) ||
+        /\bbloque\s+(I{1,3}|IV|V|\d+)\b/i.test(msg) ||
+        /\bver\s+(todos\s+)?(los\s+)?temas\b/i.test(msg)) {
       return 'list_topics'
     }
 
