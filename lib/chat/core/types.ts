@@ -228,6 +228,7 @@ export interface RateLimitInfo {
 export const DOMAIN_PRIORITIES = {
   VERIFICATION: 1,
   KNOWLEDGE_BASE: 2,
+  TEMARIO: 2.5,
   SEARCH: 3,
   STATS: 4,
   FALLBACK: 99,

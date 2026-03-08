@@ -6,6 +6,7 @@ import { getDb } from '@/db/client'
 import { articles, laws } from '@/db/schema'
 import { eq, and, or, ilike, inArray, sql } from 'drizzle-orm'
 import { logger } from '../../shared/logger'
+import { getChatCache, CACHE_KEYS, CACHE_TTL } from '../../shared/cache'
 import type { ArticleMatch, SearchOptions } from '../../core/types'
 
 // Cliente Supabase para RPC functions (match_articles usa pgvector)
@@ -877,6 +878,15 @@ export async function getHotArticlesByOposicion(
 ): Promise<HotArticlesSearchResult> {
   const { lawShortName, limit = 10 } = options
 
+  // Check cache
+  const cache = getChatCache()
+  const cacheKey = CACHE_KEYS.hotArticles(userOposicion, lawShortName)
+  const cached = cache.get<HotArticlesSearchResult>(cacheKey)
+  if (cached) {
+    logger.debug(`Cache hit: hot articles for ${userOposicion}`, { domain: 'search' })
+    return cached
+  }
+
   // Normalizar la oposición del usuario al formato de la BD (con guiones)
   const normalizedOposicion = normalizeOposicionForHotArticles(userOposicion)
 
@@ -922,7 +932,9 @@ export async function getHotArticlesByOposicion(
   if (hotArticles && hotArticles.length > 0) {
     logger.info(`🔥 Found ${hotArticles.length} hot articles for ${normalizedOposicion}`, { domain: 'search' })
     const articles = await enrichHotArticles(hotArticles)
-    return { articles, sourceOposicion: normalizedOposicion, isFromUserOposicion: true }
+    const result = { articles, sourceOposicion: normalizedOposicion, isFromUserOposicion: true }
+    cache.set(cacheKey, result, CACHE_TTL.HOT_ARTICLES)
+    return result
   }
 
   logger.info(`🔥 No hot articles found for ${normalizedOposicion}${lawShortName ? ` in ${lawShortName}` : ''}, trying fallback`, { domain: 'search' })
@@ -939,7 +951,9 @@ export async function getHotArticlesByOposicion(
     if (!fallbackError && fallbackArticles && fallbackArticles.length > 0) {
       logger.info(`🔥 Using fallback data from ${fallbackOposicion}: ${fallbackArticles.length} articles`, { domain: 'search' })
       const articles = await enrichHotArticles(fallbackArticles)
-      return { articles, sourceOposicion: fallbackOposicion, isFromUserOposicion: false }
+      const result = { articles, sourceOposicion: fallbackOposicion, isFromUserOposicion: false }
+      cache.set(cacheKey, result, CACHE_TTL.HOT_ARTICLES)
+      return result
     }
   }
 

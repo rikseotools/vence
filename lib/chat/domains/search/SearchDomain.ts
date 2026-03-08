@@ -16,6 +16,7 @@ import {
 } from './ArticleSearchService'
 import { detectQueryPattern } from './PatternMatcher'
 import { detectLawsFromText, getHotArticlesByOposicion, formatHotArticlesResponse, hasQuestionsForArticle, extractArticleNumbers } from './queries'
+import { isPsychometricSubtype } from '../../shared/constants'
 
 // ============================================
 // DOMINIO DE BÚSQUEDA
@@ -26,21 +27,10 @@ export class SearchDomain implements ChatDomain {
   priority = DOMAIN_PRIORITIES.SEARCH
 
   /**
-   * Subtipos de preguntas psicotécnicas - no deben ir a búsqueda de artículos
-   */
-  private static PSYCHOMETRIC_SUBTYPES = [
-    'bar_chart', 'pie_chart', 'line_chart', 'mixed_chart',
-    'data_tables', 'error_detection',
-    'sequence_numeric', 'sequence_letter', 'sequence_alphanumeric',
-    'word_analysis'
-  ]
-
-  /**
    * Detecta si es una pregunta psicotécnica
    */
   private isPsychometricQuestion(context: ChatContext): boolean {
-    const subtype = context.questionContext?.questionSubtype
-    return subtype ? SearchDomain.PSYCHOMETRIC_SUBTYPES.includes(subtype) : false
+    return isPsychometricSubtype(context.questionContext?.questionSubtype)
   }
 
   /**

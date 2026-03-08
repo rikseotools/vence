@@ -282,6 +282,23 @@ export function isPlatformQuery(message: string): boolean {
     return false
   }
 
+  // Excluir consultas sobre temarios/temas que deben ir a TemarioDomain
+  const temarioPatterns = [
+    /\b(en\s+)?qu[eé]\s+tema\b/i,
+    /\bcu[aá]ntos\s+temas\b/i,
+    /\bd[oó]nde\s+(se\s+)?(estudia|entra|ve|trata|aparece)/i,
+    /^tema\s+/i,
+    /qu[eé]\s+temas\s+(hay|tiene|incluye|cubre)/i,
+    /qu[eé]\s+oposiciones\s+(ten[eé]is|hay|prepar[aá]is)/i,
+    /\bep[ií]grafe/i,
+    /\bprograma\s+(de\s+)?(la\s+)?oposici[oó]n/i,
+    /entra.*\b(temario|programa)\b/i,
+    /\b(temario|programa)\b.*entra/i,
+  ]
+  if (temarioPatterns.some(p => p.test(message))) {
+    return false
+  }
+
   const platformIndicators = [
     /plan(es)?|precio|suscripci[oó]n|premium|free/i,
     /c[oó]mo\s+(funciona|uso|hago)/i,
@@ -293,14 +310,14 @@ export function isPlatformQuery(message: string): boolean {
     // "estadísticas" de la PLATAFORMA (no estadísticas personales)
     /estad[ií]sticas\s+(de\s+la\s+)?(app|plataforma|vence)/i,
     /racha/i,
-    // Cancelación y devoluciones
+    // Cancelacion y devoluciones
     /cancel(ar|aci[oó]n|o)/i,
     /devol(ver|uci[oó]n)/i,
     /reembolso/i,
     /garant[ií]a.*devoluci[oó]n/i,
     /dar(me)?\s+de\s+baja/i,
-    // Temarios
-    /temario(s)?/i,
+    // Temarios (solo consultas genericas sobre la plataforma, no sobre contenido)
+    /temario(s)?\s+(gratis|gratuito|free)/i,
     /contenido\s+(gratis|gratuito)/i,
     /qu[eé]\s+ofrece/i,
     // Test Multi-Ley
