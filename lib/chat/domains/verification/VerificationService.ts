@@ -406,7 +406,7 @@ async function generateVerificationResponse(
   const openai = await getOpenAI()
   const model = isPremium ? CHAT_MODEL_PREMIUM : CHAT_MODEL
 
-  // Construir el contexto de artículos por embedding
+  // Construir el contexto de artículos por embedding - siempre contenido completo
   const articlesContext = articles.length > 0
     ? formatArticlesForContext(articles.map(a => ({
         id: '',
@@ -416,7 +416,7 @@ async function generateVerificationResponse(
         articleNumber: a.articleNumber,
         title: a.title ?? '',
         content: a.content ?? '',
-      })))
+      })), { fullContent: true })
     : 'No se encontraron artículos relevantes en la base de datos.'
 
   // 1. Artículo citado en la PREGUNTA (máxima prioridad)

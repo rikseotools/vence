@@ -303,9 +303,9 @@ Puedo ayudarte con:
       }
     }
 
-    // Construir contexto de artículos (completo si pide literal)
+    // Construir contexto de artículos - siempre contenido completo para máxima precisión
     const articlesContext = formatArticlesForContext(searchResult.articles, {
-      fullContent: wantsFullContent && foundRequestedArticle,
+      fullContent: true,
     })
 
     // System prompt específico para búsqueda
