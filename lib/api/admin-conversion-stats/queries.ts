@@ -1,7 +1,7 @@
 // lib/api/admin-conversion-stats/queries.ts - Drizzle queries para conversion stats
 import { getDb } from '@/db/client'
-import { userProfiles, conversionEvents, tests, cancellationFeedback } from '@/db/schema'
-import { sql, gte, lt, and, eq, isNotNull, inArray } from 'drizzle-orm'
+import { userProfiles, conversionEvents, cancellationFeedback } from '@/db/schema'
+import { sql, gte, lt, and, eq, isNotNull } from 'drizzle-orm'
 import type { ConversionStatsResponse } from './schemas'
 
 // -- Helpers --
@@ -12,28 +12,10 @@ function daysAgoISO(days: number): string {
   return d.toISOString()
 }
 
-function countDistinctUsers(rows: { userId: string | null }[]): Record<string, Set<string>> {
-  const byType: Record<string, Set<string>> = {}
-  for (const row of rows) {
-    const r = row as any
-    const eventType = r.eventType
-    if (!byType[eventType]) byType[eventType] = new Set()
-    if (r.userId) byType[eventType].add(r.userId)
-  }
-  return byType
-}
-
-function setsToCountRecord(sets: Record<string, Set<string>>): Record<string, number> {
-  const result: Record<string, number> = {}
-  for (const [k, v] of Object.entries(sets)) {
-    result[k] = v.size
-  }
-  return result
-}
-
 // -- Main query --
 
 export async function getConversionStats(days: number): Promise<ConversionStatsResponse> {
+  const t0 = Date.now()
   const db = getDb()
 
   const periodFrom = daysAgoISO(days)
@@ -41,89 +23,92 @@ export async function getConversionStats(days: number): Promise<ConversionStatsR
   const sevenDaysAgoStr = daysAgoISO(7)
 
   // ============================================
-  // Parallel queries
+  // Todas las queries usan COUNT/GROUP en SQL
+  // (no descargan rows individuales)
   // ============================================
   const [
-    // 1. Registros del período
-    registrations,
-    // 2. Total usuarios all-time
-    totalUsersRows,
-    // 3. Primer test completado en período
-    firstTestRows,
-    // 4. Eventos de conversión del período (para dailyStats)
-    events,
-    // 5. DAU período
-    dauPeriod,
-    // 6. DAU 7 días
-    dau7,
-    // 7. Registros activos (tienen tests en el período)
-    activeFromReg,
-    // 8. Pagos del período
-    paidPeriodRows,
-    // 9. Pagos últimos 7 días
-    paid7Rows,
-    // 10. Refunds del período
-    refundsPeriodRows,
-    // 11. Refunds 7 días
-    refunds7Rows,
-    // 12. Funnel por usuario (período actual)
-    funnelEvents,
-    // 13. Registros período anterior
-    prevRegRows,
-    // 14. Primer test período anterior
-    prevFirstTestRows,
-    // 15. Funnel período anterior
-    prevFunnelEvents,
-    // 16. Pagos all-time (para conversión histórica)
-    paidAllTimeRows,
+    regCountRows,        // 1. Registros: total + por fuente
+    totalUsersRows,      // 2. Total usuarios all-time
+    firstTestRows,       // 3. Primer test completado en período
+    dailyStatsRows,      // 4. Eventos agrupados por día+tipo
+    dauPeriod,           // 5. DAU período (count distinct)
+    dau7,                // 6. DAU 7 días (count distinct)
+    activeFromReg,       // 7. Registros activos
+    paidPeriodRows,      // 8. Pagos del período
+    paid7Rows,           // 9. Pagos 7 días
+    refundsPeriodRows,   // 10. Refunds período
+    refunds7Rows,        // 11. Refunds 7 días
+    funnelCountsRows,    // 12. Funnel actual (count distinct por tipo)
+    prevRegRows,         // 13. Registros período anterior
+    prevFirstTestRows,   // 14. Primer test período anterior
+    prevFunnelCountsRows,// 15. Funnel anterior (count distinct por tipo)
+    paidAllTimeRows,     // 16. Pagos all-time
   ] = await Promise.all([
-    // 1
-    db.select({
-      id: userProfiles.id,
-      registrationSource: userProfiles.registrationSource,
-      createdAt: userProfiles.createdAt,
-    })
-    .from(userProfiles)
-    .where(gte(userProfiles.createdAt, periodFrom)),
+    // 1: Registros por fuente (GROUP BY, no rows individuales)
+    db.execute(sql`
+      SELECT
+        count(*)::int as total,
+        coalesce(registration_source, 'organic') as source
+      FROM user_profiles
+      WHERE created_at >= ${periodFrom}
+      GROUP BY coalesce(registration_source, 'organic')
+    `),
 
-    // 2
+    // 2: Total usuarios all-time
     db.select({ count: sql<number>`count(*)::int` })
     .from(userProfiles),
 
-    // 3
-    db.select({ id: userProfiles.id })
+    // 3: Primer test completado en período (solo count)
+    db.select({ count: sql<number>`count(*)::int` })
     .from(userProfiles)
     .where(and(
       isNotNull(userProfiles.firstTestCompletedAt),
       gte(userProfiles.firstTestCompletedAt, periodFrom),
     )),
 
-    // 4
-    db.select({
-      eventType: conversionEvents.eventType,
-      userId: conversionEvents.userId,
-      createdAt: conversionEvents.createdAt,
-    })
-    .from(conversionEvents)
-    .where(gte(conversionEvents.createdAt, periodFrom)),
+    // 4: Eventos agrupados por día + tipo (para dailyStats)
+    db.execute(sql`
+      SELECT
+        to_char(created_at, 'DD/MM/YYYY') as date,
+        event_type,
+        count(*)::int as cnt
+      FROM conversion_events
+      WHERE created_at >= ${periodFrom}
+      GROUP BY to_char(created_at, 'DD/MM/YYYY'), event_type
+      ORDER BY min(created_at) DESC
+    `),
 
-    // 5
-    db.select({ userId: tests.userId })
-    .from(tests)
-    .where(gte(tests.createdAt, periodFrom)),
+    // 5: DAU período
+    db.execute(sql`
+      SELECT
+        count(DISTINCT t.user_id)::int as dau_total,
+        count(DISTINCT t.user_id) FILTER (WHERE up.plan_type = 'premium')::int as dau_premium,
+        count(DISTINCT t.user_id) FILTER (WHERE up.plan_type != 'premium' OR up.plan_type IS NULL)::int as dau_free
+      FROM tests t
+      JOIN user_profiles up ON t.user_id = up.id
+      WHERE t.created_at >= ${periodFrom}
+    `),
 
-    // 6
-    db.select({ userId: tests.userId })
-    .from(tests)
-    .where(gte(tests.createdAt, sevenDaysAgoStr)),
+    // 6: DAU 7 días
+    db.execute(sql`
+      SELECT
+        count(DISTINCT t.user_id)::int as dau_total,
+        count(DISTINCT t.user_id) FILTER (WHERE up.plan_type = 'premium')::int as dau_premium,
+        count(DISTINCT t.user_id) FILTER (WHERE up.plan_type != 'premium' OR up.plan_type IS NULL)::int as dau_free
+      FROM tests t
+      JOIN user_profiles up ON t.user_id = up.id
+      WHERE t.created_at >= ${sevenDaysAgoStr}
+    `),
 
-    // 7: registros del período que tienen al menos 1 test
-    db.selectDistinct({ userId: tests.userId })
-    .from(tests)
-    .innerJoin(userProfiles, eq(tests.userId, userProfiles.id))
-    .where(gte(userProfiles.createdAt, periodFrom)),
+    // 7: Registros activos (registros del período con al menos 1 test)
+    db.execute(sql`
+      SELECT count(DISTINCT t.user_id)::int as count
+      FROM tests t
+      JOIN user_profiles up ON t.user_id = up.id
+      WHERE up.created_at >= ${periodFrom}
+    `),
 
-    // 8
+    // 8: Pagos del período
     db.select({ count: sql<number>`count(*)::int` })
     .from(conversionEvents)
     .where(and(
@@ -131,7 +116,7 @@ export async function getConversionStats(days: number): Promise<ConversionStatsR
       gte(conversionEvents.createdAt, periodFrom),
     )),
 
-    // 9
+    // 9: Pagos 7 días
     db.select({ count: sql<number>`count(*)::int` })
     .from(conversionEvents)
     .where(and(
@@ -139,7 +124,7 @@ export async function getConversionStats(days: number): Promise<ConversionStatsR
       gte(conversionEvents.createdAt, sevenDaysAgoStr),
     )),
 
-    // 10
+    // 10: Refunds período
     db.select({
       count: sql<number>`count(*)::int`,
       totalAmount: sql<number>`coalesce(sum(${cancellationFeedback.refundAmountCents}), 0)::int`,
@@ -150,7 +135,7 @@ export async function getConversionStats(days: number): Promise<ConversionStatsR
       gte(cancellationFeedback.createdAt, periodFrom),
     )),
 
-    // 11
+    // 11: Refunds 7 días
     db.select({
       count: sql<number>`count(*)::int`,
       totalAmount: sql<number>`coalesce(sum(${cancellationFeedback.refundAmountCents}), 0)::int`,
@@ -161,15 +146,15 @@ export async function getConversionStats(days: number): Promise<ConversionStatsR
       gte(cancellationFeedback.createdAt, sevenDaysAgoStr),
     )),
 
-    // 12
-    db.select({
-      eventType: conversionEvents.eventType,
-      userId: conversionEvents.userId,
-    })
-    .from(conversionEvents)
-    .where(gte(conversionEvents.createdAt, periodFrom)),
+    // 12: Funnel actual (count distinct users por event_type)
+    db.execute(sql`
+      SELECT event_type, count(DISTINCT user_id)::int as cnt
+      FROM conversion_events
+      WHERE created_at >= ${periodFrom}
+      GROUP BY event_type
+    `),
 
-    // 13
+    // 13: Registros período anterior
     db.select({ count: sql<number>`count(*)::int` })
     .from(userProfiles)
     .where(and(
@@ -177,7 +162,7 @@ export async function getConversionStats(days: number): Promise<ConversionStatsR
       lt(userProfiles.createdAt, periodFrom),
     )),
 
-    // 14
+    // 14: Primer test período anterior
     db.select({ count: sql<number>`count(*)::int` })
     .from(userProfiles)
     .where(and(
@@ -186,22 +171,22 @@ export async function getConversionStats(days: number): Promise<ConversionStatsR
       lt(userProfiles.firstTestCompletedAt, periodFrom),
     )),
 
-    // 15
-    db.select({
-      eventType: conversionEvents.eventType,
-      userId: conversionEvents.userId,
-    })
-    .from(conversionEvents)
-    .where(and(
-      gte(conversionEvents.createdAt, prevFrom),
-      lt(conversionEvents.createdAt, periodFrom),
-    )),
+    // 15: Funnel anterior (count distinct users por event_type)
+    db.execute(sql`
+      SELECT event_type, count(DISTINCT user_id)::int as cnt
+      FROM conversion_events
+      WHERE created_at >= ${prevFrom} AND created_at < ${periodFrom}
+      GROUP BY event_type
+    `),
 
-    // 16
+    // 16: Pagos all-time
     db.select({ count: sql<number>`count(*)::int` })
     .from(conversionEvents)
     .where(eq(conversionEvents.eventType, 'payment_completed')),
   ])
+
+  const t1 = Date.now()
+  console.log(`[conversion-stats] 16 queries paralelas: ${t1 - t0}ms (days=${days})`)
 
   // ============================================
   // Post-process
@@ -217,66 +202,60 @@ export async function getConversionStats(days: number): Promise<ConversionStatsR
   const paidNetInPeriod = Math.max(0, paidInPeriod - refundsInPeriod)
   const paidNetIn7Days = Math.max(0, paidIn7Days - refundsIn7Days)
 
-  // DAU únicos
-  const dauPeriodIds = [...new Set(dauPeriod.map(t => t.userId).filter(Boolean))] as string[]
-  const dau7Ids = [...new Set(dau7.map(t => t.userId).filter(Boolean))] as string[]
-  const activeRegUserCount = activeFromReg.length
+  // DAU (COUNT DISTINCT en SQL)
+  const dauRow = (dauPeriod as any).rows?.[0] || dauPeriod[0] || {}
+  const dauTotal = dauRow.dau_total || 0
+  const dauPremium = dauRow.dau_premium || 0
+  const dauFree = dauRow.dau_free || 0
 
-  const dauTotal = dauPeriodIds.length
-  const dau7Days = dau7Ids.length
+  const dau7Row = (dau7 as any).rows?.[0] || dau7[0] || {}
+  const dau7Days = dau7Row.dau_total || 0
+  const dau7DaysPremium = dau7Row.dau_premium || 0
+  const dau7DaysFree = dau7Row.dau_free || 0
 
-  // Free vs Premium
-  let dauFree = 0, dauPremium = 0
-  let dau7DaysFree = 0, dau7DaysPremium = 0
+  const activeRegRow = (activeFromReg as any).rows?.[0] || activeFromReg[0] || {}
+  const activeRegUserCount = activeRegRow.count || 0
 
-  if (dauPeriodIds.length > 0) {
-    const planData = await db
-      .select({ id: userProfiles.id, planType: userProfiles.planType })
-      .from(userProfiles)
-      .where(inArray(userProfiles.id, dauPeriodIds.slice(0, 1000)))
-    dauPremium = planData.filter(u => u.planType === 'premium').length
-    dauFree = planData.filter(u => u.planType !== 'premium').length
-  }
-
-  if (dau7Ids.length > 0) {
-    const plan7Data = await db
-      .select({ id: userProfiles.id, planType: userProfiles.planType })
-      .from(userProfiles)
-      .where(inArray(userProfiles.id, dau7Ids.slice(0, 1000)))
-    dau7DaysPremium = plan7Data.filter(u => u.planType === 'premium').length
-    dau7DaysFree = plan7Data.filter(u => u.planType !== 'premium').length
-  }
-
-  // Registros por fuente
+  // Registros: total y por fuente (de GROUP BY)
+  const regRows = (regCountRows as any).rows || regCountRows || []
+  let regTotal = 0
   const bySource: Record<string, number> = {}
-  registrations.forEach(u => {
-    const source = u.registrationSource || 'organic'
-    bySource[source] = (bySource[source] || 0) + 1
-  })
+  for (const r of regRows) {
+    const count = r.total || 0
+    const source = r.source || 'organic'
+    bySource[source] = count
+    regTotal += count
+  }
 
-  // dailyStats: agrupar eventos por día
+  // First test count
+  const firstTestCount = firstTestRows[0]?.count || 0
+
+  // dailyStats: ya agrupados por SQL
   const dailyMap: Record<string, Record<string, number>> = {}
-  events.forEach(e => {
-    const day = new Date(e.createdAt!).toLocaleDateString('es-ES')
-    if (!dailyMap[day]) dailyMap[day] = {}
-    const et = e.eventType
-    dailyMap[day][et] = (dailyMap[day][et] || 0) + 1
-  })
+  const dsRows = (dailyStatsRows as any).rows || dailyStatsRows || []
+  for (const r of dsRows) {
+    if (!dailyMap[r.date]) dailyMap[r.date] = {}
+    dailyMap[r.date][r.event_type] = r.cnt
+  }
   const dailyStats = Object.entries(dailyMap)
     .map(([date, evts]) => ({ date, ...evts }))
-    .sort((a, b) => {
-      const [da, ma, ya] = a.date.split('/').map(Number)
-      const [db2, mb, yb] = b.date.split('/').map(Number)
-      return new Date(yb, mb - 1, db2).getTime() - new Date(ya, ma - 1, da).getTime()
-    })
 
-  // Funnel counts (distinct users)
-  const funnelCounts = setsToCountRecord(countDistinctUsers(funnelEvents as any))
-  const prevFunnelCounts = setsToCountRecord(countDistinctUsers(prevFunnelEvents as any))
+  // Funnel counts (ya agrupados con COUNT DISTINCT en SQL)
+  const funnelCounts: Record<string, number> = {}
+  const fcRows = (funnelCountsRows as any).rows || funnelCountsRows || []
+  for (const r of fcRows) {
+    funnelCounts[r.event_type] = r.cnt
+  }
+
+  const prevFunnelCounts: Record<string, number> = {}
+  const pfcRows = (prevFunnelCountsRows as any).rows || prevFunnelCountsRows || []
+  for (const r of pfcRows) {
+    prevFunnelCounts[r.event_type] = r.cnt
+  }
 
   // Tasas
-  const activationRate = registrations.length > 0
-    ? (activeRegUserCount / registrations.length) * 100
+  const activationRate = regTotal > 0
+    ? (activeRegUserCount / regTotal) * 100
     : 0
   const monetizationRate = dauTotal > 0 ? (dauPremium / dauTotal) * 100 : 0
   const monetizationRate7Days = dau7Days > 0 ? (dau7DaysPremium / dau7Days) * 100 : 0
@@ -285,12 +264,14 @@ export async function getConversionStats(days: number): Promise<ConversionStatsR
 
   const round1 = (n: number) => Math.round(n * 10) / 10
 
+  console.log(`[conversion-stats] TOTAL: ${Date.now() - t0}ms (days=${days})`)
+
   return {
     registrations: {
-      total: registrations.length,
+      total: regTotal,
       totalAllTime: totalUsersAllTime,
       bySource,
-      firstTestCompleted: firstTestRows.length,
+      firstTestCompleted: firstTestCount,
       activeUsers: activeRegUserCount,
       activationRate: round1(activationRate),
     },
