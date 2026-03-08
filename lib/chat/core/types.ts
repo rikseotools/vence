@@ -143,6 +143,7 @@ export interface ChatContext {
 
   // Metadata
   conversationId?: string
+  logId?: string
   startTime: number
 }
 

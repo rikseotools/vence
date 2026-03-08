@@ -1619,9 +1619,12 @@ export const questionDisputes = pgTable("question_disputes", {
 	isRead: boolean("is_read").default(false),
 	appealText: text("appeal_text"),
 	appealSubmittedAt: timestamp("appeal_submitted_at", { withTimezone: true, mode: 'string' }),
+	source: text().default('user').notNull(),
+	aiChatLogId: uuid("ai_chat_log_id"),
 }, (table) => [
 	index("idx_question_disputes_appeal_submitted").using("btree", table.appealSubmittedAt.asc().nullsLast().op("timestamptz_ops")).where(sql`(appeal_text IS NOT NULL)`),
 	index("idx_question_disputes_status").using("btree", table.status.asc().nullsLast().op("text_ops")),
+	index("idx_question_disputes_source").using("btree", table.source.asc().nullsLast().op("text_ops")).where(sql`source = 'ai_auto'`),
 	foreignKey({
 			columns: [table.adminUserId],
 			foreignColumns: [userProfiles.id],
@@ -1637,8 +1640,14 @@ export const questionDisputes = pgTable("question_disputes", {
 			foreignColumns: [userProfiles.id],
 			name: "question_disputes_user_id_fkey"
 		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.aiChatLogId],
+			foreignColumns: [aiChatLogs.id],
+			name: "question_disputes_ai_chat_log_id_fkey"
+		}).onDelete("set null"),
 	check("question_disputes_dispute_type_check", sql`dispute_type = ANY (ARRAY['no_literal'::text, 'respuesta_incorrecta'::text, 'otro'::text])`),
 	check("question_disputes_status_check", sql`status = ANY (ARRAY['pending'::text, 'reviewing'::text, 'resolved'::text, 'rejected'::text])`),
+	check("question_disputes_source_check", sql`source = ANY (ARRAY['user'::text, 'ai_auto'::text])`),
 ]);
 
 export const userNotificationMetrics = pgTable("user_notification_metrics", {
@@ -2677,10 +2686,13 @@ export const psychometricQuestionDisputes = pgTable("psychometric_question_dispu
 	resolvedAt: timestamp("resolved_at", { withTimezone: true, mode: 'string' }),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 	isRead: boolean("is_read").default(false),
+	source: text().default('user').notNull(),
+	aiChatLogId: uuid("ai_chat_log_id"),
 }, (table) => [
 	index("idx_psych_disputes_question").using("btree", table.questionId.asc().nullsLast().op("uuid_ops")),
 	index("idx_psych_disputes_status").using("btree", table.status.asc().nullsLast().op("text_ops")),
 	index("idx_psych_disputes_user").using("btree", table.userId.asc().nullsLast().op("uuid_ops")),
+	index("idx_psychometric_disputes_source").using("btree", table.source.asc().nullsLast().op("text_ops")).where(sql`source = 'ai_auto'`),
 	foreignKey({
 			columns: [table.adminUserId],
 			foreignColumns: [users.id],
@@ -2696,11 +2708,17 @@ export const psychometricQuestionDisputes = pgTable("psychometric_question_dispu
 			foreignColumns: [users.id],
 			name: "psychometric_question_disputes_user_id_fkey"
 		}).onDelete("set null"),
+	foreignKey({
+			columns: [table.aiChatLogId],
+			foreignColumns: [aiChatLogs.id],
+			name: "psychometric_question_disputes_ai_chat_log_id_fkey"
+		}).onDelete("set null"),
 	pgPolicy("Users can view own disputes", { as: "permissive", for: "select", to: ["public"], using: sql`(auth.uid() = user_id)` }),
 	pgPolicy("Users can create disputes", { as: "permissive", for: "insert", to: ["public"] }),
 	pgPolicy("Service role full access", { as: "permissive", for: "all", to: ["public"] }),
 	check("psychometric_question_disputes_dispute_type_check", sql`dispute_type = ANY (ARRAY['ai_detected_error'::text, 'respuesta_incorrecta'::text, 'otro'::text])`),
 	check("psychometric_question_disputes_status_check", sql`status = ANY (ARRAY['pending'::text, 'reviewing'::text, 'resolved'::text, 'rejected'::text])`),
+	check("psychometric_question_disputes_source_check", sql`source = ANY (ARRAY['user'::text, 'ai_auto'::text])`),
 ]);
 
 export const userInteractions = pgTable("user_interactions", {

@@ -35,6 +35,8 @@ export interface CreateDisputeInput {
   disputeType: DisputeType
   description: string
   isPsychometric?: boolean // Indica si es una pregunta psicotécnica
+  source?: 'user' | 'ai_auto'
+  aiChatLogId?: string | null
 }
 
 export interface DisputeResult {
@@ -55,7 +57,8 @@ export async function createAutoDispute(
   questionId: string,
   aiResponse: string,
   userId?: string | null,
-  isPsychometric?: boolean
+  isPsychometric?: boolean,
+  chatLogId?: string | null
 ): Promise<DisputeResult> {
   try {
     // Determinar el tipo de disputa según la tabla
@@ -88,6 +91,8 @@ export async function createAutoDispute(
       disputeType,
       description,
       isPsychometric,
+      source: 'ai_auto',
+      aiChatLogId: chatLogId,
     })
 
     if (result.success) {
@@ -157,15 +162,22 @@ async function createDispute(input: CreateDisputeInput): Promise<DisputeResult> 
   // Elegir tabla según tipo de pregunta
   const tableName = input.isPsychometric ? 'psychometric_question_disputes' : 'question_disputes'
 
+  const insertData: Record<string, unknown> = {
+    question_id: input.questionId,
+    user_id: input.userId || null,
+    dispute_type: input.disputeType,
+    description: input.description,
+    status: 'pending',
+    source: input.source || 'user',
+  }
+
+  if (input.aiChatLogId) {
+    insertData.ai_chat_log_id = input.aiChatLogId
+  }
+
   const { data, error } = await getSupabase()
     .from(tableName)
-    .insert({
-      question_id: input.questionId,
-      user_id: input.userId || null,
-      dispute_type: input.disputeType,
-      description: input.description,
-      status: 'pending',
-    })
+    .insert(insertData)
     .select('id')
     .single()
 

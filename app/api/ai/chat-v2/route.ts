@@ -257,8 +257,9 @@ export async function POST(request: NextRequest) {
       }
     )
 
-    // Generar logId antes de procesar para vincular traces
+    // Generar logId antes de procesar para vincular traces y disputas
     const logId = generateLogId()
+    context.logId = logId
 
     // Obtener orquestador y procesar
     const orchestrator = getOrchestrator()

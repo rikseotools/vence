@@ -343,7 +343,9 @@ export async function verifyAnswer(
     disputeResult = await createAutoDispute(
       input.questionId,
       disputeContext + response,
-      input.userId
+      input.userId,
+      undefined, // isPsychometric
+      context.logId // vincular con el chat log
     )
     disputeCreated = disputeResult.success && !disputeResult.alreadyExists
   }

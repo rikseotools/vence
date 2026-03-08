@@ -375,6 +375,8 @@ await supabase
 | `status` | `pending` / `resolved` / `rejected` / `appealed` |
 | `admin_response` | Respuesta al usuario |
 | `resolved_at` | Fecha de resolución |
+| `source` | `user` (manual) / `ai_auto` (auto-detectada por IA del chat) |
+| `ai_chat_log_id` | UUID del `ai_chat_logs` que generó la disputa (solo `ai_auto`) |
 
 ## 9. Flujo Completo
 
@@ -545,7 +547,7 @@ supabase
 
 ### 12.1 Rechazo Silencioso (Impugnaciones Auto-Detectadas por IA)
 
-Las impugnaciones con descripción que empieza por `[AUTO-DETECTADO POR IA]` son generadas automáticamente por el sistema de detección de errores, no por usuarios reales. Se rechazan **sin notificación** al usuario:
+Las impugnaciones auto-detectadas se identifican por `source = 'ai_auto'` (y tienen `[AUTO-DETECTADO POR IA]` en la descripción). No son de usuarios reales. Se rechazan **sin notificación**:
 
 ```javascript
 supabase
@@ -568,6 +570,26 @@ supabase
 2. Si la pregunta es correcta → rechazar silenciosamente (este método)
 3. Si la pregunta tiene error → corregirla y rechazar silenciosamente igualmente (el usuario no sabe que existe la impugnación)
 4. Siempre mejorar la explicación si es pobre, independientemente del resultado
+
+### 12.2 Precisión de la IA (Panel Admin)
+
+El panel `/admin/impugnaciones` muestra métricas de precisión:
+- **Filtro "Auto IA"** para ver solo disputas auto-creadas
+- **Barra de precisión**: % de disputas aceptadas (IA acertó) vs rechazadas (IA erró)
+- **Badge "Auto IA"** en cada tarjeta para identificarlas visualmente
+- **Chat log vinculado**: si tiene `ai_chat_log_id`, se muestra el ID para revisar el razonamiento
+
+Para consultar la precisión por SQL:
+```sql
+SELECT
+  count(*) FILTER (WHERE status = 'resolved') AS aceptadas,
+  count(*) FILTER (WHERE status = 'rejected') AS rechazadas,
+  count(*) FILTER (WHERE status IN ('pending','reviewing')) AS pendientes,
+  round(100.0 * count(*) FILTER (WHERE status = 'resolved')
+    / NULLIF(count(*) FILTER (WHERE status IN ('resolved','rejected')), 0)) AS precision_pct
+FROM question_disputes
+WHERE source = 'ai_auto';
+```
 
 ---
 

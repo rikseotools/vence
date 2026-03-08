@@ -13,7 +13,7 @@ export default function ImpugnacionesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [filter, setFilter] = useState('pendientes')
-  const [typeFilter, setTypeFilter] = useState('todas') // 'todas', 'normales', 'psicotecnicas'
+  const [typeFilter, setTypeFilter] = useState('todas') // 'todas', 'normales', 'psicotecnicas', 'ia'
   const [groupByUser, setGroupByUser] = useState(true) // Agrupar por usuario por defecto
   useEffect(() => {
     loadImpugnaciones()
@@ -52,7 +52,9 @@ export default function ImpugnacionesPage() {
           description,
           status,
           created_at,
-          admin_response
+          admin_response,
+          source,
+          ai_chat_log_id
         `)
         .order('created_at', { ascending: false })
 
@@ -161,6 +163,8 @@ export default function ImpugnacionesPage() {
       allDisputes = allDisputes.filter(d => !d.isPsychometric)
     } else if (typeFilter === 'psicotecnicas') {
       allDisputes = allDisputes.filter(d => d.isPsychometric)
+    } else if (typeFilter === 'ia') {
+      allDisputes = allDisputes.filter(d => d.source === 'ai_auto')
     }
 
     // Ordenar por fecha
@@ -271,6 +275,13 @@ export default function ImpugnacionesPage() {
   const appealedCount = allDisputes.filter(d => d.status === 'appealed').length
   const psychoCount = psychometricDisputes.length
 
+  // Stats de precisión de la IA
+  const aiDisputes = allDisputes.filter(d => d.source === 'ai_auto')
+  const aiResolved = aiDisputes.filter(d => d.status === 'resolved').length
+  const aiRejected = aiDisputes.filter(d => d.status === 'rejected').length
+  const aiProcessed = aiResolved + aiRejected
+  const aiAccuracy = aiProcessed > 0 ? Math.round((aiResolved / aiProcessed) * 100) : null
+
   return (
     <div className="space-y-6">
       
@@ -345,7 +356,54 @@ export default function ImpugnacionesPage() {
           </div>
           <p className="text-xs text-gray-500 mt-2 hidden sm:block">No procedentes + Cerradas</p>
         </div>
+
+        <div className={`rounded-lg shadow p-3 sm:p-6 border ${
+          aiAccuracy !== null && aiAccuracy >= 70
+            ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800'
+            : aiAccuracy !== null
+              ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800'
+              : 'bg-white dark:bg-gray-800'
+        }`}>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">IA Auto</p>
+              <p className="text-lg sm:text-2xl font-bold text-indigo-600">{aiDisputes.length}</p>
+            </div>
+            <span className="text-2xl sm:text-3xl">🤖</span>
+          </div>
+          <p className="text-xs text-gray-500 mt-2 hidden sm:block">
+            {aiAccuracy !== null
+              ? `Precisión: ${aiAccuracy}% (${aiResolved}/${aiProcessed})`
+              : `${aiDisputes.length - aiProcessed} sin procesar`
+            }
+          </p>
+        </div>
       </div>
+
+      {/* Barra de precisión IA */}
+      {aiProcessed > 0 && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow border p-4">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+              🤖 Precisión de la IA en detección de errores
+            </h3>
+            <span className={`text-sm font-bold ${aiAccuracy >= 70 ? 'text-emerald-600' : 'text-orange-600'}`}>
+              {aiAccuracy}%
+            </span>
+          </div>
+          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
+            <div
+              className={`h-3 rounded-full transition-all ${aiAccuracy >= 70 ? 'bg-emerald-500' : 'bg-orange-500'}`}
+              style={{ width: `${aiAccuracy}%` }}
+            />
+          </div>
+          <div className="flex justify-between mt-2 text-xs text-gray-500 dark:text-gray-400">
+            <span>Aceptadas (IA acertó): {aiResolved}</span>
+            <span>Rechazadas (IA erró): {aiRejected}</span>
+            <span>Pendientes: {aiDisputes.length - aiProcessed}</span>
+          </div>
+        </div>
+      )}
 
       {/* Filtros */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow border p-3 sm:p-4 space-y-3">
@@ -356,7 +414,8 @@ export default function ImpugnacionesPage() {
             {[
               { key: 'todas', label: 'Todas', count: allDisputes.length },
               { key: 'normales', label: 'Normales', icon: '📚', count: impugnaciones.length },
-              { key: 'psicotecnicas', label: 'Psicotécnicas', icon: '🧠', count: psychoCount }
+              { key: 'psicotecnicas', label: 'Psicotécnicas', icon: '🧠', count: psychoCount },
+              { key: 'ia', label: 'Auto IA', icon: '🤖', count: aiDisputes.length }
             ].map(opt => (
               <button
                 key={opt.key}
@@ -503,6 +562,11 @@ function DisputeCard({ dispute, index, getStatusBadge, getPriorityBadge, getCorr
             <span className="text-base sm:text-lg font-bold text-gray-600 flex-shrink-0">#{index + 1}</span>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2 mb-2">
+                {dispute.source === 'ai_auto' && (
+                  <span className="bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300 px-2 py-1 rounded-full text-xs font-medium">
+                    🤖 Auto IA
+                  </span>
+                )}
                 {dispute.isPsychometric && (
                   <span className="bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300 px-2 py-1 rounded-full text-xs font-medium">
                     🧠 Psicotécnica
@@ -519,6 +583,11 @@ function DisputeCard({ dispute, index, getStatusBadge, getPriorityBadge, getCorr
                   <span className="bg-green-50 dark:bg-green-900/30 px-2 py-1 rounded truncate">
                     ❓ Pregunta: <strong className="font-mono">{dispute.question_id?.slice(0, 8) || 'N/A'}...</strong>
                   </span>
+                  {dispute.ai_chat_log_id && (
+                    <span className="bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded truncate">
+                      🤖 Chat log: <strong className="font-mono">{dispute.ai_chat_log_id.slice(0, 8)}...</strong>
+                    </span>
+                  )}
                 </div>
                 <div className="text-sm text-gray-600 dark:text-gray-400">
                   <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
