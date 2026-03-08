@@ -230,6 +230,188 @@ export function getPredefinedResponse(message: string): string | null {
 💡 Cuando estés resolviendo preguntas, ¡pídeme ayuda! Puedo explicarte la lógica de cada ejercicio.`
   }
 
+  // Simulacros / modo examen
+  if (/simulacro|modo\s+examen|examen\s+(completo|simulado|de\s+prueba|real)|practicar\s+(un\s+)?examen/i.test(msgLower)) {
+    return `**Simulacros de examen en Vence**
+
+En Vence puedes hacer simulacros que replican las condiciones reales del examen:
+
+👉 **[Hacer simulacro de examen](/test/aleatorio-examen)**
+
+**Modo Examen:**
+- Todas las preguntas visibles a la vez (como en el examen real)
+- Temporizador configurable
+- Correccion solo al final (no ves si aciertas hasta acabar)
+- Puedes elegir temas, cantidad de preguntas y dificultad
+
+**Otros modos de practica:**
+- **[Test aleatorio](/test/aleatorio)** - Preguntas una a una con correccion inmediata
+- **[Test rapido](/test/rapido)** - 10 preguntas para repasar rapido
+- **[Test por leyes](/test/por-leyes)** - Combina varias leyes en un solo test
+- **[Repaso de fallos](/test/repaso-fallos)** - Repasa las preguntas que has fallado`
+  }
+
+  // Repaso de fallos
+  if (/repas(o|ar)\s+(de\s+)?fallo/i.test(msgLower)) {
+    return `**Repaso de fallos**
+
+Puedes repasar las preguntas que has fallado anteriormente:
+
+👉 **[Ir al repaso de fallos](/test/repaso-fallos)**
+
+**Opciones:**
+- Configura el periodo (ultimos 30 dias, fecha personalizada)
+- Ordena por recientes, dificultad o frecuencia de fallo
+- Se centra en tus puntos debiles para mejorar`
+  }
+
+  // Que hay / que puedo hacer / funcionalidades
+  if (/\bqu[eé]\s+(puedo|se\s+puede)\s+hacer|\bqu[eé]\s+(hay|ofrece|tiene)|\bfuncionalidad|\bcaracter[ií]stica/i.test(msgLower)) {
+    return `**Funcionalidades de Vence**
+
+**Tests y practica:**
+- **[Test aleatorio](/test/aleatorio)** - Configura temas, dificultad y cantidad
+- **[Simulacro de examen](/test/aleatorio-examen)** - Modo examen real con temporizador
+- **[Test rapido](/test/rapido)** - 10 preguntas rapidas
+- **[Test por leyes](/test/por-leyes)** - Combina varias leyes
+- **[Test por articulo](/test/articulo)** - Practica un articulo concreto
+- **[Repaso de fallos](/test/repaso-fallos)** - Repasa lo que has fallado
+- **[Psicotecnicos](/psicotecnicos/test)** - Series, analogias, razonamiento...
+
+**Contenido:**
+- **[Temario completo](/temarios)** - Programa oficial con todos los temas
+- **[Leyes](/leyes)** - Textos legales con articulos navegables
+- **[Convocatorias](/oposiciones)** - Convocatorias actualizadas del BOE
+
+**Tu progreso:**
+- **[Mis estadisticas](/mis-estadisticas)** - Rendimiento, rachas, areas debiles
+- **[Mis impugnaciones](/mis-impugnaciones)** - Disputar preguntas incorrectas
+
+**Este chat de IA** te ayuda a resolver dudas sobre legislacion, explicar preguntas y mas.`
+  }
+
+  // Impugnaciones / disputas
+  if (/impugn|disput|reportar\s+(una\s+)?pregunta/i.test(msgLower)) {
+    return `**Sistema de impugnaciones**
+
+Si encuentras una pregunta con error, puedes impugnarla:
+
+👉 **[Ver mis impugnaciones](/mis-impugnaciones)**
+
+**Como funciona:**
+- Al responder una pregunta, pulsa el boton de impugnar
+- Describe el error que has encontrado
+- Un administrador revisara tu impugnacion
+- Puedes ver el estado (pendiente, resuelta, rechazada) en tu panel`
+  }
+
+  // Convocatorias
+  if (/convocatoria|plazas?\s+(disponible|ofertada|publicada)/i.test(msgLower)) {
+    return `**Convocatorias de oposiciones**
+
+Consulta las convocatorias actualizadas del BOE:
+
+👉 **[Ver convocatorias](/oposiciones)**
+
+**Puedes filtrar por:**
+- Categoria y tipo de puesto
+- Comunidad autonoma y provincia
+- Solo convocatorias con plazo abierto
+- Departamento y ambito`
+  }
+
+  // Test de articulo
+  if (/test\s+(de|por|solo)\s+(un\s+)?art[ií]culo|practicar\s+(un\s+)?art[ií]culo/i.test(msgLower)) {
+    return `**Test por articulo**
+
+Puedes practicar preguntas de un articulo concreto:
+
+👉 **[Ir a test por articulo](/test/articulo)**
+
+**Como funciona:**
+- Elige una ley y un articulo especifico
+- Se generan preguntas solo de ese articulo
+- Ideal para repasar articulos que te cuestan
+
+Tambien puedes ir a **[Leyes](/leyes)**, buscar el articulo y hacer test desde ahi.`
+  }
+
+  // Preguntas oficiales
+  if (/pregunta.*oficial|ex[aá]me?n(es)?\s+oficial/i.test(msgLower)) {
+    return `**Preguntas de examenes oficiales**
+
+Si, en Vence hay preguntas de examenes oficiales reales de convocatorias anteriores.
+
+**Como acceder:**
+- En el **[Test aleatorio](/test/aleatorio)**, activa la opcion "Solo preguntas oficiales"
+- Las preguntas oficiales se marcan con un badge especial al responderlas
+- Los articulos mas preguntados en examenes se destacan como "articulos calientes"
+
+Asi puedes practicar con las mismas preguntas que cayeron en examenes reales.`
+  }
+
+  // Donde veo mis estadisticas
+  if (/d[oó]nde\s+(veo|est[aá]n?|encuentro)\s+(mis\s+)?estad[ií]stica/i.test(msgLower)) {
+    return `**Tus estadisticas**
+
+Puedes ver todo tu progreso aqui:
+
+👉 **[Mis estadisticas](/mis-estadisticas)**
+
+**Incluye:**
+- Porcentaje de aciertos global y por tema
+- Racha actual y mejor racha
+- Progreso semanal
+- Areas debiles
+- Historial de tests`
+  }
+
+  // Cancelar suscripcion / darse de baja
+  if (/cancel(ar|o|e)\s+(mi\s+)?(suscripci|plan|premium)|dar(me)?\s+de\s+baja/i.test(msgLower)) {
+    return `**Cancelar suscripcion**
+
+Puedes cancelar tu suscripcion en cualquier momento desde tu perfil:
+
+👉 **[Ir a mi perfil](/perfil)**
+
+**Pasos:**
+1. Ve a tu perfil
+2. En la seccion de suscripcion, pulsa "Gestionar suscripcion"
+3. Confirma la cancelacion
+
+Tu acceso premium se mantiene hasta el final del periodo pagado.`
+  }
+
+  // Racha / streak
+  if (/\bracha\b/i.test(msgLower) && !/cancel|baja|precio|premium|plan/i.test(msgLower)) {
+    return `**Sistema de rachas en Vence**
+
+La racha es tu contador de dias consecutivos estudiando. Cada dia que respondes al menos una pregunta, tu racha sube.
+
+**Como funciona:**
+- Responde al menos 1 pregunta al dia para mantener la racha
+- Si un dia no estudias, la racha se reinicia a 0
+- En tu perfil ves tu **racha actual** y tu **mejor racha**
+
+👉 **[Mantener racha con test rapido](/test/mantener-racha)**
+
+Es una forma de mantenerte motivado y crear habito de estudio diario.`
+  }
+
+  // Tipos de test
+  if (/\bqu[eé]\s+(tipo|clase|modo)s?\s+de\s+(test|examen|ejercicio|practica)/i.test(msgLower) || /\btipos?\s+de\s+test/i.test(msgLower)) {
+    return `**Tipos de test en Vence**
+
+- **[Test aleatorio](/test/aleatorio)** - Configura temas, dificultad y cantidad de preguntas
+- **[Simulacro de examen](/test/aleatorio-examen)** - Modo examen real: todas las preguntas a la vez, temporizador, correccion al final
+- **[Test rapido](/test/rapido)** - 10 preguntas para practicar rapido
+- **[Test por leyes](/test/por-leyes)** - Combina varias leyes en un solo test
+- **[Test por articulo](/test/articulo)** - Practica un articulo concreto
+- **[Repaso de fallos](/test/repaso-fallos)** - Repasa preguntas que has fallado
+- **[Psicotecnicos](/psicotecnicos/test)** - Series numericas, alfabeticas, analogias, dominos...
+- **[Mantener racha](/test/mantener-racha)** - Test rapido para no perder tu racha diaria`
+  }
+
   // Test Multi-Ley (varias leyes, diferentes leyes, combinar leyes)
   if (/multi[- ]?ley|(varias|diferentes|m[uú]ltiples|distintas)\s+leyes|combinar\s+(leyes|normativa)|mezclar\s+(leyes|preguntas)|test\s+de\s+.*leyes/i.test(msgLower)) {
     return `📚 **¡Sí! En Vence puedes hacer tests combinando varias leyes**

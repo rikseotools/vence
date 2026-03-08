@@ -286,7 +286,7 @@ export function isPlatformQuery(message: string): boolean {
   const temarioPatterns = [
     /\b(en\s+)?qu[eé]\s+tema\b/i,
     /\bcu[aá]ntos\s+temas\b/i,
-    /\bd[oó]nde\s+(se\s+)?(estudia|entra|ve|trata|aparece)/i,
+    /\bd[oó]nde\s+(se\s+)?(estudia|entra|ve\b|trata|aparece)/i,
     /^tema\s+/i,
     /qu[eé]\s+temas\s+(hay|tiene|incluye|cubre)/i,
     /qu[eé]\s+oposiciones\s+(ten[eé]is|hay|prepar[aá]is)/i,
@@ -326,6 +326,37 @@ export function isPlatformQuery(message: string): boolean {
     /combinar\s+(leyes|normativa)/i,
     /mezclar\s+(leyes|preguntas)/i,
     /test\s+de\s+.*leyes/i,
+    // Simulacros y modo examen
+    /simulacro/i,
+    /modo\s+examen/i,
+    /examen\s+(completo|simulado|de\s+prueba|real)/i,
+    /practicar\s+(un\s+)?examen/i,
+    // Funcionalidades de test
+    /repas(o|ar)\s+(de\s+)?fallo/i,
+    /test\s+(de\s+)?art[ií]culo/i,
+    /test\s+(de\s+)?ley/i,
+    /test\s+(de\s+)?examen/i,
+    /modo\s+adaptativo/i,
+    // Preguntas sobre la plataforma
+    /\b(hay|ten[eé]is|existe|se\s+puede)\b.*(test|examen|simulacro|practicar|repas|psicot[eé]c)/i,
+    /\bqu[eé]\s+(tipo|clase)s?\s+de\s+(test|examen|ejercicio)/i,
+    /\bqu[eé]\s+(puedo|se\s+puede)\s+hacer\s+(aqu[ií]|en\s+(la\s+)?(app|plataforma))/i,
+    // Test de articulo
+    /test\s+(de|por|solo|de\s+un)\s+(un\s+)?art[ií]culo/i,
+    /practicar\s+(un\s+)?art[ií]culo/i,
+    /\b(hacer|puedo)\b.*test.*art[ií]culo/i,
+    // Preguntas oficiales
+    /pregunta.*oficial/i,
+    /ex[aá]me?n(es)?\s+oficial/i,
+    // Donde veo X (funcionalidad de la plataforma)
+    /d[oó]nde\s+(veo|est[aá]n?|encuentro)\s+(mis\s+)?(estad[ií]stica|impugnaci|notificaci|perfil|suscripci)/i,
+    // Impugnaciones y disputas
+    /impugn/i,
+    /disputar?\b/i,
+    /reportar\s+(una\s+)?pregunta/i,
+    // Convocatorias
+    /convocatoria/i,
+    /plazas?\s+(disponible|ofertada|publicada)/i,
   ]
 
   return platformIndicators.some(p => p.test(message))

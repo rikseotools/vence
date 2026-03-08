@@ -19,6 +19,29 @@ import { detectLawsFromText, getHotArticlesByOposicion, formatHotArticlesRespons
 import { isPsychometricSubtype } from '../../shared/constants'
 
 // ============================================
+// LEYES VIRTUALES (INFORMÁTICA/OFIMÁTICA)
+// Estas "leyes" son contenido técnico, no legislación real
+// ============================================
+const VIRTUAL_LAWS = [
+  'Base de datos: Access',
+  'Correo electrónico',
+  'Explorador Windows 11',
+  'Hojas de cálculo. Excel',
+  'Informática Básica',
+  'La Red Internet',
+  'Portal de Internet',
+  'Procesadores de texto',
+  'Windows 11',
+]
+
+function isVirtualLaw(lawName: string | undefined): boolean {
+  if (!lawName) return false
+  return VIRTUAL_LAWS.some(vl =>
+    lawName.toLowerCase().includes(vl.toLowerCase())
+  )
+}
+
+// ============================================
 // DOMINIO DE BÚSQUEDA
 // ============================================
 
@@ -125,6 +148,14 @@ export class SearchDomain implements ChatDomain {
     const examQueryResult = await this.handleExamQuery(context, effectiveMessage)
     if (examQueryResult) {
       return examQueryResult
+    }
+
+    // 0.6. ESPECIAL: Detectar preguntas de informática/ofimática
+    // Los artículos virtuales son solo contenedores para agrupar preguntas,
+    // no contienen información útil para responder - usar conocimiento del LLM
+    if (this.isInformaticsQuery(context)) {
+      logger.info('SearchDomain: Detected informatics query, using LLM knowledge', { domain: 'search' })
+      return this.handleInformaticsQuery(context, startTime, tracer)
     }
 
     // 1. Detectar ley - PRIORIDAD:
@@ -244,6 +275,124 @@ export class SearchDomain implements ChatDomain {
     }
 
     return builder.build()
+  }
+
+  /**
+   * Detecta si el mensaje es sobre informática/ofimática (Excel, Word, Windows, etc.)
+   */
+  private isInformaticsQuery(context: ChatContext): boolean {
+    // Detectar por contexto de pregunta (ley virtual)
+    if (context.questionContext?.lawName && isVirtualLaw(context.questionContext.lawName)) {
+      return true
+    }
+
+    // Detectar por patrones en el mensaje
+    const informaticsPatterns = [
+      // Excel
+      /\b(excel|hoja\s+de\s+c[aá]lculo|spreadsheet)\b/i,
+      /\b(celda|celdas|rango|fila|columna)\b.*\b[a-z]\d/i,
+      /=[A-Z]+\(/i, // fórmulas tipo =INDICE(, =SUMA(, =BUSCARV(
+      /\b(indice|buscarv|buscarh|si\.conjunto|sumar\.si|contar\.si|promedio|concatenar|vlookup|hlookup|index|match)\b/i,
+      /\b(tabla\s+din[aá]mica|pivot\s+table|formato\s+condicional|validaci[oó]n\s+de\s+datos)\b/i,
+      // Word
+      /\b(word|procesador\s+de\s+textos?)\b/i,
+      /\b(encabezado|pie\s+de\s+p[aá]gina|tabla\s+de\s+contenido|marcador|macro)\b.*\b(word|documento)\b/i,
+      // Windows / SO
+      /\b(windows\s+\d+|escritorio\s+remoto|explorador\s+de\s+archivos|panel\s+de\s+control|registro\s+de\s+windows)\b/i,
+      // General IT
+      /\b(hardware|software|cpu|ram|disco\s+duro|ssd|sistema\s+operativo|navegador|firewall|antivirus)\b/i,
+      /\b(internet|intranet|extranet|dns|ip|tcp|http|url|html|css)\b/i,
+      /\b(base\s+de\s+datos|sql|access|libreoffice|openoffice)\b/i,
+      // Formato de celdas/rangos Excel (B5:C9, A1:Z100, etc.)
+      /\b[A-Z]{1,3}\d{1,5}:[A-Z]{1,3}\d{1,5}\b/,
+    ]
+
+    return informaticsPatterns.some(p => p.test(context.currentMessage))
+  }
+
+  /**
+   * Maneja preguntas de informática/ofimática usando conocimiento del LLM.
+   * Los artículos virtuales son solo contenedores para agrupar preguntas,
+   * no contienen información útil - el LLM responde con su propio conocimiento.
+   */
+  private async handleInformaticsQuery(
+    context: ChatContext,
+    startTime: number,
+    tracer?: AITracerInterface
+  ): Promise<ChatResponse> {
+    const openai = await getOpenAI()
+    const model = context.isPremium ? CHAT_MODEL_PREMIUM : CHAT_MODEL
+
+    const systemPrompt = `Eres un tutor experto en informática y ofimática para oposiciones. Tu rol es explicar de forma clara, precisa y didáctica.
+
+## Directrices:
+1. **Usa tu conocimiento**: No hay artículos legales para estas preguntas. Usa tu conocimiento técnico.
+2. **Sé preciso**: Da la respuesta exacta con el razonamiento paso a paso.
+3. **Analiza opciones**: Si hay opciones A/B/C/D, explica por qué cada una es correcta o incorrecta.
+4. **Formato**: Usa markdown (negritas, listas, código) para estructurar la respuesta.
+5. **NO menciones artículos ni legislación** - esto es contenido técnico de informática.
+6. **Ejemplos prácticos**: Si es útil, muestra ejemplos concretos (fórmulas, capturas de pantalla mentales, etc.).`
+
+    const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
+      { role: 'system', content: systemPrompt },
+    ]
+
+    const recentHistory = context.messages.slice(-6)
+    for (const msg of recentHistory) {
+      if (msg.role === 'user' || msg.role === 'assistant') {
+        messages.push({ role: msg.role, content: msg.content })
+      }
+    }
+    messages.push({ role: 'user', content: context.currentMessage })
+
+    const llmSpan = tracer?.spanLLM({
+      model,
+      temperature: 0.5,
+      maxTokens: 1500,
+      systemPrompt,
+      userPrompt: context.currentMessage,
+      messagesArray: messages,
+      isInformatics: true,
+    })
+
+    try {
+      const completion = await openai.chat.completions.create({
+        model,
+        messages,
+        temperature: 0.5,
+        max_tokens: 1500,
+      })
+
+      const content = completion.choices[0]?.message?.content || 'No pude generar una respuesta.'
+      const totalTokens = completion.usage?.total_tokens
+
+      llmSpan?.setOutput({
+        responseContent: content,
+        finishReason: completion.choices[0]?.finish_reason,
+        totalTokens,
+      })
+      llmSpan?.end()
+
+      const builder = new ChatResponseBuilder()
+        .domain('search')
+        .text(content)
+        .processingTime(Date.now() - startTime)
+
+      if (totalTokens) {
+        builder.tokensUsed(totalTokens)
+      }
+
+      return builder.build()
+    } catch (error) {
+      llmSpan?.setError(error instanceof Error ? error.message : 'Unknown error')
+      llmSpan?.end()
+      logger.error('Error generating informatics response', error, { domain: 'search' })
+      return new ChatResponseBuilder()
+        .domain('search')
+        .text('Hubo un error al procesar tu consulta. Por favor, intenta de nuevo.')
+        .processingTime(Date.now() - startTime)
+        .build()
+    }
   }
 
   /**
