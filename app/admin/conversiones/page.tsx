@@ -1,7 +1,31 @@
-// app/admin/conversiones/page.js - Panel completo de tracking de conversiones
+// app/admin/conversiones/page.tsx - Panel completo de tracking de conversiones
 'use client'
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+import type { ConversionStatsResponse } from '@/lib/api/admin-conversion-stats'
+
+type TabType = 'funnel' | 'ab-testing' | 'predictions'
+
+interface PreviousPeriod {
+  registrations: number
+  firstTestCompleted: number
+  funnelCounts: Record<string, number>
+}
+
+interface StageSelection {
+  key: string
+  name: string
+}
+
+interface StageUser {
+  id: string
+  email: string
+  full_name?: string
+  plan_type: string
+  registration_source?: string
+  created_at?: string
+  event_at?: string
+}
 
 export default function ConversionesPage() {
   const { supabase } = useAuth()
@@ -11,36 +35,36 @@ export default function ConversionesPage() {
     fetch('/api/v2/admin/unread-sales', { method: 'POST' }).catch(() => {})
   }, [])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [activeTab, setActiveTab] = useState('funnel') // 'funnel' | 'ab-testing' | 'predictions'
+  const [error, setError] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<TabType>('funnel')
 
   // Estados para predicciones
-  const [predictionData, setPredictionData] = useState(null)
+  const [predictionData, setPredictionData] = useState<any>(null)
   const [loadingPredictions, setLoadingPredictions] = useState(false)
 
   // Estados para datos del funnel
-  const [funnelStats, setFunnelStats] = useState([])
-  const [registrationStats, setRegistrationStats] = useState({ total: 0, totalAllTime: 0, bySource: {}, activeUsers: 0, activationRate: 0 })
-  const [activeUserMetrics, setActiveUserMetrics] = useState({
+  const [funnelCounts, setFunnelCounts] = useState<Record<string, number>>({})
+  const [previousPeriod, setPreviousPeriod] = useState<PreviousPeriod | null>(null)
+  const [registrationStats, setRegistrationStats] = useState<ConversionStatsResponse['registrations']>({ total: 0, totalAllTime: 0, bySource: {}, firstTestCompleted: 0, activeUsers: 0, activationRate: 0 })
+  const [activeUserMetrics, setActiveUserMetrics] = useState<ConversionStatsResponse['activeUserMetrics']>({
     dauTotal: 0, dauFree: 0, dauPremium: 0, monetizationRate: 0,
     paidInPeriod: 0, refundsInPeriod: 0, paidNetInPeriod: 0, refundAmountPeriod: 0, freeToPayRate: 0,
     dau7Days: 0, dau7DaysFree: 0, dau7DaysPremium: 0, monetizationRate7Days: 0,
     paidIn7Days: 0, refundsIn7Days: 0, paidNetIn7Days: 0, refundAmount7Days: 0, freeToPayRate7Days: 0
   })
-  const [timeAnalysis, setTimeAnalysis] = useState([])
-  const [recentEvents, setRecentEvents] = useState([])
-  const [dailyStats, setDailyStats] = useState([])
-  const [selectedUser, setSelectedUser] = useState(null)
-  const [userJourney, setUserJourney] = useState([])
-  const [dateRange, setDateRange] = useState('7') // dias
-  const [selectedStage, setSelectedStage] = useState(null)
-  const [stageUsers, setStageUsers] = useState([])
+  const [timeAnalysis, setTimeAnalysis] = useState<any[]>([])
+  const [dailyStats, setDailyStats] = useState<any[]>([])
+  const [selectedUser, setSelectedUser] = useState<string | null>(null)
+  const [userJourney, setUserJourney] = useState<any[]>([])
+  const [dateRange, setDateRange] = useState('7')
+  const [selectedStage, setSelectedStage] = useState<StageSelection | null>(null)
+  const [stageUsers, setStageUsers] = useState<StageUser[]>([])
   const [loadingStage, setLoadingStage] = useState(false)
 
   // Estados para A/B testing
-  const [abStats, setAbStats] = useState([])
-  const [abImpressions, setAbImpressions] = useState([])
-  const [abTotals, setAbTotals] = useState({ impressions: 0, clicks: 0, conversions: 0 })
+  const [abStats, setAbStats] = useState<any[]>([])
+  const [abImpressions, setAbImpressions] = useState<any[]>([])
+  const [abTotals, setAbTotals] = useState<{ impressions: number; clicks: number; conversions: number; avgClickRate?: string | number; avgConversionRate?: string | number }>({ impressions: 0, clicks: 0, conversions: 0 })
 
   // Cargar datos
   useEffect(() => {
@@ -84,12 +108,11 @@ export default function ConversionesPage() {
     try {
       await Promise.all([
         loadMainStats(),
-        loadFunnelStats(),
         loadTimeAnalysis()
       ])
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error loading data:', err)
-      setError(err.message)
+      setError(err?.message || 'Error desconocido')
     } finally {
       setLoading(false)
     }
@@ -97,7 +120,7 @@ export default function ConversionesPage() {
 
   // Cargar datos principales desde la API (usa service role para bypasear RLS)
   const loadMainStats = async () => {
-    const response = await fetch(`/api/admin/conversion-stats?days=${dateRange}`)
+    const response = await fetch(`/api/v2/admin/conversion-stats?days=${dateRange}`)
     if (!response.ok) {
       const errorData = await response.json()
       throw new Error(errorData.error || 'Error loading stats')
@@ -112,22 +135,9 @@ export default function ConversionesPage() {
       dau7Days: 0, dau7DaysFree: 0, dau7DaysPremium: 0, monetizationRate7Days: 0,
       paidIn7Days: 0, freeToPayRate7Days: 0
     })
-    setRecentEvents(data.events)
-    setDailyStats(data.dailyStats)
-  }
-
-  const loadFunnelStats = async () => {
-    // Intentar cargar la vista, si falla usar datos vacíos
-    const { data, error } = await supabase
-      .from('conversion_funnel_stats')
-      .select('*')
-
-    if (error) {
-      console.log('Funnel stats view not available:', error.message)
-      setFunnelStats([])
-      return
-    }
-    setFunnelStats(data || [])
+    setFunnelCounts(data.funnelCounts || {})
+    setPreviousPeriod(data.previousPeriod || null)
+    setDailyStats(data.dailyStats || [])
   }
 
   const loadTimeAnalysis = async () => {
@@ -143,7 +153,7 @@ export default function ConversionesPage() {
     setTimeAnalysis(data || [])
   }
 
-  const loadUserJourney = async (userId) => {
+  const loadUserJourney = async (userId: string) => {
     setSelectedUser(userId)
 
     const { data, error } = await supabase
@@ -172,9 +182,9 @@ export default function ConversionesPage() {
         setAbStats(messageStats || [])
 
         // Calcular totales
-        const totalImpressions = messageStats?.reduce((sum, m) => sum + (m.total_impressions || 0), 0) || 0
-        const totalClicks = messageStats?.reduce((sum, m) => sum + (m.total_clicks || 0), 0) || 0
-        const totalConversions = messageStats?.reduce((sum, m) => sum + (m.total_conversions || 0), 0) || 0
+        const totalImpressions = messageStats?.reduce((sum: number, m: any) => sum + (m.total_impressions || 0), 0) || 0
+        const totalClicks = messageStats?.reduce((sum: number, m: any) => sum + (m.total_clicks || 0), 0) || 0
+        const totalConversions = messageStats?.reduce((sum: number, m: any) => sum + (m.total_conversions || 0), 0) || 0
 
         setAbTotals({
           impressions: totalImpressions,
@@ -204,7 +214,7 @@ export default function ConversionesPage() {
   }
 
   // Actualizar peso de un mensaje
-  const updateMessageWeight = async (messageId, newWeight) => {
+  const updateMessageWeight = async (messageId: string, newWeight: number) => {
     if (!supabase) {
       console.error('❌ Supabase no inicializado')
       return
@@ -225,7 +235,7 @@ export default function ConversionesPage() {
   }
 
   // Activar/desactivar mensaje
-  const toggleMessageActive = async (messageId, currentActive) => {
+  const toggleMessageActive = async (messageId: string, currentActive: boolean) => {
     if (!supabase) {
       console.error('❌ Supabase no inicializado')
       return
@@ -245,7 +255,7 @@ export default function ConversionesPage() {
   }
 
   // Cargar usuarios por etapa del funnel
-  const loadStageUsers = async (stageKey, stageName) => {
+  const loadStageUsers = async (stageKey: string, stageName: string) => {
     setSelectedStage({ key: stageKey, name: stageName })
     setLoadingStage(true)
     setStageUsers([])
@@ -264,35 +274,38 @@ export default function ConversionesPage() {
     }
   }
 
-  // Calcular totales del funnel
-  const getTotals = () => {
-    // Totales históricos (todo el tiempo) de la vista
-    const fromFunnelView = funnelStats.reduce((acc, row) => ({
-      hit_limit: (acc.hit_limit || 0) + (row.hit_limit || 0),
-      saw_modal: (acc.saw_modal || 0) + (row.saw_modal || 0),
-      clicked_upgrade: (acc.clicked_upgrade || 0) + (row.clicked_upgrade || 0),
-      visited_premium: (acc.visited_premium || 0) + (row.visited_premium || 0),
-      started_checkout: (acc.started_checkout || 0) + (row.started_checkout || 0),
-      paid: (acc.paid || 0) + (row.paid || 0)
-    }), {})
+  // Calcular totales del funnel (filtrados por período)
+  const getTotals = (): Record<string, number> => ({
+    registrations: registrationStats.total,
+    completed_first_test: registrationStats.firstTestCompleted || 0,
+    hit_limit: funnelCounts.limit_reached || 0,
+    saw_modal: funnelCounts.upgrade_modal_viewed || 0,
+    clicked_upgrade: (funnelCounts.upgrade_button_clicked || 0) + (funnelCounts.upgrade_banner_clicked || 0),
+    visited_premium: funnelCounts.premium_page_viewed || 0,
+    started_checkout: funnelCounts.checkout_started || 0,
+    paid: funnelCounts.payment_completed || 0,
+  })
 
-    // Pagos del período seleccionado (de recentEvents, que ya está filtrado por fecha)
-    const paidInPeriod = recentEvents.filter(e => e.event_type === 'payment_completed').length
-
-    // Registros y primer test vienen de user_profiles (ya filtrados por período)
+  const getPreviousTotals = (): Record<string, number> | null => {
+    if (!previousPeriod) return null
+    const pc = previousPeriod.funnelCounts || {}
     return {
-      registrations: registrationStats.total,
-      completed_first_test: registrationStats.firstTestCompleted || 0,
-      ...fromFunnelView,
-      // Sobrescribir paid con el del período para cálculo correcto de tasa
-      paidInPeriod
+      registrations: previousPeriod.registrations || 0,
+      completed_first_test: previousPeriod.firstTestCompleted || 0,
+      hit_limit: pc.limit_reached || 0,
+      saw_modal: pc.upgrade_modal_viewed || 0,
+      clicked_upgrade: (pc.upgrade_button_clicked || 0) + (pc.upgrade_banner_clicked || 0),
+      visited_premium: pc.premium_page_viewed || 0,
+      started_checkout: pc.checkout_started || 0,
+      paid: pc.payment_completed || 0,
     }
   }
 
   const totals = getTotals()
+  const prevTotals = getPreviousTotals()
 
   // Mapeo de nombres de eventos
-  const eventNames = {
+  const eventNames: Record<string, string> = {
     'registration': 'Registro',
     'first_test_started': 'Primer test iniciado',
     'first_test_completed': 'Primer test completado',
@@ -310,7 +323,7 @@ export default function ConversionesPage() {
     'payment_failed': 'Pago fallido'
   }
 
-  const eventColors = {
+  const eventColors: Record<string, string> = {
     'registration': 'bg-blue-100 text-blue-800',
     'first_test_completed': 'bg-green-100 text-green-800',
     'limit_reached': 'bg-yellow-100 text-yellow-800',
@@ -482,13 +495,13 @@ export default function ConversionesPage() {
                 const percentage = registrationStats.total > 0
                   ? ((count / registrationStats.total) * 100).toFixed(1)
                   : 0
-                const colors = {
+                const colors: Record<string, string> = {
                   'organic': 'bg-green-50 dark:bg-green-900/20 text-green-600',
                   'google_ads': 'bg-blue-50 dark:bg-blue-900/20 text-blue-600',
                   'meta_ads': 'bg-purple-50 dark:bg-purple-900/20 text-purple-600',
                   'default': 'bg-gray-50 dark:bg-gray-700 text-gray-600'
                 }
-                const icons = {
+                const icons: Record<string, string> = {
                   'organic': '🌱',
                   'google_ads': '🔍',
                   'meta_ads': '📘'
@@ -682,7 +695,7 @@ export default function ConversionesPage() {
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
         <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
           <span>📊</span>
-          Funnel de Conversion (Totales)
+          Funnel de Conversion ({dateRange === '365' ? 'Todo el ano' : dateRange === '1' ? 'Hoy' : `Ultimos ${dateRange} dias`})
         </h2>
 
         <div className="space-y-3">
@@ -697,11 +710,17 @@ export default function ConversionesPage() {
             { key: 'paid', label: 'Pago Completado', icon: '💰', color: 'bg-emerald-500' }
           ].map((step, index, arr) => {
             const value = totals[step.key] || 0
-            const prevValue = index > 0 ? (totals[arr[index - 1].key] || 0) : value
-            const conversionRate = prevValue > 0 ? ((value / prevValue) * 100).toFixed(1) : 0
-            const totalRate = totals.registrations > 0 ? ((value / totals.registrations) * 100).toFixed(1) : 0
+            const prevStepValue = index > 0 ? (totals[arr[index - 1].key] || 0) : value
+            const conversionRate = prevStepValue > 0 ? ((value / prevStepValue) * 100).toFixed(1) : '0'
+            const totalRate = totals.registrations > 0 ? ((value / totals.registrations) * 100).toFixed(1) : '0'
             const barWidth = totals.registrations > 0 ? Math.max(5, (value / totals.registrations) * 100) : 0
             const isExpanded = selectedStage?.key === step.key
+
+            // Delta vs período anterior
+            const prevPeriodValue = prevTotals ? (prevTotals[step.key] || 0) : null
+            const delta = prevPeriodValue !== null && prevPeriodValue > 0
+              ? Math.round(((value - prevPeriodValue) / prevPeriodValue) * 100)
+              : null
 
             return (
               <div key={step.key} className="relative">
@@ -736,6 +755,26 @@ export default function ConversionesPage() {
                         <span className={`text-2xl font-bold ${value > 0 ? 'text-blue-600 dark:text-blue-400' : 'text-gray-900 dark:text-white'}`}>
                           {value}
                         </span>
+                        {delta !== null && (
+                          <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${
+                            delta > 0 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                            delta < 0 ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                            'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+                          }`}>
+                            {delta > 0 ? '↑' : delta < 0 ? '↓' : '='}{Math.abs(delta)}% vs {dateRange === '1' ? 'ayer' : `${dateRange}d ant.`}
+                          </span>
+                        )}
+                        {delta === null && prevTotals && (
+                          <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${
+                            value > 0 && prevPeriodValue === 0
+                              ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                              : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
+                          }`}>
+                            {value > 0 && prevPeriodValue === 0
+                              ? 'nuevo'
+                              : `=0 vs ${dateRange === '1' ? 'ayer' : `${dateRange}d ant.`}`}
+                          </span>
+                        )}
                         {index > 0 && (
                           <span className={`text-sm px-2 py-0.5 rounded ${
                             parseFloat(conversionRate) >= 50 ? 'bg-green-100 text-green-800' :
@@ -913,59 +952,6 @@ export default function ConversionesPage() {
         </div>
       </div>
 
-      {/* Funnel por Fuente */}
-      {funnelStats.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
-          <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-            <span>🎯</span>
-            Funnel por Fuente de Registro
-          </h2>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-200 dark:border-gray-700">
-                  <th className="text-left py-3 px-2 font-semibold text-gray-600 dark:text-gray-400">Fuente</th>
-                  <th className="text-right py-3 px-2 font-semibold text-gray-600 dark:text-gray-400">Registros</th>
-                  <th className="text-right py-3 px-2 font-semibold text-gray-600 dark:text-gray-400">1er Test</th>
-                  <th className="text-right py-3 px-2 font-semibold text-gray-600 dark:text-gray-400">Limite</th>
-                  <th className="text-right py-3 px-2 font-semibold text-gray-600 dark:text-gray-400">Modal</th>
-                  <th className="text-right py-3 px-2 font-semibold text-gray-600 dark:text-gray-400">Premium</th>
-                  <th className="text-right py-3 px-2 font-semibold text-gray-600 dark:text-gray-400">Checkout</th>
-                  <th className="text-right py-3 px-2 font-semibold text-gray-600 dark:text-gray-400">Pagos</th>
-                  <th className="text-right py-3 px-2 font-semibold text-gray-600 dark:text-gray-400">% Conv.</th>
-                </tr>
-              </thead>
-              <tbody>
-                {funnelStats.map((row, i) => (
-                  <tr key={i} className="border-b border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                    <td className="py-3 px-2 font-medium text-gray-900 dark:text-white">
-                      {row.registration_source || 'Sin fuente'}
-                    </td>
-                    <td className="text-right py-3 px-2 text-gray-600 dark:text-gray-300">{row.registrations || 0}</td>
-                    <td className="text-right py-3 px-2 text-gray-600 dark:text-gray-300">{row.completed_first_test || 0}</td>
-                    <td className="text-right py-3 px-2 text-gray-600 dark:text-gray-300">{row.hit_limit || 0}</td>
-                    <td className="text-right py-3 px-2 text-gray-600 dark:text-gray-300">{row.saw_modal || 0}</td>
-                    <td className="text-right py-3 px-2 text-gray-600 dark:text-gray-300">{row.visited_premium || 0}</td>
-                    <td className="text-right py-3 px-2 text-gray-600 dark:text-gray-300">{row.started_checkout || 0}</td>
-                    <td className="text-right py-3 px-2 font-bold text-emerald-600">{row.paid || 0}</td>
-                    <td className="text-right py-3 px-2">
-                      <span className={`px-2 py-1 rounded text-xs font-bold ${
-                        (row.conversion_rate || 0) >= 5 ? 'bg-green-100 text-green-800' :
-                        (row.conversion_rate || 0) >= 1 ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-gray-100 text-gray-600'
-                      }`}>
-                        {row.conversion_rate || 0}%
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
       {/* Tiempo hasta Conversion */}
       {timeAnalysis.length > 0 && (
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
@@ -1035,51 +1021,6 @@ export default function ConversionesPage() {
           </div>
         </div>
       )}
-
-      {/* Eventos Recientes */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
-        <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-          <span>📋</span>
-          Eventos Recientes ({recentEvents.length})
-        </h2>
-
-        {recentEvents.length === 0 ? (
-          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-            <div className="text-4xl mb-2">📭</div>
-            <p>No hay eventos en el periodo seleccionado</p>
-            <p className="text-sm mt-1">Los eventos se registraran cuando los usuarios interactuen con el sistema de limites</p>
-          </div>
-        ) : (
-          <div className="space-y-2 max-h-[500px] overflow-y-auto">
-            {recentEvents.map((event, i) => (
-              <div
-                key={i}
-                className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
-                onClick={() => loadUserJourney(event.user_id)}
-              >
-                <div className="flex items-center gap-3">
-                  <span className={`px-2 py-1 rounded text-xs font-medium ${eventColors[event.event_type] || 'bg-gray-100 text-gray-800'}`}>
-                    {eventNames[event.event_type] || event.event_type}
-                  </span>
-                  <span className="text-sm text-gray-600 dark:text-gray-300">
-                    {event.user_profiles?.email || event.user_id?.substring(0, 8) + '...'}
-                  </span>
-                </div>
-                <div className="flex items-center gap-3">
-                  {event.days_since_registration !== null && (
-                    <span className="text-xs text-gray-500">
-                      Dia {event.days_since_registration}
-                    </span>
-                  )}
-                  <span className="text-xs text-gray-400">
-                    {new Date(event.created_at).toLocaleString('es-ES')}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
 
       {/* Modal Journey Usuario */}
       {selectedUser && (
@@ -1491,8 +1432,8 @@ export default function ConversionesPage() {
                       {/* Mini gráfico semanal */}
                       {h.weeklyBuckets && h.weeklyBuckets.length > 1 && (
                         <div className="mt-3 flex items-end gap-1 h-10">
-                          {h.weeklyBuckets.map((w, i) => {
-                            const max = Math.max(...h.weeklyBuckets.map(b => b.new), 1)
+                          {h.weeklyBuckets.map((w: any, i: number) => {
+                            const max = Math.max(...h.weeklyBuckets.map((b: any) => b.new), 1)
                             const height = Math.max(4, (w.new / max) * 40)
                             return (
                               <div key={i} className="flex flex-col items-center gap-0.5" title={`Sem ${i + 1}: +${w.new} nuevas, -${w.canceled} canceladas`}>
@@ -1571,8 +1512,8 @@ export default function ConversionesPage() {
                       </h4>
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                         {predictionData.predictionAccuracy.byMethod
-                          .filter(m => (m.methodName || m.method_name) !== 'by_historic') // Eliminado por impreciso (±109%)
-                          .map((method, idx) => {
+                          .filter((m: any) => (m.methodName || m.method_name) !== 'by_historic') // Eliminado por impreciso (±109%)
+                          .map((method: any, idx: number) => {
                             const name = method.methodName || method.method_name
                             const absError = parseFloat(method.avgAbsoluteError ?? method.avg_absolute_error)
                             const verified = method.verifiedPredictions ?? method.verified_predictions ?? 0
@@ -1879,7 +1820,7 @@ export default function ConversionesPage() {
                   <div>
                     <h4 className="font-medium text-gray-700 dark:text-gray-300 mb-3">Renovaciones por mes</h4>
                     <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
-                      {predictionData.renewals.byMonth.slice(0, 6).map((month, i) => (
+                      {predictionData.renewals.byMonth.slice(0, 6).map((month: any, i: number) => (
                         <div
                           key={i}
                           className={`text-center p-3 rounded-lg border ${
@@ -1938,7 +1879,7 @@ export default function ConversionesPage() {
                   Historial de Pagos ({predictionData.current.totalPayments} total)
                 </h3>
                 <div className="space-y-2">
-                  {predictionData.trend.paymentHistory.map((payment, i) => (
+                  {predictionData.trend.paymentHistory.map((payment: any, i: number) => (
                     <div key={i} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
                       <div className="text-sm">
                         <span className="font-medium text-gray-900 dark:text-white">Pago #{predictionData.current.totalPayments - i}</span>
