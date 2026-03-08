@@ -61,6 +61,7 @@ export const conversionStatsResponseSchema = z.object({
   activeUserMetrics: activeUserMetricsSchema,
   dailyStats: z.array(z.any()),
   funnelCounts: funnelCountsSchema,
+  paidAllTime: z.number(),
   previousPeriod: previousPeriodSchema,
   period: z.object({
     days: z.number(),

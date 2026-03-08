@@ -44,6 +44,7 @@ export default function ConversionesPage() {
 
   // Estados para datos del funnel
   const [funnelCounts, setFunnelCounts] = useState<Record<string, number>>({})
+  const [paidAllTime, setPaidAllTime] = useState(0)
   const [previousPeriod, setPreviousPeriod] = useState<PreviousPeriod | null>(null)
   const [registrationStats, setRegistrationStats] = useState<ConversionStatsResponse['registrations']>({ total: 0, totalAllTime: 0, bySource: {}, firstTestCompleted: 0, activeUsers: 0, activationRate: 0 })
   const [activeUserMetrics, setActiveUserMetrics] = useState<ConversionStatsResponse['activeUserMetrics']>({
@@ -136,6 +137,7 @@ export default function ConversionesPage() {
       paidIn7Days: 0, freeToPayRate7Days: 0
     })
     setFunnelCounts(data.funnelCounts || {})
+    setPaidAllTime(data.paidAllTime || 0)
     setPreviousPeriod(data.previousPeriod || null)
     setDailyStats(data.dailyStats || [])
   }
@@ -775,15 +777,6 @@ export default function ConversionesPage() {
                               : `=0 vs ${dateRange === '1' ? 'ayer' : `${dateRange}d ant.`}`}
                           </span>
                         )}
-                        {index > 0 && (
-                          <span className={`text-sm px-2 py-0.5 rounded ${
-                            parseFloat(conversionRate) >= 50 ? 'bg-green-100 text-green-800' :
-                            parseFloat(conversionRate) >= 20 ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-red-100 text-red-800'
-                          }`}>
-                            {conversionRate}% del paso anterior
-                          </span>
-                        )}
                         <span className="text-xs text-gray-500">({totalRate}% total)</span>
                       </div>
                     </div>
@@ -900,8 +893,8 @@ export default function ConversionesPage() {
                   ({activeUserMetrics.paidInPeriod} pagos - {activeUserMetrics.refundsInPeriod} refunds)
                 </div>
               )}
-              {totals.paid > 0 && totals.paid !== totals.paidInPeriod && (
-                <div className="text-xs text-gray-500 mt-1">({totals.paid} total historico)</div>
+              {paidAllTime > 0 && (
+                <div className="text-xs text-gray-500 mt-1">({paidAllTime} total historico)</div>
               )}
             </div>
             {/* Refunds si hay */}
@@ -938,13 +931,13 @@ export default function ConversionesPage() {
               {/* Tasa histórica */}
               <div className="text-center p-4 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg text-white">
                 <div className="text-3xl font-bold">
-                  {totals.paid > 0 && registrationStats.totalAllTime > 0
-                    ? ((totals.paid / registrationStats.totalAllTime) * 100).toFixed(2)
+                  {paidAllTime > 0 && registrationStats.totalAllTime > 0
+                    ? ((paidAllTime / registrationStats.totalAllTime) * 100).toFixed(2)
                     : '0.00'}%
                 </div>
                 <div className="text-sm opacity-90">Conversion historica total</div>
                 <div className="text-xs opacity-75 mt-1">
-                  {totals.paid} pagos / {registrationStats.totalAllTime || 0} usuarios
+                  {paidAllTime} pagos / {registrationStats.totalAllTime || 0} usuarios
                 </div>
               </div>
             </div>

@@ -1,7 +1,7 @@
 // lib/api/admin-conversion-stats/queries.ts - Drizzle queries para conversion stats
 import { getDb } from '@/db/client'
 import { userProfiles, conversionEvents, tests, cancellationFeedback } from '@/db/schema'
-import { sql, gte, lt, and, eq, isNotNull } from 'drizzle-orm'
+import { sql, gte, lt, and, eq, isNotNull, inArray } from 'drizzle-orm'
 import type { ConversionStatsResponse } from './schemas'
 
 // -- Helpers --
@@ -74,6 +74,8 @@ export async function getConversionStats(days: number): Promise<ConversionStatsR
     prevFirstTestRows,
     // 15. Funnel período anterior
     prevFunnelEvents,
+    // 16. Pagos all-time (para conversión histórica)
+    paidAllTimeRows,
   ] = await Promise.all([
     // 1
     db.select({
@@ -194,6 +196,11 @@ export async function getConversionStats(days: number): Promise<ConversionStatsR
       gte(conversionEvents.createdAt, prevFrom),
       lt(conversionEvents.createdAt, periodFrom),
     )),
+
+    // 16
+    db.select({ count: sql<number>`count(*)::int` })
+    .from(conversionEvents)
+    .where(eq(conversionEvents.eventType, 'payment_completed')),
   ])
 
   // ============================================
@@ -211,8 +218,8 @@ export async function getConversionStats(days: number): Promise<ConversionStatsR
   const paidNetIn7Days = Math.max(0, paidIn7Days - refundsIn7Days)
 
   // DAU únicos
-  const dauPeriodIds = [...new Set(dauPeriod.map(t => t.userId).filter(Boolean))]
-  const dau7Ids = [...new Set(dau7.map(t => t.userId).filter(Boolean))]
+  const dauPeriodIds = [...new Set(dauPeriod.map(t => t.userId).filter(Boolean))] as string[]
+  const dau7Ids = [...new Set(dau7.map(t => t.userId).filter(Boolean))] as string[]
   const activeRegUserCount = activeFromReg.length
 
   const dauTotal = dauPeriodIds.length
@@ -226,7 +233,7 @@ export async function getConversionStats(days: number): Promise<ConversionStatsR
     const planData = await db
       .select({ id: userProfiles.id, planType: userProfiles.planType })
       .from(userProfiles)
-      .where(sql`${userProfiles.id} = ANY(${dauPeriodIds.slice(0, 1000)}::uuid[])`)
+      .where(inArray(userProfiles.id, dauPeriodIds.slice(0, 1000)))
     dauPremium = planData.filter(u => u.planType === 'premium').length
     dauFree = planData.filter(u => u.planType !== 'premium').length
   }
@@ -235,7 +242,7 @@ export async function getConversionStats(days: number): Promise<ConversionStatsR
     const plan7Data = await db
       .select({ id: userProfiles.id, planType: userProfiles.planType })
       .from(userProfiles)
-      .where(sql`${userProfiles.id} = ANY(${dau7Ids.slice(0, 1000)}::uuid[])`)
+      .where(inArray(userProfiles.id, dau7Ids.slice(0, 1000)))
     dau7DaysPremium = plan7Data.filter(u => u.planType === 'premium').length
     dau7DaysFree = plan7Data.filter(u => u.planType !== 'premium').length
   }
@@ -309,6 +316,7 @@ export async function getConversionStats(days: number): Promise<ConversionStatsR
     },
     dailyStats,
     funnelCounts,
+    paidAllTime: paidAllTimeRows[0]?.count || 0,
     previousPeriod: {
       registrations: prevRegRows[0]?.count || 0,
       firstTestCompleted: prevFirstTestRows[0]?.count || 0,
