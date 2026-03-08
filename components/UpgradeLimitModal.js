@@ -4,6 +4,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { trackUpgradeModalView, trackUpgradeButtonClick } from '@/lib/services/conversionTracker'
 
 // Iconos SVG para cada tipo de mensaje
 const MessageIcon = ({ type }) => {
@@ -122,6 +123,8 @@ export default function UpgradeLimitModal({
         setImpressionId(data)
         hasTrackedRef.current = true
         console.log('Impresion trackeada:', data, '| Mensaje:', messageData.message_key)
+        // También trackear en conversion_events
+        trackUpgradeModalView(supabase, userId, 'daily_limit')
       }
     } catch (err) {
       console.error('Error trackeando impresion:', err)
@@ -168,7 +171,7 @@ export default function UpgradeLimitModal({
 
   // Handler para clic en upgrade con plan específico
   const handleUpgradeWithPlan = async (plan) => {
-    // Trackear clic
+    // Trackear clic (sistema A/B)
     if (supabase && impressionId) {
       try {
         await supabase.rpc('track_upgrade_message_click', {
@@ -178,6 +181,10 @@ export default function UpgradeLimitModal({
       } catch (err) {
         console.error('Error trackeando clic:', err)
       }
+    }
+    // También trackear en conversion_events
+    if (supabase && userId) {
+      trackUpgradeButtonClick(supabase, userId, 'modal')
     }
 
     // Redirigir a premium con el plan seleccionado
