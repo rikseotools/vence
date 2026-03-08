@@ -66,5 +66,5 @@ export const EMBEDDING_DIMENSIONS = 1536
 /**
  * Modelo de chat por defecto
  */
-export const CHAT_MODEL = 'gpt-4o-mini'
+export const CHAT_MODEL = 'gpt-4o'
 export const CHAT_MODEL_PREMIUM = 'gpt-4o'
