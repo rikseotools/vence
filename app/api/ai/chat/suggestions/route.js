@@ -22,13 +22,14 @@ export async function GET(request) {
       const slugToSearch = oposicionId.replace(/_/g, '-')
       console.log('🔍 [Suggestions API] Converting slug:', oposicionId, '→', slugToSearch)
 
-      const { data: oposicion, error: oposError } = await getSupabase()
+      const { data: oposiciones } = await getSupabase()
         .from('oposiciones')
         .select('id')
         .eq('slug', slugToSearch)
-        .single()
+        .limit(1)
 
-      console.log('🔍 [Suggestions API] Oposicion lookup result:', oposicion, oposError?.message)
+      const oposicion = oposiciones?.[0]
+      console.log('🔍 [Suggestions API] Oposicion lookup result:', oposicion || 'not found')
 
       if (oposicion) {
         oposicionId = oposicion.id
