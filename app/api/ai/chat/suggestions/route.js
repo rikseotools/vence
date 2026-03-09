@@ -33,6 +33,10 @@ export async function GET(request) {
       if (oposicion) {
         oposicionId = oposicion.id
         console.log('🔍 [Suggestions API] Using UUID:', oposicionId)
+      } else {
+        // No se encontró UUID para este slug, no filtrar por oposicion
+        console.log('⚠️ [Suggestions API] Slug not found in oposiciones table, ignoring oposicion filter')
+        oposicionId = null
       }
     }
 

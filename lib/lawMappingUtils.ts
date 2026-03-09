@@ -961,6 +961,9 @@ export function mapLawSlugToShortName(lawSlug: string): string | null {
     // Si falla la decodificación, usar el original
   }
 
+  // Normalizar: quitar dos puntos sueltos del slug (ej: "base-de-datos:-access" → "base-de-datos-access")
+  decodedSlug = decodedSlug.replace(/:-/g, '-').replace(/:$/g, '')
+
   // 1. Primero intentar cache de BD (fuente de verdad)
   if (dbSlugToShortName) {
     const dbResult = dbSlugToShortName.get(decodedSlug) || dbSlugToShortName.get(lawSlug)

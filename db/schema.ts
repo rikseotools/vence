@@ -117,6 +117,7 @@ export const userProfiles = pgTable("user_profiles", {
 }, (table) => [
 	index("idx_user_profiles_active_student").using("btree", table.isActiveStudent.asc().nullsLast().op("bool_ops")).where(sql`(is_active_student = true)`),
 	index("idx_user_profiles_ciudad").using("btree", table.ciudad.asc().nullsLast().op("text_ops")),
+	index("idx_user_profiles_created_at").using("btree", table.createdAt.desc().nullsFirst().op("timestamptz_ops")),
 	index("idx_user_profiles_onboarding").using("btree", table.onboardingCompletedAt.asc().nullsLast().op("timestamptz_ops")).where(sql`(onboarding_completed_at IS NOT NULL)`),
 	index("idx_user_profiles_onboarding_skip").using("btree", table.onboardingSkipCount.asc().nullsLast().op("int4_ops")),
 	index("idx_user_profiles_target_oposicion").using("btree", table.targetOposicion.asc().nullsLast().op("text_ops")).where(sql`(target_oposicion IS NOT NULL)`),
@@ -1873,6 +1874,7 @@ export const tests = pgTable("tests", {
 	index("idx_tests_tema_test").using("btree", table.temaNumber.asc().nullsLast().op("int4_ops"), table.testNumber.asc().nullsLast().op("int4_ops")),
 	index("idx_tests_test_url").using("btree", table.testUrl.asc().nullsLast().op("text_ops")),
 	index("idx_tests_user_completed").using("btree", table.userId.asc().nullsLast().op("bool_ops"), table.isCompleted.asc().nullsLast().op("bool_ops")),
+	index("idx_tests_created_at").using("btree", table.createdAt.desc().nullsFirst().op("timestamptz_ops")),
 	index("idx_tests_user_created").using("btree", table.userId.asc().nullsLast().op("timestamptz_ops"), table.createdAt.desc().nullsFirst().op("timestamptz_ops")),
 	index("idx_tests_user_id").using("btree", table.userId.asc().nullsLast().op("uuid_ops")),
 	foreignKey({
