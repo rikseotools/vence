@@ -82,6 +82,7 @@ export default function HeaderES() {
     type?: string; name?: string; message?: string
   } | null
   const dismissNotification = oposicionContext?.dismissNotification || (() => {})
+  const needsOposicionFix = oposicionContext?.needsOposicionFix || false
 
   // 🆕 CARGAR RACHA DEL USUARIO
   useEffect(() => {
@@ -868,7 +869,24 @@ export default function HeaderES() {
           </button>
         </div>
       )}
-      
+
+      {/* Banner: oposición inválida - forzar re-selección */}
+      {needsOposicionFix && user && (
+        <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white px-4 py-3 text-center">
+          <div className="flex items-center justify-center gap-2 flex-wrap">
+            <span className="font-medium">
+              Necesitamos que actualices tu oposicion para personalizar tu experiencia
+            </span>
+            <a
+              href="/perfil"
+              className="inline-flex items-center gap-1 bg-white text-orange-600 font-semibold px-4 py-1.5 rounded-full text-sm hover:bg-orange-50 transition-colors"
+            >
+              Ir a mi perfil
+            </a>
+          </div>
+        </div>
+      )}
+
       {/* Dropdown de exámenes pendientes */}
       {showPendingExamsDropdown && pendingExams.length > 0 && (
         <>

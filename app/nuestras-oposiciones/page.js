@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useOposicion } from '@/contexts/OposicionContext'
 
 export default function OposicionesPage() {
-  const { setOposicionActual, oposicionMenu, hasOposicion } = useOposicion()
+  const { changeOposicion, oposicionMenu, hasOposicion } = useOposicion()
   const [selectedOposicion, setSelectedOposicion] = useState(null)
 
   // Datos de oposiciones disponibles - Actualizados BOE 22/12/2025
@@ -519,17 +519,16 @@ export default function OposicionesPage() {
     }
   }, [hasOposicion, oposicionMenu])
 
-  const handleSelectOposicion = async (oposicion) => {
-    setSelectedOposicion(oposicion)
-    await setOposicionActual(oposicion.id)
-  }
-
   // 🆕 Manejar click en tarjeta - ir directamente a la oposición
-  const handleCardClick = (oposicion, event) => {
+  const handleCardClick = async (oposicion, event) => {
     // Evitar que se active si se hace click en enlaces/botones
     if (event.target.tagName === 'A' || event.target.tagName === 'BUTTON' || event.target.closest('a, button')) {
       return
     }
+
+    // Convertir id con guiones a underscores (formato BD)
+    const oposicionDbId = oposicion.id.replace(/-/g, '_')
+    await changeOposicion(oposicionDbId)
 
     // Para oposiciones "comingSoon", ir al temario
     // Para las demás, ir a la página principal

@@ -6,6 +6,7 @@ import Link from 'next/link'
 import AvatarChanger from '@/components/AvatarChanger'
 import { useAuth } from '@/contexts/AuthContext'
 import { useUserOposicion } from '@/components/useUserOposicion'
+import { ALL_OPOSICION_IDS } from '@/lib/config/oposiciones'
 import notificationTracker from '@/lib/services/notificationTracker'
 import CancellationFlow from '@/components/CancellationFlow'
 import type { User, SupabaseClient } from '@supabase/supabase-js'
@@ -730,6 +731,13 @@ function PerfilPageContent() {
           let currentOposicion = userOposicion?.slug || profileData.target_oposicion || ''
           if (currentOposicion === 'auxiliar-administrativo-estado') {
             currentOposicion = 'auxiliar_administrativo_estado' // Migrar al nuevo formato
+          }
+
+          // Limpiar datos sucios (UUIDs, JSON, slugs desconocidos)
+          if (currentOposicion && !ALL_OPOSICION_IDS.includes(currentOposicion)) {
+            console.warn('⚠️ [Perfil] target_oposicion inválido, abriendo selector:', currentOposicion)
+            currentOposicion = ''
+            setShowOposicionSelector(true)
           }
 
           setFormData({

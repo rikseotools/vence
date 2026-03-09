@@ -6,7 +6,7 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from '
 import { usePathname } from 'next/navigation'
 import { getSupabaseClient } from '../lib/supabase'
 import { useAuth } from './AuthContext'
-import { OPOSICIONES, type NavLink } from '@/lib/config/oposiciones'
+import { OPOSICIONES, ALL_OPOSICION_IDS, type NavLink } from '@/lib/config/oposiciones'
 
 const supabase = getSupabaseClient()
 
@@ -45,6 +45,7 @@ export interface OposicionContextValue {
   dismissNotification: () => void
   changeOposicion: (newOposicionId: string, showNotificationFlag?: boolean) => Promise<boolean>
   showOposicionChangeNotification: (oposicionName: string) => void
+  needsOposicionFix: boolean
 }
 
 // ============================================
@@ -91,7 +92,8 @@ const OposicionContext = createContext<OposicionContextValue>({
   notificationData: null,
   dismissNotification: () => {},
   changeOposicion: async () => false,
-  showOposicionChangeNotification: () => {}
+  showOposicionChangeNotification: () => {},
+  needsOposicionFix: false
 })
 
 // ============================================
@@ -107,6 +109,7 @@ export function OposicionProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [showNotification, setShowNotification] = useState(false)
   const [notificationData, setNotificationData] = useState<NotificationData | null>(null)
+  const [needsOposicionFix, setNeedsOposicionFix] = useState(false)
 
   // Cargar oposición del usuario cuando cambie el user del AuthContext
   useEffect(() => {
@@ -132,16 +135,30 @@ export function OposicionProvider({ children }: { children: ReactNode }) {
           setUserOposicion(null)
           setOposicionId(null)
           setOposicionMenu(DEFAULT_MENU)
+          setNeedsOposicionFix(false)
         } else {
           const opoId = profile.target_oposicion
-          // NOTA: target_oposicion_data es JSONB, Supabase lo devuelve como objeto
-          const oposicionData = (profile.target_oposicion_data as OposicionData | null) || null
 
-          setUserOposicion(oposicionData)
-          setOposicionId(opoId)
+          // Detectar datos sucios: UUIDs, JSON, slugs desconocidos
+          const isValidOposicion = ALL_OPOSICION_IDS.includes(opoId)
 
-          const menuConfig = OPOSICION_MENUS[opoId] || DEFAULT_MENU
-          setOposicionMenu(menuConfig)
+          if (!isValidOposicion) {
+            console.warn('⚠️ [OposicionContext] target_oposicion inválido:', opoId)
+            setNeedsOposicionFix(true)
+            setUserOposicion(null)
+            setOposicionId(null)
+            setOposicionMenu(DEFAULT_MENU)
+          } else {
+            setNeedsOposicionFix(false)
+            // NOTA: target_oposicion_data es JSONB, Supabase lo devuelve como objeto
+            const oposicionData = (profile.target_oposicion_data as OposicionData | null) || null
+
+            setUserOposicion(oposicionData)
+            setOposicionId(opoId)
+
+            const menuConfig = OPOSICION_MENUS[opoId] || DEFAULT_MENU
+            setOposicionMenu(menuConfig)
+          }
         }
 
       } catch (error) {
@@ -229,7 +246,9 @@ export function OposicionProvider({ children }: { children: ReactNode }) {
       if (error) throw error
 
       setUserOposicion(newOposicionData)
+      setOposicionId(newOposicionId)
       setOposicionMenu(menuConfig || DEFAULT_MENU)
+      setNeedsOposicionFix(false)
 
       if (showNotificationFlag) {
         localStorage.setItem('oposicionChanged', JSON.stringify({
@@ -275,7 +294,8 @@ export function OposicionProvider({ children }: { children: ReactNode }) {
     notificationData,
     dismissNotification,
     changeOposicion,
-    showOposicionChangeNotification
+    showOposicionChangeNotification,
+    needsOposicionFix
   }
 
   return (
