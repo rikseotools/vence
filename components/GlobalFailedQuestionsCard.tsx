@@ -1,4 +1,4 @@
-// components/GlobalFailedQuestionsCard.js - SOLO SUPABASE (SIMPLE)
+// components/GlobalFailedQuestionsCard.tsx - SOLO SUPABASE (SIMPLE)
 'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
@@ -7,7 +7,32 @@ import { getOposicionSlugFromPathname } from '@/lib/config/oposiciones'
 import { getSupabaseClient } from '../lib/supabase'
 const supabase = getSupabaseClient()
 
-// 🔧 Obtener usuario actual
+interface TemaStats {
+  totalFailed: number
+  totalAttempts?: number
+  totalCorrect?: number
+  uniqueTests?: number
+  averageScore?: number
+  bestScore?: number
+  worstScore?: number
+  lastTestDate?: string
+  recentTests?: Array<{
+    id: string
+    title: string
+    score: number
+    total_questions: number
+    completed_at: string
+  }>
+  isEmpty?: boolean
+  noUser?: boolean
+  error?: boolean
+}
+
+interface TemaFailedQuestionsCardProps {
+  tema: number
+  temaName: string
+}
+
 async function getCurrentUser() {
   try {
     const { data: { user }, error } = await supabase.auth.getUser()
@@ -19,11 +44,10 @@ async function getCurrentUser() {
   }
 }
 
-// 🔧 Cargar estadísticas desde Supabase
-async function loadStatsFromSupabase(userId, tema) {
+async function loadStatsFromSupabase(userId: string, tema: number): Promise<TemaStats | null> {
   try {
     console.log('📊 Cargando estadísticas desde Supabase para tema', tema)
-    
+
     const { data: tests, error } = await supabase
       .from('tests')
       .select('*')
@@ -41,14 +65,14 @@ async function loadStatsFromSupabase(userId, tema) {
       return { totalFailed: 0, isEmpty: true }
     }
 
-    const totalAttempts = tests.reduce((sum, test) => sum + test.total_questions, 0)
-    const totalCorrect = tests.reduce((sum, test) => sum + test.score, 0)
+    const totalAttempts = tests.reduce((sum: number, test: any) => sum + test.total_questions, 0)
+    const totalCorrect = tests.reduce((sum: number, test: any) => sum + test.score, 0)
     const totalFailed = totalAttempts - totalCorrect
     const averageScore = Math.round((totalCorrect / totalAttempts) * 100)
-    const bestScore = Math.max(...tests.map(test => 
+    const bestScore = Math.max(...tests.map((test: any) =>
       Math.round((test.score / test.total_questions) * 100)
     ))
-    const worstScore = Math.min(...tests.map(test => 
+    const worstScore = Math.min(...tests.map((test: any) =>
       Math.round((test.score / test.total_questions) * 100)
     ))
 
@@ -70,10 +94,9 @@ async function loadStatsFromSupabase(userId, tema) {
   }
 }
 
-// 🔧 Formatear fecha
-function formatDate(dateString) {
+function formatDate(dateString: string | undefined | null): string {
   if (!dateString) return 'Sin fecha'
-  
+
   try {
     const date = new Date(dateString)
     return date.toLocaleDateString('es-ES', {
@@ -83,16 +106,15 @@ function formatDate(dateString) {
       hour: '2-digit',
       minute: '2-digit'
     })
-  } catch (error) {
+  } catch {
     return 'Fecha inválida'
   }
 }
 
-// 🎯 COMPONENTE PRINCIPAL PARA TEMA ESPECÍFICO
-export function TemaFailedQuestionsCard({ tema, temaName }) {
-  const [temaStats, setTemaStats] = useState(null)
+export function TemaFailedQuestionsCard({ tema, temaName }: TemaFailedQuestionsCardProps) {
+  const [temaStats, setTemaStats] = useState<TemaStats | null>(null)
   const [loading, setLoading] = useState(true)
-  const [user, setUser] = useState(null)
+  const [user, setUser] = useState<any>(null)
   const pathname = usePathname()
   const oposicionSlug = getOposicionSlugFromPathname(pathname)
 
@@ -100,20 +122,18 @@ export function TemaFailedQuestionsCard({ tema, temaName }) {
     async function loadData() {
       try {
         setLoading(true)
-        
-        // Obtener usuario actual
+
         const currentUser = await getCurrentUser()
         setUser(currentUser)
-        
+
         if (!currentUser) {
           setTemaStats({ totalFailed: 0, noUser: true })
           return
         }
 
-        // Cargar estadísticas desde Supabase
         const stats = await loadStatsFromSupabase(currentUser.id, tema)
         setTemaStats(stats)
-        
+
         console.log('📊 Estadísticas cargadas:', stats)
 
       } catch (error) {
@@ -141,7 +161,6 @@ export function TemaFailedQuestionsCard({ tema, temaName }) {
     )
   }
 
-  // Usuario no autenticado
   if (!user || temaStats?.noUser) {
     return (
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
@@ -160,7 +179,6 @@ export function TemaFailedQuestionsCard({ tema, temaName }) {
     )
   }
 
-  // Sin tests o sin errores
   if (!temaStats || temaStats.isEmpty || temaStats.totalFailed === 0) {
     return (
       <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
@@ -168,10 +186,10 @@ export function TemaFailedQuestionsCard({ tema, temaName }) {
           <span className="text-2xl mr-3">🎉</span>
           <div className="text-center">
             <h3 className="text-lg font-bold text-green-800 mb-1">
-              {temaStats?.totalAttempts > 0 ? '¡Dominio Perfecto!' : '¡Empieza tu primer test!'}
+              {temaStats?.totalAttempts && temaStats.totalAttempts > 0 ? '¡Dominio Perfecto!' : '¡Empieza tu primer test!'}
             </h3>
             <p className="text-green-700 text-sm">
-              {temaStats?.totalAttempts > 0 
+              {temaStats?.totalAttempts && temaStats.totalAttempts > 0
                 ? `${temaStats.totalCorrect}/${temaStats.totalAttempts} respuestas correctas en ${temaName}`
                 : `Aún no has completado tests en ${temaName}`
               }
@@ -195,8 +213,7 @@ export function TemaFailedQuestionsCard({ tema, temaName }) {
           </p>
         </div>
       </div>
-      
-      {/* Estadísticas principales */}
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
         <div className="bg-white rounded-lg p-3 text-center">
           <div className="text-lg font-bold text-red-600">{temaStats.totalFailed}</div>
@@ -216,7 +233,6 @@ export function TemaFailedQuestionsCard({ tema, temaName }) {
         </div>
       </div>
 
-      {/* Evolución */}
       <div className="bg-white rounded-lg p-4 mb-4">
         <h4 className="font-bold text-gray-800 text-sm mb-3">📈 Tu Evolución</h4>
         <div className="grid grid-cols-3 gap-3 text-sm">
@@ -235,7 +251,6 @@ export function TemaFailedQuestionsCard({ tema, temaName }) {
         </div>
       </div>
 
-      {/* Tests recientes */}
       {temaStats.recentTests && temaStats.recentTests.length > 0 && (
         <div className="bg-white rounded-lg p-4 mb-4">
           <h4 className="font-bold text-gray-800 text-sm mb-3">🕒 Tests Recientes</h4>
@@ -252,7 +267,7 @@ export function TemaFailedQuestionsCard({ tema, temaName }) {
                   </div>
                   <div className="text-right">
                     <div className={`font-bold ${
-                      percentage >= 80 ? 'text-green-600' : 
+                      percentage >= 80 ? 'text-green-600' :
                       percentage >= 60 ? 'text-yellow-600' : 'text-red-600'
                     }`}>
                       {percentage}%
@@ -268,18 +283,17 @@ export function TemaFailedQuestionsCard({ tema, temaName }) {
         </div>
       )}
 
-      {/* Recomendaciones */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <h4 className="font-bold text-blue-800 text-sm mb-2">💡 Para Mejorar en Este Tema</h4>
         <div className="text-blue-700 text-xs space-y-1 mb-3">
           <div>• Repite los tests de este tema varias veces</div>
           <div>• Estudia los artículos específicos que más te cuestan</div>
           <div>• Toma notas de las preguntas problemáticas</div>
-          {temaStats.averageScore < 70 && (
+          {temaStats.averageScore !== undefined && temaStats.averageScore < 70 && (
             <div>• 🚨 Tu promedio es bajo, necesitas más práctica</div>
           )}
         </div>
-        
+
         <div className="flex gap-2">
           <Link
             href={`/${oposicionSlug}/test/tema-${tema}`}
@@ -299,7 +313,6 @@ export function TemaFailedQuestionsCard({ tema, temaName }) {
   )
 }
 
-// 🌍 COMPONENTE GLOBAL (simplificado)
 export default function GlobalFailedQuestionsCard() {
   return (
     <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-blue-200">
@@ -309,16 +322,16 @@ export default function GlobalFailedQuestionsCard() {
           <div className="text-sm font-bold">Estadísticas Globales</div>
         </div>
       </div>
-      
+
       <div className="p-6">
         <h3 className="font-bold text-gray-800 text-lg mb-3">
           Estadísticas por Tema
         </h3>
-        
+
         <p className="text-gray-600 text-sm mb-4 leading-relaxed">
           Las estadísticas se muestran en cada tema individual cuando estés autenticado.
         </p>
-        
+
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <div className="flex items-center">
             <span className="text-2xl mr-3">🎯</span>

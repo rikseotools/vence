@@ -1,27 +1,70 @@
-// components/Statistics/ThemePerformance.js
+// components/Statistics/ThemePerformance.tsx
 'use client'
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
 import { generateLawSlug } from '../../lib/lawMappingUtils'
 import ArticleModal from './ArticleModal'
 
-const getScoreColor = (percentage) => {
+interface ThemeData {
+  theme: number
+  title: string
+  accuracy: number
+  correct: number
+  total: number
+  avgTime: number
+  status: string
+  trend?: 'improving' | 'declining' | 'stable'
+  articlesCount: number
+}
+
+interface ArticleData {
+  theme?: number
+  tema_number?: number
+  article: string
+  article_number?: string
+  law: string
+  accuracy: number
+  correct: number
+  total: number
+  avgTime: number
+  avgRetention: number
+  status: string
+  trend?: 'improving' | 'declining' | 'stable'
+}
+
+interface UserOposicion {
+  slug: string
+  nombre: string
+  bloquesCount?: number
+  temasCount?: number
+}
+
+interface ModalState {
+  isOpen: boolean
+  lawSlug: string | null
+  articleNumber: string | null
+}
+
+interface ThemePerformanceProps {
+  themePerformance: ThemeData[] | null
+  articlePerformance: ArticleData[] | null
+  userOposicion?: UserOposicion | null
+}
+
+const getScoreColor = (percentage: number): string => {
   if (percentage >= 85) return 'text-green-600'
   if (percentage >= 70) return 'text-blue-600'
   if (percentage >= 50) return 'text-yellow-600'
   return 'text-red-600'
 }
 
-const getScoreBg = (percentage) => {
+const getScoreBg = (percentage: number): string => {
   if (percentage >= 85) return 'bg-green-50 border-green-200'
   if (percentage >= 70) return 'bg-blue-50 border-blue-200'
   if (percentage >= 50) return 'bg-yellow-50 border-yellow-200'
   return 'bg-red-50 border-red-200'
 }
 
-// Formatear número de tema para mostrar al usuario
-const formatThemeName = (num, oposicionSlug = 'auxiliar-administrativo-estado') => {
-  // Administrativo del Estado (C1) - Estructura según /administrativo-estado/test
+const formatThemeName = (num: number, oposicionSlug: string = 'auxiliar-administrativo-estado'): string => {
   if (oposicionSlug === 'administrativo-estado') {
     if (num >= 1 && num <= 11) return `Bloque I - Tema ${num}`
     if (num >= 201 && num <= 204) return `Bloque II - Tema ${num - 200}`
@@ -32,22 +75,20 @@ const formatThemeName = (num, oposicionSlug = 'auxiliar-administrativo-estado') 
     return `Tema ${num}`
   }
 
-  // Auxiliar Administrativo del Estado (C2) - Estructura por defecto
   if (num >= 1 && num <= 16) return `Bloque I - Tema ${num}`
   if (num >= 101 && num <= 112) return `Bloque II - Tema ${num - 100}`
 
   return `Tema ${num}`
 }
 
-export default function ThemePerformance({ themePerformance, articlePerformance, userOposicion }) {
-  const [selectedTheme, setSelectedTheme] = useState(null)
-  const [modalState, setModalState] = useState({
+export default function ThemePerformance({ themePerformance, articlePerformance, userOposicion }: ThemePerformanceProps) {
+  const [selectedTheme, setSelectedTheme] = useState<number | null>(null)
+  const [modalState, setModalState] = useState<ModalState>({
     isOpen: false,
     lawSlug: null,
     articleNumber: null
   })
-  
-  // Detectar si debe abrir un tema específico al cargar
+
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
     const openTheme = urlParams.get('openTheme')
@@ -55,14 +96,13 @@ export default function ThemePerformance({ themePerformance, articlePerformance,
       const themeExists = themePerformance.find(t => t.theme.toString() === openTheme)
       if (themeExists) {
         setSelectedTheme(parseInt(openTheme))
-        // Limpiar el parámetro de la URL sin recargar la página
         const newUrl = window.location.pathname
         window.history.replaceState({}, '', newUrl)
       }
     }
-  }, []) // Solo ejecutar una vez al montar
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const openArticleModal = (lawName, articleNumber) => {
+  const openArticleModal = (lawName: string, articleNumber: string) => {
     const lawSlug = generateLawSlug(lawName)
     setModalState({
       isOpen: true,
@@ -79,15 +119,15 @@ export default function ThemePerformance({ themePerformance, articlePerformance,
     })
   }
 
-  // Filtrar artículos del tema seleccionado
-  const getArticlesForTheme = (themeNumber) => {
-    return articlePerformance?.filter(article => 
+  const getArticlesForTheme = (themeNumber: number): ArticleData[] => {
+    return articlePerformance?.filter(article =>
       article.theme === themeNumber || article.tema_number === themeNumber
     ) || []
   }
 
-  // Contenido principal
-  let mainContent
+  const oposicionSlug = userOposicion?.slug || 'auxiliar-administrativo-estado'
+
+  let mainContent: React.ReactNode
 
   if (!themePerformance || themePerformance.length === 0) {
     mainContent = (
@@ -101,7 +141,7 @@ export default function ThemePerformance({ themePerformance, articlePerformance,
     const themeData = themePerformance.find(t => t.theme === selectedTheme)
     const themeArticles = getArticlesForTheme(selectedTheme)
 
-    mainContent = (
+    mainContent = themeData ? (
       <div className="bg-white rounded-xl shadow-lg p-6">
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -118,7 +158,6 @@ export default function ThemePerformance({ themePerformance, articlePerformance,
           </button>
         </div>
 
-        {/* Resumen del tema */}
         <div className={`p-4 rounded-lg border mb-6 ${getScoreBg(themeData.accuracy)}`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
@@ -145,15 +184,13 @@ export default function ThemePerformance({ themePerformance, articlePerformance,
           </div>
         </div>
 
-        {/* Lista de artículos */}
         {themeArticles.length > 0 ? (
           <div className="space-y-3">
             <h4 className="font-bold text-gray-800 mb-3">📋 Artículos del {formatThemeName(selectedTheme, userOposicion?.slug)}</h4>
             {themeArticles.map((article, index) => {
-              // Preparar datos para el modal del artículo
               const lawName = article.law || 'Ley desconocida'
               const articleNumber = article.article_number || article.article?.match(/\d+/)?.[0] || '1'
-              
+
               return (
                 <div key={index} className={`p-4 rounded-lg border ${getScoreBg(article.accuracy)}`}>
                   <div className="flex items-center justify-between">
@@ -174,7 +211,7 @@ export default function ThemePerformance({ themePerformance, articlePerformance,
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center space-x-3">
                       <div className="text-right">
                         <div className={`text-xl font-bold ${getScoreColor(article.accuracy)}`}>
@@ -196,10 +233,9 @@ export default function ThemePerformance({ themePerformance, articlePerformance,
                       </div>
                     </div>
                   </div>
-                  
-                  {/* Botón para abrir artículo en modal - FUERA del contenedor */}
+
                   <div className="mt-3 pl-4">
-                    <button 
+                    <button
                       onClick={() => openArticleModal(lawName, articleNumber)}
                       className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-2"
                     >
@@ -221,7 +257,7 @@ export default function ThemePerformance({ themePerformance, articlePerformance,
           </div>
         )}
       </div>
-    )
+    ) : null
   }
 
   else {
@@ -229,7 +265,6 @@ export default function ThemePerformance({ themePerformance, articlePerformance,
       <div className="bg-white rounded-xl shadow-lg p-6">
       <h3 className="text-xl font-bold text-gray-800 mb-4">📚 Rendimiento por Tema</h3>
 
-      {/* Indicador de oposición seleccionada */}
       {userOposicion && (
         <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
           <p className="text-sm text-blue-800">
@@ -243,20 +278,19 @@ export default function ThemePerformance({ themePerformance, articlePerformance,
       )}
 
       <p className="text-gray-600 mb-6">Haz clic en un tema para ver el detalle por artículos</p>
-      
-      
-      
+
+
+
       <div className="space-y-3">
         {themePerformance.map((theme, index) => {
-          const themeUrl = `/${userOposicion?.slug || 'auxiliar-administrativo-estado'}/temario/tema-${theme.theme}`
-          
+          const themeUrl = `/${oposicionSlug}/temario/tema-${theme.theme}`
+
           return (
             <div
               key={index}
               className={`p-4 rounded-lg border hover:shadow-md transition-all cursor-pointer ${getScoreBg(theme.accuracy)}`}
               onClick={(e) => {
-                // Solo actuar si no se hizo clic en los botones
-                if (!e.target.closest('.action-buttons')) {
+                if (!(e.target as HTMLElement).closest('.action-buttons')) {
                   setSelectedTheme(theme.theme)
                 }
               }}
@@ -278,7 +312,7 @@ export default function ThemePerformance({ themePerformance, articlePerformance,
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center space-x-3">
                   <div className="text-right">
                     <div className={`text-xl font-bold ${getScoreColor(theme.accuracy)}`}>
@@ -298,8 +332,7 @@ export default function ThemePerformance({ themePerformance, articlePerformance,
                       </div>
                     )}
                   </div>
-                  
-                  {/* Botón de acción */}
+
                   <div className="action-buttons">
                     <button
                       onClick={(e) => {
@@ -319,18 +352,16 @@ export default function ThemePerformance({ themePerformance, articlePerformance,
         })}
       </div>
 
-      
+
       </div>
     )
   }
 
-  // Renderizar el modal al nivel más alto, fuera de toda la lógica condicional
   return (
     <>
       {mainContent}
-      
-      {/* Modal de artículo - SIEMPRE renderizado */}
-      <ArticleModal 
+
+      <ArticleModal
         isOpen={modalState.isOpen}
         onClose={closeArticleModal}
         lawSlug={modalState.lawSlug}
