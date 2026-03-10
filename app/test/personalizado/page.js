@@ -87,7 +87,7 @@ function TestPersonalizadoContent() {
     <TestPageWrapper
       testType="aleatorio"
       themes={testConfig.themes}
-      testConfig={{
+      defaultConfig={{
         ...testConfig,
         positionType: positionTypeForWrapper
       }}

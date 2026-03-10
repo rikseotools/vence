@@ -115,7 +115,7 @@ function TestPersonalizadoContent({ params }) {
     <TestPageWrapper
       testType="personalizado"
       tema={temaNumber}
-      testConfig={testConfig}
+      defaultConfig={testConfig}
       customTitle={`Test Personalizado - Tema ${displayTemaNumber}${bloqueInfo}`}
       customDescription={`Test personalizado con ${testConfig.numQuestions} preguntas`}
       customIcon="✨"
