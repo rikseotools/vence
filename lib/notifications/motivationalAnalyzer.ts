@@ -24,6 +24,7 @@ interface TestRecord {
   completed_at: string
   is_completed?: boolean
   score?: number
+  total_questions?: number
   test_type?: string
   is_quick_test?: boolean
   difficulty_filter?: string
@@ -526,7 +527,10 @@ export class MotivationalAnalyzer {
           hourStats[hour] = { count: 0, totalAccuracy: 0 }
         }
         hourStats[hour].count++
-        hourStats[hour].totalAccuracy += test.score || 0
+        // score = COUNT de aciertos, derivar porcentaje
+        const total = test.total_questions || 1
+        const accuracy = total > 0 ? ((test.score || 0) / total) * 100 : 0
+        hourStats[hour].totalAccuracy += accuracy
       })
 
       // Encontrar hora más productiva

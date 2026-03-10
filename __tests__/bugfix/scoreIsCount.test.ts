@@ -502,3 +502,147 @@ describe('Display: UI muestra score/total y porcentaje derivado', () => {
     expect(buggyDisplay.percentage).toBe('375%') // imposible
   })
 })
+
+// ============================================
+// 10. Read paths — consumidores derivan % correctamente
+// ============================================
+
+describe('Read paths: consumidores derivan accuracy desde COUNT', () => {
+  describe('useIntelligentNotifications — filtro por accuracy derivada', () => {
+    function filterLowAccuracy(tests: { score: number; total_questions: number }[]) {
+      return tests
+        .map(t => {
+          const total = Number(t.total_questions) || 1
+          const pct = Math.round((Number(t.score) / total) * 100)
+          return { ...t, accuracy: pct }
+        })
+        .filter(t => t.accuracy < 70)
+    }
+
+    it('filtra por accuracy derivada, no por score directo', () => {
+      const tests = [
+        { score: 6, total_questions: 6 },   // 100% → NO filtrado
+        { score: 4, total_questions: 10 },  // 40%  → filtrado
+        { score: 15, total_questions: 20 }, // 75%  → NO filtrado
+        { score: 3, total_questions: 5 },   // 60%  → filtrado
+      ]
+
+      const result = filterLowAccuracy(tests)
+      expect(result).toHaveLength(2)
+      expect(result[0].score).toBe(4)
+      expect(result[1].score).toBe(3)
+    })
+
+    it('BUG antiguo: score < 70 filtraria TODOS los counts pequenos', () => {
+      const tests = [
+        { score: 6, total_questions: 6 },   // 100% pero 6 < 70
+        { score: 15, total_questions: 20 }, // 75% pero 15 < 70
+      ]
+
+      const buggyFilter = tests.filter(t => t.score < 70)
+      expect(buggyFilter).toHaveLength(2) // ambos! BUG
+
+      const correctFilter = filterLowAccuracy(tests)
+      expect(correctFilter).toHaveLength(0) // ninguno (100% y 75% > 70%)
+    })
+  })
+
+  describe('motivationalAnalyzer — totalAccuracy con % derivado', () => {
+    function accumulateAccuracy(tests: { score: number; total_questions: number }[]) {
+      let totalAccuracy = 0
+      let count = 0
+      tests.forEach(t => {
+        const total = t.total_questions || 1
+        const accuracy = total > 0 ? ((t.score || 0) / total) * 100 : 0
+        totalAccuracy += accuracy
+        count++
+      })
+      return count > 0 ? totalAccuracy / count : 0
+    }
+
+    it('promedia accuracy derivada correctamente', () => {
+      const tests = [
+        { score: 8, total_questions: 10 },  // 80%
+        { score: 3, total_questions: 5 },   // 60%
+        { score: 20, total_questions: 25 }, // 80%
+      ]
+
+      const avg = accumulateAccuracy(tests)
+      expect(Math.round(avg)).toBe(73) // (80+60+80)/3
+    })
+
+    it('BUG antiguo: promediar counts da resultados absurdos', () => {
+      const tests = [
+        { score: 8, total_questions: 10 },
+        { score: 3, total_questions: 5 },
+        { score: 20, total_questions: 25 },
+      ]
+
+      const buggyAvg = tests.reduce((sum, t) => sum + (t.score || 0), 0) / tests.length
+      expect(Math.round(buggyAvg)).toBe(10) // (8+3+20)/3 ≈ 10 — sin sentido
+    })
+  })
+
+  describe('userPatternAnalyzer — riesgo por rendimiento', () => {
+    function assessPerformanceRisk(sessions: { score: number; total_questions: number }[]): boolean {
+      const avgPct = sessions.reduce((sum, s) => {
+        const total = Number(s.total_questions) || 1
+        return sum + ((Number(s.score) || 0) / total) * 100
+      }, 0) / sessions.length
+      return avgPct < 50
+    }
+
+    it('no marca riesgo si accuracy promedio >= 50%', () => {
+      const sessions = [
+        { score: 15, total_questions: 20 }, // 75%
+        { score: 8, total_questions: 10 },  // 80%
+      ]
+      expect(assessPerformanceRisk(sessions)).toBe(false)
+    })
+
+    it('marca riesgo si accuracy promedio < 50%', () => {
+      const sessions = [
+        { score: 3, total_questions: 10 },  // 30%
+        { score: 4, total_questions: 10 },  // 40%
+      ]
+      expect(assessPerformanceRisk(sessions)).toBe(true)
+    })
+
+    it('BUG antiguo: promediar counts siempre daria < 50 → falso positivo', () => {
+      const sessions = [
+        { score: 15, total_questions: 20 }, // 75%
+        { score: 8, total_questions: 10 },  // 80%
+      ]
+      // Promedio de counts: (15+8)/2 = 11.5 < 50 → marcaria riesgo!
+      const buggyAvg = sessions.reduce((s, t) => s + (t.score || 0), 0) / sessions.length
+      expect(buggyAvg).toBe(11.5)
+      expect(buggyAvg < 50).toBe(true) // FALSE POSITIVE
+    })
+  })
+
+  describe('admin page — display sin codigo defensivo muerto', () => {
+    function formatAdminDisplay(score: number, totalQuestions: number) {
+      const s = Number(score)
+      const t = Number(totalQuestions)
+      if (t <= 0) return { label: '0/0 preguntas', pct: '0%' }
+      return {
+        label: `${s}/${t} preguntas`,
+        pct: `${Math.round((s / t) * 100)}%`,
+      }
+    }
+
+    it('muestra score/total directamente', () => {
+      expect(formatAdminDisplay(15, 20)).toEqual({
+        label: '15/20 preguntas',
+        pct: '75%',
+      })
+    })
+
+    it('maneja total=0', () => {
+      expect(formatAdminDisplay(0, 0)).toEqual({
+        label: '0/0 preguntas',
+        pct: '0%',
+      })
+    })
+  })
+})

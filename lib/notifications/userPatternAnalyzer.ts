@@ -347,16 +347,21 @@ export class UserPatternAnalyzer {
     }
 
     // Factor: rendimiento reciente
+    // score = COUNT de aciertos, necesitamos total_questions para derivar %
     const { data: recentSessions } = await this.supabase
-      .from('test_sessions')
-      .select('score')
+      .from('tests')
+      .select('score, total_questions')
       .eq('user_id', this.userId)
+      .eq('is_completed', true)
       .order('created_at', { ascending: false })
       .limit(5)
 
     if (recentSessions && recentSessions.length > 0) {
-      const avgRecentScore = recentSessions.reduce((sum: number, s: SessionRecord) => sum + (s.score || 0), 0) / recentSessions.length
-      if (avgRecentScore < 50) {
+      const avgRecentPct = recentSessions.reduce((sum: number, s: any) => {
+        const total = Number(s.total_questions) || 1
+        return sum + ((Number(s.score) || 0) / total) * 100
+      }, 0) / recentSessions.length
+      if (avgRecentPct < 50) {
         riskScore += 2
         riskFactors.push('low_performance')
       }

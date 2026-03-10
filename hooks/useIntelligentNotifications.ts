@@ -1006,24 +1006,30 @@ export function useIntelligentNotifications(): UseIntelligentNotificationsReturn
           // Fallback: usar datos disponibles para simular artículos problemáticos
           const { data: testData, error: testError } = await supabase
             .from('tests')
-            .select('score, created_at')
+            .select('score, total_questions, created_at')
             .eq('user_id', user.id)
             .eq('is_completed', true)
             .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
             .order('score', { ascending: true })
             .limit(5)
-          
+
           if (!testError && testData && testData.length > 0) {
             // Crear artículos problemáticos simulados basados en scores bajos
+            // score = COUNT de aciertos, derivar porcentaje
             articles = testData
-              .filter(test => test.score < 70)
+              .map(test => {
+                const total = Number(test.total_questions) || 1
+                const pct = Math.round((Number(test.score) / total) * 100)
+                return { ...test, accuracy: pct }
+              })
+              .filter(test => test.accuracy < 70)
               .map((test, index) => ({
                 article_number: `Art. ${10 + index}`, // Simulado
                 law_name: 'Ley 19/2013', // Simulado
                 law_short_name: 'Ley 19/2013',
-                accuracy_percentage: test.score,
+                accuracy_percentage: test.accuracy,
                 attempts_count: 1,
-                difficulty_level: test.score < 30 ? 'extreme' : test.score < 50 ? 'hard' : 'medium'
+                difficulty_level: test.accuracy < 30 ? 'extreme' : test.accuracy < 50 ? 'hard' : 'medium'
               }))
           }
         } else {

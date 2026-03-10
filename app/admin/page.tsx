@@ -572,10 +572,6 @@ export default function AdminDashboard() {
                             const s = Number(activity.score)
                             const t = Number(activity.total_questions)
                             if (t <= 0) return '0/0 preguntas'
-                            if (s > t) {
-                              const correct = Math.round(s * t / 100)
-                              return `${correct}/${t} preguntas`
-                            }
                             return `${s}/${t} preguntas`
                           })()}
                         </div>
@@ -587,7 +583,6 @@ export default function AdminDashboard() {
                           const s = Number(activity.score)
                           const t = Number(activity.total_questions)
                           if (t <= 0) return '0%'
-                          if (s > t) return `${Math.min(100, s)}%`
                           return `${Math.round((s / t) * 100)}%`
                         })()}
                       </div>
