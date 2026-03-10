@@ -1,4 +1,5 @@
-// app/auxiliar-administrativo-galicia/test/tema/[numero]/page.tsx
+
+// app/auxiliar-administrativo-andalucia/test/tema/[numero]/page.tsx
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
@@ -34,7 +35,7 @@ interface PageProps {
   params: Promise<{ numero: string }>
 }
 
-export default function TemaGaliciaPage({ params }: PageProps) {
+export default function TemaAndaluciaPage({ params }: PageProps) {
   const [resolvedParams, setResolvedParams] = useState<{ numero: string } | null>(null)
   const [temaNumber, setTemaNumber] = useState<number | null>(null)
   const [topicData, setTopicData] = useState<TopicData | null>(null)
@@ -78,7 +79,7 @@ export default function TemaGaliciaPage({ params }: PageProps) {
   const loadTopicData = useCallback(async (tema: number, userId: string | null) => {
     try {
       const queryParams = new URLSearchParams({
-        oposicion: 'auxiliar-administrativo-galicia',
+        oposicion: 'auxiliar-administrativo-andalucia',
         ...(userId && { userId })
       })
 
@@ -171,8 +172,8 @@ export default function TemaGaliciaPage({ params }: PageProps) {
       setResolvedParams(resolved)
       setTemaNumber(tema)
 
-      // Galicia: 17 temas (1-17)
-      if (isNaN(tema) || tema < 1 || tema > 17) {
+      // Andalucía: 22 temas (1-22)
+      if (isNaN(tema) || tema < 1 || tema > 22) {
         setTemaNotFound(true)
         setLoading(false)
         return
@@ -266,7 +267,7 @@ export default function TemaGaliciaPage({ params }: PageProps) {
     setTestLoading(true)
     try {
       window.location.href = buildTestUrl({
-        basePath: '/auxiliar-administrativo-galicia',
+        basePath: '/auxiliar-administrativo-andalucia',
         temaNumber: temaNumber!,
         testMode,
         config,
@@ -279,9 +280,9 @@ export default function TemaGaliciaPage({ params }: PageProps) {
 
   const totalQuestions = Object.values(difficultyStats).reduce((sum, count) => sum + count, 0)
 
-  const getParte = (num: number) => {
-    if (num >= 1 && num <= 13) return 'Parte General'
-    if (num >= 14 && num <= 17) return 'Parte Especifica'
+  const getBloque = (num: number) => {
+    if (num >= 1 && num <= 12) return 'Bloque I'
+    if (num >= 13 && num <= 22) return 'Bloque II'
     return ''
   }
 
@@ -289,7 +290,7 @@ export default function TemaGaliciaPage({ params }: PageProps) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-600 mx-auto mb-3"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600 mx-auto mb-3"></div>
           <p className="text-gray-600 text-sm">Cargando tema...</p>
         </div>
       </div>
@@ -303,11 +304,11 @@ export default function TemaGaliciaPage({ params }: PageProps) {
           <div className="text-6xl mb-4">404</div>
           <h1 className="text-2xl font-bold text-gray-900 mb-3">Tema No Encontrado</h1>
           <p className="text-gray-600 mb-6">
-            El Tema {temaNumber || ''} no existe o no esta disponible para Auxiliar Administrativo Xunta de Galicia.
+            El Tema {temaNumber || ''} no existe o no está disponible para Auxiliar Administrativo Junta de Andalucía.
           </p>
           <Link
-            href="/auxiliar-administrativo-galicia/test"
-            className="inline-flex items-center px-4 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition-colors"
+            href="/auxiliar-administrativo-andalucia/test"
+            className="inline-flex items-center px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
           >
             Volver a todos los temas
           </Link>
@@ -324,13 +325,13 @@ export default function TemaGaliciaPage({ params }: PageProps) {
         {/* Header */}
         <div className="text-center mb-8">
           <div className="relative inline-block" ref={dropdownRef}>
-            <div className="inline-flex items-center px-3 py-1 bg-sky-100 text-sky-800 rounded-full text-xs font-medium mb-3">
-              <span className="mr-1">{'\ud83d\udc1a'}</span>
-              <Link href="/auxiliar-administrativo-galicia/test" className="hover:text-sky-900 transition-colors">
-                Aux. Galicia (C2)
+            <div className="inline-flex items-center px-3 py-1 bg-teal-100 text-teal-800 rounded-full text-xs font-medium mb-3">
+              <span className="mr-1">🏛️</span>
+              <Link href="/auxiliar-administrativo-andalucia/test" className="hover:text-teal-900 transition-colors">
+                Aux. Admin. Andalucía (C2)
               </Link>
-              <span className="mx-2 text-sky-600">{'\u203a'}</span>
-              <span className="font-semibold">{getParte(temaNumber || 0)}</span>
+              <span className="mx-2 text-teal-600">›</span>
+              <span className="font-semibold">{getBloque(temaNumber || 0)}</span>
             </div>
           </div>
 
@@ -350,8 +351,8 @@ export default function TemaGaliciaPage({ params }: PageProps) {
             </p>
 
             {officialQuestionsCount > 0 && (
-              <p className="text-sky-600 font-medium text-sm md:text-base">
-                {'\ud83c\udfdb\ufe0f'} {officialQuestionsCount} preguntas de examenes oficiales disponibles
+              <p className="text-teal-600 font-medium text-sm md:text-base">
+                🏛️ {officialQuestionsCount} preguntas de exámenes oficiales disponibles
               </p>
             )}
 
@@ -378,11 +379,11 @@ export default function TemaGaliciaPage({ params }: PageProps) {
 
             {articlesCountByLaw.length > 0 && (
               <div className="mt-4">
-                <p className="text-gray-700 font-medium text-sm mb-2">Articulos con preguntas disponibles:</p>
+                <p className="text-gray-700 font-medium text-sm mb-2">Artículos con preguntas disponibles:</p>
                 <div className="text-center space-y-1">
                   {articlesCountByLaw.map((lawData, index) => (
                     <div key={index} className="text-sm text-gray-600">
-                      <span className="font-medium">{lawData.law_short_name}:</span> {lawData.articles_with_questions} articulo{lawData.articles_with_questions > 1 ? 's' : ''}
+                      <span className="font-medium">{lawData.law_short_name}:</span> {lawData.articles_with_questions} artículo{lawData.articles_with_questions > 1 ? 's' : ''}
                     </div>
                   ))}
                 </div>
@@ -391,7 +392,7 @@ export default function TemaGaliciaPage({ params }: PageProps) {
           </div>
         </div>
 
-        {/* Toggle Modo Practica/Examen */}
+        {/* Toggle Modo Práctica/Examen */}
         <section className="mb-6">
           <div className="bg-white rounded-lg shadow-sm p-6">
             <h2 className="text-lg font-semibold text-gray-800 mb-4 text-center">
@@ -403,12 +404,12 @@ export default function TemaGaliciaPage({ params }: PageProps) {
                 onClick={() => handleTestModeChange('practica')}
                 className={`flex-1 p-4 rounded-lg border-2 transition-all ${
                   testMode === 'practica'
-                    ? 'border-sky-500 bg-sky-50'
-                    : 'border-gray-200 bg-white hover:border-sky-300'
+                    ? 'border-teal-500 bg-teal-50'
+                    : 'border-gray-200 bg-white hover:border-teal-300'
                 }`}
               >
-                <div className="text-3xl mb-2">{'\ud83d\udcda'}</div>
-                <div className="font-bold text-gray-800 mb-1">Practica</div>
+                <div className="text-3xl mb-2">📚</div>
+                <div className="font-bold text-gray-800 mb-1">Práctica</div>
                 <div className="text-sm text-gray-600">
                   Preguntas una a una con feedback inmediato
                 </div>
@@ -418,29 +419,29 @@ export default function TemaGaliciaPage({ params }: PageProps) {
                 onClick={() => handleTestModeChange('examen')}
                 className={`flex-1 p-4 rounded-lg border-2 transition-all ${
                   testMode === 'examen'
-                    ? 'border-sky-500 bg-sky-50'
-                    : 'border-gray-200 bg-white hover:border-sky-300'
+                    ? 'border-orange-500 bg-orange-50'
+                    : 'border-gray-200 bg-white hover:border-orange-300'
                 }`}
               >
-                <div className="text-3xl mb-2">{'\ud83d\udcdd'}</div>
+                <div className="text-3xl mb-2">📝</div>
                 <div className="font-bold text-gray-800 mb-1">Examen</div>
                 <div className="text-sm text-gray-600">
-                  Todas las preguntas de una vez, correccion al final
+                  Todas las preguntas de una vez, corrección al final
                 </div>
               </button>
             </div>
 
-            <div className={`p-4 rounded-lg ${testMode === 'practica' ? 'bg-sky-50 border border-sky-200' : 'bg-sky-50 border border-sky-200'}`}>
+            <div className={`p-4 rounded-lg ${testMode === 'practica' ? 'bg-teal-50 border border-teal-200' : 'bg-orange-50 border border-orange-200'}`}>
               <div className="text-sm">
                 {testMode === 'practica' ? (
                   <>
-                    <span className="font-semibold text-sky-800">Modo Practica:</span>
-                    <span className="text-sky-700"> Veras una pregunta a la vez con explicacion inmediata.</span>
+                    <span className="font-semibold text-teal-800">Modo Práctica:</span>
+                    <span className="text-teal-700"> Verás una pregunta a la vez con explicación inmediata.</span>
                   </>
                 ) : (
                   <>
-                    <span className="font-semibold text-sky-800">Modo Examen:</span>
-                    <span className="text-sky-700"> Veras todas las preguntas en scroll. Correccion al final.</span>
+                    <span className="font-semibold text-orange-800">Modo Examen:</span>
+                    <span className="text-orange-700"> Verás todas las preguntas en scroll. Corrección al final.</span>
                   </>
                 )}
               </div>
@@ -461,18 +462,18 @@ export default function TemaGaliciaPage({ params }: PageProps) {
               lawsData={articlesCountByLaw}
               officialQuestionsCount={officialQuestionsCount}
               testMode={testMode}
-              positionType="auxiliar_administrativo_galicia"
+              positionType="auxiliar_administrativo_andalucia"
             />
           </section>
         ) : (
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-8">
             <div className="text-center">
-              <div className="text-4xl mb-3">{'\ud83d\udea7'}</div>
+              <div className="text-4xl mb-3">🚧</div>
               <h2 className="text-lg font-bold text-yellow-800 mb-2">
-                Tema en preparacion
+                Tema en preparación
               </h2>
               <p className="text-yellow-700 text-sm">
-                Este tema aun no tiene preguntas configuradas. Estamos trabajando en anadir contenido.
+                Este tema aún no tiene preguntas configuradas. Estamos trabajando en añadir contenido.
               </p>
             </div>
           </div>
@@ -501,10 +502,10 @@ export default function TemaGaliciaPage({ params }: PageProps) {
                       }[difficulty] || '#6b7280'
                     }}></span>
                     <span className="font-medium text-gray-700 capitalize">
-                      {difficulty === 'auto' ? 'Automatica' :
-                       difficulty === 'easy' ? 'Facil' :
+                      {difficulty === 'auto' ? 'Automática' :
+                       difficulty === 'easy' ? 'Fácil' :
                        difficulty === 'medium' ? 'Media' :
-                       difficulty === 'hard' ? 'Dificil' :
+                       difficulty === 'hard' ? 'Difícil' :
                        difficulty === 'extreme' ? 'Extrema' : difficulty}
                     </span>
                   </div>
@@ -521,17 +522,17 @@ export default function TemaGaliciaPage({ params }: PageProps) {
             <div className="mt-4 pt-3 border-t border-gray-200">
               <div className="flex justify-between items-center">
                 <span className="font-semibold text-gray-800">Total:</span>
-                <span className="font-bold text-sky-600 text-lg">{totalQuestions} preguntas</span>
+                <span className="font-bold text-teal-600 text-lg">{totalQuestions} preguntas</span>
               </div>
             </div>
           </div>
         )}
 
-        {/* Navegacion */}
+        {/* Navegación */}
         <div className="mt-8 text-center">
           <Link
-            href="/auxiliar-administrativo-galicia/test"
-            className="inline-flex items-center px-4 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition-colors"
+            href="/auxiliar-administrativo-andalucia/test"
+            className="inline-flex items-center px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
           >
             Volver a todos los temas
           </Link>

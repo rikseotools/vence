@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { getSupabaseClient } from '../../../../../lib/supabase'
 import TestConfigurator from '@/components/TestConfigurator'
 import InteractiveBreadcrumbs from '@/components/InteractiveBreadcrumbs'
+import { buildTestUrl } from '@/lib/test-url/buildTestUrl'
 
 const supabase = getSupabaseClient()
 
@@ -295,47 +296,15 @@ export default function TemaAdministrativoPage({ params }) {
     }
   }
 
-  // Manejar inicio de test personalizado
   async function handleStartCustomTest(config) {
     setTestLoading(true)
-
     try {
-      const params = new URLSearchParams({
-        n: config.numQuestions.toString(),
-        exclude_recent: config.excludeRecent.toString(),
-        recent_days: config.recentDays.toString(),
-        difficulty_mode: config.difficultyMode,
-        ...(config.onlyOfficialQuestions && { only_official: 'true' }),
-        ...(config.focusEssentialArticles && { focus_essential: 'true' }),
-        ...(config.focusWeakAreas && { focus_weak: 'true' }),
-        ...(config.adaptiveMode && { adaptive: 'true' }),
-        ...(config.onlyFailedQuestions && { only_failed: 'true' }),
-        ...(config.failedQuestionIds && { failed_question_ids: JSON.stringify(config.failedQuestionIds) }),
-        ...(config.failedQuestionsOrder && { failed_questions_order: config.failedQuestionsOrder }),
-        ...(config.timeLimit && { time_limit: config.timeLimit.toString() })
+      window.location.href = buildTestUrl({
+        basePath: '/administrativo-estado',
+        temaNumber,
+        testMode,
+        config,
       })
-
-      if (config.selectedLaws && config.selectedLaws.length > 0) {
-        params.set('selected_laws', JSON.stringify(config.selectedLaws))
-      }
-      if (config.selectedArticlesByLaw && Object.keys(config.selectedArticlesByLaw).length > 0) {
-        params.set('selected_articles_by_law', JSON.stringify(config.selectedArticlesByLaw))
-      }
-      // 📚 FILTRO DE SECCIONES/TÍTULOS
-      console.log('📚 DEBUG selectedSectionFilters en handleStartCustomTest:', {
-        exists: !!config.selectedSectionFilters,
-        length: config.selectedSectionFilters?.length,
-        value: config.selectedSectionFilters
-      })
-      if (config.selectedSectionFilters && config.selectedSectionFilters.length > 0) {
-        params.set('selected_section_filters', JSON.stringify(config.selectedSectionFilters))
-        console.log('📚 ✅ selected_section_filters añadido a URL')
-      }
-
-      const testPath = testMode === 'examen' ? 'test-examen' : 'test-personalizado'
-      const testUrl = `/administrativo-estado/test/tema/${temaNumber}/${testPath}?${params.toString()}`
-
-      window.location.href = testUrl
     } catch (error) {
       console.error('Error iniciando test:', error)
       setTestLoading(false)

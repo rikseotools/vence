@@ -5,6 +5,8 @@ import Link from 'next/link'
 import type { User } from '@supabase/supabase-js'
 import { getSupabaseClient } from '../../../../../lib/supabase'
 import TestConfigurator from '@/components/TestConfigurator'
+import { buildTestUrl } from '@/lib/test-url/buildTestUrl'
+import type { TestStartConfig } from '@/components/TestConfigurator.types'
 import ArticleModal from '@/components/ArticleModal'
 import { generateLawSlug } from '@/lib/lawMappingUtils'
 import { safeParseGetTopicDataResponse, type GetTopicDataResponse } from '@/lib/api/topic-data/schemas'
@@ -387,50 +389,15 @@ export default function TemaPage({ params }: PageProps) {
     setSelectedArticle({ number: null, lawSlug: null })
   }
 
-  // Función: Manejar configuración del test personalizado
-  async function handleStartCustomTest(config: any) {
+  async function handleStartCustomTest(config: TestStartConfig) {
     setTestLoading(true)
-
     try {
-      const params = new URLSearchParams({
-        n: config.numQuestions.toString(),
-        exclude_recent: config.excludeRecent.toString(),
-        recent_days: config.recentDays.toString(),
-        difficulty_mode: config.difficultyMode,
-        ...(config.onlyOfficialQuestions && { only_official: 'true' }),
-        ...(config.focusEssentialArticles && { focus_essential: 'true' }),
-        ...(config.focusWeakAreas && { focus_weak: 'true' }),
-        ...(config.adaptiveMode && { adaptive: 'true' }),
-        ...(config.onlyFailedQuestions && { only_failed: 'true' }),
-        ...(config.failedQuestionIds && { failed_question_ids: JSON.stringify(config.failedQuestionIds) }),
-        ...(config.failedQuestionsOrder && { failed_questions_order: config.failedQuestionsOrder }),
-        ...(config.timeLimit && { time_limit: config.timeLimit.toString() })
+      window.location.href = buildTestUrl({
+        basePath: '/auxiliar-administrativo-estado',
+        temaNumber: temaNumber!,
+        testMode,
+        config,
       })
-
-      if (config.selectedLaws && config.selectedLaws.length > 0) {
-        params.set('selected_laws', JSON.stringify(config.selectedLaws))
-      }
-
-      if (config.selectedArticlesByLaw && Object.keys(config.selectedArticlesByLaw).length > 0) {
-        params.set('selected_articles_by_law', JSON.stringify(config.selectedArticlesByLaw))
-      }
-
-      // 📚 FILTRO DE SECCIONES/TÍTULOS
-      console.log('📚 DEBUG selectedSectionFilters en handleStartCustomTest:', {
-        exists: !!config.selectedSectionFilters,
-        length: config.selectedSectionFilters?.length,
-        value: config.selectedSectionFilters
-      })
-      if (config.selectedSectionFilters && config.selectedSectionFilters.length > 0) {
-        params.set('selected_section_filters', JSON.stringify(config.selectedSectionFilters))
-        console.log('📚 ✅ selected_section_filters añadido a URL')
-      }
-
-      const testPath = testMode === 'examen' ? 'test-examen' : 'test-personalizado'
-      const testUrl = `/auxiliar-administrativo-estado/test/tema/${temaNumber!}/${testPath}?${params.toString()}`
-
-      window.location.href = testUrl
-
     } catch (error) {
       console.error('Error iniciando test:', error)
       setTestLoading(false)

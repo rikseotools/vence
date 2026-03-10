@@ -5,6 +5,8 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { getSupabaseClient } from '@/lib/supabase'
 import TestConfigurator from '@/components/TestConfigurator'
+import { buildTestUrl } from '@/lib/test-url/buildTestUrl'
+import type { TestStartConfig } from '@/components/TestConfigurator.types'
 import InteractiveBreadcrumbs from '@/components/InteractiveBreadcrumbs'
 
 const supabase = getSupabaseClient()
@@ -260,31 +262,15 @@ export default function TemaCanariasPage({ params }: PageProps) {
     fetchAllData()
   }, [temaNumber, temaNotFound, loadTopicData])
 
-  async function handleStartCustomTest(config: any) {
+  async function handleStartCustomTest(config: TestStartConfig) {
     setTestLoading(true)
-
     try {
-      const testParams = new URLSearchParams({
-        n: config.numQuestions.toString(),
-        exclude_recent: config.excludeRecent.toString(),
-        recent_days: config.recentDays.toString(),
-        difficulty_mode: config.difficultyMode,
-        ...(config.onlyOfficialQuestions && { only_official: 'true' }),
-        ...(config.focusEssentialArticles && { focus_essential: 'true' }),
-        ...(config.focusWeakAreas && { focus_weak: 'true' }),
-        ...(config.adaptiveMode && { adaptive: 'true' }),
-        ...(config.onlyFailedQuestions && { only_failed: 'true' }),
-        ...(config.timeLimit && { time_limit: config.timeLimit.toString() })
+      window.location.href = buildTestUrl({
+        basePath: '/auxiliar-administrativo-canarias',
+        temaNumber: temaNumber!,
+        testMode,
+        config,
       })
-
-      if (config.selectedLaws && config.selectedLaws.length > 0) {
-        testParams.set('selected_laws', JSON.stringify(config.selectedLaws))
-      }
-
-      const testPath = testMode === 'examen' ? 'test-examen' : 'test-personalizado'
-      const testUrl = `/auxiliar-administrativo-canarias/test/tema/${temaNumber}/${testPath}?${testParams.toString()}`
-
-      window.location.href = testUrl
     } catch (error) {
       console.error('Error iniciando test:', error)
       setTestLoading(false)
