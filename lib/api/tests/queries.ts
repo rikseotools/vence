@@ -44,7 +44,7 @@ export async function recoverTest(
       startedAt: new Date(pendingTest.startTime || pendingTest.savedAt).toISOString(),
       completedAt: new Date(pendingTest.savedAt).toISOString(),
       isCompleted: true,
-      score: String(percentage),
+      score: String(correctAnswers),
       totalTimeSeconds: totalTimeSeconds,
       temaNumber: pendingTest.tema,
       testNumber: pendingTest.testNumber || 0,

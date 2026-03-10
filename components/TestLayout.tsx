@@ -1207,10 +1207,9 @@ export default function TestLayout({
               } catch (e) {
                 console.warn('⚠️ No se pudo guardar question_id en localStorage:', e)
               }
-              // 🐛 FIX: Guardar porcentaje, no número absoluto
-              const scorePercentage = Math.round((newScore / effectiveQuestions.length) * 100)
-              await updateTestScore(session.id, scorePercentage)
-              console.log('✅ Respuesta ÚNICA guardada y puntuación actualizada:', scorePercentage + '%')
+              // Score = COUNT de aciertos (no porcentaje). El % se deriva en stats.
+              await updateTestScore(session.id, newScore)
+              console.log('✅ Respuesta ÚNICA guardada y puntuación actualizada:', newScore + '/' + effectiveQuestions.length)
 
               // Registrar respuesta en contador diario (solo usuarios FREE)
               if (hasLimit) {

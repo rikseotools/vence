@@ -78,9 +78,7 @@ export async function POST(request: NextRequest) {
     // Calculate statistics based on ANSWERED questions only
     const totalCorrect = answeredResults.filter(r => r.isCorrect).length
     const totalIncorrect = answeredResults.length - totalCorrect
-    const score = answeredResults.length > 0
-      ? Math.round((totalCorrect / answeredResults.length) * 100)
-      : 0
+    const score = totalCorrect
     const legCount = answeredResults.filter(r => r.questionType === 'legislative').length
     const psyCount = answeredResults.filter(r => r.questionType === 'psychometric').length
 

@@ -1,352 +1,239 @@
 /**
- * Tests E2E para score calculation
+ * Tests E2E para score = COUNT
  *
  * Simula el flujo completo de usuario respondiendo test
- * y verifica que el score se guarda correctamente en BD
+ * y verifica que el score se guarda como COUNT de aciertos.
  */
 
 // Mock de Supabase con tracking de operaciones
-const dbOperations = []
+const dbOperations: { operation: string; table: string; data: any }[] = []
 
 jest.mock('@/lib/supabase', () => ({
   getSupabaseClient: jest.fn(() => ({
-    from: jest.fn((table) => {
-      const chainable = {
-        update: jest.fn((data) => {
+    from: jest.fn((table: string) => {
+      const chainable: any = {
+        update: jest.fn((data: any) => {
           dbOperations.push({ operation: 'update', table, data })
           return chainable
         }),
-        insert: jest.fn((data) => {
+        insert: jest.fn((data: any) => {
           dbOperations.push({ operation: 'insert', table, data })
           return chainable
         }),
         eq: jest.fn(() => chainable),
         select: jest.fn(() => chainable),
         single: jest.fn(() => Promise.resolve({ data: null, error: null })),
-        then: (resolve) => resolve({ data: null, error: null })
+        then: (resolve: any) => resolve({ data: null, error: null }),
       }
       return chainable
     }),
     auth: {
-      getUser: jest.fn(() => Promise.resolve({
-        data: { user: { id: 'test-user-id' } },
-        error: null
-      }))
-    }
-  }))
+      getUser: jest.fn(() =>
+        Promise.resolve({
+          data: { user: { id: 'test-user-id' } },
+          error: null,
+        })
+      ),
+    },
+  })),
 }))
 
 import { updateTestScore } from '@/utils/testSession'
-import { saveDetailedAnswer } from '@/utils/testAnswers'
 
-describe('E2E: Complete Test Flow with Score Calculation', () => {
+describe('E2E: Complete Test Flow — score = COUNT', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     dbOperations.length = 0
   })
 
-  describe('Usuario completa test - flujo completo', () => {
-    it('debe guardar score como porcentaje en cada respuesta', async () => {
+  describe('Usuario completa test - score es COUNT en cada paso', () => {
+    it('debe guardar score como COUNT en cada respuesta', async () => {
       const sessionId = 'test-session-123'
-      const questions = [
-        { id: 'q1', question: 'Pregunta 1', correct: 0 },
-        { id: 'q2', question: 'Pregunta 2', correct: 1 },
-        { id: 'q3', question: 'Pregunta 3', correct: 2 },
-        { id: 'q4', question: 'Pregunta 4', correct: 0 },
-        { id: 'q5', question: 'Pregunta 5', correct: 3 },
-        { id: 'q6', question: 'Pregunta 6', correct: 1 },
-      ]
+      const totalQuestions = 10
 
       let score = 0
+      const correctPattern = [true, true, false, true, true, false, true, false, true, true]
 
-      // Simular usuario respondiendo pregunta por pregunta
-      for (let i = 0; i < questions.length; i++) {
-        const isCorrect = Math.random() > 0.3 // 70% de acierto
+      for (const isCorrect of correctPattern) {
         const newScore = isCorrect ? score + 1 : score
-
-        // 🔧 FIX: Calcular porcentaje antes de guardar
-        const scorePercentage = Math.round((newScore / questions.length) * 100)
-
-        await updateTestScore(sessionId, scorePercentage)
-
+        // FIX: se pasa count directamente
+        await updateTestScore(sessionId, newScore)
         score = newScore
       }
 
-      // Verificar que se guardaron porcentajes
+      // Verificar que se guardaron counts
       const updateOperations = dbOperations.filter(
-        op => op.operation === 'update' && op.table === 'tests'
+        (op) => op.operation === 'update' && op.table === 'tests'
       )
 
-      updateOperations.forEach(op => {
+      updateOperations.forEach((op) => {
         const savedScore = op.data.score
-
-        // El score debe ser un porcentaje válido
+        // Score (count) nunca excede total de preguntas
+        expect(savedScore).toBeLessThanOrEqual(totalQuestions)
         expect(savedScore).toBeGreaterThanOrEqual(0)
-        expect(savedScore).toBeLessThanOrEqual(100)
-
-        // No debe ser simplemente el contador de respuestas (1-6)
-        if (savedScore < 10 && questions.length > 10) {
-          throw new Error(
-            `Posible bug: score ${savedScore}% es sospechosamente bajo para ${questions.length} preguntas`
-          )
-        }
       })
+
+      // El ultimo score debe ser el total de correctas
+      const lastOp = updateOperations[updateOperations.length - 1]
+      const expectedCorrect = correctPattern.filter(Boolean).length
+      expect(lastOp.data.score).toBe(expectedCorrect)
+      expect(expectedCorrect).toBe(7) // 7 correctas de 10
     })
 
-    it('caso real: usuario responde 6/6 correctas', async () => {
+    it('caso real: 6/6 correctas → score=6 (NO 100)', async () => {
       const sessionId = 'bego-test-session'
-      const questions = Array(6).fill({ correct: 0 })
-
+      const totalQuestions = 6
       let score = 0
 
-      // Usuario responde todas correctamente
-      for (let i = 0; i < questions.length; i++) {
-        const isCorrect = true
-        score = isCorrect ? score + 1 : score
-
-        const scorePercentage = Math.round((score / questions.length) * 100)
-        await updateTestScore(sessionId, scorePercentage)
+      for (let i = 0; i < totalQuestions; i++) {
+        score++
+        await updateTestScore(sessionId, score)
       }
 
-      // Verificar última actualización
       const lastUpdate = dbOperations
-        .filter(op => op.operation === 'update' && op.table === 'tests')
+        .filter((op) => op.operation === 'update' && op.table === 'tests')
         .pop()
 
-      expect(lastUpdate.data.score).toBe(100)
-      expect(lastUpdate.data.score).not.toBe(6)
+      expect(lastUpdate!.data.score).toBe(6)
+      expect(lastUpdate!.data.score).not.toBe(100) // antiguo bug
 
-      // El usuario NO debe ver "repasos urgentes"
-      const requiresUrgentReview = lastUpdate.data.score < 50
-      expect(requiresUrgentReview).toBe(false)
+      // Stats derivara el porcentaje correctamente:
+      const accuracy = Math.round((lastUpdate!.data.score / totalQuestions) * 100)
+      expect(accuracy).toBe(100)
     })
 
-    it('caso real: usuario responde 21/25 correctas', async () => {
+    it('caso real: 21/25 correctas → score=21 (NO 84)', async () => {
       const sessionId = 'test-session-21-25'
-      const questions = Array(25).fill({ correct: 0 })
-
+      const totalQuestions = 25
       let score = 0
 
-      // Usuario responde 21 correctas
-      for (let i = 0; i < questions.length; i++) {
+      for (let i = 0; i < totalQuestions; i++) {
         const isCorrect = i < 21
-        score = isCorrect ? score + 1 : score
-
-        const scorePercentage = Math.round((score / questions.length) * 100)
-        await updateTestScore(sessionId, scorePercentage)
+        if (isCorrect) score++
+        await updateTestScore(sessionId, score)
       }
 
       const lastUpdate = dbOperations
-        .filter(op => op.operation === 'update' && op.table === 'tests')
+        .filter((op) => op.operation === 'update' && op.table === 'tests')
         .pop()
 
-      expect(lastUpdate.data.score).toBe(84)
-      expect(lastUpdate.data.score).not.toBe(21)
+      expect(lastUpdate!.data.score).toBe(21)
+      expect(lastUpdate!.data.score).not.toBe(84)
+
+      const accuracy = Math.round((lastUpdate!.data.score / totalQuestions) * 100)
+      expect(accuracy).toBe(84)
     })
   })
 
-  describe('Modo examen - validación batch', () => {
-    it('debe calcular score correcto al finalizar examen completo', async () => {
+  describe('Modo examen - batch score es COUNT', () => {
+    it('48 correctas de 50 → score=48 (NO 96)', async () => {
       const sessionId = 'exam-session-123'
-      const questions = Array(50).fill({ correct: 0 })
-      const userAnswers = questions.map((_, i) => ({
-        isCorrect: i < 48 // 48 correctas de 50
-      }))
+      const totalQuestions = 50
 
-      const correctCount = userAnswers.filter(a => a.isCorrect).length
-      const scorePercentage = Math.round((correctCount / questions.length) * 100)
-
-      await updateTestScore(sessionId, scorePercentage)
+      const correctCount = 48
+      await updateTestScore(sessionId, correctCount)
 
       const updateOperation = dbOperations.find(
-        op => op.operation === 'update' && op.table === 'tests'
+        (op) => op.operation === 'update' && op.table === 'tests'
       )
 
-      expect(updateOperation.data.score).toBe(96)
-      expect(updateOperation.data.score).not.toBe(48)
+      expect(updateOperation!.data.score).toBe(48)
+      expect(updateOperation!.data.score).not.toBe(96) // antiguo bug
+
+      const accuracy = Math.round((48 / totalQuestions) * 100)
+      expect(accuracy).toBe(96)
     })
   })
 
-  describe('Detección de regresión del bug', () => {
-    it('debe fallar si se detecta el patrón del bug original', async () => {
+  describe('Deteccion de regresion', () => {
+    it('si score > totalQuestions, es un bug de porcentaje', async () => {
       const sessionId = 'test-session'
-      const questions = Array(10).fill({ correct: 0 })
+      const totalQuestions = 10
       let score = 0
 
-      // Simular responder 6 correctas
       for (let i = 0; i < 6; i++) {
         score++
-
-        // ❌ CÓDIGO CON BUG (no calcular porcentaje)
-        // await updateTestScore(sessionId, score)
-
-        // ✅ CÓDIGO CORRECTO
-        const scorePercentage = Math.round((score / questions.length) * 100)
-        await updateTestScore(sessionId, scorePercentage)
+        // CORRECTO: pasar count
+        await updateTestScore(sessionId, score)
       }
 
       const lastUpdate = dbOperations
-        .filter(op => op.operation === 'update' && op.table === 'tests')
+        .filter((op) => op.operation === 'update' && op.table === 'tests')
         .pop()
 
-      // Detectar bug: si el score guardado es igual al contador
-      const savedScore = lastUpdate.data.score
-      const correctCount = score
-      const expectedScore = Math.round((correctCount / questions.length) * 100)
+      const savedScore = lastUpdate!.data.score
 
-      if (savedScore === correctCount && savedScore !== expectedScore) {
-        throw new Error(
-          `🐛 BUG DETECTADO: Se guardó ${savedScore} (contador) en lugar de ${expectedScore}% (porcentaje)`
-        )
-      }
-
-      expect(savedScore).toBe(60) // 6/10 = 60%
-      expect(savedScore).not.toBe(6) // No el contador
+      // Invariante: score <= totalQuestions
+      expect(savedScore).toBeLessThanOrEqual(totalQuestions)
+      expect(savedScore).toBe(6)
+      expect(savedScore).not.toBe(60) // Math.round(6/10*100) = 60
     })
 
-    it('debe pasar invariantes de seguridad', () => {
-      const testInvariants = (score, totalQuestions) => {
-        const invariants = []
+    it('secuencia de scores debe ser monotonicamente no decreciente', async () => {
+      const sessionId = 'monotone-test'
+      const answers = [true, false, true, true, false, true]
+      let score = 0
 
-        // Invariante 1: Score debe estar entre 0-100
-        if (score < 0 || score > 100) {
-          invariants.push('Score fuera de rango [0, 100]')
-        }
-
-        // Invariante 2: Si hay 100% de acierto, score debe ser 100
-        if (score === totalQuestions && score !== 100) {
-          invariants.push(`100% de acierto debe ser score=100, no score=${score}`)
-        }
-
-        // Invariante 3: Score no puede ser decimal si usamos Math.round
-        if (score % 1 !== 0) {
-          invariants.push('Score no debe tener decimales')
-        }
-
-        // Invariante 4: Si totalQuestions > 10 y score <= totalQuestions, posible bug
-        if (totalQuestions > 10 && score > 0 && score <= totalQuestions && score < 50) {
-          invariants.push(
-            `Sospechoso: score ${score}% con ${totalQuestions} preguntas (¿es un contador?)`
-          )
-        }
-
-        return invariants
+      for (const isCorrect of answers) {
+        if (isCorrect) score++
+        await updateTestScore(sessionId, score)
       }
 
-      // Casos buenos
-      expect(testInvariants(100, 10)).toEqual([])
-      expect(testInvariants(60, 10)).toEqual([])
-      expect(testInvariants(0, 10)).toEqual([])
+      const scores = dbOperations
+        .filter((op) => op.operation === 'update' && op.table === 'tests')
+        .map((op) => op.data.score)
 
-      // Casos con bug
-      expect(testInvariants(6, 25)).toEqual([
-        'Sospechoso: score 6% con 25 preguntas (¿es un contador?)'
-      ])
+      // Scores deben ser no decrecientes (nunca baja)
+      for (let i = 1; i < scores.length; i++) {
+        expect(scores[i]).toBeGreaterThanOrEqual(scores[i - 1])
+      }
 
-      expect(testInvariants(21, 25)).toEqual([
-        'Sospechoso: score 21% con 25 preguntas (¿es un contador?)'
-      ])
-
-      // Casos inválidos
-      expect(testInvariants(150, 10)).toContain('Score fuera de rango [0, 100]')
-      expect(testInvariants(-5, 10)).toContain('Score fuera de rango [0, 100]')
+      expect(scores).toEqual([1, 1, 2, 3, 3, 4])
     })
   })
 
-  describe('Snapshot testing - patrones correctos', () => {
-    it('debe matchear patrón correcto de cálculo', () => {
-      const correctPattern = {
-        step1: 'Mantener contador local: score++',
-        step2: 'Calcular porcentaje: Math.round((score / total) * 100)',
-        step3: 'Guardar porcentaje: updateTestScore(id, percentage)',
-        warning: 'NUNCA guardar score directamente sin calcular porcentaje'
-      }
-
-      expect(correctPattern).toMatchSnapshot()
-    })
-
-    it('debe documentar casos de prueba del bug', () => {
-      const bugCases = [
-        {
-          user: 'begosaiz85@gmail.com',
-          correct: 6,
-          total: 6,
-          buggyScore: 6,
-          fixedScore: 100,
-          impact: 'Usuario premium reportó que "contesto bien pero aparece mal"'
-        },
-        {
-          user: 'production',
-          correct: 21,
-          total: 25,
-          buggyScore: 21,
-          fixedScore: 84,
-          impact: 'Score aparecía como suspenso siendo aprobado'
-        },
-        {
-          user: 'production',
-          correct: 48,
-          total: 50,
-          buggyScore: 48,
-          fixedScore: 96,
-          impact: 'Test casi perfecto aparecía como mediocre'
-        }
+  describe('Official exam write paths', () => {
+    it('save-results API: score = totalCorrect (count)', () => {
+      const results = [
+        ...Array(53).fill({ userAnswer: 'A', isCorrect: true }),
+        ...Array(11).fill({ userAnswer: 'B', isCorrect: false }),
       ]
+      const answeredResults = results.filter(
+        (r) => r.userAnswer && r.userAnswer !== 'sin_respuesta'
+      )
+      const totalCorrect = answeredResults.filter((r) => r.isCorrect).length
+      const score = totalCorrect
 
-      expect(bugCases).toMatchSnapshot()
+      expect(score).toBe(53)
+      expect(score.toString()).toBe('53')
+      expect(score).toBeLessThanOrEqual(answeredResults.length)
     })
-  })
 
-  describe('Monitoring helpers', () => {
-    it('debe proveer función de detección de anomalías', () => {
-      const detectScoreAnomaly = (savedScore, correctCount, totalQuestions) => {
-        const anomalies = []
-        const expectedScore = Math.round((correctCount / totalQuestions) * 100)
+    it('saveOfficialExamResults: score = String(totalCorrect)', () => {
+      const results = [
+        ...Array(33).fill({ userAnswer: 'A', isCorrect: true }),
+        ...Array(17).fill({ userAnswer: 'B', isCorrect: false }),
+      ]
+      const answeredResults = results.filter(
+        (r) => r.userAnswer && r.userAnswer !== 'sin_respuesta'
+      )
+      const totalCorrect = answeredResults.filter((r) => r.isCorrect).length
+      const score = String(totalCorrect)
 
-        if (savedScore !== expectedScore) {
-          anomalies.push({
-            type: 'score_mismatch',
-            severity: 'high',
-            savedScore,
-            expectedScore,
-            correctCount,
-            totalQuestions,
-            possibleCause: savedScore === correctCount
-              ? 'Score guardado como contador en lugar de porcentaje'
-              : 'Cálculo incorrecto de porcentaje'
-          })
-        }
+      expect(score).toBe('33')
+      expect(Number(score)).toBeLessThanOrEqual(answeredResults.length)
+    })
 
-        if (savedScore > 100 || savedScore < 0) {
-          anomalies.push({
-            type: 'invalid_range',
-            severity: 'critical',
-            savedScore
-          })
-        }
+    it('recoverTest: score = String(correctAnswers)', () => {
+      const answeredQuestions = [
+        ...Array(15).fill({ correct: true }),
+        ...Array(5).fill({ correct: false }),
+      ]
+      const correctAnswers = answeredQuestions.filter((q) => q.correct).length
+      const score = String(correctAnswers)
 
-        if (totalQuestions >= 10 && savedScore > 0 && savedScore <= totalQuestions) {
-          anomalies.push({
-            type: 'suspicious_low_score',
-            severity: 'medium',
-            savedScore,
-            totalQuestions,
-            note: 'Score muy bajo podría indicar contador sin convertir'
-          })
-        }
-
-        return anomalies
-      }
-
-      // Test con bug
-      const bugAnomaly = detectScoreAnomaly(6, 6, 10)
-      expect(bugAnomaly).toHaveLength(2)
-      expect(bugAnomaly[0].type).toBe('score_mismatch')
-      expect(bugAnomaly[0].possibleCause).toContain('contador')
-
-      // Test correcto
-      const okAnomaly = detectScoreAnomaly(60, 6, 10)
-      expect(okAnomaly).toHaveLength(0)
+      expect(score).toBe('15')
+      expect(Number(score)).toBeLessThanOrEqual(answeredQuestions.length)
     })
   })
 })

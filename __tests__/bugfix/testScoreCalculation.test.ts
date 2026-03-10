@@ -1,12 +1,11 @@
 /**
- * Tests para prevenir regresión del bug de scores incorrectos
+ * Tests para prevenir regresion del bug de scores incorrectos
  *
- * BUG ORIGINAL: Se guardaba el número absoluto (6) en lugar del porcentaje (100%)
+ * SEMANTICA ACTUAL: score = COUNT de aciertos (no porcentaje)
+ * El porcentaje se deriva: (score / total_questions) * 100
  *
- * Estos tests verifican que:
- * 1. El score se calcula como porcentaje
- * 2. updateTestScore recibe porcentajes, no números absolutos
- * 3. Los componentes TestLayout y ExamLayout calculan correctamente
+ * BUG ORIGINAL: Se guardaba Math.round((correctas/total)*100) como score,
+ * pero la capa de stats asume score = count. Resultado: accuracy > 100%.
  */
 
 import { updateTestScore } from '@/utils/testSession'
@@ -24,250 +23,156 @@ jest.mock('@/lib/supabase', () => ({
   }))
 }))
 
-describe('Bug Prevention: Test Score Calculation', () => {
+describe('Bug Prevention: Test Score = COUNT', () => {
   beforeEach(() => {
     jest.clearAllMocks()
   })
 
-  describe('updateTestScore - debe guardar porcentajes', () => {
-    it('debe aceptar valores entre 0-100 (porcentajes)', async () => {
-      await updateTestScore('test-id-1', 100)
-      await updateTestScore('test-id-2', 67)
-      await updateTestScore('test-id-3', 0)
+  describe('updateTestScore - debe guardar COUNT de aciertos', () => {
+    it('debe guardar el count directamente', async () => {
+      await updateTestScore('test-id-1', 15) // 15 correctas
+      await updateTestScore('test-id-2', 0)  // 0 correctas
+      await updateTestScore('test-id-3', 25) // 25 correctas
 
-      expect(mockUpdate).toHaveBeenCalledWith({ score: 100 })
-      expect(mockUpdate).toHaveBeenCalledWith({ score: 67 })
+      expect(mockUpdate).toHaveBeenCalledWith({ score: 15 })
       expect(mockUpdate).toHaveBeenCalledWith({ score: 0 })
-    })
-
-    it('NO debe recibir números absolutos pequeños que parezcan contadores', async () => {
-      // Este es el patrón del bug: números pequeños (1-50) que deberían ser porcentajes
-      await updateTestScore('test-id', 6)
-
-      const receivedScore = mockUpdate.mock.calls[0][0].score
-
-      // Si el score es <= 50 y hay más de 10 preguntas, probablemente es un bug
-      // (porque 50% de acierto en 10+ preguntas es raro que sea exactamente 6)
-      if (receivedScore <= 50) {
-        console.warn('⚠️ Score sospechosamente bajo:', receivedScore)
-      }
+      expect(mockUpdate).toHaveBeenCalledWith({ score: 25 })
     })
   })
 
-  describe('Score calculation - fórmula correcta', () => {
-    it('debe calcular score como (correctas / total) * 100', () => {
-      const testCases = [
-        { correct: 6, total: 6, expected: 100 },
-        { correct: 21, total: 25, expected: 84 },
-        { correct: 4, total: 10, expected: 40 },
-        { correct: 1, total: 6, expected: 17 },
-        { correct: 0, total: 10, expected: 0 },
-        { correct: 48, total: 50, expected: 96 },
-        { correct: 22, total: 25, expected: 88 },
-      ]
-
-      testCases.forEach(({ correct, total, expected }) => {
-        const score = Math.round((correct / total) * 100)
-        expect(score).toBe(expected)
-      })
-    })
-
-    it('NO debe usar el número de correctas como score directamente', () => {
-      // Bug pattern: usar newScore directamente sin calcular porcentaje
+  describe('Score semantica - count NO porcentaje', () => {
+    it('6 correctas de 6 preguntas → score=6 (NO 100)', () => {
       const correctAnswers = 6
-      const totalQuestions = 10
-
-      // ❌ INCORRECTO (bug original)
-      const wrongScore = correctAnswers
-
-      // ✅ CORRECTO
-      const correctScore = Math.round((correctAnswers / totalQuestions) * 100)
-
-      expect(wrongScore).toBe(6)
-      expect(correctScore).toBe(60)
-      expect(correctScore).not.toBe(wrongScore)
-    })
-  })
-
-  describe('Edge cases - escenarios del mundo real', () => {
-    it('test perfecto (6/6) debe ser 100%, no 6%', () => {
-      const correct = 6
-      const total = 6
-      const score = Math.round((correct / total) * 100)
-
-      expect(score).toBe(100)
-      expect(score).not.toBe(6) // ❌ Bug detectado si es 6
-    })
-
-    it('test casi perfecto (21/25) debe ser 84%, no 21%', () => {
-      const correct = 21
-      const total = 25
-      const score = Math.round((correct / total) * 100)
-
-      expect(score).toBe(84)
-      expect(score).not.toBe(21) // ❌ Bug detectado si es 21
-    })
-
-    it('test mediocre (4/10) debe ser 40%, no 4%', () => {
-      const correct = 4
-      const total = 10
-      const score = Math.round((correct / total) * 100)
-
-      expect(score).toBe(40)
-      expect(score).not.toBe(4) // ❌ Bug detectado si es 4
-    })
-
-    it('tests con diferentes tamaños deben calcular porcentaje correcto', () => {
-      const scenarios = [
-        { correct: 1, total: 2, expected: 50 },
-        { correct: 3, total: 3, expected: 100 },
-        { correct: 8, total: 10, expected: 80 },
-        { correct: 17, total: 25, expected: 68 },
-        { correct: 40, total: 50, expected: 80 },
-        { correct: 80, total: 91, expected: 88 },
-      ]
-
-      scenarios.forEach(({ correct, total, expected }) => {
-        const score = Math.round((correct / total) * 100)
-        expect(score).toBe(expected)
-        expect(score).not.toBe(correct) // No debe ser el número absoluto
-      })
-    })
-  })
-
-  describe('Regression test - caso real de Bego Saiz', () => {
-    it('debe replicar el bug original y verificar que está corregido', () => {
-      // Estado ANTES del fix (bug)
-      const newScore = 6 // Número de respuestas correctas
       const totalQuestions = 6
 
-      // ❌ Código con bug (guardaba newScore directamente)
-      const buggyScore = newScore
+      // CORRECTO: score = count
+      const score = correctAnswers
+      expect(score).toBe(6)
 
-      // ✅ Código correcto (calcula porcentaje)
-      const fixedScore = Math.round((newScore / totalQuestions) * 100)
-
-      // Verificaciones
-      expect(buggyScore).toBe(6) // El bug
-      expect(fixedScore).toBe(100) // El fix
-      expect(fixedScore).toBeGreaterThan(buggyScore) // El fix debe ser mayor
-
-      // La usuaria reportó: "contesto bien pero me sale mal"
-      // Porque: 6 correctas = 100% real, pero mostraba 6%
-      expect(fixedScore).toBeGreaterThanOrEqual(90) // Test perfecto
-      expect(buggyScore).toBeLessThan(10) // Parecía suspenso
+      // INCORRECTO (antiguo bug): score = porcentaje
+      const wrongScore = Math.round((correctAnswers / totalQuestions) * 100)
+      expect(wrongScore).toBe(100)
+      expect(score).not.toBe(wrongScore)
     })
 
-    it('debe detectar otros casos reportados en producción', () => {
-      const productionBugs = [
-        { correct: 6, total: 6, buggyScore: 6, fixedScore: 100 },
-        { correct: 21, total: 21, buggyScore: 21, fixedScore: 100 },
-        { correct: 4, total: 6, buggyScore: 4, fixedScore: 67 },
-        { correct: 3, total: 4, buggyScore: 3, fixedScore: 75 },
-        { correct: 2, total: 2, buggyScore: 2, fixedScore: 100 },
+    it('21 correctas de 25 → score=21 (NO 84)', () => {
+      const correctAnswers = 21
+      const totalQuestions = 25
+
+      const score = correctAnswers
+      expect(score).toBe(21)
+      expect(score).not.toBe(Math.round((correctAnswers / totalQuestions) * 100))
+    })
+
+    it('score siempre <= totalQuestions', () => {
+      const testCases = [
+        { correct: 6, total: 6 },
+        { correct: 21, total: 25 },
+        { correct: 4, total: 10 },
+        { correct: 0, total: 10 },
+        { correct: 48, total: 50 },
       ]
 
-      productionBugs.forEach(({ correct, total, buggyScore, fixedScore }) => {
-        const calculatedScore = Math.round((correct / total) * 100)
-
-        expect(calculatedScore).toBe(fixedScore)
-        expect(calculatedScore).not.toBe(buggyScore)
-        expect(calculatedScore).toBeGreaterThan(buggyScore)
+      testCases.forEach(({ correct, total }) => {
+        expect(correct).toBeLessThanOrEqual(total)
+        expect(correct).toBeGreaterThanOrEqual(0)
       })
     })
   })
 
-  describe('Integration pattern - verificar flujo completo', () => {
-    it('debe seguir el patrón correcto: contador -> porcentaje -> guardar', async () => {
-      // 1. Contador de respuestas (estado local)
+  describe('Derivacion de porcentaje (stats layer)', () => {
+    it('porcentaje se calcula correctamente desde count', () => {
+      const testCases = [
+        { score: 6, total: 6, expectedPct: 100 },
+        { score: 21, total: 25, expectedPct: 84 },
+        { score: 4, total: 10, expectedPct: 40 },
+        { score: 0, total: 10, expectedPct: 0 },
+        { score: 48, total: 50, expectedPct: 96 },
+        { score: 22, total: 25, expectedPct: 88 },
+      ]
+
+      testCases.forEach(({ score, total, expectedPct }) => {
+        const percentage = Math.round((score / total) * 100)
+        expect(percentage).toBe(expectedPct)
+      })
+    })
+  })
+
+  describe('Edge cases', () => {
+    it('test de 1 pregunta correcta → score=1', () => {
+      const score = 1
+      const total = 1
+      expect(score).toBeLessThanOrEqual(total)
+
+      const pct = Math.round((score / total) * 100)
+      expect(pct).toBe(100)
+    })
+
+    it('test de 1 pregunta incorrecta → score=0', () => {
+      const score = 0
+      const total = 1
+      expect(score).toBeLessThanOrEqual(total)
+
+      const pct = Math.round((score / total) * 100)
+      expect(pct).toBe(0)
+    })
+
+    it('test de 100 preguntas, todas correctas → score=100', () => {
+      const score = 100
+      const total = 100
+      expect(score).toBeLessThanOrEqual(total)
+
+      const pct = Math.round((score / total) * 100)
+      expect(pct).toBe(100)
+    })
+  })
+
+  describe('Flujo completo: contador → updateTestScore', () => {
+    it('debe pasar COUNT al guardar, no porcentaje', async () => {
       let score = 0
-      const questions = Array(10).fill(null)
+      const totalQuestions = 10
 
       // Simular responder 6 correctas de 10
-      questions.forEach((_, i) => {
-        if (i < 6) score++ // Respuesta correcta
-      })
+      for (let i = 0; i < 6; i++) score++
 
-      expect(score).toBe(6) // Contador local correcto
+      expect(score).toBe(6)
 
-      // 2. Calcular porcentaje antes de guardar
-      const totalQuestions = questions.length
-      const scorePercentage = Math.round((score / totalQuestions) * 100)
-
-      expect(scorePercentage).toBe(60) // Porcentaje correcto
-
-      // 3. Guardar porcentaje (no contador)
-      await updateTestScore('test-id', scorePercentage)
-
-      expect(mockUpdate).toHaveBeenCalledWith({ score: 60 })
-      expect(mockUpdate).not.toHaveBeenCalledWith({ score: 6 })
-    })
-
-    it('debe detectar patrón incorrecto (guardar contador sin convertir)', async () => {
-      let score = 0
-      const questions = Array(10).fill(null)
-
-      questions.forEach((_, i) => {
-        if (i < 6) score++
-      })
-
-      // ❌ Simular bug: guardar score directamente sin calcular porcentaje
+      // CORRECTO: guardar count
       await updateTestScore('test-id', score)
+      expect(mockUpdate).toHaveBeenCalledWith({ score: 6 })
 
-      const savedScore = mockUpdate.mock.calls[0][0].score
-      const expectedScore = Math.round((score / questions.length) * 100)
-
-      // VERIFICAR que se detecta el bug: el score guardado NO es el esperado
-      expect(savedScore).toBe(6) // Se guardó el contador
-      expect(expectedScore).toBe(60) // Debería ser el porcentaje
-      expect(savedScore).not.toBe(expectedScore) // Bug detectado
+      // INCORRECTO seria guardar porcentaje
+      expect(mockUpdate).not.toHaveBeenCalledWith({
+        score: Math.round((score / totalQuestions) * 100),
+      })
     })
   })
 
-  describe('Validator helper - función auxiliar de validación', () => {
-    const validateScoreBeforeSave = (score, totalQuestions) => {
-      // Validaciones que deberían estar en el código
-      if (score > 100) {
-        throw new Error('Score no puede ser mayor a 100%')
-      }
+  describe('Deteccion de bug: score > totalQuestions', () => {
+    it('si score > totalQuestions, es un porcentaje corrupto', () => {
+      const corruptCases = [
+        { score: 75, total: 20 },  // 75% guardado como count
+        { score: 100, total: 6 },  // 100% guardado como count
+        { score: 84, total: 25 },  // 84% guardado como count
+      ]
 
-      if (score < 0) {
-        throw new Error('Score no puede ser negativo')
-      }
-
-      // Detectar posible bug: si el score es menor o igual al total de preguntas
-      // y no es 0, probablemente se olvidó calcular el porcentaje
-      if (score > 0 && score <= totalQuestions && totalQuestions > 10) {
-        console.warn(
-          `⚠️ POSIBLE BUG: Score ${score}% con ${totalQuestions} preguntas. ` +
-          `¿Seguro que no es un contador sin convertir a porcentaje?`
-        )
-      }
-
-      return true
-    }
-
-    it('debe validar que scores están en rango correcto', () => {
-      expect(validateScoreBeforeSave(100, 25)).toBe(true)
-      expect(validateScoreBeforeSave(84, 25)).toBe(true)
-      expect(validateScoreBeforeSave(0, 25)).toBe(true)
-
-      expect(() => validateScoreBeforeSave(150, 25)).toThrow()
-      expect(() => validateScoreBeforeSave(-10, 25)).toThrow()
+      corruptCases.forEach(({ score, total }) => {
+        expect(score).toBeGreaterThan(total)
+        // Estos son datos corruptos en BD
+      })
     })
 
-    it('debe advertir sobre scores sospechosos', () => {
-      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation()
+    it('count valido NUNCA excede totalQuestions', () => {
+      const validCases = [
+        { score: 15, total: 20 },
+        { score: 6, total: 6 },
+        { score: 21, total: 25 },
+        { score: 0, total: 10 },
+      ]
 
-      // Scores sospechosos: números pequeños con muchas preguntas
-      validateScoreBeforeSave(6, 25) // Posible bug: ¿6% o 6 correctas?
-      validateScoreBeforeSave(21, 25) // Posible bug: ¿21% o 21 correctas?
-
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('POSIBLE BUG')
-      )
-
-      consoleSpy.mockRestore()
+      validCases.forEach(({ score, total }) => {
+        expect(score).toBeLessThanOrEqual(total)
+      })
     })
   })
 })
