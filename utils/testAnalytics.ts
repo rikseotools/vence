@@ -136,7 +136,10 @@ export const completeDetailedTest = async (
       interaction_efficiency: allAnswers.length > 0 ? Math.round((allAnswers.filter(a => (a.interactions || 1) === 1).length / allAnswers.length) * 100) : 0
     }
 
-    // Verificar que todas las preguntas se guardaron antes de completar
+    // Verificar cuántas preguntas se guardaron en test_questions
+    // NOTA: saveAnswerToAPI es fire-and-forget, así que puede haber filas
+    // pendientes de INSERT cuando llegamos aquí. Usamos allAnswers.length
+    // como fuente de verdad para total_questions.
     const { data: savedQuestions, error: verifyError } = await supabase
       .from('test_questions')
       .select('question_order')
@@ -149,34 +152,21 @@ export const completeDetailedTest = async (
     const savedCount = savedQuestions?.length || 0
     const expectedCount = questions.length
 
-    // Detectar si hay preguntas perdidas
+    // Diagnóstico: detectar si hay saves pendientes (race condition con fire-and-forget)
     if (savedCount < expectedCount) {
-      console.warn('⚠️ TEST INCOMPLETO DETECTADO', {
+      console.log('ℹ️ test_questions aún incompleto (saves async pendientes):', {
         testId: sessionId,
-        preguntasGuardadas: savedCount,
-        preguntasEsperadas: expectedCount,
-        preguntasPerdidas: expectedCount - savedCount,
-        porcentajePerdido: Math.round(((expectedCount - savedCount) / expectedCount) * 100) + '%'
+        preguntasEnMemoria: allAnswers.length,
+        preguntasEnBD: savedCount,
+        preguntasEsperadas: expectedCount
       })
-
-      const savedOrders = new Set(savedQuestions?.map((q: any) => q.question_order) || [])
-      const missingOrders: number[] = []
-      for (let i = 1; i <= expectedCount; i++) {
-        if (!savedOrders.has(i)) {
-          missingOrders.push(i)
-        }
-      }
-
-      if (missingOrders.length > 0) {
-        console.error('❌ Números de pregunta faltantes:', missingOrders)
-      }
     }
 
     const { error } = await supabase
       .from('tests')
       .update({
         score: finalScore,
-        total_questions: savedCount,
+        total_questions: allAnswers.length,
         completed_at: new Date().toISOString(),
         is_completed: true,
         total_time_seconds: totalTime,
