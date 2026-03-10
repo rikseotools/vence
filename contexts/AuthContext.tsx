@@ -363,6 +363,14 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
     const checkUser = async () => {
       try {
         if (!initialUser) {
+          // 🔒 En /auth/callback, NO llamar getUser() ni ningún método que use
+          // _acquireLock. El singleton (detectSessionInUrl: true) necesita el lock
+          // para hacer el PKCE exchange en _initialize(). Si getUser() lo adquiere
+          // primero, bloquea el exchange y causa timeout de 30s en desktop (Web Locks API).
+          // El callback page tiene su propio polling de localStorage.
+          const isCallbackPage = typeof window !== 'undefined' &&
+            window.location.pathname === '/auth/callback'
+
           // 🚀 Fast path: leer sesión de localStorage (sin lock de auth-js)
           // getUser() usa _acquireLock que compite con _initialize(),
           // causando timeouts de 10s+. localStorage es instantáneo.
@@ -385,12 +393,15 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
           }
 
           // Fallback: getUser() si localStorage no tenía sesión
-          if (!user) {
+          // ⚠️ SKIP en /auth/callback para no bloquear el PKCE exchange
+          if (!user && !isCallbackPage) {
             const { data, error } = await supabase.auth.getUser()
             if (!error && data?.user) {
               user = data.user
               console.log('✅ AuthProvider: Usuario encontrado (getUser):', user.email)
             }
+          } else if (!user && isCallbackPage) {
+            console.log('🔒 AuthProvider: En /auth/callback, omitiendo getUser() para no bloquear PKCE exchange')
           }
 
           if (user) {

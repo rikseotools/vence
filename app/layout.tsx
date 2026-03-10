@@ -12,7 +12,7 @@ import FraudTracker from '../components/FraudTracker'
 import { GlobalClickTracker, PageViewTracker } from '../components/tracking'
 import CookieBanner, { CookieConsentProvider } from '../components/CookieConsent'
 
-export default function SpanishLayout({ children }) {
+export default function SpanishLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es">
       <head />
