@@ -1,24 +1,35 @@
-// app/admin/page.js - Dashboard con API v2 Drizzle
+// app/admin/page.tsx - Dashboard con API v2 Drizzle
 'use client'
 import { useState, useEffect } from 'react'
 import AdminActivityChart from '@/components/AdminActivityChart'
 import AdminRegistrationsChart from '@/components/AdminRegistrationsChart'
+import type { DashboardResponse } from '@/lib/api/admin-dashboard/schemas'
+import type { ActivityChartResponse, RegistrationsChartResponse } from '@/lib/api/admin-charts/schemas'
+
+// Tipos auxiliares para datos del dashboard
+type DashboardStats = DashboardResponse['stats']
+type EmailStats = DashboardResponse['emailStats']
+type OnlineUser = DashboardResponse['onlineUsers'][number]
+type RecentUser = DashboardResponse['users'][number]
+type TodayTest = DashboardResponse['recentActivity'][number]
+type ActivityDay = ActivityChartResponse['data'][number]
+type RegistrationDay = RegistrationsChartResponse['data'][number]
 
 export default function AdminDashboard() {
-  const [stats, setStats] = useState(null)
-  const [emailStats, setEmailStats] = useState(null)
-  const [users, setUsers] = useState([])
-  const [recentActivity, setRecentActivity] = useState([])
+  const [stats, setStats] = useState<DashboardStats | null>(null)
+  const [emailStats, setEmailStats] = useState<EmailStats | null>(null)
+  const [users, setUsers] = useState<RecentUser[]>([])
+  const [recentActivity, setRecentActivity] = useState<TodayTest[]>([])
   const [activeUsersLastWeekAtThisHour, setActiveUsersLastWeekAtThisHour] = useState(0)
   const [activeUsersYesterday, setActiveUsersYesterday] = useState(0)
-  const [onlineUsers, setOnlineUsers] = useState([])
+  const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([])
   const [showActivity, setShowActivity] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const [error, setError] = useState<string | null>(null)
 
   // Charts data (cargados en paralelo via v2 API server-side)
-  const [activityData, setActivityData] = useState(null)
-  const [registrationsData, setRegistrationsData] = useState(null)
+  const [activityData, setActivityData] = useState<ActivityDay[] | null>(null)
+  const [registrationsData, setRegistrationsData] = useState<RegistrationDay[] | null>(null)
 
   useEffect(() => {
     async function loadDashboardData() {
@@ -50,7 +61,7 @@ export default function AdminDashboard() {
         }
       } catch (err) {
         console.error('Error cargando dashboard:', err)
-        setError(err.message)
+        setError(err instanceof Error ? err.message : String(err))
       } finally {
         setLoading(false)
       }
@@ -59,10 +70,10 @@ export default function AdminDashboard() {
     loadDashboardData()
   }, [])
 
-  function formatTimeAgo(dateString) {
+  function formatTimeAgo(dateString: string) {
     const date = new Date(dateString)
     const now = new Date()
-    const diffInMinutes = Math.floor((now - date) / (1000 * 60))
+    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60))
     
     if (diffInMinutes < 1) return 'Ahora'
     if (diffInMinutes < 60) return `${diffInMinutes}m`
@@ -500,12 +511,12 @@ export default function AdminDashboard() {
                 </div>
 
                 <div className="space-y-2">
-                  {Object.entries(emailStats.byType).map(([type, stats]) => (
+                  {Object.entries(emailStats.byType).map(([type, emailType]) => (
                     <div key={type} className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-2 bg-gray-50 dark:bg-gray-700 rounded">
-                      <span className="text-sm font-medium mb-1 sm:mb-0">{stats.name}</span>
+                      <span className="text-sm font-medium mb-1 sm:mb-0">{emailType.name}</span>
                       <div className="flex space-x-2 sm:space-x-3 text-xs sm:text-sm">
-                        <span className="text-blue-600">{stats.sent} env.</span>
-                        <span className="text-green-600">{stats.openRate}% ab.</span>
+                        <span className="text-blue-600">{emailType.sent} env.</span>
+                        <span className="text-green-600">{emailType.openRate}% ab.</span>
                       </div>
                     </div>
                   ))}
@@ -581,7 +592,7 @@ export default function AdminDashboard() {
                         })()}
                       </div>
                       <div className="text-xs text-gray-500">
-                        {formatTimeAgo(activity.completed_at || activity.started_at || activity.created_at)}
+                        {formatTimeAgo(activity.completed_at || activity.started_at || activity.created_at || new Date().toISOString())}
                       </div>
                     </div>
                   </div>
@@ -640,7 +651,7 @@ export default function AdminDashboard() {
                 </span>
               </div>
               <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                📅 {new Date(user.user_created_at).toLocaleString('es-ES', { 
+                📅 {new Date(user.user_created_at || '').toLocaleString('es-ES', { 
                   day: '2-digit', 
                   month: '2-digit',
                   year: 'numeric',
@@ -696,7 +707,7 @@ export default function AdminDashboard() {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                    {new Date(user.user_created_at).toLocaleString('es-ES', { 
+                    {new Date(user.user_created_at || '').toLocaleString('es-ES', { 
                       day: '2-digit', 
                       month: '2-digit',
                       year: 'numeric',
