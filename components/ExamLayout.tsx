@@ -7,6 +7,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { usePathname } from 'next/navigation'
 import MarkdownExplanation from './MarkdownExplanation'
 import { generateLawSlug } from '@/lib/lawMappingUtils'
+import { ALL_OPOSICION_SLUGS } from '@/lib/config/oposiciones'
 
 // Type for useAuth context (AuthContext is JS, so we type it manually)
 interface AuthContextValue {
@@ -337,23 +338,19 @@ function getDisplayTemaNumber(temaNumber: number | string): number {
 }
 
 /**
- * Obtener la ruta base según positionType
+ * Extraer el slug de oposición del pathname actual.
+ * Busca el primer segmento que coincida con un slug registrado en la config central.
+ * Escalable: al añadir una oposición nueva en oposiciones.ts, funciona automáticamente.
  */
-function getPositionBasePath(positionType?: string): string {
-  switch (positionType) {
-    case 'administrativo':
-      return 'administrativo-estado'
-    case 'auxiliar_administrativo':
-      return 'auxiliar-administrativo-estado'
-    case 'tramitacion_procesal':
-      return 'tramitacion-procesal'
-    case 'auxilio_judicial':
-      return 'auxilio-judicial'
-    case 'gestion_procesal':
-      return 'gestion-procesal'
-    default:
-      return 'auxiliar-administrativo-estado'
+function getOposicionSlugFromPathname(pathname: string | null): string {
+  if (!pathname) return 'auxiliar-administrativo-estado'
+  const segments = pathname.split('/').filter(Boolean)
+  for (const segment of segments) {
+    if (ALL_OPOSICION_SLUGS.includes(segment)) {
+      return segment
+    }
   }
+  return 'auxiliar-administrativo-estado'
 }
 
 // ============================================================================
@@ -1090,8 +1087,8 @@ export default function ExamLayout({
                 <div className="text-center">
                   <Link
                     href={tema && tema !== 0
-                      ? `/${getPositionBasePath(positionType)}/test/tema/${tema}`
-                      : `/${getPositionBasePath(positionType)}/test`
+                      ? `/${getOposicionSlugFromPathname(pathname)}/test/tema/${tema}`
+                      : `/${getOposicionSlugFromPathname(pathname)}/test`
                     }
                     className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                   >
@@ -1308,8 +1305,8 @@ export default function ExamLayout({
           <div className="mt-8 mb-28 text-center">
             <Link
               href={tema && tema !== 0
-                ? `/${getPositionBasePath(positionType)}/test/tema/${tema}`
-                : `/${getPositionBasePath(positionType)}/test`
+                ? `/${getOposicionSlugFromPathname(pathname)}/test/tema/${tema}`
+                : `/${getOposicionSlugFromPathname(pathname)}/test`
               }
               className="inline-block px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold shadow-md"
             >
