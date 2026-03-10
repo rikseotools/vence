@@ -1449,7 +1449,7 @@ export default function OfficialExamLayout({
 
         {/* BOTON VOLVER A TESTS (al final) */}
         {isSubmitted && (
-          <div className="mt-8 mb-8 text-center">
+          <div className="mt-8 mb-28 text-center">
             <Link
               href={config?.backUrl || '/auxiliar-administrativo-estado/test'}
               className="inline-block px-8 py-3 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors font-semibold shadow-md"

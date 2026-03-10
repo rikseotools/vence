@@ -1089,7 +1089,10 @@ export default function ExamLayout({
 
                 <div className="text-center">
                   <Link
-                    href={tema && tema !== 0 ? `/auxiliar-administrativo-estado/test/tema/${tema}` : '/auxiliar-administrativo-estado/test'}
+                    href={tema && tema !== 0
+                      ? `/${getPositionBasePath(positionType)}/test/tema/${tema}`
+                      : `/${getPositionBasePath(positionType)}/test`
+                    }
                     className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                   >
                     ← Volver a tests
@@ -1302,7 +1305,7 @@ export default function ExamLayout({
         )}
 
         {isSubmitted && (
-          <div className="mt-8 mb-8 text-center">
+          <div className="mt-8 mb-28 text-center">
             <Link
               href={tema && tema !== 0
                 ? `/${getPositionBasePath(positionType)}/test/tema/${tema}`
