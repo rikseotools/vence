@@ -55,14 +55,12 @@ export function useLawChanges() {
   }
 
   useEffect(() => {
-    // Verificación inicial de BD (instantánea)
-    checkForChanges()
-
-    // Verificación inicial de discrepancias (instantánea)
-    checkDiscrepancies()
-
-    // Verificación inicial de fechas BOE (ligera)
-    checkBOEDates()
+    // Retrasar 3s para no competir con las APIs del dashboard por conexiones del navegador
+    const initialDelay = setTimeout(() => {
+      checkForChanges()
+      checkDiscrepancies()
+      checkBOEDates()
+    }, 3000)
 
     // Verificar BD cada 5 minutos
     const interval = setInterval(checkForChanges, 5 * 60 * 1000)
@@ -74,6 +72,7 @@ export function useLawChanges() {
     const boeInterval = setInterval(checkBOEDates, 30 * 60 * 1000)
 
     return () => {
+      clearTimeout(initialDelay)
       clearInterval(interval)
       clearInterval(discrepanciesInterval)
       clearInterval(boeInterval)

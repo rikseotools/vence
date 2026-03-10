@@ -109,22 +109,19 @@ export async function getRecentQuestions(
     // Calcular fecha de corte
     const cutoffDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString()
 
-    // Query optimizada con JOIN directo
-    const results = await db
-      .selectDistinct({
-        questionId: testQuestions.questionId,
-      })
-      .from(testQuestions)
-      .innerJoin(tests, eq(testQuestions.testId, tests.id))
-      .where(and(
-        eq(tests.userId, userId),
-        gte(testQuestions.createdAt, cutoffDate)
-      ))
+    // CTE MATERIALIZED para forzar plan eficiente (mismo patrón que getUserAnalytics)
+    const results = await db.execute(sql`
+      WITH user_tests AS MATERIALIZED (
+        SELECT id FROM tests WHERE user_id = ${userId}::uuid AND created_at >= ${cutoffDate}::timestamptz
+      )
+      SELECT DISTINCT tq.question_id
+      FROM test_questions tq
+      INNER JOIN user_tests ut ON ut.id = tq.test_id
+      WHERE tq.created_at >= ${cutoffDate}::timestamptz
+        AND tq.question_id IS NOT NULL
+    `)
 
-    // Filtrar nulls
-    const questionIds = results
-      .filter((r): r is { questionId: string } => r.questionId !== null)
-      .map(r => r.questionId)
+    const questionIds = (results as any[]).map(r => r.question_id as string)
 
     return {
       success: true,
@@ -154,35 +151,28 @@ export async function getUserAnalytics(
     // Calcular fecha de corte
     const cutoffDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString()
 
-    // Query optimizada con JOIN directo
-    // Antes: SELECT ... FROM test_questions JOIN tests WHERE tests.user_id = X AND tests.completed_at >= Y
-    // El problema era el JOIN sin índice optimizado
-    const results = await db
-      .select({
-        id: testQuestions.id,
-        createdAt: testQuestions.createdAt,
-        isCorrect: testQuestions.isCorrect,
-        lawName: testQuestions.lawName,
-        articleNumber: testQuestions.articleNumber,
-        temaNumber: testQuestions.temaNumber,
-      })
-      .from(testQuestions)
-      .innerJoin(tests, eq(testQuestions.testId, tests.id))
-      .where(and(
-        eq(tests.userId, userId),
-        gte(testQuestions.createdAt, cutoffDate)
-      ))
-      .orderBy(desc(testQuestions.createdAt))
-      .limit(500)
+    // CTE MATERIALIZED fuerza a Postgres a resolver los tests del usuario primero (29 tests, 7ms)
+    // Sin esto, Postgres escanea 63K+ filas de test_questions por created_at (12+ segundos)
+    const results = await db.execute(sql`
+      WITH user_tests AS MATERIALIZED (
+        SELECT id FROM tests WHERE user_id = ${userId}::uuid AND created_at >= ${cutoffDate}::timestamptz
+      )
+      SELECT tq.id, tq.created_at, tq.is_correct, tq.law_name, tq.article_number, tq.tema_number
+      FROM test_questions tq
+      INNER JOIN user_tests ut ON ut.id = tq.test_id
+      WHERE tq.created_at >= ${cutoffDate}::timestamptz
+      ORDER BY tq.created_at DESC
+      LIMIT 500
+    `)
 
     // Transformar a formato esperado
-    const responses: AnalyticsResponseItem[] = results.map(r => ({
+    const responses: AnalyticsResponseItem[] = (results as any[]).map(r => ({
       id: r.id,
-      createdAt: r.createdAt || new Date().toISOString(),
-      isCorrect: r.isCorrect,
-      lawName: r.lawName,
-      articleNumber: r.articleNumber,
-      temaNumber: r.temaNumber,
+      createdAt: r.created_at || new Date().toISOString(),
+      isCorrect: r.is_correct,
+      lawName: r.law_name,
+      articleNumber: r.article_number,
+      temaNumber: r.tema_number,
     }))
 
     return {

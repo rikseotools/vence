@@ -88,8 +88,48 @@ function AuthCallbackContent() {
         const POLL_INTERVAL_MS = 150
 
         const session = await new Promise<any>((resolve, reject) => {
-          const timeout = setTimeout(() => {
+          let resolved = false
+
+          const finish = (sess: any, source: string) => {
+            if (resolved) return
+            resolved = true
             clearInterval(interval)
+            clearTimeout(timeout)
+            console.log(`✅ [CALLBACK] Sesion encontrada via ${source}:`, sess?.user?.email)
+            resolve(sess)
+          }
+
+          const timeout = setTimeout(async () => {
+            if (resolved) return
+            clearInterval(interval)
+            // Fallback: intentar getSession() directamente antes de fallar
+            console.log('⏳ [CALLBACK] Polling agotado, intentando getSession() como fallback...')
+            try {
+              const { data, error: sessError } = await supabase.auth.getSession()
+              if (data?.session?.access_token && data.session.user) {
+                finish(data.session, 'getSession-fallback')
+                return
+              }
+              if (sessError) console.warn('⚠️ [CALLBACK] getSession fallback error:', sessError.message)
+            } catch (e) {
+              console.warn('⚠️ [CALLBACK] getSession fallback exception:', e)
+            }
+            // Ultimo intento: exchangeCodeForSession si hay code en URL
+            try {
+              const urlParams = new URLSearchParams(window.location.search)
+              const code = urlParams.get('code')
+              if (code) {
+                console.log('🔄 [CALLBACK] Intentando exchangeCodeForSession...')
+                const { data, error: exchError } = await supabase.auth.exchangeCodeForSession(code)
+                if (data?.session?.access_token && data.session.user) {
+                  finish(data.session, 'exchangeCode-fallback')
+                  return
+                }
+                if (exchError) console.warn('⚠️ [CALLBACK] exchangeCode error:', exchError.message)
+              }
+            } catch (e) {
+              console.warn('⚠️ [CALLBACK] exchangeCode exception:', e)
+            }
             reject(new Error('Timeout: no se recibio sesion en 30s'))
           }, SESSION_TIMEOUT_MS)
 
@@ -99,10 +139,7 @@ function AuthCallbackContent() {
               if (raw) {
                 const parsed = JSON.parse(raw)
                 if (parsed?.access_token && parsed?.user) {
-                  clearInterval(interval)
-                  clearTimeout(timeout)
-                  console.log('✅ [CALLBACK] Sesion encontrada en localStorage:', parsed.user.email)
-                  resolve(parsed)
+                  finish(parsed, 'localStorage-polling')
                 }
               }
             } catch {
@@ -116,10 +153,7 @@ function AuthCallbackContent() {
             if (raw) {
               const parsed = JSON.parse(raw)
               if (parsed?.access_token && parsed?.user) {
-                clearInterval(interval)
-                clearTimeout(timeout)
-                console.log('✅ [CALLBACK] Sesion encontrada inmediatamente:', parsed.user.email)
-                resolve(parsed)
+                finish(parsed, 'localStorage-immediate')
               }
             }
           } catch {

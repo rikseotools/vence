@@ -190,12 +190,14 @@ export function useAdminNotifications(enabled = false) {
       return
     }
 
-    loadPendingCounts()
+    // Retrasar 3s para no competir con las APIs del dashboard por conexiones del navegador
+    const initialDelay = setTimeout(loadPendingCounts, 3000)
 
-    // Polling cada 30s
+    // Polling cada 30s (empieza después del delay inicial)
     const interval = setInterval(loadPendingCounts, 30000)
 
     return () => {
+      clearTimeout(initialDelay)
       clearInterval(interval)
     }
   }, [supabase, enabled, loadPendingCounts])
