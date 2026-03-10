@@ -16,13 +16,23 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
+  // Charts data (cargados en paralelo via v2 API server-side)
+  const [activityData, setActivityData] = useState(null)
+  const [registrationsData, setRegistrationsData] = useState(null)
+
   useEffect(() => {
     async function loadDashboardData() {
       try {
         setLoading(true)
-        const res = await fetch('/api/v2/admin/dashboard')
-        if (!res.ok) throw new Error(`Error ${res.status}: ${res.statusText}`)
-        const data = await res.json()
+
+        // Dashboard + Charts en paralelo (2 fetches en vez de 28+)
+        const [dashRes, chartsRes] = await Promise.all([
+          fetch('/api/v2/admin/dashboard'),
+          fetch('/api/v2/admin/charts?days=14'),
+        ])
+
+        if (!dashRes.ok) throw new Error(`Error ${dashRes.status}: ${dashRes.statusText}`)
+        const data = await dashRes.json()
 
         setStats(data.stats)
         setEmailStats(data.emailStats)
@@ -31,6 +41,13 @@ export default function AdminDashboard() {
         setActiveUsersLastWeekAtThisHour(data.activeUsersLastWeekAtThisHour)
         setActiveUsersYesterday(data.activeUsersYesterday)
         setOnlineUsers(data.onlineUsers || [])
+
+        // Charts
+        if (chartsRes.ok) {
+          const charts = await chartsRes.json()
+          setActivityData(charts.activity?.data || null)
+          setRegistrationsData(charts.registrations?.data || null)
+        }
       } catch (err) {
         console.error('Error cargando dashboard:', err)
         setError(err.message)
@@ -505,11 +522,11 @@ export default function AdminDashboard() {
 
       </div>
 
-      {/* Gráfico de evolución temporal - Ancho completo */}
-      <AdminActivityChart />
+      {/* Gráfico de evolución temporal - Ancho completo (v2 API server-side) */}
+      <AdminActivityChart data={activityData} />
 
-      {/* Gráfico de registros por día */}
-      <AdminRegistrationsChart />
+      {/* Gráfico de registros por día (v2 API server-side) */}
+      <AdminRegistrationsChart data={registrationsData} />
 
       {/* Actividad reciente - On-demand: solo se muestra al pulsar el botón */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow border p-4 sm:p-6">
