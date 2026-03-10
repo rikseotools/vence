@@ -2,6 +2,8 @@
 'use client'
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { getOposicionSlugFromPathname } from '@/lib/config/oposiciones'
 import { useAuth } from '../contexts/AuthContext'
 import { useQuestionContext } from '../contexts/QuestionContext'
 import { useDailyQuestionLimit } from '../hooks/useDailyQuestionLimit'
@@ -233,6 +235,7 @@ export default function OfficialExamLayout({
   initialAnswers
 }: OfficialExamLayoutProps) {
   const { user, supabase } = useAuth() as AuthContextValue
+  const pathname = usePathname()
 
   // Limite diario de preguntas (FREE = 25/dia)
   const {
@@ -1198,7 +1201,7 @@ export default function OfficialExamLayout({
                 {/* Boton volver */}
                 <div className="text-center">
                   <Link
-                    href={config?.backUrl || '/auxiliar-administrativo-estado/test'}
+                    href={config?.backUrl || `/${getOposicionSlugFromPathname(pathname)}/test`}
                     className="inline-block px-6 py-3 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors"
                   >
                     ← {config?.backText || 'Volver a Tests'}
@@ -1451,7 +1454,7 @@ export default function OfficialExamLayout({
         {isSubmitted && (
           <div className="mt-8 mb-28 text-center">
             <Link
-              href={config?.backUrl || '/auxiliar-administrativo-estado/test'}
+              href={config?.backUrl || `/${getOposicionSlugFromPathname(pathname)}/test`}
               className="inline-block px-8 py-3 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors font-semibold shadow-md"
             >
               ← {config?.backText || 'Volver a Tests'}

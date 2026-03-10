@@ -2,6 +2,8 @@
 'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { getOposicionSlugFromPathname } from '@/lib/config/oposiciones'
 import { getSupabaseClient } from '../lib/supabase'
 const supabase = getSupabaseClient()
 
@@ -91,6 +93,8 @@ export function TemaFailedQuestionsCard({ tema, temaName }) {
   const [temaStats, setTemaStats] = useState(null)
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState(null)
+  const pathname = usePathname()
+  const oposicionSlug = getOposicionSlugFromPathname(pathname)
 
   useEffect(() => {
     async function loadData() {
@@ -278,13 +282,13 @@ export function TemaFailedQuestionsCard({ tema, temaName }) {
         
         <div className="flex gap-2">
           <Link
-            href={`/auxiliar-administrativo-estado/test/tema-${tema}`}
+            href={`/${oposicionSlug}/test/tema-${tema}`}
             className="bg-orange-500 text-white px-4 py-2 rounded text-xs font-medium hover:bg-orange-600 transition-colors flex-1 text-center"
           >
             🔄 Repetir Tests
           </Link>
           <Link
-            href={`/auxiliar-administrativo-estado/temario/tema-${tema}`}
+            href={`/${oposicionSlug}/temario/tema-${tema}`}
             className="bg-blue-500 text-white px-4 py-2 rounded text-xs font-medium hover:bg-blue-600 transition-colors flex-1 text-center"
           >
             📖 Estudiar Tema

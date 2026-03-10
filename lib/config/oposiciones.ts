@@ -1342,6 +1342,22 @@ export function positionTypeToSlug(positionType: string): string | null {
   return oposicion?.slug ?? null
 }
 
+/**
+ * Extrae el slug de oposición de un pathname.
+ * Busca el primer segmento que coincida con un slug registrado.
+ * Escalable: al añadir una oposición nueva, funciona automáticamente.
+ */
+export function getOposicionSlugFromPathname(pathname: string | null): string {
+  if (!pathname) return 'auxiliar-administrativo-estado'
+  const segments = pathname.split('/').filter(Boolean)
+  for (const segment of segments) {
+    if (ALL_OPOSICION_SLUGS.includes(segment)) {
+      return segment
+    }
+  }
+  return 'auxiliar-administrativo-estado'
+}
+
 /** Obtiene todos los temas de una oposición como lista plana */
 export function getAllThemes(identifier: string): Theme[] {
   const oposicion = getOposicion(identifier)

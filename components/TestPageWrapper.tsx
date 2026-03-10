@@ -1,7 +1,8 @@
 // components/TestPageWrapper.tsx
 'use client'
 import { useState, useEffect, useRef } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, usePathname } from 'next/navigation'
+import { getOposicionSlugFromPathname } from '@/lib/config/oposiciones'
 import TestLayout from './TestLayout'
 import OposicionDetector from './OposicionDetector'
 import {
@@ -77,6 +78,7 @@ export default function TestPageWrapper({
 
   // 🆕 USAR searchParams desde props si es de notificación, sino usar hook
   const hookSearchParams = useSearchParams()
+  const pathname = usePathname()
   const finalSearchParams = propsSearchParams || hookSearchParams
 
  // 🎯 Función para detectar fetcher correcto según el tema
@@ -568,7 +570,7 @@ export default function TestPageWrapper({
 
               {testType === 'personalizado' && tema && (
                 <a
-                  href={`/auxiliar-administrativo-estado/test/tema/${tema}`}
+                  href={`/${getOposicionSlugFromPathname(pathname)}/test/tema/${tema}`}
                   className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm inline-block w-full text-center"
                 >
                   🎛️ Cambiar configuración
@@ -586,7 +588,7 @@ export default function TestPageWrapper({
               )}
 
               <a
-                href="/auxiliar-administrativo-estado/test"
+                href={`/${getOposicionSlugFromPathname(pathname)}/test`}
                 className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 text-sm inline-block w-full text-center underline"
               >
                 🏠 Volver a Tests

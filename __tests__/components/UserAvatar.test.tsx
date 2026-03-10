@@ -47,6 +47,7 @@ jest.mock('next/link', () => {
 
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn() }),
+  usePathname: () => '/auxiliar-administrativo-estado/test',
 }))
 
 // Mock fetch globally

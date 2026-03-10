@@ -7,7 +7,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { usePathname } from 'next/navigation'
 import MarkdownExplanation from './MarkdownExplanation'
 import { generateLawSlug } from '@/lib/lawMappingUtils'
-import { ALL_OPOSICION_SLUGS } from '@/lib/config/oposiciones'
+import { getOposicionSlugFromPathname } from '@/lib/config/oposiciones'
 
 // Type for useAuth context (AuthContext is JS, so we type it manually)
 interface AuthContextValue {
@@ -337,21 +337,7 @@ function getDisplayTemaNumber(temaNumber: number | string): number {
   return num % 100
 }
 
-/**
- * Extraer el slug de oposición del pathname actual.
- * Busca el primer segmento que coincida con un slug registrado en la config central.
- * Escalable: al añadir una oposición nueva en oposiciones.ts, funciona automáticamente.
- */
-function getOposicionSlugFromPathname(pathname: string | null): string {
-  if (!pathname) return 'auxiliar-administrativo-estado'
-  const segments = pathname.split('/').filter(Boolean)
-  for (const segment of segments) {
-    if (ALL_OPOSICION_SLUGS.includes(segment)) {
-      return segment
-    }
-  }
-  return 'auxiliar-administrativo-estado'
-}
+// getOposicionSlugFromPathname importado de @/lib/config/oposiciones
 
 // ============================================================================
 // MAIN COMPONENT

@@ -2,6 +2,8 @@
 'use client'
 import { useState, useEffect, useMemo, type ReactNode } from 'react'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { getOposicionSlugFromPathname } from '@/lib/config/oposiciones'
 import { useAuth } from '../contexts/AuthContext'
 import { useAdminNotifications } from '@/hooks/useAdminNotifications'
 import { useSentryIssues } from '@/hooks/useSentryIssues'
@@ -52,6 +54,7 @@ const EMPTY_STATS: UserStats = {
 
 export default function UserAvatar() {
   const { user, loading: authLoading, signOut, supabase, isPremium } = useAuth()
+  const pathname = usePathname()
   const [showDropdown, setShowDropdown] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
   const [adminLoading, setAdminLoading] = useState(true)
@@ -505,7 +508,7 @@ export default function UserAvatar() {
                         const progress = exam.totalQuestions > 0
                           ? Math.round((exam.answeredQuestions / exam.totalQuestions) * 100)
                           : 0
-                        const resumeUrl = `/auxiliar-administrativo-estado/test/tema/${exam.temaNumber || 1}/test-examen?resume=${exam.id}`
+                        const resumeUrl = `/${getOposicionSlugFromPathname(pathname)}/test/tema/${exam.temaNumber || 1}/test-examen?resume=${exam.id}`
 
                         return (
                           <Link

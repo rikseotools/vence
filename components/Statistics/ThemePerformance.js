@@ -248,7 +248,7 @@ export default function ThemePerformance({ themePerformance, articlePerformance,
       
       <div className="space-y-3">
         {themePerformance.map((theme, index) => {
-          const themeUrl = `/auxiliar-administrativo-estado/temario/tema-${theme.theme}`
+          const themeUrl = `/${userOposicion?.slug || 'auxiliar-administrativo-estado'}/temario/tema-${theme.theme}`
           
           return (
             <div
