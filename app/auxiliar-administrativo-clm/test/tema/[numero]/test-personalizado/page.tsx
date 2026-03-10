@@ -1,4 +1,4 @@
-// app/auxiliar-administrativo-baleares/test/tema/[numero]/test-personalizado/page.tsx
+// app/auxiliar-administrativo-clm/test/tema/[numero]/test-personalizado/page.tsx
 'use client'
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
@@ -22,7 +22,7 @@ function TestPersonalizadoContent({ params }: ContentProps) {
       setTemaNumber(tema)
 
       if (process.env.NODE_ENV === 'development') {
-        console.log('🎯 Test personalizado Aux. Baleares tema:', tema)
+        console.log('🎯 Test personalizado Aux. CLM tema:', tema)
         console.log('📋 Parametros URL:', Object.fromEntries(searchParams.entries()))
       }
     }
@@ -65,22 +65,22 @@ function TestPersonalizadoContent({ params }: ContentProps) {
     selectedLaws,
     selectedArticlesByLaw,
     selectedSectionFilters,
-    positionType: 'auxiliar_administrativo_baleares'
+    positionType: 'auxiliar_administrativo_clm'
   }
 
   if (!temaNumber) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-600 mx-auto mb-3"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 mx-auto mb-3"></div>
           <p className="text-gray-600 text-sm">Preparando test personalizado...</p>
         </div>
       </div>
     )
   }
 
-  // Baleares: 36 temas (1-36)
-  if (isNaN(temaNumber) || temaNumber < 1 || temaNumber > 36) {
+  // CLM: 24 temas (1-24)
+  if (isNaN(temaNumber) || temaNumber < 1 || temaNumber > 24) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="max-w-md mx-auto text-center p-6">
@@ -89,11 +89,11 @@ function TestPersonalizadoContent({ params }: ContentProps) {
             Tema No Valido
           </h1>
           <p className="text-gray-600 mb-6">
-            El Tema {temaNumber} no es valido para Auxiliar Administrativo de la CAIB. Debe ser del 1 al 36.
+            El Tema {temaNumber} no es valido para Auxiliar Administrativo Junta de Castilla-La Mancha. Debe ser del 1 al 24.
           </p>
           <a
-            href="/auxiliar-administrativo-baleares/test"
-            className="inline-flex items-center px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors"
+            href="/auxiliar-administrativo-clm/test"
+            className="inline-flex items-center px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
           >
             ← Volver a todos los temas
           </a>
@@ -103,8 +103,8 @@ function TestPersonalizadoContent({ params }: ContentProps) {
   }
 
   const getBloque = (num: number) => {
-    if (num >= 1 && num <= 20) return 'Materias Comunes'
-    if (num >= 21 && num <= 36) return 'Ofimatica'
+    if (num >= 1 && num <= 12) return 'Organizacion Administrativa'
+    if (num >= 13 && num <= 24) return 'Ofimatica'
     return ''
   }
 
@@ -119,8 +119,8 @@ function TestPersonalizadoContent({ params }: ContentProps) {
       customDescription={`Test personalizado con ${testConfig.numQuestions} preguntas`}
       customSubtitle=""
       customIcon="✨"
-      customColor="from-cyan-500 to-cyan-600"
-      positionType="auxiliar_administrativo_baleares"
+      customColor="from-orange-500 to-orange-600"
+      positionType="auxiliar_administrativo_clm"
       loadingMessage="Cargando preguntas..."
       errorMessage="Error al cargar las preguntas"
     />
@@ -132,7 +132,7 @@ export default function TestPersonalizadoPage({ params }: ContentProps) {
     <Suspense fallback={
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-600 mx-auto mb-3"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 mx-auto mb-3"></div>
           <p className="text-gray-600 text-sm">Cargando test personalizado...</p>
         </div>
       </div>

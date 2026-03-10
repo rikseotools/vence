@@ -1,4 +1,4 @@
-// components/TestPageWrapper.js - ACTUALIZACIÓN PARA ARTICULOS-DIRIGIDO
+// components/TestPageWrapper.tsx
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
@@ -18,44 +18,53 @@ import {
   fetchContentScopeQuestions   // 📋 Para content_scope
 } from '../lib/testFetchers'
 
+interface ContentScopeConfig {
+  articleIds: string[]
+  sectionInfo: { name: string; [key: string]: unknown }
+}
+
+interface TestPageWrapperProps {
+  tema?: number | null
+  testType: string
+  customTitle?: string
+  customDescription?: string
+  customIcon?: string
+  customColor?: string
+  customSubtitle?: string
+  defaultConfig?: Record<string, any>
+  customQuestionFetcher?: string | null
+  lawName?: string
+  searchParams?: any
+  themes?: number[]
+  contentScopeConfig?: ContentScopeConfig
+  positionType?: string
+  loadingMessage?: string
+  errorMessage?: string
+}
+
 export default function TestPageWrapper({
-  // 🎯 Props obligatorias
   tema,
-  testType, // 'aleatorio', 'personalizado', 'rapido', 'oficial', 'articulos-dirigido', etc.
-  
-  // 🎯 Props de personalización (opcionales)
+  testType,
   customTitle,
   customDescription,
   customIcon,
   customColor,
   customSubtitle,
-  
-  // 🎯 Props de configuración (opcionales)
   defaultConfig = {},
   customQuestionFetcher = null,
-  
-  // 🆕 NUEVAS PROPS PARA ARTICULOS-DIRIGIDO
   lawName,
-  searchParams: propsSearchParams, // Desde la página server component
-  
-  // 🎲 NUEVA PROP PARA TESTS ALEATORIOS MULTI-TEMA
-  themes, // Array de IDs de temas para tests aleatorios
-  
-  // 📋 NUEVA PROP PARA CONTENT_SCOPE
-  contentScopeConfig, // Configuración de content_scope
-
-  // 🏢 NUEVA PROP PARA TIPO DE OPOSICIÓN
-  positionType, // 'auxiliar_administrativo' | 'administrativo' | 'gestion'
-
-  // 🎯 Props de UI (opcionales)
+  searchParams: propsSearchParams,
+  themes,
+  contentScopeConfig,
+  positionType,
   loadingMessage,
   errorMessage
-}) {
+}: TestPageWrapperProps) {
   // Estados básicos
-  const [questions, setQuestions] = useState([])
+  const [questions, setQuestions] = useState<any>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [config, setConfig] = useState(null)
+  const [error, setError] = useState<string | null>(null)
+  const [config, setConfig] = useState<any>(null)
 
   // 🎯 Estados para loading dinámico
   const [loadedCount, setLoadedCount] = useState(0)
@@ -71,33 +80,33 @@ export default function TestPageWrapper({
   const finalSearchParams = propsSearchParams || hookSearchParams
 
  // 🎯 Función para detectar fetcher correcto según el tema
-  const getFetcherForTema = (tema, testType, hasLawFilters = false) => {
+  const getFetcherForTema = (temaParam: number | null | undefined, testTypeParam: string, hasLawFilters = false) => {
     // 🎲 Para tests aleatorios multi-tema
-    if (testType === 'aleatorio' && themes && themes.length > 0) {
+    if (testTypeParam === 'aleatorio' && themes && themes.length > 0) {
       console.log(`🎲 Test aleatorio multi-tema: ${themes.length} temas`)
       return fetchAleatorioMultiTema
     }
 
     // 🚀 NUEVO: Usar API centralizada para tests personalizados con tema
     // La API maneja filtros de leyes, artículos y secciones via Drizzle + Zod
-    if (tema && tema > 0 && testType === 'personalizado') {
-      console.log(`🚀 Tema ${tema} usando API centralizada (Drizzle + Zod)`)
+    if (temaParam && temaParam > 0 && testTypeParam === 'personalizado') {
+      console.log(`🚀 Tema ${temaParam} usando API centralizada (Drizzle + Zod)`)
       return fetchQuestionsViaAPI
     }
 
     // Para otros tests con tema, usar fetcher legacy (funciona bien)
-    if (tema && tema > 0) {
+    if (temaParam && temaParam > 0) {
       return fetchQuestionsByTopicScope
     }
 
     // 🆕 Para tests sin tema pero con filtros de leyes específicas
-    if (!tema && hasLawFilters && testType === 'personalizado') {
+    if (!temaParam && hasLawFilters && testTypeParam === 'personalizado') {
       console.log(`🎯 Test personalizado sin tema pero con filtros de leyes`)
       return fetchQuestionsViaAPI
     }
 
     // Para tests sin tema específico, usar fetchers específicos por tipo
-    const generalFetchers = {
+    const generalFetchers: Record<string, any> = {
       aleatorio: fetchRandomQuestions,
       personalizado: fetchPersonalizedQuestions,
       rapido: fetchQuickQuestions,
@@ -105,12 +114,12 @@ export default function TestPageWrapper({
     }
 
     console.log(`⚡ Test general sin tema específico`)
-    return generalFetchers[testType] || fetchRandomQuestions
+    return generalFetchers[testTypeParam] || fetchRandomQuestions
   }
 
   // 🔥 Configuraciones predefinidas por tipo de test
   const getTestConfig = () => {
-    const baseConfigs = {
+    const baseConfigs: Record<string, any> = {
       aleatorio: {
         name: "Test Aleatorio",
         description: "Preguntas mezcladas automáticamente",
@@ -129,7 +138,7 @@ export default function TestPageWrapper({
       rapido: {
         name: "Test Rápido",
         description: "Solo 10 preguntas",
-        color: "from-green-500 to-emerald-600", 
+        color: "from-green-500 to-emerald-600",
         icon: "⚡",
         subtitle: "Práctica rápida en 5 minutos",
         fetcher: getFetcherForTema(tema, 'rapido', false) // 🎯 DETECCIÓN AUTOMÁTICA
@@ -138,7 +147,7 @@ export default function TestPageWrapper({
         name: "Test Oficial",
         description: "Solo preguntas de exámenes oficiales",
         color: "from-red-500 to-pink-600",
-        icon: "🏛️", 
+        icon: "🏛️",
         subtitle: "Preguntas que aparecieron en exámenes oficiales",
         fetcher: getFetcherForTema(tema, 'oficial', false) // 🎯 DETECCIÓN AUTOMÁTICA
       },
@@ -179,7 +188,7 @@ export default function TestPageWrapper({
     }
 
     const baseConfig = baseConfigs[testType] || baseConfigs.aleatorio
-    
+
     // 🎯 Sobrescribir con props personalizadas
     const finalConfig = {
       ...baseConfig,
@@ -196,8 +205,8 @@ export default function TestPageWrapper({
   }
 
   // 🔧 Función para obtener número de test
-  const getTestNumber = (testType) => {
-    const testNumbers = {
+  const getTestNumber = (testTypeParam: string) => {
+    const testNumbers: Record<string, number> = {
       aleatorio: 1,
       personalizado: 99,
       rapido: 2,
@@ -209,19 +218,21 @@ export default function TestPageWrapper({
       // 📋 NUEVO NÚMERO PARA CONTENT_SCOPE
       'content_scope': 85
     }
-    return testNumbers[testType] || 1
+    return testNumbers[testTypeParam] || 1
   }
 
   // 🚀 Función principal de carga
   const loadQuestions = async () => {
     // 🔒 Generar clave única para esta ejecución
     const currentKey = `${tema}-${testType}-${Date.now()}`
-    
+
     // 🔒 Prevenir ejecuciones múltiples simultáneas
     if (loadingRef.current) {
       console.log('🔒 TestPageWrapper: Ejecución ya en progreso, ignorando...')
       return
     }
+
+    let loadingInterval: ReturnType<typeof setInterval> | undefined
 
     try {
       loadingRef.current = true
@@ -230,12 +241,12 @@ export default function TestPageWrapper({
       setError(null)
 
       // 🎯 Inicializar progreso de carga
-      const numQuestions = parseInt(finalSearchParams?.get?.('n')) || parseInt(defaultConfig?.numQuestions) || 10
+      const numQuestions = parseInt(finalSearchParams?.get?.('n') as string) || parseInt(defaultConfig?.numQuestions) || 10
       setTotalToLoad(numQuestions)
       setLoadedCount(0)
 
       // 🎯 Simular progreso de carga dinámico
-      const loadingInterval = setInterval(() => {
+      loadingInterval = setInterval(() => {
         setLoadedCount(prev => {
           if (prev < numQuestions) {
             return Math.min(prev + 1, numQuestions)
@@ -252,12 +263,12 @@ export default function TestPageWrapper({
 
       // 🎯 Usar fetcher del tipo de test
       const fetcher = testConfig.fetcher
-      
+
       if (!fetcher) {
         throw new Error(`No hay fetcher configurado para el tipo de test: ${testType}`)
       }
 
-      let questions = []
+      let fetchedQuestions: any = []
 
       // 🆕 MANEJAR ARTICULOS-DIRIGIDO DE FORMA ESPECIAL
       if (testType === 'articulos-dirigido') {
@@ -272,11 +283,11 @@ export default function TestPageWrapper({
         // Llamar fetchArticulosDirigido con parámetros específicos
         try {
           console.log('🔄 Llamando fetchArticulosDirigido con:', { lawName, finalSearchParams, testConfig })
-          questions = await fetchArticulosDirigido(lawName, finalSearchParams, testConfig)
-          console.log('✅ fetchArticulosDirigido completado, preguntas:', questions?.length || 0)
-        } catch (error) {
-          console.error('❌ Error en fetchArticulosDirigido:', error)
-          throw error
+          fetchedQuestions = await fetchArticulosDirigido(lawName!, finalSearchParams, testConfig)
+          console.log('✅ fetchArticulosDirigido completado, preguntas:', fetchedQuestions?.length || 0)
+        } catch (fetchError) {
+          console.error('❌ Error en fetchArticulosDirigido:', fetchError)
+          throw fetchError
         }
       } else if (testType === 'aleatorio' && themes && themes.length > 0) {
         // 🎲 MANEJAR TEST ALEATORIO MULTI-TEMA
@@ -293,20 +304,20 @@ export default function TestPageWrapper({
         })
 
         // Llamar fetchAleatorioMultiTema con temas específicos y positionType correcto
-        questions = await fetchAleatorioMultiTema(themes, finalSearchParams, multiTemaConfig)
+        fetchedQuestions = await fetchAleatorioMultiTema(themes, finalSearchParams, multiTemaConfig)
       } else if (testType === 'content_scope') {
         // 📋 MANEJAR CONTENT_SCOPE DE FORMA ESPECIAL
         console.log('📋 Cargando test content_scope con config:', contentScopeConfig)
-        
+
         if (!contentScopeConfig) {
           throw new Error('No se proporcionó configuración de content_scope')
         }
-        
+
         // Llamar fetchContentScopeQuestions con configuración específica
-        questions = await fetchContentScopeQuestions(testConfig, contentScopeConfig)
+        fetchedQuestions = await fetchContentScopeQuestions(testConfig, contentScopeConfig)
       } else {
         // Para otros tipos de test, usar el fetcher normal
-        let finalTestConfig = {
+        let finalTestConfig: any = {
           ...testConfig,
           positionType: positionType || 'auxiliar_administrativo'
         }
@@ -327,8 +338,8 @@ export default function TestPageWrapper({
             try {
               selectedLaws = JSON.parse(selectedLawsParam)
               selectedArticlesByLaw = selectedArticlesByLawParam ? JSON.parse(selectedArticlesByLawParam) : {}
-            } catch (error) {
-              console.error('❌ Error parsing filtros URL en TestPageWrapper:', error)
+            } catch (parseError) {
+              console.error('❌ Error parsing filtros URL en TestPageWrapper:', parseError)
             }
           }
 
@@ -336,9 +347,9 @@ export default function TestPageWrapper({
           if (selectedSectionFilters.length === 0 && selectedSectionFiltersParam) {
             try {
               selectedSectionFilters = JSON.parse(selectedSectionFiltersParam)
-              console.log('📚 Filtro de secciones parseado desde URL:', selectedSectionFilters.map(s => s.title))
-            } catch (error) {
-              console.error('❌ Error parsing selectedSectionFilters URL:', error)
+              console.log('📚 Filtro de secciones parseado desde URL:', selectedSectionFilters.map((s: any) => s.title))
+            } catch (parseError) {
+              console.error('❌ Error parsing selectedSectionFilters URL:', parseError)
             }
           }
 
@@ -350,32 +361,32 @@ export default function TestPageWrapper({
             selectedSectionFilters, // 📚 FILTRO DE TÍTULOS
             positionType: positionType || 'auxiliar_administrativo'
           }
-          
+
           if (selectedLaws.length > 0) {
             // console.log('🔧 Filtros aplicados desde', testConfig?.selectedLaws ? 'props' : 'URL', ':', selectedLaws.length, 'leyes,', Object.keys(selectedArticlesByLaw).length, 'grupos de artículos')
             // console.log('🎯 Leyes seleccionadas:', selectedLaws)
             // console.log('🎯 Artículos por ley:', selectedArticlesByLaw)
           }
         }
-        
-        questions = await fetcher(tema, finalSearchParams, finalTestConfig)
+
+        fetchedQuestions = await fetcher(tema, finalSearchParams, finalTestConfig)
       }
 
       // 🧠 Verificar si es modo adaptativo o normal
-      if (questions && questions.isAdaptive) {
+      if (fetchedQuestions && fetchedQuestions.isAdaptive) {
         // Modo adaptativo - verificar estructura
-        if (!questions.activeQuestions || questions.activeQuestions.length === 0) {
+        if (!fetchedQuestions.activeQuestions || fetchedQuestions.activeQuestions.length === 0) {
           throw new Error('No se encontraron preguntas activas para modo adaptativo')
         }
-        setQuestions(questions) // Pasar toda la estructura adaptativa
-        console.log('✅ TestPageWrapper: Modo adaptativo cargado:', questions.activeQuestions.length, 'activas,', questions.questionPool.length, 'en pool')
+        setQuestions(fetchedQuestions) // Pasar toda la estructura adaptativa
+        console.log('✅ TestPageWrapper: Modo adaptativo cargado:', fetchedQuestions.activeQuestions.length, 'activas,', fetchedQuestions.questionPool.length, 'en pool')
       } else {
         // Modo normal - verificar array
-        if (!questions || questions.length === 0) {
+        if (!fetchedQuestions || fetchedQuestions.length === 0) {
           throw new Error('No se encontraron preguntas con la configuración actual')
         }
-        setQuestions(questions)
-        console.log('✅ TestPageWrapper: Test cargado exitosamente:', questions.length, 'preguntas')
+        setQuestions(fetchedQuestions)
+        console.log('✅ TestPageWrapper: Test cargado exitosamente:', fetchedQuestions.length, 'preguntas')
       }
       console.log('✅ Config final aplicado:', testConfig)
 
@@ -393,11 +404,11 @@ export default function TestPageWrapper({
       setInternalLoadingMessage('⚡ Iniciando test...')
       await new Promise(resolve => setTimeout(resolve, 200))
 
-    } catch (err) {
+    } catch (err: unknown) {
       console.error(`❌ TestPageWrapper: Error cargando test [KEY: ${currentKey}]:`, err)
-      setError(err.message || 'Error cargando el test')
+      setError((err as Error).message || 'Error cargando el test')
       // Limpiar interval en caso de error
-      if (typeof loadingInterval !== 'undefined') {
+      if (loadingInterval) {
         clearInterval(loadingInterval)
       }
     } finally {
@@ -455,14 +466,14 @@ export default function TestPageWrapper({
               )}
             </div>
           )}
-          
+
           {/* 🆕 INFORMACIÓN ESPECÍFICA PARA TESTS DIRIGIDOS */}
           {testType === 'articulos-dirigido' && (
             <div className="mt-3 space-y-1 text-xs text-red-600 dark:text-red-400">
               <p>🎯 Test dirigido cargando...</p>
               {lawName && <p>📚 Ley: {lawName}</p>}
               {finalSearchParams?.get?.('articles') && (
-                <p>📋 Artículos: {finalSearchParams.get('articles').split(',').length}</p>
+                <p>📋 Artículos: {(finalSearchParams.get('articles') as string).split(',').length}</p>
               )}
               {finalSearchParams?.get?.('mode') && (
                 <p>⚙️ Modo: {finalSearchParams.get('mode')}</p>
@@ -489,7 +500,7 @@ export default function TestPageWrapper({
             <p className="text-gray-600 dark:text-gray-300 mb-3 text-sm">
               {errorMessage || error || 'No se encontraron preguntas con esta configuración.'}
             </p>
-            
+
             {/* 🆕 INFORMACIÓN ESPECIAL PARA ARTICULOS-DIRIGIDO */}
             {testType === 'articulos-dirigido' && (
               <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg p-3 mb-4 text-left">
@@ -530,23 +541,23 @@ export default function TestPageWrapper({
             )}
 
             <div className="space-y-3">
-              <button 
+              <button
                 onClick={loadQuestions}
                 className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors text-sm w-full"
               >
                 🔄 Reintentar
               </button>
-              
+
               {/* 🆕 BOTONES ESPECÍFICOS PARA ARTICULOS-DIRIGIDO */}
               {testType === 'articulos-dirigido' && lawName && (
                 <>
-                  <a 
+                  <a
                     href={`/test/${encodeURIComponent(lawName)}/test-rapido?n=10`}
                     className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm inline-block w-full text-center"
                   >
                     ⚡ Test rápido de {lawName}
                   </a>
-                  <a 
+                  <a
                     href={`/teoria/${lawName.toLowerCase().replace(/\s+/g, '-')}`}
                     className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors text-sm inline-block w-full text-center"
                   >
@@ -554,7 +565,7 @@ export default function TestPageWrapper({
                   </a>
                 </>
               )}
-              
+
               {testType === 'personalizado' && tema && (
                 <a
                   href={`/auxiliar-administrativo-estado/test/tema/${tema}`}
@@ -573,8 +584,8 @@ export default function TestPageWrapper({
                   🎲 Test rápido general
                 </a>
               )}
-              
-              <a 
+
+              <a
                 href="/auxiliar-administrativo-estado/test"
                 className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 text-sm inline-block w-full text-center underline"
               >
@@ -591,7 +602,6 @@ export default function TestPageWrapper({
   return (
     <>
       <OposicionDetector />
-
 
       {/* ✅ DEBUGGER: Mostrar valores actuales */}
       {console.log('🔍 TestPageWrapper debug:', {

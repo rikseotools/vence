@@ -112,7 +112,6 @@ function TestPersonalizadoContent({ params }: ContentProps) {
   const bloqueInfo = ` (${getBloque(temaNumber)})`
 
   return (
-    // @ts-expect-error - TestPageWrapper is a JS component; optional props inferred as required
     <TestPageWrapper
       testType="personalizado"
       tema={temaNumber}

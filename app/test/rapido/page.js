@@ -6,7 +6,6 @@ export const dynamic = 'force-dynamic'
 export default function TestRapidoPage() {
   return (
     <TestPageWrapper
-      oposicionBased={true}
       testType="rapido"
       customTitle="Test Rápido"
       customDescription="Test rápido para retomar el estudio"

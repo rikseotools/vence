@@ -55,7 +55,6 @@ function TestPersonalizadoContent() {
   }
 
   return (
-    // @ts-expect-error - TestPageWrapper is a JS component without proper types
     <TestPageWrapper
       tema={0}
       testType="aleatorio"

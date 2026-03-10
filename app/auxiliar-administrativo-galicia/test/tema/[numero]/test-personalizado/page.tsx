@@ -111,7 +111,6 @@ function TestPersonalizadoContent({ params }: ContentProps) {
   const parteInfo = ` (${getParte(temaNumber)})`
 
   return (
-    // @ts-expect-error - TestPageWrapper is a JS component; optional props inferred as required
     <TestPageWrapper
       testType="personalizado"
       tema={temaNumber}
