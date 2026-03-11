@@ -1,7 +1,9 @@
 // lib/api/test-answers/queries.ts - Insert de respuestas via Drizzle
 import { getDb } from '@/db/client'
-import { testQuestions } from '@/db/schema'
+import { testQuestions, userProfiles } from '@/db/schema'
+import { eq } from 'drizzle-orm'
 import { resolveTemaNumber } from '@/lib/api/tema-resolver/queries'
+import { ALL_OPOSICION_IDS } from '@/lib/config/oposiciones'
 import type { SaveAnswerRequest, SaveAnswerResponse, DeviceInfo } from './schemas'
 
 // ============================================
@@ -106,7 +108,20 @@ export async function insertTestAnswer(
 
     if (calculatedTema === 0 && req.questionData.id) {
       try {
-        const oposicionId = req.oposicionId || 'auxiliar_administrativo_estado'
+        // Obtener oposición del usuario SERVER-SIDE (no depender del cliente)
+        let oposicionId = req.oposicionId || ''
+        if (!oposicionId) {
+          const db = getDb()
+          const result = await db
+            .select({ targetOposicion: userProfiles.targetOposicion })
+            .from(userProfiles)
+            .where(eq(userProfiles.id, userId))
+            .limit(1)
+          const userOposicion = result[0]?.targetOposicion
+          oposicionId = (userOposicion && ALL_OPOSICION_IDS.includes(userOposicion))
+            ? userOposicion
+            : 'auxiliar_administrativo_estado'
+        }
         const resolved = await resolveTemaNumber(
           req.questionData.id,
           req.questionData.article?.id,

@@ -818,9 +818,9 @@ export default function ExamLayout({
       console.log(`✅ ${allAnswers.length} respuestas preparadas para análisis`)
 
       if (currentTestSession?.id) {
-        const scorePercentage = Math.round((correctCount / effectiveQuestions.length) * 100)
-        await updateTestScore(currentTestSession.id, scorePercentage)
-        console.log(`✅ Score actualizado: ${scorePercentage}%`)
+        // Score = COUNT de aciertos (no porcentaje). El % se deriva en stats.
+        await updateTestScore(currentTestSession.id, correctCount)
+        console.log(`✅ Score actualizado: ${correctCount}/${effectiveQuestions.length}`)
       }
 
       if (currentTestSession?.id) {

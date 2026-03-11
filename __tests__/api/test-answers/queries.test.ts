@@ -12,10 +12,12 @@ function makeDrizzleError(pgCode: string, detail?: string): Error {
 // Setup mocks before any imports
 jest.mock('@/db/client', () => {
   const chainable: Record<string, jest.Mock> = {}
-  const methods = ['insert', 'values']
+  const methods = ['insert', 'values', 'select', 'from', 'where', 'limit']
   for (const m of methods) {
     chainable[m] = jest.fn(() => chainable)
   }
+  // Default: limit() returns user profile with auxiliar oposicion
+  chainable.limit.mockResolvedValue([{ targetOposicion: 'auxiliar_administrativo_estado' }])
   return {
     getDb: jest.fn(() => chainable),
     __chainable: chainable,
@@ -24,6 +26,20 @@ jest.mock('@/db/client', () => {
 
 jest.mock('@/db/schema', () => ({
   testQuestions: { _: 'testQuestions_table' },
+  userProfiles: { targetOposicion: 'target_oposicion', id: 'id' },
+}))
+
+jest.mock('drizzle-orm', () => ({
+  eq: jest.fn((...args: unknown[]) => ({ _type: 'eq', args })),
+}))
+
+jest.mock('@/lib/config/oposiciones', () => ({
+  ALL_OPOSICION_IDS: [
+    'auxiliar_administrativo_estado',
+    'administrativo_estado',
+    'tramitacion_procesal',
+    'auxilio_judicial',
+  ],
 }))
 
 jest.mock('@/lib/api/tema-resolver/queries', () => ({
@@ -85,6 +101,8 @@ describe('insertTestAnswer', () => {
     }
     // Default: insert succeeds
     chainable.values.mockResolvedValue(undefined)
+    // Default: user profile query returns auxiliar
+    chainable.limit.mockResolvedValue([{ targetOposicion: 'auxiliar_administrativo_estado' }])
     mockedResolveTema.mockResolvedValue(null)
   })
 
@@ -277,5 +295,60 @@ describe('insertTestAnswer', () => {
     expect(insertedData.learningAnalytics).toHaveProperty('response_pattern')
     expect(insertedData.learningAnalytics.response_pattern).toBe('correct')
     expect(insertedData.learningAnalytics.time_efficiency).toBe('fast')
+  })
+
+  // --- Resolución de oposición server-side ---
+
+  it('debe consultar user_profiles cuando tema=0 y no hay req.oposicionId', async () => {
+    const req = makeRequest({ tema: 0 })
+    req.questionData.tema = 0
+    // No tiene oposicionId en el request (como V2)
+
+    await insertTestAnswer(req, userId)
+
+    // Debe haber llamado select() para obtener el perfil
+    expect(chainable.select).toHaveBeenCalled()
+  })
+
+  it('debe usar target_oposicion del usuario para resolver tema', async () => {
+    const req = makeRequest({ tema: 0 })
+    req.questionData.tema = 0
+    // User profile devuelve administrativo_estado
+    chainable.limit.mockResolvedValueOnce([{ targetOposicion: 'administrativo_estado' }])
+    mockedResolveTema.mockResolvedValueOnce(601)
+
+    await insertTestAnswer(req, userId)
+
+    // resolveTemaNumber debe recibir 'administrativo_estado', NO auxiliar
+    const lastArg = mockedResolveTema.mock.calls[0]?.[5]
+    expect(lastArg).toBe('administrativo_estado')
+    const insertedData = chainable.values.mock.calls[0][0]
+    expect(insertedData.temaNumber).toBe(601)
+  })
+
+  it('debe usar req.oposicionId si el cliente lo envía (backward compat)', async () => {
+    const req = makeRequest({ tema: 0, oposicionId: 'tramitacion_procesal' })
+    req.questionData.tema = 0
+    mockedResolveTema.mockResolvedValueOnce(13)
+
+    await insertTestAnswer(req, userId)
+
+    // resolveTemaNumber debe recibir 'tramitacion_procesal' del request
+    const lastArg = mockedResolveTema.mock.calls[0]?.[5]
+    expect(lastArg).toBe('tramitacion_procesal')
+    const insertedData = chainable.values.mock.calls[0][0]
+    expect(insertedData.temaNumber).toBe(13)
+  })
+
+  it('debe fallback a auxiliar si user_profiles no tiene target_oposicion', async () => {
+    const req = makeRequest({ tema: 0 })
+    req.questionData.tema = 0
+    // User profile sin oposición
+    chainable.limit.mockResolvedValueOnce([{ targetOposicion: null }])
+
+    await insertTestAnswer(req, userId)
+
+    const lastArg = mockedResolveTema.mock.calls[0]?.[5]
+    expect(lastArg).toBe('auxiliar_administrativo_estado')
   })
 })

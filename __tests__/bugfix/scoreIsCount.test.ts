@@ -268,6 +268,115 @@ describe('TestLayout: updateTestScore recibe count, no porcentaje', () => {
 })
 
 // ============================================
+// 4b. TestLayout saveAllPreviousAnswersToSession — score = count
+// ============================================
+
+describe('TestLayout saveAllPreviousAnswersToSession: score = count', () => {
+  // Reproduce la lógica de saveAllPreviousAnswersToSession
+  function simulateSaveAllPrevious(params: {
+    previousAnswers: { isCorrect: boolean }[]
+    totalQuestions: number
+  }) {
+    const score = params.previousAnswers.filter(a => a.isCorrect).length
+    // FIX: se pasa score (count), no porcentaje
+    // ANTIGUO BUG: scorePercentage = Math.round((score / totalQuestions) * 100)
+    return { scorePassedToUpdate: score }
+  }
+
+  it('9 correctas de 20 → score=9, NO 45 (porcentaje)', () => {
+    const { scorePassedToUpdate } = simulateSaveAllPrevious({
+      previousAnswers: [
+        ...Array(9).fill({ isCorrect: true }),
+        ...Array(11).fill({ isCorrect: false }),
+      ],
+      totalQuestions: 20,
+    })
+    expect(scorePassedToUpdate).toBe(9)
+    expect(scorePassedToUpdate).not.toBe(45) // Math.round(9/20*100) = 45
+  })
+
+  it('6 correctas de 6 → score=6, NO 100', () => {
+    const { scorePassedToUpdate } = simulateSaveAllPrevious({
+      previousAnswers: Array(6).fill({ isCorrect: true }),
+      totalQuestions: 6,
+    })
+    expect(scorePassedToUpdate).toBe(6)
+    expect(scorePassedToUpdate).not.toBe(100)
+  })
+
+  it('score siempre <= totalQuestions', () => {
+    const cases = [
+      { correct: 3, total: 10 },
+      { correct: 21, total: 25 },
+      { correct: 48, total: 50 },
+      { correct: 0, total: 10 },
+    ]
+    cases.forEach(({ correct, total }) => {
+      const { scorePassedToUpdate } = simulateSaveAllPrevious({
+        previousAnswers: [
+          ...Array(correct).fill({ isCorrect: true }),
+          ...Array(total - correct).fill({ isCorrect: false }),
+        ],
+        totalQuestions: total,
+      })
+      expect(scorePassedToUpdate).toBeLessThanOrEqual(total)
+      expect(scorePassedToUpdate).toBeGreaterThanOrEqual(0)
+    })
+  })
+})
+
+// ============================================
+// 4c. ExamLayout completeExam — score = correctCount
+// ============================================
+
+describe('ExamLayout completeExam: score = correctCount', () => {
+  // Reproduce la lógica de completeExam en ExamLayout
+  function simulateExamComplete(params: {
+    correctCount: number
+    totalQuestions: number
+  }) {
+    // FIX: se pasa correctCount (count), no porcentaje
+    // ANTIGUO BUG: scorePercentage = Math.round((correctCount / totalQuestions) * 100)
+    return { scorePassedToUpdate: params.correctCount }
+  }
+
+  it('21 correctas de 25 → score=21, NO 84 (porcentaje)', () => {
+    const { scorePassedToUpdate } = simulateExamComplete({
+      correctCount: 21,
+      totalQuestions: 25,
+    })
+    expect(scorePassedToUpdate).toBe(21)
+    expect(scorePassedToUpdate).not.toBe(84) // Math.round(21/25*100)
+  })
+
+  it('53 correctas de 64 → score=53, NO 83', () => {
+    const { scorePassedToUpdate } = simulateExamComplete({
+      correctCount: 53,
+      totalQuestions: 64,
+    })
+    expect(scorePassedToUpdate).toBe(53)
+    expect(scorePassedToUpdate).not.toBe(83) // Math.round(53/64*100)
+  })
+
+  it('todas correctas → score=total, NO 100', () => {
+    const { scorePassedToUpdate } = simulateExamComplete({
+      correctCount: 25,
+      totalQuestions: 25,
+    })
+    expect(scorePassedToUpdate).toBe(25)
+    expect(scorePassedToUpdate).not.toBe(100)
+  })
+
+  it('0 correctas → score=0', () => {
+    const { scorePassedToUpdate } = simulateExamComplete({
+      correctCount: 0,
+      totalQuestions: 25,
+    })
+    expect(scorePassedToUpdate).toBe(0)
+  })
+})
+
+// ============================================
 // 5. Stats layer — derivacion correcta de porcentaje
 // ============================================
 

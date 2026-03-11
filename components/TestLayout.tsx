@@ -650,9 +650,8 @@ export default function TestLayout({
           }
         }
 
-        // Actualizar puntuación (guardar porcentaje, no número absoluto)
-        const scorePercentage = Math.round((score / effectiveQuestions.length) * 100)
-        await updateTestScore(session.id, scorePercentage)
+        // Score = COUNT de aciertos (no porcentaje). El % se deriva en stats.
+        await updateTestScore(session.id, score)
 
         console.log(`✅ Guardadas ${savedCount}/${previousAnswers.length} respuestas previas únicas`)
         
