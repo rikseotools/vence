@@ -31,6 +31,15 @@ export class KnowledgeBaseDomain implements ChatDomain {
     // Verificar si es una consulta sobre la plataforma
     const isKBQuery = isPlatformQuery(context.currentMessage)
 
+    // Si parece follow-up de una conversación, dejar que el fallback LLM
+    // (que usa historial completo) lo maneje en vez de dar respuesta enlatada
+    if (isKBQuery && this.looksLikeFollowUp(context)) {
+      logger.debug('KnowledgeBaseDomain: skipping, looks like follow-up', {
+        domain: 'knowledge-base',
+      })
+      return false
+    }
+
     if (isKBQuery) {
       logger.debug('KnowledgeBaseDomain will handle request', {
         domain: 'knowledge-base',
@@ -223,6 +232,34 @@ ${kbContext}`
    */
   private buildSystemPrompt(): string {
     return KNOWLEDGE_BASE_SYSTEM_PROMPT
+  }
+
+  /**
+   * Detecta si el mensaje parece un follow-up de la conversación previa.
+   * En ese caso, KB no debe capturarlo: el fallback LLM con historial completo
+   * dará una respuesta mucho mejor.
+   */
+  private looksLikeFollowUp(context: ChatContext): boolean {
+    // Solo aplica si hay conversación previa
+    if (context.messages.length < 2) return false
+
+    const msg = context.currentMessage.trim()
+
+    // Mensajes largos probablemente son standalone
+    if (msg.length > 100) return false
+
+    // Patrones que indican continuación de conversación
+    const followUpStarters = [
+      /^(y\s|pero\s|entonces\s|o\s+sea\s|es\s+decir)/i,
+      /^(de\s+(l[ao]s?\s+)?)\w/i,       // "de auxiliar...", "del tema..."
+      /^(eso|esto|ese|esa)\b/i,          // "eso es correcto?", "esto aplica?"
+      /^(son|es|eran?|fue|fueron)\s/i,   // "son de auxiliar?"
+      /^(no[,!\s]|s[ií][,!\s]|vale|ok)/i, // "no! son 5", "sí pero..."
+      /^(me\s|te\s|le\s|nos\s|se\s)/i,   // "me puedes decir..."
+      /^(cu[aá]l(es)?|cu[aá]nto|por\s*qu[eé])\s/i, // "cuál es...", "por qué..."
+    ]
+
+    return followUpStarters.some(p => p.test(msg))
   }
 
   /**
