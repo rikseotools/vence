@@ -1,13 +1,58 @@
-// components/OnboardingModal.js
+// components/OnboardingModal.tsx
 // Modal de Onboarding Compacto - Una sola pantalla
 'use client'
 import { useState, useEffect, useMemo } from 'react'
 import { getSupabaseClient } from '../lib/supabase'
 
+export interface OposicionItem {
+  id: string
+  nombre: string
+  categoria: string
+  administracion: string
+  icon: string
+}
+
+interface SelectedOposicion {
+  id: string
+  nombre: string
+  categoria: string
+  administracion: string
+  tipo: 'oficial' | 'custom'
+}
+
+interface FormData {
+  selectedOposicion: SelectedOposicion | null
+  age: string
+  gender: string
+  daily_study_hours: string
+  ciudad: string
+}
+
+interface CompletedFields {
+  oposicion: boolean
+  age: boolean
+  gender: boolean
+  ciudad: boolean
+  daily_study_hours: boolean
+}
+
+interface CustomOposicionData {
+  nombre: string
+  categoria: string
+  administracion: string
+}
+
+interface OnboardingModalProps {
+  isOpen: boolean
+  onComplete: () => void
+  onSkip: () => void
+  user: { id: string; user_metadata?: any; email?: string }
+}
+
 const supabase = getSupabaseClient()
 
 // Función para normalizar nombres de oposiciones (quitar acentos, minúsculas)
-const normalizeOposicionName = (name) => {
+const normalizeOposicionName = (name: string): string => {
   return name
     .toLowerCase()
     .normalize('NFD')
@@ -18,7 +63,7 @@ const normalizeOposicionName = (name) => {
 }
 
 // Función para detectar si una oposición personalizada coincide con una oficial
-const findMatchingOfficialOposicion = (customName) => {
+const findMatchingOfficialOposicion = (customName: string): OposicionItem | undefined => {
   const normalizedCustom = normalizeOposicionName(customName)
   const customWords = normalizedCustom.split(' ').filter(w => w.length > 0)
 
@@ -45,7 +90,7 @@ const findMatchingOfficialOposicion = (customName) => {
 }
 
 // Oposiciones oficiales ordenadas por POPULARIDAD (más demandadas primero)
-const OFFICIAL_OPOSICIONES = [
+export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
   // === TOP 10 MÁS POPULARES ===
   {
     id: 'auxiliar_administrativo_estado',
@@ -576,14 +621,14 @@ const OFFICIAL_OPOSICIONES = [
   }
 ]
 
-export default function OnboardingModal({ isOpen, onComplete, onSkip, user }) {
+export default function OnboardingModal({ isOpen, onComplete, onSkip, user }: OnboardingModalProps) {
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
-  const [saving, setSaving] = useState(null) // Campo que se está guardando
+  const [error, setError] = useState<string | null>(null)
+  const [saving, setSaving] = useState<string | null>(null) // Campo que se está guardando
 
   // Estados
   const [searchTerm, setSearchTerm] = useState('')
-  const [customOposiciones, setCustomOposiciones] = useState([])
+  const [customOposiciones, setCustomOposiciones] = useState<any[]>([])
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [detectingLocation, setDetectingLocation] = useState(false)
   const [profileLoaded, setProfileLoaded] = useState(false)
@@ -591,7 +636,7 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }) {
   const [editingCiudad, setEditingCiudad] = useState(false)
 
   // Datos del formulario (TODO OBLIGATORIO)
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     selectedOposicion: null,
     age: '',
     gender: '',
@@ -600,7 +645,7 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }) {
   })
 
   // Estado para rastrear qué campos ya estaban completos
-  const [completedFields, setCompletedFields] = useState({
+  const [completedFields, setCompletedFields] = useState<CompletedFields>({
     oposicion: false,
     age: false,
     gender: false,
@@ -609,7 +654,7 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }) {
   })
 
   // Datos para crear oposición custom
-  const [customOposicionData, setCustomOposicionData] = useState({
+  const [customOposicionData, setCustomOposicionData] = useState<CustomOposicionData>({
     nombre: '',
     categoria: '',
     administracion: ''
@@ -731,7 +776,7 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }) {
   }, [profileLoaded, formData.ciudad, completedFields.ciudad])
 
   // 💾 FUNCIÓN CLAVE: Guardar campo individual progresivamente
-  const saveField = async (fieldName, value) => {
+  const saveField = async (fieldName: string, value: any): Promise<boolean> => {
     if (!user?.id || !profileLoaded) return false
 
     try {
@@ -817,8 +862,8 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }) {
   }, [searchTerm, customOposiciones])
 
   // Seleccionar oposición oficial
-  const handleSelectOfficial = (oposicion) => {
-    const oposicionData = {
+  const handleSelectOfficial = (oposicion: OposicionItem) => {
+    const oposicionData: SelectedOposicion = {
       id: oposicion.id,
       nombre: oposicion.nombre,
       categoria: oposicion.categoria,
@@ -837,8 +882,8 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }) {
   }
 
   // Seleccionar oposición custom
-  const handleSelectCustom = (oposicion) => {
-    const oposicionData = {
+  const handleSelectCustom = (oposicion: any) => {
+    const oposicionData: SelectedOposicion = {
       id: oposicion.id,
       nombre: oposicion.nombre,
       categoria: oposicion.categoria,
@@ -876,7 +921,7 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }) {
 
       if (useOfficial) {
         // Usar la oposición oficial
-        handleSelectOposicion(matchingOfficial)
+        handleSelectOfficial(matchingOfficial)
         setShowCreateForm(false)
         setCustomOposicionData({ nombre: '', categoria: '', administracion: '' })
         return
@@ -901,7 +946,7 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }) {
       if (error) throw error
 
       // Seleccionar la oposición recién creada
-      const oposicionData = {
+      const oposicionData: SelectedOposicion = {
         id: data.oposicion_id,
         nombre: customOposicionData.nombre,
         categoria: customOposicionData.categoria,
@@ -926,7 +971,7 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }) {
       loadCustomOposiciones()
     } catch (err) {
       console.error('Error creando oposición:', err)
-      setError(err.message || 'Error al crear oposición')
+      setError((err as Error).message || 'Error al crear oposición')
     } finally {
       setLoading(false)
     }
@@ -978,10 +1023,10 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }) {
         setError(`Error: No se guardaron algunos campos (${missingFields.join(', ')}). Por favor, intenta nuevamente.`)
 
         // 🔴 NUEVO: Intentar guardar los campos faltantes
-        const updates = {}
+        const updates: Record<string, any> = {}
         if (!currentProfile.target_oposicion && formData.selectedOposicion) {
           updates.target_oposicion = formData.selectedOposicion
-          updates.target_oposicion_data = formData.oposicionData
+          updates.target_oposicion_data = formData.selectedOposicion
         }
         if (!currentProfile.age && formData.age) {
           updates.age = parseInt(formData.age)
@@ -1036,7 +1081,7 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }) {
       onComplete()
     } catch (err) {
       console.error('Error completando onboarding:', err)
-      setError(err.message || 'Error al completar onboarding')
+      setError((err as Error).message || 'Error al completar onboarding')
     } finally {
       setLoading(false)
     }
