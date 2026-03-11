@@ -14,7 +14,7 @@ const BLOQUES = [
     temas: [
       { id: 1, titulo: 'La Constitucion Espanola de 1978', descripcion: 'Estructura y contenido. Derechos y deberes fundamentales. La Corona. Las Cortes Generales. El Gobierno y la Administracion. El Poder Judicial. El Tribunal Constitucional. La reforma constitucional.', disponible: true },
       { id: 2, titulo: 'La organizacion territorial del Estado', descripcion: 'Las Comunidades Autonomas. La Administracion Local. Principios constitucionales. Distribucion de competencias.', disponible: true },
-      { id: 3, titulo: 'La Union Europea', descripcion: 'Tratados constitutivos y modificativos. Las instituciones de la Union Europea. Las libertades comunitarias. Las fuentes del derecho comunitario.', disponible: false },
+      { id: 3, titulo: 'La Union Europea', descripcion: 'Tratados constitutivos y modificativos. Las instituciones de la Union Europea. Las libertades comunitarias. Las fuentes del derecho comunitario.', disponible: true },
       { id: 4, titulo: 'El Estatuto de Autonomia de Aragon', descripcion: 'Estructura y contenido. Competencias de la Comunidad Autonoma de Aragon. Organizacion institucional.', disponible: false },
       { id: 5, titulo: 'Los organos de gobierno de la CA de Aragon', descripcion: 'Las Cortes de Aragon. El Presidente. La Diputacion General. El Justicia de Aragon. La Administracion de la Comunidad Autonoma.', disponible: false },
       { id: 6, titulo: 'El derecho administrativo. Ley 39/2015', descripcion: 'Fuentes del derecho administrativo. El procedimiento administrativo comun. Disposiciones generales. Los interesados.', disponible: true },
@@ -25,7 +25,7 @@ const BLOQUES = [
       { id: 11, titulo: 'Informacion y atencion al publico', descripcion: 'Atencion al ciudadano. Quejas y sugerencias. Servicios de informacion administrativa. Cartas de servicios.', disponible: true },
       { id: 12, titulo: 'Documentos administrativos', descripcion: 'Concepto y clases de documentos. Registros. Archivos. Gestion documental.', disponible: true },
       { id: 13, titulo: 'Gobierno Abierto y transparencia', descripcion: 'Ley 19/2013 de transparencia. Publicidad activa. Derecho de acceso a la informacion publica. Buen gobierno.', disponible: true },
-      { id: 14, titulo: 'Prevencion de Riesgos Laborales', descripcion: 'Ley 31/1995 de Prevencion de Riesgos Laborales. Derechos y obligaciones. Servicios de prevencion. Delegados de prevencion.', disponible: false },
+      { id: 14, titulo: 'Prevencion de Riesgos Laborales', descripcion: 'Ley 31/1995 de Prevencion de Riesgos Laborales. Derechos y obligaciones. Servicios de prevencion. Delegados de prevencion.', disponible: true },
       { id: 15, titulo: 'Administracion electronica', descripcion: 'Sede electronica. Registro electronico. Notificaciones electronicas. Expediente electronico. Firma electronica.', disponible: true },
     ]
   },
