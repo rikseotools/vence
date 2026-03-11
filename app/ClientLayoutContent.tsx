@@ -1,6 +1,6 @@
-// app/ClientLayoutContent.js - COMPONENTE CLIENTE SEPARADO
+// app/ClientLayoutContent.tsx - COMPONENTE CLIENTE SEPARADO
 'use client'
-import { useEffect } from 'react'
+import { ReactNode, useEffect } from 'react'
 import HeaderES from './Header'
 import FooterES from './Footer'
 import Breadcrumbs from '../components/Breadcrumbs'
@@ -11,32 +11,8 @@ import { usePathname } from 'next/navigation'
 import { useOnboarding } from '../hooks/useOnboarding'
 import { captureMetaParams } from '../lib/metaPixelCapture'
 
-// Configuración de temas para breadcrumbs dinámicos
-const TEMAS_CONFIG = {
-  '1': {
-    titulo: 'La Constitución Española de 1978',
-    color: 'from-red-500 to-orange-500',
-    icon: '📜'
-  },
-  '4': {
-    titulo: 'El Poder Judicial',
-    color: 'from-blue-600 to-indigo-600',
-    icon: '⚖️'
-  },
-  '11': {
-    titulo: 'Ley 39/2015 Procedimiento Administrativo',
-    color: 'from-green-600 to-teal-600',
-    icon: '📋'
-  },
-  '16': {
-    titulo: 'Personal al servicio de las AAPP',
-    color: 'from-purple-600 to-pink-600',
-    icon: '👥'
-  },
-}
-
 // Componente interno que usa el contexto de Auth
-export default function ClientLayoutContent({ children }) {
+export default function ClientLayoutContent({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth()
   const pathname = usePathname()
   const { showModal, handleComplete, handleSkip } = useOnboarding()
@@ -45,22 +21,6 @@ export default function ClientLayoutContent({ children }) {
   useEffect(() => {
     captureMetaParams()
   }, [])
-
-  // Función para generar labels dinámicos de breadcrumbs
-  const getBreadcrumbLabels = () => {
-    return {
-      '': '🏠 Inicio',
-      'auxiliar-administrativo-estado': '👨‍💼 Auxiliar Administrativo Estado',
-      'test': '🎯 Tests',
-      'temario': '📚 Temarios',
-      'leyes': '📚 Leyes',
-      // Temas dinámicos
-      'tema': (temaNumber) => {
-        const tema = TEMAS_CONFIG[temaNumber]
-        return tema ? `${tema.icon} ${tema.titulo}` : `📖 Tema ${temaNumber}`
-      }
-    }
-  }
 
   return (
     <>
@@ -75,10 +35,7 @@ export default function ClientLayoutContent({ children }) {
        !pathname.startsWith('/administrativo-estado/temario') &&
        !pathname.includes('/constitucion-titulos') &&
        !pathname.includes('/test-de-la-constitucion-espanola-de-1978') && (
-        <Breadcrumbs
-          pathname={pathname}
-          getBreadcrumbLabels={getBreadcrumbLabels}
-        />
+        <Breadcrumbs />
       )}
       {children}
       <FooterES />
