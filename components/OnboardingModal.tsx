@@ -1025,7 +1025,7 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }: On
         // 🔴 NUEVO: Intentar guardar los campos faltantes
         const updates: Record<string, any> = {}
         if (!currentProfile.target_oposicion && formData.selectedOposicion) {
-          updates.target_oposicion = formData.selectedOposicion
+          updates.target_oposicion = formData.selectedOposicion.id
           updates.target_oposicion_data = formData.selectedOposicion
         }
         if (!currentProfile.age && formData.age) {
