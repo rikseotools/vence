@@ -1537,7 +1537,7 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
           )}
 
           {/* 🎯 SOLO PREGUNTAS FALLADAS */}
-          {currentUser && testMode === 'practica' && (
+          {currentUser && (
             <div className="border-t border-gray-200 pt-4">
               <label className="flex items-center space-x-2">
                 <input

@@ -89,15 +89,19 @@ function TestExamenContent({ params }) {
       const selectedLawsParam = searchParams.get('selected_laws')
       const selectedArticlesByLawParam = searchParams.get('selected_articles_by_law')
       const selectedSectionFiltersParam = searchParams.get('selected_section_filters')
+      const onlyFailedQuestions = searchParams.get('only_failed') === 'true'
+      const failedQuestionIdsParam = searchParams.get('failed_question_ids')
 
       let selectedLaws = []
       let selectedArticlesByLaw = {}
       let selectedSectionFilters = []
+      let failedQuestionIds = []
 
       try {
         selectedLaws = selectedLawsParam ? JSON.parse(selectedLawsParam) : []
         selectedArticlesByLaw = selectedArticlesByLawParam ? JSON.parse(selectedArticlesByLawParam) : {}
         selectedSectionFilters = selectedSectionFiltersParam ? JSON.parse(selectedSectionFiltersParam) : []
+        failedQuestionIds = failedQuestionIdsParam ? JSON.parse(failedQuestionIdsParam) : []
       } catch (parseError) {
         console.error('❌ Error parsing URL params:', parseError)
       }
@@ -122,7 +126,9 @@ function TestExamenContent({ params }) {
           selectedArticlesByLaw,
           selectedSectionFilters,
           onlyOfficialQuestions,
-          difficultyMode
+          difficultyMode,
+          onlyFailedQuestions,
+          failedQuestionIds
         })
       })
 
