@@ -471,6 +471,301 @@ describe('ExamLayout - Prevención de Regresiones', () => {
   })
 
   // ============================================
+  // BUG CRÍTICO: Race condition en creación de sesión (user null)
+  // Bug: authLoading=false pero user=null (móvil tras /auth/callback)
+  // El useEffect creaba sesión con userId='' y bloqueaba reintentos
+  // Fix: guard !user?.id + user?.id en deps + ref solo en éxito
+  // ============================================
+  describe('Bug Fix: Race condition en creación de sesión (user null)', () => {
+
+    // Replica exacta de la lógica de guards del useEffect (líneas 460-468)
+    function shouldAttemptSessionCreation({
+      authLoading,
+      questionsLength,
+      userId,
+      sessionAlreadyCreated,
+    }: {
+      authLoading: boolean
+      questionsLength: number
+      userId: string | null | undefined
+      sessionAlreadyCreated: boolean
+    }): boolean {
+      if (authLoading || !questionsLength) return false
+      if (!userId) return false  // ← FIX: esperar a que user esté disponible
+      if (sessionAlreadyCreated) return false
+      return true
+    }
+
+    test('NO intenta crear sesión si authLoading=true', () => {
+      expect(shouldAttemptSessionCreation({
+        authLoading: true,
+        questionsLength: 100,
+        userId: 'user-123',
+        sessionAlreadyCreated: false,
+      })).toBe(false)
+    })
+
+    test('NO intenta crear sesión si no hay preguntas', () => {
+      expect(shouldAttemptSessionCreation({
+        authLoading: false,
+        questionsLength: 0,
+        userId: 'user-123',
+        sessionAlreadyCreated: false,
+      })).toBe(false)
+    })
+
+    test('NO intenta crear sesión si user es null (CAUSA RAÍZ del bug)', () => {
+      expect(shouldAttemptSessionCreation({
+        authLoading: false,
+        questionsLength: 100,
+        userId: null,
+        sessionAlreadyCreated: false,
+      })).toBe(false)
+    })
+
+    test('NO intenta crear sesión si user.id es undefined', () => {
+      expect(shouldAttemptSessionCreation({
+        authLoading: false,
+        questionsLength: 100,
+        userId: undefined,
+        sessionAlreadyCreated: false,
+      })).toBe(false)
+    })
+
+    test('NO intenta crear sesión si user.id es string vacío', () => {
+      expect(shouldAttemptSessionCreation({
+        authLoading: false,
+        questionsLength: 100,
+        userId: '',
+        sessionAlreadyCreated: false,
+      })).toBe(false)
+    })
+
+    test('NO intenta crear sesión si ya se creó (ref bloqueado)', () => {
+      expect(shouldAttemptSessionCreation({
+        authLoading: false,
+        questionsLength: 100,
+        userId: 'user-123',
+        sessionAlreadyCreated: true,
+      })).toBe(false)
+    })
+
+    test('SÍ intenta crear sesión cuando todas las condiciones se cumplen', () => {
+      expect(shouldAttemptSessionCreation({
+        authLoading: false,
+        questionsLength: 100,
+        userId: 'user-123',
+        sessionAlreadyCreated: false,
+      })).toBe(true)
+    })
+  })
+
+  // ============================================
+  // Ref solo se bloquea en éxito (no en fallo)
+  // ============================================
+  describe('Bug Fix: sessionCreationRef solo se bloquea en éxito', () => {
+
+    // Replica la lógica de initializeExamSession (líneas 512-536)
+    function processSessionResult(
+      testSessionData: { id?: string } | null | undefined
+    ): { shouldBlockRef: boolean; hasError: boolean } {
+      if (testSessionData === null || testSessionData === undefined) {
+        return { shouldBlockRef: false, hasError: true }
+      } else if (!testSessionData.id) {
+        return { shouldBlockRef: false, hasError: true }
+      } else {
+        return { shouldBlockRef: true, hasError: false }
+      }
+    }
+
+    test('Éxito: bloquea ref y no hay error', () => {
+      const result = processSessionResult({ id: 'session-abc-123' })
+      expect(result.shouldBlockRef).toBe(true)
+      expect(result.hasError).toBe(false)
+    })
+
+    test('Null: NO bloquea ref y marca error', () => {
+      const result = processSessionResult(null)
+      expect(result.shouldBlockRef).toBe(false)
+      expect(result.hasError).toBe(true)
+    })
+
+    test('Undefined: NO bloquea ref y marca error', () => {
+      const result = processSessionResult(undefined)
+      expect(result.shouldBlockRef).toBe(false)
+      expect(result.hasError).toBe(true)
+    })
+
+    test('Sin ID: NO bloquea ref y marca error', () => {
+      const result = processSessionResult({})
+      expect(result.shouldBlockRef).toBe(false)
+      expect(result.hasError).toBe(true)
+    })
+
+    test('ID vacío: NO bloquea ref y marca error', () => {
+      const result = processSessionResult({ id: '' })
+      expect(result.shouldBlockRef).toBe(false)
+      expect(result.hasError).toBe(true)
+    })
+  })
+
+  // ============================================
+  // Banner de error de sesión
+  // ============================================
+  describe('Banner de error de sesión', () => {
+
+    function shouldShowSessionErrorBanner({
+      sessionCreationError,
+      isSubmitted,
+    }: {
+      sessionCreationError: boolean
+      isSubmitted: boolean
+    }): boolean {
+      return sessionCreationError && !isSubmitted
+    }
+
+    test('Muestra banner si hay error y examen en progreso', () => {
+      expect(shouldShowSessionErrorBanner({
+        sessionCreationError: true,
+        isSubmitted: false,
+      })).toBe(true)
+    })
+
+    test('NO muestra banner si no hay error', () => {
+      expect(shouldShowSessionErrorBanner({
+        sessionCreationError: false,
+        isSubmitted: false,
+      })).toBe(false)
+    })
+
+    test('NO muestra banner en pantalla de resultados', () => {
+      expect(shouldShowSessionErrorBanner({
+        sessionCreationError: true,
+        isSubmitted: true,
+      })).toBe(false)
+    })
+  })
+
+  // ============================================
+  // Simulación del escenario completo: móvil tras /auth/callback
+  // ============================================
+  describe('Escenario: Móvil tras /auth/callback (bug de Nila)', () => {
+
+    test('ANTES del fix: sesión se pierde', () => {
+      // Estado: authLoading pasa a false, pero user tarda en llegar
+      let sessionCreationRef = false
+      let sessionCreated = false
+
+      // Render 1: authLoading=false, user=null
+      const authLoading = false
+      const questionsLength = 100
+      let userId: string | null = null
+
+      // useEffect se dispara (authLoading cambió)
+      if (!authLoading && questionsLength > 0) {
+        // ANTES: no había guard de userId
+        if (!sessionCreationRef) {
+          sessionCreationRef = true  // ← se bloquea ANTES de crear
+          // createDetailedTestSession(userId || '', ...) → userId es ''
+          // La sesión se crea con userId vacío o falla
+          sessionCreated = false  // Falla o sesión inválida
+        }
+      }
+
+      // Render 2: user llega via onAuthStateChange
+      userId = 'user-real-123'
+
+      // useEffect NO se re-dispara porque userId NO estaba en deps
+      // Y sessionCreationRef ya es true, así que aunque se disparara, no haría nada
+      // El ref está bloqueado → nunca se reintenta
+
+      expect(sessionCreationRef).toBe(true)   // Ref bloqueado
+      expect(sessionCreated).toBe(false)       // Pero sesión NO creada
+      // ❌ Test de 100 preguntas perdido
+    })
+
+    test('DESPUÉS del fix: sesión se crea correctamente', () => {
+      let sessionCreationRef = false
+      let sessionCreated = false
+
+      const authLoading = false
+      const questionsLength = 100
+      let userId: string | null = null
+
+      // Render 1: authLoading=false, user=null
+      // useEffect se dispara
+      if (!authLoading && questionsLength > 0) {
+        if (!userId) {
+          // Guard: no intentar sin userId → return
+        } else if (!sessionCreationRef) {
+          // No llega aquí
+        }
+      }
+
+      expect(sessionCreationRef).toBe(false)  // Ref libre
+      expect(sessionCreated).toBe(false)       // Aún no se creó
+
+      // Render 2: user llega → useEffect se re-dispara (userId en deps)
+      userId = 'user-real-123'
+
+      if (!authLoading && questionsLength > 0) {
+        if (!userId) {
+          // No entra
+        } else if (!sessionCreationRef) {
+          // Ahora SÍ: user disponible, ref libre
+          sessionCreated = true  // createDetailedTestSession('user-real-123', ...)
+          sessionCreationRef = true  // Solo tras éxito
+        }
+      }
+
+      expect(sessionCreationRef).toBe(true)   // Ref bloqueado tras éxito
+      expect(sessionCreated).toBe(true)        // Sesión creada correctamente
+      // ✅ Test de 100 preguntas guardado
+    })
+
+    test('DESPUÉS del fix: si createSession falla, se puede reintentar', () => {
+      let sessionCreationRef = false
+      let sessionCreated = false
+      let attemptCount = 0
+
+      const authLoading = false
+      const questionsLength = 100
+      const userId = 'user-123'
+
+      // Intento 1: falla (error de red)
+      if (!authLoading && questionsLength > 0 && userId && !sessionCreationRef) {
+        attemptCount++
+        const result = null  // Simula fallo
+        if (result && (result as any).id) {
+          sessionCreationRef = true
+          sessionCreated = true
+        }
+        // ref NO se bloquea porque no hubo éxito
+      }
+
+      expect(sessionCreationRef).toBe(false)
+      expect(sessionCreated).toBe(false)
+      expect(attemptCount).toBe(1)
+
+      // Intento 2: el useEffect se re-dispara (por cambio en deps)
+      // En la realidad esto ocurriría si algo cambia, pero el punto es
+      // que el ref NO está bloqueado
+      if (!authLoading && questionsLength > 0 && userId && !sessionCreationRef) {
+        attemptCount++
+        const result = { id: 'session-ok' }  // Ahora funciona
+        if (result && result.id) {
+          sessionCreationRef = true
+          sessionCreated = true
+        }
+      }
+
+      expect(sessionCreationRef).toBe(true)
+      expect(sessionCreated).toBe(true)
+      expect(attemptCount).toBe(2)
+    })
+  })
+
+  // ============================================
   // Escenario completo: Flujo de examen con límite
   // ============================================
   describe('Escenario: Usuario FREE hace examen con límite', () => {

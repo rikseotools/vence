@@ -384,6 +384,7 @@ export default function ExamLayout({
   // Estados de sesión
   const [currentTestSession, setCurrentTestSession] = useState<TestSession | null>(null)
   const [saveStatus, setSaveStatus] = useState<'success' | 'error' | null>(null)
+  const [sessionCreationError, setSessionCreationError] = useState(false)
 
   // Control de guardado
   const [isSaving, setIsSaving] = useState(false)
@@ -458,22 +459,23 @@ export default function ExamLayout({
   // ✅ INICIALIZAR SESIÓN AL MONTAR
   useEffect(() => {
     if (authLoading || !questions?.length) return
+    if (!user?.id) return  // Esperar a que user esté disponible
 
+    // Solo bloquear si ya se creó sesión exitosamente
     if (sessionCreationRef.current) {
-      console.log('⏭️ Sesión de examen ya iniciada, omitiendo (Strict Mode)')
+      console.log('⏭️ Sesión de examen ya creada, omitiendo')
       return
     }
-
-    sessionCreationRef.current = true
 
     if (resumeTestId) {
       console.log('🔄 Reanudando examen existente:', resumeTestId)
       setCurrentTestSession({ id: resumeTestId })
       currentTestSessionRef.current = { id: resumeTestId }
+      sessionCreationRef.current = true
     } else {
       initializeExamSession()
     }
-  }, [authLoading, questions?.length, tema, resumeTestId])
+  }, [authLoading, user?.id, questions?.length, tema, resumeTestId])
 
   // ✅ FUNCIÓN: Inicializar sesión de examen
   async function initializeExamSession(): Promise<void> {
@@ -509,11 +511,15 @@ export default function ExamLayout({
 
       if (testSessionData === null || testSessionData === undefined) {
         console.error('❌ CRITICAL: createDetailedTestSession devolvió null/undefined')
+        setSessionCreationError(true)
       } else if (!testSessionData.id) {
         console.error('❌ CRITICAL: testSessionData no tiene ID')
+        setSessionCreationError(true)
       } else {
         console.log('✅ Test session creada con ID:', testSessionData.id)
         currentTestSessionRef.current = testSessionData
+        sessionCreationRef.current = true
+        setSessionCreationError(false)
 
         // Las preguntas se guardan en test_questions solo cuando el usuario responde
         // (via saveAnswer en /api/exam/answer). La lista de question_ids se preserva
@@ -526,6 +532,7 @@ export default function ExamLayout({
 
     } catch (error) {
       console.error('❌ EXCEPCIÓN EN initializeExamSession:', error)
+      setSessionCreationError(true)
     }
   }
 
@@ -946,6 +953,15 @@ export default function ExamLayout({
                 <button onClick={() => setShowUpgradeModal(true)} className="text-amber-700 underline font-medium">
                   Hazte Premium
                 </button>
+              </p>
+            </div>
+          )}
+
+          {sessionCreationError && !isSubmitted && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg dark:bg-red-900/20 dark:border-red-800">
+              <p className="text-sm text-red-800 dark:text-red-200">
+                <span className="font-medium">Error al iniciar la sesion de examen.</span>{' '}
+                Tus respuestas podrian no guardarse. Recarga la pagina para intentarlo de nuevo.
               </p>
             </div>
           )}
