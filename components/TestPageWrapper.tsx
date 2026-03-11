@@ -3,8 +3,10 @@
 import { useState, useEffect, useRef } from 'react'
 import { useSearchParams, usePathname } from 'next/navigation'
 import { getOposicionSlugFromPathname } from '@/lib/config/oposiciones'
+import { useOposicion } from '@/contexts/OposicionContext'
 import TestLayout from './TestLayout'
 import OposicionDetector from './OposicionDetector'
+import OposicionGuard from './OposicionGuard'
 import {
   fetchRandomQuestions,
   fetchQuickQuestions,
@@ -61,6 +63,9 @@ export default function TestPageWrapper({
   loadingMessage,
   errorMessage
 }: TestPageWrapperProps) {
+  // Guard: bloquear tests si no tiene oposición seleccionada
+  const { hasOposicion, loading: oposicionLoading } = useOposicion()
+
   // Estados básicos
   const [questions, setQuestions] = useState<any>([])
   const [loading, setLoading] = useState(true)
@@ -425,6 +430,11 @@ export default function TestPageWrapper({
   useEffect(() => {
     loadQuestions()
   }, [tema, testType, finalSearchParams, lawName, themes]) // ✅ AGREGAR lawName y themes a dependencias
+
+  // Guard: si no tiene oposición, mostrar selector antes del test
+  if (!oposicionLoading && !hasOposicion) {
+    return <OposicionGuard />
+  }
 
   // 🔄 Estado de carga
   if (loading) {

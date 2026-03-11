@@ -1217,7 +1217,7 @@ export const OPOSICIONES: Oposicion[] = [
 // ============================================
 
 /** Todos los IDs de oposición (para BD target_oposicion) */
-export const ALL_OPOSICION_IDS = OPOSICIONES.map(o => o.id)
+export const ALL_OPOSICION_IDS = [...OPOSICIONES.map(o => o.id), 'explorador']
 
 /** Todos los slugs de oposición (para URLs) */
 export const ALL_OPOSICION_SLUGS = OPOSICIONES.map(o => o.slug)
