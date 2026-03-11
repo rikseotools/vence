@@ -10,6 +10,18 @@ const compat = new FlatCompat({
 });
 
 const eslintConfig = [
+  {
+    ignores: [
+      ".next/",
+      "node_modules/",
+      "scripts/",
+      "database/",
+      "docs/",
+      "_tmp_*.cjs",
+      "*.cjs",
+      "*.json",
+    ],
+  },
   ...compat.extends("next/core-web-vitals"),
   {
     files: ["app/api/**/route.ts"],
