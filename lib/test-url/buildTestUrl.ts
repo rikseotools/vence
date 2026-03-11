@@ -23,7 +23,10 @@ export function buildTestUrl({ basePath, temaNumber, testMode, config }: BuildTe
   if (config.timeLimit) params.set('time_limit', config.timeLimit.toString())
 
   if (config.failedQuestionIds?.length) {
-    params.set('failed_question_ids', JSON.stringify(config.failedQuestionIds))
+    // Guardar en sessionStorage para evitar URLs enormes (HTTP 431)
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('pendingFailedQuestionIds', JSON.stringify(config.failedQuestionIds))
+    }
   }
   if (config.failedQuestionsOrder) {
     params.set('failed_questions_order', config.failedQuestionsOrder)

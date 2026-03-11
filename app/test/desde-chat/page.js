@@ -19,13 +19,14 @@ function TestDesdeChatContent() {
     async function loadConfig() {
       try {
         // Verificar si es un test de preguntas falladas
-        const failedQuestionIdsParam = searchParams.get('failed_question_ids')
+        const failedQuestionIdsParam = typeof window !== 'undefined' ? sessionStorage.getItem('pendingFailedQuestionIds') : null
         const onlyFailed = searchParams.get('only_failed') === 'true'
 
         if (failedQuestionIdsParam && onlyFailed) {
           // Modo: Test de preguntas falladas
           console.log('🎯 [desde-chat] Modo failed_questions detectado')
           const questionIds = JSON.parse(failedQuestionIdsParam)
+          sessionStorage.removeItem('pendingFailedQuestionIds')
           console.log('🎯 [desde-chat] Question IDs:', questionIds.length)
 
           if (!questionIds || questionIds.length === 0) {

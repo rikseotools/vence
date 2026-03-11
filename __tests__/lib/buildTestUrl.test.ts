@@ -229,7 +229,14 @@ describe('buildTestUrl', () => {
       expect(url).not.toContain('failed_question_ids')
     })
 
-    it('incluye failed_question_ids y failed_questions_order', () => {
+    it('guarda failed_question_ids en sessionStorage (no en URL) y failed_questions_order en URL', () => {
+      // Mock sessionStorage
+      const mockSetItem = jest.fn()
+      Object.defineProperty(window, 'sessionStorage', {
+        value: { setItem: mockSetItem, getItem: jest.fn(), removeItem: jest.fn() },
+        writable: true,
+      })
+
       const url = buildTestUrl({
         basePath: '/administrativo-estado',
         temaNumber: 2,
@@ -241,8 +248,13 @@ describe('buildTestUrl', () => {
         }),
       })
       const params = getParams(url)
-      const parsed = JSON.parse(params.get('failed_question_ids')!)
-      expect(parsed).toEqual(['id-1', 'id-2', 'id-3'])
+      // IDs NO deben estar en la URL (evita HTTP 431)
+      expect(params.get('failed_question_ids')).toBeNull()
+      // IDs deben guardarse en sessionStorage
+      expect(mockSetItem).toHaveBeenCalledWith(
+        'pendingFailedQuestionIds',
+        JSON.stringify(['id-1', 'id-2', 'id-3'])
+      )
       expect(params.get('failed_questions_order')).toBe('most_failed')
     })
   })

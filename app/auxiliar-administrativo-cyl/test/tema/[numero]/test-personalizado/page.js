@@ -55,7 +55,7 @@ function TestPersonalizadoContent({ params }) {
     focusEssentialArticles: searchParams.get('focus_essential') === 'true',
     focusWeakAreas: searchParams.get('focus_weak') === 'true',
     onlyFailedQuestions: searchParams.get('only_failed') === 'true',
-    failedQuestionIds: searchParams.get('failed_question_ids') ? JSON.parse(searchParams.get('failed_question_ids')) : null,
+    failedQuestionIds: (() => { const stored = typeof window !== 'undefined' ? sessionStorage.getItem('pendingFailedQuestionIds') : null; if (stored) { sessionStorage.removeItem('pendingFailedQuestionIds'); return JSON.parse(stored); } return null; })(),
     failedQuestionsOrder: searchParams.get('failed_questions_order') || null,
     timeLimit: searchParams.get('time_limit') ? parseInt(searchParams.get('time_limit')) : null,
     selectedLaws,
