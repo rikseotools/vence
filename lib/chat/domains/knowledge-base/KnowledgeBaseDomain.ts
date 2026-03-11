@@ -251,7 +251,7 @@ ${kbContext}`
     // Patrones que indican continuación de conversación
     const followUpStarters = [
       /^(y\s|pero\s|entonces\s|o\s+sea\s|es\s+decir)/i,
-      /^(de\s+(l[ao]s?\s+)?)\w/i,       // "de auxiliar...", "del tema..."
+      /^(de(l|\s+(l[ao]s?\s+)?)\s*)\w/i,  // "de auxiliar...", "del tema..."
       /^(eso|esto|ese|esa)\b/i,          // "eso es correcto?", "esto aplica?"
       /^(son|es|eran?|fue|fueron)\s/i,   // "son de auxiliar?"
       /^(no[,!\s]|s[ií][,!\s]|vale|ok)/i, // "no! son 5", "sí pero..."

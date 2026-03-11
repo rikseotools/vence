@@ -138,7 +138,142 @@ function generateKBSuggestions(category) {
   ]
 }
 
+// Replica looksLikeFollowUp del KnowledgeBaseDomain
+function looksLikeFollowUp(messages: Array<{ role: string }>, currentMessage: string): boolean {
+  if (messages.length < 2) return false
+
+  const msg = currentMessage.trim()
+
+  if (msg.length > 100) return false
+
+  const followUpStarters = [
+    /^(y\s|pero\s|entonces\s|o\s+sea\s|es\s+decir)/i,
+    /^(de(l|\s+(l[ao]s?\s+)?)\s*)\w/i,
+    /^(eso|esto|ese|esa)\b/i,
+    /^(son|es|eran?|fue|fueron)\s/i,
+    /^(no[,!\s]|s[ií][,!\s]|vale|ok)/i,
+    /^(me\s|te\s|le\s|nos\s|se\s)/i,
+    /^(cu[aá]l(es)?|cu[aá]nto|por\s*qu[eé])\s/i,
+  ]
+
+  return followUpStarters.some(p => p.test(msg))
+}
+
+// Simula canHandle con follow-up detection
+function canHandleWithFollowUp(
+  currentMessage: string,
+  messages: Array<{ role: string }> = []
+): boolean {
+  const isKBQuery = isPlatformQuery(currentMessage)
+  if (isKBQuery && looksLikeFollowUp(messages, currentMessage)) {
+    return false
+  }
+  return isKBQuery
+}
+
 describe('Knowledge Base Domain', () => {
+
+  // ============================================
+  // DETECCIÓN DE FOLLOW-UPS
+  // ============================================
+  describe('looksLikeFollowUp', () => {
+    const withHistory = [
+      { role: 'user' },
+      { role: 'assistant' },
+      { role: 'user' },
+    ]
+    const noHistory: Array<{ role: string }> = []
+    const minHistory = [{ role: 'user' }]
+
+    test('debe detectar follow-up con "de auxiliar..."', () => {
+      expect(looksLikeFollowUp(withHistory, 'DE AUXILIAR O DE OTRAS CONVOCATORIAS?')).toBe(true)
+      expect(looksLikeFollowUp(withHistory, 'de la oposición de auxiliar')).toBe(true)
+      expect(looksLikeFollowUp(withHistory, 'del tema 3')).toBe(true)
+    })
+
+    test('debe detectar follow-up con conjunciones/conectores', () => {
+      expect(looksLikeFollowUp(withHistory, 'y eso aplica a auxiliar?')).toBe(true)
+      expect(looksLikeFollowUp(withHistory, 'pero son de exámenes oficiales?')).toBe(true)
+      expect(looksLikeFollowUp(withHistory, 'entonces cuántas hay?')).toBe(true)
+      expect(looksLikeFollowUp(withHistory, 'o sea que no hay más?')).toBe(true)
+    })
+
+    test('debe detectar follow-up con pronombres demostrativos', () => {
+      expect(looksLikeFollowUp(withHistory, 'eso es correcto?')).toBe(true)
+      expect(looksLikeFollowUp(withHistory, 'esto aplica a mi plan?')).toBe(true)
+    })
+
+    test('debe detectar follow-up con verbos de inicio', () => {
+      expect(looksLikeFollowUp(withHistory, 'son de auxiliar?')).toBe(true)
+      expect(looksLikeFollowUp(withHistory, 'es gratis eso?')).toBe(true)
+    })
+
+    test('debe detectar follow-up con respuestas cortas', () => {
+      expect(looksLikeFollowUp(withHistory, 'no! son 5 temas')).toBe(true)
+      expect(looksLikeFollowUp(withHistory, 'sí pero de cuáles?')).toBe(true)
+      expect(looksLikeFollowUp(withHistory, 'vale, y la oposición?')).toBe(true)
+    })
+
+    test('debe detectar follow-up con pronombres personales', () => {
+      expect(looksLikeFollowUp(withHistory, 'me puedes decir el precio?')).toBe(true)
+      expect(looksLikeFollowUp(withHistory, 'te refieres a premium?')).toBe(true)
+    })
+
+    test('debe detectar follow-up con interrogativos', () => {
+      expect(looksLikeFollowUp(withHistory, 'cuál es el precio?')).toBe(true)
+      expect(looksLikeFollowUp(withHistory, 'cuánto cuesta eso?')).toBe(true)
+      expect(looksLikeFollowUp(withHistory, 'por qué no funciona?')).toBe(true)
+    })
+
+    test('NO debe detectar follow-up sin historial', () => {
+      expect(looksLikeFollowUp(noHistory, 'de auxiliar o de otras?')).toBe(false)
+      expect(looksLikeFollowUp(minHistory, 'pero son oficiales?')).toBe(false)
+    })
+
+    test('NO debe detectar follow-up en mensajes largos (>100 chars)', () => {
+      const longMsg = 'de qué oposiciones tenéis preguntas disponibles en la plataforma para poder practicar y prepararme bien para el examen oficial?'
+      expect(longMsg.length).toBeGreaterThan(100)
+      expect(looksLikeFollowUp(withHistory, longMsg)).toBe(false)
+    })
+
+    test('NO debe detectar follow-up en mensajes standalone', () => {
+      expect(looksLikeFollowUp(withHistory, '¿Qué planes tenéis?')).toBe(false)
+      expect(looksLikeFollowUp(withHistory, '¿Cuánto cuesta premium?')).toBe(false)
+      expect(looksLikeFollowUp(withHistory, 'Hola, quiero información')).toBe(false)
+    })
+  })
+
+  // ============================================
+  // INTEGRACIÓN: canHandle + follow-up
+  // ============================================
+  describe('canHandle con follow-up detection', () => {
+    const withHistory = [
+      { role: 'user' },
+      { role: 'assistant' },
+      { role: 'user' },
+    ]
+
+    test('caso del bug: follow-up con keyword de KB debe ser rechazado', () => {
+      // "oposición" matchea isPlatformQuery, pero empieza con "de" → follow-up
+      expect(isPlatformQuery('de la oposición de auxiliar')).toBe(true)
+      expect(canHandleWithFollowUp('de la oposición de auxiliar', withHistory)).toBe(false)
+    })
+
+    test('primera interacción con keyword de KB debe ser aceptada', () => {
+      expect(canHandleWithFollowUp('¿Cuánto cuesta premium?', [])).toBe(true)
+      expect(canHandleWithFollowUp('¿Qué oposiciones tenéis?', [])).toBe(true)
+    })
+
+    test('pregunta standalone con historial debe ser aceptada', () => {
+      // No empieza con patrón de follow-up
+      expect(canHandleWithFollowUp('¿Qué planes tenéis?', withHistory)).toBe(true)
+    })
+
+    test('mensaje sin keyword de KB no es capturado (con o sin historial)', () => {
+      expect(canHandleWithFollowUp('Hola', withHistory)).toBe(false)
+      expect(canHandleWithFollowUp('¿Qué dice el artículo 21?', withHistory)).toBe(false)
+    })
+  })
 
   // ============================================
   // DETECCIÓN DE CONSULTAS DE PLATAFORMA
