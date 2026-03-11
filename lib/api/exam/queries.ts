@@ -34,8 +34,12 @@ async function getUserOposicion(userId: string): Promise<OposicionId> {
     const oposicion = result[0]?.targetOposicion
 
     // Validar que sea una oposición conocida (desde config central)
-    if (oposicion && ALL_OPOSICION_IDS.includes(oposicion)) {
+    if (oposicion && ALL_OPOSICION_IDS.includes(oposicion) && oposicion !== 'explorador') {
       return oposicion as OposicionId
+    }
+
+    if (!oposicion || !ALL_OPOSICION_IDS.includes(oposicion) || oposicion === 'explorador') {
+      console.warn(`⚠️ [getUserOposicion] Fallback a auxiliar para userId=${userId}, oposicionId=${oposicion || 'null'}`)
     }
 
     return 'auxiliar_administrativo_estado'
