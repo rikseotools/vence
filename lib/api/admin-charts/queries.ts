@@ -6,7 +6,15 @@ import type { ActivityChartResponse, RegistrationsChartResponse } from './schema
 
 // -- Helper de fechas (zona horaria Madrid) --
 
-function getMadridDayRange(daysAgo: number): { start: Date; end: Date; label: string; weekday: string } {
+// Extract YYYY-MM-DD from a Date whose values represent Madrid local time
+function toMadridDateKey(date: Date): string {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+function getMadridDayRange(daysAgo: number): { start: Date; end: Date; label: string; weekday: string; dateKey: string } {
   const nowMadrid = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Madrid' }))
   const date = new Date(nowMadrid)
   date.setDate(date.getDate() - daysAgo)
@@ -20,6 +28,7 @@ function getMadridDayRange(daysAgo: number): { start: Date; end: Date; label: st
     end: nextDay,
     label: date.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric' }),
     weekday: date.toLocaleDateString('es-ES', { weekday: 'short' }),
+    dateKey: toMadridDateKey(date),
   }
 }
 
@@ -69,8 +78,8 @@ export async function getActivityChartData(days = 14): Promise<ActivityChartResp
     const current = getMadridDayRange(i)
     const previous = getMadridDayRange(i + days)
 
-    const currentKey = current.start.toISOString().split('T')[0]
-    const previousKey = previous.start.toISOString().split('T')[0]
+    const currentKey = current.dateKey
+    const previousKey = previous.dateKey
 
     data.push({
       dia: current.label,
@@ -130,7 +139,7 @@ export async function getRegistrationsChartData(days = 14): Promise<Registration
   const data = []
   for (let i = days - 1; i >= 0; i--) {
     const dayInfo = getMadridDayRange(i)
-    const key = dayInfo.start.toISOString().split('T')[0]
+    const key = dayInfo.dateKey
     const stats = byDay.get(key) || { total: 0, organic: 0, google: 0, meta: 0, other: 0 }
 
     data.push({
