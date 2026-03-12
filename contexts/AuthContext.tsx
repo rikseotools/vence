@@ -176,15 +176,9 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
 
     // ✨ Evitar llamadas concurrentes (usar refs para evitar stale closures)
     if (profileLoadingRef.current && retryCount === 0) {
-      console.log('📄 Ya cargando perfil, esperando...')
-      // 🔧 FIX: Esperar a que termine la carga en curso (max 3s) en vez de retornar null
-      for (let i = 0; i < 15; i++) {
-        await new Promise(resolve => setTimeout(resolve, 200))
-        if (!profileLoadingRef.current) break
-      }
+      console.log('📄 Ya cargando perfil, reutilizando resultado en curso')
       if (userProfileRef.current) return userProfileRef.current
-      // Si sigue sin perfil tras esperar, permitir nueva carga
-      console.log('📄 Carga anterior terminó sin perfil, permitiendo nueva carga')
+      return null
     }
 
     // Si ya tenemos el perfil del usuario correcto, no recargar
@@ -356,220 +350,129 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
   }
 
   useEffect(() => {
-    console.log('🔐 AuthProvider: Inicializando sistema dual...')
+    console.log('🔐 AuthProvider: Inicializando (INITIAL_SESSION)...')
 
-    // 🔒 Timeout de seguridad - evitar loading infinito (extendido)
-    const timeoutId = setTimeout(() => {
+    // 🔒 Timeout de seguridad - evitar loading infinito
+    const safetyTimeoutId = setTimeout(() => {
       if (loading) {
-        console.warn('🚨 Loading timeout (10s) - forzando finalización')
+        console.warn('🚨 Loading timeout (12s) - forzando finalización')
         setLoading(false)
         setInitialized(true)
       }
-    }, 10000) // 10 segundos máximo (más tiempo para consultas lentas)
+    }, 12000)
 
-    const checkUser = async () => {
+    // 🚀 Pre-hydrate: leer user de localStorage para setUser() inmediato (evita flash de UI)
+    // NO cargar perfil aquí — INITIAL_SESSION lo hará con token válido
+    if (!initialUser) {
       try {
-        if (!initialUser) {
-          // 🔒 En /auth/callback, NO llamar getUser() ni ningún método que use
-          // _acquireLock. El singleton (detectSessionInUrl: true) necesita el lock
-          // para hacer el PKCE exchange en _initialize(). Si getUser() lo adquiere
-          // primero, bloquea el exchange y causa timeout de 30s en desktop (Web Locks API).
-          // El callback page tiene su propio polling de localStorage.
-          const isCallbackPage = typeof window !== 'undefined' &&
-            window.location.pathname === '/auth/callback'
-
-          // 🚀 Fast path: leer sesión de localStorage (sin lock de auth-js)
-          // getUser() usa _acquireLock que compite con _initialize(),
-          // causando timeouts de 10s+. localStorage es instantáneo.
-          let user = null
-          try {
-            const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-            if (supabaseUrl) {
-              const storageKey = `sb-${supabaseUrl.split('://')[1]?.split('.')[0]}-auth`
-              const raw = localStorage.getItem(storageKey)
-              if (raw) {
-                const parsed = JSON.parse(raw)
-                if (parsed?.user?.id && parsed?.access_token) {
-                  user = parsed.user
-                  console.log('✅ AuthProvider: Usuario encontrado (localStorage fast path):', user.email)
-                }
-              }
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+        if (supabaseUrl) {
+          const storageKey = `sb-${supabaseUrl.split('://')[1]?.split('.')[0]}-auth`
+          const raw = typeof window !== 'undefined' ? localStorage.getItem(storageKey) : null
+          if (raw) {
+            const parsed = JSON.parse(raw)
+            if (parsed?.user?.id) {
+              setUser(parsed.user)
+              console.log('🚀 Pre-hydrate: usuario de localStorage:', parsed.user.email)
             }
-          } catch {
-            // localStorage no disponible, caer al método normal
           }
-
-          // Fallback: getUser() si localStorage no tenía sesión
-          // ⚠️ SKIP en /auth/callback para no bloquear el PKCE exchange
-          if (!user && !isCallbackPage) {
-            const { data, error } = await supabase.auth.getUser()
-            if (!error && data?.user) {
-              user = data.user
-              console.log('✅ AuthProvider: Usuario encontrado (getUser):', user.email)
-            }
-          } else if (!user && isCallbackPage) {
-            console.log('🔒 AuthProvider: En /auth/callback, omitiendo getUser() para no bloquear PKCE exchange')
-          }
-
-          if (user) {
-            setUser(user)
-
-            // Cargar perfil completo - ESPERAR para evitar flash de isPremium=false
-            if (!userProfileRef.current || userProfileRef.current.id !== user.id) {
-              console.log('🔄 Cargando perfil...')
-              // 🚀 Fast path: si tenemos access_token de localStorage, fetch directo
-              // sin pasar por el cliente Supabase (que usa _acquireLock internamente)
-              let profileLoaded = false
-              try {
-                const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-                const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-                const storageKey = `sb-${supabaseUrl?.split('://')[1]?.split('.')[0]}-auth`
-                const raw = localStorage.getItem(storageKey)
-                const token = raw ? JSON.parse(raw)?.access_token : null
-
-                if (supabaseUrl && supabaseKey && token) {
-                  const res = await fetch(
-                    `${supabaseUrl}/rest/v1/user_profiles?id=eq.${user.id}&select=*`,
-                    {
-                      headers: {
-                        'apikey': supabaseKey,
-                        'Authorization': `Bearer ${token}`,
-                        'Accept': 'application/json',
-                      },
-                    }
-                  )
-                  if (res.ok) {
-                    const profiles = await res.json()
-                    if (profiles?.[0]) {
-                      console.log('✅ Perfil cargado (fast path):', profiles[0].email, 'Tipo:', profiles[0].plan_type)
-                      updateUserProfile(profiles[0] as unknown as UserProfileRow)
-                      profileLoaded = true
-                    }
-                  }
-                }
-              } catch {
-                // Fast path falló, caer al método normal
-              }
-
-              if (!profileLoaded) {
-                const profile = await loadUserProfile(user.id).catch((err: any) => {
-                  console.warn('⚠️ Error cargando perfil (no crítico):', err)
-                  return null
-                })
-
-                // 🔧 FIX: Si el perfil no cargó (token expirado antes de _initialize()),
-                // reintentar tras un breve delay para dar tiempo al refresh automático
-                if (!profile && !userProfileRef.current) {
-                  console.log('🔄 Perfil no cargado, reintentando en 1.5s (esperando token refresh)...')
-                  await new Promise(resolve => setTimeout(resolve, 1500))
-                  await loadUserProfile(user.id).catch((err: any) => {
-                    console.warn('⚠️ Retry de perfil falló (no crítico):', err)
-                  })
-                }
-              }
-            } else {
-              console.log('✅ Perfil ya cargado, reutilizando')
-            }
-          } else {
-            console.log('👤 AuthProvider: Sin usuario inicial')
-            setUser(null)
-            updateUserProfile(null)
-          }
-        } else {
-          console.log('✅ AuthProvider: Usuario inicial recibido:', initialUser.email)
-          setUser(initialUser)
-
-          // Cargar perfil inicial - ESPERAR para evitar flash de isPremium=false
-          console.log('🔄 Cargando perfil inicial...')
-          await loadUserProfile(initialUser.id).catch((err: any) => {
-            console.warn('⚠️ Error cargando perfil inicial (no crítico):', err)
-          })
         }
-      } catch (error) {
-        console.error('❌ AuthProvider: Error verificando usuario:', error)
-        setUser(null)
-        updateUserProfile(null)
-      } finally {
-        setLoading(false)
-        setInitialized(true)
-        clearTimeout(timeoutId)
+      } catch {
+        // localStorage no disponible
       }
+    } else {
+      setUser(initialUser)
     }
 
-    checkUser()
-
-    // Escuchar cambios de autenticación
+    // 🎯 FUENTE DE VERDAD: onAuthStateChange con INITIAL_SESSION
+    // INITIAL_SESSION se emite después de _initialize() (incluye token refresh),
+    // garantizando un token válido para cargar el perfil.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event: string, session: Session | null) => {
-        // Solo log eventos importantes, no TOKEN_REFRESHED
         if (event !== 'TOKEN_REFRESHED') {
-          console.log('🔄 AuthProvider: Auth state cambió:', event, session?.user?.email)
+          console.log('🔄 AuthProvider:', event, session?.user?.email || '(sin user)')
         }
 
         const newUser = session?.user || null
         setUser(newUser)
 
-        if (newUser) {
-          // Usuario logueado - asegurar perfil y cargar datos
-          console.log('👤 Usuario logueado, procesando perfil...')
-
-          // 📍 TRACKING IP Y LOCALIDAD - Solo en login/registro real, no en recargas
-          if (event === 'SIGNED_IN' || event === 'SIGNED_UP') {
-            trackSessionIP(newUser.id)
-          }
-
-          // 🎯 TRACKING GOOGLE ADS: Solo para nuevos usuarios (SIGNED_UP)
-          if (event === 'SIGNED_UP') {
-            console.log('🎯 Nuevo usuario registrado, tracking Google Ads conversion')
-            try {
-              GoogleAdsEvents.SIGNUP('google_oauth')
-            } catch (error) {
-              console.warn('⚠️ Error tracking Google Ads signup:', error)
-            }
-          }
-
-          // 🆕 VERIFICAR SI DEBE FORZAR CHECKOUT (COOKIES DE CAMPAÑA)
-          if (shouldForceCheckout(newUser, supabase)) {
-            console.log('💰 Forzando checkout por cookies de campaña')
-            setTimeout(() => {
-              forceCampaignCheckout(newUser, supabase).catch((err: any) => {
-                console.error('❌ Error forzando checkout:', err)
-              })
-            }, 1000) // Pequeño delay para que termine de cargar
-          }
-
-          // Cargar perfil - ESPERAR para evitar flash de isPremium=false
-          // 🔧 Usar ref para evitar stale closure (este callback se captura una sola vez)
-          let profile = userProfileRef.current?.id === newUser.id ? userProfileRef.current : null
-          if (!profile) {
-            // Solo mostrar loading para login real, NO para refresh de token (evita flash del Header)
-            if (event !== 'TOKEN_REFRESHED') {
-              setLoading(true)
-            }
-            console.log('🔄 Cargando perfil onAuthStateChange...')
-            // Primero intentar cargar, solo crear si no existe
+        if (event === 'INITIAL_SESSION') {
+          // === CARGA INICIAL (token ya refrescado por _initialize) ===
+          if (newUser) {
+            console.log('🔐 INITIAL_SESSION: cargando perfil con token válido...')
             await loadUserProfile(newUser.id).then(loadedProfile => {
               if (!loadedProfile) {
-                // Solo llamar ensureUserProfile si loadUserProfile no encontró perfil
-                console.log('🆕 Perfil no encontrado, asegurando creación...')
+                console.log('🆕 Perfil no encontrado en INITIAL_SESSION, creando...')
                 return ensureUserProfile(newUser)
               }
-              console.log('✅ Perfil cargado:', loadedProfile.plan_type)
               return undefined
             }).catch((err: any) => {
-              console.warn('⚠️ Error en flujo de perfil (no crítico):', err)
+              console.warn('⚠️ Error cargando perfil en INITIAL_SESSION:', err)
             })
           } else {
-            console.log('✅ Perfil ya en memoria:', profile.plan_type)
+            console.log('👤 INITIAL_SESSION: sin usuario')
+            updateUserProfile(null)
+          }
+          // Finalizar loading — este es el único punto que lo hace en carga inicial
+          setLoading(false)
+          setInitialized(true)
+          clearTimeout(safetyTimeoutId)
+
+        } else if (event === 'SIGNED_IN' || event === 'SIGNED_UP') {
+          // === LOGIN / REGISTRO (post-INITIAL_SESSION) ===
+          if (newUser) {
+            // 📍 Tracking
+            trackSessionIP(newUser.id)
+
+            if (event === 'SIGNED_UP') {
+              try { GoogleAdsEvents.SIGNUP('google_oauth') } catch {}
+            }
+
+            // 🆕 Campaign checkout
+            if (shouldForceCheckout(newUser, supabase)) {
+              setTimeout(() => {
+                forceCampaignCheckout(newUser, supabase).catch(() => {})
+              }, 1000)
+            }
+
+            // Cargar perfil si no lo tenemos y no hay carga en curso
+            if (!userProfileRef.current || userProfileRef.current.id !== newUser.id) {
+              if (profileLoadingRef.current) {
+                // Ya hay una carga en curso (ej: INITIAL_SESSION), no interferir
+                console.log('⏳ Perfil ya cargando, dejando que termine...')
+              } else {
+                setLoading(true)
+                console.log('🔄 Cargando perfil post-login...')
+                await loadUserProfile(newUser.id).then(loadedProfile => {
+                  if (!loadedProfile) {
+                    console.log('🆕 Perfil no encontrado, creando...')
+                    return ensureUserProfile(newUser)
+                  }
+                  return undefined
+                }).catch((err: any) => {
+                  console.warn('⚠️ Error en flujo de perfil post-login:', err)
+                })
+                setLoading(false)
+              }
+            }
           }
 
-        } else {
-          // Usuario deslogueado
-          console.log('👋 Usuario deslogueado')
-          updateUserProfile(null)
-        }
+        } else if (event === 'TOKEN_REFRESHED') {
+          // === REFRESH DE TOKEN ===
+          // Solo recargar perfil si no lo tenemos (ej: falló en INITIAL_SESSION)
+          if (newUser && !userProfileRef.current) {
+            console.log('🔄 TOKEN_REFRESHED: perfil no cargado, reintentando...')
+            await loadUserProfile(newUser.id).catch((err: any) => {
+              console.warn('⚠️ Error recargando perfil en TOKEN_REFRESHED:', err)
+            })
+          }
 
-        setLoading(false)
+        } else if (event === 'SIGNED_OUT') {
+          // === LOGOUT ===
+          console.log('👋 SIGNED_OUT')
+          updateUserProfile(null)
+          setLoading(false)
+        }
 
         // Disparar evento personalizado
         if (typeof window !== 'undefined') {
@@ -583,7 +486,7 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
     return () => {
       console.log('🧹 AuthProvider: Limpiando subscripción')
       subscription.unsubscribe()
-      clearTimeout(timeoutId)
+      clearTimeout(safetyTimeoutId)
     }
   }, [initialUser])
 
