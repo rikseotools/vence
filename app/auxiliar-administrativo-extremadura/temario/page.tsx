@@ -25,7 +25,7 @@ const BLOQUES = [
       { id: 11, titulo: 'Personal Laboral CC (II)', descripcion: 'Movilidad funcional y geografica. Puestos de trabajo. Permutas. Provision de vacantes. Jornada de trabajo.', disponible: false },
       { id: 12, titulo: 'Personal Laboral CC (III)', descripcion: 'Horas extraordinarias. Vacaciones. Permisos y licencias. Conciliacion de la vida familiar. Regimen disciplinario.', disponible: false },
       { id: 13, titulo: 'Prevencion de Riesgos Laborales', descripcion: 'Objeto y ambito de aplicacion. Definiciones. Derechos y obligaciones. Servicios de prevencion.', disponible: true },
-      { id: 14, titulo: 'Igualdad y violencia de genero en Extremadura', descripcion: 'Igualdad entre mujeres y hombres. Politicas de igualdad en Extremadura. Medidas contra la violencia de genero.', disponible: false },
+      { id: 14, titulo: 'Igualdad y violencia de genero en Extremadura', descripcion: 'Igualdad entre mujeres y hombres. Politicas de igualdad en Extremadura. Medidas contra la violencia de genero.', disponible: true },
     ]
   },
   {
@@ -40,11 +40,11 @@ const BLOQUES = [
       { id: 18, titulo: 'Procedimiento Administrativo Comun (II)', descripcion: 'De la actividad de las Administraciones Publicas. De los actos administrativos.', disponible: true },
       { id: 19, titulo: 'Procedimiento Administrativo Comun (III)', descripcion: 'Disposiciones sobre el procedimiento administrativo comun. De la revision de los actos en via administrativa. De la iniciativa legislativa y de la potestad para dictar reglamentos.', disponible: true },
       { id: 20, titulo: 'Contratacion del Sector Publico', descripcion: 'Disposiciones generales. Tipos de contratos del sector publico.', disponible: true },
-      { id: 21, titulo: 'Documento, registro y archivo', descripcion: 'Funciones del documento. Clases de documentos. Gestion documental. Tecnologias aplicadas.', disponible: false },
+      { id: 21, titulo: 'Documento, registro y archivo', descripcion: 'Funciones del documento. Clases de documentos. Gestion documental. Tecnologias aplicadas.', disponible: true },
       { id: 22, titulo: 'Administracion electronica Extremadura (I)', descripcion: 'Disposiciones generales. Puntos de acceso electronico. Registro electronico.', disponible: false },
       { id: 23, titulo: 'Administracion electronica Extremadura (II)', descripcion: 'Expediente electronico. Comunicaciones electronicas. Notificaciones electronicas.', disponible: false },
-      { id: 24, titulo: 'Windows 10', descripcion: 'Entorno grafico de Windows 10. El explorador de archivos. Gestion de carpetas y archivos. Correo electronico. Seguridad y mantenimiento.', disponible: false },
-      { id: 25, titulo: 'Office 365: Word y Excel', descripcion: 'Procesadores de texto: Word para Microsoft 365. Hojas de calculo: Excel para Microsoft 365.', disponible: false },
+      { id: 24, titulo: 'Windows 10', descripcion: 'Entorno grafico de Windows 10. El explorador de archivos. Gestion de carpetas y archivos. Correo electronico. Seguridad y mantenimiento.', disponible: true },
+      { id: 25, titulo: 'Office 365: Word y Excel', descripcion: 'Procesadores de texto: Word para Microsoft 365. Hojas de calculo: Excel para Microsoft 365.', disponible: true },
     ]
   }
 ]
