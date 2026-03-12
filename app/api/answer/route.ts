@@ -4,6 +4,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { safeParseAnswerRequest, validateAnswer } from '../../../lib/api/answers'
 
+// Dar margen al cold start de Vercel + conexión a Supabase
+export const maxDuration = 30
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()

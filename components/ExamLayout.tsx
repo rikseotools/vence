@@ -9,6 +9,7 @@ import MarkdownExplanation from './MarkdownExplanation'
 import { generateLawSlug } from '@/lib/lawMappingUtils'
 import { getOposicionSlugFromPathname } from '@/lib/config/oposiciones'
 import { validateExam, type ValidatedResults, type ValidatedQuestionResult } from '@/lib/api/exam/client'
+import { ApiTimeoutError, ApiNetworkError } from '@/lib/api/client'
 
 // Type for useAuth context (AuthContext is JS, so we type it manually)
 interface AuthContextValue {
@@ -714,8 +715,30 @@ export default function ExamLayout({
       })
 
     } catch (error) {
-      console.error('❌ Error en validación de examen:', error)
+      const errorType = error instanceof ApiTimeoutError ? 'TIMEOUT'
+        : error instanceof ApiNetworkError ? 'NETWORK'
+        : 'API_ERROR'
+      console.error('❌ Error en validación de examen:', errorType, error)
       setIsSaving(false)
+      // Mostrar error al usuario en vez de dejar UI colgada
+      alert('Error al enviar el examen. Comprueba tu conexión e inténtalo de nuevo.')
+      // Notificar al admin
+      fetch('/api/emails/send-admin-notification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'api_error',
+          adminEmail: 'manueltrader@gmail.com',
+          data: {
+            component: 'ExamLayout',
+            totalQuestions: effectiveQuestions.length,
+            errorType,
+            errorMessage: (error as Error).message,
+            userId: user?.id || 'anonymous',
+            timestamp: new Date().toISOString()
+          }
+        })
+      }).catch(() => {})
     }
   }
 

@@ -17,7 +17,7 @@ function answerToLetter(index) {
 }
 
 export default function DynamicTest({ titulo, dificultad }) {
-  const { isPremium } = useAuth()
+  const { isPremium, user } = useAuth()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [testData, setTestData] = useState(null)
@@ -118,10 +118,12 @@ export default function DynamicTest({ titulo, dificultad }) {
           type: 'api_error',
           adminEmail: 'manueltrader@gmail.com',
           data: {
+            component: 'DynamicTest',
             questionId: currentQ.id,
             userAnswer: answerIndex,
             errorType: err?.name || 'API_ERROR',
             errorMessage: err?.message || 'Unknown error',
+            userId: user?.id || 'anonymous',
             timestamp: new Date().toISOString()
           }
         })

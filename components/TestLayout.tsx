@@ -951,6 +951,7 @@ export default function TestLayout({
               type: 'api_error',
               adminEmail: 'manueltrader@gmail.com',
               data: {
+                component: 'TestLayout',
                 questionId: currentQ.id,
                 userAnswer: answerIndex,
                 errorType,

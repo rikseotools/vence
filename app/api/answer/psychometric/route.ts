@@ -3,6 +3,10 @@
 // Todo en una sola llamada para máxima fiabilidad en conexiones inestables (4G)
 
 import { NextRequest, NextResponse } from 'next/server'
+
+// Dar margen al cold start de Vercel + conexión a Supabase
+export const maxDuration = 30
+
 import {
   psychometricAnswerRequestSchema,
   validateAndSavePsychometricAnswer,

@@ -308,7 +308,6 @@ export default function PsychometricTestLayout({
       let correctAnswer: number | null
       let explanation: string | null
       let saved = false
-      let usedFallback = false
       let sessionProgress: { questionsAnswered: number; correctAnswers: number; accuracyPercentage: number } | null = null
 
       try {
@@ -318,22 +317,36 @@ export default function PsychometricTestLayout({
         explanation = apiResult.explanation
         saved = apiResult.saved
         sessionProgress = apiResult.sessionProgress ?? null
-      } catch (apiError) {
-        // Fallback local si API falla
-        console.warn('⚠️ [SecureAnswer] API error, usando fallback local:', apiError)
-        const localCorrectAnswer = currentQ.correct_option
-        isCorrect = localCorrectAnswer !== undefined ? optionIndex === localCorrectAnswer : false
-        correctAnswer = localCorrectAnswer ?? null
-        explanation = null
-        usedFallback = true
+      } catch (apiError: any) {
+        console.error('❌ [SecureAnswer] Psicotécnico: validación fallida:', apiError)
+        setSelectedAnswer(null)
+        setIsAnswering(false)
+        // Notificar al admin
+        fetch('/api/emails/send-admin-notification', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'api_error',
+            adminEmail: 'manueltrader@gmail.com',
+            data: {
+              component: 'PsychometricTestLayout',
+              questionId: currentQ.id,
+              userAnswer: optionIndex,
+              errorType: apiError?.name || 'API_ERROR',
+              errorMessage: apiError?.message || 'Unknown error',
+              userId: user?.id || 'anonymous',
+              timestamp: new Date().toISOString()
+            }
+          })
+        }).catch(() => {})
+        alert('Error temporal al validar tu respuesta. Inténtalo de nuevo.')
+        return
       }
 
       setVerifiedCorrectAnswer(correctAnswer)
       setVerifiedExplanation(explanation || currentQ.explanation || null)
 
-      if (usedFallback) {
-        console.warn('⚠️ [SecureAnswer] Psicotécnico: usado fallback local (sin guardar en DB)')
-      } else if (saved) {
+      if (saved) {
         console.log('✅ [SecureAnswer] Validada + guardada via API:', sessionProgress)
       } else {
         console.log('✅ [SecureAnswer] Validada via API (guest mode, sin guardar)')

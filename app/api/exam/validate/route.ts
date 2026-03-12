@@ -4,6 +4,10 @@
 // 🔴 FIX: Ahora también marca el test como completado para evitar "exámenes fantasma"
 
 import { NextRequest, NextResponse } from 'next/server'
+
+// Exámenes batch pueden tener 100+ preguntas, dar tiempo suficiente
+export const maxDuration = 60
+
 import { getDb } from '@/db/client'
 import { questions, tests } from '@/db/schema'
 import { inArray, eq } from 'drizzle-orm'
