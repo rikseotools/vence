@@ -285,9 +285,12 @@ describe('AuthContext — race condition fix', () => {
       )
     })
 
-    await act(async () => {
-      jest.advanceTimersByTime(100)
-    })
+    // Avanzar suficiente tiempo para el retry de perfil (1.5s) + margen
+    for (let i = 0; i < 10; i++) {
+      await act(async () => {
+        jest.advanceTimersByTime(200)
+      })
+    }
 
     const finalRender = renders[renders.length - 1]
     expect(finalRender.loading).toBe(false)

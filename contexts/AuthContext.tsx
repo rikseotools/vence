@@ -177,7 +177,14 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
     // ✨ Evitar llamadas concurrentes (usar refs para evitar stale closures)
     if (profileLoadingRef.current && retryCount === 0) {
       console.log('📄 Ya cargando perfil, esperando...')
-      return userProfileRef.current
+      // 🔧 FIX: Esperar a que termine la carga en curso (max 3s) en vez de retornar null
+      for (let i = 0; i < 15; i++) {
+        await new Promise(resolve => setTimeout(resolve, 200))
+        if (!profileLoadingRef.current) break
+      }
+      if (userProfileRef.current) return userProfileRef.current
+      // Si sigue sin perfil tras esperar, permitir nueva carga
+      console.log('📄 Carga anterior terminó sin perfil, permitiendo nueva carga')
     }
 
     // Si ya tenemos el perfil del usuario correcto, no recargar
@@ -445,9 +452,20 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
               }
 
               if (!profileLoaded) {
-                await loadUserProfile(user.id).catch((err: any) => {
+                const profile = await loadUserProfile(user.id).catch((err: any) => {
                   console.warn('⚠️ Error cargando perfil (no crítico):', err)
+                  return null
                 })
+
+                // 🔧 FIX: Si el perfil no cargó (token expirado antes de _initialize()),
+                // reintentar tras un breve delay para dar tiempo al refresh automático
+                if (!profile && !userProfileRef.current) {
+                  console.log('🔄 Perfil no cargado, reintentando en 1.5s (esperando token refresh)...')
+                  await new Promise(resolve => setTimeout(resolve, 1500))
+                  await loadUserProfile(user.id).catch((err: any) => {
+                    console.warn('⚠️ Retry de perfil falló (no crítico):', err)
+                  })
+                }
               }
             } else {
               console.log('✅ Perfil ya cargado, reutilizando')
