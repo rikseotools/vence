@@ -5,60 +5,9 @@ import Link from 'next/link'
 import { useAuth } from '../contexts/AuthContext'
 import AdSenseComponent from './AdSenseComponent'
 import MarkdownExplanation from './MarkdownExplanation'
+import { validateAnswer } from '@/lib/api/answers/client'
 
-// 🔒 FUNCIÓN: Validar respuesta de forma segura via API
-// Sin fallback local: correct_option no se envía al cliente
-async function validateAnswerSecure(questionId, userAnswer) {
-  // Si no hay questionId válido, devolver error
-  if (!questionId || typeof questionId !== 'string' || questionId.length < 10) {
-    console.warn('⚠️ [SecureAnswer] Sin questionId válido')
-    return { success: false, error: 'NO_QUESTION_ID' }
-  }
-
-  // Intentar hasta 2 veces (1 retry con 1s delay)
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      if (attempt > 0) {
-        console.log('🔄 [SecureAnswer] Reintentando validación (intento 2/2)...')
-        await new Promise(resolve => setTimeout(resolve, 1000))
-      }
-
-      const response = await fetch('/api/answer', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ questionId, userAnswer })
-      })
-
-      if (!response.ok) {
-        console.warn(`⚠️ [SecureAnswer] API error HTTP ${response.status} (intento ${attempt + 1}/2)`)
-        continue // Reintentar
-      }
-
-      const data = await response.json()
-
-      if (data.success) {
-        console.log('✅ [SecureAnswer] Respuesta validada via API')
-        return {
-          isCorrect: data.isCorrect,
-          correctAnswer: data.correctAnswer,
-          usedFallback: false
-        }
-      }
-
-      // API respondió pero no encontró la pregunta
-      console.warn('⚠️ [SecureAnswer] Pregunta no encontrada en API')
-      return { success: false, error: 'QUESTION_NOT_FOUND' }
-
-    } catch (error) {
-      console.error(`❌ [SecureAnswer] Error llamando API (intento ${attempt + 1}/2):`, error)
-      if (attempt === 1) {
-        return { success: false, error: 'API_ERROR', message: error.message }
-      }
-    }
-  }
-
-  return { success: false, error: 'API_ERROR', message: 'Agotados reintentos' }
-}
+// 🔒 Validación segura: usa lib/api/answers/client.ts (timeout 10s, retry x2, Zod)
 
 // Helper para convertir índice de respuesta a letra (0='A', 1='B', etc.)
 function answerToLetter(index) {
@@ -153,15 +102,12 @@ export default function DynamicTest({ titulo, dificultad }) {
 
     const currentQ = testData.questions[currentQuestion]
 
-    // 🔒 Validar respuesta de forma segura via API (sin fallback local)
-    const validationResult = await validateAnswerSecure(
-      currentQ.id,           // questionId (puede no existir en tests IA)
-      answerIndex            // userAnswer (0-3)
-    )
-
-    // Si la API falló, NO marcar como incorrecto — dejar reintentar
-    if (validationResult.error) {
-      console.error('❌ [SecureAnswer] Validación fallida:', validationResult.error)
+    // 🔒 Validar respuesta via API centralizada (timeout 10s, retry x2, Zod)
+    let validationResult
+    try {
+      validationResult = await validateAnswer(currentQ.id, answerIndex)
+    } catch (err) {
+      console.error('❌ [SecureAnswer] Validación fallida:', err)
       setValidationError('Error temporal al validar tu respuesta. Inténtalo de nuevo.')
       setSelectedAnswer(null)
       // Enviar notificación admin (async, no bloquea)
@@ -174,9 +120,8 @@ export default function DynamicTest({ titulo, dificultad }) {
           data: {
             questionId: currentQ.id,
             userAnswer: answerIndex,
-            errorType: validationResult.error,
-            errorMessage: validationResult.message || validationResult.error,
-            userId: user?.id || 'anonymous',
+            errorType: err?.name || 'API_ERROR',
+            errorMessage: err?.message || 'Unknown error',
             timestamp: new Date().toISOString()
           }
         })

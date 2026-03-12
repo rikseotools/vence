@@ -40,6 +40,8 @@ import DailyLimitBanner from './DailyLimitBanner'
 import AdSenseComponent from './AdSenseComponent'
 import UpgradeLimitModal from './UpgradeLimitModal'
 import { useUserOposicion } from './useUserOposicion'
+import { validateAnswer } from '@/lib/api/answers/client'
+import { ApiTimeoutError, ApiNetworkError } from '@/lib/api/client'
 
 import type {
   TestQuestion,
@@ -50,7 +52,6 @@ import type {
   AnsweredQuestionEntry,
   DetailedAnswerEntry,
   HotArticleInfo,
-  ValidateAnswerResponse,
   CompactStats,
   HotArticleOposicionMap,
 } from './TestLayout.types'
@@ -217,76 +218,8 @@ function isHotArticleForUserOposicion(targetOposicion: string | null, userOposic
   return validTargets.includes(targetOposicion.toLowerCase())
 }
 
-// 🔒 FUNCIÓN: Validar respuesta de forma segura via API
-// Sin fallback local: correct_option no se envía al cliente
-async function validateAnswerSecure(questionId: string, userAnswer: number): Promise<ValidateAnswerResponse> {
-  // Si no hay questionId válido, devolver error
-  if (!questionId || typeof questionId !== 'string' || questionId.length < 10) {
-    console.warn('⚠️ [SecureAnswer] Sin questionId válido')
-    return { success: false, error: 'NO_QUESTION_ID' }
-  }
-
-  // Intentar hasta 2 veces (1 retry con 1s delay)
-  for (let attempt = 0; attempt < 2; attempt++) {
-    if (attempt > 0) {
-      console.log('🔄 [SecureAnswer] Reintentando validación (intento 2/2)...')
-      await new Promise(resolve => setTimeout(resolve, 1000))
-    }
-
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 10000)
-
-    try {
-      const response = await fetch('/api/answer', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ questionId, userAnswer }),
-        signal: controller.signal
-      })
-
-      clearTimeout(timeoutId)
-
-      if (!response.ok) {
-        console.warn(`⚠️ [SecureAnswer] API error HTTP ${response.status} (intento ${attempt + 1}/2)`)
-        continue // Reintentar
-      }
-
-      const data = await response.json()
-
-      if (data.success) {
-        console.log('✅ [SecureAnswer] Respuesta validada via API')
-        return {
-          isCorrect: data.isCorrect,
-          correctAnswer: data.correctAnswer,
-          explanation: data.explanation,
-          articleNumber: data.articleNumber,
-          lawShortName: data.lawShortName,
-          usedFallback: false
-        }
-      }
-
-      // API respondió pero no encontró la pregunta
-      console.warn('⚠️ [SecureAnswer] Pregunta no encontrada en API')
-      return { success: false, error: 'QUESTION_NOT_FOUND' }
-
-    } catch (error) {
-      clearTimeout(timeoutId)
-      const isTimeout = (error as Error).name === 'AbortError'
-      if (isTimeout) {
-        console.warn(`⏱️ [SecureAnswer] Timeout tras 10s (intento ${attempt + 1}/2)`)
-      } else {
-        console.error(`❌ [SecureAnswer] Error llamando API (intento ${attempt + 1}/2):`, error)
-      }
-      // Si es el último intento, devolver error
-      if (attempt === 1) {
-        return { success: false, error: isTimeout ? 'TIMEOUT' : 'API_ERROR', message: (error as Error).message }
-      }
-    }
-  }
-
-  // No debería llegar aquí, pero por seguridad
-  return { success: false, error: 'API_ERROR', message: 'Agotados reintentos' }
-}
+// 🔒 Validación segura de respuestas: usa lib/api/answers/client.ts
+// (validateAnswer importado arriba — timeout 10s, retry x2, Zod)
 
 export default function TestLayout({
   tema,
@@ -997,15 +930,15 @@ export default function TestLayout({
         const timeSpent = Math.round((Date.now() - questionStartTime) / 1000)
         const responseTimeMs = Date.now() - questionStartTime
 
-        // 🔒 Validar respuesta de forma segura via API (sin fallback local)
-        const validationResult = await validateAnswerSecure(
-          currentQ.id,           // questionId (UUID)
-          answerIndex            // userAnswer (0-3)
-        )
-
-        // Si la API falló, NO marcar como incorrecto — dejar reintentar
-        if (validationResult.error) {
-          console.error('❌ [SecureAnswer] Validación fallida:', validationResult.error)
+        // 🔒 Validar respuesta de forma segura via API (timeout 10s, retry x2, Zod)
+        let validationResult
+        try {
+          validationResult = await validateAnswer(currentQ.id, answerIndex)
+        } catch (validationError_) {
+          const errorType = validationError_ instanceof ApiTimeoutError ? 'TIMEOUT'
+            : validationError_ instanceof ApiNetworkError ? 'NETWORK'
+            : 'API_ERROR'
+          console.error('❌ [SecureAnswer] Validación fallida:', errorType, validationError_)
           setValidationError('Error temporal al validar tu respuesta. Inténtalo de nuevo.')
           setSelectedAnswer(null)
           setProcessingAnswer(false)
@@ -1020,8 +953,8 @@ export default function TestLayout({
               data: {
                 questionId: currentQ.id,
                 userAnswer: answerIndex,
-                errorType: validationResult.error,
-                errorMessage: validationResult.message || validationResult.error,
+                errorType,
+                errorMessage: (validationError_ as Error).message,
                 userId: user?.id || 'anonymous',
                 timestamp: new Date().toISOString()
               }

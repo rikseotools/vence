@@ -8,6 +8,7 @@ import { usePathname } from 'next/navigation'
 import MarkdownExplanation from './MarkdownExplanation'
 import { generateLawSlug } from '@/lib/lawMappingUtils'
 import { getOposicionSlugFromPathname } from '@/lib/config/oposiciones'
+import { validateExam, type ValidatedResults, type ValidatedQuestionResult } from '@/lib/api/exam/client'
 
 // Type for useAuth context (AuthContext is JS, so we type it manually)
 interface AuthContextValue {
@@ -102,27 +103,7 @@ interface ExamLayoutProps {
 /** Respuestas del usuario indexadas por número de pregunta */
 type UserAnswers = Record<number, string>
 
-/** Resultado validado de una pregunta individual (de la API) */
-interface ValidatedQuestionResult {
-  questionId: string
-  userAnswer: string | null
-  correctAnswer: string
-  correctIndex: number
-  isCorrect: boolean
-  explanation?: string
-}
-
-/** Respuesta completa de la API /api/exam/validate */
-interface ValidatedResults {
-  success: boolean
-  results: ValidatedQuestionResult[]
-  summary: {
-    totalQuestions: number
-    totalAnswered: number
-    totalCorrect: number
-    percentage: number
-  }
-}
+// ValidatedQuestionResult y ValidatedResults importados de lib/api/exam/client
 
 /** Sesión de test */
 interface TestSession {
@@ -479,6 +460,10 @@ export default function ExamLayout({
 
   // ✅ FUNCIÓN: Inicializar sesión de examen
   async function initializeExamSession(): Promise<void> {
+    // Guard síncrono contra race condition: marcar ANTES del await
+    if (sessionCreationRef.current) return
+    sessionCreationRef.current = true
+
     try {
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
       console.log('🎯 INICIANDO SESIÓN DE EXAMEN')
@@ -511,14 +496,15 @@ export default function ExamLayout({
 
       if (testSessionData === null || testSessionData === undefined) {
         console.error('❌ CRITICAL: createDetailedTestSession devolvió null/undefined')
+        sessionCreationRef.current = false  // Permitir reintento
         setSessionCreationError(true)
       } else if (!testSessionData.id) {
         console.error('❌ CRITICAL: testSessionData no tiene ID')
+        sessionCreationRef.current = false  // Permitir reintento
         setSessionCreationError(true)
       } else {
         console.log('✅ Test session creada con ID:', testSessionData.id)
         currentTestSessionRef.current = testSessionData
-        sessionCreationRef.current = true
         setSessionCreationError(false)
 
         // Las preguntas se guardan en test_questions solo cuando el usuario responde
@@ -532,6 +518,7 @@ export default function ExamLayout({
 
     } catch (error) {
       console.error('❌ EXCEPCIÓN EN initializeExamSession:', error)
+      sessionCreationRef.current = false  // Permitir reintento
       setSessionCreationError(true)
     }
   }
@@ -681,20 +668,11 @@ export default function ExamLayout({
         userAnswer: userAnswers[index] || null
       }))
 
-      console.log('🔒 Enviando respuestas a API /api/exam/validate...')
+      console.log('🔒 Enviando respuestas a API /api/exam/validate (timeout 30s, retry x2)...')
 
       // 🔴 FIX: Incluir testId para que la API marque el test como completado
       const testId = currentTestSession?.id || currentTestSessionRef.current?.id
-      const response = await fetch('/api/exam/validate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          testId, // 🔴 FIX: El test se marca como completado en la API
-          answers: answersForApi
-        })
-      })
-
-      const apiResult: ValidatedResults = await response.json()
+      const apiResult = await validateExam(testId, answersForApi)
 
       if (!apiResult.success) {
         console.error('❌ Error validando examen:', apiResult)

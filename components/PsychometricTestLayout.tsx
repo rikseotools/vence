@@ -20,6 +20,7 @@ import MarkdownExplanation from './MarkdownExplanation'
 import PsychometricAIHelpButton from './PsychometricAIHelpButton'
 import { getDifficultyInfo, formatDifficultyDisplay, isFirstAttempt, type DifficultyInfo } from '../lib/psychometricDifficulty'
 import { useInteractionTracker } from '../hooks/useInteractionTracker'
+import { validatePsychometricAnswer } from '@/lib/api/psychometric-answer/client'
 
 // ============================================
 // TIPOS
@@ -77,23 +78,7 @@ interface SessionProgress {
   accuracyPercentage: number
 }
 
-interface ValidationResult {
-  isCorrect: boolean
-  correctAnswer: number | null
-  explanation: string | null
-  saved: boolean
-  sessionProgress?: SessionProgress | null
-  usedFallback: boolean
-}
-
-interface SaveParams {
-  sessionId: string
-  userId: string
-  questionOrder: number
-  timeSpentSeconds: number
-  questionSubtype: string | null
-  totalQuestions: number
-}
+// SaveParams y ValidationResult types ahora vienen de lib/api/psychometric-answer/client
 
 const SUBTYPE_NAMES: Record<string, string> = {
   'sequence_numeric': 'Serie numérica',
@@ -126,85 +111,8 @@ const SUBTYPE_NAMES: Record<string, string> = {
   'coding': 'Codificación'
 }
 
-// 🔒 API unificada: validar + guardar + actualizar sesión en una sola llamada
-// Si la API falla (timeout, red), fallback local para que el test siga funcionando
-async function validatePsychometricAnswerSecure(
-  questionId: string,
-  userAnswer: number,
-  localCorrectAnswer?: number,
-  saveParams: SaveParams | null = null
-): Promise<ValidationResult> {
-  if (!questionId || typeof questionId !== 'string' || questionId.length < 10) {
-    console.log('⚠️ [SecureAnswer] Sin questionId válido, usando fallback local')
-    return {
-      isCorrect: localCorrectAnswer !== undefined ? userAnswer === localCorrectAnswer : false,
-      correctAnswer: localCorrectAnswer ?? null,
-      explanation: null,
-      saved: false,
-      usedFallback: true
-    }
-  }
-
-  try {
-    // Construir payload: siempre envía questionId + userAnswer
-    // Si hay sesión (usuario logueado), envía también datos de guardado
-    const payload: Record<string, unknown> = { questionId, userAnswer }
-    if (saveParams) {
-      Object.assign(payload, saveParams)
-    }
-
-    const response = await fetch('/api/answer/psychometric', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    })
-
-    if (!response.ok) {
-      console.warn('⚠️ [SecureAnswer] API error, usando fallback local')
-      return {
-        isCorrect: localCorrectAnswer !== undefined ? userAnswer === localCorrectAnswer : false,
-        correctAnswer: localCorrectAnswer ?? null,
-        explanation: null,
-        saved: false,
-        usedFallback: true
-      }
-    }
-
-    const data = await response.json()
-
-    if (data.success) {
-      console.log('✅ [SecureAnswer] Respuesta psicotécnica validada y guardada via API')
-      return {
-        isCorrect: data.isCorrect,
-        correctAnswer: data.correctAnswer,
-        explanation: data.explanation,
-        saved: data.saved || false,
-        sessionProgress: data.sessionProgress || null,
-        usedFallback: false
-      }
-    }
-
-    // Si la API no encuentra la pregunta, fallback
-    console.warn('⚠️ [SecureAnswer] Pregunta no encontrada en API, usando fallback')
-    return {
-      isCorrect: localCorrectAnswer !== undefined ? userAnswer === localCorrectAnswer : false,
-      correctAnswer: localCorrectAnswer ?? null,
-      explanation: null,
-      saved: false,
-      usedFallback: true
-    }
-
-  } catch (error) {
-    console.error('❌ [SecureAnswer] Error llamando API:', error)
-    return {
-      isCorrect: localCorrectAnswer !== undefined ? userAnswer === localCorrectAnswer : false,
-      correctAnswer: localCorrectAnswer ?? null,
-      explanation: null,
-      saved: false,
-      usedFallback: true
-    }
-  }
-}
+// 🔒 Validación psicotécnica: usa lib/api/psychometric-answer/client.ts
+// (timeout 10s, retry x2, Zod). Fallback local se mantiene en el componente.
 
 export default function PsychometricTestLayout({
   categoria,
@@ -383,7 +291,7 @@ export default function PsychometricTestLayout({
       const questionTime = Date.now() - questionStartTime
       const timeTakenSeconds = Math.floor(questionTime / 1000)
 
-      // 🔒 API unificada: validar + guardar + actualizar sesión en UNA llamada
+      // 🔒 API centralizada: validar + guardar + actualizar sesión (timeout 10s, retry x2, Zod)
       console.log('🔒 [SecureAnswer] Validando respuesta psicotécnica via API...')
 
       // Si hay sesión (usuario logueado), enviar datos de guardado junto con la validación
@@ -396,24 +304,37 @@ export default function PsychometricTestLayout({
         totalQuestions,
       } : null
 
-      const validationResult = await validatePsychometricAnswerSecure(
-        currentQ.id,
-        optionIndex,
-        currentQ.correct_option, // fallback local si API falla
-        saveParams
-      )
+      let isCorrect: boolean
+      let correctAnswer: number | null
+      let explanation: string | null
+      let saved = false
+      let usedFallback = false
+      let sessionProgress: { questionsAnswered: number; correctAnswers: number; accuracyPercentage: number } | null = null
 
-      const isCorrect = validationResult.isCorrect
-      const correctAnswer = validationResult.correctAnswer
-      const explanation = validationResult.explanation
+      try {
+        const apiResult = await validatePsychometricAnswer(currentQ.id, optionIndex, saveParams)
+        isCorrect = apiResult.isCorrect
+        correctAnswer = apiResult.correctAnswer
+        explanation = apiResult.explanation
+        saved = apiResult.saved
+        sessionProgress = apiResult.sessionProgress ?? null
+      } catch (apiError) {
+        // Fallback local si API falla
+        console.warn('⚠️ [SecureAnswer] API error, usando fallback local:', apiError)
+        const localCorrectAnswer = currentQ.correct_option
+        isCorrect = localCorrectAnswer !== undefined ? optionIndex === localCorrectAnswer : false
+        correctAnswer = localCorrectAnswer ?? null
+        explanation = null
+        usedFallback = true
+      }
 
       setVerifiedCorrectAnswer(correctAnswer)
       setVerifiedExplanation(explanation || currentQ.explanation || null)
 
-      if (validationResult.usedFallback) {
+      if (usedFallback) {
         console.warn('⚠️ [SecureAnswer] Psicotécnico: usado fallback local (sin guardar en DB)')
-      } else if (validationResult.saved) {
-        console.log('✅ [SecureAnswer] Validada + guardada via API:', validationResult.sessionProgress)
+      } else if (saved) {
+        console.log('✅ [SecureAnswer] Validada + guardada via API:', sessionProgress)
       } else {
         console.log('✅ [SecureAnswer] Validada via API (guest mode, sin guardar)')
       }

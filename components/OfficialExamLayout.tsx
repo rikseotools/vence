@@ -32,6 +32,8 @@ import SequenceNumericQuestion from './SequenceNumericQuestion'
 import SequenceLetterQuestion from './SequenceLetterQuestion'
 import SequenceAlphanumericQuestion from './SequenceAlphanumericQuestion'
 import MarkdownExplanation from './MarkdownExplanation'
+import { validateExam } from '@/lib/api/exam/client'
+import { validatePsychometricAnswer } from '@/lib/api/psychometric-answer/client'
 
 // =====================================================
 // TYPES
@@ -540,37 +542,34 @@ export default function OfficialExamLayout({
       const allResults: (ValidationResult | null)[] = new Array(questions.length).fill(null)
       let totalCorrect = 0
 
-      // Validar preguntas legislativas via /api/exam/validate
+      // Validar preguntas legislativas via validateExam (timeout 30s, retry x2, Zod)
       if (legislativeQuestions.length > 0) {
         console.log('🔒 Validando preguntas legislativas...')
-        const legResponse = await fetch('/api/exam/validate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            answers: legislativeQuestions.map(q => ({
+        try {
+          const legResult = await validateExam(
+            undefined,
+            legislativeQuestions.map(q => ({
               questionId: q.questionId,
               userAnswer: q.userAnswer
             }))
-          })
-        })
+          )
 
-        const legResult = await legResponse.json()
-
-        if (legResult.success) {
-          legResult.results.forEach((result: ValidationResult, i: number) => {
-            const originalIndex = legislativeQuestions[i].index
-            allResults[originalIndex] = {
-              ...result,
-              questionType: 'legislative'
-            }
-            if (result.isCorrect) totalCorrect++
-          })
-        } else {
-          console.error('❌ Error validando legislativas:', legResult.error)
+          if (legResult.success) {
+            legResult.results.forEach((result, i: number) => {
+              const originalIndex = legislativeQuestions[i].index
+              allResults[originalIndex] = {
+                ...result,
+                questionType: 'legislative'
+              }
+              if (result.isCorrect) totalCorrect++
+            })
+          }
+        } catch (legError) {
+          console.error('❌ Error validando legislativas:', legError)
         }
       }
 
-      // Validar preguntas psicotecnicas EN PARALELO via /api/answer/psychometric
+      // Validar preguntas psicotecnicas EN PARALELO via validatePsychometricAnswer (timeout 10s, retry x2)
       if (psychometricQuestions.length > 0) {
         console.log('🔒 Validando preguntas psicotecnicas en paralelo...')
 
@@ -579,31 +578,19 @@ export default function OfficialExamLayout({
           if (pq.userAnswer === null) return null
 
           try {
-            const psyResponse = await fetch('/api/answer/psychometric', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                questionId: pq.questionId,
-                userAnswer: pq.userAnswer
-              })
-            })
+            const psyResult = await validatePsychometricAnswer(pq.questionId, pq.userAnswer)
 
-            const psyResult = await psyResponse.json()
-
-            if (psyResult.success) {
-              return {
-                index: pq.index,
-                result: {
-                  isCorrect: psyResult.isCorrect,
-                  correctAnswer: answerToLetter(psyResult.correctAnswer).toLowerCase(),
-                  correctIndex: psyResult.correctAnswer,
-                  explanation: psyResult.explanation,
-                  userAnswer: pq.userAnswer !== null ? answerToLetter(pq.userAnswer).toLowerCase() : null,
-                  questionType: 'psychometric' as const
-                }
+            return {
+              index: pq.index,
+              result: {
+                isCorrect: psyResult.isCorrect,
+                correctAnswer: answerToLetter(psyResult.correctAnswer).toLowerCase(),
+                correctIndex: psyResult.correctAnswer,
+                explanation: psyResult.explanation,
+                userAnswer: pq.userAnswer !== null ? answerToLetter(pq.userAnswer).toLowerCase() : null,
+                questionType: 'psychometric' as const
               }
             }
-            return null
           } catch (err) {
             console.error('❌ Error validando psicotecnica:', pq.questionId, err)
             return null

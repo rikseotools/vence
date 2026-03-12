@@ -202,3 +202,31 @@ export function safeParseGetExamProgressRequest(data: unknown) {
 export function safeParseResumeExamRequest(data: unknown) {
   return resumeExamRequestSchema.safeParse(data)
 }
+
+// ============================================
+// VALIDACIÓN BATCH DE EXAMEN (client-side)
+// ============================================
+
+export const validatedQuestionResultSchema = z.object({
+  questionId: z.string(),
+  userAnswer: z.string().nullable(),
+  correctAnswer: z.string(),
+  correctIndex: z.number(),
+  isCorrect: z.boolean(),
+  explanation: z.string().nullable().optional()
+})
+
+export type ValidatedQuestionResult = z.infer<typeof validatedQuestionResultSchema>
+
+export const validatedResultsSchema = z.object({
+  success: z.boolean(),
+  results: z.array(validatedQuestionResultSchema),
+  summary: z.object({
+    totalQuestions: z.number(),
+    totalAnswered: z.number(),
+    totalCorrect: z.number(),
+    percentage: z.number()
+  })
+})
+
+export type ValidatedResults = z.infer<typeof validatedResultsSchema>
