@@ -228,15 +228,15 @@ async function validateAnswerSecure(questionId: string, userAnswer: number): Pro
 
   // Intentar hasta 2 veces (1 retry con 1s delay)
   for (let attempt = 0; attempt < 2; attempt++) {
+    if (attempt > 0) {
+      console.log('🔄 [SecureAnswer] Reintentando validación (intento 2/2)...')
+      await new Promise(resolve => setTimeout(resolve, 1000))
+    }
+
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 10000)
+
     try {
-      if (attempt > 0) {
-        console.log('🔄 [SecureAnswer] Reintentando validación (intento 2/2)...')
-        await new Promise(resolve => setTimeout(resolve, 1000))
-      }
-
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 10000)
-
       const response = await fetch('/api/answer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
