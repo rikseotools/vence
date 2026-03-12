@@ -14,90 +14,101 @@ import type { ValidateAnswerRequest, ValidateAnswerResponse } from './schemas'
 export async function validateAnswer(
   params: ValidateAnswerRequest
 ): Promise<ValidateAnswerResponse> {
-  try {
-    const db = getDb()
+  const MAX_RETRIES = 2
 
-    // Query con joins para obtener información completa (legislative questions)
-    const result = await db
-      .select({
-        correctOption: questions.correctOption,
-        explanation: questions.explanation,
-        articleNumber: articles.articleNumber,
-        lawShortName: laws.shortName,
-        lawName: laws.name
-      })
-      .from(questions)
-      .leftJoin(articles, eq(questions.primaryArticleId, articles.id))
-      .leftJoin(laws, eq(articles.lawId, laws.id))
-      .where(eq(questions.id, params.questionId))
-      .limit(1)
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    try {
+      const db = getDb()
 
-    const question = result[0]
-
-    if (!question) {
-      // Not found in questions table, try psychometric_questions
-      const psyResult = await db
+      // Query con joins para obtener información completa (legislative questions)
+      const result = await db
         .select({
-          correctOption: psychometricQuestions.correctOption,
-          explanation: psychometricQuestions.explanation,
+          correctOption: questions.correctOption,
+          explanation: questions.explanation,
+          articleNumber: articles.articleNumber,
+          lawShortName: laws.shortName,
+          lawName: laws.name
         })
-        .from(psychometricQuestions)
-        .where(eq(psychometricQuestions.id, params.questionId))
+        .from(questions)
+        .leftJoin(articles, eq(questions.primaryArticleId, articles.id))
+        .leftJoin(laws, eq(articles.lawId, laws.id))
+        .where(eq(questions.id, params.questionId))
         .limit(1)
 
-      const psyQuestion = psyResult[0]
+      const question = result[0]
 
-      if (!psyQuestion) {
-        console.error('❌ [API/answer] Pregunta no encontrada en ninguna tabla:', params.questionId)
+      if (!question) {
+        // Not found in questions table, try psychometric_questions
+        const psyResult = await db
+          .select({
+            correctOption: psychometricQuestions.correctOption,
+            explanation: psychometricQuestions.explanation,
+          })
+          .from(psychometricQuestions)
+          .where(eq(psychometricQuestions.id, params.questionId))
+          .limit(1)
+
+        const psyQuestion = psyResult[0]
+
+        if (!psyQuestion) {
+          console.error('❌ [API/answer] Pregunta no encontrada en ninguna tabla:', params.questionId)
+          return {
+            success: false,
+            isCorrect: false,
+            correctAnswer: 0,
+            explanation: null
+          }
+        }
+
+        const isCorrect = params.userAnswer === psyQuestion.correctOption
+
         return {
-          success: false,
-          isCorrect: false,
-          correctAnswer: 0,
-          explanation: null
+          success: true,
+          isCorrect,
+          correctAnswer: psyQuestion.correctOption ?? 0,
+          explanation: psyQuestion.explanation,
+          articleNumber: null,
+          lawShortName: null,
+          lawName: null
         }
       }
 
-      const isCorrect = params.userAnswer === psyQuestion.correctOption
+      const isCorrect = params.userAnswer === question.correctOption
+
+      console.log('✅ [API/answer] Respuesta validada:', {
+        questionId: params.questionId,
+        userAnswer: params.userAnswer,
+        correctAnswer: question.correctOption,
+        isCorrect
+      })
 
       return {
         success: true,
         isCorrect,
-        correctAnswer: psyQuestion.correctOption ?? 0,
-        explanation: psyQuestion.explanation,
-        articleNumber: null,
-        lawShortName: null,
-        lawName: null
+        correctAnswer: question.correctOption,
+        explanation: question.explanation,
+        articleNumber: question.articleNumber,
+        lawShortName: question.lawShortName,
+        lawName: question.lawName
+      }
+
+    } catch (error) {
+      if (attempt < MAX_RETRIES - 1) {
+        console.warn(`⚠️ [API/answer] Error en query (intento ${attempt + 1}/${MAX_RETRIES}), reintentando en 500ms...`, (error as Error).message)
+        await new Promise(r => setTimeout(r, 500))
+        continue
+      }
+      console.error('❌ [API/answer] Error validando respuesta tras reintentos:', error)
+      return {
+        success: false,
+        isCorrect: false,
+        correctAnswer: 0,
+        explanation: null
       }
     }
-
-    const isCorrect = params.userAnswer === question.correctOption
-
-    console.log('✅ [API/answer] Respuesta validada:', {
-      questionId: params.questionId,
-      userAnswer: params.userAnswer,
-      correctAnswer: question.correctOption,
-      isCorrect
-    })
-
-    return {
-      success: true,
-      isCorrect,
-      correctAnswer: question.correctOption,
-      explanation: question.explanation,
-      articleNumber: question.articleNumber,
-      lawShortName: question.lawShortName,
-      lawName: question.lawName
-    }
-
-  } catch (error) {
-    console.error('❌ [API/answer] Error validando respuesta:', error)
-    return {
-      success: false,
-      isCorrect: false,
-      correctAnswer: 0,
-      explanation: null
-    }
   }
+
+  return { success: false, isCorrect: false, correctAnswer: 0, explanation: null }
 }
 
 // ============================================
