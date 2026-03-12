@@ -118,8 +118,12 @@ export async function insertTestAnswer(
             .where(eq(userProfiles.id, userId))
             .limit(1)
           const userOposicion = result[0]?.targetOposicion
-          if (!userOposicion || !ALL_OPOSICION_IDS.includes(userOposicion) || userOposicion === 'explorador') {
-            console.warn(`⚠️ [insertTestAnswer] Fallback a auxiliar para userId=${userId}, oposicionId=${userOposicion || 'null'}`)
+          if (!userOposicion) {
+            console.warn(`⚠️ [insertTestAnswer] Fallback a auxiliar: userId=${userId} sin target_oposicion`)
+          } else if (userOposicion === 'explorador') {
+            // Explorador → fallback silencioso (esperado)
+          } else if (!ALL_OPOSICION_IDS.includes(userOposicion)) {
+            // UUID de oposición custom → fallback silencioso (esperado)
           }
           oposicionId = (userOposicion && ALL_OPOSICION_IDS.includes(userOposicion) && userOposicion !== 'explorador')
             ? userOposicion

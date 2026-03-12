@@ -480,6 +480,18 @@ export const saveDetailedAnswerV2 = async (params: SaveAnswerParams): Promise<Sa
       timezone: Intl?.DateTimeFormat?.()?.resolvedOptions?.()?.timeZone || 'Europe/Madrid'
     } : undefined
 
+    // Obtener oposicionId del perfil para evitar query extra en el servidor
+    let oposicionId: string | null = null
+    try {
+      const user = await getCachedUser()
+      if (user) {
+        const profile = await getCachedUserProfile(user.id)
+        oposicionId = profile?.target_oposicion || null
+      }
+    } catch {
+      // No bloquear el guardado si falla
+    }
+
     // Construir body
     const body = {
       sessionId,
@@ -508,7 +520,8 @@ export const saveDetailedAnswerV2 = async (params: SaveAnswerParams): Promise<Sa
       interactionEvents: (interactionEvents || []).slice(-10),
       mouseEvents: (mouseEvents || []).slice(-50),
       scrollEvents: (scrollEvents || []).slice(-50),
-      deviceInfo
+      deviceInfo,
+      oposicionId
     }
 
     console.log('💾 [V2] Guardando respuesta via API...', {
