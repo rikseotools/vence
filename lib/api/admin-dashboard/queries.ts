@@ -8,7 +8,15 @@ import type { DashboardResponse } from './schemas'
 // -- Helpers de fechas (zona horaria Madrid) --
 
 function getMadridDates() {
-  const nowMadrid = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Madrid' }))
+  const now = new Date()
+  const nowMadrid = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Madrid' }))
+
+  // Madrid's UTC offset: difference between Madrid local time and actual UTC
+  const madridOffsetMs = nowMadrid.getTime() - now.getTime()
+
+  // Convert a "Madrid local" Date to correct UTC ISO string
+  const toISO = (madridLocal: Date) => new Date(madridLocal.getTime() - madridOffsetMs).toISOString()
+
   const currentHour = nowMadrid.getHours()
   const currentMinute = nowMadrid.getMinutes()
 
@@ -33,28 +41,29 @@ function getMadridDates() {
   const lastWeekAtThisHour = new Date(startOfLastWeekSameDay)
   lastWeekAtThisHour.setHours(currentHour, currentMinute, 0, 0)
 
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-  thirtyDaysAgo.setHours(0, 0, 0, 0)
+  const thirtyDaysAgo = new Date(startOfToday)
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
 
-  const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000)
-  sixtyDaysAgo.setHours(0, 0, 0, 0)
+  const sixtyDaysAgo = new Date(startOfToday)
+  sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60)
 
-  const fifteenDaysAgo = new Date(Date.now() - 15 * 24 * 60 * 60 * 1000)
+  const fifteenDaysAgo = new Date(nowMadrid)
+  fifteenDaysAgo.setDate(fifteenDaysAgo.getDate() - 15)
 
   const fifteenMinAgo = new Date(Date.now() - 15 * 60 * 1000)
 
   const daysPassedThisWeek = dayOfWeek === 0 ? 7 : dayOfWeek
 
   return {
-    startOfToday: startOfToday.toISOString(),
-    startOfYesterday: startOfYesterday.toISOString(),
-    thisMonday: thisMonday.toISOString(),
-    lastMonday: lastMonday.toISOString(),
-    startOfLastWeekSameDay: startOfLastWeekSameDay.toISOString(),
-    lastWeekAtThisHour: lastWeekAtThisHour.toISOString(),
-    thirtyDaysAgo: thirtyDaysAgo.toISOString(),
-    sixtyDaysAgo: sixtyDaysAgo.toISOString(),
-    fifteenDaysAgo: fifteenDaysAgo.toISOString(),
+    startOfToday: toISO(startOfToday),
+    startOfYesterday: toISO(startOfYesterday),
+    thisMonday: toISO(thisMonday),
+    lastMonday: toISO(lastMonday),
+    startOfLastWeekSameDay: toISO(startOfLastWeekSameDay),
+    lastWeekAtThisHour: toISO(lastWeekAtThisHour),
+    thirtyDaysAgo: toISO(thirtyDaysAgo),
+    sixtyDaysAgo: toISO(sixtyDaysAgo),
+    fifteenDaysAgo: toISO(fifteenDaysAgo),
     fifteenMinAgo: fifteenMinAgo.toISOString(),
     daysPassedThisWeek,
   }
