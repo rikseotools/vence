@@ -234,11 +234,17 @@ async function validateAnswerSecure(questionId: string, userAnswer: number): Pro
         await new Promise(resolve => setTimeout(resolve, 1000))
       }
 
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 10000)
+
       const response = await fetch('/api/answer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ questionId, userAnswer })
+        body: JSON.stringify({ questionId, userAnswer }),
+        signal: controller.signal
       })
+
+      clearTimeout(timeoutId)
 
       if (!response.ok) {
         console.warn(`⚠️ [SecureAnswer] API error HTTP ${response.status} (intento ${attempt + 1}/2)`)
@@ -264,10 +270,16 @@ async function validateAnswerSecure(questionId: string, userAnswer: number): Pro
       return { success: false, error: 'QUESTION_NOT_FOUND' }
 
     } catch (error) {
-      console.error(`❌ [SecureAnswer] Error llamando API (intento ${attempt + 1}/2):`, error)
+      clearTimeout(timeoutId)
+      const isTimeout = (error as Error).name === 'AbortError'
+      if (isTimeout) {
+        console.warn(`⏱️ [SecureAnswer] Timeout tras 10s (intento ${attempt + 1}/2)`)
+      } else {
+        console.error(`❌ [SecureAnswer] Error llamando API (intento ${attempt + 1}/2):`, error)
+      }
       // Si es el último intento, devolver error
       if (attempt === 1) {
-        return { success: false, error: 'API_ERROR', message: (error as Error).message }
+        return { success: false, error: isTimeout ? 'TIMEOUT' : 'API_ERROR', message: (error as Error).message }
       }
     }
   }
