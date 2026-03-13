@@ -4,7 +4,6 @@
 // ejecuta la función de recovery (reset estado + log).
 
 import { useEffect, useRef } from 'react'
-import { logValidationError } from '@/lib/api/validation-error-log'
 
 const WATCHDOG_TIMEOUT_MS = 20_000 // 20 segundos
 
@@ -48,16 +47,20 @@ export function useAnswerWatchdog({
           `🐕 [Watchdog] UI congelada ${durationMs}ms en ${component}. Reseteando estado.`
         )
 
-        // Log a BD (fire-and-forget)
-        logValidationError({
-          endpoint: '/api/answer',
-          errorType: 'timeout',
-          errorMessage: `Watchdog: UI congelada ${durationMs}ms en ${component}. processingAnswer no se reseteó.`,
-          questionId: questionId || undefined,
-          userId: userId || undefined,
-          httpStatus: 0, // No hubo respuesta HTTP
-          durationMs,
-        })
+        // Log a BD via API (fire-and-forget, no importar server code en client)
+        fetch('/api/validation-error-log', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            endpoint: '/api/answer',
+            errorType: 'timeout',
+            errorMessage: `Watchdog: UI congelada ${durationMs}ms en ${component}. processingAnswer no se reseteó.`,
+            questionId: questionId || undefined,
+            userId: userId || undefined,
+            httpStatus: 0,
+            durationMs,
+          }),
+        }).catch(() => { /* fire-and-forget */ })
 
         // Resetear estado
         onReset()

@@ -94,8 +94,8 @@ describe('useAnswerWatchdog.ts — source code', () => {
     expect(content).toMatch(/clearTimeout/)
   })
 
-  it('logea a validation_error_logs via logValidationError', () => {
-    expect(content).toMatch(/logValidationError/)
+  it('logea a validation_error_logs via fetch API', () => {
+    expect(content).toMatch(/fetch\(['"]\/api\/validation-error-log['"]/)
   })
 
   it('incluye component y questionId en el log', () => {
