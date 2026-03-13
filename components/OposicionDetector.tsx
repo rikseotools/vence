@@ -57,25 +57,15 @@ export default function OposicionDetector() {
       isDetecting = true
 
       try {
-        // 1. Verificar si hay usuario autenticado CON TIMEOUT
-        console.log('👤 Verificando usuario autenticado...')
+        // 1. Verificar si hay usuario autenticado (getSession es local/cache, no hace network call)
+        const { data: { session } } = await supabase.auth.getSession()
 
-        const { data: { user }, error: userError } = await Promise.race([
-          supabase.auth.getUser(),
-          new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error('Timeout')), 5000)
-          )
-        ])
-
-        if (userError) {
-          console.log('👤 Error verificando usuario:', userError.message)
-          return
-        }
-
-        if (!user) {
+        if (!session?.user) {
           console.log('👤 Usuario no autenticado - no se asigna oposición')
           return
         }
+
+        const user = session.user
 
         console.log('✅ Usuario autenticado:', user.email)
 
