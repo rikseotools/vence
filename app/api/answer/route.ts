@@ -3,19 +3,33 @@
 // La respuesta correcta SOLO se revela después de recibir la respuesta del usuario
 import { NextRequest, NextResponse } from 'next/server'
 import { safeParseAnswerRequest, validateAnswer } from '../../../lib/api/answers'
+import { logValidationError, classifyError } from '@/lib/api/validation-error-log'
 
 // Dar margen al cold start de Vercel + conexión a Supabase
 export const maxDuration = 30
 
 export async function POST(request: NextRequest) {
+  const startTime = Date.now()
+  let body: Record<string, unknown> | undefined
+
   try {
-    const body = await request.json()
+    body = await request.json()
 
     // Validar request con Zod
     const validation = safeParseAnswerRequest(body)
 
     if (!validation.success) {
       console.error('❌ [API/answer] Validación fallida:', validation.error.flatten())
+      logValidationError({
+        endpoint: '/api/answer',
+        errorType: 'validation',
+        errorMessage: JSON.stringify(validation.error.flatten()),
+        questionId: (body as any)?.questionId,
+        requestBody: body,
+        httpStatus: 400,
+        durationMs: Date.now() - startTime,
+        userAgent: request.headers.get('user-agent'),
+      })
       return NextResponse.json(
         {
           success: false,
@@ -30,6 +44,16 @@ export async function POST(request: NextRequest) {
     const result = await validateAnswer(validation.data)
 
     if (!result.success) {
+      logValidationError({
+        endpoint: '/api/answer',
+        errorType: 'not_found',
+        errorMessage: `Pregunta no encontrada: ${validation.data.questionId}`,
+        questionId: validation.data.questionId,
+        requestBody: body,
+        httpStatus: 404,
+        durationMs: Date.now() - startTime,
+        userAgent: request.headers.get('user-agent'),
+      })
       return NextResponse.json(
         {
           success: false,
@@ -45,6 +69,17 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('❌ [API/answer] Error:', error)
+    logValidationError({
+      endpoint: '/api/answer',
+      errorType: classifyError(error),
+      errorMessage: error instanceof Error ? error.message : String(error),
+      errorStack: error instanceof Error ? error.stack : undefined,
+      questionId: (body as any)?.questionId,
+      requestBody: body,
+      httpStatus: 500,
+      durationMs: Date.now() - startTime,
+      userAgent: request.headers.get('user-agent'),
+    })
     return NextResponse.json(
       {
         success: false,

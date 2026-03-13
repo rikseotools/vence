@@ -2795,6 +2795,30 @@ export const sessionBlockEvents = pgTable("session_block_events", {
 		}).onDelete("cascade"),
 ]);
 
+export const validationErrorLogs = pgTable("validation_error_logs", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	endpoint: text().notNull(),
+	errorType: text("error_type").notNull(),
+	errorMessage: text("error_message").notNull(),
+	errorStack: text("error_stack"),
+	userId: uuid("user_id"),
+	questionId: text("question_id"),
+	testId: text("test_id"),
+	requestBody: jsonb("request_body").default({}),
+	deployVersion: text("deploy_version"),
+	vercelRegion: text("vercel_region"),
+	httpStatus: integer("http_status"),
+	durationMs: integer("duration_ms"),
+	userAgent: text("user_agent"),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("idx_vel_created_at").using("btree", table.createdAt.desc().nullsFirst().op("timestamptz_ops")),
+	index("idx_vel_endpoint").using("btree", table.endpoint.asc().nullsLast().op("text_ops")),
+	index("idx_vel_error_type").using("btree", table.errorType.asc().nullsLast().op("text_ops")),
+	index("idx_vel_user_id").using("btree", table.userId.asc().nullsLast().op("uuid_ops")),
+	index("idx_vel_deploy_version").using("btree", table.deployVersion.asc().nullsLast().op("text_ops")),
+]);
+
 export const convocatoriasBoe = pgTable("convocatorias_boe", {
 	id: uuid().default(sql`uuid_generate_v4()`).primaryKey().notNull(),
 	boeId: text("boe_id").notNull(),

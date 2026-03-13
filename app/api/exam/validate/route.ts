@@ -12,6 +12,7 @@ import { getDb } from '@/db/client'
 import { questions, tests } from '@/db/schema'
 import { inArray, eq } from 'drizzle-orm'
 import { z } from 'zod/v3'
+import { logValidationError, classifyError } from '@/lib/api/validation-error-log'
 
 // ============================================
 // SCHEMAS DE VALIDACIÓN
@@ -181,6 +182,14 @@ async function validateExamAnswers(answers: ExamAnswer[], testId?: string) {
 
   } catch (error) {
     console.error('❌ [API/exam/validate] Error:', error)
+    logValidationError({
+      endpoint: '/api/exam/validate',
+      errorType: classifyError(error),
+      errorMessage: error instanceof Error ? error.message : String(error),
+      errorStack: error instanceof Error ? error.stack : undefined,
+      testId,
+      httpStatus: 500,
+    })
     return {
       success: false,
       error: 'Error interno validando examen'
@@ -193,14 +202,27 @@ async function validateExamAnswers(answers: ExamAnswer[], testId?: string) {
 // ============================================
 
 export async function POST(request: NextRequest) {
+  const startTime = Date.now()
+  let body: Record<string, unknown> | undefined
+
   try {
-    const body = await request.json()
+    body = await request.json()
 
     // Validar request con Zod
     const validation = validateExamRequestSchema.safeParse(body)
 
     if (!validation.success) {
       console.error('❌ [API/exam/validate] Validación fallida:', validation.error.flatten())
+      logValidationError({
+        endpoint: '/api/exam/validate',
+        errorType: 'validation',
+        errorMessage: JSON.stringify(validation.error.flatten()),
+        testId: (body as any)?.testId,
+        requestBody: body,
+        httpStatus: 400,
+        durationMs: Date.now() - startTime,
+        userAgent: request.headers.get('user-agent'),
+      })
       return NextResponse.json(
         {
           success: false,
@@ -228,6 +250,17 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('❌ [API/exam/validate] Error:', error)
+    logValidationError({
+      endpoint: '/api/exam/validate',
+      errorType: classifyError(error),
+      errorMessage: error instanceof Error ? error.message : String(error),
+      errorStack: error instanceof Error ? error.stack : undefined,
+      testId: (body as any)?.testId,
+      requestBody: body,
+      httpStatus: 500,
+      durationMs: Date.now() - startTime,
+      userAgent: request.headers.get('user-agent'),
+    })
     return NextResponse.json(
       {
         success: false,

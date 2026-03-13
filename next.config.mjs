@@ -20,6 +20,8 @@ const nextConfig = {
       : 'http://localhost:3000',
     // ✅ Forzar exposición de variable Stripe al cliente (fix para Next.js 15.3+)
     NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
+    // ✅ Versión del deploy para diagnóstico (Vercel inyecta VERCEL_GIT_COMMIT_SHA en build)
+    NEXT_PUBLIC_DEPLOY_VERSION: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 8) || 'local',
   },
 
   // ✅ URL ALIAS CORTA para mejor SEO
