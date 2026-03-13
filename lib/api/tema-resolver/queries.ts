@@ -100,6 +100,7 @@ export async function resolveTemaByArticle(
 ): Promise<ResolveTemaResponse> {
   try {
     const positionType = OPOSICION_TO_POSITION_TYPE[params.oposicionId || 'auxiliar_administrativo_estado']
+      || OPOSICION_TO_POSITION_TYPE['auxiliar_administrativo_estado']
 
     // Verificar cache
     const cacheKey = getCacheKey(
@@ -295,6 +296,7 @@ export async function resolveTemasBatch(
   params: ResolveTemasBatchRequest
 ): Promise<ResolveTemasBatchResponse> {
   const positionType = OPOSICION_TO_POSITION_TYPE[params.oposicionId || 'auxiliar_administrativo_estado']
+    || OPOSICION_TO_POSITION_TYPE['auxiliar_administrativo_estado']
 
   // Separar preguntas por tipo de input
   const questionIds: string[] = []
@@ -458,6 +460,7 @@ export async function resolveTemasBatchByQuestionIds(
   if (questionIds.length === 0) return new Map()
 
   const positionType = OPOSICION_TO_POSITION_TYPE[oposicionId]
+    || OPOSICION_TO_POSITION_TYPE['auxiliar_administrativo_estado']
   const result = new Map<string, number>()
 
   try {

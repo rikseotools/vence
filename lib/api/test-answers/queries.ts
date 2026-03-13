@@ -108,9 +108,14 @@ export async function insertTestAnswer(
 
     if (calculatedTema === 0 && req.questionData.id) {
       try {
-        // Obtener oposición del usuario SERVER-SIDE (no depender del cliente)
+        // Obtener oposición válida para resolver tema
+        // IMPORTANTE: Validar SIEMPRE contra ALL_OPOSICION_IDS, incluso si el cliente envía oposicionId
+        // porque puede ser un UUID de oposición custom que no tiene positionType en el mapa
         let oposicionId = req.oposicionId || ''
-        if (!oposicionId) {
+
+        // Validar que el oposicionId sea un ID conocido (no UUID custom, no 'explorador')
+        if (!oposicionId || !ALL_OPOSICION_IDS.includes(oposicionId) || oposicionId === 'explorador') {
+          // Intentar obtener del perfil del usuario
           const db = getDb()
           const result = await db
             .select({ targetOposicion: userProfiles.targetOposicion })
@@ -120,10 +125,6 @@ export async function insertTestAnswer(
           const userOposicion = result[0]?.targetOposicion
           if (!userOposicion) {
             console.warn(`⚠️ [insertTestAnswer] Fallback a auxiliar: userId=${userId} sin target_oposicion`)
-          } else if (userOposicion === 'explorador') {
-            // Explorador → fallback silencioso (esperado)
-          } else if (!ALL_OPOSICION_IDS.includes(userOposicion)) {
-            // UUID de oposición custom → fallback silencioso (esperado)
           }
           oposicionId = (userOposicion && ALL_OPOSICION_IDS.includes(userOposicion) && userOposicion !== 'explorador')
             ? userOposicion
