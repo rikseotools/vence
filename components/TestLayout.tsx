@@ -42,6 +42,7 @@ import UpgradeLimitModal from './UpgradeLimitModal'
 import { useUserOposicion } from './useUserOposicion'
 import { validateAnswer } from '@/lib/api/answers/client'
 import { ApiTimeoutError, ApiNetworkError } from '@/lib/api/client'
+import { useAnswerWatchdog } from '@/hooks/useAnswerWatchdog'
 
 import type {
   TestQuestion,
@@ -307,6 +308,19 @@ export default function TestLayout({
   const [processingAnswer, setProcessingAnswer] = useState<boolean>(false)
   const [validationError, setValidationError] = useState<string | null>(null)
   const [lastProcessedAnswer, setLastProcessedAnswer] = useState<string | null>(null)
+
+  // Watchdog: detecta UI congelada si processingAnswer se queda en true >20s
+  useAnswerWatchdog({
+    isProcessing: processingAnswer,
+    onReset: () => {
+      setProcessingAnswer(false)
+      setSelectedAnswer(null)
+      setValidationError('La validación tardó demasiado. Inténtalo de nuevo.')
+    },
+    component: 'TestLayout',
+    questionId: currentQuestionUuid,
+    userId: user?.id,
+  })
 
   // Estado para configuración de scroll automático
   const [autoScrollEnabled, setAutoScrollEnabled] = useState<boolean>(true)

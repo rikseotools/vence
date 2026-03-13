@@ -10,6 +10,7 @@ import { generateLawSlug } from '@/lib/lawMappingUtils'
 import { getOposicionSlugFromPathname } from '@/lib/config/oposiciones'
 import { validateExam, type ValidatedResults, type ValidatedQuestionResult } from '@/lib/api/exam/client'
 import { ApiTimeoutError, ApiNetworkError } from '@/lib/api/client'
+import { useAnswerWatchdog } from '@/hooks/useAnswerWatchdog'
 
 // Type for useAuth context (AuthContext is JS, so we type it manually)
 interface AuthContextValue {
@@ -370,6 +371,17 @@ export default function ExamLayout({
 
   // Control de guardado
   const [isSaving, setIsSaving] = useState(false)
+
+  // Watchdog: detecta UI congelada si isSaving se queda en true >20s
+  useAnswerWatchdog({
+    isProcessing: isSaving,
+    onReset: () => {
+      setIsSaving(false)
+      alert('La validación del examen tardó demasiado. Inténtalo de nuevo.')
+    },
+    component: 'ExamLayout',
+    userId: user?.id,
+  })
 
   // 🔒 SEGURIDAD: Estado para respuestas validadas por API
   const [validatedResults, setValidatedResults] = useState<ValidatedResults | null>(null)

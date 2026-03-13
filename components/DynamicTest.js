@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext'
 import AdSenseComponent from './AdSenseComponent'
 import MarkdownExplanation from './MarkdownExplanation'
 import { validateAnswer } from '@/lib/api/answers/client'
+import { useAnswerWatchdog } from '@/hooks/useAnswerWatchdog'
 
 // 🔒 Validación segura: usa lib/api/answers/client.ts (timeout 10s, retry x2, Zod)
 
@@ -26,11 +27,25 @@ export default function DynamicTest({ titulo, dificultad }) {
   const [showResult, setShowResult] = useState(false)
   const [verifiedCorrectAnswer, setVerifiedCorrectAnswer] = useState(null) // 🔒 Respuesta correcta validada por API
   const [validationError, setValidationError] = useState(null)
+  const [processingAnswer, setProcessingAnswer] = useState(false)
   const [score, setScore] = useState(0)
   const [answeredQuestions, setAnsweredQuestions] = useState([])
   const [showReview, setShowReview] = useState(false)
   const [startTime] = useState(Date.now())
   const [sessionId, setSessionId] = useState(null)
+
+  // Watchdog: detecta UI congelada si processingAnswer se queda en true >20s
+  useAnswerWatchdog({
+    isProcessing: processingAnswer,
+    onReset: () => {
+      setProcessingAnswer(false)
+      setSelectedAnswer(null)
+      setValidationError('La validación tardó demasiado. Inténtalo de nuevo.')
+    },
+    component: 'DynamicTest',
+    questionId: testData?.questions?.[currentQuestion]?.id,
+    userId: user?.id,
+  })
 
   const difficultyConfig = {
     alta: {
@@ -96,9 +111,10 @@ export default function DynamicTest({ titulo, dificultad }) {
   }
 
   const handleAnswerClick = async (answerIndex) => {
-    if (showResult) return
+    if (showResult || processingAnswer) return
 
     setSelectedAnswer(answerIndex)
+    setProcessingAnswer(true)
 
     const currentQ = testData.questions[currentQuestion]
 
@@ -110,6 +126,7 @@ export default function DynamicTest({ titulo, dificultad }) {
       console.error('❌ [SecureAnswer] Validación fallida:', err)
       setValidationError('Error temporal al validar tu respuesta. Inténtalo de nuevo.')
       setSelectedAnswer(null)
+      setProcessingAnswer(false)
       // Enviar notificación admin (async, no bloquea)
       fetch('/api/emails/send-admin-notification', {
         method: 'POST',
@@ -153,6 +170,8 @@ export default function DynamicTest({ titulo, dificultad }) {
       correct: isCorrect,
       questionData: { ...currentQ, verifiedCorrect: apiCorrectAnswer } // 🔒 Guardar respuesta verificada
     }])
+
+    setProcessingAnswer(false)
   }
 
   const handleNextQuestion = () => {

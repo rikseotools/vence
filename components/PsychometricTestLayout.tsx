@@ -21,6 +21,7 @@ import PsychometricAIHelpButton from './PsychometricAIHelpButton'
 import { getDifficultyInfo, formatDifficultyDisplay, isFirstAttempt, type DifficultyInfo } from '../lib/psychometricDifficulty'
 import { useInteractionTracker } from '../hooks/useInteractionTracker'
 import { validatePsychometricAnswer } from '@/lib/api/psychometric-answer/client'
+import { useAnswerWatchdog } from '@/hooks/useAnswerWatchdog'
 
 // ============================================
 // TIPOS
@@ -135,6 +136,19 @@ export default function PsychometricTestLayout({
   const [testSession, setTestSession] = useState<TestSession | null>(null)
   const [isAnswering, setIsAnswering] = useState<boolean>(false)
   const [isTestCompleted, setIsTestCompleted] = useState<boolean>(false)
+
+  // Watchdog: detecta UI congelada si isAnswering se queda en true >20s
+  useAnswerWatchdog({
+    isProcessing: isAnswering,
+    onReset: () => {
+      setIsAnswering(false)
+      setSelectedAnswer(null)
+      alert('La validación tardó demasiado. Inténtalo de nuevo.')
+    },
+    component: 'PsychometricTestLayout',
+    questionId: questions[currentQuestion]?.id,
+    userId: user?.id,
+  })
 
   // Estados para usuarios no logueados (igual que TestLayout)
   const [detailedAnswers, setDetailedAnswers] = useState<DetailedAnswer[]>([])
