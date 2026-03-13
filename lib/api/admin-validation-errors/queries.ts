@@ -2,7 +2,7 @@
 import { getDb } from '@/db/client'
 import { validationErrorLogs } from '@/db/schema'
 import { desc, gte, eq, sql, and, count, isNull, inArray } from 'drizzle-orm'
-import type { ValidationErrorsQuery, ValidationErrorsResponse, ValidationErrorsSummary } from './schemas'
+import type { ValidationErrorsQuery, ValidationErrorsResponse, ValidationErrorsSummary, ValidationErrorEntry } from './schemas'
 
 export async function getValidationErrors(params: ValidationErrorsQuery): Promise<ValidationErrorsResponse> {
   const db = getDb()
@@ -80,7 +80,7 @@ export async function getValidationErrors(params: ValidationErrorsQuery): Promis
   const summary = buildSummary(summaryRows)
 
   return {
-    errors,
+    errors: errors as unknown as ValidationErrorEntry[],
     summary,
     unreviewedCount: Number(unreviewed[0]?.count ?? 0),
     timeRange: params.timeRange,
