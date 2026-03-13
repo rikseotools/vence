@@ -6,7 +6,8 @@ import {
   verifyTestOwnership
 } from '@/lib/api/exam'
 
-export async function POST(request) {
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+async function _POST(request) {
   try {
     const body = await request.json()
 
@@ -59,3 +60,5 @@ export async function POST(request) {
     )
   }
 }
+
+export const POST = withErrorLogging('/api/exam/complete', _POST)

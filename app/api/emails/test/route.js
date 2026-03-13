@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { testServerConnection } from '@/lib/emails/emailService.server'
 
-export async function GET() {
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+async function _GET() {
   try {
     console.log('🧪 API Test: Probando conexión server-only...')
     
@@ -20,3 +21,5 @@ export async function GET() {
     }, { status: 500 })
   }
 }
+
+export const GET = withErrorLogging('/api/emails/test', _GET)

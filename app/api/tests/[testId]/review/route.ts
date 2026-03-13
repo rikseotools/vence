@@ -5,7 +5,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getTestReview } from '@/lib/api/test-review/queries'
 import { safeParseTestReviewRequest } from '@/lib/api/test-review/schemas'
 
-export async function GET(
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+async function _GET(
   request: NextRequest,
   { params }: { params: Promise<{ testId: string }> }
 ) {
@@ -42,3 +43,5 @@ export async function GET(
     )
   }
 }
+
+export const GET = withErrorLogging('/api/tests/[testId]/review', _GET)

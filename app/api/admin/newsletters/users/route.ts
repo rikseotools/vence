@@ -3,7 +3,8 @@ import { NextResponse } from 'next/server'
 import { newsletterUsersQuerySchema } from '@/lib/api/newsletters/schemas'
 import { getNewsletterUsers } from '@/lib/api/newsletters'
 
-export async function GET(request: Request) {
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+async function _GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
 
@@ -33,3 +34,5 @@ export async function GET(request: Request) {
     )
   }
 }
+
+export const GET = withErrorLogging('/api/admin/newsletters/users', _GET)

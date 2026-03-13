@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server'
 import { getConfigByProvider, updateVerificationStatus } from '@/lib/api/admin-ai-config'
 import { testAiConfigRequestSchema } from '@/lib/api/admin-ai-config/schemas'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 // Precios por millón de tokens (input/output) en USD
 const MODEL_PRICING: Record<string, { input: number; output: number }> = {
   'gpt-4o-mini': { input: 0.15, output: 0.60 },
@@ -78,7 +79,7 @@ interface TestResult {
   message?: string
 }
 
-export async function POST(request: Request) {
+async function _POST(request: Request) {
   try {
     const body = await request.json()
     const parsed = testAiConfigRequestSchema.safeParse(body)
@@ -321,3 +322,5 @@ async function testGoogle(apiKey: string, model: string): Promise<TestResult> {
     return { success: false, provider: 'google', error: (error as Error).message }
   }
 }
+
+export const POST = withErrorLogging('/api/admin/ai-config/test', _POST)

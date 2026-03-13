@@ -7,6 +7,7 @@ import webpush from 'web-push'
 import { UserPatternAnalyzer } from '@/lib/notifications/userPatternAnalyzer'
 import { selectContextualMessage, calculateMessageUrgency } from '@/lib/notifications/oposicionMessages'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 // Configurar web-push
 if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
   webpush.setVapidDetails(
@@ -22,7 +23,7 @@ const getSupabase = () => createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
 
-export async function POST(request) {
+async function _POST(request) {
   try {
     // Verificar autorización (solo para cron jobs o admin)
     const authHeader = request.headers.get('authorization')
@@ -357,7 +358,7 @@ async function disableUserNotifications(userId) {
 }
 
 // Endpoint GET para verificar estado del sistema
-export async function GET() {
+async function _GET() {
   try {
     // Verificar configuración
     const hasVapidKeys = !!(process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY)
@@ -392,3 +393,6 @@ export async function GET() {
     )
   }
 }
+
+export const POST = withErrorLogging('/api/notifications/send-scheduled', _POST)
+export const GET = withErrorLogging('/api/notifications/send-scheduled', _GET)

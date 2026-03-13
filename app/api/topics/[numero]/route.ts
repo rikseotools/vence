@@ -8,9 +8,10 @@ import {
 } from '@/lib/api/topic-data'
 import { ALL_OPOSICION_SLUGS } from '@/lib/config/oposiciones'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 export const dynamic = 'force-dynamic'
 
-export async function GET(
+async function _GET(
   request: NextRequest,
   { params }: { params: Promise<{ numero: string }> }
 ) {
@@ -86,3 +87,5 @@ export async function GET(
     )
   }
 }
+
+export const GET = withErrorLogging('/api/topics/[numero]', _GET)

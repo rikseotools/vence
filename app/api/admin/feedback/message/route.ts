@@ -12,11 +12,12 @@ import {
   safeParseCreateConversation
 } from '@/lib/api/admin-feedback'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 // ============================================
 // POST - Admin envia mensaje o crea conversación
 // ============================================
 
-export async function POST(request: NextRequest) {
+async function _POST(request: NextRequest) {
   try {
     const body = await request.json()
     const action = body.action || 'send_message'
@@ -115,9 +116,12 @@ export async function POST(request: NextRequest) {
 }
 
 // Bloquear GET
-export async function GET() {
+async function _GET() {
   return NextResponse.json(
     { success: false, error: 'Método no permitido. Usa POST.' },
     { status: 405 }
   )
 }
+
+export const POST = withErrorLogging('/api/admin/feedback/message', _POST)
+export const GET = withErrorLogging('/api/admin/feedback/message', _GET)

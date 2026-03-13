@@ -4,9 +4,10 @@
 import { NextResponse } from 'next/server'
 import { getPsychometricCategories } from '@/lib/api/psychometric-test-data'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 export const dynamic = 'force-dynamic'
 
-export async function GET() {
+async function _GET() {
   try {
     const result = await getPsychometricCategories()
 
@@ -26,3 +27,5 @@ export async function GET() {
     )
   }
 }
+
+export const GET = withErrorLogging('/api/psychometric-test-data', _GET)

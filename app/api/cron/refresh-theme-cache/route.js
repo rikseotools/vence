@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 // Permitir hasta 60 segundos para procesar todos los usuarios
 export const maxDuration = 60
 
-export async function GET(request) {
+async function _GET(request) {
   try {
     // Verificar authorization header
     const authHeader = request.headers.get('authorization')
@@ -104,3 +105,5 @@ export async function GET(request) {
     }, { status: 500 })
   }
 }
+
+export const GET = withErrorLogging('/api/cron/refresh-theme-cache', _GET)

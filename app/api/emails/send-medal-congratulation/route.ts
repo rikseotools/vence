@@ -4,6 +4,7 @@ import { Resend } from 'resend'
 import { createClient } from '@supabase/supabase-js'
 import { canSendEmail } from '@/lib/api/emails'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 interface MedalStats {
   accuracy?: number
   totalQuestions?: number
@@ -18,7 +19,7 @@ interface Medal {
   stats?: MedalStats
 }
 
-export async function POST(request: Request) {
+async function _POST(request: Request) {
   try {
     const { userId, userName, medal } = await request.json() as {
       userId: string
@@ -235,3 +236,5 @@ function generateMedalEmailContent(medal: Medal, userName: string) {
 
   return { subject, html }
 }
+
+export const POST = withErrorLogging('/api/emails/send-medal-congratulation', _POST)

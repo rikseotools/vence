@@ -4,13 +4,14 @@ import { NextResponse } from 'next/server'
 import { getEmailEvents } from '@/lib/api/admin-email-events'
 import { emailEventsQuerySchema } from '@/lib/api/admin-email-events'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 // Supabase admin client — para RPC calls (POST + subscriptionCount en GET)
 const getSupabaseAdmin = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-export async function GET(request: Request) {
+async function _GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const parsed = emailEventsQuerySchema.safeParse({
@@ -42,7 +43,7 @@ export async function GET(request: Request) {
 }
 
 // Verify admin access — se mantiene con Supabase RPC (no migrable a Drizzle)
-export async function POST(request: Request) {
+async function _POST(request: Request) {
   try {
     const { userId } = await request.json()
 
@@ -64,3 +65,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
+
+export const GET = withErrorLogging('/api/admin/email-events', _GET)
+export const POST = withErrorLogging('/api/admin/email-events', _POST)

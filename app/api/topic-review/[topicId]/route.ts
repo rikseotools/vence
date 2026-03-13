@@ -1,7 +1,8 @@
 // app/api/topic-review/[topicId]/route.ts
 import { safeParseTopicDetail, getTopicDetail } from '@/lib/api/topic-review'
 
-export async function GET(
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+async function _GET(
   _request: Request,
   { params }: { params: Promise<{ topicId: string }> },
 ) {
@@ -35,3 +36,5 @@ export async function GET(
     }, { status: 500 })
   }
 }
+
+export const GET = withErrorLogging('/api/topic-review/[topicId]', _GET)

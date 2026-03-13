@@ -3,11 +3,12 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 interface TrackBlockRequest {
   sessionsCount: number
 }
 
-export async function POST(request: NextRequest): Promise<NextResponse> {
+async function _POST(request: NextRequest): Promise<NextResponse> {
   try {
     // Obtener el token de autenticación
     const authHeader = request.headers.get('authorization')
@@ -77,3 +78,5 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'Error interno' }, { status: 500 })
   }
 }
+
+export const POST = withErrorLogging('/api/sessions/track-block', _POST)

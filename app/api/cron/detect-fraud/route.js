@@ -5,10 +5,11 @@ import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
 import { createFraudAlert, hasActiveAlert } from '@/lib/api/fraud'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 const getResend = () => new Resend(process.env.RESEND_API_KEY)
 const ADMIN_EMAIL = 'manueltrader@gmail.com'
 
-export async function GET(request) {
+async function _GET(request) {
   try {
     // Verificar authorization header
     const authHeader = request.headers.get('authorization')
@@ -268,3 +269,5 @@ async function sendFraudAlertEmail(alerts) {
     console.error('❌ Error enviando email de fraude:', err)
   }
 }
+
+export const GET = withErrorLogging('/api/cron/detect-fraud', _GET)

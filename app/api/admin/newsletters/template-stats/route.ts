@@ -2,7 +2,8 @@
 import { NextResponse } from 'next/server'
 import { getTemplateStats } from '@/lib/api/newsletters'
 
-export async function GET() {
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+async function _GET() {
   try {
     const result = await getTemplateStats()
     return NextResponse.json(result)
@@ -15,3 +16,5 @@ export async function GET() {
     )
   }
 }
+
+export const GET = withErrorLogging('/api/admin/newsletters/template-stats', _GET)

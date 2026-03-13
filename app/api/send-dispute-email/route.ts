@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { sendEmailV2 } from '@/lib/api/emails'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 function getSupabase() {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     throw new Error('Variables de entorno de Supabase no configuradas')
@@ -109,7 +110,7 @@ function parseDisputeFromBody(body: Record<string, unknown>): { dispute: Dispute
   return { dispute: null, disputeId: null, source: 'unknown' }
 }
 
-export async function POST(request: Request) {
+async function _POST(request: Request) {
   try {
     const body = await request.json()
     const { dispute: webhookDispute, disputeId, source } = parseDisputeFromBody(body)
@@ -201,3 +202,5 @@ export async function POST(request: Request) {
     }, { status: 500 })
   }
 }
+
+export const POST = withErrorLogging('/api/send-dispute-email', _POST)

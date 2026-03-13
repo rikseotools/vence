@@ -7,13 +7,14 @@ import {
   trackBatchInteractions
 } from '@/lib/api/interactions'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 export const maxDuration = 60
 
 // ============================================
 // POST: Registrar interacción(es)
 // ============================================
 
-export async function POST(request: NextRequest) {
+async function _POST(request: NextRequest) {
   try {
     const body = await request.json()
 
@@ -72,3 +73,5 @@ export async function OPTIONS() {
     }
   })
 }
+
+export const POST = withErrorLogging('/api/interactions', _POST)

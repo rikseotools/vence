@@ -9,11 +9,12 @@ import {
   safeParseUpdateFeedbackStatus
 } from '@/lib/api/admin-feedback'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 // ============================================
 // POST - Actualizar estado de feedback
 // ============================================
 
-export async function POST(request: NextRequest) {
+async function _POST(request: NextRequest) {
   try {
     const body = await request.json()
 
@@ -64,7 +65,7 @@ export async function POST(request: NextRequest) {
 // GET - Obtener contadores pendientes (para badges)
 // ============================================
 
-export async function GET() {
+async function _GET() {
   try {
     const result = await getPendingCounts()
 
@@ -88,3 +89,6 @@ export async function GET() {
     )
   }
 }
+
+export const POST = withErrorLogging('/api/admin/feedback/status', _POST)
+export const GET = withErrorLogging('/api/admin/feedback/status', _GET)

@@ -2,9 +2,10 @@
 import { NextResponse } from 'next/server'
 import { getUnreadSalesCount, markSalesAsRead } from '@/lib/api/admin/salesBadge'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 export const maxDuration = 15
 
-export async function GET() {
+async function _GET() {
   try {
     const count = await getUnreadSalesCount()
     return NextResponse.json({ count })
@@ -18,7 +19,7 @@ export async function GET() {
  * POST /api/v2/admin/unread-sales
  * Marca ventas como leídas (actualiza last_read_at).
  */
-export async function POST() {
+async function _POST() {
   try {
     await markSalesAsRead()
     return NextResponse.json({ success: true })
@@ -27,3 +28,6 @@ export async function POST() {
     return NextResponse.json({ success: false }, { status: 500 })
   }
 }
+
+export const GET = withErrorLogging('/api/v2/admin/unread-sales', _GET)
+export const POST = withErrorLogging('/api/v2/admin/unread-sales', _POST)

@@ -25,6 +25,7 @@ import {
   type AvatarProfile
 } from '@/lib/api/avatar-settings'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 // Cliente de Supabase con service role
 function getSupabaseAdmin() {
   return createClient(
@@ -43,7 +44,7 @@ function getSupabaseAdmin() {
 // POST: Ejecutar rotación de avatares
 // ============================================
 
-export async function POST(request: NextRequest) {
+async function _POST(request: NextRequest) {
   // 1. Verificar autorización
   const authHeader = request.headers.get('authorization')
   const expectedAuth = `Bearer ${process.env.CRON_SECRET}`
@@ -240,7 +241,7 @@ export async function POST(request: NextRequest) {
 // GET: Para health check / verificación manual
 // ============================================
 
-export async function GET(request: NextRequest) {
+async function _GET(request: NextRequest) {
   // Verificar autorización
   const authHeader = request.headers.get('authorization')
   const expectedAuth = `Bearer ${process.env.CRON_SECRET}`
@@ -356,3 +357,6 @@ async function sendAvatarChangeNotifications(
     }
   }
 }
+
+export const POST = withErrorLogging('/api/cron/avatar-rotation', _POST)
+export const GET = withErrorLogging('/api/cron/avatar-rotation', _GET)

@@ -6,11 +6,12 @@ import { userProfiles } from '@/db/schema'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod/v3'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 const storeIpSchema = z.object({
   userId: z.string().uuid(),
 })
 
-export async function POST(request: Request) {
+async function _POST(request: Request) {
   try {
     const body = await request.json()
     const parsed = storeIpSchema.safeParse(body)
@@ -66,3 +67,5 @@ export async function POST(request: Request) {
     )
   }
 }
+
+export const POST = withErrorLogging('/api/auth/store-registration-ip', _POST)

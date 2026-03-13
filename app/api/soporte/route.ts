@@ -7,12 +7,13 @@ import {
   getUserDisputes,
 } from '@/lib/api/soporte'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-export async function GET(request: NextRequest) {
+async function _GET(request: NextRequest) {
   try {
     // Auth
     const authHeader = request.headers.get('authorization')
@@ -53,3 +54,5 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
+export const GET = withErrorLogging('/api/soporte', _GET)

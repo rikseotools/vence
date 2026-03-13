@@ -1,7 +1,8 @@
 // app/api/topic-review/update-status/route.ts
 import { safeParseUpdateStatus, updateQuestionStatus } from '@/lib/api/topic-review'
 
-export async function POST(request: Request) {
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+async function _POST(request: Request) {
   try {
     const body = await request.json()
     const parsed = safeParseUpdateStatus(body)
@@ -30,3 +31,5 @@ export async function POST(request: Request) {
     }, { status: 500 })
   }
 }
+
+export const POST = withErrorLogging('/api/topic-review/update-status', _POST)

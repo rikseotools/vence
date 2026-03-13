@@ -7,7 +7,8 @@ import {
   type CreateFeedbackResponse
 } from '@/lib/api/feedback'
 
-export async function POST(request: NextRequest): Promise<NextResponse<CreateFeedbackResponse>> {
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+async function _POST(request: NextRequest): Promise<NextResponse<CreateFeedbackResponse>> {
   try {
     const body = await request.json()
 
@@ -71,9 +72,12 @@ export async function POST(request: NextRequest): Promise<NextResponse<CreateFee
 }
 
 // Bloquear GET
-export async function GET() {
+async function _GET() {
   return NextResponse.json(
     { success: false, error: 'Método no permitido. Usa POST.' },
     { status: 405 }
   )
 }
+
+export const POST = withErrorLogging('/api/feedback', _POST)
+export const GET = withErrorLogging('/api/feedback', _GET)

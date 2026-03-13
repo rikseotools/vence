@@ -3,6 +3,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 // Lista de emails bajo control de sesiones simultáneas
 const CONTROLLED_EMAILS: string[] = [
   'edu77santoyo@gmail.com'
@@ -35,7 +36,7 @@ interface CheckActiveResponse {
   error?: string
 }
 
-export async function GET(request: NextRequest): Promise<NextResponse<CheckActiveResponse>> {
+async function _GET(request: NextRequest): Promise<NextResponse<CheckActiveResponse>> {
   try {
     // Obtener el token de autenticación
     const authHeader = request.headers.get('authorization')
@@ -158,3 +159,5 @@ function formatDevice(resolution: string | null, userAgent: string | null): stri
 
   return resolution ? `${resolution} / ${os}` : os
 }
+
+export const GET = withErrorLogging('/api/sessions/check-active', _GET)

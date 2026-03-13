@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -15,7 +16,7 @@ const getSupabase = () => createClient(
  *
  * Returns user's best score for each official exam they've taken
  */
-export async function GET(request: NextRequest) {
+async function _GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get('userId')
@@ -103,3 +104,5 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
+export const GET = withErrorLogging('/api/v2/official-exams/user-stats', _GET)

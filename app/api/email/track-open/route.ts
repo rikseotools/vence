@@ -4,6 +4,7 @@ import { emailTrackOpenQuerySchema } from '@/lib/api/email-tracking/schemas'
 import { getUserEmailByProfile, recordEmailEvent } from '@/lib/api/email-tracking/queries'
 import { getDeviceType, getEmailClient } from '@/lib/api/email-tracking/helpers'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 const TRACKING_PIXEL = Buffer.from(
   'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
   'base64'
@@ -22,7 +23,7 @@ function pixelResponse() {
   })
 }
 
-export async function GET(request: Request) {
+async function _GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
 
@@ -78,3 +79,5 @@ export async function GET(request: Request) {
     return pixelResponse()
   }
 }
+
+export const GET = withErrorLogging('/api/email/track-open', _GET)

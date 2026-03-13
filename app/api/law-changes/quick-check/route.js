@@ -2,6 +2,7 @@
 // Endpoint ligero que solo verifica fechas del BOE sin parsear contenido completo
 import { createClient } from '@supabase/supabase-js'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -51,7 +52,7 @@ function parseSpanishDate(dateStr) {
   return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`)
 }
 
-export async function GET() {
+async function _GET() {
   try {
     // 1. Obtener leyes con URL del BOE
     const { data: laws, error } = await getSupabase()
@@ -147,3 +148,5 @@ export async function GET() {
     }, { status: 500 })
   }
 }
+
+export const GET = withErrorLogging('/api/law-changes/quick-check', _GET)

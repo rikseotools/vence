@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { safeParseSaveOfficialExamAnswer, saveOfficialExamAnswer } from '@/lib/api/official-exams'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 /**
  * POST /api/v2/official-exams/answer
  *
@@ -21,7 +22,7 @@ import { safeParseSaveOfficialExamAnswer, saveOfficialExamAnswer } from '@/lib/a
  * Security is ensured by requiring a valid testId (UUID) that was created
  * via the authenticated /init endpoint.
  */
-export async function POST(request: NextRequest) {
+async function _POST(request: NextRequest) {
   try {
     // Parse and validate request body
     const body = await request.json()
@@ -64,3 +65,5 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
+export const POST = withErrorLogging('/api/v2/official-exams/answer', _POST)

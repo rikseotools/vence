@@ -8,13 +8,14 @@ import {
   type CreateFailedQuestionsTestRequest,
 } from '@/lib/api/tests'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 // Cliente Supabase solo para auth
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-export async function POST(request: NextRequest) {
+async function _POST(request: NextRequest) {
   console.log('🎯 [API/v2/failed-questions] Request received')
 
   try {
@@ -90,3 +91,5 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
+export const POST = withErrorLogging('/api/v2/tests/failed-questions', _POST)

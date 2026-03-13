@@ -8,11 +8,12 @@ import {
   safeParseCountFilteredQuestions,
 } from '@/lib/api/filtered-questions'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 // ============================================
 // POST /api/questions/filtered
 // Obtener preguntas filtradas para test
 // ============================================
-export async function POST(request: NextRequest) {
+async function _POST(request: NextRequest) {
   try {
     const body = await request.json()
 
@@ -70,7 +71,7 @@ export async function POST(request: NextRequest) {
 // GET /api/questions/filtered/count
 // Contar preguntas disponibles (para UI)
 // ============================================
-export async function GET(request: NextRequest) {
+async function _GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const action = searchParams.get('action')
@@ -144,3 +145,6 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
+export const POST = withErrorLogging('/api/questions/filtered', _POST)
+export const GET = withErrorLogging('/api/questions/filtered', _GET)

@@ -7,6 +7,7 @@ import {
 } from '@/lib/api/exam'
 import { createClient } from '@supabase/supabase-js'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 // Supabase para obtener preguntas completas (questions table)
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -30,7 +31,7 @@ const getSupabase = () => createClient(
  * - questions: preguntas completas (sin correct_option)
  * - savedAnswers: { [index]: answer } para respuestas ya dadas
  */
-export async function GET(request: NextRequest) {
+async function _GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const testId = searchParams.get('testId')
@@ -144,3 +145,5 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
+export const GET = withErrorLogging('/api/exam/resume', _GET)

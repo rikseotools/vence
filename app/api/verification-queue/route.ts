@@ -13,7 +13,8 @@ import { getDb } from '@/db/client'
 import { questions } from '@/db/schema'
 import { and, eq, inArray, or, isNull, sql } from 'drizzle-orm'
 
-export async function GET(request: NextRequest) {
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+async function _GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const topicId = searchParams.get('topic_id') || undefined
@@ -30,7 +31,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
+async function _POST(request: NextRequest) {
   try {
     const body = await request.json()
     const validation = verificationQueuePostSchema.safeParse(body)
@@ -119,7 +120,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function DELETE(request: NextRequest) {
+async function _DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
@@ -149,3 +150,7 @@ export async function DELETE(request: NextRequest) {
     )
   }
 }
+
+export const GET = withErrorLogging('/api/verification-queue', _GET)
+export const POST = withErrorLogging('/api/verification-queue', _POST)
+export const DELETE = withErrorLogging('/api/verification-queue', _DELETE)

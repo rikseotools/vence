@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { sendEmailV2 } from '@/lib/api/emails'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 function getSupabase() {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     throw new Error('Variables de entorno de Supabase no configuradas')
@@ -35,7 +36,7 @@ async function isUserActivelyBrowsing(userId: string): Promise<boolean> {
   }
 }
 
-export async function POST(request: Request) {
+async function _POST(request: Request) {
   try {
     const { userId, adminMessage, conversationId } = await request.json()
 
@@ -85,3 +86,5 @@ export async function POST(request: Request) {
     )
   }
 }
+
+export const POST = withErrorLogging('/api/send-support-email', _POST)

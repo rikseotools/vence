@@ -2,6 +2,7 @@
 // Versión optimizada para cron diario - mínimo consumo de ancho de banda
 import { createClient } from '@supabase/supabase-js'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -203,7 +204,7 @@ async function checkWithFullDownload(url) {
  * - skipRecent=true: Salta leyes verificadas en las últimas 12 horas
  * - law=SHORT_NAME: Verificar solo una ley específica
  */
-export async function GET(request) {
+async function _GET(request) {
   const startTime = Date.now()
   const { searchParams } = new URL(request.url)
   const skipRecent = searchParams.get('skipRecent') !== 'false'
@@ -429,3 +430,5 @@ export async function GET(request) {
     }, { status: 500 })
   }
 }
+
+export const GET = withErrorLogging('/api/law-changes/check-optimized', _GET)

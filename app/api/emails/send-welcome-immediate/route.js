@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { sendWelcomeEmailImmediate } from '@/lib/emails/emailService.server'
 
-export async function POST(request) {
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+async function _POST(request) {
   try {
     const body = await request.json()
     const { userId } = body
@@ -30,3 +31,5 @@ export async function POST(request) {
     }, { status: 500 })
   }
 }
+
+export const POST = withErrorLogging('/api/emails/send-welcome-immediate', _POST)

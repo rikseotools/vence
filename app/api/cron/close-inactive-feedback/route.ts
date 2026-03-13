@@ -17,7 +17,8 @@ import {
   type CloseInactiveFeedbackResponse,
 } from '@/lib/api/close-inactive-feedback'
 
-export async function GET(
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+async function _GET(
   request: NextRequest
 ): Promise<NextResponse<CloseInactiveFeedbackResponse>> {
   try {
@@ -57,3 +58,5 @@ export async function GET(
     )
   }
 }
+
+export const GET = withErrorLogging('/api/cron/close-inactive-feedback', _GET)

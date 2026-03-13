@@ -3,7 +3,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { safeParseGetArticles, getArticlesForLaw } from '@/lib/api/test-config'
 
-export async function GET(request: NextRequest) {
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+async function _GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
 
@@ -39,3 +40,5 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
+export const GET = withErrorLogging('/api/v2/test-config/articles', _GET)

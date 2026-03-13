@@ -6,6 +6,7 @@ import {
   buildSingleVerificationPrompt,
 } from '@/lib/api/verify-articles/ai-helpers'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 async function verifyWithOpenAI(prompt: string): Promise<Record<string, unknown>> {
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) return { error: 'OpenAI API key no configurada. Añade OPENAI_API_KEY en .env.local' }
@@ -60,7 +61,7 @@ async function verifyWithClaude(prompt: string): Promise<Record<string, unknown>
   } catch (error) { return { error: (error as Error).message } }
 }
 
-export async function POST(request: NextRequest) {
+async function _POST(request: NextRequest) {
   try {
     const body = await request.json()
     const validation = aiVerifySingleParamsSchema.safeParse(body)
@@ -120,3 +121,5 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
+export const POST = withErrorLogging('/api/verify-articles/ai-verify', _POST)

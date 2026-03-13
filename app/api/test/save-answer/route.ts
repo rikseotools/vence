@@ -4,7 +4,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { safeParseSaveAnswerRequest, type SaveAnswerResponse } from '@/lib/api/test-answers'
 import { insertTestAnswer } from '@/lib/api/test-answers'
 
-export async function POST(request: NextRequest): Promise<NextResponse<SaveAnswerResponse>> {
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+async function _POST(request: NextRequest): Promise<NextResponse<SaveAnswerResponse>> {
   try {
     // 1. Auth: verificar Bearer token
     const authHeader = request.headers.get('authorization')
@@ -81,9 +82,12 @@ export async function POST(request: NextRequest): Promise<NextResponse<SaveAnswe
   }
 }
 
-export async function GET() {
+async function _GET() {
   return NextResponse.json(
     { success: false, action: 'error' as const, error: 'Metodo no permitido' },
     { status: 405 },
   )
 }
+
+export const POST = withErrorLogging('/api/test/save-answer', _POST)
+export const GET = withErrorLogging('/api/test/save-answer', _GET)

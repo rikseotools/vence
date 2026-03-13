@@ -20,6 +20,7 @@ import {
   type CheckBoeChangesResponse
 } from '@/lib/api/boe-changes'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300 // 5 minutos máximo
 
@@ -27,7 +28,7 @@ export const maxDuration = 300 // 5 minutos máximo
 // GET: Verificar cambios en BOE
 // ============================================
 
-export async function GET(request: NextRequest): Promise<NextResponse<CheckBoeChangesResponse>> {
+async function _GET(request: NextRequest): Promise<NextResponse<CheckBoeChangesResponse>> {
   // Verificar authorization header
   const authHeader = request.headers.get('authorization')
   const expectedAuth = `Bearer ${process.env.CRON_SECRET}`
@@ -253,3 +254,5 @@ async function processLaw(
   console.warn(`⚠️ [BOE] No se pudo verificar ${law.shortName}: ${fullResult.reason}`)
   return false
 }
+
+export const GET = withErrorLogging('/api/cron/check-boe-changes', _GET)

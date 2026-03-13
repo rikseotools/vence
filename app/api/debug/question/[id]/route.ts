@@ -12,7 +12,8 @@ import {
 } from '@/db/schema'
 import { eq } from 'drizzle-orm'
 
-export async function GET(
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+async function _GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -150,3 +151,5 @@ export async function GET(
     return Response.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
+
+export const GET = withErrorLogging('/api/debug/question/[id]', _GET)

@@ -10,6 +10,7 @@ import {
   deleteFavorite
 } from '@/lib/api/test-favorites'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
@@ -17,7 +18,7 @@ export const revalidate = 0
 // GET: Obtener favoritos del usuario
 // ============================================
 
-export async function GET(request: NextRequest) {
+async function _GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get('userId')
@@ -58,7 +59,7 @@ export async function GET(request: NextRequest) {
 // POST: Crear nuevo favorito
 // ============================================
 
-export async function POST(request: NextRequest) {
+async function _POST(request: NextRequest) {
   try {
     const body = await request.json()
 
@@ -95,7 +96,7 @@ export async function POST(request: NextRequest) {
 // DELETE: Eliminar favorito
 // ============================================
 
-export async function DELETE(request: NextRequest) {
+async function _DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const favoriteId = searchParams.get('id')
@@ -151,3 +152,7 @@ export async function OPTIONS() {
     }
   })
 }
+
+export const GET = withErrorLogging('/api/profile/test-favorites', _GET)
+export const POST = withErrorLogging('/api/profile/test-favorites', _POST)
+export const DELETE = withErrorLogging('/api/profile/test-favorites', _DELETE)

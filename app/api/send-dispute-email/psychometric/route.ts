@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { sendEmailV2 } from '@/lib/api/emails'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 function getSupabase() {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     throw new Error('Variables de entorno de Supabase no configuradas')
@@ -59,7 +60,7 @@ async function getDisputeInfo(disputeId: string): Promise<PsychometricDisputeInf
   }
 }
 
-export async function POST(request: Request) {
+async function _POST(request: Request) {
   try {
     const body = await request.json()
     const { disputeId } = body
@@ -138,3 +139,5 @@ export async function POST(request: Request) {
     }, { status: 500 })
   }
 }
+
+export const POST = withErrorLogging('/api/send-dispute-email/psychometric', _POST)

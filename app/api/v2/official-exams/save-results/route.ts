@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { safeParseSaveOfficialExamResults } from '@/lib/api/official-exams'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 // Cliente con service role - bypasa RLS para operaciones de servidor
 const getSupabaseAdmin = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -27,7 +28,7 @@ const getSupabaseAdmin = () => createClient(
  * - questionsSaved: number (if successful)
  * - error: string (if failed)
  */
-export async function POST(request: NextRequest) {
+async function _POST(request: NextRequest) {
   console.log('🎯 [API/v2/official-exams/save-results] Request received')
 
   try {
@@ -282,3 +283,5 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
+export const POST = withErrorLogging('/api/v2/official-exams/save-results', _POST)

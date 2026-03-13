@@ -4,12 +4,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import OpenAI from 'openai'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-export async function POST(request: NextRequest) {
+async function _POST(request: NextRequest) {
   try {
     const { questionId, questionText, options, correctAnswer, articleNumber, lawName } = await request.json()
 
@@ -136,3 +137,5 @@ INSTRUCCIONES:
     }, { status: 500 })
   }
 }
+
+export const POST = withErrorLogging('/api/generate-explanation', _POST)

@@ -3,12 +3,13 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
 
-export async function GET(request) {
+async function _GET(request) {
   // Verificar autorización
   const authHeader = request.headers.get('authorization')
   const expectedToken = `Bearer ${process.env.CRON_SECRET}`
@@ -269,3 +270,5 @@ async function detectSharedPremium() {
 
   return alerts
 }
+
+export const GET = withErrorLogging('/api/cron/fraud-detection', _GET)

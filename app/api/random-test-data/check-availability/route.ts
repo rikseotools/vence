@@ -4,7 +4,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { checkAvailableQuestions } from '@/lib/api/random-test-data/queries'
 import { safeParseCheckAvailableQuestionsRequest } from '@/lib/api/random-test-data/schemas'
 
-export async function POST(request: NextRequest) {
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+async function _POST(request: NextRequest) {
   try {
     const body = await request.json()
 
@@ -51,7 +52,7 @@ export async function POST(request: NextRequest) {
 }
 
 // También soportar GET para compatibilidad (con query params)
-export async function GET(request: NextRequest) {
+async function _GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
 
@@ -129,3 +130,6 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
+export const POST = withErrorLogging('/api/random-test-data/check-availability', _POST)
+export const GET = withErrorLogging('/api/random-test-data/check-availability', _GET)

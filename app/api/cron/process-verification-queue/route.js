@@ -5,6 +5,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -21,7 +22,7 @@ const MAX_EXECUTION_TIME_MS = 50000
  * Procesa la siguiente tarea de verificación en la cola
  * Continúa procesando batches hasta completar o alcanzar el timeout
  */
-export async function GET(request) {
+async function _GET(request) {
   const startTime = Date.now()
 
   try {
@@ -285,3 +286,5 @@ async function getPendingQuestionIds(task) {
 
   return allPendingIds
 }
+
+export const GET = withErrorLogging('/api/cron/process-verification-queue', _GET)

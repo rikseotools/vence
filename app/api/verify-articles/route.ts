@@ -17,7 +17,8 @@ import {
   updateLawVerification,
 } from '@/lib/api/verify-articles/queries'
 
-export async function GET(request: NextRequest) {
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+async function _GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const lawId = searchParams.get('lawId')
   const lawShortName = searchParams.get('law')
@@ -153,3 +154,5 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ success: false, error: 'Error interno del servidor', details: (error as Error).message }, { status: 500 })
   }
 }
+
+export const GET = withErrorLogging('/api/verify-articles', _GET)

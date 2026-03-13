@@ -5,7 +5,8 @@ import {
   getVerificationResultsByQuestionIds,
 } from '@/lib/api/verify-articles/queries'
 
-export async function GET(request: NextRequest) {
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+async function _GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const lawId = searchParams.get('lawId')
@@ -107,3 +108,5 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
+export const GET = withErrorLogging('/api/verify-articles/verification-summaries', _GET)

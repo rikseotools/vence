@@ -3,7 +3,8 @@ import { NextResponse } from 'next/server'
 import { aiChatLogsQuerySchema } from '@/lib/api/admin-ai-chat-logs/schemas'
 import { getAiChatLogs } from '@/lib/api/admin-ai-chat-logs'
 
-export async function GET(request: Request) {
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+async function _GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const parsed = aiChatLogsQuerySchema.safeParse({
@@ -31,3 +32,5 @@ export async function GET(request: Request) {
     )
   }
 }
+
+export const GET = withErrorLogging('/api/admin/ai-chat-logs', _GET)

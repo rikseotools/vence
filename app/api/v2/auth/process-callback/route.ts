@@ -5,6 +5,7 @@ import { getAuthenticatedUser } from '@/lib/api/shared/auth'
 import { safeParseProcessCallbackRequest } from '@/lib/api/auth/schemas'
 import { processAuthCallback } from '@/lib/api/auth/queries'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 /**
  * POST /api/v2/auth/process-callback
  *
@@ -16,7 +17,7 @@ import { processAuthCallback } from '@/lib/api/auth/queries'
  *
  * Authorization: Bearer <session.access_token>
  */
-export async function POST(request: NextRequest) {
+async function _POST(request: NextRequest) {
   try {
     // 1. Verificar autenticacion
     const auth = await getAuthenticatedUser(request)
@@ -63,3 +64,5 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
+export const POST = withErrorLogging('/api/v2/auth/process-callback', _POST)

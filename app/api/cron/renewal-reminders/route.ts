@@ -7,8 +7,9 @@ import {
   type RunReminderCampaignResponse
 } from '@/lib/api/renewal-reminders'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 // GET: Ejecutar campaña de recordatorios (llamado por GitHub Actions)
-export async function GET(request: NextRequest): Promise<NextResponse<RunReminderCampaignResponse>> {
+async function _GET(request: NextRequest): Promise<NextResponse<RunReminderCampaignResponse>> {
   try {
     // Verificar authorization header
     const authHeader = request.headers.get('authorization')
@@ -61,7 +62,7 @@ export async function GET(request: NextRequest): Promise<NextResponse<RunReminde
 }
 
 // POST: Ejecutar con parámetros personalizados (para testing manual)
-export async function POST(request: NextRequest): Promise<NextResponse<RunReminderCampaignResponse>> {
+async function _POST(request: NextRequest): Promise<NextResponse<RunReminderCampaignResponse>> {
   try {
     // Verificar authorization header
     const authHeader = request.headers.get('authorization')
@@ -121,3 +122,6 @@ export async function POST(request: NextRequest): Promise<NextResponse<RunRemind
     )
   }
 }
+
+export const GET = withErrorLogging('/api/cron/renewal-reminders', _GET)
+export const POST = withErrorLogging('/api/cron/renewal-reminders', _POST)

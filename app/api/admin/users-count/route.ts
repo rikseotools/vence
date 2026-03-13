@@ -2,7 +2,8 @@
 import { NextResponse } from 'next/server'
 import { getUsersCount } from '@/lib/api/admin-users-count'
 
-export async function GET() {
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+async function _GET() {
   try {
     const result = await getUsersCount()
     return NextResponse.json(result)
@@ -14,3 +15,5 @@ export async function GET() {
     )
   }
 }
+
+export const GET = withErrorLogging('/api/admin/users-count', _GET)

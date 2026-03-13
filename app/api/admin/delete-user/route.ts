@@ -4,7 +4,8 @@ import { deleteUserRequestSchema } from '@/lib/api/admin-delete-user/schemas'
 import { deleteUserData } from '@/lib/api/admin-delete-user'
 import { getServiceClient } from '@/lib/api/shared/auth'
 
-export async function DELETE(request: Request) {
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+async function _DELETE(request: Request) {
   try {
     const body = await request.json()
     const parsed = deleteUserRequestSchema.safeParse(body)
@@ -58,3 +59,5 @@ export async function DELETE(request: Request) {
     )
   }
 }
+
+export const DELETE = withErrorLogging('/api/admin/delete-user', _DELETE)

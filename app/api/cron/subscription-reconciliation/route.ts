@@ -6,6 +6,7 @@ import { NextResponse, NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 const getResend = () => new Resend(process.env.RESEND_API_KEY)
 const ADMIN_EMAIL = 'manueltrader@gmail.com'
 
@@ -26,7 +27,7 @@ interface Inconsistency {
   fixed: boolean
 }
 
-export async function GET(request: NextRequest) {
+async function _GET(request: NextRequest) {
   // Verificar autorización
   const authHeader = request.headers.get('authorization')
   const cronSecret = process.env.CRON_SECRET
@@ -236,3 +237,5 @@ async function sendReconciliationReport(inconsistencies: Inconsistency[]): Promi
     console.error('Error enviando reporte:', emailErr)
   }
 }
+
+export const GET = withErrorLogging('/api/cron/subscription-reconciliation', _GET)

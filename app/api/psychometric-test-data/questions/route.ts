@@ -7,9 +7,10 @@ import {
   getPsychometricQuestions,
 } from '@/lib/api/psychometric-test-data'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 export const dynamic = 'force-dynamic'
 
-export async function GET(request: NextRequest) {
+async function _GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
     const categoriesParam = searchParams.get('categories')
@@ -63,3 +64,5 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
+export const GET = withErrorLogging('/api/psychometric-test-data/questions', _GET)

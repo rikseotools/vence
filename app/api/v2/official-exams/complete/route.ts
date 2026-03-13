@@ -5,6 +5,7 @@ import { getDb } from '@/db/client'
 import { tests, testQuestions, psychometricUserQuestionHistory, userQuestionHistory } from '@/db/schema'
 import { eq, and, sql } from 'drizzle-orm'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 // Client with service role - bypasses RLS for server operations
 const getSupabaseAdmin = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -45,7 +46,7 @@ const getSupabaseAdmin = () => createClient(
  * - answeredCount: number
  * - error: string (if failed)
  */
-export async function POST(request: NextRequest) {
+async function _POST(request: NextRequest) {
   console.log('🎯 [API/v2/official-exams/complete] Request received')
 
   try {
@@ -362,3 +363,5 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
+export const POST = withErrorLogging('/api/v2/official-exams/complete', _POST)

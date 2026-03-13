@@ -4,7 +4,8 @@ import { NextResponse } from 'next/server'
 import { getFlaggedQuestions, markCorrect, markNeedsReview } from '@/lib/api/admin-embedding-review'
 import { embeddingReviewActionSchema } from '@/lib/api/admin-embedding-review/schemas'
 
-export async function GET() {
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+async function _GET() {
   try {
     const result = await getFlaggedQuestions()
 
@@ -19,7 +20,7 @@ export async function GET() {
   }
 }
 
-export async function POST(request: Request) {
+async function _POST(request: Request) {
   try {
     const body = await request.json()
     const parsed = embeddingReviewActionSchema.safeParse(body)
@@ -44,3 +45,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, error: (error as Error).message })
   }
 }
+
+export const GET = withErrorLogging('/api/admin/embedding-review', _GET)
+export const POST = withErrorLogging('/api/admin/embedding-review', _POST)

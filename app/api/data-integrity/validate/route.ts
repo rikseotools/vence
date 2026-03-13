@@ -2,6 +2,7 @@ import { getDb } from '@/db/client'
 import { laws, articles, topicScope } from '@/db/schema'
 import { eq, and, inArray } from 'drizzle-orm'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 // Configuracion oficial de leyes segun BOE
 const LEYES_OFICIALES: Record<string, {
   nombre: string
@@ -237,7 +238,7 @@ async function validateTopicScopeReferences(db: ReturnType<typeof getDb>): Promi
   return topicScopeErrors
 }
 
-export async function GET(request: Request) {
+async function _GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const cached = searchParams.get('cached')
 
@@ -326,3 +327,5 @@ export async function GET(request: Request) {
     }, { status: 500 })
   }
 }
+
+export const GET = withErrorLogging('/api/data-integrity/validate', _GET)

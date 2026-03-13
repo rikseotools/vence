@@ -25,6 +25,7 @@ import {
   verifyWithGoogle,
 } from '@/lib/api/verify-articles/ai-helpers'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 // ============================================
 // TYPES
 // ============================================
@@ -215,7 +216,7 @@ async function processBatch(params: {
 // POST: Run AI verification
 // ============================================
 
-export async function POST(request: NextRequest) {
+async function _POST(request: NextRequest) {
   try {
     const body = await request.json()
     const validation = aiVerifyArticleParamsSchema.safeParse(body)
@@ -386,7 +387,7 @@ export async function POST(request: NextRequest) {
 // GET: Retrieve saved verification results
 // ============================================
 
-export async function GET(request: NextRequest) {
+async function _GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const lawId = searchParams.get('lawId')
   const articleNumber = searchParams.get('articleNumber')
@@ -416,3 +417,6 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
+export const POST = withErrorLogging('/api/verify-articles/ai-verify-article', _POST)
+export const GET = withErrorLogging('/api/verify-articles/ai-verify-article', _GET)

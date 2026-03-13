@@ -6,7 +6,8 @@ import webpush from 'web-push'
 import { getUserPushSettings, logTestPushEvent } from '@/lib/api/admin-send-test-notification'
 import { sendTestNotificationRequestSchema } from '@/lib/api/admin-send-test-notification/schemas'
 
-export async function POST(request: Request) {
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+async function _POST(request: Request) {
   try {
     const body = await request.json()
     const parsed = sendTestNotificationRequestSchema.safeParse(body)
@@ -170,3 +171,5 @@ export async function POST(request: Request) {
     )
   }
 }
+
+export const POST = withErrorLogging('/api/admin/send-test-notification', _POST)

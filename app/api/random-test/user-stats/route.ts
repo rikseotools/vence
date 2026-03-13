@@ -6,9 +6,10 @@ import {
   type UserStatsResponse,
 } from '@/lib/api/random-test/schemas'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 export const dynamic = 'force-dynamic'
 
-export async function POST(request: NextRequest): Promise<NextResponse<UserStatsResponse>> {
+async function _POST(request: NextRequest): Promise<NextResponse<UserStatsResponse>> {
   try {
     const body = await request.json()
 
@@ -38,3 +39,5 @@ export async function POST(request: NextRequest): Promise<NextResponse<UserStats
     }, { status: 500 })
   }
 }
+
+export const POST = withErrorLogging('/api/random-test/user-stats', _POST)

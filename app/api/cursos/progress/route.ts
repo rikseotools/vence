@@ -7,6 +7,7 @@ import {
   safeParseGetProgress,
 } from '@/lib/api/video-courses'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 export const dynamic = 'force-dynamic'
 
 const getSupabase = () => createClient(
@@ -23,7 +24,7 @@ const getSupabase = () => createClient(
  * - currentTimeSeconds: number (required)
  * - completed: boolean (optional, default false)
  */
-export async function POST(request: NextRequest) {
+async function _POST(request: NextRequest) {
   try {
     // Auth is required
     const authHeader = request.headers.get('authorization')
@@ -80,7 +81,7 @@ export async function POST(request: NextRequest) {
  * GET /api/cursos/progress?lessonId=xxx
  * Get progress for a specific lesson
  */
-export async function GET(request: NextRequest) {
+async function _GET(request: NextRequest) {
   try {
     // Auth is required
     const authHeader = request.headers.get('authorization')
@@ -130,3 +131,6 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
+export const POST = withErrorLogging('/api/cursos/progress', _POST)
+export const GET = withErrorLogging('/api/cursos/progress', _GET)

@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-export async function POST(request) {
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+async function _POST(request) {
   try {
     const { userId, newSubscription } = await request.json()
 
@@ -72,3 +73,5 @@ export async function POST(request) {
     )
   }
 }
+
+export const POST = withErrorLogging('/api/push/refresh-subscription', _POST)

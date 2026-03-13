@@ -3,7 +3,8 @@ import { fetchArticleContent, fetchArticleOfficialExamData } from '@/lib/teoriaF
 import { mapLawSlugToShortName } from '@/lib/lawMappingUtils'
 import { createClient } from '@supabase/supabase-js'
 
-export async function GET(request, { params }) {
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+async function _GET(request, { params }) {
   try {
     const resolvedParams = await params
     const lawSlug = resolvedParams.law
@@ -50,3 +51,5 @@ export async function GET(request, { params }) {
     )
   }
 }
+
+export const GET = withErrorLogging('/api/teoria/[law]/[articleNumber]', _GET)

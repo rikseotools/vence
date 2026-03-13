@@ -17,6 +17,7 @@ import {
 } from '@/lib/chat/domains/verification'
 import { insertChatLog } from '@/lib/api/ai-chat-logs'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 // Cliente Supabase para queries que no están en Drizzle (getUserDailyMessageCount, getUserName)
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -152,7 +153,7 @@ async function getUserDailyMessageCount(userId: string): Promise<number> {
   }
 }
 
-export async function POST(request: NextRequest) {
+async function _POST(request: NextRequest) {
   const startTime = Date.now()
   logger.info('Chat v2 request started', { domain: 'api' })
 
@@ -487,9 +488,12 @@ export async function POST(request: NextRequest) {
 }
 
 // Bloquear GET
-export async function GET() {
+async function _GET() {
   return NextResponse.json(
     { error: 'Método no permitido. Usa POST.' },
     { status: 405 }
   )
 }
+
+export const POST = withErrorLogging('/api/ai/chat-v2', _POST)
+export const GET = withErrorLogging('/api/ai/chat-v2', _GET)

@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { detectUsersForEmails } from '@/lib/emails/emailService.server'
 
-export async function GET() {
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+async function _GET() {
   try {
     console.log('🔍 API: Detectando usuarios para emails...')
     
@@ -28,3 +29,5 @@ export async function GET() {
     }, { status: 500 })
   }
 }
+
+export const GET = withErrorLogging('/api/emails/queue', _GET)

@@ -1,11 +1,12 @@
 import { createClient } from '@supabase/supabase-js'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
 
-export async function POST(request) {
+async function _POST(request) {
   try {
     const { logId, feedback, comment } = await request.json()
 
@@ -53,3 +54,5 @@ export async function POST(request) {
     }, { status: 500 })
   }
 }
+
+export const POST = withErrorLogging('/api/ai/chat/feedback', _POST)

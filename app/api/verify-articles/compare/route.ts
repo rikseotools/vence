@@ -5,6 +5,7 @@ import {
   getArticleByLawAndNumber,
 } from '@/lib/api/verify-articles/queries'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 function normalizeArticleNumber(num: string | null): string {
   if (!num) return ''
   return num
@@ -162,7 +163,7 @@ async function fetchArticleFromBOE(boeUrl: string, articleNumber: string): Promi
   }
 }
 
-export async function GET(request: NextRequest) {
+async function _GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const lawId = searchParams.get('lawId')
   const articleNumber = searchParams.get('articleNumber')
@@ -200,3 +201,5 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
+export const GET = withErrorLogging('/api/verify-articles/compare', _GET)

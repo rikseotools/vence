@@ -8,6 +8,7 @@ import { getDb } from '@/db/client'
 import { notificationEvents, userNotificationSettings } from '@/db/schema'
 import { eq, gte, sql } from 'drizzle-orm'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 // Configurar VAPID keys para web-push
 const vapidDetails = {
   subject: 'mailto:admin@vence.es',
@@ -31,7 +32,7 @@ function getServiceClient() {
   )
 }
 
-export async function POST(request: Request) {
+async function _POST(request: Request) {
   try {
     const supabase = getServiceClient()
 
@@ -299,3 +300,5 @@ export async function POST(request: Request) {
     }, { status: 500 })
   }
 }
+
+export const POST = withErrorLogging('/api/admin/send-push-notification', _POST)

@@ -2,7 +2,8 @@
 import { NextResponse } from 'next/server'
 import { loadUsersWithPush } from '@/lib/api/admin-load-users-with-push'
 
-export async function POST() {
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+async function _POST() {
   try {
     const result = await loadUsersWithPush()
     return NextResponse.json(result)
@@ -15,3 +16,5 @@ export async function POST() {
     )
   }
 }
+
+export const POST = withErrorLogging('/api/admin/load-users-with-push', _POST)

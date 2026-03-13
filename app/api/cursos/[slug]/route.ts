@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getCourseBySlug, safeParseGetCourseBySlug } from '@/lib/api/video-courses'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 export const dynamic = 'force-dynamic'
 
 const getSupabase = () => createClient(
@@ -14,7 +15,7 @@ const getSupabase = () => createClient(
  * Returns course details with all lessons
  * Optionally includes user progress if authenticated
  */
-export async function GET(
+async function _GET(
   request: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
@@ -58,3 +59,5 @@ export async function GET(
     )
   }
 }
+
+export const GET = withErrorLogging('/api/cursos/[slug]', _GET)

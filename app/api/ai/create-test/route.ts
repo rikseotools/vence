@@ -4,6 +4,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -31,7 +32,7 @@ interface CreateTestRequest {
   lawShortName?: string
 }
 
-export async function POST(request: NextRequest) {
+async function _POST(request: NextRequest) {
   console.log('🎯 [API/create-test] Request received')
 
   try {
@@ -610,3 +611,5 @@ async function getArticleQuestions(options: CreateTestRequest) {
     message: `Test con ${questionIds.length} preguntas del Art. ${articleNumber}`
   }
 }
+
+export const POST = withErrorLogging('/api/ai/create-test', _POST)

@@ -8,6 +8,7 @@ import type Stripe from 'stripe'
 import { shouldDowngradeNow, formatPeriodEnd, determinePlanType } from '@/lib/stripe-webhook-handlers'
 import { sendEmailV2 } from '@/lib/api/emails'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type StripeSubscription = any
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -81,7 +82,7 @@ const getServiceSupabase = (): SupabaseClient => {
   )
 }
 
-export async function POST(request: NextRequest) {
+async function _POST(request: NextRequest) {
   try {
     const body = await request.text()
     const headersList = await headers()
@@ -979,3 +980,5 @@ async function recordPaymentSettlement(data: SettlementData): Promise<void> {
   }
 }
 
+
+export const POST = withErrorLogging('/api/stripe/webhook', _POST)

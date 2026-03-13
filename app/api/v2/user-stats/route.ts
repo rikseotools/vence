@@ -2,7 +2,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserPublicStats } from '@/lib/api/user-stats/queries'
 
-export async function GET(request: NextRequest) {
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+async function _GET(request: NextRequest) {
   try {
     const userId = request.nextUrl.searchParams.get('userId')
     if (!userId) {
@@ -19,3 +20,5 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
+export const GET = withErrorLogging('/api/v2/user-stats', _GET)

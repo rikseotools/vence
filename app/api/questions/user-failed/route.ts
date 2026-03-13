@@ -6,11 +6,12 @@ import {
   safeParseGetUserFailedQuestions,
 } from '@/lib/api/user-failed-questions'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 // ============================================
 // POST /api/questions/user-failed
 // Obtener preguntas que el usuario ha fallado
 // ============================================
-export async function POST(request: Request) {
+async function _POST(request: Request) {
   try {
     const body = await request.json()
 
@@ -62,3 +63,5 @@ export async function POST(request: Request) {
     )
   }
 }
+
+export const POST = withErrorLogging('/api/questions/user-failed', _POST)

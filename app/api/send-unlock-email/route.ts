@@ -4,12 +4,13 @@ import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
 import { canSendEmail, generateUnsubscribeToken, getUnsubscribeUrl } from '@/lib/api/emails'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-export async function POST(request: Request) {
+async function _POST(request: Request) {
   try {
     const body = await request.json()
     const {
@@ -239,3 +240,5 @@ function generateUnlockEmailHTML(data: UnlockEmailData): string {
     </html>
   `
 }
+
+export const POST = withErrorLogging('/api/send-unlock-email', _POST)

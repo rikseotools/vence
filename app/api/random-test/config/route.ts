@@ -8,9 +8,10 @@ import {
   type ConfigResponse,
 } from '@/lib/api/random-test/schemas'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 export const dynamic = 'force-dynamic'
 
-export async function GET(request: NextRequest): Promise<NextResponse<ConfigResponse>> {
+async function _GET(request: NextRequest): Promise<NextResponse<ConfigResponse>> {
   try {
     const { searchParams } = new URL(request.url)
     const oposicion = searchParams.get('oposicion')
@@ -58,3 +59,5 @@ export async function GET(request: NextRequest): Promise<NextResponse<ConfigResp
     }, { status: 500 })
   }
 }
+
+export const GET = withErrorLogging('/api/random-test/config', _GET)

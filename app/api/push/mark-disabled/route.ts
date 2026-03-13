@@ -5,13 +5,14 @@ import { userNotificationSettings, notificationEvents } from '@/db/schema'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod/v3'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 const markDisabledSchema = z.object({
   userId: z.string().uuid(),
   reason: z.string().min(1),
   timestamp: z.string().optional(),
 })
 
-export async function POST(request: Request) {
+async function _POST(request: Request) {
   try {
     const body = await request.json()
     const parsed = markDisabledSchema.safeParse(body)
@@ -90,3 +91,5 @@ export async function POST(request: Request) {
     )
   }
 }
+
+export const POST = withErrorLogging('/api/push/mark-disabled', _POST)

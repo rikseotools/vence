@@ -3,7 +3,8 @@
 import { revalidateTag, revalidatePath } from 'next/cache'
 import { NextRequest, NextResponse } from 'next/server'
 
-export async function POST(request: NextRequest) {
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+async function _POST(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const secret = searchParams.get('secret')
@@ -45,6 +46,9 @@ export async function POST(request: NextRequest) {
 }
 
 // También permitir GET para facilitar uso manual
-export async function GET(request: NextRequest) {
+async function _GET(request: NextRequest) {
   return POST(request)
 }
+
+export const POST = withErrorLogging('/api/revalidate', _POST)
+export const GET = withErrorLogging('/api/revalidate', _GET)

@@ -8,11 +8,12 @@ import {
   VALID_OPOSICIONES
 } from '@/lib/api/theme-stats'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 export const maxDuration = 60
 
-export async function GET(request: NextRequest) {
+async function _GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get('userId')
@@ -61,3 +62,5 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
+export const GET = withErrorLogging('/api/user/theme-stats', _GET)

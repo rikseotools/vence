@@ -12,11 +12,12 @@ import {
   type FilterType
 } from '@/lib/api/admin-feedback'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 // ============================================
 // GET - Cargar feedbacks, conversaciones y stats
 // ============================================
 
-export async function GET(request: NextRequest) {
+async function _GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
 
@@ -126,3 +127,5 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
+export const GET = withErrorLogging('/api/admin/feedback', _GET)

@@ -1,12 +1,13 @@
 import { createClient } from '@supabase/supabase-js'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
 
 // GET: Obtener sugerencias activas filtradas por oposición/contexto/página y ordenadas por CTR
-export async function GET(request) {
+async function _GET(request) {
   try {
     const { searchParams } = new URL(request.url)
     let oposicionId = searchParams.get('oposicionId')
@@ -116,7 +117,7 @@ export async function GET(request) {
 }
 
 // POST: Registrar click en una sugerencia
-export async function POST(request) {
+async function _POST(request) {
   try {
     const { suggestionId, suggestionKey, userId, sessionId } = await request.json()
 
@@ -158,3 +159,6 @@ export async function POST(request) {
     return Response.json({ success: false, error: 'Error interno' }, { status: 500 })
   }
 }
+
+export const GET = withErrorLogging('/api/ai/chat/suggestions', _GET)
+export const POST = withErrorLogging('/api/ai/chat/suggestions', _POST)

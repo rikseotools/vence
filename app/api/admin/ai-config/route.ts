@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server'
 import { getAllConfigs, upsertConfig } from '@/lib/api/admin-ai-config'
 import { updateAiConfigRequestSchema } from '@/lib/api/admin-ai-config/schemas'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 // Modelos disponibles por proveedor
 const AVAILABLE_MODELS: Record<string, Array<{ id: string; name: string; description: string }>> = {
   openai: [
@@ -31,7 +32,7 @@ const DEFAULT_MODELS: Record<string, string> = {
   google: 'gemini-1.5-flash',
 }
 
-export async function GET() {
+async function _GET() {
   try {
     const configs = await getAllConfigs()
 
@@ -112,7 +113,7 @@ export async function GET() {
   }
 }
 
-export async function POST(request: Request) {
+async function _POST(request: Request) {
   try {
     const body = await request.json()
     const parsed = updateAiConfigRequestSchema.safeParse(body)
@@ -162,3 +163,6 @@ export async function POST(request: Request) {
     )
   }
 }
+
+export const GET = withErrorLogging('/api/admin/ai-config', _GET)
+export const POST = withErrorLogging('/api/admin/ai-config', _POST)

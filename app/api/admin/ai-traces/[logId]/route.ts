@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getLogWithTraces, buildTraceTree } from '@/lib/api/ai-traces/queries'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
@@ -20,7 +21,7 @@ function isAdmin(email: string | undefined): boolean {
   return ADMIN_EMAILS.includes(email) || email.endsWith('@vencemitfg.es')
 }
 
-export async function GET(
+async function _GET(
   request: NextRequest,
   { params }: { params: Promise<{ logId: string }> }
 ) {
@@ -154,3 +155,5 @@ export async function GET(
     )
   }
 }
+
+export const GET = withErrorLogging('/api/admin/ai-traces/[logId]', _GET)

@@ -3,7 +3,8 @@
 import { NextResponse } from 'next/server'
 import { getDashboardData } from '@/lib/api/admin-dashboard'
 
-export async function GET() {
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+async function _GET() {
   try {
     const data = await getDashboardData()
     return NextResponse.json(data)
@@ -15,3 +16,5 @@ export async function GET() {
     )
   }
 }
+
+export const GET = withErrorLogging('/api/v2/admin/dashboard', _GET)

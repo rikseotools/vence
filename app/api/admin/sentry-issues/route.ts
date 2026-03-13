@@ -4,10 +4,11 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 const SENTRY_AUTH_TOKEN = process.env.SENTRY_AUTH_TOKEN
 const SENTRY_ORG = 'vence-x2'
 
-export async function GET(request: Request) {
+async function _GET(request: Request) {
   try {
     // Verificar autenticación
     const authHeader = request.headers.get('authorization')
@@ -108,3 +109,5 @@ export async function GET(request: Request) {
     }, { status: 500 })
   }
 }
+
+export const GET = withErrorLogging('/api/admin/sentry-issues', _GET)

@@ -8,7 +8,8 @@ import {
   getCampaignUserProfiles,
 } from '@/lib/api/admin-newsletters-history'
 
-export async function GET(request: Request) {
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+async function _GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const limit = parseInt(searchParams.get('limit') || '50')
@@ -259,3 +260,5 @@ async function handleCampaignUsers(templateId: string, date: string, eventType: 
     )
   }
 }
+
+export const GET = withErrorLogging('/api/admin/newsletters/history', _GET)

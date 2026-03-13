@@ -3,11 +3,12 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod/v3'
 import { markMessagesAsRead } from '@/lib/adminConversationTracking'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 const requestSchema = z.object({
   conversationId: z.string().uuid()
 })
 
-export async function POST(request: Request) {
+async function _POST(request: Request) {
   try {
     const body = await request.json()
     const parsed = requestSchema.safeParse(body)
@@ -38,3 +39,5 @@ export async function POST(request: Request) {
     )
   }
 }
+
+export const POST = withErrorLogging('/api/admin/mark-messages-read', _POST)

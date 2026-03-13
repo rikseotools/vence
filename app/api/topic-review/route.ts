@@ -8,7 +8,8 @@ import {
   getTopicQuestions,
 } from '@/lib/api/topic-review'
 
-export async function GET(request: Request) {
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+async function _GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const positionType = searchParams.get('position')
@@ -63,3 +64,5 @@ export async function GET(request: Request) {
     }, { status: 500 })
   }
 }
+
+export const GET = withErrorLogging('/api/topic-review', _GET)

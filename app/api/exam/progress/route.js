@@ -6,7 +6,8 @@ import {
   verifyTestOwnership
 } from '@/lib/api/exam'
 
-export async function GET(request) {
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+async function _GET(request) {
   try {
     const { searchParams } = new URL(request.url)
     const testId = searchParams.get('testId')
@@ -63,3 +64,5 @@ export async function GET(request) {
     )
   }
 }
+
+export const GET = withErrorLogging('/api/exam/progress', _GET)

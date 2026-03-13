@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { detectUnmotivatedUsers } from '@/lib/emails/emailService.server'
 
-export async function GET() {
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+async function _GET() {
   try {
     console.log('🔍 API Diagnóstico: Verificando usuarios nuevos sin motivación...')
     
@@ -25,3 +26,5 @@ export async function GET() {
     }, { status: 500 })
   }
 }
+
+export const GET = withErrorLogging('/api/emails/test-unmotivated', _GET)

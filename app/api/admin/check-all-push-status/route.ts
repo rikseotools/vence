@@ -2,7 +2,8 @@
 import { NextResponse } from 'next/server'
 import { checkAllPushStatus } from '@/lib/api/admin-check-push-status'
 
-export async function POST() {
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+async function _POST() {
   try {
     const result = await checkAllPushStatus()
     return NextResponse.json(result)
@@ -15,3 +16,5 @@ export async function POST() {
     )
   }
 }
+
+export const POST = withErrorLogging('/api/admin/check-all-push-status', _POST)

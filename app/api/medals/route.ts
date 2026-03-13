@@ -7,6 +7,7 @@ import {
   checkAndSaveNewMedals,
 } from '@/lib/api/medals'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
@@ -14,7 +15,7 @@ export const revalidate = 0
 // GET: Obtener medallas del usuario
 // ============================================
 
-export async function GET(request: NextRequest) {
+async function _GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get('userId')
@@ -47,7 +48,7 @@ export async function GET(request: NextRequest) {
 // POST: Verificar y guardar medallas nuevas
 // ============================================
 
-export async function POST(request: NextRequest) {
+async function _POST(request: NextRequest) {
   try {
     const body = await request.json()
 
@@ -70,3 +71,6 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
+export const GET = withErrorLogging('/api/medals', _GET)
+export const POST = withErrorLogging('/api/medals', _POST)

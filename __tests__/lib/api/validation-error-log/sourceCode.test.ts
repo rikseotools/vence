@@ -1,5 +1,5 @@
 // __tests__/lib/api/validation-error-log/sourceCode.test.ts
-// Verifica que las 3 API routes importan y usan logValidationError
+// Verifica que las API routes usan withErrorLogging wrapper
 
 import * as fs from 'fs'
 import * as path from 'path'
@@ -10,38 +10,68 @@ const apiRoutes = [
   { file: 'app/api/answer/route.ts', endpoint: '/api/answer' },
   { file: 'app/api/exam/validate/route.ts', endpoint: '/api/exam/validate' },
   { file: 'app/api/answer/psychometric/route.ts', endpoint: '/api/answer/psychometric' },
+  { file: 'app/api/exam/answer/route.ts', endpoint: '/api/exam/answer' },
+  { file: 'app/api/exam/pending/route.js', endpoint: '/api/exam/pending' },
 ]
 
-describe('API routes — validation error logging integrado', () => {
+describe('API routes — withErrorLogging wrapper', () => {
   for (const { file, endpoint } of apiRoutes) {
     describe(endpoint, () => {
       const content = fs.readFileSync(path.join(ROOT, file), 'utf-8')
 
-      it('importa logValidationError', () => {
-        expect(content).toMatch(/import.*logValidationError.*from/)
+      it('importa withErrorLogging', () => {
+        expect(content).toMatch(/import.*withErrorLogging.*from/)
       })
 
-      it('importa classifyError', () => {
-        expect(content).toMatch(/import.*classifyError.*from/)
+      it('exporta handler envuelto con withErrorLogging', () => {
+        expect(content).toMatch(/export const (GET|POST) = withErrorLogging\(/)
       })
 
-      it('llama a logValidationError en el catch de errores 500', () => {
-        expect(content).toMatch(/logValidationError\(\{[\s\S]*?errorType:\s*classifyError\(error\)/)
-      })
-
-      it('incluye durationMs para medir latencia', () => {
-        expect(content).toMatch(/durationMs:\s*Date\.now\(\)\s*-\s*startTime/)
-      })
-
-      it('incluye userAgent del request', () => {
-        expect(content).toMatch(/userAgent:\s*request\.headers\.get\(['"]user-agent['"]\)/)
-      })
-
-      it('mide startTime al inicio del handler', () => {
-        expect(content).toMatch(/const startTime = Date\.now\(\)/)
+      it('usa el endpoint correcto en el wrapper', () => {
+        expect(content).toContain(`withErrorLogging('${endpoint}'`)
       })
     })
   }
+})
+
+describe('withErrorLogging wrapper — source code', () => {
+  const content = fs.readFileSync(
+    path.join(ROOT, 'lib/api/withErrorLogging.ts'),
+    'utf-8'
+  )
+
+  it('importa logValidationError', () => {
+    expect(content).toMatch(/import.*logValidationError.*from/)
+  })
+
+  it('importa classifyError', () => {
+    expect(content).toMatch(/import.*classifyError.*from/)
+  })
+
+  it('logea respuestas 500+', () => {
+    expect(content).toMatch(/response\.status >= 500/)
+  })
+
+  it('captura errores no manejados', () => {
+    expect(content).toMatch(/catch \(error\)/)
+  })
+
+  it('mide duración con startTime', () => {
+    expect(content).toMatch(/Date\.now\(\) - startTime/)
+  })
+
+  it('extrae userAgent del request', () => {
+    expect(content).toMatch(/user-agent/)
+  })
+
+  it('parsea body para POST/PUT/PATCH', () => {
+    expect(content).toMatch(/request\.clone\(\)\.json\(\)/)
+  })
+
+  it('es fire-and-forget (no await logValidationError)', () => {
+    // logValidationError ya es fire-and-forget por diseño
+    expect(content).not.toMatch(/await logValidationError/)
+  })
 })
 
 describe('next.config.mjs — deploy version', () => {

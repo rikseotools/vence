@@ -2,6 +2,7 @@
 // Usa raw REST fetch a Supabase intencionalmente (testea conectividad REST)
 import { NextResponse } from 'next/server'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 interface DebugResult {
   timestamp: string
   email: string
@@ -21,7 +22,7 @@ interface DebugResult {
   } | null
 }
 
-export async function GET(request: Request) {
+async function _GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const email = searchParams.get('email') ?? 'ilovetestpro@gmail.com'
@@ -131,3 +132,5 @@ export async function GET(request: Request) {
     )
   }
 }
+
+export const GET = withErrorLogging('/api/debug-email-preferences', _GET)

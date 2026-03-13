@@ -8,6 +8,7 @@ import { feedbackConversations, feedbackMessages, userFeedback } from '@/db/sche
 import { eq } from 'drizzle-orm'
 import { z } from 'zod/v3'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 // ============================================
 // SCHEMAS DE VALIDACIÓN
 // ============================================
@@ -163,7 +164,7 @@ async function sendUserMessage(params: SendMessageRequest): Promise<SendMessageR
 // ENDPOINT POST
 // ============================================
 
-export async function POST(request: NextRequest) {
+async function _POST(request: NextRequest) {
   try {
     const body = await request.json()
 
@@ -214,9 +215,12 @@ export async function POST(request: NextRequest) {
 }
 
 // Bloquear GET para evitar accesos accidentales
-export async function GET() {
+async function _GET() {
   return NextResponse.json(
     { error: 'Método no permitido. Usa POST.' },
     { status: 405 }
   )
 }
+
+export const POST = withErrorLogging('/api/feedback/message', _POST)
+export const GET = withErrorLogging('/api/feedback/message', _GET)

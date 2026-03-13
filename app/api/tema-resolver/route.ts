@@ -7,6 +7,7 @@ import {
   safeParseResolveTemasBatchRequest,
 } from '@/lib/api/tema-resolver'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
@@ -22,7 +23,7 @@ export const revalidate = 0
  * - lawShortName: Nombre corto de la ley (opcional)
  * - oposicionId: ID de la oposición (default: auxiliar_administrativo_estado)
  */
-export async function GET(request: NextRequest) {
+async function _GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
 
@@ -83,7 +84,7 @@ export async function GET(request: NextRequest) {
  *   oposicionId: string (default: auxiliar_administrativo_estado)
  * }
  */
-export async function POST(request: NextRequest) {
+async function _POST(request: NextRequest) {
   try {
     const body = await request.json()
 
@@ -119,3 +120,6 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
+export const GET = withErrorLogging('/api/tema-resolver', _GET)
+export const POST = withErrorLogging('/api/tema-resolver', _POST)

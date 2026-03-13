@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getDb } from '@/db/client'
 import { sql } from 'drizzle-orm'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 interface QualityIssue {
   id: string
   question_text: string
@@ -214,7 +215,7 @@ async function runChecks(): Promise<QualityResponse> {
   return { success: true, totalIssues, checks }
 }
 
-export async function POST(request: NextRequest) {
+async function _POST(request: NextRequest) {
   try {
     const body = await request.json()
     const { action } = body
@@ -258,7 +259,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET(request: NextRequest) {
+async function _GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const countOnly = searchParams.get('count_only') === 'true'
@@ -291,3 +292,6 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
+export const POST = withErrorLogging('/api/admin/question-quality', _POST)
+export const GET = withErrorLogging('/api/admin/question-quality', _GET)

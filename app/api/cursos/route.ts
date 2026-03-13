@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server'
 import { getVideoCourses } from '@/lib/api/video-courses'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 export const dynamic = 'force-dynamic'
 
 /**
  * GET /api/cursos
  * Returns list of all active video courses
  */
-export async function GET() {
+async function _GET() {
   try {
     const result = await getVideoCourses()
 
@@ -24,3 +25,5 @@ export async function GET() {
     )
   }
 }
+
+export const GET = withErrorLogging('/api/cursos', _GET)

@@ -6,12 +6,13 @@ import {
   getLawById,
 } from '@/lib/api/verify-articles/queries'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-export async function GET(request: NextRequest) {
+async function _GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const lawId = searchParams.get('lawId')
   const articleNumber = searchParams.get('articleNumber')
@@ -98,3 +99,5 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
+export const GET = withErrorLogging('/api/verify-articles/questions', _GET)

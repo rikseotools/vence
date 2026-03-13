@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server'
 import { getAllLawsWithVerification } from '@/lib/api/verify-articles/queries'
 import { calculateIsOk } from '@/lib/api/verify-articles/ai-helpers'
 
-export async function GET() {
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+async function _GET() {
   try {
     const lawsList = await getAllLawsWithVerification()
 
@@ -38,3 +39,5 @@ export async function GET() {
     )
   }
 }
+
+export const GET = withErrorLogging('/api/verify-articles/stats-by-law', _GET)

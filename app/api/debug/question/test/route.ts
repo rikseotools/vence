@@ -3,7 +3,8 @@ import { getDb } from '@/db/client'
 import { psychometricQuestions } from '@/db/schema'
 import { eq } from 'drizzle-orm'
 
-export async function GET() {
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+async function _GET() {
   try {
     const db = getDb()
 
@@ -50,3 +51,5 @@ export async function GET() {
     )
   }
 }
+
+export const GET = withErrorLogging('/api/debug/question/test', _GET)

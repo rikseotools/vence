@@ -3,6 +3,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 // Lista de emails bajo control de sesiones simultáneas
 const CONTROLLED_EMAILS: string[] = [
   'edu77santoyo@gmail.com'
@@ -19,7 +20,7 @@ interface CloseOthersResponse {
   error?: string
 }
 
-export async function POST(request: NextRequest): Promise<NextResponse<CloseOthersResponse>> {
+async function _POST(request: NextRequest): Promise<NextResponse<CloseOthersResponse>> {
   try {
     // Obtener el token de autenticación
     const authHeader = request.headers.get('authorization')
@@ -117,3 +118,5 @@ export async function POST(request: NextRequest): Promise<NextResponse<CloseOthe
     }, { status: 500 })
   }
 }
+
+export const POST = withErrorLogging('/api/sessions/close-others', _POST)

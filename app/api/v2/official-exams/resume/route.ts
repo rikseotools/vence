@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getOfficialExamResume } from '@/lib/api/official-exams'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 // Client with service role - bypasses RLS for server operations
 const getSupabaseAdmin = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -30,7 +31,7 @@ const getSupabaseAdmin = () => createClient(
  * - Verifies user owns the test
  * - Does NOT return correct_option - validation via /api/exam/validate
  */
-export async function GET(request: NextRequest) {
+async function _GET(request: NextRequest) {
   console.log('🎯 [API/v2/official-exams/resume] Request received')
 
   try {
@@ -100,3 +101,5 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
+export const GET = withErrorLogging('/api/v2/official-exams/resume', _GET)

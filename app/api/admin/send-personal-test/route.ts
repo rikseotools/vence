@@ -6,7 +6,8 @@ import webpush from 'web-push'
 import { getAdminPushSettings, logPushEvent } from '@/lib/api/admin-send-personal-test'
 import { sendPersonalTestRequestSchema } from '@/lib/api/admin-send-personal-test/schemas'
 
-export async function POST(request: Request) {
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+async function _POST(request: Request) {
   try {
     const body = await request.json()
     const parsed = sendPersonalTestRequestSchema.safeParse(body)
@@ -156,3 +157,5 @@ export async function POST(request: Request) {
     )
   }
 }
+
+export const POST = withErrorLogging('/api/admin/send-personal-test', _POST)

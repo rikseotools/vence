@@ -2,7 +2,8 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { processUnsubscribeByToken } from '@/lib/emails/emailService.server'
 
-export async function POST(request: NextRequest) {
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+async function _POST(request: NextRequest) {
   try {
     const body = await request.json()
     const { token, unsubscribeAll = false, specificTypes = null, categories = null } = body as {
@@ -34,3 +35,5 @@ export async function POST(request: NextRequest) {
     }, { status: 500 })
   }
 }
+
+export const POST = withErrorLogging('/api/unsubscribe', _POST)

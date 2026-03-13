@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import OpenAI from 'openai'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -73,7 +74,7 @@ async function searchArticlesByKeywords(searchText: string, lawName?: string | n
   return data || []
 }
 
-export async function POST(request: NextRequest) {
+async function _POST(request: NextRequest) {
   const startTime = Date.now()
 
   try {
@@ -232,3 +233,5 @@ RAZONAMIENTO: [Explica brevemente por qué esa es la respuesta correcta]`
     }, { status: 500 })
   }
 }
+
+export const POST = withErrorLogging('/api/ai/verify-answer', _POST)

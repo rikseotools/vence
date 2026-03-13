@@ -5,7 +5,8 @@
 // La lista de question_ids se preserva en tests.questions_metadata.
 import { NextRequest, NextResponse } from 'next/server'
 
-export async function POST(request: NextRequest) {
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+async function _POST(request: NextRequest) {
   // Consumir el body para evitar warnings de Next.js
   try { await request.json() } catch { /* ignore */ }
 
@@ -17,3 +18,5 @@ export async function POST(request: NextRequest) {
     deprecated: true,
   })
 }
+
+export const POST = withErrorLogging('/api/exam/init', _POST)

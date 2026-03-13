@@ -10,7 +10,8 @@ import {
   safeParseGetUserAnalytics
 } from '@/lib/api/questions'
 
-export async function GET(request: NextRequest) {
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+async function _GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const action = searchParams.get('action') || 'history'
@@ -111,3 +112,5 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
+export const GET = withErrorLogging('/api/user/question-history', _GET)

@@ -11,11 +11,12 @@ import {
   normalizeArticleNumber,
 } from '@/lib/boe-extractor'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 function generateContentHash(content: string | null): string {
   return crypto.createHash('sha256').update(content || '').digest('hex')
 }
 
-export async function POST(request: NextRequest) {
+async function _POST(request: NextRequest) {
   try {
     const body = await request.json()
     const validation = addMissingParamsSchema.safeParse(body)
@@ -127,3 +128,5 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
+export const POST = withErrorLogging('/api/verify-articles/add-missing', _POST)

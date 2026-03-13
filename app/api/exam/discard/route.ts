@@ -7,13 +7,14 @@ import { tests } from '@/db/schema'
 import { eq, and } from 'drizzle-orm'
 import { z } from 'zod/v3'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 // Schema de validación
 const discardExamSchema = z.object({
   testId: z.string().uuid('ID de test inválido'),
   userId: z.string().uuid('ID de usuario inválido')
 })
 
-export async function POST(request: NextRequest) {
+async function _POST(request: NextRequest) {
   try {
     const body = await request.json()
 
@@ -87,3 +88,5 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
+export const POST = withErrorLogging('/api/exam/discard', _POST)

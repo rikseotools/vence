@@ -3,7 +3,8 @@ import { NextResponse } from 'next/server'
 import { setupTestUsersRequestSchema } from '@/lib/api/admin-setup-test-users/schemas'
 import { setupTestUsers } from '@/lib/api/admin-setup-test-users'
 
-export async function POST(request: Request) {
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+async function _POST(request: Request) {
   try {
     const body = await request.json()
     const parsed = setupTestUsersRequestSchema.safeParse(body)
@@ -34,3 +35,5 @@ export async function POST(request: Request) {
     )
   }
 }
+
+export const POST = withErrorLogging('/api/admin/setup-test-users', _POST)

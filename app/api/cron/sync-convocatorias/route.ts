@@ -32,6 +32,7 @@ import {
   generarResumen
 } from '@/lib/boe/convocatoriasParser';
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 // Crear cliente Supabase con service role key (bypass RLS)
 function getSupabaseAdmin() {
   return createClient(
@@ -46,7 +47,7 @@ function getSupabaseAdmin() {
   );
 }
 
-export async function GET(request: Request) {
+async function _GET(request: Request) {
   // 1. Verificar autorización
   const authHeader = request.headers.get('authorization');
   const expectedAuth = `Bearer ${process.env.CRON_SECRET}`;
@@ -338,3 +339,5 @@ function formatFecha(fecha: string): string {
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
+
+export const GET = withErrorLogging('/api/cron/sync-convocatorias', _GET)

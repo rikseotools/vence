@@ -10,6 +10,7 @@ import {
 } from '@/lib/services/metaConversionsAPI'
 import { z } from 'zod/v3'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 const metaTrackSchema = z.object({
   eventName: z.string().min(1),
   email: z.string().optional(),
@@ -21,7 +22,7 @@ const metaTrackSchema = z.object({
   customData: z.record(z.unknown()).default({}),
 })
 
-export async function POST(request: Request) {
+async function _POST(request: Request) {
   try {
     const body = await request.json()
     const parsed = metaTrackSchema.safeParse(body)
@@ -135,3 +136,5 @@ export async function POST(request: Request) {
     )
   }
 }
+
+export const POST = withErrorLogging('/api/meta/track', _POST)

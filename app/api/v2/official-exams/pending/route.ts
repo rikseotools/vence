@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getPendingOfficialExams } from '@/lib/api/official-exams'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 // Client with service role - bypasses RLS for server operations
 const getSupabaseAdmin = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -23,7 +24,7 @@ const getSupabaseAdmin = () => createClient(
  * - total: number
  * - error: string (if failed)
  */
-export async function GET(request: NextRequest) {
+async function _GET(request: NextRequest) {
   console.log('🎯 [API/v2/official-exams/pending] Request received')
 
   try {
@@ -78,3 +79,5 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
+export const GET = withErrorLogging('/api/v2/official-exams/pending', _GET)

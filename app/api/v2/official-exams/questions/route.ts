@@ -5,6 +5,7 @@ import {
   safeParseGetOfficialExamQuestions,
 } from '@/lib/api/official-exams'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 // Force dynamic rendering - never cache this route
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -26,7 +27,7 @@ const getSupabase = () => createClient(
  * Returns questions from both `questions` and `psychometric_questions` tables
  * SECURITY: Does NOT return correct_option - use /api/answer or /api/answer/psychometric to validate
  */
-export async function GET(request: NextRequest) {
+async function _GET(request: NextRequest) {
   console.log('🎯 [API/v2/official-exams/questions] Request received')
 
   try {
@@ -97,3 +98,5 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
+export const GET = withErrorLogging('/api/v2/official-exams/questions', _GET)

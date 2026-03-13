@@ -7,12 +7,13 @@ import {
   oposicionDisplayNames
 } from '@/lib/api/newsletters'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-export async function GET() {
+async function _GET() {
   try {
     console.log('📊 [Newsletter/Audience] Obteniendo estadísticas de audiencia...')
 
@@ -55,3 +56,5 @@ export async function GET() {
     }, { status: 500 })
   }
 }
+
+export const GET = withErrorLogging('/api/admin/newsletters/audience', _GET)

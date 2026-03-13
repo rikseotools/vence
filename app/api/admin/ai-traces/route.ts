@@ -6,6 +6,7 @@ import { createClient } from '@supabase/supabase-js'
 import { getTracesRequestSchema } from '@/lib/api/ai-traces/schemas'
 import { getTracesList } from '@/lib/api/ai-traces/queries'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
@@ -21,7 +22,7 @@ function isAdmin(email: string | undefined): boolean {
   return ADMIN_EMAILS.includes(email) || email.endsWith('@vencemitfg.es')
 }
 
-export async function GET(request: NextRequest) {
+async function _GET(request: NextRequest) {
   try {
     // Get auth token
     const authHeader = request.headers.get('Authorization')
@@ -116,3 +117,5 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
+export const GET = withErrorLogging('/api/admin/ai-traces', _GET)

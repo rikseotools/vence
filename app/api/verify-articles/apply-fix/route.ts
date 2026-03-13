@@ -6,10 +6,11 @@ import {
   markVerificationFixApplied,
 } from '@/lib/api/verify-articles/queries'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 const OPTION_MAP: Record<string, number> = { A: 0, B: 1, C: 2, D: 3 }
 const OPTION_LETTERS = ['A', 'B', 'C', 'D'] as const
 
-export async function POST(request: NextRequest) {
+async function _POST(request: NextRequest) {
   try {
     const body = await request.json()
     const validation = applyFixParamsSchema.safeParse(body)
@@ -71,3 +72,5 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
+export const POST = withErrorLogging('/api/verify-articles/apply-fix', _POST)

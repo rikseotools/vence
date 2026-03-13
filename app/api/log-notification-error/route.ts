@@ -3,6 +3,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod/v3'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 const notificationErrorSchema = z.object({
   error: z.string(),
   details: z.object({
@@ -15,7 +16,7 @@ const notificationErrorSchema = z.object({
   timestamp: z.string().optional(),
 })
 
-export async function POST(request: Request) {
+async function _POST(request: Request) {
   try {
     const body = await request.json()
     const parsed = notificationErrorSchema.safeParse(body)
@@ -51,3 +52,5 @@ export async function POST(request: Request) {
     )
   }
 }
+
+export const POST = withErrorLogging('/api/log-notification-error', _POST)

@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server'
 import { getAllLawsWithStats } from '@/lib/api/laws-configurator'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
@@ -9,7 +10,7 @@ export const revalidate = 0
 // GET: Obtener todas las leyes con estadísticas
 // ============================================
 
-export async function GET() {
+async function _GET() {
   try {
     const result = await getAllLawsWithStats()
 
@@ -31,3 +32,5 @@ export async function GET() {
     )
   }
 }
+
+export const GET = withErrorLogging('/api/laws-configurator', _GET)

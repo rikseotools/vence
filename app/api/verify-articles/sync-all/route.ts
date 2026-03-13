@@ -6,6 +6,7 @@ import {
   type SyncArticlesResponse
 } from '@/lib/api/article-sync'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 /**
  * POST /api/verify-articles/sync-all
  * Sincroniza todos los artículos de una ley desde el BOE
@@ -21,7 +22,7 @@ import {
  * - Marca como inactivos los que ya no existen en BOE
  * - PRESERVA artículos de estructura (art. 0, índice, etc.)
  */
-export async function POST(
+async function _POST(
   request: NextRequest
 ): Promise<NextResponse<SyncArticlesResponse>> {
   try {
@@ -73,9 +74,12 @@ export async function POST(
 }
 
 // Bloquear GET
-export async function GET(): Promise<NextResponse<SyncArticlesResponse>> {
+async function _GET(): Promise<NextResponse<SyncArticlesResponse>> {
   return NextResponse.json(
     { success: false, error: 'Método no permitido. Usa POST con lawId.' },
     { status: 405 }
   )
 }
+
+export const POST = withErrorLogging('/api/verify-articles/sync-all', _POST)
+export const GET = withErrorLogging('/api/verify-articles/sync-all', _GET)

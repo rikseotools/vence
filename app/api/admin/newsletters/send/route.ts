@@ -9,6 +9,7 @@ import {
   type EligibleUser
 } from '@/lib/api/newsletters'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -25,7 +26,7 @@ interface SendError {
   error: string
 }
 
-export async function POST(request: NextRequest) {
+async function _POST(request: NextRequest) {
   try {
     const body = await request.json()
     console.log('📧 [Newsletter/Send] Iniciando envío de newsletter...')
@@ -257,3 +258,5 @@ export async function POST(request: NextRequest) {
     }, { status: 500 })
   }
 }
+
+export const POST = withErrorLogging('/api/admin/newsletters/send', _POST)

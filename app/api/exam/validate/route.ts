@@ -12,8 +12,7 @@ import { getDb } from '@/db/client'
 import { questions, tests } from '@/db/schema'
 import { inArray, eq } from 'drizzle-orm'
 import { z } from 'zod/v3'
-import { logValidationError, classifyError } from '@/lib/api/validation-error-log'
-
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 // ============================================
 // SCHEMAS DE VALIDACIÓN
 // ============================================
@@ -182,15 +181,7 @@ async function validateExamAnswers(answers: ExamAnswer[], testId?: string) {
 
   } catch (error) {
     console.error('❌ [API/exam/validate] Error:', error)
-    logValidationError({
-      endpoint: '/api/exam/validate',
-      errorType: classifyError(error),
-      errorMessage: error instanceof Error ? error.message : String(error),
-      errorStack: error instanceof Error ? error.stack : undefined,
-      testId,
-      httpStatus: 500,
-    })
-    return {
+return {
       success: false,
       error: 'Error interno validando examen'
     }
@@ -201,7 +192,7 @@ async function validateExamAnswers(answers: ExamAnswer[], testId?: string) {
 // ENDPOINT POST
 // ============================================
 
-export async function POST(request: NextRequest) {
+async function _POST(request: NextRequest) {
   const startTime = Date.now()
   let body: Record<string, unknown> | undefined
 
@@ -213,17 +204,7 @@ export async function POST(request: NextRequest) {
 
     if (!validation.success) {
       console.error('❌ [API/exam/validate] Validación fallida:', validation.error.flatten())
-      logValidationError({
-        endpoint: '/api/exam/validate',
-        errorType: 'validation',
-        errorMessage: JSON.stringify(validation.error.flatten()),
-        testId: (body as any)?.testId,
-        requestBody: body,
-        httpStatus: 400,
-        durationMs: Date.now() - startTime,
-        userAgent: request.headers.get('user-agent'),
-      })
-      return NextResponse.json(
+return NextResponse.json(
         {
           success: false,
           error: 'Datos inválidos',
@@ -250,18 +231,7 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('❌ [API/exam/validate] Error:', error)
-    logValidationError({
-      endpoint: '/api/exam/validate',
-      errorType: classifyError(error),
-      errorMessage: error instanceof Error ? error.message : String(error),
-      errorStack: error instanceof Error ? error.stack : undefined,
-      testId: (body as any)?.testId,
-      requestBody: body,
-      httpStatus: 500,
-      durationMs: Date.now() - startTime,
-      userAgent: request.headers.get('user-agent'),
-    })
-    return NextResponse.json(
+return NextResponse.json(
       {
         success: false,
         error: 'Error interno del servidor'
@@ -272,9 +242,12 @@ export async function POST(request: NextRequest) {
 }
 
 // Bloquear GET para evitar exposición accidental
-export async function GET() {
+async function _GET() {
   return NextResponse.json(
     { error: 'Método no permitido. Usa POST.' },
     { status: 405 }
   )
 }
+
+export const POST = withErrorLogging('/api/exam/validate', _POST)
+export const GET = withErrorLogging('/api/exam/validate', _GET)

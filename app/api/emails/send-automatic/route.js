@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { runEmailCampaign } from '@/lib/emails/emailService.server'
 
-export async function POST() {
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+async function _POST() {
   try {
     console.log('🚀 API: Ejecutando campaña automática...')
     
@@ -28,3 +29,5 @@ export async function POST() {
     }, { status: 500 })
   }
 }
+
+export const POST = withErrorLogging('/api/emails/send-automatic', _POST)

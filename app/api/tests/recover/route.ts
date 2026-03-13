@@ -4,7 +4,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { safeParseRecoverTest, recoverTest } from '../../../../lib/api/tests'
 
-export async function POST(request: NextRequest) {
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+async function _POST(request: NextRequest) {
   try {
     const body = await request.json()
 
@@ -47,3 +48,5 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
+export const POST = withErrorLogging('/api/tests/recover', _POST)

@@ -5,6 +5,7 @@ import {
   cancelSubscription
 } from '@/lib/api/subscription'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
@@ -12,7 +13,7 @@ export const revalidate = 0
 // POST: Cancelar suscripción
 // ============================================
 
-export async function POST(request: NextRequest) {
+async function _POST(request: NextRequest) {
   try {
     const body = await request.json()
 
@@ -66,3 +67,5 @@ export async function OPTIONS() {
     }
   })
 }
+
+export const POST = withErrorLogging('/api/stripe/cancel', _POST)

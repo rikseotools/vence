@@ -2,7 +2,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getValidationErrors, validationErrorsQuerySchema } from '@/lib/api/admin-validation-errors'
 
-export async function GET(request: NextRequest) {
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+async function _GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
 
@@ -31,3 +32,5 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
+export const GET = withErrorLogging('/api/v2/admin/validation-errors', _GET)

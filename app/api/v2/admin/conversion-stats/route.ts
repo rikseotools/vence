@@ -2,9 +2,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getConversionStats, conversionStatsRequestSchema } from '@/lib/api/admin-conversion-stats'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 export const maxDuration = 30
 
-export async function GET(request: NextRequest) {
+async function _GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const parseResult = conversionStatsRequestSchema.safeParse({
@@ -28,3 +29,5 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
+export const GET = withErrorLogging('/api/v2/admin/conversion-stats', _GET)

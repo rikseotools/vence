@@ -3,12 +3,13 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { adaptiveDifficultyService } from '@/lib/services/adaptiveDifficulty'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
 
-export async function GET(request) {
+async function _GET(request) {
   try {
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get('userId')
@@ -93,7 +94,7 @@ export async function GET(request) {
   }
 }
 
-export async function POST(request) {
+async function _POST(request) {
   try {
     const body = await request.json()
     const { action, userId } = body
@@ -132,3 +133,6 @@ export async function POST(request) {
     )
   }
 }
+
+export const GET = withErrorLogging('/api/adaptive-difficulty', _GET)
+export const POST = withErrorLogging('/api/adaptive-difficulty', _POST)

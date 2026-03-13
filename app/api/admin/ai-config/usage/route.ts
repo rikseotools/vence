@@ -2,7 +2,8 @@
 import { aiUsageQuerySchema } from '@/lib/api/admin-ai-usage/schemas'
 import { getAiUsageStats } from '@/lib/api/admin-ai-usage'
 
-export async function GET(request: Request) {
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+async function _GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
 
@@ -29,3 +30,5 @@ export async function GET(request: Request) {
     )
   }
 }
+
+export const GET = withErrorLogging('/api/admin/ai-config/usage', _GET)

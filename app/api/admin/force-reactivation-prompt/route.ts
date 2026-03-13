@@ -3,7 +3,8 @@ import { NextResponse } from 'next/server'
 import { forceReactivationRequestSchema } from '@/lib/api/admin-force-reactivation/schemas'
 import { forceReactivationPrompt } from '@/lib/api/admin-force-reactivation'
 
-export async function POST(request: Request) {
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+async function _POST(request: Request) {
   try {
     const body = await request.json()
     const parsed = forceReactivationRequestSchema.safeParse(body)
@@ -33,3 +34,5 @@ export async function POST(request: Request) {
     )
   }
 }
+
+export const POST = withErrorLogging('/api/admin/force-reactivation-prompt', _POST)

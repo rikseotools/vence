@@ -12,13 +12,14 @@ import {
   type AppealDisputeResponse,
 } from '@/lib/api/dispute'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 const getSupabase = () =>
   createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 
-export async function POST(
+async function _POST(
   request: NextRequest
 ): Promise<NextResponse<CreateDisputeResponse>> {
   try {
@@ -83,7 +84,7 @@ export async function POST(
   }
 }
 
-export async function GET(
+async function _GET(
   request: NextRequest
 ): Promise<NextResponse<GetExistingDisputeResponse>> {
   try {
@@ -141,7 +142,7 @@ export async function GET(
   }
 }
 
-export async function PATCH(
+async function _PATCH(
   request: NextRequest
 ): Promise<NextResponse<AppealDisputeResponse>> {
   try {
@@ -196,3 +197,7 @@ export async function PATCH(
     )
   }
 }
+
+export const POST = withErrorLogging('/api/dispute', _POST)
+export const GET = withErrorLogging('/api/dispute', _GET)
+export const PATCH = withErrorLogging('/api/dispute', _PATCH)

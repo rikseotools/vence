@@ -4,11 +4,12 @@ import { validateUnsubscribeToken } from '@/lib/emails/emailService.server'
 import { EMAIL_TYPE_TO_CATEGORY } from '@/lib/api/emails/schemas'
 import type { EmailType } from '@/lib/api/emails/schemas'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 function getCategory(emailType: string): string {
   return EMAIL_TYPE_TO_CATEGORY[emailType as EmailType] ?? 'marketing'
 }
 
-export async function POST(request: NextRequest) {
+async function _POST(request: NextRequest) {
   try {
     const body = await request.json()
     const { token } = body as { token?: string }
@@ -48,7 +49,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET(request: NextRequest) {
+async function _GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const token = searchParams.get('token')
@@ -86,3 +87,6 @@ export async function GET(request: NextRequest) {
     }, { status: 500 })
   }
 }
+
+export const POST = withErrorLogging('/api/unsubscribe/validate', _POST)
+export const GET = withErrorLogging('/api/unsubscribe/validate', _GET)

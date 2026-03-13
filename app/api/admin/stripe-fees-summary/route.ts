@@ -6,6 +6,7 @@ import { getDb } from '@/db/client'
 import { paymentSettlements } from '@/db/schema'
 import { eq } from 'drizzle-orm'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 const getStripe = () => new Stripe(process.env.STRIPE_SECRET_KEY!)
 
 // Descripciones en español para tipos de transacción
@@ -23,7 +24,7 @@ function getTypeDescription(type: string): string {
   return descriptions[type] || type
 }
 
-export async function GET(request: Request) {
+async function _GET(request: Request) {
   try {
     const url = new URL(request.url)
     const sinceDate = url.searchParams.get('since')
@@ -171,3 +172,5 @@ export async function GET(request: Request) {
     )
   }
 }
+
+export const GET = withErrorLogging('/api/admin/stripe-fees-summary', _GET)

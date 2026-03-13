@@ -6,6 +6,7 @@ import { userSessions } from '@/db/schema'
 import { eq, isNull, desc, and } from 'drizzle-orm'
 import { z } from 'zod/v3'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 const trackSessionIpSchema = z.object({
   userId: z.string().uuid(),
   sessionId: z.string().uuid().optional(),
@@ -58,7 +59,7 @@ async function getGeoLocation(ip: string): Promise<GeoLocation | null> {
   }
 }
 
-export async function POST(request: Request) {
+async function _POST(request: Request) {
   try {
     const body = await request.json()
     const parsed = trackSessionIpSchema.safeParse(body)
@@ -153,3 +154,5 @@ export async function POST(request: Request) {
     )
   }
 }
+
+export const POST = withErrorLogging('/api/auth/track-session-ip', _POST)

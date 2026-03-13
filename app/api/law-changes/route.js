@@ -2,6 +2,7 @@
 import { createClient } from '@supabase/supabase-js'
 import crypto from 'crypto'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -111,7 +112,7 @@ function extractLastUpdateFromBOE(htmlContent) {
   }
 }
 
-export async function GET(request) {
+async function _GET(request) {
   try {
     const { searchParams } = new URL(request.url)
     const lawShortName = searchParams.get('law')
@@ -301,7 +302,7 @@ export async function GET(request) {
 }
 
 // Marcar cambio como revisado
-export async function POST(request) {
+async function _POST(request) {
   try {
     const body = await request.json()
     const { action, lawId } = body
@@ -328,3 +329,6 @@ export async function POST(request) {
     return Response.json({ error: 'Error procesando request' }, { status: 500 })
   }
 }
+
+export const GET = withErrorLogging('/api/law-changes', _GET)
+export const POST = withErrorLogging('/api/law-changes', _POST)

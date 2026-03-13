@@ -4,7 +4,8 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 
-export async function POST(request) {
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+async function _POST(request) {
   try {
     console.log('📤 [API] Iniciando subida de imagen de feedback...')
     
@@ -100,7 +101,7 @@ export async function POST(request) {
   }
 }
 
-export async function DELETE(request) {
+async function _DELETE(request) {
   try {
     console.log('🗑️ [API] Iniciando eliminación de imagen de feedback...')
     
@@ -147,3 +148,6 @@ export async function DELETE(request) {
     )
   }
 }
+
+export const POST = withErrorLogging('/api/upload-feedback-image', _POST)
+export const DELETE = withErrorLogging('/api/upload-feedback-image', _DELETE)

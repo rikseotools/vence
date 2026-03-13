@@ -7,9 +7,10 @@ import {
   recordEmailEvent,
 } from '@/lib/api/email-tracking/queries'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 const DEFAULT_REDIRECT = 'https://www.vence.es/auxiliar-administrativo-estado/test'
 
-export async function GET(request: Request) {
+async function _GET(request: Request) {
   const { searchParams } = new URL(request.url)
 
   try {
@@ -76,3 +77,5 @@ export async function GET(request: Request) {
     return NextResponse.redirect(fallbackUrl, { status: 302 })
   }
 }
+
+export const GET = withErrorLogging('/api/email-tracking/click', _GET)

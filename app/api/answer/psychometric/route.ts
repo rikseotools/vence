@@ -11,13 +11,12 @@ import {
   psychometricAnswerRequestSchema,
   validateAndSavePsychometricAnswer,
 } from '@/lib/api/psychometric-answer'
-import { logValidationError, classifyError } from '@/lib/api/validation-error-log'
-
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 // ============================================
 // ENDPOINT POST
 // ============================================
 
-export async function POST(request: NextRequest) {
+async function _POST(request: NextRequest) {
   const startTime = Date.now()
   let body: Record<string, unknown> | undefined
 
@@ -29,17 +28,7 @@ export async function POST(request: NextRequest) {
 
     if (!validation.success) {
       console.error('❌ [API/psychometric-answer] Validación fallida:', validation.error.flatten())
-      logValidationError({
-        endpoint: '/api/answer/psychometric',
-        errorType: 'validation',
-        errorMessage: JSON.stringify(validation.error.flatten()),
-        questionId: (body as any)?.questionId,
-        requestBody: body,
-        httpStatus: 400,
-        durationMs: Date.now() - startTime,
-        userAgent: request.headers.get('user-agent'),
-      })
-      return NextResponse.json(
+return NextResponse.json(
         {
           success: false,
           error: 'Datos inválidos',
@@ -53,17 +42,7 @@ export async function POST(request: NextRequest) {
     const result = await validateAndSavePsychometricAnswer(validation.data)
 
     if (!result.success) {
-      logValidationError({
-        endpoint: '/api/answer/psychometric',
-        errorType: 'not_found',
-        errorMessage: `Pregunta psicotécnica no encontrada: ${validation.data.questionId}`,
-        questionId: validation.data.questionId,
-        requestBody: body,
-        httpStatus: 404,
-        durationMs: Date.now() - startTime,
-        userAgent: request.headers.get('user-agent'),
-      })
-      return NextResponse.json(
+return NextResponse.json(
         {
           success: false,
           error: result.error,
@@ -77,18 +56,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(result)
   } catch (error) {
     console.error('❌ [API/psychometric-answer] Error:', error)
-    logValidationError({
-      endpoint: '/api/answer/psychometric',
-      errorType: classifyError(error),
-      errorMessage: error instanceof Error ? error.message : String(error),
-      errorStack: error instanceof Error ? error.stack : undefined,
-      questionId: (body as any)?.questionId,
-      requestBody: body,
-      httpStatus: 500,
-      durationMs: Date.now() - startTime,
-      userAgent: request.headers.get('user-agent'),
-    })
-    return NextResponse.json(
+return NextResponse.json(
       {
         success: false,
         error: 'Error interno del servidor',
@@ -101,9 +69,12 @@ export async function POST(request: NextRequest) {
 }
 
 // Bloquear GET para evitar exposición accidental
-export async function GET() {
+async function _GET() {
   return NextResponse.json(
     { error: 'Método no permitido. Usa POST.' },
     { status: 405 }
   )
 }
+
+export const POST = withErrorLogging('/api/answer/psychometric', _POST)
+export const GET = withErrorLogging('/api/answer/psychometric', _GET)

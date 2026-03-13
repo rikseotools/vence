@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 const BATCH_SIZE = 50
 
 /**
@@ -62,7 +63,7 @@ function calculateStreak(sessions) {
   return daysInStreak
 }
 
-export async function GET(request) {
+async function _GET(request) {
   try {
     const authHeader = request.headers.get('authorization')
     const expectedAuth = `Bearer ${process.env.CRON_SECRET}`
@@ -219,3 +220,5 @@ export async function GET(request) {
     }, { status: 500 })
   }
 }
+
+export const GET = withErrorLogging('/api/cron/update-streaks', _GET)

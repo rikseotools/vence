@@ -2,7 +2,8 @@
 import { NextResponse } from 'next/server'
 import { Resend } from 'resend'
 
-export async function POST(request: Request) {
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+async function _POST(request: Request) {
   try {
     const { type, adminEmail, data } = await request.json() as {
       type: string
@@ -423,3 +424,5 @@ function generateBOEChangeEmailHTML(data: Record<string, unknown>) {
     </html>`,
   }
 }
+
+export const POST = withErrorLogging('/api/emails/send-admin-notification', _POST)

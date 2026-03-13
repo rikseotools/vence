@@ -16,6 +16,7 @@ import {
   getVerifiedPredictionsWithHighError,
 } from '@/lib/api/admin-sales-prediction'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 // Helper para llamar a la API de Stripe directamente
 function stripeGet(path: string): Promise<{ data: StripeSubscription[]; has_more: boolean }> {
   return new Promise((resolve, reject) => {
@@ -195,7 +196,7 @@ function calculateMethodWeights(accuracyData: { byMethod: Array<{ method_name: s
   return weights
 }
 
-export async function GET() {
+async function _GET() {
   try {
     // 1. Obtener todos los usuarios con su fecha de registro
     const users = await getRegistrationData()
@@ -872,3 +873,5 @@ export async function GET() {
     )
   }
 }
+
+export const GET = withErrorLogging('/api/admin/sales-prediction', _GET)

@@ -8,6 +8,7 @@ import {
   type GetWeakArticlesRequest,
 } from '@/lib/api/topic-progress'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 export const maxDuration = 60
 
 // Cliente Supabase solo para auth
@@ -16,7 +17,7 @@ const getSupabase = () => createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-export async function GET(request: NextRequest) {
+async function _GET(request: NextRequest) {
   console.log('🎯 [API/v2/weak-articles] Request received')
 
   try {
@@ -92,3 +93,5 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
+export const GET = withErrorLogging('/api/v2/topic-progress/weak-articles', _GET)

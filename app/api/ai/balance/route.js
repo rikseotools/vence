@@ -1,8 +1,10 @@
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+
 /**
  * GET /api/ai/balance
  * Consulta el saldo/uso de las APIs de IA
  */
-export async function GET(request) {
+async function _GET(request) {
   const { searchParams } = new URL(request.url)
   const provider = searchParams.get('provider') || 'all'
 
@@ -109,3 +111,5 @@ export async function GET(request) {
     note: 'Para ver el saldo exacto y uso detallado, visita los dashboards de cada proveedor'
   })
 }
+
+export const GET = withErrorLogging('/api/ai/balance', _GET)

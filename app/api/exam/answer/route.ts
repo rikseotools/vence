@@ -5,12 +5,11 @@ import {
   saveAnswer,
   verifyTestOwnership
 } from '@/lib/api/exam'
-import { logValidationError, classifyError } from '@/lib/api/validation-error-log'
-
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 // Evitar 504 de Vercel (default 300s): fail fast
 export const maxDuration = 30
 
-export async function POST(request: NextRequest) {
+async function _POST(request: NextRequest) {
   const startTime = Date.now()
   let body: Record<string, unknown> | undefined
 
@@ -22,16 +21,7 @@ export async function POST(request: NextRequest) {
 
     if (!parseResult.success) {
       console.error('❌ [API/exam/answer] Validation error:', parseResult.error.issues)
-      logValidationError({
-        endpoint: '/api/exam/answer',
-        errorType: 'validation',
-        errorMessage: JSON.stringify(parseResult.error.issues),
-        requestBody: body,
-        httpStatus: 400,
-        durationMs: Date.now() - startTime,
-        userAgent: request.headers.get('user-agent'),
-      })
-      return NextResponse.json(
+return NextResponse.json(
         {
           success: false,
           error: 'Datos de respuesta inválidos',
@@ -59,17 +49,7 @@ export async function POST(request: NextRequest) {
 
     if (!result.success) {
       console.error('❌ [API/exam/answer] Save failed:', result.error)
-      logValidationError({
-        endpoint: '/api/exam/answer',
-        errorType: 'unknown',
-        errorMessage: `Save failed: ${result.error}`,
-        questionId: (body as any)?.questionId,
-        requestBody: body,
-        httpStatus: 500,
-        durationMs: Date.now() - startTime,
-        userAgent: request.headers.get('user-agent'),
-      })
-      return NextResponse.json(
+return NextResponse.json(
         { success: false, error: result.error || 'Error guardando respuesta' },
         { status: 500 }
       )
@@ -82,18 +62,7 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('❌ [API/exam/answer] Error:', error)
-    logValidationError({
-      endpoint: '/api/exam/answer',
-      errorType: classifyError(error),
-      errorMessage: error instanceof Error ? error.message : String(error),
-      errorStack: error instanceof Error ? error.stack : undefined,
-      questionId: (body as any)?.questionId,
-      requestBody: body,
-      httpStatus: 500,
-      durationMs: Date.now() - startTime,
-      userAgent: request.headers.get('user-agent'),
-    })
-    return NextResponse.json(
+return NextResponse.json(
       {
         success: false,
         error: error instanceof Error ? error.message : 'Error interno del servidor',
@@ -102,3 +71,5 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
+export const POST = withErrorLogging('/api/exam/answer', _POST)

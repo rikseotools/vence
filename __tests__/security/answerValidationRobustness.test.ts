@@ -266,7 +266,7 @@ describe('Seguridad — rutas API bloquean GET', () => {
   for (const route of routes) {
     it(`${route} tiene handler GET que devuelve 405`, () => {
       const content = fs.readFileSync(path.join(ROOT, route), 'utf-8')
-      expect(content).toMatch(/export\s+async\s+function\s+GET/)
+      expect(content).toMatch(/export\s+const\s+GET\s*=\s*withErrorLogging|export\s+async\s+function\s+GET/)
       expect(content).toContain('405')
     })
   }

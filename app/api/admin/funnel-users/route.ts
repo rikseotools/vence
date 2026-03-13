@@ -3,7 +3,8 @@ import { NextResponse } from 'next/server'
 import { funnelUsersQuerySchema } from '@/lib/api/admin-funnel-users/schemas'
 import { getFunnelUsers } from '@/lib/api/admin-funnel-users'
 
-export async function GET(request: Request) {
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+async function _GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
 
@@ -32,3 +33,5 @@ export async function GET(request: Request) {
     )
   }
 }
+
+export const GET = withErrorLogging('/api/admin/funnel-users', _GET)

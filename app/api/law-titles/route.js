@@ -1,12 +1,13 @@
 // app/api/law-titles/route.js
 import { createClient } from '@supabase/supabase-js'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
 
-export async function GET(request) {
+async function _GET(request) {
   try {
     const { searchParams } = new URL(request.url)
     const lawShortName = searchParams.get('law')
@@ -109,3 +110,5 @@ export async function GET(request) {
     return Response.json({ error: 'Error interno del servidor' }, { status: 500 })
   }
 }
+
+export const GET = withErrorLogging('/api/law-titles', _GET)

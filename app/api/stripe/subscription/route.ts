@@ -7,6 +7,7 @@ import {
   createPortalSession
 } from '@/lib/api/subscription'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
@@ -14,7 +15,7 @@ export const revalidate = 0
 // GET: Obtener datos de suscripción
 // ============================================
 
-export async function GET(request: NextRequest) {
+async function _GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get('userId')
@@ -50,7 +51,7 @@ export async function GET(request: NextRequest) {
 // POST: Crear portal de gestión de Stripe
 // ============================================
 
-export async function POST(request: NextRequest) {
+async function _POST(request: NextRequest) {
   try {
     const body = await request.json()
 
@@ -93,3 +94,6 @@ export async function OPTIONS() {
     }
   })
 }
+
+export const GET = withErrorLogging('/api/stripe/subscription', _GET)
+export const POST = withErrorLogging('/api/stripe/subscription', _POST)

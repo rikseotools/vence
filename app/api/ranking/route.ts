@@ -5,6 +5,7 @@ import {
   getRanking,
 } from '@/lib/api/ranking'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
@@ -12,7 +13,7 @@ export const revalidate = 0
 // GET: Obtener ranking
 // ============================================
 
-export async function GET(request: NextRequest) {
+async function _GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const timeFilter = searchParams.get('timeFilter')
@@ -62,3 +63,5 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
+export const GET = withErrorLogging('/api/ranking', _GET)

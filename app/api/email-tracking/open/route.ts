@@ -7,6 +7,7 @@ import {
   recordEmailEvent,
 } from '@/lib/api/email-tracking/queries'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 const TRANSPARENT_PIXEL = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
   'base64'
@@ -25,7 +26,7 @@ function pixelResponse(cacheControl = 'no-cache, no-store, must-revalidate') {
   })
 }
 
-export async function GET(request: Request) {
+async function _GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
 
@@ -80,3 +81,5 @@ export async function GET(request: Request) {
     return pixelResponse('no-cache')
   }
 }
+
+export const GET = withErrorLogging('/api/email-tracking/open', _GET)

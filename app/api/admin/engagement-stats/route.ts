@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getFullEngagementStats } from '@/lib/api/admin-engagement-stats'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
@@ -17,7 +18,7 @@ function isAdmin(email: string | undefined): boolean {
   return ADMIN_EMAILS.includes(email) || email.endsWith('@vencemitfg.es')
 }
 
-export async function GET(request: NextRequest) {
+async function _GET(request: NextRequest) {
   try {
     // Get auth token
     const authHeader = request.headers.get('Authorization')
@@ -62,3 +63,5 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
+export const GET = withErrorLogging('/api/admin/engagement-stats', _GET)

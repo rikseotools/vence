@@ -6,10 +6,11 @@ import { createClient } from '@supabase/supabase-js'
 import { getOfficialExamReview } from '@/lib/api/official-exams/queries'
 import { safeParseGetOfficialExamReview } from '@/lib/api/official-exams/schemas'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
-export async function GET(request: NextRequest) {
+async function _GET(request: NextRequest) {
   try {
     // Get auth token
     const authHeader = request.headers.get('Authorization')
@@ -73,3 +74,5 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
+export const GET = withErrorLogging('/api/v2/official-exams/review', _GET)

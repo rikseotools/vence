@@ -4,7 +4,8 @@ import { emailTrackClickQuerySchema } from '@/lib/api/email-tracking/schemas'
 import { getUserEmailByProfile, recordEmailEvent } from '@/lib/api/email-tracking/queries'
 import { getDeviceType, getEmailClient } from '@/lib/api/email-tracking/helpers'
 
-export async function GET(request: Request) {
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+async function _GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
 
@@ -66,3 +67,5 @@ export async function GET(request: Request) {
     return NextResponse.redirect(new URL('/es', request.url))
   }
 }
+
+export const GET = withErrorLogging('/api/email/track-click', _GET)

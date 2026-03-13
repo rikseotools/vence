@@ -7,6 +7,7 @@ import {
   upsertEmailPreferences
 } from '@/lib/api/email-preferences'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
@@ -14,7 +15,7 @@ export const revalidate = 0
 // GET: Obtener preferencias de email
 // ============================================
 
-export async function GET(request: NextRequest) {
+async function _GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get('userId')
@@ -55,7 +56,7 @@ export async function GET(request: NextRequest) {
 // PUT: Actualizar preferencias de email
 // ============================================
 
-export async function PUT(request: NextRequest) {
+async function _PUT(request: NextRequest) {
   try {
     const body = await request.json()
 
@@ -99,3 +100,6 @@ export async function OPTIONS() {
     }
   })
 }
+
+export const GET = withErrorLogging('/api/profile/email-preferences', _GET)
+export const PUT = withErrorLogging('/api/profile/email-preferences', _PUT)

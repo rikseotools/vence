@@ -7,6 +7,7 @@ import {
   getArticleUpdateLogs,
 } from '@/lib/api/verify-articles/queries'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 function normalizeArticleNumber(num: string | null): string {
   if (!num) return ''
   return num
@@ -113,7 +114,7 @@ async function fetchArticleFromBOE(boeUrl: string, articleNumber: string): Promi
   } catch (error) { console.error('Error fetching BOE article:', error); return null }
 }
 
-export async function POST(request: NextRequest) {
+async function _POST(request: NextRequest) {
   try {
     const body = await request.json()
     const validation = updateTitlesParamsSchema.safeParse(body)
@@ -191,7 +192,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET(request: NextRequest) {
+async function _GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const lawId = searchParams.get('lawId')
 
@@ -210,3 +211,6 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
+export const POST = withErrorLogging('/api/verify-articles/update-titles', _POST)
+export const GET = withErrorLogging('/api/verify-articles/update-titles', _GET)

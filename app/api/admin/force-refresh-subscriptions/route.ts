@@ -5,7 +5,8 @@ import webpush from 'web-push'
 import { getActiveSubscriptions, markSubscriptionExpired } from '@/lib/api/admin-refresh-subscriptions'
 import type { RefreshResults } from '@/lib/api/admin-refresh-subscriptions'
 
-export async function POST() {
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+async function _POST() {
   try {
     console.log('🔄 Iniciando renovación forzada de suscripciones...')
 
@@ -130,3 +131,5 @@ export async function POST() {
     )
   }
 }
+
+export const POST = withErrorLogging('/api/admin/force-refresh-subscriptions', _POST)

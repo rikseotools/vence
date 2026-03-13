@@ -2,11 +2,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserStats, safeParseGetUserStatsRequest } from '@/lib/api/stats'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 export const maxDuration = 300
 
-export async function GET(request: NextRequest) {
+async function _GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get('userId')
@@ -36,3 +37,5 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
+export const GET = withErrorLogging('/api/stats', _GET)

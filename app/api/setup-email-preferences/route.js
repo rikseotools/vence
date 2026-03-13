@@ -1,7 +1,8 @@
 // app/api/setup-email-preferences/route.js - Setup automático de tabla
 import { NextResponse } from 'next/server'
 
-export async function POST(request) {
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+async function _POST(request) {
   try {
     const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
     const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -114,3 +115,5 @@ export async function POST(request) {
     }, { status: 500 })
   }
 }
+
+export const POST = withErrorLogging('/api/setup-email-preferences', _POST)

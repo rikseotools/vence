@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getVideoSignedUrl, safeParseGetVideoUrl } from '@/lib/api/video-courses'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 export const dynamic = 'force-dynamic'
 
 const getSupabase = () => createClient(
@@ -21,7 +22,7 @@ const getSupabase = () => createClient(
  * - previewOnly: boolean (true if user is not premium)
  * - previewSeconds: number (max seconds allowed for preview)
  */
-export async function POST(request: NextRequest) {
+async function _POST(request: NextRequest) {
   try {
     // Auth is required
     const authHeader = request.headers.get('authorization')
@@ -73,3 +74,5 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
+export const POST = withErrorLogging('/api/cursos/video-url', _POST)

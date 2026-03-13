@@ -5,9 +5,10 @@ import {
   safeParseGetDetailedThemeStatsRequest,
 } from '@/lib/api/random-test-data'
 
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 export const dynamic = 'force-dynamic'
 
-export async function GET(request: NextRequest) {
+async function _GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
     const oposicion = searchParams.get('oposicion')
@@ -77,3 +78,5 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
+export const GET = withErrorLogging('/api/random-test-data/theme-details', _GET)

@@ -6,7 +6,8 @@ import {
 } from '@/lib/api/verify-articles/queries'
 import { MODEL_BATCH_LIMITS } from '@/lib/api/verify-articles/ai-helpers'
 
-export async function POST(request: NextRequest) {
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+async function _POST(request: NextRequest) {
   try {
     const body = await request.json()
     const validation = batchInfoParamsSchema.safeParse(body)
@@ -61,3 +62,5 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
+export const POST = withErrorLogging('/api/verify-articles/batch-info', _POST)
