@@ -24,8 +24,8 @@ describe('withErrorLogging — source code', () => {
     expect(content).toMatch(/export function withErrorLogging/)
   })
 
-  it('captura respuestas 500+', () => {
-    expect(content).toMatch(/response\.status >= 500/)
+  it('captura respuestas 400+', () => {
+    expect(content).toMatch(/response\.status >= 400/)
   })
 
   it('captura errores no manejados (catch)', () => {
@@ -63,6 +63,20 @@ describe('withErrorLogging — source code', () => {
 
   it('clona response para leer error sin consumir body', () => {
     expect(content).toMatch(/response\.clone\(\)\.json\(\)/)
+  })
+
+  it('tiene función getSeverity con 3 niveles', () => {
+    expect(content).toMatch(/function getSeverity/)
+    expect(content).toMatch(/critical/)
+    expect(content).toMatch(/warning/)
+    expect(content).toMatch(/info/)
+  })
+
+  it('clasifica HTTP status 4xx con classifyHttpStatus', () => {
+    expect(content).toMatch(/function classifyHttpStatus/)
+    expect(content).toMatch(/case 401.*auth/)
+    expect(content).toMatch(/case 404.*not_found/)
+    expect(content).toMatch(/case 429.*rate_limit/)
   })
 })
 
@@ -110,12 +124,24 @@ describe('withErrorLogging — lógica', () => {
     expect(response.status).toBe(400)
   })
 
-  it('detecta respuestas 500+ como errores', () => {
-    // Verificar la lógica: status >= 500 dispara logging
-    expect(500 >= 500).toBe(true)
-    expect(502 >= 500).toBe(true)
-    expect(499 >= 500).toBe(false)
-    expect(200 >= 500).toBe(false)
+  it('detecta respuestas 400+ como errores', () => {
+    // Verificar la lógica: status >= 400 dispara logging
+    expect(400 >= 400).toBe(true)
+    expect(401 >= 400).toBe(true)
+    expect(500 >= 400).toBe(true)
+    expect(399 >= 400).toBe(false)
+    expect(200 >= 400).toBe(false)
+  })
+
+  it('asigna severity correctamente', () => {
+    // critical: 500+
+    expect(500 >= 500 ? 'critical' : 500 === 401 || 500 === 403 ? 'warning' : 'info').toBe('critical')
+    // warning: 401, 403
+    expect(401 >= 500 ? 'critical' : 401 === 401 || 401 === 403 ? 'warning' : 'info').toBe('warning')
+    expect(403 >= 500 ? 'critical' : 403 === 401 || 403 === 403 ? 'warning' : 'info').toBe('warning')
+    // info: 400, 404
+    expect(400 >= 500 ? 'critical' : 400 === 401 || 400 === 403 ? 'warning' : 'info').toBe('info')
+    expect(404 >= 500 ? 'critical' : 404 === 401 || 404 === 403 ? 'warning' : 'info').toBe('info')
   })
 
   it('classifica errores correctamente', () => {

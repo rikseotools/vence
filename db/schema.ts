@@ -2810,13 +2810,16 @@ export const validationErrorLogs = pgTable("validation_error_logs", {
 	httpStatus: integer("http_status"),
 	durationMs: integer("duration_ms"),
 	userAgent: text("user_agent"),
+	severity: text().default('critical').notNull(),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	reviewedAt: timestamp("reviewed_at", { withTimezone: true, mode: 'string' }),
 }, (table) => [
 	index("idx_vel_created_at").using("btree", table.createdAt.desc().nullsFirst().op("timestamptz_ops")),
 	index("idx_vel_endpoint").using("btree", table.endpoint.asc().nullsLast().op("text_ops")),
 	index("idx_vel_error_type").using("btree", table.errorType.asc().nullsLast().op("text_ops")),
 	index("idx_vel_user_id").using("btree", table.userId.asc().nullsLast().op("uuid_ops")),
 	index("idx_vel_deploy_version").using("btree", table.deployVersion.asc().nullsLast().op("text_ops")),
+	index("idx_vel_severity").using("btree", table.severity.asc().nullsLast().op("text_ops")),
 ]);
 
 export const convocatoriasBoe = pgTable("convocatorias_boe", {

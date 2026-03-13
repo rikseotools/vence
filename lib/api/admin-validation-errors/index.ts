@@ -1,5 +1,5 @@
 // lib/api/admin-validation-errors/index.ts
-export { getValidationErrors } from './queries'
+export { getValidationErrors, markErrorsReviewed } from './queries'
 export {
   validationErrorsQuerySchema,
   validationErrorsResponseSchema,

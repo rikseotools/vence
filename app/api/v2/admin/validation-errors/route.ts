@@ -1,6 +1,6 @@
 // app/api/v2/admin/validation-errors/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { getValidationErrors, validationErrorsQuerySchema } from '@/lib/api/admin-validation-errors'
+import { getValidationErrors, markErrorsReviewed, validationErrorsQuerySchema } from '@/lib/api/admin-validation-errors'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 async function _GET(request: NextRequest) {
@@ -33,4 +33,22 @@ async function _GET(request: NextRequest) {
   }
 }
 
+async function _PATCH(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const ids = body.ids as string[]
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return NextResponse.json({ error: 'ids requeridos' }, { status: 400 })
+    }
+
+    const updated = await markErrorsReviewed(ids)
+    return NextResponse.json({ success: true, updated })
+  } catch (error) {
+    console.error('[API/v2/admin/validation-errors] PATCH Error:', error)
+    return NextResponse.json({ error: 'Error marcando como revisados' }, { status: 500 })
+  }
+}
+
 export const GET = withErrorLogging('/api/v2/admin/validation-errors', _GET)
+export const PATCH = withErrorLogging('/api/v2/admin/validation-errors', _PATCH)

@@ -107,12 +107,9 @@ export function useAdminNotifications(enabled = false) {
             setTimeout(() => reject(new Error('Timeout')), 8000)
           )
         ]),
-        // 6. Contar errores de validación API (últimas 24h)
+        // 6. Contar errores de validación API (últimas 24h) — via API (usa service role, bypass RLS)
         Promise.race([
-          supabase
-            .from('validation_error_logs')
-            .select('id', { count: 'exact', head: true })
-            .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()),
+          fetch('/api/v2/admin/validation-errors?timeRange=1&limit=1').then(r => r.json()),
           new Promise((_, reject) =>
             setTimeout(() => reject(new Error('Timeout')), 8000)
           )
@@ -182,9 +179,9 @@ export function useAdminNotifications(enabled = false) {
         }
       }
 
-      // Obtener errores de validación API (últimas 24h)
+      // Obtener errores de validación API no revisados (últimas 24h)
       if (erroresApiResult.status === 'fulfilled') {
-        pendingErroresApi = erroresApiResult.value.count || 0
+        pendingErroresApi = erroresApiResult.value?.unreviewedCount ?? erroresApiResult.value?.summary?.totalErrors ?? 0
       }
 
       setNotifications({

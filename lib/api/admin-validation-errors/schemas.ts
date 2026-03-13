@@ -3,7 +3,7 @@ import { z } from 'zod/v3'
 
 export const validationErrorsQuerySchema = z.object({
   timeRange: z.coerce.number().int().min(1).max(90).default(7),
-  endpoint: z.enum(['/api/answer', '/api/exam/validate', '/api/answer/psychometric', 'all']).default('all'),
+  endpoint: z.string().max(200).default('all'),
   errorType: z.enum(['timeout', 'network', 'db_connection', 'validation', 'not_found', 'unknown', 'all']).default('all'),
   userId: z.string().uuid().optional(),
   limit: z.coerce.number().int().min(1).max(500).default(100),
@@ -24,7 +24,9 @@ export const validationErrorEntrySchema = z.object({
   httpStatus: z.number().nullable(),
   durationMs: z.number().nullable(),
   userAgent: z.string().nullable(),
+  severity: z.enum(['critical', 'warning', 'info']),
   createdAt: z.string(),
+  reviewedAt: z.string().nullable().optional(),
 })
 
 export type ValidationErrorEntry = z.infer<typeof validationErrorEntrySchema>
@@ -43,6 +45,7 @@ export type ValidationErrorsSummary = z.infer<typeof validationErrorsSummarySche
 export const validationErrorsResponseSchema = z.object({
   errors: z.array(validationErrorEntrySchema),
   summary: validationErrorsSummarySchema,
+  unreviewedCount: z.number(),
   timeRange: z.number(),
   timestamp: z.string(),
 })

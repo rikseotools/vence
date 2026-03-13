@@ -61,6 +61,7 @@ async function _insertLog(input: ValidationErrorLogInput): Promise<void> {
     questionId: input.questionId || null,
     testId: input.testId || null,
     requestBody: sanitizedBody,
+    severity: input.severity || 'critical',
     deployVersion: DEPLOY_VERSION,
     vercelRegion: VERCEL_REGION,
     httpStatus: input.httpStatus || null,

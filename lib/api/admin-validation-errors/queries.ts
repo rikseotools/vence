@@ -1,7 +1,7 @@
 // lib/api/admin-validation-errors/queries.ts
 import { getDb } from '@/db/client'
 import { validationErrorLogs } from '@/db/schema'
-import { desc, gte, eq, sql, and, count } from 'drizzle-orm'
+import { desc, gte, eq, sql, and, count, isNull, inArray } from 'drizzle-orm'
 import type { ValidationErrorsQuery, ValidationErrorsResponse, ValidationErrorsSummary } from './schemas'
 
 export async function getValidationErrors(params: ValidationErrorsQuery): Promise<ValidationErrorsResponse> {
@@ -23,8 +23,8 @@ export async function getValidationErrors(params: ValidationErrorsQuery): Promis
 
   const whereClause = conditions.length === 1 ? conditions[0] : and(...conditions)
 
-  // Fetch errors + summary in parallel
-  const [errors, summaryRows] = await Promise.all([
+  // Fetch errors + summary + unreviewed count in parallel
+  const [errors, summaryRows, unreviewed] = await Promise.all([
     db
       .select({
         id: validationErrorLogs.id,
@@ -39,7 +39,9 @@ export async function getValidationErrors(params: ValidationErrorsQuery): Promis
         httpStatus: validationErrorLogs.httpStatus,
         durationMs: validationErrorLogs.durationMs,
         userAgent: validationErrorLogs.userAgent,
+        severity: validationErrorLogs.severity,
         createdAt: validationErrorLogs.createdAt,
+        reviewedAt: validationErrorLogs.reviewedAt,
       })
       .from(validationErrorLogs)
       .where(whereClause)
@@ -62,6 +64,16 @@ export async function getValidationErrors(params: ValidationErrorsQuery): Promis
         validationErrorLogs.errorType,
         validationErrorLogs.deployVersion,
       ),
+
+    // Solo contar critical no revisados (para badge)
+    db
+      .select({ count: count() })
+      .from(validationErrorLogs)
+      .where(and(
+        gte(validationErrorLogs.createdAt, cutoffDate),
+        isNull(validationErrorLogs.reviewedAt),
+        eq(validationErrorLogs.severity, 'critical'),
+      )),
   ])
 
   // Build summary from aggregated rows
@@ -70,6 +82,7 @@ export async function getValidationErrors(params: ValidationErrorsQuery): Promis
   return {
     errors,
     summary,
+    unreviewedCount: Number(unreviewed[0]?.count ?? 0),
     timeRange: params.timeRange,
     timestamp: new Date().toISOString(),
   }
@@ -126,4 +139,13 @@ function buildSummary(
     affectedUsers,
     avgDurationMs: durationCount > 0 ? Math.round(totalDuration / durationCount) : null,
   }
+}
+
+export async function markErrorsReviewed(ids: string[]): Promise<number> {
+  const db = getDb()
+  await db
+    .update(validationErrorLogs)
+    .set({ reviewedAt: new Date().toISOString() })
+    .where(and(inArray(validationErrorLogs.id, ids), isNull(validationErrorLogs.reviewedAt)))
+  return ids.length
 }

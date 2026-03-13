@@ -3,8 +3,14 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { ValidationErrorsResponse, ValidationErrorEntry } from '@/lib/api/admin-validation-errors/schemas'
 
-type EndpointFilter = '/api/answer' | '/api/exam/validate' | '/api/answer/psychometric' | 'all'
-type ErrorTypeFilter = 'timeout' | 'network' | 'db_connection' | 'validation' | 'not_found' | 'unknown' | 'all'
+type ErrorTypeFilter = 'timeout' | 'network' | 'db_connection' | 'validation' | 'not_found' | 'unknown' | 'auth' | 'forbidden' | 'rate_limit' | 'all'
+type SeverityFilter = 'critical' | 'warning' | 'info' | 'all'
+
+const SEVERITY_COLORS: Record<string, string> = {
+  critical: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+  warning: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+  info: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300',
+}
 
 const ENDPOINT_LABELS: Record<string, string> = {
   '/api/answer': 'Answer',
@@ -28,10 +34,29 @@ export default function ErroresValidacionPage() {
 
   // Filters
   const [timeRange, setTimeRange] = useState<number>(7)
-  const [endpoint, setEndpoint] = useState<EndpointFilter>('all')
+  const [endpoint, setEndpoint] = useState<string>('all')
   const [errorType, setErrorType] = useState<ErrorTypeFilter>('all')
+  const [severity, setSeverity] = useState<SeverityFilter>('all')
   const [userIdFilter, setUserIdFilter] = useState('')
   const [expandedRow, setExpandedRow] = useState<string | null>(null)
+
+  const handleMarkReviewed = useCallback(async (id: string) => {
+    try {
+      const res = await fetch('/api/v2/admin/validation-errors', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: [id] }),
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      // Actualizar localmente
+      setData(prev => prev ? {
+        ...prev,
+        errors: prev.errors.map(e => e.id === id ? { ...e, reviewedAt: new Date().toISOString() } : e),
+      } : prev)
+    } catch (err) {
+      console.error('Error marcando revisado:', err)
+    }
+  }, [])
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -57,6 +82,11 @@ export default function ErroresValidacionPage() {
       setLoading(false)
     }
   }, [timeRange, endpoint, errorType, userIdFilter])
+
+  // Filtrar por severity client-side
+  const filteredErrors = data?.errors.filter(e =>
+    severity === 'all' || e.severity === severity
+  ) ?? []
 
   useEffect(() => {
     loadData()
@@ -95,11 +125,16 @@ export default function ErroresValidacionPage() {
 
       {/* Summary cards */}
       {data?.summary && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <SummaryCard
+            label="Sin revisar"
+            value={data.unreviewedCount ?? 0}
+            color="red"
+          />
           <SummaryCard
             label="Total errores"
             value={data.summary.totalErrors}
-            color="red"
+            color="orange"
           />
           <SummaryCard
             label="Usuarios afectados"
@@ -130,7 +165,7 @@ export default function ErroresValidacionPage() {
 
       {/* Filters */}
       <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm">
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
           <div>
             <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Periodo</label>
             <select
@@ -149,13 +184,13 @@ export default function ErroresValidacionPage() {
             <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Endpoint</label>
             <select
               value={endpoint}
-              onChange={(e) => setEndpoint(e.target.value as EndpointFilter)}
+              onChange={(e) => setEndpoint(e.target.value)}
               className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm"
             >
               <option value="all">Todos</option>
-              <option value="/api/answer">Answer</option>
-              <option value="/api/exam/validate">Exam</option>
-              <option value="/api/answer/psychometric">Psychometric</option>
+              {data?.summary?.byEndpoint && Object.keys(data.summary.byEndpoint).sort().map(ep => (
+                <option key={ep} value={ep}>{ep}</option>
+              ))}
             </select>
           </div>
           <div>
@@ -174,7 +209,20 @@ export default function ErroresValidacionPage() {
               <option value="unknown">Unknown</option>
             </select>
           </div>
-          <div className="col-span-2 md:col-span-2">
+          <div>
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Severidad</label>
+            <select
+              value={severity}
+              onChange={(e) => setSeverity(e.target.value as SeverityFilter)}
+              className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm"
+            >
+              <option value="all">Todas</option>
+              <option value="critical">Critical</option>
+              <option value="warning">Warning</option>
+              <option value="info">Info</option>
+            </select>
+          </div>
+          <div>
             <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">User ID</label>
             <input
               type="text"
@@ -199,11 +247,11 @@ export default function ErroresValidacionPage() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
           <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
             <span className="text-sm text-gray-500 dark:text-gray-400">
-              {data.errors.length} errores en los ultimos {timeRange} dias
+              {filteredErrors.length} errores{severity !== 'all' ? ` (${severity})` : ''} en los ultimos {timeRange} dias
             </span>
           </div>
 
-          {data.errors.length === 0 ? (
+          {filteredErrors.length === 0 ? (
             <div className="p-8 text-center text-gray-500 dark:text-gray-400">
               Sin errores en este periodo. Todo OK.
             </div>
@@ -213,6 +261,7 @@ export default function ErroresValidacionPage() {
                 <thead className="bg-gray-50 dark:bg-gray-900">
                   <tr>
                     <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Fecha</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Sev</th>
                     <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Endpoint</th>
                     <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Tipo</th>
                     <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Mensaje</th>
@@ -222,12 +271,13 @@ export default function ErroresValidacionPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {data.errors.map((err) => (
+                  {filteredErrors.map((err) => (
                     <ErrorRow
                       key={err.id}
                       error={err}
                       expanded={expandedRow === err.id}
                       onToggle={() => setExpandedRow(expandedRow === err.id ? null : err.id)}
+                      onMarkReviewed={handleMarkReviewed}
                       formatDate={formatDate}
                       truncate={truncate}
                     />
@@ -299,12 +349,14 @@ function ErrorRow({
   error: err,
   expanded,
   onToggle,
+  onMarkReviewed,
   formatDate,
   truncate,
 }: {
   error: ValidationErrorEntry
   expanded: boolean
   onToggle: () => void
+  onMarkReviewed: (id: string) => void
   formatDate: (iso: string) => string
   truncate: (str: string | null, max: number) => string
 }) {
@@ -312,10 +364,15 @@ function ErrorRow({
     <>
       <tr
         onClick={onToggle}
-        className="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+        className={`hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer ${err.reviewedAt ? 'opacity-50' : ''}`}
       >
         <td className="px-3 py-2 text-xs text-gray-600 dark:text-gray-300 whitespace-nowrap">
-          {formatDate(err.createdAt)}
+          {err.reviewedAt ? '  ' : ''}{formatDate(err.createdAt)}
+        </td>
+        <td className="px-3 py-2">
+          <span className={`inline-flex px-1.5 py-0.5 rounded text-xs font-medium ${SEVERITY_COLORS[err.severity] || SEVERITY_COLORS.info}`}>
+            {err.severity === 'critical' ? 'CRIT' : err.severity === 'warning' ? 'WARN' : 'INFO'}
+          </span>
         </td>
         <td className="px-3 py-2 text-xs font-mono">
           {ENDPOINT_LABELS[err.endpoint] || err.endpoint}
@@ -340,7 +397,7 @@ function ErrorRow({
       </tr>
       {expanded && (
         <tr className="bg-gray-50 dark:bg-gray-900">
-          <td colSpan={7} className="px-4 py-3">
+          <td colSpan={8} className="px-4 py-3">
             <div className="grid grid-cols-2 gap-4 text-xs">
               <div>
                 <span className="font-medium text-gray-500 dark:text-gray-400">Mensaje completo:</span>
@@ -372,6 +429,20 @@ function ErrorRow({
                 <div>
                   <span className="font-medium text-gray-500 dark:text-gray-400">User Agent:</span>{' '}
                   <span className="text-gray-700 dark:text-gray-300">{truncate(err.userAgent, 100)}</span>
+                </div>
+                <div className="pt-2">
+                  {err.reviewedAt ? (
+                    <span className="text-green-600 dark:text-green-400 text-xs">
+                      Revisado {formatDate(err.reviewedAt)}
+                    </span>
+                  ) : (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onMarkReviewed(err.id) }}
+                      className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700"
+                    >
+                      Marcar revisado
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

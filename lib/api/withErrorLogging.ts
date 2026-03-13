@@ -1,5 +1,5 @@
 // lib/api/withErrorLogging.ts
-// Wrapper para route handlers que logea automáticamente errores 500+ a validation_error_logs.
+// Wrapper para route handlers que logea automáticamente errores a validation_error_logs.
 // Fire-and-forget: nunca bloquea, nunca modifica la respuesta del handler.
 
 import { NextResponse } from 'next/server'
@@ -9,11 +9,25 @@ import { logValidationError, classifyError } from '@/lib/api/validation-error-lo
 type RouteHandler = (...args: any[]) => Promise<Response> | Response
 
 /**
+ * Determina la severidad según el HTTP status code.
+ * - 500+: critical (errores del servidor)
+ * - 401, 403: warning (auth/permisos)
+ * - 400, 404, 405, 409, 422, 429: info (errores del cliente esperados)
+ */
+function getSeverity(status: number): 'critical' | 'warning' | 'info' {
+  if (status >= 500) return 'critical'
+  if (status === 401 || status === 403) return 'warning'
+  return 'info'
+}
+
+/**
  * Envuelve un route handler para capturar y logar errores automáticamente.
  *
- * - Errores no manejados (throw sin catch): logea + devuelve 500 genérico
- * - Respuestas 500+: logea con contexto del request (body, userId, questionId)
- * - Respuestas 4xx y 2xx: no logea (son esperadas)
+ * - Errores no manejados (throw sin catch): logea como critical + devuelve 500 genérico
+ * - Respuestas 500+: severity critical
+ * - Respuestas 401/403: severity warning
+ * - Respuestas 400, 404, etc: severity info
+ * - Respuestas 2xx/3xx: no logea
  * - Extrae body de POST/PUT/PATCH para enriquecer los logs
  *
  * Uso:
@@ -41,8 +55,8 @@ export function withErrorLogging(endpoint: string, handler: RouteHandler): Route
     try {
       const response = await handler(...args)
 
-      // Logar errores 500+ aunque el handler los haya "manejado"
-      if (response.status >= 500) {
+      // Logar respuestas 4xx y 5xx
+      if (response.status >= 400) {
         let errorMessage = `HTTP ${response.status}`
         try {
           const responseBody = await response.clone().json()
@@ -51,11 +65,12 @@ export function withErrorLogging(endpoint: string, handler: RouteHandler): Route
 
         logValidationError({
           endpoint,
-          errorType: 'unknown',
+          errorType: response.status >= 500 ? 'unknown' : classifyHttpStatus(response.status),
           errorMessage,
           questionId: (body?.questionId as string) || undefined,
           userId: (body?.userId as string) || undefined,
           requestBody: body,
+          severity: getSeverity(response.status),
           httpStatus: response.status,
           durationMs: Date.now() - startTime,
           userAgent,
@@ -64,7 +79,7 @@ export function withErrorLogging(endpoint: string, handler: RouteHandler): Route
 
       return response
     } catch (error) {
-      // Error no manejado — logar y devolver 500 genérico
+      // Error no manejado — logar como critical y devolver 500 genérico
       logValidationError({
         endpoint,
         errorType: classifyError(error),
@@ -73,6 +88,7 @@ export function withErrorLogging(endpoint: string, handler: RouteHandler): Route
         questionId: (body?.questionId as string) || undefined,
         userId: (body?.userId as string) || undefined,
         requestBody: body,
+        severity: 'critical',
         httpStatus: 500,
         durationMs: Date.now() - startTime,
         userAgent,
@@ -83,5 +99,22 @@ export function withErrorLogging(endpoint: string, handler: RouteHandler): Route
         { status: 500 }
       )
     }
+  }
+}
+
+/**
+ * Clasifica un HTTP status 4xx en un errorType descriptivo.
+ */
+function classifyHttpStatus(status: number): string {
+  switch (status) {
+    case 400: return 'validation'
+    case 401: return 'auth'
+    case 403: return 'forbidden'
+    case 404: return 'not_found'
+    case 405: return 'method_not_allowed'
+    case 409: return 'conflict'
+    case 422: return 'validation'
+    case 429: return 'rate_limit'
+    default: return 'client_error'
   }
 }

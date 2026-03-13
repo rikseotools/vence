@@ -48,8 +48,8 @@ describe('withErrorLogging wrapper — source code', () => {
     expect(content).toMatch(/import.*classifyError.*from/)
   })
 
-  it('logea respuestas 500+', () => {
-    expect(content).toMatch(/response\.status >= 500/)
+  it('logea respuestas 400+', () => {
+    expect(content).toMatch(/response\.status >= 400/)
   })
 
   it('captura errores no manejados', () => {

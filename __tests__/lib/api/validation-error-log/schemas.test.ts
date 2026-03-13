@@ -62,12 +62,12 @@ describe('validationErrorLogSchema', () => {
     }
   )
 
-  it('rechaza errorType inválido', () => {
+  it('acepta cualquier errorType string (no enum)', () => {
     const result = validationErrorLogSchema.safeParse({
       ...validInput,
       errorType: 'catastrophic',
     })
-    expect(result.success).toBe(false)
+    expect(result.success).toBe(true)
   })
 
   it('rechaza errorMessage vacío', () => {
