@@ -353,9 +353,33 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
     console.log('🔐 AuthProvider: Inicializando (INITIAL_SESSION)...')
 
     // 🔒 Timeout de seguridad - evitar loading infinito
-    const safetyTimeoutId = setTimeout(() => {
+    // Si Supabase _initialize() se queda colgado en navigator.locks (común en dev),
+    // intentamos recuperar la sesión manualmente desde localStorage
+    const safetyTimeoutId = setTimeout(async () => {
       if (loading) {
-        console.warn('🚨 Loading timeout (12s) - forzando finalización')
+        console.warn('🚨 Loading timeout (12s) - intentando recuperar sesión manualmente...')
+
+        // Intentar leer sesión de localStorage y cargar perfil
+        try {
+          const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+          if (supabaseUrl) {
+            const storageKey = `sb-${supabaseUrl.split('://')[1]?.split('.')[0]}-auth`
+            const raw = typeof window !== 'undefined' ? localStorage.getItem(storageKey) : null
+            if (raw) {
+              const parsed = JSON.parse(raw)
+              if (parsed?.user?.id) {
+                console.log('🔄 Recuperando sesión desde localStorage:', parsed.user.email)
+                setUser(parsed.user)
+                await loadUserProfile(parsed.user.id).catch((err: any) => {
+                  console.warn('⚠️ Error cargando perfil en timeout recovery:', err)
+                })
+              }
+            }
+          }
+        } catch (err) {
+          console.warn('⚠️ Error en timeout recovery:', err)
+        }
+
         setLoading(false)
         setInitialized(true)
       }
