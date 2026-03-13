@@ -191,10 +191,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   </a>
                   <a
                     href="/admin/errores-validacion"
-                    className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1"
+                    className={`text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1 relative ${
+                      adminNotifications?.erroresApi > 0 ? 'animate-pulse' : ''
+                    }`}
                   >
                     <span>🐕</span>
                     <span>Errores API</span>
+                    {adminNotifications?.erroresApi > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold animate-pulse">
+                        {adminNotifications.erroresApi > 99 ? '99+' : adminNotifications.erroresApi}
+                      </span>
+                    )}
                   </a>
                 </div>
               </nav>

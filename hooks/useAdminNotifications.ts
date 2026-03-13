@@ -8,6 +8,7 @@ interface AdminNotificationState {
   impugnaciones: number
   ventas: number
   calidad: number
+  erroresApi: number
   loading: boolean
 }
 
@@ -16,6 +17,7 @@ const EMPTY_STATE: AdminNotificationState = {
   impugnaciones: 0,
   ventas: 0,
   calidad: 0,
+  erroresApi: 0,
   loading: false
 }
 
@@ -42,7 +44,7 @@ export function useAdminNotifications(enabled = false) {
       originalTitle.current = document.title || 'Vence Admin'
     }
 
-    const totalPending = notifications.feedback + notifications.impugnaciones + notifications.ventas + notifications.calidad
+    const totalPending = notifications.feedback + notifications.impugnaciones + notifications.ventas + notifications.calidad + notifications.erroresApi
 
     if (totalPending > 0) {
       document.title = `(${totalPending}) ${originalTitle.current}`
@@ -104,15 +106,26 @@ export function useAdminNotifications(enabled = false) {
           new Promise((_, reject) =>
             setTimeout(() => reject(new Error('Timeout')), 8000)
           )
+        ]),
+        // 6. Contar errores de validación API (últimas 24h)
+        Promise.race([
+          supabase
+            .from('validation_error_logs')
+            .select('id', { count: 'exact', head: true })
+            .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Timeout')), 8000)
+          )
         ])
       ])
 
-      const [conversationsResult, feedbacksResult, impugnacionesApiResult, salesResult, calidadResult] = results
+      const [conversationsResult, feedbacksResult, impugnacionesApiResult, salesResult, calidadResult, erroresApiResult] = results
 
       let pendingFeedback = 0
       let pendingImpugnaciones = 0
       let pendingVentas = 0
       let pendingCalidad = 0
+      let pendingErroresApi = 0
 
       // Contar conversaciones donde el último mensaje es del USUARIO (necesita respuesta del admin)
       if (conversationsResult.status === 'fulfilled') {
@@ -169,11 +182,17 @@ export function useAdminNotifications(enabled = false) {
         }
       }
 
+      // Obtener errores de validación API (últimas 24h)
+      if (erroresApiResult.status === 'fulfilled') {
+        pendingErroresApi = erroresApiResult.value.count || 0
+      }
+
       setNotifications({
         feedback: pendingFeedback,
         impugnaciones: pendingImpugnaciones,
         ventas: pendingVentas,
         calidad: pendingCalidad,
+        erroresApi: pendingErroresApi,
         loading: false
       })
 
