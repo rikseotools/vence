@@ -5,42 +5,32 @@ import {
   saveAnswer,
   verifyTestOwnership
 } from '@/lib/api/exam'
+import { logValidationError, classifyError } from '@/lib/api/validation-error-log'
 
-/**
- * POST /api/exam/answer
- *
- * Guarda respuesta individual durante un examen (auto-save).
- * Usa UPSERT para manejar condiciones de carrera con /api/exam/init.
- *
- * Request body:
- * - testId: string (UUID)
- * - questionOrder: number (1-indexed)
- * - userAnswer: string ('a', 'b', 'c', or 'd')
- * - questionId?: string (UUID, opcional)
- * - questionText?: string
- * - articleId?: string
- * - articleNumber?: string
- * - lawName?: string
- * - temaNumber?: number
- * - difficulty?: string
- * - timeSpentSeconds?: number
- * - confidenceLevel?: string
- *
- * Returns:
- * - success: boolean
- * - answerId: string (si exitoso)
- * - isCorrect: boolean (si exitoso)
- * - error: string (si falla)
- */
+// Evitar 504 de Vercel (default 300s): fail fast
+export const maxDuration = 30
+
 export async function POST(request: NextRequest) {
+  const startTime = Date.now()
+  let body: Record<string, unknown> | undefined
+
   try {
-    const body = await request.json()
+    body = await request.json()
 
     // Validar request con Zod
     const parseResult = safeParseSaveAnswerRequest(body)
 
     if (!parseResult.success) {
       console.error('❌ [API/exam/answer] Validation error:', parseResult.error.issues)
+      logValidationError({
+        endpoint: '/api/exam/answer',
+        errorType: 'validation',
+        errorMessage: JSON.stringify(parseResult.error.issues),
+        requestBody: body,
+        httpStatus: 400,
+        durationMs: Date.now() - startTime,
+        userAgent: request.headers.get('user-agent'),
+      })
       return NextResponse.json(
         {
           success: false,
@@ -54,8 +44,8 @@ export async function POST(request: NextRequest) {
     const data = parseResult.data
 
     // Si se proporciona userId, verificar propiedad del test
-    if (body.userId) {
-      const isOwner = await verifyTestOwnership(data.testId, body.userId)
+    if (body?.userId) {
+      const isOwner = await verifyTestOwnership(data.testId, body.userId as string)
       if (!isOwner) {
         return NextResponse.json(
           { success: false, error: 'No tienes acceso a este test' },
@@ -69,6 +59,16 @@ export async function POST(request: NextRequest) {
 
     if (!result.success) {
       console.error('❌ [API/exam/answer] Save failed:', result.error)
+      logValidationError({
+        endpoint: '/api/exam/answer',
+        errorType: 'unknown',
+        errorMessage: `Save failed: ${result.error}`,
+        questionId: (body as any)?.questionId,
+        requestBody: body,
+        httpStatus: 500,
+        durationMs: Date.now() - startTime,
+        userAgent: request.headers.get('user-agent'),
+      })
       return NextResponse.json(
         { success: false, error: result.error || 'Error guardando respuesta' },
         { status: 500 }
@@ -82,6 +82,17 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('❌ [API/exam/answer] Error:', error)
+    logValidationError({
+      endpoint: '/api/exam/answer',
+      errorType: classifyError(error),
+      errorMessage: error instanceof Error ? error.message : String(error),
+      errorStack: error instanceof Error ? error.stack : undefined,
+      questionId: (body as any)?.questionId,
+      requestBody: body,
+      httpStatus: 500,
+      durationMs: Date.now() - startTime,
+      userAgent: request.headers.get('user-agent'),
+    })
     return NextResponse.json(
       {
         success: false,

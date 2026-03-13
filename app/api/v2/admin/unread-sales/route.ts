@@ -2,10 +2,8 @@
 import { NextResponse } from 'next/server'
 import { getUnreadSalesCount, markSalesAsRead } from '@/lib/api/admin/salesBadge'
 
-/**
- * GET /api/v2/admin/unread-sales
- * Devuelve el conteo de ventas no leídas.
- */
+export const maxDuration = 15
+
 export async function GET() {
   try {
     const count = await getUnreadSalesCount()

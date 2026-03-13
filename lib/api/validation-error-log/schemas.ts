@@ -4,7 +4,7 @@
 import { z } from 'zod/v3'
 
 export const validationErrorLogSchema = z.object({
-  endpoint: z.enum(['/api/answer', '/api/exam/validate', '/api/answer/psychometric']),
+  endpoint: z.string().max(200),
   errorType: z.enum(['timeout', 'network', 'db_connection', 'validation', 'not_found', 'unknown']),
   errorMessage: z.string().max(2000),
   errorStack: z.string().max(5000).nullish(),
@@ -15,7 +15,7 @@ export const validationErrorLogSchema = z.object({
 
   requestBody: z.record(z.unknown()).optional(),
 
-  httpStatus: z.number().int().min(100).max(599).optional(),
+  httpStatus: z.number().int().min(0).max(599).optional(),
   durationMs: z.number().int().min(0).optional(),
   userAgent: z.string().max(1000).nullish(),
 })

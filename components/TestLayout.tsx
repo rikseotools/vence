@@ -43,6 +43,7 @@ import { useUserOposicion } from './useUserOposicion'
 import { validateAnswer } from '@/lib/api/answers/client'
 import { ApiTimeoutError, ApiNetworkError } from '@/lib/api/client'
 import { useAnswerWatchdog } from '@/hooks/useAnswerWatchdog'
+import { logClientError } from '@/lib/logClientError'
 
 import type {
   TestQuestion,
@@ -975,20 +976,7 @@ export default function TestLayout({
               }
             })
           }).catch(e => console.warn('⚠️ No se pudo enviar notificación admin:', e))
-          // Log a BD para panel admin (fire-and-forget)
-          fetch('/api/validation-error-log', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              endpoint: '/api/answer',
-              errorType: errorType === 'TIMEOUT' ? 'timeout' : errorType === 'NETWORK' ? 'network' : 'unknown',
-              errorMessage: `[TestLayout client] ${(validationError_ as Error).message}`,
-              questionId: currentQ.id,
-              userId: user?.id || undefined,
-              httpStatus: 0,
-              durationMs: 0,
-            })
-          }).catch(() => {})
+          logClientError('/api/answer', validationError_, { component: 'TestLayout', questionId: currentQ.id, userId: user?.id })
           return
         }
 

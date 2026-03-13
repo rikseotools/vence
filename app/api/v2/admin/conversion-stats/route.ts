@@ -2,6 +2,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getConversionStats, conversionStatsRequestSchema } from '@/lib/api/admin-conversion-stats'
 
+export const maxDuration = 30
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)

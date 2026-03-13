@@ -1,10 +1,12 @@
 // app/api/exam/pending/route.js - API para obtener exámenes pendientes
 import { NextResponse } from 'next/server'
 import { getPendingExams } from '@/lib/api/exam'
+import { logValidationError, classifyError } from '@/lib/api/validation-error-log'
 
-export const maxDuration = 60
+export const maxDuration = 30
 
 export async function GET(request) {
+  const startTime = Date.now()
   try {
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get('userId')
@@ -56,7 +58,16 @@ export async function GET(request) {
 
     return NextResponse.json(result)
   } catch (error) {
-    console.error('Error en API /exam/pending:', error)
+    console.error('Error obteniendo exámenes pendientes:', error)
+    logValidationError({
+      endpoint: '/api/exam/pending',
+      errorType: classifyError(error),
+      errorMessage: error instanceof Error ? error.message : String(error),
+      errorStack: error instanceof Error ? error.stack : undefined,
+      httpStatus: 500,
+      durationMs: Date.now() - startTime,
+      userAgent: request.headers.get('user-agent'),
+    })
     return NextResponse.json(
       { success: false, error: 'Error interno del servidor' },
       { status: 500 }

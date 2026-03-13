@@ -22,6 +22,7 @@ import { getDifficultyInfo, formatDifficultyDisplay, isFirstAttempt, type Diffic
 import { useInteractionTracker } from '../hooks/useInteractionTracker'
 import { validatePsychometricAnswer } from '@/lib/api/psychometric-answer/client'
 import { useAnswerWatchdog } from '@/hooks/useAnswerWatchdog'
+import { logClientError } from '@/lib/logClientError'
 
 // ============================================
 // TIPOS
@@ -353,20 +354,7 @@ export default function PsychometricTestLayout({
             }
           })
         }).catch(() => {})
-        // Log a BD para panel admin (fire-and-forget)
-        fetch('/api/validation-error-log', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            endpoint: '/api/answer/psychometric',
-            errorType: apiError?.name === 'ApiTimeoutError' ? 'timeout' : apiError?.name === 'ApiNetworkError' ? 'network' : 'unknown',
-            errorMessage: `[PsychometricTestLayout client] ${apiError?.message || 'Unknown error'}`,
-            questionId: currentQ.id,
-            userId: user?.id || undefined,
-            httpStatus: 0,
-            durationMs: 0,
-          })
-        }).catch(() => {})
+        logClientError('/api/answer/psychometric', apiError, { component: 'PsychometricTestLayout', questionId: currentQ.id, userId: user?.id })
         alert('Error temporal al validar tu respuesta. Inténtalo de nuevo.')
         return
       }

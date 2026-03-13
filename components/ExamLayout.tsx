@@ -11,6 +11,7 @@ import { getOposicionSlugFromPathname } from '@/lib/config/oposiciones'
 import { validateExam, type ValidatedResults, type ValidatedQuestionResult } from '@/lib/api/exam/client'
 import { ApiTimeoutError, ApiNetworkError } from '@/lib/api/client'
 import { useAnswerWatchdog } from '@/hooks/useAnswerWatchdog'
+import { logClientError } from '@/lib/logClientError'
 
 // Type for useAuth context (AuthContext is JS, so we type it manually)
 interface AuthContextValue {
@@ -178,6 +179,7 @@ async function saveAnswerToAPI(
     return true
   } catch (error) {
     console.error('❌ Error guardando respuesta en API:', error)
+    logClientError('/api/exam/answer', error, { component: 'ExamLayout', questionId: question.id })
     return false
   }
 }
@@ -751,19 +753,7 @@ export default function ExamLayout({
           }
         })
       }).catch(() => {})
-      // Log a BD para panel admin (fire-and-forget)
-      fetch('/api/validation-error-log', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          endpoint: '/api/exam/validate',
-          errorType: errorType === 'TIMEOUT' ? 'timeout' : errorType === 'NETWORK' ? 'network' : 'unknown',
-          errorMessage: `[ExamLayout client] ${(error as Error).message}`,
-          userId: user?.id || undefined,
-          httpStatus: 0,
-          durationMs: 0,
-        })
-      }).catch(() => {})
+      logClientError('/api/exam/validate', error, { component: 'ExamLayout', userId: user?.id })
     }
   }
 

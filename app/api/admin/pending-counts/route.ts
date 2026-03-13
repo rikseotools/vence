@@ -4,6 +4,8 @@
 import { NextResponse } from 'next/server'
 import { getPendingDisputeCounts } from '@/lib/api/admin-pending-counts'
 
+export const maxDuration = 15
+
 export async function GET() {
   try {
     const result = await getPendingDisputeCounts()

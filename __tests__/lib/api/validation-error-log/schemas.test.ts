@@ -29,7 +29,7 @@ describe('validationErrorLogSchema', () => {
   })
 
   // Endpoints válidos
-  it.each(['/api/answer', '/api/exam/validate', '/api/answer/psychometric'] as const)(
+  it.each(['/api/answer', '/api/exam/validate', '/api/answer/psychometric', '/api/exam/answer', '/api/exam/pending'])(
     'acepta endpoint %s',
     (endpoint) => {
       const result = validationErrorLogSchema.safeParse({ ...validInput, endpoint })
@@ -37,10 +37,18 @@ describe('validationErrorLogSchema', () => {
     }
   )
 
-  it('rechaza endpoint inválido', () => {
+  it('acepta cualquier endpoint string (no enum)', () => {
     const result = validationErrorLogSchema.safeParse({
       ...validInput,
-      endpoint: '/api/invalid',
+      endpoint: '/api/exam/answer',
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('rechaza endpoint demasiado largo', () => {
+    const result = validationErrorLogSchema.safeParse({
+      ...validInput,
+      endpoint: '/api/' + 'x'.repeat(200),
     })
     expect(result.success).toBe(false)
   })
@@ -99,14 +107,14 @@ describe('validationErrorLogSchema', () => {
   })
 
   it('rechaza httpStatus fuera de rango', () => {
-    const low = validationErrorLogSchema.safeParse({ ...validInput, httpStatus: 50 })
+    const neg = validationErrorLogSchema.safeParse({ ...validInput, httpStatus: -1 })
     const high = validationErrorLogSchema.safeParse({ ...validInput, httpStatus: 600 })
-    expect(low.success).toBe(false)
+    expect(neg.success).toBe(false)
     expect(high.success).toBe(false)
   })
 
-  it('acepta httpStatus válido', () => {
-    for (const status of [200, 400, 404, 500]) {
+  it('acepta httpStatus válido (incluyendo 0 para errores client-side)', () => {
+    for (const status of [0, 200, 400, 404, 500]) {
       const result = validationErrorLogSchema.safeParse({ ...validInput, httpStatus: status })
       expect(result.success).toBe(true)
     }
