@@ -751,6 +751,19 @@ export default function ExamLayout({
           }
         })
       }).catch(() => {})
+      // Log a BD para panel admin (fire-and-forget)
+      fetch('/api/validation-error-log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          endpoint: '/api/exam/validate',
+          errorType: errorType === 'TIMEOUT' ? 'timeout' : errorType === 'NETWORK' ? 'network' : 'unknown',
+          errorMessage: `[ExamLayout client] ${(error as Error).message}`,
+          userId: user?.id || undefined,
+          httpStatus: 0,
+          durationMs: 0,
+        })
+      }).catch(() => {})
     }
   }
 

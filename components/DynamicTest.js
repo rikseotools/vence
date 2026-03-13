@@ -145,6 +145,20 @@ export default function DynamicTest({ titulo, dificultad }) {
           }
         })
       }).catch(e => console.warn('⚠️ No se pudo enviar notificación admin:', e))
+      // Log a BD para panel admin (fire-and-forget)
+      fetch('/api/validation-error-log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          endpoint: '/api/answer',
+          errorType: err?.name === 'ApiTimeoutError' ? 'timeout' : err?.name === 'ApiNetworkError' ? 'network' : 'unknown',
+          errorMessage: `[DynamicTest client] ${err?.message || 'Unknown error'}`,
+          questionId: currentQ.id,
+          userId: user?.id || undefined,
+          httpStatus: 0,
+          durationMs: 0,
+        })
+      }).catch(() => {})
       return
     }
 

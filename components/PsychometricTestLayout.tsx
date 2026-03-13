@@ -353,6 +353,20 @@ export default function PsychometricTestLayout({
             }
           })
         }).catch(() => {})
+        // Log a BD para panel admin (fire-and-forget)
+        fetch('/api/validation-error-log', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            endpoint: '/api/answer/psychometric',
+            errorType: apiError?.name === 'ApiTimeoutError' ? 'timeout' : apiError?.name === 'ApiNetworkError' ? 'network' : 'unknown',
+            errorMessage: `[PsychometricTestLayout client] ${apiError?.message || 'Unknown error'}`,
+            questionId: currentQ.id,
+            userId: user?.id || undefined,
+            httpStatus: 0,
+            durationMs: 0,
+          })
+        }).catch(() => {})
         alert('Error temporal al validar tu respuesta. Inténtalo de nuevo.')
         return
       }
