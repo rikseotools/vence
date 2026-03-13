@@ -8,7 +8,8 @@ import {
 } from '@/db/schema'
 import { eq, and, inArray, asc } from 'drizzle-orm'
 
-export async function GET(
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
+async function _GET(
   _request: Request,
   { params }: { params: Promise<{ categoryId: string }> }
 ) {
@@ -95,3 +96,5 @@ export async function GET(
     )
   }
 }
+
+export const GET = withErrorLogging('/api/debug/category/[categoryId]/questions', _GET)
