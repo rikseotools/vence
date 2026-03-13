@@ -75,7 +75,7 @@ export function withErrorLogging(endpoint: string, handler: RouteHandler): Route
         requestBody: body,
         httpStatus: 500,
         durationMs: Date.now() - startTime,
-        userAgent: request.headers.get('user-agent'),
+        userAgent,
       })
 
       return NextResponse.json(
