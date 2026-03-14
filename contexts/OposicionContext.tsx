@@ -178,9 +178,28 @@ export function OposicionProvider({ children }: { children: ReactNode }) {
 
   // Recargar oposición cuando se cambia desde perfil u otro componente
   useEffect(() => {
-    const handleOposicionAssigned = () => {
+    const handleOposicionAssigned = (e: Event) => {
+      const detail = (e as CustomEvent).detail
+      const newOpoId = detail?.oposicionId || detail?.oposicion
+
+      // Si el evento trae el ID, actualizar inmediatamente sin esperar fetch
+      if (newOpoId) {
+        const isValid = ALL_OPOSICION_IDS.includes(newOpoId)
+        if (isValid) {
+          setNeedsOposicionFix(false)
+          setOposicionId(newOpoId)
+          setOposicionMenu(OPOSICION_MENUS[newOpoId] || DEFAULT_MENU)
+        } else {
+          setNeedsOposicionFix(true)
+          setUserOposicion(null)
+          setOposicionId(null)
+          setOposicionMenu(DEFAULT_MENU)
+        }
+        return
+      }
+
+      // Fallback: si no trae ID, refetch de BD
       if (user && !authLoading) {
-        // Re-fetch from DB to update context (including needsOposicionFix)
         ;(async () => {
           try {
             const { data: profile } = await supabase

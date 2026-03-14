@@ -124,7 +124,7 @@ export default function OposicionChangeModal({ open, onClose, onSelect }: Props)
           .eq('id', user.id)
 
         if (!error) {
-          window.dispatchEvent(new CustomEvent('oposicionAssigned'))
+          window.dispatchEvent(new CustomEvent('oposicionAssigned', { detail: { oposicionId } }))
           window.dispatchEvent(new CustomEvent('profileUpdated'))
         }
       } catch {

@@ -736,9 +736,8 @@ function PerfilPageContent() {
 
           // Limpiar datos sucios (UUIDs, JSON, slugs desconocidos)
           if (currentOposicion && !ALL_OPOSICION_IDS.includes(currentOposicion)) {
-            console.warn('⚠️ [Perfil] target_oposicion inválido, abriendo selector:', currentOposicion)
+            console.warn('⚠️ [Perfil] target_oposicion inválido:', currentOposicion)
             currentOposicion = ''
-            setShowOposicionSelector(true)
           }
 
           setFormData({
@@ -2320,7 +2319,7 @@ function PerfilPageContent() {
                               }).catch(() => {})
                               // Sincronizar profile local para que hasChanges no detecte diff
                               setProfile(prev => prev ? { ...prev, target_oposicion: id, target_oposicion_data: oposicionData } : prev)
-                              window.dispatchEvent(new CustomEvent('oposicionAssigned'))
+                              window.dispatchEvent(new CustomEvent('oposicionAssigned', { detail: { oposicionId: id } }))
                               setMessage('✅ Oposición actualizada')
                               setTimeout(() => setMessage(''), 3000)
                             }}
