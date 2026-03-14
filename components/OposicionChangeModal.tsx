@@ -40,9 +40,11 @@ const OPOSICION_MAP = Object.fromEntries(
 interface Props {
   open: boolean
   onClose: () => void
+  /** Si se pasa, el modal solo notifica la selección sin guardar en BD ni navegar */
+  onSelect?: (oposicionId: string) => void
 }
 
-export default function OposicionChangeModal({ open, onClose }: Props) {
+export default function OposicionChangeModal({ open, onClose, onSelect }: Props) {
   const router = useRouter()
   const { user } = useAuth() as { user: { id: string } | null }
   const [search, setSearch] = useState('')
@@ -93,6 +95,14 @@ export default function OposicionChangeModal({ open, onClose }: Props) {
   }, [search])
 
   const handleSelect = async (oposicionId: string) => {
+    // Modo formulario: solo notificar la selección
+    if (onSelect) {
+      onSelect(oposicionId)
+      onClose()
+      return
+    }
+
+    // Modo navegación: guardar en BD y navegar
     setSaving(true)
 
     const info = OPOSICION_MAP[oposicionId]
@@ -101,7 +111,6 @@ export default function OposicionChangeModal({ open, onClose }: Props) {
       return
     }
 
-    // Actualizar BD directamente (mismo patrón que InteractiveBreadcrumbs)
     if (user) {
       try {
         const newOposicionData = { id: oposicionId, name: info.name }

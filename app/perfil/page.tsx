@@ -9,6 +9,7 @@ import { useUserOposicion } from '@/components/useUserOposicion'
 import { ALL_OPOSICION_IDS } from '@/lib/config/oposiciones'
 import notificationTracker from '@/lib/services/notificationTracker'
 import CancellationFlow from '@/components/CancellationFlow'
+import OposicionChangeModal from '@/components/OposicionChangeModal'
 import type { User, SupabaseClient } from '@supabase/supabase-js'
 
 // ============================================
@@ -2283,115 +2284,47 @@ function PerfilPageContent() {
                           </label>
 
                           {/* Oposición seleccionada */}
-                          {formData.target_oposicion && !showOposicionSelector ? (
-                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                              <div className="flex items-center justify-between">
-                                <div className="flex-1">
-                                  <div className="text-blue-600 font-semibold text-sm">
-                                    ✓ {getSelectedOposicionName()}
-                                  </div>
-                                  {(() => {
-                                    const selectedOp = oposiciones.find(op => op.value === formData.target_oposicion)
-                                    return selectedOp?.data?.categoria && selectedOp?.data?.administracion ? (
-                                      <div className="text-xs text-gray-600 mt-1">
-                                        {selectedOp.data.categoria} · {selectedOp.data.administracion}
-                                      </div>
-                                    ) : null
-                                  })()}
+                          <div className="bg-blue-50 dark:bg-gray-700 border border-blue-200 dark:border-gray-600 rounded-lg p-3">
+                            <div className="flex items-center justify-between">
+                              <div className="flex-1">
+                                <div className="text-blue-600 dark:text-blue-400 font-semibold text-sm">
+                                  {formData.target_oposicion ? `✓ ${getSelectedOposicionName()}` : 'Sin oposición seleccionada'}
                                 </div>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setShowOposicionSelector(true)
-                                    setOposicionSearchTerm('')
-                                  }}
-                                  className="text-blue-600 hover:text-blue-800 text-xs font-medium"
-                                >
-                                  Cambiar
-                                </button>
                               </div>
+                              <button
+                                type="button"
+                                onClick={() => setShowOposicionSelector(true)}
+                                className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-xs font-medium"
+                              >
+                                {formData.target_oposicion ? 'Cambiar' : 'Seleccionar'}
+                              </button>
                             </div>
-                          ) : (
-                            <>
-                              {/* Buscador */}
-                              <input
-                                type="text"
-                                placeholder="🔍 Buscar oposición..."
-                                value={oposicionSearchTerm}
-                                onChange={(e) => setOposicionSearchTerm(e.target.value)}
-                                className="w-full px-4 py-2 mb-3 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                              />
+                          </div>
 
-                              {/* Lista de oposiciones */}
-                              <div className="space-y-2 max-h-60 overflow-y-auto border border-gray-200 dark:border-gray-600 rounded-lg dark:bg-gray-700 p-2">
-                                {filteredOposiciones.length === 0 ? (
-                                  <div className="text-center py-4 text-gray-500">
-                                    No se encontraron oposiciones
-                                  </div>
-                                ) : (
-                                  <>
-                                    {/* Opción para quitar selección */}
-                                    {!formData.target_oposicion && (
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          handleDirectChange('target_oposicion', '')
-                                          setShowOposicionSelector(false)
-                                          setOposicionSearchTerm('')
-                                        }}
-                                        className="w-full text-left p-2 border border-gray-200 dark:border-gray-600 rounded-lg dark:bg-gray-700 hover:bg-gray-50 transition-all text-sm"
-                                      >
-                                        <div className="text-gray-600">
-                                          ❌ Ninguna seleccionada
-                                        </div>
-                                      </button>
-                                    )}
-
-                                    {/* Lista de oposiciones */}
-                                    {filteredOposiciones.map((op) => (
-                                      <button
-                                        key={op.value}
-                                        type="button"
-                                        onClick={() => {
-                                          handleDirectChange('target_oposicion', op.value)
-                                          setShowOposicionSelector(false)
-                                          setOposicionSearchTerm('')
-                                        }}
-                                        className={`w-full text-left p-2 border rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all text-sm ${
-                                          formData.target_oposicion === op.value
-                                            ? 'border-blue-500 bg-blue-50'
-                                            : 'border-gray-200'
-                                        }`}
-                                      >
-                                        <div className="font-medium text-gray-900 dark:text-white">
-                                          {op.label}
-                                        </div>
-                                        {op.data?.categoria && op.data?.administracion && (
-                                          <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                            {op.data.categoria} · {op.data.administracion}
-                                          </div>
-                                        )}
-                                      </button>
-                                    ))}
-                                  </>
-                                )}
-                              </div>
-
-                              {/* Cancelar si ya había una selección */}
-                              {formData.target_oposicion && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setShowOposicionSelector(false)
-                                    setOposicionSearchTerm('')
-                                  }}
-                                  className="mt-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-800"
-                                >
-                                  Cancelar
-                                </button>
-                              )}
-                            </>
-                          )}
+                          <OposicionChangeModal
+                            open={showOposicionSelector}
+                            onClose={() => setShowOposicionSelector(false)}
+                            onSelect={async (id) => {
+                              // Actualizar state local
+                              handleDirectChange('target_oposicion', id)
+                              // Guardar solo oposición en BD directamente
+                              const selectedOp = oposiciones.find(op => op.value === id)
+                              const oposicionData = selectedOp?.data || null
+                              await fetch('/api/profile', {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                  userId: user?.id,
+                                  data: { targetOposicion: id, targetOposicionData: oposicionData }
+                                })
+                              }).catch(() => {})
+                              // Sincronizar profile local para que hasChanges no detecte diff
+                              setProfile(prev => prev ? { ...prev, target_oposicion: id, target_oposicion_data: oposicionData } : prev)
+                              window.dispatchEvent(new CustomEvent('oposicionAssigned'))
+                              setMessage('✅ Oposición actualizada')
+                              setTimeout(() => setMessage(''), 3000)
+                            }}
+                          />
 
                           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                             Selecciona la oposición que estás preparando
