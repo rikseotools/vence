@@ -11,6 +11,7 @@ import type {
   StatsQueryType,
 } from './schemas'
 import { mapLawSlugToShortName } from '@/lib/lawMappingUtils'
+import { getOposicionByPositionType } from '@/lib/config/oposiciones'
 import { createClient } from '@supabase/supabase-js'
 
 // ============================================
@@ -384,8 +385,18 @@ export async function loadLawsCache(): Promise<void> {
 export function formatExamStatsResponse(stats: ExamStatsResult): string {
   let response = `📊 **Estadísticas de Exámenes Oficiales**\n\n`
 
+  // Mostrar filtro de oposición
+  if (stats.positionFilter) {
+    const oposicion = getOposicionByPositionType(stats.positionFilter)
+    if (oposicion) {
+      response += `🎓 *Oposición: ${oposicion.shortName}*\n`
+    }
+  }
+
   if (stats.lawFilter) {
     response += `📋 *Filtro: ${stats.lawFilter}*\n\n`
+  } else if (stats.positionFilter) {
+    response += `\n`
   }
 
   response += `Se analizaron **${stats.totalOfficialQuestions} preguntas** de exámenes oficiales.\n\n`
@@ -567,7 +578,9 @@ export async function searchStats(context: ChatContext, overrideType?: StatsQuer
   }
 
   if (queryType === 'exam') {
-    result.examStats = await getExamStats(result.lawFilter, 15, null)
+    // Filtrar por oposición del usuario si está disponible
+    const examPosition = context.userDomain || null
+    result.examStats = await getExamStats(result.lawFilter, 15, examPosition)
   }
 
   if (queryType === 'user') {
