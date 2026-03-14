@@ -13,6 +13,7 @@ import type { OfficialExamConvocatoria } from '@/lib/config/oposiciones'
 interface Topic {
   id: string
   topicNumber: number
+  displayNumber: number
   title: string
   description: string | null
   hasContent: boolean
@@ -621,6 +622,9 @@ function ThemeLink({ topic, basePath, stats, color, onInfoClick }: ThemeLinkProp
   const hasStats = !!stats
   const href = `${basePath}/${topic.topicNumber}`
 
+  // Mostrar solo la primera frase del título (antes del primer punto seguido de espacio)
+  const shortTitle = topic.title.split(/\.\s/)[0]
+
   // Tema sin contenido: mostrar como deshabilitado
   if (!topic.hasContent) {
     return (
@@ -628,7 +632,7 @@ function ThemeLink({ topic, basePath, stats, color, onInfoClick }: ThemeLinkProp
         className="block py-3 px-6 rounded-lg font-semibold bg-gray-100 border border-gray-200 text-gray-400 cursor-not-allowed opacity-70"
       >
         <div className="flex items-center justify-between">
-          <span>Tema {topic.topicNumber}: {topic.title}</span>
+          <span>Tema {topic.displayNumber}: {shortTitle}</span>
           <span className="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-sm font-medium">
             En desarrollo
           </span>
@@ -647,7 +651,7 @@ function ThemeLink({ topic, basePath, stats, color, onInfoClick }: ThemeLinkProp
       }`}
     >
       <div className="flex items-center justify-between">
-        <span>Tema {topic.topicNumber}: {topic.title}</span>
+        <span>Tema {topic.displayNumber}: {shortTitle}</span>
         <div className="flex items-center space-x-3">
           {hasStats ? (
             <>

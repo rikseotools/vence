@@ -8,6 +8,7 @@ type OposicionSlug = string
 interface Topic {
   id: string
   topicNumber: number
+  displayNumber: number
   title: string
   description: string | null
   hasContent: boolean
@@ -32,6 +33,19 @@ const BLOQUE_CONFIG: Record<OposicionSlug, BloqueConfig[]> = Object.fromEntries(
       min: block.themes[0].id,
       max: block.themes[block.themes.length - 1].id,
     })),
+  ])
+)
+
+// Mapa topic_number → displayNumber (solo para temas donde difiere)
+const DISPLAY_NUMBER_MAP: Record<OposicionSlug, Record<number, number>> = Object.fromEntries(
+  OPOSICIONES.map(o => [
+    o.slug,
+    Object.fromEntries(
+      o.blocks
+        .flatMap(b => b.themes)
+        .filter(t => t.displayNumber != null)
+        .map(t => [t.id, t.displayNumber!])
+    ),
   ])
 )
 
@@ -75,9 +89,11 @@ export default async function TestHubPage({ oposicion }: Props) {
   const topicsWithScope = new Set((scopes || []).map(s => s.topic_id))
 
   // Transformar a formato esperado
+  const displayMap = DISPLAY_NUMBER_MAP[oposicion] || {}
   const formattedTopics: Topic[] = (topics || []).map(t => ({
     id: t.id,
     topicNumber: t.topic_number,
+    displayNumber: displayMap[t.topic_number] ?? t.topic_number,
     title: t.title,
     description: t.description,
     hasContent: topicsWithScope.has(t.id),
