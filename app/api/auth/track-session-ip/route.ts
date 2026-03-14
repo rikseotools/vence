@@ -104,8 +104,8 @@ async function _POST(request: Request) {
       updateData.region = geo.region
       updateData.city = geo.city
       updateData.isp = geo.isp
-      if (geo.lat && geo.lon) {
-        updateData.coordinates = `(${geo.lon},${geo.lat})`
+      if (typeof geo.lat === 'number' && typeof geo.lon === 'number' && isFinite(geo.lat) && isFinite(geo.lon)) {
+        updateData.coordinates = [geo.lon, geo.lat]
       }
       console.log('📍 [SessionIP] Localidad:', geo.city, geo.region, geo.country_code)
     }
