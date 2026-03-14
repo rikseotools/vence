@@ -226,6 +226,29 @@ Si has realizado el pago pero no apareces como Premium, puede deberse a un retra
 Incluye tu email de registro y el comprobante de pago para que podamos resolverlo lo antes posible.`
   }
 
+  // Cambiar de oposición / me sale otra oposición
+  if (/cambiar\s+(de\s+)?oposici[oó]n|elegir\s+(otra\s+)?oposici[oó]n|seleccionar\s+(otra\s+)?oposici[oó]n|poner\s+(otra\s+)?oposici[oó]n|me\s+sale\s+(la\s+)?(oposici[oó]n|del\s+estado|otra)|no\s+(es\s+)?mi\s+oposici[oó]n|oposici[oó]n\s+(equivocada|incorrecta|mal)|c[oó]mo\s+(cambio|elijo|selecciono).*oposici[oó]n/i.test(msgLower)) {
+    return `**Como cambiar de oposicion**
+
+Puedes cambiar tu oposicion de dos formas:
+
+**Opcion 1 - Desde tu perfil:**
+1. Ve a **[tu perfil](/perfil)**
+2. En la seccion "Tu oposicion", pulsa **"Cambiar"**
+3. Selecciona la nueva oposicion
+4. Guarda los cambios
+
+**Opcion 2 - Acceso directo:**
+Entra directamente a la pagina de tu oposicion. Por ejemplo:
+- **[Auxiliar Administrativo Madrid](/auxiliar-administrativo-madrid)**
+- **[Auxiliar Administrativo Estado](/auxiliar-administrativo-estado)**
+- **[Tramitacion Procesal](/tramitacion-procesal)**
+
+Puedes ver todas las oposiciones disponibles en **[Nuestras Oposiciones](/nuestras-oposiciones)**.
+
+Al entrar a una oposicion y hacer un test, el sistema detecta automaticamente que quieres estudiar esa oposicion y la asigna a tu perfil.`
+  }
+
   // Psicotécnicos - pero NO cuando piden explicación de una pregunta específica
   // Si el usuario está pidiendo que expliquemos una pregunta, no devolver respuesta predefinida
   const isAskingForExplanation = /expl[ií]c(a|ame|ar)|resolver\s+(esta|la)\s+pregunta|c[oó]mo\s+se\s+resuelve|paso\s+a\s+paso|ayud(a|ame)\s+con\s+(esta|la)/i.test(msgLower)

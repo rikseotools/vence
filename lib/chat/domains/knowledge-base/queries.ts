@@ -361,6 +361,17 @@ export function isPlatformQuery(message: string): boolean {
     /plazas?\s+(disponible|ofertada|publicada)/i,
     // Problemas de suscripcion / billing
     /(ya\s+)?pagu[eé]|he\s+pagado/i,
+    // Cambiar oposición / seleccionar otra oposición
+    /cambiar\s+(de\s+)?oposici[oó]n/i,
+    /elegir\s+(otra\s+)?oposici[oó]n/i,
+    /seleccionar\s+(otra\s+)?oposici[oó]n/i,
+    /poner\s+(otra\s+)?oposici[oó]n/i,
+    /(quiero|me\s+sale)\s+(la\s+)?(del?\s+)?estado\b.*\bmadr/i,
+    /(quiero|me\s+sale)\s+(la\s+)?(del?\s+)?madr.*\bestado\b/i,
+    /me\s+sale\s+(la\s+)?(oposici[oó]n|del\s+estado|otra)/i,
+    /no\s+(es\s+)?mi\s+oposici[oó]n/i,
+    /oposici[oó]n\s+(equivocada|incorrecta|mal)/i,
+    /c[oó]mo\s+(cambio|elijo|selecciono).*oposici[oó]n/i,
   ]
 
   return platformIndicators.some(p => p.test(message))
