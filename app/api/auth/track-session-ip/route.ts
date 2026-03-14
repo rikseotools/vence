@@ -9,8 +9,8 @@ import { z } from 'zod/v3'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 const trackSessionIpSchema = z.object({
   userId: z.string().uuid(),
-  sessionId: z.string().uuid().optional(),
-  deviceId: z.string().optional(),
+  sessionId: z.string().uuid().nullish(),
+  deviceId: z.string().nullish(),
 })
 
 interface GeoLocation {
@@ -66,7 +66,7 @@ async function _POST(request: Request) {
 
     if (!parsed.success) {
       return NextResponse.json(
-        { success: false, error: 'userId requerido' },
+        { success: false, error: parsed.error.issues[0]?.message || 'Datos inválidos' },
         { status: 400 }
       )
     }
