@@ -177,18 +177,18 @@ export async function getWeeklyComparison(userId: string): Promise<{
 } | null> {
   if (!userId) return null
 
-  // Calcular fechas
-  const now = new Date()
+  // Calcular fechas en hora Madrid (importante en Vercel que corre en UTC)
+  const nowMadrid = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Madrid' }))
 
-  // Esta semana: desde el lunes 00:00
-  const thisWeekStart = new Date(now)
+  // Esta semana: desde el lunes 00:00 hora Madrid
+  const thisWeekStart = new Date(nowMadrid)
   const day = thisWeekStart.getDay()
   const diff = day === 0 ? 6 : day - 1 // Lunes = 0
   thisWeekStart.setDate(thisWeekStart.getDate() - diff)
   thisWeekStart.setHours(0, 0, 0, 0)
 
   // Fin de esta semana: ahora
-  const thisWeekEnd = new Date(now)
+  const thisWeekEnd = new Date(nowMadrid)
 
   // Semana pasada: 7 días antes del lunes
   const lastWeekStart = new Date(thisWeekStart)

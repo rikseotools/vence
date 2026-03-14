@@ -281,6 +281,16 @@ export function formatWeeklyComparisonResponse(
   response += `- Correctas: **${comparison.lastWeek.correctAnswers}** ✅\n`
   response += `- Porcentaje de acierto: **${comparison.lastWeek.accuracy}%**\n\n`
 
+  // Caso especial: no ha practicado esta semana
+  if (comparison.thisWeek.totalQuestions === 0) {
+    if (comparison.lastWeek.totalQuestions > 0) {
+      response += `📚 **No has practicado esta semana todavía.** La semana pasada hiciste ${comparison.lastWeek.totalQuestions} preguntas con un ${comparison.lastWeek.accuracy}% de acierto. ¡Retoma el ritmo!`
+    } else {
+      response += `📚 **No has practicado ninguna de las dos semanas.** ¡Es hora de empezar! Intenta hacer al menos 10 preguntas al día.`
+    }
+    return response
+  }
+
   // Análisis de mejora
   response += `📈 **Comparación:**\n`
 
@@ -293,19 +303,21 @@ export function formatWeeklyComparisonResponse(
     response += `- Has mantenido el mismo ritmo de estudio 📊\n`
   }
 
-  // Comparar precisión
-  if (comparison.improvement.accuracy > 0) {
-    response += `- Tu precisión ha **mejorado ${comparison.improvement.accuracy}%** 🚀\n`
-  } else if (comparison.improvement.accuracy < 0) {
-    response += `- Tu precisión ha **bajado ${Math.abs(comparison.improvement.accuracy)}%** 📉\n`
-  } else {
-    response += `- Tu precisión se mantiene estable 📊\n`
+  // Comparar precisión (solo si ambas semanas tienen datos)
+  if (comparison.lastWeek.totalQuestions > 0) {
+    if (comparison.improvement.accuracy > 0) {
+      response += `- Tu precisión ha **subido de ${comparison.lastWeek.accuracy}% a ${comparison.thisWeek.accuracy}%** 🚀\n`
+    } else if (comparison.improvement.accuracy < 0) {
+      response += `- Tu precisión ha **bajado de ${comparison.lastWeek.accuracy}% a ${comparison.thisWeek.accuracy}%** 📉\n`
+    } else {
+      response += `- Tu precisión se mantiene estable en **${comparison.thisWeek.accuracy}%** 📊\n`
+    }
   }
 
   response += `\n`
 
   // Mensaje motivacional según el progreso
-  if (comparison.improvement.questions > 0 && comparison.improvement.accuracy > 0) {
+  if (comparison.improvement.questions > 0 && comparison.improvement.accuracy >= 0) {
     response += `💪 **¡Excelente progreso!** Estás aumentando tanto tu ritmo de estudio como tu precisión. ¡Sigue así!`
   } else if (comparison.improvement.questions > 0 && comparison.improvement.accuracy < 0) {
     response += `🎯 **Buen ritmo de estudio**, pero intenta revisar las explicaciones para mejorar tu precisión.`
@@ -313,8 +325,6 @@ export function formatWeeklyComparisonResponse(
     response += `✨ **Tu precisión ha mejorado**, aunque has estudiado menos. ¡Intenta ser más constante!`
   } else if (comparison.improvement.questions < 0 && comparison.improvement.accuracy < 0) {
     response += `⚠️ **Necesitas retomar el ritmo**. Intenta dedicar más tiempo y revisar las explicaciones.`
-  } else if (comparison.thisWeek.totalQuestions === 0) {
-    response += `📚 **No has respondido preguntas esta semana**. ¡Es hora de empezar a estudiar!`
   } else {
     response += `📊 **Mantén la constancia**. Un ritmo regular es clave para aprobar.`
   }
