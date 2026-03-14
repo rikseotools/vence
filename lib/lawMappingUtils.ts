@@ -258,6 +258,7 @@ const SLUG_TO_SHORT_NAME: SlugToShortNameMapping = {
   // Alias desde /leyes-de-oposiciones
   'ley-poder-judicial': 'LO 6/1985',
   'ley-fuerzas-cuerpos-seguridad': 'LOFCS',
+  'lecrim': 'LECrim',
   'ley-enjuiciamiento-criminal': 'LECrim',
   'proteccion-seguridad-ciudadana': 'LO 4/2015',
   'trafico-seguridad-vial': 'Ley Tráfico',

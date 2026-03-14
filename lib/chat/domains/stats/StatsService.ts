@@ -10,6 +10,8 @@ import type {
   TemporalFilter,
   StatsQueryType,
 } from './schemas'
+import { mapLawSlugToShortName } from '@/lib/lawMappingUtils'
+import { createClient } from '@supabase/supabase-js'
 
 // ============================================
 // DETECCIÓN DE CONSULTAS
@@ -205,30 +207,171 @@ export function parseTemporalPhrase(message: string): TemporalFilter {
 // ============================================
 
 /**
- * Extrae nombre de ley del mensaje si se menciona
+ * Extrae nombre de ley del mensaje del usuario.
+ *
+ * Fuentes de resolución (en orden):
+ * 1. Cache de BD (slug → short_name, short_name directo) — escalable, sin mantenimiento
+ * 2. lawMappingUtils (aliases hardcodeados) — fallback para aliases no derivables del slug
+ * 3. Patrones descriptivos (regex) — para frases como "constitución", "enjuiciamiento criminal"
+ *
+ * Para añadir una ley nueva: solo crear la ley en BD con su slug. Sin tocar código.
  */
 export function extractLawFromMessage(message: string): string | null {
-  const msgLower = message.toLowerCase()
+  const msgLower = message.toLowerCase().trim()
 
-  // Patrones de leyes comunes
-  const lawPatterns: Array<{ pattern: RegExp; law: string }> = [
-    { pattern: /ley\s*39\/2015/i, law: 'Ley 39/2015' },
-    { pattern: /ley\s*40\/2015/i, law: 'Ley 40/2015' },
-    { pattern: /constituci[oó]n/i, law: 'CE' },
-    { pattern: /lpac|procedimiento\s*administrativo\s*com[uú]n/i, law: 'Ley 39/2015' },
-    { pattern: /lrjsp|r[eé]gimen\s*jur[ií]dico/i, law: 'Ley 40/2015' },
-    { pattern: /ley\s*50\/1997|gobierno/i, law: 'Ley 50/1997' },
-    { pattern: /ley\s*19\/2013|transparencia/i, law: 'Ley 19/2013' },
-    { pattern: /ebep|empleado\s*p[uú]blico/i, law: 'RDL 5/2015' },
+  // 1) Extraer referencias con número: "ley 39/2015", "lo 6/1985", "rd 364/1995", etc.
+  const numRefs = msgLower.matchAll(
+    /\b(ley|lo|rdl|rd|orden)\s+(\d+\/\d+)/gi
+  )
+  for (const match of numRefs) {
+    const prefix = match[1].toLowerCase()
+    const num = match[2].replace('/', '-')
+    const slug = `${prefix}-${num}`
+    const shortName = _resolveSlug(slug)
+    if (shortName) return shortName
+  }
+
+  // 2) Probar palabras/tokens del mensaje como slugs o short_names directos
+  // Captura abreviaturas: "lecrim", "lopj", "ebep", "lpac", "ce", "tfue", etc.
+  const tokens = msgLower
+    .replace(/[¿?¡!.,;:()"""]/g, ' ')
+    .split(/\s+/)
+    .filter(t => t.length >= 2)
+
+  for (const token of tokens) {
+    const shortName = _resolveSlug(token)
+    if (shortName) return shortName
+  }
+
+  // 3) Probar combinaciones de 2-3 tokens consecutivos como slug
+  // "poder judicial" → "poder-judicial", "enjuiciamiento criminal" → "ley-enjuiciamiento-criminal"
+  for (let i = 0; i < tokens.length - 1; i++) {
+    const slug2 = `${tokens[i]}-${tokens[i + 1]}`
+    let sn = _resolveSlug(slug2)
+    if (sn) return sn
+
+    // Probar con prefijo "ley-" para nombres descriptivos
+    sn = _resolveSlug(`ley-${slug2}`)
+    if (sn) return sn
+
+    if (i < tokens.length - 2) {
+      sn = _resolveSlug(`${tokens[i]}-${tokens[i + 1]}-${tokens[i + 2]}`)
+      if (sn) return sn
+    }
+  }
+
+  // 4) Patrones descriptivos comunes (frases con acentos, preposiciones, etc.)
+  const descriptivePatterns: Array<{ pattern: RegExp; slug: string }> = [
+    { pattern: /constituci[oó]n/i, slug: 'ce' },
+    { pattern: /enjuiciamiento\s*criminal/i, slug: 'ley-enjuiciamiento-criminal' },
+    { pattern: /enjuiciamiento\s*civil/i, slug: 'enjuiciamiento-civil' },
+    { pattern: /poder\s*judicial/i, slug: 'poder-judicial' },
+    { pattern: /empleado\s*p[uú]blico/i, slug: 'ebep' },
+    { pattern: /procedimiento\s*administrativo/i, slug: 'procedimiento-administrativo' },
+    { pattern: /r[eé]gimen\s*jur[ií]dico/i, slug: 'regimen-juridico' },
+    { pattern: /r[eé]gimen\s*local/i, slug: 'regimen-local' },
+    { pattern: /protecci[oó]n\s*de?\s*datos/i, slug: 'lo-3-2018' },
+    { pattern: /violencia\s*de?\s*g[eé]nero/i, slug: 'lo-1-2004' },
+    { pattern: /seguridad\s*ciudadana/i, slug: 'seguridad-ciudadana' },
+    { pattern: /estatuto.*trabajadores/i, slug: 'estatuto-trabajadores' },
+    { pattern: /prevenci[oó]n.*riesgos/i, slug: 'lprl' },
+    { pattern: /tratado.*funcionamiento/i, slug: 'tfue' },
+    { pattern: /tratado.*uni[oó]n\s*europea/i, slug: 'tue' },
+    { pattern: /subvenciones/i, slug: 'ley-38-2003' },
   ]
 
-  for (const { pattern, law } of lawPatterns) {
+  for (const { pattern, slug } of descriptivePatterns) {
     if (pattern.test(msgLower)) {
-      return law
+      const shortName = _resolveSlug(slug)
+      if (shortName) return shortName
     }
   }
 
   return null
+}
+
+// ============================================
+// CACHE DE LEYES DESDE BD (escalable)
+// ============================================
+
+/** slug → short_name cargado de la tabla laws */
+let _dbSlugMap: Map<string, string> | null = null
+/** short_name (lowercase) → short_name para match directo */
+let _dbShortNameMap: Map<string, string> | null = null
+let _dbCacheLoading: Promise<void> | null = null
+
+/**
+ * Resuelve un slug/alias a short_name.
+ * 1. Cache de BD (slug → short_name)
+ * 2. Cache de BD (short_name directo, case-insensitive)
+ * 3. lawMappingUtils hardcodeado (fallback)
+ */
+function _resolveSlug(slug: string): string | null {
+  // BD cache: slug → short_name
+  if (_dbSlugMap) {
+    const fromSlug = _dbSlugMap.get(slug)
+    if (fromSlug) return fromSlug
+  }
+
+  // BD cache: short_name directo (case-insensitive)
+  if (_dbShortNameMap) {
+    const fromSn = _dbShortNameMap.get(slug.toLowerCase())
+    if (fromSn) return fromSn
+  }
+
+  // Fallback: lawMappingUtils hardcodeado
+  return mapLawSlugToShortName(slug)
+}
+
+/**
+ * Carga slug → short_name de la tabla laws en BD.
+ * Se llama lazy desde searchStats. Solo carga una vez.
+ */
+export async function loadLawsCache(): Promise<void> {
+  if (_dbSlugMap) return // ya cargado
+
+  // Evitar cargas concurrentes
+  if (_dbCacheLoading) { await _dbCacheLoading; return }
+
+  _dbCacheLoading = (async () => {
+    try {
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+      const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+      const supabase = createClient(supabaseUrl, supabaseKey)
+
+      const { data, error } = await supabase
+        .from('laws')
+        .select('slug, short_name')
+        .eq('is_active', true)
+
+      if (error || !data) {
+        logger.warn('Could not load laws cache from DB', { domain: 'stats', error: error?.message })
+        return
+      }
+
+      const slugMap = new Map<string, string>()
+      const snMap = new Map<string, string>()
+
+      for (const law of data) {
+        // slug → short_name
+        if (law.slug) {
+          slugMap.set(law.slug, law.short_name)
+        }
+
+        // short_name (lowercase) → short_name (para match directo de abreviaturas)
+        snMap.set(law.short_name.toLowerCase(), law.short_name)
+      }
+
+      _dbSlugMap = slugMap
+      _dbShortNameMap = snMap
+
+      logger.info(`Laws cache loaded from DB: ${slugMap.size} slugs, ${snMap.size} short_names`, { domain: 'stats' })
+    } catch (err) {
+      logger.warn('Error loading laws cache from DB', { domain: 'stats', error: String(err) })
+    }
+  })()
+
+  await _dbCacheLoading
 }
 
 // ============================================
@@ -406,6 +549,9 @@ export async function searchStats(context: ChatContext): Promise<StatsSearchResu
   const queryType = detectStatsQueryType(message)
 
   logger.debug(`Stats query type detected: ${queryType}`, { domain: 'stats' })
+
+  // Cargar cache de leyes desde BD (lazy, solo la primera vez)
+  await loadLawsCache()
 
   const result: StatsSearchResult = {
     type: queryType,
