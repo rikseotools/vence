@@ -436,6 +436,16 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
           } else {
             console.log('👤 INITIAL_SESSION: sin usuario')
             updateUserProfile(null)
+            // 🔧 FIX: Limpiar localStorage para evitar que pre-hydrate o el safety timeout
+            // resuciten un usuario con token expirado (ghost user)
+            try {
+              const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+              if (supabaseUrl) {
+                const storageKey = `sb-${supabaseUrl.split('://')[1]?.split('.')[0]}-auth`
+                localStorage.removeItem(storageKey)
+                console.log('🧹 localStorage limpiado (token expirado)')
+              }
+            } catch {}
           }
           // Finalizar loading — este es el único punto que lo hace en carga inicial
           setLoading(false)

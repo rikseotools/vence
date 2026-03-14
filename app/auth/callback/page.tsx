@@ -82,26 +82,60 @@ function AuthCallbackContent() {
         const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
         const storageKey = `sb-${supabaseUrl.split('://')[1]?.split('.')[0]}-auth`
 
-        console.log('🔑 [CALLBACK] Esperando sesion via localStorage polling...')
+        // 🔧 FIX: Limpiar sesión expirada de localStorage antes de esperar la nueva.
+        // Si hay una sesión vieja con token expirado, _initialize() intenta refrescarla
+        // A LA VEZ que intercambia el código OAuth nuevo → bloqueo de navigator.locks → timeout 30s.
+        // Eliminándola, _initialize() solo hace el exchange del código nuevo.
+        try {
+          const existingRaw = localStorage.getItem(storageKey)
+          if (existingRaw) {
+            const existing = JSON.parse(existingRaw)
+            if (existing?.expires_at && existing.expires_at < Math.floor(Date.now() / 1000)) {
+              console.log('🧹 [CALLBACK] Sesión expirada en localStorage, limpiando para evitar lock contention')
+              localStorage.removeItem(storageKey)
+            }
+          }
+        } catch {
+          // ignorar errores de parsing
+        }
+
+        console.log('🔑 [CALLBACK] Esperando sesion via localStorage polling + onAuthStateChange...')
 
         const SESSION_TIMEOUT_MS = 30000
         const POLL_INTERVAL_MS = 150
 
         const session = await new Promise<any>((resolve, reject) => {
           let resolved = false
+          let authSubscription: { unsubscribe: () => void } | null = null
 
           const finish = (sess: any, source: string) => {
             if (resolved) return
             resolved = true
             clearInterval(interval)
             clearTimeout(timeout)
+            authSubscription?.unsubscribe()
             console.log(`✅ [CALLBACK] Sesion encontrada via ${source}:`, sess?.user?.email)
             resolve(sess)
+          }
+
+          // 🔧 Canal 1: onAuthStateChange — captura la sesión cuando _initialize()
+          // completa el exchange PKCE, incluso si navigator.locks retrasa la escritura
+          // a localStorage
+          try {
+            const { data } = supabase.auth.onAuthStateChange((event: string, authSession: any) => {
+              if (authSession?.access_token && authSession.user) {
+                finish(authSession, `onAuthStateChange-${event}`)
+              }
+            })
+            authSubscription = data.subscription
+          } catch (e) {
+            console.warn('⚠️ [CALLBACK] Error suscribiendo onAuthStateChange:', e)
           }
 
           const timeout = setTimeout(async () => {
             if (resolved) return
             clearInterval(interval)
+            authSubscription?.unsubscribe()
             // Fallback: intentar getSession() directamente antes de fallar
             console.log('⏳ [CALLBACK] Polling agotado, intentando getSession() como fallback...')
             try {
@@ -133,6 +167,7 @@ function AuthCallbackContent() {
             reject(new Error('Timeout: no se recibio sesion en 30s'))
           }, SESSION_TIMEOUT_MS)
 
+          // Canal 2: localStorage polling (original)
           const interval = setInterval(() => {
             try {
               const raw = localStorage.getItem(storageKey)
