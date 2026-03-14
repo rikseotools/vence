@@ -510,9 +510,9 @@ export default function HeaderES() {
                   </svg>
                 </Link>
 
-                {/* 📝 Exámenes pendientes - Móvil */}
+                {/* 📝 Exámenes pendientes - Móvil (oculto cuando se ve el desktop) */}
                 {pendingExams.length > 0 && (
-                  <div className="relative">
+                  <div className="relative lg:hidden">
                     <button
                       onClick={() => setShowPendingExamsDropdown(!showPendingExamsDropdown)}
                       className="flex items-center gap-1 px-2 py-1 bg-amber-500 text-white rounded-lg text-xs font-semibold shadow-sm"
@@ -601,7 +601,7 @@ export default function HeaderES() {
 
               {/* 📝 Exámenes pendientes - Desktop */}
               {user && pendingExams.length > 0 && (
-                <div className="relative hidden xl:block">
+                <div className="relative hidden lg:block">
                   <button
                     onClick={() => setShowPendingExamsDropdown(!showPendingExamsDropdown)}
                     className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-semibold shadow-md hover:shadow-lg transition-all"
