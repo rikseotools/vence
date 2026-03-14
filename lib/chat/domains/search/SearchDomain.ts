@@ -17,6 +17,7 @@ import {
 import { detectQueryPattern } from './PatternMatcher'
 import { detectLawsFromText, getHotArticlesByOposicion, formatHotArticlesResponse, hasQuestionsForArticle, extractArticleNumbers } from './queries'
 import { isPsychometricSubtype } from '../../shared/constants'
+import { detectStatsQueryType } from '../stats/StatsService'
 
 // ============================================
 // LEYES VIRTUALES (INFORMÁTICA/OFIMÁTICA)
@@ -129,9 +130,16 @@ export class SearchDomain implements ChatDomain {
     }
 
     // Detectar si hay leyes mencionadas en el mensaje
-    // PERO si la conversación previa era de stats, dejar que StatsDomain maneje follow-ups
+    // PERO ceder a StatsDomain cuando:
+    // 1. El mensaje es una consulta de stats (ej: "preguntas más preguntadas de la CE")
+    // 2. La conversación previa era de stats (follow-up)
     const mentionedLaws = detectMentionedLaws(msg)
     if (mentionedLaws.length > 0) {
+      const statsQueryType = detectStatsQueryType(context.currentMessage)
+      if (statsQueryType !== 'none') {
+        logger.debug('SearchDomain: law mention detected but message is stats query, deferring to StatsDomain', { domain: 'search', statsQueryType })
+        return false
+      }
       if (this.isPreviousResponseStats(context.messages)) {
         logger.debug('SearchDomain: law mention detected but previous response was stats, deferring to StatsDomain', { domain: 'search' })
         return false

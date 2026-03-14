@@ -253,6 +253,57 @@ Después de analizar los traces, clasificar:
 
 Después de verificar y (opcionalmente) corregir, marcar los mensajes como revisados con notas detalladas de lo encontrado para no volver a analizarlos.
 
+## Metodología: Revisión uno a uno con simulación
+
+La forma más efectiva de mejorar la IA es revisar los chats **uno a uno**, analizando a fondo cada conversación y simulando el flujo para encontrar bugs accionables.
+
+### Filosofía
+
+- **No ir rápido**: revisar cada chat con calma, no marcar como revisado sin entender
+- **Buscar mejoras accionables**: el objetivo no es triaje, es encontrar bugs que se puedan corregir en el código
+- **Simular antes de arreglar**: reproducir el problema con las funciones reales antes de implementar el fix
+- **Verificar después de arreglar**: simular de nuevo para confirmar que el fix funciona
+
+### Flujo de trabajo
+
+1. **Obtener el siguiente chat no revisado** (priorizar feedback negativo, discrepancias, chat libre)
+2. **Leer el mensaje del usuario y la respuesta completa**
+3. **Obtener los traces** para entender el flujo interno (routing → domain → db_query → llm_call)
+4. **Identificar el problema**: ¿routing incorrecto? ¿ley no detectada? ¿LLM inventa? ¿artículo truncado?
+5. **Simular el flujo** con las funciones reales del código (detectStatsQueryType, extractLawFromMessage, detectMentionedLaws, etc.)
+6. **Implementar el fix** en el código
+7. **Re-simular** para verificar que funciona correctamente (incluir casos positivos Y negativos)
+8. **Marcar como revisado** con notas detalladas del problema y el fix aplicado
+
+### Ejemplo de simulación
+
+Para verificar cambios en el routing de stats vs search:
+
+```typescript
+// Simular con las funciones reales via tsx
+import { extractLawFromMessage, loadLawsCache, detectStatsQueryType } from './lib/chat/domains/stats/StatsService';
+
+await loadLawsCache();
+
+// Simular la conversación paso a paso
+const messages = [];
+const msg = "Y de la LOPJ?";
+
+const qt = detectStatsQueryType(msg);
+const law = extractLawFromMessage(msg);
+const isFollowUp = isStatsFollowUp(messages, msg);
+
+console.log(`qt=${qt} law=${law} followUp=${isFollowUp}`);
+// → Verificar que el domain correcto captura el mensaje
+```
+
+### Qué simular
+
+- **Mensaje original del usuario** que causó el problema
+- **Follow-ups** si la conversación tenía varios mensajes
+- **Mensajes inventados similares** para verificar que no hay regresiones
+- **Casos negativos**: mensajes que NO deberían activar el fix (evitar false positives)
+
 ## Problemas conocidos detectados
 
 ### 1. "EN QUÉ TEMARIO APARECE?" sin contexto
@@ -279,3 +330,13 @@ Después de verificar y (opcionalmente) corregir, marcar los mensajes como revis
   - **LLM Call**: **FALLO** → El artículo se pasó **truncado** (`[TRUNCATED]`). Solo llegaron los apartados 1-2, pero la pregunta era sobre el apartado 3 (subapartados a-h de la Memoria). El LLM no tenía el texto real para comparar las opciones.
 - **Causa raíz**: `formatArticlesForContext()` truncaba a 500 chars por defecto cuando `fullContent: false`. Artículos largos perdían los apartados relevantes.
 - **Solución aplicada**: `fullContent: true` siempre en SearchDomain y VerificationService. Los artículos se pasan completos al LLM (el coste es negligible: incluso 5 artículos largos ~15K tokens, bien dentro de los 128K del modelo).
+
+### 5. LECrim stats: ley no detectada + follow-ups mal enrutados
+- **User**: anon (2026-03-14)
+- **Problema doble**:
+  1. "¿Qué artículos de la Ley de Enjuiciamiento Criminal son más preguntados?" → `extractLawFromMessage` no detectaba LECrim → `getExamStats(null)` → devolvía stats sin filtro (Windows 11, Excel)
+  2. Follow-ups como "Y de la LOPJ?" no se reconocían como continuación de stats → SearchDomain los capturaba y generaba respuestas incorrectas via OpenAI
+- **Causa raíz 1**: `extractLawFromMessage` solo tenía aliases hardcodeados, no consultaba la BD
+- **Solución 1**: Sistema de 3 capas: BD cache (slug→short_name) → lawMappingUtils (aliases) → patrones descriptivos (regex). Commit `367e8c50`
+- **Causa raíz 2**: `StatsDomain.canHandle()` solo miraba `detectStatsQueryType(currentMessage)`, no el historial de conversación. `SearchDomain` (prioridad 3) capturaba antes que `StatsDomain` (prioridad 4) por detectar mención de ley
+- **Solución 2**: `StatsDomain.canHandle()` ahora detecta follow-ups mirando si la última respuesta del assistant fue de stats + el mensaje actual menciona una ley. `SearchDomain.canHandle()` cede el control cuando el contexto previo era de stats. Verificado con simulación de 20 casos (4 escenarios).
