@@ -279,6 +279,8 @@ export function extractLawFromMessage(message: string): string | null {
     { pattern: /tratado.*funcionamiento/i, slug: 'tfue' },
     { pattern: /tratado.*uni[oó]n\s*europea/i, slug: 'tue' },
     { pattern: /subvenciones/i, slug: 'ley-38-2003' },
+    { pattern: /ley\s*(del?\s*)?gobierno/i, slug: 'ley-50-1997' },
+    { pattern: /transparencia/i, slug: 'ley-19-2013' },
   ]
 
   for (const { pattern, slug } of descriptivePatterns) {
