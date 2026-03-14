@@ -438,14 +438,19 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
             updateUserProfile(null)
             // 🔧 FIX: Limpiar localStorage para evitar que pre-hydrate o el safety timeout
             // resuciten un usuario con token expirado (ghost user)
-            try {
-              const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-              if (supabaseUrl) {
-                const storageKey = `sb-${supabaseUrl.split('://')[1]?.split('.')[0]}-auth`
-                localStorage.removeItem(storageKey)
-                console.log('🧹 localStorage limpiado (token expirado)')
-              }
-            } catch {}
+            // PERO NO en /auth/callback — ahí el code_verifier PKCE está en localStorage
+            // y es necesario para completar el exchange del código OAuth
+            const isCallbackPage = typeof window !== 'undefined' && window.location.pathname.includes('/auth/callback')
+            if (!isCallbackPage) {
+              try {
+                const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+                if (supabaseUrl) {
+                  const storageKey = `sb-${supabaseUrl.split('://')[1]?.split('.')[0]}-auth`
+                  localStorage.removeItem(storageKey)
+                  console.log('🧹 localStorage limpiado (token expirado)')
+                }
+              } catch {}
+            }
           }
           // Finalizar loading — este es el único punto que lo hace en carga inicial
           setLoading(false)
