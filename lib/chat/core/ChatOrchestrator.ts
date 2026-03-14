@@ -629,8 +629,23 @@ export class ChatOrchestrator {
           }
 
           // Para series numéricas
-          if (subtype === 'sequence_numeric' && contentData.solution_method) {
-            additionalContext += `\nMétodo de solución: ${contentData.solution_method}`
+          if (subtype === 'sequence_numeric') {
+            if (contentData.pattern_type) {
+              const patternLabels: Record<string, string> = {
+                'intercalated_constant': 'Serie intercalada: separa posiciones pares e impares, una subserie es constante',
+                'intercalated_arithmetic': 'Serie intercalada: separa posiciones pares e impares, cada una tiene su propio patrón',
+                'intercalated_geometric': 'Serie intercalada con progresión geométrica',
+                'arithmetic': 'Progresión aritmética (diferencia constante)',
+                'geometric': 'Progresión geométrica (razón constante)',
+                'fibonacci': 'Tipo Fibonacci (cada término es suma de anteriores)',
+                'quadratic': 'Diferencias de segundo orden constantes',
+              }
+              const label = patternLabels[contentData.pattern_type as string] || String(contentData.pattern_type)
+              additionalContext += `\n💡 PISTA sobre el patrón: ${label}`
+            }
+            if (contentData.solution_method && contentData.solution_method !== 'manual') {
+              additionalContext += `\nMétodo de solución: ${contentData.solution_method}`
+            }
           }
 
           // Para series alfabéticas
@@ -682,30 +697,27 @@ ${savedExplanation ? `\n📖 EXPLICACIÓN DE LA SOLUCIÓN:\n${savedExplanation}`
 
 PASO 1 - RESUELVE TÚ MISMO EL EJERCICIO:
 - Analiza los datos proporcionados (serie, gráfico, tabla, etc.)
+- Para series: comprueba SIEMPRE si es intercalada (posiciones pares vs impares) ANTES de buscar otros patrones
 - Encuentra el patrón o realiza los cálculos necesarios
-- Determina cuál es la respuesta correcta según TU análisis matemático/lógico
+- Determina cuál es la respuesta correcta según TU análisis
 
-PASO 2 - COMPARA CON LA RESPUESTA MARCADA:
-- Esta pregunta da por buena: ${correctLetter}) ${correctText}
-- Si TU respuesta (del paso 1) es DIFERENTE a ${correctLetter}:
-  → Di: "⚠️ POSIBLE ERROR DETECTADO: Esta pregunta da por buena la opción ${correctLetter}, pero según mi análisis [explica el razonamiento], la respuesta correcta debería ser [tu respuesta]"
-- Si TU respuesta coincide con ${correctLetter}:
-  → Confirma que es correcta y explica el razonamiento paso a paso
+PASO 2 - COMPARA CON LA RESPUESTA MARCADA (${correctLetter}):
+- Si TU respuesta COINCIDE con ${correctLetter}: explica el razonamiento paso a paso
+- Si TU respuesta es DIFERENTE a ${correctLetter}: NO asumas que la BD está mal. Primero:
+  1. Lee la EXPLICACIÓN DE LA SOLUCIÓN (arriba) — describe el patrón real
+  2. Intenta resolver USANDO ESE ENFOQUE (puede ser un patrón que no consideraste)
+  3. Si con ese enfoque llegas a ${correctLetter}: explica ese razonamiento al usuario
+  4. SOLO si tras intentar ambos enfoques sigues encontrando un ERROR MATEMÁTICO CLARO (ej: 2+3≠6), di "⚠️ POSIBLE ERROR DETECTADO" y explica por qué
 
 FORMATO DE EXPLICACIÓN:
 1. Muestra el análisis paso a paso (cálculos, patrón encontrado, etc.)
 2. Indica claramente la respuesta: **🎯 Respuesta: X**
 3. Enseña la ESTRATEGIA para resolver este tipo de ejercicios
 
-REGLAS ABSOLUTAS:
-- HAZ los cálculos tú mismo, no asumas que la respuesta marcada es correcta
-- Para series: verifica que el patrón lleva al resultado marcado
-- Para gráficos/tablas: verifica que los datos coinciden con la respuesta
-- Si detectas un error, SIEMPRE empieza con "⚠️ POSIBLE ERROR DETECTADO"
-- Si el usuario pregunta "¿estás seguro?" o duda de tu respuesta:
-  → VERIFICA tus cálculos de nuevo pero NO cambies tu respuesta a menos que encuentres un ERROR CONCRETO en tus cálculos
-  → Si tus cálculos son correctos, MANTÉN tu respuesta original con confianza
-  → NO cambies de opinión solo porque el usuario duda
+REGLAS:
+- HAZ los cálculos tú mismo
+- Si el usuario pregunta "¿estás seguro?" → VERIFICA tus cálculos pero NO cambies tu respuesta a menos que encuentres un ERROR CONCRETO
+- NO cambies de opinión solo porque el usuario duda
 `
       } else {
         // Contexto normal para preguntas de leyes

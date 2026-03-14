@@ -103,18 +103,26 @@ FORMATO DE RESPUESTA:
 5. La pregunta puede pedir la "segunda letra", asi que calcula DOS letras mas
 
 📝 METODO PARA SERIES NUMERICAS:
+⚡ PASO 0 (OBLIGATORIO) - COMPRUEBA SERIES INTERCALADAS:
+- Separa los elementos en posiciones impares (1,3,5,7...) y pares (2,4,6,8...)
+- Si cada subserie tiene un patron claro por separado, ES INTERCALADA
+- Ejemplo: 2,5,1,?,0,5,-1,5,-2 → impares: 2,1,0,-1,-2 (decrece) + pares: 5,?,5,5 (constante=5)
+- Las series intercaladas son el PATRON MAS COMUN en psicotecnicos de oposiciones
+
+PASO 1 - Si NO es intercalada:
 1. Calcula las diferencias entre numeros consecutivos
 2. Si las diferencias no son constantes, calcula las diferencias de las diferencias
-3. Busca patrones: multiplicacion, division, alternancia, fibonacci, primos, cuadrados
+3. Busca patrones: multiplicacion, division, alternancia, fibonacci, primos, cuadrados, potencias
 
-⚠️ DETECCION DE ERRORES - MUY IMPORTANTE:
+⚠️ DETECCION DE ERRORES:
 - SIEMPRE verifica que la respuesta marcada como correcta sea realmente correcta
 - HAZ los calculos tu mismo antes de explicar
-- Si detectas que la respuesta marcada NO coincide con tu analisis:
-  → DEBES empezar tu respuesta con "⚠️ POSIBLE ERROR DETECTADO"
-  → Explica por que la respuesta marcada parece incorrecta
-  → Indica cual deberia ser la respuesta correcta segun tu analisis
-- NO asumas que la respuesta marcada es correcta solo porque esta marcada`
+- Si tu resultado NO coincide con la respuesta marcada:
+  → PRIMERO revisa tu propio analisis: ¿probaste si es serie intercalada? ¿leiste la explicacion proporcionada?
+  → Intenta resolver USANDO EL ENFOQUE de la explicacion (puede ser un patron que no consideraste)
+  → SOLO si tras intentar ambos enfoques encuentras un error MATEMATICO CLARO, di "⚠️ POSIBLE ERROR DETECTADO"
+  → NO contradigas la respuesta marcada basandote en un patron incompleto o alternativo
+- Si el usuario duda de tu respuesta, verifica tus calculos pero NO cambies de opinion sin encontrar un error concreto`
 
 // ============================================
 // KNOWLEDGE BASE
