@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
 import InteractiveBreadcrumbs from '@/components/InteractiveBreadcrumbs'
 import ExamActionsDropdown from '@/components/ExamActionsDropdown'
+import OposicionChangeModal from '@/components/OposicionChangeModal'
 
 // ============== TYPES ==============
 
@@ -176,6 +177,7 @@ export default function TestsAuxiliarAdministrativoEstado() {
   const { user, loading } = useAuth() as AuthContextValue
   const [userStats, setUserStats] = useState<Record<number, ThemeStats>>({})
   const [statsLoading, setStatsLoading] = useState(false)
+  const [showOposicionModal, setShowOposicionModal] = useState(false)
   const [sortBy, setSortBy] = useState<SortOption>('tema')
   const [showStatsInfo, setShowStatsInfo] = useState(false)
   const [expandedBlocks, setExpandedBlocks] = useState<Record<string, boolean>>({
@@ -301,10 +303,14 @@ export default function TestsAuxiliarAdministrativoEstado() {
           <div className="text-center max-w-4xl w-full">
             {/* Header */}
             <div className="mb-8">
-              <div className="inline-flex items-center bg-gradient-to-r from-gray-700 to-gray-900 text-white px-6 py-2 rounded-full text-sm font-medium mb-6">
+              <button
+                onClick={() => setShowOposicionModal(true)}
+                className="inline-flex items-center bg-gradient-to-r from-gray-700 to-gray-900 text-white px-6 py-2 rounded-full text-sm font-medium mb-6 hover:from-gray-600 hover:to-gray-800 transition-all cursor-pointer group"
+              >
                 <span className="mr-2">🏛️</span>
                 Auxiliar Administrativo del Estado
-              </div>
+                <span className="ml-2 text-xs opacity-70 group-hover:opacity-100">Cambiar ›</span>
+              </button>
             </div>
 
             {/* Leyenda de colores */}
@@ -1020,6 +1026,8 @@ export default function TestsAuxiliarAdministrativoEstado() {
           </div>
         </div>
       </div>
+
+      <OposicionChangeModal open={showOposicionModal} onClose={() => setShowOposicionModal(false)} />
     </div>
   )
 }

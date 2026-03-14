@@ -94,7 +94,7 @@ export default async function TestHubPage({ oposicion }: Props) {
 
   const oposicionConfig = getOposicionBySlug(oposicion)
   const oposicionInfo = oposicionConfig
-    ? { short: oposicionConfig.shortName, badge: oposicionConfig.badge, icon: oposicionConfig.emoji, oposicionId: oposicionConfig.id }
+    ? { short: oposicionConfig.shortName, name: oposicionConfig.name, badge: oposicionConfig.badge, icon: oposicionConfig.emoji, oposicionId: oposicionConfig.id }
     : { short: oposicion, badge: '', icon: '', oposicionId: '' }
   const basePath = `/${oposicion}/test/tema`
 

@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
 import InteractiveBreadcrumbs from '@/components/InteractiveBreadcrumbs'
 import CcaaFlag, { hasCcaaFlag } from '@/components/CcaaFlag'
+import OposicionChangeModal from '@/components/OposicionChangeModal'
 
 interface Topic {
   id: string
@@ -26,6 +27,7 @@ interface Bloque {
 
 interface OposicionInfo {
   short: string
+  name?: string
   badge: string
   icon: string
   oposicionId?: string
@@ -71,6 +73,7 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
   const { user, loading } = useAuth() as { user: { id: string } | null; loading: boolean }
   const [userStats, setUserStats] = useState<Record<number, ThemeStats>>({})
   const [statsLoading, setStatsLoading] = useState(false)
+  const [showOposicionModal, setShowOposicionModal] = useState(false)
 
 
   // Estado de bloques expandidos (localStorage)
@@ -162,14 +165,18 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
           <div className="text-center max-w-4xl w-full">
             {/* Header */}
             <div className="mb-8">
-              <div className="inline-flex items-center bg-gradient-to-r from-blue-700 to-blue-900 text-white px-6 py-2 rounded-full text-sm font-medium mb-6">
+              <button
+                onClick={() => setShowOposicionModal(true)}
+                className="inline-flex items-center bg-gradient-to-r from-blue-700 to-blue-900 text-white px-6 py-2 rounded-full text-sm font-medium mb-6 hover:from-blue-600 hover:to-blue-800 transition-all cursor-pointer group"
+              >
                 {oposicionInfo.oposicionId && hasCcaaFlag(oposicionInfo.oposicionId) ? (
                   <CcaaFlag oposicionId={oposicionInfo.oposicionId} className="mr-2" />
                 ) : (
                   <span className="mr-2">{oposicionInfo.icon}</span>
                 )}
-                {oposicionInfo.short} ({oposicionInfo.badge})
-              </div>
+                {oposicionInfo.name || oposicionInfo.short}
+                <span className="ml-2 text-xs opacity-70 group-hover:opacity-100">Cambiar ›</span>
+              </button>
             </div>
 
             {/* Leyenda de colores */}
@@ -238,6 +245,8 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
           </div>
         </div>
       </div>
+
+      <OposicionChangeModal open={showOposicionModal} onClose={() => setShowOposicionModal(false)} />
     </div>
   )
 }
