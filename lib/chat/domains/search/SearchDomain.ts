@@ -57,6 +57,23 @@ export class SearchDomain implements ChatDomain {
   }
 
   /**
+   * Comprueba si la última respuesta del assistant fue de stats.
+   * Usado para ceder el manejo a StatsDomain en follow-ups.
+   */
+  private isPreviousResponseStats(messages: Array<{ role: string; content: string }>): boolean {
+    const lastAssistant = [...messages].reverse().find(m => m.role === 'assistant')
+    if (!lastAssistant) return false
+    const markers = [
+      'Estadísticas de Exámenes Oficiales',
+      'Artículos más preguntados',
+      'Tu Progreso de Estudio',
+      'Tu Progreso: Esta Semana',
+      'preguntas de exámenes oficiales',
+    ]
+    return markers.some(m => lastAssistant.content.includes(m))
+  }
+
+  /**
    * Determina si este dominio puede manejar el contexto
    */
   async canHandle(context: ChatContext): Promise<boolean> {
@@ -112,8 +129,15 @@ export class SearchDomain implements ChatDomain {
     }
 
     // Detectar si hay leyes mencionadas en el mensaje
+    // PERO si la conversación previa era de stats, dejar que StatsDomain maneje follow-ups
     const mentionedLaws = detectMentionedLaws(msg)
-    if (mentionedLaws.length > 0) return true
+    if (mentionedLaws.length > 0) {
+      if (this.isPreviousResponseStats(context.messages)) {
+        logger.debug('SearchDomain: law mention detected but previous response was stats, deferring to StatsDomain', { domain: 'search' })
+        return false
+      }
+      return true
+    }
 
     // Detectar si hay patrón legal
     const pattern = detectQueryPattern(msg)

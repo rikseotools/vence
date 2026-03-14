@@ -9,12 +9,46 @@ import { DOMAIN_PRIORITIES } from '../../core/types'
 import {
   searchStats,
   detectStatsQueryType,
+  extractLawFromMessage,
+  loadLawsCache,
   formatExamStatsResponse,
   formatUserStatsResponse,
   formatWeakPointsTestResponse,
   formatWeeklyComparisonResponse,
 } from './StatsService'
 import { getWeeklyComparison } from './queries'
+
+// Marcadores que indican que la respuesta anterior fue de stats
+const STATS_RESPONSE_MARKERS = [
+  'Estadísticas de Exámenes Oficiales',
+  'Artículos más preguntados',
+  'Tu Progreso de Estudio',
+  'Tu Progreso: Esta Semana',
+  'preguntas de exámenes oficiales',
+]
+
+/**
+ * Detecta si el mensaje actual es un follow-up de una conversación de stats.
+ * Ej: después de "¿Qué artículos de la LECrim son más preguntados?",
+ * el usuario dice "Y de la LOPJ?" → debe tratarse como exam stats de LOPJ.
+ */
+export function isStatsFollowUp(messages: Array<{ role: string; content: string }>, currentMessage: string): boolean {
+  // Buscar el último mensaje del assistant en el historial
+  const lastAssistant = [...messages].reverse().find(m => m.role === 'assistant')
+  if (!lastAssistant) return false
+
+  // ¿El assistant respondió con stats?
+  const wasStats = STATS_RESPONSE_MARKERS.some(marker =>
+    lastAssistant.content.includes(marker)
+  )
+  if (!wasStats) return false
+
+  // ¿El mensaje actual menciona una ley? (necesita cache cargada antes de llamar)
+  const law = extractLawFromMessage(currentMessage)
+  if (!law) return false
+
+  return true
+}
 
 // ============================================
 // DOMINIO DE ESTADÍSTICAS
@@ -37,9 +71,8 @@ export class StatsDomain implements ChatDomain {
     }
 
     const queryType = detectStatsQueryType(context.currentMessage)
-    const canHandle = queryType !== 'none'
 
-    if (canHandle) {
+    if (queryType !== 'none') {
       // Para estadísticas de usuario, necesitamos userId
       if (queryType === 'user' && !context.userId) {
         logger.debug('User stats query but no userId, skipping', { domain: 'stats' })
@@ -47,10 +80,23 @@ export class StatsDomain implements ChatDomain {
       }
 
       logger.debug(`StatsDomain will handle request: ${queryType}`, { domain: 'stats' })
+      return true
     }
 
-    return canHandle
+    // queryType === 'none': comprobar si es un follow-up de stats
+    // Ej: "Y de la LOPJ?" tras una respuesta de estadísticas de exámenes
+    await loadLawsCache()
+    if (isStatsFollowUp(context.messages, context.currentMessage)) {
+      this._isFollowUp = true
+      logger.debug('StatsDomain detected stats follow-up', { domain: 'stats' })
+      return true
+    }
+
+    return false
   }
+
+  /** Flag interno para indicar que el handle debe tratar como follow-up */
+  private _isFollowUp = false
 
   /**
    * Procesa el contexto y genera una respuesta
@@ -79,8 +125,10 @@ export class StatsDomain implements ChatDomain {
         } : null,
       })
 
-      // Obtener estadísticas
-      const statsResult = await searchStats(context)
+      // Obtener estadísticas (si es follow-up, forzar tipo 'exam')
+      const statsResult = await searchStats(context, this._isFollowUp ? 'exam' : undefined)
+      // Reset flag
+      this._isFollowUp = false
 
       dbSpan?.setOutput({
         // Tipo de stats

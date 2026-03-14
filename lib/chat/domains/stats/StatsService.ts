@@ -543,10 +543,11 @@ export interface StatsSearchResult {
 
 /**
  * Busca y obtiene estadísticas según el contexto
+ * @param overrideType - Tipo forzado (usado para follow-ups de conversación)
  */
-export async function searchStats(context: ChatContext): Promise<StatsSearchResult> {
+export async function searchStats(context: ChatContext, overrideType?: StatsQueryType): Promise<StatsSearchResult> {
   const message = context.currentMessage
-  const queryType = detectStatsQueryType(message)
+  const queryType = overrideType || detectStatsQueryType(message)
 
   logger.debug(`Stats query type detected: ${queryType}`, { domain: 'stats' })
 
