@@ -299,7 +299,7 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
               {/* Test Aleatorio */}
               <Link
                 href={`/${oposicion}/test/aleatorio`}
-                className="block bg-gradient-to-r from-gray-800 to-gray-900 text-white py-4 px-8 rounded-lg font-semibold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-xl active:scale-95 focus:outline-none focus:ring-4 focus:ring-gray-400 group"
+                className="block bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-4 px-8 rounded-lg font-semibold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-xl active:scale-95 focus:outline-none focus:ring-4 focus:ring-purple-300 group"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
