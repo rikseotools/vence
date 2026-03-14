@@ -51,8 +51,9 @@ export default function ErrorDetectionQuestion({
     )
   }
 
-  // Usar explicación personalizada si existe, sino generar automática
-  const explanationSections = question.explanation ? null : (
+  // Si hay verifiedExplanation (de la API), dejar que ChartQuestion la muestre (explanationSections = null)
+  // Si no hay verifiedExplanation, generar secciones desde content_data
+  const explanationSections = verifiedExplanation ? null : (
     <div className="space-y-4">
       {question.content_data?.explanation_sections?.map((section: any, index: number) => (
         <div key={index} className="bg-white dark:bg-gray-800 p-4 rounded-lg border-l-4 border-blue-500">

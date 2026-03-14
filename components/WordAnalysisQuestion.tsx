@@ -1,5 +1,6 @@
 'use client'
 import PsychometricAIHelpButton from './PsychometricAIHelpButton'
+import PsychometricExplanation from './PsychometricExplanation'
 import { type StandaloneQuestionProps } from './psychometric-types'
 
 export default function WordAnalysisQuestion({
@@ -88,16 +89,7 @@ export default function WordAnalysisQuestion({
             <PsychometricAIHelpButton question={question} questionTypeLabel="Análisis de palabras" className="ml-auto" />
           </div>
 
-          {/* 🔒 SEGURIDAD: Usar verifiedExplanation de API */}
-          {verifiedExplanation && (
-            <div className="bg-white p-4 rounded-lg border-l-4 border-green-500">
-              <h5 className="font-semibold text-green-800 mb-2">📝 Explicación:</h5>
-              <div
-                className="text-gray-700 text-sm whitespace-pre-line"
-                dangerouslySetInnerHTML={{ __html: verifiedExplanation.replace(/\n/g, '<br>') }}
-              />
-            </div>
-          )}
+          <PsychometricExplanation verifiedExplanation={verifiedExplanation} />
         </div>
       )}
     </div>

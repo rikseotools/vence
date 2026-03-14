@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
-import MarkdownExplanation from './MarkdownExplanation'
 import PsychometricAIHelpButton from './PsychometricAIHelpButton'
+import PsychometricExplanation from './PsychometricExplanation'
 import { type StandaloneQuestionProps } from './psychometric-types'
 
 export default function SequenceLetterQuestion({
@@ -151,35 +151,10 @@ export default function SequenceLetterQuestion({
           <PsychometricAIHelpButton question={question} questionTypeLabel="Serie alfabética" className="ml-auto" />
         </div>
 
-        <div className="space-y-4">
-          {question.content_data?.explanation_sections ? (
-            // Renderizar explanation_sections (sistema moderno)
-            question.content_data.explanation_sections.map((section: any, index: number) => (
-              <div key={index} className="bg-white p-4 rounded-lg border-l-4 border-green-500">
-                <h5 className="font-semibold text-green-800 mb-2">{section.title}</h5>
-                <div className="text-gray-700 text-sm whitespace-pre-line">
-                  {section.content}
-                </div>
-              </div>
-            ))
-          ) : verifiedExplanation ? (
-            // 🔒 SEGURIDAD: Usar verifiedExplanation de API
-            <div className="bg-white p-4 rounded-lg border-l-4 border-green-500">
-              <MarkdownExplanation
-                content={verifiedExplanation}
-                className="text-gray-700 text-sm"
-              />
-            </div>
-          ) : (
-            // Fallback para explanation simple
-            <div className="bg-white p-4 rounded-lg border-l-4 border-green-500">
-              <MarkdownExplanation
-                content={question.explanation || ''}
-                className="text-gray-700 text-sm"
-              />
-            </div>
-          )}
-        </div>
+        <PsychometricExplanation
+          verifiedExplanation={verifiedExplanation}
+          explanationSections={question.content_data?.explanation_sections}
+        />
       </div>
     )
   }

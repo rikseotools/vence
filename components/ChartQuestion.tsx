@@ -1,8 +1,8 @@
 'use client'
 import { useState, useEffect, useCallback, type ReactNode } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import MarkdownExplanation from './MarkdownExplanation'
 import PsychometricAIHelpButton from './PsychometricAIHelpButton'
+import PsychometricExplanation from './PsychometricExplanation'
 
 interface ChartQuestionData {
   id: string
@@ -359,24 +359,11 @@ export default function ChartQuestion({
             {/* Secciones específicas de explicación o explicación estándar */}
             <div className="space-y-4">
               {explanationSections ? (
-                // Si hay explanationSections, mostrarlas directamente (ya tienen sus propios títulos)
+                // Si hay explanationSections pre-renderizadas, mostrarlas directamente
                 explanationSections
               ) : (
-                // Fallback: mostrar header + explanation
-                <>
-                  <h4 className="font-bold text-blue-900 mb-3 flex items-center">
-                    <span className="bg-green-100 text-green-800 rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold mr-2">1</span>
-                    {question.content_data?.chart_type === 'error_detection' ? 'EXPLICACIÓN:' : 'ANÁLISIS PASO A PASO:'}
-                  </h4>
-                  {(verifiedExplanation || question.explanation) && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-                      <MarkdownExplanation
-                        content={verifiedExplanation || question.explanation || ''}
-                        className="text-blue-700"
-                      />
-                    </div>
-                  )}
-                </>
+                // Componente centralizado: verifiedExplanation → markdown → fallback
+                <PsychometricExplanation verifiedExplanation={verifiedExplanation} />
               )}
             </div>
 

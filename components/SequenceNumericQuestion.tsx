@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
-import MarkdownExplanation from './MarkdownExplanation'
 import PsychometricAIHelpButton from './PsychometricAIHelpButton'
+import PsychometricExplanation from './PsychometricExplanation'
 import { type StandaloneQuestionProps } from './psychometric-types'
 
 export default function SequenceNumericQuestion({
@@ -151,46 +151,10 @@ export default function SequenceNumericQuestion({
           <PsychometricAIHelpButton question={question} questionTypeLabel="Serie numérica" className="ml-auto" />
         </div>
 
-        <div className="space-y-4">
-          {question.content_data?.explanation_sections ? (
-            // Renderizar explanation_sections (sistema moderno)
-            question.content_data.explanation_sections.map((section: any, index: number) => (
-              <div key={index} className="bg-white p-4 rounded-lg border-l-4 border-green-500">
-                <h5 className="font-semibold text-green-800 mb-2">{section.title}</h5>
-                <div className="text-gray-700 text-sm whitespace-pre-line">
-                  {section.content}
-                </div>
-              </div>
-            ))
-          ) : verifiedExplanation ? (
-            // 🔒 SEGURIDAD: Usar verifiedExplanation de API
-            <div className="bg-white p-4 rounded-lg border-l-4 border-green-500">
-              <div className="text-gray-700 text-sm whitespace-pre-line">
-                {verifiedExplanation}
-              </div>
-            </div>
-          ) : (
-            // Fallback para explanation simple o hardcoded
-            <div className="bg-white p-4 rounded-lg border-l-4 border-green-500">
-              <div className="text-gray-700 text-sm">
-                {patternType === 'intercalated' ? (
-                  <div>
-                    <p>• 11, 11 → 9, 9: Los números se repiten de dos en dos, restando 2</p>
-                    <p>• 9, 9 → 7, 7: Confirmamos el patrón: -2 y repetición</p>
-                    <p>• 7, 7 → ?, ?: Siguiendo el patrón: 7 - 2 = 5</p>
-                    <p className="mt-2"><strong>✅ Patrón identificado:</strong> Series intercaladas con números repetidos que disminuyen de 2 en 2</p>
-                    <p><strong>✅ Siguiente término:</strong> 5 (porque 7 - 2 = 5)</p>
-                  </div>
-                ) : (
-                  <MarkdownExplanation
-                    content={question.explanation || ''}
-                    className="text-gray-700"
-                  />
-                )}
-              </div>
-            </div>
-          )}
-        </div>
+        <PsychometricExplanation
+          verifiedExplanation={verifiedExplanation}
+          explanationSections={question.content_data?.explanation_sections}
+        />
       </div>
     )
   }

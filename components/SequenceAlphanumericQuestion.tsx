@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
-import MarkdownExplanation from './MarkdownExplanation'
 import PsychometricAIHelpButton from './PsychometricAIHelpButton'
+import PsychometricExplanation from './PsychometricExplanation'
 import { type StandaloneQuestionProps } from './psychometric-types'
 
 export default function SequenceAlphanumericQuestion({
@@ -150,16 +150,7 @@ export default function SequenceAlphanumericQuestion({
         </div>
 
         <div className="space-y-4">
-          {/* 🔒 SEGURIDAD: Usar verifiedExplanation de API si está disponible */}
-          {(verifiedExplanation || question.explanation) && (
-            <div className="bg-white p-4 rounded-lg border-l-4 border-green-500">
-              <h5 className="font-semibold text-green-800 mb-2">📝 Explicación:</h5>
-              <MarkdownExplanation
-                content={verifiedExplanation || question.explanation || ''}
-                className="text-gray-700 text-sm"
-              />
-            </div>
-          )}
+          <PsychometricExplanation verifiedExplanation={verifiedExplanation} />
         </div>
       </div>
     )
