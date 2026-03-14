@@ -99,10 +99,11 @@ function AuthCallbackContent() {
           // ignorar errores de parsing
         }
 
-        console.log('🔑 [CALLBACK] Esperando sesion via localStorage polling + onAuthStateChange...')
+        console.log('🔑 [CALLBACK] Esperando sesion via localStorage polling + onAuthStateChange + PKCE directo...')
 
-        const SESSION_TIMEOUT_MS = 30000
+        const SESSION_TIMEOUT_MS = 15000
         const POLL_INTERVAL_MS = 150
+        const DIRECT_PKCE_DELAY_MS = 3000 // Intentar exchange directo tras 3s si _initialize() se cuelga
 
         const session = await new Promise<any>((resolve, reject) => {
           let resolved = false
@@ -113,14 +114,13 @@ function AuthCallbackContent() {
             resolved = true
             clearInterval(interval)
             clearTimeout(timeout)
+            clearTimeout(directPkceTimeout)
             authSubscription?.unsubscribe()
             console.log(`✅ [CALLBACK] Sesion encontrada via ${source}:`, sess?.user?.email)
             resolve(sess)
           }
 
-          // 🔧 Canal 1: onAuthStateChange — captura la sesión cuando _initialize()
-          // completa el exchange PKCE, incluso si navigator.locks retrasa la escritura
-          // a localStorage
+          // Canal 1: onAuthStateChange
           try {
             const { data } = supabase.auth.onAuthStateChange((event: string, authSession: any) => {
               if (authSession?.access_token && authSession.user) {
@@ -132,11 +132,59 @@ function AuthCallbackContent() {
             console.warn('⚠️ [CALLBACK] Error suscribiendo onAuthStateChange:', e)
           }
 
+          // 🔧 Canal 3: Exchange PKCE DIRECTO via HTTP (bypass navigator.locks)
+          // Si _initialize() se cuelga en locks, hacemos el exchange nosotros a los 3s
+          const urlCode = new URLSearchParams(window.location.search).get('code')
+          const directPkceTimeout = setTimeout(async () => {
+            if (resolved || !urlCode) return
+            console.log('🔄 [CALLBACK] _initialize() lento, intentando exchange PKCE directo...')
+            try {
+              // Leer code_verifier de localStorage (Supabase lo guarda con sufijo -code-verifier)
+              const codeVerifierKey = `${storageKey}-code-verifier`
+              const codeVerifier = localStorage.getItem(codeVerifierKey)
+              if (!codeVerifier) {
+                console.warn('⚠️ [CALLBACK] No se encontró code_verifier en localStorage')
+                return
+              }
+
+              // Exchange directo via HTTP — sin locks, sin SDK
+              const tokenUrl = `${supabaseUrl}/auth/v1/token?grant_type=pkce`
+              const response = await fetch(tokenUrl, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+                },
+                body: JSON.stringify({
+                  auth_code: urlCode,
+                  code_verifier: codeVerifier,
+                }),
+              })
+
+              if (!response.ok) {
+                const errBody = await response.text()
+                console.warn('⚠️ [CALLBACK] Exchange PKCE directo falló:', response.status, errBody)
+                return
+              }
+
+              const tokenData = await response.json()
+              if (tokenData?.access_token && tokenData?.user) {
+                console.log('✅ [CALLBACK] Exchange PKCE directo exitoso!')
+                // Guardar en localStorage para que Supabase lo detecte
+                localStorage.setItem(storageKey, JSON.stringify(tokenData))
+                localStorage.removeItem(codeVerifierKey)
+                finish(tokenData, 'direct-pkce-exchange')
+              }
+            } catch (e) {
+              console.warn('⚠️ [CALLBACK] Error en exchange PKCE directo:', e)
+            }
+          }, DIRECT_PKCE_DELAY_MS)
+
           const timeout = setTimeout(async () => {
             if (resolved) return
             clearInterval(interval)
             authSubscription?.unsubscribe()
-            // Fallback: intentar getSession() directamente antes de fallar
+            // Fallback final: intentar getSession()
             console.log('⏳ [CALLBACK] Polling agotado, intentando getSession() como fallback...')
             try {
               const { data, error: sessError } = await supabase.auth.getSession()
@@ -148,26 +196,10 @@ function AuthCallbackContent() {
             } catch (e) {
               console.warn('⚠️ [CALLBACK] getSession fallback exception:', e)
             }
-            // Ultimo intento: exchangeCodeForSession si hay code en URL
-            try {
-              const urlParams = new URLSearchParams(window.location.search)
-              const code = urlParams.get('code')
-              if (code) {
-                console.log('🔄 [CALLBACK] Intentando exchangeCodeForSession...')
-                const { data, error: exchError } = await supabase.auth.exchangeCodeForSession(code)
-                if (data?.session?.access_token && data.session.user) {
-                  finish(data.session, 'exchangeCode-fallback')
-                  return
-                }
-                if (exchError) console.warn('⚠️ [CALLBACK] exchangeCode error:', exchError.message)
-              }
-            } catch (e) {
-              console.warn('⚠️ [CALLBACK] exchangeCode exception:', e)
-            }
-            reject(new Error('Timeout: no se recibio sesion en 30s'))
+            reject(new Error('Timeout: no se recibio sesion en 15s'))
           }, SESSION_TIMEOUT_MS)
 
-          // Canal 2: localStorage polling (original)
+          // Canal 2: localStorage polling
           const interval = setInterval(() => {
             try {
               const raw = localStorage.getItem(storageKey)
