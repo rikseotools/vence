@@ -7,6 +7,8 @@ import { useAuth } from '@/contexts/AuthContext'
 import InteractiveBreadcrumbs from '@/components/InteractiveBreadcrumbs'
 import CcaaFlag, { hasCcaaFlag } from '@/components/CcaaFlag'
 import OposicionChangeModal from '@/components/OposicionChangeModal'
+import ExamActionsDropdown from '@/components/ExamActionsDropdown'
+import type { OfficialExamConvocatoria } from '@/lib/config/oposiciones'
 
 interface Topic {
   id: string
@@ -41,12 +43,22 @@ interface ThemeStats {
   lastStudyFormatted: string
 }
 
+interface ExamStat {
+  accuracy: number
+  correct: number
+  total: number
+  lastAttempt: string
+}
+
+type SortOption = 'tema' | 'accuracy_asc' | 'accuracy_desc' | 'last_study_new' | 'last_study_old'
+
 interface Props {
   oposicion: string
   oposicionInfo: OposicionInfo
   bloques: Bloque[]
   basePath: string
   positionType: string
+  officialExams?: OfficialExamConvocatoria[]
 }
 
 // Helpers de colores
@@ -69,12 +81,38 @@ const COLOR_CLASSES: Record<string, string> = {
 
 const BLOCK_GRADIENT = 'from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 focus:ring-blue-300'
 
-export default function TestHubClient({ oposicion, oposicionInfo, bloques, basePath, positionType }: Props) {
+const SORT_OPTIONS: { id: SortOption; label: string; icon: string }[] = [
+  { id: 'tema', label: 'Por Tema', icon: '🔢' },
+  { id: 'accuracy_asc', label: '% Más Bajo', icon: '📉' },
+  { id: 'accuracy_desc', label: '% Más Alto', icon: '📈' },
+  { id: 'last_study_new', label: 'Más Reciente', icon: '🕐' },
+  { id: 'last_study_old', label: 'Más Antiguo', icon: '🕰️' },
+]
+
+/**
+ * Get exam stat with fallback to base key (backwards compatibility).
+ * Old exams were saved without 'parte', so we check both formats.
+ */
+function getExamStat(
+  examStats: Record<string, ExamStat>,
+  examDate: string,
+  parte?: 'primera' | 'segunda'
+): ExamStat | undefined {
+  const parteKey = parte ? `${examDate}-${parte}` : examDate
+  return examStats[parteKey] || examStats[examDate]
+}
+
+export default function TestHubClient({ oposicion, oposicionInfo, bloques, basePath, positionType, officialExams }: Props) {
   const { user, loading } = useAuth() as { user: { id: string } | null; loading: boolean }
   const [userStats, setUserStats] = useState<Record<number, ThemeStats>>({})
   const [statsLoading, setStatsLoading] = useState(false)
   const [showOposicionModal, setShowOposicionModal] = useState(false)
+  const [sortBy, setSortBy] = useState<SortOption>('tema')
+  const [showStatsInfo, setShowStatsInfo] = useState(false)
 
+  // Official exams state
+  const [examStats, setExamStats] = useState<Record<string, ExamStat>>({})
+  const [expandedConvocatorias, setExpandedConvocatorias] = useState<Record<string, boolean>>({})
 
   // Estado de bloques expandidos (localStorage)
   const storageKey = `${oposicion}-expanded-blocks`
@@ -97,7 +135,6 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
   const loadUserThemeStats = useCallback(async (userId: string) => {
     setStatsLoading(true)
     try {
-      // V2: Pasar oposicionId para derivar tema desde article_id + topic_scope
       const response = await fetch(`/api/user/theme-stats?userId=${userId}&oposicionId=${oposicion}`)
       const data = await response.json()
 
@@ -127,6 +164,20 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
     }
   }, [user?.id, loading, loadUserThemeStats])
 
+  // Cargar estadísticas de exámenes oficiales (lazy, al expandir)
+  const loadExamStats = useCallback(async () => {
+    if (!user?.id || Object.keys(examStats).length > 0) return
+    try {
+      const response = await fetch(`/api/v2/official-exams/user-stats?userId=${user.id}&oposicion=${oposicion}`)
+      const data = await response.json()
+      if (data.success && data.stats) {
+        setExamStats(data.stats)
+      }
+    } catch (error) {
+      console.warn('Error cargando estadísticas de exámenes:', error)
+    }
+  }, [user?.id, examStats, oposicion])
+
   const toggleBlock = (blockId: string) => {
     setExpandedBlocks(prev => {
       const newState = { ...prev, [blockId]: !prev[blockId] }
@@ -137,6 +188,17 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
       }
       return newState
     })
+    // Cargar estadísticas cuando se expande la sección de exámenes
+    if (blockId === 'examenesOficiales' && !expandedBlocks.examenesOficiales) {
+      loadExamStats()
+    }
+  }
+
+  const toggleConvocatoria = (examDate: string) => {
+    setExpandedConvocatorias(prev => ({
+      ...prev,
+      [examDate]: !prev[examDate]
+    }))
   }
 
   // Obtener color del tema basado en stats
@@ -208,6 +270,29 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
               </div>
             </div>
 
+            {/* Opciones de ordenación */}
+            <div className="mb-6">
+              <div className="bg-white rounded-lg shadow-md p-4">
+                <div className="text-sm font-medium text-gray-700 mb-3">Ordenar por:</div>
+                <div className="flex flex-wrap gap-2 justify-center">
+                  {SORT_OPTIONS.map((option) => (
+                    <button
+                      key={option.id}
+                      onClick={() => setSortBy(option.id)}
+                      className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                        sortBy === option.id
+                          ? 'bg-blue-500 text-white shadow-lg'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      <span className="mr-1">{option.icon}</span>
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
             {/* Bloques de temas */}
             <div className="space-y-6">
               {/* Test Aleatorio */}
@@ -226,6 +311,19 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
                 </div>
               </Link>
 
+              {/* Exámenes Oficiales (si hay convocatorias) */}
+              {officialExams && officialExams.length > 0 && (
+                <OfficialExamsSection
+                  oposicion={oposicion}
+                  convocatorias={officialExams}
+                  expanded={expandedBlocks.examenesOficiales ?? false}
+                  onToggle={() => toggleBlock('examenesOficiales')}
+                  examStats={examStats}
+                  expandedConvocatorias={expandedConvocatorias}
+                  onToggleConvocatoria={toggleConvocatoria}
+                />
+              )}
+
               {/* Bloques dinámicos */}
               {bloques.map((bloque) => (
                 <BlockSection
@@ -239,9 +337,34 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
                   onToggle={toggleBlock}
                   userStats={userStats}
                   getThemeColor={getThemeColor}
+                  onInfoClick={() => setShowStatsInfo(true)}
                 />
               ))}
             </div>
+
+            {/* Modal de información de estadísticas */}
+            {showStatsInfo && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
+                <div className="bg-white rounded-lg p-6 max-w-md w-full">
+                  <h3 className="text-lg font-bold text-gray-900 mb-4">📊 Estadísticas de Rendimiento</h3>
+                  <div className="space-y-3 text-sm text-gray-700">
+                    <p><strong>Porcentaje de aciertos:</strong> Calculado como (respuestas correctas / total respuestas) × 100</p>
+                    <p><strong>Respuestas:</strong> Formato (correctas/total)</p>
+                    <p><strong>Último estudio:</strong> Fecha de tu última sesión de test en ese tema</p>
+                    <div className="bg-blue-50 p-3 rounded-lg">
+                      <p className="text-blue-800 font-medium">💡 Consejo</p>
+                      <p className="text-blue-700">Practica los temas con menor porcentaje para mejorar tu preparación general.</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowStatsInfo(false)}
+                    className="mt-4 w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Entendido
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -251,7 +374,163 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
   )
 }
 
+// ============================================================
+// Sección de Exámenes Oficiales
+// ============================================================
+
+interface OfficialExamsSectionProps {
+  oposicion: string
+  convocatorias: OfficialExamConvocatoria[]
+  expanded: boolean
+  onToggle: () => void
+  examStats: Record<string, ExamStat>
+  expandedConvocatorias: Record<string, boolean>
+  onToggleConvocatoria: (date: string) => void
+}
+
+function OfficialExamsSection({
+  oposicion,
+  convocatorias,
+  expanded,
+  onToggle,
+  examStats,
+  expandedConvocatorias,
+  onToggleConvocatoria,
+}: OfficialExamsSectionProps) {
+  return (
+    <div id="examenes-oficiales" className="bg-white rounded-lg shadow-lg overflow-hidden scroll-mt-20">
+      <button
+        onClick={onToggle}
+        className="w-full bg-gradient-to-r from-amber-600 to-orange-600 text-white py-4 px-6 text-left font-bold text-lg transition-all duration-300 hover:from-amber-700 hover:to-orange-700 focus:outline-none focus:ring-4 focus:ring-amber-300"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <span className="mr-3 text-xl">📋</span>
+            <span>Exámenes Oficiales</span>
+          </div>
+          <span className={`text-2xl transition-transform duration-300 ${expanded ? 'rotate-180' : ''}`}>
+            ▼
+          </span>
+        </div>
+      </button>
+
+      {expanded && (
+        <div className="p-4 space-y-3 bg-gray-50">
+          <div className="space-y-3">
+            {convocatorias.map((conv) => (
+              <ConvocatoriaCard
+                key={conv.date}
+                convocatoria={conv}
+                oposicion={oposicion}
+                examStats={examStats}
+                expanded={expandedConvocatorias[conv.date] ?? false}
+                onToggle={() => onToggleConvocatoria(conv.date)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+interface ConvocatoriaCardProps {
+  convocatoria: OfficialExamConvocatoria
+  oposicion: string
+  examStats: Record<string, ExamStat>
+  expanded: boolean
+  onToggle: () => void
+}
+
+function ConvocatoriaCard({ convocatoria, oposicion, examStats, expanded, onToggle }: ConvocatoriaCardProps) {
+  // Color del header basado en mejor resultado de las partes
+  const bestAccuracy = Math.max(
+    ...convocatoria.partes.map(p => getExamStat(examStats, convocatoria.date, p.id)?.accuracy || 0)
+  )
+  const hasAnyStats = convocatoria.partes.some(p => getExamStat(examStats, convocatoria.date, p.id))
+  const headerColor = hasAnyStats
+    ? COLOR_CLASSES[getAccuracyColor(bestAccuracy)]
+    : 'bg-gray-500 hover:bg-gray-600'
+
+  return (
+    <div className="bg-white rounded-lg shadow overflow-hidden">
+      <button
+        onClick={onToggle}
+        className={`w-full ${headerColor} text-white py-3 px-4 text-left font-semibold transition-all duration-300 focus:outline-none`}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <span className="mr-2 text-lg">📋</span>
+            <div>
+              <div className="font-bold">{convocatoria.title}</div>
+              <div className="text-xs text-white/80">{convocatoria.oep}</div>
+            </div>
+          </div>
+          <span className={`text-xl transition-transform duration-300 ${expanded ? 'rotate-180' : ''}`}>
+            ▼
+          </span>
+        </div>
+      </button>
+
+      {expanded && (
+        <div className="p-3 space-y-2 bg-gray-100">
+          {convocatoria.partes.map((parte) => {
+            const stat = getExamStat(examStats, convocatoria.date, parte.id)
+            return (
+              <div key={parte.id} className="rounded-lg overflow-hidden">
+                <Link
+                  href={`/${oposicion}/test/examen-oficial?fecha=${convocatoria.date}&parte=${parte.id}`}
+                  className={`block ${COLOR_CLASSES[stat ? getAccuracyColor(stat.accuracy) : 'gray']} text-white py-3 px-4 font-semibold transition-all duration-300 hover:brightness-110 active:brightness-90`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <span className="mr-2 text-lg">{parte.icon}</span>
+                      <div>
+                        <div className="font-bold">{parte.title}</div>
+                        <div className="text-xs text-white/80">{parte.description}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {stat ? (
+                        <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-bold">
+                          {stat.accuracy}%
+                        </span>
+                      ) : (
+                        <span className="bg-white/20 px-3 py-1.5 rounded-full text-sm font-medium">
+                          Empezar →
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </Link>
+                {stat && (
+                  <div className="bg-gray-200 p-3">
+                    <ExamActionsDropdown
+                      examDate={convocatoria.date}
+                      parte={parte.id}
+                      oposicion={oposicion}
+                    />
+                  </div>
+                )}
+              </div>
+            )
+          })}
+
+          {convocatoria.note && (
+            <div className="text-xs text-gray-600 px-2 pt-1">
+              {convocatoria.note}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ============================================================
 // Componente para sección de bloque
+// ============================================================
+
 interface BlockSectionProps {
   blockId: string
   icon: string
@@ -262,6 +541,7 @@ interface BlockSectionProps {
   onToggle: (blockId: string) => void
   userStats: Record<number, ThemeStats>
   getThemeColor: (topicNumber: number) => string
+  onInfoClick: () => void
 }
 
 function BlockSection({
@@ -274,6 +554,7 @@ function BlockSection({
   onToggle,
   userStats,
   getThemeColor,
+  onInfoClick,
 }: BlockSectionProps) {
   // Anchor para navegación
   const anchorMap: Record<string, string> = {
@@ -315,6 +596,7 @@ function BlockSection({
               basePath={basePath}
               stats={userStats[topic.topicNumber]}
               color={getThemeColor(topic.topicNumber)}
+              onInfoClick={onInfoClick}
             />
           ))}
         </div>
@@ -323,15 +605,19 @@ function BlockSection({
   )
 }
 
+// ============================================================
 // Componente para enlace de tema
+// ============================================================
+
 interface ThemeLinkProps {
   topic: Topic
   basePath: string
   stats: ThemeStats | undefined
   color: string
+  onInfoClick: () => void
 }
 
-function ThemeLink({ topic, basePath, stats, color }: ThemeLinkProps) {
+function ThemeLink({ topic, basePath, stats, color, onInfoClick }: ThemeLinkProps) {
   const hasStats = !!stats
   const href = `${basePath}/${topic.topicNumber}`
 
@@ -365,9 +651,22 @@ function ThemeLink({ topic, basePath, stats, color }: ThemeLinkProps) {
         <div className="flex items-center space-x-3">
           {hasStats ? (
             <>
-              <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-bold">
-                {stats.accuracy}% ({stats.correct}/{stats.total})
-              </span>
+              <div className="flex items-center space-x-1">
+                <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-bold">
+                  {stats.accuracy}% ({stats.correct}/{stats.total})
+                </span>
+                <button
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    onInfoClick()
+                  }}
+                  className="text-white/70 hover:text-white transition-colors p-1"
+                  title="¿Qué significa este porcentaje?"
+                >
+                  ℹ️
+                </button>
+              </div>
               <span className="bg-white/10 px-3 py-1 rounded-full text-xs font-medium">
                 {stats.lastStudyFormatted}
               </span>

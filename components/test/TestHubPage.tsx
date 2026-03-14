@@ -97,6 +97,7 @@ export default async function TestHubPage({ oposicion }: Props) {
     ? { short: oposicionConfig.shortName, name: oposicionConfig.name, badge: oposicionConfig.badge, icon: oposicionConfig.emoji, oposicionId: oposicionConfig.id }
     : { short: oposicion, badge: '', icon: '', oposicionId: '' }
   const basePath = `/${oposicion}/test/tema`
+  const officialExams = oposicionConfig?.officialExams
 
   return (
     <TestHubClient
@@ -105,6 +106,7 @@ export default async function TestHubPage({ oposicion }: Props) {
       bloques={bloques}
       basePath={basePath}
       positionType={positionType}
+      officialExams={officialExams}
     />
   )
 }

@@ -176,6 +176,47 @@ export function OposicionProvider({ children }: { children: ReactNode }) {
     }
   }, [user, authLoading, pathname])
 
+  // Recargar oposición cuando se cambia desde perfil u otro componente
+  useEffect(() => {
+    const handleOposicionAssigned = () => {
+      if (user && !authLoading) {
+        // Re-fetch from DB to update context (including needsOposicionFix)
+        ;(async () => {
+          try {
+            const { data: profile } = await supabase
+              .from('user_profiles')
+              .select('target_oposicion, target_oposicion_data')
+              .eq('id', user.id)
+              .single()
+
+            if (profile?.target_oposicion) {
+              const opoId = profile.target_oposicion
+              const isValid = ALL_OPOSICION_IDS.includes(opoId)
+
+              if (!isValid) {
+                setNeedsOposicionFix(true)
+                setUserOposicion(null)
+                setOposicionId(null)
+                setOposicionMenu(DEFAULT_MENU)
+              } else {
+                setNeedsOposicionFix(false)
+                const oposicionData = (profile.target_oposicion_data as OposicionData | null) || null
+                setUserOposicion(oposicionData)
+                setOposicionId(opoId)
+                setOposicionMenu(OPOSICION_MENUS[opoId] || DEFAULT_MENU)
+              }
+            }
+          } catch (error) {
+            console.warn('Error recargando oposición tras cambio:', error)
+          }
+        })()
+      }
+    }
+
+    window.addEventListener('oposicionAssigned', handleOposicionAssigned)
+    return () => window.removeEventListener('oposicionAssigned', handleOposicionAssigned)
+  }, [user, authLoading])
+
   // Verificar si hay notificación de cambio de oposición pendiente
   useEffect(() => {
     // Notificación de onboarding (asignación inicial)

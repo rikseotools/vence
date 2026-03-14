@@ -31,6 +31,21 @@ const BlockSchema = z.object({
   themes: z.array(ThemeSchema),
 })
 
+const OfficialExamParteSchema = z.object({
+  id: z.enum(['primera', 'segunda']),
+  icon: z.string(),
+  title: z.string(),
+  description: z.string(),
+})
+
+const OfficialExamConvocatoriaSchema = z.object({
+  date: z.string(),
+  title: z.string(),
+  oep: z.string(),
+  partes: z.array(OfficialExamParteSchema),
+  note: z.string().optional(),
+})
+
 const NavLinkSchema = z.object({
   href: z.string(),
   label: z.string(),
@@ -51,6 +66,7 @@ const OposicionSchema = z.object({
   blocks: z.array(BlockSchema),
   totalTopics: z.number(),
   navLinks: z.array(NavLinkSchema),
+  officialExams: z.array(OfficialExamConvocatoriaSchema).optional(),
 })
 
 // ============================================
@@ -60,6 +76,8 @@ const OposicionSchema = z.object({
 export type Theme = z.infer<typeof ThemeSchema>
 export type Block = z.infer<typeof BlockSchema>
 export type NavLink = z.infer<typeof NavLinkSchema>
+export type OfficialExamParte = z.infer<typeof OfficialExamParteSchema>
+export type OfficialExamConvocatoria = z.infer<typeof OfficialExamConvocatoriaSchema>
 export type Oposicion = z.infer<typeof OposicionSchema>
 
 // ============================================
@@ -133,6 +151,47 @@ export const OPOSICIONES: Oposicion[] = [
       { href: '/auxiliar-administrativo-estado/temario', label: 'Temario', icon: '📚' },
       { href: '/auxiliar-administrativo-estado/test', label: 'Tests', icon: '🎯' },
       { href: '/auxiliar-administrativo-estado/simulacros', label: 'Simulacros', icon: '🏆' },
+    ],
+    officialExams: [
+      {
+        date: '2024-07-09',
+        title: 'Convocatoria 9 de julio de 2024',
+        oep: 'OEP 2023-2024',
+        partes: [
+          { id: 'primera', icon: '📘', title: 'Primera parte', description: 'Bloque I: Organización del Estado (64 preguntas)' },
+          { id: 'segunda', icon: '📗', title: 'Segunda parte', description: 'Bloque II: Actividad Administrativa y Ofimática (55 preguntas)' },
+        ],
+        note: '📊 Nota de corte: 1ª parte: 5,31/10 | 2ª parte: 5,0/10',
+      },
+      {
+        date: '2023-01-20',
+        title: 'Convocatoria 20 de enero de 2023',
+        oep: 'OEP 2021-2022',
+        partes: [
+          { id: 'primera', icon: '📘', title: 'Primera parte', description: '31 legislativas + 32 psicotécnicas (63 preguntas)' },
+          { id: 'segunda', icon: '📗', title: 'Segunda parte', description: 'Actividad administrativa y Ofimática (50 preguntas)' },
+        ],
+      },
+      {
+        date: '2021-05-26',
+        title: 'Convocatoria 26 de mayo de 2021',
+        oep: 'OEP 2020',
+        partes: [
+          { id: 'primera', icon: '📘', title: 'Primera parte', description: 'Legislativas + Psicotécnicas (62 preguntas)' },
+          { id: 'segunda', icon: '📗', title: 'Segunda parte', description: 'Bloque II: Actividad Administrativa y Ofimática (53 preguntas)' },
+        ],
+        note: 'ℹ️ Nota: Preguntas de informática actualizadas a Office 365 y Windows 11',
+      },
+      {
+        date: '2019-06-14',
+        title: 'Convocatoria 14 de junio de 2019',
+        oep: 'OEP 2018-2019',
+        partes: [
+          { id: 'primera', icon: '📘', title: 'Primera parte', description: 'Legislativas + Psicotécnicas (64 preguntas)' },
+          { id: 'segunda', icon: '📗', title: 'Segunda parte', description: 'Bloque II: Actividad Administrativa y Ofimática (34 preguntas)' },
+        ],
+        note: 'ℹ️ Nota: Preguntas de informática actualizadas a Office 365 y Windows 11',
+      },
     ],
   },
 

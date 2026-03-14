@@ -870,18 +870,18 @@ export default function HeaderES() {
         </div>
       )}
 
-      {/* Banner: oposición inválida - forzar re-selección */}
+      {/* Banner: oposición no disponible - forzar re-selección */}
       {needsOposicionFix && user && (
         <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white px-4 py-3 text-center">
           <div className="flex items-center justify-center gap-2 flex-wrap">
             <span className="font-medium">
-              Necesitamos que actualices tu oposicion para personalizar tu experiencia
+              La oposición que tienes seleccionada aún no está disponible en Vence. Elige una de las disponibles.
             </span>
             <a
               href="/perfil"
               className="inline-flex items-center gap-1 bg-white text-orange-600 font-semibold px-4 py-1.5 rounded-full text-sm hover:bg-orange-50 transition-colors"
             >
-              Ir a mi perfil
+              Cambiar oposición
             </a>
           </div>
         </div>
