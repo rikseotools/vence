@@ -108,8 +108,10 @@ function validateLetterAnalogy(
     return NOT_VALIDATED
   }
 
-  // Probar con ambos alfabetos
-  for (const alpha of [ALPHA_EN, ALPHA_ES]) {
+  // Probar con ambos alfabetos (primero español que es más común en oposiciones)
+  let fallbackResult: SequenceValidationResult | null = null
+
+  for (const alpha of [ALPHA_ES, ALPHA_EN]) {
     const alphaName = alpha.length === 26 ? '26 letras' : '27 letras (con ñ)'
 
     // Calcular patrón de diferencias
@@ -147,34 +149,35 @@ function validateLetterAnalogy(
       o => o?.toUpperCase().trim() === result
     )
 
-    const correctLetter = ['A', 'B', 'C', 'D'][correctOption]
-    const dbAnswerText = optionValues[correctOption]?.toUpperCase().trim()
-
     if (matchIdx >= 0) {
+      // Coincide con una opción → retornar directamente
       const computedLetter = ['A', 'B', 'C', 'D'][matchIdx]
       return {
         validated: true,
         confirmsDbAnswer: matchIdx === correctOption,
         computedAnswer: computedLetter,
         computedValue: result,
-        pattern: `Transformación ${diffs.map(d => (d >= 0 ? '+' : '') + d).join(',')}`,
+        pattern: `Transformación ${diffs.map(d => (d >= 0 ? '+' : '') + d).join(',')} (${alphaName})`,
         steps,
       }
     }
 
-    // Si no coincide con ninguna opción, la pregunta puede tener error
-    steps.push(`Resultado ${result} no coincide con ninguna opción`)
-    return {
-      validated: true,
-      confirmsDbAnswer: false,
-      computedAnswer: null,
-      computedValue: result,
-      pattern: `Transformación ${diffs.map(d => (d >= 0 ? '+' : '') + d).join(',')}`,
-      steps,
+    // No coincide con ninguna opción → guardar como fallback y probar otro alfabeto
+    if (!fallbackResult) {
+      steps.push(`Resultado ${result} no coincide con ninguna opción`)
+      fallbackResult = {
+        validated: true,
+        confirmsDbAnswer: false,
+        computedAnswer: null,
+        computedValue: result,
+        pattern: `Transformación ${diffs.map(d => (d >= 0 ? '+' : '') + d).join(',')} (${alphaName})`,
+        steps,
+      }
     }
   }
 
-  return NOT_VALIDATED
+  // Si ningún alfabeto dio match con opciones, retornar el fallback
+  return fallbackResult || NOT_VALIDATED
 }
 
 /**
@@ -187,7 +190,7 @@ function validateLinearLetterSeries(
 ): SequenceValidationResult {
   if (letters.length < 3) return NOT_VALIDATED
 
-  for (const alpha of [ALPHA_EN, ALPHA_ES]) {
+  for (const alpha of [ALPHA_ES, ALPHA_EN]) {
     const positions = letters.map(l => letterPos(l, alpha))
     if (positions.some(p => p === 0)) continue
 
