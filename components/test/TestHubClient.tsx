@@ -510,6 +510,7 @@ function ConvocatoriaCard({ convocatoria, oposicion, examStats, expanded, onTogg
                       examDate={convocatoria.date}
                       parte={parte.id}
                       oposicion={oposicion}
+                      isCaseExam={parte.id === 'supuesto'}
                     />
                   </div>
                 )}

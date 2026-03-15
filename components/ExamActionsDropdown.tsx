@@ -7,15 +7,17 @@ import { useRouter } from 'next/navigation'
 
 interface ExamActionsDropdownProps {
   examDate: string
-  parte: 'primera' | 'segunda'
+  parte: string
   oposicion: string
   accuracy?: number
+  isCaseExam?: boolean
 }
 
 export default function ExamActionsDropdown({
   examDate,
   parte,
   oposicion,
+  isCaseExam = false,
 }: ExamActionsDropdownProps) {
   const router = useRouter()
 
@@ -54,15 +56,17 @@ export default function ExamActionsDropdown({
         <span>Repetir examen</span>
       </button>
 
-      {/* Practicar solo los fallos */}
-      <button
-        onClick={(e) => handleAction(e, 'repeat-failed')}
-        className="px-3 py-2.5 rounded-lg bg-gray-600 hover:bg-gray-700 active:bg-gray-800 transition-colors text-xs sm:text-sm font-medium text-white flex items-center justify-center gap-2 min-h-[44px]"
-        title="Practicar solo las preguntas que fallaste"
-      >
-        <span>🎯</span>
-        <span>Practicar fallos</span>
-      </button>
+      {/* Practicar solo los fallos (no en supuestos prácticos, sin enunciado no tienen sentido) */}
+      {!isCaseExam && (
+        <button
+          onClick={(e) => handleAction(e, 'repeat-failed')}
+          className="px-3 py-2.5 rounded-lg bg-gray-600 hover:bg-gray-700 active:bg-gray-800 transition-colors text-xs sm:text-sm font-medium text-white flex items-center justify-center gap-2 min-h-[44px]"
+          title="Practicar solo las preguntas que fallaste"
+        >
+          <span>🎯</span>
+          <span>Practicar fallos</span>
+        </button>
+      )}
 
       {/* Ver fallos con respuestas */}
       <button
