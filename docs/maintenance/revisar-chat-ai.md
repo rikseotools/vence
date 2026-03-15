@@ -249,6 +249,20 @@ Después de analizar los traces, clasificar:
 - Si hay patrón recurrente: considerar crear nuevo domain o handler
 - Anotar el problema en la sección "Problemas conocidos detectados" de este manual
 
+### Principio: Soluciones escalables, no hardcodeadas
+
+**IMPORTANTE**: Cada fix debe ser escalable. No añadir patrones hardcodeados para cada caso que falle. En su lugar, buscar cómo aprovechar los datos que ya existen en la BD.
+
+**Ejemplo real**: Cuando "ley del gobierno" no se detectaba como Ley 50/1997:
+- **MAL**: Añadir `{ pattern: /ley\s*del?\s*gobierno/i, slug: 'ley-50-1997' }` a un array de patrones. Cada ley nueva que falle requiere tocar código.
+- **BIEN**: La tabla `laws` tiene un campo `name` con nombres descriptivos ("Ley 50/1997, de 27 de noviembre, del Gobierno"). Cargar ese campo en la cache y hacer keyword matching automático. Cualquier ley nueva en la BD se detecta sin tocar código.
+
+**Regla general**:
+1. Primero intentar resolver con datos de la BD (tablas `laws`, `topics`, `articles`, etc.)
+2. Si la BD no tiene la info, considerar añadirla a la BD (no al código)
+3. Solo hardcodear como último recurso para casos de desambiguación (ej: "transparencia" puede ser 2 leyes distintas)
+4. Los patrones descriptivos mínimos (regex) son aceptables solo para abreviaturas que no están en la BD o para desambiguar entre dos leyes con el mismo keyword
+
 ### Paso 5: Marcar como revisado
 
 Después de verificar y (opcionalmente) corregir, marcar los mensajes como revisados con notas detalladas de lo encontrado para no volver a analizarlos.
@@ -337,6 +351,7 @@ console.log(`qt=${qt} law=${law} followUp=${isFollowUp}`);
   1. "¿Qué artículos de la Ley de Enjuiciamiento Criminal son más preguntados?" → `extractLawFromMessage` no detectaba LECrim → `getExamStats(null)` → devolvía stats sin filtro (Windows 11, Excel)
   2. Follow-ups como "Y de la LOPJ?" no se reconocían como continuación de stats → SearchDomain los capturaba y generaba respuestas incorrectas via OpenAI
 - **Causa raíz 1**: `extractLawFromMessage` solo tenía aliases hardcodeados, no consultaba la BD
-- **Solución 1**: Sistema de 3 capas: BD cache (slug→short_name) → lawMappingUtils (aliases) → patrones descriptivos (regex). Commit `367e8c50`
+- **Solución 1 (v1)**: Sistema de 3 capas: BD cache (slug→short_name) → lawMappingUtils (aliases) → patrones descriptivos (regex). Commit `367e8c50`
+- **Solución 1 (v2 - escalable)**: `loadLawsCache()` ahora también carga el campo `name` de la tabla `laws` y extrae keywords descriptivos. `extractLawFromMessage` tiene un nuevo paso 5 que hace keyword matching automático contra los nombres de BD. Esto hace que "ley del gobierno" → Ley 50/1997, "subvenciones" → Ley 38/2003, "contratos del sector público" → Ley 9/2017, etc., sin código adicional. Se eliminaron los patrones hardcodeados que ahora cubre la BD (gobierno, subvenciones, procedimiento administrativo, etc.). Solo quedan patrones para abreviaturas no derivables (CE, EBEP, TFUE) y desambiguación (transparencia).
 - **Causa raíz 2**: `StatsDomain.canHandle()` solo miraba `detectStatsQueryType(currentMessage)`, no el historial de conversación. `SearchDomain` (prioridad 3) capturaba antes que `StatsDomain` (prioridad 4) por detectar mención de ley
 - **Solución 2**: `StatsDomain.canHandle()` ahora detecta follow-ups mirando si la última respuesta del assistant fue de stats + el mensaje actual menciona una ley. `SearchDomain.canHandle()` cede el control cuando el contexto previo era de stats. Verificado con simulación de 20 casos (4 escenarios).

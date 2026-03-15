@@ -261,25 +261,16 @@ export function extractLawFromMessage(message: string): string | null {
     }
   }
 
-  // 4) Patrones descriptivos comunes (frases con acentos, preposiciones, etc.)
+  // 4) Patrones descriptivos mínimos: solo para abreviaturas/nombres que no están en el campo
+  // `name` de la BD, o para desambiguar cuando dos leyes comparten un keyword
   const descriptivePatterns: Array<{ pattern: RegExp; slug: string }> = [
     { pattern: /constituci[oó]n/i, slug: 'ce' },
     { pattern: /enjuiciamiento\s*criminal/i, slug: 'ley-enjuiciamiento-criminal' },
-    { pattern: /enjuiciamiento\s*civil/i, slug: 'enjuiciamiento-civil' },
     { pattern: /poder\s*judicial/i, slug: 'poder-judicial' },
     { pattern: /empleado\s*p[uú]blico/i, slug: 'ebep' },
-    { pattern: /procedimiento\s*administrativo/i, slug: 'procedimiento-administrativo' },
-    { pattern: /r[eé]gimen\s*jur[ií]dico/i, slug: 'regimen-juridico' },
-    { pattern: /r[eé]gimen\s*local/i, slug: 'regimen-local' },
-    { pattern: /protecci[oó]n\s*de?\s*datos/i, slug: 'lo-3-2018' },
-    { pattern: /violencia\s*de?\s*g[eé]nero/i, slug: 'lo-1-2004' },
-    { pattern: /seguridad\s*ciudadana/i, slug: 'seguridad-ciudadana' },
-    { pattern: /estatuto.*trabajadores/i, slug: 'estatuto-trabajadores' },
-    { pattern: /prevenci[oó]n.*riesgos/i, slug: 'lprl' },
     { pattern: /tratado.*funcionamiento/i, slug: 'tfue' },
     { pattern: /tratado.*uni[oó]n\s*europea/i, slug: 'tue' },
-    { pattern: /subvenciones/i, slug: 'ley-38-2003' },
-    { pattern: /ley\s*(del?\s*)?gobierno/i, slug: 'ley-50-1997' },
+    // Desambiguación: "transparencia" puede ser Plan Transparencia Judicial o Ley 19/2013
     { pattern: /transparencia/i, slug: 'ley-19-2013' },
   ]
 
@@ -289,6 +280,11 @@ export function extractLawFromMessage(message: string): string | null {
       if (shortName) return shortName
     }
   }
+
+  // 5) Búsqueda por keywords del campo `name` de la BD (escalable, sin mantenimiento)
+  // Ej: "ley del gobierno" → match "Ley 50/1997, del Gobierno" por keyword "gobierno"
+  const nameMatch = _matchLawByNameKeywords(message)
+  if (nameMatch) return nameMatch
 
   return null
 }
@@ -301,7 +297,72 @@ export function extractLawFromMessage(message: string): string | null {
 let _dbSlugMap: Map<string, string> | null = null
 /** short_name (lowercase) → short_name para match directo */
 let _dbShortNameMap: Map<string, string> | null = null
+/** Índice de keywords extraídos del campo `name` de la tabla laws */
+let _dbNameKeywords: Array<{ shortName: string; keywords: string[] }> | null = null
 let _dbCacheLoading: Promise<void> | null = null
+
+// Stop words para filtrar al extraer keywords del nombre de la ley
+const STOP_WORDS = new Set([
+  'de', 'del', 'la', 'el', 'las', 'los', 'por', 'que', 'se', 'en', 'al', 'con',
+  'para', 'y', 'o', 'a', 'un', 'una', 'su', 'sus', 'lo', 'le', 'les',
+  'sobre', 'como', 'cual', 'cuales', 'este', 'esta', 'estos', 'estas',
+  'ley', 'real', 'decreto', 'orden', 'organica', 'legislativo',
+  'texto', 'refundido', 'aprueba', 'regula', 'reguladora', 'establece',
+  'modifica', 'determina', 'dispone', 'materia', 'medidas', 'normas',
+  // Meses (aparecen en muchas leyes por la fecha, pero no son relevantes)
+  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+])
+
+/**
+ * Extrae keywords significativos del nombre descriptivo de una ley.
+ * Filtra stop words, números, fechas y tokens cortos.
+ */
+function _extractKeywords(name: string): string[] {
+  return name
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // quitar acentos
+    .replace(/[()""".,;:\/\-]/g, ' ')
+    .split(/\s+/)
+    .filter(t => t.length >= 3)
+    .filter(t => !/^\d+$/.test(t)) // sin números puros
+    .filter(t => !STOP_WORDS.has(t))
+}
+
+/**
+ * Busca una ley por keywords del campo `name` de la BD.
+ * Para cada ley, calcula qué fracción de sus keywords aparecen en el mensaje.
+ * Devuelve la ley con mayor score si supera el umbral mínimo.
+ */
+function _matchLawByNameKeywords(message: string): string | null {
+  if (!_dbNameKeywords || _dbNameKeywords.length === 0) return null
+
+  const msgNorm = message
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[¿?¡!()""".,;:\/\-]/g, ' ')
+  const msgTokens = new Set(msgNorm.split(/\s+/).filter(t => t.length >= 3))
+
+  let bestMatch: string | null = null
+  let bestScore = 0
+  let bestMatchedCount = 0
+
+  for (const { shortName, keywords } of _dbNameKeywords) {
+    if (keywords.length === 0) continue
+    const matched = keywords.filter(kw => msgTokens.has(kw)).length
+    if (matched === 0) continue
+    const score = matched / keywords.length
+    // Preferir mayor score; en empate, preferir más keywords coincidentes
+    if (score > bestScore || (score === bestScore && matched > bestMatchedCount)) {
+      bestScore = score
+      bestMatch = shortName
+      bestMatchedCount = matched
+    }
+  }
+
+  // Umbral mínimo: al menos 1 keyword y score >= 0.25
+  return bestScore >= 0.25 ? bestMatch : null
+}
 
 /**
  * Resuelve un slug/alias a short_name.
@@ -344,7 +405,7 @@ export async function loadLawsCache(): Promise<void> {
 
       const { data, error } = await supabase
         .from('laws')
-        .select('slug, short_name')
+        .select('slug, short_name, name')
         .eq('is_active', true)
 
       if (error || !data) {
@@ -354,6 +415,7 @@ export async function loadLawsCache(): Promise<void> {
 
       const slugMap = new Map<string, string>()
       const snMap = new Map<string, string>()
+      const nameKws: Array<{ shortName: string; keywords: string[] }> = []
 
       for (const law of data) {
         // slug → short_name
@@ -363,12 +425,21 @@ export async function loadLawsCache(): Promise<void> {
 
         // short_name (lowercase) → short_name (para match directo de abreviaturas)
         snMap.set(law.short_name.toLowerCase(), law.short_name)
+
+        // Extraer keywords del nombre descriptivo (solo si difiere del short_name)
+        if (law.name && law.name !== law.short_name) {
+          const keywords = _extractKeywords(law.name)
+          if (keywords.length > 0) {
+            nameKws.push({ shortName: law.short_name, keywords })
+          }
+        }
       }
 
       _dbSlugMap = slugMap
       _dbShortNameMap = snMap
+      _dbNameKeywords = nameKws
 
-      logger.info(`Laws cache loaded from DB: ${slugMap.size} slugs, ${snMap.size} short_names`, { domain: 'stats' })
+      logger.info(`Laws cache loaded from DB: ${slugMap.size} slugs, ${snMap.size} short_names, ${nameKws.length} name keyword sets`, { domain: 'stats' })
     } catch (err) {
       logger.warn('Error loading laws cache from DB', { domain: 'stats', error: String(err) })
     }
