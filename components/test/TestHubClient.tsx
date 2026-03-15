@@ -167,7 +167,7 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
 
   // Cargar estadísticas de exámenes oficiales (lazy, al expandir)
   const loadExamStats = useCallback(async () => {
-    if (!user?.id || Object.keys(examStats).length > 0) return
+    if (!user?.id) return
     try {
       const response = await fetch(`/api/v2/official-exams/user-stats?userId=${user.id}&oposicion=${oposicion}`)
       const data = await response.json()
@@ -177,7 +177,24 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
     } catch (error) {
       console.warn('Error cargando estadísticas de exámenes:', error)
     }
-  }, [user?.id, examStats, oposicion])
+  }, [user?.id, oposicion])
+
+  // Refrescar stats cuando se completa un examen y el usuario vuelve
+  useEffect(() => {
+    const handleExamCompleted = () => { loadExamStats() }
+    window.addEventListener('exam-completed', handleExamCompleted)
+    // También refrescar cuando la pestaña vuelve a ser visible (el usuario vuelve de un examen)
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible' && Object.keys(examStats).length > 0) {
+        loadExamStats()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => {
+      window.removeEventListener('exam-completed', handleExamCompleted)
+      document.removeEventListener('visibilitychange', handleVisibility)
+    }
+  }, [loadExamStats, examStats])
 
   const toggleBlock = (blockId: string) => {
     setExpandedBlocks(prev => {
