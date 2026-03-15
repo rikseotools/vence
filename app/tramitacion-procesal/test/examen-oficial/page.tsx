@@ -255,7 +255,7 @@ function OfficialExamContent() {
       config={{
         testType: 'official-exam',
         examDate: examDate || metadata?.examDate,
-        parte: (parte as 'primera' | 'segunda') || undefined,
+        parte: parte || undefined,
         backUrl: '/tramitacion-procesal/test',
         backText: 'Volver a Tests'
       }}

@@ -87,7 +87,7 @@ interface ExamMetadata {
 
 interface ExamConfig {
   examDate?: string
-  parte?: 'primera' | 'segunda'
+  parte?: string
   backUrl?: string
   backText?: string
   testType?: string
