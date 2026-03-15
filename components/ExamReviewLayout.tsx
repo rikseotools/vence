@@ -33,7 +33,8 @@ interface ExamReviewLayoutProps {
   questions: ReviewQuestion[]
   notaCorte?: NotaCorte
   oposicionSlug?: string
-  parte?: 'primera' | 'segunda' | null
+  parte?: string | null
+  isCaseExam?: boolean
 }
 
 type FilterType = 'all' | 'correct' | 'incorrect' | 'blank'
@@ -46,7 +47,8 @@ export default function ExamReviewLayout({
   questions,
   notaCorte,
   oposicionSlug = 'auxiliar-administrativo-estado',
-  parte
+  parte,
+  isCaseExam = false,
 }: ExamReviewLayoutProps) {
   const { user } = useAuth()
   const [filter, setFilter] = useState<FilterType>('all')
@@ -400,20 +402,22 @@ export default function ExamReviewLayout({
                           content={question.explanation}
                           className="text-blue-800 dark:text-blue-200"
                         />
-                        <button
-                          onClick={() => {
-                            window.dispatchEvent(new CustomEvent('openAIChat', {
-                              detail: {
-                                message: `Explícame por qué la respuesta correcta es "${question.correctAnswer}" en la pregunta: "${question.questionText.substring(0, 100)}..."`,
-                                suggestion: 'explicar_respuesta'
-                              }
-                            }))
-                          }}
-                          className="mt-3 flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
-                        >
-                          <span>✨</span>
-                          <span>Explicación con chat IA</span>
-                        </button>
+                        {!isCaseExam && (
+                          <button
+                            onClick={() => {
+                              window.dispatchEvent(new CustomEvent('openAIChat', {
+                                detail: {
+                                  message: `Explícame por qué la respuesta correcta es "${question.correctAnswer}" en la pregunta: "${question.questionText.substring(0, 100)}..."`,
+                                  suggestion: 'explicar_respuesta'
+                                }
+                              }))
+                            }}
+                            className="mt-3 flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+                          >
+                            <span>✨</span>
+                            <span>Explicación con chat IA</span>
+                          </button>
+                        )}
                       </div>
                     )}
 

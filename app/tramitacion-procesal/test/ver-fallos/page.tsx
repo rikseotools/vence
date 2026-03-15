@@ -496,13 +496,15 @@ function VerFallosContent() {
 
           {/* Actions */}
           <div className="flex gap-3 mb-6">
-            <Link
-              href={`/tramitacion-procesal/test/repaso-fallos-oficial?fecha=${examDate}${parte ? `&parte=${parte}` : ''}`}
-              className="flex-1 bg-purple-600 text-white py-3 px-4 rounded-lg font-semibold text-center hover:bg-purple-700 transition-colors flex items-center justify-center gap-2"
-            >
-              <span>🎯</span>
-              <span>Practicar estos fallos</span>
-            </Link>
+            {parte !== 'supuesto' && (
+              <Link
+                href={`/tramitacion-procesal/test/repaso-fallos-oficial?fecha=${examDate}${parte ? `&parte=${parte}` : ''}`}
+                className="flex-1 bg-purple-600 text-white py-3 px-4 rounded-lg font-semibold text-center hover:bg-purple-700 transition-colors flex items-center justify-center gap-2"
+              >
+                <span>🎯</span>
+                <span>Practicar estos fallos</span>
+              </Link>
+            )}
             <Link
               href="/tramitacion-procesal/test"
               className="bg-gray-200 text-gray-700 py-3 px-4 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
@@ -519,14 +521,16 @@ function VerFallosContent() {
           </div>
 
           {/* Bottom action */}
-          <div className="mt-6 text-center">
-            <Link
-              href={`/tramitacion-procesal/test/repaso-fallos-oficial?fecha=${examDate}${parte ? `&parte=${parte}` : ''}`}
-              className="inline-block bg-purple-600 text-white py-3 px-8 rounded-lg font-semibold hover:bg-purple-700 transition-colors"
-            >
-              Practicar estos {questions.length} fallos
-            </Link>
-          </div>
+          {parte !== 'supuesto' && (
+            <div className="mt-6 text-center">
+              <Link
+                href={`/tramitacion-procesal/test/repaso-fallos-oficial?fecha=${examDate}${parte ? `&parte=${parte}` : ''}`}
+                className="inline-block bg-purple-600 text-white py-3 px-8 rounded-lg font-semibold hover:bg-purple-700 transition-colors"
+              >
+                Practicar estos {questions.length} fallos
+              </Link>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -179,7 +179,8 @@ function RevisarExamenContent() {
       difficultyBreakdown={reviewData.difficultyBreakdown}
       notaCorte={reviewData.notaCorte}
       oposicionSlug={oposicion}
-      parte={parte as 'primera' | 'segunda' | null}
+      parte={parte}
+      isCaseExam={parte === 'supuesto'}
     />
   )
 }
