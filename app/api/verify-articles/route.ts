@@ -4,6 +4,7 @@ import {
   normalizeArticleNumber,
   normalizeText,
   compareContent,
+  isDisposicionArticle,
 } from '@/lib/boe-extractor'
 import {
   isEurLexUrl,
@@ -129,7 +130,7 @@ async function _GET(request: NextRequest) {
     for (const [artNum, dbArt] of dbMap) {
       if (!boeMap.has(artNum)) {
         if (isStructureArticle(dbArt.articleNumber)) { structureArticlesCount++; continue }
-        if (!includeDisposiciones && dbArt.articleNumber.startsWith('DA_')) { structureArticlesCount++; continue }
+        if (!includeDisposiciones && isDisposicionArticle(dbArt.articleNumber)) { structureArticlesCount++; continue }
         comparison.summary.extra_in_db++
         comparison.details.extra_in_db.push({ article_number: artNum, db_title: dbArt.title, db_id: dbArt.id })
       }

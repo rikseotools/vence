@@ -2,6 +2,7 @@
 import { getSupabaseClient } from './supabase'
 import { mapLawSlugToShortName } from './lawMappingUtils'
 import { buildExamPositionFilter } from './config/exam-positions'
+import { isDisposicionArticle } from './boe-extractor'
 
 type SearchParamsLike = URLSearchParams | Record<string, string | undefined> | null | undefined
 
@@ -1076,6 +1077,7 @@ export async function fetchQuestionsByTopicScope(tema: number, searchParams: Sea
         filteredMappings = filteredMappings.map(mapping => {
           // Filtrar artículos que estén dentro de AL MENOS UNO de los rangos seleccionados
           const filteredArticleNumbers = mapping.article_numbers.filter((articleNum: any) => {
+            if (isDisposicionArticle(articleNum)) return true  // Siempre incluir disposiciones
             const num = parseInt(articleNum)
             return ranges.some(range => num >= range.start && num <= range.end)
           })

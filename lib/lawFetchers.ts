@@ -2,6 +2,7 @@
 import { getSupabaseClient } from './supabase'
 import { mapLawSlugToShortName } from './lawMappingUtils'
 import { buildExamPositionFilter } from './config/exam-positions'
+import { isDisposicionArticle } from './boe-extractor'
 
 type SearchParamsLike = URLSearchParams | Record<string, string | undefined> | null | undefined
 
@@ -400,7 +401,12 @@ export async function fetchQuestionsByLaw(lawShortName: string, searchParams: Se
       const endArticle = typeof end === 'string' ? parseInt(end) : end
 
       filteredQuestions = validQuestions.filter(q => {
-        const articleNumber = parseInt(q.articles?.article_number || '0')
+        const articleNum = q.articles?.article_number || '0'
+
+        // Siempre incluir disposiciones (no son numéricas)
+        if (isDisposicionArticle(articleNum)) return true
+
+        const articleNumber = parseInt(articleNum)
         let isInRange = articleNumber >= startArticle && articleNumber <= endArticle
 
         // CASO ESPECIAL: Para "PREÁMBULO Y TÍTULO PRELIMINAR" (arts. 1-9), incluir también artículo 0

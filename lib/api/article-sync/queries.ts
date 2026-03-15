@@ -5,7 +5,8 @@ import { eq, and } from 'drizzle-orm'
 import crypto from 'crypto'
 import {
   extractArticlesFromBOE,
-  normalizeArticleNumber
+  normalizeArticleNumber,
+  isDisposicionArticle
 } from '@/lib/boe-extractor'
 import {
   isEurLexUrl,
@@ -245,7 +246,7 @@ export async function syncArticlesFromBoe(
       }
 
       // Si no incluimos disposiciones, no desactivar las que ya existan en BD
-      if (!includeDisposiciones && dbArt.articleNumber.startsWith('DA_')) {
+      if (!includeDisposiciones && isDisposicionArticle(dbArt.articleNumber)) {
         continue
       }
 

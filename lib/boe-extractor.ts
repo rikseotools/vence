@@ -277,7 +277,7 @@ export function extractArticlesFromBOE(html: string, options: ExtractionOptions 
     }
 
     articles.push({
-      article_number: articleNumber,
+      article_number: isDisposicionArticle(articleNumber) ? normalizeArticleNumber(articleNumber) : articleNumber,
       title: title || null,
       content: content
     })
@@ -380,7 +380,7 @@ export function extractArticlesFromBOE(html: string, options: ExtractionOptions 
 
       if (content.includes('(Suprimido)') || content.includes('(SUPRIMIDO)')) continue
 
-      articles.push({ article_number: articleNumber, title: title || null, content })
+      articles.push({ article_number: isDisposicionArticle(articleNumber) ? normalizeArticleNumber(articleNumber) : articleNumber, title: title || null, content })
     }
   }
 
@@ -414,10 +414,8 @@ export function extractArticlesFromBOE(html: string, options: ExtractionOptions 
   }
 
   articles.sort((a, b) => {
-    const isDispA = a.article_number.startsWith('DA') || a.article_number.startsWith('DT') ||
-                    a.article_number.startsWith('DD') || a.article_number.startsWith('DF')
-    const isDispB = b.article_number.startsWith('DA') || b.article_number.startsWith('DT') ||
-                    b.article_number.startsWith('DD') || b.article_number.startsWith('DF')
+    const isDispA = isDisposicionArticle(a.article_number)
+    const isDispB = isDisposicionArticle(b.article_number)
 
     if (!isDispA && !isDispB) {
       const parseArticle = (num: string) => {
@@ -470,11 +468,88 @@ export function extractArticlesFromBOE(html: string, options: ExtractionOptions 
 }
 
 /**
- * Normaliza número de artículo para comparación
+ * Verifica si un article_number corresponde a una disposición (DA, DT, DD, DF)
+ */
+export function isDisposicionArticle(articleNumber: string): boolean {
+  return /^(DA|DT|DD|DF)/i.test(articleNumber)
+}
+
+/**
+ * Normaliza número de artículo para comparación.
+ * Para disposiciones, convierte todos los formatos al canónico:
+ *   DA1, DA2, DAunica, DT9, DF4, DDunica, etc.
+ * Para artículos normales, normaliza espacios y sufijos.
  */
 export function normalizeArticleNumber(num: string | null | undefined): string {
   if (!num) return ''
-  return num
+
+  const trimmed = num.trim()
+
+  // Mapa de ordinales femeninos a número (para disposiciones)
+  const feminineToNumber: Record<string, string> = {
+    'primera': '1', 'segunda': '2', 'tercera': '3', 'cuarta': '4',
+    'quinta': '5', 'sexta': '6', 'séptima': '7', 'septima': '7',
+    'octava': '8', 'novena': '9', 'décima': '10', 'decima': '10',
+    'undécima': '11', 'undecima': '11', 'duodécima': '12', 'duodecima': '12',
+    'decimotercera': '13', 'decimocuarta': '14', 'decimoquinta': '15',
+    'decimosexta': '16', 'decimoséptima': '17', 'decimoseptima': '17',
+    'decimoctava': '18', 'decimooctava': '18', 'décimo_octava': '18', 'decimo_octava': '18', 'decimonovena': '19', 'décimo_novena': '19',
+    'vigésima': '20', 'vigesima': '20', 'vigésima_primera': '21',
+    'vigesimoprimera': '21', 'vigésima_segunda': '22', 'vigesimosegunda': '22',
+    'vigésima_tercera': '23', 'vigesimotercera': '23',
+    'única': 'unica', 'unica': 'unica'
+  }
+
+  // Mapa de tipo de disposición en español al código canónico
+  const dispTypeToCode: Record<string, string> = {
+    'adicional': 'DA',
+    'transitoria': 'DT',
+    'derogatoria': 'DD',
+    'final': 'DF'
+  }
+
+  // Formato: DA_adicional_primera, DA_transitoria_novena, DA_final_cuarta, DA_derogatoria_única
+  const legacyDispMatch = trimmed.match(/^DA_(adicional|transitoria|derogatoria|final)_([\wéáíóú]+)$/i)
+  if (legacyDispMatch) {
+    const typeCode = dispTypeToCode[legacyDispMatch[1].toLowerCase()] || 'DA'
+    const ordinal = legacyDispMatch[2].toLowerCase()
+    const ordinalNum = feminineToNumber[ordinal] || ordinal
+    return `${typeCode}${ordinalNum}`
+  }
+
+  // Formato: DAdecimocuarta, DAdecimoquinta, DAdecimoséptima, etc. (DA + ordinal femenino pegado)
+  // También captura: DAunica, DAprimera, etc.
+  const compactDispMatch = trimmed.match(/^(DA|DT|DD|DF)([a-záéíóúü]+)$/i)
+  if (compactDispMatch) {
+    const prefix = compactDispMatch[1].toUpperCase()
+    const ordinal = compactDispMatch[2].toLowerCase()
+    // Solo convertir si el ordinal está en nuestro mapa (para no romper DA1, DA2, etc.)
+    if (feminineToNumber[ordinal] !== undefined) {
+      return `${prefix}${feminineToNumber[ordinal]}`
+    }
+    // Si no está en el mapa, dejar como está con uppercase prefix
+    return `${prefix}${ordinal}`
+  }
+
+  // Formato: DA1, DT9, DF4, etc. (ya canónico, solo normalizar mayúsculas)
+  const canonicalDispMatch = trimmed.match(/^(DA|DT|DD|DF)(\d+|unica)$/i)
+  if (canonicalDispMatch) {
+    return `${canonicalDispMatch[1].toUpperCase()}${canonicalDispMatch[2].toLowerCase() === 'unica' ? 'unica' : canonicalDispMatch[2]}`
+  }
+
+  // Formato: da9, dt3, etc. (minúsculas con número)
+  const lowerDispMatch = trimmed.match(/^(da|dt|dd|df)(\d+|unica)$/i)
+  if (lowerDispMatch) {
+    return `${lowerDispMatch[1].toUpperCase()}${lowerDispMatch[2].toLowerCase() === 'unica' ? 'unica' : lowerDispMatch[2]}`
+  }
+
+  // Formato: DD o DF solos (disposición derogatoria/final única sin número)
+  if (/^(DD|DF)$/i.test(trimmed)) {
+    return trimmed.toUpperCase()
+  }
+
+  // Artículos normales (no disposiciones)
+  return trimmed
     .toLowerCase()
     .replace(/quáter/gi, 'quater')
     .replace(/(\d+)\s*(bis|ter|quater|quinquies|sexies|septies|octies|nonies|decies)(\s*\d+)?/gi, '$1 $2$3')
