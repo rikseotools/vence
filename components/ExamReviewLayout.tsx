@@ -35,6 +35,7 @@ interface ExamReviewLayoutProps {
   oposicionSlug?: string
   parte?: string | null
   isCaseExam?: boolean
+  examCase?: { id: string; caseText: string; caseTitle: string | null } | null
 }
 
 type FilterType = 'all' | 'correct' | 'incorrect' | 'blank'
@@ -49,6 +50,7 @@ export default function ExamReviewLayout({
   oposicionSlug = 'auxiliar-administrativo-estado',
   parte,
   isCaseExam = false,
+  examCase,
 }: ExamReviewLayoutProps) {
   const { user } = useAuth()
   const [filter, setFilter] = useState<FilterType>('all')
@@ -284,6 +286,21 @@ export default function ExamReviewLayout({
             </button>
           </div>
         </div>
+
+        {/* Enunciado del supuesto práctico */}
+        {examCase && (
+          <div className="bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-300 dark:border-amber-700 rounded-lg p-6 shadow-sm mb-4">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-2xl">📋</span>
+              <h3 className="text-lg font-bold text-amber-900 dark:text-amber-200">
+                {examCase.caseTitle || 'Supuesto Practico'}
+              </h3>
+            </div>
+            <div className="prose prose-sm max-w-none text-amber-900 dark:text-amber-100 leading-relaxed whitespace-pre-line">
+              {examCase.caseText}
+            </div>
+          </div>
+        )}
 
         {/* Lista de preguntas */}
         <div className="space-y-4">

@@ -1,6 +1,6 @@
 // lib/api/test-review/queries.ts - Queries tipadas para revisión de tests completados
 import { getDb } from '@/db/client'
-import { tests, testQuestions, questions } from '@/db/schema'
+import { tests, testQuestions, questions, examCases } from '@/db/schema'
 import { eq, asc, inArray } from 'drizzle-orm'
 import type {
   GetTestReviewRequest,
@@ -111,6 +111,35 @@ export async function getTestReview(
       console.log(`🔄 [DRIZZLE] Loaded ${questionRows.length} questions as fallback for missing full_question_context`)
     }
 
+    // 2c. Check if any questions belong to an exam_case (supuesto práctico)
+    const allQuestionIds = answers
+      .map(a => a.questionId)
+      .filter((id): id is string => !!id)
+
+    let examCaseData: { id: string; caseText: string; caseTitle: string | null } | null = null
+
+    if (allQuestionIds.length > 0) {
+      const caseQuestions = await db
+        .select({
+          examCaseId: questions.examCaseId,
+          caseText: examCases.caseText,
+          caseTitle: examCases.caseTitle,
+        })
+        .from(questions)
+        .innerJoin(examCases, eq(questions.examCaseId, examCases.id))
+        .where(inArray(questions.id, allQuestionIds))
+        .limit(1)
+
+      if (caseQuestions.length > 0 && caseQuestions[0].examCaseId) {
+        examCaseData = {
+          id: caseQuestions[0].examCaseId,
+          caseText: caseQuestions[0].caseText,
+          caseTitle: caseQuestions[0].caseTitle,
+        }
+        console.log(`📋 [DRIZZLE] Found exam_case: ${examCaseData.caseTitle}`)
+      }
+    }
+
     // 3. Transformar datos para la respuesta
     const reviewQuestions: ReviewQuestion[] = answers.map((a, index) => {
       const context = (a.fullQuestionContext as Record<string, unknown>) || {}
@@ -213,6 +242,7 @@ export async function getTestReview(
       temaBreakdown,
       difficultyBreakdown,
       questions: reviewQuestions,
+      examCase: examCaseData,
     }
   } catch (error) {
     console.error('❌ [DRIZZLE] Error getting test review:', error)

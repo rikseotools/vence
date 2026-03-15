@@ -18,6 +18,7 @@ interface ReviewData {
   questions?: ReviewQuestion[]
   temaBreakdown?: TemaBreakdown[]
   difficultyBreakdown?: DifficultyBreakdown[]
+  examCase?: { id: string; caseText: string; caseTitle: string | null } | null
   error?: string
 }
 
@@ -104,6 +105,8 @@ export default function TestReviewPage() {
       questions={reviewData.questions}
       temaBreakdown={reviewData.temaBreakdown}
       difficultyBreakdown={reviewData.difficultyBreakdown}
+      isCaseExam={!!reviewData.examCase}
+      examCase={reviewData.examCase}
     />
   )
 }

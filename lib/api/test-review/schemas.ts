@@ -105,6 +105,11 @@ export const getTestReviewResponseSchema = z.object({
   temaBreakdown: z.array(temaBreakdownSchema).optional(),
   difficultyBreakdown: z.array(difficultyBreakdownSchema).optional(),
   questions: z.array(reviewQuestionSchema).optional(),
+  examCase: z.object({
+    id: z.string(),
+    caseText: z.string(),
+    caseTitle: z.string().nullable(),
+  }).nullable().optional(),
   error: z.string().optional(),
 })
 
