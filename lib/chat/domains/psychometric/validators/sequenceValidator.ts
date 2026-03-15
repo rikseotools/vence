@@ -23,20 +23,18 @@ const NOT_VALIDATED: SequenceValidationResult = {
   steps: [],
 }
 
-// Alfabeto español de 27 letras (con ñ)
-const ALPHA_ES = 'ABCDEFGHIJKLMNÑOPQRSTUVWXYZ'
-// Alfabeto inglés de 26 letras (sin ñ)
-const ALPHA_EN = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+// Alfabeto español de 27 letras (con ñ) — SIEMPRE usar este, son oposiciones españolas
+const ALPHA = 'ABCDEFGHIJKLMNÑOPQRSTUVWXYZ'
 
-function letterPos(letter: string, alpha: string): number {
-  return alpha.indexOf(letter.toUpperCase()) + 1
+function letterPos(letter: string): number {
+  return ALPHA.indexOf(letter.toUpperCase()) + 1
 }
 
-function posToLetter(pos: number, alpha: string): string {
-  const len = alpha.length
+function posToLetter(pos: number): string {
+  const len = ALPHA.length
   // Wraparound
   let p = ((pos - 1) % len + len) % len
-  return alpha[p]
+  return ALPHA[p]
 }
 
 /**
@@ -108,76 +106,63 @@ function validateLetterAnalogy(
     return NOT_VALIDATED
   }
 
-  // Probar con ambos alfabetos (primero español que es más común en oposiciones)
-  let fallbackResult: SequenceValidationResult | null = null
+  // Calcular patrón de diferencias
+  const diffs: number[] = []
+  let allValid = true
 
-  for (const alpha of [ALPHA_ES, ALPHA_EN]) {
-    const alphaName = alpha.length === 26 ? '26 letras' : '27 letras (con ñ)'
+  for (let i = 0; i < word1.length; i++) {
+    const p1 = letterPos(word1[i])
+    const p2 = letterPos(word2[i])
+    if (p1 === 0 || p2 === 0) { allValid = false; break }
+    diffs.push(p2 - p1)
+  }
 
-    // Calcular patrón de diferencias
-    const diffs: number[] = []
-    let allValid = true
+  if (!allValid) return NOT_VALIDATED
 
-    for (let i = 0; i < word1.length; i++) {
-      const p1 = letterPos(word1[i], alpha)
-      const p2 = letterPos(word2[i], alpha)
-      if (p1 === 0 || p2 === 0) { allValid = false; break }
-      diffs.push(p2 - p1)
-    }
+  // Aplicar patrón a word3
+  let result = ''
+  const steps: string[] = []
+  steps.push(`Patrón ${word1}→${word2}: ${diffs.map((d, i) => `${word1[i]}(${letterPos(word1[i])})→${word2[i]}(${letterPos(word2[i])})=${d >= 0 ? '+' : ''}${d}`).join(', ')}`)
 
-    if (!allValid) continue
+  for (let i = 0; i < word3.length; i++) {
+    const p3 = letterPos(word3[i])
+    if (p3 === 0) { allValid = false; break }
+    const newPos = p3 + diffs[i]
+    const newLetter = posToLetter(newPos)
+    result += newLetter
+    steps.push(`${word3[i]}(${p3}) + ${diffs[i]} = ${newPos} → ${newLetter}`)
+  }
 
-    // Aplicar patrón a word3
-    let result = ''
-    const steps: string[] = []
-    steps.push(`Patrón ${word1}→${word2} (${alphaName}): ${diffs.map((d, i) => `${word1[i]}(${letterPos(word1[i], alpha)})→${word2[i]}(${letterPos(word2[i], alpha)})=${d >= 0 ? '+' : ''}${d}`).join(', ')}`)
+  if (!allValid) return NOT_VALIDATED
 
-    for (let i = 0; i < word3.length; i++) {
-      const p3 = letterPos(word3[i], alpha)
-      if (p3 === 0) { allValid = false; break }
-      const newPos = p3 + diffs[i]
-      const newLetter = posToLetter(newPos, alpha)
-      result += newLetter
-      steps.push(`${word3[i]}(${p3}) + ${diffs[i]} = ${newPos} → ${newLetter}`)
-    }
+  // Comparar con opciones
+  const optionValues = [options.a, options.b, options.c, options.d]
+  const matchIdx = optionValues.findIndex(
+    o => o?.toUpperCase().trim() === result
+  )
 
-    if (!allValid) continue
-
-    // Comparar con opciones
-    const optionValues = [options.a, options.b, options.c, options.d]
-    const matchIdx = optionValues.findIndex(
-      o => o?.toUpperCase().trim() === result
-    )
-
-    if (matchIdx >= 0) {
-      // Coincide con una opción → retornar directamente
-      const computedLetter = ['A', 'B', 'C', 'D'][matchIdx]
-      return {
-        validated: true,
-        confirmsDbAnswer: matchIdx === correctOption,
-        computedAnswer: computedLetter,
-        computedValue: result,
-        pattern: `Transformación ${diffs.map(d => (d >= 0 ? '+' : '') + d).join(',')} (${alphaName})`,
-        steps,
-      }
-    }
-
-    // No coincide con ninguna opción → guardar como fallback y probar otro alfabeto
-    if (!fallbackResult) {
-      steps.push(`Resultado ${result} no coincide con ninguna opción`)
-      fallbackResult = {
-        validated: true,
-        confirmsDbAnswer: false,
-        computedAnswer: null,
-        computedValue: result,
-        pattern: `Transformación ${diffs.map(d => (d >= 0 ? '+' : '') + d).join(',')} (${alphaName})`,
-        steps,
-      }
+  if (matchIdx >= 0) {
+    const computedLetter = ['A', 'B', 'C', 'D'][matchIdx]
+    return {
+      validated: true,
+      confirmsDbAnswer: matchIdx === correctOption,
+      computedAnswer: computedLetter,
+      computedValue: result,
+      pattern: `Transformación ${diffs.map(d => (d >= 0 ? '+' : '') + d).join(',')}`,
+      steps,
     }
   }
 
-  // Si ningún alfabeto dio match con opciones, retornar el fallback
-  return fallbackResult || NOT_VALIDATED
+  // No coincide con ninguna opción
+  steps.push(`Resultado ${result} no coincide con ninguna opción`)
+  return {
+    validated: true,
+    confirmsDbAnswer: false,
+    computedAnswer: null,
+    computedValue: result,
+    pattern: `Transformación ${diffs.map(d => (d >= 0 ? '+' : '') + d).join(',')}`,
+    steps,
+  }
 }
 
 /**
@@ -190,36 +175,34 @@ function validateLinearLetterSeries(
 ): SequenceValidationResult {
   if (letters.length < 3) return NOT_VALIDATED
 
-  for (const alpha of [ALPHA_ES, ALPHA_EN]) {
-    const positions = letters.map(l => letterPos(l, alpha))
-    if (positions.some(p => p === 0)) continue
+  const positions = letters.map(l => letterPos(l))
+  if (positions.some(p => p === 0)) return NOT_VALIDATED
 
-    // Calcular diferencias
-    const diffs: number[] = []
-    for (let i = 1; i < positions.length; i++) {
-      diffs.push(positions[i] - positions[i - 1])
-    }
+  // Calcular diferencias
+  const diffs: number[] = []
+  for (let i = 1; i < positions.length; i++) {
+    diffs.push(positions[i] - positions[i - 1])
+  }
 
-    // Verificar diferencia constante
-    const allSame = diffs.every(d => d === diffs[0])
-    if (allSame) {
-      const nextPos = positions[positions.length - 1] + diffs[0]
-      const nextLetter = posToLetter(nextPos, alpha)
+  // Verificar diferencia constante
+  const allSame = diffs.every(d => d === diffs[0])
+  if (allSame) {
+    const nextPos = positions[positions.length - 1] + diffs[0]
+    const nextLetter = posToLetter(nextPos)
 
-      const optionValues = [options.a, options.b, options.c, options.d]
-      const matchIdx = optionValues.findIndex(
-        o => o?.toUpperCase().trim() === nextLetter
-      )
+    const optionValues = [options.a, options.b, options.c, options.d]
+    const matchIdx = optionValues.findIndex(
+      o => o?.toUpperCase().trim() === nextLetter
+    )
 
-      if (matchIdx >= 0) {
-        return {
-          validated: true,
-          confirmsDbAnswer: matchIdx === correctOption,
-          computedAnswer: ['A', 'B', 'C', 'D'][matchIdx],
-          computedValue: nextLetter,
-          pattern: `Diferencia constante: ${diffs[0] >= 0 ? '+' : ''}${diffs[0]}`,
-          steps: [`Posiciones: ${positions.join(', ')}`, `Diferencia: ${diffs[0]}`, `Siguiente: ${nextPos} → ${nextLetter}`],
-        }
+    if (matchIdx >= 0) {
+      return {
+        validated: true,
+        confirmsDbAnswer: matchIdx === correctOption,
+        computedAnswer: ['A', 'B', 'C', 'D'][matchIdx],
+        computedValue: nextLetter,
+        pattern: `Diferencia constante: ${diffs[0] >= 0 ? '+' : ''}${diffs[0]}`,
+        steps: [`Posiciones: ${positions.join(', ')}`, `Diferencia: ${diffs[0]}`, `Siguiente: ${nextPos} → ${nextLetter}`],
       }
     }
   }
