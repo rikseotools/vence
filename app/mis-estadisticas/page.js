@@ -1,10 +1,12 @@
 // app/mis-estadisticas/page.js - ACTUALIZADO USANDO useAuth GLOBAL
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Suspense } from 'react'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
+import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext' // ✅ USAR CONTEXTO GLOBAL
 import { useOposicion } from '@/contexts/OposicionContext' // ✅ Para obtener oposición del usuario
+import OfficialExamAttempts from '@/components/Statistics/OfficialExamAttempts'
 
 // Importar todos los componentes
 import MainStats from '@/components/Statistics/MainStats'
@@ -253,7 +255,33 @@ const createEmptyStats = () => ({
   aiImpactData: null
 })
 
+// Wrapper que intercepta filtros de examen oficial
+function ExamFilterCheck() {
+  const searchParams = useSearchParams()
+  const examDate = searchParams.get('examDate')
+  const parte = searchParams.get('parte')
+  const oposicion = searchParams.get('oposicion')
+
+  if (examDate && parte && oposicion) {
+    return <OfficialExamAttempts examDate={examDate} parte={parte} oposicion={oposicion} />
+  }
+
+  return <EstadisticasContent />
+}
+
 export default function EstadisticasRevolucionarias() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+      </div>
+    }>
+      <ExamFilterCheck />
+    </Suspense>
+  )
+}
+
+function EstadisticasContent() {
   // ✅ USAR CONTEXTO GLOBAL EN LUGAR DE ESTADO LOCAL
   const { user, loading: authLoading, supabase } = useAuth()
   const { oposicionId } = useOposicion() // ✅ Para obtener oposición del usuario
