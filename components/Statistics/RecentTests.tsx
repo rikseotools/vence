@@ -2,7 +2,7 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 interface DifficultyItem {
   difficulty: string
@@ -48,6 +48,8 @@ const getScoreBg = (percentage: number): string => {
 
 export default function RecentTests({ recentTests, onInfoClick }: RecentTestsProps) {
   const [showAll, setShowAll] = useState(false)
+  const [loadingId, setLoadingId] = useState<string | null>(null)
+  const router = useRouter()
 
   if (!recentTests || recentTests.length === 0) return null
 
@@ -70,12 +72,20 @@ export default function RecentTests({ recentTests, onInfoClick }: RecentTestsPro
       </div>
       <div className="space-y-4">
         {visibleTests.map((test) => (
-          <Link key={test.id} href={`/revisar/${test.id}`} className="block">
-            <div className={`p-4 rounded-lg border ${getScoreBg(test.percentage)} hover:shadow-md transition-shadow cursor-pointer`}>
+          <div
+            key={test.id}
+            onClick={() => {
+              setLoadingId(test.id)
+              router.push(`/revisar/${test.id}`)
+            }}
+            className={`p-4 rounded-lg border ${getScoreBg(test.percentage)} hover:shadow-md transition-shadow cursor-pointer ${loadingId === test.id ? 'opacity-70' : ''}`}
+          >
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
                   <div className="text-3xl">
-                    {test.percentage >= 85 ? '\u{1F3C6}' :
+                    {loadingId === test.id ? (
+                      <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent" />
+                    ) : test.percentage >= 85 ? '\u{1F3C6}' :
                      test.percentage >= 70 ? '\u{1F3AF}' :
                      test.percentage >= 50 ? '\u{1F4DA}' : '\u{1F4AA}'}
                   </div>
@@ -118,8 +128,7 @@ export default function RecentTests({ recentTests, onInfoClick }: RecentTestsPro
                   </div>
                 </div>
               )}
-            </div>
-          </Link>
+          </div>
         ))}
       </div>
 
