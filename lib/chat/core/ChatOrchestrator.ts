@@ -14,8 +14,8 @@ import { getVerificationDomain } from '../domains/verification'
 import { getKnowledgeBaseDomain } from '../domains/knowledge-base'
 import { getTemarioDomain } from '../domains/temario/TemarioDomain'
 import { getStatsDomain } from '../domains/stats'
-import { isPsychometricSubtype } from '../shared/constants'
-import { FALLBACK_SYSTEM_PROMPT, PSYCHOMETRIC_SYSTEM_PROMPT } from '../shared/prompts'
+import { getPsychometricDomain } from '../domains/psychometric'
+import { FALLBACK_SYSTEM_PROMPT } from '../shared/prompts'
 
 /**
  * Orquestador principal del sistema de chat
@@ -568,22 +568,13 @@ export class ChatOrchestrator {
   }
 
   /**
-   * Detecta si es una pregunta psicotécnica basándose en el questionSubtype
-   */
-  private isPsychometricQuestion(context: ChatContext): boolean {
-    return isPsychometricSubtype(context.questionContext?.questionSubtype)
-  }
-
-  /**
    * Construye el system prompt con contexto
    */
   private buildSystemPrompt(context: ChatContext): string {
-    const isPsychometric = this.isPsychometricQuestion(context)
+    let prompt = this.systemPrompt
 
-    // Usar prompt específico para psicotécnicos
-    let prompt = isPsychometric ? this.getPsychometricSystemPrompt() : this.systemPrompt
-
-    // Añadir contexto de pregunta si existe
+    // Añadir contexto de pregunta si existe (solo para preguntas no-psicotécnicas;
+    // las psicotécnicas son manejadas por PsychometricDomain antes de llegar aquí)
     if (context.questionContext) {
       const qc = context.questionContext
 
@@ -608,162 +599,43 @@ export class ChatOrchestrator {
           ? String.fromCharCode(65 + qc.correctAnswer)
           : qc.correctAnswer)
         : null
-      const correctText = correctLetter
-        ? options[correctLetter.toLowerCase() as 'a' | 'b' | 'c' | 'd'] || ''
-        : ''
 
-      if (isPsychometric) {
-        // Extraer información adicional del contentData según el tipo de pregunta
-        const contentData = qc.contentData as Record<string, unknown> | undefined
-        const subtype = qc.questionSubtype || ''
+      // Contexto normal para preguntas de leyes
+      prompt += '\n\n### Contexto de la pregunta actual:\n'
 
-        // Extraer explicación según el tipo de pregunta
-        let additionalContext = ''
-        let savedExplanation = qc.explanation || ''
+      if (qc.questionText) {
+        prompt += `Pregunta: ${qc.questionText}\n`
+      }
 
-        if (contentData) {
-          // Para gráficos (bar_chart, pie_chart, line_chart, mixed_chart)
-          const explanationSections = contentData.explanation_sections as Array<{ title: string; content: string }> | undefined
-          if (explanationSections?.[0]?.content) {
-            savedExplanation = explanationSections[0].content
-          }
+      if (qc.options) {
+        prompt += 'Opciones:\n'
+        if (options.a) prompt += `A) ${options.a}\n`
+        if (options.b) prompt += `B) ${options.b}\n`
+        if (options.c) prompt += `C) ${options.c}\n`
+        if (options.d) prompt += `D) ${options.d}\n`
+      }
 
-          // Para series numéricas
-          if (subtype === 'sequence_numeric') {
-            if (contentData.pattern_type) {
-              const patternLabels: Record<string, string> = {
-                'intercalated_constant': 'Serie intercalada: separa posiciones pares e impares, una subserie es constante',
-                'intercalated_arithmetic': 'Serie intercalada: separa posiciones pares e impares, cada una tiene su propio patrón',
-                'intercalated_geometric': 'Serie intercalada con progresión geométrica',
-                'arithmetic': 'Progresión aritmética (diferencia constante)',
-                'geometric': 'Progresión geométrica (razón constante)',
-                'fibonacci': 'Tipo Fibonacci (cada término es suma de anteriores)',
-                'quadratic': 'Diferencias de segundo orden constantes',
-              }
-              const label = patternLabels[contentData.pattern_type as string] || String(contentData.pattern_type)
-              additionalContext += `\n💡 PISTA sobre el patrón: ${label}`
-            }
-            if (contentData.solution_method && contentData.solution_method !== 'manual') {
-              additionalContext += `\nMétodo de solución: ${contentData.solution_method}`
-            }
-          }
+      if (qc.lawName) {
+        prompt += `\nLey relacionada: ${qc.lawName}\n`
+      }
 
-          // Para series alfabéticas
-          if ((subtype === 'sequence_letter' || subtype === 'sequence_alphanumeric') && contentData.pattern_description) {
-            additionalContext += `\nTipo de patrón: ${contentData.pattern_description}`
-          }
+      if (qc.articleNumber) {
+        prompt += `Artículo: ${qc.articleNumber}\n`
+      }
 
-          // Para detección de errores ortográficos
-          if (subtype === 'error_detection') {
-            if (contentData.original_text) {
-              additionalContext += `\nTexto a analizar: "${contentData.original_text}"`
-            }
-            if (contentData.correct_text) {
-              additionalContext += `\nTexto corregido: "${contentData.correct_text}"`
-            }
-            const errorsFound = contentData.errors_found as Array<{ incorrect: string; correct: string; explanation: string }> | undefined
-            if (errorsFound?.length) {
-              additionalContext += '\nErrores encontrados:'
-              errorsFound.forEach(e => {
-                additionalContext += `\n  • "${e.incorrect}" → "${e.correct}" (${e.explanation})`
-              })
-            }
-          }
+      if (qc.selectedAnswer !== undefined && qc.selectedAnswer !== null) {
+        const selectedLetter = typeof qc.selectedAnswer === 'number'
+          ? String.fromCharCode(65 + qc.selectedAnswer)
+          : qc.selectedAnswer
+        prompt += `\nEl usuario seleccionó: ${selectedLetter}\n`
+      }
 
-          // Para análisis de palabras
-          if (subtype === 'word_analysis' && contentData.original_text) {
-            additionalContext += `\nTexto/Palabras a analizar: "${contentData.original_text}"`
-          }
-        }
-
-        // Contexto específico para psicotécnicos con verificación
-        prompt += `
-
-PREGUNTA DE PSICOTÉCNICO:
-Tipo: ${qc.questionTypeName || qc.questionSubtype || 'General'}
-
-Pregunta: ${qc.questionText || 'Sin texto'}${additionalContext}
-
-Opciones:
-A) ${options.a || 'Sin opción'}
-B) ${options.b || 'Sin opción'}
-C) ${options.c || 'Sin opción'}
-D) ${options.d || 'Sin opción'}
-
-⭐ RESPUESTA CORRECTA: ${correctLetter}) ${correctText}
-${savedExplanation ? `\n📖 EXPLICACIÓN DE LA SOLUCIÓN:\n${savedExplanation}` : ''}
-
-⚠️ INSTRUCCIONES CRÍTICAS - VERIFICACIÓN DE PSICOTÉCNICOS:
-
-PASO 1 - RESUELVE TÚ MISMO EL EJERCICIO:
-- Analiza los datos proporcionados (serie, gráfico, tabla, etc.)
-- Para series: comprueba SIEMPRE si es intercalada (posiciones pares vs impares) ANTES de buscar otros patrones
-- Encuentra el patrón o realiza los cálculos necesarios
-- Determina cuál es la respuesta correcta según TU análisis
-
-PASO 2 - COMPARA CON LA RESPUESTA MARCADA (${correctLetter}):
-- Si TU respuesta COINCIDE con ${correctLetter}: explica el razonamiento paso a paso
-- Si TU respuesta es DIFERENTE a ${correctLetter}: NO asumas que la BD está mal. Primero:
-  1. Lee la EXPLICACIÓN DE LA SOLUCIÓN (arriba) — describe el patrón real
-  2. Intenta resolver USANDO ESE ENFOQUE (puede ser un patrón que no consideraste)
-  3. Si con ese enfoque llegas a ${correctLetter}: explica ese razonamiento al usuario
-  4. SOLO si tras intentar ambos enfoques sigues encontrando un ERROR MATEMÁTICO CLARO (ej: 2+3≠6), di "⚠️ POSIBLE ERROR DETECTADO" y explica por qué
-
-FORMATO DE EXPLICACIÓN:
-1. Muestra el análisis paso a paso (cálculos, patrón encontrado, etc.)
-2. Indica claramente la respuesta: **🎯 Respuesta: X**
-3. Enseña la ESTRATEGIA para resolver este tipo de ejercicios
-
-REGLAS:
-- HAZ los cálculos tú mismo
-- Si el usuario pregunta "¿estás seguro?" → VERIFICA tus cálculos pero NO cambies tu respuesta a menos que encuentres un ERROR CONCRETO
-- NO cambies de opinión solo porque el usuario duda
-`
-      } else {
-        // Contexto normal para preguntas de leyes
-        prompt += '\n\n### Contexto de la pregunta actual:\n'
-
-        if (qc.questionText) {
-          prompt += `Pregunta: ${qc.questionText}\n`
-        }
-
-        if (qc.options) {
-          prompt += 'Opciones:\n'
-          if (options.a) prompt += `A) ${options.a}\n`
-          if (options.b) prompt += `B) ${options.b}\n`
-          if (options.c) prompt += `C) ${options.c}\n`
-          if (options.d) prompt += `D) ${options.d}\n`
-        }
-
-        if (qc.lawName) {
-          prompt += `\nLey relacionada: ${qc.lawName}\n`
-        }
-
-        if (qc.articleNumber) {
-          prompt += `Artículo: ${qc.articleNumber}\n`
-        }
-
-        if (qc.selectedAnswer !== undefined && qc.selectedAnswer !== null) {
-          const selectedLetter = typeof qc.selectedAnswer === 'number'
-            ? String.fromCharCode(65 + qc.selectedAnswer)
-            : qc.selectedAnswer
-          prompt += `\nEl usuario seleccionó: ${selectedLetter}\n`
-        }
-
-        if (correctLetter) {
-          prompt += `Respuesta marcada como correcta: ${correctLetter}\n`
-        }
+      if (correctLetter) {
+        prompt += `Respuesta marcada como correcta: ${correctLetter}\n`
       }
     }
 
     return prompt
-  }
-
-  /**
-   * System prompt específico para psicotécnicos
-   */
-  private getPsychometricSystemPrompt(): string {
-    return PSYCHOMETRIC_SYSTEM_PROMPT
   }
 
   /**
@@ -786,6 +658,7 @@ export function getOrchestrator(): ChatOrchestrator {
 
     // Registrar dominios (se ordenan automáticamente por prioridad)
     orchestratorInstance.registerDomain(getVerificationDomain())   // Prioridad 1
+    orchestratorInstance.registerDomain(getPsychometricDomain())   // Prioridad 1.5
     orchestratorInstance.registerDomain(getKnowledgeBaseDomain())  // Prioridad 2
     orchestratorInstance.registerDomain(getTemarioDomain())        // Prioridad 2.5
     orchestratorInstance.registerDomain(getSearchDomain())         // Prioridad 3
