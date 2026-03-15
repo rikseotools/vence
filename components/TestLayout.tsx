@@ -2042,12 +2042,20 @@ export default function TestLayout({
                                 Pregunta de Examen Oficial Real
                               </h4>
                               <div className="space-y-1 text-sm text-purple-700 dark:text-purple-400">
-                                {!!currentQ.metadata!.exam_source && (
-                                  <div className="flex items-center space-x-2">
-                                    <span>📋</span>
-                                    <span><strong>Examen:</strong> {formatExamSource(currentQ.metadata!.exam_source as string, userOposicionSlug)}</span>
-                                  </div>
-                                )}
+                                {!!currentQ.metadata!.exam_source && (() => {
+                                  const sources = (currentQ.metadata!.exam_source as string).split(' | ').map(s => formatExamSource(s.trim(), userOposicionSlug)).filter(Boolean)
+                                  return sources.length > 0 && (
+                                    <div className="flex items-start space-x-2">
+                                      <span className="mt-0.5">📋</span>
+                                      <div>
+                                        <strong>Examen{sources.length > 1 ? 'es' : ''}:</strong>
+                                        {sources.map((s, i) => (
+                                          <div key={i}>{s}</div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )
+                                })()}
                                 {!!currentQ.metadata!.exam_date && (
                                   <div className="flex items-center space-x-2">
                                     <span>📅</span>

@@ -538,6 +538,105 @@ const LAWS = {
 
 ---
 
+## Importar Exámenes Oficiales
+
+Los exámenes oficiales (convocatorias anteriores) se importan con un proceso similar pero con consideraciones adicionales.
+
+### Estructura de archivos
+
+```
+preguntas-para-subir/tramitacion-procesal/
+├── convocatorias-anteriores/
+│   ├── Examen_2025_OEP_2024.json         # Primer ejercicio (100 preguntas)
+│   └── Tercer_Ejercicio_..._OEP_2024.json # Tercer ejercicio (informática)
+└── supuestos-practicos/
+    └── Supuesto_Practico_2025_OEP_2024.json  # Segundo ejercicio (caso práctico)
+```
+
+### Proceso de importación
+
+1. **Preparar batch**: Mismo proceso que temas (buscar artículo candidato por ley+número)
+2. **Verificar con agentes IA**: Batches de 20, verificar artículo+respuesta
+3. **Importar**: Con campos adicionales `is_official_exam: true`, `exam_source`, `exam_date`
+4. **question_official_exams**: Insertar fila por cada pregunta con `exam_date`, `exam_part`, `oposicion_type`
+
+### Duplicados: append de exam_source
+
+Muchas preguntas de exámenes ya existen en BD (importadas por temas). Cuando una pregunta ya existe:
+
+```javascript
+// NO sobreescribir exam_source, hacer APPEND
+const { data: existing } = await supabase
+  .from('questions')
+  .select('id, exam_source')
+  .eq('question_text', q.question)
+  .limit(1);
+
+if (existing?.length) {
+  const currentSource = existing[0].exam_source || '';
+  const newSource = EXAM_SOURCE;
+  // Append si no está ya incluido
+  const combined = currentSource.includes(newSource)
+    ? currentSource
+    : currentSource
+      ? currentSource + ' | ' + newSource
+      : newSource;
+
+  await supabase.from('questions').update({
+    is_official_exam: true,
+    exam_source: combined,
+    exam_date: EXAM_DATE,  // Se queda con la fecha más reciente
+  }).eq('id', existing[0].id);
+}
+```
+
+Esto es importante para el badge "Pregunta de Examen Oficial" que muestra `exam_source` al usuario. Si una pregunta salió en 3 exámenes, el badge mostrará los 3.
+
+### Supuestos prácticos (exam_cases)
+
+Los supuestos tienen un enunciado compartido. Requieren:
+
+1. **Crear exam_case**: Insertar en tabla `exam_cases` con `case_text` (enunciado)
+2. **Vincular preguntas**: Las preguntas del supuesto llevan `exam_case_id`
+3. **Exclusión automática**: Preguntas con `exam_case_id` no aparecen en tests normales
+4. **Solo en exámenes oficiales**: Se muestran con el enunciado en `OfficialExamLayout`
+
+```javascript
+// 1. Crear caso
+const { data: examCase } = await supabase.from('exam_cases').insert({
+  case_text: 'Texto del enunciado...',
+  case_title: 'Supuesto práctico: Divorcio contencioso',
+  exam_date: '2025-09-27',
+  exam_source: 'Examen 2025 TP (OEP 2024) - Supuesto práctico',
+  oposicion_type: 'tramitacion-procesal',
+}).select().single();
+
+// 2. Importar preguntas con exam_case_id
+await supabase.from('questions').insert({
+  ...questionData,
+  exam_case_id: examCase.id,  // Vincula al enunciado
+});
+```
+
+### Configuración en oposiciones.ts
+
+Cada examen necesita su entrada en `officialExams` en `lib/config/oposiciones.ts`:
+
+```typescript
+{
+  date: '2025-09-27',
+  title: 'Convocatoria 27 de septiembre de 2025',
+  oep: 'OEP 2024',
+  partes: [
+    { id: 'unica', icon: '📘', title: 'Primer ejercicio', description: 'Test legislativo (100 preguntas)' },
+    { id: 'supuesto', icon: '📙', title: 'Segundo ejercicio', description: 'Supuesto práctico (9 preguntas)' },
+    { id: 'tercer-ejercicio', icon: '📗', title: 'Tercer ejercicio', description: 'Informática (19 preguntas)' },
+  ],
+},
+```
+
+---
+
 ## Notas Importantes
 
 1. **Artículo 0 CE**: Usar para preguntas de estructura de la CE (cuántos títulos, disposiciones, fechas)
