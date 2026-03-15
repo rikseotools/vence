@@ -1316,8 +1316,8 @@ export default function OfficialExamLayout({
                   </button>
                 )}
 
-                {/* Boton Explicar con IA (solo despues de corregir) */}
-                {showFeedback && (
+                {/* Boton Explicar con IA (solo despues de corregir, no en supuestos prácticos) */}
+                {showFeedback && !question.examCaseId && (
                   <div className="mt-4">
                     <button
                       onClick={() => {
