@@ -395,6 +395,74 @@ export const OPOSICIONES: Oposicion[] = [
       { href: '/tramitacion-procesal/temario', label: 'Temario', icon: '📚' },
       { href: '/tramitacion-procesal/test', label: 'Tests', icon: '🎯' },
     ],
+    officialExams: [
+      {
+        date: '2025-09-27',
+        title: 'Convocatoria 27 de septiembre de 2025',
+        oep: 'OEP 2024',
+        partes: [
+          { id: 'unica', icon: '📘', title: 'Primer ejercicio', description: 'Test legislativo (100 preguntas)' },
+          { id: 'supuesto', icon: '📙', title: 'Segundo ejercicio', description: 'Supuesto práctico (9 preguntas)' },
+          { id: 'tercer-ejercicio', icon: '📗', title: 'Tercer ejercicio', description: 'Informática (19 preguntas)' },
+        ],
+      },
+      {
+        date: '2024-09-28',
+        title: 'Convocatoria 28 de septiembre de 2024',
+        oep: 'OEP 2023',
+        partes: [
+          { id: 'unica', icon: '📘', title: 'Examen completo', description: 'Primer ejercicio (100 preguntas)' },
+        ],
+      },
+      {
+        date: '2024-03-02',
+        title: 'Convocatoria 2 de marzo de 2024 (Estabilización)',
+        oep: 'OEP 2021',
+        partes: [
+          { id: 'unica', icon: '📘', title: 'Examen completo', description: 'Primer ejercicio (100 preguntas)' },
+        ],
+      },
+      {
+        date: '2023-01-01',
+        title: 'Convocatoria 2023',
+        oep: 'OEP 2020-2022',
+        partes: [
+          { id: 'unica', icon: '📘', title: 'Examen completo', description: 'Primer ejercicio (100 preguntas)' },
+        ],
+      },
+      {
+        date: '2020-01-01',
+        title: 'Convocatoria 2020',
+        oep: 'OEP 2017-2018',
+        partes: [
+          { id: 'unica', icon: '📘', title: 'Examen completo', description: 'Primer ejercicio (100 preguntas)' },
+        ],
+      },
+      {
+        date: '2018-05-12',
+        title: 'Convocatoria 12 de mayo de 2018',
+        oep: 'OEP 2016',
+        partes: [
+          { id: 'unica', icon: '📘', title: 'Examen completo', description: 'Primer ejercicio (100 preguntas)' },
+        ],
+      },
+      {
+        date: '2016-07-03',
+        title: 'Convocatoria 3 de julio de 2016',
+        oep: 'OEP 2015',
+        partes: [
+          { id: 'unica', icon: '📘', title: 'Examen completo', description: 'Primer ejercicio (100 preguntas)' },
+        ],
+      },
+      {
+        date: '2012-03-11',
+        title: 'Convocatoria 11 de marzo de 2012',
+        oep: 'OEP 2011',
+        partes: [
+          { id: 'unica', icon: '📘', title: 'Examen completo', description: 'Primer ejercicio (100 preguntas)' },
+        ],
+      },
+    ],
   },
 
   // ========================================

@@ -1,5 +1,5 @@
 import { getDb } from '@/db/client'
-import { questions, psychometricQuestions, articles, laws, tests, testQuestions, psychometricUserQuestionHistory, userFeedback } from '@/db/schema'
+import { questions, psychometricQuestions, articles, laws, tests, testQuestions, psychometricUserQuestionHistory, userFeedback, examCases } from '@/db/schema'
 import { eq, and, like, sql, inArray, desc, count } from 'drizzle-orm'
 import fs from 'fs'
 import path from 'path'
@@ -147,10 +147,14 @@ export async function getOfficialExamQuestions(
         examSource: questions.examSource,
         articleNumber: articles.articleNumber,
         lawName: laws.shortName,
+        examCaseId: questions.examCaseId,
+        examCaseText: examCases.caseText,
+        examCaseTitle: examCases.caseTitle,
       })
       .from(questions)
       .leftJoin(articles, eq(questions.primaryArticleId, articles.id))
       .leftJoin(laws, eq(articles.lawId, laws.id))
+      .leftJoin(examCases, eq(questions.examCaseId, examCases.id))
       .where(
         and(
           eq(questions.isActive, true),
@@ -210,6 +214,9 @@ export async function getOfficialExamQuestions(
         timeLimitSeconds: null,
         articleNumber: q.articleNumber,
         lawName: q.lawName,
+        examCaseId: q.examCaseId || null,
+        examCaseText: q.examCaseText || null,
+        examCaseTitle: q.examCaseTitle || null,
       }))
 
     // Transform psychometric questions
@@ -232,6 +239,9 @@ export async function getOfficialExamQuestions(
         timeLimitSeconds: q.timeLimitSeconds,
         articleNumber: null,
         lawName: null,
+        examCaseId: null,
+        examCaseText: null,
+        examCaseTitle: null,
       }))
 
     // Combine all questions

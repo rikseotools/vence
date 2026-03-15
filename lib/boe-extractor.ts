@@ -283,6 +283,107 @@ export function extractArticlesFromBOE(html: string, options: ExtractionOptions 
     })
   }
 
+  // Fallback: si no se encontraron artículos con div.bloque (ej: txt.php de órdenes sin texto consolidado),
+  // intentar extraer directamente desde las etiquetas <h5 class="articulo">
+  if (articles.length === 0) {
+    const h5Regex = /<h5[^>]*class="articulo"[^>]*>([\s\S]*?)<\/h5>/gi
+    const h5Positions: { index: number; fullMatch: string; headerContent: string }[] = []
+    let h5Match: RegExpExecArray | null
+    while ((h5Match = h5Regex.exec(html)) !== null) {
+      h5Positions.push({ index: h5Match.index, fullMatch: h5Match[0], headerContent: h5Match[1] })
+    }
+
+    for (let i = 0; i < h5Positions.length; i++) {
+      const pos = h5Positions[i]
+      const headerText = pos.headerContent.replace(/<[^>]*>/g, '').trim()
+
+      // Extraer contenido entre este h5 y el siguiente (o fin de documento)
+      const contentStart = pos.index + pos.fullMatch.length
+      const contentEnd = i + 1 < h5Positions.length ? h5Positions[i + 1].index : html.length
+      const rawContent = html.slice(contentStart, contentEnd)
+
+      let articleNumber: string | null = null
+      let title = ''
+
+      // Disposiciones
+      const dispMatch = headerText.match(/^Disposici[oó]n\s+(adicional|transitoria|derogatoria|final)\s+(.*?)\.?\s*$/i)
+      if (includeDisposiciones && dispMatch) {
+        const dispType = dispMatch[1].toLowerCase()
+        const restText = dispMatch[2].trim()
+        const titleSep = restText.match(/^(.+?)\.\s+(.+?)\.?$/)
+        let ordinalText: string
+        if (titleSep) {
+          ordinalText = titleSep[1].trim()
+          title = titleSep[2].trim().replace(/\.$/, '')
+        } else {
+          ordinalText = restText.replace(/\.$/, '').trim()
+          title = ''
+        }
+        const ordinalToNumber: Record<string, string> = {
+          'primera': '1', 'segunda': '2', 'tercera': '3', 'cuarta': '4',
+          'quinta': '5', 'sexta': '6', 'séptima': '7', 'septima': '7',
+          'octava': '8', 'novena': '9', 'décima': '10', 'decima': '10',
+          'única': 'unica'
+        }
+        const ordinalClean = ordinalText.toLowerCase().trim()
+        const ordinalNum = ordinalToNumber[ordinalClean] || ordinalClean.replace(/\s+/g, '_')
+        const typeCode = dispType === 'adicional' ? 'DA' :
+                         dispType === 'transitoria' ? 'DT' :
+                         dispType === 'derogatoria' ? 'DD' :
+                         dispType === 'final' ? 'DF' : 'D'
+        articleNumber = `${typeCode}${ordinalNum}`
+      }
+
+      // Artículo con número
+      if (!articleNumber) {
+        const artMatch = headerText.match(/^(?:Artículo|Art\.?|Regla)\s+(\d+(?:\s+(?:bis|ter|qu[aá]ter|quinquies|sexies|septies))?)\.\s*(.*?)\.?\s*$/i)
+        if (artMatch) {
+          articleNumber = artMatch[1].trim().replace(/\s+/g, ' ')
+          title = (artMatch[2] || '').trim().replace(/\.$/, '')
+        }
+      }
+
+      // Artículo con texto ordinal
+      if (!articleNumber) {
+        const textMatch = headerText.match(/^(?:Artículo|Art\.?|Regla)\s+(.*?)$/i)
+        if (textMatch) {
+          let textContent = textMatch[1].trim()
+          const titleSepMatch = textContent.match(/^(.+?)\.\s+(.+)$/)
+          if (titleSepMatch) {
+            textContent = titleSepMatch[1].trim()
+            title = titleSepMatch[2].trim().replace(/\.$/, '')
+          }
+          const converted = spanishTextToNumber(textContent)
+          if (converted) articleNumber = converted
+        }
+      }
+
+      if (!articleNumber) continue
+
+      // Limpiar contenido
+      const content = rawContent
+        .replace(/<p[^>]*class="bloque"[^>]*>.*?<\/p>/gi, '')
+        .replace(/<p[^>]*class="nota_pie"[^>]*>[\s\S]*?<\/p>/gi, '')
+        .replace(/<p[^>]*class="pie_unico"[^>]*>[\s\S]*?<\/p>/gi, '')
+        .replace(/<p[^>]*class="linkSubir"[^>]*>[\s\S]*?<\/p>/gi, '')
+        .replace(/<blockquote[^>]*>[\s\S]*?<\/blockquote>/gi, '')
+        .replace(/<form[^>]*>[\s\S]*?<\/form>/gi, '')
+        .replace(/<\/p>/gi, '\n\n')
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<\/li>/gi, '\n')
+        .replace(/<\/div>/gi, '\n')
+        .replace(/<[^>]*>/g, '')
+        .replace(/\n{3,}/g, '\n\n')
+        .replace(/[ \t]+/g, ' ')
+        .replace(/^ +| +$/gm, '')
+        .trim()
+
+      if (content.includes('(Suprimido)') || content.includes('(SUPRIMIDO)')) continue
+
+      articles.push({ article_number: articleNumber, title: title || null, content })
+    }
+  }
+
   // Ordenar por número de artículo
   const suffixOrder: Record<string, number> = { '': 0, 'bis': 1, 'ter': 2, 'quater': 3, 'quinquies': 4, 'sexies': 5, 'septies': 6, 'octies': 7, 'nonies': 8, 'decies': 9 }
   const dispTypeOrder: Record<string, number> = { 'adicional': 1, 'transitoria': 2, 'derogatoria': 3, 'final': 4 }

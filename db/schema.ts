@@ -2096,6 +2096,21 @@ export const lawSections = pgTable("law_sections", {
 	check("check_section_type", sql`section_type = ANY (ARRAY['titulo'::text, 'capitulo'::text, 'seccion'::text, 'libro'::text, 'parte'::text, 'anexo'::text])`),
 ]);
 
+export const examCases = pgTable("exam_cases", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	caseText: text("case_text").notNull(),
+	caseTitle: text("case_title"),
+	examDate: date("exam_date"),
+	examSource: text("exam_source"),
+	oposicionType: text("oposicion_type"),
+	isActive: boolean("is_active").default(true),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+}, (table) => [
+	index("idx_exam_cases_exam_date").using("btree", table.examDate, table.oposicionType),
+	pgPolicy("exam_cases_read", { as: "permissive", for: "select", to: ["public"], using: sql`true` }),
+]);
+
 export const questions = pgTable("questions", {
 	id: uuid().default(sql`uuid_generate_v4()`).primaryKey().notNull(),
 	questionText: text("question_text").notNull(),
@@ -2127,6 +2142,7 @@ export const questions = pgTable("questions", {
 	verifiedAt: timestamp("verified_at", { withTimezone: true, mode: 'string' }),
 	verificationStatus: text("verification_status"),
 	topicReviewStatus: text("topic_review_status"),
+	examCaseId: uuid("exam_case_id"),
 }, (table) => [
 	uniqueIndex("idx_questions_content_hash").using("btree", table.contentHash.asc().nullsLast().op("text_ops")).where(sql`(content_hash IS NOT NULL)`),
 	index("idx_questions_difficulty").using("btree", table.difficulty.asc().nullsLast().op("text_ops")),

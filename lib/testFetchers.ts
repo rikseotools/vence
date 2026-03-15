@@ -633,6 +633,7 @@ export async function fetchPersonalizedQuestions(tema: number, searchParams: Sea
         )
       `)
       .eq('is_active', true)
+      .is('exam_case_id', null)
       .eq('articles.laws.short_name', 'Ley 19/2013')
 
     // 🏛️ Filtro por preguntas oficiales si está activado (CON FILTRO POR OPOSICIÓN)
@@ -894,6 +895,7 @@ export async function fetchQuestionsByTopicScope(tema: number, searchParams: Sea
             )
           `)
           .eq('is_active', true)
+      .is('exam_case_id', null)
           .in('id', failedQuestionIds)
         
         if (specificError) {
@@ -1146,6 +1148,7 @@ export async function fetchQuestionsByTopicScope(tema: number, searchParams: Sea
           )
         `)
         .eq('is_active', true)
+      .is('exam_case_id', null)
         .eq('articles.laws.short_name', mapping.laws.short_name)
         .in('articles.article_number', mapping.article_numbers)
 
@@ -1251,6 +1254,7 @@ export async function fetchQuestionsByTopicScope(tema: number, searchParams: Sea
             .from('questions')
             .select('id, articles!inner(laws!inner(short_name))', { count: 'exact', head: true })
             .eq('is_active', true)
+      .is('exam_case_id', null)
             .eq('is_official_exam', true)
             .eq('articles.laws.short_name', mapping.laws.short_name)
             .eq('articles.article_number', articleNumber)
@@ -1550,6 +1554,7 @@ export async function fetchQuestionsByTopicScope(tema: number, searchParams: Sea
             .from('questions')
             .select('id, articles!inner(laws!inner(short_name))', { count: 'exact', head: true })
             .eq('is_active', true)
+      .is('exam_case_id', null)
             .eq('is_official_exam', true)
             .eq('articles.laws.short_name', mapping.laws.short_name)
             .eq('articles.article_number', articleNumber)
@@ -1828,6 +1833,7 @@ export async function countQuestionsByTopicScope(tema: number): Promise<number> 
         .from('questions')
         .select('id', { count: 'exact', head: true })
         .eq('is_active', true)
+      .is('exam_case_id', null)
         .eq('articles.laws.short_name', mapping.laws.short_name)
         .in('articles.article_number', mapping.article_numbers)
       
@@ -1931,6 +1937,7 @@ export async function fetchArticulosDirigido(lawName: string, searchParams: Sear
             .eq('articles.laws.short_name', testLawName)
             .in('articles.article_number', articleNumbers)
             .eq('is_active', true)
+      .is('exam_case_id', null)
             .limit(requestedCount * 2)
           
           if (!error && questions && questions.length > 0) {
@@ -2019,6 +2026,7 @@ export async function fetchArticulosDirigido(lawName: string, searchParams: Sear
           `)
           .eq('articles.laws.short_name', testLawName)
           .eq('is_active', true)
+      .is('exam_case_id', null)
           .limit(requestedCount * 2)
         
         if (!error && questions && questions.length > 0) {
@@ -2060,6 +2068,7 @@ export async function fetchArticulosDirigido(lawName: string, searchParams: Sear
         )
       `)
       .eq('is_active', true)
+      .is('exam_case_id', null)
       .limit(requestedCount)
     
     if (randomError) throw randomError
@@ -2265,6 +2274,7 @@ async function fetchMantenerRachaFallback(n: number, user: { id: string } | null
         )
       `)
       .eq('is_active', true)
+      .is('exam_case_id', null)
       .or('global_difficulty_category.in.(easy,medium),and(global_difficulty_category.is.null,difficulty.in.(easy,medium))') // Mantener motivación con preguntas no muy difíciles
 
     // 🎯 PASO 3: Aplicar filtro de leyes solo si las detectamos
@@ -2298,6 +2308,7 @@ async function fetchMantenerRachaFallback(n: number, user: { id: string } | null
             )
           `)
           .eq('is_active', true)
+      .is('exam_case_id', null)
           .or('global_difficulty_category.in.(easy,medium),and(global_difficulty_category.is.null,difficulty.in.(easy,medium))')
           .limit(n * 3)
         
@@ -2361,6 +2372,7 @@ export async function fetchExplorarContenido(tema: number, searchParams: SearchP
         )
       `)
       .eq('is_active', true)
+      .is('exam_case_id', null)
       .gte('created_at', weekAgo)
       .order('created_at', { ascending: false })
       .limit(n)
@@ -2484,6 +2496,7 @@ export async function fetchContentScopeQuestions(config: FetchConfig = {}, conte
       `)
       .in('primary_article_id', contentScopeConfig.articleIds)
       .eq('is_active', true)
+      .is('exam_case_id', null)
       .order('id')
       .limit(defaultQuestions * 3) // Obtener más preguntas para seleccionar las mejores
     

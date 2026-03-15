@@ -237,6 +237,7 @@ export async function fetchQuestionsByLaw(lawShortName: string, searchParams: Se
         )
       `)
       .eq('is_active', true)
+      .is('exam_case_id', null)
       .eq('articles.laws.short_name', resolvedShortName)
 
     // Filtro por preguntas oficiales si está activado (CON FILTRO POR OPOSICIÓN)
@@ -554,6 +555,7 @@ export async function validateLawExists(lawShortName: string): Promise<boolean> 
       .from('questions')
       .select('id, articles!inner(laws!inner(short_name))', { count: 'exact', head: true })
       .eq('is_active', true)
+      .is('exam_case_id', null)
       .eq('articles.laws.short_name', resolvedShortName)
 
     if (error) {
@@ -587,6 +589,7 @@ export async function getLawStats(lawShortName: string): Promise<LawStats> {
       .from('questions')
       .select('id, articles!inner(laws!inner(short_name))', { count: 'exact', head: true })
       .eq('is_active', true)
+      .is('exam_case_id', null)
       .eq('articles.laws.short_name', resolvedShortName)
 
     // Contar preguntas oficiales
@@ -594,6 +597,7 @@ export async function getLawStats(lawShortName: string): Promise<LawStats> {
       .from('questions')
       .select('id, articles!inner(laws!inner(short_name))', { count: 'exact', head: true })
       .eq('is_active', true)
+      .is('exam_case_id', null)
       .eq('is_official_exam', true)
       .eq('articles.laws.short_name', resolvedShortName)
 

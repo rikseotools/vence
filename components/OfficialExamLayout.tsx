@@ -73,6 +73,9 @@ interface OfficialExamQuestion {
   explanation?: string | null
   difficulty?: string
   contentData?: Record<string, unknown> | null
+  examCaseId?: string | null
+  examCaseText?: string | null
+  examCaseTitle?: string | null
 }
 
 interface ExamMetadata {
@@ -1208,9 +1211,32 @@ export default function OfficialExamLayout({
             const showFeedback = !!(isSubmitted && validatedResult)
             const isPsychometric = question.questionType === 'psychometric'
 
+            // Check if this is the first question of a case group (supuesto práctico)
+            const isFirstOfCase = question.examCaseId && (
+              index === 0 || questions[index - 1]?.examCaseId !== question.examCaseId
+            )
+
             return (
+              <div key={question.id || index} className="space-y-6">
+                {/* Enunciado del supuesto práctico */}
+                {isFirstOfCase && question.examCaseText && (
+                  <div className="bg-amber-50 border-2 border-amber-300 rounded-lg p-6 shadow-sm">
+                    <div className="flex items-center gap-2 mb-4">
+                      <span className="text-2xl">📋</span>
+                      <h3 className="text-lg font-bold text-amber-900">
+                        {question.examCaseTitle || 'Supuesto Practico'}
+                      </h3>
+                    </div>
+                    <div className="prose prose-sm max-w-none text-amber-900 leading-relaxed whitespace-pre-line">
+                      {question.examCaseText}
+                    </div>
+                    <div className="mt-4 text-xs text-amber-700 font-medium">
+                      Lea el enunciado y responda las siguientes preguntas
+                    </div>
+                  </div>
+                )}
+
               <div
-                key={question.id || index}
                 className={`bg-white rounded-lg shadow-sm p-6 border-2 transition-all ${
                   showFeedback
                     ? isCorrect
@@ -1412,6 +1438,7 @@ export default function OfficialExamLayout({
                     )}
                   </div>
                 )}
+              </div>
               </div>
             )
           })}
