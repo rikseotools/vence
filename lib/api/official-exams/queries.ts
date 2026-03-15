@@ -248,11 +248,27 @@ export async function getOfficialExamQuestions(
     let allQuestions = [...formattedLegislative, ...formattedPsychometric]
 
     // Filter by parte if specified
-    // Las preguntas tienen " - Primera parte" o " - Segunda parte" en exam_source
     if (parte) {
       allQuestions = allQuestions.filter(q => {
+        // Case-based questions (supuestos prácticos): only show when parte=supuesto
+        if (q.examCaseId) {
+          return parte === 'supuesto'
+        }
+        // If asking for supuesto, only return case-based questions
+        if (parte === 'supuesto') {
+          return !!q.examCaseId
+        }
+        // Tercer ejercicio: filter by exam_source containing "Tercer ejercicio"
+        const isTercerEjercicio = q.examSource?.includes('Tercer ejercicio')
+        if (parte === 'tercer-ejercicio') {
+          return isTercerEjercicio
+        }
+        // For 'unica', exclude case-based and tercer ejercicio questions
+        if (parte === 'unica') {
+          return !q.examCaseId && !isTercerEjercicio
+        }
+        // Standard primera/segunda filtering via exam_source
         const questionParte = getExamPart(q.examSource)
-        // Si la pregunta tiene parte marcada, filtrar por ella
         if (questionParte) {
           return questionParte === parte
         }
@@ -260,10 +276,9 @@ export async function getOfficialExamQuestions(
         if (q.questionType === 'psychometric') {
           return parte === 'segunda'
         }
-        // Si no tiene parte marcada, incluir en ambas (no debería pasar)
         return true
       })
-      console.log(`🔍 [OfficialExams] Filtered to ${parte} parte: ${allQuestions.length} questions`)
+      console.log(`🔍 [OfficialExams] Filtered to ${parte}: ${allQuestions.length} questions`)
     }
 
     // Sort: non-reserva first, then reserva
