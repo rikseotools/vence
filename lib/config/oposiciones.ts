@@ -32,7 +32,7 @@ const BlockSchema = z.object({
 })
 
 const OfficialExamParteSchema = z.object({
-  id: z.enum(['primera', 'segunda']),
+  id: z.string(),
   icon: z.string(),
   title: z.string(),
   description: z.string(),
@@ -44,6 +44,7 @@ const OfficialExamConvocatoriaSchema = z.object({
   oep: z.string(),
   partes: z.array(OfficialExamParteSchema),
   note: z.string().optional(),
+  comingSoon: z.boolean().optional(),
 })
 
 const NavLinkSchema = z.object({
@@ -418,6 +419,7 @@ export const OPOSICIONES: Oposicion[] = [
         date: '2024-03-02',
         title: 'Convocatoria 2 de marzo de 2024 (Estabilización)',
         oep: 'OEP 2021',
+        comingSoon: true,
         partes: [
           { id: 'unica', icon: '📘', title: 'Examen completo', description: 'Primer ejercicio (100 preguntas)' },
         ],
@@ -426,6 +428,7 @@ export const OPOSICIONES: Oposicion[] = [
         date: '2023-01-01',
         title: 'Convocatoria 2023',
         oep: 'OEP 2020-2022',
+        comingSoon: true,
         partes: [
           { id: 'unica', icon: '📘', title: 'Examen completo', description: 'Primer ejercicio (100 preguntas)' },
         ],
@@ -434,6 +437,7 @@ export const OPOSICIONES: Oposicion[] = [
         date: '2020-01-01',
         title: 'Convocatoria 2020',
         oep: 'OEP 2017-2018',
+        comingSoon: true,
         partes: [
           { id: 'unica', icon: '📘', title: 'Examen completo', description: 'Primer ejercicio (100 preguntas)' },
         ],
@@ -442,6 +446,7 @@ export const OPOSICIONES: Oposicion[] = [
         date: '2018-05-12',
         title: 'Convocatoria 12 de mayo de 2018',
         oep: 'OEP 2016',
+        comingSoon: true,
         partes: [
           { id: 'unica', icon: '📘', title: 'Examen completo', description: 'Primer ejercicio (100 preguntas)' },
         ],
@@ -450,6 +455,7 @@ export const OPOSICIONES: Oposicion[] = [
         date: '2016-07-03',
         title: 'Convocatoria 3 de julio de 2016',
         oep: 'OEP 2015',
+        comingSoon: true,
         partes: [
           { id: 'unica', icon: '📘', title: 'Examen completo', description: 'Primer ejercicio (100 preguntas)' },
         ],
@@ -458,6 +464,7 @@ export const OPOSICIONES: Oposicion[] = [
         date: '2012-03-11',
         title: 'Convocatoria 11 de marzo de 2012',
         oep: 'OEP 2011',
+        comingSoon: true,
         partes: [
           { id: 'unica', icon: '📘', title: 'Examen completo', description: 'Primer ejercicio (100 preguntas)' },
         ],

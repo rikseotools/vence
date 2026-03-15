@@ -97,7 +97,7 @@ const SORT_OPTIONS: { id: SortOption; label: string; icon: string }[] = [
 function getExamStat(
   examStats: Record<string, ExamStat>,
   examDate: string,
-  parte?: 'primera' | 'segunda'
+  parte?: string
 ): ExamStat | undefined {
   const parteKey = parte ? `${examDate}-${parte}` : examDate
   return examStats[parteKey] || examStats[examDate]
@@ -461,36 +461,47 @@ interface ConvocatoriaCardProps {
 }
 
 function ConvocatoriaCard({ convocatoria, oposicion, examStats, expanded, onToggle }: ConvocatoriaCardProps) {
+  const isComingSoon = convocatoria.comingSoon === true
+
   // Color del header basado en mejor resultado de las partes
   const bestAccuracy = Math.max(
     ...convocatoria.partes.map(p => getExamStat(examStats, convocatoria.date, p.id)?.accuracy || 0)
   )
   const hasAnyStats = convocatoria.partes.some(p => getExamStat(examStats, convocatoria.date, p.id))
-  const headerColor = hasAnyStats
-    ? COLOR_CLASSES[getAccuracyColor(bestAccuracy)]
-    : 'bg-gray-500 hover:bg-gray-600'
+  const headerColor = isComingSoon
+    ? 'bg-gray-400'
+    : hasAnyStats
+      ? COLOR_CLASSES[getAccuracyColor(bestAccuracy)]
+      : 'bg-gray-500 hover:bg-gray-600'
 
   return (
     <div className="bg-white rounded-lg shadow overflow-hidden">
       <button
-        onClick={onToggle}
-        className={`w-full ${headerColor} text-white py-3 px-4 text-left font-semibold transition-all duration-300 focus:outline-none`}
+        onClick={isComingSoon ? undefined : onToggle}
+        className={`w-full ${headerColor} text-white py-3 px-4 text-left font-semibold transition-all duration-300 focus:outline-none ${isComingSoon ? 'cursor-default opacity-80' : ''}`}
+        disabled={isComingSoon}
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center">
-            <span className="mr-2 text-lg">📋</span>
+            <span className="mr-2 text-lg">{isComingSoon ? '🔒' : '📋'}</span>
             <div>
               <div className="font-bold">{convocatoria.title}</div>
               <div className="text-xs text-white/80">{convocatoria.oep}</div>
             </div>
           </div>
-          <span className={`text-xl transition-transform duration-300 ${expanded ? 'rotate-180' : ''}`}>
-            ▼
-          </span>
+          {isComingSoon ? (
+            <span className="bg-white/20 px-3 py-1 rounded-full text-xs font-medium">
+              En preparacion
+            </span>
+          ) : (
+            <span className={`text-xl transition-transform duration-300 ${expanded ? 'rotate-180' : ''}`}>
+              ▼
+            </span>
+          )}
         </div>
       </button>
 
-      {expanded && (
+      {expanded && !isComingSoon && (
         <div className="p-3 space-y-2 bg-gray-100">
           {convocatoria.partes.map((parte) => {
             const stat = getExamStat(examStats, convocatoria.date, parte.id)
