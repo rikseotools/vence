@@ -2011,6 +2011,7 @@ export const laws = pgTable("laws", {
 	isDerogated: boolean("is_derogated").default(false),
 	derogatedBy: text("derogated_by"),
 	derogatedAt: date("derogated_at"),
+	isVirtual: boolean("is_virtual").default(false).notNull(),
 }, (table) => [
 	pgPolicy("Enable read access for laws", { as: "permissive", for: "select", to: ["public"], using: sql`true` }),
 	check("laws_scope_check", sql`scope = ANY (ARRAY['national'::text, 'regional'::text, 'local'::text, 'eu'::text])`),

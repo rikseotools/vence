@@ -427,7 +427,6 @@ export const OPOSICIONES: Oposicion[] = [
         date: '2023-01-01',
         title: 'Convocatoria 2023',
         oep: 'OEP 2020-2022',
-        comingSoon: true,
         partes: [
           { id: 'unica', icon: '📘', title: 'Examen completo', description: 'Primer ejercicio (100 preguntas)' },
         ],

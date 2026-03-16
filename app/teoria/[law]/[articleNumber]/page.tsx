@@ -124,6 +124,53 @@ export default async function ArticleIndividualPage({ params }: PageProps) {
     return <ErrorState message={`Artículo ${articleNumber} no encontrado`} lawSlug={lawSlug} />
   }
 
+  // Si es ley virtual y contenido vacío, mostrar mensaje multimedia
+  if (article.isVirtual && (!article.content || article.content.trim().length === 0)) {
+    return (
+      <div className="min-h-screen bg-white">
+        <div className="border-b border-gray-200">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div className="flex items-center space-x-3">
+              <Link
+                href={`/teoria/${lawSlug}`}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                title="Volver a la página del tema"
+              >
+                <ArrowLeftIcon className="h-5 w-5 text-gray-600" />
+              </Link>
+              <div>
+                <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
+                  {article.title || `Artículo ${article.articleNumber}`}
+                </h1>
+                <p className="text-gray-600 text-xs sm:text-sm">{article.law.shortName}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="text-6xl mb-4">🎬</div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-3">
+              Este tema se estudia con material multimedia
+            </h3>
+            <p className="text-gray-600 mb-6 max-w-md">
+              Los contenidos de <strong>{article.law.name}</strong> no son legislación, por lo que no tienen un articulado como las leyes. La mejor forma de estudiar este tema es desde el temario.
+            </p>
+            <Link
+              href={`/teoria/${lawSlug}`}
+              className="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+            >
+              📚 Ir al temario
+              <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   // Calcular navegación prev/next
   const { articleNumbers } = navigation
   const currentIndex = articleNumbers.indexOf(articleNumber)

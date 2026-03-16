@@ -76,6 +76,7 @@ async function getArticleContentInternal(
       lawShortName: laws.shortName,
       lawName: laws.name,
       lawDescription: laws.description,
+      lawIsVirtual: laws.isVirtual,
     })
     .from(articles)
     .innerJoin(laws, eq(articles.lawId, laws.id))
@@ -93,9 +94,32 @@ async function getArticleContentInternal(
   if (result.length === 0) return null
 
   const row = result[0]
+  const isVirtual = row.lawIsVirtual === true
 
-  // Verificar contenido
+  // Verificar contenido - para leyes virtuales, permitir contenido vacío
   if (!row.content || row.content.trim().length === 0) {
+    if (isVirtual) {
+      return {
+        id: row.id,
+        articleNumber: row.articleNumber,
+        title: row.title,
+        content: '',
+        contentLength: 0,
+        contentPreview: '',
+        hasRichContent: false,
+        cleanContent: '',
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+        isVirtual: true,
+        law: {
+          id: row.lawId,
+          shortName: row.lawShortName,
+          name: row.lawName,
+          description: row.lawDescription,
+          slug: generateLawSlug(row.lawShortName),
+        },
+      }
+    }
     return null
   }
 
@@ -110,6 +134,7 @@ async function getArticleContentInternal(
     cleanContent: cleanArticleContent(row.content),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
+    ...(isVirtual ? { isVirtual: true } : {}),
     law: {
       id: row.lawId,
       shortName: row.lawShortName,

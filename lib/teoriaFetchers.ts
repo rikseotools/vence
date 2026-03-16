@@ -342,7 +342,7 @@ export async function fetchArticleContent(lawSlug: string, articleNumber: string
         created_at,
         updated_at,
         laws!inner(
-          id, name, short_name, description
+          id, name, short_name, description, is_virtual
         )
       `)
       .eq('is_active', true)
@@ -380,7 +380,31 @@ export async function fetchArticleContent(lawSlug: string, articleNumber: string
     }
 
     // Verificar que el contenido existe y no está vacío
+    // Para leyes virtuales, no lanzar error si el contenido está vacío
+    const isVirtualLaw = data.laws.is_virtual === true
     if (!data.content || data.content.trim().length === 0) {
+      if (isVirtualLaw) {
+        // Devolver artículo con flag isVirtual para que el cliente muestre mensaje adecuado
+        return {
+          id: data.id,
+          article_number: data.article_number,
+          title: data.title,
+          content: '',
+          contentLength: 0,
+          cleanContent: '',
+          hasRichContent: false,
+          created_at: data.created_at,
+          updated_at: data.updated_at,
+          isVirtual: true,
+          law: {
+            id: data.laws.id,
+            name: data.laws.name,
+            short_name: data.laws.short_name,
+            description: data.laws.description,
+            slug: generateLawSlug(data.laws.short_name)
+          }
+        } as ArticleContentResult & { isVirtual: boolean }
+      }
       throw new Error(`CONTENIDO_VACIO: El artículo ${articleNumber} de ${lawShortName} no tiene contenido`)
     }
 
@@ -395,6 +419,7 @@ export async function fetchArticleContent(lawSlug: string, articleNumber: string
       hasRichContent: isRichContent(data.content),
       created_at: data.created_at,
       updated_at: data.updated_at,
+      ...(isVirtualLaw ? { isVirtual: true } : {}),
       law: {
         id: data.laws.id,
         name: data.laws.name,

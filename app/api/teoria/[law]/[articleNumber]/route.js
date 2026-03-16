@@ -28,18 +28,28 @@ async function _GET(request, { params }) {
     }
 
     const article = await fetchArticleContent(lawSlug, parseInt(articleNumber))
-    
+
+    // Si es ley virtual y contenido vacío, devolver 200 con flag isVirtual
+    if (article.isVirtual && (!article.content || article.content.trim().length === 0)) {
+      return Response.json({
+        isVirtual: true,
+        law: article.law,
+        article_number: article.article_number,
+        title: article.title,
+      })
+    }
+
     // Obtener información del usuario para filtrar exámenes oficiales por oposición
     const { searchParams } = new URL(request.url)
     const includeOfficialExams = searchParams.get('includeOfficialExams') === 'true'
     const userOposicion = searchParams.get('userOposicion')
-    
+
     // Si se solicita información de exámenes oficiales, incluirla
     if (includeOfficialExams && article.id) {
       const officialExamData = await fetchArticleOfficialExamData(article.id, userOposicion)
       article.officialExamData = officialExamData
     }
-    
+
     return Response.json(article)
     
   } catch (error) {

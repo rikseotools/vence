@@ -28,6 +28,7 @@ export const ArticleDetailSchema = ArticleSchema.extend({
   cleanContent: z.string(),
   createdAt: z.string().nullable(),
   updatedAt: z.string().nullable(),
+  isVirtual: z.boolean().optional(),
 })
 
 export const RelatedArticleSchema = z.object({

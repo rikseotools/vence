@@ -471,6 +471,27 @@ Error al cargar artículo desde modal. Verificar si el slug de la ley es correct
                   Al hacer clic en "Notificar Error" se enviará automáticamente un reporte con toda la información técnica necesaria.
                 </p>
               </div>
+            ) : articleData?.isVirtual ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="text-6xl mb-4">🎬</div>
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">
+                  Este tema se estudia con material multimedia
+                </h3>
+                <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-md">
+                  Los contenidos de <strong>{articleData?.law?.name || articleData?.law?.short_name || 'este tema'}</strong> no son legislación, por lo que no tienen un articulado como las leyes. La mejor forma de estudiar este tema es desde el temario.
+                </p>
+                <a
+                  href={`/teoria/${lawSlug}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+                >
+                  📚 Ir al temario
+                  <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                </a>
+              </div>
             ) : articleData ? (
               <div className="max-w-none">
                 {/* Alerta de artículo problemático */}
