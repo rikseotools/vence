@@ -668,7 +668,12 @@ export async function getFilteredQuestions(
     }> = []
 
     for (const mapping of filteredMappings) {
-      if (!mapping.articleNumbers || mapping.articleNumbers.length === 0) continue
+      // articleNumbers NULL = ley virtual (incluir TODAS las preguntas de la ley)
+      // articleNumbers [] = sin artículos específicos → SKIP
+      // articleNumbers con valores = filtrar solo esos artículos
+      if (mapping.articleNumbers !== null && mapping.articleNumbers.length === 0) continue
+
+      const hasSpecificArticles = mapping.articleNumbers && mapping.articleNumbers.length > 0
 
       // Query base para preguntas de esta ley
       const questionsQuery = db
@@ -709,7 +714,7 @@ export async function getFilteredQuestions(
         .where(and(
           eq(questions.isActive, true),
           eq(laws.id, mapping.lawId!),
-          inArray(articles.articleNumber, mapping.articleNumbers),
+          ...(hasSpecificArticles ? [inArray(articles.articleNumber, mapping.articleNumbers!)] : []),
           // 🏛️ Filtro de preguntas oficiales POR OPOSICIÓN
           // Las preguntas sin exam_position NO se incluyen (deben categorizarse primero)
           onlyOfficialQuestions
@@ -950,7 +955,10 @@ export async function countFilteredQuestions(
     let totalCount = 0
 
     for (const mapping of filteredMappings) {
-      if (!mapping.articleNumbers || mapping.articleNumbers.length === 0) continue
+      // NULL = ley virtual (incluir todas), [] = skip, [valores] = filtrar
+      if (mapping.articleNumbers !== null && mapping.articleNumbers.length === 0) continue
+
+      const hasSpecificArticles = mapping.articleNumbers && mapping.articleNumbers.length > 0
 
       const countResult = await db
         .select({ count: sql<number>`count(*)` })
@@ -959,7 +967,7 @@ export async function countFilteredQuestions(
         .where(and(
           eq(questions.isActive, true),
           eq(articles.lawId, mapping.lawId!),
-          inArray(articles.articleNumber, mapping.articleNumbers),
+          ...(hasSpecificArticles ? [inArray(articles.articleNumber, mapping.articleNumbers!)] : []),
           // 🏛️ Filtro de preguntas oficiales POR OPOSICIÓN
           // Las preguntas sin exam_position NO se incluyen (deben categorizarse primero)
           onlyOfficialQuestions

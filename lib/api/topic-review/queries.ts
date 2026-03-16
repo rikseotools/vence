@@ -594,11 +594,16 @@ export async function getTopicDetail(topicId: string) {
   // 3. Para cada ley/scope, obtener artículos
   const lawsResult = await Promise.all(
     scopeRows.map(async (scope) => {
-      const articleNumbers = scope.articleNumbers || []
+      // NULL = ley virtual (incluir todos los artículos de la ley)
+      // [] = sin artículos → no incluir nada
+      // [valores] = filtrar solo esos artículos
+      const hasSpecificArticles = scope.articleNumbers && scope.articleNumbers.length > 0
+      const skipThisScope = scope.articleNumbers !== null && scope.articleNumbers.length === 0
 
       // Obtener artículos de esta ley en el scope
-      const articleRows = articleNumbers.length > 0
-        ? await db
+      const articleRows = skipThisScope
+        ? []
+        : await db
           .select({
             id: articles.id,
             articleNumber: articles.articleNumber,
@@ -608,10 +613,9 @@ export async function getTopicDetail(topicId: string) {
           .from(articles)
           .where(and(
             eq(articles.lawId, scope.lawId),
-            inArray(articles.articleNumber, articleNumbers),
+            ...(hasSpecificArticles ? [inArray(articles.articleNumber, scope.articleNumbers!)] : []),
           ))
           .orderBy(articles.articleNumber)
-        : []
 
       if (articleRows.length === 0) {
         return {

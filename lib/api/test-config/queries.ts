@@ -107,7 +107,8 @@ export async function getArticlesForLaw(
       if (!mappings || mappings.length === 0) {
         return { success: true, articles: [] }
       }
-      validArticleNumbers = mappings[0].articleNumbers || []
+      // NULL = ley virtual (incluir todas), [] = skip, [valores] = filtrar
+      validArticleNumbers = mappings[0].articleNumbers
     }
 
     // Query: artículos con conteo de preguntas (LEFT JOIN para incluir artículos sin preguntas)
@@ -116,7 +117,7 @@ export async function getArticlesForLaw(
       eq(articles.isActive, true),
     ]
 
-    if (validArticleNumbers) {
+    if (validArticleNumbers && validArticleNumbers.length > 0) {
       articleConditions.push(inArray(articles.articleNumber, validArticleNumbers))
     }
 
@@ -153,7 +154,7 @@ export async function getArticlesForLaw(
         eq(articles.lawId, lawId),
       ]
 
-      if (validArticleNumbers) {
+      if (validArticleNumbers && validArticleNumbers.length > 0) {
         officialConditions.push(inArray(articles.articleNumber, validArticleNumbers))
       }
 
@@ -266,14 +267,18 @@ export async function estimateAvailableQuestions(
     let totalCount = 0
 
     for (const mapping of filteredMappings) {
-      const articleNums = mapping.articleNumbers || []
-      if (articleNums.length === 0) continue
+      // articleNumbers NULL = ley virtual (incluir TODAS las preguntas de la ley)
+      // articleNumbers [] = sin artículos específicos → SKIP
+      // articleNumbers con valores = filtrar solo esos artículos
+      if (mapping.articleNumbers !== null && mapping.articleNumbers.length === 0) continue
+
+      const hasSpecificArticles = mapping.articleNumbers && mapping.articleNumbers.length > 0
 
       // Construir condiciones de la query
       const conditions = [
         eq(questions.isActive, true),
         eq(articles.lawId, mapping.lawId!),
-        inArray(articles.articleNumber, articleNums),
+        ...(hasSpecificArticles ? [inArray(articles.articleNumber, mapping.articleNumbers!)] : []),
       ]
 
       // Filtro de preguntas oficiales por oposición
@@ -287,7 +292,7 @@ export async function estimateAvailableQuestions(
             eq(questions.isActive, true),
             eq(questions.isOfficialExam, true),
             eq(articles.lawId, mapping.lawId!),
-            inArray(articles.articleNumber, articleNums),
+            ...(hasSpecificArticles ? [inArray(articles.articleNumber, mapping.articleNumbers!)] : []),
           ]
 
           if (validPositions.length > 0) {
@@ -381,16 +386,18 @@ export async function getEssentialArticles(
 
     // 2. Para cada ley, encontrar artículos con preguntas oficiales
     for (const mapping of topicScopeResults) {
-      const articleNums = mapping.articleNumbers || []
-      if (articleNums.length === 0) continue
+      // NULL = ley virtual (incluir todas), [] = skip, [valores] = filtrar
+      if (mapping.articleNumbers !== null && mapping.articleNumbers.length === 0) continue
       if (!mapping.lawShortName) continue
+
+      const hasSpecificArticles = mapping.articleNumbers && mapping.articleNumbers.length > 0
 
       // Query: artículos con al menos 1 pregunta oficial (agrupado)
       const officialConditions = [
         eq(questions.isActive, true),
         eq(questions.isOfficialExam, true),
         eq(articles.lawId, mapping.lawId!),
-        inArray(articles.articleNumber, articleNums),
+        ...(hasSpecificArticles ? [inArray(articles.articleNumber, mapping.articleNumbers!)] : []),
       ]
 
       if (validPositions.length > 0) {
