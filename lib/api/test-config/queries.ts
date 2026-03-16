@@ -137,7 +137,7 @@ export async function getArticlesForLaw(
 
     // Construir resultado
     const result = articleData.map(row => ({
-      article_number: isNaN(parseInt(row.articleNumber)) ? row.articleNumber : parseInt(row.articleNumber),
+      article_number: row.articleNumber,
       title: row.title,
       question_count: Number(row.questionCount),
       ...(includeOfficialCount ? { official_question_count: 0 } : {}),
@@ -414,7 +414,7 @@ export async function getEssentialArticles(
       // Añadir a la lista de artículos imprescindibles
       for (const row of articlesWithOfficial) {
         essentialArticles.push({
-          number: isNaN(parseInt(row.articleNumber)) ? row.articleNumber : parseInt(row.articleNumber),
+          number: row.articleNumber,
           law: mapping.lawShortName,
           questionsCount: Number(row.officialCount),
         })

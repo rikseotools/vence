@@ -98,9 +98,9 @@ describe('getArticlesForLaw', () => {
 
     expect(result.success).toBe(true)
     expect(result.articles).toHaveLength(2)
-    expect(result.articles![0].article_number).toBe(1)
+    expect(result.articles![0].article_number).toBe('1')
     expect(result.articles![0].question_count).toBe(15)
-    expect(result.articles![1].article_number).toBe(14)
+    expect(result.articles![1].article_number).toBe('14')
   })
 
   test('articulos del scope sin preguntas devuelven question_count=0 (LEFT JOIN)', async () => {
@@ -129,12 +129,12 @@ describe('getArticlesForLaw', () => {
     expect(result.success).toBe(true)
     expect(result.articles).toHaveLength(5)
     // Artículos con preguntas
-    expect(result.articles![1].article_number).toBe(4)
+    expect(result.articles![1].article_number).toBe('4')
     expect(result.articles![1].question_count).toBe(5)
     // Artículos sin preguntas (question_count = 0)
-    expect(result.articles![0].article_number).toBe(1)
+    expect(result.articles![0].article_number).toBe('1')
     expect(result.articles![0].question_count).toBe(0)
-    expect(result.articles![2].article_number).toBe(10)
+    expect(result.articles![2].article_number).toBe('10')
     expect(result.articles![2].question_count).toBe(0)
   })
 
@@ -506,8 +506,8 @@ describe('getEssentialArticles', () => {
     expect(result.success).toBe(true)
     expect(result.essentialCount).toBe(2)
     expect(result.essentialArticles).toHaveLength(2)
-    expect(result.essentialArticles![0]).toEqual({ number: 14, law: 'CE', questionsCount: 3 })
-    expect(result.essentialArticles![1]).toEqual({ number: 23, law: 'CE', questionsCount: 2 })
+    expect(result.essentialArticles![0]).toEqual({ number: '14', law: 'CE', questionsCount: 3 })
+    expect(result.essentialArticles![1]).toEqual({ number: '23', law: 'CE', questionsCount: 2 })
     expect(result.totalQuestions).toBe(25)
     expect(result.byDifficulty).toEqual({ easy: 10, medium: 10, hard: 5 })
   })
