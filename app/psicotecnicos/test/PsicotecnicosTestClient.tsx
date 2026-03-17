@@ -24,7 +24,21 @@ export default function PsicotecnicosTestClient() {
   // Expanded categories (accordion)
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({})
 
-  const [numQuestionsPsico, setNumQuestionsPsico] = useState(25)
+  const [numQuestionsPsico, setNumQuestionsPsico] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('psychometric_numQuestions')
+      if (saved) {
+        const num = Number(saved)
+        if ([10, 25, 50, 100].includes(num)) return num
+      }
+    }
+    return 25
+  })
+
+  // Persistir en localStorage cuando cambie
+  useEffect(() => {
+    localStorage.setItem('psychometric_numQuestions', String(numQuestionsPsico))
+  }, [numQuestionsPsico])
 
   // Load categories from API on mount (and when user loads)
   useEffect(() => {
