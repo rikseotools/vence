@@ -236,6 +236,32 @@ export default function HeaderES() {
     }
   }
 
+  // Descartar sesión psicotécnica pendiente
+  async function confirmDiscardPsychometric(sessionId: string) {
+    if (!user?.id || !sessionId) return
+
+    try {
+      setDiscardingExamId(sessionId)
+      setConfirmingDiscardId(null)
+      const response = await fetch('/api/psychometric/discard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, userId: user.id })
+      })
+      const result = await response.json()
+
+      if (result.success) {
+        setPendingPsychometric(prev => prev.filter(s => s.id !== sessionId))
+      } else {
+        console.error('Error descartando sesión psicotécnica:', result.error)
+      }
+    } catch (err) {
+      console.error('Error descartando sesión psicotécnica:', err)
+    } finally {
+      setDiscardingExamId(null)
+    }
+  }
+
   // 🆕 VERIFICAR CONVERSACIONES DE FEEDBACK PENDIENTES (Sistema BD)
   useEffect(() => {
     async function checkPendingFeedbacks() {
@@ -1023,34 +1049,75 @@ export default function HeaderES() {
                   ? Math.round((session.questionsAnswered / session.totalQuestions) * 100)
                   : 0
 
+                const isDiscardingPsycho = discardingExamId === session.id
+
                 return (
                   <div
                     key={session.id}
                     className="p-2.5 bg-violet-50 dark:bg-violet-900/30 rounded-lg border border-violet-200 dark:border-violet-700 overflow-hidden"
                   >
-                    <Link
-                      href={`/psicotecnicos/test/ejecutar?resume=${session.id}`}
-                      onClick={() => setShowPendingExamsDropdown(false)}
-                      className="block hover:opacity-80 transition-opacity"
-                    >
-                      <div className="font-medium text-gray-800 dark:text-gray-200 truncate text-sm">
-                        🧠 {session.categoryName || 'Test psicotécnico'}
-                      </div>
-                      <div className="flex items-center gap-2 mt-1.5">
-                        <div className="flex-1 bg-violet-200 dark:bg-violet-800 rounded-full h-1.5">
-                          <div
-                            className="bg-violet-500 h-1.5 rounded-full transition-all"
-                            style={{ width: `${progress}%` }}
-                          />
+                    {confirmingDiscardId === session.id ? (
+                      <div className="text-center py-1">
+                        <p className="text-xs text-gray-700 dark:text-gray-300 mb-2">¿Descartar este test?</p>
+                        <div className="flex gap-2 justify-center">
+                          <button
+                            onClick={() => setConfirmingDiscardId(null)}
+                            className="px-3 py-1 text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+                          >
+                            Cancelar
+                          </button>
+                          <button
+                            onClick={() => confirmDiscardPsychometric(session.id)}
+                            className="px-3 py-1 text-xs font-medium text-white bg-red-500 hover:bg-red-600 rounded transition-colors"
+                          >
+                            Sí, descartar
+                          </button>
                         </div>
-                        <span className="text-xs font-medium text-violet-700 dark:text-violet-300 whitespace-nowrap">
-                          {session.questionsAnswered}/{session.totalQuestions}
-                        </span>
                       </div>
-                      <div className="mt-1.5 text-xs text-violet-600 dark:text-violet-400">
-                        Click para continuar →
+                    ) : (
+                      <div className="flex items-start gap-2">
+                        <Link
+                          href={`/psicotecnicos/test/ejecutar?resume=${session.id}`}
+                          onClick={() => setShowPendingExamsDropdown(false)}
+                          className="flex-1 min-w-0 hover:opacity-80 transition-opacity"
+                        >
+                          <div className="font-medium text-gray-800 dark:text-gray-200 truncate text-sm">
+                            🧠 {session.categoryName || 'Test psicotécnico'}
+                          </div>
+                          <div className="flex items-center gap-2 mt-1.5">
+                            <div className="flex-1 bg-violet-200 dark:bg-violet-800 rounded-full h-1.5">
+                              <div
+                                className="bg-violet-500 h-1.5 rounded-full transition-all"
+                                style={{ width: `${progress}%` }}
+                              />
+                            </div>
+                            <span className="text-xs font-medium text-violet-700 dark:text-violet-300 whitespace-nowrap">
+                              {session.questionsAnswered}/{session.totalQuestions}
+                            </span>
+                          </div>
+                          <div className="mt-1.5 text-xs text-violet-600 dark:text-violet-400">
+                            Click para continuar →
+                          </div>
+                        </Link>
+                        <button
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setConfirmingDiscardId(session.id) }}
+                          disabled={isDiscardingPsycho}
+                          className="flex-shrink-0 p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors disabled:opacity-50"
+                          title="Descartar test"
+                        >
+                          {isDiscardingPsycho ? (
+                            <svg className="animate-spin h-3.5 w-3.5" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            </svg>
+                          ) : (
+                            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          )}
+                        </button>
                       </div>
-                    </Link>
+                    )}
                   </div>
                 )
               })}
