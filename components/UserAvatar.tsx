@@ -89,21 +89,14 @@ export default function UserAvatar() {
 
   async function loadPendingExams(signal?: AbortSignal) {
     try {
-      const [examRes, psychoRes] = await Promise.all([
-        fetch(`/api/exam/pending?userId=${user!.id}&testType=exam&limit=10`, { signal }),
-        fetch(`/api/psychometric/pending?userId=${user!.id}&limit=5`, { signal }).catch(() => null),
-      ])
+      const examRes = await fetch(`/api/exam/pending?userId=${user!.id}&testType=exam&limit=10`, { signal })
       if (signal?.aborted) return
       const examData = await examRes.json()
       if (examData.success) {
         setPendingExams(examData.exams || [])
       }
-      if (psychoRes) {
-        const psychoData = await psychoRes.json().catch(() => null)
-        if (psychoData?.success) {
-          setPendingPsychometric(psychoData.sessions || [])
-        }
-      }
+      // Psicotécnicos no se muestran como pendientes (son pregunta a pregunta, no modo examen)
+      setPendingPsychometric([])
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') return
       console.error('Error cargando examenes pendientes:', err)

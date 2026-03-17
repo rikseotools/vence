@@ -56,28 +56,15 @@ export default function PendingExams({ temaNumber = null, limit = 5 }: PendingEx
     try {
       setLoading(true)
 
-      // Fetch both exam and psychometric pending sessions in parallel
-      const [examResponse, psychoResponse] = await Promise.all([
-        fetch(`/api/exam/pending?${new URLSearchParams({
-          userId: user.id,
-          testType: 'exam',
-          limit: limit.toString()
-        })}`),
-        fetch(`/api/psychometric/pending?${new URLSearchParams({
-          userId: user.id,
-          limit: '5'
-        })}`).catch(() => null),
-      ])
+      // Solo exámenes legislativos (psicotécnicos son pregunta a pregunta, no modo examen)
+      const examResponse = await fetch(`/api/exam/pending?${new URLSearchParams({
+        userId: user.id,
+        testType: 'exam',
+        limit: limit.toString()
+      })}`)
 
       const examData = await examResponse.json()
-      const psychoData = psychoResponse ? await psychoResponse.json().catch(() => null) : null
-
-      // Psychometric sessions
-      if (psychoData?.success && psychoData.sessions?.length > 0) {
-        setPendingPsychometric(psychoData.sessions)
-      } else {
-        setPendingPsychometric([])
-      }
+      setPendingPsychometric([])
 
       if (!examResponse.ok || !examData.success) {
         setPendingExams([])
@@ -94,13 +81,12 @@ export default function PendingExams({ temaNumber = null, limit = 5 }: PendingEx
       const dismissedIds: string[] = JSON.parse(localStorage.getItem('pendingExamsDismissedIds') || '[]')
       const currentIds = exams.map(e => e.id)
 
-      // Include psychometric IDs in the "new items" check
-      const allPendingIds = [...currentIds, ...(psychoData?.sessions?.map((s: PendingPsychometricSession) => s.id) || [])]
+      const allPendingIds = currentIds
 
       // Si hay exámenes nuevos que no fueron cerrados, mostrar banner
       const hasNewExams = allPendingIds.some(id => !dismissedIds.includes(id))
 
-      if (!hasNewExams && (exams.length > 0 || (psychoData?.sessions?.length || 0) > 0)) {
+      if (!hasNewExams && exams.length > 0) {
         // Todos los exámenes fueron cerrados antes, verificar timeout
         const dismissedUntil = localStorage.getItem('pendingExamsDismissedUntil')
         if (dismissedUntil && Date.now() < parseInt(dismissedUntil)) {

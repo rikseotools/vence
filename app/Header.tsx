@@ -169,20 +169,13 @@ export default function HeaderES() {
       }
 
       try {
-        const [examRes, psychoRes] = await Promise.all([
-          fetch(`/api/exam/pending?userId=${user.id}&testType=exam&limit=10`),
-          fetch(`/api/psychometric/pending?userId=${user.id}&limit=5`).catch(() => null),
-        ])
+        const examRes = await fetch(`/api/exam/pending?userId=${user.id}&testType=exam&limit=10`)
         const examData = await examRes.json()
         if (examData.success) {
           setPendingExams(examData.exams || [])
         }
-        if (psychoRes) {
-          const psychoData = await psychoRes.json().catch(() => null)
-          if (psychoData?.success) {
-            setPendingPsychometric(psychoData.sessions || [])
-          }
-        }
+        // Psicotécnicos no se muestran como pendientes (son pregunta a pregunta, no modo examen)
+        setPendingPsychometric([])
       } catch (err) {
         console.error('Error cargando exámenes pendientes:', err)
         setPendingExams([])
