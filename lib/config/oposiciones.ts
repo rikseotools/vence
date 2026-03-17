@@ -443,7 +443,6 @@ export const OPOSICIONES: Oposicion[] = [
         date: '2018-05-12',
         title: 'Convocatoria 12 de mayo de 2018',
         oep: 'OEP 2016',
-        comingSoon: true,
         partes: [
           { id: 'unica', icon: '📘', title: 'Examen completo', description: 'Primer ejercicio (100 preguntas)' },
         ],

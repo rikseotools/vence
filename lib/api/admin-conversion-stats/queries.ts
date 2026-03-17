@@ -23,9 +23,11 @@ export async function getConversionStats(days: number): Promise<ConversionStatsR
   const sevenDaysAgoStr = daysAgoISO(7)
 
   // ============================================
-  // Todas las queries usan COUNT/GROUP en SQL
-  // (no descargan rows individuales)
+  // Queries en 3 lotes secuenciales (~5 por lote)
+  // para no saturar el pool de conexiones de Supabase
   // ============================================
+
+  // Lote 1: Registros, usuarios, eventos, DAU
   const [
     regCountRows,        // 1. Registros: total + por fuente
     totalUsersRows,      // 2. Total usuarios all-time
@@ -33,16 +35,6 @@ export async function getConversionStats(days: number): Promise<ConversionStatsR
     dailyStatsRows,      // 4. Eventos agrupados por día+tipo
     dauPeriod,           // 5. DAU período (count distinct)
     dau7,                // 6. DAU 7 días (count distinct)
-    activeFromReg,       // 7. Registros activos
-    paidPeriodRows,      // 8. Pagos del período
-    paid7Rows,           // 9. Pagos 7 días
-    refundsPeriodRows,   // 10. Refunds período
-    refunds7Rows,        // 11. Refunds 7 días
-    funnelCountsRows,    // 12. Funnel actual (count distinct por tipo)
-    prevRegRows,         // 13. Registros período anterior
-    prevFirstTestRows,   // 14. Primer test período anterior
-    prevFunnelCountsRows,// 15. Funnel anterior (count distinct por tipo)
-    paidAllTimeRows,     // 16. Pagos all-time
   ] = await Promise.all([
     // 1: Registros por fuente (GROUP BY, no rows individuales)
     db.execute(sql`
@@ -99,7 +91,17 @@ export async function getConversionStats(days: number): Promise<ConversionStatsR
       JOIN user_profiles up ON t.user_id = up.id
       WHERE t.created_at >= ${sevenDaysAgoStr}
     `),
+  ])
 
+  // Lote 2: Actividad, pagos, refunds, funnel
+  const [
+    activeFromReg,       // 7. Registros activos
+    paidPeriodRows,      // 8. Pagos del período
+    paid7Rows,           // 9. Pagos 7 días
+    refundsPeriodRows,   // 10. Refunds período
+    refunds7Rows,        // 11. Refunds 7 días
+    funnelCountsRows,    // 12. Funnel actual (count distinct por tipo)
+  ] = await Promise.all([
     // 7: Registros activos (registros del período con al menos 1 test)
     db.execute(sql`
       SELECT count(DISTINCT t.user_id)::int as count
@@ -153,7 +155,15 @@ export async function getConversionStats(days: number): Promise<ConversionStatsR
       WHERE created_at >= ${periodFrom}
       GROUP BY event_type
     `),
+  ])
 
+  // Lote 3: Período anterior, pagos all-time
+  const [
+    prevRegRows,         // 13. Registros período anterior
+    prevFirstTestRows,   // 14. Primer test período anterior
+    prevFunnelCountsRows,// 15. Funnel anterior (count distinct por tipo)
+    paidAllTimeRows,     // 16. Pagos all-time
+  ] = await Promise.all([
     // 13: Registros período anterior
     db.select({ count: sql<number>`count(*)::int` })
     .from(userProfiles)
@@ -186,7 +196,7 @@ export async function getConversionStats(days: number): Promise<ConversionStatsR
   ])
 
   const t1 = Date.now()
-  console.log(`[conversion-stats] 16 queries paralelas: ${t1 - t0}ms (days=${days})`)
+  console.log(`[conversion-stats] 16 queries en 3 lotes: ${t1 - t0}ms (days=${days})`)
 
   // ============================================
   // Post-process
