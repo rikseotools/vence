@@ -37,7 +37,7 @@ export const getFilteredQuestionsRequestSchema = z.object({
   selectedLaws: z.array(z.string()).default([]),
 
   // Filtros de artículos por ley: { "CE": [1, 2, 3], "Ley 39/2015": [5, 10] }
-  selectedArticlesByLaw: z.record(z.string(), z.array(z.number().int())).default({}),
+  selectedArticlesByLaw: z.record(z.string(), z.array(z.union([z.number().int(), z.string()]))).default({}),
 
   // Filtros de secciones/títulos
   selectedSectionFilters: z.array(sectionFilterSchema).default([]),
@@ -156,7 +156,7 @@ export const countFilteredQuestionsRequestSchema = z.object({
   topicNumber: z.number().int().min(1),
   positionType: z.enum(POSITION_TYPES_ENUM),
   selectedLaws: z.array(z.string()).default([]),
-  selectedArticlesByLaw: z.record(z.string(), z.array(z.number().int())).default({}),
+  selectedArticlesByLaw: z.record(z.string(), z.array(z.union([z.number().int(), z.string()]))).default({}),
   selectedSectionFilters: z.array(sectionFilterSchema).default([]),
   onlyOfficialQuestions: z.boolean().default(false),
 })

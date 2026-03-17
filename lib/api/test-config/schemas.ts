@@ -41,7 +41,7 @@ export const estimateQuestionsRequestSchema = z.object({
   topicNumber: z.number().int().min(1).nullish(),
   positionType: z.enum(POSITION_TYPES_ENUM),
   selectedLaws: z.array(z.string()).default([]),
-  selectedArticlesByLaw: z.record(z.string(), z.array(z.number().int())).default({}),
+  selectedArticlesByLaw: z.record(z.string(), z.array(z.union([z.number().int(), z.string()]))).default({}),
   selectedSectionFilters: z.array(sectionFilterSchema).default([]),
   onlyOfficialQuestions: z.boolean().default(false),
   difficultyMode: z.enum(['random', 'easy', 'medium', 'hard', 'extreme', 'adaptive']).default('random'),
