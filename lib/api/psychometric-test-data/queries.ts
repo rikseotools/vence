@@ -6,6 +6,7 @@ import {
   psychometricCategories,
   psychometricSections,
   psychometricQuestions,
+  psychometricTestAnswers,
 } from '@/db/schema'
 import { eq, and, inArray, sql } from 'drizzle-orm'
 import type {
@@ -20,12 +21,13 @@ const CATEGORIES_CACHE_TTL = 60 * 1000
 
 /**
  * Obtiene todas las categorías activas con sus secciones y conteos de preguntas.
+ * Si se pasa userId, enriquece con stats de preguntas vistas/nunca vistas.
  * Resultado ordenado por display_order.
  */
-export async function getPsychometricCategories(): Promise<GetPsychometricCategoriesResponse> {
+export async function getPsychometricCategories(userId?: string): Promise<GetPsychometricCategoriesResponse> {
   try {
-    // Check cache
-    if (_categoriesCache && Date.now() - _categoriesCache.timestamp < CATEGORIES_CACHE_TTL) {
+    // Check cache (solo para datos base sin userId)
+    if (!userId && _categoriesCache && Date.now() - _categoriesCache.timestamp < CATEGORIES_CACHE_TTL) {
       return _categoriesCache.data
     }
 
@@ -89,21 +91,80 @@ export async function getPsychometricCategories(): Promise<GetPsychometricCatego
       categoryCountMap.set(cc.categoryId, Number(cc.count))
     }
 
-    // 5. Assemble response
+    // 5. Si hay userId, contar preguntas únicas respondidas por categoría y sección
+    let userAnsweredByCategory = new Map<string, number>()
+    let userAnsweredBySection = new Map<string, number>()
+
+    if (userId) {
+      // Preguntas únicas respondidas por categoría
+      const answeredByCategory = await db
+        .select({
+          categoryId: psychometricQuestions.categoryId,
+          uniqueCount: sql<number>`count(distinct ${psychometricTestAnswers.questionId})`.as('unique_count'),
+        })
+        .from(psychometricTestAnswers)
+        .innerJoin(psychometricQuestions, eq(psychometricTestAnswers.questionId, psychometricQuestions.id))
+        .where(and(
+          eq(psychometricTestAnswers.userId, userId),
+          eq(psychometricQuestions.isActive, true),
+        ))
+        .groupBy(psychometricQuestions.categoryId)
+
+      for (const row of answeredByCategory) {
+        userAnsweredByCategory.set(row.categoryId, Number(row.uniqueCount))
+      }
+
+      // Preguntas únicas respondidas por sección
+      const answeredBySection = await db
+        .select({
+          sectionId: psychometricQuestions.sectionId,
+          uniqueCount: sql<number>`count(distinct ${psychometricTestAnswers.questionId})`.as('unique_count'),
+        })
+        .from(psychometricTestAnswers)
+        .innerJoin(psychometricQuestions, eq(psychometricTestAnswers.questionId, psychometricQuestions.id))
+        .where(and(
+          eq(psychometricTestAnswers.userId, userId),
+          eq(psychometricQuestions.isActive, true),
+        ))
+        .groupBy(psychometricQuestions.sectionId)
+
+      for (const row of answeredBySection) {
+        if (row.sectionId) {
+          userAnsweredBySection.set(row.sectionId, Number(row.uniqueCount))
+        }
+      }
+    }
+
+    // 6. Assemble response
     const categories: PsychometricCategory[] = cats.map(cat => {
+      const totalQuestions = categoryCountMap.get(cat.id) || 0
+      const answered = userAnsweredByCategory.get(cat.id) || 0
+
       const catSections = secs
         .filter(s => s.categoryId === cat.id)
-        .map(s => ({
-          key: s.key,
-          name: s.name,
-          count: countMap.get(s.id) || 0,
-        }))
+        .map(s => {
+          const secTotal = countMap.get(s.id) || 0
+          const secAnswered = userAnsweredBySection.get(s.id) || 0
+          return {
+            key: s.key,
+            name: s.name,
+            count: secTotal,
+            ...(userId ? {
+              answeredCount: secAnswered,
+              neverSeen: Math.max(0, secTotal - secAnswered),
+            } : {}),
+          }
+        })
 
       return {
         key: cat.key,
         name: cat.name,
-        questionCount: categoryCountMap.get(cat.id) || 0,
+        questionCount: totalQuestions,
         sections: catSections,
+        ...(userId ? {
+          answeredCount: answered,
+          neverSeen: Math.max(0, totalQuestions - answered),
+        } : {}),
       }
     })
 
@@ -112,7 +173,10 @@ export async function getPsychometricCategories(): Promise<GetPsychometricCatego
       categories,
     }
 
-    _categoriesCache = { data: response, timestamp: Date.now() }
+    // Solo cachear datos base (sin userId)
+    if (!userId) {
+      _categoriesCache = { data: response, timestamp: Date.now() }
+    }
 
     return response
   } catch (error) {

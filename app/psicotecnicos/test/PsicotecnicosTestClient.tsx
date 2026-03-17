@@ -10,7 +10,7 @@ import type {
 } from '@/lib/api/psychometric-test-data/schemas'
 
 export default function PsicotecnicosTestClient() {
-  const { loading } = useAuth() as { loading: boolean }
+  const { loading, user } = useAuth()
   const router = useRouter()
 
   // Data from API
@@ -26,11 +26,14 @@ export default function PsicotecnicosTestClient() {
 
   const [numQuestionsPsico, setNumQuestionsPsico] = useState(25)
 
-  // Load categories from API on mount
+  // Load categories from API on mount (and when user loads)
   useEffect(() => {
     async function loadCategories() {
       try {
-        const res = await fetch('/api/psychometric-test-data')
+        const url = user?.id
+          ? `/api/psychometric-test-data?userId=${user.id}`
+          : '/api/psychometric-test-data'
+        const res = await fetch(url)
         const data: GetPsychometricCategoriesResponse = await res.json()
 
         if (!data.success || !data.categories) {
@@ -58,7 +61,7 @@ export default function PsicotecnicosTestClient() {
     }
 
     loadCategories()
-  }, [])
+  }, [user?.id])
 
   // Helper: count of selected sections for a category
   const getSelectedSectionsCount = (cat: PsychometricCategory): number => {
@@ -234,12 +237,20 @@ export default function PsicotecnicosTestClient() {
                             {cat.name}
                           </span>
                           <div className="flex items-center gap-2 ml-2 flex-shrink-0">
-                            <span className="text-sm text-gray-500">
-                              {hasSections
-                                ? `${selectedSectionsCount}/${visibleSections.length} subcategorías • ${cat.questionCount}`
-                                : `${cat.questionCount}`
-                              }
-                            </span>
+                            <div className="text-right">
+                              <span className="text-sm text-gray-500">
+                                {hasSections
+                                  ? `${selectedSectionsCount}/${visibleSections.length} subcategorías • ${cat.questionCount}`
+                                  : `${cat.questionCount}`
+                                }
+                              </span>
+                              {cat.answeredCount !== undefined && cat.questionCount > 0 && (
+                                <div className="flex gap-2 text-xs justify-end">
+                                  <span className="text-green-600">{cat.answeredCount} vistas</span>
+                                  <span className="text-blue-600">{cat.neverSeen} nunca vistas</span>
+                                </div>
+                              )}
+                            </div>
                             {hasSections && (
                               <svg
                                 className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
@@ -271,13 +282,18 @@ export default function PsicotecnicosTestClient() {
                                   {section.name}
                                 </span>
                               </div>
-                              <span className={`text-xs px-2 py-0.5 rounded-full ${
-                                section.count === 0
-                                  ? 'bg-gray-100 text-gray-400'
-                                  : 'bg-blue-50 text-blue-600'
-                              }`}>
-                                {section.count}
-                              </span>
+                              <div className="flex items-center gap-2">
+                                {section.answeredCount !== undefined && section.count > 0 && (
+                                  <span className="text-xs text-green-600">{section.answeredCount}/{section.count}</span>
+                                )}
+                                <span className={`text-xs px-2 py-0.5 rounded-full ${
+                                  section.count === 0
+                                    ? 'bg-gray-100 text-gray-400'
+                                    : 'bg-blue-50 text-blue-600'
+                                }`}>
+                                  {section.count}
+                                </span>
+                              </div>
                             </label>
                           ))}
                         </div>

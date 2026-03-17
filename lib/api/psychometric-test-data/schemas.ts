@@ -12,6 +12,8 @@ export const psychometricSectionSchema = z.object({
   key: z.string(),
   name: z.string(),
   count: z.number().int().nonnegative(),
+  answeredCount: z.number().int().nonnegative().optional(),
+  neverSeen: z.number().int().nonnegative().optional(),
 })
 
 export type PsychometricSection = z.infer<typeof psychometricSectionSchema>
@@ -25,6 +27,8 @@ export const psychometricCategorySchema = z.object({
   name: z.string(),
   questionCount: z.number().int().nonnegative(),
   sections: z.array(psychometricSectionSchema),
+  answeredCount: z.number().int().nonnegative().optional(),
+  neverSeen: z.number().int().nonnegative().optional(),
 })
 
 export type PsychometricCategory = z.infer<typeof psychometricCategorySchema>

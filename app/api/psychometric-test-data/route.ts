@@ -1,15 +1,18 @@
 // app/api/psychometric-test-data/route.ts
 // GET - Devuelve categorías psicotécnicas con secciones y conteos de preguntas
 
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { getPsychometricCategories } from '@/lib/api/psychometric-test-data'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 export const dynamic = 'force-dynamic'
 
-async function _GET() {
+async function _GET(request: NextRequest) {
   try {
-    const result = await getPsychometricCategories()
+    const { searchParams } = new URL(request.url)
+    const userId = searchParams.get('userId') || undefined
+
+    const result = await getPsychometricCategories(userId)
 
     if (!result.success) {
       return NextResponse.json(result, { status: 500 })
