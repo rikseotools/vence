@@ -200,7 +200,11 @@ export default function HeaderES() {
       loadPendingExams()
     }
     window.addEventListener('examCompleted', handleExamCompleted)
-    return () => window.removeEventListener('examCompleted', handleExamCompleted)
+    window.addEventListener('exam-completed', handleExamCompleted)
+    return () => {
+      window.removeEventListener('examCompleted', handleExamCompleted)
+      window.removeEventListener('exam-completed', handleExamCompleted)
+    }
   }, [user, authLoading])
 
   // Mostrar confirmacion inline para descartar
