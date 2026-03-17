@@ -182,6 +182,28 @@ async function createDispute(input: CreateDisputeInput): Promise<DisputeResult> 
     .single()
 
   if (error) {
+    // Si falla por FK violation del ai_chat_log_id (race condition: el chat log aún no se insertó),
+    // reintentar sin ai_chat_log_id para no perder la disputa
+    if (error.code === '23503' && error.message?.includes('ai_chat_log_id') && input.aiChatLogId) {
+      logger.warn('FK violation on ai_chat_log_id, retrying without it', {
+        domain: 'verification',
+        table: tableName,
+        aiChatLogId: input.aiChatLogId,
+      })
+      delete insertData.ai_chat_log_id
+      const { data: retryData, error: retryError } = await getSupabase()
+        .from(tableName)
+        .insert(insertData)
+        .select('id')
+        .single()
+
+      if (retryError) {
+        logger.error('Database error creating dispute (retry)', retryError, { domain: 'verification', table: tableName })
+        return { success: false, error: retryError.message }
+      }
+      return { success: true, disputeId: retryData.id }
+    }
+
     logger.error('Database error creating dispute', error, { domain: 'verification', table: tableName })
     return {
       success: false,
