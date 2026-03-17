@@ -12,6 +12,16 @@ interface PendingExam {
   answeredQuestions: number
 }
 
+interface PendingPsychometricSession {
+  id: string
+  categoryName: string | null
+  totalQuestions: number
+  questionsAnswered: number
+  correctAnswers: number
+  accuracyPercentage: number
+  startedAt: string | null
+}
+
 interface PendingExamsProps {
   temaNumber?: number | null
   limit?: number
@@ -24,6 +34,7 @@ interface AuthContextValue {
 export default function PendingExams({ temaNumber = null, limit = 5 }: PendingExamsProps) {
   const { user } = useAuth() as AuthContextValue
   const [pendingExams, setPendingExams] = useState<PendingExam[]>([])
+  const [pendingPsychometric, setPendingPsychometric] = useState<PendingPsychometricSession[]>([])
   const [loading, setLoading] = useState(true)
   const [dismissed, setDismissed] = useState(false)
   const [expanded, setExpanded] = useState(false)
@@ -45,22 +56,36 @@ export default function PendingExams({ temaNumber = null, limit = 5 }: PendingEx
     try {
       setLoading(true)
 
-      const params = new URLSearchParams({
-        userId: user.id,
-        testType: 'exam',
-        limit: limit.toString()
-      })
+      // Fetch both exam and psychometric pending sessions in parallel
+      const [examResponse, psychoResponse] = await Promise.all([
+        fetch(`/api/exam/pending?${new URLSearchParams({
+          userId: user.id,
+          testType: 'exam',
+          limit: limit.toString()
+        })}`),
+        fetch(`/api/psychometric/pending?${new URLSearchParams({
+          userId: user.id,
+          limit: '5'
+        })}`).catch(() => null),
+      ])
 
-      const response = await fetch(`/api/exam/pending?${params}`)
-      const data = await response.json()
+      const examData = await examResponse.json()
+      const psychoData = psychoResponse ? await psychoResponse.json().catch(() => null) : null
 
-      if (!response.ok || !data.success) {
+      // Psychometric sessions
+      if (psychoData?.success && psychoData.sessions?.length > 0) {
+        setPendingPsychometric(psychoData.sessions)
+      } else {
+        setPendingPsychometric([])
+      }
+
+      if (!examResponse.ok || !examData.success) {
         setPendingExams([])
         return
       }
 
       // Filtrar por tema si se especifica
-      let exams: PendingExam[] = data.exams || []
+      let exams: PendingExam[] = examData.exams || []
       if (temaNumber) {
         exams = exams.filter(e => e.temaNumber === temaNumber)
       }
@@ -69,10 +94,13 @@ export default function PendingExams({ temaNumber = null, limit = 5 }: PendingEx
       const dismissedIds: string[] = JSON.parse(localStorage.getItem('pendingExamsDismissedIds') || '[]')
       const currentIds = exams.map(e => e.id)
 
-      // Si hay exámenes nuevos que no fueron cerrados, mostrar banner
-      const hasNewExams = currentIds.some(id => !dismissedIds.includes(id))
+      // Include psychometric IDs in the "new items" check
+      const allPendingIds = [...currentIds, ...(psychoData?.sessions?.map((s: PendingPsychometricSession) => s.id) || [])]
 
-      if (!hasNewExams && exams.length > 0) {
+      // Si hay exámenes nuevos que no fueron cerrados, mostrar banner
+      const hasNewExams = allPendingIds.some(id => !dismissedIds.includes(id))
+
+      if (!hasNewExams && (exams.length > 0 || (psychoData?.sessions?.length || 0) > 0)) {
         // Todos los exámenes fueron cerrados antes, verificar timeout
         const dismissedUntil = localStorage.getItem('pendingExamsDismissedUntil')
         if (dismissedUntil && Date.now() < parseInt(dismissedUntil)) {
@@ -94,8 +122,8 @@ export default function PendingExams({ temaNumber = null, limit = 5 }: PendingEx
   }
 
   function handleDismiss() {
-    // Guardar IDs de exámenes cerrados
-    const currentIds = pendingExams.map(e => e.id)
+    // Guardar IDs de exámenes cerrados (incluye psicotécnicos)
+    const currentIds = [...pendingExams.map(e => e.id), ...pendingPsychometric.map(s => s.id)]
     localStorage.setItem('pendingExamsDismissedIds', JSON.stringify(currentIds))
 
     // Ocultar por 1 hora
@@ -143,6 +171,34 @@ export default function PendingExams({ temaNumber = null, limit = 5 }: PendingEx
     }
   }
 
+  // Descartar sesión psicotécnica
+  async function confirmDiscardPsychometric(sessionId: string) {
+    if (!user?.id || !sessionId) return
+
+    try {
+      setDiscarding(sessionId)
+      setConfirmingDiscard(null)
+
+      const response = await fetch('/api/psychometric/discard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, userId: user.id })
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        setPendingPsychometric(prev => prev.filter(s => s.id !== sessionId))
+      } else {
+        console.error('Error descartando sesión psicotécnica:', result.error)
+      }
+    } catch (err) {
+      console.error('Error descartando sesión psicotécnica:', err)
+    } finally {
+      setDiscarding(null)
+    }
+  }
+
   // Genera la URL de reanudación según el tipo de examen
   function getResumeUrl(exam: PendingExam): string {
     if (exam.title?.toLowerCase().includes('examen oficial')) {
@@ -154,32 +210,77 @@ export default function PendingExams({ temaNumber = null, limit = 5 }: PendingEx
     return `/auxiliar-administrativo-estado/test/tema/${exam.temaNumber || 1}/test-examen?resume=${exam.id}`
   }
 
-  // No mostrar si: no hay usuario, cargando, cerrado, o no hay exámenes
-  if (!user?.id || loading || dismissed || pendingExams.length === 0) {
+  // No mostrar si: no hay usuario, cargando, cerrado, o no hay nada pendiente
+  const totalPending = pendingExams.length + pendingPsychometric.length
+  if (!user?.id || loading || dismissed || totalPending === 0) {
     return null
   }
 
-  const exam = pendingExams[0] // Mostrar el más reciente
-  const progressPercent = exam.totalQuestions > 0
-    ? Math.round((exam.answeredQuestions / exam.totalQuestions) * 100)
-    : 0
+  // Build unified list of pending items for rendering
+  type PendingItem = {
+    id: string
+    type: 'exam' | 'psychometric'
+    title: string
+    answered: number
+    total: number
+    resumeUrl: string
+  }
 
-  const resumeUrl = getResumeUrl(exam)
+  const allPendingItems: PendingItem[] = [
+    ...pendingExams.map(e => ({
+      id: e.id,
+      type: 'exam' as const,
+      title: e.title || `Tema ${e.temaNumber}`,
+      answered: e.answeredQuestions,
+      total: e.totalQuestions,
+      resumeUrl: getResumeUrl(e),
+    })),
+    ...pendingPsychometric.map(s => ({
+      id: s.id,
+      type: 'psychometric' as const,
+      title: s.categoryName || 'Test psicotécnico',
+      answered: s.questionsAnswered,
+      total: s.totalQuestions,
+      resumeUrl: `/psicotecnicos/test/ejecutar?resume=${s.id}`,
+    })),
+  ]
+
+  if (allPendingItems.length === 0) return null
+
+  const first = allPendingItems[0]
+  const firstProgress = first.total > 0 ? Math.round((first.answered / first.total) * 100) : 0
+  const isPsycho = first.type === 'psychometric'
+
+  // Discard handler: delegates to the right function based on type
+  function handleDiscard(item: PendingItem) {
+    handleDiscardExam(item.id)
+  }
+  function confirmDiscard(item: PendingItem) {
+    if (item.type === 'psychometric') {
+      confirmDiscardPsychometric(item.id)
+    } else {
+      confirmDiscardExam(item.id)
+    }
+  }
+
+  const headerLabel = totalPending === 1
+    ? (isPsycho ? 'Test psicotécnico pendiente' : 'Examen pendiente')
+    : `${totalPending} tests pendientes`
 
   return (
     <div className="fixed bottom-4 right-4 z-50 max-w-sm animate-in slide-in-from-bottom-4">
-      <div className="bg-amber-50 border border-amber-300 rounded-xl shadow-lg overflow-hidden">
+      <div className={`${isPsycho ? 'bg-violet-50 border-violet-300' : 'bg-amber-50 border-amber-300'} border rounded-xl shadow-lg overflow-hidden`}>
         {/* Header compacto */}
-        <div className="bg-amber-100 px-4 py-2 flex items-center justify-between">
+        <div className={`${isPsycho ? 'bg-violet-100' : 'bg-amber-100'} px-4 py-2 flex items-center justify-between`}>
           <div className="flex items-center gap-2">
-            <span className="text-lg">📝</span>
-            <span className="font-medium text-amber-800 text-sm">
-              {pendingExams.length === 1 ? 'Examen pendiente' : `${pendingExams.length} exámenes pendientes`}
+            <span className="text-lg">{isPsycho ? '🧠' : '📝'}</span>
+            <span className={`font-medium ${isPsycho ? 'text-violet-800' : 'text-amber-800'} text-sm`}>
+              {headerLabel}
             </span>
           </div>
           <button
             onClick={handleDismiss}
-            className="text-amber-600 hover:text-amber-800 p-1 rounded-full hover:bg-amber-200 transition-colors"
+            className={`${isPsycho ? 'text-violet-600 hover:text-violet-800 hover:bg-violet-200' : 'text-amber-600 hover:text-amber-800 hover:bg-amber-200'} p-1 rounded-full transition-colors`}
             title="Cerrar (reaparecerá en 1 hora)"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -190,11 +291,10 @@ export default function PendingExams({ temaNumber = null, limit = 5 }: PendingEx
 
         {/* Contenido */}
         <div className="p-4">
-          {confirmingDiscard === exam.id ? (
-            /* Confirmación inline */
+          {confirmingDiscard === first.id ? (
             <div className="text-center py-2">
               <p className="text-sm text-gray-700 mb-3">
-                ¿Descartar este examen?
+                ¿Descartar este {isPsycho ? 'test' : 'examen'}?
               </p>
               <div className="flex gap-2 justify-center">
                 <button
@@ -204,7 +304,7 @@ export default function PendingExams({ temaNumber = null, limit = 5 }: PendingEx
                   Cancelar
                 </button>
                 <button
-                  onClick={() => confirmDiscardExam(exam.id)}
+                  onClick={() => confirmDiscard(first)}
                   className="px-4 py-2 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-lg transition-colors"
                 >
                   Sí, descartar
@@ -212,25 +312,24 @@ export default function PendingExams({ temaNumber = null, limit = 5 }: PendingEx
               </div>
             </div>
           ) : (
-            /* Contenido normal */
             <>
               <div className="flex items-center justify-between gap-3 mb-3">
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium text-gray-800 truncate">
-                    {exam.title || `Tema ${exam.temaNumber}`}
+                    {first.title}
                   </div>
                   <div className="flex items-center gap-2 mt-1">
                     <span className="text-xs text-gray-500">
-                      {exam.answeredQuestions}/{exam.totalQuestions}
+                      {first.answered}/{first.total}
                     </span>
                     <div className="flex-1 bg-gray-200 rounded-full h-1.5">
                       <div
-                        className="bg-amber-500 h-1.5 rounded-full"
-                        style={{ width: `${progressPercent}%` }}
+                        className={`${isPsycho ? 'bg-violet-500' : 'bg-amber-500'} h-1.5 rounded-full`}
+                        style={{ width: `${firstProgress}%` }}
                       />
                     </div>
-                    <span className="text-xs font-medium text-amber-600">
-                      {progressPercent}%
+                    <span className={`text-xs font-medium ${isPsycho ? 'text-violet-600' : 'text-amber-600'}`}>
+                      {firstProgress}%
                     </span>
                   </div>
                 </div>
@@ -238,18 +337,18 @@ export default function PendingExams({ temaNumber = null, limit = 5 }: PendingEx
 
               <div className="flex gap-2">
                 <Link
-                  href={resumeUrl}
-                  className="flex-1 text-center px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium rounded-lg transition-colors"
+                  href={first.resumeUrl}
+                  className={`flex-1 text-center px-4 py-2 ${isPsycho ? 'bg-violet-500 hover:bg-violet-600' : 'bg-amber-500 hover:bg-amber-600'} text-white text-sm font-medium rounded-lg transition-colors`}
                 >
                   Continuar
                 </Link>
                 <button
-                  onClick={() => handleDiscardExam(exam.id)}
-                  disabled={discarding === exam.id}
+                  onClick={() => handleDiscard(first)}
+                  disabled={discarding === first.id}
                   className="px-3 py-2 text-gray-500 hover:text-red-600 hover:bg-red-50 text-sm rounded-lg transition-colors disabled:opacity-50"
-                  title="Descartar examen"
+                  title="Descartar"
                 >
-                  {discarding === exam.id ? (
+                  {discarding === first.id ? (
                     <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -264,28 +363,27 @@ export default function PendingExams({ temaNumber = null, limit = 5 }: PendingEx
             </>
           )}
 
-          {pendingExams.length > 1 && (
+          {allPendingItems.length > 1 && (
             <button
               onClick={() => setExpanded(!expanded)}
-              className="w-full mt-2 text-xs text-amber-600 hover:text-amber-800"
+              className={`w-full mt-2 text-xs ${isPsycho ? 'text-violet-600 hover:text-violet-800' : 'text-amber-600 hover:text-amber-800'}`}
             >
-              {expanded ? 'Ocultar otros' : `Ver ${pendingExams.length - 1} más`}
+              {expanded ? 'Ocultar otros' : `Ver ${allPendingItems.length - 1} más`}
             </button>
           )}
 
           {/* Lista expandida */}
-          {expanded && pendingExams.length > 1 && (
-            <div className="mt-3 space-y-2 border-t border-amber-200 pt-3">
-              {pendingExams.slice(1).map(e => {
-                const url = getResumeUrl(e)
-                const progress = e.totalQuestions > 0
-                  ? Math.round((e.answeredQuestions / e.totalQuestions) * 100)
+          {expanded && allPendingItems.length > 1 && (
+            <div className="mt-3 space-y-2 border-t border-gray-200 pt-3">
+              {allPendingItems.slice(1).map(item => {
+                const progress = item.total > 0
+                  ? Math.round((item.answered / item.total) * 100)
                   : 0
+                const itemIsPsycho = item.type === 'psychometric'
 
                 return (
-                  <div key={e.id} className="p-2 bg-white rounded-lg border border-amber-200">
-                    {confirmingDiscard === e.id ? (
-                      /* Confirmación inline */
+                  <div key={item.id} className={`p-2 bg-white rounded-lg border ${itemIsPsycho ? 'border-violet-200' : 'border-amber-200'}`}>
+                    {confirmingDiscard === item.id ? (
                       <div className="text-center py-1">
                         <p className="text-xs text-gray-700 mb-2">¿Descartar?</p>
                         <div className="flex gap-2 justify-center">
@@ -296,7 +394,7 @@ export default function PendingExams({ temaNumber = null, limit = 5 }: PendingEx
                             No
                           </button>
                           <button
-                            onClick={() => confirmDiscardExam(e.id)}
+                            onClick={() => confirmDiscard(item)}
                             className="px-2 py-1 text-xs font-medium text-white bg-red-500 hover:bg-red-600 rounded transition-colors"
                           >
                             Sí
@@ -304,26 +402,25 @@ export default function PendingExams({ temaNumber = null, limit = 5 }: PendingEx
                         </div>
                       </div>
                     ) : (
-                      /* Contenido normal */
                       <div className="flex items-center gap-2">
                         <Link
-                          href={url}
-                          className="flex-1 min-w-0 hover:text-amber-600 transition-colors"
+                          href={item.resumeUrl}
+                          className={`flex-1 min-w-0 ${itemIsPsycho ? 'hover:text-violet-600' : 'hover:text-amber-600'} transition-colors`}
                         >
                           <div className="text-xs font-medium text-gray-700 truncate">
-                            {e.title || `Tema ${e.temaNumber}`}
+                            {itemIsPsycho ? '🧠 ' : ''}{item.title}
                           </div>
                           <div className="text-xs text-gray-500">
-                            {e.answeredQuestions}/{e.totalQuestions} ({progress}%)
+                            {item.answered}/{item.total} ({progress}%)
                           </div>
                         </Link>
                         <button
-                          onClick={() => handleDiscardExam(e.id)}
-                          disabled={discarding === e.id}
+                          onClick={() => handleDiscard(item)}
+                          disabled={discarding === item.id}
                           className="flex-shrink-0 p-1 text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
                           title="Descartar"
                         >
-                          {discarding === e.id ? (
+                          {discarding === item.id ? (
                             <svg className="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>

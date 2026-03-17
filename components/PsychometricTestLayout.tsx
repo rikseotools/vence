@@ -52,10 +52,18 @@ interface TestConfig {
   [key: string]: unknown
 }
 
+interface ResumeData {
+  sessionId: string
+  questionsAnswered: number
+  correctAnswers: number
+  answeredQuestionIds: string[]
+}
+
 interface PsychometricTestLayoutProps {
   categoria: string
   config?: TestConfig | null
   questions: PsychometricQuestion[]
+  resumeData?: ResumeData | null
 }
 
 interface DetailedAnswer {
@@ -119,7 +127,8 @@ const SUBTYPE_NAMES: Record<string, string> = {
 export default function PsychometricTestLayout({
   categoria,
   config,
-  questions
+  questions,
+  resumeData,
 }: PsychometricTestLayoutProps) {
   const { user, supabase } = useAuth() as { user: { id: string; user_metadata?: Record<string, unknown> } | null; supabase: ReturnType<typeof import('@supabase/supabase-js').createClient> }
   const { setQuestionContext, clearQuestionContext } = useQuestionContext()
@@ -128,13 +137,15 @@ export default function PsychometricTestLayout({
   const { trackPsychometricAction } = useInteractionTracker()
 
   // Estados del test básicos
-  const [currentQuestion, setCurrentQuestion] = useState<number>(0)
+  const [currentQuestion, setCurrentQuestion] = useState<number>(resumeData?.questionsAnswered ?? 0)
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null)
   const [showResult, setShowResult] = useState<boolean>(false)
-  const [score, setScore] = useState<number>(0)
+  const [score, setScore] = useState<number>(resumeData?.correctAnswers ?? 0)
   const [answeredQuestions, setAnsweredQuestions] = useState<DetailedAnswer[]>([])
   const [startTime, setStartTime] = useState<number>(Date.now())
-  const [testSession, setTestSession] = useState<TestSession | null>(null)
+  const [testSession, setTestSession] = useState<TestSession | null>(
+    resumeData ? { id: resumeData.sessionId } : null
+  )
   const [isAnswering, setIsAnswering] = useState<boolean>(false)
   const [isTestCompleted, setIsTestCompleted] = useState<boolean>(false)
 
@@ -166,8 +177,8 @@ export default function PsychometricTestLayout({
 
   // Anti-duplicados
   const answeringTimeouts = useRef<Map<string, NodeJS.Timeout>>(new Map())
-  const answeredQuestionsGlobal = useRef<Set<string>>(new Set())
-  const sessionCreated = useRef<boolean>(false)
+  const answeredQuestionsGlobal = useRef<Set<string>>(new Set(resumeData?.answeredQuestionIds ?? []))
+  const sessionCreated = useRef<boolean>(!!resumeData)
 
   const currentQ = questions[currentQuestion]
   const totalQuestions = questions.length
@@ -210,12 +221,12 @@ export default function PsychometricTestLayout({
       }
     }
 
-    // Solo crear sesión si no se ha creado ya una
-    if (!sessionCreated.current && user && questions.length > 0) {
+    // Solo crear sesión si no se ha creado ya una (y no estamos reanudando)
+    if (!sessionCreated.current && user && questions.length > 0 && !resumeData) {
       sessionCreated.current = true
       createTestSession()
     }
-  }, [user, questions?.length, supabase]) // Usar questions.length en lugar de questions completo
+  }, [user, questions?.length, supabase, resumeData]) // Usar questions.length en lugar de questions completo
 
   // Cargar información de dificultad cuando cambie la pregunta
   useEffect(() => {

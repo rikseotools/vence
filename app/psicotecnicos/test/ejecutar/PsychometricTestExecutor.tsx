@@ -45,16 +45,62 @@ function mapApiToLayout(q: ApiQuestion): LayoutQuestion {
   }
 }
 
+interface ResumeData {
+  sessionId: string
+  questionsAnswered: number
+  correctAnswers: number
+  answeredQuestionIds: string[]
+}
+
 function MultipleCategoriesPsychometricTestContent() {
   const searchParams = useSearchParams()
-  const { loading: authLoading } = useAuth() as { loading: boolean }
+  const { loading: authLoading, user } = useAuth() as { loading: boolean; user: { id: string } | null }
   const [questions, setQuestions] = useState<LayoutQuestion[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
+  const [resumeData, setResumeData] = useState<ResumeData | null>(null)
 
   useEffect(() => {
-    async function loadQuestions() {
+    const resumeSessionId = searchParams.get('resume')
+
+    if (resumeSessionId) {
+      loadResumeSession(resumeSessionId)
+    } else {
+      loadNewQuestions()
+    }
+
+    async function loadResumeSession(sessionId: string) {
+      try {
+        const params = new URLSearchParams({ sessionId })
+        if (user?.id) params.set('userId', user.id)
+
+        const res = await fetch(`/api/psychometric/resume?${params.toString()}`)
+        const data = await res.json()
+
+        if (!data.success) {
+          setError(data.error || 'Error al cargar la sesión')
+          return
+        }
+
+        console.log(`✅ Resumed psychometric session: ${data.questionsAnswered}/${data.totalQuestions} answered`)
+
+        setQuestions(data.questions.map((q: ApiQuestion) => mapApiToLayout(q)))
+        setResumeData({
+          sessionId: data.sessionId,
+          questionsAnswered: data.questionsAnswered,
+          correctAnswers: data.correctAnswers,
+          answeredQuestionIds: data.answeredQuestionIds,
+        })
+      } catch (err) {
+        console.error('Error resuming psychometric session:', err)
+        setError('Error inesperado al reanudar la sesión')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    async function loadNewQuestions() {
       try {
         const categoriesParam = searchParams.get('categories')
         const numQuestionsParam = searchParams.get('numQuestions')
@@ -98,11 +144,7 @@ function MultipleCategoriesPsychometricTestContent() {
         setLoading(false)
       }
     }
-
-    if (!authLoading) {
-      loadQuestions()
-    }
-  }, [searchParams, authLoading])
+  }, [searchParams, authLoading, user?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (authLoading || loading) {
     return (
@@ -159,6 +201,7 @@ function MultipleCategoriesPsychometricTestContent() {
         backUrl: '/psicotecnicos/test',
         backText: 'Volver a Psicotécnicos'
       }}
+      resumeData={resumeData}
     />
   )
 }

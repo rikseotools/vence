@@ -54,6 +54,7 @@ export default function HeaderES() {
   const [userStreak, setUserStreak] = useState(0)
   const [pendingFeedbacks, setPendingFeedbacks] = useState(0)
   const [pendingExams, setPendingExams] = useState<PendingExam[]>([])
+  const [pendingPsychometric, setPendingPsychometric] = useState<{ id: string; categoryName: string | null; totalQuestions: number; questionsAnswered: number }[]>([])
   const [showPendingExamsDropdown, setShowPendingExamsDropdown] = useState(false)
   const [discardingExamId, setDiscardingExamId] = useState<string | null>(null)
   const [confirmingDiscardId, setConfirmingDiscardId] = useState<string | null>(null)
@@ -158,23 +159,34 @@ export default function HeaderES() {
     }
   }, [user, supabase, authLoading])
 
-  // 🆕 CARGAR EXÁMENES PENDIENTES
+  // 🆕 CARGAR EXÁMENES Y TESTS PENDIENTES
   useEffect(() => {
     async function loadPendingExams() {
       if (!user) {
         setPendingExams([])
+        setPendingPsychometric([])
         return
       }
 
       try {
-        const response = await fetch(`/api/exam/pending?userId=${user.id}&testType=exam&limit=10`)
-        const data = await response.json()
-        if (data.success) {
-          setPendingExams(data.exams || [])
+        const [examRes, psychoRes] = await Promise.all([
+          fetch(`/api/exam/pending?userId=${user.id}&testType=exam&limit=10`),
+          fetch(`/api/psychometric/pending?userId=${user.id}&limit=5`).catch(() => null),
+        ])
+        const examData = await examRes.json()
+        if (examData.success) {
+          setPendingExams(examData.exams || [])
+        }
+        if (psychoRes) {
+          const psychoData = await psychoRes.json().catch(() => null)
+          if (psychoData?.success) {
+            setPendingPsychometric(psychoData.sessions || [])
+          }
         }
       } catch (err) {
         console.error('Error cargando exámenes pendientes:', err)
         setPendingExams([])
+        setPendingPsychometric([])
       }
     }
 
@@ -511,15 +523,15 @@ export default function HeaderES() {
                 </Link>
 
                 {/* 📝 Exámenes pendientes - Móvil (oculto cuando se ve el desktop) */}
-                {pendingExams.length > 0 && (
+                {(pendingExams.length + pendingPsychometric.length) > 0 && (
                   <div className="relative lg:hidden">
                     <button
                       onClick={() => setShowPendingExamsDropdown(!showPendingExamsDropdown)}
                       className="flex items-center gap-1 px-2 py-1 bg-amber-500 text-white rounded-lg text-xs font-semibold shadow-sm"
-                      title="Exámenes pendientes"
+                      title="Tests pendientes"
                     >
                       <span>📝</span>
-                      <span>{pendingExams.length}</span>
+                      <span>{pendingExams.length + pendingPsychometric.length}</span>
                     </button>
                   </div>
                 )}
@@ -599,16 +611,16 @@ export default function HeaderES() {
                 </button>
               )}
 
-              {/* 📝 Exámenes pendientes - Desktop */}
-              {user && pendingExams.length > 0 && (
+              {/* 📝 Tests pendientes - Desktop */}
+              {user && (pendingExams.length + pendingPsychometric.length) > 0 && (
                 <div className="relative hidden lg:block">
                   <button
                     onClick={() => setShowPendingExamsDropdown(!showPendingExamsDropdown)}
                     className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-semibold shadow-md hover:shadow-lg transition-all"
-                    title="Exámenes pendientes"
+                    title="Tests pendientes"
                   >
                     <span>📝</span>
-                    <span className="text-sm">{pendingExams.length}</span>
+                    <span className="text-sm">{pendingExams.length + pendingPsychometric.length}</span>
                   </button>
                 </div>
               )}
@@ -887,8 +899,8 @@ export default function HeaderES() {
         </div>
       )}
 
-      {/* Dropdown de exámenes pendientes */}
-      {showPendingExamsDropdown && pendingExams.length > 0 && (
+      {/* Dropdown de tests pendientes */}
+      {showPendingExamsDropdown && (pendingExams.length + pendingPsychometric.length) > 0 && (
         <>
           {/* Overlay para cerrar */}
           <div
@@ -901,7 +913,10 @@ export default function HeaderES() {
               <div className="flex items-center gap-2">
                 <span className="text-lg">📝</span>
                 <span className="font-semibold text-amber-800 dark:text-amber-200">
-                  {pendingExams.length === 1 ? 'Examen pendiente' : `${pendingExams.length} exámenes pendientes`}
+                  {(() => {
+                    const total = pendingExams.length + pendingPsychometric.length
+                    return total === 1 ? 'Test pendiente' : `${total} tests pendientes`
+                  })()}
                 </span>
               </div>
               <button
@@ -918,7 +933,6 @@ export default function HeaderES() {
                 const progress = exam.totalQuestions > 0
                   ? Math.round((exam.answeredQuestions / exam.totalQuestions) * 100)
                   : 0
-                // Generar URL correcta según tipo de examen
                 let resumeUrl
                 if (exam.title?.toLowerCase().includes('examen oficial')) {
                   resumeUrl = `/auxiliar-administrativo-estado/test/examen-oficial?resume=${exam.id}`
@@ -937,7 +951,6 @@ export default function HeaderES() {
                     className="p-2.5 bg-amber-50 dark:bg-amber-900/30 rounded-lg border border-amber-200 dark:border-amber-700 overflow-hidden"
                   >
                     {isConfirming ? (
-                      // Confirmación inline
                       <div className="text-center py-1">
                         <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">
                           ¿Descartar este examen?
@@ -958,7 +971,6 @@ export default function HeaderES() {
                         </div>
                       </div>
                     ) : (
-                      // Contenido normal
                       <div className="flex items-start gap-2">
                         <Link
                           href={resumeUrl}
@@ -1002,6 +1014,43 @@ export default function HeaderES() {
                         </button>
                       </div>
                     )}
+                  </div>
+                )
+              })}
+              {/* Psychometric pending sessions */}
+              {pendingPsychometric.map(session => {
+                const progress = session.totalQuestions > 0
+                  ? Math.round((session.questionsAnswered / session.totalQuestions) * 100)
+                  : 0
+
+                return (
+                  <div
+                    key={session.id}
+                    className="p-2.5 bg-violet-50 dark:bg-violet-900/30 rounded-lg border border-violet-200 dark:border-violet-700 overflow-hidden"
+                  >
+                    <Link
+                      href={`/psicotecnicos/test/ejecutar?resume=${session.id}`}
+                      onClick={() => setShowPendingExamsDropdown(false)}
+                      className="block hover:opacity-80 transition-opacity"
+                    >
+                      <div className="font-medium text-gray-800 dark:text-gray-200 truncate text-sm">
+                        🧠 {session.categoryName || 'Test psicotécnico'}
+                      </div>
+                      <div className="flex items-center gap-2 mt-1.5">
+                        <div className="flex-1 bg-violet-200 dark:bg-violet-800 rounded-full h-1.5">
+                          <div
+                            className="bg-violet-500 h-1.5 rounded-full transition-all"
+                            style={{ width: `${progress}%` }}
+                          />
+                        </div>
+                        <span className="text-xs font-medium text-violet-700 dark:text-violet-300 whitespace-nowrap">
+                          {session.questionsAnswered}/{session.totalQuestions}
+                        </span>
+                      </div>
+                      <div className="mt-1.5 text-xs text-violet-600 dark:text-violet-400">
+                        Click para continuar →
+                      </div>
+                    </Link>
                   </div>
                 )
               })}

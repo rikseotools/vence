@@ -18,6 +18,13 @@ interface UserStats {
   userRegisteredDate: Date
 }
 
+interface PendingPsychometricSession {
+  id: string
+  categoryName: string | null
+  totalQuestions: number
+  questionsAnswered: number
+}
+
 interface PendingExam {
   id: string
   title?: string
@@ -63,6 +70,7 @@ export default function UserAvatar() {
   const [userStats, setUserStats] = useState<UserStats>(EMPTY_STATS)
   const [statsLoading, setStatsLoading] = useState(false)
   const [pendingExams, setPendingExams] = useState<PendingExam[]>([])
+  const [pendingPsychometric, setPendingPsychometric] = useState<PendingPsychometricSession[]>([])
   const [pendingExamsExpanded, setPendingExamsExpanded] = useState(false)
 
   // ── Pending exams: load on dropdown open, with AbortController ──
@@ -81,23 +89,30 @@ export default function UserAvatar() {
 
   async function loadPendingExams(signal?: AbortSignal) {
     try {
-      const response = await fetch(
-        `/api/exam/pending?userId=${user!.id}&testType=exam&limit=10`,
-        { signal },
-      )
+      const [examRes, psychoRes] = await Promise.all([
+        fetch(`/api/exam/pending?userId=${user!.id}&testType=exam&limit=10`, { signal }),
+        fetch(`/api/psychometric/pending?userId=${user!.id}&limit=5`, { signal }).catch(() => null),
+      ])
       if (signal?.aborted) return
-      const data = await response.json()
-      if (data.success) {
-        setPendingExams(data.exams || [])
+      const examData = await examRes.json()
+      if (examData.success) {
+        setPendingExams(examData.exams || [])
+      }
+      if (psychoRes) {
+        const psychoData = await psychoRes.json().catch(() => null)
+        if (psychoData?.success) {
+          setPendingPsychometric(psychoData.sessions || [])
+        }
       }
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') return
       console.error('Error cargando examenes pendientes:', err)
       setPendingExams([])
+      setPendingPsychometric([])
     }
   }
 
-  const pendingExamsCount = pendingExams.length
+  const pendingExamsCount = pendingExams.length + pendingPsychometric.length
 
   // ── Stats: load with unmount protection (v2 API) ──
 
@@ -478,7 +493,7 @@ export default function UserAvatar() {
                 <span>Mis Estadisticas</span>
               </Link>
 
-              {/* Pending exams */}
+              {/* Pending exams + psychometric */}
               {pendingExamsCount > 0 && (
                 <div>
                   <button
@@ -486,7 +501,7 @@ export default function UserAvatar() {
                     className="w-full text-left px-3 py-2 text-sm text-amber-700 hover:bg-amber-50 rounded-lg flex items-center space-x-3"
                   >
                     <span>📝</span>
-                    <span>Examenes pendientes</span>
+                    <span>Tests pendientes</span>
                     <span className="ml-auto flex items-center gap-1">
                       <span className="bg-amber-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
                         {pendingExamsCount > 9 ? '9+' : pendingExamsCount}
@@ -529,6 +544,35 @@ export default function UserAvatar() {
                               </div>
                               <span className="text-amber-600 font-medium">
                                 {exam.answeredQuestions}/{exam.totalQuestions}
+                              </span>
+                            </div>
+                          </Link>
+                        )
+                      })}
+                      {pendingPsychometric.map((session) => {
+                        const progress = session.totalQuestions > 0
+                          ? Math.round((session.questionsAnswered / session.totalQuestions) * 100)
+                          : 0
+
+                        return (
+                          <Link
+                            key={session.id}
+                            href={`/psicotecnicos/test/ejecutar?resume=${session.id}`}
+                            onClick={handleLinkClick}
+                            className="block px-3 py-2 text-xs bg-violet-50 hover:bg-violet-100 rounded-lg border border-violet-200 transition-colors"
+                          >
+                            <div className="font-medium text-violet-800 truncate">
+                              🧠 {session.categoryName || 'Test psicotécnico'}
+                            </div>
+                            <div className="flex items-center gap-2 mt-1">
+                              <div className="flex-1 bg-violet-200 rounded-full h-1.5">
+                                <div
+                                  className="bg-violet-500 h-1.5 rounded-full"
+                                  style={{ width: `${progress}%` }}
+                                />
+                              </div>
+                              <span className="text-violet-600 font-medium">
+                                {session.questionsAnswered}/{session.totalQuestions}
                               </span>
                             </div>
                           </Link>
