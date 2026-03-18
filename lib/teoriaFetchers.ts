@@ -359,7 +359,7 @@ export async function fetchArticleContent(lawSlug: string, articleNumber: string
         // Buscar artículos disponibles para dar contexto
         const { data: availableArticles } = await supabase
           .from('articles')
-          .select('article_number')
+          .select('article_number, laws!inner(short_name)')
           .eq('is_active', true)
           .eq('laws.short_name', lawShortName)
           .order('article_number')

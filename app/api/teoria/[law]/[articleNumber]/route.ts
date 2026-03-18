@@ -1,36 +1,36 @@
-// app/api/teoria/[law]/[articleNumber]/route.js
+// app/api/teoria/[law]/[articleNumber]/route.ts
+import { NextRequest } from 'next/server'
 import { fetchArticleContent, fetchArticleOfficialExamData } from '@/lib/teoriaFetchers'
-import { mapLawSlugToShortName } from '@/lib/lawMappingUtils'
-import { createClient } from '@supabase/supabase-js'
-
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
-async function _GET(request, { params }) {
+
+async function _GET(request: NextRequest, { params }: { params: Promise<{ law: string; articleNumber: string }> }) {
   try {
     const resolvedParams = await params
     const lawSlug = resolvedParams.law
     const articleParam = resolvedParams.articleNumber
-    
-    // Extraer número de artículo
-    let articleNumber = null
+
+    // Extraer identificador de artículo (puede ser numérico o texto: "14", "General", "DA2", etc.)
+    let articleId: string | null = null
     if (articleParam) {
       if (articleParam.startsWith('articulo-')) {
-        articleNumber = articleParam.replace('articulo-', '')
+        articleId = articleParam.replace('articulo-', '')
       } else {
-        articleNumber = articleParam
+        articleId = articleParam
       }
     }
 
-    if (!articleNumber) {
+    if (!articleId) {
       return Response.json(
-        { error: 'Número de artículo no válido' },
+        { error: 'Identificador de artículo no válido' },
         { status: 400 }
       )
     }
 
-    const article = await fetchArticleContent(lawSlug, parseInt(articleNumber))
+    // Pasar como string — article_number es text en BD, soporta "14", "General", "DA2", etc.
+    const article = await fetchArticleContent(lawSlug, articleId)
 
     // Si es ley virtual y contenido vacío, devolver 200 con flag isVirtual
-    if (article.isVirtual && (!article.content || article.content.trim().length === 0)) {
+    if ((article as any).isVirtual && (!article.content || article.content.trim().length === 0)) {
       return Response.json({
         isVirtual: true,
         law: article.law,
@@ -47,17 +47,20 @@ async function _GET(request, { params }) {
     // Si se solicita información de exámenes oficiales, incluirla
     if (includeOfficialExams && article.id) {
       const officialExamData = await fetchArticleOfficialExamData(article.id, userOposicion)
-      article.officialExamData = officialExamData
+      ;(article as any).officialExamData = officialExamData
     }
 
     return Response.json(article)
-    
+
   } catch (error) {
     console.error('Error en API de artículo:', error)
-    
+
+    const message = error instanceof Error ? error.message : 'Error interno del servidor'
+    const isNotFound = message.includes('ARTICULO_NO_ENCONTRADO') || message.includes('LEY_NO_RECONOCIDA')
+
     return Response.json(
-      { error: error.message || 'Error interno del servidor' },
-      { status: 500 }
+      { error: message },
+      { status: isNotFound ? 404 : 500 }
     )
   }
 }
