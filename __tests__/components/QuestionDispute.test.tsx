@@ -161,7 +161,7 @@ describe('QuestionDispute', () => {
 
       await waitFor(() => {
         expect(global.fetch).toHaveBeenCalledWith(
-          expect.stringContaining(`/api/dispute?questionId=${VALID_QUESTION_ID}`),
+          expect.stringContaining(`/api/v2/dispute?questionId=${VALID_QUESTION_ID}`),
           expect.objectContaining({
             headers: expect.objectContaining({
               'Authorization': 'Bearer mock-token-123',

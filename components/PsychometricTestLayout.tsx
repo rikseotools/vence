@@ -14,7 +14,7 @@ import SequenceNumericQuestion from './SequenceNumericQuestion'
 import SequenceLetterQuestion from './SequenceLetterQuestion'
 import SequenceAlphanumericQuestion from './SequenceAlphanumericQuestion'
 import PsychometricRegistrationManager from './PsychometricRegistrationManager'
-import PsychometricQuestionDispute from './v2/PsychometricQuestionDispute'
+import QuestionDispute from './QuestionDispute'
 import PsychometricQuestionEvolution from './PsychometricQuestionEvolution'
 import MarkdownExplanation from './MarkdownExplanation'
 import PsychometricAIHelpButton from './PsychometricAIHelpButton'
@@ -839,10 +839,10 @@ export default function PsychometricTestLayout({
         {showResult && (
           <div className="mt-6 space-y-4">
             {/* Botón de impugnación */}
-            <PsychometricQuestionDispute
+            <QuestionDispute
               questionId={questions[currentQuestion]?.id || ''}
               user={user}
-              supabase={supabase}
+              isPsychometric
             />
 
             <button

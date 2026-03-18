@@ -17,9 +17,10 @@ interface QuestionDisputeProps {
   user: { id: string; email?: string; user_metadata?: { full_name?: string } } | null
   isOpen?: boolean | null   // null/undefined = inline, boolean = modal
   onClose?: (() => void) | null
+  isPsychometric?: boolean
 }
 
-type DisputeTypeValue = 'no_literal' | 'respuesta_incorrecta' | 'otro' | ''
+type DisputeTypeValue = 'no_literal' | 'ai_detected_error' | 'respuesta_incorrecta' | 'otro' | ''
 
 // ============================================
 // HELPERS
@@ -69,7 +70,10 @@ export default function QuestionDispute({
   user,
   isOpen: externalIsOpen = null,
   onClose = null,
+  isPsychometric = false,
 }: QuestionDisputeProps) {
+  const questionType = isPsychometric ? 'psychometric' : 'legislative'
+  const apiBase = '/api/v2/dispute'
   const { supabase } = useAuth() as AuthContextValue
 
   const [internalIsOpen, setInternalIsOpen] = useState(false)
@@ -115,7 +119,7 @@ export default function QuestionDispute({
         return
       }
 
-      const res = await fetch(`/api/dispute?questionId=${questionId}`, {
+      const res = await fetch(`${apiBase}?questionId=${questionId}&questionType=${questionType}`, {
         headers: { 'Authorization': `Bearer ${token}` },
       })
 
@@ -175,7 +179,7 @@ export default function QuestionDispute({
     try {
       const desc = buildDescription(disputeType, description)
 
-      const res = await fetch('/api/dispute', {
+      const res = await fetch(apiBase, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -183,6 +187,7 @@ export default function QuestionDispute({
         },
         body: JSON.stringify({
           questionId,
+          questionType,
           disputeType,
           description: desc,
         }),
@@ -294,13 +299,15 @@ export default function QuestionDispute({
           <input
             type="radio"
             name="disputeType"
-            value="no_literal"
-            checked={disputeType === 'no_literal'}
+            value={isPsychometric ? 'ai_detected_error' : 'no_literal'}
+            checked={isPsychometric ? disputeType === 'ai_detected_error' : disputeType === 'no_literal'}
             onChange={(e) => setDisputeType(e.target.value as DisputeTypeValue)}
             className="text-orange-600 focus:ring-orange-500"
           />
           <span className={`text-sm ${textColor}`}>
-            Pregunta no literal (no se ajusta exactamente al artículo)
+            {isPsychometric
+              ? 'Error detectado en la pregunta o respuesta'
+              : 'Pregunta no literal (no se ajusta exactamente al artículo)'}
           </span>
         </label>
 
@@ -565,7 +572,7 @@ export default function QuestionDispute({
               )}
 
               {/* Descripción opcional para casos preconfigurados */}
-              {(disputeType === 'no_literal' || disputeType === 'respuesta_incorrecta') && (
+              {(disputeType === 'no_literal' || disputeType === 'ai_detected_error' || disputeType === 'respuesta_incorrecta') && (
                 <div>
                   <label className="block text-sm font-medium text-orange-800 dark:text-orange-300 mb-2">
                     Información adicional (opcional):
@@ -578,6 +585,8 @@ export default function QuestionDispute({
                     placeholder={
                       disputeType === 'no_literal'
                         ? 'Opcionalmente, explica por qué la pregunta no es literal...'
+                        : disputeType === 'ai_detected_error'
+                        ? 'Opcionalmente, explica qué error has detectado...'
                         : 'Opcionalmente, explica cuál debería ser la respuesta correcta...'
                     }
                   />

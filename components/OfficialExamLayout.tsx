@@ -18,7 +18,6 @@ interface AuthContextValue {
 }
 import ArticleModal from './ArticleModal'
 import QuestionDispute from './QuestionDispute'
-import PsychometricQuestionDispute from './v2/PsychometricQuestionDispute'
 
 // Componentes psicotecnicos para renderizar content_data
 import PieChartQuestion from './PieChartQuestion'
@@ -1424,18 +1423,11 @@ export default function OfficialExamLayout({
                 {/* Botones de accion (solo despues de corregir) */}
                 {showFeedback && (
                   <div className="flex flex-wrap gap-2 items-center mt-4">
-                    {isPsychometric ? (
-                      <PsychometricQuestionDispute
-                        questionId={question.id}
-                        user={user}
-                        supabase={supabase}
-                      />
-                    ) : (
-                      <QuestionDispute
-                        questionId={question.id}
-                        user={user}
-                      />
-                    )}
+                    <QuestionDispute
+                      questionId={question.id}
+                      user={user}
+                      isPsychometric={isPsychometric}
+                    />
                   </div>
                 )}
               </div>

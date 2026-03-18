@@ -6,7 +6,6 @@
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import QuestionDispute from './QuestionDispute'
-import PsychometricQuestionDispute from './v2/PsychometricQuestionDispute'
 import MarkdownExplanation from './MarkdownExplanation'
 import { useAuth } from '@/contexts/AuthContext'
 import type {
@@ -441,11 +440,7 @@ export default function ExamReviewLayout({
 
                     {/* Impugnar pregunta */}
                     <div className="flex flex-wrap gap-2 items-center mt-4">
-                      {question.isPsychometric ? (
-                        <PsychometricQuestionDispute questionId={question.id} user={user} supabase={null} />
-                      ) : (
-                        <QuestionDispute questionId={question.id} user={user} />
-                      )}
+                      <QuestionDispute questionId={question.id} user={user} isPsychometric={question.isPsychometric} />
                     </div>
 
                     {/* Artículo */}
