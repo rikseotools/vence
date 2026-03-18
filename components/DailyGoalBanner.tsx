@@ -56,8 +56,7 @@ export default function DailyGoalBanner() {
     } catch { /* ignore */ }
   }
 
-  const handleSaveGoal = async () => {
-    const goal = parseInt(newGoal)
+  const saveGoalValue = async (goal: number) => {
     if (isNaN(goal) || goal < 1) return
 
     setSaving(true)
@@ -70,11 +69,15 @@ export default function DailyGoalBanner() {
       window.dispatchEvent(new CustomEvent('profileUpdated'))
       setEditing(false)
       setShowDropdown(false)
+      setDismissed(true)
     } catch (err) {
       console.warn('Error guardando meta:', err)
     } finally {
       setSaving(false)
     }
+  }
+
+  const handleSaveGoal = () => saveGoalValue(parseInt(newGoal))
   }
 
   return (
@@ -92,11 +95,11 @@ export default function DailyGoalBanner() {
         title="Meta diaria"
       >
         {goalReached ? (
-          <>&#127942; {questionsToday}/{studyGoal}</>
+          <>&#9989; {questionsToday}/{studyGoal}</>
         ) : needsSetup ? (
-          <>&#127919; Meta</>
+          <>&#128202; &#191;Cual es tu meta diaria?</>
         ) : (
-          <>&#127919; {questionsToday}/{studyGoal}</>
+          <>&#128202; {questionsToday}/{studyGoal}</>
         )}
       </button>
 
@@ -111,12 +114,12 @@ export default function DailyGoalBanner() {
               <div className="text-xs text-gray-500 dark:text-gray-400 mb-3">
                 Elige cuantas preguntas quieres responder cada dia para mantener tu ritmo de estudio.
               </div>
-              <div className="flex gap-2 mb-2">
-                {[25, 50, 100, 200].map(n => (
+              <div className="grid grid-cols-4 gap-2 mb-2">
+                {[25, 50, 75, 100, 150, 200, 300, 500].map(n => (
                   <button
                     key={n}
-                    onClick={() => { setNewGoal(String(n)); setEditing(true) }}
-                    className="flex-1 text-sm py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors font-medium"
+                    onClick={() => saveGoalValue(n)}
+                    className="text-sm py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors font-medium"
                   >
                     {n}
                   </button>
