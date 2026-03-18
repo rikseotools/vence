@@ -23,6 +23,7 @@ interface RecentTestData {
   difficultyBreakdown?: DifficultyItem[]
   engagementScore?: number
   focusScore?: number
+  isPsychometric?: boolean
 }
 
 interface RecentTestsProps {
@@ -76,18 +77,17 @@ export default function RecentTests({ recentTests, onInfoClick }: RecentTestsPro
             key={test.id}
             onClick={() => {
               setLoadingId(test.id)
-              router.push(`/revisar/${test.id}`)
+              const typeParam = test.isPsychometric ? '?type=psychometric' : ''
+              router.push(`/revisar/${test.id}${typeParam}`)
             }}
-            className={`p-4 rounded-lg border ${getScoreBg(test.percentage)} hover:shadow-md transition-shadow cursor-pointer ${loadingId === test.id ? 'opacity-70' : ''}`}
+            className={`p-4 rounded-lg border ${getScoreBg(test.percentage)} hover:shadow-md cursor-pointer transition-shadow ${loadingId === test.id ? 'opacity-70' : ''}`}
           >
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
                   <div className="text-3xl">
                     {loadingId === test.id ? (
                       <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent" />
-                    ) : test.percentage >= 85 ? '\u{1F3C6}' :
-                     test.percentage >= 70 ? '\u{1F3AF}' :
-                     test.percentage >= 50 ? '\u{1F4DA}' : '\u{1F4AA}'}
+                    ) : test.isPsychometric ? '\u{1F9E9}' : '\u{2696}\u{FE0F}'}
                   </div>
                   <div>
                     <div className="font-bold text-gray-800">{test.title}</div>

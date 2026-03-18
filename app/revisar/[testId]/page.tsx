@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useEffect, useState, Suspense } from 'react'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import ExamReviewLayout from '@/components/ExamReviewLayout'
 import type {
   ReviewQuestion,
@@ -22,10 +22,12 @@ interface ReviewData {
   error?: string
 }
 
-export default function TestReviewPage() {
+function TestReviewContent() {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const testId = params.testId as string
+  const testType = searchParams.get('type')
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -37,7 +39,13 @@ export default function TestReviewPage() {
     const fetchReviewData = async () => {
       try {
         setLoading(true)
-        const response = await fetch(`/api/tests/${testId}/review`)
+
+        // Determinar qué API usar según el tipo
+        const url = testType === 'psychometric'
+          ? `/api/psychometric/review?sessionId=${testId}`
+          : `/api/tests/${testId}/review`
+
+        const response = await fetch(url)
         const data: ReviewData = await response.json()
 
         if (!data.success) {
@@ -55,7 +63,7 @@ export default function TestReviewPage() {
     }
 
     fetchReviewData()
-  }, [testId])
+  }, [testId, testType])
 
   if (loading) {
     return (
@@ -108,5 +116,17 @@ export default function TestReviewPage() {
       isCaseExam={!!reviewData.examCase}
       examCase={reviewData.examCase}
     />
+  )
+}
+
+export default function TestReviewPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
+      </div>
+    }>
+      <TestReviewContent />
+    </Suspense>
   )
 }

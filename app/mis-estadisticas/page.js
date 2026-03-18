@@ -343,15 +343,17 @@ function EstadisticasContent() {
         throw testsError
       }
 
-      // 1C. SESIONES PSICOTÉCNICAS COMPLETADAS
-      const { data: psychometricSessions } = await supabase
-        .from('psychometric_test_sessions')
-        .select('id, category_id, total_questions, correct_answers, accuracy_percentage, completed_at, is_completed, psychometric_categories(display_name)')
-        .eq('user_id', userId)
-        .eq('is_completed', true)
-        .not('completed_at', 'is', null)
-        .order('completed_at', { ascending: false })
-        .limit(10)
+      // 1C. SESIONES PSICOTÉCNICAS COMPLETADAS (via API server-side, bypasses RLS)
+      let psychometricSessions = []
+      try {
+        const psychoRes = await fetch(`${window.location.origin}/api/psychometric/completed-sessions?userId=${userId}&limit=10`)
+        const psychoData = await psychoRes.json()
+        if (psychoData.success) {
+          psychometricSessions = psychoData.sessions || []
+        }
+      } catch (psychoErr) {
+        console.warn('⚠️ Error cargando sesiones psicotécnicas:', psychoErr)
+      }
 
       console.log('🔍 Todos los tests:', allTests?.length, '| Tests completados:', tests?.length, '| Psicotécnicos completados:', psychometricSessions?.length || 0)
 
@@ -727,19 +729,19 @@ function EstadisticasContent() {
     // Añadir sesiones psicotécnicas completadas a tests recientes
     const psychoRecentTests = (psychometricSessions || []).map(ps => ({
       id: ps.id,
-      title: `Psicotecnico: ${ps.psychometric_categories?.display_name || 'Test'}`,
-      score: ps.correct_answers || 0,
-      total: ps.total_questions || 0,
-      percentage: Math.round(Number(ps.accuracy_percentage || 0)),
-      date: ps.completed_at ? new Date(ps.completed_at).toLocaleDateString('es-ES', {
+      title: ps.categoryName || 'Test Psicotecnico',
+      score: ps.correctAnswers || 0,
+      total: ps.totalQuestions || 0,
+      percentage: Math.round(Number(ps.accuracyPercentage || 0)),
+      date: ps.completedAt ? new Date(ps.completedAt).toLocaleDateString('es-ES', {
         day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Europe/Madrid'
       }) : 'Fecha no disponible',
-      time: '0m',
-      avgTimePerQuestion: 0,
+      time: formatTime(ps.totalTimeSeconds || 0),
+      avgTimePerQuestion: Math.round((ps.totalTimeSeconds || 0) / (ps.totalQuestions || 1)),
       difficultyBreakdown: [],
       engagementScore: 0,
       focusScore: 0,
-      _completedAt: ps.completed_at,
+      _completedAt: ps.completedAt,
     }))
 
     // Mezclar legislativos y psicotécnicos, ordenar por fecha
@@ -1257,6 +1259,18 @@ function EstadisticasContent() {
           throw new Error(apiData.error || 'Error cargando estadísticas')
         }
 
+        // 🔄 Cargar sesiones psicotécnicas completadas (via API server-side)
+        let completedPsychometricSessions = []
+        try {
+          const psychoRes = await fetch(`/api/psychometric/completed-sessions?userId=${user.id}&limit=10`)
+          const psychoData = await psychoRes.json()
+          if (psychoData.success) {
+            completedPsychometricSessions = psychoData.sessions || []
+          }
+        } catch (psychoErr) {
+          console.warn('⚠️ Error cargando sesiones psicotécnicas:', psychoErr)
+        }
+
         // 🔄 Cargar sesiones de usuario para analytics reales
         const { data: userSessions } = await supabase
           .from('user_sessions')
@@ -1288,9 +1302,8 @@ function EstadisticasContent() {
           // Tests recientes - mapear al formato esperado por RecentTests.js
           recentTests: (() => {
             const oposicionSlug = apiStats.userOposicion?.slug || 'auxiliar-administrativo-estado'
-            return apiStats.recentTests.map(t => {
+            const legislativeTests = apiStats.recentTests.map(t => {
               const bloquePrefix = t.temaNumber ? formatThemeName(t.temaNumber, oposicionSlug) : null
-              // Solo mostrar el bloque formateado, "Test Tema X" se convierte en "Test Aleatorio"
               const fullTitle = t.temaNumber
                 ? bloquePrefix
                 : (t.title && !t.title.includes('Test Tema') ? t.title : 'Test Aleatorio')
@@ -1324,6 +1337,33 @@ function EstadisticasContent() {
                   : `${Math.floor(t.timeSeconds / 60)}m`
               }
             })
+
+            // Mezclar con sesiones psicotécnicas completadas
+            const psychoTests = completedPsychometricSessions.map(ps => ({
+              id: ps.id,
+              title: ps.categoryName || 'Test Psicotecnico',
+              isPsychometric: true,
+              score: ps.correctAnswers || 0,
+              total: ps.totalQuestions || 0,
+              totalQuestions: ps.totalQuestions || 0,
+              accuracy: ps.accuracyPercentage || 0,
+              percentage: ps.accuracyPercentage || 0,
+              date: ps.completedAt ? new Date(ps.completedAt).toLocaleDateString('es-ES', {
+                day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Europe/Madrid'
+              }) + ' ' + new Date(ps.completedAt).toLocaleTimeString('es-ES', {
+                hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Madrid'
+              }) : '',
+              time: formatTime(ps.totalTimeSeconds || 0),
+              avgTimePerQuestion: ps.totalQuestions > 0 ? Math.round((ps.totalTimeSeconds || 0) / ps.totalQuestions) : 0,
+              completed_at: ps.completedAt,
+              formattedDate: ps.completedAt ? new Date(ps.completedAt).toLocaleDateString('es-ES') : '',
+              duration: ps.totalTimeSeconds || 0,
+              formattedDuration: formatTime(ps.totalTimeSeconds || 0),
+            }))
+
+            return [...legislativeTests, ...psychoTests]
+              .sort((a, b) => new Date(b.completed_at).getTime() - new Date(a.completed_at).getTime())
+              .slice(0, 15)
           })(),
 
           // Rendimiento por tema - filtrado por oposición del usuario
