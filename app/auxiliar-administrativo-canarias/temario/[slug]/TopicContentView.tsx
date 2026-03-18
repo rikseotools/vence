@@ -408,6 +408,7 @@ function ArticleCard({ article, lawShortName }: { article: Article; lawShortName
         {article.content ? formatContent(article.content) : <p className="text-gray-400 dark:text-gray-500 italic">Contenido no disponible</p>}
       </div>
 
+      {article.questionCount > 0 && (
       <div className="no-print px-4 pb-4 flex justify-end">
         <Link
           href={`/leyes/${getCanonicalSlug(lawShortName)}?selected_articles=${article.articleNumber}&source=temario`}
@@ -417,6 +418,7 @@ function ArticleCard({ article, lawShortName }: { article: Article; lawShortName
           Hacer test Art. {article.articleNumber}
         </Link>
       </div>
+      )}
     </article>
   )
 }

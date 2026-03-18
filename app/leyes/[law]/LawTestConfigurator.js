@@ -29,18 +29,46 @@ export default function LawTestConfigurator({ lawShortName, lawDisplayName }) {
     loadData()
   }, [lawShortName])
 
-  // Si hay artículos preseleccionados en la URL, iniciar el test automáticamente
+  // Si hay artículos preseleccionados en la URL, verificar disponibilidad y auto-iniciar test
   useEffect(() => {
-    if (selectedArticlesParam && !loading && lawStats) {
-      console.log('🎯 Auto-starting test with selected articles:', selectedArticlesParam)
-      const canonicalSlug = getCanonicalSlug(lawShortName)
-      const params = new URLSearchParams({
-        n: '50', // Pedir muchas, el sistema devolverá las disponibles
-        selected_articles: selectedArticlesParam,
-        ...(sourceParam && { source: sourceParam })
-      })
-      window.location.href = `/leyes/${canonicalSlug}/avanzado?${params.toString()}`
+    if (!selectedArticlesParam || loading || !lawStats) return
+
+    async function validateAndRedirect() {
+      const articleNumbers = selectedArticlesParam.split(',').map(a => a.trim()).filter(Boolean)
+      if (articleNumbers.length === 0) return
+
+      try {
+        // Verificar que hay preguntas disponibles para estos artículos antes de redirigir
+        const countParams = new URLSearchParams({
+          action: 'count',
+          topicNumber: '0',
+          positionType: 'auxiliar_administrativo',
+          selectedLaws: JSON.stringify([lawShortName]),
+          selectedArticlesByLaw: JSON.stringify({ [lawShortName]: articleNumbers.map(Number) }),
+        })
+        const countRes = await fetch(`/api/questions/filtered?${countParams}`)
+        const countData = await countRes.json()
+
+        if (!countData.success || !countData.count || countData.count === 0) {
+          console.warn('⚠️ No hay preguntas para artículos seleccionados:', articleNumbers)
+          return // No redirigir, dejar que el usuario use el configurador
+        }
+
+        console.log(`🎯 Auto-starting test: ${countData.count} preguntas disponibles para arts ${articleNumbers.join(',')}`)
+        const canonicalSlug = getCanonicalSlug(lawShortName)
+        const params = new URLSearchParams({
+          n: '50',
+          selected_articles: selectedArticlesParam,
+          ...(sourceParam && { source: sourceParam })
+        })
+        window.location.href = `/leyes/${canonicalSlug}/avanzado?${params.toString()}`
+      } catch (error) {
+        console.error('Error validando artículos:', error)
+        // En caso de error de red, no redirigir — dejar configurador
+      }
     }
+
+    validateAndRedirect()
   }, [selectedArticlesParam, sourceParam, loading, lawStats, lawShortName])
 
   if (loading) {

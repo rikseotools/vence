@@ -16,6 +16,8 @@ export const ArticleSchema = z.object({
   section: z.string().nullable(),
   // Conteo de preguntas de exámenes oficiales vinculadas a este artículo
   officialQuestionCount: z.number().default(0),
+  // Conteo total de preguntas activas vinculadas a este artículo
+  questionCount: z.number().default(0),
 })
 
 export const LawSchema = z.object({

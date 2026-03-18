@@ -160,36 +160,36 @@ async function getTopicContentBaseInternal(
     filteredArticles.push(...result)
   }
 
-  // 5. Obtener conteos de preguntas oficiales en UNA sola query
-  // IMPORTANTE: Filtra por exam_position para mostrar solo preguntas de la oposición del usuario
+  // 5. Obtener conteos de preguntas en UNA sola query (total + oficiales)
   const allArticleIds = filteredArticles.map(a => a.id)
   let officialCounts: Record<string, number> = {}
+  let totalQuestionCounts: Record<string, number> = {}
 
   if (allArticleIds.length > 0) {
-    // Obtener valores válidos de exam_position para esta oposición
     const validExamPositions = getValidExamPositions(oposicion.positionType)
+
+    const officialFilter = validExamPositions && validExamPositions.length > 0
+      ? sql`CASE WHEN ${questions.isOfficialExam} = true AND ${questions.examPosition} IN (${sql.join(validExamPositions.map(p => sql`${p}`), sql`, `)}) THEN 1 END`
+      : sql`CASE WHEN false THEN 1 END`
 
     const countsResult = await db
       .select({
         articleId: questions.primaryArticleId,
-        count: count(),
+        totalCount: count(),
+        officialCount: sql<number>`count(${officialFilter})`,
       })
       .from(questions)
       .where(
         and(
           inArray(questions.primaryArticleId, allArticleIds),
-          eq(questions.isOfficialExam, true),
           eq(questions.isActive, true),
-          // 🔥 FIX: Solo contar preguntas oficiales de la oposición del usuario
-          validExamPositions && validExamPositions.length > 0
-            ? inArray(questions.examPosition, validExamPositions)
-            : sql`false` // Si no hay mapeo, no contar ninguna
         )
       )
       .groupBy(questions.primaryArticleId)
 
     for (const row of countsResult) {
-      officialCounts[row.articleId!] = Number(row.count)
+      totalQuestionCounts[row.articleId!] = Number(row.totalCount)
+      officialCounts[row.articleId!] = Number(row.officialCount)
     }
   }
 
@@ -242,6 +242,7 @@ async function getTopicContentBaseInternal(
         chapterNumber: a.chapterNumber,
         section: a.section,
         officialQuestionCount: officialCounts[a.id] || 0,
+        questionCount: totalQuestionCounts[a.id] || 0,
       })),
       articleCount: sortedArticles.length,
     })
