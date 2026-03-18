@@ -288,6 +288,13 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     icon: '🏝️'
   },
   {
+    id: 'auxiliar_administrativo_ayuntamiento_valencia',
+    nombre: 'Auxiliar Administrativo Ayuntamiento de Valencia',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
+  {
     id: 'auxiliar_comunidad_autonoma',
     nombre: 'Auxiliar Administrativo Comunidad Autónoma',
     categoria: 'C2',

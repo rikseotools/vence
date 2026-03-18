@@ -114,7 +114,7 @@ describe('OposicionDetector', () => {
 
     test('administraciones son estado, justicia o autonomica', () => {
       for (const data of Object.values(OPOSICION_DETECTION)) {
-        expect(['estado', 'justicia', 'autonomica']).toContain(data.administracion)
+        expect(['estado', 'justicia', 'autonomica', 'local']).toContain(data.administracion)
       }
     })
 

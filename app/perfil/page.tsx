@@ -474,6 +474,16 @@ function PerfilPageContent() {
         categoria: 'C2',
         administracion: 'Autonómica'
       }
+    },
+    {
+      value: 'auxiliar_administrativo_ayuntamiento_valencia',
+      label: 'Auxiliar Administrativo Ayuntamiento de Valencia (C2)',
+      data: {
+        name: 'Auxiliar Administrativo del Ayuntamiento de Valencia',
+        slug: 'auxiliar-administrativo-ayuntamiento-valencia',
+        categoria: 'C2',
+        administracion: 'Local'
+      }
     }
   ]
 
