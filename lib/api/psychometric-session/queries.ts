@@ -14,6 +14,8 @@ import type {
   ResumePsychometricSessionResponse,
   DiscardPsychometricSessionResponse,
   PsychometricSessionError,
+  CreatePsychometricSessionRequest,
+  CompletePsychometricSessionRequest,
 } from './schemas'
 
 /**
@@ -221,6 +223,89 @@ export async function discardPsychometricSession(
     }
   } catch (error) {
     console.error('Error descartando sesión psicotécnica:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error desconocido',
+    }
+  }
+}
+
+/**
+ * Crea una nueva sesión psicotécnica (server-side, bypasses RLS).
+ */
+export async function createPsychometricSession(
+  params: CreatePsychometricSessionRequest
+): Promise<{ success: true; sessionId: string } | PsychometricSessionError> {
+  try {
+    const db = getDb()
+    const [result] = await db
+      .insert(psychometricTestSessions)
+      .values({
+        userId: params.userId,
+        categoryId: params.categoryId || null,
+        sessionType: 'psychometric',
+        totalQuestions: params.totalQuestions,
+        questionsData: { question_ids: params.questionIds },
+        startedAt: new Date().toISOString(),
+      })
+      .returning({ id: psychometricTestSessions.id })
+
+    if (!result?.id) {
+      return { success: false, error: 'No se pudo crear la sesión' }
+    }
+
+    console.log(`✅ [PsychoSession] Created: ${result.id}`)
+    return { success: true, sessionId: result.id }
+  } catch (error) {
+    console.error('Error creando sesión psicotécnica:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error desconocido',
+    }
+  }
+}
+
+/**
+ * Marca una sesión psicotécnica como completada (server-side, bypasses RLS).
+ */
+export async function completePsychometricSession(
+  params: CompletePsychometricSessionRequest
+): Promise<{ success: true; message: string } | PsychometricSessionError> {
+  try {
+    const db = getDb()
+
+    // Verificar propiedad
+    const [session] = await db
+      .select({ id: psychometricTestSessions.id, userId: psychometricTestSessions.userId })
+      .from(psychometricTestSessions)
+      .where(eq(psychometricTestSessions.id, params.sessionId))
+      .limit(1)
+
+    if (!session) {
+      return { success: false, error: 'Sesión no encontrada' }
+    }
+
+    if (session.userId !== params.userId) {
+      return { success: false, error: 'No autorizado' }
+    }
+
+    const accuracy = Math.round((params.correctAnswers / params.totalQuestions) * 100)
+
+    await db
+      .update(psychometricTestSessions)
+      .set({
+        isCompleted: true,
+        correctAnswers: params.correctAnswers,
+        questionsAnswered: params.totalQuestions,
+        accuracyPercentage: String(accuracy),
+        completedAt: new Date().toISOString(),
+      })
+      .where(eq(psychometricTestSessions.id, params.sessionId))
+
+    console.log(`✅ [PsychoSession] Completed: ${params.sessionId} (${accuracy}%)`)
+    return { success: true, message: 'Sesión completada' }
+  } catch (error) {
+    console.error('Error completando sesión psicotécnica:', error)
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Error desconocido',

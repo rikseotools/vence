@@ -75,6 +75,32 @@ export const discardPsychometricSessionResponseSchema = z.object({
 export type DiscardPsychometricSessionResponse = z.infer<typeof discardPsychometricSessionResponseSchema>
 
 // ============================================
+// CREATE SESSION
+// ============================================
+
+export const createPsychometricSessionRequestSchema = z.object({
+  userId: z.string().uuid('ID de usuario inválido'),
+  categoryId: z.string().uuid().nullable().optional(),
+  totalQuestions: z.number().int().min(1),
+  questionIds: z.array(z.string()),
+})
+
+export type CreatePsychometricSessionRequest = z.infer<typeof createPsychometricSessionRequestSchema>
+
+// ============================================
+// COMPLETE SESSION
+// ============================================
+
+export const completePsychometricSessionRequestSchema = z.object({
+  sessionId: z.string().uuid('ID de sesión inválido'),
+  userId: z.string().uuid('ID de usuario inválido'),
+  correctAnswers: z.number().int().min(0),
+  totalQuestions: z.number().int().min(1),
+})
+
+export type CompletePsychometricSessionRequest = z.infer<typeof completePsychometricSessionRequestSchema>
+
+// ============================================
 // ERROR
 // ============================================
 

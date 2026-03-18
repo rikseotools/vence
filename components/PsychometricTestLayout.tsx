@@ -198,26 +198,27 @@ export default function PsychometricTestLayout({
         return
       }
 
-      const sessionData = {
-        user_id: user.id,
-        category_id: questions[0].category_id,
-        session_type: 'psychometric',
-        total_questions: questions.length,
-        questions_data: { question_ids: questions.map(q => q.id) },
-        started_at: new Date().toISOString()
-      }
+      try {
+        const response = await fetch('/api/psychometric/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: user.id,
+            categoryId: questions[0].category_id || null,
+            totalQuestions: questions.length,
+            questionIds: questions.map(q => q.id),
+          }),
+        })
 
-      const { data, error } = await supabase
-        .from('psychometric_test_sessions')
-        .insert(sessionData)
-        .select()
-        .single()
-
-      if (data) {
-        setTestSession(data as TestSession)
-        console.log('✅ Psychometric test session created:', (data as TestSession).id)
-      } else if (error) {
-        console.error('❌ Error creating psychometric test session:', error)
+        const result = await response.json()
+        if (result.success) {
+          setTestSession({ id: result.sessionId } as TestSession)
+          console.log('✅ Psychometric test session created:', result.sessionId)
+        } else {
+          console.error('❌ Error creating psychometric test session:', result.error)
+        }
+      } catch (err) {
+        console.error('❌ Error creating psychometric test session:', err)
       }
     }
 
@@ -444,22 +445,28 @@ export default function PsychometricTestLayout({
     })
 
     if (testSession && user) {
-      // Usuario logueado - guardar sesión completada
-      const { error } = await supabase
-        .from('psychometric_test_sessions')
-        .update({
-          is_completed: true,
-          correct_answers: score,
-          accuracy_percentage: Math.round((score / totalQuestions) * 100),
-          completed_at: new Date().toISOString()
+      // Usuario logueado - completar sesión via API (bypasses RLS)
+      try {
+        const response = await fetch('/api/psychometric/complete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId: testSession.id,
+            userId: user.id,
+            correctAnswers: score,
+            totalQuestions,
+          }),
         })
-        .eq('id', testSession.id)
-      
-      if (error) {
-        console.error('❌ Error completing test session:', error)
+
+        const result = await response.json()
+        if (result.success) {
+          console.log('✅ Test session completed and saved')
+        } else {
+          console.error('❌ Error completing test session:', result.error)
+        }
+      } catch (err) {
+        console.error('❌ Error completing test session:', err)
       }
-      
-      console.log('✅ Test session completed and saved')
     } else {
       console.log('📊 Guest user completed test, showing results')
     }

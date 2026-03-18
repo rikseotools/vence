@@ -343,8 +343,17 @@ function EstadisticasContent() {
         throw testsError
       }
 
-      console.log('🔍 Todos los tests:', allTests?.length, '| Tests completados:', tests?.length)
-      console.log('🔍 Primeros 3 tests completados:', tests?.slice(0, 3))
+      // 1C. SESIONES PSICOTÉCNICAS COMPLETADAS
+      const { data: psychometricSessions } = await supabase
+        .from('psychometric_test_sessions')
+        .select('id, category_id, total_questions, correct_answers, accuracy_percentage, completed_at, is_completed, psychometric_categories(display_name)')
+        .eq('user_id', userId)
+        .eq('is_completed', true)
+        .not('completed_at', 'is', null)
+        .order('completed_at', { ascending: false })
+        .limit(10)
+
+      console.log('🔍 Todos los tests:', allTests?.length, '| Tests completados:', tests?.length, '| Psicotécnicos completados:', psychometricSessions?.length || 0)
 
       // 2. ✅ RESPUESTAS DETALLADAS - Usar RPC para evitar timeouts
       // Primero obtener estadísticas completas via RPC (más eficiente)
@@ -714,6 +723,40 @@ function EstadisticasContent() {
         focusScore: 0 // Sin datos reales disponibles
       }
     }) || []
+
+    // Añadir sesiones psicotécnicas completadas a tests recientes
+    const psychoRecentTests = (psychometricSessions || []).map(ps => ({
+      id: ps.id,
+      title: `Psicotecnico: ${ps.psychometric_categories?.display_name || 'Test'}`,
+      score: ps.correct_answers || 0,
+      total: ps.total_questions || 0,
+      percentage: Math.round(Number(ps.accuracy_percentage || 0)),
+      date: ps.completed_at ? new Date(ps.completed_at).toLocaleDateString('es-ES', {
+        day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Europe/Madrid'
+      }) : 'Fecha no disponible',
+      time: '0m',
+      avgTimePerQuestion: 0,
+      difficultyBreakdown: [],
+      engagementScore: 0,
+      focusScore: 0,
+      _completedAt: ps.completed_at,
+    }))
+
+    // Mezclar legislativos y psicotécnicos, ordenar por fecha
+    const allRecentTests = [...recentTests.map(t => ({
+      ...t,
+      _completedAt: tests?.find(tt => tt.id === t.id)?.completed_at || null,
+    })), ...psychoRecentTests]
+      .sort((a, b) => {
+        const dateA = a._completedAt ? new Date(a._completedAt).getTime() : 0
+        const dateB = b._completedAt ? new Date(b._completedAt).getTime() : 0
+        return dateB - dateA
+      })
+      .slice(0, 15)
+      .map(({ _completedAt, ...rest }) => rest) // quitar campo temporal
+
+    // Reemplazar recentTests con la lista combinada
+    const mergedRecentTests = allRecentTests
 
     // LOGROS REALES - basados en datos verdaderos
     const achievements = [
@@ -1129,7 +1172,7 @@ function EstadisticasContent() {
       difficultyBreakdown,
       themePerformance,
       articlePerformance,
-      recentTests,
+      recentTests: mergedRecentTests,
       achievements,
       weeklyProgress,
       sessionAnalytics,
