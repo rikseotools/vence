@@ -168,6 +168,8 @@ const SLUG_TO_SHORT_NAME: SlugToShortNameMapping = {
   'iv-plan-gobierno-abierto': 'IV Plan de Gobierno Abierto',
   'iii-plan-gobierno-abierto': 'III Plan Gobierno Abierto',
   'i-plan-gobierno-abierto': 'I Plan Gobierno Abierto',
+  'res-04-01-2010-sehp': 'Res. 04/01/2010 SEHP',
+  'res-04-01-2010-sehp-nominas': 'Res. 04/01/2010 SEHP',
   'plan-transparencia-judicial': 'Plan Transparencia Judicial',
   'v-plan-gobierno-abierto': 'V Plan Gobierno Abierto 2025-2029',
   'v-plan-gobierno-abierto-2025-2029': 'V Plan Gobierno Abierto 2025-2029',
@@ -227,7 +229,11 @@ const SLUG_TO_SHORT_NAME: SlugToShortNameMapping = {
 
   // Protocolos y reglamentos europeos
   'protocolo-1': 'Protocolo nº 1',
+  'protocolo-n-1': 'Protocolo nº 1',
   'protocolo-2': 'Protocolo nº 2',
+  'protocolo-n-2': 'Protocolo nº 2',
+  'protocolo-4-bce': 'Protocolo nº 4 BCE',
+  'protocolo-n-4-bce': 'Protocolo nº 4 BCE',
   'estatuto-tjue': 'Estatuto TJUE',
   'protocolo-sedes-ue': 'Protocolo Sedes UE',
 
@@ -237,7 +243,9 @@ const SLUG_TO_SHORT_NAME: SlugToShortNameMapping = {
   'ri-comisi-n': 'RI Comisión',  // Encoding roto (backward compat)
   'rp-tjue': 'RP TJUE',
   'reglamento-ce-1049-2001': 'Reglamento (CE) nº 1049/2001',
+  'reglamento-ce-n-1049-2001': 'Reglamento (CE) nº 1049/2001',
   'reglamento-ue-2018-1046': 'Reglamento (UE, Euratom) 2018/1046',
+  'reglamento-ue-euratom-2018-1046': 'Reglamento (UE, Euratom) 2018/1046',
 
   // Reglamentos parlamentarios
   'rcd': 'Reglamento del Congreso',
@@ -612,10 +620,12 @@ const SHORT_NAME_TO_SLUG: ShortNameToSlugMapping = {
   'Orden PRE/1576/2002': 'orden-pre-1576-2002',
   'Orden HAP/1949/2014': 'orden-hap-1949-2014',
   'Ley 4/2023': 'ley-4-2023',
-  'Protocolo nº 1': 'protocolo-1',
-  'Protocolo nº 2': 'protocolo-2',
-  'Reglamento (CE) nº 1049/2001': 'reglamento-ce-1049-2001',
-  'Reglamento (UE, Euratom) 2018/1046': 'reglamento-ue-2018-1046',
+  'Protocolo nº 1': 'protocolo-n-1',
+  'Protocolo nº 2': 'protocolo-n-2',
+  'Protocolo nº 4 BCE': 'protocolo-n-4-bce',
+  'Reglamento (CE) nº 1049/2001': 'reglamento-ce-n-1049-2001',
+  'Reglamento (UE, Euratom) 2018/1046': 'reglamento-ue-euratom-2018-1046',
+  'Res. 04/01/2010 SEHP': 'res-04-01-2010-sehp',
   'LPAC': 'ley-39-2015',
   'LRJSP': 'ley-40-2015',
   'Ley 39/2015': 'ley-39-2015',
