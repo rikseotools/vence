@@ -35,6 +35,7 @@ import { testTracker } from '../utils/testTracking'
 import { useTestCompletion } from '../hooks/useTestCompletion'
 import { useDailyQuestionLimit } from '../hooks/useDailyQuestionLimit'
 import { useDailyGoal } from '../hooks/useDailyGoal'
+import DailyGoalBanner from './DailyGoalBanner'
 import { useBotDetection, useBehaviorAnalysis } from '../hooks/useBotDetection'
 import { useInteractionTracker } from '../hooks/useInteractionTracker'
 import DailyLimitBanner from './DailyLimitBanner'
@@ -248,6 +249,7 @@ export default function TestLayout({
   const {
     questionsToday: goalQuestionsToday,
     studyGoal,
+    goalReached,
     justReachedGoal,
     recordAnswerForGoal,
     dismissGoalCelebration,
@@ -2439,6 +2441,15 @@ export default function TestLayout({
 
       {/* Banner de limite diario (solo usuarios FREE) */}
       {hasLimit && <DailyLimitBanner />}
+
+      {/* Banner de meta diaria (solo usuarios premium) */}
+      {isPremium && (
+        <DailyGoalBanner
+          questionsToday={goalQuestionsToday}
+          studyGoal={studyGoal}
+          goalReached={goalReached}
+        />
+      )}
 
       {/* Modal de upgrade cuando se alcanza el limite */}
       <UpgradeLimitModal
