@@ -1244,10 +1244,16 @@ function PerfilPageContent() {
         }
       }
 
+      // Validar meta diaria
+      const studyGoalNum = parseInt(formData.study_goal)
+      if (isNaN(studyGoalNum) || studyGoalNum < 1) {
+        throw new Error('La meta diaria debe ser al menos 1 pregunta')
+      }
+
       // Datos en formato camelCase para la API
       const apiData = {
         nickname: formData.nickname.trim(),
-        studyGoal: parseInt(formData.study_goal),
+        studyGoal: studyGoalNum,
         targetOposicion: formData.target_oposicion,
         targetOposicionData: oposicionData,
         // Campos del onboarding
@@ -2339,8 +2345,8 @@ function PerfilPageContent() {
                             name="study_goal"
                             value={formData.study_goal}
                             onChange={handleInputChange}
-                            min="5"
-                            max="100"
+                            min="1"
+                            max="9999"
                             className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                           />
                           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">

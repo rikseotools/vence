@@ -34,6 +34,7 @@ import {
 import { testTracker } from '../utils/testTracking'
 import { useTestCompletion } from '../hooks/useTestCompletion'
 import { useDailyQuestionLimit } from '../hooks/useDailyQuestionLimit'
+import { useDailyGoal } from '../hooks/useDailyGoal'
 import { useBotDetection, useBehaviorAnalysis } from '../hooks/useBotDetection'
 import { useInteractionTracker } from '../hooks/useInteractionTracker'
 import DailyLimitBanner from './DailyLimitBanner'
@@ -242,6 +243,22 @@ export default function TestLayout({
     setShowUpgradeModal,
     recordAnswer
   } = useDailyQuestionLimit()
+
+  // 📊 Meta diaria de estudio
+  const {
+    questionsToday: goalQuestionsToday,
+    studyGoal,
+    justReachedGoal,
+    recordAnswerForGoal,
+    dismissGoalCelebration,
+  } = useDailyGoal()
+
+  // Auto-dismiss celebración de meta diaria
+  useEffect(() => {
+    if (!justReachedGoal) return
+    const timer = setTimeout(dismissGoalCelebration, 5000)
+    return () => clearTimeout(timer)
+  }, [justReachedGoal, dismissGoalCelebration])
 
   // 🤖 Detección de bots y análisis de comportamiento (solo usuarios autenticados)
   const { isBot, botScore } = useBotDetection(user?.id ?? null)
@@ -1176,6 +1193,9 @@ export default function TestLayout({
               if (hasLimit) {
                 await recordAnswer()
               }
+
+              // Registrar para meta diaria (todos los usuarios)
+              recordAnswerForGoal()
             } else {
               // 🔴 NUEVO: Manejo mejorado de errores
               console.error('❌ Error guardando respuesta:', {
@@ -2430,6 +2450,22 @@ export default function TestLayout({
         userId={user?.id}
         userName={user?.user_metadata?.full_name || user?.user_metadata?.name}
       />
+
+      {/* Toast de meta diaria alcanzada */}
+      {justReachedGoal && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-bounce">
+          <div
+            className="bg-green-600 text-white px-6 py-3 rounded-xl shadow-lg flex items-center gap-3 cursor-pointer"
+            onClick={dismissGoalCelebration}
+          >
+            <span className="text-2xl">&#127942;</span>
+            <div>
+              <div className="font-bold">Meta diaria cumplida</div>
+              <div className="text-sm text-green-100">{goalQuestionsToday} de {studyGoal} preguntas hoy</div>
+            </div>
+          </div>
+        </div>
+      )}
     </PersistentRegistrationManager>
   )
 }
