@@ -17,6 +17,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useUserOposicion } from '../components/useUserOposicion'
 import { getOposicion } from '@/lib/config/oposiciones'
 import { useAdminNotifications } from '@/hooks/useAdminNotifications'
+import DailyGoalBanner from '@/components/DailyGoalBanner'
 import { useInteractionTracker } from '@/hooks/useInteractionTracker'
 import { useSentryIssues } from '@/hooks/useSentryIssues'
 
@@ -761,6 +762,9 @@ export default function HeaderES() {
                 </Link>
               )}
 
+
+              {/* Meta diaria (solo premium) */}
+              {user && <DailyGoalBanner />}
 
               {/* Campana de notificaciones (solo usuarios logueados) */}
               {user && <NotificationBell />}

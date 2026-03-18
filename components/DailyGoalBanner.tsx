@@ -1,47 +1,58 @@
 // components/DailyGoalBanner.tsx
-// Banner para usuarios premium sugiriendo configurar meta diaria + progreso
+// Indicador de meta diaria en el Header para usuarios premium
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { useDailyGoal } from '../hooks/useDailyGoal'
 
-interface DailyGoalBannerProps {
-  questionsToday: number
-  studyGoal: number
-  goalReached: boolean
-}
-
-export default function DailyGoalBanner({ questionsToday, studyGoal, goalReached }: DailyGoalBannerProps) {
-  const { user, isPremium, userProfile, supabase } = useAuth() as any
-  const [dismissed, setDismissed] = useState(true) // Start hidden to avoid flash
+export default function DailyGoalBanner() {
+  const { user, isPremium, userProfile } = useAuth() as any
+  const { questionsToday, studyGoal, goalReached, recordAnswerForGoal } = useDailyGoal()
+  const [dismissed, setDismissed] = useState(true)
+  const [showDropdown, setShowDropdown] = useState(false)
   const [editing, setEditing] = useState(false)
   const [newGoal, setNewGoal] = useState('')
   const [saving, setSaving] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
 
   const isDefaultGoal = !userProfile?.study_goal || userProfile.study_goal === 25
-  const showSetupPrompt = isDefaultGoal && !goalReached
+  const needsSetup = isDefaultGoal
 
+  // Check dismiss state
   useEffect(() => {
     if (!user) return
-    // Check if dismissed today
     try {
-      const key = `daily_goal_banner_${user.id}_${new Date().toISOString().slice(0, 10)}`
-      const wasDismissed = localStorage.getItem(key) === '1'
-      setDismissed(wasDismissed)
+      const dismissedForever = localStorage.getItem(`daily_goal_dismissed_${user.id}`) === '1'
+      if (dismissedForever) { setDismissed(true); return }
+      setDismissed(false)
     } catch {
       setDismissed(false)
     }
   }, [user])
 
+  // Close dropdown on outside click
+  useEffect(() => {
+    if (!showDropdown) return
+    function handleClick(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setShowDropdown(false)
+        setEditing(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [showDropdown])
+
   if (!user || !isPremium || dismissed) return null
 
   const progress = studyGoal > 0 ? Math.min((questionsToday / studyGoal) * 100, 100) : 0
 
-  const handleDismiss = () => {
+  const handleDismissForever = () => {
     setDismissed(true)
+    setShowDropdown(false)
     try {
-      const key = `daily_goal_banner_${user.id}_${new Date().toISOString().slice(0, 10)}`
-      localStorage.setItem(key, '1')
+      localStorage.setItem(`daily_goal_dismissed_${user.id}`, '1')
     } catch { /* ignore */ }
   }
 
@@ -54,14 +65,11 @@ export default function DailyGoalBanner({ questionsToday, studyGoal, goalReached
       await fetch('/api/profile', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: user.id,
-          data: { studyGoal: goal }
-        })
+        body: JSON.stringify({ userId: user.id, data: { studyGoal: goal } })
       })
-      // Notify profile update
       window.dispatchEvent(new CustomEvent('profileUpdated'))
       setEditing(false)
+      setShowDropdown(false)
     } catch (err) {
       console.warn('Error guardando meta:', err)
     } finally {
@@ -70,95 +78,132 @@ export default function DailyGoalBanner({ questionsToday, studyGoal, goalReached
   }
 
   return (
-    <div className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-80 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-blue-200 dark:border-blue-700 p-3 z-40">
-      {/* Close button */}
+    <div className="relative" ref={dropdownRef}>
+      {/* Header button — small pill */}
       <button
-        onClick={handleDismiss}
-        className="absolute top-1.5 right-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-lg leading-none"
-        aria-label="Cerrar"
+        onClick={() => setShowDropdown(!showDropdown)}
+        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+          goalReached
+            ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400'
+            : needsSetup
+              ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400'
+              : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
+        }`}
+        title="Meta diaria"
       >
-        &times;
+        {goalReached ? (
+          <>&#127942; {questionsToday}/{studyGoal}</>
+        ) : needsSetup ? (
+          <>&#127919; Meta</>
+        ) : (
+          <>&#127919; {questionsToday}/{studyGoal}</>
+        )}
       </button>
 
-      {showSetupPrompt && !editing ? (
-        /* Prompt to set a custom goal */
-        <div>
-          <div className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-1.5 pr-4">
-            Configura tu meta diaria
-          </div>
-          <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-            {questionsToday > 0
-              ? `Llevas ${questionsToday} preguntas hoy.`
-              : 'Establece cuantas preguntas quieres hacer al dia.'
-            }
-          </div>
-          <button
-            onClick={() => { setEditing(true); setNewGoal(String(studyGoal)) }}
-            className="w-full text-sm bg-blue-600 text-white py-1.5 rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Establecer meta
-          </button>
-        </div>
-      ) : editing ? (
-        /* Inline editor */
-        <div>
-          <div className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-2">
-            Meta diaria (preguntas)
-          </div>
-          <div className="flex gap-2">
-            <input
-              type="number"
-              min="1"
-              max="9999"
-              value={newGoal}
-              onChange={(e) => setNewGoal(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSaveGoal()}
-              className="flex-1 px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500"
-              autoFocus
-            />
-            <button
-              onClick={handleSaveGoal}
-              disabled={saving}
-              className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
-            >
-              {saving ? '...' : 'OK'}
-            </button>
-          </div>
-          <div className="flex gap-2 mt-1.5">
-            {[25, 50, 100].map(n => (
+      {/* Dropdown */}
+      {showDropdown && (
+        <div className="absolute right-0 top-full mt-2 w-72 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-4 z-50">
+          {needsSetup && !editing ? (
+            <>
+              <div className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">
+                Configura tu meta diaria
+              </div>
+              <div className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                Elige cuantas preguntas quieres responder cada dia para mantener tu ritmo de estudio.
+              </div>
+              <div className="flex gap-2 mb-2">
+                {[25, 50, 100, 200].map(n => (
+                  <button
+                    key={n}
+                    onClick={() => { setNewGoal(String(n)); setEditing(true) }}
+                    className="flex-1 text-sm py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors font-medium"
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
               <button
-                key={n}
-                onClick={() => setNewGoal(String(n))}
-                className="text-xs px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                onClick={() => { setNewGoal(''); setEditing(true) }}
+                className="w-full text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 py-1"
               >
-                {n}
+                Otro numero...
               </button>
-            ))}
-          </div>
-        </div>
-      ) : (
-        /* Progress display (custom goal already set) */
-        <div>
-          <div className="flex justify-between items-center mb-1.5 pr-4">
-            <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
-              Meta diaria
-            </span>
-            <span className="text-sm text-gray-600 dark:text-gray-400">
-              {questionsToday}/{studyGoal}
-            </span>
-          </div>
-          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-            <div
-              className={`h-2 rounded-full transition-all duration-500 ${
-                goalReached ? 'bg-green-500' : 'bg-blue-500'
-              }`}
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-          {goalReached && (
-            <div className="text-xs text-green-600 dark:text-green-400 mt-1">
-              Meta cumplida
-            </div>
+              <hr className="my-2 border-gray-200 dark:border-gray-700" />
+              <button
+                onClick={handleDismissForever}
+                className="w-full text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 py-1"
+              >
+                En otro momento
+              </button>
+            </>
+          ) : editing ? (
+            <>
+              <div className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-2">
+                Meta diaria (preguntas)
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  min="1"
+                  max="9999"
+                  value={newGoal}
+                  onChange={(e) => setNewGoal(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSaveGoal()}
+                  placeholder="Ej: 50"
+                  className="flex-1 px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500"
+                  autoFocus
+                />
+                <button
+                  onClick={handleSaveGoal}
+                  disabled={saving || !newGoal}
+                  className="px-4 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                >
+                  {saving ? '...' : 'Guardar'}
+                </button>
+              </div>
+              <button
+                onClick={() => setEditing(false)}
+                className="w-full text-xs text-gray-400 mt-2 hover:text-gray-600"
+              >
+                Cancelar
+              </button>
+            </>
+          ) : (
+            /* Progress view (goal is set) */
+            <>
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                  Meta diaria
+                </span>
+                <span className="text-sm font-bold text-gray-700 dark:text-gray-300">
+                  {questionsToday} / {studyGoal}
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 mb-2">
+                <div
+                  className={`h-2.5 rounded-full transition-all duration-500 ${
+                    goalReached ? 'bg-green-500' : 'bg-blue-500'
+                  }`}
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+              {goalReached ? (
+                <div className="text-xs text-green-600 dark:text-green-400 font-medium">
+                  Meta cumplida hoy
+                </div>
+              ) : (
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  Faltan {studyGoal - questionsToday} preguntas
+                </div>
+              )}
+              <hr className="my-2 border-gray-200 dark:border-gray-700" />
+              <button
+                onClick={() => { setNewGoal(String(studyGoal)); setEditing(true) }}
+                className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+              >
+                Cambiar meta
+              </button>
+            </>
           )}
         </div>
       )}
