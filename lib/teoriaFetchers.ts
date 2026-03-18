@@ -11,7 +11,7 @@ function isValidArticleNumber(articleNum: string): boolean {
   const trimmed = articleNum.trim()
   if (!trimmed) return false
   // Artículos numéricos con posible sufijo: "1", "48 bis", "103 bis", "70 ter", "84 quater"
-  if (/^\d+(\s*(bis|ter|qu[aá]ter|quinquies|sexies|septies|octies|novies|decies))?(\s+\d+)?$/i.test(trimmed)) return true
+  if (/^\d+(\s*(bis|ter|qu[aá]ter|quinquies|sexies|septies|octies|nonies|novies|decies|undecies|duodecies))?(\s+\d+)?$/i.test(trimmed)) return true
   // Disposiciones: DA1, DT2, DD, DFunica, etc.
   if (isDisposicionArticle(trimmed)) return true
   return false
@@ -206,16 +206,14 @@ export async function fetchLawsList(): Promise<LawWithStats[]> {
       throw error
     }
 
-    // Procesar en JS - filtrar artículos numéricos válidos
+    // Procesar en JS - filtrar artículos válidos (numéricos, bis/ter/quater, disposiciones)
     const lawsWithStats: LawWithStats[] = data
       .map((law: Record<string, unknown>) => {
-        // Filtrar solo artículos numéricos (1, 2, 10, etc.)
         const articles = (law.articles || []) as Array<{ article_number: string }>
         const validArticles = articles.filter((article: { article_number: string }) => {
           const articleNum = article.article_number
           if (!articleNum || articleNum.trim() === '') return false
-          // Solo números puros (excluir T1, C1, etc.)
-          return /^\d+$/.test(articleNum.trim())
+          return isValidArticleNumber(articleNum)
         })
 
         return {
@@ -308,15 +306,11 @@ export async function fetchLawArticles(lawSlug: string): Promise<LawArticlesResu
       }
     }
 
-    // Filtrar solo artículos reales (excluir títulos, capítulos, etc.)
+    // Filtrar solo artículos reales (excluir formatos no estándar como "General", "Compromiso8", etc.)
     const articlesOnly = data.filter((item: Record<string, unknown>) => {
       const articleNum = item.article_number as string
-      // Excluir si es null, vacío
       if (!articleNum || (articleNum as string).trim() === '') return false
-
-      // Solo permitir números puros (1, 2, 3, 10, 100, etc.)
-      const isNumericOnly = /^\d+$/.test((articleNum as string).trim())
-      if (!isNumericOnly) return false
+      if (!isValidArticleNumber(articleNum)) return false
 
       // Excluir títulos y capítulos comunes por título
       const lowerTitle = ((item.title as string) || '').toLowerCase()
@@ -332,11 +326,9 @@ export async function fetchLawArticles(lawSlug: string): Promise<LawArticlesResu
       return true
     })
 
-    // Ordenar artículos numéricamente por article_number
+    // Ordenar artículos: numéricos con bis/ter/quater primero, disposiciones al final
     const sortedData = articlesOnly.sort((a: Record<string, unknown>, b: Record<string, unknown>) => {
-      const numA = parseInt(a.article_number as string) || 0
-      const numB = parseInt(b.article_number as string) || 0
-      return numA - numB
+      return sortArticleNumbers(a.article_number as string, b.article_number as string)
     })
 
     // Procesar artículos
