@@ -2087,8 +2087,8 @@ function EstadisticasContent() {
       <div className="sticky top-0 z-40 bg-gradient-to-br from-purple-50 to-indigo-50 border-b border-purple-200 shadow-sm py-2 md:py-4">
         <div className="container mx-auto px-4">
           {/* Tabs horizontales compactos y sticky */}
-          <div className="bg-white rounded-lg shadow-md p-2">
-            <div className="flex justify-center space-x-2 md:grid md:grid-cols-5 md:gap-3 max-w-5xl mx-auto">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-2">
+            <div className="flex overflow-x-auto space-x-2 md:grid md:grid-cols-5 md:gap-3 max-w-5xl mx-auto scrollbar-hide pb-1 md:pb-0 -mx-1 px-1">
               {[
                 {
                   id: 'overview',
@@ -2127,7 +2127,7 @@ function EstadisticasContent() {
                 <button
                   key={tab.id}
                   onClick={() => handleTabChange(tab.id)}
-                  className={`flex-1 md:flex-auto p-2 md:p-3 rounded-lg transition-all duration-200 relative ${
+                  className={`min-w-[72px] flex-shrink-0 md:min-w-0 md:flex-auto p-2 md:p-3 rounded-lg transition-all duration-200 relative ${
                     activeTab === tab.id
                       ? `${tab.color === 'blue' ? 'bg-gradient-to-br from-blue-500 to-blue-600' :
                           tab.color === 'purple' ? 'bg-gradient-to-br from-purple-500 to-purple-600' :
@@ -2135,7 +2135,7 @@ function EstadisticasContent() {
                           tab.color === 'green' ? 'bg-gradient-to-br from-green-500 to-green-600' :
                           tab.color === 'orange' ? 'bg-gradient-to-br from-orange-500 to-orange-600' :
                           'bg-gradient-to-br from-pink-500 to-pink-600'} text-white shadow-md`
-                      : 'bg-gray-50 hover:bg-gray-100 text-gray-700'
+                      : 'bg-gray-50 hover:bg-gray-100 text-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-300'
                   }`}
                 >
                   {/* Badge de activo solo en móvil */}
@@ -2169,13 +2169,13 @@ function EstadisticasContent() {
                 </button>
               ))}
 
-              {/* Tab Psicotécnicos */}
+              {/* Tab Psicotecnicos */}
               <button
                 onClick={() => handleTabChange('psicotecnicos')}
-                className={`flex-1 md:flex-auto p-2 md:p-3 rounded-lg transition-all duration-200 relative ${
+                className={`min-w-[72px] flex-shrink-0 md:min-w-0 md:flex-auto p-2 md:p-3 rounded-lg transition-all duration-200 relative ${
                   activeTab === 'psicotecnicos'
                     ? 'bg-gradient-to-br from-green-500 to-green-600 text-white shadow-md'
-                    : 'bg-gray-50 hover:bg-green-100 text-gray-700 hover:text-green-700'
+                    : 'bg-gray-50 hover:bg-green-100 text-gray-700 hover:text-green-700 dark:bg-gray-700 dark:hover:bg-green-900/30 dark:text-gray-300'
                 }`}
               >
                 {activeTab === 'psicotecnicos' && (
