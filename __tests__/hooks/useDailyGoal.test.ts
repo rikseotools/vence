@@ -6,7 +6,8 @@
  * sin saber qué campo fallaba.
  *
  * Fix: Límite subido a 9999, validación frontend antes de enviar,
- * y sistema de celebración cuando se alcanza la meta diaria.
+ * meta por defecto = media personal de la última semana,
+ * barra de progreso en Header, y confetti al alcanzar la meta.
  */
 
 // ============================================
@@ -160,5 +161,74 @@ describe('studyGoal limits consistency', () => {
     expect(inputMin).not.toBeNull()
     expect(schemaMin).not.toBeNull()
     expect(inputMin).toBe(schemaMin)
+  })
+})
+
+// ============================================
+// TEST: Cálculo de meta por defecto (media semanal)
+// ============================================
+describe('Default goal calculation (weekly average)', () => {
+  // Replica la lógica de useDailyGoal para calcular la meta por defecto
+  function calculateDefaultGoal(weekCount: number): number {
+    if (weekCount <= 0) return 25 // Fallback sin historial
+    const rawAvg = weekCount / 7
+    return Math.max(5, Math.round(rawAvg / 5) * 5)
+  }
+
+  it('should return 25 as fallback when no history', () => {
+    expect(calculateDefaultGoal(0)).toBe(25)
+  })
+
+  it('should round to nearest multiple of 5', () => {
+    // 70 questions / 7 days = 10/day → 10
+    expect(calculateDefaultGoal(70)).toBe(10)
+    // 140 / 7 = 20 → 20
+    expect(calculateDefaultGoal(140)).toBe(20)
+    // 175 / 7 = 25 → 25
+    expect(calculateDefaultGoal(175)).toBe(25)
+  })
+
+  it('should handle low averages with minimum of 5', () => {
+    // 7 questions / 7 days = 1/day → min 5
+    expect(calculateDefaultGoal(7)).toBe(5)
+    // 3 / 7 = 0.43 → rounds to 0, but min is 5
+    expect(calculateDefaultGoal(3)).toBe(5)
+  })
+
+  it('should handle high averages', () => {
+    // 700 / 7 = 100 → 100
+    expect(calculateDefaultGoal(700)).toBe(100)
+    // 350 / 7 = 50 → 50
+    expect(calculateDefaultGoal(350)).toBe(50)
+    // 500 / 7 ≈ 71.4 → rounds to 70
+    expect(calculateDefaultGoal(500)).toBe(70)
+  })
+
+  it('should produce reasonable goals for typical users', () => {
+    // Casual user: ~15 questions/day
+    expect(calculateDefaultGoal(105)).toBe(15)
+    // Active user: ~50 questions/day
+    expect(calculateDefaultGoal(350)).toBe(50)
+    // Very active: ~200/day
+    expect(calculateDefaultGoal(1400)).toBe(200)
+  })
+})
+
+// ============================================
+// TEST: Solo premium (FREE tiene límite fijo de 25)
+// ============================================
+describe('Daily goal is premium-only', () => {
+  const fs = require('fs')
+
+  it('useDailyGoal should check isPremium', () => {
+    const content = fs.readFileSync('hooks/useDailyGoal.ts', 'utf-8')
+    expect(content).toContain('isPremium')
+  })
+
+  it('DailyGoalBanner should only render for premium', () => {
+    const content = fs.readFileSync('components/DailyGoalBanner.tsx', 'utf-8')
+    expect(content).toContain('!isPremium')
+    // Should return null for non-premium
+    expect(content).toMatch(/if.*!isPremium.*return null/)
   })
 })

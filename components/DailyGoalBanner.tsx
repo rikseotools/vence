@@ -1,5 +1,6 @@
 // components/DailyGoalBanner.tsx
 // Indicador de meta diaria en el Header para usuarios premium
+// Pill con barra de progreso + dropdown para configurar + confetti al completar
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
@@ -8,16 +9,20 @@ import { useDailyGoal } from '../hooks/useDailyGoal'
 
 export default function DailyGoalBanner() {
   const { user, isPremium, userProfile } = useAuth() as any
-  const { questionsToday, studyGoal, goalReached, recordAnswerForGoal } = useDailyGoal()
+  const {
+    questionsToday, studyGoal, goalReached, justReachedGoal,
+    dismissGoalCelebration, loading: goalLoading,
+  } = useDailyGoal()
   const [dismissed, setDismissed] = useState(true)
   const [showDropdown, setShowDropdown] = useState(false)
   const [editing, setEditing] = useState(false)
   const [newGoal, setNewGoal] = useState('')
   const [saving, setSaving] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const confettiFiredRef = useRef(false)
 
-  const isDefaultGoal = !userProfile?.study_goal || userProfile.study_goal === 25
-  const needsSetup = isDefaultGoal
+  const hasCustomGoal = userProfile?.study_goal && userProfile.study_goal !== 25
+  const needsSetup = !hasCustomGoal
 
   // Check dismiss state
   useEffect(() => {
@@ -44,7 +49,28 @@ export default function DailyGoalBanner() {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [showDropdown])
 
-  if (!user || !isPremium || dismissed) return null
+  // Confetti when goal is reached
+  useEffect(() => {
+    if (!justReachedGoal || confettiFiredRef.current) return
+    confettiFiredRef.current = true
+
+    import('canvas-confetti').then(({ default: confetti }) => {
+      // Burst from both sides
+      const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 9999 }
+      confetti({ ...defaults, particleCount: 50, origin: { x: 0.2, y: 0.6 } })
+      confetti({ ...defaults, particleCount: 50, origin: { x: 0.8, y: 0.6 } })
+      // Second wave
+      setTimeout(() => {
+        confetti({ ...defaults, particleCount: 30, origin: { x: 0.5, y: 0.4 } })
+      }, 250)
+    }).catch(() => {})
+
+    // Auto-dismiss celebration after 3s
+    const timer = setTimeout(dismissGoalCelebration, 3000)
+    return () => clearTimeout(timer)
+  }, [justReachedGoal, dismissGoalCelebration])
+
+  if (!user || !isPremium || dismissed || goalLoading) return null
 
   const progress = studyGoal > 0 ? Math.min((questionsToday / studyGoal) * 100, 100) : 0
 
@@ -78,28 +104,34 @@ export default function DailyGoalBanner() {
   }
 
   const handleSaveGoal = () => saveGoalValue(parseInt(newGoal))
-  }
 
   return (
     <div className="relative" ref={dropdownRef}>
-      {/* Header button — small pill */}
+      {/* Pill con barra de progreso integrada */}
       <button
         onClick={() => setShowDropdown(!showDropdown)}
-        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-          goalReached
-            ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400'
-            : needsSetup
-              ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400'
-              : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
-        }`}
+        className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-medium transition-colors bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700"
         title="Meta diaria"
       >
-        {goalReached ? (
-          <>&#9989; {questionsToday}/{studyGoal}</>
-        ) : needsSetup ? (
-          <>&#128202; &#191;Cual es tu meta diaria?</>
+        {needsSetup ? (
+          <span className="text-blue-600 dark:text-blue-400 whitespace-nowrap">
+            {'📊'} {'¿Cual es tu meta diaria?'}
+          </span>
         ) : (
-          <>&#128202; {questionsToday}/{studyGoal}</>
+          <div className="flex items-center gap-1.5">
+            {/* Mini progress bar */}
+            <div className="w-12 h-1.5 bg-gray-300 dark:bg-gray-600 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${
+                  goalReached ? 'bg-green-500' : 'bg-blue-500'
+                }`}
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+            <span className={`tabular-nums ${goalReached ? 'text-green-600 dark:text-green-400' : 'text-gray-600 dark:text-gray-400'}`}>
+              {goalReached ? '✅' : ''} {questionsToday}/{studyGoal}
+            </span>
+          </div>
         )}
       </button>
 
@@ -112,14 +144,15 @@ export default function DailyGoalBanner() {
                 Configura tu meta diaria
               </div>
               <div className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                Elige cuantas preguntas quieres responder cada dia para mantener tu ritmo de estudio.
+                {'¿Cuantas preguntas quieres responder cada dia?'}
               </div>
               <div className="grid grid-cols-4 gap-2 mb-2">
                 {[25, 50, 75, 100, 150, 200, 300, 500].map(n => (
                   <button
                     key={n}
                     onClick={() => saveGoalValue(n)}
-                    className="text-sm py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors font-medium"
+                    disabled={saving}
+                    className="text-sm py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 disabled:opacity-50 transition-colors font-medium"
                   >
                     {n}
                   </button>
@@ -172,7 +205,6 @@ export default function DailyGoalBanner() {
               </button>
             </>
           ) : (
-            /* Progress view (goal is set) */
             <>
               <div className="flex justify-between items-center mb-2">
                 <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
