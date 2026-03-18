@@ -38,38 +38,55 @@ export function useDailyGoal() {
         const today = new Date()
         today.setHours(0, 0, 0, 0)
 
-        // 1. Contar preguntas de hoy
-        const { count: todayCount, error: todayError } = await supabase
-          .from('detailed_answers')
-          .select('id', { count: 'exact', head: true })
-          .eq('user_id', user.id)
-          .gte('created_at', today.toISOString())
+        // 1. Contar preguntas respondidas hoy (legislativas + psicotécnicas)
+        const [legRes, psychoRes] = await Promise.all([
+          supabase
+            .from('test_questions')
+            .select('id, tests!inner(user_id)', { count: 'exact', head: true })
+            .eq('tests.user_id', user.id)
+            .gte('created_at', today.toISOString())
+            .neq('user_answer', ''),
+          supabase
+            .from('psychometric_test_answers')
+            .select('id', { count: 'exact', head: true })
+            .eq('user_id', user.id)
+            .gte('created_at', today.toISOString()),
+        ])
 
-        const questionsToday = (!todayError && todayCount !== null) ? todayCount : 0
+        const questionsToday = (legRes.count || 0) + (psychoRes.count || 0)
 
-        // 2. Determinar meta: si el usuario la configuró, usar esa. Si no, calcular media semanal.
+        // 2. Determinar meta: si el usuario la configuró (distinto de 25), usar esa. Si no, calcular media semanal.
         let studyGoal = userProfile?.study_goal || 0
         const hasCustomGoal = userProfile?.study_goal && userProfile.study_goal !== 25
 
         if (!hasCustomGoal) {
-          // Calcular media personal de los últimos 7 días
           const weekAgo = new Date()
           weekAgo.setDate(weekAgo.getDate() - 7)
           weekAgo.setHours(0, 0, 0, 0)
 
-          const { count: weekCount, error: weekError } = await supabase
-            .from('detailed_answers')
-            .select('id', { count: 'exact', head: true })
-            .eq('user_id', user.id)
-            .gte('created_at', weekAgo.toISOString())
-            .lt('created_at', today.toISOString()) // Excluir hoy para no sesgar
+          const [legWeek, psychoWeek] = await Promise.all([
+            supabase
+              .from('test_questions')
+              .select('id, tests!inner(user_id)', { count: 'exact', head: true })
+              .eq('tests.user_id', user.id)
+              .gte('created_at', weekAgo.toISOString())
+              .lt('created_at', today.toISOString())
+              .neq('user_answer', ''),
+            supabase
+              .from('psychometric_test_answers')
+              .select('id', { count: 'exact', head: true })
+              .eq('user_id', user.id)
+              .gte('created_at', weekAgo.toISOString())
+              .lt('created_at', today.toISOString()),
+          ])
 
-          if (!weekError && weekCount !== null && weekCount > 0) {
-            // Media de los últimos 7 días, redondeada al múltiplo de 5 más cercano
+          const weekCount = (legWeek.count || 0) + (psychoWeek.count || 0)
+
+          if (weekCount > 0) {
             const rawAvg = weekCount / 7
-            studyGoal = Math.max(5, Math.round(rawAvg / 5) * 5)
+            studyGoal = Math.max(25, Math.round(rawAvg / 5) * 5)
           } else {
-            studyGoal = 25 // Fallback si no hay historial
+            studyGoal = 25
           }
         }
 
@@ -92,25 +109,25 @@ export function useDailyGoal() {
     fetchData()
   }, [user, supabase, isPremium, userProfile?.study_goal])
 
-  // Llamar después de cada respuesta guardada
+  // Escuchar evento de respuesta desde otras instancias del hook
+  useEffect(() => {
+    function handleGoalUpdate() {
+      setStatus(prev => {
+        if (prev.loading) return prev
+        const newCount = prev.questionsToday + 1
+        const nowReached = newCount >= prev.studyGoal
+        const justReached = nowReached && !celebratedRef.current
+        if (justReached) celebratedRef.current = true
+        return { ...prev, questionsToday: newCount, goalReached: nowReached, justReachedGoal: justReached }
+      })
+    }
+    window.addEventListener('dailyGoalAnswerRecorded', handleGoalUpdate)
+    return () => window.removeEventListener('dailyGoalAnswerRecorded', handleGoalUpdate)
+  }, [])
+
+  // Llamar después de cada respuesta guardada — actualiza todas las instancias via evento
   const recordAnswerForGoal = useCallback(() => {
-    setStatus(prev => {
-      if (prev.loading) return prev
-      const newCount = prev.questionsToday + 1
-      const nowReached = newCount >= prev.studyGoal
-      const justReached = nowReached && !celebratedRef.current
-
-      if (justReached) {
-        celebratedRef.current = true
-      }
-
-      return {
-        ...prev,
-        questionsToday: newCount,
-        goalReached: nowReached,
-        justReachedGoal: justReached,
-      }
-    })
+    window.dispatchEvent(new Event('dailyGoalAnswerRecorded'))
   }, [])
 
   const dismissGoalCelebration = useCallback(() => {

@@ -14,6 +14,7 @@ import SequenceNumericQuestion from './SequenceNumericQuestion'
 import SequenceLetterQuestion from './SequenceLetterQuestion'
 import SequenceAlphanumericQuestion from './SequenceAlphanumericQuestion'
 import PsychometricRegistrationManager from './PsychometricRegistrationManager'
+import { useDailyGoal } from '../hooks/useDailyGoal'
 import QuestionDispute from './QuestionDispute'
 import PsychometricQuestionEvolution from './PsychometricQuestionEvolution'
 import MarkdownExplanation from './MarkdownExplanation'
@@ -132,6 +133,9 @@ export default function PsychometricTestLayout({
 }: PsychometricTestLayoutProps) {
   const { user, supabase } = useAuth() as { user: { id: string; user_metadata?: Record<string, unknown> } | null; supabase: ReturnType<typeof import('@supabase/supabase-js').createClient> }
   const { setQuestionContext, clearQuestionContext } = useQuestionContext()
+
+  // 📊 Meta diaria (registrar respuestas psicotécnicas)
+  const { recordAnswerForGoal } = useDailyGoal()
 
   // 📊 Tracking de interacciones de usuario
   const { trackPsychometricAction } = useInteractionTracker()
@@ -376,6 +380,7 @@ export default function PsychometricTestLayout({
 
       if (saved) {
         console.log('✅ [SecureAnswer] Validada + guardada via API:', sessionProgress)
+        recordAnswerForGoal()
       } else {
         console.log('✅ [SecureAnswer] Validada via API (guest mode, sin guardar)')
       }

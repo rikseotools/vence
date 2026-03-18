@@ -762,13 +762,12 @@ export default function HeaderES() {
                 </Link>
               )}
 
-
-              {/* Meta diaria (solo premium) */}
+              {/* 📊 Meta diaria (solo premium, después de iconos de navegación) */}
               {user && <DailyGoalBanner />}
 
               {/* Campana de notificaciones (solo usuarios logueados) */}
               {user && <NotificationBell />}
-              
+
               {/* Botón menú hamburguesa con texto "Menú" */}
               <button
                 type="button"
