@@ -193,13 +193,13 @@ function TestExamenContent({ oposicionSlug }: TestExamenPageProps) {
     numQuestions: parseInt(searchParams.get('n') || '25'),
     onlyOfficialQuestions: searchParams.get('only_official') === 'true',
     difficultyMode: searchParams.get('difficulty_mode') || 'random',
-    timeLimit: searchParams.get('time_limit') ? parseInt(searchParams.get('time_limit')!) : null,
+    timeLimit: searchParams.get('time_limit') ? parseInt(searchParams.get('time_limit')!) : undefined,
   }
 
   return (
     <ExamLayout
       tema={temaNumber}
-      testNumber={null}
+      testNumber={undefined}
       config={testConfig}
       questions={questions}
       resumeTestId={resumeTestId}
