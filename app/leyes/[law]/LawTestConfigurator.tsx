@@ -63,7 +63,8 @@ export default function LawTestConfigurator({ lawShortName, lawDisplayName }: La
     law_short_name: lawShortName,
     display_name: lawDisplayName,
     total_articles: lawStats?.totalQuestions || 0,
-    questions_count: lawStats?.totalQuestions || 0
+    questions_count: lawStats?.totalQuestions || 0,
+    articles_with_questions: lawStats?.totalQuestions || 0,
   }]
 
   const difficultyStats = {
