@@ -348,6 +348,27 @@ const OPOSICIONES_EXTRA: OposicionPageData[] = [
       'Tener 16 anos y no exceder edad jubilacion',
     ],
   },
+  {
+    id: 'auxiliar_administrativo_ayuntamiento_valencia',
+    description: 'Oposicion para trabajar en el Ayuntamiento de Valencia como Auxiliar Administrativo. 274 plazas convocadas OEP 2021-2025. 21 temas en 2 bloques: Derecho Constitucional y Administracion Local.',
+    level: 'Grupo C, Subgrupo C2',
+    difficulty: 'Intermedio',
+    duration: '6-12 meses',
+    salary: '18.000 - 22.000',
+    features: [
+      'Temario oficial BOP Valencia (21 temas)',
+      '274 plazas convocadas',
+      'Derecho Constitucional + Administracion Local',
+      'Tests por temas y bloques',
+      'Seguimiento de progreso',
+    ],
+    requirements: [
+      'Titulo de Graduado en ESO o equivalente',
+      'Nacionalidad espanola o UE',
+      'Tener 16 anos y no exceder edad jubilacion',
+    ],
+    boeUrl: 'https://sede.valencia.es/sede/registro/procedimiento/PE.AF.430',
+  },
 ]
 
 // ============================================
