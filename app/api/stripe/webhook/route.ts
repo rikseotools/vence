@@ -48,6 +48,11 @@ interface PurchaseEmailData {
   currency: string
   stripeCustomerId: string
   userId: string
+  targetOposicion?: string | null
+  registrationSource?: string | null
+  registrationUrl?: string | null
+  registrationFunnel?: string | null
+  registrationDate?: string | null
 }
 
 interface PaymentIssueEmailData {
@@ -317,7 +322,12 @@ async function handleCheckoutSessionCompleted(
           amount: (session.amount_total || 0) / 100,
           currency: session.currency?.toUpperCase() || 'EUR',
           stripeCustomerId: session.customer as string,
-          userId
+          userId,
+          targetOposicion: userProfile.target_oposicion,
+          registrationSource: userProfile.registration_source,
+          registrationUrl: userProfile.registration_url,
+          registrationFunnel: userProfile.registration_funnel,
+          registrationDate: userProfile.created_at,
         })
         console.log('📧 Email de nueva compra enviado')
       } catch (emailErr) {
@@ -364,7 +374,7 @@ async function handleCheckoutSessionCompleted(
     if (customer.email) {
       const { data: existingUser } = await supabase
         .from('user_profiles')
-        .select('id')
+        .select('id, full_name, target_oposicion, registration_source, registration_url, registration_funnel, created_at')
         .eq('email', customer.email)
         .single()
 
@@ -452,11 +462,16 @@ async function handleCheckoutSessionCompleted(
         try {
           await sendAdminPurchaseEmail({
             userEmail: customer.email,
-            userName: 'Usuario encontrado por email',
+            userName: existingUser.full_name || 'Usuario encontrado por email',
             amount: (session.amount_total || 0) / 100,
             currency: session.currency?.toUpperCase() || 'EUR',
             stripeCustomerId: session.customer as string,
-            userId: existingUser.id
+            userId: existingUser.id,
+            targetOposicion: existingUser.target_oposicion,
+            registrationSource: existingUser.registration_source,
+            registrationUrl: existingUser.registration_url,
+            registrationFunnel: existingUser.registration_funnel,
+            registrationDate: existingUser.created_at,
           })
         } catch (emailErr) {
           console.error('Error enviando email admin (CASO 2):', emailErr)
@@ -840,7 +855,15 @@ async function sendAdminPurchaseEmail(data: PurchaseEmailData): Promise<void> {
             <h3 style="color: #0c4a6e; margin: 0 0 15px 0;">👤 Datos del Cliente:</h3>
             <p style="margin: 8px 0;"><strong>Email:</strong> ${data.userEmail}</p>
             <p style="margin: 8px 0;"><strong>Nombre:</strong> ${data.userName}</p>
-            <p style="margin: 8px 0;"><strong>Fecha:</strong> ${new Date().toLocaleString('es-ES')}</p>
+            <p style="margin: 8px 0;"><strong>Oposicion:</strong> ${data.targetOposicion || 'Sin seleccionar'}</p>
+            <p style="margin: 8px 0;"><strong>Fecha compra:</strong> ${new Date().toLocaleString('es-ES')}</p>
+          </div>
+          <div style="background: #faf5ff; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+            <h3 style="color: #6b21a8; margin: 0 0 15px 0;">📊 Captacion:</h3>
+            <p style="margin: 8px 0;"><strong>Fuente:</strong> ${data.registrationSource || 'desconocida'}</p>
+            <p style="margin: 8px 0;"><strong>Funnel:</strong> ${data.registrationFunnel || 'directo'}</p>
+            <p style="margin: 8px 0;"><strong>URL registro:</strong> ${data.registrationUrl || 'N/A'}</p>
+            <p style="margin: 8px 0;"><strong>Registrado:</strong> ${data.registrationDate ? new Date(data.registrationDate).toLocaleDateString('es-ES') : 'N/A'}</p>
           </div>
           <div style="text-align: center; margin-top: 20px;">
             <a href="https://www.vence.es/admin/conversiones" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">📊 Ver Panel de Conversiones</a>
