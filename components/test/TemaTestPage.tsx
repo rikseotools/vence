@@ -2,7 +2,7 @@
 // Reemplaza las 17 copias hardcodeadas de app/[oposicion]/test/tema/[numero]/page.tsx
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { getSupabaseClient } from '@/lib/supabase'
@@ -10,6 +10,9 @@ import TestConfigurator from '@/components/TestConfigurator'
 import { buildTestUrl } from '@/lib/test-url/buildTestUrl'
 import type { TestStartConfig } from '@/components/TestConfigurator.types'
 import InteractiveBreadcrumbs from '@/components/InteractiveBreadcrumbs'
+import ArticleModal from '@/components/ArticleModal'
+import ArticulosEstudioPrioritario from '@/components/test/ArticulosEstudioPrioritario'
+import { generateLawSlug } from '@/lib/lawMappingUtils'
 import { getOposicion, getBlockForTopic, type Block } from '@/lib/config/oposiciones'
 
 const supabase = getSupabaseClient()
@@ -58,6 +61,10 @@ export default function TemaTestPage({ oposicionSlug }: TemaTestPageProps) {
   const [userRecentStats, setUserRecentStats] = useState<any>(null)
   const [userAnswers, setUserAnswers] = useState<any[]>([])
   const [testMode, setTestMode] = useState<'practica' | 'examen'>('practica')
+
+  // ArticleModal state
+  const [modalOpen, setModalOpen] = useState(false)
+  const [selectedArticle, setSelectedArticle] = useState<{ number: string | null; lawSlug: string | null }>({ number: null, lawSlug: null })
 
   const basePath = `/${oposicionSlug}`
   const positionType = config?.positionType || 'auxiliar_administrativo'
@@ -259,6 +266,17 @@ export default function TemaTestPage({ oposicionSlug }: TemaTestPageProps) {
     }
   }
 
+  function openArticleModal(articleNumber: string, lawName: string) {
+    const lawSlug = lawName ? generateLawSlug(lawName) : 'ley-desconocida'
+    setSelectedArticle({ number: articleNumber, lawSlug })
+    setModalOpen(true)
+  }
+
+  function closeArticleModal() {
+    setModalOpen(false)
+    setSelectedArticle({ number: null, lawSlug: null })
+  }
+
   const totalQuestions = Object.values(difficultyStats).reduce((sum, count) => sum + count, 0)
 
   // LOADING
@@ -412,6 +430,98 @@ export default function TemaTestPage({ oposicionSlug }: TemaTestPageProps) {
           </div>
         )}
 
+        {/* Progreso del usuario con métricas detalladas */}
+        {!userStatsLoading && currentUser && userStats && userStats.totalAnswers > 0 && (
+          <section className="mb-8">
+            <h2 className="text-xl font-bold text-gray-800 mb-4 text-center">
+              Tu Progreso en el Tema {temaNumber}
+            </h2>
+            <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-gray-800 text-lg">Rendimiento Personal</h3>
+                <div className="text-right">
+                  <div className={`text-2xl font-bold ${c.accent}`}>{userStats.overallAccuracy.toFixed(1)}%</div>
+                  <div className="text-sm text-gray-500">{userStats.totalAnswers} respuestas</div>
+                </div>
+              </div>
+
+              {/* Métricas */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div className="text-center p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="font-bold text-blue-800 mb-2 text-sm">Ultimos 7 dias</div>
+                  <div className="text-xl font-bold text-blue-600 mb-1">
+                    {(() => {
+                      const recent = userAnswers?.filter((a: any) => new Date(a.createdAt) >= new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)) || []
+                      return recent.length > 0 ? (recent.filter((a: any) => a.isCorrect).length / recent.length * 100).toFixed(0) + '%' : 'N/A'
+                    })()}
+                  </div>
+                  <div className="text-xs text-blue-600">
+                    {(userAnswers?.filter((a: any) => new Date(a.createdAt) >= new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)) || []).length} respuestas
+                  </div>
+                </div>
+                <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
+                  <div className="font-bold text-green-800 mb-2 text-sm">Velocidad</div>
+                  <div className="text-xl font-bold text-green-600 mb-1">
+                    {(() => {
+                      const avgTime = userAnswers?.reduce((sum: number, a: any) => sum + (a.timeSpentSeconds || 0), 0) / (userAnswers?.length || 1)
+                      return avgTime > 0 ? Math.round(avgTime) + 's' : 'N/A'
+                    })()}
+                  </div>
+                  <div className="text-xs text-green-600">por pregunta</div>
+                </div>
+                <div className="text-center p-4 bg-purple-50 rounded-lg border border-purple-200">
+                  <div className="font-bold text-purple-800 mb-2 text-sm">Racha</div>
+                  <div className="text-xl font-bold text-purple-600 mb-1">
+                    {(() => {
+                      const dates = [...new Set(userAnswers?.map((a: any) => new Date(a.createdAt).toDateString()) || [])].sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
+                      let streak = 0
+                      let currentDate = new Date()
+                      for (const date of dates) {
+                        const diffDays = Math.floor((currentDate.getTime() - new Date(date).getTime()) / (1000 * 60 * 60 * 24))
+                        if (diffDays === streak) { streak++; currentDate = new Date(date) } else break
+                      }
+                      return streak
+                    })()}
+                  </div>
+                  <div className="text-xs text-purple-600">dias seguidos</div>
+                </div>
+                <div className="text-center p-4 bg-orange-50 rounded-lg border border-orange-200">
+                  <div className="font-bold text-orange-800 mb-2 text-sm">Cobertura</div>
+                  <div className="text-xl font-bold text-orange-600 mb-1">
+                    {new Set(userAnswers?.map((a: any) => a.articleNumber).filter(Boolean) || []).size}
+                  </div>
+                  <div className="text-xs text-orange-600">articulos distintos</div>
+                </div>
+              </div>
+
+              {/* Análisis Inteligente */}
+              <div className="border-t border-gray-200 pt-6">
+                <h4 className="font-bold text-gray-800 mb-4 flex items-center">
+                  <span className="mr-2">{'🎯'}</span>
+                  Analisis Inteligente de Estudio
+                </h4>
+                <ArticulosEstudioPrioritario
+                  userAnswers={userAnswers}
+                  tema={temaNumber || 0}
+                  totalRespuestas={userStats.totalAnswers}
+                  openArticleModal={openArticleModal}
+                />
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* Mensaje cuando no hay estadísticas */}
+        {!userStatsLoading && currentUser && (!userStats || userStats.totalAnswers === 0) && (
+          <section className="mb-8">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
+              <div className="text-4xl mb-3">{'📊'}</div>
+              <h3 className="font-bold text-blue-800 mb-2">Empieza a practicar</h3>
+              <p className="text-blue-700 text-sm">Completa algunos tests para ver tus estadisticas personales.</p>
+            </div>
+          </section>
+        )}
+
         {/* Dificultad */}
         {Object.keys(difficultyStats).length > 0 && (
           <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
@@ -450,6 +560,14 @@ export default function TemaTestPage({ oposicionSlug }: TemaTestPageProps) {
           </Link>
         </div>
       </div>
+
+      {/* ArticleModal */}
+      <ArticleModal
+        isOpen={modalOpen}
+        onClose={closeArticleModal}
+        articleNumber={selectedArticle.number}
+        lawSlug={selectedArticle.lawSlug}
+      />
     </div>
   )
 }
