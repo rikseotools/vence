@@ -844,10 +844,10 @@ export async function fetchQuestionsByTopicScope(tema: number, searchParams: Sea
     const focusEssentialArticles = getParam(searchParams, 'focus_essential') === 'true'
     const adaptiveMode = getParam(searchParams, 'adaptive') === 'true' // 🧠 MODO ADAPTATIVO
     const focusWeakAreas = config?.focusWeakAreas ?? (getParam(searchParams, 'focus_weak') === 'true') // 🎯 ÁREAS DÉBILES (prioriza config)
-    const onlyFailedQuestions = getParam(searchParams, 'only_failed') === 'true' // 🆕 SOLO PREGUNTAS FALLADAS
+    const onlyFailedQuestions = config?.onlyFailedQuestions ?? (getParam(searchParams, 'only_failed') === 'true') // 🆕 SOLO PREGUNTAS FALLADAS
     const failedQuestionIdsStr = getParam(searchParams, 'failed_question_ids')
-    const failedQuestionIds = failedQuestionIdsStr ? JSON.parse(failedQuestionIdsStr) : null // 🆕 IDs ESPECÍFICOS
-    const failedQuestionsOrder = getParam(searchParams, 'failed_questions_order') // 🆕 TIPO DE ORDEN
+    const failedQuestionIds = config?.failedQuestionIds || (failedQuestionIdsStr ? JSON.parse(failedQuestionIdsStr) : null) // 🆕 IDs: priorizar config (sessionStorage) sobre URL
+    const failedQuestionsOrder = config?.failedQuestionsOrder || getParam(searchParams, 'failed_questions_order') // 🆕 TIPO DE ORDEN
     const positionType = config?.positionType || 'auxiliar_administrativo' // 🏢 TIPO DE OPOSICIÓN
     const timeLimitStr = getParam(searchParams, 'time_limit')
     const timeLimit = timeLimitStr ? parseInt(timeLimitStr) : null // ⏱️ LÍMITE DE TIEMPO
