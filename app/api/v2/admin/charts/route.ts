@@ -20,10 +20,19 @@ async function _GET(request: NextRequest) {
 
     const { days } = parseResult.data
 
-    // 2 queries SQL paralelas en vez de 28 secuenciales desde el cliente
+    // 2 queries SQL paralelas con timeout de 15s
+    const timeoutMs = 15000
+    const withTimeout = <T>(promise: Promise<T>, label: string): Promise<T> =>
+      Promise.race([
+        promise,
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error(`${label} timeout after ${timeoutMs}ms`)), timeoutMs)
+        ),
+      ])
+
     const [activity, registrations] = await Promise.all([
-      getActivityChartData(days),
-      getRegistrationsChartData(days),
+      withTimeout(getActivityChartData(days), 'activity'),
+      withTimeout(getRegistrationsChartData(days), 'registrations'),
     ])
 
     return NextResponse.json({ activity, registrations })
@@ -32,7 +41,6 @@ async function _GET(request: NextRequest) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Error loading chart data' },
       { status: 500 },
-    )
   }
 }
 
