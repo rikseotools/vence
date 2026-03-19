@@ -841,13 +841,25 @@ export function useIntelligentNotifications(): UseIntelligentNotificationsReturn
   const filterUnreadNotifications = (notifications: Notification[]) => {
     try {
       const readNotificationsKey = `read_notifications_${user?.id || 'anonymous'}`
-      const readNotifications: Record<string, boolean> = JSON.parse(localStorage.getItem(readNotificationsKey) || '{}')
+      const readNotifications: Record<string, any> = JSON.parse(localStorage.getItem(readNotificationsKey) || '{}')
 
       // Filtrar: solo mostrar las que NO están marcadas como leídas
       return notifications.filter((notification: Notification) => {
-        const isReadInStorage = !!readNotifications[notification.id]
+        const readEntry = readNotifications[notification.id]
         const isReadInDB = notification.isRead // Para impugnaciones
-        return !isReadInStorage && !isReadInDB
+
+        if (isReadInDB) return false
+        if (!readEntry) return true // No leída
+
+        // Para artículos problemáticos: el read expira tras 6h para que puedan reaparecer
+        // (los demás tipos como logros y rachas se mantienen permanentes)
+        if (notification.type === 'problematic_articles' || notification.type === 'level_regression') {
+          const readAt = readEntry.readAt ? new Date(readEntry.readAt).getTime() : 0
+          const hoursElapsed = (Date.now() - readAt) / (1000 * 60 * 60)
+          if (hoursElapsed > 6) return true // Expirado, mostrar de nuevo
+        }
+
+        return false // Leída y no expirada
       })
     } catch (error) {
       console.error('Error filtrando notificaciones leídas:', error)
