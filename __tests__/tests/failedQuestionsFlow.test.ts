@@ -41,7 +41,9 @@ describe('test-personalizado pages - sessionStorage via useEffect', () => {
   const fs = require('fs')
   const glob = require('glob')
 
+  // Exclude dynamic [oposicion] route — it delegates to shared component TestPersonalizadoPage
   const testPersonalizadoPages = glob.sync('app/**/test/tema/*/test-personalizado/page.{js,tsx}')
+    .filter((f: string) => !f.includes('[oposicion]'))
 
   it('should find all test-personalizado pages', () => {
     expect(testPersonalizadoPages.length).toBeGreaterThanOrEqual(17)
