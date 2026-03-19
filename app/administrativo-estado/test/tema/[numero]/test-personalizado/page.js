@@ -8,6 +8,7 @@ function TestPersonalizadoContent({ params }) {
   const searchParams = useSearchParams()
   const [resolvedParams, setResolvedParams] = useState(null)
   const [temaNumber, setTemaNumber] = useState(null)
+  const [failedQuestionIds, setFailedQuestionIds] = useState(null)
 
   // Resolver params async
   useEffect(() => {
@@ -26,6 +27,20 @@ function TestPersonalizadoContent({ params }) {
 
     resolveParams()
   }, [params, searchParams])
+
+  // ✅ LEER failedQuestionIds de sessionStorage (una sola vez, en client)
+  useEffect(() => {
+    try {
+      const stored = sessionStorage.getItem('pendingFailedQuestionIds')
+      if (stored) {
+        sessionStorage.removeItem('pendingFailedQuestionIds')
+        setFailedQuestionIds(JSON.parse(stored))
+        console.log('📋 failedQuestionIds leídos de sessionStorage:', JSON.parse(stored).length, 'preguntas')
+      }
+    } catch (e) {
+      console.warn('Error leyendo failedQuestionIds:', e)
+    }
+  }, [])
 
   // Extraer configuración de la URL
   const selectedLawsParam = searchParams.get('selected_laws')
@@ -53,7 +68,7 @@ function TestPersonalizadoContent({ params }) {
     focusEssentialArticles: searchParams.get('focus_essential') === 'true',
     focusWeakAreas: searchParams.get('focus_weak') === 'true',
     onlyFailedQuestions: searchParams.get('only_failed') === 'true',
-    failedQuestionIds: (() => { const stored = typeof window !== 'undefined' ? sessionStorage.getItem('pendingFailedQuestionIds') : null; if (stored) { sessionStorage.removeItem('pendingFailedQuestionIds'); return JSON.parse(stored); } return null; })(),
+    failedQuestionIds,
     failedQuestionsOrder: searchParams.get('failed_questions_order') || null,
     timeLimit: searchParams.get('time_limit') ? parseInt(searchParams.get('time_limit')) : null,
     selectedLaws,
@@ -62,8 +77,9 @@ function TestPersonalizadoContent({ params }) {
     positionType: 'administrativo' // Importante: indicar el tipo de oposición
   }
 
-  // Loading state
-  if (!temaNumber) {
+  // Loading state (esperar también a failedQuestionIds si only_failed está activo)
+  const isOnlyFailed = searchParams.get('only_failed') === 'true'
+  if (!temaNumber || (isOnlyFailed && failedQuestionIds === null)) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">

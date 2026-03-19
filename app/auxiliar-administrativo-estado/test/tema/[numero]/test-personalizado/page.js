@@ -8,24 +8,39 @@ function TestPersonalizadoContent({ params }) {
   const searchParams = useSearchParams()
   const [resolvedParams, setResolvedParams] = useState(null)
   const [temaNumber, setTemaNumber] = useState(null)
+  const [failedQuestionIds, setFailedQuestionIds] = useState(null)
 
   // ✅ RESOLVER PARAMS ASYNC
   useEffect(() => {
     async function resolveParams() {
       const resolved = await params
       const tema = parseInt(resolved.numero)
-      
+
       setResolvedParams(resolved)
       setTemaNumber(tema)
-      
+
       if (process.env.NODE_ENV === 'development') {
         console.log('🎯 Test personalizado tema dinámico:', tema)
         console.log('📋 Parámetros URL:', Object.fromEntries(searchParams.entries()))
       }
     }
-    
+
     resolveParams()
   }, [params, searchParams])
+
+  // ✅ LEER failedQuestionIds de sessionStorage (una sola vez, en client)
+  useEffect(() => {
+    try {
+      const stored = sessionStorage.getItem('pendingFailedQuestionIds')
+      if (stored) {
+        sessionStorage.removeItem('pendingFailedQuestionIds')
+        setFailedQuestionIds(JSON.parse(stored))
+        console.log('📋 failedQuestionIds leídos de sessionStorage:', JSON.parse(stored).length, 'preguntas')
+      }
+    } catch (e) {
+      console.warn('Error leyendo failedQuestionIds:', e)
+    }
+  }, [])
 
   // ✅ EXTRAER CONFIGURACIÓN DE LA URL
   const selectedLawsParam = searchParams.get('selected_laws')
@@ -62,7 +77,7 @@ function TestPersonalizadoContent({ params }) {
     focusEssentialArticles: searchParams.get('focus_essential') === 'true',
     focusWeakAreas: searchParams.get('focus_weak') === 'true',
     onlyFailedQuestions: searchParams.get('only_failed') === 'true', // 🆕 Solo preguntas falladas
-    failedQuestionIds: (() => { const stored = typeof window !== 'undefined' ? sessionStorage.getItem('pendingFailedQuestionIds') : null; if (stored) { sessionStorage.removeItem('pendingFailedQuestionIds'); return JSON.parse(stored); } return null; })(), // 🆕 IDs ordenados
+    failedQuestionIds, // 🆕 IDs ordenados (leídos de sessionStorage via useEffect)
     failedQuestionsOrder: searchParams.get('failed_questions_order') || null, // 🆕 Tipo de orden
     timeLimit: searchParams.get('time_limit') ? parseInt(searchParams.get('time_limit')) : null,
     // 🆕 FILTROS DE LEYES Y ARTÍCULOS
@@ -72,8 +87,9 @@ function TestPersonalizadoContent({ params }) {
   }
   
 
-  // ✅ LOADING STATE
-  if (!temaNumber) {
+  // ✅ LOADING STATE (esperar también a failedQuestionIds si only_failed está activo)
+  const isOnlyFailed = searchParams.get('only_failed') === 'true'
+  if (!temaNumber || (isOnlyFailed && failedQuestionIds === null)) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
