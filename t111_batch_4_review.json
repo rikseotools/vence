@@ -1,0 +1,162 @@
+[
+  {
+    "id": "c5aca51d-50ac-4ef5-8a3c-63c06125df37",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "El atajo de teclado Ctrl+Mayús+A (Ctrl+Shift+A) en Outlook permite crear una nueva cita en el calendario desde cualquier vista de la aplicación, sin necesidad de cambiar previamente a la vista de calendario.\n\nAnálisis de las opciones:\n- A) Ctrl+Mayús+B: Incorrecto. Este atajo abre la Libreta de direcciones (Address Book).\n- B) Ctrl+Mayús+D: Incorrecto. No es un atajo estándar de Outlook para esta función.\n- C) Ctrl+Mayús+A: CORRECTO. Crea una nueva cita (Appointment) desde cualquier vista de Outlook.\n- D) Ctrl+Mayús+C: Incorrecto. Este atajo crea un nuevo contacto (Contact).\n\nRegla mnemotécnica: la 'A' de Ctrl+Mayús+A corresponde a 'Appointment' (cita en inglés). Fuente: Microsoft Support - Métodos abreviados de teclado en Outlook.",
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "La respuesta correcta (C, Ctrl+Mayús+A) ES correcta según la documentación oficial de Microsoft. La explicación original es correcta pero demasiado escueta y no analiza las demás opciones. Es un false positive en cuanto a la respuesta, pero necesita mejor explicación."
+  },
+  {
+    "id": "6e68dac1-654e-430e-9755-7be8dac63e91",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta correcta (C, Ctrl+Mayús+A) ES correcta. Ctrl+Shift+A crea una nueva cita en Outlook desde cualquier vista, incluida la pestaña de calendarios. La explicación es completa y detallada, con fuente de Microsoft Support."
+  },
+  {
+    "id": "db1750b3-47d0-4fcc-85f8-83bedfaa11c1",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "En Outlook clásico, el atajo Ctrl+Mayús+I (Ctrl+Shift+I) permite cambiar directamente a la Bandeja de entrada (Inbox), sin importar en qué sección de Outlook te encuentres en ese momento.\n\nAnálisis de las opciones:\n- A) Inserta un hipervínculo: Incorrecto. El atajo para insertar un hipervínculo en un mensaje es Ctrl+K.\n- B) Abre la bandeja de entrada: CORRECTO. Ctrl+Mayús+I cambia la vista a la Bandeja de entrada (la 'I' corresponde a 'Inbox').\n- C) Abre la carpeta de borradores: Incorrecto. No existe un atajo directo estándar para abrir borradores.\n- D) Abre el calendario: Incorrecto. El atajo para cambiar al calendario es Ctrl+2.\n\nRegla mnemotécnica: la 'I' de Ctrl+Mayús+I corresponde a 'Inbox' (bandeja de entrada en inglés). Fuente: Microsoft Support - Métodos abreviados de teclado en Outlook.",
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "La respuesta correcta (B, abre la bandeja de entrada) ES correcta según la documentación oficial de Microsoft. La explicación original es correcta pero muy escueta y no analiza las demás opciones."
+  },
+  {
+    "id": "a825413d-4903-4c15-bbc4-58b0d62ea61e",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "Esta pregunta aborda los elementos mínimos obligatorios para enviar un correo electrónico. Técnicamente, los tres elementos imprescindibles son: el Remitente (Sender), el Destinatario y el Mensaje (cuerpo del correo, aunque puede estar vacío como estructura).\n\nAnálisis de las opciones:\n- A) Asunto, Sender y Destinatario: Incorrecto. El Asunto NO es técnicamente obligatorio. Outlook permite enviar correos sin asunto (mostrará una advertencia, pero permite el envío). Los correos sin asunto aparecen como 'Sin asunto' en la bandeja del destinatario.\n- B) Mensaje, Asunto y Destinatario: Incorrecto. El Asunto no es obligatorio, como se explicó anteriormente.\n- C) Firma, Etiqueta y Mensaje: Incorrecto. Ni la firma ni la etiqueta son elementos obligatorios del correo electrónico.\n- D) Destinatario, Sender y Mensaje: CORRECTO. Estos son los tres elementos mínimos. El Destinatario indica a quién se envía, el Sender/Remitente identifica quién envía (se autocompleta con la cuenta del usuario, pero es obligatorio en el protocolo SMTP), y el Mensaje es el contenido (puede estar vacío pero la estructura debe existir).\n\nNota: en la práctica, el remitente se configura automáticamente con la cuenta de correo del usuario, y el cuerpo del mensaje puede estar vacío, por lo que el único campo que el usuario debe rellenar manualmente es el destinatario. Sin embargo, los tres elementos existen como campos obligatorios en la estructura del protocolo SMTP (RFC 5321).",
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta correcta (D) es discutible pero aceptable dentro de las opciones disponibles. La explicación original es aceptable pero puede mejorarse con análisis detallado de cada opción."
+  },
+  {
+    "id": "43f3f783-6077-483d-9969-5b320f2613e7",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "En Outlook clásico, el atajo Ctrl+3 permite acceder a la vista de Contactos/Personas. Los atajos Ctrl+número en Outlook corresponden a la posición de los módulos en la barra de navegación: Ctrl+1 = Correo, Ctrl+2 = Calendario, Ctrl+3 = Contactos/Personas (en la configuración por defecto de Outlook clásico).\n\nAnálisis de las opciones:\n- A) CTRL+5: Incorrecto. En Outlook clásico, Ctrl+5 cambia a la vista de Notas o Tareas pendientes (según la versión).\n- B) CTRL+3: CORRECTO. En Outlook clásico con la configuración por defecto, Ctrl+3 cambia a la vista de Contactos (Personas).\n- C) CTRL+2: Incorrecto. Ctrl+2 cambia a la vista de Calendario.\n- D) CTRL+4: Incorrecto. En Outlook clásico, Ctrl+4 cambia a la vista de Tareas.\n\nNota importante: en el nuevo Outlook (New Outlook), Ctrl+3 se ha reasignado a Copilot y Ctrl+4 ahora accede a Personas/Contactos. Esta pregunta se refiere al Outlook clásico. Los atajos Ctrl+número dependen del orden de los iconos en la barra de navegación, que el usuario puede personalizar. Fuente: Microsoft Support - Métodos abreviados de teclado en Outlook.",
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "La respuesta (B, Ctrl+3) ES correcta para Outlook clásico, donde Ctrl+3 va a Contactos/Personas por defecto. La explicación necesita mejorarse con análisis de opciones y la aclaración sobre versiones."
+  },
+  {
+    "id": "4769855e-1459-45c2-8f39-ad0fc7d35e3e",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "La respuesta correcta (A, Ctrl+O) ES correcta según la documentación oficial de Microsoft para Outlook clásico. Ctrl+O abre un mensaje recibido seleccionado. La explicación ya es completa, menciona la diferencia con el nuevo Outlook, y analiza otros atajos relacionados."
+  },
+  {
+    "id": "544fdc24-ef7d-4fdd-bb09-b60dca1df47d",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta correcta (C, lista de contactos favoritos) ES correcta. La barra de estado de Outlook muestra información como el número de mensajes sin leer y el estado de la conexión, pero NO muestra la lista de contactos favoritos. La explicación es clara y correcta."
+  },
+  {
+    "id": "d69910fd-c356-481b-a921-0d5136b75ade",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "El método abreviado de teclado Ctrl+Mayús+M (Ctrl+Shift+M) en Outlook permite crear un nuevo mensaje de correo electrónico desde cualquier vista de la aplicación, sin necesidad de estar en la vista de Correo.\n\nAnálisis de las opciones:\n- A) Alt+M: Incorrecto. No es un atajo estándar para crear mensajes en Outlook.\n- B) Ctrl+M: Incorrecto. Ctrl+M en Outlook se utiliza para enviar y recibir correo (sincronizar), no para crear un mensaje nuevo.\n- C) Ctrl+Alt+M: Incorrecto. No es un atajo estándar de Outlook para esta función.\n- D) Ctrl+Mayús+M: CORRECTO. Crea un nuevo mensaje de correo electrónico desde cualquier ubicación de Outlook.\n\nRegla mnemotécnica: la 'M' de Ctrl+Mayús+M corresponde a 'Message' o 'Mail' (mensaje/correo en inglés). Nota: si ya estás en la vista de Correo, también puedes usar Ctrl+N para crear un nuevo elemento (que será un mensaje). Fuente: Microsoft Support - Métodos abreviados de teclado en Outlook.",
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "La respuesta correcta (D, Ctrl+Mayús+M) ES correcta según la documentación oficial de Microsoft. La explicación original es correcta pero demasiado escueta y no analiza las demás opciones."
+  },
+  {
+    "id": "87604836-3ff1-49fb-9cf3-e913e2865f74",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "En Microsoft Outlook, el método abreviado de teclado F3 (o también Ctrl+E) permite acceder al campo de búsqueda para buscar un contacto, correo electrónico u otro elemento dentro de la aplicación.\n\nAnálisis de las opciones:\n- A) F6: Incorrecto. F6 en Outlook se utiliza para alternar entre diferentes paneles de la ventana (panel de carpetas, lista de mensajes, panel de lectura, etc.).\n- B) CTRL+L: Incorrecto. En Outlook clásico, Ctrl+L no es el atajo estándar para buscar. En algunos contextos, Ctrl+L se usa para crear una lista de distribución.\n- C) CTRL+4: Incorrecto. Ctrl+4 cambia a la vista de Tareas (en Outlook clásico) o a Personas (en el nuevo Outlook), no realiza búsquedas.\n- D) F3: CORRECTO. Presionar F3 abre la barra de búsqueda en la parte superior de Outlook, permitiendo buscar contactos, mensajes y otros elementos.\n\nNota: Ctrl+E también funciona como alternativa a F3 para abrir la búsqueda. Para búsqueda avanzada, se puede usar Ctrl+Mayús+F. Fuente: Microsoft Support - Métodos abreviados de teclado en Outlook.",
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta correcta (D, F3) ES correcta según la documentación oficial de Microsoft. La explicación original es correcta pero no analiza las demás opciones de forma clara."
+  },
+  {
+    "id": "fd470a04-283f-4d49-a084-340803deb998",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "El atajo de teclado Ctrl+Mayús+C (Ctrl+Shift+C) en Outlook permite crear un nuevo contacto desde cualquier vista de la aplicación.\n\nAnálisis de las opciones:\n- A) Alt+N: Incorrecto. No es un atajo estándar de Outlook para crear contactos.\n- B) Ctrl+N: Incorrecto. Ctrl+N crea un nuevo elemento del tipo correspondiente a la vista actual (un correo si estás en Correo, una cita si estás en Calendario, etc.), pero no siempre crea un contacto.\n- C) Ctrl+Mayús+C: CORRECTO. Este atajo global crea un nuevo contacto (Contact) independientemente de la vista en la que te encuentres.\n- D) Ctrl+Mayús+N: Incorrecto. Ctrl+Mayús+N crea una nueva Nota (Note) en Outlook.\n\nRegla mnemotécnica: la 'C' de Ctrl+Mayús+C corresponde a 'Contact' (contacto en inglés). Fuente: Microsoft Support - Métodos abreviados de teclado en Outlook.",
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "La respuesta correcta (C, Ctrl+Mayús+C) ES correcta según la documentación oficial de Microsoft. La explicación original es correcta pero demasiado escueta y no analiza las demás opciones."
+  },
+  {
+    "id": "89567403-9392-49d0-8bb3-eb955e2a791b",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "En Outlook (versiones 2016 y posteriores, incluyendo Microsoft 365), la tecla Retroceso (Backspace) se utiliza para archivar el elemento seleccionado, moviéndolo a la carpeta de Archivo.\n\nAnálisis de las opciones:\n- A) Archivar el elemento seleccionado: CORRECTO. Desde Outlook 2016/Microsoft 365, la tecla Retroceso (Backspace) archiva el mensaje seleccionado, moviéndolo a la carpeta 'Archivo'. Es un método rápido para organizar mensajes sin eliminarlos.\n- B) Reenviar el elemento seleccionado: Incorrecto. Para reenviar un mensaje se usa Ctrl+F (en Outlook clásico desde la lista de mensajes).\n- C) Eliminar el elemento seleccionado: Incorrecto. Para eliminar un mensaje se usa la tecla Suprimir (Delete/Supr), que lo envía a la carpeta 'Elementos eliminados'.\n- D) Responder al email seleccionado: Incorrecto. Para responder a un email se usa Ctrl+R.\n\nNota importante: la diferencia entre Retroceso (Backspace) y Suprimir (Delete) en Outlook es clave: Retroceso = Archivar (conserva el mensaje en la carpeta Archivo), Suprimir = Eliminar (envía el mensaje a Elementos eliminados). Esta función de archivo con Backspace fue introducida en Outlook 2016 y puede desactivarse mediante el registro de Windows. Fuente: Microsoft Support.",
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "La respuesta correcta (A, archivar) ES correcta. En Outlook 2016+ y Microsoft 365, Backspace archiva el mensaje seleccionado. La explicación original es correcta pero escueta y no diferencia claramente entre archivar y eliminar."
+  },
+  {
+    "id": "a206d1c9-a7e1-45c9-b279-84216448f724",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "En Outlook clásico, el atajo Ctrl+Mayús+P (Ctrl+Shift+P) permite crear una nueva carpeta de búsqueda (Search Folder). Las carpetas de búsqueda son carpetas virtuales que muestran automáticamente todos los mensajes que cumplen determinados criterios de búsqueda, sin mover los mensajes de su ubicación original.\n\nAnálisis de las opciones:\n- A) CTRL+MAYÚS+B: Incorrecto. Este atajo abre la Libreta de direcciones (Address Book).\n- B) CTRL+MAYÚS+P: CORRECTO. Crea una nueva carpeta de búsqueda, abriendo el cuadro de diálogo 'Nueva carpeta de búsqueda' donde se pueden definir los criterios.\n- C) CTRL+MAYÚS+J: Incorrecto. Ctrl+Mayús+J crea una nueva entrada de diario (Journal entry) en Outlook clásico.\n- D) CTRL+MAYÚS+R: Incorrecto. Este atajo se usa para 'Responder a todos' (Reply All).\n\nNota: Ctrl+Mayús+P tiene una función dual en Outlook: en la vista principal crea una carpeta de búsqueda, mientras que dentro de la ventana de redacción de un mensaje abre el cuadro de diálogo de Fuente (Font). Ejemplos de carpetas de búsqueda útiles: correo no leído, mensajes con datos adjuntos, correos de un remitente específico, etc. Fuente: Microsoft Support - Métodos abreviados de teclado en Outlook.",
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "La respuesta correcta (B, Ctrl+Mayús+P) ES correcta según la documentación oficial de Microsoft. Ctrl+Shift+P crea una carpeta de búsqueda en Outlook clásico. La explicación original es correcta pero escueta y no analiza las demás opciones."
+  },
+  {
+    "id": "f243ff75-2f5d-4df0-93f5-93ad262f4947",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta correcta (C, el mensaje cambia de estado visual pero no se reenvía ni mueve) ES correcta. Marcar como 'No leído' es una acción local que solo cambia el estado visual del mensaje. La explicación es detallada y correcta."
+  },
+  {
+    "id": "4395d20b-4f18-4989-8799-5e45b0a88e30",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "En Outlook clásico, el atajo de teclado Ctrl+F (Forward) permite reenviar el mensaje que está abierto o seleccionado en ese momento.\n\nAnálisis de las opciones:\n- A) Control+Mayús+R: Incorrecto. Este atajo se utiliza para 'Responder a todos' (Reply All), incluyendo al remitente y a todos los destinatarios en copia.\n- B) Control+R: Incorrecto. Este atajo se utiliza para 'Responder' (Reply) únicamente al remitente del mensaje.\n- C) Control+Alt+R: Incorrecto. No es un atajo estándar de Outlook para reenviar mensajes.\n- D) Control+F: CORRECTO. En Outlook clásico (desde la lista de mensajes), Ctrl+F abre una nueva ventana para reenviar (Forward) el mensaje seleccionado.\n\nNota importante: a diferencia de la mayoría de aplicaciones donde Ctrl+F abre la función de búsqueda (Find), en Outlook clásico este atajo se usa para Reenviar (Forward). Esta peculiaridad se debe a una decisión histórica de Microsoft. Para buscar en Outlook, se usa F3 o Ctrl+E. En el nuevo Outlook, Ctrl+F también se usa para reenviar. Fuente: Microsoft Support - Métodos abreviados de teclado en Outlook.",
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "La respuesta correcta (D, Ctrl+F para reenviar) ES correcta según la documentación oficial de Microsoft para Outlook clásico. La explicación original es correcta pero escueta y no analiza las demás opciones ni menciona la particularidad histórica de este atajo."
+  },
+  {
+    "id": "e89dde07-5b35-49ef-8433-fbe8f018f38c",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "En Outlook (clásico y Microsoft 365), cuando estás en la vista de calendario, el atajo Ctrl+Alt+1 cambia la visualización a la vista de 'Día', mostrando las citas y eventos programados para un día específico con detalle horario.\n\nAnálisis de las opciones:\n- A) Ctrl+Alt+D: Incorrecto. No es un atajo estándar de Outlook para cambiar la vista del calendario.\n- B) Alt+Mayusc+1: Incorrecto. No es el atajo correcto para la vista de Día en el calendario de Outlook.\n- C) Alt+D: Incorrecto. No es un atajo estándar para esta función en Outlook.\n- D) Ctrl+Alt+1: CORRECTO. Cambia a la vista de Día (Day view) en el calendario.\n\nOtros atajos de vista de calendario relacionados:\n- Ctrl+Alt+2: Vista de Semana laboral (Work Week)\n- Ctrl+Alt+3: Vista de Semana completa (Full Week)\n- Ctrl+Alt+4: Vista de Mes (Month)\n\nFuente: Microsoft Support - Métodos abreviados de teclado en Outlook.",
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "La respuesta correcta (D, Ctrl+Alt+1) ES correcta según la documentación oficial de Microsoft. La explicación original es correcta pero escueta y no analiza las demás opciones ni menciona los atajos relacionados para otras vistas del calendario."
+  },
+  {
+    "id": "81ee7276-a47b-48ef-911c-54ddc41d3dcd",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta correcta (D, 8 botones) ES correcta. La documentación de Microsoft y múltiples fuentes confirman que el número máximo de botones visibles en la barra de navegación de Outlook es 8. La explicación es detallada y correcta."
+  },
+  {
+    "id": "b8084d8a-3900-49f6-be93-a88527d3780b",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta correcta (B) ES correcta. Ctrl+R responde al remitente y Ctrl+Mayús+R responde a todos. La explicación es detallada y correcta."
+  },
+  {
+    "id": "d970d0cf-c4bd-4dd3-aacb-aa9e1de7baa8",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "En Outlook, la combinación de teclas Ctrl+Mayús+B (Ctrl+Shift+B) abre la Libreta de direcciones (Address Book), que permite buscar, ver y seleccionar contactos de la organización y de las listas de contactos personales.\n\nAnálisis de las opciones:\n- A) Muestra el cuadro de búsqueda: Incorrecto. Para abrir el cuadro de búsqueda se usa F3 o Ctrl+E.\n- B) Creamos un nuevo contacto: Incorrecto. Para crear un nuevo contacto se usa Ctrl+Mayús+C.\n- C) Añade una marca de seguimiento al elemento seleccionado: Incorrecto. Para insertar una marca de seguimiento se puede usar Ctrl+Mayús+G (en Outlook clásico).\n- D) Abrimos la libreta de direcciones: CORRECTO. Ctrl+Mayús+B abre la Libreta de direcciones, donde se pueden consultar todos los contactos disponibles.\n\nNota: la Libreta de direcciones es diferente de la vista de Contactos (Ctrl+3 en Outlook clásico). La Libreta de direcciones se abre como un cuadro de diálogo independiente y es especialmente útil para buscar destinatarios al redactar un correo. Fuente: Microsoft Support - Métodos abreviados de teclado en Outlook.",
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "La respuesta correcta (D, abrir la libreta de direcciones) ES correcta según la documentación oficial de Microsoft. La explicación original es correcta pero demasiado escueta y no analiza las demás opciones."
+  },
+  {
+    "id": "a097958e-1cf8-4ee1-9c65-b6352ecf986c",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta correcta (A, el mensaje se traslada a la Bandeja de entrada y se aprende el patrón) ES correcta. Cuando un usuario marca un mensaje como 'No es correo no deseado', Outlook lo mueve a la Bandeja de entrada y registra el comportamiento para mejorar los filtros antispam. La explicación es detallada y correcta."
+  },
+  {
+    "id": "1ff3d8e3-86a0-4c08-8285-2c3c8b9fa63c",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta correcta (D, Ctrl+Mayús+P) ES correcta según la documentación oficial de Microsoft. Ctrl+Shift+P crea una carpeta de búsqueda en Outlook clásico. La explicación es detallada, distingue entre Ctrl+Mayús+E (carpeta normal) y Ctrl+Mayús+P (carpeta de búsqueda), y es correcta."
+  }
+]

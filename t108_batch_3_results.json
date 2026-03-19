@@ -1,0 +1,210 @@
+[
+  {
+    "id": "953b689e-67b5-46eb-9b9d-b6bb53a50acb",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "Ctrl+Alt+I ES el atajo correcto para cambiar a vista previa de impresión en Word 365, confirmado por la documentación oficial de Microsoft. La explicación es correcta y didáctica."
+  },
+  {
+    "id": "7ce20362-1cfb-46ad-910c-c0b681d491c9",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "La respuesta correcta es C) Dividir tabla.\n\nAnálisis de cada opción:\n\n- A) Combinar celdas: Esta herramienta une varias celdas seleccionadas en una sola celda más grande. No tiene relación con separar filas de una tabla.\n\n- B) Dividir celdas: Esta herramienta divide una celda en varias celdas más pequeñas (en filas y/o columnas). No separa la tabla en dos tablas independientes.\n\n- C) Dividir tabla: CORRECTA. Al colocar el cursor en una celda y seleccionar \"Dividir tabla\" (en la pestaña Presentación de Herramientas de tabla), la tabla se divide en dos tablas independientes. La fila donde se encuentra el cursor y todas las filas inferiores pasan a formar una nueva tabla separada.\n\n- D) Alinear: Las opciones de alineación en tablas controlan la posición del contenido dentro de las celdas (arriba, centro, abajo, izquierda, derecha). No dividen la tabla.\n\nNota: También se puede dividir una tabla colocando el cursor en la fila deseada y pulsando Ctrl+Mayús+Enter.",
+    "original_status": "tech_bad_explanation",
+    "reason": "La respuesta C es correcta pero la explicación dice 'Sin explicación disponible'. Se necesita una explicación didáctica completa."
+  },
+  {
+    "id": "dff2fc17-03ef-4358-9a43-26d5db6ad2c8",
+    "verdict": "deactivate",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "Ctrl+J en Word 365 JUSTIFICA el párrafo (alinea ambos márgenes). Ninguna de las cuatro opciones describe correctamente esta función. La opción B dice que 'cambia de justificada a alineada a la izquierda', lo cual es incorrecto. La pregunta es irrecuperable porque no tiene opción correcta."
+  },
+  {
+    "id": "6be4557d-e5cc-4267-8977-d22a992f3ea5",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "Ctrl+Alt+Mayúsc+S (Ctrl+Alt+Shift+S) ES el atajo correcto para abrir el panel de Estilos en Word 365, confirmado por la documentación oficial de Microsoft. La respuesta C y la explicación son correctas."
+  },
+  {
+    "id": "1b9e6973-00af-4d33-99fc-1402fb6c2b1e",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta D es correcta. Word genera la tabla de ilustraciones a partir de los títulos insertados con 'Insertar título'. Para excluir una imagen específica, se debe eliminar su título. No existe opción para excluir elementos individuales manteniendo su título. La explicación es adecuada."
+  },
+  {
+    "id": "eb541aae-b3e2-4283-b38f-2c3cef44875f",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "La respuesta correcta es B) Vista.\n\nAnálisis de cada opción:\n\n- A) Disposición: Esta pestaña contiene herramientas para configurar la página (márgenes, orientación, saltos de página, columnas). No incluye opciones de macros.\n\n- B) Vista: CORRECTA. La pestaña Vista contiene el grupo \"Macros\" con las opciones \"Ver macros\" y \"Grabar macro\". Este es el acceso rápido a las macros sin necesidad de activar la pestaña Programador. Al hacer clic en el desplegable de Macros, se muestran las opciones de ver, grabar y pausar macros.\n\n- C) Referencias: Esta pestaña contiene herramientas como tabla de contenido, notas al pie, citas, índice y tabla de ilustraciones. No tiene opciones de macros.\n\n- D) Insertar: Esta pestaña permite insertar elementos como tablas, imágenes, gráficos, vínculos y complementos. No incluye opciones de macros.\n\nNota: La pestaña Programador también contiene estas opciones de macros, pero debe activarse manualmente desde Archivo > Opciones > Personalizar cinta de opciones.",
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "La respuesta B (Vista) es correcta, confirmado por múltiples fuentes. La pestaña Vista contiene el grupo Macros. La explicación existente es demasiado breve y necesita análisis de cada opción."
+  },
+  {
+    "id": "9e4caf84-f69a-4825-b98e-d3c20e464b4f",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta B (@) es correcta. En la búsqueda avanzada con comodines de Word, @ representa una o más repeticiones del carácter o expresión anterior. La explicación incluye una tabla completa de comodines que confirma esto."
+  },
+  {
+    "id": "508758c5-04a7-4a31-ade1-fb7afe99fb13",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "La respuesta correcta es C) Finalizar.\n\nAnálisis de cada opción:\n\n- A) Escribir e insertar campos: Este grupo de la pestaña Correspondencia contiene herramientas para insertar campos de combinación en el documento principal, como \"Insertar campo de combinación\", \"Bloque de direcciones\" y \"Línea de saludo\".\n\n- B) Iniciar combinación: Este grupo contiene las herramientas iniciales del proceso: \"Iniciar combinación de correspondencia\" (para elegir el tipo de documento) y \"Seleccionar destinatarios\" (para conectar con el origen de datos).\n\n- C) Finalizar: CORRECTA. El botón \"Finalizar y combinar\" se encuentra en el grupo \"Finalizar\" de la pestaña Correspondencia. Este botón ofrece tres opciones: \"Editar documentos individuales\" (crea un nuevo documento con todas las cartas), \"Imprimir documentos\" (envía directamente a la impresora) y \"Enviar mensajes de correo electrónico\".\n\n- D) Vista previa de resultados: Este grupo contiene herramientas para previsualizar cómo quedarán los documentos combinados, con botones de navegación para recorrer los registros y un botón para comprobar errores.",
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "La respuesta C (Finalizar) es correcta. El botón 'Finalizar y combinar' está en el grupo 'Finalizar' de la pestaña Correspondencia. La explicación dice 'Sin explicación disponible' y necesita ser escrita."
+  },
+  {
+    "id": "c68608f2-a7b0-4411-8d05-99ea615063a2",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "La respuesta correcta es B) Alinear el párrafo a la derecha.\n\nAnálisis de cada opción:\n\n- A) Cerrar el documento actual: El atajo para cerrar el documento actual es Ctrl+F4 o Ctrl+W. Ctrl+D no cierra documentos.\n\n- B) Alinear el párrafo a la derecha: CORRECTA. En la versión española de Word 365, Ctrl+D alinea el párrafo a la derecha (\"D\" de Derecha). Este es el atajo localizado para español. En la versión inglesa de Word, Ctrl+D abre el cuadro de diálogo Fuente, y Ctrl+R alinea a la derecha (\"R\" de Right).\n\n- C) Reabrir el último documento cerrado: No existe un atajo estándar Ctrl+D para esta función en Word.\n\n- D) Actualizar los campos del documento: Para actualizar campos se utiliza F9 (con el campo seleccionado) o Ctrl+A seguido de F9 para actualizar todos los campos.\n\nNota importante: Los atajos de teclado en Word varían según el idioma de la instalación. Es fundamental conocer los atajos de la versión española para oposiciones.",
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta B es correcta para la versión española de Word 365 (Ctrl+D = alinear a la derecha). La explicación existente es correcta pero no analiza las demás opciones. Se mejora para ser más didáctica."
+  },
+  {
+    "id": "1b790706-252a-4928-bb0d-075f386133c4",
+    "verdict": "fix_answer",
+    "correct_option": 1,
+    "new_explanation": "La respuesta correcta es B) Inserta un salto de página.\n\nAnálisis de cada opción:\n\n- A) Inserta un salto de línea dentro de la celda: Incorrecto. Para insertar un salto de línea dentro de una celda se utiliza Mayús+Enter (Shift+Enter).\n\n- B) Inserta un salto de página: CORRECTA. Ctrl+Enter inserta un salto de página manual, independientemente de dónde esté el cursor. Si el cursor está dentro de una celda de tabla, se inserta un salto de página dentro de esa celda, lo que puede causar que la fila se divida entre dos páginas. Sin embargo, NO divide la tabla en dos tablas independientes.\n\n- C) Inserta un salto de página y divide la tabla: Incorrecto. Ctrl+Enter inserta un salto de página pero NO divide la tabla en dos tablas separadas. Para dividir una tabla en dos tablas independientes se debe usar la herramienta \"Dividir tabla\" (Ctrl+Mayús+Enter) desde la pestaña Presentación de Herramientas de tabla.\n\n- D) Sale de la celda y crea una nueva fila: Incorrecto. Para crear una nueva fila al final de la tabla se pulsa Tab en la última celda. Enter dentro de una celda añade un párrafo dentro de la misma celda.",
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "La respuesta C es incorrecta. Ctrl+Enter dentro de una celda de tabla inserta un salto de página DENTRO de la celda, pero NO divide la tabla en dos tablas independientes. Para dividir una tabla se usa Dividir tabla (Ctrl+Mayús+Enter). La respuesta correcta es B."
+  },
+  {
+    "id": "a51e14af-143e-4a36-b3fa-8bdd78b6af13",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "La respuesta correcta es C) Panel de navegación.\n\nAnálisis de cada opción:\n\nEl grupo \"Vistas\" de la ficha Vista contiene los diferentes modos de visualización del documento:\n\n- A) Vista Modo de lectura: SÍ pertenece al grupo Vistas. Optimiza la visualización del documento para lectura cómoda, ocultando las herramientas de edición.\n\n- B) Esquema: SÍ pertenece al grupo Vistas. Muestra el documento con su estructura jerárquica de títulos y subtítulos, facilitando la reorganización del contenido.\n\n- C) Panel de navegación: NO pertenece al grupo \"Vistas\". CORRECTA. El Panel de navegación se encuentra en el grupo \"Mostrar\", que es un grupo diferente dentro de la misma ficha Vista. El grupo Mostrar contiene casillas de verificación para activar/desactivar elementos como la Regla, las Líneas de cuadrícula y el Panel de navegación.\n\n- D) Diseño de impresión: SÍ pertenece al grupo Vistas. Es la vista predeterminada que muestra el documento tal como aparecerá al imprimirse, con márgenes, encabezados, pies de página y saltos de página visibles.\n\nOtras vistas incluidas en el grupo Vistas son: Diseño web y Borrador.",
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta C es correcta. El Panel de navegación pertenece al grupo 'Mostrar', no al grupo 'Vistas'. La explicación existente es incompleta (falta enumerar las vistas) y necesita mejorarse."
+  },
+  {
+    "id": "8cdf96ad-e77f-4fe3-b884-f7210a0631b3",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "La respuesta correcta es C) 1_7 + 12.\n\nAnálisis de cada opción:\n\nEn Word, para imprimir páginas específicas se utiliza el campo \"Páginas\" en el cuadro de diálogo Imprimir (Archivo > Imprimir). Los formatos válidos son:\n- Guion (-) para rangos de páginas: por ejemplo, 1-3 imprime las páginas 1, 2 y 3.\n- Coma (,) para páginas individuales o combinaciones: por ejemplo, 1,3,5 imprime las páginas 1, 3 y 5.\n- Se pueden combinar: 1-3,7,10-12 imprime las páginas 1, 2, 3, 7, 10, 11 y 12.\n\n- A) 1-3,4: Formato CORRECTO. Imprimiría las páginas 1, 2, 3 y 4. Usa guion para el rango y coma para separar.\n\n- B) 12-34, 44-66: Formato CORRECTO. Imprimiría las páginas 12 a 34 y 44 a 66. Los espacios después de la coma son aceptados por Word.\n\n- C) 1_7 + 12: Formato INCORRECTO. El guion bajo (_) y el signo más (+) no son caracteres válidos para definir intervalos de impresión en Word. Lo correcto sería 1-7,12.\n\n- D) Todos los intervalos son incorrectos: Falso, ya que A y B son formatos válidos.",
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "La respuesta C es correcta (formato inválido por usar guion bajo y signo más). La explicación es demasiado vaga y no analiza cada opción ni explica los formatos válidos."
+  },
+  {
+    "id": "0583b605-7650-45a7-9543-3fcc2b9e3904",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta B es correcta. Word 365 no puede abrir directamente archivos .xlsx, que son el formato nativo de Excel. La explicación es completa y correcta."
+  },
+  {
+    "id": "649e3bde-71d8-4260-b6cd-1876f0ca601d",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "La respuesta correcta es D) En la parte superior de la ventana, haciendo clic en el nombre del archivo y después, clic en Historial de versiones.\n\nAnálisis de cada opción:\n\n- A) En la parte superior derecha de la ventana, haciendo clic en la pestaña Historial de Archivos: Incorrecto. No existe una pestaña llamada \"Historial de Archivos\" en la parte superior derecha de Word. \"Historial de archivos\" es una función de Windows para copias de seguridad del sistema, no de Word.\n\n- B) Haciendo clic en la pestaña Archivo > Información > Administrar complementos COM: Incorrecto. Los complementos COM son extensiones de software de terceros que añaden funcionalidad a Office. No tienen relación con el historial de versiones.\n\n- C) Haciendo clic en la pestaña Archivo > Información > Administrar documento: Esta opción permite recuperar documentos no guardados y ver versiones de autorrecuperación, pero la pregunta especifica que el autoguardado está activado, lo que implica que el documento está almacenado en OneDrive o SharePoint.\n\n- D) En la parte superior de la ventana, haciendo clic en el nombre del archivo y después, clic en Historial de versiones: CORRECTA. Cuando el autoguardado está activado (lo que requiere almacenamiento en OneDrive o SharePoint), se puede acceder al historial de versiones haciendo clic en el nombre del archivo en la barra de título y seleccionando \"Historial de versiones\". Esto muestra todas las versiones guardadas automáticamente, permitiendo restaurar cualquiera de ellas.\n\nNota: También se puede acceder al historial de versiones desde Archivo > Información > Historial de versiones.",
+    "original_status": "tech_bad_explanation",
+    "reason": "La respuesta D es correcta para el escenario descrito (autoguardado activado = OneDrive/SharePoint). La explicación existente es confusa, excesivamente cautelosa y no analiza las opciones individualmente."
+  },
+  {
+    "id": "13f840f0-23fd-41c3-9cc5-781e25f2459f",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "La respuesta correcta es A) \"Archivo\" y luego en la opción \"Imprimir\".\n\nAnálisis de cada opción:\n\n- A) \"Archivo\" y luego en la opción \"Imprimir\": CORRECTA. En Word 365, la vista previa de impresión está integrada en la pantalla de Imprimir. Al hacer clic en Archivo > Imprimir (o pulsar Ctrl+P), se muestra automáticamente una vista previa del documento en el panel derecho, junto con las opciones de configuración de impresión en el panel izquierdo.\n\n- B) \"Archivo\" y luego la opción \"Mostrar\": Incorrecto. No existe una opción \"Mostrar\" dentro de la pestaña Archivo (vista Backstage).\n\n- C) \"Archivo\" y luego la opción \"Intro\": Incorrecto. No existe una opción \"Intro\" dentro de la pestaña Archivo.\n\n- D) \"Archivo\" y luego la opción \"Guardar\": Incorrecto. La opción Guardar solo almacena el documento, no muestra ninguna vista previa.\n\nNota: En versiones anteriores de Word existía un comando independiente de \"Vista previa de impresión\", pero en Word 365 esta funcionalidad está integrada en Archivo > Imprimir. También se puede acceder mediante los atajos Ctrl+P o Ctrl+Alt+I.",
+    "original_status": "tech_bad_explanation",
+    "reason": "La respuesta A es correcta. La explicación existente es aceptable pero no analiza cada opción y menciona Ctrl+Alt+I sin suficiente contexto. Se mejora la estructura didáctica."
+  },
+  {
+    "id": "dec41679-fab1-4e8d-b4ae-1d93841fcd0e",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta B es correcta. 'Recuperar documentos no guardados' permite recuperar archivos que se cerraron sin guardar, buscando en la carpeta de archivos temporales de autorrecuperación. La explicación es completa y correcta."
+  },
+  {
+    "id": "a773d002-6843-4820-9231-2632d5c10b7d",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "La respuesta correcta es C) Ctrl+Mayús+Espacio.\n\nAnálisis de cada opción:\n\n- A) Ctrl+Mayús+F1: Incorrecto. Esta combinación no tiene una función estándar asignada para espacios o guiones de no separación en Word.\n\n- B) Ctrl+Alt+Espacio: Incorrecto. Esta combinación no es el atajo estándar para insertar un espacio de no separación.\n\n- C) Ctrl+Mayús+Espacio: CORRECTA. Este es el atajo estándar de Word para insertar un espacio de no separación (non-breaking space). Un espacio de no separación impide que Word divida una línea en el punto donde se encuentra ese espacio, manteniendo las palabras unidas en la misma línea.\n\n- D) Ctrl+Espacio: Incorrecto. Ctrl+Espacio en Word elimina el formato de caracteres manual aplicado al texto seleccionado, restaurándolo al formato del estilo base.\n\nNota importante: La pregunta menciona \"dos palabras separadas por un guión\". Para evitar que un guión se separe al final de línea, el atajo correcto sería Ctrl+Mayús+Guión (que inserta un guión de no separación). El espacio de no separación (Ctrl+Mayús+Espacio) se utiliza para mantener unidas palabras separadas por un espacio. Ambos son caracteres de no separación, pero se aplican a contextos diferentes.",
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "Ctrl+Mayús+Espacio es el atajo correcto para espacio de no separación (confirmado por Microsoft). La explicación existente es demasiado breve y no analiza las opciones. Además, la pregunta tiene una imprecisión (habla de guión pero la respuesta es sobre espacio), que se aclara en la nueva explicación."
+  },
+  {
+    "id": "10e47a40-ba73-4368-8f50-31d2f1ed51a6",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "La respuesta correcta es B) Ctrl + K.\n\nAnálisis de cada opción:\n\n- A) Alt Gr + C: Incorrecto. Alt Gr + C no es un atajo de formato de texto en Word. En algunos teclados, Alt Gr genera caracteres especiales.\n\n- B) Ctrl + K: CORRECTA. En la versión española de Word 365, Ctrl+K aplica formato de cursiva (itálica) al texto seleccionado. La \"K\" corresponde a \"Kursiva\" (del alemán), que fue la adaptación elegida para la versión española. En la versión inglesa de Word, Ctrl+I aplica cursiva (\"I\" de Italic) y Ctrl+K inserta un hipervínculo.\n\n- C) Ctrl + C: Incorrecto. Ctrl+C es el atajo universal para copiar el texto o elemento seleccionado al portapapeles.\n\n- D) Alt Gr + K: Incorrecto. Alt Gr + K no es un atajo de formato reconocido en Word. La tecla Alt Gr se utiliza para insertar caracteres especiales del teclado.\n\nNota: Los atajos de formato básico en la versión española de Word son: Ctrl+N (Negrita), Ctrl+K (Cursiva) y Ctrl+S (Subrayado). Estos difieren de los atajos en inglés: Ctrl+B (Bold), Ctrl+I (Italic) y Ctrl+U (Underline).",
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "Ctrl+K ES el atajo correcto para cursiva en la versión española de Word. La explicación existente es correcta pero demasiado breve y no analiza todas las opciones. Se mejora con análisis completo."
+  },
+  {
+    "id": "93377951-78a6-438b-887d-f9109cc93348",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "La respuesta correcta es C) F12.\n\nAnálisis de cada opción:\n\n- A) F11: Incorrecto. F11 no abre el cuadro de diálogo \"Guardar como\". En Word, F11 se utiliza para ir al siguiente campo del documento.\n\n- B) F5: Incorrecto. F5 abre el cuadro de diálogo \"Buscar y reemplazar\" en la pestaña \"Ir a\" (permite navegar a una página, sección, línea o marcador específico).\n\n- C) F12: CORRECTA. Al pulsar F12 en Word 365, se abre directamente el cuadro de diálogo \"Guardar como\", que permite elegir la ubicación y el nombre del archivo, así como el formato en que se desea guardar. Es la forma más rápida de acceder a esta función.\n\n- D) F10: Incorrecto. F10 activa las teclas de acceso (KeyTips), mostrando las letras y números que permiten navegar por la cinta de opciones con el teclado.\n\nNota: No confundir F12 con Ctrl+F12, que abre el cuadro de diálogo \"Abrir\" (para abrir un documento existente). Tampoco con Ctrl+G (o Ctrl+S), que es \"Guardar\" (no \"Guardar como\").",
+    "original_status": "tech_bad_explanation",
+    "reason": "F12 es correcto para 'Guardar como', confirmado por Microsoft. La explicación existente es extremadamente breve ('Métodos abreviados de teclado de Microsoft Word para Windows: F12 y Ctrl + G') y no analiza las opciones."
+  },
+  {
+    "id": "8b169eb9-0fff-4cd0-a957-bc0ac7e278b6",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "La respuesta correcta es B) F6.\n\nAnálisis de cada opción:\n\n- A) F4: Incorrecto. F4 en Word repite la última acción realizada (equivalente a Ctrl+Y en algunos contextos). No sirve para desplazarse entre paneles.\n\n- B) F6: CORRECTA. La tecla F6 permite desplazarse cíclicamente entre los diferentes paneles y áreas de la ventana de Word: el documento, los paneles de tareas abiertos (como el panel de navegación o el panel de estilos), la barra de estado y la cinta de opciones. Cada vez que se pulsa F6, el foco se mueve al siguiente panel. Para ir en dirección inversa, se puede usar Mayús+F6.\n\n- C) Alt + F5: Incorrecto. Alt+F5 no es un atajo estándar para la navegación entre paneles en Word. Alt+F5 restaura el tamaño de la ventana del programa.\n\n- D) Ctrl + F4: Incorrecto. Ctrl+F4 cierra el documento activo (no la ventana de Word, solo el documento). No tiene relación con la navegación entre paneles.",
+    "original_status": "tech_bad_answer",
+    "reason": "F6 ES el atajo correcto para desplazarse entre paneles de tareas, confirmado por la documentación oficial de Microsoft. La explicación existente es demasiado breve y necesita análisis de cada opción."
+  },
+  {
+    "id": "e042b55f-8f2d-45f0-b0a8-86b147ef3936",
+    "verdict": "deactivate",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "Ctrl+Alt+K en Word activa AutoFormato (AutoFormat), NO inserta un hipervínculo. El atajo para insertar hipervínculo es Ctrl+K. Ninguna de las cuatro opciones describe correctamente la función de Ctrl+Alt+K. La propia explicación ya reconoce que el atajo es Ctrl+K, no Ctrl+Alt+K. Pregunta irrecuperable."
+  },
+  {
+    "id": "641db440-356e-45e5-b86b-f0fdd55bf346",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "La respuesta correcta es C) Ctrl + B.\n\nAnálisis de cada opción:\n\n- A) La opción describe acceder a la cinta de opciones con Alt+R para la pestaña Revisar y luego F para el panel de navegación. Si bien se puede navegar por la cinta con teclas de acceso (Alt), esta no es la forma más directa ni un \"atajo de teclado\" propiamente dicho para abrir el panel de búsqueda.\n\n- B) \"No hay un atajo de teclado específico\": Incorrecto. Sí existe un atajo de teclado para abrir el panel de navegación y buscar.\n\n- C) Ctrl + B: CORRECTA. En la versión española de Word, Ctrl+B abre el panel de tareas de navegación con la función de búsqueda activada, permitiendo buscar texto en el contenido del documento. Este atajo corresponde al Ctrl+F (Find) de la versión inglesa.\n\n- D) \"Pulsando F7\": Incorrecto. F7 abre el corrector ortográfico y gramatical en Word, no el cuadro de búsqueda.\n\nNota importante: Desde octubre de 2024, Microsoft ha ido unificando los atajos de teclado de Word al estándar inglés. En algunas versiones actualizadas, Ctrl+B puede activar la negrita (Bold) en lugar de buscar, y Ctrl+F sería el atajo para buscar. Es recomendable verificar los atajos en la versión específica de Word instalada.",
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "Ctrl+B es el atajo tradicional de búsqueda en Word español, aunque desde 2024 Microsoft está cambiando atajos al estándar inglés. Para exámenes de oposiciones, Ctrl+B como búsqueda sigue siendo la respuesta esperada. La explicación existente es demasiado breve."
+  },
+  {
+    "id": "2a9907db-d2ad-4c6e-80f0-f39cfe413afd",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "Ctrl+N ES el atajo correcto para negrita en la versión española de Word (N de Negrita). La explicación es correcta y completa, mencionando la diferencia con la versión inglesa (Ctrl+B)."
+  },
+  {
+    "id": "42fac20c-d4af-45a5-adf0-37fbf16a7145",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "La respuesta correcta es D) Todas las líneas del párrafo excepto la primera tendrán un sangrado de un centímetro hacia la derecha.\n\nAnálisis de cada opción:\n\n- A) La primera línea del párrafo aparecerá un centímetro desplazada a la derecha: Incorrecto. Esto describe una \"sangría de primera línea\", donde solo la primera línea se desplaza. La sangría francesa es justo lo contrario.\n\n- B) Todas las líneas del párrafo aparecerán desplazadas un centímetro hacia la izquierda: Incorrecto. No describe ningún tipo de sangría estándar de Word.\n\n- C) Todas las líneas tendrán un sangrado de un centímetro: Incorrecto. Esto describe una \"sangría izquierda\" general, donde todo el párrafo se desplaza uniformemente.\n\n- D) Todas las líneas del párrafo excepto la primera tendrán un sangrado de un centímetro hacia la derecha: CORRECTA. La sangría francesa (también llamada sangría colgante) mantiene la primera línea alineada con el margen izquierdo y desplaza todas las líneas siguientes hacia la derecha según el valor especificado (en este caso, un centímetro).\n\nLa sangría francesa se configura desde el cuadro de diálogo Párrafo (pestaña Inicio > grupo Párrafo > iniciador del cuadro de diálogo), seleccionando \"Francesa\" en el desplegable \"Especial\" de la sección Sangría. Se utiliza habitualmente en bibliografías, listas de referencias y normas APA.",
+    "original_status": "tech_bad_explanation",
+    "reason": "La respuesta D es correcta. La sangría francesa desplaza todas las líneas excepto la primera. La explicación existente está vacía y necesita ser escrita completamente."
+  },
+  {
+    "id": "714e62ae-f1de-41fc-bbd3-007f00573888",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "La respuesta B es correcta. El procedimiento estándar es: 1) seleccionar el texto, 2) aplicar formato con Ctrl+N (negrita en español). La explicación es correcta y completa."
+  },
+  {
+    "id": "85dc7926-c25f-48eb-8d4e-082685aa0c27",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "La respuesta A es correcta. Al cerrar todas las aplicaciones de Office, el portapapeles de Office (hasta 24 elementos) se vacía, pero el último elemento copiado permanece en el portapapeles del sistema Windows. La explicación es completa y detallada."
+  }
+]

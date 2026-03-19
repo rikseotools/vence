@@ -1,0 +1,210 @@
+[
+  {
+    "id": "d4b375fd-0a10-4974-a606-d18a55ce53eb",
+    "verdict": "deactivate",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "El atajo para aplicar Estilo Normal en Word 365 es Ctrl+Mayus+N (documentacion oficial Microsoft). Ctrl+Mayus+A activa/desactiva las mayusculas (All Caps). Ninguna de las opciones (A: Ctrl+Mayus+A, B: Ctrl+Alt+1, C: Ctrl+Alt+Mayus+A, D: Ctrl+Mayus+1) es correcta. Nota: Ctrl+Alt+1 aplica Titulo 1, no Normal. La pregunta no tiene respuesta valida entre las opciones."
+  },
+  {
+    "id": "8b0ff91c-39a4-4988-8d3f-418082c385d5",
+    "verdict": "deactivate",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "Segun la documentacion oficial de Microsoft, el atajo para alinear a la derecha en Word 365 es Ctrl+R (Ctrl+D abre el cuadro de dialogo Fuente). Ninguna de las opciones (Mayus+D, Ctrl+Mayus+D, Ctrl+D, Alt+D) corresponde al atajo correcto. Incluso en la convencion 'espanola' antigua donde Ctrl+D era alinear derecha, la opcion C seria correcta, pero la explicacion ya indica que es incorrecta y cita fuentes oficiales. La pregunta es irrecuperable porque las fuentes oficiales no avalan ninguna opcion."
+  },
+  {
+    "id": "f7f22e38-35ca-4b6f-9f0c-831cb38dc56c",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "La respuesta correcta es A). \"Buscar y reemplazar\" NO se encuentra en la pestaña Revisar de Word 365, sino en la pestaña Inicio, dentro del grupo Edición (también accesible con Ctrl+H). Analicemos las opciones:\n\n- A) Buscar y reemplazar: CORRECTO. Esta herramienta se ubica en la pestaña Inicio > grupo Edición, no en Revisar.\n- B) Ortografía y gramática: Incorrecto. Sí está en la pestaña Revisar, dentro del grupo Revisión.\n- C) Comentarios: Incorrecto. Sí está en la pestaña Revisar, con su propio grupo Comentarios.\n- D) Control de cambios: Incorrecto. Sí está en la pestaña Revisar, dentro del grupo Seguimiento.\n\nLa pestaña Revisar contiene grupos como Revisión (ortografía, sinónimos, contar palabras), Idioma (traducir), Comentarios, Seguimiento (control de cambios), Cambios, Comparar y Proteger.",
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta A es correcta: Buscar y reemplazar esta en Inicio > Edicion, no en Revisar. La explicacion existente es aceptable pero se mejora con analisis de cada opcion para ser mas didactica."
+  },
+  {
+    "id": "13c7f798-a383-4a7b-b11e-db8582ac0c4d",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "La respuesta correcta es C). Para acceder a la vista previa de impresión en Word 365, se debe hacer clic en la pestaña \"Archivo\" y luego seleccionar la opción \"Imprimir\". Analicemos las opciones:\n\n- A) \"Archivo\" > \"Guardar\": Incorrecto. Esta opción guarda el documento, no muestra la vista previa de impresión.\n- B) \"Archivo\" > \"Intro\": Incorrecto. No existe una opción llamada \"Intro\" en el menú Archivo de Word 365.\n- C) \"Archivo\" > \"Imprimir\": CORRECTO. Al seleccionar esta opción (o pulsar Ctrl+P), se muestra automáticamente la vista previa del documento junto con las opciones de configuración de impresión.\n- D) \"Archivo\" > \"Mostrar\": Incorrecto. No existe una opción llamada \"Mostrar\" en el menú Archivo.\n\nEn versiones anteriores de Word existía un comando separado de \"Vista previa de impresión\", pero en Word 365 la vista previa está integrada directamente en la pantalla de Imprimir del menú Archivo.",
+    "original_status": "tech_bad_explanation",
+    "reason": "La respuesta C es correcta. La explicacion existente menciona Ctrl+Alt+I que no es un atajo estandar y no analiza las opciones A/B/C/D individualmente. Se reescribe para ser mas completa y didactica."
+  },
+  {
+    "id": "d48050c5-e36d-402a-87a6-aefaf8af468c",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta B es correcta. Al activar la opcion Regla en Vista > Mostrar, se muestra la regla horizontal siempre, pero la regla vertical solo aparece si se esta en vista Diseno de impresion Y esta habilitada en Archivo > Opciones > Avanzadas. La explicacion es precisa y tecnica. El sistema de verificacion la marco incorrectamente."
+  },
+  {
+    "id": "cd545d57-0aef-474f-8950-281bbab82c53",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "La respuesta correcta es A). En Word 365, dentro de la pestaña Revisar, el grupo \"Revisión\" contiene los comandos: Editor (Ortografía y gramática), Sinónimos (Tesauro) y Contar palabras. Analicemos las opciones:\n\n- A) Sinónimos: CORRECTO. El comando Sinónimos (Tesauro) está en el grupo Revisión junto con Ortografía y gramática y Contar palabras.\n- B) Nuevo comentario: Incorrecto. Este comando pertenece al grupo \"Comentarios\" de la pestaña Revisar, no al grupo \"Revisión\".\n- C) Traducir: Incorrecto. Este comando se encuentra en el grupo \"Idioma\" de la pestaña Revisar.\n- D) Comparar: Incorrecto. Este comando tiene su propio grupo \"Comparar\" dentro de la pestaña Revisar.\n\nEs importante distinguir entre la pestaña \"Revisar\" (que contiene todos estos grupos) y el grupo específico \"Revisión\" (que solo incluye las herramientas de corrección lingüística).",
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "La respuesta A (Sinonimos) es correcta. Sinonimos esta en el mismo grupo 'Revision' que 'Ortografia y gramatica'. La explicacion existente era correcta en el fondo pero se mejora para ser mas precisa y didactica con analisis de cada opcion."
+  },
+  {
+    "id": "453cc0af-61a2-49c8-9190-275064519bf5",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "La respuesta correcta es B). \"Restringir edición\" es la herramienta específica del menú Archivo > Proteger documento que permite controlar los tipos de cambios que otros usuarios pueden realizar en el documento. Analicemos las opciones:\n\n- A) Cifrar con contraseña: Incorrecto. Esta opción protege el acceso al documento completo con una contraseña, impidiendo abrirlo, pero no permite controlar qué tipo de cambios se pueden hacer.\n- B) Restringir edición: CORRECTO. Permite establecer restricciones específicas como: limitar el formato a ciertos estilos, permitir solo comentarios, solo rellenar formularios o no permitir cambios. Es la herramienta diseñada específicamente para controlar qué modificaciones pueden hacer otros usuarios.\n- C) Agregar una firma digital: Incorrecto. Añade una firma electrónica que certifica la autenticidad del documento, pero no controla los cambios que otros puedan hacer.\n- D) Marcar como final: Incorrecto. Marca el documento como versión final y lo establece como solo lectura, pero es una protección informativa que se puede desactivar fácilmente con un clic.",
+    "original_status": "tech_bad_explanation",
+    "reason": "La respuesta B es correcta. La explicacion existente es confusa, menciona 'Abrir siempre como solo lectura' que ni siquiera es una opcion del test, y no analiza correctamente cada opcion. Se reescribe completamente."
+  },
+  {
+    "id": "7e6489d5-8236-4bea-9f41-fea18269dec4",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "La respuesta correcta es B). Para insertar una nota al pie en Word 365 debemos acceder a la ficha (pestaña) \"Referencias\". Analicemos las opciones:\n\n- A) Vista: Incorrecto. La pestaña Vista contiene opciones de visualización del documento como vistas de diseño, zoom, regla, panel de navegación, etc.\n- B) Referencias: CORRECTO. La pestaña Referencias contiene el grupo \"Notas al pie\" con los comandos \"Insertar nota al pie\" (Ctrl+Alt+F) e \"Insertar nota al final\" (Ctrl+Alt+D). También incluye tabla de contenido, citas, bibliografía, títulos e índice.\n- C) Diseño: Incorrecto. La pestaña Diseño contiene temas, colores, fuentes del documento y opciones de fondo de página como marcas de agua y bordes.\n- D) Disposición: Incorrecto. La pestaña Disposición (antes llamada \"Diseño de página\") contiene márgenes, orientación, tamaño de papel, columnas, saltos de página y sección.",
+    "original_status": "tech_bad_explanation",
+    "reason": "La respuesta B (Referencias) es correcta. La explicacion estaba completamente vacia. Se crea una explicacion didactica completa con analisis de cada opcion."
+  },
+  {
+    "id": "88435afb-ba5e-4f2a-aa51-08c67f75f75d",
+    "verdict": "deactivate",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "Segun la documentacion oficial de Microsoft, Ctrl+Alt+L en Word 365 inserta un campo LISTNUM (numeracion de listas), NO una nota al final. Los atajos correctos para notas son: Ctrl+Alt+F (nota al pie) y Ctrl+Alt+D (nota al final). La respuesta C es incorrecta y ninguna de las opciones A, B, D es correcta tampoco. La pregunta es irrecuperable."
+  },
+  {
+    "id": "8ae223ca-75b3-4b4d-a94b-5c0547b02eb0",
+    "verdict": "fix_answer",
+    "correct_option": 3,
+    "new_explanation": "La respuesta correcta es D). La pregunta plantea un escenario confuso. Si ya se ha habilitado la opción \"Mostrar automáticamente el Portapapeles de Office\", el panel del portapapeles aparecerá automáticamente cuando se copie o corte más de un elemento, es decir, al copiar o pegar más de un elemento. Analicemos las opciones:\n\n- A) Alt-P: Incorrecto. No es un atajo estándar relacionado con el portapapeles de Office.\n- B) Control+C dos veces: Incorrecto. Esta es otra opción diferente del portapapeles (\"Mostrar Portapapeles de Office al presionar Ctrl+C dos veces\"), que es una configuración distinta a la mencionada en el enunciado.\n- C) Control-V: Incorrecto. Ctrl+V pega el último elemento del portapapeles del sistema, pero no abre el panel del Portapapeles de Office.\n- D) Copiar o pegar más de un elemento: CORRECTO. La opción \"Mostrar automáticamente el Portapapeles de Office\" hace que el panel se abra automáticamente cuando se copia más de un elemento consecutivamente.\n\nEs importante distinguir entre las distintas opciones de configuración del portapapeles: una lo muestra automáticamente al copiar varios elementos, y otra lo muestra al presionar Ctrl+C dos veces.",
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "La pregunta dice 'despues de habilitar Mostrar automaticamente el portapapeles de Office'. Con esa opcion activa, el portapapeles aparece al copiar o pegar mas de un elemento (opcion D). Ctrl+C dos veces (B) corresponde a OTRA opcion diferente del portapapeles. La respuesta correcta es D (3), no B (1)."
+  },
+  {
+    "id": "84121332-ceb5-4d47-9ede-e0a1ea53cec6",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "La respuesta D (Ninguna de las respuestas anteriores) es correcta. El atajo para pegar formato en Word es Ctrl+Mayus+V (Ctrl+Shift+V), que no aparece entre las opciones A (Ctrl+C = copiar), B (Ctrl+X = cortar), C (Ctrl+V = pegar contenido). La explicacion existente es correcta y completa. El sistema la marco erroneamente."
+  },
+  {
+    "id": "df5e6b1b-c207-4c5f-94ac-5588ec563ec4",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "Ctrl+M en la version espanola de Word abre el cuadro de dialogo Fuente. Aunque la documentacion oficial de Microsoft indica Ctrl+D para Font dialog, multiples fuentes de oposiciones espanolas y sitios especializados confirman que Ctrl+M abre el dialogo Fuente en Word en espanol. La explicacion existente ya menciona ambas versiones. La respuesta A es aceptable en el contexto de oposiciones espanolas."
+  },
+  {
+    "id": "ee07b9f8-449c-4e43-a68b-1e19429452a6",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta C (Continua) es correcta. En Word 365, el menu Saltos de la pestana Disposicion se divide en: Saltos de pagina (Pagina, Columna, Ajuste de texto) y Saltos de seccion (Pagina siguiente, Continua, Pagina par, Pagina impar). 'Continua' es un salto de seccion, NO un salto de pagina. La explicacion es precisa."
+  },
+  {
+    "id": "15d0b52c-5706-4444-9cb3-01461cbdac64",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta C (Ctrl+Mayus+F5) es correcta. Este es el atajo oficial de Microsoft para abrir el cuadro de dialogo Marcadores en Word 365 (tanto en version inglesa como espanola). La explicacion es correcta y referencia la fuente oficial."
+  },
+  {
+    "id": "535037a7-1485-4376-9c4d-760019f28147",
+    "verdict": "deactivate",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "Segun la documentacion oficial de Microsoft, Ctrl+K en Word 365 inserta un hipervinculo, NO aplica cursiva. El atajo oficial para cursiva es Ctrl+I (internacional). En la convencion espanola antigua se usaba Ctrl+K para cursiva, pero en Word 365 actual esto ya no es asi. La opcion B (Ctrl+K) seria cursiva solo bajo la convencion espanola antigua ya no vigente en Word 365. La pregunta genera confusion porque la respuesta depende de la interpretacion. Sin embargo, dado que la documentacion oficial de Microsoft dice que Ctrl+K = Insertar hipervinculo, y Ctrl+I = Cursiva, ninguna opcion es correcta segun Microsoft. Se desactiva por ambiguedad irreconciliable."
+  },
+  {
+    "id": "d9df0f0b-756b-4371-a30b-6725aeb8dd85",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta D (24) es correcta. El Portapapeles de Office puede almacenar hasta 24 elementos. Al copiar un vigesimo quinto elemento, se elimina el mas antiguo. Esto esta documentado oficialmente por Microsoft. La explicacion es correcta."
+  },
+  {
+    "id": "48f4897c-9054-465f-8dd3-a17ca9ca1bf3",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta A (Ctrl+Mayus+E) es correcta. Ctrl+Shift+E es el atajo oficial de Microsoft para activar/desactivar el Control de cambios (Track Changes) en Word 365 tanto en ingles como en espanol. La explicacion es correcta y bien documentada."
+  },
+  {
+    "id": "3f89ec4f-7181-4a91-8b57-079291d86615",
+    "verdict": "deactivate",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "Segun la documentacion oficial de Microsoft, Ctrl+A es el atajo para Seleccionar todo en Word 365 (seria opcion C). Ctrl+E centra el parrafo segun Microsoft. En la convencion espanola antigua, Ctrl+E era Seleccionar todo, pero la documentacion oficial actual de Microsoft no lo avala. La respuesta marcada B (Ctrl+E) es incorrecta segun Microsoft, y la correcta seria C (Ctrl+A). Sin embargo, hay muchas fuentes de oposiciones que siguen usando la convencion espanola. La ambiguedad es problematica: si la correcta es C segun Microsoft, la respuesta marcada B esta mal. Y si usamos la convencion espanola antigua, B seria correcta pero C tambien podria considerarse correcta (Ctrl+A = Abrir en espanol antiguo). La pregunta se desactiva por ambiguedad insalvable entre convenciones."
+  },
+  {
+    "id": "945ce292-bd71-4a12-a833-bdd6f76a0dfc",
+    "verdict": "deactivate",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "Segun la documentacion oficial de Microsoft, el atajo para Abrir un documento en Word 365 es Ctrl+O (de Open), no Ctrl+A. Ctrl+A selecciona todo el documento. En la convencion espanola antigua Ctrl+A era Abrir, pero Microsoft no usa estos atajos traducidos en Word 365. La pregunta se desactiva porque la respuesta depende de una convencion obsoleta y genera confusion con Ctrl+A (Select All)."
+  },
+  {
+    "id": "15705c3e-3d2d-4d2e-b445-d83abf73839b",
+    "verdict": "deactivate",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "El atajo para dictado en Word 365 es Alt+` (backtick/acento grave), NO Alt+[. La opcion C dice 'Iniciar la herramienta de dictado por voz' pero el atajo Alt+[ no corresponde a esta funcion. Alt+[ no es un atajo estandar documentado por Microsoft para Word 365. Ninguna de las opciones parece correcta para Alt+[. La pregunta se desactiva."
+  },
+  {
+    "id": "8d7b1a8e-39bb-4022-a381-d84f7024df9e",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "La respuesta correcta es A). En Word 365, el método abreviado Ctrl+M abre el cuadro de diálogo \"Fuente\", que permite modificar el tipo de letra, tamaño, estilo, color, efectos y otros atributos tipográficos del texto seleccionado. Analicemos las opciones:\n\n- A) Ctrl+M: CORRECTO. Este es un atajo específico de la versión en español de Word para abrir el cuadro de diálogo Fuente. En la versión internacional/inglesa, el equivalente es Ctrl+D.\n- B) Ctrl+F: Incorrecto. Ctrl+F abre el panel de Buscar (Find) para localizar texto en el documento.\n- C) Ctrl+D: Incorrecto en el contexto español. Aunque Ctrl+D abre el cuadro de diálogo Fuente en la versión inglesa de Word, en algunas configuraciones en español este atajo puede tener otra función. La respuesta pedida es Ctrl+M.\n- D) Ctrl+H: Incorrecto. Ctrl+H abre el cuadro de diálogo \"Buscar y reemplazar\" directamente en la pestaña Reemplazar.\n\nOtro atajo alternativo para abrir el cuadro de diálogo Fuente es Ctrl+Mayús+F, que funciona en ambas versiones.",
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "La respuesta A (Ctrl+M) es correcta para la version espanola de Word. La explicacion existente es basicamente correcta pero se mejora con analisis de cada opcion."
+  },
+  {
+    "id": "630f0f0c-a645-4fe6-b048-bdce13c3f59f",
+    "verdict": "deactivate",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "Segun la documentacion oficial de Microsoft, el atajo para crear un documento nuevo en Word 365 es Ctrl+N (de New), no Ctrl+U. Ctrl+U aplica subrayado (Underline). En la convencion espanola antigua Ctrl+U era 'Nuevo' (de nUevo), pero Microsoft no mantiene estos atajos traducidos en Word 365. La respuesta A (Ctrl+U = nuevo) solo es correcta bajo la convencion espanola antigua ya no vigente. Se desactiva por ambiguedad."
+  },
+  {
+    "id": "772852ad-3165-4da3-94ce-0d77e1d046e1",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "La respuesta correcta es C). En Word 365, el atajo de teclado Ctrl+L abre el cuadro de diálogo \"Buscar y Reemplazar\", directamente en la pestaña Reemplazar. Analicemos las opciones:\n\n- A) F11: Incorrecto. F11 se utiliza para ir al siguiente campo del documento, no tiene relación con Buscar y Reemplazar.\n- B) Ctrl+Alt+T: Incorrecto. No es un atajo estándar para Buscar y Reemplazar en Word 365.\n- C) Ctrl+L: CORRECTO. Este atajo abre directamente el cuadro de diálogo Buscar y Reemplazar en Word 365 en español. En la versión inglesa, el equivalente es Ctrl+H.\n- D) Ctrl+Alt+R: Incorrecto. No es un atajo estándar para Buscar y Reemplazar.\n\nAlternativamente, se puede acceder a esta función desde la pestaña Inicio > grupo Edición > Reemplazar.",
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "Ctrl+L para Buscar y Reemplazar es una convencion documentada en multiples fuentes de oposiciones en espanol, aunque la documentacion oficial de Microsoft dice Ctrl+H. La respuesta C es aceptable en el contexto de oposiciones espanolas. La explicacion existente es demasiado escueta y necesita analisis de cada opcion."
+  },
+  {
+    "id": "bdace670-ded2-480b-a68c-02e15df480ef",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "La respuesta correcta es C). Control+Mayús+F (Ctrl+Shift+F) abre el cuadro de diálogo Fuente en Word 365, permitiendo modificar tipo de letra, tamaño, estilo, color y efectos del texto. Analicemos las opciones:\n\n- A) Control+Alt+F: Incorrecto. Ctrl+Alt+F inserta una nota al pie en el documento.\n- B) Control+F: Incorrecto. Ctrl+F abre el panel de Buscar para localizar texto en el documento.\n- C) Control+Mayús+F: CORRECTO. Este atajo abre el cuadro de diálogo Fuente. Es un atajo oficial documentado por Microsoft que funciona tanto en la versión española como en la inglesa.\n- D) Mayús+F: Incorrecto. Esta combinación no tiene una función estándar asignada en Word 365.\n\nExisten otros atajos alternativos para abrir el cuadro de diálogo Fuente: Ctrl+D (versión internacional) y Ctrl+M (versión en español).",
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta C (Ctrl+Mayus+F) es correcta. Ctrl+Shift+F es un atajo oficial documentado por Microsoft para abrir el cuadro de dialogo Fuente. La explicacion existente es insuficiente, solo lista atajos sin analizar las opciones del test."
+  },
+  {
+    "id": "fddc638e-e57c-4eaa-b34b-f63321813d6d",
+    "verdict": "deactivate",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "La pregunta es ambigua e irrecuperable. Segun la documentacion oficial de Microsoft, Ctrl+U aplica subrayado (Underline), por lo que la opcion A seria correcta. Sin embargo, la explicacion existente dice que en Word espanol Ctrl+U crea documento nuevo y Ctrl+S subraya. Esta ambiguedad entre convenciones hace que la pregunta sea confusa para los opositores: si se sigue Microsoft oficial, A es correcta; si se sigue la convencion espanola antigua, D seria correcta. Se desactiva."
+  },
+  {
+    "id": "d7d7bc23-633d-415d-9ece-c1875230ba34",
+    "verdict": "deactivate",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "Segun la documentacion oficial de Microsoft, Ctrl+Q quita el formato de parrafo (remove paragraph formatting), NO alinea a la izquierda. Ctrl+L es el atajo para alinear a la izquierda (opcion C seria la correcta). En la convencion espanola antigua, Ctrl+Q alineaba a la izquierda, pero esto contradice la documentacion oficial actual. Si se usa la convencion Microsoft oficial, la respuesta correcta es C (Ctrl+L), no D (Ctrl+Q). La ambiguedad entre convenciones hace esta pregunta problematica. Se desactiva."
+  }
+]

@@ -1,0 +1,41 @@
+{
+  "scraped": {
+    "previousCall::707425": {
+      "examId": 707425,
+      "title": "Examen Tramitación Procesal Turno Libre, 3 de Julio de 2016 (OEP 2015)",
+      "questionCount": 100,
+      "scrapedAt": "2026-02-16T12:52:35.768Z"
+    },
+    "previousCall::1143624": {
+      "examId": 1143624,
+      "title": "Examen Tramitación Procesal Turno Libre, 12 de mayo de 2018 (OEP 2016)",
+      "questionCount": 100,
+      "scrapedAt": "2026-02-16T12:52:37.487Z"
+    },
+    "previousCall::7215420": {
+      "examId": 7215420,
+      "title": "Examen Tramitación Procesal Turno Libre, 2020 (OEP 2017 y 2018)",
+      "questionCount": 100,
+      "scrapedAt": "2026-02-16T12:52:39.201Z"
+    },
+    "previousCall::35968319": {
+      "examId": 35968319,
+      "title": "Examen Tramitación Procesal Turno Libre Estabilización, 2 de marzo de 2024 (OEP 2021)",
+      "questionCount": 100,
+      "scrapedAt": "2026-02-16T12:52:41.053Z"
+    },
+    "previousCall::40195044": {
+      "examId": 40195044,
+      "title": "Examen Tramitación Procesal Turno Libre, 28 de septiembre de 2024 (OEP 2023)",
+      "questionCount": 100,
+      "scrapedAt": "2026-02-16T12:52:42.787Z"
+    },
+    "previousCall::49481489": {
+      "examId": 49481489,
+      "title": "Tercer Ejercicio Tramitación Procesal turno libre (OEP 2024)",
+      "questionCount": 19,
+      "scrapedAt": "2026-02-16T12:52:44.496Z"
+    }
+  },
+  "lastUpdate": "2026-02-16T12:52:44.496Z"
+}

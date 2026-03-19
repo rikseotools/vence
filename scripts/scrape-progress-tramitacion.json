@@ -1,0 +1,1133 @@
+{
+  "temas": [
+    {
+      "index": 0,
+      "title": "Tema 1. La Constitución española de 1978  (PRÓXIMAS CONVOCATORIAS TP TL)",
+      "epigrafesCount": 7,
+      "type": "epigrafes"
+    },
+    {
+      "index": 1,
+      "title": "Tema 2. Derecho de igualdad y no discriminación por razón de género (PRÓXIMAS CONVOCATORIAS TP TL)",
+      "epigrafesCount": 4,
+      "type": "epigrafes"
+    },
+    {
+      "index": 2,
+      "title": "Tema 3. El Gobierno y la Administración (PRÓXIMAS CONVOCATORIAS TP TL)",
+      "epigrafesCount": 5,
+      "type": "epigrafes"
+    },
+    {
+      "index": 3,
+      "title": "Tema 4. Organización territorial del Estado en la Constitución [PRÓXIMAS CONVOCATORIAS TP TL]",
+      "epigrafesCount": 7,
+      "type": "epigrafes"
+    },
+    {
+      "index": 4,
+      "title": "Tema 5. La Unión Europea (PRÓXIMAS CONVOCATORIAS TP TL)",
+      "epigrafesCount": 11,
+      "type": "epigrafes"
+    },
+    {
+      "index": 5,
+      "title": "Tema 6. El poder judicial. El CGPJ. El Ministerio Fiscal. (PRÓXIMAS CONVOCATORIAS TP TL)",
+      "epigrafesCount": 7,
+      "type": "epigrafes"
+    },
+    {
+      "index": 6,
+      "title": "Tema 7. Examen de la organización y competencia de los órganos judiciales I (PRÓXIMAS CONVOCATORIAS TP TL)",
+      "epigrafesCount": 4,
+      "type": "epigrafes"
+    },
+    {
+      "index": 7,
+      "title": "Tema 8. Examen de la organización y competencia de los órganos judiciales II (PRÓXIMAS CONVOCATORIAS TP TL)",
+      "epigrafesCount": 4,
+      "type": "epigrafes"
+    },
+    {
+      "index": 8,
+      "title": "Tema 9. La Carta de Derechos de los Ciudadanos ante la Justicia (PRÓXIMAS CONVOCATORIAS TP TL)",
+      "epigrafesCount": 4,
+      "type": "epigrafes"
+    },
+    {
+      "index": 9,
+      "title": "Tema 10. Modernización de la Oficina judicial (PROXIMAS CONVOCATORIAS TP TL)",
+      "epigrafesCount": 6,
+      "type": "epigrafes"
+    },
+    {
+      "index": 10,
+      "title": "Tema 11. El letrado de la Administración de Justicia (PRÓXIMAS CONVOCATORIAS TP TL)",
+      "epigrafesCount": 3,
+      "type": "epigrafes"
+    },
+    {
+      "index": 11,
+      "title": "Tema 12. Los Cuerpos de Funcionarios al servicio de la Administración de Justicia. (PRÓXIMAS CONVOCATORIAS TP TL)",
+      "epigrafesCount": 2,
+      "type": "epigrafes"
+    },
+    {
+      "index": 12,
+      "title": "Tema 13. Los Cuerpos Generales (I) (PRÓXIMAS CONVOCATORIAS TP TL)",
+      "epigrafesCount": 6,
+      "type": "epigrafes"
+    },
+    {
+      "index": 13,
+      "title": "Tema 14. Los Cuerpos Generales. (PRÓXIMAS CONVOCATORIAS TP TL)",
+      "epigrafesCount": 4,
+      "type": "epigrafes"
+    },
+    {
+      "index": 14,
+      "title": "Tema 15. Libertad sindical (PRÓXIMAS CONVOCATORIAS TP TL)",
+      "epigrafesCount": 4,
+      "type": "epigrafes"
+    },
+    {
+      "index": 15,
+      "title": "Tema 16. Los procedimientos declarativos en la Ley de Enjuiciamiento Civil (PRÓXIMAS CONVOCATORIAS TP TL)",
+      "epigrafesCount": 10,
+      "type": "epigrafes"
+    },
+    {
+      "index": 16,
+      "title": "Tema 17. Los procedimientos de ejecución en la Ley de Enjuiciamiento Civil [PRÓXIMAS CONVOCATORIAS TP TL]",
+      "epigrafesCount": 5,
+      "type": "epigrafes"
+    },
+    {
+      "index": 17,
+      "title": "Tema 18. Procesos especiales en la Ley de Enjuiciamiento Civil (PRÓXIMAS CONVOCATORIAS TP TL)",
+      "epigrafesCount": 3,
+      "type": "epigrafes"
+    },
+    {
+      "index": 18,
+      "title": "Tema 19. La jurisdicción voluntaria (PRÓXIMAS CONVOCATORIAS TP TL)",
+      "epigrafesCount": 9,
+      "type": "epigrafes"
+    },
+    {
+      "index": 19,
+      "title": "Tema 20. Los procedimientos penales en la Ley de Enjuiciamiento Criminal (PRÓXIMAS CONVOCATORIAS TP TL)",
+      "epigrafesCount": 10,
+      "type": "epigrafes"
+    },
+    {
+      "index": 20,
+      "title": "Tema 21. Procedimiento para el juicio sobre delitos leves. (PRÓXIMAS CONVOCATORIAS TP TL)",
+      "epigrafesCount": 5,
+      "type": "epigrafes"
+    },
+    {
+      "index": 21,
+      "title": "Tema 22. Recurso contencioso-administrativo (PROXIMAS CONVOCATORIAS TP TL)",
+      "epigrafesCount": 7,
+      "type": "epigrafes"
+    },
+    {
+      "index": 22,
+      "title": "Tema 23. El proceso laboral (PRÓXIMAS CONVOCATORIAS TP TL)",
+      "epigrafesCount": 10,
+      "type": "epigrafes"
+    },
+    {
+      "index": 23,
+      "title": "Tema 24. Recursos (PRÓXIMAS CONVOCATORIAS TP TL)",
+      "epigrafesCount": 3,
+      "type": "epigrafes"
+    },
+    {
+      "index": 24,
+      "title": "Tema 25. Los actos procesales (PRÓXIMAS CONVOCATORIAS TP TL)",
+      "epigrafesCount": 2,
+      "type": "epigrafes"
+    },
+    {
+      "index": 25,
+      "title": "Tema 26. Las resoluciones de los órganos judiciales (PRÓXIMAS CONVOCATORIAS TP TL)",
+      "epigrafesCount": 4,
+      "type": "epigrafes"
+    },
+    {
+      "index": 26,
+      "title": "Tema 27. Los actos de comunicación con otros Tribunales y Autoridades (PRÓXIMAS CONVOCATORIAS TP TL)",
+      "epigrafesCount": 3,
+      "type": "epigrafes"
+    },
+    {
+      "index": 27,
+      "title": "Tema 28. Actos de comunicación a las partes y otros intervinientes en el proceso (PRÓXIMAS CONVOCATORIAS TP TL)",
+      "epigrafesCount": 3,
+      "type": "epigrafes"
+    },
+    {
+      "index": 28,
+      "title": "Tema 29. El Registro Civil (PRÓXIMAS CONVOCATORIAS TP TL)",
+      "epigrafesCount": 3,
+      "type": "epigrafes"
+    },
+    {
+      "index": 29,
+      "title": "Tema 30. Las inscripciones, certificaciones y expedientes (PRÓXIMAS CONVOCATORIAS TP TL)",
+      "epigrafesCount": 10,
+      "type": "epigrafes"
+    },
+    {
+      "index": 30,
+      "title": "Tema 31. Archivo judicial. (PRÓXIMAS CONVOCATORIAS TP TL)",
+      "epigrafesCount": 2,
+      "type": "epigrafes"
+    },
+    {
+      "index": 0,
+      "title": "Tema 32",
+      "epigrafesCount": 4,
+      "type": "bloques"
+    },
+    {
+      "index": 1,
+      "title": "Tema 33 y 34",
+      "epigrafesCount": 2,
+      "type": "bloques"
+    },
+    {
+      "index": 2,
+      "title": "Tema 35",
+      "epigrafesCount": 6,
+      "type": "bloques"
+    },
+    {
+      "index": 3,
+      "title": "Tema 36",
+      "epigrafesCount": 3,
+      "type": "bloques"
+    },
+    {
+      "index": 4,
+      "title": "Tema 37",
+      "epigrafesCount": 4,
+      "type": "bloques"
+    }
+  ],
+  "scrapeados": {
+    "Tema 1. La Constitución española de 1978  (PRÓXIMAS CONVOCATORIAS TP TL)::I. La CE de 1978": {
+      "done": true,
+      "questions": 59,
+      "date": "2026-02-16T08:58:54.115Z"
+    },
+    "Tema 1. La Constitución española de 1978  (PRÓXIMAS CONVOCATORIAS TP TL)::II. Derechos y deberes fundamentales": {
+      "done": true,
+      "questions": 51,
+      "date": "2026-02-16T08:59:38.798Z"
+    },
+    "Tema 1. La Constitución española de 1978  (PRÓXIMAS CONVOCATORIAS TP TL)::III. La Corona": {
+      "done": true,
+      "questions": 68,
+      "date": "2026-02-16T09:00:29.968Z"
+    },
+    "Tema 1. La Constitución española de 1978  (PRÓXIMAS CONVOCATORIAS TP TL)::IV. Las Cortes Generales": {
+      "done": true,
+      "questions": 82,
+      "date": "2026-02-16T09:01:27.254Z"
+    },
+    "Tema 1. La Constitución española de 1978  (PRÓXIMAS CONVOCATORIAS TP TL)::V. La elaboración de las leyes": {
+      "done": true,
+      "questions": 43,
+      "date": "2026-02-16T09:02:05.695Z"
+    },
+    "Tema 1. La Constitución española de 1978  (PRÓXIMAS CONVOCATORIAS TP TL)::VI. El Tribunal Constitucional": {
+      "done": true,
+      "questions": 66,
+      "date": "2026-02-16T09:02:59.386Z"
+    },
+    "Tema 1. La Constitución española de 1978  (PRÓXIMAS CONVOCATORIAS TP TL)::VII. La reforma constitucional": {
+      "done": true,
+      "questions": 24,
+      "date": "2026-02-16T09:03:33.633Z"
+    },
+    "Tema 2. Derecho de igualdad y no discriminación por razón de género (PRÓXIMAS CONVOCATORIAS TP TL)::I. La LO 3/2007 para la igualdad efectiva de mujeres y hombres": {
+      "done": true,
+      "questions": 71,
+      "date": "2026-02-16T09:04:27.519Z"
+    },
+    "Tema 2. Derecho de igualdad y no discriminación por razón de género (PRÓXIMAS CONVOCATORIAS TP TL)::II. La LO 1/2004 de Medidas de Protección Integral contra la Violencia de Género": {
+      "done": true,
+      "questions": 78,
+      "date": "2026-02-16T09:05:29.489Z"
+    },
+    "Tema 2. Derecho de igualdad y no discriminación por razón de género (PRÓXIMAS CONVOCATORIAS TP TL)::III. La ley 15/2022, de 12 de Julio, integral para la igualdad de trato y la no discriminación": {
+      "done": true,
+      "questions": 31,
+      "date": "2026-02-16T09:06:11.771Z"
+    },
+    "Tema 2. Derecho de igualdad y no discriminación por razón de género (PRÓXIMAS CONVOCATORIAS TP TL)::IV.  La Ley 4/2023, de 28 de febrero, para la igualdad real y efectiva de las personas trans y para la garantía de los derechos de las personas LGTBI": {
+      "done": true,
+      "questions": 34,
+      "date": "2026-02-16T09:06:51.179Z"
+    },
+    "Tema 3. El Gobierno y la Administración (PRÓXIMAS CONVOCATORIAS TP TL)::I y II. El gobierno y la administración": {
+      "done": true,
+      "questions": 94,
+      "date": "2026-02-16T09:07:55.622Z"
+    },
+    "Tema 3. El Gobierno y la Administración (PRÓXIMAS CONVOCATORIAS TP TL)::III. La organización administrativa española": {
+      "done": true,
+      "questions": 35,
+      "date": "2026-02-16T09:08:37.468Z"
+    },
+    "Tema 3. El Gobierno y la Administración (PRÓXIMAS CONVOCATORIAS TP TL)::IV. Los Ministerios y su estructura interna": {
+      "done": true,
+      "questions": 55,
+      "date": "2026-02-16T09:09:20.220Z"
+    },
+    "Tema 3. El Gobierno y la Administración (PRÓXIMAS CONVOCATORIAS TP TL)::V. La Administración periférica del Estado": {
+      "done": true,
+      "questions": 44,
+      "date": "2026-02-16T09:10:02.674Z"
+    },
+    "Tema 3. El Gobierno y la Administración (PRÓXIMAS CONVOCATORIAS TP TL)::VI. La Secretaría de Estado de Justicia: Principales competencias.": {
+      "done": true,
+      "questions": 13,
+      "date": "2026-02-16T09:10:33.182Z"
+    },
+    "Tema 4. Organización territorial del Estado en la Constitución [PRÓXIMAS CONVOCATORIAS TP TL]::I y II. Organización territorial del Estado en la Constitución y el Estado de las Autonomías": {
+      "done": true,
+      "questions": 42,
+      "date": "2026-02-16T09:11:17.228Z"
+    },
+    "Tema 4. Organización territorial del Estado en la Constitución [PRÓXIMAS CONVOCATORIAS TP TL]::III. Competencias de las Comunidades Autónomas": {
+      "done": true,
+      "questions": 29,
+      "date": "2026-02-16T09:11:52.773Z"
+    },
+    "Tema 4. Organización territorial del Estado en la Constitución [PRÓXIMAS CONVOCATORIAS TP TL]::IV. Régimen jurídico de las Comunidades Autónomas": {
+      "done": true,
+      "questions": 25,
+      "date": "2026-02-16T09:12:29.623Z"
+    },
+    "Tema 4. Organización territorial del Estado en la Constitución [PRÓXIMAS CONVOCATORIAS TP TL]::V. La Administración local": {
+      "done": true,
+      "questions": 26,
+      "date": "2026-02-16T09:13:05.993Z"
+    },
+    "Tema 4. Organización territorial del Estado en la Constitución [PRÓXIMAS CONVOCATORIAS TP TL]::VI. La provincia": {
+      "done": true,
+      "questions": 32,
+      "date": "2026-02-16T09:13:46.715Z"
+    },
+    "Tema 4. Organización territorial del Estado en la Constitución [PRÓXIMAS CONVOCATORIAS TP TL]::VII. El municipio": {
+      "done": true,
+      "questions": 47,
+      "date": "2026-02-16T09:14:40.080Z"
+    },
+    "Tema 4. Organización territorial del Estado en la Constitución [PRÓXIMAS CONVOCATORIAS TP TL]::VIII. Disposiciones comunes a las Entidades Locales": {
+      "done": true,
+      "questions": 22,
+      "date": "2026-02-16T09:15:13.829Z"
+    },
+    "Tema 5. La Unión Europea (PRÓXIMAS CONVOCATORIAS TP TL)::I. La Unión Europea": {
+      "done": true,
+      "questions": 19,
+      "date": "2026-02-16T09:15:54.003Z"
+    },
+    "Tema 5. La Unión Europea (PRÓXIMAS CONVOCATORIAS TP TL)::II. Derecho de la Unión Europea": {
+      "done": true,
+      "questions": 23,
+      "date": "2026-02-16T09:16:33.510Z"
+    },
+    "Tema 5. La Unión Europea (PRÓXIMAS CONVOCATORIAS TP TL)::III. Competencias de la Unión Europea": {
+      "done": true,
+      "questions": 22,
+      "date": "2026-02-16T09:17:10.797Z"
+    },
+    "Tema 5. La Unión Europea (PRÓXIMAS CONVOCATORIAS TP TL)::IV. Instituciones y órganos de la Unión Europea": {
+      "done": true,
+      "questions": 20,
+      "date": "2026-02-16T09:17:48.124Z"
+    },
+    "Tema 5. La Unión Europea (PRÓXIMAS CONVOCATORIAS TP TL)::V. El Parlamento Europeo": {
+      "done": true,
+      "questions": 32,
+      "date": "2026-02-16T09:18:22.603Z"
+    },
+    "Tema 5. La Unión Europea (PRÓXIMAS CONVOCATORIAS TP TL)::VI. El Consejo Europeo": {
+      "done": true,
+      "questions": 30,
+      "date": "2026-02-16T09:19:03.312Z"
+    },
+    "Tema 5. La Unión Europea (PRÓXIMAS CONVOCATORIAS TP TL)::VII. El Consejo de la Unión Europea": {
+      "done": true,
+      "questions": 22,
+      "date": "2026-02-16T09:19:39.515Z"
+    },
+    "Tema 5. La Unión Europea (PRÓXIMAS CONVOCATORIAS TP TL)::VIII. La Comisión Europea": {
+      "done": true,
+      "questions": 27,
+      "date": "2026-02-16T09:20:15.766Z"
+    },
+    "Tema 5. La Unión Europea (PRÓXIMAS CONVOCATORIAS TP TL)::IX. El Tribunal de Justicia de la UE": {
+      "done": true,
+      "questions": 33,
+      "date": "2026-02-16T09:20:55.582Z"
+    },
+    "Tema 5. La Unión Europea (PRÓXIMAS CONVOCATORIAS TP TL)::X. El Tribunal de Cuentas": {
+      "done": true,
+      "questions": 20,
+      "date": "2026-02-16T09:21:27.399Z"
+    },
+    "Tema 5. La Unión Europea (PRÓXIMAS CONVOCATORIAS TP TL)::XI. El Banco Central Europeo": {
+      "done": true,
+      "questions": 21,
+      "date": "2026-02-16T09:22:02.667Z"
+    },
+    "Tema 6. El poder judicial. El CGPJ. El Ministerio Fiscal. (PRÓXIMAS CONVOCATORIAS TP TL)::I. El poder judicial": {
+      "done": true,
+      "questions": 30,
+      "date": "2026-02-16T09:22:38.315Z"
+    },
+    "Tema 6. El poder judicial. El CGPJ. El Ministerio Fiscal. (PRÓXIMAS CONVOCATORIAS TP TL)::II. El Consejo General del Poder Judicial": {
+      "done": true,
+      "questions": 42,
+      "date": "2026-02-16T09:23:28.787Z"
+    },
+    "Tema 6. El poder judicial. El CGPJ. El Ministerio Fiscal. (PRÓXIMAS CONVOCATORIAS TP TL)::III. El gobierno interno de los Juzgados y Tribunales": {
+      "done": true,
+      "questions": 34,
+      "date": "2026-02-16T09:24:05.437Z"
+    },
+    "Tema 6. El poder judicial. El CGPJ. El Ministerio Fiscal. (PRÓXIMAS CONVOCATORIAS TP TL)::IV. Jueces y Magistrados": {
+      "done": true,
+      "questions": 42,
+      "date": "2026-02-16T09:24:50.853Z"
+    },
+    "Tema 6. El poder judicial. El CGPJ. El Ministerio Fiscal. (PRÓXIMAS CONVOCATORIAS TP TL)::V. Independencia judicial": {
+      "done": true,
+      "questions": 24,
+      "date": "2026-02-16T09:25:35.443Z"
+    },
+    "Tema 6. El poder judicial. El CGPJ. El Ministerio Fiscal. (PRÓXIMAS CONVOCATORIAS TP TL)::VI. El Ministerio Fiscal": {
+      "done": true,
+      "questions": 43,
+      "date": "2026-02-16T09:26:23.123Z"
+    },
+    "Tema 6. El poder judicial. El CGPJ. El Ministerio Fiscal. (PRÓXIMAS CONVOCATORIAS TP TL)::VII. Acceso a las carreras judicial y fiscal": {
+      "done": true,
+      "questions": 23,
+      "date": "2026-02-16T09:26:57.418Z"
+    },
+    "Tema 7. Examen de la organización y competencia de los órganos judiciales I (PRÓXIMAS CONVOCATORIAS TP TL)::I. El Tribunal Supremo": {
+      "done": true,
+      "questions": 39,
+      "date": "2026-02-16T09:27:42.666Z"
+    },
+    "Tema 7. Examen de la organización y competencia de los órganos judiciales I (PRÓXIMAS CONVOCATORIAS TP TL)::II. La Audiencia Nacional": {
+      "done": true,
+      "questions": 23,
+      "date": "2026-02-16T09:28:20.386Z"
+    },
+    "Tema 7. Examen de la organización y competencia de los órganos judiciales I (PRÓXIMAS CONVOCATORIAS TP TL)::III. Los Tribunales Superiores de Justicia": {
+      "done": true,
+      "questions": 29,
+      "date": "2026-02-16T09:28:59.365Z"
+    },
+    "Tema 7. Examen de la organización y competencia de los órganos judiciales I (PRÓXIMAS CONVOCATORIAS TP TL)::IV. Las Audiencias Provinciales": {
+      "done": true,
+      "questions": 25,
+      "date": "2026-02-16T09:29:33.770Z"
+    },
+    "Tema 8. Examen de la organización y competencia de los órganos judiciales II (PRÓXIMAS CONVOCATORIAS TP TL)::I. Los Tribunales de Instancia": {
+      "done": true,
+      "questions": 50,
+      "date": "2026-02-16T09:30:18.557Z"
+    },
+    "Tema 8. Examen de la organización y competencia de los órganos judiciales II (PRÓXIMAS CONVOCATORIAS TP TL)::II. El Tribunal Central de Instancia": {
+      "done": true,
+      "questions": 10,
+      "date": "2026-02-16T09:30:47.801Z"
+    },
+    "Tema 8. Examen de la organización y competencia de los órganos judiciales II (PRÓXIMAS CONVOCATORIAS TP TL)::III. La especialización de secciones y plazas judiciales": {
+      "done": true,
+      "questions": 7,
+      "date": "2026-02-16T09:31:16.412Z"
+    },
+    "Tema 8. Examen de la organización y competencia de los órganos judiciales II (PRÓXIMAS CONVOCATORIAS TP TL)::IV. Los jueces y las juezas de paz": {
+      "done": true,
+      "questions": 71,
+      "date": "2026-02-16T09:32:14.910Z"
+    },
+    "Tema 9. La Carta de Derechos de los Ciudadanos ante la Justicia (PRÓXIMAS CONVOCATORIAS TP TL)::I. Carta de Derechos de los Ciudadanos ante la Justicia": {
+      "done": true,
+      "questions": 21,
+      "date": "2026-02-16T09:32:45.244Z"
+    },
+    "Tema 9. La Carta de Derechos de los Ciudadanos ante la Justicia (PRÓXIMAS CONVOCATORIAS TP TL)::II. Derechos de información, de atención y gestión, de identificación de actuaciones y funcionarios, derechos lingüísticos": {
+      "done": true,
+      "questions": 71,
+      "date": "2026-02-16T09:33:32.575Z"
+    },
+    "Tema 9. La Carta de Derechos de los Ciudadanos ante la Justicia (PRÓXIMAS CONVOCATORIAS TP TL)::III. Derechos frente a los profesionales que asisten y representan a los ciudadanos y derecho a la justicia gratuita en la Carta": {
+      "done": true,
+      "questions": 37,
+      "date": "2026-02-16T09:34:15.730Z"
+    },
+    "Tema 9. La Carta de Derechos de los Ciudadanos ante la Justicia (PRÓXIMAS CONVOCATORIAS TP TL)::IV. Plan de Transparencia Judicial": {
+      "done": true,
+      "questions": 23,
+      "date": "2026-02-16T09:34:50.186Z"
+    },
+    "Tema 10. Modernización de la Oficina judicial (PROXIMAS CONVOCATORIAS TP TL)::I y II. La modernización de la oficina judicial y el nuevo modelo de organización judicial": {
+      "done": true,
+      "questions": 27,
+      "date": "2026-02-16T09:35:30.284Z"
+    },
+    "Tema 10. Modernización de la Oficina judicial (PROXIMAS CONVOCATORIAS TP TL)::III. La administración de justicia y las nuevas tecnologías": {
+      "done": true,
+      "questions": 31,
+      "date": "2026-02-16T09:36:13.295Z"
+    },
+    "Tema 10. Modernización de la Oficina judicial (PROXIMAS CONVOCATORIAS TP TL)::IV. Código de Conducta para usuarios de equipos y sistemas informáticos al servicio de la Administración de Justicia.": {
+      "done": true,
+      "questions": 25,
+      "date": "2026-02-16T09:36:51.990Z"
+    },
+    "Tema 10. Modernización de la Oficina judicial (PROXIMAS CONVOCATORIAS TP TL)::V. El expediente digital y la presentación telemática de escritos y documentos.": {
+      "done": true,
+      "questions": 46,
+      "date": "2026-02-16T09:37:39.601Z"
+    },
+    "Tema 10. Modernización de la Oficina judicial (PROXIMAS CONVOCATORIAS TP TL)::VI. La firma digital y el correo electrónico.": {
+      "done": true,
+      "questions": 16,
+      "date": "2026-02-16T09:38:15.625Z"
+    },
+    "Tema 10. Modernización de la Oficina judicial (PROXIMAS CONVOCATORIAS TP TL)::VII. Incidencia de la legislación de protección de datos en el uso de las aplicaciones informáticas": {
+      "done": true,
+      "questions": 41,
+      "date": "2026-02-16T09:39:04.242Z"
+    },
+    "Tema 11. El letrado de la Administración de Justicia (PRÓXIMAS CONVOCATORIAS TP TL)::I. Estatuto personal del Letrado de la Administración de Justicia": {
+      "done": true,
+      "questions": 35,
+      "date": "2026-02-16T09:39:44.400Z"
+    },
+    "Tema 11. El letrado de la Administración de Justicia (PRÓXIMAS CONVOCATORIAS TP TL)::II. Funciones y competencias de los Letrados de la Administración de Justicia": {
+      "done": true,
+      "questions": 45,
+      "date": "2026-02-16T09:40:37.430Z"
+    },
+    "Tema 11. El letrado de la Administración de Justicia (PRÓXIMAS CONVOCATORIAS TP TL)::III. Ordenación del Cuerpo de Letrados de la Administración de Justicia": {
+      "done": true,
+      "questions": 58,
+      "date": "2026-02-16T09:41:27.190Z"
+    },
+    "Tema 12. Los Cuerpos de Funcionarios al servicio de la Administración de Justicia. (PRÓXIMAS CONVOCATORIAS TP TL)::I. Cuerpos de funcionarios al servicio de la Administración de Justicia": {
+      "done": true,
+      "questions": 40,
+      "date": "2026-02-16T09:42:16.826Z"
+    },
+    "Tema 12. Los Cuerpos de Funcionarios al servicio de la Administración de Justicia. (PRÓXIMAS CONVOCATORIAS TP TL)::II. Cuerpos especiales. El Cuerpo de Médicos Forenses": {
+      "done": true,
+      "questions": 45,
+      "date": "2026-02-16T09:43:06.937Z"
+    },
+    "Tema 13. Los Cuerpos Generales (I) (PRÓXIMAS CONVOCATORIAS TP TL)::I. Cuerpos generales: funciones": {
+      "done": true,
+      "questions": 38,
+      "date": "2026-02-16T09:43:44.897Z"
+    },
+    "Tema 13. Los Cuerpos Generales (I) (PRÓXIMAS CONVOCATORIAS TP TL)::II. Formas de acceso y promoción interna": {
+      "done": true,
+      "questions": 93,
+      "date": "2026-02-16T09:44:54.139Z"
+    },
+    "Tema 13. Los Cuerpos Generales (I) (PRÓXIMAS CONVOCATORIAS TP TL)::III. Adquisición y pérdida de la condición de funcionario. Rehabilitación": {
+      "done": true,
+      "questions": 64,
+      "date": "2026-02-16T09:45:52.838Z"
+    },
+    "Tema 13. Los Cuerpos Generales (I) (PRÓXIMAS CONVOCATORIAS TP TL)::IV. Derechos, deberes e incompatibilidades": {
+      "done": true,
+      "questions": 24,
+      "date": "2026-02-16T09:46:30.104Z"
+    },
+    "Tema 13. Los Cuerpos Generales (I) (PRÓXIMAS CONVOCATORIAS TP TL)::V. Jornada y horarios": {
+      "done": true,
+      "questions": 25,
+      "date": "2026-02-16T09:47:08.264Z"
+    },
+    "Tema 13. Los Cuerpos Generales (I) (PRÓXIMAS CONVOCATORIAS TP TL)::VI. Vacaciones, permisos y licencias": {
+      "done": true,
+      "questions": 39,
+      "date": "2026-02-16T09:47:55.125Z"
+    },
+    "Tema 14. Los Cuerpos Generales. (PRÓXIMAS CONVOCATORIAS TP TL)::I. Situaciones administrativas": {
+      "done": true,
+      "questions": 36,
+      "date": "2026-02-16T09:48:41.477Z"
+    },
+    "Tema 14. Los Cuerpos Generales. (PRÓXIMAS CONVOCATORIAS TP TL)::II. Ordenación de la actividad profesional": {
+      "done": true,
+      "questions": 22,
+      "date": "2026-02-16T09:49:17.199Z"
+    },
+    "Tema 14. Los Cuerpos Generales. (PRÓXIMAS CONVOCATORIAS TP TL)::III. Provisión de puestos de trabajo y movilidad": {
+      "done": true,
+      "questions": 29,
+      "date": "2026-02-16T09:50:01.023Z"
+    },
+    "Tema 14. Los Cuerpos Generales. (PRÓXIMAS CONVOCATORIAS TP TL)::IV. Régimen disciplinario": {
+      "done": true,
+      "questions": 32,
+      "date": "2026-02-16T09:50:43.171Z"
+    },
+    "Tema 15. Libertad sindical (PRÓXIMAS CONVOCATORIAS TP TL)::I. Libertad sindical": {
+      "done": true,
+      "questions": 42,
+      "date": "2026-02-16T09:51:30.003Z"
+    },
+    "Tema 15. Libertad sindical (PRÓXIMAS CONVOCATORIAS TP TL)::II. Derechos de ejercicio colectivo de los empleos públicos": {
+      "done": true,
+      "questions": 31,
+      "date": "2026-02-16T09:52:14.284Z"
+    },
+    "Tema 15. Libertad sindical (PRÓXIMAS CONVOCATORIAS TP TL)::III. Derecho de huelga": {
+      "done": true,
+      "questions": 11,
+      "date": "2026-02-16T09:52:43.940Z"
+    },
+    "Tema 15. Libertad sindical (PRÓXIMAS CONVOCATORIAS TP TL)::IV. Salud y prevención de riesgos laborales": {
+      "done": true,
+      "questions": 10,
+      "date": "2026-02-16T09:53:14.957Z"
+    },
+    "Tema 16. Los procedimientos declarativos en la Ley de Enjuiciamiento Civil (PRÓXIMAS CONVOCATORIAS TP TL)::I. Medios adecuados de solución de controversias en vía no jurisdiccional": {
+      "done": true,
+      "questions": 20,
+      "date": "2026-02-16T09:53:45.833Z"
+    },
+    "Tema 16. Los procedimientos declarativos en la Ley de Enjuiciamiento Civil (PRÓXIMAS CONVOCATORIAS TP TL)::II. Los procedimientos declarativos en la Ley de Enjuiciamiento Civil": {
+      "done": true,
+      "questions": 30,
+      "date": "2026-02-16T09:54:23.035Z"
+    },
+    "Tema 16. Los procedimientos declarativos en la Ley de Enjuiciamiento Civil (PRÓXIMAS CONVOCATORIAS TP TL)::III. Las partes en el proceso civil": {
+      "done": true,
+      "questions": 76,
+      "date": "2026-02-16T09:55:16.606Z"
+    },
+    "Tema 16. Los procedimientos declarativos en la Ley de Enjuiciamiento Civil (PRÓXIMAS CONVOCATORIAS TP TL)::IV. Jurisdicción y competencia": {
+      "done": true,
+      "questions": 100,
+      "date": "2026-02-16T09:56:24.303Z"
+    },
+    "Tema 16. Los procedimientos declarativos en la Ley de Enjuiciamiento Civil (PRÓXIMAS CONVOCATORIAS TP TL)::V. Diligencias preliminares": {
+      "done": true,
+      "questions": 26,
+      "date": "2026-02-16T09:56:59.469Z"
+    },
+    "Tema 16. Los procedimientos declarativos en la Ley de Enjuiciamiento Civil (PRÓXIMAS CONVOCATORIAS TP TL)::VI. Prueba": {
+      "done": true,
+      "questions": 34,
+      "date": "2026-02-16T09:57:40.430Z"
+    },
+    "Tema 16. Los procedimientos declarativos en la Ley de Enjuiciamiento Civil (PRÓXIMAS CONVOCATORIAS TP TL)::VII. Cuestiones incidentales": {
+      "done": true,
+      "questions": 22,
+      "date": "2026-02-16T09:58:15.703Z"
+    },
+    "Tema 16. Los procedimientos declarativos en la Ley de Enjuiciamiento Civil (PRÓXIMAS CONVOCATORIAS TP TL)::VIII. Juicio ordinario": {
+      "done": true,
+      "questions": 100,
+      "date": "2026-02-16T09:59:18.273Z"
+    },
+    "Tema 16. Los procedimientos declarativos en la Ley de Enjuiciamiento Civil (PRÓXIMAS CONVOCATORIAS TP TL)::IX. Juicio verbal": {
+      "done": true,
+      "questions": 42,
+      "date": "2026-02-16T10:00:08.244Z"
+    },
+    "Tema 16. Los procedimientos declarativos en la Ley de Enjuiciamiento Civil (PRÓXIMAS CONVOCATORIAS TP TL)::X. Juicios verbales especiales": {
+      "done": true,
+      "questions": 61,
+      "date": "2026-02-16T10:01:08.191Z"
+    },
+    "Tema 17. Los procedimientos de ejecución en la Ley de Enjuiciamiento Civil [PRÓXIMAS CONVOCATORIAS TP TL]::I. Los procedimientos de ejecución en la Ley de Enjuiciamiento Civil": {
+      "done": true,
+      "questions": 100,
+      "date": "2026-02-16T10:02:16.189Z"
+    },
+    "Tema 17. Los procedimientos de ejecución en la Ley de Enjuiciamiento Civil [PRÓXIMAS CONVOCATORIAS TP TL]::II. Ejecución provisional": {
+      "done": true,
+      "questions": 40,
+      "date": "2026-02-16T10:02:56.408Z"
+    },
+    "Tema 17. Los procedimientos de ejecución en la Ley de Enjuiciamiento Civil [PRÓXIMAS CONVOCATORIAS TP TL]::III. Ejecución dineraria": {
+      "done": true,
+      "questions": 100,
+      "date": "2026-02-16T10:03:57.790Z"
+    },
+    "Tema 17. Los procedimientos de ejecución en la Ley de Enjuiciamiento Civil [PRÓXIMAS CONVOCATORIAS TP TL]::IV. Ejecución no dineraria": {
+      "done": true,
+      "questions": 36,
+      "date": "2026-02-16T10:04:39.718Z"
+    },
+    "Tema 17. Los procedimientos de ejecución en la Ley de Enjuiciamiento Civil [PRÓXIMAS CONVOCATORIAS TP TL]::V. Medidas cautelares": {
+      "done": true,
+      "questions": 100,
+      "date": "2026-02-16T10:05:34.887Z"
+    },
+    "Tema 18. Procesos especiales en la Ley de Enjuiciamiento Civil (PRÓXIMAS CONVOCATORIAS TP TL)::I. Procesos sobre provisión de medidas judiciales de apoyo a las personas con discapacidad, filiación, matrimonio y menores": {
+      "done": true,
+      "questions": 100,
+      "date": "2026-02-16T10:06:31.224Z"
+    },
+    "Tema 18. Procesos especiales en la Ley de Enjuiciamiento Civil (PRÓXIMAS CONVOCATORIAS TP TL)::III. Proceso monitorio y juicio cambiario": {
+      "done": true,
+      "questions": 88,
+      "date": "2026-02-16T10:08:21.081Z"
+    },
+    "Tema 19. La jurisdicción voluntaria (PRÓXIMAS CONVOCATORIAS TP TL)::I. Disposiciones generales y normas comunes de los procedimientos de jurisdicción voluntaria": {
+      "done": true,
+      "questions": 76,
+      "date": "2026-02-16T10:09:09.450Z"
+    },
+    "Tema 19. La jurisdicción voluntaria (PRÓXIMAS CONVOCATORIAS TP TL)::II. Expedientes de jurisdicción voluntaria en materia de personas": {
+      "done": true,
+      "questions": 62,
+      "date": "2026-02-16T10:09:57.635Z"
+    },
+    "Tema 19. La jurisdicción voluntaria (PRÓXIMAS CONVOCATORIAS TP TL)::III. Expedientes de jurisdicción voluntaria en materia de familia": {
+      "done": true,
+      "questions": 25,
+      "date": "2026-02-16T10:10:33.218Z"
+    },
+    "Tema 19. La jurisdicción voluntaria (PRÓXIMAS CONVOCATORIAS TP TL)::IV. Expedientes de jurisdicción voluntaria relativos al Derecho sucesorio": {
+      "done": true,
+      "questions": 22,
+      "date": "2026-02-16T10:11:05.168Z"
+    },
+    "Tema 19. La jurisdicción voluntaria (PRÓXIMAS CONVOCATORIAS TP TL)::V. Expedientes relativos al Derecho de obligaciones": {
+      "done": true,
+      "questions": 24,
+      "date": "2026-02-16T10:11:38.654Z"
+    },
+    "Tema 19. La jurisdicción voluntaria (PRÓXIMAS CONVOCATORIAS TP TL)::VI. Expedientes relativos a los derechos reales": {
+      "done": true,
+      "questions": 24,
+      "date": "2026-02-16T10:12:18.416Z"
+    },
+    "Tema 19. La jurisdicción voluntaria (PRÓXIMAS CONVOCATORIAS TP TL)::VII. Expedientes de subastas voluntarias.": {
+      "done": true,
+      "questions": 30,
+      "date": "2026-02-16T10:12:57.410Z"
+    },
+    "Tema 19. La jurisdicción voluntaria (PRÓXIMAS CONVOCATORIAS TP TL)::VIII. Expedientes en materia mercantil": {
+      "done": true,
+      "questions": 42,
+      "date": "2026-02-16T10:13:39.319Z"
+    },
+    "Tema 19. La jurisdicción voluntaria (PRÓXIMAS CONVOCATORIAS TP TL)::IX. Conciliación": {
+      "done": true,
+      "questions": 41,
+      "date": "2026-02-16T10:14:19.601Z"
+    },
+    "Tema 20. Los procedimientos penales en la Ley de Enjuiciamiento Criminal (PRÓXIMAS CONVOCATORIAS TP TL)::I. Jurisdicción y competencia": {
+      "done": true,
+      "questions": 67,
+      "date": "2026-02-16T10:15:15.905Z"
+    },
+    "Tema 20. Los procedimientos penales en la Ley de Enjuiciamiento Criminal (PRÓXIMAS CONVOCATORIAS TP TL)::II. Breve referencia al procedimiento restaurativo": {
+      "done": true,
+      "questions": 12,
+      "date": "2026-02-16T10:15:50.528Z"
+    },
+    "Tema 20. Los procedimientos penales en la Ley de Enjuiciamiento Criminal (PRÓXIMAS CONVOCATORIAS TP TL)::III. Las partes del proceso penal": {
+      "done": true,
+      "questions": 64,
+      "date": "2026-02-16T10:16:39.986Z"
+    },
+    "Tema 20. Los procedimientos penales en la Ley de Enjuiciamiento Criminal (PRÓXIMAS CONVOCATORIAS TP TL)::IV. Incoación del proceso penal": {
+      "done": true,
+      "questions": 33,
+      "date": "2026-02-16T10:17:14.461Z"
+    },
+    "Tema 20. Los procedimientos penales en la Ley de Enjuiciamiento Criminal (PRÓXIMAS CONVOCATORIAS TP TL)::V. Medidas cautelares personales": {
+      "done": true,
+      "questions": 100,
+      "date": "2026-02-16T10:18:19.819Z"
+    },
+    "Tema 20. Los procedimientos penales en la Ley de Enjuiciamiento Criminal (PRÓXIMAS CONVOCATORIAS TP TL)::VI. Medidas limitadoras de derechos fundamentales": {
+      "done": true,
+      "questions": 32,
+      "date": "2026-02-16T10:18:57.418Z"
+    },
+    "Tema 20. Los procedimientos penales en la Ley de Enjuiciamiento Criminal (PRÓXIMAS CONVOCATORIAS TP TL)::VII. Medidas cautelares reales": {
+      "done": true,
+      "questions": 25,
+      "date": "2026-02-16T10:19:36.722Z"
+    },
+    "Tema 20. Los procedimientos penales en la Ley de Enjuiciamiento Criminal (PRÓXIMAS CONVOCATORIAS TP TL)::VIII. El procedimiento ordinario": {
+      "done": true,
+      "questions": 100,
+      "date": "2026-02-16T10:20:38.249Z"
+    },
+    "Tema 20. Los procedimientos penales en la Ley de Enjuiciamiento Criminal (PRÓXIMAS CONVOCATORIAS TP TL)::IX. El procedimiento abreviado": {
+      "done": true,
+      "questions": 100,
+      "date": "2026-02-16T10:21:27.049Z"
+    },
+    "Tema 21. Procedimiento para el juicio sobre delitos leves. (PRÓXIMAS CONVOCATORIAS TP TL)::I. El procedimiento para el juicio sobre delitos leves": {
+      "done": true,
+      "questions": 62,
+      "date": "2026-02-16T10:23:24.500Z"
+    },
+    "Tema 21. Procedimiento para el juicio sobre delitos leves. (PRÓXIMAS CONVOCATORIAS TP TL)::II. EL procedimiento para el enjuiciamiento rápido de determinados delitos": {
+      "done": true,
+      "questions": 93,
+      "date": "2026-02-16T10:24:27.033Z"
+    },
+    "Tema 21. Procedimiento para el juicio sobre delitos leves. (PRÓXIMAS CONVOCATORIAS TP TL)::III. El proceso por aceptación de decreto": {
+      "done": true,
+      "questions": 17,
+      "date": "2026-02-16T10:24:57.239Z"
+    },
+    "Tema 21. Procedimiento para el juicio sobre delitos leves. (PRÓXIMAS CONVOCATORIAS TP TL)::IV. La ejecución en el proceso penal": {
+      "done": true,
+      "questions": 23,
+      "date": "2026-02-16T10:25:34.415Z"
+    },
+    "Tema 21. Procedimiento para el juicio sobre delitos leves. (PRÓXIMAS CONVOCATORIAS TP TL)::V. La ejecución civil en el proceso penal": {
+      "done": true,
+      "questions": 24,
+      "date": "2026-02-16T10:26:16.771Z"
+    },
+    "Tema 22. Recurso contencioso-administrativo (PROXIMAS CONVOCATORIAS TP TL)::I. El orden jurisdiccional contencioso-administrativo": {
+      "done": true,
+      "questions": 85,
+      "date": "2026-02-16T10:27:15.069Z"
+    },
+    "Tema 22. Recurso contencioso-administrativo (PROXIMAS CONVOCATORIAS TP TL)::II. Las partes en el proceso contencioso administrativo": {
+      "done": true,
+      "questions": 24,
+      "date": "2026-02-16T10:27:47.775Z"
+    },
+    "Tema 22. Recurso contencioso-administrativo (PROXIMAS CONVOCATORIAS TP TL)::III. El objeto del recurso contencioso administrativo": {
+      "done": true,
+      "questions": 37,
+      "date": "2026-02-16T10:28:25.970Z"
+    },
+    "Tema 22. Recurso contencioso-administrativo (PROXIMAS CONVOCATORIAS TP TL)::IV. El procedimiento contencioso administrativo ordinario": {
+      "done": true,
+      "questions": 100,
+      "date": "2026-02-16T10:29:21.056Z"
+    },
+    "Tema 22. Recurso contencioso-administrativo (PROXIMAS CONVOCATORIAS TP TL)::V. El procedimiento contencioso administrativo abreviado": {
+      "done": true,
+      "questions": 60,
+      "date": "2026-02-16T10:30:06.688Z"
+    },
+    "Tema 22. Recurso contencioso-administrativo (PROXIMAS CONVOCATORIAS TP TL)::VI. Los procedimientos contencioso administrativos especiales": {
+      "done": true,
+      "questions": 99,
+      "date": "2026-02-16T10:31:12.855Z"
+    },
+    "Tema 22. Recurso contencioso-administrativo (PROXIMAS CONVOCATORIAS TP TL)::VII. Impugnación de la sentencia: recurso ordinario de apelación": {
+      "done": true,
+      "questions": 23,
+      "date": "2026-02-16T10:31:46.422Z"
+    },
+    "Tema 23. El proceso laboral (PRÓXIMAS CONVOCATORIAS TP TL)::I. El proceso laboral": {
+      "done": true,
+      "questions": 13,
+      "date": "2026-02-16T10:32:16.640Z"
+    },
+    "Tema 23. El proceso laboral (PRÓXIMAS CONVOCATORIAS TP TL)::II. Jurisdicción y competencia": {
+      "done": true,
+      "questions": 34,
+      "date": "2026-02-16T10:32:56.305Z"
+    },
+    "Tema 23. El proceso laboral (PRÓXIMAS CONVOCATORIAS TP TL)::III. Las partes en el procedimiento laboral": {
+      "done": true,
+      "questions": 35,
+      "date": "2026-02-16T10:33:32.421Z"
+    },
+    "Tema 23. El proceso laboral (PRÓXIMAS CONVOCATORIAS TP TL)::IV. Acumulación de acciones, procesos y ejecuciones": {
+      "done": true,
+      "questions": 37,
+      "date": "2026-02-16T10:34:12.309Z"
+    },
+    "Tema 23. El proceso laboral (PRÓXIMAS CONVOCATORIAS TP TL)::V. Los actos procesales en el orden jurisdiccional social": {
+      "done": true,
+      "questions": 29,
+      "date": "2026-02-16T10:34:46.559Z"
+    },
+    "Tema 23. El proceso laboral (PRÓXIMAS CONVOCATORIAS TP TL)::VI. La evitación del proceso": {
+      "done": true,
+      "questions": 26,
+      "date": "2026-02-16T10:35:19.769Z"
+    },
+    "Tema 23. El proceso laboral (PRÓXIMAS CONVOCATORIAS TP TL)::VII. Proceso ordinario": {
+      "done": true,
+      "questions": 39,
+      "date": "2026-02-16T10:35:58.483Z"
+    },
+    "Tema 23. El proceso laboral (PRÓXIMAS CONVOCATORIAS TP TL)::VIII. Proceso monitorio": {
+      "done": true,
+      "questions": 15,
+      "date": "2026-02-16T10:36:29.906Z"
+    },
+    "Tema 23. El proceso laboral (PRÓXIMAS CONVOCATORIAS TP TL)::IX y X. Procesos especiales: modalidades. Despidos y sanciones": {
+      "done": true,
+      "questions": 38,
+      "date": "2026-02-16T10:37:11.837Z"
+    },
+    "Tema 23. El proceso laboral (PRÓXIMAS CONVOCATORIAS TP TL)::XI. Seguridad Social": {
+      "done": true,
+      "questions": 23,
+      "date": "2026-02-16T10:37:48.056Z"
+    },
+    "Tema 24. Recursos (PRÓXIMAS CONVOCATORIAS TP TL)::I. Los recursos": {
+      "done": true,
+      "questions": 23,
+      "date": "2026-02-16T10:38:21.400Z"
+    },
+    "Tema 24. Recursos (PRÓXIMAS CONVOCATORIAS TP TL)::II. Los recursos en el ámbito civil": {
+      "done": true,
+      "questions": 100,
+      "date": "2026-02-16T10:39:22.694Z"
+    },
+    "Tema 24. Recursos (PRÓXIMAS CONVOCATORIAS TP TL)::III. Los recursos en el procedimiento penal": {
+      "done": true,
+      "questions": 100,
+      "date": "2026-02-16T10:40:23.625Z"
+    },
+    "Tema 25. Los actos procesales (PRÓXIMAS CONVOCATORIAS TP TL)::I y II. Los actos procesales. Requisitos": {
+      "done": true,
+      "questions": 67,
+      "date": "2026-02-16T10:41:13.683Z"
+    },
+    "Tema 25. Los actos procesales (PRÓXIMAS CONVOCATORIAS TP TL)::III. Defectos de los actos procesales": {
+      "done": true,
+      "questions": 30,
+      "date": "2026-02-16T10:41:50.330Z"
+    },
+    "Tema 26. Las resoluciones de los órganos judiciales (PRÓXIMAS CONVOCATORIAS TP TL)::I y II. Las resoluciones: concepto y clases. Las resoluciones de los órganos judiciales": {
+      "done": true,
+      "questions": 51,
+      "date": "2026-02-16T10:42:37.164Z"
+    },
+    "Tema 26. Las resoluciones de los órganos judiciales (PRÓXIMAS CONVOCATORIAS TP TL)::III. Las resoluciones de los órganos judiciales colegiados": {
+      "done": true,
+      "questions": 60,
+      "date": "2026-02-16T10:43:18.605Z"
+    },
+    "Tema 26. Las resoluciones de los órganos judiciales (PRÓXIMAS CONVOCATORIAS TP TL)::IV. Las resoluciones del Letrado de la Administración de Justicia": {
+      "done": true,
+      "questions": 31,
+      "date": "2026-02-16T10:43:55.220Z"
+    },
+    "Tema 26. Las resoluciones de los órganos judiciales (PRÓXIMAS CONVOCATORIAS TP TL)::V. Invariabilidad y subsanación de las resoluciones": {
+      "done": true,
+      "questions": 25,
+      "date": "2026-02-16T10:44:28.896Z"
+    },
+    "Tema 27. Los actos de comunicación con otros Tribunales y Autoridades (PRÓXIMAS CONVOCATORIAS TP TL)::I. Los actos de comunicación con otros tribunales y autoridades": {
+      "done": true,
+      "questions": 39,
+      "date": "2026-02-16T10:45:09.345Z"
+    },
+    "Tema 27. Los actos de comunicación con otros Tribunales y Autoridades (PRÓXIMAS CONVOCATORIAS TP TL)::II. El auxilio judicial en el proceso penal": {
+      "done": true,
+      "questions": 24,
+      "date": "2026-02-16T10:45:43.647Z"
+    },
+    "Tema 27. Los actos de comunicación con otros Tribunales y Autoridades (PRÓXIMAS CONVOCATORIAS TP TL)::III. Cooperación jurídica internacional": {
+      "done": true,
+      "questions": 40,
+      "date": "2026-02-16T10:46:21.837Z"
+    },
+    "Tema 28. Actos de comunicación a las partes y otros intervinientes en el proceso (PRÓXIMAS CONVOCATORIAS TP TL)::I. Actos de comunicación a las partes y otros intervinientes": {
+      "done": true,
+      "questions": 80,
+      "date": "2026-02-16T10:47:24.927Z"
+    },
+    "Tema 28. Actos de comunicación a las partes y otros intervinientes en el proceso (PRÓXIMAS CONVOCATORIAS TP TL)::II. Notificaciones, citaciones y mandamientos en el proceso penal": {
+      "done": true,
+      "questions": 43,
+      "date": "2026-02-16T10:48:10.599Z"
+    },
+    "Tema 28. Actos de comunicación a las partes y otros intervinientes en el proceso (PRÓXIMAS CONVOCATORIAS TP TL)::III. Formas de notificación y nuevas tecnologías": {
+      "done": true,
+      "questions": 23,
+      "date": "2026-02-16T10:48:42.348Z"
+    },
+    "Tema 29. El Registro Civil (PRÓXIMAS CONVOCATORIAS TP TL)::I y II. El Registro Civil: legislación vigente, naturaleza, contenido y competencias": {
+      "done": true,
+      "questions": 24,
+      "date": "2026-02-16T10:49:16.049Z"
+    },
+    "Tema 29. El Registro Civil (PRÓXIMAS CONVOCATORIAS TP TL)::III. Derechos y deberes ante el Registro Civil y principios de funcionamiento": {
+      "done": true,
+      "questions": 23,
+      "date": "2026-02-16T10:49:48.048Z"
+    },
+    "Tema 29. El Registro Civil (PRÓXIMAS CONVOCATORIAS TP TL)::IV. Estructura y dependencia del Registro Civil": {
+      "done": true,
+      "questions": 29,
+      "date": "2026-02-16T10:50:23.467Z"
+    },
+    "Tema 30. Las inscripciones, certificaciones y expedientes (PRÓXIMAS CONVOCATORIAS TP TL)::I.  Títulos que acceden al Registro Civil": {
+      "done": true,
+      "questions": 22,
+      "date": "2026-02-16T10:50:56.954Z"
+    },
+    "Tema 30. Las inscripciones, certificaciones y expedientes (PRÓXIMAS CONVOCATORIAS TP TL)::II. Los asientos registrales": {
+      "done": true,
+      "questions": 23,
+      "date": "2026-02-16T10:51:28.627Z"
+    },
+    "Tema 30. Las inscripciones, certificaciones y expedientes (PRÓXIMAS CONVOCATORIAS TP TL)::III. Inscripción de nacimiento y filiación": {
+      "done": true,
+      "questions": 32,
+      "date": "2026-02-16T10:52:05.121Z"
+    },
+    "Tema 30. Las inscripciones, certificaciones y expedientes (PRÓXIMAS CONVOCATORIAS TP TL)::IV. Inscripciones relativas al matrimonio": {
+      "done": true,
+      "questions": 19,
+      "date": "2026-02-16T10:52:38.286Z"
+    },
+    "Tema 30. Las inscripciones, certificaciones y expedientes (PRÓXIMAS CONVOCATORIAS TP TL)::V. Inscripción de la defunción": {
+      "done": true,
+      "questions": 20,
+      "date": "2026-02-16T10:53:10.278Z"
+    },
+    "Tema 30. Las inscripciones, certificaciones y expedientes (PRÓXIMAS CONVOCATORIAS TP TL)::VI. Otras inscripciones": {
+      "done": true,
+      "questions": 22,
+      "date": "2026-02-16T10:53:43.313Z"
+    },
+    "Tema 30. Las inscripciones, certificaciones y expedientes (PRÓXIMAS CONVOCATORIAS TP TL)::VII. Certificaciones": {
+      "done": true,
+      "questions": 25,
+      "date": "2026-02-16T10:54:16.046Z"
+    },
+    "Tema 30. Las inscripciones, certificaciones y expedientes (PRÓXIMAS CONVOCATORIAS TP TL)::VIII. Régimen de recursos": {
+      "done": true,
+      "questions": 13,
+      "date": "2026-02-16T10:54:45.339Z"
+    },
+    "Tema 30. Las inscripciones, certificaciones y expedientes (PRÓXIMAS CONVOCATORIAS TP TL)::IX. Expedientes del Registro Civil": {
+      "done": true,
+      "questions": 15,
+      "date": "2026-02-16T10:55:15.234Z"
+    },
+    "Tema 30. Las inscripciones, certificaciones y expedientes (PRÓXIMAS CONVOCATORIAS TP TL)::X. Normas de derecho internacional privado": {
+      "done": true,
+      "questions": 20,
+      "date": "2026-02-16T10:55:51.383Z"
+    },
+    "Tema 31. Archivo judicial. (PRÓXIMAS CONVOCATORIAS TP TL)::I. Archivos Judiciales": {
+      "done": true,
+      "questions": 53,
+      "date": "2026-02-16T10:56:39.232Z"
+    },
+    "Tema 31. Archivo judicial. (PRÓXIMAS CONVOCATORIAS TP TL)::II. Juntas de Expurgo": {
+      "done": true,
+      "questions": 34,
+      "date": "2026-02-16T10:57:20.738Z"
+    },
+    "Tema 32::Introducción a la informática": {
+      "done": true,
+      "questions": 100,
+      "date": "2026-02-16T10:58:29.623Z"
+    },
+    "Tema 32::El Hardware": {
+      "done": true,
+      "questions": 100,
+      "date": "2026-02-16T10:59:30.071Z"
+    },
+    "Tema 32::El Software": {
+      "done": true,
+      "questions": 94,
+      "date": "2026-02-16T11:00:34.206Z"
+    },
+    "Tema 32::Nociones básicas de seguridad informática": {
+      "done": true,
+      "questions": 100,
+      "date": "2026-02-16T11:01:45.879Z"
+    },
+    "Tema 33 y 34::Windows 10": {
+      "done": true,
+      "questions": 100,
+      "date": "2026-02-16T11:02:43.118Z"
+    },
+    "Tema 33 y 34::Windows 11": {
+      "done": true,
+      "questions": 100,
+      "date": "2026-02-16T11:03:42.763Z"
+    },
+    "Tema 35::Principales funciones y utilidades": {
+      "done": true,
+      "questions": 100,
+      "date": "2026-02-16T11:04:52.319Z"
+    },
+    "Tema 35::Formatos de fuente, página y párrafo.": {
+      "done": true,
+      "questions": 100,
+      "date": "2026-02-16T11:05:52.463Z"
+    },
+    "Tema 35::Imágenes, tablas, gráficos e iconos.": {
+      "done": true,
+      "questions": 100,
+      "date": "2026-02-16T11:06:52.659Z"
+    },
+    "Tema 35::Atajos de teclado": {
+      "done": true,
+      "questions": 100,
+      "date": "2026-02-16T11:09:04.433Z"
+    },
+    "Tema 36::Conceptos elementales y funcionamiento.": {
+      "done": true,
+      "questions": 100,
+      "date": "2026-02-16T11:10:00.343Z"
+    },
+    "Tema 36::El entorno de trabajo": {
+      "done": true,
+      "questions": 100,
+      "date": "2026-02-16T11:10:55.374Z"
+    },
+    "Tema 36::Atajos de teclado": {
+      "done": true,
+      "questions": 84,
+      "date": "2026-02-16T11:11:43.913Z"
+    },
+    "Tema 37::Origen, evolución y estado actual de Internet": {
+      "done": true,
+      "questions": 100,
+      "date": "2026-02-16T11:12:41.656Z"
+    },
+    "Tema 37::Conceptos elementales sobre protocolos y servicios en Internet": {
+      "done": true,
+      "questions": 100,
+      "date": "2026-02-16T11:13:48.954Z"
+    },
+    "Tema 37::Funcionalidades básicas de los navegadores web": {
+      "done": true,
+      "questions": 96,
+      "date": "2026-02-16T11:14:42.510Z"
+    },
+    "Tema 37::Atajos de teclado": {
+      "done": true,
+      "questions": 35,
+      "date": "2026-02-16T11:15:21.574Z"
+    }
+  },
+  "lastUpdate": "2026-02-16T11:15:21.574Z"
+}

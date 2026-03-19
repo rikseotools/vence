@@ -1,0 +1,44 @@
+[
+  {
+    "id": "1535cc3d-e702-472e-ae83-527516b24bc4",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "original_status": "all_wrong",
+    "new_explanation": "La respuesta correcta es la C).\n\nSegún el artículo 41.1 de la **Ley 40/2015**, de 1 de octubre, de Régimen Jurídico del Sector Público: «Se entiende por actuación administrativa automatizada, cualquier acto o actuación realizada **íntegramente** a través de medios electrónicos por una Administración Pública en el marco de un procedimiento **administrativo** y en la que no haya intervenido de forma **directa** un empleado público».\n\n**Análisis de las opciones:**\n\n- **A) Incorrecta.** Dice «directa o indirecta», pero la ley solo dice «de forma directa». La diferencia es crucial: la actuación automatizada admite que un empleado público haya intervenido indirectamente (por ejemplo, programando el sistema), pero no de forma directa en el acto concreto.\n\n- **B) Incorrecta.** Dice «íntegra o parcialmente», cuando la ley exige que sea realizada «íntegramente» a través de medios electrónicos. Una actuación solo parcialmente electrónica no se considera automatizada.\n\n- **C) Correcta.** Reproduce fielmente el texto legal: íntegramente, procedimiento administrativo, y sin intervención directa de empleado público.\n\n- **D) Incorrecta.** Dice «procedimiento judicial» en lugar de «procedimiento administrativo». La Ley 40/2015 regula el sector público administrativo, no el ámbito judicial.\n\n**Nota importante:** Este artículo pertenece a la Ley 40/2015 (Régimen Jurídico del Sector Público), no a la Ley 39/2015 (Procedimiento Administrativo Común). El artículo 41 de la Ley 39/2015 trata sobre las condiciones generales de las notificaciones, que es un tema completamente diferente."
+  },
+  {
+    "id": "7a2cadcb-3330-4149-ada6-83526f385df3",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "original_status": "all_wrong",
+    "new_explanation": "La respuesta correcta es la A).\n\nLa web oficial de la Presidencia del Gobierno de España es **www.lamoncloa.gob.es**, que toma su nombre del Palacio de la Moncloa, sede de la Presidencia del Gobierno.\n\n**Análisis de las opciones:**\n\n- **A) Correcta.** www.lamoncloa.gob.es es la web oficial de la Presidencia del Gobierno, donde se publican las noticias, comparecencias y actividad del Presidente y del Consejo de Ministros.\n\n- **B) Incorrecta.** www.gob.es no es la web de la Presidencia del Gobierno. El dominio gob.es se utiliza como parte de subdominios de múltiples organismos públicos (administracion.gob.es, sede.gob.es, etc.), pero www.gob.es como tal no es un portal operativo.\n\n- **C) Incorrecta.** www.presidencia.gob.es no es la web de la Presidencia del Gobierno. La denominación oficial del sitio web utiliza «lamoncloa» y no «presidencia».\n\n- **D) Incorrecta.** Ya que la opción A es correcta, «Ninguna es correcta» no puede ser la respuesta válida."
+  },
+  {
+    "id": "13ad6684-ebf0-48fc-adee-d20077c93d60",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "original_status": "all_wrong",
+    "new_explanation": "La respuesta correcta es la B).\n\nLa web oficial de la Casa de Su Majestad el Rey es **www.casareal.es**. El Jefe del Estado en España es el Rey, y la institución que le da soporte es la Casa de Su Majestad el Rey.\n\n**Análisis de las opciones:**\n\n- **A) Incorrecta.** www.casareal.com usa el dominio comercial .com. Las instituciones públicas españolas utilizan dominios .es o .gob.es, nunca .com.\n\n- **B) Correcta.** www.casareal.es es la web oficial de la Casa de Su Majestad el Rey, donde se publica información institucional, la agenda oficial de la Familia Real, discursos, y datos de transparencia.\n\n- **C) Incorrecta.** www.jefaturadelestado.es no existe como web oficial. Aunque el Rey es el Jefe del Estado, la denominación oficial de la institución es «Casa de Su Majestad el Rey», no «Jefatura del Estado».\n\n- **D) Incorrecta.** www.jefaturadelestado.com tampoco existe, y además utiliza un dominio .com que no corresponde a instituciones públicas españolas."
+  },
+  {
+    "id": "d4fe2016-b822-4380-8952-3d5dc155b164",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "original_status": "tech_bad_answer",
+    "new_explanation": "La respuesta correcta es la B).\n\nLa pregunta pide identificar cuál de las webs indicadas **no existe**. www.gob.es no existe como sitio web independiente: el dominio no resuelve y no lleva a ninguna página. Aunque muchos organismos públicos usan subdominios de gob.es (como administracion.gob.es, lamoncloa.gob.es, sede.gob.es, etc.), la dirección www.gob.es por sí sola no funciona ni redirige a ningún portal.\n\n**Análisis de las opciones:**\n\n- **A) Existe.** www.tcu.es es la web del Tribunal de Cuentas de España, órgano fiscalizador de las cuentas y de la gestión económica del sector público.\n\n- **B) No existe.** www.gob.es no resuelve como sitio web. El Punto de Acceso General de la Administración es administracion.gob.es, no www.gob.es.\n\n- **C) Existe.** www.casareal.es es la web oficial de la Casa de Su Majestad el Rey.\n\n- **D) Existe.** www.ine.es es la web del Instituto Nacional de Estadística."
+  },
+  {
+    "id": "56a31296-512d-4d11-af08-7eaf13174a2a",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "original_status": "all_wrong",
+    "new_explanation": "La respuesta correcta es la D).\n\nLa web oficial de la Unión Europea es **https://european-union.europa.eu/**. Este es el portal principal que da acceso a información sobre el funcionamiento de la UE, sus países miembros, instituciones, historia y prioridades.\n\n**Análisis de las opciones:**\n\n- **A) Incorrecta.** https://www.consilium.europa.eu/ es la web del Consejo de la Unión Europea (y del Consejo Europeo), que es solo una de las instituciones de la UE, no el portal oficial general.\n\n- **B) Incorrecta.** https://ec.europa.eu/ es la web de la Comisión Europea, el órgano ejecutivo de la UE. Tampoco es la web oficial general de la Unión Europea como tal.\n\n- **C) Incorrecta.** http://www.europarl.europa.eu/ es la web del Parlamento Europeo, otra institución de la UE, pero no el portal oficial general.\n\n- **D) Correcta.** https://european-union.europa.eu/ es el portal oficial de la Unión Europea en su conjunto, distinto de las webs de instituciones individuales."
+  },
+  {
+    "id": "ddb0a848-c39e-4427-b5ec-ca1be3990af1",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "original_status": "all_wrong",
+    "new_explanation": "La respuesta correcta es la A).\n\nEn el Punto de Acceso General de la Administración (administracion.gob.es), la categoría «Portales de internet del Poder Judicial» engloba las webs del **Poder Judicial** y del **Ministerio Fiscal**.\n\n**Análisis de las opciones:**\n\n- **A) Correcta.** Según la clasificación oficial del Punto de Acceso General, la categoría del Poder Judicial incluye dos portales: el del Poder Judicial (www.poderjudicial.es, gestionado por el CGPJ) y el del Ministerio Fiscal (Fiscalía General del Estado).\n\n- **B) Incorrecta.** Menciona órganos jurisdiccionales concretos (Tribunal Supremo, Tribunal Constitucional, etc.), pero esta no es la clasificación del Punto de Acceso General. Además, el Tribunal Constitucional no forma parte del Poder Judicial sino que es un órgano constitucional independiente.\n\n- **C) Incorrecta.** Incluye al CGPJ, Juzgados y Tribunales, pero omite al Ministerio Fiscal y no se corresponde con la categorización oficial del portal.\n\n- **D) Incorrecta.** Aunque menciona al Ministerio Fiscal, también incluye al CGPJ y a los Juzgados y Tribunales como elementos separados, lo cual no corresponde a la clasificación oficial."
+  }
+]

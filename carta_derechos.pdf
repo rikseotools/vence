@@ -1,0 +1,6229 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+		
+			<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<html class="ltr" dir="ltr" lang="es">
+
+<head>
+	<title>
+		Error - fiscal.es
+	</title>
+	<meta content="initial-scale=1.0, width=device-width" name="viewport" />
+<link rel="preload" href="https://www.fiscal.es/o/fiscal-theme/templates/../fonts/akzidenzgroteskbq-bold.woff" as="font" crossorigin>
+<link rel="preload" href="https://www.fiscal.es/o/fiscal-theme/templates/../fonts/akzidenzgroteskbq-medium.woff" as="font" crossorigin>
+<link rel="preload" href="https://www.fiscal.es/o/fiscal-theme/templates/../fonts/akzidenzgroteskbq-reg.woff" as="font" crossorigin>
+<link rel="preload" href="https://www.fiscal.es/o/fiscal-theme/templates/../fonts/lyondisplay-bold.woff" as="font" crossorigin>
+<link rel="preload" href="https://www.fiscal.es/o/fiscal-theme/templates/../fonts/lyondisplay-regular.woff" as="font" crossorigin>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<meta content="text/html; charset=UTF-8" http-equiv="content-type" />
+
+
+
+
+
+
+
+
+
+
+
+
+<script type="importmap">{"imports":{"react-dom":"/o/frontend-js-react-web/__liferay__/exports/react-dom.js","@clayui/breadcrumb":"/o/frontend-taglib-clay/__liferay__/exports/@clayui$breadcrumb.js","@clayui/form":"/o/frontend-taglib-clay/__liferay__/exports/@clayui$form.js","@clayui/popover":"/o/frontend-taglib-clay/__liferay__/exports/@clayui$popover.js","@clayui/charts":"/o/frontend-taglib-clay/__liferay__/exports/@clayui$charts.js","@clayui/shared":"/o/frontend-taglib-clay/__liferay__/exports/@clayui$shared.js","@clayui/localized-input":"/o/frontend-taglib-clay/__liferay__/exports/@clayui$localized-input.js","@clayui/modal":"/o/frontend-taglib-clay/__liferay__/exports/@clayui$modal.js","@clayui/empty-state":"/o/frontend-taglib-clay/__liferay__/exports/@clayui$empty-state.js","react":"/o/frontend-js-react-web/__liferay__/exports/react.js","@clayui/color-picker":"/o/frontend-taglib-clay/__liferay__/exports/@clayui$color-picker.js","@clayui/navigation-bar":"/o/frontend-taglib-clay/__liferay__/exports/@clayui$navigation-bar.js","@clayui/pagination":"/o/frontend-taglib-clay/__liferay__/exports/@clayui$pagination.js","@clayui/icon":"/o/frontend-taglib-clay/__liferay__/exports/@clayui$icon.js","@clayui/table":"/o/frontend-taglib-clay/__liferay__/exports/@clayui$table.js","@clayui/autocomplete":"/o/frontend-taglib-clay/__liferay__/exports/@clayui$autocomplete.js","@clayui/slider":"/o/frontend-taglib-clay/__liferay__/exports/@clayui$slider.js","@clayui/management-toolbar":"/o/frontend-taglib-clay/__liferay__/exports/@clayui$management-toolbar.js","@clayui/multi-select":"/o/frontend-taglib-clay/__liferay__/exports/@clayui$multi-select.js","@clayui/nav":"/o/frontend-taglib-clay/__liferay__/exports/@clayui$nav.js","@clayui/time-picker":"/o/frontend-taglib-clay/__liferay__/exports/@clayui$time-picker.js","@clayui/provider":"/o/frontend-taglib-clay/__liferay__/exports/@clayui$provider.js","@clayui/upper-toolbar":"/o/frontend-taglib-clay/__liferay__/exports/@clayui$upper-toolbar.js","@clayui/loading-indicator":"/o/frontend-taglib-clay/__liferay__/exports/@clayui$loading-indicator.js","@clayui/panel":"/o/frontend-taglib-clay/__liferay__/exports/@clayui$panel.js","@clayui/drop-down":"/o/frontend-taglib-clay/__liferay__/exports/@clayui$drop-down.js","@clayui/list":"/o/frontend-taglib-clay/__liferay__/exports/@clayui$list.js","@clayui/date-picker":"/o/frontend-taglib-clay/__liferay__/exports/@clayui$date-picker.js","@clayui/label":"/o/frontend-taglib-clay/__liferay__/exports/@clayui$label.js","@clayui/data-provider":"/o/frontend-taglib-clay/__liferay__/exports/@clayui$data-provider.js","@liferay/frontend-js-api/data-set":"/o/frontend-js-dependencies-web/__liferay__/exports/@liferay$js-api$data-set.js","@clayui/core":"/o/frontend-taglib-clay/__liferay__/exports/@clayui$core.js","@clayui/pagination-bar":"/o/frontend-taglib-clay/__liferay__/exports/@clayui$pagination-bar.js","@clayui/layout":"/o/frontend-taglib-clay/__liferay__/exports/@clayui$layout.js","@clayui/multi-step-nav":"/o/frontend-taglib-clay/__liferay__/exports/@clayui$multi-step-nav.js","@liferay/frontend-js-api":"/o/frontend-js-dependencies-web/__liferay__/exports/@liferay$js-api.js","@clayui/css":"/o/frontend-taglib-clay/__liferay__/exports/@clayui$css.js","@clayui/toolbar":"/o/frontend-taglib-clay/__liferay__/exports/@clayui$toolbar.js","@clayui/alert":"/o/frontend-taglib-clay/__liferay__/exports/@clayui$alert.js","@clayui/badge":"/o/frontend-taglib-clay/__liferay__/exports/@clayui$badge.js","@clayui/link":"/o/frontend-taglib-clay/__liferay__/exports/@clayui$link.js","@clayui/card":"/o/frontend-taglib-clay/__liferay__/exports/@clayui$card.js","@clayui/progress-bar":"/o/frontend-taglib-clay/__liferay__/exports/@clayui$progress-bar.js","@clayui/tooltip":"/o/frontend-taglib-clay/__liferay__/exports/@clayui$tooltip.js","@clayui/button":"/o/frontend-taglib-clay/__liferay__/exports/@clayui$button.js","@clayui/tabs":"/o/frontend-taglib-clay/__liferay__/exports/@clayui$tabs.js","@clayui/sticker":"/o/frontend-taglib-clay/__liferay__/exports/@clayui$sticker.js"},"scopes":{}}</script><script data-senna-track="temporary">var Liferay = window.Liferay || {};Liferay.Icons = Liferay.Icons || {};Liferay.Icons.controlPanelSpritemap = 'https://www.fiscal.es/o/admin-theme/images/clay/icons.svg';Liferay.Icons.spritemap = 'https://www.fiscal.es/o/fiscal-theme/images/clay/icons.svg';</script>
+<script data-senna-track="permanent" src="/combo?browserId=other&minifierType=js&languageId=es_ES&t=1770961556741&/o/frontend-js-jquery-web/jquery/jquery.min.js&/o/frontend-js-jquery-web/jquery/init.js&/o/frontend-js-jquery-web/jquery/ajax.js&/o/frontend-js-jquery-web/jquery/bootstrap.bundle.min.js&/o/frontend-js-jquery-web/jquery/collapsible_search.js&/o/frontend-js-jquery-web/jquery/fm.js&/o/frontend-js-jquery-web/jquery/form.js&/o/frontend-js-jquery-web/jquery/popper.min.js&/o/frontend-js-jquery-web/jquery/side_navigation.js" type="text/javascript"></script>
+<link data-senna-track="permanent" href="/o/comcom-frontend-library-repository-module/css/datatables/datatables.min.css?&mac=hCZqNIMVX0BrB9LPQAlQ5TGhZVo=&browserId=other&languageId=es_ES&minifierType=css&themeId=fiscal_WAR_fiscaltheme" rel="stylesheet" type="text/css" /><link data-senna-track="permanent" href="/o/comcom-frontend-library-repository-module/css/slick/slick-theme-custom.css?&mac=LhrQ45I9UFZJaO+/iDfxsI/0KAE=&browserId=other&languageId=es_ES&minifierType=css&themeId=fiscal_WAR_fiscaltheme" rel="stylesheet" type="text/css" /><link data-senna-track="permanent" href="/o/comcom-frontend-library-repository-module/css/slick/slick.css?&mac=usPgYpS4lAtTNDtrYQjGcB+tY5c=&browserId=other&languageId=es_ES&minifierType=css&themeId=fiscal_WAR_fiscaltheme" rel="stylesheet" type="text/css" /><link data-senna-track="permanent" href="/o/comcom-frontend-library-repository-module/css/vmap/jqvmap.min.css?&mac=6SMKOAHS5nSGShuAH78LfqxZ0eY=&browserId=other&languageId=es_ES&minifierType=css&themeId=fiscal_WAR_fiscaltheme" rel="stylesheet" type="text/css" />
+<script data-senna-track="permanent" type="text/javascript">window.Liferay = window.Liferay || {}; window.Liferay.CSP = {nonce: ''};</script>
+<link data-senna-track="temporary" href="https://www.fiscal.es/error" rel="canonical" />
+<link data-senna-track="temporary" href="https://www.fiscal.es/error" hreflang="es-ES" rel="alternate" />
+<link data-senna-track="temporary" href="https://www.fiscal.es/error" hreflang="gl-ES" rel="alternate" />
+<link data-senna-track="temporary" href="https://www.fiscal.es/error" hreflang="ca-ES" rel="alternate" />
+<link data-senna-track="temporary" href="https://www.fiscal.es/error" hreflang="eu-ES" rel="alternate" />
+<link data-senna-track="temporary" href="https://www.fiscal.es/error" hreflang="en-US" rel="alternate" />
+<link data-senna-track="temporary" href="https://www.fiscal.es/error" hreflang="ca-ES-VALENCIA" rel="alternate" />
+<link data-senna-track="temporary" href="https://www.fiscal.es/error" hreflang="x-default" rel="alternate" />
+
+<meta property="og:locale" content="es_ES">
+<meta property="og:locale:alternate" content="es_ES">
+<meta property="og:locale:alternate" content="ca_ES">
+<meta property="og:locale:alternate" content="gl_ES">
+<meta property="og:locale:alternate" content="eu_ES">
+<meta property="og:locale:alternate" content="en_US">
+<meta property="og:locale:alternate" content="ca_ES_VALENCIA">
+<meta property="og:site_name" content="fiscal.es">
+<meta property="og:title" content="Error - fiscal.es">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://www.fiscal.es/error">
+
+
+<link href="/documents/13333297/13750896/favicon.png/9e24efcb-0034-9757-9454-77bef34898fe" rel="apple-touch-icon" />
+<link href="/documents/13333297/13750896/favicon.png/9e24efcb-0034-9757-9454-77bef34898fe" rel="icon" />
+
+
+
+<link class="lfr-css-file" data-senna-track="temporary" href="https://www.fiscal.es/o/fiscal-theme/css/clay.css?browserId=other&amp;themeId=fiscal_WAR_fiscaltheme&amp;minifierType=css&amp;languageId=es_ES&amp;t=1761782214000" id="liferayAUICSS" rel="stylesheet" type="text/css" />
+
+
+
+
+
+
+
+
+
+	<link href="/combo?browserId=other&amp;minifierType=css&amp;themeId=fiscal_WAR_fiscaltheme&amp;languageId=es_ES&amp;com_liferay_cookies_banner_web_portlet_CookiesBannerPortlet:%2Fo%2Fcookies-banner-web%2Fcookies_banner%2Fcss%2Fmain.css&amp;com_liferay_journal_content_web_portlet_JournalContentPortlet_INSTANCE_footer_rrss_menu:%2Fo%2Fjournal-content-web%2Fcss%2Fmain.css&amp;com_liferay_portal_search_web_search_bar_portlet_SearchBarPortlet_INSTANCE_templateSearch:%2Fo%2Fportal-search-web%2Fcss%2Fmain.css&amp;com_liferay_product_navigation_product_menu_web_portlet_ProductMenuPortlet:%2Fo%2Fproduct-navigation-product-menu-web%2Fcss%2Fmain.css&amp;com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_footer_accordion_menu:%2Fo%2Fsite-navigation-menu-web%2Fcss%2Fmain.css&amp;t=1761782214000" rel="stylesheet" type="text/css"
+ data-senna-track="temporary" id="85405d4e" />
+
+
+
+
+
+
+
+
+<script type="text/javascript" data-senna-track="temporary">
+	// <![CDATA[
+		var Liferay = Liferay || {};
+
+		Liferay.Browser = {
+			acceptsGzip: function() {
+				return false;
+			},
+
+			
+
+			getMajorVersion: function() {
+				return 0;
+			},
+
+			getRevision: function() {
+				return '';
+			},
+			getVersion: function() {
+				return '';
+			},
+
+			
+
+			isAir: function() {
+				return false;
+			},
+			isChrome: function() {
+				return false;
+			},
+			isEdge: function() {
+				return false;
+			},
+			isFirefox: function() {
+				return false;
+			},
+			isGecko: function() {
+				return false;
+			},
+			isIe: function() {
+				return false;
+			},
+			isIphone: function() {
+				return false;
+			},
+			isLinux: function() {
+				return false;
+			},
+			isMac: function() {
+				return false;
+			},
+			isMobile: function() {
+				return false;
+			},
+			isMozilla: function() {
+				return true;
+			},
+			isOpera: function() {
+				return false;
+			},
+			isRtf: function() {
+				return false;
+			},
+			isSafari: function() {
+				return false;
+			},
+			isSun: function() {
+				return false;
+			},
+			isWebKit: function() {
+				return false;
+			},
+			isWindows: function() {
+				return false;
+			}
+		};
+
+		Liferay.Data = Liferay.Data || {};
+
+		Liferay.Data.ICONS_INLINE_SVG = true;
+
+		Liferay.Data.NAV_SELECTOR = '#navigation';
+
+		Liferay.Data.NAV_SELECTOR_MOBILE = '#navigationCollapse';
+
+		Liferay.Data.isCustomizationView = function() {
+			return false;
+		};
+
+		Liferay.Data.notices = [
+			
+		];
+
+		(function () {
+			var available = {};
+
+			var direction = {};
+
+			
+
+				available['es_ES'] = 'español\x20\x28España\x29';
+				direction['es_ES'] = 'ltr';
+
+			
+
+				available['ca_ES'] = 'catalán\x20\x28España\x29';
+				direction['ca_ES'] = 'ltr';
+
+			
+
+				available['gl_ES'] = 'gallego\x20\x28España\x29';
+				direction['gl_ES'] = 'ltr';
+
+			
+
+				available['eu_ES'] = 'euskera\x20\x28España\x29';
+				direction['eu_ES'] = 'ltr';
+
+			
+
+				available['en_US'] = 'inglés\x20\x28Estados\x20Unidos\x29';
+				direction['en_US'] = 'ltr';
+
+			
+
+				available['ca_ES_VALENCIA'] = 'catalán\x20\x28España\x2cValenciano\x29';
+				direction['ca_ES_VALENCIA'] = 'ltr';
+
+			
+
+			Liferay.Language = {
+				available,
+				direction,
+				get: function(key) {
+					return key;
+				}
+			};
+		})();
+
+		var featureFlags = {"LPD-11018":false,"LPS-193884":false,"LPS-178642":false,"LPS-193005":false,"LPS-187284":false,"LPS-187285":false,"LPS-114786":false,"LPS-192957":false,"COMMERCE-8087":false,"LRAC-10757":false,"LPS-180090":false,"LPS-170809":false,"LPS-178052":false,"LPS-189856":false,"LPS-187436":false,"LPS-182184":false,"LPS-185892":false,"LPS-186620":false,"COMMERCE-12754":false,"LPS-184404":false,"LPS-180328":false,"LPS-198183":false,"LPS-171364":false,"LPS-153714":false,"LPS-96845":false,"LPS-170670":false,"LPS-141392":false,"LPS-169981":false,"LPD-15804":false,"LPS-153839":false,"LPS-200135":false,"LPS-187793":false,"LPS-177027":false,"LPD-10793":false,"COMMERCE-12192":false,"LPD-11003":false,"LPS-196768":false,"LPS-196724":false,"LPS-196847":false,"LPS-163118":false,"LPS-114700":false,"LPS-135430":false,"LPS-134060":false,"LPS-164563":false,"LPS-122920":false,"LPS-203351":false,"LPS-194395":false,"LPD-6368":false,"LPD-10701":false,"LPS-202104":false,"COMMERCE-9599":false,"LPS-187142":false,"LPD-15596":false,"LPS-198959":false,"LPS-196935":true,"LPS-187854":false,"LPS-176691":false,"LPS-197909":false,"LPS-202534":false,"COMMERCE-8949":false,"COMMERCE-11922":false,"LPS-194362":false,"LPS-165481":false,"LPS-153813":false,"LPS-174455":false,"LPD-10735":false,"COMMERCE-13024":false,"LPS-194763":false,"LPS-165482":false,"LPS-193551":false,"LPS-197477":false,"LPS-174816":false,"LPS-186360":false,"LPS-153332":false,"COMMERCE-12170":false,"LPS-179669":false,"LPS-174417":false,"LPS-183882":false,"LPS-155284":false,"LRAC-15017":false,"LPS-200108":false,"LPS-159643":false,"LPS-161033":false,"LPS-164948":false,"LPS-186870":false,"LPS-186871":false,"LPS-188058":false,"LPS-129412":false,"LPS-166126":false,"LPS-169837":false};
+
+		Liferay.FeatureFlags = Object.keys(featureFlags).reduce(
+			(acc, key) => ({
+				...acc, [key]: featureFlags[key] === 'true' || featureFlags[key] === true
+			}), {}
+		);
+
+		Liferay.PortletKeys = {
+			DOCUMENT_LIBRARY: 'com_liferay_document_library_web_portlet_DLPortlet',
+			DYNAMIC_DATA_MAPPING: 'com_liferay_dynamic_data_mapping_web_portlet_DDMPortlet',
+			ITEM_SELECTOR: 'com_liferay_item_selector_web_portlet_ItemSelectorPortlet'
+		};
+
+		Liferay.PropsValues = {
+			JAVASCRIPT_SINGLE_PAGE_APPLICATION_TIMEOUT: 0,
+			UPLOAD_SERVLET_REQUEST_IMPL_MAX_SIZE: 429496729600
+		};
+
+		Liferay.ThemeDisplay = {
+
+			
+
+			
+				getLayoutId: function() {
+					return '81';
+				},
+
+				
+
+				getLayoutRelativeControlPanelURL: function() {
+					return '/group/fiscal/~/control_panel/manage';
+				},
+
+				getLayoutRelativeURL: function() {
+					return '/error';
+				},
+				getLayoutURL: function() {
+					return 'https://www.fiscal.es/error';
+				},
+				getParentLayoutId: function() {
+					return '0';
+				},
+				isControlPanel: function() {
+					return false;
+				},
+				isPrivateLayout: function() {
+					return 'false';
+				},
+				isVirtualLayout: function() {
+					return false;
+				},
+			
+
+			getBCP47LanguageId: function() {
+				return 'es-ES';
+			},
+			getCanonicalURL: function() {
+
+				
+
+				return 'https\x3a\x2f\x2fwww\x2efiscal\x2ees\x2ferror';
+			},
+			getCDNBaseURL: function() {
+				return 'https://www.fiscal.es';
+			},
+			getCDNDynamicResourcesHost: function() {
+				return '';
+			},
+			getCDNHost: function() {
+				return '';
+			},
+			getCompanyGroupId: function() {
+				return '13333299';
+			},
+			getCompanyId: function() {
+				return '13333257';
+			},
+			getDefaultLanguageId: function() {
+				return 'es_ES';
+			},
+			getDoAsUserIdEncoded: function() {
+				return '';
+			},
+			getLanguageId: function() {
+				return 'es_ES';
+			},
+			getParentGroupId: function() {
+				return '13333297';
+			},
+			getPathContext: function() {
+				return '';
+			},
+			getPathImage: function() {
+				return '/image';
+			},
+			getPathJavaScript: function() {
+				return '/o/frontend-js-web';
+			},
+			getPathMain: function() {
+				return '/c';
+			},
+			getPathThemeImages: function() {
+				return 'https://www.fiscal.es/o/fiscal-theme/images';
+			},
+			getPathThemeRoot: function() {
+				return '/o/fiscal-theme';
+			},
+			getPlid: function() {
+				return '816589';
+			},
+			getPortalURL: function() {
+				return 'https://www.fiscal.es';
+			},
+			getRealUserId: function() {
+				return '13333262';
+			},
+			getRemoteAddr: function() {
+				return '10.12.190.98';
+			},
+			getRemoteHost: function() {
+				return '10.12.190.98';
+			},
+			getScopeGroupId: function() {
+				return '13333297';
+			},
+			getScopeGroupIdOrLiveGroupId: function() {
+				return '13333297';
+			},
+			getSessionId: function() {
+				return '';
+			},
+			getSiteAdminURL: function() {
+				return 'https://www.fiscal.es/group/fiscal/~/control_panel/manage?p_p_lifecycle=0&p_p_state=maximized&p_p_mode=view';
+			},
+			getSiteGroupId: function() {
+				return '13333297';
+			},
+			getURLControlPanel: function() {
+				return '/group/control_panel?refererPlid=816589';
+			},
+			getURLHome: function() {
+				return 'https\x3a\x2f\x2fwww\x2efiscal\x2ees\x2fweb\x2ffiscal\x2finicio';
+			},
+			getUserEmailAddress: function() {
+				return '';
+			},
+			getUserId: function() {
+				return '13333262';
+			},
+			getUserName: function() {
+				return '';
+			},
+			isAddSessionIdToURL: function() {
+				return false;
+			},
+			isImpersonated: function() {
+				return false;
+			},
+			isSignedIn: function() {
+				return false;
+			},
+
+			isStagedPortlet: function() {
+				
+					
+						return false;
+					
+				
+			},
+
+			isStateExclusive: function() {
+				return false;
+			},
+			isStateMaximized: function() {
+				return false;
+			},
+			isStatePopUp: function() {
+				return false;
+			}
+		};
+
+		var themeDisplay = Liferay.ThemeDisplay;
+
+		Liferay.AUI = {
+
+			
+
+			getCombine: function() {
+				return true;
+			},
+			getComboPath: function() {
+				return '/combo/?browserId=other&minifierType=&languageId=es_ES&t=1761782169046&';
+			},
+			getDateFormat: function() {
+				return '%d/%m/%Y';
+			},
+			getEditorCKEditorPath: function() {
+				return '/o/frontend-editor-ckeditor-web';
+			},
+			getFilter: function() {
+				var filter = 'raw';
+
+				
+					
+						filter = 'min';
+					
+					
+
+				return filter;
+			},
+			getFilterConfig: function() {
+				var instance = this;
+
+				var filterConfig = null;
+
+				if (!instance.getCombine()) {
+					filterConfig = {
+						replaceStr: '.js' + instance.getStaticResourceURLParams(),
+						searchExp: '\\.js$'
+					};
+				}
+
+				return filterConfig;
+			},
+			getJavaScriptRootPath: function() {
+				return '/o/frontend-js-web';
+			},
+			getPortletRootPath: function() {
+				return '/html/portlet';
+			},
+			getStaticResourceURLParams: function() {
+				return '?browserId=other&minifierType=&languageId=es_ES&t=1761782169046';
+			}
+		};
+
+		Liferay.authToken = 'L9mDMLc6';
+
+		
+
+		Liferay.currentURL = '\x2ferror';
+		Liferay.currentURLEncoded = '\x252Ferror';
+	// ]]>
+</script>
+
+<script data-senna-track="temporary" type="text/javascript">window.__CONFIG__= {basePath: '',combine: true, defaultURLParams: null, explainResolutions: false, exposeGlobal: false, logLevel: 'warn', moduleType: 'module', namespace:'Liferay', nonce: '', reportMismatchedAnonymousModules: 'warn', resolvePath: '/o/js_resolve_modules', url: '/combo/?browserId=other&minifierType=js&languageId=es_ES&t=1761782169046&', waitTimeout: 60000};</script><script data-senna-track="permanent" src="/o/frontend-js-loader-modules-extender/loader.js?&mac=9WaMmhziBCkScHZwrrVcOR7VZF4=&browserId=other&languageId=es_ES&minifierType=js" type="text/javascript"></script><script data-senna-track="permanent" src="/combo?browserId=other&minifierType=js&languageId=es_ES&t=1761782169046&/o/frontend-js-aui-web/aui/aui/aui-min.js&/o/frontend-js-aui-web/liferay/modules.js&/o/frontend-js-aui-web/liferay/aui_sandbox.js&/o/frontend-js-aui-web/aui/attribute-base/attribute-base-min.js&/o/frontend-js-aui-web/aui/attribute-complex/attribute-complex-min.js&/o/frontend-js-aui-web/aui/attribute-core/attribute-core-min.js&/o/frontend-js-aui-web/aui/attribute-observable/attribute-observable-min.js&/o/frontend-js-aui-web/aui/attribute-extras/attribute-extras-min.js&/o/frontend-js-aui-web/aui/event-custom-base/event-custom-base-min.js&/o/frontend-js-aui-web/aui/event-custom-complex/event-custom-complex-min.js&/o/frontend-js-aui-web/aui/oop/oop-min.js&/o/frontend-js-aui-web/aui/aui-base-lang/aui-base-lang-min.js&/o/frontend-js-aui-web/liferay/dependency.js&/o/frontend-js-aui-web/liferay/util.js&/o/frontend-js-web/liferay/dom_task_runner.js&/o/frontend-js-web/liferay/events.js&/o/frontend-js-web/liferay/lazy_load.js&/o/frontend-js-web/liferay/liferay.js&/o/frontend-js-web/liferay/global.bundle.js&/o/frontend-js-web/liferay/portlet.js&/o/frontend-js-web/liferay/workflow.js&/o/oauth2-provider-web/js/liferay.js" type="text/javascript"></script>
+<script data-senna-track="temporary" type="text/javascript">window.Liferay = Liferay || {}; window.Liferay.OAuth2 = {getAuthorizeURL: function() {return 'https://www.fiscal.es/o/oauth2/authorize';}, getBuiltInRedirectURL: function() {return 'https://www.fiscal.es/o/oauth2/redirect';}, getIntrospectURL: function() { return 'https://www.fiscal.es/o/oauth2/introspect';}, getTokenURL: function() {return 'https://www.fiscal.es/o/oauth2/token';}, getUserAgentApplication: function(externalReferenceCode) {return Liferay.OAuth2._userAgentApplications[externalReferenceCode];}, _userAgentApplications: {}}</script><script data-senna-track="temporary" type="text/javascript">try {var MODULE_MAIN='null';var MODULE_PATH='/o/comcom-liferay_search_custom-module';/**
+ * SPDX-FileCopyrightText: (c) 2000 Liferay, Inc. https://liferay.com
+ * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
+ */
+
+(function () {
+	AUI().applyConfig({
+		groups: {
+			searchCustomDate: {
+				base: MODULE_PATH + '/js/',
+				combine: Liferay.AUI.getCombine(),
+				filter: Liferay.AUI.getFilterConfig(),
+				modules: {									
+					'liferay-search-customdate-facet': {
+						path: 'customdate_facet.js',
+						requires: [
+							'aui-form-validator',
+							'liferay-search-facet-util',
+						],
+					}
+				},
+				root: MODULE_PATH + '/js/',
+			},
+		},
+	});
+})();
+
+} catch(error) {console.error(error);}try {var MODULE_MAIN='portal-search-web@6.0.127/index';var MODULE_PATH='/o/portal-search-web';AUI().applyConfig({groups:{search:{base:MODULE_PATH+"/js/",combine:Liferay.AUI.getCombine(),filter:Liferay.AUI.getFilterConfig(),modules:{"liferay-search-custom-filter":{path:"custom_filter.js",requires:[]},"liferay-search-date-facet":{path:"date_facet.js",requires:["aui-form-validator","liferay-search-facet-util"]},"liferay-search-facet-util":{path:"facet_util.js",requires:[]},"liferay-search-modified-facet":{path:"modified_facet.js",requires:["aui-form-validator","liferay-search-facet-util"]},"liferay-search-sort-configuration":{path:"sort_configuration.js",requires:["aui-node"]},"liferay-search-sort-util":{path:"sort_util.js",requires:[]}},root:MODULE_PATH+"/js/"}}});
+} catch(error) {console.error(error);}try {var MODULE_MAIN='frontend-editor-alloyeditor-web@5.0.46/index';var MODULE_PATH='/o/frontend-editor-alloyeditor-web';AUI().applyConfig({groups:{alloyeditor:{base:MODULE_PATH+"/js/",combine:Liferay.AUI.getCombine(),filter:Liferay.AUI.getFilterConfig(),modules:{"liferay-alloy-editor":{path:"alloyeditor.js",requires:["aui-component","liferay-portlet-base","timers"]},"liferay-alloy-editor-source":{path:"alloyeditor_source.js",requires:["aui-debounce","liferay-fullscreen-source-editor","liferay-source-editor","plugin"]}},root:MODULE_PATH+"/js/"}}});
+} catch(error) {console.error(error);}try {var MODULE_MAIN='frontend-js-components-web@2.0.63/index';var MODULE_PATH='/o/frontend-js-components-web';AUI().applyConfig({groups:{components:{mainModule:MODULE_MAIN}}});
+} catch(error) {console.error(error);}try {var MODULE_MAIN='portal-workflow-kaleo-designer-web@5.0.125/index';var MODULE_PATH='/o/portal-workflow-kaleo-designer-web';AUI().applyConfig({groups:{"kaleo-designer":{base:MODULE_PATH+"/designer/js/legacy/",combine:Liferay.AUI.getCombine(),filter:Liferay.AUI.getFilterConfig(),modules:{"liferay-kaleo-designer-autocomplete-util":{path:"autocomplete_util.js",requires:["autocomplete","autocomplete-highlighters"]},"liferay-kaleo-designer-definition-diagram-controller":{path:"definition_diagram_controller.js",requires:["liferay-kaleo-designer-field-normalizer","liferay-kaleo-designer-utils"]},"liferay-kaleo-designer-dialogs":{path:"dialogs.js",requires:["liferay-util-window"]},"liferay-kaleo-designer-editors":{path:"editors.js",requires:["aui-ace-editor","aui-ace-editor-mode-xml","aui-base","aui-datatype","aui-node","liferay-kaleo-designer-autocomplete-util","liferay-kaleo-designer-utils"]},"liferay-kaleo-designer-field-normalizer":{path:"field_normalizer.js",requires:["liferay-kaleo-designer-remote-services"]},"liferay-kaleo-designer-nodes":{path:"nodes.js",requires:["aui-datatable","aui-datatype","aui-diagram-builder","liferay-kaleo-designer-editors","liferay-kaleo-designer-utils"]},"liferay-kaleo-designer-remote-services":{path:"remote_services.js",requires:["aui-io"]},"liferay-kaleo-designer-templates":{path:"templates.js",requires:["aui-tpl-snippets-deprecated"]},"liferay-kaleo-designer-utils":{path:"utils.js",requires:[]},"liferay-kaleo-designer-xml-definition":{path:"xml_definition.js",requires:["aui-base","aui-component","dataschema-xml","datatype-xml"]},"liferay-kaleo-designer-xml-definition-serializer":{path:"xml_definition_serializer.js",requires:["escape","liferay-kaleo-designer-xml-util"]},"liferay-kaleo-designer-xml-util":{path:"xml_util.js",requires:["aui-base"]},"liferay-portlet-kaleo-designer":{path:"main.js",requires:["aui-ace-editor","aui-ace-editor-mode-xml","aui-tpl-snippets-deprecated","dataschema-xml","datasource","datatype-xml","event-valuechange","io-form","liferay-kaleo-designer-autocomplete-util","liferay-kaleo-designer-editors","liferay-kaleo-designer-nodes","liferay-kaleo-designer-remote-services","liferay-kaleo-designer-utils","liferay-kaleo-designer-xml-util","liferay-util-window"]}},root:MODULE_PATH+"/designer/js/legacy/"}}});
+} catch(error) {console.error(error);}try {var MODULE_MAIN='contacts-web@5.0.57/index';var MODULE_PATH='/o/contacts-web';AUI().applyConfig({groups:{contactscenter:{base:MODULE_PATH+"/js/",combine:Liferay.AUI.getCombine(),filter:Liferay.AUI.getFilterConfig(),modules:{"liferay-contacts-center":{path:"main.js",requires:["aui-io-plugin-deprecated","aui-toolbar","autocomplete-base","datasource-io","json-parse","liferay-portlet-base","liferay-util-window"]}},root:MODULE_PATH+"/js/"}}});
+} catch(error) {console.error(error);}try {var MODULE_MAIN='staging-processes-web@5.0.55/index';var MODULE_PATH='/o/staging-processes-web';AUI().applyConfig({groups:{stagingprocessesweb:{base:MODULE_PATH+"/",combine:Liferay.AUI.getCombine(),filter:Liferay.AUI.getFilterConfig(),modules:{"liferay-staging-processes-export-import":{path:"js/main.js",requires:["aui-datatype","aui-dialog-iframe-deprecated","aui-modal","aui-parse-content","aui-toggler","liferay-portlet-base","liferay-util-window"]}},root:MODULE_PATH+"/"}}});
+} catch(error) {console.error(error);}try {var MODULE_MAIN='@liferay/document-library-web@6.0.177/document_library/js/index';var MODULE_PATH='/o/document-library-web';AUI().applyConfig({groups:{dl:{base:MODULE_PATH+"/document_library/js/legacy/",combine:Liferay.AUI.getCombine(),filter:Liferay.AUI.getFilterConfig(),modules:{"document-library-upload-component":{path:"DocumentLibraryUpload.js",requires:["aui-component","aui-data-set-deprecated","aui-overlay-manager-deprecated","aui-overlay-mask-deprecated","aui-parse-content","aui-progressbar","aui-template-deprecated","liferay-search-container","querystring-parse-simple","uploader"]}},root:MODULE_PATH+"/document_library/js/legacy/"}}});
+} catch(error) {console.error(error);}try {var MODULE_MAIN='exportimport-web@5.0.83/index';var MODULE_PATH='/o/exportimport-web';AUI().applyConfig({groups:{exportimportweb:{base:MODULE_PATH+"/",combine:Liferay.AUI.getCombine(),filter:Liferay.AUI.getFilterConfig(),modules:{"liferay-export-import-export-import":{path:"js/main.js",requires:["aui-datatype","aui-dialog-iframe-deprecated","aui-modal","aui-parse-content","aui-toggler","liferay-portlet-base","liferay-util-window"]}},root:MODULE_PATH+"/"}}});
+} catch(error) {console.error(error);}try {var MODULE_MAIN='@liferay/frontend-js-state-web@1.0.20/index';var MODULE_PATH='/o/frontend-js-state-web';AUI().applyConfig({groups:{state:{mainModule:MODULE_MAIN}}});
+} catch(error) {console.error(error);}try {var MODULE_MAIN='@liferay/frontend-js-react-web@5.0.37/index';var MODULE_PATH='/o/frontend-js-react-web';AUI().applyConfig({groups:{react:{mainModule:MODULE_MAIN}}});
+} catch(error) {console.error(error);}try {var MODULE_MAIN='calendar-web@5.0.89/index';var MODULE_PATH='/o/calendar-web';AUI().applyConfig({groups:{calendar:{base:MODULE_PATH+"/js/",combine:Liferay.AUI.getCombine(),filter:Liferay.AUI.getFilterConfig(),modules:{"liferay-calendar-a11y":{path:"calendar_a11y.js",requires:["calendar"]},"liferay-calendar-container":{path:"calendar_container.js",requires:["aui-alert","aui-base","aui-component","liferay-portlet-base"]},"liferay-calendar-date-picker-sanitizer":{path:"date_picker_sanitizer.js",requires:["aui-base"]},"liferay-calendar-interval-selector":{path:"interval_selector.js",requires:["aui-base","liferay-portlet-base"]},"liferay-calendar-interval-selector-scheduler-event-link":{path:"interval_selector_scheduler_event_link.js",requires:["aui-base","liferay-portlet-base"]},"liferay-calendar-list":{path:"calendar_list.js",requires:["aui-template-deprecated","liferay-scheduler"]},"liferay-calendar-message-util":{path:"message_util.js",requires:["liferay-util-window"]},"liferay-calendar-recurrence-converter":{path:"recurrence_converter.js",requires:[]},"liferay-calendar-recurrence-dialog":{path:"recurrence.js",requires:["aui-base","liferay-calendar-recurrence-util"]},"liferay-calendar-recurrence-util":{path:"recurrence_util.js",requires:["aui-base","liferay-util-window"]},"liferay-calendar-reminders":{path:"calendar_reminders.js",requires:["aui-base"]},"liferay-calendar-remote-services":{path:"remote_services.js",requires:["aui-base","aui-component","liferay-calendar-util","liferay-portlet-base"]},"liferay-calendar-session-listener":{path:"session_listener.js",requires:["aui-base","liferay-scheduler"]},"liferay-calendar-simple-color-picker":{path:"simple_color_picker.js",requires:["aui-base","aui-template-deprecated"]},"liferay-calendar-simple-menu":{path:"simple_menu.js",requires:["aui-base","aui-template-deprecated","event-outside","event-touch","widget-modality","widget-position","widget-position-align","widget-position-constrain","widget-stack","widget-stdmod"]},"liferay-calendar-util":{path:"calendar_util.js",requires:["aui-datatype","aui-io","aui-scheduler","aui-toolbar","autocomplete","autocomplete-highlighters"]},"liferay-scheduler":{path:"scheduler.js",requires:["async-queue","aui-datatype","aui-scheduler","dd-plugin","liferay-calendar-a11y","liferay-calendar-message-util","liferay-calendar-recurrence-converter","liferay-calendar-recurrence-util","liferay-calendar-util","liferay-scheduler-event-recorder","liferay-scheduler-models","promise","resize-plugin"]},"liferay-scheduler-event-recorder":{path:"scheduler_event_recorder.js",requires:["dd-plugin","liferay-calendar-util","resize-plugin"]},"liferay-scheduler-models":{path:"scheduler_models.js",requires:["aui-datatype","dd-plugin","liferay-calendar-util"]}},root:MODULE_PATH+"/js/"}}});
+} catch(error) {console.error(error);}try {var MODULE_MAIN='dynamic-data-mapping-web@5.0.100/index';var MODULE_PATH='/o/dynamic-data-mapping-web';!function(){const a=Liferay.AUI;AUI().applyConfig({groups:{ddm:{base:MODULE_PATH+"/js/",combine:Liferay.AUI.getCombine(),filter:a.getFilterConfig(),modules:{"liferay-ddm-form":{path:"ddm_form.js",requires:["aui-base","aui-datatable","aui-datatype","aui-image-viewer","aui-parse-content","aui-set","aui-sortable-list","json","liferay-form","liferay-map-base","liferay-translation-manager","liferay-util-window"]},"liferay-portlet-dynamic-data-mapping":{condition:{trigger:"liferay-document-library"},path:"main.js",requires:["arraysort","aui-form-builder-deprecated","aui-form-validator","aui-map","aui-text-unicode","json","liferay-menu","liferay-translation-manager","liferay-util-window","text"]},"liferay-portlet-dynamic-data-mapping-custom-fields":{condition:{trigger:"liferay-document-library"},path:"custom_fields.js",requires:["liferay-portlet-dynamic-data-mapping"]}},root:MODULE_PATH+"/js/"}}})}();
+} catch(error) {console.error(error);}</script>
+
+
+
+
+<script type="text/javascript" data-senna-track="temporary">
+	// <![CDATA[
+		
+			
+				
+		
+
+		
+	// ]]>
+</script>
+
+
+
+
+
+	
+		
+
+			
+
+			
+				<script async src="https://www.googletagmanager.com/gtag/js?id=G-LTYNHPCL94"></script>
+
+				
+			
+		
+		
+
+
+
+	
+		
+
+			
+
+			
+		
+		
+
+
+
+	
+		
+
+			
+
+			
+		
+	
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link class="lfr-css-file" data-senna-track="temporary" href="https://www.fiscal.es/o/fiscal-theme/css/main.css?browserId=other&amp;themeId=fiscal_WAR_fiscaltheme&amp;minifierType=css&amp;languageId=es_ES&amp;t=1761782214000" id="liferayThemeCSS" rel="stylesheet" type="text/css" />
+
+
+
+
+	<style data-senna-track="temporary" type="text/css">
+		.mj-personal-card__img{
+object-position: center;
+}
+
+
+.mj-content a{ color: #3a5dae; text-decoration: none; font-family: "AkzidenzGroteskBQ-Regular"; font-weight: bold; }
+.mj-content a::after{ margin-left: 0.625rem; vertical-align: middle; font-weight: bold; }
+.mj-content a:hover{ color: black; }
+.mj-content a:hover::after{ text-decoration: none; color: black; }
+	</style>
+
+
+
+
+
+	<style data-senna-track="temporary" type="text/css">
+
+		
+
+			
+
+		
+
+			
+
+		
+
+			
+
+		
+
+			
+
+		
+
+			
+
+		
+
+			
+
+		
+
+			
+
+		
+
+			
+
+				
+
+					
+
+#p_p_id_com_liferay_site_navigation_breadcrumb_web_portlet_SiteNavigationBreadcrumbPortlet_ .portlet-content {
+
+}
+
+
+
+
+				
+
+			
+
+		
+
+			
+
+		
+
+			
+
+		
+
+			
+
+		
+
+			
+
+		
+
+			
+
+		
+
+			
+
+		
+
+	</style>
+
+
+<script data-senna-track="temporary">var Liferay = window.Liferay || {}; Liferay.CommerceContext = {"commerceAccountGroupIds":[],"accountEntryAllowedTypes":["person"],"commerceChannelId":"0","showUnselectableOptions":false,"currency":{"currencyId":"13333600","currencyCode":"USD"},"showSeparateOrderItems":false,"commerceSiteType":0};</script><link href="/o/commerce-frontend-js/styles/main.css" rel="stylesheet" type="text/css" />
+<style data-senna-track="temporary" type="text/css">
+</style>
+<script data-senna-track="permanent" src="/combo?browserId=other&minifierType=js&languageId=es_ES&t=1770961556745&/o/comcom-frontend-library-repository-module/js/datatables/datatables.min.js&/o/comcom-frontend-library-repository-module/js/slick/slick.min.js&/o/comcom-frontend-library-repository-module/js/vmap/jquery.vmap.min.js&/o/comcom-frontend-library-repository-module/js/vmap/jquery.vmap.mju.resize.js" type="text/javascript"></script>
+
+
+
+
+
+
+
+
+
+
+<script type="text/javascript" data-senna-track="temporary">
+	if (window.Analytics) {
+		window._com_liferay_document_library_analytics_isViewFileEntry = false;
+	}
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script type="text/javascript">
+Liferay.on(
+	'ddmFieldBlur', function(event) {
+		if (window.Analytics) {
+			Analytics.send(
+				'fieldBlurred',
+				'Form',
+				{
+					fieldName: event.fieldName,
+					focusDuration: event.focusDuration,
+					formId: event.formId,
+					formPageTitle: event.formPageTitle,
+					page: event.page,
+					title: event.title
+				}
+			);
+		}
+	}
+);
+
+Liferay.on(
+	'ddmFieldFocus', function(event) {
+		if (window.Analytics) {
+			Analytics.send(
+				'fieldFocused',
+				'Form',
+				{
+					fieldName: event.fieldName,
+					formId: event.formId,
+					formPageTitle: event.formPageTitle,
+					page: event.page,
+					title:event.title
+				}
+			);
+		}
+	}
+);
+
+Liferay.on(
+	'ddmFormPageShow', function(event) {
+		if (window.Analytics) {
+			Analytics.send(
+				'pageViewed',
+				'Form',
+				{
+					formId: event.formId,
+					formPageTitle: event.formPageTitle,
+					page: event.page,
+					title: event.title
+				}
+			);
+		}
+	}
+);
+
+Liferay.on(
+	'ddmFormSubmit', function(event) {
+		if (window.Analytics) {
+			Analytics.send(
+				'formSubmitted',
+				'Form',
+				{
+					formId: event.formId,
+					title: event.title
+				}
+			);
+		}
+	}
+);
+
+Liferay.on(
+	'ddmFormView', function(event) {
+		if (window.Analytics) {
+			Analytics.send(
+				'formViewed',
+				'Form',
+				{
+					formId: event.formId,
+					title: event.title
+				}
+			);
+		}
+	}
+);
+
+</script><script>
+
+</script>
+
+
+
+
+
+
+
+<script src="https://www.fiscal.es/o/fiscal-theme/js/parent-components/maps/jquery.vmap.spain.ccaa.js"></script><link rel="apple-touch-icon" href="https://www.fiscal.es/o/fiscal-theme/images/apple-touch-icon/apple-touch-icon.png" />
+<link rel="apple-touch-icon-precomposed" href="https://www.fiscal.es/o/fiscal-theme/images/apple-touch-icon/apple-touch-icon-precomposed.png" />
+<link rel="apple-touch-icon" sizes="57x57" href="https://www.fiscal.es/o/fiscal-theme/images/apple-touch-icon/apple-touch-icon-57x57.png" />
+<link rel="apple-touch-icon" sizes="72x72" href="https://www.fiscal.es/o/fiscal-theme/images/apple-touch-icon/apple-touch-icon-72x72.png" />
+<link rel="apple-touch-icon" sizes="76x76" href="https://www.fiscal.es/o/fiscal-theme/images/apple-touch-icon/apple-touch-icon-76x76.png" />
+<link rel="apple-touch-icon" sizes="114x114" href="https://www.fiscal.es/o/fiscal-theme/images/apple-touch-icon/apple-touch-icon-114x114.png" />
+<link rel="apple-touch-icon" sizes="120x120" href="https://www.fiscal.es/o/fiscal-theme/images/apple-touch-icon/apple-touch-icon-120x120.png" />
+<link rel="apple-touch-icon" sizes="144x144" href="https://www.fiscal.es/o/fiscal-theme/images/apple-touch-icon/apple-touch-icon-144x144.png" />
+<link rel="apple-touch-icon" sizes="152x152" href="https://www.fiscal.es/o/fiscal-theme/images/apple-touch-icon/apple-touch-icon-152x152.png" />
+<link rel="apple-touch-icon" sizes="180x180" href="https://www.fiscal.es/o/fiscal-theme/images/apple-touch-icon/apple-touch-icon-180x180.png" /></head>
+
+<body class="other controls-visible  yui3-skin-sam guest-site signed-out public-page site ">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	<nav aria-label="Enlaces rápidos" class="bg-dark cadmin quick-access-nav text-center text-white" id="mids_quickAccessNav">
+		
+			
+				<a class="d-block p-2 sr-only sr-only-focusable text-reset" href="#main-content">
+		Saltar al contenido principal
+	</a>
+			
+			
+	</nav>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	<div class="page" id="wrapper">
+
+<header class="header-basic header-fiscal" id="banner">
+
+	<div class="header-basic__content p-container">
+		<div class="header-basic__content__top">
+			
+			<div class="header-basic__logo">
+
+				<a class="" href="https://www.fiscal.es" title="Ir a fiscal.es">
+					<img class="header-basic__logo__img header-basic__logo--close" alt="logo fiscal.es" src="/image/layout_set_logo?img_id=13760814&amp;t=1770961560958" />
+				</a>
+			</div>
+
+			<div class="header-basic__buttons">
+					<button class="header-basic__buttons--search mj-search-button fj-regular fj-buscar" aria-label="Botón Buscar" data-target="#searcher-collapse" data-toggle="collapse" aria-expanded="false"></button>
+
+				<button aria-controls="target-1" aria-expanded="false" aria-label="Botón Menú Principal" class="header-basic__buttons--menu nav-button mj-menu-button fj-solid fj-no collapsed d-md-none" data-target=".multi-collapse" data-toggle="collapse" type="button">
+				</button>
+
+			</div>
+		</div>
+
+		<div class="header-basic__block collapse multi-collapse d-md-flex" id="target-1">
+			<div class="header-basic__block__top">
+		
+					<a class="header-basic__fiscalia-link" href="/web/fiscalia-accesible" role="button" title="Ir a Fiscalía Accesible" >
+						<span>Ir a Fiscalía Accesible</span>
+						<span class="header-basic__fiscalia-link__icon fj-duo fj-accesibilidad fj-2x"></span>
+					</a>
+
+					<div class="header-basic__languages-select languages">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+	<div class="portlet-boundary portlet-boundary_com_liferay_site_navigation_language_web_portlet_SiteNavigationLanguagePortlet_  portlet-static portlet-static-end portlet-barebone portlet-language " id="p_p_id_com_liferay_site_navigation_language_web_portlet_SiteNavigationLanguagePortlet_">
+		<span id="p_com_liferay_site_navigation_language_web_portlet_SiteNavigationLanguagePortlet"></span>
+
+
+
+
+	
+
+	
+		
+			
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+		
+<section class="portlet" id="portlet_com_liferay_site_navigation_language_web_portlet_SiteNavigationLanguagePortlet">
+
+
+	<div class="portlet-content">
+
+		<div class="autofit-float autofit-row portlet-header">
+			<div class="autofit-col autofit-col-end">
+				<div class="autofit-section">
+				</div>
+			</div>
+		</div>
+
+		
+			<div class=" portlet-content-container">
+				
+
+
+	<div class="portlet-body">
+
+
+
+	
+		
+			
+				
+					
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+	
+
+
+
+
+
+
+
+
+	
+
+				
+
+				
+					
+						
+
+
+	
+
+		
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+		<div class="select-language p-container">
+				<button class="select-language__button collapsed" type="button" data-toggle="collapse" data-target=".select-language__list" aria-expanded="false" aria-controls="selectLanguageList" aria-activedescendant="" role="combobox" tabindex="0" aria-haspopup="true" title="select-language">
+					<span class="mr-10">Castellano</span>
+					<span class="fj-regular fj-chevron-abajo"></span>
+				</button>
+	</div>
+
+
+
+
+	
+	
+					
+				
+			
+		
+	
+	
+
+
+	</div>
+
+			</div>
+		
+	</div>
+</section>
+	
+
+		
+		
+
+
+
+
+
+
+
+	</div>
+
+
+
+
+
+
+					</div>
+
+					<div class="header-basic__short-menu navigation__pipe-menu">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+	<div class="portlet-boundary portlet-boundary_com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_  portlet-static portlet-static-end portlet-barebone portlet-navigation " id="p_p_id_com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_short_menu_public_">
+		<span id="p_com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_short_menu_public"></span>
+
+
+
+
+	
+
+	
+		
+			
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+		
+<section class="portlet" id="portlet_com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_short_menu_public">
+
+
+	<div class="portlet-content">
+
+		<div class="autofit-float autofit-row portlet-header">
+			<div class="autofit-col autofit-col-end">
+				<div class="autofit-section">
+				</div>
+			</div>
+		</div>
+
+		
+			<div class=" portlet-content-container">
+				
+
+
+	<div class="portlet-body">
+
+
+
+	
+		
+			
+				
+					
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+	
+
+
+
+
+
+
+
+
+	
+
+				
+
+				
+					
+						
+
+
+	
+
+		
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+		
+
+		
+			
+				
+
+
+	<div id="navbar_com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_short_menu_public">
+		<ul aria-label="Páginas del sitio web" class="navbar-blank navbar-nav navbar-site" role="menubar">
+
+
+
+
+
+
+					<li class="lfr-nav-item nav-item" id="layout_com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_short_menu_public_13767410" role="presentation">
+						<a  class="nav-link text-truncate" href='https://sedeelectronica.fiscal.es/' target="_blank" role="menuitem">
+							<span class="text-truncate"> Sede Electrónica </span>
+						</a>
+
+					</li>
+
+
+
+
+
+					<li class="lfr-nav-item nav-item" id="layout_com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_short_menu_public_13767411" role="presentation">
+						<a  class="nav-link text-truncate" href='https://www.fiscal.es/group/fiscal'  role="menuitem">
+							<span class="text-truncate"> Zona Privada </span>
+						</a>
+
+					</li>
+		</ul>
+	</div>
+
+<script>
+AUI().use(
+  'liferay-navigation-interaction',
+function(A) {
+(function() {
+var $ = AUI.$;var _ = AUI._;		var navigation = A.one('#navbar_com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_short_menu_public');
+
+		Liferay.Data.NAV_INTERACTION_LIST_SELECTOR = '.navbar-site';
+		Liferay.Data.NAV_LIST_SELECTOR = '.navbar-site';
+
+		if (navigation) {
+			navigation.plug(Liferay.NavigationInteraction);
+		}
+})();
+});
+
+</script>
+			
+			
+		
+	
+	
+	
+	
+
+
+	
+	
+					
+				
+			
+		
+	
+	
+
+
+	</div>
+
+			</div>
+		
+	</div>
+</section>
+	
+
+		
+		
+
+
+
+
+
+
+
+	</div>
+
+
+
+
+
+
+					</div>
+
+			</div>
+
+
+				<div class="header-basic__nav header-basic__nav--main nav-menu-wrapper">
+
+<nav class="navbar nav-basic nav-fiscal nav-fiscal--main " aria-label="Menu Principal" id="navigation" >
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+	<div class="portlet-boundary portlet-boundary_com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_  portlet-static portlet-static-end portlet-barebone portlet-navigation " id="p_p_id_com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_public_navigation_">
+		<span id="p_com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_public_navigation"></span>
+
+
+
+
+	
+
+	
+		
+			
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+		
+<section class="portlet" id="portlet_com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_public_navigation">
+
+
+	<div class="portlet-content">
+
+		<div class="autofit-float autofit-row portlet-header">
+			<div class="autofit-col autofit-col-end">
+				<div class="autofit-section">
+				</div>
+			</div>
+		</div>
+
+		
+			<div class=" portlet-content-container">
+				
+
+
+	<div class="portlet-body">
+
+
+
+	
+		
+			
+				
+					
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+	
+
+
+
+
+
+
+
+
+	
+
+				
+
+				
+					
+						
+
+
+	
+
+		
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+		
+
+		
+			
+				
+	<div id="navbar_com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_public_navigation">
+		<ul aria-label="Páginas del sitio web" class="navbar-blank navbar-nav navbar-site navbar-custom navbar-third-level" role="menubar">
+
+
+
+
+
+
+					<li class="lfr-nav-item nav-item" id="layout_com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_public_navigation_13777057" role="presentation">
+						<a aria-labelledby="layout_com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_public_navigation_13777057"  class="nav-link text-truncate" href='https://www.fiscal.es/inicio'  role="menuitem">
+							<span class="text-truncate"> Inicio </span>
+						</a>
+
+					</li>
+
+
+
+
+
+
+
+					<li class="lfr-nav-item nav-item dropdown" id="layout_com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_public_navigation_13777058" role="presentation">
+						<a aria-labelledby="layout_com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_public_navigation_13777058" aria-haspopup='true' class="nav-link text-truncate dropdown-toggle" href='https://www.fiscal.es/quienes-somos'  role="menuitem">
+							<span class="text-truncate"> Quiénes somos </span>
+						</a>
+
+							<span class="ico-siguiente menu-btn-toggle"></span>
+		<ul aria-expanded="false" class="menu-2 dropdown-menu child-menu" role="menu">
+
+
+
+				<li class="nav-item item-menu-2 " id="layout_13777062" >
+					<a aria-labelledby="layout_13777062"  class="link-menu-2" href="https://www.fiscal.es/como-nos-organizamos"  role="menuitem">
+						<span>Cómo nos organizamos</span>
+					</a>
+
+				</li>
+
+
+
+				<li class="nav-item item-menu-2 " id="layout_13777063" >
+					<a aria-labelledby="layout_13777063"  class="link-menu-2" href="https://www.fiscal.es/historia"  role="menuitem">
+						<span>Nuestra Historia</span>
+					</a>
+
+				</li>
+		</ul>
+					</li>
+
+
+
+
+
+
+
+					<li class="lfr-nav-item nav-item dropdown" id="layout_com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_public_navigation_13777059" role="presentation">
+						<a aria-labelledby="layout_com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_public_navigation_13777059" aria-haspopup='true' class="nav-link text-truncate dropdown-toggle" href='https://www.fiscal.es/que-hacemos'  role="menuitem">
+							<span class="text-truncate"> Qué hacemos </span>
+						</a>
+
+							<span class="ico-siguiente menu-btn-toggle"></span>
+		<ul aria-expanded="false" class="menu-2 dropdown-menu child-menu" role="menu">
+
+
+
+				<li class="nav-item item-menu-2 " id="layout_13777061" >
+					<a aria-labelledby="layout_13777061"  class="link-menu-2" href="https://www.fiscal.es/funciones"  role="menuitem">
+						<span>Funciones del Ministerio Fiscal</span>
+					</a>
+
+				</li>
+
+
+
+				<li class="nav-item item-menu-2 " id="layout_13777070" >
+					<a aria-labelledby="layout_13777070"  class="link-menu-2" href="https://www.fiscal.es/cooperacion-internacional"  role="menuitem">
+						<span>Cooperación Internacional</span>
+					</a>
+
+				</li>
+
+
+
+				<li class="nav-item item-menu-2 " id="layout_13777071" >
+					<a aria-labelledby="layout_13777071"  class="link-menu-2" href="https://www.fiscal.es/criminalidad-informatica"  role="menuitem">
+						<span>Criminalidad Informática</span>
+					</a>
+
+				</li>
+
+
+
+				<li class="nav-item item-menu-2 " id="layout_13777072" >
+					<a aria-labelledby="layout_13777072"  class="link-menu-2" href="https://www.fiscal.es/delitos-contra-la-administracion-publica"  role="menuitem">
+						<span>Delitos contra la Administración Pública</span>
+					</a>
+
+				</li>
+
+
+
+				<li class="nav-item item-menu-2 " id="layout_13777073" >
+					<a aria-labelledby="layout_13777073"  class="link-menu-2" href="https://www.fiscal.es/delitos-de-odio-y-discriminacion"  role="menuitem">
+						<span>Delitos de Odio y Discriminación</span>
+					</a>
+
+				</li>
+
+
+
+				<li class="nav-item item-menu-2 " id="layout_13777074" >
+					<a aria-labelledby="layout_13777074"  class="link-menu-2" href="https://www.fiscal.es/delitos-economicos"  role="menuitem">
+						<span>Delitos Económicos</span>
+					</a>
+
+				</li>
+
+
+
+				<li class="nav-item item-menu-2 " id="layout_13777075" >
+					<a aria-labelledby="layout_13777075"  class="link-menu-2" href="https://www.fiscal.es/derechos-humanos-y-memoria-democratica"  role="menuitem">
+						<span>Derechos Humanos y Memoria Democrática</span>
+					</a>
+
+				</li>
+
+
+
+				<li class="nav-item item-menu-2 " id="layout_13777076" >
+					<a aria-labelledby="layout_13777076"  class="link-menu-2" href="https://www.fiscal.es/medio-ambiente-urbanismo"  role="menuitem">
+						<span>Medio Ambiente y Urbanismo</span>
+					</a>
+
+				</li>
+
+
+
+				<li class="nav-item item-menu-2 " id="layout_13777077" >
+					<a aria-labelledby="layout_13777077"  class="link-menu-2" href="https://www.fiscal.es/menores"  role="menuitem">
+						<span>Menores</span>
+					</a>
+
+				</li>
+
+
+
+				<li class="nav-item item-menu-2 " id="layout_13777078" >
+					<a aria-labelledby="layout_13777078"  class="link-menu-2" href="https://www.fiscal.es/personas-con-discapacidad-y-mayores"  role="menuitem">
+						<span>Personas con Discapacidad y Mayores</span>
+					</a>
+
+				</li>
+
+
+
+				<li class="nav-item item-menu-2 " id="layout_13777079" >
+					<a aria-labelledby="layout_13777079"  class="link-menu-2" href="https://www.fiscal.es/proteccion-y-tutela-de-las-victimas-en-el-proceso-penal"  role="menuitem">
+						<span>Protección y Tutela de las Victimas en el Proceso Penal</span>
+					</a>
+
+				</li>
+
+
+
+				<li class="nav-item item-menu-2 " id="layout_13777080" >
+					<a aria-labelledby="layout_13777080"  class="link-menu-2" href="https://www.fiscal.es/seguridad-vial"  role="menuitem">
+						<span>Seguridad Vial</span>
+					</a>
+
+				</li>
+
+
+
+				<li class="nav-item item-menu-2 " id="layout_13777081" >
+					<a aria-labelledby="layout_13777081"  class="link-menu-2" href="https://www.fiscal.es/seguridad-y-salud-en-el-trabajo"  role="menuitem">
+						<span>Seguridad y Salud en el Trabajo</span>
+					</a>
+
+				</li>
+
+
+
+				<li class="nav-item item-menu-2 " id="layout_13777082" >
+					<a aria-labelledby="layout_13777082"  class="link-menu-2" href="https://www.fiscal.es/trata-de-personas-y-extranjeria"  role="menuitem">
+						<span>Trata de Personas y Extranjería</span>
+					</a>
+
+				</li>
+
+
+
+				<li class="nav-item item-menu-2 " id="layout_13777083" >
+					<a aria-labelledby="layout_13777083"  class="link-menu-2" href="https://www.fiscal.es/vigilancia-penitenciaria"  role="menuitem">
+						<span>Vigilancia Penitenciaria</span>
+					</a>
+
+				</li>
+
+
+
+				<li class="nav-item item-menu-2 " id="layout_13777084" >
+					<a aria-labelledby="layout_13777084"  class="link-menu-2" href="https://www.fiscal.es/violencia-sobre-la-mujer"  role="menuitem">
+						<span>Violencia sobre la Mujer</span>
+					</a>
+
+				</li>
+		</ul>
+					</li>
+
+
+
+
+
+					<li class="lfr-nav-item nav-item" id="layout_com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_public_navigation_13777060" role="presentation">
+						<a aria-labelledby="layout_com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_public_navigation_13777060"  class="nav-link text-truncate" href='https://www.fiscal.es/tu-fiscalia'  role="menuitem">
+							<span class="text-truncate"> Tu Fiscalía </span>
+						</a>
+
+					</li>
+
+
+
+
+
+
+
+					<li class="lfr-nav-item nav-item dropdown" id="layout_com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_public_navigation_13915665" role="presentation">
+						<a aria-labelledby="layout_com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_public_navigation_13915665" aria-haspopup='true' class="nav-link text-truncate dropdown-toggle"   role="menuitem">
+							<span class="text-truncate"> Actualidad </span>
+						</a>
+
+							<span class="ico-siguiente menu-btn-toggle"></span>
+		<ul aria-expanded="false" class="menu-2 dropdown-menu child-menu" role="menu">
+
+
+
+				<li class="nav-item item-menu-2 " id="layout_13915666" >
+					<a aria-labelledby="layout_13915666"  class="link-menu-2" href="https://www.fiscal.es/noticias"  role="menuitem">
+						<span>Noticias</span>
+					</a>
+
+				</li>
+
+
+
+				<li class="nav-item item-menu-2 " id="layout_13915667" >
+					<a aria-labelledby="layout_13915667"  class="link-menu-2" href="https://www.fiscal.es/sala-de-prensa"  role="menuitem">
+						<span>Sala de Prensa</span>
+					</a>
+
+				</li>
+
+
+
+				<li class="nav-item item-menu-2 " id="layout_13915668" >
+					<a aria-labelledby="layout_13915668"  class="link-menu-2" href="https://www.fiscal.es/hemeroteca"  role="menuitem">
+						<span>Hemeroteca</span>
+					</a>
+
+				</li>
+		</ul>
+					</li>
+
+
+
+
+
+
+
+					<li class="lfr-nav-item nav-item dropdown" id="layout_com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_public_navigation_13777068" role="presentation">
+						<a aria-labelledby="layout_com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_public_navigation_13777068" aria-haspopup='true' class="nav-link text-truncate dropdown-toggle" href='https://www.fiscal.es/documentacion'  role="menuitem">
+							<span class="text-truncate"> Documentación </span>
+						</a>
+
+							<span class="ico-siguiente menu-btn-toggle"></span>
+		<ul aria-expanded="false" class="menu-2 dropdown-menu child-menu" role="menu">
+
+
+
+				<li class="nav-item item-menu-2 " id="layout_13777069" >
+					<a aria-labelledby="layout_13777069"  class="link-menu-2" href="https://www.fiscal.es/biblioteca"  role="menuitem">
+						<span>Biblioteca</span>
+					</a>
+
+				</li>
+		</ul>
+					</li>
+		</ul>
+	</div>
+
+<script>
+AUI().use(
+  'liferay-navigation-interaction',
+function(A) {
+(function() {
+var $ = AUI.$;var _ = AUI._;		var navigation = A.one('#navbar_com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_public_navigation');
+
+		Liferay.Data.NAV_INTERACTION_LIST_SELECTOR = '.navbar-site';
+		Liferay.Data.NAV_LIST_SELECTOR = '.navbar-site';
+
+		if (navigation) {
+			navigation.plug(Liferay.NavigationInteraction);
+		}
+})();
+});
+
+</script>
+
+			
+			
+		
+	
+	
+	
+	
+
+
+	
+	
+					
+				
+			
+		
+	
+	
+
+
+	</div>
+
+			</div>
+		
+	</div>
+</section>
+	
+
+		
+		
+
+
+
+
+
+
+
+	</div>
+
+
+
+
+
+
+
+</nav>				</div>
+
+		</div>
+	</div>
+	<div class="mj-searcher-container collapse" id="searcher-collapse">
+		<div class="p-container">
+			<p class="mj-searcher__title">Dinos qué buscas, nosotros te ayudamos a encontrar la información que necesitas</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+	<div class="portlet-boundary portlet-boundary_com_liferay_portal_search_web_search_bar_portlet_SearchBarPortlet_  portlet-static portlet-static-end portlet-barebone portlet-search-bar " id="p_p_id_com_liferay_portal_search_web_search_bar_portlet_SearchBarPortlet_INSTANCE_templateSearch_">
+		<span id="p_com_liferay_portal_search_web_search_bar_portlet_SearchBarPortlet_INSTANCE_templateSearch"></span>
+
+
+
+
+	
+
+	
+		
+			
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+		
+<section class="portlet" id="portlet_com_liferay_portal_search_web_search_bar_portlet_SearchBarPortlet_INSTANCE_templateSearch">
+
+
+	<div class="portlet-content">
+
+		<div class="autofit-float autofit-row portlet-header">
+			<div class="autofit-col autofit-col-end">
+				<div class="autofit-section">
+				</div>
+			</div>
+		</div>
+
+		
+			<div class=" portlet-content-container">
+				
+
+
+	<div class="portlet-body">
+
+
+
+	
+		
+			
+				
+					
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+	
+
+
+
+
+
+
+
+
+	
+
+				
+
+				
+					
+						
+
+
+	
+
+		
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+	
+		<form action="https://www.fiscal.es/busqueda" id="dkrk___fm" method="get" name="dkrk___fm">
+			
+
+			
+
+			
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+				
+					
+						<div id="_com_liferay_portal_search_web_search_bar_portlet_SearchBarPortlet_INSTANCE_templateSearch_reactSearchBar">
+							<div id="cgtn"></div><script>
+Liferay.Loader.require(
+'portal-template-react-renderer-impl@5.0.14',
+'portal-search-web@6.0.127/js/components/SearchBar',
+function(indexcgtn, renderFunctioncgtn) {
+try {
+(function() {
+indexcgtn.render(renderFunctioncgtn.default, {"isSearchExperiencesSupported":true,"letUserChooseScope":false,"componentId":null,"keywords":"","selectedEverythingSearchScope":false,"scopeParameterStringEverything":"everything","locale":{"ISO3Country":"ESP","ISO3Language":"spa","country":"ES","displayCountry":"Spain","displayLanguage":"Spanish","displayName":"Spanish (Spain)","displayScript":"","displayVariant":"","extensionKeys":[],"language":"es","script":"","unicodeLocaleAttributes":[],"unicodeLocaleKeys":[],"variant":""},"suggestionsDisplayThreshold":2,"isDXP":true,"scopeParameterStringCurrentSite":"this-site","suggestionsContributorConfiguration":"[{\"contributorName\":\"sxpBlueprint\",\"displayGroupName\":\"suggestions\",\"size\":5,\"attributes\":{\"characterThreshold\":\"\",\"fields\":[],\"includeAssetSearchSummary\":true,\"includeAssetURL\":true,\"sxpBlueprintId\":5438491}}]","destinationFriendlyURL":"\/busqueda","emptySearchEnabled":false,"scopeParameterName":"scope","keywordsParameterName":"q","portletId":"com_liferay_portal_search_web_search_bar_portlet_SearchBarPortlet_INSTANCE_templateSearch","paginationStartParameterName":"","searchURL":"https:\/\/www.fiscal.es\/busqueda","suggestionsURL":"\/o\/portal-search-rest\/v1.0\/suggestions","portletNamespace":"_com_liferay_portal_search_web_search_bar_portlet_SearchBarPortlet_INSTANCE_templateSearch_"}, 'cgtn');
+})();
+} catch (err) {
+	console.error(err);
+}
+});
+
+</script>
+						</div>
+					
+					
+				
+			
+		</form>
+
+		<script>
+Liferay.Loader.require(
+'portal-search-web@6.0.127/js/SearchBar',
+function(SearchBar) {
+try {
+(function() {
+Liferay.component('__UNNAMED_COMPONENT__4660a687-c451-632e-cdeb-de66ca133569', new SearchBar.default({"formId":"dkrk___fm","namespace":"_com_liferay_portal_search_web_search_bar_portlet_SearchBarPortlet_INSTANCE_templateSearch_","spritemap":"https:\/\/www.fiscal.es\/o\/fiscal-theme\/images\/clay\/icons.svg"}), { destroyOnNavigate: true, portletId: 'com_liferay_portal_search_web_search_bar_portlet_SearchBarPortlet_INSTANCE_templateSearch'});
+})();
+} catch (err) {
+	console.error(err);
+}
+});
+
+</script>
+	
+
+
+	
+	
+					
+				
+			
+		
+	
+	
+
+
+	</div>
+
+			</div>
+		
+	</div>
+</section>
+	
+
+		
+		
+
+
+
+
+
+
+
+	</div>
+
+
+
+
+
+
+		</div>
+	</div>
+</header>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+		<section id="content" class="container p-container layout-1_column ">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+	<div class="portlet-boundary portlet-boundary_com_liferay_site_navigation_breadcrumb_web_portlet_SiteNavigationBreadcrumbPortlet_  portlet-static portlet-static-end portlet-barebone portlet-breadcrumb " id="p_p_id_com_liferay_site_navigation_breadcrumb_web_portlet_SiteNavigationBreadcrumbPortlet_">
+		<span id="p_com_liferay_site_navigation_breadcrumb_web_portlet_SiteNavigationBreadcrumbPortlet"></span>
+
+
+
+
+	
+
+	
+		
+			
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+		
+<section class="portlet" id="portlet_com_liferay_site_navigation_breadcrumb_web_portlet_SiteNavigationBreadcrumbPortlet">
+
+
+	<div class="portlet-content">
+
+		<div class="autofit-float autofit-row portlet-header">
+			<div class="autofit-col autofit-col-end">
+				<div class="autofit-section">
+				</div>
+			</div>
+		</div>
+
+		
+			<div class=" portlet-content-container">
+				
+
+
+	<div class="portlet-body">
+
+
+
+	
+		
+			
+				
+					
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+	
+
+
+
+
+
+
+
+
+	
+
+				
+
+				
+					
+						
+
+
+	
+
+		
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<nav aria-label="Ruta de navegación" id="_com_liferay_site_navigation_breadcrumb_web_portlet_SiteNavigationBreadcrumbPortlet_breadcrumbs-defaultScreen">
+	
+</nav>
+
+	
+	
+					
+				
+			
+		
+	
+	
+
+
+	</div>
+
+			</div>
+		
+	</div>
+</section>
+	
+
+		
+		
+
+
+
+
+
+
+
+	</div>
+
+
+
+
+
+
+			<h2 class="hide-accessible sr-only" role="heading" aria-level="1">
+				Error
+			</h2>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+		
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+	
+	
+		<style type="text/css">
+			.master-layout-fragment .portlet-header {
+				display: none;
+			}
+		</style>
+
+		
+
+		<div class="columns-1" id="main-content" role="main">
+	<div class="portlet-layout row">
+		<div class="col-md-12 portlet-column portlet-column-only" id="column-1">
+			<div class="portlet-dropzone portlet-column-content portlet-column-content-only" id="layout-column_column-1">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+	<div class="portlet-boundary portlet-boundary_com_liferay_journal_content_web_portlet_JournalContentPortlet_  portlet-static portlet-static-end portlet-barebone portlet-journal-content " id="p_p_id_com_liferay_journal_content_web_portlet_JournalContentPortlet_INSTANCE_gAC8PYQ2UktX_">
+		<span id="p_com_liferay_journal_content_web_portlet_JournalContentPortlet_INSTANCE_gAC8PYQ2UktX"></span>
+
+
+
+
+	
+
+	
+		
+			
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+		
+<section class="portlet" id="portlet_com_liferay_journal_content_web_portlet_JournalContentPortlet_INSTANCE_gAC8PYQ2UktX">
+
+
+	<div class="portlet-content">
+
+		<div class="autofit-float autofit-row portlet-header">
+			<div class="autofit-col autofit-col-end">
+				<div class="autofit-section">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="visible-interaction">
+
+	
+
+	
+</div>				</div>
+			</div>
+		</div>
+
+		
+			<div class=" portlet-content-container">
+				
+
+
+	<div class="portlet-body">
+
+
+
+	
+		
+			
+				
+					
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+	
+
+
+
+
+
+
+
+
+	
+
+				
+
+				
+					
+						
+
+
+	
+
+		
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+	
+		
+			
+			
+				
+					
+					
+					
+					
+
+						
+
+						
+
+							
+
+							<div class="" data-fragments-editor-item-id="31301-13757741" data-fragments-editor-item-type="fragments-editor-mapped-item" >
+								
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+	
+	
+		<div class="journal-content-article " data-analytics-asset-id="5493137" data-analytics-asset-title="Página de Error" data-analytics-asset-type="web-content" data-analytics-web-content-resource-pk="13757741">
+			
+
+			<p>
+  <img alt="" src="/documents/d/fiscal/pantalla_error_fiscal-es" />
+</p>
+
+			
+		</div>
+
+		
+
+	
+
+
+
+							</div>
+						
+					
+				
+			
+		
+	
+
+
+
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+
+	
+	
+					
+				
+			
+		
+	
+	
+
+
+	</div>
+
+			</div>
+		
+	</div>
+</section>
+	
+
+		
+		
+
+
+
+
+
+
+
+	</div>
+
+
+
+
+
+
+</div>
+		</div>
+	</div>
+</div>
+	
+
+
+<form action="#" aria-hidden="true" class="hide" id="hrefFm" method="post" name="hrefFm"><span></span><button hidden type="submit">Oculto</button></form>
+
+	
+		</section>
+
+<footer id="footer" class="footer-basic mj-footer-fiscal">
+	<div class="mj-footer-fiscal__top p-container">
+		
+		<div class="mj-footer-fiscal__top__wrapper-custom">
+			<div class="mj-footer-fiscal__top__slogan">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+	<div class="portlet-boundary portlet-boundary_com_liferay_journal_content_web_portlet_JournalContentPortlet_  portlet-static portlet-static-end portlet-barebone portlet-journal-content " id="p_p_id_com_liferay_journal_content_web_portlet_JournalContentPortlet_INSTANCE_footer_slogan_">
+		<span id="p_com_liferay_journal_content_web_portlet_JournalContentPortlet_INSTANCE_footer_slogan"></span>
+
+
+
+
+	
+
+	
+		
+			
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+		
+<section class="portlet" id="portlet_com_liferay_journal_content_web_portlet_JournalContentPortlet_INSTANCE_footer_slogan">
+
+
+	<div class="portlet-content">
+
+		<div class="autofit-float autofit-row portlet-header">
+			<div class="autofit-col autofit-col-end">
+				<div class="autofit-section">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="visible-interaction">
+
+	
+
+	
+</div>				</div>
+			</div>
+		</div>
+
+		
+			<div class=" portlet-content-container">
+				
+
+
+	<div class="portlet-body">
+
+
+
+	
+		
+			
+				
+					
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+	
+
+
+
+
+
+
+
+
+	
+
+				
+
+				
+					
+						
+
+
+	
+
+		
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+	
+		
+			
+			
+				
+					
+					
+					
+					
+
+						
+
+						
+
+							
+
+							<div class="" data-fragments-editor-item-id="31301-13750739" data-fragments-editor-item-type="fragments-editor-mapped-item" >
+								
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+	
+	
+		<div class="journal-content-article " data-analytics-asset-id="2071940" data-analytics-asset-title="Eslogan Footer" data-analytics-asset-type="web-content" data-analytics-web-content-resource-pk="13750739">
+			
+
+			<p>Defendemos la legalidad, los derechos de los ciudadanos y el interés público</p>
+
+			
+		</div>
+
+		
+
+	
+
+
+
+							</div>
+						
+					
+				
+			
+		
+	
+
+
+
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+
+	
+	
+					
+				
+			
+		
+	
+	
+
+
+	</div>
+
+			</div>
+		
+	</div>
+</section>
+	
+
+		
+		
+
+
+
+
+
+
+
+	</div>
+
+
+
+
+
+
+			</div>
+
+			<nav class="mj-links__nav mj-footer-fiscal__top__rrss" aria-label="contact-menu">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+	<div class="portlet-boundary portlet-boundary_com_liferay_journal_content_web_portlet_JournalContentPortlet_  portlet-static portlet-static-end portlet-barebone portlet-journal-content " id="p_p_id_com_liferay_journal_content_web_portlet_JournalContentPortlet_INSTANCE_footer_rrss_menu_">
+		<span id="p_com_liferay_journal_content_web_portlet_JournalContentPortlet_INSTANCE_footer_rrss_menu"></span>
+
+
+
+
+	
+
+	
+		
+			
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+		
+<section class="portlet" id="portlet_com_liferay_journal_content_web_portlet_JournalContentPortlet_INSTANCE_footer_rrss_menu">
+
+
+	<div class="portlet-content">
+
+		<div class="autofit-float autofit-row portlet-header">
+			<div class="autofit-col autofit-col-end">
+				<div class="autofit-section">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="visible-interaction">
+
+	
+
+	
+</div>				</div>
+			</div>
+		</div>
+
+		
+			<div class=" portlet-content-container">
+				
+
+
+	<div class="portlet-body">
+
+
+
+	
+		
+			
+				
+					
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+	
+
+
+
+
+
+
+
+
+	
+
+				
+
+				
+					
+						
+
+
+	
+
+		
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+	
+		
+			
+			
+				
+					
+					
+					
+					
+
+						
+
+						
+
+							
+
+							<div class="" data-fragments-editor-item-id="31301-13750757" data-fragments-editor-item-type="fragments-editor-mapped-item" >
+								
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+	
+	
+		<div class="journal-content-article " data-analytics-asset-id="5225947" data-analytics-asset-title="Redes Sociales" data-analytics-asset-type="web-content" data-analytics-web-content-resource-pk="13750757">
+			
+
+			
+<ul class="rrss__list">
+		<li>
+			<a href="https://www.instagram.com/fge.fortuny4/" aria-label="Ir a Instagram (se abre en ventana nueva)" title="Ir a Instagram (se abre en ventana nueva)" target="_blank" >
+				<span class="fj-regular fj-instagram-logo"></span>
+			</a>
+		</li>
+		<li>
+			<a href="https://twitter.com/fiscal_es" aria-label="Ir a Twitter (se abre en ventana nueva)" title="Ir a Twitter (se abre en ventana nueva)" target="_blank" >
+				<span class="fj-regular fj-x-logo"></span>
+			</a>
+		</li>
+		<li>
+			<a href="https://www.youtube.com/channel/UC6CcnbfGFbiL6NftkenCx0Q" aria-label="Ir a Youtube (se abre en ventana nueva)" title="Ir a Youtube (se abre en ventana nueva)" target="_blank" >
+				<span class="fj-regular fj-youtube-logo"></span>
+			</a>
+		</li>
+</ul>
+
+
+			
+		</div>
+
+		
+
+	
+
+
+
+							</div>
+						
+					
+				
+			
+		
+	
+
+
+
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+
+	
+	
+					
+				
+			
+		
+	
+	
+
+
+	</div>
+
+			</div>
+		
+	</div>
+</section>
+	
+
+		
+		
+
+
+
+
+
+
+
+	</div>
+
+
+
+
+
+
+            </nav>
+
+		</div>
+
+			<div class="mj-footer-fiscal__top__short-menu navigation__pipe-menu">	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+	<div class="portlet-boundary portlet-boundary_com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_  portlet-static portlet-static-end portlet-barebone portlet-navigation " id="p_p_id_com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_footer_short_menu_public_">
+		<span id="p_com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_footer_short_menu_public"></span>
+
+
+
+
+	
+
+	
+		
+			
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+		
+<section class="portlet" id="portlet_com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_footer_short_menu_public">
+
+
+	<div class="portlet-content">
+
+		<div class="autofit-float autofit-row portlet-header">
+			<div class="autofit-col autofit-col-end">
+				<div class="autofit-section">
+				</div>
+			</div>
+		</div>
+
+		
+			<div class=" portlet-content-container">
+				
+
+
+	<div class="portlet-body">
+
+
+
+	
+		
+			
+				
+					
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+	
+
+
+
+
+
+
+
+
+	
+
+				
+
+				
+					
+						
+
+
+	
+
+		
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+		
+
+		
+			
+				
+
+
+	<div id="navbar_com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_footer_short_menu_public">
+		<ul aria-label="Páginas del sitio web" class="navbar-blank navbar-nav navbar-site" role="menubar">
+
+
+
+
+
+
+					<li class="lfr-nav-item nav-item" id="layout_com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_footer_short_menu_public_13767409" role="presentation">
+						<a  class="nav-link text-truncate" href='https://www.fiscal.es/group/fiscal/'  role="menuitem">
+							<span class="text-truncate"> Área privada </span>
+						</a>
+
+					</li>
+		</ul>
+	</div>
+
+<script>
+AUI().use(
+  'liferay-navigation-interaction',
+function(A) {
+(function() {
+var $ = AUI.$;var _ = AUI._;		var navigation = A.one('#navbar_com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_footer_short_menu_public');
+
+		Liferay.Data.NAV_INTERACTION_LIST_SELECTOR = '.navbar-site';
+		Liferay.Data.NAV_LIST_SELECTOR = '.navbar-site';
+
+		if (navigation) {
+			navigation.plug(Liferay.NavigationInteraction);
+		}
+})();
+});
+
+</script>
+			
+			
+		
+	
+	
+	
+	
+
+
+	
+	
+					
+				
+			
+		
+	
+	
+
+
+	</div>
+
+			</div>
+		
+	</div>
+</section>
+	
+
+		
+		
+
+
+
+
+
+
+
+	</div>
+
+
+
+
+
+
+			</div>
+
+
+		<div class="mj-footer-fiscal__top__accordion">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+	<div class="portlet-boundary portlet-boundary_com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_  portlet-static portlet-static-end portlet-barebone portlet-navigation " id="p_p_id_com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_footer_accordion_menu_">
+		<span id="p_com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_footer_accordion_menu"></span>
+
+
+
+
+	
+
+	
+		
+			
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+		
+<section class="portlet" id="portlet_com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_footer_accordion_menu">
+
+
+	<div class="portlet-content">
+
+		<div class="autofit-float autofit-row portlet-header">
+			<div class="autofit-col autofit-col-end">
+				<div class="autofit-section">
+				</div>
+			</div>
+		</div>
+
+		
+			<div class=" portlet-content-container">
+				
+
+
+	<div class="portlet-body">
+
+
+
+	
+		
+			
+				
+					
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+	
+
+
+
+
+
+
+
+
+	
+
+				
+
+				
+					
+						
+
+
+	
+
+		
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+		
+
+		
+			
+					<div class="accordion" id="footer-accordion">
+        
+		<div class="mb-30">
+			<div class="mj-footer-accordion__header" id="heading0">
+				<div class="mj-footer-accordion__title">
+					<a href="https://www.fiscal.es/portal-de-transparencia">Portal de transparencia</a>
+				</div>
+				<button aria-label="Contraíble" class="mj-footer-accordion__trigger" type="button" data-toggle="collapse" data-target="#collapse_13779704" aria-expanded="false" aria-controls="collapse_13779704">
+					<span class="fj-regular fj-chevron-abajo"></span>
+				</button>
+			</div>
+				<div id="collapse_13779704" class="collapse mj-footer-accordion__body" aria-labelledby="heading0" data-parent="#footer-accordion">
+					<ul class="mj-footer-accordion__list" aria-labelledby="heading0" data-parent="#footer-accordion">
+							<li class="mj-footer-accordion__list__item">
+								<a href="https://www.fiscal.es/informacion-institucional-y-organizativa" >Información Institucional y Organizativa</a>
+							</li>
+							<li class="mj-footer-accordion__list__item">
+								<a href="https://www.fiscal.es/informacion-de-relevancia-juridica" >Información de Relevancia Jurídica</a>
+							</li>
+							<li class="mj-footer-accordion__list__item">
+								<a href="https://www.fiscal.es/informes-estadisticas-y-datos-publicos" >Información Económica, Presupuestaria y Estadística</a>
+							</li>
+							<li class="mj-footer-accordion__list__item">
+								<a href="https://www.fiscal.es/informacion-patrimonial" >Información Patrimonial</a>
+							</li>
+							<li class="mj-footer-accordion__list__item">
+								<a href="https://www.fiscal.es/agenda-fiscal-general-estado" >Agenda del Fiscal General del Estado</a>
+							</li>
+							<li class="mj-footer-accordion__list__item">
+								<a href="https://www.fiscal.es/solicitud-de-informacion-publica" >Solicitud de Información Pública</a>
+							</li>
+					</ul>
+				</div>
+		</div>
+		<div class="mb-30">
+			<div class="mj-footer-accordion__header" id="heading1">
+				<div class="mj-footer-accordion__title">
+					<a href="https://www.fiscal.es/proteccion-de-datos">Protección de datos</a>
+				</div>
+				<button aria-label="Contraíble" class="mj-footer-accordion__trigger" type="button" data-toggle="collapse" data-target="#collapse_13779713" aria-expanded="false" aria-controls="collapse_13779713">
+					<span class="fj-regular fj-chevron-abajo"></span>
+				</button>
+			</div>
+				<div id="collapse_13779713" class="collapse mj-footer-accordion__body" aria-labelledby="heading1" data-parent="#footer-accordion">
+					<ul class="mj-footer-accordion__list" aria-labelledby="heading1" data-parent="#footer-accordion">
+							<li class="mj-footer-accordion__list__item">
+								<a href="https://www.fiscal.es/informacion-general" >Información general</a>
+							</li>
+							<li class="mj-footer-accordion__list__item">
+								<a href="https://www.fiscal.es/ejercicio-de-los-derechos" >Ejercicio de los derechos</a>
+							</li>
+							<li class="mj-footer-accordion__list__item">
+								<a href="https://www.fiscal.es/registro-de-actividades-de-tratamiento" >Registro de actividades de tratamiento</a>
+							</li>
+							<li class="mj-footer-accordion__list__item">
+								<a href="https://www.fiscal.es/normativa1" >Normativa</a>
+							</li>
+					</ul>
+				</div>
+		</div>
+		<div class="mb-30">
+			<div class="mj-footer-accordion__header" id="heading2">
+				<div class="mj-footer-accordion__title">
+					<a href="https://www.fiscal.es/carrera-fiscal">Carrera Fiscal</a>
+				</div>
+			</div>
+		</div>
+		<div class="mb-30">
+			<div class="mj-footer-accordion__header" id="heading3">
+				<div class="mj-footer-accordion__title">
+					<a href="https://www.fiscal.es/atenci%C3%B3n-ciudadana">Atención ciudadana</a>
+				</div>
+			</div>
+		</div>
+	</div>
+
+
+			
+			
+		
+	
+	
+	
+	
+
+
+	
+	
+					
+				
+			
+		
+	
+	
+
+
+	</div>
+
+			</div>
+		
+	</div>
+</section>
+	
+
+		
+		
+
+
+
+
+
+
+
+	</div>
+
+
+
+
+
+
+		</div>
+
+	</div>
+
+
+	<div class="mj-footer-fiscal__bottom">
+		<div class="mj-footer-fiscal__bottom__inner p-container">
+			<div class="mj-footer-fiscal__logo">
+				<a href="https://www.fiscal.es" title="Ir a fiscal.es">
+					<img class="mj-footer-fiscal__logo__img" alt="logo fiscal.es" src="/image/layout_set_logo?img_id=13760814&amp;t=1770961560958" />
+				</a>
+			</div>
+
+			<div class="mj-footer-fiscal__nav navigation__pipe-menu">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+	<div class="portlet-boundary portlet-boundary_com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_  portlet-static portlet-static-end portlet-barebone portlet-navigation " id="p_p_id_com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_footer_navigation_menu_">
+		<span id="p_com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_footer_navigation_menu"></span>
+
+
+
+
+	
+
+	
+		
+			
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+		
+<section class="portlet" id="portlet_com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_footer_navigation_menu">
+
+
+	<div class="portlet-content">
+
+		<div class="autofit-float autofit-row portlet-header">
+			<div class="autofit-col autofit-col-end">
+				<div class="autofit-section">
+				</div>
+			</div>
+		</div>
+
+		
+			<div class=" portlet-content-container">
+				
+
+
+	<div class="portlet-body">
+
+
+
+	
+		
+			
+				
+					
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+	
+
+
+
+
+
+
+
+
+	
+
+				
+
+				
+					
+						
+
+
+	
+
+		
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+		
+
+		
+			
+				
+
+
+	<div id="navbar_com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_footer_navigation_menu">
+		<ul aria-label="Páginas del sitio web" class="navbar-blank navbar-nav navbar-site" role="menubar">
+
+
+
+
+
+
+					<li class="lfr-nav-item nav-item" id="layout_com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_footer_navigation_menu_13767412" role="presentation">
+						<a  class="nav-link text-truncate" href='https://www.w3.org/WAI/' target="_blank" role="menuitem">
+							<span class="text-truncate"> W3C-WAI </span>
+						</a>
+
+					</li>
+
+
+
+
+
+					<li class="lfr-nav-item nav-item" id="layout_com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_footer_navigation_menu_13779718" role="presentation">
+						<a  class="nav-link text-truncate" href='https://www.fiscal.es/aviso-legal'  role="menuitem">
+							<span class="text-truncate"> Aviso Legal </span>
+						</a>
+
+					</li>
+
+
+
+
+
+					<li class="lfr-nav-item nav-item" id="layout_com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_footer_navigation_menu_13779719" role="presentation">
+						<a  class="nav-link text-truncate" href='https://www.fiscal.es/politica-de-privacidad'  role="menuitem">
+							<span class="text-truncate"> Política de privacidad </span>
+						</a>
+
+					</li>
+
+
+
+
+
+					<li class="lfr-nav-item nav-item" id="layout_com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_footer_navigation_menu_13779720" role="presentation">
+						<a  class="nav-link text-truncate" href='https://www.fiscal.es/politica-de-cookies'  role="menuitem">
+							<span class="text-truncate"> Política de cookies </span>
+						</a>
+
+					</li>
+
+
+
+
+
+					<li class="lfr-nav-item nav-item" id="layout_com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_footer_navigation_menu_13779721" role="presentation">
+						<a  class="nav-link text-truncate" href='https://www.fiscal.es/accesibilidad'  role="menuitem">
+							<span class="text-truncate"> Accesibilidad </span>
+						</a>
+
+					</li>
+
+
+
+
+
+					<li class="lfr-nav-item nav-item" id="layout_com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_footer_navigation_menu_13779722" role="presentation">
+						<a  class="nav-link text-truncate" href='https://www.fiscal.es/mapa-web'  role="menuitem">
+							<span class="text-truncate"> Mapa web </span>
+						</a>
+
+					</li>
+
+
+
+
+
+					<li class="lfr-nav-item nav-item" id="layout_com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_footer_navigation_menu_13932544" role="presentation">
+						<a  class="nav-link text-truncate" href='https://canal-etico.online/app/sessions/comunicar?=fiscalia' target="_blank" role="menuitem">
+							<span class="text-truncate"> Canal Interno para Informantes </span>
+						</a>
+
+					</li>
+		</ul>
+	</div>
+
+<script>
+AUI().use(
+  'liferay-navigation-interaction',
+function(A) {
+(function() {
+var $ = AUI.$;var _ = AUI._;		var navigation = A.one('#navbar_com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_footer_navigation_menu');
+
+		Liferay.Data.NAV_INTERACTION_LIST_SELECTOR = '.navbar-site';
+		Liferay.Data.NAV_LIST_SELECTOR = '.navbar-site';
+
+		if (navigation) {
+			navigation.plug(Liferay.NavigationInteraction);
+		}
+})();
+});
+
+</script>
+			
+			
+		
+	
+	
+	
+	
+
+
+	
+	
+					
+				
+			
+		
+	
+	
+
+
+	</div>
+
+			</div>
+		
+	</div>
+</section>
+	
+
+		
+		
+
+
+
+
+
+
+
+	</div>
+
+
+
+
+
+
+			</div>
+		</div>
+	</div>
+
+</footer>
+	</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+<script type="text/javascript">
+
+	
+		
+
+			
+
+			
+		
+	
+
+
+</script><script>
+
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+	
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+<script type="text/javascript">
+
+					window.dataLayer = window.dataLayer || [];
+					function gtag(){dataLayer.push(arguments);}
+					gtag('js', new Date());
+					gtag('config', 'G-LTYNHPCL94');
+
+					
+
+					
+				
+
+	function getValueByAttribute(node, attr) {
+		return (
+			node.dataset[attr] ||
+			(node.parentElement && node.parentElement.dataset[attr])
+		);
+	}
+
+	function sendDocumentDownloadedAnalyticsEvent(anchor) {
+		var fileEntryId = getValueByAttribute(
+			anchor,
+			'analyticsFileEntryId'
+		);
+		var title = getValueByAttribute(
+			anchor,
+			'analyticsFileEntryTitle'
+		);
+		var version = getValueByAttribute(
+			anchor,
+			'analyticsFileEntryVersion'
+		);
+
+		if (fileEntryId) {
+			Analytics.send('documentDownloaded', 'Document', {
+				groupId: themeDisplay.getScopeGroupId(),
+				fileEntryId,
+				preview: !!window._com_liferay_document_library_analytics_isViewFileEntry,
+				title,
+				version,
+			});
+		}
+	}
+
+	function handleDownloadClick(event) {
+		if (window.Analytics) {
+			if (event.target.nodeName.toLowerCase() === 'a') {
+				sendDocumentDownloadedAnalyticsEvent(
+					event.target
+				);
+			}
+			else if (
+				event.target.parentNode &&
+				event.target.parentNode.nodeName.toLowerCase() === 'a'
+			) {
+				sendDocumentDownloadedAnalyticsEvent(
+					event.target.parentNode
+				);
+			}
+			else {
+				var target = event.target;
+				var matchTextContent =
+					target.textContent &&
+					target.textContent.toLowerCase() ===
+						'descargar';
+				var matchTitle =
+					target.title && target.title.toLowerCase() === 'download';
+				var matchAction = target.action === 'download';
+				var matchLexiconIcon = !!target.querySelector(
+					'.lexicon-icon-download'
+				);
+				var matchLexiconClassName = target.classList.contains(
+					'lexicon-icon-download'
+				);
+				var matchParentTitle =
+					target.parentNode &&
+					target.parentNode.title &&
+					target.parentNode.title.toLowerCase() === 'download';
+				var matchParentLexiconClassName =
+					target.parentNode &&
+					target.parentNode.classList.contains('lexicon-icon-download');
+
+				if (
+					matchTextContent ||
+					matchTitle ||
+					matchParentTitle ||
+					matchAction ||
+					matchLexiconIcon ||
+					matchLexiconClassName ||
+					matchParentLexiconClassName
+				) {
+					var selectedFiles = document.querySelectorAll(
+						'.form .custom-control-input:checked'
+					);
+
+					selectedFiles.forEach(({value}) => {
+						var selectedFile = document.querySelector(
+							'[data-analytics-file-entry-id="' + value + '"]'
+						);
+
+						sendDocumentDownloadedAnalyticsEvent(
+							selectedFile
+						);
+					});
+				}
+			}
+		}
+	}
+
+	Liferay.once('destroyPortlet', () => {
+		document.body.removeEventListener(
+			'click',
+			handleDownloadClick
+		);
+	});
+
+	Liferay.once('portletReady', () => {
+		document.body.addEventListener(
+			'click',
+			handleDownloadClick
+		);
+	});
+
+(function() {var $ = AUI.$;var _ = AUI._;
+	var onShare = function (data) {
+		if (window.Analytics) {
+			Analytics.send('shared', 'SocialBookmarks', {
+				className: data.className,
+				classPK: data.classPK,
+				type: data.type,
+				url: data.url,
+			});
+		}
+	};
+
+	var onDestroyPortlet = function () {
+		Liferay.detach('socialBookmarks:share', onShare);
+		Liferay.detach('destroyPortlet', onDestroyPortlet);
+	};
+
+	Liferay.on('socialBookmarks:share', onShare);
+	Liferay.on('destroyPortlet', onDestroyPortlet);
+})();
+(function() {var $ = AUI.$;var _ = AUI._;
+	var onDestroyPortlet = function () {
+		Liferay.detach('messagePosted', onMessagePosted);
+		Liferay.detach('destroyPortlet', onDestroyPortlet);
+	};
+
+	Liferay.on('destroyPortlet', onDestroyPortlet);
+
+	var onMessagePosted = function (event) {
+		if (window.Analytics) {
+			const eventProperties = {
+				className: event.className,
+				classPK: event.classPK,
+				commentId: event.commentId,
+				text: event.text,
+			};
+
+			const blogNode = document.querySelector(
+				'[data-analytics-asset-id="' + event.classPK + '"]'
+			);
+
+			const dmNode = document.querySelector(
+				'[data-analytics-file-entry-id="' + event.classPK + '"]'
+			);
+
+			if (blogNode) {
+				eventProperties.title = blogNode.dataset.analyticsAssetTitle;
+			}
+			else if (dmNode) {
+				eventProperties.title = dmNode.dataset.analyticsFileEntryTitle;
+			}
+
+			Analytics.send('posted', 'Comment', eventProperties);
+		}
+	};
+
+	Liferay.on('messagePosted', onMessagePosted);
+})();
+(function() {var $ = AUI.$;var _ = AUI._;
+	var onVote = function (event) {
+		if (window.Analytics) {
+			let title = event.contentTitle;
+
+			if (!title) {
+				const dmNode = document.querySelector(
+					'[data-analytics-file-entry-id="' + event.classPK + '"]'
+				);
+
+				if (dmNode) {
+					title = dmNode.dataset.analyticsFileEntryTitle;
+				}
+			}
+
+			Analytics.send('VOTE', 'Ratings', {
+				className: event.className,
+				classPK: event.classPK,
+				ratingType: event.ratingType,
+				score: event.score,
+				title,
+			});
+		}
+	};
+
+	var onDestroyPortlet = function () {
+		Liferay.detach('ratings:vote', onVote);
+		Liferay.detach('destroyPortlet', onDestroyPortlet);
+	};
+
+	Liferay.on('ratings:vote', onVote);
+	Liferay.on('destroyPortlet', onDestroyPortlet);
+})();
+
+	if (window.svg4everybody && Liferay.Data.ICONS_INLINE_SVG) {
+		svg4everybody(
+			{
+				polyfill: true,
+				validate: function (src, svg, use) {
+					return !src || !src.startsWith('#');
+				}
+			}
+		);
+	}
+
+
+	// <![CDATA[
+
+		
+
+		Liferay.currentURL = '\x2ferror';
+		Liferay.currentURLEncoded = '\x252Ferror';
+
+	// ]]>
+
+
+		// <![CDATA[
+			
+				
+
+				
+
+				
+			
+		// ]]>
+	
+
+	
+		Liferay.Portlet.register('com_liferay_site_navigation_breadcrumb_web_portlet_SiteNavigationBreadcrumbPortlet');
+	
+
+	Liferay.Portlet.onLoad(
+		{
+			canEditTitle: false,
+			columnPos: 0,
+			isStatic: 'end',
+			namespacedId: 'p_p_id_com_liferay_site_navigation_breadcrumb_web_portlet_SiteNavigationBreadcrumbPortlet_',
+			portletId: 'com_liferay_site_navigation_breadcrumb_web_portlet_SiteNavigationBreadcrumbPortlet',
+			refreshURL: '\x2fc\x2fportal\x2frender_portlet\x3fp_l_id\x3d816589\x26p_p_id\x3dcom_liferay_site_navigation_breadcrumb_web_portlet_SiteNavigationBreadcrumbPortlet\x26p_p_lifecycle\x3d0\x26p_t_lifecycle\x3d0\x26p_p_state\x3dnormal\x26p_p_mode\x3dview\x26p_p_col_id\x3dnull\x26p_p_col_pos\x3dnull\x26p_p_col_count\x3dnull\x26p_p_static\x3d1\x26p_p_isolated\x3d1\x26currentURL\x3d\x252Ferror',
+			refreshURLData: {}
+		}
+	);
+
+
+	
+		Liferay.Portlet.register('com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_footer_navigation_menu');
+	
+
+	Liferay.Portlet.onLoad(
+		{
+			canEditTitle: false,
+			columnPos: 0,
+			isStatic: 'end',
+			namespacedId: 'p_p_id_com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_footer_navigation_menu_',
+			portletId: 'com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_footer_navigation_menu',
+			refreshURL: '\x2fc\x2fportal\x2frender_portlet\x3fp_l_id\x3d816589\x26p_p_id\x3dcom_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_footer_navigation_menu\x26p_p_lifecycle\x3d0\x26p_t_lifecycle\x3d0\x26p_p_state\x3dnormal\x26p_p_mode\x3dview\x26p_p_col_id\x3dnull\x26p_p_col_pos\x3dnull\x26p_p_col_count\x3dnull\x26p_p_static\x3d1\x26p_p_isolated\x3d1\x26currentURL\x3d\x252Ferror',
+			refreshURLData: {}
+		}
+	);
+
+
+	
+		Liferay.Portlet.register('com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_footer_accordion_menu');
+	
+
+	Liferay.Portlet.onLoad(
+		{
+			canEditTitle: false,
+			columnPos: 0,
+			isStatic: 'end',
+			namespacedId: 'p_p_id_com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_footer_accordion_menu_',
+			portletId: 'com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_footer_accordion_menu',
+			refreshURL: '\x2fc\x2fportal\x2frender_portlet\x3fp_l_id\x3d816589\x26p_p_id\x3dcom_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_footer_accordion_menu\x26p_p_lifecycle\x3d0\x26p_t_lifecycle\x3d0\x26p_p_state\x3dnormal\x26p_p_mode\x3dview\x26p_p_col_id\x3dnull\x26p_p_col_pos\x3dnull\x26p_p_col_count\x3dnull\x26p_p_static\x3d1\x26p_p_isolated\x3d1\x26currentURL\x3d\x252Ferror',
+			refreshURLData: {}
+		}
+	);
+
+
+	
+		Liferay.Portlet.register('com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_footer_short_menu_public');
+	
+
+	Liferay.Portlet.onLoad(
+		{
+			canEditTitle: false,
+			columnPos: 0,
+			isStatic: 'end',
+			namespacedId: 'p_p_id_com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_footer_short_menu_public_',
+			portletId: 'com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_footer_short_menu_public',
+			refreshURL: '\x2fc\x2fportal\x2frender_portlet\x3fp_l_id\x3d816589\x26p_p_id\x3dcom_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_footer_short_menu_public\x26p_p_lifecycle\x3d0\x26p_t_lifecycle\x3d0\x26p_p_state\x3dnormal\x26p_p_mode\x3dview\x26p_p_col_id\x3dnull\x26p_p_col_pos\x3dnull\x26p_p_col_count\x3dnull\x26p_p_static\x3d1\x26p_p_isolated\x3d1\x26currentURL\x3d\x252Ferror',
+			refreshURLData: {}
+		}
+	);
+
+
+	
+		Liferay.Portlet.register('com_liferay_journal_content_web_portlet_JournalContentPortlet_INSTANCE_journal_content_page_515487c0ec2a52999e488b4e9f1e35d5');
+	
+
+	Liferay.Portlet.onLoad(
+		{
+			canEditTitle: false,
+			columnPos: 0,
+			isStatic: 'end',
+			namespacedId: 'p_p_id_com_liferay_journal_content_web_portlet_JournalContentPortlet_INSTANCE_journal_content_page_515487c0ec2a52999e488b4e9f1e35d5_',
+			portletId: 'com_liferay_journal_content_web_portlet_JournalContentPortlet_INSTANCE_journal_content_page_515487c0ec2a52999e488b4e9f1e35d5',
+			refreshURL: '\x2fc\x2fportal\x2frender_portlet\x3fp_l_id\x3d816589\x26p_p_id\x3dcom_liferay_journal_content_web_portlet_JournalContentPortlet_INSTANCE_journal_content_page_515487c0ec2a52999e488b4e9f1e35d5\x26p_p_lifecycle\x3d0\x26p_t_lifecycle\x3d0\x26p_p_state\x3dnormal\x26p_p_mode\x3dview\x26p_p_col_id\x3dnull\x26p_p_col_pos\x3dnull\x26p_p_col_count\x3dnull\x26p_p_static\x3d1\x26p_p_isolated\x3d1\x26currentURL\x3d\x252Ferror',
+			refreshURLData: {}
+		}
+	);
+
+
+	
+		Liferay.Portlet.register('com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_public_navigation');
+	
+
+	Liferay.Portlet.onLoad(
+		{
+			canEditTitle: false,
+			columnPos: 0,
+			isStatic: 'end',
+			namespacedId: 'p_p_id_com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_public_navigation_',
+			portletId: 'com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_public_navigation',
+			refreshURL: '\x2fc\x2fportal\x2frender_portlet\x3fp_l_id\x3d816589\x26p_p_id\x3dcom_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_public_navigation\x26p_p_lifecycle\x3d0\x26p_t_lifecycle\x3d0\x26p_p_state\x3dnormal\x26p_p_mode\x3dview\x26p_p_col_id\x3dnull\x26p_p_col_pos\x3dnull\x26p_p_col_count\x3dnull\x26p_p_static\x3d1\x26p_p_isolated\x3d1\x26currentURL\x3d\x252Ferror',
+			refreshURLData: {}
+		}
+	);
+
+
+	
+		Liferay.Portlet.register('com_liferay_site_navigation_language_web_portlet_SiteNavigationLanguagePortlet');
+	
+
+	Liferay.Portlet.onLoad(
+		{
+			canEditTitle: false,
+			columnPos: 0,
+			isStatic: 'end',
+			namespacedId: 'p_p_id_com_liferay_site_navigation_language_web_portlet_SiteNavigationLanguagePortlet_',
+			portletId: 'com_liferay_site_navigation_language_web_portlet_SiteNavigationLanguagePortlet',
+			refreshURL: '\x2fc\x2fportal\x2frender_portlet\x3fp_l_id\x3d816589\x26p_p_id\x3dcom_liferay_site_navigation_language_web_portlet_SiteNavigationLanguagePortlet\x26p_p_lifecycle\x3d0\x26p_t_lifecycle\x3d0\x26p_p_state\x3dnormal\x26p_p_mode\x3dview\x26p_p_col_id\x3dnull\x26p_p_col_pos\x3dnull\x26p_p_col_count\x3dnull\x26p_p_static\x3d1\x26p_p_isolated\x3d1\x26currentURL\x3d\x252Ferror',
+			refreshURLData: {}
+		}
+	);
+
+
+	
+		Liferay.Portlet.register('com_liferay_portal_search_web_search_bar_portlet_SearchBarPortlet_INSTANCE_templateSearch');
+	
+
+	Liferay.Portlet.onLoad(
+		{
+			canEditTitle: false,
+			columnPos: 0,
+			isStatic: 'end',
+			namespacedId: 'p_p_id_com_liferay_portal_search_web_search_bar_portlet_SearchBarPortlet_INSTANCE_templateSearch_',
+			portletId: 'com_liferay_portal_search_web_search_bar_portlet_SearchBarPortlet_INSTANCE_templateSearch',
+			refreshURL: '\x2fc\x2fportal\x2frender_portlet\x3fp_l_id\x3d816589\x26p_p_id\x3dcom_liferay_portal_search_web_search_bar_portlet_SearchBarPortlet_INSTANCE_templateSearch\x26p_p_lifecycle\x3d0\x26p_t_lifecycle\x3d0\x26p_p_state\x3dnormal\x26p_p_mode\x3dview\x26p_p_col_id\x3dnull\x26p_p_col_pos\x3dnull\x26p_p_col_count\x3dnull\x26p_p_static\x3d1\x26p_p_isolated\x3d1\x26currentURL\x3d\x252Ferror',
+			refreshURLData: {}
+		}
+	);
+
+
+	
+		Liferay.Portlet.register('com_liferay_journal_content_web_portlet_JournalContentPortlet_INSTANCE_footer_rrss_menu');
+	
+
+	Liferay.Portlet.onLoad(
+		{
+			canEditTitle: false,
+			columnPos: 0,
+			isStatic: 'end',
+			namespacedId: 'p_p_id_com_liferay_journal_content_web_portlet_JournalContentPortlet_INSTANCE_footer_rrss_menu_',
+			portletId: 'com_liferay_journal_content_web_portlet_JournalContentPortlet_INSTANCE_footer_rrss_menu',
+			refreshURL: '\x2fc\x2fportal\x2frender_portlet\x3fp_l_id\x3d816589\x26p_p_id\x3dcom_liferay_journal_content_web_portlet_JournalContentPortlet_INSTANCE_footer_rrss_menu\x26p_p_lifecycle\x3d0\x26p_t_lifecycle\x3d0\x26p_p_state\x3dnormal\x26p_p_mode\x3dview\x26p_p_col_id\x3dnull\x26p_p_col_pos\x3dnull\x26p_p_col_count\x3dnull\x26p_p_static\x3d1\x26p_p_isolated\x3d1\x26currentURL\x3d\x252Ferror',
+			refreshURLData: {}
+		}
+	);
+
+
+	
+		Liferay.Portlet.register('com_liferay_journal_content_web_portlet_JournalContentPortlet_INSTANCE_gAC8PYQ2UktX');
+	
+
+	Liferay.Portlet.onLoad(
+		{
+			canEditTitle: false,
+			columnPos: 0,
+			isStatic: 'end',
+			namespacedId: 'p_p_id_com_liferay_journal_content_web_portlet_JournalContentPortlet_INSTANCE_gAC8PYQ2UktX_',
+			portletId: 'com_liferay_journal_content_web_portlet_JournalContentPortlet_INSTANCE_gAC8PYQ2UktX',
+			refreshURL: '\x2fc\x2fportal\x2frender_portlet\x3fp_l_id\x3d816589\x26p_p_id\x3dcom_liferay_journal_content_web_portlet_JournalContentPortlet_INSTANCE_gAC8PYQ2UktX\x26p_p_lifecycle\x3d0\x26p_t_lifecycle\x3d0\x26p_p_state\x3dnormal\x26p_p_mode\x3dview\x26p_p_col_id\x3dcolumn-1\x26p_p_col_pos\x3d0\x26p_p_col_count\x3d1\x26p_p_isolated\x3d1\x26currentURL\x3d\x252Ferror',
+			refreshURLData: {}
+		}
+	);
+
+
+	
+		Liferay.Portlet.register('com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_short_menu_public');
+	
+
+	Liferay.Portlet.onLoad(
+		{
+			canEditTitle: false,
+			columnPos: 0,
+			isStatic: 'end',
+			namespacedId: 'p_p_id_com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_short_menu_public_',
+			portletId: 'com_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_short_menu_public',
+			refreshURL: '\x2fc\x2fportal\x2frender_portlet\x3fp_l_id\x3d816589\x26p_p_id\x3dcom_liferay_site_navigation_menu_web_portlet_SiteNavigationMenuPortlet_INSTANCE_short_menu_public\x26p_p_lifecycle\x3d0\x26p_t_lifecycle\x3d0\x26p_p_state\x3dnormal\x26p_p_mode\x3dview\x26p_p_col_id\x3dnull\x26p_p_col_pos\x3dnull\x26p_p_col_count\x3dnull\x26p_p_static\x3d1\x26p_p_isolated\x3d1\x26currentURL\x3d\x252Ferror',
+			refreshURLData: {}
+		}
+	);
+
+
+	
+		Liferay.Portlet.register('com_liferay_journal_content_web_portlet_JournalContentPortlet_INSTANCE_footer_slogan');
+	
+
+	Liferay.Portlet.onLoad(
+		{
+			canEditTitle: false,
+			columnPos: 0,
+			isStatic: 'end',
+			namespacedId: 'p_p_id_com_liferay_journal_content_web_portlet_JournalContentPortlet_INSTANCE_footer_slogan_',
+			portletId: 'com_liferay_journal_content_web_portlet_JournalContentPortlet_INSTANCE_footer_slogan',
+			refreshURL: '\x2fc\x2fportal\x2frender_portlet\x3fp_l_id\x3d816589\x26p_p_id\x3dcom_liferay_journal_content_web_portlet_JournalContentPortlet_INSTANCE_footer_slogan\x26p_p_lifecycle\x3d0\x26p_t_lifecycle\x3d0\x26p_p_state\x3dnormal\x26p_p_mode\x3dview\x26p_p_col_id\x3dnull\x26p_p_col_pos\x3dnull\x26p_p_col_count\x3dnull\x26p_p_static\x3d1\x26p_p_isolated\x3d1\x26currentURL\x3d\x252Ferror',
+			refreshURLData: {}
+		}
+	);
+
+
+</script><script type="module">
+import {InfoItemActionHandler as ComponentModule} from '/o/layout-taglib/__liferay__/index.js';
+Liferay.Loader.require(
+'frontend-js-web/index',
+function(frontendJsWeb) {
+try {
+AUI().use(
+  'liferay-menu',
+function(A) {
+{
+Liferay.component('infoItemActionComponent', new ComponentModule({"executeInfoItemActionURL":"https:\/\/www.fiscal.es\/c\/portal\/execute_info_item_action?p_l_mode=view&plid=816589","namespace":"","spritemap":"https:\/\/www.fiscal.es\/o\/fiscal-theme\/images\/clay\/icons.svg"}), { destroyOnNavigate: true, portletId: ''});
+}
+(function() {
+var $ = AUI.$;var _ = AUI._;
+	var {delegate} = frontendJsWeb;
+
+	delegate(
+		document,
+		'focusin',
+		'.portlet',
+		function(event) {
+			event.delegateTarget.closest('.portlet').classList.add('open');
+		}
+	);
+
+	delegate(
+		document,
+		'focusout',
+		'.portlet',
+		function(event) {
+			event.delegateTarget.closest('.portlet').classList.remove('open');
+		}
+	);
+})();
+(function() {
+var $ = AUI.$;var _ = AUI._;
+	new Liferay.Menu();
+
+	var liferayNotices = Liferay.Data.notices;
+
+	for (var i = 0; i < liferayNotices.length; i++) {
+		Liferay.Util.openToast(liferayNotices[i]);
+	}
+
+})();
+(function() {
+var $ = AUI.$;var _ = AUI._;
+		var {openToast} = frontendJsWeb;
+
+		AUI().use(
+			'liferay-session',
+			function() {
+				Liferay.Session = new Liferay.SessionBase(
+					{
+						autoExtend: true,
+						redirectOnExpire: false,
+						redirectUrl: 'https\x3a\x2f\x2fwww\x2efiscal\x2ees\x2fweb\x2ffiscal\x2finicio',
+						sessionLength: 900,
+						sessionTimeoutOffset: 2700,
+						warningLength: 0
+					}
+				);
+
+				
+			}
+		);
+	
+})();
+});
+} catch (err) {
+	console.error(err);
+}
+});
+
+</script>
+
+
+
+
+
+
+
+
+
+<script src="https://www.fiscal.es/o/fiscal-theme/js/main.js?browserId=other&amp;minifierType=js&amp;languageId=es_ES&amp;t=1761782214000" type="text/javascript"></script>
+
+
+
+
+<script type="module">
+import {default as main} from '/o/frontend-js-tooltip-support-web/__liferay__/index.js';
+{
+main();
+}
+
+</script><script type="module">
+import {default as main} from '/o/frontend-js-dropdown-support-web/__liferay__/index.js';
+{
+main();
+}
+
+</script><script type="module">
+import {default as main} from '/o/frontend-js-collapse-support-web/__liferay__/index.js';
+{
+main();
+}
+
+</script><script type="module">
+import {default as main} from '/o/frontend-js-tabs-support-web/__liferay__/index.js';
+{
+main();
+}
+
+</script><script type="module">
+import {default as main} from '/o/frontend-js-alert-support-web/__liferay__/index.js';
+{
+main();
+}
+
+</script><script type="module">
+import {runThirdPartyCookiesInterval} from '/o/cookies-banner-web/__liferay__/index.js';
+{
+runThirdPartyCookiesInterval();
+}
+
+</script><script type="text/javascript">
+Liferay.CustomDialogs = {enabled: false};
+
+</script><script>
+
+</script>
+
+
+
+
+
+
+
+<div aria-label="banner cookie" class="cookies-banner cookies-banner-bottom" role="dialog" style="display: none;">
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+	<div class="portlet-boundary portlet-boundary_com_liferay_cookies_banner_web_portlet_CookiesBannerPortlet_  portlet-static portlet-static-end portlet-barebone portlet-cookies-banner " id="p_p_id_com_liferay_cookies_banner_web_portlet_CookiesBannerPortlet_">
+		<span id="p_com_liferay_cookies_banner_web_portlet_CookiesBannerPortlet"></span>
+
+
+
+
+	
+
+	
+		
+			
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="container-fluid container-fluid-max-xl container-view">
+	<div class="row">
+		<div class="autofit-row autofit-padded-no-gutters autofit-row-center autofit-float-sm-down px-2 px-md-0">
+			<div class="autofit-col autofit-col-expand">
+				<p class="mb-0">
+					Usamos cookies para mostrar contenidos personalizados, analizar tendencias, administrar el sitio, llevar un seguimiento de los movimientos de los usuarios en el sitio y recopilar información demográfica sobre nuestra base de usuarios en su conjunto. Acepte todas las cookies para disfrutar de la mejor experiencia posible en nuestro sitio web, o bien administre sus preferencias.
+
+					<a class="" href="/politica-de-privacidad" >Consulte la Política de privacidad</a>
+				</p>
+			</div>
+
+			<div class="autofit-col">
+				<button class="btn btn-sm btn-link" id="_com_liferay_cookies_banner_web_portlet_CookiesBannerPortlet_configurationButton" type="button" >Configuración</button>
+			</div>
+
+			<div class="autofit-col">
+				<button class="btn btn-sm btn-secondary" id="_com_liferay_cookies_banner_web_portlet_CookiesBannerPortlet_acceptAllButton" type="button" >Aceptar todo</button>
+			</div>
+
+			
+				<div class="autofit-col">
+					<button class="btn btn-sm btn-secondary" id="_com_liferay_cookies_banner_web_portlet_CookiesBannerPortlet_declineAllButton" type="button" >Rechazar todas</button>
+				</div>
+			
+		</div>
+	</div>
+</div>
+
+<script type="module">
+import {CookiesBanner as ComponentModule} from '/o/cookies-banner-web/__liferay__/index.js';
+{
+Liferay.component('CookiesBanner', new ComponentModule({"configurationURL":"https:\/\/www.fiscal.es\/error?p_p_id=com_liferay_cookies_banner_web_portlet_CookiesBannerConfigurationPortlet&p_p_lifecycle=0&p_p_state=pop_up&p_p_mode=view&_com_liferay_cookies_banner_web_portlet_CookiesBannerConfigurationPortlet_mvcPath=%2Fcookies_banner_configuration%2Fview.jsp&p_p_auth=GQ12gF7K","optionalConsentCookieTypeNames":["CONSENT_TYPE_FUNCTIONAL","CONSENT_TYPE_PERFORMANCE","CONSENT_TYPE_PERSONALIZATION"],"spritemap":"https:\/\/www.fiscal.es\/o\/fiscal-theme\/images\/clay\/icons.svg","configurationNamespace":"com_liferay_cookies_banner_web_portlet_CookiesBannerConfigurationPortlet","namespace":"_com_liferay_cookies_banner_web_portlet_CookiesBannerPortlet_","requiredConsentCookieTypeNames":["CONSENT_TYPE_NECESSARY"],"includeDeclineAllButton":true,"title":"Configuración de cookies"}), { destroyOnNavigate: true, portletId: 'com_liferay_cookies_banner_web_portlet_CookiesBannerPortlet'});
+}
+
+</script>
+		
+	
+
+
+
+
+
+
+
+	</div>
+
+
+
+
+
+
+
+</div><script data-senna-track="temporary" src="https://www.fiscal.es/documents/d/fiscal/scrolltosearchbar_overridewithpromise" type="text/javascript"></script><script src="https://www.fiscal.es/o/fiscal-theme/js/parent__functions.js"></script>
+
+<script src="https://www.fiscal.es/o/fiscal-theme/js/fiscal__functions.js?t=1761782214000"></script>
+<script src="https://www.fiscal.es/o/fiscal-theme/js/fiscal__vmap.js?t=1761782214000"></script>
+<script src="https://www.fiscal.es/o/fiscal-theme/js/fiscal__init.js?t=1761782214000"></script>	<div class="sr-only" data-url-datatable="/o/comcom-frontend-library-repository-module/js/datatables/datatables-langs/" ></div>
+</body>
+
+</html>
+		
+	
+

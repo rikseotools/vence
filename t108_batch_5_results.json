@@ -1,0 +1,186 @@
+[
+  {
+    "id": "cfc0ab11-8482-4953-8c2f-e5f40b9cd7d8",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "La respuesta A (Ctrl+S) ES correcta para subrayar en Word en español. En la versión española, Ctrl+S = Subrayar (equivalente a Ctrl+U en inglés, U de Underline). La explicación es aceptable y menciona correctamente la equivalencia con Ctrl+U."
+  },
+  {
+    "id": "66b0842f-2e92-48e8-92d1-207f0d8d3754",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "La respuesta A (Ctrl+Alt+Mayusc+S) ES correcta para abrir el panel de Estilos en Word 365. Este es un atajo bien documentado y confirmado por múltiples fuentes. La explicación es completa y didáctica, analizando cada opción."
+  },
+  {
+    "id": "ca084e9a-9f05-423b-9a7c-5785ca87eacb",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta B (Archivo > Opciones > Personalizar cinta de opciones) ES correcta. Para reactivar la ficha Ayuda si no está visible en la cinta, se accede desde esa ruta. Las otras opciones son inventadas (no existen en Word). La explicación es clara."
+  },
+  {
+    "id": "c4e8ea93-921c-456f-8c81-f7d96c69add9",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "La respuesta correcta es D) Sinónimos. En la pestaña Revisar de Word 365, el grupo \"Revisión\" (en inglés \"Proofing\") contiene las herramientas de revisión lingüística del documento. Además de \"Ortografía y gramática\" (o \"Editor\" en versiones recientes), este grupo incluye el comando \"Sinónimos\" (Diccionario de sinónimos/Thesaurus) y el contador de palabras.\n\nAnálisis de cada opción:\n- A) Nuevo comentario: INCORRECTO. Se encuentra en el grupo \"Comentarios\" de la pestaña Revisar, no en el grupo \"Revisión\".\n- B) Traducir: INCORRECTO. Se encuentra en el grupo \"Idioma\" de la pestaña Revisar.\n- C) Comparar: INCORRECTO. Se encuentra en su propio grupo \"Comparar\" dentro de la pestaña Revisar.\n- D) Sinónimos: CORRECTO. Forma parte del grupo \"Revisión\" junto con Ortografía y gramática y Contar palabras.",
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta D es correcta. Sinónimos (Thesaurus) sí está en el grupo Revisión (Proofing) junto con Ortografía y gramática. Pero la explicación necesita mejorar el análisis opción por opción con más claridad sobre la estructura de grupos de la pestaña Revisar."
+  },
+  {
+    "id": "86000eb8-3e13-4e06-8539-f2b1c2e2aeb1",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "La respuesta A (Control+Mayús+F) ES correcta para abrir el cuadro de diálogo Fuente en Word en español. La opción B (Control+F) en español abre Buscar, no Fuente. La opción C tiene una errata (Control+Al+F en vez de Control+Alt+F), pero de todas formas Control+Alt+F no abre el diálogo de Fuente. La explicación menciona otros atajos válidos (Ctrl+M, Ctrl+Shift+M) como información adicional, lo cual es aceptable."
+  },
+  {
+    "id": "07f44a7c-474f-4435-87b9-fd6f1abd61d7",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta A ES correcta como afirmación FALSA. Es falso que los atajos personalizados deban empezar siempre y únicamente por CTRL. Word permite asignar combinaciones con Alt, Ctrl+Mayús, Ctrl+Alt, Alt+Mayús, etc. Las demás afirmaciones (B, C, D) son verdaderas. La explicación lo explica correctamente."
+  },
+  {
+    "id": "126e7b0d-546a-4a4c-8dd5-bf11cf5accf5",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta B (Insertar y Revisar) ES correcta. Los comentarios se pueden agregar desde la pestaña Insertar (botón Comentar) y desde la pestaña Revisar (grupo Comentarios > Nuevo comentario). Esto está confirmado por la documentación oficial de Microsoft y múltiples fuentes."
+  },
+  {
+    "id": "e7a33917-0317-4aa8-9107-e8839fafc1d0",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "La respuesta correcta es D) Las dos últimas respuestas son correctas. En el panel del Portapapeles de Office en Word 365, existen dos formas de eliminar un elemento individual sin vaciar todo el portapapeles:\n\nAnálisis de cada opción:\n- A) No se puede hacer, hay que vaciar el portapapeles y empezar de nuevo: INCORRECTO. Sí es posible eliminar elementos individuales del portapapeles sin tener que vaciarlo completamente.\n- B) Hacer clic con el botón derecho sobre el elemento y seleccionar Eliminar: CORRECTO. Al hacer clic derecho sobre un elemento del portapapeles aparece un menú contextual con las opciones Pegar y Eliminar.\n- C) Hacer clic en el botón situado a la derecha del elemento (flecha desplegable) y seleccionar Eliminar: CORRECTO. Al pasar el cursor sobre un elemento del portapapeles aparece una pequeña flecha a la derecha; al hacer clic en ella se despliegan las opciones Pegar y Eliminar.\n- D) Las dos últimas respuestas son correctas: CORRECTO. Ambos métodos (B y C) son válidos para eliminar un elemento individual del portapapeles de Office.",
+    "original_status": "tech_bad_explanation",
+    "reason": "La respuesta D es correcta (ambos métodos B y C funcionan para eliminar un elemento individual del portapapeles). Pero la explicación estaba vacía y necesita contenido didáctico que analice cada opción."
+  },
+  {
+    "id": "a3a30138-f883-405f-82ab-0aba5b67cbbe",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "La respuesta correcta es D) Agregar una firma digital. Dentro de las opciones del comando Proteger documento (accesible desde Archivo > Información > Proteger documento), la herramienta que permite certificar la autoría de un documento y asegurar que su contenido no ha sido alterado ni manipulado es \"Agregar una firma digital\".\n\nAnálisis de cada opción:\n- A) Marcar como final: INCORRECTO. Esta opción marca el documento como versión final y lo establece como solo lectura, pero no certifica la autoría ni garantiza la integridad del contenido. Además, cualquier usuario puede desactivar esta protección.\n- B) Cifrar con contraseña: INCORRECTO. Esta opción protege el acceso al documento mediante una contraseña, pero no certifica quién es el autor ni verifica que el contenido no haya sido modificado.\n- C) Restringir edición: INCORRECTO. Esta opción limita los tipos de cambios que se pueden realizar en el documento (formato, comentarios, etc.), pero no certifica la autoría ni la integridad del contenido.\n- D) Agregar una firma digital: CORRECTO. La firma digital permite certificar la autoría del documento y garantizar que el contenido no ha sido modificado desde que se firmó. Si alguien altera el documento después de firmarlo, la firma digital se invalida, asegurando así la integridad del contenido.",
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "La respuesta D es correcta. La firma digital es la herramienta correcta para certificar autoría y garantizar integridad. Pero la explicación era muy pobre: no analizaba cada opción A/B/C/D y no explicaba por qué las otras son incorrectas."
+  },
+  {
+    "id": "eded3aa9-8b27-41f0-8483-759b24c148bc",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "La respuesta correcta es A) Control+C dos veces. Pulsar Ctrl+C dos veces seguidas puede abrir el panel del Portapapeles de Office, aunque previamente es necesario habilitar esta opción. Para activar este comportamiento, se debe abrir el panel del Portapapeles (desde Inicio > grupo Portapapeles > lanzador del grupo), hacer clic en \"Opciones\" en la parte inferior del panel, y marcar la casilla \"Mostrar Portapapeles de Office cuando se presione Ctrl+C dos veces\".\n\nAnálisis de cada opción:\n- A) Control+C dos veces: CORRECTO. Si la opción está habilitada en la configuración del portapapeles, pulsar Ctrl+C dos veces abre el panel del Portapapeles de Office, que permite acceder a los últimos 24 elementos cortados o copiados.\n- B) Control+C: INCORRECTO. Ctrl+C simplemente copia el texto o elemento seleccionado al portapapeles, pero no abre el panel del Portapapeles de Office.\n- C) Control+V: INCORRECTO. Ctrl+V pega el último elemento copiado desde el portapapeles, pero no abre el panel del Portapapeles de Office.\n- D) Alt+P: INCORRECTO. Alt+P no es un atajo estándar para abrir el portapapeles en Word 365.",
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "La respuesta A es correcta. Ctrl+C dos veces sí puede abrir el portapapeles de Office si la opción está habilitada. Pero la explicación necesita mejorar: debe analizar cada opción y ser más clara sobre el requisito previo de habilitación."
+  },
+  {
+    "id": "4a94a126-cfb0-404c-bd21-86ae37ce266b",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta A (Dos clics) ES correcta. En Word, al hacer clic en el margen izquierdo: 1 clic selecciona la línea, 2 clics seleccionan el párrafo, 3 clics seleccionan todo el documento. Esto está confirmado por la documentación oficial de Microsoft. La explicación es clara y correcta."
+  },
+  {
+    "id": "72cd62d6-b9b5-47fc-bcd9-b74fac41bdac",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta D (Archivo > Opciones > Personalizar cinta de opciones) ES correcta. Es la misma pregunta que el índice 107 pero con las opciones reordenadas. La ruta para añadir/quitar fichas de la cinta es Archivo > Opciones > Personalizar cinta de opciones. La explicación es correcta."
+  },
+  {
+    "id": "3533ae15-7a86-4299-9eef-da06f995c815",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta B (Triple) ES correcta como opción que NO es un tipo de interlineado predefinido. Los tipos predefinidos son: Sencillo, 1,5 líneas, Doble, Mínimo, Exacto y Múltiple. No existe 'Triple' como opción predefinida. La explicación es completa y correcta."
+  },
+  {
+    "id": "2d8b01a6-6d47-4fa8-aacd-17386098b7e5",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta B ES correcta. La alineación vertical justificada distribuye el texto de forma uniforme entre el margen superior y el inferior, ajustando los espacios verticales entre las líneas del texto. La explicación es correcta y detallada, explicando dónde se configura y cómo funciona."
+  },
+  {
+    "id": "cfcc284f-e33b-4911-8c8b-a237a87bd8d9",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta A (Doble clic en Copiar formato) ES correcta. Un solo clic aplica el formato una vez; doble clic mantiene el formato activo para aplicarlo a múltiples fragmentos no consecutivos hasta que se pulse Esc o se haga clic de nuevo en el botón. La explicación es clara y correcta."
+  },
+  {
+    "id": "73678ae8-e10a-4177-83f5-dc47a6bb7adc",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta D (Cambiar el tema visual de Office) ES correcta. Desde Archivo > Cuenta se puede cambiar el tema de Office (Colorido, Gris oscuro, Negro, Blanco) en la sección 'Tema de Office'. Las otras opciones no están disponibles desde Cuenta. La explicación es correcta."
+  },
+  {
+    "id": "41aaaf63-e9ec-47ea-b6d1-73b52d072649",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "La respuesta correcta es D) Las opciones A y C son correctas.\n\nAnálisis de cada opción:\n- A) La tecla F5 abre la ventana \"Buscar y reemplazar\": CORRECTO. F5 abre el cuadro de diálogo \"Buscar y reemplazar\", concretamente mostrando la pestaña \"Ir a\" (Go To), que permite navegar a páginas, secciones, líneas, marcadores, comentarios, notas al pie, etc. Aunque la pestaña activa es \"Ir a\", el cuadro de diálogo es el mismo de \"Buscar y reemplazar\" con sus tres pestañas (Buscar, Reemplazar e Ir a).\n- B) La tecla F6 abre la ventana \"Buscar y reemplazar\": INCORRECTO. F6 se utiliza para cambiar entre el documento, el panel de tareas, la barra de estado y la cinta de opciones. No abre Buscar y reemplazar.\n- C) La tecla F12 abre la ventana \"Guardar como\": CORRECTO. F12 abre directamente el cuadro de diálogo \"Guardar como\" para guardar el documento con un nuevo nombre o ubicación.\n- D) Las opciones A y C son correctas: CORRECTO. Ambas afirmaciones son verdaderas.",
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "La respuesta D es correcta: tanto F5 (abre Buscar y reemplazar en la pestaña Ir a) como F12 (abre Guardar como) son correctas. Pero la explicación necesita ser más precisa: F5 abre el cuadro de diálogo 'Buscar y reemplazar' mostrando específicamente la pestaña 'Ir a', no la pestaña 'Buscar'. La explicación original era correcta pero le faltaba análisis opción por opción estructurado."
+  },
+  {
+    "id": "c117124f-6c5d-4c49-b1c3-3838b1127c66",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "La respuesta A ES correcta. Ctrl+Shift+N (Ctrl+Mayús+N) aplica el estilo Normal al texto seleccionado en Word. Esto está confirmado por múltiples fuentes incluyendo documentación oficial de Microsoft. La explicación es correcta y menciona correctamente los atajos para Título 1 (Ctrl+Alt+1) y panel de navegación."
+  },
+  {
+    "id": "15a5ad3c-34fa-4ea1-9419-5f9efb375284",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "La respuesta correcta es D) Modo Lectura. En Word 365, para ampliar el zoom sobre un objeto gráfico (imagen, gráfico SmartArt, forma, etc.) o sobre una tabla, se debe activar la vista Modo Lectura. En esta vista, al hacer doble clic sobre una imagen o tabla, Word la amplía a pantalla completa para facilitar su visualización detallada.\n\nAnálisis de cada opción:\n- A) Vista previa: INCORRECTO. La vista previa (Vista previa de impresión) se utiliza para ver cómo quedará el documento impreso, pero no permite hacer zoom sobre objetos individuales mediante doble clic.\n- B) Diseño de impresión: INCORRECTO. Aunque es la vista predeterminada de Word y permite trabajar con objetos gráficos, no ofrece la funcionalidad de ampliar objetos con doble clic.\n- C) Modo escritura: INCORRECTO. No existe una vista llamada \"Modo escritura\" como tal en Word 365.\n- D) Modo Lectura: CORRECTO. En esta vista, al hacer doble clic sobre una imagen, tabla o gráfico, Word amplía el objeto para mostrarlo a mayor tamaño, facilitando su lectura y análisis sin necesidad de usar el control de zoom general del documento.",
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "La respuesta D es correcta. El Modo Lectura permite hacer zoom sobre imágenes y tablas con doble clic. La explicación original era escueta y solo mencionaba imágenes; la pregunta incluye tablas y objetos gráficos. Se necesita un análisis completo opción por opción."
+  },
+  {
+    "id": "4e04d14c-72a8-4975-be4d-171c076906ef",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "La respuesta correcta es D) Seleccionar tabla. En Word 365, al ir a la pestaña Inicio > grupo Edición > botón Seleccionar, se despliega un menú con las siguientes opciones:\n\n1. Seleccionar todo (Ctrl+E): Selecciona todo el contenido del documento.\n2. Seleccionar objetos: Permite seleccionar objetos (imágenes, formas, cuadros de texto) dibujando un rectángulo de selección.\n3. Seleccionar todo el texto con formato similar (sin datos): Selecciona todo el texto que tenga el mismo formato que el texto actualmente seleccionado.\n4. Panel de selección: Abre el panel de selección lateral para gestionar objetos (mostrar, ocultar, reordenar).\n\nAnálisis de cada opción:\n- A) Seleccionar objetos: INCORRECTO (sí aparece en el menú). Es una de las cuatro opciones disponibles.\n- B) Seleccionar todo: INCORRECTO (sí aparece en el menú). Es una de las cuatro opciones disponibles.\n- C) Seleccionar todo el texto con formato similar (sin datos): INCORRECTO (sí aparece en el menú). Es una de las cuatro opciones disponibles.\n- D) Seleccionar tabla: CORRECTO (NO aparece en el menú). Para seleccionar una tabla completa se debe usar el icono de selección en la esquina superior izquierda de la tabla, o las opciones de la pestaña contextual \"Diseño de tabla\".",
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "La respuesta D es correcta: 'Seleccionar tabla' NO aparece en el menú Seleccionar del grupo Edición. Las cuatro opciones reales son: Seleccionar todo, Seleccionar objetos, Seleccionar todo el texto con formato similar, y Panel de selección. La explicación original no mencionaba 'Panel de selección' como la cuarta opción, lo que dejaba incompleta la lista. Necesita corrección para ser precisa."
+  },
+  {
+    "id": "f05d930c-2ca3-4148-be5e-cfbcdf1b58c1",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_explanation",
+    "reason": "La respuesta C (mover el punto de inserción una palabra a la izquierda) ES correcta. Control+Flecha izquierda mueve el cursor una palabra a la izquierda en Word. La explicación es extensa y correcta, listando múltiples atajos de navegación como referencia. Aunque tiene una errata menor ('Fecha izquierda' en vez de 'Flecha izquierda'), el contenido es correcto y didáctico."
+  },
+  {
+    "id": "ff7b464b-48f2-4ed9-bfd8-98f56e49d8d7",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta C (Archivo > Inicio > Recientes) ES correcta. En Word 365, al hacer clic en Archivo se abre la vista Backstage, donde en la sección Inicio aparecen los documentos recientes. La explicación es correcta y detallada."
+  },
+  {
+    "id": "44e48a9d-ca79-44e3-9773-937926e333f1",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "La respuesta correcta es D) Alt+Mayusc+F. En la versión en español de Word 365, el atajo de teclado Alt+Mayús+F inserta un campo de fecha del sistema en el documento, mostrándola en formato dd/MM/aaaa. Este campo se actualiza automáticamente cada vez que se abre o actualiza el documento.\n\nNota: En la versión en inglés de Word, el atajo equivalente es Alt+Shift+D (D de \"Date\"), mientras que en español se usa la F (de \"Fecha\").\n\nAnálisis de cada opción:\n- A) F4: INCORRECTO. La tecla F4 en Word repite la última acción realizada, no inserta la fecha.\n- B) Alt+Mayusc (sin letra adicional): INCORRECTO. Alt+Mayús sin una tecla adicional cambia el idioma de entrada del teclado en Windows, no inserta fecha.\n- C) F3: INCORRECTO. La tecla F3 en Word inserta un elemento de Autotexto (si el nombre del autotexto está escrito), no inserta la fecha del sistema.\n- D) Alt+Mayusc+F: CORRECTO. Este atajo inserta un campo DATE con la fecha del sistema. El campo se puede actualizar pulsando F9 o haciendo clic derecho sobre él y seleccionando \"Actualizar campo\".",
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta D es correcta. Alt+Mayús+F inserta la fecha del sistema en Word en español. La explicación original era demasiado escueta y no analizaba las opciones incorrectas (A, B, C). Necesita análisis opción por opción."
+  }
+]

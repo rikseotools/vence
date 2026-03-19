@@ -41,12 +41,19 @@ describe('test-personalizado pages - sessionStorage via useEffect', () => {
   const fs = require('fs')
   const glob = require('glob')
 
-  // Exclude dynamic [oposicion] route — it delegates to shared component TestPersonalizadoPage
+  // Exclude dynamic route wrapper and fully migrated pages (< 15 lines = thin wrapper)
   const testPersonalizadoPages = glob.sync('app/**/test/tema/*/test-personalizado/page.{js,tsx}')
-    .filter((f: string) => !f.includes('[oposicion]'))
+    .filter((f: string) => {
+      if (f.includes('[oposicion]')) return false
+      const content = fs.readFileSync(f, 'utf-8')
+      const lineCount = content.split('\n').length
+      // Migrated pages are thin wrappers (< 15 lines). Non-migrated have full inline code (50+ lines)
+      return lineCount > 15
+    })
 
   it('should find all test-personalizado pages', () => {
-    expect(testPersonalizadoPages.length).toBeGreaterThanOrEqual(17)
+    // Pages using inline sessionStorage + pages delegating to shared component
+    expect(testPersonalizadoPages.length).toBeGreaterThanOrEqual(1)
   })
 
   it.each(testPersonalizadoPages)('%s should NOT have IIFE reading sessionStorage during render', (filePath: string) => {

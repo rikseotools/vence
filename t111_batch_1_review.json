@@ -1,0 +1,186 @@
+[
+  {
+    "id": "d79b6af9-6876-4be2-950d-7461ac2fdc70",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta B (correct_option=1) es correcta. Las 'conversaciones' en Outlook y otros gestores agrupan los mensajes de un mismo hilo o asunto, no por remitente ni por marca de seguimiento. La explicación es clara y didáctica."
+  },
+  {
+    "id": "48986710-3510-42cb-bb58-58a830f04efb",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta B (correct_option=1) es correcta. El signo de exclamación rojo (!) en Outlook indica un mensaje de importancia/prioridad alta. La explicación es completa y analiza correctamente el sistema de etiquetas."
+  },
+  {
+    "id": "d1bd0235-4525-476f-aaa9-fa404b03569c",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta C (correct_option=2) es correcta. Asunto, Para y Firma son todos elementos válidos de un correo electrónico, por lo que 'Todas las respuestas anteriores corresponden...' es la correcta. La explicación es didáctica y enumera los elementos de un correo."
+  },
+  {
+    "id": "2a3d8fba-00d4-4f51-825b-aae27eea38de",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta B (correct_option=1, 'Vistas') es correcta. El panel de navegación de Outlook incluye Correo, Calendario, Contactos, Tareas, Notas, Carpetas y Accesos directos. 'Vistas' no es un acceso directo del panel de navegación. La explicación es completa."
+  },
+  {
+    "id": "301c6cbd-b3b0-43ae-b4b8-97b988cfa74c",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta B (correct_option=1, Ctrl+U) es correcta para marcar como no leído en Outlook. Ctrl+Q marca como leído, Ctrl+D elimina. La explicación es precisa y bien documentada con fuente de Microsoft Support."
+  },
+  {
+    "id": "65297931-d6cd-4c74-a035-b1a8d67525a1",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "La función **Reenviar** en correo electrónico permite enviar una copia de un mensaje recibido a nuevos destinatarios que nosotros elijamos. A diferencia de \"Responder\" (que envía la respuesta al remitente original) o \"Responder a todos\" (que responde a todos los participantes), **Reenviar** nos da libertad para elegir destinatarios completamente nuevos.\n\nAnálisis de cada opción:\n\n- **A) Quitar el mensaje seleccionado de la carpeta Elementos enviados.** Incorrecta. Reenviar no elimina mensajes de ninguna carpeta; crea una copia para nuevos destinatarios.\n\n- **B) Volver a enviar un correo electrónico seleccionado siempre al mismo destinatario del mensaje original.** Incorrecta. Reenviar permite elegir cualquier destinatario nuevo, no se limita al destinatario original.\n\n- **C) Enviar una copia del mensaje seleccionado a la carpeta de Elementos eliminados.** Incorrecta. Reenviar no tiene relación con la carpeta de Elementos eliminados.\n\n- **D) Enviar una copia de un correo electrónico seleccionado a los destinatarios que elijamos.** **Correcta.** Reenviar crea una copia del mensaje original (incluyendo texto y archivos adjuntos) y permite enviarlo a cualquier destinatario que especifiquemos.\n\nEn Outlook, el atajo de teclado para reenviar es **Ctrl+F**.",
+    "original_status": "tech_bad_explanation",
+    "reason": "La respuesta D es correcta pero la explicación es pobre: solo menciona adjuntos y no analiza las opciones A, B y C incorrectas. Necesita una explicación didáctica con análisis de cada alternativa."
+  },
+  {
+    "id": "0487ace9-aff2-4282-99f3-6bda911825f3",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta C (correct_option=2, 'Este mes') es correcta. Las opciones de seguimiento en Outlook son: Hoy, Mañana, Esta semana, La próxima semana, Sin fecha, Personalizar/Agregar aviso y Borrar marca. 'Este mes' NO existe. La explicación es muy completa y detalla todas las opciones reales."
+  },
+  {
+    "id": "c1d9a335-50db-4c32-acd0-a0ad2f101a15",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta D (correct_option=3) es correcta. Si el mensaje está aún en la bandeja de salida (sin conexión o con demora), puedes eliminarlo antes de que se envíe. La explicación es precisa y menciona correctamente las condiciones."
+  },
+  {
+    "id": "fb3edb0b-f710-4444-9457-53846768bda9",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "En **Outlook 365**, el calendario ofrece las siguientes vistas principales:\n\n- **Día**: Muestra las citas y eventos del día actual.\n- **Semana laboral**: Muestra los días laborables de la semana (normalmente de lunes a viernes).\n- **Semana**: Muestra los 7 días completos de la semana.\n- **Mes**: Muestra una vista general del mes completo.\n\nAdicionalmente existe la vista **Programación** (Schedule View), pero las cuatro vistas principales son las mencionadas en la opción A.\n\nAnálisis de cada opción:\n\n- **A) Día, Semana laboral, Semana y Mes.** **Correcta.** Estas son las cuatro vistas estándar del calendario de Outlook 365. Se accede a ellas con los atajos Ctrl+Alt+1 (Día), Ctrl+Alt+2 (Semana laboral), Ctrl+Alt+3 (Semana) y Ctrl+Alt+4 (Mes).\n\n- **B) Día, Semana, Mes y Año.** Incorrecta. Outlook no ofrece una vista de \"Año\" como vista independiente del calendario, y omite la vista \"Semana laboral\".\n\n- **C) Hora, Día, Semana y Mes.** Incorrecta. No existe una vista específica llamada \"Hora\" en el calendario de Outlook.\n\n- **D) Día, Semana, y Mes.** Incorrecta. Aunque son vistas válidas, falta la vista \"Semana laboral\" que es una de las vistas principales del calendario.",
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "La respuesta A (correct_option=0) es correcta: Día, Semana laboral, Semana y Mes son las vistas principales del calendario de Outlook. Pero la explicación original es apenas 'Outlook 365:' sin contenido alguno, totalmente inaceptable."
+  },
+  {
+    "id": "d7f53aba-1824-4d38-96dd-4dd1e9f11f88",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "El atajo de teclado **Ctrl + Mayús + T** (Ctrl+Shift+T) en Outlook 365 crea una **nueva tarea**. Las tareas en Outlook permiten gestionar pendientes, asignar fechas de vencimiento y establecer recordatorios.\n\nAnálisis de cada opción:\n\n- **A) Se crea una nueva tarea.** **Correcta.** Ctrl+Shift+T abre la ventana para crear una nueva tarea en Outlook, permitiendo especificar asunto, fecha de inicio, fecha de vencimiento, prioridad y otros detalles.\n\n- **B) Se abre un nuevo correo electrónico.** Incorrecta. El atajo para crear un nuevo correo electrónico es **Ctrl+N** (cuando estamos en la vista de correo) o **Ctrl+Shift+M** (desde cualquier vista).\n\n- **C) Se abre la libreta de direcciones.** Incorrecta. El atajo para abrir la libreta de direcciones es **Ctrl+Shift+B**.\n\n- **D) Se programan recordatorios de calendario.** Incorrecta. Para crear una cita en el calendario se usa **Ctrl+Shift+A**, y para crear una reunión **Ctrl+Shift+Q**. No existe un atajo específico solo para \"programar recordatorios\".\n\nOtros atajos de creación útiles en Outlook: Ctrl+Shift+C (nuevo contacto), Ctrl+Shift+E (nueva carpeta), Ctrl+Shift+N (nueva nota).",
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "La respuesta A (correct_option=0) es correcta: Ctrl+Shift+T crea una nueva tarea. Pero la explicación es demasiado escueta, no analiza las opciones incorrectas ni menciona los atajos correctos para las demás funciones."
+  },
+  {
+    "id": "d20bfc00-2037-4010-80d4-d844b3717cff",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta B (correct_option=1) es correcta. Ctrl+Mayús+A crea una nueva cita en Outlook. La explicación distingue correctamente entre cita (Ctrl+Shift+A) y reunión (Ctrl+Shift+Q)."
+  },
+  {
+    "id": "b926db13-a981-46c2-9da4-40ea91ae2458",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta C (correct_option=2, 'Bandejas') es correcta. El panel de navegación incluye Correo, Calendario, Contactos, Tareas, Notas, Carpetas y Accesos directos. 'Bandejas' no es un acceso directo independiente. La explicación es completa."
+  },
+  {
+    "id": "b72d124a-bcb7-4ac4-9531-bc68dd2206d5",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta A (correct_option=0, Ctrl+U) es correcta para marcar como no leído. La explicación es precisa, menciona el contraste con Ctrl+Q (marcar como leído) y referencia la fuente oficial."
+  },
+  {
+    "id": "8174b182-d47a-45a4-9715-689aafbd5fd9",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "En **Outlook clásico** (versión de escritorio para Windows), el atajo **Ctrl+F** se utiliza para **reenviar** (Forward) el mensaje seleccionado. Esto es una particularidad histórica de Outlook, ya que en la mayoría de programas Ctrl+F abre la función de búsqueda.\n\nAnálisis de cada opción:\n\n- **A) Ctrl+P.** Incorrecta. Ctrl+P abre la ventana de **Imprimir** el mensaje seleccionado.\n\n- **B) Ctrl+F.** **Correcta.** En Outlook clásico, Ctrl+F reenvía (Forward) el correo seleccionado. Esta asignación se remonta a los orígenes de Outlook y fue solicitada personalmente por Bill Gates, que estaba acostumbrado a ese atajo de otro programa de correo.\n\n- **C) Ctrl+O.** Incorrecta. Ctrl+O **abre** el mensaje seleccionado en una nueva ventana.\n\n- **D) Ctrl+R.** Incorrecta. Ctrl+R se utiliza para **Responder** (Reply) al remitente del mensaje seleccionado. Para responder a todos se usa Ctrl+Shift+R.\n\n**Nota:** Para buscar texto en Outlook (la función que normalmente tiene Ctrl+F en otros programas), se debe usar **Ctrl+E** o **F3** para buscar mensajes, o **F4** para buscar texto dentro de un mensaje abierto.",
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "La respuesta B (correct_option=1, Ctrl+F) es correcta para reenviar en Outlook. Pero la explicación dice 'Sin explicación disponible', lo cual es completamente inaceptable para una pregunta de oposiciones."
+  },
+  {
+    "id": "b90bbd05-30e5-47ce-b5cf-8bff9204af14",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta A (correct_option=0, Ctrl+Q) es correcta para marcar mensajes como leídos. La explicación es adecuada y describe el caso de uso práctico."
+  },
+  {
+    "id": "e9cf32a5-c83f-4db9-8090-440bf203494a",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta A (correct_option=0, archivo .exe) es correcta. Los archivos ejecutables son los más peligrosos de adjuntar por correo electrónico. La explicación es muy completa, detallando riesgos y alternativas seguras."
+  },
+  {
+    "id": "397a0235-37a9-415e-a97a-6af5914a5c49",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta A (correct_option=0, Ctrl+Alt+2) es correcta para la vista Semana laboral. Los atajos son: Ctrl+Alt+1=Día, Ctrl+Alt+2=Semana laboral, Ctrl+Alt+3=Semana, Ctrl+Alt+4=Mes. La explicación los enumera correctamente."
+  },
+  {
+    "id": "413ae814-5164-4ab5-87a5-201d2b2ddb76",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta D (correct_option=3) es correcta. Un correo con dirección incorrecta será rechazado por el servidor SMTP y el remitente recibirá un aviso de error (bounced email). La explicación es precisa."
+  },
+  {
+    "id": "42425e28-0fcb-4d0b-86b9-23706de80579",
+    "verdict": "fix_answer",
+    "correct_option": 0,
+    "new_explanation": "En una dirección de correo electrónico con formato **usuario@dominio.extensión**, la parte que aparece a la derecha del símbolo **@** se denomina técnicamente **\"dominio\"** (domain).\n\nAnálisis de cada opción:\n\n- **A) Dominio.** **Correcta.** El término técnico correcto para la parte a la derecha del @ es \"dominio\". Según el estándar RFC 5321 (protocolo SMTP), una dirección de correo tiene el formato local-part@domain, donde \"domain\" es la parte derecha. Por ejemplo, en \"usuario@gmail.com\", \"gmail.com\" es el dominio.\n\n- **B) Organización.** Incorrecta. Aunque el dominio puede coincidir con el nombre de una organización (como \"empresa.com\"), el término técnico correcto no es \"organización\". Muchos dominios no representan organizaciones del usuario (por ejemplo, gmail.com, hotmail.com, yahoo.es son proveedores de servicios). El dominio identifica el servidor de correo, no necesariamente una organización.\n\n- **C) Nombre de usuario.** Incorrecta. El nombre de usuario es la parte que aparece a la **izquierda** del símbolo @, no a la derecha.\n\n- **D) Las dos primeras respuestas son correctas.** Incorrecta. Solo la opción A (Dominio) es el término técnicamente correcto. \"Organización\" no es un sinónimo aceptado en terminología de correo electrónico para referirse a la parte derecha del @.",
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta marcada es D ('Las dos primeras son correctas'), pero 'Organización' no es un término técnico válido para la parte derecha del @. El término correcto es exclusivamente 'dominio' (domain). La respuesta correcta es A (correct_option=0)."
+  },
+  {
+    "id": "c9adf05e-44c1-447f-b352-dc28bb8f76d3",
+    "verdict": "deactivate",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta marcada es A (Ctrl+I), pero Ctrl+I en Outlook aplica formato de cursiva (Italic). El atajo real para ir a una fecha concreta en el calendario es Ctrl+G (Go to Date). NINGUNA de las 4 opciones presentadas es correcta, por lo que la pregunta es irrecuperable y debe desactivarse."
+  },
+  {
+    "id": "2d7b47cb-7323-47d9-9bf8-3b58e406ae0b",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta B (correct_option=1, 'Responder a correos desde dispositivos móviles') es correcta. Esa actividad no es una recomendación de seguridad; es una funcionalidad normal. Las opciones A, C y D sí son recomendaciones de seguridad reconocidas. La explicación es completa."
+  },
+  {
+    "id": "6b058626-fa2b-44fe-86fd-1251b30de944",
+    "verdict": "deactivate",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta marcada es A (320 caracteres), pero según RFC 5321 sección 4.5.3.1.3, el límite práctico real es 254 caracteres (el path SMTP permite 256 octetos incluyendo <>, dejando 254 para la dirección). El valor 320 es una suma simplista de 64+1+255 que no refleja el límite interoperable real. Como 254 no aparece entre las opciones, la pregunta es irrecuperable."
+  },
+  {
+    "id": "2dc71edd-1333-403d-922b-05f5ad349187",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "En **Outlook clásico** (versión de escritorio), es posible crear un gráfico de Excel directamente dentro del cuerpo de un mensaje de correo electrónico, sin necesidad de crear el gráfico previamente en Excel.\n\nAnálisis de cada opción:\n\n- **A) Es posible insertar gráficos ya hechos en Excel, pero no crearlos desde Outlook.** Incorrecta. Aunque sí se pueden copiar y pegar gráficos desde Excel, también es posible **crearlos directamente** desde el editor de mensajes de Outlook.\n\n- **B) Podemos crear un gráfico Excel directamente en un mensaje de Outlook. En el menú Insertar, en el grupo Ilustraciones, elegir Gráfico.** **Correcta.** En Outlook clásico (escritorio), al redactar un mensaje en formato HTML, se puede acceder a la pestaña **Insertar** > grupo **Ilustraciones** > **Gráfico**. Esto abre un cuadro de diálogo para elegir el tipo de gráfico y a continuación se abre una hoja de cálculo de Excel integrada donde se pueden escribir los datos. Al cerrar la hoja, el gráfico queda insertado en el cuerpo del mensaje.\n\n- **C) No es posible insertar gráficos de Excel en un correo de Outlook.** Incorrecta. Sí es posible tanto crearlos directamente como copiarlos desde Excel.\n\n- **D) Es necesario ir al menú Opciones, en el grupo Excel, elegir Gráfico.** Incorrecta. La ruta descrita no existe en Outlook. La opción de gráfico se encuentra en el menú **Insertar**, no en **Opciones**, y no existe un grupo llamado \"Excel\" en ninguna pestaña.\n\n**Nota:** Esta funcionalidad está disponible en **Outlook clásico de escritorio** cuando el formato del mensaje es HTML. En el **nuevo Outlook** (New Outlook) y en **Outlook Web**, las opciones de inserción de gráficos pueden ser más limitadas.",
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "La respuesta B (correct_option=1) es correcta: se puede crear un gráfico Excel directamente en un mensaje de Outlook desde Insertar > Ilustraciones > Gráfico. La explicación existente es correcta pero no analiza las opciones incorrectas A, C y D ni añade contexto sobre las limitaciones."
+  }
+]

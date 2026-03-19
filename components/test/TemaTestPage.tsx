@@ -94,7 +94,7 @@ export default function TemaTestPage({ oposicionSlug }: TemaTestPageProps) {
   const getBloque = (num: number): string => {
     if (!config) return ''
     const block = getBlockForTopic(oposicionSlug, num)
-    return block?.title?.split(':')[0] || ''
+    return block?.blockTitle || ''
   }
 
   useEffect(() => {

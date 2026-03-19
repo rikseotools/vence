@@ -1,0 +1,1538 @@
+{
+  "timestamp": "2026-02-16T12:36:04.093Z",
+  "requests": [
+    {
+      "time": 1771245267646,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/classroom/test-configurator?mainContentId=7",
+      "body": null
+    },
+    {
+      "time": 1771245267795,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/config.json",
+      "body": null
+    },
+    {
+      "time": 1771245267795,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/runtime~main-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245267795,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/7028-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245267796,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/9195-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245267796,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/2761-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245267796,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/637-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245267797,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/7337-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245267797,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/1233-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245267797,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/6653-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245267797,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/7013-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245267797,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/9999-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245267797,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/5470-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245267798,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/5348-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245267805,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/6007-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245267805,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/9099-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245267805,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/3968-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245267806,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/853-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245267806,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/4581-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245267806,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/main-bde52cb3-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245267806,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/main-6107ac1a-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245267806,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/main-8f704ffb-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245267806,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/main-47c73965-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245267806,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/main-c8cac85e-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245267806,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/main-9a6d6179-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245267806,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/main-82efc419-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245267806,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/main-8b0d7e22-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245267806,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/main-6e257a50-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245267806,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/main-552fe63d-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245267806,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/main-94f42109-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245267806,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/main-27179dd4-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245267807,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/main-ccb2c78d-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245267807,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/main-f71beb76-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245267807,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/main-ed52db9f-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245267807,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/main-016faedb-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245267807,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/7337.css?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245267807,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/main-82efc419.css?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245267807,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/oq7o/",
+      "body": null
+    },
+    {
+      "time": 1771245267900,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/9328-bundle.js",
+      "body": null
+    },
+    {
+      "time": 1771245267900,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/3264-bundle.js",
+      "body": null
+    },
+    {
+      "time": 1771245267936,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/fonts/ibm-plex-sans-v8-latin-regular.woff2",
+      "body": null
+    },
+    {
+      "time": 1771245267960,
+      "method": "GET",
+      "url": "https://www.opositatest.com/login?_target_path=https://aula.opositatest.com/classroom/test-configurator?mainContentId=7",
+      "body": null
+    },
+    {
+      "time": 1771245267989,
+      "method": "GET",
+      "url": "blob:https://aula.opositatest.com/5ff44231-f6f6-4141-815c-5cfd0d7cff8b",
+      "body": null
+    },
+    {
+      "time": 1771245268206,
+      "method": "GET",
+      "url": "https://www.opositatest.com/build/2026.02.16.113849/assets/main.css",
+      "body": null
+    },
+    {
+      "time": 1771245268207,
+      "method": "GET",
+      "url": "https://www.opositatest.com/build/2026.02.16.113849/runtime.js",
+      "body": null
+    },
+    {
+      "time": 1771245268209,
+      "method": "GET",
+      "url": "https://www.opositatest.com/build/2026.02.16.113849/assets/main.js",
+      "body": null
+    },
+    {
+      "time": 1771245268209,
+      "method": "GET",
+      "url": "https://www.opositatest.com/build/2026.02.16.113849/assets/pages/access/login.js",
+      "body": null
+    },
+    {
+      "time": 1771245268209,
+      "method": "GET",
+      "url": "https://www.opositatest.com/oq7o/",
+      "body": null
+    },
+    {
+      "time": 1771245268241,
+      "method": "GET",
+      "url": "https://www.opositatest.com/build/2026.02.16.113849/4869.js",
+      "body": null
+    },
+    {
+      "time": 1771245268241,
+      "method": "GET",
+      "url": "https://www.opositatest.com/build/2026.02.16.113849/9911.js",
+      "body": null
+    },
+    {
+      "time": 1771245268241,
+      "method": "GET",
+      "url": "https://www.opositatest.com/build/2026.02.16.113849/4817.js",
+      "body": null
+    },
+    {
+      "time": 1771245268242,
+      "method": "GET",
+      "url": "https://www.opositatest.com/build/2026.02.16.113849/5534.js",
+      "body": null
+    },
+    {
+      "time": 1771245268242,
+      "method": "GET",
+      "url": "https://www.opositatest.com/build/2026.02.16.113849/8876.js",
+      "body": null
+    },
+    {
+      "time": 1771245268242,
+      "method": "GET",
+      "url": "https://www.opositatest.com/build/2026.02.16.113849/6023.js",
+      "body": null
+    },
+    {
+      "time": 1771245268242,
+      "method": "GET",
+      "url": "https://www.opositatest.com/build/2026.02.16.113849/4900.js",
+      "body": null
+    },
+    {
+      "time": 1771245268242,
+      "method": "GET",
+      "url": "https://www.opositatest.com/build/2026.02.16.113849/8026.js",
+      "body": null
+    },
+    {
+      "time": 1771245268242,
+      "method": "GET",
+      "url": "https://www.opositatest.com/build/2026.02.16.113849/4096.js",
+      "body": null
+    },
+    {
+      "time": 1771245268288,
+      "method": "GET",
+      "url": "https://www.opositatest.com/build/2026.02.16.113849/images/home-bg-blur-1344.cf8769be.jpg",
+      "body": null
+    },
+    {
+      "time": 1771245268288,
+      "method": "GET",
+      "url": "https://www.opositatest.com/build/2026.02.16.113849/images/facebook-white.1ba3e653.svg",
+      "body": null
+    },
+    {
+      "time": 1771245268288,
+      "method": "GET",
+      "url": "https://www.opositatest.com/build/2026.02.16.113849/images/google.f3c79dff.svg",
+      "body": null
+    },
+    {
+      "time": 1771245268288,
+      "method": "GET",
+      "url": "https://www.opositatest.com/build/2026.02.16.113849/images/apple-white.8ddfca0f.svg",
+      "body": null
+    },
+    {
+      "time": 1771245268291,
+      "method": "GET",
+      "url": "https://www.opositatest.com/build/2026.02.16.113849/fonts/ibm-plex-sans-v8-latin-regular.d55c14f8.woff2",
+      "body": null
+    },
+    {
+      "time": 1771245268291,
+      "method": "GET",
+      "url": "https://www.opositatest.com/build/2026.02.16.113849/fonts/ibm-plex-sans-v8-latin-500.441e9049.woff2",
+      "body": null
+    },
+    {
+      "time": 1771245268316,
+      "method": "GET",
+      "url": "https://www.opositatest.com/oq7o/?id=G-GNC9Q3YH5E&cx=c&gtm=4e62b1h1",
+      "body": null
+    },
+    {
+      "time": 1771245268316,
+      "method": "GET",
+      "url": "https://www.opositatest.com/oq7o/?id=G-ABCDEF&cx=c&gtm=4e62b1h1",
+      "body": null
+    },
+    {
+      "time": 1771245268316,
+      "method": "GET",
+      "url": "https://www.opositatest.com/oq7o/?id=AW-956142973&cx=c&gtm=4e62b1h1",
+      "body": null
+    },
+    {
+      "time": 1771245268318,
+      "method": "POST",
+      "url": "https://www.google.com/ccm/collect?frm=0&en=page_view&dr=aula.opositatest.com&dl=https%3A%2F%2Fwww.opositatest.com%2Flogin&scrsrc=www.opositatest.com&rnd=1215988044.1771245268&dt=Iniciar%20sesi%C3%B3n%20en%20OpositaTest&auid=253357570.1766661703&navt=n&npa=0&ep.ads_data_redaction=0&gdid=dY2E1Nz&gtm=45E92e62b1h1v844545255za204zd844545255xea&gcs=G111&gcd=13r3r3r2r5l1&dma_cps=syphamo&dma=1&tag_exp=103116026~103200004~104527907~104528500~104684208~104684211~115938465~115938469~116988316&apve=1&apvf=f&apvc=1&tft=1771245268313&tfd=363",
+      "body": null
+    },
+    {
+      "time": 1771245268363,
+      "method": "GET",
+      "url": "https://www.opositatest.com/build/2026.02.16.113849/3000.js",
+      "body": null
+    },
+    {
+      "time": 1771245268363,
+      "method": "GET",
+      "url": "https://www.opositatest.com/build/2026.02.16.113849/fonts/ibm-plex-sans-v8-latin-600.b1bbdcb6.woff2",
+      "body": null
+    },
+    {
+      "time": 1771245268363,
+      "method": "GET",
+      "url": "https://www.opositatest.com/build/2026.02.16.113849/assets/img/resources/contact-phone.svg",
+      "body": null
+    },
+    {
+      "time": 1771245268398,
+      "method": "POST",
+      "url": "https://region1.analytics.google.com/g/collect?v=2&tid=G-GNC9Q3YH5E&gtm=45g92e62b1h1v880975082z8844545255za20kzb844545255zd844545255&_p=1771245268212&_gaz=1&gcs=G111&gcd=13r3rPr2r5l1&npa=0&dma_cps=syphamo&dma=1&gdid=dY2E1Nz&cid=1276091076.1766661701&ecid=1621650237&ul=es-es&sr=1280x720&ir=1&ur=ES-MD&_uip=%3A%3A&uaa=x86&uab=64&uafvl=Google%2520Chrome%3B143.0.7499.192%7CChromium%3B143.0.7499.192%7CNot%2520A(Brand%3B24.0.0.0&uamb=0&uam=&uap=Linux&uapv=6.18.5&uaw=0&are=1&frm=0&pscdl=noapi&_eu=EAAAAGQ&_s=1&tag_exp=103116026~103200004~104527907~104528500~104684208~104684211~115938465~115938468~116988315&dt=access%2Flogin&sid=1771230944&sct=6&seg=1&dl=https%3A%2F%2Fwww.opositatest.com%2Flogin%3F_target_path%3Dhttps%3A%2F%2Faula.opositatest.com%2Fclassroom%2Ftest-configurator%3FmainContentId%3D7&dr=https%3A%2F%2Faula.opositatest.com%2F&_tu=CA&en=page_view&ep.event_category=login&ep.page_name=access%2Flogin&ep.user_logged=no&ep.version=2026.02.16.113849&_et=8&tfd=442",
+      "body": null
+    },
+    {
+      "time": 1771245268425,
+      "method": "GET",
+      "url": "https://tagging.opositatest.com/g/collect?v=2&tid=G-ABCDEF&gtm=45g92e62b1h1z8844545255za20kzb844545255zd844545255&_p=1771245268212&gcs=G111&gcd=13r3r3r2r5l1&npa=0&dma_cps=syphamo&dma=1&gdid=dY2E1Nz&cid=1276091076.1766661701&ecid=756103791&ul=es-es&sr=1280x720&ur=ES-MD&uaa=x86&uab=64&uafvl=Google%2520Chrome%3B143.0.7499.192%7CChromium%3B143.0.7499.192%7CNot%2520A(Brand%3B24.0.0.0&uamb=0&uam=&uap=Linux&uapv=6.18.5&uaw=0&are=1&frm=0&pscdl=noapi&_eu=AAAAAAQ&sst.rnd=1215988044.1771245268&sst.etld=google.es&sst.gcsub=region1&sst.tft=1771245268212&sst.lpc=89638085&sst.navt=n&sst.ude=0&sst.sw_exp=1&_s=1&tag_exp=103116026~103200004~104527907~104528500~104684208~104684211~115938465~115938468~116988315~117447492~117455673~117455675&sid=1771240739&sct=8&seg=1&dl=https%3A%2F%2Fwww.opositatest.com%2Flogin%3F_target_path%3Dhttps%3A%2F%2Faula.opositatest.com%2Fclassroom%2Ftest-configurator%3FmainContentId%3D7&dr=https%3A%2F%2Faula.opositatest.com%2F&dt=Iniciar%20sesi%C3%B3n%20en%20OpositaTest&_tu=BA&en=page_view&tfd=471&richsstsse",
+      "body": null
+    },
+    {
+      "time": 1771245268456,
+      "method": "GET",
+      "url": "https://googleads.g.doubleclick.net/pagead/viewthroughconversion/956142973/?random=1771245268429&cv=11&fst=1771245268429&bg=ffffff&guid=ON&async=1&en=gtag.config&gtm=45892e62b1h1v894930176z8844545255za20kzb844545255zd844545255xec&gcd=13r3rPr2r5l1&dma_cps=syphamo&dma=1&tag_exp=103116026~103200004~104527907~104528501~104684208~104684211~115938465~115938468~116988315&u_w=1280&u_h=720&url=https%3A%2F%2Fwww.opositatest.com%2Flogin%3F_target_path%3Dhttps%3A%2F%2Faula.opositatest.com%2Fclassroom%2Ftest-configurator%3FmainContentId%3D7&ref=https%3A%2F%2Faula.opositatest.com%2F&frm=0&tiba=Iniciar%20sesi%C3%B3n%20en%20OpositaTest&did=dY2E1Nz&gdid=dY2E1Nz&hn=www.googleadservices.com&npa=0&pscdl=noapi&auid=253357570.1766661703&uaa=x86&uab=64&uafvl=Google%2520Chrome%3B143.0.7499.192%7CChromium%3B143.0.7499.192%7CNot%2520A(Brand%3B24.0.0.0&uamb=0&uam=&uap=Linux&uapv=6.18.5&uaw=0&data=event%3Dgtag.config&rfmt=3&fmt=4",
+      "body": null
+    },
+    {
+      "time": 1771245268456,
+      "method": "GET",
+      "url": "https://googleads.g.doubleclick.net/pagead/viewthroughconversion/956142973/?random=1771245268442&cv=11&fst=1771245268442&bg=ffffff&guid=ON&async=1&gtm=45892e62b1h1v894930176z8844545255za20kzb844545255zd844545255xea&gcd=13r3rPr2r5l1&dma_cps=syphamo&dma=1&tag_exp=103116026~103200004~104527907~104528501~104684208~104684211~115938465~115938468~116988315&u_w=1280&u_h=720&url=https%3A%2F%2Fwww.opositatest.com%2Flogin%3F_target_path%3Dhttps%3A%2F%2Faula.opositatest.com%2Fclassroom%2Ftest-configurator%3FmainContentId%3D7&ref=https%3A%2F%2Faula.opositatest.com%2F&frm=0&tiba=Iniciar%20sesi%C3%B3n%20en%20OpositaTest&did=dY2E1Nz&gdid=dY2E1Nz&hn=www.googleadservices.com&npa=0&pscdl=noapi&auid=253357570.1766661703&uaa=x86&uab=64&uafvl=Google%2520Chrome%3B143.0.7499.192%7CChromium%3B143.0.7499.192%7CNot%2520A(Brand%3B24.0.0.0&uamb=0&uam=&uap=Linux&uapv=6.18.5&uaw=0&_tu=CA&rfmt=3&fmt=4",
+      "body": null
+    },
+    {
+      "time": 1771245268456,
+      "method": "POST",
+      "url": "https://www.google.com/ccm/collect?frm=0&en=page_view&dr=aula.opositatest.com&dl=https%3A%2F%2Fwww.opositatest.com%2Flogin&scrsrc=www.opositatest.com&rnd=1215988044.1771245268&dt=Iniciar%20sesi%C3%B3n%20en%20OpositaTest&auid=253357570.1766661703&navt=n&npa=0&did=dY2E1Nz&gdid=dY2E1Nz&gtm=45892e62b1h1v894930176z8844545255za20kzb844545255zd844545255xec&gcs=G111&gcd=13r3rPr2r5l1&dma_cps=syphamo&dma=1&tag_exp=103116026~103200004~104527907~104528501~104684208~104684211~115938465~115938468~116988315&apve=1&apvf=f&apvc=0&tids=AW-956142973&tid=AW-956142973&tft=1771245268452&tfd=502",
+      "body": null
+    },
+    {
+      "time": 1771245268456,
+      "method": "POST",
+      "url": "https://www.google.com/ccm/collect?frm=0&dr=aula.opositatest.com&dl=https%3A%2F%2Fwww.opositatest.com%2Flogin&scrsrc=www.opositatest.com&rnd=1215988044.1771245268&dt=Iniciar%20sesi%C3%B3n%20en%20OpositaTest&auid=253357570.1766661703&navt=n&npa=0&did=dY2E1Nz&gdid=dY2E1Nz&_tu=CA&gtm=45892e62b1h1v894930176z8844545255za20kzb844545255zd844545255xea&gcs=G111&gcd=13r3rPr2r5l1&dma_cps=syphamo&dma=1&tag_exp=103116026~103200004~104527907~104528501~104684208~104684211~115938465~115938468~116988315&apve=1&apvf=f&apvc=0&tids=AW-956142973&tid=AW-956142973&tft=1771245268452&tfd=503",
+      "body": null
+    },
+    {
+      "time": 1771245268483,
+      "method": "GET",
+      "url": "https://tagging.opositatest.com/_/service_worker/6240/sw_iframe.html?origin=https%3A%2F%2Fwww.opositatest.com&1p=1",
+      "body": null
+    },
+    {
+      "time": 1771245268506,
+      "method": "GET",
+      "url": "https://tagging.opositatest.com/oq7o/",
+      "body": null
+    },
+    {
+      "time": 1771245268518,
+      "method": "GET",
+      "url": "https://trc.taboola.com/1543686/trc/3/json?tim=1771245268514&data=%7B%22id%22%3A576%2C%22ii%22%3A%22%2Flogin%22%2C%22it%22%3A%22video%22%2C%22sd%22%3Anull%2C%22ui%22%3A%22ebb37785-1876-4913-b1d7-3dfb76892845-tuct1046a436%22%2C%22vi%22%3A1771245268510%2C%22cv%22%3A%2220251112-1-RELEASE%22%2C%22uiv%22%3A%22default%22%2C%22u%22%3A%22https%3A%2F%2Fwww.opositatest.com%2Flogin%22%2C%22e%22%3A%22https%3A%2F%2Faula.opositatest.com%2F%22%2C%22cb%22%3A%22TFASC.trkCallback%22%2C%22qs%22%3A%22%3F_target_path%3Dhttps%3A%2F%2Faula.opositatest.com%2Fclassroom%2Ftest-configurator%3FmainContentId%3D7%22%2C%22r%22%3A%5B%7B%22li%22%3A%22rbox-tracking%22%2C%22s%22%3A0%2C%22uim%22%3A%22rbox-tracking%3Apub%3Dopositatest-sc%3Aabp%3D0%22%2C%22uip%22%3A%22rbox-tracking%22%2C%22orig_uip%22%3A%22rbox-tracking%22%7D%5D%2C%22cbp%22%3A%22Gtm%22%2C%22cbpv%22%3A%221%22%2C%22cbcd%22%3A%22true%22%2C%22mpvd%22%3A%7B%22en%22%3A%22page_view%22%2C%22tim%22%3A1771245268514%2C%22ref%22%3A%22https%3A%2F%2Faula.opositatest.com%2F%22%2C%22item-url%22%3A%22https%3A%2F%2Fwww.opositatest.com%2Flogin%3F_target_path%3Dhttps%3A%2F%2Faula.opositatest.com%2Fclassroom%2Ftest-configurator%3FmainContentId%3D7%22%2C%22tos%22%3A295693%2C%22ssd%22%3A11%2C%22scd%22%3A100%2C%22ler%22%3A%22other%22%2C%22it%22%3A%22JS_PIXEL%22%2C%22supv%22%3Atrue%7D%2C%22pa%22%3A%7B%22su%22%3Atrue%7D%2C%22psb%22%3Atrue%7D&pubit=i",
+      "body": null
+    },
+    {
+      "time": 1771245268538,
+      "method": "GET",
+      "url": "https://www.opositatest.com/site.webmanifest",
+      "body": null
+    },
+    {
+      "time": 1771245268547,
+      "method": "GET",
+      "url": "https://connect.facebook.net/signals/config/1671615303081756?v=2.9.265&r=stable&domain=www.opositatest.com&hme=8faeb0ed09c145bbd9d3213e762abac29e9f76b8e7a9df9d71a3058625e3b7dd&ex_m=96%2C187%2C136%2C21%2C68%2C69%2C129%2C64%2C43%2C130%2C73%2C63%2C10%2C143%2C82%2C15%2C95%2C124%2C117%2C71%2C74%2C123%2C140%2C104%2C145%2C7%2C3%2C4%2C6%2C5%2C2%2C83%2C93%2C146%2C151%2C201%2C57%2C167%2C168%2C50%2C238%2C28%2C70%2C213%2C212%2C211%2C30%2C56%2C9%2C59%2C89%2C90%2C91%2C97%2C120%2C29%2C27%2C122%2C119%2C118%2C137%2C72%2C139%2C138%2C45%2C55%2C113%2C14%2C142%2C40%2C226%2C227%2C225%2C24%2C25%2C26%2C17%2C19%2C39%2C35%2C37%2C36%2C78%2C84%2C88%2C102%2C128%2C131%2C41%2C103%2C22%2C20%2C109%2C65%2C33%2C133%2C132%2C134%2C125%2C23%2C32%2C54%2C101%2C141%2C66%2C16%2C135%2C106%2C77%2C62%2C18%2C31%2C249%2C194%2C181%2C182%2C180%2C252%2C244%2C195%2C99%2C121%2C76%2C111%2C49%2C42%2C44%2C105%2C110%2C116%2C53%2C60%2C115%2C48%2C51%2C47%2C92%2C144%2C0%2C114%2C13%2C112%2C11%2C1%2C52%2C85%2C58%2C61%2C108%2C81%2C80%2C147%2C148%2C86%2C87%2C8%2C94%2C46%2C126%2C79%2C75%2C67%2C107%2C98%2C38%2C127%2C34%2C100%2C12%2C149",
+      "body": null
+    },
+    {
+      "time": 1771245268613,
+      "method": "GET",
+      "url": "https://www.facebook.com/tr/?id=1671615303081756&ev=PageView&dl=https%3A%2F%2Fwww.opositatest.com%2Flogin%3F_target_path%3Dhttps%3A%2F%2Faula.opositatest.com%2Fclassroom%2Ftest-configurator%3FmainContentId%3D7&rl=https%3A%2F%2Faula.opositatest.com%2F&if=false&ts=1771245268606&sw=1280&sh=720&v=2.9.265&r=stable&a=tmSimo-GTM-WebTemplate&ec=0&o=4126&fbp=fb.1.1766661814671.989498709494038031&hmd=c50bf2c52df9c8e41e37c3ed&cs_est=true&ler=other&cdl=API_unavailable&pmd[title]=Iniciar%20sesi%C3%B3n%20en%20OpositaTest%0A&pmd[description]=Inicio%20de%20sesi%C3%B3n%20en%20Opos%C3%ADtaTest.%20Identif%C3%ADcate%20para%20acceder%20a%20todo%20el%20contenido.%0A&pmd[keywords]=&plt=376.10000002384186&it=1771245268544&coo=false&eid=1771245917485_17712460210776&tm=1&exp=s0&expv2[0]=pl1&expv2[1]=el3&expv2[2]=bc1&expv2[3]=ra2&expv2[4]=rp2&expv2[5]=im1&expv2[6]=hf0&rqm=GET",
+      "body": null
+    },
+    {
+      "time": 1771245268613,
+      "method": "GET",
+      "url": "https://www.facebook.com/privacy_sandbox/pixel/register/trigger/?id=1671615303081756&ev=PageView&dl=https%3A%2F%2Fwww.opositatest.com%2Flogin%3F_target_path%3Dhttps%3A%2F%2Faula.opositatest.com%2Fclassroom%2Ftest-configurator%3FmainContentId%3D7&rl=https%3A%2F%2Faula.opositatest.com%2F&if=false&ts=1771245268606&sw=1280&sh=720&v=2.9.265&r=stable&a=tmSimo-GTM-WebTemplate&ec=0&o=4126&fbp=fb.1.1766661814671.989498709494038031&hmd=c50bf2c52df9c8e41e37c3ed&cs_est=true&ler=other&cdl=API_unavailable&pmd[title]=Iniciar%20sesi%C3%B3n%20en%20OpositaTest%0A&pmd[description]=Inicio%20de%20sesi%C3%B3n%20en%20Opos%C3%ADtaTest.%20Identif%C3%ADcate%20para%20acceder%20a%20todo%20el%20contenido.%0A&pmd[keywords]=&plt=376.10000002384186&it=1771245268544&coo=false&eid=1771245917485_17712460210776&tm=1&exp=s0&expv2[0]=pl1&expv2[1]=el3&expv2[2]=bc1&expv2[3]=ra2&expv2[4]=rp2&expv2[5]=im1&expv2[6]=hf0&rqm=FGET",
+      "body": null
+    },
+    {
+      "time": 1771245268777,
+      "method": "GET",
+      "url": "https://www.google.com/pagead/1p-user-list/956142973/?random=1771245268429&cv=11&fst=1771243200000&bg=ffffff&guid=ON&async=1&en=gtag.config&gtm=45892e62b1h1v894930176z8844545255za20kzb844545255zd844545255xec&gcd=13r3rPr2r5l1&dma_cps=syphamo&dma=1&tag_exp=103116026~103200004~104527907~104528501~104684208~104684211~115938465~115938468~116988315&u_w=1280&u_h=720&url=https%3A%2F%2Fwww.opositatest.com%2Flogin%3F_target_path%3Dhttps%3A%2F%2Faula.opositatest.com%2Fclassroom%2Ftest-configurator%3FmainContentId%3D7&ref=https%3A%2F%2Faula.opositatest.com%2F&frm=0&tiba=Iniciar%20sesi%C3%B3n%20en%20OpositaTest&did=dY2E1Nz&gdid=dY2E1Nz&hn=www.googleadservices.com&npa=0&pscdl=noapi&auid=253357570.1766661703&uaa=x86&uab=64&uafvl=Google%2520Chrome%3B143.0.7499.192%7CChromium%3B143.0.7499.192%7CNot%2520A(Brand%3B24.0.0.0&uamb=0&uam=&uap=Linux&uapv=6.18.5&uaw=0&data=event%3Dgtag.config&rfmt=3&fmt=3&is_vtc=1&cid=CAQSLADnonV5VRf6m5mF7yTK4XmGwZzrbELoFzLHZMvtpolxpGgADz1P3P7WHiDE&random=1415744626&rmt_tld=0&ipr=y",
+      "body": null
+    },
+    {
+      "time": 1771245268777,
+      "method": "GET",
+      "url": "https://www.google.es/pagead/1p-user-list/956142973/?random=1771245268429&cv=11&fst=1771243200000&bg=ffffff&guid=ON&async=1&en=gtag.config&gtm=45892e62b1h1v894930176z8844545255za20kzb844545255zd844545255xec&gcd=13r3rPr2r5l1&dma_cps=syphamo&dma=1&tag_exp=103116026~103200004~104527907~104528501~104684208~104684211~115938465~115938468~116988315&u_w=1280&u_h=720&url=https%3A%2F%2Fwww.opositatest.com%2Flogin%3F_target_path%3Dhttps%3A%2F%2Faula.opositatest.com%2Fclassroom%2Ftest-configurator%3FmainContentId%3D7&ref=https%3A%2F%2Faula.opositatest.com%2F&frm=0&tiba=Iniciar%20sesi%C3%B3n%20en%20OpositaTest&did=dY2E1Nz&gdid=dY2E1Nz&hn=www.googleadservices.com&npa=0&pscdl=noapi&auid=253357570.1766661703&uaa=x86&uab=64&uafvl=Google%2520Chrome%3B143.0.7499.192%7CChromium%3B143.0.7499.192%7CNot%2520A(Brand%3B24.0.0.0&uamb=0&uam=&uap=Linux&uapv=6.18.5&uaw=0&data=event%3Dgtag.config&rfmt=3&fmt=3&is_vtc=1&cid=CAQSLADnonV5VRf6m5mF7yTK4XmGwZzrbELoFzLHZMvtpolxpGgADz1P3P7WHiDE&random=1415744626&rmt_tld=1&ipr=y",
+      "body": null
+    },
+    {
+      "time": 1771245268778,
+      "method": "GET",
+      "url": "https://www.google.com/pagead/1p-user-list/956142973/?random=1771245268442&cv=11&fst=1771243200000&bg=ffffff&guid=ON&async=1&gtm=45892e62b1h1v894930176z8844545255za20kzb844545255zd844545255xea&gcd=13r3rPr2r5l1&dma_cps=syphamo&dma=1&tag_exp=103116026~103200004~104527907~104528501~104684208~104684211~115938465~115938468~116988315&u_w=1280&u_h=720&url=https%3A%2F%2Fwww.opositatest.com%2Flogin%3F_target_path%3Dhttps%3A%2F%2Faula.opositatest.com%2Fclassroom%2Ftest-configurator%3FmainContentId%3D7&ref=https%3A%2F%2Faula.opositatest.com%2F&frm=0&tiba=Iniciar%20sesi%C3%B3n%20en%20OpositaTest&did=dY2E1Nz&gdid=dY2E1Nz&hn=www.googleadservices.com&npa=0&pscdl=noapi&auid=253357570.1766661703&uaa=x86&uab=64&uafvl=Google%2520Chrome%3B143.0.7499.192%7CChromium%3B143.0.7499.192%7CNot%2520A(Brand%3B24.0.0.0&uamb=0&uam=&uap=Linux&uapv=6.18.5&uaw=0&_tu=CA&rfmt=3&fmt=3&is_vtc=1&cid=CAQSLADnonV5_YET7R2U5DykS2q6Q63Dh6wAfNcG0rVfo0GqBHycOOqeP4xa646K&random=2212879100&rmt_tld=0&ipr=y",
+      "body": null
+    },
+    {
+      "time": 1771245268778,
+      "method": "GET",
+      "url": "https://www.google.es/pagead/1p-user-list/956142973/?random=1771245268442&cv=11&fst=1771243200000&bg=ffffff&guid=ON&async=1&gtm=45892e62b1h1v894930176z8844545255za20kzb844545255zd844545255xea&gcd=13r3rPr2r5l1&dma_cps=syphamo&dma=1&tag_exp=103116026~103200004~104527907~104528501~104684208~104684211~115938465~115938468~116988315&u_w=1280&u_h=720&url=https%3A%2F%2Fwww.opositatest.com%2Flogin%3F_target_path%3Dhttps%3A%2F%2Faula.opositatest.com%2Fclassroom%2Ftest-configurator%3FmainContentId%3D7&ref=https%3A%2F%2Faula.opositatest.com%2F&frm=0&tiba=Iniciar%20sesi%C3%B3n%20en%20OpositaTest&did=dY2E1Nz&gdid=dY2E1Nz&hn=www.googleadservices.com&npa=0&pscdl=noapi&auid=253357570.1766661703&uaa=x86&uab=64&uafvl=Google%2520Chrome%3B143.0.7499.192%7CChromium%3B143.0.7499.192%7CNot%2520A(Brand%3B24.0.0.0&uamb=0&uam=&uap=Linux&uapv=6.18.5&uaw=0&_tu=CA&rfmt=3&fmt=3&is_vtc=1&cid=CAQSLADnonV5_YET7R2U5DykS2q6Q63Dh6wAfNcG0rVfo0GqBHycOOqeP4xa646K&random=2212879100&rmt_tld=1&ipr=y",
+      "body": null
+    },
+    {
+      "time": 1771245268924,
+      "method": "GET",
+      "url": "https://bat.bing.com/action/0?ti=26016268&tm=gtm002&Ver=2&mid=158f0dd4-866f-4518-97e4-d2c3f6f2c97f&bo=1&sid=7c5efdd00b1211f1865f6dab72f4fd01&vid=e2d2bc60e18311f0b0d86b669571411d&vids=0&msclkid=N&pi=918639831&lg=es-ES&sw=1280&sh=720&sc=24&nwd=1&tl=Iniciar%20sesi%C3%B3n%20en%20OpositaTest&p=https%3A%2F%2Fwww.opositatest.com%2Flogin%3F_target_path%3Dhttps%3A%2F%2Faula.opositatest.com%2Fclassroom%2Ftest-configurator%3FmainContentId%3D7&r=https%3A%2F%2Faula.opositatest.com%2F&lt=376&evt=pageLoad&sv=2&cdb=AQAS&rn=383366",
+      "body": null
+    },
+    {
+      "time": 1771245273141,
+      "method": "GET",
+      "url": "https://www.opositatest.com/oauth/v2/describe-token-info?grant_type=authorization_code&client_id=googlev2&code=eyJhbGciOiJSUzI1NiIsImtpZCI6ImM4MTZkMzM3YjgzNjVhMDZhODUxYWQ4MDAxNmMxNzEwOTk0OTI2MDkiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiIyNjU5ODM5NjM2ODgtNXZmYXJlbjBqcnZsazU4Z2MxNWoyZXZvbW1hcjFzcGUuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJhdWQiOiIyNjU5ODM5NjM2ODgtNXZmYXJlbjBqcnZsazU4Z2MxNWoyZXZvbW1hcjFzcGUuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJzdWIiOiIxMDc2NDgxMjA0NTc0NjgyNDg1NDMiLCJlbWFpbCI6Im1hbnVlbHRyYWRlckBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwibm9uY2UiOiJub3RfcHJvdmlkZWQiLCJuYmYiOjE3NzEyNDQ5NzAsIm5hbWUiOiJNYW51ZWwiLCJwaWN0dXJlIjoiaHR0cHM6Ly9saDMuZ29vZ2xldXNlcmNvbnRlbnQuY29tL2EvQUNnOG9jSWVVX05CTEF3dG9mZlkyd2IyTEZBeUxucFdNQWFkR3MtSVFhazF1S2hjYTBTOUZ3PXM5Ni1jIiwiZ2l2ZW5fbmFtZSI6Ik1hbnVlbCIsImlhdCI6MTc3MTI0NTI3MCwiZXhwIjoxNzcxMjQ4ODcwLCJqdGkiOiJiYzM2ZWM3ZWUyZDRjODlhYTQ5NmVkZjBhYTk2YzQ2NmEzYjAwYTQ4In0.UZ-HUXu3JwP13SGKLbwJVzSw1B2wQ-0Tt37GLhHZ2t56hxMu2olEq8Qj5oifHCI0Lb6XyKn7ON9dJAY7utslxyToH7Vv0mxsIljrgwJEzYogN0ol3Zzhl78SBK1rnCbQLh-jfMSql1Qu1XtSTmE27N4pdHq3SsyKx04Kg8diDezB_dWotAoeTtkrcCdwNUncERAdU4o1qGVV2BjfMpyZ2zjqNeRIEIonk8POlNhrAcFqLTOpXV0kjXMftvZyUKs3XylRn9m7olSzVuqzJTKTBjfD0MarpiICGKwTDB7XP11iPe60hX2J2xmB8HfhK0BJczO6FJMbd2wXAFzw0qNMXg",
+      "body": null
+    },
+    {
+      "time": 1771245273324,
+      "method": "GET",
+      "url": "https://www.opositatest.com/oauth/v2/token?grant_type=authorization_code&client_id=googlev2&code=eyJhbGciOiJSUzI1NiIsImtpZCI6ImM4MTZkMzM3YjgzNjVhMDZhODUxYWQ4MDAxNmMxNzEwOTk0OTI2MDkiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiIyNjU5ODM5NjM2ODgtNXZmYXJlbjBqcnZsazU4Z2MxNWoyZXZvbW1hcjFzcGUuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJhdWQiOiIyNjU5ODM5NjM2ODgtNXZmYXJlbjBqcnZsazU4Z2MxNWoyZXZvbW1hcjFzcGUuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJzdWIiOiIxMDc2NDgxMjA0NTc0NjgyNDg1NDMiLCJlbWFpbCI6Im1hbnVlbHRyYWRlckBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwibm9uY2UiOiJub3RfcHJvdmlkZWQiLCJuYmYiOjE3NzEyNDQ5NzAsIm5hbWUiOiJNYW51ZWwiLCJwaWN0dXJlIjoiaHR0cHM6Ly9saDMuZ29vZ2xldXNlcmNvbnRlbnQuY29tL2EvQUNnOG9jSWVVX05CTEF3dG9mZlkyd2IyTEZBeUxucFdNQWFkR3MtSVFhazF1S2hjYTBTOUZ3PXM5Ni1jIiwiZ2l2ZW5fbmFtZSI6Ik1hbnVlbCIsImlhdCI6MTc3MTI0NTI3MCwiZXhwIjoxNzcxMjQ4ODcwLCJqdGkiOiJiYzM2ZWM3ZWUyZDRjODlhYTQ5NmVkZjBhYTk2YzQ2NmEzYjAwYTQ4In0.UZ-HUXu3JwP13SGKLbwJVzSw1B2wQ-0Tt37GLhHZ2t56hxMu2olEq8Qj5oifHCI0Lb6XyKn7ON9dJAY7utslxyToH7Vv0mxsIljrgwJEzYogN0ol3Zzhl78SBK1rnCbQLh-jfMSql1Qu1XtSTmE27N4pdHq3SsyKx04Kg8diDezB_dWotAoeTtkrcCdwNUncERAdU4o1qGVV2BjfMpyZ2zjqNeRIEIonk8POlNhrAcFqLTOpXV0kjXMftvZyUKs3XylRn9m7olSzVuqzJTKTBjfD0MarpiICGKwTDB7XP11iPe60hX2J2xmB8HfhK0BJczO6FJMbd2wXAFzw0qNMXg&device_id=206552341395&additionalUserInfo[source]=web&additionalUserInfo[referer]=aula.opositatest.com&additionalUserInfo[source]=web&additionalUserInfo[first_page_name]=access/login&additionalUserInfo[first_landing_url]=https://www.opositatest.com/login&additionalUserInfo[first_referer]=https://aula.opositatest.com/&additionalUserInfo[last_page_name]=access/login&additionalUserInfo[last_landing_url]=https://www.opositatest.com/login&additionalUserInfo[last_referer]=https://aula.opositatest.com/",
+      "body": null
+    },
+    {
+      "time": 1771245273471,
+      "method": "POST",
+      "url": "https://region1.analytics.google.com/g/collect?v=2&tid=G-GNC9Q3YH5E&gtm=45g92e62b1h1v880975082za20kzb844545255zd844545255&_p=1771245268212&gcs=G111&gcd=13r3rPr2r5l1&npa=0&dma_cps=syphamo&dma=1&gdid=dY2E1Nz&cid=1276091076.1766661701&ecid=1621650237&ul=es-es&sr=1280x720&ir=1&ur=ES-MD&_uip=%3A%3A&uaa=x86&uab=64&uafvl=Google%2520Chrome%3B143.0.7499.192%7CChromium%3B143.0.7499.192%7CNot%2520A(Brand%3B24.0.0.0&uamb=0&uam=&uap=Linux&uapv=6.18.5&uaw=0&are=1&frm=0&pscdl=noapi&_eu=EEAAAGQ&_s=2&tag_exp=103116026~103200004~104527907~104528500~104684208~104684211~115938465~115938468~116988315&sid=1771230944&sct=6&seg=1&dl=https%3A%2F%2Fwww.opositatest.com%2Flogin%3F_target_path%3Dhttps%3A%2F%2Faula.opositatest.com%2Fclassroom%2Ftest-configurator%3FmainContentId%3D7&dr=https%3A%2F%2Faula.opositatest.com%2F&dt=Iniciar%20sesi%C3%B3n%20en%20OpositaTest&en=scroll&epn.percent_scrolled=90&_et=68&tfd=5517",
+      "body": null
+    },
+    {
+      "time": 1771245273550,
+      "method": "GET",
+      "url": "https://www.opositatest.com/ecommerce/api/v2.0/me/properties",
+      "body": null
+    },
+    {
+      "time": 1771245273702,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/classroom/test-configurator?mainContentId=7",
+      "body": null
+    },
+    {
+      "time": 1771245273870,
+      "method": "POST",
+      "url": "https://region1.analytics.google.com/g/collect?v=2&tid=G-GNC9Q3YH5E&gtm=45g92e62b1h1v880975082za20kzb844545255zd844545255&_p=1771245268212&gcs=G111&gcd=13r3rPr2r5l1&npa=0&dma_cps=syphamo&dma=1&gdid=dY2E1Nz&cid=1276091076.1766661701&ecid=1621650237&ul=es-es&sr=1280x720&ir=1&are=1&frm=0&pscdl=noapi&ur=ES-MD&_uip=%3A%3A&uaa=x86&uab=64&uafvl=Google%2520Chrome%3B143.0.7499.192%7CChromium%3B143.0.7499.192%7CNot%2520A(Brand%3B24.0.0.0&uamb=0&uam=&uap=Linux&uapv=6.18.5&uaw=0&_eu=BAAAAGQ&_s=3&tag_exp=103116026~103200004~104527907~104528500~104684208~104684211~115938465~115938468~116988315&dt=access%2Flogin&sid=1771230944&sct=6&seg=1&dl=https%3A%2F%2Fwww.opositatest.com%2Flogin%3F_target_path%3Dhttps%3A%2F%2Faula.opositatest.com%2Fclassroom%2Ftest-configurator%3FmainContentId%3D7&dr=https%3A%2F%2Faula.opositatest.com%2F&en=login&ep.event_category=login&ep.page_name=access%2Flogin&ep.user_logged=no&ep.method=google&ep.version=2026.02.16.113849&_et=5071&tfd=5892",
+      "body": null
+    },
+    {
+      "time": 1771245273870,
+      "method": "POST",
+      "url": "https://tagging.opositatest.com/g/collect?v=2&tid=G-ABCDEF&gtm=45g92e62b1h1za20kzb844545255zd844545255&_p=1771245268212&gcs=G111&gcd=13r3r3r2r5l1&npa=0&dma_cps=syphamo&dma=1&gdid=dY2E1Nz&cid=1276091076.1766661701&ecid=756103791&ul=es-es&sr=1280x720&ur=ES-MD&uaa=x86&uab=64&uafvl=Google%2520Chrome%3B143.0.7499.192%7CChromium%3B143.0.7499.192%7CNot%2520A(Brand%3B24.0.0.0&uamb=0&uam=&uap=Linux&uapv=6.18.5&uaw=0&are=1&frm=0&pscdl=noapi&_eu=AAAAAAQ&sst.rnd=1215988044.1771245268&sst.etld=google.es&sst.gcsub=region1&sst.tft=1771245268212&sst.lpc=89638085&sst.navt=n&sst.ude=0&sst.sw_exp=1&_s=2&tag_exp=103116026~103200004~104527907~104528500~104684208~104684211~115938465~115938468~116988315~117447492~117455673~117455675&sid=1771240739&sct=8&seg=1&dl=https%3A%2F%2Fwww.opositatest.com%2Flogin%3F_target_path%3Dhttps%3A%2F%2Faula.opositatest.com%2Fclassroom%2Ftest-configurator%3FmainContentId%3D7&dr=https%3A%2F%2Faula.opositatest.com%2F&dt=Iniciar%20sesi%C3%B3n%20en%20OpositaTest&_tu=DA&en=user_engagement&_et=5424&tfd=5901",
+      "body": null
+    },
+    {
+      "time": 1771245273890,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/config.json",
+      "body": null
+    },
+    {
+      "time": 1771245273890,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/runtime~main-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245273890,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/7028-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245273890,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/9195-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245273891,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/2761-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245273891,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/637-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245273891,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/7337-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245273891,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/1233-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245273891,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/6653-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245273891,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/7013-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245273891,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/9999-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245273891,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/5470-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245273891,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/5348-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245273891,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/6007-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245273891,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/9099-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245273891,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/3968-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245273891,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/853-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245273891,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/4581-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245273891,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/main-bde52cb3-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245273891,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/main-6107ac1a-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245273891,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/main-8f704ffb-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245273891,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/main-47c73965-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245273891,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/main-c8cac85e-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245273891,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/main-9a6d6179-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245273891,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/main-82efc419-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245273891,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/main-8b0d7e22-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245273891,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/main-6e257a50-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245273891,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/main-552fe63d-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245273891,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/main-94f42109-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245273892,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/main-27179dd4-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245273892,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/main-ccb2c78d-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245273892,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/main-f71beb76-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245273892,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/main-ed52db9f-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245273892,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/main-016faedb-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245273892,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/7337.css?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245273892,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/main-82efc419.css?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245273894,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/oq7o/",
+      "body": null
+    },
+    {
+      "time": 1771245274018,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/classroom/test-configurator?mainContentId=7",
+      "body": null
+    },
+    {
+      "time": 1771245274028,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/9328-bundle.js",
+      "body": null
+    },
+    {
+      "time": 1771245274028,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/3264-bundle.js",
+      "body": null
+    },
+    {
+      "time": 1771245274028,
+      "method": "GET",
+      "url": "https://api.opositatest.com/api/v2.0/me",
+      "body": null
+    },
+    {
+      "time": 1771245274029,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/fonts/ibm-plex-sans-v8-latin-regular.woff2",
+      "body": null
+    },
+    {
+      "time": 1771245274030,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/fonts/ibm-plex-sans-v8-latin-regular.woff",
+      "body": null
+    },
+    {
+      "time": 1771245274045,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/config.json",
+      "body": null
+    },
+    {
+      "time": 1771245274046,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/runtime~main-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245274046,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/7028-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245274050,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/9195-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245274051,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/2761-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245274051,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/637-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245274051,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/7337-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245274051,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/1233-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245274051,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/6653-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245274051,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/7013-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245274051,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/9999-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245274051,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/5470-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245274051,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/5348-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245274051,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/6007-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245274054,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/9099-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245274054,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/3968-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245274054,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/853-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245274054,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/4581-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245274055,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/main-bde52cb3-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245274055,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/main-6107ac1a-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245274055,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/main-8f704ffb-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245274055,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/main-47c73965-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245274055,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/main-c8cac85e-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245274055,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/main-9a6d6179-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245274057,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/main-82efc419-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245274057,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/main-8b0d7e22-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245274057,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/main-6e257a50-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245274057,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/main-552fe63d-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245274058,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/main-94f42109-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245274058,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/main-27179dd4-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245274058,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/main-ccb2c78d-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245274058,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/main-f71beb76-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245274058,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/main-ed52db9f-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245274058,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/main-016faedb-bundle.js?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245274058,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/7337.css?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245274059,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/main-82efc419.css?8a21cbed2af2fcc5fb6a",
+      "body": null
+    },
+    {
+      "time": 1771245274082,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/oq7o/",
+      "body": null
+    },
+    {
+      "time": 1771245274102,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/9328-bundle.js",
+      "body": null
+    },
+    {
+      "time": 1771245274102,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/3264-bundle.js",
+      "body": null
+    },
+    {
+      "time": 1771245274103,
+      "method": "GET",
+      "url": "https://api.opositatest.com/api/v2.0/me",
+      "body": null
+    },
+    {
+      "time": 1771245274104,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/fonts/ibm-plex-sans-v8-latin-regular.woff2",
+      "body": null
+    },
+    {
+      "time": 1771245274120,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/2435-bundle.js",
+      "body": null
+    },
+    {
+      "time": 1771245274120,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/1856-bundle.js",
+      "body": null
+    },
+    {
+      "time": 1771245274121,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/6567-bundle.js",
+      "body": null
+    },
+    {
+      "time": 1771245274121,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/8139-bundle.js",
+      "body": null
+    },
+    {
+      "time": 1771245274121,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/8884-bundle.js",
+      "body": null
+    },
+    {
+      "time": 1771245274121,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/2138-bundle.js",
+      "body": null
+    },
+    {
+      "time": 1771245274124,
+      "method": "GET",
+      "url": "https://subscriptions.opositatest.com/api/v2.0/subscriptions/has-subscription?filters%5Bactive%5D=true&filters%5BresourceTypes%5D%5B%5D=opposition&filters%5BresourceTypes%5D%5B%5D=course&filters%5BresourceTypes%5D%5B%5D=download&filters%5BresourceTypes%5D%5B%5D=exam",
+      "body": null
+    },
+    {
+      "time": 1771245274137,
+      "method": "GET",
+      "url": "blob:https://aula.opositatest.com/f334ab7a-d9a7-4bc7-9c3b-a7256ff4b77f",
+      "body": null
+    },
+    {
+      "time": 1771245274180,
+      "method": "GET",
+      "url": "https://admin.opositatest.com/api/v2.0/oppositions/7?embedded=mainCategory,organizations",
+      "body": null
+    },
+    {
+      "time": 1771245274433,
+      "method": "GET",
+      "url": "https://api.opositatest.com/api/v2.0/students/stats/doing-tests/7?filters%5BdatetimeFrom%5D=2026-02-16T00%3A00%3A00%2B01%3A00&filters%5BdatetimeTo%5D=2026-02-16T13%3A29%3A34%2B01%3A00",
+      "body": null
+    },
+    {
+      "time": 1771245274434,
+      "method": "GET",
+      "url": "https://api.opositatest.com/api/v2.0/tests/saved/stats",
+      "body": null
+    },
+    {
+      "time": 1771245274434,
+      "method": "GET",
+      "url": "https://admin.opositatest.com/api/v2.0/oppositions/7?embedded=mainCategory,organizations",
+      "body": null
+    },
+    {
+      "time": 1771245274444,
+      "method": "GET",
+      "url": "https://subscriptions.opositatest.com/api/v2.0/subscriptions/is-subscribed-to-resource?filters%5BexternalResourceId%5D=7&filters%5BresourceType%5D=opposition",
+      "body": null
+    },
+    {
+      "time": 1771245274475,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/oq7o/gtd?id=G-GNC9Q3YH5E&cx=c&gtm=4e62b1",
+      "body": null
+    },
+    {
+      "time": 1771245274527,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/2118-bundle.js",
+      "body": null
+    },
+    {
+      "time": 1771245274527,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/9146-bundle.js",
+      "body": null
+    },
+    {
+      "time": 1771245274527,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/6485-bundle.js",
+      "body": null
+    },
+    {
+      "time": 1771245274527,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/7506-bundle.js",
+      "body": null
+    },
+    {
+      "time": 1771245274527,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/3149-bundle.js",
+      "body": null
+    },
+    {
+      "time": 1771245274527,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/5198-bundle.js",
+      "body": null
+    },
+    {
+      "time": 1771245274528,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/9652-bundle.js",
+      "body": null
+    },
+    {
+      "time": 1771245274576,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/fonts/ibm-plex-sans-v8-latin-600.woff2",
+      "body": null
+    },
+    {
+      "time": 1771245274576,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/fonts/ibm-plex-sans-v8-latin-500.woff2",
+      "body": null
+    },
+    {
+      "time": 1771245274576,
+      "method": "GET",
+      "url": "https://subscriptions.opositatest.com/api/v2.0/subscriptions/has-subscription?filters%5Bactive%5D=true&filters%5BresourceTypes%5D%5B%5D=course",
+      "body": null
+    },
+    {
+      "time": 1771245274576,
+      "method": "GET",
+      "url": "https://api.opositatest.com/api/v2.0/notifications/stats",
+      "body": null
+    },
+    {
+      "time": 1771245274576,
+      "method": "GET",
+      "url": "https://admin.opositatest.com/api/v2.0/oppositions/7/contents",
+      "body": null
+    },
+    {
+      "time": 1771245274576,
+      "method": "GET",
+      "url": "https://api.opositatest.com/api/v2.0/exam-types?filters[opposition]=7",
+      "body": null
+    },
+    {
+      "time": 1771245274578,
+      "method": "GET",
+      "url": "https://subscriptions.opositatest.com/api/v2.0/subscriptions?filters%5Bactive%5D=true",
+      "body": null
+    },
+    {
+      "time": 1771245274578,
+      "method": "GET",
+      "url": "https://api.opositatest.com/api/v2.0/championships/participant/my-championships",
+      "body": null
+    },
+    {
+      "time": 1771245274578,
+      "method": "GET",
+      "url": "https://api.opositatest.com/api/v2.0/tests/saved?filters%5Boppositions%5D=7&pageSize=1",
+      "body": null
+    },
+    {
+      "time": 1771245274578,
+      "method": "GET",
+      "url": "https://subscriptions.opositatest.com/api/v2.0/subscriptions/is-subscribed-to-resource?filters%5BexternalResourceId%5D=7&filters%5BresourceType%5D=opposition",
+      "body": null
+    },
+    {
+      "time": 1771245274578,
+      "method": "GET",
+      "url": "https://api.opositatest.com/api/v2.0/responses/stats?filters%5Bopposition%5D=7",
+      "body": null
+    },
+    {
+      "time": 1771245274578,
+      "method": "GET",
+      "url": "https://www.opositatest.com/ecommerce/api/v2.0/user-basic-ecommerce-info",
+      "body": null
+    },
+    {
+      "time": 1771245274578,
+      "method": "GET",
+      "url": "https://admin.opositatest.com/api/v2.0/opposition-categories?embedded=oppositions&pageSize=50&filters%5Bstates%5D%5B%5D=DISCONTINUED&filters%5Bstates%5D%5B%5D=ACTIVE",
+      "body": null
+    },
+    {
+      "time": 1771245274578,
+      "method": "GET",
+      "url": "https://admin.opositatest.com/api/v2.0/oppositions?embedded=mainCategory&page=1&pageSize=250&filters%5BoppositionStates%5D%5B%5D=ACTIVE&filters%5BoppositionStates%5D%5B%5D=DISCONTINUED",
+      "body": null
+    },
+    {
+      "time": 1771245274591,
+      "method": "GET",
+      "url": "https://api.opositatest.com/avatars/people/person-038.svg",
+      "body": null
+    },
+    {
+      "time": 1771245274676,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/8982-bundle.js",
+      "body": null
+    },
+    {
+      "time": 1771245274676,
+      "method": "GET",
+      "url": "https://aula.opositatest.com/2026.02.12.134434/2504-bundle.js",
+      "body": null
+    },
+    {
+      "time": 1771245274738,
+      "method": "GET",
+      "url": "https://cursos.opositatest.com/wp-json/v1/courses",
+      "body": null
+    },
+    {
+      "time": 1771245274882,
+      "method": "GET",
+      "url": "https://admin.opositatest.com/api/v2.0/exams?filters%5Bopposition%5D=7&filters%5Btype%5D=previousCall&page=1",
+      "body": null
+    },
+    {
+      "time": 1771245279637,
+      "method": "POST",
+      "url": "https://region1.analytics.google.com/g/collect?v=2&tid=G-GNC9Q3YH5E&gtm=45g92e62b1v880975082z8844545255za20kzb844545255zd844545255&_p=1771245274105&gcs=G111&gcd=13r3rPr2r5l1&npa=0&dma_cps=syphamo&dma=1&gdid=dY2E1Nz&cid=1276091076.1766661701&ecid=1621650237&ul=es-es&sr=1280x720&ir=1&ur=ES-MD&_uip=%3A%3A&uaa=x86&uab=64&uafvl=Google%2520Chrome%3B143.0.7499.192%7CChromium%3B143.0.7499.192%7CNot%2520A(Brand%3B24.0.0.0&uamb=0&uam=&uap=Linux&uapv=6.18.5&uaw=0&are=1&frm=0&pscdl=noapi&_eu=EAAAAGQ&_s=1&tag_exp=103116026~103200004~104527907~104528501~104684208~104684211~115938466~115938468~116988315&dt=classroom%2Ftest_configurator&sid=1771230944&sct=6&seg=1&dl=https%3A%2F%2Faula.opositatest.com%2Fclassroom%2Ftest-configurator%3FmainContentId%3D7&en=page_view&ep.event_category=test_configurator&ep.page_name=classroom%2Ftest_configurator&ep.user_logged=yes&ep.active_subscription=yes&ep.version=2026.02.12.134434&up.user_active_subscription=yes&tfd=5615",
+      "body": null
+    }
+  ],
+  "responses": [
+    {
+      "time": 1771245268521,
+      "status": 200,
+      "url": "https://tagging.opositatest.com/g/collect?v=2&tid=G-ABCDEF&gtm=45g92e62b1h1z8844545255za20kzb844545255zd844545255&_p=1771245268212&gcs=G111&gcd=13r3r3r2r5l1&npa=0&dma_cps=syphamo&dma=1&gdid=dY2E1Nz&cid=1276091076.1766661701&ecid=756103791&ul=es-es&sr=1280x720&ur=ES-MD&uaa=x86&uab=64&uafvl=Google%2520Chrome%3B143.0.7499.192%7CChromium%3B143.0.7499.192%7CNot%2520A(Brand%3B24.0.0.0&uamb=0&uam=&uap=Linux&uapv=6.18.5&uaw=0&are=1&frm=0&pscdl=noapi&_eu=AAAAAAQ&sst.rnd=1215988044.1771245268&sst.etld=google.es&sst.gcsub=region1&sst.tft=1771245268212&sst.lpc=89638085&sst.navt=n&sst.ude=0&sst.sw_exp=1&_s=1&tag_exp=103116026~103200004~104527907~104528500~104684208~104684211~115938465~115938468~116988315~117447492~117455673~117455675&sid=1771240739&sct=8&seg=1&dl=https%3A%2F%2Fwww.opositatest.com%2Flogin%3F_target_path%3Dhttps%3A%2F%2Faula.opositatest.com%2Fclassroom%2Ftest-configurator%3FmainContentId%3D7&dr=https%3A%2F%2Faula.opositatest.com%2F&dt=Iniciar%20sesi%C3%B3n%20en%20OpositaTest&_tu=BA&en=page_view&tfd=471&richsstsse",
+      "size": 65,
+      "preview": "event: message\ndata: {\"response\":{\"status_code\":200,\"body\":\"\"}}\n\n"
+    },
+    {
+      "time": 1771245268779,
+      "status": 200,
+      "url": "https://googleads.g.doubleclick.net/pagead/viewthroughconversion/956142973/?random=1771245268429&cv=11&fst=1771245268429&bg=ffffff&guid=ON&async=1&en=gtag.config&gtm=45892e62b1h1v894930176z8844545255za20kzb844545255zd844545255xec&gcd=13r3rPr2r5l1&dma_cps=syphamo&dma=1&tag_exp=103116026~103200004~104527907~104528501~104684208~104684211~115938465~115938468~116988315&u_w=1280&u_h=720&url=https%3A%2F%2Fwww.opositatest.com%2Flogin%3F_target_path%3Dhttps%3A%2F%2Faula.opositatest.com%2Fclassroom%2Ftest-configurator%3FmainContentId%3D7&ref=https%3A%2F%2Faula.opositatest.com%2F&frm=0&tiba=Iniciar%20sesi%C3%B3n%20en%20OpositaTest&did=dY2E1Nz&gdid=dY2E1Nz&hn=www.googleadservices.com&npa=0&pscdl=noapi&auid=253357570.1766661703&uaa=x86&uab=64&uafvl=Google%2520Chrome%3B143.0.7499.192%7CChromium%3B143.0.7499.192%7CNot%2520A(Brand%3B24.0.0.0&uamb=0&uam=&uap=Linux&uapv=6.18.5&uaw=0&data=event%3Dgtag.config&rfmt=3&fmt=4",
+      "size": 5497,
+      "preview": "(function(){var s = {};(function(){var k=typeof Object.defineProperties==\"function\"?Object.defineProperty:function(a,d,b){if(a==Array.prototype||a==Object.prototype)return a;a[d]=b.value;return a};function l(a){a=[\"object\"==typeof globalThis&&globalThis,a,\"object\"==typeof window&&window,\"object\"==typeof self&&self,\"object\"==typeof global&&global];for(var d=0;d<a.length;++d){var b=a[d];if(b&&b.Math==Math)return b}throw Error(\"Cannot find global object\");} var p=l(this),q=typeof Symbol===\"function"
+    },
+    {
+      "time": 1771245268779,
+      "status": 200,
+      "url": "https://googleads.g.doubleclick.net/pagead/viewthroughconversion/956142973/?random=1771245268442&cv=11&fst=1771245268442&bg=ffffff&guid=ON&async=1&gtm=45892e62b1h1v894930176z8844545255za20kzb844545255zd844545255xea&gcd=13r3rPr2r5l1&dma_cps=syphamo&dma=1&tag_exp=103116026~103200004~104527907~104528501~104684208~104684211~115938465~115938468~116988315&u_w=1280&u_h=720&url=https%3A%2F%2Fwww.opositatest.com%2Flogin%3F_target_path%3Dhttps%3A%2F%2Faula.opositatest.com%2Fclassroom%2Ftest-configurator%3FmainContentId%3D7&ref=https%3A%2F%2Faula.opositatest.com%2F&frm=0&tiba=Iniciar%20sesi%C3%B3n%20en%20OpositaTest&did=dY2E1Nz&gdid=dY2E1Nz&hn=www.googleadservices.com&npa=0&pscdl=noapi&auid=253357570.1766661703&uaa=x86&uab=64&uafvl=Google%2520Chrome%3B143.0.7499.192%7CChromium%3B143.0.7499.192%7CNot%2520A(Brand%3B24.0.0.0&uamb=0&uam=&uap=Linux&uapv=6.18.5&uaw=0&_tu=CA&rfmt=3&fmt=4",
+      "size": 5419,
+      "preview": "(function(){var s = {};(function(){var k=typeof Object.defineProperties==\"function\"?Object.defineProperty:function(a,d,b){if(a==Array.prototype||a==Object.prototype)return a;a[d]=b.value;return a};function l(a){a=[\"object\"==typeof globalThis&&globalThis,a,\"object\"==typeof window&&window,\"object\"==typeof self&&self,\"object\"==typeof global&&global];for(var d=0;d<a.length;++d){var b=a[d];if(b&&b.Math==Math)return b}throw Error(\"Cannot find global object\");} var p=l(this),q=typeof Symbol===\"function"
+    },
+    {
+      "time": 1771245268873,
+      "status": 200,
+      "url": "https://www.google.es/pagead/1p-user-list/956142973/?random=1771245268442&cv=11&fst=1771243200000&bg=ffffff&guid=ON&async=1&gtm=45892e62b1h1v894930176z8844545255za20kzb844545255zd844545255xea&gcd=13r3rPr2r5l1&dma_cps=syphamo&dma=1&tag_exp=103116026~103200004~104527907~104528501~104684208~104684211~115938465~115938468~116988315&u_w=1280&u_h=720&url=https%3A%2F%2Fwww.opositatest.com%2Flogin%3F_target_path%3Dhttps%3A%2F%2Faula.opositatest.com%2Fclassroom%2Ftest-configurator%3FmainContentId%3D7&ref=https%3A%2F%2Faula.opositatest.com%2F&frm=0&tiba=Iniciar%20sesi%C3%B3n%20en%20OpositaTest&did=dY2E1Nz&gdid=dY2E1Nz&hn=www.googleadservices.com&npa=0&pscdl=noapi&auid=253357570.1766661703&uaa=x86&uab=64&uafvl=Google%2520Chrome%3B143.0.7499.192%7CChromium%3B143.0.7499.192%7CNot%2520A(Brand%3B24.0.0.0&uamb=0&uam=&uap=Linux&uapv=6.18.5&uaw=0&_tu=CA&rfmt=3&fmt=3&is_vtc=1&cid=CAQSLADnonV5_YET7R2U5DykS2q6Q63Dh6wAfNcG0rVfo0GqBHycOOqeP4xa646K&random=2212879100&rmt_tld=1&ipr=y",
+      "size": 42,
+      "preview": "GIF89a\u0001\u0000\u0001\u0000�\u0000\u0000\u0000\u0000\u0000���!�\u0004\u0001\u0000\u0000\u0000\u0000,\u0000\u0000\u0000\u0000\u0001\u0000\u0001\u0000\u0000\u0002\u0001D\u0000;"
+    },
+    {
+      "time": 1771245268873,
+      "status": 200,
+      "url": "https://www.google.com/pagead/1p-user-list/956142973/?random=1771245268442&cv=11&fst=1771243200000&bg=ffffff&guid=ON&async=1&gtm=45892e62b1h1v894930176z8844545255za20kzb844545255zd844545255xea&gcd=13r3rPr2r5l1&dma_cps=syphamo&dma=1&tag_exp=103116026~103200004~104527907~104528501~104684208~104684211~115938465~115938468~116988315&u_w=1280&u_h=720&url=https%3A%2F%2Fwww.opositatest.com%2Flogin%3F_target_path%3Dhttps%3A%2F%2Faula.opositatest.com%2Fclassroom%2Ftest-configurator%3FmainContentId%3D7&ref=https%3A%2F%2Faula.opositatest.com%2F&frm=0&tiba=Iniciar%20sesi%C3%B3n%20en%20OpositaTest&did=dY2E1Nz&gdid=dY2E1Nz&hn=www.googleadservices.com&npa=0&pscdl=noapi&auid=253357570.1766661703&uaa=x86&uab=64&uafvl=Google%2520Chrome%3B143.0.7499.192%7CChromium%3B143.0.7499.192%7CNot%2520A(Brand%3B24.0.0.0&uamb=0&uam=&uap=Linux&uapv=6.18.5&uaw=0&_tu=CA&rfmt=3&fmt=3&is_vtc=1&cid=CAQSLADnonV5_YET7R2U5DykS2q6Q63Dh6wAfNcG0rVfo0GqBHycOOqeP4xa646K&random=2212879100&rmt_tld=0&ipr=y",
+      "size": 42,
+      "preview": "GIF89a\u0001\u0000\u0001\u0000�\u0000\u0000\u0000\u0000\u0000���!�\u0004\u0001\u0000\u0000\u0000\u0000,\u0000\u0000\u0000\u0000\u0001\u0000\u0001\u0000\u0000\u0002\u0001D\u0000;"
+    },
+    {
+      "time": 1771245268873,
+      "status": 200,
+      "url": "https://www.google.es/pagead/1p-user-list/956142973/?random=1771245268429&cv=11&fst=1771243200000&bg=ffffff&guid=ON&async=1&en=gtag.config&gtm=45892e62b1h1v894930176z8844545255za20kzb844545255zd844545255xec&gcd=13r3rPr2r5l1&dma_cps=syphamo&dma=1&tag_exp=103116026~103200004~104527907~104528501~104684208~104684211~115938465~115938468~116988315&u_w=1280&u_h=720&url=https%3A%2F%2Fwww.opositatest.com%2Flogin%3F_target_path%3Dhttps%3A%2F%2Faula.opositatest.com%2Fclassroom%2Ftest-configurator%3FmainContentId%3D7&ref=https%3A%2F%2Faula.opositatest.com%2F&frm=0&tiba=Iniciar%20sesi%C3%B3n%20en%20OpositaTest&did=dY2E1Nz&gdid=dY2E1Nz&hn=www.googleadservices.com&npa=0&pscdl=noapi&auid=253357570.1766661703&uaa=x86&uab=64&uafvl=Google%2520Chrome%3B143.0.7499.192%7CChromium%3B143.0.7499.192%7CNot%2520A(Brand%3B24.0.0.0&uamb=0&uam=&uap=Linux&uapv=6.18.5&uaw=0&data=event%3Dgtag.config&rfmt=3&fmt=3&is_vtc=1&cid=CAQSLADnonV5VRf6m5mF7yTK4XmGwZzrbELoFzLHZMvtpolxpGgADz1P3P7WHiDE&random=1415744626&rmt_tld=1&ipr=y",
+      "size": 42,
+      "preview": "GIF89a\u0001\u0000\u0001\u0000�\u0000\u0000\u0000\u0000\u0000���!�\u0004\u0001\u0000\u0000\u0000\u0000,\u0000\u0000\u0000\u0000\u0001\u0000\u0001\u0000\u0000\u0002\u0001D\u0000;"
+    },
+    {
+      "time": 1771245268873,
+      "status": 200,
+      "url": "https://www.google.com/pagead/1p-user-list/956142973/?random=1771245268429&cv=11&fst=1771243200000&bg=ffffff&guid=ON&async=1&en=gtag.config&gtm=45892e62b1h1v894930176z8844545255za20kzb844545255zd844545255xec&gcd=13r3rPr2r5l1&dma_cps=syphamo&dma=1&tag_exp=103116026~103200004~104527907~104528501~104684208~104684211~115938465~115938468~116988315&u_w=1280&u_h=720&url=https%3A%2F%2Fwww.opositatest.com%2Flogin%3F_target_path%3Dhttps%3A%2F%2Faula.opositatest.com%2Fclassroom%2Ftest-configurator%3FmainContentId%3D7&ref=https%3A%2F%2Faula.opositatest.com%2F&frm=0&tiba=Iniciar%20sesi%C3%B3n%20en%20OpositaTest&did=dY2E1Nz&gdid=dY2E1Nz&hn=www.googleadservices.com&npa=0&pscdl=noapi&auid=253357570.1766661703&uaa=x86&uab=64&uafvl=Google%2520Chrome%3B143.0.7499.192%7CChromium%3B143.0.7499.192%7CNot%2520A(Brand%3B24.0.0.0&uamb=0&uam=&uap=Linux&uapv=6.18.5&uaw=0&data=event%3Dgtag.config&rfmt=3&fmt=3&is_vtc=1&cid=CAQSLADnonV5VRf6m5mF7yTK4XmGwZzrbELoFzLHZMvtpolxpGgADz1P3P7WHiDE&random=1415744626&rmt_tld=0&ipr=y",
+      "size": 42,
+      "preview": "GIF89a\u0001\u0000\u0001\u0000�\u0000\u0000\u0000\u0000\u0000���!�\u0004\u0001\u0000\u0000\u0000\u0000,\u0000\u0000\u0000\u0000\u0001\u0000\u0001\u0000\u0000\u0002\u0001D\u0000;"
+    },
+    {
+      "time": 1771245273703,
+      "status": 200,
+      "url": "https://www.opositatest.com/ecommerce/api/v2.0/me/properties",
+      "size": 283,
+      "preview": "{\"userId\":2083,\"activeSubscription\":true,\"activeSubscriptionLastChecked\":\"2026-02-16T12:29:40+00:00\",\"registrationSource\":\"\",\"hasExamsDone\":false,\"hasMadeDownloads\":false,\"hasBeenPremium\":false,\"registrationDate\":\"1999-12-31T23:59:00+00:00\",\"premiumDate\":\"1999-12-31T23:59:00+00:00\"}"
+    },
+    {
+      "time": 1771245274583,
+      "status": 200,
+      "url": "https://subscriptions.opositatest.com/api/v2.0/subscriptions/has-subscription?filters%5Bactive%5D=true&filters%5BresourceTypes%5D%5B%5D=opposition&filters%5BresourceTypes%5D%5B%5D=course&filters%5BresourceTypes%5D%5B%5D=download&filters%5BresourceTypes%5D%5B%5D=exam",
+      "size": 24,
+      "preview": "{\"hasSubscription\":true}"
+    },
+    {
+      "time": 1771245274586,
+      "status": 200,
+      "url": "https://admin.opositatest.com/api/v2.0/oppositions/7?embedded=mainCategory,organizations",
+      "size": 50564,
+      "preview": "{\"id\":7,\"name\":\"Tramitaci\\u00f3n Procesal y Administrativa de la Administraci\\u00f3n de Justicia Turno Libre\",\"role\":\"ROLE_TRAMITACION_PROCESAL_TURNO_LIBRE\",\"numberQuestionsExamOfficial\":100,\"maxQuestionsCustomExam\":100,\"shortName\":\"Tramitaci\\u00f3n Procesal TL\",\"hasFreeAccess\":false,\"freeAccessDateFrom\":\"2024-05-16T00:00:00+02:00\",\"freeAccessDateTo\":\"2024-05-17T00:00:00+02:00\",\"slug\":\"tramitacion-procesal-turno-libre\",\"state\":\"CLOSED\",\"oppositionState\":\"ACTIVE\",\"stateComment\":\"\\u003Cp\\u003E\\u00"
+    },
+    {
+      "time": 1771245274703,
+      "status": 200,
+      "url": "https://api.opositatest.com/avatars/people/person-038.svg",
+      "size": 4958,
+      "preview": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 480.05 600.92\"><g data-name=\"Capa 2\"><path fill=\"#fff\" d=\"M457.85 126.06a33 33 0 0 0-26.2.76 33.67 33.67 0 0 0-17.85 19l-71.4 188.74a107.71 107.71 0 0 1-21.65 34.94 11.36 11.36 0 0 0 .32 15.5 120 120 0 0 1-29.29 19.44H189.45a120.21 120.21 0 0 1-27.88-18.18 11.35 11.35 0 0 0 .05-15.62 108.66 108.66 0 0 1-22.4-36.08l-71-188c-6.46-16.72-23.55-26.21-40.26-22a33.25 33.25 0 0 0-22.43 17.07 34.64 34.64 0 0 0-1.89 28.1L68.2 342.15c4.55 12.54 9.11 25.4"
+    },
+    {
+      "time": 1771245274707,
+      "status": 200,
+      "url": "https://admin.opositatest.com/api/v2.0/oppositions/7?embedded=mainCategory,organizations",
+      "size": 50564,
+      "preview": "{\"id\":7,\"name\":\"Tramitaci\\u00f3n Procesal y Administrativa de la Administraci\\u00f3n de Justicia Turno Libre\",\"role\":\"ROLE_TRAMITACION_PROCESAL_TURNO_LIBRE\",\"numberQuestionsExamOfficial\":100,\"maxQuestionsCustomExam\":100,\"shortName\":\"Tramitaci\\u00f3n Procesal TL\",\"hasFreeAccess\":false,\"freeAccessDateFrom\":\"2024-05-16T00:00:00+02:00\",\"freeAccessDateTo\":\"2024-05-17T00:00:00+02:00\",\"slug\":\"tramitacion-procesal-turno-libre\",\"state\":\"CLOSED\",\"oppositionState\":\"ACTIVE\",\"stateComment\":\"\\u003Cp\\u003E\\u00"
+    },
+    {
+      "time": 1771245274708,
+      "status": 200,
+      "url": "https://api.opositatest.com/api/v2.0/me",
+      "size": 163,
+      "preview": "{\"id\":2083,\"customer\":{\"id\":2083},\"username\":\"manueltrader@gmail.com\",\"firstName\":\"Manuel\",\"lastName\":\"Trader\",\"trainer\":null,\"academy\":null,\"roles\":[\"ROLE_USER\"]}"
+    },
+    {
+      "time": 1771245274708,
+      "status": 200,
+      "url": "https://api.opositatest.com/api/v2.0/tests/saved/stats",
+      "size": 11,
+      "preview": "{\"count\":2}"
+    },
+    {
+      "time": 1771245274709,
+      "status": 200,
+      "url": "https://subscriptions.opositatest.com/api/v2.0/subscriptions/is-subscribed-to-resource?filters%5BexternalResourceId%5D=7&filters%5BresourceType%5D=opposition",
+      "size": 21,
+      "preview": "{\"isSubscribed\":true}"
+    },
+    {
+      "time": 1771245274709,
+      "status": 200,
+      "url": "https://subscriptions.opositatest.com/api/v2.0/subscriptions/is-subscribed-to-resource?filters%5BexternalResourceId%5D=7&filters%5BresourceType%5D=opposition",
+      "size": 21,
+      "preview": "{\"isSubscribed\":true}"
+    },
+    {
+      "time": 1771245274799,
+      "status": 200,
+      "url": "https://admin.opositatest.com/api/v2.0/oppositions/7/contents",
+      "size": 83643,
+      "preview": "{\"resources\":[{\"id\":\"d801ac95-745b-43f5-a55d-6437cf1fbcde\",\"name\":\"Tema 1. La Constituci\\u00f3n espa\\u00f1ola de 1978  (PR\\u00d3XIMAS CONVOCATORIAS TP TL)\",\"slug\":\"tema-1-la-constitucion-espanola-de-1978-proximas-convocatorias-tp-tl\",\"levelName\":\"Temas\",\"levelSlug\":\"\",\"info\":[{\"level\":\"Ep\\u00edgrafes\",\"count\":7}],\"description\":\"La Constituci\\u00f3n espa\\u00f1ola de 1978: Estructura y contenido. Las atribuciones de la Corona. Las Cortes Generales: Composici\\u00f3n, atribuciones y funcionamiento. "
+    },
+    {
+      "time": 1771245274800,
+      "status": 200,
+      "url": "https://api.opositatest.com/api/v2.0/exam-types?filters[opposition]=7",
+      "size": 448,
+      "preview": "{\"resources\":[{\"type\":\"random\",\"enabled\":true,\"examCount\":1},{\"type\":\"fails\",\"enabled\":true,\"examCount\":1},{\"type\":\"blank\",\"enabled\":true,\"examCount\":1},{\"type\":\"favorite\",\"enabled\":false,\"examCount\":1},{\"type\":\"oficial\",\"enabled\":true,\"examCount\":1},{\"type\":\"previousCall\",\"enabled\":true,\"examCount\":1},{\"type\":\"alleged\",\"enabled\":true,\"examCount\":1},{\"type\":\"demo\",\"enabled\":true,\"examCount\":1},{\"type\":\"challenge\",\"enabled\":true,\"examCount\":1}]}"
+    },
+    {
+      "time": 1771245274854,
+      "status": 200,
+      "url": "https://admin.opositatest.com/api/v2.0/oppositions?embedded=mainCategory&page=1&pageSize=250&filters%5BoppositionStates%5D%5B%5D=ACTIVE&filters%5BoppositionStates%5D%5B%5D=DISCONTINUED",
+      "size": 1481989,
+      "preview": "{\"resources\":[{\"id\":1,\"name\":\"Acceso a la Carrera Judicial y Fiscal\",\"role\":\"ROLE_JUECES_Y_FISCALES\",\"numberQuestionsExamOfficial\":100,\"maxQuestionsCustomExam\":100,\"shortName\":\"Jueces y Fiscales\",\"hasFreeAccess\":false,\"freeAccessDateFrom\":\"2024-05-16T00:00:00+02:00\",\"freeAccessDateTo\":\"2024-05-17T00:00:00+02:00\",\"slug\":\"acceso-a-la-carrera-judicial-y-fiscal\",\"state\":\"EXAM_PENDING\",\"oppositionState\":\"ACTIVE\",\"stateComment\":\"\\u003Cp\\u003E\\u003Cstrong\\u003E\\u003Ca href=\\u0022https:\\/\\/www.boe.es\\/b"
+    },
+    {
+      "time": 1771245274863,
+      "status": 200,
+      "url": "https://subscriptions.opositatest.com/api/v2.0/subscriptions/has-subscription?filters%5Bactive%5D=true&filters%5BresourceTypes%5D%5B%5D=course",
+      "size": 25,
+      "preview": "{\"hasSubscription\":false}"
+    },
+    {
+      "time": 1771245274863,
+      "status": 200,
+      "url": "https://subscriptions.opositatest.com/api/v2.0/subscriptions?filters%5Bactive%5D=true",
+      "size": 788,
+      "preview": "{\"resources\":[{\"dateInit\":\"2026-02-16T09:32:42+01:00\",\"dateFinish\":\"2026-03-16T09:32:42+01:00\",\"pack\":{\"id\":605,\"name\":\"Suscripci\\u00f3n a Test de Tramitaci\\u00f3n Procesal y Administrativa de la Administraci\\u00f3n de Justicia Turno Libre\",\"opposition\":null,\"resources\":[{\"id\":7,\"externalId\":7,\"name\":\"Tramitaci\\u00f3n Procesal y Administrativa de la Administraci\\u00f3n de Justicia Turno Libre\",\"type\":\"Opposition\",\"organizations\":[]}]},\"packs\":[{\"id\":605,\"name\":\"Suscripci\\u00f3n a Test de Tramita"
+    },
+    {
+      "time": 1771245274877,
+      "status": 200,
+      "url": "https://admin.opositatest.com/api/v2.0/opposition-categories?embedded=oppositions&pageSize=50&filters%5Bstates%5D%5B%5D=DISCONTINUED&filters%5Bstates%5D%5B%5D=ACTIVE",
+      "size": 1423862,
+      "preview": "{\"resources\":[{\"id\":3,\"shortName\":\"Jueces y Fiscales\",\"name\":\"Acceso a la Carrera Judicial y Fiscal\",\"slug\":\"jueces-fiscales\",\"order\":1,\"categoryColor\":\"#ffb142\",\"categoryColorToken\":\"color-category-jueces-fiscales\",\"iconCode\":\"jueces-fiscales\",\"oppositions\":[{\"id\":1,\"name\":\"Acceso a la Carrera Judicial y Fiscal\",\"role\":\"ROLE_JUECES_Y_FISCALES\",\"numberQuestionsExamOfficial\":100,\"maxQuestionsCustomExam\":100,\"shortName\":\"Jueces y Fiscales\",\"hasFreeAccess\":false,\"freeAccessDateFrom\":\"2024-05-16T00:"
+    },
+    {
+      "time": 1771245274882,
+      "status": 200,
+      "url": "https://api.opositatest.com/api/v2.0/students/stats/doing-tests/7?filters%5BdatetimeFrom%5D=2026-02-16T00%3A00%3A00%2B01%3A00&filters%5BdatetimeTo%5D=2026-02-16T13%3A29%3A34%2B01%3A00",
+      "size": 13,
+      "preview": "{\"count\":280}"
+    },
+    {
+      "time": 1771245274882,
+      "status": 200,
+      "url": "https://api.opositatest.com/api/v2.0/notifications/stats",
+      "size": 13,
+      "preview": "{\"notRead\":0}"
+    },
+    {
+      "time": 1771245274905,
+      "status": 200,
+      "url": "https://api.opositatest.com/api/v2.0/tests/saved?filters%5Boppositions%5D=7&pageSize=1",
+      "size": 826,
+      "preview": "{\"resources\":[{\"id\":\"4e424261-93fa-4f38-838c-6e1302010891\",\"examId\":49478717,\"oppositionId\":7,\"state\":\"in_progress\",\"title\":\"Examen Supuesto Pr\\u00e1ctico Tramitaci\\u00f3n Procesal Turno Libre, 2025 (OEP 2024)\",\"annotation\":null,\"type\":\"alleged\",\"duration\":0,\"maxDuration\":null,\"isMaxDurationMandatory\":false,\"mark\":0,\"doubtfulMark\":0,\"maxMark\":0,\"createdAt\":\"2026-02-16T12:25:35+00:00\",\"updatedAt\":\"2026-02-16T12:25:35+00:00\",\"completedAt\":null,\"isRepeated\":false,\"info\":{\"questionsCount\":9,\"blankQu"
+    },
+    {
+      "time": 1771245274905,
+      "status": 200,
+      "url": "https://api.opositatest.com/api/v2.0/championships/participant/my-championships",
+      "size": 383,
+      "preview": "{\"resources\":[{\"rankingId\":\"3a92e859-36b7-4b79-a660-2bdd1c0748ef\",\"championshipId\":\"3a92e859-36b7-4b79-a660-2bdd1c0748ef\",\"mainContentId\":7,\"isParticipant\":false,\"isActive\":false,\"isCloseToExitChampionship\":false,\"challengesTokenIsCloseFinish\":[],\"canContinueChampionship\":false,\"deadline\":{\"datetimeStart\":\"2026-01-31T23:00:00+00:00\",\"datetimeFinish\":\"2026-02-28T23:00:00+00:00\"}}]}"
+    },
+    {
+      "time": 1771245274915,
+      "status": 200,
+      "url": "https://www.opositatest.com/ecommerce/api/v2.0/user-basic-ecommerce-info",
+      "size": 155,
+      "preview": "{\"cart\":{\"id\":null,\"totalItems\":0},\"recomendations\":{\"recomendationToken\":\"4953a3edf\",\"numberOfUserActiveRecomendations\":0,\"numberOfUsedRecomendations\":0}}"
+    },
+    {
+      "time": 1771245274950,
+      "status": 200,
+      "url": "https://api.opositatest.com/api/v2.0/responses/stats?filters%5Bopposition%5D=7",
+      "size": 35,
+      "preview": "{\"countFailed\":0,\"countBlank\":8514}"
+    },
+    {
+      "time": 1771245275038,
+      "status": 200,
+      "url": "https://admin.opositatest.com/api/v2.0/exams?filters%5Bopposition%5D=7&filters%5Btype%5D=previousCall&page=1",
+      "size": 3080,
+      "preview": "{\"resources\":[{\"id\":709137,\"title\":\"Examen Tramitaci\\u00f3n Procesal Turno Libre, 11 de Marzo de 2012 (OEP 2011)\",\"type\":\"previousCall\",\"isDemo\":false,\"requiredRoles\":[],\"isIncludedInNormalSubscription\":false,\"initDate\":null,\"realizationLimit\":null,\"editionId\":82,\"permissions\":{\"isFree\":false},\"maxDuration\":null,\"isMaxDurationMandatory\":false},{\"id\":707425,\"title\":\"Examen Tramitaci\\u00f3n Procesal Turno Libre, 3 de Julio de 2016 (OEP 2015)\",\"type\":\"previousCall\",\"isDemo\":false,\"requiredRoles\":[]"
+    },
+    {
+      "time": 1771245279676,
+      "status": 204,
+      "url": "https://region1.analytics.google.com/g/collect?v=2&tid=G-GNC9Q3YH5E&gtm=45g92e62b1v880975082z8844545255za20kzb844545255zd844545255&_p=1771245274105&gcs=G111&gcd=13r3rPr2r5l1&npa=0&dma_cps=syphamo&dma=1&gdid=dY2E1Nz&cid=1276091076.1766661701&ecid=1621650237&ul=es-es&sr=1280x720&ir=1&ur=ES-MD&_uip=%3A%3A&uaa=x86&uab=64&uafvl=Google%2520Chrome%3B143.0.7499.192%7CChromium%3B143.0.7499.192%7CNot%2520A(Brand%3B24.0.0.0&uamb=0&uam=&uap=Linux&uapv=6.18.5&uaw=0&are=1&frm=0&pscdl=noapi&_eu=EAAAAGQ&_s=1&tag_exp=103116026~103200004~104527907~104528501~104684208~104684211~115938466~115938468~116988315&dt=classroom%2Ftest_configurator&sid=1771230944&sct=6&seg=1&dl=https%3A%2F%2Faula.opositatest.com%2Fclassroom%2Ftest-configurator%3FmainContentId%3D7&en=page_view&ep.event_category=test_configurator&ep.page_name=classroom%2Ftest_configurator&ep.user_logged=yes&ep.active_subscription=yes&ep.version=2026.02.12.134434&up.user_active_subscription=yes&tfd=5615",
+      "size": 0,
+      "preview": ""
+    }
+  ],
+  "questionsResponses": []
+}

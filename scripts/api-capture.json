@@ -1,0 +1,1219 @@
+{
+  "requests": [
+    {
+      "timestamp": "2026-02-16T12:29:33.826Z",
+      "method": "POST",
+      "url": "https://region1.analytics.google.com/g/collect?v=2&tid=G-GNC9Q3YH5E&gtm=45g92e62b1h1v880975082z8844545255za20kzb844545255zd844545255&_p=1771244973531&_gaz=1&gcs=G111&gcd=13r3rPr2r5l1&npa=0&dma_cps=syphamo&dma=1&gdid=dY2E1Nz&cid=1276091076.1766661701&ecid=1621650237&ul=es-es&sr=1280x720&ir=1&ur=ES-MD&_uip=%3A%3A&uaa=x86&uab=64&uafvl=Google%2520Chrome%3B143.0.7499.192%7CChromium%3B143.0.7499.192%7CNot%2520A(Brand%3B24.0.0.0&uamb=0&uam=&uap=Linux&uapv=6.18.5&uaw=0&are=1&frm=0&pscdl=noapi&_eu=EAAAAGQ&_s=1&tag_exp=103116026~103200004~104527907~104528500~104684208~104684211~115938465~115938468~116988315&dt=access%2Flogin&sid=1771230944&sct=6&seg=1&dl=https%3A%2F%2Fwww.opositatest.com%2Flogin%3F_target_path%3Dhttps%3A%2F%2Faula.opositatest.com%2Fclassroom%2Ftest-configurator%3FmainContentId%3D7&dr=https%3A%2F%2Faula.opositatest.com%2F&_tu=CA&en=page_view&ep.event_category=login&ep.page_name=access%2Flogin&ep.user_logged=no&ep.version=2026.02.16.113849&_et=3&tfd=496",
+      "headers": {
+        "sec-ch-ua-platform": "\"Linux\"",
+        "referer": "https://www.opositatest.com/",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0"
+      },
+      "body": null
+    },
+    {
+      "timestamp": "2026-02-16T12:29:33.900Z",
+      "method": "GET",
+      "url": "https://googleads.g.doubleclick.net/pagead/viewthroughconversion/956142973/?random=1771244973833&cv=11&fst=1771244973833&bg=ffffff&guid=ON&async=1&en=gtag.config&gtm=45892e62b1h1v894930176z8844545255za20kzb844545255zd844545255xec&gcd=13r3rPr2r5l1&dma_cps=syphamo&dma=1&tag_exp=103116026~103200004~104527907~104528500~104684208~104684211~115616986~115938465~115938469~116988315~117384406&u_w=1280&u_h=720&url=https%3A%2F%2Fwww.opositatest.com%2Flogin%3F_target_path%3Dhttps%3A%2F%2Faula.opositatest.com%2Fclassroom%2Ftest-configurator%3FmainContentId%3D7&ref=https%3A%2F%2Faula.opositatest.com%2F&frm=0&tiba=Iniciar%20sesi%C3%B3n%20en%20OpositaTest&did=dY2E1Nz&gdid=dY2E1Nz&hn=www.googleadservices.com&npa=0&pscdl=noapi&auid=253357570.1766661703&uaa=x86&uab=64&uafvl=Google%2520Chrome%3B143.0.7499.192%7CChromium%3B143.0.7499.192%7CNot%2520A(Brand%3B24.0.0.0&uamb=0&uam=&uap=Linux&uapv=6.18.5&uaw=0&data=event%3Dgtag.config&rfmt=3&fmt=4",
+      "headers": {
+        "sec-ch-ua-platform": "\"Linux\"",
+        "referer": "https://www.opositatest.com/",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0"
+      },
+      "body": null
+    },
+    {
+      "timestamp": "2026-02-16T12:29:33.901Z",
+      "method": "GET",
+      "url": "https://googleads.g.doubleclick.net/pagead/viewthroughconversion/956142973/?random=1771244973887&cv=11&fst=1771244973887&bg=ffffff&guid=ON&async=1&gtm=45892e62b1h1v894930176z8844545255za20kzb844545255zd844545255xea&gcd=13r3rPr2r5l1&dma_cps=syphamo&dma=1&tag_exp=103116026~103200004~104527907~104528500~104684208~104684211~115616986~115938465~115938469~116988315~117384406&u_w=1280&u_h=720&url=https%3A%2F%2Fwww.opositatest.com%2Flogin%3F_target_path%3Dhttps%3A%2F%2Faula.opositatest.com%2Fclassroom%2Ftest-configurator%3FmainContentId%3D7&ref=https%3A%2F%2Faula.opositatest.com%2F&frm=0&tiba=Iniciar%20sesi%C3%B3n%20en%20OpositaTest&did=dY2E1Nz&gdid=dY2E1Nz&hn=www.googleadservices.com&npa=0&pscdl=noapi&auid=253357570.1766661703&uaa=x86&uab=64&uafvl=Google%2520Chrome%3B143.0.7499.192%7CChromium%3B143.0.7499.192%7CNot%2520A(Brand%3B24.0.0.0&uamb=0&uam=&uap=Linux&uapv=6.18.5&uaw=0&_tu=CA&rfmt=3&fmt=4",
+      "headers": {
+        "sec-ch-ua-platform": "\"Linux\"",
+        "referer": "https://www.opositatest.com/",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0"
+      },
+      "body": null
+    },
+    {
+      "timestamp": "2026-02-16T12:29:33.987Z",
+      "method": "GET",
+      "url": "https://tagging.opositatest.com/g/collect?v=2&tid=G-ABCDEF&gtm=45g92e62b1h1z8844545255za20kzb844545255zd844545255&_p=1771244973531&gcs=G111&gcd=13r3r3r2r5l1&npa=0&dma_cps=syphamo&dma=1&gdid=dY2E1Nz&cid=1276091076.1766661701&ecid=756103791&ul=es-es&sr=1280x720&ur=ES-MD&uaa=x86&uab=64&uafvl=Google%2520Chrome%3B143.0.7499.192%7CChromium%3B143.0.7499.192%7CNot%2520A(Brand%3B24.0.0.0&uamb=0&uam=&uap=Linux&uapv=6.18.5&uaw=0&are=1&frm=0&pscdl=noapi&_eu=AAAAAAQ&sst.rnd=58856423.1771244974&sst.etld=google.es&sst.gcsub=region1&sst.tft=1771244973531&sst.lpc=89638085&sst.navt=n&sst.ude=0&sst.sw_exp=1&_s=1&tag_exp=103116026~103200004~104527907~104528501~104684208~104684211~115616986~115938465~115938468~116988315~117455673~117455675&sid=1771240739&sct=8&seg=1&dl=https%3A%2F%2Fwww.opositatest.com%2Flogin%3F_target_path%3Dhttps%3A%2F%2Faula.opositatest.com%2Fclassroom%2Ftest-configurator%3FmainContentId%3D7&dr=https%3A%2F%2Faula.opositatest.com%2F&dt=Iniciar%20sesi%C3%B3n%20en%20OpositaTest&_tu=BA&en=page_view&tfd=653&richsstsse",
+      "headers": {
+        "sec-ch-ua-platform": "\"Linux\"",
+        "referer": "https://www.opositatest.com/",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0"
+      },
+      "body": null
+    },
+    {
+      "timestamp": "2026-02-16T12:29:34.181Z",
+      "method": "GET",
+      "url": "https://www.google.com/pagead/1p-user-list/956142973/?random=1771244973887&cv=11&fst=1771243200000&bg=ffffff&guid=ON&async=1&gtm=45892e62b1h1v894930176z8844545255za20kzb844545255zd844545255xea&gcd=13r3rPr2r5l1&dma_cps=syphamo&dma=1&tag_exp=103116026~103200004~104527907~104528500~104684208~104684211~115616986~115938465~115938469~116988315~117384406&u_w=1280&u_h=720&url=https%3A%2F%2Fwww.opositatest.com%2Flogin%3F_target_path%3Dhttps%3A%2F%2Faula.opositatest.com%2Fclassroom%2Ftest-configurator%3FmainContentId%3D7&ref=https%3A%2F%2Faula.opositatest.com%2F&frm=0&tiba=Iniciar%20sesi%C3%B3n%20en%20OpositaTest&did=dY2E1Nz&gdid=dY2E1Nz&hn=www.googleadservices.com&npa=0&pscdl=noapi&auid=253357570.1766661703&uaa=x86&uab=64&uafvl=Google%2520Chrome%3B143.0.7499.192%7CChromium%3B143.0.7499.192%7CNot%2520A(Brand%3B24.0.0.0&uamb=0&uam=&uap=Linux&uapv=6.18.5&uaw=0&_tu=CA&rfmt=3&fmt=3&is_vtc=1&cid=CAQSLADnonV5iF5dTOEzozHXyBOmTE-4kkYV2wX8DylMnuXnx0D8K9MfQcnKp1aP&random=2636532259&rmt_tld=0&ipr=y",
+      "headers": {
+        "sec-ch-ua-platform": "\"Linux\"",
+        "referer": "https://www.opositatest.com/",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0"
+      },
+      "body": null
+    },
+    {
+      "timestamp": "2026-02-16T12:29:34.181Z",
+      "method": "GET",
+      "url": "https://www.google.es/pagead/1p-user-list/956142973/?random=1771244973887&cv=11&fst=1771243200000&bg=ffffff&guid=ON&async=1&gtm=45892e62b1h1v894930176z8844545255za20kzb844545255zd844545255xea&gcd=13r3rPr2r5l1&dma_cps=syphamo&dma=1&tag_exp=103116026~103200004~104527907~104528500~104684208~104684211~115616986~115938465~115938469~116988315~117384406&u_w=1280&u_h=720&url=https%3A%2F%2Fwww.opositatest.com%2Flogin%3F_target_path%3Dhttps%3A%2F%2Faula.opositatest.com%2Fclassroom%2Ftest-configurator%3FmainContentId%3D7&ref=https%3A%2F%2Faula.opositatest.com%2F&frm=0&tiba=Iniciar%20sesi%C3%B3n%20en%20OpositaTest&did=dY2E1Nz&gdid=dY2E1Nz&hn=www.googleadservices.com&npa=0&pscdl=noapi&auid=253357570.1766661703&uaa=x86&uab=64&uafvl=Google%2520Chrome%3B143.0.7499.192%7CChromium%3B143.0.7499.192%7CNot%2520A(Brand%3B24.0.0.0&uamb=0&uam=&uap=Linux&uapv=6.18.5&uaw=0&_tu=CA&rfmt=3&fmt=3&is_vtc=1&cid=CAQSLADnonV5iF5dTOEzozHXyBOmTE-4kkYV2wX8DylMnuXnx0D8K9MfQcnKp1aP&random=2636532259&rmt_tld=1&ipr=y",
+      "headers": {
+        "sec-ch-ua-platform": "\"Linux\"",
+        "referer": "https://www.opositatest.com/",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0"
+      },
+      "body": null
+    },
+    {
+      "timestamp": "2026-02-16T12:29:34.182Z",
+      "method": "GET",
+      "url": "https://www.google.com/pagead/1p-user-list/956142973/?random=1771244973833&cv=11&fst=1771243200000&bg=ffffff&guid=ON&async=1&en=gtag.config&gtm=45892e62b1h1v894930176z8844545255za20kzb844545255zd844545255xec&gcd=13r3rPr2r5l1&dma_cps=syphamo&dma=1&tag_exp=103116026~103200004~104527907~104528500~104684208~104684211~115616986~115938465~115938469~116988315~117384406&u_w=1280&u_h=720&url=https%3A%2F%2Fwww.opositatest.com%2Flogin%3F_target_path%3Dhttps%3A%2F%2Faula.opositatest.com%2Fclassroom%2Ftest-configurator%3FmainContentId%3D7&ref=https%3A%2F%2Faula.opositatest.com%2F&frm=0&tiba=Iniciar%20sesi%C3%B3n%20en%20OpositaTest&did=dY2E1Nz&gdid=dY2E1Nz&hn=www.googleadservices.com&npa=0&pscdl=noapi&auid=253357570.1766661703&uaa=x86&uab=64&uafvl=Google%2520Chrome%3B143.0.7499.192%7CChromium%3B143.0.7499.192%7CNot%2520A(Brand%3B24.0.0.0&uamb=0&uam=&uap=Linux&uapv=6.18.5&uaw=0&data=event%3Dgtag.config&rfmt=3&fmt=3&is_vtc=1&cid=CAQSLADnonV5lYwKpdu1QYzuA7X9XVAjh01zzslmX3raJK1G8HO6G-ak0KtqCxJ1&random=3779280675&rmt_tld=0&ipr=y",
+      "headers": {
+        "sec-ch-ua-platform": "\"Linux\"",
+        "referer": "https://www.opositatest.com/",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0"
+      },
+      "body": null
+    },
+    {
+      "timestamp": "2026-02-16T12:29:34.182Z",
+      "method": "GET",
+      "url": "https://www.google.es/pagead/1p-user-list/956142973/?random=1771244973833&cv=11&fst=1771243200000&bg=ffffff&guid=ON&async=1&en=gtag.config&gtm=45892e62b1h1v894930176z8844545255za20kzb844545255zd844545255xec&gcd=13r3rPr2r5l1&dma_cps=syphamo&dma=1&tag_exp=103116026~103200004~104527907~104528500~104684208~104684211~115616986~115938465~115938469~116988315~117384406&u_w=1280&u_h=720&url=https%3A%2F%2Fwww.opositatest.com%2Flogin%3F_target_path%3Dhttps%3A%2F%2Faula.opositatest.com%2Fclassroom%2Ftest-configurator%3FmainContentId%3D7&ref=https%3A%2F%2Faula.opositatest.com%2F&frm=0&tiba=Iniciar%20sesi%C3%B3n%20en%20OpositaTest&did=dY2E1Nz&gdid=dY2E1Nz&hn=www.googleadservices.com&npa=0&pscdl=noapi&auid=253357570.1766661703&uaa=x86&uab=64&uafvl=Google%2520Chrome%3B143.0.7499.192%7CChromium%3B143.0.7499.192%7CNot%2520A(Brand%3B24.0.0.0&uamb=0&uam=&uap=Linux&uapv=6.18.5&uaw=0&data=event%3Dgtag.config&rfmt=3&fmt=3&is_vtc=1&cid=CAQSLADnonV5lYwKpdu1QYzuA7X9XVAjh01zzslmX3raJK1G8HO6G-ak0KtqCxJ1&random=3779280675&rmt_tld=1&ipr=y",
+      "headers": {
+        "sec-ch-ua-platform": "\"Linux\"",
+        "referer": "https://www.opositatest.com/",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0"
+      },
+      "body": null
+    },
+    {
+      "timestamp": "2026-02-16T12:29:38.920Z",
+      "method": "POST",
+      "url": "https://region1.analytics.google.com/g/collect?v=2&tid=G-GNC9Q3YH5E&gtm=45g92e62b1h1v880975082za20kzb844545255zd844545255&_p=1771244973531&gcs=G111&gcd=13r3rPr2r5l1&npa=0&dma_cps=syphamo&dma=1&gdid=dY2E1Nz&cid=1276091076.1766661701&ecid=1621650237&ul=es-es&sr=1280x720&ir=1&ur=ES-MD&_uip=%3A%3A&uaa=x86&uab=64&uafvl=Google%2520Chrome%3B143.0.7499.192%7CChromium%3B143.0.7499.192%7CNot%2520A(Brand%3B24.0.0.0&uamb=0&uam=&uap=Linux&uapv=6.18.5&uaw=0&are=1&frm=0&pscdl=noapi&_eu=EEAAAGQ&_s=2&tag_exp=103116026~103200004~104527907~104528500~104684208~104684211~115938465~115938468~116988315&sid=1771230944&sct=6&seg=1&dl=https%3A%2F%2Fwww.opositatest.com%2Flogin%3F_target_path%3Dhttps%3A%2F%2Faula.opositatest.com%2Fclassroom%2Ftest-configurator%3FmainContentId%3D7&dr=https%3A%2F%2Faula.opositatest.com%2F&dt=Iniciar%20sesi%C3%B3n%20en%20OpositaTest&en=scroll&epn.percent_scrolled=90&_et=120&tfd=5626",
+      "headers": {
+        "sec-ch-ua-platform": "\"Linux\"",
+        "referer": "https://www.opositatest.com/",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0"
+      },
+      "body": null
+    },
+    {
+      "timestamp": "2026-02-16T12:29:40.012Z",
+      "method": "GET",
+      "url": "https://www.opositatest.com/ecommerce/api/v2.0/me/properties",
+      "headers": {
+        "sec-ch-ua-platform": "\"Linux\"",
+        "authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpYXQiOjE3NzEyNDQ5NzksImV4cCI6MTc3MTMzMTM3OSwicm9sZXMiOlsiUk9MRV9VU0VSIl0sInVzZXJuYW1lIjoibWFudWVsdHJhZGVyQGdtYWlsLmNvbSIsImlkIjoyMDgzLCJuaWNrbmFtZSI6bnVsbCwicGljdHVyZSI6Imh0dHBzOi8vYXBpLm9wb3NpdGF0ZXN0LmNvbS9hdmF0YXJzL3Blb3BsZS9wZXJzb24tMDM4LnN2ZyJ9.j0sG3UVL8kLKDWfZVf5QEPBuW_1v2gWjuFNfCEhSb4FKG0xFvXXSJfk8wcKfLuFb9htXF2fp96lgNn3Ita5EB-7dOnYNM3O3qQr20K7ndj4Uy2l5jIaqs1MZwQXahuefXdUz-1mtTu8uclayIJ7hrZEBELBVGwZiDIugYqQi9L95ALnoITWvlm_pwAri_zby6SEKUs3lQBzhTU7_wGzhPmlTInHdlAOlovwHPzsSjMoCr4FNHuWAhrrS1AS5amw3qRsP7p7SVNhaSltrHk3MN0m8RVsqI505xQa-Q46UgBRGrcPqeVySYlUZ6Wb0CX2-87iAj1CkiC4SR1cjgOMxgw",
+        "referer": "https://www.opositatest.com/login?_target_path=https://aula.opositatest.com/classroom/test-configurator?mainContentId=7",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0"
+      },
+      "body": null
+    },
+    {
+      "timestamp": "2026-02-16T12:29:40.398Z",
+      "method": "POST",
+      "url": "https://region1.analytics.google.com/g/collect?v=2&tid=G-GNC9Q3YH5E&gtm=45g92e62b1h1v880975082za20kzb844545255zd844545255&_p=1771244973531&gcs=G111&gcd=13r3rPr2r5l1&npa=0&dma_cps=syphamo&dma=1&gdid=dY2E1Nz&cid=1276091076.1766661701&ecid=1621650237&ul=es-es&sr=1280x720&ir=1&are=1&frm=0&pscdl=noapi&ur=ES-MD&_uip=%3A%3A&uaa=x86&uab=64&uafvl=Google%2520Chrome%3B143.0.7499.192%7CChromium%3B143.0.7499.192%7CNot%2520A(Brand%3B24.0.0.0&uamb=0&uam=&uap=Linux&uapv=6.18.5&uaw=0&_eu=BAAAAGQ&_s=3&tag_exp=103116026~103200004~104527907~104528500~104684208~104684211~115938465~115938468~116988315&dt=access%2Flogin&sid=1771230944&sct=6&seg=1&dl=https%3A%2F%2Fwww.opositatest.com%2Flogin%3F_target_path%3Dhttps%3A%2F%2Faula.opositatest.com%2Fclassroom%2Ftest-configurator%3FmainContentId%3D7&dr=https%3A%2F%2Faula.opositatest.com%2F&en=login&ep.event_category=login&ep.page_name=access%2Flogin&ep.user_logged=no&ep.method=google&ep.version=2026.02.16.113849&_et=6086&tfd=7082",
+      "headers": {
+        "sec-ch-ua-platform": "\"Linux\"",
+        "referer": "https://www.opositatest.com/",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0"
+      },
+      "body": null
+    },
+    {
+      "timestamp": "2026-02-16T12:29:40.400Z",
+      "method": "POST",
+      "url": "https://tagging.opositatest.com/g/collect?v=2&tid=G-ABCDEF&gtm=45g92e62b1h1za20kzb844545255zd844545255&_p=1771244973531&gcs=G111&gcd=13r3r3r2r5l1&npa=0&dma_cps=syphamo&dma=1&gdid=dY2E1Nz&cid=1276091076.1766661701&ecid=756103791&ul=es-es&sr=1280x720&ur=ES-MD&uaa=x86&uab=64&uafvl=Google%2520Chrome%3B143.0.7499.192%7CChromium%3B143.0.7499.192%7CNot%2520A(Brand%3B24.0.0.0&uamb=0&uam=&uap=Linux&uapv=6.18.5&uaw=0&are=1&frm=0&pscdl=noapi&_eu=AAAAAAQ&sst.rnd=58856423.1771244974&sst.etld=google.es&sst.gcsub=region1&sst.tft=1771244973531&sst.lpc=89638085&sst.navt=n&sst.ude=0&sst.sw_exp=1&_s=2&tag_exp=103116026~103200004~104527907~104528501~104684208~104684211~115616986~115938465~115938468~116988315~117455673~117455675&sid=1771240739&sct=8&seg=1&dl=https%3A%2F%2Fwww.opositatest.com%2Flogin%3F_target_path%3Dhttps%3A%2F%2Faula.opositatest.com%2Fclassroom%2Ftest-configurator%3FmainContentId%3D7&dr=https%3A%2F%2Faula.opositatest.com%2F&dt=Iniciar%20sesi%C3%B3n%20en%20OpositaTest&_tu=DA&en=user_engagement&_et=6432&tfd=7092",
+      "headers": {
+        "sec-ch-ua-platform": "\"Linux\"",
+        "referer": "https://www.opositatest.com/",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0"
+      },
+      "body": null
+    },
+    {
+      "timestamp": "2026-02-16T12:29:40.527Z",
+      "method": "GET",
+      "url": "https://api.opositatest.com/api/v2.0/me",
+      "headers": {
+        "sec-ch-ua-platform": "\"Linux\"",
+        "authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpYXQiOjE3NzEyNDQ5NzksImV4cCI6MTc3MTMzMTM3OSwicm9sZXMiOlsiUk9MRV9VU0VSIl0sInVzZXJuYW1lIjoibWFudWVsdHJhZGVyQGdtYWlsLmNvbSIsImlkIjoyMDgzLCJuaWNrbmFtZSI6bnVsbCwicGljdHVyZSI6Imh0dHBzOi8vYXBpLm9wb3NpdGF0ZXN0LmNvbS9hdmF0YXJzL3Blb3BsZS9wZXJzb24tMDM4LnN2ZyJ9.j0sG3UVL8kLKDWfZVf5QEPBuW_1v2gWjuFNfCEhSb4FKG0xFvXXSJfk8wcKfLuFb9htXF2fp96lgNn3Ita5EB-7dOnYNM3O3qQr20K7ndj4Uy2l5jIaqs1MZwQXahuefXdUz-1mtTu8uclayIJ7hrZEBELBVGwZiDIugYqQi9L95ALnoITWvlm_pwAri_zby6SEKUs3lQBzhTU7_wGzhPmlTInHdlAOlovwHPzsSjMoCr4FNHuWAhrrS1AS5amw3qRsP7p7SVNhaSltrHk3MN0m8RVsqI505xQa-Q46UgBRGrcPqeVySYlUZ6Wb0CX2-87iAj1CkiC4SR1cjgOMxgw",
+        "referer": "https://aula.opositatest.com/",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json",
+        "content-type": "application/json"
+      },
+      "body": null
+    },
+    {
+      "timestamp": "2026-02-16T12:29:40.543Z",
+      "method": "GET",
+      "url": "https://subscriptions.opositatest.com/api/v2.0/subscriptions/has-subscription?filters%5Bactive%5D=true&filters%5BresourceTypes%5D%5B%5D=opposition&filters%5BresourceTypes%5D%5B%5D=course&filters%5BresourceTypes%5D%5B%5D=download&filters%5BresourceTypes%5D%5B%5D=exam",
+      "headers": {
+        "x-metadata-source": "{\"source\":\"web\",\"version\":\"2026.02.12.134434\"}",
+        "authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpYXQiOjE3NzEyNDQ5NzksImV4cCI6MTc3MTMzMTM3OSwicm9sZXMiOlsiUk9MRV9VU0VSIl0sInVzZXJuYW1lIjoibWFudWVsdHJhZGVyQGdtYWlsLmNvbSIsImlkIjoyMDgzLCJuaWNrbmFtZSI6bnVsbCwicGljdHVyZSI6Imh0dHBzOi8vYXBpLm9wb3NpdGF0ZXN0LmNvbS9hdmF0YXJzL3Blb3BsZS9wZXJzb24tMDM4LnN2ZyJ9.j0sG3UVL8kLKDWfZVf5QEPBuW_1v2gWjuFNfCEhSb4FKG0xFvXXSJfk8wcKfLuFb9htXF2fp96lgNn3Ita5EB-7dOnYNM3O3qQr20K7ndj4Uy2l5jIaqs1MZwQXahuefXdUz-1mtTu8uclayIJ7hrZEBELBVGwZiDIugYqQi9L95ALnoITWvlm_pwAri_zby6SEKUs3lQBzhTU7_wGzhPmlTInHdlAOlovwHPzsSjMoCr4FNHuWAhrrS1AS5amw3qRsP7p7SVNhaSltrHk3MN0m8RVsqI505xQa-Q46UgBRGrcPqeVySYlUZ6Wb0CX2-87iAj1CkiC4SR1cjgOMxgw",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "referer": "https://aula.opositatest.com/",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json",
+        "content-type": "application/json"
+      },
+      "body": null
+    },
+    {
+      "timestamp": "2026-02-16T12:29:40.581Z",
+      "method": "GET",
+      "url": "https://admin.opositatest.com/api/v2.0/oppositions/7?embedded=mainCategory,organizations",
+      "headers": {
+        "x-metadata-source": "{\"source\":\"web\",\"version\":\"2026.02.12.134434\"}",
+        "authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpYXQiOjE3NzEyNDQ5NzksImV4cCI6MTc3MTMzMTM3OSwicm9sZXMiOlsiUk9MRV9VU0VSIl0sInVzZXJuYW1lIjoibWFudWVsdHJhZGVyQGdtYWlsLmNvbSIsImlkIjoyMDgzLCJuaWNrbmFtZSI6bnVsbCwicGljdHVyZSI6Imh0dHBzOi8vYXBpLm9wb3NpdGF0ZXN0LmNvbS9hdmF0YXJzL3Blb3BsZS9wZXJzb24tMDM4LnN2ZyJ9.j0sG3UVL8kLKDWfZVf5QEPBuW_1v2gWjuFNfCEhSb4FKG0xFvXXSJfk8wcKfLuFb9htXF2fp96lgNn3Ita5EB-7dOnYNM3O3qQr20K7ndj4Uy2l5jIaqs1MZwQXahuefXdUz-1mtTu8uclayIJ7hrZEBELBVGwZiDIugYqQi9L95ALnoITWvlm_pwAri_zby6SEKUs3lQBzhTU7_wGzhPmlTInHdlAOlovwHPzsSjMoCr4FNHuWAhrrS1AS5amw3qRsP7p7SVNhaSltrHk3MN0m8RVsqI505xQa-Q46UgBRGrcPqeVySYlUZ6Wb0CX2-87iAj1CkiC4SR1cjgOMxgw",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "referer": "https://aula.opositatest.com/",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json",
+        "content-type": "application/json"
+      },
+      "body": null
+    },
+    {
+      "timestamp": "2026-02-16T12:29:40.668Z",
+      "method": "GET",
+      "url": "https://admin.opositatest.com/api/v2.0/oppositions/7?embedded=mainCategory,organizations",
+      "headers": {
+        "x-metadata-source": "{\"source\":\"web\",\"version\":\"2026.02.12.134434\"}",
+        "authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpYXQiOjE3NzEyNDQ5NzksImV4cCI6MTc3MTMzMTM3OSwicm9sZXMiOlsiUk9MRV9VU0VSIl0sInVzZXJuYW1lIjoibWFudWVsdHJhZGVyQGdtYWlsLmNvbSIsImlkIjoyMDgzLCJuaWNrbmFtZSI6bnVsbCwicGljdHVyZSI6Imh0dHBzOi8vYXBpLm9wb3NpdGF0ZXN0LmNvbS9hdmF0YXJzL3Blb3BsZS9wZXJzb24tMDM4LnN2ZyJ9.j0sG3UVL8kLKDWfZVf5QEPBuW_1v2gWjuFNfCEhSb4FKG0xFvXXSJfk8wcKfLuFb9htXF2fp96lgNn3Ita5EB-7dOnYNM3O3qQr20K7ndj4Uy2l5jIaqs1MZwQXahuefXdUz-1mtTu8uclayIJ7hrZEBELBVGwZiDIugYqQi9L95ALnoITWvlm_pwAri_zby6SEKUs3lQBzhTU7_wGzhPmlTInHdlAOlovwHPzsSjMoCr4FNHuWAhrrS1AS5amw3qRsP7p7SVNhaSltrHk3MN0m8RVsqI505xQa-Q46UgBRGrcPqeVySYlUZ6Wb0CX2-87iAj1CkiC4SR1cjgOMxgw",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "referer": "https://aula.opositatest.com/",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json",
+        "content-type": "application/json"
+      },
+      "body": null
+    },
+    {
+      "timestamp": "2026-02-16T12:29:40.849Z",
+      "method": "GET",
+      "url": "https://api.opositatest.com/api/v2.0/students/stats/doing-tests/7?filters%5BdatetimeFrom%5D=2026-02-16T00%3A00%3A00%2B01%3A00&filters%5BdatetimeTo%5D=2026-02-16T13%3A24%3A40%2B01%3A00",
+      "headers": {
+        "x-metadata-source": "{\"source\":\"web\",\"version\":\"2026.02.12.134434\"}",
+        "authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpYXQiOjE3NzEyNDQ5NzksImV4cCI6MTc3MTMzMTM3OSwicm9sZXMiOlsiUk9MRV9VU0VSIl0sInVzZXJuYW1lIjoibWFudWVsdHJhZGVyQGdtYWlsLmNvbSIsImlkIjoyMDgzLCJuaWNrbmFtZSI6bnVsbCwicGljdHVyZSI6Imh0dHBzOi8vYXBpLm9wb3NpdGF0ZXN0LmNvbS9hdmF0YXJzL3Blb3BsZS9wZXJzb24tMDM4LnN2ZyJ9.j0sG3UVL8kLKDWfZVf5QEPBuW_1v2gWjuFNfCEhSb4FKG0xFvXXSJfk8wcKfLuFb9htXF2fp96lgNn3Ita5EB-7dOnYNM3O3qQr20K7ndj4Uy2l5jIaqs1MZwQXahuefXdUz-1mtTu8uclayIJ7hrZEBELBVGwZiDIugYqQi9L95ALnoITWvlm_pwAri_zby6SEKUs3lQBzhTU7_wGzhPmlTInHdlAOlovwHPzsSjMoCr4FNHuWAhrrS1AS5amw3qRsP7p7SVNhaSltrHk3MN0m8RVsqI505xQa-Q46UgBRGrcPqeVySYlUZ6Wb0CX2-87iAj1CkiC4SR1cjgOMxgw",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "referer": "https://aula.opositatest.com/",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json",
+        "content-type": "application/json"
+      },
+      "body": null
+    },
+    {
+      "timestamp": "2026-02-16T12:29:40.853Z",
+      "method": "GET",
+      "url": "https://api.opositatest.com/api/v2.0/tests/saved/stats",
+      "headers": {
+        "x-metadata-source": "{\"source\":\"web\",\"version\":\"2026.02.12.134434\"}",
+        "authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpYXQiOjE3NzEyNDQ5NzksImV4cCI6MTc3MTMzMTM3OSwicm9sZXMiOlsiUk9MRV9VU0VSIl0sInVzZXJuYW1lIjoibWFudWVsdHJhZGVyQGdtYWlsLmNvbSIsImlkIjoyMDgzLCJuaWNrbmFtZSI6bnVsbCwicGljdHVyZSI6Imh0dHBzOi8vYXBpLm9wb3NpdGF0ZXN0LmNvbS9hdmF0YXJzL3Blb3BsZS9wZXJzb24tMDM4LnN2ZyJ9.j0sG3UVL8kLKDWfZVf5QEPBuW_1v2gWjuFNfCEhSb4FKG0xFvXXSJfk8wcKfLuFb9htXF2fp96lgNn3Ita5EB-7dOnYNM3O3qQr20K7ndj4Uy2l5jIaqs1MZwQXahuefXdUz-1mtTu8uclayIJ7hrZEBELBVGwZiDIugYqQi9L95ALnoITWvlm_pwAri_zby6SEKUs3lQBzhTU7_wGzhPmlTInHdlAOlovwHPzsSjMoCr4FNHuWAhrrS1AS5amw3qRsP7p7SVNhaSltrHk3MN0m8RVsqI505xQa-Q46UgBRGrcPqeVySYlUZ6Wb0CX2-87iAj1CkiC4SR1cjgOMxgw",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "referer": "https://aula.opositatest.com/",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json",
+        "content-type": "application/json"
+      },
+      "body": null
+    },
+    {
+      "timestamp": "2026-02-16T12:29:40.854Z",
+      "method": "GET",
+      "url": "https://admin.opositatest.com/api/v2.0/oppositions/7?embedded=mainCategory,organizations",
+      "headers": {
+        "x-metadata-source": "{\"source\":\"web\",\"version\":\"2026.02.12.134434\"}",
+        "authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpYXQiOjE3NzEyNDQ5NzksImV4cCI6MTc3MTMzMTM3OSwicm9sZXMiOlsiUk9MRV9VU0VSIl0sInVzZXJuYW1lIjoibWFudWVsdHJhZGVyQGdtYWlsLmNvbSIsImlkIjoyMDgzLCJuaWNrbmFtZSI6bnVsbCwicGljdHVyZSI6Imh0dHBzOi8vYXBpLm9wb3NpdGF0ZXN0LmNvbS9hdmF0YXJzL3Blb3BsZS9wZXJzb24tMDM4LnN2ZyJ9.j0sG3UVL8kLKDWfZVf5QEPBuW_1v2gWjuFNfCEhSb4FKG0xFvXXSJfk8wcKfLuFb9htXF2fp96lgNn3Ita5EB-7dOnYNM3O3qQr20K7ndj4Uy2l5jIaqs1MZwQXahuefXdUz-1mtTu8uclayIJ7hrZEBELBVGwZiDIugYqQi9L95ALnoITWvlm_pwAri_zby6SEKUs3lQBzhTU7_wGzhPmlTInHdlAOlovwHPzsSjMoCr4FNHuWAhrrS1AS5amw3qRsP7p7SVNhaSltrHk3MN0m8RVsqI505xQa-Q46UgBRGrcPqeVySYlUZ6Wb0CX2-87iAj1CkiC4SR1cjgOMxgw",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "referer": "https://aula.opositatest.com/",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json",
+        "content-type": "application/json"
+      },
+      "body": null
+    },
+    {
+      "timestamp": "2026-02-16T12:29:40.951Z",
+      "method": "GET",
+      "url": "https://subscriptions.opositatest.com/api/v2.0/subscriptions/has-subscription?filters%5Bactive%5D=true&filters%5BresourceTypes%5D%5B%5D=course",
+      "headers": {
+        "x-metadata-source": "{\"source\":\"web\",\"version\":\"2026.02.12.134434\"}",
+        "authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpYXQiOjE3NzEyNDQ5NzksImV4cCI6MTc3MTMzMTM3OSwicm9sZXMiOlsiUk9MRV9VU0VSIl0sInVzZXJuYW1lIjoibWFudWVsdHJhZGVyQGdtYWlsLmNvbSIsImlkIjoyMDgzLCJuaWNrbmFtZSI6bnVsbCwicGljdHVyZSI6Imh0dHBzOi8vYXBpLm9wb3NpdGF0ZXN0LmNvbS9hdmF0YXJzL3Blb3BsZS9wZXJzb24tMDM4LnN2ZyJ9.j0sG3UVL8kLKDWfZVf5QEPBuW_1v2gWjuFNfCEhSb4FKG0xFvXXSJfk8wcKfLuFb9htXF2fp96lgNn3Ita5EB-7dOnYNM3O3qQr20K7ndj4Uy2l5jIaqs1MZwQXahuefXdUz-1mtTu8uclayIJ7hrZEBELBVGwZiDIugYqQi9L95ALnoITWvlm_pwAri_zby6SEKUs3lQBzhTU7_wGzhPmlTInHdlAOlovwHPzsSjMoCr4FNHuWAhrrS1AS5amw3qRsP7p7SVNhaSltrHk3MN0m8RVsqI505xQa-Q46UgBRGrcPqeVySYlUZ6Wb0CX2-87iAj1CkiC4SR1cjgOMxgw",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "referer": "https://aula.opositatest.com/",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json",
+        "content-type": "application/json"
+      },
+      "body": null
+    },
+    {
+      "timestamp": "2026-02-16T12:29:40.951Z",
+      "method": "GET",
+      "url": "https://api.opositatest.com/api/v2.0/notifications/stats",
+      "headers": {
+        "x-metadata-source": "{\"source\":\"web\",\"version\":\"2026.02.12.134434\"}",
+        "authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpYXQiOjE3NzEyNDQ5NzksImV4cCI6MTc3MTMzMTM3OSwicm9sZXMiOlsiUk9MRV9VU0VSIl0sInVzZXJuYW1lIjoibWFudWVsdHJhZGVyQGdtYWlsLmNvbSIsImlkIjoyMDgzLCJuaWNrbmFtZSI6bnVsbCwicGljdHVyZSI6Imh0dHBzOi8vYXBpLm9wb3NpdGF0ZXN0LmNvbS9hdmF0YXJzL3Blb3BsZS9wZXJzb24tMDM4LnN2ZyJ9.j0sG3UVL8kLKDWfZVf5QEPBuW_1v2gWjuFNfCEhSb4FKG0xFvXXSJfk8wcKfLuFb9htXF2fp96lgNn3Ita5EB-7dOnYNM3O3qQr20K7ndj4Uy2l5jIaqs1MZwQXahuefXdUz-1mtTu8uclayIJ7hrZEBELBVGwZiDIugYqQi9L95ALnoITWvlm_pwAri_zby6SEKUs3lQBzhTU7_wGzhPmlTInHdlAOlovwHPzsSjMoCr4FNHuWAhrrS1AS5amw3qRsP7p7SVNhaSltrHk3MN0m8RVsqI505xQa-Q46UgBRGrcPqeVySYlUZ6Wb0CX2-87iAj1CkiC4SR1cjgOMxgw",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "referer": "https://aula.opositatest.com/",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json",
+        "content-type": "application/json"
+      },
+      "body": null
+    },
+    {
+      "timestamp": "2026-02-16T12:29:40.951Z",
+      "method": "GET",
+      "url": "https://admin.opositatest.com/api/v2.0/oppositions/7/contents",
+      "headers": {
+        "x-metadata-source": "{\"source\":\"web\",\"version\":\"2026.02.12.134434\"}",
+        "authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpYXQiOjE3NzEyNDQ5NzksImV4cCI6MTc3MTMzMTM3OSwicm9sZXMiOlsiUk9MRV9VU0VSIl0sInVzZXJuYW1lIjoibWFudWVsdHJhZGVyQGdtYWlsLmNvbSIsImlkIjoyMDgzLCJuaWNrbmFtZSI6bnVsbCwicGljdHVyZSI6Imh0dHBzOi8vYXBpLm9wb3NpdGF0ZXN0LmNvbS9hdmF0YXJzL3Blb3BsZS9wZXJzb24tMDM4LnN2ZyJ9.j0sG3UVL8kLKDWfZVf5QEPBuW_1v2gWjuFNfCEhSb4FKG0xFvXXSJfk8wcKfLuFb9htXF2fp96lgNn3Ita5EB-7dOnYNM3O3qQr20K7ndj4Uy2l5jIaqs1MZwQXahuefXdUz-1mtTu8uclayIJ7hrZEBELBVGwZiDIugYqQi9L95ALnoITWvlm_pwAri_zby6SEKUs3lQBzhTU7_wGzhPmlTInHdlAOlovwHPzsSjMoCr4FNHuWAhrrS1AS5amw3qRsP7p7SVNhaSltrHk3MN0m8RVsqI505xQa-Q46UgBRGrcPqeVySYlUZ6Wb0CX2-87iAj1CkiC4SR1cjgOMxgw",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "referer": "https://aula.opositatest.com/",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json",
+        "content-type": "application/json"
+      },
+      "body": null
+    },
+    {
+      "timestamp": "2026-02-16T12:29:40.951Z",
+      "method": "GET",
+      "url": "https://api.opositatest.com/api/v2.0/exam-types?filters[opposition]=7",
+      "headers": {
+        "x-metadata-source": "{\"source\":\"web\",\"version\":\"2026.02.12.134434\"}",
+        "authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpYXQiOjE3NzEyNDQ5NzksImV4cCI6MTc3MTMzMTM3OSwicm9sZXMiOlsiUk9MRV9VU0VSIl0sInVzZXJuYW1lIjoibWFudWVsdHJhZGVyQGdtYWlsLmNvbSIsImlkIjoyMDgzLCJuaWNrbmFtZSI6bnVsbCwicGljdHVyZSI6Imh0dHBzOi8vYXBpLm9wb3NpdGF0ZXN0LmNvbS9hdmF0YXJzL3Blb3BsZS9wZXJzb24tMDM4LnN2ZyJ9.j0sG3UVL8kLKDWfZVf5QEPBuW_1v2gWjuFNfCEhSb4FKG0xFvXXSJfk8wcKfLuFb9htXF2fp96lgNn3Ita5EB-7dOnYNM3O3qQr20K7ndj4Uy2l5jIaqs1MZwQXahuefXdUz-1mtTu8uclayIJ7hrZEBELBVGwZiDIugYqQi9L95ALnoITWvlm_pwAri_zby6SEKUs3lQBzhTU7_wGzhPmlTInHdlAOlovwHPzsSjMoCr4FNHuWAhrrS1AS5amw3qRsP7p7SVNhaSltrHk3MN0m8RVsqI505xQa-Q46UgBRGrcPqeVySYlUZ6Wb0CX2-87iAj1CkiC4SR1cjgOMxgw",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "referer": "https://aula.opositatest.com/",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json",
+        "content-type": "application/json"
+      },
+      "body": null
+    },
+    {
+      "timestamp": "2026-02-16T12:29:40.951Z",
+      "method": "GET",
+      "url": "https://subscriptions.opositatest.com/api/v2.0/subscriptions?filters%5Bactive%5D=true",
+      "headers": {
+        "x-metadata-source": "{\"source\":\"web\",\"version\":\"2026.02.12.134434\"}",
+        "authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpYXQiOjE3NzEyNDQ5NzksImV4cCI6MTc3MTMzMTM3OSwicm9sZXMiOlsiUk9MRV9VU0VSIl0sInVzZXJuYW1lIjoibWFudWVsdHJhZGVyQGdtYWlsLmNvbSIsImlkIjoyMDgzLCJuaWNrbmFtZSI6bnVsbCwicGljdHVyZSI6Imh0dHBzOi8vYXBpLm9wb3NpdGF0ZXN0LmNvbS9hdmF0YXJzL3Blb3BsZS9wZXJzb24tMDM4LnN2ZyJ9.j0sG3UVL8kLKDWfZVf5QEPBuW_1v2gWjuFNfCEhSb4FKG0xFvXXSJfk8wcKfLuFb9htXF2fp96lgNn3Ita5EB-7dOnYNM3O3qQr20K7ndj4Uy2l5jIaqs1MZwQXahuefXdUz-1mtTu8uclayIJ7hrZEBELBVGwZiDIugYqQi9L95ALnoITWvlm_pwAri_zby6SEKUs3lQBzhTU7_wGzhPmlTInHdlAOlovwHPzsSjMoCr4FNHuWAhrrS1AS5amw3qRsP7p7SVNhaSltrHk3MN0m8RVsqI505xQa-Q46UgBRGrcPqeVySYlUZ6Wb0CX2-87iAj1CkiC4SR1cjgOMxgw",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "referer": "https://aula.opositatest.com/",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json",
+        "content-type": "application/json"
+      },
+      "body": null
+    },
+    {
+      "timestamp": "2026-02-16T12:29:40.951Z",
+      "method": "GET",
+      "url": "https://api.opositatest.com/api/v2.0/championships/participant/my-championships",
+      "headers": {
+        "x-metadata-source": "{\"source\":\"web\",\"version\":\"2026.02.12.134434\"}",
+        "authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpYXQiOjE3NzEyNDQ5NzksImV4cCI6MTc3MTMzMTM3OSwicm9sZXMiOlsiUk9MRV9VU0VSIl0sInVzZXJuYW1lIjoibWFudWVsdHJhZGVyQGdtYWlsLmNvbSIsImlkIjoyMDgzLCJuaWNrbmFtZSI6bnVsbCwicGljdHVyZSI6Imh0dHBzOi8vYXBpLm9wb3NpdGF0ZXN0LmNvbS9hdmF0YXJzL3Blb3BsZS9wZXJzb24tMDM4LnN2ZyJ9.j0sG3UVL8kLKDWfZVf5QEPBuW_1v2gWjuFNfCEhSb4FKG0xFvXXSJfk8wcKfLuFb9htXF2fp96lgNn3Ita5EB-7dOnYNM3O3qQr20K7ndj4Uy2l5jIaqs1MZwQXahuefXdUz-1mtTu8uclayIJ7hrZEBELBVGwZiDIugYqQi9L95ALnoITWvlm_pwAri_zby6SEKUs3lQBzhTU7_wGzhPmlTInHdlAOlovwHPzsSjMoCr4FNHuWAhrrS1AS5amw3qRsP7p7SVNhaSltrHk3MN0m8RVsqI505xQa-Q46UgBRGrcPqeVySYlUZ6Wb0CX2-87iAj1CkiC4SR1cjgOMxgw",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "referer": "https://aula.opositatest.com/",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json",
+        "content-type": "application/json"
+      },
+      "body": null
+    },
+    {
+      "timestamp": "2026-02-16T12:29:40.951Z",
+      "method": "GET",
+      "url": "https://api.opositatest.com/api/v2.0/tests/saved?filters%5Boppositions%5D=7&pageSize=1",
+      "headers": {
+        "x-metadata-source": "{\"source\":\"web\",\"version\":\"2026.02.12.134434\"}",
+        "authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpYXQiOjE3NzEyNDQ5NzksImV4cCI6MTc3MTMzMTM3OSwicm9sZXMiOlsiUk9MRV9VU0VSIl0sInVzZXJuYW1lIjoibWFudWVsdHJhZGVyQGdtYWlsLmNvbSIsImlkIjoyMDgzLCJuaWNrbmFtZSI6bnVsbCwicGljdHVyZSI6Imh0dHBzOi8vYXBpLm9wb3NpdGF0ZXN0LmNvbS9hdmF0YXJzL3Blb3BsZS9wZXJzb24tMDM4LnN2ZyJ9.j0sG3UVL8kLKDWfZVf5QEPBuW_1v2gWjuFNfCEhSb4FKG0xFvXXSJfk8wcKfLuFb9htXF2fp96lgNn3Ita5EB-7dOnYNM3O3qQr20K7ndj4Uy2l5jIaqs1MZwQXahuefXdUz-1mtTu8uclayIJ7hrZEBELBVGwZiDIugYqQi9L95ALnoITWvlm_pwAri_zby6SEKUs3lQBzhTU7_wGzhPmlTInHdlAOlovwHPzsSjMoCr4FNHuWAhrrS1AS5amw3qRsP7p7SVNhaSltrHk3MN0m8RVsqI505xQa-Q46UgBRGrcPqeVySYlUZ6Wb0CX2-87iAj1CkiC4SR1cjgOMxgw",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "referer": "https://aula.opositatest.com/",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json",
+        "content-type": "application/json"
+      },
+      "body": null
+    },
+    {
+      "timestamp": "2026-02-16T12:29:40.951Z",
+      "method": "GET",
+      "url": "https://subscriptions.opositatest.com/api/v2.0/subscriptions/is-subscribed-to-resource?filters%5BexternalResourceId%5D=7&filters%5BresourceType%5D=opposition",
+      "headers": {
+        "x-metadata-source": "{\"source\":\"web\",\"version\":\"2026.02.12.134434\"}",
+        "authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpYXQiOjE3NzEyNDQ5NzksImV4cCI6MTc3MTMzMTM3OSwicm9sZXMiOlsiUk9MRV9VU0VSIl0sInVzZXJuYW1lIjoibWFudWVsdHJhZGVyQGdtYWlsLmNvbSIsImlkIjoyMDgzLCJuaWNrbmFtZSI6bnVsbCwicGljdHVyZSI6Imh0dHBzOi8vYXBpLm9wb3NpdGF0ZXN0LmNvbS9hdmF0YXJzL3Blb3BsZS9wZXJzb24tMDM4LnN2ZyJ9.j0sG3UVL8kLKDWfZVf5QEPBuW_1v2gWjuFNfCEhSb4FKG0xFvXXSJfk8wcKfLuFb9htXF2fp96lgNn3Ita5EB-7dOnYNM3O3qQr20K7ndj4Uy2l5jIaqs1MZwQXahuefXdUz-1mtTu8uclayIJ7hrZEBELBVGwZiDIugYqQi9L95ALnoITWvlm_pwAri_zby6SEKUs3lQBzhTU7_wGzhPmlTInHdlAOlovwHPzsSjMoCr4FNHuWAhrrS1AS5amw3qRsP7p7SVNhaSltrHk3MN0m8RVsqI505xQa-Q46UgBRGrcPqeVySYlUZ6Wb0CX2-87iAj1CkiC4SR1cjgOMxgw",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "referer": "https://aula.opositatest.com/",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json",
+        "content-type": "application/json"
+      },
+      "body": null
+    },
+    {
+      "timestamp": "2026-02-16T12:29:40.952Z",
+      "method": "GET",
+      "url": "https://api.opositatest.com/api/v2.0/responses/stats?filters%5Bopposition%5D=7",
+      "headers": {
+        "x-metadata-source": "{\"source\":\"web\",\"version\":\"2026.02.12.134434\"}",
+        "authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpYXQiOjE3NzEyNDQ5NzksImV4cCI6MTc3MTMzMTM3OSwicm9sZXMiOlsiUk9MRV9VU0VSIl0sInVzZXJuYW1lIjoibWFudWVsdHJhZGVyQGdtYWlsLmNvbSIsImlkIjoyMDgzLCJuaWNrbmFtZSI6bnVsbCwicGljdHVyZSI6Imh0dHBzOi8vYXBpLm9wb3NpdGF0ZXN0LmNvbS9hdmF0YXJzL3Blb3BsZS9wZXJzb24tMDM4LnN2ZyJ9.j0sG3UVL8kLKDWfZVf5QEPBuW_1v2gWjuFNfCEhSb4FKG0xFvXXSJfk8wcKfLuFb9htXF2fp96lgNn3Ita5EB-7dOnYNM3O3qQr20K7ndj4Uy2l5jIaqs1MZwQXahuefXdUz-1mtTu8uclayIJ7hrZEBELBVGwZiDIugYqQi9L95ALnoITWvlm_pwAri_zby6SEKUs3lQBzhTU7_wGzhPmlTInHdlAOlovwHPzsSjMoCr4FNHuWAhrrS1AS5amw3qRsP7p7SVNhaSltrHk3MN0m8RVsqI505xQa-Q46UgBRGrcPqeVySYlUZ6Wb0CX2-87iAj1CkiC4SR1cjgOMxgw",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "referer": "https://aula.opositatest.com/",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json",
+        "content-type": "application/json"
+      },
+      "body": null
+    },
+    {
+      "timestamp": "2026-02-16T12:29:40.952Z",
+      "method": "GET",
+      "url": "https://subscriptions.opositatest.com/api/v2.0/subscriptions/is-subscribed-to-resource?filters%5BexternalResourceId%5D=7&filters%5BresourceType%5D=opposition",
+      "headers": {
+        "x-metadata-source": "{\"source\":\"web\",\"version\":\"2026.02.12.134434\"}",
+        "authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpYXQiOjE3NzEyNDQ5NzksImV4cCI6MTc3MTMzMTM3OSwicm9sZXMiOlsiUk9MRV9VU0VSIl0sInVzZXJuYW1lIjoibWFudWVsdHJhZGVyQGdtYWlsLmNvbSIsImlkIjoyMDgzLCJuaWNrbmFtZSI6bnVsbCwicGljdHVyZSI6Imh0dHBzOi8vYXBpLm9wb3NpdGF0ZXN0LmNvbS9hdmF0YXJzL3Blb3BsZS9wZXJzb24tMDM4LnN2ZyJ9.j0sG3UVL8kLKDWfZVf5QEPBuW_1v2gWjuFNfCEhSb4FKG0xFvXXSJfk8wcKfLuFb9htXF2fp96lgNn3Ita5EB-7dOnYNM3O3qQr20K7ndj4Uy2l5jIaqs1MZwQXahuefXdUz-1mtTu8uclayIJ7hrZEBELBVGwZiDIugYqQi9L95ALnoITWvlm_pwAri_zby6SEKUs3lQBzhTU7_wGzhPmlTInHdlAOlovwHPzsSjMoCr4FNHuWAhrrS1AS5amw3qRsP7p7SVNhaSltrHk3MN0m8RVsqI505xQa-Q46UgBRGrcPqeVySYlUZ6Wb0CX2-87iAj1CkiC4SR1cjgOMxgw",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "referer": "https://aula.opositatest.com/",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json",
+        "content-type": "application/json"
+      },
+      "body": null
+    },
+    {
+      "timestamp": "2026-02-16T12:29:40.952Z",
+      "method": "GET",
+      "url": "https://www.opositatest.com/ecommerce/api/v2.0/user-basic-ecommerce-info",
+      "headers": {
+        "x-metadata-source": "{\"source\":\"web\",\"version\":\"2026.02.12.134434\"}",
+        "authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpYXQiOjE3NzEyNDQ5NzksImV4cCI6MTc3MTMzMTM3OSwicm9sZXMiOlsiUk9MRV9VU0VSIl0sInVzZXJuYW1lIjoibWFudWVsdHJhZGVyQGdtYWlsLmNvbSIsImlkIjoyMDgzLCJuaWNrbmFtZSI6bnVsbCwicGljdHVyZSI6Imh0dHBzOi8vYXBpLm9wb3NpdGF0ZXN0LmNvbS9hdmF0YXJzL3Blb3BsZS9wZXJzb24tMDM4LnN2ZyJ9.j0sG3UVL8kLKDWfZVf5QEPBuW_1v2gWjuFNfCEhSb4FKG0xFvXXSJfk8wcKfLuFb9htXF2fp96lgNn3Ita5EB-7dOnYNM3O3qQr20K7ndj4Uy2l5jIaqs1MZwQXahuefXdUz-1mtTu8uclayIJ7hrZEBELBVGwZiDIugYqQi9L95ALnoITWvlm_pwAri_zby6SEKUs3lQBzhTU7_wGzhPmlTInHdlAOlovwHPzsSjMoCr4FNHuWAhrrS1AS5amw3qRsP7p7SVNhaSltrHk3MN0m8RVsqI505xQa-Q46UgBRGrcPqeVySYlUZ6Wb0CX2-87iAj1CkiC4SR1cjgOMxgw",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "referer": "https://aula.opositatest.com/",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json",
+        "content-type": "application/json"
+      },
+      "body": null
+    },
+    {
+      "timestamp": "2026-02-16T12:29:40.952Z",
+      "method": "GET",
+      "url": "https://admin.opositatest.com/api/v2.0/opposition-categories?embedded=oppositions&pageSize=50&filters%5Bstates%5D%5B%5D=DISCONTINUED&filters%5Bstates%5D%5B%5D=ACTIVE",
+      "headers": {
+        "x-metadata-source": "{\"source\":\"web\",\"version\":\"2026.02.12.134434\"}",
+        "authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpYXQiOjE3NzEyNDQ5NzksImV4cCI6MTc3MTMzMTM3OSwicm9sZXMiOlsiUk9MRV9VU0VSIl0sInVzZXJuYW1lIjoibWFudWVsdHJhZGVyQGdtYWlsLmNvbSIsImlkIjoyMDgzLCJuaWNrbmFtZSI6bnVsbCwicGljdHVyZSI6Imh0dHBzOi8vYXBpLm9wb3NpdGF0ZXN0LmNvbS9hdmF0YXJzL3Blb3BsZS9wZXJzb24tMDM4LnN2ZyJ9.j0sG3UVL8kLKDWfZVf5QEPBuW_1v2gWjuFNfCEhSb4FKG0xFvXXSJfk8wcKfLuFb9htXF2fp96lgNn3Ita5EB-7dOnYNM3O3qQr20K7ndj4Uy2l5jIaqs1MZwQXahuefXdUz-1mtTu8uclayIJ7hrZEBELBVGwZiDIugYqQi9L95ALnoITWvlm_pwAri_zby6SEKUs3lQBzhTU7_wGzhPmlTInHdlAOlovwHPzsSjMoCr4FNHuWAhrrS1AS5amw3qRsP7p7SVNhaSltrHk3MN0m8RVsqI505xQa-Q46UgBRGrcPqeVySYlUZ6Wb0CX2-87iAj1CkiC4SR1cjgOMxgw",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "referer": "https://aula.opositatest.com/",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json",
+        "content-type": "application/json"
+      },
+      "body": null
+    },
+    {
+      "timestamp": "2026-02-16T12:29:40.952Z",
+      "method": "GET",
+      "url": "https://admin.opositatest.com/api/v2.0/oppositions?embedded=mainCategory&page=1&pageSize=250&filters%5BoppositionStates%5D%5B%5D=ACTIVE&filters%5BoppositionStates%5D%5B%5D=DISCONTINUED",
+      "headers": {
+        "x-metadata-source": "{\"source\":\"web\",\"version\":\"2026.02.12.134434\"}",
+        "authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpYXQiOjE3NzEyNDQ5NzksImV4cCI6MTc3MTMzMTM3OSwicm9sZXMiOlsiUk9MRV9VU0VSIl0sInVzZXJuYW1lIjoibWFudWVsdHJhZGVyQGdtYWlsLmNvbSIsImlkIjoyMDgzLCJuaWNrbmFtZSI6bnVsbCwicGljdHVyZSI6Imh0dHBzOi8vYXBpLm9wb3NpdGF0ZXN0LmNvbS9hdmF0YXJzL3Blb3BsZS9wZXJzb24tMDM4LnN2ZyJ9.j0sG3UVL8kLKDWfZVf5QEPBuW_1v2gWjuFNfCEhSb4FKG0xFvXXSJfk8wcKfLuFb9htXF2fp96lgNn3Ita5EB-7dOnYNM3O3qQr20K7ndj4Uy2l5jIaqs1MZwQXahuefXdUz-1mtTu8uclayIJ7hrZEBELBVGwZiDIugYqQi9L95ALnoITWvlm_pwAri_zby6SEKUs3lQBzhTU7_wGzhPmlTInHdlAOlovwHPzsSjMoCr4FNHuWAhrrS1AS5amw3qRsP7p7SVNhaSltrHk3MN0m8RVsqI505xQa-Q46UgBRGrcPqeVySYlUZ6Wb0CX2-87iAj1CkiC4SR1cjgOMxgw",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "referer": "https://aula.opositatest.com/",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json",
+        "content-type": "application/json"
+      },
+      "body": null
+    },
+    {
+      "timestamp": "2026-02-16T12:29:40.959Z",
+      "method": "GET",
+      "url": "https://api.opositatest.com/avatars/people/person-038.svg",
+      "headers": {
+        "sec-ch-ua-platform": "\"Linux\"",
+        "referer": "https://aula.opositatest.com/",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0"
+      },
+      "body": null
+    },
+    {
+      "timestamp": "2026-02-16T12:29:41.192Z",
+      "method": "GET",
+      "url": "https://admin.opositatest.com/api/v2.0/exams?filters%5Bopposition%5D=7&filters%5Btype%5D=previousCall&page=1",
+      "headers": {
+        "x-metadata-source": "{\"source\":\"web\",\"version\":\"2026.02.12.134434\"}",
+        "authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpYXQiOjE3NzEyNDQ5NzksImV4cCI6MTc3MTMzMTM3OSwicm9sZXMiOlsiUk9MRV9VU0VSIl0sInVzZXJuYW1lIjoibWFudWVsdHJhZGVyQGdtYWlsLmNvbSIsImlkIjoyMDgzLCJuaWNrbmFtZSI6bnVsbCwicGljdHVyZSI6Imh0dHBzOi8vYXBpLm9wb3NpdGF0ZXN0LmNvbS9hdmF0YXJzL3Blb3BsZS9wZXJzb24tMDM4LnN2ZyJ9.j0sG3UVL8kLKDWfZVf5QEPBuW_1v2gWjuFNfCEhSb4FKG0xFvXXSJfk8wcKfLuFb9htXF2fp96lgNn3Ita5EB-7dOnYNM3O3qQr20K7ndj4Uy2l5jIaqs1MZwQXahuefXdUz-1mtTu8uclayIJ7hrZEBELBVGwZiDIugYqQi9L95ALnoITWvlm_pwAri_zby6SEKUs3lQBzhTU7_wGzhPmlTInHdlAOlovwHPzsSjMoCr4FNHuWAhrrS1AS5amw3qRsP7p7SVNhaSltrHk3MN0m8RVsqI505xQa-Q46UgBRGrcPqeVySYlUZ6Wb0CX2-87iAj1CkiC4SR1cjgOMxgw",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "referer": "https://aula.opositatest.com/",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json",
+        "content-type": "application/json"
+      },
+      "body": null
+    },
+    {
+      "timestamp": "2026-02-16T12:29:42.259Z",
+      "method": "POST",
+      "url": "https://region1.analytics.google.com/g/collect?v=2&tid=G-GNC9Q3YH5E&gtm=45g92e62b1v880975082z8844545255za20kzb844545255zd844545255&_p=1771244980529&gcs=G111&gcd=13r3rPr2r5l1&npa=0&dma_cps=syphamo&dma=1&gdid=dY2E1Nz&cid=1276091076.1766661701&ecid=1621650237&ul=es-es&sr=1280x720&ir=1&ur=ES-MD&_uip=%3A%3A&uaa=x86&uab=64&uafvl=Google%2520Chrome%3B143.0.7499.192%7CChromium%3B143.0.7499.192%7CNot%2520A(Brand%3B24.0.0.0&uamb=0&uam=&uap=Linux&uapv=6.18.5&uaw=0&are=1&frm=0&pscdl=noapi&_eu=EAAAAGQ&_s=1&tag_exp=103116026~103200004~104527906~104528501~104684208~104684211~115938466~115938468~116988315&dt=classroom%2Ftest_configurator&uid=2083&sid=1771230944&sct=6&seg=1&dl=https%3A%2F%2Faula.opositatest.com%2Fclassroom%2Ftest-configurator%3FmainContentId%3D7&dr=https%3A%2F%2Fwww.opositatest.com%2F&en=page_view&ep.event_category=test_configurator&ep.page_name=classroom%2Ftest_configurator&ep.user_logged=yes&ep.active_subscription=yes&ep.version=2026.02.12.134434&epn.event_user_id=2083&up.user_active_subscription=yes&upn.userId=2083&tfd=2039",
+      "headers": {
+        "sec-ch-ua-platform": "\"Linux\"",
+        "referer": "https://aula.opositatest.com/",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0"
+      },
+      "body": null
+    },
+    {
+      "timestamp": "2026-02-16T12:29:42.312Z",
+      "method": "GET",
+      "url": "https://api.opositatest.com/api/v2.0/me",
+      "headers": {
+        "sec-ch-ua-platform": "\"Linux\"",
+        "authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpYXQiOjE3NzEyNDQ5NzksImV4cCI6MTc3MTMzMTM3OSwicm9sZXMiOlsiUk9MRV9VU0VSIl0sInVzZXJuYW1lIjoibWFudWVsdHJhZGVyQGdtYWlsLmNvbSIsImlkIjoyMDgzLCJuaWNrbmFtZSI6bnVsbCwicGljdHVyZSI6Imh0dHBzOi8vYXBpLm9wb3NpdGF0ZXN0LmNvbS9hdmF0YXJzL3Blb3BsZS9wZXJzb24tMDM4LnN2ZyJ9.j0sG3UVL8kLKDWfZVf5QEPBuW_1v2gWjuFNfCEhSb4FKG0xFvXXSJfk8wcKfLuFb9htXF2fp96lgNn3Ita5EB-7dOnYNM3O3qQr20K7ndj4Uy2l5jIaqs1MZwQXahuefXdUz-1mtTu8uclayIJ7hrZEBELBVGwZiDIugYqQi9L95ALnoITWvlm_pwAri_zby6SEKUs3lQBzhTU7_wGzhPmlTInHdlAOlovwHPzsSjMoCr4FNHuWAhrrS1AS5amw3qRsP7p7SVNhaSltrHk3MN0m8RVsqI505xQa-Q46UgBRGrcPqeVySYlUZ6Wb0CX2-87iAj1CkiC4SR1cjgOMxgw",
+        "referer": "https://aula.opositatest.com/",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json",
+        "content-type": "application/json"
+      },
+      "body": null
+    },
+    {
+      "timestamp": "2026-02-16T12:29:42.335Z",
+      "method": "GET",
+      "url": "https://admin.opositatest.com/api/v2.0/oppositions/7?embedded=mainCategory,organizations",
+      "headers": {
+        "x-metadata-source": "{\"source\":\"web\",\"version\":\"2026.02.12.134434\"}",
+        "authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpYXQiOjE3NzEyNDQ5NzksImV4cCI6MTc3MTMzMTM3OSwicm9sZXMiOlsiUk9MRV9VU0VSIl0sInVzZXJuYW1lIjoibWFudWVsdHJhZGVyQGdtYWlsLmNvbSIsImlkIjoyMDgzLCJuaWNrbmFtZSI6bnVsbCwicGljdHVyZSI6Imh0dHBzOi8vYXBpLm9wb3NpdGF0ZXN0LmNvbS9hdmF0YXJzL3Blb3BsZS9wZXJzb24tMDM4LnN2ZyJ9.j0sG3UVL8kLKDWfZVf5QEPBuW_1v2gWjuFNfCEhSb4FKG0xFvXXSJfk8wcKfLuFb9htXF2fp96lgNn3Ita5EB-7dOnYNM3O3qQr20K7ndj4Uy2l5jIaqs1MZwQXahuefXdUz-1mtTu8uclayIJ7hrZEBELBVGwZiDIugYqQi9L95ALnoITWvlm_pwAri_zby6SEKUs3lQBzhTU7_wGzhPmlTInHdlAOlovwHPzsSjMoCr4FNHuWAhrrS1AS5amw3qRsP7p7SVNhaSltrHk3MN0m8RVsqI505xQa-Q46UgBRGrcPqeVySYlUZ6Wb0CX2-87iAj1CkiC4SR1cjgOMxgw",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "referer": "https://aula.opositatest.com/",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json",
+        "content-type": "application/json"
+      },
+      "body": null
+    },
+    {
+      "timestamp": "2026-02-16T12:29:42.338Z",
+      "method": "GET",
+      "url": "https://subscriptions.opositatest.com/api/v2.0/subscriptions/has-subscription?filters%5Bactive%5D=true&filters%5BresourceTypes%5D%5B%5D=opposition&filters%5BresourceTypes%5D%5B%5D=course&filters%5BresourceTypes%5D%5B%5D=download&filters%5BresourceTypes%5D%5B%5D=exam",
+      "headers": {
+        "x-metadata-source": "{\"source\":\"web\",\"version\":\"2026.02.12.134434\"}",
+        "authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpYXQiOjE3NzEyNDQ5NzksImV4cCI6MTc3MTMzMTM3OSwicm9sZXMiOlsiUk9MRV9VU0VSIl0sInVzZXJuYW1lIjoibWFudWVsdHJhZGVyQGdtYWlsLmNvbSIsImlkIjoyMDgzLCJuaWNrbmFtZSI6bnVsbCwicGljdHVyZSI6Imh0dHBzOi8vYXBpLm9wb3NpdGF0ZXN0LmNvbS9hdmF0YXJzL3Blb3BsZS9wZXJzb24tMDM4LnN2ZyJ9.j0sG3UVL8kLKDWfZVf5QEPBuW_1v2gWjuFNfCEhSb4FKG0xFvXXSJfk8wcKfLuFb9htXF2fp96lgNn3Ita5EB-7dOnYNM3O3qQr20K7ndj4Uy2l5jIaqs1MZwQXahuefXdUz-1mtTu8uclayIJ7hrZEBELBVGwZiDIugYqQi9L95ALnoITWvlm_pwAri_zby6SEKUs3lQBzhTU7_wGzhPmlTInHdlAOlovwHPzsSjMoCr4FNHuWAhrrS1AS5amw3qRsP7p7SVNhaSltrHk3MN0m8RVsqI505xQa-Q46UgBRGrcPqeVySYlUZ6Wb0CX2-87iAj1CkiC4SR1cjgOMxgw",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "referer": "https://aula.opositatest.com/",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json",
+        "content-type": "application/json"
+      },
+      "body": null
+    },
+    {
+      "timestamp": "2026-02-16T12:29:42.636Z",
+      "method": "GET",
+      "url": "https://api.opositatest.com/api/v2.0/students/stats/doing-tests/7?filters%5BdatetimeFrom%5D=2026-02-16T00%3A00%3A00%2B01%3A00&filters%5BdatetimeTo%5D=2026-02-16T13%3A24%3A42%2B01%3A00",
+      "headers": {
+        "x-metadata-source": "{\"source\":\"web\",\"version\":\"2026.02.12.134434\"}",
+        "authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpYXQiOjE3NzEyNDQ5NzksImV4cCI6MTc3MTMzMTM3OSwicm9sZXMiOlsiUk9MRV9VU0VSIl0sInVzZXJuYW1lIjoibWFudWVsdHJhZGVyQGdtYWlsLmNvbSIsImlkIjoyMDgzLCJuaWNrbmFtZSI6bnVsbCwicGljdHVyZSI6Imh0dHBzOi8vYXBpLm9wb3NpdGF0ZXN0LmNvbS9hdmF0YXJzL3Blb3BsZS9wZXJzb24tMDM4LnN2ZyJ9.j0sG3UVL8kLKDWfZVf5QEPBuW_1v2gWjuFNfCEhSb4FKG0xFvXXSJfk8wcKfLuFb9htXF2fp96lgNn3Ita5EB-7dOnYNM3O3qQr20K7ndj4Uy2l5jIaqs1MZwQXahuefXdUz-1mtTu8uclayIJ7hrZEBELBVGwZiDIugYqQi9L95ALnoITWvlm_pwAri_zby6SEKUs3lQBzhTU7_wGzhPmlTInHdlAOlovwHPzsSjMoCr4FNHuWAhrrS1AS5amw3qRsP7p7SVNhaSltrHk3MN0m8RVsqI505xQa-Q46UgBRGrcPqeVySYlUZ6Wb0CX2-87iAj1CkiC4SR1cjgOMxgw",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "referer": "https://aula.opositatest.com/",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json",
+        "content-type": "application/json"
+      },
+      "body": null
+    },
+    {
+      "timestamp": "2026-02-16T12:29:42.636Z",
+      "method": "GET",
+      "url": "https://api.opositatest.com/api/v2.0/tests/saved/stats",
+      "headers": {
+        "x-metadata-source": "{\"source\":\"web\",\"version\":\"2026.02.12.134434\"}",
+        "authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpYXQiOjE3NzEyNDQ5NzksImV4cCI6MTc3MTMzMTM3OSwicm9sZXMiOlsiUk9MRV9VU0VSIl0sInVzZXJuYW1lIjoibWFudWVsdHJhZGVyQGdtYWlsLmNvbSIsImlkIjoyMDgzLCJuaWNrbmFtZSI6bnVsbCwicGljdHVyZSI6Imh0dHBzOi8vYXBpLm9wb3NpdGF0ZXN0LmNvbS9hdmF0YXJzL3Blb3BsZS9wZXJzb24tMDM4LnN2ZyJ9.j0sG3UVL8kLKDWfZVf5QEPBuW_1v2gWjuFNfCEhSb4FKG0xFvXXSJfk8wcKfLuFb9htXF2fp96lgNn3Ita5EB-7dOnYNM3O3qQr20K7ndj4Uy2l5jIaqs1MZwQXahuefXdUz-1mtTu8uclayIJ7hrZEBELBVGwZiDIugYqQi9L95ALnoITWvlm_pwAri_zby6SEKUs3lQBzhTU7_wGzhPmlTInHdlAOlovwHPzsSjMoCr4FNHuWAhrrS1AS5amw3qRsP7p7SVNhaSltrHk3MN0m8RVsqI505xQa-Q46UgBRGrcPqeVySYlUZ6Wb0CX2-87iAj1CkiC4SR1cjgOMxgw",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "referer": "https://aula.opositatest.com/",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json",
+        "content-type": "application/json"
+      },
+      "body": null
+    },
+    {
+      "timestamp": "2026-02-16T12:29:42.637Z",
+      "method": "GET",
+      "url": "https://admin.opositatest.com/api/v2.0/oppositions/7?embedded=mainCategory,organizations",
+      "headers": {
+        "x-metadata-source": "{\"source\":\"web\",\"version\":\"2026.02.12.134434\"}",
+        "authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpYXQiOjE3NzEyNDQ5NzksImV4cCI6MTc3MTMzMTM3OSwicm9sZXMiOlsiUk9MRV9VU0VSIl0sInVzZXJuYW1lIjoibWFudWVsdHJhZGVyQGdtYWlsLmNvbSIsImlkIjoyMDgzLCJuaWNrbmFtZSI6bnVsbCwicGljdHVyZSI6Imh0dHBzOi8vYXBpLm9wb3NpdGF0ZXN0LmNvbS9hdmF0YXJzL3Blb3BsZS9wZXJzb24tMDM4LnN2ZyJ9.j0sG3UVL8kLKDWfZVf5QEPBuW_1v2gWjuFNfCEhSb4FKG0xFvXXSJfk8wcKfLuFb9htXF2fp96lgNn3Ita5EB-7dOnYNM3O3qQr20K7ndj4Uy2l5jIaqs1MZwQXahuefXdUz-1mtTu8uclayIJ7hrZEBELBVGwZiDIugYqQi9L95ALnoITWvlm_pwAri_zby6SEKUs3lQBzhTU7_wGzhPmlTInHdlAOlovwHPzsSjMoCr4FNHuWAhrrS1AS5amw3qRsP7p7SVNhaSltrHk3MN0m8RVsqI505xQa-Q46UgBRGrcPqeVySYlUZ6Wb0CX2-87iAj1CkiC4SR1cjgOMxgw",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "referer": "https://aula.opositatest.com/",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json",
+        "content-type": "application/json"
+      },
+      "body": null
+    },
+    {
+      "timestamp": "2026-02-16T12:29:42.758Z",
+      "method": "GET",
+      "url": "https://subscriptions.opositatest.com/api/v2.0/subscriptions/has-subscription?filters%5Bactive%5D=true&filters%5BresourceTypes%5D%5B%5D=course",
+      "headers": {
+        "x-metadata-source": "{\"source\":\"web\",\"version\":\"2026.02.12.134434\"}",
+        "authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpYXQiOjE3NzEyNDQ5NzksImV4cCI6MTc3MTMzMTM3OSwicm9sZXMiOlsiUk9MRV9VU0VSIl0sInVzZXJuYW1lIjoibWFudWVsdHJhZGVyQGdtYWlsLmNvbSIsImlkIjoyMDgzLCJuaWNrbmFtZSI6bnVsbCwicGljdHVyZSI6Imh0dHBzOi8vYXBpLm9wb3NpdGF0ZXN0LmNvbS9hdmF0YXJzL3Blb3BsZS9wZXJzb24tMDM4LnN2ZyJ9.j0sG3UVL8kLKDWfZVf5QEPBuW_1v2gWjuFNfCEhSb4FKG0xFvXXSJfk8wcKfLuFb9htXF2fp96lgNn3Ita5EB-7dOnYNM3O3qQr20K7ndj4Uy2l5jIaqs1MZwQXahuefXdUz-1mtTu8uclayIJ7hrZEBELBVGwZiDIugYqQi9L95ALnoITWvlm_pwAri_zby6SEKUs3lQBzhTU7_wGzhPmlTInHdlAOlovwHPzsSjMoCr4FNHuWAhrrS1AS5amw3qRsP7p7SVNhaSltrHk3MN0m8RVsqI505xQa-Q46UgBRGrcPqeVySYlUZ6Wb0CX2-87iAj1CkiC4SR1cjgOMxgw",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "referer": "https://aula.opositatest.com/",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json",
+        "content-type": "application/json"
+      },
+      "body": null
+    },
+    {
+      "timestamp": "2026-02-16T12:29:42.758Z",
+      "method": "GET",
+      "url": "https://api.opositatest.com/api/v2.0/notifications/stats",
+      "headers": {
+        "x-metadata-source": "{\"source\":\"web\",\"version\":\"2026.02.12.134434\"}",
+        "authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpYXQiOjE3NzEyNDQ5NzksImV4cCI6MTc3MTMzMTM3OSwicm9sZXMiOlsiUk9MRV9VU0VSIl0sInVzZXJuYW1lIjoibWFudWVsdHJhZGVyQGdtYWlsLmNvbSIsImlkIjoyMDgzLCJuaWNrbmFtZSI6bnVsbCwicGljdHVyZSI6Imh0dHBzOi8vYXBpLm9wb3NpdGF0ZXN0LmNvbS9hdmF0YXJzL3Blb3BsZS9wZXJzb24tMDM4LnN2ZyJ9.j0sG3UVL8kLKDWfZVf5QEPBuW_1v2gWjuFNfCEhSb4FKG0xFvXXSJfk8wcKfLuFb9htXF2fp96lgNn3Ita5EB-7dOnYNM3O3qQr20K7ndj4Uy2l5jIaqs1MZwQXahuefXdUz-1mtTu8uclayIJ7hrZEBELBVGwZiDIugYqQi9L95ALnoITWvlm_pwAri_zby6SEKUs3lQBzhTU7_wGzhPmlTInHdlAOlovwHPzsSjMoCr4FNHuWAhrrS1AS5amw3qRsP7p7SVNhaSltrHk3MN0m8RVsqI505xQa-Q46UgBRGrcPqeVySYlUZ6Wb0CX2-87iAj1CkiC4SR1cjgOMxgw",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "referer": "https://aula.opositatest.com/",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json",
+        "content-type": "application/json"
+      },
+      "body": null
+    },
+    {
+      "timestamp": "2026-02-16T12:29:42.758Z",
+      "method": "GET",
+      "url": "https://admin.opositatest.com/api/v2.0/oppositions/7/contents",
+      "headers": {
+        "x-metadata-source": "{\"source\":\"web\",\"version\":\"2026.02.12.134434\"}",
+        "authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpYXQiOjE3NzEyNDQ5NzksImV4cCI6MTc3MTMzMTM3OSwicm9sZXMiOlsiUk9MRV9VU0VSIl0sInVzZXJuYW1lIjoibWFudWVsdHJhZGVyQGdtYWlsLmNvbSIsImlkIjoyMDgzLCJuaWNrbmFtZSI6bnVsbCwicGljdHVyZSI6Imh0dHBzOi8vYXBpLm9wb3NpdGF0ZXN0LmNvbS9hdmF0YXJzL3Blb3BsZS9wZXJzb24tMDM4LnN2ZyJ9.j0sG3UVL8kLKDWfZVf5QEPBuW_1v2gWjuFNfCEhSb4FKG0xFvXXSJfk8wcKfLuFb9htXF2fp96lgNn3Ita5EB-7dOnYNM3O3qQr20K7ndj4Uy2l5jIaqs1MZwQXahuefXdUz-1mtTu8uclayIJ7hrZEBELBVGwZiDIugYqQi9L95ALnoITWvlm_pwAri_zby6SEKUs3lQBzhTU7_wGzhPmlTInHdlAOlovwHPzsSjMoCr4FNHuWAhrrS1AS5amw3qRsP7p7SVNhaSltrHk3MN0m8RVsqI505xQa-Q46UgBRGrcPqeVySYlUZ6Wb0CX2-87iAj1CkiC4SR1cjgOMxgw",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "referer": "https://aula.opositatest.com/",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json",
+        "content-type": "application/json"
+      },
+      "body": null
+    },
+    {
+      "timestamp": "2026-02-16T12:29:42.758Z",
+      "method": "GET",
+      "url": "https://api.opositatest.com/api/v2.0/exam-types?filters[opposition]=7",
+      "headers": {
+        "x-metadata-source": "{\"source\":\"web\",\"version\":\"2026.02.12.134434\"}",
+        "authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpYXQiOjE3NzEyNDQ5NzksImV4cCI6MTc3MTMzMTM3OSwicm9sZXMiOlsiUk9MRV9VU0VSIl0sInVzZXJuYW1lIjoibWFudWVsdHJhZGVyQGdtYWlsLmNvbSIsImlkIjoyMDgzLCJuaWNrbmFtZSI6bnVsbCwicGljdHVyZSI6Imh0dHBzOi8vYXBpLm9wb3NpdGF0ZXN0LmNvbS9hdmF0YXJzL3Blb3BsZS9wZXJzb24tMDM4LnN2ZyJ9.j0sG3UVL8kLKDWfZVf5QEPBuW_1v2gWjuFNfCEhSb4FKG0xFvXXSJfk8wcKfLuFb9htXF2fp96lgNn3Ita5EB-7dOnYNM3O3qQr20K7ndj4Uy2l5jIaqs1MZwQXahuefXdUz-1mtTu8uclayIJ7hrZEBELBVGwZiDIugYqQi9L95ALnoITWvlm_pwAri_zby6SEKUs3lQBzhTU7_wGzhPmlTInHdlAOlovwHPzsSjMoCr4FNHuWAhrrS1AS5amw3qRsP7p7SVNhaSltrHk3MN0m8RVsqI505xQa-Q46UgBRGrcPqeVySYlUZ6Wb0CX2-87iAj1CkiC4SR1cjgOMxgw",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "referer": "https://aula.opositatest.com/",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json",
+        "content-type": "application/json"
+      },
+      "body": null
+    },
+    {
+      "timestamp": "2026-02-16T12:29:42.758Z",
+      "method": "GET",
+      "url": "https://subscriptions.opositatest.com/api/v2.0/subscriptions?filters%5Bactive%5D=true",
+      "headers": {
+        "x-metadata-source": "{\"source\":\"web\",\"version\":\"2026.02.12.134434\"}",
+        "authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpYXQiOjE3NzEyNDQ5NzksImV4cCI6MTc3MTMzMTM3OSwicm9sZXMiOlsiUk9MRV9VU0VSIl0sInVzZXJuYW1lIjoibWFudWVsdHJhZGVyQGdtYWlsLmNvbSIsImlkIjoyMDgzLCJuaWNrbmFtZSI6bnVsbCwicGljdHVyZSI6Imh0dHBzOi8vYXBpLm9wb3NpdGF0ZXN0LmNvbS9hdmF0YXJzL3Blb3BsZS9wZXJzb24tMDM4LnN2ZyJ9.j0sG3UVL8kLKDWfZVf5QEPBuW_1v2gWjuFNfCEhSb4FKG0xFvXXSJfk8wcKfLuFb9htXF2fp96lgNn3Ita5EB-7dOnYNM3O3qQr20K7ndj4Uy2l5jIaqs1MZwQXahuefXdUz-1mtTu8uclayIJ7hrZEBELBVGwZiDIugYqQi9L95ALnoITWvlm_pwAri_zby6SEKUs3lQBzhTU7_wGzhPmlTInHdlAOlovwHPzsSjMoCr4FNHuWAhrrS1AS5amw3qRsP7p7SVNhaSltrHk3MN0m8RVsqI505xQa-Q46UgBRGrcPqeVySYlUZ6Wb0CX2-87iAj1CkiC4SR1cjgOMxgw",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "referer": "https://aula.opositatest.com/",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json",
+        "content-type": "application/json"
+      },
+      "body": null
+    },
+    {
+      "timestamp": "2026-02-16T12:29:42.758Z",
+      "method": "GET",
+      "url": "https://api.opositatest.com/api/v2.0/championships/participant/my-championships",
+      "headers": {
+        "x-metadata-source": "{\"source\":\"web\",\"version\":\"2026.02.12.134434\"}",
+        "authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpYXQiOjE3NzEyNDQ5NzksImV4cCI6MTc3MTMzMTM3OSwicm9sZXMiOlsiUk9MRV9VU0VSIl0sInVzZXJuYW1lIjoibWFudWVsdHJhZGVyQGdtYWlsLmNvbSIsImlkIjoyMDgzLCJuaWNrbmFtZSI6bnVsbCwicGljdHVyZSI6Imh0dHBzOi8vYXBpLm9wb3NpdGF0ZXN0LmNvbS9hdmF0YXJzL3Blb3BsZS9wZXJzb24tMDM4LnN2ZyJ9.j0sG3UVL8kLKDWfZVf5QEPBuW_1v2gWjuFNfCEhSb4FKG0xFvXXSJfk8wcKfLuFb9htXF2fp96lgNn3Ita5EB-7dOnYNM3O3qQr20K7ndj4Uy2l5jIaqs1MZwQXahuefXdUz-1mtTu8uclayIJ7hrZEBELBVGwZiDIugYqQi9L95ALnoITWvlm_pwAri_zby6SEKUs3lQBzhTU7_wGzhPmlTInHdlAOlovwHPzsSjMoCr4FNHuWAhrrS1AS5amw3qRsP7p7SVNhaSltrHk3MN0m8RVsqI505xQa-Q46UgBRGrcPqeVySYlUZ6Wb0CX2-87iAj1CkiC4SR1cjgOMxgw",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "referer": "https://aula.opositatest.com/",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json",
+        "content-type": "application/json"
+      },
+      "body": null
+    },
+    {
+      "timestamp": "2026-02-16T12:29:42.758Z",
+      "method": "GET",
+      "url": "https://api.opositatest.com/api/v2.0/tests/saved?filters%5Boppositions%5D=7&pageSize=1",
+      "headers": {
+        "x-metadata-source": "{\"source\":\"web\",\"version\":\"2026.02.12.134434\"}",
+        "authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpYXQiOjE3NzEyNDQ5NzksImV4cCI6MTc3MTMzMTM3OSwicm9sZXMiOlsiUk9MRV9VU0VSIl0sInVzZXJuYW1lIjoibWFudWVsdHJhZGVyQGdtYWlsLmNvbSIsImlkIjoyMDgzLCJuaWNrbmFtZSI6bnVsbCwicGljdHVyZSI6Imh0dHBzOi8vYXBpLm9wb3NpdGF0ZXN0LmNvbS9hdmF0YXJzL3Blb3BsZS9wZXJzb24tMDM4LnN2ZyJ9.j0sG3UVL8kLKDWfZVf5QEPBuW_1v2gWjuFNfCEhSb4FKG0xFvXXSJfk8wcKfLuFb9htXF2fp96lgNn3Ita5EB-7dOnYNM3O3qQr20K7ndj4Uy2l5jIaqs1MZwQXahuefXdUz-1mtTu8uclayIJ7hrZEBELBVGwZiDIugYqQi9L95ALnoITWvlm_pwAri_zby6SEKUs3lQBzhTU7_wGzhPmlTInHdlAOlovwHPzsSjMoCr4FNHuWAhrrS1AS5amw3qRsP7p7SVNhaSltrHk3MN0m8RVsqI505xQa-Q46UgBRGrcPqeVySYlUZ6Wb0CX2-87iAj1CkiC4SR1cjgOMxgw",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "referer": "https://aula.opositatest.com/",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json",
+        "content-type": "application/json"
+      },
+      "body": null
+    },
+    {
+      "timestamp": "2026-02-16T12:29:42.758Z",
+      "method": "GET",
+      "url": "https://subscriptions.opositatest.com/api/v2.0/subscriptions/is-subscribed-to-resource?filters%5BexternalResourceId%5D=7&filters%5BresourceType%5D=opposition",
+      "headers": {
+        "x-metadata-source": "{\"source\":\"web\",\"version\":\"2026.02.12.134434\"}",
+        "authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpYXQiOjE3NzEyNDQ5NzksImV4cCI6MTc3MTMzMTM3OSwicm9sZXMiOlsiUk9MRV9VU0VSIl0sInVzZXJuYW1lIjoibWFudWVsdHJhZGVyQGdtYWlsLmNvbSIsImlkIjoyMDgzLCJuaWNrbmFtZSI6bnVsbCwicGljdHVyZSI6Imh0dHBzOi8vYXBpLm9wb3NpdGF0ZXN0LmNvbS9hdmF0YXJzL3Blb3BsZS9wZXJzb24tMDM4LnN2ZyJ9.j0sG3UVL8kLKDWfZVf5QEPBuW_1v2gWjuFNfCEhSb4FKG0xFvXXSJfk8wcKfLuFb9htXF2fp96lgNn3Ita5EB-7dOnYNM3O3qQr20K7ndj4Uy2l5jIaqs1MZwQXahuefXdUz-1mtTu8uclayIJ7hrZEBELBVGwZiDIugYqQi9L95ALnoITWvlm_pwAri_zby6SEKUs3lQBzhTU7_wGzhPmlTInHdlAOlovwHPzsSjMoCr4FNHuWAhrrS1AS5amw3qRsP7p7SVNhaSltrHk3MN0m8RVsqI505xQa-Q46UgBRGrcPqeVySYlUZ6Wb0CX2-87iAj1CkiC4SR1cjgOMxgw",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "referer": "https://aula.opositatest.com/",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json",
+        "content-type": "application/json"
+      },
+      "body": null
+    },
+    {
+      "timestamp": "2026-02-16T12:29:42.758Z",
+      "method": "GET",
+      "url": "https://api.opositatest.com/api/v2.0/responses/stats?filters%5Bopposition%5D=7",
+      "headers": {
+        "x-metadata-source": "{\"source\":\"web\",\"version\":\"2026.02.12.134434\"}",
+        "authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpYXQiOjE3NzEyNDQ5NzksImV4cCI6MTc3MTMzMTM3OSwicm9sZXMiOlsiUk9MRV9VU0VSIl0sInVzZXJuYW1lIjoibWFudWVsdHJhZGVyQGdtYWlsLmNvbSIsImlkIjoyMDgzLCJuaWNrbmFtZSI6bnVsbCwicGljdHVyZSI6Imh0dHBzOi8vYXBpLm9wb3NpdGF0ZXN0LmNvbS9hdmF0YXJzL3Blb3BsZS9wZXJzb24tMDM4LnN2ZyJ9.j0sG3UVL8kLKDWfZVf5QEPBuW_1v2gWjuFNfCEhSb4FKG0xFvXXSJfk8wcKfLuFb9htXF2fp96lgNn3Ita5EB-7dOnYNM3O3qQr20K7ndj4Uy2l5jIaqs1MZwQXahuefXdUz-1mtTu8uclayIJ7hrZEBELBVGwZiDIugYqQi9L95ALnoITWvlm_pwAri_zby6SEKUs3lQBzhTU7_wGzhPmlTInHdlAOlovwHPzsSjMoCr4FNHuWAhrrS1AS5amw3qRsP7p7SVNhaSltrHk3MN0m8RVsqI505xQa-Q46UgBRGrcPqeVySYlUZ6Wb0CX2-87iAj1CkiC4SR1cjgOMxgw",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "referer": "https://aula.opositatest.com/",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json",
+        "content-type": "application/json"
+      },
+      "body": null
+    },
+    {
+      "timestamp": "2026-02-16T12:29:42.758Z",
+      "method": "GET",
+      "url": "https://subscriptions.opositatest.com/api/v2.0/subscriptions/is-subscribed-to-resource?filters%5BexternalResourceId%5D=7&filters%5BresourceType%5D=opposition",
+      "headers": {
+        "x-metadata-source": "{\"source\":\"web\",\"version\":\"2026.02.12.134434\"}",
+        "authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpYXQiOjE3NzEyNDQ5NzksImV4cCI6MTc3MTMzMTM3OSwicm9sZXMiOlsiUk9MRV9VU0VSIl0sInVzZXJuYW1lIjoibWFudWVsdHJhZGVyQGdtYWlsLmNvbSIsImlkIjoyMDgzLCJuaWNrbmFtZSI6bnVsbCwicGljdHVyZSI6Imh0dHBzOi8vYXBpLm9wb3NpdGF0ZXN0LmNvbS9hdmF0YXJzL3Blb3BsZS9wZXJzb24tMDM4LnN2ZyJ9.j0sG3UVL8kLKDWfZVf5QEPBuW_1v2gWjuFNfCEhSb4FKG0xFvXXSJfk8wcKfLuFb9htXF2fp96lgNn3Ita5EB-7dOnYNM3O3qQr20K7ndj4Uy2l5jIaqs1MZwQXahuefXdUz-1mtTu8uclayIJ7hrZEBELBVGwZiDIugYqQi9L95ALnoITWvlm_pwAri_zby6SEKUs3lQBzhTU7_wGzhPmlTInHdlAOlovwHPzsSjMoCr4FNHuWAhrrS1AS5amw3qRsP7p7SVNhaSltrHk3MN0m8RVsqI505xQa-Q46UgBRGrcPqeVySYlUZ6Wb0CX2-87iAj1CkiC4SR1cjgOMxgw",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "referer": "https://aula.opositatest.com/",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json",
+        "content-type": "application/json"
+      },
+      "body": null
+    },
+    {
+      "timestamp": "2026-02-16T12:29:42.758Z",
+      "method": "GET",
+      "url": "https://admin.opositatest.com/api/v2.0/opposition-categories?embedded=oppositions&pageSize=50&filters%5Bstates%5D%5B%5D=DISCONTINUED&filters%5Bstates%5D%5B%5D=ACTIVE",
+      "headers": {
+        "x-metadata-source": "{\"source\":\"web\",\"version\":\"2026.02.12.134434\"}",
+        "authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpYXQiOjE3NzEyNDQ5NzksImV4cCI6MTc3MTMzMTM3OSwicm9sZXMiOlsiUk9MRV9VU0VSIl0sInVzZXJuYW1lIjoibWFudWVsdHJhZGVyQGdtYWlsLmNvbSIsImlkIjoyMDgzLCJuaWNrbmFtZSI6bnVsbCwicGljdHVyZSI6Imh0dHBzOi8vYXBpLm9wb3NpdGF0ZXN0LmNvbS9hdmF0YXJzL3Blb3BsZS9wZXJzb24tMDM4LnN2ZyJ9.j0sG3UVL8kLKDWfZVf5QEPBuW_1v2gWjuFNfCEhSb4FKG0xFvXXSJfk8wcKfLuFb9htXF2fp96lgNn3Ita5EB-7dOnYNM3O3qQr20K7ndj4Uy2l5jIaqs1MZwQXahuefXdUz-1mtTu8uclayIJ7hrZEBELBVGwZiDIugYqQi9L95ALnoITWvlm_pwAri_zby6SEKUs3lQBzhTU7_wGzhPmlTInHdlAOlovwHPzsSjMoCr4FNHuWAhrrS1AS5amw3qRsP7p7SVNhaSltrHk3MN0m8RVsqI505xQa-Q46UgBRGrcPqeVySYlUZ6Wb0CX2-87iAj1CkiC4SR1cjgOMxgw",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "referer": "https://aula.opositatest.com/",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json",
+        "content-type": "application/json"
+      },
+      "body": null
+    },
+    {
+      "timestamp": "2026-02-16T12:29:42.758Z",
+      "method": "GET",
+      "url": "https://admin.opositatest.com/api/v2.0/oppositions?embedded=mainCategory&page=1&pageSize=250&filters%5BoppositionStates%5D%5B%5D=ACTIVE&filters%5BoppositionStates%5D%5B%5D=DISCONTINUED",
+      "headers": {
+        "x-metadata-source": "{\"source\":\"web\",\"version\":\"2026.02.12.134434\"}",
+        "authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpYXQiOjE3NzEyNDQ5NzksImV4cCI6MTc3MTMzMTM3OSwicm9sZXMiOlsiUk9MRV9VU0VSIl0sInVzZXJuYW1lIjoibWFudWVsdHJhZGVyQGdtYWlsLmNvbSIsImlkIjoyMDgzLCJuaWNrbmFtZSI6bnVsbCwicGljdHVyZSI6Imh0dHBzOi8vYXBpLm9wb3NpdGF0ZXN0LmNvbS9hdmF0YXJzL3Blb3BsZS9wZXJzb24tMDM4LnN2ZyJ9.j0sG3UVL8kLKDWfZVf5QEPBuW_1v2gWjuFNfCEhSb4FKG0xFvXXSJfk8wcKfLuFb9htXF2fp96lgNn3Ita5EB-7dOnYNM3O3qQr20K7ndj4Uy2l5jIaqs1MZwQXahuefXdUz-1mtTu8uclayIJ7hrZEBELBVGwZiDIugYqQi9L95ALnoITWvlm_pwAri_zby6SEKUs3lQBzhTU7_wGzhPmlTInHdlAOlovwHPzsSjMoCr4FNHuWAhrrS1AS5amw3qRsP7p7SVNhaSltrHk3MN0m8RVsqI505xQa-Q46UgBRGrcPqeVySYlUZ6Wb0CX2-87iAj1CkiC4SR1cjgOMxgw",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "referer": "https://aula.opositatest.com/",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json",
+        "content-type": "application/json"
+      },
+      "body": null
+    },
+    {
+      "timestamp": "2026-02-16T12:29:42.812Z",
+      "method": "GET",
+      "url": "https://api.opositatest.com/avatars/people/person-038.svg",
+      "headers": {
+        "sec-ch-ua-platform": "\"Linux\"",
+        "referer": "https://aula.opositatest.com/",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0"
+      },
+      "body": null
+    },
+    {
+      "timestamp": "2026-02-16T12:29:42.951Z",
+      "method": "GET",
+      "url": "https://admin.opositatest.com/api/v2.0/exams?filters%5Bopposition%5D=7&filters%5Btype%5D=previousCall&page=1",
+      "headers": {
+        "x-metadata-source": "{\"source\":\"web\",\"version\":\"2026.02.12.134434\"}",
+        "authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpYXQiOjE3NzEyNDQ5NzksImV4cCI6MTc3MTMzMTM3OSwicm9sZXMiOlsiUk9MRV9VU0VSIl0sInVzZXJuYW1lIjoibWFudWVsdHJhZGVyQGdtYWlsLmNvbSIsImlkIjoyMDgzLCJuaWNrbmFtZSI6bnVsbCwicGljdHVyZSI6Imh0dHBzOi8vYXBpLm9wb3NpdGF0ZXN0LmNvbS9hdmF0YXJzL3Blb3BsZS9wZXJzb24tMDM4LnN2ZyJ9.j0sG3UVL8kLKDWfZVf5QEPBuW_1v2gWjuFNfCEhSb4FKG0xFvXXSJfk8wcKfLuFb9htXF2fp96lgNn3Ita5EB-7dOnYNM3O3qQr20K7ndj4Uy2l5jIaqs1MZwQXahuefXdUz-1mtTu8uclayIJ7hrZEBELBVGwZiDIugYqQi9L95ALnoITWvlm_pwAri_zby6SEKUs3lQBzhTU7_wGzhPmlTInHdlAOlovwHPzsSjMoCr4FNHuWAhrrS1AS5amw3qRsP7p7SVNhaSltrHk3MN0m8RVsqI505xQa-Q46UgBRGrcPqeVySYlUZ6Wb0CX2-87iAj1CkiC4SR1cjgOMxgw",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "referer": "https://aula.opositatest.com/",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json",
+        "content-type": "application/json"
+      },
+      "body": null
+    },
+    {
+      "timestamp": "2026-02-16T12:29:47.403Z",
+      "method": "POST",
+      "url": "https://region1.analytics.google.com/g/collect?v=2&tid=G-GNC9Q3YH5E&gtm=45g92e62b1v880975082z8844545255za20kzb844545255zd844545255&_p=1771244982313&gcs=G111&gcd=13r3rPr2r5l1&npa=0&dma_cps=syphamo&dma=1&gdid=dY2E1Nz&cid=1276091076.1766661701&ecid=1621650237&ul=es-es&sr=1280x720&ir=1&ur=ES-MD&_uip=%3A%3A&uaa=x86&uab=64&uafvl=Google%2520Chrome%3B143.0.7499.192%7CChromium%3B143.0.7499.192%7CNot%2520A(Brand%3B24.0.0.0&uamb=0&uam=&uap=Linux&uapv=6.18.5&uaw=0&are=1&frm=0&pscdl=noapi&_eu=EAAAAGQ&_s=1&tag_exp=103116026~103200004~104527907~104528500~104684208~104684211~115938466~115938468~116988315~117447491&dt=classroom%2Ftest_configurator&uid=2083&sid=1771230944&sct=6&seg=1&dl=https%3A%2F%2Faula.opositatest.com%2Fclassroom%2Ftest-configurator%3FmainContentId%3D7&en=page_view&ep.event_category=test_configurator&ep.page_name=classroom%2Ftest_configurator&ep.user_logged=yes&ep.active_subscription=yes&ep.version=2026.02.12.134434&epn.event_user_id=2083&up.user_active_subscription=yes&upn.userId=2083&tfd=5159",
+      "headers": {
+        "sec-ch-ua-platform": "\"Linux\"",
+        "referer": "https://aula.opositatest.com/",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0"
+      },
+      "body": null
+    }
+  ],
+  "responses": [
+    {
+      "timestamp": "2026-02-16T12:29:34.022Z",
+      "status": 200,
+      "url": "https://googleads.g.doubleclick.net/pagead/viewthroughconversion/956142973/?random=1771244973887&cv=11&fst=1771244973887&bg=ffffff&guid=ON&async=1&gtm=45892e62b1h1v894930176z8844545255za20kzb844545255zd844545255xea&gcd=13r3rPr2r5l1&dma_cps=syphamo&dma=1&tag_exp=103116026~103200004~104527907~104528500~104684208~104684211~115616986~115938465~115938469~116988315~117384406&u_w=1280&u_h=720&url=https%3A%2F%2Fwww.opositatest.com%2Flogin%3F_target_path%3Dhttps%3A%2F%2Faula.opositatest.com%2Fclassroom%2Ftest-configurator%3FmainContentId%3D7&ref=https%3A%2F%2Faula.opositatest.com%2F&frm=0&tiba=Iniciar%20sesi%C3%B3n%20en%20OpositaTest&did=dY2E1Nz&gdid=dY2E1Nz&hn=www.googleadservices.com&npa=0&pscdl=noapi&auid=253357570.1766661703&uaa=x86&uab=64&uafvl=Google%2520Chrome%3B143.0.7499.192%7CChromium%3B143.0.7499.192%7CNot%2520A(Brand%3B24.0.0.0&uamb=0&uam=&uap=Linux&uapv=6.18.5&uaw=0&_tu=CA&rfmt=3&fmt=4",
+      "body": "(function(){var s = {};(function(){var k=typeof Object.defineProperties==\"function\"?Object.defineProperty:function(a,d,b){if(a==Array.prototype||a==Object.prototype)return a;a[d]=b.value;return a};function l(a){a=[\"object\"==typeof globalThis&&globalThis,a,\"object\"==typeof window&&window,\"object\"==typeof self&&self,\"object\"==typeof global&&global];for(var d=0;d<a.length;++d){var b=a[d];if(b&&b.Math==Math)return b}throw Error(\"Cannot find global object\");} var p=l(this),q=typeof Symbol===\"function\"&&typeof Symbol(\"x\")===\"symbol\",r={},t={};function u(a,d,b){if(!b||a!=null){b=t[d];if(b==null)return a[d];b=a[b];return b!==void 0?b:a[d]}} function v(a,d,b){if(d)a:{var c=a.split(\".\");a=c.length===1;var e=c[0],g;!a&&e in r?g=r:g=p;for(e=0;e<c.length-1;e++){var f=c[e];if(!(f in g))break a;g=g[f]}c=c[c.length-1];b=q&&b===\"es6\"?g[c]:null;d=d(b);d!=null&&(a?k(r,c,{configurable:!0,writable:!0,value:d}):d!==b&&(t[c]===void 0&&(a=Math.random()*1E9>>>0,t[c]=q?p.Symbol(c):\"$jscp$\"+a+\"$\"+c),k(g,t[c],{configurable:!0,writable:!0,value:d})))}} var w=q&&typeof u(Object,\"assign\")==\"function\"?u(Object,\"assign\"):function(a,d){if(a==null)throw new TypeError(\"No nullish arg\");a=Object(a);for(var b=1;b<arguments.length;b++){var c=arguments[b];if(c)for(var e in c)Object.prototype.hasOwnProperty.call(c,e)&&(a[e]=c[e])}return a};v(\"Object.assign\",function(a){return a||w},\"es6\");/*  Copyright The Closure Library Authors. SPDX-License-Identifier: Apache-2.0 */ var x=this||self;var y={};var z=window,A=navigator,C=Object.freeze({cache:\"no-store\",credentials:\"include\",keepalive:!0,method:\"POST\",mode:\"no-cors\",redirect:\"follow\"});function D(a){if(typeof z.fetch===\"function\"){var d=u(Object,\"assign\").call(Object,{},C);try{var b=z.fetch(a,d);if(b)return b.then(function(){}).catch(function(){}),!0}catch(c){}}E(a);return!0}function F(a){var d=new Image(1,1);d.onload=function(){d.onload=null};d.onerror=function(){d.onerror=null};d.src=a} function E(a){try{var d=A.sendBeacon&&A.sendBeacon(a)}catch(c){var b=y.TAGGING;b||(b=y.TAGGING=[]);b[15]=!0}d||F(a)};var G=/#|$/;function H(a){var d=a.search(G),b;a:{for(b=0;(b=a.indexOf(\"fmt\",b))>=0&&b<d;){var c=a.charCodeAt(b-1);if(c==38||c==63)if(c=a.charCodeAt(b+3),!c||c==61||c==38||c==35)break a;b+=4}b=-1}if(b<0)return null;c=a.indexOf(\"&\",b);if(c<0||c>d)c=d;return decodeURIComponent(a.slice(b+4,c!==-1?c:0).replace(/\\+/g,\" \"))};function I(a,d,b,c){function e(){--g;if(g<=0){var h;(h=a.GooglebQhCsO)||(h={});var B=h[d];B&&(delete h[d],h=B[0],typeof h===\"function\"&&h())}}c=c===void 0?[]:c;for(var g=b.length+1,f={g:0};f.g<b.length;f={g:f.g},f.g++){var n=Number(H(b[f.g])),m=null;n!==1&&n!==2||!(n=a.document.getElementById(\"goog_conv_iframe\"))||n.src||(m=n);m||(m=new Image,c&&c[f.g]&&(m.onerror=function(h){return function(){D(c[h.g])&&e()}}(f)));m.onload=e;m.src=b[f.g]}e()} for(var J=[\"ss_\"],K=s||x,L;J.length&&(L=J.shift());)J.length||I===void 0?K[L]&&K[L]!==Object.prototype[L]?K=K[L]:K=K[L]={}:K[L]=I;}).call(this);;s.ss_(window,'OjE3NzEyNDQ5NzM4ODc',['https://www.google.com/pagead/1p-user-list/956142973/?random\\x3d1771244973887\\x26cv\\x3d11\\x26fst\\x3d1771243200000\\x26bg\\x3dffffff\\x26guid\\x3dON\\x26async\\x3d1\\x26gtm\\x3d45892e62b1h1v894930176z8844545255za20kzb844545255zd844545255xea\\x26gcd\\x3d13r3rPr2r5l1\\x26dma_cps\\x3dsyphamo\\x26dma\\x3d1\\x26tag_exp\\x3d103116026~103200004~104527907~104528500~104684208~104684211~115616986~115938465~115938469~116988315~117384406\\x26u_w\\x3d1280\\x26u_h\\x3d720\\x26url\\x3dhttps%3A%2F%2Fwww.opositatest.com%2Flogin%3F_target_path%3Dhttps%3A%2F%2Faula.opositatest.com%2Fclassroom%2Ftest-configurator%3FmainContentId%3D7\\x26ref\\x3dhttps%3A%2F%2Faula.opositatest.com%2F\\x26frm\\x3d0\\x26tiba\\x3dIniciar%20sesi%C3%B3n%20en%20OpositaTest\\x26did\\x3ddY2E1Nz\\x26gdid\\x3ddY2E1Nz\\x26hn\\x3dwww.googleadservices.com\\x26npa\\x3d0\\x26pscdl\\x3dnoapi\\x26auid\\x3d253357570.1766661703\\x26uaa\\x3dx86\\x26uab\\x3d64\\x26uafvl\\x3dGoogle%2520Chrome%3B143.0.7499.192%7CChromium%3B143.0.7499.192%7CNot%2520A(Brand%3B24.0.0.0\\x26uamb\\x3d0\\x26uam\\x3d\\x26uap\\x3dLinux\\x26uapv\\x3d6.18.5\\x26uaw\\x3d0\\x26_tu\\x3dCA\\x26rfmt\\x3d3\\x26fmt\\x3d3\\x26is_vtc\\x3d1\\x26cid\\x3dCAQSLADnonV5iF5dTOEzozHXyBOmTE-4kkYV2wX8DylMnuXnx0D8K9MfQcnKp1aP\\x26random\\x3d2636532259\\x26rmt_tld\\x3d0\\x26ipr\\x3dy','https://www.google.es/pagead/1p-user-list/956142973/?random\\x3d1771244973887\\x26cv\\x3d11\\x26fst\\x3d1771243200000\\x26bg\\x3dffffff\\x26guid\\x3dON\\x26async\\x3d1\\x26gtm\\x3d45892e62b1h1v894930176z8844545255za20kzb844545255zd844545255xea\\x26gcd\\x3d13r3rPr2r5l1\\x26dma_cps\\x3dsyphamo\\x26dma\\x3d1\\x26tag_exp\\x3d103116026~103200004~104527907~104528500~104684208~104684211~115616986~115938465~115938469~116988315~117384406\\x26u_w\\x3d1280\\x26u_h\\x3d720\\x26url\\x3dhttps%3A%2F%2Fwww.opositatest.com%2Flogin%3F_target_path%3Dhttps%3A%2F%2Faula.opositatest.com%2Fclassroom%2Ftest-configurator%3FmainContentId%3D7\\x26ref\\x3dhttps%3A%2F%2Faula.opositatest.com%2F\\x26frm\\x3d0\\x26tiba\\x3dIniciar%20sesi%C3%B3n%20en%20OpositaTest\\x26did\\x3ddY2E1Nz\\x26gdid\\x3ddY2E1Nz\\x26hn\\x3dwww.googleadservices."
+    },
+    {
+      "timestamp": "2026-02-16T12:29:34.022Z",
+      "status": 200,
+      "url": "https://googleads.g.doubleclick.net/pagead/viewthroughconversion/956142973/?random=1771244973833&cv=11&fst=1771244973833&bg=ffffff&guid=ON&async=1&en=gtag.config&gtm=45892e62b1h1v894930176z8844545255za20kzb844545255zd844545255xec&gcd=13r3rPr2r5l1&dma_cps=syphamo&dma=1&tag_exp=103116026~103200004~104527907~104528500~104684208~104684211~115616986~115938465~115938469~116988315~117384406&u_w=1280&u_h=720&url=https%3A%2F%2Fwww.opositatest.com%2Flogin%3F_target_path%3Dhttps%3A%2F%2Faula.opositatest.com%2Fclassroom%2Ftest-configurator%3FmainContentId%3D7&ref=https%3A%2F%2Faula.opositatest.com%2F&frm=0&tiba=Iniciar%20sesi%C3%B3n%20en%20OpositaTest&did=dY2E1Nz&gdid=dY2E1Nz&hn=www.googleadservices.com&npa=0&pscdl=noapi&auid=253357570.1766661703&uaa=x86&uab=64&uafvl=Google%2520Chrome%3B143.0.7499.192%7CChromium%3B143.0.7499.192%7CNot%2520A(Brand%3B24.0.0.0&uamb=0&uam=&uap=Linux&uapv=6.18.5&uaw=0&data=event%3Dgtag.config&rfmt=3&fmt=4",
+      "body": "(function(){var s = {};(function(){var k=typeof Object.defineProperties==\"function\"?Object.defineProperty:function(a,d,b){if(a==Array.prototype||a==Object.prototype)return a;a[d]=b.value;return a};function l(a){a=[\"object\"==typeof globalThis&&globalThis,a,\"object\"==typeof window&&window,\"object\"==typeof self&&self,\"object\"==typeof global&&global];for(var d=0;d<a.length;++d){var b=a[d];if(b&&b.Math==Math)return b}throw Error(\"Cannot find global object\");} var p=l(this),q=typeof Symbol===\"function\"&&typeof Symbol(\"x\")===\"symbol\",r={},t={};function u(a,d,b){if(!b||a!=null){b=t[d];if(b==null)return a[d];b=a[b];return b!==void 0?b:a[d]}} function v(a,d,b){if(d)a:{var c=a.split(\".\");a=c.length===1;var e=c[0],g;!a&&e in r?g=r:g=p;for(e=0;e<c.length-1;e++){var f=c[e];if(!(f in g))break a;g=g[f]}c=c[c.length-1];b=q&&b===\"es6\"?g[c]:null;d=d(b);d!=null&&(a?k(r,c,{configurable:!0,writable:!0,value:d}):d!==b&&(t[c]===void 0&&(a=Math.random()*1E9>>>0,t[c]=q?p.Symbol(c):\"$jscp$\"+a+\"$\"+c),k(g,t[c],{configurable:!0,writable:!0,value:d})))}} var w=q&&typeof u(Object,\"assign\")==\"function\"?u(Object,\"assign\"):function(a,d){if(a==null)throw new TypeError(\"No nullish arg\");a=Object(a);for(var b=1;b<arguments.length;b++){var c=arguments[b];if(c)for(var e in c)Object.prototype.hasOwnProperty.call(c,e)&&(a[e]=c[e])}return a};v(\"Object.assign\",function(a){return a||w},\"es6\");/*  Copyright The Closure Library Authors. SPDX-License-Identifier: Apache-2.0 */ var x=this||self;var y={};var z=window,A=navigator,C=Object.freeze({cache:\"no-store\",credentials:\"include\",keepalive:!0,method:\"POST\",mode:\"no-cors\",redirect:\"follow\"});function D(a){if(typeof z.fetch===\"function\"){var d=u(Object,\"assign\").call(Object,{},C);try{var b=z.fetch(a,d);if(b)return b.then(function(){}).catch(function(){}),!0}catch(c){}}E(a);return!0}function F(a){var d=new Image(1,1);d.onload=function(){d.onload=null};d.onerror=function(){d.onerror=null};d.src=a} function E(a){try{var d=A.sendBeacon&&A.sendBeacon(a)}catch(c){var b=y.TAGGING;b||(b=y.TAGGING=[]);b[15]=!0}d||F(a)};var G=/#|$/;function H(a){var d=a.search(G),b;a:{for(b=0;(b=a.indexOf(\"fmt\",b))>=0&&b<d;){var c=a.charCodeAt(b-1);if(c==38||c==63)if(c=a.charCodeAt(b+3),!c||c==61||c==38||c==35)break a;b+=4}b=-1}if(b<0)return null;c=a.indexOf(\"&\",b);if(c<0||c>d)c=d;return decodeURIComponent(a.slice(b+4,c!==-1?c:0).replace(/\\+/g,\" \"))};function I(a,d,b,c){function e(){--g;if(g<=0){var h;(h=a.GooglebQhCsO)||(h={});var B=h[d];B&&(delete h[d],h=B[0],typeof h===\"function\"&&h())}}c=c===void 0?[]:c;for(var g=b.length+1,f={g:0};f.g<b.length;f={g:f.g},f.g++){var n=Number(H(b[f.g])),m=null;n!==1&&n!==2||!(n=a.document.getElementById(\"goog_conv_iframe\"))||n.src||(m=n);m||(m=new Image,c&&c[f.g]&&(m.onerror=function(h){return function(){D(c[h.g])&&e()}}(f)));m.onload=e;m.src=b[f.g]}e()} for(var J=[\"ss_\"],K=s||x,L;J.length&&(L=J.shift());)J.length||I===void 0?K[L]&&K[L]!==Object.prototype[L]?K=K[L]:K=K[L]={}:K[L]=I;}).call(this);;s.ss_(window,'OjE3NzEyNDQ5NzM4MzM',['https://www.google.com/pagead/1p-user-list/956142973/?random\\x3d1771244973833\\x26cv\\x3d11\\x26fst\\x3d1771243200000\\x26bg\\x3dffffff\\x26guid\\x3dON\\x26async\\x3d1\\x26en\\x3dgtag.config\\x26gtm\\x3d45892e62b1h1v894930176z8844545255za20kzb844545255zd844545255xec\\x26gcd\\x3d13r3rPr2r5l1\\x26dma_cps\\x3dsyphamo\\x26dma\\x3d1\\x26tag_exp\\x3d103116026~103200004~104527907~104528500~104684208~104684211~115616986~115938465~115938469~116988315~117384406\\x26u_w\\x3d1280\\x26u_h\\x3d720\\x26url\\x3dhttps%3A%2F%2Fwww.opositatest.com%2Flogin%3F_target_path%3Dhttps%3A%2F%2Faula.opositatest.com%2Fclassroom%2Ftest-configurator%3FmainContentId%3D7\\x26ref\\x3dhttps%3A%2F%2Faula.opositatest.com%2F\\x26frm\\x3d0\\x26tiba\\x3dIniciar%20sesi%C3%B3n%20en%20OpositaTest\\x26did\\x3ddY2E1Nz\\x26gdid\\x3ddY2E1Nz\\x26hn\\x3dwww.googleadservices.com\\x26npa\\x3d0\\x26pscdl\\x3dnoapi\\x26auid\\x3d253357570.1766661703\\x26uaa\\x3dx86\\x26uab\\x3d64\\x26uafvl\\x3dGoogle%2520Chrome%3B143.0.7499.192%7CChromium%3B143.0.7499.192%7CNot%2520A(Brand%3B24.0.0.0\\x26uamb\\x3d0\\x26uam\\x3d\\x26uap\\x3dLinux\\x26uapv\\x3d6.18.5\\x26uaw\\x3d0\\x26data\\x3devent%3Dgtag.config\\x26rfmt\\x3d3\\x26fmt\\x3d3\\x26is_vtc\\x3d1\\x26cid\\x3dCAQSLADnonV5lYwKpdu1QYzuA7X9XVAjh01zzslmX3raJK1G8HO6G-ak0KtqCxJ1\\x26random\\x3d3779280675\\x26rmt_tld\\x3d0\\x26ipr\\x3dy','https://www.google.es/pagead/1p-user-list/956142973/?random\\x3d1771244973833\\x26cv\\x3d11\\x26fst\\x3d1771243200000\\x26bg\\x3dffffff\\x26guid\\x3dON\\x26async\\x3d1\\x26en\\x3dgtag.config\\x26gtm\\x3d45892e62b1h1v894930176z8844545255za20kzb844545255zd844545255xec\\x26gcd\\x3d13r3rPr2r5l1\\x26dma_cps\\x3dsyphamo\\x26dma\\x3d1\\x26tag_exp\\x3d103116026~103200004~104527907~104528500~104684208~104684211~115616986~115938465~115938469~116988315~117384406\\x26u_w\\x3d1280\\x26u_h\\x3d720\\x26url\\x3dhttps%3A%2F%2Fwww.opositatest.com%2Flogin%3F_target_path%3Dhttps%3A%2F%2Faula.opositatest.com%2Fclassroom%2Ftest-configurator%3FmainContentId%3D7\\x26ref\\x3dhttps%3A%2F%2Faula.opositatest.com%2F\\x26frm\\x3d0\\x26tiba\\x3dIniciar%20sesi%C3%B3n%20en%20OpositaTest\\x26did\\"
+    },
+    {
+      "timestamp": "2026-02-16T12:29:34.135Z",
+      "status": 200,
+      "url": "https://tagging.opositatest.com/g/collect?v=2&tid=G-ABCDEF&gtm=45g92e62b1h1z8844545255za20kzb844545255zd844545255&_p=1771244973531&gcs=G111&gcd=13r3r3r2r5l1&npa=0&dma_cps=syphamo&dma=1&gdid=dY2E1Nz&cid=1276091076.1766661701&ecid=756103791&ul=es-es&sr=1280x720&ur=ES-MD&uaa=x86&uab=64&uafvl=Google%2520Chrome%3B143.0.7499.192%7CChromium%3B143.0.7499.192%7CNot%2520A(Brand%3B24.0.0.0&uamb=0&uam=&uap=Linux&uapv=6.18.5&uaw=0&are=1&frm=0&pscdl=noapi&_eu=AAAAAAQ&sst.rnd=58856423.1771244974&sst.etld=google.es&sst.gcsub=region1&sst.tft=1771244973531&sst.lpc=89638085&sst.navt=n&sst.ude=0&sst.sw_exp=1&_s=1&tag_exp=103116026~103200004~104527907~104528501~104684208~104684211~115616986~115938465~115938468~116988315~117455673~117455675&sid=1771240739&sct=8&seg=1&dl=https%3A%2F%2Fwww.opositatest.com%2Flogin%3F_target_path%3Dhttps%3A%2F%2Faula.opositatest.com%2Fclassroom%2Ftest-configurator%3FmainContentId%3D7&dr=https%3A%2F%2Faula.opositatest.com%2F&dt=Iniciar%20sesi%C3%B3n%20en%20OpositaTest&_tu=BA&en=page_view&tfd=653&richsstsse",
+      "body": "event: message\ndata: {\"response\":{\"status_code\":200,\"body\":\"\"}}\n\n"
+    },
+    {
+      "timestamp": "2026-02-16T12:29:34.234Z",
+      "status": 200,
+      "url": "https://www.google.com/pagead/1p-user-list/956142973/?random=1771244973833&cv=11&fst=1771243200000&bg=ffffff&guid=ON&async=1&en=gtag.config&gtm=45892e62b1h1v894930176z8844545255za20kzb844545255zd844545255xec&gcd=13r3rPr2r5l1&dma_cps=syphamo&dma=1&tag_exp=103116026~103200004~104527907~104528500~104684208~104684211~115616986~115938465~115938469~116988315~117384406&u_w=1280&u_h=720&url=https%3A%2F%2Fwww.opositatest.com%2Flogin%3F_target_path%3Dhttps%3A%2F%2Faula.opositatest.com%2Fclassroom%2Ftest-configurator%3FmainContentId%3D7&ref=https%3A%2F%2Faula.opositatest.com%2F&frm=0&tiba=Iniciar%20sesi%C3%B3n%20en%20OpositaTest&did=dY2E1Nz&gdid=dY2E1Nz&hn=www.googleadservices.com&npa=0&pscdl=noapi&auid=253357570.1766661703&uaa=x86&uab=64&uafvl=Google%2520Chrome%3B143.0.7499.192%7CChromium%3B143.0.7499.192%7CNot%2520A(Brand%3B24.0.0.0&uamb=0&uam=&uap=Linux&uapv=6.18.5&uaw=0&data=event%3Dgtag.config&rfmt=3&fmt=3&is_vtc=1&cid=CAQSLADnonV5lYwKpdu1QYzuA7X9XVAjh01zzslmX3raJK1G8HO6G-ak0KtqCxJ1&random=3779280675&rmt_tld=0&ipr=y",
+      "body": "GIF89a\u0001\u0000\u0001\u0000�\u0000\u0000\u0000\u0000\u0000���!�\u0004\u0001\u0000\u0000\u0000\u0000,\u0000\u0000\u0000\u0000\u0001\u0000\u0001\u0000\u0000\u0002\u0001D\u0000;"
+    },
+    {
+      "timestamp": "2026-02-16T12:29:34.236Z",
+      "status": 200,
+      "url": "https://www.google.com/pagead/1p-user-list/956142973/?random=1771244973887&cv=11&fst=1771243200000&bg=ffffff&guid=ON&async=1&gtm=45892e62b1h1v894930176z8844545255za20kzb844545255zd844545255xea&gcd=13r3rPr2r5l1&dma_cps=syphamo&dma=1&tag_exp=103116026~103200004~104527907~104528500~104684208~104684211~115616986~115938465~115938469~116988315~117384406&u_w=1280&u_h=720&url=https%3A%2F%2Fwww.opositatest.com%2Flogin%3F_target_path%3Dhttps%3A%2F%2Faula.opositatest.com%2Fclassroom%2Ftest-configurator%3FmainContentId%3D7&ref=https%3A%2F%2Faula.opositatest.com%2F&frm=0&tiba=Iniciar%20sesi%C3%B3n%20en%20OpositaTest&did=dY2E1Nz&gdid=dY2E1Nz&hn=www.googleadservices.com&npa=0&pscdl=noapi&auid=253357570.1766661703&uaa=x86&uab=64&uafvl=Google%2520Chrome%3B143.0.7499.192%7CChromium%3B143.0.7499.192%7CNot%2520A(Brand%3B24.0.0.0&uamb=0&uam=&uap=Linux&uapv=6.18.5&uaw=0&_tu=CA&rfmt=3&fmt=3&is_vtc=1&cid=CAQSLADnonV5iF5dTOEzozHXyBOmTE-4kkYV2wX8DylMnuXnx0D8K9MfQcnKp1aP&random=2636532259&rmt_tld=0&ipr=y",
+      "body": "GIF89a\u0001\u0000\u0001\u0000�\u0000\u0000\u0000\u0000\u0000���!�\u0004\u0001\u0000\u0000\u0000\u0000,\u0000\u0000\u0000\u0000\u0001\u0000\u0001\u0000\u0000\u0002\u0001D\u0000;"
+    },
+    {
+      "timestamp": "2026-02-16T12:29:34.287Z",
+      "status": 200,
+      "url": "https://www.google.es/pagead/1p-user-list/956142973/?random=1771244973833&cv=11&fst=1771243200000&bg=ffffff&guid=ON&async=1&en=gtag.config&gtm=45892e62b1h1v894930176z8844545255za20kzb844545255zd844545255xec&gcd=13r3rPr2r5l1&dma_cps=syphamo&dma=1&tag_exp=103116026~103200004~104527907~104528500~104684208~104684211~115616986~115938465~115938469~116988315~117384406&u_w=1280&u_h=720&url=https%3A%2F%2Fwww.opositatest.com%2Flogin%3F_target_path%3Dhttps%3A%2F%2Faula.opositatest.com%2Fclassroom%2Ftest-configurator%3FmainContentId%3D7&ref=https%3A%2F%2Faula.opositatest.com%2F&frm=0&tiba=Iniciar%20sesi%C3%B3n%20en%20OpositaTest&did=dY2E1Nz&gdid=dY2E1Nz&hn=www.googleadservices.com&npa=0&pscdl=noapi&auid=253357570.1766661703&uaa=x86&uab=64&uafvl=Google%2520Chrome%3B143.0.7499.192%7CChromium%3B143.0.7499.192%7CNot%2520A(Brand%3B24.0.0.0&uamb=0&uam=&uap=Linux&uapv=6.18.5&uaw=0&data=event%3Dgtag.config&rfmt=3&fmt=3&is_vtc=1&cid=CAQSLADnonV5lYwKpdu1QYzuA7X9XVAjh01zzslmX3raJK1G8HO6G-ak0KtqCxJ1&random=3779280675&rmt_tld=1&ipr=y",
+      "body": "GIF89a\u0001\u0000\u0001\u0000�\u0000\u0000\u0000\u0000\u0000���!�\u0004\u0001\u0000\u0000\u0000\u0000,\u0000\u0000\u0000\u0000\u0001\u0000\u0001\u0000\u0000\u0002\u0001D\u0000;"
+    },
+    {
+      "timestamp": "2026-02-16T12:29:34.287Z",
+      "status": 200,
+      "url": "https://www.google.es/pagead/1p-user-list/956142973/?random=1771244973887&cv=11&fst=1771243200000&bg=ffffff&guid=ON&async=1&gtm=45892e62b1h1v894930176z8844545255za20kzb844545255zd844545255xea&gcd=13r3rPr2r5l1&dma_cps=syphamo&dma=1&tag_exp=103116026~103200004~104527907~104528500~104684208~104684211~115616986~115938465~115938469~116988315~117384406&u_w=1280&u_h=720&url=https%3A%2F%2Fwww.opositatest.com%2Flogin%3F_target_path%3Dhttps%3A%2F%2Faula.opositatest.com%2Fclassroom%2Ftest-configurator%3FmainContentId%3D7&ref=https%3A%2F%2Faula.opositatest.com%2F&frm=0&tiba=Iniciar%20sesi%C3%B3n%20en%20OpositaTest&did=dY2E1Nz&gdid=dY2E1Nz&hn=www.googleadservices.com&npa=0&pscdl=noapi&auid=253357570.1766661703&uaa=x86&uab=64&uafvl=Google%2520Chrome%3B143.0.7499.192%7CChromium%3B143.0.7499.192%7CNot%2520A(Brand%3B24.0.0.0&uamb=0&uam=&uap=Linux&uapv=6.18.5&uaw=0&_tu=CA&rfmt=3&fmt=3&is_vtc=1&cid=CAQSLADnonV5iF5dTOEzozHXyBOmTE-4kkYV2wX8DylMnuXnx0D8K9MfQcnKp1aP&random=2636532259&rmt_tld=1&ipr=y",
+      "body": "GIF89a\u0001\u0000\u0001\u0000�\u0000\u0000\u0000\u0000\u0000���!�\u0004\u0001\u0000\u0000\u0000\u0000,\u0000\u0000\u0000\u0000\u0001\u0000\u0001\u0000\u0000\u0002\u0001D\u0000;"
+    },
+    {
+      "timestamp": "2026-02-16T12:29:40.221Z",
+      "status": 200,
+      "url": "https://www.opositatest.com/ecommerce/api/v2.0/me/properties",
+      "body": "{\"userId\":2083,\"activeSubscription\":true,\"activeSubscriptionLastChecked\":\"2026-02-16T12:29:40+00:00\",\"registrationSource\":\"\",\"hasExamsDone\":false,\"hasMadeDownloads\":false,\"hasBeenPremium\":false,\"registrationDate\":\"1999-12-31T23:59:00+00:00\",\"premiumDate\":\"1999-12-31T23:59:00+00:00\"}"
+    },
+    {
+      "timestamp": "2026-02-16T12:29:40.668Z",
+      "status": 200,
+      "url": "https://admin.opositatest.com/api/v2.0/oppositions/7?embedded=mainCategory,organizations",
+      "body": "{\"id\":7,\"name\":\"Tramitaci\\u00f3n Procesal y Administrativa de la Administraci\\u00f3n de Justicia Turno Libre\",\"role\":\"ROLE_TRAMITACION_PROCESAL_TURNO_LIBRE\",\"numberQuestionsExamOfficial\":100,\"maxQuestionsCustomExam\":100,\"shortName\":\"Tramitaci\\u00f3n Procesal TL\",\"hasFreeAccess\":false,\"freeAccessDateFrom\":\"2024-05-16T00:00:00+02:00\",\"freeAccessDateTo\":\"2024-05-17T00:00:00+02:00\",\"slug\":\"tramitacion-procesal-turno-libre\",\"state\":\"CLOSED\",\"oppositionState\":\"ACTIVE\",\"stateComment\":\"\\u003Cp\\u003E\\u003Cstrong\\u003E\\u003Cu\\u003EConvocatoria correspondiente a la OEP 2025\\u003C\\/u\\u003E:\\u003C\\/strong\\u003E\\u003C\\/p\\u003E\\n\\n\\u003Cul\\u003E\\n\\t\\u003Cli\\u003E\\u003Ca href=\\u0022https:\\/\\/www.boe.es\\/boe\\/dias\\/2025\\/12\\/30\\/pdfs\\/BOE-A-2025-27053.pdf\\u0022\\u003EConvocatoria\\u003C\\/a\\u003E:\\u0026nbsp;1155 plazas (116 - cupo de reserva para personas con discapacidad)\\u003C\\/li\\u003E\\n\\u003C\\/ul\\u003E\\n\\n\\u003Cp\\u003E\\u0026nbsp;\\u003C\\/p\\u003E\\n\\n\\u003Cp\\u003E\\u003Cu\\u003E\\u003Cstrong\\u003EConvocatoria correspondiente a la\\u0026nbsp;\\u003C\\/strong\\u003E\\u003C\\/u\\u003E\\u003Ca href=\\u0022https:\\/\\/www.boe.es\\/boe\\/dias\\/2024\\/07\\/03\\/pdfs\\/BOE-A-2024-13572.pdf\\u0022\\u003EOEP 2024\\u003C\\/a\\u003E:\\u003C\\/p\\u003E\\n\\n\\u003Cul\\u003E\\n\\t\\u003Cli\\u003EPlazo para la acreditaci\\u0026oacute;n documental del conocimiento del idioma valenciano: 5 d\\u0026iacute;as h\\u0026aacute;biles desde el 16 de febrero (incluido), al correo:\\u0026nbsp;oposicionesjust@gva.es\\u0026nbsp;\\u003C\\/li\\u003E\\n\\t\\u003Cli\\u003EConvocatoria de la prueba de idioma valenciano:\\u0026nbsp;\\u003Ca href=\\u0022https:\\/\\/www.mjusticia.gob.es\\/es\\/ciudadania\\/empleo-publico\\/acceso-libre\\/Tramitaci%C3%B3n-PA-acceso-libre-PJC14372024\\u0022\\u003E17 de febrero, a las 9:00h.\\u003C\\/a\\u003E\\u003C\\/li\\u003E\\n\\t\\u003Cli\\u003E\\u003Ca href=\\u0022https:\\/\\/www.mjusticia.gob.es\\/es\\/Ciudadano\\/EmpleoPublico\\/Documents\\/ACUERDO%20TCU%20TR%20LIBRE%20APROBADOS%201437.pdf\\u0022\\u003EAcuerdo\\u003C\\/a\\u003E\\u0026nbsp;por el que se publica el\\u0026nbsp;\\u003Ca href=\\u0022https:\\/\\/www.mjusticia.gob.es\\/es\\/Ciudadano\\/EmpleoPublico\\/Documents\\/TRAMITACION-L_1437-SUPERAN_PROCESO.pdf\\u0022\\u003Elistado de aspirantes aprobados en el proceso selectivo.\\u003C\\/a\\u003E\\u003C\\/li\\u003E\\n\\t\\u003Cli\\u003E\\u003Ca href=\\u0022https:\\/\\/www.mjusticia.gob.es\\/es\\/Ciudadano\\/EmpleoPublico\\/Documents\\/ACUERDO%20TCU%20VACANTES%20CRD.pdf\\u0022\\u003EAdjudicaci\\u0026oacute;n de las plazas vacantes ofertadas dentro del cupo de reserva para personas con discapacidad.\\u003C\\/a\\u003E\\u003C\\/li\\u003E\\n\\t\\u003Cli\\u003E\\u003Ca href=\\u0022https:\\/\\/www.mjusticia.gob.es\\/es\\/ciudadania\\/empleo-publico\\/acceso-libre\\/Tramitaci%C3%B3n-PA-acceso-libre-PJC14372024\\u0022\\u003EModificaci\\u0026oacute;n del acuerdo por el que se ofertaban plazas vacantes en el cupo de reserva de personas con discapacidad.\\u003C\\/a\\u003E\\u003C\\/li\\u003E\\n\\t\\u003Cli\\u003E\\u003Ca href=\\u0022https:\\/\\/www.mjusticia.gob.es\\/es\\/ciudadania\\/empleo-publico\\/acceso-libre\\/Tramitaci%C3%B3n-PA-acceso-libre-PJC14372024\\u0022\\u003EPlazas vacantes cupo reserva personas con discapacidad\\u003C\\/a\\u003E\\n\\t\\u003Cul\\u003E\\n\\t\\t\\u003Cli\\u003EPlazo: 5 d\\u0026iacute;as h\\u0026aacute;biles\\u003C\\/li\\u003E\\n\\t\\t\\u003Cli\\u003E\\u003Ca href=\\u0022https:\\/\\/www.mjusticia.gob.es\\/es\\/Ciudadano\\/EmpleoPublico\\/Documents\\/ACUERDO%20TCU%20VACANTES%201437%20TR%20L.pdf\\u0022\\u003EAcuerdo\\u003C\\/a\\u003E\\u003C\\/li\\u003E\\n\\t\\t\\u003Cli\\u003E\\u003Ca href=\\u0022https:\\/\\/www.mjusticia.gob.es\\/es\\/Ciudadano\\/EmpleoPublico\\/Documents\\/ANEXO%20SOLICITUD%20PLAZAS%20VACANTES%201437.docx\\u0022\\u003EAnexo solicitud\\u003C\\/a\\u003E\\u003C\\/li\\u003E\\n\\t\\u003C\\/ul\\u003E\\n\\t\\u003C\\/li\\u003E\\n\\t\\u003Cli\\u003E\\u003Ca href=\\u0022https:\\/\\/www.mjusticia.gob.es\\/es\\/ciudadania\\/empleo-publico\\/acceso-libre\\/Tramitaci%C3%B3n-PA-acceso-libre-PJC14372024\\u0022\\u003EListados de aprobados y no aptos\\u003C\\/a\\u003E\\u003C\\/li\\u003E\\n\\t\\u003Cli\\u003E\\u003Ca href=\\u0022https:\\/\\/www.mjusticia.gob.es\\/es\\/Ciudadano\\/EmpleoPublico\\/Documents\\/PLANTILLAS%20DEFINITIVAS%20TR%20LIBRE%20EX%20INCID%201437.pdf\\u0022\\u003EPlantillas definitivas del examen de incidencias\\u003C\\/a\\u003E\\u003C\\/li\\u003E\\n\\t\\u003Cli\\u003E\\u003Ca href=\\u0022https:\\/\\/www.mjusticia.gob.es\\/es\\/Ciudadano\\/EmpleoPublico\\/Documents\\/ACUERDO%20TCU%20PLANTILLAS%20PROVISIONALES%20EXAMEN%20INCIDENCIAS%201437.pdf\\u0022\\u003EAcuerdo\\u003C\\/a\\u003E\\u0026nbsp;por el que se publican las\\u0026nbsp;\\u003Ca href=\\u0022https:\\/\\/www.mjusticia.gob.es\\/es\\/Ciudadano\\/EmpleoPublico\\/Documents\\/PLANTILLAS%20PROVISIONALES%20TR%20LIBRE%20EXAMEN%20INCIDENCIAS%201437.pdf\\u0022\\u003Eplantillas provisionales del examen de incidencias\\u003C\\/a\\u003E\\u0026nbsp;(5 d\\u0026iacute;as h\\u0026aacute;biles para alegaciones)\\u003C\\/li\\u003E\\n\\t\\u003Cli\\u003E\\u003Ca href=\\u0022https:\\/\\/www.mjusticia.gob.es\\/es\\/Ciudadano\\/EmpleoPublico\\/Documents\\/ACUERDO%20TCU%20TR%20LIBRE%201437%20PLANTILLAS%20DEFINITIVAS.pdf\\u0022\\u003EAcuerdo por el que se publican las plantillas defi"
+    },
+    {
+      "timestamp": "2026-02-16T12:29:40.674Z",
+      "status": 200,
+      "url": "https://api.opositatest.com/api/v2.0/me",
+      "body": "{\"id\":2083,\"customer\":{\"id\":2083},\"username\":\"manueltrader@gmail.com\",\"firstName\":\"Manuel\",\"lastName\":\"Trader\",\"trainer\":null,\"academy\":null,\"roles\":[\"ROLE_USER\"]}"
+    },
+    {
+      "timestamp": "2026-02-16T12:29:40.686Z",
+      "status": 200,
+      "url": "https://subscriptions.opositatest.com/api/v2.0/subscriptions/has-subscription?filters%5Bactive%5D=true&filters%5BresourceTypes%5D%5B%5D=opposition&filters%5BresourceTypes%5D%5B%5D=course&filters%5BresourceTypes%5D%5B%5D=download&filters%5BresourceTypes%5D%5B%5D=exam",
+      "body": "{\"hasSubscription\":true}"
+    },
+    {
+      "timestamp": "2026-02-16T12:29:41.018Z",
+      "status": 200,
+      "url": "https://admin.opositatest.com/api/v2.0/oppositions/7?embedded=mainCategory,organizations",
+      "body": "{\"id\":7,\"name\":\"Tramitaci\\u00f3n Procesal y Administrativa de la Administraci\\u00f3n de Justicia Turno Libre\",\"role\":\"ROLE_TRAMITACION_PROCESAL_TURNO_LIBRE\",\"numberQuestionsExamOfficial\":100,\"maxQuestionsCustomExam\":100,\"shortName\":\"Tramitaci\\u00f3n Procesal TL\",\"hasFreeAccess\":false,\"freeAccessDateFrom\":\"2024-05-16T00:00:00+02:00\",\"freeAccessDateTo\":\"2024-05-17T00:00:00+02:00\",\"slug\":\"tramitacion-procesal-turno-libre\",\"state\":\"CLOSED\",\"oppositionState\":\"ACTIVE\",\"stateComment\":\"\\u003Cp\\u003E\\u003Cstrong\\u003E\\u003Cu\\u003EConvocatoria correspondiente a la OEP 2025\\u003C\\/u\\u003E:\\u003C\\/strong\\u003E\\u003C\\/p\\u003E\\n\\n\\u003Cul\\u003E\\n\\t\\u003Cli\\u003E\\u003Ca href=\\u0022https:\\/\\/www.boe.es\\/boe\\/dias\\/2025\\/12\\/30\\/pdfs\\/BOE-A-2025-27053.pdf\\u0022\\u003EConvocatoria\\u003C\\/a\\u003E:\\u0026nbsp;1155 plazas (116 - cupo de reserva para personas con discapacidad)\\u003C\\/li\\u003E\\n\\u003C\\/ul\\u003E\\n\\n\\u003Cp\\u003E\\u0026nbsp;\\u003C\\/p\\u003E\\n\\n\\u003Cp\\u003E\\u003Cu\\u003E\\u003Cstrong\\u003EConvocatoria correspondiente a la\\u0026nbsp;\\u003C\\/strong\\u003E\\u003C\\/u\\u003E\\u003Ca href=\\u0022https:\\/\\/www.boe.es\\/boe\\/dias\\/2024\\/07\\/03\\/pdfs\\/BOE-A-2024-13572.pdf\\u0022\\u003EOEP 2024\\u003C\\/a\\u003E:\\u003C\\/p\\u003E\\n\\n\\u003Cul\\u003E\\n\\t\\u003Cli\\u003EPlazo para la acreditaci\\u0026oacute;n documental del conocimiento del idioma valenciano: 5 d\\u0026iacute;as h\\u0026aacute;biles desde el 16 de febrero (incluido), al correo:\\u0026nbsp;oposicionesjust@gva.es\\u0026nbsp;\\u003C\\/li\\u003E\\n\\t\\u003Cli\\u003EConvocatoria de la prueba de idioma valenciano:\\u0026nbsp;\\u003Ca href=\\u0022https:\\/\\/www.mjusticia.gob.es\\/es\\/ciudadania\\/empleo-publico\\/acceso-libre\\/Tramitaci%C3%B3n-PA-acceso-libre-PJC14372024\\u0022\\u003E17 de febrero, a las 9:00h.\\u003C\\/a\\u003E\\u003C\\/li\\u003E\\n\\t\\u003Cli\\u003E\\u003Ca href=\\u0022https:\\/\\/www.mjusticia.gob.es\\/es\\/Ciudadano\\/EmpleoPublico\\/Documents\\/ACUERDO%20TCU%20TR%20LIBRE%20APROBADOS%201437.pdf\\u0022\\u003EAcuerdo\\u003C\\/a\\u003E\\u0026nbsp;por el que se publica el\\u0026nbsp;\\u003Ca href=\\u0022https:\\/\\/www.mjusticia.gob.es\\/es\\/Ciudadano\\/EmpleoPublico\\/Documents\\/TRAMITACION-L_1437-SUPERAN_PROCESO.pdf\\u0022\\u003Elistado de aspirantes aprobados en el proceso selectivo.\\u003C\\/a\\u003E\\u003C\\/li\\u003E\\n\\t\\u003Cli\\u003E\\u003Ca href=\\u0022https:\\/\\/www.mjusticia.gob.es\\/es\\/Ciudadano\\/EmpleoPublico\\/Documents\\/ACUERDO%20TCU%20VACANTES%20CRD.pdf\\u0022\\u003EAdjudicaci\\u0026oacute;n de las plazas vacantes ofertadas dentro del cupo de reserva para personas con discapacidad.\\u003C\\/a\\u003E\\u003C\\/li\\u003E\\n\\t\\u003Cli\\u003E\\u003Ca href=\\u0022https:\\/\\/www.mjusticia.gob.es\\/es\\/ciudadania\\/empleo-publico\\/acceso-libre\\/Tramitaci%C3%B3n-PA-acceso-libre-PJC14372024\\u0022\\u003EModificaci\\u0026oacute;n del acuerdo por el que se ofertaban plazas vacantes en el cupo de reserva de personas con discapacidad.\\u003C\\/a\\u003E\\u003C\\/li\\u003E\\n\\t\\u003Cli\\u003E\\u003Ca href=\\u0022https:\\/\\/www.mjusticia.gob.es\\/es\\/ciudadania\\/empleo-publico\\/acceso-libre\\/Tramitaci%C3%B3n-PA-acceso-libre-PJC14372024\\u0022\\u003EPlazas vacantes cupo reserva personas con discapacidad\\u003C\\/a\\u003E\\n\\t\\u003Cul\\u003E\\n\\t\\t\\u003Cli\\u003EPlazo: 5 d\\u0026iacute;as h\\u0026aacute;biles\\u003C\\/li\\u003E\\n\\t\\t\\u003Cli\\u003E\\u003Ca href=\\u0022https:\\/\\/www.mjusticia.gob.es\\/es\\/Ciudadano\\/EmpleoPublico\\/Documents\\/ACUERDO%20TCU%20VACANTES%201437%20TR%20L.pdf\\u0022\\u003EAcuerdo\\u003C\\/a\\u003E\\u003C\\/li\\u003E\\n\\t\\t\\u003Cli\\u003E\\u003Ca href=\\u0022https:\\/\\/www.mjusticia.gob.es\\/es\\/Ciudadano\\/EmpleoPublico\\/Documents\\/ANEXO%20SOLICITUD%20PLAZAS%20VACANTES%201437.docx\\u0022\\u003EAnexo solicitud\\u003C\\/a\\u003E\\u003C\\/li\\u003E\\n\\t\\u003C\\/ul\\u003E\\n\\t\\u003C\\/li\\u003E\\n\\t\\u003Cli\\u003E\\u003Ca href=\\u0022https:\\/\\/www.mjusticia.gob.es\\/es\\/ciudadania\\/empleo-publico\\/acceso-libre\\/Tramitaci%C3%B3n-PA-acceso-libre-PJC14372024\\u0022\\u003EListados de aprobados y no aptos\\u003C\\/a\\u003E\\u003C\\/li\\u003E\\n\\t\\u003Cli\\u003E\\u003Ca href=\\u0022https:\\/\\/www.mjusticia.gob.es\\/es\\/Ciudadano\\/EmpleoPublico\\/Documents\\/PLANTILLAS%20DEFINITIVAS%20TR%20LIBRE%20EX%20INCID%201437.pdf\\u0022\\u003EPlantillas definitivas del examen de incidencias\\u003C\\/a\\u003E\\u003C\\/li\\u003E\\n\\t\\u003Cli\\u003E\\u003Ca href=\\u0022https:\\/\\/www.mjusticia.gob.es\\/es\\/Ciudadano\\/EmpleoPublico\\/Documents\\/ACUERDO%20TCU%20PLANTILLAS%20PROVISIONALES%20EXAMEN%20INCIDENCIAS%201437.pdf\\u0022\\u003EAcuerdo\\u003C\\/a\\u003E\\u0026nbsp;por el que se publican las\\u0026nbsp;\\u003Ca href=\\u0022https:\\/\\/www.mjusticia.gob.es\\/es\\/Ciudadano\\/EmpleoPublico\\/Documents\\/PLANTILLAS%20PROVISIONALES%20TR%20LIBRE%20EXAMEN%20INCIDENCIAS%201437.pdf\\u0022\\u003Eplantillas provisionales del examen de incidencias\\u003C\\/a\\u003E\\u0026nbsp;(5 d\\u0026iacute;as h\\u0026aacute;biles para alegaciones)\\u003C\\/li\\u003E\\n\\t\\u003Cli\\u003E\\u003Ca href=\\u0022https:\\/\\/www.mjusticia.gob.es\\/es\\/Ciudadano\\/EmpleoPublico\\/Documents\\/ACUERDO%20TCU%20TR%20LIBRE%201437%20PLANTILLAS%20DEFINITIVAS.pdf\\u0022\\u003EAcuerdo por el que se publican las plantillas defi"
+    },
+    {
+      "timestamp": "2026-02-16T12:29:41.032Z",
+      "status": 200,
+      "url": "https://api.opositatest.com/avatars/people/person-038.svg",
+      "body": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 480.05 600.92\"><g data-name=\"Capa 2\"><path fill=\"#fff\" d=\"M457.85 126.06a33 33 0 0 0-26.2.76 33.67 33.67 0 0 0-17.85 19l-71.4 188.74a107.71 107.71 0 0 1-21.65 34.94 11.36 11.36 0 0 0 .32 15.5 120 120 0 0 1-29.29 19.44H189.45a120.21 120.21 0 0 1-27.88-18.18 11.35 11.35 0 0 0 .05-15.62 108.66 108.66 0 0 1-22.4-36.08l-71-188c-6.46-16.72-23.55-26.21-40.26-22a33.25 33.25 0 0 0-22.43 17.07 34.64 34.64 0 0 0-1.89 28.1L68.2 342.15c4.55 12.54 9.11 25.45 12.91 38.36a11.53 11.53 0 0 0 14.43 7.6 9.93 9.93 0 0 0 1.22-.47q4.68 13.91 8.79 28a23 23 0 0 0-2.79 15.36l21.91 125.33H102a11.4 11.4 0 1 0 0 22.79h34.37a11.14 11.14 0 0 0 4 0h240.77a11.4 11.4 0 0 0 0-22.79h-24.26l22-125.33a23 23 0 0 0-2.83-15.5c2.6-9 5.42-18 8.4-27a8.53 8.53 0 0 0 .89.32 10.46 10.46 0 0 0 3.41.38 11.06 11.06 0 0 0 10.64-7.59c4.18-12.91 8.35-26.2 13.29-38.73l64.92-172.77a33 33 0 0 0-.76-26.2 33.59 33.59 0 0 0-18.99-17.85z\"/><path fill=\"#fff\" d=\"M349.25 180.52c-3.74-3.08-7.19-3.66-11.27.13-9.18 8.54-18.78 18.67-27.57 27.32l-2.75 2.71 2.19-2.18c-.38-.32-.67-.76-1.05-1.08-9.28-7.76-18.48-15.13-29.84-19.59a97.48 97.48 0 0 0-36.35-7.23 94.83 94.83 0 0 0-36.34 7.21 92 92 0 0 0-29.72 19.7 91.39 91.39 0 0 0-.11 130.49 92.14 92.14 0 0 0 29.69 19.76 94.93 94.93 0 0 0 72.65 0 93.13 93.13 0 0 0 49.8-49 93.84 93.84 0 0 0 7.42-35.88c.27-12.56-3.25-24.19-7.05-36L326 239a91.32 91.32 0 0 0-8.29-15.68l31.86-31.75c2.22-3.52 3.43-7.97-.32-11.05z\"/><path fill=\"#fff\" d=\"M453.68 136.31a22.48 22.48 0 0 0-29.25 13.29L353 338.36a120.3 120.3 0 0 1-224.83 0l-71-188a23.3 23.3 0 0 0-27-14.81 22.7 22.7 0 0 0-15.95 30.38l64.99 172.81c15.57 41.77 31.14 84.69 38.36 128.74 6.08 36.84 20.13 100.65 20.13 100.65H342s15.58-63.81 22-100.65c7.22-43.67 22.41-87 38.36-128.74l64.94-172.81a23.4 23.4 0 0 0-13.67-29.62zm0 0\"/><path fill=\"#010101\" d=\"M318.1 427.22H133.52a11.39 11.39 0 0 1 0-22.78H318.1a11.19 11.19 0 0 1 11.39 11.39 11.42 11.42 0 0 1-11.39 11.39zm0 0\"/><path fill=\"#f9b045\" d=\"M138.08 567.74l-24.31-138.62a11.49 11.49 0 0 1 11.4-13.29h231.28a11.49 11.49 0 0 1 11.4 13.29l-24.69 138.62zm0 0\"/><path fill=\"#010101\" d=\"M381.14 579.14H102a11.4 11.4 0 1 1 0-22.79h279.14a11.4 11.4 0 0 1 0 22.79zm0 0\"/><path fill=\"#fff\" d=\"M259.61 491.79a19 19 0 1 1-19-19 19 19 0 0 1 19 19zm0 0\"/><path fill=\"#010101\" d=\"M343.16 579.14h-1.9a11.34 11.34 0 01-9.11-13.29l23.92-138.63h-230.9l24.3 138.63a11.4 11.4 0 01-22.41 4.15l-24.3-139a23.38 23.38 0 014.94-18.61c4.18-5.31 10.63-8 17.47-8h231.28a23.05 23.05 0 0117.48 8 23.41 23.41 0 014.93 18.61l-24.31 138.64a11.7 11.7 0 01-11.39 9.5zm0 0M152.89 389.24a11.8 11.8 0 01-8.36-3.41 131.89 131.89 0 01-27-43.3l-71-188.37c-2.28-5.69-8-9.11-13.67-8a10.73 10.73 0 00-7.6 5.7 11.91 11.91 0 00-.76 9.5l64.94 172.8c4.94 12.91 9.5 26.2 13.68 39.5a11.53 11.53 0 11-22 6.83c-3.8-12.91-8.36-25.82-12.91-38.36L3.64 169.73a34.64 34.64 0 011.89-28.1 33.25 33.25 0 0122.41-17.09c16.71-4.18 33.8 5.31 40.26 22l71 188a108.66 108.66 0 0022.4 36.08 11.35 11.35 0 01-.37 15.95 16.69 16.69 0 01-8.36 2.65zm0 0M388.73 389.24a10.46 10.46 0 01-3.41-.38 11.53 11.53 0 01-7.6-14.43c4.18-13.29 8.74-27 13.67-39.87l64.95-172.8A10 10 0 00456 153c-1.52-2.66-3.42-4.94-6.46-6.07a10 10 0 00-8.74.37 11.38 11.38 0 00-6.07 6.46l-71 188.37a136.74 136.74 0 01-26.21 42.54 11.29 11.29 0 01-16.71-15.19 107.71 107.71 0 0021.65-34.94L413.8 145.8a33.67 33.67 0 0117.85-19 33 33 0 0126.2-.76 33.59 33.59 0 0119 17.85 33 33 0 01.76 26.2l-64.95 172.83c-4.94 12.53-9.11 25.82-13.29 38.73a11.06 11.06 0 01-10.64 7.59zm0 0\"/><path fill=\"#fff\" d=\"M332.64 272.9c0 49.61-40.81 90.32-90.42 90.28s-90.32-40.81-90.28-90.43 40.81-90.32 90.42-90.28 90.32 40.82 90.28 90.43z\"/><path fill=\"#010101\" d=\"M315.51 246.35c2.62 9.51 5 16.6 4.52 26.87-.93 21.71-9.83 40.93-25.5 56.31 1.69 3.88 1.72 7.19-1.19 10.37-1.52 1.68-3.26 2.11-5.48 2.21s-4.1-1.05-5.81-2.46c-.17-.14-.4-.56-.67-.6-12.4 5.34-25.21 10.43-39 10-41.67-1.34-76.94-33.6-76.87-76.24s35.17-75.1 77.06-76c21.45-.48 40 9.31 55.87 22.95 3.92-3.55 7.61-7.49 11.43-11.22-.38-.32-.67-.76-1.05-1.08-9.28-7.76-18.48-15.13-29.84-19.59a97.48 97.48 0 0 0-36.35-7.23 94.83 94.83 0 0 0-36.34 7.21 92 92 0 0 0-29.72 19.7 91.39 91.39 0 0 0-.13 130.45 92.14 92.14 0 0 0 29.69 19.76 94.93 94.93 0 0 0 72.65 0 93.13 93.13 0 0 0 49.8-49 93.84 93.84 0 0 0 7.42-35.88c.27-12.56-3.25-24.19-7.05-36\"/><path fill=\"#010101\" d=\"M349.56 191.53c2.23-3.48 3.43-7.93-.31-11s-7.19-3.66-11.27.13c-9.18 8.54-18.79 18.67-27.57 27.32s-3.38 3.4-15.46 15.4-36.75 36.78-51.43 51.26c-11-8.41-19.82-20.73-29.5-29.95-4-3.84-7.63-4-11.23-.53s-4.12 6.95-.35 11.22c12.62 14.29 26.78 28.87 39.73 43.19M268.55 302c-3.94-3.86-7.64-3.82-11.22-.46s-3.86 7.06-.26 11.23c7.34 8.52 16.52 17.55 24.29 26.13a94.88 94.88 0 0013.14-9.36c-.28-.33-.43-.59-.77-.95-8.27-8.5-16.93-18.46-25.18-26.59z\"/><path fill=\"#010101\" d=\"M282.06 339.65c1.7 1.42 3.58 2.55 5.8 2.46s4-.54 5.48-2.2c2.9-3.17 2.91-6.53 1.17-10.32a110.64 110.64 0 0 1-13.09 9.41c.18.14.46.5.64.65z\"/></g></svg>"
+    },
+    {
+      "timestamp": "2026-02-16T12:29:41.067Z",
+      "status": 200,
+      "url": "https://api.opositatest.com/api/v2.0/tests/saved/stats",
+      "body": "{\"count\":2}"
+    },
+    {
+      "timestamp": "2026-02-16T12:29:41.099Z",
+      "status": 200,
+      "url": "https://subscriptions.opositatest.com/api/v2.0/subscriptions/has-subscription?filters%5Bactive%5D=true&filters%5BresourceTypes%5D%5B%5D=course",
+      "body": "{\"hasSubscription\":false}"
+    },
+    {
+      "timestamp": "2026-02-16T12:29:41.109Z",
+      "status": 200,
+      "url": "https://admin.opositatest.com/api/v2.0/oppositions/7/contents",
+      "body": "{\"resources\":[{\"id\":\"d801ac95-745b-43f5-a55d-6437cf1fbcde\",\"name\":\"Tema 1. La Constituci\\u00f3n espa\\u00f1ola de 1978  (PR\\u00d3XIMAS CONVOCATORIAS TP TL)\",\"slug\":\"tema-1-la-constitucion-espanola-de-1978-proximas-convocatorias-tp-tl\",\"levelName\":\"Temas\",\"levelSlug\":\"\",\"info\":[{\"level\":\"Ep\\u00edgrafes\",\"count\":7}],\"description\":\"La Constituci\\u00f3n espa\\u00f1ola de 1978: Estructura y contenido. Las atribuciones de la Corona. Las Cortes Generales: Composici\\u00f3n, atribuciones y funcionamiento. La elaboraci\\u00f3n de las leyes. El Tribunal Constitucional. Composici\\u00f3n y funciones.\",\"children\":[{\"id\":\"988d2ae8-34d0-4099-b9bf-80550df34cee\",\"name\":\"I. La CE de 1978\",\"slug\":\"i-la-ce-de-1978\",\"levelName\":\"Ep\\u00edgrafes\",\"levelSlug\":\"\",\"info\":[],\"description\":\"La CE de 1978\",\"children\":[]},{\"id\":\"5cdb9060-d93f-4b06-b9a2-a94b6b6becf7\",\"name\":\"II. Derechos y deberes fundamentales\",\"slug\":\"ii-derechos-y-deberes-fundamentales\",\"levelName\":\"Ep\\u00edgrafes\",\"levelSlug\":\"\",\"info\":[],\"description\":\"Derechos y deberes fundamentales\",\"children\":[]},{\"id\":\"605e2fc6-6f45-4488-a1a9-9cc2db59ebe7\",\"name\":\"III. La Corona\",\"slug\":\"iii-la-corona\",\"levelName\":\"Ep\\u00edgrafes\",\"levelSlug\":\"\",\"info\":[],\"description\":\"La Corona\",\"children\":[]},{\"id\":\"141da43b-4720-433e-8a1c-52f39d8b1b1d\",\"name\":\"IV. Las Cortes Generales\",\"slug\":\"iv-las-cortes-generales\",\"levelName\":\"Ep\\u00edgrafes\",\"levelSlug\":\"\",\"info\":[],\"description\":\"Las Cortes Generales\",\"children\":[]},{\"id\":\"7f88d05b-3090-44d3-894c-9ad15dc749d1\",\"name\":\"V. La elaboraci\\u00f3n de las leyes\",\"slug\":\"v-la-elaboracion-de-las-leyes\",\"levelName\":\"Ep\\u00edgrafes\",\"levelSlug\":\"\",\"info\":[],\"description\":\"La elaboraci\\u00f3n de las leyes\",\"children\":[]},{\"id\":\"121fd7f1-1b08-439e-a12a-243f2edd73a8\",\"name\":\"VI. El Tribunal Constitucional\",\"slug\":\"vi-el-tribunal-constitucional\",\"levelName\":\"Ep\\u00edgrafes\",\"levelSlug\":\"\",\"info\":[],\"description\":\"El Tribunal Constitucional\",\"children\":[]},{\"id\":\"74d75dd0-683a-4f37-ac0f-1bd54c7e849b\",\"name\":\"VII. La reforma constitucional\",\"slug\":\"vii-la-reforma-constitucional\",\"levelName\":\"Ep\\u00edgrafes\",\"levelSlug\":\"\",\"info\":[],\"description\":\"La reforma constitucional\",\"children\":[]}]},{\"id\":\"ebac0551-d923-4c69-b175-e2f862ef094f\",\"name\":\"Tema 2. Derecho de igualdad y no discriminaci\\u00f3n por raz\\u00f3n de g\\u00e9nero (PR\\u00d3XIMAS CONVOCATORIAS TP TL)\",\"slug\":\"tema-2-derecho-de-igualdad-y-no-discriminacion-por-razon-de-genero-proximas-convocatorias-tp-tl\",\"levelName\":\"Temas\",\"levelSlug\":\"\",\"info\":[{\"level\":\"Ep\\u00edgrafes\",\"count\":4}],\"description\":\"Derecho de igualdad y no discriminaci\\u00f3n por raz\\u00f3n de g\\u00e9nero: especial referencia a la Ley Org\\u00e1nica 3\\/2007, para la Igualdad Efectiva de Mujeres y Hombres. La Ley Org\\u00e1nica 1\\/2004, de Medidas de Protecci\\u00f3n Integral contra la Violencia de G\\u00e9nero. Antecedentes. Objeto y principios rectores. Medidas de sensibilizaci\\u00f3n, prevenci\\u00f3n y detecci\\u00f3n. Derechos de las mujeres v\\u00edctimas de la violencia de g\\u00e9nero. Tutela institucional. Ley 15\\/2022, de 12 de julio, integral para la igualdad de trato y la no discriminaci\\u00f3n. La Ley 4\\/2023, de 28 de febrero, para la igualdad real y efectiva de las personas trans y para la garant\\u00eda de los derechos de las personas LGTBI\",\"children\":[{\"id\":\"c281e2f4-f7a3-470b-8773-10a8a497b96a\",\"name\":\"I. La LO 3\\/2007 para la igualdad efectiva de mujeres y hombres\",\"slug\":\"i-la-lo-3-2007-para-la-igualdad-efectiva-de-mujeres-y-hombres\",\"levelName\":\"Ep\\u00edgrafes\",\"levelSlug\":\"\",\"info\":[],\"description\":\"La LO 3\\/2007 para la igualdad efectiva de mujeres y hombres\",\"children\":[]},{\"id\":\"d0ace19e-ec0a-4ea3-beac-e5301d4db39e\",\"name\":\"II. La LO 1\\/2004 de Medidas de Protecci\\u00f3n Integral contra la Violencia de G\\u00e9nero\",\"slug\":\"ii-la-lo-1-2004-de-medidas-de-proteccion-integral-contra-la-violencia-de-genero\",\"levelName\":\"Ep\\u00edgrafes\",\"levelSlug\":\"\",\"info\":[],\"description\":\"La LO 1\\/2004 de Medidas de Protecci\\u00f3n Integral contra la Violencia de G\\u00e9nero\",\"children\":[]},{\"id\":\"e9ea53e7-c1dd-41bf-b752-419cd45bee94\",\"name\":\"III. La ley 15\\/2022, de 12 de Julio, integral para la igualdad de trato y la no discriminaci\\u00f3n\",\"slug\":\"iii-la-ley-15-2022-de-12-de-julio-integral-para-la-igualdad-de-trato-y-la-no-discriminacion\",\"levelName\":\"Ep\\u00edgrafes\",\"levelSlug\":\"\",\"info\":[],\"description\":\"Ley 15\\/2022, de 12 de Julio, integral para la igualdad de trato y la no discriminaci\\u00f3n\",\"children\":[]},{\"id\":\"3d5627bb-c07f-4343-9d8f-b2a7affbbe34\",\"name\":\"IV.  La Ley 4\\/2023, de 28 de febrero, para la igualdad real y efectiva de las personas trans y para la garant\\u00eda de los derechos de las personas LGTBI\",\"slug\":\"iv-la-ley-4-2023-de-28-de-febrero-para-la-igualdad-real-y-efectiva-de-las-personas-trans-y-para-la-garantia-de-los-derechos-de-las-personas-lgtbi\",\"levelName\":\"Ep\\u00edgrafes\",\"levelSlug\":\"\",\"info\":[],\"description\":\"La Ley 4\\/2023, de 28 de febrero, para la igualdad real y efectiva de las personas trans y par"
+    },
+    {
+      "timestamp": "2026-02-16T12:29:41.119Z",
+      "status": 200,
+      "url": "https://subscriptions.opositatest.com/api/v2.0/subscriptions?filters%5Bactive%5D=true",
+      "body": "{\"resources\":[{\"dateInit\":\"2026-02-16T09:32:42+01:00\",\"dateFinish\":\"2026-03-16T09:32:42+01:00\",\"pack\":{\"id\":605,\"name\":\"Suscripci\\u00f3n a Test de Tramitaci\\u00f3n Procesal y Administrativa de la Administraci\\u00f3n de Justicia Turno Libre\",\"opposition\":null,\"resources\":[{\"id\":7,\"externalId\":7,\"name\":\"Tramitaci\\u00f3n Procesal y Administrativa de la Administraci\\u00f3n de Justicia Turno Libre\",\"type\":\"Opposition\",\"organizations\":[]}]},\"packs\":[{\"id\":605,\"name\":\"Suscripci\\u00f3n a Test de Tramitaci\\u00f3n Procesal y Administrativa de la Administraci\\u00f3n de Justicia Turno Libre\",\"opposition\":null,\"resources\":[{\"id\":7,\"externalId\":7,\"name\":\"Tramitaci\\u00f3n Procesal y Administrativa de la Administraci\\u00f3n de Justicia Turno Libre\",\"type\":\"Opposition\",\"organizations\":[]}]}]}]}"
+    },
+    {
+      "timestamp": "2026-02-16T12:29:41.124Z",
+      "status": 200,
+      "url": "https://subscriptions.opositatest.com/api/v2.0/subscriptions/is-subscribed-to-resource?filters%5BexternalResourceId%5D=7&filters%5BresourceType%5D=opposition",
+      "body": "{\"isSubscribed\":true}"
+    },
+    {
+      "timestamp": "2026-02-16T12:29:41.124Z",
+      "status": 200,
+      "url": "https://subscriptions.opositatest.com/api/v2.0/subscriptions/is-subscribed-to-resource?filters%5BexternalResourceId%5D=7&filters%5BresourceType%5D=opposition",
+      "body": "{\"isSubscribed\":true}"
+    },
+    {
+      "timestamp": "2026-02-16T12:29:41.124Z",
+      "status": 200,
+      "url": "https://api.opositatest.com/api/v2.0/exam-types?filters[opposition]=7",
+      "body": "{\"resources\":[{\"type\":\"random\",\"enabled\":true,\"examCount\":1},{\"type\":\"fails\",\"enabled\":true,\"examCount\":1},{\"type\":\"blank\",\"enabled\":true,\"examCount\":1},{\"type\":\"favorite\",\"enabled\":false,\"examCount\":1},{\"type\":\"oficial\",\"enabled\":true,\"examCount\":1},{\"type\":\"previousCall\",\"enabled\":true,\"examCount\":1},{\"type\":\"alleged\",\"enabled\":true,\"examCount\":1},{\"type\":\"demo\",\"enabled\":true,\"examCount\":1},{\"type\":\"challenge\",\"enabled\":true,\"examCount\":1}]}"
+    },
+    {
+      "timestamp": "2026-02-16T12:29:41.144Z",
+      "status": 200,
+      "url": "https://api.opositatest.com/api/v2.0/notifications/stats",
+      "body": "{\"notRead\":0}"
+    },
+    {
+      "timestamp": "2026-02-16T12:29:41.154Z",
+      "status": 200,
+      "url": "https://admin.opositatest.com/api/v2.0/oppositions/7?embedded=mainCategory,organizations",
+      "body": ""
+    },
+    {
+      "timestamp": "2026-02-16T12:29:41.178Z",
+      "status": 200,
+      "url": "https://api.opositatest.com/api/v2.0/tests/saved?filters%5Boppositions%5D=7&pageSize=1",
+      "body": "{\"resources\":[{\"id\":\"4e424261-93fa-4f38-838c-6e1302010891\",\"examId\":49478717,\"oppositionId\":7,\"state\":\"in_progress\",\"title\":\"Examen Supuesto Pr\\u00e1ctico Tramitaci\\u00f3n Procesal Turno Libre, 2025 (OEP 2024)\",\"annotation\":null,\"type\":\"alleged\",\"duration\":0,\"maxDuration\":null,\"isMaxDurationMandatory\":false,\"mark\":0,\"doubtfulMark\":0,\"maxMark\":0,\"createdAt\":\"2026-02-16T12:25:35+00:00\",\"updatedAt\":\"2026-02-16T12:25:35+00:00\",\"completedAt\":null,\"isRepeated\":false,\"info\":{\"questionsCount\":9,\"blankQuestionsCount\":0,\"answeredQuestionsCount\":0,\"correctQuestionsCount\":0,\"failedQuestionsCount\":0,\"doubtfulQuestionsCount\":0,\"correctDoubtfulQuestionsCount\":0,\"failedDoubtfulQuestionsCount\":0,\"highlightedQuestionsCount\":0},\"generationInfo\":{\"contents\":[],\"contentsCount\":[]},\"challengeToken\":null,\"learningMethodStudentId\":null}]}"
+    },
+    {
+      "timestamp": "2026-02-16T12:29:41.179Z",
+      "status": 200,
+      "url": "https://api.opositatest.com/api/v2.0/students/stats/doing-tests/7?filters%5BdatetimeFrom%5D=2026-02-16T00%3A00%3A00%2B01%3A00&filters%5BdatetimeTo%5D=2026-02-16T13%3A24%3A40%2B01%3A00",
+      "body": "{\"count\":277}"
+    },
+    {
+      "timestamp": "2026-02-16T12:29:41.227Z",
+      "status": 200,
+      "url": "https://api.opositatest.com/api/v2.0/championships/participant/my-championships",
+      "body": "{\"resources\":[{\"rankingId\":\"3a92e859-36b7-4b79-a660-2bdd1c0748ef\",\"championshipId\":\"3a92e859-36b7-4b79-a660-2bdd1c0748ef\",\"mainContentId\":7,\"isParticipant\":false,\"isActive\":false,\"isCloseToExitChampionship\":false,\"challengesTokenIsCloseFinish\":[],\"canContinueChampionship\":false,\"deadline\":{\"datetimeStart\":\"2026-01-31T23:00:00+00:00\",\"datetimeFinish\":\"2026-02-28T23:00:00+00:00\"}}]}"
+    },
+    {
+      "timestamp": "2026-02-16T12:29:41.324Z",
+      "status": 200,
+      "url": "https://admin.opositatest.com/api/v2.0/opposition-categories?embedded=oppositions&pageSize=50&filters%5Bstates%5D%5B%5D=DISCONTINUED&filters%5Bstates%5D%5B%5D=ACTIVE",
+      "body": "{\"resources\":[{\"id\":3,\"shortName\":\"Jueces y Fiscales\",\"name\":\"Acceso a la Carrera Judicial y Fiscal\",\"slug\":\"jueces-fiscales\",\"order\":1,\"categoryColor\":\"#ffb142\",\"categoryColorToken\":\"color-category-jueces-fiscales\",\"iconCode\":\"jueces-fiscales\",\"oppositions\":[{\"id\":1,\"name\":\"Acceso a la Carrera Judicial y Fiscal\",\"role\":\"ROLE_JUECES_Y_FISCALES\",\"numberQuestionsExamOfficial\":100,\"maxQuestionsCustomExam\":100,\"shortName\":\"Jueces y Fiscales\",\"hasFreeAccess\":false,\"freeAccessDateFrom\":\"2024-05-16T00:00:00+02:00\",\"freeAccessDateTo\":\"2024-05-17T00:00:00+02:00\",\"slug\":\"acceso-a-la-carrera-judicial-y-fiscal\",\"state\":\"EXAM_PENDING\",\"oppositionState\":\"ACTIVE\",\"stateComment\":\"\\u003Cp\\u003E\\u003Cstrong\\u003E\\u003Ca href=\\u0022https:\\/\\/www.boe.es\\/boe\\/dias\\/2025\\/11\\/01\\/pdfs\\/BOE-A-2025-22051.pdf\\u0022\\u003EConvocatoria OEP 2025\\u003C\\/a\\u003E\\u003C\\/strong\\u003E\\u003C\\/p\\u003E\\n\\n\\u003Cul\\u003E\\n\\t\\u003Cli\\u003E\\u003Cstrong\\u003EPRIMER EJERCICIO\\u003C\\/strong\\u003E\\n\\n\\t\\u003Cul\\u003E\\n\\t\\t\\u003Cli\\u003E\\n\\t\\t\\u003Cp\\u003E\\u003Ca href=\\u0022https:\\/\\/www.poderjudicial.es\\/cgpj\\/es\\/Servicios\\/Acceso-a-la-categoria-de-Juez-a\\/Anuncios\\/Acceso-a-la-carrera-judicial--Juez---Fiscal-2025--Desarrollo-de-las-pruebas---Nota-de-corte-para-superar-el-primer-ejercicio-y-comienzo-de-la-fase-de-impugnacion-de-preguntas\\u0022\\u003EComienzo de la fase de IMPUGNACI\\u0026Oacute;N\\u003C\\/a\\u003E: publicado \\u003Ca href=\\u0022https:\\/\\/www.boe.es\\/boe\\/dias\\/2026\\/02\\/07\\/pdfs\\/BOE-A-2026-2838.pdf\\u0022\\u003Een el BOE\\u003C\\/a\\u003E el acuerdo que marca el inicio de los \\u003Cstrong\\u003E5 d\\u0026iacute;as h\\u0026aacute;biles\\u003C\\/strong\\u003E para impugnar\\u003C\\/p\\u003E\\n\\t\\t\\u003C\\/li\\u003E\\n\\t\\t\\u003Cli\\u003E\\n\\t\\t\\u003Cp\\u003EResultados (provisionales): \\u003Ca href=\\u0022https:\\/\\/www.poderjudicial.es\\/cgpj\\/es\\/Servicios\\/Acceso-a-la-categoria-de-Juez-a\\/Anuncios\\/Acceso-a-la-carrera-judicial--Juez---Fiscal-2025--Desarrollo-de-las-pruebas---Nota-de-corte-para-superar-el-primer-ejercicio-y-comienzo-de-la-fase-de-impugnacion-de-preguntas\\u0022\\u003EAPTOS + NO APTOS\\u003C\\/a\\u003E\\u003C\\/p\\u003E\\n\\t\\t\\u003C\\/li\\u003E\\n\\t\\t\\u003Cli\\u003E\\n\\t\\t\\u003Cp\\u003E\\u003Ca href=\\u0022https:\\/\\/www.poderjudicial.es\\/cgpj\\/es\\/Servicios\\/Acceso-a-la-categoria-de-Juez-a\\/Anuncios\\/Acceso-a-la-carrera-judicial--Juez---Fiscal-2025--Desarrollo-de-las-pruebas---Calificacion-necesaria-para-superar-el-primer-ejercicio\\u0022\\u003ENota de corte\\u003C\\/a\\u003E:\\u0026nbsp;\\u003Cstrong\\u003E66,73 puntos\\u003C\\/strong\\u003E\\u003C\\/p\\u003E\\n\\t\\t\\u003C\\/li\\u003E\\n\\t\\t\\u003Cli\\u003E\\n\\t\\t\\u003Cp\\u003E\\u003Ca href=\\u0022https:\\/\\/www.poderjudicial.es\\/cgpj\\/es\\/Servicios\\/Acceso-a-la-categoria-de-Juez-a\\/Anuncios\\/Acceso-a-la-carrera-judicial--Juez---Fiscal-2025--Desarrollo-de-las-pruebas---Preguntas-y-respuestas-correctas-del-primer-ejercicio\\u0022\\u003EPlantilla PROVISIONAL de respuestas correctas\\u003C\\/a\\u003E\\u003C\\/p\\u003E\\n\\t\\t\\u003C\\/li\\u003E\\n\\t\\t\\u003Cli\\u003E\\n\\t\\t\\u003Cp\\u003E\\u003Ca href=\\u0022https:\\/\\/www.poderjudicial.es\\/cgpj\\/es\\/Servicios\\/Acceso-a-la-categoria-de-Juez-a\\/Anuncios\\/Acceso-a-la-carrera-judicial--Juez---Fiscal-2025--Desarrollo-de-las-pruebas---Preguntas-y-respuestas-correctas-del-primer-ejercicio\\u0022\\u003EPreguntas del primer ejercicio\\u003C\\/a\\u003E\\u003C\\/p\\u003E\\n\\t\\t\\u003C\\/li\\u003E\\n\\t\\t\\u003Cli\\u003E\\n\\t\\t\\u003Cp\\u003E\\u003Ca href=\\u0022https:\\/\\/www.poderjudicial.es\\/cgpj\\/es\\/Servicios\\/Acceso-a-la-categoria-de-Juez-a\\/Anuncios\\/Acceso-a-la-carrera-judicial--Juez---Fiscal-2025--Avisos-y-notas-informativas--Nota-informativa-de-la-Comision-de-Seleccion-relativa-a-la-acreditacion--DNI--en-el-primer-ejercicio\\u0022\\u003ENota informativa relativa a la acreditaci\\u0026oacute;n (DNI)\\u003C\\/a\\u003E: solo formato f\\u0026iacute;sico.\\u003C\\/p\\u003E\\n\\t\\t\\u003C\\/li\\u003E\\n\\t\\t\\u003Cli\\u003E\\n\\t\\t\\u003Cp\\u003E\\u003Ca href=\\u0022https:\\/\\/www.poderjudicial.es\\/cgpj\\/es\\/Servicios\\/Acceso-a-la-categoria-de-Juez-a\\/Anuncios\\/Acceso-a-la-carrera-judicial--Juez---Fiscal-2025--Desarrollo-de-las-pruebas---Primer-ejercicio\\u0022\\u003EDistribuci\\u0026oacute;n de opositores por aulas +\\u0026nbsp;Informaci\\u0026oacute;n sobre acceso a las sedes de examen y\\/o ubicaci\\u0026oacute;n de las aulas de examen\\u003C\\/a\\u003E.\\u003C\\/p\\u003E\\n\\t\\t\\u003C\\/li\\u003E\\n\\t\\t\\u003Cli\\u003E\\u003Ca href=\\u0022https:\\/\\/www.poderjudicial.es\\/cgpj\\/es\\/Servicios\\/Acceso-a-la-categoria-de-Juez-a\\/Anuncios\\/Acceso-a-la-carrera-judicial--Juez---Fiscal-2025--Admitidos-y-excluidos---Relacion-definitiva-de-admitidos-as-y-excluidos-as--nombramiento-del-Tribunal-calificador-y-lugares-donde-tendra-lugar-el-primer-ejercicio\\u0022\\u003ERelaci\\u0026oacute;n definitiva de admitidos y excluidos, nombramiento del Tribunal Calificador y lugares donde tendr\\u0026aacute; lugar el primer ejercicio.\\u003C\\/a\\u003E\\n\\t\\t\\u003Cul\\u003E\\n\\t\\t\\t\\u003Cli\\u003E\\u003Cu\\u003EFecha\\u003C\\/u\\u003E:\\u0026nbsp;\\u003Cstrong\\u003Edomingo 1 de febrero de 2026.\\u003C\\/strong\\u003E\\u0026nbsp;"
+    },
+    {
+      "timestamp": "2026-02-16T12:29:41.344Z",
+      "status": 200,
+      "url": "https://admin.opositatest.com/api/v2.0/oppositions?embedded=mainCategory&page=1&pageSize=250&filters%5BoppositionStates%5D%5B%5D=ACTIVE&filters%5BoppositionStates%5D%5B%5D=DISCONTINUED",
+      "body": "{\"resources\":[{\"id\":1,\"name\":\"Acceso a la Carrera Judicial y Fiscal\",\"role\":\"ROLE_JUECES_Y_FISCALES\",\"numberQuestionsExamOfficial\":100,\"maxQuestionsCustomExam\":100,\"shortName\":\"Jueces y Fiscales\",\"hasFreeAccess\":false,\"freeAccessDateFrom\":\"2024-05-16T00:00:00+02:00\",\"freeAccessDateTo\":\"2024-05-17T00:00:00+02:00\",\"slug\":\"acceso-a-la-carrera-judicial-y-fiscal\",\"state\":\"EXAM_PENDING\",\"oppositionState\":\"ACTIVE\",\"stateComment\":\"\\u003Cp\\u003E\\u003Cstrong\\u003E\\u003Ca href=\\u0022https:\\/\\/www.boe.es\\/boe\\/dias\\/2025\\/11\\/01\\/pdfs\\/BOE-A-2025-22051.pdf\\u0022\\u003EConvocatoria OEP 2025\\u003C\\/a\\u003E\\u003C\\/strong\\u003E\\u003C\\/p\\u003E\\n\\n\\u003Cul\\u003E\\n\\t\\u003Cli\\u003E\\u003Cstrong\\u003EPRIMER EJERCICIO\\u003C\\/strong\\u003E\\n\\n\\t\\u003Cul\\u003E\\n\\t\\t\\u003Cli\\u003E\\n\\t\\t\\u003Cp\\u003E\\u003Ca href=\\u0022https:\\/\\/www.poderjudicial.es\\/cgpj\\/es\\/Servicios\\/Acceso-a-la-categoria-de-Juez-a\\/Anuncios\\/Acceso-a-la-carrera-judicial--Juez---Fiscal-2025--Desarrollo-de-las-pruebas---Nota-de-corte-para-superar-el-primer-ejercicio-y-comienzo-de-la-fase-de-impugnacion-de-preguntas\\u0022\\u003EComienzo de la fase de IMPUGNACI\\u0026Oacute;N\\u003C\\/a\\u003E: publicado \\u003Ca href=\\u0022https:\\/\\/www.boe.es\\/boe\\/dias\\/2026\\/02\\/07\\/pdfs\\/BOE-A-2026-2838.pdf\\u0022\\u003Een el BOE\\u003C\\/a\\u003E el acuerdo que marca el inicio de los \\u003Cstrong\\u003E5 d\\u0026iacute;as h\\u0026aacute;biles\\u003C\\/strong\\u003E para impugnar\\u003C\\/p\\u003E\\n\\t\\t\\u003C\\/li\\u003E\\n\\t\\t\\u003Cli\\u003E\\n\\t\\t\\u003Cp\\u003EResultados (provisionales): \\u003Ca href=\\u0022https:\\/\\/www.poderjudicial.es\\/cgpj\\/es\\/Servicios\\/Acceso-a-la-categoria-de-Juez-a\\/Anuncios\\/Acceso-a-la-carrera-judicial--Juez---Fiscal-2025--Desarrollo-de-las-pruebas---Nota-de-corte-para-superar-el-primer-ejercicio-y-comienzo-de-la-fase-de-impugnacion-de-preguntas\\u0022\\u003EAPTOS + NO APTOS\\u003C\\/a\\u003E\\u003C\\/p\\u003E\\n\\t\\t\\u003C\\/li\\u003E\\n\\t\\t\\u003Cli\\u003E\\n\\t\\t\\u003Cp\\u003E\\u003Ca href=\\u0022https:\\/\\/www.poderjudicial.es\\/cgpj\\/es\\/Servicios\\/Acceso-a-la-categoria-de-Juez-a\\/Anuncios\\/Acceso-a-la-carrera-judicial--Juez---Fiscal-2025--Desarrollo-de-las-pruebas---Calificacion-necesaria-para-superar-el-primer-ejercicio\\u0022\\u003ENota de corte\\u003C\\/a\\u003E:\\u0026nbsp;\\u003Cstrong\\u003E66,73 puntos\\u003C\\/strong\\u003E\\u003C\\/p\\u003E\\n\\t\\t\\u003C\\/li\\u003E\\n\\t\\t\\u003Cli\\u003E\\n\\t\\t\\u003Cp\\u003E\\u003Ca href=\\u0022https:\\/\\/www.poderjudicial.es\\/cgpj\\/es\\/Servicios\\/Acceso-a-la-categoria-de-Juez-a\\/Anuncios\\/Acceso-a-la-carrera-judicial--Juez---Fiscal-2025--Desarrollo-de-las-pruebas---Preguntas-y-respuestas-correctas-del-primer-ejercicio\\u0022\\u003EPlantilla PROVISIONAL de respuestas correctas\\u003C\\/a\\u003E\\u003C\\/p\\u003E\\n\\t\\t\\u003C\\/li\\u003E\\n\\t\\t\\u003Cli\\u003E\\n\\t\\t\\u003Cp\\u003E\\u003Ca href=\\u0022https:\\/\\/www.poderjudicial.es\\/cgpj\\/es\\/Servicios\\/Acceso-a-la-categoria-de-Juez-a\\/Anuncios\\/Acceso-a-la-carrera-judicial--Juez---Fiscal-2025--Desarrollo-de-las-pruebas---Preguntas-y-respuestas-correctas-del-primer-ejercicio\\u0022\\u003EPreguntas del primer ejercicio\\u003C\\/a\\u003E\\u003C\\/p\\u003E\\n\\t\\t\\u003C\\/li\\u003E\\n\\t\\t\\u003Cli\\u003E\\n\\t\\t\\u003Cp\\u003E\\u003Ca href=\\u0022https:\\/\\/www.poderjudicial.es\\/cgpj\\/es\\/Servicios\\/Acceso-a-la-categoria-de-Juez-a\\/Anuncios\\/Acceso-a-la-carrera-judicial--Juez---Fiscal-2025--Avisos-y-notas-informativas--Nota-informativa-de-la-Comision-de-Seleccion-relativa-a-la-acreditacion--DNI--en-el-primer-ejercicio\\u0022\\u003ENota informativa relativa a la acreditaci\\u0026oacute;n (DNI)\\u003C\\/a\\u003E: solo formato f\\u0026iacute;sico.\\u003C\\/p\\u003E\\n\\t\\t\\u003C\\/li\\u003E\\n\\t\\t\\u003Cli\\u003E\\n\\t\\t\\u003Cp\\u003E\\u003Ca href=\\u0022https:\\/\\/www.poderjudicial.es\\/cgpj\\/es\\/Servicios\\/Acceso-a-la-categoria-de-Juez-a\\/Anuncios\\/Acceso-a-la-carrera-judicial--Juez---Fiscal-2025--Desarrollo-de-las-pruebas---Primer-ejercicio\\u0022\\u003EDistribuci\\u0026oacute;n de opositores por aulas +\\u0026nbsp;Informaci\\u0026oacute;n sobre acceso a las sedes de examen y\\/o ubicaci\\u0026oacute;n de las aulas de examen\\u003C\\/a\\u003E.\\u003C\\/p\\u003E\\n\\t\\t\\u003C\\/li\\u003E\\n\\t\\t\\u003Cli\\u003E\\u003Ca href=\\u0022https:\\/\\/www.poderjudicial.es\\/cgpj\\/es\\/Servicios\\/Acceso-a-la-categoria-de-Juez-a\\/Anuncios\\/Acceso-a-la-carrera-judicial--Juez---Fiscal-2025--Admitidos-y-excluidos---Relacion-definitiva-de-admitidos-as-y-excluidos-as--nombramiento-del-Tribunal-calificador-y-lugares-donde-tendra-lugar-el-primer-ejercicio\\u0022\\u003ERelaci\\u0026oacute;n definitiva de admitidos y excluidos, nombramiento del Tribunal Calificador y lugares donde tendr\\u0026aacute; lugar el primer ejercicio.\\u003C\\/a\\u003E\\n\\t\\t\\u003Cul\\u003E\\n\\t\\t\\t\\u003Cli\\u003E\\u003Cu\\u003EFecha\\u003C\\/u\\u003E:\\u0026nbsp;\\u003Cstrong\\u003Edomingo 1 de febrero de 2026.\\u003C\\/strong\\u003E\\u0026nbsp;(El llamamiento de aspirantes se efectuar\\u0026aacute; a las \\u003Cstrong\\u003E10:00 horas\\u003C\\/strong\\u003E y el examen dar\\u0026aacute; comienzo a las \\u003Cstrong\\u003E11:00 horas\\u003C\\/strong\\u003E).\\u003C\\/li\\u003E\\n\\t\\t\\u003C\\/ul\\u003E\\n"
+    },
+    {
+      "timestamp": "2026-02-16T12:29:41.366Z",
+      "status": 200,
+      "url": "https://www.opositatest.com/ecommerce/api/v2.0/user-basic-ecommerce-info",
+      "body": "{\"cart\":{\"id\":null,\"totalItems\":0},\"recomendations\":{\"recomendationToken\":\"4953a3edf\",\"numberOfUserActiveRecomendations\":0,\"numberOfUsedRecomendations\":0}}"
+    },
+    {
+      "timestamp": "2026-02-16T12:29:41.367Z",
+      "status": 200,
+      "url": "https://api.opositatest.com/api/v2.0/responses/stats?filters%5Bopposition%5D=7",
+      "body": "{\"countFailed\":0,\"countBlank\":8516}"
+    },
+    {
+      "timestamp": "2026-02-16T12:29:41.369Z",
+      "status": 200,
+      "url": "https://admin.opositatest.com/api/v2.0/exams?filters%5Bopposition%5D=7&filters%5Btype%5D=previousCall&page=1",
+      "body": "{\"resources\":[{\"id\":709137,\"title\":\"Examen Tramitaci\\u00f3n Procesal Turno Libre, 11 de Marzo de 2012 (OEP 2011)\",\"type\":\"previousCall\",\"isDemo\":false,\"requiredRoles\":[],\"isIncludedInNormalSubscription\":false,\"initDate\":null,\"realizationLimit\":null,\"editionId\":82,\"permissions\":{\"isFree\":false},\"maxDuration\":null,\"isMaxDurationMandatory\":false},{\"id\":707425,\"title\":\"Examen Tramitaci\\u00f3n Procesal Turno Libre, 3 de Julio de 2016 (OEP 2015)\",\"type\":\"previousCall\",\"isDemo\":false,\"requiredRoles\":[],\"isIncludedInNormalSubscription\":false,\"initDate\":null,\"realizationLimit\":null,\"editionId\":83,\"permissions\":{\"isFree\":false},\"maxDuration\":null,\"isMaxDurationMandatory\":false},{\"id\":1143624,\"title\":\"Examen Tramitaci\\u00f3n Procesal Turno Libre, 12 de mayo de 2018 (OEP 2016)\",\"type\":\"previousCall\",\"isDemo\":false,\"requiredRoles\":[],\"isIncludedInNormalSubscription\":false,\"initDate\":null,\"realizationLimit\":null,\"editionId\":91,\"permissions\":{\"isFree\":false},\"maxDuration\":null,\"isMaxDurationMandatory\":false},{\"id\":7215420,\"title\":\"Examen Tramitaci\\u00f3n Procesal Turno Libre, 2020 (OEP 2017 y 2018)\",\"type\":\"previousCall\",\"isDemo\":false,\"requiredRoles\":[],\"isIncludedInNormalSubscription\":false,\"initDate\":null,\"realizationLimit\":null,\"editionId\":147,\"permissions\":{\"isFree\":false},\"maxDuration\":null,\"isMaxDurationMandatory\":false},{\"id\":29734933,\"title\":\"Examen Tramitaci\\u00f3n Procesal Turno Libre, 2023 (OEP 2020, 2021, 2022)\",\"type\":\"previousCall\",\"isDemo\":false,\"requiredRoles\":[],\"isIncludedInNormalSubscription\":false,\"initDate\":null,\"realizationLimit\":null,\"editionId\":345,\"permissions\":{\"isFree\":false},\"maxDuration\":null,\"isMaxDurationMandatory\":false},{\"id\":35968319,\"title\":\"Examen Tramitaci\\u00f3n Procesal Turno Libre Estabilizaci\\u00f3n, 2 de marzo de 2024 (OEP 2021)\",\"type\":\"previousCall\",\"isDemo\":false,\"requiredRoles\":[],\"isIncludedInNormalSubscription\":false,\"initDate\":null,\"realizationLimit\":null,\"editionId\":392,\"permissions\":{\"isFree\":false},\"maxDuration\":null,\"isMaxDurationMandatory\":false},{\"id\":40195044,\"title\":\"Examen Tramitaci\\u00f3n Procesal Turno Libre, 28 de septiembre de 2024 (OEP 2023)\",\"type\":\"previousCall\",\"isDemo\":false,\"requiredRoles\":[],\"isIncludedInNormalSubscription\":false,\"initDate\":null,\"realizationLimit\":null,\"editionId\":441,\"permissions\":{\"isFree\":false},\"maxDuration\":null,\"isMaxDurationMandatory\":false},{\"id\":49481489,\"title\":\"Tercer Ejercicio Tramitaci\\u00f3n Procesal turno libre (OEP 2024)\",\"type\":\"previousCall\",\"isDemo\":false,\"requiredRoles\":[],\"isIncludedInNormalSubscription\":false,\"initDate\":null,\"realizationLimit\":null,\"editionId\":539,\"permissions\":{\"isFree\":false},\"maxDuration\":null,\"isMaxDurationMandatory\":false},{\"id\":49485348,\"title\":\"Examen Tramitaci\\u00f3n Procesal Turno Libre, 27 de septiembre de 2025 (OEP 2024)\",\"type\":\"previousCall\",\"isDemo\":false,\"requiredRoles\":[],\"isIncludedInNormalSubscription\":false,\"initDate\":null,\"realizationLimit\":null,\"editionId\":539,\"permissions\":{\"isFree\":false},\"maxDuration\":null,\"isMaxDurationMandatory\":false}],\"paginator\":{\"page\":1,\"pages\":1,\"limit\":20,\"total\":9}}"
+    },
+    {
+      "timestamp": "2026-02-16T12:29:42.339Z",
+      "status": 200,
+      "url": "https://api.opositatest.com/api/v2.0/me",
+      "body": "{\"id\":2083,\"customer\":{\"id\":2083},\"username\":\"manueltrader@gmail.com\",\"firstName\":\"Manuel\",\"lastName\":\"Trader\",\"trainer\":null,\"academy\":null,\"roles\":[\"ROLE_USER\"]}"
+    },
+    {
+      "timestamp": "2026-02-16T12:29:42.377Z",
+      "status": 200,
+      "url": "https://subscriptions.opositatest.com/api/v2.0/subscriptions/has-subscription?filters%5Bactive%5D=true&filters%5BresourceTypes%5D%5B%5D=opposition&filters%5BresourceTypes%5D%5B%5D=course&filters%5BresourceTypes%5D%5B%5D=download&filters%5BresourceTypes%5D%5B%5D=exam",
+      "body": "{\"hasSubscription\":true}"
+    },
+    {
+      "timestamp": "2026-02-16T12:29:42.429Z",
+      "status": 200,
+      "url": "https://admin.opositatest.com/api/v2.0/oppositions/7?embedded=mainCategory,organizations",
+      "body": "{\"id\":7,\"name\":\"Tramitaci\\u00f3n Procesal y Administrativa de la Administraci\\u00f3n de Justicia Turno Libre\",\"role\":\"ROLE_TRAMITACION_PROCESAL_TURNO_LIBRE\",\"numberQuestionsExamOfficial\":100,\"maxQuestionsCustomExam\":100,\"shortName\":\"Tramitaci\\u00f3n Procesal TL\",\"hasFreeAccess\":false,\"freeAccessDateFrom\":\"2024-05-16T00:00:00+02:00\",\"freeAccessDateTo\":\"2024-05-17T00:00:00+02:00\",\"slug\":\"tramitacion-procesal-turno-libre\",\"state\":\"CLOSED\",\"oppositionState\":\"ACTIVE\",\"stateComment\":\"\\u003Cp\\u003E\\u003Cstrong\\u003E\\u003Cu\\u003EConvocatoria correspondiente a la OEP 2025\\u003C\\/u\\u003E:\\u003C\\/strong\\u003E\\u003C\\/p\\u003E\\n\\n\\u003Cul\\u003E\\n\\t\\u003Cli\\u003E\\u003Ca href=\\u0022https:\\/\\/www.boe.es\\/boe\\/dias\\/2025\\/12\\/30\\/pdfs\\/BOE-A-2025-27053.pdf\\u0022\\u003EConvocatoria\\u003C\\/a\\u003E:\\u0026nbsp;1155 plazas (116 - cupo de reserva para personas con discapacidad)\\u003C\\/li\\u003E\\n\\u003C\\/ul\\u003E\\n\\n\\u003Cp\\u003E\\u0026nbsp;\\u003C\\/p\\u003E\\n\\n\\u003Cp\\u003E\\u003Cu\\u003E\\u003Cstrong\\u003EConvocatoria correspondiente a la\\u0026nbsp;\\u003C\\/strong\\u003E\\u003C\\/u\\u003E\\u003Ca href=\\u0022https:\\/\\/www.boe.es\\/boe\\/dias\\/2024\\/07\\/03\\/pdfs\\/BOE-A-2024-13572.pdf\\u0022\\u003EOEP 2024\\u003C\\/a\\u003E:\\u003C\\/p\\u003E\\n\\n\\u003Cul\\u003E\\n\\t\\u003Cli\\u003EPlazo para la acreditaci\\u0026oacute;n documental del conocimiento del idioma valenciano: 5 d\\u0026iacute;as h\\u0026aacute;biles desde el 16 de febrero (incluido), al correo:\\u0026nbsp;oposicionesjust@gva.es\\u0026nbsp;\\u003C\\/li\\u003E\\n\\t\\u003Cli\\u003EConvocatoria de la prueba de idioma valenciano:\\u0026nbsp;\\u003Ca href=\\u0022https:\\/\\/www.mjusticia.gob.es\\/es\\/ciudadania\\/empleo-publico\\/acceso-libre\\/Tramitaci%C3%B3n-PA-acceso-libre-PJC14372024\\u0022\\u003E17 de febrero, a las 9:00h.\\u003C\\/a\\u003E\\u003C\\/li\\u003E\\n\\t\\u003Cli\\u003E\\u003Ca href=\\u0022https:\\/\\/www.mjusticia.gob.es\\/es\\/Ciudadano\\/EmpleoPublico\\/Documents\\/ACUERDO%20TCU%20TR%20LIBRE%20APROBADOS%201437.pdf\\u0022\\u003EAcuerdo\\u003C\\/a\\u003E\\u0026nbsp;por el que se publica el\\u0026nbsp;\\u003Ca href=\\u0022https:\\/\\/www.mjusticia.gob.es\\/es\\/Ciudadano\\/EmpleoPublico\\/Documents\\/TRAMITACION-L_1437-SUPERAN_PROCESO.pdf\\u0022\\u003Elistado de aspirantes aprobados en el proceso selectivo.\\u003C\\/a\\u003E\\u003C\\/li\\u003E\\n\\t\\u003Cli\\u003E\\u003Ca href=\\u0022https:\\/\\/www.mjusticia.gob.es\\/es\\/Ciudadano\\/EmpleoPublico\\/Documents\\/ACUERDO%20TCU%20VACANTES%20CRD.pdf\\u0022\\u003EAdjudicaci\\u0026oacute;n de las plazas vacantes ofertadas dentro del cupo de reserva para personas con discapacidad.\\u003C\\/a\\u003E\\u003C\\/li\\u003E\\n\\t\\u003Cli\\u003E\\u003Ca href=\\u0022https:\\/\\/www.mjusticia.gob.es\\/es\\/ciudadania\\/empleo-publico\\/acceso-libre\\/Tramitaci%C3%B3n-PA-acceso-libre-PJC14372024\\u0022\\u003EModificaci\\u0026oacute;n del acuerdo por el que se ofertaban plazas vacantes en el cupo de reserva de personas con discapacidad.\\u003C\\/a\\u003E\\u003C\\/li\\u003E\\n\\t\\u003Cli\\u003E\\u003Ca href=\\u0022https:\\/\\/www.mjusticia.gob.es\\/es\\/ciudadania\\/empleo-publico\\/acceso-libre\\/Tramitaci%C3%B3n-PA-acceso-libre-PJC14372024\\u0022\\u003EPlazas vacantes cupo reserva personas con discapacidad\\u003C\\/a\\u003E\\n\\t\\u003Cul\\u003E\\n\\t\\t\\u003Cli\\u003EPlazo: 5 d\\u0026iacute;as h\\u0026aacute;biles\\u003C\\/li\\u003E\\n\\t\\t\\u003Cli\\u003E\\u003Ca href=\\u0022https:\\/\\/www.mjusticia.gob.es\\/es\\/Ciudadano\\/EmpleoPublico\\/Documents\\/ACUERDO%20TCU%20VACANTES%201437%20TR%20L.pdf\\u0022\\u003EAcuerdo\\u003C\\/a\\u003E\\u003C\\/li\\u003E\\n\\t\\t\\u003Cli\\u003E\\u003Ca href=\\u0022https:\\/\\/www.mjusticia.gob.es\\/es\\/Ciudadano\\/EmpleoPublico\\/Documents\\/ANEXO%20SOLICITUD%20PLAZAS%20VACANTES%201437.docx\\u0022\\u003EAnexo solicitud\\u003C\\/a\\u003E\\u003C\\/li\\u003E\\n\\t\\u003C\\/ul\\u003E\\n\\t\\u003C\\/li\\u003E\\n\\t\\u003Cli\\u003E\\u003Ca href=\\u0022https:\\/\\/www.mjusticia.gob.es\\/es\\/ciudadania\\/empleo-publico\\/acceso-libre\\/Tramitaci%C3%B3n-PA-acceso-libre-PJC14372024\\u0022\\u003EListados de aprobados y no aptos\\u003C\\/a\\u003E\\u003C\\/li\\u003E\\n\\t\\u003Cli\\u003E\\u003Ca href=\\u0022https:\\/\\/www.mjusticia.gob.es\\/es\\/Ciudadano\\/EmpleoPublico\\/Documents\\/PLANTILLAS%20DEFINITIVAS%20TR%20LIBRE%20EX%20INCID%201437.pdf\\u0022\\u003EPlantillas definitivas del examen de incidencias\\u003C\\/a\\u003E\\u003C\\/li\\u003E\\n\\t\\u003Cli\\u003E\\u003Ca href=\\u0022https:\\/\\/www.mjusticia.gob.es\\/es\\/Ciudadano\\/EmpleoPublico\\/Documents\\/ACUERDO%20TCU%20PLANTILLAS%20PROVISIONALES%20EXAMEN%20INCIDENCIAS%201437.pdf\\u0022\\u003EAcuerdo\\u003C\\/a\\u003E\\u0026nbsp;por el que se publican las\\u0026nbsp;\\u003Ca href=\\u0022https:\\/\\/www.mjusticia.gob.es\\/es\\/Ciudadano\\/EmpleoPublico\\/Documents\\/PLANTILLAS%20PROVISIONALES%20TR%20LIBRE%20EXAMEN%20INCIDENCIAS%201437.pdf\\u0022\\u003Eplantillas provisionales del examen de incidencias\\u003C\\/a\\u003E\\u0026nbsp;(5 d\\u0026iacute;as h\\u0026aacute;biles para alegaciones)\\u003C\\/li\\u003E\\n\\t\\u003Cli\\u003E\\u003Ca href=\\u0022https:\\/\\/www.mjusticia.gob.es\\/es\\/Ciudadano\\/EmpleoPublico\\/Documents\\/ACUERDO%20TCU%20TR%20LIBRE%201437%20PLANTILLAS%20DEFINITIVAS.pdf\\u0022\\u003EAcuerdo por el que se publican las plantillas defi"
+    },
+    {
+      "timestamp": "2026-02-16T12:29:42.817Z",
+      "status": 200,
+      "url": "https://admin.opositatest.com/api/v2.0/oppositions/7?embedded=mainCategory,organizations",
+      "body": "{\"id\":7,\"name\":\"Tramitaci\\u00f3n Procesal y Administrativa de la Administraci\\u00f3n de Justicia Turno Libre\",\"role\":\"ROLE_TRAMITACION_PROCESAL_TURNO_LIBRE\",\"numberQuestionsExamOfficial\":100,\"maxQuestionsCustomExam\":100,\"shortName\":\"Tramitaci\\u00f3n Procesal TL\",\"hasFreeAccess\":false,\"freeAccessDateFrom\":\"2024-05-16T00:00:00+02:00\",\"freeAccessDateTo\":\"2024-05-17T00:00:00+02:00\",\"slug\":\"tramitacion-procesal-turno-libre\",\"state\":\"CLOSED\",\"oppositionState\":\"ACTIVE\",\"stateComment\":\"\\u003Cp\\u003E\\u003Cstrong\\u003E\\u003Cu\\u003EConvocatoria correspondiente a la OEP 2025\\u003C\\/u\\u003E:\\u003C\\/strong\\u003E\\u003C\\/p\\u003E\\n\\n\\u003Cul\\u003E\\n\\t\\u003Cli\\u003E\\u003Ca href=\\u0022https:\\/\\/www.boe.es\\/boe\\/dias\\/2025\\/12\\/30\\/pdfs\\/BOE-A-2025-27053.pdf\\u0022\\u003EConvocatoria\\u003C\\/a\\u003E:\\u0026nbsp;1155 plazas (116 - cupo de reserva para personas con discapacidad)\\u003C\\/li\\u003E\\n\\u003C\\/ul\\u003E\\n\\n\\u003Cp\\u003E\\u0026nbsp;\\u003C\\/p\\u003E\\n\\n\\u003Cp\\u003E\\u003Cu\\u003E\\u003Cstrong\\u003EConvocatoria correspondiente a la\\u0026nbsp;\\u003C\\/strong\\u003E\\u003C\\/u\\u003E\\u003Ca href=\\u0022https:\\/\\/www.boe.es\\/boe\\/dias\\/2024\\/07\\/03\\/pdfs\\/BOE-A-2024-13572.pdf\\u0022\\u003EOEP 2024\\u003C\\/a\\u003E:\\u003C\\/p\\u003E\\n\\n\\u003Cul\\u003E\\n\\t\\u003Cli\\u003EPlazo para la acreditaci\\u0026oacute;n documental del conocimiento del idioma valenciano: 5 d\\u0026iacute;as h\\u0026aacute;biles desde el 16 de febrero (incluido), al correo:\\u0026nbsp;oposicionesjust@gva.es\\u0026nbsp;\\u003C\\/li\\u003E\\n\\t\\u003Cli\\u003EConvocatoria de la prueba de idioma valenciano:\\u0026nbsp;\\u003Ca href=\\u0022https:\\/\\/www.mjusticia.gob.es\\/es\\/ciudadania\\/empleo-publico\\/acceso-libre\\/Tramitaci%C3%B3n-PA-acceso-libre-PJC14372024\\u0022\\u003E17 de febrero, a las 9:00h.\\u003C\\/a\\u003E\\u003C\\/li\\u003E\\n\\t\\u003Cli\\u003E\\u003Ca href=\\u0022https:\\/\\/www.mjusticia.gob.es\\/es\\/Ciudadano\\/EmpleoPublico\\/Documents\\/ACUERDO%20TCU%20TR%20LIBRE%20APROBADOS%201437.pdf\\u0022\\u003EAcuerdo\\u003C\\/a\\u003E\\u0026nbsp;por el que se publica el\\u0026nbsp;\\u003Ca href=\\u0022https:\\/\\/www.mjusticia.gob.es\\/es\\/Ciudadano\\/EmpleoPublico\\/Documents\\/TRAMITACION-L_1437-SUPERAN_PROCESO.pdf\\u0022\\u003Elistado de aspirantes aprobados en el proceso selectivo.\\u003C\\/a\\u003E\\u003C\\/li\\u003E\\n\\t\\u003Cli\\u003E\\u003Ca href=\\u0022https:\\/\\/www.mjusticia.gob.es\\/es\\/Ciudadano\\/EmpleoPublico\\/Documents\\/ACUERDO%20TCU%20VACANTES%20CRD.pdf\\u0022\\u003EAdjudicaci\\u0026oacute;n de las plazas vacantes ofertadas dentro del cupo de reserva para personas con discapacidad.\\u003C\\/a\\u003E\\u003C\\/li\\u003E\\n\\t\\u003Cli\\u003E\\u003Ca href=\\u0022https:\\/\\/www.mjusticia.gob.es\\/es\\/ciudadania\\/empleo-publico\\/acceso-libre\\/Tramitaci%C3%B3n-PA-acceso-libre-PJC14372024\\u0022\\u003EModificaci\\u0026oacute;n del acuerdo por el que se ofertaban plazas vacantes en el cupo de reserva de personas con discapacidad.\\u003C\\/a\\u003E\\u003C\\/li\\u003E\\n\\t\\u003Cli\\u003E\\u003Ca href=\\u0022https:\\/\\/www.mjusticia.gob.es\\/es\\/ciudadania\\/empleo-publico\\/acceso-libre\\/Tramitaci%C3%B3n-PA-acceso-libre-PJC14372024\\u0022\\u003EPlazas vacantes cupo reserva personas con discapacidad\\u003C\\/a\\u003E\\n\\t\\u003Cul\\u003E\\n\\t\\t\\u003Cli\\u003EPlazo: 5 d\\u0026iacute;as h\\u0026aacute;biles\\u003C\\/li\\u003E\\n\\t\\t\\u003Cli\\u003E\\u003Ca href=\\u0022https:\\/\\/www.mjusticia.gob.es\\/es\\/Ciudadano\\/EmpleoPublico\\/Documents\\/ACUERDO%20TCU%20VACANTES%201437%20TR%20L.pdf\\u0022\\u003EAcuerdo\\u003C\\/a\\u003E\\u003C\\/li\\u003E\\n\\t\\t\\u003Cli\\u003E\\u003Ca href=\\u0022https:\\/\\/www.mjusticia.gob.es\\/es\\/Ciudadano\\/EmpleoPublico\\/Documents\\/ANEXO%20SOLICITUD%20PLAZAS%20VACANTES%201437.docx\\u0022\\u003EAnexo solicitud\\u003C\\/a\\u003E\\u003C\\/li\\u003E\\n\\t\\u003C\\/ul\\u003E\\n\\t\\u003C\\/li\\u003E\\n\\t\\u003Cli\\u003E\\u003Ca href=\\u0022https:\\/\\/www.mjusticia.gob.es\\/es\\/ciudadania\\/empleo-publico\\/acceso-libre\\/Tramitaci%C3%B3n-PA-acceso-libre-PJC14372024\\u0022\\u003EListados de aprobados y no aptos\\u003C\\/a\\u003E\\u003C\\/li\\u003E\\n\\t\\u003Cli\\u003E\\u003Ca href=\\u0022https:\\/\\/www.mjusticia.gob.es\\/es\\/Ciudadano\\/EmpleoPublico\\/Documents\\/PLANTILLAS%20DEFINITIVAS%20TR%20LIBRE%20EX%20INCID%201437.pdf\\u0022\\u003EPlantillas definitivas del examen de incidencias\\u003C\\/a\\u003E\\u003C\\/li\\u003E\\n\\t\\u003Cli\\u003E\\u003Ca href=\\u0022https:\\/\\/www.mjusticia.gob.es\\/es\\/Ciudadano\\/EmpleoPublico\\/Documents\\/ACUERDO%20TCU%20PLANTILLAS%20PROVISIONALES%20EXAMEN%20INCIDENCIAS%201437.pdf\\u0022\\u003EAcuerdo\\u003C\\/a\\u003E\\u0026nbsp;por el que se publican las\\u0026nbsp;\\u003Ca href=\\u0022https:\\/\\/www.mjusticia.gob.es\\/es\\/Ciudadano\\/EmpleoPublico\\/Documents\\/PLANTILLAS%20PROVISIONALES%20TR%20LIBRE%20EXAMEN%20INCIDENCIAS%201437.pdf\\u0022\\u003Eplantillas provisionales del examen de incidencias\\u003C\\/a\\u003E\\u0026nbsp;(5 d\\u0026iacute;as h\\u0026aacute;biles para alegaciones)\\u003C\\/li\\u003E\\n\\t\\u003Cli\\u003E\\u003Ca href=\\u0022https:\\/\\/www.mjusticia.gob.es\\/es\\/Ciudadano\\/EmpleoPublico\\/Documents\\/ACUERDO%20TCU%20TR%20LIBRE%201437%20PLANTILLAS%20DEFINITIVAS.pdf\\u0022\\u003EAcuerdo por el que se publican las plantillas defi"
+    },
+    {
+      "timestamp": "2026-02-16T12:29:42.834Z",
+      "status": 200,
+      "url": "https://api.opositatest.com/avatars/people/person-038.svg",
+      "body": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 480.05 600.92\"><g data-name=\"Capa 2\"><path fill=\"#fff\" d=\"M457.85 126.06a33 33 0 0 0-26.2.76 33.67 33.67 0 0 0-17.85 19l-71.4 188.74a107.71 107.71 0 0 1-21.65 34.94 11.36 11.36 0 0 0 .32 15.5 120 120 0 0 1-29.29 19.44H189.45a120.21 120.21 0 0 1-27.88-18.18 11.35 11.35 0 0 0 .05-15.62 108.66 108.66 0 0 1-22.4-36.08l-71-188c-6.46-16.72-23.55-26.21-40.26-22a33.25 33.25 0 0 0-22.43 17.07 34.64 34.64 0 0 0-1.89 28.1L68.2 342.15c4.55 12.54 9.11 25.45 12.91 38.36a11.53 11.53 0 0 0 14.43 7.6 9.93 9.93 0 0 0 1.22-.47q4.68 13.91 8.79 28a23 23 0 0 0-2.79 15.36l21.91 125.33H102a11.4 11.4 0 1 0 0 22.79h34.37a11.14 11.14 0 0 0 4 0h240.77a11.4 11.4 0 0 0 0-22.79h-24.26l22-125.33a23 23 0 0 0-2.83-15.5c2.6-9 5.42-18 8.4-27a8.53 8.53 0 0 0 .89.32 10.46 10.46 0 0 0 3.41.38 11.06 11.06 0 0 0 10.64-7.59c4.18-12.91 8.35-26.2 13.29-38.73l64.92-172.77a33 33 0 0 0-.76-26.2 33.59 33.59 0 0 0-18.99-17.85z\"/><path fill=\"#fff\" d=\"M349.25 180.52c-3.74-3.08-7.19-3.66-11.27.13-9.18 8.54-18.78 18.67-27.57 27.32l-2.75 2.71 2.19-2.18c-.38-.32-.67-.76-1.05-1.08-9.28-7.76-18.48-15.13-29.84-19.59a97.48 97.48 0 0 0-36.35-7.23 94.83 94.83 0 0 0-36.34 7.21 92 92 0 0 0-29.72 19.7 91.39 91.39 0 0 0-.11 130.49 92.14 92.14 0 0 0 29.69 19.76 94.93 94.93 0 0 0 72.65 0 93.13 93.13 0 0 0 49.8-49 93.84 93.84 0 0 0 7.42-35.88c.27-12.56-3.25-24.19-7.05-36L326 239a91.32 91.32 0 0 0-8.29-15.68l31.86-31.75c2.22-3.52 3.43-7.97-.32-11.05z\"/><path fill=\"#fff\" d=\"M453.68 136.31a22.48 22.48 0 0 0-29.25 13.29L353 338.36a120.3 120.3 0 0 1-224.83 0l-71-188a23.3 23.3 0 0 0-27-14.81 22.7 22.7 0 0 0-15.95 30.38l64.99 172.81c15.57 41.77 31.14 84.69 38.36 128.74 6.08 36.84 20.13 100.65 20.13 100.65H342s15.58-63.81 22-100.65c7.22-43.67 22.41-87 38.36-128.74l64.94-172.81a23.4 23.4 0 0 0-13.67-29.62zm0 0\"/><path fill=\"#010101\" d=\"M318.1 427.22H133.52a11.39 11.39 0 0 1 0-22.78H318.1a11.19 11.19 0 0 1 11.39 11.39 11.42 11.42 0 0 1-11.39 11.39zm0 0\"/><path fill=\"#f9b045\" d=\"M138.08 567.74l-24.31-138.62a11.49 11.49 0 0 1 11.4-13.29h231.28a11.49 11.49 0 0 1 11.4 13.29l-24.69 138.62zm0 0\"/><path fill=\"#010101\" d=\"M381.14 579.14H102a11.4 11.4 0 1 1 0-22.79h279.14a11.4 11.4 0 0 1 0 22.79zm0 0\"/><path fill=\"#fff\" d=\"M259.61 491.79a19 19 0 1 1-19-19 19 19 0 0 1 19 19zm0 0\"/><path fill=\"#010101\" d=\"M343.16 579.14h-1.9a11.34 11.34 0 01-9.11-13.29l23.92-138.63h-230.9l24.3 138.63a11.4 11.4 0 01-22.41 4.15l-24.3-139a23.38 23.38 0 014.94-18.61c4.18-5.31 10.63-8 17.47-8h231.28a23.05 23.05 0 0117.48 8 23.41 23.41 0 014.93 18.61l-24.31 138.64a11.7 11.7 0 01-11.39 9.5zm0 0M152.89 389.24a11.8 11.8 0 01-8.36-3.41 131.89 131.89 0 01-27-43.3l-71-188.37c-2.28-5.69-8-9.11-13.67-8a10.73 10.73 0 00-7.6 5.7 11.91 11.91 0 00-.76 9.5l64.94 172.8c4.94 12.91 9.5 26.2 13.68 39.5a11.53 11.53 0 11-22 6.83c-3.8-12.91-8.36-25.82-12.91-38.36L3.64 169.73a34.64 34.64 0 011.89-28.1 33.25 33.25 0 0122.41-17.09c16.71-4.18 33.8 5.31 40.26 22l71 188a108.66 108.66 0 0022.4 36.08 11.35 11.35 0 01-.37 15.95 16.69 16.69 0 01-8.36 2.65zm0 0M388.73 389.24a10.46 10.46 0 01-3.41-.38 11.53 11.53 0 01-7.6-14.43c4.18-13.29 8.74-27 13.67-39.87l64.95-172.8A10 10 0 00456 153c-1.52-2.66-3.42-4.94-6.46-6.07a10 10 0 00-8.74.37 11.38 11.38 0 00-6.07 6.46l-71 188.37a136.74 136.74 0 01-26.21 42.54 11.29 11.29 0 01-16.71-15.19 107.71 107.71 0 0021.65-34.94L413.8 145.8a33.67 33.67 0 0117.85-19 33 33 0 0126.2-.76 33.59 33.59 0 0119 17.85 33 33 0 01.76 26.2l-64.95 172.83c-4.94 12.53-9.11 25.82-13.29 38.73a11.06 11.06 0 01-10.64 7.59zm0 0\"/><path fill=\"#fff\" d=\"M332.64 272.9c0 49.61-40.81 90.32-90.42 90.28s-90.32-40.81-90.28-90.43 40.81-90.32 90.42-90.28 90.32 40.82 90.28 90.43z\"/><path fill=\"#010101\" d=\"M315.51 246.35c2.62 9.51 5 16.6 4.52 26.87-.93 21.71-9.83 40.93-25.5 56.31 1.69 3.88 1.72 7.19-1.19 10.37-1.52 1.68-3.26 2.11-5.48 2.21s-4.1-1.05-5.81-2.46c-.17-.14-.4-.56-.67-.6-12.4 5.34-25.21 10.43-39 10-41.67-1.34-76.94-33.6-76.87-76.24s35.17-75.1 77.06-76c21.45-.48 40 9.31 55.87 22.95 3.92-3.55 7.61-7.49 11.43-11.22-.38-.32-.67-.76-1.05-1.08-9.28-7.76-18.48-15.13-29.84-19.59a97.48 97.48 0 0 0-36.35-7.23 94.83 94.83 0 0 0-36.34 7.21 92 92 0 0 0-29.72 19.7 91.39 91.39 0 0 0-.13 130.45 92.14 92.14 0 0 0 29.69 19.76 94.93 94.93 0 0 0 72.65 0 93.13 93.13 0 0 0 49.8-49 93.84 93.84 0 0 0 7.42-35.88c.27-12.56-3.25-24.19-7.05-36\"/><path fill=\"#010101\" d=\"M349.56 191.53c2.23-3.48 3.43-7.93-.31-11s-7.19-3.66-11.27.13c-9.18 8.54-18.79 18.67-27.57 27.32s-3.38 3.4-15.46 15.4-36.75 36.78-51.43 51.26c-11-8.41-19.82-20.73-29.5-29.95-4-3.84-7.63-4-11.23-.53s-4.12 6.95-.35 11.22c12.62 14.29 26.78 28.87 39.73 43.19M268.55 302c-3.94-3.86-7.64-3.82-11.22-.46s-3.86 7.06-.26 11.23c7.34 8.52 16.52 17.55 24.29 26.13a94.88 94.88 0 0013.14-9.36c-.28-.33-.43-.59-.77-.95-8.27-8.5-16.93-18.46-25.18-26.59z\"/><path fill=\"#010101\" d=\"M282.06 339.65c1.7 1.42 3.58 2.55 5.8 2.46s4-.54 5.48-2.2c2.9-3.17 2.91-6.53 1.17-10.32a110.64 110.64 0 0 1-13.09 9.41c.18.14.46.5.64.65z\"/></g></svg>"
+    },
+    {
+      "timestamp": "2026-02-16T12:29:42.835Z",
+      "status": 200,
+      "url": "https://api.opositatest.com/api/v2.0/tests/saved/stats",
+      "body": "{\"count\":2}"
+    },
+    {
+      "timestamp": "2026-02-16T12:29:42.839Z",
+      "status": 200,
+      "url": "https://subscriptions.opositatest.com/api/v2.0/subscriptions/has-subscription?filters%5Bactive%5D=true&filters%5BresourceTypes%5D%5B%5D=course",
+      "body": "{\"hasSubscription\":false}"
+    },
+    {
+      "timestamp": "2026-02-16T12:29:42.842Z",
+      "status": 200,
+      "url": "https://admin.opositatest.com/api/v2.0/oppositions/7/contents",
+      "body": "{\"resources\":[{\"id\":\"d801ac95-745b-43f5-a55d-6437cf1fbcde\",\"name\":\"Tema 1. La Constituci\\u00f3n espa\\u00f1ola de 1978  (PR\\u00d3XIMAS CONVOCATORIAS TP TL)\",\"slug\":\"tema-1-la-constitucion-espanola-de-1978-proximas-convocatorias-tp-tl\",\"levelName\":\"Temas\",\"levelSlug\":\"\",\"info\":[{\"level\":\"Ep\\u00edgrafes\",\"count\":7}],\"description\":\"La Constituci\\u00f3n espa\\u00f1ola de 1978: Estructura y contenido. Las atribuciones de la Corona. Las Cortes Generales: Composici\\u00f3n, atribuciones y funcionamiento. La elaboraci\\u00f3n de las leyes. El Tribunal Constitucional. Composici\\u00f3n y funciones.\",\"children\":[{\"id\":\"988d2ae8-34d0-4099-b9bf-80550df34cee\",\"name\":\"I. La CE de 1978\",\"slug\":\"i-la-ce-de-1978\",\"levelName\":\"Ep\\u00edgrafes\",\"levelSlug\":\"\",\"info\":[],\"description\":\"La CE de 1978\",\"children\":[]},{\"id\":\"5cdb9060-d93f-4b06-b9a2-a94b6b6becf7\",\"name\":\"II. Derechos y deberes fundamentales\",\"slug\":\"ii-derechos-y-deberes-fundamentales\",\"levelName\":\"Ep\\u00edgrafes\",\"levelSlug\":\"\",\"info\":[],\"description\":\"Derechos y deberes fundamentales\",\"children\":[]},{\"id\":\"605e2fc6-6f45-4488-a1a9-9cc2db59ebe7\",\"name\":\"III. La Corona\",\"slug\":\"iii-la-corona\",\"levelName\":\"Ep\\u00edgrafes\",\"levelSlug\":\"\",\"info\":[],\"description\":\"La Corona\",\"children\":[]},{\"id\":\"141da43b-4720-433e-8a1c-52f39d8b1b1d\",\"name\":\"IV. Las Cortes Generales\",\"slug\":\"iv-las-cortes-generales\",\"levelName\":\"Ep\\u00edgrafes\",\"levelSlug\":\"\",\"info\":[],\"description\":\"Las Cortes Generales\",\"children\":[]},{\"id\":\"7f88d05b-3090-44d3-894c-9ad15dc749d1\",\"name\":\"V. La elaboraci\\u00f3n de las leyes\",\"slug\":\"v-la-elaboracion-de-las-leyes\",\"levelName\":\"Ep\\u00edgrafes\",\"levelSlug\":\"\",\"info\":[],\"description\":\"La elaboraci\\u00f3n de las leyes\",\"children\":[]},{\"id\":\"121fd7f1-1b08-439e-a12a-243f2edd73a8\",\"name\":\"VI. El Tribunal Constitucional\",\"slug\":\"vi-el-tribunal-constitucional\",\"levelName\":\"Ep\\u00edgrafes\",\"levelSlug\":\"\",\"info\":[],\"description\":\"El Tribunal Constitucional\",\"children\":[]},{\"id\":\"74d75dd0-683a-4f37-ac0f-1bd54c7e849b\",\"name\":\"VII. La reforma constitucional\",\"slug\":\"vii-la-reforma-constitucional\",\"levelName\":\"Ep\\u00edgrafes\",\"levelSlug\":\"\",\"info\":[],\"description\":\"La reforma constitucional\",\"children\":[]}]},{\"id\":\"ebac0551-d923-4c69-b175-e2f862ef094f\",\"name\":\"Tema 2. Derecho de igualdad y no discriminaci\\u00f3n por raz\\u00f3n de g\\u00e9nero (PR\\u00d3XIMAS CONVOCATORIAS TP TL)\",\"slug\":\"tema-2-derecho-de-igualdad-y-no-discriminacion-por-razon-de-genero-proximas-convocatorias-tp-tl\",\"levelName\":\"Temas\",\"levelSlug\":\"\",\"info\":[{\"level\":\"Ep\\u00edgrafes\",\"count\":4}],\"description\":\"Derecho de igualdad y no discriminaci\\u00f3n por raz\\u00f3n de g\\u00e9nero: especial referencia a la Ley Org\\u00e1nica 3\\/2007, para la Igualdad Efectiva de Mujeres y Hombres. La Ley Org\\u00e1nica 1\\/2004, de Medidas de Protecci\\u00f3n Integral contra la Violencia de G\\u00e9nero. Antecedentes. Objeto y principios rectores. Medidas de sensibilizaci\\u00f3n, prevenci\\u00f3n y detecci\\u00f3n. Derechos de las mujeres v\\u00edctimas de la violencia de g\\u00e9nero. Tutela institucional. Ley 15\\/2022, de 12 de julio, integral para la igualdad de trato y la no discriminaci\\u00f3n. La Ley 4\\/2023, de 28 de febrero, para la igualdad real y efectiva de las personas trans y para la garant\\u00eda de los derechos de las personas LGTBI\",\"children\":[{\"id\":\"c281e2f4-f7a3-470b-8773-10a8a497b96a\",\"name\":\"I. La LO 3\\/2007 para la igualdad efectiva de mujeres y hombres\",\"slug\":\"i-la-lo-3-2007-para-la-igualdad-efectiva-de-mujeres-y-hombres\",\"levelName\":\"Ep\\u00edgrafes\",\"levelSlug\":\"\",\"info\":[],\"description\":\"La LO 3\\/2007 para la igualdad efectiva de mujeres y hombres\",\"children\":[]},{\"id\":\"d0ace19e-ec0a-4ea3-beac-e5301d4db39e\",\"name\":\"II. La LO 1\\/2004 de Medidas de Protecci\\u00f3n Integral contra la Violencia de G\\u00e9nero\",\"slug\":\"ii-la-lo-1-2004-de-medidas-de-proteccion-integral-contra-la-violencia-de-genero\",\"levelName\":\"Ep\\u00edgrafes\",\"levelSlug\":\"\",\"info\":[],\"description\":\"La LO 1\\/2004 de Medidas de Protecci\\u00f3n Integral contra la Violencia de G\\u00e9nero\",\"children\":[]},{\"id\":\"e9ea53e7-c1dd-41bf-b752-419cd45bee94\",\"name\":\"III. La ley 15\\/2022, de 12 de Julio, integral para la igualdad de trato y la no discriminaci\\u00f3n\",\"slug\":\"iii-la-ley-15-2022-de-12-de-julio-integral-para-la-igualdad-de-trato-y-la-no-discriminacion\",\"levelName\":\"Ep\\u00edgrafes\",\"levelSlug\":\"\",\"info\":[],\"description\":\"Ley 15\\/2022, de 12 de Julio, integral para la igualdad de trato y la no discriminaci\\u00f3n\",\"children\":[]},{\"id\":\"3d5627bb-c07f-4343-9d8f-b2a7affbbe34\",\"name\":\"IV.  La Ley 4\\/2023, de 28 de febrero, para la igualdad real y efectiva de las personas trans y para la garant\\u00eda de los derechos de las personas LGTBI\",\"slug\":\"iv-la-ley-4-2023-de-28-de-febrero-para-la-igualdad-real-y-efectiva-de-las-personas-trans-y-para-la-garantia-de-los-derechos-de-las-personas-lgtbi\",\"levelName\":\"Ep\\u00edgrafes\",\"levelSlug\":\"\",\"info\":[],\"description\":\"La Ley 4\\/2023, de 28 de febrero, para la igualdad real y efectiva de las personas trans y par"
+    },
+    {
+      "timestamp": "2026-02-16T12:29:42.842Z",
+      "status": 200,
+      "url": "https://subscriptions.opositatest.com/api/v2.0/subscriptions?filters%5Bactive%5D=true",
+      "body": "{\"resources\":[{\"dateInit\":\"2026-02-16T09:32:42+01:00\",\"dateFinish\":\"2026-03-16T09:32:42+01:00\",\"pack\":{\"id\":605,\"name\":\"Suscripci\\u00f3n a Test de Tramitaci\\u00f3n Procesal y Administrativa de la Administraci\\u00f3n de Justicia Turno Libre\",\"opposition\":null,\"resources\":[{\"id\":7,\"externalId\":7,\"name\":\"Tramitaci\\u00f3n Procesal y Administrativa de la Administraci\\u00f3n de Justicia Turno Libre\",\"type\":\"Opposition\",\"organizations\":[]}]},\"packs\":[{\"id\":605,\"name\":\"Suscripci\\u00f3n a Test de Tramitaci\\u00f3n Procesal y Administrativa de la Administraci\\u00f3n de Justicia Turno Libre\",\"opposition\":null,\"resources\":[{\"id\":7,\"externalId\":7,\"name\":\"Tramitaci\\u00f3n Procesal y Administrativa de la Administraci\\u00f3n de Justicia Turno Libre\",\"type\":\"Opposition\",\"organizations\":[]}]}]}]}"
+    },
+    {
+      "timestamp": "2026-02-16T12:29:42.843Z",
+      "status": 200,
+      "url": "https://subscriptions.opositatest.com/api/v2.0/subscriptions/is-subscribed-to-resource?filters%5BexternalResourceId%5D=7&filters%5BresourceType%5D=opposition",
+      "body": "{\"isSubscribed\":true}"
+    },
+    {
+      "timestamp": "2026-02-16T12:29:42.843Z",
+      "status": 200,
+      "url": "https://subscriptions.opositatest.com/api/v2.0/subscriptions/is-subscribed-to-resource?filters%5BexternalResourceId%5D=7&filters%5BresourceType%5D=opposition",
+      "body": "{\"isSubscribed\":true}"
+    },
+    {
+      "timestamp": "2026-02-16T12:29:42.899Z",
+      "status": 200,
+      "url": "https://admin.opositatest.com/api/v2.0/opposition-categories?embedded=oppositions&pageSize=50&filters%5Bstates%5D%5B%5D=DISCONTINUED&filters%5Bstates%5D%5B%5D=ACTIVE",
+      "body": "{\"resources\":[{\"id\":3,\"shortName\":\"Jueces y Fiscales\",\"name\":\"Acceso a la Carrera Judicial y Fiscal\",\"slug\":\"jueces-fiscales\",\"order\":1,\"categoryColor\":\"#ffb142\",\"categoryColorToken\":\"color-category-jueces-fiscales\",\"iconCode\":\"jueces-fiscales\",\"oppositions\":[{\"id\":1,\"name\":\"Acceso a la Carrera Judicial y Fiscal\",\"role\":\"ROLE_JUECES_Y_FISCALES\",\"numberQuestionsExamOfficial\":100,\"maxQuestionsCustomExam\":100,\"shortName\":\"Jueces y Fiscales\",\"hasFreeAccess\":false,\"freeAccessDateFrom\":\"2024-05-16T00:00:00+02:00\",\"freeAccessDateTo\":\"2024-05-17T00:00:00+02:00\",\"slug\":\"acceso-a-la-carrera-judicial-y-fiscal\",\"state\":\"EXAM_PENDING\",\"oppositionState\":\"ACTIVE\",\"stateComment\":\"\\u003Cp\\u003E\\u003Cstrong\\u003E\\u003Ca href=\\u0022https:\\/\\/www.boe.es\\/boe\\/dias\\/2025\\/11\\/01\\/pdfs\\/BOE-A-2025-22051.pdf\\u0022\\u003EConvocatoria OEP 2025\\u003C\\/a\\u003E\\u003C\\/strong\\u003E\\u003C\\/p\\u003E\\n\\n\\u003Cul\\u003E\\n\\t\\u003Cli\\u003E\\u003Cstrong\\u003EPRIMER EJERCICIO\\u003C\\/strong\\u003E\\n\\n\\t\\u003Cul\\u003E\\n\\t\\t\\u003Cli\\u003E\\n\\t\\t\\u003Cp\\u003E\\u003Ca href=\\u0022https:\\/\\/www.poderjudicial.es\\/cgpj\\/es\\/Servicios\\/Acceso-a-la-categoria-de-Juez-a\\/Anuncios\\/Acceso-a-la-carrera-judicial--Juez---Fiscal-2025--Desarrollo-de-las-pruebas---Nota-de-corte-para-superar-el-primer-ejercicio-y-comienzo-de-la-fase-de-impugnacion-de-preguntas\\u0022\\u003EComienzo de la fase de IMPUGNACI\\u0026Oacute;N\\u003C\\/a\\u003E: publicado \\u003Ca href=\\u0022https:\\/\\/www.boe.es\\/boe\\/dias\\/2026\\/02\\/07\\/pdfs\\/BOE-A-2026-2838.pdf\\u0022\\u003Een el BOE\\u003C\\/a\\u003E el acuerdo que marca el inicio de los \\u003Cstrong\\u003E5 d\\u0026iacute;as h\\u0026aacute;biles\\u003C\\/strong\\u003E para impugnar\\u003C\\/p\\u003E\\n\\t\\t\\u003C\\/li\\u003E\\n\\t\\t\\u003Cli\\u003E\\n\\t\\t\\u003Cp\\u003EResultados (provisionales): \\u003Ca href=\\u0022https:\\/\\/www.poderjudicial.es\\/cgpj\\/es\\/Servicios\\/Acceso-a-la-categoria-de-Juez-a\\/Anuncios\\/Acceso-a-la-carrera-judicial--Juez---Fiscal-2025--Desarrollo-de-las-pruebas---Nota-de-corte-para-superar-el-primer-ejercicio-y-comienzo-de-la-fase-de-impugnacion-de-preguntas\\u0022\\u003EAPTOS + NO APTOS\\u003C\\/a\\u003E\\u003C\\/p\\u003E\\n\\t\\t\\u003C\\/li\\u003E\\n\\t\\t\\u003Cli\\u003E\\n\\t\\t\\u003Cp\\u003E\\u003Ca href=\\u0022https:\\/\\/www.poderjudicial.es\\/cgpj\\/es\\/Servicios\\/Acceso-a-la-categoria-de-Juez-a\\/Anuncios\\/Acceso-a-la-carrera-judicial--Juez---Fiscal-2025--Desarrollo-de-las-pruebas---Calificacion-necesaria-para-superar-el-primer-ejercicio\\u0022\\u003ENota de corte\\u003C\\/a\\u003E:\\u0026nbsp;\\u003Cstrong\\u003E66,73 puntos\\u003C\\/strong\\u003E\\u003C\\/p\\u003E\\n\\t\\t\\u003C\\/li\\u003E\\n\\t\\t\\u003Cli\\u003E\\n\\t\\t\\u003Cp\\u003E\\u003Ca href=\\u0022https:\\/\\/www.poderjudicial.es\\/cgpj\\/es\\/Servicios\\/Acceso-a-la-categoria-de-Juez-a\\/Anuncios\\/Acceso-a-la-carrera-judicial--Juez---Fiscal-2025--Desarrollo-de-las-pruebas---Preguntas-y-respuestas-correctas-del-primer-ejercicio\\u0022\\u003EPlantilla PROVISIONAL de respuestas correctas\\u003C\\/a\\u003E\\u003C\\/p\\u003E\\n\\t\\t\\u003C\\/li\\u003E\\n\\t\\t\\u003Cli\\u003E\\n\\t\\t\\u003Cp\\u003E\\u003Ca href=\\u0022https:\\/\\/www.poderjudicial.es\\/cgpj\\/es\\/Servicios\\/Acceso-a-la-categoria-de-Juez-a\\/Anuncios\\/Acceso-a-la-carrera-judicial--Juez---Fiscal-2025--Desarrollo-de-las-pruebas---Preguntas-y-respuestas-correctas-del-primer-ejercicio\\u0022\\u003EPreguntas del primer ejercicio\\u003C\\/a\\u003E\\u003C\\/p\\u003E\\n\\t\\t\\u003C\\/li\\u003E\\n\\t\\t\\u003Cli\\u003E\\n\\t\\t\\u003Cp\\u003E\\u003Ca href=\\u0022https:\\/\\/www.poderjudicial.es\\/cgpj\\/es\\/Servicios\\/Acceso-a-la-categoria-de-Juez-a\\/Anuncios\\/Acceso-a-la-carrera-judicial--Juez---Fiscal-2025--Avisos-y-notas-informativas--Nota-informativa-de-la-Comision-de-Seleccion-relativa-a-la-acreditacion--DNI--en-el-primer-ejercicio\\u0022\\u003ENota informativa relativa a la acreditaci\\u0026oacute;n (DNI)\\u003C\\/a\\u003E: solo formato f\\u0026iacute;sico.\\u003C\\/p\\u003E\\n\\t\\t\\u003C\\/li\\u003E\\n\\t\\t\\u003Cli\\u003E\\n\\t\\t\\u003Cp\\u003E\\u003Ca href=\\u0022https:\\/\\/www.poderjudicial.es\\/cgpj\\/es\\/Servicios\\/Acceso-a-la-categoria-de-Juez-a\\/Anuncios\\/Acceso-a-la-carrera-judicial--Juez---Fiscal-2025--Desarrollo-de-las-pruebas---Primer-ejercicio\\u0022\\u003EDistribuci\\u0026oacute;n de opositores por aulas +\\u0026nbsp;Informaci\\u0026oacute;n sobre acceso a las sedes de examen y\\/o ubicaci\\u0026oacute;n de las aulas de examen\\u003C\\/a\\u003E.\\u003C\\/p\\u003E\\n\\t\\t\\u003C\\/li\\u003E\\n\\t\\t\\u003Cli\\u003E\\u003Ca href=\\u0022https:\\/\\/www.poderjudicial.es\\/cgpj\\/es\\/Servicios\\/Acceso-a-la-categoria-de-Juez-a\\/Anuncios\\/Acceso-a-la-carrera-judicial--Juez---Fiscal-2025--Admitidos-y-excluidos---Relacion-definitiva-de-admitidos-as-y-excluidos-as--nombramiento-del-Tribunal-calificador-y-lugares-donde-tendra-lugar-el-primer-ejercicio\\u0022\\u003ERelaci\\u0026oacute;n definitiva de admitidos y excluidos, nombramiento del Tribunal Calificador y lugares donde tendr\\u0026aacute; lugar el primer ejercicio.\\u003C\\/a\\u003E\\n\\t\\t\\u003Cul\\u003E\\n\\t\\t\\t\\u003Cli\\u003E\\u003Cu\\u003EFecha\\u003C\\/u\\u003E:\\u0026nbsp;\\u003Cstrong\\u003Edomingo 1 de febrero de 2026.\\u003C\\/strong\\u003E\\u0026nbsp;"
+    },
+    {
+      "timestamp": "2026-02-16T12:29:42.931Z",
+      "status": 200,
+      "url": "https://admin.opositatest.com/api/v2.0/oppositions?embedded=mainCategory&page=1&pageSize=250&filters%5BoppositionStates%5D%5B%5D=ACTIVE&filters%5BoppositionStates%5D%5B%5D=DISCONTINUED",
+      "body": "{\"resources\":[{\"id\":1,\"name\":\"Acceso a la Carrera Judicial y Fiscal\",\"role\":\"ROLE_JUECES_Y_FISCALES\",\"numberQuestionsExamOfficial\":100,\"maxQuestionsCustomExam\":100,\"shortName\":\"Jueces y Fiscales\",\"hasFreeAccess\":false,\"freeAccessDateFrom\":\"2024-05-16T00:00:00+02:00\",\"freeAccessDateTo\":\"2024-05-17T00:00:00+02:00\",\"slug\":\"acceso-a-la-carrera-judicial-y-fiscal\",\"state\":\"EXAM_PENDING\",\"oppositionState\":\"ACTIVE\",\"stateComment\":\"\\u003Cp\\u003E\\u003Cstrong\\u003E\\u003Ca href=\\u0022https:\\/\\/www.boe.es\\/boe\\/dias\\/2025\\/11\\/01\\/pdfs\\/BOE-A-2025-22051.pdf\\u0022\\u003EConvocatoria OEP 2025\\u003C\\/a\\u003E\\u003C\\/strong\\u003E\\u003C\\/p\\u003E\\n\\n\\u003Cul\\u003E\\n\\t\\u003Cli\\u003E\\u003Cstrong\\u003EPRIMER EJERCICIO\\u003C\\/strong\\u003E\\n\\n\\t\\u003Cul\\u003E\\n\\t\\t\\u003Cli\\u003E\\n\\t\\t\\u003Cp\\u003E\\u003Ca href=\\u0022https:\\/\\/www.poderjudicial.es\\/cgpj\\/es\\/Servicios\\/Acceso-a-la-categoria-de-Juez-a\\/Anuncios\\/Acceso-a-la-carrera-judicial--Juez---Fiscal-2025--Desarrollo-de-las-pruebas---Nota-de-corte-para-superar-el-primer-ejercicio-y-comienzo-de-la-fase-de-impugnacion-de-preguntas\\u0022\\u003EComienzo de la fase de IMPUGNACI\\u0026Oacute;N\\u003C\\/a\\u003E: publicado \\u003Ca href=\\u0022https:\\/\\/www.boe.es\\/boe\\/dias\\/2026\\/02\\/07\\/pdfs\\/BOE-A-2026-2838.pdf\\u0022\\u003Een el BOE\\u003C\\/a\\u003E el acuerdo que marca el inicio de los \\u003Cstrong\\u003E5 d\\u0026iacute;as h\\u0026aacute;biles\\u003C\\/strong\\u003E para impugnar\\u003C\\/p\\u003E\\n\\t\\t\\u003C\\/li\\u003E\\n\\t\\t\\u003Cli\\u003E\\n\\t\\t\\u003Cp\\u003EResultados (provisionales): \\u003Ca href=\\u0022https:\\/\\/www.poderjudicial.es\\/cgpj\\/es\\/Servicios\\/Acceso-a-la-categoria-de-Juez-a\\/Anuncios\\/Acceso-a-la-carrera-judicial--Juez---Fiscal-2025--Desarrollo-de-las-pruebas---Nota-de-corte-para-superar-el-primer-ejercicio-y-comienzo-de-la-fase-de-impugnacion-de-preguntas\\u0022\\u003EAPTOS + NO APTOS\\u003C\\/a\\u003E\\u003C\\/p\\u003E\\n\\t\\t\\u003C\\/li\\u003E\\n\\t\\t\\u003Cli\\u003E\\n\\t\\t\\u003Cp\\u003E\\u003Ca href=\\u0022https:\\/\\/www.poderjudicial.es\\/cgpj\\/es\\/Servicios\\/Acceso-a-la-categoria-de-Juez-a\\/Anuncios\\/Acceso-a-la-carrera-judicial--Juez---Fiscal-2025--Desarrollo-de-las-pruebas---Calificacion-necesaria-para-superar-el-primer-ejercicio\\u0022\\u003ENota de corte\\u003C\\/a\\u003E:\\u0026nbsp;\\u003Cstrong\\u003E66,73 puntos\\u003C\\/strong\\u003E\\u003C\\/p\\u003E\\n\\t\\t\\u003C\\/li\\u003E\\n\\t\\t\\u003Cli\\u003E\\n\\t\\t\\u003Cp\\u003E\\u003Ca href=\\u0022https:\\/\\/www.poderjudicial.es\\/cgpj\\/es\\/Servicios\\/Acceso-a-la-categoria-de-Juez-a\\/Anuncios\\/Acceso-a-la-carrera-judicial--Juez---Fiscal-2025--Desarrollo-de-las-pruebas---Preguntas-y-respuestas-correctas-del-primer-ejercicio\\u0022\\u003EPlantilla PROVISIONAL de respuestas correctas\\u003C\\/a\\u003E\\u003C\\/p\\u003E\\n\\t\\t\\u003C\\/li\\u003E\\n\\t\\t\\u003Cli\\u003E\\n\\t\\t\\u003Cp\\u003E\\u003Ca href=\\u0022https:\\/\\/www.poderjudicial.es\\/cgpj\\/es\\/Servicios\\/Acceso-a-la-categoria-de-Juez-a\\/Anuncios\\/Acceso-a-la-carrera-judicial--Juez---Fiscal-2025--Desarrollo-de-las-pruebas---Preguntas-y-respuestas-correctas-del-primer-ejercicio\\u0022\\u003EPreguntas del primer ejercicio\\u003C\\/a\\u003E\\u003C\\/p\\u003E\\n\\t\\t\\u003C\\/li\\u003E\\n\\t\\t\\u003Cli\\u003E\\n\\t\\t\\u003Cp\\u003E\\u003Ca href=\\u0022https:\\/\\/www.poderjudicial.es\\/cgpj\\/es\\/Servicios\\/Acceso-a-la-categoria-de-Juez-a\\/Anuncios\\/Acceso-a-la-carrera-judicial--Juez---Fiscal-2025--Avisos-y-notas-informativas--Nota-informativa-de-la-Comision-de-Seleccion-relativa-a-la-acreditacion--DNI--en-el-primer-ejercicio\\u0022\\u003ENota informativa relativa a la acreditaci\\u0026oacute;n (DNI)\\u003C\\/a\\u003E: solo formato f\\u0026iacute;sico.\\u003C\\/p\\u003E\\n\\t\\t\\u003C\\/li\\u003E\\n\\t\\t\\u003Cli\\u003E\\n\\t\\t\\u003Cp\\u003E\\u003Ca href=\\u0022https:\\/\\/www.poderjudicial.es\\/cgpj\\/es\\/Servicios\\/Acceso-a-la-categoria-de-Juez-a\\/Anuncios\\/Acceso-a-la-carrera-judicial--Juez---Fiscal-2025--Desarrollo-de-las-pruebas---Primer-ejercicio\\u0022\\u003EDistribuci\\u0026oacute;n de opositores por aulas +\\u0026nbsp;Informaci\\u0026oacute;n sobre acceso a las sedes de examen y\\/o ubicaci\\u0026oacute;n de las aulas de examen\\u003C\\/a\\u003E.\\u003C\\/p\\u003E\\n\\t\\t\\u003C\\/li\\u003E\\n\\t\\t\\u003Cli\\u003E\\u003Ca href=\\u0022https:\\/\\/www.poderjudicial.es\\/cgpj\\/es\\/Servicios\\/Acceso-a-la-categoria-de-Juez-a\\/Anuncios\\/Acceso-a-la-carrera-judicial--Juez---Fiscal-2025--Admitidos-y-excluidos---Relacion-definitiva-de-admitidos-as-y-excluidos-as--nombramiento-del-Tribunal-calificador-y-lugares-donde-tendra-lugar-el-primer-ejercicio\\u0022\\u003ERelaci\\u0026oacute;n definitiva de admitidos y excluidos, nombramiento del Tribunal Calificador y lugares donde tendr\\u0026aacute; lugar el primer ejercicio.\\u003C\\/a\\u003E\\n\\t\\t\\u003Cul\\u003E\\n\\t\\t\\t\\u003Cli\\u003E\\u003Cu\\u003EFecha\\u003C\\/u\\u003E:\\u0026nbsp;\\u003Cstrong\\u003Edomingo 1 de febrero de 2026.\\u003C\\/strong\\u003E\\u0026nbsp;(El llamamiento de aspirantes se efectuar\\u0026aacute; a las \\u003Cstrong\\u003E10:00 horas\\u003C\\/strong\\u003E y el examen dar\\u0026aacute; comienzo a las \\u003Cstrong\\u003E11:00 horas\\u003C\\/strong\\u003E).\\u003C\\/li\\u003E\\n\\t\\t\\u003C\\/ul\\u003E\\n"
+    },
+    {
+      "timestamp": "2026-02-16T12:29:42.935Z",
+      "status": 200,
+      "url": "https://api.opositatest.com/api/v2.0/exam-types?filters[opposition]=7",
+      "body": "{\"resources\":[{\"type\":\"random\",\"enabled\":true,\"examCount\":1},{\"type\":\"fails\",\"enabled\":true,\"examCount\":1},{\"type\":\"blank\",\"enabled\":true,\"examCount\":1},{\"type\":\"favorite\",\"enabled\":false,\"examCount\":1},{\"type\":\"oficial\",\"enabled\":true,\"examCount\":1},{\"type\":\"previousCall\",\"enabled\":true,\"examCount\":1},{\"type\":\"alleged\",\"enabled\":true,\"examCount\":1},{\"type\":\"demo\",\"enabled\":true,\"examCount\":1},{\"type\":\"challenge\",\"enabled\":true,\"examCount\":1}]}"
+    },
+    {
+      "timestamp": "2026-02-16T12:29:42.968Z",
+      "status": 200,
+      "url": "https://api.opositatest.com/api/v2.0/notifications/stats",
+      "body": "{\"notRead\":0}"
+    },
+    {
+      "timestamp": "2026-02-16T12:29:42.968Z",
+      "status": 200,
+      "url": "https://api.opositatest.com/api/v2.0/tests/saved?filters%5Boppositions%5D=7&pageSize=1",
+      "body": "{\"resources\":[{\"id\":\"4e424261-93fa-4f38-838c-6e1302010891\",\"examId\":49478717,\"oppositionId\":7,\"state\":\"in_progress\",\"title\":\"Examen Supuesto Pr\\u00e1ctico Tramitaci\\u00f3n Procesal Turno Libre, 2025 (OEP 2024)\",\"annotation\":null,\"type\":\"alleged\",\"duration\":0,\"maxDuration\":null,\"isMaxDurationMandatory\":false,\"mark\":0,\"doubtfulMark\":0,\"maxMark\":0,\"createdAt\":\"2026-02-16T12:25:35+00:00\",\"updatedAt\":\"2026-02-16T12:25:35+00:00\",\"completedAt\":null,\"isRepeated\":false,\"info\":{\"questionsCount\":9,\"blankQuestionsCount\":0,\"answeredQuestionsCount\":0,\"correctQuestionsCount\":0,\"failedQuestionsCount\":0,\"doubtfulQuestionsCount\":0,\"correctDoubtfulQuestionsCount\":0,\"failedDoubtfulQuestionsCount\":0,\"highlightedQuestionsCount\":0},\"generationInfo\":{\"contents\":[],\"contentsCount\":[]},\"challengeToken\":null,\"learningMethodStudentId\":null}]}"
+    },
+    {
+      "timestamp": "2026-02-16T12:29:42.968Z",
+      "status": 200,
+      "url": "https://api.opositatest.com/api/v2.0/championships/participant/my-championships",
+      "body": "{\"resources\":[{\"rankingId\":\"3a92e859-36b7-4b79-a660-2bdd1c0748ef\",\"championshipId\":\"3a92e859-36b7-4b79-a660-2bdd1c0748ef\",\"mainContentId\":7,\"isParticipant\":false,\"isActive\":false,\"isCloseToExitChampionship\":false,\"challengesTokenIsCloseFinish\":[],\"canContinueChampionship\":false,\"deadline\":{\"datetimeStart\":\"2026-01-31T23:00:00+00:00\",\"datetimeFinish\":\"2026-02-28T23:00:00+00:00\"}}]}"
+    },
+    {
+      "timestamp": "2026-02-16T12:29:42.968Z",
+      "status": 200,
+      "url": "https://api.opositatest.com/api/v2.0/students/stats/doing-tests/7?filters%5BdatetimeFrom%5D=2026-02-16T00%3A00%3A00%2B01%3A00&filters%5BdatetimeTo%5D=2026-02-16T13%3A24%3A42%2B01%3A00",
+      "body": "{\"count\":277}"
+    },
+    {
+      "timestamp": "2026-02-16T12:29:42.995Z",
+      "status": 200,
+      "url": "https://admin.opositatest.com/api/v2.0/exams?filters%5Bopposition%5D=7&filters%5Btype%5D=previousCall&page=1",
+      "body": "{\"resources\":[{\"id\":709137,\"title\":\"Examen Tramitaci\\u00f3n Procesal Turno Libre, 11 de Marzo de 2012 (OEP 2011)\",\"type\":\"previousCall\",\"isDemo\":false,\"requiredRoles\":[],\"isIncludedInNormalSubscription\":false,\"initDate\":null,\"realizationLimit\":null,\"editionId\":82,\"permissions\":{\"isFree\":false},\"maxDuration\":null,\"isMaxDurationMandatory\":false},{\"id\":707425,\"title\":\"Examen Tramitaci\\u00f3n Procesal Turno Libre, 3 de Julio de 2016 (OEP 2015)\",\"type\":\"previousCall\",\"isDemo\":false,\"requiredRoles\":[],\"isIncludedInNormalSubscription\":false,\"initDate\":null,\"realizationLimit\":null,\"editionId\":83,\"permissions\":{\"isFree\":false},\"maxDuration\":null,\"isMaxDurationMandatory\":false},{\"id\":1143624,\"title\":\"Examen Tramitaci\\u00f3n Procesal Turno Libre, 12 de mayo de 2018 (OEP 2016)\",\"type\":\"previousCall\",\"isDemo\":false,\"requiredRoles\":[],\"isIncludedInNormalSubscription\":false,\"initDate\":null,\"realizationLimit\":null,\"editionId\":91,\"permissions\":{\"isFree\":false},\"maxDuration\":null,\"isMaxDurationMandatory\":false},{\"id\":7215420,\"title\":\"Examen Tramitaci\\u00f3n Procesal Turno Libre, 2020 (OEP 2017 y 2018)\",\"type\":\"previousCall\",\"isDemo\":false,\"requiredRoles\":[],\"isIncludedInNormalSubscription\":false,\"initDate\":null,\"realizationLimit\":null,\"editionId\":147,\"permissions\":{\"isFree\":false},\"maxDuration\":null,\"isMaxDurationMandatory\":false},{\"id\":29734933,\"title\":\"Examen Tramitaci\\u00f3n Procesal Turno Libre, 2023 (OEP 2020, 2021, 2022)\",\"type\":\"previousCall\",\"isDemo\":false,\"requiredRoles\":[],\"isIncludedInNormalSubscription\":false,\"initDate\":null,\"realizationLimit\":null,\"editionId\":345,\"permissions\":{\"isFree\":false},\"maxDuration\":null,\"isMaxDurationMandatory\":false},{\"id\":35968319,\"title\":\"Examen Tramitaci\\u00f3n Procesal Turno Libre Estabilizaci\\u00f3n, 2 de marzo de 2024 (OEP 2021)\",\"type\":\"previousCall\",\"isDemo\":false,\"requiredRoles\":[],\"isIncludedInNormalSubscription\":false,\"initDate\":null,\"realizationLimit\":null,\"editionId\":392,\"permissions\":{\"isFree\":false},\"maxDuration\":null,\"isMaxDurationMandatory\":false},{\"id\":40195044,\"title\":\"Examen Tramitaci\\u00f3n Procesal Turno Libre, 28 de septiembre de 2024 (OEP 2023)\",\"type\":\"previousCall\",\"isDemo\":false,\"requiredRoles\":[],\"isIncludedInNormalSubscription\":false,\"initDate\":null,\"realizationLimit\":null,\"editionId\":441,\"permissions\":{\"isFree\":false},\"maxDuration\":null,\"isMaxDurationMandatory\":false},{\"id\":49481489,\"title\":\"Tercer Ejercicio Tramitaci\\u00f3n Procesal turno libre (OEP 2024)\",\"type\":\"previousCall\",\"isDemo\":false,\"requiredRoles\":[],\"isIncludedInNormalSubscription\":false,\"initDate\":null,\"realizationLimit\":null,\"editionId\":539,\"permissions\":{\"isFree\":false},\"maxDuration\":null,\"isMaxDurationMandatory\":false},{\"id\":49485348,\"title\":\"Examen Tramitaci\\u00f3n Procesal Turno Libre, 27 de septiembre de 2025 (OEP 2024)\",\"type\":\"previousCall\",\"isDemo\":false,\"requiredRoles\":[],\"isIncludedInNormalSubscription\":false,\"initDate\":null,\"realizationLimit\":null,\"editionId\":539,\"permissions\":{\"isFree\":false},\"maxDuration\":null,\"isMaxDurationMandatory\":false}],\"paginator\":{\"page\":1,\"pages\":1,\"limit\":20,\"total\":9}}"
+    },
+    {
+      "timestamp": "2026-02-16T12:29:43.057Z",
+      "status": 200,
+      "url": "https://api.opositatest.com/api/v2.0/responses/stats?filters%5Bopposition%5D=7",
+      "body": "{\"countFailed\":0,\"countBlank\":8516}"
+    },
+    {
+      "timestamp": "2026-02-16T12:29:47.447Z",
+      "status": 204,
+      "url": "https://region1.analytics.google.com/g/collect?v=2&tid=G-GNC9Q3YH5E&gtm=45g92e62b1v880975082z8844545255za20kzb844545255zd844545255&_p=1771244982313&gcs=G111&gcd=13r3rPr2r5l1&npa=0&dma_cps=syphamo&dma=1&gdid=dY2E1Nz&cid=1276091076.1766661701&ecid=1621650237&ul=es-es&sr=1280x720&ir=1&ur=ES-MD&_uip=%3A%3A&uaa=x86&uab=64&uafvl=Google%2520Chrome%3B143.0.7499.192%7CChromium%3B143.0.7499.192%7CNot%2520A(Brand%3B24.0.0.0&uamb=0&uam=&uap=Linux&uapv=6.18.5&uaw=0&are=1&frm=0&pscdl=noapi&_eu=EAAAAGQ&_s=1&tag_exp=103116026~103200004~104527907~104528500~104684208~104684211~115938466~115938468~116988315~117447491&dt=classroom%2Ftest_configurator&uid=2083&sid=1771230944&sct=6&seg=1&dl=https%3A%2F%2Faula.opositatest.com%2Fclassroom%2Ftest-configurator%3FmainContentId%3D7&en=page_view&ep.event_category=test_configurator&ep.page_name=classroom%2Ftest_configurator&ep.user_logged=yes&ep.active_subscription=yes&ep.version=2026.02.12.134434&epn.event_user_id=2083&up.user_active_subscription=yes&upn.userId=2083&tfd=5159",
+      "body": ""
+    }
+  ],
+  "questions": [],
+  "flow": [
+    {
+      "step": 1,
+      "action": "check_session"
+    },
+    {
+      "step": 2,
+      "action": "configure_test"
+    },
+    {
+      "step": 3,
+      "action": "start_test"
+    },
+    {
+      "step": 4,
+      "action": "capture_questions"
+    }
+  ]
+}

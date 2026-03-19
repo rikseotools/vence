@@ -1,0 +1,37 @@
+[
+  {
+    "mainContentId": 7,
+    "status": "REDIRECT_LOGIN",
+    "oposicionName": null,
+    "temasCount": 0,
+    "timestamp": "2026-02-16T11:26:05.401Z"
+  },
+  {
+    "mainContentId": 1,
+    "status": "PARTIAL",
+    "oposicionName": "",
+    "temasCount": 0,
+    "timestamp": "2026-02-16T11:26:51.464Z"
+  },
+  {
+    "mainContentId": 2,
+    "status": "PARTIAL",
+    "oposicionName": "",
+    "temasCount": 0,
+    "timestamp": "2026-02-16T11:27:37.728Z"
+  },
+  {
+    "mainContentId": 3,
+    "status": "PARTIAL",
+    "oposicionName": "",
+    "temasCount": 0,
+    "timestamp": "2026-02-16T11:28:23.061Z"
+  },
+  {
+    "mainContentId": 4,
+    "status": "PARTIAL",
+    "oposicionName": "",
+    "temasCount": 0,
+    "timestamp": "2026-02-16T11:29:08.362Z"
+  }
+]

@@ -1,0 +1,65 @@
+[
+  {
+    "id": "a9ae937a-12b5-4dd4-b0ca-3c168901d6ab",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "reason": "La respuesta D es correcta. Una IP privada es para conectividad interna SIN acceso directo a Internet."
+  },
+  {
+    "id": "e082facf-28be-4595-b31a-e95f089987d8",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "reason": "La respuesta C (Ping) es correcta."
+  },
+  {
+    "id": "d9842d56-e4c6-4071-9f14-5c2fd145f933",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "La respuesta correcta es **D) F9**.\n\nEn Microsoft Edge, la tecla **F9** activa y desactiva el **Lector inmersivo** (Immersive Reader), que proporciona una vista de lectura limpia y sin distracciones.\n\nAnálisis de las opciones:\n\n- **A) Ctrl + Mayúsc + L**: No corresponde al Lector inmersivo en Edge.\n- **B) Ctrl + R**: Recarga la página actual.\n- **C) Ctrl + Mayúsc + O**: Abre el administrador de favoritos.\n- **D) F9**: **Correcto.** Activa o desactiva el Lector inmersivo en Microsoft Edge. En algunos teclados puede ser necesario pulsar Fn + F9.\n\n**Nota:** Ctrl + Mayúsc + R se utiliza en algunos contextos como atajo alternativo, pero el atajo principal y oficial documentado por Microsoft es **F9**.",
+    "reason": "Respuesta correcta pero explicación muy escueta."
+  },
+  {
+    "id": "1444d5dd-d9de-4253-9b3b-f6615e8447c6",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "reason": "La respuesta B es correcta. Cookie = pequeña información almacenada en navegador."
+  },
+  {
+    "id": "9b75b0aa-404b-4824-a3b8-bf77f93a2189",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "La respuesta correcta es **B) Comandos de resolución de datos**, ya que este tipo de comando **NO existe** en el protocolo FTP.\n\nSegún el **RFC 959** (estándar que define FTP), los comandos FTP se clasifican en **tres categorías**:\n\n1. **Comandos de control de acceso** (*Access Control Commands*): USER, PASS, ACCT, CWD, CDUP, SMNT, REIN, QUIT. Gestionan la autenticación y el acceso al sistema de archivos.\n\n2. **Comandos de parámetros de transferencia** (*Transfer Parameter Commands*): PORT, PASV, TYPE, STRU, MODE. Configuran cómo se realizará la transferencia de datos.\n\n3. **Comandos de servicio FTP** (*FTP Service Commands*): RETR, STOR, STOU, APPE, ALLO, REST, RNFR, RNTO, ABOR, DELE, RMD, MKD, PWD, LIST, NLST, SITE, SYST, STAT, HELP, NOOP. Ejecutan las operaciones reales sobre archivos y directorios.\n\nAnálisis de las opciones:\n\n- **A) Comandos de control de acceso**: **Existe.** Es una de las tres categorías reales.\n- **B) Comandos de resolución de datos**: **NO existe.** Es un término inventado que no aparece en el RFC 959.\n- **C) Comandos de servicio FTP**: **Existe.** Es una de las tres categorías reales.\n- **D) Comandos de parámetros de transferencia**: **Existe.** Es una de las tres categorías reales.",
+    "reason": "Respuesta correcta pero explicación demasiado escueta."
+  },
+  {
+    "id": "0732cc67-1ecb-4c6f-8bfc-00fad43b9813",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "reason": "La respuesta B es correcta. Malware = software malicioso intencionado."
+  },
+  {
+    "id": "2c452dd8-b160-4732-bc4c-2fcb73903db2",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "reason": "La respuesta B es correcta. Cookie = información almacenada en navegador."
+  },
+  {
+    "id": "c7f71b0d-dbc8-46fd-8d80-675538fff613",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "La respuesta correcta es **B) Una red VPN** (Virtual Private Network).\n\nUna **VPN** (Red Privada Virtual) crea un túnel cifrado entre el dispositivo del usuario e Internet, lo que permite:\n\n- **Proteger la información personal**: Todo el tráfico se cifra, impidiendo que terceros intercepten datos sensibles.\n- **Proteger la identidad en línea**: Oculta la dirección IP real del usuario, dificultando el rastreo de su actividad.\n- **Acceder a recursos de red local**: Permite conectarse de forma remota y segura a la red interna de una organización como si se estuviera físicamente en ella (uso muy habitual en teletrabajo de la Administración Pública).\n\nAnálisis de las opciones:\n\n- **A) Controladores de filtro**: Son componentes de software del sistema operativo que filtran datos entre capas. No protegen la identidad ni dan acceso remoto a redes.\n- **B) Una red VPN**: **Correcto.** Cumple las tres funciones descritas en el enunciado.\n- **C) Una red PAN** (*Personal Area Network*): Es una red de corto alcance (Bluetooth, NFC) para conectar dispositivos personales cercanos. No protege la identidad ni permite acceso remoto.\n- **D) Controladores de función**: Son drivers de hardware que gestionan funciones de dispositivos. No tienen relación con la protección de datos en línea.",
+    "reason": "Respuesta correcta pero explicación insuficiente."
+  },
+  {
+    "id": "332fbf50-76e7-4710-915a-6a9da03f8a30",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "reason": "La respuesta A (Barra espaciadora) es correcta para bajar una pantalla en Edge."
+  }
+]

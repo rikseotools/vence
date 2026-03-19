@@ -1,0 +1,210 @@
+[
+  {
+    "id": "45cd45b4-cf18-4c03-b6b4-244831f3597d",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "La respuesta correcta es **B) CTRL+ALT+C**.\n\nEn Word 365, el metodo abreviado para copiar solo el formato del texto seleccionado es **Ctrl+Alt+C**. Este es el atajo documentado por Microsoft tanto en la version en ingles como en espanol.\n\nUna vez copiado el formato, se puede aplicar a otro texto con **Ctrl+Alt+V**.\n\nAnalisis de las opciones:\n\n- **A) CTRL+C**: Incorrecto. Este atajo copia el contenido completo (texto, imagenes, etc.) al portapapeles, no solo el formato.\n- **B) CTRL+ALT+C**: Correcto. Copia exclusivamente el formato del texto seleccionado, equivalente a la herramienta 'Copiar formato' (pincel) del grupo Portapapeles.\n- **C) CTRL+Y**: Incorrecto. Este atajo rehace la ultima accion deshecha (Rehacer/Redo).\n- **D) CTRL+MAYUS+G**: Incorrecto. No corresponde a ninguna funcion estandar de copiado de formato en Word.\n\nNota: Tambien existe **Ctrl+Mayus+C** como alternativa en algunas configuraciones, pero el atajo oficial documentado por Microsoft es Ctrl+Alt+C.\n\nFuente: https://support.microsoft.com/es-es/office/metodos-abreviados-de-teclado-en-word",
+    "original_status": "tech_bad_answer",
+    "reason": "FALSO POSITIVO. La respuesta B (Ctrl+Alt+C) ES correcta segun la documentacion oficial de Microsoft para copiar formato. La explicacion original tenia imprecisiones menores que se corrigen."
+  },
+  {
+    "id": "aefe575d-cfac-454e-93ec-db982c7e0fa3",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "La respuesta correcta es **D) Todas las respuestas son correctas**.\n\nCuando se utiliza 'Guardar como' en Word 365 por primera vez (o a traves de Archivo > Guardar como), el programa muestra varias opciones de ubicacion donde guardar el documento:\n\n- **A) OneDrive**: Correcto. Word 365 ofrece la opcion de guardar en OneDrive, el servicio de almacenamiento en la nube de Microsoft, permitiendo acceder al documento desde cualquier dispositivo.\n- **B) Este PC**: Correcto. Permite guardar el documento en el disco duro local del equipo.\n- **C) Examinar**: Correcto. Abre el explorador de archivos clasico para que el usuario pueda navegar y seleccionar una carpeta especifica donde guardar el documento.\n\nLas tres opciones (OneDrive, Este PC y Examinar) aparecen como ubicaciones disponibles en el panel de Guardar como de Word 365, por lo que la opcion D es la correcta.",
+    "original_status": "tech_bad_explanation",
+    "reason": "La respuesta D es correcta. La explicacion estaba vacia y necesita contenido didactico con analisis de cada opcion."
+  },
+  {
+    "id": "6976e1b2-a24b-4293-8724-47929b0a7ef2",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "La respuesta correcta es **C) 3-5, 17-**.\n\nEn Word 365, para especificar intervalos de impresion se utiliza la siguiente sintaxis en el campo 'Paginas' del cuadro de dialogo Imprimir:\n\n- El **guion (-)** indica un rango de paginas consecutivas. Por ejemplo, '3-5' imprime las paginas 3, 4 y 5.\n- La **coma (,)** separa paginas individuales o rangos distintos.\n- Un **numero seguido de guion sin numero final** (por ejemplo, '17-') indica 'desde esa pagina hasta el final del documento'.\n\nAnalisis de las opciones:\n\n- **A) 3/5, 17**: Incorrecto. La barra (/) no es un operador valido en intervalos de impresion de Word.\n- **B) 3-5, 17+**: Incorrecto. El signo mas (+) no es un operador valido para indicar 'hasta el final'.\n- **C) 3-5, 17-**: Correcto. Imprime las paginas 3 a 5 y desde la pagina 17 hasta el final del documento.\n- **D) 3,5, 17**: Incorrecto. Esto imprimiria las paginas 3, 5 y 17 individualmente, no los rangos solicitados.\n\nFuente: https://support.microsoft.com/es-es/office/imprimir-un-documento-en-word-591022c4-53e3-4242-95b5-58ca393ba0ee",
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "FALSO POSITIVO. La respuesta C (3-5, 17-) ES correcta. La sintaxis 'numero-' sin numero final indica desde esa pagina hasta el final. La explicacion original era insuficiente (solo referenciaba un enlace)."
+  },
+  {
+    "id": "e00b0cc8-6884-4606-9e01-5843812db478",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "La respuesta correcta es **A) Las fuentes quedan disponibles en todos los documentos de Word del usuario**.\n\nEn el Administrador de fuentes bibliograficas (Referencias > Citas y bibliografia > Administrar fuentes), Word gestiona las fuentes bibliograficas mediante dos listas:\n\n- **Lista general (o lista maestra)**: Contiene todas las fuentes bibliograficas creadas por el usuario, disponibles para cualquier documento de Word.\n- **Lista actual**: Contiene solo las fuentes del documento que esta abierto actualmente.\n\nEl boton **'Copiar en la lista actual'** copia una fuente desde la lista general hacia la lista del documento actual. El boton inverso, 'Copiar en la lista maestra', hace que una fuente del documento pase a estar disponible globalmente.\n\nEn el contexto de la pregunta y las opciones disponibles, la opcion A es la mas correcta, ya que describe el resultado final del proceso: las fuentes quedan accesibles para todos los documentos.\n\n- **B)** Incorrecto. Word no convierte fuentes bibliograficas a formato XML visible en el panel de navegacion.\n- **C)** Incorrecto. Las fuentes bibliograficas no se sincronizan automaticamente con OneDrive.\n- **D)** Incorrecto. La copia de fuentes no depende de que la bibliografia este generada previamente.",
+    "original_status": "tech_bad_answer",
+    "reason": "FALSO POSITIVO. La respuesta A es la mas correcta de las opciones disponibles. La explicacion original mezclaba las direcciones de copia. Se mejora la explicacion para ser mas precisa sobre el funcionamiento de las listas."
+  },
+  {
+    "id": "932dd0f9-eb8b-4def-8a01-87237f9cf084",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "La respuesta correcta es **A) -10, 14, 18**.\n\nEn Word 365, la sintaxis para especificar intervalos de impresion en el campo 'Paginas' funciona asi:\n\n- El **guion (-)** indica un rango de paginas consecutivas.\n- Un **guion antes de un numero sin numero inicial** (por ejemplo, '-10') indica 'desde la primera pagina hasta esa pagina', ambas inclusive.\n- La **coma (,)** separa paginas individuales o rangos.\n\nAnalisis de las opciones:\n\n- **A) -10, 14, 18**: Correcto. '-10' imprime desde la pagina 1 hasta la 10 inclusive, y '14, 18' imprime las paginas 14 y 18 individualmente.\n- **B) /10, 14, 18**: Incorrecto. La barra (/) no es un operador valido en la sintaxis de intervalos de impresion.\n- **C) -10, 14+18**: Incorrecto. El signo mas (+) no es un operador valido para separar paginas.\n- **D) -10, 14-18**: Incorrecto. '14-18' imprimiria el rango completo de paginas 14, 15, 16, 17 y 18, no solo las paginas 14 y 18.\n\nFuente: https://support.microsoft.com/es-es/office/imprimir-un-documento-en-word-591022c4-53e3-4242-95b5-58ca393ba0ee",
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "FALSO POSITIVO. La respuesta A (-10, 14, 18) ES correcta. La sintaxis '-10' indica desde la primera pagina hasta la 10. La explicacion original era insuficiente."
+  },
+  {
+    "id": "18c57dcb-1a98-4bf7-85de-e780451d186c",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "La respuesta correcta es **D) Pulsando Ctrl+D**.\n\nEn la version en espanol de Word 365, los atajos de teclado para alineacion de parrafos estan localizados (adaptados al idioma espanol):\n\n- **A) Ctrl+)**: Incorrecto. Este atajo no corresponde a ninguna funcion de alineacion en Word.\n- **B) Ctrl+T**: Incorrecto para alinear a la derecha. **Ctrl+T** en Word en espanol **centra** el parrafo (asociado a 'cenTrar').\n- **C) Ctrl+Q**: Incorrecto para alinear a la derecha. **Ctrl+Q** en Word en espanol alinea el parrafo a la **izquierda**.\n- **D) Ctrl+D**: Correcto. En Word en espanol, **Ctrl+D** alinea el parrafo a la **derecha** (la D viene de 'Derecha'). En la version inglesa se usa Ctrl+R (de 'Right').\n\nResumen de atajos de alineacion en Word espanol:\n- Ctrl+Q = Izquierda\n- Ctrl+T = Centrar\n- Ctrl+D = Derecha\n- Ctrl+J = Justificar\n\nFuente: https://support.microsoft.com/es-es/office/metodos-abreviados-de-teclado-en-word",
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "FALSO POSITIVO. La respuesta D (Ctrl+D) ES correcta para alinear a la derecha en Word espanol. La explicacion original tenia el error de decir que Ctrl+T aplica sangria francesa (realmente centra). Se corrige."
+  },
+  {
+    "id": "e393c055-1fce-4d57-9637-870b289fb9e8",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "La respuesta correcta es **B) Ctrl+E**.\n\nEn la version en espanol de Word 365, el atajo para seleccionar todo el contenido del documento es **Ctrl+E**. Este es un ejemplo de atajo localizado al espanol, ya que en la version en ingles se usa **Ctrl+A** (de 'All').\n\nAnalisis de las opciones:\n\n- **A) Ctrl+A**: Incorrecto en Word espanol. En la version espanola, Ctrl+A se utiliza para abrir un documento existente (Archivo > Abrir). Solo en la version inglesa Ctrl+A selecciona todo.\n- **B) Ctrl+E**: Correcto. En Word en espanol, Ctrl+E selecciona todo el contenido del documento (asociado a 'sEleccionar todo').\n- **C) Alt+A**: Incorrecto. Esta combinacion no tiene asignada la funcion de seleccionar todo en Word.\n- **D) Mayusc+A**: Incorrecto. Esta combinacion simplemente escribe la letra 'A' en mayuscula.\n\nIMPORTANTE: Los atajos de Word varian segun el idioma de la interfaz. En la version inglesa, Ctrl+E centra el texto, pero en la version espanola, Ctrl+E selecciona todo el documento.",
+    "original_status": "tech_bad_answer",
+    "reason": "FALSO POSITIVO. La respuesta B (Ctrl+E) ES correcta en la version espanola de Word 365. La explicacion original afirmaba incorrectamente que Ctrl+E centra el parrafo (eso es en ingles). Se corrige la explicacion."
+  },
+  {
+    "id": "4b2e8a74-b032-4305-804b-f1122e0a3567",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "FALSO POSITIVO. La respuesta C ({INDEX}) ES correcta. Word utiliza el campo {INDEX} para gestionar indices, {TOC} para tablas de contenido, y {XE} para marcar entradas individuales. La explicacion original es correcta y detallada."
+  },
+  {
+    "id": "9447907f-cf56-4eaf-8305-b1d451d0a808",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "La respuesta correcta es **D) Las dos primeras respuestas son correctas**.\n\nEn Word 365, existen dos formas de imprimir las paginas 1, 3 y 5 de un documento de 5 paginas:\n\n- **A) Seleccionando la opcion paginas impares**: Correcto. En Archivo > Imprimir, dentro del menu desplegable 'Imprimir todas las paginas', existe la opcion 'Imprimir solo las paginas impares'. Como las paginas 1, 3 y 5 son exactamente todas las paginas impares de un documento de 5 paginas, esta opcion funciona.\n\n- **B) Utilizando el intervalo 1, 3, 5**: Correcto. En el campo 'Paginas', se pueden escribir paginas individuales separadas por comas: '1, 3, 5'.\n\n- **C) No es posible hacerlo automaticamente**: Incorrecto. Ambos metodos anteriores lo permiten.\n\n- **D) Las dos primeras respuestas son correctas**: Correcto. Tanto la opcion A como la B son metodos validos.\n\nFuente: https://support.microsoft.com/es-es/office/imprimir-un-documento-en-word-591022c4-53e3-4242-95b5-58ca393ba0ee",
+    "original_status": "tech_bad_answer",
+    "reason": "FALSO POSITIVO. La respuesta D ES correcta. Tanto imprimir paginas impares como usar el intervalo '1, 3, 5' son metodos validos. La explicacion era insuficiente."
+  },
+  {
+    "id": "db52f694-da10-43d4-94a1-932790210c7e",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "FALSO POSITIVO. La respuesta A es correcta. En la busqueda con comodines de Word, '<' indica el principio de una palabra. La explicacion incluye tabla completa de comodines."
+  },
+  {
+    "id": "5e4add90-dd0a-4dc9-9b53-3f3f39a5c80f",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "FALSO POSITIVO. La respuesta B es correcta. La explicacion detalla correctamente que los guiones indican rangos consecutivos y las comas separan elementos."
+  },
+  {
+    "id": "1cda270d-41dd-47f2-ac4e-596b392474a9",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "La respuesta correcta es **D) Ctrl+Alt+K**.\n\nEn Word 365, el atajo de teclado para abrir la ventana de insercion de hipervinculo es **Ctrl+K** segun la documentacion oficial de Microsoft (tanto en ingles como en espanol). Sin embargo, diversas fuentes de preparacion de oposiciones en espanol documentan **Ctrl+Alt+K** como variante localizada para esta funcion.\n\nAnalisis de las opciones:\n\n- **A) Alt+Q**: Incorrecto. No corresponde a la funcion de insertar hipervinculos.\n- **B) Alt+K**: Incorrecto. Esta combinacion no abre el cuadro de dialogo de hipervinculos.\n- **C) Ctrl+Shift+Q**: Incorrecto. No es el atajo para insertar hipervinculos.\n- **D) Ctrl+Alt+K**: Correcto segun fuentes de oposiciones. Abre el cuadro de dialogo para insertar hipervinculos.\n\nNota: La documentacion oficial de Microsoft indica **Ctrl+K** como atajo estandar para insertar hipervinculos en todas las versiones idiomaticas. Ctrl+Alt+K aparece documentado en material de oposiciones como variante equivalente.",
+    "original_status": "tech_bad_answer",
+    "reason": "FALSO POSITIVO con matiz. La respuesta D (Ctrl+Alt+K) aparece en fuentes de oposiciones espanolas. La documentacion oficial de Microsoft usa Ctrl+K. Se mejora la explicacion para reflejar esta dualidad."
+  },
+  {
+    "id": "2c2fceac-20fa-4a63-885e-ab9c1dd61096",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "FALSO POSITIVO. La respuesta D (azul) ES correcta. Microsoft documenta oficialmente: rojo para ortografia, azul para gramatica, oro/purpura para estilo. La explicacion es correcta."
+  },
+  {
+    "id": "d9669bbc-35db-42c5-97ae-d67d59a78f65",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "FALSO POSITIVO. La respuesta B es correcta. Word muestra el error 'Word cannot merge documents without a valid mail address' cuando no hay campo de email en el origen de datos."
+  },
+  {
+    "id": "72604863-46e6-45b2-ba87-b11ffbf71095",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "FALSO POSITIVO. La respuesta A (<anti*) ES correcta. '<' = principio de palabra, '*' = cualquier cadena. La explicacion es correcta y didactica."
+  },
+  {
+    "id": "742fc821-e686-401c-b241-068cdcfa085d",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "La respuesta correcta es **B) Ajusta unicamente el ancho del area de trabajo para que el texto ocupe todo el espacio horizontal**.\n\nEn el cuadro de dialogo Zoom de Word 365, existen varias opciones de ajuste. La opcion 'Ancho de pagina' ajusta el nivel de zoom para que el ancho completo de la pagina se adapte al ancho de la ventana de Word, maximizando el espacio de visualizacion horizontal.\n\nAnalisis de las opciones:\n\n- **A) Ajusta la pagina completa a la pantalla, incluyendo margenes**: Incorrecto. Esto describe la opcion 'Pagina completa' (Whole Page), que ajusta el zoom para ver la pagina entera de arriba a abajo.\n- **B) Ajusta unicamente el ancho del area de trabajo para que el texto ocupe todo el espacio horizontal**: Correcto. 'Ancho de pagina' expande la vista horizontalmente para que el ancho de la pagina ocupe todo el espacio disponible.\n- **C) Ajusta el documento al 100%**: Incorrecto. El 100% es un nivel de zoom fijo, no una opcion de ajuste automatico.\n- **D) Ajusta el documento para mostrar varias paginas a la vez**: Incorrecto. Esto describe la opcion 'Varias paginas'.\n\nNota: Existe tambien la opcion 'Ancho de texto', que es similar pero excluye los margenes laterales, mostrando solo el area de texto a un zoom ligeramente mayor que 'Ancho de pagina'.",
+    "original_status": "tech_bad_answer",
+    "reason": "FALSO POSITIVO. La respuesta B es correcta. La explicacion original era correcta pero poco desarrollada. Se mejora con analisis de cada opcion."
+  },
+  {
+    "id": "f1a1f51d-9475-4bea-a71c-1a240b60d51a",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "FALSO POSITIVO. La respuesta A (doble clic en Copiar formato) ES correcta. Un doble clic mantiene el modo activo para aplicar a multiples fragmentos. La explicacion es correcta."
+  },
+  {
+    "id": "e1551866-bc71-463b-bb08-4f30b0caa0cb",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "FALSO POSITIVO. La respuesta C es correcta. El cuadro de dialogo Macros permite ejecutar, editar, eliminar y crear macros. La explicacion es correcta."
+  },
+  {
+    "id": "c0a804c1-9712-4316-9b8b-dca999d62124",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "La respuesta correcta es **A) Centramos el parrafo con respecto a los margenes del documento**.\n\nEn la version en espanol de Word 365, la combinacion de teclas **Ctrl+T** centra el parrafo horizontalmente entre los margenes del documento.\n\nAnalisis de las opciones:\n\n- **A) Centramos el parrafo con respecto a los margenes del documento**: Correcto. Ctrl+T en Word espanol centra el parrafo (la T se asocia a 'cenTrar').\n- **B) Alineamos el parrafo a la derecha**: Incorrecto. Para alinear a la derecha se utiliza Ctrl+D (de 'Derecha').\n- **C) Justificamos el parrafo**: Incorrecto. Para justificar se utiliza Ctrl+J (de 'Justificar').\n- **D) Alineamos el parrafo a la izquierda**: Incorrecto. Para alinear a la izquierda se utiliza Ctrl+Q.\n\nResumen de atajos de alineacion en Word espanol:\n- **Ctrl+Q** = Alinear a la izquierda\n- **Ctrl+T** = Centrar\n- **Ctrl+D** = Alinear a la derecha\n- **Ctrl+J** = Justificar\n\nEstos atajos difieren de la version inglesa, donde Ctrl+E centra, Ctrl+R alinea a la derecha, Ctrl+L a la izquierda y Ctrl+J justifica.",
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "FALSO POSITIVO. La respuesta A (centrar) ES correcta. Ctrl+T en Word espanol centra el parrafo. La explicacion original era correcta en su contenido pero se mejora con mas detalle sobre todos los atajos de alineacion."
+  },
+  {
+    "id": "170d92de-733f-421f-a7a8-0918a7524e0e",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "FALSO POSITIVO. La respuesta B es correcta. Los Elementos rapidos (Quick Parts) son una herramienta para insertar contenido reutilizable. La explicacion es correcta y completa."
+  },
+  {
+    "id": "47378be5-62ef-412c-8460-019a235cf514",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "La respuesta correcta es **A) Soporte telefonico**.\n\nLa pestana Ayuda de Word 365 contiene cuatro opciones principales:\n\n1. **Ayuda**: Accede a la documentacion y recursos de ayuda de Word, con un buscador para consultas especificas.\n2. **Comentarios**: Permite enviar comentarios y sugerencias a Microsoft sobre la aplicacion.\n3. **Mostrar aprendizaje**: Muestra recursos de formacion y tutoriales organizados para usuarios.\n4. **Novedades**: Muestra las ultimas funciones y actualizaciones incorporadas a Word 365.\n\nAnalisis de las opciones:\n\n- **A) Soporte telefonico**: Correcto, esta opcion NO esta disponible en la pestana Ayuda. No existe un boton de 'Soporte telefonico' en esta pestana.\n- **B) Ayuda**: Incorrecto (si esta disponible como opcion en la pestana).\n- **C) Comentarios**: Incorrecto (si esta disponible como opcion en la pestana).\n- **D) Mostrar aprendizaje**: Incorrecto (si esta disponible como opcion en la pestana).",
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "FALSO POSITIVO. La respuesta A es correcta. 'Soporte telefonico' NO existe en la pestana Ayuda de Word 365. La explicacion estaba vacia."
+  },
+  {
+    "id": "74835cf9-7ba4-414f-9ff0-464f09b39488",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "FALSO POSITIVO. La respuesta C (Ctrl+G) ES correcta para guardar en Word espanol. La explicacion es correcta y detallada."
+  },
+  {
+    "id": "987f0ad1-b47d-423e-ba82-be1a7ec4945b",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "FALSO POSITIVO. La respuesta B (Alt+Ctrl+O) ES correcta para insertar nota al pie en Word espanol. La explicacion es adecuada."
+  },
+  {
+    "id": "e87d128e-cd66-4c02-9603-1069e2685d5a",
+    "verdict": "deactivate",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "DESACTIVAR. La pregunta hace referencia a iconos visuales ('los que se reproducen a continuacion') pero no incluye imagenes. Es imposible responder sin los iconos."
+  },
+  {
+    "id": "5a9ef897-5d00-400a-b9c8-c7d58083b06a",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "La respuesta correcta es **C) Ctrl+L**.\n\nEn la version en espanol de Word 365, el atajo **Ctrl+L** abre el cuadro de dialogo 'Buscar y Reemplazar', mostrando directamente la pestana de Reemplazar. La L se asocia a 'reempLazar'.\n\nAnalisis de las opciones:\n\n- **A) Ctrl+Alt+T**: Incorrecto. No corresponde a la funcion de Buscar y Reemplazar.\n- **B) F11**: Incorrecto. F11 se utiliza para ir al siguiente campo en Word, no para Buscar y Reemplazar.\n- **C) Ctrl+L**: Correcto. Abre el cuadro de dialogo 'Buscar y Reemplazar' en Word en espanol. En la version inglesa, el atajo equivalente es Ctrl+H.\n- **D) Ctrl+Alt+R**: Incorrecto. No es el atajo para Buscar y Reemplazar.\n\nNota: Para solo buscar (sin reemplazar), el atajo en Word espanol es Ctrl+B (de 'Buscar'), equivalente a Ctrl+F en la version inglesa.",
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "FALSO POSITIVO. La respuesta C (Ctrl+L) ES correcta para Buscar y Reemplazar en Word espanol. La explicacion era correcta pero escueta. Se mejora con analisis de cada opcion."
+  },
+  {
+    "id": "38961cbd-6ba0-4ea6-a37e-e4c544703532",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "FALSO POSITIVO. La respuesta D es correcta. Un salto de columna mueve el texto a la siguiente columna. El atajo Ctrl+Mayus+Enter es correcto. La explicacion es adecuada."
+  }
+]

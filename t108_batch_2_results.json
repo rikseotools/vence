@@ -1,0 +1,210 @@
+[
+  {
+    "id": "b9ae23e3-17d3-47b4-85f5-3d2012c54a63",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta B es correcta. El menu 'Información del documento' (Document Info) en Encabezado y pie de página incluye opciones como Autor, Nombre del archivo, Ruta del archivo, Título del documento, etc. El 'Número total de páginas' NO está en ese menú específico; se inserta mediante 'Número de página' o el campo NumPages a través de Elementos rápidos > Campo. La explicación es clara y correcta."
+  },
+  {
+    "id": "d2ce5210-78c2-45f6-a91b-240484cdb361",
+    "verdict": "fix_answer",
+    "correct_option": 1,
+    "new_explanation": "La respuesta correcta es **B) Ctrl+E**.\n\nEn la versión en **español** de Word 365, el atajo de teclado para **seleccionar todo el contenido del documento** es **Ctrl+E** (la \"E\" viene de \"sEleccionar todo\"). Este es el equivalente español de Ctrl+A en la versión inglesa (donde \"A\" viene de \"All\").\n\nAnálisis de las opciones:\n\n- **A) Ctrl+T**: En la versión española de Word 365, **centra el párrafo** (equivalente a Ctrl+E en inglés). No selecciona todo.\n- **B) Ctrl+E**: **CORRECTA**. Selecciona todo el contenido del documento en la versión española de Word 365.\n- **C) Ctrl+S**: En la versión española, aplica formato de **subrayado** al texto seleccionado (equivalente a Ctrl+U en inglés).\n- **D) Ctrl+A**: En la versión española de Word 365, **abre un documento existente** (equivalente a Ctrl+O en inglés). En la versión inglesa sería \"Select All\", pero en español su función cambia.\n\n**Importante**: Los atajos de teclado en Word varían según el idioma de instalación. En la versión española, muchos atajos se adaptan a las iniciales en castellano.\n\nFuente: https://support.microsoft.com/es-es/office/métodos-abreviados-de-teclado-en-word-95ef89dd-7142-4b50-afb2-f762f663ceb2",
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "La respuesta B (Ctrl+E) ES correcta en la versión española de Word 365, donde Ctrl+E selecciona todo el documento. La explicación del sistema de verificación estaba equivocada al decir que la correcta era D (Ctrl+A). Ctrl+A en español abre un documento (Abrir), no selecciona todo. Se necesita nueva explicación que aclare que los atajos dependen del idioma."
+  },
+  {
+    "id": "b05201a1-8d83-4df3-8eb2-387c924342e7",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta C es correcta. Cuando se usa un archivo Excel como origen de datos para combinación de correspondencia sin fila de encabezados, Word interpreta la primera fila de datos como encabezados. La explicación es clara y precisa, incluyendo un ejemplo ilustrativo."
+  },
+  {
+    "id": "1099b249-a0f8-416a-89a2-ce080f60523c",
+    "verdict": "fix_answer",
+    "correct_option": 3,
+    "new_explanation": "La respuesta correcta es **D) Todas las opciones anteriores son correctas**.\n\nEn Word 365, el cuadro de diálogo **\"Configurar página\"** tiene tres pestañas: Márgenes, Papel y **Disposición** (Layout). La pestaña \"Disposición\" incluye las siguientes secciones y opciones:\n\n- **Sección**: Configuración de inicio de sección (Página nueva, Continua, Página par, Página impar).\n- **Encabezados y pies de página**: Opciones para primera página diferente y páginas pares e impares diferentes.\n- **Página**: **Alineación vertical** de la página (Superior, Centrada, Justificada, Inferior).\n- **Números de línea**: Botón que permite **numerar las líneas del documento**.\n- **Bordes**: Botón que abre el cuadro de diálogo de **Bordes y sombreado** para configurar bordes de página.\n\nAnálisis de las opciones:\n\n- **A) Numerar cada una de las líneas del documento**: **CORRECTA**. El botón \"Números de línea\" está disponible en esta pestaña.\n- **B) Configurar bordes y sombreado del documento**: **CORRECTA**. El botón \"Bordes\" en la parte inferior de esta pestaña abre el cuadro de diálogo de Bordes y sombreado.\n- **C) Ajustar la alineación vertical de la página**: **CORRECTA**. La sección \"Página\" incluye el desplegable de Alineación vertical.\n- **D) Todas las opciones anteriores son correctas**: **CORRECTA**. Las tres funcionalidades están disponibles en la pestaña Disposición del cuadro de diálogo Configurar página.\n\nFuente: https://www.teachucomp.com/page-setup-in-word-tutorial/",
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "La respuesta marcada como A es INCORRECTA. La pestaña Disposición (Layout) del cuadro de diálogo Configurar página incluye las tres opciones: números de línea, alineación vertical Y un botón de Bordes que abre el cuadro de Bordes y sombreado. Por tanto, la respuesta correcta es D (todas son correctas). La explicación original era errónea al afirmar que los bordes no están en esta pestaña."
+  },
+  {
+    "id": "c3406116-af24-4f86-9231-c258ec214d92",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "La respuesta A (Sangría Francesa) es correcta. La sangría francesa coloca la primera línea en el margen y sangra las líneas posteriores. La explicación, aunque sin tildes, es correcta y completa: describe qué es, cómo se configura y descarta las otras opciones. El status 'tech_bad_answer_and_explanation' es un falso positivo."
+  },
+  {
+    "id": "356b4569-3ad9-4b93-a9cd-9990f4db3af4",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta A es correcta. En Archivo > Cuenta se encuentra la sección 'Opciones de personalización de Office' donde se puede cambiar el tema visual (Blanco, Oscuro, Colorido, Negro). La explicación es adecuada aunque le falta la frase completa tras 'entre ella'. Suficiente para el propósito."
+  },
+  {
+    "id": "b418679e-efbb-4910-ae4e-385e5a709004",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta D es correcta. Todas las opciones mencionadas (Coincidir mayúsculas y minúsculas, Solo palabras completas, Usar caracteres comodín) SÍ están disponibles en el cuadro Buscar y reemplazar de Word. La explicación es muy completa y didáctica."
+  },
+  {
+    "id": "b3b45164-17d8-4f97-976c-be9172d5f6f6",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta B es correcta. Al hacer clic en la regla horizontal de Word, se inserta por defecto un marcador de tabulación izquierda (representado como una pequeña L). La explicación es clara, menciona el selector de tabulación y distingue correctamente entre tabulaciones y sangrías."
+  },
+  {
+    "id": "e116e69d-2583-413c-8449-8d8ea8debd66",
+    "verdict": "fix_answer",
+    "correct_option": 3,
+    "new_explanation": "La respuesta correcta es **D) Las opciones A y B son correctas**.\n\nEn Word 365, la opción **\"Espaciado entre párrafos\"** de la pestaña **\"Diseño\"** ofrece varias opciones predefinidas:\n\n- **Predeterminado**\n- **Sin espacio entre párrafos**\n- **Compacto**\n- **Reducido**\n- **Abierto**\n- **Moderado** (opción B)\n- **Doble**\n- **Espacio personalizado entre párrafos...**\n\nAnálisis de las opciones:\n\n- **A) Crear un espaciado personalizado mediante la opción que aparece en la ventana del cuadro de diálogo \"Administrar estilos\", dentro de la pestaña \"Establecer valores predeterminados\"**: **CORRECTA**. Al seleccionar \"Espacio personalizado entre párrafos...\" se abre el cuadro de diálogo \"Administrar estilos\" en la pestaña \"Establecer valores predeterminados\", donde se puede configurar el espaciado antes y después de los párrafos de forma personalizada.\n- **B) Puedo seleccionar la opción \"Moderado\"**: **CORRECTA**. \"Moderado\" es una de las opciones predefinidas disponibles en el desplegable.\n- **C) Configurar el espaciado del párrafo desde la pestaña \"Insertar\"**: **INCORRECTA**. El espaciado entre párrafos no se configura desde la pestaña \"Insertar\", sino desde \"Diseño\" o desde el grupo \"Párrafo\" en la pestaña \"Disposición\".\n- **D) Las opciones A y B son correctas**: **CORRECTA**. Tanto la opción de personalizar mediante \"Administrar estilos\" como seleccionar \"Moderado\" son funcionalidades disponibles.\n\nFuente: https://support.microsoft.com/es-es/office/cambiar-el-espaciado-entre-párrafos-ee4c7016-7cb8-405e-90a1-6601e657f3ce",
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta marcada como B es incompleta. La opción A también es correcta: al seleccionar 'Espacio personalizado entre párrafos...' se abre efectivamente el cuadro de diálogo 'Administrar estilos' en la pestaña 'Establecer valores predeterminados'. Por tanto, la respuesta correcta es D (A y B son correctas)."
+  },
+  {
+    "id": "98e39982-f354-4465-869f-a758823f0557",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta B es correcta. 'Modo de impresión' NO existe como tipo de vista en Word 365. Los tipos de vista son: Diseño de impresión, Modo de lectura, Diseño web, Esquema y Borrador. La explicación es clara y correcta."
+  },
+  {
+    "id": "e562f0be-a78a-4b35-a66d-552cb7d034b9",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "La respuesta C (<b*a>) es correcta. Para buscar palabras completas que empiecen por 'b' y terminen por 'a' con comodines en Word, se necesitan los delimitadores de palabra < y >. La explicación es muy detallada, analizando cada opción y explicando por qué las alternativas son incorrectas."
+  },
+  {
+    "id": "c87f01f5-3f8d-4a6a-b968-e96a310f9ae2",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta A es correcta. El panel Combinar de la pestaña Disposición de Tabla contiene: Combinar celdas, Dividir celdas y Dividir tabla. 'Dividir fila' NO existe como función en ese panel. La explicación es precisa."
+  },
+  {
+    "id": "6ca68cd4-4553-475e-96ed-ed5c686eda3e",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta D es correcta. Para insertar una celda específica (no una fila completa), se va a Disposición de tabla > grupo Filas y columnas > se hace clic en la flecha del lanzador del cuadro de diálogo, y se elige la opción de desplazar celdas. La explicación descarta correctamente las otras opciones."
+  },
+  {
+    "id": "224a59ba-2b39-4ac7-8653-13b14d8f91e1",
+    "verdict": "fix_answer",
+    "correct_option": 3,
+    "new_explanation": "La respuesta correcta es **D) Finalizar y combinar**.\n\nPara guardar las cartas combinadas en un nuevo documento, el proceso correcto en Word 365 es:\n\n1. Ir a la pestaña **Correspondencia**.\n2. Hacer clic en **\"Finalizar y combinar\"**.\n3. Seleccionar **\"Editar documentos individuales\"** del submenú que aparece.\n4. Elegir los registros deseados (Todos, Registro actual, o un rango Desde-Hasta).\n5. Word genera un **nuevo documento** con todas las cartas combinadas, que se puede guardar, editar o imprimir.\n\nAnálisis de las opciones:\n\n- **A) Editar lista de destinatarios**: Permite modificar la lista de datos (filtrar, ordenar, seleccionar registros), pero NO genera un documento nuevo con las cartas.\n- **B) Vista previa de resultados**: Muestra cómo se verán los campos combinados en el documento principal, pero NO crea un documento independiente.\n- **C) Editar cartas individuales**: Esta NO es un botón independiente en la cinta de opciones. \"Editar documentos individuales\" es una opción que aparece como **submenú** dentro de \"Finalizar y combinar\".\n- **D) Finalizar y combinar**: **CORRECTA**. Es el comando principal que da acceso a las opciones de finalización, incluyendo \"Editar documentos individuales\" para generar un nuevo documento con las cartas combinadas.\n\nFuente: https://support.microsoft.com/es-es/office/use-mail-merge-to-personalize-letters-d7686bb1-3077-4af3-926b-8c825e9505a3",
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "La respuesta C ('Editar cartas individuales') es incorrecta. 'Editar documentos individuales' es una subopccion dentro de 'Finalizar y combinar', no un botón independiente en la cinta de opciones. El enunciado pregunta en qué se debe hacer clic, y la acción correcta es hacer clic en 'Finalizar y combinar' (D), que despliega el submenú con la opción de editar documentos individuales. La explicación original era confusa y contradictoria."
+  },
+  {
+    "id": "e3a9b91c-b3f3-46f2-9df9-f0cd6ebaf076",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta A es correcta. 'Marcar como inicio' NO existe en Proteger documento. Las opciones reales son: Marcar como final, Cifrar con contraseña, Restringir edición, Restringir el acceso, Agregar una firma digital, y Abrir siempre como solo lectura. La explicación es clara y correcta."
+  },
+  {
+    "id": "a2866526-8104-4b3c-bfce-f9728fcf9650",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta D es correcta. La barra de estado de Word incluye botones de acceso rápido a las vistas Modo de lectura, Diseño de impresión y Diseño Web. La explicación es adecuada."
+  },
+  {
+    "id": "e90edda7-c5ce-404c-84f3-6d3887b1ba5b",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta C es correcta. 'Recuperar documentos no guardados' busca archivos temporales de recuperación automática de documentos que se cerraron sin guardar. La explicación es completa y detallada."
+  },
+  {
+    "id": "5b491fdf-8a9c-4e12-a46c-f4c070687190",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta D es correcta. Para eliminar varias palabras previamente seleccionadas, basta con pulsar la tecla Supr (Delete). Ctrl+Retroceso y Ctrl+Supr eliminan palabras individuales cuando NO hay selección. La explicación es correcta y clara."
+  },
+  {
+    "id": "007fd5db-d313-4058-a97c-2589eb82aac2",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "La respuesta correcta es **A) Información**.\n\nPara agregar una **firma digital** a un documento en Word 365, se debe seguir esta ruta:\n\n1. Ir a la pestaña **Archivo**.\n2. Seleccionar **Información**.\n3. Hacer clic en **Proteger documento**.\n4. Elegir **Agregar una firma digital**.\n\nAnálisis de las opciones:\n\n- **A) Información**: **CORRECTA**. El comando \"Información\" dentro del menú Archivo es donde se encuentra la opción \"Proteger documento\", que a su vez contiene la funcionalidad de agregar firma digital.\n- **B) Abrir**: Sirve para abrir documentos existentes. No tiene relación con las firmas digitales.\n- **C) Opciones**: Abre el cuadro de configuración general de Word (idioma, revisión, guardado, etc.), pero no incluye la opción de agregar firmas digitales a un documento específico.\n- **D) Cuenta**: Muestra información de la cuenta de Microsoft, licencia de Office y opciones de personalización visual, pero no permite agregar firmas digitales al documento.\n\nFuente: https://support.microsoft.com/es-es/office/agregar-o-quitar-una-firma-digital-en-archivos-de-office-70d26dc9-be10-46f1-8efa-719c8b3f1a2d",
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "La respuesta A es correcta (Información), pero la explicación es demasiado escueta: solo dice la ruta sin analizar por qué las otras opciones son incorrectas. Necesita una explicación didáctica completa."
+  },
+  {
+    "id": "b10e8309-81ed-47e7-a6f6-bc03d2ae1b1c",
+    "verdict": "deactivate",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La pregunta describe iconos de forma textual vaga ('Icono de documento con signo de interrogación') que no se pueden verificar objetivamente sin ver la interfaz. El icono del comando Reglas de combinación de correspondencia no es universalmente descrito así en la documentación oficial. La pregunta es irrecuperablemente mala porque depende de descripciones subjetivas de iconos que pueden variar entre versiones."
+  },
+  {
+    "id": "20dc7218-0d37-4129-b706-c484d3786e81",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta B (Programador) es correcta. La pestaña Programador (Developer) NO está visible por defecto en Word 365. Hay que habilitarla desde Archivo > Opciones > Personalizar cinta de opciones. Correspondencia, Disposición y Diseño sí están visibles por defecto. La explicación es muy completa."
+  },
+  {
+    "id": "485cccfc-2033-42d3-81ac-3cde83461920",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta B (Mostrar aprendizaje / Show Training) es correcta. Esta opción en la pestaña Ayuda permite acceder a tutoriales y consejos interactivos sobre Word. La explicación es breve pero correcta."
+  },
+  {
+    "id": "232c3560-06d1-4e48-8f66-fed9dc74a638",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta C es correcta. La vista preliminar de impresión permite ajustar márgenes y orientación pero NO permite editar directamente el texto del documento. Para editar hay que volver al modo de edición normal. La explicación es precisa."
+  },
+  {
+    "id": "7e7c0dd8-4d96-4419-9269-09c94213dcf2",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer_and_explanation",
+    "reason": "La respuesta D (A y B son correctas) es correcta. F12 abre 'Guardar como' y Ctrl+G (en español) ejecuta 'Guardar'. Ambos son métodos abreviados válidos para guardar. La explicación es clara y correcta, distinguiendo las funciones de cada atajo."
+  },
+  {
+    "id": "f1ad07f7-daac-4cb0-a0f6-f964af1bd450",
+    "verdict": "false_positive",
+    "correct_option": null,
+    "new_explanation": null,
+    "original_status": "tech_bad_answer",
+    "reason": "La respuesta D (Se guarda el documento) es correcta. Ctrl+G en Word 365 en español guarda el documento (equivalente a Ctrl+S en inglés). La explicación es correcta y detallada."
+  },
+  {
+    "id": "24ecdb75-255f-4c6d-8523-8a482b95c7fd",
+    "verdict": "fix_explanation",
+    "correct_option": null,
+    "new_explanation": "La respuesta correcta es **A) Con Intro añadimos un nuevo párrafo y con Mayús+Intro un salto de línea**.\n\nEn Word 365, las teclas **Intro** y **Mayús+Intro** tienen funciones distintas e importantes:\n\n- **Intro (Enter)**: Inserta una **marca de párrafo** (¶). Esto crea un nuevo párrafo con todas sus propiedades (espaciado antes/después, sangría, estilo, etc.). Al activar las marcas de formato (¶), se visualiza como el símbolo ¶.\n\n- **Mayús+Intro (Shift+Enter)**: Inserta un **salto de línea manual** (↵). El texto pasa a la línea siguiente pero **dentro del mismo párrafo**, manteniendo todas las propiedades del párrafo actual. Al activar las marcas de formato, se visualiza como una flecha curvada hacia abajo (↵).\n\nAnálisis de las opciones:\n\n- **A) Con Intro añadimos un nuevo párrafo y con Mayús+Intro un salto de línea**: **CORRECTA**. Describe exactamente la diferencia entre ambas acciones.\n- **B) Con Intro pasamos a la siguiente línea y con Mayús+Intro crearemos un nuevo párrafo**: **INCORRECTA**. Invierte las funciones: es al revés.\n- **C) Con Intro añadimos un nuevo párrafo y con Mayús+Intro incluimos un salto de sección**: **INCORRECTA**. Mayús+Intro no inserta un salto de sección. Los saltos de sección se insertan desde Disposición > Saltos.\n- **D) Es exactamente lo mismo**: **INCORRECTA**. Son acciones fundamentalmente diferentes con resultados distintos.\n\nEsta distinción es especialmente importante en listas numeradas, donde Mayús+Intro permite bajar de línea sin crear un nuevo elemento de la lista.\n\nFuente: https://support.microsoft.com/es-es/office/insertar-un-salto-de-línea-manual-en-word-1eda9c3c-63b0-4240-870a-a8aa04d37bca",
+    "original_status": "tech_bad_explanation",
+    "reason": "La respuesta A es correcta, pero la explicación es extremadamente pobre: solo dice 'Insertar un salto de línea: Mayusc + Enter.' sin analizar las opciones ni explicar la diferencia con Intro. Necesita una explicación didáctica completa."
+  }
+]
