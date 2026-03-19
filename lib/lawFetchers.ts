@@ -84,7 +84,7 @@ interface TransformedQuestion {
   }
 }
 
-interface LawStats {
+export interface LawStats {
   lawShortName: string
   totalQuestions: number
   officialQuestions: number

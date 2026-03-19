@@ -2,14 +2,19 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import TestConfigurator from '@/components/TestConfigurator'
-import { getLawStats } from '@/lib/lawFetchers'
+import { getLawStats, type LawStats } from '@/lib/lawFetchers'
 import { useAuth } from '@/contexts/AuthContext'
 import { getCanonicalSlug } from '@/lib/lawMappingUtils'
 
-export default function LawTestConfigurator({ lawShortName, lawDisplayName }) {
+interface LawTestConfiguratorProps {
+  lawShortName: string
+  lawDisplayName: string
+}
+
+export default function LawTestConfigurator({ lawShortName, lawDisplayName }: LawTestConfiguratorProps) {
   const { user } = useAuth()
   const [loading, setLoading] = useState(true)
-  const [lawStats, setLawStats] = useState(null)
+  const [lawStats, setLawStats] = useState<LawStats | null>(null)
   const searchParams = useSearchParams()
   const selectedArticlesParam = searchParams.get('selected_articles')
   const sourceParam = searchParams.get('source')
