@@ -63,6 +63,14 @@ export function withErrorLogging(endpoint: string, handler: RouteHandler): Route
           errorMessage = responseBody.error || responseBody.message || errorMessage
         } catch {}
 
+        // Filtrar ruido: no logear 400 con body vacío (bots/crawlers haciendo requests sin parámetros)
+        const isEmptyBodyNoise = response.status === 400
+          && (!body || Object.keys(body).length === 0)
+          && (errorMessage.includes('inválidos') || errorMessage.includes('invalid') || errorMessage.includes('Usa POST'))
+        if (isEmptyBodyNoise) {
+          return response
+        }
+
         logValidationError({
           endpoint,
           errorType: response.status >= 500 ? 'unknown' : classifyHttpStatus(response.status),

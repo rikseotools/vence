@@ -38,8 +38,9 @@ async function getUserOposicion(userId: string): Promise<OposicionId> {
       return oposicion as OposicionId
     }
 
-    if (!oposicion || !ALL_OPOSICION_IDS.includes(oposicion) || oposicion === 'explorador') {
-      console.warn(`⚠️ [getUserOposicion] Fallback a auxiliar para userId=${userId}, oposicionId=${oposicion || 'null'}`)
+    // Solo logear warning si la oposición es desconocida (no explorador ni null)
+    if (oposicion && oposicion !== 'explorador' && !ALL_OPOSICION_IDS.includes(oposicion)) {
+      console.warn(`⚠️ [getUserOposicion] Fallback a auxiliar para userId=${userId}, oposicionId=${oposicion}`)
     }
 
     return 'auxiliar_administrativo_estado'
