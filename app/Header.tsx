@@ -463,12 +463,12 @@ export default function HeaderES() {
   return (
     <>
       <header className="bg-white dark:bg-gray-900 shadow-sm border-b dark:border-gray-700 sticky top-0 z-50 relative min-h-16">
-        <div className={`container mx-auto px-4 ${user ? 'py-6 pb-12 xl:pb-6' : 'py-6'}`}>
-          <div className="flex items-center justify-between relative">
+        <div className={`container mx-auto px-2 sm:px-4 ${user ? 'py-6 pb-12 xl:pb-6' : 'py-6'}`}>
+          <div className="flex items-center justify-between relative overflow-visible">
             
             {/* 🔥 SEGUNDA LÍNEA MÓVIL - RACHA + LEYES + SOPORTE */}
             {user && (
-              <div className="xl:hidden absolute top-full left-0 right-0 flex items-center gap-4 mt-1 mb-2 pl-4 pr-4 overflow-x-auto scrollbar-hide">
+              <div className="xl:hidden absolute top-full left-0 right-0 flex items-center gap-3 mt-1 mb-2 pl-2 pr-2 sm:pl-4 sm:pr-4 overflow-x-auto scrollbar-hide">
                 {/* 🔥 ICONO DE RACHA */}
                 <button
                   onClick={() => {
