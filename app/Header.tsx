@@ -546,6 +546,9 @@ export default function HeaderES() {
                   </svg>
                 </Link>
 
+                {/* 📊 Meta diaria - Móvil (después de diana) */}
+                <DailyGoalBanner />
+
                 {/* 📝 Exámenes pendientes - Móvil (oculto cuando se ve el desktop) */}
                 {(pendingExams.length + pendingPsychometric.length) > 0 && (
                   <div className="relative lg:hidden">
@@ -762,8 +765,10 @@ export default function HeaderES() {
                 </Link>
               )}
 
-              {/* 📊 Meta diaria (solo premium, después de iconos de navegación) */}
-              {user && <DailyGoalBanner />}
+              {/* 📊 Meta diaria - Solo en desktop (en móvil va en segunda línea) */}
+              <div className="hidden xl:block">
+                {user && <DailyGoalBanner />}
+              </div>
 
               {/* Campana de notificaciones (solo usuarios logueados) */}
               {user && <NotificationBell />}
