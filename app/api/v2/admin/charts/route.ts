@@ -41,6 +41,7 @@ async function _GET(request: NextRequest) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Error loading chart data' },
       { status: 500 },
+    )
   }
 }
 
