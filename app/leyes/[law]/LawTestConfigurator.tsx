@@ -119,7 +119,7 @@ export default function LawTestConfigurator({ lawShortName, lawDisplayName }: La
         <TestConfigurator
           tema={null} // Explícitamente null para que use lawsData
           totalQuestions={difficultyStats}
-          userStats={difficultyStats}
+          userStats={difficultyStats as any}
           loading={false}
           currentUser={user}
           lawsData={lawsData}
