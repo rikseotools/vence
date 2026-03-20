@@ -72,6 +72,13 @@ const nextConfig = {
         destination: '/administrativo-estado/temario/tema-:numero',
         permanent: true,
       },
+      // 🔄 Redirecciones de temas con numeración antigua de administrativo-estado (25 URLs 404 en GSC)
+      // Temas que ya no existen: 12-14, 101-114, 205-210, 308-309 → redirigir al índice del temario
+      ...([12, 13, 14, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 205, 206, 207, 208, 209, 210, 308, 309].map(n => ({
+        source: `/administrativo-estado/temario/tema-${n}`,
+        destination: '/administrativo-estado/temario',
+        permanent: true,
+      }))),
       // 🔄 Redirecciones de /teoria/ con formato incorrecto (bots/crawlers)
       // /teoria/ley-39/2015 → /teoria/ley-39-2015
       {
