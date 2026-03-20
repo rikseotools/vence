@@ -89,6 +89,7 @@ export async function getUserAnswersWithArticles(
     INNER JOIN articles a ON q.primary_article_id = a.id
     WHERE t.user_id = ${userId}
       AND q.primary_article_id IS NOT NULL
+      AND a.is_active = true
   `)
 
   const rows = Array.isArray(result) ? result : (result as any).rows || []
