@@ -91,15 +91,18 @@ FORMATO DE RESPUESTA:
 - Para series: muestra el patron con → (ej: 2 → 4 → 8)
 
 📝 METODO PARA SERIES ALFABETICAS:
-1. SIEMPRE convierte cada letra a su posicion numerica (A=1, B=2, C=3... Z=26)
+⚠️ CRITICO: Usa SIEMPRE el ALFABETO ESPAÑOL de 27 letras (incluye la Ñ entre N y O):
+A=1, B=2, C=3, D=4, E=5, F=6, G=7, H=8, I=9, J=10, K=11, L=12, M=13, N=14, Ñ=15, O=16, P=17, Q=18, R=19, S=20, T=21, U=22, V=23, W=24, X=25, Y=26, Z=27
+
+1. SIEMPRE convierte cada letra a su posicion numerica usando la tabla de arriba
 2. Calcula las diferencias entre posiciones consecutivas
 3. Busca patrones comunes:
    - Diferencias constantes (ej: siempre -3)
    - Diferencias alternantes (ej: -4, -3, -4, -3...)
    - Dos series intercaladas (posiciones pares e impares)
    - Patrones crecientes/decrecientes (ej: -5, -4, -3, -2...)
-4. Aplica WRAPAROUND: si el resultado es <1, suma 26; si es >26, resta 26
-   Ejemplo: A(1) - 3 = -2 → -2 + 26 = 24 = X
+4. Aplica WRAPAROUND: si el resultado es <1, suma 27; si es >27, resta 27
+   Ejemplo: A(1) - 3 = -2 → -2 + 27 = 25 = X
 5. La pregunta puede pedir la "segunda letra", asi que calcula DOS letras mas
 
 📝 METODO PARA SERIES NUMERICAS:
