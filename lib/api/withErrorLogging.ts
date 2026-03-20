@@ -66,7 +66,7 @@ export function withErrorLogging(endpoint: string, handler: RouteHandler): Route
         // Filtrar ruido: no logear 400 con body vacío (bots/crawlers haciendo requests sin parámetros)
         const isEmptyBodyNoise = response.status === 400
           && (!body || Object.keys(body).length === 0)
-          && (errorMessage.includes('inválidos') || errorMessage.includes('invalid') || errorMessage.includes('Usa POST'))
+          && (errorMessage.includes('inválid') || errorMessage.includes('invalid') || errorMessage.includes('Usa POST') || errorMessage.includes('no válida'))
         if (isEmptyBodyNoise) {
           return response
         }
