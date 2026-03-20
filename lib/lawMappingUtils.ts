@@ -529,6 +529,14 @@ const SLUG_TO_SHORT_NAME: SlugToShortNameMapping = {
   'eds-2030': 'EDS 2030',
   'estrategia-2022-2030': 'Estrategia 2022-2030',
 
+  // Legislación Comunidad de Madrid
+  'lo-31983': 'LO 3/1983',
+  'reglamento-asamblea-madrid': 'Reglamento Asamblea Madrid',
+  'ley-11983-cm': 'Ley 1/1983 CM',
+  'ley-111986-cm': 'Ley 11/1986 CM',
+  'ley-61986-cm-ilp': 'Ley 6/1986 CM ILP',
+  'ley-11984-cm': 'Ley 1/1984 CM',
+
   // Reglamentos parlamentarios
   'reglamento-del-congreso': 'Reglamento del Congreso',
   'reglamento-del-senado': 'Reglamento del Senado',
@@ -779,6 +787,14 @@ const SHORT_NAME_TO_SLUG: ShortNameToSlugMapping = {
 
   // Leyes autonómicas
   'Ley Función Pública Andalucía (Ley 5/2023)': 'ley-funcion-publica-andalucia-ley-5-2023',
+
+  // Legislación Comunidad de Madrid
+  'LO 3/1983': 'lo-31983',
+  'Reglamento Asamblea Madrid': 'reglamento-asamblea-madrid',
+  'Ley 1/1983 CM': 'ley-11983-cm',
+  'Ley 11/1986 CM': 'ley-111986-cm',
+  'Ley 6/1986 CM ILP': 'ley-61986-cm-ilp',
+  'Ley 1/1984 CM': 'ley-11984-cm',
 
   // Reglamentos parlamentarios
   'Reglamento 3/1995': 'reglamento-3-1995-jueces-paz',
