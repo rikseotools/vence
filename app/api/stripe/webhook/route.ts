@@ -815,6 +815,47 @@ async function handlePaymentSucceeded(
 
         console.log(`✅ Payment succeeded for user ${userId}`, periodUpdate.current_period_end ? `period_end: ${periodUpdate.current_period_end}` : '')
 
+        // 🎯 Loyalty discount: aplicar cupón de fidelidad en renovaciones mensuales
+        if (invoice.billing_reason === 'subscription_cycle') {
+          try {
+            const planInterval = subscription.items?.data?.[0]?.price?.recurring?.interval
+            const isMonthly = planInterval === 'month' && (subscription.items?.data?.[0]?.price?.recurring?.interval_count || 1) === 1
+
+            if (isMonthly) {
+              // Contar renovaciones (invoices pagadas de tipo subscription_cycle)
+              const invoices = await stripe().invoices.list({
+                subscription: subscription.id,
+                status: 'paid',
+                limit: 100
+              })
+              const renewalCount = invoices.data.filter(
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (inv: any) => inv.billing_reason === 'subscription_cycle'
+              ).length
+
+              console.log(`🎯 [Loyalty] Renovación #${renewalCount} para ${subscription.id} (mensual)`)
+
+              const currentDiscount = subscription.discount?.coupon?.id
+              if (renewalCount === 1 && currentDiscount !== 'loyalty_10' && currentDiscount !== 'loyalty_20') {
+                // Primera renovación → 10% descuento
+                await stripe().subscriptions.update(subscription.id, {
+                  discounts: [{ coupon: 'loyalty_10' }]
+                })
+                console.log(`🎁 [Loyalty] Aplicado 10% fidelidad (renovación #1)`)
+              } else if (renewalCount >= 2 && currentDiscount !== 'loyalty_20') {
+                // Segunda+ renovación → 20% descuento
+                await stripe().subscriptions.update(subscription.id, {
+                  discounts: [{ coupon: 'loyalty_20' }]
+                })
+                console.log(`🎁 [Loyalty] Aplicado 20% fidelidad (renovación #${renewalCount})`)
+              }
+            }
+          } catch (loyaltyErr) {
+            // No bloquear el flujo si falla el descuento
+            console.error('⚠️ [Loyalty] Error aplicando descuento:', loyaltyErr)
+          }
+        }
+
         try {
           await recordPaymentSettlement({
             paymentIntentId: invoice.payment_intent as string | null,
