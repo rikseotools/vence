@@ -5,7 +5,6 @@ import type { ChatDomain, ChatContext, ChatResponse, ArticleSource, AITracerInte
 import { ChatResponseBuilder } from '../../core/ChatResponseBuilder'
 import { logger } from '../../shared/logger'
 import { DOMAIN_PRIORITIES } from '../../core/types'
-import { isPsychometricSubtype } from '../../shared/constants'
 import {
   verifyAnswer,
   isVerificationRequest,
@@ -41,12 +40,6 @@ export class VerificationDomain implements ChatDomain {
     // Necesitamos contexto de pregunta para verificar
     if (!hasQuestionToVerify(context)) {
       logger.info('VerificationDomain: hasQuestionToVerify = false', { domain: 'verification' })
-      return false
-    }
-
-    // Ceder al PsychometricDomain si la pregunta es psicotécnica
-    if (isPsychometricSubtype(qc?.questionSubtype)) {
-      logger.info('VerificationDomain: ceding to PsychometricDomain (psychometric subtype)', { domain: 'verification' })
       return false
     }
 

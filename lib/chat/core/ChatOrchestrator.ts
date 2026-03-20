@@ -15,6 +15,7 @@ import { getKnowledgeBaseDomain } from '../domains/knowledge-base'
 import { getTemarioDomain } from '../domains/temario/TemarioDomain'
 import { getStatsDomain } from '../domains/stats'
 import { getPsychometricDomain } from '../domains/psychometric'
+import { isPsychometricSubtype } from '../shared/constants'
 import { FALLBACK_SYSTEM_PROMPT } from '../shared/prompts'
 
 /**
@@ -93,7 +94,32 @@ export class ChatOrchestrator {
     })
 
     try {
-      // Buscar dominio que pueda manejar el mensaje
+      // ============================================
+      // FAST-PATH: routing directo por tipo de contenido conocido
+      // Si el tipo de pregunta determina el domain sin ambigüedad,
+      // ir directo sin evaluar todos los domains.
+      // ============================================
+      if (isPsychometricSubtype(context.questionContext?.questionSubtype)) {
+        const psychDomain = this.domains.find(d => d.name === 'psychometric')
+        if (psychDomain) {
+          routingSpan.setOutput({
+            evaluatedDomains: [{ name: 'psychometric', priority: psychDomain.priority, canHandle: true, evalTimeMs: 0, reason: 'fast-path: psychometric subtype' }],
+            selectedDomain: 'psychometric',
+            confidence: 1.0
+          })
+          routingSpan.end()
+
+          logger.info('Fast-path: PsychometricDomain (subtype detected)', { domain: 'orchestrator' })
+
+          const response = await psychDomain.handle(context, tracer)
+          const duration = Date.now() - startTime
+          logger.info(`Request completed via fast-path in ${duration}ms`, { domain: 'orchestrator' })
+          await tracer.flush()
+          return response
+        }
+      }
+
+      // Buscar dominio que pueda manejar el mensaje (routing normal)
       for (const domain of this.domains) {
         const evalStart = Date.now()
         const canHandle = await domain.canHandle(context)
