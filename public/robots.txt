@@ -3,11 +3,13 @@ Allow: /
 
 # Sitemaps
 Sitemap: https://www.vence.es/sitemap.xml
-Sitemap: https://www.vence.es/sitemap-convocatorias.xml
 
 # 🚨 BLOQUEAR SOLO PÁGINAS PRIVADAS Y NO INDEXABLES
 # Admin y auth
 Disallow: /admin/
+
+# Convocatorias (URLs dinámicas con UUIDs que se eliminan — 566 errores 404 en GSC)
+Disallow: /convocatorias/
 Disallow: /es/admin/
 Disallow: /api/
 Disallow: /_next/
