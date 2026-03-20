@@ -2,8 +2,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getFullEngagementStats } from '@/lib/api/admin-engagement-stats'
+import { unstable_cache } from 'next/cache'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+
+// Cache server-side: 5 minutos. Las estadísticas de engagement no cambian en segundos.
+const getCachedEngagementStats = unstable_cache(
+  () => getFullEngagementStats(),
+  ['admin-engagement-stats'],
+  { revalidate: 300, tags: ['engagement'] }
+)
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
@@ -50,11 +58,9 @@ async function _GET(request: NextRequest) {
       )
     }
 
-    const result = await getFullEngagementStats()
+    const result = await getCachedEngagementStats()
 
-    return NextResponse.json(result, {
-      headers: { 'Cache-Control': 'no-store' },
-    })
+    return NextResponse.json(result)
   } catch (error) {
     console.error('❌ [API/admin/engagement-stats] Error:', error)
     return NextResponse.json(
