@@ -2296,16 +2296,30 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
                   </div>
 
                   {/* Resumen */}
-                  <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                    <div className="text-sm text-blue-800">
-                      ✓ {selectedArticlesByLaw.get(currentLawForArticles)?.size || 0} de {(availableArticlesByLaw.get(currentLawForArticles) || []).filter(art => art.question_count > 0).length} artículos seleccionados
-                    </div>
-                    <div className="text-xs text-blue-600 mt-1">
-                      Preguntas estimadas: {(availableArticlesByLaw.get(currentLawForArticles) || [])
-                        .filter(art => selectedArticlesByLaw.get(currentLawForArticles)?.has(art.article_number))
-                        .reduce((sum, art) => sum + art.question_count, 0)}
-                    </div>
-                  </div>
+                  {(() => {
+                    const allArticles = availableArticlesByLaw.get(currentLawForArticles) || []
+                    const withQuestions = allArticles.filter(art => art.question_count > 0)
+                    const withoutQuestions = allArticles.length - withQuestions.length
+                    const selected = selectedArticlesByLaw.get(currentLawForArticles)?.size || 0
+                    const estimatedQuestions = allArticles
+                      .filter(art => selectedArticlesByLaw.get(currentLawForArticles)?.has(art.article_number))
+                      .reduce((sum, art) => sum + art.question_count, 0)
+                    return (
+                      <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                        <div className="text-sm text-blue-800 dark:text-blue-200">
+                          ✓ {selected} artículos seleccionados de {allArticles.length} totales
+                        </div>
+                        {withoutQuestions > 0 && (
+                          <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                            {withoutQuestions} artículos sin preguntas (aparecen en gris)
+                          </div>
+                        )}
+                        <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                          Preguntas estimadas: {estimatedQuestions}
+                        </div>
+                      </div>
+                    )
+                  })()}
                 </>
               )}
             </div>
