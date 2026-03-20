@@ -79,33 +79,18 @@ const nextConfig = {
         destination: '/administrativo-estado/temario',
         permanent: true,
       }))),
-      // 🔄 Redirecciones de /teoria/ con formato incorrecto (bots/crawlers)
+      // 🔄 Redirecciones de /teoria/ y /leyes/ con formato incorrecto (barras en slugs)
       // /teoria/ley-39/2015 → /teoria/ley-39-2015
-      {
-        source: '/teoria/ley-:num/:year(\\d{4})',
-        destination: '/teoria/ley-:num-:year',
-        permanent: true,
-      },
-      {
-        source: '/teoria/lo-:num/:year(\\d{4})',
-        destination: '/teoria/lo-:num-:year',
-        permanent: true,
-      },
-      {
-        source: '/teoria/rd-:num/:year(\\d{4})',
-        destination: '/teoria/rd-:num-:year',
-        permanent: true,
-      },
-      {
-        source: '/teoria/rdl-:num/:year(\\d{4})',
-        destination: '/teoria/rdl-:num-:year',
-        permanent: true,
-      },
-      {
-        source: '/teoria/reglamento-ue-:num/:year(\\d{3,4})',
-        destination: '/teoria/reglamento-ue-:num-:year',
-        permanent: true,
-      },
+      // /leyes/ley-39/2015 → /leyes/ley-39-2015
+      ...(['teoria', 'leyes'].flatMap(prefix => [
+        { source: `/${prefix}/ley-:num/:year(\\d{4})`, destination: `/${prefix}/ley-:num-:year`, permanent: true },
+        { source: `/${prefix}/lo-:num/:year(\\d{4})`, destination: `/${prefix}/lo-:num-:year`, permanent: true },
+        { source: `/${prefix}/rd-:num/:year(\\d{4})`, destination: `/${prefix}/rd-:num-:year`, permanent: true },
+        { source: `/${prefix}/rdl-:num/:year(\\d{4})`, destination: `/${prefix}/rdl-:num-:year`, permanent: true },
+        { source: `/${prefix}/reglamento-ue-:num/:year(\\d{3,4})`, destination: `/${prefix}/reglamento-ue-:num-:year`, permanent: true },
+        { source: `/${prefix}/orden-:a/:b(\\d{4})`, destination: `/${prefix}/orden-:a-:b`, permanent: true },
+        { source: `/${prefix}/orden-:a/:b/:c(\\d{4})`, destination: `/${prefix}/orden-:a-:b-:c`, permanent: true },
+      ])),
     ];
 
     // Redirigir sin www a con www (solo en producción)
