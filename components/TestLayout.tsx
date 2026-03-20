@@ -41,6 +41,7 @@ import { useInteractionTracker } from '../hooks/useInteractionTracker'
 import DailyLimitBanner from './DailyLimitBanner'
 import AdSenseComponent from './AdSenseComponent'
 import UpgradeLimitModal from './UpgradeLimitModal'
+import SessionExpiredModal from './SessionExpiredModal'
 import { useUserOposicion } from './useUserOposicion'
 import { validateAnswer } from '@/lib/api/answers/client'
 import { ApiTimeoutError, ApiNetworkError } from '@/lib/api/client'
@@ -261,6 +262,9 @@ export default function TestLayout({
   // 🏛️ Oposición del usuario (para formatear exam_source correctamente)
   const { userOposicion } = useUserOposicion()
   const userOposicionSlug = userOposicion?.slug || null
+
+  // 🔒 Sesión expirada durante test
+  const [showSessionExpired, setShowSessionExpired] = useState(false)
 
   // Estados del test básicos
   const [currentQuestion, setCurrentQuestion] = useState<number>(0)
@@ -1195,8 +1199,11 @@ export default function TestLayout({
               // Si fue un duplicado, no es un error grave
               if (saveSuccess?.action === 'prevented_duplicate') {
                 console.warn('⚠️ Respuesta duplicada detectada, continuando...')
+              } else if (saveSuccess?.action === 'session_expired') {
+                // Nivel 3: Mostrar modal de sesión expirada
+                console.error('🔒 Sesión expirada — mostrando modal')
+                setShowSessionExpired(true)
               } else {
-                // TODO: Aquí podríamos mostrar el modal de error
                 console.error('❌ Fallo crítico al guardar respuesta')
               }
             }
@@ -2442,6 +2449,16 @@ export default function TestLayout({
       />
 
       {/* Celebración de meta diaria se maneja via confetti en DailyGoalBanner (Header) */}
+
+      {/* Modal de sesión expirada durante test */}
+      <SessionExpiredModal
+        isOpen={showSessionExpired}
+        onReLogin={() => {
+          setShowSessionExpired(false)
+          window.location.href = '/login'
+        }}
+        onDismiss={() => setShowSessionExpired(false)}
+      />
     </PersistentRegistrationManager>
   )
 }

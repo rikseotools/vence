@@ -463,11 +463,22 @@ export const saveDetailedAnswerV2 = async (params: SaveAnswerParams): Promise<Sa
       return { success: false, error: 'Datos faltantes', action: 'error' }
     }
 
-    // Obtener token de autenticacion
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session?.access_token) {
-      console.error('❌ [V2] No hay sesion activa')
-      return { success: false, error: 'No autenticado', action: 'error' }
+    // Nivel 1: Refresh proactivo antes de usar el token
+    let accessToken: string | undefined
+    try {
+      const { data: refreshData } = await supabase.auth.refreshSession()
+      accessToken = refreshData?.session?.access_token
+    } catch {
+      // refreshSession puede fallar si no hay red — fallback a getSession
+    }
+    if (!accessToken) {
+      console.warn('⚠️ [V2] refreshSession falló, fallback a getSession')
+      const { data: { session: fallbackSession } } = await supabase.auth.getSession()
+      accessToken = fallbackSession?.access_token
+    }
+    if (!accessToken) {
+      console.error('❌ [V2] No hay sesion activa después de refresh')
+      return { success: false, error: 'Sesión expirada', action: 'session_expired' }
     }
 
     // Recoger device info del navegador
@@ -534,16 +545,50 @@ export const saveDetailedAnswerV2 = async (params: SaveAnswerParams): Promise<Sa
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session.access_token}`
+        'Authorization': `Bearer ${accessToken}`
       },
       body: JSON.stringify(body)
     })
+
+    // Nivel 2: Si recibimos 401, intentar refresh + retry una vez
+    if (response.status === 401) {
+      console.warn('⚠️ [V2] 401 recibido, intentando refresh + retry...')
+      try {
+        const { data: retryRefresh } = await supabase.auth.refreshSession()
+        if (retryRefresh?.session?.access_token) {
+          const retryResponse = await fetch('/api/test/save-answer', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${retryRefresh.session.access_token}`
+            },
+            body: JSON.stringify(body)
+          })
+          const retryResult = await retryResponse.json()
+          if (retryResult.success) {
+            console.log('✅ [V2] Respuesta guardada tras retry:', retryResult.action)
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('refreshUserStreak'))
+            }
+          }
+          return {
+            success: retryResult.success,
+            question_id: retryResult.question_id || null,
+            action: retryResult.action || 'error',
+            error: retryResult.error
+          }
+        }
+      } catch {
+        // Refresh falló completamente
+      }
+      console.error('🔒 [V2] Sesión expirada — refresh falló')
+      return { success: false, error: 'Sesión expirada', action: 'session_expired' }
+    }
 
     const result = await response.json()
 
     if (result.success) {
       console.log('✅ [V2] Respuesta guardada:', result.action)
-      // Notificar al Header para refrescar la racha
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('refreshUserStreak'))
       }
@@ -618,7 +663,13 @@ export const saveDetailedAnswerWithRetry = async (params: SaveAnswerParams, maxR
         console.log('💾 Intentando guardar via API (V2)...');
         result = await saveDetailedAnswerV2(params);
 
-        // Si V2 falla por error de red/auth, intentar V1 en el mismo intento
+        // Si sesión expirada (Nivel 2 agotado), no reintentar
+        if (!result.success && result.action === 'session_expired') {
+          console.error('🔒 Sesión expirada — no se puede recuperar')
+          return { ...result, hasLocalBackup: testBackup !== null }
+        }
+
+        // Si V2 falla por error de red, intentar V1 en el mismo intento
         if (!result.success && result.action === 'error') {
           console.warn('⚠️ V2 fallo, intentando V1 (Supabase directo)...');
           result = await saveDetailedAnswer(
