@@ -127,9 +127,12 @@ export async function processPsychometricQuestion(
   const openai = await getOpenAI()
   const model = context.isPremium ? CHAT_MODEL_PREMIUM : CHAT_MODEL
 
+  // Temperature baja para psicotécnicos: precisión > creatividad
+  const temperature = 0.3
+
   const llmSpan = tracer?.spanLLM({
     model,
-    temperature: 0.7,
+    temperature,
     maxTokens: 1500,
     systemPrompt,
     userPrompt: context.currentMessage,
@@ -147,7 +150,7 @@ export async function processPsychometricQuestion(
   const completion = await openai.chat.completions.create({
     model,
     messages,
-    temperature: 0.7,
+    temperature,
     max_tokens: 1500,
   })
 

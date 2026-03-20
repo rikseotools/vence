@@ -105,6 +105,10 @@ export function buildPsychometricPrompt(
           'geometric': 'Progresión geométrica (razón constante)',
           'fibonacci': 'Tipo Fibonacci (cada término es suma de anteriores)',
           'quadratic': 'Diferencias de segundo orden constantes',
+          'simetrica': 'Serie simétrica: busca relaciones entre posiciones equidistantes del centro',
+          'diferencias_variables': 'Las diferencias entre términos siguen un patrón propio',
+          'potencias': 'Basada en potencias (cuadrados, cubos, etc.)',
+          'primos': 'Relacionada con números primos',
         }
         const label = patternLabels[contentData.pattern_type as string] || String(contentData.pattern_type)
         additionalContext += `\n💡 PISTA sobre el patrón: ${label}`
