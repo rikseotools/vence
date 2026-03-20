@@ -38,6 +38,7 @@ FASE 3: Topic scope con IA     → Analizar epigrafes, mapear a leyes/articulos
 FASE 4: Config y schemas       → oposiciones.ts, archivos manuales
 FASE 5: Frontend               → Rutas Next.js, landing, temario, tests
 FASE 6: Verificacion           → Build, tests, funcional
+FASE 7: Examenes oficiales     → exam_position, hot_articles, mapas (si aplica)
 ```
 
 ---
@@ -445,6 +446,87 @@ npm run test:ci   # Actualizar toHaveLength si procede
 
 ---
 
+## FASE 7: Examenes oficiales (si se importan)
+
+Si la oposicion tiene examenes oficiales anteriores y se importan preguntas:
+
+### 7a. Campo `exam_position` en preguntas (OBLIGATORIO)
+
+Todas las preguntas oficiales DEBEN tener `exam_position` relleno con el `position_type` de la oposicion:
+
+```sql
+UPDATE questions
+SET exam_position = 'auxiliar_administrativo_madrid'
+WHERE is_official_exam = true
+  AND exam_source ILIKE '%Madrid%'
+  AND exam_position IS NULL;
+```
+
+El sistema usa `exam_position` (campo estructurado) para filtrar preguntas oficiales por oposicion. Sin este campo, las preguntas no apareceran en el modo examen oficial.
+
+### 7b. Tabla `hot_articles` (para badges "OFICIAL" en ArticleModal)
+
+Cuando un usuario abre un articulo, el modal muestra si ese articulo ha aparecido en examenes oficiales de **su oposicion**. Esto se controla via la tabla `hot_articles`:
+
+```sql
+INSERT INTO hot_articles (
+  article_id, law_id, target_oposicion,
+  article_number, law_name,
+  total_official_appearances, unique_exams_count,
+  priority_level, hotness_score
+)
+SELECT
+  a.id, a.law_id,
+  'auxiliar-administrativo-madrid',  -- GUIONES, no underscores
+  a.article_number, l.short_name,
+  COUNT(*),
+  COUNT(DISTINCT q.exam_source),
+  CASE
+    WHEN COUNT(*) >= 5 THEN 'critical'
+    WHEN COUNT(*) >= 3 THEN 'high'
+    WHEN COUNT(*) >= 2 THEN 'medium'
+    ELSE 'low'
+  END,
+  COUNT(*) * 10
+FROM questions q
+JOIN articles a ON q.primary_article_id = a.id
+JOIN laws l ON a.law_id = l.id
+WHERE q.is_official_exam = true
+  AND q.exam_position = 'auxiliar_administrativo_madrid'
+  AND q.is_active = true
+GROUP BY a.id, a.law_id, a.article_number, l.short_name
+ON CONFLICT (article_id, target_oposicion)
+DO UPDATE SET
+  total_official_appearances = EXCLUDED.total_official_appearances,
+  unique_exams_count = EXCLUDED.unique_exams_count,
+  priority_level = EXCLUDED.priority_level,
+  hotness_score = EXCLUDED.hotness_score,
+  updated_at = NOW();
+```
+
+**IMPORTANTE:**
+- `target_oposicion` en `hot_articles` usa **guiones** (ej: `auxiliar-administrativo-madrid`)
+- `exam_position` en `questions` usa **underscores** (ej: `auxiliar_administrativo_madrid`)
+- Si no hay filas en `hot_articles` para la oposicion, simplemente no se muestran badges oficiales (correcto)
+
+### 7c. Mapa `oposicionToExamPosition` (solo para modo examen oficial completo)
+
+Si la oposicion tiene el modo "Examen Oficial" (reproducir un examen real completo), anadir entrada en `lib/api/official-exams/queries.ts`:
+
+```typescript
+const oposicionToExamPosition: Record<string, string> = {
+  'auxiliar-administrativo-estado': 'auxiliar_administrativo_estado',
+  'tramitacion-procesal': 'tramitacion_procesal',
+  'auxilio-judicial': 'auxilio_judicial',
+  // Anadir nueva:
+  'auxiliar-administrativo-madrid': 'auxiliar_administrativo_madrid',
+}
+```
+
+Y tambien en `oposicionToExamSourcePattern` (fallback para preguntas psicotecnicas que no tienen campo `exam_position`).
+
+---
+
 ## Errores frecuentes
 
 | Error | Causa | Solucion |
@@ -458,6 +540,9 @@ npm run test:ci   # Actualizar toHaveLength si procede
 | Temas con contenido dicen "En elaboracion" | `disponible: false` en temario/page.tsx | Cambiar a `disponible: true` los temas con topic_scope |
 | Temas sin contenido clickeables | Falta `disponible: false` | Marcar en temario/page.tsx |
 | Tests fallan "Expected length: N" | Conteos hardcodeados | Actualizar en test files |
+| ArticleModal muestra "oficial" de otra oposicion | Falta fila en `hot_articles` para esta oposicion | Ejecutar INSERT de hot_articles (Fase 7b) |
+| Examen oficial no encuentra preguntas | Falta `exam_position` en preguntas | Ejecutar UPDATE (Fase 7a) |
+| Examen oficial da "Oposicion no soportada" | Falta en `oposicionToExamPosition` | Anadir en `official-exams/queries.ts` (Fase 7c) |
 
 ---
 

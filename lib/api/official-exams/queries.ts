@@ -69,11 +69,22 @@ import type {
   OfficialExamReviewQuestion,
 } from './schemas'
 
-// Map oposicion slug to exam_source pattern
+// Map oposicion slug to exam_position value (structured field in questions table)
+const oposicionToExamPosition: Record<string, string> = {
+  'auxiliar-administrativo-estado': 'auxiliar_administrativo_estado',
+  'tramitacion-procesal': 'tramitacion_procesal',
+  'auxilio-judicial': 'auxilio_judicial',
+  'administrativo-estado': 'administrativo_estado',
+  'gestion-procesal': 'cuerpo_gestion_administracion_civil',
+}
+
+// Fallback: exam_source LIKE pattern for psychometric_questions (which lacks exam_position column)
 const oposicionToExamSourcePattern: Record<string, string> = {
   'auxiliar-administrativo-estado': '%Auxiliar Administrativo Estado%',
   'tramitacion-procesal': '%Tramitación Procesal%',
   'auxilio-judicial': '%Auxilio Judicial%',
+  'administrativo-estado': '%Administrativo Estado%',
+  'gestion-procesal': '%Gestión%',
 }
 
 /**
@@ -122,9 +133,10 @@ export async function getOfficialExamQuestions(
 
   try {
     const db = getDb()
+    const examPosition = oposicionToExamPosition[oposicion]
     const examSourcePattern = oposicionToExamSourcePattern[oposicion]
 
-    if (!examSourcePattern) {
+    if (!examPosition) {
       return {
         success: false,
         error: `Oposición no soportada: ${oposicion}`,
@@ -160,7 +172,7 @@ export async function getOfficialExamQuestions(
           eq(questions.isActive, true),
           eq(questions.isOfficialExam, true),
           eq(questions.examDate, examDate),
-          like(questions.examSource, examSourcePattern)
+          eq(questions.examPosition, examPosition)
         )
       )
 
@@ -188,7 +200,8 @@ export async function getOfficialExamQuestions(
           eq(psychometricQuestions.isActive, true),
           eq(psychometricQuestions.isOfficialExam, true),
           eq(psychometricQuestions.examDate, examDate),
-          like(psychometricQuestions.examSource, examSourcePattern)
+          // psychometric_questions lacks exam_position column, fallback to exam_source LIKE
+          examSourcePattern ? like(psychometricQuestions.examSource, examSourcePattern) : sql`false`
         )
       )
 
