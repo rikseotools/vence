@@ -374,7 +374,7 @@ function ArticleCard({ article, lawShortName }: { article: Article; lawShortName
 
   const formatContent = (content: string | null) => {
     if (!content) return null
-    const lines = content.split(/(?=\d+\.\s)|(?=[a-z]\)\s)/g)
+    const lines = content.split(/\n/).filter(line => line.trim())
     return lines.map((line, index) => <p key={index} className="mb-2 last:mb-0">{line.trim()}</p>)
   }
 
