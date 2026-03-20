@@ -16,6 +16,12 @@ export type GetSubscriptionRequest = z.infer<typeof getSubscriptionRequestSchema
 // RESPONSE: SUBSCRIPTION DATA
 // ============================================
 
+export const loyaltyDiscountSchema = z.object({
+  id: z.string(),
+  percentOff: z.number(),
+  name: z.string().nullable().optional()
+})
+
 export const subscriptionInfoSchema = z.object({
   id: z.string(),
   status: z.string(),
@@ -28,7 +34,8 @@ export const subscriptionInfoSchema = z.object({
   planAmount: z.number().nullable().optional(),
   planCurrency: z.string().nullable().optional(),
   planInterval: z.string().nullable().optional(),
-  planIntervalCount: z.number().nullable().optional()
+  planIntervalCount: z.number().nullable().optional(),
+  loyaltyDiscount: loyaltyDiscountSchema.nullable().optional()
 })
 
 export type SubscriptionInfo = z.infer<typeof subscriptionInfoSchema>

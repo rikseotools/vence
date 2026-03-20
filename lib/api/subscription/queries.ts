@@ -72,7 +72,7 @@ export async function getSubscription(
       customer: profile.stripeCustomerId,
       status: 'all',
       limit: 1,
-      expand: ['data.default_payment_method']
+      expand: ['data.default_payment_method', 'data.discounts']
     })
 
     if (subscriptions.data.length === 0) {
@@ -84,22 +84,32 @@ export async function getSubscription(
     }
 
     // Type assertion needed because Stripe SDK types may not expose all properties
-    const subscription = subscriptions.data[0] as unknown as {
-      id: string
-      status: string
-      current_period_start: number
-      current_period_end: number
-      cancel_at_period_end: boolean
-      canceled_at: number | null
-      created: number
-      items: { data: Array<{ price?: { nickname?: string | null; unit_amount?: number | null; currency?: string; recurring?: { interval?: string; interval_count?: number } } }> }
-    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const subscription = subscriptions.data[0] as any
 
     console.log('💳 [Subscription] Datos obtenidos:', {
       userId: params.userId,
       status: subscription.status,
       cancelAtPeriodEnd: subscription.cancel_at_period_end
     })
+
+    // Extraer period_end (SDK v18 puede no tener current_period_end)
+    const periodStart = subscription.current_period_start
+      ? new Date(subscription.current_period_start * 1000).toISOString()
+      : subscription.start_date
+        ? new Date(subscription.start_date * 1000).toISOString()
+        : new Date(subscription.created * 1000).toISOString()
+
+    const periodEnd = subscription.current_period_end
+      ? new Date(subscription.current_period_end * 1000).toISOString()
+      : subscription.cancel_at
+        ? new Date(subscription.cancel_at * 1000).toISOString()
+        : null
+
+    // Extraer descuento de fidelidad
+    const discountCoupon = subscription.discounts?.[0]
+      ? (typeof subscription.discounts[0] === 'string' ? null : subscription.discounts[0]?.coupon)
+      : subscription.discount?.coupon || null
 
     return {
       hasSubscription: true,
@@ -108,8 +118,8 @@ export async function getSubscription(
       subscription: {
         id: subscription.id,
         status: subscription.status,
-        currentPeriodStart: new Date(subscription.current_period_start * 1000).toISOString(),
-        currentPeriodEnd: new Date(subscription.current_period_end * 1000).toISOString(),
+        currentPeriodStart: periodStart,
+        currentPeriodEnd: periodEnd || new Date(subscription.created * 1000).toISOString(),
         cancelAtPeriodEnd: subscription.cancel_at_period_end,
         canceledAt: subscription.canceled_at ? new Date(subscription.canceled_at * 1000).toISOString() : null,
         created: new Date(subscription.created * 1000).toISOString(),
@@ -117,7 +127,12 @@ export async function getSubscription(
         planAmount: subscription.items.data[0]?.price?.unit_amount ? subscription.items.data[0].price.unit_amount / 100 : null,
         planCurrency: subscription.items.data[0]?.price?.currency || null,
         planInterval: subscription.items.data[0]?.price?.recurring?.interval || null,
-        planIntervalCount: subscription.items.data[0]?.price?.recurring?.interval_count || null
+        planIntervalCount: subscription.items.data[0]?.price?.recurring?.interval_count || null,
+        loyaltyDiscount: discountCoupon ? {
+          id: discountCoupon.id,
+          percentOff: discountCoupon.percent_off,
+          name: discountCoupon.name
+        } : null
       }
     }
 

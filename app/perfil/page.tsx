@@ -1536,6 +1536,37 @@ function PerfilPageContent() {
                 </div>
               </div>
 
+              {/* Banner de descuento de fidelidad */}
+              {subscriptionData.subscription.planInterval === 'month' && !subscriptionData.subscription.cancelAtPeriodEnd && (
+                <div className="mt-4 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg p-4">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-emerald-600">🎁</span>
+                    <span className="text-emerald-800 dark:text-emerald-200 font-medium">
+                      Descuento de fidelidad
+                    </span>
+                  </div>
+                  {(() => {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const loyalty = (subscriptionData.subscription as any).loyaltyDiscount
+                    const amount = subscriptionData.subscription.planAmount || 20
+                    if (loyalty) {
+                      const discountedPrice = (amount * (1 - loyalty.percentOff / 100)).toFixed(2)
+                      return (
+                        <p className="text-emerald-700 dark:text-emerald-300 text-sm mt-1">
+                          Tu plan incluye un descuento de fidelidad del <strong>{loyalty.percentOff}%</strong>.
+                          {' '}Tu proxima renovacion sera de <strong>{discountedPrice}€</strong> en vez de {amount}€.
+                        </p>
+                      )
+                    }
+                    return (
+                      <p className="text-emerald-700 dark:text-emerald-300 text-sm mt-1">
+                        A partir de tu proxima renovacion disfrutaras de un <strong>10% de descuento</strong> por mantenerte como suscriptor activo.
+                      </p>
+                    )
+                  })()}
+                </div>
+              )}
+
               {/* Aviso de cancelación pendiente */}
               {subscriptionData.subscription.cancelAtPeriodEnd && (
                 <div className="mt-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
