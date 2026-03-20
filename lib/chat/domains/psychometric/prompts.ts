@@ -138,6 +138,31 @@ export function buildPsychometricPrompt(
       }
     }
 
+    // Gráficos: pasar chart_data al LLM para que pueda calcular
+    if (contentData.chart_data && (subtype.endsWith('_chart') || subtype === 'data_tables')) {
+      const chartData = contentData.chart_data as Record<string, unknown>
+      additionalContext += `\n\n📊 DATOS DEL GRÁFICO:`
+      if (contentData.chart_title) additionalContext += `\nTítulo: ${contentData.chart_title}`
+      if (contentData.x_axis_label) additionalContext += `\nEje X: ${contentData.x_axis_label}`
+      if (contentData.y_axis_label) additionalContext += `\nEje Y: ${contentData.y_axis_label}`
+      additionalContext += `\nDatos: ${JSON.stringify(chartData)}`
+    }
+
+    if (subtype === 'data_tables' && contentData.tables) {
+      const tables = contentData.tables as Array<{ headers?: string[]; rows?: string[][] }>
+      tables.forEach((table, idx) => {
+        if (table.headers) {
+          additionalContext += `\n\nTabla ${tables.length > 1 ? (idx + 1) : ''}:\n| ${table.headers.join(' | ')} |`
+          additionalContext += `\n| ${table.headers.map(() => '---').join(' | ')} |`
+        }
+        if (table.rows) {
+          table.rows.forEach(row => {
+            additionalContext += `\n| ${row.join(' | ')} |`
+          })
+        }
+      })
+    }
+
     if (subtype === 'word_analysis' && contentData.original_text) {
       additionalContext += `\nTexto/Palabras a analizar: "${contentData.original_text}"`
     }
