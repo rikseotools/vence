@@ -119,6 +119,31 @@ export class ChatOrchestrator {
         }
       }
 
+      // Fast-path: verification cuando hay contexto de pregunta legislativa con respuesta
+      // Si el usuario está en una pregunta y envía un follow-up, quiere saber sobre esa pregunta.
+      if (context.questionContext?.questionText &&
+          context.questionContext?.correctAnswer !== undefined &&
+          context.questionContext?.correctAnswer !== null &&
+          !isPsychometricSubtype(context.questionContext?.questionSubtype)) {
+        const verifyDomain = this.domains.find(d => d.name === 'verification')
+        if (verifyDomain) {
+          routingSpan.setOutput({
+            evaluatedDomains: [{ name: 'verification', priority: verifyDomain.priority, canHandle: true, evalTimeMs: 0, reason: 'fast-path: question context with answer' }],
+            selectedDomain: 'verification',
+            confidence: 1.0
+          })
+          routingSpan.end()
+
+          logger.info('Fast-path: VerificationDomain (question context detected)', { domain: 'orchestrator' })
+
+          const response = await verifyDomain.handle(context, tracer)
+          const duration = Date.now() - startTime
+          logger.info(`Request completed via fast-path in ${duration}ms`, { domain: 'orchestrator' })
+          await tracer.flush()
+          return response
+        }
+      }
+
       // Buscar dominio que pueda manejar el mensaje (routing normal)
       for (const domain of this.domains) {
         const evalStart = Date.now()
