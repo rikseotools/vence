@@ -2642,6 +2642,11 @@ export async function fetchQuestionsViaAPI(tema: number, searchParams: SearchPar
 
     console.log(`✅ API devolvió ${data.questions?.length || 0} preguntas (${data.totalAvailable} disponibles)`)
 
+    // Si la API devolvió 0 preguntas con motivo, propagar el motivo
+    if (data.questions?.length === 0 && data.emptyReason) {
+      throw new Error(data.emptyReason)
+    }
+
     // La API ya devuelve las preguntas en el formato correcto (transformadas)
     return data.questions || []
 

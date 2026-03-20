@@ -558,8 +558,11 @@ export async function getFilteredQuestions(
 
       if (!globalQuestions || globalQuestions.length === 0) {
         return {
-          success: false,
-          error: `No se encontraron preguntas para ${positionType}`,
+          success: true,
+          questions: [],
+          totalAvailable: 0,
+          filtersApplied: { laws: 0, articles: 0, sections: 0 },
+          emptyReason: `No hay preguntas disponibles para la oposición "${positionType}"`,
         }
       }
 
@@ -681,8 +684,11 @@ export async function getFilteredQuestions(
 
       if (!topicScopeResults || topicScopeResults.length === 0) {
         return {
-          success: false,
-          error: `No se encontró mapeo para los temas especificados (${positionType})`,
+          success: true,
+          questions: [],
+          totalAvailable: 0,
+          filtersApplied: { laws: 0, articles: 0, sections: 0 },
+          emptyReason: `Los temas seleccionados no tienen preguntas asignadas todavía`,
         }
       }
 
@@ -727,8 +733,11 @@ export async function getFilteredQuestions(
 
     if (filteredMappings.length === 0) {
       return {
-        success: false,
-        error: 'No hay preguntas disponibles con los filtros seleccionados',
+        success: true,
+        questions: [],
+        totalAvailable: 0,
+        filtersApplied: { laws: selectedLaws?.length || 0, articles: Object.keys(selectedArticlesByLaw || {}).length, sections: selectedSectionFilters?.length || 0 },
+        emptyReason: `No hay preguntas para las leyes o artículos seleccionados`,
       }
     }
 
@@ -848,9 +857,18 @@ export async function getFilteredQuestions(
     }
 
     if (allQuestions.length === 0) {
+      const reasons: string[] = []
+      if (difficultyMode && difficultyMode !== 'random') reasons.push(`dificultad "${difficultyMode}"`)
+      if (onlyOfficialQuestions) reasons.push('solo preguntas oficiales')
+      if (selectedLaws?.length) reasons.push(`leyes: ${selectedLaws.join(', ')}`)
       return {
-        success: false,
-        error: 'No se encontraron preguntas para esta configuración',
+        success: true,
+        questions: [],
+        totalAvailable: 0,
+        filtersApplied: { laws: selectedLaws?.length || 0, articles: Object.keys(selectedArticlesByLaw || {}).length, sections: selectedSectionFilters?.length || 0 },
+        emptyReason: reasons.length > 0
+          ? `No hay preguntas con los filtros: ${reasons.join(', ')}`
+          : 'No hay preguntas disponibles para esta configuración',
       }
     }
 
@@ -1008,8 +1026,9 @@ export async function countFilteredQuestions(
 
     if (!topicScopeResults || topicScopeResults.length === 0) {
       return {
-        success: false,
-        error: `No se encontró mapeo para tema ${topicNumber}`,
+        success: true,
+        count: 0,
+        byLaw: {},
       }
     }
 

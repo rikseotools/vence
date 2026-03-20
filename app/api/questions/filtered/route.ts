@@ -84,6 +84,7 @@ async function _POST(request: NextRequest) {
       questions: result.questions,
       totalAvailable: result.totalAvailable,
       filtersApplied: result.filtersApplied,
+      ...(result.emptyReason && { emptyReason: result.emptyReason }),
     })
   } catch (error) {
     console.error('❌ Error en API /questions/filtered:', error)

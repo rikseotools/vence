@@ -132,6 +132,7 @@ export const getFilteredQuestionsResponseSchema = z.object({
     sections: z.number().int(),
   }).optional(),
   error: z.string().optional(),
+  emptyReason: z.string().optional(),
 })
 
 export type GetFilteredQuestionsResponse = z.infer<typeof getFilteredQuestionsResponseSchema>
