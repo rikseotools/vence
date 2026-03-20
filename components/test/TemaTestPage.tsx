@@ -14,6 +14,7 @@ import ArticleModal from '@/components/ArticleModal'
 import ArticulosEstudioPrioritario from '@/components/test/ArticulosEstudioPrioritario'
 import { generateLawSlug } from '@/lib/lawMappingUtils'
 import { getOposicion, getBlockForTopic, type Block } from '@/lib/config/oposiciones'
+import { safeParseGetTopicDataResponse, type GetTopicDataResponse } from '@/lib/api/topic-data/schemas'
 
 const supabase = getSupabaseClient()
 
@@ -21,15 +22,15 @@ interface TopicData {
   id: string
   topic_number: number
   title: string
-  description: string
-  difficulty: string
-  estimated_hours: number
+  description: string | null
+  difficulty: string | null
+  estimated_hours: number | null
 }
 
 interface UserStats {
   totalAnswers: number
   overallAccuracy: number
-  performanceByDifficulty: Record<string, number>
+  performanceByDifficulty: Record<string, any>
   isRealData: boolean
   uniqueQuestionsAnswered: number
   totalQuestionsAvailable: number
@@ -118,16 +119,22 @@ export default function TemaTestPage({ oposicionSlug }: TemaTestPageProps) {
     try { localStorage.setItem('preferredTestMode', newMode) } catch { /* */ }
   }
 
-  const loadTopicData = useCallback(async (tema: number, userId: string | null) => {
+  const loadTopicData = useCallback(async (tema: number, userId: string | null): Promise<GetTopicDataResponse | null> => {
     try {
       const queryParams = new URLSearchParams({
         oposicion: oposicionSlug,
         ...(userId && { userId })
       })
       const response = await fetch(`/api/topics/${tema}?${queryParams}`)
-      const data = await response.json()
-      if (!data.success) return null
-      return data
+      const raw = await response.json()
+
+      const parsed = safeParseGetTopicDataResponse(raw)
+      if (!parsed.success) {
+        console.error('❌ [Zod] Respuesta API inválida:', parsed.error.issues)
+        return null
+      }
+      if (!parsed.data.success) return null
+      return parsed.data
     } catch (error) {
       console.error('Error en loadTopicData:', error)
       return null
@@ -146,25 +153,27 @@ export default function TemaTestPage({ oposicionSlug }: TemaTestPageProps) {
         setArticlesCountByLaw(data.articlesByLaw?.map((a: any) => ({
           law_short_name: a.lawShortName, law_name: a.lawName, articles_with_questions: a.articlesWithQuestions
         })) || [])
-        if (data.userProgress) {
+        const up = data.userProgress
+        if (up) {
           setUserStats({
-            totalAnswers: data.userProgress.totalAnswers, overallAccuracy: data.userProgress.overallAccuracy,
-            performanceByDifficulty: data.userProgress.performanceByDifficulty, isRealData: true,
-            uniqueQuestionsAnswered: data.userProgress.uniqueQuestionsAnswered,
-            totalQuestionsAvailable: data.userProgress.totalQuestionsAvailable, neverSeen: data.userProgress.neverSeen
+            totalAnswers: up.totalAnswers, overallAccuracy: up.overallAccuracy,
+            performanceByDifficulty: up.performanceByDifficulty, isRealData: true,
+            uniqueQuestionsAnswered: up.uniqueQuestionsAnswered,
+            totalQuestionsAvailable: up.totalQuestionsAvailable, neverSeen: up.neverSeen
           })
-          if (data.userProgress.recentStats) {
+          const rs = up.recentStats
+          if (rs) {
             setUserRecentStats({
-              last7Days: data.userProgress.recentStats.last7Days, last15Days: data.userProgress.recentStats.last15Days,
-              last30Days: data.userProgress.recentStats.last30Days, recentlyAnswered: data.userProgress.recentStats.last15Days,
+              last7Days: rs.last7Days, last15Days: rs.last15Days,
+              last30Days: rs.last30Days, recentlyAnswered: rs.last15Days,
               getExcludedCount: (days: number) => {
-                if (days <= 7) return data.userProgress.recentStats.last7Days
-                if (days <= 15) return data.userProgress.recentStats.last15Days
-                return data.userProgress.recentStats.last30Days
+                if (days <= 7) return rs.last7Days
+                if (days <= 15) return rs.last15Days
+                return rs.last30Days
               }
             })
           }
-          setUserAnswers(data.userProgress.detailedAnswers || [])
+          setUserAnswers(up.detailedAnswers || [])
         }
       }
     }
@@ -205,12 +214,13 @@ export default function TemaTestPage({ oposicionSlug }: TemaTestPageProps) {
     async function fetchAllData() {
       try {
         const basicData = await loadTopicData(temaNumber!, null)
-        if (!basicData?.success) { setTemaNotFound(true); setLoading(false); return }
+        if (!basicData?.success || !basicData.topic) { setTemaNotFound(true); setLoading(false); return }
 
+        const topic = basicData.topic
         setTopicData({
-          id: basicData.topic.id, topic_number: basicData.topic.topicNumber,
-          title: basicData.topic.title, description: basicData.topic.description,
-          difficulty: basicData.topic.difficulty, estimated_hours: basicData.topic.estimatedHours
+          id: topic.id, topic_number: topic.topicNumber,
+          title: topic.title, description: topic.description,
+          difficulty: topic.difficulty, estimated_hours: topic.estimatedHours
         })
         setDifficultyStats(basicData.difficultyStats || {})
         setOfficialQuestionsCount(basicData.officialQuestionsCount || 0)
@@ -225,25 +235,27 @@ export default function TemaTestPage({ oposicionSlug }: TemaTestPageProps) {
         if (user) {
           setUserStatsLoading(true)
           const userData = await loadTopicData(temaNumber!, user.id)
-          if (userData?.success && userData.userProgress) {
+          const up2 = userData?.success ? userData.userProgress : null
+          if (up2) {
             setUserStats({
-              totalAnswers: userData.userProgress.totalAnswers, overallAccuracy: userData.userProgress.overallAccuracy,
-              performanceByDifficulty: userData.userProgress.performanceByDifficulty, isRealData: true,
-              uniqueQuestionsAnswered: userData.userProgress.uniqueQuestionsAnswered,
-              totalQuestionsAvailable: userData.userProgress.totalQuestionsAvailable, neverSeen: userData.userProgress.neverSeen
+              totalAnswers: up2.totalAnswers, overallAccuracy: up2.overallAccuracy,
+              performanceByDifficulty: up2.performanceByDifficulty, isRealData: true,
+              uniqueQuestionsAnswered: up2.uniqueQuestionsAnswered,
+              totalQuestionsAvailable: up2.totalQuestionsAvailable, neverSeen: up2.neverSeen
             })
-            if (userData.userProgress.recentStats) {
+            const rs2 = up2.recentStats
+            if (rs2) {
               setUserRecentStats({
-                last7Days: userData.userProgress.recentStats.last7Days, last15Days: userData.userProgress.recentStats.last15Days,
-                last30Days: userData.userProgress.recentStats.last30Days, recentlyAnswered: userData.userProgress.recentStats.last15Days,
+                last7Days: rs2.last7Days, last15Days: rs2.last15Days,
+                last30Days: rs2.last30Days, recentlyAnswered: rs2.last15Days,
                 getExcludedCount: (days: number) => {
-                  if (days <= 7) return userData.userProgress.recentStats.last7Days
-                  if (days <= 15) return userData.userProgress.recentStats.last15Days
-                  return userData.userProgress.recentStats.last30Days
+                  if (days <= 7) return rs2.last7Days
+                  if (days <= 15) return rs2.last15Days
+                  return rs2.last30Days
                 }
               })
             }
-            setUserAnswers(userData.userProgress.detailedAnswers || [])
+            setUserAnswers(up2.detailedAnswers || [])
           }
           setUserStatsLoading(false)
         }
