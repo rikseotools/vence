@@ -2,6 +2,14 @@
 
 import { useState } from 'react'
 
+interface CancellationFlowProps {
+  isOpen: boolean
+  onClose: () => void
+  userId: string
+  periodEndDate?: string | number
+  onCancelled?: (periodEnd: string) => void
+}
+
 const REASONS = [
   { value: 'approved', label: 'He aprobado la oposición' },
   { value: 'not_presenting', label: 'Ya no me voy a presentar' },
@@ -26,18 +34,18 @@ const ALTERNATIVES = [
 // Motivos que NO requieren preguntar alternativa
 const SKIP_ALTERNATIVE_REASONS = ['approved', 'not_presenting']
 
-export default function CancellationFlow({ isOpen, onClose, userId, periodEndDate, onCancelled }) {
+export default function CancellationFlow({ isOpen, onClose, userId, periodEndDate, onCancelled }: CancellationFlowProps) {
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
+  const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
-  const [resultPeriodEnd, setResultPeriodEnd] = useState(null)
+  const [resultPeriodEnd, setResultPeriodEnd] = useState<string | null>(null)
 
   // Form data
   const [reason, setReason] = useState('')
   const [reasonDetails, setReasonDetails] = useState('')
   const [alternative, setAlternative] = useState('')
-  const [contactedSupport, setContactedSupport] = useState(null)
+  const [contactedSupport, setContactedSupport] = useState<string | null>(null)
 
   const resetForm = () => {
     setStep(1)
@@ -108,7 +116,7 @@ export default function CancellationFlow({ isOpen, onClose, userId, periodEndDat
       }
 
     } catch (err) {
-      setError(err.message)
+      setError(err instanceof Error ? err.message : 'Error desconocido')
     } finally {
       setLoading(false)
     }
@@ -167,7 +175,7 @@ export default function CancellationFlow({ isOpen, onClose, userId, periodEndDat
                   Si cancelas vas a perder tu descuento de fidelidad
                 </p>
                 <p className="text-xs text-amber-700 dark:text-amber-300">
-                  Tu plan incluye un 10% de descuento en la 1a y 2a renovacion, y un 20% a partir de la 3a. Al cancelar, este beneficio se pierde y no se recupera.
+                  Tu plan incluye un 10% de descuento en la primera y segunda renovacion, y un 20% a partir de la tercera. Al cancelar, este beneficio se pierde y no se recupera.
                 </p>
               </div>
               <p className="text-sm text-amber-600 dark:text-amber-400 mb-6">
@@ -177,15 +185,15 @@ export default function CancellationFlow({ isOpen, onClose, userId, periodEndDat
               <div className="flex gap-3">
                 <button
                   onClick={handleClose}
-                  className="flex-1 py-3 px-4 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  className="flex-1 py-3 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors"
                 >
-                  Volver
+                  Mantener mi suscripcion
                 </button>
                 <button
                   onClick={handleConfirmStart}
-                  className="flex-1 py-3 px-4 rounded-lg bg-red-500 hover:bg-red-600 text-white font-medium transition-colors"
+                  className="flex-1 py-3 px-4 rounded-lg border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 font-medium hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                 >
-                  Continuar
+                  Estoy conforme en perderlo y cancelar
                 </button>
               </div>
             </div>
