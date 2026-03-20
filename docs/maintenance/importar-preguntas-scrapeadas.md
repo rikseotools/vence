@@ -495,29 +495,98 @@ await supabase.from('questions').insert({
 });
 ```
 
-## 9. Ejemplo de Explicación Didáctica
+## 9. Formato de Explicación Didáctica (OBLIGATORIO)
 
-**Original (scrapeada):**
-> Ley 39/2015, artículo 26.3. No requerirán de firma electrónica...
+Las explicaciones scrapeadas suelen ser solo citas del artículo. Hay que reescribirlas con formato didáctico. Usar agentes Sonnet en paralelo (batches de 14 preguntas).
 
-**Mejorada:**
-> **Art. 26.3 Ley 39/2015 - Excepciones a la firma electrónica**
->
-> La regla general es que los documentos electrónicos requieren firma.
->
-> Sin embargo, HAY DOS EXCEPCIONES:
-> 1. Documentos MERAMENTE INFORMATIVOS → no necesitan firma
-> 2. Documentos que NO FORMEN PARTE DE UN EXPEDIENTE → no necesitan firma
->
-> La opción C es incorrecta porque los documentos dispositivos SÍ requieren firma.
->
-> **Ejemplo:** Un folleto informativo NO necesita firma. Una resolución SÍ la necesita.
+### Formato obligatorio
 
-## 10. Siguiente Paso: Verificar con Agente
+```markdown
+> **Art. X [Ley]**
+> "Cita textual relevante del artículo"
 
-Una vez importadas las preguntas, el siguiente paso es verificarlas con el agente de Claude Code.
+**Por qué [LETRA] es correcta:** Explicación clara.
+
+**Por qué las demás son incorrectas:**
+- **A)** Razón concreta
+- **B)** Razón concreta
+- **C)** Razón concreta
+```
+
+### Reglas
+
+- Sin emojis
+- Markdown con **, >, -
+- Cita del artículo con blockquote (>)
+- Omitir la letra correcta del bloque de incorrectas
+- Para preguntas "Ninguna es correcta": explicar por qué cada opción falla
+- Para preguntas "Señale la incorrecta": explicar que la correcta es la afirmación falsa
+- Para preguntas de fechas/estructura: no hace falta blockquote, explicación directa
+- Ser conciso pero completo
+
+### Ejecución con agentes paralelos
+
+Dividir las preguntas en batches de ~14 y lanzar agentes Sonnet en paralelo. Cada agente genera las explicaciones y un script de actualización en /tmp.
+
+```
+Batch 1 (Q1-Q14)  → agente Sonnet → /tmp/update_explanations_batch1.cjs
+Batch 2 (Q15-Q28) → agente Sonnet → /tmp/update_explanations_batch2.cjs
+Batch 3 (Q29-Q42) → agente Sonnet → /tmp/update_explanations_batch3.cjs
+```
+
+Los scripts deben usar paths absolutos a node_modules (scripts en /tmp no encuentran node_modules del proyecto).
+
+## 10. OBLIGATORIO: Verificación Post-Inserción con Agente
+
+**CRITICO:** Después de insertar preguntas y mejorar explicaciones, es OBLIGATORIO verificarlas con el agente de Claude Code. No se considera un tema completado hasta que pasa esta verificación.
+
+El agente compara cada pregunta contra su artículo vinculado y verifica:
+
+1. **articleOk** - El artículo vinculado es correcto para esta pregunta
+2. **answerOk** - La respuesta marcada como correcta es realmente correcta según el artículo
+3. **explanationOk** - La explicación es correcta, didáctica y con formato markdown
+
+Las preguntas que fallen se corrigen antes de dar el tema por bueno.
 
 **Ver:** [revisar-temas-con-agente.md](./revisar-temas-con-agente.md)
+
+## 11. Checklist Completo por Tema
+
+Flujo validado (Marzo 2026, Auxiliar Madrid T1):
+
+```
+1. DETECCIÓN DUPLICADOS (obligatorio antes de trabajar)
+   - Hash exacto (SHA-256 normalizado)
+   - Similitud Jaccard >=80% (revisar rápido)
+   - Similitud 60-80% (comparar opciones manualmente)
+   - Contra TODA la BD, no solo el tema
+
+2. VERIFICAR LEYES Y ARTÍCULOS
+   - Las leyes del tema existen en BD
+   - Los artículos están sincronizados desde BOE
+   - El Preámbulo existe si la ley lo tiene
+
+3. VERIFICAR TOPIC SCOPE
+   - Los artículos del scope corresponden al epígrafe
+   - No faltan artículos que el epígrafe menciona
+   - No sobran artículos que no corresponden
+
+4. INSERTAR PREGUNTAS NUEVAS
+   - Solo las que no son duplicados
+   - Con primary_article_id correcto
+   - Con content_hash generado
+   - Con tags apropiados
+
+5. EXPLICACIONES DIDÁCTICAS
+   - Reescribir con agentes Sonnet
+   - Formato: blockquote + por qué correcta + por qué incorrectas
+   - Actualizar en BD
+
+6. VERIFICACIÓN CON AGENTE
+   - articleOk, answerOk, explanationOk
+   - Corregir los que fallen
+   - No dar el tema por bueno hasta que pase
+```
 
 ### Comando rápido:
 ```
