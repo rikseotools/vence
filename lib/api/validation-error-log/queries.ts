@@ -39,6 +39,9 @@ export function classifyError(error: unknown): 'timeout' | 'network' | 'db_conne
  * Fire-and-forget: NUNCA lanza excepciones, NUNCA bloquea al caller.
  */
 export function logValidationError(input: ValidationErrorLogInput): void {
+  // No loguear errores en desarrollo local — solo ruido
+  if (DEPLOY_VERSION === 'local') return
+
   // Ejecutar async sin await — fire-and-forget
   _insertLog(input).catch((err) => {
     // Si falla el logging mismo, solo console (no queremos loops)
