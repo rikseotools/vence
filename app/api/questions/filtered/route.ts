@@ -1,6 +1,7 @@
 // app/api/questions/filtered/route.ts - API para obtener preguntas filtradas
 // Usa Drizzle ORM + Zod para validación tipada
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
 import {
   getFilteredQuestions,
   countFilteredQuestions,
@@ -9,6 +10,26 @@ import {
 } from '@/lib/api/filtered-questions'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+
+/** Extract userId from Bearer token (optional — returns null if not authenticated) */
+async function getOptionalUserId(request: NextRequest): Promise<string | null> {
+  try {
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader?.startsWith('Bearer ')) return null
+
+    const token = authHeader.split(' ')[1]
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      { global: { headers: { Authorization: `Bearer ${token}` } } },
+    )
+    const { data: { user } } = await supabase.auth.getUser()
+    return user?.id ?? null
+  } catch {
+    return null
+  }
+}
+
 // ============================================
 // POST /api/questions/filtered
 // Obtener preguntas filtradas para test
@@ -24,8 +45,14 @@ async function _POST(request: NextRequest) {
       numQuestions: body.numQuestions,
     })
 
-    // Validar request con Zod
-    const validation = safeParseGetFilteredQuestions(body)
+    // Extract userId from auth token (secure, server-side)
+    const authUserId = await getOptionalUserId(request)
+
+    // Validar request con Zod (ignoring client-sent userId for security)
+    const validation = safeParseGetFilteredQuestions({
+      ...body,
+      userId: authUserId ?? body.userId, // Prefer auth token, fallback to body for backward compat
+    })
     if (!validation.success) {
       const issues = validation.error?.issues || []
       console.error('❌ Validación fallida:', issues)

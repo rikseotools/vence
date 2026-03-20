@@ -2600,22 +2600,25 @@ export async function fetchQuestionsViaAPI(tema: number, searchParams: SearchPar
       failedQuestionIds: failedQuestionIds.length
     })
 
-    // Obtener userId para filtrar preguntas falladas
-    let userId: string | undefined
+    // Obtener token de auth para que la API resuelva userId server-side
+    let authToken: string | null = null
     if (onlyFailedQuestions) {
       try {
         const supabase = getSupabaseClient()
         const { data: { session } } = await supabase.auth.getSession()
-        userId = session?.user?.id
+        authToken = session?.access_token ?? null
       } catch {
-        console.warn('⚠️ No se pudo obtener userId para filtrar falladas')
+        console.warn('⚠️ No se pudo obtener token para filtrar falladas')
       }
     }
 
     // Llamar a la API
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    if (authToken) headers['Authorization'] = `Bearer ${authToken}`
+
     const response = await fetch('/api/questions/filtered', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({
         topicNumber: tema,
         positionType,
@@ -2627,7 +2630,6 @@ export async function fetchQuestionsViaAPI(tema: number, searchParams: SearchPar
         difficultyMode,
         onlyFailedQuestions,
         failedQuestionIds,
-        ...(userId && { userId })
       })
     })
 

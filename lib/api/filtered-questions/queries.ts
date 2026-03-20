@@ -307,42 +307,108 @@ export async function getFilteredQuestions(
       failedQuestionIds,
     } = params
 
-    // IDs de preguntas falladas (pueden venir del cliente o resolverse del historial)
-    let resolvedFailedIds = failedQuestionIds && failedQuestionIds.length > 0 ? failedQuestionIds : null
+    // 🔄 CASO: "Solo falladas" sin IDs — single JOIN con user_question_history
+    if (onlyFailedQuestions && (!failedQuestionIds || failedQuestionIds.length === 0) && userId) {
+      console.log(`🔄 Modo preguntas falladas por historial (single JOIN): userId=${userId}`)
 
-    // 🔄 CASO: "Solo falladas" sin IDs específicos — buscar en historial del usuario
-    if (onlyFailedQuestions && !resolvedFailedIds && userId) {
-      console.log(`🔄 Modo preguntas falladas por historial del usuario: ${userId}`)
-
-      // Buscar question_ids donde el usuario ha fallado al menos una vez
-      const failedHistory = await db
-        .select({ questionId: userQuestionHistory.questionId })
-        .from(userQuestionHistory)
-        .where(
+      const failedQuestions = await db
+        .select({
+          id: questions.id,
+          questionText: questions.questionText,
+          optionA: questions.optionA,
+          optionB: questions.optionB,
+          optionC: questions.optionC,
+          optionD: questions.optionD,
+          explanation: questions.explanation,
+          difficulty: questions.difficulty,
+          questionType: questions.questionType,
+          tags: questions.tags,
+          isActive: questions.isActive,
+          createdAt: questions.createdAt,
+          updatedAt: questions.updatedAt,
+          primaryArticleId: questions.primaryArticleId,
+          isOfficialExam: questions.isOfficialExam,
+          examSource: questions.examSource,
+          examDate: questions.examDate,
+          examEntity: questions.examEntity,
+          examPosition: questions.examPosition,
+          officialDifficultyLevel: questions.officialDifficultyLevel,
+          articleId: articles.id,
+          articleNumber: articles.articleNumber,
+          articleTitle: articles.title,
+          articleContent: articles.content,
+          lawId: laws.id,
+          lawName: laws.name,
+          lawShortName: laws.shortName,
+        })
+        .from(questions)
+        .innerJoin(articles, eq(questions.primaryArticleId, articles.id))
+        .innerJoin(laws, eq(articles.lawId, laws.id))
+        .innerJoin(
+          userQuestionHistory,
           and(
+            eq(userQuestionHistory.questionId, questions.id),
             eq(userQuestionHistory.userId, userId),
             lt(userQuestionHistory.successRate, '1.00')
           )
         )
+        .where(eq(questions.isActive, true))
+        .orderBy(sql`random()`)
+        .limit(numQuestions)
 
-      const userFailedIds = failedHistory.map(h => h.questionId)
+      const finalQuestions = failedQuestions
 
-      if (userFailedIds.length === 0) {
-        console.log('📭 El usuario no tiene preguntas falladas')
+      console.log(`✅ Single JOIN: ${finalQuestions.length} preguntas falladas (limit ${numQuestions})`)
+
+      if (finalQuestions.length === 0) {
         return { success: true, questions: [], totalAvailable: 0, filtersApplied: { laws: 0, articles: 0, sections: 0 } }
       }
 
-      console.log(`❌ Encontradas ${userFailedIds.length} preguntas falladas en historial`)
+      // Transformar al formato esperado (same block as specific IDs below)
+      const transformedQuestions: FilteredQuestion[] = finalQuestions.map((q, index) => ({
+        id: q.id,
+        question: q.questionText,
+        options: [q.optionA, q.optionB, q.optionC, q.optionD] as [string, string, string, string],
+        explanation: q.explanation,
+        primary_article_id: q.primaryArticleId,
+        tema: topicNumber || null,
+        article: {
+          id: q.articleId,
+          number: q.articleNumber || (index + 1).toString(),
+          title: q.articleTitle || `Artículo ${index + 1}`,
+          full_text: q.articleContent || `Artículo ${q.articleNumber || index + 1}`,
+          law_name: q.lawName || 'Ley desconocida',
+          law_short_name: q.lawShortName || 'Ley',
+          display_number: `Art. ${q.articleNumber || index + 1} ${q.lawShortName || 'Ley'}`,
+        },
+        metadata: {
+          id: q.id,
+          difficulty: q.difficulty || 'medium',
+          question_type: q.questionType || 'single',
+          tags: q.tags,
+          is_active: q.isActive ?? true,
+          created_at: q.createdAt,
+          updated_at: q.updatedAt,
+          is_official_exam: q.isOfficialExam,
+          exam_source: q.examSource,
+          exam_date: q.examDate,
+          exam_entity: q.examEntity,
+          exam_position: q.examPosition,
+          official_difficulty_level: q.officialDifficultyLevel,
+        },
+      }))
 
-      // Continuar al bloque siguiente con los IDs resueltos
-      resolvedFailedIds = userFailedIds
+      return {
+        success: true,
+        questions: transformedQuestions,
+        totalAvailable: transformedQuestions.length,
+        filtersApplied: { laws: 0, articles: 0, sections: 0 },
+      }
     }
 
-
-    // 🔄 CASO ESPECIAL: Preguntas falladas específicas
-    // Si se proporcionan IDs de preguntas falladas, buscar directamente por ID
-    if (onlyFailedQuestions && resolvedFailedIds && resolvedFailedIds.length > 0) {
-      console.log(`🔄 Modo preguntas falladas: ${resolvedFailedIds.length} preguntas específicas`)
+    // 🔄 CASO: Preguntas falladas con IDs específicos (del sessionStorage)
+    if (onlyFailedQuestions && failedQuestionIds && failedQuestionIds.length > 0) {
+      console.log(`🔄 Modo preguntas falladas por IDs: ${failedQuestionIds.length} específicas`)
 
       const failedQuestions = await db
         .select({
@@ -379,19 +445,18 @@ export async function getFilteredQuestions(
         .innerJoin(laws, eq(articles.lawId, laws.id))
         .where(and(
           eq(questions.isActive, true),
-          inArray(questions.id, resolvedFailedIds)
+          inArray(questions.id, failedQuestionIds)
         ))
 
-      // Ordenar según el orden de resolvedFailedIds (mantener orden original)
+      // Ordenar según el orden de failedQuestionIds (mantener orden original)
       const questionMap = new Map(failedQuestions.map(q => [q.id, q]))
-      const orderedQuestions = resolvedFailedIds
+      const orderedQuestions = failedQuestionIds
         .map(id => questionMap.get(id))
         .filter((q): q is NonNullable<typeof q> => q !== undefined)
 
-      // Limitar a numQuestions si es necesario
       const finalQuestions = orderedQuestions.slice(0, numQuestions)
 
-      console.log(`✅ Encontradas ${finalQuestions.length} de ${resolvedFailedIds.length} preguntas falladas`)
+      console.log(`✅ Encontradas ${finalQuestions.length} de ${failedQuestionIds.length} preguntas falladas`)
 
       // Transformar al formato esperado
       const transformedQuestions: FilteredQuestion[] = finalQuestions.map((q, index) => ({
@@ -430,7 +495,7 @@ export async function getFilteredQuestions(
       return {
         success: true,
         questions: transformedQuestions,
-        totalAvailable: resolvedFailedIds.length,
+        totalAvailable: failedQuestionIds.length,
         filtersApplied: {
           laws: 0,
           articles: 0,
