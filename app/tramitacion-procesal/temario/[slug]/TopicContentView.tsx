@@ -73,7 +73,7 @@ function getBlockInfo(topicNumber: number): { block: string; displayNum: number 
 
 export default function TopicContentView({ content, oposicion = 'administrativo-estado' }: TopicContentViewProps) {
   const [expandedLaws, setExpandedLaws] = useState<Set<string>>(
-    new Set(content.laws.map((l) => l.law.id))
+    new Set()
   )
   const [showPrintModal, setShowPrintModal] = useState(false)
   const { user, userProfile } = useAuth() as { user: any; userProfile: any }
