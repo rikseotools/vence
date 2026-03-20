@@ -13,7 +13,7 @@ const BLOQUES = [
     count: 15,
     temas: [
       { id: 1, titulo: 'La Constitución Española de 1978', descripcion: 'La Constitución Española de 1978. Estructura y contenido. Derechos y deberes fundamentales.', disponible: true },
-      { id: 2, titulo: 'El Estatuto de Autonomía de la Comunidad de Madrid', descripcion: 'Estatuto de Autonomía de la Comunidad de Madrid. Estructura, competencias y organización.', disponible: false },
+      { id: 2, titulo: 'El Estatuto de Autonomía de la Comunidad de Madrid', descripcion: 'Estatuto de Autonomía de la Comunidad de Madrid. Estructura, competencias y organización.', disponible: true },
       { id: 3, titulo: 'La Ley de Gobierno y Administración de la CAM', descripcion: 'Ley de Gobierno y Administración de la Comunidad de Madrid. Organización y funcionamiento.', disponible: false },
       { id: 4, titulo: 'Las fuentes del ordenamiento jurídico', descripcion: 'Las fuentes del derecho. La ley. El reglamento. Otras fuentes del ordenamiento jurídico.', disponible: true },
       { id: 5, titulo: 'El acto administrativo', descripcion: 'El acto administrativo. Concepto, clases y elementos. Eficacia. Nulidad y anulabilidad.', disponible: true },
