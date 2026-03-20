@@ -1,7 +1,7 @@
 // lib/api/filtered-questions/queries.ts - Queries Drizzle para preguntas filtradas
 import { getDb } from '@/db/client'
-import { questions, articles, laws, topicScope, topics, tests, testQuestions } from '@/db/schema'
-import { eq, and, inArray, sql, notInArray, desc, or } from 'drizzle-orm'
+import { questions, articles, laws, topicScope, topics, tests, testQuestions, userQuestionHistory } from '@/db/schema'
+import { eq, and, inArray, sql, notInArray, desc, or, lt } from 'drizzle-orm'
 import type {
   GetFilteredQuestionsRequest,
   GetFilteredQuestionsResponse,
@@ -307,10 +307,42 @@ export async function getFilteredQuestions(
       failedQuestionIds,
     } = params
 
+    // IDs de preguntas falladas (pueden venir del cliente o resolverse del historial)
+    let resolvedFailedIds = failedQuestionIds && failedQuestionIds.length > 0 ? failedQuestionIds : null
+
+    // 🔄 CASO: "Solo falladas" sin IDs específicos — buscar en historial del usuario
+    if (onlyFailedQuestions && !resolvedFailedIds && userId) {
+      console.log(`🔄 Modo preguntas falladas por historial del usuario: ${userId}`)
+
+      // Buscar question_ids donde el usuario ha fallado al menos una vez
+      const failedHistory = await db
+        .select({ questionId: userQuestionHistory.questionId })
+        .from(userQuestionHistory)
+        .where(
+          and(
+            eq(userQuestionHistory.userId, userId),
+            lt(userQuestionHistory.successRate, '1.00')
+          )
+        )
+
+      const userFailedIds = failedHistory.map(h => h.questionId)
+
+      if (userFailedIds.length === 0) {
+        console.log('📭 El usuario no tiene preguntas falladas')
+        return { success: true, questions: [], totalAvailable: 0, filtersApplied: { laws: 0, articles: 0, sections: 0 } }
+      }
+
+      console.log(`❌ Encontradas ${userFailedIds.length} preguntas falladas en historial`)
+
+      // Continuar al bloque siguiente con los IDs resueltos
+      resolvedFailedIds = userFailedIds
+    }
+
+
     // 🔄 CASO ESPECIAL: Preguntas falladas específicas
     // Si se proporcionan IDs de preguntas falladas, buscar directamente por ID
-    if (onlyFailedQuestions && failedQuestionIds && failedQuestionIds.length > 0) {
-      console.log(`🔄 Modo preguntas falladas: ${failedQuestionIds.length} preguntas específicas`)
+    if (onlyFailedQuestions && resolvedFailedIds && resolvedFailedIds.length > 0) {
+      console.log(`🔄 Modo preguntas falladas: ${resolvedFailedIds.length} preguntas específicas`)
 
       const failedQuestions = await db
         .select({
@@ -347,19 +379,19 @@ export async function getFilteredQuestions(
         .innerJoin(laws, eq(articles.lawId, laws.id))
         .where(and(
           eq(questions.isActive, true),
-          inArray(questions.id, failedQuestionIds)
+          inArray(questions.id, resolvedFailedIds)
         ))
 
-      // Ordenar según el orden de failedQuestionIds (mantener orden original)
+      // Ordenar según el orden de resolvedFailedIds (mantener orden original)
       const questionMap = new Map(failedQuestions.map(q => [q.id, q]))
-      const orderedQuestions = failedQuestionIds
+      const orderedQuestions = resolvedFailedIds
         .map(id => questionMap.get(id))
         .filter((q): q is NonNullable<typeof q> => q !== undefined)
 
       // Limitar a numQuestions si es necesario
       const finalQuestions = orderedQuestions.slice(0, numQuestions)
 
-      console.log(`✅ Encontradas ${finalQuestions.length} de ${failedQuestionIds.length} preguntas falladas`)
+      console.log(`✅ Encontradas ${finalQuestions.length} de ${resolvedFailedIds.length} preguntas falladas`)
 
       // Transformar al formato esperado
       const transformedQuestions: FilteredQuestion[] = finalQuestions.map((q, index) => ({
@@ -398,7 +430,7 @@ export async function getFilteredQuestions(
       return {
         success: true,
         questions: transformedQuestions,
-        totalAvailable: failedQuestionIds.length,
+        totalAvailable: resolvedFailedIds.length,
         filtersApplied: {
           laws: 0,
           articles: 0,

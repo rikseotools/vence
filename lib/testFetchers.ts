@@ -878,10 +878,29 @@ export async function fetchQuestionsByTopicScope(tema: number, searchParams: Sea
       selectedSectionFilters: selectedSectionFilters.length > 0 ? selectedSectionFilters.map(s => s.title).join(', ') : null // 📚 FILTRO DE SECCIONES
     })
 
-    // 🆕 MANEJO ESPECIAL PARA PREGUNTAS FALLADAS CON IDs ESPECÍFICOS
-    if (onlyFailedQuestions && failedQuestionIds && failedQuestionIds.length > 0) {
-      console.log(`❌ Modo preguntas falladas específicas: ${failedQuestionIds.length} preguntas, orden: ${failedQuestionsOrder}`)
-      
+    // 🆕 CASO: "Solo falladas" sin IDs — buscar en historial del usuario
+    let resolvedFailedIds = failedQuestionIds
+    if (onlyFailedQuestions && (!failedQuestionIds || failedQuestionIds.length === 0) && user) {
+      console.log(`🔄 Modo falladas por historial: buscando preguntas falladas del usuario ${user.id}`)
+      const { data: failedHistory } = await supabase
+        .from('user_question_history')
+        .select('question_id')
+        .eq('user_id', user.id)
+        .lt('success_rate', 1.00)
+
+      resolvedFailedIds = failedHistory?.map((h: any) => h.question_id) || []
+      console.log(`❌ Encontradas ${resolvedFailedIds.length} preguntas falladas en historial`)
+
+      if (resolvedFailedIds.length === 0) {
+        console.log('📭 El usuario no tiene preguntas falladas')
+        return []
+      }
+    }
+
+    // 🆕 MANEJO ESPECIAL PARA PREGUNTAS FALLADAS CON IDs
+    if (onlyFailedQuestions && resolvedFailedIds && resolvedFailedIds.length > 0) {
+      console.log(`❌ Modo preguntas falladas: ${resolvedFailedIds.length} preguntas, orden: ${failedQuestionsOrder}`)
+
       try {
         // Obtener las preguntas específicas en el orden correcto
         const { data: specificQuestions, error: specificError } = await supabase
@@ -897,7 +916,7 @@ export async function fetchQuestionsByTopicScope(tema: number, searchParams: Sea
           `)
           .eq('is_active', true)
       .is('exam_case_id', null)
-          .in('id', failedQuestionIds)
+          .in('id', resolvedFailedIds)
         
         if (specificError) {
           console.error('❌ Error obteniendo preguntas falladas específicas:', specificError)
@@ -909,7 +928,7 @@ export async function fetchQuestionsByTopicScope(tema: number, searchParams: Sea
         }
         
         // Ordenar las preguntas según la lista de IDs (mantener el orden elegido por el usuario)
-        const orderedQuestions = failedQuestionIds
+        const orderedQuestions = resolvedFailedIds
           .map((id: any) => specificQuestions.find((q: any) => q.id === id))
           .filter((q: any) => q) // Filtrar preguntas no encontradas
         
@@ -2581,6 +2600,18 @@ export async function fetchQuestionsViaAPI(tema: number, searchParams: SearchPar
       failedQuestionIds: failedQuestionIds.length
     })
 
+    // Obtener userId para filtrar preguntas falladas
+    let userId: string | undefined
+    if (onlyFailedQuestions) {
+      try {
+        const supabase = getSupabaseClient()
+        const { data: { session } } = await supabase.auth.getSession()
+        userId = session?.user?.id
+      } catch {
+        console.warn('⚠️ No se pudo obtener userId para filtrar falladas')
+      }
+    }
+
     // Llamar a la API
     const response = await fetch('/api/questions/filtered', {
       method: 'POST',
@@ -2595,7 +2626,8 @@ export async function fetchQuestionsViaAPI(tema: number, searchParams: SearchPar
         onlyOfficialQuestions,
         difficultyMode,
         onlyFailedQuestions,
-        failedQuestionIds
+        failedQuestionIds,
+        ...(userId && { userId })
       })
     })
 
