@@ -21,6 +21,55 @@ async function getSubscription(subscriptionId: string): Promise<StripeSubscripti
   return await stripe().subscriptions.retrieve(subscriptionId)
 }
 
+/**
+ * Extrae current_period_start y current_period_end de una suscripción.
+ * Stripe SDK v18+ eliminó estos campos del objeto subscription.
+ * Fallback: calcular desde billing_cycle_anchor + interval, o usar cancel_at.
+ */
+function extractPeriodDates(subscription: StripeSubscription): { periodStart: string | null, periodEnd: string | null } {
+  let periodStart: string | null = null
+  let periodEnd: string | null = null
+
+  // Intento 1: campos directos (SDKs antiguos o si Stripe los devuelve)
+  if (subscription.current_period_start) {
+    periodStart = new Date(subscription.current_period_start * 1000).toISOString()
+  }
+  if (subscription.current_period_end) {
+    periodEnd = new Date(subscription.current_period_end * 1000).toISOString()
+  }
+
+  // Intento 2: usar cancel_at como period_end (cuando cancel_at_period_end=true, cancel_at = fin del periodo)
+  if (!periodEnd && subscription.cancel_at) {
+    periodEnd = new Date(subscription.cancel_at * 1000).toISOString()
+    console.log('📅 [extractPeriodDates] Usando cancel_at como period_end:', periodEnd)
+  }
+
+  // Intento 3: calcular desde billing_cycle_anchor + interval
+  if (!periodEnd && subscription.billing_cycle_anchor) {
+    const anchor = subscription.billing_cycle_anchor * 1000
+    const interval = subscription.items?.data?.[0]?.price?.recurring?.interval
+    const intervalCount = subscription.items?.data?.[0]?.price?.recurring?.interval_count || 1
+    const now = Date.now()
+
+    if (interval) {
+      let periodMs = 30 * 24 * 60 * 60 * 1000 // default: 1 mes
+      if (interval === 'month') periodMs = intervalCount * 30 * 24 * 60 * 60 * 1000
+      else if (interval === 'year') periodMs = intervalCount * 365 * 24 * 60 * 60 * 1000
+
+      // Calcular el periodo actual avanzando desde el anchor
+      let currentStart = anchor
+      while (currentStart + periodMs <= now) {
+        currentStart += periodMs
+      }
+      periodStart = periodStart || new Date(currentStart).toISOString()
+      periodEnd = new Date(currentStart + periodMs).toISOString()
+      console.log('📅 [extractPeriodDates] Calculado desde anchor:', periodStart, '→', periodEnd)
+    }
+  }
+
+  return { periodStart, periodEnd }
+}
+
 // Mapear status de Stripe a valores permitidos en user_subscriptions_status_check
 // Stripe puede enviar: active, past_due, unpaid, canceled, incomplete, incomplete_expired, trialing, paused
 // Nuestro constraint permite: trialing, active, canceled, past_due, unpaid
@@ -569,16 +618,18 @@ async function handleSubscriptionUpdated(
   supabase: SupabaseClient
 ): Promise<void> {
   try {
+    const { periodStart, periodEnd } = extractPeriodDates(subscription)
+
     const updateData: Record<string, unknown> = {
       status: normalizeStripeStatus(subscription.status),
       cancel_at_period_end: subscription.cancel_at_period_end
     }
 
-    if (subscription.current_period_start) {
-      updateData.current_period_start = new Date(subscription.current_period_start * 1000).toISOString()
+    if (periodStart) {
+      updateData.current_period_start = periodStart
     }
-    if (subscription.current_period_end) {
-      updateData.current_period_end = new Date(subscription.current_period_end * 1000).toISOString()
+    if (periodEnd) {
+      updateData.current_period_end = periodEnd
     }
 
     await supabase
@@ -586,18 +637,15 @@ async function handleSubscriptionUpdated(
       .update(updateData)
       .eq('stripe_subscription_id', subscription.id)
 
-    console.log(`✅ Subscription ${subscription.id} updated to status: ${subscription.status}`)
+    console.log(`✅ Subscription ${subscription.id} updated to status: ${subscription.status}`, periodEnd ? `period_end: ${periodEnd}` : '')
 
     if (subscription.cancel_at_period_end && subscription.status === 'active') {
-      const periodEnd = subscription.current_period_end
-        ? new Date(subscription.current_period_end * 1000).toLocaleString('es-ES')
-        : 'fecha desconocida'
-      console.log(`⏰ Subscription programada para cancelar. Premium hasta ${periodEnd}`)
+      console.log(`⏰ Subscription programada para cancelar. Premium hasta ${periodEnd || 'fecha desconocida'}`)
     }
 
     if (subscription.status === 'canceled') {
       const now = Math.floor(Date.now() / 1000)
-      const periodEndTimestamp = subscription.current_period_end || 0
+      const periodEndTimestamp = subscription.current_period_end || subscription.cancel_at || 0
       const shouldDowngrade = shouldDowngradeNow(periodEndTimestamp, now)
 
       const { data: subDataArray } = await supabase
@@ -676,12 +724,9 @@ async function handleSubscriptionDeleted(
       console.warn(`⚠️ Subscription ${subscription.id} no encontrada en BD`)
     }
 
-    const periodEnd = subscription.current_period_end
-      ? new Date(subscription.current_period_end * 1000).toISOString()
-      : null
+    const { periodEnd } = extractPeriodDates(subscription)
 
     const updateData: Record<string, unknown> = { status: 'canceled' }
-    // Solo actualizar current_period_end si Stripe lo envía, para no perder el dato histórico
     if (periodEnd) {
       updateData.current_period_end = periodEnd
     }
@@ -694,7 +739,7 @@ async function handleSubscriptionDeleted(
     console.log(`✅ Subscription ${subscription.id} canceled in user_subscriptions`)
 
     const now = Math.floor(Date.now() / 1000)
-    const periodEndTimestamp = subscription.current_period_end || 0
+    const periodEndTimestamp = subscription.current_period_end || subscription.cancel_at || 0
     const shouldDowngrade = shouldDowngradeNow(periodEndTimestamp, now)
 
     if (subData?.user_id) {
@@ -750,7 +795,25 @@ async function handlePaymentSucceeded(
           .update({ plan_type: 'premium' })
           .eq('id', userId)
 
-        console.log(`✅ Payment succeeded for user ${userId}`)
+        // Actualizar periodo en user_subscriptions (renovación)
+        const { periodStart, periodEnd } = extractPeriodDates(subscription)
+        const periodUpdate: Record<string, unknown> = { status: 'active' }
+        if (periodStart) periodUpdate.current_period_start = periodStart
+        if (periodEnd) periodUpdate.current_period_end = periodEnd
+        // También intentar desde la invoice (más fiable en renovaciones)
+        if (!periodEnd && invoice.period_end) {
+          periodUpdate.current_period_end = new Date(invoice.period_end * 1000).toISOString()
+        }
+        if (!periodStart && invoice.period_start) {
+          periodUpdate.current_period_start = new Date(invoice.period_start * 1000).toISOString()
+        }
+
+        await supabase
+          .from('user_subscriptions')
+          .update(periodUpdate)
+          .eq('stripe_subscription_id', subscription.id)
+
+        console.log(`✅ Payment succeeded for user ${userId}`, periodUpdate.current_period_end ? `period_end: ${periodUpdate.current_period_end}` : '')
 
         try {
           await recordPaymentSettlement({
