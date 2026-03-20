@@ -581,6 +581,7 @@ export default function TemaTestPage({ oposicionSlug, params }: TemaTestPageProp
         onClose={closeArticleModal}
         articleNumber={selectedArticle.number}
         lawSlug={selectedArticle.lawSlug}
+        userOposicion={oposicionSlug}
       />
     </div>
   )

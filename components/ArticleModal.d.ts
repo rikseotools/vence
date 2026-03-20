@@ -13,6 +13,8 @@ export interface ArticleModalProps {
   correctAnswer?: number | null
   /** Options array for highlighting context */
   options?: string[] | null
+  /** User's oposicion slug for filtering official exam data */
+  userOposicion?: string | null
 }
 
 declare const ArticleModal: FC<ArticleModalProps>

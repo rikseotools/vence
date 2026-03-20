@@ -2,7 +2,7 @@
 'use client'
 
 import { useState, useEffect, MouseEvent } from 'react'
-import { fetchLawArticles, fetchMultipleArticlesOfficialExamData, fetchLawSections, type LawSection } from '@/lib/teoriaFetchers'
+import { fetchLawArticles, fetchLawSections, type LawSection } from '@/lib/teoriaFetchers'
 import { useAuth } from '@/contexts/AuthContext'
 import Link from 'next/link'
 import ArticleModal from '@/components/ArticleModal'
@@ -273,16 +273,15 @@ export default function LawArticlesClient({ params, searchParams }: LawArticlesC
       
       try {
         console.log('🏛️ Cargando datos de examen oficial para artículos problemáticos:', problematicArticles)
-        const examData = await (fetchMultipleArticlesOfficialExamData as (
-          articleNumbers: string[],
-          lawShortName: string,
-          userOposicion?: string | null,
-        ) => Promise<Record<string, OfficialExamInfo>>)(
-          problematicArticles,
-          lawData.law.short_name,
-          userOposicion
-        )
-        setOfficialExamData(examData as Record<string, OfficialExamInfo>)
+        const params = new URLSearchParams({
+          articleNumbers: problematicArticles.join(','),
+          lawShortName: lawData.law.short_name,
+        })
+        if (userOposicion) params.set('userOposicion', userOposicion)
+        const response = await fetch(`/api/v2/hot-articles?${params}`)
+        if (!response.ok) throw new Error('Error fetching official exam data')
+        const examData = await response.json() as Record<string, OfficialExamInfo>
+        setOfficialExamData(examData)
         console.log('✅ Datos de examen oficial cargados:', examData)
       } catch (error) {
         console.error('❌ Error cargando datos de examen oficial:', error)

@@ -1,6 +1,7 @@
 // app/api/teoria/[law]/[articleNumber]/route.ts
 import { NextRequest } from 'next/server'
-import { fetchArticleContent, fetchArticleOfficialExamData } from '@/lib/teoriaFetchers'
+import { fetchArticleContent } from '@/lib/teoriaFetchers'
+import { getArticleOfficialExamData } from '@/lib/api/hot-articles'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 
 async function _GET(request: NextRequest, { params }: { params: Promise<{ law: string; articleNumber: string }> }) {
@@ -46,7 +47,7 @@ async function _GET(request: NextRequest, { params }: { params: Promise<{ law: s
 
     // Si se solicita información de exámenes oficiales, incluirla
     if (includeOfficialExams && article.id) {
-      const officialExamData = await fetchArticleOfficialExamData(article.id, userOposicion)
+      const officialExamData = await getArticleOfficialExamData(article.id, userOposicion)
       ;(article as any).officialExamData = officialExamData
     }
 

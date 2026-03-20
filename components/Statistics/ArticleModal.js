@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 
-export default function ArticleModal({ isOpen, onClose, lawSlug, articleNumber }) {
+export default function ArticleModal({ isOpen, onClose, lawSlug, articleNumber, userOposicion = null }) {
   const [article, setArticle] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -20,7 +20,9 @@ export default function ArticleModal({ isOpen, onClose, lawSlug, articleNumber }
     setArticle(null)
 
     try {
-      const response = await fetch(`/api/teoria/${lawSlug}/articulo-${articleNumber}`)
+      const params = new URLSearchParams({ includeOfficialExams: 'true' })
+      if (userOposicion) params.set('userOposicion', userOposicion)
+      const response = await fetch(`/api/teoria/${lawSlug}/articulo-${articleNumber}?${params}`)
       
       if (!response.ok) {
         throw new Error('Error al cargar el artículo')
