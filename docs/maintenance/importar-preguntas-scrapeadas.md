@@ -4,6 +4,90 @@
 
 Este manual documenta el proceso para importar preguntas scrapeadas de OpositaTest u otras fuentes a la base de datos de Vence, asegurando calidad y correcta vinculación con artículos.
 
+## ANTES DE IMPORTAR: Detección de Duplicados (OBLIGATORIO)
+
+Muchas preguntas scrapeadas ya existen en la BD (de otras oposiciones que comparten leyes). Importar duplicados degrada la experiencia del usuario. Hay que detectarlos ANTES de hacer el trabajo de verificación y mejora.
+
+### Por qué el content_hash NO es suficiente
+
+La BD tiene un `content_hash` (SHA-256 del texto normalizado) con constraint único. Pero esto solo detecta duplicados **exactos**. Diferencias mínimas (un espacio, un guión, "Señale" vs "De acuerdo con") generan hashes distintos aunque la pregunta sea la misma.
+
+**Ejemplo real:** De 146 preguntas de CE scrapeadas, el hash detectó 0 duplicados. Con comparación por similitud se encontraron 104 duplicados reales.
+
+### Proceso de detección en 3 niveles
+
+```javascript
+const crypto = require('crypto');
+
+function normalize(text) {
+  return (text || '').toLowerCase()
+    .replace(/[áàâä]/g,'a').replace(/[éèêë]/g,'e').replace(/[íìîï]/g,'i')
+    .replace(/[óòôö]/g,'o').replace(/[úùûü]/g,'u').replace(/ñ/g,'n')
+    .replace(/[^a-z0-9]/g,' ').replace(/\s+/g,' ').trim();
+}
+
+function jaccard(a, b) {
+  const wa = new Set(a.split(' ').filter(w => w.length > 2));
+  const wb = new Set(b.split(' ').filter(w => w.length > 2));
+  let intersection = 0;
+  for (const w of wa) if (wb.has(w)) intersection++;
+  const union = new Set([...wa, ...wb]).size;
+  return union === 0 ? 0 : intersection / union;
+}
+```
+
+**Nivel 1 - Exacto normalizado:** Normalizar texto (quitar tildes, puntuación, espacios extra) y comparar. Detecta ~67% de duplicados.
+
+```javascript
+const dbNormSet = new Set(dbQuestions.map(q => normalize(q.question_text)));
+if (dbNormSet.has(normalize(scraped.question))) → DUPLICADO
+```
+
+**Nivel 2 - Similitud alta (>=80% Jaccard):** Comparar palabras significativas. Detecta preguntas reformuladas ("Señale la respuesta..." vs "De acuerdo con..."). Estos son CASI SEGURO duplicados pero revisar uno a uno.
+
+**Nivel 3 - Similitud media (60-80%):** Podrían ser duplicados o no. HAY QUE comparar las opciones de respuesta manualmente:
+
+```javascript
+// Si la pregunta Y las opciones son sobre el mismo artículo y concepto → DUPLICADO
+// Si preguntan sobre artículos distintos o conceptos distintos → NUEVA
+// Ejemplo: "Art 10 CE" vs "Art 24 CE" con 75% similitud → NO duplicado
+// Ejemplo: "169 artículos" vs "169 artículos" con opciones diferentes → DUPLICADO (redundante)
+```
+
+### Criterio para similitud media
+
+Cuando dos preguntas tienen 60-80% de similitud:
+1. **¿Preguntan sobre el mismo artículo/concepto?** → Comparar opciones
+2. **¿Las opciones son sobre lo mismo?** → DUPLICADO (aunque opciones difieran, aburre al usuario)
+3. **"correcta" vs "incorrecta" en el mismo tema?** → NO duplicado (preguntan opuesto)
+4. **Mismo inicio pero artículo distinto?** → NO duplicado
+
+### Contra qué comparar
+
+Comparar contra TODA la BD (`questions` activas), no solo contra las del tema. Porque las preguntas se comparten entre oposiciones vía artículos.
+
+```javascript
+let allDbQuestions = [];
+let page = 0;
+while (true) {
+  const { data: qs } = await supabase.from('questions')
+    .select('id, question_text').eq('is_active', true)
+    .range(page * 1000, (page + 1) * 1000 - 1);
+  if (!qs || qs.length === 0) break;
+  allDbQuestions.push(...qs);
+  page++;
+  if (qs.length < 1000) break;
+}
+```
+
+### Resultado esperado
+
+La detección clasifica cada pregunta en:
+- **Exacto:** Descartar sin más
+- **Alta similitud:** Casi seguro duplicado, confirmar rápido
+- **Media similitud:** Revisar opciones una a una
+- **Nueva (<60%):** Seguro nueva, proceder con importación
+
 ## 0. Identificar el Topic Correcto (IMPORTANTE)
 
 **ATENCIÓN:** El `topic_number` puede repetirse para diferentes oposiciones. Por ejemplo:

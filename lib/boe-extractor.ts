@@ -131,11 +131,13 @@ export function extractArticlesFromBOE(html: string, options: ExtractionOptions 
   // Regex flexible para capturar TODOS los bloques de artículos
   // Disposiciones estándar: da, da-2, dt, dt-3, dd, dd-2, df, df-5
   // Disposiciones CE: primera, segunda-2, tercera, cuarta-2, quinta, etc. (ordinales con sufijo)
+  // Preámbulo: id="preambulo" (texto introductorio de la ley)
   const disposicionPatternStd = includeDisposiciones ? '|da(?:-\\d+)?|dt(?:-\\d+)?|dd(?:-\\d+)?|df(?:-\\d+)?' : ''
   const disposicionPatternOrdinals = includeDisposiciones ? '|primera(?:-\\d+)?|segunda(?:-\\d+)?|tercera(?:-\\d+)?|cuarta(?:-\\d+)?|quinta(?:-\\d+)?|sexta(?:-\\d+)?|s[eé]ptima(?:-\\d+)?|octava(?:-\\d+)?|novena(?:-\\d+)?|d[eé]cima(?:-\\d+)?' : ''
+  const preambulPattern = '|preambulo|pre[aá]mbulo'
 
   const articleBlockRegex = new RegExp(
-    `<div[^>]*class="bloque"[^>]*id="(a[a-z0-9]+|regla\\d+|primero|segundo|tercero|cuarto|quinto|sexto|s[eé]ptimo|octavo|noveno|d[eé]cimo${disposicionPatternStd}${disposicionPatternOrdinals})[^"]*"[^>]*>([\\s\\S]*?)(?=<div[^>]*class="bloque"|$)`,
+    `<div[^>]*class="bloque"[^>]*id="(a[a-z0-9]+|regla\\d+|primero|segundo|tercero|cuarto|quinto|sexto|s[eé]ptimo|octavo|noveno|d[eé]cimo${disposicionPatternStd}${disposicionPatternOrdinals}${preambulPattern})[^"]*"[^>]*>([\\s\\S]*?)(?=<div[^>]*class="bloque"|$)`,
     'gi'
   )
 
@@ -145,6 +147,29 @@ export function extractArticlesFromBOE(html: string, options: ExtractionOptions 
     const blockContent = match[2]
     let articleNumber: string | null = null
     let title = ''
+
+    // Patrón Preámbulo: id="preambulo" → article_number = "Preámbulo"
+    const isPreambulo = /^pre[aá]mbulo$/i.test(blockId)
+    if (isPreambulo) {
+      const content = blockContent
+        .replace(/<p[^>]*class="bloque"[^>]*>.*?<\/p>/gi, '')
+        .replace(/<form[^>]*>[\s\S]*?<\/form>/gi, '')
+        .replace(/<\/p>/gi, '\n\n')
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<[^>]*>/g, '')
+        .replace(/\n{3,}/g, '\n\n')
+        .replace(/[ \t]+/g, ' ')
+        .replace(/^ +| +$/gm, '')
+        .trim()
+      if (content.length > 10) {
+        articles.push({
+          article_number: 'Preámbulo',
+          title: 'Preámbulo',
+          content
+        })
+      }
+      continue
+    }
 
     // Patrón 0 (Disposiciones): "Disposición adicional primera. Título"
     // Soporta IDs estándar (da, dt, dd, df) y CE-style (primera, segunda-2, etc.)
