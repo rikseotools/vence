@@ -1,6 +1,6 @@
-// app/auxiliar-administrativo-ayuntamiento-valencia/test/tema/[numero]/test-examen/page.js
+// app/auxiliar-administrativo-ayuntamiento-valencia/test/tema/[numero]/test-examen/page.tsx
 import TestExamenPage from '@/components/test/TestExamenPage'
 
-export default function Page() {
-  return <TestExamenPage oposicionSlug="auxiliar-administrativo-ayuntamiento-valencia" />
+export default function Page({ params }: { params: Promise<{ numero: string }> }) {
+  return <TestExamenPage oposicionSlug="auxiliar-administrativo-ayuntamiento-valencia" params={params} />
 }

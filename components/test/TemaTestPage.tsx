@@ -4,7 +4,6 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import Link from 'next/link'
-import { useParams } from 'next/navigation'
 import { getSupabaseClient } from '@/lib/supabase'
 import TestConfigurator from '@/components/TestConfigurator'
 import { buildTestUrl } from '@/lib/test-url/buildTestUrl'
@@ -39,10 +38,10 @@ interface UserStats {
 
 interface TemaTestPageProps {
   oposicionSlug: string
+  params: Promise<{ numero: string }>
 }
 
-export default function TemaTestPage({ oposicionSlug }: TemaTestPageProps) {
-  const params = useParams<{ numero: string }>()
+export default function TemaTestPage({ oposicionSlug, params }: TemaTestPageProps) {
   const config = getOposicion(oposicionSlug)
 
   const [temaNumber, setTemaNumber] = useState<number | null>(null)
@@ -198,16 +197,19 @@ export default function TemaTestPage({ oposicionSlug }: TemaTestPageProps) {
 
   // Resolve params and load data
   useEffect(() => {
-    if (!params?.numero) return
-    const tema = parseInt(params.numero)
-    setTemaNumber(tema)
+    async function resolveParams() {
+      const resolved = await params
+      const tema = parseInt(resolved.numero)
+      setTemaNumber(tema)
 
-    if (isNaN(tema) || !isValidTema(tema)) {
-      setTemaNotFound(true)
-      setLoading(false)
-      return
+      if (isNaN(tema) || !isValidTema(tema)) {
+        setTemaNotFound(true)
+        setLoading(false)
+        return
+      }
     }
-  }, [params?.numero])
+    resolveParams()
+  }, [params])
 
   useEffect(() => {
     if (!temaNumber || temaNotFound) return

@@ -2,17 +2,17 @@
 // Reemplaza las 17 copias de app/[oposicion]/test/tema/[numero]/test-personalizado/page.js
 'use client'
 import { useState, useEffect, Suspense } from 'react'
-import { useSearchParams, useParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import TestPageWrapper from '@/components/TestPageWrapper'
 import { getOposicion } from '@/lib/config/oposiciones'
 
 interface TestPersonalizadoPageProps {
   oposicionSlug: string
+  params: Promise<{ numero: string }>
 }
 
-function TestPersonalizadoContent({ oposicionSlug }: TestPersonalizadoPageProps) {
+function TestPersonalizadoContent({ oposicionSlug, params }: TestPersonalizadoPageProps) {
   const searchParams = useSearchParams()
-  const params = useParams<{ numero: string }>()
   const [temaNumber, setTemaNumber] = useState<number | null>(null)
   const [failedQuestionIds, setFailedQuestionIds] = useState<string[] | null>(null)
 
@@ -22,10 +22,12 @@ function TestPersonalizadoContent({ oposicionSlug }: TestPersonalizadoPageProps)
 
   // Resolve params
   useEffect(() => {
-    if (!params?.numero) return
-    const tema = parseInt(params.numero)
-    setTemaNumber(tema)
-  }, [params?.numero])
+    async function resolveParams() {
+      const resolved = await params
+      setTemaNumber(parseInt(resolved.numero))
+    }
+    resolveParams()
+  }, [params])
 
   // Read failedQuestionIds from sessionStorage (once, on client)
   useEffect(() => {
@@ -134,7 +136,7 @@ function TestPersonalizadoContent({ oposicionSlug }: TestPersonalizadoPageProps)
   )
 }
 
-export default function TestPersonalizadoPage({ oposicionSlug }: TestPersonalizadoPageProps) {
+export default function TestPersonalizadoPage({ oposicionSlug, params }: TestPersonalizadoPageProps) {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -144,7 +146,7 @@ export default function TestPersonalizadoPage({ oposicionSlug }: TestPersonaliza
         </div>
       </div>
     }>
-      <TestPersonalizadoContent oposicionSlug={oposicionSlug} />
+      <TestPersonalizadoContent oposicionSlug={oposicionSlug} params={params} />
     </Suspense>
   )
 }

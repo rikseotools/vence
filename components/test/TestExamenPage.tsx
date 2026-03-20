@@ -2,17 +2,17 @@
 // Reemplaza las 17 copias de app/[oposicion]/test/tema/[numero]/test-examen/page.js
 'use client'
 import { useState, useEffect, Suspense } from 'react'
-import { useSearchParams, useParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import ExamLayout from '@/components/ExamLayout'
 import { getOposicion } from '@/lib/config/oposiciones'
 
 interface TestExamenPageProps {
   oposicionSlug: string
+  params: Promise<{ numero: string }>
 }
 
-function TestExamenContent({ oposicionSlug }: TestExamenPageProps) {
+function TestExamenContent({ oposicionSlug, params }: TestExamenPageProps) {
   const searchParams = useSearchParams()
-  const params = useParams<{ numero: string }>()
   const [temaNumber, setTemaNumber] = useState<number | null>(null)
   const [questions, setQuestions] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -36,12 +36,13 @@ function TestExamenContent({ oposicionSlug }: TestExamenPageProps) {
   }
 
   useEffect(() => {
-    if (!params?.numero) return
-    const tema = parseInt(params.numero)
-    const resume = searchParams.get('resume')
-    setTemaNumber(tema)
-    setResumeTestId(resume)
-  }, [params?.numero, searchParams])
+    async function resolveParams() {
+      const resolved = await params
+      setTemaNumber(parseInt(resolved.numero))
+      setResumeTestId(searchParams.get('resume'))
+    }
+    resolveParams()
+  }, [params, searchParams])
 
   useEffect(() => {
     if (!temaNumber) return
@@ -208,7 +209,7 @@ function TestExamenContent({ oposicionSlug }: TestExamenPageProps) {
   )
 }
 
-export default function TestExamenPage({ oposicionSlug }: TestExamenPageProps) {
+export default function TestExamenPage({ oposicionSlug, params }: TestExamenPageProps) {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -218,7 +219,7 @@ export default function TestExamenPage({ oposicionSlug }: TestExamenPageProps) {
         </div>
       </div>
     }>
-      <TestExamenContent oposicionSlug={oposicionSlug} />
+      <TestExamenContent oposicionSlug={oposicionSlug} params={params} />
     </Suspense>
   )
 }
