@@ -59,7 +59,7 @@ primero en el diccionario de mappings de lawMappingUtils.
     })
 
     test('CRÍTICO: ArticleModal debe capturar errores detallados', () => {
-      const articleModalPath = join(process.cwd(), 'components', 'ArticleModal.js')
+      const articleModalPath = join(process.cwd(), 'components', 'ArticleModal.tsx')
       
       let modalContent
       try {
@@ -92,7 +92,7 @@ Este sistema es crítico para debuggear problemas de carga de artículos.
     test('CRÍTICO: Archivos esenciales deben existir y ser legibles', () => {
       const criticalFiles = [
         'app/auxiliar-administrativo-estado/test/tema/[numero]/page.tsx',
-        'components/ArticleModal.js',
+        'components/ArticleModal.tsx',
         'lib/lawMappingUtils.ts',
         'lib/teoriaFetchers.ts'
       ]
@@ -114,7 +114,7 @@ Este sistema es crítico para debuggear problemas de carga de artículos.
     test('CRÍTICO: No debe haber código que genere slugs con "/"', () => {
       const filesToCheck = [
         'app/auxiliar-administrativo-estado/test/tema/[numero]/page.tsx',
-        'components/ArticleModal.js',
+        'components/ArticleModal.tsx',
         'lib/lawMappingUtils.js'
       ]
 

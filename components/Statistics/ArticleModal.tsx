@@ -1,12 +1,32 @@
-// components/Statistics/ArticleModal.js
+// components/Statistics/ArticleModal.tsx
 'use client'
 import { useState, useEffect } from 'react'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 
-export default function ArticleModal({ isOpen, onClose, lawSlug, articleNumber, userOposicion = null }) {
-  const [article, setArticle] = useState(null)
+interface ArticleData {
+  article_number: string
+  title: string
+  content: string
+  cleanContent?: string
+  hasRichContent?: boolean
+  law?: {
+    short_name?: string
+    name?: string
+  }
+}
+
+interface StatisticsArticleModalProps {
+  isOpen: boolean
+  onClose: () => void
+  lawSlug: string | null
+  articleNumber: string | null
+  userOposicion?: string | null
+}
+
+export default function ArticleModal({ isOpen, onClose, lawSlug, articleNumber, userOposicion = null }: StatisticsArticleModalProps) {
+  const [article, setArticle] = useState<ArticleData | null>(null)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (isOpen && lawSlug && articleNumber) {
@@ -23,7 +43,7 @@ export default function ArticleModal({ isOpen, onClose, lawSlug, articleNumber, 
       const params = new URLSearchParams({ includeOfficialExams: 'true' })
       if (userOposicion) params.set('userOposicion', userOposicion)
       const response = await fetch(`/api/teoria/${lawSlug}/articulo-${articleNumber}?${params}`)
-      
+
       if (!response.ok) {
         throw new Error('Error al cargar el artículo')
       }
@@ -32,7 +52,7 @@ export default function ArticleModal({ isOpen, onClose, lawSlug, articleNumber, 
       setArticle(data)
     } catch (err) {
       console.error('Error cargando artículo:', err)
-      setError(err.message)
+      setError(err instanceof Error ? err.message : 'Error desconocido')
     } finally {
       setLoading(false)
     }
@@ -50,7 +70,7 @@ export default function ArticleModal({ isOpen, onClose, lawSlug, articleNumber, 
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex min-h-screen items-center justify-center p-4">
         {/* Overlay */}
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity"
           onClick={handleClose}
         ></div>
@@ -61,8 +81,8 @@ export default function ArticleModal({ isOpen, onClose, lawSlug, articleNumber, 
           <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
             <div>
               <h2 className="text-xl font-bold text-gray-900">
-                {loading ? 'Cargando artículo...' : 
-                 article ? `Artículo ${article.article_number}` : 
+                {loading ? 'Cargando artículo...' :
+                 article ? `Artículo ${article.article_number}` :
                  `Artículo ${articleNumber}`}
               </h2>
               {article && (
@@ -123,9 +143,9 @@ export default function ArticleModal({ isOpen, onClose, lawSlug, articleNumber, 
                 <div className="prose prose-lg max-w-none">
                   <div className="bg-gray-50 border-l-4 border-blue-500 p-6 rounded-r-lg">
                     {article.hasRichContent ? (
-                      <div 
+                      <div
                         className="text-gray-800 leading-relaxed"
-                        dangerouslySetInnerHTML={{ __html: article.cleanContent }}
+                        dangerouslySetInnerHTML={{ __html: article.cleanContent || '' }}
                       />
                     ) : (
                       <div className="text-gray-800 leading-relaxed whitespace-pre-wrap">
