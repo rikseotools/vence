@@ -164,10 +164,10 @@ export default function CancellationFlow({ isOpen, onClose, userId, periodEndDat
               )}
               <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 mb-3">
                 <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-1">
-                  Tu suscripcion tiene precio de fidelizacion
+                  Si cancelas vas a perder tu descuento de fidelidad
                 </p>
                 <p className="text-xs text-amber-700 dark:text-amber-300">
-                  Como suscriptor activo disfrutas de descuentos progresivos de hasta un 20%. Si cancelas y vuelves a suscribirte, empezaras desde el precio base sin descuento.
+                  Tu plan incluye un 10% de descuento en la 1a y 2a renovacion, y un 20% a partir de la 3a. Al cancelar, este beneficio se pierde y no se recupera.
                 </p>
               </div>
               <p className="text-sm text-amber-600 dark:text-amber-400 mb-6">

@@ -836,14 +836,14 @@ async function handlePaymentSucceeded(
               console.log(`🎯 [Loyalty] Renovación #${renewalCount} para ${subscription.id} (mensual)`)
 
               const currentDiscount = subscription.discount?.coupon?.id
-              if (renewalCount === 1 && currentDiscount !== 'loyalty_10' && currentDiscount !== 'loyalty_20') {
-                // Primera renovación → 10% descuento
+              if (renewalCount <= 2 && currentDiscount !== 'loyalty_10' && currentDiscount !== 'loyalty_20') {
+                // 1a y 2a renovación → 10% descuento
                 await stripe().subscriptions.update(subscription.id, {
                   discounts: [{ coupon: 'loyalty_10' }]
                 })
-                console.log(`🎁 [Loyalty] Aplicado 10% fidelidad (renovación #1)`)
-              } else if (renewalCount >= 2 && currentDiscount !== 'loyalty_20') {
-                // Segunda+ renovación → 20% descuento
+                console.log(`🎁 [Loyalty] Aplicado 10% fidelidad (renovación #${renewalCount})`)
+              } else if (renewalCount >= 3 && currentDiscount !== 'loyalty_20') {
+                // 3a+ renovación → 20% descuento
                 await stripe().subscriptions.update(subscription.id, {
                   discounts: [{ coupon: 'loyalty_20' }]
                 })
