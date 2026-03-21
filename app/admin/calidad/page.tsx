@@ -22,6 +22,7 @@ interface QualityData {
     banned_words: CheckResult
     pending_explanation: CheckResult
     missing_article: CheckResult
+    missing_image: CheckResult
     copied_explanation: CheckResult
   }
 }
@@ -46,6 +47,11 @@ const CHECK_CONFIG = {
     title: 'Sin artículo vinculado',
     description: 'Preguntas sin primary_article_id',
     icon: '🔗',
+  },
+  missing_image: {
+    title: 'Imagen no disponible',
+    description: 'Preguntas que referencian imágenes/capturas que no se muestran',
+    icon: '🖼️',
   },
   copied_explanation: {
     title: 'Explicación copiada del artículo',

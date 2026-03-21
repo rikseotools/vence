@@ -25,6 +25,7 @@ interface QualityResponse {
     banned_words: CheckResult
     pending_explanation: CheckResult
     missing_article: CheckResult
+    missing_image: CheckResult
     copied_explanation: CheckResult
   }
 }
@@ -39,6 +40,10 @@ const TEXT_LIMIT = 120
 const SIMILARITY_THRESHOLD = 0.9
 
 // Single regex that covers all banned word variants (much faster than 576 ilikes)
+// Regex for questions referencing images/screenshots that aren't shown
+// Patterns for questions that reference visual content not available (images, icons, tables, screenshots)
+const MISSING_IMAGE_REGEX = `(?i)(siguiente imagen|imagen que se muestra|captura de pantalla que se muestra|pantalla que se muestra|icono que aparece en la siguiente|icono que muestra la siguiente|icono que puedes ver en la siguiente|icono que aparece a continuación|observa la siguiente captura|según la siguiente imagen|relación con la siguiente imagen|observe la siguiente imagen|figura que aparece a continuación|rango de datos que aparece a continuación|tabla adjunta|documento adjunto|gráfico siguiente|hoja de cálculo siguiente)`
+
 const BANNED_REGEX = `(?i)(oposita\\s*[-_.]?\\s*test|opositest|oposistatest|opossita|opositatets|opostia|opsita|opositatestt|opositates[^t]|oposiitatest|oppositatest|opoositatest|opositattest|opositateest|opositatesst|0positatest|opositat3st|op0sitatest|0p0sitatest|opos1tatest|oposi7atest|oposita7est|opositat€st|o[-._]p[-._]o[-._]s[-._]i[-._]t[-._]a[-._]t[-._]e[-._]s[-._]t)`
 
 function truncate(text: string): string {
@@ -62,7 +67,8 @@ async function runCountsOnly(): Promise<number> {
         count(*) FILTER (WHERE
           explanation ILIKE '%pendiente de explicación%' OR explanation ILIKE '%pendiente de explicacion%'
         ) as pending_explanation,
-        count(*) FILTER (WHERE primary_article_id IS NULL) as missing_article
+        count(*) FILTER (WHERE primary_article_id IS NULL) as missing_article,
+        count(*) FILTER (WHERE question_text ~* ${MISSING_IMAGE_REGEX}) as missing_image
       FROM questions
       WHERE is_active = true
     ),
@@ -76,7 +82,7 @@ async function runCountsOnly(): Promise<number> {
         AND LENGTH(q.explanation) > 50
         AND similarity(q.explanation, a.content) >= ${SIMILARITY_THRESHOLD}
     )
-    SELECT (b.empty_options + b.banned_words + b.pending_explanation + b.missing_article + s.copied)::int as total
+    SELECT (b.empty_options + b.banned_words + b.pending_explanation + b.missing_article + b.missing_image + s.copied)::int as total
     FROM base b, similarity_count s
   `)
 
@@ -89,7 +95,7 @@ async function runChecks(): Promise<QualityResponse> {
   const db = getDb()
 
   // Run all data queries with count(*) OVER() to get totals without separate count queries
-  const [emptyOpts, bannedRaw, pendingExpl, missingArt, copiedExplRaw] = await Promise.all([
+  const [emptyOpts, bannedRaw, pendingExpl, missingArt, missingImg, copiedExplRaw] = await Promise.all([
     // 1. Empty options
     db.execute(sql`
       SELECT id, LEFT(question_text, ${TEXT_LIMIT}) as question_text,
@@ -131,7 +137,17 @@ async function runChecks(): Promise<QualityResponse> {
       LIMIT ${MAX_ITEMS}
     `),
 
-    // 5. Copied explanation (similarity)
+    // 5. Missing image (references screenshots/images not shown)
+    db.execute(sql`
+      SELECT id, LEFT(question_text, ${TEXT_LIMIT}) as question_text,
+             count(*) OVER()::int as total_count
+      FROM questions
+      WHERE is_active = true
+        AND question_text ~* ${MISSING_IMAGE_REGEX}
+      LIMIT ${MAX_ITEMS}
+    `),
+
+    // 6. Copied explanation (similarity)
     db.execute(sql`
       SELECT q.id, LEFT(q.question_text, ${TEXT_LIMIT}) as question_text,
              ROUND(similarity(q.explanation, a.content)::numeric, 2) as sim,
@@ -154,6 +170,7 @@ async function runChecks(): Promise<QualityResponse> {
   const bannedRows = toRows(bannedRaw)
   const pendingRows = toRows(pendingExpl)
   const missingRows = toRows(missingArt)
+  const missingImgRows = toRows(missingImg)
   const copiedRows = toRows(copiedExplRaw)
 
   // Detect which field has banned word
@@ -199,6 +216,12 @@ async function runChecks(): Promise<QualityResponse> {
         id: q.id, question_text: q.question_text, field: 'primary_article_id',
       })),
     },
+    missing_image: {
+      count: getCount(missingImgRows),
+      questions: missingImgRows.map((q: any) => ({
+        id: q.id, question_text: q.question_text, field: 'image_reference',
+      })),
+    },
     copied_explanation: {
       count: getCount(copiedRows),
       questions: copiedExpl,
@@ -210,6 +233,7 @@ async function runChecks(): Promise<QualityResponse> {
     checks.banned_words.count +
     checks.pending_explanation.count +
     checks.missing_article.count +
+    checks.missing_image.count +
     checks.copied_explanation.count
 
   return { success: true, totalIssues, checks }
