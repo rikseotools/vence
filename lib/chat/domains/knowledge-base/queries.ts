@@ -372,6 +372,12 @@ export function isPlatformQuery(message: string): boolean {
     /no\s+(es\s+)?mi\s+oposici[oó]n/i,
     /oposici[oó]n\s+(equivocada|incorrecta|mal)/i,
     /c[oó]mo\s+(cambio|elijo|selecciono).*oposici[oó]n/i,
+    // Imprimir, guardar, descargar tests/temario
+    /imprim(ir|o|e|imos)/i,
+    /guardar\s+(el\s+)?(test|resultado|examen)/i,
+    /descargar/i,
+    /\bpdf\b/i,
+    /exportar/i,
   ]
 
   return platformIndicators.some(p => p.test(message))

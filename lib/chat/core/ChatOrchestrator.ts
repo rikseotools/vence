@@ -16,6 +16,7 @@ import { getTemarioDomain } from '../domains/temario/TemarioDomain'
 import { getStatsDomain } from '../domains/stats'
 import { getPsychometricDomain } from '../domains/psychometric'
 import { isPsychometricSubtype } from '../shared/constants'
+import { isPlatformQuery } from '../domains/knowledge-base/queries'
 import { FALLBACK_SYSTEM_PROMPT } from '../shared/prompts'
 
 /**
@@ -121,10 +122,12 @@ export class ChatOrchestrator {
 
       // Fast-path: verification cuando hay contexto de pregunta legislativa con respuesta
       // Si el usuario está en una pregunta y envía un follow-up, quiere saber sobre esa pregunta.
+      // EXCEPCIÓN: si el mensaje es sobre la plataforma (imprimir, guardar, etc.), dejar routing normal.
       if (context.questionContext?.questionText &&
           context.questionContext?.correctAnswer !== undefined &&
           context.questionContext?.correctAnswer !== null &&
-          !isPsychometricSubtype(context.questionContext?.questionSubtype)) {
+          !isPsychometricSubtype(context.questionContext?.questionSubtype) &&
+          !isPlatformQuery(context.currentMessage)) {
         const verifyDomain = this.domains.find(d => d.name === 'verification')
         if (verifyDomain) {
           routingSpan.setOutput({
