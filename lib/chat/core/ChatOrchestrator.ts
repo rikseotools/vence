@@ -463,30 +463,41 @@ export class ChatOrchestrator {
     const messages = this.buildOpenAIMessages(context)
 
     // RAG: buscar artículos relevantes en la BD antes de responder
+    // Busca más artículos y diversifica por ley para que el LLM tenga
+    // múltiples fuentes y pueda cruzar información entre leyes.
     try {
       const { embedding } = await generateEmbedding(context.currentMessage)
-      const articles = await searchArticlesBySimilarity(embedding, {
-        minSimilarity: 0.25,
-        limit: 5,
+      const allArticles = await searchArticlesBySimilarity(embedding, {
+        minSimilarity: 0.20,
+        limit: 15,
       })
 
-      if (articles.length > 0) {
-        const articlesContext = articles.map(a =>
+      if (allArticles.length > 0) {
+        // Diversificar: máximo 2 artículos por ley para cubrir más fuentes
+        const byLaw = new Map<string, number>()
+        const diversified = allArticles.filter(a => {
+          const lawKey = a.lawShortName || a.lawId || 'unknown'
+          const count = byLaw.get(lawKey) || 0
+          if (count >= 2) return false
+          byLaw.set(lawKey, count + 1)
+          return true
+        }).slice(0, 8) // Máximo 8 artículos al LLM
+
+        const articlesContext = diversified.map(a =>
           `--- ${a.lawShortName || ''} Art. ${a.articleNumber} ${a.title ? '- ' + a.title : ''} ---\n${a.content}`
         ).join('\n\n')
 
-        // Inyectar artículos como contexto en el system prompt
         const systemIdx = messages.findIndex(m => m.role === 'system')
         if (systemIdx >= 0) {
-          messages[systemIdx].content += `\n\n📖 ARTÍCULOS RELEVANTES DE LA BASE DE DATOS:\nUsa esta información para responder con precisión. Cita siempre la fuente (ley y artículo).\n\n${articlesContext}`
+          messages[systemIdx].content += `\n\n📖 ARTÍCULOS RELEVANTES DE LA BASE DE DATOS (${diversified.length} artículos de ${byLaw.size} leyes):\nUsa esta información para responder con precisión. Cita siempre la fuente (ley y artículo). Si varios artículos de distintas leyes tratan el mismo tema, crúzalos para dar la respuesta más completa.\n\n${articlesContext}`
         }
 
-        logger.info(`Fallback RAG: ${articles.length} articles found (best: ${articles[0].lawShortName} Art. ${articles[0].articleNumber})`, {
+        logger.info(`Fallback RAG: ${diversified.length} articles from ${byLaw.size} laws`, {
           domain: 'orchestrator',
+          laws: [...byLaw.keys()],
         })
       }
     } catch (ragError) {
-      // No bloquear el fallback si falla el RAG
       logger.warn('Fallback RAG failed, continuing without articles', { domain: 'orchestrator' })
     }
 
