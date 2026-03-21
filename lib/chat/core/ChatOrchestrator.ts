@@ -567,10 +567,11 @@ export class ChatOrchestrator {
           })
 
           // Ordenar por score y tomar los mejores párrafos
+          // Priorizar párrafos con más keywords y que sean encabezados de apartado (a), b), c)...)
           const relevant = scored
             .filter(s => s.score > 0)
             .sort((a, b) => b.score - a.score || a.idx - b.idx)
-            .slice(0, 6)
+            .slice(0, 8)
             .sort((a, b) => a.idx - b.idx) // Reordenar por posición original
 
           // Si no hay párrafos relevantes, tomar los primeros
@@ -584,11 +585,13 @@ export class ChatOrchestrator {
 
         const systemIdx = messages.findIndex(m => m.role === 'system')
         if (systemIdx >= 0) {
-          messages[systemIdx].content += `\n\n📖 ARTÍCULOS DE LA BASE DE DATOS (${diversified.length} artículos de ${byLaw.size} leyes):
+          messages[systemIdx].content += `\n\n📖 LEGISLACIÓN VIGENTE (${diversified.length} artículos de ${byLaw.size} leyes):
 
-⚠️ REGLA CRÍTICA: Los artículos de abajo son la FUENTE DE VERDAD. Si un artículo dice un dato (plazo, duración, requisito), USA ESE DATO, NO el que tú recuerdes de tu entrenamiento. La legislación cambia y tus datos pueden estar desactualizados. Los artículos de la BD están actualizados.
-
-Si varios artículos tratan el mismo tema, cita TODOS con su ley y artículo.
+⚠️ INSTRUCCIÓN OBLIGATORIA:
+1. Los artículos de abajo son legislación VIGENTE y ACTUALIZADA. SIEMPRE tienen prioridad sobre lo que recuerdes de tu entrenamiento.
+2. Si un artículo dice "diecinueve semanas", la respuesta es 19 semanas. NO uses datos de tu entrenamiento que puedan estar desactualizados.
+3. Cita SIEMPRE la ley y artículo exacto de donde sacas el dato.
+4. Si no encuentras la respuesta en los artículos, di que no tienes suficiente información en la base de datos.
 
 ${articlesContext}`
         }
