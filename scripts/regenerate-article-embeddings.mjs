@@ -36,11 +36,11 @@ async function main() {
   // Obtener artículos a procesar
   let query
   if (mode === 'single') {
-    query = `SELECT a.id, a.article_number, a.title, a.content, l.short_name, l.full_name
+    query = `SELECT a.id, a.article_number, a.title, a.content, l.short_name, l.name AS full_name
              FROM articles a JOIN laws l ON a.law_id = l.id
              WHERE a.id = $1 AND a.is_active = true`
   } else if (mode === 'all') {
-    query = `SELECT DISTINCT a.id, a.article_number, a.title, a.content, l.short_name, l.full_name
+    query = `SELECT DISTINCT a.id, a.article_number, a.title, a.content, l.short_name, l.name AS full_name
              FROM articles a
              JOIN laws l ON a.law_id = l.id
              JOIN questions q ON q.primary_article_id = a.id AND q.is_active = true
@@ -48,7 +48,7 @@ async function main() {
              ORDER BY l.short_name, a.article_number`
   } else {
     // Solo stale
-    query = `SELECT DISTINCT a.id, a.article_number, a.title, a.content, l.short_name, l.full_name
+    query = `SELECT DISTINCT a.id, a.article_number, a.title, a.content, l.short_name, l.name AS full_name
              FROM articles a
              JOIN laws l ON a.law_id = l.id
              WHERE a.is_active = true AND a.embedding_stale = true
