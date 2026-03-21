@@ -19,7 +19,13 @@ import { isPsychometricSubtype } from '../shared/constants'
 import { isPlatformQuery } from '../domains/knowledge-base/queries'
 import { generateEmbedding } from '../domains/search/EmbeddingService'
 import { searchArticlesBySimilarity } from '../domains/search/queries'
+import { createClient } from '@supabase/supabase-js'
 import { FALLBACK_SYSTEM_PROMPT } from '../shared/prompts'
+
+const getSupabaseForSearch = () => createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
 /**
  * Orquestador principal del sistema de chat
@@ -462,29 +468,36 @@ export class ChatOrchestrator {
 
     const messages = this.buildOpenAIMessages(context)
 
-    // RAG: buscar artículos relevantes en la BD antes de responder
-    // Busca más artículos y diversifica por ley para que el LLM tenga
-    // múltiples fuentes y pueda cruzar información entre leyes.
+    // RAG híbrido: busca artículos por embedding + full-text (keywords)
+    // Combina ambos scores para encontrar artículos relevantes incluso
+    // cuando la query coloquial no matchea semánticamente con el texto legal.
     try {
       const { embedding } = await generateEmbedding(context.currentMessage)
-      const allArticles = await searchArticlesBySimilarity(embedding, {
-        minSimilarity: 0.20,
-        limit: 15,
+
+      // Búsqueda híbrida (embedding + full-text con OR)
+      const { data: hybridResults } = await getSupabaseForSearch().rpc('hybrid_search_articles', {
+        query_embedding: embedding,
+        query_text: context.currentMessage,
+        match_count: 15,
+        semantic_weight: 0.4,
+        text_weight: 0.6,
       })
+
+      const allArticles = hybridResults || []
 
       if (allArticles.length > 0) {
         // Diversificar: máximo 2 artículos por ley para cubrir más fuentes
         const byLaw = new Map<string, number>()
-        const diversified = allArticles.filter(a => {
-          const lawKey = a.lawShortName || a.lawId || 'unknown'
+        const diversified = allArticles.filter((a: Record<string, unknown>) => {
+          const lawKey = (a.law_short_name || 'unknown') as string
           const count = byLaw.get(lawKey) || 0
           if (count >= 2) return false
           byLaw.set(lawKey, count + 1)
           return true
-        }).slice(0, 8) // Máximo 8 artículos al LLM
+        }).slice(0, 8)
 
-        const articlesContext = diversified.map(a =>
-          `--- ${a.lawShortName || ''} Art. ${a.articleNumber} ${a.title ? '- ' + a.title : ''} ---\n${a.content}`
+        const articlesContext = diversified.map((a: Record<string, unknown>) =>
+          `--- ${a.law_short_name || ''} Art. ${a.article_number} ${a.title ? '- ' + a.title : ''} ---\n${a.content}`
         ).join('\n\n')
 
         const systemIdx = messages.findIndex(m => m.role === 'system')
@@ -492,7 +505,7 @@ export class ChatOrchestrator {
           messages[systemIdx].content += `\n\n📖 ARTÍCULOS RELEVANTES DE LA BASE DE DATOS (${diversified.length} artículos de ${byLaw.size} leyes):\nUsa esta información para responder con precisión. Cita siempre la fuente (ley y artículo). Si varios artículos de distintas leyes tratan el mismo tema, crúzalos para dar la respuesta más completa.\n\n${articlesContext}`
         }
 
-        logger.info(`Fallback RAG: ${diversified.length} articles from ${byLaw.size} laws`, {
+        logger.info(`Fallback RAG hybrid: ${diversified.length} articles from ${byLaw.size} laws`, {
           domain: 'orchestrator',
           laws: [...byLaw.keys()],
         })
