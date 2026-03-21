@@ -329,6 +329,71 @@ Puedes repasar las preguntas que has fallado anteriormente:
 **Este chat de IA** te ayuda a resolver dudas sobre legislacion, explicar preguntas y mas.`
   }
 
+  // Imprimir tests / resultados
+  if (/imprim(ir|o|e|imos)\s+(los\s+)?(test|resultado|examen|pregunta)/i.test(msgLower) || /c[oó]mo\s+(imprimo|guardo)\s+(los\s+)?test/i.test(msgLower) || /los\s+test.*imprimo/i.test(msgLower)) {
+    return `**Tus tests y resultados**
+
+Los tests que realizas se guardan automaticamente. Puedes consultarlos en:
+
+👉 **[Mis estadisticas](/mis-estadisticas)** → pestaña **General**
+
+**Ahi puedes ver:**
+- Tests completados con puntuacion y fecha
+- Preguntas acertadas, falladas y en blanco
+- Tiempo medio por pregunta
+- Racha de estudio
+
+**Para revisar un test concreto:**
+- En Mis estadisticas, pulsa sobre cualquier test para ver todas las preguntas con sus respuestas y explicaciones
+
+**Para repasar lo que has fallado:**
+- 👉 **[Repaso de fallos](/test/repaso-fallos)** - Practica solo las preguntas que fallaste`
+  }
+
+  // Imprimir temario / PDF
+  if (/imprim(ir|o|e)\s+(el\s+)?(temario|tema|articulo|ley)/i.test(msgLower) || /descargar\s+(el\s+)?(temario|tema|pdf)/i.test(msgLower) || /\bpdf\b/i.test(msgLower) || /temario.*pdf/i.test(msgLower)) {
+    return `**Imprimir temario en PDF**
+
+Si, puedes imprimir cualquier tema del temario:
+
+1. Ve a **[Temario](/temarios)** y selecciona el tema que quieras
+2. Dentro del tema, pulsa el boton **"Imprimir PDF"** (esta en la parte superior)
+3. En el dialogo de impresion, elige **"Guardar como PDF"** para descargarlo
+
+El PDF se genera con formato optimizado para impresion (margenes, saltos de pagina, sin menus).`
+  }
+
+  // Guardar test / descargar resultados
+  if (/guardar\s+(el\s+)?(test|resultado|examen)/i.test(msgLower) || /descargar\s+(mis\s+)?(resultado|estadistic)/i.test(msgLower) || /exportar/i.test(msgLower)) {
+    return `**Guardar y consultar resultados**
+
+Todos tus tests se guardan automaticamente. No necesitas hacer nada especial.
+
+**Donde los encuentras:**
+- 👉 **[Mis estadisticas](/mis-estadisticas)** → pestaña **General**: ves todos los tests que has hecho
+- Pulsa sobre cualquier test para revisar las preguntas, respuestas y explicaciones
+- En la pestaña **Analisis de fallos** puedes ver patrones en tus errores
+- En la pestaña **Rendimiento** ves tu progreso por tema y dificultad
+
+Actualmente no hay opcion de exportar a CSV o Excel, pero puedes usar la impresion del navegador (Ctrl+P) para guardar como PDF.`
+  }
+
+  // Mis estadísticas / dónde veo mis resultados
+  if (/mis\s+(estadistic|resultado|test|nota)|d[oó]nde\s+veo\s+(mis|lo|los|las)\s+(estadistic|resultado|test|nota|fallo|progre)/i.test(msgLower) || /historial\s+de\s+test/i.test(msgLower)) {
+    return `**Tus estadisticas y progreso**
+
+👉 **[Mis estadisticas](/mis-estadisticas)**
+
+**5 pestañas disponibles:**
+- 📊 **General** - Tests realizados, puntuacion, racha, tiempo de estudio
+- 🔍 **Analisis de fallos** - Patrones de error y areas debiles
+- 📈 **Rendimiento** - Progreso por tema, dificultad y articulo
+- 🔮 **Predicciones** - Probabilidad de aprobar y ritmo de mejora
+- 🧩 **Psicotecnicos** - Resultados de tests psicotecnicos
+
+Tambien puedes pulsar sobre cualquier test completado para revisarlo pregunta por pregunta.`
+  }
+
   // Impugnaciones / disputas
   if (/impugn|disput|reportar\s+(una\s+)?pregunta/i.test(msgLower)) {
     return `**Sistema de impugnaciones**
