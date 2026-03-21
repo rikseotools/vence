@@ -1095,8 +1095,8 @@ export function generateLawSlug(shortName: string): string {
 /**
  * Obtiene el slug canónico para SEO
  */
-export function getCanonicalSlug(shortName: string): string {
-  // generateLawSlug ya verifica cache BD, diccionario y genera automático
+export function getCanonicalSlug(shortName: string | null | undefined): string {
+  if (!shortName) return 'unknown'
   return generateLawSlug(shortName)
 }
 
