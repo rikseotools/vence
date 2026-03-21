@@ -46,21 +46,6 @@ async function _GET(request: Request) {
       })
     }
 
-    // Si es "_all", cargar temas de todas las oposiciones
-    if (positionType === '_all') {
-      const allBlocks = []
-      for (const pos of positions.filter((p: string) => p !== 'psicotecnicos')) {
-        const topicsArr = await getTopicsWithStats(pos)
-        const blocks = groupTopicsIntoBlocks(pos, topicsArr)
-        allBlocks.push(...blocks)
-      }
-      return Response.json({
-        success: true,
-        positions,
-        blocks: allBlocks,
-      })
-    }
-
     // Obtener temas con stats y agrupar en bloques
     const topicsArr = await getTopicsWithStats(positionType)
     const blocks = groupTopicsIntoBlocks(positionType, topicsArr)

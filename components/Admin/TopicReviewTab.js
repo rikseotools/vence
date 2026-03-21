@@ -149,6 +149,11 @@ export default function TopicReviewTab() {
   const [verificationQueue, setVerificationQueue] = useState({})
   const [loadingQueue, setLoadingQueue] = useState(false)
 
+  // Estado de verificación global (toda la BD)
+  const [verifyingAll, setVerifyingAll] = useState(false)
+  const [verifyAllProgress, setVerifyAllProgress] = useState({ current: 0, total: 0 })
+  const [globalStats, setGlobalStats] = useState({ total: 0, pending: 0, perfect: 0, problems: 0 })
+
   // Estado de verificación directa en navegador
   const [verifyingDirect, setVerifyingDirect] = useState({}) // { topicId: { current, total } }
 
@@ -159,12 +164,26 @@ export default function TopicReviewTab() {
   const [verifyingBlockDirect, setVerifyingBlockDirect] = useState({}) // { blockId: { current, total } }
   const [blockMenuOpen, setBlockMenuOpen] = useState(null) // blockId del menú abierto
 
+  // Cargar stats globales de preguntas únicas
+  const loadGlobalStats = async () => {
+    try {
+      const response = await fetch('/api/topic-review/pending-all')
+      const data = await response.json()
+      if (data.success && data.stats) {
+        setGlobalStats(data.stats)
+      }
+    } catch (err) {
+      console.error('Error cargando stats globales:', err)
+    }
+  }
+
   // Cargar oposiciones disponibles
   useEffect(() => {
     loadPositions()
     loadAiConfig()
     loadVerificationQueue()
     loadEmbeddingCount()
+    loadGlobalStats()
 
     // Polling para actualizar progreso de verificaciones cada 10 segundos
     const interval = setInterval(loadVerificationQueue, 10000)
@@ -483,6 +502,69 @@ export default function TopicReviewTab() {
     }
   }
 
+  // Verificar TODA la base de datos con un solo botón
+  const verifyAllDB = async () => {
+    if (!selectedProvider || !selectedModel) {
+      setError('Selecciona un proveedor y modelo de IA')
+      return
+    }
+    if (verifyingAll) return
+    if (!confirm('¿Verificar TODAS las preguntas pendientes de toda la base de datos? Esto puede tardar.')) return
+
+    try {
+      setVerifyingAll(true)
+      setError(null)
+
+      // Obtener TODAS las preguntas pendientes de la BD
+      const response = await fetch('/api/topic-review/pending-all')
+      const data = await response.json()
+
+      if (!data.success || !data.questionIds?.length) {
+        setError('No hay preguntas pendientes de verificar')
+        setVerifyingAll(false)
+        return
+      }
+
+      const allIds = data.questionIds
+      setVerifyAllProgress({ current: 0, total: allIds.length })
+
+      // Verificar en batches de 5
+      const BATCH_SIZE = 5
+      let processed = 0
+
+      for (let i = 0; i < allIds.length; i += BATCH_SIZE) {
+        const batchIds = allIds.slice(i, i + BATCH_SIZE)
+
+        const verifyResponse = await fetch('/api/topic-review/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            questionIds: batchIds,
+            provider: selectedProvider,
+            model: selectedModel,
+          })
+        })
+
+        const verifyResult = await verifyResponse.json()
+
+        if (!verifyResult.success && verifyResult.errorType === 'billing') {
+          setError(`❌ Sin créditos. ${processed}/${allIds.length} verificadas.`)
+          break
+        }
+
+        processed += batchIds.length
+        setVerifyAllProgress({ current: processed, total: allIds.length })
+      }
+
+      await loadTopics()
+      await loadGlobalStats()
+    } catch (err) {
+      setError('Error verificando: ' + err.message)
+    } finally {
+      setVerifyingAll(false)
+    }
+  }
+
   // Toggle menú de verificación
   const toggleVerifyMenu = (topicId, e) => {
     e.stopPropagation()
@@ -781,7 +863,6 @@ export default function TopicReviewTab() {
             }}
             className="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
           >
-            <option value="_all">Todas las oposiciones</option>
             {positions.map(pos => (
               <option key={pos} value={pos}>
                 {formatPositionName(pos)}
@@ -846,6 +927,56 @@ export default function TopicReviewTab() {
         <div className="flex items-center justify-center py-12">
           <Spinner size="lg" />
           <span className="ml-3 text-gray-500 dark:text-gray-400">Cargando temas...</span>
+        </div>
+      )}
+
+      {/* Bloque global: Toda la Base de Datos (preguntas únicas) */}
+      {!loading && (
+        <div className="mb-6">
+          <div className="flex items-center justify-between bg-gradient-to-r from-blue-100 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/30 border border-blue-200 dark:border-blue-800 rounded-lg px-4 py-3">
+            <div className="flex items-center gap-3">
+              <span className="text-lg">🗄️</span>
+              <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
+                Toda la Base de Datos
+              </h2>
+              <span className="text-xs text-gray-500 dark:text-gray-400">(preguntas únicas)</span>
+            </div>
+            <div className="flex items-center gap-3 text-sm">
+              <span className="text-gray-600 dark:text-gray-400">
+                📊 {globalStats.total}
+              </span>
+              {globalStats.perfect > 0 && (
+                <span className="text-green-600 dark:text-green-400">
+                  ✅ {globalStats.perfect}
+                </span>
+              )}
+              {globalStats.pending > 0 && (
+                <span className="text-gray-500 dark:text-gray-400">
+                  ⏳ {globalStats.pending}
+                </span>
+              )}
+              {globalStats.problems > 0 && (
+                <span className="text-orange-500 dark:text-orange-400">
+                  ⚠️ {globalStats.problems}
+                </span>
+              )}
+
+              {verifyingAll ? (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg">
+                  <div className="animate-spin rounded-full h-3.5 w-3.5 border-2 border-white border-t-transparent"></div>
+                  {verifyAllProgress.current}/{verifyAllProgress.total}
+                </span>
+              ) : (
+                <button
+                  onClick={(e) => { e.stopPropagation(); verifyAllDB(); }}
+                  disabled={!selectedProvider || !selectedModel || globalStats.pending === 0}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white text-sm rounded-lg transition-colors"
+                >
+                  🔍 Verificar
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
