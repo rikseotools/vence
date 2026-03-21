@@ -474,13 +474,32 @@ export class ChatOrchestrator {
     try {
       const { embedding } = await generateEmbedding(context.currentMessage)
 
-      // Búsqueda híbrida (embedding + full-text con OR)
+      // Obtener leyes prioritarias del temario del usuario
+      let priorityLawIds: string[] = []
+      if (context.userDomain) {
+        try {
+          // userDomain puede ser slug (auxiliar-administrativo-estado) o position_type (auxiliar_administrativo)
+          const domainNorm = context.userDomain.replace(/-/g, '_')
+          // Buscar topics que matcheen (position_type puede no tener _estado)
+          const { data: scopeLaws } = await getSupabaseForSearch()
+            .from('topic_scope')
+            .select('law_id, topics!inner(position_type)')
+            .or(`topics.position_type.eq.${domainNorm},topics.position_type.eq.${domainNorm.replace('_estado', '')}`)
+          if (scopeLaws && scopeLaws.length > 0) {
+            priorityLawIds = [...new Set(scopeLaws.map((s: Record<string, unknown>) => s.law_id as string))]
+            logger.info(`Fallback RAG: ${priorityLawIds.length} priority laws for ${context.userDomain}`, { domain: 'orchestrator' })
+          }
+        } catch { /* no bloquear si falla */ }
+      }
+
+      // Búsqueda híbrida (embedding + full-text con OR + boost por oposición)
       const { data: hybridResults } = await getSupabaseForSearch().rpc('hybrid_search_articles', {
         query_embedding: embedding,
         query_text: context.currentMessage,
         match_count: 15,
         semantic_weight: 0.4,
         text_weight: 0.6,
+        priority_law_ids: priorityLawIds,
       })
 
       const allArticles = hybridResults || []
@@ -543,7 +562,13 @@ export class ChatOrchestrator {
 
         const systemIdx = messages.findIndex(m => m.role === 'system')
         if (systemIdx >= 0) {
-          messages[systemIdx].content += `\n\n📖 ARTÍCULOS RELEVANTES DE LA BASE DE DATOS (${diversified.length} artículos de ${byLaw.size} leyes):\nUsa esta información para responder con precisión. Cita siempre la fuente (ley y artículo). Si varios artículos de distintas leyes tratan el mismo tema, crúzalos para dar la respuesta más completa.\n\n${articlesContext}`
+          messages[systemIdx].content += `\n\n📖 ARTÍCULOS DE LA BASE DE DATOS (${diversified.length} artículos de ${byLaw.size} leyes):
+
+⚠️ REGLA CRÍTICA: Los artículos de abajo son la FUENTE DE VERDAD. Si un artículo dice un dato (plazo, duración, requisito), USA ESE DATO, NO el que tú recuerdes de tu entrenamiento. La legislación cambia y tus datos pueden estar desactualizados. Los artículos de la BD están actualizados.
+
+Si varios artículos tratan el mismo tema, cita TODOS con su ley y artículo.
+
+${articlesContext}`
         }
 
         logger.info(`Fallback RAG hybrid: ${diversified.length} articles from ${byLaw.size} laws`, {
