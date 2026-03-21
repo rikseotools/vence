@@ -496,10 +496,26 @@ export class ChatOrchestrator {
           return true
         }).slice(0, 8)
 
-        // Truncar contenido a 1500 chars por artículo para no exceder token limit
+        // Truncar contenido inteligentemente: si el artículo es largo,
+        // extraer los fragmentos que contienen keywords de la query del usuario
+        const queryWords = context.currentMessage.toLowerCase().split(/\s+/).filter(w => w.length > 3)
         const articlesContext = diversified.map((a: Record<string, unknown>) => {
           const content = String(a.content || '')
-          const truncated = content.length > 1500 ? content.substring(0, 1500) + '...' : content
+          if (content.length <= 2000) {
+            return `--- ${a.law_short_name || ''} Art. ${a.article_number} ${a.title ? '- ' + a.title : ''} ---\n${content}`
+          }
+
+          // Artículo largo: extraer fragmentos relevantes
+          const fragments: string[] = []
+          const paragraphs = content.split(/\n\n+/)
+          for (const p of paragraphs) {
+            const pLower = p.toLowerCase()
+            if (queryWords.some(w => pLower.includes(w)) || fragments.length === 0) {
+              fragments.push(p)
+            }
+          }
+          const extracted = fragments.join('\n\n')
+          const truncated = extracted.length > 3000 ? extracted.substring(0, 3000) + '...' : extracted
           return `--- ${a.law_short_name || ''} Art. ${a.article_number} ${a.title ? '- ' + a.title : ''} ---\n${truncated}`
         }).join('\n\n')
 
