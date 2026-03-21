@@ -17,6 +17,8 @@ import { getStatsDomain } from '../domains/stats'
 import { getPsychometricDomain } from '../domains/psychometric'
 import { isPsychometricSubtype } from '../shared/constants'
 import { isPlatformQuery } from '../domains/knowledge-base/queries'
+import { generateEmbedding } from '../domains/search/EmbeddingService'
+import { searchArticlesBySimilarity } from '../domains/search/queries'
 import { FALLBACK_SYSTEM_PROMPT } from '../shared/prompts'
 
 /**
@@ -459,6 +461,34 @@ export class ChatOrchestrator {
     const model = context.isPremium ? CHAT_MODEL_PREMIUM : CHAT_MODEL
 
     const messages = this.buildOpenAIMessages(context)
+
+    // RAG: buscar artículos relevantes en la BD antes de responder
+    try {
+      const { embedding } = await generateEmbedding(context.currentMessage)
+      const articles = await searchArticlesBySimilarity(embedding, {
+        minSimilarity: 0.25,
+        limit: 5,
+      })
+
+      if (articles.length > 0) {
+        const articlesContext = articles.map(a =>
+          `--- ${a.lawShortName || ''} Art. ${a.articleNumber} ${a.title ? '- ' + a.title : ''} ---\n${a.content}`
+        ).join('\n\n')
+
+        // Inyectar artículos como contexto en el system prompt
+        const systemIdx = messages.findIndex(m => m.role === 'system')
+        if (systemIdx >= 0) {
+          messages[systemIdx].content += `\n\n📖 ARTÍCULOS RELEVANTES DE LA BASE DE DATOS:\nUsa esta información para responder con precisión. Cita siempre la fuente (ley y artículo).\n\n${articlesContext}`
+        }
+
+        logger.info(`Fallback RAG: ${articles.length} articles found (best: ${articles[0].lawShortName} Art. ${articles[0].articleNumber})`, {
+          domain: 'orchestrator',
+        })
+      }
+    } catch (ragError) {
+      // No bloquear el fallback si falla el RAG
+      logger.warn('Fallback RAG failed, continuing without articles', { domain: 'orchestrator' })
+    }
 
     // Crear span LLM si hay tracer - COMPLETO sin truncar
     const llmSpan = tracer?.spanLLM({
