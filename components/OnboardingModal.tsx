@@ -655,27 +655,58 @@ const REGION_PRIORITY_OPOSICIONES: Record<string, string[]> = {
   'Valencia': ['auxiliar_administrativo_valencia', 'auxiliar_administrativo_ayuntamiento_valencia', 'auxiliar_administrativo_estado'],
 }
 
-/** Reordena oposiciones poniendo las de la región del usuario primero */
+// Oposiciones con contenido disponible, ordenadas por demanda real de usuarios
+const AVAILABLE_OPOSICIONES_BY_DEMAND: string[] = [
+  'auxiliar_administrativo_estado',       // 527 usuarios
+  'administrativo_estado',               // 284
+  'tramitacion_procesal',                // incluida por relevancia
+  'auxilio_judicial',                    // incluida por relevancia
+  'auxiliar_administrativo_cyl',         // 24
+  'auxiliar_administrativo_carm',        // 21
+  'auxiliar_administrativo_canarias',    // 10
+  'auxiliar_administrativo_andalucia',   // 7
+  'auxiliar_administrativo_madrid',      // 4+
+  'auxiliar_administrativo_aragon',      // 3
+  'auxiliar_administrativo_asturias',    // 3
+  'auxiliar_administrativo_ayuntamiento_valencia', // 3
+  'auxiliar_administrativo_baleares',    // 3
+  'auxiliar_administrativo_galicia',     // 2+
+  'auxiliar_administrativo_valencia',    // 2+
+  'auxiliar_administrativo_clm',         // 1+
+  'auxiliar_administrativo_extremadura', // 1+
+]
+
+/** Reordena oposiciones: 1) región del usuario, 2) disponibles por demanda, 3) resto */
 function sortByRegionPriority(oposiciones: OposicionItem[], region: string | null): OposicionItem[] {
-  if (!region) return oposiciones
-  const priorityIds = REGION_PRIORITY_OPOSICIONES[region]
-  if (!priorityIds) return oposiciones
+  const regionIds = region ? (REGION_PRIORITY_OPOSICIONES[region] || []) : []
+  const regionSet = new Set(regionIds)
+  const availableSet = new Set(AVAILABLE_OPOSICIONES_BY_DEMAND)
 
-  const prioritySet = new Set(priorityIds)
-  const priority: OposicionItem[] = []
-  const rest: OposicionItem[] = []
+  const tier1: OposicionItem[] = [] // Región del usuario
+  const tier2: OposicionItem[] = [] // Disponibles por demanda (no en región)
+  const tier3: OposicionItem[] = [] // Resto (captación, sin contenido)
 
-  // Mantener el orden de prioridad definido en el mapa
-  for (const id of priorityIds) {
+  // Tier 1: región del usuario (en orden del mapa)
+  for (const id of regionIds) {
     const found = oposiciones.find(o => o.id === id)
-    if (found) priority.push(found)
+    if (found) tier1.push(found)
   }
 
+  // Tier 2: disponibles por demanda (en orden de demanda, excluyendo los de región)
+  for (const id of AVAILABLE_OPOSICIONES_BY_DEMAND) {
+    if (regionSet.has(id)) continue
+    const found = oposiciones.find(o => o.id === id)
+    if (found) tier2.push(found)
+  }
+
+  // Tier 3: resto (mantener orden original)
   for (const op of oposiciones) {
-    if (!prioritySet.has(op.id)) rest.push(op)
+    if (!regionSet.has(op.id) && !availableSet.has(op.id)) {
+      tier3.push(op)
+    }
   }
 
-  return [...priority, ...rest]
+  return [...tier1, ...tier2, ...tier3]
 }
 
 export default function OnboardingModal({ isOpen, onComplete, onSkip, user }: OnboardingModalProps) {
