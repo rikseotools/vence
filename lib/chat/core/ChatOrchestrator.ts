@@ -496,9 +496,12 @@ export class ChatOrchestrator {
           return true
         }).slice(0, 8)
 
-        const articlesContext = diversified.map((a: Record<string, unknown>) =>
-          `--- ${a.law_short_name || ''} Art. ${a.article_number} ${a.title ? '- ' + a.title : ''} ---\n${a.content}`
-        ).join('\n\n')
+        // Truncar contenido a 1500 chars por artículo para no exceder token limit
+        const articlesContext = diversified.map((a: Record<string, unknown>) => {
+          const content = String(a.content || '')
+          const truncated = content.length > 1500 ? content.substring(0, 1500) + '...' : content
+          return `--- ${a.law_short_name || ''} Art. ${a.article_number} ${a.title ? '- ' + a.title : ''} ---\n${truncated}`
+        }).join('\n\n')
 
         const systemIdx = messages.findIndex(m => m.role === 'system')
         if (systemIdx >= 0) {
