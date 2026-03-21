@@ -506,11 +506,39 @@ Los estados se muestran con colores:
 5. Re-verificar si es necesario
 ```
 
-## 8. Formato de las Explicaciones
+## 8. Niveles de Calidad de las Explicaciones
 
-Al corregir explicaciones, seguir este formato:
+Al revisar preguntas, clasificar la explicación en uno de estos niveles:
 
-### Estructura obligatoria:
+| Nivel | Descripción | Acción |
+|-------|-------------|--------|
+| **Correcta y didáctica** | Markdown, explica por qué cada opción es correcta/incorrecta, cita del artículo con blockquote, fuente al final | Ninguna — dejar como está |
+| **Correcta pero mejorable** | Contenido correcto pero sin markdown, sin análisis por opción, sin fuente | Mejorar formato y añadir análisis por opción |
+| **Copia del artículo** | Transcribe literalmente el artículo sin explicar nada didácticamente | Reescribir completa — es el error más frecuente |
+| **Incorrecta** | Habla de otro tema, referencia artículo equivocado, conclusión errónea | Corregir urgente |
+
+### Cómo detectar cada nivel:
+
+**Copia del artículo** (más común):
+- La explicación empieza con "Art. X de la Ley Y..." y copia el texto
+- No dice POR QUÉ la respuesta es correcta
+- No analiza las opciones incorrectas
+- El usuario lee la explicación y no aprende nada que no sepa leyendo el artículo
+
+**Correcta pero mejorable:**
+- Dice cuál es correcta y por qué, pero en texto corrido
+- No usa markdown (negrita, listas, tablas)
+- No analiza CADA opción incorrecta individualmente
+- Falta la fuente oficial
+
+**Correcta y didáctica** (objetivo):
+- Usa `**negrita**` para términos clave
+- Analiza cada opción (A, B, C, D) con motivo
+- Cita el artículo con `>` blockquote
+- Incluye fuente verificada al final
+- El usuario entiende por qué acertó/falló
+
+### Formato obligatorio para explicaciones nuevas/corregidas:
 1. **Párrafos separados**: No apelotonar el texto. Usar saltos de línea entre ideas.
 2. **Fuente oficial verificada**:
    - Siempre incluir enlace a Microsoft Support en español al final
