@@ -11,8 +11,11 @@ interface HelpArticle {
   content: string
   keywords: string[]
   related_urls: string[]
+  related_paths: string[]
   is_published: boolean
   updated_at: string
+  needs_review: boolean
+  review_reason: string | null
   has_embedding: boolean
   content_length: number
   days_since_update: number
@@ -119,6 +122,26 @@ export default function AdminAyudaPage() {
         </div>
       )}
 
+      {/* Alerta de artículos afectados por deploy */}
+      {articles.some(a => a.needs_review) && (
+        <div className="mb-6 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-amber-600 text-lg">⚠️</span>
+            <span className="font-medium text-amber-800 dark:text-amber-200">
+              {articles.filter(a => a.needs_review).length} articulo(s) afectados por cambios recientes
+            </span>
+          </div>
+          {articles.filter(a => a.needs_review).map(a => (
+            <div key={a.id} className="text-sm text-amber-700 dark:text-amber-300 ml-7 mb-1">
+              <strong>{a.title}</strong>: {a.review_reason}
+            </div>
+          ))}
+          <p className="text-xs text-amber-600 dark:text-amber-400 ml-7 mt-2">
+            Pide a Claude Code que actualice estos articulos con los cambios.
+          </p>
+        </div>
+      )}
+
       {/* Lista de artículos */}
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
         <table className="w-full">
@@ -166,7 +189,9 @@ export default function AdminAyudaPage() {
                     {art.days_since_update === 0 ? 'hoy' : `hace ${art.days_since_update}d`}
                   </td>
                   <td className="px-4 py-3 text-center">
-                    {noEmb ? (
+                    {art.needs_review ? (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300" title={art.review_reason || ''}>Deploy</span>
+                    ) : noEmb ? (
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300">Sin RAG</span>
                     ) : isOutdated ? (
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">Revisar</span>

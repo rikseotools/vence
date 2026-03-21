@@ -11,12 +11,13 @@ async function _GET() {
     const result = await db.execute(sql`
       SELECT
         id, slug, title, category, content, keywords, related_urls,
-        is_published, updated_at,
+        is_published, updated_at, needs_review, review_reason,
+        related_paths,
         embedding IS NOT NULL AS has_embedding,
         LENGTH(content) AS content_length,
         EXTRACT(DAY FROM NOW() - updated_at)::int AS days_since_update
       FROM help_articles
-      ORDER BY category, title
+      ORDER BY needs_review DESC, category, title
     `)
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -30,6 +31,9 @@ async function _GET() {
       related_urls: r.related_urls || [],
       is_published: r.is_published,
       updated_at: r.updated_at,
+      needs_review: r.needs_review || false,
+      review_reason: r.review_reason || null,
+      related_paths: r.related_paths || [],
       has_embedding: r.has_embedding,
       content_length: Number(r.content_length) || 0,
       days_since_update: Number(r.days_since_update) || 0,
