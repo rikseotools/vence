@@ -384,6 +384,59 @@ export function isPlatformQuery(message: string): boolean {
 }
 
 // ============================================
+// BÚSQUEDA EN HELP_ARTICLES (RAG)
+// ============================================
+
+export interface HelpArticle {
+  id: string
+  slug: string
+  title: string
+  category: string
+  content: string
+  keywords: string[]
+  relatedUrls: string[]
+  similarity: number
+}
+
+/**
+ * Busca artículos de ayuda por similitud semántica (RAG).
+ * Usa la tabla help_articles con pgvector.
+ */
+export async function searchHelpArticles(
+  embedding: number[],
+  options: { threshold?: number; limit?: number } = {}
+): Promise<HelpArticle[]> {
+  const { threshold = 0.30, limit = 3 } = options
+
+  try {
+    const { data, error } = await getSupabase().rpc('match_help_articles', {
+      query_embedding: embedding,
+      match_threshold: threshold,
+      match_count: limit,
+    })
+
+    if (error) {
+      logger.error('Error in match_help_articles RPC', error, { domain: 'knowledge-base' })
+      return []
+    }
+
+    return (data || []).map((d: Record<string, unknown>) => ({
+      id: d.id as string,
+      slug: d.slug as string,
+      title: d.title as string,
+      category: d.category as string,
+      content: d.content as string,
+      keywords: (d.keywords || []) as string[],
+      relatedUrls: (d.related_urls || []) as string[],
+      similarity: d.similarity as number,
+    }))
+  } catch (err) {
+    logger.error('Error in searchHelpArticles', err, { domain: 'knowledge-base' })
+    return []
+  }
+}
+
+// ============================================
 // HELPERS
 // ============================================
 

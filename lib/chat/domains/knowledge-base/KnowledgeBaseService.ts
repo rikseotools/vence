@@ -5,11 +5,13 @@ import { generateEmbedding } from '../search/EmbeddingService'
 import {
   searchKnowledgeBase,
   searchKnowledgeBaseByKeywords,
+  searchHelpArticles,
   detectCategory,
   isPlatformQuery,
   extractPlatformKeywords,
   type KnowledgeBaseEntry,
   type KBCategory,
+  type HelpArticle,
 } from './queries'
 import { logger } from '../../shared/logger'
 import type { ChatContext } from '../../core/types'
@@ -52,9 +54,41 @@ export async function searchKB(
   const category = detectCategory(message)
   logger.debug(`Detected category: ${category || 'none'}`, { domain: 'knowledge-base' })
 
-  // 3. Intentar búsqueda semántica
+  // 3. Intentar búsqueda en help_articles (RAG) primero
   try {
     const { embedding } = await generateEmbedding(message)
+
+    // 3a. Buscar en help_articles (contenido curado de la plataforma)
+    const helpArticles = await searchHelpArticles(embedding, { threshold: 0.35, limit: 3 })
+    if (helpArticles.length > 0 && helpArticles[0].similarity > 0.40) {
+      // Convertir HelpArticle a KnowledgeBaseEntry para compatibilidad
+      const entries: KnowledgeBaseEntry[] = helpArticles.map(ha => ({
+        id: ha.id,
+        category: ha.category as KBCategory,
+        subcategory: null,
+        title: ha.title,
+        content: ha.content,
+        shortAnswer: null,
+        keywords: ha.keywords,
+        metadata: { slug: ha.slug, relatedUrls: ha.relatedUrls },
+        similarity: ha.similarity,
+        priority: 10, // Alta prioridad para help_articles
+      }))
+
+      logger.info(`Help articles RAG: ${entries.length} results (best: ${(helpArticles[0].similarity * 100).toFixed(1)}%)`, {
+        domain: 'knowledge-base',
+        slugs: helpArticles.map(h => h.slug),
+      })
+
+      return {
+        entries,
+        category,
+        searchMethod: 'semantic' as const,
+        confidence: Math.min(helpArticles[0].similarity + 0.2, 1),
+      }
+    }
+
+    // 3b. Fallback: buscar en ai_knowledge_base (sistema anterior)
     const entries = await searchKnowledgeBase(embedding, {
       threshold: 0.40,
       limit: 3,
@@ -62,9 +96,8 @@ export async function searchKB(
     })
 
     if (entries.length > 0) {
-      // Calcular confianza basada en similarity
       const avgSimilarity = entries.reduce((sum, e) => sum + (e.similarity || 0), 0) / entries.length
-      const confidence = Math.min(avgSimilarity + 0.2, 1) // Boost por coincidencia de categoría
+      const confidence = Math.min(avgSimilarity + 0.2, 1)
 
       logger.info(`KB semantic search: ${entries.length} results`, {
         domain: 'knowledge-base',
