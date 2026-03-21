@@ -781,6 +781,7 @@ export default function TopicReviewTab() {
             }}
             className="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
           >
+            <option value="_all">Todas las oposiciones</option>
             {positions.map(pos => (
               <option key={pos} value={pos}>
                 {formatPositionName(pos)}
