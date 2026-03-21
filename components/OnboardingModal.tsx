@@ -628,6 +628,56 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
   }
 ]
 
+// Mapa de regiones (ipapi.co) → oposiciones prioritarias de esa comunidad autónoma
+// Las oposiciones estatales (Estado, Justicia) siempre se incluyen como relevantes
+const REGION_PRIORITY_OPOSICIONES: Record<string, string[]> = {
+  'Madrid': ['auxiliar_administrativo_madrid', 'auxiliar_administrativo_estado', 'administrativo_estado'],
+  'Community of Madrid': ['auxiliar_administrativo_madrid', 'auxiliar_administrativo_estado', 'administrativo_estado'],
+  'Murcia': ['auxiliar_administrativo_carm', 'auxiliar_administrativo_estado'],
+  'Region of Murcia': ['auxiliar_administrativo_carm', 'auxiliar_administrativo_estado'],
+  'Castilla y León': ['auxiliar_administrativo_cyl', 'auxiliar_administrativo_estado'],
+  'Castile and León': ['auxiliar_administrativo_cyl', 'auxiliar_administrativo_estado'],
+  'Andalucía': ['auxiliar_administrativo_andalucia', 'auxiliar_administrativo_estado'],
+  'Andalusia': ['auxiliar_administrativo_andalucia', 'auxiliar_administrativo_estado'],
+  'Canarias': ['auxiliar_administrativo_canarias', 'auxiliar_administrativo_estado'],
+  'Canary Islands': ['auxiliar_administrativo_canarias', 'auxiliar_administrativo_estado'],
+  'Castilla-La Mancha': ['auxiliar_administrativo_clm', 'auxiliar_administrativo_estado'],
+  'Extremadura': ['auxiliar_administrativo_extremadura', 'auxiliar_administrativo_estado'],
+  'Aragón': ['auxiliar_administrativo_aragon', 'auxiliar_administrativo_estado'],
+  'Aragon': ['auxiliar_administrativo_aragon', 'auxiliar_administrativo_estado'],
+  'Asturias': ['auxiliar_administrativo_asturias', 'auxiliar_administrativo_estado'],
+  'Principality of Asturias': ['auxiliar_administrativo_asturias', 'auxiliar_administrativo_estado'],
+  'Islas Baleares': ['auxiliar_administrativo_baleares', 'auxiliar_administrativo_estado'],
+  'Balearic Islands': ['auxiliar_administrativo_baleares', 'auxiliar_administrativo_estado'],
+  'Galicia': ['auxiliar_administrativo_galicia', 'auxiliar_administrativo_estado'],
+  'Comunidad Valenciana': ['auxiliar_administrativo_valencia', 'auxiliar_administrativo_ayuntamiento_valencia', 'auxiliar_administrativo_estado'],
+  'Valencian Community': ['auxiliar_administrativo_valencia', 'auxiliar_administrativo_ayuntamiento_valencia', 'auxiliar_administrativo_estado'],
+  'Valencia': ['auxiliar_administrativo_valencia', 'auxiliar_administrativo_ayuntamiento_valencia', 'auxiliar_administrativo_estado'],
+}
+
+/** Reordena oposiciones poniendo las de la región del usuario primero */
+function sortByRegionPriority(oposiciones: OposicionItem[], region: string | null): OposicionItem[] {
+  if (!region) return oposiciones
+  const priorityIds = REGION_PRIORITY_OPOSICIONES[region]
+  if (!priorityIds) return oposiciones
+
+  const prioritySet = new Set(priorityIds)
+  const priority: OposicionItem[] = []
+  const rest: OposicionItem[] = []
+
+  // Mantener el orden de prioridad definido en el mapa
+  for (const id of priorityIds) {
+    const found = oposiciones.find(o => o.id === id)
+    if (found) priority.push(found)
+  }
+
+  for (const op of oposiciones) {
+    if (!prioritySet.has(op.id)) rest.push(op)
+  }
+
+  return [...priority, ...rest]
+}
+
 export default function OnboardingModal({ isOpen, onComplete, onSkip, user }: OnboardingModalProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -639,6 +689,7 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }: On
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [detectingLocation, setDetectingLocation] = useState(false)
   const [profileLoaded, setProfileLoaded] = useState(false)
+  const [detectedRegion, setDetectedRegion] = useState<string | null>(null)
   const [ciudadTemp, setCiudadTemp] = useState('')
   const [editingCiudad, setEditingCiudad] = useState(false)
 
@@ -749,6 +800,12 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }: On
 
       console.log('📍 Ubicación detectada:', data)
 
+      // Guardar región para reordenar oposiciones
+      if (data.region) {
+        setDetectedRegion(data.region)
+        console.log('📍 Región detectada:', data.region)
+      }
+
       // Pre-rellenar y guardar ciudad automáticamente si está vacía
       if (data.city) {
         setFormData(prev => {
@@ -849,13 +906,15 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }: On
     }
   }
 
-  // Filtrar oposiciones por búsqueda
+  // Filtrar y reordenar oposiciones por búsqueda y región detectada
   const filteredOposiciones = useMemo(() => {
     const term = searchTerm.toLowerCase().trim()
-    if (!term) return { official: OFFICIAL_OPOSICIONES, custom: customOposiciones }
+    const sorted = sortByRegionPriority(OFFICIAL_OPOSICIONES, detectedRegion)
+
+    if (!term) return { official: sorted, custom: customOposiciones }
 
     return {
-      official: OFFICIAL_OPOSICIONES.filter(op =>
+      official: sorted.filter(op =>
         op.nombre.toLowerCase().includes(term) ||
         op.categoria.toLowerCase().includes(term) ||
         op.administracion.toLowerCase().includes(term)
@@ -866,7 +925,7 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }: On
         (op.administracion && op.administracion.toLowerCase().includes(term))
       )
     }
-  }, [searchTerm, customOposiciones])
+  }, [searchTerm, customOposiciones, detectedRegion])
 
   // Seleccionar oposición oficial
   const handleSelectOfficial = (oposicion: OposicionItem) => {
