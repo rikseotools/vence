@@ -496,27 +496,49 @@ export class ChatOrchestrator {
           return true
         }).slice(0, 8)
 
-        // Truncar contenido inteligentemente: si el artículo es largo,
-        // extraer los fragmentos que contienen keywords de la query del usuario
-        const queryWords = context.currentMessage.toLowerCase().split(/\s+/).filter(w => w.length > 3)
+        // Extraer párrafos relevantes de cada artículo (chunking por párrafo)
+        // En vez de truncar, buscar los párrafos que matchean con la query.
+        // Escalable: funciona con artículos de cualquier longitud.
+        const queryWords = context.currentMessage.toLowerCase()
+          .split(/\s+/)
+          .filter(w => w.length > 3)
+          .map(w => w.replace(/[áàä]/g, 'a').replace(/[éèë]/g, 'e').replace(/[íìï]/g, 'i').replace(/[óòö]/g, 'o').replace(/[úùü]/g, 'u'))
+
         const articlesContext = diversified.map((a: Record<string, unknown>) => {
           const content = String(a.content || '')
-          if (content.length <= 2000) {
-            return `--- ${a.law_short_name || ''} Art. ${a.article_number} ${a.title ? '- ' + a.title : ''} ---\n${content}`
-          }
+          const header = `--- ${a.law_short_name || ''} Art. ${a.article_number} ${a.title ? '- ' + a.title : ''} ---`
 
-          // Artículo largo: extraer fragmentos relevantes
-          const fragments: string[] = []
-          const paragraphs = content.split(/\n\n+/)
-          for (const p of paragraphs) {
-            const pLower = p.toLowerCase()
-            if (queryWords.some(w => pLower.includes(w)) || fragments.length === 0) {
-              fragments.push(p)
+          // Artículos cortos: pasar completos
+          if (content.length <= 2500) return `${header}\n${content}`
+
+          // Artículos largos: extraer párrafos relevantes por score
+          const paragraphs = content.split(/\n\n+/).filter(p => p.trim().length > 20)
+          const scored = paragraphs.map((p, idx) => {
+            const pNorm = p.toLowerCase()
+              .replace(/[áàä]/g, 'a').replace(/[éèë]/g, 'e').replace(/[íìï]/g, 'i').replace(/[óòö]/g, 'o').replace(/[úùü]/g, 'u')
+            let score = 0
+            for (const w of queryWords) {
+              if (pNorm.includes(w)) score += 1
             }
-          }
-          const extracted = fragments.join('\n\n')
-          const truncated = extracted.length > 3000 ? extracted.substring(0, 3000) + '...' : extracted
-          return `--- ${a.law_short_name || ''} Art. ${a.article_number} ${a.title ? '- ' + a.title : ''} ---\n${truncated}`
+            // Bonus para primeros párrafos (suelen tener contexto)
+            if (idx === 0) score += 0.5
+            return { p, score, idx }
+          })
+
+          // Ordenar por score y tomar los mejores párrafos
+          const relevant = scored
+            .filter(s => s.score > 0)
+            .sort((a, b) => b.score - a.score || a.idx - b.idx)
+            .slice(0, 6)
+            .sort((a, b) => a.idx - b.idx) // Reordenar por posición original
+
+          // Si no hay párrafos relevantes, tomar los primeros
+          const selected = relevant.length > 0
+            ? relevant.map(r => r.p)
+            : paragraphs.slice(0, 3)
+
+          const extracted = selected.join('\n\n')
+          return `${header}\n${extracted.length > 3000 ? extracted.substring(0, 3000) : extracted}`
         }).join('\n\n')
 
         const systemIdx = messages.findIndex(m => m.role === 'system')
