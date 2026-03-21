@@ -516,12 +516,34 @@ export class ChatOrchestrator {
         }).slice(0, 8)
 
         // Extraer párrafos relevantes de cada artículo (chunking por párrafo)
-        // En vez de truncar, buscar los párrafos que matchean con la query.
         // Escalable: funciona con artículos de cualquier longitud.
-        const queryWords = context.currentMessage.toLowerCase()
+        // Expande keywords con sinónimos legales para encontrar párrafos relevantes
+        // aunque usen terminología diferente (ej: "paternidad" → "progenitor")
+        const LEGAL_SYNONYMS: Record<string, string[]> = {
+          'paternidad': ['progenitor', 'padre', 'nacimiento'],
+          'maternidad': ['progenitora', 'madre', 'nacimiento', 'biologica'],
+          'vacaciones': ['descanso', 'permiso', 'dias'],
+          'despido': ['cese', 'extincion', 'separacion'],
+          'sueldo': ['retribucion', 'salario', 'remuneracion'],
+          'jefe': ['superior', 'director', 'responsable'],
+          'multa': ['sancion', 'infraccion', 'penalidad'],
+          'contrato': ['convenio', 'acuerdo', 'pacto'],
+          'recurso': ['impugnacion', 'reclamacion', 'alzada'],
+          'plazo': ['termino', 'periodo', 'duracion'],
+        }
+
+        const baseWords = context.currentMessage.toLowerCase()
           .split(/\s+/)
           .filter(w => w.length > 3)
           .map(w => w.replace(/[áàä]/g, 'a').replace(/[éèë]/g, 'e').replace(/[íìï]/g, 'i').replace(/[óòö]/g, 'o').replace(/[úùü]/g, 'u'))
+
+        // Expandir con sinónimos
+        const expandedWords = new Set(baseWords)
+        for (const w of baseWords) {
+          const synonyms = LEGAL_SYNONYMS[w]
+          if (synonyms) synonyms.forEach(s => expandedWords.add(s))
+        }
+        const queryWords = [...expandedWords]
 
         const articlesContext = diversified.map((a: Record<string, unknown>) => {
           const content = String(a.content || '')
