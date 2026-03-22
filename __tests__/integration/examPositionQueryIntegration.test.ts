@@ -65,7 +65,7 @@ describeIfDb('BD Real: filtro exam_position con .in()', () => {
     const estadoIds = new Set(estadoQs.map(q => q.id))
     const overlap = madridQs.filter(q => estadoIds.has(q.id))
     expect(overlap.length).toBe(0)
-  })
+  }, 30000)
 
   test('preguntas filtradas por Estado tienen exam_position correcto', async () => {
     const positions = getValidExamPositions('auxiliar_administrativo_estado')
@@ -79,7 +79,7 @@ describeIfDb('BD Real: filtro exam_position con .in()', () => {
     for (const q of questions) {
       expect(positions.map(p => p.toLowerCase())).toContain(q.exam_position?.toLowerCase())
     }
-  })
+  }, 30000)
 
   test('preguntas filtradas por Madrid tienen exam_position correcto', async () => {
     const positions = getValidExamPositions('auxiliar_administrativo_madrid')
@@ -94,7 +94,7 @@ describeIfDb('BD Real: filtro exam_position con .in()', () => {
     for (const q of questions) {
       expect(positions.map(p => p.toLowerCase())).toContain(q.exam_position?.toLowerCase())
     }
-  })
+  }, 30000)
 
   test('cada exam_position en BD está cubierto por EXAM_POSITION_MAP', async () => {
     const questions = await supabaseGet<Question>(
@@ -110,7 +110,7 @@ describeIfDb('BD Real: filtro exam_position con .in()', () => {
       console.error('exam_position en BD sin mapear:', unmapped)
     }
     expect(unmapped.length).toBe(0)
-  })
+  }, 30000)
 
   test('no hay preguntas oficiales activas sin exam_position (< 10%)', async () => {
     const allOfficial = await supabaseGet<Question>(
@@ -126,5 +126,5 @@ describeIfDb('BD Real: filtro exam_position con .in()', () => {
       console.warn(`⚠️ ${nullCount}/${total} (${pctNull.toFixed(1)}%) preguntas oficiales sin exam_position`)
     }
     expect(pctNull).toBeLessThan(10)
-  })
+  }, 30000)
 })

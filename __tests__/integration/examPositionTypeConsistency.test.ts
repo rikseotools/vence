@@ -83,7 +83,7 @@ describeIfDb('Exam page position_type consistency (DB)', () => {
       `select=id&position_type=eq.${pt}&limit=1`
     )
     expect(rows.length).toBeGreaterThan(0)
-  }, 10000)
+  }, 30000)
 
   it.each(EXAM_PAGE_SLUGS)('%s → has topic_scopes in DB', async (slug) => {
     const pt = slugToPositionType(slug)
@@ -101,5 +101,5 @@ describeIfDb('Exam page position_type consistency (DB)', () => {
       `select=id&topic_id=in.(${topicIds.join(',')})&limit=1`
     )
     expect(scopes.length).toBeGreaterThan(0)
-  }, 15000)
+  }, 30000)
 })

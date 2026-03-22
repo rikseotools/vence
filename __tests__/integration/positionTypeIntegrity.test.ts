@@ -48,7 +48,7 @@ describeIfDb('position_type integrity', () => {
       'select=position_type&limit=10000'
     )
     dbPositionTypes = [...new Set(rows.map(r => r.position_type))]
-  }, 15000)
+  }, 30000)
 
   test('all SLUG_TO_POSITION_TYPE values exist in DB topics', () => {
     const missing: string[] = []

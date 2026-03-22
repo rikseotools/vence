@@ -252,9 +252,17 @@ export async function getTopicsWithStats(positionType: string): Promise<TopicWit
         verificationStatus: questions.verificationStatus,
       })
       .from(questions)
-      .where(
+      .where(and(
         inArray(questions.primaryArticleId, allArticleIds),
-      )
+        // Incluir activas + inactivas con errores conocidos (misma lógica que pending-all)
+        // Esto evita que inactivas sin status inflen el conteo de "pendientes"
+        sql`(${questions.isActive} = true OR ${questions.topicReviewStatus} IN (
+          'bad_answer', 'bad_explanation', 'bad_answer_and_explanation',
+          'wrong_article', 'wrong_article_bad_explanation', 'wrong_article_bad_answer',
+          'all_wrong', 'invalid_structure',
+          'tech_bad_answer', 'tech_bad_answer_and_explanation', 'tech_bad_explanation'
+        ))`,
+      ))
   }
 
   // Mapa: articleId → questions[]

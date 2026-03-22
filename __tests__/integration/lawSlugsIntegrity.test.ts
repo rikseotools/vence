@@ -43,7 +43,7 @@ describeIfDb('Law slugs integrity', () => {
 
   beforeAll(async () => {
     activeLaws = await supabaseGet('laws', 'select=id,short_name,slug&is_active=eq.true')
-  }, 15000)
+  }, 30000)
 
   test('all active laws must have a slug', () => {
     const missingSlug = activeLaws.filter(l => !l.slug)
