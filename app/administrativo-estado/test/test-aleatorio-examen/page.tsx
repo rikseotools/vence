@@ -112,7 +112,7 @@ function TestAleatorioExamenContent() {
           topics!inner(topic_number, position_type)
         `)
         .in('topics.topic_number', testConfig.themes)
-        .eq('topics.position_type', 'administrativo')
+        .eq('topics.position_type', 'administrativo_estado')
 
       if (mappingError) throw mappingError
       if (!mappings || mappings.length === 0) {
