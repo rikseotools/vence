@@ -56,7 +56,7 @@ function TestAleatorioExamenContent() {
     themes: searchParams.get('themes')?.split(',').map(t => parseInt(t)) || [],
     difficulty: searchParams.get('difficulty') || 'mixed',
     mode: searchParams.get('mode') || 'aleatorio',
-    oposicion: searchParams.get('oposicion') || 'auxiliar_administrativo',
+    oposicion: searchParams.get('oposicion') || 'auxiliar_administrativo_estado',
     onlyOfficialQuestions: searchParams.get('official_only') === 'true',
     focusEssentialArticles: searchParams.get('focus_essential') === 'true',
     adaptiveMode: searchParams.get('adaptive') === 'true'

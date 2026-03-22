@@ -71,7 +71,7 @@ function getBlockInfo(topicNumber: number): { block: string; displayNum: number 
   return { block: '', displayNum: topicNumber }
 }
 
-export default function TopicContentView({ content, oposicion = 'administrativo-estado' }: TopicContentViewProps) {
+export default function TopicContentView({ content, oposicion = 'tramitacion-procesal' }: TopicContentViewProps) {
   const [expandedLaws, setExpandedLaws] = useState<Set<string>>(
     new Set()
   )

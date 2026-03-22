@@ -10,7 +10,7 @@ function TestPersonalizadoContent() {
   const [oposicionConfig, setOposicionConfig] = useState(null)
 
   // Extraer configuración de la URL
-  const oposicionParam = searchParams.get('oposicion') || 'auxiliar_administrativo'
+  const oposicionParam = searchParams.get('oposicion') || 'auxiliar_administrativo_estado'
 
   const testConfig = {
     numQuestions: parseInt(searchParams.get('n')) || 20,
