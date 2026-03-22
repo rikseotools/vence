@@ -12,37 +12,12 @@
 - Extremadura: 25/25 insertados (pendiente verificación muestra)
 - Valencia: 24/24 insertados (pendiente verificación muestra)
 
-### Tramitación Procesal - PROBLEMA ESTRUCTURAL
-**Epígrafes T1-T28:** OK (verificados por muestras)
-**Epígrafes T31-T37:** CORREGIDOS (estaban desplazados, ahora alinean con título)
+### Tramitación Procesal - RESUELTO
+**37/37 epígrafes verificados contra BOE-A-2025-27053 (Anexo VI.b)**
 
-**Problema de fondo:** Nuestros T29-T30 dividen el Registro Civil en 2 temas pero el BOE tiene 1 solo:
-- Nuestro T29 "Registro Civil (I)" = BOE T29 completo
-- Nuestro T30 "Registro Civil (II)" = BOE T30 (Archivo judicial) ← título incorrecto
-- Nuestro T31 "Archivo judicial" = BOE T31 (Informática básica) ← título incorrecto
-
-**El BOE real:**
-- T29 = Registro Civil (un solo tema)
-- T30 = Archivo judicial
-- T31 = Informática básica
-- T32 = Windows
-- T33 = Explorador
-- T34 = Word 365
-- T35 = Outlook 365
-- T36 = Internet
-- NO hay T37 de Excel (el programa tiene 36 o 37 temas sin Excel)
-
-**Impacto de renumerar:**
-- topic_scope vinculado a topic_id (UUID, no cambia si renombramos)
-- Preguntas no vinculadas directamente a topic_number
-- Estadísticas de usuario sí usan topic_number
-- oposiciones.ts blocks.themes[].id referencia topic_number
-- URLs de tema usan topic_number
-
-**Acción recomendada:**
-1. Verificar si el BOE tiene 36 o 37 temas exactos
-2. Decidir si fundir T29+T30 o renombrar T30→"Archivo judicial" y T31→"Informática básica"
-3. Actualizar topic_scope, oposiciones.ts y tests
+El BOE SÍ divide Registro Civil en 2 temas (T29 y T30). Nuestra estructura era correcta.
+Los epígrafes T29-T37 estaban desplazados, ahora corregidos y verificados.
+NO hay tema de Excel en Tramitación Procesal (T37 = Internet).
 
 ### Auxilio Judicial - VERIFICACIÓN MENOR
 T6: Posible frase faltante "Sistemas de acceso a las carreras judicial y fiscal."
