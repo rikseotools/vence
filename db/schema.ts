@@ -1646,7 +1646,7 @@ export const questionDisputes = pgTable("question_disputes", {
 			foreignColumns: [aiChatLogs.id],
 			name: "question_disputes_ai_chat_log_id_fkey"
 		}).onDelete("set null"),
-	check("question_disputes_dispute_type_check", sql`dispute_type = ANY (ARRAY['no_literal'::text, 'respuesta_incorrecta'::text, 'otro'::text])`),
+	check("question_disputes_dispute_type_check", sql`dispute_type = ANY (ARRAY['no_literal'::text, 'respuesta_incorrecta'::text, 'desacuerdo_correcta'::text, 'mal_formulada'::text, 'pregunta_repetida'::text, 'explicacion_confusa'::text, 'explicacion_mejorable'::text, 'tema_incorrecto'::text, 'otro'::text])`),
 	check("question_disputes_status_check", sql`status = ANY (ARRAY['pending'::text, 'reviewing'::text, 'resolved'::text, 'rejected'::text])`),
 	check("question_disputes_source_check", sql`source = ANY (ARRAY['user'::text, 'ai_auto'::text])`),
 ]);
@@ -2735,7 +2735,7 @@ export const psychometricQuestionDisputes = pgTable("psychometric_question_dispu
 	pgPolicy("Users can view own disputes", { as: "permissive", for: "select", to: ["public"], using: sql`(auth.uid() = user_id)` }),
 	pgPolicy("Users can create disputes", { as: "permissive", for: "insert", to: ["public"] }),
 	pgPolicy("Service role full access", { as: "permissive", for: "all", to: ["public"] }),
-	check("psychometric_question_disputes_dispute_type_check", sql`dispute_type = ANY (ARRAY['ai_detected_error'::text, 'respuesta_incorrecta'::text, 'otro'::text])`),
+	check("psychometric_question_disputes_dispute_type_check", sql`dispute_type = ANY (ARRAY['ai_detected_error'::text, 'respuesta_incorrecta'::text, 'desacuerdo_correcta'::text, 'mal_formulada'::text, 'pregunta_repetida'::text, 'explicacion_confusa'::text, 'explicacion_mejorable'::text, 'tema_incorrecto'::text, 'otro'::text])`),
 	check("psychometric_question_disputes_status_check", sql`status = ANY (ARRAY['pending'::text, 'reviewing'::text, 'resolved'::text, 'rejected'::text])`),
 	check("psychometric_question_disputes_source_check", sql`source = ANY (ARRAY['user'::text, 'ai_auto'::text])`),
 ]);

@@ -78,11 +78,16 @@ const DISPUTE_STATUS_CONFIG: Record<string, { label: string; color: string }> = 
 }
 
 const DISPUTE_TYPES: Record<string, string> = {
-  'respuesta_incorrecta': '❌ Respuesta Incorrecta',
   'no_literal': '📝 No Literal',
-  'otro': '💭 Otro Motivo',
   'ai_detected_error': '📊 Error en datos/gráficos',
-  'other': '💭 Otro Motivo'
+  'respuesta_incorrecta': '❌ Respuesta Incorrecta',
+  'desacuerdo_correcta': '🤔 Desacuerdo con Correcta',
+  'mal_formulada': '⚠️ Mal Formulada',
+  'pregunta_repetida': '🔁 Pregunta Repetida',
+  'explicacion_confusa': '😕 Explicación Confusa',
+  'explicacion_mejorable': '✏️ Explicación Mejorable',
+  'tema_incorrecto': '📂 Tema Incorrecto',
+  'otro': '💭 Otro Motivo',
 }
 
 const QUESTION_SUBTYPES: Record<string, string> = {

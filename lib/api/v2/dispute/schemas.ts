@@ -2,20 +2,18 @@
 // Schemas Zod unificados para impugnaciones (legislativas y psicotécnicas)
 
 import { z } from 'zod/v3'
+import {
+  ALL_DISPUTE_TYPES,
+  LEGISLATIVE_ONLY_TYPES,
+  PSYCHOMETRIC_ONLY_TYPES,
+} from './types'
 
 // Tipos de pregunta
 export const questionTypeSchema = z.enum(['legislative', 'psychometric'])
 export type QuestionType = z.infer<typeof questionTypeSchema>
 
-// Tipos de impugnación (unificados)
-// legislative: no_literal, respuesta_incorrecta, otro
-// psychometric: ai_detected_error, respuesta_incorrecta, otro
-export const disputeTypeSchema = z.enum([
-  'no_literal',
-  'ai_detected_error',
-  'respuesta_incorrecta',
-  'otro',
-])
+// Tipos de impugnación — derivados de la fuente de verdad (types.ts)
+export const disputeTypeSchema = z.enum(ALL_DISPUTE_TYPES)
 export type DisputeType = z.infer<typeof disputeTypeSchema>
 
 // ============================================
@@ -28,19 +26,19 @@ export const createDisputeRequestSchema = z.object({
   disputeType: disputeTypeSchema,
   description: z.string().min(10, 'La descripcion debe tener al menos 10 caracteres').max(500),
 }).superRefine((data, ctx) => {
-  // no_literal solo para legislativas
-  if (data.disputeType === 'no_literal' && data.questionType === 'psychometric') {
+  // Tipos exclusivos legislativas no válidos para psicotécnicas
+  if ((LEGISLATIVE_ONLY_TYPES as readonly string[]).includes(data.disputeType) && data.questionType === 'psychometric') {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: 'El tipo "no_literal" solo aplica a preguntas legislativas',
+      message: `El tipo "${data.disputeType}" solo aplica a preguntas legislativas`,
       path: ['disputeType'],
     })
   }
-  // ai_detected_error solo para psicotécnicas
-  if (data.disputeType === 'ai_detected_error' && data.questionType === 'legislative') {
+  // Tipos exclusivos psicotécnicas no válidos para legislativas
+  if ((PSYCHOMETRIC_ONLY_TYPES as readonly string[]).includes(data.disputeType) && data.questionType === 'legislative') {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: 'El tipo "ai_detected_error" solo aplica a preguntas psicotecnicas',
+      message: `El tipo "${data.disputeType}" solo aplica a preguntas psicotecnicas`,
       path: ['disputeType'],
     })
   }

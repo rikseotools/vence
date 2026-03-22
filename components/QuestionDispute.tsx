@@ -3,6 +3,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import type { ExistingDisputeData } from '@/lib/api/dispute'
+import {
+  LEGISLATIVE_DISPUTE_TYPES,
+  PSYCHOMETRIC_DISPUTE_TYPES,
+  DISPUTE_TYPE_LABELS,
+  type DisputeType,
+} from '@/lib/api/v2/dispute/types'
 
 // ============================================
 // TIPOS
@@ -20,7 +26,7 @@ interface QuestionDisputeProps {
   isPsychometric?: boolean
 }
 
-type DisputeTypeValue = 'no_literal' | 'ai_detected_error' | 'respuesta_incorrecta' | 'desacuerdo_correcta' | 'mal_formulada' | 'pregunta_repetida' | 'explicacion_confusa' | 'explicacion_mejorable' | 'tema_incorrecto' | 'otro' | ''
+type DisputeTypeValue = DisputeType | ''
 
 // ============================================
 // HELPERS
@@ -293,135 +299,25 @@ export default function QuestionDispute({
       ? 'text-gray-700 dark:text-gray-300'
       : 'text-orange-700 dark:text-orange-300'
 
+    const availableTypes = isPsychometric ? PSYCHOMETRIC_DISPUTE_TYPES : LEGISLATIVE_DISPUTE_TYPES
+
     return (
       <div className="space-y-2">
-        <label className="flex items-center space-x-2 cursor-pointer">
-          <input
-            type="radio"
-            name="disputeType"
-            value={isPsychometric ? 'ai_detected_error' : 'no_literal'}
-            checked={isPsychometric ? disputeType === 'ai_detected_error' : disputeType === 'no_literal'}
-            onChange={(e) => setDisputeType(e.target.value as DisputeTypeValue)}
-            className="text-orange-600 focus:ring-orange-500"
-          />
-          <span className={`text-sm ${textColor}`}>
-            {isPsychometric
-              ? 'Error detectado en la pregunta o respuesta'
-              : 'Pregunta no literal (no se ajusta exactamente al artículo)'}
-          </span>
-        </label>
-
-        <label className="flex items-center space-x-2 cursor-pointer">
-          <input
-            type="radio"
-            name="disputeType"
-            value="respuesta_incorrecta"
-            checked={disputeType === 'respuesta_incorrecta'}
-            onChange={(e) => setDisputeType(e.target.value as DisputeTypeValue)}
-            className="text-orange-600 focus:ring-orange-500"
-          />
-          <span className={`text-sm ${textColor}`}>
-            La respuesta marcada como correcta es errónea
-          </span>
-        </label>
-
-        <label className="flex items-center space-x-2 cursor-pointer">
-          <input
-            type="radio"
-            name="disputeType"
-            value="desacuerdo_correcta"
-            checked={disputeType === 'desacuerdo_correcta'}
-            onChange={(e) => setDisputeType(e.target.value as DisputeTypeValue)}
-            className="text-orange-600 focus:ring-orange-500"
-          />
-          <span className={`text-sm ${textColor}`}>
-            No estoy de acuerdo con la opcion marcada como correcta
-          </span>
-        </label>
-
-        <label className="flex items-center space-x-2 cursor-pointer">
-          <input
-            type="radio"
-            name="disputeType"
-            value="mal_formulada"
-            checked={disputeType === 'mal_formulada'}
-            onChange={(e) => setDisputeType(e.target.value as DisputeTypeValue)}
-            className="text-orange-600 focus:ring-orange-500"
-          />
-          <span className={`text-sm ${textColor}`}>
-            Pregunta mal formulada
-          </span>
-        </label>
-
-        <label className="flex items-center space-x-2 cursor-pointer">
-          <input
-            type="radio"
-            name="disputeType"
-            value="pregunta_repetida"
-            checked={disputeType === 'pregunta_repetida'}
-            onChange={(e) => setDisputeType(e.target.value as DisputeTypeValue)}
-            className="text-orange-600 focus:ring-orange-500"
-          />
-          <span className={`text-sm ${textColor}`}>
-            Pregunta repetida
-          </span>
-        </label>
-
-        <label className="flex items-center space-x-2 cursor-pointer">
-          <input
-            type="radio"
-            name="disputeType"
-            value="explicacion_confusa"
-            checked={disputeType === 'explicacion_confusa'}
-            onChange={(e) => setDisputeType(e.target.value as DisputeTypeValue)}
-            className="text-orange-600 focus:ring-orange-500"
-          />
-          <span className={`text-sm ${textColor}`}>
-            Explicacion confusa
-          </span>
-        </label>
-
-        <label className="flex items-center space-x-2 cursor-pointer">
-          <input
-            type="radio"
-            name="disputeType"
-            value="explicacion_mejorable"
-            checked={disputeType === 'explicacion_mejorable'}
-            onChange={(e) => setDisputeType(e.target.value as DisputeTypeValue)}
-            className="text-orange-600 focus:ring-orange-500"
-          />
-          <span className={`text-sm ${textColor}`}>
-            Explicacion mejorable
-          </span>
-        </label>
-
-        <label className="flex items-center space-x-2 cursor-pointer">
-          <input
-            type="radio"
-            name="disputeType"
-            value="tema_incorrecto"
-            checked={disputeType === 'tema_incorrecto'}
-            onChange={(e) => setDisputeType(e.target.value as DisputeTypeValue)}
-            className="text-orange-600 focus:ring-orange-500"
-          />
-          <span className={`text-sm ${textColor}`}>
-            Pregunta de otro tema
-          </span>
-        </label>
-
-        <label className="flex items-center space-x-2 cursor-pointer">
-          <input
-            type="radio"
-            name="disputeType"
-            value="otro"
-            checked={disputeType === 'otro'}
-            onChange={(e) => setDisputeType(e.target.value as DisputeTypeValue)}
-            className="text-orange-600 focus:ring-orange-500"
-          />
-          <span className={`text-sm ${textColor}`}>
-            Otro motivo
-          </span>
-        </label>
+        {availableTypes.map((type) => (
+          <label key={type} className="flex items-center space-x-2 cursor-pointer">
+            <input
+              type="radio"
+              name="disputeType"
+              value={type}
+              checked={disputeType === type}
+              onChange={(e) => setDisputeType(e.target.value as DisputeTypeValue)}
+              className="text-orange-600 focus:ring-orange-500"
+            />
+            <span className={`text-sm ${textColor}`}>
+              {DISPUTE_TYPE_LABELS[type]}
+            </span>
+          </label>
+        ))}
       </div>
     )
   }

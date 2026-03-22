@@ -5,7 +5,11 @@ import { z } from 'zod/v3'
 // VALORES PERMITIDOS
 // ============================================
 
-export const disputeTypeOptions = ['no_literal', 'respuesta_incorrecta', 'otro'] as const
+export const disputeTypeOptions = [
+  'no_literal', 'ai_detected_error', 'respuesta_incorrecta',
+  'desacuerdo_correcta', 'mal_formulada', 'pregunta_repetida',
+  'explicacion_confusa', 'explicacion_mejorable', 'tema_incorrecto', 'otro',
+] as const
 export const disputeStatusOptions = ['pending', 'reviewing', 'resolved', 'rejected'] as const
 
 export type DisputeType = typeof disputeTypeOptions[number]

@@ -6,6 +6,56 @@ import {
   questionTypeSchema,
   disputeTypeSchema,
 } from '@/lib/api/v2/dispute/schemas'
+import {
+  ALL_DISPUTE_TYPES,
+  LEGISLATIVE_DISPUTE_TYPES,
+  PSYCHOMETRIC_DISPUTE_TYPES,
+  COMMON_DISPUTE_TYPES,
+  LEGISLATIVE_ONLY_TYPES,
+  PSYCHOMETRIC_ONLY_TYPES,
+  DISPUTE_TYPE_LABELS,
+} from '@/lib/api/v2/dispute/types'
+
+// ============================================
+// SYNC: Fuente de verdad unica (types.ts)
+// ============================================
+
+describe('Dispute V2 - Sincronizacion fuente de verdad', () => {
+  it('el schema Zod acepta exactamente los mismos tipos que ALL_DISPUTE_TYPES', () => {
+    const zodValues = disputeTypeSchema.options
+    expect([...zodValues].sort()).toEqual([...ALL_DISPUTE_TYPES].sort())
+  })
+
+  it('LEGISLATIVE = LEGISLATIVE_ONLY + COMMON', () => {
+    expect([...LEGISLATIVE_DISPUTE_TYPES].sort()).toEqual(
+      [...LEGISLATIVE_ONLY_TYPES, ...COMMON_DISPUTE_TYPES].sort()
+    )
+  })
+
+  it('PSYCHOMETRIC = PSYCHOMETRIC_ONLY + COMMON', () => {
+    expect([...PSYCHOMETRIC_DISPUTE_TYPES].sort()).toEqual(
+      [...PSYCHOMETRIC_ONLY_TYPES, ...COMMON_DISPUTE_TYPES].sort()
+    )
+  })
+
+  it('todos los tipos tienen label en DISPUTE_TYPE_LABELS', () => {
+    for (const type of ALL_DISPUTE_TYPES) {
+      expect(DISPUTE_TYPE_LABELS[type]).toBeDefined()
+      expect(DISPUTE_TYPE_LABELS[type].length).toBeGreaterThan(0)
+    }
+  })
+
+  it('no hay tipos exclusivos en ambas listas', () => {
+    const overlap = LEGISLATIVE_ONLY_TYPES.filter((t: string) =>
+      (PSYCHOMETRIC_ONLY_TYPES as readonly string[]).includes(t)
+    )
+    expect(overlap).toHaveLength(0)
+  })
+})
+
+// ============================================
+// TESTS ORIGINALES
+// ============================================
 
 describe('Dispute V2 - QuestionType Schema', () => {
   it('acepta legislative', () => {
@@ -20,18 +70,10 @@ describe('Dispute V2 - QuestionType Schema', () => {
 })
 
 describe('Dispute V2 - DisputeType Schema', () => {
-  it('acepta no_literal', () => {
-    expect(disputeTypeSchema.safeParse('no_literal').success).toBe(true)
+  it.each([...ALL_DISPUTE_TYPES])('acepta %s', (type) => {
+    expect(disputeTypeSchema.safeParse(type).success).toBe(true)
   })
-  it('acepta ai_detected_error', () => {
-    expect(disputeTypeSchema.safeParse('ai_detected_error').success).toBe(true)
-  })
-  it('acepta respuesta_incorrecta', () => {
-    expect(disputeTypeSchema.safeParse('respuesta_incorrecta').success).toBe(true)
-  })
-  it('acepta otro', () => {
-    expect(disputeTypeSchema.safeParse('otro').success).toBe(true)
-  })
+
   it('rechaza valor invalido', () => {
     expect(disputeTypeSchema.safeParse('invalid').success).toBe(false)
   })
@@ -131,6 +173,23 @@ describe('Dispute V2 - CreateDispute Schema', () => {
   it('acepta otro para ambos tipos', () => {
     expect(createDisputeRequestSchema.safeParse({ ...validLegislative, disputeType: 'otro' }).success).toBe(true)
     expect(createDisputeRequestSchema.safeParse({ ...validPsychometric, disputeType: 'otro' }).success).toBe(true)
+  })
+
+  // Tipos comunes: aceptados para ambos tipos de pregunta
+  it.each([...COMMON_DISPUTE_TYPES])('acepta %s para legislativa', (type) => {
+    const result = createDisputeRequestSchema.safeParse({
+      ...validLegislative,
+      disputeType: type,
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it.each([...COMMON_DISPUTE_TYPES])('acepta %s para psicotecnica', (type) => {
+    const result = createDisputeRequestSchema.safeParse({
+      ...validPsychometric,
+      disputeType: type,
+    })
+    expect(result.success).toBe(true)
   })
 })
 

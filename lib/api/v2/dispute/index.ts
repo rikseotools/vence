@@ -23,3 +23,15 @@ export {
   getExistingDispute,
   createDispute,
 } from './queries'
+
+export {
+  ALL_DISPUTE_TYPES,
+  LEGISLATIVE_DISPUTE_TYPES,
+  PSYCHOMETRIC_DISPUTE_TYPES,
+  COMMON_DISPUTE_TYPES,
+  LEGISLATIVE_ONLY_TYPES,
+  PSYCHOMETRIC_ONLY_TYPES,
+  DISPUTE_TYPE_LABELS,
+  type LegislativeDisputeType,
+  type PsychometricDisputeType,
+} from './types'
