@@ -703,7 +703,7 @@ export default function AdminFeedbackPage() {
       } catch (error) {
         console.error('Error recargando feedbacks:', error)
       }
-    }, 5000) // Verificar cada 5 segundos para detectar cambios más rápido
+    }, 30000) // Verificar cada 30 segundos
 
     return () => clearInterval(interval)
   }, [user, viewedConversationsLoaded, checkForNewUserMessages])

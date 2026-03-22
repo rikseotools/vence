@@ -180,8 +180,8 @@ export default function TopicReviewTab() {
     loadEmbeddingCount()
     loadGlobalStats()
 
-    // Polling para actualizar progreso de verificaciones cada 10 segundos
-    const interval = setInterval(() => { loadVerificationQueue(); loadGlobalStats() }, 10000)
+    // Polling para actualizar progreso de verificaciones cada 60 segundos
+    const interval = setInterval(() => { loadVerificationQueue(); loadGlobalStats() }, 60000)
     return () => clearInterval(interval)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
