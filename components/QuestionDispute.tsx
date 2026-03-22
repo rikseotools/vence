@@ -154,9 +154,7 @@ export default function QuestionDispute({
   // ------------------------------------------
   // Submit (POST)
   // ------------------------------------------
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
+  const submitDispute = async (type: DisputeTypeValue, desc: string) => {
     setErrorMessage('')
 
     if (!user) {
@@ -164,7 +162,7 @@ export default function QuestionDispute({
       return
     }
 
-    if (!disputeType) {
+    if (!type) {
       setErrorMessage('Por favor selecciona un motivo de impugnación')
       return
     }
@@ -183,7 +181,7 @@ export default function QuestionDispute({
     setSubmitting(true)
 
     try {
-      const desc = buildDescription(disputeType, description)
+      const builtDesc = buildDescription(type, desc)
 
       const res = await fetch(apiBase, {
         method: 'POST',
@@ -194,8 +192,8 @@ export default function QuestionDispute({
         body: JSON.stringify({
           questionId,
           questionType,
-          disputeType,
-          description: desc,
+          disputeType: type,
+          description: builtDesc,
         }),
       })
 
@@ -245,6 +243,12 @@ export default function QuestionDispute({
     } finally {
       setSubmitting(false)
     }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    await submitDispute(disputeType, description)
   }
 
   // ------------------------------------------
@@ -301,6 +305,13 @@ export default function QuestionDispute({
 
     const availableTypes = isPsychometric ? PSYCHOMETRIC_DISPUTE_TYPES : LEGISLATIVE_DISPUTE_TYPES
 
+    const handleRadioChange = (type: DisputeTypeValue) => {
+      setDisputeType(type)
+      if (type !== 'otro' && type !== '') {
+        submitDispute(type, '')
+      }
+    }
+
     return (
       <div className="space-y-2">
         {availableTypes.map((type) => (
@@ -310,7 +321,8 @@ export default function QuestionDispute({
               name="disputeType"
               value={type}
               checked={disputeType === type}
-              onChange={(e) => setDisputeType(e.target.value as DisputeTypeValue)}
+              onChange={() => handleRadioChange(type)}
+              disabled={submitting}
               className="text-orange-600 focus:ring-orange-500"
             />
             <span className={`text-sm ${textColor}`}>

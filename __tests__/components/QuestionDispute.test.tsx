@@ -252,12 +252,17 @@ describe('QuestionDispute', () => {
   // ============================================
 
   describe('Submit (POST)', () => {
-    async function openAndFillForm(type = 'no_literal', description = '') {
+    async function openAndFillForm(type = 'no_literal', description = '', postMock = null) {
       // GET check → no existing
       global.fetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ success: true, data: null }),
       })
+
+      // For non-"otro" types, auto-submit fires on radio click, so POST mock must be ready
+      if (postMock && type !== 'otro') {
+        global.fetch.mockResolvedValueOnce(postMock)
+      }
 
       renderInline()
       fireEvent.click(screen.getByText(/Impugnar pregunta/))
@@ -266,7 +271,7 @@ describe('QuestionDispute', () => {
         expect(screen.getByText(/Motivo de la impugnación/)).toBeInTheDocument()
       })
 
-      // Select type
+      // Select type (auto-submits if not "otro")
       const labels = {
         no_literal: /no se ajusta exactamente al artículo/,
         respuesta_incorrecta: /respuesta marcada como correcta es errónea/,
@@ -281,20 +286,17 @@ describe('QuestionDispute', () => {
     }
 
     test('envía con Bearer token y body correcto', async () => {
-      await openAndFillForm('no_literal')
-
-      // POST → success
-      global.fetch.mockResolvedValueOnce({
+      const postMock = {
         ok: true,
         status: 200,
         json: async () => ({
           success: true,
           data: { id: 'new-dispute-id', createdAt: '2026-01-15T10:00:00Z' },
         }),
-      })
+      }
+      await openAndFillForm('no_literal', '', postMock)
 
-      fireEvent.click(screen.getByRole('button', { name: /Enviar impugnación/ }))
-
+      // Auto-submitted on radio click
       await waitFor(() => {
         const postCall = global.fetch.mock.calls.find(c => c[1]?.method === 'POST')
         expect(postCall).toBeTruthy()
@@ -306,23 +308,20 @@ describe('QuestionDispute', () => {
       })
     })
 
-    test('descripción formateada para "no_literal" con detalles', async () => {
-      await openAndFillForm('no_literal', 'No cita textualmente')
-
-      global.fetch.mockResolvedValueOnce({
+    test('auto-submit para "no_literal" envía descripción automática', async () => {
+      const postMock = {
         ok: true,
         json: async () => ({
           success: true,
           data: { id: 'id-1', createdAt: '2026-01-15T10:00:00Z' },
         }),
-      })
-
-      fireEvent.click(screen.getByRole('button', { name: /Enviar impugnación/ }))
+      }
+      await openAndFillForm('no_literal', '', postMock)
 
       await waitFor(() => {
         const postCall = global.fetch.mock.calls.find(c => c[1]?.method === 'POST')
         const body = JSON.parse(postCall[1].body)
-        expect(body.description).toBe('Motivo: no_literal - Detalles: No cita textualmente')
+        expect(body.description).toBe('Motivo: no_literal')
       })
     })
 
@@ -347,17 +346,14 @@ describe('QuestionDispute', () => {
     })
 
     test('200 → muestra éxito + auto-cierre a los 6s', async () => {
-      await openAndFillForm('respuesta_incorrecta')
-
-      global.fetch.mockResolvedValueOnce({
+      const postMock = {
         ok: true,
         json: async () => ({
           success: true,
           data: { id: 'id-3', createdAt: '2026-01-15T10:00:00Z' },
         }),
-      })
-
-      fireEvent.click(screen.getByRole('button', { name: /Enviar impugnación/ }))
+      }
+      await openAndFillForm('respuesta_incorrecta', '', postMock)
 
       await waitFor(() => {
         expect(screen.getByText(/Impugnación enviada/)).toBeInTheDocument()
@@ -371,18 +367,15 @@ describe('QuestionDispute', () => {
     })
 
     test('409 → error inline "Ya has impugnado"', async () => {
-      await openAndFillForm('no_literal')
-
-      global.fetch.mockResolvedValueOnce({
+      const postMock = {
         ok: false,
         status: 409,
         json: async () => ({
           success: false,
           error: 'Ya has impugnado esta pregunta anteriormente',
         }),
-      })
-
-      fireEvent.click(screen.getByRole('button', { name: /Enviar impugnación/ }))
+      }
+      await openAndFillForm('no_literal', '', postMock)
 
       await waitFor(() => {
         expect(screen.getByText(/Ya has impugnado/)).toBeInTheDocument()
@@ -390,18 +383,15 @@ describe('QuestionDispute', () => {
     })
 
     test('error genérico → error inline', async () => {
-      await openAndFillForm('no_literal')
-
-      global.fetch.mockResolvedValueOnce({
+      const postMock = {
         ok: false,
         status: 500,
         json: async () => ({
           success: false,
           error: 'Error interno del servidor',
         }),
-      })
-
-      fireEvent.click(screen.getByRole('button', { name: /Enviar impugnación/ }))
+      }
+      await openAndFillForm('no_literal', '', postMock)
 
       await waitFor(() => {
         expect(screen.getByText(/Error interno del servidor/)).toBeInTheDocument()
@@ -515,15 +505,13 @@ describe('QuestionDispute', () => {
         expect(screen.getByText(/Motivo de la impugnación/)).toBeInTheDocument()
       })
 
-      // Now try to submit
-      fireEvent.click(screen.getByLabelText(/no se ajusta exactamente al artículo/))
-
-      // Reset mock for the POST submit attempt
+      // Mock null session for auto-submit attempt
       mockSupabase.auth.getSession.mockResolvedValueOnce({
         data: { session: null },
       })
 
-      fireEvent.click(screen.getByRole('button', { name: /Enviar impugnación/ }))
+      // Click radio auto-submits → triggers auth error
+      fireEvent.click(screen.getByLabelText(/no se ajusta exactamente al artículo/))
 
       await waitFor(() => {
         expect(screen.getByText(/Error de autenticación/)).toBeInTheDocument()
