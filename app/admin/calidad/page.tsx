@@ -24,6 +24,7 @@ interface QualityData {
     missing_article: CheckResult
     missing_image: CheckResult
     excel_typo: CheckResult
+    cramped_explanation: CheckResult
     copied_explanation: CheckResult
   }
 }
@@ -58,6 +59,11 @@ const CHECK_CONFIG = {
     title: 'Función Excel mal escrita',
     description: 'Funciones sin punto: SIERROR→SI.ERROR, CONTARSI→CONTAR.SI, SUMARSI→SUMAR.SI',
     icon: '📊',
+  },
+  cramped_explanation: {
+    title: 'Explicación apelotonada',
+    description: 'Explicaciones de >400 caracteres sin ningún salto de línea (texto corrido ilegible)',
+    icon: '📄',
   },
   copied_explanation: {
     title: 'Explicación copiada del artículo',

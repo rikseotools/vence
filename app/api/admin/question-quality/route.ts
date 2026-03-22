@@ -28,6 +28,7 @@ interface QualityResponse {
     missing_image: CheckResult
     excel_typo: CheckResult
     copied_explanation: CheckResult
+    cramped_explanation: CheckResult
   }
 }
 
@@ -75,7 +76,11 @@ async function runCountsOnly(): Promise<number> {
         count(*) FILTER (WHERE question_text ~* ${MISSING_IMAGE_REGEX}) as missing_image,
         count(*) FILTER (WHERE
           CONCAT_WS(' ', question_text, option_a, option_b, option_c, option_d) ~* ${EXCEL_TYPO_REGEX}
-        ) as excel_typo
+        ) as excel_typo,
+        count(*) FILTER (WHERE
+          explanation IS NOT NULL AND LENGTH(explanation) > 400
+          AND explanation NOT LIKE '%' || chr(10) || '%'
+        ) as cramped_explanation
       FROM questions
       WHERE is_active = true
     ),
@@ -89,7 +94,7 @@ async function runCountsOnly(): Promise<number> {
         AND LENGTH(q.explanation) > 50
         AND similarity(q.explanation, a.content) >= ${SIMILARITY_THRESHOLD}
     )
-    SELECT (b.empty_options + b.banned_words + b.pending_explanation + b.missing_article + b.missing_image + b.excel_typo + s.copied)::int as total
+    SELECT (b.empty_options + b.banned_words + b.pending_explanation + b.missing_article + b.missing_image + b.excel_typo + b.cramped_explanation + s.copied)::int as total
     FROM base b, similarity_count s
   `)
 
@@ -102,7 +107,7 @@ async function runChecks(): Promise<QualityResponse> {
   const db = getDb()
 
   // Run all data queries with count(*) OVER() to get totals without separate count queries
-  const [emptyOpts, bannedRaw, pendingExpl, missingArt, missingImg, excelTypoRaw, copiedExplRaw] = await Promise.all([
+  const results = await Promise.all([
     // 1. Empty options
     db.execute(sql`
       SELECT id, LEFT(question_text, ${TEXT_LIMIT}) as question_text,
@@ -166,7 +171,21 @@ async function runChecks(): Promise<QualityResponse> {
       LIMIT ${MAX_ITEMS}
     `),
 
-    // 7. Copied explanation (similarity)
+    // 7. Cramped explanation (>400 chars without any line break)
+    db.execute(sql`
+      SELECT id, LEFT(question_text, ${TEXT_LIMIT}) as question_text,
+             LENGTH(explanation) as len,
+             count(*) OVER()::int as total_count
+      FROM questions
+      WHERE is_active = true
+        AND explanation IS NOT NULL
+        AND LENGTH(explanation) > 400
+        AND explanation NOT LIKE '%' || chr(10) || '%'
+      ORDER BY LENGTH(explanation) DESC
+      LIMIT ${MAX_ITEMS}
+    `),
+
+    // 8. Copied explanation (similarity)
     db.execute(sql`
       SELECT q.id, LEFT(q.question_text, ${TEXT_LIMIT}) as question_text,
              ROUND(similarity(q.explanation, a.content)::numeric, 2) as sim,
@@ -185,12 +204,15 @@ async function runChecks(): Promise<QualityResponse> {
 
   const toRows = (r: any) => (r as any).rows ?? r ?? []
 
+  const [emptyOpts, bannedRaw, pendingExpl, missingArt, missingImg, excelTypoRaw, crampedExplRaw, copiedExplRaw] = results
+
   const emptyRows = toRows(emptyOpts)
   const bannedRows = toRows(bannedRaw)
   const pendingRows = toRows(pendingExpl)
   const missingRows = toRows(missingArt)
   const missingImgRows = toRows(missingImg)
   const excelTypoRows = toRows(excelTypoRaw)
+  const crampedRows = toRows(crampedExplRaw)
   const copiedRows = toRows(copiedExplRaw)
 
   // Detect which field has banned word
@@ -257,6 +279,12 @@ async function runChecks(): Promise<QualityResponse> {
       count: getCount(excelTypoRows),
       questions: excelTypoWithField,
     },
+    cramped_explanation: {
+      count: getCount(crampedRows),
+      questions: crampedRows.map((q: any) => ({
+        id: q.id, question_text: q.question_text, field: `${q.len} chars`,
+      })),
+    },
     copied_explanation: {
       count: getCount(copiedRows),
       questions: copiedExpl,
@@ -270,6 +298,7 @@ async function runChecks(): Promise<QualityResponse> {
     checks.missing_article.count +
     checks.missing_image.count +
     checks.excel_typo.count +
+    checks.cramped_explanation.count +
     checks.copied_explanation.count
 
   return { success: true, totalIssues, checks }
