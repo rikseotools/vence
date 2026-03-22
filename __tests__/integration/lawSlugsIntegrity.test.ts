@@ -49,7 +49,7 @@ describeIfDb('Law slugs integrity', () => {
     const missingSlug = activeLaws.filter(l => !l.slug)
     if (missingSlug.length > 0) {
       const names = missingSlug.map(l => l.short_name).join(', ')
-      fail(`${missingSlug.length} leyes activas sin slug (causaría 404 en /leyes/[slug]): ${names}`)
+      throw new Error(`${missingSlug.length} leyes activas sin slug (causaría 404 en /leyes/[slug]): ${names}`)
     }
   })
 

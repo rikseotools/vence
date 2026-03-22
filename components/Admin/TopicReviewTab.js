@@ -181,7 +181,7 @@ export default function TopicReviewTab() {
     loadGlobalStats()
 
     // Polling para actualizar progreso de verificaciones cada 10 segundos
-    const interval = setInterval(loadVerificationQueue, 10000)
+    const interval = setInterval(() => { loadVerificationQueue(); loadGlobalStats() }, 10000)
     return () => clearInterval(interval)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -484,8 +484,9 @@ export default function TopicReviewTab() {
         return newState
       })
 
-      // Recargar lista de temas para actualizar stats
+      // Recargar lista de temas y stats globales
       await loadTopics()
+      await loadGlobalStats()
 
     } catch (err) {
       setError('Error verificando: ' + err.message)
@@ -687,6 +688,7 @@ export default function TopicReviewTab() {
       })
 
       await loadTopics()
+      await loadGlobalStats()
 
     } catch (err) {
       setError('Error verificando bloque: ' + err.message)
