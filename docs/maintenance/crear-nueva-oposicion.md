@@ -111,6 +111,16 @@ INSERT INTO oposiciones (
 - `programa_url`: URL directa al PDF/HTML con el programa oficial
 - `seguimiento_url`: URL de la pagina de seguimiento del proceso selectivo (INAP, sede electronica, portal empleo publico)
 
+**Campos opcionales de convocatoria (si se conocen):**
+- `plazas_libres`, `plazas_promocion_interna`, `plazas_discapacidad`: numero de plazas
+- `exam_date`: fecha del examen (YYYY-MM-DD)
+- `inscription_start`, `inscription_deadline`: fechas de inscripcion
+- `boe_publication_date`: fecha de publicacion en el boletin
+- `salario_min`, `salario_max`: rango salarial anual bruto
+- `is_convocatoria_activa`: true si hay convocatoria en curso
+
+Estos campos se usan automaticamente en las landings dinamicas (ver FASE 5).
+
 ### 2b. Insertar topics con epigrafes literales
 
 ```sql
@@ -430,7 +440,7 @@ Copiar estructura de una oposicion existente (ej: `app/tramitacion-procesal/`):
 
 ```
 app/<slug-con-guiones>/
-  page.tsx                              -- Landing con metadata SEO
+  page.tsx                              -- Landing dinamica con datos de BD
   test/
     page.tsx                            -- <TestHubPage oposicion="slug" />
     layout.tsx                          -- Metadata
@@ -452,16 +462,79 @@ app/<slug-con-guiones>/
 
 **En `temario/page.tsx`:** marcar `disponible: true` los temas que YA tienen topic_scope con preguntas. Los temas SIN scope (ej: leyes autonomicas no importadas) se dejan como `disponible: false` — el componente TemarioClient muestra "En elaboracion" automaticamente.
 
-**En `page.tsx` (landing):** anadir el componente de enlaces oficiales. Lee de BD automaticamente:
+### 5a. Landing page dinamica (PATRON ACTUAL - marzo 2026)
+
+Usar `app/auxiliar-administrativo-estado/page.tsx` como referencia. La landing lee datos de BD:
 
 ```tsx
-import ConvocatoriaLinks from '@/components/ConvocatoriaLinks'
+import { getOposicionLandingData, getHitosConvocatoria } from '@/lib/api/convocatoria/queries'
 
-// Dentro del JSX, en la seccion de informacion:
-<ConvocatoriaLinks oposicionSlug="slug-con-guiones" />
+export const revalidate = 86400 // ISR 24h en Vercel
+
+export default async function LandingPage() {
+  const data = await getOposicionLandingData('slug-con-guiones')
+  const hitos = await getHitosConvocatoria('slug-con-guiones')
+
+  // Datos con fallbacks
+  const plazasLibres = data?.plazasLibres ?? 0
+  const boeRef = data?.boeReference ?? ''
+  const examDate = data?.examDate ? formatDateLarga(data.examDate) : null
+  // ...etc
+}
 ```
 
-El componente muestra los enlaces al boletin oficial y la pagina de seguimiento si existen en la tabla `convocatorias` (campos `boletin_oficial_url` y `pagina_informacion_url`). Si la convocatoria no tiene URLs, no renderiza nada.
+**Datos dinamicos de tabla `oposiciones`:**
+- Plazas (libres, promocion, discapacidad)
+- Fechas (examen, inscripcion inicio/fin, publicacion BOE)
+- BOE reference y diario oficial
+- Salario min/max
+- Titulo requerido
+- URLs (programa_url → link BOE, seguimiento_url → link INAP/sede)
+
+**Helpers de formato (definir en el page.tsx):**
+- `formatNumber(n)` → regex `\B(?=(\d{3})+(?!\d))` (NO usar toLocaleString, falla en servidores sin es-ES)
+- `formatDateLarga(str)` → "22 de diciembre de 2025"
+- `formatDateCorta(str)` → "22/12/2025"
+
+**Estado de inscripcion (derivado):**
+```tsx
+const inscripcionCerrada = data?.inscriptionDeadline
+  ? new Date(data.inscriptionDeadline) < new Date()
+  : true
+```
+
+**Links oficiales:** se renderizan como tarjetas fuera de la seccion verde de convocatoria (2 columnas, iconos, hover effects).
+
+### 5b. Timeline de hitos del proceso selectivo
+
+La tabla `convocatoria_hitos` almacena los hitos del proceso:
+
+```sql
+INSERT INTO convocatoria_hitos (oposicion_id, fecha, titulo, descripcion, url, status, order_index)
+VALUES
+  ('<uuid>', '2025-12-22', 'Convocatoria publicada en BOE', 'BOE-A-2025-26262', 'https://...', 'completed', 1),
+  ('<uuid>', '2026-01-22', 'Cierre plazo inscripcion', NULL, NULL, 'completed', 2),
+  ('<uuid>', '2026-05-23', 'Examen', 'Ejercicio unico 90 min', NULL, 'upcoming', 3);
+```
+
+**Status de cada hito:**
+- `completed` → check verde, texto normal
+- `current` → circulo azul animado, badge "En curso"
+- `upcoming` → circulo gris, texto opaco
+
+El timeline se renderiza entre los links oficiales y el temario. Los hitos con `url` son clickeables.
+
+**JSON-LD Event:** Ademas del FAQPage schema, se genera un schema `Event` con la fecha del examen para rich snippets de Google.
+
+### 5c. Monitoreo de seguimiento (automatico)
+
+Al crear la oposicion con `seguimiento_url`, el cron diario (`/api/cron/check-seguimiento`) empezara a monitorearla automaticamente. Cuando detecte cambios:
+
+1. Badge "CAMBIO" en `/admin/seguimiento-convocatorias`
+2. El admin avisa a Claude
+3. Claude lee la pagina de seguimiento, extrae los hitos nuevos
+4. Actualiza `convocatoria_hitos` (INSERT nuevos, UPDATE status de existentes)
+5. La landing se regenera en 24h (ISR) con el timeline actualizado
 
 ---
 
