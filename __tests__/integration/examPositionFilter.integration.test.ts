@@ -8,23 +8,8 @@
  * a ninguna oposición. Solo se muestran las que tienen un valor específico.
  */
 
-// Mapeo de exam_position (debe coincidir con el código real)
-const EXAM_POSITION_MAP = {
-  'auxiliar_administrativo_estado': [
-    'auxiliar administrativo del estado',
-    'auxiliar administrativo',
-    'auxiliar_administrativo_estado',
-    'auxiliar_administrativo_estado',
-  ],
-  'administrativo': [
-    'administrativo',
-    'cuerpo_general_administrativo',
-    'cuerpo general administrativo de la administración del estado',
-  ],
-  'tramitacion_procesal': ['tramitacion_procesal', 'tramitación procesal'],
-  'auxilio_judicial': ['auxilio_judicial', 'auxilio judicial'],
-  'gestion_procesal': ['gestion_procesal', 'gestión procesal'],
-}
+// Importar el mapeo real (NO copiar localmente - causa desincronización)
+import { EXAM_POSITION_MAP } from '@/lib/config/exam-positions'
 
 // Simulación de datos de BD
 const mockDatabaseQuestions = [
@@ -292,42 +277,24 @@ describe('Integración: Comparación entre oposiciones', () => {
   })
 })
 
-describe('Integración: Formato de filtro Supabase', () => {
-  // Función que genera el filtro IN para Supabase (copiada del código real)
-  // ACTUALIZADO: Ya NO incluye exam_position.is.null
-  function buildSupabaseInFilter(positionType) {
-    const validPositions = EXAM_POSITION_MAP[positionType] || []
-    if (validPositions.length === 0) {
-      return null
-    }
-    // Solo filtro IN, sin NULL
-    const escaped = validPositions.map(p => p.replace(/,/g, '\\,')).join(',')
-    return `exam_position.in.(${escaped})`
-  }
-
-  test('genera filtro correcto para auxiliar_administrativo (SIN NULL)', () => {
-    const filter = buildSupabaseInFilter('auxiliar_administrativo_estado')
-
-    // NO debe incluir exam_position.is.null
-    expect(filter).not.toContain('exam_position.is.null')
-    expect(filter).toContain('exam_position.in.')
-    expect(filter).toContain('auxiliar_administrativo_estado')
-    expect(filter).toContain('auxiliar administrativo del estado')
+describe('Integración: getValidExamPositions devuelve arrays para .in()', () => {
+  test('auxiliar_administrativo_estado devuelve array con posiciones válidas', () => {
+    const positions = EXAM_POSITION_MAP['auxiliar_administrativo_estado'] || []
+    expect(Array.isArray(positions)).toBe(true)
+    expect(positions).toContain('auxiliar_administrativo_estado')
+    expect(positions).toContain('auxiliar administrativo del estado')
+    expect(positions).not.toContain('tramitacion_procesal')
   })
 
-  test('genera filtro correcto para tramitacion_procesal (SIN NULL)', () => {
-    const filter = buildSupabaseInFilter('tramitacion_procesal')
-
-    expect(filter).not.toContain('exam_position.is.null')
-    expect(filter).toContain('tramitacion_procesal')
-    expect(filter).toContain('tramitación procesal')
+  test('tramitacion_procesal devuelve array correcto', () => {
+    const positions = EXAM_POSITION_MAP['tramitacion_procesal'] || []
+    expect(positions).toContain('tramitacion_procesal')
+    expect(positions).not.toContain('auxiliar_administrativo_estado')
   })
 
-  test('genera filtro correcto para auxilio_judicial (SIN NULL)', () => {
-    const filter = buildSupabaseInFilter('auxilio_judicial')
-
-    expect(filter).not.toContain('exam_position.is.null')
-    expect(filter).toContain('auxilio_judicial')
-    expect(filter).toContain('auxilio judicial')
+  test('auxiliar_administrativo_madrid tiene su propio array separado', () => {
+    const positions = EXAM_POSITION_MAP['auxiliar_administrativo_madrid'] || []
+    expect(positions).toContain('auxiliar_administrativo_madrid')
+    expect(positions).not.toContain('auxiliar_administrativo_estado')
   })
 })

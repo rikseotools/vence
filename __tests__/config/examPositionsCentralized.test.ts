@@ -7,7 +7,6 @@ import {
   HOT_ARTICLE_TARGET_MAP,
   getValidExamPositions,
   getValidHotArticleTargets,
-  buildExamPositionFilter,
 } from '@/lib/config/exam-positions'
 
 import {
@@ -147,23 +146,34 @@ describe('getValidExamPositions', () => {
 })
 
 // ============================================
-// 4. buildExamPositionFilter - Filtro Supabase
+// 4. Seguridad: NO usar .or() para filtros de exam_position
 // ============================================
 
-describe('buildExamPositionFilter', () => {
-  test('genera filtro válido para positionType conocido', () => {
-    const filter = buildExamPositionFilter('auxiliar_administrativo_estado')
-    expect(filter).not.toBeNull()
-    expect(filter).toContain('exam_position.in.(')
-    expect(filter).toContain('auxiliar_administrativo_estado')
+describe('Prevención de bug .or() en exam_position', () => {
+  test('buildExamPositionFilter NO debe existir (eliminado por generar .or() que rompe AND)', () => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const examPositions = require('@/lib/config/exam-positions')
+    expect(examPositions.buildExamPositionFilter).toBeUndefined()
   })
 
-  test('devuelve null para positionType desconocido', () => {
-    expect(buildExamPositionFilter('inventado')).toBeNull()
+  test('getValidExamPositions devuelve array para usar con .in(), no string para .or()', () => {
+    const result = getValidExamPositions('auxiliar_administrativo_estado')
+    expect(Array.isArray(result)).toBe(true)
+    expect(typeof result[0]).toBe('string')
   })
 
-  test('devuelve null para string vacío', () => {
-    expect(buildExamPositionFilter('')).toBeNull()
+  test('el código fuente de testFetchers NO usa .or(exam', () => {
+    const fs = require('fs')
+    const code = fs.readFileSync('lib/testFetchers.ts', 'utf-8')
+    expect(code).not.toContain('.or(examPosition')
+    expect(code).not.toContain('buildExamPositionFilter')
+  })
+
+  test('el código fuente de lawFetchers NO usa .or(exam', () => {
+    const fs = require('fs')
+    const code = fs.readFileSync('lib/lawFetchers.ts', 'utf-8')
+    expect(code).not.toContain('.or(examPosition')
+    expect(code).not.toContain('buildExamPositionFilter')
   })
 })
 

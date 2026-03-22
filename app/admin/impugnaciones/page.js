@@ -2,7 +2,6 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import { createClient } from '@supabase/supabase-js'
 import Link from 'next/link'
 
 export default function ImpugnacionesPage() {
@@ -20,93 +19,16 @@ export default function ImpugnacionesPage() {
   }, [supabase])
 
   const loadImpugnaciones = async () => {
-    if (!supabase) return
-
     try {
       setLoading(true)
-      console.log('📋 Cargando impugnaciones...')
+      const response = await fetch('/api/v2/admin/disputes')
+      const data = await response.json()
 
-      // Cargar todas las impugnaciones con información de usuario y pregunta
-      // Usar RPC para hacer el JOIN manualmente
-      const { data: disputes, error: disputesError } = await supabase.rpc('get_disputes_with_users_debug')
+      if (!data.success) throw new Error(data.error || 'Error cargando impugnaciones')
 
-      if (disputesError) throw disputesError
-
-      // Impugnaciones normales cargadas
-      const normalDisputes = (disputes || []).map(d => ({ ...d, isPsychometric: false }))
-      setImpugnaciones(normalDisputes)
-
-      // Cargar impugnaciones psicotécnicas
-      const supabaseServiceRole = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL,
-        process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxYnBzdHhvd3ZnaXBxc3BxcmdvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MDg3NjcwMywiZXhwIjoyMDY2NDUyNzAzfQ.4yUKsfS-enlY6iGICFkKi-HPqNUyTkHczUqc5kgQB3w'
-      )
-
-      const { data: psychoDisputes } = await supabaseServiceRole
-        .from('psychometric_question_disputes')
-        .select(`
-          id,
-          question_id,
-          user_id,
-          dispute_type,
-          description,
-          status,
-          created_at,
-          admin_response,
-          source,
-          ai_chat_log_id
-        `)
-        .order('created_at', { ascending: false })
-
-      // Obtener info de usuarios y preguntas para psicotécnicas
-      if (psychoDisputes && psychoDisputes.length > 0) {
-        const psychoUserIds = [...new Set(psychoDisputes.map(d => d.user_id).filter(Boolean))]
-        const psychoQuestionIds = [...new Set(psychoDisputes.map(d => d.question_id).filter(Boolean))]
-
-        // Obtener perfiles de usuarios
-        const { data: userProfiles } = await supabaseServiceRole
-          .from('user_profiles')
-          .select('id, full_name, email')
-          .in('id', psychoUserIds)
-
-        // Obtener preguntas psicotécnicas
-        const { data: questions } = await supabaseServiceRole
-          .from('psychometric_questions')
-          .select('id, question_text, question_subtype')
-          .in('id', psychoQuestionIds)
-
-        const userMap = new Map((userProfiles || []).map(u => [u.id, u]))
-        const questionMap = new Map((questions || []).map(q => [q.id, q]))
-
-        const enrichedPsychoDisputes = psychoDisputes.map(d => ({
-          ...d,
-          isPsychometric: true,
-          user_full_name: userMap.get(d.user_id)?.full_name || null,
-          user_email: userMap.get(d.user_id)?.email || null,
-          question_text: questionMap.get(d.question_id)?.question_text || null,
-          question_subtype: questionMap.get(d.question_id)?.question_subtype || null
-        }))
-
-        setPsychometricDisputes(enrichedPsychoDisputes)
-      }
-
-      // Cargar usuarios premium
-      const allDisputes = [...(disputes || []), ...(psychoDisputes || [])]
-      if (allDisputes.length > 0) {
-        const userIds = [...new Set(allDisputes.map(d => d.user_id).filter(Boolean))]
-        if (userIds.length > 0) {
-          const { data: premiumData } = await supabaseServiceRole
-            .from('user_profiles')
-            .select('id, plan_type')
-            .in('id', userIds)
-            .in('plan_type', ['premium', 'trial'])
-
-          if (premiumData) {
-            setPremiumUsers(new Set(premiumData.map(p => p.id)))
-          }
-        }
-      }
-
+      setImpugnaciones(data.normalDisputes || [])
+      setPsychometricDisputes(data.psychometricDisputes || [])
+      setPremiumUsers(new Set(data.premiumUserIds || []))
     } catch (err) {
       console.error('❌ Error cargando impugnaciones:', err)
       setError(err.message)
@@ -116,38 +38,17 @@ export default function ImpugnacionesPage() {
   }
 
   const closeDispute = async (disputeId, isPsychometric = false) => {
-    if (!supabase) return
-
     try {
-      console.log('🔒 Cerrando impugnación:', disputeId, isPsychometric ? '(psicotécnica)' : '(normal)')
+      const response = await fetch('/api/v2/admin/disputes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ disputeId, isPsychometric }),
+      })
 
-      const tableName = isPsychometric ? 'psychometric_question_disputes' : 'question_disputes'
+      const data = await response.json()
+      if (!data.success) throw new Error(data.error || 'Error cerrando impugnación')
 
-      const supabaseServiceRole = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL,
-        process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxYnBzdHhvd3ZnaXBxc3BxcmdvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MDg3NjcwMywiZXhwIjoyMDY2NDUyNzAzfQ.4yUKsfS-enlY6iGICFkKi-HPqNUyTkHczUqc5kgQB3w'
-      )
-
-      const { error } = await supabaseServiceRole
-        .from(tableName)
-        .update({
-          status: 'rejected',
-          resolved_at: new Date().toISOString(),
-          admin_response: 'Impugnación cerrada por el administrador sin respuesta específica.',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', disputeId)
-
-      if (error) throw error
-
-      console.log('✅ Impugnación cerrada exitosamente')
-
-      // Email se envía automáticamente por trigger PostgreSQL
-      // (send_dispute_email_notification) al hacer UPDATE de question_disputes
-
-      // Recargar la lista
       await loadImpugnaciones()
-
     } catch (err) {
       console.error('❌ Error cerrando impugnación:', err)
       alert('Error al cerrar la impugnación: ' + err.message)

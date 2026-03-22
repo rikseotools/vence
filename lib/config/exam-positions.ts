@@ -99,15 +99,5 @@ export function getValidHotArticleTargets(slugOrPositionType: string): string[] 
   return HOT_ARTICLE_TARGET_MAP[normalized] || [normalized]
 }
 
-/**
- * Construye un filtro de exam_position para Supabase PostgREST (.or() format).
- * @deprecated Usar getValidExamPositions() con .in('exam_position', [...]) en vez de .or()
- * El uso de .or() rompe la lógica AND de queries compuestas.
- */
-export function buildExamPositionFilter(positionType: string): string | null {
-  if (!positionType) return null
-  const validPositions = getValidExamPositions(positionType)
-  if (validPositions.length === 0) return null
-  const escaped = validPositions.map(p => p.replace(/,/g, '\\,')).join(',')
-  return `exam_position.in.(${escaped})`
-}
+// buildExamPositionFilter ELIMINADO (usaba .or() que rompe lógica AND en Supabase PostgREST)
+// Usar getValidExamPositions() con .in('exam_position', [...]) en su lugar.

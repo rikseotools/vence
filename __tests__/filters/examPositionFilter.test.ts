@@ -33,16 +33,10 @@ const EXAM_POSITION_MAP = {
   'gestion_procesal': ['gestion_procesal', 'gestión procesal'],
 }
 
-// Helper para construir filtro (copiado del código real)
-// ACTUALIZADO: Ya NO incluye exam_position.is.null - las preguntas sin categorizar no se muestran
-function buildExamPositionFilter(positionType) {
-  const validPositions = EXAM_POSITION_MAP[positionType] || []
-  if (validPositions.length === 0) {
-    return null
-  }
-  // Formato para Supabase .in() - Solo preguntas con exam_position específico
-  const escaped = validPositions.map(p => p.replace(/,/g, '\\,')).join(',')
-  return `exam_position.in.(${escaped})`
+// Helper: simula el filtro correcto usando .in() (NO .or())
+// El código real usa getValidExamPositions() + .in('exam_position', [...])
+function getFilteredPositions(positionType) {
+  return EXAM_POSITION_MAP[positionType] || []
 }
 
 // Mock de preguntas con exam_position
@@ -121,33 +115,30 @@ describe('Filtrado de preguntas oficiales por oposición', () => {
     })
   })
 
-  describe('buildExamPositionFilter', () => {
-    test('debe generar filtro correcto para auxiliar_administrativo (SIN NULL)', () => {
-      const filter = buildExamPositionFilter('auxiliar_administrativo_estado')
-      // NO debe incluir exam_position.is.null - preguntas sin categorizar no se muestran
-      expect(filter).not.toContain('exam_position.is.null')
-      expect(filter).toContain('auxiliar_administrativo_estado')
-      expect(filter).not.toContain('tramitacion_procesal')
+  describe('getFilteredPositions (devuelve array para .in(), NO string para .or())', () => {
+    test('devuelve array con posiciones válidas para auxiliar_administrativo_estado', () => {
+      const positions = getFilteredPositions('auxiliar_administrativo_estado')
+      expect(Array.isArray(positions)).toBe(true)
+      expect(positions).toContain('auxiliar_administrativo_estado')
+      expect(positions).not.toContain('tramitacion_procesal')
     })
 
-    test('debe generar filtro correcto para tramitacion_procesal (SIN NULL)', () => {
-      const filter = buildExamPositionFilter('tramitacion_procesal')
-      // NO debe incluir exam_position.is.null
-      expect(filter).not.toContain('exam_position.is.null')
-      expect(filter).toContain('tramitacion_procesal')
-      expect(filter).not.toContain('auxiliar_administrativo_estado')
+    test('devuelve array con posiciones válidas para tramitacion_procesal', () => {
+      const positions = getFilteredPositions('tramitacion_procesal')
+      expect(Array.isArray(positions)).toBe(true)
+      expect(positions).toContain('tramitacion_procesal')
+      expect(positions).not.toContain('auxiliar_administrativo_estado')
     })
 
-    test('debe generar filtro correcto para auxilio_judicial (SIN NULL)', () => {
-      const filter = buildExamPositionFilter('auxilio_judicial')
-      // NO debe incluir exam_position.is.null
-      expect(filter).not.toContain('exam_position.is.null')
-      expect(filter).toContain('auxilio_judicial')
+    test('devuelve array con posiciones válidas para auxilio_judicial', () => {
+      const positions = getFilteredPositions('auxilio_judicial')
+      expect(Array.isArray(positions)).toBe(true)
+      expect(positions).toContain('auxilio_judicial')
     })
 
-    test('debe retornar null para oposición desconocida', () => {
-      const filter = buildExamPositionFilter('oposicion_inexistente')
-      expect(filter).toBeNull()
+    test('devuelve array vacío para oposición desconocida', () => {
+      const positions = getFilteredPositions('oposicion_inexistente')
+      expect(positions).toEqual([])
     })
   })
 
