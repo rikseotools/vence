@@ -848,20 +848,13 @@ export interface HotArticlesSearchResult {
   isFromUserOposicion: boolean    // true si son datos de la oposición del usuario
 }
 
-// Normaliza el slug de oposición del usuario al formato de hot_articles (con guiones)
+// Normaliza el slug de oposición del usuario al formato de hot_articles
+// Usa mapeo centralizado de lib/config/exam-positions.ts
+import { getValidHotArticleTargets } from '@/lib/config/exam-positions'
+
 function normalizeOposicionForHotArticles(oposicion: string): string {
-  const mapping: Record<string, string> = {
-    'auxiliar_administrativo_estado': 'auxiliar-administrativo-estado',
-    'auxiliar_administrativo': 'auxiliar-administrativo-estado',
-    'cuerpo_general_administrativo': 'administrativo-estado',
-    'administrativo_estado': 'administrativo-estado',
-    'tramitacion_procesal': 'tramitacion-procesal',
-    'auxilio_judicial': 'auxilio-judicial',
-    'gestion_estado': 'gestion-estado',
-    'gestion_procesal': 'gestion-estado',
-  }
-  const normalized = oposicion.toLowerCase()
-  return mapping[normalized] || oposicion.replace(/_/g, '-')
+  const targets = getValidHotArticleTargets(oposicion)
+  return targets.length > 0 ? targets[0] : oposicion.replace(/_/g, '-')
 }
 
 /**
@@ -1010,24 +1003,18 @@ export function formatHotArticlesResponse(
   const { articles: hotArticles, sourceOposicion, isFromUserOposicion } = searchResult
   const { lawName, userName } = options
 
-  // Nombre legible de las oposiciones
-  const oposicionNames: Record<string, string> = {
-    auxiliar_administrativo_estado: 'Auxiliar Administrativo del Estado',
-    tramitacion_procesal: 'Tramitación Procesal',
-    auxilio_judicial: 'Auxilio Judicial',
-    gestion_procesal: 'Gestión Procesal',
-    cuerpo_general_administrativo: 'Cuerpo General Administrativo',
-    cuerpo_gestion_administracion_civil: 'Cuerpo de Gestión de la Administración Civil',
-  }
+  // Nombre legible de las oposiciones (usa config central)
+  const { getOposicion } = await import('@/lib/config/oposiciones')
+  const getOposicionName = (id: string) => getOposicion(id)?.name || id.replace(/_/g, ' ')
 
-  const userOposicionName = oposicionNames[userOposicion] || userOposicion
+  const userOposicionName = getOposicionName(userOposicion)
   const greeting = userName ? `${userName}, ` : ''
 
   if (hotArticles.length === 0) {
     return `${greeting}he visto que estás estudiando **${userOposicionName}**, pero en Vence todavía no tenemos datos de exámenes oficiales${lawName ? ` de ${lawName}` : ''} para esta oposición.\n\n💡 *Los artículos de la Constitución que suelen preguntarse están relacionados con derechos fundamentales (arts. 14-29), organización del Estado y procedimientos.*`
   }
 
-  const sourceOposicionName = sourceOposicion ? (oposicionNames[sourceOposicion] || sourceOposicion) : ''
+  const sourceOposicionName = sourceOposicion ? (getOposicionName(sourceOposicion)) : ''
 
   let response = ''
 

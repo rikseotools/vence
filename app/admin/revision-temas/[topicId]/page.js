@@ -90,14 +90,15 @@ const VirtualLawBadge = () => (
   </span>
 )
 
-// Formatear nombre de oposición
+// Formatear nombre de oposición (usa config central)
+import { getOposicionByPositionType } from '@/lib/config/oposiciones'
+
 const formatPositionName = (position) => {
-  const names = {
-    'auxiliar_administrativo': { name: 'Auxiliar Administrativo', group: 'C2', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200' },
-    'administrativo': { name: 'Administrativo del Estado', group: 'C1', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-200' },
-    'gestion': { name: 'Gestión del Estado', group: 'A2', color: 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-200' }
+  const oposicion = getOposicionByPositionType(position)
+  if (oposicion) {
+    return { name: oposicion.name, group: oposicion.badge, color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200' }
   }
-  return names[position] || { name: position, group: '', color: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200' }
+  return { name: position, group: '', color: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200' }
 }
 
 // Badge de oposición

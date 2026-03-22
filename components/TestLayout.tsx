@@ -83,7 +83,8 @@ function isOfficialForUserOposicion(examSource: string | null, userOposicionSlug
   // 🏛️ PRIORIDAD 1: Usar exam_position (campo estructurado, más confiable)
   if (examPosition) {
     const normalizedExamPosition = examPosition.toLowerCase()
-    // Mapeo de exam_position a slugs de URL válidos
+    // Mapeo: exam_position de la pregunta → positionTypes que deberían verla
+    // TODO: Mover a lib/config/exam-positions.ts cuando se normalicen los datos en BD
     const positionToSlugs: Record<string, string[]> = {
       'auxiliar_administrativo_estado': ['auxiliar_administrativo', 'auxiliar_administrativo_estado'],
       'auxiliar_administrativo': ['auxiliar_administrativo', 'auxiliar_administrativo_estado'],
