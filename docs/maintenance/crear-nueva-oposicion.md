@@ -83,7 +83,9 @@ Crear `data/temarios/<slug>.json` con los datos de la convocatoria y los epigraf
 INSERT INTO oposiciones (
   nombre, tipo_acceso, administracion, categoria, slug,
   short_name, grupo, is_active, temas_count, bloques_count,
-  titulo_requerido
+  titulo_requerido,
+  diario_oficial, diario_referencia,
+  programa_url, seguimiento_url
 ) VALUES (
   'Nombre Completo de la Oposicion',
   'libre',
@@ -95,26 +97,38 @@ INSERT INTO oposiciones (
   false,    -- INACTIVA hasta verificar todo
   21,
   2,
-  'Graduado en ESO o equivalente'
+  'Graduado en ESO o equivalente',
+  'BOE',                                      -- o BOCM, BOJA, DOE, DOCM, etc.
+  'BOE-A-2025-26262',                         -- referencia en el diario oficial
+  'https://www.boe.es/diario_boe/txt.php?id=BOE-A-2025-26262',  -- URL al programa
+  'https://sede.inap.gob.es/...'              -- URL de seguimiento del proceso
 );
 ```
+
+**Campos obligatorios de convocatoria:**
+- `diario_oficial`: nombre del boletin (BOE, BOCM, BOJA, BOC, DOE, DOCM, DOGV, DOG, BOA, BOPA, BOIB, BORM, BOCYL)
+- `diario_referencia`: referencia unica en el diario
+- `programa_url`: URL directa al PDF/HTML con el programa oficial
+- `seguimiento_url`: URL de la pagina de seguimiento del proceso selectivo (INAP, sede electronica, portal empleo publico)
 
 ### 2b. Insertar topics con epigrafes literales
 
 ```sql
-INSERT INTO topics (position_type, topic_number, title, description, difficulty, estimated_hours, is_active)
+INSERT INTO topics (position_type, topic_number, title, description, epigrafe, difficulty, estimated_hours, is_active)
 VALUES
   ('slug_con_underscores', 1, 'La Constitucion Espanola de 1978',
-   'Caracteristicas. Los principios constitucionales y los valores superiores. Derechos y deberes fundamentales. Su garantia y suspension.',
+   'Caracteristicas. Los principios constitucionales y los valores superiores.',
+   'La Constitucion Espanola de 1978. Caracteristicas. Los principios constitucionales y los valores superiores. Derechos y deberes fundamentales de los espanoles. Su garantia y suspension.',
    'medium', 12, true),
-  -- ... repetir para todos los temas con el epigrafe LITERAL en description
+  -- ... repetir para todos los temas
 ;
 ```
 
 **IMPORTANTE:**
 - `position_type` usa underscores (ej: `auxiliar_administrativo_madrid`), NO guiones
 - El slug de URL usa guiones (ej: `auxiliar-administrativo-madrid`)
-- `description` debe contener el epigrafe LITERAL del BOE, es la referencia para crear el topic_scope
+- `epigrafe`: texto EXACTO del programa oficial (BOE/diario autonomico). Es la fuente de verdad para crear el topic_scope
+- `description`: resumen corto para mostrar al usuario (puede ser mas breve que el epigrafe)
 
 ### 2c. Insertar convocatoria con enlaces oficiales
 
@@ -219,16 +233,18 @@ Muchos temas son comunes entre oposiciones. La regla:
 
 **Leyes virtuales de ofimatica** (compartidas entre todas las oposiciones):
 
-| Contenido | law_id |
-|-----------|--------|
-| Informatica Basica | `82fd3977-ecf7-4f36-a6df-95c41445d3c2` |
-| Windows 11 | `932efcfb-5dce-4bcc-9c6c-55eab19752b0` |
-| Explorador Windows 11 | `9c0b25a4-c819-478c-972f-ee462d724a40` |
-| Procesadores de texto (Word) | `86f671a9-4fd8-42e6-91db-694f27eb4292` |
-| Excel | `c7475712-5ae4-4bec-9bd5-ff646c378e33` |
-| Access | `b403019a-bdf7-4795-886e-1d26f139602d` |
-| Correo electronico (Outlook) | `c9df042b-15df-4285-affb-6c93e2a71139` |
-| Internet | `7814de3a-7c9c-4045-88c2-d452b31f449a` |
+| Contenido | law_id | Notas |
+|-----------|--------|-------|
+| Informatica Basica | `82fd3977-ecf7-4f36-a6df-95c41445d3c2` | |
+| Windows 11 | `932efcfb-5dce-4bcc-9c6c-55eab19752b0` | Para opos que piden W11 |
+| Windows 10 | `cb536623-fb75-429c-a839-0154b76ee27b` | Para opos que piden W10 (CLM, EXT, VAL) |
+| Explorador Windows 11 | `9c0b25a4-c819-478c-972f-ee462d724a40` | |
+| Explorador Windows 10 | `9a4d819f-50d6-421b-b3ea-d66d72b8524b` | Para Madrid T16, CLM T15 |
+| Procesadores de texto (Word) | `86f671a9-4fd8-42e6-91db-694f27eb4292` | |
+| Excel | `c7475712-5ae4-4bec-9bd5-ff646c378e33` | |
+| Access | `b403019a-bdf7-4795-886e-1d26f139602d` | |
+| Correo electronico (Outlook) | `c9df042b-15df-4285-affb-6c93e2a71139` | |
+| Internet | `7814de3a-7c9c-4045-88c2-d452b31f449a` | |
 
 ### 3d. Temas especificos de comunidad autonoma
 
