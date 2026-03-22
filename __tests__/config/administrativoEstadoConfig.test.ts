@@ -7,7 +7,7 @@ import {
 
 const ADMIN_SLUG = 'administrativo-estado'
 
-// topic_numbers reales en la BD para position_type='administrativo'
+// topic_numbers reales en la BD para position_type='administrativo_estado'
 const EXPECTED_TOPIC_NUMBERS = {
   bloque1: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
   bloque2: [201, 202, 203, 204],
@@ -22,7 +22,7 @@ describe('administrativo-estado config', () => {
 
   test('existe en la config central', () => {
     expect(config).toBeDefined()
-    expect(config!.positionType).toBe('administrativo')
+    expect(config!.positionType).toBe('administrativo_estado')
   })
 
   test('tiene 6 bloques con 45 temas totales', () => {

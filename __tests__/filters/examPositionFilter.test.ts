@@ -23,7 +23,7 @@ const EXAM_POSITION_MAP = {
     'auxiliar_administrativo_estado',
     'auxiliar_administrativo_estado',
   ],
-  'administrativo': [
+  'administrativo_estado': [
     'administrativo',
     'cuerpo_general_administrativo',
     'cuerpo general administrativo de la administración del estado',
@@ -96,8 +96,8 @@ describe('Filtrado de preguntas oficiales por oposición', () => {
     })
 
     test('debe tener mapeo para administrativo', () => {
-      expect(EXAM_POSITION_MAP['administrativo']).toBeDefined()
-      expect(EXAM_POSITION_MAP['administrativo']).toContain('administrativo')
+      expect(EXAM_POSITION_MAP['administrativo_estado']).toBeDefined()
+      expect(EXAM_POSITION_MAP['administrativo_estado']).toContain('administrativo')
     })
 
     test('NO debe tener valores de otras oposiciones mezclados', () => {
@@ -288,7 +288,7 @@ describe('Integración: Verificar que los mapeos coinciden con el código real',
     // también se debe actualizar en los tests
     const expectedKeys = [
       'auxiliar_administrativo_estado',
-      'administrativo',
+      'administrativo_estado',
       'tramitacion_procesal',
       'auxilio_judicial',
       'gestion_procesal'

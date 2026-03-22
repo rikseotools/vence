@@ -691,7 +691,7 @@ describe('Random Test Data - Constants', () => {
   describe('OPOSICION_TO_POSITION_TYPE', () => {
     it('debe mapear correctamente las oposiciones existentes', () => {
       expect(OPOSICION_TO_POSITION_TYPE['auxiliar-administrativo-estado']).toBe('auxiliar_administrativo_estado')
-      expect(OPOSICION_TO_POSITION_TYPE['administrativo-estado']).toBe('administrativo')
+      expect(OPOSICION_TO_POSITION_TYPE['administrativo-estado']).toBe('administrativo_estado')
     })
 
     it('debe mapear todas las 8 oposiciones', () => {

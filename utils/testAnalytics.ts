@@ -315,7 +315,7 @@ export const updateUserProgressDirect = async (
     const positionTypesToTry = [
       'auxiliar_administrativo',
       'auxiliar_administrativo_estado',
-      'administrativo',
+      'administrativo_estado',
       'tramitacion_procesal',
       'auxilio_judicial'
     ]

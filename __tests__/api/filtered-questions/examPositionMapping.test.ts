@@ -19,7 +19,7 @@ const EXAM_POSITION_MAP: Record<string, string[]> = {
     'auxiliar_administrativo_estado',
     'auxiliar_administrativo_estado',
   ],
-  'administrativo': [
+  'administrativo_estado': [
     'administrativo',
     'administrativo_estado',
     'cuerpo_general_administrativo',

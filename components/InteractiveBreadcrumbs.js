@@ -38,7 +38,7 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
   const defaultLabels = {
     'es': '🇪🇸 España',
     'auxiliar-administrativo-estado': '👨‍💼 Auxiliar Administrativo Estado',
-    'administrativo': '👨‍💼 Administrativo',
+    'administrativo-estado': '👨‍💼 Administrativo Estado',
     'leyes': '📚 Leyes',
     'temario': '📚 Temarios',
     'test': '🎯 Tests',

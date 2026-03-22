@@ -202,7 +202,7 @@ export const OPOSICIONES: Oposicion[] = [
   {
     id: 'administrativo_estado',
     slug: 'administrativo-estado',
-    positionType: 'administrativo',
+    positionType: 'administrativo_estado',
     name: 'Administrativo del Estado',
     shortName: 'Admin. Estado',
     emoji: '👨‍💼',

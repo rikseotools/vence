@@ -13,13 +13,13 @@
 
 const VALID_POSITION_TYPES = [
   'auxiliar_administrativo_estado',
-  'administrativo',
+  'administrativo_estado',
   'tramitacion_procesal'
 ]
 
 const OPOSICION_SLUG_TO_POSITION_TYPE = {
   'auxiliar-administrativo-estado': 'auxiliar_administrativo_estado',
-  'administrativo-estado': 'administrativo',
+  'administrativo-estado': 'administrativo_estado',
   'tramitacion-procesal': 'tramitacion_procesal'
 }
 
@@ -108,12 +108,12 @@ describe('Multi-Tema Config por Oposición', () => {
     const oposicion = 'administrativo-estado'
     const expectedPositionType = OPOSICION_SLUG_TO_POSITION_TYPE[oposicion]
 
-    expect(expectedPositionType).toBe('administrativo')
+    expect(expectedPositionType).toBe('administrativo_estado')
   })
 
   test.each([
     ['auxiliar-administrativo-estado', 'auxiliar_administrativo_estado'],
-    ['administrativo-estado', 'administrativo'],
+    ['administrativo-estado', 'administrativo_estado'],
     ['tramitacion-procesal', 'tramitacion_procesal']
   ])('Oposición %s debe mapear a positionType %s', (oposicion, expectedType) => {
     expect(OPOSICION_SLUG_TO_POSITION_TYPE[oposicion]).toBe(expectedType)
@@ -154,11 +154,11 @@ describe('TestPageWrapper - Simulación de configuración multi-tema', () => {
 
   test('Config multi-tema incluye positionType correcto para administrativo', () => {
     const testConfig = { numQuestions: 50 }
-    const positionType = 'administrativo'
+    const positionType = 'administrativo_estado'
 
     const multiTemaConfig = createMultiTemaConfig(testConfig, positionType)
 
-    expect(multiTemaConfig.positionType).toBe('administrativo')
+    expect(multiTemaConfig.positionType).toBe('administrativo_estado')
   })
 
   test('Config multi-tema preserva todas las propiedades originales', () => {
@@ -386,15 +386,15 @@ describe('Flujo completo de test multi-tema', () => {
   test('Flujo para administrativo con tema único [5]', () => {
     const result = simulateTestFlow('administrativo-estado', [5], 25)
 
-    expect(result.positionType).toBe('administrativo')
-    expect(result.apiRequest.positionType).toBe('administrativo')
+    expect(result.positionType).toBe('administrativo_estado')
+    expect(result.apiRequest.positionType).toBe('administrativo_estado')
     expect(result.apiRequest.multipleTopics).toEqual([5])
     expect(result.apiRequest.proportionalByTopic).toBe(false) // Solo 1 tema
   })
 
   test.each([
     ['auxiliar-administrativo-estado', [1, 5, 10], 30, 'auxiliar_administrativo_estado'],
-    ['administrativo-estado', [2, 4, 6], 25, 'administrativo'],
+    ['administrativo-estado', [2, 4, 6], 25, 'administrativo_estado'],
     ['tramitacion-procesal', [3, 15], 10, 'tramitacion_procesal'],
     ['tramitacion-procesal', [101, 105, 110], 15, 'tramitacion_procesal'],
     ['tramitacion-procesal', [201, 210, 220], 20, 'tramitacion_procesal']
@@ -468,7 +468,7 @@ describe('Prevención de Regresión - BUG positionType', () => {
     const pages = [
       { path: '/tramitacion-procesal/test/test-personalizado', positionType: 'tramitacion_procesal' },
       { path: '/auxiliar-administrativo-estado/test/test-personalizado', positionType: 'auxiliar_administrativo_estado' },
-      { path: '/administrativo-estado/test/test-personalizado', positionType: 'administrativo' }
+      { path: '/administrativo-estado/test/test-personalizado', positionType: 'administrativo_estado' }
     ]
 
     pages.forEach(page => {

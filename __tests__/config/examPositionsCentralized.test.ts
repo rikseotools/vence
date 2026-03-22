@@ -26,7 +26,7 @@ describe('EXAM_POSITION_MAP', () => {
     const oposicionesConOficiales = [
       'auxiliar_administrativo_estado',
       'auxiliar_administrativo_madrid',
-      'administrativo',
+      'administrativo_estado',
       'tramitacion_procesal',
       'auxilio_judicial',
       'gestion_procesal',

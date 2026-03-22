@@ -17,14 +17,14 @@ const OposicionIdSchema = z.enum([
 
 const PositionTypeSchema = z.enum([
   'auxiliar_administrativo_estado',
-  'administrativo',
+  'administrativo_estado',
   'tramitacion_procesal',
   'auxilio_judicial',
 ])
 
 const OPOSICION_TO_POSITION_TYPE = {
   'auxiliar_administrativo_estado': 'auxiliar_administrativo_estado',
-  'administrativo_estado': 'administrativo',
+  'administrativo_estado': 'administrativo_estado',
   'tramitacion_procesal': 'tramitacion_procesal',
   'auxilio_judicial': 'auxilio_judicial',
 }
@@ -135,7 +135,7 @@ describe('TemaResolver Schemas', () => {
 
     test('el mapeo es correcto', () => {
       expect(OPOSICION_TO_POSITION_TYPE['auxiliar_administrativo_estado']).toBe('auxiliar_administrativo_estado')
-      expect(OPOSICION_TO_POSITION_TYPE['administrativo_estado']).toBe('administrativo')
+      expect(OPOSICION_TO_POSITION_TYPE['administrativo_estado']).toBe('administrativo_estado')
       expect(OPOSICION_TO_POSITION_TYPE['tramitacion_procesal']).toBe('tramitacion_procesal')
       expect(OPOSICION_TO_POSITION_TYPE['auxilio_judicial']).toBe('auxilio_judicial')
     })

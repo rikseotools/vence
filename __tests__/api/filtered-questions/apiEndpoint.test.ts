@@ -784,7 +784,7 @@ describe('API Real Request Simulation', () => {
   test('Request de test examen con múltiples filtros', () => {
     const request = {
       topicNumber: 1,
-      positionType: 'administrativo',
+      positionType: 'administrativo_estado',
       numQuestions: 25,
       selectedLaws: ['CE'],
       selectedSectionFilters: [

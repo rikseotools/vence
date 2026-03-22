@@ -108,23 +108,23 @@ describe('Mismo artículo, diferente tema según oposición', () => {
     // law_id:article_number → { position_type: tema_number }
     'ley-internet:3': {
       'auxiliar_administrativo': 112,
-      'administrativo': 601,
+      'administrativo_estado': 601,
     },
     'trebep:16': {
       'auxiliar_administrativo': 5,
       'tramitacion_procesal': 13,
-      'administrativo': 5,
+      'administrativo_estado': 5,
     },
     'constitucion:1': {
       'auxiliar_administrativo': 1,
-      'administrativo': 1,
+      'administrativo_estado': 1,
       'tramitacion_procesal': 1,
     },
   }
 
   const OPOSICION_TO_POSITION: Record<string, string> = {
     'auxiliar_administrativo_estado': 'auxiliar_administrativo',
-    'administrativo_estado': 'administrativo',
+    'administrativo_estado': 'administrativo_estado',
     'tramitacion_procesal': 'tramitacion_procesal',
   }
 

@@ -19,20 +19,18 @@ describe('testAnswers - Resolución de tema', () => {
   describe('Mapeo oposicion -> positionType', () => {
     // Este mapeo es crítico para que el tema-resolver funcione correctamente
     const OPOSICION_TO_POSITION_TYPE = {
-      'auxiliar_administrativo_estado': 'auxiliar_administrativo',
-      'administrativo_estado': 'administrativo',
+      'auxiliar_administrativo_estado': 'auxiliar_administrativo_estado',
+      'administrativo_estado': 'administrativo_estado',
       'tramitacion_procesal': 'tramitacion_procesal',
       'auxilio_judicial': 'auxilio_judicial',
     }
 
     test('auxiliar_administrativo_estado mapea a auxiliar_administrativo', () => {
-      expect(OPOSICION_TO_POSITION_TYPE['auxiliar_administrativo_estado']).toBe('auxiliar_administrativo')
+      expect(OPOSICION_TO_POSITION_TYPE['auxiliar_administrativo_estado']).toBe('auxiliar_administrativo_estado')
     })
 
-    test('administrativo_estado mapea a administrativo (NO administrativo_estado)', () => {
-      // Este fue un bug que causaba que no se resolvieran temas para administrativo_estado
-      expect(OPOSICION_TO_POSITION_TYPE['administrativo_estado']).toBe('administrativo')
-      expect(OPOSICION_TO_POSITION_TYPE['administrativo_estado']).not.toBe('administrativo_estado')
+    test('administrativo_estado mapea a administrativo_estado', () => {
+      expect(OPOSICION_TO_POSITION_TYPE['administrativo_estado']).toBe('administrativo_estado')
     })
 
     test('tramitacion_procesal mapea a tramitacion_procesal', () => {
@@ -281,14 +279,14 @@ describe('testAnswers - Casos de regresión', () => {
     /**
      * Escenario: Usuario con oposición administrativo_estado
      * El sistema buscaba position_type='administrativo_estado' en topic_scope
-     * Pero en la BD, el position_type es 'administrativo'
+     * Pero en la BD, el position_type es 'administrativo_estado'
      *
-     * Fix: Mapear administrativo_estado -> administrativo
+     * Fix: Mapear administrativo_estado -> administrativo_estado
      */
-    test('administrativo_estado debe mapear a administrativo para topic_scope', () => {
+    test('administrativo_estado debe mapear a administrativo_estado para topic_scope', () => {
       const OPOSICION_TO_POSITION_TYPE = {
-        'auxiliar_administrativo_estado': 'auxiliar_administrativo',
-        'administrativo_estado': 'administrativo', // Este era el bug
+        'auxiliar_administrativo_estado': 'auxiliar_administrativo_estado',
+        'administrativo_estado': 'administrativo_estado',
         'tramitacion_procesal': 'tramitacion_procesal',
         'auxilio_judicial': 'auxilio_judicial',
       }
@@ -296,8 +294,7 @@ describe('testAnswers - Casos de regresión', () => {
       const userOposicion = 'administrativo_estado'
       const positionTypeParaBuscar = OPOSICION_TO_POSITION_TYPE[userOposicion]
 
-      expect(positionTypeParaBuscar).toBe('administrativo')
-      expect(positionTypeParaBuscar).not.toBe('administrativo_estado')
+      expect(positionTypeParaBuscar).toBe('administrativo_estado')
     })
   })
 })

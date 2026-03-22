@@ -19,8 +19,9 @@ const EXAM_POSITION_MAP = {
     'auxiliar_administrativo',
     'auxiliar_administrativo_estado',
   ],
-  'administrativo': [
+  'administrativo_estado': [
     'administrativo',
+    'administrativo_estado',
     'cuerpo_general_administrativo',
     'cuerpo general administrativo de la administración del estado',
   ],

@@ -484,7 +484,7 @@ export class ChatOrchestrator {
           const { data: scopeLaws } = await getSupabaseForSearch()
             .from('topic_scope')
             .select('law_id, topics!inner(position_type)')
-            .or(`topics.position_type.eq.${domainNorm},topics.position_type.eq.${domainNorm.replace('_estado', '')}`)
+            .eq('topics.position_type', domainNorm)
           if (scopeLaws && scopeLaws.length > 0) {
             priorityLawIds = [...new Set(scopeLaws.map((s: Record<string, unknown>) => s.law_id as string))]
             logger.info(`Fallback RAG: ${priorityLawIds.length} priority laws for ${context.userDomain}`, { domain: 'orchestrator' })

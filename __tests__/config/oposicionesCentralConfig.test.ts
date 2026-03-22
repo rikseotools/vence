@@ -33,7 +33,7 @@ const KNOWN_SLUGS = [
 
 const KNOWN_POSITION_TYPES = [
   'auxiliar_administrativo_estado',
-  'administrativo',
+  'administrativo_estado',
   'tramitacion_procesal',
   'auxilio_judicial',
   'auxiliar_administrativo_carm',
@@ -67,7 +67,7 @@ describe('Config central de oposiciones', () => {
 
   test('SLUG_TO_POSITION_TYPE mapea correctamente cada slug', () => {
     expect(SLUG_TO_POSITION_TYPE['auxiliar-administrativo-estado']).toBe('auxiliar_administrativo_estado')
-    expect(SLUG_TO_POSITION_TYPE['administrativo-estado']).toBe('administrativo')
+    expect(SLUG_TO_POSITION_TYPE['administrativo-estado']).toBe('administrativo_estado')
     expect(SLUG_TO_POSITION_TYPE['tramitacion-procesal']).toBe('tramitacion_procesal')
     expect(SLUG_TO_POSITION_TYPE['auxilio-judicial']).toBe('auxilio_judicial')
     expect(SLUG_TO_POSITION_TYPE['auxiliar-administrativo-carm']).toBe('auxiliar_administrativo_carm')

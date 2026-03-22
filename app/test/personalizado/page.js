@@ -77,11 +77,7 @@ function TestPersonalizadoContent() {
     )
   }
 
-  // Mapear positionType a formato esperado por TestPageWrapper
-  // TestPageWrapper espera 'administrativo' o 'auxiliar_administrativo'
-  const positionTypeForWrapper = oposicionConfig.positionType === 'administrativo_estado'
-    ? 'administrativo'
-    : oposicionConfig.positionType
+  const positionTypeForWrapper = oposicionConfig.positionType
 
   return (
     <TestPageWrapper
