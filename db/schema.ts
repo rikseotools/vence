@@ -2279,6 +2279,7 @@ export const oposiciones = pgTable("oposiciones", {
 	programaUrl: text("programa_url"),
 	diarioOficial: text("diario_oficial"),
 	diarioReferencia: text("diario_referencia"),
+	seguimientoUrl: text("seguimiento_url"),
 }, (table) => [
 	check("oposiciones_tipo_acceso_check", sql`tipo_acceso = ANY (ARRAY['libre'::text, 'promocion_interna'::text, 'discapacidad'::text])`),
 ]);

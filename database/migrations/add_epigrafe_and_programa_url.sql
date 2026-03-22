@@ -16,3 +16,7 @@ COMMENT ON COLUMN oposiciones.diario_oficial IS 'Nombre del diario oficial: BOE,
 
 ALTER TABLE oposiciones ADD COLUMN IF NOT EXISTS diario_referencia TEXT NULL;
 COMMENT ON COLUMN oposiciones.diario_referencia IS 'Referencia en el diario autonómico (ej: DOCM-2024-12345)';
+
+-- 4. URL de seguimiento del proceso selectivo
+ALTER TABLE oposiciones ADD COLUMN IF NOT EXISTS seguimiento_url TEXT NULL;
+COMMENT ON COLUMN oposiciones.seguimiento_url IS 'URL de seguimiento del proceso selectivo (INAP, sede electrónica, portal empleo público, etc.)';
