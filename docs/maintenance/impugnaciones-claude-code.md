@@ -182,6 +182,41 @@ Según el artículo Y de la Ley Z:
 - Texto corrido sin saltos de línea ni formato.
 - Secciones tipo "Truco", "Consejo", "Tip" o similares. El resumen final debe integrarse como un párrafo natural, no como una sección aparte.
 
+### 5.1.1 Preguntas de Informática (Word, Excel, Access, Windows, Outlook, Internet)
+
+Para preguntas de temas técnicos/informáticos, la explicación **SIEMPRE** debe:
+
+1. **Ser didáctica con markdown:** negrita, listas, análisis por opción (A, B, C, D)
+2. **Incluir fuente oficial en español al final:** enlace a Microsoft Support en español (`support.microsoft.com/es-es/...`)
+3. **Verificar la fuente antes de usarla:** buscar con WebSearch y confirmar que la URL existe y es relevante
+
+**Formato obligatorio para preguntas de informática:**
+```
+La respuesta correcta es **X) Texto de la opción**.
+
+[Explicación del concepto con markdown]
+
+**A) CORRECTA/INCORRECTA** — Razón...
+
+**B) CORRECTA/INCORRECTA** — Razón...
+
+**C) CORRECTA/INCORRECTA** — Razón...
+
+**D) CORRECTA/INCORRECTA** — Razón...
+
+Fuente: [Microsoft Support - Título descriptivo](https://support.microsoft.com/es-es/office/...)
+```
+
+**Fuentes comunes de Microsoft Support en español:**
+- Excel: `https://support.microsoft.com/es-es/excel`
+- Word: `https://support.microsoft.com/es-es/word`
+- Access: `https://support.microsoft.com/es-es/access`
+- Outlook: `https://support.microsoft.com/es-es/outlook`
+- Windows: `https://support.microsoft.com/es-es/windows`
+- Atajos Word: `https://support.microsoft.com/es-es/office/keyboard-shortcuts-in-word-95ef89dd-7142-4b50-afb2-f762f663ceb2`
+
+**IMPORTANTE:** No inventar URLs. Siempre buscar y verificar que la fuente existe antes de incluirla.
+
 ### 5.2 Explicación (tabla `questions`)
 ```javascript
 supabase
