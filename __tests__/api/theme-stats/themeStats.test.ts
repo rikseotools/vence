@@ -86,7 +86,7 @@ describe('Theme Stats V2 - Oposición Schemas', () => {
 
   describe('OPOSICION_TO_POSITION_TYPE mapping', () => {
     test('debe mapear auxiliar-administrativo-estado a auxiliar_administrativo', () => {
-      expect(OPOSICION_TO_POSITION_TYPE['auxiliar-administrativo-estado']).toBe('auxiliar_administrativo')
+      expect(OPOSICION_TO_POSITION_TYPE['auxiliar-administrativo-estado']).toBe('auxiliar_administrativo_estado')
     })
 
     test('debe mapear administrativo-estado a administrativo', () => {
@@ -1003,7 +1003,7 @@ describe('Theme Stats V2 - Tests de Regresión', () => {
 
   test('CRÍTICO: OPOSICION_TO_POSITION_TYPE mapea slugs URL a position_type DB', () => {
     // Verificar que los valores son los que usa la DB (con underscore)
-    expect(OPOSICION_TO_POSITION_TYPE['auxiliar-administrativo-estado']).toBe('auxiliar_administrativo')
+    expect(OPOSICION_TO_POSITION_TYPE['auxiliar-administrativo-estado']).toBe('auxiliar_administrativo_estado')
     expect(OPOSICION_TO_POSITION_TYPE['administrativo-estado']).toBe('administrativo')
     expect(OPOSICION_TO_POSITION_TYPE['tramitacion-procesal']).toBe('tramitacion_procesal')
     expect(OPOSICION_TO_POSITION_TYPE['auxilio-judicial']).toBe('auxilio_judicial')

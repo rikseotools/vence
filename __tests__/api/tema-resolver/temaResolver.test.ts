@@ -16,14 +16,14 @@ const OposicionIdSchema = z.enum([
 ])
 
 const PositionTypeSchema = z.enum([
-  'auxiliar_administrativo',
+  'auxiliar_administrativo_estado',
   'administrativo',
   'tramitacion_procesal',
   'auxilio_judicial',
 ])
 
 const OPOSICION_TO_POSITION_TYPE = {
-  'auxiliar_administrativo_estado': 'auxiliar_administrativo',
+  'auxiliar_administrativo_estado': 'auxiliar_administrativo_estado',
   'administrativo_estado': 'administrativo',
   'tramitacion_procesal': 'tramitacion_procesal',
   'auxilio_judicial': 'auxilio_judicial',
@@ -134,7 +134,7 @@ describe('TemaResolver Schemas', () => {
     })
 
     test('el mapeo es correcto', () => {
-      expect(OPOSICION_TO_POSITION_TYPE['auxiliar_administrativo_estado']).toBe('auxiliar_administrativo')
+      expect(OPOSICION_TO_POSITION_TYPE['auxiliar_administrativo_estado']).toBe('auxiliar_administrativo_estado')
       expect(OPOSICION_TO_POSITION_TYPE['administrativo_estado']).toBe('administrativo')
       expect(OPOSICION_TO_POSITION_TYPE['tramitacion_procesal']).toBe('tramitacion_procesal')
       expect(OPOSICION_TO_POSITION_TYPE['auxilio_judicial']).toBe('auxilio_judicial')
@@ -220,7 +220,7 @@ describe('TemaResolver Schemas', () => {
         temaNumber: 9,
         topicId: '1a562f1d-eaf8-4a26-8b1d-1152aa310cc1',
         topicTitle: 'Tema 9: Organización territorial',
-        positionType: 'auxiliar_administrativo',
+        positionType: 'auxiliar_administrativo_estado',
         resolvedVia: 'question',
       }
       const result = ResolveTemaSuccessSchema.safeParse(response)
@@ -248,7 +248,7 @@ describe('TemaResolver Schemas', () => {
           success: true,
           temaNumber: 1,
           topicId: '1a562f1d-eaf8-4a26-8b1d-1152aa310cc1',
-          positionType: 'auxiliar_administrativo',
+          positionType: 'auxiliar_administrativo_estado',
           resolvedVia: via,
         }
         const result = ResolveTemaSuccessSchema.safeParse(response)
@@ -261,7 +261,7 @@ describe('TemaResolver Schemas', () => {
         success: true,
         temaNumber: 0,
         topicId: '1a562f1d-eaf8-4a26-8b1d-1152aa310cc1',
-        positionType: 'auxiliar_administrativo',
+        positionType: 'auxiliar_administrativo_estado',
         resolvedVia: 'question',
       }
       const result = ResolveTemaSuccessSchema.safeParse(response)
@@ -401,7 +401,7 @@ describe('TemaResolver API Contracts', () => {
         temaNumber: 9,
         topicId: '1a562f1d-eaf8-4a26-8b1d-1152aa310cc1',
         topicTitle: 'Tema 9',
-        positionType: 'auxiliar_administrativo',
+        positionType: 'auxiliar_administrativo_estado',
         resolvedVia: 'question',
       }
 
@@ -602,7 +602,7 @@ describe('Edge Cases', () => {
       success: true,
       temaNumber: 1,
       topicId: '1a562f1d-eaf8-4a26-8b1d-1152aa310cc1',
-      positionType: 'auxiliar_administrativo',
+      positionType: 'auxiliar_administrativo_estado',
       resolvedVia: 'question',
     }).success).toBe(true)
 

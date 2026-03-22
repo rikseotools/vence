@@ -142,7 +142,7 @@ describe('Position Type - Tramitación Procesal', () => {
   })
 
   test('positionType NO debe ser auxiliar_administrativo', () => {
-    expect(TRAMITACION_CONFIG.positionType).not.toBe('auxiliar_administrativo')
+    expect(TRAMITACION_CONFIG.positionType).not.toBe('auxiliar_administrativo_estado')
   })
 
   test('positionType NO debe ser administrativo', () => {
@@ -182,7 +182,7 @@ describe('Position Type - Tramitación Procesal', () => {
       }
 
       expect(correctProps.positionType).toBe('tramitacion_procesal')
-      expect(correctProps.positionType).not.toBe('auxiliar_administrativo')
+      expect(correctProps.positionType).not.toBe('auxiliar_administrativo_estado')
     })
   })
 })

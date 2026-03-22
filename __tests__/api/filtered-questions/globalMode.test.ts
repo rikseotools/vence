@@ -129,7 +129,7 @@ describe('Modo Global - Validación Zod', () => {
   test('Request de test rápido sin tema ni ley pasa validación Zod', () => {
     const result = safeParseGetFilteredQuestions({
       topicNumber: 0,
-      positionType: 'auxiliar_administrativo',
+      positionType: 'auxiliar_administrativo_estado',
       numQuestions: 10,
       selectedLaws: [],
       difficultyMode: 'random',
@@ -145,7 +145,7 @@ describe('Modo Global - Validación Zod', () => {
   test('Request con topicNumber null se transforma a 0', () => {
     const result = safeParseGetFilteredQuestions({
       topicNumber: null,
-      positionType: 'auxiliar_administrativo',
+      positionType: 'auxiliar_administrativo_estado',
       numQuestions: 10,
     })
 
@@ -157,7 +157,7 @@ describe('Modo Global - Validación Zod', () => {
 
   test('Request sin topicNumber tiene default 0', () => {
     const result = safeParseGetFilteredQuestions({
-      positionType: 'auxiliar_administrativo',
+      positionType: 'auxiliar_administrativo_estado',
     })
 
     // topicNumber is required in schema (no default), so this should fail

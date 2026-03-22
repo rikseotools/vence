@@ -44,7 +44,7 @@ describe('GET /api/v2/test-config/articles', () => {
     })
 
     const request = createRequest(
-      '/api/v2/test-config/articles?lawShortName=CE&topicNumber=1&positionType=auxiliar_administrativo'
+      '/api/v2/test-config/articles?lawShortName=CE&topicNumber=1&positionType=auxiliar_administrativo_estado'
     )
     const response = await articlesGET(request)
     const data = await response.json()
@@ -56,7 +56,7 @@ describe('GET /api/v2/test-config/articles', () => {
 
   test('falta lawShortName devuelve 400', async () => {
     const request = createRequest(
-      '/api/v2/test-config/articles?positionType=auxiliar_administrativo'
+      '/api/v2/test-config/articles?positionType=auxiliar_administrativo_estado'
     )
     const response = await articlesGET(request)
     const data = await response.json()
@@ -84,7 +84,7 @@ describe('GET /api/v2/test-config/articles', () => {
     })
 
     const request = createRequest(
-      '/api/v2/test-config/articles?lawShortName=CE&positionType=auxiliar_administrativo'
+      '/api/v2/test-config/articles?lawShortName=CE&positionType=auxiliar_administrativo_estado'
     )
     const response = await articlesGET(request)
     const data = await response.json()
@@ -104,7 +104,7 @@ describe('GET /api/v2/test-config/articles', () => {
     })
 
     const request = createRequest(
-      '/api/v2/test-config/articles?lawShortName=CE&positionType=auxiliar_administrativo'
+      '/api/v2/test-config/articles?lawShortName=CE&positionType=auxiliar_administrativo_estado'
     )
     const response = await articlesGET(request)
     const data = await response.json()
@@ -127,7 +127,7 @@ describe('GET /api/v2/test-config/estimate', () => {
     })
 
     const request = createRequest(
-      '/api/v2/test-config/estimate?topicNumber=1&positionType=auxiliar_administrativo'
+      '/api/v2/test-config/estimate?topicNumber=1&positionType=auxiliar_administrativo_estado'
     )
     const response = await estimateGET(request)
     const data = await response.json()
@@ -147,7 +147,7 @@ describe('GET /api/v2/test-config/estimate', () => {
 
     const articlesByLaw = JSON.stringify({ CE: [14, 16] })
     const request = createRequest(
-      `/api/v2/test-config/estimate?topicNumber=1&positionType=auxiliar_administrativo&onlyOfficialQuestions=true&selectedLaws=CE&selectedArticlesByLaw=${encodeURIComponent(articlesByLaw)}`
+      `/api/v2/test-config/estimate?topicNumber=1&positionType=auxiliar_administrativo_estado&onlyOfficialQuestions=true&selectedLaws=CE&selectedArticlesByLaw=${encodeURIComponent(articlesByLaw)}`
     )
     const response = await estimateGET(request)
     const data = await response.json()
@@ -175,7 +175,7 @@ describe('GET /api/v2/test-config/estimate', () => {
     })
 
     const request = createRequest(
-      '/api/v2/test-config/estimate?topicNumber=999&positionType=auxiliar_administrativo'
+      '/api/v2/test-config/estimate?topicNumber=999&positionType=auxiliar_administrativo_estado'
     )
     const response = await estimateGET(request)
     const data = await response.json()
@@ -203,7 +203,7 @@ describe('GET /api/v2/test-config/essential-articles', () => {
     })
 
     const request = createRequest(
-      '/api/v2/test-config/essential-articles?topicNumber=1&positionType=auxiliar_administrativo'
+      '/api/v2/test-config/essential-articles?topicNumber=1&positionType=auxiliar_administrativo_estado'
     )
     const response = await essentialArticlesGET(request)
     const data = await response.json()
@@ -218,7 +218,7 @@ describe('GET /api/v2/test-config/essential-articles', () => {
 
   test('falta topicNumber devuelve 400', async () => {
     const request = createRequest(
-      '/api/v2/test-config/essential-articles?positionType=auxiliar_administrativo'
+      '/api/v2/test-config/essential-articles?positionType=auxiliar_administrativo_estado'
     )
     const response = await essentialArticlesGET(request)
     const data = await response.json()
@@ -246,7 +246,7 @@ describe('GET /api/v2/test-config/essential-articles', () => {
     })
 
     const request = createRequest(
-      '/api/v2/test-config/essential-articles?topicNumber=999&positionType=auxiliar_administrativo'
+      '/api/v2/test-config/essential-articles?topicNumber=999&positionType=auxiliar_administrativo_estado'
     )
     const response = await essentialArticlesGET(request)
     const data = await response.json()

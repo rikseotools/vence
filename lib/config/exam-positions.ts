@@ -15,7 +15,7 @@
  * Las preguntas oficiales se marcan con exam_position al importar.
  */
 export const EXAM_POSITION_MAP: Record<string, string[]> = {
-  'auxiliar_administrativo': [
+  'auxiliar_administrativo_estado': [
     'auxiliar administrativo del estado',
     'auxiliar administrativo',
     'auxiliar_administrativo',
@@ -58,7 +58,6 @@ export const HOT_ARTICLE_TARGET_MAP: Record<string, string[]> = {
   // Auxiliar Administrativo del Estado
   'auxiliar-administrativo-estado': ['auxiliar-administrativo-estado', 'auxiliar_administrativo_estado'],
   'auxiliar_administrativo_estado': ['auxiliar-administrativo-estado', 'auxiliar_administrativo_estado'],
-  'auxiliar_administrativo': ['auxiliar-administrativo-estado', 'auxiliar_administrativo_estado'],
   // Auxiliar Administrativo Comunidad de Madrid
   'auxiliar-administrativo-madrid': ['auxiliar_administrativo_madrid'],
   'auxiliar_administrativo_madrid': ['auxiliar_administrativo_madrid'],

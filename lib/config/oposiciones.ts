@@ -92,7 +92,7 @@ export const OPOSICIONES: Oposicion[] = [
   {
     id: 'auxiliar_administrativo_estado',
     slug: 'auxiliar-administrativo-estado',
-    positionType: 'auxiliar_administrativo',
+    positionType: 'auxiliar_administrativo_estado',
     name: 'Auxiliar Administrativo del Estado',
     shortName: 'Auxiliar Admin.',
     emoji: '👤',

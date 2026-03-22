@@ -86,7 +86,7 @@ describe('lib/api/test-config barrel exports', () => {
     test('safeParse funciona para getArticles', () => {
       const valid = testConfigModule.safeParseGetArticles({
         lawShortName: 'CE',
-        positionType: 'auxiliar_administrativo',
+        positionType: 'auxiliar_administrativo_estado',
       })
       expect(valid.success).toBe(true)
 
@@ -97,7 +97,7 @@ describe('lib/api/test-config barrel exports', () => {
     test('safeParse funciona para estimateQuestions', () => {
       const valid = testConfigModule.safeParseEstimateQuestions({
         topicNumber: 1,
-        positionType: 'auxiliar_administrativo',
+        positionType: 'auxiliar_administrativo_estado',
       })
       expect(valid.success).toBe(true)
     })
@@ -105,7 +105,7 @@ describe('lib/api/test-config barrel exports', () => {
     test('safeParse funciona para getEssentialArticles', () => {
       const valid = testConfigModule.safeParseGetEssentialArticles({
         topicNumber: 1,
-        positionType: 'auxiliar_administrativo',
+        positionType: 'auxiliar_administrativo_estado',
       })
       expect(valid.success).toBe(true)
     })

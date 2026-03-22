@@ -306,7 +306,7 @@ export default function LawTestPageWrapper({
       // 🚀 Construir request para API v2
       const apiRequest = {
         topicNumber: 0, // Sin filtro de tema (modo ley-only)
-        positionType: 'auxiliar_administrativo' as const,
+        positionType: 'auxiliar_administrativo_estado' as const,
         numQuestions: testConfig.numQuestions || 25,
         selectedLaws: [lawShortName],
         selectedArticlesByLaw,

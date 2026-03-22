@@ -17,10 +17,10 @@
 
 // Mapeo de exam_position - debe coincidir con lib/testFetchers.js
 const EXAM_POSITION_MAP = {
-  'auxiliar_administrativo': [
+  'auxiliar_administrativo_estado': [
     'auxiliar administrativo del estado',
     'auxiliar administrativo',
-    'auxiliar_administrativo',
+    'auxiliar_administrativo_estado',
     'auxiliar_administrativo_estado',
   ],
   'administrativo': [
@@ -86,9 +86,9 @@ describe('Filtrado de preguntas oficiales por oposición', () => {
 
   describe('EXAM_POSITION_MAP', () => {
     test('debe tener mapeo para auxiliar_administrativo', () => {
-      expect(EXAM_POSITION_MAP['auxiliar_administrativo']).toBeDefined()
-      expect(EXAM_POSITION_MAP['auxiliar_administrativo'].length).toBeGreaterThan(0)
-      expect(EXAM_POSITION_MAP['auxiliar_administrativo']).toContain('auxiliar_administrativo_estado')
+      expect(EXAM_POSITION_MAP['auxiliar_administrativo_estado']).toBeDefined()
+      expect(EXAM_POSITION_MAP['auxiliar_administrativo_estado'].length).toBeGreaterThan(0)
+      expect(EXAM_POSITION_MAP['auxiliar_administrativo_estado']).toContain('auxiliar_administrativo_estado')
     })
 
     test('debe tener mapeo para tramitacion_procesal', () => {
@@ -108,8 +108,8 @@ describe('Filtrado de preguntas oficiales por oposición', () => {
 
     test('NO debe tener valores de otras oposiciones mezclados', () => {
       // Auxiliar NO debe contener valores de tramitación
-      expect(EXAM_POSITION_MAP['auxiliar_administrativo']).not.toContain('tramitacion_procesal')
-      expect(EXAM_POSITION_MAP['auxiliar_administrativo']).not.toContain('auxilio_judicial')
+      expect(EXAM_POSITION_MAP['auxiliar_administrativo_estado']).not.toContain('tramitacion_procesal')
+      expect(EXAM_POSITION_MAP['auxiliar_administrativo_estado']).not.toContain('auxilio_judicial')
 
       // Tramitación NO debe contener valores de auxiliar
       expect(EXAM_POSITION_MAP['tramitacion_procesal']).not.toContain('auxiliar_administrativo_estado')
@@ -123,7 +123,7 @@ describe('Filtrado de preguntas oficiales por oposición', () => {
 
   describe('buildExamPositionFilter', () => {
     test('debe generar filtro correcto para auxiliar_administrativo (SIN NULL)', () => {
-      const filter = buildExamPositionFilter('auxiliar_administrativo')
+      const filter = buildExamPositionFilter('auxiliar_administrativo_estado')
       // NO debe incluir exam_position.is.null - preguntas sin categorizar no se muestran
       expect(filter).not.toContain('exam_position.is.null')
       expect(filter).toContain('auxiliar_administrativo_estado')
@@ -135,7 +135,7 @@ describe('Filtrado de preguntas oficiales por oposición', () => {
       // NO debe incluir exam_position.is.null
       expect(filter).not.toContain('exam_position.is.null')
       expect(filter).toContain('tramitacion_procesal')
-      expect(filter).not.toContain('auxiliar_administrativo')
+      expect(filter).not.toContain('auxiliar_administrativo_estado')
     })
 
     test('debe generar filtro correcto para auxilio_judicial (SIN NULL)', () => {
@@ -155,7 +155,7 @@ describe('Filtrado de preguntas oficiales por oposición', () => {
     const mockQuestions = createMockOfficialQuestions()
 
     test('auxiliar_administrativo solo ve sus preguntas (SIN legacy NULL)', () => {
-      const filtered = filterByExamPosition(mockQuestions, 'auxiliar_administrativo')
+      const filtered = filterByExamPosition(mockQuestions, 'auxiliar_administrativo_estado')
 
       // Debe incluir preguntas de auxiliar
       expect(filtered.some(q => q.id === 'q1')).toBe(true)
@@ -202,7 +202,7 @@ describe('Filtrado de preguntas oficiales por oposición', () => {
     })
 
     test('cada oposición solo ve sus preguntas propias (sin NULL)', () => {
-      const auxiliar = filterByExamPosition(mockQuestions, 'auxiliar_administrativo')
+      const auxiliar = filterByExamPosition(mockQuestions, 'auxiliar_administrativo_estado')
       const tramitacion = filterByExamPosition(mockQuestions, 'tramitacion_procesal')
       const auxilio = filterByExamPosition(mockQuestions, 'auxilio_judicial')
 
@@ -218,7 +218,7 @@ describe('Filtrado de preguntas oficiales por oposición', () => {
 
     test('preguntas con NULL no se muestran a ninguna oposición', () => {
       // Las preguntas q9 y q10 tienen exam_position: null
-      const auxiliar = filterByExamPosition(mockQuestions, 'auxiliar_administrativo')
+      const auxiliar = filterByExamPosition(mockQuestions, 'auxiliar_administrativo_estado')
       const tramitacion = filterByExamPosition(mockQuestions, 'tramitacion_procesal')
       const auxilio = filterByExamPosition(mockQuestions, 'auxilio_judicial')
 
@@ -241,7 +241,7 @@ describe('Filtrado de preguntas oficiales por oposición', () => {
         { id: 'legacy2', exam_position: null, is_official_exam: true },
       ]
 
-      const auxiliar = filterByExamPosition(mockQuestions, 'auxiliar_administrativo')
+      const auxiliar = filterByExamPosition(mockQuestions, 'auxiliar_administrativo_estado')
       const tramitacion = filterByExamPosition(mockQuestions, 'tramitacion_procesal')
       const auxilio = filterByExamPosition(mockQuestions, 'auxilio_judicial')
 
@@ -260,7 +260,7 @@ describe('Filtrado de preguntas oficiales por oposición', () => {
       const todas = [preguntaSinCategorizar]
 
       // No aparece en ningún filtro
-      expect(filterByExamPosition(todas, 'auxiliar_administrativo').length).toBe(0)
+      expect(filterByExamPosition(todas, 'auxiliar_administrativo_estado').length).toBe(0)
       expect(filterByExamPosition(todas, 'tramitacion_procesal').length).toBe(0)
       expect(filterByExamPosition(todas, 'auxilio_judicial').length).toBe(0)
     })
@@ -271,11 +271,11 @@ describe('Filtrado de preguntas oficiales por oposición', () => {
       const variantes = [
         { id: 'v1', exam_position: 'auxiliar administrativo del estado' },
         { id: 'v2', exam_position: 'auxiliar administrativo' },
-        { id: 'v3', exam_position: 'auxiliar_administrativo' },
+        { id: 'v3', exam_position: 'auxiliar_administrativo_estado' },
         { id: 'v4', exam_position: 'auxiliar_administrativo_estado' },
       ]
 
-      const filtered = filterByExamPosition(variantes, 'auxiliar_administrativo')
+      const filtered = filterByExamPosition(variantes, 'auxiliar_administrativo_estado')
       expect(filtered.length).toBe(4)
     })
 
@@ -296,7 +296,7 @@ describe('Integración: Verificar que los mapeos coinciden con el código real',
     // Este test asegura que si se modifica el mapeo en el código,
     // también se debe actualizar en los tests
     const expectedKeys = [
-      'auxiliar_administrativo',
+      'auxiliar_administrativo_estado',
       'administrativo',
       'tramitacion_procesal',
       'auxilio_judicial',

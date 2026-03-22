@@ -2,7 +2,7 @@
  * Tests para verificar que el positionType se pasa correctamente en tests multi-tema
  *
  * BUG ENCONTRADO: TestPageWrapper no pasaba positionType a fetchAleatorioMultiTema,
- * causando que siempre usara 'auxiliar_administrativo' por defecto.
+ * causando que siempre usara 'auxiliar_administrativo_estado' por defecto.
  *
  * CORREGIDO: 13/01/2026
  */
@@ -12,13 +12,13 @@
 // ============================================
 
 const VALID_POSITION_TYPES = [
-  'auxiliar_administrativo',
+  'auxiliar_administrativo_estado',
   'administrativo',
   'tramitacion_procesal'
 ]
 
 const OPOSICION_SLUG_TO_POSITION_TYPE = {
-  'auxiliar-administrativo-estado': 'auxiliar_administrativo',
+  'auxiliar-administrativo-estado': 'auxiliar_administrativo_estado',
   'administrativo-estado': 'administrativo',
   'tramitacion-procesal': 'tramitacion_procesal'
 }
@@ -62,26 +62,26 @@ describe('Position Type Validation', () => {
     const config = { positionType: explicitPositionType }
 
     // Simula la lógica de fetchAleatorioMultiTema
-    const usedPositionType = config?.positionType || 'auxiliar_administrativo'
+    const usedPositionType = config?.positionType || 'auxiliar_administrativo_estado'
 
     expect(usedPositionType).toBe('tramitacion_procesal')
-    expect(usedPositionType).not.toBe('auxiliar_administrativo')
+    expect(usedPositionType).not.toBe('auxiliar_administrativo_estado')
   })
 
   test('Default se usa solo cuando positionType es undefined', () => {
     const config = {} // Sin positionType
 
-    const usedPositionType = config?.positionType || 'auxiliar_administrativo'
+    const usedPositionType = config?.positionType || 'auxiliar_administrativo_estado'
 
-    expect(usedPositionType).toBe('auxiliar_administrativo')
+    expect(usedPositionType).toBe('auxiliar_administrativo_estado')
   })
 
   test('Default se usa cuando config es null', () => {
     const config = null
 
-    const usedPositionType = config?.positionType || 'auxiliar_administrativo'
+    const usedPositionType = config?.positionType || 'auxiliar_administrativo_estado'
 
-    expect(usedPositionType).toBe('auxiliar_administrativo')
+    expect(usedPositionType).toBe('auxiliar_administrativo_estado')
   })
 })
 
@@ -101,7 +101,7 @@ describe('Multi-Tema Config por Oposición', () => {
     const oposicion = 'auxiliar-administrativo-estado'
     const expectedPositionType = OPOSICION_SLUG_TO_POSITION_TYPE[oposicion]
 
-    expect(expectedPositionType).toBe('auxiliar_administrativo')
+    expect(expectedPositionType).toBe('auxiliar_administrativo_estado')
   })
 
   test('Administrativo debe usar administrativo', () => {
@@ -112,7 +112,7 @@ describe('Multi-Tema Config por Oposición', () => {
   })
 
   test.each([
-    ['auxiliar-administrativo-estado', 'auxiliar_administrativo'],
+    ['auxiliar-administrativo-estado', 'auxiliar_administrativo_estado'],
     ['administrativo-estado', 'administrativo'],
     ['tramitacion-procesal', 'tramitacion_procesal']
   ])('Oposición %s debe mapear a positionType %s', (oposicion, expectedType) => {
@@ -129,7 +129,7 @@ describe('TestPageWrapper - Simulación de configuración multi-tema', () => {
   function createMultiTemaConfig(testConfig, positionType) {
     return {
       ...testConfig,
-      positionType: positionType || 'auxiliar_administrativo'
+      positionType: positionType || 'auxiliar_administrativo_estado'
     }
   }
 
@@ -145,11 +145,11 @@ describe('TestPageWrapper - Simulación de configuración multi-tema', () => {
 
   test('Config multi-tema incluye positionType correcto para auxiliar-administrativo', () => {
     const testConfig = { numQuestions: 10 }
-    const positionType = 'auxiliar_administrativo'
+    const positionType = 'auxiliar_administrativo_estado'
 
     const multiTemaConfig = createMultiTemaConfig(testConfig, positionType)
 
-    expect(multiTemaConfig.positionType).toBe('auxiliar_administrativo')
+    expect(multiTemaConfig.positionType).toBe('auxiliar_administrativo_estado')
   })
 
   test('Config multi-tema incluye positionType correcto para administrativo', () => {
@@ -189,7 +189,7 @@ describe('TestPageWrapper - Simulación de configuración multi-tema', () => {
     const multiTemaConfig = createMultiTemaConfig(testConfig, positionType)
 
     // El bug era que siempre usaba auxiliar_administrativo
-    expect(multiTemaConfig.positionType).not.toBe('auxiliar_administrativo')
+    expect(multiTemaConfig.positionType).not.toBe('auxiliar_administrativo_estado')
     expect(multiTemaConfig.positionType).toBe('tramitacion_procesal')
   })
 })
@@ -377,8 +377,8 @@ describe('Flujo completo de test multi-tema', () => {
   test('Flujo para auxiliar-administrativo con temas [1, 2, 3]', () => {
     const result = simulateTestFlow('auxiliar-administrativo-estado', [1, 2, 3], 30)
 
-    expect(result.positionType).toBe('auxiliar_administrativo')
-    expect(result.apiRequest.positionType).toBe('auxiliar_administrativo')
+    expect(result.positionType).toBe('auxiliar_administrativo_estado')
+    expect(result.apiRequest.positionType).toBe('auxiliar_administrativo_estado')
     expect(result.apiRequest.multipleTopics).toEqual([1, 2, 3])
     expect(result.apiRequest.proportionalByTopic).toBe(true)
   })
@@ -393,7 +393,7 @@ describe('Flujo completo de test multi-tema', () => {
   })
 
   test.each([
-    ['auxiliar-administrativo-estado', [1, 5, 10], 30, 'auxiliar_administrativo'],
+    ['auxiliar-administrativo-estado', [1, 5, 10], 30, 'auxiliar_administrativo_estado'],
     ['administrativo-estado', [2, 4, 6], 25, 'administrativo'],
     ['tramitacion-procesal', [3, 15], 10, 'tramitacion_procesal'],
     ['tramitacion-procesal', [101, 105, 110], 15, 'tramitacion_procesal'],
@@ -421,7 +421,7 @@ describe('Prevención de Regresión - BUG positionType', () => {
     // La lógica CORRECTA (después del fix)
     const multiTemaConfig = {
       ...testConfig,
-      positionType: positionType || 'auxiliar_administrativo'
+      positionType: positionType || 'auxiliar_administrativo_estado'
     }
 
     expect(multiTemaConfig.positionType).toBe('tramitacion_procesal')
@@ -442,7 +442,7 @@ describe('Prevención de Regresión - BUG positionType', () => {
       // Lógica del fix: usar prop si existe, o testConfig, o default
       const finalPositionType = propPositionType ||
                                 testConfig?.positionType ||
-                                'auxiliar_administrativo'
+                                'auxiliar_administrativo_estado'
 
       expect(finalPositionType).toBe('tramitacion_procesal')
     })
@@ -454,20 +454,20 @@ describe('Prevención de Regresión - BUG positionType', () => {
 
     const apiBody = {
       topicNumber: 0,
-      positionType: config?.positionType || 'auxiliar_administrativo',
+      positionType: config?.positionType || 'auxiliar_administrativo_estado',
       multipleTopics: [3, 15],
       numQuestions: 10
     }
 
     expect(apiBody.positionType).toBe('tramitacion_procesal')
-    expect(apiBody.positionType).not.toBe('auxiliar_administrativo')
+    expect(apiBody.positionType).not.toBe('auxiliar_administrativo_estado')
   })
 
   test('Cada página test-personalizado pasa su positionType correcto', () => {
     // Simula lo que hacen las páginas test-personalizado
     const pages = [
       { path: '/tramitacion-procesal/test/test-personalizado', positionType: 'tramitacion_procesal' },
-      { path: '/auxiliar-administrativo-estado/test/test-personalizado', positionType: 'auxiliar_administrativo' },
+      { path: '/auxiliar-administrativo-estado/test/test-personalizado', positionType: 'auxiliar_administrativo_estado' },
       { path: '/administrativo-estado/test/test-personalizado', positionType: 'administrativo' }
     ]
 
@@ -479,7 +479,7 @@ describe('Prevención de Regresión - BUG positionType', () => {
       // Verificar que no es el default incorrecto para tramitación
       if (page.path.includes('tramitacion')) {
         expect(page.positionType).toBe('tramitacion_procesal')
-        expect(page.positionType).not.toBe('auxiliar_administrativo')
+        expect(page.positionType).not.toBe('auxiliar_administrativo_estado')
       }
     })
   })

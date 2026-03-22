@@ -37,7 +37,7 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
   hideEssentialArticles = false,
   officialQuestionsCount = 0,
   testMode = 'practica',
-  positionType = 'auxiliar_administrativo'
+  positionType = 'auxiliar_administrativo_estado'
 }) => {
   // Estados de configuración
   const [selectedQuestions, setSelectedQuestions] = useState(25);

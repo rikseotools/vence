@@ -10,10 +10,10 @@
 
 // Mapeo de exam_position (debe coincidir con el código real)
 const EXAM_POSITION_MAP = {
-  'auxiliar_administrativo': [
+  'auxiliar_administrativo_estado': [
     'auxiliar administrativo del estado',
     'auxiliar administrativo',
-    'auxiliar_administrativo',
+    'auxiliar_administrativo_estado',
     'auxiliar_administrativo_estado',
   ],
   'administrativo': [
@@ -130,7 +130,7 @@ describe('Integración: Simulación de filtrado exam_position', () => {
   })
 
   describe('Filtro para Auxiliar Administrativo', () => {
-    const auxiliarFilter = EXAM_POSITION_MAP['auxiliar_administrativo']
+    const auxiliarFilter = EXAM_POSITION_MAP['auxiliar_administrativo_estado']
 
     test('debe incluir solo preguntas de auxiliar (SIN legacy)', () => {
       const result = simulateSupabaseQuery(mockDatabaseQuestions, {
@@ -211,7 +211,7 @@ describe('Integración: Simulación de filtrado exam_position', () => {
       const result = simulateSupabaseQuery(mockDatabaseQuestions, {
         is_official_exam: true,
         is_active: true,
-        examPositionFilter: EXAM_POSITION_MAP['auxiliar_administrativo'],
+        examPositionFilter: EXAM_POSITION_MAP['auxiliar_administrativo_estado'],
       })
 
       expect(result.some(q => q.id === 'no-of-1')).toBe(false)
@@ -234,7 +234,7 @@ describe('Integración: Comparación entre oposiciones', () => {
     const auxiliarResult = simulateSupabaseQuery(mockDatabaseQuestions, {
       is_official_exam: true,
       is_active: true,
-      examPositionFilter: EXAM_POSITION_MAP['auxiliar_administrativo'],
+      examPositionFilter: EXAM_POSITION_MAP['auxiliar_administrativo_estado'],
     })
 
     const tramitacionResult = simulateSupabaseQuery(mockDatabaseQuestions, {
@@ -270,7 +270,7 @@ describe('Integración: Comparación entre oposiciones', () => {
     const auxiliarResult = simulateSupabaseQuery(mockDatabaseQuestions, {
       is_official_exam: true,
       is_active: true,
-      examPositionFilter: EXAM_POSITION_MAP['auxiliar_administrativo'],
+      examPositionFilter: EXAM_POSITION_MAP['auxiliar_administrativo_estado'],
     })
 
     const tramitacionResult = simulateSupabaseQuery(mockDatabaseQuestions, {
@@ -306,7 +306,7 @@ describe('Integración: Formato de filtro Supabase', () => {
   }
 
   test('genera filtro correcto para auxiliar_administrativo (SIN NULL)', () => {
-    const filter = buildSupabaseInFilter('auxiliar_administrativo')
+    const filter = buildSupabaseInFilter('auxiliar_administrativo_estado')
 
     // NO debe incluir exam_position.is.null
     expect(filter).not.toContain('exam_position.is.null')

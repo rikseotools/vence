@@ -300,7 +300,7 @@ export default function TestPageWrapper({
         // 🎲 MANEJAR TEST ALEATORIO MULTI-TEMA
         const multiTemaConfig = {
           ...testConfig,
-          positionType: positionType || 'auxiliar_administrativo'
+          positionType: positionType || 'auxiliar_administrativo_estado'
         }
         console.log('🎲 Cargando test aleatorio multi-tema con parámetros:', {
           themes,
@@ -326,7 +326,7 @@ export default function TestPageWrapper({
         // Para otros tipos de test, usar el fetcher normal
         let finalTestConfig: any = {
           ...testConfig,
-          positionType: positionType || 'auxiliar_administrativo'
+          positionType: positionType || 'auxiliar_administrativo_estado'
         }
 
         // 🎯 PARA TESTS PERSONALIZADOS: Extraer filtros de URL y agregarlos al config
@@ -366,7 +366,7 @@ export default function TestPageWrapper({
             selectedLaws,
             selectedArticlesByLaw,
             selectedSectionFilters, // 📚 FILTRO DE TÍTULOS
-            positionType: positionType || 'auxiliar_administrativo'
+            positionType: positionType || 'auxiliar_administrativo_estado'
           }
 
           if (selectedLaws.length > 0) {

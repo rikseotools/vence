@@ -245,7 +245,7 @@ export async function fetchQuestionsByLaw(lawShortName: string, searchParams: Se
     if (onlyOfficial) {
       baseQuery = baseQuery.eq('is_official_exam', true)
       // Añadir filtro por exam_position para evitar preguntas de otras oposiciones
-      const positionType = config?.positionType || 'auxiliar_administrativo'
+      const positionType = config?.positionType || 'auxiliar_administrativo_estado'
       const examPositionFilter = buildExamPositionFilter(positionType)
       if (examPositionFilter) {
         baseQuery = baseQuery.or(examPositionFilter)

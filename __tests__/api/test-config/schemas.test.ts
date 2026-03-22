@@ -21,7 +21,7 @@ describe('getArticlesRequestSchema', () => {
     const result = getArticlesRequestSchema.safeParse({
       lawShortName: 'CE',
       topicNumber: 1,
-      positionType: 'auxiliar_administrativo',
+      positionType: 'auxiliar_administrativo_estado',
     })
     expect(result.success).toBe(true)
     if (result.success) {
@@ -35,7 +35,7 @@ describe('getArticlesRequestSchema', () => {
     const result = getArticlesRequestSchema.safeParse({
       lawShortName: 'CE',
       topicNumber: null,
-      positionType: 'auxiliar_administrativo',
+      positionType: 'auxiliar_administrativo_estado',
     })
     expect(result.success).toBe(true)
     if (result.success) {
@@ -46,7 +46,7 @@ describe('getArticlesRequestSchema', () => {
   test('includeOfficialCount default es false', () => {
     const result = getArticlesRequestSchema.safeParse({
       lawShortName: 'CE',
-      positionType: 'auxiliar_administrativo',
+      positionType: 'auxiliar_administrativo_estado',
     })
     expect(result.success).toBe(true)
     if (result.success) {
@@ -57,7 +57,7 @@ describe('getArticlesRequestSchema', () => {
   test('rechaza lawShortName vacio', () => {
     const result = getArticlesRequestSchema.safeParse({
       lawShortName: '',
-      positionType: 'auxiliar_administrativo',
+      positionType: 'auxiliar_administrativo_estado',
     })
     expect(result.success).toBe(false)
   })
@@ -96,7 +96,7 @@ describe('estimateQuestionsRequestSchema', () => {
   test('valida request minimo', () => {
     const result = estimateQuestionsRequestSchema.safeParse({
       topicNumber: 1,
-      positionType: 'auxiliar_administrativo',
+      positionType: 'auxiliar_administrativo_estado',
     })
     expect(result.success).toBe(true)
     if (result.success) {
@@ -128,7 +128,7 @@ describe('estimateQuestionsRequestSchema', () => {
   test('rechaza difficultyMode invalido', () => {
     const result = estimateQuestionsRequestSchema.safeParse({
       topicNumber: 1,
-      positionType: 'auxiliar_administrativo',
+      positionType: 'auxiliar_administrativo_estado',
       difficultyMode: 'impossible',
     })
     expect(result.success).toBe(false)
@@ -150,14 +150,14 @@ describe('getEssentialArticlesRequestSchema', () => {
   test('valida request correcto', () => {
     const result = getEssentialArticlesRequestSchema.safeParse({
       topicNumber: 1,
-      positionType: 'auxiliar_administrativo',
+      positionType: 'auxiliar_administrativo_estado',
     })
     expect(result.success).toBe(true)
   })
 
   test('rechaza sin topicNumber', () => {
     const result = getEssentialArticlesRequestSchema.safeParse({
-      positionType: 'auxiliar_administrativo',
+      positionType: 'auxiliar_administrativo_estado',
     })
     expect(result.success).toBe(false)
   })
@@ -183,7 +183,7 @@ describe('helpers safeParse*', () => {
   test('safeParseGetArticles valida correctamente', () => {
     const valid = safeParseGetArticles({
       lawShortName: 'CE',
-      positionType: 'auxiliar_administrativo',
+      positionType: 'auxiliar_administrativo_estado',
     })
     expect(valid.success).toBe(true)
 
@@ -194,7 +194,7 @@ describe('helpers safeParse*', () => {
   test('safeParseEstimateQuestions valida correctamente', () => {
     const valid = safeParseEstimateQuestions({
       topicNumber: 1,
-      positionType: 'auxiliar_administrativo',
+      positionType: 'auxiliar_administrativo_estado',
     })
     expect(valid.success).toBe(true)
 
@@ -205,7 +205,7 @@ describe('helpers safeParse*', () => {
   test('safeParseGetEssentialArticles valida correctamente', () => {
     const valid = safeParseGetEssentialArticles({
       topicNumber: 1,
-      positionType: 'auxiliar_administrativo',
+      positionType: 'auxiliar_administrativo_estado',
     })
     expect(valid.success).toBe(true)
 

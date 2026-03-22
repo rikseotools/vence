@@ -39,13 +39,13 @@ describe('Weak Articles Schema', () => {
         maxSuccessRate: 70,
         minAttempts: 3,
         maxPerTopic: 10,
-        positionType: 'auxiliar_administrativo'
+        positionType: 'auxiliar_administrativo_estado'
       })
 
       expect(result.maxSuccessRate).toBe(70)
       expect(result.minAttempts).toBe(3)
       expect(result.maxPerTopic).toBe(10)
-      expect(result.positionType).toBe('auxiliar_administrativo')
+      expect(result.positionType).toBe('auxiliar_administrativo_estado')
     })
 
     test('debe rechazar userId inválido', () => {

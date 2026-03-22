@@ -14,8 +14,8 @@ jest.mock('../../../db/client', () => ({
 // Mock de exam-positions
 jest.mock('../../../lib/config/exam-positions', () => ({
   getValidExamPositions: jest.fn((positionType: string) => {
-    if (positionType === 'auxiliar_administrativo') {
-      return ['auxiliar administrativo del estado', 'auxiliar_administrativo']
+    if (positionType === 'auxiliar_administrativo_estado') {
+      return ['auxiliar administrativo del estado', 'auxiliar_administrativo_estado']
     }
     if (positionType === 'tramitacion_procesal') {
       return ['tramitacion_procesal']
@@ -92,7 +92,7 @@ describe('getArticlesForLaw', () => {
     const result = await getArticlesForLaw({
       lawShortName: 'CE',
       topicNumber: 1,
-      positionType: 'auxiliar_administrativo',
+      positionType: 'auxiliar_administrativo_estado',
       includeOfficialCount: false,
     })
 
@@ -122,7 +122,7 @@ describe('getArticlesForLaw', () => {
     const result = await getArticlesForLaw({
       lawShortName: 'LPRL',
       topicNumber: 15,
-      positionType: 'auxiliar_administrativo',
+      positionType: 'auxiliar_administrativo_estado',
       includeOfficialCount: false,
     })
 
@@ -147,7 +147,7 @@ describe('getArticlesForLaw', () => {
     const result = await getArticlesForLaw({
       lawShortName: 'INEXISTENTE',
       topicNumber: 1,
-      positionType: 'auxiliar_administrativo',
+      positionType: 'auxiliar_administrativo_estado',
       includeOfficialCount: false,
     })
 
@@ -169,7 +169,7 @@ describe('getArticlesForLaw', () => {
     const result = await getArticlesForLaw({
       lawShortName: 'CE',
       topicNumber: null,
-      positionType: 'auxiliar_administrativo',
+      positionType: 'auxiliar_administrativo_estado',
       includeOfficialCount: false,
     })
 
@@ -195,7 +195,7 @@ describe('getArticlesForLaw', () => {
     const result = await getArticlesForLaw({
       lawShortName: 'CE',
       topicNumber: null,
-      positionType: 'auxiliar_administrativo',
+      positionType: 'auxiliar_administrativo_estado',
       includeOfficialCount: true,
     })
 
@@ -216,7 +216,7 @@ describe('getArticlesForLaw', () => {
     const result = await getArticlesForLaw({
       lawShortName: 'CE',
       topicNumber: 999,
-      positionType: 'auxiliar_administrativo',
+      positionType: 'auxiliar_administrativo_estado',
       includeOfficialCount: false,
     })
 
@@ -232,7 +232,7 @@ describe('getArticlesForLaw', () => {
     const result = await getArticlesForLaw({
       lawShortName: 'CE',
       topicNumber: 1,
-      positionType: 'auxiliar_administrativo',
+      positionType: 'auxiliar_administrativo_estado',
       includeOfficialCount: false,
     })
 
@@ -249,7 +249,7 @@ describe('estimateAvailableQuestions', () => {
   test('sin topicNumber devuelve error', async () => {
     const result = await estimateAvailableQuestions({
       topicNumber: null,
-      positionType: 'auxiliar_administrativo',
+      positionType: 'auxiliar_administrativo_estado',
       selectedLaws: [],
       selectedArticlesByLaw: {},
       selectedSectionFilters: [],
@@ -272,7 +272,7 @@ describe('estimateAvailableQuestions', () => {
 
     const result = await estimateAvailableQuestions({
       topicNumber: 1,
-      positionType: 'auxiliar_administrativo',
+      positionType: 'auxiliar_administrativo_estado',
       selectedLaws: [],
       selectedArticlesByLaw: {},
       selectedSectionFilters: [],
@@ -299,7 +299,7 @@ describe('estimateAvailableQuestions', () => {
 
     const result = await estimateAvailableQuestions({
       topicNumber: 1,
-      positionType: 'auxiliar_administrativo',
+      positionType: 'auxiliar_administrativo_estado',
       selectedLaws: ['CE'],
       selectedArticlesByLaw: {},
       selectedSectionFilters: [],
@@ -323,7 +323,7 @@ describe('estimateAvailableQuestions', () => {
 
     const result = await estimateAvailableQuestions({
       topicNumber: 1,
-      positionType: 'auxiliar_administrativo',
+      positionType: 'auxiliar_administrativo_estado',
       selectedLaws: [],
       selectedArticlesByLaw: {},
       selectedSectionFilters: [],
@@ -346,7 +346,7 @@ describe('estimateAvailableQuestions', () => {
 
     const result = await estimateAvailableQuestions({
       topicNumber: 1,
-      positionType: 'auxiliar_administrativo',
+      positionType: 'auxiliar_administrativo_estado',
       selectedLaws: [],
       selectedArticlesByLaw: { CE: [14, 16] },
       selectedSectionFilters: [],
@@ -369,7 +369,7 @@ describe('estimateAvailableQuestions', () => {
 
     const result = await estimateAvailableQuestions({
       topicNumber: 1,
-      positionType: 'auxiliar_administrativo',
+      positionType: 'auxiliar_administrativo_estado',
       selectedLaws: [],
       selectedArticlesByLaw: {},
       selectedSectionFilters: [],
@@ -390,7 +390,7 @@ describe('estimateAvailableQuestions', () => {
 
     const result = await estimateAvailableQuestions({
       topicNumber: 999,
-      positionType: 'auxiliar_administrativo',
+      positionType: 'auxiliar_administrativo_estado',
       selectedLaws: [],
       selectedArticlesByLaw: {},
       selectedSectionFilters: [],
@@ -415,7 +415,7 @@ describe('estimateAvailableQuestions', () => {
 
     const result = await estimateAvailableQuestions({
       topicNumber: 1,
-      positionType: 'auxiliar_administrativo',
+      positionType: 'auxiliar_administrativo_estado',
       selectedLaws: [],
       selectedArticlesByLaw: {},
       selectedSectionFilters: [],
@@ -438,7 +438,7 @@ describe('estimateAvailableQuestions', () => {
 
     const result = await estimateAvailableQuestions({
       topicNumber: 1,
-      positionType: 'auxiliar_administrativo',
+      positionType: 'auxiliar_administrativo_estado',
       selectedLaws: [],
       selectedArticlesByLaw: {},
       selectedSectionFilters: [
@@ -460,7 +460,7 @@ describe('estimateAvailableQuestions', () => {
 
     const result = await estimateAvailableQuestions({
       topicNumber: 1,
-      positionType: 'auxiliar_administrativo',
+      positionType: 'auxiliar_administrativo_estado',
       selectedLaws: [],
       selectedArticlesByLaw: {},
       selectedSectionFilters: [],
@@ -500,7 +500,7 @@ describe('getEssentialArticles', () => {
 
     const result = await getEssentialArticles({
       topicNumber: 1,
-      positionType: 'auxiliar_administrativo',
+      positionType: 'auxiliar_administrativo_estado',
     })
 
     expect(result.success).toBe(true)
@@ -522,7 +522,7 @@ describe('getEssentialArticles', () => {
 
     const result = await getEssentialArticles({
       topicNumber: 1,
-      positionType: 'auxiliar_administrativo',
+      positionType: 'auxiliar_administrativo_estado',
     })
 
     expect(result.success).toBe(true)
@@ -539,7 +539,7 @@ describe('getEssentialArticles', () => {
 
     const result = await getEssentialArticles({
       topicNumber: 999,
-      positionType: 'auxiliar_administrativo',
+      positionType: 'auxiliar_administrativo_estado',
     })
 
     expect(result.success).toBe(false)
@@ -553,7 +553,7 @@ describe('getEssentialArticles', () => {
 
     const result = await getEssentialArticles({
       topicNumber: 1,
-      positionType: 'auxiliar_administrativo',
+      positionType: 'auxiliar_administrativo_estado',
     })
 
     expect(result.success).toBe(false)
@@ -583,7 +583,7 @@ describe('getEssentialArticles', () => {
 
     const result = await getEssentialArticles({
       topicNumber: 1,
-      positionType: 'auxiliar_administrativo',
+      positionType: 'auxiliar_administrativo_estado',
     })
 
     expect(result.success).toBe(true)

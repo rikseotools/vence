@@ -93,7 +93,7 @@ export default function TopicContentView({ content }: TopicContentViewProps) {
   const [expandedLaws, setExpandedLaws] = useState<Set<string>>(new Set())
   const [showPrintModal, setShowPrintModal] = useState(false)
   const { user, userProfile } = useAuth() as { user: any; userProfile: any }
-  const { getWeakArticles } = useTopicUnlock({ positionType: 'auxiliar_administrativo' }) as {
+  const { getWeakArticles } = useTopicUnlock({ positionType: 'auxiliar_administrativo_estado' }) as {
     getWeakArticles: (topicNumber: number) => WeakArticleInfo[]
   }
 

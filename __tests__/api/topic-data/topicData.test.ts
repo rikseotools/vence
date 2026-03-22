@@ -529,7 +529,7 @@ describe('Topic Data - Validadores', () => {
 describe('Topic Data - Helpers', () => {
   describe('OPOSICION_TO_POSITION_TYPE', () => {
     test('debe mapear auxiliar correctamente', () => {
-      expect(OPOSICION_TO_POSITION_TYPE['auxiliar-administrativo-estado']).toBe('auxiliar_administrativo')
+      expect(OPOSICION_TO_POSITION_TYPE['auxiliar-administrativo-estado']).toBe('auxiliar_administrativo_estado')
     })
 
     test('debe mapear administrativo correctamente', () => {

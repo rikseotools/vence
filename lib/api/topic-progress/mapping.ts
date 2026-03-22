@@ -38,7 +38,7 @@ const TOPIC_SCOPE_TTL = 30 * 24 * 60 * 60 * 1000 // 30 días
  *
  * Resultado: { "lawId_articleNumber": topicNumber, ... }
  *
- * @param positionType - Tipo de oposición (ej: 'auxiliar_administrativo')
+ * @param positionType - Tipo de oposición (ej: 'auxiliar_administrativo_estado')
  * @returns Mapeo cacheado (30 días)
  */
 export async function getArticleTopicMapping(

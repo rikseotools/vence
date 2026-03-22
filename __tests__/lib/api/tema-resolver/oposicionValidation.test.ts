@@ -33,7 +33,7 @@ const ALL_OPOSICION_IDS = [
 
 // Simula OPOSICION_TO_POSITION_TYPE
 const OPOSICION_TO_POSITION_TYPE: Record<string, string> = {
-  'auxiliar_administrativo_estado': 'auxiliar_administrativo',
+  'auxiliar_administrativo_estado': 'auxiliar_administrativo_estado',
   'administrativo_estado': 'administrativo',
   'tramitacion_procesal': 'tramitacion_procesal',
 }
@@ -151,21 +151,21 @@ describe('resolveTemaByArticle — positionType never undefined', () => {
   }
 
   it('oposicionId válido → positionType correcto', () => {
-    expect(resolvePositionType('auxiliar_administrativo_estado')).toBe('auxiliar_administrativo')
+    expect(resolvePositionType('auxiliar_administrativo_estado')).toBe('auxiliar_administrativo_estado')
     expect(resolvePositionType('tramitacion_procesal')).toBe('tramitacion_procesal')
   })
 
   it('oposicionId como UUID desconocido → fallback a auxiliar_administrativo', () => {
     expect(resolvePositionType('a1b2c3d4-e5f6-7890-abcd-ef1234567890'))
-      .toBe('auxiliar_administrativo')
+      .toBe('auxiliar_administrativo_estado')
   })
 
   it('oposicionId vacío → auxiliar_administrativo', () => {
-    expect(resolvePositionType('')).toBe('auxiliar_administrativo')
+    expect(resolvePositionType('')).toBe('auxiliar_administrativo_estado')
   })
 
   it('oposicionId undefined → auxiliar_administrativo', () => {
-    expect(resolvePositionType(undefined)).toBe('auxiliar_administrativo')
+    expect(resolvePositionType(undefined)).toBe('auxiliar_administrativo_estado')
   })
 
   it('NUNCA devuelve undefined', () => {
@@ -271,7 +271,7 @@ describe('Bug scenario: UUID custom en oposicionId', () => {
     const positionType = OPOSICION_TO_POSITION_TYPE[oposicionIdAfterFix]
       || OPOSICION_TO_POSITION_TYPE['auxiliar_administrativo_estado']
 
-    expect(positionType).toBe('auxiliar_administrativo')
+    expect(positionType).toBe('auxiliar_administrativo_estado')
     expect(positionType).toBeDefined()
   })
 
@@ -283,6 +283,6 @@ describe('Bug scenario: UUID custom en oposicionId', () => {
     const positionType = OPOSICION_TO_POSITION_TYPE[unexpectedValue]
       || OPOSICION_TO_POSITION_TYPE['auxiliar_administrativo_estado']
 
-    expect(positionType).toBe('auxiliar_administrativo')
+    expect(positionType).toBe('auxiliar_administrativo_estado')
   })
 })

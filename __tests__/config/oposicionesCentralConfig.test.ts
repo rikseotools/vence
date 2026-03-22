@@ -32,7 +32,7 @@ const KNOWN_SLUGS = [
 ]
 
 const KNOWN_POSITION_TYPES = [
-  'auxiliar_administrativo',
+  'auxiliar_administrativo_estado',
   'administrativo',
   'tramitacion_procesal',
   'auxilio_judicial',
@@ -66,7 +66,7 @@ describe('Config central de oposiciones', () => {
   })
 
   test('SLUG_TO_POSITION_TYPE mapea correctamente cada slug', () => {
-    expect(SLUG_TO_POSITION_TYPE['auxiliar-administrativo-estado']).toBe('auxiliar_administrativo')
+    expect(SLUG_TO_POSITION_TYPE['auxiliar-administrativo-estado']).toBe('auxiliar_administrativo_estado')
     expect(SLUG_TO_POSITION_TYPE['administrativo-estado']).toBe('administrativo')
     expect(SLUG_TO_POSITION_TYPE['tramitacion-procesal']).toBe('tramitacion_procesal')
     expect(SLUG_TO_POSITION_TYPE['auxilio-judicial']).toBe('auxilio_judicial')
@@ -126,7 +126,7 @@ describe('Config central de oposiciones', () => {
   test('getOposicionBySlug() devuelve datos correctos', () => {
     const aux = getOposicionBySlug('auxiliar-administrativo-estado')
     expect(aux).toBeDefined()
-    expect(aux!.positionType).toBe('auxiliar_administrativo')
+    expect(aux!.positionType).toBe('auxiliar_administrativo_estado')
     expect(aux!.name).toBe('Auxiliar Administrativo del Estado')
 
     const tp = getOposicionBySlug('tramitacion-procesal')

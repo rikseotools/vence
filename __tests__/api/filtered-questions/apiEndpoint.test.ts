@@ -158,7 +158,7 @@ describe('API Request Validation', () => {
   test('Request válido debe tener topicNumber', () => {
     const validRequest = {
       topicNumber: 1,
-      positionType: 'auxiliar_administrativo',
+      positionType: 'auxiliar_administrativo_estado',
       numQuestions: 10
     }
 
@@ -167,10 +167,10 @@ describe('API Request Validation', () => {
   })
 
   test('positionType debe ser uno de los valores permitidos', () => {
-    const validTypes = ['auxiliar_administrativo', 'administrativo', 'administrativo_estado']
+    const validTypes = ['auxiliar_administrativo_estado', 'administrativo', 'administrativo_estado']
 
     validTypes.forEach(type => {
-      expect(['auxiliar_administrativo', 'administrativo', 'administrativo_estado']).toContain(type)
+      expect(['auxiliar_administrativo_estado', 'administrativo', 'administrativo_estado']).toContain(type)
     })
   })
 
@@ -597,7 +597,7 @@ describe('API Law-Only Mode (sin tema)', () => {
     // Este es el caso de las notificaciones que envían /test/rapido?law=lpac
     const request = {
       topicNumber: 0, // Sin tema
-      positionType: 'auxiliar_administrativo',
+      positionType: 'auxiliar_administrativo_estado',
       numQuestions: 10,
       selectedLaws: ['LPAC'], // Pero con ley
       selectedArticlesByLaw: {},
@@ -616,7 +616,7 @@ describe('API Law-Only Mode (sin tema)', () => {
     // Caso de notificación de artículos problemáticos
     const request = {
       topicNumber: 0,
-      positionType: 'auxiliar_administrativo',
+      positionType: 'auxiliar_administrativo_estado',
       numQuestions: 10,
       selectedLaws: ['CE'],
       selectedArticlesByLaw: { 'CE': [14, 15, 16] },
@@ -635,7 +635,7 @@ describe('API Law-Only Mode (sin tema)', () => {
     // que busca preguntas de todos los temas del positionType
     const request = {
       topicNumber: 0,
-      positionType: 'auxiliar_administrativo',
+      positionType: 'auxiliar_administrativo_estado',
       numQuestions: 10,
       selectedLaws: [], // Sin leyes
       selectedArticlesByLaw: {},
@@ -662,7 +662,7 @@ describe('API Law-Only Mode (sin tema)', () => {
     // El fetcher debe transformar esto en:
     const apiRequest = {
       topicNumber: 0, // No hay tema en la URL
-      positionType: 'auxiliar_administrativo',
+      positionType: 'auxiliar_administrativo_estado',
       numQuestions: parseInt(notificationParams.n),
       selectedLaws: ['LPAC'], // mapLawSlugToShortName('lpac') → 'LPAC'
       selectedArticlesByLaw: { 'LPAC': [1, 2, 3] },
@@ -687,7 +687,7 @@ describe('API Law-Only Mode (sin tema)', () => {
 
     const apiRequest = {
       topicNumber: 0,
-      positionType: 'auxiliar_administrativo',
+      positionType: 'auxiliar_administrativo_estado',
       numQuestions: parseInt(notificationParams.n),
       selectedLaws: ['CE'],
       selectedArticlesByLaw: {},
@@ -711,7 +711,7 @@ describe('API Critical Parameter Validation', () => {
       topicNumber: 0,
       multipleTopics: [],
       selectedLaws: [],
-      positionType: 'auxiliar_administrativo'
+      positionType: 'auxiliar_administrativo_estado'
     }
 
     const topicsToQuery = request.multipleTopics.length > 0
@@ -729,7 +729,7 @@ describe('API Critical Parameter Validation', () => {
       topicNumber: 0,
       multipleTopics: [1, 2, 3],
       selectedLaws: [],
-      positionType: 'auxiliar_administrativo'
+      positionType: 'auxiliar_administrativo_estado'
     }
 
     const topicsToQuery = request.multipleTopics.length > 0
@@ -745,7 +745,7 @@ describe('API Critical Parameter Validation', () => {
       topicNumber: 5,
       multipleTopics: [],
       selectedLaws: [],
-      positionType: 'auxiliar_administrativo'
+      positionType: 'auxiliar_administrativo_estado'
     }
 
     const topicsToQuery = request.multipleTopics.length > 0
@@ -763,7 +763,7 @@ describe('API Real Request Simulation', () => {
   test('Request típico de test personalizado con filtro de sección', () => {
     const request = {
       topicNumber: 1,
-      positionType: 'auxiliar_administrativo',
+      positionType: 'auxiliar_administrativo_estado',
       numQuestions: 10,
       selectedLaws: ['CE'],
       selectedSectionFilters: [{
@@ -810,7 +810,7 @@ describe('API Real Request Simulation', () => {
   test('Request sin filtros devuelve todas las preguntas del tema', () => {
     const request = {
       topicNumber: 1,
-      positionType: 'auxiliar_administrativo',
+      positionType: 'auxiliar_administrativo_estado',
       numQuestions: 50,
       selectedLaws: [],
       selectedSectionFilters: [],

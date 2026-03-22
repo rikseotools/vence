@@ -8,6 +8,7 @@ import { eq, and, or, ilike, inArray, sql } from 'drizzle-orm'
 import { logger } from '../../shared/logger'
 import { getChatCache, CACHE_KEYS, CACHE_TTL } from '../../shared/cache'
 import type { ArticleMatch, SearchOptions } from '../../core/types'
+import { getOposicion } from '@/lib/config/oposiciones'
 
 // Cliente Supabase para RPC functions (match_articles usa pgvector)
 const getSupabase = () => createClient(
@@ -1004,7 +1005,6 @@ export function formatHotArticlesResponse(
   const { lawName, userName } = options
 
   // Nombre legible de las oposiciones (usa config central)
-  const { getOposicion } = await import('@/lib/config/oposiciones')
   const getOposicionName = (id: string) => getOposicion(id)?.name || id.replace(/_/g, ' ')
 
   const userOposicionName = getOposicionName(userOposicion)

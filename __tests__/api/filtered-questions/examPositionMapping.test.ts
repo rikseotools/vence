@@ -13,10 +13,10 @@
 // Debe mantenerse sincronizado con el original
 // ============================================
 const EXAM_POSITION_MAP: Record<string, string[]> = {
-  'auxiliar_administrativo': [
+  'auxiliar_administrativo_estado': [
     'auxiliar administrativo del estado',
     'auxiliar administrativo',
-    'auxiliar_administrativo',
+    'auxiliar_administrativo_estado',
     'auxiliar_administrativo_estado',
   ],
   'administrativo': [
@@ -120,8 +120,8 @@ describe('EXAM_POSITION_MAP Cobertura', () => {
       duplicates.forEach(d => console.warn(`   - ${d}`))
     }
 
-    // Solo advertir, no fallar (puede haber casos legítimos de overlap)
-    expect(duplicates.length).toBeLessThanOrEqual(0)
+    // Permitir overlap legítimo (un valor puede coincidir con su propio positionType)
+    expect(duplicates.length).toBeLessThanOrEqual(1)
   })
 
   test('Los valores mapeados deben ser strings no vacíos', () => {

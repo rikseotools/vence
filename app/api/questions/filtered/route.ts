@@ -113,7 +113,7 @@ async function _GET(request: NextRequest) {
 
     // Parsear parámetros de la URL
     const topicNumber = parseInt(searchParams.get('topicNumber') || '0')
-    const positionType = searchParams.get('positionType') || 'auxiliar_administrativo'
+    const positionType = searchParams.get('positionType') || 'auxiliar_administrativo_estado'
     const onlyOfficialQuestions = searchParams.get('onlyOfficialQuestions') === 'true'
 
     let selectedLaws: string[] = []
