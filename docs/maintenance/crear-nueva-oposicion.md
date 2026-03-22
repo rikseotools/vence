@@ -130,6 +130,33 @@ VALUES
 - `epigrafe`: texto EXACTO del programa oficial (BOE/diario autonomico). Es la fuente de verdad para crear el topic_scope
 - `description`: resumen corto para mostrar al usuario (puede ser mas breve que el epigrafe)
 
+### 2b.1 Numeracion de temas: LEER LA CONVOCATORIA REAL
+
+**CRITICO:** Cada oposicion tiene su propia estructura de numeracion en el programa oficial. NO asumir que todas son iguales.
+
+Ejemplos reales de como numeran distintas convocatorias:
+
+| Oposicion | Numeracion en el programa oficial |
+|-----------|-----------------------------------|
+| Auxiliar Estado (BOE) | Secuencial por bloques: Bloque I temas 1-16, Bloque II temas 101-112 |
+| Administrativo Estado (BOE) | Reinicia en cada bloque: Bloque I 1-11, Bloque II 1-4, Bloque III 1-7... |
+| Tramitacion Procesal (BOE) | Secuencial: temas 1-37 |
+| Madrid (BOCM) | Secuencial: temas 1-21 |
+| Aragon (BOA) | Parte comun 1-25 + Parte especifica E1-E5 |
+| Asturias (BOPA) | Temas 1-20 + Ofimatica O1-O5 |
+
+**Proceso para determinar el `topic_number` correcto:**
+
+1. Leer la convocatoria REAL (PDF del boletin oficial)
+2. Anotar como numera cada tema y cada bloque
+3. Decidir como mapear a nuestro `topic_number`:
+   - Si el programa usa numeracion secuencial (1-37) → usar esa directamente
+   - Si reinicia por bloque (Bloque II tema 1) → usar prefijo de bloque (201, 301...)
+   - Si tiene partes separadas (comun + especifica) → usar rangos distintos
+4. **Documentar el mapeo** en `lib/config/oposiciones.ts` para que quede claro
+
+**El `topic_number` en BD debe coincidir con lo que usa `oposiciones.ts` en blocks.themes[].id.** Si hay duda, consultar primero la config existente de oposiciones similares.
+
 ### 2c. Insertar convocatoria con enlaces oficiales
 
 ```sql
