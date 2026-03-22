@@ -42,7 +42,7 @@ const OPOSICIONES_EXTRA: OposicionPageData[] = [
       'Nacionalidad espanola o UE',
       'Tener 16 anos y no exceder edad jubilacion',
     ],
-    boeUrl: 'https://www.boe.es/diario_boe/txt.php?id=BOE-A-2025-26261',
+    boeUrl: 'https://www.boe.es/diario_boe/txt.php?id=BOE-A-2025-26262',
   },
   {
     id: 'administrativo_estado',
