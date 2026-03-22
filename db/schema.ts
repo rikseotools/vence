@@ -44,6 +44,7 @@ export const topics = pgTable("topics", {
 	description: text(),
 	difficulty: text().default('medium'),
 	estimatedHours: integer("estimated_hours").default(10),
+	epigrafe: text(),
 	isActive: boolean("is_active").default(true),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
@@ -2275,6 +2276,9 @@ export const oposiciones = pgTable("oposiciones", {
 	salarioMax: integer("salario_max"),
 	isActive: boolean("is_active").default(true),
 	isConvocatoriaActiva: boolean("is_convocatoria_activa").default(false),
+	programaUrl: text("programa_url"),
+	diarioOficial: text("diario_oficial"),
+	diarioReferencia: text("diario_referencia"),
 }, (table) => [
 	check("oposiciones_tipo_acceso_check", sql`tipo_acceso = ANY (ARRAY['libre'::text, 'promocion_interna'::text, 'discapacidad'::text])`),
 ]);
