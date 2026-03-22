@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import ClientBreadcrumbsWrapper from '@/components/ClientBreadcrumbsWrapper'
-import { getOposicionLandingData } from '@/lib/api/convocatoria/queries'
+import { getOposicionLandingData, getHitosConvocatoria, type HitoConvocatoria } from '@/lib/api/convocatoria/queries'
 
 const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
 
@@ -65,6 +65,7 @@ function formatDateCorta(dateStr: string | null): string {
 
 export default async function AuxiliarAdministrativoEstado() {
   const data = await getOposicionLandingData('auxiliar-administrativo-estado')
+  const hitos = await getHitosConvocatoria('auxiliar-administrativo-estado')
 
   // Datos de BD con fallbacks al valor actual hardcodeado
   const plazasLibres = data?.plazasLibres ?? 1700
@@ -150,8 +151,8 @@ export default async function AuxiliarAdministrativoEstado() {
     }
   ]
 
-  // Schema JSON-LD
-  const schemaData = {
+  // Schema JSON-LD: FAQ
+  const schemaFAQ = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
     "mainEntity": faqs.map(faq => ({
@@ -164,13 +165,39 @@ export default async function AuxiliarAdministrativoEstado() {
     }))
   }
 
+  // Schema JSON-LD: Evento del examen (para rich snippets en Google)
+  const examHito = hitos.find(h => h.titulo.toLowerCase().includes('examen') && h.status !== 'completed')
+  const schemaEvent = examHito ? {
+    "@context": "https://schema.org",
+    "@type": "Event",
+    "name": "Examen Auxiliar Administrativo del Estado 2026",
+    "description": examHito.descripcion ?? "Examen de oposición para Auxiliar Administrativo del Estado",
+    "startDate": examHito.fecha,
+    "eventStatus": "https://schema.org/EventScheduled",
+    "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
+    "organizer": {
+      "@type": "Organization",
+      "name": "INAP - Instituto Nacional de Administración Pública"
+    },
+    "location": {
+      "@type": "Place",
+      "name": "Sedes de examen en toda España"
+    }
+  } : null
+
   return (
     <>
       {/* Schema JSON-LD */}
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaData) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaFAQ) }}
       />
+      {schemaEvent && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaEvent) }}
+        />
+      )}
 
       <div className="min-h-screen bg-gray-50">
         <ClientBreadcrumbsWrapper />
@@ -312,6 +339,75 @@ export default async function AuxiliarAdministrativoEstado() {
                 </a>
               )}
             </div>
+          )}
+
+          {/* Estado del Proceso Selectivo - Timeline */}
+          {hitos.length > 0 && (
+            <section className="mb-10">
+              <h2 className="text-3xl font-bold text-gray-800 text-center mb-8">
+                📅 Estado del Proceso Selectivo
+              </h2>
+              <div className="max-w-3xl mx-auto">
+                <div className="relative">
+                  {/* Línea vertical */}
+                  <div className="absolute left-4 md:left-6 top-0 bottom-0 w-0.5 bg-gray-200" />
+
+                  <div className="space-y-6">
+                    {hitos.map((hito) => (
+                      <div key={hito.id} className="relative flex items-start gap-4 md:gap-6">
+                        {/* Indicador */}
+                        <div className={`relative z-10 flex-shrink-0 w-9 h-9 md:w-12 md:h-12 rounded-full flex items-center justify-center text-sm md:text-base ${
+                          hito.status === 'completed'
+                            ? 'bg-green-100 text-green-600 border-2 border-green-500'
+                            : hito.status === 'current'
+                              ? 'bg-blue-100 text-blue-600 border-2 border-blue-500 animate-pulse'
+                              : 'bg-gray-100 text-gray-400 border-2 border-gray-300'
+                        }`}>
+                          {hito.status === 'completed' ? '✓' : hito.status === 'current' ? '●' : '○'}
+                        </div>
+
+                        {/* Contenido */}
+                        <div className={`flex-1 pb-2 ${hito.status === 'upcoming' ? 'opacity-60' : ''}`}>
+                          <div className="flex flex-wrap items-center gap-2 mb-1">
+                            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                              hito.status === 'completed'
+                                ? 'bg-green-100 text-green-700'
+                                : hito.status === 'current'
+                                  ? 'bg-blue-100 text-blue-700'
+                                  : 'bg-gray-100 text-gray-500'
+                            }`}>
+                              {formatDateCorta(hito.fecha)}
+                            </span>
+                            {hito.status === 'current' && (
+                              <span className="text-xs font-bold text-blue-600 uppercase">En curso</span>
+                            )}
+                          </div>
+                          <h3 className={`font-semibold ${
+                            hito.status === 'upcoming' ? 'text-gray-500' : 'text-gray-800'
+                          }`}>
+                            {hito.url ? (
+                              <a
+                                href={hito.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="hover:text-blue-600 hover:underline transition-colors"
+                              >
+                                {hito.titulo}
+                              </a>
+                            ) : (
+                              hito.titulo
+                            )}
+                          </h3>
+                          {hito.descripcion && (
+                            <p className="text-sm text-gray-500 mt-1">{hito.descripcion}</p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </section>
           )}
 
           {/* Temario Oficial BOE */}

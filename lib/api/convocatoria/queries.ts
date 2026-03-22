@@ -72,6 +72,58 @@ export async function getOposicionLandingData(
   }
 }
 
+export interface HitoConvocatoria {
+  id: string
+  fecha: string
+  titulo: string
+  descripcion: string | null
+  url: string | null
+  status: 'completed' | 'current' | 'upcoming'
+  orderIndex: number
+}
+
+/**
+ * Obtiene los hitos del proceso selectivo para una oposición.
+ * Usado por las landings para mostrar el timeline del proceso.
+ */
+export async function getHitosConvocatoria(
+  slug: string
+): Promise<HitoConvocatoria[]> {
+  try {
+    const db = getDb()
+
+    const rows = await db.execute<{
+      id: string
+      fecha: string
+      titulo: string
+      descripcion: string | null
+      url: string | null
+      status: string
+      order_index: number
+    }>(sql`
+      SELECT h.id, h.fecha, h.titulo, h.descripcion, h.url, h.status, h.order_index
+      FROM convocatoria_hitos h
+      INNER JOIN oposiciones o ON h.oposicion_id = o.id
+      WHERE o.slug = ${slug}
+      ORDER BY h.order_index ASC
+    `)
+
+    const results = Array.isArray(rows) ? rows : (rows as any).rows || []
+    return results.map((r: any) => ({
+      id: r.id,
+      fecha: r.fecha,
+      titulo: r.titulo,
+      descripcion: r.descripcion,
+      url: r.url,
+      status: r.status as 'completed' | 'current' | 'upcoming',
+      orderIndex: r.order_index,
+    }))
+  } catch (error) {
+    console.warn(`⚠️ [convocatoria] Error obteniendo hitos para ${slug}:`, (error as Error).message)
+    return []
+  }
+}
+
 export interface ConvocatoriaActiva {
   año: number
   fechaExamen: string | null

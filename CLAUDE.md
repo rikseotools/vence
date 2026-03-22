@@ -32,6 +32,26 @@
 
 ## Funcionalidades Recientes
 
+### Landing Pages Dinámicas con Datos de BD (Implementado: 22/03/2026)
+- **Ubicación:** `app/auxiliar-administrativo-estado/page.tsx` (primera migrada)
+- **Datos dinámicos de tabla `oposiciones`:** plazas, fechas, BOE reference, salario, título requerido
+- **Timeline del proceso selectivo:** tabla `convocatoria_hitos` con hitos (completed/current/upcoming)
+- **Links oficiales:** convocatoria BOE (`programa_url`) y seguimiento INAP (`seguimiento_url`)
+- **ISR:** `revalidate = 86400` (24h) en Vercel
+- **SEO:** JSON-LD FAQPage + Event (fecha examen), epígrafes oficiales BOE
+- **Función compartida:** `getOposicionLandingData(slug)` en `lib/api/convocatoria/queries.ts`
+- **Hitos:** `getHitosConvocatoria(slug)` - timeline visual en la landing
+- **Helpers de formato:** `formatNumber()` (regex, sin depender de locale), `formatDateLarga()`, `formatDateCorta()`
+
+### Monitoreo de Seguimiento de Convocatorias (Implementado: 22/03/2026)
+- **Objetivo:** Detectar cambios en páginas oficiales de seguimiento de cada oposición
+- **Cron:** `/api/cron/check-seguimiento` (L-V 9:00 UTC via GitHub Actions)
+- **Mecanismo:** Fetch → limpiar HTML → hash SHA-256 → comparar con hash anterior
+- **Tabla:** `convocatoria_seguimiento_checks` (historial) + columnas `seguimiento_*` en `oposiciones`
+- **Admin:** `/admin/seguimiento-convocatorias` - lista con badges (CAMBIO/ERROR/OK)
+- **Flujo:** Cron detecta cambio → badge en admin → usuario avisa a Claude → Claude actualiza hitos y landing
+- **Workflow:** `.github/workflows/check-seguimiento.yml`
+
 ### Sistema de Validación Segura de Respuestas (Implementado: 09/01/2026)
 - **Objetivo:** Prevenir scraping de respuestas correctas por bots
 - **Principio:** La respuesta correcta (`correct_option`) NUNCA se envía al cliente antes de que el usuario responda
@@ -152,6 +172,9 @@ git push origin main
 - `detailed_answers` - Respuestas detalladas con analytics
 - `user_profiles` - Perfiles de usuario
 - `articles` - Artículos de legislación
+- `oposiciones` - Datos de convocatorias (plazas, fechas, BOE, URLs seguimiento)
+- `convocatoria_hitos` - Hitos del proceso selectivo (timeline en landings)
+- `convocatoria_seguimiento_checks` - Historial de checks de páginas de seguimiento
 
 ### Formato de Respuestas (questions.correct_option)
 - **0 = A**, **1 = B**, **2 = C**, **3 = D** (0-indexed)
