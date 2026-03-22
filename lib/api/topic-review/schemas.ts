@@ -16,6 +16,43 @@ export const reviewStatusSchema = z.enum(REVIEW_STATUSES)
 
 export type ReviewStatus = z.infer<typeof reviewStatusSchema>
 
+/** Statuses that represent confirmed errors — questions should be deactivated */
+export const ERROR_STATUSES: readonly ReviewStatus[] = [
+  'bad_explanation', 'bad_answer', 'bad_answer_and_explanation',
+  'wrong_article', 'wrong_article_bad_explanation', 'wrong_article_bad_answer', 'all_wrong',
+  'tech_bad_explanation', 'tech_bad_answer', 'tech_bad_answer_and_explanation',
+] as const
+
+/** Statuses that represent verified questions — questions should be active */
+export const OK_STATUSES: readonly ReviewStatus[] = [
+  'perfect', 'tech_perfect',
+] as const
+
+/** Check if a status is a confirmed error */
+export function isErrorStatus(status: string): boolean {
+  return (ERROR_STATUSES as readonly string[]).includes(status)
+}
+
+/** Check if a status means the question is verified OK */
+export function isOkStatus(status: string): boolean {
+  return (OK_STATUSES as readonly string[]).includes(status)
+}
+
+/** Human-readable labels for error statuses (used as deactivation_reason) */
+export const ERROR_STATUS_LABELS: Record<string, string> = {
+  bad_answer: 'Respuesta incorrecta',
+  bad_explanation: 'Explicación incorrecta',
+  bad_answer_and_explanation: 'Respuesta y explicación incorrectas',
+  wrong_article: 'Artículo vinculado incorrecto',
+  wrong_article_bad_explanation: 'Artículo incorrecto y explicación incorrecta',
+  wrong_article_bad_answer: 'Artículo incorrecto y respuesta incorrecta',
+  all_wrong: 'Todo incorrecto (respuesta, explicación y artículo)',
+  tech_bad_answer: 'Respuesta incorrecta (informática)',
+  tech_bad_answer_and_explanation: 'Respuesta y explicación incorrectas (informática)',
+  tech_bad_explanation: 'Explicación incorrecta (informática)',
+  invalid_structure: 'Estructura inválida (opciones vacías, texto vacío)',
+}
+
 // ============================================
 // REVIEW STATS (14 contadores)
 // ============================================

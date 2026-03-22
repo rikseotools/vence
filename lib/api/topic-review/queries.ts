@@ -12,6 +12,9 @@ import {
   type TopicWithStats,
   type TopicBlock,
   createEmptyStats,
+  isErrorStatus,
+  isOkStatus,
+  ERROR_STATUS_LABELS,
 } from './schemas'
 
 // ============================================
@@ -860,13 +863,24 @@ export async function updateQuestionStatus(
 ): Promise<{ success: boolean; message?: string; error?: string; questionId?: string; newStatus?: string }> {
   const db = getDb()
 
-  // Actualizar questions
+  // Actualizar questions + auto-desactivar/reactivar según status
+  const updatePayload: Record<string, unknown> = {
+    topicReviewStatus: status,
+    verifiedAt: new Date().toISOString(),
+  }
+
+  if (isErrorStatus(status)) {
+    updatePayload.isActive = false
+    updatePayload.deactivationReason = ERROR_STATUS_LABELS[status] || status
+  } else if (isOkStatus(status)) {
+    updatePayload.isActive = true
+    updatePayload.deactivationReason = null
+  }
+  // 'pending' y 'needs_review' no tocan is_active ni deactivation_reason
+
   await db
     .update(questions)
-    .set({
-      topicReviewStatus: status,
-      verifiedAt: new Date().toISOString(),
-    })
+    .set(updatePayload)
     .where(eq(questions.id, questionId))
 
   // Si existe verificación IA, marcar como descartada (override manual)

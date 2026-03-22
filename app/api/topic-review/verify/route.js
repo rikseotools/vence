@@ -599,7 +599,9 @@ async function _POST(request) {
             .update({
               verified_at: new Date().toISOString(),
               verification_status: 'problem',
-              topic_review_status: 'invalid_structure'
+              topic_review_status: 'invalid_structure',
+              is_active: false,
+              deactivation_reason: 'Estructura inválida'
             })
             .eq('id', question.id)
 
@@ -621,7 +623,9 @@ async function _POST(request) {
             .update({
               verified_at: new Date().toISOString(),
               verification_status: 'problem',
-              topic_review_status: 'invalid_structure'
+              topic_review_status: 'invalid_structure',
+              is_active: false,
+              deactivation_reason: 'Estructura inválida'
             })
             .eq('id', question.id)
 
@@ -643,7 +647,9 @@ async function _POST(request) {
             .update({
               verified_at: new Date().toISOString(),
               verification_status: 'problem',
-              topic_review_status: 'invalid_structure'
+              topic_review_status: 'invalid_structure',
+              is_active: false,
+              deactivation_reason: 'Estructura inválida'
             })
             .eq('id', question.id)
 
@@ -753,15 +759,25 @@ async function _POST(request) {
             onConflict: 'question_id,ai_provider'
           })
 
-        // Actualizar pregunta
+        // Actualizar pregunta + auto-desactivar/reactivar según status
         const isPerfect = topicReviewStatus === 'perfect' || topicReviewStatus === 'tech_perfect'
-        await getSupabase()
-          .from('questions')
-          .update({
+        const ERROR_STATUSES = ['bad_explanation', 'bad_answer', 'bad_answer_and_explanation', 'wrong_article', 'wrong_article_bad_explanation', 'wrong_article_bad_answer', 'all_wrong', 'tech_bad_explanation', 'tech_bad_answer', 'tech_bad_answer_and_explanation', 'invalid_structure']
+        const ERROR_LABELS = { bad_answer: 'Respuesta incorrecta', bad_explanation: 'Explicación incorrecta', bad_answer_and_explanation: 'Respuesta y explicación incorrectas', wrong_article: 'Artículo vinculado incorrecto', wrong_article_bad_explanation: 'Artículo incorrecto y explicación incorrecta', wrong_article_bad_answer: 'Artículo incorrecto y respuesta incorrecta', all_wrong: 'Todo incorrecto', tech_bad_answer: 'Respuesta incorrecta (informática)', tech_bad_answer_and_explanation: 'Respuesta y explicación incorrectas (informática)', tech_bad_explanation: 'Explicación incorrecta (informática)', invalid_structure: 'Estructura inválida' }
+        const updatePayload = {
             verified_at: new Date().toISOString(),
             verification_status: isPerfect ? 'ok' : 'problem',
             topic_review_status: topicReviewStatus
-          })
+        }
+        if (ERROR_STATUSES.includes(topicReviewStatus)) {
+          updatePayload.is_active = false
+          updatePayload.deactivation_reason = ERROR_LABELS[topicReviewStatus] || topicReviewStatus
+        } else if (isPerfect) {
+          updatePayload.is_active = true
+          updatePayload.deactivation_reason = null
+        }
+        await getSupabase()
+          .from('questions')
+          .update(updatePayload)
           .eq('id', question.id)
 
         // Guardar uso de tokens
