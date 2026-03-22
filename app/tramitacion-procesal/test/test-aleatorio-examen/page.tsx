@@ -9,8 +9,10 @@ import ExamLayout from '@/components/ExamLayout'
 import ExamLoadingIndicator from '@/components/ExamLoadingIndicator'
 import { normalizeLawShortName } from '@/lib/lawMappingUtils'
 import { OPOSICION_BLOCKS_CONFIG } from '@/lib/api/random-test/schemas'
+import { slugToPositionType } from '@/lib/config/oposiciones'
 
 const supabase = getSupabaseClient()
+const POSITION_TYPE = slugToPositionType('tramitacion-procesal')
 
 // Mapeo de exam_position para filtrar preguntas oficiales por oposición
 const EXAM_POSITION_VALUES = [
@@ -118,7 +120,7 @@ function TestAleatorioExamenContent() {
           topics!inner(topic_number, position_type)
         `)
         .in('topics.topic_number', testConfig.themes)
-        .eq('topics.position_type', 'tramitacion_procesal')
+        .eq('topics.position_type', POSITION_TYPE)
 
       if (mappingError) throw mappingError
       if (!mappings || mappings.length === 0) {

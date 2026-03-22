@@ -7,16 +7,12 @@ import ExamLayout from '../../../../components/ExamLayout'
 import ExamLoadingIndicator from '../../../../components/ExamLoadingIndicator'
 import { fetchAleatorioMultiTema } from '../../../../lib/testFetchers'
 import { normalizeLawShortName } from '../../../../lib/lawMappingUtils'
+import { slugToPositionType } from '@/lib/config/oposiciones'
+import { getValidExamPositions } from '@/lib/config/exam-positions'
 
 const supabase = getSupabaseClient()
-
-// Mapeo de exam_position para filtrar preguntas oficiales por oposición
-const EXAM_POSITION_VALUES = [
-  'auxiliar administrativo del estado',
-  'auxiliar administrativo',
-  'auxiliar_administrativo',
-  'auxiliar_administrativo_estado'
-]
+const POSITION_TYPE = slugToPositionType('auxiliar-administrativo-estado')
+const EXAM_POSITION_VALUES = getValidExamPositions(POSITION_TYPE)
 
 function TestAleatorioExamenContent() {
   const searchParams = useSearchParams()
@@ -98,7 +94,7 @@ function TestAleatorioExamenContent() {
           topics!inner(topic_number, position_type)
         `)
         .in('topics.topic_number', testConfig.themes)
-        .eq('topics.position_type', 'auxiliar_administrativo_estado')
+        .eq('topics.position_type', POSITION_TYPE)
 
       if (mappingError) {
         console.error('❌ Error obteniendo mapeos:', mappingError)
