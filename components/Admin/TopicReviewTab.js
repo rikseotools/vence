@@ -146,7 +146,7 @@ export default function TopicReviewTab() {
 
   // Estado de verificación global (toda la BD)
   const [verifyingAll, setVerifyingAll] = useState(false)
-  const [verifyAllProgress, setVerifyAllProgress] = useState({ current: 0, total: 0 })
+  const [verifyAllProgress, setVerifyAllProgress] = useState({ current: 0, total: 0, startedAt: 0 })
   const [globalStats, setGlobalStats] = useState({ total: 0, pending: 0, perfect: 0, problems: 0 })
 
   // Estado de verificación directa en navegador
@@ -522,7 +522,7 @@ export default function TopicReviewTab() {
       }
 
       const allIds = data.questionIds
-      setVerifyAllProgress({ current: 0, total: allIds.length })
+      setVerifyAllProgress({ current: 0, total: allIds.length, startedAt: Date.now() })
 
       // Verificar en batches de 5
       const BATCH_SIZE = 5
@@ -549,7 +549,7 @@ export default function TopicReviewTab() {
         }
 
         processed += batchIds.length
-        setVerifyAllProgress({ current: processed, total: allIds.length })
+        setVerifyAllProgress(prev => ({ ...prev, current: processed }))
       }
 
       await loadTopics()
@@ -962,6 +962,14 @@ export default function TopicReviewTab() {
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg">
                   <div className="animate-spin rounded-full h-3.5 w-3.5 border-2 border-white border-t-transparent"></div>
                   {verifyAllProgress.current}/{verifyAllProgress.total}
+                  {verifyAllProgress.current > 0 && verifyAllProgress.startedAt > 0 && (() => {
+                    const elapsed = (Date.now() - verifyAllProgress.startedAt) / 1000
+                    const rate = verifyAllProgress.current / elapsed
+                    const remaining = (verifyAllProgress.total - verifyAllProgress.current) / rate
+                    const mins = Math.floor(remaining / 60)
+                    const secs = Math.floor(remaining % 60)
+                    return <span className="ml-1 opacity-80">({mins > 0 ? `${mins}m ` : ''}{secs}s)</span>
+                  })()}
                 </span>
               ) : (
                 <button
