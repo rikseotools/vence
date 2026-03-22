@@ -67,7 +67,7 @@ export default function TemaTestPage({ oposicionSlug, params }: TemaTestPageProp
   const [selectedArticle, setSelectedArticle] = useState<{ number: string | null; lawSlug: string | null }>({ number: null, lawSlug: null })
 
   const basePath = `/${oposicionSlug}`
-  const positionType = config?.positionType || 'auxiliar_administrativo'
+  const positionType = config?.positionType || 'auxiliar_administrativo_estado'
   const color = config?.color || 'blue'
 
   // Tailwind color mapping

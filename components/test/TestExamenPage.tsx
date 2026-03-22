@@ -22,7 +22,7 @@ function TestExamenContent({ oposicionSlug, params }: TestExamenPageProps) {
 
   const config = getOposicion(oposicionSlug)
   const basePath = `/${oposicionSlug}`
-  const positionType = config?.positionType || 'auxiliar_administrativo'
+  const positionType = config?.positionType || 'auxiliar_administrativo_estado'
 
   // Validate tema number
   const isValidTema = (tema: number): boolean => {

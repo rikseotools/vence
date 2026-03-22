@@ -452,7 +452,7 @@ export async function fetchQuickQuestions(tema: number, searchParams: SearchPara
     const lawShortNameDirect = getParam(searchParams, 'law_short_name')
     const lawParam = getParam(searchParams, 'law')
     const articlesParam = getParam(searchParams, 'articles')
-    const positionType = config?.positionType || 'auxiliar_administrativo'
+    const positionType = config?.positionType || 'auxiliar_administrativo_estado'
 
     // Preparar filtros para la API
     // Preferir law_short_name directo (desde notificaciones) sobre slug → short_name
@@ -510,7 +510,7 @@ export async function fetchOfficialQuestions(tema: number, searchParams: SearchP
 
     // 🔧 Usar getParam helper para manejar URLSearchParams u objeto plano
     const numQuestions = parseInt(getParam(searchParams, 'n', String(config?.numQuestions || 20)))
-    const positionType = config?.positionType || 'auxiliar_administrativo'
+    const positionType = config?.positionType || 'auxiliar_administrativo_estado'
 
     // 🚀 LLAMAR A LA API CENTRALIZADA CON FILTRO DE OFICIALES
     const response = await fetch('/api/questions/filtered', {
@@ -844,7 +844,7 @@ export async function fetchQuestionsByTopicScope(tema: number, searchParams: Sea
     const failedQuestionIdsStr = getParam(searchParams, 'failed_question_ids')
     const failedQuestionIds = config?.failedQuestionIds || (failedQuestionIdsStr ? JSON.parse(failedQuestionIdsStr) : null) // 🆕 IDs: priorizar config (sessionStorage) sobre URL
     const failedQuestionsOrder = config?.failedQuestionsOrder || getParam(searchParams, 'failed_questions_order') // 🆕 TIPO DE ORDEN
-    const positionType = config?.positionType || 'auxiliar_administrativo' // 🏢 TIPO DE OPOSICIÓN
+    const positionType = config?.positionType || 'auxiliar_administrativo_estado' // 🏢 TIPO DE OPOSICIÓN
     const timeLimitStr = getParam(searchParams, 'time_limit')
     const timeLimit = timeLimitStr ? parseInt(timeLimitStr) : null // ⏱️ LÍMITE DE TIEMPO
     
@@ -1822,7 +1822,7 @@ export async function countQuestionsByTopicScope(tema: number): Promise<number> 
         topics!inner(topic_number, position_type)
       `)
       .eq('topics.topic_number', tema)
-      .eq('topics.position_type', 'auxiliar_administrativo')
+      .eq('topics.position_type', 'auxiliar_administrativo_estado')
     
     if (!mappings?.length) {
       return 0
@@ -2418,7 +2418,7 @@ export async function fetchAleatorioMultiTema(themes: number[], searchParams: Se
     const { data: { user } } = await supabase.auth.getUser()
 
     // Leer parámetros de configuración (usando helper para URLSearchParams u objeto)
-    const positionType = config?.positionType || 'auxiliar_administrativo'
+    const positionType = config?.positionType || 'auxiliar_administrativo_estado'
     const numQuestions = parseInt(getParam(searchParams, 'n', '20'))
     const excludeRecent = getParam(searchParams, 'exclude_recent') === 'true'
     const excludeDays = parseInt(getParam(searchParams, 'exclude_days', '15'))
@@ -2540,7 +2540,7 @@ export async function fetchQuestionsViaAPI(tema: number, searchParams: SearchPar
     const numQuestions = parseInt(getParam(searchParams, 'n', '25')) || config?.numQuestions || 25
     const onlyOfficialQuestions = getParam(searchParams, 'only_official') === 'true' || config?.onlyOfficialQuestions || false
     const difficultyMode = getParam(searchParams, 'difficulty_mode') || config?.difficultyMode || 'random'
-    const positionType = config?.positionType || 'auxiliar_administrativo'
+    const positionType = config?.positionType || 'auxiliar_administrativo_estado'
 
     // 🔄 Filtro de preguntas falladas
     const onlyFailedQuestions = getParam(searchParams, 'only_failed') === 'true' || config?.onlyFailedQuestions || false
@@ -2644,7 +2644,7 @@ export async function fetchQuestionsViaAPI(tema: number, searchParams: SearchPar
 // =================================================================
 export async function countQuestionsViaAPI(tema: number, config: FetchConfig): Promise<CountResult> {
   try {
-    const positionType = config?.positionType || 'auxiliar_administrativo'
+    const positionType = config?.positionType || 'auxiliar_administrativo_estado'
     const selectedLaws = config?.selectedLaws || []
     const selectedArticlesByLaw = config?.selectedArticlesByLaw || {}
     const selectedSectionFilters = config?.selectedSectionFilters || []

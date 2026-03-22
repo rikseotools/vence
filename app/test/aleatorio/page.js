@@ -53,7 +53,7 @@ function TestAleatorioContent() {
 
     // Default a auxiliar_administrativo si no hay nada
     if (!targetOposicion) {
-      targetOposicion = 'auxiliar_administrativo'
+      targetOposicion = 'auxiliar_administrativo_estado'
     }
 
     const config = getOposicionConfig(targetOposicion)

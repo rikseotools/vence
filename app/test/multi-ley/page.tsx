@@ -201,7 +201,7 @@ function MultiLeyTestContent() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             topicNumber: 0,
-            positionType: 'auxiliar_administrativo',
+            positionType: 'auxiliar_administrativo_estado',
             selectedLaws,
             selectedArticlesByLaw: Object.keys(articlesAsNumbers).length > 0
               ? articlesAsNumbers

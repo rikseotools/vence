@@ -282,7 +282,7 @@ function TestConfiguradorContent() {
                 hideOfficialQuestions={false}
                 hideEssentialArticles={true}
                 testMode="practica"
-                positionType="auxiliar_administrativo"
+                positionType="auxiliar_administrativo_estado"
                 onStartTest={handleStartTest}
               />
             </div>

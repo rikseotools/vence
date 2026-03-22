@@ -18,7 +18,7 @@ function TestPersonalizadoContent({ oposicionSlug, params }: TestPersonalizadoPa
 
   const config = getOposicion(oposicionSlug)
   const basePath = `/${oposicionSlug}`
-  const positionType = config?.positionType || 'auxiliar_administrativo'
+  const positionType = config?.positionType || 'auxiliar_administrativo_estado'
 
   // Resolve params
   useEffect(() => {

@@ -288,7 +288,7 @@ export default function TopicContentView({ content, oposicion = 'auxiliar-admini
 
               <div className="space-y-3">
                 <Link
-                  href="/login?oposicion=tramitacion_procesal&return_to=/tramitacion-procesal/temario"
+                  href="/login?oposicion=auxiliar_administrativo_andalucia&return_to=/auxiliar-administrativo-andalucia/temario"
                   className="block w-full py-3 px-4 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors"
                 >
                   Registrarse gratis
