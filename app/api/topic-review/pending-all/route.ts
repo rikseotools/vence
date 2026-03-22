@@ -10,6 +10,7 @@ async function _GET() {
     const db = getDb()
 
     // Stats globales de preguntas únicas (sin duplicados)
+    // Incluye activas e inactivas para que el admin vea el conteo real de errores
     const statsResult = await db.execute(sql`
       SELECT
         COUNT(*)::int AS total,
@@ -17,13 +18,18 @@ async function _GET() {
         COUNT(*) FILTER (WHERE topic_review_status IN ('perfect', 'tech_perfect'))::int AS perfect,
         COUNT(*) FILTER (WHERE topic_review_status NOT IN ('pending', 'perfect', 'tech_perfect') AND topic_review_status IS NOT NULL)::int AS problems
       FROM questions
-      WHERE is_active = true
+      WHERE is_active = true OR topic_review_status IN (
+        'bad_answer', 'bad_explanation', 'bad_answer_and_explanation',
+        'wrong_article', 'wrong_article_bad_explanation', 'wrong_article_bad_answer',
+        'all_wrong', 'invalid_structure',
+        'tech_bad_answer', 'tech_bad_answer_and_explanation', 'tech_bad_explanation'
+      )
     `)
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const stats = (statsResult as any[])[0] || { total: 0, pending: 0, perfect: 0, problems: 0 }
 
-    // IDs pendientes para verificación
+    // IDs pendientes para verificación (solo activas — no re-verificar las ya desactivadas)
     const pendingResult = await db.execute(sql`
       SELECT id FROM questions
       WHERE is_active = true
