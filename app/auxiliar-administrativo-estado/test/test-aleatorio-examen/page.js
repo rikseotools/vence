@@ -98,7 +98,7 @@ function TestAleatorioExamenContent() {
           topics!inner(topic_number, position_type)
         `)
         .in('topics.topic_number', testConfig.themes)
-        .eq('topics.position_type', 'auxiliar_administrativo')
+        .eq('topics.position_type', 'auxiliar_administrativo_estado')
 
       if (mappingError) {
         console.error('❌ Error obteniendo mapeos:', mappingError)
