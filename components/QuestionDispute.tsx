@@ -20,7 +20,7 @@ interface QuestionDisputeProps {
   isPsychometric?: boolean
 }
 
-type DisputeTypeValue = 'no_literal' | 'ai_detected_error' | 'respuesta_incorrecta' | 'otro' | ''
+type DisputeTypeValue = 'no_literal' | 'ai_detected_error' | 'respuesta_incorrecta' | 'desacuerdo_correcta' | 'mal_formulada' | 'pregunta_repetida' | 'explicacion_confusa' | 'explicacion_mejorable' | 'tema_incorrecto' | 'otro' | ''
 
 // ============================================
 // HELPERS
@@ -329,6 +329,90 @@ export default function QuestionDispute({
           <input
             type="radio"
             name="disputeType"
+            value="desacuerdo_correcta"
+            checked={disputeType === 'desacuerdo_correcta'}
+            onChange={(e) => setDisputeType(e.target.value as DisputeTypeValue)}
+            className="text-orange-600 focus:ring-orange-500"
+          />
+          <span className={`text-sm ${textColor}`}>
+            No estoy de acuerdo con la opcion marcada como correcta
+          </span>
+        </label>
+
+        <label className="flex items-center space-x-2 cursor-pointer">
+          <input
+            type="radio"
+            name="disputeType"
+            value="mal_formulada"
+            checked={disputeType === 'mal_formulada'}
+            onChange={(e) => setDisputeType(e.target.value as DisputeTypeValue)}
+            className="text-orange-600 focus:ring-orange-500"
+          />
+          <span className={`text-sm ${textColor}`}>
+            Pregunta mal formulada
+          </span>
+        </label>
+
+        <label className="flex items-center space-x-2 cursor-pointer">
+          <input
+            type="radio"
+            name="disputeType"
+            value="pregunta_repetida"
+            checked={disputeType === 'pregunta_repetida'}
+            onChange={(e) => setDisputeType(e.target.value as DisputeTypeValue)}
+            className="text-orange-600 focus:ring-orange-500"
+          />
+          <span className={`text-sm ${textColor}`}>
+            Pregunta repetida
+          </span>
+        </label>
+
+        <label className="flex items-center space-x-2 cursor-pointer">
+          <input
+            type="radio"
+            name="disputeType"
+            value="explicacion_confusa"
+            checked={disputeType === 'explicacion_confusa'}
+            onChange={(e) => setDisputeType(e.target.value as DisputeTypeValue)}
+            className="text-orange-600 focus:ring-orange-500"
+          />
+          <span className={`text-sm ${textColor}`}>
+            Explicacion confusa
+          </span>
+        </label>
+
+        <label className="flex items-center space-x-2 cursor-pointer">
+          <input
+            type="radio"
+            name="disputeType"
+            value="explicacion_mejorable"
+            checked={disputeType === 'explicacion_mejorable'}
+            onChange={(e) => setDisputeType(e.target.value as DisputeTypeValue)}
+            className="text-orange-600 focus:ring-orange-500"
+          />
+          <span className={`text-sm ${textColor}`}>
+            Explicacion mejorable
+          </span>
+        </label>
+
+        <label className="flex items-center space-x-2 cursor-pointer">
+          <input
+            type="radio"
+            name="disputeType"
+            value="tema_incorrecto"
+            checked={disputeType === 'tema_incorrecto'}
+            onChange={(e) => setDisputeType(e.target.value as DisputeTypeValue)}
+            className="text-orange-600 focus:ring-orange-500"
+          />
+          <span className={`text-sm ${textColor}`}>
+            Pregunta de otro tema
+          </span>
+        </label>
+
+        <label className="flex items-center space-x-2 cursor-pointer">
+          <input
+            type="radio"
+            name="disputeType"
             value="otro"
             checked={disputeType === 'otro'}
             onChange={(e) => setDisputeType(e.target.value as DisputeTypeValue)}
@@ -572,7 +656,7 @@ export default function QuestionDispute({
               )}
 
               {/* Descripción opcional para casos preconfigurados */}
-              {(disputeType === 'no_literal' || disputeType === 'ai_detected_error' || disputeType === 'respuesta_incorrecta') && (
+              {disputeType && disputeType !== 'otro' && (
                 <div>
                   <label className="block text-sm font-medium text-orange-800 dark:text-orange-300 mb-2">
                     Información adicional (opcional):
