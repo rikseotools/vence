@@ -1,7 +1,7 @@
 // lib/lawFetchers.ts - FETCHERS ESPECÍFICOS PARA TESTS POR LEY
 import { getSupabaseClient } from './supabase'
 import { mapLawSlugToShortName } from './lawMappingUtils'
-import { getValidExamPositions } from './config/exam-positions'
+import { applyExamPositionFilter } from './config/exam-positions'
 import { isDisposicionArticle } from './boe-extractor'
 
 type SearchParamsLike = URLSearchParams | Record<string, string | undefined> | null | undefined
@@ -244,12 +244,8 @@ export async function fetchQuestionsByLaw(lawShortName: string, searchParams: Se
     // Filtro por preguntas oficiales si está activado (CON FILTRO POR OPOSICIÓN)
     if (onlyOfficial) {
       baseQuery = baseQuery.eq('is_official_exam', true)
-      // Filtrar por exam_position usando .in() (NO .or() que rompe los filtros AND)
       const positionType = config?.positionType || 'auxiliar_administrativo_estado'
-      const validPositions = getValidExamPositions(positionType)
-      if (validPositions.length > 0) {
-        baseQuery = baseQuery.in('exam_position', validPositions)
-      }
+      baseQuery = applyExamPositionFilter(baseQuery, positionType)
       console.log(`🏛️ [LAW FETCHER] Filtro aplicado: Solo preguntas oficiales de ${positionType}`)
     }
 

@@ -162,18 +162,26 @@ describe('Prevención de bug .or() en exam_position', () => {
     expect(typeof result[0]).toBe('string')
   })
 
-  test('el código fuente de testFetchers NO usa .or(exam', () => {
+  test('testFetchers usa applyExamPositionFilter (no .or ni buildExamPositionFilter)', () => {
     const fs = require('fs')
     const code = fs.readFileSync('lib/testFetchers.ts', 'utf-8')
     expect(code).not.toContain('.or(examPosition')
     expect(code).not.toContain('buildExamPositionFilter')
+    expect(code).toContain('applyExamPositionFilter')
   })
 
-  test('el código fuente de lawFetchers NO usa .or(exam', () => {
+  test('lawFetchers usa applyExamPositionFilter (no .or ni buildExamPositionFilter)', () => {
     const fs = require('fs')
     const code = fs.readFileSync('lib/lawFetchers.ts', 'utf-8')
     expect(code).not.toContain('.or(examPosition')
     expect(code).not.toContain('buildExamPositionFilter')
+    expect(code).toContain('applyExamPositionFilter')
+  })
+
+  test('applyExamPositionFilter existe y es una función', () => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { applyExamPositionFilter } = require('@/lib/config/exam-positions')
+    expect(typeof applyExamPositionFilter).toBe('function')
   })
 })
 

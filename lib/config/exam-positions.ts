@@ -99,5 +99,22 @@ export function getValidHotArticleTargets(slugOrPositionType: string): string[] 
   return HOT_ARTICLE_TARGET_MAP[normalized] || [normalized]
 }
 
-// buildExamPositionFilter ELIMINADO (usaba .or() que rompe lógica AND en Supabase PostgREST)
-// Usar getValidExamPositions() con .in('exam_position', [...]) en su lugar.
+/**
+ * Aplica filtro de exam_position a una query Supabase.
+ * Usa .in() internamente (NUNCA .or() que rompe la lógica AND).
+ *
+ * Uso: query = applyExamPositionFilter(query, positionType)
+ *
+ * Si no hay posiciones válidas para el positionType, no aplica filtro.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function applyExamPositionFilter<T extends { in: (column: string, values: string[]) => T }>(
+  query: T,
+  positionType: string
+): T {
+  const validPositions = getValidExamPositions(positionType)
+  if (validPositions.length > 0) {
+    return query.in('exam_position', validPositions)
+  }
+  return query
+}

@@ -1,7 +1,7 @@
 // lib/testFetchers.ts - FETCHERS MODULARES PARA TODOS LOS TIPOS DE TEST - CON SOPORTE MULTI-LEY
 import { getSupabaseClient } from './supabase'
 import { mapLawSlugToShortName } from './lawMappingUtils'
-import { getValidExamPositions } from './config/exam-positions'
+import { getValidExamPositions, applyExamPositionFilter } from './config/exam-positions'
 import { isDisposicionArticle } from './boe-extractor'
 
 type SearchParamsLike = URLSearchParams | Record<string, string | undefined> | null | undefined
@@ -640,11 +640,7 @@ export async function fetchPersonalizedQuestions(tema: number, searchParams: Sea
     // 🏛️ Filtro por preguntas oficiales si está activado (CON FILTRO POR OPOSICIÓN)
     if (configParams.onlyOfficialQuestions) {
       baseQuery = baseQuery.eq('is_official_exam', true)
-      // Filtrar por exam_position usando .in() (NO .or() que rompe los filtros AND)
-      const validPositions = getValidExamPositions(config?.positionType || 'auxiliar_administrativo_estado')
-      if (validPositions.length > 0) {
-        baseQuery = baseQuery.in('exam_position', validPositions)
-      }
+      baseQuery = applyExamPositionFilter(baseQuery, config?.positionType || 'auxiliar_administrativo_estado')
       console.log('🏛️ Filtro aplicado: Solo preguntas oficiales de la oposición')
     }
 
@@ -1176,11 +1172,7 @@ export async function fetchQuestionsByTopicScope(tema: number, searchParams: Sea
       // 🏛️ FILTRO CORREGIDO: Solo preguntas oficiales si está activado (CON FILTRO POR OPOSICIÓN)
       if (onlyOfficialQuestions) {
         baseQuery = baseQuery.eq('is_official_exam', true)
-        // Filtrar por exam_position usando .in() (NO .or() que rompe los filtros AND)
-        const validPositions = getValidExamPositions(positionType)
-        if (validPositions.length > 0) {
-          baseQuery = baseQuery.in('exam_position', validPositions)
-        }
+        baseQuery = applyExamPositionFilter(baseQuery, positionType)
         console.log(`🏛️ ${mapping.laws.short_name}: Filtro aplicado - Solo preguntas oficiales de ${positionType}`)
       }
 
@@ -1267,8 +1259,6 @@ export async function fetchQuestionsByTopicScope(tema: number, searchParams: Sea
 
       // Obtener todos los artículos que tienen preguntas oficiales para los artículos FILTRADOS
       // 🔧 FIX: Usar filteredMappings en lugar de mappings para solo contar artículos seleccionados
-      // 🏛️ FIX: Filtrar por exam_position usando .in() (NO .or())
-      const validPositionsForCount = getValidExamPositions(positionType)
       for (const mapping of filteredMappings) {
         for (const articleNumber of mapping.article_numbers) {
           let countQuery = supabase
@@ -1280,10 +1270,7 @@ export async function fetchQuestionsByTopicScope(tema: number, searchParams: Sea
             .eq('articles.laws.short_name', mapping.laws.short_name)
             .eq('articles.article_number', articleNumber)
 
-          // Filtrar por exam_position usando .in()
-          if (validPositionsForCount.length > 0) {
-            countQuery = countQuery.in('exam_position', validPositionsForCount)
-          }
+          countQuery = applyExamPositionFilter(countQuery, positionType)
 
           const { count } = await countQuery
 
@@ -1566,8 +1553,6 @@ export async function fetchQuestionsByTopicScope(tema: number, searchParams: Sea
       console.log('\n🔍 ===== ANÁLISIS DETALLADO DE ARTÍCULOS IMPRESCINDIBLES =====')
       
       // Re-obtener articleOfficialCount para el debug (ya se calculó antes)
-      // 🏛️ FIX: Filtrar por exam_position usando .in() (NO .or())
-      const validPositionsForDebug = getValidExamPositions(positionType)
       const debugArticleOfficialCount: Record<string, number> = {}
       for (const mapping of mappings) {
         for (const articleNumber of mapping.article_numbers) {
@@ -1580,10 +1565,7 @@ export async function fetchQuestionsByTopicScope(tema: number, searchParams: Sea
             .eq('articles.laws.short_name', mapping.laws.short_name)
             .eq('articles.article_number', articleNumber)
 
-          // Filtrar por exam_position usando .in()
-          if (validPositionsForDebug.length > 0) {
-            debugCountQuery = debugCountQuery.in('exam_position', validPositionsForDebug)
-          }
+          debugCountQuery = applyExamPositionFilter(debugCountQuery, positionType)
 
           const { count } = await debugCountQuery
 
