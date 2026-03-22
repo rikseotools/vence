@@ -85,17 +85,12 @@ const ReviewStatusBadge = ({ status, small = false }) => {
   )
 }
 
-// Formatear nombre de oposición
+// Formatear nombre de oposición (usa config central)
+import { getOposicionByPositionType } from '@/lib/config/oposiciones'
+
 const formatPositionName = (position) => {
-  const names = {
-    'auxiliar_administrativo': 'Auxiliar Administrativo del Estado (C2)',
-    'administrativo': 'Administrativo del Estado (C1)',
-    'gestion': 'Gestión del Estado (A2)',
-    'psicotecnicos': '🧠 Pruebas Psicotécnicas',
-    'tramitacion_procesal': 'Tramitación Procesal',
-    'auxilio_judicial': 'Auxilio Judicial'
-  }
-  return names[position] || position.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+  if (position === 'psicotecnicos') return '🧠 Pruebas Psicotécnicas'
+  return getOposicionByPositionType(position)?.name || position.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
 }
 
 // Formatear tiempo relativo "hace X días"

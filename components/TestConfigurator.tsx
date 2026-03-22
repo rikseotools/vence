@@ -4,6 +4,11 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import SectionFilterModal from './SectionFilterModal';
 import { fetchLawSections } from '../lib/teoriaFetchers';
 import { getCanonicalSlug } from '../lib/lawMappingUtils';
+import { getOposicionByPositionType } from '@/lib/config/oposiciones';
+
+function getOposicionName(positionType: string): string {
+  return getOposicionByPositionType(positionType)?.name || 'tu oposición'
+}
 import type {
   TestConfiguratorProps,
   TestStartConfig,
@@ -1349,12 +1354,7 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
                           </p>
                           <p className="text-xs text-red-600 mt-1 italic">
                             💡 Estas preguntas aparecieron en exámenes oficiales de {
-                              positionType === 'auxiliar_administrativo' ? 'Auxiliar Administrativo del Estado (C2)' :
-                              positionType === 'administrativo' ? 'Administrativo del Estado (C1)' :
-                              positionType === 'tramitacion_procesal' ? 'Tramitación Procesal' :
-                              positionType === 'auxilio_judicial' ? 'Auxilio Judicial' :
-                              positionType === 'gestion_procesal' ? 'Gestión Procesal' :
-                              'tu oposición'
+                              getOposicionName(positionType)
                             }
                           </p>
                         </div>
@@ -1455,15 +1455,10 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
                     </div>
                     <p className="text-xs text-red-600 mb-2">
                       El test priorizará artículos que han aparecido en exámenes oficiales de {
-                        positionType === 'auxiliar_administrativo' ? 'Auxiliar Administrativo del Estado (C2)' :
-                        positionType === 'administrativo' ? 'Administrativo del Estado (C1)' :
-                        positionType === 'tramitacion_procesal' ? 'Tramitación Procesal' :
-                        positionType === 'auxilio_judicial' ? 'Auxilio Judicial' :
-                        positionType === 'gestion_procesal' ? 'Gestión Procesal' :
-                        'tu oposición'
+                        getOposicionName(positionType)
                       }
                     </p>
-                    
+
                     {/* Mostrar contador de preguntas disponibles */}
                     {!loadingEssentialCount && essentialQuestionsCount > 0 && (
                       <div className="mb-2 p-2 bg-red-100 border border-red-200 rounded">
@@ -2052,7 +2047,7 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
                   ¿Qué son las preguntas oficiales?
                 </h4>
                 <p className="text-blue-700 text-sm">
-                  Son preguntas extraídas directamente de <strong>exámenes oficiales reales</strong> de convocatorias pasadas del Auxiliar Administrativo del Estado. 
+                  Son preguntas extraídas directamente de <strong>exámenes oficiales reales</strong> de convocatorias pasadas de tu oposición.
                   Representan el <strong>estándar oficial</strong> de dificultad y formato que encontrarás en tu examen.
                 </p>
               </div>

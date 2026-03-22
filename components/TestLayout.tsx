@@ -7,6 +7,7 @@ import { useQuestionContext } from '../contexts/QuestionContext'
 import PersistentRegistrationManager from './PersistentRegistrationManager'
 import { usePathname } from 'next/navigation'
 import { getOposicionSlugFromPathname } from '@/lib/config/oposiciones'
+import { getValidHotArticleTargets } from '@/lib/config/exam-positions'
 import QuestionEvolution from './QuestionEvolution'
 import QuestionDispute from './QuestionDispute'
 import ShareQuestion from './ShareQuestion'
@@ -58,7 +59,6 @@ import type {
   DetailedAnswerEntry,
   HotArticleInfo,
   CompactStats,
-  HotArticleOposicionMap,
 } from './TestLayout.types'
 
 // Type guard para distinguir entre TestQuestion[] y AdaptiveQuestionsInput
@@ -87,6 +87,7 @@ function isOfficialForUserOposicion(examSource: string | null, userOposicionSlug
     const positionToSlugs: Record<string, string[]> = {
       'auxiliar_administrativo_estado': ['auxiliar_administrativo', 'auxiliar_administrativo_estado'],
       'auxiliar_administrativo': ['auxiliar_administrativo', 'auxiliar_administrativo_estado'],
+      'auxiliar_administrativo_madrid': ['auxiliar_administrativo_madrid'],
       'tramitacion_procesal': ['tramitacion_procesal'],
       'auxilio_judicial': ['auxilio_judicial'],
       'gestion_procesal': ['gestion_procesal'],
@@ -109,6 +110,7 @@ function isOfficialForUserOposicion(examSource: string | null, userOposicionSlug
   const sourceToOposicion = {
     'Tramitaci': ['tramitacion_procesal'],
     'Auxilio Judicial': ['auxilio_judicial'],
+    'Auxiliar Administrativo Madrid': ['auxiliar_administrativo_madrid'],
     'Auxiliar Administrativo': ['auxiliar_administrativo', 'auxiliar_administrativo_estado'],
     'Auxiliar Admin': ['auxiliar_administrativo', 'auxiliar_administrativo_estado'],
     'Gestión Procesal': ['gestion_procesal'],
@@ -181,45 +183,11 @@ function isLegalArticle(lawShortName: string | null): boolean {
 }
 
 // 🏛️ FUNCIÓN: Verificar si un hot article es válido para la oposición del usuario
-// Mapeo de slugs de URL a valores de target_oposicion en hot_articles
-// Mapeo de slugs de oposición del usuario a valores válidos en hot_articles.target_oposicion
-// Los valores en BD están normalizados con guiones: auxiliar-administrativo-estado, administrativo-estado, etc.
-const HOT_ARTICLE_OPOSICION_MAP: HotArticleOposicionMap = {
-  // Auxiliar Administrativo del Estado (C2)
-  'auxiliar-administrativo-estado': ['auxiliar-administrativo-estado'],
-  'auxiliar_administrativo_estado': ['auxiliar-administrativo-estado'],
-  'auxiliar_administrativo': ['auxiliar-administrativo-estado'],
-
-  // Administrativo del Estado (C1) - Cuerpo General Administrativo
-  'administrativo-estado': ['administrativo-estado'],
-  'administrativo_estado': ['administrativo-estado'],
-  'cuerpo-general-administrativo': ['administrativo-estado'],
-  'cuerpo_general_administrativo': ['administrativo-estado'],
-
-  // Tramitación Procesal
-  'tramitacion-procesal': ['tramitacion-procesal'],
-  'tramitacion_procesal': ['tramitacion-procesal'],
-
-  // Auxilio Judicial
-  'auxilio-judicial': ['auxilio-judicial'],
-  'auxilio_judicial': ['auxilio-judicial'],
-
-  // Gestión del Estado
-  'gestion-estado': ['gestion-estado'],
-  'gestion_estado': ['gestion-estado'],
-  'gestion-procesal': ['gestion-estado'],
-  'gestion_procesal': ['gestion-estado'],
-}
-
+// Usa mapeo centralizado de lib/config/exam-positions.ts
 function isHotArticleForUserOposicion(targetOposicion: string | null, userOposicionSlug: string | null): boolean {
-  // Si no hay target_oposicion definido, es válido para todas (legacy)
   if (!targetOposicion) return true
-  // Si no hay oposición de usuario, mostrar todos
   if (!userOposicionSlug) return true
-
-  const normalized = userOposicionSlug.toLowerCase().replace(/-/g, '_')
-  const validTargets = HOT_ARTICLE_OPOSICION_MAP[normalized] || [normalized]
-
+  const validTargets = getValidHotArticleTargets(userOposicionSlug)
   return validTargets.includes(targetOposicion.toLowerCase())
 }
 

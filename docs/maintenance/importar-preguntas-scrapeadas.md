@@ -550,7 +550,45 @@ Las preguntas que fallen se corrigen antes de dar el tema por bueno.
 
 **Ver:** [revisar-temas-con-agente.md](./revisar-temas-con-agente.md)
 
-## 11. Checklist Completo por Tema
+## 11. Preguntas sin artículo legal (conceptos teóricos)
+
+Algunas preguntas del temario no se basan en un artículo de una ley concreta, sino en conceptos teóricos (ej: elementos de la comunicación, tipos de documentos, conceptos de ofimática). Estas preguntas SÍ tienen cabida si el epígrafe del tema las incluye, pero no tienen un artículo legal al que vincularse.
+
+### Solución: Ley virtual con artículos temáticos
+
+1. **Crear una ley virtual** (`is_virtual: true`) con un nombre descriptivo:
+```javascript
+await supabase.from('laws').insert({
+  name: 'Conceptos de comunicación y atención al ciudadano',
+  short_name: 'Comunicación y Atención Ciudadano',
+  description: 'Conceptos teóricos de comunicación aplicados a la información administrativa',
+  is_virtual: true,
+  is_active: true,
+  type: 'law', scope: 'national',
+  slug: 'comunicacion-atencion-ciudadano'
+});
+```
+
+2. **Crear artículos temáticos** dentro de la ley virtual (uno por concepto):
+   - Art 0: Estructura (índice de los artículos)
+   - Art 1: Elementos del proceso de comunicación
+   - Art 2: El código en la comunicación
+   - Art 3: Canales de comunicación
+   - etc.
+
+3. **Redactar el contenido** de cada artículo para que responda las preguntas vinculadas. El contenido debe ser didáctico y contener la información que justifica cada respuesta correcta.
+
+4. **Vincular las preguntas** al artículo temático correspondiente (NO al Art 0 genérico).
+
+5. **Añadir la ley virtual al topic_scope** del tema.
+
+### Reglas importantes:
+- **NUNCA** vincular preguntas teóricas al Art 0 de otra ley (ej: no vincular "elementos de la comunicación" al Art 0 del Decreto 21/2002).
+- **El Art 0** solo debe contener la estructura/índice, NO contenido sustantivo.
+- Cada pregunta debe tener un artículo cuyo contenido justifique la respuesta correcta.
+- Verificar que el epígrafe del tema realmente incluye esos conceptos teóricos antes de importar las preguntas.
+
+## 12. Checklist Completo por Tema
 
 Flujo validado (Marzo 2026, Auxiliar Madrid T1):
 
@@ -565,6 +603,7 @@ Flujo validado (Marzo 2026, Auxiliar Madrid T1):
    - Las leyes del tema existen en BD
    - Los artículos están sincronizados desde BOE
    - El Preámbulo existe si la ley lo tiene
+   - Si hay preguntas teóricas sin ley → crear ley virtual (ver sección 11)
 
 3. VERIFICAR TOPIC SCOPE
    - Los artículos del scope corresponden al epígrafe

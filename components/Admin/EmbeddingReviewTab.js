@@ -12,16 +12,11 @@ const Spinner = ({ size = 'sm' }) => {
   )
 }
 
-// Formatear nombre de oposición
+// Formatear nombre de oposición (usa config central)
+import { getOposicionByPositionType } from '@/lib/config/oposiciones'
+
 const formatPositionName = (position) => {
-  const names = {
-    'auxiliar_administrativo': 'Aux. Admin.',
-    'administrativo': 'Administrativo',
-    'gestion': 'Gestión',
-    'tramitacion_procesal': 'Tramitación',
-    'auxilio_judicial': 'Auxilio Judicial'
-  }
-  return names[position] || position?.replace(/_/g, ' ')
+  return getOposicionByPositionType(position)?.shortName || position?.replace(/_/g, ' ')
 }
 
 export default function EmbeddingReviewTab() {

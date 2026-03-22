@@ -475,7 +475,11 @@ Antes de insertar una pregunta oficial, verificar:
 - [ ] `exam_source` con formato correcto
 - [ ] `exam_date` en formato YYYY-MM-DD (fecha de **convocatoria**, no del examen)
 - [ ] `difficulty` asignada
+- [ ] `exam_position` con el `positionType` de la oposición (ej: `auxiliar_administrativo_madrid`). Sin esto, las preguntas NO aparecen en el filtro "Solo preguntas oficiales".
 - [ ] **Añadir registro en `question_official_exams`** (ver sección 12)
+- [ ] **Verificar configuración** (solo la primera vez que se importan oficiales para una oposición nueva):
+  - [ ] `lib/config/oposiciones.ts` → La oposición debe existir aquí (fuente de verdad). Los nombres se derivan automáticamente.
+  - [ ] `lib/config/exam-positions.ts` → Añadir el `positionType` en `EXAM_POSITION_MAP` (variantes de exam_position) y en `HOT_ARTICLE_TARGET_MAP` (variantes de target_oposicion). Sin esto el conteo de preguntas oficiales es 0 y los hot articles no se muestran.
 
 ---
 

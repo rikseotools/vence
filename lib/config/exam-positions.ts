@@ -1,14 +1,30 @@
-// lib/config/exam-positions.ts - Mapeo centralizado de exam_position
-// Las preguntas oficiales en BD tienen exam_position con valores inconsistentes.
-// Este mapeo normaliza positionType → valores válidos de exam_position.
-// FUENTE DE VERDAD: Todos los archivos que filtran por exam_position importan de aquí.
+// lib/config/exam-positions.ts - Mapeo centralizado de exam_position y hot_articles
+// Los valores de exam_position y target_oposicion en BD son inconsistentes (legacy).
+// Este archivo centraliza TODOS los mapeos de variantes para que solo haya que
+// tocarlo aquí al añadir una nueva oposición.
+//
+// FUENTE DE VERDAD para:
+// - exam_position en questions (filtro de preguntas oficiales)
+// - target_oposicion en hot_articles (artículos importantes por oposición)
+//
+// TODO FUTURO: Normalizar BD para que todos los valores usen positionType directamente
+// (ej: 'auxiliar_administrativo_madrid'), eliminando la necesidad de mapear variantes.
 
+/**
+ * Mapeo: positionType → valores válidos de exam_position en la tabla questions.
+ * Las preguntas oficiales se marcan con exam_position al importar.
+ */
 export const EXAM_POSITION_MAP: Record<string, string[]> = {
   'auxiliar_administrativo': [
     'auxiliar administrativo del estado',
     'auxiliar administrativo',
     'auxiliar_administrativo',
     'auxiliar_administrativo_estado',
+  ],
+  'auxiliar_administrativo_madrid': [
+    'auxiliar_administrativo_madrid',
+    'auxiliar administrativo madrid',
+    'auxiliar administrativo comunidad de madrid',
   ],
   'administrativo': [
     'administrativo',
@@ -35,9 +51,38 @@ export const EXAM_POSITION_MAP: Record<string, string[]> = {
 }
 
 /**
+ * Mapeo: slug/positionType del usuario → valores válidos de target_oposicion en hot_articles.
+ * Los valores en BD son inconsistentes (mezcla de guiones y guiones bajos, legacy).
+ */
+export const HOT_ARTICLE_TARGET_MAP: Record<string, string[]> = {
+  // Auxiliar Administrativo del Estado
+  'auxiliar-administrativo-estado': ['auxiliar-administrativo-estado', 'auxiliar_administrativo_estado'],
+  'auxiliar_administrativo_estado': ['auxiliar-administrativo-estado', 'auxiliar_administrativo_estado'],
+  'auxiliar_administrativo': ['auxiliar-administrativo-estado', 'auxiliar_administrativo_estado'],
+  // Auxiliar Administrativo Comunidad de Madrid
+  'auxiliar-administrativo-madrid': ['auxiliar_administrativo_madrid'],
+  'auxiliar_administrativo_madrid': ['auxiliar_administrativo_madrid'],
+  // Administrativo del Estado
+  'administrativo-estado': ['administrativo-estado'],
+  'administrativo_estado': ['administrativo-estado'],
+  'cuerpo-general-administrativo': ['administrativo-estado'],
+  'cuerpo_general_administrativo': ['administrativo-estado'],
+  // Tramitación Procesal
+  'tramitacion-procesal': ['tramitacion-procesal', 'tramitacion_procesal'],
+  'tramitacion_procesal': ['tramitacion-procesal', 'tramitacion_procesal'],
+  // Auxilio Judicial
+  'auxilio-judicial': ['auxilio-judicial'],
+  'auxilio_judicial': ['auxilio-judicial'],
+  // Gestión Procesal / Estado
+  'gestion-estado': ['gestion-estado'],
+  'gestion_estado': ['gestion-estado'],
+  'gestion-procesal': ['gestion-estado'],
+  'gestion_procesal': ['gestion-estado'],
+}
+
+/**
  * Obtiene los valores válidos de exam_position para un positionType.
  * Normaliza el input (lowercase, guiones → underscores).
- * @returns string[] (vacío si no hay mapeo)
  */
 export function getValidExamPositions(positionType: string): string[] {
   if (!positionType) return []
@@ -46,8 +91,17 @@ export function getValidExamPositions(positionType: string): string[] {
 }
 
 /**
+ * Obtiene los valores válidos de target_oposicion en hot_articles para un slug/positionType.
+ * Normaliza el input (lowercase).
+ */
+export function getValidHotArticleTargets(slugOrPositionType: string): string[] {
+  if (!slugOrPositionType) return []
+  const normalized = slugOrPositionType.toLowerCase()
+  return HOT_ARTICLE_TARGET_MAP[normalized] || [normalized]
+}
+
+/**
  * Construye un filtro de exam_position para Supabase PostgREST.
- * @returns string como "exam_position.in.(...)" o null si no hay mapeo
  */
 export function buildExamPositionFilter(positionType: string): string | null {
   if (!positionType) return null

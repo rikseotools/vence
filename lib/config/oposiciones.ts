@@ -724,6 +724,44 @@ export const OPOSICIONES: Oposicion[] = [
       { href: '/auxiliar-administrativo-madrid/temario', label: 'Temario', icon: '📚' },
       { href: '/auxiliar-administrativo-madrid/test', label: 'Tests', icon: '🎯' },
     ],
+    officialExams: [
+      {
+        date: '2018-06-29',
+        title: 'Convocatoria 2018',
+        oep: 'OEP 2015-2016',
+        partes: [
+          { id: 'primera', icon: '📘', title: '1ª Sesión', description: '45 preguntas tipo test' },
+          { id: 'segunda', icon: '📗', title: '2ª Sesión', description: '45 preguntas tipo test' },
+        ],
+      },
+      {
+        date: '2022-09-11',
+        title: 'Convocatoria 2022',
+        oep: 'OEP 2017-2019',
+        partes: [
+          { id: 'primera', icon: '📘', title: '1ª Sesión', description: '45 preguntas tipo test' },
+          { id: 'segunda', icon: '📗', title: '2ª Sesión', description: '45 preguntas tipo test' },
+        ],
+      },
+      {
+        date: '2023-06-24',
+        title: 'Convocatoria 2023 - Ordinario',
+        oep: 'OEP 2020-2022',
+        partes: [
+          { id: 'primera', icon: '📘', title: 'Primer ejercicio', description: 'Preguntas legislativas' },
+        ],
+        note: 'Incluye preguntas psicotécnicas (pendientes de importar)',
+      },
+      {
+        date: '2024-11-23',
+        title: 'Convocatoria 2024 - Extraordinario',
+        oep: 'OEP 2020-2022',
+        partes: [
+          { id: 'primera', icon: '📘', title: 'Primer ejercicio', description: 'Preguntas legislativas' },
+        ],
+        note: 'Incluye preguntas psicotécnicas (pendientes de importar)',
+      },
+    ],
   },
 
   // ========================================
