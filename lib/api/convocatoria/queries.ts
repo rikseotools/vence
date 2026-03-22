@@ -3,6 +3,74 @@
 
 import { getDb } from '@/db/client'
 import { sql } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
+import { oposiciones } from '@/db/schema'
+
+export interface OposicionLandingData {
+  nombre: string
+  plazasLibres: number | null
+  plazasPromocionInterna: number | null
+  plazasDiscapacidad: number | null
+  examDate: string | null
+  inscriptionStart: string | null
+  inscriptionDeadline: string | null
+  boePublicationDate: string | null
+  boeReference: string | null
+  temasCount: number | null
+  bloquesCount: number | null
+  tituloRequerido: string | null
+  salarioMin: number | null
+  salarioMax: number | null
+  programaUrl: string | null
+  diarioOficial: string | null
+  diarioReferencia: string | null
+  seguimientoUrl: string | null
+  isConvocatoriaActiva: boolean | null
+}
+
+/**
+ * Obtiene datos de la tabla oposiciones para landing pages.
+ * Usado por las landings estáticas para mostrar plazas, fechas, BOE, etc.
+ */
+export async function getOposicionLandingData(
+  slug: string
+): Promise<OposicionLandingData | null> {
+  try {
+    const db = getDb()
+
+    const rows = await db
+      .select({
+        nombre: oposiciones.nombre,
+        plazasLibres: oposiciones.plazasLibres,
+        plazasPromocionInterna: oposiciones.plazasPromocionInterna,
+        plazasDiscapacidad: oposiciones.plazasDiscapacidad,
+        examDate: oposiciones.examDate,
+        inscriptionStart: oposiciones.inscriptionStart,
+        inscriptionDeadline: oposiciones.inscriptionDeadline,
+        boePublicationDate: oposiciones.boePublicationDate,
+        boeReference: oposiciones.boeReference,
+        temasCount: oposiciones.temasCount,
+        bloquesCount: oposiciones.bloquesCount,
+        tituloRequerido: oposiciones.tituloRequerido,
+        salarioMin: oposiciones.salarioMin,
+        salarioMax: oposiciones.salarioMax,
+        programaUrl: oposiciones.programaUrl,
+        diarioOficial: oposiciones.diarioOficial,
+        diarioReferencia: oposiciones.diarioReferencia,
+        seguimientoUrl: oposiciones.seguimientoUrl,
+        isConvocatoriaActiva: oposiciones.isConvocatoriaActiva,
+      })
+      .from(oposiciones)
+      .where(eq(oposiciones.slug, slug))
+      .limit(1)
+
+    if (rows.length === 0) return null
+    return rows[0]
+  } catch (error) {
+    console.warn(`⚠️ [convocatoria] Error obteniendo datos landing para ${slug}:`, (error as Error).message)
+    return null
+  }
+}
 
 export interface ConvocatoriaActiva {
   año: number
