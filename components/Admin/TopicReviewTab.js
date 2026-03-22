@@ -966,9 +966,14 @@ export default function TopicReviewTab() {
                     const elapsed = (Date.now() - verifyAllProgress.startedAt) / 1000
                     const rate = verifyAllProgress.current / elapsed
                     const remaining = (verifyAllProgress.total - verifyAllProgress.current) / rate
-                    const mins = Math.floor(remaining / 60)
+                    const hrs = Math.floor(remaining / 3600)
+                    const mins = Math.floor((remaining % 3600) / 60)
                     const secs = Math.floor(remaining % 60)
-                    return <span className="ml-1 opacity-80">({mins > 0 ? `${mins}m ` : ''}{secs}s)</span>
+                    const parts = []
+                    if (hrs > 0) parts.push(`${hrs}h`)
+                    if (mins > 0) parts.push(`${mins}m`)
+                    if (hrs === 0) parts.push(`${secs}s`)
+                    return <span className="ml-1 opacity-80">({parts.join(' ')})</span>
                   })()}
                 </span>
               ) : (
