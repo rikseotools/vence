@@ -73,7 +73,7 @@ export function useAdminNotifications(enabled = false) {
             .select('id, status, feedback_messages(id, is_admin, created_at)')
             .neq('status', 'closed'),
           new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Timeout')), 8000)
+            setTimeout(() => reject(new Error('Timeout')), 15000)
           )
         ]),
         // 2. Contar feedbacks pending/in_progress sin conversación
@@ -83,35 +83,35 @@ export function useAdminNotifications(enabled = false) {
             .select('id, feedback_conversations(id)')
             .in('status', ['pending', 'in_progress']),
           new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Timeout')), 8000)
+            setTimeout(() => reject(new Error('Timeout')), 15000)
           )
         ]),
         // 3. Obtener impugnaciones via API (usa SERVICE_ROLE para bypass RLS)
         Promise.race([
           fetch('/api/admin/pending-counts').then(r => r.json()),
           new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Timeout')), 8000)
+            setTimeout(() => reject(new Error('Timeout')), 15000)
           )
         ]),
         // 4. Obtener ventas no leídas
         Promise.race([
           fetch('/api/v2/admin/unread-sales').then(r => r.json()),
           new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Timeout')), 8000)
+            setTimeout(() => reject(new Error('Timeout')), 15000)
           )
         ]),
         // 5. Obtener problemas de calidad de preguntas
         Promise.race([
           fetch('/api/admin/question-quality?count_only=true').then(r => r.json()),
           new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Timeout')), 8000)
+            setTimeout(() => reject(new Error('Timeout')), 15000)
           )
         ]),
         // 6. Contar errores de validación API (últimas 24h) — via API (usa service role, bypass RLS)
         Promise.race([
           fetch('/api/v2/admin/validation-errors?timeRange=1&limit=1').then(r => r.json()),
           new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Timeout')), 8000)
+            setTimeout(() => reject(new Error('Timeout')), 15000)
           )
         ])
       ])
