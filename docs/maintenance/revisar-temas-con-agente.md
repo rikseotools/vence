@@ -625,7 +625,61 @@ Sin la imagen, no se puede:
 - Escribir una explicación útil para el estudiante
 - Garantizar la calidad de la pregunta
 
-## 11. Preguntas Frecuentes
+## 11. Desactivación Automática por Calidad
+
+Desde marzo 2026, el sistema **desactiva automáticamente** las preguntas cuando se les asigna un status de error, y **las reactiva** cuando se marcan como perfectas.
+
+### Comportamiento automático
+
+| Status | Acción sobre `is_active` |
+|--------|--------------------------|
+| `perfect`, `tech_perfect` | `is_active = true` (reactivar) |
+| `bad_answer`, `bad_explanation`, `all_wrong`, etc. | `is_active = false` (desactivar) |
+| `pending`, `needs_review` | Sin cambio |
+
+Esto aplica tanto al panel admin (Revisión Temas) como a la verificación automática por IA.
+
+### Campo `deactivation_reason`
+
+Al desactivar una pregunta por error, se escribe automáticamente un motivo legible en español en el campo `deactivation_reason`. Al reactivarla (marcar como perfect), se limpia automáticamente.
+
+Ejemplos de motivos automáticos: "Respuesta incorrecta", "Artículo vinculado incorrecto", "Todo incorrecto (respuesta, explicación y artículo)".
+
+Para desactivaciones manuales (imagen no disponible, duplicada, etc.), escribir el motivo manualmente:
+```javascript
+await supabase
+  .from('questions')
+  .update({ is_active: false, deactivation_reason: 'Imagen no disponible' })
+  .eq('id', questionId);
+```
+
+### Encontrar preguntas desactivadas por error
+
+```sql
+SELECT id, question_text, topic_review_status, deactivation_reason
+FROM questions
+WHERE is_active = false
+  AND deactivation_reason IS NOT NULL
+ORDER BY verified_at DESC;
+```
+
+### Panel admin Revisión Temas
+
+Las preguntas desactivadas por error **siguen visibles** en el panel de Revisión Temas para que se puedan reparar. Los fetchers de usuario sí las ocultan.
+
+### Flujo para reparar una pregunta desactivada
+
+1. Corregir la pregunta (respuesta, explicación, artículo)
+2. Marcar como `perfect` o `tech_perfect` en Revisión Temas
+3. La pregunta se **reactiva automáticamente** — no hace falta tocar `is_active` manualmente
+
+### Al revisar con agentes
+
+Cuando un agente detecta un error y lo corrige, debe marcar el status final:
+- Si la corrigió y quedó perfecta → `topic_review_status = 'perfect'` (se reactiva sola)
+- Si detectó error pero no pudo corregir → marcar el error específico (se desactiva sola)
+
+## 12. Preguntas Frecuentes
 
 **¿El agente usa tokens de mi suscripción?**
 Sí, usa los tokens de Claude Code (Max), no la API de Anthropic.
@@ -663,7 +717,7 @@ Depende del número de preguntas. 57 preguntas con 4 agentes paralelos tarda apr
 **¿Puedo ver el progreso?**
 Sí, el orquestador reporta el progreso: "Procesadas 19/57", y al final da un resumen completo.
 
-## 12. Ejemplo Real: Revisión del Bloque II Administrativo C1
+## 13. Ejemplo Real: Revisión del Bloque II Administrativo C1
 
 **Fecha:** Enero 2026
 **Solicitud:** "Revisa todas las preguntas con errores del bloque II de administrativo C1"

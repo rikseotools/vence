@@ -252,10 +252,9 @@ export async function getTopicsWithStats(positionType: string): Promise<TopicWit
         verificationStatus: questions.verificationStatus,
       })
       .from(questions)
-      .where(and(
+      .where(
         inArray(questions.primaryArticleId, allArticleIds),
-        eq(questions.isActive, true),
-      ))
+      )
   }
 
   // Mapa: articleId → questions[]
@@ -531,10 +530,9 @@ export async function getTopicQuestions(topicId: string): Promise<{
       primaryArticleId: questions.primaryArticleId,
     })
     .from(questions)
-    .where(and(
+    .where(
       inArray(questions.primaryArticleId, allArticleIds),
-      eq(questions.isActive, true),
-    ))
+    )
     .orderBy(questions.createdAt)
 
   return {
@@ -659,10 +657,9 @@ export async function getTopicDetail(topicId: string) {
           primaryArticleId: questions.primaryArticleId,
         })
         .from(questions)
-        .where(and(
+        .where(
           inArray(questions.primaryArticleId, articleIds),
-          eq(questions.isActive, true),
-        ))
+        )
         .orderBy(questions.createdAt)
 
       // 5. Obtener verificaciones IA
