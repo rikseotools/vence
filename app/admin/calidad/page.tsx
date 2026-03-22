@@ -23,6 +23,7 @@ interface QualityData {
     pending_explanation: CheckResult
     missing_article: CheckResult
     missing_image: CheckResult
+    excel_typo: CheckResult
     copied_explanation: CheckResult
   }
 }
@@ -52,6 +53,11 @@ const CHECK_CONFIG = {
     title: 'Imagen no disponible',
     description: 'Preguntas que referencian imágenes/capturas que no se muestran',
     icon: '🖼️',
+  },
+  excel_typo: {
+    title: 'Función Excel mal escrita',
+    description: 'Funciones sin punto: SIERROR→SI.ERROR, CONTARSI→CONTAR.SI, SUMARSI→SUMAR.SI',
+    icon: '📊',
   },
   copied_explanation: {
     title: 'Explicación copiada del artículo',

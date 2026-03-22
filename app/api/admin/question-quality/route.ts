@@ -26,6 +26,7 @@ interface QualityResponse {
     pending_explanation: CheckResult
     missing_article: CheckResult
     missing_image: CheckResult
+    excel_typo: CheckResult
     copied_explanation: CheckResult
   }
 }
@@ -44,7 +45,10 @@ const SIMILARITY_THRESHOLD = 0.9
 // Patterns for questions that reference visual content not available (images, icons, tables, screenshots)
 const MISSING_IMAGE_REGEX = `(?i)(siguiente imagen|imagen que se muestra|captura de pantalla que se muestra|pantalla que se muestra|icono que aparece en la siguiente|icono que muestra la siguiente|icono que puedes ver en la siguiente|icono que aparece a continuación|observa la siguiente captura|según la siguiente imagen|relación con la siguiente imagen|observe la siguiente imagen|figura que aparece a continuación|rango de datos que aparece a continuación|tabla adjunta|documento adjunto|gráfico siguiente|hoja de cálculo siguiente|siguiente hoja de cálculo|siguiente figura|figura que aparece entre)`
 
-const BANNED_REGEX = `(?i)(oposita\\s*[-_.]?\\s*test|opositest|oposistatest|opossita|opositatets|opostia|opsita|opositatestt|opositates[^t]|oposiitatest|oppositatest|opoositatest|opositattest|opositateest|opositatesst|0positatest|opositat3st|op0sitatest|0p0sitatest|opos1tatest|oposi7atest|oposita7est|opositat€st|o[-._]p[-._]o[-._]s[-._]i[-._]t[-._]a[-._]t[-._]e[-._]s[-._]t)`
+// Excel functions written without the required period (e.g. SIERROR instead of SI.ERROR)
+const EXCEL_TYPO_REGEX = `(?i)(\\mSIERROR\\M|\\mCONTARSI\\M|\\mSUMARSI\\M)`
+
+const BANNED_REGEX =`(?i)(oposita\\s*[-_.]?\\s*test|opositest|oposistatest|opossita|opositatets|opostia|opsita|opositatestt|opositates[^t]|oposiitatest|oppositatest|opoositatest|opositattest|opositateest|opositatesst|0positatest|opositat3st|op0sitatest|0p0sitatest|opos1tatest|oposi7atest|oposita7est|opositat€st|o[-._]p[-._]o[-._]s[-._]i[-._]t[-._]a[-._]t[-._]e[-._]s[-._]t)`
 
 function truncate(text: string): string {
   return text.length > TEXT_LIMIT ? text.slice(0, TEXT_LIMIT) + '...' : text
@@ -68,7 +72,10 @@ async function runCountsOnly(): Promise<number> {
           explanation ILIKE '%pendiente de explicación%' OR explanation ILIKE '%pendiente de explicacion%'
         ) as pending_explanation,
         count(*) FILTER (WHERE primary_article_id IS NULL) as missing_article,
-        count(*) FILTER (WHERE question_text ~* ${MISSING_IMAGE_REGEX}) as missing_image
+        count(*) FILTER (WHERE question_text ~* ${MISSING_IMAGE_REGEX}) as missing_image,
+        count(*) FILTER (WHERE
+          CONCAT_WS(' ', question_text, option_a, option_b, option_c, option_d) ~* ${EXCEL_TYPO_REGEX}
+        ) as excel_typo
       FROM questions
       WHERE is_active = true
     ),
@@ -82,7 +89,7 @@ async function runCountsOnly(): Promise<number> {
         AND LENGTH(q.explanation) > 50
         AND similarity(q.explanation, a.content) >= ${SIMILARITY_THRESHOLD}
     )
-    SELECT (b.empty_options + b.banned_words + b.pending_explanation + b.missing_article + b.missing_image + s.copied)::int as total
+    SELECT (b.empty_options + b.banned_words + b.pending_explanation + b.missing_article + b.missing_image + b.excel_typo + s.copied)::int as total
     FROM base b, similarity_count s
   `)
 
@@ -95,7 +102,7 @@ async function runChecks(): Promise<QualityResponse> {
   const db = getDb()
 
   // Run all data queries with count(*) OVER() to get totals without separate count queries
-  const [emptyOpts, bannedRaw, pendingExpl, missingArt, missingImg, copiedExplRaw] = await Promise.all([
+  const [emptyOpts, bannedRaw, pendingExpl, missingArt, missingImg, excelTypoRaw, copiedExplRaw] = await Promise.all([
     // 1. Empty options
     db.execute(sql`
       SELECT id, LEFT(question_text, ${TEXT_LIMIT}) as question_text,
@@ -147,7 +154,19 @@ async function runChecks(): Promise<QualityResponse> {
       LIMIT ${MAX_ITEMS}
     `),
 
-    // 6. Copied explanation (similarity)
+    // 6. Excel function typos (e.g. SIERROR instead of SI.ERROR)
+    db.execute(sql`
+      SELECT id, LEFT(question_text, ${TEXT_LIMIT}) as question_text,
+             question_text as full_question_text,
+             option_a, option_b, option_c, option_d,
+             count(*) OVER()::int as total_count
+      FROM questions
+      WHERE is_active = true
+        AND CONCAT_WS(' ', question_text, option_a, option_b, option_c, option_d) ~* ${EXCEL_TYPO_REGEX}
+      LIMIT ${MAX_ITEMS}
+    `),
+
+    // 7. Copied explanation (similarity)
     db.execute(sql`
       SELECT q.id, LEFT(q.question_text, ${TEXT_LIMIT}) as question_text,
              ROUND(similarity(q.explanation, a.content)::numeric, 2) as sim,
@@ -171,6 +190,7 @@ async function runChecks(): Promise<QualityResponse> {
   const pendingRows = toRows(pendingExpl)
   const missingRows = toRows(missingArt)
   const missingImgRows = toRows(missingImg)
+  const excelTypoRows = toRows(excelTypoRaw)
   const copiedRows = toRows(copiedExplRaw)
 
   // Detect which field has banned word
@@ -182,6 +202,17 @@ async function runChecks(): Promise<QualityResponse> {
     else if (bannedRegexJs.test(q.option_c)) field = 'option_c'
     else if (bannedRegexJs.test(q.option_d)) field = 'option_d'
     else if (bannedRegexJs.test(q.explanation)) field = 'explanation'
+    return { id: q.id, question_text: q.question_text, field }
+  })
+
+  // Detect which field has the Excel typo
+  const excelTypoRegexJs = new RegExp(EXCEL_TYPO_REGEX.replace('(?i)', '').replace(/\\m/g, '\\b').replace(/\\M/g, '\\b'), 'i')
+  const excelTypoWithField = excelTypoRows.map((q: any) => {
+    let field = 'question_text'
+    if (excelTypoRegexJs.test(q.option_a)) field = 'option_a'
+    else if (excelTypoRegexJs.test(q.option_b)) field = 'option_b'
+    else if (excelTypoRegexJs.test(q.option_c)) field = 'option_c'
+    else if (excelTypoRegexJs.test(q.option_d)) field = 'option_d'
     return { id: q.id, question_text: q.question_text, field }
   })
 
@@ -222,6 +253,10 @@ async function runChecks(): Promise<QualityResponse> {
         id: q.id, question_text: q.question_text, field: 'image_reference',
       })),
     },
+    excel_typo: {
+      count: getCount(excelTypoRows),
+      questions: excelTypoWithField,
+    },
     copied_explanation: {
       count: getCount(copiedRows),
       questions: copiedExpl,
@@ -234,6 +269,7 @@ async function runChecks(): Promise<QualityResponse> {
     checks.pending_explanation.count +
     checks.missing_article.count +
     checks.missing_image.count +
+    checks.excel_typo.count +
     checks.copied_explanation.count
 
   return { success: true, totalIssues, checks }
