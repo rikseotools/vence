@@ -70,8 +70,10 @@ import type {
 } from './schemas'
 
 // Map oposicion slug to exam_position value (structured field in questions table)
+// TODO: Derivar de lib/config/exam-positions.ts
 const oposicionToExamPosition: Record<string, string> = {
   'auxiliar-administrativo-estado': 'auxiliar_administrativo_estado',
+  'auxiliar-administrativo-madrid': 'auxiliar_administrativo_madrid',
   'tramitacion-procesal': 'tramitacion_procesal',
   'auxilio-judicial': 'auxilio_judicial',
   'administrativo-estado': 'administrativo_estado',
@@ -81,6 +83,7 @@ const oposicionToExamPosition: Record<string, string> = {
 // Fallback: exam_source LIKE pattern for psychometric_questions (which lacks exam_position column)
 const oposicionToExamSourcePattern: Record<string, string> = {
   'auxiliar-administrativo-estado': '%Auxiliar Administrativo Estado%',
+  'auxiliar-administrativo-madrid': '%Auxiliar Administrativo Madrid%',
   'tramitacion-procesal': '%Tramitación Procesal%',
   'auxilio-judicial': '%Auxilio Judicial%',
   'administrativo-estado': '%Administrativo Estado%',

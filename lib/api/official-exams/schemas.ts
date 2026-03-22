@@ -1,8 +1,10 @@
 import { z } from 'zod'
 
 // Available positions for official exams
+// TODO: Derivar de lib/config/oposiciones.ts cuando todas las oposiciones tengan exámenes oficiales
 export const OposicionType = {
   AUXILIAR_ADMINISTRATIVO_ESTADO: 'auxiliar-administrativo-estado',
+  AUXILIAR_ADMINISTRATIVO_MADRID: 'auxiliar-administrativo-madrid',
   TRAMITACION_PROCESAL: 'tramitacion-procesal',
   AUXILIO_JUDICIAL: 'auxilio-judicial',
 } as const
@@ -14,6 +16,7 @@ export const getOfficialExamQuestionsRequestSchema = z.object({
   examDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato de fecha inválido (YYYY-MM-DD)'),
   oposicion: z.enum([
     OposicionType.AUXILIAR_ADMINISTRATIVO_ESTADO,
+    OposicionType.AUXILIAR_ADMINISTRATIVO_MADRID,
     OposicionType.TRAMITACION_PROCESAL,
     OposicionType.AUXILIO_JUDICIAL,
   ]),
@@ -113,6 +116,7 @@ export const saveOfficialExamResultsRequestSchema = z.object({
   examDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato de fecha inválido (YYYY-MM-DD)'),
   oposicion: z.enum([
     OposicionType.AUXILIAR_ADMINISTRATIVO_ESTADO,
+    OposicionType.AUXILIAR_ADMINISTRATIVO_MADRID,
     OposicionType.TRAMITACION_PROCESAL,
     OposicionType.AUXILIO_JUDICIAL,
   ]),
@@ -162,6 +166,7 @@ export const initOfficialExamRequestSchema = z.object({
   examDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato de fecha inválido (YYYY-MM-DD)'),
   oposicion: z.enum([
     OposicionType.AUXILIAR_ADMINISTRATIVO_ESTADO,
+    OposicionType.AUXILIAR_ADMINISTRATIVO_MADRID,
     OposicionType.TRAMITACION_PROCESAL,
     OposicionType.AUXILIO_JUDICIAL,
   ]),
@@ -327,6 +332,7 @@ export const getOfficialExamFailedQuestionsRequestSchema = z.object({
   parte: z.enum(['primera', 'segunda', 'unica', 'supuesto', 'tercer-ejercicio']).optional(),
   oposicion: z.enum([
     OposicionType.AUXILIAR_ADMINISTRATIVO_ESTADO,
+    OposicionType.AUXILIAR_ADMINISTRATIVO_MADRID,
     OposicionType.TRAMITACION_PROCESAL,
     OposicionType.AUXILIO_JUDICIAL,
   ]),
@@ -381,6 +387,7 @@ export const getOfficialExamReviewRequestSchema = z.object({
   parte: z.enum(['primera', 'segunda', 'unica', 'supuesto', 'tercer-ejercicio']).optional(),
   oposicion: z.enum([
     OposicionType.AUXILIAR_ADMINISTRATIVO_ESTADO,
+    OposicionType.AUXILIAR_ADMINISTRATIVO_MADRID,
     OposicionType.TRAMITACION_PROCESAL,
     OposicionType.AUXILIO_JUDICIAL,
   ]),
