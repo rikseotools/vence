@@ -712,13 +712,17 @@ function EstadisticasContent() {
 
           // Artículos débiles y fuertes - incluir theme para filtrado por tema
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          articlePerformance: [...apiStats.weakArticles, ...apiStats.strongArticles].map((a: any) => ({
+          articlePerformance: (apiStats.allArticles || [...apiStats.weakArticles, ...apiStats.strongArticles]).map((a: any) => ({
             article: `Art. ${a.articleNumber}`,
+            article_number: a.articleNumber,
             law: a.lawName,
-            theme: a.temaNumber, // Necesario para getArticlesForTheme
+            theme: a.temaNumber,
+            tema_number: a.temaNumber,
             total: a.totalQuestions,
             correct: a.correctAnswers,
             accuracy: a.accuracy,
+            avgTime: 0,
+            avgRetention: 0,
             status: a.accuracy >= 85 ? 'dominado' : a.accuracy >= 70 ? 'bien' : a.accuracy >= 50 ? 'regular' : 'débil'
           })),
 

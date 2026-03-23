@@ -168,6 +168,7 @@ async function getUserStatsWithDrizzle(userId: string): Promise<GetUserStatsResp
       timePatterns,
       weakArticles,
       strongArticles,
+      allArticles: articleStats,
       userOposicion: userOposicion ?? undefined,
       userSessions: userSessionsData,
     },

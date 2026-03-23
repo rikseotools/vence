@@ -140,6 +140,7 @@ export const getUserStatsResponseSchema = z.object({
     timePatterns: timePatternsSchema,
     weakArticles: z.array(articlePerformanceSchema),
     strongArticles: z.array(articlePerformanceSchema),
+    allArticles: z.array(articlePerformanceSchema).optional(),
     userOposicion: userOposicionSchema.optional(),
     userSessions: z.array(userSessionSchema).optional(),
   }).optional(),
