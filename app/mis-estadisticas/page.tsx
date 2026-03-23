@@ -9,7 +9,6 @@ import { useOposicion } from '@/contexts/OposicionContext' // ✅ Para obtener o
 import OfficialExamAttempts from '@/components/Statistics/OfficialExamAttempts'
 
 // Importar todos los componentes
-import MainStats from '@/components/Statistics/MainStats'
 import WeeklyProgress from '@/components/Statistics/WeeklyProgress'
 import RecentTests from '@/components/Statistics/RecentTests'
 import Achievements from '@/components/Statistics/Achievements'
@@ -1478,8 +1477,7 @@ function EstadisticasContent() {
         <div id="statistics-content" className="scroll-mt-8">
           {activeTab === 'overview' && (
             <div className="space-y-6">
-              <MainStats stats={stats} />
-              <DetailedCharts 
+              <DetailedCharts
                 weeklyProgress={stats.weeklyProgress}
                 difficultyBreakdown={stats.difficultyBreakdown}
                 themePerformance={stats.themePerformance}
