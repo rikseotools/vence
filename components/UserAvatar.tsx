@@ -423,7 +423,11 @@ export default function UserAvatar() {
             </div>
 
             {/* Stats */}
-            <div className="p-4 border-b border-gray-200">
+            <Link
+              href="/mis-estadisticas"
+              onClick={handleLinkClick}
+              className="block p-4 border-b border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer"
+            >
               <div className="text-sm font-medium text-gray-700 mb-3">📊 Tu Progreso</div>
               <div className="grid grid-cols-2 gap-3 text-xs">
                 <div className="bg-orange-50 p-3 rounded-lg text-center">
@@ -464,7 +468,7 @@ export default function UserAvatar() {
                   </div>
                 </div>
               </div>
-            </div>
+            </Link>
 
             {/* Menu options */}
             <div className="p-2">
