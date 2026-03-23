@@ -266,6 +266,145 @@ const VerticalBarChart = ({ data, title, icon, color = 'green', valueFormatter =
   )
 }
 
+// Gráfico de líneas: precisión últimos 7d vs 7d anteriores vs hace 1 mes
+const AccuracyLineChart = ({ weeklyProgress }) => {
+  if (!weeklyProgress || weeklyProgress.length === 0) return null
+
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+
+  // Agrupar datos por período
+  const getAccuracyForPeriod = (startDaysAgo, endDaysAgo) => {
+    const start = new Date(today.getTime() - startDaysAgo * 86400000)
+    const end = new Date(today.getTime() - endDaysAgo * 86400000)
+    const days = weeklyProgress.filter(d => {
+      const date = new Date(d.date)
+      return date >= start && date < end
+    })
+    // Devolver precisión por día relativo (0-6)
+    const result = []
+    for (let i = 0; i < 7; i++) {
+      const targetDate = new Date(start.getTime() + i * 86400000)
+      const dayData = days.find(d => d.date === targetDate.toISOString().split('T')[0])
+      result.push(dayData ? dayData.accuracy : null)
+    }
+    return result
+  }
+
+  const last7 = getAccuracyForPeriod(7, 0)
+  const prev7 = getAccuracyForPeriod(14, 7)
+  const month = getAccuracyForPeriod(30, 23)
+
+  const dayLabels = ['D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7']
+
+  // Calcular promedios
+  const avg = (arr) => {
+    const valid = arr.filter(v => v !== null)
+    return valid.length > 0 ? Math.round(valid.reduce((s, v) => s + v, 0) / valid.length) : null
+  }
+  const avgLast7 = avg(last7)
+  const avgPrev7 = avg(prev7)
+  const avgMonth = avg(month)
+
+  // SVG line chart dimensions
+  const W = 320, H = 160, PAD_L = 35, PAD_R = 10, PAD_T = 10, PAD_B = 25
+  const chartW = W - PAD_L - PAD_R
+  const chartH = H - PAD_T - PAD_B
+
+  // Find min/max for Y axis
+  const allVals = [...last7, ...prev7, ...month].filter(v => v !== null)
+  const minY = allVals.length > 0 ? Math.max(0, Math.min(...allVals) - 10) : 0
+  const maxY = allVals.length > 0 ? Math.min(100, Math.max(...allVals) + 10) : 100
+  const rangeY = maxY - minY || 1
+
+  const toX = (i) => PAD_L + (i / 6) * chartW
+  const toY = (v) => PAD_T + chartH - ((v - minY) / rangeY) * chartH
+
+  const makePath = (data, color) => {
+    const points = data
+      .map((v, i) => v !== null ? { x: toX(i), y: toY(v) } : null)
+      .filter(Boolean)
+    if (points.length < 2) return null
+    const d = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')
+    return (
+      <>
+        <path d={d} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        {points.map((p, i) => (
+          <circle key={i} cx={p.x} cy={p.y} r="3.5" fill={color} stroke="white" strokeWidth="1.5" />
+        ))}
+      </>
+    )
+  }
+
+  const periods = [
+    { label: 'Últimos 7 días', avg: avgLast7, color: '#10b981', data: last7 },
+    { label: '7 días anteriores', avg: avgPrev7, color: '#3b82f6', data: prev7 },
+    { label: 'Hace 1 mes', avg: avgMonth, color: '#a855f7', data: month },
+  ]
+
+  return (
+    <div className="bg-white rounded-xl shadow-lg p-6">
+      <h3 className="text-lg font-bold text-gray-800 mb-4">
+        <span className="mr-2">📈</span>
+        Evolución de tu Precisión
+      </h3>
+
+      {/* Leyenda con promedios */}
+      <div className="flex flex-wrap gap-3 mb-4">
+        {periods.map((p, i) => (
+          <div key={i} className="flex items-center gap-1.5 text-xs">
+            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: p.color }} />
+            <span className="text-gray-600">{p.label}</span>
+            {p.avg !== null && (
+              <span className="font-bold" style={{ color: p.color }}>{p.avg}%</span>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* SVG Chart */}
+      <div className="w-full overflow-hidden">
+        <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto">
+          {/* Grid lines */}
+          {[0, 0.25, 0.5, 0.75, 1].map((pct, i) => {
+            const y = PAD_T + chartH * (1 - pct)
+            const val = Math.round(minY + rangeY * pct)
+            return (
+              <g key={i}>
+                <line x1={PAD_L} y1={y} x2={W - PAD_R} y2={y} stroke="#e5e7eb" strokeWidth="1" />
+                <text x={PAD_L - 5} y={y + 4} textAnchor="end" fontSize="10" fill="#9ca3af">{val}%</text>
+              </g>
+            )
+          })}
+
+          {/* X labels */}
+          {dayLabels.map((label, i) => (
+            <text key={i} x={toX(i)} y={H - 5} textAnchor="middle" fontSize="10" fill="#9ca3af">{label}</text>
+          ))}
+
+          {/* Lines */}
+          {makePath(month, '#a855f7')}
+          {makePath(prev7, '#3b82f6')}
+          {makePath(last7, '#10b981')}
+        </svg>
+      </div>
+
+      {/* Trend indicator */}
+      {avgLast7 !== null && avgPrev7 !== null && (
+        <div className="mt-3 text-center text-sm">
+          {avgLast7 > avgPrev7 ? (
+            <span className="text-green-600 font-medium">↑ +{avgLast7 - avgPrev7}% vs semana anterior</span>
+          ) : avgLast7 < avgPrev7 ? (
+            <span className="text-red-500 font-medium">↓ {avgLast7 - avgPrev7}% vs semana anterior</span>
+          ) : (
+            <span className="text-gray-500 font-medium">= Igual que la semana anterior</span>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function DetailedCharts({ weeklyProgress, difficultyBreakdown, themePerformance }) {
   const [showInfo, setShowInfo] = useState(false)
 
@@ -367,15 +506,9 @@ export default function DetailedCharts({ weeklyProgress, difficultyBreakdown, th
           </div>
         )}
 
-        {/* Gráfico de barras horizontales: Evolución de Precisión */}
-        {difficultyEvolutionData.length > 0 && (
-          <HorizontalBarChart
-            data={difficultyEvolutionData}
-            title="Evolución de tu Precisión"
-            icon="📈"
-            color="green"
-            valueFormatter={(v) => `${v}%`}
-          />
+        {/* Gráfico de líneas: Evolución de Precisión (3 períodos) */}
+        {weeklyProgress?.length > 0 && (
+          <AccuracyLineChart weeklyProgress={weeklyProgress} />
         )}
 
         {/* Gráfico de temas - optimizado para móviles */}

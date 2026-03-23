@@ -118,7 +118,7 @@ function getWorstHours(hourlyData: Array<{hour: number, questions: number, accur
 async function getUserStatsWithDrizzle(userId: string): Promise<GetUserStatsResponse> {
   const db = getDb()
   const now = new Date()
-  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
 
   // Ejecutar todas las queries en paralelo
   const [
@@ -134,7 +134,7 @@ async function getUserStatsWithDrizzle(userId: string): Promise<GetUserStatsResp
     userSessionsData,
   ] = await Promise.all([
     getMainStats(db, userId),
-    getWeeklyProgress(db, userId, sevenDaysAgo),
+    getWeeklyProgress(db, userId, thirtyDaysAgo),
     getRecentTests(db, userId),
     getThemePerformance(db, userId),
     getDifficultyBreakdown(db, userId),
