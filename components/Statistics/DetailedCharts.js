@@ -270,19 +270,24 @@ const VerticalBarChart = ({ data, title, icon, color = 'green', valueFormatter =
 const AccuracyLineChart = ({ weeklyProgress }) => {
   if (!weeklyProgress || weeklyProgress.length === 0) return null
 
-  const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+  const dayLabelsOrdered = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
   const now = new Date()
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
 
-  // Generar los 7 días: hoy es el último (índice 6), hace 6 días es el primero (índice 0)
+  // Encontrar el lunes de esta semana (si hoy es domingo, retroceder 6 días)
+  const dayOfWeek = today.getDay() // 0=Dom, 1=Lun, ...
+  const mondayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1
+  const monday = new Date(today.getTime() - mondayOffset * 86400000)
+
+  // Generar Lun→Dom de la semana actual
   const buildDays = () => {
     const days = []
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(today.getTime() - i * 86400000)
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(monday.getTime() + i * 86400000)
       days.push({
         date: d.toISOString().split('T')[0],
-        label: dayNames[d.getDay()],
-        isToday: i === 0,
+        label: dayLabelsOrdered[i],
+        isToday: d.getTime() === today.getTime(),
       })
     }
     return days
@@ -296,19 +301,20 @@ const AccuracyLineChart = ({ weeklyProgress }) => {
     return match && match.questions > 0 ? match.accuracy : null
   }
 
-  // Últimos 7 días (hoy → hace 6 días)
+  // Esta semana (Lun→Dom)
   const last7 = days.map(d => findAccuracy(d.date))
 
-  // 7 días anteriores (hace 7 → hace 13 días), mapeados a los mismos slots
+  // Semana anterior (mismo Lun→Dom pero -7 días)
+  const prevMonday = new Date(monday.getTime() - 7 * 86400000)
   const prev7 = days.map((_, i) => {
-    const d = new Date(today.getTime() - (i + 7) * 86400000 + (6 - i) * 0) // offset -7 días
-    const targetDate = new Date(today.getTime() - ((6 - i) + 7) * 86400000)
+    const targetDate = new Date(prevMonday.getTime() + i * 86400000)
     return findAccuracy(targetDate.toISOString().split('T')[0])
   })
 
-  // Hace 1 mes (hace 30 → hace 23 días), mapeados a los mismos slots
+  // Hace 1 mes (misma semana pero -28 días)
+  const monthMonday = new Date(monday.getTime() - 28 * 86400000)
   const month = days.map((_, i) => {
-    const targetDate = new Date(today.getTime() - ((6 - i) + 23) * 86400000)
+    const targetDate = new Date(monthMonday.getTime() + i * 86400000)
     return findAccuracy(targetDate.toISOString().split('T')[0])
   })
 
@@ -352,9 +358,9 @@ const AccuracyLineChart = ({ weeklyProgress }) => {
   }
 
   const periods = [
-    { label: 'Últimos 7 días', avg: avgLast7, color: '#10b981' },
-    { label: '7 días anteriores', avg: avgPrev7, color: '#3b82f6' },
-    { label: 'Hace 1 mes', avg: avgMonth, color: '#a855f7' },
+    { label: 'Esta semana', avg: avgLast7, color: '#10b981' },
+    { label: 'Semana anterior', avg: avgPrev7, color: '#3b82f6' },
+    { label: 'Hace 4 semanas', avg: avgMonth, color: '#a855f7' },
   ]
 
   return (
