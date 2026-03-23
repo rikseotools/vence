@@ -86,8 +86,8 @@ export default async function AuxiliarAdministrativoMadrid() {
     : 'Examen previsto para 2026'
 
   const textoInscripcion = inscripcionCerrada
-    ? 'Plazo de inscripcion cerrado.'
-    : `Plazo de inscripcion: del ${inscripcionInicio} al ${inscripcionFin}.`
+    ? 'Plazo de inscripción cerrado.'
+    : `Plazo de inscripción: del ${inscripcionInicio} al ${inscripcionFin}.`
 
   const estadisticas = [
     { numero: formatNumber(plazasLibres), texto: "Plazas libres", color: "text-red-600" },
@@ -98,22 +98,22 @@ export default async function AuxiliarAdministrativoMadrid() {
 
   const faqs = [
     {
-      pregunta: "¿Cuantas plazas hay para Auxiliar Administrativo de la Comunidad de Madrid 2026?",
-      respuesta: `Se convocan ${formatNumber(plazasLibres)} plazas de acceso libre${plazasPromocion ? ` y ${formatNumber(plazasPromocion)} de promocion interna` : ''} para Auxiliar Administrativo de la Comunidad de Madrid.`
+      pregunta: "¿Cuántas plazas hay para Auxiliar Administrativo de la Comunidad de Madrid 2026?",
+      respuesta: `Se convocan ${formatNumber(plazasLibres)} plazas de acceso libre${plazasPromocion ? ` y ${formatNumber(plazasPromocion)} de promoción interna` : ''} para Auxiliar Administrativo de la Comunidad de Madrid.`
     },
     {
-      pregunta: "¿Cual es el programa oficial de Auxiliar Administrativo Madrid?",
-      respuesta: `El programa consta de ${temasCount} temas en 2 bloques: Bloque I (15 temas) sobre Organizacion Politica y Bloque II (6 temas) sobre Ofimatica (Windows, Word, Excel, Access, Outlook, Microsoft 365).`
+      pregunta: "¿Cuál es el programa oficial de Auxiliar Administrativo Madrid?",
+      respuesta: `El programa consta de ${temasCount} temas en 2 bloques: Bloque I (15 temas) sobre Organización Política y Bloque II (6 temas) sobre Ofimática (Windows, Word, Excel, Access, Outlook, Microsoft 365).`
     },
     {
-      pregunta: "¿Cuando es el examen de Auxiliar Administrativo de la Comunidad de Madrid?",
+      pregunta: "¿Cuándo es el examen de Auxiliar Administrativo de la Comunidad de Madrid?",
       respuesta: examDate
-        ? `El examen esta previsto para el ${examDate}.${inscripcionCerrada && inscripcionInicio ? ` El plazo de inscripcion fue del ${inscripcionInicio} al ${inscripcionFin}.` : ''}`
-        : 'Pendiente de confirmacion.'
+        ? `El examen está previsto para el ${examDate}.${inscripcionCerrada && inscripcionInicio ? ` El plazo de inscripción fue del ${inscripcionInicio} al ${inscripcionFin}.` : ''}`
+        : 'Pendiente de confirmación.'
     },
     {
-      pregunta: "¿Que requisitos necesito para opositar?",
-      respuesta: `Nacionalidad espanola o europea, tener 16 anos cumplidos, titulo de ${tituloRequerido} (Grupo C2), y no estar inhabilitado para funciones publicas.`
+      pregunta: "¿Qué requisitos necesito para opositar?",
+      respuesta: `Nacionalidad española o europea, tener 16 años cumplidos, título de ${tituloRequerido} (Grupo C2), y no estar inhabilitado para funciones públicas.`
     }
   ]
 
@@ -133,7 +133,7 @@ export default async function AuxiliarAdministrativoMadrid() {
     "@context": "https://schema.org",
     "@type": "Event",
     "name": "Examen Auxiliar Administrativo Comunidad de Madrid 2026",
-    "description": examHito.descripcion ?? "Examen de oposicion para Auxiliar Administrativo de la Comunidad de Madrid",
+    "description": examHito.descripcion ?? "Examen de oposición para Auxiliar Administrativo de la Comunidad de Madrid",
     "startDate": examHito.fecha,
     "eventStatus": "https://schema.org/EventScheduled",
     "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
@@ -168,7 +168,7 @@ export default async function AuxiliarAdministrativoMadrid() {
             </h1>
 
             <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
-              Oposicion para la Comunidad de Madrid con <strong>{formatNumber(plazasLibres)} plazas de acceso libre</strong>.
+              Oposición para la Comunidad de Madrid con <strong>{formatNumber(plazasLibres)} plazas de acceso libre</strong>.
               {examDate ? ` ${textoExamen}.` : ''}
             </p>
 
@@ -209,7 +209,7 @@ export default async function AuxiliarAdministrativoMadrid() {
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold">{formatNumber(plazasPromocion)}</div>
-                <div className="text-red-100 text-sm">Promocion int.</div>
+                <div className="text-red-100 text-sm">Promoción int.</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold">{temasCount}</div>
@@ -300,34 +300,34 @@ export default async function AuxiliarAdministrativoMadrid() {
             <div className="grid md:grid-cols-2 gap-6">
               <div className="bg-white rounded-xl shadow-lg p-5 border-l-4 border-red-500">
                 <p className="text-xs text-gray-500 mb-1">15 temas (1-15)</p>
-                <h3 className="text-base font-bold mb-3 text-gray-800">Bloque I: Organizacion Politica</h3>
+                <h3 className="text-base font-bold mb-3 text-gray-800">Bloque I: Organización Política</h3>
                 <ul className="space-y-1 text-xs text-gray-600">
-                  <li className="flex items-start"><span className="mr-1">&bull;</span><span>1. La Constitucion Espanola de 1978</span></li>
-                  <li className="flex items-start"><span className="mr-1">&bull;</span><span>2. El Estatuto de Autonomia de la Comunidad de Madrid</span></li>
-                  <li className="flex items-start"><span className="mr-1">&bull;</span><span>3. La Ley de Gobierno y Administracion de la Comunidad de Madrid</span></li>
-                  <li className="flex items-start"><span className="mr-1">&bull;</span><span>4. Las fuentes del ordenamiento juridico</span></li>
+                  <li className="flex items-start"><span className="mr-1">&bull;</span><span>1. La Constitución Española de 1978</span></li>
+                  <li className="flex items-start"><span className="mr-1">&bull;</span><span>2. El Estatuto de Autonomía de la Comunidad de Madrid</span></li>
+                  <li className="flex items-start"><span className="mr-1">&bull;</span><span>3. La Ley de Gobierno y Administración de la Comunidad de Madrid</span></li>
+                  <li className="flex items-start"><span className="mr-1">&bull;</span><span>4. Las fuentes del ordenamiento jurídico</span></li>
                   <li className="flex items-start"><span className="mr-1">&bull;</span><span>5. El acto administrativo</span></li>
-                  <li className="flex items-start"><span className="mr-1">&bull;</span><span>6. La Ley del Procedimiento Administrativo Comun de las Administraciones Publicas</span></li>
-                  <li className="flex items-start"><span className="mr-1">&bull;</span><span>7. La Jurisdiccion Contencioso-Administrativa</span></li>
-                  <li className="flex items-start"><span className="mr-1">&bull;</span><span>8. Transparencia y Proteccion de Datos</span></li>
-                  <li className="flex items-start"><span className="mr-1">&bull;</span><span>9. Los contratos en el Sector Publico</span></li>
-                  <li className="flex items-start"><span className="mr-1">&bull;</span><span>10. El Texto Refundido de la Ley del Estatuto Basico del Empleado Publico</span></li>
+                  <li className="flex items-start"><span className="mr-1">&bull;</span><span>6. La Ley del Procedimiento Administrativo Común de las Administraciones Públicas</span></li>
+                  <li className="flex items-start"><span className="mr-1">&bull;</span><span>7. La Jurisdicción Contencioso-Administrativa</span></li>
+                  <li className="flex items-start"><span className="mr-1">&bull;</span><span>8. Transparencia y Protección de Datos</span></li>
+                  <li className="flex items-start"><span className="mr-1">&bull;</span><span>9. Los contratos en el Sector Público</span></li>
+                  <li className="flex items-start"><span className="mr-1">&bull;</span><span>10. El Texto Refundido de la Ley del Estatuto Básico del Empleado Público</span></li>
                   <li className="flex items-start"><span className="mr-1">&bull;</span><span>11. La Seguridad Social</span></li>
-                  <li className="flex items-start"><span className="mr-1">&bull;</span><span>12. Hacienda Publica y Presupuestos de la Comunidad de Madrid</span></li>
-                  <li className="flex items-start"><span className="mr-1">&bull;</span><span>13. Igualdad de genero y no discriminacion</span></li>
-                  <li className="flex items-start"><span className="mr-1">&bull;</span><span>14. Informacion administrativa y Administracion electronica</span></li>
+                  <li className="flex items-start"><span className="mr-1">&bull;</span><span>12. Hacienda Pública y Presupuestos de la Comunidad de Madrid</span></li>
+                  <li className="flex items-start"><span className="mr-1">&bull;</span><span>13. Igualdad de género y no discriminación</span></li>
+                  <li className="flex items-start"><span className="mr-1">&bull;</span><span>14. Información administrativa y Administración electrónica</span></li>
                   <li className="flex items-start"><span className="mr-1">&bull;</span><span>15. Los documentos administrativos</span></li>
                 </ul>
               </div>
               <div className="bg-white rounded-xl shadow-lg p-5 border-l-4 border-blue-500">
                 <p className="text-xs text-gray-500 mb-1">6 temas (16-21)</p>
-                <h3 className="text-base font-bold mb-3 text-gray-800">Bloque II: Ofimatica</h3>
+                <h3 className="text-base font-bold mb-3 text-gray-800">Bloque II: Ofimática</h3>
                 <ul className="space-y-1 text-xs text-gray-600">
                   <li className="flex items-start"><span className="mr-1">&bull;</span><span>16. El explorador de Windows</span></li>
                   <li className="flex items-start"><span className="mr-1">&bull;</span><span>17. Procesadores de texto: Word</span></li>
-                  <li className="flex items-start"><span className="mr-1">&bull;</span><span>18. Hojas de calculo: Excel</span></li>
+                  <li className="flex items-start"><span className="mr-1">&bull;</span><span>18. Hojas de cálculo: Excel</span></li>
                   <li className="flex items-start"><span className="mr-1">&bull;</span><span>19. Bases de datos: Access y Power BI</span></li>
-                  <li className="flex items-start"><span className="mr-1">&bull;</span><span>20. Correo electronico: Outlook</span></li>
+                  <li className="flex items-start"><span className="mr-1">&bull;</span><span>20. Correo electrónico: Outlook</span></li>
                   <li className="flex items-start"><span className="mr-1">&bull;</span><span>21. Trabajo colaborativo: Microsoft 365</span></li>
                 </ul>
               </div>
@@ -355,9 +355,9 @@ export default async function AuxiliarAdministrativoMadrid() {
 
           {/* CTA Final */}
           <section className="bg-red-600 rounded-lg shadow-lg p-6 text-white text-center">
-            <h2 className="text-2xl font-bold mb-3">¿Listo para aprobar tu oposicion?</h2>
+            <h2 className="text-2xl font-bold mb-3">¿Listo para aprobar tu oposición?</h2>
             <p className="text-red-100 mb-6 max-w-xl mx-auto">
-              Preparate con tests tipo examen y temario oficial actualizado.
+              Prepárate con tests tipo examen y temario oficial actualizado.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center items-center max-w-sm mx-auto">
               <Link href="/auxiliar-administrativo-madrid/test"
