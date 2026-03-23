@@ -26,6 +26,7 @@ interface RecentTestData {
   focusScore?: number
   isPsychometric?: boolean
   oposicionLabel?: string | null
+  oposicionFullName?: string | null
   oposicionPositionType?: string | null
 }
 
@@ -95,7 +96,10 @@ export default function RecentTests({ recentTests, onInfoClick }: RecentTestsPro
                   <div>
                     <div className="font-bold text-gray-800">{test.title}</div>
                     {test.oposicionLabel && (
-                      <span className="inline-flex items-center gap-1 text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full mt-0.5">
+                      <span
+                        className="inline-flex items-center gap-1 text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full mt-0.5"
+                        title={test.oposicionFullName || test.oposicionLabel}
+                      >
                         {test.oposicionPositionType && (() => {
                           const isNational = test.oposicionPositionType.includes('estado') || test.oposicionPositionType.includes('tramitacion')
                           if (isNational) return <span>🇪🇸</span>
