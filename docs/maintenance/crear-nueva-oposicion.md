@@ -604,16 +604,76 @@ Al crear la oposicion con `seguimiento_url`, el cron diario (`/api/cron/check-se
 
 ## FASE 6: Verificacion
 
-### Build y tests
+### 6a. Tests automatizados
 
 ```bash
 npm run build     # Sin errores
 npm run test:ci   # Actualizar toHaveLength si procede
 ```
 
-### Funcional
+**Test de integridad de landings** (`__tests__/config/landingDataIntegrity.test.ts`):
 
-1. `/<slug>/` - Landing carga
+Despues de migrar una landing, anadir el slug al array `MIGRATED_SLUGS` en el test:
+
+```typescript
+const MIGRATED_SLUGS = [
+  'auxiliar-administrativo-estado',
+  'auxiliar-administrativo-madrid',
+  // Anadir aqui cada nueva landing migrada
+]
+```
+
+El test verifica automaticamente (77+ checks):
+- Archivo .tsx existe, es Server Component async, tiene ISR
+- Importa `getOposicionLandingData` y `getHitosConvocatoria`
+- Tiene JSON-LD schema
+- NO usa `toLocaleString` (falla en servidores sin es-ES)
+- Plazas, fecha examen, BOE reference vienen de BD (no hardcodeados)
+- Links a convocatoria oficial y seguimiento
+- Timeline de hitos renderizado
+- Cantidad correcta de temas listados
+- No mezcla texto con y sin tildes (ver 6b)
+- Config central: slugs/positionTypes validos, totalTopics correcto
+
+```bash
+# Ejecutar solo los tests de landing
+npx jest landingDataIntegrity --no-coverage
+```
+
+### 6b. Tildes en landings (CRITICO para SEO)
+
+**SIEMPRE usar tildes correctas en el contenido de las landings.** Google distingue "Constitucion" de "Constitución". Los titulos de temas deben coincidir exactamente con los de la BD (tabla `topics.title`).
+
+Palabras frecuentes que necesitan tilde:
+- Constitución, Administración, Jurisdicción, Protección
+- Autonomía, público, jurídico, básico, electrónico
+- cálculo, información, inscripción, promoción
+- género, discriminación, Ofimática
+
+El test `no mezcla acentos con texto sin acentos` detecta inconsistencias.
+
+### 6c. Verificar epigrafes contra BD
+
+Los titulos de los temas en la landing DEBEN coincidir con `topics.title` en BD. Verificar con:
+
+```bash
+node -e "
+const { createClient } = require('@supabase/supabase-js');
+require('dotenv').config({ path: '.env.local' });
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+(async () => {
+  const { data } = await supabase.from('topics').select('topic_number, title')
+    .eq('position_type', 'slug_con_underscores').eq('is_active', true).order('topic_number');
+  data.forEach(d => console.log('T' + d.topic_number + ': ' + d.title));
+})();
+"
+```
+
+Si hay discrepancias, la BD es la fuente de verdad (viene del BOE oficial).
+
+### 6d. Checklist funcional
+
+1. `/<slug>/` - Landing carga con datos de BD
 2. `/<slug>/test` - Hub muestra temas en bloques correctos
 3. `/<slug>/test/aleatorio` - Genera test con preguntas
 4. `/<slug>/test/tema/X` - Carga datos del tema
@@ -623,6 +683,11 @@ npm run test:ci   # Actualizar toHaveLength si procede
 8. Breadcrumbs funcionan
 9. Perfil: oposicion aparece en selector
 10. Onboarding: oposicion aparece para nuevos usuarios
+11. **Landing: plazas, fecha examen, BOE coinciden con BD**
+12. **Landing: links a convocatoria y seguimiento funcionan**
+13. **Landing: timeline de hitos se renderiza correctamente**
+14. **Landing: epigrafes coinciden con pagina de tests**
+15. **Admin: oposicion aparece en /admin/seguimiento-convocatorias**
 
 ---
 
