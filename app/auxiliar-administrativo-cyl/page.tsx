@@ -1,262 +1,149 @@
 // app/auxiliar-administrativo-cyl/page.tsx
 import Link from 'next/link'
+import type { Metadata } from 'next'
 import ClientBreadcrumbsWrapper from '@/components/ClientBreadcrumbsWrapper'
+import { getOposicionLandingData, getHitosConvocatoria } from '@/lib/api/convocatoria/queries'
 
 const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
+export const revalidate = 86400
 
-export const metadata = {
+export const metadata: Metadata = {
   title: 'Auxiliar Administrativo Castilla y León 2026 | Temario Oficial y Tests',
-  description: 'Oposiciones Auxiliar Administrativo Castilla y León 2026: 362 plazas, temario oficial 28 temas BOCYL enero 2026. Junta de Castilla y León.',
-  keywords: [
-    'auxiliar administrativo castilla y leon',
-    'oposiciones auxiliar administrativo cyl',
-    'temario auxiliar castilla y leon',
-    'oposiciones castilla y leon 2026',
-    'auxiliar administrativo junta castilla y leon',
-    '28 temas auxiliar cyl',
-    'requisitos auxiliar cyl',
-    'plazas auxiliar administrativo castilla y leon'
-  ].join(', '),
-  authors: [{ name: 'Vence' }],
-  metadataBase: new URL(SITE_URL),
-  openGraph: {
-    title: 'Auxiliar Administrativo Castilla y León 2026 | 362 Plazas',
-    description: 'Oposiciones Auxiliar Administrativo Castilla y León: temario oficial 28 temas. Junta de Castilla y León.',
-    url: `${SITE_URL}/auxiliar-administrativo-cyl`,
-    siteName: 'Vence',
-    locale: 'es_ES',
-    type: 'website',
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Auxiliar Administrativo Castilla y León 2026',
-    description: '362 plazas. Temario 28 temas BOCYL enero 2026. Junta de Castilla y León.'
-  },
-  alternates: {
-    canonical: `${SITE_URL}/auxiliar-administrativo-cyl`,
-  },
+  description: 'Oposiciones Auxiliar Administrativo Junta de Castilla y León: 362 plazas, temario oficial 28 temas, 2 bloques. Tests gratuitos.',
+  keywords: ['auxiliar administrativo castilla y leon','oposiciones auxiliar cyl','temario auxiliar cyl','oposiciones junta castilla leon','28 temas auxiliar cyl'].join(', '),
+  authors: [{ name: 'Vence' }], metadataBase: new URL(SITE_URL),
+  openGraph: { title: 'Auxiliar Administrativo Castilla y León | 362 Plazas', description: 'Temario oficial 28 temas.', url: `${SITE_URL}/auxiliar-administrativo-cyl`, siteName: 'Vence', locale: 'es_ES', type: 'website' },
+  alternates: { canonical: `${SITE_URL}/auxiliar-administrativo-cyl` },
 }
 
-export default function AuxiliarAdministrativoCyl() {
+function formatNumber(n: number | null): string { if (n == null) return '—'; return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') }
+function formatDateLarga(dateStr: string | null): string { if (!dateStr) return ''; const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']; const [y, m, d] = dateStr.split('-').map(Number); return `${d} de ${meses[m - 1]} de ${y}` }
+function formatDateCorta(dateStr: string | null): string { if (!dateStr) return ''; const [y, m, d] = dateStr.split('-'); return `${d}/${m}/${y}` }
+
+export default async function AuxiliarAdministrativoCyl() {
+  const data = await getOposicionLandingData('auxiliar-administrativo-cyl')
+  const hitos = await getHitosConvocatoria('auxiliar-administrativo-cyl')
+  const plazasLibres = data?.plazasLibres ?? 362
+  const temasCount = data?.temasCount ?? 28
+  const boeRef = data?.boeReference ?? 'BOCYL 13/01/2026'
+  const boeFechaCorta = data?.boePublicationDate ? formatDateCorta(data.boePublicationDate) : '13/01/2026'
+  const programaUrl = data?.programaUrl ?? null
+  const seguimientoUrl = data?.seguimientoUrl ?? null
+  const tituloRequerido = data?.tituloRequerido ?? 'Graduado en ESO o equivalente'
+  const examDate = data?.examDate ? formatDateLarga(data.examDate) : null
+  const textoExamen = examDate ? `Examen previsto para el ${examDate}` : 'Fecha de examen pendiente de confirmación'
+
   const estadisticas = [
-    { numero: "362", texto: "Plazas", color: "text-rose-600" },
-    { numero: "28", texto: "Temas oficiales", color: "text-green-600" },
-    { numero: "2", texto: "Grupos", color: "text-blue-600" },
+    { numero: formatNumber(plazasLibres), texto: "Plazas convocadas", color: "text-violet-600" },
+    { numero: String(temasCount), texto: "Temas oficiales", color: "text-green-600" },
+    { numero: String(data?.bloquesCount ?? 2), texto: "Bloques", color: "text-blue-600" },
     { numero: "ESO", texto: "Título requerido", color: "text-orange-600" }
   ]
-
-  const infoTemario = [
-    {
-      icon: "📚",
-      titulo: "Programa Oficial BOCYL",
-      descripcion: "El temario consta de 28 temas distribuidos en 2 grupos temáticos según BOCYL enero 2026.",
-      stats: "28 temas \u2022 2 grupos"
-    },
-    {
-      icon: "📋",
-      titulo: "Estructura del Examen",
-      descripcion: "60 preguntas tipo test + 20 preguntas de supuesto práctico Office 365. Tiempo total: 100 minutos.",
-      stats: "80 preguntas \u2022 100 minutos"
-    },
-    {
-      icon: "🎓",
-      titulo: "Requisitos de Acceso",
-      descripcion: "Título de Graduado en ESO o equivalente, nacionalidad española o europea. Grupo C2.",
-      stats: "ESO/equivalente \u2022 +18 años"
-    }
-  ]
-
   const faqs = [
-    {
-      pregunta: "¿Cuántas plazas hay para Auxiliar Administrativo de Castilla y León 2026?",
-      respuesta: "Se convocan 362 plazas para Auxiliar Administrativo de la Junta de Castilla y León, según convocatoria publicada en el BOCYL en enero de 2026."
-    },
-    {
-      pregunta: "¿Cuál es el programa oficial de Auxiliar Administrativo CyL?",
-      respuesta: "El programa consta de 28 temas en 2 grupos: Grupo I (19 temas) sobre Organización Política y Administrativa, y Grupo II (9 temas) sobre Competencias profesionales."
-    },
-    {
-      pregunta: "¿Cómo es el examen de Auxiliar Administrativo de Castilla y León?",
-      respuesta: "El examen consta de 60 preguntas tipo test sobre el temario más 20 preguntas de un supuesto práctico sobre Office 365. Tiempo total: 100 minutos."
-    },
-    {
-      pregunta: "¿Qué requisitos necesito para opositar?",
-      respuesta: "Nacionalidad española o europea, tener 18 años cumplidos, título de Graduado en ESO o equivalente (Grupo C2), y no estar inhabilitado para funciones públicas."
-    }
+    { pregunta: "¿Cuántas plazas hay para Auxiliar Administrativo de CyL?", respuesta: `Se convocan ${formatNumber(plazasLibres)} plazas.` },
+    { pregunta: "¿Cuál es el programa oficial?", respuesta: `El programa consta de ${temasCount} temas en 2 grupos temáticos.` },
+    { pregunta: "¿Qué requisitos necesito?", respuesta: `Título de ${tituloRequerido}, nacionalidad española o europea, 16 años cumplidos.` },
   ]
-
-  const bloquesTematicos = [
-    {
-      titulo: "Grupo I: Organización Política y Administrativa",
-      temas: "19 temas (1-19)",
-      color: "border-rose-500",
-      temasLista: [
-        "1. La Constitución Española",
-        "2. La Administración General del Estado",
-        "3. La Administración local y organización territorial de CyL",
-        "4. La Unión Europea",
-        "5. El Estatuto de Autonomía de Castilla y León",
-        "6. Las Cortes de Castilla y León",
-        "7. Instituciones propias de CyL",
-        "8. El Gobierno de CyL",
-        "9. La Administración de CyL",
-        "10. El sector público de CyL",
-        "11. Las fuentes del derecho administrativo",
-        "12. El acto administrativo",
-        "13. El procedimiento administrativo común",
-        "14. Órganos de las Administraciones Públicas",
-        "15. El Estatuto Básico del Empleado Público",
-        "16. La Función Pública de Castilla y León",
-        "17. Sindicación, huelga e incompatibilidades",
-        "18. El presupuesto de CyL",
-        "19. Políticas de igualdad y no discriminación en CyL"
-      ]
-    },
-    {
-      titulo: "Grupo II: Competencias",
-      temas: "9 temas (20-28)",
-      color: "border-blue-500",
-      temasLista: [
-        "20. Derechos de las personas y atención al público",
-        "21. Oficinas de asistencia en materia de registros",
-        "22. Administración electrónica",
-        "23. Transparencia y protección de datos",
-        "24. El documento y archivo administrativo",
-        "25. Informática básica y Windows 11",
-        "26. Word y Excel para Microsoft 365",
-        "27. Correo electrónico e Internet",
-        "28. Seguridad y salud en el puesto de trabajo"
-      ]
-    }
-  ]
-
-  const schemaData = {
-    "@context": "https://schema.org",
-    "@type": "Course",
-    "name": "Oposiciones Auxiliar Administrativo Castilla y León 2026",
-    "description": "Preparación para las oposiciones de Auxiliar Administrativo de la Junta de Castilla y León con temario oficial BOCYL, tests y simulacros. 362 plazas.",
-    "provider": {
-      "@type": "Organization",
-      "name": "Vence",
-      "url": SITE_URL
-    },
-    "courseCode": "AUX-ADMIN-CYL-2026",
-    "educationalLevel": "Graduado en ESO",
-    "teaches": "28 temas oficiales del programa de Auxiliar Administrativo de Castilla y León según BOCYL enero 2026"
-  }
+  const schemaFAQ = { "@context": "https://schema.org", "@type": "FAQPage", "mainEntity": faqs.map(faq => ({ "@type": "Question", "name": faq.pregunta, "acceptedAnswer": { "@type": "Answer", "text": faq.respuesta } })) }
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaData) }}
-      />
-
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaFAQ) }} />
       <div className="min-h-screen bg-gray-50">
         <ClientBreadcrumbsWrapper />
         <div className="container mx-auto px-4 py-8">
-          {/* Hero Section */}
           <div className="text-center mb-8">
-            <span className="bg-rose-100 text-rose-800 px-3 py-1 rounded-full text-sm font-medium">
-              🏛️ JUNTA DE CASTILLA Y LEÓN - GRUPO C2
-            </span>
-
-            <h1 className="text-4xl font-bold text-gray-800 mt-4 mb-4">
-              Auxiliar Administrativo Castilla y León 2026
-            </h1>
-
-            <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
-              Oposición para la Junta de Castilla y León con <strong>362 plazas</strong>.
-              Temario oficial según BOCYL enero 2026.
-            </p>
-
+            <span className="bg-violet-100 text-violet-800 px-3 py-1 rounded-full text-sm font-medium">🏛️ JUNTA DE CASTILLA Y LEÓN - GRUPO C2</span>
+            <h1 className="text-4xl font-bold text-gray-800 mt-4 mb-4">Auxiliar Administrativo de Castilla y León</h1>
+            <p className="text-gray-600 mb-6 max-w-2xl mx-auto">Oposición para la Junta de CyL con <strong>{formatNumber(plazasLibres)} plazas convocadas</strong>.</p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
-              <Link
-                href="/auxiliar-administrativo-cyl/test"
-                className="inline-flex items-center justify-center space-x-2 bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-700 hover:to-pink-700 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
-              >
-                <span className="text-2xl">🎯</span>
-                <span>Empezar a Practicar</span>
-              </Link>
-              <Link
-                href="/auxiliar-administrativo-cyl/temario"
-                className="inline-flex items-center justify-center space-x-2 bg-white hover:bg-gray-50 text-gray-800 px-6 py-4 rounded-xl font-semibold border-2 border-gray-200 hover:border-rose-300 transition-all"
-              >
-                <span className="text-xl">📚</span>
-                <span>Ver Temario</span>
-              </Link>
+              <Link href="/auxiliar-administrativo-cyl/test" className="inline-flex items-center justify-center space-x-2 bg-gradient-to-r from-violet-600 to-violet-700 hover:from-violet-700 hover:to-violet-800 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all transform hover:scale-105"><span className="text-2xl">🎯</span><span>Empezar a Practicar</span></Link>
+              <Link href="/auxiliar-administrativo-cyl/temario" className="inline-flex items-center justify-center space-x-2 bg-white hover:bg-gray-50 text-gray-800 px-6 py-4 rounded-xl font-semibold border-2 border-gray-200 hover:border-violet-300 transition-all"><span className="text-xl">📚</span><span>Ver Temario</span></Link>
             </div>
-
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl mx-auto">
-              {estadisticas.map((stat, index) => (
-                <div key={index} className="bg-white rounded-lg p-4 shadow-md">
-                  <div className={`text-2xl font-bold ${stat.color}`}>
-                    {stat.numero}
-                  </div>
-                  <div className="text-sm text-gray-600">
-                    {stat.texto}
-                  </div>
-                </div>
-              ))}
+              {estadisticas.map((stat, i) => (<div key={i} className="bg-white rounded-lg p-4 shadow-md"><div className={`text-2xl font-bold ${stat.color}`}>{stat.numero}</div><div className="text-sm text-gray-600">{stat.texto}</div></div>))}
             </div>
           </div>
 
-          {/* Información del Temario */}
-          <section className="mb-12">
-            <h2 className="text-2xl font-bold text-center mb-8">Información de la Oposición</h2>
-            <div className="grid md:grid-cols-3 gap-6">
-              {infoTemario.map((info, index) => (
-                <div key={index} className="bg-white rounded-xl shadow-lg p-6">
-                  <div className="text-3xl mb-4">{info.icon}</div>
-                  <h3 className="text-xl font-bold mb-3">{info.titulo}</h3>
-                  <p className="text-gray-600 mb-4">{info.descripcion}</p>
-                  <div className="text-sm text-gray-500">{info.stats}</div>
-                </div>
-              ))}
+          {(programaUrl || seguimientoUrl) && (
+            <div className="grid md:grid-cols-2 gap-4 max-w-4xl mx-auto mb-10">
+              {programaUrl && (<a href={programaUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 bg-white rounded-xl shadow-md border border-gray-200 p-5 hover:shadow-lg hover:border-violet-300 transition-all group"><div className="flex-shrink-0 w-12 h-12 bg-violet-100 rounded-lg flex items-center justify-center text-2xl group-hover:bg-violet-200 transition-colors">📄</div><div><div className="font-bold text-gray-800 group-hover:text-violet-700 transition-colors">Ver convocatoria en {data?.diarioOficial ?? 'BOCYL'}</div><div className="text-sm text-gray-500">{boeFechaCorta}</div></div></a>)}
+              {seguimientoUrl && (<a href={seguimientoUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 bg-white rounded-xl shadow-md border border-gray-200 p-5 hover:shadow-lg hover:border-blue-300 transition-all group"><div className="flex-shrink-0 w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center text-2xl group-hover:bg-blue-200 transition-colors">🔍</div><div><div className="font-bold text-gray-800 group-hover:text-blue-700 transition-colors">Seguimiento del proceso selectivo</div><div className="text-sm text-gray-500">Estado actual, listas y documentos oficiales</div></div></a>)}
             </div>
-          </section>
+          )}
 
-          {/* Temario Oficial */}
+          {hitos.length > 0 && (
+            <section className="mb-10">
+              <h2 className="text-2xl font-bold text-gray-800 text-center mb-8">📅 Estado del Proceso Selectivo</h2>
+              <div className="max-w-3xl mx-auto"><div className="relative"><div className="absolute left-4 md:left-6 top-0 bottom-0 w-0.5 bg-gray-200" /><div className="space-y-6">
+                {hitos.map((hito) => (<div key={hito.id} className="relative flex items-start gap-4 md:gap-6"><div className={`relative z-10 flex-shrink-0 w-9 h-9 md:w-12 md:h-12 rounded-full flex items-center justify-center text-sm md:text-base ${hito.status === 'completed' ? 'bg-green-100 text-green-600 border-2 border-green-500' : hito.status === 'current' ? 'bg-blue-100 text-blue-600 border-2 border-blue-500 animate-pulse' : 'bg-gray-100 text-gray-400 border-2 border-gray-300'}`}>{hito.status === 'completed' ? '✓' : hito.status === 'current' ? '●' : '○'}</div><div className={`flex-1 pb-2 ${hito.status === 'upcoming' ? 'opacity-60' : ''}`}><div className="flex flex-wrap items-center gap-2 mb-1"><span className={`text-xs font-medium px-2 py-0.5 rounded-full ${hito.status === 'completed' ? 'bg-green-100 text-green-700' : hito.status === 'current' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>{formatDateCorta(hito.fecha)}</span>{hito.status === 'current' && <span className="text-xs font-bold text-blue-600 uppercase">En curso</span>}</div><h3 className={`font-semibold ${hito.status === 'upcoming' ? 'text-gray-500' : 'text-gray-800'}`}>{hito.url ? <a href={hito.url} target="_blank" rel="noopener noreferrer" className="hover:text-violet-600 hover:underline transition-colors">{hito.titulo}</a> : hito.titulo}</h3>{hito.descripcion && <p className="text-sm text-gray-500 mt-1">{hito.descripcion}</p>}</div></div>))}
+              </div></div></div>
+            </section>
+          )}
+
           <section className="mb-12">
-            <h2 className="text-2xl font-bold text-center mb-2">📋 Temario Oficial BOCYL enero 2026</h2>
-            <p className="text-center text-gray-600 mb-8">28 temas en 2 grupos</p>
+            <h2 className="text-2xl font-bold text-center mb-2">📋 Temario Oficial</h2>
+            <p className="text-center text-gray-600 mb-8">{temasCount} temas en 2 grupos</p>
             <div className="grid md:grid-cols-2 gap-6">
-              {bloquesTematicos.map((bloque, index) => (
-                <div key={index} className={`bg-white rounded-xl shadow-lg p-5 border-l-4 ${bloque.color}`}>
-                  <p className="text-xs text-gray-500 mb-1">{bloque.temas}</p>
-                  <h3 className="text-base font-bold mb-3 text-gray-800">{bloque.titulo}</h3>
-                  <ul className="space-y-1 text-xs text-gray-600">
-                    {bloque.temasLista.map((tema, temaIndex) => (
-                      <li key={temaIndex} className="flex items-start">
-                        <span className="mr-1">&bull;</span>
-                        <span>{tema}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
+              <div className="bg-white rounded-xl shadow-lg p-5 border-l-4 border-violet-500">
+                <p className="text-xs text-gray-500 mb-1">19 temas (1-19)</p>
+                <h3 className="text-base font-bold mb-3 text-gray-800">Grupo I</h3>
+                <ul className="space-y-1 text-xs text-gray-600">
+                  <li>1. La Constitución Española de 1978</li>
+                  <li>2. La Administración General del Estado: regulación y estructura</li>
+                  <li>3. La Administración local y organización territorial de CyL</li>
+                  <li>4. La Unión Europea. Las instituciones europeas</li>
+                  <li>5. El Estatuto de Autonomía de Castilla y León</li>
+                  <li>6. Las Cortes de Castilla y León</li>
+                  <li>7. Instituciones propias de la Comunidad de Castilla y León</li>
+                  <li>8. El Gobierno de la Comunidad de Castilla y León</li>
+                  <li>9. La Administración de la Comunidad de Castilla y León</li>
+                  <li>10. El sector público de la Comunidad de Castilla y León</li>
+                  <li>11. Las fuentes del derecho administrativo</li>
+                  <li>12. El acto administrativo. Revisión y recursos administrativos</li>
+                  <li>13. El procedimiento administrativo común</li>
+                  <li>14. Los órganos de las Administraciones Públicas</li>
+                  <li>15. El Estatuto Básico del Empleado Público</li>
+                  <li>16. La Ley de la Función Pública de Castilla y León</li>
+                  <li>17. El derecho de sindicación y de huelga. Régimen de incompatibilidades</li>
+                  <li>18. El presupuesto de la Comunidad de Castilla y León</li>
+                  <li>19. Políticas de igualdad y no discriminación en Castilla y León</li>
+                </ul>
+              </div>
+              <div className="bg-white rounded-xl shadow-lg p-5 border-l-4 border-blue-500">
+                <p className="text-xs text-gray-500 mb-1">9 temas (20-28)</p>
+                <h3 className="text-base font-bold mb-3 text-gray-800">Grupo II</h3>
+                <ul className="space-y-1 text-xs text-gray-600">
+                  <li>20. Derechos de las personas y atención al público</li>
+                  <li>21. Oficinas de asistencia en materia de registros de CyL</li>
+                  <li>22. La administración electrónica en CyL</li>
+                  <li>23. Transparencia y protección de datos</li>
+                  <li>24. El documento y archivo administrativo</li>
+                  <li>25. Informática básica y Windows 11</li>
+                  <li>26. Word y Excel para Microsoft 365</li>
+                  <li>27. Correo electrónico e Internet</li>
+                  <li>28. Seguridad y salud en el puesto de trabajo</li>
+                </ul>
+              </div>
             </div>
             <div className="text-center mt-6">
-              <Link
-                href="/auxiliar-administrativo-cyl/temario"
-                className="inline-flex items-center space-x-2 bg-rose-600 hover:bg-rose-700 text-white px-6 py-3 rounded-lg font-bold transition-colors"
-              >
-                <span>📚</span>
-                <span>Ver Temario Completo</span>
-              </Link>
+              <Link href="/auxiliar-administrativo-cyl/temario" className="inline-flex items-center space-x-2 bg-violet-600 hover:bg-violet-700 text-white px-6 py-3 rounded-lg font-bold transition-colors"><span>📚</span><span>Ver Temario Completo</span></Link>
             </div>
           </section>
 
-          {/* FAQs */}
           <section className="mb-12">
             <h2 className="text-2xl font-bold text-center mb-8">Preguntas Frecuentes</h2>
             <div className="max-w-3xl mx-auto space-y-4">
-              {faqs.map((faq, index) => (
-                <div key={index} className="bg-white rounded-lg p-6 shadow-md">
-                  <h3 className="text-lg font-bold mb-3 text-gray-800">{faq.pregunta}</h3>
-                  <p className="text-gray-600">{faq.respuesta}</p>
-                </div>
-              ))}
+              {faqs.map((faq, i) => (<div key={i} className="bg-white rounded-lg p-6 shadow-md"><h3 className="text-lg font-bold mb-3 text-gray-800">{faq.pregunta}</h3><p className="text-gray-600">{faq.respuesta}</p></div>))}
+            </div>
+          </section>
+
+          <section className="bg-violet-600 rounded-lg shadow-lg p-6 text-white text-center mb-8">
+            <h2 className="text-2xl font-bold mb-3">¿Listo para aprobar tu oposición?</h2>
+            <p className="text-violet-100 mb-6 max-w-xl mx-auto">Prepárate con tests tipo examen y temario oficial actualizado.</p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center items-center max-w-sm mx-auto">
+              <Link href="/auxiliar-administrativo-cyl/test" className="bg-white text-violet-600 px-6 py-2 rounded font-bold hover:bg-gray-100 transition-colors w-full sm:w-auto text-sm">🎯 Empezar Tests</Link>
+              <Link href="/auxiliar-administrativo-cyl/temario" className="bg-yellow-500 text-violet-900 px-6 py-2 rounded font-bold hover:bg-yellow-400 transition-colors w-full sm:w-auto text-sm">📚 Ver Temario</Link>
             </div>
           </section>
         </div>
