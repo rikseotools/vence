@@ -94,6 +94,7 @@ export default function RecentTests({ recentTests, onInfoClick }: RecentTestsPro
                     <div className="text-sm text-gray-600">
                       {test.date} &bull; {test.time} &bull; {test.avgTimePerQuestion}s/pregunta
                     </div>
+                    <div className="text-xs text-blue-500 font-medium mt-0.5">Pulsa para revisar →</div>
                     {(test.engagementScore ?? 0) > 0 && (
                       <div className="text-xs text-purple-600 mt-1">
                         Engagement: {test.engagementScore}% &bull; Focus: {test.focusScore}%
@@ -101,13 +102,16 @@ export default function RecentTests({ recentTests, onInfoClick }: RecentTestsPro
                     )}
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className={`text-2xl font-bold ${getScoreColor(test.percentage)}`}>
-                    {test.score}/{test.total}
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <div className={`text-2xl font-bold ${getScoreColor(test.percentage)}`}>
+                      {test.score}/{test.total}
+                    </div>
+                    <div className={`text-lg font-bold ${getScoreColor(test.percentage)}`}>
+                      {test.percentage}%
+                    </div>
                   </div>
-                  <div className={`text-lg font-bold ${getScoreColor(test.percentage)}`}>
-                    {test.percentage}%
-                  </div>
+                  <div className="text-gray-400 text-xl">›</div>
                 </div>
               </div>
 
