@@ -270,34 +270,49 @@ const VerticalBarChart = ({ data, title, icon, color = 'green', valueFormatter =
 const AccuracyLineChart = ({ weeklyProgress }) => {
   if (!weeklyProgress || weeklyProgress.length === 0) return null
 
+  const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
   const now = new Date()
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
 
-  // Agrupar datos por período
-  const getAccuracyForPeriod = (startDaysAgo, endDaysAgo) => {
-    const start = new Date(today.getTime() - startDaysAgo * 86400000)
-    const end = new Date(today.getTime() - endDaysAgo * 86400000)
-    const days = weeklyProgress.filter(d => {
-      const date = new Date(d.date)
-      return date >= start && date < end
-    })
-    // Devolver precisión por día relativo (0-6)
-    const result = []
-    for (let i = 0; i < 7; i++) {
-      const targetDate = new Date(start.getTime() + i * 86400000)
-      const dayData = days.find(d => d.date === targetDate.toISOString().split('T')[0])
-      result.push(dayData ? dayData.accuracy : null)
+  // Generar los 7 días: hoy es el último (índice 6), hace 6 días es el primero (índice 0)
+  const buildDays = () => {
+    const days = []
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today.getTime() - i * 86400000)
+      days.push({
+        date: d.toISOString().split('T')[0],
+        label: dayNames[d.getDay()],
+        isToday: i === 0,
+      })
     }
-    return result
+    return days
   }
 
-  const last7 = getAccuracyForPeriod(7, 0)
-  const prev7 = getAccuracyForPeriod(14, 7)
-  const month = getAccuracyForPeriod(30, 23)
+  const days = buildDays()
 
-  const dayLabels = ['D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7']
+  // Buscar precisión para un día específico en weeklyProgress
+  const findAccuracy = (dateStr) => {
+    const match = weeklyProgress.find(d => d.date === dateStr)
+    return match && match.questions > 0 ? match.accuracy : null
+  }
 
-  // Calcular promedios
+  // Últimos 7 días (hoy → hace 6 días)
+  const last7 = days.map(d => findAccuracy(d.date))
+
+  // 7 días anteriores (hace 7 → hace 13 días), mapeados a los mismos slots
+  const prev7 = days.map((_, i) => {
+    const d = new Date(today.getTime() - (i + 7) * 86400000 + (6 - i) * 0) // offset -7 días
+    const targetDate = new Date(today.getTime() - ((6 - i) + 7) * 86400000)
+    return findAccuracy(targetDate.toISOString().split('T')[0])
+  })
+
+  // Hace 1 mes (hace 30 → hace 23 días), mapeados a los mismos slots
+  const month = days.map((_, i) => {
+    const targetDate = new Date(today.getTime() - ((6 - i) + 23) * 86400000)
+    return findAccuracy(targetDate.toISOString().split('T')[0])
+  })
+
+  // Promedios
   const avg = (arr) => {
     const valid = arr.filter(v => v !== null)
     return valid.length > 0 ? Math.round(valid.reduce((s, v) => s + v, 0) / valid.length) : null
@@ -306,12 +321,12 @@ const AccuracyLineChart = ({ weeklyProgress }) => {
   const avgPrev7 = avg(prev7)
   const avgMonth = avg(month)
 
-  // SVG line chart dimensions
-  const W = 320, H = 160, PAD_L = 35, PAD_R = 10, PAD_T = 10, PAD_B = 25
+  // SVG dimensions
+  const W = 340, H = 180, PAD_L = 38, PAD_R = 15, PAD_T = 15, PAD_B = 30
   const chartW = W - PAD_L - PAD_R
   const chartH = H - PAD_T - PAD_B
 
-  // Find min/max for Y axis
+  // Y axis range
   const allVals = [...last7, ...prev7, ...month].filter(v => v !== null)
   const minY = allVals.length > 0 ? Math.max(0, Math.min(...allVals) - 10) : 0
   const maxY = allVals.length > 0 ? Math.min(100, Math.max(...allVals) + 10) : 100
@@ -320,7 +335,7 @@ const AccuracyLineChart = ({ weeklyProgress }) => {
   const toX = (i) => PAD_L + (i / 6) * chartW
   const toY = (v) => PAD_T + chartH - ((v - minY) / rangeY) * chartH
 
-  const makePath = (data, color) => {
+  const makePath = (data, color, dashed = false) => {
     const points = data
       .map((v, i) => v !== null ? { x: toX(i), y: toY(v) } : null)
       .filter(Boolean)
@@ -328,18 +343,18 @@ const AccuracyLineChart = ({ weeklyProgress }) => {
     const d = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')
     return (
       <>
-        <path d={d} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        <path d={d} fill="none" stroke={color} strokeWidth={dashed ? '1.5' : '2.5'} strokeLinecap="round" strokeLinejoin="round" strokeDasharray={dashed ? '6 4' : 'none'} opacity={dashed ? 0.6 : 1} />
         {points.map((p, i) => (
-          <circle key={i} cx={p.x} cy={p.y} r="3.5" fill={color} stroke="white" strokeWidth="1.5" />
+          <circle key={i} cx={p.x} cy={p.y} r={dashed ? '2.5' : '3.5'} fill={color} stroke="white" strokeWidth="1.5" opacity={dashed ? 0.7 : 1} />
         ))}
       </>
     )
   }
 
   const periods = [
-    { label: 'Últimos 7 días', avg: avgLast7, color: '#10b981', data: last7 },
-    { label: '7 días anteriores', avg: avgPrev7, color: '#3b82f6', data: prev7 },
-    { label: 'Hace 1 mes', avg: avgMonth, color: '#a855f7', data: month },
+    { label: 'Últimos 7 días', avg: avgLast7, color: '#10b981' },
+    { label: '7 días anteriores', avg: avgPrev7, color: '#3b82f6' },
+    { label: 'Hace 1 mes', avg: avgMonth, color: '#a855f7' },
   ]
 
   return (
@@ -372,20 +387,34 @@ const AccuracyLineChart = ({ weeklyProgress }) => {
             return (
               <g key={i}>
                 <line x1={PAD_L} y1={y} x2={W - PAD_R} y2={y} stroke="#e5e7eb" strokeWidth="1" />
-                <text x={PAD_L - 5} y={y + 4} textAnchor="end" fontSize="10" fill="#9ca3af">{val}%</text>
+                <text x={PAD_L - 5} y={y + 4} textAnchor="end" fontSize="9" fill="#9ca3af">{val}%</text>
               </g>
             )
           })}
 
-          {/* X labels */}
-          {dayLabels.map((label, i) => (
-            <text key={i} x={toX(i)} y={H - 5} textAnchor="middle" fontSize="10" fill="#9ca3af">{label}</text>
+          {/* X labels: días de la semana */}
+          {days.map((day, i) => (
+            <g key={i}>
+              <text
+                x={toX(i)}
+                y={H - 8}
+                textAnchor="middle"
+                fontSize="9"
+                fill={day.isToday ? '#10b981' : '#6b7280'}
+                fontWeight={day.isToday ? 'bold' : 'normal'}
+              >
+                {day.label}
+              </text>
+              {day.isToday && (
+                <text x={toX(i)} y={H} textAnchor="middle" fontSize="7" fill="#10b981">hoy</text>
+              )}
+            </g>
           ))}
 
-          {/* Lines */}
-          {makePath(month, '#a855f7')}
-          {makePath(prev7, '#3b82f6')}
-          {makePath(last7, '#10b981')}
+          {/* Lines: mes primero (detrás), luego prev7, luego last7 (delante) */}
+          {makePath(month, '#a855f7', true)}
+          {makePath(prev7, '#3b82f6', true)}
+          {makePath(last7, '#10b981', false)}
         </svg>
       </div>
 
