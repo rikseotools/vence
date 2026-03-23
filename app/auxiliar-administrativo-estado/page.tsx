@@ -430,7 +430,7 @@ export default async function AuxiliarAdministrativoEstado() {
                   <li className="flex items-start"><span className="text-blue-500 mr-2">4.</span>El Poder Judicial</li>
                   <li className="flex items-start"><span className="text-blue-500 mr-2">5.</span>El Gobierno y la Administración</li>
                   <li className="flex items-start"><span className="text-blue-500 mr-2">6.</span>El Gobierno Abierto y la Agenda 2030</li>
-                  <li className="flex items-start"><span className="text-blue-500 mr-2">7.</span>Ley 19/2013 de transparencia</li>
+                  <li className="flex items-start"><span className="text-blue-500 mr-2">7.</span>Ley 19/2013 de Transparencia, Acceso a la Información Pública y Buen Gobierno</li>
                   <li className="flex items-start"><span className="text-blue-500 mr-2">8.</span>La Administración General del Estado</li>
                   <li className="flex items-start"><span className="text-blue-500 mr-2">9.</span>La Organización territorial del Estado</li>
                   <li className="flex items-start"><span className="text-blue-500 mr-2">10.</span>La organización de la Unión Europea</li>
