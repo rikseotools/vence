@@ -1378,9 +1378,9 @@ function EstadisticasContent() {
                 },
                 {
                   id: 'ai_analysis',
-                  name: 'Análisis Fallos',
+                  name: 'Tests y Fallos',
                   icon: '🔍',
-                  subtitle: 'Errores',
+                  subtitle: 'Recientes',
                   color: 'purple'
                 },
                 {
@@ -1485,16 +1485,16 @@ function EstadisticasContent() {
                 difficultyBreakdown={stats.difficultyBreakdown}
                 themePerformance={stats.themePerformance || []}
               />
-              <RecentTests
-                recentTests={stats.recentTests as any}
-                onInfoClick={() => setShowRecentTestsInfo(true)}
-              />
               <Achievements achievements={stats.achievements} />
             </div>
           )}
 
           {activeTab === 'ai_analysis' && (
             <div className="space-y-6">
+              <RecentTests
+                recentTests={stats.recentTests as any}
+                onInfoClick={() => setShowRecentTestsInfo(true)}
+              />
               <PersonalDifficultyInsights />
             </div>
           )}
