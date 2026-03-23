@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic'
 import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext' // ✅ USAR CONTEXTO GLOBAL
 import { useOposicion } from '@/contexts/OposicionContext' // ✅ Para obtener oposición del usuario
+import { getOposicionByPositionType } from '@/lib/config/oposiciones'
 import OfficialExamAttempts from '@/components/Statistics/OfficialExamAttempts'
 
 // Importar todos los componentes
@@ -562,12 +563,21 @@ function EstadisticasContent() {
               const bloquePrefix = t.temaNumber ? formatThemeName(t.temaNumber, oposicionSlug) : null
               // topicTitle viene del JOIN con topics en la API
               const topicTitle = t.topicTitle || null
+              // Detectar si es de otra oposición
+              const currentPositionType = oposicionSlug.replace(/-/g, '_')
+              const testPositionType = t.topicPositionType || null
+              const isOtherOposicion = testPositionType && testPositionType !== currentPositionType
+              const oposicionLabel = isOtherOposicion
+                ? (getOposicionByPositionType(testPositionType)?.shortName || testPositionType.replace(/_/g, ' '))
+                : null
+
               const fullTitle = t.temaNumber
                 ? (topicTitle ? `${bloquePrefix}: ${topicTitle}` : bloquePrefix)
                 : (t.title && !t.title.includes('Test Tema') ? t.title : 'Test Aleatorio')
               return {
                 id: t.id,
                 title: fullTitle,
+                oposicionLabel,
                 score: t.score,
                 total: t.totalQuestions,
                 totalQuestions: t.totalQuestions,

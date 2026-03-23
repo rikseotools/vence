@@ -49,6 +49,7 @@ export const recentTestSchema = z.object({
   completedAt: z.string(),
   timeSeconds: z.number(),
   topicTitle: z.string().nullable().optional(),
+  topicPositionType: z.string().nullable().optional(),
 })
 
 // Rendimiento por tema

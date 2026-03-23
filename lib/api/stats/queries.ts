@@ -293,6 +293,13 @@ async function getRecentTests(db: ReturnType<typeof getDb>, userId: string): Pro
         ORDER BY CASE WHEN t.position_type = ${positionType} THEN 0 ELSE 1 END
         LIMIT 1
       )`,
+      topicPositionType: sql<string | null>`(
+        SELECT t.position_type FROM topics t
+        WHERE t.topic_number = ${tests.temaNumber}
+          AND t.is_active = true
+        ORDER BY CASE WHEN t.position_type = ${positionType} THEN 0 ELSE 1 END
+        LIMIT 1
+      )`,
     })
     .from(tests)
     .where(and(
@@ -308,6 +315,7 @@ async function getRecentTests(db: ReturnType<typeof getDb>, userId: string): Pro
     title: row.title,
     temaNumber: row.temaNumber,
     topicTitle: row.topicTitle || null,
+    topicPositionType: row.topicPositionType || null,
     score: row.score,
     totalQuestions: row.totalQuestions,
     accuracy: row.totalQuestions > 0 ? Math.round((row.score / row.totalQuestions) * 100) : 0,

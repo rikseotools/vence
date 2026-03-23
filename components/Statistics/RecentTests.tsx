@@ -24,6 +24,7 @@ interface RecentTestData {
   engagementScore?: number
   focusScore?: number
   isPsychometric?: boolean
+  oposicionLabel?: string | null
 }
 
 interface RecentTestsProps {
@@ -91,6 +92,11 @@ export default function RecentTests({ recentTests, onInfoClick }: RecentTestsPro
                   </div>
                   <div>
                     <div className="font-bold text-gray-800">{test.title}</div>
+                    {test.oposicionLabel && (
+                      <span className="inline-block text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full mt-0.5">
+                        {test.oposicionLabel}
+                      </span>
+                    )}
                     <div className="text-sm text-gray-600">
                       {test.date} &bull; {test.time} &bull; {test.avgTimePerQuestion}s/pregunta
                     </div>
