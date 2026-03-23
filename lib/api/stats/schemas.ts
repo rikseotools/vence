@@ -93,6 +93,15 @@ export const articlePerformanceSchema = z.object({
   accuracy: z.number(),
 })
 
+// Sesiones de usuario (para analytics de sesión)
+export const userSessionSchema = z.object({
+  totalDurationMinutes: z.number().nullable(),
+  engagementScore: z.number().nullable(),
+  sessionStart: z.string().nullable(),
+  testsCompleted: z.number().nullable(),
+  questionsAnswered: z.number().nullable(),
+})
+
 // Información de la oposición del usuario
 export const userOposicionSchema = z.object({
   // Datos del usuario
@@ -128,6 +137,7 @@ export const getUserStatsResponseSchema = z.object({
     weakArticles: z.array(articlePerformanceSchema),
     strongArticles: z.array(articlePerformanceSchema),
     userOposicion: userOposicionSchema.optional(),
+    userSessions: z.array(userSessionSchema).optional(),
   }).optional(),
   error: z.string().optional(),
   cached: z.boolean().optional(),
@@ -143,6 +153,7 @@ export type DifficultyBreakdown = z.infer<typeof difficultyBreakdownSchema>
 export type TimePatterns = z.infer<typeof timePatternsSchema>
 export type ArticlePerformance = z.infer<typeof articlePerformanceSchema>
 export type UserOposicion = z.infer<typeof userOposicionSchema>
+export type UserSession = z.infer<typeof userSessionSchema>
 
 // ============================================
 // VALIDATORS

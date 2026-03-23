@@ -1,6 +1,6 @@
 // lib/api/stats/queries.ts - Queries optimizadas para estadísticas de usuario
 import { getDb } from '@/db/client'
-import { tests, testQuestions, userStreaks, userProfiles, oposiciones } from '@/db/schema'
+import { tests, testQuestions, userStreaks, userProfiles, oposiciones, userSessions } from '@/db/schema'
 import { eq, and, desc, sql, gte, isNotNull } from 'drizzle-orm'
 import type {
   GetUserStatsResponse,
@@ -76,159 +76,8 @@ export async function getUserStats(userId: string): Promise<GetUserStatsResponse
       return { ...cached.data, cached: true }
     }
 
-    const db = getDb()
-    const now = new Date()
-
-    // 🚀 Ejecutar función SQL principal y getUserOposicion en paralelo
-    const [sqlResult, userOposicion] = await Promise.all([
-      db.execute(sql`SELECT get_user_stats_optimized(${userId}::uuid) as stats`),
-      getUserOposicion(db, userId),
-    ])
-
-    const statsJson = (sqlResult as any)[0]?.stats
-
-    if (!statsJson) {
-      // Fallback a queries individuales si la función no existe
-      console.warn('⚠️ Función get_user_stats_optimized no existe, usando fallback')
-      return await getUserStatsFallback(userId)
-    }
-
-    // 🚀 Usar themePerformance de la función SQL como base.
-    // Solo consultar alternativas si la función no devolvió datos de temas.
-    let themePerformance: ThemePerformance[] = (statsJson.themePerformance || []).map((t: any) => ({
-      temaNumber: t.temaNumber,
-      totalQuestions: t.totalQuestions || 0,
-      correctAnswers: t.correctAnswers || 0,
-      accuracy: t.accuracy || 0,
-      averageTime: t.averageTime || 0,
-      lastPracticed: t.lastPracticed,
-    }))
-
-    // Solo buscar scope-based si la función SQL no devolvió temas
-    if (themePerformance.length === 0) {
-      try {
-        // Intentar leer de la tabla caché
-        const cacheResult = await db.execute(
-          sql`SELECT topic_number, topic_title, total_questions, correct_answers,
-              accuracy, average_time, last_practiced
-              FROM user_theme_performance_cache
-              WHERE user_id = ${userId}::uuid
-              ORDER BY topic_number`
-        )
-
-        if (cacheResult && Array.isArray(cacheResult) && cacheResult.length > 0) {
-          themePerformance = (cacheResult as any[]).map(row => ({
-            temaNumber: row.topic_number,
-            title: row.topic_title || null,
-            totalQuestions: Number(row.total_questions) || 0,
-            correctAnswers: Number(row.correct_answers) || 0,
-            accuracy: Number(row.accuracy) || 0,
-            averageTime: Math.round(Number(row.average_time) || 0),
-            lastPracticed: row.last_practiced,
-          }))
-          console.log(`📊 Theme performance desde caché BD (${themePerformance.length} temas)`)
-        } else {
-          // Último recurso: calcular en tiempo real
-          console.warn('⚠️ Caché vacío, calculando theme performance en tiempo real...')
-          const scopeResult = await db.execute(
-            sql`SELECT * FROM get_theme_performance_by_scope(${userId}::uuid)`
-          )
-          if (scopeResult && Array.isArray(scopeResult) && scopeResult.length > 0) {
-            themePerformance = (scopeResult as any[]).map(row => ({
-              temaNumber: row.topic_number,
-              title: row.topic_title || null,
-              totalQuestions: Number(row.total_questions) || 0,
-              correctAnswers: Number(row.correct_answers) || 0,
-              accuracy: Number(row.accuracy) || 0,
-              averageTime: Math.round(Number(row.average_time) || 0),
-              lastPracticed: row.last_practiced,
-            }))
-            await writeThemePerformanceToCache(db, userId, themePerformance)
-          }
-        }
-      } catch (error) {
-        console.warn('⚠️ Error cargando theme performance:', error)
-      }
-    }
-
-    // 🚀 Usar weakArticles/strongArticles de la función SQL directamente
-    // (evita una query separada de getArticleStats que duplicaba el trabajo)
-    const weakArticles: ArticlePerformance[] = (statsJson.weakArticles || []).map((a: any) => ({
-      articleId: a.articleId || null,
-      articleNumber: a.articleNumber || null,
-      lawName: a.lawName || null,
-      temaNumber: a.temaNumber || null,
-      totalQuestions: a.totalQuestions || 0,
-      correctAnswers: a.correctAnswers || 0,
-      accuracy: a.accuracy || 0,
-    }))
-    const strongArticles: ArticlePerformance[] = (statsJson.strongArticles || []).map((a: any) => ({
-      articleId: a.articleId || null,
-      articleNumber: a.articleNumber || null,
-      lawName: a.lawName || null,
-      temaNumber: a.temaNumber || null,
-      totalQuestions: a.totalQuestions || 0,
-      correctAnswers: a.correctAnswers || 0,
-      accuracy: a.accuracy || 0,
-    }))
-
-    // Parsear y formatear la respuesta
-    const response: GetUserStatsResponse = {
-      success: true,
-      stats: {
-        main: {
-          totalTests: statsJson.main.totalTests || 0,
-          totalQuestions: statsJson.main.totalQuestions || 0,
-          correctAnswers: statsJson.main.correctAnswers || 0,
-          accuracy: statsJson.main.accuracy || 0,
-          totalStudyTimeSeconds: statsJson.main.totalStudyTimeSeconds || 0,
-          averageTimePerQuestion: statsJson.main.averageTimePerQuestion || 0,
-          bestScore: statsJson.main.bestScore || 0,
-          currentStreak: statsJson.main.currentStreak || 0,
-          longestStreak: statsJson.main.longestStreak || 0,
-        },
-        weeklyProgress: (statsJson.weeklyProgress || []).map((d: any) => ({
-          day: getDayName(new Date(d.date)),
-          date: d.date,
-          questions: d.questions || 0,
-          correct: d.correct || 0,
-          accuracy: d.accuracy || 0,
-          studyMinutes: d.studyMinutes || 0,
-        })),
-        recentTests: (statsJson.recentTests || []).map((t: any) => ({
-          id: t.id,
-          title: t.title,
-          temaNumber: t.temaNumber,
-          score: t.score || 0,
-          totalQuestions: t.totalQuestions || 0,
-          accuracy: t.accuracy || 0,
-          completedAt: t.completedAt || '',
-          timeSeconds: t.timeSeconds || 0,
-        })),
-        themePerformance,
-        difficultyBreakdown: (statsJson.difficultyBreakdown || []).map((d: any) => ({
-          difficulty: d.difficulty,
-          totalQuestions: d.totalQuestions || 0,
-          correctAnswers: d.correctAnswers || 0,
-          accuracy: d.accuracy || 0,
-          averageTime: d.averageTime || 0,
-        })),
-        timePatterns: {
-          hourlyDistribution: (statsJson.timePatterns?.hourlyDistribution || []).map((h: any) => ({
-            hour: h.hour,
-            questions: h.questions || 0,
-            accuracy: h.accuracy || 0,
-          })),
-          bestHours: getBestHours(statsJson.timePatterns?.hourlyDistribution || []),
-          worstHours: getWorstHours(statsJson.timePatterns?.hourlyDistribution || []),
-          averageSessionMinutes: statsJson.timePatterns?.averageSessionMinutes || 0,
-        },
-        weakArticles,
-        strongArticles,
-        userOposicion: userOposicion ?? undefined,
-      },
-      generatedAt: now.toISOString(),
-    }
+    // Ejecutar queries Drizzle en paralelo (8 stats + userOposicion)
+    const response = await getUserStatsWithDrizzle(userId)
 
     // Guardar en cache
     statsCache.set(userId, { data: response, timestamp: Date.now() })
@@ -236,14 +85,9 @@ export async function getUserStats(userId: string): Promise<GetUserStatsResponse
     return response
   } catch (error) {
     console.error('Error obteniendo estadísticas:', error)
-    // Intentar fallback
-    try {
-      return await getUserStatsFallback(userId)
-    } catch (fallbackError) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Error desconocido',
-      }
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error desconocido',
     }
   }
 }
@@ -270,8 +114,8 @@ function getWorstHours(hourlyData: Array<{hour: number, questions: number, accur
     .map(h => h.hour)
 }
 
-// Fallback usando queries individuales (más lento pero funciona sin la función SQL)
-async function getUserStatsFallback(userId: string): Promise<GetUserStatsResponse> {
+// Queries Drizzle en paralelo (9 queries: 8 stats + userOposicion)
+async function getUserStatsWithDrizzle(userId: string): Promise<GetUserStatsResponse> {
   const db = getDb()
   const now = new Date()
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
@@ -286,6 +130,8 @@ async function getUserStatsFallback(userId: string): Promise<GetUserStatsRespons
     timePatterns,
     articleStats,
     streakData,
+    userOposicion,
+    userSessionsData,
   ] = await Promise.all([
     getMainStats(db, userId),
     getWeeklyProgress(db, userId, sevenDaysAgo),
@@ -295,6 +141,8 @@ async function getUserStatsFallback(userId: string): Promise<GetUserStatsRespons
     getTimePatterns(db, userId),
     getArticleStats(db, userId),
     getStreakData(db, userId),
+    getUserOposicion(db, userId),
+    getUserSessionsData(db, userId),
   ])
 
   // Combinar streak data con main stats
@@ -319,6 +167,8 @@ async function getUserStatsFallback(userId: string): Promise<GetUserStatsRespons
       timePatterns,
       weakArticles,
       strongArticles,
+      userOposicion: userOposicion ?? undefined,
+      userSessions: userSessionsData,
     },
     generatedAt: now.toISOString(),
   }
@@ -749,6 +599,38 @@ async function getUserOposicion(db: ReturnType<typeof getDb>, userId: string): P
   } catch (error) {
     console.error('Error obteniendo oposición del usuario:', error)
     return null
+  }
+}
+
+// ============================================
+// SESIONES DE USUARIO
+// ============================================
+
+async function getUserSessionsData(db: ReturnType<typeof getDb>, userId: string) {
+  try {
+    const rows = await db
+      .select({
+        totalDurationMinutes: userSessions.totalDurationMinutes,
+        engagementScore: userSessions.engagementScore,
+        sessionStart: userSessions.sessionStart,
+        testsCompleted: userSessions.testsCompleted,
+        questionsAnswered: userSessions.questionsAnswered,
+      })
+      .from(userSessions)
+      .where(eq(userSessions.userId, userId))
+      .orderBy(desc(userSessions.sessionStart))
+      .limit(100)
+
+    return rows.map(r => ({
+      totalDurationMinutes: r.totalDurationMinutes ?? null,
+      engagementScore: r.engagementScore ? Number(r.engagementScore) : null,
+      sessionStart: r.sessionStart ?? null,
+      testsCompleted: r.testsCompleted ?? null,
+      questionsAnswered: r.questionsAnswered ?? null,
+    }))
+  } catch (error) {
+    console.warn('⚠️ Error obteniendo sesiones de usuario:', error)
+    return []
   }
 }
 
