@@ -1,4 +1,4 @@
-// app/mis-estadisticas/page.js - ACTUALIZADO USANDO useAuth GLOBAL
+// app/mis-estadisticas/page.tsx - ACTUALIZADO USANDO useAuth GLOBAL
 'use client'
 import { useState, useEffect, useCallback, Suspense } from 'react'
 import Link from 'next/link'
@@ -36,11 +36,178 @@ const PsychometricStatsTab = dynamic(
 )
 
 // Cache inteligente para análisis de IA
-const aiAnalysisCache = new Map()
+const aiAnalysisCache = new Map<string, { data: unknown; timestamp: number }>()
 const CACHE_DURATION = 5 * 60 * 1000 // 5 minutos
 
+// ---- Type definitions ----
+interface DbResponse {
+  is_correct?: boolean
+  time_spent_seconds?: number
+  difficulty?: string
+  article_number?: string | number | null
+  law_name?: string | null
+  tema_number?: number | null
+  theme_number?: number | null
+  theme_title?: string | null
+  tema_title?: string | null
+  test_id?: string
+  created_at?: string
+  [key: string]: unknown
+}
+
+interface DbTest {
+  id: string
+  user_id?: string
+  created_at?: string
+  completed_at?: string
+  title?: string
+  test_type?: string
+  tema_number?: number | null
+  score?: number
+  total_questions?: number
+  total_time_seconds?: number
+  duration_seconds?: number
+  is_completed?: boolean
+  config?: Record<string, unknown>
+  focus_weak?: boolean
+  [key: string]: unknown
+}
+
+interface ThemeRange {
+  min: number
+  max: number
+}
+
+interface DifficultyItem {
+  difficulty: string
+  total: number
+  correct: number
+  accuracy: number
+  avgTime: number
+  avgConfidence?: number
+  trend?: string
+}
+
+interface ArticleItem {
+  article: string
+  law: string
+  theme?: number | null
+  total: number
+  correct: number
+  accuracy: number
+  status?: string
+  avgTime?: number
+  trend?: string
+}
+
+interface ThemeItem {
+  theme: number
+  title: string
+  total: number
+  correct: number
+  accuracy: number
+  avgTime?: number
+  articlesCount?: number
+  status?: string
+  trend?: string
+}
+
+interface RecentTest {
+  id: string
+  title: string
+  score: number
+  total: number
+  totalQuestions?: number
+  accuracy?: number
+  percentage: number
+  date: string
+  time: string
+  avgTimePerQuestion: number
+  difficultyBreakdown?: unknown[]
+  engagementScore?: number
+  focusScore?: number
+  completed_at?: string
+  formattedDate?: string
+  duration?: number
+  formattedDuration?: string
+  isPsychometric?: boolean
+}
+
+interface Achievement {
+  id: string
+  title: string
+  description: string
+  unlocked: boolean
+  progress: string
+  category: string
+}
+
+interface WeeklyProgressItem {
+  week?: string
+  day?: string
+  testsCompleted?: number
+  questionsAnswered?: number
+  questions?: number
+  correctAnswers?: number
+  accuracy?: number
+  studyTime?: number
+  trend?: string
+}
+
+interface SessionAnalytics {
+  totalSessions: number
+  avgSessionDuration: number
+  avgEngagement: number
+  devicesUsed: number
+  recentSessions: Array<Record<string, unknown>>
+  consistency: number
+}
+
+interface Recommendation {
+  priority: string
+  title: string
+  description: string
+  action: string
+  type?: string
+  icon: string
+}
+
+interface StatsObject {
+  testsCompleted: number
+  totalQuestions: number
+  correctAnswers: number
+  accuracy: number
+  averageTime: number
+  totalStudyTime: number
+  currentStreak: number
+  longestStreak?: number
+  bestScore: number
+  difficultyBreakdown: DifficultyItem[]
+  articlePerformance: ArticleItem[]
+  themePerformance?: ThemeItem[]
+  learningStyle: Record<string, unknown> | null
+  timePatterns: Record<string, unknown> | null
+  sessionAnalytics: SessionAnalytics | null
+  examReadiness: null
+  examPredictionMarch2025: Record<string, unknown> | null
+  recommendations: Recommendation[]
+  recentTests: RecentTest[]
+  achievements: Achievement[]
+  weeklyProgress: WeeklyProgressItem[]
+  knowledgeRetention: Record<string, unknown> | null
+  learningEfficiency: Record<string, unknown> | null
+  confidenceAnalysis: Record<string, unknown> | null
+  deviceAnalytics: Record<string, unknown> | null
+  engagementMetrics: Record<string, unknown> | null
+  aiImpactData: Record<string, unknown> | null
+  userOposicion?: Record<string, unknown> | null
+  _cached?: boolean
+  _generatedAt?: string
+}
+// ---- End type definitions ----
+
 // ✅ FUNCIÓN formatTime DEFINIDA AQUÍ
-const formatTime = (seconds) => {
+const formatTime = (seconds: number | null | undefined): string => {
   if (!seconds) return '0m'
   const hours = Math.floor(seconds / 3600)
   const minutes = Math.floor((seconds % 3600) / 60)
@@ -50,7 +217,7 @@ const formatTime = (seconds) => {
 
 // ✅ Formatear número de tema interno a nombre legible por bloque
 // oposicionSlug determina qué bloques son válidos para esa oposición
-const formatThemeName = (num, oposicionSlug = 'auxiliar-administrativo-estado') => {
+const formatThemeName = (num: number, oposicionSlug: string = 'auxiliar-administrativo-estado'): string => {
   // Administrativo del Estado (C1) - Estructura según /administrativo-estado/test
   if (oposicionSlug === 'administrativo-estado') {
     if (num >= 1 && num <= 11) return `Bloque I - Tema ${num}`
@@ -70,7 +237,7 @@ const formatThemeName = (num, oposicionSlug = 'auxiliar-administrativo-estado') 
 }
 
 // ✅ Obtener los rangos de temas válidos según la oposición
-const getValidThemeRanges = (oposicionSlug) => {
+const getValidThemeRanges = (oposicionSlug?: string): ThemeRange[] => {
   if (oposicionSlug === 'administrativo-estado') {
     // Administrativo C1: 6 bloques (según /administrativo-estado/test)
     return [
@@ -90,13 +257,13 @@ const getValidThemeRanges = (oposicionSlug) => {
 }
 
 // ✅ Verificar si un tema pertenece a la oposición del usuario
-const isThemeValidForOposicion = (themeNumber, oposicionSlug) => {
+const isThemeValidForOposicion = (themeNumber: number, oposicionSlug: string): boolean => {
   const ranges = getValidThemeRanges(oposicionSlug)
   return ranges.some(r => themeNumber >= r.min && themeNumber <= r.max)
 }
 
 // ✅ FUNCIONES AUXILIARES MOVIDAS AL INICIO - ANTES DE SU USO
-const generateRealRecommendations = (responses, articlePerformance, accuracy) => {
+const generateRealRecommendations = (responses: DbResponse[], articlePerformance: ArticleItem[], accuracy: number): Recommendation[] => {
   if (!responses || responses.length < 10) return []
   
   const recommendations = []
@@ -143,7 +310,7 @@ const generateRealRecommendations = (responses, articlePerformance, accuracy) =>
   return recommendations
 }
 
-const detectRealLearningStyle = (responses, learningAnalytics) => {
+const detectRealLearningStyle = (responses: DbResponse[], learningAnalytics: unknown): Record<string, unknown> | null => {
   if (!responses || responses.length < 30) return null
   
   // Análisis básico basado en patrones reales
@@ -177,19 +344,19 @@ const detectRealLearningStyle = (responses, learningAnalytics) => {
 }
 
 // ✅ FUNCIONES AUXILIARES PARA PREDICCIÓN DE EXAMEN MOVIDAS AQUÍ
-const calculateActiveDays = (tests) => {
+const calculateActiveDays = (tests: DbTest[]): number => {
   if (!tests || tests.length === 0) return 0
-  const dates = [...new Set(tests.map(test => 
-    new Date(test.completed_at).toDateString()
+  const dates = [...new Set(tests.map(test =>
+    new Date(test.completed_at as string).toDateString()
   ))]
   return dates.length
 }
 
-const calculateDailyImprovement = (responses, tests) => {
+const calculateDailyImprovement = (responses: DbResponse[], tests: DbTest[]): number => {
   if (!tests || tests.length < 5) return 0.1
   
   // Ordenar tests por fecha
-  const sortedTests = tests.sort((a, b) => new Date(a.completed_at) - new Date(b.completed_at))
+  const sortedTests = tests.sort((a, b) => new Date(a.completed_at as string).getTime() - new Date(b.completed_at as string).getTime())
   
   // Tomar los primeros y últimos tests para comparar
   const recentCount = Math.min(5, Math.floor(tests.length / 3))
@@ -201,9 +368,9 @@ const calculateDailyImprovement = (responses, tests) => {
   const recentAccuracy = calculatePeriodAccuracy(recentTests)
   
   // Calcular días transcurridos
-  const firstDate = new Date(oldTests[0].completed_at)
-  const lastDate = new Date(recentTests[recentTests.length - 1].completed_at)
-  const daysDiff = Math.max(1, Math.ceil((lastDate - firstDate) / (1000 * 60 * 60 * 24)))
+  const firstDate = new Date(oldTests[0].completed_at as string)
+  const lastDate = new Date(recentTests[recentTests.length - 1].completed_at as string)
+  const daysDiff = Math.max(1, Math.ceil((lastDate.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24)))
   
   // Mejora diaria
   const totalImprovement = recentAccuracy - oldAccuracy
@@ -212,13 +379,13 @@ const calculateDailyImprovement = (responses, tests) => {
   return Math.max(0.0, parseFloat(dailyImprovement.toFixed(1)))
 }
 
-const calculatePeriodAccuracy = (tests) => {
+const calculatePeriodAccuracy = (tests: DbTest[]): number => {
   const totalQuestions = tests.reduce((sum, test) => sum + (test.total_questions || 0), 0)
   const totalCorrect = tests.reduce((sum, test) => sum + (test.score || 0), 0)
   return totalQuestions > 0 ? (totalCorrect / totalQuestions) * 100 : 0
 }
 
-const calculateLearningSpeed = (responses, totalStudyTime) => {
+const calculateLearningSpeed = (responses: DbResponse[], totalStudyTime: number): number => {
   if (!responses || responses.length === 0 || !totalStudyTime) return 50
   
   const questionsPerHour = (responses.length / (totalStudyTime / 3600))
@@ -228,7 +395,7 @@ const calculateLearningSpeed = (responses, totalStudyTime) => {
   return Math.min(100, Math.round((questionsPerHour + accuracyPerHour) * 5))
 }
 
-const createEmptyStats = () => ({
+const createEmptyStats = (): StatsObject => ({
   testsCompleted: 0,
   totalQuestions: 0,
   correctAnswers: 0,
@@ -243,6 +410,7 @@ const createEmptyStats = () => ({
   timePatterns: null,
   sessionAnalytics: null,
   examReadiness: null,
+  examPredictionMarch2025: null,
   recommendations: [],
   recentTests: [],
   achievements: [],
@@ -290,11 +458,11 @@ function EstadisticasContent() {
   // oposicionId usa guiones bajos (administrativo_estado), formatThemeName espera guiones (administrativo-estado)
   const userOposicionSlug = oposicionId?.replace(/_/g, '-') || 'auxiliar-administrativo-estado'
 
-  const [loading, setLoading] = useState(true)
-  const [stats, setStats] = useState(createEmptyStats())
-  const [error, setError] = useState(null)
-  const [activeTab, setActiveTab] = useState('overview')
-  const [showRecentTestsInfo, setShowRecentTestsInfo] = useState(false)
+  const [loading, setLoading] = useState<boolean>(true)
+  const [stats, setStats] = useState<StatsObject>(createEmptyStats())
+  const [error, setError] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<string>('overview')
+  const [showRecentTestsInfo, setShowRecentTestsInfo] = useState<boolean>(false)
 
   // Función para scroll suave al contenido
   const scrollToContent = () => {
@@ -308,12 +476,12 @@ function EstadisticasContent() {
   }
 
   // Función para cambiar tab (sin scroll automático)
-  const handleTabChange = (tabId) => {
+  const handleTabChange = (tabId: string): void => {
     setActiveTab(tabId)
   }
 
   // 🧠 Cargar análisis completo desde todas las tablas
-  const loadCompleteAnalytics = useCallback(async (userId) => {
+  const loadCompleteAnalytics = useCallback(async (userId: string) => {
     try {
       console.log('🧠 Cargando análisis  completo...')
       
@@ -374,7 +542,7 @@ function EstadisticasContent() {
 
         let responses = []
         if (fallbackTests && fallbackTests.length > 0) {
-          const testIds = fallbackTests.map(t => t.id)
+          const testIds = fallbackTests.map((t: { id: string }) => t.id)
           const { data: responsesData, error: responsesError } = await supabase
             .from('test_questions')
             .select('*')
@@ -401,7 +569,7 @@ function EstadisticasContent() {
       // Paso 2: obtener respuestas de esos tests (sin join, más rápido)
       let responses = []
       if (userTests && userTests.length > 0) {
-        const testIds = userTests.map(t => t.id)
+        const testIds = userTests.map((t: { id: string }) => t.id)
         const { data: responsesData, error: responsesError } = await supabase
           .from('test_questions')
           .select('*')
@@ -436,7 +604,7 @@ function EstadisticasContent() {
       console.log(`✅ Datos cargados: ${tests?.length || 0} tests, ${responses?.length || 0} respuestas`)
 
       // ⚡ CONTEOS OPTIMIZADOS para gráficos básicos (sin transferir filas)
-      const testIds = tests?.map(t => t.id) || []
+      const testIds = tests?.map((t: DbTest) => t.id) || []
       
       // Solo hacer conteos si hay tests
       let optimizedCounts = { totalQuestions: 0, correctAnswers: 0 }
@@ -467,7 +635,7 @@ function EstadisticasContent() {
       }
 
       // 🧠 PROCESAMIENTO INTELIGENTE DE TODOS LOS DATOS
-      const processedStats = await processCompleteAnalytics(tests, responses, learningAnalytics, sessions, optimizedCounts, supabase, allTests, userOposicionSlug)
+      const processedStats = await processCompleteAnalytics(tests, responses, learningAnalytics, sessions, optimizedCounts, supabase, allTests, userOposicionSlug, psychometricSessions)
 
       return processedStats
 
@@ -478,7 +646,8 @@ function EstadisticasContent() {
   }, [supabase, oposicionId])
 
   // 🧠 Procesamiento SOLO con datos reales - sin inventar nada
-  const processCompleteAnalytics = useCallback(async (tests, responses, learningAnalytics, sessions, optimizedCounts, supabaseClient, allTests, oposicionSlug = 'auxiliar-administrativo-estado') => {
+  const processCompleteAnalytics = useCallback(async (tests: DbTest[], responses: DbResponse[], learningAnalytics: unknown, sessions: Array<Record<string, unknown>>, optimizedCounts: { totalQuestions: number; correctAnswers: number }, // eslint-disable-next-line @typescript-eslint/no-explicit-any
+supabaseClient: any, allTests: DbTest[], oposicionSlug: string = 'auxiliar-administrativo-estado', psychometricSessions: Array<Record<string, unknown>> = []) => {
     console.log('🧠 Procesando análisis con datos 100% reales...')
 
     // ESTADÍSTICAS BÁSICAS - USAR CONTEOS OPTIMIZADOS para gráficos básicos
@@ -497,7 +666,7 @@ function EstadisticasContent() {
       Math.max(...tests.map(t => Math.round(((t.score || 0) / (t.total_questions || 1)) * 100))) : 0
 
     // RACHA ACTUAL REAL - calculada desde fechas reales
-    const calculateRealStreak = (tests) => {
+    const calculateRealStreak = (tests: DbTest[]): number => {
       if (!tests || tests.length === 0) return 0
       
       let streak = 0
@@ -510,7 +679,7 @@ function EstadisticasContent() {
         checkDate.setDate(today.getDate() - i)
         
         const hasTestOnDate = tests.some(test => {
-          const testDate = new Date(test.completed_at)
+          const testDate = new Date(test.completed_at as string)
           testDate.setHours(0, 0, 0, 0)
           return testDate.getTime() === checkDate.getTime()
         })
@@ -548,10 +717,10 @@ function EstadisticasContent() {
 
     // ANÁLISIS POR TEMA - NUEVO
     const themePerformance = responses && responses.length > 0 ? (() => {
-      const themeMap = {}
+      const themeMap: Record<number, { theme: number; title: string; total: number; correct: number; totalTime: number; articles: Set<unknown> }> = {}
 
-      responses.forEach((response, index) => {
-        const theme = response.tema_number ?? response.theme_number ?? 0
+      responses.forEach((response) => {
+        const theme = (response.tema_number ?? response.theme_number ?? 0) as number
 
         if (theme === null || theme === undefined) {
           return // Skip si no hay tema
@@ -600,7 +769,7 @@ function EstadisticasContent() {
 
     // ANÁLISIS POR ARTÍCULO - MEJORADO con referencia al tema
     const articlePerformance = responses && responses.length > 0 ? (() => {
-      const articleMap = {}
+      const articleMap: Record<string, { article: string; law: string; theme: number | null | undefined; total: number; correct: number; totalTime: number }> = {}
       responses.forEach(response => {
         const article = response.article_number
         const law = response.law_name
@@ -727,7 +896,8 @@ function EstadisticasContent() {
     }) || []
 
     // Añadir sesiones psicotécnicas completadas a tests recientes
-    const psychoRecentTests = (psychometricSessions || []).map(ps => ({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const psychoRecentTests = (psychometricSessions || []).map((ps: any) => ({
       id: ps.id,
       title: ps.categoryName || 'Test Psicotecnico',
       score: ps.correctAnswers || 0,
@@ -745,13 +915,14 @@ function EstadisticasContent() {
     }))
 
     // Mezclar legislativos y psicotécnicos, ordenar por fecha
-    const allRecentTests = [...recentTests.map(t => ({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const allRecentTests = [...recentTests.map((t: any) => ({
       ...t,
       _completedAt: tests?.find(tt => tt.id === t.id)?.completed_at || null,
     })), ...psychoRecentTests]
       .sort((a, b) => {
-        const dateA = a._completedAt ? new Date(a._completedAt).getTime() : 0
-        const dateB = b._completedAt ? new Date(b._completedAt).getTime() : 0
+        const dateA = a._completedAt ? new Date(a._completedAt as string).getTime() : 0
+        const dateB = b._completedAt ? new Date(b._completedAt as string).getTime() : 0
         return dateB - dateA
       })
       .slice(0, 15)
@@ -813,7 +984,8 @@ function EstadisticasContent() {
     ]
 
     // PROGRESO SEMANAL REAL - calculado desde lunes de cada semana CON CONTEOS OPTIMIZADOS
-    const calculateRealWeeklyProgress = async (tests, responses, supabaseClient) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const calculateRealWeeklyProgress = async (tests: DbTest[], responses: DbResponse[], supabaseClient: any) => {
       if (!tests || tests.length === 0) return []
 
       console.log('🔍 CALCULANDO ACTIVIDAD SEMANAL CON CONTEOS OPTIMIZADOS:', {
@@ -828,7 +1000,7 @@ function EstadisticasContent() {
       console.log('🔍 TEST IDS para semanas:', testIds.length, 'tests:', testIds.slice(0, 5), '...');
       
       // Función para obtener el lunes de una semana específica
-      const getMondayOfWeek = (date, weeksBack = 0) => {
+      const getMondayOfWeek = (date: Date, weeksBack: number = 0): Date => {
         const target = new Date(date)
         target.setDate(date.getDate() - (weeksBack * 7))
         const dayOfWeek = target.getDay()
@@ -846,7 +1018,7 @@ function EstadisticasContent() {
         weekEnd.setHours(23, 59, 59, 999)
         
         const weekTests = tests.filter(test => {
-          const testDate = new Date(test.completed_at)
+          const testDate = new Date(test.completed_at as string)
           return testDate >= weekStart && testDate <= weekEnd
         })
         
@@ -914,17 +1086,22 @@ function EstadisticasContent() {
 
     // ANÁLISIS DE SESIONES REAL
     // Filtrar sesiones con duración > 0 para calcular promedios reales
-    const validSessions = sessions?.filter(s => (s.total_duration_minutes || 0) > 0) || []
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const validSessions = sessions?.filter((s: any) => ((s.total_duration_minutes as number) || 0) > 0) || []
     const sessionAnalytics = sessions && sessions.length > 0 ? {
       totalSessions: sessions.length,
       avgSessionDuration: validSessions.length > 0
-        ? Math.round(validSessions.reduce((sum, s) => sum + (s.total_duration_minutes || 0), 0) / validSessions.length)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ? Math.round(validSessions.reduce((sum: number, s: any) => sum + ((s.total_duration_minutes as number) || 0), 0) / validSessions.length)
         : 0,
       avgEngagement: validSessions.length > 0
-        ? Math.round(validSessions.reduce((sum, s) => sum + (s.engagement_score || 0), 0) / validSessions.length)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ? Math.round(validSessions.reduce((sum: number, s: any) => sum + ((s.engagement_score as number) || 0), 0) / validSessions.length)
         : 0,
-      devicesUsed: [...new Set(sessions.map(s => s.device_model).filter(Boolean))].length,
-      recentSessions: sessions.slice(0, 5).map(session => ({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      devicesUsed: [...new Set(sessions.map((s: any) => s.device_model).filter(Boolean))].length,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      recentSessions: sessions.slice(0, 5).map((session: any) => ({
         date: new Date(session.session_start).toLocaleDateString('es-ES', {
           timeZone: 'Europe/Madrid'
         }),
@@ -935,7 +1112,8 @@ function EstadisticasContent() {
         questionsAnswered: session.questions_answered || 0
       })),
       consistency: (() => {
-        const last30Days = sessions.filter(s => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const last30Days = sessions.filter((s: any) => {
           const sessionDate = new Date(s.session_start)
           const thirtyDaysAgo = new Date()
           thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
@@ -950,8 +1128,8 @@ function EstadisticasContent() {
       // Fecha objetivo del examen
       const examDate = new Date('2026-07-01') // Estimación julio 2026
       const today = new Date()
-      const daysRemaining = Math.ceil((examDate - today) / (1000 * 60 * 60 * 24))
-      
+      const daysRemaining = Math.ceil((examDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+
       // 1. COBERTURA DEL TEMARIO
       const totalThemes = 28 // 16 Bloque I + 12 Bloque II
       const studiedThemes = themePerformance?.length || 0
@@ -1187,10 +1365,10 @@ function EstadisticasContent() {
       // Componentes que requieren más datos - null hasta tener suficiente
       timePatterns: tests && tests.length >= 5 ? (() => {
         // Análisis temporal básico basado en completed_at de tests
-        const hourlyStats = {}
-        
+        const hourlyStats: Record<number, { hour: number; tests: number; totalAccuracy: number; accuracy: number }> = {}
+
         tests.forEach(test => {
-          const testDate = new Date(test.completed_at)
+          const testDate = new Date(test.completed_at as string)
           const hour = testDate.getHours()
           const accuracy = Math.round(((test.score || 0) / (test.total_questions || 1)) * 100)
           
@@ -1280,7 +1458,8 @@ function EstadisticasContent() {
           .limit(100)
 
         // Filtrar sesiones con duración válida para promedios
-        const validSessions = userSessions?.filter(s => (s.total_duration_minutes || 0) > 0) || []
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const validSessions = userSessions?.filter((s: any) => (s.total_duration_minutes || 0) > 0) || []
 
         // Mapear respuesta de API al formato esperado por componentes
         const { stats: apiStats } = apiData
@@ -1302,7 +1481,8 @@ function EstadisticasContent() {
           // Tests recientes - mapear al formato esperado por RecentTests.js
           recentTests: (() => {
             const oposicionSlug = apiStats.userOposicion?.slug || 'auxiliar-administrativo-estado'
-            const legislativeTests = apiStats.recentTests.map(t => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const legislativeTests = apiStats.recentTests.map((t: any) => {
               const bloquePrefix = t.temaNumber ? formatThemeName(t.temaNumber, oposicionSlug) : null
               const fullTitle = t.temaNumber
                 ? bloquePrefix
@@ -1339,7 +1519,8 @@ function EstadisticasContent() {
             })
 
             // Mezclar con sesiones psicotécnicas completadas
-            const psychoTests = completedPsychometricSessions.map(ps => ({
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const psychoTests = completedPsychometricSessions.map((ps: any) => ({
               id: ps.id,
               title: ps.categoryName || 'Test Psicotecnico',
               isPsychometric: true,
@@ -1369,9 +1550,11 @@ function EstadisticasContent() {
           // Rendimiento por tema - filtrado por oposición del usuario
           themePerformance: (() => {
             const oposicionSlug = apiStats.userOposicion?.slug || 'auxiliar-administrativo-estado'
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const filtered = apiStats.themePerformance
-              .filter(t => isThemeValidForOposicion(t.temaNumber, oposicionSlug))
-            return filtered.map(t => {
+              .filter((t: any) => isThemeValidForOposicion(t.temaNumber, oposicionSlug))
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            return filtered.map((t: any) => {
                 const bloquePrefix = formatThemeName(t.temaNumber, oposicionSlug)
                 // Solo mostrar el bloque formateado
                 const fullTitle = bloquePrefix
@@ -1405,7 +1588,8 @@ function EstadisticasContent() {
           } : null,
 
           // Desglose por dificultad
-          difficultyBreakdown: apiStats.difficultyBreakdown.map(d => ({
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          difficultyBreakdown: apiStats.difficultyBreakdown.map((d: any) => ({
             difficulty: d.difficulty,
             total: d.totalQuestions,
             correct: d.correctAnswers,
@@ -1420,7 +1604,8 @@ function EstadisticasContent() {
           } : null,
 
           // Artículos débiles y fuertes - incluir theme para filtrado por tema
-          articlePerformance: [...apiStats.weakArticles, ...apiStats.strongArticles].map(a => ({
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          articlePerformance: [...apiStats.weakArticles, ...apiStats.strongArticles].map((a: any) => ({
             article: `Art. ${a.articleNumber}`,
             law: a.lawName,
             theme: a.temaNumber, // Necesario para getArticlesForTheme
@@ -1485,7 +1670,8 @@ function EstadisticasContent() {
           // AI Impact Data - calculado desde datos disponibles
           aiImpactData: apiStats.main.totalQuestions >= 20 ? {
             totalInsights: Math.floor(
-              apiStats.difficultyBreakdown.filter(d => d.accuracy < 70).length +
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              apiStats.difficultyBreakdown.filter((d: any) => d.accuracy < 70).length +
               apiStats.weakArticles.length + 3
             ),
             problemsDetected: apiStats.weakArticles.length,
@@ -1510,17 +1696,20 @@ function EstadisticasContent() {
             const totalThemes = oposicion?.temasCount || 28
 
             // ✅ Filtrar temas por la oposición del usuario (igual que en themePerformance)
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const filteredThemePerformance = apiStats.themePerformance
-              .filter(t => isThemeValidForOposicion(t.temaNumber, oposicionSlug))
+              .filter((t: any) => isThemeValidForOposicion(t.temaNumber, oposicionSlug))
 
             // Tema "estudiado" = ≥10 preguntas Y ≥50% precisión (criterio similar a desbloqueo)
             const studiedThemes = filteredThemePerformance
-              .filter(t => t.totalQuestions >= 10 && t.accuracy >= 50).length
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              .filter((t: any) => t.totalQuestions >= 10 && t.accuracy >= 50).length
             const coveragePercentage = Math.min(100, Math.round((studiedThemes / totalThemes) * 100))
 
             // Temas dominados (accuracy >= 80% Y ≥10 preguntas) - también filtrados
             const masteredThemes = filteredThemePerformance
-              .filter(t => t.totalQuestions >= 10 && t.accuracy >= 80).length
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              .filter((t: any) => t.totalQuestions >= 10 && t.accuracy >= 80).length
             const masteredPercentage = Math.round((masteredThemes / totalThemes) * 100)
             const accuracy = apiStats.main.accuracy
 
@@ -1529,7 +1718,7 @@ function EstadisticasContent() {
             const examDate = examDateStr ? new Date(examDateStr) : new Date('2026-07-01')
             const hasRealExamDate = !!examDateStr
             const today = new Date()
-            const daysRemaining = Math.ceil((examDate - today) / (1000 * 60 * 60 * 24))
+            const daysRemaining = Math.ceil((examDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
 
             // Cálculo de preparación
             let readinessScore
@@ -1706,8 +1895,10 @@ function EstadisticasContent() {
                   : 0
 
                 // También mostrar preguntas recientes
-                const weeklyQuestions = apiStats.weeklyProgress.reduce((sum, day) => sum + day.questions, 0)
-                const activeDaysInWeek = apiStats.weeklyProgress.filter(d => d.questions > 0).length
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const weeklyQuestions = apiStats.weeklyProgress.reduce((sum: number, day: any) => sum + day.questions, 0)
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const activeDaysInWeek = apiStats.weeklyProgress.filter((d: any) => d.questions > 0).length
                 const dailyQ = activeDaysInWeek > 0
                   ? Math.round(weeklyQuestions / activeDaysInWeek)
                   : 0
@@ -1771,7 +1962,8 @@ function EstadisticasContent() {
               priority: 'medium',
               title: 'Reforzar Artículos Débiles',
               description: `${apiStats.weakArticles.length} artículos con menos del 60% de precisión`,
-              action: `Estudiar específicamente: ${apiStats.weakArticles.slice(0, 3).map(a => `${a.lawName} Art.${a.articleNumber}`).join(', ')}`,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              action: `Estudiar específicamente: ${apiStats.weakArticles.slice(0, 3).map((a: any) => `${a.lawName} Art.${a.articleNumber}`).join(', ')}`,
               type: 'content',
               icon: '📚'
             }] : []),
@@ -1820,13 +2012,16 @@ function EstadisticasContent() {
           sessionAnalytics: userSessions && userSessions.length > 0 ? {
             totalSessions: userSessions.length,
             avgSessionDuration: validSessions.length > 0
-              ? Math.round(validSessions.reduce((sum, s) => sum + (s.total_duration_minutes || 0), 0) / validSessions.length)
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              ? Math.round(validSessions.reduce((sum: number, s: any) => sum + (s.total_duration_minutes || 0), 0) / validSessions.length)
               : 0,
             avgEngagement: validSessions.length > 0
-              ? Math.round(validSessions.reduce((sum, s) => sum + (s.engagement_score || 0), 0) / validSessions.length)
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              ? Math.round(validSessions.reduce((sum: number, s: any) => sum + (s.engagement_score || 0), 0) / validSessions.length)
               : 0,
             devicesUsed: 1,
-            recentSessions: userSessions.slice(0, 5).map(s => ({
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            recentSessions: userSessions.slice(0, 5).map((s: any) => ({
               date: new Date(s.session_start).toLocaleDateString('es-ES'),
               duration: s.total_duration_minutes || 0,
               engagement: s.engagement_score || 0,
@@ -1835,7 +2030,8 @@ function EstadisticasContent() {
               questionsAnswered: s.questions_answered || 0
             })),
             consistency: (() => {
-              const last30Days = userSessions.filter(s => {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const last30Days = userSessions.filter((s: any) => {
                 const sessionDate = new Date(s.session_start)
                 const thirtyDaysAgo = new Date()
                 thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
@@ -1859,11 +2055,13 @@ function EstadisticasContent() {
               (Math.min(apiStats.main.currentStreak, 7) / 7 * 30) +
               (Math.min(apiStats.main.totalTests, 20) / 20 * 30)
             )),
-            weeklyActivity: apiStats.weeklyProgress.map(w => ({ day: w.day, questions: w.questions })),
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            weeklyActivity: apiStats.weeklyProgress.map((w: any) => ({ day: w.day, questions: w.questions })),
             streakData: {
               current: apiStats.main.currentStreak,
               longest: apiStats.main.longestStreak,
-              thisWeek: apiStats.weeklyProgress.filter(w => w.questions > 0).length
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              thisWeek: apiStats.weeklyProgress.filter((w: any) => w.questions > 0).length
             },
             completionRate: apiStats.main.totalTests > 0 ? 100 : 0,
             averageSessionLength: Math.round(apiStats.main.totalStudyTimeSeconds / Math.max(1, apiStats.main.totalTests) / 60)
@@ -1874,7 +2072,8 @@ function EstadisticasContent() {
             overallRetention: Math.round(
               (apiStats.strongArticles.length / Math.max(1, apiStats.strongArticles.length + apiStats.weakArticles.length)) * 100
             ),
-            byTheme: apiStats.themePerformance.slice(0, 5).map(t => ({
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            byTheme: apiStats.themePerformance.slice(0, 5).map((t: any) => ({
               theme: t.temaNumber,
               retention: t.accuracy,
               lastPracticed: t.lastPracticed
@@ -1912,7 +2111,8 @@ function EstadisticasContent() {
               (apiStats.main.accuracy * 0.7) +
               (Math.min(apiStats.main.currentStreak, 7) / 7 * 30)
             ),
-            byDifficulty: apiStats.difficultyBreakdown.map(d => ({
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            byDifficulty: apiStats.difficultyBreakdown.map((d: any) => ({
               difficulty: d.difficulty,
               confidence: d.accuracy,
               questions: d.totalQuestions
@@ -1930,12 +2130,12 @@ function EstadisticasContent() {
           _generatedAt: apiData.generatedAt
         }
 
-        setStats(mappedStats)
+        setStats(mappedStats as unknown as StatsObject)
         console.log('✅ Estadísticas cargadas desde API:', apiData.cached ? '(cached)' : '(fresh)', mappedStats)
 
       } catch (error) {
         console.error('❌ Error cargando estadísticas:', error)
-        setError(error.message)
+        setError((error as Error).message)
       } finally {
         setLoading(false)
       }
@@ -1945,7 +2145,7 @@ function EstadisticasContent() {
   }, [user, authLoading, supabase])
 
   // Componente de loading
-  const LoadingSection = ({ title }) => (
+  const LoadingSection = ({ title }: { title?: string }) => (
     <div className="bg-white rounded-xl shadow-lg mb-6 animate-pulse">
       <div className="p-6 border-b border-gray-200">
         <div className="flex items-center space-x-3">
@@ -2115,13 +2315,13 @@ function EstadisticasContent() {
                   id: 'predictions',
                   name: 'Predicciones',
                   icon: '🔮',
-                  subtitle: stats?.examPrediction?.oposicionInfo?.hasRealExamDate
-                    ? stats.examPrediction.oposicionInfo.examDateFormatted?.split(' de ')[0] + ' ' + stats.examPrediction.oposicionInfo.examDateFormatted?.split(' de ')[1]?.substring(0, 3)
+                  subtitle: (stats?.examPredictionMarch2025 as any)?.oposicionInfo?.hasRealExamDate
+                    ? (stats.examPredictionMarch2025 as any).oposicionInfo.examDateFormatted?.split(' de ')[0] + ' ' + (stats.examPredictionMarch2025 as any).oposicionInfo.examDateFormatted?.split(' de ')[1]?.substring(0, 3)
                     : 'Examen',
                   color: 'pink',
                   // Datos especiales para predicciones
-                  hasExamDate: stats?.examPrediction?.oposicionInfo?.hasRealExamDate,
-                  daysRemaining: stats?.examPrediction?.daysRemaining
+                  hasExamDate: (stats?.examPredictionMarch2025 as any)?.oposicionInfo?.hasRealExamDate,
+                  daysRemaining: (stats?.examPredictionMarch2025 as any)?.daysRemaining
                 }
               ].map((tab) => (
                 <button
@@ -2207,9 +2407,9 @@ function EstadisticasContent() {
                 difficultyBreakdown={stats.difficultyBreakdown}
                 themePerformance={stats.themePerformance}
               />
-              <RecentTests 
-                recentTests={stats.recentTests} 
-                onInfoClick={() => setShowRecentTestsInfo(true)} 
+              <RecentTests
+                recentTests={stats.recentTests as any}
+                onInfoClick={() => setShowRecentTestsInfo(true)}
               />
               <Achievements achievements={stats.achievements} />
             </div>
@@ -2225,9 +2425,9 @@ function EstadisticasContent() {
             <div className="space-y-6">
               <DifficultyBreakdown difficultyBreakdown={stats.difficultyBreakdown} />
               <ThemePerformance
-                themePerformance={stats.themePerformance}
-                articlePerformance={stats.articlePerformance}
-                userOposicion={stats.userOposicion} 
+                themePerformance={stats.themePerformance as any}
+                articlePerformance={stats.articlePerformance as any}
+                userOposicion={stats.userOposicion as any}
               />
               <TimePatterns timePatterns={stats.timePatterns} />
             </div>
