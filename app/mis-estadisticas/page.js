@@ -2127,7 +2127,7 @@ function EstadisticasContent() {
                 <button
                   key={tab.id}
                   onClick={() => handleTabChange(tab.id)}
-                  className={`min-w-[72px] flex-shrink-0 md:min-w-0 md:flex-auto p-2 md:p-3 rounded-lg transition-all duration-200 relative ${
+                  className={`min-w-[64px] flex-shrink-0 md:min-w-0 md:flex-auto p-2 md:p-3 rounded-lg transition-all duration-200 relative ${
                     activeTab === tab.id
                       ? `${tab.color === 'blue' ? 'bg-gradient-to-br from-blue-500 to-blue-600' :
                           tab.color === 'purple' ? 'bg-gradient-to-br from-purple-500 to-purple-600' :
@@ -2172,7 +2172,7 @@ function EstadisticasContent() {
               {/* Tab Psicotecnicos */}
               <button
                 onClick={() => handleTabChange('psicotecnicos')}
-                className={`min-w-[72px] flex-shrink-0 md:min-w-0 md:flex-auto p-2 md:p-3 rounded-lg transition-all duration-200 relative ${
+                className={`min-w-[64px] flex-shrink-0 md:min-w-0 md:flex-auto p-2 md:p-3 rounded-lg transition-all duration-200 relative ${
                   activeTab === 'psicotecnicos'
                     ? 'bg-gradient-to-br from-green-500 to-green-600 text-white shadow-md'
                     : 'bg-gray-50 hover:bg-green-100 text-gray-700 hover:text-green-700 dark:bg-gray-700 dark:hover:bg-green-900/30 dark:text-gray-300'
