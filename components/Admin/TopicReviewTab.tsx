@@ -1,4 +1,4 @@
-// components/Admin/TopicReviewTab.js
+// components/Admin/TopicReviewTab.tsx
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -6,20 +6,29 @@ import { useRouter } from 'next/navigation'
 import EmbeddingReviewTab from './EmbeddingReviewTab'
 
 // Spinner component
-const Spinner = ({ size = 'sm' }) => {
-  const sizeClasses = { sm: 'w-4 h-4', md: 'w-6 h-6', lg: 'w-8 h-8' }
+interface SpinnerProps {
+  size?: 'sm' | 'md' | 'lg'
+}
+
+const Spinner = ({ size = 'sm' }: SpinnerProps) => {
+  const sizeClasses: Record<string, string> = { sm: 'w-4 h-4', md: 'w-6 h-6', lg: 'w-8 h-8' }
   return (
     <div className={`animate-spin rounded-full border-2 border-blue-200 border-t-blue-600 ${sizeClasses[size]}`} />
   )
 }
 
 // Badge de estado de revisión - 8 estados legales + 4 estados técnicos
-const ReviewStatusBadge = ({ status, small = false }) => {
+interface ReviewStatusBadgeProps {
+  status: string
+  small?: boolean
+}
+
+const ReviewStatusBadge = ({ status, small = false }: ReviewStatusBadgeProps) => {
   const baseClasses = small
     ? 'inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium'
     : 'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium'
 
-  const statusConfig = {
+  const statusConfig: Record<string, { classes: string; label: string }> = {
     // Estados para leyes normales (8)
     perfect: {
       classes: 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-200',
@@ -88,18 +97,18 @@ const ReviewStatusBadge = ({ status, small = false }) => {
 // Formatear nombre de oposición (usa config central)
 import { getOposicionByPositionType } from '@/lib/config/oposiciones'
 
-const formatPositionName = (position) => {
+const formatPositionName = (position: string): string => {
   if (position === 'psicotecnicos') return '🧠 Pruebas Psicotécnicas'
   return getOposicionByPositionType(position)?.name || position.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
 }
 
 // Formatear tiempo relativo "hace X días"
-const formatTimeAgo = (dateString) => {
+const formatTimeAgo = (dateString: string | null | undefined): string | null => {
   if (!dateString) return null
 
   const date = new Date(dateString)
   const now = new Date()
-  const diffMs = now - date
+  const diffMs = now.getTime() - date.getTime()
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
 
   if (diffDays === 0) {
@@ -120,44 +129,121 @@ const formatTimeAgo = (dateString) => {
   return months === 1 ? 'hace 1 mes' : `hace ${months} meses`
 }
 
+interface TopicStats {
+  total_questions?: number
+  pending?: number
+  perfect?: number
+  tech_perfect?: number
+  bad_explanation?: number
+  bad_answer?: number
+  bad_answer_and_explanation?: number
+  wrong_article?: number
+  wrong_article_bad_explanation?: number
+  wrong_article_bad_answer?: number
+  all_wrong?: number
+  tech_bad_explanation?: number
+  tech_bad_answer?: number
+  tech_bad_answer_and_explanation?: number
+  last_verified_at?: string | null
+}
+
+interface TopicLaw {
+  id: string
+  short_name?: string
+  is_virtual?: boolean
+}
+
+interface Topic {
+  id: string
+  title: string
+  topic_number: number
+  stats?: TopicStats
+  laws?: TopicLaw[]
+}
+
+interface Block {
+  id: string
+  title: string
+  topics: Topic[]
+}
+
+interface AiModel {
+  id: string
+  name?: string
+  status: string
+}
+
+interface AiConfig {
+  provider: string
+  is_active: boolean
+  api_key_encrypted?: string
+  has_key?: boolean
+  available_models?: AiModel[]
+}
+
+interface QueueItem {
+  topic_id: string
+  status: string
+  processed_questions?: number
+  total_questions?: number
+}
+
+interface VerifyProgress {
+  current: number
+  total: number
+}
+
+interface GlobalStats {
+  total: number
+  pending: number
+  perfect: number
+  problems: number
+}
+
+interface VerifyAllProgress {
+  current: number
+  total: number
+  startedAt: number
+}
+
 export default function TopicReviewTab() {
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState('topics') // 'topics' | 'embeddings'
-  const [positions, setPositions] = useState([])
-  const [selectedPosition, setSelectedPosition] = useState('')
-  const [blocks, setBlocks] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [searchFilter, setSearchFilter] = useState('')
-  const [embeddingCount, setEmbeddingCount] = useState(0)
+  const [activeTab, setActiveTab] = useState<string>('topics') // 'topics' | 'embeddings'
+  const [positions, setPositions] = useState<string[]>([])
+  const [selectedPosition, setSelectedPosition] = useState<string>('')
+  const [blocks, setBlocks] = useState<Block[]>([])
+  const [loading, setLoading] = useState<boolean>(true)
+  const [error, setError] = useState<string | null>(null)
+  const [searchFilter, setSearchFilter] = useState<string>('')
+  const [embeddingCount, setEmbeddingCount] = useState<number>(0)
 
   // Estado para bloques colapsables
-  const [expandedBlocks, setExpandedBlocks] = useState(new Set())
+  const [expandedBlocks, setExpandedBlocks] = useState<Set<string>>(new Set())
 
   // Configuración de IA para verificación
-  const [aiConfigs, setAiConfigs] = useState([])
-  const [selectedProvider, setSelectedProvider] = useState('')
-  const [selectedModel, setSelectedModel] = useState('')
-  const [loadingAiConfig, setLoadingAiConfig] = useState(true)
+  const [aiConfigs, setAiConfigs] = useState<AiConfig[]>([])
+  const [selectedProvider, setSelectedProvider] = useState<string>('')
+  const [selectedModel, setSelectedModel] = useState<string>('')
+  const [loadingAiConfig, setLoadingAiConfig] = useState<boolean>(true)
 
   // Estado de verificación en cola (background)
-  const [verificationQueue, setVerificationQueue] = useState({})
-  const [loadingQueue, setLoadingQueue] = useState(false)
+  const [verificationQueue, setVerificationQueue] = useState<Record<string, QueueItem>>({})
+  const [loadingQueue, setLoadingQueue] = useState<boolean>(false)
 
   // Estado de verificación global (toda la BD)
-  const [verifyingAll, setVerifyingAll] = useState(false)
-  const [verifyAllProgress, setVerifyAllProgress] = useState({ current: 0, total: 0, startedAt: 0 })
-  const [globalStats, setGlobalStats] = useState({ total: 0, pending: 0, perfect: 0, problems: 0 })
+  const [verifyingAll, setVerifyingAll] = useState<boolean>(false)
+  const [verifyAllProgress, setVerifyAllProgress] = useState<VerifyAllProgress>({ current: 0, total: 0, startedAt: 0 })
+  const [globalStats, setGlobalStats] = useState<GlobalStats>({ total: 0, pending: 0, perfect: 0, problems: 0 })
 
   // Estado de verificación directa en navegador
-  const [verifyingDirect, setVerifyingDirect] = useState({}) // { topicId: { current, total } }
+  const [verifyingDirect, setVerifyingDirect] = useState<Record<string, VerifyProgress>>({}) // { topicId: { current, total } }
 
   // Menú desplegable para elegir modo de verificación
-  const [verifyMenuOpen, setVerifyMenuOpen] = useState(null) // topicId del menú abierto
+  const [verifyMenuOpen, setVerifyMenuOpen] = useState<string | null>(null) // topicId del menú abierto
 
   // Estado de verificación directa de BLOQUE en navegador
-  const [verifyingBlockDirect, setVerifyingBlockDirect] = useState({}) // { blockId: { current, total } }
-  const [blockMenuOpen, setBlockMenuOpen] = useState(null) // blockId del menú abierto
+  const [verifyingBlockDirect, setVerifyingBlockDirect] = useState<Record<string, VerifyProgress>>({}) // { blockId: { current, total } }
+  const [blockMenuOpen, setBlockMenuOpen] = useState<string | null>(null) // blockId del menú abierto
 
   // Cargar stats globales de preguntas únicas
   const loadGlobalStats = async () => {
@@ -260,7 +346,7 @@ export default function TopicReviewTab() {
       const data = await response.json()
 
       if (data.success && data.configs) {
-        const activeConfigs = data.configs.filter(c =>
+        const activeConfigs: AiConfig[] = data.configs.filter((c: AiConfig) =>
           c.is_active &&
           (c.api_key_encrypted || c.has_key) && // Soportar ambos campos
           c.available_models?.some(m => m.status === 'working')
@@ -300,13 +386,13 @@ export default function TopicReviewTab() {
   }
 
   // Obtener modelos del proveedor seleccionado
-  const getAvailableModels = () => {
+  const getAvailableModels = (): AiModel[] => {
     const config = aiConfigs.find(c => c.provider === selectedProvider)
     return config?.available_models?.filter(m => m.status === 'working') || []
   }
 
   // Cambiar proveedor
-  const handleProviderChange = (provider) => {
+  const handleProviderChange = (provider: string) => {
     setSelectedProvider(provider)
     localStorage.setItem('topic_review_ai_provider', provider)
 
@@ -319,7 +405,7 @@ export default function TopicReviewTab() {
   }
 
   // Cambiar modelo (también guardar)
-  const handleModelChange = (model) => {
+  const handleModelChange = (model: string) => {
     setSelectedModel(model)
     localStorage.setItem('topic_review_ai_model', model)
   }
@@ -332,14 +418,14 @@ export default function TopicReviewTab() {
 
       if (data.success && data.queue) {
         // Crear mapa de topic_id -> estado de verificación
-        const queueMap = {}
-        for (const item of data.queue) {
+        const queueMap: Record<string, QueueItem> = {}
+        for (const item of data.queue as QueueItem[]) {
           queueMap[item.topic_id] = item
         }
         setVerificationQueue(queueMap)
 
         // Si hay alguna completada, recargar temas
-        const hasCompleted = data.queue.some(q => q.status === 'completed')
+        const hasCompleted = (data.queue as QueueItem[]).some(q => q.status === 'completed')
         if (hasCompleted) {
           loadTopics()
         }
@@ -350,7 +436,7 @@ export default function TopicReviewTab() {
   }
 
   // Encolar verificación de un tema (se procesa en background)
-  const verifyTopicQueue = async (topicId) => {
+  const verifyTopicQueue = async (topicId: string) => {
     setVerifyMenuOpen(null)
     if (!selectedProvider || !selectedModel) {
       setError('Selecciona un proveedor y modelo de IA')
@@ -381,12 +467,12 @@ export default function TopicReviewTab() {
       await loadVerificationQueue()
 
     } catch (err) {
-      setError('Error al encolar verificación: ' + err.message)
+      setError('Error al encolar verificación: ' + (err as Error).message)
     }
   }
 
   // Verificación directa en navegador (más rápida para pocas preguntas)
-  const verifyTopicDirect = async (topicId, totalPending) => {
+  const verifyTopicDirect = async (topicId: string, totalPending: number) => {
     setVerifyMenuOpen(null)
     if (!selectedProvider || !selectedModel) {
       setError('Selecciona un proveedor y modelo de IA')
@@ -412,7 +498,7 @@ export default function TopicReviewTab() {
       }
 
       // Filtrar solo las pendientes
-      const pendingQuestions = detailData.questions?.filter(q =>
+      const pendingQuestions: Array<{ id: string; topic_review_status?: string }> = detailData.questions?.filter((q: { topic_review_status?: string }) =>
         !q.topic_review_status || q.topic_review_status === 'pending'
       ) || []
 
@@ -489,7 +575,7 @@ export default function TopicReviewTab() {
       await loadGlobalStats()
 
     } catch (err) {
-      setError('Error verificando: ' + err.message)
+      setError('Error verificando: ' + (err as Error).message)
       setVerifyingDirect(prev => {
         const newState = { ...prev }
         delete newState[topicId]
@@ -521,7 +607,7 @@ export default function TopicReviewTab() {
         return
       }
 
-      const allIds = data.questionIds
+      const allIds: string[] = data.questionIds
       setVerifyAllProgress({ current: 0, total: allIds.length, startedAt: Date.now() })
 
       // Verificar en batches de 5
@@ -555,14 +641,14 @@ export default function TopicReviewTab() {
       await loadTopics()
       await loadGlobalStats()
     } catch (err) {
-      setError('Error verificando: ' + err.message)
+      setError('Error verificando: ' + (err as Error).message)
     } finally {
       setVerifyingAll(false)
     }
   }
 
   // Toggle menú de verificación
-  const toggleVerifyMenu = (topicId, e) => {
+  const toggleVerifyMenu = (topicId: string, e: React.MouseEvent) => {
     e.stopPropagation()
     setVerifyMenuOpen(prev => prev === topicId ? null : topicId)
   }
@@ -577,16 +663,17 @@ export default function TopicReviewTab() {
       document.addEventListener('click', handleClickOutside)
       return () => document.removeEventListener('click', handleClickOutside)
     }
+    return undefined
   }, [verifyMenuOpen, blockMenuOpen])
 
   // Toggle menú de verificación de BLOQUE
-  const toggleBlockMenu = (blockId, e) => {
+  const toggleBlockMenu = (blockId: string, e: React.MouseEvent) => {
     e.stopPropagation()
     setBlockMenuOpen(prev => prev === blockId ? null : blockId)
   }
 
   // Verificación directa de BLOQUE en navegador
-  const verifyBlockDirect = async (blockId, topics, mode = 'pending') => {
+  const verifyBlockDirect = async (blockId: string, topics: Topic[], mode: 'pending' | 'problems' | 'all' = 'pending') => {
     setBlockMenuOpen(null)
     if (!selectedProvider || !selectedModel) {
       setError('Selecciona un proveedor y modelo de IA')
@@ -597,14 +684,14 @@ export default function TopicReviewTab() {
       setError(null)
 
       // Recolectar todas las preguntas de todos los temas del bloque
-      let allQuestions = []
+      let allQuestions: Array<{ id: string; topic_review_status?: string }> = []
 
       for (const topic of topics) {
         const detailResponse = await fetch(`/api/topic-review?topic_id=${topic.id}`)
         const detailData = await detailResponse.json()
 
         if (detailData.success && detailData.questions) {
-          let questionsToAdd = detailData.questions
+          let questionsToAdd: Array<{ id: string; topic_review_status?: string }> = detailData.questions
 
           // Filtrar según el modo
           if (mode === 'pending') {
@@ -691,7 +778,7 @@ export default function TopicReviewTab() {
       await loadGlobalStats()
 
     } catch (err) {
-      setError('Error verificando bloque: ' + err.message)
+      setError('Error verificando bloque: ' + (err as Error).message)
       setVerifyingBlockDirect(prev => {
         const newState = { ...prev }
         delete newState[blockId]
@@ -701,12 +788,12 @@ export default function TopicReviewTab() {
   }
 
   // Obtener estado de verificación de un tema
-  const getTopicQueueStatus = (topicId) => {
+  const getTopicQueueStatus = (topicId: string): QueueItem | null => {
     return verificationQueue[topicId] || null
   }
 
   // Toggle expandir bloque
-  const toggleBlock = (blockId) => {
+  const toggleBlock = (blockId: string) => {
     setExpandedBlocks(prev => {
       const newSet = new Set(prev)
       if (newSet.has(blockId)) {
@@ -729,12 +816,12 @@ export default function TopicReviewTab() {
   }
 
   // Navegar al detalle del tema
-  const goToTopicDetail = (topicId) => {
+  const goToTopicDetail = (topicId: string) => {
     router.push(`/admin/revision-temas/${topicId}`)
   }
 
   // Filtrar temas por búsqueda
-  const filterTopics = (topics) => {
+  const filterTopics = (topics: Topic[]): Topic[] => {
     if (!searchFilter.trim()) return topics
     const search = searchFilter.toLowerCase()
     return topics.filter(t =>
@@ -745,10 +832,12 @@ export default function TopicReviewTab() {
   }
 
   // Calcular progreso de verificación
-  const getProgressPercent = (stats) => {
+  const getProgressPercent = (stats: TopicStats | undefined): number => {
     if (!stats || stats.total_questions === 0) return 0
-    const verified = stats.ok_literal + stats.ok_not_literal + stats.needs_review
-    return Math.round((verified / stats.total_questions) * 100)
+    const verified = (stats as Record<string, number>).ok_literal ?? 0 +
+      ((stats as Record<string, number>).ok_not_literal ?? 0) +
+      ((stats as Record<string, number>).needs_review ?? 0)
+    return Math.round((verified / (stats.total_questions ?? 1)) * 100)
   }
 
   return (
@@ -969,7 +1058,7 @@ export default function TopicReviewTab() {
                     const hrs = Math.floor(remaining / 3600)
                     const mins = Math.floor((remaining % 3600) / 60)
                     const secs = Math.floor(remaining % 60)
-                    const parts = []
+                    const parts: string[] = []
                     if (hrs > 0) parts.push(`${hrs}h`)
                     if (mins > 0) parts.push(`${mins}m`)
                     if (hrs === 0) parts.push(`${secs}s`)
@@ -1157,35 +1246,35 @@ export default function TopicReviewTab() {
                         <span className="text-gray-600 dark:text-gray-400">
                           📊 {topic.stats?.total_questions || 0}
                         </span>
-                        {topic.stats?.perfect > 0 && (
+                        {(topic.stats?.perfect ?? 0) > 0 && (
                           <span className="text-green-600 dark:text-green-400">
-                            ✅ {topic.stats.perfect}
+                            ✅ {topic.stats?.perfect}
                           </span>
                         )}
                         {/* Estados técnicos */}
-                        {topic.stats?.tech_perfect > 0 && (
+                        {(topic.stats?.tech_perfect ?? 0) > 0 && (
                           <span className="text-cyan-600 dark:text-cyan-400">
-                            💻✅ {topic.stats.tech_perfect}
+                            💻✅ {topic.stats?.tech_perfect}
                           </span>
                         )}
-                        {(topic.stats?.bad_explanation > 0 || topic.stats?.bad_answer > 0 || topic.stats?.bad_answer_and_explanation > 0) && (
+                        {((topic.stats?.bad_explanation ?? 0) > 0 || (topic.stats?.bad_answer ?? 0) > 0 || (topic.stats?.bad_answer_and_explanation ?? 0) > 0) && (
                           <span className="text-orange-600 dark:text-orange-400">
                             ⚠️ {(topic.stats?.bad_explanation || 0) + (topic.stats?.bad_answer || 0) + (topic.stats?.bad_answer_and_explanation || 0)}
                           </span>
                         )}
-                        {(topic.stats?.tech_bad_explanation > 0 || topic.stats?.tech_bad_answer > 0 || topic.stats?.tech_bad_answer_and_explanation > 0) && (
+                        {((topic.stats?.tech_bad_explanation ?? 0) > 0 || (topic.stats?.tech_bad_answer ?? 0) > 0 || (topic.stats?.tech_bad_answer_and_explanation ?? 0) > 0) && (
                           <span className="text-cyan-500 dark:text-cyan-400">
                             💻⚠️ {(topic.stats?.tech_bad_explanation || 0) + (topic.stats?.tech_bad_answer || 0) + (topic.stats?.tech_bad_answer_and_explanation || 0)}
                           </span>
                         )}
-                        {(topic.stats?.wrong_article > 0 || topic.stats?.wrong_article_bad_explanation > 0 || topic.stats?.wrong_article_bad_answer > 0 || topic.stats?.all_wrong > 0) && (
+                        {((topic.stats?.wrong_article ?? 0) > 0 || (topic.stats?.wrong_article_bad_explanation ?? 0) > 0 || (topic.stats?.wrong_article_bad_answer ?? 0) > 0 || (topic.stats?.all_wrong ?? 0) > 0) && (
                           <span className="text-purple-600 dark:text-purple-400">
                             🔗 {(topic.stats?.wrong_article || 0) + (topic.stats?.wrong_article_bad_explanation || 0) + (topic.stats?.wrong_article_bad_answer || 0) + (topic.stats?.all_wrong || 0)}
                           </span>
                         )}
-                        {topic.stats?.pending > 0 && (
+                        {(topic.stats?.pending ?? 0) > 0 && (
                           <span className="text-gray-500 dark:text-gray-400">
-                            ⏳ {topic.stats.pending}
+                            ⏳ {topic.stats?.pending}
                           </span>
                         )}
                         {/* Indicador de última verificación */}
@@ -1210,9 +1299,9 @@ export default function TopicReviewTab() {
                             {law.is_virtual && '💻'}{law.short_name}
                           </span>
                         ))}
-                        {topic.laws?.length > 3 && (
+                        {(topic.laws?.length ?? 0) > 3 && (
                           <span className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded text-xs">
-                            +{topic.laws.length - 3}
+                            +{(topic.laws?.length ?? 0) - 3}
                           </span>
                         )}
                       </div>
@@ -1248,15 +1337,15 @@ export default function TopicReviewTab() {
                         }
 
                         // Si hay pendientes y hay IA configurada, mostrar botón con menú
-                        if (topic.stats?.pending > 0 && aiConfigs.length > 0) {
+                        if ((topic.stats?.pending ?? 0) > 0 && aiConfigs.length > 0) {
                           return (
                             <div className="relative shrink-0">
                               <button
                                 onClick={(e) => toggleVerifyMenu(topic.id, e)}
                                 className="px-2 py-1 bg-purple-600 hover:bg-purple-700 text-white text-xs rounded flex items-center gap-1"
-                                title={`Verificar ${topic.stats.pending} pendientes con IA`}
+                                title={`Verificar ${topic.stats?.pending} pendientes con IA`}
                               >
-                                🤖 Verificar ({topic.stats.pending})
+                                🤖 Verificar ({topic.stats?.pending})
                                 <span className="ml-1">▼</span>
                               </button>
 
@@ -1267,7 +1356,7 @@ export default function TopicReviewTab() {
                                   onClick={(e) => e.stopPropagation()}
                                 >
                                   <button
-                                    onClick={() => verifyTopicDirect(topic.id, topic.stats.pending)}
+                                    onClick={() => verifyTopicDirect(topic.id, topic.stats!.pending!)}
                                     className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 rounded-t-lg flex items-center gap-2"
                                   >
                                     <span>🖥️</span>
