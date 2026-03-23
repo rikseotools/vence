@@ -1,9 +1,42 @@
-// components/Statistics/DetailedCharts.js
+// components/Statistics/DetailedCharts.tsx
 'use client'
 
 import { useState } from 'react'
 
-const formatTime = (seconds) => {
+interface ChartDataItem {
+  label: string
+  value: number
+}
+
+interface WeeklyProgressItem {
+  day?: string
+  date?: string
+  week?: string
+  questions?: number
+  questionsAnswered?: number
+  correct?: number
+  accuracy?: number
+  studyMinutes?: number
+}
+
+interface ThemeItem {
+  theme?: number
+  temaNumber?: number
+  title?: string
+  accuracy: number
+  total?: number
+  correct?: number
+  [key: string]: unknown
+}
+
+interface DetailedChartsProps {
+  weeklyProgress: WeeklyProgressItem[]
+  difficultyBreakdown: unknown[]
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  themePerformance: any[]
+}
+
+const formatTime = (seconds: number) => {
   if (!seconds) return '0m'
   const hours = Math.floor(seconds / 3600)
   const minutes = Math.floor((seconds % 3600) / 60)
@@ -11,14 +44,14 @@ const formatTime = (seconds) => {
   return minutes > 0 ? `${minutes}m` : '0m'
 }
 
-const getScoreColor = (percentage) => {
+const getScoreColor = (percentage: number) => {
   if (percentage >= 85) return '#10b981' // green-500
   if (percentage >= 70) return '#3b82f6' // blue-500
   if (percentage >= 50) return '#f59e0b' // amber-500
   return '#ef4444' // red-500
 }
 
-const getBarColor = (percentage) => {
+const getBarColor = (percentage: number) => {
   if (percentage >= 85) return 'bg-green-500'
   if (percentage >= 70) return 'bg-blue-500'
   if (percentage >= 50) return 'bg-amber-500'
@@ -26,7 +59,7 @@ const getBarColor = (percentage) => {
 }
 
 // Componente para gráfico de barras vertical (temas, etc.)
-const SimpleBarChart = ({ data, title, icon, color = 'purple', valueFormatter = (v) => v }) => {
+const SimpleBarChart = ({ data, title, icon, color = 'purple', valueFormatter = (v: number) => String(v) }: { data: ChartDataItem[], title: string, icon: string, color?: string, valueFormatter?: (v: number) => string }) => {
   if (!data || data.length === 0) return null
 
   const maxValue = Math.max(...data.map(item => item.value))
@@ -114,7 +147,7 @@ const SimpleBarChart = ({ data, title, icon, color = 'purple', valueFormatter = 
 }
 
 // Componente para gráfico de barras horizontal (mobile friendly)
-const HorizontalBarChart = ({ data, title, icon, color = 'blue', valueFormatter = (v) => v }) => {
+const HorizontalBarChart = ({ data, title, icon, color = 'blue', valueFormatter = (v: number) => String(v) }: { data: ChartDataItem[], title: string, icon: string, color?: string, valueFormatter?: (v: number) => string }) => {
   if (!data || data.length === 0) return null
 
   const maxValue = Math.max(...data.map(item => item.value))
@@ -176,7 +209,7 @@ const HorizontalBarChart = ({ data, title, icon, color = 'blue', valueFormatter 
 }
 
 // Componente para gráfico de barras verticales (para evolución de precisión)
-const VerticalBarChart = ({ data, title, icon, color = 'green', valueFormatter = (v) => `${v}%` }) => {
+const VerticalBarChart = ({ data, title, icon, color = 'green', valueFormatter = (v: number) => `${v}%` }: { data: ChartDataItem[], title: string, icon: string, color?: string, valueFormatter?: (v: number) => string }) => {
   if (!data || data.length === 0) return null
 
   const maxValue = Math.max(...data.map(item => item.value))
@@ -267,7 +300,7 @@ const VerticalBarChart = ({ data, title, icon, color = 'green', valueFormatter =
 }
 
 // Gráfico de líneas: precisión últimos 7d vs 7d anteriores vs hace 1 mes
-const AccuracyLineChart = ({ weeklyProgress }) => {
+const AccuracyLineChart = ({ weeklyProgress }: { weeklyProgress: WeeklyProgressItem[] }) => {
   if (!weeklyProgress || weeklyProgress.length === 0) return null
 
   const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
@@ -286,9 +319,9 @@ const AccuracyLineChart = ({ weeklyProgress }) => {
   }
 
   // Buscar precisión para un día específico en weeklyProgress
-  const findAccuracy = (dateStr) => {
+  const findAccuracy = (dateStr: string): number | null => {
     const match = weeklyProgress.find(d => d.date === dateStr)
-    return match && match.questions > 0 ? match.accuracy : null
+    return match && (match.questions || 0) > 0 ? (match.accuracy || 0) : null
   }
 
   // Últimos 7 días (hace 6 días → hoy)
@@ -307,8 +340,8 @@ const AccuracyLineChart = ({ weeklyProgress }) => {
   })
 
   // Promedios
-  const avg = (arr) => {
-    const valid = arr.filter(v => v !== null)
+  const avg = (arr: (number | null)[]) => {
+    const valid = arr.filter((v): v is number => v !== null)
     return valid.length > 0 ? Math.round(valid.reduce((s, v) => s + v, 0) / valid.length) : null
   }
   const avgLast7 = avg(last7)
@@ -326,15 +359,15 @@ const AccuracyLineChart = ({ weeklyProgress }) => {
   const maxY = allVals.length > 0 ? Math.min(100, Math.max(...allVals) + 10) : 100
   const rangeY = maxY - minY || 1
 
-  const toX = (i) => PAD_L + (i / 6) * chartW
-  const toY = (v) => PAD_T + chartH - ((v - minY) / rangeY) * chartH
+  const toX = (i: number) => PAD_L + (i / 6) * chartW
+  const toY = (v: number) => PAD_T + chartH - ((v - minY) / rangeY) * chartH
 
-  const makePath = (data, color, dashed = false) => {
+  const makePath = (data: (number | null)[], color: string, dashed = false) => {
     const points = data
-      .map((v, i) => v !== null ? { x: toX(i), y: toY(v) } : null)
-      .filter(Boolean)
+      .map((v: number | null, i: number) => v !== null ? { x: toX(i), y: toY(v) } : null)
+      .filter((p): p is { x: number, y: number } => p !== null)
     if (points.length < 2) return null
-    const d = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')
+    const d = points.map((p: { x: number, y: number }, i: number) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')
     return (
       <>
         <path d={d} fill="none" stroke={color} strokeWidth={dashed ? '1.5' : '2.5'} strokeLinecap="round" strokeLinejoin="round" strokeDasharray={dashed ? '6 4' : 'none'} opacity={dashed ? 0.6 : 1} />
@@ -428,7 +461,7 @@ const AccuracyLineChart = ({ weeklyProgress }) => {
   )
 }
 
-export default function DetailedCharts({ weeklyProgress, difficultyBreakdown, themePerformance }) {
+export default function DetailedCharts({ weeklyProgress, difficultyBreakdown, themePerformance }: DetailedChartsProps) {
   const [showInfo, setShowInfo] = useState(false)
 
   // Preparar datos para gráfico de actividad semanal (preguntas respondidas)
@@ -473,18 +506,14 @@ export default function DetailedCharts({ weeklyProgress, difficultyBreakdown, th
     }
   }) || []
 
-  // Formatear nombre de tema (101 → "B2-T1", 1 → "B1-T1")
-  const formatThemeLabel = (num) => {
-    if (num >= 101 && num <= 112) return `B2-T${num - 100}`
-    if (num >= 1 && num <= 16) return `B1-T${num}`
-    return `T${num}`
-  }
-
-  // Preparar datos para top 5 temas
-  const topThemes = themePerformance?.slice(0, 5).map(theme => ({
-    label: formatThemeLabel(theme.theme),
-    value: theme.accuracy
-  })) || []
+  // Preparar datos para top 5 temas — usar title de la API (ya formateado por oposición)
+  const topThemes = themePerformance
+    ?.sort((a, b) => (b.accuracy || 0) - (a.accuracy || 0))
+    .slice(0, 5)
+    .map(theme => ({
+      label: theme.title || `T${theme.theme || theme.temaNumber}`,
+      value: theme.accuracy
+    })) || []
 
   return (
     <div className="space-y-6">

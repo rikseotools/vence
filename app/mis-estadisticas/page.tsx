@@ -1480,7 +1480,7 @@ function EstadisticasContent() {
               <DetailedCharts
                 weeklyProgress={stats.weeklyProgress}
                 difficultyBreakdown={stats.difficultyBreakdown}
-                themePerformance={stats.themePerformance}
+                themePerformance={stats.themePerformance || []}
               />
               <RecentTests
                 recentTests={stats.recentTests as any}
