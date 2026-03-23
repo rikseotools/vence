@@ -18,6 +18,7 @@ const MIGRATED_SLUGS = [
   'auxiliar-administrativo-clm',
   'auxiliar-administrativo-extremadura',
   'auxiliar-administrativo-valencia',
+  'auxiliar-administrativo-galicia',
 ]
 
 // Mapeo de displayNumber en landing (17→101, etc.) para auxiliar estado
