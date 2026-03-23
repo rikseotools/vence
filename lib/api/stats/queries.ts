@@ -1,6 +1,6 @@
 // lib/api/stats/queries.ts - Queries optimizadas para estadísticas de usuario
 import { getDb } from '@/db/client'
-import { tests, testQuestions, userStreaks, userProfiles, oposiciones, userSessions } from '@/db/schema'
+import { tests, testQuestions, userStreaks, userProfiles, oposiciones, userSessions, topics } from '@/db/schema'
 import { eq, and, desc, sql, gte, isNotNull } from 'drizzle-orm'
 import type {
   GetUserStatsResponse,
@@ -268,6 +268,15 @@ async function getWeeklyProgress(
 }
 
 async function getRecentTests(db: ReturnType<typeof getDb>, userId: string): Promise<RecentTest[]> {
+  // Obtener positionType del usuario para resolver el título del tema
+  const profileRow = await db
+    .select({ targetOposicion: userProfiles.targetOposicion })
+    .from(userProfiles)
+    .where(eq(userProfiles.id, userId))
+    .limit(1)
+  const positionType = profileRow[0]?.targetOposicion?.replace(/-/g, '_') || 'auxiliar_administrativo_estado'
+
+  // Query principal con LEFT JOIN a topics para obtener el título del tema
   const result = await db
     .select({
       id: tests.id,
@@ -277,6 +286,13 @@ async function getRecentTests(db: ReturnType<typeof getDb>, userId: string): Pro
       totalQuestions: sql<number>`COALESCE(${tests.totalQuestions}, 0)`,
       completedAt: tests.completedAt,
       timeSeconds: sql<number>`COALESCE(${tests.totalTimeSeconds}, 0)`,
+      topicTitle: sql<string | null>`(
+        SELECT t.title FROM topics t
+        WHERE t.topic_number = ${tests.temaNumber}
+          AND t.position_type = ${positionType}
+          AND t.is_active = true
+        LIMIT 1
+      )`,
     })
     .from(tests)
     .where(and(
@@ -291,6 +307,7 @@ async function getRecentTests(db: ReturnType<typeof getDb>, userId: string): Pro
     id: row.id,
     title: row.title,
     temaNumber: row.temaNumber,
+    topicTitle: row.topicTitle || null,
     score: row.score,
     totalQuestions: row.totalQuestions,
     accuracy: row.totalQuestions > 0 ? Math.round((row.score / row.totalQuestions) * 100) : 0,

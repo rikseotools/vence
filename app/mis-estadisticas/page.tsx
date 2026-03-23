@@ -560,8 +560,10 @@ function EstadisticasContent() {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const legislativeTests = apiStats.recentTests.map((t: any) => {
               const bloquePrefix = t.temaNumber ? formatThemeName(t.temaNumber, oposicionSlug) : null
+              // topicTitle viene del JOIN con topics en la API
+              const topicTitle = t.topicTitle || null
               const fullTitle = t.temaNumber
-                ? bloquePrefix
+                ? (topicTitle ? `${bloquePrefix}: ${topicTitle}` : bloquePrefix)
                 : (t.title && !t.title.includes('Test Tema') ? t.title : 'Test Aleatorio')
               return {
                 id: t.id,
