@@ -83,25 +83,41 @@ describe('Test Personalizado - Ruta dinámica unificada', () => {
     })
   })
 
-  describe('Páginas individuales antiguas pueden eliminarse', () => {
-    // Verificar que cada página individual no tiene lógica especial
-    // que no esté cubierta por la ruta dinámica
-    test.each(ALL_OPOSICION_SLUGS)('%s: página individual usa solo TestPageWrapper + positionType', (slug) => {
+  describe('Páginas individuales multi-tema eliminadas', () => {
+    test.each(ALL_OPOSICION_SLUGS)('%s: NO tiene página individual en test/test-personalizado', (slug) => {
       const dir = path.join(process.cwd(), `app/${slug}/test/test-personalizado`)
-      if (!fs.existsSync(dir)) return // Algunas puede que ya no existan
+      expect(fs.existsSync(dir)).toBe(false)
+    })
+  })
 
-      const files = fs.readdirSync(dir).filter(f => f.startsWith('page.'))
-      if (files.length === 0) return
+  describe('Ruta dinámica por tema [oposicion]/test/tema/[numero]/test-personalizado', () => {
+    test('page.tsx existe', () => {
+      const filePath = path.join(process.cwd(), 'app/[oposicion]/test/tema/[numero]/test-personalizado/page.tsx')
+      expect(fs.existsSync(filePath)).toBe(true)
+    })
 
-      const content = fs.readFileSync(path.join(dir, files[0]), 'utf-8')
+    test('usa generateStaticParams para SSG', () => {
+      const filePath = path.join(process.cwd(), 'app/[oposicion]/test/tema/[numero]/test-personalizado/page.tsx')
+      const content = fs.readFileSync(filePath, 'utf-8')
+      expect(content).toContain('generateStaticParams')
+    })
 
-      // Debe usar TestPageWrapper
-      expect(content).toContain('TestPageWrapper')
+    test('usa getOposicion para validar y notFound para slugs inválidos', () => {
+      const filePath = path.join(process.cwd(), 'app/[oposicion]/test/tema/[numero]/test-personalizado/page.tsx')
+      const content = fs.readFileSync(filePath, 'utf-8')
+      expect(content).toContain('getOposicion')
+      expect(content).toContain('notFound')
+    })
 
-      // No debe tener lógica de negocio única (fetch, API calls, etc.)
-      expect(content).not.toContain('fetch(')
-      expect(content).not.toContain('supabase')
-      expect(content).not.toContain('getDb')
+    test('usa TestPersonalizadoPage (mismo componente que las individuales)', () => {
+      const filePath = path.join(process.cwd(), 'app/[oposicion]/test/tema/[numero]/test-personalizado/page.tsx')
+      const content = fs.readFileSync(filePath, 'utf-8')
+      expect(content).toContain('TestPersonalizadoPage')
+    })
+
+    test.each(ALL_OPOSICION_SLUGS)('%s: NO tiene página individual por tema', (slug) => {
+      const dir = path.join(process.cwd(), `app/${slug}/test/tema/[numero]/test-personalizado`)
+      expect(fs.existsSync(dir)).toBe(false)
     })
   })
 })

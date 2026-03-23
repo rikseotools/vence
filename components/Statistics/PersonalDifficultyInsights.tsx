@@ -1,65 +1,61 @@
-// components/Statistics/PersonalDifficultyInsights.js
+// components/Statistics/PersonalDifficultyInsights.tsx
 'use client'
 
 import { useState, useEffect } from 'react'
-import { adaptiveDifficultyService } from '@/lib/services/adaptiveDifficulty'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
+import type {
+  GetDifficultyInsightsResponse,
+  DifficultyMetrics,
+  QuestionResult,
+  ProgressTrends,
+  Recommendation,
+} from '@/lib/api/difficulty-insights/schemas'
+
+type TrendType = 'improving' | 'declining' | 'stable'
 
 export default function PersonalDifficultyInsights() {
-  const { user, supabase } = useAuth()
-  const [metrics, setMetrics] = useState(null)
-  const [trends, setTrends] = useState(null)
-  const [strugglingQuestions, setStrugglingQuestions] = useState([])
-  const [masteredQuestions, setMasteredQuestions] = useState([])
-  const [recommendations, setRecommendations] = useState([])
+  const { user } = useAuth()
+  const router = useRouter()
+  const [metrics, setMetrics] = useState<DifficultyMetrics | null>(null)
+  const [trends, setTrends] = useState<ProgressTrends | null>(null)
+  const [strugglingQuestions, setStrugglingQuestions] = useState<QuestionResult[]>([])
+  const [masteredQuestions, setMasteredQuestions] = useState<QuestionResult[]>([])
+  const [recommendations, setRecommendations] = useState<Recommendation[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('struggling')
   const [showInfo, setShowInfo] = useState(false)
 
   useEffect(() => {
-    const initializeData = async () => {
-      if (user) {
-        // Cargar métricas primero (rápido) para mostrar algo inmediatamente
-        await loadMetrics(user.id)
-        // Luego cargar el resto en segundo plano (sin bloquear)
-        loadSecondaryData(user.id)
-      }
+    if (!user?.id) {
       setIsLoading(false)
+      return
     }
 
-    initializeData()
-  }, [user])
+    const loadData = async () => {
+      try {
+        const res = await fetch(`/api/v2/difficulty-insights?userId=${user.id}`)
+        const data: GetDifficultyInsightsResponse = await res.json()
 
-  // Cargar solo métricas (rápido ~300ms)
-  const loadMetrics = async (userId) => {
-    try {
-      const metricsData = await adaptiveDifficultyService.getUserDifficultyMetrics(userId)
-      setMetrics(metricsData)
-    } catch (error) {
-      console.error('Error loading metrics:', error)
-      setMetrics({ total_questions_attempted: 0 }) // Fallback
+        if (data.success && data.data) {
+          setMetrics(data.data.metrics)
+          setTrends(data.data.progressTrends)
+          setStrugglingQuestions(data.data.strugglingQuestions)
+          setMasteredQuestions(data.data.masteredQuestions)
+          setRecommendations(data.data.recommendations)
+        } else {
+          setMetrics({ totalQuestionsAttempted: 0, questionsMastered: 0, questionsStruggling: 0, avgPersonalDifficulty: 0, accuracyTrend: 'stable' })
+        }
+      } catch (error) {
+        console.error('Error loading difficulty insights:', error)
+        setMetrics({ totalQuestionsAttempted: 0, questionsMastered: 0, questionsStruggling: 0, avgPersonalDifficulty: 0, accuracyTrend: 'stable' })
+      } finally {
+        setIsLoading(false)
+      }
     }
-  }
 
-  // Cargar datos secundarios en paralelo (puede ser lento)
-  const loadSecondaryData = async (userId) => {
-    // Cargar cada uno independientemente para no bloquear si uno falla
-    adaptiveDifficultyService.getUserProgressTrends(userId)
-      .then(data => setTrends(data))
-      .catch(err => console.warn('Trends timeout/error:', err.message))
-
-    adaptiveDifficultyService.getStrugglingQuestions(userId, 5)
-      .then(data => setStrugglingQuestions(data))
-      .catch(err => console.warn('Struggling questions timeout/error:', err.message))
-
-    adaptiveDifficultyService.getMasteredQuestions(userId, 5)
-      .then(data => setMasteredQuestions(data))
-      .catch(err => console.warn('Mastered questions timeout/error:', err.message))
-
-    adaptiveDifficultyService.getPersonalizedRecommendations(userId)
-      .then(data => setRecommendations(data))
-      .catch(err => console.warn('Recommendations timeout/error:', err.message))
-  }
+    loadData()
+  }, [user?.id])
 
   if (isLoading) {
     return (
@@ -78,38 +74,37 @@ export default function PersonalDifficultyInsights() {
   if (!user || !metrics) {
     return (
       <div className="bg-gray-50 rounded-xl p-6 text-center">
-        <p className="text-gray-600">🔐 Inicia sesión para ver tu análisis personal</p>
+        <p className="text-gray-600">Inicia sesión para ver tu análisis personal</p>
       </div>
     )
   }
 
-  if (metrics.total_questions_attempted === 0) {
+  if (metrics.totalQuestionsAttempted === 0) {
     return (
       <div className="bg-blue-50 rounded-xl p-6 text-center border border-blue-200">
-        <h3 className="text-lg font-bold text-blue-800 mb-2">🎯 Análisis de tu Rendimiento</h3>
+        <h3 className="text-lg font-bold text-blue-800 mb-2">Análisis de tu Rendimiento</h3>
         <p className="text-blue-700 mb-3">Responde preguntas para activar tu análisis personalizado</p>
-        
-        <button 
+
+        <button
           onClick={() => setShowInfo(!showInfo)}
           className="text-sm text-blue-600 hover:text-blue-800 flex items-center mx-auto space-x-1"
         >
-          <span>ℹ️</span>
           <span>¿Cómo funciona?</span>
           <span className="text-xs">{showInfo ? '▼' : '▶'}</span>
         </button>
-        
+
         {showInfo && (
           <div className="mt-3 text-sm text-blue-600 space-y-1">
-            <p>• Cada pregunta se adapta a tu nivel individual</p>
-            <p>• Seguimos tu progreso y detectamos mejoras</p>
-            <p>• Identificamos fortalezas y áreas de mejora</p>
+            <p>Cada pregunta se adapta a tu nivel individual</p>
+            <p>Seguimos tu progreso y detectamos mejoras</p>
+            <p>Identificamos fortalezas y áreas de mejora</p>
           </div>
         )}
       </div>
     )
   }
 
-  const getProgressColor = (trend) => {
+  const getProgressColor = (trend: string) => {
     switch (trend) {
       case 'improving': return 'text-green-600'
       case 'declining': return 'text-red-600'
@@ -117,7 +112,7 @@ export default function PersonalDifficultyInsights() {
     }
   }
 
-  const getProgressIcon = (trend) => {
+  const getProgressIcon = (trend: string) => {
     switch (trend) {
       case 'improving': return '📈'
       case 'declining': return '📉'
@@ -125,7 +120,7 @@ export default function PersonalDifficultyInsights() {
     }
   }
 
-  const getPriorityColor = (priority) => {
+  const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'high': return 'bg-red-100 border-red-300 text-red-800'
       case 'medium': return 'bg-yellow-100 border-yellow-300 text-yellow-800'
@@ -135,22 +130,10 @@ export default function PersonalDifficultyInsights() {
 
   return (
     <div className="bg-white rounded-xl shadow-lg p-6">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-xl font-bold text-gray-800">🎯 Análisis de tu Rendimiento</h3>
-        <button 
-          onClick={() => setShowInfo(!showInfo)}
-          className="text-blue-600 hover:text-blue-800 transition-colors"
-        >
-          <span className="text-lg">ℹ️</span>
-        </button>
+      <div className="mb-4">
+        <h3 className="text-xl font-bold text-gray-800">Análisis de tu Rendimiento</h3>
       </div>
-      
-      {showInfo && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-sm">
-          <p><strong>Sistema adaptativo IA ✨:</strong> Analiza tu rendimiento individual en cada pregunta para ofrecerte insights personalizados y recomendaciones específicas.</p>
-        </div>
-      )}
-      
+
       {/* Tabs compactos */}
       <div className="flex space-x-1 mb-4">
         {[
@@ -179,30 +162,40 @@ export default function PersonalDifficultyInsights() {
           {strugglingQuestions.length > 0 ? (
             <>
               <p className="text-sm text-gray-600 mb-3">
-                💪 Enfócate en estas para mejorar:
+                Enfócate en estas para mejorar:
               </p>
               {strugglingQuestions.map((item, index) => (
                 <div key={index} className="bg-red-50 border border-red-200 rounded-lg p-3">
                   <div className="flex justify-between items-start mb-2">
-                    <div className="text-sm font-medium text-red-800 truncate flex-1">
-                      {item.questions.question_text.substring(0, 80)}...
+                    <div className="text-sm font-medium text-red-800 flex-1">
+                      {item.questionText.substring(0, 100)}...
                     </div>
                     <div className="text-xs text-red-600 ml-2 shrink-0">
-                      {Math.round(item.success_rate * 100)}% éxito
+                      {Math.round(item.successRate * 100)}% éxito
                     </div>
                   </div>
-                  <div className="flex justify-between text-xs text-red-600">
-                    <span>Intentos: {item.total_attempts}</span>
-                    <span className={`${getProgressColor(item.trend)}`}>
-                      {getProgressIcon(item.trend)} {item.trend}
+                  <div className="flex justify-between items-center text-xs text-red-600">
+                    <span>Intentos: {item.totalAttempts}</span>
+                    <span className={getProgressColor(item.trend || 'stable')}>
+                      {getProgressIcon(item.trend || 'stable')} {item.trend || 'stable'}
                     </span>
                   </div>
+                  {item.lawSlug && (
+                    <div className="flex gap-2 mt-2 pt-2 border-t border-red-200">
+                      <button
+                        onClick={() => router.push(`/leyes/${item.lawSlug}`)}
+                        className="text-xs bg-white text-red-700 border border-red-300 px-2 py-1 rounded hover:bg-red-100 transition-colors"
+                      >
+                        Estudiar {item.lawName} Art. {item.articleNumber}
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
             </>
           ) : (
             <div className="text-center py-8 text-gray-500">
-              <p>🎉 ¡Genial! No tienes preguntas con dificultades significativas.</p>
+              <p>No tienes preguntas con dificultades significativas.</p>
             </div>
           )}
         </div>
@@ -214,28 +207,37 @@ export default function PersonalDifficultyInsights() {
           {masteredQuestions.length > 0 ? (
             <>
               <p className="text-sm text-gray-600 mb-3">
-                ✅ Preguntas que dominas:
+                Preguntas que dominas:
               </p>
               {masteredQuestions.map((item, index) => (
                 <div key={index} className="bg-green-50 border border-green-200 rounded-lg p-3">
                   <div className="flex justify-between items-start mb-2">
-                    <div className="text-sm font-medium text-green-800 truncate flex-1">
-                      {item.questions.question_text.substring(0, 80)}...
+                    <div className="text-sm font-medium text-green-800 flex-1">
+                      {item.questionText.substring(0, 100)}...
                     </div>
                     <div className="text-xs text-green-600 ml-2 shrink-0">
-                      {Math.round(item.success_rate * 100)}% éxito
+                      {Math.round(item.successRate * 100)}% éxito
                     </div>
                   </div>
                   <div className="flex justify-between text-xs text-green-600">
-                    <span>Intentos: {item.total_attempts}</span>
-                    <span>Dificultad: {item.personal_difficulty}</span>
+                    <span>Intentos: {item.totalAttempts}</span>
                   </div>
+                  {item.lawSlug && (
+                    <div className="flex gap-2 mt-2 pt-2 border-t border-green-200">
+                      <button
+                        onClick={() => router.push(`/leyes/${item.lawSlug}`)}
+                        className="text-xs bg-white text-green-700 border border-green-300 px-2 py-1 rounded hover:bg-green-100 transition-colors"
+                      >
+                        {item.lawName} Art. {item.articleNumber}
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
             </>
           ) : (
             <div className="text-center py-8 text-gray-500">
-              <p>📚 Continúa practicando para dominar más preguntas.</p>
+              <p>Continúa practicando para dominar más preguntas.</p>
             </div>
           )}
         </div>
@@ -261,7 +263,7 @@ export default function PersonalDifficultyInsights() {
             ))
           ) : (
             <div className="text-center py-8 text-gray-500">
-              <p>🎯 ¡Perfecto! No hay recomendaciones urgentes ahora.</p>
+              <p>No hay recomendaciones urgentes ahora.</p>
             </div>
           )}
         </div>

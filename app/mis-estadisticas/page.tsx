@@ -19,7 +19,7 @@ import ArticlePerformance from '@/components/Statistics/ArticlePerformance'
 import TimePatterns from '@/components/Statistics/TimePatterns'
 import ExamReadiness from '@/components/Statistics/ExamReadiness'
 import ExamPredictionMarch2025 from '@/components/Statistics/ExamPredictionMarch2025'
-import PersonalDifficultyInsights from '@/components/Statistics/PersonalDifficultyInsights'
+import PersonalDifficultyInsights from '@/components/Statistics/PersonalDifficultyInsights' // .tsx - usa API v2
 import DetailedCharts from '@/components/Statistics/DetailedCharts'
 
 // Lazy load PsychometricStatsTab - solo se carga cuando se usa
@@ -1523,7 +1523,7 @@ function EstadisticasContent() {
                 articlePerformance={stats.articlePerformance as any}
                 userOposicion={stats.userOposicion as any}
               />
-              <TimePatterns timePatterns={stats.timePatterns} />
+              <TimePatterns timePatterns={stats.timePatterns as any} />
             </div>
           )}
 

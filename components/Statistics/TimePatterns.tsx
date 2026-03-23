@@ -1,7 +1,18 @@
-// components/Statistics/TimePatterns.js
+// components/Statistics/TimePatterns.tsx
 'use client'
 
-export default function TimePatterns({ timePatterns }) {
+interface HourlyStat {
+  hour: number
+  accuracy: number
+}
+
+interface TimePatternsData {
+  bestHours: number[]
+  worstHours: number[]
+  hourlyStats: HourlyStat[]
+}
+
+export default function TimePatterns({ timePatterns }: { timePatterns: TimePatternsData | null }) {
   if (!timePatterns) return null
 
   return (
