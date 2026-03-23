@@ -14,6 +14,7 @@ const MIGRATED_SLUGS = [
   'administrativo-estado',
   'tramitacion-procesal',
   'auxilio-judicial',
+  'auxiliar-administrativo-canarias',
 ]
 
 // Mapeo de displayNumber en landing (17→101, etc.) para auxiliar estado
