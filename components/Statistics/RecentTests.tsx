@@ -3,6 +3,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import CcaaFlag from '@/components/CcaaFlag'
 
 interface DifficultyItem {
   difficulty: string
@@ -25,6 +26,7 @@ interface RecentTestData {
   focusScore?: number
   isPsychometric?: boolean
   oposicionLabel?: string | null
+  oposicionPositionType?: string | null
 }
 
 interface RecentTestsProps {
@@ -93,7 +95,9 @@ export default function RecentTests({ recentTests, onInfoClick }: RecentTestsPro
                   <div>
                     <div className="font-bold text-gray-800">{test.title}</div>
                     {test.oposicionLabel && (
-                      <span className="inline-block text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full mt-0.5">
+                      <span className="inline-flex items-center gap-1 text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full mt-0.5">
+                        {test.oposicionPositionType && <CcaaFlag oposicionId={test.oposicionPositionType} size="sm" />}
+                        {!test.oposicionPositionType || test.oposicionPositionType.includes('estado') || test.oposicionPositionType.includes('tramitacion') ? '🇪🇸' : null}
                         {test.oposicionLabel}
                       </span>
                     )}

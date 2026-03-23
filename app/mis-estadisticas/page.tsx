@@ -563,13 +563,11 @@ function EstadisticasContent() {
               const bloquePrefix = t.temaNumber ? formatThemeName(t.temaNumber, oposicionSlug) : null
               // topicTitle viene del JOIN con topics en la API
               const topicTitle = t.topicTitle || null
-              // Detectar si es de otra oposición
+              // Resolver oposición del test (del tema o la actual si no tiene tema)
               const currentPositionType = oposicionSlug.replace(/-/g, '_')
-              const testPositionType = t.topicPositionType || null
-              const isOtherOposicion = testPositionType && testPositionType !== currentPositionType
-              const oposicionLabel = isOtherOposicion
-                ? (getOposicionByPositionType(testPositionType)?.shortName || testPositionType.replace(/_/g, ' '))
-                : null
+              const testPositionType = t.topicPositionType || currentPositionType
+              const oposicionConfig = getOposicionByPositionType(testPositionType)
+              const oposicionLabel = oposicionConfig?.shortName || testPositionType.replace(/_/g, ' ')
 
               const fullTitle = t.temaNumber
                 ? (topicTitle ? `${bloquePrefix}: ${topicTitle}` : bloquePrefix)
@@ -578,6 +576,7 @@ function EstadisticasContent() {
                 id: t.id,
                 title: fullTitle,
                 oposicionLabel,
+                oposicionPositionType: testPositionType,
                 score: t.score,
                 total: t.totalQuestions,
                 totalQuestions: t.totalQuestions,
