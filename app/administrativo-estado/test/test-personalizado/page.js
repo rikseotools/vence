@@ -19,7 +19,7 @@ function TestPersonalizadoAleatorioContent() {
     focusWeakAreas: searchParams.get('focus_weak') === 'true',
     timeLimit: null,
     testMode: searchParams.get('test_mode') || 'practice',
-    positionType: 'administrativo'
+    positionType: 'administrativo_estado'
   }
 
   // Nombres de los 45 temas de Administrativo C1
@@ -109,7 +109,7 @@ function TestPersonalizadoAleatorioContent() {
       customSubtitle=""
       customIcon="🎲"
       customColor="from-blue-500 to-indigo-600"
-      positionType="administrativo"
+      positionType="administrativo_estado"
     />
   )
 }
