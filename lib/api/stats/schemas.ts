@@ -106,6 +106,7 @@ export const userSessionSchema = z.object({
 export const userOposicionSchema = z.object({
   // Datos del usuario
   userName: z.string().nullable(),
+  gender: z.enum(['male', 'female', 'other', 'prefer_not_say']).nullable().optional(),
   // Datos de la oposición
   slug: z.string().nullable(),
   nombre: z.string().nullable(),

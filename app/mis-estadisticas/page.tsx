@@ -691,57 +691,60 @@ function EstadisticasContent() {
             status: a.accuracy >= 85 ? 'dominado' : a.accuracy >= 70 ? 'bien' : a.accuracy >= 50 ? 'regular' : 'débil'
           })),
 
-          // Logros - calculados desde datos básicos
-          achievements: [
-            {
-              id: 'first_steps',
-              title: '🎯 Primeros Pasos',
-              description: 'Completaste tu primer test',
-              unlocked: apiStats.main.totalTests >= 1,
-              progress: `${Math.min(apiStats.main.totalTests, 1)}/1`,
-              category: 'basic'
-            },
-            {
-              id: 'dedicated_student',
-              title: '📚 Estudiante Dedicado',
-              description: 'Completaste 5 tests',
-              unlocked: apiStats.main.totalTests >= 5,
-              progress: `${Math.min(apiStats.main.totalTests, 5)}/5`,
-              category: 'progress'
-            },
-            {
-              id: 'question_master',
-              title: '❓ Maestro de Preguntas',
-              description: 'Respondiste 100 preguntas',
-              unlocked: apiStats.main.totalQuestions >= 100,
-              progress: `${Math.min(apiStats.main.totalQuestions, 100)}/100`,
-              category: 'volume'
-            },
-            {
-              id: 'accuracy_champion',
-              title: '🎓 Campeón de Precisión',
-              description: 'Alcanzaste 80% de precisión global',
-              unlocked: apiStats.main.accuracy >= 80,
-              progress: `${apiStats.main.accuracy}/80%`,
-              category: 'skill'
-            },
-            {
-              id: 'time_warrior',
-              title: '⏰ Guerrero del Tiempo',
-              description: 'Acumulaste 10 horas de estudio',
-              unlocked: apiStats.main.totalStudyTimeSeconds >= 36000,
-              progress: `${Math.min(Math.floor(apiStats.main.totalStudyTimeSeconds / 3600), 10)}/10h`,
-              category: 'dedication'
-            },
-            {
-              id: 'streak_master',
-              title: '🔥 Maestro de la Constancia',
-              description: 'Estudiaste 7 días seguidos',
-              unlocked: apiStats.main.currentStreak >= 7,
-              progress: `${Math.min(apiStats.main.currentStreak, 7)}/7 días`,
-              category: 'habit'
-            }
-          ],
+          // Logros - calculados desde datos básicos, con género del perfil
+          achievements: (() => {
+            const isFemale = apiStats.userOposicion?.gender === 'female'
+            return [
+              {
+                id: 'first_steps',
+                title: '🎯 Primeros Pasos',
+                description: 'Completaste tu primer test',
+                unlocked: apiStats.main.totalTests >= 1,
+                progress: `${Math.min(apiStats.main.totalTests, 1)}/1`,
+                category: 'basic'
+              },
+              {
+                id: 'dedicated_student',
+                title: isFemale ? '📚 Estudiante Dedicada' : '📚 Estudiante Dedicado',
+                description: 'Completaste 5 tests',
+                unlocked: apiStats.main.totalTests >= 5,
+                progress: `${Math.min(apiStats.main.totalTests, 5)}/5`,
+                category: 'progress'
+              },
+              {
+                id: 'question_master',
+                title: isFemale ? '❓ Maestra de Preguntas' : '❓ Maestro de Preguntas',
+                description: 'Respondiste 100 preguntas',
+                unlocked: apiStats.main.totalQuestions >= 100,
+                progress: `${Math.min(apiStats.main.totalQuestions, 100)}/100`,
+                category: 'volume'
+              },
+              {
+                id: 'accuracy_champion',
+                title: isFemale ? '🎓 Campeona de Precisión' : '🎓 Campeón de Precisión',
+                description: 'Alcanzaste 80% de precisión global',
+                unlocked: apiStats.main.accuracy >= 80,
+                progress: `${apiStats.main.accuracy}/80%`,
+                category: 'skill'
+              },
+              {
+                id: 'time_warrior',
+                title: isFemale ? '⏰ Guerrera del Tiempo' : '⏰ Guerrero del Tiempo',
+                description: 'Acumulaste 10 horas de estudio',
+                unlocked: apiStats.main.totalStudyTimeSeconds >= 36000,
+                progress: `${Math.min(Math.floor(apiStats.main.totalStudyTimeSeconds / 3600), 10)}/10h`,
+                category: 'dedication'
+              },
+              {
+                id: 'streak_master',
+                title: isFemale ? '🔥 Maestra de la Constancia' : '🔥 Maestro de la Constancia',
+                description: 'Estudiaste 7 días seguidos',
+                unlocked: apiStats.main.currentStreak >= 7,
+                progress: `${Math.min(apiStats.main.currentStreak, 7)}/7 días`,
+                category: 'habit'
+              }
+            ]
+          })(),
 
           // AI Impact Data - calculado desde datos disponibles
           aiImpactData: apiStats.main.totalQuestions >= 20 ? {

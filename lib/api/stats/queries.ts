@@ -506,6 +506,7 @@ async function getUserOposicion(db: ReturnType<typeof getDb>, userId: string): P
         fullName: userProfiles.fullName,
         targetOposicion: userProfiles.targetOposicion,
         createdAt: userProfiles.createdAt,
+        gender: userProfiles.gender,
       })
       .from(userProfiles)
       .where(eq(userProfiles.id, userId))
@@ -524,6 +525,7 @@ async function getUserOposicion(db: ReturnType<typeof getDb>, userId: string): P
       // Devolver al menos el nombre del usuario y días desde registro
       return {
         userName: profile?.fullName || null,
+        gender: (profile?.gender as 'male' | 'female' | 'other' | 'prefer_not_say' | null) || null,
         slug: null,
         nombre: null,
         tipoAcceso: null,
@@ -564,6 +566,7 @@ async function getUserOposicion(db: ReturnType<typeof getDb>, userId: string): P
     if (!oposicion) {
       return {
         userName: profile?.fullName || null,
+        gender: (profile?.gender as 'male' | 'female' | 'other' | 'prefer_not_say' | null) || null,
         slug: targetOposicion,
         nombre: null,
         tipoAcceso: null,
@@ -582,6 +585,7 @@ async function getUserOposicion(db: ReturnType<typeof getDb>, userId: string): P
 
     return {
       userName: profile?.fullName || null,
+      gender: (profile?.gender as 'male' | 'female' | 'other' | 'prefer_not_say' | null) || null,
       slug: oposicion.slug,
       nombre: oposicion.nombre,
       tipoAcceso: oposicion.tipoAcceso || 'libre',
