@@ -289,8 +289,8 @@ async function getRecentTests(db: ReturnType<typeof getDb>, userId: string): Pro
       topicTitle: sql<string | null>`(
         SELECT t.title FROM topics t
         WHERE t.topic_number = ${tests.temaNumber}
-          AND t.position_type = ${positionType}
           AND t.is_active = true
+        ORDER BY CASE WHEN t.position_type = ${positionType} THEN 0 ELSE 1 END
         LIMIT 1
       )`,
     })
