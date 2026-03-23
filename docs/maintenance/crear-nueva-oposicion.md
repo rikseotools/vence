@@ -507,17 +507,52 @@ const inscripcionCerrada = data?.inscriptionDeadline
 
 ### 5b. Timeline de hitos del proceso selectivo
 
-La tabla `convocatoria_hitos` almacena los hitos del proceso:
+#### Procedimiento para crear hitos
+
+1. **Obtener la `seguimiento_url`** de la tabla `oposiciones` (pagina oficial del proceso)
+2. **Leer la pagina de seguimiento** y extraer todas las fechas y eventos publicados
+3. **Clasificar cada hito** con su status:
+   - `completed` → ya ocurrio (fecha pasada y confirmado)
+   - `current` → en curso ahora (plazo abierto, fase activa)
+   - `upcoming` → pendiente (fecha futura)
+4. **Insertar en BD** con orden cronologico
+
+#### Hitos tipicos de un proceso selectivo
+
+| Orden | Hito | Notas |
+|-------|------|-------|
+| 1 | Convocatoria publicada en [diario] | Incluir referencia y num. plazas. URL al PDF |
+| 2 | Apertura plazo de inscripcion | |
+| 3 | Cierre plazo de inscripcion | Notar si se amplio |
+| 4 | Listas provisionales admitidos/excluidos | URL a la pagina de seguimiento |
+| 5 | Fin plazo subsanacion | |
+| 6 | Listas definitivas admitidos | |
+| 7 | Examen | Hora, sedes si se conocen |
+| 8 | Publicacion plantillas respuestas | Fecha estimada si no se conoce |
+| 9 | Resultados | Fecha estimada |
+
+No todos los procesos tienen todos los hitos. Algunos tienen extras (calendario actuaciones, composicion tribunal, comunicacion legislacion vigente). Incluir solo los relevantes para el opositor.
+
+#### SQL de insercion
 
 ```sql
+-- Obtener el UUID de la oposicion
+SELECT id FROM oposiciones WHERE slug = 'auxiliar-administrativo-madrid';
+
+-- Insertar hitos
 INSERT INTO convocatoria_hitos (oposicion_id, fecha, titulo, descripcion, url, status, order_index)
 VALUES
-  ('<uuid>', '2025-12-22', 'Convocatoria publicada en BOE', 'BOE-A-2025-26262', 'https://...', 'completed', 1),
-  ('<uuid>', '2026-01-22', 'Cierre plazo inscripcion', NULL, NULL, 'completed', 2),
-  ('<uuid>', '2026-05-23', 'Examen', 'Ejercicio unico 90 min', NULL, 'upcoming', 3);
+  ('<uuid>', '2025-05-13', 'Convocatoria publicada en BOCM', 'Orden 1081/2025. 551 plazas.', 'https://...', 'completed', 1),
+  ('<uuid>', '2025-05-14', 'Apertura plazo de inscripcion', NULL, NULL, 'completed', 2),
+  ('<uuid>', '2025-06-13', 'Cierre plazo de inscripcion', 'Ampliado por problemas tecnicos.', NULL, 'completed', 3),
+  ('<uuid>', '2025-12-29', 'Listas provisionales admitidos y excluidos', NULL, 'https://...', 'completed', 4),
+  ('<uuid>', '2026-02-17', 'Listas definitivas admitidos y excluidos', NULL, 'https://...', 'completed', 5),
+  ('<uuid>', '2026-04-12', 'Examen', '09:00h primer ejercicio, 12:00h segundo.', NULL, 'upcoming', 6),
+  ('<uuid>', '2026-06-15', 'Resultados', 'Fecha estimada.', NULL, 'upcoming', 7);
 ```
 
-**Status de cada hito:**
+#### Status de cada hito en la UI
+
 - `completed` → check verde, texto normal
 - `current` → circulo azul animado, badge "En curso"
 - `upcoming` → circulo gris, texto opaco
@@ -525,6 +560,24 @@ VALUES
 El timeline se renderiza entre los links oficiales y el temario. Los hitos con `url` son clickeables.
 
 **JSON-LD Event:** Ademas del FAQPage schema, se genera un schema `Event` con la fecha del examen para rich snippets de Google.
+
+#### Actualizar hitos cuando hay cambios
+
+Cuando el monitoreo detecta un cambio (ver 5c), actualizar los hitos:
+
+```sql
+-- Marcar un hito como completado
+UPDATE convocatoria_hitos SET status = 'completed'
+WHERE oposicion_id = '<uuid>' AND titulo ILIKE '%listas definitivas%';
+
+-- Insertar nuevo hito
+INSERT INTO convocatoria_hitos (oposicion_id, fecha, titulo, descripcion, url, status, order_index)
+VALUES ('<uuid>', '2026-04-12', 'Examen', 'Sedes publicadas.', 'https://...', 'upcoming', 8);
+
+-- Cambiar hito de upcoming a current
+UPDATE convocatoria_hitos SET status = 'current'
+WHERE oposicion_id = '<uuid>' AND titulo ILIKE '%subsanacion%';
+```
 
 ### 5c. Monitoreo de seguimiento (automatico)
 
@@ -535,6 +588,17 @@ Al crear la oposicion con `seguimiento_url`, el cron diario (`/api/cron/check-se
 3. Claude lee la pagina de seguimiento, extrae los hitos nuevos
 4. Actualiza `convocatoria_hitos` (INSERT nuevos, UPDATE status de existentes)
 5. La landing se regenera en 24h (ISR) con el timeline actualizado
+
+**Paginas de seguimiento por tipo de administracion:**
+
+| Administracion | Portal de seguimiento | Ejemplo |
+|----------------|----------------------|---------|
+| Estado (AGE) | sede.inap.gob.es | Auxiliar/Administrativo Estado |
+| Justicia | mjusticia.gob.es | Tramitacion Procesal, Auxilio Judicial |
+| Madrid | comunidad.madrid | Auxiliar Madrid |
+| Canarias | gobiernodecanarias.org | Auxiliar Canarias |
+| Valencia | sede.gva.es | Auxiliar Valencia |
+| Otras CCAA | Portal empleo publico de cada CCAA | Ver tabla oposiciones |
 
 ---
 
