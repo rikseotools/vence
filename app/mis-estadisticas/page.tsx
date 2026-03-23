@@ -648,17 +648,32 @@ function EstadisticasContent() {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             return filtered.map((t: any) => {
                 const bloquePrefix = formatThemeName(t.temaNumber, oposicionSlug)
-                // Solo mostrar el bloque formateado
-                const fullTitle = bloquePrefix
+                // Bloque + título del tema desde la BD
+                const topicTitle = t.title || null
+                const fullTitle = topicTitle ? `${bloquePrefix}: ${topicTitle}` : bloquePrefix
+                // Resolver oposición del tema
+                const currentPT = oposicionSlug.replace(/-/g, '_')
+                const themePT = t.topicPositionType || currentPT
+                const themeOposConfig = getOposicionByPositionType(themePT)
                 return {
                   theme: t.temaNumber,
                   title: fullTitle,
+                  oposicionLabel: themeOposConfig?.shortName || themePT.replace(/_/g, ' '),
+                  oposicionPositionType: themePT,
                   total: t.totalQuestions,
                   correct: t.correctAnswers,
                   accuracy: t.accuracy,
                   avgTime: t.averageTime,
-                  status: t.accuracy >= 85 ? 'dominado' : t.accuracy >= 70 ? 'bien' : t.accuracy >= 50 ? 'regular' : 'débil'
+                  status: t.accuracy >= 85 ? 'dominado' : t.accuracy >= 70 ? 'bien' : t.accuracy >= 50 ? 'regular' : 'débil',
+                  lastPracticed: t.lastPracticed || null,
                 }
+              })
+              .sort((a: any, b: any) => {
+                // Recientes primero
+                if (!a.lastPracticed && !b.lastPracticed) return 0
+                if (!a.lastPracticed) return 1
+                if (!b.lastPracticed) return -1
+                return new Date(b.lastPracticed).getTime() - new Date(a.lastPracticed).getTime()
               })
           })(),
 

@@ -326,21 +326,38 @@ async function getRecentTests(db: ReturnType<typeof getDb>, userId: string): Pro
 }
 
 async function getThemePerformance(db: ReturnType<typeof getDb>, userId: string): Promise<ThemePerformance[]> {
-  // 🚀 OPTIMIZADO: Leer de caché en lugar de función lenta
+  // Obtener positionType del usuario para resolver títulos de temas
+  const profileRow = await db
+    .select({ targetOposicion: userProfiles.targetOposicion })
+    .from(userProfiles)
+    .where(eq(userProfiles.id, userId))
+    .limit(1)
+  const positionType = profileRow[0]?.targetOposicion?.replace(/-/g, '_') || 'auxiliar_administrativo_estado'
+
+  // Leer de caché con JOIN a topics para obtener título y position_type reales
   try {
-    // Intentar leer de la tabla caché primero
     const cacheResult = await db.execute(
-      sql`SELECT topic_number, topic_title, total_questions, correct_answers,
-          accuracy, average_time, last_practiced
-          FROM user_theme_performance_cache
-          WHERE user_id = ${userId}::uuid
-          ORDER BY topic_number`
+      sql`SELECT
+          c.topic_number, c.topic_title, c.total_questions, c.correct_answers,
+          c.accuracy, c.average_time, c.last_practiced,
+          (SELECT t.title FROM topics t
+           WHERE t.topic_number = c.topic_number AND t.is_active = true
+           ORDER BY CASE WHEN t.position_type = ${positionType} THEN 0 ELSE 1 END
+           LIMIT 1) AS resolved_title,
+          (SELECT t.position_type FROM topics t
+           WHERE t.topic_number = c.topic_number AND t.is_active = true
+           ORDER BY CASE WHEN t.position_type = ${positionType} THEN 0 ELSE 1 END
+           LIMIT 1) AS topic_position_type
+        FROM user_theme_performance_cache c
+        WHERE c.user_id = ${userId}::uuid
+        ORDER BY c.topic_number`
     )
 
     if (cacheResult && Array.isArray(cacheResult) && cacheResult.length > 0) {
       return (cacheResult as any[]).map(row => ({
         temaNumber: row.topic_number,
-        title: row.topic_title || null,
+        title: row.resolved_title || row.topic_title || null,
+        topicPositionType: row.topic_position_type || null,
         totalQuestions: Number(row.total_questions) || 0,
         correctAnswers: Number(row.correct_answers) || 0,
         accuracy: Number(row.accuracy) || 0,

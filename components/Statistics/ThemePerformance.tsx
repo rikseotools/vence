@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { generateLawSlug } from '../../lib/lawMappingUtils'
 import ArticleModal from './ArticleModal'
+import CcaaFlag from '@/components/CcaaFlag'
 
 interface ThemeData {
   theme: number
@@ -14,6 +15,9 @@ interface ThemeData {
   status: string
   trend?: 'improving' | 'declining' | 'stable'
   articlesCount: number
+  oposicionLabel?: string
+  oposicionPositionType?: string
+  lastPracticed?: string | null
 }
 
 interface ArticleData {
@@ -290,11 +294,21 @@ export default function ThemePerformance({ themePerformance, articlePerformance,
                   </div>
                   <div className="text-left flex-1">
                     <div className="font-bold text-gray-800">{theme.title}</div>
+                    {theme.oposicionLabel && (
+                      <span className="inline-flex items-center gap-1 text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full mt-0.5">
+                        {theme.oposicionPositionType && (() => {
+                          const isNational = theme.oposicionPositionType.includes('estado') || theme.oposicionPositionType.includes('tramitacion')
+                          if (isNational) return <span>🇪🇸</span>
+                          return <CcaaFlag oposicionId={theme.oposicionPositionType} size="sm" />
+                        })()}
+                        {theme.oposicionLabel}
+                      </span>
+                    )}
                     <div className="text-sm text-gray-600">
                       {theme.correct}/{theme.total} preguntas • {theme.avgTime}s promedio
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {theme.articlesCount} artículos analizados
+                      {theme.lastPracticed && (
+                        <span className="ml-1">• {new Date(theme.lastPracticed).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Europe/Madrid' })}</span>
+                      )}
                     </div>
                   </div>
                 </div>
