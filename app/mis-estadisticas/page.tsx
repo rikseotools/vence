@@ -572,8 +572,7 @@ function EstadisticasContent() {
                 else if (t.title.includes('administrativo-estado') || t.title.includes('administrativo estado')) testPositionType = 'administrativo_estado'
               }
               const oposicionConfig = getOposicionByPositionType(testPositionType)
-              const oposicionLabel = oposicionConfig?.shortName || testPositionType.replace(/_/g, ' ')
-              const oposicionFullName = oposicionConfig?.name || oposicionLabel
+              const oposicionLabel = oposicionConfig?.name || testPositionType.replace(/_/g, ' ')
 
               const fullTitle = t.temaNumber
                 ? (topicTitle ? `${bloquePrefix}: ${topicTitle}` : bloquePrefix)
@@ -582,7 +581,6 @@ function EstadisticasContent() {
                 id: t.id,
                 title: fullTitle,
                 oposicionLabel,
-                oposicionFullName,
                 oposicionPositionType: testPositionType,
                 score: t.score,
                 total: t.totalQuestions,

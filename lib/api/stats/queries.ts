@@ -14,9 +14,10 @@ import type {
   UserOposicion,
 } from './schemas'
 
-// Cache simple en memoria (5 minutos)
+// Cache en memoria — desactivado para UX inmediata (el usuario espera ver su test recién completado)
+// Las 10 queries paralelas tardan ~200ms, no necesita caché
 const statsCache = new Map<string, { data: GetUserStatsResponse; timestamp: number }>()
-const CACHE_TTL = 5 * 60 * 1000 // 5 minutos
+const CACHE_TTL = 0 // Sin caché — datos siempre frescos
 
 /**
  * Write-through cache: guarda el resultado calculado en tiempo real
