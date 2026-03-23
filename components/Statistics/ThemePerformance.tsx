@@ -64,22 +64,8 @@ const getScoreBg = (percentage: number): string => {
   return 'bg-red-50 border-red-200'
 }
 
-const formatThemeName = (num: number, oposicionSlug: string = 'auxiliar-administrativo-estado'): string => {
-  if (oposicionSlug === 'administrativo-estado') {
-    if (num >= 1 && num <= 11) return `Bloque I - Tema ${num}`
-    if (num >= 201 && num <= 204) return `Bloque II - Tema ${num - 200}`
-    if (num >= 301 && num <= 307) return `Bloque III - Tema ${num - 300}`
-    if (num >= 401 && num <= 409) return `Bloque IV - Tema ${num - 400}`
-    if (num >= 501 && num <= 506) return `Bloque V - Tema ${num - 500}`
-    if (num >= 601 && num <= 608) return `Bloque VI - Tema ${num - 600}`
-    return `Tema ${num}`
-  }
-
-  if (num >= 1 && num <= 16) return `Bloque I - Tema ${num}`
-  if (num >= 101 && num <= 112) return `Bloque II - Tema ${num - 100}`
-
-  return `Tema ${num}`
-}
+// Título del tema — usa el title que viene del page (ya formateado por oposición)
+const formatThemeFallback = (num: number): string => `Tema ${num}`
 
 export default function ThemePerformance({ themePerformance, articlePerformance, userOposicion }: ThemePerformanceProps) {
   const [selectedTheme, setSelectedTheme] = useState<number | null>(null)
@@ -146,7 +132,7 @@ export default function ThemePerformance({ themePerformance, articlePerformance,
         <div className="flex items-center justify-between mb-6">
           <div>
             <h3 className="text-xl font-bold text-gray-800">
-              📖 {themeData.title || formatThemeName(selectedTheme, userOposicion?.slug)} - Artículos
+              📖 {themeData.title || formatThemeFallback(selectedTheme)} - Artículos
             </h3>
             <p className="text-gray-600">Rendimiento detallado por artículo</p>
           </div>
@@ -186,7 +172,7 @@ export default function ThemePerformance({ themePerformance, articlePerformance,
 
         {themeArticles.length > 0 ? (
           <div className="space-y-3">
-            <h4 className="font-bold text-gray-800 mb-3">📋 Artículos del {formatThemeName(selectedTheme, userOposicion?.slug)}</h4>
+            <h4 className="font-bold text-gray-800 mb-3">📋 Artículos del {formatThemeFallback(selectedTheme)}</h4>
             {themeArticles.map((article, index) => {
               const lawName = article.law || 'Ley desconocida'
               const articleNumber = article.article_number || article.article?.match(/\d+/)?.[0] || '1'
