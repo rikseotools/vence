@@ -800,3 +800,54 @@ Y tambien en `oposicionToExamSourcePattern` (fallback para preguntas psicotecnic
 | BD oposicion id | underscores | `auxiliar_administrativo_madrid` |
 | Config id | underscores | `auxiliar_administrativo_madrid` |
 | Config slug | guiones | `auxiliar-administrativo-madrid` |
+
+---
+
+## Lecciones aprendidas (marzo 2026, caso Galicia)
+
+### 1. Temas sin preguntas deben decir "En elaboración"
+
+Un tema puede tener scope (artículos vinculados) pero 0 preguntas. Si el usuario entra a hacer un test de ese tema, ve un test vacío y se frustra.
+
+**Solución implementada:** `TestHubPage.tsx` verifica que cada tema tenga al menos 1 pregunta activa. Si no tiene, muestra "En desarrollo" en vez de un enlace activo.
+
+**Regla:** Después de crear los scopes de una oposición nueva, SIEMPRE contar preguntas por tema (sección 3f). Los temas con 0 preguntas deben quedar visibles pero deshabilitados hasta que se importen preguntas.
+
+### 2. Temas de contenido virtual (ofimática, gestión documental) sin ley → marcar como inactivos
+
+Si un tema requiere una ley virtual que no existe (ej: LibreOffice Writer, gestión documental de una CCAA), marcar el topic como `is_active: false` en la BD. Esto hace que aparezca como "En elaboración" en tests y temario.
+
+**No vincular leyes de otra suite/sistema:** Si el programa pide LibreOffice, NO vincular leyes de Microsoft Office. Los contenidos son diferentes y las preguntas serían incorrectas.
+
+### 3. Epígrafes mandan sobre todo lo demás
+
+El epígrafe literal del programa oficial determina EXACTAMENTE qué artículos van en el topic_scope. Ejemplo real del caso Galicia:
+
+| Epígrafe | Scope correcto | Error evitado |
+|----------|---------------|---------------|
+| "LPRL: capítulo III" | Arts. 14-29 | Tenía arts. 33-40 (capítulo IV) |
+| "Ley 40/2015: caps I-V título preliminar excepto subsección 2ª sec 3ª" | Arts. 1-18, 23-46 (sin 19-22) | Faltaba Cap I (1-4) y sobraba subsec 2ª |
+
+### 4. Leyes autonómicas suelen estar en el BOE
+
+Los estatutos de autonomía y leyes autonómicas publicadas en DOG/BOCM/BOJA etc. también suelen tener texto consolidado en el BOE (`buscar/act.php`). Usar la API de sincronización del BOE para importarlas automáticamente en vez de hacerlo manualmente.
+
+### 5. Verificar scope contra programa oficial ANTES de activar
+
+Proceso obligatorio antes de marcar una oposición como activa:
+
+1. Leer programa oficial (BOE/diario autonómico)
+2. Para CADA tema: verificar que el scope coincide con el epígrafe
+3. Para CADA tema: contar preguntas — si es 0, no activar en tests
+4. Los temas con 0 preguntas quedan visibles pero deshabilitados ("En elaboración")
+5. Solo activar cuando el tema tiene scope correcto Y preguntas
+
+### 6. Frontend hardcodeado — actualizar temario/page.tsx
+
+La página del temario (`app/[oposicion]/temario/page.tsx`) tiene los temas hardcodeados con `disponible: true/false`. Al crear scopes nuevos, hay que actualizar este archivo para que los temas pasen a `disponible: true`. No se actualiza automáticamente desde la BD.
+
+### 7. Caché estático en Vercel
+
+Las páginas del temario y tests se generan en build time (`revalidate = false` o `revalidate = 2592000`). Después de cambios en la BD hay que:
+- Hacer un deploy (push a main), o
+- Llamar a `/api/revalidate?secret=vence-revalidate-2024&path=/[ruta]` para invalidar la caché de una página específica

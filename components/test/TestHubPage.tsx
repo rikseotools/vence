@@ -12,6 +12,7 @@ interface Topic {
   title: string
   description: string | null
   hasContent: boolean
+  isActive: boolean
 }
 
 interface BloqueConfig {
@@ -63,9 +64,8 @@ export default async function TestHubPage({ oposicion }: Props) {
   // Obtener topics de la BD (cacheado por Next.js)
   const { data: topics, error } = await supabase
     .from('topics')
-    .select('id, topic_number, title, description')
+    .select('id, topic_number, title, description, is_active')
     .eq('position_type', positionType)
-    .eq('is_active', true)
     .order('topic_number', { ascending: true })
 
   if (error) {
@@ -79,7 +79,7 @@ export default async function TestHubPage({ oposicion }: Props) {
     )
   }
 
-  // Consultar qué temas tienen contenido (topic_scope)
+  // Consultar qué temas tienen contenido (topic_scope + preguntas)
   const topicIds = (topics || []).map(t => t.id)
   const { data: scopes } = await supabase
     .from('topic_scope')
@@ -87,6 +87,31 @@ export default async function TestHubPage({ oposicion }: Props) {
     .in('topic_id', topicIds)
 
   const topicsWithScope = new Set((scopes || []).map(s => s.topic_id))
+
+  // Para temas con scope, verificar cuáles tienen al menos 1 pregunta
+  const topicsWithQuestions = new Set<string>()
+  for (const topicId of topicsWithScope) {
+    const { data: scopeRows } = await supabase
+      .from('topic_scope')
+      .select('law_id, article_numbers')
+      .eq('topic_id', topicId)
+
+    let articleIds: string[] = []
+    for (const s of scopeRows || []) {
+      if (!s.article_numbers) {
+        const { data: arts } = await supabase.from('articles').select('id').eq('law_id', s.law_id).limit(100)
+        articleIds.push(...(arts || []).map(a => a.id))
+      } else {
+        const { data: arts } = await supabase.from('articles').select('id').eq('law_id', s.law_id).in('article_number', s.article_numbers).limit(500)
+        articleIds.push(...(arts || []).map(a => a.id))
+      }
+    }
+
+    if (articleIds.length > 0) {
+      const { count } = await supabase.from('questions').select('id', { count: 'exact', head: true }).eq('is_active', true).in('primary_article_id', articleIds.slice(0, 500))
+      if (count && count > 0) topicsWithQuestions.add(topicId)
+    }
+  }
 
   // Transformar a formato esperado
   const displayMap = DISPLAY_NUMBER_MAP[oposicion] || {}
@@ -96,7 +121,8 @@ export default async function TestHubPage({ oposicion }: Props) {
     displayNumber: displayMap[t.topic_number] ?? t.topic_number,
     title: t.title,
     description: t.description,
-    hasContent: topicsWithScope.has(t.id),
+    hasContent: topicsWithQuestions.has(t.id),
+    isActive: t.is_active !== false,
   }))
 
   // Agrupar por bloques

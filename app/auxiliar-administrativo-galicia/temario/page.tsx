@@ -12,19 +12,19 @@ const BLOQUES = [
     icon: '\ud83c\udfdb\ufe0f',
     count: 13,
     temas: [
-      { id: 1, titulo: 'CE: T.Preliminar, T.I (excepto cap 3), T.II, T.III (cap 1), T.IV, T.V, T.VIII', descripcion: 'Constitucion Espanola: Titulo Preliminar. Derechos y deberes fundamentales (Titulo I, excepto capitulo 3). La Corona (Titulo II). Las Cortes Generales, capitulo 1 (Titulo III). Del Gobierno y de la Administracion (Titulo IV). Relaciones Gobierno-Cortes (Titulo V). Organizacion territorial (Titulo VIII).', disponible: false },
-      { id: 2, titulo: 'Estatuto de Autonomia de Galicia', descripcion: 'Ley Organica 1/1981, de 6 de abril, de Estatuto de Autonomia de Galicia.', disponible: false },
-      { id: 3, titulo: 'Derecho derivado UE: reglamentos, directivas, decisiones', descripcion: 'El derecho derivado de la Union Europea: reglamentos, directivas y decisiones.', disponible: false },
-      { id: 4, titulo: 'Instituciones UE: Parlamento, Consejo Europeo, Consejo, Comision', descripcion: 'Las instituciones de la Union Europea: Parlamento Europeo, Consejo Europeo, Consejo y Comision Europea.', disponible: false },
-      { id: 5, titulo: 'Ley 31/1995 PRL: capitulo III', descripcion: 'Ley 31/1995, de 8 de noviembre, de prevencion de riesgos laborales: capitulo III, derechos y obligaciones.', disponible: false },
-      { id: 6, titulo: 'Ley 16/2010 organizacion Administracion Galicia', descripcion: 'Ley 16/2010, de 17 de diciembre, de organizacion y funcionamiento de la Administracion general y del sector publico autonomico de Galicia.', disponible: false },
-      { id: 7, titulo: 'Ley 39/2015 LPAC: titulos Preliminar, I, II, III, IV y V', descripcion: 'Ley 39/2015, de 1 de octubre, del procedimiento administrativo comun de las administraciones publicas: titulos Preliminar, I, II, III, IV y V.', disponible: false },
-      { id: 8, titulo: 'Ley 40/2015 LRJSP: caps I-V titulo preliminar', descripcion: 'Ley 40/2015, de 1 de octubre, de regimen juridico del sector publico: capitulos I a V del titulo preliminar.', disponible: false },
-      { id: 9, titulo: 'DL 1/1999 regimen financiero Galicia', descripcion: 'Decreto Legislativo 1/1999, de 7 de octubre, por el que se aprueba el texto refundido de la Ley de regimen financiero y presupuestario de Galicia.', disponible: false },
-      { id: 10, titulo: 'Ley 1/2016 transparencia Galicia', descripcion: 'Ley 1/2016, de 18 de enero, de transparencia y buen gobierno de Galicia.', disponible: false },
-      { id: 11, titulo: 'Ley 2/2015 empleo publico Galicia', descripcion: 'Ley 2/2015, de 29 de abril, del empleo publico de Galicia.', disponible: false },
-      { id: 12, titulo: 'Ley 7/2023 igualdad Galicia', descripcion: 'Ley 7/2023, de 30 de noviembre, para la igualdad efectiva de mujeres y hombres de Galicia.', disponible: false },
-      { id: 13, titulo: 'RDL 1/2013 discapacidad', descripcion: 'Real Decreto Legislativo 1/2013, de 29 de noviembre, por el que se aprueba el texto refundido de la Ley general de derechos de las personas con discapacidad y de su inclusion social.', disponible: false },
+      { id: 1, titulo: 'CE: T.Preliminar, T.I (excepto cap 3), T.II, T.III (cap 1), T.IV, T.V, T.VIII', descripcion: 'Constitucion Espanola: Titulo Preliminar. Derechos y deberes fundamentales (Titulo I, excepto capitulo 3). La Corona (Titulo II). Las Cortes Generales, capitulo 1 (Titulo III). Del Gobierno y de la Administracion (Titulo IV). Relaciones Gobierno-Cortes (Titulo V). Organizacion territorial (Titulo VIII).', disponible: true },
+      { id: 2, titulo: 'Estatuto de Autonomia de Galicia', descripcion: 'Ley Organica 1/1981, de 6 de abril, de Estatuto de Autonomia de Galicia.', disponible: true },
+      { id: 3, titulo: 'Derecho derivado UE: reglamentos, directivas, decisiones', descripcion: 'El derecho derivado de la Union Europea: reglamentos, directivas y decisiones.', disponible: true },
+      { id: 4, titulo: 'Instituciones UE: Parlamento, Consejo Europeo, Consejo, Comision', descripcion: 'Las instituciones de la Union Europea: Parlamento Europeo, Consejo Europeo, Consejo y Comision Europea.', disponible: true },
+      { id: 5, titulo: 'Ley 31/1995 PRL: capitulo III', descripcion: 'Ley 31/1995, de 8 de noviembre, de prevencion de riesgos laborales: capitulo III, derechos y obligaciones.', disponible: true },
+      { id: 6, titulo: 'Ley 16/2010 organizacion Administracion Galicia', descripcion: 'Ley 16/2010, de 17 de diciembre, de organizacion y funcionamiento de la Administracion general y del sector publico autonomico de Galicia.', disponible: true },
+      { id: 7, titulo: 'Ley 39/2015 LPAC: titulos Preliminar, I, II, III, IV y V', descripcion: 'Ley 39/2015, de 1 de octubre, del procedimiento administrativo comun de las administraciones publicas: titulos Preliminar, I, II, III, IV y V.', disponible: true },
+      { id: 8, titulo: 'Ley 40/2015 LRJSP: caps I-V titulo preliminar', descripcion: 'Ley 40/2015, de 1 de octubre, de regimen juridico del sector publico: capitulos I a V del titulo preliminar.', disponible: true },
+      { id: 9, titulo: 'DL 1/1999 regimen financiero Galicia', descripcion: 'Decreto Legislativo 1/1999, de 7 de octubre, por el que se aprueba el texto refundido de la Ley de regimen financiero y presupuestario de Galicia.', disponible: true },
+      { id: 10, titulo: 'Ley 1/2016 transparencia Galicia', descripcion: 'Ley 1/2016, de 18 de enero, de transparencia y buen gobierno de Galicia.', disponible: true },
+      { id: 11, titulo: 'Ley 2/2015 empleo publico Galicia', descripcion: 'Ley 2/2015, de 29 de abril, del empleo publico de Galicia.', disponible: true },
+      { id: 12, titulo: 'Ley 7/2023 igualdad Galicia', descripcion: 'Ley 7/2023, de 30 de noviembre, para la igualdad efectiva de mujeres y hombres de Galicia.', disponible: true },
+      { id: 13, titulo: 'RDL 1/2013 discapacidad', descripcion: 'Real Decreto Legislativo 1/2013, de 29 de noviembre, por el que se aprueba el texto refundido de la Ley general de derechos de las personas con discapacidad y de su inclusion social.', disponible: true },
     ]
   },
   {
@@ -33,10 +33,10 @@ const BLOQUES = [
     icon: '\ud83d\udcbb',
     count: 4,
     temas: [
-      { id: 14, titulo: 'Gestion de documentos en la Xunta de Galicia', descripcion: 'Gestion de documentos en la Xunta de Galicia. Registro, archivo y clasificacion de documentos.', disponible: false },
-      { id: 15, titulo: 'Informatica basica: componentes, redes, almacenamiento', descripcion: 'Informatica basica: componentes de un ordenador, redes informaticas y sistemas de almacenamiento.', disponible: false },
-      { id: 16, titulo: 'Sistemas operativos: administrador de archivos', descripcion: 'Sistemas operativos: el administrador de archivos. Organizacion y gestion de ficheros.', disponible: false },
-      { id: 17, titulo: 'Sistemas ofimaticos: Writer, Calc, Impress, correo electronico', descripcion: 'Sistemas ofimaticos: procesador de textos (Writer), hoja de calculo (Calc), presentaciones (Impress) y correo electronico.', disponible: false },
+      { id: 14, titulo: 'Gestion de documentos en la Xunta de Galicia', descripcion: 'En elaboracion. Gestion de documentos en la Xunta de Galicia. Registro, archivo y clasificacion de documentos.', disponible: false },
+      { id: 15, titulo: 'Informatica basica: componentes, redes, almacenamiento', descripcion: 'Informatica basica: componentes de un ordenador, redes informaticas y sistemas de almacenamiento.', disponible: true },
+      { id: 16, titulo: 'Sistemas operativos: administrador de archivos', descripcion: 'Sistemas operativos: el administrador de archivos. Organizacion y gestion de ficheros.', disponible: true },
+      { id: 17, titulo: 'Sistemas ofimaticos: Writer, Calc, Impress, correo electronico', descripcion: 'En elaboracion. Sistemas ofimaticos: procesador de textos (Writer), hoja de calculo (Calc), presentaciones (Impress) y correo electronico.', disponible: false },
     ]
   }
 ]
