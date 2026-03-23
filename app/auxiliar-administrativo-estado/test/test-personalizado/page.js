@@ -77,12 +77,13 @@ function TestPersonalizadoAleatorioContent() {
     <TestPageWrapper
       testType="aleatorio"
       themes={testConfig.themes}
-      testConfig={testConfig}
+      defaultConfig={testConfig}
       customTitle={`Test Aleatorio - ${testConfig.themes.length} Temas`}
       customDescription=""
       customSubtitle=""
       customIcon="🎲"
       customColor="from-blue-500 to-indigo-600"
+      positionType="auxiliar_administrativo_estado"
     />
   )
 }

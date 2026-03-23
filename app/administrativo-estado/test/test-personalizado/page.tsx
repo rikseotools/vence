@@ -8,12 +8,12 @@ function TestPersonalizadoAleatorioContent() {
 
   // Extraer configuración de la URL
   const testConfig = {
-    numQuestions: parseInt(searchParams.get('n')) || 20,
+    numQuestions: parseInt(searchParams.get('n') ?? '20'),
     themes: searchParams.get('themes')?.split(',').map(t => parseInt(t)) || [],
     difficulty: searchParams.get('difficulty') || 'mixed',
     mode: searchParams.get('mode') || 'aleatorio',
     excludeRecent: searchParams.get('exclude_recent') === 'true',
-    excludeDays: parseInt(searchParams.get('exclude_days')) || 15,
+    excludeDays: parseInt(searchParams.get('exclude_days') ?? '15'),
     onlyOfficialQuestions: searchParams.get('official_only') === 'true',
     focusEssentialArticles: searchParams.get('focus_essential') === 'true',
     focusWeakAreas: searchParams.get('focus_weak') === 'true',
@@ -103,7 +103,7 @@ function TestPersonalizadoAleatorioContent() {
     <TestPageWrapper
       testType="aleatorio"
       themes={testConfig.themes}
-      testConfig={testConfig}
+      defaultConfig={testConfig}
       customTitle={`Test Aleatorio - ${testConfig.themes.length} Temas`}
       customDescription=""
       customSubtitle=""
