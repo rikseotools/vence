@@ -96,8 +96,11 @@ export default function RecentTests({ recentTests, onInfoClick }: RecentTestsPro
                     <div className="font-bold text-gray-800">{test.title}</div>
                     {test.oposicionLabel && (
                       <span className="inline-flex items-center gap-1 text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full mt-0.5">
-                        {test.oposicionPositionType && <CcaaFlag oposicionId={test.oposicionPositionType} size="sm" />}
-                        {!test.oposicionPositionType || test.oposicionPositionType.includes('estado') || test.oposicionPositionType.includes('tramitacion') ? '🇪🇸' : null}
+                        {test.oposicionPositionType && (() => {
+                          const isNational = test.oposicionPositionType.includes('estado') || test.oposicionPositionType.includes('tramitacion')
+                          if (isNational) return <span>🇪🇸</span>
+                          return <CcaaFlag oposicionId={test.oposicionPositionType} size="sm" />
+                        })()}
                         {test.oposicionLabel}
                       </span>
                     )}

@@ -563,11 +563,16 @@ function EstadisticasContent() {
               const bloquePrefix = t.temaNumber ? formatThemeName(t.temaNumber, oposicionSlug) : null
               // topicTitle viene del JOIN con topics en la API
               const topicTitle = t.topicTitle || null
-              // Resolver oposición del test (del tema o la actual si no tiene tema)
+              // Resolver oposición del test
               const currentPositionType = oposicionSlug.replace(/-/g, '_')
-              const testPositionType = t.topicPositionType || currentPositionType
+              let testPositionType = t.topicPositionType || currentPositionType
+              // Para exámenes oficiales sin tema, intentar extraer oposición del título
+              if (!t.topicPositionType && t.title) {
+                if (t.title.includes('tramitacion-procesal') || t.title.includes('tramitación procesal')) testPositionType = 'tramitacion_procesal'
+                else if (t.title.includes('administrativo-estado') || t.title.includes('administrativo estado')) testPositionType = 'administrativo_estado'
+              }
               const oposicionConfig = getOposicionByPositionType(testPositionType)
-              const oposicionLabel = oposicionConfig?.shortName || testPositionType.replace(/_/g, ' ')
+              const oposicionLabel = oposicionConfig?.name || testPositionType.replace(/_/g, ' ')
 
               const fullTitle = t.temaNumber
                 ? (topicTitle ? `${bloquePrefix}: ${topicTitle}` : bloquePrefix)
