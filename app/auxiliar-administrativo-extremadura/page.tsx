@@ -1,255 +1,180 @@
 // app/auxiliar-administrativo-extremadura/page.tsx
 import Link from 'next/link'
+import type { Metadata } from 'next'
 import ClientBreadcrumbsWrapper from '@/components/ClientBreadcrumbsWrapper'
-import ConvocatoriaLinks from '@/components/ConvocatoriaLinks'
+import { getOposicionLandingData, getHitosConvocatoria } from '@/lib/api/convocatoria/queries'
 
 const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
+export const revalidate = 86400
 
-export const metadata = {
-  title: 'Auxiliar Administrativo Junta de Extremadura 2025 | Temario Oficial y Tests',
-  description: 'Oposiciones Auxiliar Administrativo Junta de Extremadura: 146 plazas, temario oficial 25 temas, 2 bloques. DOE 27/12/2024.',
-  keywords: [
-    'auxiliar administrativo extremadura',
-    'oposiciones auxiliar administrativo extremadura',
-    'temario auxiliar extremadura',
-    'oposiciones junta extremadura',
-    'auxiliar administrativo junta extremadura',
-    '25 temas auxiliar extremadura',
-    'cuerpo auxiliar extremadura',
-    'plazas auxiliar administrativo extremadura'
-  ].join(', '),
-  authors: [{ name: 'Vence' }],
-  metadataBase: new URL(SITE_URL),
-  openGraph: {
-    title: 'Auxiliar Administrativo Junta de Extremadura | 146 Plazas',
-    description: 'Oposiciones Auxiliar Administrativo Junta de Extremadura: temario oficial 25 temas en 2 bloques.',
-    url: `${SITE_URL}/auxiliar-administrativo-extremadura`,
-    siteName: 'Vence',
-    locale: 'es_ES',
-    type: 'website',
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Auxiliar Administrativo Junta de Extremadura',
-    description: '146 plazas. Temario 25 temas. Junta de Extremadura.'
-  },
-  alternates: {
-    canonical: `${SITE_URL}/auxiliar-administrativo-extremadura`,
-  },
+export const metadata: Metadata = {
+  title: 'Auxiliar Administrativo Junta de Extremadura 2026 | Temario Oficial y Tests',
+  description: 'Oposiciones Auxiliar Administrativo Junta de Extremadura: 106 plazas, temario oficial 25 temas, 2 bloques. Tests gratuitos y temario actualizado.',
+  keywords: ['auxiliar administrativo extremadura','oposiciones auxiliar extremadura','temario auxiliar extremadura','oposiciones junta extremadura','25 temas auxiliar extremadura','plazas auxiliar extremadura'].join(', '),
+  authors: [{ name: 'Vence' }], metadataBase: new URL(SITE_URL),
+  openGraph: { title: 'Auxiliar Administrativo Junta de Extremadura | 106 Plazas', description: 'Temario oficial 25 temas en 2 bloques.', url: `${SITE_URL}/auxiliar-administrativo-extremadura`, siteName: 'Vence', locale: 'es_ES', type: 'website' },
+  twitter: { card: 'summary_large_image', title: 'Auxiliar Administrativo Extremadura', description: '106 plazas. Temario 25 temas.' },
+  alternates: { canonical: `${SITE_URL}/auxiliar-administrativo-extremadura` },
 }
 
-export default function AuxiliarAdministrativoExtremadura() {
-  const estadisticas = [
-    { numero: "146", texto: "Plazas convocadas", color: "text-teal-600" },
-    { numero: "25", texto: "Temas oficiales", color: "text-green-600" },
-    { numero: "2", texto: "Bloques", color: "text-blue-600" },
-    { numero: "ESO", texto: "Titulo requerido", color: "text-teal-600" }
-  ]
+function formatNumber(n: number | null): string { if (n == null) return '—'; return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') }
+function formatDateLarga(dateStr: string | null): string { if (!dateStr) return ''; const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']; const [y, m, d] = dateStr.split('-').map(Number); return `${d} de ${meses[m - 1]} de ${y}` }
+function formatDateCorta(dateStr: string | null): string { if (!dateStr) return ''; const [y, m, d] = dateStr.split('-'); return `${d}/${m}/${y}` }
 
-  const infoTemario = [
-    {
-      icon: "📚",
-      titulo: "Programa Oficial",
-      descripcion: "El temario consta de 25 temas distribuidos en 2 bloques: Empleo Publico y Organizacion (14 temas) y Derecho Administrativo y Ofimatica (11 temas).",
-      stats: "25 temas \u2022 2 bloques"
-    },
-    {
-      icon: "📋",
-      titulo: "Estructura del Examen",
-      descripcion: "Ejercicio unico teorico-practico: 43 preguntas (35 teoricas + 8 practicas de ofimatica), 85 minutos. Concurso-oposicion (10+3 puntos).",
-      stats: "43 preguntas \u2022 85 minutos"
-    },
-    {
-      icon: "🎓",
-      titulo: "Requisitos de Acceso",
-      descripcion: "Titulo de Graduado en ESO o equivalente, nacionalidad espanola o europea. Grupo C2.",
-      stats: "ESO/equivalente \u2022 +16 anos"
-    }
+export default async function AuxiliarAdministrativoExtremadura() {
+  const data = await getOposicionLandingData('auxiliar-administrativo-extremadura')
+  const hitos = await getHitosConvocatoria('auxiliar-administrativo-extremadura')
+
+  const plazasLibres = data?.plazasLibres ?? 106
+  const plazasDiscapacidad = data?.plazasDiscapacidad ?? 20
+  const temasCount = data?.temasCount ?? 25
+  const boeRef = data?.boeReference ?? 'DOE num. 244, 19/12/2025'
+  const boeFechaLarga = data?.boePublicationDate ? formatDateLarga(data.boePublicationDate) : '19 de diciembre de 2025'
+  const boeFechaCorta = data?.boePublicationDate ? formatDateCorta(data.boePublicationDate) : '19/12/2025'
+  const examDate = data?.examDate ? formatDateLarga(data.examDate) : null
+  const programaUrl = data?.programaUrl ?? null
+  const seguimientoUrl = data?.seguimientoUrl ?? null
+  const tituloRequerido = data?.tituloRequerido ?? 'Graduado en ESO'
+  const textoExamen = examDate ? `Examen previsto para el ${examDate}` : 'Fecha de examen pendiente de confirmación'
+
+  const estadisticas = [
+    { numero: formatNumber(plazasLibres), texto: "Plazas acceso libre", color: "text-emerald-600" },
+    { numero: String(temasCount), texto: "Temas oficiales", color: "text-green-600" },
+    { numero: String(data?.bloquesCount ?? 2), texto: "Bloques", color: "text-blue-600" },
+    { numero: "ESO", texto: "Título requerido", color: "text-orange-600" }
   ]
 
   const faqs = [
-    {
-      pregunta: "¿Cuantas plazas hay para Auxiliar Administrativo de la Junta de Extremadura?",
-      respuesta: "Se convocan 146 plazas (126 turno libre + 20 discapacidad) para el Cuerpo Auxiliar, Especialidad Administracion General, de la Junta de Extremadura. Acumulacion OEP 2021+2022+2023."
-    },
-    {
-      pregunta: "¿Cual es el programa oficial de Auxiliar Administrativo Extremadura?",
-      respuesta: "El programa consta de 25 temas en 2 bloques: Empleo Publico y Organizacion (14 temas) sobre Estatuto Autonomia, TREBEP, Funcion Publica Extremadura, PRL e Igualdad; y Derecho Administrativo y Ofimatica (11 temas) sobre Ley 39/2015, Ley 40/2015, Contratacion, Administracion electronica, Windows y Office 365."
-    },
-    {
-      pregunta: "¿Como es el examen de Auxiliar Administrativo Extremadura?",
-      respuesta: "El examen consta de un ejercicio unico teorico-practico con 43 preguntas: 35 teoricas y 8 practicas de ofimatica. Duracion 85 minutos. Sistema concurso-oposicion (10 puntos oposicion + 3 puntos concurso)."
-    },
-    {
-      pregunta: "¿Que requisitos necesito para opositar?",
-      respuesta: "Nacionalidad espanola o europea, tener 16 anos cumplidos, titulo de Graduado en ESO o equivalente (Grupo C2), y no estar inhabilitado para funciones publicas."
-    }
+    { pregunta: "¿Cuántas plazas hay para Auxiliar Administrativo de Extremadura?", respuesta: `Se convocan ${formatNumber(plazasLibres)} plazas de acceso libre (${formatNumber(plazasDiscapacidad)} reservadas para discapacidad).` },
+    { pregunta: "¿Cuál es el programa oficial?", respuesta: `El programa consta de ${temasCount} temas en 2 bloques: Empleo Público y Función Pública de Extremadura (14 temas) y Derecho Administrativo, Contratación y Ofimática (11 temas).` },
+    { pregunta: "¿Qué requisitos necesito para opositar?", respuesta: `Nacionalidad española o europea, tener 16 años cumplidos, título de ${tituloRequerido} o equivalente (Grupo C2), y no estar inhabilitado para funciones públicas.` },
   ]
 
-  const bloquesTematicos = [
-    {
-      titulo: "Empleo Publico y Organizacion",
-      temas: "14 temas (1-14)",
-      color: "border-teal-500",
-      temasLista: [
-        "1. Gobierno y Administracion de la CAE (I)",
-        "2. Gobierno y Administracion de la CAE (II)",
-        "3. Estatuto Basico del Empleado Publico",
-        "4. Funcion Publica de Extremadura (I)",
-        "5. Funcion Publica de Extremadura (II)",
-        "6. Funcion Publica de Extremadura (III)",
-        "7. Funcion Publica de Extremadura (IV)",
-        "8. Funcion Publica de Extremadura (V)",
-        "9. Funcion Publica de Extremadura (VI)",
-        "10. Personal Laboral CC (I)",
-        "11. Personal Laboral CC (II)",
-        "12. Personal Laboral CC (III)",
-        "13. Prevencion de Riesgos Laborales",
-        "14. Igualdad y violencia de genero en Extremadura"
-      ]
-    },
-    {
-      titulo: "Derecho Administrativo y Ofimatica",
-      temas: "11 temas (15-25)",
-      color: "border-blue-500",
-      temasLista: [
-        "15. Regimen Juridico del Sector Publico (I)",
-        "16. Regimen Juridico del Sector Publico (II)",
-        "17. Procedimiento Administrativo Comun (I)",
-        "18. Procedimiento Administrativo Comun (II)",
-        "19. Procedimiento Administrativo Comun (III)",
-        "20. Contratacion del Sector Publico",
-        "21. Documento, registro y archivo",
-        "22. Administracion electronica Extremadura (I)",
-        "23. Administracion electronica Extremadura (II)",
-        "24. Windows 10",
-        "25. Office 365: Word y Excel"
-      ]
-    }
-  ]
-
-  const schemaData = {
-    "@context": "https://schema.org",
-    "@type": "Course",
-    "name": "Oposiciones Auxiliar Administrativo Junta de Extremadura",
-    "description": "Preparacion para las oposiciones de Auxiliar Administrativo de la Junta de Extremadura con temario oficial, tests y simulacros. 146 plazas convocadas.",
-    "provider": {
-      "@type": "Organization",
-      "name": "Vence",
-      "url": SITE_URL
-    },
-    "courseCode": "AUX-ADMIN-EXT",
-    "educationalLevel": "Graduado en ESO",
-    "teaches": "25 temas oficiales del programa de Auxiliar Administrativo de la Junta de Extremadura"
-  }
+  const schemaFAQ = { "@context": "https://schema.org", "@type": "FAQPage", "mainEntity": faqs.map(faq => ({ "@type": "Question", "name": faq.pregunta, "acceptedAnswer": { "@type": "Answer", "text": faq.respuesta } })) }
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaData) }}
-      />
-
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaFAQ) }} />
       <div className="min-h-screen bg-gray-50">
         <ClientBreadcrumbsWrapper />
         <div className="container mx-auto px-4 py-8">
           <div className="text-center mb-8">
-            <span className="bg-teal-100 text-teal-800 px-3 py-1 rounded-full text-sm font-medium">
-              🌿 JUNTA DE EXTREMADURA - GRUPO C2
-            </span>
-
-            <h1 className="text-4xl font-bold text-gray-800 mt-4 mb-4">
-              Auxiliar Administrativo Junta de Extremadura
-            </h1>
-
-            <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
-              Oposicion para la Junta de Extremadura con <strong>146 plazas convocadas</strong>.
-              Convocatoria DOE 27/12/2024. Acumulacion OEP 2021+2022+2023.
+            <span className="bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full text-sm font-medium">🏛️ JUNTA DE EXTREMADURA - GRUPO C2</span>
+            <h1 className="text-4xl font-bold text-gray-800 mt-4 mb-4">Auxiliar Administrativo Junta de Extremadura</h1>
+            <p className="text-lg text-gray-600 mb-4 max-w-2xl mx-auto">
+              <span className="inline-block bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full font-bold">Convocatoria publicada - {textoExamen}</span>
             </p>
-
+            <p className="text-gray-600 mb-6 max-w-2xl mx-auto">Oposición para la Junta de Extremadura con <strong>{formatNumber(plazasLibres)} plazas de acceso libre</strong>.</p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
-              <Link
-                href="/auxiliar-administrativo-extremadura/test"
-                className="inline-flex items-center justify-center space-x-2 bg-gradient-to-r from-teal-600 to-teal-700 hover:from-teal-700 hover:to-teal-800 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
-              >
-                <span className="text-2xl">🎯</span>
-                <span>Empezar a Practicar</span>
-              </Link>
-              <Link
-                href="/auxiliar-administrativo-extremadura/temario"
-                className="inline-flex items-center justify-center space-x-2 bg-white hover:bg-gray-50 text-gray-800 px-6 py-4 rounded-xl font-semibold border-2 border-gray-200 hover:border-teal-300 transition-all"
-              >
-                <span className="text-xl">📚</span>
-                <span>Ver Temario</span>
-              </Link>
+              <Link href="/auxiliar-administrativo-extremadura/test" className="inline-flex items-center justify-center space-x-2 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all transform hover:scale-105"><span className="text-2xl">🎯</span><span>Empezar a Practicar</span></Link>
+              <Link href="/auxiliar-administrativo-extremadura/temario" className="inline-flex items-center justify-center space-x-2 bg-white hover:bg-gray-50 text-gray-800 px-6 py-4 rounded-xl font-semibold border-2 border-gray-200 hover:border-emerald-300 transition-all"><span className="text-xl">📚</span><span>Ver Temario</span></Link>
             </div>
-
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl mx-auto">
-              {estadisticas.map((stat, index) => (
-                <div key={index} className="bg-white rounded-lg p-4 shadow-md">
-                  <div className={`text-2xl font-bold ${stat.color}`}>{stat.numero}</div>
-                  <div className="text-sm text-gray-600">{stat.texto}</div>
-                </div>
-              ))}
+              {estadisticas.map((stat, i) => (<div key={i} className="bg-white rounded-lg p-4 shadow-md"><div className={`text-2xl font-bold ${stat.color}`}>{stat.numero}</div><div className="text-sm text-gray-600">{stat.texto}</div></div>))}
             </div>
           </div>
 
-          <section className="mb-12">
-            <h2 className="text-2xl font-bold text-center mb-8">Informacion de la Oposicion</h2>
-            <div className="grid md:grid-cols-3 gap-6">
-              {infoTemario.map((info, index) => (
-                <div key={index} className="bg-white rounded-xl shadow-lg p-6">
-                  <div className="text-3xl mb-4">{info.icon}</div>
-                  <h3 className="text-xl font-bold mb-3">{info.titulo}</h3>
-                  <p className="text-gray-600 mb-4">{info.descripcion}</p>
-                  <div className="text-sm text-gray-500">{info.stats}</div>
-                </div>
-              ))}
+          <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 rounded-lg shadow-lg p-6 text-white mb-10">
+            <h2 className="text-2xl font-bold mb-3">🚀 Convocatoria</h2>
+            <div className="grid grid-cols-3 gap-4 mb-4">
+              <div className="text-center"><div className="text-2xl font-bold">{formatNumber(plazasLibres)}</div><div className="text-emerald-100 text-sm">Plazas libres</div></div>
+              <div className="text-center"><div className="text-2xl font-bold">{temasCount}</div><div className="text-emerald-100 text-sm">Temas</div></div>
+              <div className="text-center"><div className="text-2xl font-bold">C2</div><div className="text-emerald-100 text-sm">Grupo</div></div>
             </div>
-            <div className="mt-6">
-              <ConvocatoriaLinks oposicionSlug="auxiliar-administrativo-extremadura" />
+            <div className="bg-white bg-opacity-20 rounded-lg p-4">
+              <h3 className="font-bold mb-2">📋 {boeRef} ({boeFechaLarga})</h3>
+              <p className="text-emerald-100 text-sm">{textoExamen}.</p>
             </div>
-          </section>
+          </div>
+
+          {(programaUrl || seguimientoUrl) && (
+            <div className="grid md:grid-cols-2 gap-4 max-w-4xl mx-auto mb-10">
+              {programaUrl && (<a href={programaUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 bg-white rounded-xl shadow-md border border-gray-200 p-5 hover:shadow-lg hover:border-emerald-300 transition-all group"><div className="flex-shrink-0 w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center text-2xl group-hover:bg-emerald-200 transition-colors">📄</div><div><div className="font-bold text-gray-800 group-hover:text-emerald-700 transition-colors">Ver convocatoria en {data?.diarioOficial ?? 'DOE'}</div><div className="text-sm text-gray-500">{boeFechaCorta}</div></div></a>)}
+              {seguimientoUrl && (<a href={seguimientoUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 bg-white rounded-xl shadow-md border border-gray-200 p-5 hover:shadow-lg hover:border-blue-300 transition-all group"><div className="flex-shrink-0 w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center text-2xl group-hover:bg-blue-200 transition-colors">🔍</div><div><div className="font-bold text-gray-800 group-hover:text-blue-700 transition-colors">Seguimiento del proceso selectivo</div><div className="text-sm text-gray-500">Estado actual, listas y documentos oficiales</div></div></a>)}
+            </div>
+          )}
+
+          {hitos.length > 0 && (
+            <section className="mb-10">
+              <h2 className="text-2xl font-bold text-gray-800 text-center mb-8">📅 Estado del Proceso Selectivo</h2>
+              <div className="max-w-3xl mx-auto"><div className="relative"><div className="absolute left-4 md:left-6 top-0 bottom-0 w-0.5 bg-gray-200" /><div className="space-y-6">
+                {hitos.map((hito) => (
+                  <div key={hito.id} className="relative flex items-start gap-4 md:gap-6">
+                    <div className={`relative z-10 flex-shrink-0 w-9 h-9 md:w-12 md:h-12 rounded-full flex items-center justify-center text-sm md:text-base ${hito.status === 'completed' ? 'bg-green-100 text-green-600 border-2 border-green-500' : hito.status === 'current' ? 'bg-blue-100 text-blue-600 border-2 border-blue-500 animate-pulse' : 'bg-gray-100 text-gray-400 border-2 border-gray-300'}`}>{hito.status === 'completed' ? '✓' : hito.status === 'current' ? '●' : '○'}</div>
+                    <div className={`flex-1 pb-2 ${hito.status === 'upcoming' ? 'opacity-60' : ''}`}>
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${hito.status === 'completed' ? 'bg-green-100 text-green-700' : hito.status === 'current' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>{formatDateCorta(hito.fecha)}</span>
+                        {hito.status === 'current' && <span className="text-xs font-bold text-blue-600 uppercase">En curso</span>}
+                      </div>
+                      <h3 className={`font-semibold ${hito.status === 'upcoming' ? 'text-gray-500' : 'text-gray-800'}`}>{hito.url ? <a href={hito.url} target="_blank" rel="noopener noreferrer" className="hover:text-emerald-600 hover:underline transition-colors">{hito.titulo}</a> : hito.titulo}</h3>
+                      {hito.descripcion && <p className="text-sm text-gray-500 mt-1">{hito.descripcion}</p>}
+                    </div>
+                  </div>
+                ))}
+              </div></div></div>
+            </section>
+          )}
 
           <section className="mb-12">
             <h2 className="text-2xl font-bold text-center mb-2">📋 Temario Oficial</h2>
-            <p className="text-center text-gray-600 mb-8">25 temas en 2 bloques</p>
+            <p className="text-center text-gray-600 mb-8">{temasCount} temas en 2 bloques</p>
             <div className="grid md:grid-cols-2 gap-6">
-              {bloquesTematicos.map((bloque, index) => (
-                <div key={index} className={`bg-white rounded-xl shadow-lg p-5 border-l-4 ${bloque.color}`}>
-                  <p className="text-xs text-gray-500 mb-1">{bloque.temas}</p>
-                  <h3 className="text-base font-bold mb-3 text-gray-800">{bloque.titulo}</h3>
-                  <ul className="space-y-1 text-xs text-gray-600">
-                    {bloque.temasLista.map((tema, temaIndex) => (
-                      <li key={temaIndex} className="flex items-start">
-                        <span className="mr-1">&bull;</span>
-                        <span>{tema}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
+              <div className="bg-white rounded-xl shadow-lg p-5 border-l-4 border-emerald-500">
+                <p className="text-xs text-gray-500 mb-1">14 temas (1-14)</p>
+                <h3 className="text-base font-bold mb-3 text-gray-800">Empleo Público y Función Pública</h3>
+                <ul className="space-y-1 text-xs text-gray-600">
+                  <li>1. Gobierno y Administración de la CAE (I)</li>
+                  <li>2. Gobierno y Administración de la CAE (II)</li>
+                  <li>3. TREBEP</li>
+                  <li>4. Función Pública de Extremadura (I)</li>
+                  <li>5. Función Pública de Extremadura (II)</li>
+                  <li>6. Función Pública de Extremadura (III)</li>
+                  <li>7. Función Pública de Extremadura (IV)</li>
+                  <li>8. Función Pública de Extremadura (V)</li>
+                  <li>9. Función Pública de Extremadura (VI)</li>
+                  <li>10. Personal Laboral - Convenio Colectivo (I)</li>
+                  <li>11. Personal Laboral - Convenio Colectivo (II)</li>
+                  <li>12. Personal Laboral - Convenio Colectivo (III)</li>
+                  <li>13. Prevención de riesgos laborales</li>
+                  <li>14. Igualdad y violencia de género en Extremadura</li>
+                </ul>
+              </div>
+              <div className="bg-white rounded-xl shadow-lg p-5 border-l-4 border-blue-500">
+                <p className="text-xs text-gray-500 mb-1">11 temas (15-25)</p>
+                <h3 className="text-base font-bold mb-3 text-gray-800">Derecho Administrativo y Ofimática</h3>
+                <ul className="space-y-1 text-xs text-gray-600">
+                  <li>15. Régimen Jurídico del Sector Público (I)</li>
+                  <li>16. Régimen Jurídico del Sector Público (II)</li>
+                  <li>17. LPAC (I)</li>
+                  <li>18. LPAC (II)</li>
+                  <li>19. LPAC (III)</li>
+                  <li>20. Contratación del Sector Público</li>
+                  <li>21. Documento, registro y archivo</li>
+                  <li>22. Administración electrónica de Extremadura (I)</li>
+                  <li>23. Administración electrónica de Extremadura (II)</li>
+                  <li>24. Windows 10</li>
+                  <li>25. Office 365: Word y Excel</li>
+                </ul>
+              </div>
             </div>
             <div className="text-center mt-6">
-              <Link
-                href="/auxiliar-administrativo-extremadura/temario"
-                className="inline-flex items-center space-x-2 bg-teal-600 hover:bg-teal-700 text-white px-6 py-3 rounded-lg font-bold transition-colors"
-              >
-                <span>📚</span>
-                <span>Ver Temario Completo</span>
-              </Link>
+              <Link href="/auxiliar-administrativo-extremadura/temario" className="inline-flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-lg font-bold transition-colors"><span>📚</span><span>Ver Temario Completo</span></Link>
             </div>
           </section>
 
           <section className="mb-12">
             <h2 className="text-2xl font-bold text-center mb-8">Preguntas Frecuentes</h2>
             <div className="max-w-3xl mx-auto space-y-4">
-              {faqs.map((faq, index) => (
-                <div key={index} className="bg-white rounded-lg p-6 shadow-md">
-                  <h3 className="text-lg font-bold mb-3 text-gray-800">{faq.pregunta}</h3>
-                  <p className="text-gray-600">{faq.respuesta}</p>
-                </div>
-              ))}
+              {faqs.map((faq, i) => (<div key={i} className="bg-white rounded-lg p-6 shadow-md"><h3 className="text-lg font-bold mb-3 text-gray-800">{faq.pregunta}</h3><p className="text-gray-600">{faq.respuesta}</p></div>))}
+            </div>
+          </section>
+
+          <section className="bg-emerald-600 rounded-lg shadow-lg p-6 text-white text-center mb-8">
+            <h2 className="text-2xl font-bold mb-3">¿Listo para aprobar tu oposición?</h2>
+            <p className="text-emerald-100 mb-6 max-w-xl mx-auto">Prepárate con tests tipo examen y temario oficial actualizado.</p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center items-center max-w-sm mx-auto">
+              <Link href="/auxiliar-administrativo-extremadura/test" className="bg-white text-emerald-600 px-6 py-2 rounded font-bold hover:bg-gray-100 transition-colors w-full sm:w-auto text-sm">🎯 Empezar Tests</Link>
+              <Link href="/auxiliar-administrativo-extremadura/temario" className="bg-yellow-500 text-emerald-900 px-6 py-2 rounded font-bold hover:bg-yellow-400 transition-colors w-full sm:w-auto text-sm">📚 Ver Temario</Link>
             </div>
           </section>
         </div>
