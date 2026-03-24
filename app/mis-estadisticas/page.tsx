@@ -874,6 +874,7 @@ function EstadisticasContent() {
                 plazasLibres: oposicion?.plazasLibres || null,
                 plazasPromocionInterna: oposicion?.plazasPromocionInterna || null,
                 boeReference: oposicion?.boeReference || null,
+                programaUrl: oposicion?.programaUrl || null,
                 boePublicationDate: oposicion?.boePublicationDate
                   ? new Date(oposicion.boePublicationDate).toLocaleDateString('es-ES')
                   : null,

@@ -124,6 +124,7 @@ export const userOposicionSchema = z.object({
   // Datos del BOE
   boePublicationDate: z.string().nullable(),
   boeReference: z.string().nullable(),
+  programaUrl: z.string().nullable().optional(),
   // Datos para predicciones
   daysSinceJoin: z.number().nullable(), // Días desde registro (para calcular ritmo de estudio)
 })

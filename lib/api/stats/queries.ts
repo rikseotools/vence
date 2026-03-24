@@ -600,6 +600,7 @@ async function getUserOposicion(db: ReturnType<typeof getDb>, userId: string): P
         bloquesCount: oposiciones.bloquesCount,
         boePublicationDate: oposiciones.boePublicationDate,
         boeReference: oposiciones.boeReference,
+        programaUrl: oposiciones.programaUrl,
       })
       .from(oposiciones)
       .where(eq(oposiciones.slug, targetOposicion))
@@ -642,6 +643,7 @@ async function getUserOposicion(db: ReturnType<typeof getDb>, userId: string): P
       bloquesCount: oposicion.bloquesCount,
       boePublicationDate: oposicion.boePublicationDate,
       boeReference: oposicion.boeReference,
+      programaUrl: oposicion.programaUrl || null,
       daysSinceJoin,
     }
   } catch (error) {

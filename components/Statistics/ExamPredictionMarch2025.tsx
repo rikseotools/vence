@@ -163,19 +163,27 @@ export default function ExamPredictionMarch2025({ examPrediction }: ExamPredicti
               <div className="text-2xl font-bold text-purple-600">{prediction.daysRemaining}</div>
             </>
           )}
-          {oposicionInfo.boeReference && (
-            <a
-              href={`https://www.boe.es/diario_boe/txt.php?id=${oposicionInfo.boeReference}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center text-xs text-blue-600 hover:text-blue-800 hover:underline mt-1"
-            >
-              📰 {oposicionInfo.boeReference}
-              <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-              </svg>
-            </a>
-          )}
+          {oposicionInfo.boeReference && (() => {
+            // Usar programaUrl si existe, si no construir URL de BOE solo para refs BOE-*
+            const ref = oposicionInfo.boeReference as string
+            const url = (oposicionInfo as Record<string, unknown>).programaUrl as string | null
+              || (ref.startsWith('BOE-') ? `https://www.boe.es/diario_boe/txt.php?id=${ref}` : null)
+            return url ? (
+              <a
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center text-xs text-blue-600 hover:text-blue-800 hover:underline mt-1"
+              >
+                📰 {ref}
+                <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+              </a>
+            ) : (
+              <span className="text-xs text-gray-500 mt-1">📰 {ref}</span>
+            )
+          })()}
         </div>
       </div>
 
@@ -239,7 +247,7 @@ export default function ExamPredictionMarch2025({ examPrediction }: ExamPredicti
             )}
             {oposicionInfo.boeReference && (
               <div>
-                <div className="text-xs text-indigo-600 font-medium">📰 BOE</div>
+                <div className="text-xs text-indigo-600 font-medium">📰 Convocatoria</div>
                 <div className="font-bold text-indigo-800 text-xs">{oposicionInfo.boeReference}</div>
                 {oposicionInfo.boePublicationDate && (
                   <div className="text-xs text-indigo-500">{oposicionInfo.boePublicationDate}</div>
