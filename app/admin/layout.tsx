@@ -197,6 +197,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     <span>Fraudes</span>
                   </a>
                   <a
+                    href="/admin/oposiciones"
+                    className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1"
+                  >
+                    <span>🎓</span>
+                    <span>Oposiciones</span>
+                  </a>
+                  <a
                     href="/admin/ayuda"
                     className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1"
                   >
