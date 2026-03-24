@@ -18,8 +18,7 @@ async function _POST(request: NextRequest) {
     }
 
     if (tag) {
-      // @ts-expect-error - Next.js 16 type definition issue
-      revalidateTag(tag)
+      revalidateTag(tag, 'max')
       return NextResponse.json({
         revalidated: true,
         type: 'tag',
