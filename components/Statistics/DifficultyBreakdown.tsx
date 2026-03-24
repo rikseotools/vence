@@ -37,7 +37,7 @@ const difficultyColors: Record<string, string> = {
   extreme: 'bg-red-100 border-red-300 hover:bg-red-200 text-red-800',
 }
 
-// Precisión esperada por categoría (media de opositores)
+// Precisión estimada por categoría (referencia orientativa, no datos reales de otros opositores)
 const expectedAccuracy: Record<string, number> = {
   easy: 75,
   medium: 55,
@@ -176,7 +176,7 @@ export default function DifficultyBreakdown({ difficultyBreakdown }: DifficultyB
               disabled={isLoading}
               className="mt-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
             >
-              {isLoading ? 'Cargando...' : 'Compararme con el resto de opositores'}
+              {isLoading ? 'Cargando...' : 'Ver mi dificultad personal'}
             </button>
           )}
         </div>
@@ -211,7 +211,7 @@ export default function DifficultyBreakdown({ difficultyBreakdown }: DifficultyB
           <div className="space-y-3 mb-4">
             <div>
               <div className="flex justify-between text-xs mb-1">
-                <span className="text-gray-600">Precisión media esperada</span>
+                <span className="text-gray-600">Referencia orientativa</span>
                 <span className="font-bold text-gray-700">{comparison.expectedAccuracy}%</span>
               </div>
               <div className="h-6 bg-gray-200 rounded-full overflow-hidden">
@@ -254,7 +254,7 @@ export default function DifficultyBreakdown({ difficultyBreakdown }: DifficultyB
             comparison.isBetter ? 'text-green-700' : comparison.isWorse ? 'text-amber-700' : 'text-blue-700'
           }`}>
             <p className="text-xs text-gray-600 mb-2">
-              La precisión esperada se calcula según la dificultad de las preguntas que has respondido.
+              La precisión de referencia es una estimación orientativa según la dificultad de las preguntas.
             </p>
             {comparison.isBetter ? (
               <p>Aciertas más de lo esperado. ¡Vas muy bien preparado!</p>
@@ -294,7 +294,7 @@ export default function DifficultyBreakdown({ difficultyBreakdown }: DifficultyB
                   </div>
                   <div className="text-xs">
                     {showPersonal
-                      ? `${diff.total} preguntas • ${diff.accuracy}%`
+                      ? `${diff.total} preguntas (${diff.accuracy}% del total)`
                       : `${diff.accuracy}% aciertos • ${diff.correct}/${diff.total}`
                     }
                   </div>

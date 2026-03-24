@@ -1,11 +1,83 @@
-// components/Statistics/ExamPredictionMarch2025.js
+// components/Statistics/ExamPredictionMarch2025.tsx
 'use client'
 import { useState } from 'react'
 import Link from 'next/link'
 
-export default function ExamPredictionMarch2025({ examPrediction }) {
-  const [showProgressInfo, setShowProgressInfo] = useState(false)
-  const [showMetricInfo, setShowMetricInfo] = useState(null)
+type MetricInfoKey = 'coverage' | 'accuracy' | 'improvement' | 'time' | 'mastery'
+
+interface OposicionInfo {
+  nombre?: string
+  tipoAcceso?: string
+  hasRealExamDate?: boolean
+  examDateFormatted?: string
+  plazasLibres?: number
+  plazas?: number
+  inscriptionDeadline?: string
+  boeReference?: string
+  boePublicationDate?: string
+  userName?: string
+}
+
+interface MasteryInfo {
+  masteredThemes: number
+  totalThemes: number
+  projectedMasteryDate?: string
+}
+
+interface CoverageInfo {
+  studiedThemes: number
+  totalThemes: number
+  percentage: number
+}
+
+interface AccuracyInfo {
+  current: number
+  target: number
+}
+
+interface DailyProgressInfo {
+  averageImprovement: number | string
+  daysAnalyzed: number
+}
+
+interface TimeEstimateInfo {
+  dailyHours: number
+}
+
+interface ProjectionInfo {
+  estimatedStudyCompletion?: string
+  temasPoSemana?: number
+  noMasteredYet?: boolean
+  allMastered?: boolean
+}
+
+interface CalculationsInfo {
+  temasPoSemana?: number
+}
+
+interface ExamPrediction {
+  readinessScore: number
+  readinessLevel: 'excellent' | 'good' | 'developing' | string
+  daysRemaining: number
+  mainMessage?: string
+  oposicionInfo?: OposicionInfo
+  mastery?: MasteryInfo
+  coverage: CoverageInfo
+  accuracy: AccuracyInfo
+  dailyProgress: DailyProgressInfo
+  timeEstimate: TimeEstimateInfo
+  projection?: ProjectionInfo
+  calculations?: CalculationsInfo
+}
+
+interface ExamPredictionMarch2025Props {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  examPrediction: ExamPrediction | Record<string, any> | null | undefined
+}
+
+export default function ExamPredictionMarch2025({ examPrediction }: ExamPredictionMarch2025Props) {
+  const [showProgressInfo, setShowProgressInfo] = useState<boolean>(false)
+  const [showMetricInfo, setShowMetricInfo] = useState<MetricInfoKey | null>(null)
 
   if (!examPrediction) {
     return (
@@ -13,7 +85,7 @@ export default function ExamPredictionMarch2025({ examPrediction }) {
         <div className="text-6xl mb-4">🔮</div>
         <h3 className="text-xl font-bold text-gray-700 mb-2">Predicción no disponible</h3>
         <p className="text-gray-600 mb-4">Necesitas más datos para generar una predicción precisa</p>
-        <Link 
+        <Link
           href="/auxiliar-administrativo-estado/test"
           className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-6 py-3 rounded-lg font-semibold hover:opacity-90 transition-opacity"
         >
@@ -23,21 +95,24 @@ export default function ExamPredictionMarch2025({ examPrediction }) {
     )
   }
 
-  const getReadinessColor = (score) => {
+  // Cast to ExamPrediction after null guard - caller may pass Record<string, unknown>
+  const prediction = examPrediction as ExamPrediction
+
+  const getReadinessColor = (score: number): string => {
     if (score >= 85) return 'text-green-600'
     if (score >= 70) return 'text-blue-600'
     if (score >= 50) return 'text-yellow-600'
     return 'text-red-600'
   }
 
-  const getReadinessBg = (score) => {
+  const getReadinessBg = (score: number): string => {
     if (score >= 85) return 'from-green-50 to-emerald-50 border-green-200'
     if (score >= 70) return 'from-blue-50 to-cyan-50 border-blue-200'
     if (score >= 50) return 'from-yellow-50 to-orange-50 border-yellow-200'
     return 'from-red-50 to-pink-50 border-red-200'
   }
 
-  const getProgressColor = (percentage) => {
+  const getProgressColor = (percentage: number): string => {
     if (percentage >= 80) return 'bg-green-500'
     if (percentage >= 60) return 'bg-blue-500'
     if (percentage >= 40) return 'bg-yellow-500'
@@ -45,7 +120,7 @@ export default function ExamPredictionMarch2025({ examPrediction }) {
   }
 
   // Convertir días en formato "X meses y Y días"
-  const formatDaysRemaining = (days) => {
+  const formatDaysRemaining = (days: number): string => {
     if (days <= 0) return '0 días'
     const months = Math.floor(days / 30)
     const remainingDays = days % 30
@@ -59,7 +134,7 @@ export default function ExamPredictionMarch2025({ examPrediction }) {
   }
 
   // Datos de la oposición (si están disponibles)
-  const oposicionInfo = examPrediction.oposicionInfo || {}
+  const oposicionInfo = prediction.oposicionInfo || {}
   const hasOposicionData = oposicionInfo.nombre && oposicionInfo.nombre !== 'tu oposición'
   const examDateLabel = oposicionInfo.hasRealExamDate
     ? oposicionInfo.examDateFormatted
@@ -85,7 +160,7 @@ export default function ExamPredictionMarch2025({ examPrediction }) {
           ) : (
             <>
               <div className="text-sm text-gray-500">Días restantes</div>
-              <div className="text-2xl font-bold text-purple-600">{examPrediction.daysRemaining}</div>
+              <div className="text-2xl font-bold text-purple-600">{prediction.daysRemaining}</div>
             </>
           )}
           {oposicionInfo.boeReference && (
@@ -116,13 +191,13 @@ export default function ExamPredictionMarch2025({ examPrediction }) {
               </div>
             </div>
             <div className="text-right">
-              <div className={`text-2xl font-black ${examPrediction.daysRemaining < 90 ? 'animate-pulse' : ''}`}>
-                {formatDaysRemaining(examPrediction.daysRemaining)}
+              <div className={`text-2xl font-black ${prediction.daysRemaining < 90 ? 'animate-pulse' : ''}`}>
+                {formatDaysRemaining(prediction.daysRemaining)}
               </div>
               <div className="text-sm opacity-90">restantes</div>
             </div>
           </div>
-          {examPrediction.daysRemaining < 90 && (
+          {prediction.daysRemaining < 90 && (
             <div className="mt-3 bg-white bg-opacity-20 rounded-lg p-2 text-center text-sm animate-pulse">
               ⚡ ¡Menos de 3 meses! Intensifica tu preparación
             </div>
@@ -152,7 +227,7 @@ export default function ExamPredictionMarch2025({ examPrediction }) {
               <div>
                 <div className="text-xs text-indigo-600 font-medium">🎫 Plazas (acceso libre)</div>
                 <div className="font-bold text-indigo-800">
-                  {(oposicionInfo.plazasLibres || oposicionInfo.plazas).toLocaleString()}
+                  {(oposicionInfo.plazasLibres || oposicionInfo.plazas)!.toLocaleString()}
                 </div>
               </div>
             )}
@@ -176,7 +251,7 @@ export default function ExamPredictionMarch2025({ examPrediction }) {
       )}
 
       {/* Predicción Principal - COMPACTA */}
-      <div className={`bg-gradient-to-r ${getReadinessBg(examPrediction.readinessScore)} border rounded-xl p-4 mb-4 relative`}>
+      <div className={`bg-gradient-to-r ${getReadinessBg(prediction.readinessScore)} border rounded-xl p-4 mb-4 relative`}>
         <button
           onClick={() => setShowProgressInfo(true)}
           className="absolute top-2 right-2 p-1 text-gray-400 hover:text-gray-600"
@@ -189,27 +264,27 @@ export default function ExamPredictionMarch2025({ examPrediction }) {
 
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <div className={`text-4xl font-bold ${getReadinessColor(examPrediction.readinessScore)}`}>
-              {examPrediction.readinessScore}%
+            <div className={`text-4xl font-bold ${getReadinessColor(prediction.readinessScore)}`}>
+              {prediction.readinessScore}%
             </div>
             <div>
               <div className="text-sm font-medium text-gray-700">Preparación estimada</div>
               <div className={`text-xs px-2 py-0.5 rounded-full inline-block ${
-                examPrediction.readinessLevel === 'excellent' ? 'bg-green-100 text-green-700' :
-                examPrediction.readinessLevel === 'good' ? 'bg-blue-100 text-blue-700' :
-                examPrediction.readinessLevel === 'developing' ? 'bg-yellow-100 text-yellow-700' :
+                prediction.readinessLevel === 'excellent' ? 'bg-green-100 text-green-700' :
+                prediction.readinessLevel === 'good' ? 'bg-blue-100 text-blue-700' :
+                prediction.readinessLevel === 'developing' ? 'bg-yellow-100 text-yellow-700' :
                 'bg-red-100 text-red-700'
               }`}>
-                {examPrediction.readinessLevel === 'excellent' ? '🏆 Excelente' :
-                 examPrediction.readinessLevel === 'good' ? '👍 Buena' :
-                 examPrediction.readinessLevel === 'developing' ? '📈 En desarrollo' :
+                {prediction.readinessLevel === 'excellent' ? '🏆 Excelente' :
+                 prediction.readinessLevel === 'good' ? '👍 Buena' :
+                 prediction.readinessLevel === 'developing' ? '📈 En desarrollo' :
                  '⚠️ Mejora necesaria'}
               </div>
             </div>
           </div>
 
           {/* Temas dominados integrado */}
-          {examPrediction.mastery && (
+          {prediction.mastery && (
             <div className="text-right">
               <button
                 onClick={() => setShowMetricInfo('mastery')}
@@ -221,7 +296,7 @@ export default function ExamPredictionMarch2025({ examPrediction }) {
                 </svg>
               </button>
               <div className="text-lg font-bold text-purple-700">
-                {examPrediction.mastery.masteredThemes}/{examPrediction.mastery.totalThemes}
+                {prediction.mastery.masteredThemes}/{prediction.mastery.totalThemes}
               </div>
             </div>
           )}
@@ -231,48 +306,48 @@ export default function ExamPredictionMarch2025({ examPrediction }) {
         <div className="mt-3">
           <div className="w-full bg-gray-200 rounded-full h-2">
             <div
-              className={`h-2 rounded-full transition-all duration-1000 ${getProgressColor(examPrediction.readinessScore)}`}
-              style={{ width: `${examPrediction.readinessScore}%` }}
+              className={`h-2 rounded-full transition-all duration-1000 ${getProgressColor(prediction.readinessScore)}`}
+              style={{ width: `${prediction.readinessScore}%` }}
             ></div>
           </div>
         </div>
 
-        {examPrediction.mainMessage && (
+        {prediction.mainMessage && (
           <div className="mt-2 text-xs text-gray-600 text-center">
-            {examPrediction.mainMessage}
+            {prediction.mainMessage}
           </div>
         )}
       </div>
 
       {/* Proyección de preparación - SIEMPRE visible */}
-      {examPrediction.mastery?.projectedMasteryDate === 'completado' ? (
+      {prediction.mastery?.projectedMasteryDate === 'completado' ? (
         <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4 text-center">
           <p className="text-sm text-green-700 font-bold">✅ ¡Felicidades! Has dominado todo el temario</p>
         </div>
-      ) : examPrediction.mastery?.projectedMasteryDate ? (
+      ) : prediction.mastery?.projectedMasteryDate ? (
         <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-4 text-center">
           <p className="text-sm text-purple-700">
             📅 A este ritmo, dominarás todo el temario para el{' '}
-            <span className="font-bold">{examPrediction.mastery.projectedMasteryDate}</span>
+            <span className="font-bold">{prediction.mastery.projectedMasteryDate}</span>
           </p>
         </div>
-      ) : examPrediction.projection?.estimatedStudyCompletion ? (
+      ) : prediction.projection?.estimatedStudyCompletion ? (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-center">
           <p className="text-sm text-blue-700">
             📚 A tu ritmo actual, dominarás todo el temario para el{' '}
-            <span className="font-bold">{examPrediction.projection.estimatedStudyCompletion}</span>
+            <span className="font-bold">{prediction.projection.estimatedStudyCompletion}</span>
           </p>
           <p className="text-xs text-blue-500 mt-1">
-            Basado en {examPrediction.calculations?.temasPoSemana || examPrediction.projection?.temasPoSemana || 0} temas/semana
+            Basado en {prediction.calculations?.temasPoSemana || prediction.projection?.temasPoSemana || 0} temas/semana
           </p>
         </div>
-      ) : examPrediction.projection?.noMasteredYet ? (
+      ) : prediction.projection?.noMasteredYet ? (
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 text-center">
           <p className="text-sm text-amber-700">
             💡 Domina tu primer tema (≥80% precisión) para ver tu proyección
           </p>
         </div>
-      ) : examPrediction.projection?.allMastered ? (
+      ) : prediction.projection?.allMastered ? (
         <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4 text-center">
           <p className="text-sm text-green-700">
             ✅ ¡Felicidades! Has dominado todo el temario
@@ -287,11 +362,11 @@ export default function ExamPredictionMarch2025({ examPrediction }) {
       )}
 
       {/* Info sobre temas estudiados vs dominados */}
-      {examPrediction.mastery && examPrediction.mastery.masteredThemes < examPrediction.coverage?.studiedThemes && (
+      {prediction.mastery && prediction.mastery.masteredThemes < prediction.coverage?.studiedThemes && (
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 mb-4">
           <div className="text-xs text-center space-y-1">
             <span className="text-amber-700">
-              Tienes <strong>{examPrediction.coverage.studiedThemes}</strong> temas estudiados pero solo <strong>{examPrediction.mastery.masteredThemes}</strong> dominados
+              Tienes <strong>{prediction.coverage.studiedThemes}</strong> temas estudiados pero solo <strong>{prediction.mastery.masteredThemes}</strong> dominados
             </span>
             <div className="flex justify-center gap-4 mt-1">
               <span className="text-blue-600">📚 Estudiado: ≥50% precisión</span>
@@ -317,11 +392,11 @@ export default function ExamPredictionMarch2025({ examPrediction }) {
           </button>
           <div className="text-lg mb-1">📚</div>
           <div className="text-lg font-bold text-blue-700">
-            {examPrediction.coverage.studiedThemes} de {examPrediction.coverage.totalThemes}
+            {prediction.coverage.studiedThemes} de {prediction.coverage.totalThemes}
           </div>
           <div className="text-xs text-blue-600 mb-1">temas estudiados</div>
           <div className="text-xs text-blue-500">
-            {examPrediction.coverage.percentage}% completado
+            {prediction.coverage.percentage}% completado
           </div>
         </div>
 
@@ -338,11 +413,11 @@ export default function ExamPredictionMarch2025({ examPrediction }) {
           </button>
           <div className="text-lg mb-1">🎯</div>
           <div className="text-lg font-bold text-green-700">
-            {examPrediction.accuracy.current}%
+            {prediction.accuracy.current}%
           </div>
           <div className="text-xs text-green-600 mb-1">Aciertos</div>
           <div className="text-xs text-green-500">
-            Objetivo: {examPrediction.accuracy.target}%
+            Objetivo: {prediction.accuracy.target}%
           </div>
         </div>
 
@@ -359,11 +434,11 @@ export default function ExamPredictionMarch2025({ examPrediction }) {
           </button>
           <div className="text-lg mb-1">📈</div>
           <div className="text-lg font-bold text-purple-700">
-            +{parseFloat(examPrediction.dailyProgress.averageImprovement).toFixed(1)}%
+            +{parseFloat(String(prediction.dailyProgress.averageImprovement)).toFixed(1)}%
           </div>
           <div className="text-xs text-purple-600 mb-1">Mejora Diaria</div>
           <div className="text-xs text-purple-500">
-            Últimos {examPrediction.dailyProgress.daysAnalyzed} días
+            Últimos {prediction.dailyProgress.daysAnalyzed} días
           </div>
         </div>
 
@@ -380,7 +455,7 @@ export default function ExamPredictionMarch2025({ examPrediction }) {
           </button>
           <div className="text-lg mb-1">⏰</div>
           <div className="text-lg font-bold text-orange-700">
-            {examPrediction.timeEstimate.dailyHours}h
+            {prediction.timeEstimate.dailyHours}h
           </div>
           <div className="text-xs text-orange-600 mb-1">Horas/día recomendadas</div>
           <div className="text-xs text-orange-500">

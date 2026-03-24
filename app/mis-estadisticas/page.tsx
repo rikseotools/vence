@@ -935,10 +935,34 @@ function EstadisticasContent() {
                 current: accuracy,
                 target: 85
               },
-              dailyProgress: {
-                averageImprovement: 0.1,
-                daysAnalyzed: 7
-              },
+              dailyProgress: (() => {
+                // Calcular mejora real: accuracy últimos 7 días vs 7 días anteriores
+                const now = new Date()
+                const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const wp = apiStats.weeklyProgress || []
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const getAvgAccuracy = (startDaysAgo: number, endDaysAgo: number) => {
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  const days = wp.filter((d: any) => {
+                    const date = new Date(d.date)
+                    const daysAgo = Math.floor((today.getTime() - date.getTime()) / 86400000)
+                    return daysAgo >= endDaysAgo && daysAgo < startDaysAgo && d.questions > 0
+                  })
+                  if (days.length === 0) return null
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  return days.reduce((sum: number, d: any) => sum + d.accuracy, 0) / days.length
+                }
+                const recent = getAvgAccuracy(7, 0)
+                const previous = getAvgAccuracy(14, 7)
+                const improvement = (recent !== null && previous !== null) ? Math.round((recent - previous) * 10) / 10 : 0
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const daysWithData = wp.filter((d: any) => d.questions > 0).length
+                return {
+                  averageImprovement: improvement,
+                  daysAnalyzed: Math.min(daysWithData, 14)
+                }
+              })(),
               timeEstimate: {
                 dailyHours: Math.max(1, Math.min(4, Math.ceil((totalThemes - studiedThemes) * 30 / Math.max(1, daysRemaining) / 20))) || 2
               },
@@ -1022,7 +1046,6 @@ function EstadisticasContent() {
                   totalQuestions: apiStats.main.totalQuestions,
                   activeDays: diasEnVence, // Días desde registro
                   totalStudyTime: `${Math.round(apiStats.main.totalStudyTimeSeconds / 3600)}h`,
-                  averageImprovement: 0.1,
                   dailyQuestions: dailyQ, // Preguntas/día (última semana)
                   temasPoSemana, // Ritmo de dominio de temas
                   consistency: Math.round((activeDaysInWeek / 7) * 100),
