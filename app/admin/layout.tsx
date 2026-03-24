@@ -1,12 +1,33 @@
 // app/admin/layout.tsx - Layout base para área administrativa
 'use client'
+import { useState, useEffect, useCallback } from 'react'
 import ProtectedRoute from '@/components/Admin/ProtectedRoute'
 import { useAdminNotifications } from '@/hooks/useAdminNotifications'
 import { useLawChanges } from '@/hooks/useLawChanges'
+import { useAuth } from '@/contexts/AuthContext'
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const adminNotifications = useAdminNotifications(true)
   const { hasUnreviewedChanges } = useLawChanges()
+  const { supabase } = useAuth() as any
+  const [seguimientoChanges, setSeguimientoChanges] = useState(0)
+
+  const checkSeguimiento = useCallback(async () => {
+    if (!supabase) return
+    try {
+      const { count } = await supabase
+        .from('oposiciones')
+        .select('id', { count: 'exact', head: true })
+        .eq('seguimiento_change_status', 'changed')
+      setSeguimientoChanges(count || 0)
+    } catch {}
+  }, [supabase])
+
+  useEffect(() => {
+    checkSeguimiento()
+    const interval = setInterval(checkSeguimiento, 300000) // 5 minutos
+    return () => clearInterval(interval)
+  }, [checkSeguimiento])
 
   return (
     <ProtectedRoute>
@@ -142,10 +163,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   </a>
                   <a
                     href="/admin/seguimiento-convocatorias"
-                    className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1"
+                    className={`text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1 relative ${
+                      seguimientoChanges > 0 ? 'animate-pulse' : ''
+                    }`}
                   >
                     <span>📋</span>
                     <span>Seguimiento</span>
+                    {seguimientoChanges > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold animate-pulse">
+                        {seguimientoChanges}
+                      </span>
+                    )}
                   </a>
                   <a
                     href="/admin/revision-temas"
