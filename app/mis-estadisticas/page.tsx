@@ -576,7 +576,9 @@ function EstadisticasContent() {
 
               const fullTitle = t.temaNumber
                 ? (topicTitle ? `${bloquePrefix}: ${topicTitle}` : bloquePrefix)
-                : (t.title && !t.title.includes('Test Tema') ? t.title : 'Test Aleatorio')
+                : t.lawName
+                  ? `Test ${t.lawName}`
+                  : (t.title && !t.title.includes('Test Tema') ? t.title : 'Test Aleatorio')
               return {
                 id: t.id,
                 title: fullTitle,
