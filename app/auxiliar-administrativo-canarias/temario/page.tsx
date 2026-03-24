@@ -20,7 +20,7 @@ const BLOQUES = [
       { id: 6, titulo: 'El Gobierno de Canarias', descripcion: 'El Gobierno de Canarias. Composicion, funciones y organizacion.', disponible: false },
       { id: 7, titulo: 'Las islas y la Comunidad Autonoma de Canarias', descripcion: 'Las islas y la Comunidad Autonoma de Canarias. Los Cabildos Insulares.', disponible: false },
       { id: 8, titulo: 'El Presupuesto de la Comunidad Autonoma de Canarias', descripcion: 'El Presupuesto de la Comunidad Autonoma de Canarias. Elaboracion y aprobacion.', disponible: false },
-      { id: 9, titulo: 'La organizacion de la Union Europea', descripcion: 'La organizacion de la Union Europea. Instituciones y organos.', disponible: false },
+      { id: 9, titulo: 'La organizacion de la Union Europea', descripcion: 'La organizacion de la Union Europea. Instituciones y organos.', disponible: true },
       { id: 10, titulo: 'Igualdad efectiva de mujeres y hombres', descripcion: 'Igualdad efectiva de mujeres y hombres. Politicas de igualdad de genero.', disponible: true },
       { id: 11, titulo: 'Violencia de genero y discapacidad', descripcion: 'Violencia de genero. Prevencion y proteccion. Derechos de personas con discapacidad.', disponible: true },
       { id: 12, titulo: 'Actividad de las Administraciones Publicas', descripcion: 'La actividad de las Administraciones Publicas. Principios de actuacion.', disponible: true },

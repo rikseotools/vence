@@ -78,8 +78,8 @@ async function getTopicContentBaseInternal(
     .from(topicScope)
     .where(eq(topicScope.topicId, topic.id))
 
-  // Filtrar scopes válidos y extraer lawIds únicos
-  const validScopes = scopeResult.filter(s => s.lawId && s.articleNumbers && s.articleNumbers.length > 0)
+  // Filtrar scopes válidos: con lawId Y (artículos específicos O toda la ley con null)
+  const validScopes = scopeResult.filter(s => s.lawId && (s.articleNumbers === null || (s.articleNumbers && s.articleNumbers.length > 0)))
   if (validScopes.length === 0) {
     return {
       topicNumber: topic.topicNumber,
@@ -112,11 +112,19 @@ async function getTopicContentBaseInternal(
 
   // 4. Obtener artículos por ley - queries separadas para evitar timeout
   // con muchos parámetros IN (problema cuando hay 4+ leyes con 90+ artículos)
-  const scopeByLaw = new Map<string, string[]>()
+  // articleNumbers: null = toda la ley, articleNumbers: ['1','2'] = artículos específicos
+  const scopeByLaw = new Map<string, string[] | null>()
 
   for (const scope of validScopes) {
-    const existing = scopeByLaw.get(scope.lawId!) || []
-    scopeByLaw.set(scope.lawId!, [...existing, ...scope.articleNumbers!])
+    const existing = scopeByLaw.get(scope.lawId!)
+    if (scope.articleNumbers === null) {
+      // Toda la ley - marcar como null (override cualquier lista parcial)
+      scopeByLaw.set(scope.lawId!, null)
+    } else if (existing !== null) {
+      // Artículos específicos - agregar a la lista (solo si no es ya "toda la ley")
+      scopeByLaw.set(scope.lawId!, [...(existing || []), ...scope.articleNumbers])
+    }
+    // Si existing === null, ya es "toda la ley", no cambiar
   }
 
   // Query separada por cada ley - usa mejor el índice (law_id, article_number)
@@ -133,26 +141,27 @@ async function getTopicContentBaseInternal(
 
   // Ejecutar queries en paralelo para cada ley
   const articlePromises = Array.from(scopeByLaw.entries()).map(async ([lawId, articleNums]) => {
+    const selectFields = {
+      id: articles.id,
+      lawId: articles.lawId,
+      articleNumber: articles.articleNumber,
+      title: articles.title,
+      content: articles.content,
+      titleNumber: articles.titleNumber,
+      chapterNumber: articles.chapterNumber,
+      section: articles.section,
+    }
+
+    if (articleNums === null) {
+      // Toda la ley - sin filtro de article_number
+      return db.select(selectFields).from(articles).where(eq(articles.lawId, lawId))
+    }
+
+    // Artículos específicos
     const uniqueArticleNums = [...new Set(articleNums)]
-    const result = await db
-      .select({
-        id: articles.id,
-        lawId: articles.lawId,
-        articleNumber: articles.articleNumber,
-        title: articles.title,
-        content: articles.content,
-        titleNumber: articles.titleNumber,
-        chapterNumber: articles.chapterNumber,
-        section: articles.section,
-      })
-      .from(articles)
-      .where(
-        and(
-          eq(articles.lawId, lawId),
-          inArray(articles.articleNumber, uniqueArticleNums)
-        )
-      )
-    return result
+    return db.select(selectFields).from(articles).where(
+      and(eq(articles.lawId, lawId), inArray(articles.articleNumber, uniqueArticleNums))
+    )
   })
 
   const articlesResults = await Promise.all(articlePromises)
