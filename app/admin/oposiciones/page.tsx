@@ -74,7 +74,7 @@ export default function AdminOposicionesPage() {
   async function loadData() {
     setLoading(true)
     try {
-      // 1. Todo via API route (bypass RLS)
+      // 1. Todo via API route (bypass RLS, datos ya agregados en servidor)
       const res = await fetch('/api/admin/oposiciones-stats')
       const json = await res.json()
 
@@ -101,47 +101,10 @@ export default function AdminOposicionesPage() {
       }))
       setOposicionesConfig(configs)
 
-      // 3. Perfiles de usuarios
-      const profiles = json.profiles || []
-
-      if (profiles.length > 0) {
-        setTotalUsers(profiles.length)
-
-        // Contar usuarios por target_oposicion
-        const counts: Record<string, number> = {}
-        const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-
-        // Custom oposiciones (UUID)
-        const customMap = new Map<string, UserOposicion>()
-
-        profiles.forEach((p: any) => {
-          const key = p.targetOposicion || p.target_oposicion
-          if (!key) return
-          counts[key] = (counts[key] || 0) + 1
-
-          const data = p.targetOposicionData || p.target_oposicion_data
-          if (uuidPattern.test(key) && !customMap.has(key)) {
-            customMap.set(key, {
-              target_oposicion: key,
-              nombre: data?.nombre || null,
-              categoria: data?.categoria || null,
-              administracion: data?.administracion || null,
-              tipo: data?.tipo || null,
-              count: 0,
-            })
-          }
-        })
-
-        // Actualizar counts en custom
-        customMap.forEach((v, k) => {
-          v.count = counts[k] || 0
-        })
-
-        setUserCounts(counts)
-        setUserOposiciones(
-          Array.from(customMap.values()).sort((a, b) => b.count - a.count)
-        )
-      }
+      // 3. Datos de usuarios (ya agregados en el servidor)
+      setTotalUsers(json.totalUsers || 0)
+      setUserCounts(json.userCounts || {})
+      setUserOposiciones(json.customOposiciones || [])
     } catch (err) {
       console.error('Error loading data:', err)
     } finally {
@@ -260,12 +223,12 @@ export default function AdminOposicionesPage() {
 
       {/* Stats cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        <StatCard label="Onboarding" value={OFFICIAL_OPOSICIONES.length} color="blue" />
-        <StatCard label="Con temario" value={stats.withConfig.length} color="green" />
-        <StatCard label="Con convocatoria" value={stats.withBD.length} color="purple" />
-        <StatCard label="En las 3" value={stats.inAllThree.length} color="emerald" />
-        <StatCard label="Custom creadas" value={stats.customCount} color="orange" />
-        <StatCard label="Usuarios custom" value={stats.customUsers} sublabel={`de ${totalUsers}`} color="red" />
+        <StatCard label="En onboarding" value={OFFICIAL_OPOSICIONES.length} sublabel="lista oficial" color="blue" />
+        <StatCard label="Con temario" value={stats.withConfig.length} sublabel="tienen preguntas" color="green" />
+        <StatCard label="En BD" value={stats.withBD.length} sublabel="con convocatoria" color="purple" />
+        <StatCard label="Completas" value={stats.inAllThree.length} sublabel="onboarding+temario+BD" color="emerald" />
+        <StatCard label="Inventadas" value={stats.customCount} sublabel="creadas por usuarios" color="orange" />
+        <StatCard label="Usuarios sin oficial" value={stats.customUsers} sublabel={`eligieron custom (de ${totalUsers} total)`} color="red" />
       </div>
 
       {/* Tabs */}
@@ -289,7 +252,7 @@ export default function AdminOposicionesPage() {
 
       {/* Content */}
       {activeTab === 'cruzada' && <CrossTab data={crossData} />}
-      {activeTab === 'custom' && <CustomTab data={userOposiciones} />}
+      {activeTab === 'custom' && <CustomTab data={userOposiciones} onMigrated={loadData} />}
       {activeTab === 'onboarding' && <OnboardingTab />}
       {activeTab === 'config' && <ConfigTab data={oposicionesConfig} userCounts={userCounts} />}
       {activeTab === 'bd' && <BDTab data={oposicionesBD} userCounts={userCounts} />}
@@ -428,75 +391,182 @@ function CrossTab({ data }: { data: CrossReference[] }) {
 // TAB: Custom (usuarios)
 // ============================================
 
-function CustomTab({ data }: { data: UserOposicion[] }) {
-  // Detectar posibles duplicados con oficiales
-  const withDuplicateCheck = useMemo(() => {
-    return data.map(o => {
-      const nombre = (o.nombre || '').toLowerCase().replace(/[^a-záéíóúñ0-9\s]/g, ' ').trim()
-      let possibleMatch: string | null = null
+function findBestMatch(nombre: string): string | null {
+  const norm = nombre.toLowerCase().replace(/[^a-záéíóúñ0-9\s]/g, ' ').trim()
+  const words = norm.split(/\s+/).filter(w => w.length > 2)
+  if (words.length === 0) return null
 
-      OFFICIAL_OPOSICIONES.forEach(official => {
-        const officialNorm = official.nombre.toLowerCase().replace(/[^a-záéíóúñ0-9\s]/g, ' ').trim()
-        const words = nombre.split(/\s+/).filter(w => w.length > 2)
-        const matchCount = words.filter(w => officialNorm.includes(w)).length
-        if (words.length > 0 && matchCount / words.length >= 0.5) {
-          possibleMatch = official.nombre
-        }
-      })
+  let bestId: string | null = null
+  let bestScore = 0
 
-      return { ...o, possibleMatch }
+  OFFICIAL_OPOSICIONES.forEach(official => {
+    const officialNorm = official.nombre.toLowerCase().replace(/[^a-záéíóúñ0-9\s]/g, ' ').trim()
+    const matchCount = words.filter(w => officialNorm.includes(w)).length
+    const score = matchCount / words.length
+    if (score > bestScore && score >= 0.5) {
+      bestScore = score
+      bestId = official.id
+    }
+  })
+
+  return bestId
+}
+
+function CustomTab({ data, onMigrated }: { data: UserOposicion[]; onMigrated: () => void }) {
+  const [selections, setSelections] = useState<Record<string, string>>({})
+  const [migrating, setMigrating] = useState<string | null>(null)
+  const [migratedIds, setMigratedIds] = useState<Set<string>>(new Set())
+  const [message, setMessage] = useState<{ uuid: string; text: string; ok: boolean } | null>(null)
+
+  // Preseleccionar matches automaticos
+  useEffect(() => {
+    const initial: Record<string, string> = {}
+    data.forEach(o => {
+      if (o.nombre) {
+        const match = findBestMatch(o.nombre)
+        if (match) initial[o.target_oposicion] = match
+      }
     })
+    setSelections(initial)
   }, [data])
+
+  const handleMigrate = async (uuid: string, count: number) => {
+    const targetSlug = selections[uuid]
+    if (!targetSlug) return
+
+    const official = OFFICIAL_OPOSICIONES.find(o => o.id === targetSlug)
+    if (!official) return
+
+    const confirmed = window.confirm(
+      `Migrar ${count} usuario(s) de "${data.find(d => d.target_oposicion === uuid)?.nombre}" a "${official.nombre}"?`
+    )
+    if (!confirmed) return
+
+    setMigrating(uuid)
+    setMessage(null)
+
+    try {
+      const res = await fetch('/api/admin/oposiciones-migrate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fromUUID: uuid,
+          toSlug: targetSlug,
+          toData: {
+            id: official.id,
+            nombre: official.nombre,
+            categoria: official.categoria,
+            administracion: official.administracion,
+            tipo: 'oficial',
+          },
+        }),
+      })
+      const result = await res.json()
+
+      if (result.success) {
+        setMigratedIds(prev => new Set([...prev, uuid]))
+        setMessage({ uuid, text: `${result.migratedCount} usuarios migrados`, ok: true })
+        onMigrated()
+      } else {
+        setMessage({ uuid, text: result.error || 'Error', ok: false })
+      }
+    } catch (err) {
+      setMessage({ uuid, text: 'Error de conexion', ok: false })
+    } finally {
+      setMigrating(null)
+    }
+  }
+
+  const pending = data.filter(o => !migratedIds.has(o.target_oposicion))
 
   return (
     <div className="space-y-4">
       <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-700 rounded-lg p-3">
         <p className="text-sm text-orange-800 dark:text-orange-200">
-          <strong>{data.length}</strong> oposiciones creadas por usuarios que no encontraron la suya en el onboarding.
-          Las marcadas con "Posible duplicado" podrían mapearse a una oficial existente.
+          <strong>{pending.length}</strong> oposiciones inventadas por usuarios.
+          Selecciona a cual oficial corresponde cada una y pulsa "Migrar" para traspasar los usuarios.
+          {migratedIds.size > 0 && (
+            <span className="ml-2 font-bold text-green-700 dark:text-green-300">
+              ({migratedIds.size} migradas)
+            </span>
+          )}
         </p>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead className="bg-gray-50 dark:bg-gray-800">
-            <tr>
-              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Nombre</th>
-              <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Usuarios</th>
-              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Cat.</th>
-              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Admin.</th>
-              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Posible duplicado</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-            {withDuplicateCheck.map(o => (
-              <tr key={o.target_oposicion} className={`hover:bg-gray-50 dark:hover:bg-gray-800 ${
-                o.possibleMatch ? 'bg-yellow-50/50 dark:bg-yellow-900/10' : ''
-              }`}>
-                <td className="px-3 py-2">
-                  <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{o.nombre || 'Sin nombre'}</div>
-                  <div className="text-xs text-gray-400 font-mono">{o.target_oposicion.slice(0, 8)}...</div>
-                </td>
-                <td className="px-3 py-2 text-center">
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-orange-100 dark:bg-orange-800 text-orange-800 dark:text-orange-200">
-                    {o.count}
-                  </span>
-                </td>
-                <td className="px-3 py-2 text-xs text-gray-600 dark:text-gray-400">{o.categoria || '-'}</td>
-                <td className="px-3 py-2 text-xs text-gray-600 dark:text-gray-400">{o.administracion || '-'}</td>
-                <td className="px-3 py-2">
-                  {o.possibleMatch ? (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200">
-                      ~ {o.possibleMatch}
+      <div className="space-y-3">
+        {pending.map(o => {
+          const selected = selections[o.target_oposicion] || ''
+          const selectedOfficial = OFFICIAL_OPOSICIONES.find(off => off.id === selected)
+          const isMigrating = migrating === o.target_oposicion
+          const msg = message?.uuid === o.target_oposicion ? message : null
+
+          return (
+            <div
+              key={o.target_oposicion}
+              className={`border rounded-lg p-3 ${
+                selected
+                  ? 'border-yellow-300 dark:border-yellow-700 bg-yellow-50/50 dark:bg-yellow-900/10'
+                  : 'border-gray-200 dark:border-gray-700'
+              }`}
+            >
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                {/* Info de la custom */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      {o.nombre || 'Sin nombre'}
                     </span>
-                  ) : (
-                    <span className="text-xs text-gray-400">Nueva</span>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-orange-100 dark:bg-orange-800 text-orange-800 dark:text-orange-200">
+                      {o.count} usuario{o.count !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    {[o.categoria, o.administracion].filter(Boolean).join(' - ') || 'Sin categoria'}
+                    <span className="ml-2 font-mono text-gray-400">{o.target_oposicion.slice(0, 8)}...</span>
+                  </div>
+                </div>
+
+                {/* Selector de oficial */}
+                <div className="flex items-center gap-2">
+                  <select
+                    value={selected}
+                    onChange={e => setSelections({ ...selections, [o.target_oposicion]: e.target.value })}
+                    className="text-xs border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 max-w-[220px]"
+                  >
+                    <option value="">-- Mapear a oficial --</option>
+                    {OFFICIAL_OPOSICIONES.map(off => (
+                      <option key={off.id} value={off.id}>
+                        {off.nombre} ({off.categoria})
+                      </option>
+                    ))}
+                  </select>
+
+                  <button
+                    onClick={() => handleMigrate(o.target_oposicion, o.count)}
+                    disabled={!selected || isMigrating}
+                    className="px-3 py-1.5 text-xs font-medium rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+                  >
+                    {isMigrating ? 'Migrando...' : 'Migrar'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Match sugerido */}
+              {selected && selectedOfficial && (
+                <div className="mt-2 text-xs text-yellow-700 dark:text-yellow-300">
+                  Destino: <strong>{selectedOfficial.nombre}</strong> ({selectedOfficial.categoria} - {selectedOfficial.administracion})
+                </div>
+              )}
+
+              {/* Resultado */}
+              {msg && (
+                <div className={`mt-2 text-xs font-medium ${msg.ok ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                  {msg.text}
+                </div>
+              )}
+            </div>
+          )
+        })}
       </div>
     </div>
   )
