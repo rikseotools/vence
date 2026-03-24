@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server'
 import { getDb } from '@/db/client'
 import { userProfiles, oposiciones } from '@/db/schema'
 import { isNotNull } from 'drizzle-orm'
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -16,7 +17,7 @@ interface CustomOposicion {
   count: number
 }
 
-export async function GET() {
+async function _GET() {
   try {
     const db = getDb()
 
@@ -86,3 +87,5 @@ export async function GET() {
     )
   }
 }
+
+export const GET = withErrorLogging('/api/admin/oposiciones-stats', _GET)

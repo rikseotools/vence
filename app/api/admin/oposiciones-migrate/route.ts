@@ -3,9 +3,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getDb } from '@/db/client'
 import { userProfiles } from '@/db/schema'
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { eq } from 'drizzle-orm'
 
-export async function POST(request: NextRequest) {
+async function _POST(request: NextRequest) {
   try {
     const { fromUUID, toSlug, toData } = await request.json()
 
@@ -56,3 +57,5 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
+export const POST = withErrorLogging('/api/admin/oposiciones-migrate', _POST)

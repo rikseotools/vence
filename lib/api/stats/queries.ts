@@ -367,28 +367,9 @@ async function getThemePerformance(db: ReturnType<typeof getDb>, userId: string)
       }))
     }
 
-    // Si no hay caché, usar función en tiempo real (lento)
-    console.warn('⚠️ Caché vacío en fallback, calculando en tiempo real...')
-    const scopeResult = await db.execute(
-      sql`SELECT * FROM get_theme_performance_by_scope(${userId}::uuid)`
-    )
-
-    if (scopeResult && Array.isArray(scopeResult) && scopeResult.length > 0) {
-      const result = (scopeResult as any[]).map(row => ({
-        temaNumber: row.topic_number,
-        title: row.topic_title || null,
-        totalQuestions: Number(row.total_questions) || 0,
-        correctAnswers: Number(row.correct_answers) || 0,
-        accuracy: Number(row.accuracy) || 0,
-        averageTime: Math.round(Number(row.average_time) || 0),
-        lastPracticed: row.last_practiced,
-      }))
-      // Write-through: guardar en caché para próximas peticiones
-      writeThemePerformanceToCache(db, userId, result)
-      return result
-    }
+    // Si no hay caché, caer al fallback Drizzle directamente
   } catch (error) {
-    console.warn('⚠️ Error cargando theme performance, usando fallback básico:', error)
+    console.warn('⚠️ Error leyendo caché de theme performance:', error)
   }
 
   // Fallback al método antiguo si la función no existe

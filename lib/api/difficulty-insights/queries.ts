@@ -270,12 +270,14 @@ async function getQuestionEnrichment(
   if (questionIds.length === 0) return map
 
   try {
+    // Usar IN con sql.join para compatibilidad con Drizzle (no ANY con array)
+    const idList = sql.join(questionIds.map(id => sql`${id}::uuid`), sql`, `)
     const result = await db.execute(sql`
       SELECT q.id AS question_id, a.article_number, l.slug AS law_slug, l.short_name AS law_name
       FROM questions q
       INNER JOIN articles a ON q.primary_article_id = a.id
       INNER JOIN laws l ON a.law_id = l.id
-      WHERE q.id = ANY(${questionIds}::uuid[])
+      WHERE q.id IN (${idList})
     `)
 
     for (const row of result as Record<string, unknown>[]) {
