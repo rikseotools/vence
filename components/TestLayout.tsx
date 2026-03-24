@@ -2246,15 +2246,30 @@ export default function TestLayout({
                             </div>
                           )}
 
-                          {/* Botón de repetir test (misma configuración, preguntas nuevas) */}
-                          <div className="mb-4">
-                            <button
-                              onClick={() => window.location.reload()}
-                              className="px-8 py-3 rounded-lg font-semibold text-white transition-all bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-lg hover:shadow-xl text-base"
-                            >
-                              Repetir test
-                            </button>
-                          </div>
+                          {/* Botón de revisar fallos */}
+                          {currentTestSession && score < effectiveQuestions.length && (
+                            <div className="mb-4">
+                              <Link
+                                href={`/revisar/${currentTestSession.id}`}
+                                className="inline-flex items-center space-x-2 px-8 py-3 rounded-lg font-semibold text-white transition-all bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-lg hover:shadow-xl text-base"
+                              >
+                                <span>📊</span>
+                                <span>Revisar fallos</span>
+                              </Link>
+                            </div>
+                          )}
+                          {/* Si test perfecto, mostrar repetir */}
+                          {score === effectiveQuestions.length && (
+                            <div className="mb-4">
+                              <button
+                                onClick={() => window.location.reload()}
+                                className="inline-flex items-center space-x-2 px-8 py-3 rounded-lg font-semibold text-white transition-all bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 shadow-lg hover:shadow-xl text-base"
+                              >
+                                <span>🎉</span>
+                                <span>Repetir test</span>
+                              </button>
+                            </div>
+                          )}
 
                           {/* Botones de navegación */}
                           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
