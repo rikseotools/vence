@@ -87,14 +87,14 @@ export default function LawTestConfigurator({ lawShortName, lawDisplayName }: La
     lawsData
   })
 
-  // Validar que no hay NaN
+  // Validar que hay preguntas disponibles
   if (!lawStats || !lawStats.totalQuestions || isNaN(lawStats.totalQuestions)) {
-    console.warn('⚠️ LawStats inválidas, usando fallback')
     return (
       <div className="text-center p-8">
-        <div className="text-red-600 mb-4">⚠️ No se pudieron cargar las estadísticas de la ley</div>
-        <div className="text-sm text-gray-600">Law: {lawShortName}</div>
-        <div className="text-sm text-gray-600">Stats: {JSON.stringify(lawStats)}</div>
+        <div className="text-5xl mb-4">📚</div>
+        <h3 className="text-xl font-bold text-gray-700 mb-2">Esta ley aún no tiene preguntas de test</h3>
+        <p className="text-gray-500 mb-4">Estamos trabajando en añadir preguntas para {lawShortName}.</p>
+        <p className="text-sm text-gray-400">Mientras tanto puedes consultar la teoría de esta ley.</p>
       </div>
     )
   }
