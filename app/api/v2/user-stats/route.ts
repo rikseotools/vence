@@ -3,6 +3,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getUserPublicStats } from '@/lib/api/user-stats/queries'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+
+export const maxDuration = 10
+
 async function _GET(request: NextRequest) {
   try {
     const userId = request.nextUrl.searchParams.get('userId')
