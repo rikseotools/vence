@@ -85,7 +85,10 @@ INSERT INTO oposiciones (
   short_name, grupo, is_active, temas_count, bloques_count,
   titulo_requerido,
   diario_oficial, diario_referencia,
-  programa_url, seguimiento_url
+  programa_url, seguimiento_url,
+  -- Estado del proceso selectivo
+  estado_proceso, oep_decreto, oep_fecha,
+  convocatoria_numero, convocatoria_fecha, convocatoria_dogv
 ) VALUES (
   'Nombre Completo de la Oposicion',
   'libre',
@@ -101,9 +104,54 @@ INSERT INTO oposiciones (
   'BOE',                                      -- o BOCM, BOJA, DOE, DOCM, etc.
   'BOE-A-2025-26262',                         -- referencia en el diario oficial
   'https://www.boe.es/diario_boe/txt.php?id=BOE-A-2025-26262',  -- URL al programa
-  'https://sede.inap.gob.es/...'              -- URL de seguimiento del proceso
+  'https://sede.inap.gob.es/...',             -- URL de seguimiento del proceso
+  -- Estado del proceso
+  'oep_aprobada',                             -- ver tabla de estados abajo
+  'RD 1052/2025',                             -- decreto de la OEP
+  '2025-12-22',                               -- fecha de aprobacion de la OEP
+  NULL,                                       -- numero de convocatoria (cuando se publique)
+  NULL,                                       -- fecha de la convocatoria
+  NULL                                        -- referencia del diario de la convocatoria
 );
 ```
+
+### 2a.1 Estados del proceso selectivo (`estado_proceso`)
+
+El campo `estado_proceso` indica en que fase se encuentra la oposicion. Es **obligatorio** y determina que informacion se muestra al usuario en la landing y en el temario.
+
+| Estado | Significado | Que se muestra al usuario |
+|--------|------------|--------------------------|
+| `sin_oep` | No hay OEP aprobada. Solo existe la oposicion en la plataforma | "Pendiente de OEP" |
+| `oep_aprobada` | OEP aprobada (decreto publicado) pero sin convocatoria | "X plazas (OEP 2026). Pendiente de convocatoria" |
+| `convocada` | Convocatoria publicada pero inscripcion no abierta | "Convocada. Inscripcion proxima" |
+| `inscripcion_abierta` | Plazo de inscripcion abierto | "Inscripcion abierta hasta DD/MM/YYYY" |
+| `inscripcion_cerrada` | Inscripcion cerrada, esperando siguiente fase | "Inscripcion cerrada. Pendiente de lista admitidos" |
+| `lista_admitidos` | Lista de admitidos publicada | "Lista admitidos publicada" |
+| `pendiente_examen` | Fecha de examen conocida, esperando | "Examen: DD/MM/YYYY" |
+| `examen_realizado` | Examen ya realizado, esperando resultados | "Examen realizado. Pendiente de resultados" |
+| `resultados` | Resultados publicados | "Resultados publicados" |
+| `nombramientos` | Proceso finalizado | "Nombramientos realizados" |
+
+**IMPORTANTE:** Actualizar `estado_proceso` cuando cambie la fase. El seguimiento de convocatorias (cron) detecta cambios en la pagina de seguimiento, pero hay que actualizar manualmente el estado.
+
+### 2a.2 Campos de la OEP vs la Convocatoria
+
+La OEP y la convocatoria son documentos diferentes publicados en momentos distintos:
+
+| Campo | Fuente | Cuando se rellena |
+|-------|--------|-------------------|
+| `oep_decreto` | Decreto de la OEP (ej: "Decreto 16/2026") | Al crear la oposicion |
+| `oep_fecha` | Fecha publicacion de la OEP en el diario oficial | Al crear la oposicion |
+| `plazas_libres`, `plazas_*` | OEP o convocatoria | Al crear o al publicarse convocatoria |
+| `convocatoria_numero` | Convocatoria (ej: "14/23") | Cuando se publica la convocatoria |
+| `convocatoria_fecha` | Fecha publicacion convocatoria | Cuando se publica |
+| `convocatoria_dogv` | Referencia diario (ej: "DOGV-C-2026-xxxx") | Cuando se publica |
+| `inscription_start/deadline` | Convocatoria | Cuando se publica |
+| `exam_date` | Convocatoria o resolucion posterior | Cuando se conozca |
+| `programa_url` | Convocatoria (anexo con el temario) | Cuando se publica |
+| `seguimiento_url` | Pagina de seguimiento del proceso | **DEBE SER URL ESPECIFICA, no buscador generico** |
+
+**Error clasico con `seguimiento_url`:** NO poner un buscador generico de empleo publico (ej: `sede.gva.es/busc_empleo_publico`). Debe ser la URL de la ficha concreta del proceso selectivo. Si aun no existe (porque no esta convocada), usar la URL de la pagina de la OEP donde aparecera cuando se convoque.
 
 **Campos obligatorios de convocatoria:**
 - `diario_oficial`: nombre del boletin (BOE, BOCM, BOJA, BOC, DOE, DOCM, DOGV, DOG, BOA, BOPA, BOIB, BORM, BOCYL)
