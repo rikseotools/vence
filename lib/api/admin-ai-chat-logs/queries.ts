@@ -16,13 +16,14 @@ export async function getAiChatLogs(
   const db = getDb()
   const offset = (page - 1) * limit
 
-  // Obtener estadísticas generales
+  // Obtener estadísticas generales (solo logs no revisados = desde última auditoría)
   const allLogs = await db
     .select({
       feedback: aiChatLogs.feedback,
       hadError: aiChatLogs.hadError
     })
     .from(aiChatLogs)
+    .where(isNull(aiChatLogs.reviewedAt))
 
   const stats = {
     total: allLogs.length,
@@ -117,11 +118,11 @@ export async function getAiChatLogs(
       : null
   }))
 
-  // Top sugerencias
+  // Top sugerencias (solo no revisados)
   const suggestionsData = await db
     .select({ suggestionUsed: aiChatLogs.suggestionUsed })
     .from(aiChatLogs)
-    .where(isNotNull(aiChatLogs.suggestionUsed))
+    .where(isNull(aiChatLogs.reviewedAt))
 
   const suggestionCounts: Record<string, number> = {}
   for (const s of suggestionsData) {
@@ -134,10 +135,11 @@ export async function getAiChatLogs(
     .slice(0, 5)
     .map(([name, count]) => ({ name, count }))
 
-  // Top leyes
+  // Top leyes (solo no revisados)
   const lawLogsData = await db
     .select({ detectedLaws: aiChatLogs.detectedLaws })
     .from(aiChatLogs)
+    .where(isNull(aiChatLogs.reviewedAt))
 
   const lawCounts: Record<string, number> = {}
   for (const l of lawLogsData) {
@@ -151,11 +153,11 @@ export async function getAiChatLogs(
     .slice(0, 5)
     .map(([name, count]) => ({ name, count }))
 
-  // Tiempo de respuesta promedio
+  // Tiempo de respuesta promedio (solo no revisados)
   const responseTimesData = await db
     .select({ responseTimeMs: aiChatLogs.responseTimeMs })
     .from(aiChatLogs)
-    .where(isNotNull(aiChatLogs.responseTimeMs))
+    .where(isNull(aiChatLogs.reviewedAt))
 
   const validTimes = responseTimesData.filter(r => r.responseTimeMs !== null)
   const avgResponseTime = validTimes.length

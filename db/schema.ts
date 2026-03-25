@@ -3043,6 +3043,8 @@ export const aiChatLogs = pgTable("ai_chat_logs", {
 	feedback: text(),
 	feedbackComment: text("feedback_comment"),
 	reviewed: boolean().default(false),
+	reviewedAt: timestamp("reviewed_at", { withTimezone: true, mode: 'string' }),
+	reviewNotes: text("review_notes"),
 	hadDiscrepancy: boolean("had_discrepancy").default(false),
 	aiSuggestedAnswer: text("ai_suggested_answer"),
 	dbAnswer: text("db_answer"),

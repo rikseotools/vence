@@ -355,3 +355,31 @@ console.log(`qt=${qt} law=${law} followUp=${isFollowUp}`);
 - **Solución 1 (v2 - escalable)**: `loadLawsCache()` ahora también carga el campo `name` de la tabla `laws` y extrae keywords descriptivos. `extractLawFromMessage` tiene un nuevo paso 5 que hace keyword matching automático contra los nombres de BD. Esto hace que "ley del gobierno" → Ley 50/1997, "subvenciones" → Ley 38/2003, "contratos del sector público" → Ley 9/2017, etc., sin código adicional. Se eliminaron los patrones hardcodeados que ahora cubre la BD (gobierno, subvenciones, procedimiento administrativo, etc.). Solo quedan patrones para abreviaturas no derivables (CE, EBEP, TFUE) y desambiguación (transparencia).
 - **Causa raíz 2**: `StatsDomain.canHandle()` solo miraba `detectStatsQueryType(currentMessage)`, no el historial de conversación. `SearchDomain` (prioridad 3) capturaba antes que `StatsDomain` (prioridad 4) por detectar mención de ley
 - **Solución 2**: `StatsDomain.canHandle()` ahora detecta follow-ups mirando si la última respuesta del assistant fue de stats + el mensaje actual menciona una ley. `SearchDomain.canHandle()` cede el control cuando el contexto previo era de stats. Verificado con simulación de 20 casos (4 escenarios).
+
+### 6. ErrorDetector: falsos positivos en impugnaciones automáticas (2026-03-25)
+- **Problema**: La IA creaba impugnaciones automáticas aunque su respuesta coincidía con la BD. Los patrones P5 (`contradice el/la artículo`) y P6 (`según el artículo...no es`) matcheaban frases de la IA al explicar por qué las opciones incorrectas son incorrectas (ej: "lo cual contradice el artículo 147").
+- **Solución**: Eliminados P5 y P6 de `ErrorDetector.ts`. Los patrones restantes (P1-P4) detectan errores reales donde la IA usa explícitamente "POSIBLE ERROR" o "debería ser".
+
+### 7. DynamicTest sin contexto para chat IA (2026-03-25)
+- **User**: anon (2026-03-25)
+- **Problema**: `DynamicTest.js` no llamaba a `setQuestionContext()`, así que el chat IA no tenía las opciones A/B/C/D. La IA respondía genéricamente "A: Si esta opción es..." sin saber qué eran. Afectaba al ~4.8% de solicitudes `explicar_respuesta` (36 de 746).
+- **Solución**: Migrado `DynamicTest.js` → `DynamicTest.tsx` con `setQuestionContext` + warning en API si llega `explicar_respuesta` sin contexto.
+
+## Resetear estadísticas tras auditoría
+
+Las estadísticas del panel admin (`/admin/ai`) — positivos, negativos, satisfacción, tiempo de respuesta — se calculan **solo sobre logs no revisados** (`reviewed_at IS NULL`). Al marcar todos los logs como revisados tras una auditoría, las stats se resetean automáticamente.
+
+### Cómo resetear
+
+```javascript
+// Marcar todos como revisados (resetea las stats del panel admin)
+const { error } = await supabase
+  .from('ai_chat_logs')
+  .update({
+    reviewed_at: new Date().toISOString(),
+    review_notes: 'Auditoría completada YYYY-MM-DD: [resumen de hallazgos y fixes]'
+  })
+  .is('reviewed_at', null);
+```
+
+Esto hace que las stats del panel empiecen de cero para el siguiente ciclo de auditoría.
