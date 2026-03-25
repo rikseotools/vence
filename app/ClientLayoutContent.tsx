@@ -3,7 +3,7 @@
 import { ReactNode, useEffect } from 'react'
 import HeaderES from './Header'
 import FooterES from './Footer'
-import Breadcrumbs from '../components/Breadcrumbs'
+// Breadcrumbs.js eliminado — InteractiveBreadcrumbs cubre todas las rutas
 import PushNotificationManager from '../components/PushNotificationManager'
 import OnboardingModal from '../components/OnboardingModal'
 import { useAuth } from '../contexts/AuthContext'
@@ -25,18 +25,7 @@ export default function ClientLayoutContent({ children }: { children: ReactNode 
   return (
     <>
       <HeaderES />
-      {/* Breadcrumbs solo para usuarios no logueados Y solo en páginas que no tengan breadcrumbs específicos */}
-      {!user && !loading &&
-       !pathname.startsWith('/leyes') &&
-       !pathname.startsWith('/teoria') &&
-       !pathname.startsWith('/auxiliar-administrativo-estado/test') &&
-       !pathname.startsWith('/auxiliar-administrativo-estado/temario') &&
-       !pathname.startsWith('/administrativo-estado/test') &&
-       !pathname.startsWith('/administrativo-estado/temario') &&
-       !pathname.includes('/constitucion-titulos') &&
-       !pathname.includes('/test-de-la-constitucion-espanola-de-1978') && (
-        <Breadcrumbs />
-      )}
+      {/* Breadcrumbs eliminados del layout global — cada página usa InteractiveBreadcrumbs */}
       {children}
       <FooterES />
 

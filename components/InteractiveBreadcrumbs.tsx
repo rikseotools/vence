@@ -1,4 +1,4 @@
-// components/InteractiveBreadcrumbs.js
+// components/InteractiveBreadcrumbs.tsx
 'use client'
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
@@ -9,15 +9,36 @@ import { useAuth } from '../contexts/AuthContext'
 import { OPOSICIONES, getBlockForTopic } from '@/lib/config/oposiciones'
 import CcaaFlag, { hasCcaaFlag } from './CcaaFlag'
 
+interface OppositionOption {
+  key: string
+  label: string
+  name: string
+  emoji: string
+  hasFlag: boolean
+  path: string
+  oposicionId: string | null
+}
+
+interface SectionOption {
+  key: string
+  label: string
+  path: string
+}
+
+interface InteractiveBreadcrumbsProps {
+  customLabels?: Record<string, string>
+  className?: string
+}
+
 const supabase = getSupabaseClient()
 
-export default function InteractiveBreadcrumbs({ customLabels = {}, className = "" }) {
+export default function InteractiveBreadcrumbs({ customLabels = {}, className = "" }: InteractiveBreadcrumbsProps) {
   const pathname = usePathname()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [openDropdown, setOpenDropdown] = useState(null)
-  const [dropdownSearch, setDropdownSearch] = useState('')
-  const [toast, setToast] = useState(null)
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null)
+  const [dropdownSearch, setDropdownSearch] = useState<string>('')
+  const [toast, setToast] = useState<string | null>(null)
   const { user } = useAuth()
 
   // Detectar si venimos de un cambio de oposición (query param)
@@ -63,7 +84,7 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
   // Opciones disponibles para cambiar de oposición/sección
   // Generado dinámicamente desde config central
   const currentSection = getCurrentSection()
-  const oppositionOptions = [
+  const oppositionOptions: OppositionOption[] = [
     ...OPOSICIONES.map(o => ({
       key: o.slug,
       label: `${o.emoji} ${o.name}`,
@@ -86,7 +107,7 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
   }, [dropdownSearch, oppositionOptions])
 
   // Opciones de sección específicas según contexto
-  const getSectionOptions = () => {
+  const getSectionOptions = (): SectionOption[] => {
     if (isAuxiliarAdmin) {
       return [
         { key: 'info', label: 'ℹ️ Información', path: '' },
@@ -251,7 +272,7 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
     if (isInSpecificLaw) {
       const lawSlug = pathname.split('/leyes/')[1]?.split('/')[0]
       // Mapear algunos slugs comunes a nombres legibles
-      const lawNames = {
+      const lawNames: Record<string, string> = {
         'constitucion-espanola': 'Constitución Española',
         'rdl-5-2015': 'Real Decreto-Ley 5/2015',
         'ley-39-2015': 'Ley 39/2015',
@@ -272,7 +293,7 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
     }
     if (isInSpecificTheory) {
       const theorySlug = pathname.split('/teoria/')[1]?.split('/')[0]
-      const lawNames = {
+      const lawNames: Record<string, string> = {
         'constitucion-espanola': 'Constitución Española',
         'rdl-5-2015': 'Real Decreto-Ley 5/2015',
         'ley-39-2015': 'Ley 39/2015',
@@ -299,7 +320,7 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
   )
 
   // Función para cambiar de oposición (va a la página principal de la nueva oposición)
-  const changeOpposition = async (option) => {
+  const changeOpposition = async (option: OppositionOption) => {
     console.log('🔄 changeOpposition llamado:', option)
     setOpenDropdown(null)
 
@@ -351,7 +372,7 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
   }
 
   // Función para cambiar de sección manteniendo la oposición actual
-  const changeSection = (newSectionPath) => {
+  const changeSection = (newSectionPath: string) => {
     let finalPath = ''
     
     // Si la ruta ya incluye una base completa (como /leyes/test), usarla directamente
@@ -495,7 +516,7 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
                           className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded-md transition-colors text-sm flex items-center gap-1.5"
                         >
                           {option.hasFlag ? (
-                            <><CcaaFlag oposicionId={option.oposicionId} /> {option.name}</>
+                            <><CcaaFlag oposicionId={option.oposicionId!} /> {option.name}</>
                           ) : (
                             option.label
                           )}
@@ -684,7 +705,7 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
 
             if (categoriaMatch) {
               const categoria = categoriaMatch[1]
-              const categoriaLabels = {
+              const categoriaLabels: Record<string, string> = {
                 'capacidad-administrativa': '📊 Capacidad Administrativa',
                 'razonamiento-numerico': '🔢 Razonamiento Numérico',
                 'razonamiento-verbal': '📝 Razonamiento Verbal'
