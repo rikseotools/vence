@@ -1,7 +1,7 @@
 // lib/api/admin-ai-chat-logs/queries.ts
 import { getDb } from '@/db/client'
 import { aiChatLogs, userProfiles } from '@/db/schema'
-import { desc, eq, isNull, isNotNull, inArray } from 'drizzle-orm'
+import { desc, eq, isNull, isNotNull, inArray, and } from 'drizzle-orm'
 import type { AiChatLogsResponse } from './schemas'
 
 // ============================================
@@ -54,24 +54,28 @@ export async function getAiChatLogs(
     createdAt: aiChatLogs.createdAt
   }
 
+  // Solo mostrar logs no revisados (se resetean al marcar como revisados tras auditoría)
+  const notReviewed = isNull(aiChatLogs.reviewedAt)
+
   let logs
   if (feedbackFilter === 'positive') {
     logs = await db.select(baseSelect).from(aiChatLogs)
-      .where(eq(aiChatLogs.feedback, 'positive'))
+      .where(and(notReviewed, eq(aiChatLogs.feedback, 'positive')))
       .orderBy(desc(aiChatLogs.createdAt))
       .offset(offset).limit(limit)
   } else if (feedbackFilter === 'negative') {
     logs = await db.select(baseSelect).from(aiChatLogs)
-      .where(eq(aiChatLogs.feedback, 'negative'))
+      .where(and(notReviewed, eq(aiChatLogs.feedback, 'negative')))
       .orderBy(desc(aiChatLogs.createdAt))
       .offset(offset).limit(limit)
   } else if (feedbackFilter === 'none') {
     logs = await db.select(baseSelect).from(aiChatLogs)
-      .where(isNull(aiChatLogs.feedback))
+      .where(and(notReviewed, isNull(aiChatLogs.feedback)))
       .orderBy(desc(aiChatLogs.createdAt))
       .offset(offset).limit(limit)
   } else {
     logs = await db.select(baseSelect).from(aiChatLogs)
+      .where(notReviewed)
       .orderBy(desc(aiChatLogs.createdAt))
       .offset(offset).limit(limit)
   }
