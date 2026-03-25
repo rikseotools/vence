@@ -32,8 +32,8 @@ const ERROR_PATTERNS = [
   /ERROR\s*DETECTADO/i,
   // Solo detectar error si dice "debería ser" o "sería" (no "es" que es confirmación)
   /la\s+respuesta\s+correcta\s+(debería|sería)\s+/i,
-  /contradice\s+(el|la|lo)\s+(artículo|ley|normativa)/i,
-  /según\s+(el|la)\s+artículo.*(?:no\s+es|es\s+incorrecta)/i,
+  // ELIMINADOS P5 y P6: generaban falsos positivos cuando la IA explicaba
+  // por qué las opciones incorrectas son incorrectas (ej: "contradice el artículo 147")
 ]
 
 const CONFIRMATION_PATTERNS = [
