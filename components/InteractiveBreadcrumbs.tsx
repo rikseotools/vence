@@ -54,7 +54,7 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
       setTimeout(() => setToast(null), 3000)
     }
   }, [searchParams])
-  
+
   // Mapeo de rutas a etiquetas legibles
   const defaultLabels = {
     'es': '🇪🇸 España',
@@ -71,13 +71,31 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
   // Combinar etiquetas por defecto con personalizadas
   const labels = { ...defaultLabels, ...customLabels }
 
+  // Detectar la oposición actual dinámicamente desde config
+  const currentOpo = OPOSICIONES.find(o => pathname.includes('/' + o.slug))
+  const isOposicion = !!currentOpo
+
+  // Detectar contextos especiales (no oposición)
+  const isLeyes = pathname.includes('/leyes')
+  const isTeoria = pathname.includes('/teoria')
+  const isInTests = pathname.includes('/test')
+  const isPsicotecnicos = pathname.includes('/psicotecnicos')
+  const isInTemario = pathname.includes('/temario')
+  const isPorLeyes = pathname === '/test/por-leyes' || pathname === '/test/multi-ley'
+
+  // Tests independientes bajo /test/ que no pertenecen a ninguna oposición
+  const isStandaloneTest = pathname.startsWith('/test/') && !currentOpo
+
+  // Detectar si estamos en página de información (página principal de oposición)
+  const isInInfo = currentOpo ? pathname === '/' + currentOpo.slug : false
+
   // Detectar la sección actual (test, temario, info, etc.)
   const getCurrentSection = () => {
     if (pathname.includes('/test')) return '/test'
     if (pathname.includes('/temario')) return '/temario'
     if (pathname.includes('/simulacros')) return '/simulacros'
     // Si estamos en página principal de oposición (información), mantener vacío
-    if (pathname === '/auxiliar-administrativo-estado' || pathname === '/administrativo-estado' || pathname === '/tramitacion-procesal' || pathname === '/auxilio-judicial' || pathname === '/auxiliar-administrativo-carm' || pathname === '/auxiliar-administrativo-cyl' || pathname === '/auxiliar-administrativo-madrid' || pathname === '/auxiliar-administrativo-canarias' || pathname === '/auxiliar-administrativo-clm' || pathname === '/auxiliar-administrativo-extremadura' || pathname === '/auxiliar-administrativo-valencia' || pathname === '/auxiliar-administrativo-galicia' || pathname === '/auxiliar-administrativo-aragon' || pathname === '/auxiliar-administrativo-asturias' || pathname === '/auxiliar-administrativo-baleares' || pathname === '/auxiliar-administrativo-ayuntamiento-valencia') return ''
+    if (isInInfo) return ''
     return '/test' // Por defecto ir a tests (para otras páginas como /leyes)
   }
 
@@ -108,102 +126,7 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
 
   // Opciones de sección específicas según contexto
   const getSectionOptions = (): SectionOption[] => {
-    if (isAuxiliarAdmin) {
-      return [
-        { key: 'info', label: 'ℹ️ Información', path: '' },
-        { key: 'test', label: '🎯 Tests', path: '/test' },
-        { key: 'temario', label: '📚 Temario', path: '/temario' }
-      ]
-    } else if (isAdministrativo) {
-      return [
-        { key: 'info', label: 'ℹ️ Información', path: '' },
-        { key: 'test', label: '🎯 Tests', path: '/test' }
-      ]
-    } else if (isTramitacionProcesal) {
-      return [
-        { key: 'info', label: 'ℹ️ Información', path: '' },
-        { key: 'test', label: '🎯 Tests', path: '/test' },
-        { key: 'temario', label: '📚 Temario', path: '/temario' }
-      ]
-    } else if (isAuxilioJudicial) {
-      return [
-        { key: 'info', label: 'ℹ️ Información', path: '' },
-        { key: 'test', label: '🎯 Tests', path: '/test' },
-        { key: 'temario', label: '📚 Temario', path: '/temario' }
-      ]
-    } else if (isCarm) {
-      return [
-        { key: 'info', label: 'ℹ️ Información', path: '' },
-        { key: 'test', label: '🎯 Tests', path: '/test' },
-        { key: 'temario', label: '📚 Temario', path: '/temario' }
-      ]
-    } else if (isCyl) {
-      return [
-        { key: 'info', label: 'ℹ️ Información', path: '' },
-        { key: 'test', label: '🎯 Tests', path: '/test' },
-        { key: 'temario', label: '📚 Temario', path: '/temario' }
-      ]
-    } else if (isAndalucia) {
-      return [
-        { key: 'info', label: 'ℹ️ Información', path: '' },
-        { key: 'test', label: '🎯 Tests', path: '/test' },
-        { key: 'temario', label: '📚 Temario', path: '/temario' }
-      ]
-    } else if (isMadrid) {
-      return [
-        { key: 'info', label: 'ℹ️ Información', path: '' },
-        { key: 'test', label: '🎯 Tests', path: '/test' },
-        { key: 'temario', label: '📚 Temario', path: '/temario' }
-      ]
-    } else if (isCanarias) {
-      return [
-        { key: 'info', label: 'ℹ️ Información', path: '' },
-        { key: 'test', label: '🎯 Tests', path: '/test' },
-        { key: 'temario', label: '📚 Temario', path: '/temario' }
-      ]
-    } else if (isClm) {
-      return [
-        { key: 'info', label: 'ℹ️ Información', path: '' },
-        { key: 'test', label: '🎯 Tests', path: '/test' },
-        { key: 'temario', label: '📚 Temario', path: '/temario' }
-      ]
-    } else if (isExtremadura) {
-      return [
-        { key: 'info', label: 'ℹ️ Información', path: '' },
-        { key: 'test', label: '🎯 Tests', path: '/test' },
-        { key: 'temario', label: '📚 Temario', path: '/temario' }
-      ]
-    } else if (isValencia) {
-      return [
-        { key: 'info', label: 'ℹ️ Información', path: '' },
-        { key: 'test', label: '🎯 Tests', path: '/test' },
-        { key: 'temario', label: '📚 Temario', path: '/temario' }
-      ]
-    } else if (isGalicia) {
-      return [
-        { key: 'info', label: 'ℹ️ Información', path: '' },
-        { key: 'test', label: '🎯 Tests', path: '/test' },
-        { key: 'temario', label: '📚 Temario', path: '/temario' }
-      ]
-    } else if (isAragon) {
-      return [
-        { key: 'info', label: 'ℹ️ Información', path: '' },
-        { key: 'test', label: '🎯 Tests', path: '/test' },
-        { key: 'temario', label: '📚 Temario', path: '/temario' }
-      ]
-    } else if (isAsturias) {
-      return [
-        { key: 'info', label: 'ℹ️ Información', path: '' },
-        { key: 'test', label: '🎯 Tests', path: '/test' },
-        { key: 'temario', label: '📚 Temario', path: '/temario' }
-      ]
-    } else if (isBaleares) {
-      return [
-        { key: 'info', label: 'ℹ️ Información', path: '' },
-        { key: 'test', label: '🎯 Tests', path: '/test' },
-        { key: 'temario', label: '📚 Temario', path: '/temario' }
-      ]
-    } else if (isAytoValencia) {
+    if (currentOpo) {
       return [
         { key: 'info', label: 'ℹ️ Información', path: '' },
         { key: 'test', label: '🎯 Tests', path: '/test' },
@@ -228,45 +151,14 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
 
   // Dividir la ruta en segmentos
   const pathSegments = pathname.split('/').filter(segment => segment !== '')
-  
+
   // Si estamos en la página raíz, no mostrar breadcrumbs
   if (pathSegments.length === 0) return null
-
-  // Detectar el contexto actual
-  const isAuxiliarAdmin = pathname.includes('auxiliar-administrativo-estado')
-  const isAdministrativo = pathname.includes('/administrativo-estado')
-  const isTramitacionProcesal = pathname.includes('/tramitacion-procesal')
-  const isAuxilioJudicial = pathname.includes('/auxilio-judicial')
-  const isCarm = pathname.includes('/auxiliar-administrativo-carm')
-  const isCyl = pathname.includes('/auxiliar-administrativo-cyl')
-  const isAndalucia = pathname.includes('/auxiliar-administrativo-andalucia')
-  const isMadrid = pathname.includes('/auxiliar-administrativo-madrid')
-  const isCanarias = pathname.includes('/auxiliar-administrativo-canarias')
-  const isClm = pathname.includes('/auxiliar-administrativo-clm')
-  const isExtremadura = pathname.includes('/auxiliar-administrativo-extremadura')
-  const isAytoValencia = pathname.includes('/auxiliar-administrativo-ayuntamiento-valencia')
-  const isValencia = pathname.includes('/auxiliar-administrativo-valencia') && !isAytoValencia
-  const isGalicia = pathname.includes('/auxiliar-administrativo-galicia')
-  const isAragon = pathname.includes('/auxiliar-administrativo-aragon')
-  const isAsturias = pathname.includes('/auxiliar-administrativo-asturias')
-  const isBaleares = pathname.includes('/auxiliar-administrativo-baleares')
-  const isLeyes = pathname.includes('/leyes')
-  const isTeoria = pathname.includes('/teoria')
-  const isInTests = pathname.includes('/test')
-  const isPsicotecnicos = pathname.includes('/psicotecnicos')
-  const isInTemario = pathname.includes('/temario')
-  const isPorLeyes = pathname === '/test/por-leyes' || pathname === '/test/multi-ley'
-
-  // Tests independientes bajo /test/ que no pertenecen a ninguna oposición
-  const isStandaloneTest = pathname.startsWith('/test/') && !isAuxiliarAdmin && !isAdministrativo && !isTramitacionProcesal && !isAuxilioJudicial && !isCarm && !isCyl && !isAndalucia && !isMadrid && !isCanarias && !isClm && !isExtremadura && !isValencia && !isGalicia && !isAragon && !isAsturias && !isBaleares && !isAytoValencia
-
-  // Detectar si estamos en página de información (página principal de oposición)
-  const isInInfo = (pathname === '/auxiliar-administrativo-estado' || pathname === '/administrativo-estado' || pathname === '/tramitacion-procesal' || pathname === '/auxilio-judicial' || pathname === '/auxiliar-administrativo-carm' || pathname === '/auxiliar-administrativo-cyl' || pathname === '/auxiliar-administrativo-andalucia' || pathname === '/auxiliar-administrativo-madrid' || pathname === '/auxiliar-administrativo-canarias' || pathname === '/auxiliar-administrativo-clm' || pathname === '/auxiliar-administrativo-extremadura' || pathname === '/auxiliar-administrativo-valencia' || pathname === '/auxiliar-administrativo-galicia' || pathname === '/auxiliar-administrativo-aragon' || pathname === '/auxiliar-administrativo-asturias' || pathname === '/auxiliar-administrativo-baleares' || pathname === '/auxiliar-administrativo-ayuntamiento-valencia')
 
   // Detectar si estamos en una ley específica
   const isInSpecificLaw = pathname.startsWith('/leyes/') && pathname !== '/leyes' && !pathname.includes('/test')
   const isInSpecificTheory = pathname.startsWith('/teoria/') && pathname !== '/teoria'
-  
+
   // Obtener nombre de la ley desde el pathname
   const getLawName = () => {
     if (isInSpecificLaw) {
@@ -374,53 +266,38 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
   // Función para cambiar de sección manteniendo la oposición actual
   const changeSection = (newSectionPath: string) => {
     let finalPath = ''
-    
+
     // Si la ruta ya incluye una base completa (como /leyes/test), usarla directamente
     if (newSectionPath.includes('/') && !newSectionPath.startsWith('/test') && !newSectionPath.startsWith('/temario') && !newSectionPath.startsWith('/psicotecnicos')) {
       finalPath = newSectionPath
     } else {
       // Determinar la ruta base según la oposición actual
-      const currentOpo = OPOSICIONES.find(o => pathname.includes(`/${o.slug}`))
-      let basePath = currentOpo ? `/${currentOpo.slug}` : (isLeyes ? '/leyes' : '')
+      const activeOpo = OPOSICIONES.find(o => pathname.includes(`/${o.slug}`))
+      let basePath = activeOpo ? `/${activeOpo.slug}` : (isLeyes ? '/leyes' : '')
       finalPath = basePath + newSectionPath
     }
-    
+
     router.push(finalPath)
     setOpenDropdown(null)
   }
 
   return (
-    <nav 
+    <nav
       className={`bg-gray-50 border-b border-gray-200 py-3 ${className}`}
       aria-label="Breadcrumb"
     >
       <div className="container mx-auto px-4">
         <ol className="flex items-center space-x-2 text-sm">
           {/* Breadcrumb para Oposición */}
-          {(isAuxiliarAdmin || isAdministrativo || isTramitacionProcesal || isAuxilioJudicial || isCarm || isCyl || isAndalucia || isMadrid || isCanarias || isClm || isExtremadura || isValencia || isGalicia || isAragon || isAsturias || isBaleares || isAytoValencia || isLeyes || isTeoria || isPsicotecnicos || isStandaloneTest) && (
+          {(isOposicion || isLeyes || isTeoria || isPsicotecnicos || isStandaloneTest) && (
+
             <li className="flex items-center relative">
               <div className="flex items-center">
                 {/* Texto clickeable para ir a la página principal (solo si no estamos ya ahí) */}
                 {(() => {
                   // Determinar si mostrar link (no estamos en la página principal)
                   const showAsLink =
-                    (isAuxiliarAdmin && pathname !== '/auxiliar-administrativo-estado') ||
-                    (isAdministrativo && pathname !== '/administrativo-estado') ||
-                    (isTramitacionProcesal && pathname !== '/tramitacion-procesal') ||
-                    (isAuxilioJudicial && pathname !== '/auxilio-judicial') ||
-                    (isCarm && pathname !== '/auxiliar-administrativo-carm') ||
-                    (isCyl && pathname !== '/auxiliar-administrativo-cyl') ||
-                    (isAndalucia && pathname !== '/auxiliar-administrativo-andalucia') ||
-                    (isMadrid && pathname !== '/auxiliar-administrativo-madrid') ||
-                    (isCanarias && pathname !== '/auxiliar-administrativo-canarias') ||
-                    (isClm && pathname !== '/auxiliar-administrativo-clm') ||
-                    (isExtremadura && pathname !== '/auxiliar-administrativo-extremadura') ||
-                    (isValencia && pathname !== '/auxiliar-administrativo-valencia') ||
-                    (isGalicia && pathname !== '/auxiliar-administrativo-galicia') ||
-                    (isAragon && pathname !== '/auxiliar-administrativo-aragon') ||
-                    (isAsturias && pathname !== '/auxiliar-administrativo-asturias') ||
-                    (isBaleares && pathname !== '/auxiliar-administrativo-baleares') ||
-                    (isAytoValencia && pathname !== '/auxiliar-administrativo-ayuntamiento-valencia') ||
+                    (currentOpo && pathname !== '/' + currentOpo.slug) ||
                     (isLeyes && pathname !== '/leyes') ||
                     (isTeoria && pathname !== '/teoria') ||
                     (isPsicotecnicos && pathname !== '/psicotecnicos') ||
@@ -429,52 +306,22 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
 
                   // Determinar href
                   const linkHref =
-                    isAuxiliarAdmin ? '/auxiliar-administrativo-estado' :
-                    isAdministrativo ? '/administrativo-estado' :
-                    isTramitacionProcesal ? '/tramitacion-procesal' :
-                    isAuxilioJudicial ? '/auxilio-judicial' :
-                    isCarm ? '/auxiliar-administrativo-carm' :
-                    isCyl ? '/auxiliar-administrativo-cyl' :
-                    isAndalucia ? '/auxiliar-administrativo-andalucia' :
-                    isMadrid ? '/auxiliar-administrativo-madrid' :
-                    isCanarias ? '/auxiliar-administrativo-canarias' :
-                    isClm ? '/auxiliar-administrativo-clm' :
-                    isExtremadura ? '/auxiliar-administrativo-extremadura' :
-                    isValencia ? '/auxiliar-administrativo-valencia' :
-                    isGalicia ? '/auxiliar-administrativo-galicia' :
-                    isAragon ? '/auxiliar-administrativo-aragon' :
-                    isAsturias ? '/auxiliar-administrativo-asturias' :
-                    isBaleares ? '/auxiliar-administrativo-baleares' :
-                    isAytoValencia ? '/auxiliar-administrativo-ayuntamiento-valencia' :
+                    currentOpo ? '/' + currentOpo.slug :
                     isLeyes ? '/leyes' :
                     isTeoria ? '/teoria' :
                     isPsicotecnicos ? '/psicotecnicos' :
                     isPorLeyes ? '/test/por-leyes' :
                     isStandaloneTest ? '/test/por-leyes' : '#'
 
-                  // Determinar texto (JSX para CCAA con banderas SVG)
-                  const labelContent =
-                    isCarm ? <><CcaaFlag oposicionId="auxiliar_administrativo_carm" /> Aux. Admin. CARM</> :
-                    isCyl ? <><CcaaFlag oposicionId="auxiliar_administrativo_cyl" /> Aux. Admin. CyL</> :
-                    isAndalucia ? <><CcaaFlag oposicionId="auxiliar_administrativo_andalucia" /> Aux. Admin. Andalucía</> :
-                    isMadrid ? <><CcaaFlag oposicionId="auxiliar_administrativo_madrid" /> Aux. Admin. Madrid</> :
-                    isCanarias ? <><CcaaFlag oposicionId="auxiliar_administrativo_canarias" /> Aux. Admin. Canarias</> :
-                    isClm ? <><CcaaFlag oposicionId="auxiliar_administrativo_clm" /> Aux. Admin. CLM</> :
-                    isExtremadura ? <><CcaaFlag oposicionId="auxiliar_administrativo_extremadura" /> Aux. Admin. Extremadura</> :
-                    isValencia ? <><CcaaFlag oposicionId="auxiliar_administrativo_valencia" /> Aux. Admin. Valencia</> :
-                    isGalicia ? <><CcaaFlag oposicionId="auxiliar_administrativo_galicia" /> Aux. Admin. Galicia</> :
-                    isAragon ? <><CcaaFlag oposicionId="auxiliar_administrativo_aragon" /> Aux. Admin. Aragón</> :
-                    isAsturias ? <><CcaaFlag oposicionId="auxiliar_administrativo_asturias" /> Aux. Admin. Asturias</> :
-                    isBaleares ? <><CcaaFlag oposicionId="auxiliar_administrativo_baleares" /> Aux. Admin. Baleares</> :
-                    isAytoValencia ? '🏛️ Ayto. Valencia' :
-                    isAuxiliarAdmin ? '👤 Auxiliar Administrativo Estado' :
-                    isAdministrativo ? '👨‍💼 Administrativo del Estado' :
-                    isTramitacionProcesal ? '⚖️ Tramitación Procesal' :
-                    isAuxilioJudicial ? '⚖️ Auxilio Judicial' :
-                    isLeyes ? '📚 Leyes' :
-                    isTeoria ? '📖 Teoría' :
-                    isPsicotecnicos ? '🧩 Psicotécnicos' :
-                    isStandaloneTest ? '🎯 Tests' : ''
+                  // Determinar texto (JSX para CCAA con banderas SVG, emoji para Estado/nacionales)
+                  const labelContent = currentOpo
+                    ? (hasCcaaFlag(currentOpo.id)
+                        ? <><CcaaFlag oposicionId={currentOpo.id} /> {currentOpo.shortName}</>
+                        : `${currentOpo.emoji} ${currentOpo.shortName}`)
+                    : isLeyes ? '📚 Leyes'
+                    : isTeoria ? '📖 Teoría'
+                    : isPsicotecnicos ? '🧩 Psicotécnicos'
+                    : isStandaloneTest ? '🎯 Tests' : ''
 
                   if (showAsLink) {
                     return (
@@ -485,7 +332,7 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
                   }
                   return <span className="text-gray-700 font-semibold inline-flex items-center gap-1">{labelContent}</span>
                 })()}
-                
+
                 {/* Flecha para dropdown */}
                 <button
                   onClick={() => { setDropdownSearch(''); setOpenDropdown(openDropdown === 'opposition' ? null : 'opposition') }}
@@ -574,7 +421,7 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
           )}
 
           {/* Separador */}
-          {(isAuxiliarAdmin || isAdministrativo || isTramitacionProcesal || isAuxilioJudicial || isCarm || isCyl || isAndalucia || isMadrid || isCanarias || isClm || isExtremadura || isValencia || isGalicia || isAragon || isAsturias || isBaleares || isAytoValencia || isLeyes || isTeoria || isPsicotecnicos) && (isInTests || isInTemario || isInInfo) && (
+          {(isOposicion || isLeyes || isTeoria || isPsicotecnicos) && (isInTests || isInTemario || isInInfo) && (
             <span className="text-gray-400 mx-2">/</span>
           )}
 
@@ -584,23 +431,7 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
               <div className="flex items-center">
                 {/* Si estamos en una página específica dentro de la sección, hacer clickeable para volver al índice */}
                 {(() => {
-                  const basePath = isAuxiliarAdmin ? '/auxiliar-administrativo-estado' :
-                                   isAdministrativo ? '/administrativo-estado' :
-                                   isTramitacionProcesal ? '/tramitacion-procesal' :
-                                   isAuxilioJudicial ? '/auxilio-judicial' :
-                                   isCarm ? '/auxiliar-administrativo-carm' :
-                                   isCyl ? '/auxiliar-administrativo-cyl' :
-                                   isAndalucia ? '/auxiliar-administrativo-andalucia' :
-                                   isMadrid ? '/auxiliar-administrativo-madrid' :
-                                   isCanarias ? '/auxiliar-administrativo-canarias' :
-                                   isClm ? '/auxiliar-administrativo-clm' :
-                                   isExtremadura ? '/auxiliar-administrativo-extremadura' :
-                                   isValencia ? '/auxiliar-administrativo-valencia' :
-                                   isGalicia ? '/auxiliar-administrativo-galicia' :
-                                   isAragon ? '/auxiliar-administrativo-aragon' :
-                                   isAsturias ? '/auxiliar-administrativo-asturias' :
-                                   isBaleares ? '/auxiliar-administrativo-baleares' :
-                                   isAytoValencia ? '/auxiliar-administrativo-ayuntamiento-valencia' : ''
+                  const basePath = currentOpo ? '/' + currentOpo.slug : ''
                   const isInSpecificPage = pathname.includes('/tema-') || pathname.includes('/test/')
 
                   if (isInSpecificPage && basePath) {
@@ -624,7 +455,7 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
                     </span>
                   )
                 })()}
-                
+
                 {/* Flecha para dropdown */}
                 <button
                   onClick={() => setOpenDropdown(openDropdown === 'section' ? null : 'section')}
@@ -633,7 +464,7 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
                   <ChevronDownIcon className="h-4 w-4" />
                 </button>
               </div>
-              
+
               {/* Dropdown de secciones */}
               {openDropdown === 'section' && (
                 <div className="absolute top-full left-0 mt-1 w-52 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
@@ -674,9 +505,9 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
               const temaNum = parseInt(temaMatch[1])
 
               // Detectar oposición actual desde el pathname y buscar bloque en config central
-              const currentOpo = OPOSICIONES.find(o => pathname.includes(`/${o.slug}`))
-              const blockInfo = currentOpo ? getBlockForTopic(currentOpo.slug, temaNum) : null
-              const basePath = currentOpo ? `/${currentOpo.slug}/test` : ''
+              const activeOpo = OPOSICIONES.find(o => pathname.includes(`/${o.slug}`))
+              const blockInfo = activeOpo ? getBlockForTopic(activeOpo.slug, temaNum) : null
+              const basePath = activeOpo ? `/${activeOpo.slug}/test` : ''
 
               return (
                 <>
