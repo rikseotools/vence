@@ -257,7 +257,7 @@ describe('logClientError — source code', () => {
 describe('Componentes — logClientError integrado', () => {
   const components = [
     { name: 'TestLayout', file: 'components/TestLayout.tsx' },
-    { name: 'DynamicTest', file: 'components/DynamicTest.js' },
+    { name: 'DynamicTest', file: 'components/DynamicTest.tsx' },
     { name: 'ExamLayout', file: 'components/ExamLayout.tsx' },
     { name: 'PsychometricTestLayout', file: 'components/PsychometricTestLayout.tsx' },
   ]

@@ -1,8 +1,9 @@
-// components/DynamicTest.js
+// components/DynamicTest.tsx
 'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useAuth } from '../contexts/AuthContext'
+import { useQuestionContext } from '../contexts/QuestionContext'
 import AdSenseComponent from './AdSenseComponent'
 import MarkdownExplanation from './MarkdownExplanation'
 import { validateAnswer } from '@/lib/api/answers/client'
@@ -12,28 +13,65 @@ import { logClientError } from '@/lib/logClientError'
 // 🔒 Validación segura: usa lib/api/answers/client.ts (timeout 10s, retry x2, Zod)
 
 // Helper para convertir índice de respuesta a letra (0='A', 1='B', etc.)
-function answerToLetter(index) {
+function answerToLetter(index: number | null | undefined): string {
   if (index === null || index === undefined) return '?'
   const letters = ['A', 'B', 'C', 'D']
   return letters[index] || '?'
 }
 
-export default function DynamicTest({ titulo, dificultad }) {
+interface DynamicQuestion {
+  id: string
+  question: string
+  options: string[]
+  explanation?: string
+  law?: string
+  article?: {
+    number: string
+    text: string
+  }
+}
+
+interface TestData {
+  id: string
+  questions: DynamicQuestion[]
+}
+
+interface AnsweredQuestion {
+  question: number
+  selectedAnswer: number
+  correct: boolean
+  questionData: DynamicQuestion & { verifiedCorrect: number }
+}
+
+interface DifficultyConfig {
+  name: string
+  color: string
+  icon: string
+  description: string
+}
+
+interface DynamicTestProps {
+  titulo: string
+  dificultad: string
+}
+
+export default function DynamicTest({ titulo, dificultad }: DynamicTestProps) {
   const { isPremium, user } = useAuth()
+  const { setQuestionContext, clearQuestionContext } = useQuestionContext()
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [testData, setTestData] = useState(null)
+  const [error, setError] = useState<string | null>(null)
+  const [testData, setTestData] = useState<TestData | null>(null)
   const [currentQuestion, setCurrentQuestion] = useState(0)
-  const [selectedAnswer, setSelectedAnswer] = useState(null)
+  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null)
   const [showResult, setShowResult] = useState(false)
-  const [verifiedCorrectAnswer, setVerifiedCorrectAnswer] = useState(null) // 🔒 Respuesta correcta validada por API
-  const [validationError, setValidationError] = useState(null)
+  const [verifiedCorrectAnswer, setVerifiedCorrectAnswer] = useState<number | null>(null) // 🔒 Respuesta correcta validada por API
+  const [validationError, setValidationError] = useState<string | null>(null)
   const [processingAnswer, setProcessingAnswer] = useState(false)
   const [score, setScore] = useState(0)
-  const [answeredQuestions, setAnsweredQuestions] = useState([])
+  const [answeredQuestions, setAnsweredQuestions] = useState<AnsweredQuestion[]>([])
   const [showReview, setShowReview] = useState(false)
   const [startTime] = useState(Date.now())
-  const [sessionId, setSessionId] = useState(null)
+  const [sessionId, setSessionId] = useState<string | null>(null)
 
   // Watchdog: detecta UI congelada si processingAnswer se queda en true >20s
   useAnswerWatchdog({
@@ -48,7 +86,7 @@ export default function DynamicTest({ titulo, dificultad }) {
     userId: user?.id,
   })
 
-  const difficultyConfig = {
+  const difficultyConfig: Record<string, DifficultyConfig> = {
     alta: {
       name: "Alta",
       color: "from-orange-500 to-red-500",
@@ -68,6 +106,33 @@ export default function DynamicTest({ titulo, dificultad }) {
   useEffect(() => {
     generateTest()
   }, [titulo, dificultad])
+
+  // Actualizar contexto de pregunta para el chat IA
+  useEffect(() => {
+    if (testData?.questions?.length && testData.questions.length > 0) {
+      const currentQ = testData.questions[currentQuestion]
+      if (currentQ) {
+        setQuestionContext({
+          id: currentQ.id,
+          question_text: currentQ.question,
+          option_a: currentQ.options?.[0],
+          option_b: currentQ.options?.[1],
+          option_c: currentQ.options?.[2],
+          option_d: currentQ.options?.[3],
+          correct: showResult ? verifiedCorrectAnswer : null,
+          explanation: currentQ.explanation,
+          law: currentQ.law || null,
+          article_number: currentQ.article?.number || null,
+          difficulty: dificultad || null,
+          source: 'ai_generated'
+        })
+      }
+    }
+
+    return () => {
+      clearQuestionContext()
+    }
+  }, [currentQuestion, testData, setQuestionContext, clearQuestionContext, showResult, verifiedCorrectAnswer, dificultad])
 
   const generateTest = async () => {
     try {
@@ -102,28 +167,28 @@ export default function DynamicTest({ titulo, dificultad }) {
       }
 
       setTestData(data.test)
-      
-    } catch (err) {
+
+    } catch (err: unknown) {
       console.error('Error generating test:', err)
-      setError(err.message)
+      setError(err instanceof Error ? err.message : 'Error desconocido')
     } finally {
       setLoading(false)
     }
   }
 
-  const handleAnswerClick = async (answerIndex) => {
+  const handleAnswerClick = async (answerIndex: number) => {
     if (showResult || processingAnswer) return
 
     setSelectedAnswer(answerIndex)
     setProcessingAnswer(true)
 
-    const currentQ = testData.questions[currentQuestion]
+    const currentQ = testData!.questions[currentQuestion]
 
     // 🔒 Validar respuesta via API centralizada (timeout 10s, retry x2, Zod)
     let validationResult
     try {
       validationResult = await validateAnswer(currentQ.id, answerIndex)
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('❌ [SecureAnswer] Validación fallida:', err)
       setValidationError('Error temporal al validar tu respuesta. Inténtalo de nuevo.')
       setSelectedAnswer(null)
@@ -139,14 +204,14 @@ export default function DynamicTest({ titulo, dificultad }) {
             component: 'DynamicTest',
             questionId: currentQ.id,
             userAnswer: answerIndex,
-            errorType: err?.name || 'API_ERROR',
-            errorMessage: err?.message || 'Unknown error',
+            errorType: (err as Error)?.name || 'API_ERROR',
+            errorMessage: (err as Error)?.message || 'Unknown error',
             userId: user?.id || 'anonymous',
             timestamp: new Date().toISOString()
           }
         })
       }).catch(e => console.warn('⚠️ No se pudo enviar notificación admin:', e))
-      logClientError('/api/answer', err, { component: 'DynamicTest', questionId: currentQ.id, userId: user?.id })
+      logClientError('/api/answer', err as Error, { component: 'DynamicTest', questionId: currentQ.id, userId: user?.id })
       return
     }
 
@@ -177,7 +242,7 @@ export default function DynamicTest({ titulo, dificultad }) {
   }
 
   const handleNextQuestion = () => {
-    if (currentQuestion < testData.questions.length - 1) {
+    if (currentQuestion < testData!.questions.length - 1) {
       setCurrentQuestion(currentQuestion + 1)
       setSelectedAnswer(null)
       setShowResult(false)
@@ -188,14 +253,14 @@ export default function DynamicTest({ titulo, dificultad }) {
   const handleTestComplete = async () => {
     try {
       const tiempoTotal = Math.round((Date.now() - startTime) / 1000)
-      
+
       await fetch('/api/save-test-results', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          testId: testData.id,
+          testId: testData!.id,
           respuestas: answeredQuestions,
           score,
           tiempoTotal
@@ -217,7 +282,7 @@ export default function DynamicTest({ titulo, dificultad }) {
     generateTest() // Generar nuevas preguntas
   }
 
-  const isTestCompleted = currentQuestion === testData?.questions.length - 1 && showResult
+  const isTestCompleted = currentQuestion === (testData?.questions.length ?? 0) - 1 && showResult
 
   useEffect(() => {
     if (isTestCompleted) {
@@ -228,7 +293,7 @@ export default function DynamicTest({ titulo, dificultad }) {
   // Componente para revisar fallos
   const ReviewMistakes = () => {
     const mistakes = answeredQuestions.filter(q => !q.correct)
-    
+
     if (mistakes.length === 0) {
       return (
         <div className="bg-green-50 border border-green-200 rounded-lg p-6 text-center">
@@ -243,7 +308,7 @@ export default function DynamicTest({ titulo, dificultad }) {
       <div className="space-y-6">
         <div className="text-center mb-8">
           <h3 className="text-2xl font-bold text-gray-800 mb-2">
-            Revisión de Errores ({mistakes.length}/{testData.questions.length})
+            Revisión de Errores ({mistakes.length}/{testData!.questions.length})
           </h3>
           <p className="text-gray-600">
             Preguntas generadas dinámicamente con IA - Revisa los errores para mejorar
@@ -297,7 +362,7 @@ export default function DynamicTest({ titulo, dificultad }) {
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
               <h5 className="font-bold text-blue-800 mb-2">Explicación de IA:</h5>
               <MarkdownExplanation
-                content={mistake.questionData.explanation}
+                content={mistake.questionData.explanation || ''}
                 className="text-blue-700 text-sm"
               />
             </div>
@@ -402,7 +467,7 @@ export default function DynamicTest({ titulo, dificultad }) {
                   </span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-3">
-                  <div 
+                  <div
                     className={`bg-gradient-to-r ${config.color} h-3 rounded-full transition-all duration-500`}
                     style={{ width: `${((currentQuestion + (showResult ? 1 : 0)) / testData.questions.length) * 100}%` }}
                   ></div>
@@ -522,7 +587,7 @@ export default function DynamicTest({ titulo, dificultad }) {
                         </div>
                       </div>
                       <MarkdownExplanation
-                        content={currentQ.explanation}
+                        content={currentQ.explanation || ''}
                         className="text-gray-700 mb-4"
                       />
                       {/* Botón para abrir IA */}
@@ -583,7 +648,7 @@ export default function DynamicTest({ titulo, dificultad }) {
                   <div className="text-sm text-gray-600">
                     Aciertos: <span className="font-bold text-green-600">{score}</span> / {answeredQuestions.length}
                   </div>
-                  
+
                   {showResult && currentQuestion === testData.questions.length - 1 && (
                     <div className="text-sm text-gray-500">
                       ¡Test con IA completado!
@@ -596,7 +661,7 @@ export default function DynamicTest({ titulo, dificultad }) {
             <div className="bg-white rounded-xl shadow-lg p-8 text-center">
               <div className="mb-8">
                 <span className="text-6xl mb-4 block">
-                  {score >= Math.ceil(testData.questions.length * 0.8) ? '🏆' : 
+                  {score >= Math.ceil(testData.questions.length * 0.8) ? '🏆' :
                    score >= Math.ceil(testData.questions.length * 0.6) ? '🎯' : '📚'}
                 </span>
                 <h2 className="text-3xl font-bold text-gray-800 mb-4">
@@ -604,23 +669,23 @@ export default function DynamicTest({ titulo, dificultad }) {
                 </h2>
                 <div className="text-6xl font-bold mb-4">
                   <span className={
-                    score >= Math.ceil(testData.questions.length * 0.8) ? 'text-green-600' : 
+                    score >= Math.ceil(testData.questions.length * 0.8) ? 'text-green-600' :
                     score >= Math.ceil(testData.questions.length * 0.6) ? 'text-yellow-600' : 'text-red-600'
                   }>
                     {score}/{testData.questions.length}
                   </span>
                 </div>
                 <p className="text-xl text-gray-600 mb-4">
-                  {score >= Math.ceil(testData.questions.length * 0.8) ? 
+                  {score >= Math.ceil(testData.questions.length * 0.8) ?
                     `¡Excelente dominio de nivel ${config.name}! 🎓` :
-                   score >= Math.ceil(testData.questions.length * 0.6) ? 
+                   score >= Math.ceil(testData.questions.length * 0.6) ?
                     `¡Buen nivel ${config.name}! Sigue practicando 💪` :
                     `Requiere más estudio en nivel ${config.name} 📖`}
                 </p>
-                
+
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 max-w-2xl mx-auto">
                   <p className="text-blue-800 text-sm">
-                    <strong>🤖 Test Generado con IA:</strong> Cada pregunta fue creada dinámicamente 
+                    <strong>🤖 Test Generado con IA:</strong> Cada pregunta fue creada dinámicamente
                     usando inteligencia artificial basada en los artículos constitucionales.
                   </p>
                 </div>

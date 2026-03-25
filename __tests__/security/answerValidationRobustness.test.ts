@@ -162,7 +162,7 @@ describe('PsychometricTestLayout.tsx — sin fallback inseguro', () => {
 // ============================================
 describe('DynamicTest.js — error handling', () => {
   const content = fs.readFileSync(
-    path.join(ROOT, 'components/DynamicTest.js'), 'utf-8'
+    path.join(ROOT, 'components/DynamicTest.tsx'), 'utf-8'
   )
 
   it('envía notificación admin con component: DynamicTest', () => {
@@ -230,7 +230,7 @@ describe('TestLayout.tsx — error handling', () => {
 describe('Consistencia — todos los componentes de test notifican errores', () => {
   const components = [
     { name: 'TestLayout', file: 'components/TestLayout.tsx' },
-    { name: 'DynamicTest', file: 'components/DynamicTest.js' },
+    { name: 'DynamicTest', file: 'components/DynamicTest.tsx' },
     { name: 'ExamLayout', file: 'components/ExamLayout.tsx' },
     { name: 'PsychometricTestLayout', file: 'components/PsychometricTestLayout.tsx' },
   ]
@@ -355,7 +355,7 @@ describe('Error handling — notificación admin fire-and-forget', () => {
     // Verificar que todos los componentes usan .catch(() => {}) o .catch(...)
     const components = [
       'components/TestLayout.tsx',
-      'components/DynamicTest.js',
+      'components/DynamicTest.tsx',
       'components/ExamLayout.tsx',
       'components/PsychometricTestLayout.tsx',
     ]

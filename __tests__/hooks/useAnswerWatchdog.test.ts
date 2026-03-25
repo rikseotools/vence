@@ -134,7 +134,7 @@ describe('Componentes — watchdog integrado', () => {
   const components = [
     { name: 'TestLayout', file: 'components/TestLayout.tsx', flag: 'processingAnswer' },
     { name: 'ExamLayout', file: 'components/ExamLayout.tsx', flag: 'isSaving' },
-    { name: 'DynamicTest', file: 'components/DynamicTest.js', flag: 'processingAnswer' },
+    { name: 'DynamicTest', file: 'components/DynamicTest.tsx', flag: 'processingAnswer' },
     { name: 'PsychometricTestLayout', file: 'components/PsychometricTestLayout.tsx', flag: 'isAnswering' },
   ]
 
@@ -177,7 +177,7 @@ describe('Componentes — watchdog integrado', () => {
 // ============================================
 describe('DynamicTest — processingAnswer guard', () => {
   const content = fs.readFileSync(
-    path.join(ROOT, 'components/DynamicTest.js'), 'utf-8'
+    path.join(ROOT, 'components/DynamicTest.tsx'), 'utf-8'
   )
 
   it('tiene estado processingAnswer', () => {
@@ -196,7 +196,7 @@ describe('DynamicTest — processingAnswer guard', () => {
 
   it('setProcessingAnswer(false) en el catch de error', () => {
     // En el bloque catch, debe resetear
-    const catchBlock = content.match(/catch \(err\) \{[\s\S]*?return\s*\n\s*\}/m)
+    const catchBlock = content.match(/catch \(err[^)]*\) \{[\s\S]*?return\s*\n\s*\}/m)
     expect(catchBlock).not.toBeNull()
     expect(catchBlock![0]).toContain('setProcessingAnswer(false)')
   })

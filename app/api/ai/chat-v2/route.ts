@@ -239,6 +239,16 @@ async function _POST(request: NextRequest) {
       }
     }
 
+    // Log warning si explicar_respuesta llega sin contexto (indica componente sin setQuestionContext)
+    const isExplainSuggestion = data.suggestionUsed && ['explicar_respuesta', 'explicar_psico', 'analizar_psico'].includes(data.suggestionUsed)
+    if (isExplainSuggestion && !normalizedQuestionContext?.questionText) {
+      logger.warn('explicar_respuesta without questionContext — componente no llama setQuestionContext', {
+        domain: 'api',
+        suggestionUsed: data.suggestionUsed,
+        message: data.message?.substring(0, 100),
+      })
+    }
+
     // Obtener nombre del usuario para personalización
     const userName = data.userId ? await getUserName(data.userId) : undefined
     logger.info(`👤 User info: userId=${data.userId}, userName=${userName}`, { domain: 'api' })
