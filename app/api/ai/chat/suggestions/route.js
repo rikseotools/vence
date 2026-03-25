@@ -136,7 +136,9 @@ async function _POST(request) {
     }
 
     if (!finalSuggestionId) {
-      return Response.json({ success: false, error: 'Sugerencia no encontrada' }, { status: 400 })
+      // Sugerencia no existe en BD — no es un error, simplemente no trackear
+      // Las sugerencias están hardcodeadas en el widget, no todas están en BD
+      return Response.json({ success: true, tracked: false })
     }
 
     // Registrar click
