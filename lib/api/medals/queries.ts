@@ -183,12 +183,19 @@ export async function getUserMedals(userId: string): Promise<GetMedalsResponse> 
       if (!period) continue
 
       const result = await db.execute(
-        sql`SELECT * FROM get_ranking_for_period(
-          ${period.startDate.toISOString()}::timestamptz,
-          ${period.endDate.toISOString()}::timestamptz,
-          ${5},
-          ${100}
-        )`
+        sql`SELECT
+              t.user_id,
+              COUNT(*)::bigint AS total_questions,
+              COUNT(*) FILTER (WHERE tq.is_correct)::bigint AS correct_answers,
+              ROUND((COUNT(*) FILTER (WHERE tq.is_correct)::numeric / COUNT(*)) * 100, 0) AS accuracy
+            FROM test_questions tq
+            INNER JOIN tests t ON t.id = tq.test_id
+            WHERE tq.created_at >= ${period.startDate.toISOString()}::timestamptz
+              AND tq.created_at <= ${period.endDate.toISOString()}::timestamptz
+            GROUP BY t.user_id
+            HAVING COUNT(*) >= 5
+            ORDER BY accuracy DESC, total_questions DESC
+            LIMIT 100`
       )
 
       const ranking: RankingUser[] = ((result as any[]) || []).map((row: any) => ({

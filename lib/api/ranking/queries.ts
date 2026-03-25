@@ -247,13 +247,20 @@ export async function getRanking(params: GetRankingRequest): Promise<GetRankingR
     const { startDate, endDate } = computeDateRange(params.timeFilter)
 
     const result = await db.execute(
-      sql`SELECT * FROM get_ranking_for_period(
-        ${startDate}::timestamptz,
-        ${endDate}::timestamptz,
-        ${params.minQuestions ?? 5},
-        ${limit},
-        ${offset}
-      )`
+      sql`SELECT
+            t.user_id,
+            COUNT(*)::bigint AS total_questions,
+            COUNT(*) FILTER (WHERE tq.is_correct)::bigint AS correct_answers,
+            ROUND((COUNT(*) FILTER (WHERE tq.is_correct)::numeric / COUNT(*)) * 100, 0) AS accuracy
+          FROM test_questions tq
+          INNER JOIN tests t ON t.id = tq.test_id
+          WHERE tq.created_at >= ${startDate}::timestamptz
+            ${endDate ? sql`AND tq.created_at <= ${endDate}::timestamptz` : sql``}
+          GROUP BY t.user_id
+          HAVING COUNT(*) >= ${params.minQuestions ?? 5}
+          ORDER BY accuracy DESC, total_questions DESC
+          LIMIT ${limit}
+          OFFSET ${offset}`
     )
 
     const rows = result as any[]
@@ -321,12 +328,31 @@ export async function getUserPosition(
     const { startDate, endDate } = computeDateRange(timeFilter)
 
     const result = await db.execute(
-      sql`SELECT * FROM get_user_ranking_position(
-        ${userId}::uuid,
-        ${startDate}::timestamptz,
-        ${endDate}::timestamptz,
-        ${minQuestions}
-      )`
+      sql`WITH user_stats AS (
+            SELECT
+              t.user_id,
+              COUNT(*)::bigint AS total_questions,
+              COUNT(*) FILTER (WHERE tq.is_correct)::bigint AS correct_answers,
+              ROUND((COUNT(*) FILTER (WHERE tq.is_correct)::numeric / COUNT(*)) * 100, 0) AS accuracy
+            FROM test_questions tq
+            INNER JOIN tests t ON t.id = tq.test_id
+            WHERE tq.created_at >= ${startDate}::timestamptz
+              ${endDate ? sql`AND tq.created_at <= ${endDate}::timestamptz` : sql``}
+            GROUP BY t.user_id
+            HAVING COUNT(*) >= ${minQuestions}
+          ),
+          ranked AS (
+            SELECT *, ROW_NUMBER() OVER (ORDER BY accuracy DESC, total_questions DESC) AS rank
+            FROM user_stats
+          )
+          SELECT
+            r.rank::bigint AS user_rank,
+            r.total_questions,
+            r.correct_answers,
+            r.accuracy,
+            (SELECT COUNT(*) FROM ranked)::bigint AS total_users_in_ranking
+          FROM ranked r
+          WHERE r.user_id = ${userId}::uuid`
     )
 
     const rows = result as any[]
