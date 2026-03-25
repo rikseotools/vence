@@ -741,7 +741,7 @@ export default function AdminAIPage() {
   const [loading, setLoading] = useState(true)
   const [usage, setUsage] = useState<UsageData | null>(null)
   const [loadingUsage, setLoadingUsage] = useState(false)
-  const [activeTab, setActiveTab] = useState<'config' | 'usage' | 'logs'>('config')
+  const [activeTab, setActiveTab] = useState<'config' | 'usage' | 'logs'>('logs')
   const [logs, setLogs] = useState<LogsData | null>(null)
   const [loadingLogs, setLoadingLogs] = useState(false)
   const [logsPage, setLogsPage] = useState(1)
