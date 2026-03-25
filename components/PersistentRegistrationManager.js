@@ -19,38 +19,50 @@ export default function PersistentRegistrationManager({
   score,
   startTime,
   isTestCompleted,
-  
+
   // Props de control
   enabled = true,
+  externalUser = undefined,
+  externalAuthLoading = undefined,
   children
 }) {
   // Hook de router
   const router = useRouter()
-  
+
   // Estados internos
-  const [user, setUser] = useState(null)
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true) // 🔄 Nuevo: evitar flash
+  // Si se pasa externalUser, usar ese (más fiable, viene de AuthContext con refresh token)
+  const [internalUser, setInternalUser] = useState(null)
+  const [isCheckingAuth, setIsCheckingAuth] = useState(externalUser === undefined)
   const [showModal, setShowModal] = useState(false)
   const [attempt, setAttempt] = useState(1)
   const [userRejected, setUserRejected] = useState(false)
 
-  // Verificar usuario
+  // Usar externalUser si disponible, sino internalUser
+  const user = externalUser !== undefined ? externalUser : internalUser
+
+  // Verificar usuario solo si NO se pasa externalUser
   useEffect(() => {
+    // Si tenemos externalUser, no necesitamos verificar por nuestra cuenta
+    if (externalUser !== undefined) {
+      setIsCheckingAuth(externalAuthLoading ?? false)
+      return
+    }
+
     const checkUser = async () => {
       try {
         const { data: { user }, error } = await supabase.auth.getUser()
         if (error) {
           console.log('🔍 No hay sesión activa, usuario no registrado')
-          setUser(null)
+          setInternalUser(null)
         } else {
           console.log('✅ Usuario encontrado:', user?.email || 'sin email')
-          setUser(user)
+          setInternalUser(user)
         }
       } catch (error) {
         console.log('🔍 Error verificando usuario (normal en localhost):', error.message)
-        setUser(null)
+        setInternalUser(null)
       } finally {
-        setIsCheckingAuth(false) // 🔄 Auth check completado
+        setIsCheckingAuth(false)
       }
     }
 
@@ -59,7 +71,7 @@ export default function PersistentRegistrationManager({
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         console.log('🔄 Auth change:', event, session?.user?.email || 'no user')
-        setUser(session?.user || null)
+        setInternalUser(session?.user || null)
         if (session?.user) {
           setShowModal(false)
         }
@@ -67,7 +79,7 @@ export default function PersistentRegistrationManager({
     )
 
     return () => subscription.unsubscribe()
-  }, [])
+  }, [externalUser, externalAuthLoading])
 
   // 🎯 MODAL AL INICIAR TEST (después de 10 segundos)
   useEffect(() => {
