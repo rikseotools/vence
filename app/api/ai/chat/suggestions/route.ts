@@ -1,19 +1,45 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
+import { NextRequest } from 'next/server'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
-const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
+
+const getSupabase = (): SupabaseClient => createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+interface SuggestionRow {
+  id: string
+  label: string
+  message: string
+  suggestion_key: string
+  emoji: string | null
+  priority: number
+  oposicion_id: string | null
+  context_type: string
+  page_context: string
+  ai_chat_suggestion_clicks: Array<{ count: number }>
+}
+
+interface ProcessedSuggestion {
+  id: string
+  label: string
+  message: string
+  suggestion_key: string
+  emoji: string | null
+  priority: number
+  oposicion_id: string | null
+  clicks: number
+}
+
 // GET: Obtener sugerencias activas filtradas por oposición/contexto/página y ordenadas por CTR
-async function _GET(request) {
+async function _GET(request: NextRequest): Promise<Response> {
   try {
     const { searchParams } = new URL(request.url)
-    let oposicionId = searchParams.get('oposicionId')
-    const contextType = searchParams.get('contextType') || 'general' // 'general' | 'law_context'
-    const pageContext = searchParams.get('pageContext') || 'general' // 'general' | 'test' | 'psicotecnico' | 'psicotecnico_test'
-    const lawName = searchParams.get('lawName') // Para reemplazar {lawName} en plantillas
+    let oposicionId: string | null = searchParams.get('oposicionId')
+    const contextType: string = searchParams.get('contextType') || 'general' // 'general' | 'law_context'
+    const pageContext: string = searchParams.get('pageContext') || 'general' // 'general' | 'test' | 'psicotecnico' | 'psicotecnico_test'
+    const lawName: string | null = searchParams.get('lawName') // Para reemplazar {lawName} en plantillas
 
     console.log('🔍 [Suggestions API] Request params:', { oposicionId, contextType, pageContext, lawName })
 
@@ -29,7 +55,7 @@ async function _GET(request) {
         .eq('slug', slugToSearch)
         .limit(1)
 
-      const oposicion = oposiciones?.[0]
+      const oposicion = (oposiciones as Array<{ id: string }> | null)?.[0]
       console.log('🔍 [Suggestions API] Oposicion lookup result:', oposicion || 'not found')
 
       if (oposicion) {
@@ -79,8 +105,8 @@ async function _GET(request) {
     }
 
     // Procesar y ordenar por CTR (clicks) descendente, luego por prioridad
-    const suggestions = data
-      .map(s => {
+    const suggestions: ProcessedSuggestion[] = (data as SuggestionRow[])
+      .map((s: SuggestionRow): ProcessedSuggestion => {
         // Reemplazar {lawName} en label y message si se proporciona
         let label = s.label
         let message = s.message
@@ -100,7 +126,7 @@ async function _GET(request) {
           clicks: s.ai_chat_suggestion_clicks?.[0]?.count || 0
         }
       })
-      .sort((a, b) => {
+      .sort((a: ProcessedSuggestion, b: ProcessedSuggestion): number => {
         // Primero por clicks (CTR), luego por prioridad
         if (b.clicks !== a.clicks) return b.clicks - a.clicks
         return b.priority - a.priority
@@ -117,12 +143,17 @@ async function _GET(request) {
 }
 
 // POST: Registrar click en una sugerencia
-async function _POST(request) {
+async function _POST(request: NextRequest): Promise<Response> {
   try {
-    const { suggestionId, suggestionKey, userId, sessionId } = await request.json()
+    const { suggestionId, suggestionKey, userId, sessionId } = await request.json() as {
+      suggestionId?: string
+      suggestionKey?: string
+      userId?: string
+      sessionId?: string
+    }
 
     // Si tenemos suggestionKey pero no suggestionId, buscar el ID
-    let finalSuggestionId = suggestionId
+    let finalSuggestionId: string | undefined = suggestionId
     if (!suggestionId && suggestionKey) {
       const { data: suggestion } = await getSupabase()
         .from('ai_chat_suggestions')
@@ -131,7 +162,7 @@ async function _POST(request) {
         .single()
 
       if (suggestion) {
-        finalSuggestionId = suggestion.id
+        finalSuggestionId = (suggestion as { id: string }).id
       }
     }
 
