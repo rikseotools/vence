@@ -7,6 +7,11 @@ import { usePathname } from 'next/navigation'
 import { InteractionTracker } from '@/hooks/useInteractionTracker'
 import { useAuth } from '@/contexts/AuthContext'
 
+// Truncar texto sin cortar emojis por la mitad (evita surrogates huérfanos en JSON)
+function safeSlice(str: string, maxLen: number): string {
+  return Array.from(str).slice(0, maxLen).join('')
+}
+
 // Elementos a ignorar (no trackear clicks en estos)
 const IGNORED_ELEMENTS = ['html', 'body', 'main', 'div', 'span', 'section', 'article']
 const IGNORED_CLASSES = ['backdrop', 'overlay', 'modal-bg']
@@ -36,7 +41,7 @@ function getElementInfo(element: HTMLElement): {
   if (targetElement.tagName === 'INPUT' || targetElement.tagName === 'TEXTAREA') {
     text = (targetElement as HTMLInputElement).placeholder || (targetElement as HTMLInputElement).name || ''
   } else {
-    text = (targetElement.textContent || '').trim().slice(0, 100)
+    text = safeSlice((targetElement.textContent || '').trim(), 100)
   }
 
   // Obtener clases relevantes (filtrar clases de Tailwind genéricas)
@@ -55,7 +60,7 @@ function getElementInfo(element: HTMLElement): {
     ariaLabel: targetElement.getAttribute('aria-label'),
     role: targetElement.getAttribute('role'),
     closest: {
-      button: element.closest('button')?.textContent?.trim().slice(0, 50) || null,
+      button: safeSlice(element.closest('button')?.textContent?.trim() || '', 50) || null,
       link: (element.closest('a') as HTMLAnchorElement)?.href || null,
       form: element.closest('form')?.id || element.closest('form')?.name || null
     }
@@ -163,7 +168,7 @@ export default function GlobalClickTracker({ children }: GlobalClickTrackerProps
       },
       pageUrl: pathname || undefined,
       elementId: elementInfo.id || undefined,
-      elementText: elementInfo.text?.slice(0, 200) || undefined,
+      elementText: elementInfo.text ? safeSlice(elementInfo.text, 200) : undefined,
       userId: user?.id
     })
   }, [pathname, user?.id])
