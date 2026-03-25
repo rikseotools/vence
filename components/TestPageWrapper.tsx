@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useSearchParams, usePathname } from 'next/navigation'
 import { getOposicionSlugFromPathname } from '@/lib/config/oposiciones'
 import { useOposicion } from '@/contexts/OposicionContext'
+import { useAuth } from '@/contexts/AuthContext'
 import TestLayout from './TestLayout'
 import OposicionDetector from './OposicionDetector'
 import OposicionGuard from './OposicionGuard'
@@ -63,8 +64,10 @@ export default function TestPageWrapper({
   loadingMessage,
   errorMessage
 }: TestPageWrapperProps) {
-  // Guard: bloquear tests si no tiene oposición seleccionada
+  // Guard: bloquear tests si usuario logueado no tiene oposición seleccionada
+  // No aplicar a anónimos — no tiene sentido pedirles oposición
   const { hasOposicion, loading: oposicionLoading } = useOposicion()
+  const { user: authUser, loading: authLoading } = useAuth()
 
   // Estados básicos
   const [questions, setQuestions] = useState<any>([])
@@ -431,8 +434,9 @@ export default function TestPageWrapper({
     loadQuestions()
   }, [tema, testType, finalSearchParams, lawName, themes]) // ✅ AGREGAR lawName y themes a dependencias
 
-  // Guard: si no tiene oposición, mostrar selector antes del test
-  if (!oposicionLoading && !hasOposicion) {
+  // Guard: si usuario logueado no tiene oposición, mostrar selector antes del test
+  // No bloquear a anónimos — el test se carga por URL
+  if (!oposicionLoading && !authLoading && authUser && !hasOposicion) {
     return <OposicionGuard />
   }
 
