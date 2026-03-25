@@ -455,7 +455,7 @@ Importan de `lib/config/oposiciones.ts` y se actualizan solos:
 | Archivo | Que actualizar |
 |---------|---------------|
 | `lib/api/topic-data/schemas.ts` | `VALID_TOPIC_RANGES` (rangos de temas por bloque) |
-| `components/InteractiveBreadcrumbs.js` | 9 lugares (ver detalle abajo) |
+| `components/InteractiveBreadcrumbs.tsx` | **No requiere cambios** — se adapta automáticamente desde OPOSICIONES |
 | `components/OnboardingModal.js` | `OFFICIAL_OPOSICIONES` array |
 | `app/perfil/page.tsx` | Array `oposiciones` del selector |
 | `app/nuestras-oposiciones/page.js` | Tarjeta de la oposicion |
@@ -468,17 +468,13 @@ Importan de `lib/config/oposiciones.ts` y se actualizan solos:
 | `__tests__/api/theme-stats/themeStats.test.js` | `toHaveLength(N)` |
 | `__tests__/config/oposicionesCentralConfig.test.ts` | `toHaveLength(N)` |
 
-### 4e. InteractiveBreadcrumbs.js (9 lugares)
+### 4e. InteractiveBreadcrumbs.tsx — NO requiere cambios
 
-1. `getCurrentSection()` - pathname check
-2. `const is<Nombre> = pathname.includes('/slug-con-guiones')` - nueva variable
-3. `isStandaloneTest` - excluir de la condicion
-4. `isInInfo` - anadir a la condicion
-5. `getSectionOptions()` - anadir bloque con opciones
-6. Condicion de visibilidad del breadcrumb
-7. `showAsLink`, `linkHref`, `labelText` - cadenas ternarias
-8. Condicion del separador
-9. `basePath` en la seccion de Tests/Temario
+El componente detecta la oposición automáticamente desde `OPOSICIONES` config:
+```typescript
+const currentOpo = OPOSICIONES.find(o => pathname.includes('/' + o.slug))
+```
+Labels, banderas, links y secciones se derivan dinámicamente. No hay código hardcodeado por oposición.
 
 ---
 
@@ -827,7 +823,7 @@ Y tambien en `oposicionToExamSourcePattern` (fallback para preguntas psicotecnic
 | "Oposicion no valida" | Falta en `oposiciones.ts` | Anadir a OPOSICIONES |
 | "Parametros invalidos" en test | `positionType` no reconocido | Se importa auto de config |
 | 404 en tema con contenido | Falta en `VALID_TOPIC_RANGES` | Anadir rangos en `topic-data/schemas.ts` |
-| Breadcrumbs vacios | Falta en InteractiveBreadcrumbs | Anadir en 9 lugares |
+| Breadcrumbs vacios | Falta en `OPOSICIONES` config | Anadir oposicion a `lib/config/oposiciones.ts` |
 | Tema sin preguntas | Falta topic_scope o ley en BD | Crear scope o importar ley |
 | Tema muestra preguntas irrelevantes | topic_scope demasiado amplio | Restringir article_numbers al epigrafe |
 | Temas con contenido dicen "En elaboracion" | `disponible: false` en temario/page.tsx | Cambiar a `disponible: true` los temas con topic_scope |
