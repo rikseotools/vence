@@ -148,3 +148,22 @@ export async function getQuestionFullData(questionId: string): Promise<QuestionF
     return null
   }
 }
+
+/**
+ * Verifica si una pregunta es psicotécnica (existe en psychometric_questions)
+ */
+export async function checkIsPsychometric(questionId: string): Promise<boolean> {
+  if (!questionId) return false
+
+  try {
+    const { data } = await getSupabase()
+      .from('psychometric_questions')
+      .select('id')
+      .eq('id', questionId)
+      .maybeSingle()
+
+    return !!data
+  } catch {
+    return false
+  }
+}

@@ -18,6 +18,7 @@ import {
   type DisputeResult,
 } from './DisputeService'
 import { getLinkedArticle, type LinkedArticle } from './queries'
+import { checkIsPsychometric } from './queries'
 import type { ChatContext, ArticleSource } from '../../core/types'
 
 // ============================================
@@ -340,11 +341,13 @@ export async function verifyAnswer(
       ? `[ERROR DE VINCULACIÓN - Artículo vinculado: ${linkedArticle?.lawShortName} Art. ${linkedArticle?.articleNumber}, Ley en pregunta: ${effectiveLawName}]\n\n`
       : ''
 
+    // Detectar si es pregunta psicotécnica para insertar en la tabla correcta
+    const isPsychometric = await checkIsPsychometric(input.questionId)
     disputeResult = await createAutoDispute(
       input.questionId,
       disputeContext + response,
       input.userId,
-      undefined, // isPsychometric
+      isPsychometric,
       context.logId // vincular con el chat log
     )
     disputeCreated = disputeResult.success && !disputeResult.alreadyExists
