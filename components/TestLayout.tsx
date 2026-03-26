@@ -1320,6 +1320,7 @@ export default function TestLayout({
       setSelectedAnswer(null)
       setShowResult(false)
       setVerifiedCorrectAnswer(null) // 🔒 Resetear respuesta verificada
+      setValidationError(null) // Limpiar error de validación de pregunta anterior
       setQuestionStartTime(Date.now())
       setFirstInteractionTime(null)
       setInteractionCount(0)

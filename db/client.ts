@@ -3,6 +3,15 @@ import { drizzle } from 'drizzle-orm/postgres-js'
 import postgres from 'postgres'
 import * as schema from './schema'
 
+// ============================================
+// Pool principal (APIs de usuario)
+// ============================================
+// max: 1 → Una conexión por instancia serverless (recomendado por Supabase)
+// connect_timeout: 2 → Fail fast: pooler saturado no mejora esperando más
+// ROLLBACK: Si se detectan errores de "too many clients", subir max a 2
+//           Si queries de admin fallan, usar getAdminDb() en vez de getDb()
+// VALORES ANTERIORES: max: 8, connect_timeout: 5
+
 // Singleton global para persistir entre invocaciones en serverless
 const globalForDb = globalThis as unknown as {
   db: ReturnType<typeof drizzle<typeof schema>> | undefined
@@ -24,9 +33,9 @@ function createDbClient() {
     : `${connectionString}?options=-c statement_timeout=30000 -c idle_in_transaction_session_timeout=60000`
 
   const conn = postgres(urlWithTimeout, {
-    max: 8,           // Pool suficiente para dashboard (10 queries paralelas) + requests concurrentes
+    max: 1,            // Una conexión por instancia serverless (evita saturar pooler)
     idle_timeout: 20,
-    connect_timeout: 5,   // Fail fast: si no conecta en 5s, reintentar en vez de bloquear 30s
+    connect_timeout: 2,   // Fail fast: si no conecta en 2s, reintentar en vez de bloquear
     prepare: false, // Requerido para Supabase Transaction Pooler (puerto 6543)
   })
 
@@ -53,6 +62,44 @@ export function getDb() {
     throw new Error('DATABASE_URL environment variable is not set')
   }
   return globalForDb.db
+}
+
+// ============================================
+// Pool para admin/dashboard (queries paralelas)
+// ============================================
+// max: 4 → Permite queries paralelas del dashboard sin saturar pooler
+// Solo usar en rutas /admin/* o /api/v2/admin/*
+
+const globalForAdminDb = globalThis as unknown as {
+  adminDb: ReturnType<typeof drizzle<typeof schema>> | undefined
+}
+
+function createAdminDbClient() {
+  const connectionString = process.env.DATABASE_URL
+  if (!connectionString) return null
+
+  const urlWithTimeout = connectionString.includes('?')
+    ? `${connectionString}&options=-c statement_timeout=30000 -c idle_in_transaction_session_timeout=60000`
+    : `${connectionString}?options=-c statement_timeout=30000 -c idle_in_transaction_session_timeout=60000`
+
+  const conn = postgres(urlWithTimeout, {
+    max: 4,
+    idle_timeout: 20,
+    connect_timeout: 3,
+    prepare: false,
+  })
+
+  return drizzle(conn, { schema })
+}
+
+export function getAdminDb() {
+  if (!globalForAdminDb.adminDb) {
+    globalForAdminDb.adminDb = createAdminDbClient() as any
+  }
+  if (!globalForAdminDb.adminDb) {
+    throw new Error('DATABASE_URL environment variable is not set')
+  }
+  return globalForAdminDb.adminDb
 }
 
 // ============================================

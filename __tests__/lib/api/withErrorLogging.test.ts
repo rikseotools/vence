@@ -192,15 +192,18 @@ describe('withErrorLogging — cobertura de endpoints', () => {
   })
 
   it('todos los endpoints con handler exportado usan withErrorLogging', () => {
+    // Excluir endpoints que intencionalmente no usan el wrapper (evitar loops)
+    const excluded = ['app/api/validation-error-log/route.ts']
     let wrappedCount = 0
     for (const relPath of routeFiles) {
+      if (excluded.includes(relPath)) continue
       const content = fs.readFileSync(path.join(ROOT, relPath), 'utf-8')
       if (content.includes('withErrorLogging')) {
         wrappedCount++
       }
     }
-    // Todos deberían tener el wrapper
-    expect(wrappedCount).toBe(routeFiles.length)
+    // Todos (excepto excluidos) deberían tener el wrapper
+    expect(wrappedCount).toBe(routeFiles.length - excluded.length)
   })
 
   it('todos los wrappers tienen el endpoint path correcto', () => {

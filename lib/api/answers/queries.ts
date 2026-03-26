@@ -14,91 +14,43 @@ import type { ValidateAnswerRequest, ValidateAnswerResponse } from './schemas'
 export async function validateAnswer(
   params: ValidateAnswerRequest
 ): Promise<ValidateAnswerResponse> {
-  const MAX_RETRIES = 2
+  // Sin retry server-side: el cliente (apiFetch) ya reintenta con timeout de 10s x 2 intentos.
+  // Retry aquí solo añadía latencia (500ms delay x 2 = 1s extra sin beneficio).
+  // Si la query falla, dejamos que propague y el cliente reintente con conexión fresca.
+  const db = getDb()
 
-  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-    try {
-      const db = getDb()
+  // Query con joins para obtener información completa (legislative questions)
+  const result = await db
+    .select({
+      correctOption: questions.correctOption,
+      explanation: questions.explanation,
+      articleNumber: articles.articleNumber,
+      lawShortName: laws.shortName,
+      lawName: laws.name
+    })
+    .from(questions)
+    .leftJoin(articles, eq(questions.primaryArticleId, articles.id))
+    .leftJoin(laws, eq(articles.lawId, laws.id))
+    .where(eq(questions.id, params.questionId))
+    .limit(1)
 
-      // Query con joins para obtener información completa (legislative questions)
-      const result = await db
-        .select({
-          correctOption: questions.correctOption,
-          explanation: questions.explanation,
-          articleNumber: articles.articleNumber,
-          lawShortName: laws.shortName,
-          lawName: laws.name
-        })
-        .from(questions)
-        .leftJoin(articles, eq(questions.primaryArticleId, articles.id))
-        .leftJoin(laws, eq(articles.lawId, laws.id))
-        .where(eq(questions.id, params.questionId))
-        .limit(1)
+  const question = result[0]
 
-      const question = result[0]
-
-      if (!question) {
-        // Not found in questions table, try psychometric_questions
-        const psyResult = await db
-          .select({
-            correctOption: psychometricQuestions.correctOption,
-            explanation: psychometricQuestions.explanation,
-          })
-          .from(psychometricQuestions)
-          .where(eq(psychometricQuestions.id, params.questionId))
-          .limit(1)
-
-        const psyQuestion = psyResult[0]
-
-        if (!psyQuestion) {
-          console.error('❌ [API/answer] Pregunta no encontrada en ninguna tabla:', params.questionId)
-          return {
-            success: false,
-            isCorrect: false,
-            correctAnswer: 0,
-            explanation: null
-          }
-        }
-
-        const isCorrect = params.userAnswer === psyQuestion.correctOption
-
-        return {
-          success: true,
-          isCorrect,
-          correctAnswer: psyQuestion.correctOption ?? 0,
-          explanation: psyQuestion.explanation,
-          articleNumber: null,
-          lawShortName: null,
-          lawName: null
-        }
-      }
-
-      const isCorrect = params.userAnswer === question.correctOption
-
-      console.log('✅ [API/answer] Respuesta validada:', {
-        questionId: params.questionId,
-        userAnswer: params.userAnswer,
-        correctAnswer: question.correctOption,
-        isCorrect
+  if (!question) {
+    // Not found in questions table, try psychometric_questions
+    const psyResult = await db
+      .select({
+        correctOption: psychometricQuestions.correctOption,
+        explanation: psychometricQuestions.explanation,
       })
+      .from(psychometricQuestions)
+      .where(eq(psychometricQuestions.id, params.questionId))
+      .limit(1)
 
-      return {
-        success: true,
-        isCorrect,
-        correctAnswer: question.correctOption,
-        explanation: question.explanation,
-        articleNumber: question.articleNumber,
-        lawShortName: question.lawShortName,
-        lawName: question.lawName
-      }
+    const psyQuestion = psyResult[0]
 
-    } catch (error) {
-      if (attempt < MAX_RETRIES - 1) {
-        console.warn(`⚠️ [API/answer] Error en query (intento ${attempt + 1}/${MAX_RETRIES}), reintentando en 500ms...`, (error as Error).message)
-        await new Promise(r => setTimeout(r, 500))
-        continue
-      }
-      console.error('❌ [API/answer] Error validando respuesta tras reintentos:', error)
+    if (!psyQuestion) {
+      console.error('❌ [API/answer] Pregunta no encontrada en ninguna tabla:', params.questionId)
       return {
         success: false,
         isCorrect: false,
@@ -106,9 +58,38 @@ export async function validateAnswer(
         explanation: null
       }
     }
+
+    const isCorrect = params.userAnswer === psyQuestion.correctOption
+
+    return {
+      success: true,
+      isCorrect,
+      correctAnswer: psyQuestion.correctOption ?? 0,
+      explanation: psyQuestion.explanation,
+      articleNumber: null,
+      lawShortName: null,
+      lawName: null
+    }
   }
 
-  return { success: false, isCorrect: false, correctAnswer: 0, explanation: null }
+  const isCorrect = params.userAnswer === question.correctOption
+
+  console.log('✅ [API/answer] Respuesta validada:', {
+    questionId: params.questionId,
+    userAnswer: params.userAnswer,
+    correctAnswer: question.correctOption,
+    isCorrect
+  })
+
+  return {
+    success: true,
+    isCorrect,
+    correctAnswer: question.correctOption,
+    explanation: question.explanation,
+    articleNumber: question.articleNumber,
+    lawShortName: question.lawShortName,
+    lawName: question.lawName
+  }
 }
 
 // ============================================

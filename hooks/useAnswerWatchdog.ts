@@ -5,7 +5,11 @@
 
 import { useEffect, useRef } from 'react'
 
-const WATCHDOG_TIMEOUT_MS = 20_000 // 20 segundos
+// 12s: dispara después del primer intento del cliente (10s timeout) + margen,
+// pero antes de que terminen todos los retries (21s). Así el usuario tiene feedback
+// rápido sin esperar al agotamiento completo de retries.
+// VALOR ANTERIOR: 20_000 (20s) — demasiado cercano al total de retries (21s)
+const WATCHDOG_TIMEOUT_MS = 12_000
 
 export interface WatchdogConfig {
   /** Flag que indica si se está procesando una respuesta */

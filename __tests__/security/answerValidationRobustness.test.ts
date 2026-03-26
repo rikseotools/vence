@@ -18,16 +18,17 @@ describe('db/client.ts — connect_timeout', () => {
   const filePath = path.join(ROOT, 'db/client.ts')
   const content = fs.readFileSync(filePath, 'utf-8')
 
-  it('connect_timeout debe ser 5 (fail fast)', () => {
+  it('connect_timeout debe ser <= 5 (fail fast)', () => {
     // Buscar todas las ocurrencias de connect_timeout
     const matches = content.match(/connect_timeout:\s*(\d+)/g)
     expect(matches).not.toBeNull()
     expect(matches!.length).toBeGreaterThanOrEqual(1)
 
-    // Todas deben ser 5
+    // Todas deben ser <= 5 (2 para APIs normales, 3 para admin)
     for (const match of matches!) {
       const value = parseInt(match.match(/\d+/)![0])
-      expect(value).toBe(5)
+      expect(value).toBeLessThanOrEqual(5)
+      expect(value).toBeGreaterThanOrEqual(1)
     }
   })
 

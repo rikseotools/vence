@@ -19,7 +19,7 @@ async function _POST(request: NextRequest) {
 
     if (!validation.success) {
       console.error('❌ [API/answer] Validación fallida:', validation.error.flatten())
-return NextResponse.json(
+      return NextResponse.json(
         {
           success: false,
           error: 'Datos inválidos',
@@ -30,10 +30,18 @@ return NextResponse.json(
     }
 
     // Validar respuesta con Drizzle
+    const queryStart = Date.now()
     const result = await validateAnswer(validation.data)
+    const queryMs = Date.now() - queryStart
+    const totalMs = Date.now() - startTime
+
+    // Logear si la query tarda más de 2s (para diagnóstico de timeouts)
+    if (queryMs > 2000) {
+      console.warn(`⚠️ [API/answer] Query lenta: ${queryMs}ms (total: ${totalMs}ms) questionId=${validation.data.questionId}`)
+    }
 
     if (!result.success) {
-return NextResponse.json(
+      return NextResponse.json(
         {
           success: false,
           error: 'Pregunta no encontrada',
@@ -47,8 +55,9 @@ return NextResponse.json(
     return NextResponse.json(result)
 
   } catch (error) {
-    console.error('❌ [API/answer] Error:', error)
-return NextResponse.json(
+    const totalMs = Date.now() - startTime
+    console.error(`❌ [API/answer] Error tras ${totalMs}ms:`, error)
+    return NextResponse.json(
       {
         success: false,
         error: 'Error interno del servidor',
