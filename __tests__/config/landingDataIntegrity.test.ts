@@ -8,8 +8,8 @@ import fs from 'fs'
 import path from 'path'
 
 // Oposiciones migradas a datos de BD (añadir aquí cada nueva migración)
-// Landings con archivo estático propio (app/<slug>/page.tsx)
-const MIGRATED_SLUGS = [
+// Todas las landings servidas por el template dinámico app/[oposicion]/page.tsx
+const DYNAMIC_SLUGS = [
   'auxiliar-administrativo-estado',
   'auxiliar-administrativo-madrid',
   'administrativo-estado',
@@ -24,13 +24,9 @@ const MIGRATED_SLUGS = [
   'auxiliar-administrativo-aragon',
   'auxiliar-administrativo-asturias',
   'auxiliar-administrativo-baleares',
+  'auxiliar-administrativo-cyl',
   'auxiliar-administrativo-andalucia',
   'auxiliar-administrativo-ayuntamiento-valencia',
-]
-
-// Landings servidas por el template dinámico app/[oposicion]/page.tsx
-const DYNAMIC_SLUGS = [
-  'auxiliar-administrativo-cyl',
 ]
 
 // Mapeo de displayNumber en landing (17→101, etc.) para auxiliar estado
@@ -58,140 +54,6 @@ describe('Landing Data Integrity', () => {
       expect(config.slug).not.toContain('_')
       expect(config.positionType).not.toContain('-')
       expect(config.slug.replace(/-/g, '_')).toBe(config.positionType)
-    })
-  })
-
-  describe('Landings migradas: archivos existen', () => {
-    test.each(MIGRATED_SLUGS)('%s: page.tsx existe', (slug) => {
-      const filePath = path.join(process.cwd(), `app/${slug}/page.tsx`)
-      expect(fs.existsSync(filePath)).toBe(true)
-    })
-
-    test.each(MIGRATED_SLUGS)('%s: importa getOposicionLandingData', (slug) => {
-      const filePath = path.join(process.cwd(), `app/${slug}/page.tsx`)
-      const content = fs.readFileSync(filePath, 'utf-8')
-      expect(content).toContain('getOposicionLandingData')
-    })
-
-    test.each(MIGRATED_SLUGS)('%s: importa getHitosConvocatoria', (slug) => {
-      const filePath = path.join(process.cwd(), `app/${slug}/page.tsx`)
-      const content = fs.readFileSync(filePath, 'utf-8')
-      expect(content).toContain('getHitosConvocatoria')
-    })
-
-    test.each(MIGRATED_SLUGS)('%s: tiene revalidate ISR', (slug) => {
-      const filePath = path.join(process.cwd(), `app/${slug}/page.tsx`)
-      const content = fs.readFileSync(filePath, 'utf-8')
-      expect(content).toMatch(/export const revalidate\s*=\s*\d+/)
-    })
-
-    test.each(MIGRATED_SLUGS)('%s: es async (Server Component)', (slug) => {
-      const filePath = path.join(process.cwd(), `app/${slug}/page.tsx`)
-      const content = fs.readFileSync(filePath, 'utf-8')
-      expect(content).toContain('export default async function')
-    })
-
-    test.each(MIGRATED_SLUGS)('%s: NO tiene "use client"', (slug) => {
-      const filePath = path.join(process.cwd(), `app/${slug}/page.tsx`)
-      const content = fs.readFileSync(filePath, 'utf-8')
-      expect(content).not.toContain("'use client'")
-      expect(content).not.toContain('"use client"')
-    })
-
-    test.each(MIGRATED_SLUGS)('%s: tiene JSON-LD schema', (slug) => {
-      const filePath = path.join(process.cwd(), `app/${slug}/page.tsx`)
-      const content = fs.readFileSync(filePath, 'utf-8')
-      expect(content).toContain('application/ld+json')
-    })
-
-    test.each(MIGRATED_SLUGS)('%s: NO usa toLocaleString (falla en servidores sin es-ES)', (slug) => {
-      const filePath = path.join(process.cwd(), `app/${slug}/page.tsx`)
-      const content = fs.readFileSync(filePath, 'utf-8')
-      expect(content).not.toContain('toLocaleString')
-    })
-  })
-
-  describe('Landings migradas: epígrafes presentes', () => {
-    test.each(MIGRATED_SLUGS)('%s: tiene la cantidad correcta de temas listados', (slug) => {
-      const config = getOposicion(slug)
-      expect(config).toBeTruthy()
-      if (!config) return
-
-      const filePath = path.join(process.cwd(), `app/${slug}/page.tsx`)
-      const content = fs.readFileSync(filePath, 'utf-8')
-
-      // Contar cuántos temas numerados aparecen (ej: "1.", "2.", ... "28.")
-      for (const block of config.blocks) {
-        for (const theme of block.themes) {
-          const displayNum = theme.displayNumber ?? theme.id
-          // Cada tema debe tener su número en el listado
-          const numPattern = `${displayNum}.`
-          expect(content).toContain(numPattern)
-        }
-      }
-    })
-
-    test.each(MIGRATED_SLUGS)('%s: no mezcla acentos con texto sin acentos', (slug) => {
-      const filePath = path.join(process.cwd(), `app/${slug}/page.tsx`)
-      const content = fs.readFileSync(filePath, 'utf-8')
-
-      // Si tiene "Constitución" (con tilde), no debe tener "Constitucion" (sin tilde) en el mismo archivo
-      if (content.includes('Constitución')) {
-        expect(content).not.toMatch(/Constitucion[^a-zA-Z]/) // sin tilde
-      }
-      // Si tiene texto en español, verificar consistencia de tildes comunes
-      if (content.includes('Administración')) {
-        expect(content).not.toMatch(/Administracion[^a-zA-Z]/)
-      }
-    })
-  })
-
-  describe('Landings migradas: no tiene datos hardcodeados de plazas/fechas', () => {
-    test.each(MIGRATED_SLUGS)('%s: plazas vienen de BD (usa variable, no número hardcodeado en el hero)', (slug) => {
-      const filePath = path.join(process.cwd(), `app/${slug}/page.tsx`)
-      const content = fs.readFileSync(filePath, 'utf-8')
-      // Debe usar formatNumber(plazasLibres) o similar, no un número directo
-      expect(content).toContain('plazasLibres')
-      expect(content).toContain('formatNumber')
-    })
-
-    test.each(MIGRATED_SLUGS)('%s: fecha examen viene de BD', (slug) => {
-      const filePath = path.join(process.cwd(), `app/${slug}/page.tsx`)
-      const content = fs.readFileSync(filePath, 'utf-8')
-      expect(content).toContain('examDate')
-      expect(content).toContain('textoExamen')
-    })
-
-    test.each(MIGRATED_SLUGS)('%s: BOE reference viene de BD', (slug) => {
-      const filePath = path.join(process.cwd(), `app/${slug}/page.tsx`)
-      const content = fs.readFileSync(filePath, 'utf-8')
-      expect(content).toContain('boeRef')
-    })
-  })
-
-  describe('Landings migradas: tiene links oficiales', () => {
-    test.each(MIGRATED_SLUGS)('%s: tiene link a convocatoria oficial', (slug) => {
-      const filePath = path.join(process.cwd(), `app/${slug}/page.tsx`)
-      const content = fs.readFileSync(filePath, 'utf-8')
-      expect(content).toContain('programaUrl')
-      expect(content).toContain('Ver convocatoria en')
-    })
-
-    test.each(MIGRATED_SLUGS)('%s: tiene link a seguimiento', (slug) => {
-      const filePath = path.join(process.cwd(), `app/${slug}/page.tsx`)
-      const content = fs.readFileSync(filePath, 'utf-8')
-      expect(content).toContain('seguimientoUrl')
-      expect(content).toContain('Seguimiento del proceso selectivo')
-    })
-  })
-
-  describe('Landings migradas: tiene timeline de hitos', () => {
-    test.each(MIGRATED_SLUGS)('%s: renderiza timeline si hay hitos', (slug) => {
-      const filePath = path.join(process.cwd(), `app/${slug}/page.tsx`)
-      const content = fs.readFileSync(filePath, 'utf-8')
-      expect(content).toContain('Estado del Proceso Selectivo')
-      expect(content).toContain('hitos.map')
-      expect(content).toContain('hito.status')
     })
   })
 
