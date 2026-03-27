@@ -96,13 +96,17 @@ async function runCountsOnly(): Promise<number> {
         AND LENGTH(q.explanation) > 50
         AND similarity(q.explanation, a.content) >= ${SIMILARITY_THRESHOLD}
     ),
+    -- Preguntas duplicadas: mismo texto Y mismas opciones (barajadas).
+    -- Se comparan las opciones ordenadas alfabéticamente para detectar barajado.
+    -- Preguntas con mismo texto pero opciones DIFERENTES son legítimas (no duplicadas).
     duplicate_count AS (
       SELECT COALESCE(SUM(cnt)::int, 0) as duplicates
       FROM (
         SELECT count(*) - 1 as cnt
         FROM questions
         WHERE is_active = true
-        GROUP BY question_text
+        GROUP BY question_text,
+          (SELECT string_agg(opt, '|||' ORDER BY opt) FROM unnest(ARRAY[option_a, option_b, option_c, option_d]) AS opt)
         HAVING count(*) > 1
       ) d
     )
@@ -213,24 +217,29 @@ async function runChecks(): Promise<QualityResponse> {
       LIMIT ${MAX_ITEMS}
     `),
 
-    // 9. Duplicate questions (same question_text, multiple active)
-    // Only show ONE row per duplicate group (not all copies)
+    // 9. Duplicate questions (same text AND same options shuffled)
+    // Preguntas con mismo texto pero opciones DIFERENTES son legítimas, no duplicadas.
+    // Se comparan opciones ordenadas alfabéticamente para detectar barajado.
     db.execute(sql`
       WITH dupe_groups AS (
-        SELECT question_text, count(*) as cnt
+        SELECT question_text,
+               (SELECT string_agg(opt, '|||' ORDER BY opt) FROM unnest(ARRAY[option_a, option_b, option_c, option_d]) AS opt) as options_sorted,
+               count(*) as cnt
         FROM questions
         WHERE is_active = true
-        GROUP BY question_text
+        GROUP BY question_text,
+          (SELECT string_agg(opt, '|||' ORDER BY opt) FROM unnest(ARRAY[option_a, option_b, option_c, option_d]) AS opt)
         HAVING count(*) > 1
       )
-      SELECT DISTINCT ON (d.question_text)
+      SELECT DISTINCT ON (d.question_text, d.options_sorted)
              q.id, LEFT(q.question_text, ${TEXT_LIMIT}) as question_text,
              d.cnt,
              (SELECT COALESCE(SUM(cnt - 1)::int, 0) FROM dupe_groups) as total_count
       FROM questions q
       JOIN dupe_groups d ON q.question_text = d.question_text
+        AND (SELECT string_agg(opt, '|||' ORDER BY opt) FROM unnest(ARRAY[q.option_a, q.option_b, q.option_c, q.option_d]) AS opt) = d.options_sorted
       WHERE q.is_active = true
-      ORDER BY d.question_text, q.created_at ASC
+      ORDER BY d.question_text, d.options_sorted, q.created_at ASC
       LIMIT ${MAX_ITEMS}
     `),
   ])
