@@ -185,9 +185,7 @@ export default function RandomTestClient({
   const handleTestModeChange = (newMode: TestMode) => {
     setTestMode(newMode)
     localStorage.setItem('preferredTestMode', newMode)
-    if (newMode === 'examen' && difficulty !== 'mixed') {
-      setDifficulty('mixed')
-    }
+    // La dificultad se mantiene al cambiar de modo (funciona en ambos)
   }
 
   const toggleTheme = (themeId: number) => {
@@ -321,10 +319,10 @@ export default function RandomTestClient({
                 ].map(({ value, label, emoji }) => (
                   <button
                     key={value}
-                    onClick={() => !onlyOfficialQuestions && testMode !== 'examen' && setDifficulty(value)}
-                    disabled={onlyOfficialQuestions || testMode === 'examen'}
+                    onClick={() => !onlyOfficialQuestions && setDifficulty(value)}
+                    disabled={onlyOfficialQuestions}
                     className={`py-2 px-2 rounded-lg text-xs font-medium transition-all ${
-                      onlyOfficialQuestions || testMode === 'examen'
+                      onlyOfficialQuestions
                         ? 'bg-gray-200 text-gray-400 cursor-not-allowed opacity-50'
                         : difficulty === value
                         ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg'
