@@ -8,6 +8,7 @@ import fs from 'fs'
 import path from 'path'
 
 // Oposiciones migradas a datos de BD (añadir aquí cada nueva migración)
+// Landings con archivo estático propio (app/<slug>/page.tsx)
 const MIGRATED_SLUGS = [
   'auxiliar-administrativo-estado',
   'auxiliar-administrativo-madrid',
@@ -23,9 +24,13 @@ const MIGRATED_SLUGS = [
   'auxiliar-administrativo-aragon',
   'auxiliar-administrativo-asturias',
   'auxiliar-administrativo-baleares',
-  'auxiliar-administrativo-cyl',
   'auxiliar-administrativo-andalucia',
   'auxiliar-administrativo-ayuntamiento-valencia',
+]
+
+// Landings servidas por el template dinámico app/[oposicion]/page.tsx
+const DYNAMIC_SLUGS = [
+  'auxiliar-administrativo-cyl',
 ]
 
 // Mapeo de displayNumber en landing (17→101, etc.) para auxiliar estado
@@ -187,6 +192,32 @@ describe('Landing Data Integrity', () => {
       expect(content).toContain('Estado del Proceso Selectivo')
       expect(content).toContain('hitos.map')
       expect(content).toContain('hito.status')
+    })
+  })
+
+  describe('Landings dinámicas: template cubre las oposiciones migradas', () => {
+    const templatePath = path.join(process.cwd(), 'app/[oposicion]/page.tsx')
+    const templateContent = fs.readFileSync(templatePath, 'utf-8')
+
+    test('template dinámico existe y tiene las secciones necesarias', () => {
+      expect(templateContent).toContain('getOposicionLandingData')
+      expect(templateContent).toContain('getHitosConvocatoria')
+      expect(templateContent).toContain('revalidate')
+      expect(templateContent).toContain('generateStaticParams')
+      expect(templateContent).toContain('application/ld+json')
+      expect(templateContent).toContain('hitos.map')
+    })
+
+    test.each(DYNAMIC_SLUGS)('%s: NO tiene page.tsx estático (usa template dinámico)', (slug) => {
+      const staticPath = path.join(process.cwd(), `app/${slug}/page.tsx`)
+      expect(fs.existsSync(staticPath)).toBe(false)
+    })
+
+    test.each(DYNAMIC_SLUGS)('%s: config existe en oposiciones.ts', (slug) => {
+      const { getOposicion } = require('@/lib/config/oposiciones')
+      const config = getOposicion(slug)
+      expect(config).toBeTruthy()
+      expect(config.blocks.length).toBeGreaterThan(0)
     })
   })
 

@@ -82,17 +82,38 @@ export default async function OposicionPage({ params }: { params: Promise<{ opos
   const inscripcionInicio = data?.inscriptionStart ? formatDateLarga(data.inscriptionStart) : null
   const inscripcionFin = data?.inscriptionDeadline ? formatDateLarga(data.inscriptionDeadline) : null
 
-  // Estadísticas hero (de BD o generadas)
-  const estadisticas = (data?.landingEstadisticas as Array<{ numero: string; texto: string; color: string }>) ??
-    [
-      { numero: plazasLibres ? formatNumber(plazasLibres) : '—', texto: 'Plazas', color: `text-blue-600` },
-      { numero: String(temasCount), texto: 'Temas', color: 'text-green-600' },
-      { numero: String(config.blocks.length), texto: 'Bloques', color: 'text-purple-600' },
-      { numero: config.badge, texto: 'Grupo', color: 'text-orange-600' },
-    ]
+  // Resolver variables {plazasLibres}, {temasCount}, etc. en textos de BD
+  const varsMap: Record<string, string> = {
+    plazasLibres: plazasLibres ? formatNumber(plazasLibres) : '—',
+    plazasDiscapacidad: plazasDiscapacidad ? formatNumber(plazasDiscapacidad) : '—',
+    temasCount: String(temasCount),
+    bloquesCount: String(config.blocks.length),
+    tituloRequerido,
+    boeRef: boeRef || '',
+    boeFechaLarga: boeFechaLarga || '',
+    boeFechaCorta: boeFechaCorta || '',
+    textoExamen,
+  }
+  function resolveVars(text: string): string {
+    return text.replace(/\{(\w+)\}/g, (_, key) => varsMap[key] ?? `{${key}}`)
+  }
 
-  // FAQs (de BD o genéricas)
-  const faqs = (data?.landingFaqs as Array<{ pregunta: string; respuesta: string }>) ??
+  // Estadísticas hero (de BD con variables resueltas, o generadas)
+  const rawStats = data?.landingEstadisticas as Array<{ numero: string; texto: string; color: string }> | null
+  const estadisticas = rawStats
+    ? rawStats.map(s => ({ ...s, numero: resolveVars(s.numero) }))
+    : [
+        { numero: plazasLibres ? formatNumber(plazasLibres) : '—', texto: 'Plazas', color: `text-blue-600` },
+        { numero: String(temasCount), texto: 'Temas', color: 'text-green-600' },
+        { numero: String(config.blocks.length), texto: 'Bloques', color: 'text-purple-600' },
+        { numero: config.badge, texto: 'Grupo', color: 'text-orange-600' },
+      ]
+
+  // FAQs (de BD con variables resueltas, o genéricas)
+  const rawFaqs = data?.landingFaqs as Array<{ pregunta: string; respuesta: string }> | null
+  const faqs = rawFaqs
+    ? rawFaqs.map(f => ({ pregunta: resolveVars(f.pregunta), respuesta: resolveVars(f.respuesta) }))
+    :
     [
       {
         pregunta: `¿Cuántas plazas hay para ${config.name}?`,
