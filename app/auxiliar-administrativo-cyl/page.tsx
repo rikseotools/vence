@@ -31,6 +31,9 @@ export default async function AuxiliarAdministrativoCyl() {
   const seguimientoUrl = data?.seguimientoUrl ?? null
   const tituloRequerido = data?.tituloRequerido ?? 'Graduado en ESO o equivalente'
   const examDate = data?.examDate ? formatDateLarga(data.examDate) : null
+  const oepDecreto = data?.oepDecreto ?? null
+  const oepFecha = data?.oepFecha ? formatDateLarga(data.oepFecha) : null
+
   const textoExamen = examDate ? `Examen previsto para el ${examDate}` : 'Fecha de examen pendiente de confirmación'
 
   const estadisticas = [
@@ -63,6 +66,11 @@ export default async function AuxiliarAdministrativoCyl() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl mx-auto">
               {estadisticas.map((stat, i) => (<div key={i} className="bg-white rounded-lg p-4 shadow-md"><div className={`text-2xl font-bold ${stat.color}`}>{stat.numero}</div><div className="text-sm text-gray-600">{stat.texto}</div></div>))}
             </div>
+            {oepDecreto && (
+              <p className="text-sm text-gray-500 mt-4 text-center">
+                OEP: {oepDecreto}{oepFecha ? ` (${oepFecha})` : ''}
+              </p>
+            )}
           </div>
 
           {(programaUrl || seguimientoUrl) && (

@@ -81,6 +81,9 @@ export default async function AuxiliarAdministrativoMadrid() {
   const inscripcionInicio = data?.inscriptionStart ? formatDateLarga(data.inscriptionStart) : null
   const inscripcionFin = data?.inscriptionDeadline ? formatDateLarga(data.inscriptionDeadline) : null
 
+  const oepDecreto = data?.oepDecreto ?? null
+  const oepFecha = data?.oepFecha ? formatDateLarga(data.oepFecha) : null
+
   const textoExamen = examDate
     ? `Examen previsto para el ${examDate}`
     : 'Examen previsto para 2026'
@@ -222,6 +225,11 @@ export default async function AuxiliarAdministrativoMadrid() {
                 <strong>{textoInscripcion}</strong> {textoExamen}.
               </p>
             </div>
+            {oepDecreto && (
+              <p className="text-sm mt-2 opacity-80">
+                OEP: {oepDecreto}{oepFecha ? ` (${oepFecha})` : ''}
+              </p>
+            )}
           </div>
 
           {/* Enlaces oficiales */}

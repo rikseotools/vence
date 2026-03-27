@@ -29,6 +29,9 @@ export default async function AuxiliarAdministrativoAytoValencia() {
   const seguimientoUrl = data?.seguimientoUrl ?? null
   const tituloRequerido = data?.tituloRequerido ?? 'Graduado en ESO o equivalente'
   const examDate = data?.examDate ? formatDateLarga(data.examDate) : null
+  const oepDecreto = data?.oepDecreto ?? null
+  const oepFecha = data?.oepFecha ? formatDateLarga(data.oepFecha) : null
+
   const textoExamen = examDate ? `Examen previsto para el ${examDate}` : 'Pendiente de convocatoria'
   const boeRef = data?.boeReference ?? 'BOP Valencia'
   const boeFechaCorta = data?.boePublicationDate ? formatDateCorta(data.boePublicationDate) : ''
@@ -64,6 +67,11 @@ export default async function AuxiliarAdministrativoAytoValencia() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl mx-auto">
               {estadisticas.map((stat, i) => (<div key={i} className="bg-white rounded-lg p-4 shadow-md"><div className={`text-2xl font-bold ${stat.color}`}>{stat.numero}</div><div className="text-sm text-gray-600">{stat.texto}</div></div>))}
             </div>
+            {oepDecreto && (
+              <p className="text-sm text-gray-500 mt-4 text-center">
+                OEP: {oepDecreto}{oepFecha ? ` (${oepFecha})` : ''}
+              </p>
+            )}
           </div>
           {(programaUrl || seguimientoUrl) && (<div className="grid md:grid-cols-2 gap-4 max-w-4xl mx-auto mb-10">{programaUrl && (<a href={programaUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 bg-white rounded-xl shadow-md border border-gray-200 p-5 hover:shadow-lg hover:border-blue-300 transition-all group"><div className="flex-shrink-0 w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center text-2xl group-hover:bg-blue-200 transition-colors">📄</div><div><div className="font-bold text-gray-800 group-hover:text-blue-700 transition-colors">Ver convocatoria en {data?.diarioOficial ?? 'BOP Valencia'}</div></div></a>)}{seguimientoUrl && (<a href={seguimientoUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 bg-white rounded-xl shadow-md border border-gray-200 p-5 hover:shadow-lg hover:border-blue-300 transition-all group"><div className="flex-shrink-0 w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center text-2xl group-hover:bg-blue-200 transition-colors">🔍</div><div><div className="font-bold text-gray-800 group-hover:text-blue-700 transition-colors">Seguimiento del proceso selectivo</div></div></a>)}</div>)}
           {hitos.length > 0 && (<section className="mb-10"><h2 className="text-2xl font-bold text-gray-800 text-center mb-8">📅 Estado del Proceso Selectivo</h2><div className="max-w-3xl mx-auto"><div className="relative"><div className="absolute left-4 md:left-6 top-0 bottom-0 w-0.5 bg-gray-200" /><div className="space-y-6">{hitos.map((hito) => (<div key={hito.id} className="relative flex items-start gap-4 md:gap-6"><div className={`relative z-10 flex-shrink-0 w-9 h-9 md:w-12 md:h-12 rounded-full flex items-center justify-center text-sm md:text-base ${hito.status === 'completed' ? 'bg-green-100 text-green-600 border-2 border-green-500' : hito.status === 'current' ? 'bg-blue-100 text-blue-600 border-2 border-blue-500 animate-pulse' : 'bg-gray-100 text-gray-400 border-2 border-gray-300'}`}>{hito.status === 'completed' ? '✓' : hito.status === 'current' ? '●' : '○'}</div><div className={`flex-1 pb-2 ${hito.status === 'upcoming' ? 'opacity-60' : ''}`}><div className="flex flex-wrap items-center gap-2 mb-1"><span className={`text-xs font-medium px-2 py-0.5 rounded-full ${hito.status === 'completed' ? 'bg-green-100 text-green-700' : hito.status === 'current' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>{formatDateCorta(hito.fecha)}</span></div><h3 className={`font-semibold ${hito.status === 'upcoming' ? 'text-gray-500' : 'text-gray-800'}`}>{hito.titulo}</h3>{hito.descripcion && <p className="text-sm text-gray-500 mt-1">{hito.descripcion}</p>}</div></div>))}</div></div></div></section>)}

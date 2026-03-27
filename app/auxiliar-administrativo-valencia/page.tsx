@@ -36,6 +36,9 @@ export default async function AuxiliarAdministrativoValencia() {
   const seguimientoUrl = data?.seguimientoUrl ?? null
   const tituloRequerido = data?.tituloRequerido ?? 'Graduado en ESO'
   const examYaPasado = data?.examDate ? new Date(data.examDate) < new Date() : false
+  const oepDecreto = data?.oepDecreto ?? null
+  const oepFecha = data?.oepFecha ? formatDateLarga(data.oepFecha) : null
+
   const textoExamen = examDate ? (examYaPasado ? `Examen realizado el ${examDate}` : `Examen previsto para el ${examDate}`) : 'Fecha de examen pendiente'
 
   const estadisticas = [
@@ -86,6 +89,11 @@ export default async function AuxiliarAdministrativoValencia() {
               <h3 className="font-bold mb-2">📋 {boeRef} ({boeFechaLarga})</h3>
               <p className="text-orange-100 text-sm">{textoExamen}.</p>
             </div>
+            {oepDecreto && (
+              <p className="text-sm mt-2 opacity-80">
+                OEP: {oepDecreto}{oepFecha ? ` (${oepFecha})` : ''}
+              </p>
+            )}
           </div>
 
           {(programaUrl || seguimientoUrl) && (

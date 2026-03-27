@@ -26,6 +26,9 @@ export interface OposicionLandingData {
   diarioReferencia: string | null
   seguimientoUrl: string | null
   isConvocatoriaActiva: boolean | null
+  oepDecreto: string | null
+  oepFecha: string | null
+  estadoProceso: string | null
 }
 
 /**
@@ -59,6 +62,9 @@ export async function getOposicionLandingData(
         diarioReferencia: oposiciones.diarioReferencia,
         seguimientoUrl: oposiciones.seguimientoUrl,
         isConvocatoriaActiva: oposiciones.isConvocatoriaActiva,
+        oepDecreto: oposiciones.oepDecreto,
+        oepFecha: oposiciones.oepFecha,
+        estadoProceso: oposiciones.estadoProceso,
       })
       .from(oposiciones)
       .where(eq(oposiciones.slug, slug))

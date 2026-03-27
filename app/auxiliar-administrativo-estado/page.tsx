@@ -88,6 +88,9 @@ export default async function AuxiliarAdministrativoEstado() {
   const inscripcionInicio = data?.inscriptionStart ? formatDateLarga(data.inscriptionStart) : null
   const inscripcionFin = data?.inscriptionDeadline ? formatDateLarga(data.inscriptionDeadline) : null
 
+  const oepDecreto = data?.oepDecreto ?? null
+  const oepFecha = data?.oepFecha ? formatDateLarga(data.oepFecha) : null
+
   const textoExamen = examDate
     ? `Examen previsto para el ${examDate}`
     : 'Examen previsto primer semestre 2026'
@@ -297,6 +300,11 @@ export default async function AuxiliarAdministrativoEstado() {
             <p className="text-green-100 text-sm mt-4">
               Examen tipo test de 90 minutos. Novedades del temario: políticas LGTBI y Copilot de Windows.
             </p>
+            {oepDecreto && (
+              <p className="text-sm mt-2 opacity-80">
+                OEP: {oepDecreto}{oepFecha ? ` (${oepFecha})` : ''}
+              </p>
+            )}
           </div>
 
           {/* Enlaces oficiales */}
