@@ -2287,6 +2287,7 @@ export const oposiciones = pgTable("oposiciones", {
 	convocatoriaNumero: text("convocatoria_numero"),
 	convocatoriaFecha: date("convocatoria_fecha"),
 	convocatoriaDogv: text("convocatoria_dogv"),
+	examDateApproximate: boolean("exam_date_approximate").default(false),
 	// Landing page data (JSONB para escalar a 120+ oposiciones sin archivos por landing)
 	landingFaqs: jsonb("landing_faqs").default([]),
 	examenConfig: jsonb("examen_config").default({}),

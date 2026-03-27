@@ -76,8 +76,11 @@ export default async function OposicionPage({ params }: { params: Promise<{ opos
   const oepFecha = data?.oepFecha ? formatDateLarga(data.oepFecha) : null
   const diarioOficial = data?.diarioOficial ?? 'BOE'
 
+  const isApproxDate = data?.examDateApproximate ?? false
   const textoExamen = examDate
-    ? `Examen previsto para el ${examDate}`
+    ? isApproxDate
+      ? `Examen previsto: ${examDate} (fecha aproximada)`
+      : `Examen: ${examDate}`
     : 'Fecha de examen pendiente de confirmación'
 
   // Inscripción

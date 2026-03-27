@@ -12,6 +12,7 @@ export interface OposicionLandingData {
   plazasPromocionInterna: number | null
   plazasDiscapacidad: number | null
   examDate: string | null
+  examDateApproximate: boolean | null
   inscriptionStart: string | null
   inscriptionDeadline: string | null
   boePublicationDate: string | null
@@ -56,6 +57,7 @@ export async function getOposicionLandingData(
         plazasPromocionInterna: oposiciones.plazasPromocionInterna,
         plazasDiscapacidad: oposiciones.plazasDiscapacidad,
         examDate: oposiciones.examDate,
+        examDateApproximate: oposiciones.examDateApproximate,
         inscriptionStart: oposiciones.inscriptionStart,
         inscriptionDeadline: oposiciones.inscriptionDeadline,
         boePublicationDate: oposiciones.boePublicationDate,
