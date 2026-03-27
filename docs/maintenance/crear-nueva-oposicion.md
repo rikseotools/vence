@@ -484,7 +484,7 @@ Copiar estructura de una oposicion existente (ej: `app/tramitacion-procesal/`):
 
 ```
 app/<slug-con-guiones>/
-  page.tsx                              -- Landing dinamica con datos de BD
+  (NO crear page.tsx — la landing se genera automaticamente desde app/[oposicion]/page.tsx)
   test/
     page.tsx                            -- <TestHubPage oposicion="slug" />
     layout.tsx                          -- Metadata
@@ -506,48 +506,38 @@ app/<slug-con-guiones>/
 
 **En `temario/page.tsx`:** marcar `disponible: true` los temas que YA tienen topic_scope con preguntas. Los temas SIN scope (ej: leyes autonomicas no importadas) se dejan como `disponible: false` — el componente TemarioClient muestra "En elaboracion" automaticamente.
 
-### 5a. Landing page dinamica (PATRON ACTUAL - marzo 2026)
+### 5a. Landing page (AUTOMATICA - no hay que crear archivo)
 
-Usar `app/auxiliar-administrativo-estado/page.tsx` como referencia. La landing lee datos de BD:
+La landing se genera automaticamente desde `app/[oposicion]/page.tsx` (template unico). **NO hay que crear ningun archivo page.tsx para la landing.**
 
-```tsx
-import { getOposicionLandingData, getHitosConvocatoria } from '@/lib/api/convocatoria/queries'
+Solo necesitas que los datos esten en la tabla `oposiciones` (fase 2a) y la config en `oposiciones.ts` (fase 4). El template lee todo de BD y genera el HTML estatico con ISR (24h).
 
-export const revalidate = 86400 // ISR 24h en Vercel
+**Datos que usa el template (columnas de `oposiciones`):**
 
-export default async function LandingPage() {
-  const data = await getOposicionLandingData('slug-con-guiones')
-  const hitos = await getHitosConvocatoria('slug-con-guiones')
+| Columna | Uso en landing |
+|---------|---------------|
+| `plazas_libres/promocion/discapacidad` | Hero, caja de convocatoria, FAQs |
+| `exam_date`, `inscription_start/deadline` | Texto de examen, estado inscripcion |
+| `boe_reference`, `boe_publication_date` | Caja de convocatoria |
+| `programa_url`, `seguimiento_url` | Links oficiales (tarjetas) |
+| `oep_decreto`, `oep_fecha` | Linea OEP en la caja de convocatoria |
+| `diario_oficial` | Texto del link oficial ("Ver en BOCYL") |
+| `titulo_requerido`, `salario_min/max` | FAQs |
+| `color_primario` | Color del gradiente (emerald, cyan, violet, etc.) |
+| `seo_title`, `seo_description` | Meta tags SEO |
+| `landing_faqs` (JSONB) | Preguntas frecuentes especificas |
+| `examen_config` (JSONB) | Estructura del examen |
+| `landing_estadisticas` (JSONB) | Las 4 tarjetas hero (plazas, temas, etc.) |
+| `requisitos_especiales` (JSONB) | Requisitos extra (idiomas, etc.) |
 
-  // Datos con fallbacks
-  const plazasLibres = data?.plazasLibres ?? 0
-  const boeRef = data?.boeReference ?? ''
-  const examDate = data?.examDate ? formatDateLarga(data.examDate) : null
-  // ...etc
-}
-```
+**Variables en FAQs y estadisticas:** Los textos en `landing_faqs` y `landing_estadisticas` pueden usar variables como `{plazasLibres}`, `{temasCount}`, `{tituloRequerido}`, etc. El template las resuelve automaticamente con los datos de BD.
 
-**Datos dinamicos de tabla `oposiciones`:**
-- Plazas (libres, promocion, discapacidad)
-- Fechas (examen, inscripcion inicio/fin, publicacion BOE)
-- BOE reference y diario oficial
-- Salario min/max
-- Titulo requerido
-- URLs (programa_url → link BOE, seguimiento_url → link INAP/sede)
+**Colores disponibles:** emerald, cyan, blue, purple, red, amber, orange, rose, green, violet. Se configuran en `color_primario`. El mapa completo esta en `lib/utils/landing-colors.ts`.
 
-**Helpers de formato (definir en el page.tsx):**
-- `formatNumber(n)` → regex `\B(?=(\d{3})+(?!\d))` (NO usar toLocaleString, falla en servidores sin es-ES)
+**Helpers de formato** estan en `lib/utils/format.ts` (compartidos, NO hay que duplicarlos):
+- `formatNumber(n)` → "1.700"
 - `formatDateLarga(str)` → "22 de diciembre de 2025"
 - `formatDateCorta(str)` → "22/12/2025"
-
-**Estado de inscripcion (derivado):**
-```tsx
-const inscripcionCerrada = data?.inscriptionDeadline
-  ? new Date(data.inscriptionDeadline) < new Date()
-  : true
-```
-
-**Links oficiales:** se renderizan como tarjetas fuera de la seccion verde de convocatoria (2 columnas, iconos, hover effects).
 
 ### 5b. Timeline de hitos del proceso selectivo
 
@@ -667,16 +657,10 @@ const MIGRATED_SLUGS = [
 ]
 ```
 
-El test verifica automaticamente (77+ checks):
-- Archivo .tsx existe, es Server Component async, tiene ISR
-- Importa `getOposicionLandingData` y `getHitosConvocatoria`
-- Tiene JSON-LD schema
-- NO usa `toLocaleString` (falla en servidores sin es-ES)
-- Plazas, fecha examen, BOE reference vienen de BD (no hardcodeados)
-- Links a convocatoria oficial y seguimiento
-- Timeline de hitos renderizado
-- Cantidad correcta de temas listados
-- No mezcla texto con y sin tildes (ver 6b)
+El test verifica automaticamente:
+- Template dinamico `app/[oposicion]/page.tsx` existe y tiene todas las secciones
+- Cada oposicion en DYNAMIC_SLUGS NO tiene page.tsx estatico (usa template)
+- Cada oposicion tiene config valida en `oposiciones.ts` con bloques
 - Config central: slugs/positionTypes validos, totalTopics correcto
 
 ```bash
@@ -727,10 +711,10 @@ Si hay discrepancias, la BD es la fuente de verdad (viene del BOE oficial).
 8. Breadcrumbs funcionan
 9. Perfil: oposicion aparece en selector
 10. Onboarding: oposicion aparece para nuevos usuarios
-11. **Landing: plazas, fecha examen, BOE coinciden con BD**
+11. **Landing (automatica): plazas, fecha examen, BOE se muestran correctamente desde BD**
 12. **Landing: links a convocatoria y seguimiento funcionan**
-13. **Landing: timeline de hitos se renderiza correctamente**
-14. **Landing: epigrafes coinciden con pagina de tests**
+13. **Landing: timeline de hitos se renderiza (insertar hitos en `convocatoria_hitos`)**
+14. **Landing: FAQs y estadisticas se muestran (insertar en columnas JSONB de `oposiciones`)**
 15. **Admin: oposicion aparece en /admin/seguimiento-convocatorias**
 
 ---
