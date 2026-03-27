@@ -25,7 +25,12 @@ export async function generateMetadata({ params }: { params: Promise<{ oposicion
 
   const data = await getOposicionLandingData(oposicion)
   const title = data?.seoTitle || `${config.name} 2026 | Tests y Temario`
-  const description = data?.seoDescription || `Prepara ${config.name} con tests tipo examen y temario completo. ${config.totalTopics} temas.`
+  // Description se genera dinámicamente para que plazas/temas siempre estén actualizados
+  const plazas = data?.plazasLibres
+  const temas = data?.temasCount ?? config.totalTopics
+  const description = plazas
+    ? `Oposiciones ${config.name}: ${plazas} plazas, temario oficial ${temas} temas. Tests gratuitos.`
+    : `Prepara ${config.name} con tests tipo examen y temario completo. ${temas} temas.`
 
   return {
     title,
