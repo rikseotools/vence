@@ -11,8 +11,9 @@ import type { SequenceValidationResult } from './validators/sequenceValidator'
 
 const SERIES_EXTRA = `
 📝 IMPORTANTE PARA SERIES:
-- Para series alfabéticas: convierte CADA letra a su posición numérica y muestra el cálculo
+- Para series alfabéticas: convierte CADA letra a su posición numérica usando el ALFABETO ESPAÑOL DE 27 LETRAS (con Ñ) y muestra el cálculo
 - Verifica cada operación aritmética individualmente (no asumas, calcula)
+- Si las diferencias entre elementos NO siguen un patrón claro, dilo honestamente. NO inventes patrones forzados ni operaciones arbitrarias (como multiplicar por números aleatorios)
 - Si el resultado no coincide con ninguna opción, indica "⚠️ POSIBLE ERROR EN LA PREGUNTA"
 `
 

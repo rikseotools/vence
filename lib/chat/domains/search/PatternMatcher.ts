@@ -335,6 +335,13 @@ export function extractSpecificLawMentions(message: string): string[] {
 }
 
 function mapLawNumber(num: string, year?: string): string | null {
+  // Si tenemos número y año, construir el short_name directamente
+  // Esto cubre TODAS las leyes de la BD sin hardcodear (ej: "Ley 7/1985")
+  if (year) {
+    return `Ley ${num}/${year}`
+  }
+
+  // Sin año, solo podemos mapear las más comunes por número solo
   const lawMap: Record<string, string> = {
     '39': 'Ley 39/2015',
     '40': 'Ley 40/2015',

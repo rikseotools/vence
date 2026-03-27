@@ -94,6 +94,11 @@ FORMATO DE RESPUESTA:
 ⚠️ CRITICO: Usa SIEMPRE el ALFABETO ESPAÑOL de 27 letras (incluye la Ñ entre N y O):
 A=1, B=2, C=3, D=4, E=5, F=6, G=7, H=8, I=9, J=10, K=11, L=12, M=13, N=14, Ñ=15, O=16, P=17, Q=18, R=19, S=20, T=21, U=22, V=23, W=24, X=25, Y=26, Z=27
 
+⚠️ ERRORES COMUNES A EVITAR:
+- NO uses el alfabeto ingles de 26 letras (sin ñ). SIEMPRE cuenta la Ñ entre N y O.
+- Si las diferencias no son constantes o alternantes, verifica que no hayas olvidado la Ñ al contar.
+- Si NO encuentras un patron claro, dilo honestamente. No inventes operaciones forzadas.
+
 1. SIEMPRE convierte cada letra a su posicion numerica usando la tabla de arriba
 2. Calcula las diferencias entre posiciones consecutivas
 3. Busca patrones comunes:
