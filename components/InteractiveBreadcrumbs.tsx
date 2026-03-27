@@ -313,11 +313,11 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
                     isPorLeyes ? '/test/por-leyes' :
                     isStandaloneTest ? '/test/por-leyes' : '#'
 
-                  // Determinar texto (JSX para CCAA con banderas SVG, emoji para Estado/nacionales)
+                  // Determinar texto: nombre completo en desktop, abreviado en móvil
                   const labelContent = currentOpo
                     ? (hasCcaaFlag(currentOpo.id)
-                        ? <><CcaaFlag oposicionId={currentOpo.id} /> {currentOpo.shortName}</>
-                        : `${currentOpo.emoji} ${currentOpo.shortName}`)
+                        ? <><CcaaFlag oposicionId={currentOpo.id} /> <span className="hidden md:inline">{currentOpo.name}</span><span className="md:hidden">{currentOpo.shortName}</span></>
+                        : <><span className="hidden md:inline">{currentOpo.emoji} {currentOpo.name}</span><span className="md:hidden">{currentOpo.emoji} {currentOpo.shortName}</span></>)
                     : isLeyes ? '📚 Leyes'
                     : isTeoria ? '📖 Teoría'
                     : isPsicotecnicos ? '🧩 Psicotécnicos'
