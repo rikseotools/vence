@@ -193,24 +193,7 @@ export default function DynamicTest({ titulo, dificultad }: DynamicTestProps) {
       setValidationError('Error temporal al validar tu respuesta. Inténtalo de nuevo.')
       setSelectedAnswer(null)
       setProcessingAnswer(false)
-      // Enviar notificación admin (async, no bloquea)
-      fetch('/api/emails/send-admin-notification', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'api_error',
-          adminEmail: 'manueltrader@gmail.com',
-          data: {
-            component: 'DynamicTest',
-            questionId: currentQ.id,
-            userAnswer: answerIndex,
-            errorType: (err as Error)?.name || 'API_ERROR',
-            errorMessage: (err as Error)?.message || 'Unknown error',
-            userId: user?.id || 'anonymous',
-            timestamp: new Date().toISOString()
-          }
-        })
-      }).catch(e => console.warn('⚠️ No se pudo enviar notificación admin:', e))
+      // Los errores de validación se registran automáticamente en validation_error_logs por el servidor
       logClientError('/api/answer', err as Error, { component: 'DynamicTest', questionId: currentQ.id, userId: user?.id })
       return
     }

@@ -352,24 +352,7 @@ export default function PsychometricTestLayout({
         console.error('❌ [SecureAnswer] Psicotécnico: validación fallida:', apiError)
         setSelectedAnswer(null)
         setIsAnswering(false)
-        // Notificar al admin
-        fetch('/api/emails/send-admin-notification', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: 'api_error',
-            adminEmail: 'manueltrader@gmail.com',
-            data: {
-              component: 'PsychometricTestLayout',
-              questionId: currentQ.id,
-              userAnswer: optionIndex,
-              errorType: apiError?.name || 'API_ERROR',
-              errorMessage: apiError?.message || 'Unknown error',
-              userId: user?.id || 'anonymous',
-              timestamp: new Date().toISOString()
-            }
-          })
-        }).catch(() => {})
+        // Los errores de validación se registran automáticamente en validation_error_logs por el servidor
         logClientError('/api/answer/psychometric', apiError, { component: 'PsychometricTestLayout', questionId: currentQ.id, userId: user?.id })
         alert('Error temporal al validar tu respuesta. Inténtalo de nuevo.')
         return

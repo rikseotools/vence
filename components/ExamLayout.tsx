@@ -736,23 +736,7 @@ export default function ExamLayout({
       setIsSaving(false)
       // Mostrar error al usuario en vez de dejar UI colgada
       alert('Error al enviar el examen. Comprueba tu conexión e inténtalo de nuevo.')
-      // Notificar al admin
-      fetch('/api/emails/send-admin-notification', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'api_error',
-          adminEmail: 'manueltrader@gmail.com',
-          data: {
-            component: 'ExamLayout',
-            totalQuestions: effectiveQuestions.length,
-            errorType,
-            errorMessage: (error as Error).message,
-            userId: user?.id || 'anonymous',
-            timestamp: new Date().toISOString()
-          }
-        })
-      }).catch(() => {})
+      // Los errores de validación se registran automáticamente en validation_error_logs por el servidor
       logClientError('/api/exam/validate', error, { component: 'ExamLayout', userId: user?.id })
     }
   }

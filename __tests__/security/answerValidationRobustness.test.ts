@@ -104,13 +104,8 @@ describe('ExamLayout.tsx — error handling', () => {
     expect(content).toMatch(/alert\s*\(/)
   })
 
-  it('envía notificación admin con campos correctos', () => {
-    expect(content).toContain("'/api/emails/send-admin-notification'")
-    expect(content).toContain("component: 'ExamLayout'")
-    expect(content).toContain('errorType')
-    expect(content).toContain('errorMessage')
-    expect(content).toContain('userId')
-    expect(content).toContain('timestamp')
+  it('NO envía emails de notificación admin (se registran en validation_error_logs)', () => {
+    expect(content).not.toContain("'/api/emails/send-admin-notification'")
   })
 
   it('resetea isSaving en caso de error (no deja UI colgada)', () => {
@@ -148,9 +143,8 @@ describe('PsychometricTestLayout.tsx — sin fallback inseguro', () => {
     expect(content).toContain('setIsAnswering(false)')
   })
 
-  it('envía notificación admin con component: PsychometricTestLayout', () => {
-    expect(content).toContain("'/api/emails/send-admin-notification'")
-    expect(content).toContain("component: 'PsychometricTestLayout'")
+  it('NO envía emails de notificación admin (se registran en validation_error_logs)', () => {
+    expect(content).not.toContain("'/api/emails/send-admin-notification'")
   })
 
   it('usa validatePsychometricAnswer (no fetch directo)', () => {
@@ -159,24 +153,18 @@ describe('PsychometricTestLayout.tsx — sin fallback inseguro', () => {
 })
 
 // ============================================
-// 5. DYNAMICTEST: Notificación admin completa
+// 5. DYNAMICTEST: Error handling
 // ============================================
-describe('DynamicTest.js — error handling', () => {
+describe('DynamicTest — error handling', () => {
   const content = fs.readFileSync(
     path.join(ROOT, 'components/DynamicTest.tsx'), 'utf-8'
   )
 
-  it('envía notificación admin con component: DynamicTest', () => {
-    expect(content).toContain("'/api/emails/send-admin-notification'")
-    expect(content).toContain("component: 'DynamicTest'")
-  })
-
-  it('incluye userId en la notificación admin', () => {
-    expect(content).toContain('userId:')
+  it('NO envía emails de notificación admin (se registran en validation_error_logs)', () => {
+    expect(content).not.toContain("'/api/emails/send-admin-notification'")
   })
 
   it('extrae user de useAuth()', () => {
-    // Debe tener user en la destructuración de useAuth
     expect(content).toMatch(/const\s*\{[^}]*user[^}]*\}\s*=\s*useAuth\(\)/)
   })
 
@@ -186,22 +174,15 @@ describe('DynamicTest.js — error handling', () => {
 })
 
 // ============================================
-// 6. TESTLAYOUT: Notificación admin completa
+// 6. TESTLAYOUT: Error handling
 // ============================================
 describe('TestLayout.tsx — error handling', () => {
   const content = fs.readFileSync(
     path.join(ROOT, 'components/TestLayout.tsx'), 'utf-8'
   )
 
-  it('envía notificación admin con component: TestLayout', () => {
-    expect(content).toContain("'/api/emails/send-admin-notification'")
-    expect(content).toContain("component: 'TestLayout'")
-  })
-
-  it('incluye userId y errorType en la notificación', () => {
-    expect(content).toContain('userId:')
-    expect(content).toContain('errorType')
-    expect(content).toContain('errorMessage')
+  it('NO envía emails de notificación admin (se registran en validation_error_logs)', () => {
+    expect(content).not.toContain("'/api/emails/send-admin-notification'")
   })
 
   it('importa ApiTimeoutError y ApiNetworkError', () => {
@@ -226,9 +207,9 @@ describe('TestLayout.tsx — error handling', () => {
 })
 
 // ============================================
-// 7. CONSISTENCIA: Todos los componentes notifican admin
+// 7. CONSISTENCIA: Ningún componente envía emails de error (se usan validation_error_logs)
 // ============================================
-describe('Consistencia — todos los componentes de test notifican errores', () => {
+describe('Consistencia — ningún componente envía emails de error admin', () => {
   const components = [
     { name: 'TestLayout', file: 'components/TestLayout.tsx' },
     { name: 'DynamicTest', file: 'components/DynamicTest.tsx' },
@@ -237,19 +218,9 @@ describe('Consistencia — todos los componentes de test notifican errores', () 
   ]
 
   for (const { name, file } of components) {
-    it(`${name} envía notificación al admin en caso de error API`, () => {
+    it(`${name} NO envía email de notificación admin`, () => {
       const content = fs.readFileSync(path.join(ROOT, file), 'utf-8')
-      expect(content).toContain("'/api/emails/send-admin-notification'")
-    })
-
-    it(`${name} incluye component: '${name}' en la notificación`, () => {
-      const content = fs.readFileSync(path.join(ROOT, file), 'utf-8')
-      expect(content).toContain(`component: '${name}'`)
-    })
-
-    it(`${name} incluye timestamp en la notificación`, () => {
-      const content = fs.readFileSync(path.join(ROOT, file), 'utf-8')
-      expect(content).toContain('timestamp:')
+      expect(content).not.toContain("'/api/emails/send-admin-notification'")
     })
   }
 })
@@ -349,11 +320,8 @@ describe('Error handling — lógica de clasificación de errores', () => {
   })
 })
 
-describe('Error handling — notificación admin fire-and-forget', () => {
-
-  // Los componentes usan fetch(...).catch(() => {}) para no bloquear
-  it('la notificación admin NO debe bloquear el flujo del usuario', () => {
-    // Verificar que todos los componentes usan .catch(() => {}) o .catch(...)
+describe('Error handling — errores se registran en servidor, no por email', () => {
+  it('ningún componente envía emails de error (usan validation_error_logs)', () => {
     const components = [
       'components/TestLayout.tsx',
       'components/DynamicTest.tsx',
@@ -363,13 +331,7 @@ describe('Error handling — notificación admin fire-and-forget', () => {
 
     for (const file of components) {
       const content = fs.readFileSync(path.join(ROOT, file), 'utf-8')
-      // La notificación fetch debe tener .catch al final
-      const hasFireAndForget = content.includes('.catch(() => {})') ||
-        content.includes('.catch(()=>{})') ||
-        content.includes('.catch(() => { })') ||
-        // Algunos usan el catch del bloque exterior
-        content.includes("send-admin-notification'")
-      expect(hasFireAndForget).toBe(true)
+      expect(content).not.toContain("send-admin-notification")
     }
   })
 })
