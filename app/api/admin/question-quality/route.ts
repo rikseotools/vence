@@ -214,21 +214,23 @@ async function runChecks(): Promise<QualityResponse> {
     `),
 
     // 9. Duplicate questions (same question_text, multiple active)
+    // Only show ONE row per duplicate group (not all copies)
     db.execute(sql`
-      SELECT q.id, LEFT(q.question_text, ${TEXT_LIMIT}) as question_text,
-             d.cnt,
-             d.total_dupes as total_count
-      FROM questions q
-      JOIN (
-        SELECT question_text, count(*) as cnt,
-               SUM(count(*) - 1) OVER()::int as total_dupes
+      WITH dupe_groups AS (
+        SELECT question_text, count(*) as cnt
         FROM questions
         WHERE is_active = true
         GROUP BY question_text
         HAVING count(*) > 1
-      ) d ON q.question_text = d.question_text
+      )
+      SELECT DISTINCT ON (d.question_text)
+             q.id, LEFT(q.question_text, ${TEXT_LIMIT}) as question_text,
+             d.cnt,
+             (SELECT COALESCE(SUM(cnt - 1)::int, 0) FROM dupe_groups) as total_count
+      FROM questions q
+      JOIN dupe_groups d ON q.question_text = d.question_text
       WHERE q.is_active = true
-      ORDER BY d.cnt DESC
+      ORDER BY d.question_text, q.created_at ASC
       LIMIT ${MAX_ITEMS}
     `),
   ])
