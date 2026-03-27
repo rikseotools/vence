@@ -87,9 +87,17 @@ export default async function OposicionPage({ params }: { params: Promise<{ opos
   const inscripcionInicio = data?.inscriptionStart ? formatDateLarga(data.inscriptionStart) : null
   const inscripcionFin = data?.inscriptionDeadline ? formatDateLarga(data.inscriptionDeadline) : null
 
+  // Texto de inscripción (usado en FAQs)
+  const textoInscripcion = inscripcionCerrada && inscripcionInicio
+    ? `El plazo de inscripción fue del ${inscripcionInicio} al ${inscripcionFin}.`
+    : inscripcionInicio
+      ? `Plazo de inscripción: del ${inscripcionInicio} al ${inscripcionFin}.`
+      : ''
+
   // Resolver variables {plazasLibres}, {temasCount}, etc. en textos de BD
   const varsMap: Record<string, string> = {
     plazasLibres: plazasLibres ? formatNumber(plazasLibres) : '—',
+    plazasPromocion: plazasPromocion ? formatNumber(plazasPromocion) : '—',
     plazasDiscapacidad: plazasDiscapacidad ? formatNumber(plazasDiscapacidad) : '—',
     temasCount: String(temasCount),
     bloquesCount: String(config.blocks.length),
@@ -98,9 +106,19 @@ export default async function OposicionPage({ params }: { params: Promise<{ opos
     boeFechaLarga: boeFechaLarga || '',
     boeFechaCorta: boeFechaCorta || '',
     textoExamen,
+    textoInscripcion,
+    examDate: examDate || 'pendiente de confirmación',
+    salarioMin: data?.salarioMin ? formatNumber(data.salarioMin) : '—',
+    salarioMax: data?.salarioMax ? formatNumber(data.salarioMax) : '—',
   }
   function resolveVars(text: string): string {
-    return text.replace(/\{(\w+)\}/g, (_, key) => varsMap[key] ?? `{${key}}`)
+    return text.replace(/\{(\w+)\}/g, (_, key) => {
+      const val = varsMap[key]
+      if (val === undefined) {
+        console.warn(`⚠️ [Landing ${oposicion}] Variable no resuelta: {${key}}`)
+      }
+      return val ?? ''
+    })
   }
 
   // Estadísticas hero (de BD con variables resueltas, o generadas)
