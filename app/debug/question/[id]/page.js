@@ -242,13 +242,63 @@ export default function QuestionDebugPage() {
         )
       
       default:
+        // Tipos de texto simple (calculation, percentage, analogy, synonym, antonym, etc.)
+        // Se renderizan como text_question
         return (
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <div className="text-center py-8">
-              <p className="text-gray-600">
-                Tipo de pregunta no soportado: {question.question_subtype}
-              </p>
+          <div className="bg-white rounded-lg shadow-lg p-8">
+            <h3 className="text-xl font-bold text-gray-900 mb-6 whitespace-pre-line">
+              {question.question_text}
+            </h3>
+
+            <div className="grid gap-4 mb-8">
+              {['A', 'B', 'C', 'D'].map((letter, index) => {
+                const optionText = question.options[letter]
+                const isSelected = selectedAnswer === index
+                const isCorrectOption = showResult && verifiedCorrectAnswer !== null
+                  ? index === verifiedCorrectAnswer
+                  : false
+
+                return (
+                  <button
+                    key={letter}
+                    onClick={() => !showResult && !isAnswering && handleAnswer(index)}
+                    disabled={showResult || isAnswering}
+                    className={`text-left p-4 rounded-lg border transition-all duration-200 ${
+                      showResult
+                        ? isCorrectOption
+                          ? 'bg-green-100 border-green-500 text-green-800'
+                          : isSelected
+                            ? 'bg-red-100 border-red-500 text-red-800'
+                            : 'bg-gray-50 border-gray-300 text-gray-600'
+                        : isSelected
+                          ? 'bg-blue-100 border-blue-500 text-blue-800'
+                          : 'bg-gray-50 border-gray-300 hover:bg-gray-100'
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <span className="font-bold text-lg">{letter})</span>
+                      <span className="flex-1">{optionText}</span>
+                      {showResult && isCorrectOption && (
+                        <span className="text-green-600">✓</span>
+                      )}
+                      {showResult && isSelected && !isCorrectOption && (
+                        <span className="text-red-600">✗</span>
+                      )}
+                    </div>
+                  </button>
+                )
+              })}
             </div>
+
+            {showResult && (verifiedExplanation || question.explanation) && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mt-6">
+                <h4 className="font-semibold text-blue-800 mb-2">Explicación:</h4>
+                <div
+                  className="text-blue-700 whitespace-pre-line"
+                  dangerouslySetInnerHTML={{ __html: (verifiedExplanation || question.explanation).replace(/\n/g, '<br>') }}
+                />
+              </div>
+            )}
           </div>
         )
     }

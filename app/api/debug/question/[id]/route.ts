@@ -89,6 +89,7 @@ async function _GET(
 
     // Si no está en questions, buscar en psychometric_questions
     // 🔒 SEGURIDAD: NO seleccionar correct_option
+    // LEFT JOIN para soportar preguntas sin sección asignada
     const psychResults = await db
       .select({
         id: psychometricQuestions.id,
@@ -102,14 +103,15 @@ async function _GET(
         explanation: psychometricQuestions.explanation,
         isActive: psychometricQuestions.isActive,
         createdAt: psychometricQuestions.createdAt,
+        categoryId: psychometricQuestions.categoryId,
         sectionKey: psychometricSections.sectionKey,
         sectionDisplayName: psychometricSections.displayName,
-        categoryKey: psychometricCategories.categoryKey,
-        categoryDisplayName: psychometricCategories.displayName,
+        sectionCategoryKey: psychometricCategories.categoryKey,
+        sectionCategoryName: psychometricCategories.displayName,
       })
       .from(psychometricQuestions)
-      .innerJoin(psychometricSections, eq(psychometricQuestions.sectionId, psychometricSections.id))
-      .innerJoin(psychometricCategories, eq(psychometricSections.categoryId, psychometricCategories.id))
+      .leftJoin(psychometricSections, eq(psychometricQuestions.sectionId, psychometricSections.id))
+      .leftJoin(psychometricCategories, eq(psychometricSections.categoryId, psychometricCategories.id))
       .where(eq(psychometricQuestions.id, id))
       .limit(1)
 
@@ -118,6 +120,21 @@ async function _GET(
     }
 
     const q = psychResults[0]
+
+    // Si no hay categoría vía sección, buscar directamente por category_id
+    let categoryKey = q.sectionCategoryKey
+    let categoryName = q.sectionCategoryName
+    if (!categoryKey && q.categoryId) {
+      const directCat = await db
+        .select({ categoryKey: psychometricCategories.categoryKey, displayName: psychometricCategories.displayName })
+        .from(psychometricCategories)
+        .where(eq(psychometricCategories.id, q.categoryId))
+        .limit(1)
+      if (directCat.length > 0) {
+        categoryKey = directCat[0].categoryKey
+        categoryName = directCat[0].displayName
+      }
+    }
 
     return Response.json({
       success: true,
@@ -134,8 +151,8 @@ async function _GET(
         content_data: q.contentData,
         explanation: q.explanation,
         category: {
-          key: q.categoryKey,
-          name: q.categoryDisplayName,
+          key: categoryKey,
+          name: categoryName,
         },
         section: {
           key: q.sectionKey,

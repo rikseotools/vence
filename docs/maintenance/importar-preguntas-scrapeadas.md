@@ -4,6 +4,44 @@
 
 Este manual documenta el proceso para importar preguntas scrapeadas de OpositaTest u otras fuentes a la base de datos de Vence, asegurando calidad y correcta vinculación con artículos.
 
+## PRINCIPIO FUNDAMENTAL: Importar Desactivadas, Activar Tras Revisión
+
+**Todas las preguntas importadas se insertan desactivadas** (`is_active: false`) con `deactivation_reason: 'Pendiente de revisión post-importación'`. Esto aplica tanto a preguntas legislativas como psicotécnicas.
+
+**Razones:**
+- **Seguridad:** Ningún usuario ve preguntas sin verificar (respuesta incorrecta, artículo equivocado, explicación pobre)
+- **Sin presión:** Se puede importar en bloque sin pararse a revisar cada pregunta durante la importación
+- **Flujo existente:** El sistema de desactivación automática ya maneja `is_active` + `deactivation_reason` + reactivación al marcar `perfect`
+- **Activación por bloques:** Tras importar, se verifican con agentes tema a tema; las que pasan se reactivan solas
+
+**Flujo:**
+```
+1. Importar todas desactivadas
+   → is_active: false
+   → deactivation_reason: 'Pendiente de revisión post-importación'
+   → topic_review_status: 'pending'
+
+2. Verificar con agentes (artículo + respuesta + explicación)
+   → Agentes Opus/Sonnet en paralelo por batches
+
+3. Las 'perfect' se reactivan automáticamente
+   → is_active: true
+   → deactivation_reason: null
+
+4. Las que fallen se corrigen y luego se reactivan
+   → Agentes de corrección o manual
+```
+
+**Al insertar preguntas, usar siempre:**
+```javascript
+{
+  is_active: false,
+  deactivation_reason: 'Pendiente de revisión post-importación',
+  topic_review_status: 'pending',
+  // ... resto de campos
+}
+```
+
 ## ANTES DE IMPORTAR: Detección de Duplicados (OBLIGATORIO)
 
 Muchas preguntas scrapeadas ya existen en la BD (de otras oposiciones que comparten leyes). Importar duplicados degrada la experiencia del usuario. Hay que detectarlos ANTES de hacer el trabajo de verificación y mejora.
@@ -14,7 +52,28 @@ La BD tiene un `content_hash` (SHA-256 del texto normalizado) con constraint ún
 
 **Ejemplo real:** De 146 preguntas de CE scrapeadas, el hash detectó 0 duplicados. Con comparación por similitud se encontraron 104 duplicados reales.
 
-### Proceso de detección en 3 niveles
+### Nivel 0 - Opciones barajadas (IMPORTANTE)
+
+Muchas fuentes barajan las opciones A/B/C/D de la misma pregunta. Esto genera preguntas que parecen "nuevas" porque el `correct_option` cambia (A→C, etc.) y el texto de las opciones está en distinto orden, pero son la misma pregunta.
+
+**Detección:** Normalizar y ordenar las 4 opciones alfabéticamente. Si la pregunta normalizada + opciones ordenadas coinciden → DUPLICADO.
+
+```javascript
+function normalizeOptions(opts) {
+  return opts.map(o => normalize(o)).sort().join('|||');
+}
+
+// Duplicado si: misma pregunta + mismas opciones (en cualquier orden)
+const key = normalize(question) + '###' + normalizeOptions([optA, optB, optC, optD]);
+```
+
+**Variante:** Mismas opciones pero pregunta ligeramente reformulada. Comparar solo opciones ordenadas y, si coinciden, verificar similitud de pregunta (>50% Jaccard de palabras).
+
+**IMPORTANTE - Distinción legislativas vs psicotécnicas:**
+- **Legislativas:** Mismo enunciado + opciones DIFERENTES = pregunta NUEVA (no duplicado). Es habitual que varias preguntas compartan enunciado ("Según el art. X...") pero pregunten sobre aspectos distintos con opciones diferentes. Solo es duplicado si las opciones (ordenadas) también coinciden.
+- **Psicotécnicas:** Mismo enunciado + mismas opciones barajadas = DUPLICADO seguro. Las opciones salen de un cálculo concreto y no hay variación posible.
+
+### Proceso de detección en 4 niveles
 
 ```javascript
 const crypto = require('crypto');
@@ -83,9 +142,10 @@ while (true) {
 ### Resultado esperado
 
 La detección clasifica cada pregunta en:
+- **Barajadas:** Descartar sin más (mismas opciones en distinto orden)
 - **Exacto:** Descartar sin más
-- **Alta similitud:** Casi seguro duplicado, confirmar rápido
-- **Media similitud:** Revisar opciones una a una
+- **Alta similitud (>=80%):** Verificar con agentes Sonnet (rápido, ~30 por batch). La mayoría son falsos positivos en psicotécnicas (mismo formato, distinto contenido)
+- **Media similitud (60-80%):** Verificar con agentes Sonnet también
 - **Nueva (<60%):** Seguro nueva, proceder con importación
 
 ## 0. Identificar el Topic Correcto (IMPORTANTE)
@@ -341,11 +401,15 @@ Para cada pregunta:
   explanation: 'Explicación didáctica mejorada...',
   primary_article_id: 'UUID_DEL_ARTICULO',
   difficulty: 'medium',  // easy, medium, hard, extreme
-  is_active: true,
+  is_active: false,  // SIEMPRE false al importar
+  deactivation_reason: 'Pendiente de revisión post-importación',
+  topic_review_status: 'pending',
   is_official_exam: false,
   tags: ['Subtema', 'Tema XXX', 'Bloque X']
 }
 ```
+
+> **IMPORTANTE:** Nunca importar con `is_active: true`. Las preguntas se activan automáticamente cuando pasan la verificación con agentes y se marcan como `perfect`.
 
 ### 3.3 Mapeo de respuestas
 
@@ -588,9 +652,140 @@ await supabase.from('laws').insert({
 - Cada pregunta debe tener un artículo cuyo contenido justifique la respuesta correcta.
 - Verificar que el epígrafe del tema realmente incluye esos conceptos teóricos antes de importar las preguntas.
 
-## 12. Checklist Completo por Tema
+## 12. Preguntas con Imágenes/Datos Visuales (Psicotécnicas)
 
-Flujo validado (Marzo 2026, Auxiliar Madrid T1):
+Muchas preguntas psicotécnicas scrapeadas incluyen imágenes (tablas, diagramas de flujo, gráficos, tablas de equivalencias). Estas imágenes **NO se deben guardar como imágenes estáticas** - se deben convertir a `content_data` JSON para que los componentes React las rendericen nativamente.
+
+### Por qué NO usar imágenes estáticas
+- No son responsive ni accesibles
+- No soportan dark mode
+- No se pueden verificar automáticamente (los datos están "atrapados" en píxeles)
+- Se rompen si cambian las URLs o se pierde el hosting
+
+### Qué hacer: Convertir a `content_data` JSON
+
+Los componentes psicotécnicos renderizan datos desde el campo `content_data` (JSONB):
+
+| Tipo visual | Componente | Formato `content_data` |
+|-------------|------------|----------------------|
+| Tabla de datos | `DataTableQuestion` | `{ table_data: { headers: [...], rows: [[...], ...] } }` |
+| Gráfico de barras | `BarChartQuestion` | `{ chart_data: [{ label, value }], chart_title }` |
+| Gráfico de tarta | `PieChartQuestion` | `{ chart_data: [{ label, value, percentage }], total_value }` |
+| Gráfico de líneas | `LineChartQuestion` | `{ age_groups: [...], categories: [...], chart_title }` |
+| Gráfico mixto | `MixedChartQuestion` | Similar a bar/line combinado |
+
+### Flujo para preguntas con imagen
+
+```
+1. Importar TODAS desactivadas (con y sin imagen)
+2. Verificar con agentes las que NO tienen imagen (se activan solas)
+3. Las que SÍ tienen imagen: procesar aparte, una a una:
+   a. Leer la imagen PNG/JPG con Read (Claude es multimodal)
+   b. Extraer los datos estructurados (tabla, valores, instrucciones)
+   c. Convertir a content_data JSON según el componente
+   d. Verificar la respuesta MANUALMENTE contra los datos extraídos
+   e. Escribir explicación didáctica paso a paso
+   f. Activar solo si se ha verificado al 100%
+4. Las que dependen de imagen y NO se pueden verificar → desactivar
+```
+
+**IMPORTANTE:** NUNCA activar una pregunta que dependa de una imagen sin haberla verificado. Es preferible tener menos preguntas activas que tener preguntas con respuestas no verificadas.
+
+### Tipos de imágenes en psicotécnicas (aprendizaje de Marzo 2026)
+
+Al procesar las preguntas de "Pruebas de instrucciones" se identificaron estos tipos:
+
+| Tipo | Ejemplo | Complejidad | `content_data` |
+|------|---------|-------------|----------------|
+| **Tabla de equivalencias símbolo→número** | `+ * ( % $ ¡ ) ° - ?` = 0-9 | Baja | `table_data` con headers/rows |
+| **Tabla de operaciones con símbolos** | Œ=+3, Ž=÷2, ™=-5, Š=×2 | Baja | `table_data` con Símbolo/Operación |
+| **Tabla de equivalencias letra→letra** | Ψ=C, Φ=A, Ω=M (letras griegas) | Baja | `table_data` con headers/rows |
+| **Tabla de órdenes sobre frase** | A=mover 1a al final, B=intercambiar 3a y 6a | Media | `table_data` con Orden/Acción |
+| **Tabla de clasificación** | Enciclopedia con reglas de codificación | Alta | `table_data` compleja |
+| **Diagrama de flujo** | Estrella/luna/carita con transformaciones | Alta | Requiere análisis visual profundo |
+
+### Problemas conocidos del scraping
+
+1. **Símbolos Unicode corruptos**: El scraping puede corromper símbolos especiales. Por ejemplo, `"` (comillas tipográficas) puede convertirse en `+` o viceversa. **Siempre leer la imagen original** para verificar qué símbolos aparecen realmente.
+
+2. **Cada pregunta puede tener su PROPIA tabla de equivalencias**: Aunque varias preguntas compartan formato, la tabla de símbolos puede ser diferente. Verificar imagen por imagen.
+
+3. **Opciones corruptas `[object Object]`**: Algunas preguntas tienen opciones que muestran `[object Object]` en vez de texto. Son irrecuperables → desactivar.
+
+4. **Explicaciones genéricas del scraping**: Las explicaciones scrapeadas de psicotécnicas suelen ser texto genérico ("Los ejercicios de instrucciones...") que NO resuelve la pregunta concreta. Hay que reescribirlas SIEMPRE con el paso a paso específico.
+
+### Ejemplo real: Tabla de equivalencias → `content_data`
+
+**Imagen original:** Tabla con `+ * ( % $ ¡ ) ° - ?` = 0-9
+
+**`content_data` JSON:**
+```json
+{
+  "table_data": {
+    "title": "Tabla de equivalencias",
+    "headers": ["+", "*", "(", "%", "$", "¡", ")", "°", "-", "?"],
+    "rows": [["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]]
+  }
+}
+```
+
+**Explicación didáctica resultante:**
+```markdown
+Aplicando la tabla: **+** = 0, **%** = 3, **)** = 6, **¡** = 5, **%** = 3, **-** = 8, **(** = 2
+
+Resultado: **0365382**
+
+Por qué las demás son incorrectas:
+
+- **A) 0365832**: Intercambia los dígitos 5o y 6o
+- **B) 0356382**: Intercambia los dígitos 3o y 4o
+- **D) 0363582**: Cambia posiciones centrales
+```
+
+### Ejemplo real: Tabla de operaciones → `content_data`
+
+**Imagen:** Œ=suma 3, Ž=divide entre 2, ™=resta 5, Š=multiplica por 2
+
+**`content_data` JSON:**
+```json
+{
+  "table_data": {
+    "title": "Tabla de operaciones",
+    "headers": ["Símbolo", "Operación"],
+    "rows": [["Œ", "Suma 3"], ["Ž", "Divide entre 2"], ["™", "Resta 5"], ["Š", "Multiplica por 2"]]
+  }
+}
+```
+
+**Explicación didáctica:**
+```markdown
+Partiendo de **0** y aplicando cada símbolo en orden:
+
+1. **Œ** (suma 3): 0 + 3 = **3**
+2. **Ž** (divide entre 2): 3 / 2 = **1,5**
+3. **™** (resta 5): 1,5 - 5 = **-3,5**
+4. **Š** (multiplica por 2): -3,5 x 2 = **-7**
+5. **Œ** (suma 3): -7 + 3 = **-4**
+
+Resultado: **-4**
+```
+
+### Preguntas que NO se pueden convertir
+
+Desactivar con motivo específico:
+- `[object Object]` en opciones → `'Opciones corruptas por error de scraping'`
+- Diagrama de flujo demasiado complejo → `'Requiere imagen no convertible a content_data'`
+- Imagen no disponible → `'Imagen no disponible'`
+
+### Detección durante importación
+
+Al importar, verificar si la pregunta tiene `imageLocal`/`imageOriginal` en el JSON scrapeado:
+- Si **tiene imagen** → importar desactivada, procesar imagen aparte antes de activar
+- Si **no tiene imagen** → importar desactivada, verificar con agentes (se activan solas al pasar)
+
+## 13. Checklist Completo por Tema
+
+Flujo validado (Marzo 2026):
 
 ```
 1. DETECCIÓN DUPLICADOS (obligatorio antes de trabajar)
@@ -610,21 +805,31 @@ Flujo validado (Marzo 2026, Auxiliar Madrid T1):
    - No faltan artículos que el epígrafe menciona
    - No sobran artículos que no corresponden
 
-4. INSERTAR PREGUNTAS NUEVAS
+4. INSERTAR PREGUNTAS NUEVAS (DESACTIVADAS)
    - Solo las que no son duplicados
    - Con primary_article_id correcto
    - Con content_hash generado
    - Con tags apropiados
+   - is_active: false
+   - deactivation_reason: 'Pendiente de revisión post-importación'
+   - topic_review_status: 'pending'
 
 5. EXPLICACIONES DIDÁCTICAS
-   - Reescribir con agentes Sonnet
+   - Reescribir con agentes Opus/Sonnet en paralelo
    - Formato: blockquote + por qué correcta + por qué incorrectas
    - Actualizar en BD
 
-6. VERIFICACIÓN CON AGENTE
+6. VERIFICACIÓN CON AGENTE (las preguntas siguen desactivadas)
    - articleOk, answerOk, explanationOk
-   - Corregir los que fallen
-   - No dar el tema por bueno hasta que pase
+   - Las 'perfect' se reactivan automáticamente
+   - Las que fallen se corrigen y luego se reactivan
+   - No dar el tema por bueno hasta que TODAS estén perfect o desactivadas con motivo
+
+7. CORRECCIÓN DE ERRORES
+   - Agentes revisan preguntas con status de error
+   - Falsos positivos → perfect (se reactivan)
+   - Errores reales → corregir explicación/respuesta/artículo → perfect
+   - Preguntas irrecuperables → desactivar con motivo específico
 ```
 
 ### Comando rápido:
