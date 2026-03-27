@@ -514,10 +514,14 @@ export default function NotificationBell() {
     }
   }
 
-  // Manejar botón "Entendido" (descartar otras notificaciones)
+  // Manejar botón X / "Entendido" (descartar notificación)
   const handleDismiss = (notification: Notification, event: MouseEvent<HTMLButtonElement>): void => {
     event.stopPropagation()
-    // ✅ FIX: Marcar notificaciones motivacionales como leídas permanentemente
+    // Para disputas, marcar también en la tabla de disputas (si no, reaparece)
+    if (notification.type === 'dispute_update') {
+      const realDisputeId = notification.disputeId || notification.id.replace('dispute-', '')
+      disputeNotifications.markAsRead(realDisputeId, notification.isPsychometric)
+    }
     markAsRead(notification.id)
   }
 
