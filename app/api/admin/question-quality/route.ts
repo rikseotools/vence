@@ -29,6 +29,7 @@ interface QualityResponse {
     excel_typo: CheckResult
     copied_explanation: CheckResult
     cramped_explanation: CheckResult
+    duplicate_questions: CheckResult
   }
 }
 
@@ -94,9 +95,19 @@ async function runCountsOnly(): Promise<number> {
         AND LENGTH(a.content) > 50
         AND LENGTH(q.explanation) > 50
         AND similarity(q.explanation, a.content) >= ${SIMILARITY_THRESHOLD}
+    ),
+    duplicate_count AS (
+      SELECT COALESCE(SUM(cnt)::int, 0) as duplicates
+      FROM (
+        SELECT count(*) - 1 as cnt
+        FROM questions
+        WHERE is_active = true
+        GROUP BY question_text
+        HAVING count(*) > 1
+      ) d
     )
-    SELECT (b.empty_options + b.banned_words + b.pending_explanation + b.missing_article + b.missing_image + b.excel_typo + b.cramped_explanation + s.copied)::int as total
-    FROM base b, similarity_count s
+    SELECT (b.empty_options + b.banned_words + b.pending_explanation + b.missing_article + b.missing_image + b.excel_typo + b.cramped_explanation + s.copied + dup.duplicates)::int as total
+    FROM base b, similarity_count s, duplicate_count dup
   `)
 
   const rows = (result as any).rows ?? result ?? []
@@ -201,11 +212,30 @@ async function runChecks(): Promise<QualityResponse> {
       ORDER BY similarity(q.explanation, a.content) DESC
       LIMIT ${MAX_ITEMS}
     `),
+
+    // 9. Duplicate questions (same question_text, multiple active)
+    db.execute(sql`
+      SELECT q.id, LEFT(q.question_text, ${TEXT_LIMIT}) as question_text,
+             d.cnt,
+             d.total_dupes as total_count
+      FROM questions q
+      JOIN (
+        SELECT question_text, count(*) as cnt,
+               SUM(count(*) - 1) OVER()::int as total_dupes
+        FROM questions
+        WHERE is_active = true
+        GROUP BY question_text
+        HAVING count(*) > 1
+      ) d ON q.question_text = d.question_text
+      WHERE q.is_active = true
+      ORDER BY d.cnt DESC
+      LIMIT ${MAX_ITEMS}
+    `),
   ])
 
   const toRows = (r: any) => (r as any).rows ?? r ?? []
 
-  const [emptyOpts, bannedRaw, pendingExpl, missingArt, missingImg, excelTypoRaw, crampedExplRaw, copiedExplRaw] = results
+  const [emptyOpts, bannedRaw, pendingExpl, missingArt, missingImg, excelTypoRaw, crampedExplRaw, copiedExplRaw, duplicateRaw] = results
 
   const emptyRows = toRows(emptyOpts)
   const bannedRows = toRows(bannedRaw)
@@ -215,6 +245,7 @@ async function runChecks(): Promise<QualityResponse> {
   const excelTypoRows = toRows(excelTypoRaw)
   const crampedRows = toRows(crampedExplRaw)
   const copiedRows = toRows(copiedExplRaw)
+  const duplicateRows = toRows(duplicateRaw)
 
   // Detect which field has banned word
   const bannedRegexJs = new RegExp(BANNED_REGEX.replace('(?i)', ''), 'i')
@@ -290,6 +321,12 @@ async function runChecks(): Promise<QualityResponse> {
       count: getCount(copiedRows),
       questions: copiedExpl,
     },
+    duplicate_questions: {
+      count: getCount(duplicateRows),
+      questions: duplicateRows.map((q: any) => ({
+        id: q.id, question_text: q.question_text, field: `${q.cnt} copias`,
+      })),
+    },
   }
 
   const totalIssues =
@@ -300,7 +337,8 @@ async function runChecks(): Promise<QualityResponse> {
     checks.missing_image.count +
     checks.excel_typo.count +
     checks.cramped_explanation.count +
-    checks.copied_explanation.count
+    checks.copied_explanation.count +
+    checks.duplicate_questions.count
 
   return { success: true, totalIssues, checks }
 }

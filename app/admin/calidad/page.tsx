@@ -26,6 +26,7 @@ interface QualityData {
     excel_typo: CheckResult
     cramped_explanation: CheckResult
     copied_explanation: CheckResult
+    duplicate_questions: CheckResult
   }
 }
 
@@ -69,6 +70,11 @@ const CHECK_CONFIG = {
     title: 'Explicación copiada del artículo',
     description: 'Explicaciones con similarity >= 0.9 respecto al artículo vinculado',
     icon: '📋',
+  },
+  duplicate_questions: {
+    title: 'Preguntas duplicadas',
+    description: 'Preguntas con el mismo texto que aparecen más de una vez (opciones barajadas)',
+    icon: '👯',
   },
 } as const
 
