@@ -2286,6 +2286,14 @@ export const oposiciones = pgTable("oposiciones", {
 	convocatoriaNumero: text("convocatoria_numero"),
 	convocatoriaFecha: date("convocatoria_fecha"),
 	convocatoriaDogv: text("convocatoria_dogv"),
+	// Landing page data (JSONB para escalar a 120+ oposiciones sin archivos por landing)
+	landingFaqs: jsonb("landing_faqs").default([]),
+	examenConfig: jsonb("examen_config").default({}),
+	colorPrimario: text("color_primario").default('emerald'),
+	seoTitle: text("seo_title"),
+	seoDescription: text("seo_description"),
+	requisitosEspeciales: jsonb("requisitos_especiales").default([]),
+	landingEstadisticas: jsonb("landing_estadisticas").default([]),
 }, (table) => [
 	check("oposiciones_tipo_acceso_check", sql`tipo_acceso = ANY (ARRAY['libre'::text, 'promocion_interna'::text, 'discapacidad'::text])`),
 	check("oposiciones_estado_proceso_check", sql`estado_proceso = ANY (ARRAY['sin_oep'::text, 'oep_aprobada'::text, 'convocada'::text, 'inscripcion_abierta'::text, 'inscripcion_cerrada'::text, 'lista_admitidos'::text, 'pendiente_examen'::text, 'examen_realizado'::text, 'resultados'::text, 'nombramientos'::text])`),

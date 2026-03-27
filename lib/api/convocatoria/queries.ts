@@ -29,6 +29,14 @@ export interface OposicionLandingData {
   oepDecreto: string | null
   oepFecha: string | null
   estadoProceso: string | null
+  // Landing page data (JSONB)
+  colorPrimario: string | null
+  seoTitle: string | null
+  seoDescription: string | null
+  landingFaqs: Array<{ pregunta: string; respuesta: string }> | null
+  examenConfig: Record<string, unknown> | null
+  requisitosEspeciales: Array<{ tipo: string; nombre: string }> | null
+  landingEstadisticas: Array<{ numero: string; texto: string; color: string }> | null
 }
 
 /**
@@ -65,13 +73,28 @@ export async function getOposicionLandingData(
         oepDecreto: oposiciones.oepDecreto,
         oepFecha: oposiciones.oepFecha,
         estadoProceso: oposiciones.estadoProceso,
+        colorPrimario: oposiciones.colorPrimario,
+        seoTitle: oposiciones.seoTitle,
+        seoDescription: oposiciones.seoDescription,
+        landingFaqs: oposiciones.landingFaqs,
+        examenConfig: oposiciones.examenConfig,
+        requisitosEspeciales: oposiciones.requisitosEspeciales,
+        landingEstadisticas: oposiciones.landingEstadisticas,
       })
       .from(oposiciones)
       .where(eq(oposiciones.slug, slug))
       .limit(1)
 
     if (rows.length === 0) return null
-    return rows[0]
+    // Cast JSONB fields (Drizzle los tipa como unknown)
+    const row = rows[0]
+    return {
+      ...row,
+      landingFaqs: row.landingFaqs as OposicionLandingData['landingFaqs'],
+      examenConfig: row.examenConfig as OposicionLandingData['examenConfig'],
+      requisitosEspeciales: row.requisitosEspeciales as OposicionLandingData['requisitosEspeciales'],
+      landingEstadisticas: row.landingEstadisticas as OposicionLandingData['landingEstadisticas'],
+    }
   } catch (error) {
     console.warn(`⚠️ [convocatoria] Error obteniendo datos landing para ${slug}:`, (error as Error).message)
     return null
