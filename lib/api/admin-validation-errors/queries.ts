@@ -1,5 +1,5 @@
 // lib/api/admin-validation-errors/queries.ts
-import { getDb } from '@/db/client'
+import { getAdminDb as getDb } from '@/db/client'
 import { validationErrorLogs } from '@/db/schema'
 import { desc, gte, eq, sql, and, count, isNull, inArray } from 'drizzle-orm'
 import type { ValidationErrorsQuery, ValidationErrorsResponse, ValidationErrorsSummary, ValidationErrorEntry } from './schemas'

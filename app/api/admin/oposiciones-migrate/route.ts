@@ -1,7 +1,7 @@
 // app/api/admin/oposiciones-migrate/route.ts
 // Migra usuarios de una oposición custom (UUID) a una oficial (slug)
 import { NextRequest, NextResponse } from 'next/server'
-import { getDb } from '@/db/client'
+import { getAdminDb as getDb } from '@/db/client'
 import { userProfiles } from '@/db/schema'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { eq } from 'drizzle-orm'

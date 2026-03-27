@@ -1,7 +1,7 @@
 // app/api/admin/oposiciones-stats/route.ts
 // API interna para obtener estadísticas de oposiciones de usuarios
 import { NextResponse } from 'next/server'
-import { getDb } from '@/db/client'
+import { getAdminDb as getDb } from '@/db/client'
 import { userProfiles, oposiciones } from '@/db/schema'
 import { isNotNull } from 'drizzle-orm'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'

@@ -2,7 +2,7 @@
 // API para obtener resumen de fees de Stripe
 import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
-import { getDb } from '@/db/client'
+import { getAdminDb as getDb } from '@/db/client'
 import { paymentSettlements } from '@/db/schema'
 import { eq } from 'drizzle-orm'
 

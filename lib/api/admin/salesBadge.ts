@@ -1,5 +1,5 @@
 // lib/api/admin/salesBadge.ts - Queries para badge de ventas no leídas
-import { getDb } from '@/db/client'
+import { getAdminDb as getDb } from '@/db/client'
 import { adminReadMarkers, conversionEvents } from '@/db/schema'
 import { eq, and, gt, sql } from 'drizzle-orm'
 

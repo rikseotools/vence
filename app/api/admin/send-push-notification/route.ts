@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 // @ts-expect-error -- web-push has no type declarations
 import webpush from 'web-push'
-import { getDb } from '@/db/client'
+import { getAdminDb as getDb } from '@/db/client'
 import { notificationEvents, userNotificationSettings } from '@/db/schema'
 import { eq, gte, sql } from 'drizzle-orm'
 

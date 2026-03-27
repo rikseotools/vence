@@ -1,6 +1,6 @@
 // lib/api/admin-dashboard/queries.ts - Drizzle queries para Admin Dashboard v2
 // Consolida 13 queries secuenciales del cliente en ~6 queries paralelas en servidor
-import { getDb } from '@/db/client'
+import { getAdminDb as getDb } from '@/db/client'
 import { userProfiles, tests, testQuestions, emailLogs, adminUsersWithRoles } from '@/db/schema'
 import { eq, sql, gte, lt, lte, and, isNotNull, desc } from 'drizzle-orm'
 import type { DashboardResponse } from './schemas'

@@ -1,7 +1,7 @@
 // lib/api/ai-traces/queries.ts
 // Queries Drizzle para AI Chat Traces
 
-import { getDb, getTraceDb } from '@/db/client'
+import { getAdminDb as getDb, getTraceDb } from '@/db/client'
 import { aiChatTraces, aiChatLogs } from '@/db/schema'
 import { eq, and, desc, asc, sql, isNull, isNotNull, lte, gte, inArray } from 'drizzle-orm'
 import type { CreateTraceInput, TraceFilters, TraceTreeNode } from './schemas'

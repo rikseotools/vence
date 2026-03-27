@@ -35,7 +35,7 @@ function createDbClient() {
   const conn = postgres(urlWithTimeout, {
     max: 1,            // Una conexión por instancia serverless (evita saturar pooler)
     idle_timeout: 20,
-    connect_timeout: 2,   // Fail fast: si no conecta en 2s, reintentar en vez de bloquear
+    connect_timeout: 5,   // 5s para cold start (build + Vercel). Lo importante es max:1
     prepare: false, // Requerido para Supabase Transaction Pooler (puerto 6543)
   })
 

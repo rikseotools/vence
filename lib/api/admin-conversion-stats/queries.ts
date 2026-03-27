@@ -1,5 +1,5 @@
 // lib/api/admin-conversion-stats/queries.ts - Drizzle queries para conversion stats
-import { getDb } from '@/db/client'
+import { getAdminDb as getDb } from '@/db/client'
 import { userProfiles, conversionEvents, cancellationFeedback } from '@/db/schema'
 import { sql, gte, lt, and, eq, isNotNull } from 'drizzle-orm'
 import type { ConversionStatsResponse } from './schemas'

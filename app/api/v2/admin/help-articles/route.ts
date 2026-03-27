@@ -1,6 +1,6 @@
 // app/api/v2/admin/help-articles/route.ts
 import { NextResponse } from 'next/server'
-import { getDb } from '@/db/client'
+import { getAdminDb as getDb } from '@/db/client'
 import { sql } from 'drizzle-orm'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 

@@ -2,7 +2,7 @@
 // API para detectar problemas de calidad en preguntas activas
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getDb } from '@/db/client'
+import { getAdminDb as getDb } from '@/db/client'
 import { sql } from 'drizzle-orm'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'

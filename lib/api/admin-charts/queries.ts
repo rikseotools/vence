@@ -1,6 +1,6 @@
 // lib/api/admin-charts/queries.ts - Drizzle queries para charts de admin
 // Reemplaza 28 queries secuenciales del cliente por 2 queries SQL server-side
-import { getDb } from '@/db/client'
+import { getAdminDb as getDb } from '@/db/client'
 import { sql } from 'drizzle-orm'
 import type { ActivityChartResponse, RegistrationsChartResponse } from './schemas'
 
