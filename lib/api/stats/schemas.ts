@@ -116,6 +116,7 @@ export const userOposicionSchema = z.object({
   nombre: z.string().nullable(),
   tipoAcceso: z.string().nullable(), // 'libre', 'promocion_interna', etc.
   examDate: z.string().nullable(), // ISO date (YYYY-MM-DD)
+  examDateApproximate: z.boolean().nullable(), // true = fecha estimada, false/null = fecha confirmada
   inscriptionDeadline: z.string().nullable(),
   plazas: z.number().nullable(), // Total de plazas
   plazasLibres: z.number().nullable(), // Plazas acceso libre

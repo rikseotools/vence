@@ -688,6 +688,7 @@ function EstadisticasContent() {
             bloquesCount: apiStats.userOposicion.bloquesCount,
             temasCount: apiStats.userOposicion.temasCount,
             examDate: apiStats.userOposicion.examDate,
+            examDateApproximate: apiStats.userOposicion.examDateApproximate,
             inscriptionDeadline: apiStats.userOposicion.inscriptionDeadline,
             plazas: apiStats.userOposicion.plazas, // Total
             plazasLibres: apiStats.userOposicion.plazasLibres,
@@ -829,12 +830,16 @@ function EstadisticasContent() {
             const masteredPercentage = Math.round((masteredThemes / totalThemes) * 100)
             const accuracy = apiStats.main.accuracy
 
-            // Fecha del examen REAL desde la BD o estimación
+            // Fecha del examen desde la BD
             const examDateStr = oposicion?.examDate
-            const examDate = examDateStr ? new Date(examDateStr) : new Date('2026-07-01')
-            const hasRealExamDate = !!examDateStr
+            const isApproximate = oposicion?.examDateApproximate ?? false
+            const examDate = examDateStr ? new Date(examDateStr) : null
+            const hasRealExamDate = !!examDateStr && !isApproximate
             const today = new Date()
-            const daysRemaining = Math.ceil((examDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+            const examPassed = examDate ? examDate.getTime() < today.getTime() : false
+            const daysRemaining = examDate
+              ? Math.ceil((examDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+              : null
 
             // Cálculo de preparación
             let readinessScore
@@ -867,11 +872,15 @@ function EstadisticasContent() {
                 userName: userName,
                 tipoAcceso: oposicion?.tipoAcceso || 'libre',
                 hasRealExamDate,
-                examDateFormatted: examDate.toLocaleDateString('es-ES', {
-                  day: 'numeric',
-                  month: 'long',
-                  year: 'numeric'
-                }),
+                isApproximate,
+                examPassed,
+                examDateFormatted: examDate
+                  ? examDate.toLocaleDateString('es-ES', {
+                      day: isApproximate ? undefined : 'numeric',
+                      month: 'long',
+                      year: 'numeric'
+                    })
+                  : 'Pendiente de convocatoria',
                 plazas: oposicion?.plazas || null, // Total
                 plazasLibres: oposicion?.plazasLibres || null,
                 plazasPromocionInterna: oposicion?.plazasPromocionInterna || null,
@@ -884,7 +893,7 @@ function EstadisticasContent() {
                   ? new Date(oposicion.inscriptionDeadline).toLocaleDateString('es-ES')
                   : null,
               },
-              daysRemaining: Math.max(0, daysRemaining),
+              daysRemaining,
               readinessScore,
               readinessLevel: readinessScore >= 85 ? 'excellent' :
                              readinessScore >= 70 ? 'good' :
@@ -967,7 +976,7 @@ function EstadisticasContent() {
                 }
               })(),
               timeEstimate: {
-                dailyHours: Math.max(1, Math.min(4, Math.ceil((totalThemes - studiedThemes) * 30 / Math.max(1, daysRemaining) / 20))) || 2
+                dailyHours: Math.max(1, Math.min(4, Math.ceil((totalThemes - studiedThemes) * 30 / Math.max(1, daysRemaining ?? 180) / 20))) || 2
               },
               projection: (() => {
                 // 🔧 CÁLCULO IGUAL QUE EN UserProfileModal:
@@ -1017,7 +1026,7 @@ function EstadisticasContent() {
                     month: 'long',
                     year: 'numeric'
                   }) : null,
-                  onTrack: daysRemaining > 0 && readinessScore >= 50,
+                  onTrack: (daysRemaining ?? 0) > 0 && readinessScore >= 50,
                   estimatedStudyCompletion: isReasonable ? projectedDate.toLocaleDateString('es-ES', {
                     day: 'numeric',
                     month: 'long',
@@ -1077,7 +1086,7 @@ function EstadisticasContent() {
                   action: 'Practicar tests enfocados en tus puntos débiles',
                   icon: '📖'
                 }] : []),
-                ...(daysRemaining < 90 && readinessScore < 70 ? [{
+                ...((daysRemaining ?? Infinity) < 90 && readinessScore < 70 ? [{
                   priority: 'high',
                   title: '¡Tiempo Limitado!',
                   description: `Solo quedan ${daysRemaining} días para el examen`,

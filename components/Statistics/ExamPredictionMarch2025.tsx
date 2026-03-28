@@ -9,6 +9,8 @@ interface OposicionInfo {
   nombre?: string
   tipoAcceso?: string
   hasRealExamDate?: boolean
+  isApproximate?: boolean
+  examPassed?: boolean
   examDateFormatted?: string
   plazasLibres?: number
   plazas?: number
@@ -58,7 +60,7 @@ interface CalculationsInfo {
 interface ExamPrediction {
   readinessScore: number
   readinessLevel: 'excellent' | 'good' | 'developing' | string
-  daysRemaining: number
+  daysRemaining: number | null
   mainMessage?: string
   oposicionInfo?: OposicionInfo
   mastery?: MasteryInfo
@@ -136,9 +138,15 @@ export default function ExamPredictionMarch2025({ examPrediction }: ExamPredicti
   // Datos de la oposición (si están disponibles)
   const oposicionInfo = prediction.oposicionInfo || {}
   const hasOposicionData = oposicionInfo.nombre && oposicionInfo.nombre !== 'tu oposición'
-  const examDateLabel = oposicionInfo.hasRealExamDate
-    ? oposicionInfo.examDateFormatted
-    : 'Fecha por confirmar'
+  const examDateLabel = oposicionInfo.examPassed
+    ? 'Examen ya celebrado'
+    : oposicionInfo.hasRealExamDate
+      ? oposicionInfo.examDateFormatted
+      : oposicionInfo.isApproximate
+        ? `~${oposicionInfo.examDateFormatted} (estimación)`
+        : oposicionInfo.examDateFormatted
+          ? oposicionInfo.examDateFormatted
+          : 'Pendiente de convocatoria'
 
   return (
     <div className="bg-white rounded-xl shadow-lg p-6">
@@ -152,15 +160,25 @@ export default function ExamPredictionMarch2025({ examPrediction }: ExamPredicti
           </p>
         </div>
         <div className="text-right">
-          {oposicionInfo.hasRealExamDate ? (
+          {oposicionInfo.examPassed ? (
+            <>
+              <div className="text-sm text-gray-500">📅 Examen</div>
+              <div className="text-lg font-bold text-gray-400">Ya celebrado</div>
+            </>
+          ) : oposicionInfo.hasRealExamDate ? (
             <>
               <div className="text-sm text-gray-500">📅 Fecha examen</div>
               <div className="text-lg font-bold text-purple-600">{oposicionInfo.examDateFormatted}</div>
             </>
+          ) : prediction.daysRemaining != null ? (
+            <>
+              <div className="text-sm text-gray-500">{oposicionInfo.isApproximate ? '~Fecha estimada' : 'Días restantes'}</div>
+              <div className="text-2xl font-bold text-purple-600">{prediction.daysRemaining}</div>
+            </>
           ) : (
             <>
-              <div className="text-sm text-gray-500">Días restantes</div>
-              <div className="text-2xl font-bold text-purple-600">{prediction.daysRemaining}</div>
+              <div className="text-sm text-gray-500">📅 Examen</div>
+              <div className="text-lg font-bold text-amber-600">Pendiente</div>
             </>
           )}
           {oposicionInfo.boeReference && (() => {
@@ -188,24 +206,32 @@ export default function ExamPredictionMarch2025({ examPrediction }: ExamPredicti
       </div>
 
       {/* Cuenta Regresiva del Examen - PROMINENTE con animación */}
-      {oposicionInfo.hasRealExamDate && (
-        <div className="bg-gradient-to-r from-red-500 to-orange-500 rounded-xl p-4 mb-6 text-white shadow-lg">
+      {!oposicionInfo.examPassed && prediction.daysRemaining != null && prediction.daysRemaining > 0 && (
+        <div className={`rounded-xl p-4 mb-6 text-white shadow-lg ${
+          oposicionInfo.isApproximate
+            ? 'bg-gradient-to-r from-indigo-500 to-blue-500'
+            : 'bg-gradient-to-r from-red-500 to-orange-500'
+        }`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <div className="text-4xl animate-pulse">🎯</div>
               <div>
-                <div className="text-sm opacity-90">Examen oficial</div>
-                <div className="text-xl font-bold">{oposicionInfo.examDateFormatted}</div>
+                <div className="text-sm opacity-90">
+                  {oposicionInfo.isApproximate ? 'Examen (fecha estimada)' : 'Examen oficial'}
+                </div>
+                <div className="text-xl font-bold">
+                  {oposicionInfo.isApproximate ? `~${oposicionInfo.examDateFormatted}` : oposicionInfo.examDateFormatted}
+                </div>
               </div>
             </div>
             <div className="text-right">
-              <div className={`text-2xl font-black ${prediction.daysRemaining < 90 ? 'animate-pulse' : ''}`}>
-                {formatDaysRemaining(prediction.daysRemaining)}
+              <div className={`text-2xl font-black ${!oposicionInfo.isApproximate && prediction.daysRemaining < 90 ? 'animate-pulse' : ''}`}>
+                {oposicionInfo.isApproximate ? `~${formatDaysRemaining(prediction.daysRemaining)}` : formatDaysRemaining(prediction.daysRemaining)}
               </div>
               <div className="text-sm opacity-90">restantes</div>
             </div>
           </div>
-          {prediction.daysRemaining < 90 && (
+          {!oposicionInfo.isApproximate && prediction.daysRemaining < 90 && (
             <div className="mt-3 bg-white bg-opacity-20 rounded-lg p-2 text-center text-sm animate-pulse">
               ⚡ ¡Menos de 3 meses! Intensifica tu preparación
             </div>
@@ -228,7 +254,9 @@ export default function ExamPredictionMarch2025({ examPrediction }: ExamPredicti
               <div>
                 <div className="text-xs text-indigo-600 font-medium">📅 Examen</div>
                 <div className="font-bold text-indigo-800">{examDateLabel}</div>
-                <div className="text-xs text-indigo-500">(estimación)</div>
+                {oposicionInfo.isApproximate && !oposicionInfo.examPassed && (
+                  <div className="text-xs text-indigo-500">(fecha estimada)</div>
+                )}
               </div>
             )}
             {(oposicionInfo.plazasLibres || oposicionInfo.plazas) && (
