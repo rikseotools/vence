@@ -27,6 +27,8 @@ interface QualityResponse {
     missing_article: CheckResult
     missing_image: CheckResult
     excel_typo: CheckResult
+    html_explanation: CheckResult
+    wrong_article_law: CheckResult
     copied_explanation: CheckResult
     cramped_explanation: CheckResult
     duplicate_questions: CheckResult
@@ -46,6 +48,9 @@ const SIMILARITY_THRESHOLD = 0.9
 // Regex for questions referencing images/screenshots that aren't shown
 // Patterns for questions that reference visual content not available (images, icons, tables, screenshots)
 const MISSING_IMAGE_REGEX = '(?i)(siguiente imagen|imagen que se muestra|imagen que aparece|la imagen de Excel|la imagen de Access|la imagen de Word|de la imagen de|celda de la imagen|analizando la imagen|la imagen adjunta|imagen que se adjunta|captura de pantalla que se muestra|pantalla que se muestra|icono que aparece en la siguiente|icono que muestra la siguiente|icono que puedes ver en la siguiente|icono que aparece a continuación|observa la siguiente captura|según la siguiente imagen|relación con la siguiente imagen|observe la siguiente imagen|figura que aparece a continuación|rango de datos que aparece a continuación|tabla adjunta|documento adjunto|gráfico siguiente|hoja de cálculo siguiente|siguiente hoja de cálculo|sigui?ente figura|figura que aparece entre|figura de ejemplo|observa la figura|aparece en la figura|siguiente icono|como se muestra en la imagen|como se puede ver en la imagen|que aparece en la imagen|aparecen en la imagen|mostrad[oa] en la imagen|en la imagen de Excel|en la imagen de Access|en la imagen de Word|en la imagen siguiente|de la figura siguiente|icono de la figura)'
+
+// HTML entities or tags in explanation (should be markdown)
+const HTML_EXPLANATION_REGEX = '(<p>|<p |</p>|<strong>|</strong>|<br>|<br/>|<br />|&eacute;|&oacute;|&aacute;|&iacute;|&uacute;|&ntilde;|&Eacute;|&Oacute;|&Aacute;|&nbsp;|<em>|</em>|<ul>|<li>|</li>|</ul>|<ol>|</ol>|<h[1-6]>)'
 
 // Excel functions written without the required period (e.g. SIERROR instead of SI.ERROR)
 // eslint-disable-next-line no-useless-escape
@@ -80,6 +85,9 @@ async function runCountsOnly(): Promise<number> {
           CONCAT_WS(' ', question_text, option_a, option_b, option_c, option_d) ~* ${EXCEL_TYPO_REGEX}
         ) as excel_typo,
         count(*) FILTER (WHERE
+          explanation ~* ${HTML_EXPLANATION_REGEX}
+        ) as html_explanation,
+        count(*) FILTER (WHERE
           explanation IS NOT NULL AND LENGTH(explanation) > 400
           AND explanation NOT LIKE '%' || chr(10) || '%'
         ) as cramped_explanation
@@ -109,9 +117,26 @@ async function runCountsOnly(): Promise<number> {
           (SELECT string_agg(opt, '|||' ORDER BY opt) FROM unnest(ARRAY[option_a, option_b, option_c, option_d]) AS opt)
         HAVING count(*) > 1
       ) d
+    ),
+    -- Preguntas cuyo texto menciona una app (Access, Word, Excel, etc.)
+    -- pero están vinculadas a un artículo de otra ley diferente.
+    wrong_law_count AS (
+      SELECT count(*)::int as wrong_law
+      FROM questions q
+      JOIN articles a ON q.primary_article_id = a.id
+      JOIN laws l ON a.law_id = l.id
+      WHERE q.is_active = true AND (
+        (q.question_text ~* '\\mAccess\\M' AND l.short_name NOT ILIKE '%Access%')
+        OR (q.question_text ~* '\\mExcel\\M' AND l.short_name NOT ILIKE '%Excel%' AND l.short_name NOT ILIKE '%hoja%')
+        OR (q.question_text ~* '\\mWord\\M' AND l.short_name NOT ILIKE '%Word%' AND l.short_name NOT ILIKE '%procesador%')
+        OR (q.question_text ~* '\\mOutlook\\M' AND l.short_name NOT ILIKE '%Outlook%' AND l.short_name NOT ILIKE '%Microsoft 365%')
+        OR (q.question_text ~* '\\mOneDrive\\M' AND l.short_name NOT ILIKE '%OneDrive%' AND l.short_name NOT ILIKE '%Microsoft 365%')
+        OR (q.question_text ~* '\\mTeams\\M' AND l.short_name NOT ILIKE '%Teams%' AND l.short_name NOT ILIKE '%Microsoft 365%')
+        OR (q.question_text ~* '\\mSharePoint\\M' AND l.short_name NOT ILIKE '%SharePoint%' AND l.short_name NOT ILIKE '%Microsoft 365%')
+      )
     )
-    SELECT (b.empty_options + b.banned_words + b.pending_explanation + b.missing_article + b.missing_image + b.excel_typo + b.cramped_explanation + s.copied + dup.duplicates)::int as total
-    FROM base b, similarity_count s, duplicate_count dup
+    SELECT (b.empty_options + b.banned_words + b.pending_explanation + b.missing_article + b.missing_image + b.excel_typo + b.html_explanation + b.cramped_explanation + s.copied + dup.duplicates + wl.wrong_law)::int as total
+    FROM base b, similarity_count s, duplicate_count dup, wrong_law_count wl
   `)
 
   const rows = (result as any).rows ?? result ?? []
@@ -187,7 +212,37 @@ async function runChecks(): Promise<QualityResponse> {
       LIMIT ${MAX_ITEMS}
     `),
 
-    // 7. Cramped explanation (>400 chars without any line break)
+    // 7. HTML in explanation (should be markdown)
+    db.execute(sql`
+      SELECT id, LEFT(question_text, ${TEXT_LIMIT}) as question_text,
+             count(*) OVER()::int as total_count
+      FROM questions
+      WHERE is_active = true
+        AND explanation ~* ${HTML_EXPLANATION_REGEX}
+      LIMIT ${MAX_ITEMS}
+    `),
+
+    // 8. Wrong article law (question mentions app X but article is from law Y)
+    db.execute(sql`
+      SELECT q.id, LEFT(q.question_text, ${TEXT_LIMIT}) as question_text,
+             l.short_name as law_name,
+             count(*) OVER()::int as total_count
+      FROM questions q
+      JOIN articles a ON q.primary_article_id = a.id
+      JOIN laws l ON a.law_id = l.id
+      WHERE q.is_active = true AND (
+        (q.question_text ~* '\\mAccess\\M' AND l.short_name NOT ILIKE '%Access%')
+        OR (q.question_text ~* '\\mExcel\\M' AND l.short_name NOT ILIKE '%Excel%' AND l.short_name NOT ILIKE '%hoja%')
+        OR (q.question_text ~* '\\mWord\\M' AND l.short_name NOT ILIKE '%Word%' AND l.short_name NOT ILIKE '%procesador%')
+        OR (q.question_text ~* '\\mOutlook\\M' AND l.short_name NOT ILIKE '%Outlook%' AND l.short_name NOT ILIKE '%Microsoft 365%')
+        OR (q.question_text ~* '\\mOneDrive\\M' AND l.short_name NOT ILIKE '%OneDrive%' AND l.short_name NOT ILIKE '%Microsoft 365%')
+        OR (q.question_text ~* '\\mTeams\\M' AND l.short_name NOT ILIKE '%Teams%' AND l.short_name NOT ILIKE '%Microsoft 365%')
+        OR (q.question_text ~* '\\mSharePoint\\M' AND l.short_name NOT ILIKE '%SharePoint%' AND l.short_name NOT ILIKE '%Microsoft 365%')
+      )
+      LIMIT ${MAX_ITEMS}
+    `),
+
+    // 9. Cramped explanation (>400 chars without any line break)
     db.execute(sql`
       SELECT id, LEFT(question_text, ${TEXT_LIMIT}) as question_text,
              LENGTH(explanation) as len,
@@ -246,7 +301,7 @@ async function runChecks(): Promise<QualityResponse> {
 
   const toRows = (r: any) => (r as any).rows ?? r ?? []
 
-  const [emptyOpts, bannedRaw, pendingExpl, missingArt, missingImg, excelTypoRaw, crampedExplRaw, copiedExplRaw, duplicateRaw] = results
+  const [emptyOpts, bannedRaw, pendingExpl, missingArt, missingImg, excelTypoRaw, htmlExplRaw, wrongLawRaw, crampedExplRaw, copiedExplRaw, duplicateRaw] = results
 
   const emptyRows = toRows(emptyOpts)
   const bannedRows = toRows(bannedRaw)
@@ -254,6 +309,8 @@ async function runChecks(): Promise<QualityResponse> {
   const missingRows = toRows(missingArt)
   const missingImgRows = toRows(missingImg)
   const excelTypoRows = toRows(excelTypoRaw)
+  const htmlExplRows = toRows(htmlExplRaw)
+  const wrongLawRows = toRows(wrongLawRaw)
   const crampedRows = toRows(crampedExplRaw)
   const copiedRows = toRows(copiedExplRaw)
   const duplicateRows = toRows(duplicateRaw)
@@ -322,6 +379,18 @@ async function runChecks(): Promise<QualityResponse> {
       count: getCount(excelTypoRows),
       questions: excelTypoWithField,
     },
+    html_explanation: {
+      count: getCount(htmlExplRows),
+      questions: htmlExplRows.map((q: any) => ({
+        id: q.id, question_text: q.question_text, field: 'explanation',
+      })),
+    },
+    wrong_article_law: {
+      count: getCount(wrongLawRows),
+      questions: wrongLawRows.map((q: any) => ({
+        id: q.id, question_text: q.question_text, field: q.law_name,
+      })),
+    },
     cramped_explanation: {
       count: getCount(crampedRows),
       questions: crampedRows.map((q: any) => ({
@@ -347,6 +416,8 @@ async function runChecks(): Promise<QualityResponse> {
     checks.missing_article.count +
     checks.missing_image.count +
     checks.excel_typo.count +
+    checks.html_explanation.count +
+    checks.wrong_article_law.count +
     checks.cramped_explanation.count +
     checks.copied_explanation.count +
     checks.duplicate_questions.count

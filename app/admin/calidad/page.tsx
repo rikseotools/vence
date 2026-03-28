@@ -24,6 +24,8 @@ interface QualityData {
     missing_article: CheckResult
     missing_image: CheckResult
     excel_typo: CheckResult
+    html_explanation: CheckResult
+    wrong_article_law: CheckResult
     cramped_explanation: CheckResult
     copied_explanation: CheckResult
     duplicate_questions: CheckResult
@@ -60,6 +62,16 @@ const CHECK_CONFIG = {
     title: 'Función Excel mal escrita',
     description: 'Funciones sin punto: SIERROR→SI.ERROR, CONTARSI→CONTAR.SI, SUMARSI→SUMAR.SI',
     icon: '📊',
+  },
+  html_explanation: {
+    title: 'Explicación con HTML',
+    description: 'Explicaciones con etiquetas HTML (<p>, <strong>, &eacute;, etc.) en vez de markdown',
+    icon: '🏷️',
+  },
+  wrong_article_law: {
+    title: 'Artículo de ley incorrecta',
+    description: 'Pregunta menciona una app (Access, Excel, Word...) pero el artículo vinculado es de otra ley',
+    icon: '🔀',
   },
   cramped_explanation: {
     title: 'Explicación apelotonada',
