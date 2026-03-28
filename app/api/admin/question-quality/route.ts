@@ -32,6 +32,9 @@ interface QualityResponse {
     copied_explanation: CheckResult
     cramped_explanation: CheckResult
     duplicate_questions: CheckResult
+    psy_empty_options: CheckResult
+    psy_missing_figures: CheckResult
+    psy_html_explanation: CheckResult
   }
 }
 
@@ -134,9 +137,25 @@ async function runCountsOnly(): Promise<number> {
         OR (q.question_text ~* '\\mTeams\\M' AND l.short_name NOT ILIKE '%Teams%' AND l.short_name NOT ILIKE '%Microsoft 365%')
         OR (q.question_text ~* '\\mSharePoint\\M' AND l.short_name NOT ILIKE '%SharePoint%' AND l.short_name NOT ILIKE '%Microsoft 365%')
       )
+    ),
+    -- Checks de psicotécnicas
+    psy_base AS (
+      SELECT
+        count(*) FILTER (WHERE
+          option_a = '' OR option_b = '' OR option_c = '' OR option_d = ''
+        ) as psy_empty,
+        count(*) FILTER (WHERE
+          (question_text ILIKE '%figura%' OR question_text ILIKE '%imagen%' OR question_text ILIKE '%tabla I%')
+          AND (content_data IS NULL OR content_data::text = '{}')
+        ) as psy_figures,
+        count(*) FILTER (WHERE
+          explanation ~* ${HTML_EXPLANATION_REGEX}
+        ) as psy_html
+      FROM psychometric_questions
+      WHERE is_active = true
     )
-    SELECT (b.empty_options + b.banned_words + b.pending_explanation + b.missing_article + b.missing_image + b.excel_typo + b.html_explanation + b.cramped_explanation + s.copied + dup.duplicates + wl.wrong_law)::int as total
-    FROM base b, similarity_count s, duplicate_count dup, wrong_law_count wl
+    SELECT (b.empty_options + b.banned_words + b.pending_explanation + b.missing_article + b.missing_image + b.excel_typo + b.html_explanation + b.cramped_explanation + s.copied + dup.duplicates + wl.wrong_law + pb.psy_empty + pb.psy_figures + pb.psy_html)::int as total
+    FROM base b, similarity_count s, duplicate_count dup, wrong_law_count wl, psy_base pb
   `)
 
   const rows = (result as any).rows ?? result ?? []
@@ -297,11 +316,44 @@ async function runChecks(): Promise<QualityResponse> {
       ORDER BY d.question_text, d.options_sorted, d.primary_article_id, q.created_at ASC
       LIMIT ${MAX_ITEMS}
     `),
+
+    // --- PSICOTÉCNICAS ---
+
+    // 12. Opciones vacías en psicotécnicas
+    db.execute(sql`
+      SELECT id, LEFT(question_text, ${TEXT_LIMIT}) as question_text,
+             count(*) OVER()::int as total_count
+      FROM psychometric_questions
+      WHERE is_active = true
+        AND (option_a = '' OR option_b = '' OR option_c = '' OR option_d = '')
+      LIMIT ${MAX_ITEMS}
+    `),
+
+    // 13. Psicotécnicas que referencian figuras/tablas pero no tienen content_data
+    db.execute(sql`
+      SELECT id, LEFT(question_text, ${TEXT_LIMIT}) as question_text,
+             count(*) OVER()::int as total_count
+      FROM psychometric_questions
+      WHERE is_active = true
+        AND (question_text ILIKE '%figura%' OR question_text ILIKE '%imagen%' OR question_text ILIKE '%tabla I%')
+        AND (content_data IS NULL OR content_data::text = '{}')
+      LIMIT ${MAX_ITEMS}
+    `),
+
+    // 14. Explicación HTML en psicotécnicas
+    db.execute(sql`
+      SELECT id, LEFT(question_text, ${TEXT_LIMIT}) as question_text,
+             count(*) OVER()::int as total_count
+      FROM psychometric_questions
+      WHERE is_active = true
+        AND explanation ~* ${HTML_EXPLANATION_REGEX}
+      LIMIT ${MAX_ITEMS}
+    `),
   ])
 
   const toRows = (r: any) => (r as any).rows ?? r ?? []
 
-  const [emptyOpts, bannedRaw, pendingExpl, missingArt, missingImg, excelTypoRaw, htmlExplRaw, wrongLawRaw, crampedExplRaw, copiedExplRaw, duplicateRaw] = results
+  const [emptyOpts, bannedRaw, pendingExpl, missingArt, missingImg, excelTypoRaw, htmlExplRaw, wrongLawRaw, crampedExplRaw, copiedExplRaw, duplicateRaw, psyEmptyRaw, psyFiguresRaw, psyHtmlRaw] = results
 
   const emptyRows = toRows(emptyOpts)
   const bannedRows = toRows(bannedRaw)
@@ -314,6 +366,9 @@ async function runChecks(): Promise<QualityResponse> {
   const crampedRows = toRows(crampedExplRaw)
   const copiedRows = toRows(copiedExplRaw)
   const duplicateRows = toRows(duplicateRaw)
+  const psyEmptyRows = toRows(psyEmptyRaw)
+  const psyFiguresRows = toRows(psyFiguresRaw)
+  const psyHtmlRows = toRows(psyHtmlRaw)
 
   // Detect which field has banned word
   const bannedRegexJs = new RegExp(BANNED_REGEX.replace('(?i)', ''), 'i')
@@ -407,6 +462,24 @@ async function runChecks(): Promise<QualityResponse> {
         id: q.id, question_text: q.question_text, field: `${q.cnt} copias`,
       })),
     },
+    psy_empty_options: {
+      count: getCount(psyEmptyRows),
+      questions: psyEmptyRows.map((q: any) => ({
+        id: q.id, question_text: q.question_text, field: 'options',
+      })),
+    },
+    psy_missing_figures: {
+      count: getCount(psyFiguresRows),
+      questions: psyFiguresRows.map((q: any) => ({
+        id: q.id, question_text: q.question_text, field: 'content_data',
+      })),
+    },
+    psy_html_explanation: {
+      count: getCount(psyHtmlRows),
+      questions: psyHtmlRows.map((q: any) => ({
+        id: q.id, question_text: q.question_text, field: 'explanation',
+      })),
+    },
   }
 
   const totalIssues =
@@ -420,7 +493,10 @@ async function runChecks(): Promise<QualityResponse> {
     checks.wrong_article_law.count +
     checks.cramped_explanation.count +
     checks.copied_explanation.count +
-    checks.duplicate_questions.count
+    checks.duplicate_questions.count +
+    checks.psy_empty_options.count +
+    checks.psy_missing_figures.count +
+    checks.psy_html_explanation.count
 
   return { success: true, totalIssues, checks }
 }

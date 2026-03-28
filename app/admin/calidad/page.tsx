@@ -29,6 +29,9 @@ interface QualityData {
     cramped_explanation: CheckResult
     copied_explanation: CheckResult
     duplicate_questions: CheckResult
+    psy_empty_options: CheckResult
+    psy_missing_figures: CheckResult
+    psy_html_explanation: CheckResult
   }
 }
 
@@ -87,6 +90,21 @@ const CHECK_CONFIG = {
     title: 'Preguntas duplicadas',
     description: 'Preguntas con el mismo texto que aparecen más de una vez (opciones barajadas)',
     icon: '👯',
+  },
+  psy_empty_options: {
+    title: '[PSY] Opciones vacías',
+    description: 'Psicotécnicas con alguna opción A/B/C/D sin texto',
+    icon: '🧩',
+  },
+  psy_missing_figures: {
+    title: '[PSY] Figuras no disponibles',
+    description: 'Psicotécnicas que referencian figuras/tablas pero no tienen content_data',
+    icon: '🖼️',
+  },
+  psy_html_explanation: {
+    title: '[PSY] Explicación con HTML',
+    description: 'Psicotécnicas con HTML en la explicación en vez de markdown',
+    icon: '🏷️',
   },
 } as const
 
