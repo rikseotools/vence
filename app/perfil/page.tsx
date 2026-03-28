@@ -6,7 +6,7 @@ import Link from 'next/link'
 import AvatarChanger from '@/components/AvatarChanger'
 import { useAuth } from '@/contexts/AuthContext'
 import { useOposicion } from '@/contexts/OposicionContext'
-import { ALL_OPOSICION_IDS, ID_TO_SLUG, getOposicion } from '@/lib/config/oposiciones'
+import { ALL_OPOSICION_IDS, getOposicion } from '@/lib/config/oposiciones'
 import notificationTracker from '@/lib/services/notificationTracker'
 import CancellationFlow from '@/components/CancellationFlow'
 import OposicionChangeModal from '@/components/OposicionChangeModal'
@@ -156,8 +156,7 @@ interface AuthContextValue {
 
 function PerfilPageContent() {
   const { user, loading: authLoading, supabase } = useAuth() as AuthContextValue
-  const { oposicionId, loading: oposicionLoading } = useOposicion()
-  const userOposicionSlug = oposicionId ? (ID_TO_SLUG[oposicionId] ?? null) : null
+  const { oposicionId } = useOposicion()
   const userOposicionName = oposicionId ? (getOposicion(oposicionId)?.name ?? null) : null
   const searchParams = useSearchParams()
 
@@ -689,7 +688,7 @@ function PerfilPageContent() {
   // CARGAR PERFIL VIA API TIPADA
   useEffect(() => {
     async function loadUserProfile() {
-      if (authLoading || oposicionLoading) return
+      if (authLoading) return
 
       if (!user) {
         setLoading(false)
@@ -733,8 +732,8 @@ function PerfilPageContent() {
           }
           setProfile(profileData)
 
-          // ✅ SINCRONIZAR CON oposicionId del contexto
-          let currentOposicion = oposicionId || profileData.target_oposicion || ''
+          // ✅ Usar target_oposicion del perfil cargado
+          let currentOposicion = profileData.target_oposicion || ''
           if (currentOposicion === 'auxiliar-administrativo-estado') {
             currentOposicion = 'auxiliar_administrativo_estado' // Migrar al nuevo formato
           }
@@ -769,7 +768,7 @@ function PerfilPageContent() {
     }
 
     loadUserProfile()
-  }, [user, authLoading, oposicionLoading, oposicionId])
+  }, [user, authLoading])
 
   // 🤖 CARGAR CONFIGURACIÓN DE AVATAR AUTOMÁTICO
   useEffect(() => {
@@ -1951,7 +1950,7 @@ function PerfilPageContent() {
   }
 
   // Loading mientras se verifica auth
-  if (authLoading || loading || oposicionLoading) {
+  if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center">
         <div className="text-center">
