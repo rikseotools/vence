@@ -145,7 +145,7 @@ async function runCountsOnly(): Promise<number> {
           option_a = '' OR option_b = '' OR option_c = '' OR option_d = ''
         ) as psy_empty,
         count(*) FILTER (WHERE
-          (question_text ILIKE '%figura%' OR question_text ILIKE '%imagen%' OR question_text ILIKE '%tabla I%')
+          (question_text ILIKE '%serie de figuras%' OR question_text ILIKE '%siguiente imagen%' OR question_text ILIKE '%siguiente gráfico%' OR question_text ILIKE '%tabla I y marcar%' OR question_text ILIKE '%observe la figura%')
           AND (content_data IS NULL OR content_data::text = '{}')
         ) as psy_figures,
         count(*) FILTER (WHERE
@@ -335,7 +335,7 @@ async function runChecks(): Promise<QualityResponse> {
              count(*) OVER()::int as total_count
       FROM psychometric_questions
       WHERE is_active = true
-        AND (question_text ILIKE '%figura%' OR question_text ILIKE '%imagen%' OR question_text ILIKE '%tabla I%')
+        AND (question_text ILIKE '%serie de figuras%' OR question_text ILIKE '%siguiente imagen%' OR question_text ILIKE '%siguiente gráfico%' OR question_text ILIKE '%tabla I y marcar%' OR question_text ILIKE '%observe la figura%')
         AND (content_data IS NULL OR content_data::text = '{}')
       LIMIT ${MAX_ITEMS}
     `),
