@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import InteractiveBreadcrumbs from '@/components/InteractiveBreadcrumbs'
+import NavigationButton from '@/components/ui/NavigationButton'
 
 interface ExamAttempt {
   id: string
@@ -188,13 +189,13 @@ export default function OfficialExamAttempts({
           </div>
 
           {/* Repeat exam button */}
-          <button
-            onClick={() => router.push(`/${oposicion}/test/examen-oficial?fecha=${examDate}&parte=${parte}`)}
+          <NavigationButton
+            href={`/${oposicion}/test/examen-oficial?fecha=${examDate}&parte=${parte}`}
             className="w-full mb-6 py-3 px-4 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-semibold text-center transition-colors flex items-center justify-center gap-2"
           >
             <span>🔄</span>
             <span>{attempts.length === 0 ? 'Empezar examen' : 'Repetir examen'}</span>
-          </button>
+          </NavigationButton>
 
           {/* Attempts list */}
           {attempts.length === 0 ? (

@@ -1,15 +1,13 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { useOposicionPaths } from '@/hooks/useOposicionPaths'
+import NavigationButton from '@/components/ui/NavigationButton'
 
 export default function PremiumSuccess() {
   const { user, refreshUser } = useAuth() as unknown as { user: { id: string } | null; refreshUser?: () => Promise<void> }
   const { testUrl } = useOposicionPaths()
-  const router = useRouter()
   const [synced, setSynced] = useState(false)
-  const [navigating, setNavigating] = useState(false)
 
   // Forzar recarga del perfil UNA VEZ para que el cliente sepa que ya es premium
   useEffect(() => {
@@ -18,11 +16,6 @@ export default function PremiumSuccess() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
-
-  const handleStart = () => {
-    setNavigating(true)
-    router.push(testUrl)
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 py-12">
@@ -33,20 +26,13 @@ export default function PremiumSuccess() {
           <p className="text-lg text-gray-600 mb-6">
             Tu suscripción se ha configurado correctamente. Ya tienes acceso ilimitado.
           </p>
-          <button
-            onClick={handleStart}
-            disabled={navigating}
-            className="bg-blue-600 text-white py-4 px-6 rounded-lg font-bold hover:bg-blue-700 disabled:opacity-70 transition-all"
+          <NavigationButton
+            href={testUrl}
+            loadingText="Cargando..."
+            className="bg-blue-600 text-white py-4 px-6 rounded-lg font-bold hover:bg-blue-700"
           >
-            {navigating ? (
-              <span className="flex items-center justify-center gap-2">
-                <span className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></span>
-                Cargando...
-              </span>
-            ) : (
-              '🚀 Empezar a Estudiar'
-            )}
-          </button>
+            🚀 Empezar a Estudiar
+          </NavigationButton>
         </div>
       </div>
     </div>
