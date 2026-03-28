@@ -9,12 +9,13 @@ export default function PremiumSuccess() {
   const { testUrl } = useOposicionPaths()
   const [synced, setSynced] = useState(false)
 
-  // Forzar recarga del perfil para que el cliente sepa que ya es premium
+  // Forzar recarga del perfil UNA VEZ para que el cliente sepa que ya es premium
   useEffect(() => {
-    if (user && refreshUser) {
+    if (user && refreshUser && !synced) {
       refreshUser().then(() => setSynced(true))
     }
-  }, [user, refreshUser])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 py-12">
