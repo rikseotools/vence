@@ -219,7 +219,7 @@ function TestRecuperadoContent() {
             Puede que ya se haya guardado o haya expirado.
           </p>
           <Link
-            href="/auxiliar-administrativo-estado"
+            href="/"
             className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 py-3 rounded-lg transition-colors"
           >
             Ir a hacer tests
@@ -242,7 +242,7 @@ function TestRecuperadoContent() {
             {error || 'No pudimos recuperar tu test'}
           </p>
           <Link
-            href="/auxiliar-administrativo-estado"
+            href="/"
             className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 py-3 rounded-lg transition-colors"
           >
             Continuar practicando
@@ -348,7 +348,7 @@ function TestRecuperadoContent() {
             </>
           ) : (
             <Link
-              href={testResult.pageUrl || '/auxiliar-administrativo-estado'}
+              href={testResult.pageUrl || '/'}
               className="block w-full bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 py-4 rounded-lg transition-colors text-center"
             >
               Continuar practicando

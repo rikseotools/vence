@@ -357,14 +357,14 @@ export default function LeyesDeOposicionesPage() {
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
-              href="/auxiliar-administrativo-estado/test"
+              href="/nuestras-oposiciones"
               className="bg-white text-blue-600 font-bold py-3 px-8 rounded-xl hover:bg-gray-100 transition-all duration-300 shadow-lg hover:shadow-xl"
             >
               🎯 Comenzar Tests Gratuitos
             </Link>
-            
+
             <Link
-              href="/auxiliar-administrativo-estado/temario"
+              href="/temarios"
               className="border-2 border-white text-white font-bold py-3 px-8 rounded-xl hover:bg-white/10 transition-all duration-300"
             >
               📚 Ver Todo el Temario

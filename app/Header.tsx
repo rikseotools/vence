@@ -15,7 +15,7 @@ import { LogoHorizontal, LogoIcon } from '@/components/Logo'
 import { useOposicion } from '../contexts/OposicionContext'
 import { useAuth } from '../contexts/AuthContext'
 import { useUserOposicion } from '../components/useUserOposicion'
-import { getOposicion } from '@/lib/config/oposiciones'
+import { getOposicion, ALL_OPOSICION_SLUGS } from '@/lib/config/oposiciones'
 import { useAdminNotifications } from '@/hooks/useAdminNotifications'
 import DailyGoalBanner from '@/components/DailyGoalBanner'
 import { useInteractionTracker } from '@/hooks/useInteractionTracker'
@@ -304,10 +304,11 @@ export default function HeaderES() {
 
   // Enlaces simplificados para usuarios logueados
   const getLoggedInNavLinks = (): NavLink[] => {
+    const defaultSlug = ALL_OPOSICION_SLUGS[0]
     if (!hasOposicion || loading) {
       return [
-        { href: '/auxiliar-administrativo-estado/test', label: 'Test', icon: '🎯' },
-        { href: '/auxiliar-administrativo-estado/temario', label: 'Temario', icon: '📚' },
+        { href: `/${defaultSlug}/test`, label: 'Test', icon: '🎯' },
+        { href: `/${defaultSlug}/temario`, label: 'Temario', icon: '📚' },
         { href: '/leyes', label: 'Leyes', icon: '⚖️' },
         { href: '/test/por-leyes', label: 'Por Leyes', icon: '📖' },
         { href: '/psicotecnicos/test', label: 'Psicotécnicos', icon: '🧩' },
@@ -317,7 +318,7 @@ export default function HeaderES() {
 
     try {
       const featuredLink = oposicionMenu?.navLinks?.find(link => link?.featured)
-      const basePath = featuredLink?.href || '/auxiliar-administrativo-estado'
+      const basePath = featuredLink?.href || `/${defaultSlug}`
 
       return [
         { href: `${basePath}/test`, label: 'Test', icon: '🎯' },
@@ -330,8 +331,8 @@ export default function HeaderES() {
     } catch (error) {
       console.warn('Error generando enlaces:', error)
       return [
-        { href: '/auxiliar-administrativo-estado/test', label: 'Test', icon: '🎯' },
-        { href: '/auxiliar-administrativo-estado/temario', label: 'Temario', icon: '📚' },
+        { href: `/${defaultSlug}/test`, label: 'Test', icon: '🎯' },
+        { href: `/${defaultSlug}/temario`, label: 'Temario', icon: '📚' },
         { href: '/leyes', label: 'Leyes', icon: '⚖️' },
         { href: '/test/por-leyes', label: 'Por Leyes', icon: '📖' },
         { href: '/psicotecnicos/test', label: 'Psicotécnicos', icon: '🧩' },
@@ -342,9 +343,10 @@ export default function HeaderES() {
 
   // Enlaces para usuarios NO logueados
   const getGuestNavLinks = (): NavLink[] => {
+    const guestSlug = ALL_OPOSICION_SLUGS[0]
     return [
-      { href: '/auxiliar-administrativo-estado/test', label: 'Test', icon: '🎯' },
-      { href: '/auxiliar-administrativo-estado/temario', label: 'Temario', icon: '📚' },
+      { href: `/${guestSlug}/test`, label: 'Test', icon: '🎯' },
+      { href: `/${guestSlug}/temario`, label: 'Temario', icon: '📚' },
       { href: '/leyes', label: 'Leyes', icon: '⚖️' },
       { href: '/test/por-leyes', label: 'Por Leyes', icon: '📖' },
       { href: '/psicotecnicos', label: 'Psicotécnicos', icon: '🧩' },
@@ -743,7 +745,7 @@ export default function HeaderES() {
                 <Link
                   href={(() => {
                     const testsLink = getTestsLink()
-                    return testsLink === '/' ? '/auxiliar-administrativo-estado/temario' : testsLink.replace('/test', '/temario')
+                    return testsLink === '/' ? `/${ALL_OPOSICION_SLUGS[0]}/temario` : testsLink.replace('/test', '/temario')
                   })()}
                   className="xl:hidden p-1.5 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg transition-colors"
                   aria-label="Ir a Temario"
@@ -964,13 +966,14 @@ export default function HeaderES() {
                 const progress = exam.totalQuestions > 0
                   ? Math.round((exam.answeredQuestions / exam.totalQuestions) * 100)
                   : 0
+                const opoSlug = oposicionMenu?.navLinks?.find(l => l.featured)?.href?.replace('/', '') || ALL_OPOSICION_SLUGS[0]
                 let resumeUrl
                 if (exam.title?.toLowerCase().includes('examen oficial')) {
-                  resumeUrl = `/auxiliar-administrativo-estado/test/examen-oficial?resume=${exam.id}`
+                  resumeUrl = `/${opoSlug}/test/examen-oficial?resume=${exam.id}`
                 } else if (exam.title?.toLowerCase().includes('aleatorio') || exam.temaNumber === 0 || exam.temaNumber === null) {
                   resumeUrl = `/test/aleatorio-examen?resume=${exam.id}`
                 } else {
-                  resumeUrl = `/auxiliar-administrativo-estado/test/tema/${exam.temaNumber || 1}/test-examen?resume=${exam.id}`
+                  resumeUrl = `/${opoSlug}/test/tema/${exam.temaNumber || 1}/test-examen?resume=${exam.id}`
                 }
 
                 const isConfirming = confirmingDiscardId === exam.id

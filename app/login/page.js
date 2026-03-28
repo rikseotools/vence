@@ -16,7 +16,7 @@ function LoginPageContent() {
   
   // URL de retorno después del login
   const returnToParam = searchParams.get('return_to')
-  const returnTo = returnToParam || '/auxiliar-administrativo-estado'
+  const returnTo = returnToParam || '/'
   // Oposición detectada (para preseleccionar en registro)
   const oposicion = searchParams.get('oposicion')
   // Si no hay return_to, es login directo
@@ -137,7 +137,7 @@ function LoginPageContent() {
               Continuar donde lo dejé
             </Link>
             <Link
-              href="/auxiliar-administrativo-estado"
+              href="/"
               className="block w-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 py-2.5 px-4 rounded-lg font-semibold hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm"
             >
               Ir al inicio
@@ -225,7 +225,7 @@ function LoginPageContent() {
           {/* Additional links compactos */}
           <div className="mt-4 text-center space-y-2">
             <Link
-              href="/auxiliar-administrativo-estado"
+              href="/"
               className="block text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 text-xs transition-colors"
             >
               ← Volver al inicio
