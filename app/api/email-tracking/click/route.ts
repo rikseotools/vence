@@ -8,7 +8,7 @@ import {
 } from '@/lib/api/email-tracking/queries'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
-const DEFAULT_REDIRECT = 'https://www.vence.es/auxiliar-administrativo-estado/test'
+const DEFAULT_REDIRECT = 'https://www.vence.es/nuestras-oposiciones'
 
 async function _GET(request: Request) {
   const { searchParams } = new URL(request.url)

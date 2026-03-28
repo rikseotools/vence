@@ -71,7 +71,7 @@ const DEFAULT_MENU: OposicionMenu = {
   icon: '🔍',
   navLinks: [
     { href: '/es', label: 'Inicio', icon: '🏠' },
-    { href: '/auxiliar-administrativo-estado', label: 'Auxiliar Administrativo', icon: '🏛️', featured: true },
+    { href: '/nuestras-oposiciones', label: 'Oposiciones', icon: '🏛️', featured: true },
     { href: '/leyes', label: 'Leyes', icon: '📚' },
     { href: '/guardia-civil', label: 'Guardia Civil', icon: '🚔' },
     { href: '/policia-nacional', label: 'Policía Nacional', icon: '👮‍♂️' }
