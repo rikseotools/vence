@@ -34,5 +34,28 @@ Registro de áreas del epígrafe que no tienen suficientes preguntas. Para prior
 4. Vincular a los artículos correctos
 5. Añadir al `topic_scope` si faltan artículos
 
+## Psicotécnicas — Imágenes pendientes de importar
+
+87 preguntas de "Pruebas de instrucciones" (Madrid) tienen imágenes en el JSON de importación (`preguntas-para-subir/auxiliar-madrid/por_tema_psicotecnicos/Psico_-_Pruebas_de_instrucciones.json`) pero se importaron sin procesar la imagen a `content_data`.
+
+| Dato | Valor |
+|------|-------|
+| Archivo fuente | `Psico_-_Pruebas_de_instrucciones.json` |
+| Preguntas con imagen | 87 / 149 |
+| Imágenes descargadas | `preguntas-para-subir/auxiliar-madrid/images/q_*.png` |
+| Campo en JSON | `imageLocal`, `imageOriginal`, `imageRaw` |
+| Campo destino en BD | `psychometric_questions.content_data` |
+| Estado actual | `content_data = {}` (vacío) → preguntas irresolubles |
+| Pregunta ejemplo | `938d5801` (desactivada por impugnación de Esther) |
+
+**Proceso para reparar:**
+1. Leer imagen local de `preguntas-para-subir/auxiliar-madrid/images/`
+2. Subir a Supabase Storage
+3. Guardar URL pública en `content_data.imageUrl`
+4. Reactivar preguntas desactivadas por este motivo
+
+**Nota:** El check `psy_missing_figures` en admin calidad detectará futuros casos.
+
 ## Última revisión
 - 2026-03-28: T11 y T21 de Madrid revisados
+- 2026-03-28: Psicotécnicas con imágenes pendientes documentadas
