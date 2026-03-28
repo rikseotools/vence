@@ -43,7 +43,7 @@ import DailyLimitBanner from './DailyLimitBanner'
 import AdSenseComponent from './AdSenseComponent'
 import UpgradeLimitModal from './UpgradeLimitModal'
 import SessionExpiredModal from './SessionExpiredModal'
-import { useUserOposicion } from './useUserOposicion'
+import { useOposicionPaths } from '@/hooks/useOposicionPaths'
 import { validateAnswer } from '@/lib/api/answers/client'
 import { ApiTimeoutError, ApiNetworkError } from '@/lib/api/client'
 import { useAnswerWatchdog } from '@/hooks/useAnswerWatchdog'
@@ -229,8 +229,7 @@ export default function TestLayout({
   const { trackTestAction } = useInteractionTracker()
 
   // 🏛️ Oposición del usuario (para formatear exam_source correctamente)
-  const { userOposicion } = useUserOposicion()
-  const userOposicionSlug = userOposicion?.slug || null
+  const { slug: userOposicionSlug } = useOposicionPaths()
 
   // 🔒 Sesión expirada durante test
   const [showSessionExpired, setShowSessionExpired] = useState(false)

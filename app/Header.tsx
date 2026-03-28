@@ -14,8 +14,7 @@ import { useNewMedalsBadge } from '@/hooks/useNewMedalsBadge'
 import { LogoHorizontal, LogoIcon } from '@/components/Logo'
 import { useOposicion } from '../contexts/OposicionContext'
 import { useAuth } from '../contexts/AuthContext'
-import { useUserOposicion } from '../components/useUserOposicion'
-import { getOposicion, ALL_OPOSICION_SLUGS } from '@/lib/config/oposiciones'
+import { getOposicion, ALL_OPOSICION_SLUGS, getTestsLink as configGetTestsLink } from '@/lib/config/oposiciones'
 import { useAdminNotifications } from '@/hooks/useAdminNotifications'
 import DailyGoalBanner from '@/components/DailyGoalBanner'
 import { useInteractionTracker } from '@/hooks/useInteractionTracker'
@@ -64,7 +63,6 @@ export default function HeaderES() {
 
   const { user, loading: authLoading, supabase, isPremium, isLegacy, userProfile } = useAuth()
   const oposicionContext = useOposicion()
-  const { userOposicion: hookUserOposicion } = useUserOposicion() // Hook que SÍ funciona
   const adminNotifications = useAdminNotifications(isAdmin && !adminLoading)
   const { issuesCount: sentryIssuesCount } = useSentryIssues(isAdmin && !adminLoading)
 
@@ -396,22 +394,11 @@ export default function HeaderES() {
     setIsMobileMenuOpen(!isMobileMenuOpen)
   }
 
-  // Funcion para obtener el enlace a tests de la oposicion objetivo
+  // Enlace a tests de la oposición del usuario (desde OposicionContext)
   const getTestsLink = (): string => {
-    // hookUserOposicion puede ser un string JSON o un objeto
-    let oposicionData: Record<string, unknown> | null = hookUserOposicion as Record<string, unknown> | null
-    if (typeof hookUserOposicion === 'string') {
-      try {
-        oposicionData = JSON.parse(hookUserOposicion)
-      } catch {
-        oposicionData = null
-      }
-    }
-    const oposicionId = (oposicionData?.id || oposicionData?.slug) as string | undefined
-    if (!oposicionId) return '/'
-
-    const oposicion = getOposicion(oposicionId)
-    return oposicion ? `/${oposicion.slug}/test` : '/'
+    const opoId = oposicionContext?.oposicionId
+    if (!opoId) return '/'
+    return configGetTestsLink(opoId)
   }
 
   // Obtener color dinamico

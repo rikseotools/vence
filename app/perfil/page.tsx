@@ -5,8 +5,8 @@ import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import AvatarChanger from '@/components/AvatarChanger'
 import { useAuth } from '@/contexts/AuthContext'
-import { useUserOposicion } from '@/components/useUserOposicion'
-import { ALL_OPOSICION_IDS } from '@/lib/config/oposiciones'
+import { useOposicion } from '@/contexts/OposicionContext'
+import { ALL_OPOSICION_IDS, ID_TO_SLUG, getOposicion } from '@/lib/config/oposiciones'
 import notificationTracker from '@/lib/services/notificationTracker'
 import CancellationFlow from '@/components/CancellationFlow'
 import OposicionChangeModal from '@/components/OposicionChangeModal'
@@ -150,19 +150,15 @@ interface AuthContextValue {
   supabase: SupabaseClient
 }
 
-// Tipo para UserOposicion hook
-interface UserOposicionValue {
-  userOposicion: { slug: string; name?: string; [key: string]: unknown } | null
-  loading: boolean
-}
-
 // ============================================
 // COMPONENTE PRINCIPAL
 // ============================================
 
 function PerfilPageContent() {
   const { user, loading: authLoading, supabase } = useAuth() as AuthContextValue
-  const { userOposicion, loading: oposicionLoading } = useUserOposicion() as UserOposicionValue
+  const { oposicionId, loading: oposicionLoading } = useOposicion()
+  const userOposicionSlug = oposicionId ? (ID_TO_SLUG[oposicionId] ?? null) : null
+  const userOposicionName = oposicionId ? (getOposicion(oposicionId)?.name ?? null) : null
   const searchParams = useSearchParams()
 
   const [profile, setProfile] = useState<UserProfile | null>(null)
@@ -737,9 +733,8 @@ function PerfilPageContent() {
           }
           setProfile(profileData)
 
-          // ✅ SINCRONIZAR CON userOposicion del hook
-          // Migrar valor antiguo si es necesario
-          let currentOposicion = userOposicion?.slug || profileData.target_oposicion || ''
+          // ✅ SINCRONIZAR CON oposicionId del contexto
+          let currentOposicion = oposicionId || profileData.target_oposicion || ''
           if (currentOposicion === 'auxiliar-administrativo-estado') {
             currentOposicion = 'auxiliar_administrativo_estado' // Migrar al nuevo formato
           }
@@ -774,7 +769,7 @@ function PerfilPageContent() {
     }
 
     loadUserProfile()
-  }, [user, authLoading, oposicionLoading, userOposicion])
+  }, [user, authLoading, oposicionLoading, oposicionId])
 
   // 🤖 CARGAR CONFIGURACIÓN DE AVATAR AUTOMÁTICO
   useEffect(() => {
@@ -1415,9 +1410,9 @@ function PerfilPageContent() {
     const selected = oposiciones.find(op => op.value === formData.target_oposicion)
     if (selected) return selected.label
     
-    // Fallback: usar datos del hook si están disponibles
-    if (userOposicion?.name) return userOposicion.name
-    
+    // Fallback: usar datos del contexto
+    if (userOposicionName) return userOposicionName
+
     return null
   }
 
