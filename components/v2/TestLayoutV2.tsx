@@ -13,6 +13,7 @@ import MarkdownExplanation from '@/components/MarkdownExplanation'
 import { useTestCompletion } from '@/hooks/useTestCompletion'
 import { useDailyQuestionLimit } from '@/hooks/useDailyQuestionLimit'
 import { useInteractionTracker } from '@/hooks/useInteractionTracker'
+import { useOposicionPaths } from '@/hooks/useOposicionPaths'
 
 // Tipos
 import type { TestLayoutV2Props, ValidateAnswerResult, DetailedAnswer, AnsweredQuestion } from './types'
@@ -59,6 +60,7 @@ export default function TestLayoutV2({
     isPremium: boolean
   }
   const { setQuestionContext, clearQuestionContext } = useQuestionContext()
+  const { testUrl } = useOposicionPaths()
   const { notifyTestCompletion } = useTestCompletion()
   const {
     hasLimit,
@@ -505,7 +507,7 @@ export default function TestLayoutV2({
                   if (config.customNavigationLinks?.backToLaw) {
                     window.location.href = config.customNavigationLinks.backToLaw.href
                   } else {
-                    window.location.href = config.isLawTest ? '/leyes' : '/auxiliar-administrativo-estado/test'
+                    window.location.href = config.isLawTest ? '/leyes' : testUrl
                   }
                 }}
                 className="flex-1 bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 shadow-sm border border-gray-700"

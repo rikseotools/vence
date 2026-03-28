@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useAuth } from '../contexts/AuthContext'
+import { useOposicionPaths } from '@/hooks/useOposicionPaths'
 
 interface PendingExam {
   id: string
@@ -33,6 +34,7 @@ interface AuthContextValue {
 
 export default function PendingExams({ temaNumber = null, limit = 5 }: PendingExamsProps) {
   const { user } = useAuth() as AuthContextValue
+  const { slug } = useOposicionPaths()
   const [pendingExams, setPendingExams] = useState<PendingExam[]>([])
   const [pendingPsychometric, setPendingPsychometric] = useState<PendingPsychometricSession[]>([])
   const [loading, setLoading] = useState(true)
@@ -188,12 +190,12 @@ export default function PendingExams({ temaNumber = null, limit = 5 }: PendingEx
   // Genera la URL de reanudación según el tipo de examen
   function getResumeUrl(exam: PendingExam): string {
     if (exam.title?.toLowerCase().includes('examen oficial')) {
-      return `/auxiliar-administrativo-estado/test/examen-oficial?resume=${exam.id}`
+      return `/${slug}/test/examen-oficial?resume=${exam.id}`
     }
     if (exam.title?.toLowerCase().includes('aleatorio') || exam.temaNumber === 0 || exam.temaNumber === null) {
       return `/test/aleatorio-examen?resume=${exam.id}`
     }
-    return `/auxiliar-administrativo-estado/test/tema/${exam.temaNumber || 1}/test-examen?resume=${exam.id}`
+    return `/${slug}/test/tema/${exam.temaNumber || 1}/test-examen?resume=${exam.id}`
   }
 
   // No mostrar si: no hay usuario, cargando, cerrado, o no hay nada pendiente
