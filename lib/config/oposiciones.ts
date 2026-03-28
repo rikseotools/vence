@@ -1524,6 +1524,12 @@ export function getTemarioLink(identifier: string): string {
   return oposicion ? `/${oposicion.slug}/temario` : '/'
 }
 
+/** Devuelve el enlace a la home de una oposición dada (por id o slug) */
+export function getHomeLink(identifier: string): string {
+  const oposicion = getOposicion(identifier)
+  return oposicion ? `/${oposicion.slug}` : '/'
+}
+
 const ROMAN_NUMERALS = ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii']
 
 /**
@@ -1574,14 +1580,14 @@ export function positionTypeToSlug(positionType: string): string | null {
  * Escalable: al añadir una oposición nueva, funciona automáticamente.
  */
 export function getOposicionSlugFromPathname(pathname: string | null): string {
-  if (!pathname) return 'auxiliar-administrativo-estado'
+  if (!pathname) return ALL_OPOSICION_SLUGS[0]
   const segments = pathname.split('/').filter(Boolean)
   for (const segment of segments) {
     if (ALL_OPOSICION_SLUGS.includes(segment)) {
       return segment
     }
   }
-  return 'auxiliar-administrativo-estado'
+  return ALL_OPOSICION_SLUGS[0]
 }
 
 /** Obtiene todos los temas de una oposición como lista plana */

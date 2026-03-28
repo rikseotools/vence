@@ -2,9 +2,11 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
+import { useOposicionPaths } from '@/hooks/useOposicionPaths'
 
 export default function PremiumSuccess() {
-  const { user, refreshUser } = useAuth()
+  const { user, refreshUser } = useAuth() as unknown as { user: { id: string } | null; refreshUser?: () => Promise<void> }
+  const { testUrl } = useOposicionPaths()
   const [synced, setSynced] = useState(false)
 
   // Forzar recarga del perfil para que el cliente sepa que ya es premium
@@ -23,7 +25,7 @@ export default function PremiumSuccess() {
           <p className="text-lg text-gray-600 mb-6">
             Tu suscripción se ha configurado correctamente. Ya tienes acceso ilimitado.
           </p>
-          <Link href="/auxiliar-administrativo-estado/test"
+          <Link href={testUrl}
                 className="bg-blue-600 text-white py-4 px-6 rounded-lg font-bold hover:bg-blue-700">
             🚀 Empezar a Estudiar
           </Link>

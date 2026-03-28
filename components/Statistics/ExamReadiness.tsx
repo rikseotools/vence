@@ -1,21 +1,41 @@
-// components/Statistics/ExamReadiness.js
+// components/Statistics/ExamReadiness.tsx
 'use client'
 import Link from 'next/link'
+import { useOposicionPaths } from '@/hooks/useOposicionPaths'
 
-export default function ExamReadiness({ examReadiness }) {
+interface ExamReadinessData {
+  level: string
+  score: number
+  message: string
+  components?: {
+    accuracy: number
+    consistency: number
+    coverage: number
+    retention: number
+    aiConfidence?: 'high' | 'medium' | 'low'
+  }
+}
+
+interface ExamReadinessProps {
+  examReadiness: ExamReadinessData | null
+}
+
+export default function ExamReadiness({ examReadiness }: ExamReadinessProps) {
+  const { testUrl } = useOposicionPaths()
+
   if (!examReadiness) return null
 
   return (
     <div className="bg-white rounded-xl shadow-lg p-6">
       <h3 className="text-xl font-bold text-gray-800 mb-4">🎯 Predicción de Preparación para Examen</h3>
-      
+
       {examReadiness.level === 'insufficient_data' ? (
         <div className="text-center py-8">
           <div className="text-6xl mb-4">🔍</div>
           <h4 className="text-xl font-bold text-gray-700 mb-2">Datos Insuficientes</h4>
           <p className="text-gray-600 mb-4">{examReadiness.message}</p>
-          <Link 
-            href="/auxiliar-administrativo-estado/test"
+          <Link
+            href={testUrl}
             className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-6 py-3 rounded-lg font-semibold hover:opacity-90 transition-opacity"
           >
             🚀 Hacer Más Tests
@@ -45,7 +65,7 @@ export default function ExamReadiness({ examReadiness }) {
 
             {/* Barra de Progreso */}
             <div className="w-full bg-green-200 rounded-full h-4 mb-4">
-              <div 
+              <div
                 className="bg-green-600 h-4 rounded-full transition-all duration-1000"
                 style={{ width: `${examReadiness.score}%` }}
               ></div>
@@ -109,7 +129,7 @@ export default function ExamReadiness({ examReadiness }) {
                 </span>
               </div>
               <div className="text-sm text-gray-600 mt-2">
-                {examReadiness.components.aiConfidence === 'high' ? 
+                {examReadiness.components.aiConfidence === 'high' ?
                   'Predicción basada en algoritmos avanzados de IA con alto nivel de certeza' :
                   examReadiness.components.aiConfidence === 'medium' ?
                   'Predicción basada en análisis de comportamiento con confianza media' :

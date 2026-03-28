@@ -1,8 +1,24 @@
-// components/Statistics/AIRecommendations.js
+// components/Statistics/AIRecommendations.tsx
 'use client'
 import Link from 'next/link'
+import { useOposicionPaths } from '@/hooks/useOposicionPaths'
 
-export default function AIRecommendations({ recommendations }) {
+interface Recommendation {
+  priority: 'high' | 'medium' | 'low'
+  icon: string
+  title: string
+  description: string
+  action: string
+  type: string
+}
+
+interface AIRecommendationsProps {
+  recommendations: Recommendation[] | null
+}
+
+export default function AIRecommendations({ recommendations }: AIRecommendationsProps) {
+  const { testUrl } = useOposicionPaths()
+
   if (!recommendations || recommendations.length === 0) {
     return (
       <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-xl p-8 text-center">
@@ -37,7 +53,7 @@ export default function AIRecommendations({ recommendations }) {
           </div>
         </div>
         <Link
-          href="/auxiliar-administrativo-estado/test"
+          href={testUrl}
           className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-8 py-4 rounded-lg font-bold text-lg hover:opacity-90 transition-opacity inline-block"
         >
           🚀 Hacer Más Tests
