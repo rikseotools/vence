@@ -23,7 +23,7 @@ interface TopicScopeCacheEntry {
 // ============================================
 
 const topicScopeCache = new Map<string, TopicScopeCacheEntry>()
-const TOPIC_SCOPE_TTL = 30 * 24 * 60 * 60 * 1000 // 30 días
+const TOPIC_SCOPE_TTL = 60 * 60 * 1000 // 1 hora (30 días era excesivo y causaba stale data tras cambios de scope)
 
 // ============================================
 // FUNCIÓN PRINCIPAL
