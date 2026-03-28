@@ -68,6 +68,12 @@ export default function PsicotecnicosTestClient() {
         }
         setSelectedCategories(catSelection)
         setSelectedSections(secSelection)
+        // Desplegar categorías con subcategorías por defecto
+        const expanded: Record<string, boolean> = {}
+        for (const cat of data.categories) {
+          if (cat.sections.length > 0) expanded[cat.key] = true
+        }
+        setExpandedCategories(expanded)
         setDataLoaded(true)
       } catch (err) {
         console.error('Error fetching psychometric categories:', err)
@@ -86,6 +92,13 @@ export default function PsicotecnicosTestClient() {
   const getSelectedCategoriesQuestionCount = (): number => {
     return categories.reduce((total: number, cat: PsychometricCategory) => {
       if (!selectedCategories[cat.key]) return total
+      if (cat.sections.length === 0) {
+        return total + cat.questionCount
+      }
+      const allSectionsSelected = cat.sections.every((s: PsychometricSection) => selectedSections[s.key])
+      if (allSectionsSelected) {
+        return total + cat.questionCount
+      }
       const sectionSum = cat.sections.reduce((sub: number, sec: PsychometricSection) => {
         if (selectedSections[sec.key]) return sub + sec.count
         return sub
