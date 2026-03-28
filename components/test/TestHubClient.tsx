@@ -164,6 +164,17 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
     if (user?.id && !loading) {
       loadUserThemeStats(user.id)
     }
+
+    // Refrescar stats cuando la pestaña vuelve a ser visible (el usuario vuelve de un test)
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible' && user?.id) {
+        loadUserThemeStats(user.id)
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility)
+    }
   }, [user?.id, loading, loadUserThemeStats])
 
   // Cargar estadísticas de exámenes oficiales (lazy, al expandir)
