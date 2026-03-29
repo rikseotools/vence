@@ -212,8 +212,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     <span>💰</span>
                     <span>Conversiones</span>
                     {adminNotifications?.ventas > 0 && (
-                      <span className="absolute -top-1 -right-1 bg-green-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold animate-pulse">
-                        {adminNotifications.ventas}
+                      <span className="absolute -top-1 -right-1 bg-green-500 text-white text-xs rounded-full h-auto min-w-5 px-1 py-0.5 flex items-center justify-center font-bold animate-pulse whitespace-nowrap">
+                        {adminNotifications.ventasImporte > 0 ? `${adminNotifications.ventasImporte}€` : adminNotifications.ventas}
                       </span>
                     )}
                   </a>

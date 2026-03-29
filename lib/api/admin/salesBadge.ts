@@ -4,14 +4,16 @@ import { adminReadMarkers, conversionEvents } from '@/db/schema'
 import { eq, and, gt, sql } from 'drizzle-orm'
 
 /**
- * Cuenta ventas (payment_completed) posteriores a la última lectura del admin.
+ * Cuenta ventas (payment_completed) posteriores a la última lectura del admin
+ * y suma el importe total.
  */
-export async function getUnreadSalesCount(): Promise<number> {
+export async function getUnreadSalesCount(): Promise<{ count: number; totalAmount: number }> {
   const db = getDb()
 
   const result = await db
     .select({
       count: sql<number>`count(${conversionEvents.id})::int`,
+      totalAmount: sql<number>`coalesce(sum((${conversionEvents.eventData}->>'amount')::numeric), 0)::float`,
     })
     .from(conversionEvents)
     .innerJoin(
@@ -25,7 +27,7 @@ export async function getUnreadSalesCount(): Promise<number> {
       )
     )
 
-  return result[0]?.count ?? 0
+  return { count: result[0]?.count ?? 0, totalAmount: result[0]?.totalAmount ?? 0 }
 }
 
 /**

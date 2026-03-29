@@ -7,6 +7,7 @@ interface AdminNotificationState {
   feedback: number
   impugnaciones: number
   ventas: number
+  ventasImporte: number
   calidad: number
   erroresApi: number
   loading: boolean
@@ -16,6 +17,7 @@ const EMPTY_STATE: AdminNotificationState = {
   feedback: 0,
   impugnaciones: 0,
   ventas: 0,
+  ventasImporte: 0,
   calidad: 0,
   erroresApi: 0,
   loading: false
@@ -167,8 +169,10 @@ export function useAdminNotifications(enabled = false) {
       }
 
       // Obtener ventas no leídas
+      let ventasImporte = 0
       if (salesResult.status === 'fulfilled') {
         pendingVentas = salesResult.value.count || 0
+        ventasImporte = salesResult.value.totalAmount || 0
       }
 
       // Obtener problemas de calidad
@@ -188,6 +192,7 @@ export function useAdminNotifications(enabled = false) {
         feedback: pendingFeedback,
         impugnaciones: pendingImpugnaciones,
         ventas: pendingVentas,
+        ventasImporte,
         calidad: pendingCalidad,
         erroresApi: pendingErroresApi,
         loading: false

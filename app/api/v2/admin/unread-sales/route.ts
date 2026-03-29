@@ -7,8 +7,8 @@ export const maxDuration = 15
 
 async function _GET() {
   try {
-    const count = await getUnreadSalesCount()
-    return NextResponse.json({ count })
+    const { count, totalAmount } = await getUnreadSalesCount()
+    return NextResponse.json({ count, totalAmount })
   } catch (error) {
     console.error('❌ [API/unread-sales] GET error:', error)
     return NextResponse.json({ count: 0 }, { status: 500 })
