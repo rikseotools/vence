@@ -1,53 +1,28 @@
 // app/api/revalidate/route.ts
-// API para invalidar cache de Next.js
-import { revalidateTag, revalidatePath } from 'next/cache'
+// Endpoint para invalidar cache ISR de páginas específicas.
+// Uso: POST /api/revalidate { "path": "/auxiliar-administrativo-cyl/test" }
 import { NextRequest, NextResponse } from 'next/server'
-
+import { revalidatePath } from 'next/cache'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+
 async function _POST(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url)
-    const secret = searchParams.get('secret')
-    const tag = searchParams.get('tag')
-    const path = searchParams.get('path')
-
-    // Verificar secret (usar variable de entorno en producción)
-    const expectedSecret = process.env.REVALIDATE_SECRET || 'vence-revalidate-2024'
-    if (secret !== expectedSecret) {
-      return NextResponse.json({ error: 'Invalid secret' }, { status: 401 })
-    }
-
-    if (tag) {
-      revalidateTag(tag, 'max')
-      return NextResponse.json({
-        revalidated: true,
-        type: 'tag',
-        tag,
-        timestamp: new Date().toISOString()
-      })
-    }
-
-    if (path) {
-      revalidatePath(path)
-      return NextResponse.json({
-        revalidated: true,
-        type: 'path',
-        path,
-        timestamp: new Date().toISOString()
-      })
-    }
-
-    return NextResponse.json({ error: 'Missing tag or path parameter' }, { status: 400 })
-  } catch (error) {
-    console.error('Revalidation error:', error)
-    return NextResponse.json({ error: 'Revalidation failed' }, { status: 500 })
+  const cronSecret = request.headers.get('x-cron-secret')
+  if (cronSecret !== process.env.CRON_SECRET) {
+    return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   }
-}
 
-// También permitir GET para facilitar uso manual
-async function _GET(request: NextRequest) {
-  return POST(request)
+  const { path } = await request.json()
+  if (!path || typeof path !== 'string') {
+    return NextResponse.json({ error: 'path requerido' }, { status: 400 })
+  }
+
+  revalidatePath(path)
+
+  return NextResponse.json({
+    success: true,
+    revalidated: path,
+    timestamp: new Date().toISOString(),
+  })
 }
 
 export const POST = withErrorLogging('/api/revalidate', _POST)
-export const GET = withErrorLogging('/api/revalidate', _GET)
