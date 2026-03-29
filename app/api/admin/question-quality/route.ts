@@ -66,6 +66,13 @@ const EXCEL_TYPO_REGEX = '(?i)(\\mSIERROR\\M|\\mCONTARSI\\M|\\mSUMARSI\\M)'
 // Add more patterns here as plans get superseded
 const OUTDATED_PLAN_REGEX = '(?i)(\\m(I|II|III|IV)\\s+Plan\\s+de\\s+Gobierno\\s+Abierto)'
 
+// Preguntas revisadas manualmente que mencionan planes antiguos pero son válidas
+// (preguntas históricas en pasado, no contenido desactualizado)
+const OUTDATED_PLAN_REVIEWED_IDS = [
+  '6b4f9c91-6fcc-4470-b8c0-9e4bc48e5b99', // "¿Qué Plan incluyó el Foro?" — pregunta histórica en pasado
+  '815dd117-c237-4d36-bda3-e6bf774c537f', // "¿En qué año se presentó el I Plan?" — dato factual
+]
+
 const BANNED_REGEX = '(?i)(oposita\\s*[-_./@*]?\\s*test|opositest|oposistatest|opossita|opositatets|opostia|opsita|opositatestt|opositates[^t]|oposiitatest|oppositatest|opoositatest|opositattest|opositateest|opositatesst|0positatest|opositat3st|op0sitatest|0p0sitatest|opos1tatest|oposi7atest|oposita7est|opositat€st|o[-_./@* ]p[-_./@* ]o[-_./@* ]s[-_./@* ]i[-_./@* ]t[-_./@* ]a[-_./@* ]t[-_./@* ]e[-_./@* ]s[-_./@* ]t)'
 
 function truncate(text: string): string {
@@ -103,6 +110,7 @@ async function runCountsOnly(): Promise<number> {
         ) as cramped_explanation,
         count(*) FILTER (WHERE
           CONCAT_WS(' ', question_text, option_a, option_b, option_c, option_d) ~* ${OUTDATED_PLAN_REGEX}
+          AND id NOT IN (${sql.join(OUTDATED_PLAN_REVIEWED_IDS.map(id => sql`${id}::uuid`), sql`, `)})
         ) as outdated_plan
       FROM questions
       WHERE is_active = true
