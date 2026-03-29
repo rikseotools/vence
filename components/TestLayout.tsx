@@ -645,19 +645,39 @@ export default function TestLayout({
           return
         }
 
+        // Filtrar la oposición actual de la curiosidad (evitar "también aparece en X" cuando ya estás en X)
+        const currentSlug = getOposicionSlugFromPathname(pathname)
+        let filteredCuriosityMessage = hotData.curiosity_message
+        let filteredAlsoAppears = hotData.also_appears_in_other_oposiciones
+        if (currentSlug && filteredCuriosityMessage) {
+          const currentSlugNorm = currentSlug.replace(/-/g, '_')
+          // Si la curiosidad solo menciona la oposición actual, ocultarla
+          if (filteredCuriosityMessage.includes(currentSlugNorm) || filteredCuriosityMessage.includes(currentSlug)) {
+            const otherOpos = Object.keys(hotData.other_oposiciones_info || {}).filter(
+              o => o !== currentSlugNorm && o !== currentSlug && o !== hotData.user_oposicion
+            )
+            if (otherOpos.length === 0) {
+              filteredCuriosityMessage = null
+              filteredAlsoAppears = false
+            }
+          }
+        }
+
         // Diferentes notificaciones según tipo
         if (isOfficialExam) {
-          // Pregunta oficial
           setHotArticleInfo({
             ...hotData,
+            curiosity_message: filteredCuriosityMessage,
+            also_appears_in_other_oposiciones: filteredAlsoAppears,
             type: 'official_question',
             hot_message: `🏛️ PREGUNTA DE EXAMEN OFICIAL\n${hotData.hot_message}`,
             display_title: '¡Esta pregunta apareció en un examen oficial!'
           })
         } else {
-          // Artículo hot
           setHotArticleInfo({
             ...hotData,
+            curiosity_message: filteredCuriosityMessage,
+            also_appears_in_other_oposiciones: filteredAlsoAppears,
             type: 'hot_article',
             display_title: '¡Artículo súper importante para memorizar!'
           })
