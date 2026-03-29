@@ -201,7 +201,7 @@ describe('Admin AI Chat Logs - Queries', () => {
     let selectCallCount = 0
 
     jest.doMock('@/db/client', () => ({
-      getDb: () => ({
+      getAdminDb: () => ({
         select: () => {
           selectCallCount++
           if (selectCallCount === 1) {

@@ -1,5 +1,5 @@
 // lib/api/admin-ai-chat-logs/queries.ts
-import { getDb } from '@/db/client'
+import { getAdminDb as getDb } from '@/db/client'
 import { aiChatLogs, userProfiles } from '@/db/schema'
 import { desc, eq, isNull, inArray, and, sql, count } from 'drizzle-orm'
 import type { AiChatLogsResponse } from './schemas'
