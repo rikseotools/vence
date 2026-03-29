@@ -42,7 +42,7 @@ async function resolveLaw(slug: string): Promise<{ lawShortName: string; lawInfo
   const lawInfo = getLawInfo(slug)
 
   if (lawShortName && lawInfo) {
-    return { lawShortName, lawInfo }
+    return { lawShortName, lawInfo: { ...lawInfo, shortName: lawShortName } }
   }
 
   const dbLaw = await resolveLawFromDb(slug)
@@ -318,7 +318,7 @@ export default async function LawMainPage({ params }: PageProps) {
               <p className="text-gray-600">Cargando artículos de la ley...</p>
             </div>
           }>
-            <LawArticlesClient params={{law: resolvedParams.law}} searchParams={{}} />
+            <LawArticlesClient params={Promise.resolve({law: resolvedParams.law})} searchParams={Promise.resolve({})} />
           </Suspense>
         </div>
       </div>
