@@ -15,6 +15,7 @@ export default function LawTestConfigurator({ lawShortName, lawDisplayName }: La
   const { getSlug: getCanonicalSlug } = useLawSlugs()
   const { user } = useAuth()
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [lawStats, setLawStats] = useState<LawStats | null>(null)
   const searchParams = useSearchParams()
   const selectedArticlesParam = searchParams.get('selected_articles')
@@ -25,8 +26,12 @@ export default function LawTestConfigurator({ lawShortName, lawDisplayName }: La
       try {
         const stats = await getLawStats(lawShortName)
         setLawStats(stats)
+        if (!stats || stats.totalQuestions === 0) {
+          setLoadError(true)
+        }
       } catch (error) {
         console.error('Error loading law data:', error)
+        setLoadError(true)
       } finally {
         setLoading(false)
       }
@@ -54,6 +59,19 @@ export default function LawTestConfigurator({ lawShortName, lawDisplayName }: La
       <div className="flex flex-col items-center justify-center py-12 space-y-3">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
         <p className="text-gray-600 dark:text-gray-400 text-sm">Preparando test de {lawDisplayName}...</p>
+      </div>
+    )
+  }
+
+  if (loadError || !lawStats || lawStats.totalQuestions === 0) {
+    return (
+      <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-6 text-center">
+        <p className="text-amber-800 dark:text-amber-200 font-medium">
+          No hay preguntas disponibles para {lawDisplayName}
+        </p>
+        <p className="text-amber-600 dark:text-amber-400 text-sm mt-2">
+          Estamos preparando el contenido. Prueba con otra ley o vuelve pronto.
+        </p>
       </div>
     )
   }
