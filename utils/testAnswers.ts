@@ -663,9 +663,15 @@ export const saveDetailedAnswerWithRetry = async (params: SaveAnswerParams, maxR
         console.log('💾 Intentando guardar via API (V2)...');
         result = await saveDetailedAnswerV2(params);
 
-        // Si V2 falla (sesión expirada o error de red), fallback a V1 (Supabase directo)
-        if (!result.success && (result.action === 'session_expired' || result.action === 'error')) {
-          console.warn(`⚠️ V2 falló (${result.action}), intentando V1 (Supabase directo)...`);
+        // Si sesión expirada, NO hacer fallback — devolver para que el UI muestre el modal
+        if (!result.success && result.action === 'session_expired') {
+          console.error('🔒 Sesión expirada — no se reintenta, devolviendo para mostrar modal');
+          return result;
+        }
+
+        // Si V2 falla por error de red, fallback a V1 (Supabase directo)
+        if (!result.success && result.action === 'error') {
+          console.warn('⚠️ V2 falló por error de red, intentando V1 (Supabase directo)...');
           result = await saveDetailedAnswer(
             sessionId, questionData, answerData, tema,
             confidenceLevel, interactionCount, questionStartTime,

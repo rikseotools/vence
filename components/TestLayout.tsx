@@ -1160,6 +1160,17 @@ export default function TestLayout({
             }
           } else {
             console.error('❌ No se pudo crear/obtener sesión de test')
+            // Verificar si el fallo es por sesión expirada
+            try {
+              const { data: { session: authCheck } } = await supabase.auth.getSession()
+              if (!authCheck?.access_token) {
+                console.error('🔒 Sesión expirada — mostrando modal')
+                setShowSessionExpired(true)
+              }
+            } catch {
+              // Si getSession falla, asumir sesión expirada
+              setShowSessionExpired(true)
+            }
           }
           
           if (!userSession) {

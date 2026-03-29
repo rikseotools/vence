@@ -512,6 +512,13 @@ export async function createDetailedTestSession(
       }),
     }
 
+    // Verificar sesión antes de insertar (evita fallos silenciosos por RLS)
+    const { data: { session: currentSession } } = await supabase.auth.getSession()
+    if (!currentSession?.access_token) {
+      console.error('🔒 [testSession] Sesión expirada — no se puede crear test')
+      return null
+    }
+
     console.log('📤 Intentando INSERT en tabla tests...')
     console.log('   Datos a insertar:', {
       user_id: insertData.user_id,
