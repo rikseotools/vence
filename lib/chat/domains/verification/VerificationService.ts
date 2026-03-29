@@ -353,6 +353,36 @@ export async function verifyAnswer(
     disputeCreated = disputeResult.success && !disputeResult.alreadyExists
   }
 
+  // 6b. Detectar queja explícita del usuario → impugnación automática
+  // Esto cubre casos donde el ErrorDetector no salta pero el usuario dice que algo está mal
+  if (!disputeCreated && input.questionId && detectUserComplaint(context.currentMessage)) {
+    logger.info('🗣️ [Complaint] Queja del usuario detectada, creando impugnación', {
+      domain: 'verification',
+      questionId: input.questionId,
+      message: context.currentMessage.substring(0, 100),
+    })
+
+    const isPsychometric = await checkIsPsychometric(input.questionId)
+    const complaintDescription = `[QUEJA DEL USUARIO EN CHAT]\n\nMensaje: "${context.currentMessage}"\n\nRespuesta del chat:\n${response.substring(0, 800)}`
+
+    disputeResult = await createAutoDispute(
+      input.questionId,
+      complaintDescription,
+      input.userId,
+      isPsychometric,
+      context.logId
+    )
+    disputeCreated = disputeResult.success && !disputeResult.alreadyExists
+
+    if (disputeCreated) {
+      logger.info('🗣️ [Complaint] Impugnación creada por queja del usuario', {
+        domain: 'verification',
+        questionId: input.questionId,
+        disputeId: disputeResult?.disputeId,
+      })
+    }
+  }
+
   // 7. Construir respuesta final
   // Si es error de vinculación, NO mostrar el mensaje de error al usuario
   let finalResponse = response
@@ -781,6 +811,31 @@ El 99.9% de las preguntas están verificadas - los errores son extremadamente ra
 /**
  * Determina si un mensaje del usuario es una solicitud de verificación
  */
+/**
+ * Detecta si el mensaje del usuario es una queja sobre el contenido de la pregunta.
+ * Usado para crear impugnaciones automáticas cuando el usuario reporta errores
+ * que el ErrorDetector no captura (ej: artículo mal vinculado, pregunta confusa).
+ */
+export function detectUserComplaint(message: string): boolean {
+  const msg = message.toLowerCase()
+
+  // Patrones de queja sobre contenido
+  const complaintPatterns = [
+    /(?:la\s+)?(?:pregunta|respuesta)\s+(?:est[aá]|es)\s+mal/i,
+    /(?:la\s+)?(?:pregunta|respuesta)\s+(?:est[aá]|es)\s+(?:incorrecta|equivocada|err[oó]nea)/i,
+    /creo\s+que?\s+(?:la\s+)?(?:pregunta|respuesta)\s+(?:est[aá]|es)\s+mal/i,
+    /creo\s+que?\s+est[aá]s?\s+(?:equivocad[oa]|mal|err[oó]nea)/i,
+    /(?:est[aá]s|estas)\s+equivocad[oa]/i,
+    /no\s+(?:est[aá]|esta)\s+(?:en|textualmente\s+en)\s+(?:el\s+)?(?:art[ií]culo|texto|ley)/i,
+    /no\s+me\s+pongas\s+preguntas/i,
+    /(?:la\s+)?respuesta\s+de\s+la\s+app\s+est[aá]\s+mal/i,
+    /pienso\s+que?\s+est[aá]s?\s+equivocad/i,
+    /la\s+app\s+(?:est[aá]|dice)\s+mal/i,
+  ]
+
+  return complaintPatterns.some(p => p.test(message))
+}
+
 export function isVerificationRequest(message: string): boolean {
   const patterns = [
     /está.*(bien|mal|correcto|incorrecto)/i,
