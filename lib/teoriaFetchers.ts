@@ -194,7 +194,7 @@ export async function fetchLawsList(): Promise<LawWithStats[]> {
     const { data, error } = await supabase
       .from('laws')
       .select(`
-        id, name, short_name, description,
+        id, name, short_name, slug, description,
         articles!inner(id, article_number)
       `)
       .eq('is_active', true)
@@ -222,7 +222,7 @@ export async function fetchLawsList(): Promise<LawWithStats[]> {
           short_name: law.short_name as string,
           description: law.description as string | null,
           articleCount: validArticles.length,
-          slug: generateLawSlug(law.short_name as string)
+          slug: (law.slug as string) || generateLawSlug(law.short_name as string)
         }
       })
       .filter((law: LawWithStats) => law.articleCount > 0)
@@ -280,7 +280,7 @@ export async function fetchLawArticles(lawSlug: string): Promise<LawArticlesResu
         is_active,
         created_at,
         laws!inner(
-          id, name, short_name, description
+          id, name, short_name, slug, description
         )
       `)
       .eq('is_active', true)
@@ -347,7 +347,7 @@ export async function fetchLawArticles(lawSlug: string): Promise<LawArticlesResu
           name: laws.name as string,
           short_name: laws.short_name as string,
           description: laws.description as string | null,
-          slug: generateLawSlug(laws.short_name as string)
+          slug: (laws.slug as string) || generateLawSlug(laws.short_name as string)
         }
       }
     })
@@ -389,7 +389,7 @@ export async function fetchArticleContent(lawSlug: string, articleNumber: string
         created_at,
         updated_at,
         laws!inner(
-          id, name, short_name, description, is_virtual
+          id, name, short_name, slug, description, is_virtual
         )
       `)
       .eq('is_active', true)
@@ -448,7 +448,7 @@ export async function fetchArticleContent(lawSlug: string, articleNumber: string
             name: data.laws.name,
             short_name: data.laws.short_name,
             description: data.laws.description,
-            slug: generateLawSlug(data.laws.short_name)
+            slug: data.laws.slug || generateLawSlug(data.laws.short_name)
           }
         } as ArticleContentResult & { isVirtual: boolean }
       }
@@ -472,7 +472,7 @@ export async function fetchArticleContent(lawSlug: string, articleNumber: string
         name: data.laws.name,
         short_name: data.laws.short_name,
         description: data.laws.description,
-        slug: generateLawSlug(data.laws.short_name)
+        slug: data.laws.slug || generateLawSlug(data.laws.short_name)
       }
     }
 
@@ -508,7 +508,7 @@ export async function fetchRelatedArticles(lawSlug: string, currentArticleNumber
         article_number,
         title,
         content,
-        laws!inner(short_name, name)
+        laws!inner(short_name, slug, name)
       `)
       .eq('is_active', true)
       .eq('laws.short_name', lawShortName)
@@ -525,7 +525,7 @@ export async function fetchRelatedArticles(lawSlug: string, currentArticleNumber
         article_number: article.article_number as string,
         title: article.title as string | null,
         contentPreview: extractContentPreview(article.content as string),
-        lawSlug: generateLawSlug(laws.short_name as string)
+        lawSlug: (laws.slug as string) || generateLawSlug(laws.short_name as string)
       }
     })
 
@@ -602,7 +602,7 @@ export async function searchArticles(query: string, lawSlug: string | null = nul
         article_number,
         title,
         content,
-        laws!inner(name, short_name)
+        laws!inner(name, short_name, slug)
       `)
       .eq('is_active', true)
       .not('content', 'is', null)
@@ -632,7 +632,7 @@ export async function searchArticles(query: string, lawSlug: string | null = nul
         law: {
           name: laws.name as string,
           short_name: laws.short_name as string,
-          slug: generateLawSlug(laws.short_name as string)
+          slug: (laws.slug as string) || generateLawSlug(laws.short_name as string)
         }
       }
     })

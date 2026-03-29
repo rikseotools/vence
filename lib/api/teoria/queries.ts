@@ -74,6 +74,7 @@ async function getArticleContentInternal(
       updatedAt: articles.updatedAt,
       lawId: laws.id,
       lawShortName: laws.shortName,
+      lawSlug: laws.slug,
       lawName: laws.name,
       lawDescription: laws.description,
       lawIsVirtual: laws.isVirtual,
@@ -116,7 +117,7 @@ async function getArticleContentInternal(
           shortName: row.lawShortName,
           name: row.lawName,
           description: row.lawDescription,
-          slug: generateSlugFromShortName(row.lawShortName),
+          slug: row.lawSlug || generateSlugFromShortName(row.lawShortName),
         },
       }
     }
@@ -140,7 +141,7 @@ async function getArticleContentInternal(
       shortName: row.lawShortName,
       name: row.lawName,
       description: row.lawDescription,
-      slug: generateSlugFromShortName(row.lawShortName),
+      slug: row.lawSlug || generateSlugFromShortName(row.lawShortName),
     },
   }
 }
@@ -225,6 +226,7 @@ async function getRelatedArticlesInternal(
       title: articles.title,
       content: articles.content,
       lawShortName: laws.shortName,
+      lawSlug: laws.slug,
     })
     .from(articles)
     .innerJoin(laws, eq(articles.lawId, laws.id))
@@ -252,7 +254,7 @@ async function getRelatedArticlesInternal(
     articleNumber: row.articleNumber,
     title: row.title,
     contentPreview: extractContentPreview(row.content),
-    lawSlug: generateSlugFromShortName(row.lawShortName),
+    lawSlug: row.lawSlug || generateSlugFromShortName(row.lawShortName),
   }))
 }
 
@@ -280,6 +282,7 @@ async function getLawBasicInfoInternal(
     .select({
       id: laws.id,
       shortName: laws.shortName,
+      slug: laws.slug,
       name: laws.name,
       description: laws.description,
     })
@@ -296,7 +299,7 @@ async function getLawBasicInfoInternal(
 
   return {
     ...result[0],
-    slug: generateSlugFromShortName(result[0].shortName),
+    slug: result[0].slug || generateSlugFromShortName(result[0].shortName),
   }
 }
 
