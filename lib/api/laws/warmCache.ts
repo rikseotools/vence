@@ -10,19 +10,6 @@ import {
   invalidateSyncCache,
 } from '@/lib/lawSlugSync'
 
-// También mantenemos el cache legacy de lawMappingUtils mientras existan imports
-// TODO: Eliminar cuando lawMappingUtils sea borrado
-let legacyBridgeActive = false
-try {
-  // Dynamic import para no romper si lawMappingUtils ya fue eliminado
-  const lmu = require('@/lib/lawMappingUtils')
-  if (lmu.setDbCache) {
-    legacyBridgeActive = true
-  }
-} catch {
-  // lawMappingUtils ya no existe — perfecto
-}
-
 /**
  * Calienta el cache síncrono con datos de la BD via Supabase.
  * Si el cache ya está cargado, es un no-op (no hace query).
@@ -56,19 +43,7 @@ export async function warmSlugCache(): Promise<boolean> {
       }
     }
 
-    // Poblar nuevo cache síncrono (lawSlugSync)
     setSyncCache(slugToShortName, shortNameToSlug)
-
-    // Poblar cache legacy (lawMappingUtils) si aún existe
-    if (legacyBridgeActive) {
-      try {
-        const { setDbCache } = require('@/lib/lawMappingUtils')
-        setDbCache(slugToShortName, shortNameToSlug)
-      } catch {
-        // lawMappingUtils ya no existe
-      }
-    }
-
     return true
   } catch (error) {
     console.warn('⚠️ [warmCache] No se pudo cargar cache de BD:', error)
@@ -82,15 +57,5 @@ export async function warmSlugCache(): Promise<boolean> {
  */
 export function invalidateAllSlugCaches(): void {
   invalidateSyncCache()
-
-  if (legacyBridgeActive) {
-    try {
-      const { invalidateDbCache } = require('@/lib/lawMappingUtils')
-      invalidateDbCache()
-    } catch {
-      // lawMappingUtils ya no existe
-    }
-  }
-
   console.log('🗑️ [warmCache] Cache síncrono invalidado')
 }

@@ -1,10 +1,22 @@
-// proxy.js (Next.js 16+)
-// Rate limiting para tests + headers anti-indexación
+// proxy.ts (Next.js 16+)
+// Rate limiting para tests + headers anti-indexación + redirects aliases de leyes
 import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
+import { resolveAlias } from './lib/lawSlugAliases'
+
+// Rutas donde los slugs de leyes aparecen (redirect aliases → canonical)
+const LAW_SLUG_PATTERNS = [
+  /^\/leyes\/([^/]+)(\/.*)?$/,
+  /^\/teoria\/([^/]+)(\/.*)?$/,
+]
 
 // 🔒 Rate limiter en memoria para usuarios autenticados en tests
-// Formato: Map<sessionKey, { count: number, windowStart: number }>
-const rateLimitMap = new Map()
+interface RateLimitRecord {
+  count: number
+  windowStart: number
+}
+
+const rateLimitMap = new Map<string, RateLimitRecord>()
 
 // Configuración de rate limiting
 const RATE_LIMIT_CONFIG = {
@@ -28,7 +40,7 @@ function cleanupRateLimitCache() {
 }
 
 // Verificar rate limit para un usuario
-function checkRateLimit(sessionKey) {
+function checkRateLimit(sessionKey: string) {
   cleanupRateLimitCache()
 
   const now = Date.now()
@@ -49,7 +61,7 @@ function checkRateLimit(sessionKey) {
   return { allowed: true, remaining: RATE_LIMIT_CONFIG.maxRequests - record.count }
 }
 
-export function proxy(request) {
+export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname
 
   // ✅ NO interceptar rutas de autenticación ni estáticos
@@ -57,6 +69,23 @@ export function proxy(request) {
       pathname.startsWith('/api/auth') ||
       pathname.startsWith('/_next')) {
     return NextResponse.next()
+  }
+
+  // 🔀 REDIRECTS: Aliases de slugs de leyes → slug canónico (301)
+  for (const pattern of LAW_SLUG_PATTERNS) {
+    const match = pathname.match(pattern)
+    if (!match) continue
+
+    const slug = match[1]
+    const rest = match[2] || ''
+    const canonical = await resolveAlias(slug)
+
+    if (canonical && canonical !== slug) {
+      const prefix = pathname.startsWith('/leyes/') ? '/leyes/' : '/teoria/'
+      const newUrl = request.nextUrl.clone()
+      newUrl.pathname = `${prefix}${canonical}${rest}`
+      return NextResponse.redirect(newUrl, 301)
+    }
   }
 
   // Añadir pathname a headers

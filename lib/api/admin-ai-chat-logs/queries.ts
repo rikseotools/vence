@@ -63,9 +63,9 @@ export async function getAiChatLogs(
     `),
   ])
 
-  const topSuggestions = (topSuggestionsRaw.rows as { name: string; count: number }[])
+  const topSuggestions = ((topSuggestionsRaw as { rows?: unknown[] }).rows as { name: string; count: number }[] ?? [])
     .map(r => ({ name: r.name, count: Number(r.count) }))
-  const topLaws = (topLawsRaw.rows as { law: string; count: number }[])
+  const topLaws = ((topLawsRaw as { rows?: unknown[] }).rows as { law: string; count: number }[] ?? [])
     .map(r => ({ name: r.law, count: Number(r.count) }))
 
   // 3. Query paginada con filtro
