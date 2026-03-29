@@ -190,24 +190,104 @@ function validateLinearLetterSeries(
     const nextPos = positions[positions.length - 1] + diffs[0]
     const nextLetter = posToLetter(nextPos)
 
-    const optionValues = [options.a, options.b, options.c, options.d]
-    const matchIdx = optionValues.findIndex(
-      o => o?.toUpperCase().trim() === nextLetter
+    const result = matchLetterWithOptions(nextLetter, options, correctOption,
+      `Diferencia constante: ${diffs[0] >= 0 ? '+' : ''}${diffs[0]}`,
+      [`Posiciones: ${positions.join(', ')}`, `Diferencia: ${diffs[0]}`, `Siguiente: ${nextPos} → ${nextLetter}`]
     )
+    if (result.validated) return result
+  }
 
-    if (matchIdx >= 0) {
-      return {
-        validated: true,
-        confirmsDbAnswer: matchIdx === correctOption,
-        computedAnswer: ['A', 'B', 'C', 'D'][matchIdx],
-        computedValue: nextLetter,
-        pattern: `Diferencia constante: ${diffs[0] >= 0 ? '+' : ''}${diffs[0]}`,
-        steps: [`Posiciones: ${positions.join(', ')}`, `Diferencia: ${diffs[0]}`, `Siguiente: ${nextPos} → ${nextLetter}`],
+  // Diferencias de 2do orden constantes (ej: H,L,P,V → +4,+5,+6 → 2do orden +1)
+  if (diffs.length >= 3) {
+    const diffs2: number[] = []
+    for (let i = 1; i < diffs.length; i++) {
+      diffs2.push(diffs[i] - diffs[i - 1])
+    }
+    if (diffs2.every(d => d === diffs2[0])) {
+      const nextDiff = diffs[diffs.length - 1] + diffs2[0]
+      const nextPos = positions[positions.length - 1] + nextDiff
+      const nextLetter = posToLetter(nextPos)
+
+      const result = matchLetterWithOptions(nextLetter, options, correctOption,
+        `Diferencias de 2º orden: ${diffs2[0] >= 0 ? '+' : ''}${diffs2[0]}`,
+        [
+          `Posiciones: ${positions.join(', ')}`,
+          `Diferencias 1er orden: ${diffs.join(', ')}`,
+          `Diferencias 2do orden: ${diffs2.join(', ')} (constante: ${diffs2[0]})`,
+          `Siguiente diferencia: ${nextDiff}`,
+          `Siguiente: ${positions[positions.length - 1]} + ${nextDiff} = ${nextPos} → ${nextLetter}`,
+        ]
+      )
+      if (result.validated) return result
+    }
+  }
+
+  // Patrón cíclico de diferencias (ej: -2,-3,-4,-2,-3,-4 → ciclo de 3)
+  if (diffs.length >= 4) {
+    for (let cycleLen = 2; cycleLen <= Math.floor(diffs.length / 2); cycleLen++) {
+      const cycle = diffs.slice(0, cycleLen)
+      let isCyclic = true
+      for (let i = cycleLen; i < diffs.length; i++) {
+        if (diffs[i] !== cycle[i % cycleLen]) { isCyclic = false; break }
+      }
+      if (isCyclic) {
+        const nextDiff = cycle[diffs.length % cycleLen]
+        const nextPos = positions[positions.length - 1] + nextDiff
+        const nextLetter = posToLetter(nextPos)
+
+        const result = matchLetterWithOptions(nextLetter, options, correctOption,
+          `Patrón cíclico: ${cycle.map(d => (d >= 0 ? '+' : '') + d).join(', ')}`,
+          [
+            `Posiciones: ${positions.join(', ')}`,
+            `Diferencias: ${diffs.join(', ')}`,
+            `Ciclo detectado (${cycleLen}): ${cycle.join(', ')}`,
+            `Siguiente diferencia: ${nextDiff}`,
+            `Siguiente: ${positions[positions.length - 1]} + ${nextDiff} = ${nextPos} → ${nextLetter}`,
+          ]
+        )
+        if (result.validated) return result
       }
     }
   }
 
   return NOT_VALIDATED
+}
+
+/**
+ * Compara una letra calculada con las opciones disponibles
+ */
+function matchLetterWithOptions(
+  letter: string,
+  options: { a?: string; b?: string; c?: string; d?: string },
+  correctOption: number,
+  pattern: string,
+  steps: string[]
+): SequenceValidationResult {
+  const optionValues = [options.a, options.b, options.c, options.d]
+  const matchIdx = optionValues.findIndex(
+    o => o?.toUpperCase().trim() === letter
+  )
+
+  if (matchIdx >= 0) {
+    return {
+      validated: true,
+      confirmsDbAnswer: matchIdx === correctOption,
+      computedAnswer: ['A', 'B', 'C', 'D'][matchIdx],
+      computedValue: letter,
+      pattern,
+      steps,
+    }
+  }
+
+  steps.push(`Valor calculado ${letter} no coincide con ninguna opción`)
+  return {
+    validated: true,
+    confirmsDbAnswer: false,
+    computedAnswer: null,
+    computedValue: letter,
+    pattern,
+    steps,
+  }
 }
 
 /**
