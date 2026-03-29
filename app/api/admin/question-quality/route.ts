@@ -57,9 +57,9 @@ const HTML_EXPLANATION_REGEX = '(<p>|<p |</p>|<strong>|</strong>|<br>|<br/>|<br 
 
 // Excel functions written without the required period (e.g. SIERROR instead of SI.ERROR)
 // eslint-disable-next-line no-useless-escape
-const EXCEL_TYPO_REGEX = '(?i)(\\\\mSIERROR\\\\M|\\\\mCONTARSI\\\\M|\\\\mSUMARSI\\\\M)'
+const EXCEL_TYPO_REGEX = '(?i)(\\mSIERROR\\M|\\mCONTARSI\\M|\\mSUMARSI\\M)'
 
-const BANNED_REGEX = '(?i)(oposita\\\\s*[-_.]?\\\\s*test|opositest|oposistatest|opossita|opositatets|opostia|opsita|opositatestt|opositates[^t]|oposiitatest|oppositatest|opoositatest|opositattest|opositateest|opositatesst|0positatest|opositat3st|op0sitatest|0p0sitatest|opos1tatest|oposi7atest|oposita7est|opositat€st|o[-._]p[-._]o[-._]s[-._]i[-._]t[-._]a[-._]t[-._]e[-._]s[-._]t)'
+const BANNED_REGEX = '(?i)(oposita\\s*[-_.]?\\s*test|opositest|oposistatest|opossita|opositatets|opostia|opsita|opositatestt|opositates[^t]|oposiitatest|oppositatest|opoositatest|opositattest|opositateest|opositatesst|0positatest|opositat3st|op0sitatest|0p0sitatest|opos1tatest|oposi7atest|oposita7est|opositat€st|o[-._]p[-._]o[-._]s[-._]i[-._]t[-._]a[-._]t[-._]e[-._]s[-._]t)'
 
 function truncate(text: string): string {
   return text.length > TEXT_LIMIT ? text.slice(0, TEXT_LIMIT) + '...' : text
@@ -129,20 +129,29 @@ async function runCountsOnly(): Promise<number> {
       JOIN articles a ON q.primary_article_id = a.id
       JOIN laws l ON a.law_id = l.id
       WHERE q.is_active = true AND (
-        (q.question_text ~* '\\mAccess\\M' AND l.short_name NOT ILIKE '%Access%')
-        OR (q.question_text ~* '\\mExcel\\M' AND l.short_name NOT ILIKE '%Excel%' AND l.short_name NOT ILIKE '%hoja%')
-        OR (q.question_text ~* '\\mWord\\M' AND l.short_name NOT ILIKE '%Word%' AND l.short_name NOT ILIKE '%procesador%')
-        OR (q.question_text ~* '\\mOutlook\\M' AND l.short_name NOT ILIKE '%Outlook%' AND l.short_name NOT ILIKE '%Microsoft 365%')
-        OR (q.question_text ~* '\\mOneDrive\\M' AND l.short_name NOT ILIKE '%OneDrive%' AND l.short_name NOT ILIKE '%Microsoft 365%')
-        OR (q.question_text ~* '\\mTeams\\M' AND l.short_name NOT ILIKE '%Teams%' AND l.short_name NOT ILIKE '%Microsoft 365%')
-        OR (q.question_text ~* '\\mSharePoint\\M' AND l.short_name NOT ILIKE '%SharePoint%' AND l.short_name NOT ILIKE '%Microsoft 365%')
+        -- Excluir leyes técnicas/informáticas que comparten menciones entre apps
+        l.short_name NOT ILIKE '%Informática%'
+        AND l.short_name NOT ILIKE '%Windows%'
+        AND l.short_name NOT ILIKE '%Explorador%'
+        AND l.short_name NOT ILIKE '%Red Internet%'
+        AND l.short_name NOT ILIKE '%Correo%'
+        AND l.short_name NOT ILIKE '%Microsoft 365%'
+        AND (
+          (q.question_text ~* '\\mAccess\\M' AND l.short_name NOT ILIKE '%Access%' AND l.short_name NOT ILIKE '%Excel%' AND l.short_name NOT ILIKE '%hoja%')
+          OR (q.question_text ~* '\\mExcel\\M' AND q.question_text !~* '\\mexcelencia\\M' AND l.short_name NOT ILIKE '%Excel%' AND l.short_name NOT ILIKE '%hoja%' AND l.short_name NOT ILIKE '%Access%' AND l.short_name NOT ILIKE '%procesador%')
+          OR (q.question_text ~* '\\mWord\\M' AND q.question_text !~* '\\mWordPress\\M' AND l.short_name NOT ILIKE '%Word%' AND l.short_name NOT ILIKE '%procesador%' AND l.short_name NOT ILIKE '%Excel%' AND l.short_name NOT ILIKE '%hoja%')
+          OR (q.question_text ~* '\\mOutlook\\M' AND l.short_name NOT ILIKE '%Outlook%' AND l.short_name NOT ILIKE '%Correo%')
+          OR (q.question_text ~* '\\mOneDrive\\M' AND l.short_name NOT ILIKE '%OneDrive%' AND l.short_name NOT ILIKE '%procesador%')
+          OR (q.question_text ~* '\\mTeams\\M' AND l.short_name NOT ILIKE '%Teams%')
+          OR (q.question_text ~* '\\mSharePoint\\M' AND l.short_name NOT ILIKE '%SharePoint%')
+        )
       )
     ),
     -- Checks de psicotécnicas
     psy_base AS (
       SELECT
         count(*) FILTER (WHERE
-          option_a = '' OR option_b = '' OR option_c = '' OR option_d = ''
+          option_a = '' OR option_b = '' OR option_c = ''
         ) as psy_empty,
         count(*) FILTER (WHERE
           (question_text ILIKE '%serie de figuras%' OR question_text ILIKE '%siguiente imagen%' OR question_text ILIKE '%siguiente gráfico%' OR question_text ILIKE '%tabla I y marcar%' OR question_text ILIKE '%observe la figura%')
@@ -325,7 +334,7 @@ async function runChecks(): Promise<QualityResponse> {
              count(*) OVER()::int as total_count
       FROM psychometric_questions
       WHERE is_active = true
-        AND (option_a = '' OR option_b = '' OR option_c = '' OR option_d = '')
+        AND (option_a = '' OR option_b = '' OR option_c = '')
       LIMIT ${MAX_ITEMS}
     `),
 
