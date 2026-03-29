@@ -184,50 +184,38 @@ describe('Admin AI Chat Logs - Queries', () => {
         feedback: null, feedbackComment: null, detectedLaws: [], createdAt: '2026-01-02' }
     ]
 
-    // Track calls to distinguish which table is being queried
-    let selectCallCount = 0
-    const chainable = {
-      from: () => chainable,
-      where: () => chainable,
-      orderBy: () => chainable,
-      offset: () => chainable,
-      limit: () => Promise.resolve(mockLogs),
-      then: (resolve: any) => resolve(mockLogs)
+    const mockStatsRow = { total: 2, positive: 1, negative: 0, noFeedback: 1, errors: 0, avgResponseTime: 1500 }
+
+    const makeChainable = (resolveValue: any) => {
+      const obj: any = {
+        from: () => obj,
+        where: () => obj,
+        orderBy: () => obj,
+        offset: () => obj,
+        limit: () => Promise.resolve(resolveValue),
+        then: (resolve: any) => resolve(resolveValue),
+      }
+      return obj
     }
+
+    let selectCallCount = 0
 
     jest.doMock('@/db/client', () => ({
       getDb: () => ({
         select: () => {
           selectCallCount++
-          return {
-            from: () => {
-              // Make the object both thenable (for direct await) and chainable
-              const result: any = Promise.resolve(
-                selectCallCount <= 1
-                  ? [{ feedback: 'positive', hadError: false }, { feedback: null, hadError: false }]
-                  : selectCallCount <= 2
-                  ? mockLogs
-                  : selectCallCount <= 4
-                  ? [{ suggestionUsed: 'tip1' }]
-                  : [{ detectedLaws: ['TREBEP'] }]
-              )
-              result.orderBy = () => ({
-                offset: () => ({
-                  limit: () => Promise.resolve(mockLogs)
-                })
-              })
-              result.where = () => ({
-                orderBy: () => ({
-                  offset: () => ({
-                    limit: () => Promise.resolve(mockLogs)
-                  })
-                }),
-                then: (resolve: any) => resolve([{ id: 'u1', fullName: 'User 1', email: 'u1@test.com' }])
-              })
-              return result
-            }
+          if (selectCallCount === 1) {
+            // Stats aggregation query
+            return makeChainable([mockStatsRow])
+          } else if (selectCallCount === 2) {
+            // Paginated logs query
+            return makeChainable(mockLogs)
+          } else {
+            // User enrichment query
+            return makeChainable([{ id: 'u1', fullName: 'User 1', email: 'u1@test.com' }])
           }
-        }
+        },
+        execute: () => Promise.resolve({ rows: [] })
       })
     }))
 
@@ -238,7 +226,7 @@ describe('Admin AI Chat Logs - Queries', () => {
         questionContextLaw: 'question_context_law', suggestionUsed: 'suggestion_used',
         responseTimeMs: 'response_time_ms', tokensUsed: 'tokens_used', hadError: 'had_error',
         errorMessage: 'error_message', feedback: 'feedback', feedbackComment: 'feedback_comment',
-        detectedLaws: 'detected_laws', createdAt: 'created_at'
+        detectedLaws: 'detected_laws', createdAt: 'created_at', reviewedAt: 'reviewed_at'
       },
       userProfiles: { id: 'id', fullName: 'full_name', email: 'email' }
     }))
@@ -247,8 +235,10 @@ describe('Admin AI Chat Logs - Queries', () => {
       desc: () => 'desc',
       eq: () => 'eq',
       isNull: () => 'isNull',
-      isNotNull: () => 'isNotNull',
-      inArray: () => 'inArray'
+      inArray: () => 'inArray',
+      and: () => 'and',
+      sql: Object.assign((strings: any, ...values: any[]) => 'sql', { raw: () => 'raw' }),
+      count: () => 'count',
     }))
 
     const { getAiChatLogs } = require('@/lib/api/admin-ai-chat-logs/queries')
@@ -256,7 +246,12 @@ describe('Admin AI Chat Logs - Queries', () => {
 
     expect(result.success).toBe(true)
     expect(result.logs.length).toBe(2)
+    expect(result.stats.total).toBe(2)
+    expect(result.stats.positive).toBe(1)
+    expect(result.stats.avgResponseTime).toBe(1500)
     expect(result.pagination.page).toBe(1)
     expect(result.pagination.limit).toBe(20)
+    expect(result.topSuggestions).toEqual([])
+    expect(result.topLaws).toEqual([])
   })
 })

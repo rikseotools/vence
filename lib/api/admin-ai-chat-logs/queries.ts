@@ -1,7 +1,7 @@
 // lib/api/admin-ai-chat-logs/queries.ts
 import { getDb } from '@/db/client'
 import { aiChatLogs, userProfiles } from '@/db/schema'
-import { desc, eq, isNull, isNotNull, inArray, and } from 'drizzle-orm'
+import { desc, eq, isNull, inArray, and, sql, count } from 'drizzle-orm'
 import type { AiChatLogsResponse } from './schemas'
 
 // ============================================
@@ -15,25 +15,60 @@ export async function getAiChatLogs(
 ): Promise<AiChatLogsResponse> {
   const db = getDb()
   const offset = (page - 1) * limit
+  const notReviewed = isNull(aiChatLogs.reviewedAt)
 
-  // Obtener estadísticas generales (solo logs no revisados = desde última auditoría)
-  const allLogs = await db
+  // 1. Stats agregados en una sola query SQL
+  const [statsRow] = await db
     .select({
-      feedback: aiChatLogs.feedback,
-      hadError: aiChatLogs.hadError
+      total: count(),
+      positive: sql<number>`count(*) filter (where ${aiChatLogs.feedback} = 'positive')`,
+      negative: sql<number>`count(*) filter (where ${aiChatLogs.feedback} = 'negative')`,
+      noFeedback: sql<number>`count(*) filter (where ${aiChatLogs.feedback} is null)`,
+      errors: sql<number>`count(*) filter (where ${aiChatLogs.hadError} = true)`,
+      avgResponseTime: sql<number>`coalesce(avg(${aiChatLogs.responseTimeMs})::int, 0)`,
     })
     .from(aiChatLogs)
-    .where(isNull(aiChatLogs.reviewedAt))
+    .where(notReviewed)
 
   const stats = {
-    total: allLogs.length,
-    positive: allLogs.filter(l => l.feedback === 'positive').length,
-    negative: allLogs.filter(l => l.feedback === 'negative').length,
-    noFeedback: allLogs.filter(l => !l.feedback).length,
-    errors: allLogs.filter(l => l.hadError).length
+    total: Number(statsRow.total),
+    positive: Number(statsRow.positive),
+    negative: Number(statsRow.negative),
+    noFeedback: Number(statsRow.noFeedback),
+    errors: Number(statsRow.errors),
+    avgResponseTime: Number(statsRow.avgResponseTime),
   }
 
-  // Query paginada con filtro
+  const satisfactionRate = stats.positive + stats.negative > 0
+    ? Math.round((stats.positive / (stats.positive + stats.negative)) * 100)
+    : null
+
+  // 2. Top sugerencias y top leyes en paralelo con SQL agregado
+  const [topSuggestionsRaw, topLawsRaw] = await Promise.all([
+    db.execute(sql`
+      select suggestion_used as name, count(*)::int as count
+      from ai_chat_logs
+      where reviewed_at is null and suggestion_used is not null
+      group by suggestion_used
+      order by count desc
+      limit 5
+    `),
+    db.execute(sql`
+      select law, count(*)::int as count
+      from ai_chat_logs, jsonb_array_elements_text(detected_laws) as law
+      where reviewed_at is null and detected_laws is not null
+      group by law
+      order by count desc
+      limit 5
+    `),
+  ])
+
+  const topSuggestions = (topSuggestionsRaw.rows as { name: string; count: number }[])
+    .map(r => ({ name: r.name, count: Number(r.count) }))
+  const topLaws = (topLawsRaw.rows as { law: string; count: number }[])
+    .map(r => ({ name: r.law, count: Number(r.count) }))
+
+  // 3. Query paginada con filtro
   const baseSelect = {
     id: aiChatLogs.id,
     userId: aiChatLogs.userId,
@@ -54,33 +89,18 @@ export async function getAiChatLogs(
     createdAt: aiChatLogs.createdAt
   }
 
-  // Solo mostrar logs no revisados (se resetean al marcar como revisados tras auditoría)
-  const notReviewed = isNull(aiChatLogs.reviewedAt)
+  const filterCondition =
+    feedbackFilter === 'positive' ? and(notReviewed, eq(aiChatLogs.feedback, 'positive')) :
+    feedbackFilter === 'negative' ? and(notReviewed, eq(aiChatLogs.feedback, 'negative')) :
+    feedbackFilter === 'none' ? and(notReviewed, isNull(aiChatLogs.feedback)) :
+    notReviewed
 
-  let logs
-  if (feedbackFilter === 'positive') {
-    logs = await db.select(baseSelect).from(aiChatLogs)
-      .where(and(notReviewed, eq(aiChatLogs.feedback, 'positive')))
-      .orderBy(desc(aiChatLogs.createdAt))
-      .offset(offset).limit(limit)
-  } else if (feedbackFilter === 'negative') {
-    logs = await db.select(baseSelect).from(aiChatLogs)
-      .where(and(notReviewed, eq(aiChatLogs.feedback, 'negative')))
-      .orderBy(desc(aiChatLogs.createdAt))
-      .offset(offset).limit(limit)
-  } else if (feedbackFilter === 'none') {
-    logs = await db.select(baseSelect).from(aiChatLogs)
-      .where(and(notReviewed, isNull(aiChatLogs.feedback)))
-      .orderBy(desc(aiChatLogs.createdAt))
-      .offset(offset).limit(limit)
-  } else {
-    logs = await db.select(baseSelect).from(aiChatLogs)
-      .where(notReviewed)
-      .orderBy(desc(aiChatLogs.createdAt))
-      .offset(offset).limit(limit)
-  }
+  const logs = await db.select(baseSelect).from(aiChatLogs)
+    .where(filterCondition)
+    .orderBy(desc(aiChatLogs.createdAt))
+    .offset(offset).limit(limit)
 
-  // Enriquecer con info de usuarios
+  // 4. Enriquecer con info de usuarios
   const userIds = [...new Set(logs.filter(l => l.userId).map(l => l.userId!))]
   const usersMap: Record<string, { id: string; display_name: string | null; email: string }> = {}
 
@@ -122,62 +142,11 @@ export async function getAiChatLogs(
       : null
   }))
 
-  // Top sugerencias (solo no revisados)
-  const suggestionsData = await db
-    .select({ suggestionUsed: aiChatLogs.suggestionUsed })
-    .from(aiChatLogs)
-    .where(isNull(aiChatLogs.reviewedAt))
-
-  const suggestionCounts: Record<string, number> = {}
-  for (const s of suggestionsData) {
-    if (s.suggestionUsed) {
-      suggestionCounts[s.suggestionUsed] = (suggestionCounts[s.suggestionUsed] || 0) + 1
-    }
-  }
-  const topSuggestions = Object.entries(suggestionCounts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)
-    .map(([name, count]) => ({ name, count }))
-
-  // Top leyes (solo no revisados)
-  const lawLogsData = await db
-    .select({ detectedLaws: aiChatLogs.detectedLaws })
-    .from(aiChatLogs)
-    .where(isNull(aiChatLogs.reviewedAt))
-
-  const lawCounts: Record<string, number> = {}
-  for (const l of lawLogsData) {
-    const laws = (l.detectedLaws as string[] | null) || []
-    for (const law of laws) {
-      lawCounts[law] = (lawCounts[law] || 0) + 1
-    }
-  }
-  const topLaws = Object.entries(lawCounts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)
-    .map(([name, count]) => ({ name, count }))
-
-  // Tiempo de respuesta promedio (solo no revisados)
-  const responseTimesData = await db
-    .select({ responseTimeMs: aiChatLogs.responseTimeMs })
-    .from(aiChatLogs)
-    .where(isNull(aiChatLogs.reviewedAt))
-
-  const validTimes = responseTimesData.filter(r => r.responseTimeMs !== null)
-  const avgResponseTime = validTimes.length
-    ? Math.round(validTimes.reduce((sum, r) => sum + r.responseTimeMs!, 0) / validTimes.length)
-    : 0
-
-  const satisfactionRate = stats.positive + stats.negative > 0
-    ? Math.round((stats.positive / (stats.positive + stats.negative)) * 100)
-    : null
-
   return {
     success: true,
     logs: enrichedLogs,
     stats: {
       ...stats,
-      avgResponseTime,
       satisfactionRate
     },
     topSuggestions,
