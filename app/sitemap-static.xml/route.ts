@@ -151,7 +151,7 @@ export async function GET() {
   try {
     const { data: laws } = await supabase
       .from('laws')
-      .select('short_name, updated_at')
+      .select('short_name, slug, updated_at')
       .eq('is_active', true);
 
     if (laws) {
@@ -164,7 +164,7 @@ export async function GET() {
           .eq('articles.laws.short_name', law.short_name);
 
         if ((count || 0) >= 5) {
-          const canonicalSlug = generateSlugFromShortName(law.short_name);
+          const canonicalSlug = law.slug || generateSlugFromShortName(law.short_name);
           const lastmod = law.updated_at
             ? new Date(law.updated_at).toISOString().split('T')[0]
             : today;
