@@ -1531,30 +1531,54 @@ function PerfilPageContent() {
               </div>
 
               {/* Banner de descuento de fidelidad */}
-              {subscriptionData.subscription.planInterval === 'month' && !subscriptionData.subscription.cancelAtPeriodEnd && (
+              {!subscriptionData.subscription.cancelAtPeriodEnd && (
                 <div className="mt-4 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg p-4">
                   <div className="flex items-center space-x-2">
                     <span className="text-emerald-600">🎁</span>
                     <span className="text-emerald-800 dark:text-emerald-200 font-medium">
-                      Descuento de fidelidad
+                      Tu precio de fidelidad
                     </span>
                   </div>
                   {(() => {
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const loyalty = (subscriptionData.subscription as any).loyaltyDiscount
                     const amount = subscriptionData.subscription.planAmount || 20
+                    const intervalCount = subscriptionData.subscription.planIntervalCount || 1
+                    const renewalDate = subscriptionData.subscription.currentPeriodEnd
+                      ? new Date(subscriptionData.subscription.currentPeriodEnd).toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })
+                      : null
+
                     if (loyalty) {
-                      const discountedPrice = (amount * (1 - loyalty.percentOff / 100)).toFixed(2)
+                      const discountedPrice = +(amount * (1 - loyalty.percentOff / 100)).toFixed(2)
+                      const monthlyPrice = +(discountedPrice / intervalCount).toFixed(2)
+                      const monthlyFull = +(amount / intervalCount).toFixed(2)
+
                       return (
-                        <p className="text-emerald-700 dark:text-emerald-300 text-sm mt-1">
-                          Tu plan incluye un descuento de fidelidad del <strong>{loyalty.percentOff}%</strong>.
-                          {' '}Tu proxima renovacion sera de <strong>{discountedPrice}€</strong> en vez de {amount}€.
-                        </p>
+                        <div className="mt-2 space-y-2">
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">{discountedPrice}€</span>
+                            <span className="text-sm line-through text-gray-400">{amount}€</span>
+                            <span className="text-xs bg-emerald-200 dark:bg-emerald-800 text-emerald-800 dark:text-emerald-200 px-2 py-0.5 rounded-full font-medium">-{loyalty.percentOff}%</span>
+                          </div>
+                          {intervalCount > 1 && (
+                            <p className="text-emerald-700 dark:text-emerald-300 text-sm">
+                              Equivale a <strong>{monthlyPrice}€/mes</strong> <span className="text-gray-400 line-through text-xs">{monthlyFull}€/mes</span>
+                            </p>
+                          )}
+                          {renewalDate && (
+                            <p className="text-emerald-600 dark:text-emerald-400 text-xs">
+                              Precio garantizado en tu renovación del {renewalDate}
+                            </p>
+                          )}
+                          <p className="text-emerald-600 dark:text-emerald-400 text-xs mt-1">
+                            Este descuento es exclusivo para suscriptores activos. Si cancelas, se pierde y no se recupera.
+                          </p>
+                        </div>
                       )
                     }
                     return (
                       <p className="text-emerald-700 dark:text-emerald-300 text-sm mt-1">
-                        A partir de tu proxima renovacion disfrutaras de un <strong>10% de descuento</strong> por mantenerte como suscriptor activo.
+                        A partir de tu próxima renovación{renewalDate ? ` (${renewalDate})` : ''} disfrutarás de un <strong>10% de descuento</strong> por mantenerte como suscriptor activo.
                       </p>
                     )
                   })()}

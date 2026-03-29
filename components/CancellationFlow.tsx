@@ -175,7 +175,7 @@ export default function CancellationFlow({ isOpen, onClose, userId, periodEndDat
                   Si cancelas vas a perder tu descuento de fidelidad
                 </p>
                 <p className="text-xs text-amber-700 dark:text-amber-300">
-                  Tu plan incluye un 10% de descuento en la primera y segunda renovacion, y un 20% a partir de la tercera. Al cancelar, este beneficio se pierde y no se recupera.
+                  Tu plan incluye un 10% de descuento en la primera y segunda renovación, y un 20% a partir de la tercera. Al cancelar, este beneficio se pierde y no se recupera.
                 </p>
               </div>
               <p className="text-sm text-amber-600 dark:text-amber-400 mb-6">
@@ -187,7 +187,7 @@ export default function CancellationFlow({ isOpen, onClose, userId, periodEndDat
                   onClick={handleClose}
                   className="flex-1 py-3 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors"
                 >
-                  Mantener mi suscripcion
+                  Mantener mi suscripción
                 </button>
                 <button
                   onClick={handleConfirmStart}
