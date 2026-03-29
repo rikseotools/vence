@@ -107,8 +107,8 @@ INSERT INTO oposiciones (
   'https://sede.inap.gob.es/...',             -- URL de seguimiento del proceso
   -- Estado del proceso
   'oep_aprobada',                             -- ver tabla de estados abajo
-  'RD 1052/2025',                             -- decreto de la OEP
-  '2025-12-22',                               -- fecha de aprobacion de la OEP
+  'RD 1052/2025',                             -- decreto de la OEP (ver nota sobre multiples OEPs)
+  '2025-12-22',                               -- fecha de aprobacion de la OEP (la mas reciente)
   NULL,                                       -- numero de convocatoria (cuando se publique)
   NULL,                                       -- fecha de la convocatoria
   NULL                                        -- referencia del diario de la convocatoria
@@ -168,6 +168,133 @@ La OEP y la convocatoria son documentos diferentes publicados en momentos distin
 - `is_convocatoria_activa`: true si hay convocatoria en curso
 
 Estos campos se usan automaticamente en las landings dinamicas (ver FASE 5).
+
+### 2a.3 Multiples OEPs acumuladas (caso frecuente)
+
+Es habitual que una convocatoria acumule plazas de varias OEPs (ej: OEP 2024 + OEP 2025). En ese caso:
+
+**Campo `oep_decreto`:** Listar TODOS los decretos separados. Ejemplo:
+```
+'Decreto 275/2024 (OEP 2024) y Decreto 214/2025 (OEP 2025)'
+```
+
+**Campo `oep_fecha`:** Usar la fecha de la OEP MAS RECIENTE:
+```
+'2025-12-30'  -- fecha del Decreto 214/2025, la OEP mas reciente
+```
+
+**Campo `plazas_libres`:** Sumar las plazas de TODAS las OEPs pendientes de convocar:
+```
+-- OEP 2024: 30 plazas + OEP 2025: 44 plazas = 74 plazas totales
+74
+```
+
+**Campo `boe_reference`:** Referenciar ambas publicaciones:
+```
+'BOJA 252/2024 (OEP 2024) y BOJA 250/2025 (OEP 2025)'
+```
+
+**Plazas de discapacidad intelectual:** Si hay un proceso SEPARADO para discapacidad intelectual (frecuente en Andalucia, Estado), esas plazas NO se suman a `plazas_libres`. Se mencionan en las FAQs como informacion adicional.
+
+**Ejemplo real (Andalucia marzo 2026):**
+| OEP | Decreto | Plazas TL | Plazas DI (proceso aparte) |
+|-----|---------|-----------|---------------------------|
+| 2024 | Decreto 275/2024 | 30 | 22 |
+| 2025 | Decreto 214/2025 | 44 | 20 |
+| **Total** | | **74** | 42 |
+
+**Cuando se publique la convocatoria:** actualizar los campos de convocatoria (`convocatoria_numero`, `convocatoria_fecha`, `estado_proceso` → `convocada`, etc.) y ajustar las plazas si la convocatoria trae numeros distintos a la OEP.
+
+### 2a.4 Campos JSONB para la landing page
+
+La landing dinamica usa varias columnas JSONB. Rellenarlas al crear la oposicion permite que la landing muestre informacion rica desde el primer dia.
+
+#### `examen_config` (estructura del examen)
+
+```json
+{
+  "tipo": "test",
+  "penalizacion": "1/3 del valor del acierto",
+  "total_preguntas": 100,
+  "duracion_total_minutos": 180,
+  "partes": [
+    {
+      "nombre": "Parte teorica",
+      "preguntas": 75,
+      "reserva": 4,
+      "puntuacion_max": 90,
+      "puntuacion_min": 36,
+      "valor_acierto": 1.2
+    },
+    {
+      "nombre": "Parte practica (Ofimatica)",
+      "preguntas": 25,
+      "reserva": 3,
+      "puntuacion_max": 30,
+      "puntuacion_min": 12,
+      "valor_acierto": 1.2
+    }
+  ],
+  "notas": "Basado en convocatoria anterior. Puede variar."
+}
+```
+
+Si la oposicion aun NO tiene convocatoria, rellenar con datos de la convocatoria anterior del mismo cuerpo (suele ser identica o muy similar). Indicar en `notas` que es estimacion.
+
+#### `landing_faqs` (preguntas frecuentes)
+
+```json
+[
+  {
+    "pregunta": "¿Cuantas plazas hay?",
+    "respuesta": "Las OEP 2024 y 2025 acumulan {plazasLibres} plazas..."
+  }
+]
+```
+
+Variables disponibles: `{plazasLibres}`, `{temasCount}`, `{bloquesCount}`, `{tituloRequerido}`, `{salarioMin}`, `{salarioMax}`. Se resuelven automaticamente.
+
+**Minimo 4-5 FAQs:** plazas, temario, estructura examen, requisitos, fecha examen.
+
+#### `landing_estadisticas` (4 tarjetas hero)
+
+```json
+[
+  { "numero": "{plazasLibres}", "texto": "Plazas OEP 2024+2025", "color": "text-green-600" },
+  { "numero": "{temasCount}", "texto": "Temas oficiales", "color": "text-blue-600" },
+  { "numero": "100", "texto": "Preguntas en el examen", "color": "text-purple-600" },
+  { "numero": "ESO", "texto": "Titulo requerido", "color": "text-orange-600" }
+]
+```
+
+Si no se conocen las plazas, usar `"—"` como numero.
+
+#### `requisitos_especiales` (si aplica)
+
+```json
+[
+  { "tipo": "ofimatica", "descripcion": "LibreOffice 7.6 (no Microsoft Office)" }
+]
+```
+
+Usar cuando la oposicion tiene requisitos que la diferencian de otras similares (ej: suite ofimatica distinta, idioma cooficial, conducir).
+
+### 2a.5 Oposiciones sin convocatoria publicada
+
+Es valido crear una oposicion cuando solo hay OEP aprobada pero no hay convocatoria aun. Configuracion:
+
+| Campo | Valor |
+|-------|-------|
+| `estado_proceso` | `oep_aprobada` |
+| `is_convocatoria_activa` | `false` |
+| `convocatoria_*` | `NULL` (todos) |
+| `exam_date` | `NULL` |
+| `inscription_*` | `NULL` |
+| `programa_url` | URL del programa de la convocatoria ANTERIOR (mismo cuerpo) |
+| `seguimiento_url` | URL de la ficha del proceso (si existe) o pagina general de empleo publico |
+| `examen_config` | Basado en convocatoria anterior + nota aclaratoria |
+
+La landing se genera igualmente, mostrando "Pendiente de convocatoria" y los datos de la OEP. Los usuarios pueden empezar a estudiar con el temario de la convocatoria anterior (que suele ser identico o muy similar).
 
 ### 2b. Insertar topics con epigrafes literales
 
@@ -717,6 +844,22 @@ Si hay discrepancias, la BD es la fuente de verdad (viene del BOE oficial).
 14. **Landing: FAQs y estadisticas se muestran (insertar en columnas JSONB de `oposiciones`)**
 15. **Admin: oposicion aparece en /admin/seguimiento-convocatorias**
 
+### 6e. Tabla oposiciones (OBLIGATORIO para landings)
+
+Crear fila en la tabla `oposiciones` con datos de la convocatoria. Sin esta fila, la landing dinamica no tiene datos que mostrar (plazas, fecha examen, BOE, etc.).
+
+Campos minimos: slug, nombre, plazas, categoria (C1/C2), administracion, programa_url (BOE).
+
+### 6f. Invalidar cache ISR (CRITICO despues de importar preguntas)
+
+La pagina `/<slug>/test` tiene cache ISR de 30 dias. Si se crean los topics primero (sin preguntas) y luego se importan las preguntas, el cache sirve la version vieja donde los temas aparecen como "En desarrollo".
+
+**Solucion:** Hacer un deploy (push a main) despues de importar las preguntas. El deploy regenera todas las paginas ISR con datos frescos.
+
+**Si no se hace deploy:** Los temas apareceran como "En desarrollo" hasta que expire el cache (30 dias) o se haga un nuevo deploy.
+
+**Recomendacion:** Importar las preguntas ANTES del primer deploy de la oposicion. Si no es posible, hacer un deploy adicional despues de la importacion.
+
 ---
 
 ## FASE 7: Examenes oficiales (si se importan)
@@ -831,7 +974,49 @@ Y tambien en `oposicionToExamSourcePattern` (fallback para preguntas psicotecnic
 
 ---
 
-## Lecciones aprendidas (marzo 2026, caso Galicia)
+## Lecciones aprendidas
+
+### Caso Andalucía (marzo 2026)
+
+#### 8. Múltiples OEPs acumuladas — investigar TODAS antes de crear
+
+Una oposición puede acumular plazas de 2-3 OEPs consecutivas. Antes de crear la fila en BD:
+
+1. Buscar en el BOJA/BOE TODAS las OEPs publicadas para ese cuerpo
+2. Verificar cuáles ya fueron convocadas (proceso terminado) y cuáles están pendientes
+3. Sumar solo las plazas de OEPs PENDIENTES de convocatoria
+
+**Ejemplo real:** Auxiliar Administrativo Junta de Andalucía tenía OEP 2022+2023 (ya convocada, 95 plazas, proceso terminado) y OEP 2024+2025 (74 plazas, pendiente de convocatoria). La oposición en Vence debe apuntar a las plazas PENDIENTES, no a las ya convocadas.
+
+**Error evitado:** Se tenía `estado_proceso: 'resultados'` con `plazas_libres: 113`, mezclando datos del proceso terminado con el nuevo.
+
+#### 9. Distinguir proceso turno libre de procesos de discapacidad intelectual
+
+Andalucía y Estado convocan procesos SEPARADOS para discapacidad intelectual (DI). Las plazas DI NO se suman a `plazas_libres`:
+- Turno libre + discapacidad general → `plazas_libres` + `plazas_discapacidad`
+- Discapacidad intelectual → proceso aparte, mencionar en FAQs
+
+#### 10. Convocatoria NO publicada: usar datos de la anterior
+
+Si la nueva OEP aún no tiene convocatoria, el programa y la estructura del examen suelen ser idénticos a la convocatoria anterior del mismo cuerpo. Usar esos datos con una nota en `examen_config.notas`.
+
+Para `programa_url`: enlazar la convocatoria anterior (que contiene el programa vigente). Cuando se publique la nueva, actualizar.
+
+#### 11. Campos JSONB de landing: rellenar desde el principio
+
+No dejar los campos JSONB vacíos o con datos placeholder (`"—"` en plazas, partes vacías en examen_config). Investigar y rellenar:
+- `examen_config`: estructura completa del examen (partes, preguntas, tiempo, penalización)
+- `landing_faqs`: mínimo 5 FAQs reales (plazas, temario, examen, requisitos, fecha)
+- `landing_estadisticas`: las 4 tarjetas del hero con datos reales
+- `requisitos_especiales`: si hay diferencias vs otras oposiciones (LibreOffice vs Office, idioma...)
+
+Una landing con datos reales convierte mejor que una con placeholders.
+
+#### 12. No confundir convocatorias de universidad con administración general
+
+Al buscar "auxiliar administrativo BOJA", aparecen convocatorias de universidades andaluzas (Universidad de Huelva, Sevilla, etc.) que tienen temarios completamente diferentes (temas universitarios). Verificar que el organismo convocante sea la **Dirección General de Recursos Humanos y Función Pública** (administración general) o el organismo correcto.
+
+### Caso Galicia (marzo 2026)
 
 ### 1. Temas sin preguntas deben decir "En elaboración"
 
