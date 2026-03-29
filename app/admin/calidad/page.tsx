@@ -29,6 +29,8 @@ interface QualityData {
     cramped_explanation: CheckResult
     copied_explanation: CheckResult
     duplicate_questions: CheckResult
+    uncited_explanation: CheckResult
+    outdated_plan: CheckResult
     psy_empty_options: CheckResult
     psy_missing_figures: CheckResult
     psy_html_explanation: CheckResult
@@ -90,6 +92,16 @@ const CHECK_CONFIG = {
     title: 'Preguntas duplicadas',
     description: 'Preguntas con el mismo texto que aparecen más de una vez (opciones barajadas)',
     icon: '👯',
+  },
+  uncited_explanation: {
+    title: 'Explicación sin cita de artículo',
+    description: 'Preguntas legislativas cuya explicación no contiene blockquote (>) ni referencia a artículo (Art./Artículo)',
+    icon: '📎',
+  },
+  outdated_plan: {
+    title: 'Plan/estrategia obsoleto',
+    description: 'Preguntas que mencionan planes ya no vigentes (ej: IV Plan de Gobierno Abierto, sustituido por el V Plan)',
+    icon: '📅',
   },
   psy_empty_options: {
     title: '[PSY] Opciones vacías',

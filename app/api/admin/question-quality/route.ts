@@ -33,6 +33,8 @@ interface QualityResponse {
     cramped_explanation: CheckResult
     duplicate_questions: CheckResult
     psy_empty_options: CheckResult
+    uncited_explanation: CheckResult
+    outdated_plan: CheckResult
     psy_missing_figures: CheckResult
     psy_html_explanation: CheckResult
   }
@@ -58,6 +60,11 @@ const HTML_EXPLANATION_REGEX = '(<p>|<p |</p>|<strong>|</strong>|<br>|<br/>|<br 
 // Excel functions written without the required period (e.g. SIERROR instead of SI.ERROR)
 // eslint-disable-next-line no-useless-escape
 const EXCEL_TYPO_REGEX = '(?i)(\\mSIERROR\\M|\\mCONTARSI\\M|\\mSUMARSI\\M)'
+
+// Plans/strategies that are no longer current (superseded by newer versions)
+// IV Plan de Gobierno Abierto (2020-2024) → superseded by V Plan (2025-2029)
+// Add more patterns here as plans get superseded
+const OUTDATED_PLAN_REGEX = '(?i)(\\m(I|II|III|IV)\\s+Plan\\s+de\\s+Gobierno\\s+Abierto)'
 
 const BANNED_REGEX = '(?i)(oposita\\s*[-_./@*]?\\s*test|opositest|oposistatest|opossita|opositatets|opostia|opsita|opositatestt|opositates[^t]|oposiitatest|oppositatest|opoositatest|opositattest|opositateest|opositatesst|0positatest|opositat3st|op0sitatest|0p0sitatest|opos1tatest|oposi7atest|oposita7est|opositat€st|o[-_./@* ]p[-_./@* ]o[-_./@* ]s[-_./@* ]i[-_./@* ]t[-_./@* ]a[-_./@* ]t[-_./@* ]e[-_./@* ]s[-_./@* ]t)'
 
@@ -93,9 +100,26 @@ async function runCountsOnly(): Promise<number> {
         count(*) FILTER (WHERE
           explanation IS NOT NULL AND LENGTH(explanation) > 400
           AND explanation NOT LIKE '%' || chr(10) || '%'
-        ) as cramped_explanation
+        ) as cramped_explanation,
+        count(*) FILTER (WHERE
+          CONCAT_WS(' ', question_text, option_a, option_b, option_c, option_d) ~* ${OUTDATED_PLAN_REGEX}
+        ) as outdated_plan
       FROM questions
       WHERE is_active = true
+    ),
+    uncited_count AS (
+      SELECT count(*)::int as uncited
+      FROM questions q
+      JOIN articles a ON q.primary_article_id = a.id
+      JOIN laws l ON a.law_id = l.id
+      WHERE q.is_active = true
+        AND l.is_virtual IS NOT TRUE
+        AND q.explanation IS NOT NULL
+        AND LENGTH(q.explanation) > 20
+        AND q.explanation NOT ILIKE '%pendiente de explicación%'
+        AND q.explanation NOT ILIKE '%pendiente de explicacion%'
+        AND q.explanation NOT LIKE '%>%'
+        AND q.explanation !~* '(Art[íi]culo|\\mArt\\.)'
     ),
     similarity_count AS (
       SELECT count(*)::int as copied
@@ -163,8 +187,8 @@ async function runCountsOnly(): Promise<number> {
       FROM psychometric_questions
       WHERE is_active = true
     )
-    SELECT (b.empty_options + b.banned_words + b.pending_explanation + b.missing_article + b.missing_image + b.excel_typo + b.html_explanation + b.cramped_explanation + s.copied + dup.duplicates + wl.wrong_law + pb.psy_empty + pb.psy_figures + pb.psy_html)::int as total
-    FROM base b, similarity_count s, duplicate_count dup, wrong_law_count wl, psy_base pb
+    SELECT (b.empty_options + b.banned_words + b.pending_explanation + b.missing_article + b.missing_image + b.excel_typo + b.html_explanation + b.cramped_explanation + b.outdated_plan + s.copied + dup.duplicates + wl.wrong_law + uc.uncited + pb.psy_empty + pb.psy_figures + pb.psy_html)::int as total
+    FROM base b, similarity_count s, duplicate_count dup, wrong_law_count wl, uncited_count uc, psy_base pb
   `)
 
   const rows = (result as any).rows ?? result ?? []
@@ -326,9 +350,40 @@ async function runChecks(): Promise<QualityResponse> {
       LIMIT ${MAX_ITEMS}
     `),
 
+    // 11. Uncited explanation (legislative questions without article reference)
+    db.execute(sql`
+      SELECT q.id, LEFT(q.question_text, ${TEXT_LIMIT}) as question_text,
+             LENGTH(q.explanation) as len,
+             l.short_name as law_name,
+             count(*) OVER()::int as total_count
+      FROM questions q
+      JOIN articles a ON q.primary_article_id = a.id
+      JOIN laws l ON a.law_id = l.id
+      WHERE q.is_active = true
+        AND l.is_virtual IS NOT TRUE
+        AND q.explanation IS NOT NULL
+        AND LENGTH(q.explanation) > 20
+        AND q.explanation NOT ILIKE '%pendiente de explicación%'
+        AND q.explanation NOT ILIKE '%pendiente de explicacion%'
+        AND q.explanation NOT LIKE '%>%'
+        AND q.explanation !~* '(Art[íi]culo|\\mArt\\.)'
+      ORDER BY LENGTH(q.explanation) ASC
+      LIMIT ${MAX_ITEMS}
+    `),
+
+    // 12. Outdated plans/strategies
+    db.execute(sql`
+      SELECT id, LEFT(question_text, ${TEXT_LIMIT}) as question_text,
+             count(*) OVER()::int as total_count
+      FROM questions
+      WHERE is_active = true
+        AND CONCAT_WS(' ', question_text, option_a, option_b, option_c, option_d) ~* ${OUTDATED_PLAN_REGEX}
+      LIMIT ${MAX_ITEMS}
+    `),
+
     // --- PSICOTÉCNICAS ---
 
-    // 12. Opciones vacías en psicotécnicas
+    // 13. Opciones vacías en psicotécnicas
     db.execute(sql`
       SELECT id, LEFT(question_text, ${TEXT_LIMIT}) as question_text,
              count(*) OVER()::int as total_count
@@ -362,7 +417,7 @@ async function runChecks(): Promise<QualityResponse> {
 
   const toRows = (r: any) => (r as any).rows ?? r ?? []
 
-  const [emptyOpts, bannedRaw, pendingExpl, missingArt, missingImg, excelTypoRaw, htmlExplRaw, wrongLawRaw, crampedExplRaw, copiedExplRaw, duplicateRaw, psyEmptyRaw, psyFiguresRaw, psyHtmlRaw] = results
+  const [emptyOpts, bannedRaw, pendingExpl, missingArt, missingImg, excelTypoRaw, htmlExplRaw, wrongLawRaw, crampedExplRaw, copiedExplRaw, duplicateRaw, uncitedRaw, outdatedPlanRaw, psyEmptyRaw, psyFiguresRaw, psyHtmlRaw] = results
 
   const emptyRows = toRows(emptyOpts)
   const bannedRows = toRows(bannedRaw)
@@ -375,6 +430,8 @@ async function runChecks(): Promise<QualityResponse> {
   const crampedRows = toRows(crampedExplRaw)
   const copiedRows = toRows(copiedExplRaw)
   const duplicateRows = toRows(duplicateRaw)
+  const uncitedRows = toRows(uncitedRaw)
+  const outdatedPlanRows = toRows(outdatedPlanRaw)
   const psyEmptyRows = toRows(psyEmptyRaw)
   const psyFiguresRows = toRows(psyFiguresRaw)
   const psyHtmlRows = toRows(psyHtmlRaw)
@@ -471,6 +528,18 @@ async function runChecks(): Promise<QualityResponse> {
         id: q.id, question_text: q.question_text, field: `${q.cnt} copias`,
       })),
     },
+    uncited_explanation: {
+      count: getCount(uncitedRows),
+      questions: uncitedRows.map((q: any) => ({
+        id: q.id, question_text: q.question_text, field: q.law_name || `${q.len} chars`,
+      })),
+    },
+    outdated_plan: {
+      count: getCount(outdatedPlanRows),
+      questions: outdatedPlanRows.map((q: any) => ({
+        id: q.id, question_text: q.question_text, field: 'plan obsoleto',
+      })),
+    },
     psy_empty_options: {
       count: getCount(psyEmptyRows),
       questions: psyEmptyRows.map((q: any) => ({
@@ -503,6 +572,8 @@ async function runChecks(): Promise<QualityResponse> {
     checks.cramped_explanation.count +
     checks.copied_explanation.count +
     checks.duplicate_questions.count +
+    checks.uncited_explanation.count +
+    checks.outdated_plan.count +
     checks.psy_empty_options.count +
     checks.psy_missing_figures.count +
     checks.psy_html_explanation.count
