@@ -275,6 +275,7 @@ async function runChecks(): Promise<QualityResponse> {
     `),
 
     // 8. Wrong article law (question mentions app X but article is from law Y)
+    // Must mirror the logic in runCountsOnly: exclude tech/informatics laws first
     db.execute(sql`
       SELECT q.id, LEFT(q.question_text, ${TEXT_LIMIT}) as question_text,
              l.short_name as law_name,
@@ -283,13 +284,21 @@ async function runChecks(): Promise<QualityResponse> {
       JOIN articles a ON q.primary_article_id = a.id
       JOIN laws l ON a.law_id = l.id
       WHERE q.is_active = true AND (
-        (q.question_text ~* '\\mAccess\\M' AND l.short_name NOT ILIKE '%Access%')
-        OR (q.question_text ~* '\\mExcel\\M' AND l.short_name NOT ILIKE '%Excel%' AND l.short_name NOT ILIKE '%hoja%')
-        OR (q.question_text ~* '\\mWord\\M' AND l.short_name NOT ILIKE '%Word%' AND l.short_name NOT ILIKE '%procesador%')
-        OR (q.question_text ~* '\\mOutlook\\M' AND l.short_name NOT ILIKE '%Outlook%' AND l.short_name NOT ILIKE '%Microsoft 365%')
-        OR (q.question_text ~* '\\mOneDrive\\M' AND l.short_name NOT ILIKE '%OneDrive%' AND l.short_name NOT ILIKE '%Microsoft 365%')
-        OR (q.question_text ~* '\\mTeams\\M' AND l.short_name NOT ILIKE '%Teams%' AND l.short_name NOT ILIKE '%Microsoft 365%')
-        OR (q.question_text ~* '\\mSharePoint\\M' AND l.short_name NOT ILIKE '%SharePoint%' AND l.short_name NOT ILIKE '%Microsoft 365%')
+        l.short_name NOT ILIKE '%Informática%'
+        AND l.short_name NOT ILIKE '%Windows%'
+        AND l.short_name NOT ILIKE '%Explorador%'
+        AND l.short_name NOT ILIKE '%Red Internet%'
+        AND l.short_name NOT ILIKE '%Correo%'
+        AND l.short_name NOT ILIKE '%Microsoft 365%'
+        AND (
+          (q.question_text ~* '\\mAccess\\M' AND l.short_name NOT ILIKE '%Access%' AND l.short_name NOT ILIKE '%Excel%' AND l.short_name NOT ILIKE '%hoja%')
+          OR (q.question_text ~* '\\mExcel\\M' AND q.question_text !~* '\\mexcelencia\\M' AND l.short_name NOT ILIKE '%Excel%' AND l.short_name NOT ILIKE '%hoja%' AND l.short_name NOT ILIKE '%Access%' AND l.short_name NOT ILIKE '%procesador%')
+          OR (q.question_text ~* '\\mWord\\M' AND q.question_text !~* '\\mWordPress\\M' AND l.short_name NOT ILIKE '%Word%' AND l.short_name NOT ILIKE '%procesador%' AND l.short_name NOT ILIKE '%Excel%' AND l.short_name NOT ILIKE '%hoja%')
+          OR (q.question_text ~* '\\mOutlook\\M' AND l.short_name NOT ILIKE '%Outlook%' AND l.short_name NOT ILIKE '%Correo%')
+          OR (q.question_text ~* '\\mOneDrive\\M' AND l.short_name NOT ILIKE '%OneDrive%' AND l.short_name NOT ILIKE '%procesador%')
+          OR (q.question_text ~* '\\mTeams\\M' AND l.short_name NOT ILIKE '%Teams%')
+          OR (q.question_text ~* '\\mSharePoint\\M' AND l.short_name NOT ILIKE '%SharePoint%')
+        )
       )
       LIMIT ${MAX_ITEMS}
     `),
