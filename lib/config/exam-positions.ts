@@ -56,31 +56,24 @@ export const EXAM_POSITION_MAP: Record<string, string[]> = {
 }
 
 /**
- * Mapeo: slug/positionType del usuario → valores válidos de target_oposicion en hot_articles.
- * Los valores en BD son inconsistentes (mezcla de guiones y guiones bajos, legacy).
+ * Mapeo: slug/positionType del usuario → valor de target_oposicion en hot_articles.
+ * BD normalizada: hot_articles.target_oposicion siempre usa dashes.
  */
 export const HOT_ARTICLE_TARGET_MAP: Record<string, string[]> = {
-  // Auxiliar Administrativo del Estado
-  'auxiliar-administrativo-estado': ['auxiliar-administrativo-estado', 'auxiliar_administrativo_estado'],
-  'auxiliar_administrativo_estado': ['auxiliar-administrativo-estado', 'auxiliar_administrativo_estado'],
-  // Auxiliar Administrativo Comunidad de Madrid
-  'auxiliar-administrativo-madrid': ['auxiliar_administrativo_madrid'],
-  'auxiliar_administrativo_madrid': ['auxiliar_administrativo_madrid'],
-  // Auxiliar Administrativo Castilla y León
-  'auxiliar-administrativo-cyl': ['auxiliar-administrativo-cyl', 'auxiliar_administrativo_cyl'],
-  'auxiliar_administrativo_cyl': ['auxiliar-administrativo-cyl', 'auxiliar_administrativo_cyl'],
-  // Administrativo del Estado
+  'auxiliar-administrativo-estado': ['auxiliar-administrativo-estado'],
+  'auxiliar_administrativo_estado': ['auxiliar-administrativo-estado'],
+  'auxiliar-administrativo-madrid': ['auxiliar-administrativo-madrid'],
+  'auxiliar_administrativo_madrid': ['auxiliar-administrativo-madrid'],
+  'auxiliar-administrativo-cyl': ['auxiliar-administrativo-cyl'],
+  'auxiliar_administrativo_cyl': ['auxiliar-administrativo-cyl'],
   'administrativo-estado': ['administrativo-estado'],
   'administrativo_estado': ['administrativo-estado'],
   'cuerpo-general-administrativo': ['administrativo-estado'],
   'cuerpo_general_administrativo': ['administrativo-estado'],
-  // Tramitación Procesal
-  'tramitacion-procesal': ['tramitacion-procesal', 'tramitacion_procesal'],
-  'tramitacion_procesal': ['tramitacion-procesal', 'tramitacion_procesal'],
-  // Auxilio Judicial
+  'tramitacion-procesal': ['tramitacion-procesal'],
+  'tramitacion_procesal': ['tramitacion-procesal'],
   'auxilio-judicial': ['auxilio-judicial'],
   'auxilio_judicial': ['auxilio-judicial'],
-  // Gestión Procesal / Estado
   'gestion-estado': ['gestion-estado'],
   'gestion_estado': ['gestion-estado'],
   'gestion-procesal': ['gestion-estado'],
