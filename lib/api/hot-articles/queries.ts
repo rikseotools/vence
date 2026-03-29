@@ -193,7 +193,13 @@ export async function checkHotArticle(
   }
 
   // 3. Buscar otras oposiciones, excluyendo AMBAS: la del usuario Y la actual (URL)
-  const excludeSlugs = new Set([userOpo, currentOpo, row.targetOposicion])
+  // Normalizar todos los slugs a dashes para comparar correctamente
+  const excludeNormalized = new Set([
+    userOpo,
+    currentOpo,
+    normalizeOposicionSlug(row.targetOposicion ?? ''),
+  ])
+
   const otherRows = await db
     .select({
       targetOposicion: hotArticles.targetOposicion,
@@ -208,16 +214,19 @@ export async function checkHotArticle(
       )
     )
 
-  // Filtrar en TypeScript las que coinciden con la oposición actual
-  const otherOposiciones = otherRows.filter(
-    r => !excludeSlugs.has(r.targetOposicion ?? '')
-  )
-
-  const otherInfo = otherOposiciones.map(r => ({
-    oposicion: r.targetOposicion ?? '',
-    apariciones: r.totalOfficialAppearances ?? 0,
-    prioridad: r.priorityLevel ?? 'low',
-  }))
+  // Filtrar normalizando para evitar duplicados dash/underscore
+  const seenNormalized = new Set<string>()
+  const otherInfo: Array<{ oposicion: string; apariciones: number; prioridad: string }> = []
+  for (const r of otherRows) {
+    const norm = normalizeOposicionSlug(r.targetOposicion ?? '')
+    if (excludeNormalized.has(norm) || seenNormalized.has(norm)) continue
+    seenNormalized.add(norm)
+    otherInfo.push({
+      oposicion: norm,
+      apariciones: r.totalOfficialAppearances ?? 0,
+      prioridad: r.priorityLevel ?? 'low',
+    })
+  }
 
   let curiosityMessage: string | null = null
   if (otherInfo.length > 0) {
