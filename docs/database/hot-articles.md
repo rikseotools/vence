@@ -189,25 +189,20 @@ END
 
 ## Filtrado por Oposición del Usuario
 
-El código en `TestLayout.js` filtra los hot articles según la oposición del usuario:
+El filtrado se hace via API v2 (Drizzle + Zod + TypeScript):
 
-```javascript
-// Solo mostrar hot articles relevantes para la oposición del usuario
-function isHotArticleForUserOposicion(targetOposicion, userOposicionSlug) {
-  if (!targetOposicion) return true  // Legacy: sin oposición = todas
-  if (!userOposicionSlug) return true
+**Endpoint:** `GET /api/v2/hot-articles/check`
 
-  // Mapeo de variantes a valores normalizados
-  const HOT_ARTICLE_OPOSICION_MAP = {
-    'auxiliar-administrativo-estado': ['auxiliar-administrativo-estado'],
-    'auxiliar_administrativo_estado': ['auxiliar-administrativo-estado'],
-    // ...
-  }
+**Parámetros:**
+- `articleId` — UUID del artículo
+- `userOposicion` — oposición del perfil del usuario (ej: `auxiliar-administrativo-estado`)
+- `currentOposicion` — oposición de la URL actual (ej: `auxiliar-administrativo-cyl`)
 
-  const validTargets = HOT_ARTICLE_OPOSICION_MAP[userOposicionSlug] || [userOposicionSlug]
-  return validTargets.includes(targetOposicion.toLowerCase())
-}
-```
+**Lógica:** Busca en `hot_articles` por `articleId + userOposicion`. Para la "curiosidad" (otras oposiciones donde el artículo es importante), excluye tanto la oposición del usuario como la actual (de la URL).
+
+**Código:** `lib/api/hot-articles/queries.ts` → `checkHotArticle()`
+
+**BD normalizada:** `target_oposicion` siempre usa dashes (ej: `auxiliar-administrativo-estado`, nunca `auxiliar_administrativo_estado`). El mapeo de compatibilidad está en `lib/config/exam-positions.ts` → `HOT_ARTICLE_TARGET_MAP`.
 
 ## Exclusiones: Contenido No Legal
 

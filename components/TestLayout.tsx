@@ -632,7 +632,7 @@ export default function TestLayout({
 
       if (result.success && result.isHot) {
         // Mapear respuesta API al formato de HotArticleInfo
-        const hotData = {
+        const hotData: HotArticleInfo = {
           is_hot: true,
           hotness_score: result.hotnessScore,
           priority_level: result.priorityLevel,
@@ -642,6 +642,10 @@ export default function TestLayout({
           also_appears_in_other_oposiciones: result.alsoAppearsInOtherOposiciones,
           other_oposiciones_info: result.otherOposicionesInfo,
           curiosity_message: result.curiosityMessage,
+          total_official_appearances: 0,
+          unique_exams_count: 0,
+          article_number: '',
+          law_name: '',
         }
 
         if (isOfficialExam) {
