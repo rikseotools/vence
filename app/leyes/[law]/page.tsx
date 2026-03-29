@@ -1,6 +1,7 @@
-// app/leyes/[law]/page.js - PÁGINA PRINCIPAL DE CADA LEY CON META CANONICAL
+// app/leyes/[law]/page.tsx - PÁGINA PRINCIPAL DE CADA LEY CON META CANONICAL
 import { Suspense } from 'react'
 import Link from 'next/link'
+import type { Metadata } from 'next'
 import { mapLawSlugToShortName, getLawInfo, getCanonicalSlug, getAllLawSlugsWithDB } from '@/lib/lawMappingUtils'
 import { getLawStats } from '@/lib/lawFetchers'
 import { notFound } from 'next/navigation'
@@ -10,67 +11,93 @@ import LawTestConfigurator from './LawTestConfigurator'
 
 const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
 
+interface PageProps {
+  params: Promise<{ law: string }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}
+
+interface LawInfoResolved {
+  shortName: string
+  name: string
+  description?: string
+}
+
+/** Consulta la BD como fallback cuando el mapping estático no reconoce un slug */
+async function resolveLawFromDb(slug: string): Promise<LawInfoResolved | null> {
+  const { getSupabaseClient } = await import('@/lib/supabase')
+  const supabase = getSupabaseClient()
+  const { data } = await supabase
+    .from('laws')
+    .select('short_name, name, description')
+    .eq('slug', slug)
+    .eq('is_active', true)
+    .single()
+
+  return data ? { shortName: data.short_name, name: data.name, description: data.description } : null
+}
+
+/** Resuelve lawShortName y lawInfo desde mapping estático o BD */
+async function resolveLaw(slug: string): Promise<{ lawShortName: string; lawInfo: LawInfoResolved } | null> {
+  const lawShortName = mapLawSlugToShortName(slug)
+  const lawInfo = getLawInfo(slug)
+
+  if (lawShortName && lawInfo) {
+    return { lawShortName, lawInfo }
+  }
+
+  const dbLaw = await resolveLawFromDb(slug)
+  if (dbLaw) {
+    return { lawShortName: dbLaw.shortName, lawInfo: dbLaw }
+  }
+
+  return null
+}
+
+const SEO_DESCRIPTIONS: Record<string, string> = {
+  'CE': 'Test de Constitución Española con preguntas de exámenes oficiales. Artículos, derechos fundamentales, organización del Estado. Preparación completa para oposiciones.',
+  'Ley 39/2015': 'Test Ley 39/2015 LPAC - Procedimiento Administrativo Común. Preguntas oficiales sobre tramitación, plazos, recursos administrativos. Esencial para oposiciones.',
+  'Ley 40/2015': 'Test Ley 40/2015 LRJSP - Régimen Jurídico Sector Público. Organización administrativa, competencias, funcionamiento. Preguntas actualizadas para oposiciones.',
+  'Ley 19/2013': 'Test Ley 19/2013 de Transparencia, Acceso a la Información Pública y Buen Gobierno. Preguntas oficiales sobre transparencia administrativa.',
+  'Código Civil': 'Test Código Civil español con preguntas de exámenes oficiales. Personas, bienes, obligaciones, contratos, familia, sucesiones. Derecho civil completo.',
+  'Código Penal': 'Test Código Penal español actualizado. Delitos, penas, responsabilidad penal. Preguntas de exámenes oficiales para oposiciones de justicia.',
+  'Ley 7/1985': 'Test Ley 7/1985 Bases del Régimen Local. Municipios, provincias, competencias locales. Preguntas oficiales para oposiciones de administración local.',
+  'RDL 5/2015': 'Test Estatuto Básico del Empleado Público (TREBEP) - RDL 5/2015. Derechos, deberes, carrera profesional, régimen disciplinario. Esencial para oposiciones públicas.',
+  'Estatuto de los Trabajadores': 'Test Estatuto de los Trabajadores actualizado. Contratos, derechos laborales, jornada, salarios. Preguntas oficiales de derecho laboral.',
+  'TUE': 'Test Tratado de la Unión Europea con preguntas oficiales. Instituciones europeas, principios fundamentales, ciudadanía europea.',
+  'TFUE': 'Test Tratado de Funcionamiento de la UE. Mercado interior, políticas europeas, competencias. Preguntas actualizadas para oposiciones europeas.',
+  'LO 6/1985': 'Test Ley Orgánica del Poder Judicial. Organización judicial, juzgados, tribunales, carrera judicial. Preguntas oficiales para oposiciones de justicia.',
+  'Ley 50/1981': 'Test Estatuto Orgánico del Ministerio Fiscal. Funciones del fiscal, organización, principios. Preguntas actualizadas para oposiciones de justicia.',
+  'Ley 50/1997': 'Test Ley 50/1997 del Gobierno. Organización, funcionamiento y competencias del Gobierno. Preguntas oficiales para oposiciones administrativas.',
+  'Ley 47/2003': 'Test Ley 47/2003 General Presupuestaria. Régimen presupuestario del sector público, contabilidad pública. Esencial para oposiciones económicas.',
+  'LOTC': 'Test Ley Orgánica del Tribunal Constitucional. Organización, competencias, procedimientos constitucionales. Preguntas para oposiciones jurídicas.',
+  'LO 3/2007': 'Test Ley Orgánica 3/2007 para la Igualdad Efectiva entre Mujeres y Hombres. Principios de igualdad, políticas públicas. Oposiciones sociales.',
+  'LO 3/2018': 'Test Ley Orgánica 3/2018 de Protección de Datos Personales y Garantía de los Derechos Digitales. RGPD español para oposiciones tecnológicas.',
+  'RC': 'Test Reglamento del Congreso de los Diputados. Organización parlamentaria, procedimiento legislativo, grupos parlamentarios. Esencial para oposiciones de Tramitación Procesal.',
+  'RS': 'Test Reglamento del Senado. Organización, funcionamiento y procedimientos de la Cámara Alta. Preguntas oficiales para oposiciones de Cortes Generales.'
+}
+
+function getSEODescription(lawShortName: string, lawName: string): string {
+  return SEO_DESCRIPTIONS[lawShortName] || `Test ${lawName} con preguntas actualizadas de exámenes oficiales. Contenido completo para preparación de oposiciones y estudio jurídico especializado.`
+}
+
 // 🎯 GENERAR METADATA DINÁMICOS CON CANONICAL URL
-export async function generateMetadata({ params }) {
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const resolvedParams = await params
-  let lawInfo = getLawInfo(resolvedParams.law)
-  let lawShortName = mapLawSlugToShortName(resolvedParams.law)
+  const resolved = await resolveLaw(resolvedParams.law)
 
-  // Fallback a BD si el mapping estático no reconoce el slug
-  if (!lawInfo || !lawShortName) {
-    const { getSupabaseClient } = await import('@/lib/supabase')
-    const supabase = getSupabaseClient()
-    const { data } = await supabase
-      .from('laws')
-      .select('short_name, name')
-      .eq('slug', resolvedParams.law)
-      .eq('is_active', true)
-      .single()
-
-    if (data) {
-      lawShortName = data.short_name
-      lawInfo = { shortName: data.short_name, name: data.name }
-    } else {
-      return {
-        title: 'Ley no encontrada | Vence',
-        description: 'La ley solicitada no está disponible',
-      }
+  if (!resolved) {
+    return {
+      title: 'Ley no encontrada | Vence',
+      description: 'La ley solicitada no está disponible',
     }
   }
 
+  const { lawShortName, lawInfo } = resolved
   const canonicalSlug = getCanonicalSlug(lawShortName)
-  
-  // Generar descripción SEO específica para cada ley
-  const generateSEODescription = (lawShortName, lawName) => {
-    const seoDescriptions = {
-      'CE': 'Test de Constitución Española con preguntas de exámenes oficiales. Artículos, derechos fundamentales, organización del Estado. Preparación completa para oposiciones.',
-      'Ley 39/2015': 'Test Ley 39/2015 LPAC - Procedimiento Administrativo Común. Preguntas oficiales sobre tramitación, plazos, recursos administrativos. Esencial para oposiciones.',
-      'Ley 40/2015': 'Test Ley 40/2015 LRJSP - Régimen Jurídico Sector Público. Organización administrativa, competencias, funcionamiento. Preguntas actualizadas para oposiciones.',
-      'Ley 19/2013': 'Test Ley 19/2013 de Transparencia, Acceso a la Información Pública y Buen Gobierno. Preguntas oficiales sobre transparencia administrativa.',
-      'Código Civil': 'Test Código Civil español con preguntas de exámenes oficiales. Personas, bienes, obligaciones, contratos, familia, sucesiones. Derecho civil completo.',
-      'Código Penal': 'Test Código Penal español actualizado. Delitos, penas, responsabilidad penal. Preguntas de exámenes oficiales para oposiciones de justicia.',
-      'Ley 7/1985': 'Test Ley 7/1985 Bases del Régimen Local. Municipios, provincias, competencias locales. Preguntas oficiales para oposiciones de administración local.',
-      'RDL 5/2015': 'Test Estatuto Básico del Empleado Público (TREBEP) - RDL 5/2015. Derechos, deberes, carrera profesional, régimen disciplinario. Esencial para oposiciones públicas.',
-      'Estatuto de los Trabajadores': 'Test Estatuto de los Trabajadores actualizado. Contratos, derechos laborales, jornada, salarios. Preguntas oficiales de derecho laboral.',
-      'TUE': 'Test Tratado de la Unión Europea con preguntas oficiales. Instituciones europeas, principios fundamentales, ciudadanía europea.',
-      'TFUE': 'Test Tratado de Funcionamiento de la UE. Mercado interior, políticas europeas, competencias. Preguntas actualizadas para oposiciones europeas.',
-      'LO 6/1985': 'Test Ley Orgánica del Poder Judicial. Organización judicial, juzgados, tribunales, carrera judicial. Preguntas oficiales para oposiciones de justicia.',
-      'Ley 50/1981': 'Test Estatuto Orgánico del Ministerio Fiscal. Funciones del fiscal, organización, principios. Preguntas actualizadas para oposiciones de justicia.',
-      'Ley 50/1997': 'Test Ley 50/1997 del Gobierno. Organización, funcionamiento y competencias del Gobierno. Preguntas oficiales para oposiciones administrativas.',
-      'Ley 47/2003': 'Test Ley 47/2003 General Presupuestaria. Régimen presupuestario del sector público, contabilidad pública. Esencial para oposiciones económicas.',
-      'LOTC': 'Test Ley Orgánica del Tribunal Constitucional. Organización, competencias, procedimientos constitucionales. Preguntas para oposiciones jurídicas.',
-      'LO 3/2007': 'Test Ley Orgánica 3/2007 para la Igualdad Efectiva entre Mujeres y Hombres. Principios de igualdad, políticas públicas. Oposiciones sociales.',
-      'LO 3/2018': 'Test Ley Orgánica 3/2018 de Protección de Datos Personales y Garantía de los Derechos Digitales. RGPD español para oposiciones tecnológicas.',
-      'RC': 'Test Reglamento del Congreso de los Diputados. Organización parlamentaria, procedimiento legislativo, grupos parlamentarios. Esencial para oposiciones de Tramitación Procesal.',
-      'RS': 'Test Reglamento del Senado. Organización, funcionamiento y procedimientos de la Cámara Alta. Preguntas oficiales para oposiciones de Cortes Generales.'
-    }
-    
-    return seoDescriptions[lawShortName] || `Test ${lawName} con preguntas actualizadas de exámenes oficiales. Contenido completo para preparación de oposiciones y estudio jurídico especializado.`
-  }
 
   return {
     title: `Test ${lawInfo.name} | Vence`,
-    description: generateSEODescription(lawShortName, lawInfo.name),
+    description: getSEODescription(lawShortName, lawInfo.name),
     keywords: [
       `test ${lawInfo.name.toLowerCase()}`,
       'test leyes gratis',
@@ -79,27 +106,24 @@ export async function generateMetadata({ params }) {
       'preguntas oficiales',
       'vence'
     ].join(', '),
-    
-    // 🎯 CANONICAL URL PARA EVITAR CONTENIDO DUPLICADO
+
     alternates: {
       canonical: `/leyes/${canonicalSlug}`
     },
-    
+
     openGraph: {
       title: `Test: ${lawInfo.name} | Vence`,
-      description: generateSEODescription(lawShortName, lawInfo.name),
+      description: getSEODescription(lawShortName, lawInfo.name),
       type: 'website',
       siteName: 'Vence',
-      url: `${SITE_URL}/leyes/${canonicalSlug}` // También canonical en OG
+      url: `${SITE_URL}/leyes/${canonicalSlug}`
     },
-    
-    // 🔍 ROBOTS: Permitir indexación solo si es URL canonical
+
     robots: {
       index: resolvedParams.law === canonicalSlug,
       follow: true
     },
-    
-    // 📊 Información adicional de la ley
+
     authors: [{ name: 'Vence' }],
     creator: 'Vence',
     publisher: 'Vence'
@@ -113,16 +137,16 @@ export async function generateStaticParams() {
 }
 
 // 🔧 COMPONENTE PARA CARGAR ESTADÍSTICAS
-async function LawStatsLoader({ lawShortName }) {
+async function LawStatsLoader({ lawShortName }: { lawShortName: string }) {
   try {
     const stats = await getLawStats(lawShortName)
-    
+
     if (!stats.hasQuestions) {
       return (
         <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
           <h3 className="text-red-800 font-bold mb-2">⚠️ Ley no disponible</h3>
           <p className="text-red-600">No hay preguntas disponibles para esta ley.</p>
-          <Link 
+          <Link
             href="/leyes"
             className="inline-block mt-4 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
           >
@@ -150,50 +174,29 @@ async function LawStatsLoader({ lawShortName }) {
   }
 }
 
-export default async function LawMainPage({ params, searchParams }) {
+export default async function LawMainPage({ params }: PageProps) {
   const resolvedParams = await params
-  let lawShortName = mapLawSlugToShortName(resolvedParams.law)
-  let lawInfo = getLawInfo(resolvedParams.law)
+  const resolved = await resolveLaw(resolvedParams.law)
 
-  // Fallback a BD si el mapping estático no reconoce el slug
-  if (!lawShortName || !lawInfo) {
-    const { getSupabaseClient } = await import('@/lib/supabase')
-    const supabase = getSupabaseClient()
-    const { data } = await supabase
-      .from('laws')
-      .select('short_name, name')
-      .eq('slug', resolvedParams.law)
-      .eq('is_active', true)
-      .single()
-
-    if (data) {
-      lawShortName = data.short_name
-      lawInfo = { shortName: data.short_name, name: data.name }
-    }
-  }
-
-  const canonicalSlug = getCanonicalSlug(lawShortName)
-
-  // Validar que la ley es conocida
-  if (!lawShortName || !lawInfo) {
+  if (!resolved) {
     console.warn('⚠️ Ley no reconocida:', resolvedParams.law)
     notFound()
   }
 
-  // 🎯 VERIFICAR SI ES URL CANONICAL
-  const isCanonicalUrl = resolvedParams.law === canonicalSlug
+  const { lawShortName, lawInfo } = resolved
+  const canonicalSlug = getCanonicalSlug(lawShortName)
+  const isCanonical = resolvedParams.law === canonicalSlug
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
       <ClientBreadcrumbsWrapper />
       <div className="container mx-auto px-4 py-12">
-        
-        {/* 🎯 AVISO DE URL CANONICAL (opcional para UX) */}
-        {!isCanonicalUrl && (
+
+        {!isCanonical && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-8 text-center">
             <p className="text-blue-700">
-              💡 Esta página también está disponible en: 
-              <Link 
+              💡 Esta página también está disponible en:
+              <Link
                 href={`/leyes/${canonicalSlug}`}
                 className="ml-2 font-semibold text-blue-800 hover:underline"
               >
@@ -202,8 +205,6 @@ export default async function LawMainPage({ params, searchParams }) {
             </p>
           </div>
         )}
-
-
 
         {/* Header */}
         <div className="text-center mb-12">
@@ -216,7 +217,6 @@ export default async function LawMainPage({ params, searchParams }) {
             {lawInfo.description}
           </p>
         </div>
-
 
         {/* TEST PERSONALIZADO DE LA LEY */}
         <div className="max-w-4xl mx-auto mb-12">
