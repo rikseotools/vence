@@ -13,14 +13,28 @@ const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
 // 🎯 GENERAR METADATA DINÁMICOS CON CANONICAL URL
 export async function generateMetadata({ params }) {
   const resolvedParams = await params
-  const lawInfo = getLawInfo(resolvedParams.law)
-  const lawShortName = mapLawSlugToShortName(resolvedParams.law)
+  let lawInfo = getLawInfo(resolvedParams.law)
+  let lawShortName = mapLawSlugToShortName(resolvedParams.law)
 
-  // Si la ley no es reconocida, devolver metadata básico (notFound() se maneja en el componente)
+  // Fallback a BD si el mapping estático no reconoce el slug
   if (!lawInfo || !lawShortName) {
-    return {
-      title: 'Ley no encontrada | Vence',
-      description: 'La ley solicitada no está disponible',
+    const { getSupabaseClient } = await import('@/lib/supabase')
+    const supabase = getSupabaseClient()
+    const { data } = await supabase
+      .from('laws')
+      .select('short_name, name')
+      .eq('slug', resolvedParams.law)
+      .eq('is_active', true)
+      .single()
+
+    if (data) {
+      lawShortName = data.short_name
+      lawInfo = { shortName: data.short_name, name: data.name }
+    } else {
+      return {
+        title: 'Ley no encontrada | Vence',
+        description: 'La ley solicitada no está disponible',
+      }
     }
   }
 
@@ -138,10 +152,28 @@ async function LawStatsLoader({ lawShortName }) {
 
 export default async function LawMainPage({ params, searchParams }) {
   const resolvedParams = await params
-  const lawInfo = getLawInfo(resolvedParams.law)
-  const lawShortName = mapLawSlugToShortName(resolvedParams.law)
+  let lawShortName = mapLawSlugToShortName(resolvedParams.law)
+  let lawInfo = getLawInfo(resolvedParams.law)
+
+  // Fallback a BD si el mapping estático no reconoce el slug
+  if (!lawShortName || !lawInfo) {
+    const { getSupabaseClient } = await import('@/lib/supabase')
+    const supabase = getSupabaseClient()
+    const { data } = await supabase
+      .from('laws')
+      .select('short_name, name')
+      .eq('slug', resolvedParams.law)
+      .eq('is_active', true)
+      .single()
+
+    if (data) {
+      lawShortName = data.short_name
+      lawInfo = { shortName: data.short_name, name: data.name }
+    }
+  }
+
   const canonicalSlug = getCanonicalSlug(lawShortName)
-  
+
   // Validar que la ley es conocida
   if (!lawShortName || !lawInfo) {
     console.warn('⚠️ Ley no reconocida:', resolvedParams.law)
