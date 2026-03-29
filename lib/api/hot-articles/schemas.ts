@@ -22,3 +22,28 @@ export type ArticleOfficialExamData = z.infer<typeof articleOfficialExamDataSche
 export function normalizeOposicionSlug(slug: string): string {
   return slug.replace(/_/g, '-')
 }
+
+// Schema for check hot article request
+export const checkHotArticleRequestSchema = z.object({
+  articleId: z.string().uuid(),
+  userOposicion: z.string().min(1),
+  currentOposicion: z.string().min(1),
+})
+
+export type CheckHotArticleRequest = z.infer<typeof checkHotArticleRequestSchema>
+
+export function safeParseCheckHotArticleRequest(data: unknown) {
+  return checkHotArticleRequestSchema.safeParse(data)
+}
+
+// Response type for check hot article
+export interface CheckHotArticleResponse {
+  isHot: boolean
+  hotnessScore: number
+  priorityLevel: string
+  hotMessage: string | null
+  userOposicion: string
+  alsoAppearsInOtherOposiciones: boolean
+  otherOposicionesInfo: Array<{ oposicion: string; apariciones: number; prioridad: string }>
+  curiosityMessage: string | null
+}

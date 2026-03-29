@@ -616,68 +616,44 @@ export default function TestLayout({
   }
 
   // Función para verificar artículos hot
-  const checkHotArticle = async (articleId: string, userId: string, isOfficialExam: boolean = false): Promise<void> => {
-    if (!articleId || !userId) return
+  const checkHotArticle = async (articleId: string, _userId: string, isOfficialExam: boolean = false): Promise<void> => {
+    if (!articleId) return
 
     try {
+      const currentSlug = getOposicionSlugFromPathname(pathname)
+      const res = await fetch(`/api/v2/hot-articles/check?${new URLSearchParams({
+        articleId,
+        userOposicion: userOposicionSlug,
+        currentOposicion: currentSlug,
+      })}`)
 
-      const { data, error } = await supabase.rpc('check_hot_article_for_current_user', {
-        article_id_param: articleId,
-        user_id_param: userId
-      })
+      if (!res.ok) return
+      const result = await res.json()
 
-      if (error) {
-        console.error('Error verificando artículo:', error)
-        return
-      }
-
-      console.log('🔥 Resultado check hot article:', data)
-
-      if (data && data.length > 0 && data[0].is_hot) {
-        const hotData = data[0]
-        console.log('🔥 [DEBUG] Datos del hot article:', hotData)
-        console.log('🔥 [DEBUG] isOfficialExam:', isOfficialExam)
-        console.log('🔥 [DEBUG] Estados ANTES:', { showHotAlert, hotArticleInfo })
-
-        // 🏛️ FILTRO POR OPOSICIÓN: Verificar que el hot article sea de la oposición del usuario
-        if (!isHotArticleForUserOposicion(hotData.target_oposicion, userOposicionSlug)) {
-          console.log('🔥 [FILTRADO] Hot article ignorado - target_oposicion:', hotData.target_oposicion, 'userOposicion:', userOposicionSlug)
-          return
+      if (result.success && result.isHot) {
+        // Mapear respuesta API al formato de HotArticleInfo
+        const hotData = {
+          is_hot: true,
+          hotness_score: result.hotnessScore,
+          priority_level: result.priorityLevel,
+          hot_message: result.hotMessage,
+          target_oposicion: currentSlug,
+          user_oposicion: result.userOposicion,
+          also_appears_in_other_oposiciones: result.alsoAppearsInOtherOposiciones,
+          other_oposiciones_info: result.otherOposicionesInfo,
+          curiosity_message: result.curiosityMessage,
         }
 
-        // Filtrar la oposición actual de la curiosidad (evitar "también aparece en X" cuando ya estás en X)
-        const currentSlug = getOposicionSlugFromPathname(pathname)
-        let filteredCuriosityMessage = hotData.curiosity_message
-        let filteredAlsoAppears = hotData.also_appears_in_other_oposiciones
-        if (currentSlug && filteredCuriosityMessage) {
-          const currentSlugNorm = currentSlug.replace(/-/g, '_')
-          // Si la curiosidad solo menciona la oposición actual, ocultarla
-          if (filteredCuriosityMessage.includes(currentSlugNorm) || filteredCuriosityMessage.includes(currentSlug)) {
-            const otherOpos = Object.keys(hotData.other_oposiciones_info || {}).filter(
-              o => o !== currentSlugNorm && o !== currentSlug && o !== hotData.user_oposicion
-            )
-            if (otherOpos.length === 0) {
-              filteredCuriosityMessage = null
-              filteredAlsoAppears = false
-            }
-          }
-        }
-
-        // Diferentes notificaciones según tipo
         if (isOfficialExam) {
           setHotArticleInfo({
             ...hotData,
-            curiosity_message: filteredCuriosityMessage,
-            also_appears_in_other_oposiciones: filteredAlsoAppears,
             type: 'official_question',
-            hot_message: `🏛️ PREGUNTA DE EXAMEN OFICIAL\n${hotData.hot_message}`,
+            hot_message: `PREGUNTA DE EXAMEN OFICIAL\n${hotData.hot_message}`,
             display_title: '¡Esta pregunta apareció en un examen oficial!'
           })
         } else {
           setHotArticleInfo({
             ...hotData,
-            curiosity_message: filteredCuriosityMessage,
-            also_appears_in_other_oposiciones: filteredAlsoAppears,
             type: 'hot_article',
             display_title: '¡Artículo súper importante para memorizar!'
           })

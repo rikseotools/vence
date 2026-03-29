@@ -1,7 +1,7 @@
 import { getDb } from '@/db/client'
 import { hotArticles, questions } from '@/db/schema'
-import { eq, and, inArray } from 'drizzle-orm'
-import { normalizeOposicionSlug, type ArticleOfficialExamData } from './schemas'
+import { eq, and, ne, inArray } from 'drizzle-orm'
+import { normalizeOposicionSlug, type ArticleOfficialExamData, type CheckHotArticleRequest, type CheckHotArticleResponse } from './schemas'
 
 /**
  * Get official exam data for a single article, filtered by oposicion.
@@ -133,4 +133,106 @@ function extractFromBreakdown(breakdown: unknown, key: string): string[] {
   const value = obj[key]
   if (Array.isArray(value)) return value.filter((v): v is string => typeof v === 'string')
   return []
+}
+
+/**
+ * Check if an article is "hot" for a given oposición.
+ * Replaces the old RPC function check_hot_article_for_current_user.
+ *
+ * Key improvement: receives currentOposicion (from URL) to correctly
+ * exclude it from "other oposiciones" in the curiosity message.
+ */
+export async function checkHotArticle(
+  params: CheckHotArticleRequest
+): Promise<CheckHotArticleResponse> {
+  const db = getDb()
+  const userOpo = normalizeOposicionSlug(params.userOposicion)
+  const currentOpo = normalizeOposicionSlug(params.currentOposicion)
+
+  // 1. Buscar hot article para la oposición del usuario
+  const [row] = await db
+    .select()
+    .from(hotArticles)
+    .where(
+      and(
+        eq(hotArticles.articleId, params.articleId),
+        eq(hotArticles.targetOposicion, userOpo)
+      )
+    )
+    .orderBy(hotArticles.hotnessScore)
+    .limit(1)
+
+  if (!row) {
+    return {
+      isHot: false,
+      hotnessScore: 0,
+      priorityLevel: 'none',
+      hotMessage: null,
+      userOposicion: params.userOposicion,
+      alsoAppearsInOtherOposiciones: false,
+      otherOposicionesInfo: [],
+      curiosityMessage: null,
+    }
+  }
+
+  // 2. Construir mensaje según prioridad
+  const appearances = row.totalOfficialAppearances ?? 0
+  let hotMessage: string
+  switch (row.priorityLevel) {
+    case 'critical':
+      hotMessage = `ARTÍCULO SÚPER CRÍTICO: Apareció en ${appearances} exámenes oficiales reales. ¡Memorízalo perfecto!`
+      break
+    case 'high':
+      hotMessage = `ARTÍCULO MUY IMPORTANTE: Apareció en ${appearances} exámenes oficiales. Estudia bien este tema.`
+      break
+    case 'medium':
+      hotMessage = `ARTÍCULO IMPORTANTE: Apareció en ${appearances} exámenes oficiales. Vale la pena conocerlo bien.`
+      break
+    default:
+      hotMessage = `Artículo de interés: Apareció en ${appearances} exámenes oficiales.`
+  }
+
+  // 3. Buscar otras oposiciones, excluyendo AMBAS: la del usuario Y la actual (URL)
+  const excludeSlugs = new Set([userOpo, currentOpo, row.targetOposicion])
+  const otherRows = await db
+    .select({
+      targetOposicion: hotArticles.targetOposicion,
+      totalOfficialAppearances: hotArticles.totalOfficialAppearances,
+      priorityLevel: hotArticles.priorityLevel,
+    })
+    .from(hotArticles)
+    .where(
+      and(
+        eq(hotArticles.articleId, params.articleId),
+        ne(hotArticles.targetOposicion, row.targetOposicion ?? '')
+      )
+    )
+
+  // Filtrar en TypeScript las que coinciden con la oposición actual
+  const otherOposiciones = otherRows.filter(
+    r => !excludeSlugs.has(r.targetOposicion ?? '')
+  )
+
+  const otherInfo = otherOposiciones.map(r => ({
+    oposicion: r.targetOposicion ?? '',
+    apariciones: r.totalOfficialAppearances ?? 0,
+    prioridad: r.priorityLevel ?? 'low',
+  }))
+
+  let curiosityMessage: string | null = null
+  if (otherInfo.length > 0) {
+    const names = otherInfo.map(o => o.oposicion).join(', ')
+    curiosityMessage = `CURIOSIDAD: Este artículo también es importante en ${otherInfo.length} oposiciones más: ${names}`
+  }
+
+  return {
+    isHot: true,
+    hotnessScore: Number(row.hotnessScore) || 0,
+    priorityLevel: row.priorityLevel ?? 'low',
+    hotMessage,
+    userOposicion: params.userOposicion,
+    alsoAppearsInOtherOposiciones: otherInfo.length > 0,
+    otherOposicionesInfo: otherInfo,
+    curiosityMessage,
+  }
 }

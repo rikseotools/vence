@@ -59,7 +59,7 @@ const HTML_EXPLANATION_REGEX = '(<p>|<p |</p>|<strong>|</strong>|<br>|<br/>|<br 
 // eslint-disable-next-line no-useless-escape
 const EXCEL_TYPO_REGEX = '(?i)(\\mSIERROR\\M|\\mCONTARSI\\M|\\mSUMARSI\\M)'
 
-const BANNED_REGEX = '(?i)(oposita\\s*[-_.]?\\s*test|opositest|oposistatest|opossita|opositatets|opostia|opsita|opositatestt|opositates[^t]|oposiitatest|oppositatest|opoositatest|opositattest|opositateest|opositatesst|0positatest|opositat3st|op0sitatest|0p0sitatest|opos1tatest|oposi7atest|oposita7est|opositat€st|o[-._]p[-._]o[-._]s[-._]i[-._]t[-._]a[-._]t[-._]e[-._]s[-._]t)'
+const BANNED_REGEX = '(?i)(oposita\\s*[-_./@*]?\\s*test|opositest|oposistatest|opossita|opositatets|opostia|opsita|opositatestt|opositates[^t]|oposiitatest|oppositatest|opoositatest|opositattest|opositateest|opositatesst|0positatest|opositat3st|op0sitatest|0p0sitatest|opos1tatest|oposi7atest|oposita7est|opositat€st|o[-_./@* ]p[-_./@* ]o[-_./@* ]s[-_./@* ]i[-_./@* ]t[-_./@* ]a[-_./@* ]t[-_./@* ]e[-_./@* ]s[-_./@* ]t)'
 
 function truncate(text: string): string {
   return text.length > TEXT_LIMIT ? text.slice(0, TEXT_LIMIT) + '...' : text
