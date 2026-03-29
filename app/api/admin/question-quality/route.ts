@@ -128,6 +128,7 @@ async function runCountsOnly(): Promise<number> {
         AND q.explanation NOT ILIKE '%pendiente de explicacion%'
         AND q.explanation NOT LIKE '%>%'
         AND q.explanation !~* '(Art[íi]culo|\\mArt\\.)'
+        AND a.article_number NOT IN ('0', '00', 'preámbulo', 'Preámbulo', 'General', 'Retos', 'I', 'II', 'III', 'IV')
     ),
     similarity_count AS (
       SELECT count(*)::int as copied
@@ -384,6 +385,7 @@ async function runChecks(): Promise<QualityResponse> {
         AND q.explanation NOT ILIKE '%pendiente de explicacion%'
         AND q.explanation NOT LIKE '%>%'
         AND q.explanation !~* '(Art[íi]culo|\\mArt\\.)'
+        AND a.article_number NOT IN ('0', '00', 'preámbulo', 'Preámbulo', 'General', 'Retos', 'I', 'II', 'III', 'IV')
       ORDER BY LENGTH(q.explanation) ASC
       LIMIT ${MAX_ITEMS}
     `),
