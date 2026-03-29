@@ -321,6 +321,10 @@ export async function sendEmailV2(params: SendEmailRequest): Promise<SendEmailRe
     const mejoraDatos = (customData.mejoraDatos as Record<string, unknown>) || {}
     subject = template.subject(userName, mejoraDatos.titulo)
     html = template.html(userName, daysInactive, testUrl, unsubscribeUrl, mejoraDatos)
+  } else if (emailType === 'nueva_oposicion') {
+    const datos = (customData.oposicionDatos as Record<string, unknown>) || {}
+    subject = template.subject(userName, 0)
+    html = template.html(userName, 0, testUrl, unsubscribeUrl, datos)
   } else {
     subject = template.subject(userName, daysInactive)
     html = template.html(userName, daysInactive, testUrl, unsubscribeUrl)

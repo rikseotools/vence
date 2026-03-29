@@ -47,6 +47,7 @@ export const EMAIL_TYPES = [
   // Templates sin categoría de preferencia (admin/internal)
   'modal_articulos_mejora',
   'mejoras_producto',
+  'nueva_oposicion',
   'lanzamiento_premium',
   'recordatorio_renovacion',
   'pago_fallido',
@@ -79,6 +80,7 @@ export const EMAIL_TYPE_TO_CATEGORY: Record<EmailType, EmailCategory> = {
   // Marketing (sin toggle individual, bloqueados por unsubscribed_all)
   modal_articulos_mejora: 'marketing',
   mejoras_producto: 'marketing',
+  nueva_oposicion: 'marketing',
   lanzamiento_premium: 'marketing',
   // Transaccional (aviso de cobro/pago, no bloqueado por unsubscribed_all)
   recordatorio_renovacion: 'soporte',

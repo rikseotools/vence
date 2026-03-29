@@ -32,6 +32,12 @@ const BroadcastRequestSchema = z.object({
   message: z.string().min(1, 'Mensaje requerido'),
   channels: z.array(z.enum(['email', 'push'])).min(1, 'Al menos un canal'),
   testMode: z.boolean().default(false),
+  oposicionDatos: z.object({
+    plazas: z.string().optional(),
+    temas: z.string().optional(),
+    preguntas: z.string().optional(),
+    features: z.array(z.string()).optional(),
+  }).optional(),
 }).refine(data => data.oposicion || data.region, {
   message: 'Se requiere oposicion o region (o ambos)',
 })
@@ -147,13 +153,13 @@ async function _POST(request: NextRequest) {
 
         await sendEmailV2({
           userId: targetUser.id,
-          emailType: 'mejoras_producto',
+          emailType: 'nueva_oposicion',
           customData: {
-            mejoraDatos: {
-              titulo: subject,
-              descripcion: message,
-              ctaTexto: 'Ir a la app',
-              ctaUrl: `https://www.vence.es/${oposicion || ''}/test`,
+            oposicionDatos: {
+              nombreOposicion: subject,
+              comunidad: (oposicion || region || '').replace(/-/g, ' '),
+              slug: oposicion || '',
+              ...((parsed.data as Record<string, unknown>).oposicionDatos as Record<string, unknown> || {}),
             },
           },
         })

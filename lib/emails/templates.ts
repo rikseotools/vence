@@ -544,6 +544,62 @@ export const emailTemplates: Record<string, { subject: (...args: any[]) => strin
     }
   },
 
+  nueva_oposicion: {
+    subject: (_userName: string, _daysInactive: number) => `Nueva oposicion disponible en Vence.es`,
+    html: (userName: string, _daysInactive: number, testUrl: string, unsubscribeUrl: string, datos: Record<string, unknown> = {}) => {
+      const {
+        nombreOposicion = 'Nueva Oposicion',
+        plazas = '',
+        temas = '',
+        preguntas = '',
+        slug = '',
+        texto = '',
+      } = datos
+
+      const ctaUrl = slug ? `https://www.vence.es/${slug}/test?utm_source=email&utm_campaign=nueva_oposicion` : testUrl
+      const cuerpo = texto || `Ya puedes preparar la oposicion de <strong>${nombreOposicion}</strong> en Vence.es.${plazas ? ` Se han convocado ${plazas} plazas.` : ''}${temas ? ` Tienes ${temas} temas disponibles.` : ''}`
+
+      return `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #2563eb; margin: 0;">Vence.es</h1>
+            <p style="color: #6b7280; margin: 5px 0;">Plataforma de oposiciones</p>
+          </div>
+
+          <h2 style="color: #1f2937;">Hola ${userName},</h2>
+
+          <p style="font-size: 16px; line-height: 1.6; color: #374151;">
+            ${cuerpo}
+          </p>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${ctaUrl}" style="display: inline-block; background: #2563eb; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
+              Empezar a practicar
+            </a>
+          </div>
+
+          <p style="font-size: 14px; line-height: 1.6; color: #6b7280;">
+            Si tienes alguna duda, responde a este email.
+          </p>
+
+          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
+
+          <div style="color: #6b7280; font-size: 12px; text-align: center;">
+            <p>Este email se envio porque estas registrado en Vence.es.</p>
+            <p>
+              Si no quieres recibir estos emails, puedes
+              <a href="${unsubscribeUrl}" style="color: #2563eb;">gestionar tus preferencias aqui</a>.
+            </p>
+            <p style="margin-top: 15px;">
+              Vence.es - Plataforma de oposiciones<br>
+              <a href="mailto:info@vence.es" style="color: #6b7280;">info@vence.es</a>
+            </p>
+          </div>
+        </div>
+      `
+    }
+  },
+
   soporte_respuesta: {
     subject: () => `💬 El equipo de Vence te ha respondido`,
     html: (userName, adminMessage, chatUrl, unsubscribeUrl) => {
@@ -820,7 +876,7 @@ export const emailTemplates: Record<string, { subject: (...args: any[]) => strin
             <a href="${unsubscribeUrl}" style="color: #2563eb;">gestionar tus preferencias aquí</a>.
           </p>
           <p style="margin-top: 15px;">
-            Vence.es - Preparación de Oposiciones<br>
+            Vence.es - Plataforma de oposiciones<br>
             <a href="mailto:info@vence.es" style="color: #6b7280;">info@vence.es</a>
           </p>
         </div>
