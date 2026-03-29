@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useAuth } from '../contexts/AuthContext'
 import { usePathname } from 'next/navigation'
 import MarkdownExplanation from './MarkdownExplanation'
-import { generateLawSlug } from '@/lib/lawMappingUtils'
+import { useLawSlugs } from '@/contexts/LawSlugContext'
 import { getOposicionSlugFromPathname } from '@/lib/config/oposiciones'
 import { validateExam, type ValidatedResults, type ValidatedQuestionResult } from '@/lib/api/exam/client'
 import { ApiTimeoutError, ApiNetworkError } from '@/lib/api/client'
@@ -352,6 +352,7 @@ export default function ExamLayout({
     recordAnswer,
     refreshStatus
   } = useDailyQuestionLimit()
+  const { getSlug: generateLawSlug } = useLawSlugs()
 
   // Estados del examen
   const [userAnswers, setUserAnswers] = useState<UserAnswers>(initialAnswers || {})

@@ -7,13 +7,21 @@ export {
   lawShortNameSchema,
   LawSlugMappingSchema,
   LawWithCountsSchema,
+  LawResolvedSchema,
+  LawInfoSchema,
   GetLawsWithCountsResponseSchema,
+  SlugMappingEntrySchema,
+  SlugMappingResponseSchema,
   // Types
   type LawSlug,
   type LawShortName,
   type LawSlugMapping,
   type LawWithCounts,
+  type LawResolved,
+  type LawInfo,
   type GetLawsWithCountsResponse,
+  type SlugMappingEntry,
+  type SlugMappingResponse,
   type SlugMappingCache,
   // Constants
   SLUG_CACHE_TTL_MS,
@@ -22,10 +30,19 @@ export {
 
 // Queries
 export {
-  // Slug mapping (nuevo)
+  // Resolución de leyes (API principal)
+  resolveLawBySlug,
+  getLawInfoBySlug,
+  getCanonicalSlugAsync,
+  // Slug mapping
   getShortNameBySlug,
   getSlugByShortName,
   generateSlugFromShortName,
+  getAllActiveSlugs,
+  getSlugMappingForApi,
+  // Normalización
+  normalizeLawShortName,
+  // Cache management
   invalidateSlugCache,
   loadSlugMappingCache,
   // Laws with counts
@@ -33,6 +50,6 @@ export {
   getLawsBasic,
 } from './queries'
 
-// Cache warming: importar desde '@/lib/api/laws/warmCache'
+// Cache warming (Supabase-based, para fetchers que no pueden usar Drizzle):
+// import { warmSlugCache } from '@/lib/api/laws/warmCache'
 // No se re-exporta aquí para evitar incluir Supabase en imports que solo necesitan tipos.
-// Uso: import { warmSlugCache } from '@/lib/api/laws/warmCache'

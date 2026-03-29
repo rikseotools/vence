@@ -5,6 +5,8 @@ import GoogleAnalytics from '../components/GoogleAnalytics'
 import { AuthProvider } from '../contexts/AuthContext'
 import { QuestionProvider } from '../contexts/QuestionContext'
 import { OposicionProvider } from '../contexts/OposicionContext'
+import { LawSlugProvider } from '../contexts/LawSlugContext'
+import { getSlugMappingForApi } from '@/lib/api/laws'
 import AIChatWidget from '../components/AIChatWidget'
 import GoogleOneTapWrapper from '../components/GoogleOneTapWrapper'
 import SentryInit from '../components/SentryInit'
@@ -12,7 +14,15 @@ import FraudTracker from '../components/FraudTracker'
 import { GlobalClickTracker, PageViewTracker } from '../components/tracking'
 import CookieBanner, { CookieConsentProvider } from '../components/CookieConsent'
 
-export default function SpanishLayout({ children }: { children: React.ReactNode }) {
+export default async function SpanishLayout({ children }: { children: React.ReactNode }) {
+  // Precargar mapping slug↔shortName para client components (cacheado en memoria 1h)
+  let lawMappings: Awaited<ReturnType<typeof getSlugMappingForApi>> = []
+  try {
+    lawMappings = await getSlugMappingForApi()
+  } catch (error) {
+    console.warn('⚠️ [Layout] No se pudo cargar mapping de leyes:', error)
+  }
+
   return (
     <html lang="es">
       <head />
@@ -21,6 +31,7 @@ export default function SpanishLayout({ children }: { children: React.ReactNode 
         <CookieConsentProvider>
           <AuthProvider initialUser={null}>
             <OposicionProvider>
+              <LawSlugProvider initialMappings={lawMappings}>
               <QuestionProvider>
                 <GlobalClickTracker>
                   <Suspense fallback={null}>
@@ -38,6 +49,7 @@ export default function SpanishLayout({ children }: { children: React.ReactNode 
                   <FraudTracker />
                 </GlobalClickTracker>
               </QuestionProvider>
+              </LawSlugProvider>
             </OposicionProvider>
           </AuthProvider>
           <CookieBanner />

@@ -24,11 +24,11 @@ jest.mock('@/lib/supabase', () => ({
   })),
 }))
 
-// Mock lawMappingUtils
+// Mock lawSlugSync
 const mockMapSlug = jest.fn()
-jest.mock('@/lib/lawMappingUtils', () => ({
-  mapLawSlugToShortName: (...args: unknown[]) => mockMapSlug(...args),
-  generateLawSlug: jest.fn((s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-')),
+jest.mock('@/lib/lawSlugSync', () => ({
+  mapSlugToShortName: (...args: unknown[]) => mockMapSlug(...args),
+  generateSlug: jest.fn((s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-')),
   getCanonicalSlug: jest.fn((s: string) => s?.toLowerCase().replace(/[^a-z0-9]+/g, '-')),
 }))
 

@@ -6,7 +6,7 @@ import {
   getRelatedArticles,
   getLawBasicInfo,
 } from '@/lib/api/teoria'
-import { getLawInfo, mapLawSlugToShortName } from '@/lib/lawMappingUtils'
+import { getShortNameBySlug, getLawInfoBySlug } from '@/lib/api/laws'
 import Link from 'next/link'
 import { ArrowLeftIcon } from '@heroicons/react/24/outline'
 import type { Metadata } from 'next'
@@ -36,8 +36,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 
   // Obtener info de ley (cacheado)
-  const shortName = mapLawSlugToShortName(lawSlug)
-  const lawInfo = shortName ? getLawInfo(shortName) : null
+  const shortName = await getShortNameBySlug(lawSlug)
+  const lawInfo = await getLawInfoBySlug(lawSlug)
 
   // Intentar obtener título del artículo (cacheado)
   let articleTitle = `Artículo ${articleNumber}`

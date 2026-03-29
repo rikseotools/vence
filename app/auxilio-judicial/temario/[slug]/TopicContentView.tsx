@@ -5,7 +5,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import type { TopicContent, LawWithArticles, Article } from '@/lib/api/temario/schemas'
 import { useAuth } from '@/contexts/AuthContext'
-import { getCanonicalSlug } from '@/lib/lawMappingUtils'
+import { useLawSlugs } from '@/contexts/LawSlugContext'
 import { isVirtualLaw } from '@/lib/isVirtualLaw'
 import VideoCourseBanner from '@/components/VideoCourseBanner'
 import TopicNavFooter from '@/components/TopicNavFooter'
@@ -37,6 +37,7 @@ function getBlockInfo(topicNumber: number): { block: string; displayNum: number 
 }
 
 export default function TopicContentView({ content, oposicion = 'auxilio-judicial' }: TopicContentViewProps) {
+  const { getSlug } = useLawSlugs()
   const [expandedLaws, setExpandedLaws] = useState<Set<string>>(
     new Set()
   )
@@ -334,6 +335,7 @@ export default function TopicContentView({ content, oposicion = 'auxilio-judicia
 
 // Virtual law card - simplified display without accordion for non-legislative content
 function VirtualLawCard({ lawData }: { lawData: LawWithArticles }) {
+  const { getSlug } = useLawSlugs()
   const { law, articleCount } = lawData
   return (
     <section className="no-print rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
@@ -347,7 +349,7 @@ function VirtualLawCard({ lawData }: { lawData: LawWithArticles }) {
           </p>
         </div>
         <Link
-          href={`/leyes/${getCanonicalSlug(law.shortName)}`}
+          href={`/leyes/${getSlug(law.shortName)}`}
           className="inline-flex items-center gap-1 px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
         >
           Hacer test
@@ -369,6 +371,7 @@ interface LawSectionProps {
 }
 
 function LawSection({ lawData, isExpanded, onToggle, isFirst }: LawSectionProps) {
+  const { getSlug } = useLawSlugs()
   const { law, articles } = lawData
   const officialCount = articles.filter(a => a.officialQuestionCount > 0).length
 
@@ -412,7 +415,7 @@ function LawSection({ lawData, isExpanded, onToggle, isFirst }: LawSectionProps)
       {/* Enlace a test - siempre visible */}
       <div className="no-print flex justify-end mt-1 -mb-1">
         <Link
-          href={`/leyes/${getCanonicalSlug(law.shortName)}`}
+          href={`/leyes/${getSlug(law.shortName)}`}
           className="text-sm text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 hover:underline"
         >
           Hacer test de {law.shortName} →
@@ -443,6 +446,7 @@ function LawSection({ lawData, isExpanded, onToggle, isFirst }: LawSectionProps)
 
 // Article card component
 function ArticleCard({ article, lawShortName }: { article: Article; lawShortName: string }) {
+  const { getSlug } = useLawSlugs()
   const hasOfficialQuestions = article.officialQuestionCount > 0
 
   const formatContent = (content: string | null) => {
@@ -514,7 +518,7 @@ function ArticleCard({ article, lawShortName }: { article: Article; lawShortName
       {article.questionCount > 0 && (
       <div className="no-print px-4 pb-4 flex justify-end">
         <Link
-          href={`/leyes/${getCanonicalSlug(lawShortName)}?selected_articles=${article.articleNumber}&source=temario`}
+          href={`/leyes/${getSlug(lawShortName)}?selected_articles=${article.articleNumber}&source=temario`}
           onClick={() => {
             // Store current URL for "Volver a mi temario" button
             if (typeof window !== 'undefined') {

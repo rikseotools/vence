@@ -8,7 +8,7 @@ import TestConfigurator from '@/components/TestConfigurator'
 import { buildTestUrl } from '@/lib/test-url/buildTestUrl'
 import type { TestStartConfig } from '@/components/TestConfigurator.types'
 import ArticleModal from '@/components/ArticleModal'
-import { generateLawSlug } from '@/lib/lawMappingUtils'
+import { useLawSlugs } from '@/contexts/LawSlugContext'
 import { safeParseGetTopicDataResponse, type GetTopicDataResponse } from '@/lib/api/topic-data/schemas'
 
 const supabase = getSupabaseClient()
@@ -105,6 +105,7 @@ interface RecomendacionCardProps {
 }
 
 export default function TemaPage({ params }: PageProps) {
+  const { getSlug: generateLawSlug } = useLawSlugs()
   // Estados principales
   const [resolvedParams, setResolvedParams] = useState<{ numero: string } | null>(null)
   const [temaNumber, setTemaNumber] = useState<number | null>(null)

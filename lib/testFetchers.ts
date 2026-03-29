@@ -1,6 +1,6 @@
 // lib/testFetchers.ts - FETCHERS MODULARES PARA TODOS LOS TIPOS DE TEST - CON SOPORTE MULTI-LEY
 import { getSupabaseClient } from './supabase'
-import { mapLawSlugToShortName } from './lawMappingUtils'
+import { mapSlugToShortName as mapLawSlugToShortName } from './lawSlugSync'
 import { getValidExamPositions, applyExamPositionFilter } from './config/exam-positions'
 import { isDisposicionArticle } from './boe-extractor'
 

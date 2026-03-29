@@ -6,7 +6,7 @@ import { getSupabaseClient } from '../../../../lib/supabase'
 import ExamLayout from '../../../../components/ExamLayout'
 import ExamLoadingIndicator from '../../../../components/ExamLoadingIndicator'
 import { fetchAleatorioMultiTema } from '../../../../lib/testFetchers'
-import { normalizeLawShortName } from '../../../../lib/lawMappingUtils'
+import { useLawSlugs } from '@/contexts/LawSlugContext'
 import { slugToPositionType } from '@/lib/config/oposiciones'
 import { getValidExamPositions } from '@/lib/config/exam-positions'
 
@@ -15,6 +15,7 @@ const POSITION_TYPE = slugToPositionType('auxiliar-administrativo-estado')
 const EXAM_POSITION_VALUES = getValidExamPositions(POSITION_TYPE)
 
 function TestAleatorioExamenContent() {
+  const { normalizeName } = useLawSlugs()
   const searchParams = useSearchParams()
   const [questions, setQuestions] = useState([])
   const [loading, setLoading] = useState(true)
@@ -122,7 +123,7 @@ function TestAleatorioExamenContent() {
       for (const mapping of mappings) {
         mappingIndex++
         // Normalizar el nombre de la ley usando nuestra función centralizada
-        const normalizedLawName = normalizeLawShortName(mapping.laws?.short_name)
+        const normalizedLawName = normalizeName(mapping.laws?.short_name)
         console.log(`\n🔍 Procesando mapeo ${mappingIndex}/${mappings.length}: ${mapping.laws?.short_name}${normalizedLawName !== mapping.laws?.short_name ? ` → ${normalizedLawName}` : ''}`)
 
         // Actualizar progreso con la ley actual

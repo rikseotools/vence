@@ -3,7 +3,7 @@
 
 import type { DetectedPattern, PatternType } from '../../core/types'
 import { logger } from '../../shared/logger'
-import { mapLawSlugToShortName } from '@/lib/lawMappingUtils'
+import { mapSlugToShortName as mapLawSlugToShortName } from '@/lib/lawSlugSync'
 
 // ============================================
 // DEFINICIÓN DE PATRONES

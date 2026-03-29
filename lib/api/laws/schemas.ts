@@ -40,13 +40,49 @@ export const LawWithCountsSchema = z.object({
 })
 
 // ============================================
-// SCHEMAS DE RESPUESTA
+// SCHEMAS DE RESOLUCIÓN DE LEYES
+// ============================================
+
+/** Ley resuelta desde BD - resultado de resolveLawBySlug */
+export const LawResolvedSchema = z.object({
+  id: z.string().uuid(),
+  shortName: z.string(),
+  slug: z.string(),
+  name: z.string(),
+  description: z.string().nullable(),
+  year: z.number().nullable(),
+  type: z.string(),
+})
+
+/** Info básica de una ley (compatible con LawInfo de lawMappingUtils) */
+export const LawInfoSchema = z.object({
+  name: z.string(),
+  description: z.string(),
+})
+
+// ============================================
+// SCHEMAS DE RESPUESTA API
 // ============================================
 
 export const GetLawsWithCountsResponseSchema = z.object({
   success: z.boolean(),
   laws: z.array(LawWithCountsSchema).optional(),
   error: z.string().optional(),
+})
+
+/** Entrada individual del mapping slug ↔ shortName para el endpoint /api/v2/law-slugs */
+export const SlugMappingEntrySchema = z.object({
+  slug: z.string(),
+  shortName: z.string(),
+  name: z.string(),
+  description: z.string().nullable(),
+})
+
+/** Respuesta del endpoint /api/v2/law-slugs */
+export const SlugMappingResponseSchema = z.object({
+  success: z.literal(true),
+  mappings: z.array(SlugMappingEntrySchema),
+  count: z.number(),
 })
 
 // ============================================
@@ -58,10 +94,16 @@ export type GetLawsWithCountsResponse = z.infer<typeof GetLawsWithCountsResponse
 export type LawSlug = z.infer<typeof lawSlugSchema>
 export type LawShortName = z.infer<typeof lawShortNameSchema>
 export type LawSlugMapping = z.infer<typeof LawSlugMappingSchema>
+export type LawResolved = z.infer<typeof LawResolvedSchema>
+export type LawInfo = z.infer<typeof LawInfoSchema>
+export type SlugMappingEntry = z.infer<typeof SlugMappingEntrySchema>
+export type SlugMappingResponse = z.infer<typeof SlugMappingResponseSchema>
 
 // Cache structure
 export interface SlugMappingCache {
   slugToShortName: Map<string, string>
   shortNameToSlug: Map<string, string>
+  /** Full law data indexed by slug for rich resolution */
+  lawsBySlug: Map<string, LawResolved>
   loadedAt: Date
 }

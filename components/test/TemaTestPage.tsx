@@ -11,7 +11,7 @@ import type { TestStartConfig } from '@/components/TestConfigurator.types'
 import InteractiveBreadcrumbs from '@/components/InteractiveBreadcrumbs'
 import ArticleModal from '@/components/ArticleModal'
 import ArticulosEstudioPrioritario from '@/components/test/ArticulosEstudioPrioritario'
-import { generateLawSlug } from '@/lib/lawMappingUtils'
+import { useLawSlugs } from '@/contexts/LawSlugContext'
 import { getOposicion, getBlockForTopic, type Block } from '@/lib/config/oposiciones'
 import { safeParseGetTopicDataResponse, type GetTopicDataResponse } from '@/lib/api/topic-data/schemas'
 
@@ -42,6 +42,7 @@ interface TemaTestPageProps {
 }
 
 export default function TemaTestPage({ oposicionSlug, params }: TemaTestPageProps) {
+  const { getSlug: generateLawSlug } = useLawSlugs()
   const config = getOposicion(oposicionSlug)
 
   const [temaNumber, setTemaNumber] = useState<number | null>(null)

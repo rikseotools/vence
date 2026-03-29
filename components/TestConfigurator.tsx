@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import SectionFilterModal from './SectionFilterModal';
 import { fetchLawSections } from '../lib/teoriaFetchers';
-import { getCanonicalSlug } from '../lib/lawMappingUtils';
+import { useLawSlugs } from '@/contexts/LawSlugContext';
 import { getOposicionByPositionType } from '@/lib/config/oposiciones';
 
 function getOposicionName(positionType: string): string {
@@ -46,6 +46,8 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
   const [showOfficialQuestionsModal, setShowOfficialQuestionsModal] = useState(false);
   const [showEssentialArticlesInfoModal, setShowEssentialArticlesInfoModal] = useState(false);
   
+  const { getSlug: getCanonicalSlug } = useLawSlugs();
+
   // Estados de dificultad
   const [difficultyMode, setDifficultyMode] = useState('random');
   

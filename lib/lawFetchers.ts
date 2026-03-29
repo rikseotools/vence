@@ -1,6 +1,6 @@
 // lib/lawFetchers.ts - FETCHERS ESPECÍFICOS PARA TESTS POR LEY
 import { getSupabaseClient } from './supabase'
-import { mapLawSlugToShortName } from './lawMappingUtils'
+import { mapSlugToShortName as mapLawSlugToShortName } from './lawSlugSync'
 import { applyExamPositionFilter } from './config/exam-positions'
 import { isDisposicionArticle } from './boe-extractor'
 

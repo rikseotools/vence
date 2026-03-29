@@ -3,7 +3,7 @@ import { getDb } from '@/db/client'
 import { articles, laws } from '@/db/schema'
 import { eq, and, ne, isNotNull, sql } from 'drizzle-orm'
 import { unstable_cache } from 'next/cache'
-import { mapLawSlugToShortName, generateLawSlug } from '@/lib/lawMappingUtils'
+import { getShortNameBySlug, generateSlugFromShortName } from '@/lib/api/laws'
 import type {
   ArticleDetail,
   ArticleNavigation,
@@ -59,7 +59,7 @@ async function getArticleContentInternal(
   articleNumber: number
 ): Promise<ArticleDetail | null> {
   const db = getDb()
-  const lawShortName = mapLawSlugToShortName(lawSlug)
+  const lawShortName = await getShortNameBySlug(lawSlug)
 
   if (!lawShortName) return null
 
@@ -116,7 +116,7 @@ async function getArticleContentInternal(
           shortName: row.lawShortName,
           name: row.lawName,
           description: row.lawDescription,
-          slug: generateLawSlug(row.lawShortName),
+          slug: generateSlugFromShortName(row.lawShortName),
         },
       }
     }
@@ -140,7 +140,7 @@ async function getArticleContentInternal(
       shortName: row.lawShortName,
       name: row.lawName,
       description: row.lawDescription,
-      slug: generateLawSlug(row.lawShortName),
+      slug: generateSlugFromShortName(row.lawShortName),
     },
   }
 }
@@ -163,7 +163,7 @@ async function getArticleNavigationInternal(
   lawSlug: string
 ): Promise<ArticleNavigation> {
   const db = getDb()
-  const lawShortName = mapLawSlugToShortName(lawSlug)
+  const lawShortName = await getShortNameBySlug(lawSlug)
 
   if (!lawShortName) return { articleNumbers: [], totalCount: 0 }
 
@@ -215,7 +215,7 @@ async function getRelatedArticlesInternal(
   limit = 3
 ): Promise<RelatedArticle[]> {
   const db = getDb()
-  const lawShortName = mapLawSlugToShortName(lawSlug)
+  const lawShortName = await getShortNameBySlug(lawSlug)
 
   if (!lawShortName) return []
 
@@ -252,7 +252,7 @@ async function getRelatedArticlesInternal(
     articleNumber: row.articleNumber,
     title: row.title,
     contentPreview: extractContentPreview(row.content),
-    lawSlug: generateLawSlug(row.lawShortName),
+    lawSlug: generateSlugFromShortName(row.lawShortName),
   }))
 }
 
@@ -272,7 +272,7 @@ async function getLawBasicInfoInternal(
   lawSlug: string
 ): Promise<LawBasic | null> {
   const db = getDb()
-  const lawShortName = mapLawSlugToShortName(lawSlug)
+  const lawShortName = await getShortNameBySlug(lawSlug)
 
   if (!lawShortName) return null
 
@@ -296,7 +296,7 @@ async function getLawBasicInfoInternal(
 
   return {
     ...result[0],
-    slug: generateLawSlug(result[0].shortName),
+    slug: generateSlugFromShortName(result[0].shortName),
   }
 }
 

@@ -6,7 +6,7 @@ import { useSearchParams } from 'next/navigation'
 import { getSupabaseClient } from '@/lib/supabase'
 import ExamLayout from '@/components/ExamLayout'
 import ExamLoadingIndicator from '@/components/ExamLoadingIndicator'
-import { normalizeLawShortName } from '@/lib/lawMappingUtils'
+import { useLawSlugs } from '@/contexts/LawSlugContext'
 import { OPOSICION_BLOCKS_CONFIG } from '@/lib/api/random-test/schemas'
 import { slugToPositionType } from '@/lib/config/oposiciones'
 
@@ -60,6 +60,7 @@ interface Question {
 }
 
 function TestAleatorioExamenContent() {
+  const { normalizeName } = useLawSlugs()
   const searchParams = useSearchParams()
   const [questions, setQuestions] = useState<Question[]>([])
   const [loading, setLoading] = useState(true)
@@ -132,7 +133,7 @@ function TestAleatorioExamenContent() {
 
       for (const mapping of mappings) {
         mappingIndex++
-        const normalizedLawName = normalizeLawShortName(mapping.laws?.short_name || '')
+        const normalizedLawName = normalizeName(mapping.laws?.short_name || '')
 
         setLoadingProgress(prev => ({
           ...prev,

@@ -2,7 +2,7 @@
 import { Suspense } from 'react'
 import Link from 'next/link'
 import type { Metadata } from 'next'
-import { mapLawSlugToShortName, getLawInfo, getCanonicalSlug, getAllLawSlugsWithDB } from '@/lib/lawMappingUtils'
+import { resolveLawBySlug, getCanonicalSlugAsync, getAllActiveSlugs } from '@/lib/api/laws'
 import { getLawStats } from '@/lib/lawFetchers'
 import { notFound } from 'next/navigation'
 import LawArticlesClient from '../../teoria/[law]/LawArticlesClient'
@@ -22,35 +22,18 @@ interface LawInfoResolved {
   description?: string
 }
 
-/** Consulta la BD como fallback cuando el mapping estático no reconoce un slug */
-async function resolveLawFromDb(slug: string): Promise<LawInfoResolved | null> {
-  const { getSupabaseClient } = await import('@/lib/supabase')
-  const supabase = getSupabaseClient()
-  const { data } = await supabase
-    .from('laws')
-    .select('short_name, name, description')
-    .eq('slug', slug)
-    .eq('is_active', true)
-    .single()
-
-  return data ? { shortName: data.short_name, name: data.name, description: data.description } : null
-}
-
-/** Resuelve lawShortName y lawInfo desde mapping estático o BD */
+/** Resuelve lawShortName y lawInfo desde BD (Drizzle) */
 async function resolveLaw(slug: string): Promise<{ lawShortName: string; lawInfo: LawInfoResolved } | null> {
-  const lawShortName = mapLawSlugToShortName(slug)
-  const lawInfo = getLawInfo(slug)
-
-  if (lawShortName && lawInfo) {
-    return { lawShortName, lawInfo: { ...lawInfo, shortName: lawShortName } }
+  const law = await resolveLawBySlug(slug)
+  if (!law) return null
+  return {
+    lawShortName: law.shortName,
+    lawInfo: {
+      shortName: law.shortName,
+      name: law.name,
+      description: law.description ?? `Test de ${law.shortName}`,
+    },
   }
-
-  const dbLaw = await resolveLawFromDb(slug)
-  if (dbLaw) {
-    return { lawShortName: dbLaw.shortName, lawInfo: dbLaw }
-  }
-
-  return null
 }
 
 const SEO_DESCRIPTIONS: Record<string, string> = {
@@ -93,7 +76,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 
   const { lawShortName, lawInfo } = resolved
-  const canonicalSlug = getCanonicalSlug(lawShortName)
+  const canonicalSlug = await getCanonicalSlugAsync(lawShortName)
 
   return {
     title: `Test ${lawInfo.name} | Vence`,
@@ -132,7 +115,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 // 🎯 GENERAR RUTAS ESTÁTICAS (auto-generado desde lawMappingUtils)
 export async function generateStaticParams() {
-  const slugs = await getAllLawSlugsWithDB()
+  const slugs = await getAllActiveSlugs()
   return slugs.map(slug => ({ law: slug }))
 }
 
@@ -184,7 +167,7 @@ export default async function LawMainPage({ params }: PageProps) {
   }
 
   const { lawShortName, lawInfo } = resolved
-  const canonicalSlug = getCanonicalSlug(lawShortName)
+  const canonicalSlug = await getCanonicalSlugAsync(lawShortName)
   const isCanonical = resolvedParams.law === canonicalSlug
 
   return (

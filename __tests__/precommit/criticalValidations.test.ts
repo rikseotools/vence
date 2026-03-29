@@ -21,9 +21,9 @@ describe('Pre-commit Critical Validations', () => {
 
       // After migration to shared TemaTestPage, the page may be a thin wrapper.
       // If it doesn't have generateLawSlug, it delegates to the shared component which handles it.
-      const hasImport = temaPageContent.includes('generateLawSlug')
-      if (!hasImport && !temaPageContent.includes('TemaTestPage')) {
-        throw new Error('❌ COMMIT RECHAZADO: falta import de generateLawSlug de lawMappingUtils')
+      const hasSlugImport = temaPageContent.includes('generateLawSlug') || temaPageContent.includes('useLawSlugs') || temaPageContent.includes('generateSlug')
+      if (!hasSlugImport && !temaPageContent.includes('TemaTestPage')) {
+        throw new Error('❌ COMMIT RECHAZADO: falta import de slug generation (useLawSlugs o generateSlug)')
       }
 
       // Buscar la función openArticleModal (may not exist in shared component)
@@ -93,7 +93,7 @@ Este sistema es crítico para debuggear problemas de carga de artículos.
       const criticalFiles = [
         'app/auxiliar-administrativo-estado/test/tema/[numero]/page.tsx',
         'components/ArticleModal.tsx',
-        'lib/lawMappingUtils.ts',
+        'lib/lawSlugSync.ts',
         'lib/teoriaFetchers.ts'
       ]
 
@@ -115,7 +115,7 @@ Este sistema es crítico para debuggear problemas de carga de artículos.
       const filesToCheck = [
         'app/auxiliar-administrativo-estado/test/tema/[numero]/page.tsx',
         'components/ArticleModal.tsx',
-        'lib/lawMappingUtils.js'
+        'lib/lawSlugSync.ts'
       ]
 
       filesToCheck.forEach(filePath => {
@@ -126,7 +126,7 @@ Este sistema es crítico para debuggear problemas de carga de artículos.
           
           // Buscar el patrón específico del bug: replace spaces pero sin replace slashes
           const hasSpaceReplace = content.includes('.replace(/\\s+/g, \'-\')')
-          const hasSlashReplace = content.includes('.replace(/\\//g, \'-\')') || content.includes('.replace(/[^a-z0-9\\-]/g, \'-\')')
+          const hasSlashReplace = content.includes('.replace(/\\//g, \'-\')') || content.includes('.replace(/[^a-z0-9\\-]/g, \'-\')') || content.includes('.replace(/[^a-z0-9-]/g, \'-\')')
           
           // Si hay reemplazo de espacios pero NO de barras en lawSlug, es peligroso
           if (hasSpaceReplace && !hasSlashReplace && content.includes('lawSlug')) {

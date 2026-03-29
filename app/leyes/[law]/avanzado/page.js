@@ -2,23 +2,24 @@
 import { Suspense } from 'react'
 import Head from 'next/head'
 import LawTestPageWrapper from '@/components/LawTestPageWrapper'
-import { mapLawSlugToShortName, getLawInfo, getAllLawSlugsWithDB } from '@/lib/lawMappingUtils'
+import { resolveLawBySlug, getAllActiveSlugs } from '@/lib/api/laws'
 
 // ❌ NO METADATA - Esta página NO se debe indexar
 // Solo la página principal /leyes/[law]/ debe aparecer en buscadores
 
 // 🎯 GENERAR RUTAS ESTÁTICAS (auto-generado desde lawMappingUtils)
 export async function generateStaticParams() {
-  const slugs = await getAllLawSlugsWithDB()
+  const slugs = await getAllActiveSlugs()
   return slugs.map(slug => ({ law: slug }))
 }
 
 export default async function TestAvanzadoLeyPage({ params, searchParams }) {
   const resolvedParams = await params
   const resolvedSearchParams = await searchParams
-  
-  const lawInfo = getLawInfo(resolvedParams.law)
-  const lawShortName = mapLawSlugToShortName(resolvedParams.law)
+
+  const law = await resolveLawBySlug(resolvedParams.law)
+  const lawInfo = law ? { name: law.name, description: law.description ?? `Test de ${law.shortName}` } : { name: 'Ley', description: '' }
+  const lawShortName = law?.shortName ?? resolvedParams.law
   const numQuestions = parseInt(resolvedSearchParams.n) || 25
   
   return (

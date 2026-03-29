@@ -1,5 +1,5 @@
 // app/teoria/[law]/page.js - VERSIÓN CON METADATA DINÁMICA PARA SEO
-import { getLawInfo, mapLawSlugToShortName } from '../../../lib/lawMappingUtils'
+import { getShortNameBySlug, getLawInfoBySlug } from '@/lib/api/laws'
 import { notFound } from 'next/navigation'
 import LawArticlesClient from './LawArticlesClient'
 import ClientBreadcrumbsWrapper from '@/components/ClientBreadcrumbsWrapper'
@@ -10,7 +10,7 @@ export async function generateMetadata({ params }) {
   const lawSlug = resolvedParams.law
 
   // Obtener información de la ley
-  const shortName = mapLawSlugToShortName(lawSlug)
+  const shortName = await getShortNameBySlug(lawSlug)
 
   // Si el slug no es válido, devolver metadata para 404
   if (!shortName) {
@@ -20,7 +20,7 @@ export async function generateMetadata({ params }) {
     }
   }
 
-  const lawInfo = getLawInfo(lawSlug)
+  const lawInfo = await getLawInfoBySlug(lawSlug)
 
   if (!lawInfo) {
     return {
@@ -70,7 +70,7 @@ export default async function LawArticlesPage({ params, searchParams }) {
   const lawSlug = resolvedParams.law
 
   // Validar que la ley existe
-  const shortName = mapLawSlugToShortName(lawSlug)
+  const shortName = await getShortNameBySlug(lawSlug)
   if (!shortName) {
     notFound()
   }

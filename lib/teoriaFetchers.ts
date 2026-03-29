@@ -1,6 +1,6 @@
 // lib/teoriaFetchers.ts - FETCHERS PARA SISTEMA DE TEORÍA
 import { getSupabaseClient } from './supabase'
-import { mapLawSlugToShortName, generateLawSlug, getCanonicalSlug } from './lawMappingUtils'
+import { mapSlugToShortName as mapLawSlugToShortName, generateSlug as generateLawSlug, getCanonicalSlug } from './lawSlugSync'
 import { isDisposicionArticle } from './boe-extractor'
 
 /**

@@ -6,7 +6,7 @@ import { getSupabaseClient } from '@/lib/supabase'
 import ExamLayout from '@/components/ExamLayout'
 import ExamLoadingIndicator from '@/components/ExamLoadingIndicator'
 import { fetchAleatorioMultiTema } from '@/lib/testFetchers'
-import { normalizeLawShortName } from '@/lib/lawMappingUtils'
+import { useLawSlugs } from '@/contexts/LawSlugContext'
 import { getOposicionConfig, getThemeNames } from '@/lib/config/oposiciones'
 
 const supabase = getSupabaseClient()
@@ -31,6 +31,7 @@ const EXAM_POSITION_MAP = {
 }
 
 function TestAleatorioExamenContent() {
+  const { normalizeName } = useLawSlugs()
   const searchParams = useSearchParams()
   const [questions, setQuestions] = useState([])
   const [loading, setLoading] = useState(true)
@@ -190,7 +191,7 @@ function TestAleatorioExamenContent() {
 
       for (const mapping of mappings) {
         mappingIndex++
-        const normalizedLawName = normalizeLawShortName(mapping.laws?.short_name)
+        const normalizedLawName = normalizeName(mapping.laws?.short_name)
         console.log(`\n🔍 Procesando mapeo ${mappingIndex}/${mappings.length}: ${mapping.laws?.short_name}${normalizedLawName !== mapping.laws?.short_name ? ` → ${normalizedLawName}` : ''}`)
 
         setLoadingProgress(prev => ({

@@ -2,11 +2,7 @@
 // hooks/useIntelligentNotifications.ts - SISTEMA COMPLETO DE NOTIFICACIONES INTELIGENTES CON PERSISTENCIA Y EMAIL FALLBACK
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import {
-  mapLawSlugToShortName,
-  generateLawSlug,
-  getLawInfo
-} from '../lib/lawMappingUtils'
+import { useLawSlugs } from '../contexts/LawSlugContext'
 import { MotivationalAnalyzer } from '../lib/notifications/motivationalAnalyzer'
 import type {
   Notification,
@@ -537,7 +533,7 @@ const NOTIFICATION_TYPES: NotificationTypesMap = {
 }
 
 // ✅ FUNCIÓN AUXILIAR: Validar y mapear law_short_name usando sistema centralizado
-function validateAndMapLawShortName(lawShortName: string | null | undefined, lawFullName: string | null | undefined): string {
+function validateAndMapLawShortName(lawShortName: string | null | undefined, lawFullName: string | null | undefined, mapLawSlugToShortName: (slug: string) => string | null): string {
   // Si ya tenemos un short_name válido, usarlo
   if (lawShortName && lawShortName !== 'undefined' && lawShortName !== 'null' && lawShortName.trim() !== '') {
     return lawShortName
@@ -601,6 +597,7 @@ function validateAndMapLawShortName(lawShortName: string | null | undefined, law
 
 export function useIntelligentNotifications(): UseIntelligentNotificationsReturn {
   const { user, userProfile, supabase, loading: authLoading } = useAuth() as AuthContextValue
+  const { getSlug: generateLawSlug, getShortName: mapLawSlugToShortName, getLawInfo } = useLawSlugs()
   
   // Estados principales
   const [allNotifications, setAllNotifications] = useState<Notification[]>([])
@@ -1076,7 +1073,8 @@ export function useIntelligentNotifications(): UseIntelligentNotificationsReturn
           // 🎯 VALIDAR law_name con sistema centralizado (CORREGIDO: usar law_name, no law_short_name)
           const validatedShortName = validateAndMapLawShortName(
             article.law_name,  // ✅ CORRECTO: usar law_name (campo que existe)
-            article.law_name   // ✅ CORRECTO: usar law_name como fallback
+            article.law_name,  // ✅ CORRECTO: usar law_name como fallback
+            mapLawSlugToShortName
           )
 
           if (!acc[validatedShortName]) {
@@ -1105,7 +1103,7 @@ export function useIntelligentNotifications(): UseIntelligentNotificationsReturn
           const { law_short_name, law_full_name, articles: lawArticles } = lawGroup
           
           // 🔧 VALIDACIÓN FINAL con sistema centralizado
-          const finalShortName = validateAndMapLawShortName(law_short_name, law_full_name)
+          const finalShortName = validateAndMapLawShortName(law_short_name, law_full_name, mapLawSlugToShortName)
           const lawInfo = getLawInfo(finalShortName) // ✅ Info completa del sistema centralizado
           
           // 🆕 FILTRAR ARTÍCULOS POR COOLDOWN ANTES DE CREAR NOTIFICACIÓN

@@ -1,7 +1,7 @@
 // components/Statistics/ThemePerformance.tsx
 'use client'
 import { useState, useEffect } from 'react'
-import { generateLawSlug } from '../../lib/lawMappingUtils'
+import { useLawSlugs } from '@/contexts/LawSlugContext'
 import ArticleModal from './ArticleModal'
 import CcaaFlag from '@/components/CcaaFlag'
 
@@ -72,6 +72,7 @@ const getScoreBg = (percentage: number): string => {
 const formatThemeFallback = (num: number): string => `Tema ${num}`
 
 export default function ThemePerformance({ themePerformance, articlePerformance, userOposicion }: ThemePerformanceProps) {
+  const { getSlug: generateLawSlug } = useLawSlugs()
   const [selectedTheme, setSelectedTheme] = useState<number | null>(null)
   const [modalState, setModalState] = useState<ModalState>({
     isOpen: false,

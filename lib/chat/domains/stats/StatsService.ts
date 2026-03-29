@@ -10,7 +10,7 @@ import type {
   TemporalFilter,
   StatsQueryType,
 } from './schemas'
-import { mapLawSlugToShortName } from '@/lib/lawMappingUtils'
+import { mapSlugToShortName as mapLawSlugToShortName } from '@/lib/lawSlugSync'
 import { getOposicionByPositionType } from '@/lib/config/oposiciones'
 import { createClient } from '@supabase/supabase-js'
 

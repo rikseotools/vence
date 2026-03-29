@@ -4,7 +4,7 @@ import { useSearchParams } from 'next/navigation'
 import TestConfigurator from '@/components/TestConfigurator'
 import { getLawStats, type LawStats } from '@/lib/lawFetchers'
 import { useAuth } from '@/contexts/AuthContext'
-import { getCanonicalSlug } from '@/lib/lawMappingUtils'
+import { useLawSlugs } from '@/contexts/LawSlugContext'
 
 interface LawTestConfiguratorProps {
   lawShortName: string
@@ -12,6 +12,7 @@ interface LawTestConfiguratorProps {
 }
 
 export default function LawTestConfigurator({ lawShortName, lawDisplayName }: LawTestConfiguratorProps) {
+  const { getSlug: getCanonicalSlug } = useLawSlugs()
   const { user } = useAuth()
   const [loading, setLoading] = useState(true)
   const [lawStats, setLawStats] = useState<LawStats | null>(null)

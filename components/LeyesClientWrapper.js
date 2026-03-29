@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
-import { getCanonicalSlug } from '../lib/lawMappingUtils'
+import { useLawSlugs } from '@/contexts/LawSlugContext'
 
 // Detectar si una ley es virtual (sin artículos legales reales)
 function isVirtualLaw(law) {
@@ -21,6 +21,7 @@ const VIRTUAL_LAW_VIDEOS = {
 }
 
 export default function LeyesClientWrapper({ laws }) {
+  const { getSlug: getCanonicalSlug } = useLawSlugs()
   const [searchTerm, setSearchTerm] = useState('')
   const [filterType, setFilterType] = useState('all') // 'all', 'legal', 'virtual'
 

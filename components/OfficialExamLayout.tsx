@@ -9,7 +9,7 @@ import { useQuestionContext } from '../contexts/QuestionContext'
 import { useDailyQuestionLimit } from '../hooks/useDailyQuestionLimit'
 import DailyLimitBanner from './DailyLimitBanner'
 import UpgradeLimitModal from './UpgradeLimitModal'
-import { generateLawSlug } from '@/lib/lawMappingUtils'
+import { useLawSlugs } from '@/contexts/LawSlugContext'
 
 // Type for useAuth context (AuthContext is JS, so we type it manually)
 interface AuthContextValue {
@@ -252,6 +252,7 @@ export default function OfficialExamLayout({
     setShowUpgradeModal,
     recordAnswer
   } = useDailyQuestionLimit()
+  const { getSlug: generateLawSlug } = useLawSlugs()
 
   // Contexto de pregunta para el chat AI
   const { setQuestionContext, clearQuestionContext } = useQuestionContext()

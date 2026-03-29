@@ -1,5 +1,5 @@
 // __tests__/lib/laws/warmSlugCache.test.ts
-// Tests para el módulo puente warmCache.ts (usa Supabase)
+// Tests para el módulo puente warmCache.ts (usa Supabase → lawSlugSync)
 
 // Mock de Supabase client con chaining
 const mockNot = jest.fn()
@@ -14,12 +14,12 @@ jest.mock('@/lib/supabase', () => ({
   getSupabaseClient: jest.fn(() => mockSupabase),
 }))
 
-// Importar las funciones reales de lawMappingUtils (NO mockeadas)
+// Importar funciones de lawSlugSync (cache síncrono)
 import {
-  invalidateDbCache,
-  isDbCacheLoaded,
-  mapLawSlugToShortName,
-} from '@/lib/lawMappingUtils'
+  invalidateSyncCache,
+  isSyncCacheLoaded,
+  mapSlugToShortName,
+} from '@/lib/lawSlugSync'
 
 // Importar el módulo bajo test
 import { warmSlugCache, invalidateAllSlugCaches } from '@/lib/api/laws/warmCache'
@@ -46,7 +46,7 @@ function setupMockThrow(error = new Error('Network error')) {
 describe('warmSlugCache', () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    invalidateDbCache()
+    invalidateSyncCache()
     // Re-setup chaining (clearAllMocks resets return values)
     mockSelect.mockReturnValue({ eq: mockEq })
     mockEq.mockReturnValue({ not: mockNot })
@@ -54,7 +54,7 @@ describe('warmSlugCache', () => {
   })
 
   afterEach(() => {
-    invalidateDbCache()
+    invalidateSyncCache()
   })
 
   // ─── Calentamiento basico ────────────────────────────────────────
@@ -66,16 +66,16 @@ describe('warmSlugCache', () => {
       const result = await warmSlugCache()
 
       expect(result).toBe(true)
-      expect(isDbCacheLoaded()).toBe(true)
+      expect(isSyncCacheLoaded()).toBe(true)
       expect(mockSupabase.from).toHaveBeenCalledWith('laws')
     })
 
-    it('mapLawSlugToShortName resuelve slugs de BD despues de calentar', async () => {
+    it('mapSlugToShortName resuelve slugs de BD despues de calentar', async () => {
       setupMockSuccess()
 
       await warmSlugCache()
 
-      expect(mapLawSlugToShortName('nueva-ley-test')).toBe('Nueva Ley Test')
+      expect(mapSlugToShortName('nueva-ley-test')).toBe('Nueva Ley Test')
     })
 
     it('devuelve true al calentar correctamente', async () => {
@@ -92,8 +92,8 @@ describe('warmSlugCache', () => {
 
       await warmSlugCache()
 
-      expect(mapLawSlugToShortName('constitucion-espanola')).toBe('CE')
-      expect(isDbCacheLoaded()).toBe(true)
+      expect(mapSlugToShortName('constitucion-espanola')).toBe('CE')
+      expect(isSyncCacheLoaded()).toBe(true)
     })
 
     it('filtra leyes con short_name null', async () => {
@@ -104,7 +104,7 @@ describe('warmSlugCache', () => {
 
       await warmSlugCache()
 
-      expect(isDbCacheLoaded()).toBe(true)
+      expect(isSyncCacheLoaded()).toBe(true)
     })
   })
 
@@ -120,12 +120,12 @@ describe('warmSlugCache', () => {
       expect(mockSupabase.from).toHaveBeenCalledTimes(1)
     })
 
-    it('isDbCacheLoaded es true tras calentar', async () => {
+    it('isSyncCacheLoaded es true tras calentar', async () => {
       setupMockSuccess()
 
       await warmSlugCache()
 
-      expect(isDbCacheLoaded()).toBe(true)
+      expect(isSyncCacheLoaded()).toBe(true)
     })
   })
 
@@ -154,13 +154,13 @@ describe('warmSlugCache', () => {
       expect(result).toBe(false)
     })
 
-    it('diccionario estatico sigue funcionando tras fallo de BD', async () => {
+    it('pattern fallback sigue funcionando tras fallo de BD', async () => {
       setupMockError('DB down')
 
       await warmSlugCache()
 
-      // 'constitucion-espanola' existe en el diccionario estatico de lawMappingUtils
-      expect(mapLawSlugToShortName('constitucion-espanola')).toBe('CE')
+      // Pattern fallback: 'ley-39-2015' → 'Ley 39/2015'
+      expect(mapSlugToShortName('ley-39-2015')).toBe('Ley 39/2015')
     })
   })
 
@@ -171,11 +171,11 @@ describe('warmSlugCache', () => {
       setupMockSuccess()
 
       await warmSlugCache()
-      expect(isDbCacheLoaded()).toBe(true)
+      expect(isSyncCacheLoaded()).toBe(true)
 
       invalidateAllSlugCaches()
 
-      expect(isDbCacheLoaded()).toBe(false)
+      expect(isSyncCacheLoaded()).toBe(false)
     })
 
     it('re-calienta correctamente despues de invalidar', async () => {
@@ -187,23 +187,22 @@ describe('warmSlugCache', () => {
       setupMockSuccess()
       await warmSlugCache()
 
-      expect(isDbCacheLoaded()).toBe(true)
+      expect(isSyncCacheLoaded()).toBe(true)
       expect(mockSupabase.from).toHaveBeenCalledTimes(2)
     })
   })
 
   // ─── BD tiene prioridad ──────────────────────────────────────────
 
-  describe('BD tiene prioridad sobre diccionario estatico', () => {
-    it('BD gana sobre diccionario estatico para el mismo slug', async () => {
+  describe('BD tiene prioridad', () => {
+    it('slugs de BD funcionan', async () => {
       setupMockSuccess([
         { short_name: 'Constitucion Espanola 1978', slug: 'constitucion-espanola' },
       ])
 
       await warmSlugCache()
 
-      // BD tiene prioridad: devuelve el valor de BD, no el estatico ('CE')
-      expect(mapLawSlugToShortName('constitucion-espanola')).toBe('Constitucion Espanola 1978')
+      expect(mapSlugToShortName('constitucion-espanola')).toBe('Constitucion Espanola 1978')
     })
 
     it('slugs solo en BD funcionan', async () => {
@@ -213,17 +212,16 @@ describe('warmSlugCache', () => {
 
       await warmSlugCache()
 
-      expect(mapLawSlugToShortName('ley-imaginaria-2026')).toBe('Ley Imaginaria 2026')
+      expect(mapSlugToShortName('ley-imaginaria-2026')).toBe('Ley Imaginaria 2026')
     })
 
-    it('slugs solo en diccionario estatico funcionan como fallback', async () => {
-      // BD vacia
+    it('pattern fallback funciona con BD vacía', async () => {
       setupMockSuccess([])
 
       await warmSlugCache()
 
-      // 'ley-39-2015' existe en diccionario estatico
-      expect(mapLawSlugToShortName('ley-39-2015')).toBe('Ley 39/2015')
+      // Pattern: 'ley-39-2015' → 'Ley 39/2015'
+      expect(mapSlugToShortName('ley-39-2015')).toBe('Ley 39/2015')
     })
   })
 
@@ -236,7 +234,7 @@ describe('warmSlugCache', () => {
       const result = await warmSlugCache()
 
       expect(result).toBe(true)
-      expect(isDbCacheLoaded()).toBe(true)
+      expect(isSyncCacheLoaded()).toBe(true)
     })
 
     it('cache se marca como cargado incluso con datos vacios', async () => {
@@ -244,7 +242,7 @@ describe('warmSlugCache', () => {
 
       await warmSlugCache()
 
-      expect(isDbCacheLoaded()).toBe(true)
+      expect(isSyncCacheLoaded()).toBe(true)
     })
 
     it('pasa parametros correctos a Supabase', async () => {

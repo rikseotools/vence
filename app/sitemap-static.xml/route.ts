@@ -4,7 +4,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import { generateLawSlug } from '@/lib/lawMappingUtils';
+import { generateSlugFromShortName } from '@/lib/api/laws';
 import { OPOSICIONES } from '@/lib/config/oposiciones';
 
 const SITE_URL = process.env.NEXT_PUBLIC_URL || 'https://www.vence.es';
@@ -164,7 +164,7 @@ export async function GET() {
           .eq('articles.laws.short_name', law.short_name);
 
         if ((count || 0) >= 5) {
-          const canonicalSlug = generateLawSlug(law.short_name);
+          const canonicalSlug = generateSlugFromShortName(law.short_name);
           const lastmod = law.updated_at
             ? new Date(law.updated_at).toISOString().split('T')[0]
             : today;

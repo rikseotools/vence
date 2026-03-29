@@ -58,6 +58,17 @@ jest.mock('../../contexts/AuthContext', () => ({
   })
 }))
 
+jest.mock('../../contexts/LawSlugContext', () => ({
+  useLawSlugs: () => ({
+    getSlug: (shortName: string) => shortName?.toLowerCase().replace(/[\s/]+/g, '-') || 'unknown',
+    getShortName: () => null,
+    getLawInfo: () => null,
+    normalizeName: (name: string) => name,
+    count: 0,
+    ready: true,
+  })
+}))
+
 // Importar el componente después de los mocks
 import TemaPage from '../../app/auxiliar-administrativo-estado/test/tema/[numero]/page'
 
