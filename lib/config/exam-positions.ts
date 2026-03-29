@@ -40,6 +40,11 @@ export const EXAM_POSITION_MAP: Record<string, string[]> = {
     'tramitacion_procesal',
     'tramitación procesal',
   ],
+  'auxiliar_administrativo_cyl': [
+    'auxiliar_administrativo_cyl',
+    'auxiliar administrativo castilla y leon',
+    'auxiliar administrativo cyl',
+  ],
   'auxilio_judicial': [
     'auxilio_judicial',
     'auxilio judicial',
@@ -61,6 +66,9 @@ export const HOT_ARTICLE_TARGET_MAP: Record<string, string[]> = {
   // Auxiliar Administrativo Comunidad de Madrid
   'auxiliar-administrativo-madrid': ['auxiliar_administrativo_madrid'],
   'auxiliar_administrativo_madrid': ['auxiliar_administrativo_madrid'],
+  // Auxiliar Administrativo Castilla y León
+  'auxiliar-administrativo-cyl': ['auxiliar-administrativo-cyl', 'auxiliar_administrativo_cyl'],
+  'auxiliar_administrativo_cyl': ['auxiliar-administrativo-cyl', 'auxiliar_administrativo_cyl'],
   // Administrativo del Estado
   'administrativo-estado': ['administrativo-estado'],
   'administrativo_estado': ['administrativo-estado'],

@@ -601,6 +601,40 @@ export const OPOSICIONES: Oposicion[] = [
       { href: '/auxiliar-administrativo-cyl/temario', label: 'Temario', icon: '📚' },
       { href: '/auxiliar-administrativo-cyl/test', label: 'Tests', icon: '🎯' },
     ],
+    officialExams: [
+      {
+        date: '2025-01-01',
+        title: 'Examen 2025',
+        oep: 'OEP 2021, 2022 y 2023',
+        partes: [
+          { id: 'completo', icon: '📋', title: 'Examen completo', description: '80 preguntas' },
+        ],
+      },
+      {
+        date: '2024-01-01',
+        title: 'Examen 2024',
+        oep: 'OEP 2019-2020',
+        partes: [
+          { id: 'completo', icon: '📋', title: 'Examen completo', description: '90 preguntas' },
+        ],
+      },
+      {
+        date: '2022-01-01',
+        title: 'Examen aplazo 2022',
+        oep: 'OEP 2018',
+        partes: [
+          { id: 'completo', icon: '📋', title: 'Examen completo', description: '90 preguntas' },
+        ],
+      },
+      {
+        date: '2021-01-01',
+        title: 'Examen 2021',
+        oep: 'OEP 2018',
+        partes: [
+          { id: 'completo', icon: '📋', title: 'Examen completo', description: '90 preguntas' },
+        ],
+      },
+    ],
   },
 
   // ========================================

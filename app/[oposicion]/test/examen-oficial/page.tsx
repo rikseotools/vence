@@ -1,19 +1,18 @@
-// app/tramitacion-procesal/test/examen-oficial/page.tsx
+// app/[oposicion]/test/examen-oficial/page.tsx — Ruta dinámica compartida
 'use client'
 
 import { useState, useEffect, Suspense } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
+import { useSearchParams, useParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 
-// Dynamic import del componente de examen oficial
 const OfficialExamLayout = dynamic(() => import('@/components/OfficialExamLayout'), {
   ssr: false,
   loading: () => (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
       <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600 mx-auto mb-4"></div>
         <p className="text-gray-600">Cargando examen oficial...</p>
       </div>
     </div>
@@ -22,8 +21,9 @@ const OfficialExamLayout = dynamic(() => import('@/components/OfficialExamLayout
 
 function OfficialExamContent() {
   const searchParams = useSearchParams()
-  const router = useRouter()
-  const { user, supabase, loading: authLoading } = useAuth()
+  const params = useParams<{ oposicion: string }>()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { supabase, loading: authLoading } = useAuth() as any
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [questions, setQuestions] = useState<any[]>([])
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -31,19 +31,18 @@ function OfficialExamContent() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Resume state
-  const [resumeTestId, setResumeTestId] = useState<string | null>(null)
+  const [resumeTestId, setResumeTestId] = useState<string | undefined>(undefined)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [initialAnswers, setInitialAnswers] = useState<Record<number, any> | null>(null)
+  const [initialAnswers, setInitialAnswers] = useState<Record<number, any> | undefined>(undefined)
 
+  const oposicion = params.oposicion
   const examDate = searchParams.get('fecha')
   const parte = searchParams.get('parte')
   const resumeParam = searchParams.get('resume')
-  const oposicion = 'tramitacion-procesal'
+  const backUrl = `/${oposicion}/test`
 
   useEffect(() => {
     async function loadOfficialExam() {
-      // If resuming, load from resume API instead
       if (resumeParam) {
         await loadResumeExam(resumeParam)
         return
@@ -78,7 +77,6 @@ function OfficialExamContent() {
 
         console.log(`✅ [OfficialExam] Loaded ${data.questions.length} questions`)
 
-        // Transform questions to the format expected by the layout
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const formattedQuestions = data.questions.map((q: any, index: number) => ({
           id: q.id,
@@ -103,8 +101,8 @@ function OfficialExamContent() {
         setQuestions(formattedQuestions)
         setMetadata(data.metadata)
 
-      } catch (error) {
-        console.error('❌ [OfficialExam] Error loading exam:', error)
+      } catch (err) {
+        console.error('❌ [OfficialExam] Error loading exam:', err)
         setError('Error inesperado al cargar el examen')
       } finally {
         setLoading(false)
@@ -126,11 +124,7 @@ function OfficialExamContent() {
 
         const response = await fetch(
           `/api/v2/official-exams/resume?testId=${testId}`,
-          {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          }
+          { headers: { 'Authorization': `Bearer ${token}` } }
         )
         const data = await response.json()
 
@@ -164,11 +158,10 @@ function OfficialExamContent() {
           questionNumber: index + 1,
         }))
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const answers: Record<number, any> = {}
+        const answers: Record<number, string> = {}
         if (data.savedAnswers) {
           for (const [key, value] of Object.entries(data.savedAnswers)) {
-            answers[parseInt(key, 10)] = value
+            answers[parseInt(key, 10)] = value as string
           }
         }
 
@@ -182,8 +175,8 @@ function OfficialExamContent() {
         setResumeTestId(testId)
         setInitialAnswers(answers)
 
-      } catch (error) {
-        console.error('❌ [OfficialExam] Error loading resume:', error)
+      } catch (err) {
+        console.error('❌ [OfficialExam] Error loading resume:', err)
         setError('Error inesperado al reanudar el examen')
       } finally {
         setLoading(false)
@@ -199,7 +192,7 @@ function OfficialExamContent() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Cargando examen oficial...</p>
           {examDate && (
             <p className="text-gray-500 text-sm mt-2">
@@ -219,8 +212,8 @@ function OfficialExamContent() {
           <h1 className="text-2xl font-bold text-red-600 mb-4">Error</h1>
           <p className="text-gray-600 mb-6">{error}</p>
           <Link
-            href="/tramitacion-procesal/test"
-            className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+            href={backUrl}
+            className="bg-amber-600 hover:bg-amber-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
           >
             Volver a Tests
           </Link>
@@ -237,8 +230,8 @@ function OfficialExamContent() {
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Sin preguntas</h1>
           <p className="text-gray-600 mb-6">No se encontraron preguntas para este examen oficial.</p>
           <Link
-            href="/tramitacion-procesal/test"
-            className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+            href={backUrl}
+            className="bg-amber-600 hover:bg-amber-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
           >
             Volver a Tests
           </Link>
@@ -256,11 +249,11 @@ function OfficialExamContent() {
         testType: 'official-exam',
         examDate: examDate || metadata?.examDate,
         parte: parte || undefined,
-        backUrl: '/tramitacion-procesal/test',
+        backUrl,
         backText: 'Volver a Tests'
       }}
-      resumeTestId={resumeTestId ?? undefined}
-      initialAnswers={initialAnswers ?? undefined}
+      resumeTestId={resumeTestId}
+      initialAnswers={initialAnswers}
     />
   )
 }
@@ -270,7 +263,7 @@ export default function OfficialExamPage() {
     <Suspense fallback={
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Preparando examen oficial...</p>
         </div>
       </div>

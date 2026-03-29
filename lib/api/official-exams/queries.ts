@@ -74,6 +74,7 @@ import type {
 const oposicionToExamPosition: Record<string, string> = {
   'auxiliar-administrativo-estado': 'auxiliar_administrativo_estado',
   'auxiliar-administrativo-madrid': 'auxiliar_administrativo_madrid',
+  'auxiliar-administrativo-cyl': 'auxiliar_administrativo_cyl',
   'tramitacion-procesal': 'tramitacion_procesal',
   'auxilio-judicial': 'auxilio_judicial',
   'administrativo-estado': 'administrativo_estado',
@@ -84,6 +85,7 @@ const oposicionToExamPosition: Record<string, string> = {
 const oposicionToExamSourcePattern: Record<string, string> = {
   'auxiliar-administrativo-estado': '%Auxiliar Administrativo Estado%',
   'auxiliar-administrativo-madrid': '%Auxiliar Administrativo Madrid%',
+  'auxiliar-administrativo-cyl': '%Auxiliar Administrativo CyL%',
   'tramitacion-procesal': '%Tramitación Procesal%',
   'auxilio-judicial': '%Auxilio Judicial%',
   'administrativo-estado': '%Administrativo Estado%',

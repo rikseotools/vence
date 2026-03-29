@@ -5,6 +5,7 @@ import { z } from 'zod'
 export const OposicionType = {
   AUXILIAR_ADMINISTRATIVO_ESTADO: 'auxiliar-administrativo-estado',
   AUXILIAR_ADMINISTRATIVO_MADRID: 'auxiliar-administrativo-madrid',
+  AUXILIAR_ADMINISTRATIVO_CYL: 'auxiliar-administrativo-cyl',
   TRAMITACION_PROCESAL: 'tramitacion-procesal',
   AUXILIO_JUDICIAL: 'auxilio-judicial',
 } as const
@@ -17,10 +18,11 @@ export const getOfficialExamQuestionsRequestSchema = z.object({
   oposicion: z.enum([
     OposicionType.AUXILIAR_ADMINISTRATIVO_ESTADO,
     OposicionType.AUXILIAR_ADMINISTRATIVO_MADRID,
+    OposicionType.AUXILIAR_ADMINISTRATIVO_CYL,
     OposicionType.TRAMITACION_PROCESAL,
     OposicionType.AUXILIO_JUDICIAL,
   ]),
-  parte: z.enum(['primera', 'segunda', 'unica', 'supuesto', 'tercer-ejercicio']).optional(),
+  parte: z.enum(['primera', 'segunda', 'unica', 'completo', 'supuesto', 'tercer-ejercicio']).optional(),
   includeReservas: z.boolean().default(true),
 })
 
@@ -117,10 +119,11 @@ export const saveOfficialExamResultsRequestSchema = z.object({
   oposicion: z.enum([
     OposicionType.AUXILIAR_ADMINISTRATIVO_ESTADO,
     OposicionType.AUXILIAR_ADMINISTRATIVO_MADRID,
+    OposicionType.AUXILIAR_ADMINISTRATIVO_CYL,
     OposicionType.TRAMITACION_PROCESAL,
     OposicionType.AUXILIO_JUDICIAL,
   ]),
-  parte: z.enum(['primera', 'segunda', 'unica', 'supuesto', 'tercer-ejercicio']).optional(),
+  parte: z.enum(['primera', 'segunda', 'unica', 'completo', 'supuesto', 'tercer-ejercicio']).optional(),
   results: z.array(questionResultSchema).min(1, 'Debe haber al menos un resultado'),
   totalTimeSeconds: z.number().int().min(0),
   metadata: z.object({
@@ -167,10 +170,11 @@ export const initOfficialExamRequestSchema = z.object({
   oposicion: z.enum([
     OposicionType.AUXILIAR_ADMINISTRATIVO_ESTADO,
     OposicionType.AUXILIAR_ADMINISTRATIVO_MADRID,
+    OposicionType.AUXILIAR_ADMINISTRATIVO_CYL,
     OposicionType.TRAMITACION_PROCESAL,
     OposicionType.AUXILIO_JUDICIAL,
   ]),
-  parte: z.enum(['primera', 'segunda', 'unica', 'supuesto', 'tercer-ejercicio']).optional(),
+  parte: z.enum(['primera', 'segunda', 'unica', 'completo', 'supuesto', 'tercer-ejercicio']).optional(),
   questions: z.array(initOfficialExamQuestionSchema).min(1, 'Debe haber al menos una pregunta'),
   metadata: z.object({
     legislativeCount: z.number().int().min(0).optional(),
@@ -329,10 +333,11 @@ export function safeParseGetPendingOfficialExams(data: unknown) {
 export const getOfficialExamFailedQuestionsRequestSchema = z.object({
   userId: z.string().uuid(),
   examDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato de fecha inválido (YYYY-MM-DD)'),
-  parte: z.enum(['primera', 'segunda', 'unica', 'supuesto', 'tercer-ejercicio']).optional(),
+  parte: z.enum(['primera', 'segunda', 'unica', 'completo', 'supuesto', 'tercer-ejercicio']).optional(),
   oposicion: z.enum([
     OposicionType.AUXILIAR_ADMINISTRATIVO_ESTADO,
     OposicionType.AUXILIAR_ADMINISTRATIVO_MADRID,
+    OposicionType.AUXILIAR_ADMINISTRATIVO_CYL,
     OposicionType.TRAMITACION_PROCESAL,
     OposicionType.AUXILIO_JUDICIAL,
   ]),
@@ -384,10 +389,11 @@ export function safeParseGetOfficialExamFailedQuestions(data: unknown) {
 export const getOfficialExamReviewRequestSchema = z.object({
   userId: z.string().uuid(),
   examDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato de fecha inválido (YYYY-MM-DD)'),
-  parte: z.enum(['primera', 'segunda', 'unica', 'supuesto', 'tercer-ejercicio']).optional(),
+  parte: z.enum(['primera', 'segunda', 'unica', 'completo', 'supuesto', 'tercer-ejercicio']).optional(),
   oposicion: z.enum([
     OposicionType.AUXILIAR_ADMINISTRATIVO_ESTADO,
     OposicionType.AUXILIAR_ADMINISTRATIVO_MADRID,
+    OposicionType.AUXILIAR_ADMINISTRATIVO_CYL,
     OposicionType.TRAMITACION_PROCESAL,
     OposicionType.AUXILIO_JUDICIAL,
   ]),
