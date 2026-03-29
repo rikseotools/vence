@@ -66,24 +66,22 @@ export function validateLetterSequence(
   // Formato 1: A, C, E, G, ? (comas)
   // Formato 2: A-C-E-G-? (guiones)
   // Formato 3: A C E G ? (espacios)
+  // Soporta hasta 15 letras (suficiente para series largas de oposiciones)
   const SEP = '[,→\\-–\\s]'  // separadores posibles
+  const LETTER_GROUP = `(?:\\s*${SEP}\\s*([A-ZÑ]))?`
   const linearRegex = new RegExp(
     `([A-ZÑ])\\s*${SEP}\\s*([A-ZÑ])\\s*${SEP}\\s*([A-ZÑ])` +
-    `(?:\\s*${SEP}\\s*([A-ZÑ]))?` +
-    `(?:\\s*${SEP}\\s*([A-ZÑ]))?` +
-    `(?:\\s*${SEP}\\s*([A-ZÑ]))?` +
-    `(?:\\s*${SEP}\\s*([A-ZÑ]))?` +
-    `(?:\\s*${SEP}\\s*([A-ZÑ]))?` +
+    LETTER_GROUP.repeat(12) + // 3 obligatorias + 12 opcionales = hasta 15 letras
     `\\s*${SEP}\\s*\\??`,
     'i'
   )
   const linearMatch = questionText.match(linearRegex)
 
   if (linearMatch) {
-    const letters = [linearMatch[1], linearMatch[2], linearMatch[3], linearMatch[4],
-      linearMatch[5], linearMatch[6], linearMatch[7], linearMatch[8]]
-      .filter(Boolean)
-      .map(l => l.toUpperCase())
+    const letters: string[] = []
+    for (let i = 1; i <= 15; i++) {
+      if (linearMatch[i]) letters.push(linearMatch[i].toUpperCase())
+    }
     if (letters.length >= 3) {
       return validateLinearLetterSeries(letters, options, correctOption)
     }
