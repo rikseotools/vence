@@ -61,14 +61,34 @@ async function _GET(request: Request) {
       })
     }
 
-    const response = await fetch(
-      `https://sentry.io/api/0/organizations/${SENTRY_ORG}/issues/?statsPeriod=24h&query=is:unresolved`,
-      {
-        headers: {
-          'Authorization': `Bearer ${SENTRY_AUTH_TOKEN}`
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 10_000)
+
+    let response: Response
+    try {
+      response = await fetch(
+        `https://sentry.io/api/0/organizations/${SENTRY_ORG}/issues/?statsPeriod=24h&query=is:unresolved`,
+        {
+          headers: {
+            'Authorization': `Bearer ${SENTRY_AUTH_TOKEN}`
+          },
+          signal: controller.signal,
         }
+      )
+    } catch (err) {
+      if ((err as Error).name === 'AbortError') {
+        console.warn('⚠️ Sentry API timeout (10s)')
+        return NextResponse.json({
+          success: true,
+          count: 0,
+          issues: [],
+          message: 'Sentry timeout'
+        })
       }
-    )
+      throw err
+    } finally {
+      clearTimeout(timeout)
+    }
 
     if (!response.ok) {
       console.error('Error Sentry API:', response.status)

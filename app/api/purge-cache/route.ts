@@ -1,6 +1,6 @@
-// app/api/revalidate/route.ts
+// app/api/purge-cache/route.ts
 // Endpoint para invalidar cache ISR de páginas específicas.
-// Uso: POST /api/revalidate { "path": "/auxiliar-administrativo-cyl/test" }
+// Uso: POST /api/purge-cache { "path": "/auxiliar-administrativo-cyl/test" }
 import { NextRequest, NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
@@ -25,4 +25,4 @@ async function _POST(request: NextRequest) {
   })
 }
 
-export const POST = withErrorLogging('/api/revalidate', _POST)
+export const POST = withErrorLogging('/api/purge-cache', _POST)
