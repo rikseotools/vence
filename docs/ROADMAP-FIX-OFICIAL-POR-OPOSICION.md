@@ -77,33 +77,40 @@ if (onlyOfficialQuestions) {
 
 ---
 
-### FASE 3: Fix RPC `check_hot_article_for_current_user`
-**Ubicación:** Supabase (función RPC)
+### FASE 3: Migrar check hot article a API v2
+**Ubicación:** `lib/api/hot-articles/queries.ts` + `app/api/v2/hot-articles/check/route.ts`
 
-**Cambio:** Añadir parámetro `target_oposicion_param` y filtrar por él.
+**Cambio:** Reemplazar función RPC `check_hot_article_for_current_user` por endpoint API v2 con Drizzle + Zod.
 
 **En código:**
-```javascript
-// TestLayout.js:590
-await supabase.rpc('check_hot_article_for_current_user', {
-  article_id_param: articleId,
-  user_id_param: userId,
-  target_oposicion_param: userOposicionSlug  // NUEVO
-})
+```typescript
+// TestLayout.tsx - ahora usa fetch al API v2
+const res = await fetch(`/api/v2/hot-articles/check?${new URLSearchParams({
+  articleId,
+  userOposicion: userOposicionSlug,
+  currentOposicion: currentSlug, // de la URL, para excluir de "curiosidad"
+})}`)
 ```
 
-**Status:** [x] COMPLETADO (filtro en cliente)
+**Mejoras:**
+- Recibe `currentOposicion` (de la URL) para excluir correctamente la oposición actual de las "otras oposiciones"
+- Validación Zod de parámetros
+- Normalización automática de slugs (dash/underscore)
+- Deduplicación de oposiciones en curiosidad
+
+**Status:** [x] COMPLETADO - Migrado a API v2 (2026-03-29)
 
 ---
 
-### FASE 4: Poblar `target_oposicion` en hot_articles
+### FASE 4: Normalizar `target_oposicion` en hot_articles
 **Tabla:** `hot_articles`
 
 **Acciones:**
-1. Identificar de qué oposición es cada hot_article basándose en las preguntas que lo referencian
-2. Actualizar los 868 registros con NULL
+1. Normalizar todos los `target_oposicion` a formato dashes (ej: `auxiliar-administrativo-estado`)
+2. Eliminar duplicados dash/underscore (conservando mayor `hotness_score`)
+3. Simplificar `HOT_ARTICLE_TARGET_MAP` en `lib/config/exam-positions.ts`
 
-**Status:** [x] PARCIAL (duplicados impiden actualización completa)
+**Status:** [x] COMPLETADO (2026-03-29)
 
 ---
 
@@ -122,8 +129,8 @@ await supabase.rpc('check_hot_article_for_current_user', {
 |---|---|---|
 | 1 | Filtrar preguntas oficiales en fetchers | [x] COMPLETADO |
 | 2 | Normalizar y poblar exam_position | [x] COMPLETADO - 694 preguntas con valor |
-| 3 | Fix RPC check_hot_article | [x] COMPLETADO - Filtro añadido en cliente |
-| 4 | Poblar target_oposicion en hot_articles | [x] PARCIAL - Duplicados impiden actualización completa |
+| 3 | Migrar check hot article a API v2 | [x] COMPLETADO - Drizzle + Zod + currentOposicion |
+| 4 | Normalizar target_oposicion en hot_articles | [x] COMPLETADO - Todo en dashes, sin duplicados |
 | 5 | Mejorar badge pregunta oficial | [x] COMPLETADO - Usa exam_position con fallback |
 
 ---
