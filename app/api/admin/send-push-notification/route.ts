@@ -139,6 +139,30 @@ async function _POST(request: Request) {
           message: 'No hay usuarios activos en los últimos 30 días',
         })
       }
+    } else if (targetType !== 'all') {
+      // Filtrar por oposición (targetType = slug como 'auxiliar-administrativo-cyl')
+      const { data: oposicionUsers, error: oposError } = await supabase
+        .from('user_profiles')
+        .select('id')
+        .eq('target_oposicion', targetType.replace(/-/g, '_'))
+
+      if (oposError) {
+        console.error('Error filtrando por oposición:', oposError)
+        return NextResponse.json({ error: 'Error filtrando por oposición' }, { status: 500 })
+      }
+
+      const oposUserIds = new Set(oposicionUsers?.map(u => u.id) ?? [])
+
+      if (oposUserIds.size > 0) {
+        subscriptions = subscriptions.filter(sub => oposUserIds.has(sub.user_id))
+        console.log(`📱 [ADMIN PUSH] Filtrado por oposición ${targetType}: ${subscriptions.length} usuarios`)
+      } else {
+        return NextResponse.json({
+          success: true,
+          sent: 0,
+          message: `No hay usuarios con oposición ${targetType}`,
+        })
+      }
     }
 
     const finalSubscriptions = subscriptions.slice(0, 1000)
