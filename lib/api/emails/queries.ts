@@ -5,6 +5,7 @@ import { eq } from 'drizzle-orm'
 import { Resend } from 'resend'
 import crypto from 'crypto'
 import { emailTemplates } from '@/lib/emails/templates'
+import { getEmailTemplate, renderTemplate } from '@/lib/api/newsletters'
 import type {
   EmailType,
   EmailPreferences,
@@ -279,55 +280,95 @@ export async function sendEmailV2(params: SendEmailRequest): Promise<SendEmailRe
   const token = await generateUnsubscribeToken(userId, user.email, emailType)
   const unsubscribeUrl = getUnsubscribeUrl(token)
 
-  // 4. Render template
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const template = (emailTemplates as any)[emailType]
-  if (!template) {
-    return {
-      success: false,
-      error: `Template not found for email type: ${emailType}`,
-    }
-  }
-
+  // 4. Render template — BD first, fallback to hardcoded
   const toEmail = customData.to as string || user.email
   const userName = customData.userName as string || user.fullName || 'Usuario'
   const daysInactive = (customData.daysInactive as number) || (customData.daysSince as number) || 7
   const baseUrl = 'https://www.vence.es'
   const testUrl = `${baseUrl}/auxiliar-administrativo-estado/test?utm_source=email&utm_campaign=${emailType}`
 
-  // Each template has different argument signatures
   let subject: string
   let html: string
 
-  if (emailType === 'soporte_respuesta') {
-    subject = template.subject()
-    html = template.html(userName, customData.adminMessage, customData.chatUrl, unsubscribeUrl)
-  } else if (emailType === 'impugnacion_respuesta') {
-    subject = template.subject(customData.status)
-    html = template.html(userName, customData.status, customData.adminResponse, customData.questionText, customData.disputeUrl, unsubscribeUrl)
-  } else if (emailType === 'pago_fallido') {
-    subject = template.subject()
-    const gestionarUrl = `${baseUrl}/perfil?tab=suscripcion&utm_source=email&utm_campaign=pago_fallido`
-    html = template.html(userName, gestionarUrl, unsubscribeUrl)
-  } else if (emailType === 'recordatorio_renovacion') {
-    const diasRestantes = (customData.daysUntilRenewal as number) || 7
-    subject = template.subject(userName, diasRestantes)
-    html = template.html(userName, diasRestantes, customData.fechaRenovacion, customData.planAmount, customData.gestionarUrl, unsubscribeUrl)
-  } else if (emailType === 'resumen_semanal') {
-    const articlesData = (customData.articlesData as unknown[]) || []
-    subject = template.subject(userName, articlesData.length)
-    html = template.html(userName, 0, testUrl, unsubscribeUrl, articlesData)
-  } else if (emailType === 'mejoras_producto') {
-    const mejoraDatos = (customData.mejoraDatos as Record<string, unknown>) || {}
-    subject = template.subject(userName, mejoraDatos.titulo)
-    html = template.html(userName, daysInactive, testUrl, unsubscribeUrl, mejoraDatos)
-  } else if (emailType === 'nueva_oposicion') {
-    const datos = (customData.oposicionDatos as Record<string, unknown>) || {}
-    subject = template.subject(userName, 0)
-    html = template.html(userName, 0, testUrl, unsubscribeUrl, datos)
+  // Try BD template first (slug = emailType with _ → -)
+  const slug = emailType.replace(/_/g, '-')
+  const bdTemplate = await getEmailTemplate(slug)
+
+  if (bdTemplate) {
+    // Build variables from user data + customData
+    const flatCustom: Record<string, unknown> = {
+      ...(customData.oposicionDatos as Record<string, unknown> || {}),
+      ...(customData.mejoraDatos as Record<string, unknown> || {}),
+      ...customData,
+    }
+    const vars: Record<string, unknown> = {
+      userName,
+      unsubscribeUrl,
+      testUrl,
+      daysInactive,
+      baseUrl,
+      ...flatCustom,
+    }
+    // Auto-generate cuerpo for nueva-oposicion if not provided
+    if (slug === 'nueva-oposicion' && !vars.cuerpo) {
+      const datos = customData.oposicionDatos as Record<string, unknown> || {}
+      const nombre = datos.nombreOposicion || 'Nueva Oposicion'
+      const plazas = datos.plazas ? ` Se han convocado ${datos.plazas} plazas.` : ''
+      const temas = datos.temas ? ` Tienes ${datos.temas} temas disponibles.` : ''
+      vars.cuerpo = `Ya puedes preparar la oposicion de <strong>${nombre}</strong> en Vence.es.${plazas}${temas}`
+    }
+    if (slug === 'nueva-oposicion' && !vars.ctaUrl) {
+      const datos = customData.oposicionDatos as Record<string, unknown> || {}
+      vars.ctaUrl = datos.slug
+        ? `https://www.vence.es/${datos.slug}/test?utm_source=email&utm_campaign=nueva_oposicion`
+        : testUrl
+    }
+
+    subject = renderTemplate(bdTemplate.subjectTemplate, vars)
+    html = renderTemplate(bdTemplate.htmlTemplate, vars)
+    console.log(`📧 [Emails/v2] Using BD template: ${slug}`)
   } else {
-    subject = template.subject(userName, daysInactive)
-    html = template.html(userName, daysInactive, testUrl, unsubscribeUrl)
+    // Fallback: hardcoded templates from lib/emails/templates.ts
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const template = (emailTemplates as any)[emailType]
+    if (!template) {
+      return {
+        success: false,
+        error: `Template not found for email type: ${emailType}`,
+      }
+    }
+
+    if (emailType === 'soporte_respuesta') {
+      subject = template.subject()
+      html = template.html(userName, customData.adminMessage, customData.chatUrl, unsubscribeUrl)
+    } else if (emailType === 'impugnacion_respuesta') {
+      subject = template.subject(customData.status)
+      html = template.html(userName, customData.status, customData.adminResponse, customData.questionText, customData.disputeUrl, unsubscribeUrl)
+    } else if (emailType === 'pago_fallido') {
+      subject = template.subject()
+      const gestionarUrl = `${baseUrl}/perfil?tab=suscripcion&utm_source=email&utm_campaign=pago_fallido`
+      html = template.html(userName, gestionarUrl, unsubscribeUrl)
+    } else if (emailType === 'recordatorio_renovacion') {
+      const diasRestantes = (customData.daysUntilRenewal as number) || 7
+      subject = template.subject(userName, diasRestantes)
+      html = template.html(userName, diasRestantes, customData.fechaRenovacion, customData.planAmount, customData.gestionarUrl, unsubscribeUrl)
+    } else if (emailType === 'resumen_semanal') {
+      const articlesData = (customData.articlesData as unknown[]) || []
+      subject = template.subject(userName, articlesData.length)
+      html = template.html(userName, 0, testUrl, unsubscribeUrl, articlesData)
+    } else if (emailType === 'mejoras_producto') {
+      const mejoraDatos = (customData.mejoraDatos as Record<string, unknown>) || {}
+      subject = template.subject(userName, mejoraDatos.titulo)
+      html = template.html(userName, daysInactive, testUrl, unsubscribeUrl, mejoraDatos)
+    } else if (emailType === 'nueva_oposicion') {
+      const datos = (customData.oposicionDatos as Record<string, unknown>) || {}
+      subject = template.subject(userName, 0)
+      html = template.html(userName, 0, testUrl, unsubscribeUrl, datos)
+    } else {
+      subject = template.subject(userName, daysInactive)
+      html = template.html(userName, daysInactive, testUrl, unsubscribeUrl)
+    }
+    console.log(`📧 [Emails/v2] Using hardcoded template: ${emailType}`)
   }
 
   // 5. Send via Resend

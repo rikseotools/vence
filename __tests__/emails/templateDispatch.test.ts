@@ -86,6 +86,12 @@ jest.mock('resend', () => ({
 // Use REAL templates — this is the whole point of the test
 // (no jest.mock for @/lib/emails/templates)
 
+// Mock getEmailTemplate to return null (force fallback to hardcoded templates)
+jest.mock('@/lib/api/newsletters', () => ({
+  getEmailTemplate: jest.fn().mockResolvedValue(null),
+  renderTemplate: jest.fn(),
+}))
+
 import { sendEmailV2 } from '@/lib/api/emails/queries'
 
 // Helper to mock user lookup in sendEmailV2
