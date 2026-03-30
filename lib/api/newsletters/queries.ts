@@ -115,33 +115,54 @@ export async function getNewsletterAudience(
 // ============================================
 
 export async function getAudienceStats(): Promise<AudienceStats> {
-  // Cargar oposiciones activas desde BD
+  const db = getDb()
+
+  // 1. Cargar oposiciones activas
   const activeOposiciones = await getActiveOposiciones()
 
-  const audienceTypes: string[] = [
-    'all', 'active', 'inactive', 'premium', 'free',
-    ...activeOposiciones.map(o => o.key)
-  ]
+  // 2. IDs de usuarios dados de baja (1 query)
+  const unsubscribedUsers = await db
+    .select({ userId: emailPreferences.userId })
+    .from(emailPreferences)
+    .where(eq(emailPreferences.unsubscribedAll, true))
+  const unsubscribedIds = new Set(unsubscribedUsers.map(u => u.userId))
 
-  const counts: Record<string, number> = {}
+  // 3. Todos los usuarios con email en 1 sola query
+  const allUsers = await db
+    .select({
+      id: userProfiles.id,
+      targetOposicion: userProfiles.targetOposicion,
+      isActiveStudent: userProfiles.isActiveStudent,
+      planType: userProfiles.planType,
+    })
+    .from(userProfiles)
+    .where(not(isNull(userProfiles.email)))
 
-  for (const type of audienceTypes) {
-    const audience = await getNewsletterAudience(type)
-    counts[type] = audience.length
+  // 4. Filtrar unsubs y contar en memoria
+  const eligible = allUsers.filter(u => !unsubscribedIds.has(u.id))
+
+  const general = {
+    all: eligible.length,
+    active: eligible.filter(u => u.isActiveStudent === true).length,
+    inactive: eligible.filter(u => u.isActiveStudent === false).length,
+    premium: eligible.filter(u => u.planType === 'premium').length,
+    free: eligible.filter(u => u.planType !== 'premium').length,
+  }
+
+  // 5. Contar por oposición
+  const oposicionCounts: Record<string, number> = {}
+  for (const u of eligible) {
+    if (u.targetOposicion) {
+      oposicionCounts[u.targetOposicion] = (oposicionCounts[u.targetOposicion] || 0) + 1
+    }
   }
 
   return {
-    general: {
-      all: counts.all || 0,
-      active: counts.active || 0,
-      inactive: counts.inactive || 0,
-      premium: counts.premium || 0,
-      free: counts.free || 0
-    },
+    general,
     byOposicion: activeOposiciones.map(o => ({
       key: o.key,
       name: o.name,
-      count: counts[o.key] || 0
+      count: oposicionCounts[o.key] || 0
     }))
   }
 }
