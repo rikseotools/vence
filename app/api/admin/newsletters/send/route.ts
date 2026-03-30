@@ -52,7 +52,7 @@ async function _POST(request: NextRequest) {
       fromName,
       fromEmail,
       testMode,
-      templateId,
+      templateId: rawTemplateId,
       templateSlug,
       templateVariables,
     } = parsed.data as typeof parsed.data & { templateSlug?: string; templateVariables?: Record<string, unknown> }
@@ -60,6 +60,7 @@ async function _POST(request: NextRequest) {
     // Si se proporciona templateSlug, resolver plantilla desde BD
     let subject = rawSubject
     let htmlContent = rawHtmlContent
+    let templateId = rawTemplateId
 
     if (templateSlug) {
       const tpl = await getEmailTemplate(templateSlug)
@@ -71,6 +72,7 @@ async function _POST(request: NextRequest) {
       const vars = { ...previewData, ...(templateVariables || {}) }
       subject = renderTemplate(tpl.subjectTemplate, vars)
       htmlContent = renderTemplate(tpl.htmlTemplate, vars)
+      templateId = templateSlug // Usar slug como templateId para tracking correcto
       console.log(`📧 [Newsletter/Send] Usando plantilla BD: ${templateSlug}`)
     }
 
