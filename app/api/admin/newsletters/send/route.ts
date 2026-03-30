@@ -251,7 +251,7 @@ async function _POST(request: NextRequest) {
                   event_type: 'sent',
                   email_type: 'newsletter',
                   email_address: user.email,
-                  subject: subject,
+                  subject: personalizedSubject,
                   template_id: templateId || 'newsletter',
                   campaign_id: campaignId,
                   email_content_preview: personalizedHtml
