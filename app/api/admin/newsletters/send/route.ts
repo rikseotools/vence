@@ -183,7 +183,12 @@ async function _POST(request: NextRequest) {
         // Añadir tracking pixel para detectar aperturas (solo en modo real)
         if (!testMode) {
           const trackingPixel = `<img src="https://www.vence.es/api/email-tracking/open?user_id=${user.id}&email_id=${campaignId}&type=newsletter&template_id=${templateId || 'newsletter'}&campaign_id=${campaignId}" width="1" height="1" style="display:none;" alt="">`
-          personalizedHtml = personalizedHtml.replace('</body>', `${trackingPixel}</body>`)
+          if (personalizedHtml.includes('</body>')) {
+            personalizedHtml = personalizedHtml.replace('</body>', `${trackingPixel}</body>`)
+          } else {
+            // Templates sin </body>: añadir al final del HTML
+            personalizedHtml += trackingPixel
+          }
         }
 
         // Añadir tracking a enlaces (solo en modo real)
@@ -214,8 +219,12 @@ async function _POST(request: NextRequest) {
           </div>
         `
 
-        // Insertar footer antes del </body>
-        personalizedHtml = personalizedHtml.replace('</body>', `${unsubscribeFooter}</body>`)
+        // Insertar footer antes del </body> o al final
+        if (personalizedHtml.includes('</body>')) {
+          personalizedHtml = personalizedHtml.replace('</body>', `${unsubscribeFooter}</body>`)
+        } else {
+          personalizedHtml += unsubscribeFooter
+        }
 
         // Enviar con Resend con retry en caso de rate limiting
         let retries = 0
