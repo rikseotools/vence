@@ -19,8 +19,8 @@ export type AudienceType = string
 // ============================================
 
 export const sendNewsletterRequestSchema = z.object({
-  subject: z.string().min(1, 'El asunto es requerido').max(200, 'El asunto es demasiado largo').optional().default(''),
-  htmlContent: z.string().min(1, 'El contenido HTML es requerido').optional().default(''),
+  subject: z.string().max(200, 'El asunto es demasiado largo').optional().default(''),
+  htmlContent: z.string().optional().default(''),
   audienceType: audienceTypeSchema.optional(),
   selectedUserIds: z.array(z.string().uuid()).optional(),
   fromName: z.string().default('Vence'),
