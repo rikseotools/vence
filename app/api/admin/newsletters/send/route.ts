@@ -8,7 +8,7 @@ import {
   type SendNewsletterRequest,
   type EligibleUser
 } from '@/lib/api/newsletters'
-import { renderTemplate, getEmailTemplate } from '@/lib/api/newsletters'
+import { renderTemplate, getEmailTemplate, getActiveOposiciones } from '@/lib/api/newsletters'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 const getSupabase = () => createClient(
@@ -62,6 +62,12 @@ async function _POST(request: NextRequest) {
     let htmlContent = rawHtmlContent
     let templateId = rawTemplateId
 
+    // Templates raw para renderizar por usuario (solo con templateSlug)
+    let rawSubjectTemplate = ''
+    let rawHtmlTemplate = ''
+    let baseVars: Record<string, unknown> = {}
+    let oposicionNames: Record<string, string> = {}
+
     if (templateSlug) {
       const tpl = await getEmailTemplate(templateSlug)
       if (!tpl) {
@@ -69,11 +75,24 @@ async function _POST(request: NextRequest) {
       }
 
       const previewData = tpl.previewData as Record<string, unknown> || {}
-      const vars = { ...previewData, ...(templateVariables || {}) }
-      subject = renderTemplate(tpl.subjectTemplate, vars)
-      htmlContent = renderTemplate(tpl.htmlTemplate, vars)
-      templateId = templateSlug // Usar slug como templateId para tracking correcto
-      console.log(`📧 [Newsletter/Send] Usando plantilla BD: ${templateSlug}`)
+      baseVars = { ...previewData, ...(templateVariables || {}) }
+
+      // Guardar templates raw para personalizar por usuario en el loop
+      rawSubjectTemplate = tpl.subjectTemplate
+      rawHtmlTemplate = tpl.htmlTemplate
+
+      // Pre-render para subject/htmlContent por defecto (fallback)
+      subject = renderTemplate(tpl.subjectTemplate, baseVars)
+      htmlContent = renderTemplate(tpl.htmlTemplate, baseVars)
+      templateId = templateSlug
+
+      // Cargar nombres de oposiciones para personalizar {{oposicionActual}}
+      const oposiciones = await getActiveOposiciones()
+      for (const o of oposiciones) {
+        oposicionNames[o.key] = o.name
+      }
+
+      console.log(`📧 [Newsletter/Send] Usando plantilla BD: ${templateSlug} (personalización por usuario activa)`)
     }
 
     // Obtener usuarios según el tipo de audiencia
@@ -138,7 +157,24 @@ async function _POST(request: NextRequest) {
         }
 
         // Personalizar HTML con variables del usuario
-        let personalizedHtml = replaceNewsletterVariables(htmlContent, {
+        let personalizedSubject = subject
+        let personalizedHtml: string
+
+        if (rawHtmlTemplate) {
+          // Plantilla BD: renderizar con variables por usuario
+          const userVars = {
+            ...baseVars,
+            userName: user.fullName?.split(' ')[0] || 'Opositor/a',
+            oposicionActual: oposicionNames[user.targetOposicion || ''] || user.targetOposicion || 'tu oposicion',
+          }
+          personalizedSubject = renderTemplate(rawSubjectTemplate, userVars)
+          personalizedHtml = renderTemplate(rawHtmlTemplate, userVars)
+        } else {
+          personalizedHtml = htmlContent
+        }
+
+        // Reemplazar variables legacy {nombre}, {oposicion}, {email}
+        personalizedHtml = replaceNewsletterVariables(personalizedHtml, {
           nombre: user.fullName,
           oposicion: user.targetOposicion,
           email: user.email
@@ -196,7 +232,7 @@ async function _POST(request: NextRequest) {
             body: JSON.stringify({
               from: `${fromName} <${fromEmail}>`,
               to: [user.email],
-              subject: subject,
+              subject: personalizedSubject,
               html: personalizedHtml
             })
           })
