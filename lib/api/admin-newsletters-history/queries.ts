@@ -10,8 +10,19 @@ import { eq, and, gte, lte, inArray, sql } from 'drizzle-orm'
 export async function getNewsletterHistory() {
   const db = getDb()
 
+  // Solo campos necesarios para agrupar y calcular stats
+  // (excluir email_content_preview que es HTML pesado)
   const events = await db
-    .select()
+    .select({
+      userId: emailEvents.userId,
+      emailType: emailEvents.emailType,
+      eventType: emailEvents.eventType,
+      templateId: emailEvents.templateId,
+      campaignId: emailEvents.campaignId,
+      subject: emailEvents.subject,
+      createdAt: emailEvents.createdAt,
+      emailContentPreview: emailEvents.emailContentPreview,
+    })
     .from(emailEvents)
     .where(eq(emailEvents.emailType, 'newsletter'))
     .orderBy(sql`${emailEvents.createdAt} DESC`)
