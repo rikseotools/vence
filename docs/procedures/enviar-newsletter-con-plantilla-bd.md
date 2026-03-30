@@ -4,15 +4,15 @@
 
 Cuando el usuario dice cosas como:
 - "Envia la newsletter de nueva oposicion a los usuarios de CyL"
-- "Manda un email a los de Madrid con la plantilla nueva-oposicion"
+- "Manda el email de oposicion cruzada a usuarios de Estado que viven en CyL"
 - "Haz un broadcast con la plantilla X a la audiencia Y"
 
 ## Paso 1: Identificar plantilla y audiencia
 
 Preguntar al usuario si no queda claro:
-- **Plantilla**: slug de la plantilla en BD (ej: `nueva-oposicion`)
-- **Audiencia**: target_oposicion del usuario (ej: `auxiliar_administrativo_cyl`)
-- **Variables**: datos que rellenan el template (nombre, plazas, features, etc.)
+- **Plantilla**: slug de la plantilla en BD (ej: `nueva-oposicion`, `oposicion-cruzada`)
+- **Audiencia**: por target_oposicion, por selectedUserIds, o por region/IP
+- **Variables**: datos que rellenan el template
 
 ### Consultar plantillas disponibles
 
@@ -31,7 +31,7 @@ const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.
 "
 ```
 
-### Consultar audiencias disponibles (usuarios por oposicion)
+### Consultar audiencias por oposicion
 
 ```bash
 node -e "
@@ -49,7 +49,45 @@ const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.
 "
 ```
 
-### Comprobar audiencia final (OBLIGATORIO antes de enviar)
+### Consultar audiencia por region/IP (tabla user_sessions)
+
+Cuando el usuario pide enviar a usuarios de una comunidad autonoma, buscar por IP:
+
+```bash
+node -e "
+const { createClient } = require('@supabase/supabase-js');
+require('dotenv').config({ path: '.env.local' });
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+
+const REGION = 'Castille and León'; // Nombre en inglés como lo guarda ip-api.com
+
+(async () => {
+  const { data: sessions } = await supabase
+    .from('user_sessions')
+    .select('user_id')
+    .ilike('region', '%' + REGION + '%');
+
+  const userIds = [...new Set((sessions || []).map(s => s.user_id).filter(Boolean))];
+
+  const { data: profiles } = await supabase
+    .from('user_profiles')
+    .select('id, email, full_name, target_oposicion, ciudad')
+    .in('id', userIds)
+    .not('email', 'is', null)
+    .order('target_oposicion');
+
+  console.log('Usuarios con IP en', REGION + ':', profiles?.length);
+  // Filtrar por oposicion si es necesario
+  for (const u of profiles || []) {
+    console.log(u.email, '|', u.ciudad || '?', '|', u.target_oposicion);
+  }
+})();
+"
+```
+
+Regiones en user_sessions (en ingles): Madrid, Andalusia, Castille and León, Valencia, Catalonia, Principality of Asturias, etc.
+
+## Paso 2: Comprobar audiencia final (OBLIGATORIO)
 
 Verificar cuantos usuarios recibirán el email y cuantos están bloqueados.
 Se excluyen usuarios con `unsubscribed_all = true` O `email_newsletter_disabled = true`.
@@ -60,45 +98,42 @@ const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config({ path: '.env.local' });
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
-const AUDIENCE = 'auxiliar_administrativo_cyl'; // <-- CAMBIAR por la audiencia deseada
+const USER_IDS = []; // <-- Rellenar con IDs de usuarios a enviar
 
 (async () => {
-  const { data: users } = await supabase
-    .from('user_profiles')
-    .select('id, email, full_name')
-    .eq('target_oposicion', AUDIENCE)
-    .not('email', 'is', null)
-    .order('email');
-
   const { data: blocked } = await supabase
     .from('email_preferences')
     .select('user_id, unsubscribed_all, email_newsletter_disabled')
     .or('unsubscribed_all.eq.true,email_newsletter_disabled.eq.true');
-
   const blockedIds = new Set((blocked || []).map(b => b.user_id));
+
+  const { data: users } = await supabase
+    .from('user_profiles')
+    .select('id, email, full_name, target_oposicion')
+    .in('id', USER_IDS)
+    .not('email', 'is', null);
+
   const eligible = (users || []).filter(u => !blockedIds.has(u.id));
   const blockedList = (users || []).filter(u => blockedIds.has(u.id));
 
-  console.log('=== AUDIENCIA:', AUDIENCE, '===');
-  console.log('Total registrados:', users?.length);
-  console.log('Bloqueados (unsub_all o newsletter_disabled):', blockedList.length);
-  if (blockedList.length > 0) {
-    blockedList.forEach(u => console.log('  BLOQUEADO:', u.email, '-', u.full_name || '(sin nombre)'));
-  }
-  console.log('Elegibles finales:', eligible.length);
-  console.log('');
-  eligible.forEach((u, i) => console.log((i+1) + '.', u.email, '-', u.full_name || '(sin nombre)'));
+  console.log('Total:', users?.length);
+  console.log('Bloqueados:', blockedList.length);
+  if (blockedList.length) blockedList.forEach(u => console.log('  BLOQUEADO:', u.email));
+  console.log('Elegibles:', eligible.length);
+  eligible.forEach((u, i) => console.log((i+1) + '.', u.email, '-', u.full_name || '', '-', u.target_oposicion));
 })();
 "
 ```
 
 **Reportar al usuario** antes de enviar:
 - Total registrados
-- Cuantos bloqueados y por que (unsubscribed_all o newsletter_disabled)
+- Cuantos bloqueados y por que
 - Cuantos elegibles finales
 - Pedir confirmacion antes de enviar
 
-## Paso 2: Enviar en modo TEST primero (SIEMPRE)
+## Paso 3: Enviar test primero
+
+Enviar a 1 usuario (el admin) para verificar que se ve bien.
 
 ```bash
 node -e "
@@ -106,46 +141,59 @@ const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config({ path: '.env.local' });
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
-// Obtener token admin
 (async () => {
-  const { data: { session } } = await supabase.auth.signInWithPassword({
-    email: process.env.ADMIN_EMAIL || 'rikseotools@gmail.com',
-    password: process.env.ADMIN_PASSWORD
-  });
+  const { data: p } = await supabase.from('user_profiles').select('id').eq('email', 'manueltrader@gmail.com').single();
 
-  if (!session) { console.error('No se pudo autenticar'); return; }
-
-  const res = await fetch(process.env.NEXT_PUBLIC_URL + '/api/admin/newsletters/send', {
+  const res = await fetch('http://localhost:3000/api/admin/newsletters/send', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      templateSlug: 'nueva-oposicion',
+      templateSlug: 'SLUG_PLANTILLA',
       templateVariables: {
-        nombreOposicion: 'Auxiliar Administrativo de Castilla y Leon',
-        textoPlazas: ' Se han convocado 362 plazas.',
-        features: '<li style=\"margin: 10px 0; color: #065f46; font-size: 15px; padding-left: 28px; position: relative;\"><span style=\"position: absolute; left: 0;\">✅</span><strong>27 temas</strong> del temario oficial BOCYL</li><li style=\"margin: 10px 0; color: #065f46; font-size: 15px; padding-left: 28px; position: relative;\"><span style=\"position: absolute; left: 0;\">✅</span><strong>Tests por tema</strong></li><li style=\"margin: 10px 0; color: #065f46; font-size: 15px; padding-left: 28px; position: relative;\"><span style=\"position: absolute; left: 0;\">✅</span><strong>Examenes oficiales</strong> de convocatorias anteriores</li><li style=\"margin: 10px 0; color: #065f46; font-size: 15px; padding-left: 28px; position: relative;\"><span style=\"position: absolute; left: 0;\">✅</span><strong>Estadisticas de progreso</strong></li>',
-        ctaUrl: 'https://www.vence.es/auxiliar-administrativo-cyl/test?utm_source=email&utm_campaign=nueva_oposicion'
+        // Variables de la plantilla (NO incluir userName ni unsubscribeUrl, se rellenan solos)
       },
-      audienceType: 'auxiliar_administrativo_cyl',
-      testMode: true
+      selectedUserIds: [p.id],
+      testMode: false
     })
   });
 
-  const data = await res.json();
-  console.log(JSON.stringify(data, null, 2));
+  console.log(JSON.stringify(await res.json(), null, 2));
 })();
 "
 ```
 
-**testMode: true** envia solo a los primeros 3 usuarios. Verificar que llega bien al email.
+## Paso 4: Enviar a todos (solo con aprobacion del usuario)
 
-## Paso 3: Enviar a todos (solo con aprobacion del usuario)
+Usar `selectedUserIds` con los IDs elegibles del paso 2.
+Si ya se envio a algunos (ej: test previo), excluirlos consultando email_events.
 
-Cambiar `testMode: false` y ejecutar de nuevo. El endpoint:
-- Respeta `unsubscribedAll` (no envia a usuarios dados de baja)
-- Tiene rate limiting (1 email/segundo con retry en 429)
-- Registra eventos en `email_events` para analytics
-- Añade tracking pixel y link tracking automaticamente
+```bash
+# Verificar a quienes ya se envio
+node -e "
+const { createClient } = require('@supabase/supabase-js');
+require('dotenv').config({ path: '.env.local' });
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+(async () => {
+  const today = new Date().toISOString().split('T')[0];
+  const { data } = await supabase.from('email_events')
+    .select('email_address')
+    .eq('event_type', 'sent')
+    .eq('template_id', 'SLUG_PLANTILLA')
+    .gte('created_at', today + 'T00:00:00Z');
+  console.log('Ya enviados hoy:', data?.length);
+  (data || []).forEach(e => console.log(' -', e.email_address));
+})();
+"
+```
+
+El endpoint al enviar:
+- Personaliza `{{userName}}` y `{{oposicionActual}}` por cada usuario automaticamente
+- `{{userName}}` = primer nombre del perfil
+- `{{oposicionActual}}` = nombre completo de la oposicion del usuario (desde tabla oposiciones)
+- Respeta `unsubscribedAll` y `email_newsletter_disabled`
+- Rate limiting: 1 email/segundo con retry en 429
+- Registra eventos en `email_events` con subject personalizado
+- Tracking pixel + link tracking automatico (solo en testMode: false)
 - Genera token de unsubscribe por usuario
 
 ## Referencia rapida de la API
@@ -155,38 +203,56 @@ Cambiar `testMode: false` y ejecutar de nuevo. El endpoint:
 | Campo | Tipo | Descripcion |
 |-------|------|-------------|
 | `templateSlug` | string | Slug de plantilla en BD |
-| `templateVariables` | object | Variables para rellenar el template |
-| `audienceType` | string | `all`, `active`, `inactive`, `premium`, `free`, o cualquier `target_oposicion` |
-| `testMode` | boolean | `true` = solo 3 usuarios |
+| `templateVariables` | object | Variables globales (no incluir userName ni unsubscribeUrl) |
+| `audienceType` | string | `all`, `active`, `premium`, `free`, o cualquier `target_oposicion` |
 | `selectedUserIds` | string[] | Alternativa: enviar a usuarios especificos por ID |
+| `testMode` | boolean | `true` = solo 3 usuarios (solo con audienceType, no selectedUserIds) |
 
-### Variables de la plantilla `nueva-oposicion`
+### Plantillas disponibles
 
-| Variable | Descripcion | Ejemplo |
-|----------|-------------|---------|
-| `nombreOposicion` | Nombre completo | Auxiliar Administrativo de Castilla y Leon |
-| `textoPlazas` | Texto con plazas (empieza con espacio) | ` Se han convocado 362 plazas.` |
-| `features` | HTML con items `<li>` y checkmarks | Ver ejemplo arriba |
-| `ctaUrl` | URL del boton "Empezar a practicar" | `https://www.vence.es/SLUG/test?utm_source=email&utm_campaign=nueva_oposicion` |
-| `userName` | Se rellena automaticamente por usuario | - |
-| `unsubscribeUrl` | Se genera automaticamente por usuario | - |
+#### `nueva-oposicion` - Anunciar nueva oposicion
 
-### Audiencias comunes
+| Variable | Descripcion | Auto? |
+|----------|-------------|-------|
+| `nombreOposicion` | Nombre completo de la oposicion | No |
+| `textoPlazas` | Texto con plazas (empieza con espacio) | No |
+| `features` | HTML con items `<li>` y checkmarks | No |
+| `ctaUrl` | URL del boton CTA | No |
+| `userName` | Primer nombre del usuario | Si |
+| `unsubscribeUrl` | Link de desuscripcion | Si |
+
+#### `oposicion-cruzada` - Promocionar oposicion a usuarios de otra
+
+| Variable | Descripcion | Auto? |
+|----------|-------------|-------|
+| `nuevaOposicion` | Nombre de la oposicion a promocionar | No |
+| `nuevaOposicionCorta` | Nombre corto (para boton CTA) | No |
+| `temasComunesHtml` | HTML con temas comunes (items `<li>`) | No |
+| `ctaUrl` | URL del boton CTA | No |
+| `userName` | Primer nombre del usuario | Si |
+| `oposicionActual` | Oposicion actual del usuario (nombre completo) | Si |
+| `unsubscribeUrl` | Link de desuscripcion | Si |
+
+### Audiencias
+
+Las audiencias se cargan dinamicamente de la tabla `oposiciones`. Valores comunes:
 
 | Valor | Descripcion |
 |-------|-------------|
 | `all` | Todos los usuarios con email |
+| `active` | Usuarios activos |
+| `premium` | Usuarios premium |
 | `auxiliar_administrativo_estado` | Aux. Admin. Estado |
 | `auxiliar_administrativo_cyl` | Aux. Admin. CyL |
 | `auxiliar_administrativo_madrid` | Aux. Admin. Madrid |
 | `administrativo_estado` | Administrativo Estado |
-| `tramitacion_procesal` | Tramitacion Procesal |
 
-Las audiencias se cargan dinamicamente de la tabla `oposiciones`. Cualquier oposicion activa con usuarios que tengan ese `target_oposicion` es una audiencia valida.
+Para audiencias por region/IP, usar `selectedUserIds` con IDs obtenidos de `user_sessions`.
 
 ## Notas importantes
 
-- **SIEMPRE testMode: true primero** - verificar que el email se ve bien
-- **userName y unsubscribeUrl** se rellenan automaticamente por cada usuario
-- Las audiencias no son mutuamente excluyentes con region. Si quieres CyL + region, usa el endpoint `/api/v2/admin/broadcast` que combina ambos filtros
-- Para ver el resultado del envio, consultar `/admin/newsletters` > Historial de Envios
+- **SIEMPRE enviar test a manueltrader@gmail.com primero**
+- Variables auto (`userName`, `oposicionActual`, `unsubscribeUrl`) se personalizan por cada usuario
+- Si ya se envio a algunos usuarios, excluirlos consultando `email_events`
+- Para ver resultado: `/admin/newsletters` > Historial de Envios
+- Limite de Resend: verificar cuota antes de envios grandes
