@@ -6,28 +6,9 @@ import { emailTemplates } from '@/db/schema'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod/v3'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
-import { createClient } from '@supabase/supabase-js'
-
-const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || 'rikseotools@gmail.com').split(',')
-
-async function verifyAdmin(request: NextRequest): Promise<boolean> {
-  const token = request.headers.get('authorization')?.replace('Bearer ', '')
-  if (!token) return false
-
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
-  const { data: { user }, error } = await supabase.auth.getUser(token)
-  return !error && !!user && ADMIN_EMAILS.includes(user.email || '')
-}
 
 // GET - Obtener plantilla por slug
-async function _GET(request: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
-  if (!await verifyAdmin(request)) {
-    return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
-  }
-
+async function _GET(_request: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const db = getDb()
 
@@ -61,10 +42,6 @@ const UpdateTemplateSchema = z.object({
 })
 
 async function _PUT(request: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
-  if (!await verifyAdmin(request)) {
-    return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
-  }
-
   const { slug } = await params
   const body = await request.json()
   const parsed = UpdateTemplateSchema.safeParse(body)

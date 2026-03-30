@@ -43,7 +43,8 @@ export default function EmailTemplatesTab() {
   const [sendResult, setSendResult] = useState<{ success: boolean; message: string } | null>(null)
   const [sendAudience, setSendAudience] = useState('all')
   const [sendTestMode, setSendTestMode] = useState(true)
-  const [authToken, setAuthToken] = useState<string | null>(null)
+  const [audienceOptions, setAudienceOptions] = useState<{ key: string; name: string; count: number }[]>([])
+  const [loadingAudience, setLoadingAudience] = useState(false)
 
   // Edit form state
   const [editForm, setEditForm] = useState({
@@ -57,27 +58,14 @@ export default function EmailTemplatesTab() {
   })
   const [isNew, setIsNew] = useState(false)
 
-  // Obtener token de sesión
-  useEffect(() => {
-    const { createClient } = require('@supabase/supabase-js')
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    )
-    supabase.auth.getSession().then(({ data }: { data: { session: { access_token: string } | null } }) => {
-      setAuthToken(data.session?.access_token || null)
-    })
-  }, [])
-
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {}),
   }
 
   const loadTemplates = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/admin/newsletters/templates', { headers })
+      const res = await fetch('/api/admin/newsletters/templates')
       const data = await res.json()
       if (data.success) {
         setTemplates(data.templates)
@@ -87,10 +75,19 @@ export default function EmailTemplatesTab() {
     } finally {
       setLoading(false)
     }
-  }, [authToken])
+  }, [])
 
   useEffect(() => {
     loadTemplates()
+    // Cargar audiencias dinámicamente desde BD
+    fetch('/api/admin/newsletters/audience')
+      .then(r => r.json())
+      .then(data => {
+        if (data.success && data.audienceStats?.byOposicion) {
+          setAudienceOptions(data.audienceStats.byOposicion)
+        }
+      })
+      .catch(() => {})
   }, [loadTemplates])
 
   // Abrir editor con plantilla existente
@@ -621,16 +618,22 @@ export default function EmailTemplatesTab() {
               onChange={e => setSendAudience(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             >
-              <option value="all">Todos los usuarios</option>
-              <option value="active">Usuarios activos</option>
-              <option value="inactive">Usuarios inactivos</option>
-              <option value="premium">Premium</option>
-              <option value="free">Free</option>
-              <option value="auxiliar_administrativo_estado">Aux. Administrativo Estado</option>
-              <option value="administrativo_estado">Administrativo Estado</option>
-              <option value="tramitacion_procesal">Tramitacion Procesal</option>
-              <option value="auxilio_judicial">Auxilio Judicial</option>
-              <option value="gestion_procesal">Gestion Procesal</option>
+              <optgroup label="General">
+                <option value="all">Todos los usuarios</option>
+                <option value="active">Usuarios activos</option>
+                <option value="inactive">Usuarios inactivos</option>
+                <option value="premium">Premium</option>
+                <option value="free">Free</option>
+              </optgroup>
+              {audienceOptions.length > 0 && (
+                <optgroup label="Por oposicion">
+                  {audienceOptions.map(o => (
+                    <option key={o.key} value={o.key}>
+                      {o.name} ({o.count} usuarios)
+                    </option>
+                  ))}
+                </optgroup>
+              )}
             </select>
           </div>
 

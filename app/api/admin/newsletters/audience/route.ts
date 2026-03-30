@@ -4,7 +4,6 @@ import { createClient } from '@supabase/supabase-js'
 import {
   getAudienceStats,
   getUnsubscribedCount,
-  oposicionDisplayNames
 } from '@/lib/api/newsletters'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
@@ -40,10 +39,7 @@ async function _GET() {
       // Metadata adicional
       meta: {
         note: 'Todos los conteos excluyen usuarios con unsubscribedAll=true',
-        oposicionTypes: Object.entries(oposicionDisplayNames).map(([key, name]) => ({
-          key,
-          name
-        }))
+        oposicionTypes: audienceStats.byOposicion.map(o => ({ key: o.key, name: o.name }))
       }
     })
 

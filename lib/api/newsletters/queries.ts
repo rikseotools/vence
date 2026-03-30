@@ -1,46 +1,68 @@
 // lib/api/newsletters/queries.ts - Queries tipadas para newsletters
 import { getDb } from '@/db/client'
-import { userProfiles, emailPreferences, emailEvents, adminUsersWithRoles } from '@/db/schema'
+import { userProfiles, emailPreferences, emailEvents, adminUsersWithRoles, oposiciones } from '@/db/schema'
 import { eq, and, not, isNull, sql, gte, lt, notInArray, desc, or, ilike, ne } from 'drizzle-orm'
 import type {
   AudienceType, EligibleUser, AudienceStats, NewsletterVariables,
   TemplateStatsResponse, TemplateStat,
   NewsletterUsersResponse, NewsletterUser
 } from './schemas'
-import { oposicionTypes, oposicionDisplayNames } from './schemas'
+import { generalAudienceTypes } from './schemas'
+
+// ============================================
+// OBTENER OPOSICIONES ACTIVAS DESDE BD
+// ============================================
+
+export interface OposicionOption {
+  key: string   // target_oposicion value (underscores): auxiliar_administrativo_cyl
+  slug: string  // URL slug (dashes): auxiliar-administrativo-cyl
+  name: string  // Display name: Aux. CyL
+}
+
+export async function getActiveOposiciones(): Promise<OposicionOption[]> {
+  const db = getDb()
+
+  const rows = await db
+    .select({
+      slug: oposiciones.slug,
+      shortName: oposiciones.shortName,
+      nombre: oposiciones.nombre,
+    })
+    .from(oposiciones)
+    .where(eq(oposiciones.isActive, true))
+    .orderBy(oposiciones.nombre)
+
+  return rows
+    .filter(r => r.slug)
+    .map(r => ({
+      key: r.slug!.replace(/-/g, '_'),
+      slug: r.slug!,
+      name: r.shortName || r.nombre,
+    }))
+}
 
 // ============================================
 // OBTENER USUARIOS ELEGIBLES PARA NEWSLETTER
 // ============================================
 // Esta función respeta email_preferences.unsubscribedAll
+// audienceType puede ser un tipo general (all, active, etc.) o un target_oposicion (auxiliar_administrativo_cyl)
 
 export async function getNewsletterAudience(
   audienceType: AudienceType
 ): Promise<EligibleUser[]> {
   const db = getDb()
 
-  // Subquery para usuarios que se han dado de baja de todos los emails
-  const unsubscribedUsersSubquery = db
-    .select({ userId: emailPreferences.userId })
-    .from(emailPreferences)
-    .where(eq(emailPreferences.unsubscribedAll, true))
+  const isGeneralType = (generalAudienceTypes as readonly string[]).includes(audienceType)
 
-  // Base conditions: excluir usuarios sin email y usuarios dados de baja
+  // Base conditions: excluir usuarios sin email
   const baseConditions = [
     not(isNull(userProfiles.email)),
   ]
 
-  // Verificar si es un tipo de oposición
-  const isOposicionType = (oposicionTypes as readonly string[]).includes(audienceType)
-
-  if (isOposicionType) {
-    // Filtro por oposición específica
+  if (!isGeneralType) {
+    // Es un target_oposicion → filtrar directamente
     baseConditions.push(eq(userProfiles.targetOposicion, audienceType))
   } else {
-    // Filtros generales según audienceType
-    const thirtyDaysAgo = new Date()
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-
     switch (audienceType) {
       case 'active':
         baseConditions.push(eq(userProfiles.isActiveStudent, true))
@@ -60,7 +82,6 @@ export async function getNewsletterAudience(
     }
   }
 
-  // Query principal: obtener usuarios y excluir los que están en unsubscribed
   const users = await db
     .select({
       id: userProfiles.id,
@@ -71,7 +92,7 @@ export async function getNewsletterAudience(
     .from(userProfiles)
     .where(and(...baseConditions))
 
-  // Obtener lista de usuarios dados de baja
+  // Excluir usuarios dados de baja
   const unsubscribedUsers = await db
     .select({ userId: emailPreferences.userId })
     .from(emailPreferences)
@@ -79,7 +100,6 @@ export async function getNewsletterAudience(
 
   const unsubscribedIds = new Set(unsubscribedUsers.map(u => u.userId))
 
-  // Filtrar usuarios que no están dados de baja y tienen email válido
   return users
     .filter(u => u.email && !unsubscribedIds.has(u.id))
     .map(u => ({
@@ -95,10 +115,12 @@ export async function getNewsletterAudience(
 // ============================================
 
 export async function getAudienceStats(): Promise<AudienceStats> {
-  // Obtener conteos para cada tipo de audiencia
-  const audienceTypes: AudienceType[] = [
+  // Cargar oposiciones activas desde BD
+  const activeOposiciones = await getActiveOposiciones()
+
+  const audienceTypes: string[] = [
     'all', 'active', 'inactive', 'premium', 'free',
-    ...oposicionTypes
+    ...activeOposiciones.map(o => o.key)
   ]
 
   const counts: Record<string, number> = {}
@@ -116,10 +138,10 @@ export async function getAudienceStats(): Promise<AudienceStats> {
       premium: counts.premium || 0,
       free: counts.free || 0
     },
-    byOposicion: oposicionTypes.map(key => ({
-      key,
-      name: oposicionDisplayNames[key],
-      count: counts[key] || 0
+    byOposicion: activeOposiciones.map(o => ({
+      key: o.key,
+      name: o.name,
+      count: counts[o.key] || 0
     }))
   }
 }
@@ -141,11 +163,9 @@ export function replaceNewsletterVariables(
   // Reemplazar {user_name} - compatibilidad con sistema anterior
   result = result.replace(/\{user_name\}/gi, firstName)
 
-  // Reemplazar {oposicion} - usar nombre legible
+  // Reemplazar {oposicion} - usar el valor tal cual o fallback
   let oposicionName = 'tu oposición'
-  if (variables.oposicion && variables.oposicion in oposicionDisplayNames) {
-    oposicionName = oposicionDisplayNames[variables.oposicion as keyof typeof oposicionDisplayNames]
-  } else if (variables.oposicion) {
+  if (variables.oposicion) {
     oposicionName = variables.oposicion
   }
   result = result.replace(/\{oposicion\}/gi, oposicionName)

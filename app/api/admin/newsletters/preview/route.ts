@@ -7,21 +7,6 @@ import { eq } from 'drizzle-orm'
 import { z } from 'zod/v3'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { renderTemplate } from '@/lib/api/newsletters'
-import { createClient } from '@supabase/supabase-js'
-
-const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || 'rikseotools@gmail.com').split(',')
-
-async function verifyAdmin(request: NextRequest): Promise<boolean> {
-  const token = request.headers.get('authorization')?.replace('Bearer ', '')
-  if (!token) return false
-
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
-  const { data: { user }, error } = await supabase.auth.getUser(token)
-  return !error && !!user && ADMIN_EMAILS.includes(user.email || '')
-}
 
 const PreviewSchema = z.object({
   templateSlug: z.string().min(1),
@@ -29,10 +14,6 @@ const PreviewSchema = z.object({
 })
 
 async function _POST(request: NextRequest) {
-  if (!await verifyAdmin(request)) {
-    return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
-  }
-
   const body = await request.json()
   const parsed = PreviewSchema.safeParse(body)
   if (!parsed.success) {

@@ -3,6 +3,7 @@
 // Schemas y tipos
 export {
   audienceTypeSchema,
+  generalAudienceTypes,
   sendNewsletterRequestSchema,
   sendNewsletterResponseSchema,
   audienceStatsSchema,
@@ -14,8 +15,6 @@ export {
   newsletterUsersResponseSchema,
   safeParseSendRequest,
   validateSendRequest,
-  oposicionTypes,
-  oposicionDisplayNames,
   type AudienceType,
   type SendNewsletterRequest,
   type SendNewsletterResponse,
@@ -31,6 +30,7 @@ export {
 
 // Queries
 export {
+  getActiveOposiciones,
   getNewsletterAudience,
   getAudienceStats,
   replaceNewsletterVariables,
@@ -39,5 +39,6 @@ export {
   getUnsubscribedCount,
   isUserUnsubscribed,
   getTemplateStats,
-  getNewsletterUsers
+  getNewsletterUsers,
+  type OposicionOption
 } from './queries'

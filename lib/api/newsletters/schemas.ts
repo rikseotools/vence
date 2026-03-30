@@ -6,33 +6,13 @@ import { z } from 'zod/v3'
 // ============================================
 
 // Tipos generales de audiencia
-const generalAudienceTypes = ['all', 'active', 'inactive', 'premium', 'free'] as const
+export const generalAudienceTypes = ['all', 'active', 'inactive', 'premium', 'free'] as const
 
-// Tipos de oposición disponibles (deben coincidir con target_oposicion en user_profiles)
-export const oposicionTypes = [
-  'auxiliar_administrativo_estado',
-  'administrativo_estado',
-  'tramitacion_procesal',
-  'auxilio_judicial',
-  'gestion_procesal'
-] as const
+// audienceType acepta cualquier string: los generales + cualquier target_oposicion de BD
+// La validación de que existe la oposición se hace en runtime contra la tabla oposiciones
+export const audienceTypeSchema = z.string().min(1)
 
-// Mapeo de oposición a nombre legible
-export const oposicionDisplayNames: Record<typeof oposicionTypes[number], string> = {
-  'auxiliar_administrativo_estado': 'Auxiliar Administrativo del Estado',
-  'administrativo_estado': 'Administrativo del Estado',
-  'tramitacion_procesal': 'Tramitación Procesal',
-  'auxilio_judicial': 'Auxilio Judicial',
-  'gestion_procesal': 'Gestión Procesal',
-}
-
-// Schema de tipo de audiencia (combina generales + oposiciones)
-export const audienceTypeSchema = z.enum([
-  ...generalAudienceTypes,
-  ...oposicionTypes
-])
-
-export type AudienceType = z.infer<typeof audienceTypeSchema>
+export type AudienceType = string
 
 // ============================================
 // REQUEST: ENVIAR NEWSLETTER
