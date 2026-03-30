@@ -49,6 +49,55 @@ const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.
 "
 ```
 
+### Comprobar audiencia final (OBLIGATORIO antes de enviar)
+
+Verificar cuantos usuarios recibirán el email y cuantos están bloqueados.
+Se excluyen usuarios con `unsubscribed_all = true` O `email_newsletter_disabled = true`.
+
+```bash
+node -e "
+const { createClient } = require('@supabase/supabase-js');
+require('dotenv').config({ path: '.env.local' });
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+
+const AUDIENCE = 'auxiliar_administrativo_cyl'; // <-- CAMBIAR por la audiencia deseada
+
+(async () => {
+  const { data: users } = await supabase
+    .from('user_profiles')
+    .select('id, email, full_name')
+    .eq('target_oposicion', AUDIENCE)
+    .not('email', 'is', null)
+    .order('email');
+
+  const { data: blocked } = await supabase
+    .from('email_preferences')
+    .select('user_id, unsubscribed_all, email_newsletter_disabled')
+    .or('unsubscribed_all.eq.true,email_newsletter_disabled.eq.true');
+
+  const blockedIds = new Set((blocked || []).map(b => b.user_id));
+  const eligible = (users || []).filter(u => !blockedIds.has(u.id));
+  const blockedList = (users || []).filter(u => blockedIds.has(u.id));
+
+  console.log('=== AUDIENCIA:', AUDIENCE, '===');
+  console.log('Total registrados:', users?.length);
+  console.log('Bloqueados (unsub_all o newsletter_disabled):', blockedList.length);
+  if (blockedList.length > 0) {
+    blockedList.forEach(u => console.log('  BLOQUEADO:', u.email, '-', u.full_name || '(sin nombre)'));
+  }
+  console.log('Elegibles finales:', eligible.length);
+  console.log('');
+  eligible.forEach((u, i) => console.log((i+1) + '.', u.email, '-', u.full_name || '(sin nombre)'));
+})();
+"
+```
+
+**Reportar al usuario** antes de enviar:
+- Total registrados
+- Cuantos bloqueados y por que (unsubscribed_all o newsletter_disabled)
+- Cuantos elegibles finales
+- Pedir confirmacion antes de enviar
+
 ## Paso 2: Enviar en modo TEST primero (SIEMPRE)
 
 ```bash

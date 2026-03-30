@@ -92,16 +92,21 @@ export async function getNewsletterAudience(
     .from(userProfiles)
     .where(and(...baseConditions))
 
-  // Excluir usuarios dados de baja
-  const unsubscribedUsers = await db
+  // Excluir usuarios dados de baja (unsubscribedAll) o con newsletters desactivadas
+  const blockedUsers = await db
     .select({ userId: emailPreferences.userId })
     .from(emailPreferences)
-    .where(eq(emailPreferences.unsubscribedAll, true))
+    .where(
+      or(
+        eq(emailPreferences.unsubscribedAll, true),
+        eq(emailPreferences.emailNewsletterDisabled, true)
+      )
+    )
 
-  const unsubscribedIds = new Set(unsubscribedUsers.map(u => u.userId))
+  const blockedIds = new Set(blockedUsers.map(u => u.userId))
 
   return users
-    .filter(u => u.email && !unsubscribedIds.has(u.id))
+    .filter(u => u.email && !blockedIds.has(u.id))
     .map(u => ({
       id: u.id,
       email: u.email!,
@@ -120,12 +125,17 @@ export async function getAudienceStats(): Promise<AudienceStats> {
   // 1. Cargar oposiciones activas
   const activeOposiciones = await getActiveOposiciones()
 
-  // 2. IDs de usuarios dados de baja (1 query)
-  const unsubscribedUsers = await db
+  // 2. IDs de usuarios dados de baja o con newsletters desactivadas (1 query)
+  const blockedUsers = await db
     .select({ userId: emailPreferences.userId })
     .from(emailPreferences)
-    .where(eq(emailPreferences.unsubscribedAll, true))
-  const unsubscribedIds = new Set(unsubscribedUsers.map(u => u.userId))
+    .where(
+      or(
+        eq(emailPreferences.unsubscribedAll, true),
+        eq(emailPreferences.emailNewsletterDisabled, true)
+      )
+    )
+  const blockedIds = new Set(blockedUsers.map(u => u.userId))
 
   // 3. Todos los usuarios con email en 1 sola query
   const allUsers = await db
@@ -138,8 +148,8 @@ export async function getAudienceStats(): Promise<AudienceStats> {
     .from(userProfiles)
     .where(not(isNull(userProfiles.email)))
 
-  // 4. Filtrar unsubs y contar en memoria
-  const eligible = allUsers.filter(u => !unsubscribedIds.has(u.id))
+  // 4. Filtrar bloqueados y contar en memoria
+  const eligible = allUsers.filter(u => !blockedIds.has(u.id))
 
   const general = {
     all: eligible.length,
