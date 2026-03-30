@@ -14,9 +14,10 @@ import { generalAudienceTypes } from './schemas'
 // ============================================
 
 export interface OposicionOption {
-  key: string   // target_oposicion value (underscores): auxiliar_administrativo_cyl
-  slug: string  // URL slug (dashes): auxiliar-administrativo-cyl
-  name: string  // Display name: Aux. CyL
+  key: string       // target_oposicion value (underscores): auxiliar_administrativo_cyl
+  slug: string      // URL slug (dashes): auxiliar-administrativo-cyl
+  name: string      // Short name for UI: Aux. CyL
+  fullName: string  // Full name for emails: Auxiliar Administrativo de Castilla y León
 }
 
 export async function getActiveOposiciones(): Promise<OposicionOption[]> {
@@ -38,6 +39,7 @@ export async function getActiveOposiciones(): Promise<OposicionOption[]> {
       key: r.slug!.replace(/-/g, '_'),
       slug: r.slug!,
       name: r.shortName || r.nombre,
+      fullName: r.nombre,
     }))
 }
 

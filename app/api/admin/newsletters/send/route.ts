@@ -86,10 +86,10 @@ async function _POST(request: NextRequest) {
       htmlContent = renderTemplate(tpl.htmlTemplate, baseVars)
       templateId = templateSlug
 
-      // Cargar nombres de oposiciones para personalizar {{oposicionActual}}
+      // Cargar nombres completos de oposiciones para personalizar {{oposicionActual}}
       const oposiciones = await getActiveOposiciones()
       for (const o of oposiciones) {
-        oposicionNames[o.key] = o.name
+        oposicionNames[o.key] = o.fullName
       }
 
       console.log(`📧 [Newsletter/Send] Usando plantilla BD: ${templateSlug} (personalización por usuario activa)`)
