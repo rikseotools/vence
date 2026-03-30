@@ -157,6 +157,35 @@ export function replaceNewsletterVariables(
 }
 
 // ============================================
+// RENDERIZAR PLANTILLA CON {{variables}}
+// ============================================
+
+export function renderTemplate(template: string, variables: Record<string, unknown>): string {
+  return template.replace(/\{\{(\w+)\}\}/g, (match, key) => {
+    const value = variables[key]
+    if (value === undefined || value === null) return match
+    return String(value)
+  })
+}
+
+// ============================================
+// OBTENER PLANTILLA DE BD POR SLUG
+// ============================================
+
+export async function getEmailTemplate(slug: string) {
+  const db = getDb()
+  const { emailTemplates } = await import('@/db/schema')
+
+  const [template] = await db
+    .select()
+    .from(emailTemplates)
+    .where(eq(emailTemplates.slug, slug))
+    .limit(1)
+
+  return template || null
+}
+
+// ============================================
 // CONTAR USUARIOS DADOS DE BAJA
 // ============================================
 

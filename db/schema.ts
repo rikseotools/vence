@@ -3632,3 +3632,20 @@ export const adminReadMarkers = pgTable("admin_read_markers", {
 	id: text().primaryKey().notNull(),
 	lastReadAt: timestamp("last_read_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 });
+
+export const emailTemplates = pgTable("email_templates", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	slug: text().notNull().unique(),
+	name: text().notNull(),
+	category: text().default('broadcast'),
+	subjectTemplate: text("subject_template").notNull(),
+	htmlTemplate: text("html_template").notNull(),
+	variables: jsonb().default([]),
+	previewData: jsonb("preview_data").default({}),
+	isActive: boolean("is_active").default(true),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+}, (table) => [
+	check("email_templates_category_check", sql`category IN ('broadcast', 'transactional', 'marketing')`),
+	pgPolicy("Service role full access", { as: "permissive", for: "all", to: ["service_role"], using: sql`true`, withCheck: sql`true` }),
+]);

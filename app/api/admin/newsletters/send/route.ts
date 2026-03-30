@@ -8,6 +8,7 @@ import {
   type SendNewsletterRequest,
   type EligibleUser
 } from '@/lib/api/newsletters'
+import { renderTemplate, getEmailTemplate } from '@/lib/api/newsletters'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 const getSupabase = () => createClient(
@@ -44,15 +45,34 @@ async function _POST(request: NextRequest) {
     }
 
     const {
-      subject,
-      htmlContent,
+      subject: rawSubject,
+      htmlContent: rawHtmlContent,
       audienceType,
       selectedUserIds,
       fromName,
       fromEmail,
       testMode,
-      templateId
-    } = parsed.data
+      templateId,
+      templateSlug,
+      templateVariables,
+    } = parsed.data as typeof parsed.data & { templateSlug?: string; templateVariables?: Record<string, unknown> }
+
+    // Si se proporciona templateSlug, resolver plantilla desde BD
+    let subject = rawSubject
+    let htmlContent = rawHtmlContent
+
+    if (templateSlug) {
+      const tpl = await getEmailTemplate(templateSlug)
+      if (!tpl) {
+        return NextResponse.json({ error: `Plantilla "${templateSlug}" no encontrada` }, { status: 404 })
+      }
+
+      const previewData = tpl.previewData as Record<string, unknown> || {}
+      const vars = { ...previewData, ...(templateVariables || {}) }
+      subject = renderTemplate(tpl.subjectTemplate, vars)
+      htmlContent = renderTemplate(tpl.htmlTemplate, vars)
+      console.log(`📧 [Newsletter/Send] Usando plantilla BD: ${templateSlug}`)
+    }
 
     // Obtener usuarios según el tipo de audiencia
     let users: EligibleUser[] = []

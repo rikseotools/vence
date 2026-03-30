@@ -34,6 +34,8 @@ export {
   getNewsletterAudience,
   getAudienceStats,
   replaceNewsletterVariables,
+  renderTemplate,
+  getEmailTemplate,
   getUnsubscribedCount,
   isUserUnsubscribed,
   getTemplateStats,

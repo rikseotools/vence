@@ -39,17 +39,23 @@ export type AudienceType = z.infer<typeof audienceTypeSchema>
 // ============================================
 
 export const sendNewsletterRequestSchema = z.object({
-  subject: z.string().min(1, 'El asunto es requerido').max(200, 'El asunto es demasiado largo'),
-  htmlContent: z.string().min(1, 'El contenido HTML es requerido'),
+  subject: z.string().min(1, 'El asunto es requerido').max(200, 'El asunto es demasiado largo').optional().default(''),
+  htmlContent: z.string().min(1, 'El contenido HTML es requerido').optional().default(''),
   audienceType: audienceTypeSchema.optional(),
   selectedUserIds: z.array(z.string().uuid()).optional(),
   fromName: z.string().default('Vence'),
   fromEmail: z.string().email().default('info@vence.es'),
   testMode: z.boolean().default(false),
-  templateId: z.string().optional().nullable()
+  templateId: z.string().optional().nullable(),
+  // Nuevo: enviar usando plantilla de BD
+  templateSlug: z.string().optional(),
+  templateVariables: z.record(z.unknown()).optional(),
 }).refine(
   data => data.audienceType || (data.selectedUserIds && data.selectedUserIds.length > 0),
   { message: 'Debe especificar audienceType o selectedUserIds' }
+).refine(
+  data => (data.subject && data.htmlContent) || data.templateSlug,
+  { message: 'Debe proporcionar subject+htmlContent o templateSlug' }
 )
 
 export type SendNewsletterRequest = z.infer<typeof sendNewsletterRequestSchema>

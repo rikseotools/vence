@@ -3,6 +3,7 @@
 import { useState, useEffect, ChangeEvent } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { createClient } from '@supabase/supabase-js'
+import EmailTemplatesTab from './EmailTemplatesTab'
 
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -187,7 +188,7 @@ export default function NewslettersPage() {
   })
 
   // 📑 Tab state
-  const [activeTab, setActiveTab] = useState<'enviar' | 'historial'>('enviar')
+  const [activeTab, setActiveTab] = useState<'enviar' | 'historial' | 'plantillas'>('enviar')
 
   // 📊 History state
   const [history, setHistory] = useState<Newsletter[]>([])
@@ -806,6 +807,16 @@ export default function NewslettersPage() {
                 } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
               >
                 📊 Historial de Envíos
+              </button>
+              <button
+                onClick={() => setActiveTab('plantillas')}
+                className={`${
+                  activeTab === 'plantillas'
+                    ? 'border-blue-600 text-blue-600 dark:border-blue-500 dark:text-blue-500'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+                } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
+              >
+                📝 Plantillas BD
               </button>
             </nav>
           </div>
@@ -3177,6 +3188,11 @@ export default function NewslettersPage() {
               </div>
             )}
           </div>
+        )}
+
+        {/* Tab Content: Plantillas BD */}
+        {activeTab === 'plantillas' && (
+          <EmailTemplatesTab />
         )}
 
         {/* Modal: Ver newsletter */}
