@@ -960,7 +960,7 @@ export default function TestLayout({
           } : null,
           metadata: {
             id: currentQ.id,
-            difficulty: currentQ.difficulty || null,
+            difficulty: (currentQ.difficulty as 'easy' | 'medium' | 'hard' | 'extreme' | null) || null,
             question_type: currentQ.question_type || null,
             tags: null,
           },

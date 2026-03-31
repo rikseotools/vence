@@ -96,6 +96,7 @@ export const questionMetadataSchema = z.object({
   exam_source: z.string().nullable(),
   exam_date: z.string().nullable(),
   exam_entity: z.string().nullable(),
+  exam_position: z.string().nullable().optional(),
   official_difficulty_level: z.string().nullable(),
 })
 
@@ -113,7 +114,7 @@ export const filteredQuestionSchema = z.object({
   primary_article_id: z.string().uuid(),
   tema: z.number().nullable(),
   image_url: z.string().nullable().optional(),
-  content_data: z.record(z.unknown()).nullable().optional(),
+  content_data: z.record(z.string(), z.unknown()).nullable().optional(),
   article: articleResponseSchema,
   metadata: questionMetadataSchema,
 })
