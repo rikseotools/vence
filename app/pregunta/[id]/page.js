@@ -5,9 +5,11 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import ArticleModal from '@/components/ArticleModal'
+import { useLawSlugs } from '@/contexts/LawSlugContext'
 
 export default function QuestionPage({ params }) {
   const { user, supabase } = useAuth()
+  const { getSlug: resolveLawSlug } = useLawSlugs()
   const searchParams = useSearchParams()
   const [question, setQuestion] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -21,42 +23,10 @@ export default function QuestionPage({ params }) {
   const [showArticleModal, setShowArticleModal] = useState(false)
   const [lawSlug, setLawSlug] = useState(null)
 
-  // Función para generar slug desde nombre de ley
+  // Slug de ley: usa el context con cache de BD (via LawSlugProvider)
   const generateLawSlug = (lawShortName) => {
     if (!lawShortName) return null
-
-    // Mapeo directo para leyes comunes
-    const slugMap = {
-      'Ley 39/2015': 'ley-39-2015',
-      'Ley 40/2015': 'ley-40-2015',
-      'Ley 19/2013': 'ley-19-2013',
-      'Ley 50/1997': 'ley-50-1997',
-      'Ley 7/1985': 'ley-7-1985',
-      'Ley 2/2014': 'ley-2-2014',
-      'Ley 25/2014': 'ley-25-2014',
-      'Ley 38/2015': 'ley-38-2015',
-      'CE': 'ce',
-      'TUE': 'tue',
-      'TFUE': 'tfue',
-      'EBEP': 'ebep',
-      'Reglamento del Congreso': 'reglamento-del-congreso',
-      'Reglamento del Senado': 'reglamento-del-senado',
-    }
-
-    if (slugMap[lawShortName]) {
-      return slugMap[lawShortName]
-    }
-
-    // Generar slug genérico si no está en el mapeo
-    return lawShortName
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/\//g, '-') // Barra a guión
-      .replace(/[^a-z0-9\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-')
-      .trim()
+    return resolveLawSlug(lawShortName)
   }
 
   // Detectar modo quiz y fuente desde URL

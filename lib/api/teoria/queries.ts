@@ -3,7 +3,7 @@ import { getDb } from '@/db/client'
 import { articles, laws } from '@/db/schema'
 import { eq, and, ne, isNotNull, sql } from 'drizzle-orm'
 import { unstable_cache } from 'next/cache'
-import { getShortNameBySlug, generateSlugFromShortName } from '@/lib/api/laws'
+import { getShortNameBySlug, loadSlugMappingCache, generateSlugFromShortName } from '@/lib/api/laws'
 import type {
   ArticleDetail,
   ArticleNavigation,

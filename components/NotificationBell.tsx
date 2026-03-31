@@ -5,6 +5,7 @@ import { useIntelligentNotifications } from '../hooks/useIntelligentNotification
 import { useDisputeNotifications } from '../hooks/useDisputeNotifications'
 import { getActionTimeEstimate, getActionIcon } from '../hooks/useIntelligentNotifications'
 import type { Notification, NotificationAction } from '../hooks/useIntelligentNotifications.types'
+import { useLawSlugs } from '../contexts/LawSlugContext'
 
 // Tipos locales para el componente
 interface SwipeState {
@@ -37,6 +38,7 @@ export default function NotificationBell() {
     getNotificationActions,     
     notificationTypes
   } = useIntelligentNotifications()
+  const { getSlug: resolveLawSlug } = useLawSlugs()
 
   // 🧪 DEBUG: Solo log cuando hay cambios (throttled)
   useEffect(() => {
@@ -463,36 +465,10 @@ export default function NotificationBell() {
     return defaultUrl
   }
 
-  // 🆕 GENERAR SLUG DE LEY (copiada del hook)
+  // Slug de ley: usa el context con cache de BD (via LawSlugProvider)
   const generateLawSlug = (lawName: string | undefined): string => {
     if (!lawName) return 'unknown'
-
-    const specialCases: Record<string, string> = {
-      'Ley 19/2013': 'ley-19-2013',
-      'Ley 50/1997': 'ley-50-1997',
-      'Ley 40/2015': 'ley-40-2015',
-      'LRJSP': 'ley-40-2015',
-      'Ley 7/1985': 'ley-7-1985',
-      'Ley 2/2014': 'ley-2-2014',
-      'Ley 25/2014': 'ley-25-2014',
-      'Ley 38/2015': 'ley-38-2015',
-      'LPAC': 'ley-39-2015',
-      'CE': 'ce',
-      'Constitución Española': 'ce',
-      'TUE': 'tue',
-      'TFUE': 'tfue'
-    }
-
-    if (specialCases[lawName]) {
-      return specialCases[lawName]
-    }
-    
-    return lawName
-      .toLowerCase()
-      .replace(/\s+/g, '-')
-      .replace(/[^a-z0-9\-]/g, '-')
-      .replace(/-+/g, '-')
-      .replace(/^-|-$/g, '')
+    return resolveLawSlug(lawName)
   }
 
   // Manejar botón "Marcar como leído" (solo impugnaciones)

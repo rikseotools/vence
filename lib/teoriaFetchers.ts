@@ -1,8 +1,18 @@
 // lib/teoriaFetchers.ts - FETCHERS PARA SISTEMA DE TEORÍA
 import { getSupabaseClient } from './supabase'
-import { generateSlug as generateLawSlug, getCanonicalSlug } from './lawSlugSync'
-import { getShortNameBySlug } from './api/laws/queries'
+import { getShortNameBySlug, getCanonicalSlugAsync, loadSlugMappingCache, generateSlugFromShortName } from './api/laws/queries'
 import { isDisposicionArticle } from './boe-extractor'
+
+/**
+ * Helper: carga el cache de slugs de BD y devuelve una función sync para resolver slugs.
+ * Usar al inicio de cada función async, antes de .map() u otros contextos sync.
+ */
+async function getSlugResolver(): Promise<(shortName: string) => string> {
+  const cache = await loadSlugMappingCache()
+  return (shortName: string) => {
+    return cache.shortNameToSlug.get(shortName) ?? generateSlugFromShortName(shortName)
+  }
+}
 
 /**
  * Verifica si un article_number es un artículo válido (numérico, bis/ter/quater, o disposición).
@@ -188,6 +198,7 @@ const supabase: SupabaseClientAny = getSupabaseClient()
 // 🚀 OPTIMIZADO: No traer content (17MB+), solo contar artículos válidos
 export async function fetchLawsList(): Promise<LawWithStats[]> {
   try {
+    const resolveSlug = await getSlugResolver()
     console.log('📚 Cargando lista de leyes con teoría disponible...')
     console.time('⏱️ fetchLawsList')
 
@@ -223,7 +234,7 @@ export async function fetchLawsList(): Promise<LawWithStats[]> {
           short_name: law.short_name as string,
           description: law.description as string | null,
           articleCount: validArticles.length,
-          slug: (law.slug as string) || generateLawSlug(law.short_name as string)
+          slug: (law.slug as string) || resolveSlug(law.short_name as string)
         }
       })
       .filter((law: LawWithStats) => law.articleCount > 0)
@@ -243,8 +254,7 @@ export async function fetchLawsList(): Promise<LawWithStats[]> {
 // 📄 FETCHER: Lista de artículos de una ley específica
 // ================================================================
 export async function fetchLawArticles(lawSlug: string): Promise<LawArticlesResult> {
-  // Calentar cache BD → lawMappingUtils (no-op si ya cargado)
-  try { const { warmSlugCache } = await import('./api/laws/warmCache'); await warmSlugCache() } catch {}
+  const resolveSlug = await getSlugResolver()
 
   try {
     console.log(`📖 Cargando artículos de ley: ${lawSlug}`)
@@ -348,7 +358,7 @@ export async function fetchLawArticles(lawSlug: string): Promise<LawArticlesResu
           name: laws.name as string,
           short_name: laws.short_name as string,
           description: laws.description as string | null,
-          slug: (laws.slug as string) || generateLawSlug(laws.short_name as string)
+          slug: (laws.slug as string) || resolveSlug(laws.short_name as string)
         }
       }
     })
@@ -371,6 +381,7 @@ export async function fetchLawArticles(lawSlug: string): Promise<LawArticlesResu
 
 export async function fetchArticleContent(lawSlug: string, articleNumber: string | number): Promise<ArticleContentResult> {
   try {
+    const resolveSlug = await getSlugResolver()
     console.log(`📑 Cargando artículo: ${lawSlug}/articulo-${articleNumber}`)
 
     const lawShortName = await getShortNameBySlug(lawSlug)
@@ -449,7 +460,7 @@ export async function fetchArticleContent(lawSlug: string, articleNumber: string
             name: data.laws.name,
             short_name: data.laws.short_name,
             description: data.laws.description,
-            slug: data.laws.slug || generateLawSlug(data.laws.short_name)
+            slug: data.laws.slug || resolveSlug(data.laws.short_name)
           }
         } as ArticleContentResult & { isVirtual: boolean }
       }
@@ -473,7 +484,7 @@ export async function fetchArticleContent(lawSlug: string, articleNumber: string
         name: data.laws.name,
         short_name: data.laws.short_name,
         description: data.laws.description,
-        slug: data.laws.slug || generateLawSlug(data.laws.short_name)
+        slug: data.laws.slug || resolveSlug(data.laws.short_name)
       }
     }
 
@@ -498,6 +509,7 @@ export async function fetchArticleContent(lawSlug: string, articleNumber: string
 // ================================================================
 export async function fetchRelatedArticles(lawSlug: string, currentArticleNumber: string | number, limit: number = 5): Promise<RelatedArticle[]> {
   try {
+    const resolveSlug = await getSlugResolver()
     console.log(`🔗 Cargando artículos relacionados para: ${lawSlug}`)
 
     const lawShortName = await getShortNameBySlug(lawSlug)
@@ -526,7 +538,7 @@ export async function fetchRelatedArticles(lawSlug: string, currentArticleNumber
         article_number: article.article_number as string,
         title: article.title as string | null,
         contentPreview: extractContentPreview(article.content as string),
-        lawSlug: (laws.slug as string) || generateLawSlug(laws.short_name as string)
+        lawSlug: (laws.slug as string) || resolveSlug(laws.short_name as string)
       }
     })
 
@@ -594,6 +606,7 @@ function cleanArticleContent(content: string | null): string {
 // ================================================================
 export async function searchArticles(query: string, lawSlug: string | null = null, limit: number = 10): Promise<SearchResult[]> {
   try {
+    const resolveSlug = await getSlugResolver()
     console.log(`🔍 Buscando artículos: "${query}"`)
 
     let supabaseQuery = supabase
@@ -633,7 +646,7 @@ export async function searchArticles(query: string, lawSlug: string | null = nul
         law: {
           name: laws.name as string,
           short_name: laws.short_name as string,
-          slug: (laws.slug as string) || generateLawSlug(laws.short_name as string)
+          slug: (laws.slug as string) || resolveSlug(laws.short_name as string)
         }
       }
     })
@@ -652,6 +665,7 @@ export async function searchArticles(query: string, lawSlug: string | null = nul
 // ================================================================
 export async function fetchLawSections(lawSlugOrShortName: string, options: FetchLawSectionsOptions = {}): Promise<LawSectionsResult> {
   try {
+    const resolveSlug = await getSlugResolver()
     console.log(`📚 Cargando secciones de ley: ${lawSlugOrShortName}`)
 
     // Intentar convertir slug a short_name, o usar directamente si ya es short_name
@@ -721,7 +735,7 @@ export async function fetchLawSections(lawSlugOrShortName: string, options: Fetc
 
     // Generar slug correcto (si recibimos short_name, convertir a slug)
     const slug = lawSlugOrShortName.includes('/')
-      ? getCanonicalSlug(lawShortName) || lawSlugOrShortName.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+      ? resolveSlug(lawShortName)
       : lawSlugOrShortName
 
     return {

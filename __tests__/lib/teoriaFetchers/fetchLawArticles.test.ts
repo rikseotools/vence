@@ -48,6 +48,13 @@ jest.mock('@/lib/api/laws/warmCache', () => ({
 
 jest.mock('@/lib/api/laws/queries', () => ({
   getShortNameBySlug: jest.fn((slug: string) => mockMapSlug(slug)),
+  loadSlugMappingCache: jest.fn(() => Promise.resolve({
+    slugToShortName: new Map(),
+    shortNameToSlug: new Map([['CE', 'constitucion-espanola'], ['Ley 39/2015', 'ley-39-2015']]),
+    lawsBySlug: new Map(),
+    loadedAt: new Date(),
+  })),
+  generateSlugFromShortName: jest.fn((s: string) => s?.toLowerCase().replace(/[^a-z0-9]+/g, '-')),
 }))
 
 import { fetchLawArticles } from '@/lib/teoriaFetchers'

@@ -34,24 +34,31 @@ const specialCases: Record<string, string> = {
   'TFUE': 'tfue'
 }
 
-export function generateLawSlug(lawName: string | undefined): string {
+export async function generateLawSlug(lawName: string | undefined): Promise<string> {
   if (!lawName) return 'unknown'
 
   if (specialCases[lawName]) {
     return specialCases[lawName]
   }
 
-  return lawName
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/\s+/g, '-')
-    .replace(/[^a-z0-9\-]/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
+  // Intentar resolver desde BD
+  try {
+    const { getCanonicalSlugAsync } = await import('@/lib/api/laws/queries')
+    return await getCanonicalSlugAsync(lawName)
+  } catch {
+    // Fallback: generación determinista
+    return lawName
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9\-]/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '')
+  }
 }
 
-export function generateNotificationActionUrl(notification: NotificationInput, actionType: string): string {
+export async function generateNotificationActionUrl(notification: NotificationInput, actionType: string): Promise<string> {
   const baseParams = new URLSearchParams({
     utm_source: 'notification',
     utm_campaign: notification.campaign || 'general',
@@ -63,7 +70,7 @@ export function generateNotificationActionUrl(notification: NotificationInput, a
       case 'problematic_articles':
         if (actionType === 'intensive_test') {
           const articles = notification.articlesList?.map(a => a.article_number).join(',') || ''
-          const lawSlug = generateLawSlug(notification.law_short_name)
+          const lawSlug = await generateLawSlug(notification.law_short_name)
 
           baseParams.append('articles', articles)
           baseParams.append('mode', 'intensive')
@@ -74,7 +81,7 @@ export function generateNotificationActionUrl(notification: NotificationInput, a
           baseParams.append('law', lawSlug)
           return `/test/rapido?${baseParams.toString()}`
         } else if (actionType === 'view_theory') {
-          const lawSlug = generateLawSlug(notification.law_short_name)
+          const lawSlug = await generateLawSlug(notification.law_short_name)
           return `/teoria/${lawSlug}?${baseParams.toString()}`
         }
         break
@@ -86,12 +93,12 @@ export function generateNotificationActionUrl(notification: NotificationInput, a
           if (notification.law_short_name) {
             baseParams.append('law_short_name', notification.law_short_name)
           }
-          const lawSlug = generateLawSlug(notification.law_short_name)
+          const lawSlug = await generateLawSlug(notification.law_short_name)
           baseParams.append('law', lawSlug)
           baseParams.append('_t', Date.now().toString())
           return `/test/rapido?${baseParams.toString()}`
         } else if (actionType === 'view_theory') {
-          const lawSlug = generateLawSlug(notification.law_short_name)
+          const lawSlug = await generateLawSlug(notification.law_short_name)
           return `/teoria/${lawSlug}?${baseParams.toString()}`
         }
         break
