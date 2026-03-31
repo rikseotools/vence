@@ -81,6 +81,7 @@ interface ExamQuestion {
   primary_article_id?: string
   articles?: QuestionArticle
   content_data?: Record<string, unknown> | null
+  image_url?: string | null
   question_subtype?: string | null
 }
 
@@ -1143,7 +1144,7 @@ export default function ExamLayout({
                   )}
                 </div>
 
-                <ContentDataRenderer contentData={question.content_data as Record<string, unknown> | null} />
+                <ContentDataRenderer contentData={question.content_data as Record<string, unknown> | null} imageUrl={question.image_url} />
 
                 <div className="mb-6">
                   <p className="text-lg text-gray-900 leading-relaxed">{question.question_text}</p>

@@ -1275,6 +1275,11 @@ export default function OfficialExamLayout({
                   )}
                 </div>
 
+                {/* Imagen de la pregunta (Supabase Storage) — para legislativas con imágenes */}
+                {!isPsychometric && question.imageUrl && (
+                  <ContentDataRenderer contentData={null} imageUrl={question.imageUrl} />
+                )}
+
                 {/* Texto de la pregunta - Solo para legislativas y psicotecnicas sin componente especializado */}
                 {/* Los tipos con componente (pie_chart, bar_chart, data_tables, etc.) muestran el texto internamente */}
                 {(!isPsychometric || !['pie_chart', 'bar_chart', 'line_chart', 'data_tables', 'mixed_chart', 'error_detection', 'word_analysis', 'sequence_numeric', 'sequence_letter', 'sequence_alphanumeric'].includes(question.questionSubtype || '')) && (

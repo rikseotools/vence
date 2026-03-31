@@ -9,6 +9,7 @@
 
 interface ContentDataRendererProps {
   contentData: Record<string, unknown> | null | undefined
+  imageUrl?: string | null
 }
 
 interface TableData {
@@ -17,16 +18,16 @@ interface TableData {
   rows?: string[][]
 }
 
-export default function ContentDataRenderer({ contentData }: ContentDataRendererProps) {
-  if (!contentData || Object.keys(contentData).length === 0) return null
+export default function ContentDataRenderer({ contentData, imageUrl }: ContentDataRendererProps) {
+  const hasContentData = contentData && Object.keys(contentData).length > 0
 
-  const tdData = contentData.table_data as TableData | undefined
-  const instruction = contentData.instruction as string | undefined
-  const instructions = contentData.instructions as string[] | undefined
-  const textPassage = contentData.text_passage as string | undefined
-  const imageBase64 = contentData.image_base64 as string | undefined
+  const tdData = hasContentData ? contentData.table_data as TableData | undefined : undefined
+  const instruction = hasContentData ? contentData.instruction as string | undefined : undefined
+  const instructions = hasContentData ? contentData.instructions as string[] | undefined : undefined
+  const textPassage = hasContentData ? contentData.text_passage as string | undefined : undefined
+  const imageBase64 = hasContentData ? contentData.image_base64 as string | undefined : undefined
 
-  if (!tdData && !instruction && !instructions && !textPassage && !imageBase64) return null
+  if (!tdData && !instruction && !instructions && !textPassage && !imageBase64 && !imageUrl) return null
 
   return (
     <div className="mb-6">
@@ -50,6 +51,13 @@ export default function ContentDataRenderer({ contentData }: ContentDataRenderer
       {imageBase64 && (
         <div className="flex justify-center mb-4">
           <img src={imageBase64} alt="Imagen de la pregunta" className="max-h-32 border border-gray-300 dark:border-gray-600 rounded-lg p-2 bg-white" />
+        </div>
+      )}
+
+      {/* Imagen URL (Supabase Storage — capturas grandes, anexos) */}
+      {imageUrl && !imageBase64 && (
+        <div className="flex justify-center mb-4">
+          <img src={imageUrl} alt="Imagen de la pregunta" className="max-w-full border border-gray-300 dark:border-gray-600 rounded-lg bg-white" loading="lazy" />
         </div>
       )}
 

@@ -2146,6 +2146,8 @@ export const questions = pgTable("questions", {
 	verificationStatus: text("verification_status"),
 	topicReviewStatus: text("topic_review_status"),
 	deactivationReason: text("deactivation_reason"),
+	contentData: jsonb("content_data").default({}),
+	imageUrl: text("image_url"),
 	examCaseId: uuid("exam_case_id"),
 }, (table) => [
 	uniqueIndex("idx_questions_content_hash").using("btree", table.contentHash.asc().nullsLast().op("text_ops")).where(sql`(content_hash IS NOT NULL)`),
