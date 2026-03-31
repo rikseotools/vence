@@ -1,12 +1,12 @@
-// app/teoria/page.js - PÁGINA PRINCIPAL DE TEORÍA CON SEO
+// app/teoria/page.tsx - PÁGINA PRINCIPAL DE TEORÍA CON SEO
 import { unstable_cache } from 'next/cache'
 import { fetchLawsList } from '@/lib/teoriaFetchers'
 import Link from 'next/link'
 import { BookOpenIcon, DocumentTextIcon, ScaleIcon } from '@heroicons/react/24/outline'
 import ClientBreadcrumbsWrapper from '@/components/ClientBreadcrumbsWrapper'
+import type { Metadata } from 'next'
 
 // Cache permanente - revalidar manualmente con revalidateTag('teoria')
-// Ver docs/maintenance/cache-revalidation.md
 const getCachedLaws = unstable_cache(
   async () => {
     console.log('🚀 Cargando leyes (sin cache)...')
@@ -14,26 +14,26 @@ const getCachedLaws = unstable_cache(
   },
   ['teoria-laws-list'],
   {
-    revalidate: false, // Permanente - evita thundering herd
+    revalidate: false,
     tags: ['teoria'],
   }
 )
 
-export const metadata = {
-  title: 'Teoría Legal - Estudia Legislación Española',
-  description: 'Accede a todos los artículos de las principales leyes españolas. Constitución, Ley 39/2015, Ley 40/2015 y más. Teoría completa para oposiciones.',
-  keywords: 'teoría legal, legislación española, constitución, ley 39/2015, ley 40/2015, artículos, oposiciones, estudio',
+export const metadata: Metadata = {
+  title: 'Teoria Legal - Estudia Legislacion Española',
+  description: 'Accede a todos los articulos de las principales leyes españolas. Constitucion, Ley 39/2015, Ley 40/2015 y mas. Teoria completa para oposiciones.',
+  keywords: 'teoria legal, legislacion española, constitucion, ley 39/2015, ley 40/2015, articulos, oposiciones, estudio',
   openGraph: {
-    title: 'Teoría Legal - Estudia Legislación Española',
-    description: 'Accede a todos los artículos de las principales leyes españolas. Constitución, Ley 39/2015, Ley 40/2015 y más. Teoría completa para oposiciones.',
+    title: 'Teoria Legal - Estudia Legislacion Española',
+    description: 'Accede a todos los articulos de las principales leyes españolas. Constitucion, Ley 39/2015, Ley 40/2015 y mas. Teoria completa para oposiciones.',
     url: 'https://www.vence.es/teoria',
     type: 'website',
-    siteName: 'Vence - Preparación de Oposiciones'
+    siteName: 'Vence - Preparacion de Oposiciones'
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Teoría Legal - Estudia Legislación Española',
-    description: 'Accede a todos los artículos de las principales leyes españolas. Teoría completa para oposiciones.'
+    title: 'Teoria Legal - Estudia Legislacion Española',
+    description: 'Accede a todos los articulos de las principales leyes españolas. Teoria completa para oposiciones.'
   },
   robots: {
     index: true,
@@ -52,14 +52,14 @@ export const metadata = {
 }
 
 export default async function TeoriaMainPage() {
-  let laws = []
-  let error = null
+  let laws: Array<{ id: string; short_name: string; name: string; description: string | null; slug: string; articleCount: number }> = []
+  let error: string | null = null
 
   try {
     laws = await getCachedLaws()
   } catch (err) {
     console.error('Error cargando leyes:', err)
-    error = err.message
+    error = (err as Error).message
   }
 
   const totalArticles = laws.reduce((sum, law) => sum + law.articleCount, 0)
@@ -67,7 +67,6 @@ export default async function TeoriaMainPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <ClientBreadcrumbsWrapper />
-      {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center space-x-3">
@@ -75,9 +74,9 @@ export default async function TeoriaMainPage() {
               <BookOpenIcon className="h-8 w-8 text-blue-600" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Teoría Legal</h1>
+              <h1 className="text-3xl font-bold text-gray-900">Teoria Legal</h1>
               <p className="text-gray-600 mt-1">
-                Accede al contenido completo de la legislación española
+                Accede al contenido completo de la legislacion española
               </p>
             </div>
           </div>
@@ -85,8 +84,7 @@ export default async function TeoriaMainPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        
-        {/* Stats Overview */}
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-white rounded-xl shadow-sm p-6 border">
             <div className="flex items-center">
@@ -99,19 +97,19 @@ export default async function TeoriaMainPage() {
               </div>
             </div>
           </div>
-          
+
           <div className="bg-white rounded-xl shadow-sm p-6 border">
             <div className="flex items-center">
               <div className="p-2 bg-green-100 rounded-lg">
                 <DocumentTextIcon className="h-6 w-6 text-green-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm text-gray-600">Artículos Totales</p>
+                <p className="text-sm text-gray-600">Articulos Totales</p>
                 <p className="text-2xl font-bold text-gray-900">{totalArticles}</p>
               </div>
             </div>
           </div>
-          
+
           <div className="bg-white rounded-xl shadow-sm p-6 border">
             <div className="flex items-center">
               <div className="p-2 bg-purple-100 rounded-lg">
@@ -125,7 +123,6 @@ export default async function TeoriaMainPage() {
           </div>
         </div>
 
-        {/* Error State */}
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-6 mb-8">
             <div className="flex items-center">
@@ -142,12 +139,11 @@ export default async function TeoriaMainPage() {
           </div>
         )}
 
-        {/* Laws Grid */}
         {laws.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {laws.map((law) => (
-              <Link 
-                key={law.id} 
+              <Link
+                key={law.id}
                 href={`/teoria/${law.slug}`}
                 className="group"
               >
@@ -160,7 +156,7 @@ export default async function TeoriaMainPage() {
                       <p className="text-sm text-gray-600 mt-1 line-clamp-2">
                         {law.name}
                       </p>
-                      
+
                       {law.description && (
                         <p className="text-xs text-gray-500 mt-2 line-clamp-3">
                           {law.description}
@@ -168,13 +164,13 @@ export default async function TeoriaMainPage() {
                       )}
                     </div>
                   </div>
-                  
+
                   <div className="mt-4 flex items-center justify-between">
                     <div className="flex items-center text-sm text-gray-500">
                       <DocumentTextIcon className="h-4 w-4 mr-1" />
-                      <span>{law.articleCount} artículos</span>
+                      <span>{law.articleCount} articulos</span>
                     </div>
-                    
+
                     <div className="text-blue-600 group-hover:text-blue-700">
                       <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
@@ -190,21 +186,20 @@ export default async function TeoriaMainPage() {
             <BookOpenIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">No hay contenido disponible</h3>
             <p className="text-gray-600">
-              No se encontraron leyes con contenido de teoría disponible.
+              No se encontraron leyes con contenido de teoria disponible.
             </p>
           </div>
         )}
 
-        {/* Footer Info */}
         <div className="mt-12 bg-white rounded-xl shadow-sm border p-6">
           <div className="text-center">
             <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Sobre el Contenido de Teoría
+              Sobre el Contenido de Teoria
             </h3>
             <p className="text-gray-600 max-w-2xl mx-auto">
-              Accede al contenido completo y oficial de la legislación española. 
-              Cada artículo incluye el texto íntegro y la estructura original 
-              para facilitar tu estudio y comprensión.
+              Accede al contenido completo y oficial de la legislacion española.
+              Cada articulo incluye el texto integro y la estructura original
+              para facilitar tu estudio y comprension.
             </p>
           </div>
         </div>

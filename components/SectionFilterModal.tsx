@@ -1,24 +1,43 @@
-// components/SectionFilterModal.js
+// components/SectionFilterModal.tsx
 'use client'
 
 import { useState, useEffect } from 'react'
+
+interface Section {
+  id: string
+  title: string
+  description: string | null
+  articleRange: { start: number; end: number } | null
+  sectionNumber: number | null
+  sectionType: string | null
+  orderPosition: number
+}
+
+interface SectionFilterModalProps {
+  isOpen: boolean
+  onClose: () => void
+  lawSlug: string | null
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onSectionSelect: (sections: any[]) => void
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  selectedSections?: any[]
+}
 
 export default function SectionFilterModal({
   isOpen,
   onClose,
   lawSlug,
   onSectionSelect,
-  selectedSections = [] // 🆕 Secciones previamente seleccionadas
-}) {
-  const [sections, setSections] = useState([])
+  selectedSections = []
+}: SectionFilterModalProps) {
+  const [sections, setSections] = useState<Section[]>([])
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
-  const [localSelectedSections, setLocalSelectedSections] = useState([])
+  const [error, setError] = useState<string | null>(null)
+  const [localSelectedSections, setLocalSelectedSections] = useState<Section[]>([])
 
-  // Inicializar con secciones previamente seleccionadas
   useEffect(() => {
     if (isOpen) {
-      setLocalSelectedSections(selectedSections)
+      setLocalSelectedSections(selectedSections || [])
     }
   }, [isOpen, selectedSections])
 
@@ -26,6 +45,7 @@ export default function SectionFilterModal({
     if (isOpen && lawSlug) {
       loadSections()
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, lawSlug])
 
   const loadSections = async () => {
@@ -33,17 +53,17 @@ export default function SectionFilterModal({
       setLoading(true)
       setError(null)
 
-      const res = await fetch(`/api/teoria/sections?law=${encodeURIComponent(lawSlug)}`)
+      const res = await fetch(`/api/teoria/sections?law=${encodeURIComponent(lawSlug || '')}`)
       const data = await res.json()
       setSections(data.sections || [])
     } catch (err) {
-      setError(err.message)
+      setError((err as Error).message)
     } finally {
       setLoading(false)
     }
   }
 
-  const toggleSection = (section) => {
+  const toggleSection = (section: Section) => {
     setLocalSelectedSections(prev => {
       const isSelected = prev.some(s => s.id === section.id)
       if (isSelected) {
@@ -72,7 +92,7 @@ export default function SectionFilterModal({
     onClose()
   }
 
-  const isSectionSelected = (sectionId) => {
+  const isSectionSelected = (sectionId: string) => {
     return localSelectedSections.some(s => s.id === sectionId)
   }
 
@@ -85,13 +105,13 @@ export default function SectionFilterModal({
       <div className="relative mx-auto max-w-2xl w-full bg-white dark:bg-gray-800 rounded-lg shadow-xl max-h-[80vh] overflow-hidden">
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            📚 Filtrar por Títulos
+            Filtrar por Titulos
           </h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors text-xl"
           >
-            ✕
+            &#x2715;
           </button>
         </div>
 
@@ -99,7 +119,7 @@ export default function SectionFilterModal({
           {loading && (
             <div className="text-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-3"></div>
-              <p className="text-gray-600 dark:text-gray-400">Cargando títulos...</p>
+              <p className="text-gray-600 dark:text-gray-400">Cargando titulos...</p>
             </div>
           )}
 
@@ -111,13 +131,12 @@ export default function SectionFilterModal({
 
           {!loading && !error && sections.length === 0 && (
             <div className="text-center py-8">
-              <p className="text-gray-600 dark:text-gray-400">No hay títulos disponibles para esta ley.</p>
+              <p className="text-gray-600 dark:text-gray-400">No hay titulos disponibles para esta ley.</p>
             </div>
           )}
 
           {!loading && !error && sections.length > 0 && (
             <>
-              {/* Botones de selección rápida */}
               <div className="flex gap-2 mb-4">
                 <button
                   onClick={selectAll}
@@ -147,7 +166,6 @@ export default function SectionFilterModal({
                       }`}
                     >
                       <div className="flex items-start">
-                        {/* Checkbox visual */}
                         <div className={`flex-shrink-0 w-5 h-5 mt-0.5 mr-3 rounded border-2 flex items-center justify-center transition-colors ${
                           isSelected
                             ? 'bg-blue-500 border-blue-500'
@@ -173,7 +191,7 @@ export default function SectionFilterModal({
                           </div>
                           {section.articleRange && (
                             <div className={`text-xs ${isSelected ? 'text-blue-600 dark:text-blue-400' : 'text-blue-600 dark:text-blue-500'}`}>
-                              Artículos {section.articleRange.start}-{section.articleRange.end}
+                              Articulos {section.articleRange.start}-{section.articleRange.end}
                             </div>
                           )}
                         </div>
@@ -190,8 +208,8 @@ export default function SectionFilterModal({
           <div className="flex items-center justify-between">
             <div className="text-sm text-gray-600 dark:text-gray-400">
               {localSelectedSections.length === 0
-                ? 'Ningún título seleccionado (se usarán todos)'
-                : `${localSelectedSections.length} título${localSelectedSections.length > 1 ? 's' : ''} seleccionado${localSelectedSections.length > 1 ? 's' : ''}`
+                ? 'Ningun titulo seleccionado (se usaran todos)'
+                : `${localSelectedSections.length} titulo${localSelectedSections.length > 1 ? 's' : ''} seleccionado${localSelectedSections.length > 1 ? 's' : ''}`
               }
             </div>
             <div className="flex gap-3">
