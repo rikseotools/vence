@@ -179,25 +179,38 @@ async function _POST(request: NextRequest) {
     // Las explicaciones de preguntas (EXEMPT_SUGGESTIONS) no cuentan contra el límite
     const isExemptSuggestion = data.suggestionUsed && EXEMPT_SUGGESTIONS.includes(data.suggestionUsed)
 
-    if (data.userId && !data.isPremium && !isExemptSuggestion) {
-      const dailyCount = await getUserDailyMessageCount(data.userId)
-      if (dailyCount >= FREE_USER_DAILY_LIMIT) {
-        logger.warn('Rate limit exceeded', {
-          domain: 'api',
-          userId: data.userId,
-          count: dailyCount,
-        })
+    if (data.userId && !isExemptSuggestion) {
+      // Verificar plan en BD (no confiar en el frontend)
+      let isPremiumVerified = data.isPremium
+      if (!isPremiumVerified && data.userId !== 'anonymous') {
+        const { data: profile } = await getSupabase()
+          .from('user_profiles')
+          .select('plan_type')
+          .eq('id', data.userId)
+          .single()
+        isPremiumVerified = profile?.plan_type === 'premium' || profile?.plan_type === 'trial'
+      }
 
-        return NextResponse.json(
-          {
-            success: false,
-            error: 'Límite diario de mensajes alcanzado',
-            code: 'RATE_LIMIT',
-            dailyUsed: dailyCount,
-            dailyLimit: FREE_USER_DAILY_LIMIT,
-          },
-          { status: 429 }
-        )
+      if (!isPremiumVerified) {
+        const dailyCount = await getUserDailyMessageCount(data.userId)
+        if (dailyCount >= FREE_USER_DAILY_LIMIT) {
+          logger.warn('Rate limit exceeded', {
+            domain: 'api',
+            userId: data.userId,
+            count: dailyCount,
+          })
+
+          return NextResponse.json(
+            {
+              success: false,
+              error: 'Límite diario de mensajes alcanzado',
+              code: 'RATE_LIMIT',
+              dailyUsed: dailyCount,
+              dailyLimit: FREE_USER_DAILY_LIMIT,
+            },
+            { status: 429 }
+          )
+        }
       }
     }
 
