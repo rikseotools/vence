@@ -88,7 +88,7 @@ async function runCountsOnly(): Promise<number> {
     WITH base AS (
       SELECT
         count(*) FILTER (WHERE
-          option_a = '' OR option_b = '' OR option_c = '' OR option_d = ''
+          option_a = '' OR option_b = '' OR option_c = '' OR option_d = '' OR option_d = ''
         ) as empty_options,
         count(*) FILTER (WHERE
           CONCAT_WS(' ', question_text, option_a, option_b, option_c, option_d, explanation) ~* ${BANNED_REGEX}
@@ -184,7 +184,7 @@ async function runCountsOnly(): Promise<number> {
     psy_base AS (
       SELECT
         count(*) FILTER (WHERE
-          option_a = '' OR option_b = '' OR option_c = ''
+          option_a = '' OR option_b = '' OR option_c = '' OR option_d = ''
         ) as psy_empty,
         count(*) FILTER (WHERE
           (question_text ILIKE '%serie de figuras%' OR question_text ILIKE '%siguiente imagen%' OR question_text ILIKE '%siguiente gráfico%' OR question_text ILIKE '%tabla I y marcar%' OR question_text ILIKE '%observe la figura%')
@@ -216,7 +216,7 @@ async function runChecks(): Promise<QualityResponse> {
              count(*) OVER()::int as total_count
       FROM questions
       WHERE is_active = true
-        AND (option_a = '' OR option_b = '' OR option_c = '' OR option_d = '')
+        AND (option_a = '' OR option_b = '' OR option_c = '' OR option_d = '' OR option_d = '')
       LIMIT ${MAX_ITEMS}
     `),
 
@@ -408,7 +408,7 @@ async function runChecks(): Promise<QualityResponse> {
              count(*) OVER()::int as total_count
       FROM psychometric_questions
       WHERE is_active = true
-        AND (option_a = '' OR option_b = '' OR option_c = '')
+        AND (option_a = '' OR option_b = '' OR option_c = '' OR option_d = '')
       LIMIT ${MAX_ITEMS}
     `),
 
