@@ -12,6 +12,7 @@ import { validateExam, type ValidatedResults, type ValidatedQuestionResult } fro
 import { ApiTimeoutError, ApiNetworkError } from '@/lib/api/client'
 import { useAnswerWatchdog } from '@/hooks/useAnswerWatchdog'
 import { logClientError } from '@/lib/logClientError'
+import { useQuestionContext } from '@/contexts/QuestionContext'
 
 // Type for useAuth context (AuthContext is JS, so we type it manually)
 interface AuthContextValue {
@@ -78,6 +79,8 @@ interface ExamQuestion {
   tema_number?: number
   primary_article_id?: string
   articles?: QuestionArticle
+  content_data?: Record<string, unknown> | null
+  question_subtype?: string | null
 }
 
 /** Configuración del examen */
@@ -353,6 +356,7 @@ export default function ExamLayout({
     refreshStatus
   } = useDailyQuestionLimit()
   const { getSlug: generateLawSlug } = useLawSlugs()
+  const { setQuestionContext } = useQuestionContext()
 
   // Estados del examen
   const [userAnswers, setUserAnswers] = useState<UserAnswers>(initialAnswers || {})
@@ -1138,6 +1142,53 @@ export default function ExamLayout({
                   )}
                 </div>
 
+                {question.content_data && Object.keys(question.content_data).length > 0 && (() => {
+                  const cd = question.content_data as Record<string, unknown>
+                  const tdData = cd.table_data as { title?: string; headers?: string[]; rows?: string[][] } | undefined
+                  const cdInstruction = cd.instruction as string | undefined
+                  const cdInstructions = cd.instructions as string[] | undefined
+                  if (!tdData && !cdInstruction && !cdInstructions) return null
+                  return (
+                    <div className="mb-6">
+                      {cdInstructions && Array.isArray(cdInstructions) && (
+                        <div className="bg-amber-50 border-2 border-amber-200 rounded-lg p-4 mb-4">
+                          <div className="text-gray-800 text-sm space-y-2">
+                            {cdInstructions.map((line: string, i: number) => <p key={i}>{line}</p>)}
+                          </div>
+                        </div>
+                      )}
+                      {tdData && (
+                        <div className="bg-orange-50 border-2 border-orange-200 rounded-lg p-4 mb-4">
+                          {tdData.title && <h4 className="font-bold text-gray-900 mb-2 text-sm">{tdData.title}</h4>}
+                          <div className="overflow-x-auto">
+                            <table className="w-full border-collapse border border-orange-300 text-xs">
+                              {tdData.headers && (
+                                <thead><tr className="bg-orange-100">
+                                  {tdData.headers.map((h: string, i: number) => (
+                                    <th key={i} className="border border-orange-300 px-2 py-1 text-orange-800 font-semibold">{h}</th>
+                                  ))}
+                                </tr></thead>
+                              )}
+                              <tbody>
+                                {(tdData.rows || []).map((row: string[], ri: number) => (
+                                  <tr key={ri}>{row.map((cell: string, ci: number) => (
+                                    <td key={ci} className="border border-orange-300 px-2 py-1 text-center text-gray-700">{cell}</td>
+                                  ))}</tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+                      {cdInstruction && (
+                        <div className="bg-indigo-50 border-2 border-indigo-200 rounded-lg p-3 text-center mb-4">
+                          <p className="text-indigo-800 font-bold">{cdInstruction}</p>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
+
                 <div className="mb-6">
                   <p className="text-lg text-gray-900 leading-relaxed">{question.question_text}</p>
                 </div>
@@ -1217,6 +1268,21 @@ export default function ExamLayout({
                       onClick={() => {
                         const correctAnswer = validatedResults?.results?.[index]?.correctIndex
                         const correctLetter = answerToLetter(correctAnswer)
+                        // Setear contexto de pregunta para el chat IA
+                        setQuestionContext({
+                          id: question.id,
+                          question_text: question.question_text,
+                          option_a: question.option_a,
+                          option_b: question.option_b,
+                          option_c: question.option_c,
+                          option_d: question.option_d,
+                          correct: correctAnswer ?? null,
+                          explanation: question.explanation || null,
+                          law: (question as unknown as Record<string, { laws?: { short_name?: string }; article_number?: string }>).articles?.laws?.short_name || null,
+                          article_number: (question as unknown as Record<string, { article_number?: string }>).articles?.article_number || null,
+                          difficulty: null,
+                          source: null,
+                        })
                         window.dispatchEvent(new CustomEvent('openAIChat', {
                           detail: {
                             message: `Explícame por qué la respuesta correcta es "${correctLetter}" en la pregunta: "${question.question_text.substring(0, 100)}..."`,
