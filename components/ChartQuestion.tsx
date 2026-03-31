@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, type ReactNode } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import PsychometricAIHelpButton from './PsychometricAIHelpButton'
 import PsychometricExplanation from './PsychometricExplanation'
+import ContentDataRenderer from './ContentDataRenderer'
 
 interface ChartQuestionData {
   id: string
@@ -155,6 +156,9 @@ export default function ChartQuestion({
           {question.content_data.question_context}
         </p>
       )}
+
+      {/* Content data visual (tablas, imágenes, instrucciones) — solo si no hay chartComponent especializado */}
+      {!chartComponent && <ContentDataRenderer contentData={question.content_data as Record<string, unknown> | null} />}
 
       {/* Gráfico - Componente específico (solo si existe) */}
       {chartComponent && (

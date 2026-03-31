@@ -51,6 +51,7 @@ import {
   completeDetailedTest,
   formatTime
 } from '../utils/testAnalytics'
+import ContentDataRenderer from './ContentDataRenderer'
 
 // ============================================================================
 // TYPES & INTERFACES
@@ -1142,52 +1143,7 @@ export default function ExamLayout({
                   )}
                 </div>
 
-                {question.content_data && Object.keys(question.content_data).length > 0 && (() => {
-                  const cd = question.content_data as Record<string, unknown>
-                  const tdData = cd.table_data as { title?: string; headers?: string[]; rows?: string[][] } | undefined
-                  const cdInstruction = cd.instruction as string | undefined
-                  const cdInstructions = cd.instructions as string[] | undefined
-                  if (!tdData && !cdInstruction && !cdInstructions) return null
-                  return (
-                    <div className="mb-6">
-                      {cdInstructions && Array.isArray(cdInstructions) && (
-                        <div className="bg-amber-50 border-2 border-amber-200 rounded-lg p-4 mb-4">
-                          <div className="text-gray-800 text-sm space-y-2">
-                            {cdInstructions.map((line: string, i: number) => <p key={i}>{line}</p>)}
-                          </div>
-                        </div>
-                      )}
-                      {tdData && (
-                        <div className="bg-orange-50 border-2 border-orange-200 rounded-lg p-4 mb-4">
-                          {tdData.title && <h4 className="font-bold text-gray-900 mb-2 text-sm">{tdData.title}</h4>}
-                          <div className="overflow-x-auto">
-                            <table className="w-full border-collapse border border-orange-300 text-xs">
-                              {tdData.headers && (
-                                <thead><tr className="bg-orange-100">
-                                  {tdData.headers.map((h: string, i: number) => (
-                                    <th key={i} className="border border-orange-300 px-2 py-1 text-orange-800 font-semibold">{h}</th>
-                                  ))}
-                                </tr></thead>
-                              )}
-                              <tbody>
-                                {(tdData.rows || []).map((row: string[], ri: number) => (
-                                  <tr key={ri}>{row.map((cell: string, ci: number) => (
-                                    <td key={ci} className="border border-orange-300 px-2 py-1 text-center text-gray-700">{cell}</td>
-                                  ))}</tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        </div>
-                      )}
-                      {cdInstruction && (
-                        <div className="bg-indigo-50 border-2 border-indigo-200 rounded-lg p-3 text-center mb-4">
-                          <p className="text-indigo-800 font-bold">{cdInstruction}</p>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })()}
+                <ContentDataRenderer contentData={question.content_data as Record<string, unknown> | null} />
 
                 <div className="mb-6">
                   <p className="text-lg text-gray-900 leading-relaxed">{question.question_text}</p>

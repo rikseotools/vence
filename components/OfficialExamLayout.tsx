@@ -33,6 +33,7 @@ import SequenceAlphanumericQuestion from './SequenceAlphanumericQuestion'
 import MarkdownExplanation from './MarkdownExplanation'
 import { validateExam } from '@/lib/api/exam/client'
 import { validatePsychometricAnswer } from '@/lib/api/psychometric-answer/client'
+import ContentDataRenderer from './ContentDataRenderer'
 
 // =====================================================
 // TYPES
@@ -926,6 +927,7 @@ export default function OfficialExamLayout({
   ): React.ReactElement {
     return (
       <div className="space-y-3">
+        <ContentDataRenderer contentData={question.contentData as Record<string, unknown> | null} />
         {(['A', 'B', 'C', 'D'] as const).map((letter, optIndex) => {
           const optionText = question.options[optIndex]
           const isSelected = selectedIndex === optIndex
