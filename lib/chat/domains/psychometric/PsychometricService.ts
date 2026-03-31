@@ -71,7 +71,16 @@ export async function processPsychometricQuestion(
   tracer?: AITracerInterface
 ): Promise<ChatResponse> {
   const startTime = Date.now()
-  const subtype = context.questionContext?.questionSubtype || ''
+  // Subtype del contexto, o inferir del mensaje si no hay contexto
+  let subtype = context.questionContext?.questionSubtype || ''
+  if (!subtype) {
+    const msg = context.currentMessage.toLowerCase()
+    if (/serie\s+alfanum/i.test(msg)) subtype = 'sequence_alphanumeric'
+    else if (/serie\s+(de\s+)?letras|serie\s+alfab/i.test(msg)) subtype = 'sequence_letter'
+    else if (/serie\s+num[eé]rica/i.test(msg)) subtype = 'sequence_numeric'
+    else if (/tabla\s+de\s+datos/i.test(msg)) subtype = 'data_tables'
+    else if (/c[aá]lculo|regla\s+de\s+tres/i.test(msg)) subtype = 'calculation'
+  }
   const group = getSubtypeGroup(subtype)
 
   logger.info('PsychometricService processing', {
