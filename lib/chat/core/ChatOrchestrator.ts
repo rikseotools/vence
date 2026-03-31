@@ -76,7 +76,33 @@ export class ChatOrchestrator {
           if (o.estado_proceso) info += ` [${o.estado_proceso.replace(/_/g, ' ')}]`
           return info
         })
-        ChatOrchestrator.cachedOposiciones = lines.join('\n')
+
+        // Generar resumen dinámico de subgrupos y titulaciones desde BD
+        const bySubgrupo = new Map<string, { titulo: string, count: number }>()
+        for (const o of data) {
+          if (!o.subgrupo) continue
+          const existing = bySubgrupo.get(o.subgrupo)
+          if (!existing) {
+            bySubgrupo.set(o.subgrupo, { titulo: o.titulo_requerido || '', count: 1 })
+          } else {
+            existing.count++
+          }
+        }
+
+        let subgrupoSummary = ''
+        if (bySubgrupo.size > 0) {
+          subgrupoSummary = '\n\nSubgrupos disponibles en Vence:'
+          // Ordenar: C2, C1, B, A2, A1
+          const order = ['C2', 'C1', 'B', 'A2', 'A1']
+          for (const sg of order) {
+            const info = bySubgrupo.get(sg)
+            if (info) {
+              subgrupoSummary += `\n- ${sg}: ${info.count} oposiciones, requiere ${info.titulo}`
+            }
+          }
+        }
+
+        ChatOrchestrator.cachedOposiciones = lines.join('\n') + subgrupoSummary
         ChatOrchestrator.cacheTimestamp = now
         logger.info(`Loaded ${data.length} oposiciones for system prompt`, { domain: 'orchestrator' })
       }
