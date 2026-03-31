@@ -705,6 +705,21 @@ ${responseGuidelines}
       return null
     }
 
+    // Si el historial reciente es una conversación de resumen/estudio,
+    // NO interceptar como exam query - el usuario solo menciona "examen" como referencia
+    const recentHistory = context.messages?.slice(-4) || []
+    const isInStudyConversation = recentHistory.some(m =>
+      m.role === 'assistant' && (
+        /\bresumen\b/i.test(m.content) ||
+        /\bpaso a paso\b/i.test(m.content) ||
+        /\bnivel\s+(mínimo|intermedio|avanzado)\b/i.test(m.content)
+      )
+    )
+    if (isInStudyConversation) {
+      logger.info('SearchDomain: Skipping exam query - user is in study conversation', { domain: 'search' })
+      return null
+    }
+
     const startTime = Date.now()
 
     // Nombres legibles de oposiciones para logs y respuestas
