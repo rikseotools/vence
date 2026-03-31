@@ -5,14 +5,19 @@ import ReactMarkdown from 'react-markdown'
 interface MarkdownExplanationProps {
   content: string
   className?: string
+  preserveLineBreaks?: boolean
 }
 
 /**
  * Componente para renderizar explicaciones con formato markdown
  * Usado en todos los componentes de test para mostrar explicaciones formateadas
  */
-export default function MarkdownExplanation({ content, className = '' }: MarkdownExplanationProps) {
+export default function MarkdownExplanation({ content, className = '', preserveLineBreaks = false }: MarkdownExplanationProps) {
   if (!content) return null
+
+  // preserveLineBreaks: convierte \n simple a <br> via markdown trailing spaces
+  // Usar solo en contextos donde el texto es plano (feedback admin), no en explicaciones de preguntas
+  const processed = preserveLineBreaks ? content.replace(/(?<!\n)\n(?!\n)/g, '  \n') : content
 
   return (
     <div
@@ -34,7 +39,7 @@ export default function MarkdownExplanation({ content, className = '' }: Markdow
             <a href={href} target="_blank" rel="noopener noreferrer">{children}</a>
           ),
         }}
-      >{content}</ReactMarkdown>
+      >{processed}</ReactMarkdown>
     </div>
   )
 }

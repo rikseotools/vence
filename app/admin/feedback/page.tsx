@@ -2232,7 +2232,7 @@ export default function AdminFeedbackPage() {
                               : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 shadow-sm'
                           }`}>
                             {msg.is_admin ? (
-                              <MarkdownExplanation content={msg.message} className="text-sm text-inherit prose-p:my-1 prose-ul:my-1 prose-li:my-0 prose-strong:text-inherit" />
+                              <MarkdownExplanation content={msg.message} preserveLineBreaks className="text-sm text-inherit prose-p:my-1 prose-ul:my-1 prose-li:my-0 prose-strong:text-inherit" />
                             ) : (
                               <p className="text-sm whitespace-pre-wrap">{linkifyText(msg.message, false)}</p>
                             )}
@@ -2674,7 +2674,7 @@ export default function AdminFeedbackPage() {
                       </div>
                       <div className="text-xs sm:text-sm">
                         {message.is_admin ? (
-                          <MarkdownExplanation content={message.message} className="text-sm text-inherit prose-p:my-1 prose-ul:my-1 prose-li:my-0 prose-strong:text-inherit" />
+                          <MarkdownExplanation content={message.message} preserveLineBreaks className="text-sm text-inherit prose-p:my-1 prose-ul:my-1 prose-li:my-0 prose-strong:text-inherit" />
                         ) : (
                           renderMessageWithImages(message.message)
                         )}
