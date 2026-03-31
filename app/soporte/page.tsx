@@ -779,7 +779,7 @@ function SoporteContent() {
                         </div>
                         <div className="text-sm break-words leading-relaxed">
                           {msg.isAdmin ? (
-                            <MarkdownExplanation content={msg.message} className="text-sm text-inherit prose-p:my-1 prose-ul:my-1 prose-li:my-0 prose-strong:text-inherit" />
+                            <MarkdownExplanation content={msg.message} preserveLineBreaks className="text-sm text-inherit prose-p:my-1 prose-ul:my-1 prose-li:my-0 prose-strong:text-inherit" />
                           ) : (
                             <span className="whitespace-pre-wrap">{renderMessageWithImages(msg.message)}</span>
                           )}
