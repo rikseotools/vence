@@ -166,7 +166,7 @@ export default function InfraStatsTab() {
               <div key={i} className="text-xs border-l-2 border-red-400 pl-3 py-1">
                 <div className="flex justify-between">
                   <span className="font-mono text-gray-600 dark:text-gray-400">{e.endpoint}</span>
-                  <span className="text-gray-400">{new Date(e.date).toLocaleDateString('es-ES')}</span>
+                  <span className="text-gray-400">{new Date(e.date).toLocaleString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
                 </div>
                 <div className="text-red-600 dark:text-red-400 truncate">{e.message}</div>
               </div>
