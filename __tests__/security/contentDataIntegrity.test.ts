@@ -104,15 +104,16 @@ describeIf('Content Data Integrity', () => {
 
     let total = 0
     for (const pattern of patterns) {
+      // Excluir preguntas que YA tienen image_url (imágenes en Supabase Storage)
       const rows = await query(
         'questions',
-        `select=id&is_active=eq.true&question_text=ilike.*${encodeURIComponent(pattern)}*`
+        `select=id&is_active=eq.true&image_url=is.null&question_text=ilike.*${encodeURIComponent(pattern)}*`
       ) as Array<{ id: string }>
       total += rows.length
     }
 
     if (total > 0) {
-      console.error(`${total} preguntas legislativas activas referencian imágenes no disponibles`)
+      console.error(`${total} preguntas legislativas activas referencian imágenes no disponibles (sin image_url)`)
     }
 
     expect(total).toBe(0)
