@@ -253,7 +253,7 @@ describe('insertTestAnswer', () => {
 
   it('debe mapear difficulty "auto" a "medium"', async () => {
     const req = makeRequest()
-    req.questionData.metadata = { difficulty: 'auto' }
+    req.questionData.metadata = { difficulty: 'auto' as any } // 'auto' ya no es válido en el schema, pero normalizeDifficulty lo maneja
 
     await insertTestAnswer(req, userId)
 

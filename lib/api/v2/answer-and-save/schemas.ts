@@ -1,6 +1,7 @@
 // lib/api/v2/answer-and-save/schemas.ts
 // Schemas para el endpoint unificado: validar + guardar respuesta
 import { z } from 'zod/v3'
+import { difficultyInputSchema } from '@/lib/api/shared/difficulty'
 
 // ============================================
 // REQUEST
@@ -28,7 +29,7 @@ export const answerAndSaveRequestSchema = z.object({
   }).optional().nullable(),
   metadata: z.object({
     id: z.string().optional().nullable(),
-    difficulty: z.string().optional().nullable(),
+    difficulty: difficultyInputSchema,
     question_type: z.string().optional().nullable(),
     tags: z.array(z.string()).optional().nullable(),
   }).optional().nullable(),

@@ -5,6 +5,7 @@ import { eq } from 'drizzle-orm'
 import { resolveTemaNumber } from '@/lib/api/tema-resolver/queries'
 import { ALL_OPOSICION_IDS } from '@/lib/config/oposiciones'
 import type { SaveAnswerRequest, SaveAnswerResponse, DeviceInfo } from './schemas'
+import { normalizeDifficulty } from '@/lib/api/shared/difficulty'
 
 // ============================================
 // HELPERS PRIVADOS
@@ -17,14 +18,6 @@ function mapAnswerToLetter(selected: number, correct: number): string {
   }
   // -1 = no respondio -> devolver una opcion incorrecta
   return String.fromCharCode(65 + ((correct + 1) % 4))
-}
-
-/** Normaliza dificultad al enum valido de la BD */
-function mapDifficulty(raw: string | null | undefined): string {
-  const valid = ['easy', 'medium', 'hard', 'extreme']
-  if (raw && valid.includes(raw)) return raw
-  if (raw === 'auto') return 'medium'
-  return 'medium'
 }
 
 /** Hash simple del contenido de la pregunta para IDs generados */
@@ -188,7 +181,7 @@ export async function insertTestAnswer(
       interactionCount: req.interactionCount || 1,
 
       // Metadata
-      difficulty: mapDifficulty(req.questionData.metadata?.difficulty),
+      difficulty: normalizeDifficulty(req.questionData.metadata?.difficulty),
       tags: req.questionData.metadata?.tags || [],
 
       // Learning placeholders

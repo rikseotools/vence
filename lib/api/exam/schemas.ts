@@ -1,5 +1,6 @@
 // lib/api/exam/schemas.ts - Schemas de validación para la API de exámenes
 import { z } from 'zod'
+import { difficultyInputSchema } from '@/lib/api/shared/difficulty'
 
 // ============================================
 // GUARDAR RESPUESTA INDIVIDUAL
@@ -19,7 +20,7 @@ export const saveAnswerRequestSchema = z.object({
   articleNumber: z.string().optional().nullable(),
   lawName: z.string().optional().nullable(),
   temaNumber: z.number().int().optional().nullable(),
-  difficulty: z.string().optional().nullable(),
+  difficulty: difficultyInputSchema,
   // Métricas de tiempo
   timeSpentSeconds: z.number().int().min(0).default(0),
   confidenceLevel: z.enum(['very_sure', 'sure', 'unsure', 'guessing']).optional().nullable(),

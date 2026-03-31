@@ -13,20 +13,7 @@ import type {
   CompleteExamResponse,
 } from './schemas'
 
-/** Normaliza difficulty al enum válido de test_questions.
- *  Acepta: 'easy'|'medium'|'hard'|'extreme' (ya válidos),
- *          '1'-'5' (escala numérica de questions), 'auto', o cualquier string. */
-function mapDifficulty(raw: string | null | undefined): string {
-  if (!raw) return 'medium'
-  const valid = ['easy', 'medium', 'hard', 'extreme']
-  if (valid.includes(raw)) return raw
-  // Mapeo numérico (questions.difficulty usa escala 1-5)
-  const numericMap: Record<string, string> = {
-    '1': 'easy', '2': 'medium', '3': 'hard', '4': 'extreme', '5': 'extreme',
-  }
-  if (numericMap[raw]) return numericMap[raw]
-  return 'medium'
-}
+import { normalizeDifficulty } from '@/lib/api/shared/difficulty'
 
 // ============================================
 // OBTENER OPOSICIÓN DEL USUARIO
@@ -241,7 +228,7 @@ export async function saveAnswer(params: SaveAnswerParams): Promise<SaveAnswerRe
           articleNumber: params.articleNumber,
           lawName: params.lawName,
           temaNumber: temaNumber,
-          difficulty: mapDifficulty(params.difficulty),
+          difficulty: normalizeDifficulty(params.difficulty),
           timeSpentSeconds: params.timeSpentSeconds ?? 0,
           confidenceLevel: params.confidenceLevel,
         })
