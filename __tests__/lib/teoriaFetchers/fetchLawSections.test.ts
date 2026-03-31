@@ -36,6 +36,10 @@ jest.mock('@/lib/api/laws/warmCache', () => ({
   warmSlugCache: jest.fn(),
 }))
 
+jest.mock('@/lib/api/laws/queries', () => ({
+  getShortNameBySlug: jest.fn((slug: string) => mockMapSlug(slug)),
+}))
+
 import { fetchLawSections } from '@/lib/teoriaFetchers'
 
 // Helper: setup law query response (single)

@@ -1,6 +1,7 @@
 // lib/teoriaFetchers.ts - FETCHERS PARA SISTEMA DE TEORÍA
 import { getSupabaseClient } from './supabase'
-import { mapSlugToShortName as mapLawSlugToShortName, generateSlug as generateLawSlug, getCanonicalSlug } from './lawSlugSync'
+import { generateSlug as generateLawSlug, getCanonicalSlug } from './lawSlugSync'
+import { getShortNameBySlug } from './api/laws/queries'
 import { isDisposicionArticle } from './boe-extractor'
 
 /**
@@ -249,7 +250,7 @@ export async function fetchLawArticles(lawSlug: string): Promise<LawArticlesResu
     console.log(`📖 Cargando artículos de ley: ${lawSlug}`)
 
     // Convertir slug back to short_name usando mapeo centralizado
-    const lawShortName = mapLawSlugToShortName(lawSlug)
+    const lawShortName = await getShortNameBySlug(lawSlug)
     console.log(`🔍 Mapeo: "${lawSlug}" → "${lawShortName}"`)
 
     // Si el mapeo ya resolvió el short_name, usarlo directamente (evita query redundante a laws)
@@ -372,7 +373,7 @@ export async function fetchArticleContent(lawSlug: string, articleNumber: string
   try {
     console.log(`📑 Cargando artículo: ${lawSlug}/articulo-${articleNumber}`)
 
-    const lawShortName = mapLawSlugToShortName(lawSlug)
+    const lawShortName = await getShortNameBySlug(lawSlug)
 
     if (!lawShortName) {
       throw new Error(`LEY_NO_RECONOCIDA: Ley "${lawSlug}" no es válida`)
@@ -499,7 +500,7 @@ export async function fetchRelatedArticles(lawSlug: string, currentArticleNumber
   try {
     console.log(`🔗 Cargando artículos relacionados para: ${lawSlug}`)
 
-    const lawShortName = mapLawSlugToShortName(lawSlug)
+    const lawShortName = await getShortNameBySlug(lawSlug)
 
     const { data, error } = await supabase
       .from('articles')
@@ -609,7 +610,7 @@ export async function searchArticles(query: string, lawSlug: string | null = nul
 
     // Filtrar por ley si se especifica
     if (lawSlug) {
-      const lawShortName = mapLawSlugToShortName(lawSlug)
+      const lawShortName = await getShortNameBySlug(lawSlug)
       supabaseQuery = supabaseQuery.eq('laws.short_name', lawShortName)
     }
 
@@ -654,7 +655,7 @@ export async function fetchLawSections(lawSlugOrShortName: string, options: Fetc
     console.log(`📚 Cargando secciones de ley: ${lawSlugOrShortName}`)
 
     // Intentar convertir slug a short_name, o usar directamente si ya es short_name
-    let lawShortName = mapLawSlugToShortName(lawSlugOrShortName)
+    let lawShortName = await getShortNameBySlug(lawSlugOrShortName)
 
     // Si no se encontró como slug, puede que ya sea el short_name
     if (!lawShortName && lawSlugOrShortName.includes('/')) {
