@@ -266,7 +266,7 @@ export async function getOfficialExamQuestions(
     let allQuestions = [...formattedLegislative, ...formattedPsychometric]
 
     // Filter by parte if specified
-    if (parte) {
+    if (parte && parte !== 'completo') {
       allQuestions = allQuestions.filter(q => {
         // Case-based questions (supuestos prácticos): only show when parte=supuesto
         if (q.examCaseId) {

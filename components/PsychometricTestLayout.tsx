@@ -622,9 +622,65 @@ export default function PsychometricTestLayout({
       case 'alphabetical_order':
       case 'code_equivalence':
       case 'coding':
+        const cd = currentQ.content_data || {} as Record<string, unknown>
+        const tdData = cd.table_data as { title?: string; headers?: string[]; rows?: string[][] } | undefined
+        const cdInstruction = cd.instruction as string | undefined
+        const cdInstructions = cd.instructions as string[] | undefined
+        const cdTextPassage = cd.text_passage as string | undefined
+        const hasCD = tdData || cdInstruction || cdInstructions || cdTextPassage
         return (
-          <div className="bg-white rounded-lg shadow-lg p-8">
-            <h3 className="text-xl font-bold text-gray-900 mb-6 whitespace-pre-line">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8">
+            {/* Renderizar content_data si existe */}
+            {hasCD && (
+              <div className="mb-6">
+                {cdInstructions && Array.isArray(cdInstructions) && (
+                  <div className="bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-200 dark:border-amber-700 rounded-lg p-4 mb-4">
+                    <div className="text-gray-800 dark:text-gray-200 text-sm space-y-2">
+                      {cdInstructions.map((line: string, i: number) => <p key={i}>{line}</p>)}
+                    </div>
+                  </div>
+                )}
+                {cdTextPassage && (
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 dark:border-blue-700 rounded-lg p-4 mb-4">
+                    <p className="text-gray-800 dark:text-gray-200 text-sm">{cdTextPassage}</p>
+                  </div>
+                )}
+                {tdData && (
+                  <div className="bg-orange-50 dark:bg-orange-900/20 border-2 border-orange-200 dark:border-orange-700 rounded-lg p-4 mb-4">
+                    {tdData.title && <h4 className="font-bold text-gray-900 dark:text-white mb-2">{tdData.title}</h4>}
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-collapse border border-orange-300 dark:border-orange-600">
+                        {tdData.headers && (
+                          <thead>
+                            <tr className="bg-orange-100 dark:bg-orange-800/40">
+                              {tdData.headers.map((h: string, i: number) => (
+                                <th key={i} className="border border-orange-300 dark:border-orange-600 px-3 py-2 text-orange-800 dark:text-orange-300 font-semibold text-sm">{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                        )}
+                        <tbody>
+                          {(tdData.rows || []).map((row: string[], ri: number) => (
+                            <tr key={ri}>
+                              {row.map((cell: string, ci: number) => (
+                                <td key={ci} className="border border-orange-300 dark:border-orange-600 px-3 py-2 text-center text-gray-700 dark:text-gray-300 text-sm font-medium">{cell}</td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+                {cdInstruction && (
+                  <div className="bg-indigo-50 dark:bg-indigo-900/20 border-2 border-indigo-200 dark:border-indigo-700 rounded-lg p-4 text-center mb-4">
+                    <p className="text-indigo-800 dark:text-indigo-300 font-bold text-lg">{cdInstruction}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6 whitespace-pre-line">
               {currentQ.question_text}
             </h3>
 

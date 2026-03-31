@@ -783,6 +783,42 @@ Al importar, verificar si la pregunta tiene `imageLocal`/`imageOriginal` en el J
 - Si **tiene imagen** → importar desactivada, procesar imagen aparte antes de activar
 - Si **no tiene imagen** → importar desactivada, verificar con agentes (se activan solas al pasar)
 
+### INCIDENTE: Preguntas con cuadro/tabla activadas sin content_data (Marzo 2026)
+
+**Qué pasó:** 39 preguntas psicotécnicas activas mencionaban "cuadro" o "tabla" en `question_text` pero tenían `content_data: {}`. Los usuarios veían una pregunta que decía "Complete el siguiente cuadro..." sin ningún cuadro visible. Imposible de resolver.
+
+**Causa raíz:** Al importar, las preguntas con imagen se importaron con `content_data: {}` y luego se activaron sin verificar que el content_data estuviera relleno. El campo `imageLocal` del JSON scrapeado apuntaba a la imagen correcta, pero nunca se procesó.
+
+**Lecciones aprendidas:**
+
+1. **NUNCA activar una pregunta si `question_text` menciona cuadro/tabla/figura y `content_data` es `{}`**. Añadido al check de calidad admin (`MISSING_IMAGE_REGEX` en `/api/admin/question-quality`).
+
+2. **Cada pregunta tiene su PROPIA imagen**. Aunque varias preguntas compartan la misma tabla de equivalencias, la instrucción debajo de la tabla varía por pregunta. No asumir que una imagen sirve para varias preguntas. Siempre mapear pregunta→imagen por opciones (A/D match).
+
+3. **Nuevos campos en `content_data`** (añadidos en DataTableQuestion y PsychometricTestLayout):
+   - `instruction`: string — instrucción única debajo de tabla (ej: "TEA + (mes invernal)")
+   - `instructions`: string[] — bloque de reglas (ej: "Si es vocal mayúscula = 5, si consonante = 2...")
+   - `text_passage`: string — pasaje de texto para leer (ej: texto con errores ortográficos)
+   - `table_data` sin `headers`: tabla solo con rows (ej: MORTAL/LETAL, INOFENSIVO/¿?)
+
+4. **Validación pre-activación de psicotécnicas:**
+   ```javascript
+   // ANTES de activar, verificar:
+   const text = q.question_text || '';
+   const needsVisual = /cuadro|tabla|figura|imagen|gráfico|siguiente tabla|siguiente cuadro/i.test(text);
+   const hasContentData = JSON.stringify(q.content_data) !== '{}';
+
+   if (needsVisual && !hasContentData) {
+     // NO ACTIVAR — falta content_data
+     console.error('Pregunta necesita datos visuales pero content_data está vacío');
+   }
+   ```
+
+5. **Patrones de `question_text` que indican necesidad de imagen** (añadidos a `MISSING_IMAGE_REGEX`):
+   - `tabla mostrad[oa]`, `mostrad[oa] a continuación`
+   - `anexo Excel`, `anexo de Excel`, `anexo Word`, `anexo Access`
+   - `columna .{1,3} del anexo`
+
 ## 13. Checklist Completo por Tema
 
 Flujo validado (Marzo 2026):

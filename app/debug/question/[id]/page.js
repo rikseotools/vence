@@ -10,6 +10,7 @@ import ErrorDetectionQuestion from '../../../../components/ErrorDetectionQuestio
 import WordAnalysisQuestion from '../../../../components/WordAnalysisQuestion'
 import SequenceNumericQuestion from '../../../../components/SequenceNumericQuestion'
 import SequenceLetterQuestion from '../../../../components/SequenceLetterQuestion'
+import MarkdownExplanation from '../../../../components/MarkdownExplanation'
 import SequenceAlphanumericQuestion from '../../../../components/SequenceAlphanumericQuestion'
 
 export default function QuestionDebugPage() {
@@ -232,9 +233,9 @@ export default function QuestionDebugPage() {
             {showResult && (verifiedExplanation || question.explanation) && (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mt-6">
                 <h4 className="font-semibold text-blue-800 mb-2">📝 Explicación:</h4>
-                <div
-                  className="text-blue-700 whitespace-pre-line"
-                  dangerouslySetInnerHTML={{ __html: (verifiedExplanation || question.explanation).replace(/\n/g, '<br>') }}
+                <MarkdownExplanation
+                  content={verifiedExplanation || question.explanation}
+                  className="text-blue-700"
                 />
               </div>
             )}
@@ -244,8 +245,60 @@ export default function QuestionDebugPage() {
       default:
         // Tipos de texto simple (calculation, percentage, analogy, synonym, antonym, etc.)
         // Se renderizan como text_question
+        const cd = question.content_data || {}
+        const hasContentData = cd.table_data || cd.instruction || cd.instructions || cd.text_passage
         return (
           <div className="bg-white rounded-lg shadow-lg p-8">
+            {/* Renderizar content_data si existe (tablas, instrucciones, etc.) */}
+            {hasContentData && (
+              <div className="mb-6">
+                {cd.instructions && Array.isArray(cd.instructions) && (
+                  <div className="bg-amber-50 border-2 border-amber-200 rounded-lg p-4 mb-4">
+                    <div className="text-gray-800 text-sm space-y-2">
+                      {cd.instructions.map((line, i) => <p key={i}>{line}</p>)}
+                    </div>
+                  </div>
+                )}
+                {cd.text_passage && (
+                  <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 mb-4">
+                    <p className="text-gray-800 text-sm">{cd.text_passage}</p>
+                  </div>
+                )}
+                {cd.table_data && (
+                  <div className="bg-orange-50 border-2 border-orange-200 rounded-lg p-4 mb-4">
+                    {cd.table_data.title && <h4 className="font-bold text-gray-900 mb-2">{cd.table_data.title}</h4>}
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-collapse border border-orange-300">
+                        {cd.table_data.headers && (
+                          <thead>
+                            <tr className="bg-orange-100">
+                              {cd.table_data.headers.map((h, i) => (
+                                <th key={i} className="border border-orange-300 px-3 py-2 text-orange-800 font-semibold text-sm">{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                        )}
+                        <tbody>
+                          {(cd.table_data.rows || []).map((row, ri) => (
+                            <tr key={ri}>
+                              {row.map((cell, ci) => (
+                                <td key={ci} className="border border-orange-300 px-3 py-2 text-center text-gray-700 text-sm font-medium">{cell}</td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+                {cd.instruction && (
+                  <div className="bg-indigo-50 border-2 border-indigo-200 rounded-lg p-4 text-center mb-4">
+                    <p className="text-indigo-800 font-bold text-lg">{cd.instruction}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
             <h3 className="text-xl font-bold text-gray-900 mb-6 whitespace-pre-line">
               {question.question_text}
             </h3>
@@ -293,9 +346,9 @@ export default function QuestionDebugPage() {
             {showResult && (verifiedExplanation || question.explanation) && (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mt-6">
                 <h4 className="font-semibold text-blue-800 mb-2">Explicación:</h4>
-                <div
-                  className="text-blue-700 whitespace-pre-line"
-                  dangerouslySetInnerHTML={{ __html: (verifiedExplanation || question.explanation).replace(/\n/g, '<br>') }}
+                <MarkdownExplanation
+                  content={verifiedExplanation || question.explanation}
+                  className="text-blue-700"
                 />
               </div>
             )}
