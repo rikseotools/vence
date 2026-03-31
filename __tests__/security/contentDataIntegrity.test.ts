@@ -56,11 +56,11 @@ describeIf('Content Data Integrity', () => {
     global.fetch = originalFetch
   })
 
-  test('NO debe haber preguntas psicotécnicas activas con cuadro/tabla en texto y content_data vacío', async () => {
-    // Obtener psicotécnicas activas con content_data vacío
+  test('NO debe haber preguntas psicotécnicas activas con cuadro/tabla en texto y sin content_data ni image_url', async () => {
+    // Obtener psicotécnicas activas con content_data vacío Y sin image_url
     const rows = await query(
       'psychometric_questions',
-      'select=id,question_text,content_data&is_active=eq.true&content_data=eq.%7B%7D'
+      'select=id,question_text,content_data&is_active=eq.true&content_data=eq.%7B%7D&image_url=is.null'
     ) as Array<{ id: string; question_text: string; content_data: Record<string, unknown> }>
 
     const patterns = ['cuadro', 'tabla', 'figura', 'imagen', 'gráfico']
@@ -71,7 +71,7 @@ describeIf('Content Data Integrity', () => {
 
     if (problematic.length > 0) {
       console.error(
-        `${problematic.length} preguntas psicotécnicas activas referencian datos visuales sin content_data:`,
+        `${problematic.length} preguntas psicotécnicas activas sin content_data ni image_url:`,
         problematic.map(q => q.id.substring(0, 8))
       )
     }
@@ -79,15 +79,16 @@ describeIf('Content Data Integrity', () => {
     expect(problematic.length).toBe(0)
   }, 15000)
 
-  test('NO debe haber preguntas psicotécnicas activas de tipo data_tables sin content_data', async () => {
+  test('NO debe haber preguntas psicotécnicas activas de tipo data_tables sin content_data ni image_url', async () => {
+    // Excluir las que tienen image_url (imágenes en Supabase Storage)
     const rows = await query(
       'psychometric_questions',
-      'select=id,question_text&is_active=eq.true&question_subtype=eq.data_tables&content_data=eq.%7B%7D'
+      'select=id,question_text&is_active=eq.true&question_subtype=eq.data_tables&content_data=eq.%7B%7D&image_url=is.null'
     ) as Array<{ id: string; question_text: string }>
 
     if (rows.length > 0) {
       console.error(
-        `${rows.length} preguntas data_tables activas sin content_data:`,
+        `${rows.length} preguntas data_tables activas sin content_data ni image_url:`,
         rows.map(q => q.id.substring(0, 8))
       )
     }

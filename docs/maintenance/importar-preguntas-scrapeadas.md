@@ -819,6 +819,61 @@ Al importar, verificar si la pregunta tiene `imageLocal`/`imageOriginal` en el J
    - `anexo Excel`, `anexo de Excel`, `anexo Word`, `anexo Access`
    - `columna .{1,3} del anexo`
 
+### Arquitectura de preguntas con imágenes (aprendizaje 31/03/2026)
+
+#### Dónde van las preguntas según tipo
+
+| Tipo de pregunta | Tabla | content_data | image_url |
+|-----------------|-------|-------------|-----------|
+| **Legislativas** (leyes, CE, LPAC...) | `questions` | No suele necesitar | No suele necesitar |
+| **Informática con imagen** (Anexo Word/Excel) | `questions` | Opcional (tablas) | **Sí** (Supabase Storage) |
+| **Psicotécnicas con tabla** (equivalencias, instrucciones) | `psychometric_questions` | **Sí** (JSON) | No |
+| **Psicotécnicas con icono** (<5KB) | `psychometric_questions` | `image_base64` | No |
+| **Psicotécnicas con diagrama/cuadro grande** | `psychometric_questions` | Intentar JSON | `image_url` si no se puede |
+
+#### Campos disponibles
+
+- **`questions.content_data`** (JSONB) — Añadido 31/03/2026. Mismo formato que psychometric.
+- **`questions.image_url`** (TEXT) — URL pública de Supabase Storage.
+- **`psychometric_questions.content_data`** (JSONB) — Tablas, instrucciones, image_base64.
+
+#### ContentDataRenderer (componente centralizado)
+
+Renderiza automáticamente cualquier tipo de content_data visual:
+- `table_data` con/sin headers → tabla HTML responsive
+- `instruction` → bloque destacado (ej: "TEA + (mes invernal)")
+- `instructions` → lista de reglas paso a paso
+- `text_passage` → bloque de texto para leer
+- `image_base64` → imagen inline (<5KB, iconos)
+- `imageUrl` (prop) → imagen con zoom modal (Supabase Storage)
+
+Usado en: ChartQuestion, ExamLayout, OfficialExamLayout, TestLayout, PsychometricTestLayout.
+
+#### Supabase Storage (bucket `question-images`)
+
+- Bucket público con CDN
+- Ruta: `cyl-exams/{imageName}.png` para exámenes CyL
+- Imágenes >5KB que no se pueden convertir a content_data
+- El componente ContentDataRenderer muestra lupa + zoom modal
+
+#### Proceso eficiente para 500+ preguntas con imagen
+
+1. **Agrupar por imagen compartida** — Muchas preguntas usan el mismo cuadro/tabla
+2. **Mapear BD → scrapeado** por opciones (option_a + option_d)
+3. **Leer cada imagen ÚNICA** — no repetir lectura de la misma imagen
+4. **Convertir a content_data si es posible** (tablas, instrucciones, texto)
+5. **Subir a Supabase Storage si es complejo** (diagramas, capturas Word)
+6. **Aplicar content_data/image_url a todas las preguntas** del grupo
+7. **Verificar respuesta + explicación** con agentes Opus
+8. **Activar solo si todo es perfecto**
+
+#### Preguntas que NO se pueden convertir a content_data
+
+- Diagramas de flujo complejos → `image_url` (Supabase Storage)
+- Capturas de pantalla de Word/Excel → `image_url` (Supabase Storage)
+- Sopas de letras → `table_data` con rows (cada fila es una línea de letras)
+- Cuadros con formato visual específico → evaluar caso a caso
+
 ## 13. Checklist Completo por Tema
 
 Flujo validado (Marzo 2026):
