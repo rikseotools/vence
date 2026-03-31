@@ -58,13 +58,15 @@ export class ChatOrchestrator {
       const supabase = getSupabaseForSearch()
       const { data } = await supabase
         .from('oposiciones')
-        .select('nombre, slug, plazas_libres, temas_count, exam_date, exam_date_approximate, estado_proceso, is_convocatoria_activa')
+        .select('nombre, slug, plazas_libres, temas_count, exam_date, exam_date_approximate, estado_proceso, is_convocatoria_activa, grupo, titulo_requerido')
         .eq('is_active', true)
         .order('nombre')
 
       if (data?.length) {
         const lines = data.map(o => {
           let info = `- ${o.nombre} (/${o.slug})`
+          if (o.grupo) info += ` [${o.grupo}]`
+          if (o.titulo_requerido) info += ` (${o.titulo_requerido})`
           if (o.plazas_libres) info += ` — ${o.plazas_libres} plazas`
           if (o.temas_count) info += `, ${o.temas_count} temas`
           if (o.exam_date) {
