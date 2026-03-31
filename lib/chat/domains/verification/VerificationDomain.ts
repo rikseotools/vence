@@ -49,6 +49,14 @@ export class VerificationDomain implements ChatDomain {
     // También manejar si el usuario pregunta sobre la respuesta
     const asksAboutAnswer = this.asksAboutAnswer(context.currentMessage)
 
+    // Si el contexto es psicotécnico y NO es una petición explícita de verificación,
+    // ceder al PsychometricDomain que maneja follow-ups de psicotécnicos mejor
+    const isPsico = qc?.isPsicotecnico || qc?.questionSubtype || qc?.contentData
+    if (isPsico && !isVerification && !asksAboutAnswer) {
+      logger.info('VerificationDomain: Psychometric context, deferring to PsychometricDomain', { domain: 'verification' })
+      return false
+    }
+
     // INTELIGENTE: Si hay contexto de pregunta con respuesta correcta,
     // y el mensaje es corto/genérico (no menciona otra ley o tema),
     // probablemente quiere saber sobre la respuesta actual
