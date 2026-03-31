@@ -5,6 +5,9 @@
  * NO debe hacer una query extra a laws para case-insensitive lookup.
  */
 
+// Mock server-only (lanza error en cliente, necesita mock en tests)
+jest.mock('server-only', () => ({}))
+
 // Track which tables are queried
 const queriedTables: string[] = []
 
@@ -66,8 +69,19 @@ jest.mock('@/lib/api/laws/warmCache', () => ({
   warmSlugCache: jest.fn(),
 }))
 
-// lib/api/laws/queries ya no se importa directamente desde teoriaFetchers
-// (usa supabase directamente para compatibilidad client/server)
+jest.mock('@/lib/api/laws/queries', () => ({
+  getShortNameBySlug: jest.fn(async (slug: string) => {
+    const map: Record<string, string> = { 'constitucion-espanola': 'CE', 'ley-39-2015': 'Ley 39/2015' }
+    return map[slug] || null
+  }),
+  loadSlugMappingCache: jest.fn(async () => ({
+    slugToShortName: new Map([['constitucion-espanola', 'CE'], ['ley-39-2015', 'Ley 39/2015']]),
+    shortNameToSlug: new Map([['CE', 'constitucion-espanola'], ['Ley 39/2015', 'ley-39-2015']]),
+    lawsBySlug: new Map(),
+    loadedAt: new Date(),
+  })),
+  generateSlugFromShortName: jest.fn((s: string) => s?.toLowerCase().replace(/[^a-z0-9]+/g, '-')),
+}))
 
 import { fetchLawArticles } from '@/lib/teoriaFetchers'
 
@@ -111,7 +125,7 @@ describe('fetchLawArticles', () => {
   })
 
   describe('con slug reconocido por mapLawSlugToShortName', () => {
-    it('consulta la tabla laws para cache de slugs y luego articles', async () => {
+    it('resuelve slug via Drizzle cache y consulta articles via supabase', async () => {
       mockMapSlug.mockReturnValue('CE')
       mockArticlesOrder.mockResolvedValueOnce({
         data: [makeArticle('1')],
@@ -120,8 +134,7 @@ describe('fetchLawArticles', () => {
 
       await fetchLawArticles('constitucion-espanola')
 
-      // laws se consulta para el cache de slugs (loadSlugCache) + articles para los datos
-      expect(queriedTables).toContain('laws')
+      // Slug se resuelve via Drizzle (mockeado), articles se consultan via supabase
       expect(queriedTables).toContain('articles')
     })
 

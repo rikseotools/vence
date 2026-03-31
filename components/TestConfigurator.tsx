@@ -2,7 +2,6 @@
 'use client'
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import SectionFilterModal from './SectionFilterModal';
-import { fetchLawSections } from '../lib/teoriaFetchers';
 import { useLawSlugs } from '@/contexts/LawSlugContext';
 import { getOposicionByPositionType } from '@/lib/config/oposiciones';
 
@@ -624,7 +623,8 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
     const promise = (async () => {
       try {
         console.log('📚 Cargando secciones para ley:', lawSlug);
-        const data = await fetchLawSections(lawSlug);
+        const res = await fetch(`/api/teoria/sections?law=${encodeURIComponent(lawSlug)}`);
+        const data = await res.json();
         return data.sections || [];
       } catch (error) {
         console.error('❌ Error cargando secciones:', error);

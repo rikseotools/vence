@@ -5,6 +5,9 @@
  * en vez de hacer una query redundante a la tabla laws.
  */
 
+// Mock server-only
+jest.mock('server-only', () => ({}))
+
 // Track which tables are queried
 const queriedTables: string[] = []
 
@@ -51,7 +54,19 @@ jest.mock('@/lib/api/laws/warmCache', () => ({
   warmSlugCache: jest.fn(),
 }))
 
-// lib/api/laws/queries ya no se importa desde teoriaFetchers
+jest.mock('@/lib/api/laws/queries', () => ({
+  getShortNameBySlug: jest.fn(async (slug: string) => {
+    const map: Record<string, string> = { 'constitucion-espanola': 'CE', 'test-law': 'TL', 'ley-39-2015': 'Ley 39/2015' }
+    return map[slug] || null
+  }),
+  loadSlugMappingCache: jest.fn(async () => ({
+    slugToShortName: new Map(),
+    shortNameToSlug: new Map([['CE', 'constitucion-espanola'], ['TL', 'test-law'], ['Ley 39/2015', 'ley-39-2015']]),
+    lawsBySlug: new Map(),
+    loadedAt: new Date(),
+  })),
+  generateSlugFromShortName: jest.fn((s: string) => s?.toLowerCase().replace(/[^a-z0-9]+/g, '-')),
+}))
 
 import { fetchLawSections } from '@/lib/teoriaFetchers'
 

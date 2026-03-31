@@ -2,7 +2,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { fetchLawSections } from '@/lib/teoriaFetchers'
 
 export default function SectionFilterModal({
   isOpen,
@@ -34,7 +33,8 @@ export default function SectionFilterModal({
       setLoading(true)
       setError(null)
 
-      const data = await fetchLawSections(lawSlug)
+      const res = await fetch(`/api/teoria/sections?law=${encodeURIComponent(lawSlug)}`)
+      const data = await res.json()
       setSections(data.sections || [])
     } catch (err) {
       setError(err.message)

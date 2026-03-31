@@ -2,7 +2,7 @@
 'use client'
 
 import { useState, useEffect, MouseEvent } from 'react'
-import { fetchLawArticles, fetchLawSections, type LawSection } from '@/lib/teoriaFetchers'
+import type { LawSection } from '@/lib/teoriaFetchers'
 import { useAuth } from '@/contexts/AuthContext'
 import Link from 'next/link'
 import ArticleModal from '@/components/ArticleModal'
@@ -137,8 +137,9 @@ export default function LawArticlesClient({ params, searchParams }: LawArticlesC
       try {
         setLoading(true)
 
-        // Cargar artículos de la ley
-        const data = await fetchLawArticles(lawSlug)
+        // Cargar artículos de la ley via API route (server-side)
+        const articlesRes = await fetch(`/api/teoria/articles?law=${encodeURIComponent(lawSlug)}`)
+        const data = await articlesRes.json()
 
         // Verificar si la ley no existe
         if (data.notFound) {
@@ -149,13 +150,14 @@ export default function LawArticlesClient({ params, searchParams }: LawArticlesC
 
         setLawData(data as LawData)
 
-        // Cargar secciones reutilizando datos de ley (evita query redundante a laws)
+        // Cargar secciones via API route
         try {
-          const sectionsData = await fetchLawSections(lawSlug, {
-            lawId: data.law?.id,
-            lawName: data.law?.name,
-            lawShortName: data.law?.short_name,
-          })
+          const params = new URLSearchParams({ law: lawSlug })
+          if (data.law?.id) params.set('lawId', data.law.id)
+          if (data.law?.name) params.set('lawName', data.law.name)
+          if (data.law?.short_name) params.set('lawShortName', data.law.short_name)
+          const sectionsRes = await fetch(`/api/teoria/sections?${params}`)
+          const sectionsData = await sectionsRes.json()
           setAvailableSections(sectionsData.sections || [])
           console.log('📚 Secciones cargadas para', lawSlug, ':', sectionsData.sections?.length || 0)
         } catch (sectionsError: unknown) {
