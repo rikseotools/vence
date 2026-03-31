@@ -73,6 +73,7 @@ interface OfficialExamQuestion {
   explanation?: string | null
   difficulty?: string
   contentData?: Record<string, unknown> | null
+  imageUrl?: string | null
   examCaseId?: string | null
   examCaseText?: string | null
   examCaseTitle?: string | null

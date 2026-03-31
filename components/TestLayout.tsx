@@ -48,6 +48,7 @@ import { validateAnswer } from '@/lib/api/answers/client'
 import { ApiTimeoutError, ApiNetworkError } from '@/lib/api/client'
 import { useAnswerWatchdog } from '@/hooks/useAnswerWatchdog'
 import { logClientError } from '@/lib/logClientError'
+import ContentDataRenderer from './ContentDataRenderer'
 
 import type {
   TestQuestion,
@@ -1829,6 +1830,12 @@ export default function TestLayout({
                   {/* 🚫 ELIMINADO: No mostrar artículo antes de responder (da pistas) */}
                 </div>
                 
+                {/* Contenido visual: imagen, tabla, instrucciones */}
+                <ContentDataRenderer
+                  contentData={currentQ?.content_data as Record<string, unknown> | null}
+                  imageUrl={currentQ?.image_url as string | null}
+                />
+
                 <div
                   className="prose max-w-none dark:prose-invert select-none"
                   onCopy={(e) => e.preventDefault()}

@@ -88,6 +88,7 @@ function OfficialExamContent() {
           questionSubtype: q.questionSubtype,
           isReserva: q.isReserva,
           contentData: q.contentData,
+          imageUrl: q.imageUrl,
           timeLimitSeconds: q.timeLimitSeconds,
           articleNumber: q.articleNumber,
           lawName: q.lawName,

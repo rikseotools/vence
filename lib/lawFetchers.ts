@@ -230,7 +230,7 @@ export async function fetchQuestionsByLaw(lawShortName: string, searchParams: Se
       .select(`
         id, question_text, option_a, option_b, option_c, option_d,
         correct_option, explanation, difficulty, question_type, tags,
-        primary_article_id, is_official_exam, exam_source, exam_date,
+        primary_article_id, is_official_exam, exam_source, exam_date, image_url, content_data,
         exam_entity, official_difficulty_level, is_active, created_at, updated_at,
         articles!inner (
           id, article_number, title, content, section,

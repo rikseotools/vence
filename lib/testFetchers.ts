@@ -626,7 +626,7 @@ export async function fetchPersonalizedQuestions(tema: number, searchParams: Sea
       .select(`
         id, question_text, option_a, option_b, option_c, option_d,
         correct_option, explanation, difficulty, global_difficulty_category, question_type, tags,
-        primary_article_id, is_official_exam, exam_source, exam_date,
+        primary_article_id, is_official_exam, exam_source, exam_date, image_url, content_data,
         exam_entity, official_difficulty_level, is_active, created_at, updated_at,
         articles!inner (
           id, article_number, title, content, section,
@@ -904,7 +904,7 @@ export async function fetchQuestionsByTopicScope(tema: number, searchParams: Sea
           .select(`
             id, question_text, option_a, option_b, option_c, option_d,
             correct_option, explanation, difficulty, is_official_exam,
-            primary_article_id, exam_source, exam_date, exam_entity,
+            primary_article_id, exam_source, exam_date, exam_entity, image_url, content_data,
             articles!inner(
               id, article_number, title, content,
               laws!inner(short_name, slug, name)
@@ -1157,7 +1157,7 @@ export async function fetchQuestionsByTopicScope(tema: number, searchParams: Sea
         .select(`
           id, question_text, option_a, option_b, option_c, option_d,
           correct_option, explanation, difficulty, global_difficulty_category, question_type, tags,
-          primary_article_id, is_official_exam, exam_source, exam_date,
+          primary_article_id, is_official_exam, exam_source, exam_date, image_url, content_data,
           exam_entity, official_difficulty_level, is_active, created_at, updated_at,
           articles!inner (
             id, article_number, title, content, section,
@@ -2021,7 +2021,7 @@ export async function fetchArticulosDirigido(lawName: string, searchParams: Sear
           .select(`
             id, question_text, option_a, option_b, option_c, option_d,
             correct_option, explanation, difficulty, is_official_exam,
-            primary_article_id, exam_source, exam_date, exam_entity,
+            primary_article_id, exam_source, exam_date, exam_entity, image_url, content_data,
             articles!inner(
               id, article_number, title, content,
               laws!inner(short_name, name)
@@ -2304,7 +2304,7 @@ async function fetchMantenerRachaFallback(n: number, user: { id: string } | null
           .select(`
             id, question_text, option_a, option_b, option_c, option_d,
             correct_option, explanation, difficulty, global_difficulty_category, is_official_exam,
-            primary_article_id, exam_source, exam_date, exam_entity,
+            primary_article_id, exam_source, exam_date, exam_entity, image_url, content_data,
             articles!inner(
               id, article_number, title, content,
               laws!inner(short_name, name)
