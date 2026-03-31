@@ -15,7 +15,7 @@ import {
   isGenericLawQuery,
 } from './ArticleSearchService'
 import { detectQueryPattern } from './PatternMatcher'
-import { detectLawsFromText, getHotArticlesByOposicion, formatHotArticlesResponse, hasQuestionsForArticle, extractArticleNumbers } from './queries'
+import { detectLawsFromText, getHotArticlesByOposicion, formatHotArticlesResponse, hasQuestionsForArticle, extractArticleNumbers, getSupabaseForSearch } from './queries'
 import { isPsychometricSubtype } from '../../shared/constants'
 import { detectStatsQueryType } from '../stats/StatsService'
 
@@ -741,17 +741,67 @@ ${responseGuidelines}
 
     // Detectar si hay una ley específica mencionada
     const mentionedLaws = detectMentionedLaws(message)
-    const lawFilter = mentionedLaws.length > 0 ? mentionedLaws[0] : undefined
+    let lawFilter = mentionedLaws.length > 0 ? mentionedLaws[0] : undefined
 
-    // Consultar hot_articles
-    const searchResult = await getHotArticlesByOposicion(context.userDomain, {
+    // Detectar si hay un tema específico ("tema 15", "tema 3")
+    const temaMatch = message.match(/\btema\s+(\d+)\b/i)
+    let temaLaws: string[] = []
+    if (temaMatch && !lawFilter && context.userDomain) {
+      const temaNumber = parseInt(temaMatch[1])
+      // Buscar las leyes de ese tema en topic_scope
+      try {
+        const { data: topics } = await getSupabaseForSearch()
+          .from('topics')
+          .select('id')
+          .eq('position_type', context.userDomain)
+          .eq('topic_number', temaNumber)
+          .limit(1)
+
+        if (topics?.length) {
+          const { data: scopes } = await getSupabaseForSearch()
+            .from('topic_scope')
+            .select('law_id')
+            .eq('topic_id', topics[0].id)
+
+          if (scopes?.length) {
+            const lawIds = scopes.map(s => s.law_id)
+            const { data: laws } = await getSupabaseForSearch()
+              .from('laws')
+              .select('short_name')
+              .in('id', lawIds)
+
+            temaLaws = (laws || []).map(l => l.short_name).filter(Boolean)
+            if (temaLaws.length === 1) {
+              lawFilter = temaLaws[0]
+            }
+            logger.info(`🔥 Tema ${temaNumber} → ${temaLaws.length} leyes: ${temaLaws.join(', ')}`, { domain: 'search' })
+          }
+        }
+      } catch (err) {
+        logger.warn('Error buscando leyes del tema', { domain: 'search' })
+      }
+    }
+
+    // Consultar hot_articles (filtrado por ley o por leyes del tema)
+    let searchResult = await getHotArticlesByOposicion(context.userDomain, {
       lawShortName: lawFilter,
-      limit: 10,
+      limit: temaLaws.length > 1 ? 20 : 10,
     })
 
+    // Si hay múltiples leyes del tema y no se filtró por una ley específica,
+    // filtrar los resultados para incluir solo artículos de las leyes del tema
+    if (temaLaws.length > 1 && !lawFilter && searchResult.articles) {
+      const temaLawSet = new Set(temaLaws)
+      searchResult = {
+        ...searchResult,
+        articles: searchResult.articles.filter(a => temaLawSet.has(a.lawName || '')).slice(0, 10),
+      }
+    }
+
     // Formatear respuesta con nombre del usuario para personalización
+    const temaLabel = temaMatch ? `Tema ${temaMatch[1]}` : undefined
     const response = formatHotArticlesResponse(searchResult, context.userDomain, {
-      lawName: lawFilter,
+      lawName: lawFilter || (temaLaws.length > 0 ? temaLabel : undefined),
       userName: context.userName,
     })
 

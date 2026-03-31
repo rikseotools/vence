@@ -11,6 +11,10 @@ import type { ArticleMatch, SearchOptions } from '../../core/types'
 import { getOposicion } from '@/lib/config/oposiciones'
 
 // Cliente Supabase para RPC functions (match_articles usa pgvector)
+export const getSupabaseForSearch = () => createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
