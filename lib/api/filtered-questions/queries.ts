@@ -14,6 +14,115 @@ import type {
 import { getValidExamPositions } from '@/lib/config/exam-positions'
 
 // ============================================
+// COLUMNAS COMPARTIDAS: Usado por todos los selects de preguntas
+// Definir una sola vez para evitar que se olviden campos (como image_url)
+// ============================================
+const questionColumns = {
+  id: questions.id,
+  questionText: questions.questionText,
+  optionA: questions.optionA,
+  optionB: questions.optionB,
+  optionC: questions.optionC,
+  optionD: questions.optionD,
+  explanation: questions.explanation,
+  difficulty: questions.difficulty,
+  questionType: questions.questionType,
+  tags: questions.tags,
+  isActive: questions.isActive,
+  createdAt: questions.createdAt,
+  updatedAt: questions.updatedAt,
+  primaryArticleId: questions.primaryArticleId,
+  isOfficialExam: questions.isOfficialExam,
+  examSource: questions.examSource,
+  examDate: questions.examDate,
+  examEntity: questions.examEntity,
+  examPosition: questions.examPosition,
+  officialDifficultyLevel: questions.officialDifficultyLevel,
+  imageUrl: questions.imageUrl,
+  contentData: questions.contentData,
+} as const
+
+const articleColumns = {
+  articleId: articles.id,
+  articleNumber: articles.articleNumber,
+  articleTitle: articles.title,
+  articleContent: articles.content,
+  lawId: laws.id,
+  lawName: laws.name,
+  lawShortName: laws.shortName,
+} as const
+
+type QuestionRow = {
+  id: string
+  questionText: string
+  optionA: string
+  optionB: string
+  optionC: string
+  optionD: string
+  explanation: string
+  difficulty: string | null
+  questionType: string | null
+  tags: string[] | null
+  isActive: boolean | null
+  createdAt: string | null
+  updatedAt: string | null
+  primaryArticleId: string
+  isOfficialExam: boolean | null
+  examSource: string | null
+  examDate: string | null
+  examEntity: string | null
+  examPosition: string | null
+  officialDifficultyLevel: string | null
+  imageUrl: string | null
+  contentData: Record<string, unknown> | null
+  articleId: string
+  articleNumber: string
+  articleTitle: string | null
+  articleContent: string | null
+  lawId: string
+  lawName: string
+  lawShortName: string
+  sourceTopic: number | null
+}
+
+function transformQuestion(q: QuestionRow, index: number): FilteredQuestion {
+  return {
+    id: q.id,
+    question: q.questionText,
+    options: [q.optionA, q.optionB, q.optionC, q.optionD] as [string, string, string, string],
+    explanation: q.explanation,
+    primary_article_id: q.primaryArticleId,
+    tema: q.sourceTopic ?? null,
+    image_url: q.imageUrl || null,
+    content_data: q.contentData || null,
+    article: {
+      id: q.articleId,
+      number: q.articleNumber || (index + 1).toString(),
+      title: q.articleTitle || `Artículo ${index + 1}`,
+      full_text: q.articleContent || `Artículo ${q.articleNumber || index + 1}`,
+      law_name: q.lawName || 'Ley desconocida',
+      law_short_name: q.lawShortName || 'Ley',
+      display_number: `Art. ${q.articleNumber || index + 1} ${q.lawShortName || 'Ley'}`,
+    },
+    metadata: {
+      id: q.id,
+      difficulty: q.difficulty || 'medium',
+      question_type: q.questionType || 'single',
+      tags: q.tags,
+      is_active: q.isActive ?? true,
+      created_at: q.createdAt,
+      updated_at: q.updatedAt,
+      is_official_exam: q.isOfficialExam,
+      exam_source: q.examSource,
+      exam_date: q.examDate,
+      exam_entity: q.examEntity,
+      exam_position: q.examPosition,
+      official_difficulty_level: q.officialDifficultyLevel,
+    },
+  }
+}
+
+// ============================================
 // HELPER: Obtener IDs de preguntas respondidas recientemente
 // ============================================
 async function getRecentlyAnsweredQuestionIds(
@@ -312,35 +421,7 @@ export async function getFilteredQuestions(
       console.log(`🔄 Modo preguntas falladas por historial (single JOIN): userId=${userId}`)
 
       const failedQuestions = await db
-        .select({
-          id: questions.id,
-          questionText: questions.questionText,
-          optionA: questions.optionA,
-          optionB: questions.optionB,
-          optionC: questions.optionC,
-          optionD: questions.optionD,
-          explanation: questions.explanation,
-          difficulty: questions.difficulty,
-          questionType: questions.questionType,
-          tags: questions.tags,
-          isActive: questions.isActive,
-          createdAt: questions.createdAt,
-          updatedAt: questions.updatedAt,
-          primaryArticleId: questions.primaryArticleId,
-          isOfficialExam: questions.isOfficialExam,
-          examSource: questions.examSource,
-          examDate: questions.examDate,
-          examEntity: questions.examEntity,
-          examPosition: questions.examPosition,
-          officialDifficultyLevel: questions.officialDifficultyLevel,
-          articleId: articles.id,
-          articleNumber: articles.articleNumber,
-          articleTitle: articles.title,
-          articleContent: articles.content,
-          lawId: laws.id,
-          lawName: laws.name,
-          lawShortName: laws.shortName,
-        })
+        .select({ ...questionColumns, ...articleColumns })
         .from(questions)
         .innerJoin(articles, eq(questions.primaryArticleId, articles.id))
         .innerJoin(laws, eq(articles.lawId, laws.id))
@@ -364,39 +445,7 @@ export async function getFilteredQuestions(
         return { success: true, questions: [], totalAvailable: 0, filtersApplied: { laws: 0, articles: 0, sections: 0 } }
       }
 
-      // Transformar al formato esperado (same block as specific IDs below)
-      const transformedQuestions: FilteredQuestion[] = finalQuestions.map((q, index) => ({
-        id: q.id,
-        question: q.questionText,
-        options: [q.optionA, q.optionB, q.optionC, q.optionD] as [string, string, string, string],
-        explanation: q.explanation,
-        primary_article_id: q.primaryArticleId,
-        tema: topicNumber || null,
-        article: {
-          id: q.articleId,
-          number: q.articleNumber || (index + 1).toString(),
-          title: q.articleTitle || `Artículo ${index + 1}`,
-          full_text: q.articleContent || `Artículo ${q.articleNumber || index + 1}`,
-          law_name: q.lawName || 'Ley desconocida',
-          law_short_name: q.lawShortName || 'Ley',
-          display_number: `Art. ${q.articleNumber || index + 1} ${q.lawShortName || 'Ley'}`,
-        },
-        metadata: {
-          id: q.id,
-          difficulty: q.difficulty || 'medium',
-          question_type: q.questionType || 'single',
-          tags: q.tags,
-          is_active: q.isActive ?? true,
-          created_at: q.createdAt,
-          updated_at: q.updatedAt,
-          is_official_exam: q.isOfficialExam,
-          exam_source: q.examSource,
-          exam_date: q.examDate,
-          exam_entity: q.examEntity,
-          exam_position: q.examPosition,
-          official_difficulty_level: q.officialDifficultyLevel,
-        },
-      }))
+      const transformedQuestions = finalQuestions.map((q, i) => transformQuestion({ ...q, sourceTopic: topicNumber || null } as QuestionRow, i))
 
       return {
         success: true,
@@ -411,35 +460,7 @@ export async function getFilteredQuestions(
       console.log(`🔄 Modo preguntas falladas por IDs: ${failedQuestionIds.length} específicas`)
 
       const failedQuestions = await db
-        .select({
-          id: questions.id,
-          questionText: questions.questionText,
-          optionA: questions.optionA,
-          optionB: questions.optionB,
-          optionC: questions.optionC,
-          optionD: questions.optionD,
-          explanation: questions.explanation,
-          difficulty: questions.difficulty,
-          questionType: questions.questionType,
-          tags: questions.tags,
-          isActive: questions.isActive,
-          createdAt: questions.createdAt,
-          updatedAt: questions.updatedAt,
-          primaryArticleId: questions.primaryArticleId,
-          isOfficialExam: questions.isOfficialExam,
-          examSource: questions.examSource,
-          examDate: questions.examDate,
-          examEntity: questions.examEntity,
-          examPosition: questions.examPosition,
-          officialDifficultyLevel: questions.officialDifficultyLevel,
-          articleId: articles.id,
-          articleNumber: articles.articleNumber,
-          articleTitle: articles.title,
-          articleContent: articles.content,
-          lawId: laws.id,
-          lawName: laws.name,
-          lawShortName: laws.shortName,
-        })
+        .select({ ...questionColumns, ...articleColumns })
         .from(questions)
         .innerJoin(articles, eq(questions.primaryArticleId, articles.id))
         .innerJoin(laws, eq(articles.lawId, laws.id))
@@ -459,38 +480,7 @@ export async function getFilteredQuestions(
       console.log(`✅ Encontradas ${finalQuestions.length} de ${failedQuestionIds.length} preguntas falladas`)
 
       // Transformar al formato esperado
-      const transformedQuestions: FilteredQuestion[] = finalQuestions.map((q, index) => ({
-        id: q.id,
-        question: q.questionText,
-        options: [q.optionA, q.optionB, q.optionC, q.optionD] as [string, string, string, string],
-        explanation: q.explanation,
-        primary_article_id: q.primaryArticleId,
-        tema: topicNumber || null,
-        article: {
-          id: q.articleId,
-          number: q.articleNumber || (index + 1).toString(),
-          title: q.articleTitle || `Artículo ${index + 1}`,
-          full_text: q.articleContent || `Artículo ${q.articleNumber || index + 1}`,
-          law_name: q.lawName || 'Ley desconocida',
-          law_short_name: q.lawShortName || 'Ley',
-          display_number: `Art. ${q.articleNumber || index + 1} ${q.lawShortName || 'Ley'}`,
-        },
-        metadata: {
-          id: q.id,
-          difficulty: q.difficulty || 'medium',
-          question_type: q.questionType || 'single',
-          tags: q.tags,
-          is_active: q.isActive ?? true,
-          created_at: q.createdAt,
-          updated_at: q.updatedAt,
-          is_official_exam: q.isOfficialExam,
-          exam_source: q.examSource,
-          exam_date: q.examDate,
-          exam_entity: q.examEntity,
-          exam_position: q.examPosition,
-          official_difficulty_level: q.officialDifficultyLevel,
-        },
-      }))
+      const transformedQuestions = finalQuestions.map((q, i) => transformQuestion({ ...q, sourceTopic: topicNumber || null } as QuestionRow, i))
 
       return {
         success: true,
@@ -520,35 +510,7 @@ export async function getFilteredQuestions(
 
       // Query directa: preguntas activas aleatorias, sin filtrar por tema
       const globalQuestions = await db
-        .select({
-          id: questions.id,
-          questionText: questions.questionText,
-          optionA: questions.optionA,
-          optionB: questions.optionB,
-          optionC: questions.optionC,
-          optionD: questions.optionD,
-          explanation: questions.explanation,
-          difficulty: questions.difficulty,
-          questionType: questions.questionType,
-          tags: questions.tags,
-          isActive: questions.isActive,
-          createdAt: questions.createdAt,
-          updatedAt: questions.updatedAt,
-          primaryArticleId: questions.primaryArticleId,
-          isOfficialExam: questions.isOfficialExam,
-          examSource: questions.examSource,
-          examDate: questions.examDate,
-          examEntity: questions.examEntity,
-          examPosition: questions.examPosition,
-          officialDifficultyLevel: questions.officialDifficultyLevel,
-          articleId: articles.id,
-          articleNumber: articles.articleNumber,
-          articleTitle: articles.title,
-          articleContent: articles.content,
-          lawId: laws.id,
-          lawName: laws.name,
-          lawShortName: laws.shortName,
-        })
+        .select({ ...questionColumns, ...articleColumns })
         .from(questions)
         .innerJoin(articles, eq(questions.primaryArticleId, articles.id))
         .innerJoin(laws, eq(articles.lawId, laws.id))
@@ -569,37 +531,7 @@ export async function getFilteredQuestions(
       console.log(`✅ Modo global: ${globalQuestions.length} preguntas encontradas`)
 
       // Transformar al formato esperado
-      const transformedQuestions = globalQuestions.map(q => ({
-        id: q.id,
-        question: q.questionText,
-        options: [q.optionA, q.optionB, q.optionC, q.optionD] as [string, string, string, string],
-        explanation: q.explanation || '',
-        primary_article_id: q.primaryArticleId,
-        tema: null,
-        article: {
-          id: q.articleId,
-          number: q.articleNumber,
-          title: q.articleTitle,
-          full_text: q.articleContent,
-          law_name: q.lawName,
-          law_short_name: q.lawShortName,
-          display_number: `Art. ${q.articleNumber}`,
-        },
-        metadata: {
-          id: q.id,
-          difficulty: q.difficulty || 'medium',
-          question_type: q.questionType || 'test',
-          tags: q.tags,
-          is_active: q.isActive ?? true,
-          created_at: q.createdAt,
-          updated_at: q.updatedAt,
-          is_official_exam: q.isOfficialExam,
-          exam_source: q.examSource,
-          exam_date: q.examDate,
-          exam_entity: q.examEntity,
-          official_difficulty_level: q.officialDifficultyLevel,
-        },
-      }))
+      const transformedQuestions = globalQuestions.map((q, i) => transformQuestion({ ...q, sourceTopic: null } as QuestionRow, i))
 
       return {
         success: true,
@@ -742,36 +674,7 @@ export async function getFilteredQuestions(
     }
 
     // 5️⃣ Obtener preguntas para cada ley filtrada
-    let allQuestions: Array<{
-      id: string
-      questionText: string
-      optionA: string
-      optionB: string
-      optionC: string
-      optionD: string
-      explanation: string
-      difficulty: string | null
-      questionType: string | null
-      tags: string[] | null
-      isActive: boolean | null
-      createdAt: string | null
-      updatedAt: string | null
-      primaryArticleId: string
-      isOfficialExam: boolean | null
-      examSource: string | null
-      examDate: string | null
-      examEntity: string | null
-      examPosition: string | null // 🏛️ AÑADIDO: Campo para filtrar por oposición
-      officialDifficultyLevel: string | null
-      articleId: string
-      articleNumber: string
-      articleTitle: string | null
-      articleContent: string | null
-      lawId: string
-      lawName: string
-      lawShortName: string
-      sourceTopic: number | null // Track which topic this question belongs to
-    }> = []
+    let allQuestions: QuestionRow[] = []
 
     for (const mapping of filteredMappings) {
       // articleNumbers NULL = ley virtual (incluir TODAS las preguntas de la ley)
@@ -783,37 +686,7 @@ export async function getFilteredQuestions(
 
       // Query base para preguntas de esta ley
       const questionsQuery = db
-        .select({
-          id: questions.id,
-          questionText: questions.questionText,
-          optionA: questions.optionA,
-          optionB: questions.optionB,
-          optionC: questions.optionC,
-          optionD: questions.optionD,
-          explanation: questions.explanation,
-          difficulty: questions.difficulty,
-          questionType: questions.questionType,
-          tags: questions.tags,
-          isActive: questions.isActive,
-          createdAt: questions.createdAt,
-          updatedAt: questions.updatedAt,
-          primaryArticleId: questions.primaryArticleId,
-          isOfficialExam: questions.isOfficialExam,
-          examSource: questions.examSource,
-          examDate: questions.examDate,
-          examEntity: questions.examEntity,
-          examPosition: questions.examPosition, // 🏛️ AÑADIDO: Campo para filtrar por oposición
-          officialDifficultyLevel: questions.officialDifficultyLevel,
-          // Article info
-          articleId: articles.id,
-          articleNumber: articles.articleNumber,
-          articleTitle: articles.title,
-          articleContent: articles.content,
-          // Law info
-          lawId: laws.id,
-          lawName: laws.name,
-          lawShortName: laws.shortName,
-        })
+        .select({ ...questionColumns, ...articleColumns })
         .from(questions)
         .innerJoin(articles, eq(questions.primaryArticleId, articles.id))
         .innerJoin(laws, eq(articles.lawId, laws.id))
@@ -852,7 +725,7 @@ export async function getFilteredQuestions(
       const questionsWithTopic = lawQuestions.map(q => ({
         ...q,
         sourceTopic: mapping.topicNumber ?? null
-      }))
+      })) as QuestionRow[]
       allQuestions = [...allQuestions, ...questionsWithTopic]
     }
 
@@ -940,38 +813,7 @@ export async function getFilteredQuestions(
       }
     }
 
-    const transformedQuestions: FilteredQuestion[] = finalQuestions.map((q, index) => ({
-      id: q.id,
-      question: q.questionText,
-      options: [q.optionA, q.optionB, q.optionC, q.optionD] as [string, string, string, string],
-      explanation: q.explanation,
-      primary_article_id: q.primaryArticleId,
-      tema: q.sourceTopic, // Preserve the source topic for each question
-      article: {
-        id: q.articleId,
-        number: q.articleNumber || (index + 1).toString(),
-        title: q.articleTitle || `Artículo ${index + 1}`,
-        full_text: q.articleContent || `Artículo ${q.articleNumber || index + 1}`,
-        law_name: q.lawName || 'Ley desconocida',
-        law_short_name: q.lawShortName || 'Ley',
-        display_number: `Art. ${q.articleNumber || index + 1} ${q.lawShortName || 'Ley'}`,
-      },
-      metadata: {
-        id: q.id,
-        difficulty: q.difficulty || 'medium',
-        question_type: q.questionType || 'single',
-        tags: q.tags,
-        is_active: q.isActive ?? true,
-        created_at: q.createdAt,
-        updated_at: q.updatedAt,
-        is_official_exam: q.isOfficialExam,
-        exam_source: q.examSource,
-        exam_date: q.examDate,
-        exam_entity: q.examEntity,
-        exam_position: q.examPosition, // 🏛️ AÑADIDO: Campo para filtrar por oposición
-        official_difficulty_level: q.officialDifficultyLevel,
-      },
-    }))
+    const transformedQuestions: FilteredQuestion[] = finalQuestions.map((q, i) => transformQuestion(q, i))
 
     return {
       success: true,

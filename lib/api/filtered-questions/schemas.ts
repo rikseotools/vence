@@ -112,6 +112,8 @@ export const filteredQuestionSchema = z.object({
   explanation: z.string(),
   primary_article_id: z.string().uuid(),
   tema: z.number().nullable(),
+  image_url: z.string().nullable().optional(),
+  content_data: z.record(z.unknown()).nullable().optional(),
   article: articleResponseSchema,
   metadata: questionMetadataSchema,
 })
