@@ -180,6 +180,13 @@ export async function resolveLawBySlug(rawSlug: string): Promise<LawResolved | n
     }
   }
 
+  // 3. Fallback: resolver como identificador genérico (short_name, slug generado, etc.)
+  const resolved = await resolveLawIdentifier(rawSlug)
+  if (resolved) {
+    const law = cache.lawsBySlug.get(resolved.slug)
+    if (law) return law
+  }
+
   return null
 }
 
@@ -327,12 +334,32 @@ export async function resolveLawIdentifier(input: string): Promise<{
     if (law) return { id: law.id, shortName: law.shortName, slug: law.slug!, name: law.name }
   }
 
-  // 3. Intentar como slug generado (ej: "ce" podría ser generateSlug("CE"))
-  // Buscar en todos los short_names cuyo slug generado coincida
+  // 3. Intentar como slug generado exacto (ej: "ce" podría ser generateSlug("CE"))
   for (const [shortName, slug] of cache.shortNameToSlug) {
     if (generateSlugFromShortName(shortName) === normalizeSlug(input)) {
       const law = cache.lawsBySlug.get(slug)
       if (law) return { id: law.id, shortName: law.shortName, slug: law.slug!, name: law.name }
+    }
+  }
+
+  // 4. Match parcial: el input es prefijo del slug canónico o del generado
+  // Ej: "ley-31-1995" matchea "ley-31-1995-lprl" (prefijo)
+  const normalInput = normalizeSlug(input)
+  for (const [slug, law] of cache.lawsBySlug) {
+    if (slug.startsWith(normalInput + '-') || generateSlugFromShortName(law.shortName).startsWith(normalInput + '-')) {
+      return { id: law.id, shortName: law.shortName, slug: law.slug!, name: law.name }
+    }
+  }
+
+  // 5. Match por partes: todas las partes del input existen en el slug canónico
+  // Ej: "protocolo-6" → partes [protocolo, 6] → ambas están en "protocolo-n-6"
+  const inputParts = normalInput.split('-').filter(p => p.length > 0)
+  if (inputParts.length >= 2) {
+    for (const [slug, law] of cache.lawsBySlug) {
+      const slugParts = slug.split('-')
+      if (inputParts.every(p => slugParts.includes(p))) {
+        return { id: law.id, shortName: law.shortName, slug: law.slug!, name: law.name }
+      }
     }
   }
 
