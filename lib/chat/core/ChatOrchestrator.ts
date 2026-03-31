@@ -36,9 +36,51 @@ const getSupabaseForSearch = () => createClient(
 export class ChatOrchestrator {
   private domains: ChatDomain[] = []
   private systemPrompt: string
+  static cachedOposiciones: string | null = null
+  static cacheTimestamp = 0
+  static readonly CACHE_TTL = 1000 * 60 * 60 // 1 hora
 
   constructor(systemPrompt?: string) {
     this.systemPrompt = systemPrompt || this.getDefaultSystemPrompt()
+  }
+
+  /**
+   * Carga oposiciones activas de BD para inyectar en el system prompt.
+   * Cache de 1 hora para no consultar BD en cada mensaje.
+   */
+  static async loadOposiciones(): Promise<void> {
+    const now = Date.now()
+    if (ChatOrchestrator.cachedOposiciones && (now - ChatOrchestrator.cacheTimestamp) < ChatOrchestrator.CACHE_TTL) {
+      return
+    }
+
+    try {
+      const supabase = getSupabaseForSearch()
+      const { data } = await supabase
+        .from('oposiciones')
+        .select('nombre, slug, plazas_libres, temas_count, exam_date, exam_date_approximate, estado_proceso, is_convocatoria_activa')
+        .eq('is_active', true)
+        .order('nombre')
+
+      if (data?.length) {
+        const lines = data.map(o => {
+          let info = `- ${o.nombre} (/${o.slug})`
+          if (o.plazas_libres) info += ` — ${o.plazas_libres} plazas`
+          if (o.temas_count) info += `, ${o.temas_count} temas`
+          if (o.exam_date) {
+            const fecha = new Date(o.exam_date).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })
+            info += `, examen ${o.exam_date_approximate ? '~' : ''}${fecha}`
+          }
+          if (o.estado_proceso) info += ` [${o.estado_proceso.replace(/_/g, ' ')}]`
+          return info
+        })
+        ChatOrchestrator.cachedOposiciones = lines.join('\n')
+        ChatOrchestrator.cacheTimestamp = now
+        logger.info(`Loaded ${data.length} oposiciones for system prompt`, { domain: 'orchestrator' })
+      }
+    } catch (err) {
+      logger.warn('Failed to load oposiciones for prompt', { domain: 'orchestrator' })
+    }
   }
 
   /**
@@ -64,6 +106,9 @@ export class ChatOrchestrator {
     logId?: string,
     options?: { onFlush?: (flushFn: () => Promise<void>) => void }
   ): Promise<ChatResponse> {
+    // Cargar oposiciones de BD (cache 1h, no bloquea si falla)
+    await ChatOrchestrator.loadOposiciones()
+
     const startTime = Date.now()
     const tracer = createTracer()
 
@@ -276,6 +321,8 @@ export class ChatOrchestrator {
     logId?: string,
     options?: { onFlush?: (flushFn: () => Promise<void>) => void }
   ): Promise<ReadableStream> {
+    await ChatOrchestrator.loadOposiciones()
+
     const startTime = Date.now()
     const tracer = createTracer()
 
@@ -771,6 +818,12 @@ ${articlesContext}`
    */
   private buildSystemPrompt(context: ChatContext): string {
     let prompt = this.systemPrompt
+
+    // Inyectar oposiciones activas desde cache
+    if (prompt.includes('{{OPOSICIONES_ACTIVAS}}')) {
+      const opoList = ChatOrchestrator.cachedOposiciones || '- Auxiliar Administrativo del Estado, Administrativo del Estado, y más'
+      prompt = prompt.replace('{{OPOSICIONES_ACTIVAS}}', opoList)
+    }
 
     // Añadir contexto de pregunta si existe (solo para preguntas no-psicotécnicas;
     // las psicotécnicas son manejadas por PsychometricDomain antes de llegar aquí)
