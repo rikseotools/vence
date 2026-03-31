@@ -45,7 +45,7 @@ import UpgradeLimitModal from './UpgradeLimitModal'
 import SessionExpiredModal from './SessionExpiredModal'
 import { useOposicionPaths } from '@/hooks/useOposicionPaths'
 import { validateAnswer } from '@/lib/api/answers/client'
-import { ApiTimeoutError, ApiNetworkError } from '@/lib/api/client'
+import { answerAndSave } from '@/lib/api/v2/answer-and-save/client'
 import { useAnswerWatchdog } from '@/hooks/useAnswerWatchdog'
 import { logClientError } from '@/lib/logClientError'
 import ContentDataRenderer from './ContentDataRenderer'
@@ -858,443 +858,286 @@ export default function TestLayout({
     }
   }
 
-  // Manejar respuesta con protección anti-duplicados
+  // Manejar respuesta — flujo unificado server-side (/api/v2/answer-and-save)
   const handleAnswerClick = async (answerIndex: number): Promise<void> => {
     if (showResult || processingAnswer) return
 
     // Verificar limite diario para usuarios FREE
-    // (el tracking de limit_reached se hace en useDailyQuestionLimit cuando llega a 25)
     if (hasLimit && isLimitReached) {
       setShowUpgradeModal(true)
       return
     }
 
-    console.log('🎯 Respuesta seleccionada:', answerIndex)
-    
     if (!effectiveQuestions || !effectiveQuestions[currentQuestion]) {
       console.error('❌ No hay pregunta actual disponible')
       return
     }
 
     const currentQ = effectiveQuestions[currentQuestion]
-    
-    // Crear clave única para esta respuesta específica
+
+    // Anti-duplicados
     const answerKey = `${currentQuestion}-${answerIndex}-${Date.now()}`
-    
-    // Verificar si ya procesamos esta respuesta
-    if (lastProcessedAnswer === answerKey) {
-      console.log('🚫 RESPUESTA YA PROCESADA:', answerKey)
-      return
-    }
-    
-    // Marcar como en proceso
+    if (lastProcessedAnswer === answerKey) return
+
     setProcessingAnswer(true)
     setLastProcessedAnswer(answerKey)
-    
-    console.log('🔒 PROCESANDO RESPUESTA ÚNICA:', answerKey)
+    setSelectedAnswer(answerIndex)
+    setInteractionCount(prev => prev + 1)
 
+    // Tracking de interacciones (client-only)
     if (!firstInteractionTime) {
       setFirstInteractionTime(Date.now())
       testTracker.trackInteraction('first_answer_click', { selected_option: answerIndex }, currentQuestion)
     } else {
-      testTracker.trackInteraction('answer_change', {
-        from_option: selectedAnswer,
-        to_option: answerIndex
-      }, currentQuestion)
+      testTracker.trackInteraction('answer_change', { from_option: selectedAnswer, to_option: answerIndex }, currentQuestion)
     }
-
-    // 📊 Tracking de interacción
     trackTestAction('answer_selected', currentQ?.id, {
-      answerIndex,
-      questionIndex: currentQuestion,
-      timeToDecide: Date.now() - questionStartTime,
-      isChange: selectedAnswer !== null
+      answerIndex, questionIndex: currentQuestion,
+      timeToDecide: Date.now() - questionStartTime, isChange: selectedAnswer !== null
     })
 
-    setSelectedAnswer(answerIndex)
-    setInteractionCount(prev => prev + 1)
-    
     const timeToDecide = Date.now() - questionStartTime
     const newConfidence = calculateConfidence(timeToDecide, interactionCount)
     setConfidenceLevel(newConfidence)
-    
-    // Garantizar que processingAnswer se libere SIEMPRE, incluso si el flujo falla
-    // El timeout de 11s es menor que el watchdog (12s) para evitar falsos positivos
-    const safetyTimeout = setTimeout(() => {
-      if (processingAnswer) {
-        console.warn('⚠️ [TestLayout] Safety timeout: liberando processingAnswer después de 11s')
-        setProcessingAnswer(false)
-      }
-    }, 11000)
+    const timeSpent = Math.round((Date.now() - questionStartTime) / 1000)
+    const responseTimeMs = Date.now() - questionStartTime
 
-    setTimeout(async () => {
-      try {
-        const timeSpent = Math.round((Date.now() - questionStartTime) / 1000)
-        const responseTimeMs = Date.now() - questionStartTime
+    try {
+      // ═══════════════════════════════════════════════════════════════
+      // FLUJO SERVER-SIDE: validar + guardar + actualizar score
+      // ═══════════════════════════════════════════════════════════════
+      let isCorrect: boolean
+      let apiCorrectAnswer: number
+      let explanation: string | null | undefined
+      let newScore: number
+      let saveAction: string | null = null
+      let questionDbId: string | null = null
 
-        // 🔒 Validar respuesta de forma segura via API (timeout 10s, retry x2, Zod)
-        let validationResult
-        try {
-          validationResult = await validateAnswer(currentQ.id, answerIndex)
-        } catch (validationError_) {
-          const errorType = validationError_ instanceof ApiTimeoutError ? 'TIMEOUT'
-            : validationError_ instanceof ApiNetworkError ? 'NETWORK'
-            : 'API_ERROR'
-          console.error('❌ [SecureAnswer] Validación fallida:', errorType, validationError_)
-          setValidationError('Error temporal al validar tu respuesta. Inténtalo de nuevo.')
-          setSelectedAnswer(null)
-          setProcessingAnswer(false)
-          setLastProcessedAnswer(null)
-          clearTimeout(safetyTimeout)
-          logClientError('/api/answer', validationError_, { component: 'TestLayout', questionId: currentQ.id, userId: user?.id })
-          return
-        }
-
-        // Limpiar error de validación previo si existe
-        if (validationError) setValidationError(null)
-
-        const isCorrect = validationResult.isCorrect
-        const apiCorrectAnswer = validationResult.correctAnswer // 🔒 Respuesta verificada por API
-        const newScore = isCorrect ? score + 1 : score
-
-        // 🔒 Guardar respuesta correcta verificada para el UI
-        // IMPORTANTE: Setear verifiedCorrectAnswer ANTES de showResult
-        // para evitar parpadeo de emoticono incorrecto
-        setVerifiedCorrectAnswer(apiCorrectAnswer ?? null)
-        setShowResult(true)
-        scrollToResult()
-
-        // 🤖 Registrar comportamiento para detección de scrapers
-        // (Los scrapers no "responden" - solo copian contenido rápidamente)
-        if (user?.id) {
-          recordBehavior(responseTimeMs)
-        }
-
-        if (isCorrect) {
-          setScore(newScore)
-          testTracker.trackInteraction('answer_correct', {
-            time_spent: timeSpent,
-            confidence: newConfidence
-          }, currentQuestion)
+      // Asegurar sesión de test existe (necesaria para guardar)
+      let session = currentTestSession
+      if (user && !session) {
+        const sessionKey = `${user.id}-${tema}-${testNumber}`
+        if (sessionCreationRef.current.has(sessionKey)) {
+          // Esperar a que termine la creación existente
+          let attempts = 0
+          while (!currentTestSession && attempts < 10) {
+            await new Promise(resolve => setTimeout(resolve, 100))
+            attempts++
+          }
+          session = currentTestSession
         } else {
-          testTracker.trackInteraction('answer_incorrect', {
-            time_spent: timeSpent,
-            confidence: newConfidence,
-            correct_answer: apiCorrectAnswer
-          }, currentQuestion)
+          sessionCreationRef.current.add(sessionKey)
+          try {
+            session = await createDetailedTestSession(user.id, tema, testNumber, effectiveQuestions as any, config as any, startTime, pageLoadTime.current)
+            if (session) setCurrentTestSession(session)
+          } finally {
+            sessionCreationRef.current.delete(sessionKey)
+          }
         }
+      }
 
-        const detailedAnswer = createDetailedAnswer(
-          currentQuestion,
-          answerIndex,
-          apiCorrectAnswer ?? 0,
-          isCorrect ?? false,
+      if (user && session) {
+        // Usuario autenticado con sesión → endpoint unificado
+        const result = await answerAndSave({
+          questionId: currentQ.id,
+          userAnswer: answerIndex,
+          sessionId: session.id,
+          questionIndex: currentQuestion,
+          questionText: currentQ.question_text || currentQ.question || '',
+          options: currentQ.options || [currentQ.option_a, currentQ.option_b, currentQ.option_c, currentQ.option_d].filter(Boolean) as string[],
+          tema,
+          questionType: (currentQ.question_type === 'psychometric' ? 'psychometric' : 'legislative') as 'legislative' | 'psychometric',
+          article: currentQ.article ? {
+            id: currentQ.article.id || currentQ.primary_article_id || null,
+            number: currentQ.article.number || currentQ.article_number || null,
+            law_id: null,
+            law_short_name: currentQ.article.law_short_name || currentQ.law_short_name || null,
+          } : currentQ.primary_article_id ? {
+            id: currentQ.primary_article_id,
+            number: currentQ.article_number || null,
+            law_id: null,
+            law_short_name: currentQ.law_short_name || null,
+          } : null,
+          metadata: {
+            id: currentQ.id,
+            difficulty: currentQ.difficulty || null,
+            question_type: currentQ.question_type || null,
+            tags: null,
+          },
+          explanation: currentQ.explanation || null,
           timeSpent,
-          currentQ,
-          newConfidence,
-          interactionCount
-        ) as unknown as DetailedAnswerEntry
+          confidenceLevel: newConfidence as 'very_sure' | 'sure' | 'unsure' | 'guessing' | 'unknown',
+          interactionCount,
+          questionStartTime,
+          firstInteractionTime: firstInteractionTime || 0,
+          interactionEvents: testTracker.interactionEvents.slice(-10),
+          mouseEvents: testTracker.mouseEvents.slice(-50),
+          scrollEvents: testTracker.scrollEvents.slice(-50),
+          currentScore: score,
+        })
 
-        const newAnsweredQuestions: AnsweredQuestionEntry[] = [...answeredQuestions, {
-          question: currentQuestion,
-          selectedAnswer: answerIndex,
-          correct: !!isCorrect,
-          timestamp: new Date().toISOString()
-        }]
-
-        const newDetailedAnswers = [...detailedAnswers, detailedAnswer]
-        
-        setAnsweredQuestions(newAnsweredQuestions)
-        setDetailedAnswers(newDetailedAnswers)
-
-        // 💾 Guardar en localStorage para usuarios anónimos
-        savePendingTestState(newAnsweredQuestions, newScore, newDetailedAnswers)
-
-        // 📊 TRACKING: Marcar usuario como activo si es su primera pregunta logueado
-        if (user && answeredQuestions.length === 0) {
-          // Primera pregunta de este test - verificar si es su primera pregunta global
-          (async () => {
-            try {
-              const { data: profile } = await supabase
-                .from('user_profiles')
-                .select('is_active_student')
-                .eq('id', user.id)
-                .single()
-
-              if (profile && !profile.is_active_student) {
-                await supabase
-                  .from('user_profiles')
-                  .update({
-                    is_active_student: true,
-                    first_test_completed_at: new Date().toISOString()
-                  })
-                  .eq('id', user.id)
-
-                console.log('🎯 [TRACKING] Usuario marcado como ACTIVO (primera pregunta logueado)')
-              }
-            } catch (e) {
-              console.warn('⚠️ Error actualizando is_active_student:', e)
-            }
-          })()
-        }
-
-        // 🧠 Lógica adaptativa: evaluar % de aciertos
-        if (adaptiveMode) {
-          // Calcular % de aciertos actual
-          const totalAnswered = newAnsweredQuestions.length
-          const totalCorrect = newAnsweredQuestions.filter(q => q.correct).length
-          const currentAccuracy = totalAnswered > 0 ? (totalCorrect / totalAnswered) * 100 : 100
-
-          console.log(`🧠 Accuracy actual: ${currentAccuracy.toFixed(1)}% (${totalCorrect}/${totalAnswered})`)
-
-          // 🔥 NUEVO: Calcular preguntas desde última adaptación
-          const questionsSinceLastAdaptation = currentQuestion - lastAdaptedQuestion
-          console.log(`🔍 Preguntas desde última adaptación: ${questionsSinceLastAdaptation}`)
-
-          // 🧠 SMART LOGIC: Solo adaptar si el usuario va MAL (< 60%)
-          // Si va bien, dejarlo con las preguntas que tiene (no castigar)
-          if (currentAccuracy < 60 && totalAnswered >= 3) { // Mínimo 3 respuestas para evaluar
-
-            // 🔥 NUEVO: Solo adaptar si han pasado al menos 3 preguntas desde la última adaptación
-            if (questionsSinceLastAdaptation >= 3) {
-              console.log('🧠 Accuracy < 60%, adaptando a preguntas más fáciles...')
-              console.log(`🔍 Preguntas actuales antes de adaptar: ${effectiveQuestions.map(q => q.id).join(', ')}`)
-
-              setIsAdaptiveMode(true) // 🔥 MOSTRAR: Se está adaptando
-              adaptDifficulty('easier')
-              setLastAdaptedQuestion(currentQuestion) // 🔥 Guardar que adaptamos ahora
-
-              console.log('✅ MENSAJE VISUAL ACTIVADO: "✨ Adaptándose a tu nivel"')
-
-              // Ocultar mensaje después de 4 segundos
-              setTimeout(() => {
-                setIsAdaptiveMode(false)
-                console.log('🔕 Mensaje visual desactivado')
-              }, 4000)
-            } else {
-              console.log(`⏸️  Adaptación en cooldown (faltan ${3 - questionsSinceLastAdaptation} preguntas)`)
-            }
-          } else if (currentAccuracy >= 60) {
-            console.log(`✅ Accuracy OK (${currentAccuracy.toFixed(1)}%), manteniendo preguntas actuales`)
-          }
-        }
-        
-        // Guardado con protección mejorada
-        if (user) {
-          
-          let session = currentTestSession
-          
-          // Proteger creación de sesión con ref
-          if (!session) {
-            const sessionKey = `${user.id}-${tema}-${testNumber}`
-            
-            if (sessionCreationRef.current.has(sessionKey)) {
-              console.log('🚫 SESIÓN YA EN CREACIÓN, ESPERANDO...', sessionKey)
-              // Esperar a que termine la creación existente
-              let attempts = 0
-              while (!currentTestSession && attempts < 10) {
-                await new Promise(resolve => setTimeout(resolve, 100))
-                attempts++
-              }
-              session = currentTestSession
-            } else {
-              console.log('🔄 Creando nueva sesión PROTEGIDA...')
-              sessionCreationRef.current.add(sessionKey)
-              
-              try {
-                session = await createDetailedTestSession(user.id, tema, testNumber, effectiveQuestions as any, config as any, startTime, pageLoadTime.current)
-                if (session) {
-                  setCurrentTestSession(session)
-                  console.log('✅ Nueva sesión PROTEGIDA creada:', session.id)
-                }
-              } finally {
-                sessionCreationRef.current.delete(sessionKey)
-              }
-            }
-          }
-          
-          if (session) {
-            console.log('💾 Guardando respuesta ÚNICA en sesión:', session.id)
-            const saveSuccess = await saveDetailedAnswerWithRetry({
-              sessionId: session.id,
-              questionData: currentQ,
-              answerData: detailedAnswer as unknown as Parameters<typeof saveDetailedAnswerWithRetry>[0]['answerData'],
-              tema,
-              confidenceLevel: newConfidence,
-              interactionCount,
-              questionStartTime,
-              firstInteractionTime,
-              interactionEvents: testTracker.interactionEvents,
-              mouseEvents: testTracker.mouseEvents,
-              scrollEvents: testTracker.scrollEvents
-            })
-            // 🔴 FIX CRÍTICO: Verificar success === true, no solo question_id
-            const saveResult = saveSuccess as any
-            if (saveResult && saveResult.success === true && saveResult.question_id) {
-              setCurrentQuestionUuid(saveResult.question_id)
-              // Guardar en localStorage para detección de feedback
-              try {
-                localStorage.setItem('currentQuestionId', saveResult.question_id)
-              } catch (e) {
-                console.warn('⚠️ No se pudo guardar question_id en localStorage:', e)
-              }
-              // Score = COUNT de aciertos (no porcentaje). El % se deriva en stats.
-              await updateTestScore(session.id, newScore)
-              console.log('✅ Respuesta ÚNICA guardada y puntuación actualizada:', newScore + '/' + effectiveQuestions.length)
-
-              // Registrar respuesta en contador diario (solo usuarios FREE)
-              if (hasLimit) {
-                await recordAnswer()
-              }
-
-              // Registrar para meta diaria (todos los usuarios)
-              recordAnswerForGoal()
-            } else {
-              // 🔴 NUEVO: Manejo mejorado de errores
-              console.error('❌ Error guardando respuesta:', {
-                success: saveSuccess?.success,
-                action: saveSuccess?.action,
-                error: saveSuccess?.error
-              })
-
-              // Si fue un duplicado, no es un error grave
-              if (saveSuccess?.action === 'prevented_duplicate') {
-                console.warn('⚠️ Respuesta duplicada detectada, continuando...')
-              } else if (saveSuccess?.action === 'session_expired') {
-                // Nivel 3: Mostrar modal de sesión expirada
-                console.error('🔒 Sesión expirada — mostrando modal')
-                setShowSessionExpired(true)
-              } else {
-                console.error('❌ Fallo crítico al guardar respuesta')
-              }
-            }
-          } else {
-            console.error('❌ No se pudo crear/obtener sesión de test')
-            // Verificar si el fallo es por sesión expirada
-            try {
-              const { data: { session: authCheck } } = await supabase.auth.getSession()
-              if (!authCheck?.access_token) {
-                console.error('🔒 Sesión expirada — mostrando modal')
-                setShowSessionExpired(true)
-              }
-            } catch {
-              // Si getSession falla, asumir sesión expirada
-              setShowSessionExpired(true)
-            }
-          }
-          
-          if (!userSession) {
-            console.log('🔄 Creando sesión de usuario...')
-            const newUserSession = await createUserSession(user.id)
-            if (newUserSession) {
-              setUserSession(newUserSession)
-            }
-          }
-        } else {
-          console.log('👤 Usuario no autenticado, guardado omitido')
-        }
-        
-        // Lógica de finalización existente...
-        // 🔄 NUEVA LÓGICA: Verificar si todas las preguntas están respondidas
-        const allQuestionsAnswered = newDetailedAnswers.length >= effectiveQuestions.length
-
-        if (currentQuestion === effectiveQuestions.length - 1 || allQuestionsAnswered) {
-          console.log('🏁 Última pregunta completada')
-          console.log(`📊 Preguntas respondidas: ${newDetailedAnswers.length}/${effectiveQuestions.length}`)
-          setIsExplicitlyCompleted(true)
-
-          // 📊 Tracking de test completado
-          trackTestAction('test_completed', undefined, {
-            totalQuestions: effectiveQuestions.length,
-            correctAnswers: newScore,
-            accuracy: Math.round((newScore / effectiveQuestions.length) * 100),
-            totalTimeMs: Date.now() - startTime,
-            testType: tema ? 'tema' : 'general'
-          })
-
-          if (user && currentTestSession) {
-            setSaveStatus('saving')
-            console.log('💾 Completando test final...')
-
-            // 🔄 NUEVO: Verificar preguntas guardadas en BD antes de completar
-            const { data: savedQuestions } = await supabase
-              .from('test_questions')
-              .select('question_order')
-              .eq('test_id', currentTestSession.id)
-
-            const savedCount = savedQuestions?.length || 0
-            const expectedCount = newDetailedAnswers.length
-
-            console.log(`📊 Preguntas en BD: ${savedCount}/${expectedCount}`)
-
-            // 🔄 NUEVO: Si faltan preguntas, intentar guardarlas en segundo plano
-            if (savedCount < expectedCount) {
-              console.warn(`⚠️  Faltan ${expectedCount - savedCount} preguntas por guardar`)
-              console.log('💾 Guardando preguntas faltantes en segundo plano...')
-
-              // Guardar en segundo plano sin bloquear
-              saveAnswersInBackground(
-                currentTestSession.id,
-                newDetailedAnswers,
-                effectiveQuestions,
-                tema,
-                startTime
-              ).then(result => {
-                console.log('✅ Guardado en segundo plano completado:', result)
-              }).catch(err => {
-                console.error('❌ Error en guardado en segundo plano:', err)
-              })
-            }
-
-            const result = await completeDetailedTest(
-              currentTestSession.id,
-              newScore,
-              newDetailedAnswers as unknown as Parameters<typeof completeDetailedTest>[2],
-              effectiveQuestions,
-              startTime,
-              testTracker.interactionEvents,
-              userSession
-            )
-            setSaveStatus(result.status as 'saving' | 'saved' | 'error')
-            console.log('✅ Test completado en BD:', result.status)
-
-            // 🔓 NOTIFICAR COMPLETION PARA SISTEMA DE DESBLOQUEO
-            if (result.status === 'success' && tema && typeof tema === 'number') {
-              const accuracy = Math.round((newScore / effectiveQuestions.length) * 100)
-              console.log(`🔄 Notificando completion para desbloqueo: Tema ${tema}, ${accuracy}% accuracy`)
-
-              try {
-                await notifyTestCompletion(tema, accuracy, effectiveQuestions.length)
-                console.log('✅ Sistema de desbloqueo notificado correctamente')
-              } catch (unlockError) {
-                console.error('❌ Error notificando sistema de desbloqueo:', unlockError)
-              }
-            }
-          }
-        }
-
-        if (currentQuestion >= effectiveQuestions.length - 1) {
-          console.log('🚨 FORZANDO FINALIZACIÓN - Detectado índice fuera de rango')
-          setIsExplicitlyCompleted(true)
-        }
-
-        // Hot article check - solo para contenido legal (no informática)
-        const questionLawName = (currentQ.law_short_name || currentQ.article?.law_short_name || currentQ.law) as string | null
-        if (user && currentQ.primary_article_id && isLegalArticle(questionLawName)) {
-          await checkHotArticle(currentQ.primary_article_id, user.id, !!(currentQ.is_official_exam || currentQ.metadata?.is_official_exam))
-        }
-        
-      } catch (error) {
-        console.error('❌ Error en flujo de respuesta:', error)
-      } finally {
-        clearTimeout(safetyTimeout)
-        // Liberar el lock después de 1 segundo
-        setTimeout(() => {
-          setProcessingAnswer(false)
-          console.log('🔓 RESPUESTA PROCESADA, LIBERANDO LOCK')
-        }, 1000)
+        isCorrect = result.isCorrect
+        apiCorrectAnswer = result.correctAnswer
+        explanation = result.explanation
+        newScore = result.newScore
+        saveAction = result.saveAction
+        questionDbId = result.questionDbId ?? null
+      } else {
+        // Usuario anónimo o sin sesión → solo validar (legacy)
+        const result = await validateAnswer(currentQ.id, answerIndex)
+        isCorrect = result.isCorrect
+        apiCorrectAnswer = result.correctAnswer
+        explanation = result.explanation
+        newScore = isCorrect ? score + 1 : score
       }
-    }, 200)
+
+      // ═══════════════════════════════════════════════════════════════
+      // ACTUALIZAR UI (siempre, auth o anónimo)
+      // ═══════════════════════════════════════════════════════════════
+      if (validationError) setValidationError(null)
+      setVerifiedCorrectAnswer(apiCorrectAnswer ?? null)
+      setShowResult(true)
+      scrollToResult()
+      if (isCorrect) setScore(newScore)
+      else setScore(newScore) // actualizar igualmente por consistencia con server
+
+      // Tracking de resultado
+      if (isCorrect) {
+        testTracker.trackInteraction('answer_correct', { time_spent: timeSpent, confidence: newConfidence }, currentQuestion)
+      } else {
+        testTracker.trackInteraction('answer_incorrect', { time_spent: timeSpent, confidence: newConfidence, correct_answer: apiCorrectAnswer }, currentQuestion)
+      }
+
+      // Fraud detection (client-only — analiza patrones de timing)
+      if (user?.id) recordBehavior(responseTimeMs)
+
+      // Construir datos locales de respuesta
+      const detailedAnswer = createDetailedAnswer(
+        currentQuestion, answerIndex, apiCorrectAnswer ?? 0, isCorrect ?? false,
+        timeSpent, currentQ, newConfidence, interactionCount
+      ) as unknown as DetailedAnswerEntry
+
+      const newAnsweredQuestions: AnsweredQuestionEntry[] = [...answeredQuestions, {
+        question: currentQuestion, selectedAnswer: answerIndex,
+        correct: !!isCorrect, timestamp: new Date().toISOString()
+      }]
+      const newDetailedAnswers = [...detailedAnswers, detailedAnswer]
+
+      setAnsweredQuestions(newAnsweredQuestions)
+      setDetailedAnswers(newDetailedAnswers)
+      savePendingTestState(newAnsweredQuestions, newScore, newDetailedAnswers)
+
+      // ═══════════════════════════════════════════════════════════════
+      // POST-SAVE (client-only, no bloquea UI)
+      // ═══════════════════════════════════════════════════════════════
+      if (user && session && saveAction && saveAction !== 'save_failed') {
+        if (questionDbId) {
+          setCurrentQuestionUuid(questionDbId)
+          try { localStorage.setItem('currentQuestionId', questionDbId) } catch {}
+        }
+        // Registrar respuesta en contador diario (solo usuarios FREE)
+        if (hasLimit) recordAnswer().catch(() => {})
+        // Registrar para meta diaria (todos los usuarios)
+        recordAnswerForGoal()
+
+        // Crear sesión de usuario si no existe
+        if (!userSession) {
+          createUserSession(user.id).then(s => { if (s) setUserSession(s) }).catch(() => {})
+        }
+      } else if (user && session && saveAction === 'save_failed') {
+        console.error('❌ Servidor no pudo guardar la respuesta')
+      }
+
+      // Sesión expirada detectada
+      if (!user) {
+        // Usuario anónimo — solo localStorage
+      }
+
+      // ═══════════════════════════════════════════════════════════════
+      // MODO ADAPTATIVO (client-only)
+      // ═══════════════════════════════════════════════════════════════
+      if (adaptiveMode) {
+        const totalAnswered = newAnsweredQuestions.length
+        const totalCorrect = newAnsweredQuestions.filter(q => q.correct).length
+        const currentAccuracy = totalAnswered > 0 ? (totalCorrect / totalAnswered) * 100 : 100
+        const questionsSinceLastAdaptation = currentQuestion - lastAdaptedQuestion
+
+        if (currentAccuracy < 60 && totalAnswered >= 3 && questionsSinceLastAdaptation >= 3) {
+          setIsAdaptiveMode(true)
+          adaptDifficulty('easier')
+          setLastAdaptedQuestion(currentQuestion)
+          setTimeout(() => setIsAdaptiveMode(false), 4000)
+        }
+      }
+
+      // ═══════════════════════════════════════════════════════════════
+      // FINALIZACIÓN DEL TEST
+      // ═══════════════════════════════════════════════════════════════
+      const allQuestionsAnswered = newDetailedAnswers.length >= effectiveQuestions.length
+
+      if (currentQuestion === effectiveQuestions.length - 1 || allQuestionsAnswered) {
+        setIsExplicitlyCompleted(true)
+
+        trackTestAction('test_completed', undefined, {
+          totalQuestions: effectiveQuestions.length, correctAnswers: newScore,
+          accuracy: Math.round((newScore / effectiveQuestions.length) * 100),
+          totalTimeMs: Date.now() - startTime, testType: tema ? 'tema' : 'general'
+        })
+
+        if (user && session) {
+          setSaveStatus('saving')
+
+          // Verificar preguntas guardadas en BD antes de completar
+          const { data: savedQuestions } = await supabase
+            .from('test_questions')
+            .select('question_order')
+            .eq('test_id', session.id)
+
+          const savedCount = savedQuestions?.length || 0
+          if (savedCount < newDetailedAnswers.length) {
+            saveAnswersInBackground(session.id, newDetailedAnswers, effectiveQuestions, tema, startTime).catch(() => {})
+          }
+
+          const completionResult = await completeDetailedTest(
+            session.id, newScore,
+            newDetailedAnswers as unknown as Parameters<typeof completeDetailedTest>[2],
+            effectiveQuestions, startTime, testTracker.interactionEvents, userSession
+          )
+          setSaveStatus(completionResult.status as 'saving' | 'saved' | 'error')
+
+          if (completionResult.status === 'success' && tema && typeof tema === 'number') {
+            const accuracy = Math.round((newScore / effectiveQuestions.length) * 100)
+            notifyTestCompletion(tema, accuracy, effectiveQuestions.length).catch(() => {})
+          }
+        }
+      }
+
+      if (currentQuestion >= effectiveQuestions.length - 1) {
+        setIsExplicitlyCompleted(true)
+      }
+
+      // Hot article check (client-only, no bloquea)
+      const questionLawName = (currentQ.law_short_name || currentQ.article?.law_short_name || currentQ.law) as string | null
+      if (user && currentQ.primary_article_id && isLegalArticle(questionLawName)) {
+        checkHotArticle(currentQ.primary_article_id, user.id, !!(currentQ.is_official_exam || currentQ.metadata?.is_official_exam)).catch(() => {})
+      }
+
+    } catch (error) {
+      console.error('❌ Error en flujo de respuesta:', error)
+      if (error instanceof Error && error.message === 'SESSION_EXPIRED') {
+        setShowSessionExpired(true)
+      } else {
+        setValidationError('Error temporal al validar tu respuesta. Inténtalo de nuevo.')
+        logClientError('/api/v2/answer-and-save', error, { component: 'TestLayout', questionId: currentQ.id, userId: user?.id })
+      }
+      setSelectedAnswer(null)
+      setLastProcessedAnswer(null)
+    } finally {
+      // Liberar lock después de 1s (previene doble-click rápido)
+      setTimeout(() => {
+        setProcessingAnswer(false)
+      }, 1000)
+    }
   }
 
   // Navegación a siguiente pregunta con scroll específico

@@ -185,15 +185,13 @@ describe('TestLayout.tsx — error handling', () => {
     expect(content).not.toContain("'/api/emails/send-admin-notification'")
   })
 
-  it('importa ApiTimeoutError y ApiNetworkError', () => {
-    expect(content).toMatch(/import\s*\{[^}]*ApiTimeoutError[^}]*\}\s*from/)
-    expect(content).toMatch(/import\s*\{[^}]*ApiNetworkError[^}]*\}\s*from/)
+  it('usa endpoint unificado answerAndSave o validateAnswer como fallback', () => {
+    expect(content).toContain('answerAndSave')
+    expect(content).toContain('validateAnswer')
   })
 
-  it('clasifica errores por tipo (TIMEOUT, NETWORK, API_ERROR)', () => {
-    expect(content).toContain("'TIMEOUT'")
-    expect(content).toContain("'NETWORK'")
-    expect(content).toContain("'API_ERROR'")
+  it('detecta sesión expirada (SESSION_EXPIRED)', () => {
+    expect(content).toContain('SESSION_EXPIRED')
   })
 
   it('resetea estado en caso de error (no deja UI colgada)', () => {
