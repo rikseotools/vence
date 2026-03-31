@@ -115,6 +115,7 @@ export const userProfiles = pgTable("user_profiles", {
 	registrationIp: varchar("registration_ip", { length: 45 }),
 	registrationFunnel: text("registration_funnel"),
 	registrationUrl: text("registration_url"),
+	adminNotes: text("admin_notes"),
 }, (table) => [
 	index("idx_user_profiles_active_student").using("btree", table.isActiveStudent.asc().nullsLast().op("bool_ops")).where(sql`(is_active_student = true)`),
 	index("idx_user_profiles_ciudad").using("btree", table.ciudad.asc().nullsLast().op("text_ops")),
