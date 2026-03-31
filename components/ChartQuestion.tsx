@@ -16,6 +16,7 @@ interface ChartQuestionData {
   explanation?: string | null
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   content_data?: Record<string, any> | null
+  image_url?: string | null
   question_subtype?: string
   psychometric_sections?: {
     display_name?: string
@@ -158,7 +159,7 @@ export default function ChartQuestion({
       )}
 
       {/* Content data visual (tablas, imágenes, instrucciones) — solo si no hay chartComponent especializado */}
-      {!chartComponent && <ContentDataRenderer contentData={question.content_data as Record<string, unknown> | null} />}
+      {!chartComponent && <ContentDataRenderer contentData={question.content_data as Record<string, unknown> | null} imageUrl={question.image_url} />}
 
       {/* Gráfico - Componente específico (solo si existe) */}
       {chartComponent && (

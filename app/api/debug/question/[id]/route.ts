@@ -38,6 +38,8 @@ async function _GET(
         optionD: questions.optionD,
         explanation: questions.explanation,
         primaryArticleId: questions.primaryArticleId,
+        imageUrl: questions.imageUrl,
+        contentData: questions.contentData,
         isActive: questions.isActive,
         createdAt: questions.createdAt,
         articleId: articles.id,
@@ -68,7 +70,8 @@ async function _GET(
             C: q.optionC,
             D: q.optionD,
           },
-          content_data: null,
+          content_data: q.contentData || null,
+          image_url: q.imageUrl || null,
           explanation: q.explanation,
           category_id: q.lawId ?? null,
           category: {
