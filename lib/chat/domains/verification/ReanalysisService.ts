@@ -2,9 +2,11 @@
 // Servicio para re-analizar preguntas psicotécnicas con modelo superior
 
 import { getOpenAI } from '../../shared/openai'
+import { getAnthropic, ANTHROPIC_MODEL } from '../../shared/anthropic'
+import { usesClaude } from '../../shared/modelRouter'
 import { logger } from '../../shared/logger'
 
-const REANALYSIS_MODEL = 'gpt-4o'
+const REANALYSIS_MODEL_OPENAI = 'gpt-4o'
 
 interface ReanalysisInput {
   questionText: string
@@ -30,12 +32,17 @@ interface ReanalysisResult {
 export async function reanalyzeWithSuperiorModel(
   input: ReanalysisInput
 ): Promise<ReanalysisResult> {
-  const openai = await getOpenAI()
+
+  // Usar Claude para psicotécnicos de cálculo/series (mejor razonamiento)
+  const shouldUseClaude = usesClaude(input.questionSubtype)
+  const reanalysisModel = shouldUseClaude ? ANTHROPIC_MODEL : REANALYSIS_MODEL_OPENAI
 
   logger.info('Starting reanalysis with superior model', {
     domain: 'verification',
-    model: REANALYSIS_MODEL,
+    model: reanalysisModel,
+    provider: shouldUseClaude ? 'anthropic' : 'openai',
     questionType: input.questionTypeName,
+    questionSubtype: input.questionSubtype,
     aiSuggested: input.aiSuggestedAnswer,
     dbAnswer: input.correctAnswer
   })
@@ -77,28 +84,47 @@ ${input.originalAnalysis.substring(0, 1500)}
 Por favor, analiza paso a paso esta pregunta y explica cuál es la respuesta correcta y por qué. Si el análisis previo se equivocó, explica dónde estuvo el error de razonamiento.`
 
   try {
-    const response = await openai.chat.completions.create({
-      model: REANALYSIS_MODEL,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
-      ],
-      temperature: 0.2, // Baja temperatura para más consistencia
-      max_tokens: 1200
-    })
+    let analysis: string
+    let tokensUsed: number | undefined
 
-    const analysis = response.choices[0].message.content || ''
-    const tokensUsed = response.usage?.total_tokens
+    if (shouldUseClaude) {
+      const anthropic = await getAnthropic()
+      const response = await anthropic.messages.create({
+        model: ANTHROPIC_MODEL,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userPrompt }],
+        temperature: 0.2,
+        max_tokens: 1200,
+      })
+
+      analysis = response.content[0]?.type === 'text' ? response.content[0].text : ''
+      tokensUsed = response.usage.input_tokens + response.usage.output_tokens
+    } else {
+      const openai = await getOpenAI()
+      const response = await openai.chat.completions.create({
+        model: REANALYSIS_MODEL_OPENAI,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        temperature: 0.2,
+        max_tokens: 1200
+      })
+
+      analysis = response.choices[0].message.content || ''
+      tokensUsed = response.usage?.total_tokens
+    }
 
     logger.info('Reanalysis completed', {
       domain: 'verification',
+      model: reanalysisModel,
       tokensUsed,
       responseLength: analysis.length
     })
 
     return {
       analysis,
-      model: REANALYSIS_MODEL,
+      model: reanalysisModel,
       tokensUsed
     }
   } catch (error) {
