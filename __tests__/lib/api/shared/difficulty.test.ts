@@ -13,13 +13,13 @@ describe('difficulty — validación en schemas de INPUT', () => {
   ]
 
   it.each(inputSchemaFiles)(
-    '%s usa difficultyInputSchema (no z.string() libre)',
+    '%s usa VALID_DIFFICULTIES para validar difficulty (no z.string() libre)',
     (file) => {
       const content = fs.readFileSync(path.join(ROOT, file), 'utf-8')
-      // Debe importar el schema compartido
-      expect(content).toContain('difficultyInputSchema')
-      // No debe tener difficulty: z.string() suelto para campos que escriben en test_questions
-      // (excepción: schemas de OUTPUT/lectura que no escriben en BD)
+      // Debe importar las constantes compartidas
+      expect(content).toContain('VALID_DIFFICULTIES')
+      // Debe usar z.enum(VALID_DIFFICULTIES) para validar
+      expect(content).toMatch(/z\.enum\(VALID_DIFFICULTIES\)/)
     }
   )
 
@@ -68,28 +68,32 @@ describe('difficulty — normalizeDifficulty', () => {
   })
 })
 
-describe('difficulty — difficultyInputSchema', () => {
-  const { difficultyInputSchema } = require('../../../../lib/api/shared/difficulty')
+describe('difficulty — VALID_DIFFICULTIES como fuente de verdad', () => {
+  const { VALID_DIFFICULTIES } = require('../../../../lib/api/shared/difficulty')
+  const { z } = require('zod/v3')
+
+  // Recrea el schema como lo hacen los módulos consumidores
+  const difficultySchema = z.enum(VALID_DIFFICULTIES).nullable().optional()
 
   it('acepta valores válidos', () => {
-    expect(difficultyInputSchema.safeParse('easy').success).toBe(true)
-    expect(difficultyInputSchema.safeParse('medium').success).toBe(true)
-    expect(difficultyInputSchema.safeParse('hard').success).toBe(true)
-    expect(difficultyInputSchema.safeParse('extreme').success).toBe(true)
-    expect(difficultyInputSchema.safeParse(null).success).toBe(true)
-    expect(difficultyInputSchema.safeParse(undefined).success).toBe(true)
+    expect(difficultySchema.safeParse('easy').success).toBe(true)
+    expect(difficultySchema.safeParse('medium').success).toBe(true)
+    expect(difficultySchema.safeParse('hard').success).toBe(true)
+    expect(difficultySchema.safeParse('extreme').success).toBe(true)
+    expect(difficultySchema.safeParse(null).success).toBe(true)
+    expect(difficultySchema.safeParse(undefined).success).toBe(true)
   })
 
   it('RECHAZA valores numéricos (alerta de bug de importación)', () => {
-    expect(difficultyInputSchema.safeParse('1').success).toBe(false)
-    expect(difficultyInputSchema.safeParse('2').success).toBe(false)
-    expect(difficultyInputSchema.safeParse('3').success).toBe(false)
-    expect(difficultyInputSchema.safeParse('4').success).toBe(false)
+    expect(difficultySchema.safeParse('1').success).toBe(false)
+    expect(difficultySchema.safeParse('2').success).toBe(false)
+    expect(difficultySchema.safeParse('3').success).toBe(false)
+    expect(difficultySchema.safeParse('4').success).toBe(false)
   })
 
   it('RECHAZA valores arbitrarios', () => {
-    expect(difficultyInputSchema.safeParse('auto').success).toBe(false)
-    expect(difficultyInputSchema.safeParse('mixed').success).toBe(false)
-    expect(difficultyInputSchema.safeParse('garbage').success).toBe(false)
+    expect(difficultySchema.safeParse('auto').success).toBe(false)
+    expect(difficultySchema.safeParse('mixed').success).toBe(false)
+    expect(difficultySchema.safeParse('garbage').success).toBe(false)
   })
 })

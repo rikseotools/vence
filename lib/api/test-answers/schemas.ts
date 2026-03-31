@@ -1,7 +1,7 @@
 // lib/api/test-answers/schemas.ts - Schemas de validacion para guardar respuestas
 // Usar zod/v3 para compatibilidad con Zod 4
 import { z } from 'zod/v3'
-import { difficultyInputSchema } from '@/lib/api/shared/difficulty'
+import { VALID_DIFFICULTIES } from '@/lib/api/shared/difficulty'
 
 // ============================================
 // SUB-SCHEMAS
@@ -26,7 +26,7 @@ export const articleDataSchema = z.object({
 
 export const questionMetadataSchema = z.object({
   id: z.string().optional().nullable(),
-  difficulty: difficultyInputSchema,
+  difficulty: z.enum(VALID_DIFFICULTIES).nullable().optional(),
   question_type: z.string().optional().nullable(),
   tags: z.array(z.string()).optional().nullable(),
 }).optional().nullable()

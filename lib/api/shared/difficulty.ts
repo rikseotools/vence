@@ -1,14 +1,12 @@
 // lib/api/shared/difficulty.ts
 // Valores válidos para test_questions.difficulty (CHECK constraint en BD)
 // Fuente de verdad: db/schema.ts línea 610
-import { z } from 'zod/v3'
+//
+// NO exporta schemas Zod porque el proyecto usa zod v3 y v4 en distintos módulos.
+// Cada schema importa VALID_DIFFICULTIES y crea su propio z.enum() localmente.
 
 export const VALID_DIFFICULTIES = ['easy', 'medium', 'hard', 'extreme'] as const
 export type ValidDifficulty = (typeof VALID_DIFFICULTIES)[number]
-
-/** Schema Zod para difficulty en requests de INPUT (escritura a BD).
- *  Acepta los 4 valores válidos o null. Rechaza cualquier otro string. */
-export const difficultyInputSchema = z.enum(VALID_DIFFICULTIES).nullable().optional()
 
 /** Mapea valores legacy (numéricos, 'auto') al enum válido.
  *  Usar SOLO para migración o lectura de datos legacy, NO en requests nuevos. */
