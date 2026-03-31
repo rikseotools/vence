@@ -669,19 +669,16 @@ export async function fetchLawSections(lawSlugOrShortName: string, options: Fetc
     const resolveSlug = await getSlugResolver()
     console.log(`📚 Cargando secciones de ley: ${lawSlugOrShortName}`)
 
-    // Intentar convertir slug a short_name, o usar directamente si ya es short_name
-    let lawShortName = await getShortNameBySlug(lawSlugOrShortName)
+    // Resolver cualquier formato: slug, short_name, o variante
+    const { resolveLawIdentifier } = await import('./api/laws/queries')
+    const resolved = await resolveLawIdentifier(lawSlugOrShortName)
 
-    // Si no se encontró como slug, puede que ya sea el short_name
-    if (!lawShortName && lawSlugOrShortName.includes('/')) {
-      lawShortName = lawSlugOrShortName // Ya es short_name (ej: "Ley 29/1998")
-    }
-
-    console.log(`🔍 Mapeo: "${lawSlugOrShortName}" → "${lawShortName}"`)
-
-    if (!lawShortName) {
+    if (!resolved) {
       throw new Error(`Ley "${lawSlugOrShortName}" no reconocida`)
     }
+
+    const lawShortName = resolved.shortName
+    console.log(`🔍 Mapeo: "${lawSlugOrShortName}" → "${lawShortName}" (id: ${resolved.id})`)
 
     // Si nos pasan lawId, reutilizarlo en vez de consultar de nuevo
     let lawData: { id: string; name: string; short_name: string }

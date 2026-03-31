@@ -290,6 +290,56 @@ export async function getSlugMappingForApi(): Promise<SlugMappingEntry[]> {
 }
 
 // ============================================
+// RESOLVER UNIVERSAL DE LEYES
+// ============================================
+
+/**
+ * Resuelve cualquier identificador de ley (slug, short_name, o variante)
+ * a sus datos completos. Un solo punto de resolución para toda la app.
+ *
+ * Intenta en orden:
+ * 1. Como slug (ej: "constitucion-espanola")
+ * 2. Como short_name exacto (ej: "CE", "Ley 39/2015")
+ * 3. Como slug generado desde short_name (ej: "ce" → busca "CE" en cache)
+ *
+ * @returns { id, shortName, slug, name } o null si no existe
+ */
+export async function resolveLawIdentifier(input: string): Promise<{
+  id: string
+  shortName: string
+  slug: string
+  name: string
+} | null> {
+  if (!input) return null
+  const cache = await loadSlugMappingCache()
+
+  // 1. Intentar como slug directo
+  const bySlug = cache.slugToShortName.get(input) ?? cache.slugToShortName.get(normalizeSlug(input))
+  if (bySlug) {
+    const law = cache.lawsBySlug.get(input) ?? cache.lawsBySlug.get(normalizeSlug(input))
+    if (law) return { id: law.id, shortName: law.shortName, slug: law.slug!, name: law.name }
+  }
+
+  // 2. Intentar como short_name exacto
+  const slugFromShortName = cache.shortNameToSlug.get(input)
+  if (slugFromShortName) {
+    const law = cache.lawsBySlug.get(slugFromShortName)
+    if (law) return { id: law.id, shortName: law.shortName, slug: law.slug!, name: law.name }
+  }
+
+  // 3. Intentar como slug generado (ej: "ce" podría ser generateSlug("CE"))
+  // Buscar en todos los short_names cuyo slug generado coincida
+  for (const [shortName, slug] of cache.shortNameToSlug) {
+    if (generateSlugFromShortName(shortName) === normalizeSlug(input)) {
+      const law = cache.lawsBySlug.get(slug)
+      if (law) return { id: law.id, shortName: law.shortName, slug: law.slug!, name: law.name }
+    }
+  }
+
+  return null
+}
+
+// ============================================
 // NORMALIZACIÓN DE NOMBRES DE LEY
 // ============================================
 
