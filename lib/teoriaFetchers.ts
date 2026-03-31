@@ -1,16 +1,62 @@
 // lib/teoriaFetchers.ts - FETCHERS PARA SISTEMA DE TEORÍA
 import { getSupabaseClient } from './supabase'
-import { getShortNameBySlug, getCanonicalSlugAsync, loadSlugMappingCache, generateSlugFromShortName } from './api/laws/queries'
 import { isDisposicionArticle } from './boe-extractor'
+
+// Cache de slugs en memoria (cargado desde supabase, compatible con client/server)
+let slugCache: { slugToShort: Map<string, string>; shortToSlug: Map<string, string>; loadedAt: number } | null = null
+const CACHE_TTL = 5 * 60 * 1000 // 5 minutos
+
+async function loadSlugCache() {
+  if (slugCache && Date.now() - slugCache.loadedAt < CACHE_TTL) return slugCache
+
+  const supabase = getSupabaseClient()
+  const { data } = await supabase
+    .from('laws')
+    .select('slug, short_name')
+    .eq('is_active', true)
+    .not('slug', 'is', null)
+
+  const slugToShort = new Map<string, string>()
+  const shortToSlug = new Map<string, string>()
+  for (const l of data || []) {
+    if (l.slug && l.short_name) {
+      slugToShort.set(l.slug, l.short_name)
+      shortToSlug.set(l.short_name, l.slug)
+    }
+  }
+
+  slugCache = { slugToShort, shortToSlug, loadedAt: Date.now() }
+  return slugCache
+}
+
+function generateSlugFallback(shortName: string): string {
+  if (!shortName) return 'unknown'
+  return shortName
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+}
+
+/**
+ * Resuelve slug → short_name desde BD (via supabase, compatible client/server).
+ */
+async function getShortNameBySlug(slug: string): Promise<string | null> {
+  const cache = await loadSlugCache()
+  return cache.slugToShort.get(slug) ?? null
+}
 
 /**
  * Helper: carga el cache de slugs de BD y devuelve una función sync para resolver slugs.
  * Usar al inicio de cada función async, antes de .map() u otros contextos sync.
  */
 async function getSlugResolver(): Promise<(shortName: string) => string> {
-  const cache = await loadSlugMappingCache()
+  const cache = await loadSlugCache()
   return (shortName: string) => {
-    return cache.shortNameToSlug.get(shortName) ?? generateSlugFromShortName(shortName)
+    return cache.shortToSlug.get(shortName) ?? generateSlugFallback(shortName)
   }
 }
 

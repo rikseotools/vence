@@ -15,11 +15,26 @@ const mockEq2 = jest.fn().mockImplementation(() => ({ eq: jest.fn().mockReturnVa
 const mockEq1 = jest.fn().mockImplementation(() => ({ eq: mockEq2, single: mockSingle }))
 const mockSelect = jest.fn().mockReturnValue({ eq: mockEq1 })
 
+// Mock supabase chain for loadSlugCache: .from('laws').select('slug, short_name').eq().not()
+const mockSlugCacheNot = jest.fn().mockResolvedValue({ data: [
+  { slug: 'constitucion-espanola', short_name: 'CE' },
+  { slug: 'test-law', short_name: 'TL' },
+  { slug: 'ley-39-2015', short_name: 'Ley 39/2015' },
+] })
+const mockSlugCacheEq = jest.fn().mockReturnValue({ not: mockSlugCacheNot })
+
 jest.mock('@/lib/supabase', () => ({
   getSupabaseClient: jest.fn(() => ({
     from: jest.fn((table: string) => {
       queriedTables.push(table)
-      return { select: mockSelect }
+      return {
+        select: jest.fn((fields: string) => {
+          if (fields === 'slug, short_name') {
+            return { eq: mockSlugCacheEq }
+          }
+          return mockSelect(fields)
+        })
+      }
     }),
   })),
 }))
@@ -36,16 +51,7 @@ jest.mock('@/lib/api/laws/warmCache', () => ({
   warmSlugCache: jest.fn(),
 }))
 
-jest.mock('@/lib/api/laws/queries', () => ({
-  getShortNameBySlug: jest.fn((slug: string) => mockMapSlug(slug)),
-  loadSlugMappingCache: jest.fn(() => Promise.resolve({
-    slugToShortName: new Map(),
-    shortNameToSlug: new Map([['CE', 'constitucion-espanola']]),
-    lawsBySlug: new Map(),
-    loadedAt: new Date(),
-  })),
-  generateSlugFromShortName: jest.fn((s: string) => s?.toLowerCase().replace(/[^a-z0-9]+/g, '-')),
-}))
+// lib/api/laws/queries ya no se importa desde teoriaFetchers
 
 import { fetchLawSections } from '@/lib/teoriaFetchers'
 
@@ -126,7 +132,7 @@ describe('fetchLawSections', () => {
   })
 
   describe('con options.lawId (optimizacion N+1)', () => {
-    it('NO consulta la tabla laws cuando se pasa lawId', async () => {
+    it('consulta laws solo para cache de slugs cuando se pasa lawId', async () => {
       setupSectionsQuerySuccess()
 
       await fetchLawSections('test-law', {
@@ -135,8 +141,7 @@ describe('fetchLawSections', () => {
         lawShortName: 'LPR',
       })
 
-      // NO debe consultar 'laws', solo 'law_sections'
-      expect(queriedTables).not.toContain('laws')
+      // laws se consulta para slug cache, law_sections para los datos
       expect(queriedTables).toContain('law_sections')
     })
 
@@ -164,9 +169,9 @@ describe('fetchLawSections', () => {
       })
 
       expect(result.law.id).toBe('law-only-id')
-      // Defaults to mapped short_name
-      expect(result.law.name).toBe('Test Law')
-      expect(result.law.short_name).toBe('Test Law')
+      // Defaults to short_name from slug cache (test-law → TL)
+      expect(result.law.name).toBe('TL')
+      expect(result.law.short_name).toBe('TL')
     })
 
     it('retorna secciones correctamente con lawId pre-resuelto', async () => {

@@ -24,11 +24,31 @@ const mockArticlesEq2 = jest.fn().mockReturnValue({ eq: mockArticlesEq3 })
 const mockArticlesEq1 = jest.fn().mockReturnValue({ eq: mockArticlesEq2 })
 const mockArticlesSelect = jest.fn().mockReturnValue({ eq: mockArticlesEq1 })
 
+// Mock supabase chain for loadSlugCache: .from('laws').select().eq().not()
+const mockSlugCacheNot = jest.fn().mockResolvedValue({ data: [
+  { slug: 'constitucion-espanola', short_name: 'CE' },
+  { slug: 'ley-39-2015', short_name: 'Ley 39/2015' },
+] })
+const mockSlugCacheEq = jest.fn().mockReturnValue({ not: mockSlugCacheNot })
+const mockSlugCacheSelect = jest.fn().mockReturnValue({ eq: mockSlugCacheEq })
+
 jest.mock('@/lib/supabase', () => ({
   getSupabaseClient: jest.fn(() => ({
     from: jest.fn((table: string) => {
       queriedTables.push(table)
-      if (table === 'laws') return { select: mockLawsSelect }
+      if (table === 'laws') {
+        // Return different chain depending on what's being queried
+        return {
+          select: jest.fn((fields: string) => {
+            // loadSlugCache query: .select('slug, short_name')
+            if (fields === 'slug, short_name') {
+              return { eq: mockSlugCacheEq }
+            }
+            // Other laws queries
+            return mockLawsSelect(fields)
+          })
+        }
+      }
       if (table === 'articles') return { select: mockArticlesSelect }
       return { select: jest.fn().mockReturnValue({}) }
     }),
@@ -46,16 +66,8 @@ jest.mock('@/lib/api/laws/warmCache', () => ({
   warmSlugCache: jest.fn(),
 }))
 
-jest.mock('@/lib/api/laws/queries', () => ({
-  getShortNameBySlug: jest.fn((slug: string) => mockMapSlug(slug)),
-  loadSlugMappingCache: jest.fn(() => Promise.resolve({
-    slugToShortName: new Map(),
-    shortNameToSlug: new Map([['CE', 'constitucion-espanola'], ['Ley 39/2015', 'ley-39-2015']]),
-    lawsBySlug: new Map(),
-    loadedAt: new Date(),
-  })),
-  generateSlugFromShortName: jest.fn((s: string) => s?.toLowerCase().replace(/[^a-z0-9]+/g, '-')),
-}))
+// lib/api/laws/queries ya no se importa directamente desde teoriaFetchers
+// (usa supabase directamente para compatibilidad client/server)
 
 import { fetchLawArticles } from '@/lib/teoriaFetchers'
 
@@ -99,7 +111,7 @@ describe('fetchLawArticles', () => {
   })
 
   describe('con slug reconocido por mapLawSlugToShortName', () => {
-    it('NO consulta la tabla laws cuando el slug se resuelve', async () => {
+    it('consulta la tabla laws para cache de slugs y luego articles', async () => {
       mockMapSlug.mockReturnValue('CE')
       mockArticlesOrder.mockResolvedValueOnce({
         data: [makeArticle('1')],
@@ -108,7 +120,8 @@ describe('fetchLawArticles', () => {
 
       await fetchLawArticles('constitucion-espanola')
 
-      expect(queriedTables).not.toContain('laws')
+      // laws se consulta para el cache de slugs (loadSlugCache) + articles para los datos
+      expect(queriedTables).toContain('laws')
       expect(queriedTables).toContain('articles')
     })
 
