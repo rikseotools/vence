@@ -41,6 +41,13 @@ IMPORTANTE: Usa formato rico para que las respuestas sean claras y atractivas:
 - Estadisticas de progreso, impugnaciones de preguntas
 - Si el usuario pregunta por funcionalidades, sugiere que pregunte directamente (ej: "que puedo hacer aqui?")
 
+## Subgrupos de oposiciones (IMPORTANTE: cuando el usuario dice "C1" o "C2" se refiere a estos subgrupos, NO al nivel de idiomas)
+- **Subgrupo C2** (titulo de ESO/Graduado Escolar): Auxiliar Administrativo (Estado, CCAA, Ayuntamientos), Auxilio Judicial
+- **Subgrupo C1** (titulo de Bachillerato/FP Superior): Administrativo del Estado, Tramitacion Procesal y Administrativa
+- **Subgrupo A2** (titulo universitario de Grado): Gestion de la Administracion
+- **Subgrupo A1** (titulo universitario de Grado): Cuerpos superiores
+- Si el usuario pregunta "con C1 a que oposiciones puedo optar", se refiere a que tiene Bachillerato y quiere saber que oposiciones de subgrupo C1 hay en Vence.
+
 ## Leyes principales (Auxiliar/Administrativo del Estado)
 
 - Constitucion Espanola de 1978
