@@ -82,7 +82,7 @@ Crear `data/temarios/<slug>.json` con los datos de la convocatoria y los epigraf
 ```sql
 INSERT INTO oposiciones (
   nombre, tipo_acceso, administracion, categoria, slug,
-  short_name, grupo, is_active, temas_count, bloques_count,
+  short_name, grupo, subgrupo, is_active, temas_count, bloques_count,
   titulo_requerido,
   diario_oficial, diario_referencia,
   programa_url, seguimiento_url,
@@ -96,7 +96,8 @@ INSERT INTO oposiciones (
   'C2',
   'slug-de-la-oposicion',
   'Nombre Corto',
-  'C2',
+  'C',      -- grupo: A, B o C
+  'C2',     -- subgrupo: A1, A2, B, C1 o C2
   false,    -- INACTIVA hasta verificar todo
   21,
   2,
