@@ -11,7 +11,9 @@ Este documento describe el proceso para eliminar cuentas de usuario cuando lo so
 
 ## 1. Investigar al Usuario (IMPORTANTE)
 
-Antes de eliminar, investigar el comportamiento del usuario para aprender y mejorar:
+Antes de eliminar, investigar el comportamiento del usuario para aprender y mejorar.
+
+> **IMPORTANTE:** Seguir el procedimiento completo de `docs/procedures/investigar-journey-usuario.md` para reconstruir el journey del usuario: `user_interactions` (clicks, page views), sesiones, tests, errores del servidor, etc. El journey revela *por qué* se va, no solo *qué* hizo.
 
 ```javascript
 const userId = 'UUID_DEL_USUARIO';
