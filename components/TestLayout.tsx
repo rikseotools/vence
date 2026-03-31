@@ -918,6 +918,15 @@ export default function TestLayout({
     const newConfidence = calculateConfidence(timeToDecide, interactionCount)
     setConfidenceLevel(newConfidence)
     
+    // Garantizar que processingAnswer se libere SIEMPRE, incluso si el flujo falla
+    // El timeout de 11s es menor que el watchdog (12s) para evitar falsos positivos
+    const safetyTimeout = setTimeout(() => {
+      if (processingAnswer) {
+        console.warn('⚠️ [TestLayout] Safety timeout: liberando processingAnswer después de 11s')
+        setProcessingAnswer(false)
+      }
+    }, 11000)
+
     setTimeout(async () => {
       try {
         const timeSpent = Math.round((Date.now() - questionStartTime) / 1000)
@@ -936,7 +945,7 @@ export default function TestLayout({
           setSelectedAnswer(null)
           setProcessingAnswer(false)
           setLastProcessedAnswer(null)
-          // Los errores de validación se registran automáticamente en validation_error_logs por el servidor
+          clearTimeout(safetyTimeout)
           logClientError('/api/answer', validationError_, { component: 'TestLayout', questionId: currentQ.id, userId: user?.id })
           return
         }
@@ -1278,6 +1287,7 @@ export default function TestLayout({
       } catch (error) {
         console.error('❌ Error en flujo de respuesta:', error)
       } finally {
+        clearTimeout(safetyTimeout)
         // Liberar el lock después de 1 segundo
         setTimeout(() => {
           setProcessingAnswer(false)
