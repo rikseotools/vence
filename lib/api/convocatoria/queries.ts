@@ -160,6 +160,7 @@ export interface OposicionCardData {
   nombre: string
   shortName: string | null
   grupo: string | null
+  subgrupo: string | null
   plazasLibres: number | null
   plazasPromocionInterna: number | null
   examDate: string | null
@@ -190,7 +191,7 @@ export async function getAllOposicionesCardData(): Promise<Map<string, Oposicion
     const db = getDb()
 
     const rows = await db.execute(sql`
-      SELECT slug, nombre, short_name, grupo,
+      SELECT slug, nombre, short_name, grupo, subgrupo,
              plazas_libres, plazas_promocion_interna,
              exam_date, boe_reference, boe_publication_date,
              programa_url, seguimiento_url,
@@ -214,6 +215,7 @@ export async function getAllOposicionesCardData(): Promise<Map<string, Oposicion
         nombre: r.nombre,
         shortName: r.short_name,
         grupo: r.grupo,
+        subgrupo: r.subgrupo,
         plazasLibres: r.plazas_libres,
         plazasPromocionInterna: r.plazas_promocion_interna,
         examDate: r.exam_date,

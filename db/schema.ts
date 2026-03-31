@@ -2264,6 +2264,7 @@ export const oposiciones = pgTable("oposiciones", {
 	slug: text(),
 	shortName: text("short_name"),
 	grupo: text(),
+	subgrupo: text(),
 	examDate: date("exam_date"),
 	inscriptionStart: date("inscription_start"),
 	inscriptionDeadline: date("inscription_deadline"),

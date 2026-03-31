@@ -288,7 +288,7 @@ export class TemarioDomain implements ChatDomain {
 
     for (const o of oposiciones) {
       const temas = o.temasCount ? ` (${o.temasCount} temas)` : ''
-      const grupo = o.grupo ? ` - ${o.grupo}` : ''
+      const grupo = o.subgrupo ? ` - ${o.subgrupo}` : ''
       text += `- **${o.nombre}**${grupo}${temas}\n`
     }
 

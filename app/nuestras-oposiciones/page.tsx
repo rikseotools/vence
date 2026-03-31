@@ -51,7 +51,7 @@ export default async function NuestrasOposicionesPage() {
       totalTopics: config.totalTopics,
       blocksCount: config.blocks.length,
       description: db?.landingDescription ?? `Prepara ${config.name} con tests tipo examen y temario completo. ${config.totalTopics} temas.`,
-      level: `Grupo C, Subgrupo ${db?.grupo ?? config.badge}`,
+      level: `Grupo ${db?.grupo ?? 'C'}, Subgrupo ${db?.subgrupo ?? config.badge}`,
       difficulty: db?.landingDifficulty ?? 'Intermedio',
       duration: db?.landingDuration ?? '6-12 meses',
       salary: db?.salarioMin && db?.salarioMax

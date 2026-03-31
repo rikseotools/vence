@@ -29,6 +29,7 @@ export interface OposicionInfo {
   slug: string | null
   temasCount: number | null
   grupo: string | null
+  subgrupo: string | null
 }
 
 export interface TemarioSearchResult {
@@ -62,6 +63,7 @@ function mapOposicion(o: Record<string, unknown>): OposicionInfo {
     slug: o.slug as string | null,
     temasCount: o.temas_count as number | null,
     grupo: o.grupo as string | null,
+    subgrupo: o.subgrupo as string | null,
   }
 }
 
@@ -168,7 +170,7 @@ export async function getOposicionInfo(oposicionId: string): Promise<OposicionIn
 
   const { data, error } = await getSupabase()
     .from('oposiciones')
-    .select('id, nombre, short_name, slug, temas_count, grupo')
+    .select('id, nombre, short_name, slug, temas_count, grupo, subgrupo')
     .eq('slug', slug)
     .single()
 
@@ -194,7 +196,7 @@ export async function getAllOposiciones(): Promise<OposicionInfo[]> {
 
   const { data, error } = await getSupabase()
     .from('oposiciones')
-    .select('id, nombre, short_name, slug, temas_count, grupo')
+    .select('id, nombre, short_name, slug, temas_count, grupo, subgrupo')
     .eq('is_active', true)
     .order('nombre')
 
