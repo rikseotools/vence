@@ -52,7 +52,8 @@ const SIMILARITY_THRESHOLD = 0.9
 // Single regex that covers all banned word variants (much faster than 576 ilikes)
 // Regex for questions referencing images/screenshots that aren't shown
 // Patterns for questions that reference visual content not available (images, icons, tables, screenshots)
-const MISSING_IMAGE_REGEX = '(?i)(siguiente imagen|imagen que se muestra|imagen que aparece|la imagen de Excel|la imagen de Access|la imagen de Word|de la imagen de|celda de la imagen|analizando la imagen|la imagen adjunta|imagen que se adjunta|captura de pantalla que se muestra|pantalla que se muestra|icono que aparece en la siguiente|icono que muestra la siguiente|icono que puedes ver en la siguiente|icono que aparece a continuación|observa la siguiente captura|según la siguiente imagen|relación con la siguiente imagen|observe la siguiente imagen|figura que aparece a continuación|rango de datos que aparece a continuación|tabla adjunta|documento adjunto|gráfico siguiente|hoja de cálculo siguiente|siguiente hoja de cálculo|sigui?ente figura|figura que aparece entre|figura de ejemplo|observa la figura|aparece en la figura|siguiente icono|como se muestra en la imagen|como se puede ver en la imagen|que aparece en la imagen|aparecen en la imagen|mostrad[oa] en la imagen|en la imagen de Excel|en la imagen de Access|en la imagen de Word|en la imagen siguiente|de la figura siguiente|icono de la figura|tabla mostrad[oa]|fórmula mostrad[oa]|mostrad[oa] a continuación|anexo Excel|anexo de Excel|anexo Word|anexo Access|columna .{1,3} del anexo)'
+// NOTE: "anexo Word/Excel/Access" removed — those are exam context references, not visual content requirements
+const MISSING_IMAGE_REGEX = '(?i)(siguiente imagen|imagen que se muestra|imagen que aparece|la imagen de Excel|la imagen de Access|la imagen de Word|de la imagen de|celda de la imagen|analizando la imagen|la imagen adjunta|imagen que se adjunta|captura de pantalla que se muestra|pantalla que se muestra|icono que aparece en la siguiente|icono que muestra la siguiente|icono que puedes ver en la siguiente|icono que aparece a continuación|observa la siguiente captura|según la siguiente imagen|relación con la siguiente imagen|observe la siguiente imagen|figura que aparece a continuación|rango de datos que aparece a continuación|tabla adjunta|documento adjunto|gráfico siguiente|hoja de cálculo siguiente|siguiente hoja de cálculo|sigui?ente figura|figura que aparece entre|figura de ejemplo|observa la figura|aparece en la figura|siguiente icono|como se muestra en la imagen|como se puede ver en la imagen|que aparece en la imagen|aparecen en la imagen|mostrad[oa] en la imagen|en la imagen de Excel|en la imagen de Access|en la imagen de Word|en la imagen siguiente|de la figura siguiente|icono de la figura|tabla mostrad[oa]|fórmula mostrad[oa]|mostrad[oa] a continuación|columna .{1,3} del anexo)'
 
 // HTML entities or tags in explanation (should be markdown)
 const HTML_EXPLANATION_REGEX = '(<p>|<p |</p>|<strong>|</strong>|<br>|<br/>|<br />|&eacute;|&oacute;|&aacute;|&iacute;|&uacute;|&ntilde;|&Eacute;|&Oacute;|&Aacute;|&nbsp;|<em>|</em>|<ul>|<li>|</li>|</ul>|<ol>|</ol>|<h[1-6]>)'
@@ -97,7 +98,7 @@ async function runCountsOnly(): Promise<number> {
           explanation ILIKE '%pendiente de explicación%' OR explanation ILIKE '%pendiente de explicacion%'
         ) as pending_explanation,
         count(*) FILTER (WHERE primary_article_id IS NULL) as missing_article,
-        count(*) FILTER (WHERE question_text ~* ${MISSING_IMAGE_REGEX}) as missing_image,
+        count(*) FILTER (WHERE question_text ~* ${MISSING_IMAGE_REGEX} AND question_text NOT ILIKE '%Observatorio de la Imagen%' AND image_url IS NULL AND (content_data IS NULL OR content_data::text = '{}')) as missing_image,
         count(*) FILTER (WHERE
           CONCAT_WS(' ', question_text, option_a, option_b, option_c, option_d) ~* ${EXCEL_TYPO_REGEX}
         ) as excel_typo,
@@ -258,6 +259,9 @@ async function runChecks(): Promise<QualityResponse> {
       FROM questions
       WHERE is_active = true
         AND question_text ~* ${MISSING_IMAGE_REGEX}
+        AND question_text NOT ILIKE '%Observatorio de la Imagen%'
+        AND image_url IS NULL
+        AND (content_data IS NULL OR content_data::text = '{}')
       LIMIT ${MAX_ITEMS}
     `),
 
