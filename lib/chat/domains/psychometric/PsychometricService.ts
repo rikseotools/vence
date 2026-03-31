@@ -4,6 +4,8 @@
 import type { ChatContext, ChatResponse, AITracerInterface } from '../../core/types'
 import { ChatResponseBuilder } from '../../core/ChatResponseBuilder'
 import { getOpenAI, CHAT_MODEL, CHAT_MODEL_PREMIUM } from '../../shared/openai'
+import { getAnthropic, ANTHROPIC_MODEL } from '../../shared/anthropic'
+import { selectModel } from '../../shared/modelRouter'
 import { logger } from '../../shared/logger'
 import { isPsychometricSubtype } from '../../shared/constants'
 import { buildPsychometricPrompt, normalizeOptions, getCorrectLetter } from './prompts'
@@ -123,52 +125,113 @@ export async function processPsychometricQuestion(
     }
   }
 
-  // 4. Llamar al LLM
-  const openai = await getOpenAI()
-  const model = context.isPremium ? CHAT_MODEL_PREMIUM : CHAT_MODEL
+  // 4. Llamar al LLM - routing por subtype
+  const modelSelection = selectModel({
+    domain: 'psychometric',
+    questionSubtype: subtype,
+    isPsicotecnico: true,
+  })
 
   // Temperature baja para psicotécnicos: precisión > creatividad
   const temperature = 0.3
+  let content: string
+  let totalTokens: number | undefined
+  let promptTokens: number | undefined
+  let completionTokens: number | undefined
+  let finishReason: string | undefined
+  let model: string
 
-  const llmSpan = tracer?.spanLLM({
-    model,
-    temperature,
-    maxTokens: 1500,
-    systemPrompt,
-    userPrompt: context.currentMessage,
-    messagesArray: messages,
-    // Metadata específica de psicotécnicos
-    psychometricSubtype: subtype,
-    psychometricGroup: group,
-    validationResult: validation ? {
-      validated: validation.validated,
-      confirmsDbAnswer: validation.confirmsDbAnswer,
-      computedValue: validation.computedValue,
-    } : null,
-  })
+  if (modelSelection.provider === 'anthropic') {
+    // Claude Sonnet para subtypes que requieren razonamiento avanzado
+    const anthropic = await getAnthropic()
+    model = ANTHROPIC_MODEL
 
-  const completion = await openai.chat.completions.create({
-    model,
-    messages,
-    temperature,
-    max_tokens: 1500,
-  })
+    const llmSpan = tracer?.spanLLM({
+      model,
+      temperature,
+      maxTokens: 2000,
+      systemPrompt,
+      userPrompt: context.currentMessage,
+      messagesArray: messages,
+      psychometricSubtype: subtype,
+      psychometricGroup: group,
+      validationResult: validation ? {
+        validated: validation.validated,
+        confirmsDbAnswer: validation.confirmsDbAnswer,
+        computedValue: validation.computedValue,
+      } : null,
+    })
 
-  const content = completion.choices[0]?.message?.content || 'No pude generar una respuesta.'
-  const totalTokens = completion.usage?.total_tokens
+    // Convertir mensajes OpenAI format → Anthropic format
+    const anthropicMessages = messages
+      .filter(m => m.role !== 'system')
+      .map(m => ({ role: m.role as 'user' | 'assistant', content: m.content }))
 
-  llmSpan?.setOutput({
-    responseContent: content,
-    finishReason: completion.choices[0]?.finish_reason,
-    promptTokens: completion.usage?.prompt_tokens,
-    completionTokens: completion.usage?.completion_tokens,
-    totalTokens,
-  })
-  llmSpan?.addMetadata('tokensIn', completion.usage?.prompt_tokens)
-  llmSpan?.addMetadata('tokensOut', completion.usage?.completion_tokens)
-  llmSpan?.addMetadata('model', model)
-  llmSpan?.addMetadata('responseLength', content.length)
-  llmSpan?.end()
+    const response = await anthropic.messages.create({
+      model,
+      max_tokens: 2000,
+      temperature,
+      system: systemPrompt,
+      messages: anthropicMessages,
+    })
+
+    content = response.content[0]?.type === 'text' ? response.content[0].text : 'No pude generar una respuesta.'
+    promptTokens = response.usage.input_tokens
+    completionTokens = response.usage.output_tokens
+    totalTokens = promptTokens + completionTokens
+    finishReason = response.stop_reason || undefined
+
+    llmSpan?.setOutput({ responseContent: content, finishReason, promptTokens, completionTokens, totalTokens })
+    llmSpan?.addMetadata('tokensIn', promptTokens)
+    llmSpan?.addMetadata('tokensOut', completionTokens)
+    llmSpan?.addMetadata('model', model)
+    llmSpan?.addMetadata('provider', 'anthropic')
+    llmSpan?.addMetadata('responseLength', content.length)
+    llmSpan?.end()
+
+    logger.info(`Psychometric using Claude: ${subtype}`, { domain: 'psychometric', model, reason: modelSelection.reason })
+  } else {
+    // OpenAI GPT-4o para subtypes estándar
+    const openai = await getOpenAI()
+    model = context.isPremium ? CHAT_MODEL_PREMIUM : CHAT_MODEL
+
+    const llmSpan = tracer?.spanLLM({
+      model,
+      temperature,
+      maxTokens: 1500,
+      systemPrompt,
+      userPrompt: context.currentMessage,
+      messagesArray: messages,
+      psychometricSubtype: subtype,
+      psychometricGroup: group,
+      validationResult: validation ? {
+        validated: validation.validated,
+        confirmsDbAnswer: validation.confirmsDbAnswer,
+        computedValue: validation.computedValue,
+      } : null,
+    })
+
+    const completion = await openai.chat.completions.create({
+      model,
+      messages,
+      temperature,
+      max_tokens: 1500,
+    })
+
+    content = completion.choices[0]?.message?.content || 'No pude generar una respuesta.'
+    promptTokens = completion.usage?.prompt_tokens
+    completionTokens = completion.usage?.completion_tokens
+    totalTokens = completion.usage?.total_tokens
+    finishReason = completion.choices[0]?.finish_reason || undefined
+
+    llmSpan?.setOutput({ responseContent: content, finishReason, promptTokens, completionTokens, totalTokens })
+    llmSpan?.addMetadata('tokensIn', promptTokens)
+    llmSpan?.addMetadata('tokensOut', completionTokens)
+    llmSpan?.addMetadata('model', model)
+    llmSpan?.addMetadata('provider', 'openai')
+    llmSpan?.addMetadata('responseLength', content.length)
+    llmSpan?.end()
+  }
 
   // 5. Construir respuesta
   const builder = new ChatResponseBuilder()
