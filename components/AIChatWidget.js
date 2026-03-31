@@ -890,12 +890,14 @@ export default function AIChatWidget() {
                     // Sugerencias para tests de leyes con contexto de pregunta
                     <>
                       <p className="text-xs text-gray-400 dark:text-gray-500 mb-2">Sobre esta pregunta:</p>
-                      <button
-                        onClick={() => useSuggestion(`Explícame por qué la respuesta correcta es "${answerToLetter(currentQuestionContext.correctAnswer) || '?'}" en la pregunta: "${currentQuestionContext.questionText?.substring(0, 100)}..."`, 'explicar_respuesta')}
-                        className="block w-full text-left px-3 py-2 text-xs bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition text-blue-700 dark:text-blue-300"
-                      >
-                        💡 Explícame la respuesta correcta
-                      </button>
+                      {currentQuestionContext.correctAnswer !== undefined && currentQuestionContext.correctAnswer !== null && (
+                        <button
+                          onClick={() => useSuggestion(`Explícame por qué la respuesta correcta es "${answerToLetter(currentQuestionContext.correctAnswer)}" en la pregunta: "${currentQuestionContext.questionText?.substring(0, 100)}..."`, 'explicar_respuesta')}
+                          className="block w-full text-left px-3 py-2 text-xs bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition text-blue-700 dark:text-blue-300"
+                        >
+                          💡 Explícame la respuesta correcta
+                        </button>
+                      )}
                       {/* Sugerencias dinámicas de la ley */}
                       {currentQuestionContext.lawName && lawContextSuggestions.length > 0 && (
                         <>

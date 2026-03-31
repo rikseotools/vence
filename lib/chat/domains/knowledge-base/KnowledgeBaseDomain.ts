@@ -10,7 +10,6 @@ import {
   searchKB,
   formatKBContext,
   getShortAnswer,
-  generateKBSuggestions,
   getPredefinedResponse,
   isPlatformQuery,
 } from './KnowledgeBaseService'
@@ -97,9 +96,9 @@ export class KnowledgeBaseDomain implements ChatDomain {
     })
     dbSpan?.end()
 
-    // 3. Si no hay resultados, devolver respuesta genérica
+    // 3. Si no hay resultados, usar LLM para pedir más contexto
     if (searchResult.entries.length === 0) {
-      return this.handleNoResults(context, startTime)
+      return this.handleNoResults(context, startTime, tracer)
     }
 
     // 4. Si hay respuesta corta y la pregunta es simple, usarla
@@ -130,23 +129,79 @@ export class KnowledgeBaseDomain implements ChatDomain {
   }
 
   /**
-   * Maneja cuando no hay resultados en la KB
+   * Maneja cuando no hay resultados en la KB.
+   * En vez de dar respuesta enlatada, usa el LLM para pedir más contexto
+   * o intentar ayudar con lo que tiene.
    */
-  private handleNoResults(context: ChatContext, startTime: number): ChatResponse {
-    const suggestions = generateKBSuggestions(null)
+  private async handleNoResults(context: ChatContext, startTime: number, tracer?: AITracerInterface): Promise<ChatResponse> {
+    const openai = await getOpenAI()
+    const model = context.isPremium ? CHAT_MODEL_PREMIUM : CHAT_MODEL
 
-    const response = `No tengo información específica sobre eso, pero puedo ayudarte con otras cosas sobre la plataforma.
+    const systemPrompt = `${KNOWLEDGE_BASE_SYSTEM_PROMPT}
 
-**Algunas preguntas frecuentes:**
-${suggestions.map(s => `• ${s}`).join('\n')}
+IMPORTANTE: No has encontrado información específica en la base de conocimiento para esta consulta.
+- Si el usuario no se explica bien o falta contexto, pídele más información de forma natural y amigable.
+- Si puedes ayudarle con lo que sabes de la plataforma, hazlo.
+- NO respondas con listas de preguntas frecuentes genéricas.
+- Sé breve y directo.`
 
-¿Hay algo más en lo que pueda ayudarte?`
+    const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
+      { role: 'system', content: systemPrompt },
+    ]
 
-    return new ChatResponseBuilder()
-      .domain('knowledge-base')
-      .text(response)
-      .processingTime(Date.now() - startTime)
-      .build()
+    // Incluir historial
+    for (const msg of context.messages) {
+      if (msg.role === 'user' || msg.role === 'assistant') {
+        messages.push({ role: msg.role, content: msg.content })
+      }
+    }
+
+    const llmSpan = tracer?.spanLLM({
+      model,
+      temperature: 0.7,
+      maxTokens: 500,
+      systemPrompt,
+      userPrompt: context.currentMessage,
+      messagesArray: messages,
+    })
+
+    try {
+      const completion = await openai.chat.completions.create({
+        model,
+        messages,
+        temperature: 0.7,
+        max_tokens: 500,
+      })
+
+      const content = completion.choices[0]?.message?.content || '¿Puedes darme más detalles sobre lo que necesitas?'
+      const totalTokens = completion.usage?.total_tokens
+
+      llmSpan?.setOutput({
+        responseContent: content,
+        finishReason: completion.choices[0]?.finish_reason,
+        totalTokens,
+      })
+      llmSpan?.end()
+
+      const builder = new ChatResponseBuilder()
+        .domain('knowledge-base')
+        .text(content)
+        .processingTime(Date.now() - startTime)
+
+      if (totalTokens) builder.tokensUsed(totalTokens)
+
+      return builder.build()
+    } catch (error) {
+      llmSpan?.setError(error instanceof Error ? error.message : 'Unknown error')
+      llmSpan?.end()
+
+      logger.error('Error generating KB no-results response', error, { domain: 'knowledge-base' })
+      return new ChatResponseBuilder()
+        .domain('knowledge-base')
+        .text('¿Puedes darme más detalles sobre lo que necesitas? Así podré ayudarte mejor.')
+        .processingTime(Date.now() - startTime)
+        .build()
+    }
   }
 
   /**

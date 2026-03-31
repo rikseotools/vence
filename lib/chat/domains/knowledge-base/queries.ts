@@ -306,7 +306,11 @@ export function isPlatformQuery(message: string): boolean {
     /c[oó]mo\s+(funciona|uso|hago)/i,
     /la\s+(app|aplicaci[oó]n|plataforma|p[aá]gina)/i,
     /vence/i,
-    /soporte|ayuda|contacto/i,
+    /soporte|contacto/i,
+    // "ayuda" solo cuando es sobre la plataforma, no cuando es "ayúdame con el artículo 14"
+    /ayuda.*(plataforma|app|suscripci|plan\b|cuenta|contrase|perfil|configurar)/i,
+    /(plataforma|app|suscripci|plan\b|cuenta|contrase|perfil|configurar).*ayuda/i,
+    /necesito\s+(soporte|ayuda\s+t[eé]cnica)/i,
     /funcionalidad|caracter[ií]stica/i,
     /test(s)?\s+(personalizad|r[aá]pid|oficial)/i,
     // "estadísticas" de la PLATAFORMA (no estadísticas personales)
@@ -341,6 +345,7 @@ export function isPlatformQuery(message: string): boolean {
     /modo\s+adaptativo/i,
     // Preguntas sobre la plataforma
     /\b(hay|ten[eé]is|existe|se\s+puede)\b.*(test|examen|simulacro|practicar|repas|psicot[eé]c)/i,
+    /practicar.*psicot[eé]c/i,
     /\bqu[eé]\s+(tipo|clase)s?\s+de\s+(test|examen|ejercicio)/i,
     /\bqu[eé]\s+(puedo|se\s+puede)\s+hacer\s+(aqu[ií]|en\s+(la\s+)?(app|plataforma))/i,
     // Test de articulo

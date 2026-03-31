@@ -73,7 +73,10 @@ export class VerificationDomain implements ChatDomain {
       contextualFollowUp,
     })
 
-    if (isVerification || asksAboutAnswer || contextualFollowUp) {
+    // Solo capturar si hay correctAnswer disponible (usuario ya respondió).
+    // Si no hay correctAnswer, dejar pasar al fallback con RAG que puede
+    // buscar el artículo o dar contexto sin necesidad de la respuesta.
+    if ((isVerification || asksAboutAnswer || contextualFollowUp) && hasAnswerContext) {
       logger.debug('VerificationDomain will handle request', {
         domain: 'verification',
         isVerification,
