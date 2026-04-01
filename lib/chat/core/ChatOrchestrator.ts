@@ -203,12 +203,14 @@ export class ChatOrchestrator {
 
       // Fast-path: verification cuando hay contexto de pregunta legislativa con respuesta
       // Si el usuario está en una pregunta y envía un follow-up, quiere saber sobre esa pregunta.
-      // EXCEPCIÓN: si el mensaje es sobre la plataforma (imprimir, guardar, etc.), dejar routing normal.
+      // EXCEPCIÓN: si el mensaje es sobre la plataforma o pide crear un test nuevo, dejar routing normal.
+      const isTestCreationRequest = /prep[aá]ra(me|nos)?\s+(un\s+)?test|hazme\s+(un\s+)?test|cr[eé]a(me)?\s+(un\s+)?test|quiero\s+(un\s+)?test|gen[eé]ra(me)?\s+(un\s+)?test/i.test(context.currentMessage)
       if (context.questionContext?.questionText &&
           context.questionContext?.correctAnswer !== undefined &&
           context.questionContext?.correctAnswer !== null &&
           !isPsychometricSubtype(context.questionContext?.questionSubtype) &&
-          !isPlatformQuery(context.currentMessage)) {
+          !isPlatformQuery(context.currentMessage) &&
+          !isTestCreationRequest) {
         const verifyDomain = this.domains.find(d => d.name === 'verification')
         if (verifyDomain) {
           routingSpan.setOutput({

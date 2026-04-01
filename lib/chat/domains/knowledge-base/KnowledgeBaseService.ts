@@ -302,6 +302,27 @@ Al entrar a una oposicion y hacer un test, el sistema detecta automaticamente qu
 💡 Cuando estés resolviendo preguntas, ¡pídeme ayuda! Puedo explicarte la lógica de cada ejercicio.`
   }
 
+  // Preparar / crear test personalizado
+  if (/prep[aá]ra(me|nos)?\s+(un\s+)?test|hazme\s+(un\s+)?test|cr[eé]a(me)?\s+(un\s+)?test|gen[eé]ra(me)?\s+(un\s+)?test|quiero\s+(un\s+)?test\b|necesito\s+(un\s+)?test\b/i.test(msgLower)) {
+    return `**Crear un test personalizado**
+
+En Vence puedes crear tests a medida eligiendo exactamente lo que quieres practicar:
+
+👉 **[Crear test personalizado](/test/personalizado)**
+
+**Puedes configurar:**
+- **Leyes**: elige una o varias leyes concretas
+- **Cantidad**: de 5 a 100 preguntas
+- **Dificultad**: facil, media, dificil o mezcla
+- **Solo preguntas oficiales**: preguntas de examenes reales
+- **Solo preguntas falladas**: repasa tus puntos debiles
+
+**Atajos rapidos:**
+- **[Test por leyes](/test/por-leyes)** - Elige leyes y combinalas
+- **[Test por articulo](/test/articulo)** - Practica un articulo concreto
+- **[Simulacro de examen](/test/aleatorio-examen)** - Modo examen real`
+  }
+
   // Simulacros / modo examen
   if (/simulacro|modo\s+examen|examen\s+(completo|simulado|de\s+prueba|real)|practicar\s+(un\s+)?examen/i.test(msgLower)) {
     return `**Simulacros de examen en Vence**
