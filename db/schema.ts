@@ -1399,6 +1399,7 @@ export const psychometricQuestions = pgTable("psychometric_questions", {
 	examSource: text("exam_source"),
 	examDate: date("exam_date"),
 	deactivationReason: text("deactivation_reason"),
+	imageUrl: text("image_url"),
 }, (table) => [
 	index("idx_psychometric_official_exam").using("btree", table.isOfficialExam.asc().nullsLast().op("bool_ops")).where(sql`(is_official_exam = true)`),
 	index("idx_psychometric_questions_active").using("btree", table.isActive.asc().nullsLast().op("bool_ops")).where(sql`(is_active = true)`),

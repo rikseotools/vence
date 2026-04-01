@@ -341,6 +341,7 @@ export async function getPsychometricQuestions(
         optionD: psychometricQuestions.optionD,
         // correctOption: OMITIDO — seguridad anti-scraping
         contentData: psychometricQuestions.contentData,
+        imageUrl: psychometricQuestions.imageUrl,
         difficulty: psychometricQuestions.difficulty,
         timeLimitSeconds: psychometricQuestions.timeLimitSeconds,
         cognitiveSkills: psychometricQuestions.cognitiveSkills,

@@ -37,6 +37,7 @@ function mapApiToLayout(q: ApiQuestion): LayoutQuestion {
     option_c: q.optionC ?? '',
     option_d: q.optionD ?? '',
     content_data: q.contentData,
+    image_url: q.imageUrl || null,
     difficulty: q.difficulty,
     time_limit_seconds: q.timeLimitSeconds,
     cognitive_skills: q.cognitiveSkills,
