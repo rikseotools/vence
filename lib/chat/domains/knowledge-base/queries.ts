@@ -333,7 +333,7 @@ export function isPlatformQuery(message: string): boolean {
     /mezclar\s+(leyes|preguntas)/i,
     /test\s+de\s+.*leyes/i,
     // Simulacros y modo examen
-    /simulacro/i,
+    /sim[iu]lacro/i,
     /modo\s+examen/i,
     /examen\s+(completo|simulado|de\s+prueba|real)/i,
     /practicar\s+(un\s+)?examen/i,
@@ -385,6 +385,10 @@ export function isPlatformQuery(message: string): boolean {
     /gen[eé]ra(me)?\s+(un\s+)?test/i,
     /quiero\s+(un\s+)?test\b/i,
     /necesito\s+(un\s+)?test\b/i,
+    // Quejas o dudas sobre comportamiento de la plataforma
+    /por\s*qu[eé]\s*(me\s*)?(salen?|aparecen?|encuentro)\s*(preguntas?|temas?)/i,
+    /selecciono\s+(un\s+)?tema.*preguntas?\s*(de\s+)?otro/i,
+    /(preguntas?|temas?)\s*(de\s+)?otros?\s*(temas?|leyes?).*por\s*qu[eé]/i,
     // Imprimir, guardar, descargar tests/temario
     /imprim(ir|o|e|imos)/i,
     /guardar\s+(el\s+)?(test|resultado|examen)/i,

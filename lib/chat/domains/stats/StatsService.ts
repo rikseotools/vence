@@ -83,6 +83,10 @@ export function isUserStatsQuery(message: string): boolean {
     /en\s*qu[eé]\s*(art[ií]culos?|temas?)\s*fallos?\s*m[aá]s/i, // "en que articulos fallo/fallos mas"
     /(art[ií]culos?|temas?)\s*(que|donde|en\s*los?\s*que)\s*fallos?\s*m[aá]s/i, // "articulos que fallo mas"
     /fallos?\s*m[aá]s/i, // Patrón general: cualquier mención de "fallo/fallos más"
+    // Resultados personales sin "mis" (ej: "dame los resultados", "los resultados que he hecho")
+    /(dame|ver|enseñ[aá]|muestra|dime)\s*(los\s*)?(resultado|estad[ií]stica|nota|puntuaci[oó]n)/i,
+    /resultado.*que\s*he\s*(hecho|sacado|obtenido)/i,
+    /resultado.*(sim[iu]lacro|examen|test)/i,
   ]
 
   return patterns.some(p => p.test(msgLower))
@@ -609,6 +613,8 @@ export function formatUserStatsResponse(
   } else {
     response += `💡 *Sigue así, tu rendimiento es bueno.*`
   }
+
+  response += `\n\n📋 **[Ver estadísticas detalladas](/perfil#estadisticas)**`
 
   return response
 }

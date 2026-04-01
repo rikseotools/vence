@@ -323,6 +323,24 @@ En Vence puedes crear tests a medida eligiendo exactamente lo que quieres practi
 - **[Simulacro de examen](/test/aleatorio-examen)** - Modo examen real`
   }
 
+  // Preguntas de otros temas / mezcla de temas
+  if (/selecciono\s+(un\s+)?tema.*preguntas?\s*(de\s+)?otro|por\s*qu[eé]\s*(me\s*)?(salen?|aparecen?|encuentro)\s*(preguntas?|temas?)\s*(de\s+)?otro/i.test(msgLower)) {
+    return `**Preguntas de otros temas en tu test**
+
+Es normal encontrar algunas preguntas que parecen de otro tema. Esto ocurre porque:
+
+1. **Leyes compartidas**: Varios temas comparten las mismas leyes (ej: la Ley 39/2015 aparece en varios temas). Una pregunta puede estar vinculada a un artículo que se estudia en mas de un tema.
+
+2. **Preguntas transversales**: Algunas preguntas de examenes oficiales tocan conceptos que cruzan varios temas del temario.
+
+**Opciones para practicar mas enfocado:**
+- **[Test por leyes](/test/por-leyes)** - Elige una ley concreta
+- **[Test por articulo](/test/articulo)** - Practica un articulo especifico
+- **[Test personalizado](/test/personalizado)** - Configura exactamente lo que quieres
+
+Si crees que una pregunta esta mal clasificada, puedes impugnarla pulsando el boton de impugnar tras responderla.`
+  }
+
   // Simulacros / modo examen
   if (/simulacro|modo\s+examen|examen\s+(completo|simulado|de\s+prueba|real)|practicar\s+(un\s+)?examen/i.test(msgLower)) {
     return `**Simulacros de examen en Vence**
