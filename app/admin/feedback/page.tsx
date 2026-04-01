@@ -1236,9 +1236,10 @@ export default function AdminFeedbackPage() {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            userId: conversation.data.user_id,
+            userId: conversation.data.user_id || null,
             adminMessage: message.trim(),
-            conversationId: conversationId
+            conversationId: conversationId,
+            email: selectedUser?.email || null,
           })
         })
         
