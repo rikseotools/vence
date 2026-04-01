@@ -154,6 +154,7 @@ async function getExamQuestions(exam) {
       options: (q.answers || []).map(a => ({
         id: a.id,
         text: a.declaration,
+        image: a.image || null,
         isCorrect: a.id === q.correctAnswerId,
       })),
 

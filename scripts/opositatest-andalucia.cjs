@@ -161,6 +161,7 @@ function transformQuestions(questions) {
       id: a.id,
       letter: ['A', 'B', 'C', 'D'][q.answers.indexOf(a)],
       text: a.declaration,
+      image: a.image || null,
       isCorrect: a.id === q.correctAnswerId
     })),
     correctAnswer: ['A', 'B', 'C', 'D'][q.answers.findIndex(a => a.id === q.correctAnswerId)],

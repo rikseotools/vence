@@ -41,6 +41,7 @@ import ShareQuestion from './ShareQuestion'
 import DailyLimitBanner from './DailyLimitBanner'
 import UpgradeLimitModal from './UpgradeLimitModal'
 import { useDailyQuestionLimit } from '../hooks/useDailyQuestionLimit'
+import OptionContent from './OptionContent'
 
 // Imports modularizados
 import {
@@ -1204,7 +1205,7 @@ export default function ExamLayout({
                             </div>
                           </div>
                           <span className="font-bold text-gray-700 mr-3">{option.toUpperCase()})</span>
-                          <span className="text-gray-900 flex-1">{question[optionKey] as string}</span>
+                          <span className="text-gray-900 flex-1"><OptionContent value={question[optionKey] as string} /></span>
                           {showFeedback && isCorrectOption && (
                             <span className="ml-2 text-green-600 font-bold">✓</span>
                           )}

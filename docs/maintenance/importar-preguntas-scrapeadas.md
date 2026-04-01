@@ -823,13 +823,15 @@ Al importar, verificar si la pregunta tiene `imageLocal`/`imageOriginal` en el J
 
 #### Dónde van las preguntas según tipo
 
-| Tipo de pregunta | Tabla | content_data | image_url |
-|-----------------|-------|-------------|-----------|
-| **Legislativas** (leyes, CE, LPAC...) | `questions` | No suele necesitar | No suele necesitar |
-| **Informática con imagen** (Anexo Word/Excel) | `questions` | Opcional (tablas) | **Sí** (Supabase Storage) |
-| **Psicotécnicas con tabla** (equivalencias, instrucciones) | `psychometric_questions` | **Sí** (JSON) | No |
-| **Psicotécnicas con icono** (<5KB) | `psychometric_questions` | `image_base64` | No |
-| **Psicotécnicas con diagrama/cuadro grande** | `psychometric_questions` | Intentar JSON | `image_url` si no se puede |
+| Tipo de pregunta | Tabla | content_data | image_url | option_a/b/c/d |
+|-----------------|-------|-------------|-----------|----------------|
+| **Legislativas** (leyes, CE, LPAC...) | `questions` | No suele necesitar | No suele necesitar | Texto |
+| **Informática con imagen** (Anexo Word/Excel) | `questions` | Opcional (tablas) | **Sí** (Supabase Storage) | Texto |
+| **Informática con icono en enunciado** | `questions` | `image_base64` | No | Texto |
+| **Informática con iconos en opciones** | `questions` | No | No | **URL de imagen** (Supabase Storage) |
+| **Psicotécnicas con tabla** (equivalencias, instrucciones) | `psychometric_questions` | **Sí** (JSON) | No | Texto |
+| **Psicotécnicas con icono** (<5KB) | `psychometric_questions` | `image_base64` | No | Texto |
+| **Psicotécnicas con diagrama/cuadro grande** | `psychometric_questions` | Intentar JSON | `image_url` si no se puede | Texto |
 
 #### Campos disponibles
 
@@ -855,6 +857,38 @@ Usado en: ChartQuestion, ExamLayout, OfficialExamLayout, TestLayout, Psychometri
 - Ruta: `cyl-exams/{imageName}.png` para exámenes CyL
 - Imágenes >5KB que no se pueden convertir a content_data
 - El componente ContentDataRenderer muestra lupa + zoom modal
+
+#### Imágenes en opciones de respuesta (iconos Word/Excel)
+
+Algunas preguntas de exámenes oficiales tienen **iconos como opciones A/B/C/D** en vez de texto (ej: "¿Qué icono permite voltear horizontalmente?"). El scraper captura `options[].image` (objeto con `name` y `thumbs`).
+
+**Cómo importar opciones-imagen:**
+
+1. Descargar cada imagen de opción desde OpositaTest (`answer_thumb_big` o `answer_thumb_original`)
+2. Subir a Supabase Storage: `question-images/cyl-exams/options/{imageName}.png`
+3. Guardar la URL completa directamente en `option_a`, `option_b`, etc.
+4. El componente `OptionContent` detecta URLs de `question-images` y renderiza `<img>` en vez de texto
+
+```javascript
+// En option_a se guarda la URL directa:
+option_a: 'https://...supabase.../question-images/cyl-exams/options/6502db4f...png'
+```
+
+**Componente OptionContent** (`components/OptionContent.tsx`):
+- Detecta si el valor empieza con `https://` y contiene `question-images`
+- Si sí: renderiza `<img>` inline (max-h-12)
+- Si no: renderiza texto tal cual (comportamiento idéntico al anterior)
+- Integrado en: `ExamLayout`, `OfficialExamLayout`
+
+**Diferencia con imágenes de enunciado:**
+
+| Ubicación | Campo | Ejemplo |
+|-----------|-------|---------|
+| Enunciado: icono pequeño (<5KB) | `content_data.image_base64` | "¿Qué hace este icono?" |
+| Enunciado: captura grande (supuesto) | `image_url` | Documento Anexo Word/Excel |
+| Opciones: iconos de menú | `option_a/b/c/d` con URL | "¿Cuál de estos iconos...?" |
+
+**Scraper:** Los scrapers ahora capturan `image: a.image || null` en cada opción. Si `options[].image` existe y `options[].text` está vacío, la opción es una imagen.
 
 #### Proceso eficiente para 500+ preguntas con imagen
 

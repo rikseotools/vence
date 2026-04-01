@@ -66,6 +66,19 @@ jest.mock('@/lib/api/laws/queries', () => ({
     loadedAt: new Date(),
   })),
   generateSlugFromShortName: jest.fn((s: string) => s?.toLowerCase().replace(/[^a-z0-9]+/g, '-')),
+  resolveLawIdentifier: jest.fn(async (input: string) => {
+    const map: Record<string, { lawId: string; slug: string; shortName: string }> = {
+      'test-law': { lawId: 'law-123', slug: 'test-law', shortName: 'TL' },
+      'TL': { lawId: 'law-123', slug: 'test-law', shortName: 'TL' },
+      'constitucion-espanola': { lawId: 'law-ce', slug: 'constitucion-espanola', shortName: 'CE' },
+      'CE': { lawId: 'law-ce', slug: 'constitucion-espanola', shortName: 'CE' },
+      'ley-39-2015': { lawId: 'law-39', slug: 'ley-39-2015', shortName: 'Ley 39/2015' },
+      'Ley 39/2015': { lawId: 'law-39', slug: 'ley-39-2015', shortName: 'Ley 39/2015' },
+    }
+    const result = map[input]
+    if (!result) throw new Error(`Ley "${input}" no reconocida`)
+    return result
+  }),
 }))
 
 import { fetchLawSections } from '@/lib/teoriaFetchers'

@@ -16,6 +16,7 @@ interface AuthContextValue {
   user: { id: string; email?: string } | null
   supabase: ReturnType<typeof import('@supabase/supabase-js').createClient>
 }
+import OptionContent from './OptionContent'
 import ArticleModal from './ArticleModal'
 import QuestionDispute from './QuestionDispute'
 
@@ -842,7 +843,7 @@ export default function OfficialExamLayout({
                   {option.toUpperCase()})
                 </span>
                 <span className="text-gray-900 flex-1">
-                  {optionText}
+                  <OptionContent value={optionText} />
                 </span>
                 {showFeedback && isCorrectOption && (
                   <span className="ml-2 text-green-600 font-bold">✓</span>
