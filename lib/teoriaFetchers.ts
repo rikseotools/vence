@@ -365,6 +365,9 @@ export async function fetchLawArticles(lawSlug: string): Promise<LawArticlesResu
     })
 
     console.log(`✅ ${processedArticles.length} artículos cargados`)
+    if (processedArticles.length === 0) {
+      throw new Error(`No se encontraron artículos para la ley "${lawSlug}"`)
+    }
     return {
       articles: processedArticles,
       law: processedArticles[0].law
