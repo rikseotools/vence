@@ -157,5 +157,5 @@ async function _GET() {
   return NextResponse.json({ status: 'ok', service: 'resend-inbound' })
 }
 
-export const POST = withErrorLogging(_POST, '/api/webhooks/resend-inbound')
-export const GET = withErrorLogging(_GET, '/api/webhooks/resend-inbound')
+export const POST = withErrorLogging('/api/webhooks/resend-inbound', _POST)
+export const GET = withErrorLogging('/api/webhooks/resend-inbound', _GET)
