@@ -48,11 +48,24 @@ interface PsychometricAIHelpButtonProps {
   className?: string
 }
 
+// Subtypes que requieren contenido visual (gráficos, tablas, imágenes)
+const VISUAL_SUBTYPES = new Set([
+  'data_tables', 'pie_chart', 'bar_chart', 'line_chart', 'mixed_chart',
+])
+
 export default function PsychometricAIHelpButton({
   question,
   questionTypeLabel,
   className = ''
 }: PsychometricAIHelpButtonProps) {
+  // Ocultar si es un subtype visual sin datos procesables por la IA
+  // (tiene image_url pero content_data vacío → la IA no puede ver la imagen)
+  const isVisualSubtype = VISUAL_SUBTYPES.has(question.question_subtype || '')
+  const hasProcessableData = question.content_data && Object.keys(question.content_data).length > 0
+  if (isVisualSubtype && !hasProcessableData) {
+    return null
+  }
+
   const label = questionTypeLabel
     || (question.question_subtype && SUBTYPE_LABELS[question.question_subtype])
     || 'pregunta'

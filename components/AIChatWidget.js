@@ -862,30 +862,44 @@ export default function AIChatWidget() {
                 {currentQuestionContext ? (
                   currentQuestionContext.isPsicotecnico ? (
                     // Sugerencias para psicotécnicos con contexto de pregunta
-                    <>
-                      <p className="text-xs text-gray-400 dark:text-gray-500 mb-2">Sobre esta {currentQuestionContext.questionTypeName || 'pregunta'}:</p>
-                      <button
-                        onClick={() => {
-                          const dataInfo = formatPsicotecnicoData(currentQuestionContext)
-                          useSuggestion(`Explícame paso a paso cómo resolver esta ${currentQuestionContext.questionTypeName || 'pregunta'}: "${currentQuestionContext.questionText}"\n\nLas opciones son:\nA) ${currentQuestionContext.options?.a}\nB) ${currentQuestionContext.options?.b}\nC) ${currentQuestionContext.options?.c}\nD) ${currentQuestionContext.options?.d}${dataInfo ? `\n\nDATOS DEL GRÁFICO/TABLA:${dataInfo}` : ''}`, 'explicar_psico')
-                        }}
-                        className="block w-full text-left px-3 py-2 text-xs bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition text-blue-700 dark:text-blue-300"
-                      >
-                        💡 Explícame cómo resolverla
-                      </button>
-                      {/* Solo mostrar "Analiza los datos" para gráficos y tablas */}
-                      {['bar_chart', 'pie_chart', 'line_chart', 'mixed_chart', 'data_tables'].includes(currentQuestionContext.questionSubtype) && (
-                        <button
-                          onClick={() => {
-                            const dataInfo = formatPsicotecnicoData(currentQuestionContext)
-                            useSuggestion(`Analiza los datos y dime cuál es la respuesta correcta para: "${currentQuestionContext.questionText}"\n\nOpciones:\nA) ${currentQuestionContext.options?.a}\nB) ${currentQuestionContext.options?.b}\nC) ${currentQuestionContext.options?.c}\nD) ${currentQuestionContext.options?.d}${dataInfo ? `\n\nDATOS:${dataInfo}` : ''}`, 'analizar_psico')
-                          }}
-                          className="block w-full text-left px-3 py-2 text-xs bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/50 transition text-green-700 dark:text-green-300"
-                        >
-                          🔍 Analiza los datos
-                        </button>
-                      )}
-                    </>
+                    // Ocultar botones de IA si es un subtype visual sin datos procesables
+                    (() => {
+                      const visualSubtypes = ['bar_chart', 'pie_chart', 'line_chart', 'mixed_chart', 'data_tables']
+                      const isVisual = visualSubtypes.includes(currentQuestionContext.questionSubtype)
+                      const hasData = currentQuestionContext.contentData && Object.keys(currentQuestionContext.contentData).length > 0
+                      const aiCanHelp = !isVisual || hasData
+
+                      return aiCanHelp ? (
+                        <>
+                          <p className="text-xs text-gray-400 dark:text-gray-500 mb-2">Sobre esta {currentQuestionContext.questionTypeName || 'pregunta'}:</p>
+                          <button
+                            onClick={() => {
+                              const dataInfo = formatPsicotecnicoData(currentQuestionContext)
+                              useSuggestion(`Explícame paso a paso cómo resolver esta ${currentQuestionContext.questionTypeName || 'pregunta'}: "${currentQuestionContext.questionText}"\n\nLas opciones son:\nA) ${currentQuestionContext.options?.a}\nB) ${currentQuestionContext.options?.b}\nC) ${currentQuestionContext.options?.c}\nD) ${currentQuestionContext.options?.d}${dataInfo ? `\n\nDATOS DEL GRÁFICO/TABLA:${dataInfo}` : ''}`, 'explicar_psico')
+                            }}
+                            className="block w-full text-left px-3 py-2 text-xs bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition text-blue-700 dark:text-blue-300"
+                          >
+                            💡 Explícame cómo resolverla
+                          </button>
+                          {/* Solo mostrar "Analiza los datos" para gráficos y tablas con datos */}
+                          {isVisual && hasData && (
+                            <button
+                              onClick={() => {
+                                const dataInfo = formatPsicotecnicoData(currentQuestionContext)
+                                useSuggestion(`Analiza los datos y dime cuál es la respuesta correcta para: "${currentQuestionContext.questionText}"\n\nOpciones:\nA) ${currentQuestionContext.options?.a}\nB) ${currentQuestionContext.options?.b}\nC) ${currentQuestionContext.options?.c}\nD) ${currentQuestionContext.options?.d}${dataInfo ? `\n\nDATOS:${dataInfo}` : ''}`, 'analizar_psico')
+                              }}
+                              className="block w-full text-left px-3 py-2 text-xs bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/50 transition text-green-700 dark:text-green-300"
+                            >
+                              🔍 Analiza los datos
+                            </button>
+                          )}
+                        </>
+                      ) : (
+                        <p className="text-xs text-gray-400 dark:text-gray-500 px-3 py-2">
+                          Esta pregunta tiene contenido visual que la IA no puede procesar. Resuélvela mirando la tabla/gráfico en pantalla.
+                        </p>
+                      )
+                    })()
                   ) : (
                     // Sugerencias para tests de leyes con contexto de pregunta
                     <>
