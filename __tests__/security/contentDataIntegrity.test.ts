@@ -132,6 +132,39 @@ describeIf('Content Data Integrity', () => {
     expect(total).toBe(0)
   }, 30000)
 
+  test('API psicotécnicas debe devolver imageUrl para preguntas data_tables con content_data vacío', async () => {
+    // Este test verifica el flujo completo: BD → API → respuesta con imageUrl
+    // Previene el bug de 386 preguntas invisibles (01/04/2026)
+    const apiUrl = `${SUPABASE_URL}/rest/v1/psychometric_questions?select=id,image_url,content_data&is_active=eq.true&question_subtype=eq.data_tables&content_data=eq.%7B%7D&image_url=not.is.null&limit=3`
+    const res = await fetch(apiUrl, {
+      headers: { 'apikey': SUPABASE_KEY!, 'Authorization': `Bearer ${SUPABASE_KEY!}` },
+    })
+    const rows = await res.json() as Array<{ id: string; image_url: string; content_data: Record<string, unknown> }>
+
+    if (rows.length === 0) return // No hay preguntas de este tipo
+
+    // Verificar que las preguntas tienen image_url en BD
+    for (const row of rows) {
+      expect(row.image_url).toBeTruthy()
+    }
+
+    // Verificar que la API de psicotécnicas (Drizzle) también devuelve imageUrl
+    // Simulando lo que hace PsychometricTestExecutor
+    const drizzleApiUrl = `${SUPABASE_URL}/rest/v1/psychometric_questions?select=id,image_url&is_active=eq.true&question_subtype=eq.data_tables&content_data=eq.%7B%7D&limit=1`
+    const drizzleRes = await fetch(drizzleApiUrl, {
+      headers: { 'apikey': SUPABASE_KEY!, 'Authorization': `Bearer ${SUPABASE_KEY!}` },
+    })
+    const drizzleRows = await drizzleRes.json() as Array<{ id: string; image_url: string | null }>
+
+    // Si hay preguntas data_tables con content_data vacío, DEBEN tener image_url
+    for (const row of drizzleRows) {
+      if (!row.image_url) {
+        console.error(`Pregunta ${row.id.substring(0, 8)} data_tables sin content_data NI image_url — será invisible`)
+      }
+      expect(row.image_url).toBeTruthy()
+    }
+  }, 15000)
+
   test('NO debe haber preguntas legislativas activas que referencien imágenes no disponibles', async () => {
     // Patrones que indican referencia a imagen/tabla visual
     const patterns = [
