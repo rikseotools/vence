@@ -130,6 +130,7 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
       return [
         { key: 'info', label: 'ℹ️ Información', path: '' },
         { key: 'test', label: '🎯 Tests', path: '/test' },
+        { key: 'psicotecnicos', label: '🧩 Psicotécnicos', path: '/psicotecnicos/test' },
         { key: 'temario', label: '📚 Temario', path: '/temario' }
       ]
     } else if (isLeyes) {
@@ -141,6 +142,15 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
         { key: 'test', label: '🎯 Tests', path: '/test' }
       ]
     } else if (isPsicotecnicos) {
+      const psicoUserOpo = OPOSICIONES.find(o => o.positionType === userProfile?.target_oposicion)
+      if (psicoUserOpo) {
+        return [
+          { key: 'info', label: 'ℹ️ Información', path: '/' + psicoUserOpo.slug },
+          { key: 'test', label: '🎯 Tests', path: '/' + psicoUserOpo.slug + '/test' },
+          { key: 'psicotecnicos', label: '🧩 Psicotécnicos', path: '/psicotecnicos/test' },
+          { key: 'temario', label: '📚 Temario', path: '/' + psicoUserOpo.slug + '/temario' },
+        ]
+      }
       return [
         { key: 'test', label: '🎯 Tests', path: '/psicotecnicos/test' }
       ]
@@ -268,7 +278,7 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
     let finalPath = ''
 
     // Si la ruta ya incluye una base completa (como /leyes/test), usarla directamente
-    if (newSectionPath.includes('/') && !newSectionPath.startsWith('/test') && !newSectionPath.startsWith('/temario') && !newSectionPath.startsWith('/psicotecnicos')) {
+    if (newSectionPath.startsWith('/psicotecnicos') || (newSectionPath.includes('/') && !newSectionPath.startsWith('/test') && !newSectionPath.startsWith('/temario'))) {
       finalPath = newSectionPath
     } else {
       // Determinar la ruta base según la oposición actual
@@ -487,13 +497,15 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
                         className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded-md transition-colors text-sm"
                         disabled={
                           (option.key === 'info' && isInInfo) ||
-                          (option.key === 'test' && isInTests) ||
+                          (option.key === 'test' && isInTests && !isPsicotecnicos) ||
+                          (option.key === 'psicotecnicos' && isPsicotecnicos) ||
                           (option.key === 'temario' && pathname.includes('/temario'))
                         }
                       >
                         {option.label}
                         {((option.key === 'info' && isInInfo) ||
-                          (option.key === 'test' && isInTests) ||
+                          (option.key === 'test' && isInTests && !isPsicotecnicos) ||
+                          (option.key === 'psicotecnicos' && isPsicotecnicos) ||
                           (option.key === 'temario' && pathname.includes('/temario'))) && (
                           <span className="text-gray-400 ml-2">(actual)</span>
                         )}
