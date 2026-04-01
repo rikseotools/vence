@@ -90,6 +90,27 @@ export async function processPsychometricQuestion(
     questionId: context.questionContext?.questionId ?? undefined,
   })
 
+  // 0. Detectar contenido visual faltante en subtypes de gráficos/tablas
+  const isVisualSubtype = group === 'charts'
+  const cd = context.questionContext?.contentData
+  const hasContentData = cd && typeof cd === 'object' && Object.keys(cd as Record<string, unknown>).length > 0
+  const hasImageUrl = !!(context.questionContext as Record<string, unknown>)?.imageUrl
+  const hasVisualData = hasContentData || hasImageUrl
+  const questionId = context.questionContext?.questionId
+
+  if (isVisualSubtype && !hasVisualData && questionId) {
+    logger.warn('PsychometricService: Visual subtype without content_data/image_url, reporting', {
+      domain: 'psychometric',
+      subtype,
+      questionId,
+    })
+
+    // Reportar automáticamente como feedback bug (fire-and-forget, deduplicado por questionId)
+    reportMissingVisualContent(questionId, subtype, context.userId).catch(err => {
+      logger.warn('PsychometricService: Error reporting missing visual', { domain: 'psychometric', error: String(err) })
+    })
+  }
+
   // 1. Validación matemática (solo para series)
   const validationSpan = tracer?.spanDB('sequenceValidation', {
     subtype,
@@ -253,4 +274,67 @@ export async function processPsychometricQuestion(
   }
 
   return builder.build()
+}
+
+// ============================================
+// REPORTE AUTOMÁTICO DE CONTENIDO VISUAL FALTANTE
+// ============================================
+
+// Cache en memoria para no reportar la misma pregunta más de una vez por proceso
+const reportedQuestions = new Set<string>()
+
+/**
+ * Crea un feedback automático cuando una pregunta psicotécnica visual
+ * no tiene content_data ni image_url. Deduplicado por questionId.
+ */
+async function reportMissingVisualContent(
+  questionId: string,
+  subtype: string,
+  userId?: string | null,
+): Promise<void> {
+  // Deduplicar en memoria (mismo proceso serverless)
+  if (reportedQuestions.has(questionId)) return
+  reportedQuestions.add(questionId)
+
+  try {
+    const { getDb } = await import('@/db/client')
+    const { userFeedback } = await import('@/db/schema')
+    const { eq, and } = await import('drizzle-orm')
+
+    const db = getDb()
+
+    // Deduplicar en BD: no crear si ya existe un feedback para esta pregunta
+    const [existing] = await db
+      .select({ id: userFeedback.id })
+      .from(userFeedback)
+      .where(and(
+        eq(userFeedback.questionId, questionId),
+        eq(userFeedback.type, 'bug'),
+      ))
+      .limit(1)
+
+    if (existing) return
+
+    // Crear feedback
+    await db.insert(userFeedback).values({
+      userId: userId || null,
+      type: 'bug',
+      message: `[Auto] Pregunta psicotécnica (${subtype}) sin contenido visual. No tiene content_data ni image_url. El usuario no puede ver la tabla/gráfico necesario para resolver la pregunta.`,
+      url: '/psicotecnicos/test',
+      status: 'pending',
+      priority: 'medium',
+      questionId,
+    })
+
+    logger.info('PsychometricService: Reported missing visual content', {
+      domain: 'psychometric',
+      questionId,
+      subtype,
+    })
+  } catch (err) {
+    logger.warn('PsychometricService: Failed to report missing visual', {
+      domain: 'psychometric',
+      error: String(err),
+    })
+  }
 }
