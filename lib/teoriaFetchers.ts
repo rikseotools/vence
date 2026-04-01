@@ -698,6 +698,7 @@ export async function fetchLawSections(lawSlugOrShortName: string, options: Fetc
         .from('laws')
         .select('id, name, short_name')
         .eq('short_name', lawShortName)
+        .eq('is_active', true)
         .single()
 
       if (lawError || !queryResult) {

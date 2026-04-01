@@ -240,6 +240,22 @@ describe('fetchLawSections', () => {
     })
   })
 
+  describe('filtro is_active en query a laws', () => {
+    it('la query a laws incluye eq is_active true para evitar duplicados', async () => {
+      setupLawQuerySuccess({ id: 'law-active', name: 'LO 2/2012', short_name: 'LO 2/2012' })
+      setupSectionsQuerySuccess([])
+
+      await fetchLawSections('test-law')
+
+      // Verify the chain includes is_active filter
+      // mockEq1 is the first .eq() call, mockEq2 is the second
+      // The query does .eq('short_name', ...).eq('is_active', true).single()
+      const eq2Calls = mockEq2.mock.calls
+      const isActiveCall = eq2Calls.find((call: unknown[]) => call[0] === 'is_active' && call[1] === true)
+      expect(isActiveCall).toBeTruthy()
+    })
+  })
+
   describe('manejo de short_name directo', () => {
     it('acepta short_name con / como input directo', async () => {
       mockMapSlug.mockReturnValue(null)
