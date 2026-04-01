@@ -134,9 +134,33 @@ async function _POST(request: NextRequest) {
 
     console.log(`📧 [Inbound] Email de ${fromEmail} — "${subject}"`)
 
+    // 0a. Filtrar emails automáticos que no son de usuarios reales
+    const ignoredSenders = [
+      'noreply-dmarc-support@google.com',
+      'noreply@google.com',
+      'mailer-daemon@',
+      'postmaster@',
+      'noreply@',
+      'no-reply@',
+    ]
+
+    const isAutomated = ignoredSenders.some(pattern =>
+      pattern.endsWith('@') ? fromEmail.startsWith(pattern) : fromEmail === pattern
+    )
+
+    // También ignorar reportes DMARC por asunto
+    const isDmarcReport = subject.toLowerCase().includes('report domain:') ||
+      subject.toLowerCase().includes('dmarc report') ||
+      subject.toLowerCase().includes('report-id:')
+
+    if (isAutomated || isDmarcReport) {
+      console.log(`📧 [Inbound] Email automático ignorado: ${fromEmail} — "${subject}"`)
+      return NextResponse.json({ received: true, action: 'automated_ignored' })
+    }
+
     const db = getDb()
 
-    // 0. Deduplicación: si ya existe un feedback con el mismo email + asunto creado en los últimos 60s, ignorar
+    // 0b. Deduplicación: si ya existe un feedback con el mismo email + asunto creado en los últimos 60s, ignorar
     const recentDuplicates = await db
       .select({ id: userFeedback.id })
       .from(userFeedback)
