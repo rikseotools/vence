@@ -96,6 +96,42 @@ describeIf('Content Data Integrity', () => {
     expect(rows.length).toBe(0)
   }, 15000)
 
+  test('Preguntas data_tables con image_url: la imagen debe ser accesible (muestreo)', async () => {
+    // Las preguntas data_tables con content_data vacío dependen de image_url
+    // para mostrar las tablas. Verificar que las imágenes existen.
+    const rows = await query(
+      'psychometric_questions',
+      'select=id,image_url&is_active=eq.true&question_subtype=eq.data_tables&content_data=eq.%7B%7D&image_url=not.is.null&limit=5'
+    ) as Array<{ id: string; image_url: string }>
+
+    for (const row of rows) {
+      const res = await fetch(row.image_url, { method: 'HEAD' })
+      if (!res.ok) {
+        console.error(`Imagen 404 para ${row.id.substring(0, 8)}: ${row.image_url}`)
+      }
+      expect(res.ok).toBe(true)
+    }
+  }, 30000)
+
+  test('NO debe haber preguntas psicotécnicas de chart sin content_data ni image_url', async () => {
+    // Verificar TODOS los subtipos de chart, no solo data_tables
+    const chartSubtypes = ['data_tables', 'pie_chart', 'bar_chart', 'line_chart', 'mixed_chart']
+    let total = 0
+
+    for (const subtype of chartSubtypes) {
+      const rows = await query(
+        'psychometric_questions',
+        `select=id&is_active=eq.true&question_subtype=eq.${subtype}&content_data=eq.%7B%7D&image_url=is.null`
+      ) as Array<{ id: string }>
+      total += rows.length
+      if (rows.length > 0) {
+        console.error(`${rows.length} preguntas ${subtype} sin content_data ni image_url:`, rows.map(q => q.id.substring(0, 8)))
+      }
+    }
+
+    expect(total).toBe(0)
+  }, 30000)
+
   test('NO debe haber preguntas legislativas activas que referencien imágenes no disponibles', async () => {
     // Patrones que indican referencia a imagen/tabla visual
     const patterns = [
