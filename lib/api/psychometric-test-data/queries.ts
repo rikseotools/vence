@@ -7,6 +7,7 @@ import {
   psychometricSections,
   psychometricQuestions,
   psychometricTestAnswers,
+  userProfiles,
 } from '@/db/schema'
 import { eq, and, inArray, sql } from 'drizzle-orm'
 import type {
@@ -167,6 +168,109 @@ export async function getPsychometricCategories(userId?: string): Promise<GetPsy
         } : {}),
       }
     })
+
+    // 6. Calcular exam frequency por categoría (basado en oposición del usuario)
+    if (userId) {
+      try {
+        const [userProfile] = await db
+          .select({ oposicion: userProfiles.targetOposicion })
+          .from(userProfiles)
+          .where(eq(userProfiles.id, userId))
+          .limit(1)
+
+        if (userProfile?.oposicion) {
+          // Mapear position_type a patrón de exam_source
+          // Solo oposiciones que tienen exámenes psicotécnicos oficiales propios
+          const examSourcePatterns: Record<string, string> = {
+            'auxiliar_administrativo': '%Auxiliar Administrativo Estado%',
+            'auxiliar_administrativo_estado': '%Auxiliar Administrativo Estado%',
+            'auxiliar_administrativo_madrid': '%Auxiliar Administrativo Madrid%',
+            'auxiliar_administrativo_cyl': '%Auxiliar Administrativo CyL%',
+            'tramitacion_procesal': '%Tramitación Procesal%',
+            'auxilio_judicial': '%Auxilio Judicial%',
+            'administrativo_estado': '%Administrativo Estado%',
+          }
+          const examSourcePattern = examSourcePatterns[userProfile.oposicion]
+          if (!examSourcePattern) {
+            // No tenemos exámenes oficiales de esta oposición — no mostrar badges
+            console.log(`📊 [PsychometricCategories] Sin exámenes psicotécnicos para ${userProfile.oposicion}`)
+          } else {
+
+          const officialCounts = await db
+            .select({
+              subtype: psychometricQuestions.questionSubtype,
+              examCount: sql<number>`count(DISTINCT ${psychometricQuestions.examSource})::int`,
+            })
+            .from(psychometricQuestions)
+            .where(
+              and(
+                eq(psychometricQuestions.isOfficialExam, true),
+                eq(psychometricQuestions.isActive, true),
+                sql`${psychometricQuestions.examSource} ILIKE ${examSourcePattern}`
+              )
+            )
+            .groupBy(psychometricQuestions.questionSubtype)
+
+          // Mapear question_subtype → section_key (no coinciden directamente)
+          const subtypeToSectionKey: Record<string, string> = {
+            'data_tables': 'tablas',
+            'pie_chart': 'graficos', 'bar_chart': 'graficos', 'line_chart': 'graficos', 'mixed_chart': 'graficos',
+            'classification': 'clasificacion',
+            'calculation': 'numeros-enteros',
+            'percentage': 'porcentajes',
+            'probability': 'calculo-intervalos',
+            'synonym': 'sinonimos-antonimos', 'antonym': 'sinonimos-antonimos',
+            'analogy': 'analogias-verbales',
+            'definition': 'definiciones',
+            'word_analysis': 'organizacion-frases',
+            'error_detection': 'ortografia',
+            'alphabetical_order': 'ortografia', 'alphabetical': 'ortografia',
+            'sequence_numeric': 'series-numericas',
+            'sequence_letter': 'series-letras-correlativas',
+            'sequence_alphanumeric': 'series-mixtas',
+            'text_question': 'pruebas-instrucciones',
+            'code_equivalence': 'pruebas-instrucciones',
+            'coding': 'pruebas-instrucciones',
+          }
+
+          const subtypeFrequency = new Map<string, 'frequent' | 'appears'>()
+          for (const row of officialCounts) {
+            if (!row.subtype) continue
+            const freq: 'frequent' | 'appears' = row.examCount >= 3 ? 'frequent' : 'appears'
+            // Mapear subtype a section key
+            const sectionKey = subtypeToSectionKey[row.subtype]
+            if (sectionKey) {
+              const existing = subtypeFrequency.get(sectionKey)
+              if (!existing || freq === 'frequent') subtypeFrequency.set(sectionKey, freq)
+            }
+            // También guardar por subtype directo (por si coincide con category key)
+            subtypeFrequency.set(row.subtype, freq)
+          }
+
+          // Asignar a cada categoría la mayor frecuencia de sus secciones
+          for (const cat of categories) {
+            let maxFreq: 'frequent' | 'appears' | null = null
+            // Comprobar las secciones de la categoría
+            for (const sec of cat.sections) {
+              const freq = subtypeFrequency.get(sec.key)
+              if (freq === 'frequent') { maxFreq = 'frequent'; break }
+              if (freq === 'appears') maxFreq = 'appears'
+            }
+            // También comprobar el key de la categoría directamente (categorías sin secciones)
+            if (!maxFreq) {
+              const freq = subtypeFrequency.get(cat.key)
+              if (freq) maxFreq = freq
+            }
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            ;(cat as any).examFrequency = maxFreq
+          }
+          } // close else (examSourcePattern exists)
+        }
+      } catch (err) {
+        console.error('⚠️ [PsychometricCategories] Error calculando examFrequency:', err)
+        // No bloquear — examFrequency queda undefined
+      }
+    }
 
     const response: GetPsychometricCategoriesResponse = {
       success: true,

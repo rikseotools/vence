@@ -29,6 +29,7 @@ export const psychometricCategorySchema = z.object({
   sections: z.array(psychometricSectionSchema),
   answeredCount: z.number().int().nonnegative().optional(),
   neverSeen: z.number().int().nonnegative().optional(),
+  examFrequency: z.enum(['frequent', 'appears']).nullable().optional(),
 })
 
 export type PsychometricCategory = z.infer<typeof psychometricCategorySchema>

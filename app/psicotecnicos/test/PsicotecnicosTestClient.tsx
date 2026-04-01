@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
+import { OPOSICIONES } from '@/lib/config/oposiciones'
 import InteractiveBreadcrumbs from '@/components/InteractiveBreadcrumbs'
 import type {
   PsychometricCategory,
@@ -10,7 +11,7 @@ import type {
 } from '@/lib/api/psychometric-test-data/schemas'
 
 export default function PsicotecnicosTestClient() {
-  const { loading, user } = useAuth()
+  const { loading, user, userProfile } = useAuth()
   const router = useRouter()
 
   // Data from API
@@ -196,27 +197,79 @@ export default function PsicotecnicosTestClient() {
               const allSelected = categories
                 .filter(cat => cat.questionCount > 0)
                 .every(cat => selectedCategories[cat.key])
-              return (
-                <div className="flex justify-end mb-3">
-                  <button
-                    onClick={() => {
-                      const catSel: Record<string, boolean> = {}
-                      const secSel: Record<string, boolean> = {}
-                      for (const cat of categories) {
-                        catSel[cat.key] = allSelected ? false : cat.questionCount > 0
-                        for (const sec of cat.sections) {
-                          secSel[sec.key] = !allSelected
-                        }
-                      }
-                      setSelectedCategories(catSel)
-                      setSelectedSections(secSel)
-                    }}
-                    className={`text-sm font-medium ${allSelected ? 'text-gray-500 hover:text-gray-700' : 'text-blue-600 hover:text-blue-800'}`}
-                  >
-                    {allSelected ? 'Deseleccionar todo' : 'Seleccionar todo'}
-                  </button>
-                </div>
-              )
+              return (<>
+                {(() => {
+                  const hasExamData = categories.some(cat => cat.examFrequency)
+                  const opoName = hasExamData
+                    ? OPOSICIONES.find(o => o.positionType === userProfile?.target_oposicion)?.name || 'mi oposición'
+                    : ''
+                  const examOnlySelected = hasExamData && categories
+                    .filter(cat => cat.questionCount > 0)
+                    .every(cat => cat.examFrequency ? selectedCategories[cat.key] : !selectedCategories[cat.key])
+
+                  return (
+                    <div className="flex gap-3 mb-4">
+                      {hasExamData && (
+                        <button
+                          onClick={() => {
+                            if (examOnlySelected) {
+                              const catSel: Record<string, boolean> = {}
+                              const secSel: Record<string, boolean> = {}
+                              for (const cat of categories) {
+                                catSel[cat.key] = cat.questionCount > 0
+                                for (const sec of cat.sections) {
+                                  secSel[sec.key] = true
+                                }
+                              }
+                              setSelectedCategories(catSel)
+                              setSelectedSections(secSel)
+                            } else {
+                              const catSel: Record<string, boolean> = {}
+                              const secSel: Record<string, boolean> = {}
+                              for (const cat of categories) {
+                                catSel[cat.key] = !!cat.examFrequency && cat.questionCount > 0
+                                for (const sec of cat.sections) {
+                                  secSel[sec.key] = !!cat.examFrequency
+                                }
+                              }
+                              setSelectedCategories(catSel)
+                              setSelectedSections(secSel)
+                            }
+                          }}
+                          className={`flex-1 py-3 px-4 rounded-lg border-2 transition-colors text-sm font-medium ${
+                            examOnlySelected
+                              ? 'bg-blue-100 border-blue-500 text-blue-800 shadow-sm'
+                              : 'bg-gray-50 border-gray-200 hover:bg-gray-100 text-gray-600'
+                          }`}
+                        >
+                          Seleccionar lo más importante para {opoName}
+                        </button>
+                      )}
+                      <button
+                        onClick={() => {
+                          const catSel: Record<string, boolean> = {}
+                          const secSel: Record<string, boolean> = {}
+                          for (const cat of categories) {
+                            catSel[cat.key] = allSelected ? false : cat.questionCount > 0
+                            for (const sec of cat.sections) {
+                              secSel[sec.key] = !allSelected
+                            }
+                          }
+                          setSelectedCategories(catSel)
+                          setSelectedSections(secSel)
+                        }}
+                        className={`flex-1 py-3 px-4 rounded-lg border-2 transition-colors text-sm font-medium ${
+                          allSelected
+                            ? 'bg-blue-100 border-blue-500 text-blue-800 shadow-sm'
+                            : 'bg-gray-50 border-gray-200 hover:bg-gray-100 text-gray-600'
+                        }`}
+                      >
+                        {allSelected ? 'Desmarcar todo' : 'Seleccionar todo'}
+                      </button>
+                    </div>
+                  )
+                })()}
+              </>)
             })()}
             <div className="space-y-2">
               {categories
@@ -262,6 +315,12 @@ export default function PsicotecnicosTestClient() {
                         >
                           <span className="text-base sm:text-lg font-medium text-gray-900 truncate">
                             {cat.name}
+                            {cat.examFrequency === 'frequent' && (
+                              <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">⭐ Frecuente en examen</span>
+                            )}
+                            {cat.examFrequency === 'appears' && (
+                              <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">📋 Aparece en examen</span>
+                            )}
                           </span>
                           <div className="flex items-center gap-2 ml-2 flex-shrink-0">
                             <div className="text-right">
