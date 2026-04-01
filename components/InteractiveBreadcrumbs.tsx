@@ -39,7 +39,7 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   const [dropdownSearch, setDropdownSearch] = useState<string>('')
   const [toast, setToast] = useState<string | null>(null)
-  const { user } = useAuth()
+  const { user, userProfile } = useAuth()
 
   // Detectar si venimos de un cambio de oposición (query param)
   useEffect(() => {
@@ -304,9 +304,15 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
                     (isStandaloneTest && !isPorLeyes) || // Siempre link en tests standalone (menos por-leyes cuando estamos en él)
                     (isPorLeyes && pathname !== '/test/por-leyes')
 
+                  // Para psicotécnicos: mostrar la oposición del usuario si la tiene
+                  const psicoOpo = isPsicotecnicos && !currentOpo
+                    ? OPOSICIONES.find(o => o.positionType === userProfile?.target_oposicion)
+                    : null
+
                   // Determinar href
                   const linkHref =
                     currentOpo ? '/' + currentOpo.slug :
+                    (isPsicotecnicos && psicoOpo) ? '/' + psicoOpo.slug :
                     isLeyes ? '/leyes' :
                     isTeoria ? '/teoria' :
                     isPsicotecnicos ? '/psicotecnicos' :
@@ -314,10 +320,14 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
                     isStandaloneTest ? '/test/por-leyes' : '#'
 
                   // Determinar texto: nombre completo en desktop, abreviado en móvil
-                  const labelContent = currentOpo
-                    ? (hasCcaaFlag(currentOpo.id)
-                        ? <><CcaaFlag oposicionId={currentOpo.id} /> <span className="hidden md:inline">{currentOpo.name}</span><span className="md:hidden">{currentOpo.shortName}</span></>
-                        : <><span className="hidden md:inline">{currentOpo.emoji} {currentOpo.name}</span><span className="md:hidden">{currentOpo.emoji} {currentOpo.shortName}</span></>)
+
+                  const labelContent = (currentOpo || psicoOpo)
+                    ? (() => {
+                        const opo = currentOpo || psicoOpo!
+                        return hasCcaaFlag(opo.id)
+                          ? <><CcaaFlag oposicionId={opo.id} /> <span className="hidden md:inline">{opo.name}</span><span className="md:hidden">{opo.shortName}</span></>
+                          : <><span className="hidden md:inline">{opo.emoji} {opo.name}</span><span className="md:hidden">{opo.emoji} {opo.shortName}</span></>
+                      })()
                     : isLeyes ? '📚 Leyes'
                     : isTeoria ? '📖 Teoría'
                     : isPsicotecnicos ? '🧩 Psicotécnicos'
@@ -437,11 +447,11 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
                   if (isInSpecificPage && basePath) {
                     return (
                       <Link
-                        href={`${basePath}${isInTemario ? '/temario' : isInTests ? '/test' : ''}`}
+                        href={isPsicotecnicos ? '/psicotecnicos/test' : `${basePath}${isInTemario ? '/temario' : isInTests ? '/test' : ''}`}
                         className="text-blue-600 hover:text-blue-800 transition-colors"
                       >
                         {isInInfo && 'ℹ️ Información'}
-                        {isInTests && '🎯 Tests'}
+                        {isInTests && (isPsicotecnicos ? '🧩 Psicotécnicos' : '🎯 Tests')}
                         {isInTemario && '📚 Temario'}
                       </Link>
                     )
@@ -450,7 +460,7 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
                   return (
                     <span className="text-gray-700 font-semibold">
                       {isInInfo && 'ℹ️ Información'}
-                      {isInTests && '🎯 Tests'}
+                      {isInTests && (isPsicotecnicos ? '🧩 Psicotécnicos' : '🎯 Tests')}
                       {isInTemario && '📚 Temario'}
                     </span>
                   )

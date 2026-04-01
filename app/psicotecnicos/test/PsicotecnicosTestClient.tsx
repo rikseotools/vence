@@ -201,7 +201,7 @@ export default function PsicotecnicosTestClient() {
                 {(() => {
                   const hasExamData = categories.some(cat => cat.examFrequency)
                   const opoName = hasExamData
-                    ? OPOSICIONES.find(o => o.positionType === userProfile?.target_oposicion)?.name || 'mi oposición'
+                    ? OPOSICIONES.find(o => o.positionType === (userProfile as any)?.target_oposicion)?.name || 'mi oposición'
                     : ''
                   const examOnlySelected = hasExamData && categories
                     .filter(cat => cat.questionCount > 0)
