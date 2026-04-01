@@ -9,7 +9,7 @@ import '@testing-library/jest-dom'
 // ============================================
 
 // Mock de Supabase
-const mockSupabaseClient = {
+const mockSupabaseClient: Record<string, jest.Mock> = {
   from: jest.fn(() => mockSupabaseClient),
   select: jest.fn(() => mockSupabaseClient),
   insert: jest.fn(() => mockSupabaseClient),
@@ -18,7 +18,7 @@ const mockSupabaseClient = {
   order: jest.fn(() => mockSupabaseClient),
   limit: jest.fn(() => mockSupabaseClient),
   single: jest.fn(() => Promise.resolve({ data: null, error: null })),
-  then: jest.fn((cb) => cb({ data: [], error: null }))
+  then: jest.fn((cb: (val: { data: unknown[]; error: null }) => void) => cb({ data: [], error: null }))
 }
 
 // ============================================
@@ -29,11 +29,11 @@ describe('SupportEmailService - Lógica de envío de emails', () => {
 
   describe('Verificación de usuario activo (isUserActivelyBrowsing)', () => {
 
-    function isUserActivelyBrowsing(lastActivityDate) {
+    function isUserActivelyBrowsing(lastActivityDate: string | null): boolean {
       if (!lastActivityDate) return false
       const lastActivity = new Date(lastActivityDate)
       const now = new Date()
-      const secondsSinceLastActivity = (now - lastActivity) / 1000
+      const secondsSinceLastActivity = (now.getTime() - lastActivity.getTime()) / 1000
       return secondsSinceLastActivity <= 5
     }
 
@@ -49,7 +49,7 @@ describe('SupportEmailService - Lógica de envío de emails', () => {
 
     test('debe retornar false si no hay fecha de actividad', () => {
       expect(isUserActivelyBrowsing(null)).toBe(false)
-      expect(isUserActivelyBrowsing(undefined)).toBe(false)
+      expect(isUserActivelyBrowsing(undefined as unknown as string | null)).toBe(false)
     })
 
     test('debe retornar false exactamente en el límite de 5 segundos', () => {
@@ -60,7 +60,7 @@ describe('SupportEmailService - Lógica de envío de emails', () => {
 
   describe('Decisión de envío de email', () => {
 
-    function shouldSendEmail(preferences, isActivelyBrowsing) {
+    function shouldSendEmail(preferences: { unsubscribed_all: boolean }, isActivelyBrowsing: boolean) {
       // Si deshabilitó todos los emails, no enviar
       if (preferences.unsubscribed_all) {
         return { send: false, reason: 'emails_disabled' }
@@ -99,7 +99,7 @@ describe('SupportEmailService - Lógica de envío de emails', () => {
 
   describe('Preparación de datos del email', () => {
 
-    function prepareEmailData(userInfo, adminMessage, conversationId) {
+    function prepareEmailData(userInfo: { email: string; full_name?: string | null }, adminMessage: string, conversationId: string) {
       const baseUrl = 'https://www.vence.es'
       return {
         to: userInfo.email,
@@ -146,7 +146,7 @@ describe('SupportEmailService - Lógica de envío de emails', () => {
 
 describe('API /api/send-support-email - Validación de entrada', () => {
 
-  function validateSupportEmailRequest(body) {
+  function validateSupportEmailRequest(body: { userId?: string; adminMessage?: string; conversationId?: string }) {
     const errors = []
 
     if (!body.userId) errors.push('userId es requerido')
@@ -219,7 +219,7 @@ describe('Sistema de Notificaciones - Campana', () => {
 
   describe('Creación de notificación de feedback_response', () => {
 
-    function createFeedbackNotification(userId, adminMessage, conversationId, feedbackId) {
+    function createFeedbackNotification(userId: string, adminMessage: string, conversationId: string, feedbackId: string) {
       const messagePreview = adminMessage.length > 100
         ? adminMessage.substring(0, 100) + '...'
         : adminMessage
@@ -281,7 +281,7 @@ describe('Sistema de Notificaciones - Campana', () => {
 
   describe('URL de redirección desde notificación', () => {
 
-    function getNotificationRedirectUrl(contextData) {
+    function getNotificationRedirectUrl(contextData: { type: string; conversation_id?: string; dispute_id?: string }) {
       if (contextData.type === 'feedback_response') {
         return `/soporte?conversation_id=${contextData.conversation_id}`
       }

@@ -136,6 +136,33 @@ async function _POST(request: NextRequest) {
 
     const db = getDb()
 
+    // 0. Deduplicación: si ya existe un feedback con el mismo email + asunto creado en los últimos 60s, ignorar
+    const recentDuplicates = await db
+      .select({ id: userFeedback.id })
+      .from(userFeedback)
+      .where(
+        and(
+          eq(userFeedback.email, fromEmail),
+          eq(userFeedback.type, 'email'),
+          sql`${userFeedback.createdAt} > NOW() - INTERVAL '60 seconds'`
+        )
+      )
+      .limit(1)
+
+    if (recentDuplicates.length > 0) {
+      // Verificar si el asunto matchea
+      const [recent] = await db
+        .select({ message: userFeedback.message })
+        .from(userFeedback)
+        .where(eq(userFeedback.id, recentDuplicates[0].id))
+        .limit(1)
+
+      if (recent?.message?.includes(subject) || recent?.message?.includes(rawText.substring(0, 50))) {
+        console.log(`📧 [Inbound] Duplicado detectado — ignorando`)
+        return NextResponse.json({ received: true, action: 'duplicate_ignored' })
+      }
+    }
+
     // 1. Buscar si el usuario existe
     const userResult = await db
       .select({ id: userProfiles.id })
@@ -224,7 +251,7 @@ async function _POST(request: NextRequest) {
       userId: userId,
       email: fromEmail,
       type: 'email',
-      message: `**${subject}**\n\n${messageText}`,
+      message: subject !== '(sin asunto)' ? `${subject}\n\n${messageText}` : messageText,
       url: 'email-inbound',
       status: 'pending',
       priority: 'medium',
@@ -241,7 +268,7 @@ async function _POST(request: NextRequest) {
       conversationId: conversation.id,
       senderId: userId,
       isAdmin: false,
-      message: `**De:** ${fromName ? fromName + ' <' + fromEmail + '>' : fromEmail}\n**Asunto:** ${subject}\n\n${messageText}`,
+      message: messageText,
     })
 
     console.log(`📧 [Inbound] Nueva conversación ${conversation.id.substring(0, 8)} para ${fromEmail}`)
