@@ -104,9 +104,29 @@ export class VerificationDomain implements ChatDomain {
     // Verificar si tenemos la respuesta correcta disponible
     // (solo está disponible después de que el usuario responde)
     if (!hasCorrectAnswer(context)) {
-      logger.info('VerificationDomain: No correctAnswer available (user has not answered yet)', {
+      logger.info('VerificationDomain: No correctAnswer available, checking if message is a knowledge question', {
         domain: 'verification',
+        message: context.currentMessage?.substring(0, 80),
       })
+
+      // Si el usuario pregunta "qué artículo es/regula/dice" o similar sin haber respondido,
+      // es una pregunta de conocimiento, no de verificación. Delegar a SearchDomain.
+      // Excluir preguntas de búsqueda de exámenes (ej: "qué artículos caen en exámenes")
+      const msg = context.currentMessage
+      const isSearchQuery = /ca[ií]do.*ex[aá]men|m[aá]s\s+importantes?|suelen\s+caer|tipos?\s+de\s+preguntas/i.test(msg)
+      const isKnowledgeQuestion = !isSearchQuery && (
+        this.asksAboutAnswer(msg) || /art[ií]culo|ley|regula|norma/i.test(msg)
+      )
+
+      if (isKnowledgeQuestion) {
+        logger.info('VerificationDomain: Knowledge question without answer → returning null to let other domains handle', {
+          domain: 'verification',
+        })
+        // Devolver null para que el Orchestrator continúe con routing normal
+        // (SearchDomain buscará el artículo en la BD)
+        return null!
+      }
+
       return new ChatResponseBuilder()
         .domain('verification')
         .text('🤔 **Primero responde la pregunta** para que pueda explicarte por qué es correcta o incorrecta.\n\nAsí evitamos hacer spoiler de la respuesta. ¡Inténtalo y luego hablamos!')

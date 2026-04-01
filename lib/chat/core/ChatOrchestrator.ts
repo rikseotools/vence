@@ -221,10 +221,17 @@ export class ChatOrchestrator {
           logger.info('Fast-path: VerificationDomain (question context detected)', { domain: 'orchestrator' })
 
           const response = await verifyDomain.handle(context, tracer)
-          const duration = Date.now() - startTime
-          logger.info(`Request completed via fast-path in ${duration}ms`, { domain: 'orchestrator' })
-          await tracer.flush()
-          return response
+
+          // Si VerificationDomain devuelve null (ej: pregunta de conocimiento sin correctAnswer),
+          // continuar con routing normal para que otro domain (SearchDomain) lo maneje.
+          if (response) {
+            const duration = Date.now() - startTime
+            logger.info(`Request completed via fast-path in ${duration}ms`, { domain: 'orchestrator' })
+            await tracer.flush()
+            return response
+          }
+
+          logger.info('Fast-path: VerificationDomain returned null, falling through to normal routing', { domain: 'orchestrator' })
         }
       }
 
