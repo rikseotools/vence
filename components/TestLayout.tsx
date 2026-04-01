@@ -29,7 +29,6 @@ import {
   createDetailedAnswer
 } from '../utils/testAnswers'
 import {
-  completeDetailedTest,
   formatTime
 } from '../utils/testAnalytics'
 import { testTracker } from '../utils/testTracking'
@@ -46,6 +45,7 @@ import SessionExpiredModal from './SessionExpiredModal'
 import { useOposicionPaths } from '@/hooks/useOposicionPaths'
 import { validateAnswer } from '@/lib/api/answers/client'
 import { answerAndSave } from '@/lib/api/v2/answer-and-save/client'
+import { completeTestOnServer } from '@/lib/api/v2/complete-test/client'
 import { useAnswerWatchdog } from '@/hooks/useAnswerWatchdog'
 import { logClientError } from '@/lib/logClientError'
 import ContentDataRenderer from './ContentDataRenderer'
@@ -1087,28 +1087,48 @@ export default function TestLayout({
         if (user && session) {
           setSaveStatus('saving')
 
-          // Verificar preguntas guardadas en BD antes de completar
-          const { data: savedQuestions } = await supabase
-            .from('test_questions')
-            .select('question_order')
-            .eq('test_id', session.id)
-
-          const savedCount = savedQuestions?.length || 0
-          if (savedCount < newDetailedAnswers.length) {
-            saveAnswersInBackground(session.id, newDetailedAnswers, effectiveQuestions, tema, startTime).catch(() => {})
-          }
-
-          const completionResult = await completeDetailedTest(
-            session.id, newScore,
-            newDetailedAnswers as unknown as Parameters<typeof completeDetailedTest>[2],
-            effectiveQuestions, startTime, testTracker.interactionEvents, userSession
-          )
-          setSaveStatus(completionResult.status as 'saving' | 'saved' | 'error')
-
-          if (completionResult.status === 'success' && tema && typeof tema === 'number') {
-            const accuracy = Math.round((newScore / effectiveQuestions.length) * 100)
-            notifyTestCompletion(tema, accuracy, effectiveQuestions.length).catch(() => {})
-          }
+          // Finalización server-side — NO bloquea el finally ni processingAnswer
+          completeTestOnServer({
+            sessionId: session.id,
+            finalScore: newScore,
+            totalQuestions: effectiveQuestions.length,
+            detailedAnswers: newDetailedAnswers.map(a => ({
+              questionIndex: a.questionIndex ?? 0,
+              selectedAnswer: a.selectedAnswer ?? -1,
+              isCorrect: !!a.isCorrect,
+              timeSpent: a.timeSpent ?? 0,
+              confidence: (['very_sure', 'sure', 'unsure', 'guessing', 'unknown'].includes(a.confidence as string)
+                ? a.confidence : 'unknown') as 'very_sure' | 'sure' | 'unsure' | 'guessing' | 'unknown',
+              interactions: a.interactions ?? 1,
+              questionData: a.questionData ? {
+                id: a.questionData.id ?? null,
+                metadata: a.questionData.metadata ? {
+                  difficulty: (['easy', 'medium', 'hard', 'extreme'].includes(a.questionData.metadata.difficulty as string)
+                    ? a.questionData.metadata.difficulty : null) as 'easy' | 'medium' | 'hard' | 'extreme' | null,
+                } : null,
+                article: a.questionData.article ? {
+                  id: a.questionData.article.id ?? null,
+                  number: a.questionData.article.number != null ? String(a.questionData.article.number) : null,
+                  law_short_name: a.questionData.article.law_short_name ?? null,
+                } : null,
+              } : null,
+            })),
+            startTime,
+            interactionEvents: testTracker.interactionEvents.slice(-500),
+            userSessionId: userSession?.id ?? null,
+            tema: typeof tema === 'number' ? tema : null,
+          })
+            .then(result => {
+              setSaveStatus(result.status as 'saving' | 'saved' | 'error')
+              if (result.success && tema && typeof tema === 'number') {
+                const accuracy = Math.round((newScore / effectiveQuestions.length) * 100)
+                notifyTestCompletion(tema, accuracy, effectiveQuestions.length).catch(() => {})
+              }
+            })
+            .catch(err => {
+              console.error('❌ Error en finalización de test (server-side):', err)
+              setSaveStatus('error')
+            })
         }
       }
 

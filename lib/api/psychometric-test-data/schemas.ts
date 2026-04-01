@@ -78,6 +78,7 @@ export const psychometricQuestionSchema = z.object({
   cognitiveSkills: z.array(z.string()).nullable(),
   isOfficialExam: z.boolean().nullable(),
   examSource: z.string().nullable(),
+  imageUrl: z.string().nullable().optional(),
 })
 
 export type PsychometricQuestion = z.infer<typeof psychometricQuestionSchema>
