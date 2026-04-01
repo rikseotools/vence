@@ -25,7 +25,7 @@ export default function PieChartQuestion({
   // Dark mode desactivado para gráficos psicotécnicos
 
   const generatePieChart = () => {
-    if (!question.content_data?.chart_data) return
+    if (!question.content_data?.chart_data) { setChartSvg(null); return }
 
     const data = question.content_data.chart_data
     const centerSize = 200

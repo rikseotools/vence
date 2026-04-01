@@ -25,7 +25,7 @@ export default function LineChartQuestion({
   // Dark mode desactivado para gráficos psicotécnicos
 
   const generateLineChart = () => {
-    if (!question.content_data?.age_groups) return
+    if (!question.content_data?.age_groups) { setChartSvg(null); return }
 
     const data = question.content_data
     const chartWidth = 700

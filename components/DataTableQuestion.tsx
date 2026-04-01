@@ -37,7 +37,12 @@ export default function DataTableQuestion({
     const instructions = question.content_data?.instructions
     const textPassage = question.content_data?.text_passage
 
-    if (!tableData && !tables && !hasDirectData && !hasTabla1Tabla2 && !instruction && !instructions && !textPassage) return
+    if (!tableData && !tables && !hasDirectData && !hasTabla1Tabla2 && !instruction && !instructions && !textPassage) {
+      // Sin datos en content_data → null para que ChartQuestion use su fallback
+      // (ContentDataRenderer con imageUrl si existe, o nada)
+      setTableComponent(null)
+      return
+    }
 
     setTableComponent(
       <div className="w-full">

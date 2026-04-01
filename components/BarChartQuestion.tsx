@@ -82,7 +82,7 @@ export default function BarChartQuestion({
   }
 
   const generateBarChart = (): void => {
-    if (!question.content_data?.chart_data) return
+    if (!question.content_data?.chart_data) { setChartSvg(null); return }
 
     const rawData = question.content_data.chart_data as any
     let data: any[] = []

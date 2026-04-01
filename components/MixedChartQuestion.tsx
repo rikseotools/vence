@@ -211,7 +211,7 @@ export default function MixedChartQuestion({
   }
 
   const generateMixedChart = () => {
-    if (!question.content_data?.chart_data) return
+    if (!question.content_data?.chart_data) { setChartSvg(null); return }
 
     const data = question.content_data.chart_data
 
