@@ -385,6 +385,11 @@ export function isPlatformQuery(message: string): boolean {
     /gen[eé]ra(me)?\s+(un\s+)?test/i,
     /quiero\s+(un\s+)?test\b/i,
     /necesito\s+(un\s+)?test\b/i,
+    // Ver resultados / historial de tests y simulacros
+    /(dame|ver|enseñ[aá]|muestra|dime)\s*(los\s*)?(resultado|estad[ií]stica|nota|puntuaci[oó]n)/i,
+    /resultado.*que\s*he\s*(hecho|sacado|obtenido)/i,
+    /resultado.*(sim[iu]lacro|examen|test)/i,
+    /historial\s*(de\s*)?(test|examen|sim[iu]lacro)/i,
     // Quejas o dudas sobre comportamiento de la plataforma
     /por\s*qu[eé]\s*(me\s*)?(salen?|aparecen?|encuentro)\s*(preguntas?|temas?)/i,
     /selecciono\s+(un\s+)?tema.*preguntas?\s*(de\s+)?otro/i,

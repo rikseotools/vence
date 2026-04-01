@@ -302,6 +302,22 @@ Al entrar a una oposicion y hacer un test, el sistema detecta automaticamente qu
 💡 Cuando estés resolviendo preguntas, ¡pídeme ayuda! Puedo explicarte la lógica de cada ejercicio.`
   }
 
+  // Ver resultados / historial de tests y simulacros
+  if (/(dame|ver|enseñ[aá]|muestra|dime)\s*(los\s*)?(resultado|estad[ií]stica|nota|puntuaci[oó]n)/i.test(msgLower) ||
+      /resultado.*que\s*he\s*(hecho|sacado|obtenido)/i.test(msgLower) ||
+      /resultado.*(sim[iu]lacro|examen|test)/i.test(msgLower) ||
+      /historial\s*(de\s*)?(test|examen|sim[iu]lacro)/i.test(msgLower)) {
+    return `**Como ver tus resultados**
+
+1. Pulsa en tu **foto de perfil** (arriba a la derecha)
+2. Veras un resumen rapido de tu progreso (racha, tests, aciertos)
+3. Pulsa en **"Mis Estadisticas"** para ver el historial completo
+
+Ahi encontraras todos tus tests completados con fecha, nota y desglose por ley.
+
+👉 **[Ir directamente a Mis Estadisticas](/mis-estadisticas)**`
+  }
+
   // Preparar / crear test personalizado
   if (/prep[aá]ra(me|nos)?\s+(un\s+)?test|hazme\s+(un\s+)?test|cr[eé]a(me)?\s+(un\s+)?test|gen[eé]ra(me)?\s+(un\s+)?test|quiero\s+(un\s+)?test\b|necesito\s+(un\s+)?test\b/i.test(msgLower)) {
     return `**Crear un test personalizado**
