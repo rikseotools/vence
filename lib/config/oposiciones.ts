@@ -607,7 +607,7 @@ export const OPOSICIONES: Oposicion[] = [
         title: 'Examen 2025',
         oep: 'OEP 2021, 2022 y 2023',
         partes: [
-          { id: 'completo', icon: '📋', title: 'Examen completo', description: '76 preguntas' },
+          { id: 'completo', icon: '📋', title: 'Examen completo', description: '75 preguntas' },
         ],
       },
       {
@@ -631,7 +631,7 @@ export const OPOSICIONES: Oposicion[] = [
         title: 'Examen 2021',
         oep: 'OEP 2018',
         partes: [
-          { id: 'completo', icon: '📋', title: 'Examen completo', description: '85 preguntas' },
+          { id: 'completo', icon: '📋', title: 'Examen completo', description: '83 preguntas' },
         ],
       },
     ],

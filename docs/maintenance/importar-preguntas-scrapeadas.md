@@ -652,7 +652,58 @@ await supabase.from('laws').insert({
 - Cada pregunta debe tener un artículo cuyo contenido justifique la respuesta correcta.
 - Verificar que el epígrafe del tema realmente incluye esos conceptos teóricos antes de importar las preguntas.
 
-## 12. Preguntas con Imágenes/Datos Visuales (Psicotécnicas)
+## 12. Aislamiento de preguntas de exámenes oficiales por oposición (CRÍTICO)
+
+Las leyes virtuales de informática (Procesadores de texto, Hojas de cálculo, etc.) son **compartidas** entre todas las oposiciones. Si vinculas preguntas de exámenes oficiales de una oposición a estas leyes compartidas, los usuarios de OTRAS oposiciones verán esas preguntas, que pueden ser de versiones antiguas o contener referencias a documentos específicos del examen.
+
+### Problema real (incidente 01/04/2026)
+
+Preguntas de exámenes CyL (Excel 2013, Word 2016) vinculadas a "Hojas de cálculo. Excel" (ley compartida) aparecían en tests de Aux Estado (Excel 365). Además, preguntas de supuesto ("celda G33 del Anexo Excel") sin sentido fuera del examen CyL.
+
+### Regla: preguntas de informática de exámenes oficiales NUNCA en leyes compartidas
+
+Las preguntas **legislativas** de exámenes oficiales SÍ pueden estar en leyes compartidas — una pregunta sobre el Art. 103 CE es válida para cualquier oposición. El problema es **solo con informática y supuestos**:
+- Versiones de software específicas (Excel 2013, Word 2016) que no aplican a otras oposiciones
+- Supuestos prácticos que referencian documentos anexos del examen
+
+Para cada oposición que tiene preguntas de informática en exámenes oficiales, crear leyes virtuales **exclusivas**:
+
+```
+Leyes compartidas (para preguntas de estudio):     Leyes exclusivas (para exámenes oficiales):
+├── Procesadores de texto                          ├── Procesadores de texto - Exámenes CyL
+├── Hojas de cálculo. Excel                        ├── Hojas de cálculo Excel - Exámenes CyL
+├── Correo electrónico                             ├── Supuesto Word - Exámenes oficiales CyL
+├── La Red Internet                                ├── Supuesto Excel - Exámenes oficiales CyL
+├── Informática Básica                             ├── Windows 10 - Exámenes CyL
+└── Windows 11                                     └── (etc. para cada oposición)
+```
+
+### Cuándo crear ley exclusiva
+
+- Preguntas de informática de exámenes oficiales con versiones específicas (Excel 2013, Word 2016)
+- Preguntas de "supuesto práctico" que referencian un documento anexo del examen
+- Preguntas de ofimática que mencionan menús/opciones de una versión concreta
+
+### Cuándo usar ley compartida
+
+- Preguntas **legislativas** de exámenes oficiales (CE, LPAC, TREBEP, etc.) — válidas para todas las oposiciones
+- Preguntas de estudio genéricas de informática que aplican a cualquier versión
+- Preguntas teóricas sobre conceptos de informática que no dependen de versión
+
+### Naming convention
+
+```
+{nombre-ley-compartida} - Exámenes {oposición}
+Slug: {slug-ley-compartida}-{oposición}
+```
+
+Ejemplos: `procesadores-de-texto-cyl`, `hojas-de-calculo-excel-cyl`, `supuesto-word-cyl`
+
+### NO tocar topic_scope
+
+Las leyes exclusivas de exámenes **no se añaden al topic_scope**. El topic_scope es para el estudio de normativa actual. Las preguntas de exámenes oficiales se acceden por el modo examen (`exam_position` + `exam_date`), no por topic_scope.
+
+## 13. Preguntas con Imágenes/Datos Visuales (Psicotécnicas)
 
 Muchas preguntas psicotécnicas scrapeadas incluyen imágenes (tablas, diagramas de flujo, gráficos, tablas de equivalencias). Estas imágenes **NO se deben guardar como imágenes estáticas** - se deben convertir a `content_data` JSON para que los componentes React las rendericen nativamente.
 
