@@ -185,22 +185,22 @@ describe('TestLayout.tsx — error handling', () => {
     expect(content).not.toContain("'/api/emails/send-admin-notification'")
   })
 
-  it('usa endpoint unificado answerAndSave o validateAnswer como fallback', () => {
-    expect(content).toContain('answerAndSave')
-    expect(content).toContain('validateAnswer')
+  it('usa validación client-side con correct_option y cola de guardado', () => {
+    expect(content).toContain('correct_option')
+    expect(content).toContain('enqueueAnswer')
   })
 
-  it('detecta sesión expirada (SESSION_EXPIRED)', () => {
-    expect(content).toContain('SESSION_EXPIRED')
+  it('usa completeTestOnServer para finalización', () => {
+    expect(content).toContain('completeTestOnServer')
   })
 
-  it('resetea estado en caso de error (no deja UI colgada)', () => {
-    expect(content).toContain('setSelectedAnswer(null)')
-    expect(content).toContain('setProcessingAnswer(false)')
+  it('no bloquea UI con processingAnswer (validación instantánea)', () => {
+    // processingAnswer ya no se usa — la validación es síncrona client-side
+    expect(content).not.toMatch(/setProcessingAnswer\(true\)/)
   })
 
   it('muestra validationError al usuario', () => {
-    expect(content).toContain('setValidationError(')
+    expect(content).toContain('validationError')
   })
 })
 

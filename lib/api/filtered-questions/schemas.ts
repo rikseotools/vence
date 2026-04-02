@@ -111,6 +111,7 @@ export const filteredQuestionSchema = z.object({
   question: z.string(),
   options: z.tuple([z.string(), z.string(), z.string(), z.string()]),
   explanation: z.string(),
+  correct_option: z.number().int().min(0).max(3),
   primary_article_id: z.string().uuid(),
   tema: z.number().nullable(),
   image_url: z.string().nullable().optional(),

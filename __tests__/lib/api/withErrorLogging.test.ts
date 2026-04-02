@@ -263,8 +263,8 @@ describe('logClientError — source code', () => {
 // 5. INTEGRACIÓN: componentes usan logClientError
 // ============================================
 describe('Componentes — logClientError integrado', () => {
+  // TestLayout ya no usa logClientError — validación client-side sin API calls bloqueantes
   const components = [
-    { name: 'TestLayout', file: 'components/TestLayout.tsx' },
     { name: 'DynamicTest', file: 'components/DynamicTest.tsx' },
     { name: 'ExamLayout', file: 'components/ExamLayout.tsx' },
     { name: 'PsychometricTestLayout', file: 'components/PsychometricTestLayout.tsx' },

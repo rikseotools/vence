@@ -279,7 +279,8 @@ export function transformQuestions(supabaseQuestions: SupabaseQuestionAny[] | nu
         q.option_c,
         q.option_d
       ],
-      // 🔒 SEGURIDAD: correct_option eliminado - validación solo via API /api/answer
+      // Respuesta correcta incluida para validación client-side instantánea
+      correct_option: q.correct_option,
       explanation: q.explanation,
       
       // 🔥 INCLUIR primary_article_id PARA HOT ARTICLES
