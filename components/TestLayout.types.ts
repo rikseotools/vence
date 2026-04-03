@@ -25,7 +25,7 @@ export interface LegacyQuestion {
   explanation?: string | null
   difficulty?: string | null
   primary_article_id?: string | null
-  correct_option?: number  // 0-3 (NUNCA debe exponerse al cliente antes de responder)
+  correct_option: number  // 0-3 — obligatorio para validación client-side
   is_official_exam?: boolean
   exam_source?: string | null
   exam_position?: string | null

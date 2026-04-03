@@ -862,52 +862,30 @@ export default function TestLayout({
     // Anti-duplicados (por índice de pregunta)
     if (answeredQuestions.some(aq => aq.question === currentQuestion)) return
 
-    setSelectedAnswer(answerIndex)
-    setInteractionCount(prev => prev + 1)
-
-    // Tracking de interacciones (client-only)
-    if (!firstInteractionTime) {
-      setFirstInteractionTime(Date.now())
-      testTracker.trackInteraction('first_answer_click', { selected_option: answerIndex }, currentQuestion)
-    } else {
-      testTracker.trackInteraction('answer_change', { from_option: selectedAnswer, to_option: answerIndex }, currentQuestion)
-    }
-    trackTestAction('answer_selected', currentQ?.id, {
-      answerIndex, questionIndex: currentQuestion,
-      timeToDecide: Date.now() - questionStartTime, isChange: selectedAnswer !== null
-    })
-
-    const timeToDecide = Date.now() - questionStartTime
-    const newConfidence = calculateConfidence(timeToDecide, interactionCount)
-    setConfidenceLevel(newConfidence)
-    const timeSpent = Math.round((Date.now() - questionStartTime) / 1000)
-    const responseTimeMs = Date.now() - questionStartTime
-
     // ═══════════════════════════════════════════════════════════════
-    // VALIDACIÓN INSTANTÁNEA CLIENT-SIDE
+    // VALIDACIÓN INSTANTÁNEA — primero actualizar UI, luego lo demás
     // ═══════════════════════════════════════════════════════════════
     const correctOption = currentQ.correct_option ?? currentQ.correct ?? null
     const isCorrect = correctOption !== null && answerIndex === correctOption
     const newScore = isCorrect ? score + 1 : score
 
-    // Actualizar UI inmediatamente — sin esperar al servidor
+    // UI inmediata — estos setState se batchean en React 18
+    setSelectedAnswer(answerIndex)
     if (validationError) setValidationError(null)
     setVerifiedCorrectAnswer(correctOption)
     setShowResult(true)
-    scrollToResult()
     setScore(newScore)
 
-    // Tracking de resultado
-    if (isCorrect) {
-      testTracker.trackInteraction('answer_correct', { time_spent: timeSpent, confidence: newConfidence }, currentQuestion)
-    } else {
-      testTracker.trackInteraction('answer_incorrect', { time_spent: timeSpent, confidence: newConfidence, correct_answer: correctOption }, currentQuestion)
-    }
+    // Cálculos y tracking en siguiente tick para no bloquear el render
+    const timeToDecide = Date.now() - questionStartTime
+    const timeSpent = Math.round(timeToDecide / 1000)
+    const responseTimeMs = timeToDecide
+    const newConfidence = calculateConfidence(timeToDecide, interactionCount)
+    setConfidenceLevel(newConfidence)
+    setInteractionCount(prev => prev + 1)
+    scrollToResult()
 
-    // Fraud detection (client-only)
-    if (user?.id) recordBehavior(responseTimeMs)
-
-    // Construir datos locales de respuesta
+    // Construir datos locales de respuesta (necesarios para estado)
     const detailedAnswer = createDetailedAnswer(
       currentQuestion, answerIndex, correctOption ?? 0, isCorrect,
       timeSpent, currentQ, newConfidence, interactionCount
@@ -921,7 +899,28 @@ export default function TestLayout({
 
     setAnsweredQuestions(newAnsweredQuestions)
     setDetailedAnswers(newDetailedAnswers)
-    savePendingTestState(newAnsweredQuestions, newScore, newDetailedAnswers)
+
+    // ═══════════════════════════════════════════════════════════════
+    // TRABAJO DIFERIDO — no bloquea el render del resultado
+    // ═══════════════════════════════════════════════════════════════
+    setTimeout(() => {
+      // Tracking
+      if (!firstInteractionTime) {
+        setFirstInteractionTime(Date.now())
+        testTracker.trackInteraction('first_answer_click', { selected_option: answerIndex }, currentQuestion)
+      }
+      trackTestAction('answer_selected', currentQ?.id, {
+        answerIndex, questionIndex: currentQuestion,
+        timeToDecide, isChange: selectedAnswer !== null
+      })
+      if (isCorrect) {
+        testTracker.trackInteraction('answer_correct', { time_spent: timeSpent, confidence: newConfidence }, currentQuestion)
+      } else {
+        testTracker.trackInteraction('answer_incorrect', { time_spent: timeSpent, confidence: newConfidence, correct_answer: correctOption }, currentQuestion)
+      }
+      if (user?.id) recordBehavior(responseTimeMs)
+      savePendingTestState(newAnsweredQuestions, newScore, newDetailedAnswers)
+    }, 0)
 
     // ═══════════════════════════════════════════════════════════════
     // GUARDADO EN BACKGROUND (fire-and-forget via cola offline)

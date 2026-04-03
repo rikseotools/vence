@@ -16,7 +16,7 @@ interface Question {
   option_b: string
   option_c: string
   option_d: string
-  correct_option?: number
+  correct_option: number
   explanation?: string
   primary_article_id?: string
   [key: string]: unknown

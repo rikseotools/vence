@@ -19,7 +19,7 @@ interface Question {
   option_c: string
   option_d: string
   options: [string, string, string, string]
-  correct_option?: number
+  correct_option: number
   explanation?: string
   primary_article_id?: string
   is_official_exam?: boolean

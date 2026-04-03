@@ -146,6 +146,7 @@ export const testLayoutQuestionSchema = z.object({
   question_text: z.string().optional(),
   options: z.tuple([z.string(), z.string(), z.string(), z.string()]),
   explanation: z.string().nullable(),
+  correct_option: z.number().int().min(0).max(3),
   difficulty: z.string().nullable(),
   primary_article_id: z.string().uuid().nullable(),
   article_number: z.string().nullable().optional(),
