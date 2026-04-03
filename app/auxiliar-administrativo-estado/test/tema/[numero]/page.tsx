@@ -10,6 +10,7 @@ import type { TestStartConfig } from '@/components/TestConfigurator.types'
 import ArticleModal from '@/components/ArticleModal'
 import { useLawSlugs } from '@/contexts/LawSlugContext'
 import { safeParseGetTopicDataResponse, type GetTopicDataResponse } from '@/lib/api/topic-data/schemas'
+import { getBlockForTopic } from '@/lib/config/oposiciones'
 
 const supabase = getSupabaseClient()
 
@@ -422,6 +423,9 @@ export default function TemaPage({ params }: PageProps) {
 
   // Past this point, temaNumber is guaranteed non-null
   const tema = temaNumber!
+  const topicInfo = getBlockForTopic('auxiliar-administrativo-estado', tema)
+  const temaDisplay = topicInfo?.displayNum ?? tema
+  const blockLabel = topicInfo?.blockTitle ?? (tema >= 101 ? 'Bloque II' : 'Bloque I')
 
   // TEMA NO ENCONTRADO
   if (temaNotFound) {
@@ -472,7 +476,7 @@ export default function TemaPage({ params }: PageProps) {
               </button>
               <span className="mx-2 text-blue-600">›</span>
               <span className="font-semibold">
-                {tema >= 101 ? 'Bloque II' : 'Bloque I'}
+                {blockLabel}
               </span>
             </div>
 
@@ -517,7 +521,7 @@ export default function TemaPage({ params }: PageProps) {
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3">
             {topicData?.title?.startsWith('Tema ') ?
               topicData.title :
-              `Tema ${tema >= 101 ? tema - 100 : tema}: ${topicData?.title}`
+              `Tema ${temaDisplay}: ${topicData?.title}`
             }
           </h1>
 
@@ -636,7 +640,7 @@ export default function TemaPage({ params }: PageProps) {
         <section className="mb-8">
           <TestConfigurator
             tema={tema}
-            temaDisplayName={topicData ? (topicData.title.startsWith('Tema ') ? topicData.title : `${tema >= 101 ? `Bloque II - Tema ${tema - 100}` : `Tema ${tema}`}: ${topicData.title}`) : null}
+            temaDisplayName={topicData ? (topicData.title.startsWith('Tema ') ? topicData.title : `${blockLabel} - Tema ${temaDisplay}: ${topicData.title}`) : null}
             totalQuestions={difficultyStats as any}
             onStartTest={handleStartCustomTest}
             userStats={userRecentStats as any}
@@ -652,7 +656,7 @@ export default function TemaPage({ params }: PageProps) {
         {userStatsLoading && (
           <section className="mb-8">
             <h2 className="text-xl font-bold text-gray-800 mb-4 text-center">
-              Tu Progreso en el {tema >= 101 ? `Bloque II. Tema ${tema - 100}` : `Tema ${tema}`}
+              Tu Progreso en el {`${blockLabel}. Tema ${temaDisplay}`}
             </h2>
             <div className="bg-white rounded-lg shadow-sm p-6">
               <div className="flex items-center justify-center gap-3 py-8 text-gray-500">
@@ -670,14 +674,14 @@ export default function TemaPage({ params }: PageProps) {
         {!userStatsLoading && currentUser && userStats && (
           <section className="mb-8">
             <h2 className="text-xl font-bold text-gray-800 mb-4 text-center">
-              Tu Progreso en el {tema >= 101 ? `Bloque II. Tema ${tema - 100}` : `Tema ${tema}`}
+              Tu Progreso en el {`${blockLabel}. Tema ${temaDisplay}`}
             </h2>
 
             <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
               {userStats.totalAnswers === 0 ? (
                 <div className="text-center py-8">
                   <div className="text-6xl mb-4">🎯</div>
-                  <h3 className="font-bold text-gray-800 text-xl mb-2">¡Empieza tu primer test del {tema >= 101 ? `Bloque II. Tema ${tema - 100}` : `Tema ${tema}`}!</h3>
+                  <h3 className="font-bold text-gray-800 text-xl mb-2">¡Empieza tu primer test del {`${blockLabel}. Tema ${temaDisplay}`}!</h3>
                   <p className="text-gray-600">
                     Completa preguntas para ver tus estadísticas personales y análisis de rendimiento.
                   </p>
@@ -688,7 +692,7 @@ export default function TemaPage({ params }: PageProps) {
                     <h3 className="font-bold text-gray-800 text-lg">Rendimiento Personal</h3>
                     <div className="text-right">
                       <div className="text-2xl font-bold text-blue-600">{userStats.overallAccuracy.toFixed(1)}%</div>
-                      <div className="text-sm text-gray-500">{userStats.totalAnswers} respuestas en {tema >= 101 ? `Bloque II. Tema ${tema - 100}` : `Tema ${tema}`}</div>
+                      <div className="text-sm text-gray-500">{userStats.totalAnswers} respuestas en {`${blockLabel}. Tema ${temaDisplay}`}</div>
                       {userStats.isRealData && (
                         <div className="text-xs text-green-600 font-medium">Datos reales</div>
                       )}
