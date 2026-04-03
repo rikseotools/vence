@@ -60,7 +60,7 @@ const EMPTY_STATS: UserStats = {
 // ── Component ────────────────────────────────────────────────────
 
 export default function UserAvatar() {
-  const { user, loading: authLoading, signOut, supabase, isPremium } = useAuth()
+  const { user, loading: authLoading, signOut, supabase, isPremium, userProfile } = useAuth()
   const pathname = usePathname()
   const [showDropdown, setShowDropdown] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
@@ -363,10 +363,14 @@ export default function UserAvatar() {
           <div className="text-sm font-medium text-gray-900">
             {displayName}
           </div>
-          {isPremium ? (
-            <div className="text-xs text-amber-600 font-semibold">⭐ Premium</div>
+          {userProfile ? (
+            isPremium ? (
+              <div className="text-xs text-amber-600 font-semibold">⭐ Premium</div>
+            ) : (
+              <div className="text-xs text-green-600">✅ Registrado</div>
+            )
           ) : (
-            <div className="text-xs text-green-600">✅ Registrado</div>
+            <div className="text-xs text-gray-400 animate-pulse">Cargando...</div>
           )}
         </div>
 

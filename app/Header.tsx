@@ -497,7 +497,7 @@ export default function HeaderES() {
                 </Link>
 
                 {/* 👑 BOTÓN PREMIUM - Solo usuarios FREE */}
-                {!isPremium && !isLegacy && userProfile?.plan_type !== 'trial' && (
+                {userProfile && !isPremium && !isLegacy && userProfile.plan_type !== 'trial' && (
                   <Link
                     href="/premium"
                     onClick={() => trackClick('Header', 'premium_button_click', { location: 'mobile' })}
@@ -600,7 +600,7 @@ export default function HeaderES() {
               </Link>
 
               {/* 👑 BOTÓN PREMIUM - Solo usuarios FREE en desktop */}
-              {user && !isPremium && !isLegacy && userProfile?.plan_type !== 'trial' && (
+              {user && userProfile && !isPremium && !isLegacy && userProfile.plan_type !== 'trial' && (
                 <Link
                   href="/premium"
                   onClick={() => trackClick('Header', 'premium_button_click', { location: 'desktop' })}
