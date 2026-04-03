@@ -327,7 +327,7 @@ export async function getPsychometricQuestions(
       }
     }
 
-    // 2. Fetch questions — explicit columns, NO correctOption
+    // 2. Fetch questions — includes correctOption for client-side validation
     const allQuestions = await db
       .select({
         id: psychometricQuestions.id,
@@ -339,7 +339,7 @@ export async function getPsychometricQuestions(
         optionB: psychometricQuestions.optionB,
         optionC: psychometricQuestions.optionC,
         optionD: psychometricQuestions.optionD,
-        // correctOption: OMITIDO — seguridad anti-scraping
+        correctOption: psychometricQuestions.correctOption,
         contentData: psychometricQuestions.contentData,
         imageUrl: psychometricQuestions.imageUrl,
         difficulty: psychometricQuestions.difficulty,

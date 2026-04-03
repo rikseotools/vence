@@ -118,37 +118,26 @@ describe('ExamLayout.tsx — error handling', () => {
 // ============================================
 // 4. PSYCHOMETRIC: Sin fallback inseguro
 // ============================================
-describe('PsychometricTestLayout.tsx — sin fallback inseguro', () => {
+describe('PsychometricTestLayout.tsx — validación client-side', () => {
   const content = fs.readFileSync(
     path.join(ROOT, 'components/PsychometricTestLayout.tsx'), 'utf-8'
   )
 
-  it('NO usa correct_option del cliente como fallback', () => {
-    // No debe haber una línea que lea correct_option directamente para validar
-    // Patrones peligrosos: currentQ.correct_option, question.correct_option usado como fallback
-    const dangerousPatterns = [
-      /localCorrectAnswer\s*=\s*currentQ\.correct_option/,
-      /const\s+correctAnswer\s*=\s*currentQ\.correct_option/,
-      /fallback.*correct_option/i,
-    ]
-
-    for (const pattern of dangerousPatterns) {
-      expect(content).not.toMatch(pattern)
-    }
+  it('usa correct_option para validación client-side instantánea', () => {
+    expect(content).toContain('correct_option')
+    expect(content).toContain('enqueueAnswer')
   })
 
-  it('resetea estado en caso de error API (no deja respuesta seleccionada)', () => {
-    // En el catch de validación, debe resetear selectedAnswer
-    expect(content).toContain('setSelectedAnswer(null)')
-    expect(content).toContain('setIsAnswering(false)')
+  it('no bloquea UI con isAnswering (validación instantánea)', () => {
+    expect(content).not.toMatch(/setIsAnswering\(true\)/)
   })
 
   it('NO envía emails de notificación admin (se registran en validation_error_logs)', () => {
     expect(content).not.toContain("'/api/emails/send-admin-notification'")
   })
 
-  it('usa validatePsychometricAnswer (no fetch directo)', () => {
-    expect(content).toMatch(/import\s*\{[^}]*validatePsychometricAnswer[^}]*\}/)
+  it('usa enqueueAnswer para guardado en background', () => {
+    expect(content).toMatch(/import\s*\{[^}]*enqueueAnswer[^}]*\}/)
   })
 })
 

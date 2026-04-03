@@ -108,6 +108,7 @@ describe('API /api/psychometric-test-data - validación de parámetros', () => {
             optionB: '12',
             optionC: '9',
             optionD: '11',
+            correctOption: 0,
             contentData: { sequence: [2, 4, 6, 8] },
             difficulty: 'easy',
             timeLimitSeconds: 60,
@@ -122,12 +123,12 @@ describe('API /api/psychometric-test-data - validación de parámetros', () => {
       expect(result.success).toBe(true)
       if (result.success) {
         const q = result.data.questions![0]
-        expect('correctOption' in q).toBe(false)
-        expect('correct_option' in q).toBe(false)
+        // correctOption ahora se incluye para validación client-side
+        expect(q.correctOption).toBeDefined()
       }
     })
 
-    it('correctOption se stripea del output por Zod', () => {
+    it('correctOption se preserva en el output para validación client-side', () => {
       const response = {
         success: true,
         questions: [
@@ -147,7 +148,6 @@ describe('API /api/psychometric-test-data - validación de parámetros', () => {
             cognitiveSkills: null,
             isOfficialExam: false,
             examSource: null,
-            // Intentionally added — should be stripped
             correctOption: 2,
           },
         ],
@@ -157,7 +157,7 @@ describe('API /api/psychometric-test-data - validación de parámetros', () => {
       expect(result.success).toBe(true)
       if (result.success) {
         const q = result.data.questions![0]
-        expect('correctOption' in q).toBe(false)
+        expect(q.correctOption).toBe(2)
       }
     })
 

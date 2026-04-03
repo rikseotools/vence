@@ -131,11 +131,10 @@ describe('useAnswerWatchdog.ts — source code', () => {
 // 3. INTEGRACIÓN EN COMPONENTES
 // ============================================
 describe('Componentes — watchdog integrado', () => {
-  // TestLayout ya no usa watchdog — validación client-side instantánea
+  // TestLayout y PsychometricTestLayout ya no usan watchdog — validación client-side instantánea
   const components = [
     { name: 'ExamLayout', file: 'components/ExamLayout.tsx', flag: 'isSaving' },
     { name: 'DynamicTest', file: 'components/DynamicTest.tsx', flag: 'processingAnswer' },
-    { name: 'PsychometricTestLayout', file: 'components/PsychometricTestLayout.tsx', flag: 'isAnswering' },
   ]
 
   for (const { name, file, flag } of components) {

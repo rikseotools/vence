@@ -135,34 +135,29 @@ describe('Psychometric Test Data Schemas', () => {
       examSource: null,
     }
 
-    it('debe aceptar pregunta válida sin correctOption', () => {
-      const result = psychometricQuestionSchema.safeParse(validQuestion)
+    it('debe aceptar pregunta válida con correctOption', () => {
+      const result = psychometricQuestionSchema.safeParse({ ...validQuestion, correctOption: 2 })
       expect(result.success).toBe(true)
     })
 
-    it('NO debe incluir correctOption en el schema', () => {
-      // Verificar que el schema no tiene correctOption como campo conocido
+    it('correctOption se incluye en el schema para validación client-side', () => {
       const withCorrectOption = { ...validQuestion, correctOption: 2 }
       const result = psychometricQuestionSchema.safeParse(withCorrectOption)
-      // Zod strips unknown keys by default, so it should pass but correctOption should not be in output
       expect(result.success).toBe(true)
       if (result.success) {
-        expect('correctOption' in result.data).toBe(false)
+        expect(result.data.correctOption).toBe(2)
       }
     })
 
-    it('NO debe incluir correct_option en el schema', () => {
-      const withCorrectOption = { ...validQuestion, correct_option: 2 }
-      const result = psychometricQuestionSchema.safeParse(withCorrectOption)
+    it('correctOption acepta null', () => {
+      const withNull = { ...validQuestion, correctOption: null }
+      const result = psychometricQuestionSchema.safeParse(withNull)
       expect(result.success).toBe(true)
-      if (result.success) {
-        expect('correct_option' in result.data).toBe(false)
-      }
     })
   })
 
   describe('getPsychometricQuestionsResponseSchema - seguridad', () => {
-    it('debe aceptar respuesta con preguntas SIN correct_option', () => {
+    it('debe aceptar respuesta con preguntas con correctOption', () => {
       const result = getPsychometricQuestionsResponseSchema.safeParse({
         success: true,
         questions: [
@@ -176,6 +171,7 @@ describe('Psychometric Test Data Schemas', () => {
             optionB: '12',
             optionC: '14',
             optionD: '16',
+            correctOption: 2,
             contentData: {},
             difficulty: 'easy',
             timeLimitSeconds: 60,
@@ -189,10 +185,9 @@ describe('Psychometric Test Data Schemas', () => {
       expect(result.success).toBe(true)
       if (result.success) {
         expect(result.data.questions).toHaveLength(1)
-        // Verify no correctOption leaked
+        // correctOption ahora se incluye para validación client-side
         const q = result.data.questions![0]
-        expect('correctOption' in q).toBe(false)
-        expect('correct_option' in q).toBe(false)
+        expect(q.correctOption).toBe(2)
       }
     })
 

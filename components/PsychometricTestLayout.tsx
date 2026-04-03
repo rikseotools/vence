@@ -21,9 +21,7 @@ import MarkdownExplanation from './MarkdownExplanation'
 import PsychometricAIHelpButton from './PsychometricAIHelpButton'
 import { getDifficultyInfo, formatDifficultyDisplay, isFirstAttempt, type DifficultyInfo } from '../lib/psychometricDifficulty'
 import { useInteractionTracker } from '../hooks/useInteractionTracker'
-import { validatePsychometricAnswer } from '@/lib/api/psychometric-answer/client'
-import { useAnswerWatchdog } from '@/hooks/useAnswerWatchdog'
-import { logClientError } from '@/lib/logClientError'
+import { enqueueAnswer } from '@/utils/answerSaveQueue'
 import ContentDataRenderer from './ContentDataRenderer'
 
 // ============================================
@@ -151,21 +149,9 @@ export default function PsychometricTestLayout({
   const [testSession, setTestSession] = useState<TestSession | null>(
     resumeData ? { id: resumeData.sessionId } : null
   )
-  const [isAnswering, setIsAnswering] = useState<boolean>(false)
+  // isAnswering siempre false — validación client-side instantánea, sin bloqueo
+  const isAnswering = false
   const [isTestCompleted, setIsTestCompleted] = useState<boolean>(false)
-
-  // Watchdog: detecta UI congelada si isAnswering se queda en true >20s
-  useAnswerWatchdog({
-    isProcessing: isAnswering,
-    onReset: () => {
-      setIsAnswering(false)
-      setSelectedAnswer(null)
-      alert('La validación tardó demasiado. Inténtalo de nuevo.')
-    },
-    component: 'PsychometricTestLayout',
-    questionId: questions[currentQuestion]?.id,
-    userId: user?.id,
-  })
 
   // Estados para usuarios no logueados (igual que TestLayout)
   const [detailedAnswers, setDetailedAnswers] = useState<DetailedAnswer[]>([])
@@ -289,9 +275,9 @@ export default function PsychometricTestLayout({
     }
   }, [currentQuestion, currentQ, setQuestionContext, clearQuestionContext, categoria, showResult, verifiedCorrectAnswer])
 
-  const handleAnswer = async (optionIndex: number, _metadata: Record<string, unknown> | null = null) => {
-    if (!currentQ || isAnswering || answeredQuestionsGlobal.current.has(currentQ.id)) {
-      console.log('🚫 Answer blocked - already answered or processing')
+  const handleAnswer = (optionIndex: number, _metadata: Record<string, unknown> | null = null) => {
+    if (!currentQ || showResult || answeredQuestionsGlobal.current.has(currentQ.id)) {
+      console.log('🚫 Answer blocked - already answered')
       return
     }
 
@@ -301,7 +287,6 @@ export default function PsychometricTestLayout({
       return
     }
 
-    setIsAnswering(true)
     setSelectedAnswer(optionIndex)
     answeredQuestionsGlobal.current.add(currentQ.id)
 
@@ -319,83 +304,69 @@ export default function PsychometricTestLayout({
     }, 2000)
     answeringTimeouts.current.set(timeoutKey, timeout)
 
-    try {
-      const questionTime = Date.now() - questionStartTime
-      const timeTakenSeconds = Math.floor(questionTime / 1000)
+    const questionTime = Date.now() - questionStartTime
+    const timeTakenSeconds = Math.floor(questionTime / 1000)
 
-      // 🔒 API centralizada: validar + guardar + actualizar sesión (timeout 10s, retry x2, Zod)
-      console.log('🔒 [SecureAnswer] Validando respuesta psicotécnica via API...')
+    // ═══════════════════════════════════════════════════════════════
+    // VALIDACIÓN INSTANTÁNEA CLIENT-SIDE
+    // ═══════════════════════════════════════════════════════════════
+    const correctOption = typeof currentQ.correct_option === 'number' ? currentQ.correct_option : null
+    const isCorrect = correctOption !== null && optionIndex === correctOption
 
-      // Si hay sesión (usuario logueado), enviar datos de guardado junto con la validación
-      const saveParams = (testSession && user) ? {
-        sessionId: testSession.id,
-        userId: user.id,
-        questionOrder: currentQuestion + 1,
-        timeSpentSeconds: timeTakenSeconds,
-        questionSubtype: currentQ.question_subtype || null,
-        totalQuestions,
-      } : null
+    setVerifiedCorrectAnswer(correctOption)
+    setVerifiedExplanation(currentQ.explanation || null)
 
-      let isCorrect: boolean
-      let correctAnswer: number | null
-      let explanation: string | null
-      let saved = false
-      let sessionProgress: { questionsAnswered: number; correctAnswers: number; accuracyPercentage: number } | null = null
+    if (isCorrect) {
+      setScore(prev => prev + 1)
+    }
 
-      try {
-        const apiResult = await validatePsychometricAnswer(currentQ.id, optionIndex, saveParams)
-        isCorrect = apiResult.isCorrect
-        correctAnswer = apiResult.correctAnswer
-        explanation = apiResult.explanation
-        saved = apiResult.saved
-        sessionProgress = apiResult.sessionProgress ?? null
-      } catch (apiError: any) {
-        console.error('❌ [SecureAnswer] Psicotécnico: validación fallida:', apiError)
-        setSelectedAnswer(null)
-        setIsAnswering(false)
-        // Los errores de validación se registran automáticamente en validation_error_logs por el servidor
-        logClientError('/api/answer/psychometric', apiError, { component: 'PsychometricTestLayout', questionId: currentQ.id, userId: user?.id })
-        alert('Error temporal al validar tu respuesta. Inténtalo de nuevo.')
-        return
-      }
+    const detailedAnswer = {
+      questionId: currentQ.id,
+      questionText: currentQ.question_text,
+      userAnswer: optionIndex,
+      correctAnswer: correctOption,
+      isCorrect,
+      timeSpent: timeTakenSeconds,
+      timestamp: new Date().toISOString(),
+      questionOrder: currentQuestion + 1
+    }
 
-      setVerifiedCorrectAnswer(correctAnswer)
-      setVerifiedExplanation(explanation || currentQ.explanation || null)
+    setAnsweredQuestions(prev => [...prev, detailedAnswer])
+    setDetailedAnswers(prev => [...prev, detailedAnswer])
+    setShowResult(true)
 
-      if (saved) {
-        console.log('✅ [SecureAnswer] Validada + guardada via API:', sessionProgress)
-        recordAnswerForGoal()
-      } else {
-        console.log('✅ [SecureAnswer] Validada via API (guest mode, sin guardar)')
-      }
-
-      // Actualizar score
-      if (isCorrect) {
-        setScore(prev => prev + 1)
-      }
-
-      // Crear objeto de respuesta detallada (para estado local)
-      const detailedAnswer = {
+    // ═══════════════════════════════════════════════════════════════
+    // GUARDADO EN BACKGROUND (fire-and-forget)
+    // ═══════════════════════════════════════════════════════════════
+    if (testSession && user) {
+      enqueueAnswer({
         questionId: currentQ.id,
-        questionText: currentQ.question_text,
         userAnswer: optionIndex,
-        correctAnswer: correctAnswer,
-        isCorrect,
+        sessionId: testSession.id,
+        questionIndex: currentQuestion,
+        questionText: currentQ.question_text || '',
+        options: [currentQ.option_a, currentQ.option_b, currentQ.option_c, currentQ.option_d].filter(Boolean),
+        tema: 0,
+        questionType: 'psychometric',
+        article: null,
+        metadata: {
+          id: currentQ.id,
+          difficulty: currentQ.difficulty || null,
+          question_type: currentQ.question_subtype || null,
+          tags: null,
+        },
+        explanation: currentQ.explanation || null,
         timeSpent: timeTakenSeconds,
-        timestamp: new Date().toISOString(),
-        questionOrder: currentQuestion + 1
-      }
-
-      // Actualizar estado de preguntas respondidas (ambos tipos de usuario)
-      setAnsweredQuestions(prev => [...prev, detailedAnswer])
-      setDetailedAnswers(prev => [...prev, detailedAnswer])
-
-      setShowResult(true)
-
-    } catch (error) {
-      console.error('❌ Error processing answer:', error)
-    } finally {
-      setIsAnswering(false)
+        confidenceLevel: 'unknown',
+        interactionCount: 1,
+        questionStartTime,
+        firstInteractionTime: 0,
+        interactionEvents: [],
+        mouseEvents: [],
+        scrollEvents: [],
+        currentScore: score,
+      })
+      recordAnswerForGoal()
     }
   }
 
