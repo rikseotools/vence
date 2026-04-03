@@ -75,3 +75,44 @@ describe('getBlockForTopic', () => {
     }
   })
 })
+
+// ============================================
+// Verificar que las páginas de test NO usan {tema} directamente en textos visibles
+// ============================================
+import * as fs from 'fs'
+import * as path from 'path'
+
+const ROOT = path.resolve(__dirname, '../../..')
+
+describe('Páginas de test no usan topic_number raw en textos', () => {
+  const pagesWithBlocks = [
+    'app/auxiliar-administrativo-estado/test/tema/[numero]/page.tsx',
+  ]
+
+  for (const file of pagesWithBlocks) {
+    it(`${file} no tiene "Tema {tema}" ni "Tema \${tema}" en textos visibles`, () => {
+      const content = fs.readFileSync(path.join(ROOT, file), 'utf-8')
+
+      // Buscar patrones peligrosos: "Tema" seguido de {tema} o ${tema} o ${temaNumber}
+      // Excluir comentarios y console.log
+      const lines = content.split('\n')
+      const problems: string[] = []
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim()
+        // Ignorar comentarios, console, y mensajes de error 404 (tema no existe → no hay display)
+        if (line.startsWith('//') || line.startsWith('*') || line.includes('console.')) continue
+        if (line.includes('no existe') || line.includes('no está disponible')) continue
+
+        // Buscar "Tema" + variable raw (no temaDisplay, no temaLabel, no temaDisplayLocal)
+        if (/Tema.*\{tema\}/.test(line) || /Tema.*\$\{tema\b[^DL]/.test(line) || /Tema.*\$\{temaNum/.test(line)) {
+          problems.push(`  L${i + 1}: ${line.slice(0, 100)}`)
+        }
+      }
+
+      if (problems.length > 0) {
+        fail(`Encontrados ${problems.length} usos de topic_number raw en textos:\n${problems.join('\n')}`)
+      }
+    })
+  }
+})
