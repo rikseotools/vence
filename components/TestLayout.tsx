@@ -727,7 +727,7 @@ export default function TestLayout({
           id: question.id,
           question: question.question_text,
           options: [question.option_a, question.option_b, question.option_c, question.option_d],
-          correctAnswer: question.correct,
+          correctAnswer: question.correct_option ?? question.correct ?? 0,
           explanation: question.explanation,
           article: {
             id: question.primary_article_id,
