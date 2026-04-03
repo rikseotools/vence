@@ -869,200 +869,197 @@ export default function TestLayout({
     const isCorrect = correctOption !== null && answerIndex === correctOption
     const newScore = isCorrect ? score + 1 : score
 
-    // UI inmediata — estos setState se batchean en React 18
+    // UI inmediata — SOLO setState, nada más. React batchea y renderiza.
     setSelectedAnswer(answerIndex)
     if (validationError) setValidationError(null)
     setVerifiedCorrectAnswer(correctOption)
     setShowResult(true)
     setScore(newScore)
 
-    // Cálculos y tracking en siguiente tick para no bloquear el render
+    // ═══════════════════════════════════════════════════════════════
+    // TODO lo demás en siguiente tick — React renderiza PRIMERO
+    // ═══════════════════════════════════════════════════════════════
     const timeToDecide = Date.now() - questionStartTime
     const timeSpent = Math.round(timeToDecide / 1000)
-    const responseTimeMs = timeToDecide
     const newConfidence = calculateConfidence(timeToDecide, interactionCount)
-    setConfidenceLevel(newConfidence)
-    setInteractionCount(prev => prev + 1)
-    scrollToResult()
 
-    // Construir datos locales de respuesta (necesarios para estado)
-    const detailedAnswer = createDetailedAnswer(
-      currentQuestion, answerIndex, correctOption ?? 0, isCorrect,
-      timeSpent, currentQ, newConfidence, interactionCount
-    ) as unknown as DetailedAnswerEntry
+    // Capturar valores para el closure (evitar stale state en setTimeout)
+    const capturedAnsweredQuestions = answeredQuestions
+    const capturedDetailedAnswers = detailedAnswers
+    const capturedFirstInteractionTime = firstInteractionTime
+    const capturedSelectedAnswer = selectedAnswer
+    const capturedSession = currentTestSession
+    const capturedUserSession = userSession
 
-    const newAnsweredQuestions: AnsweredQuestionEntry[] = [...answeredQuestions, {
-      question: currentQuestion, selectedAnswer: answerIndex,
-      correct: isCorrect, timestamp: new Date().toISOString()
-    }]
-    const newDetailedAnswers = [...detailedAnswers, detailedAnswer]
-
-    setAnsweredQuestions(newAnsweredQuestions)
-    setDetailedAnswers(newDetailedAnswers)
-
-    // ═══════════════════════════════════════════════════════════════
-    // TRABAJO DIFERIDO — no bloquea el render del resultado
-    // ═══════════════════════════════════════════════════════════════
     setTimeout(() => {
+      setConfidenceLevel(newConfidence)
+      setInteractionCount(prev => prev + 1)
+      scrollToResult()
+
+      // Construir datos locales de respuesta
+      const detailedAnswer = createDetailedAnswer(
+        currentQuestion, answerIndex, correctOption ?? 0, isCorrect,
+        timeSpent, currentQ, newConfidence, interactionCount
+      ) as unknown as DetailedAnswerEntry
+
+      const newAnsweredQuestions: AnsweredQuestionEntry[] = [...capturedAnsweredQuestions, {
+        question: currentQuestion, selectedAnswer: answerIndex,
+        correct: isCorrect, timestamp: new Date().toISOString()
+      }]
+      const newDetailedAnswers = [...capturedDetailedAnswers, detailedAnswer]
+
+      setAnsweredQuestions(newAnsweredQuestions)
+      setDetailedAnswers(newDetailedAnswers)
+      savePendingTestState(newAnsweredQuestions, newScore, newDetailedAnswers)
+
       // Tracking
-      if (!firstInteractionTime) {
+      if (!capturedFirstInteractionTime) {
         setFirstInteractionTime(Date.now())
         testTracker.trackInteraction('first_answer_click', { selected_option: answerIndex }, currentQuestion)
       }
       trackTestAction('answer_selected', currentQ?.id, {
         answerIndex, questionIndex: currentQuestion,
-        timeToDecide, isChange: selectedAnswer !== null
+        timeToDecide, isChange: capturedSelectedAnswer !== null
       })
       if (isCorrect) {
         testTracker.trackInteraction('answer_correct', { time_spent: timeSpent, confidence: newConfidence }, currentQuestion)
       } else {
         testTracker.trackInteraction('answer_incorrect', { time_spent: timeSpent, confidence: newConfidence, correct_answer: correctOption }, currentQuestion)
       }
-      if (user?.id) recordBehavior(responseTimeMs)
-      savePendingTestState(newAnsweredQuestions, newScore, newDetailedAnswers)
-    }, 0)
+      if (user?.id) recordBehavior(timeToDecide)
 
-    // ═══════════════════════════════════════════════════════════════
-    // GUARDADO EN BACKGROUND (fire-and-forget via cola offline)
-    // ═══════════════════════════════════════════════════════════════
-    const session = currentTestSession
-    if (user && session) {
-      enqueueAnswer({
-        questionId: currentQ.id,
-        userAnswer: answerIndex,
-        sessionId: session.id,
-        questionIndex: currentQuestion,
-        questionText: currentQ.question_text || currentQ.question || '',
-        options: currentQ.options || [currentQ.option_a, currentQ.option_b, currentQ.option_c, currentQ.option_d].filter(Boolean),
-        tema,
-        questionType: (currentQ.question_type === 'psychometric' ? 'psychometric' : 'legislative'),
-        article: currentQ.article ? {
-          id: currentQ.article.id || currentQ.primary_article_id || null,
-          number: currentQ.article.number || currentQ.article_number || null,
-          law_id: null,
-          law_short_name: currentQ.article.law_short_name || currentQ.law_short_name || null,
-        } : currentQ.primary_article_id ? {
-          id: currentQ.primary_article_id,
-          number: currentQ.article_number || null,
-          law_id: null,
-          law_short_name: currentQ.law_short_name || null,
-        } : null,
-        metadata: {
-          id: currentQ.id,
-          difficulty: currentQ.difficulty || null,
-          question_type: currentQ.question_type || null,
-          tags: null,
-        },
-        explanation: currentQ.explanation || null,
-        timeSpent,
-        confidenceLevel: newConfidence,
-        interactionCount,
-        questionStartTime,
-        firstInteractionTime: firstInteractionTime || 0,
-        interactionEvents: testTracker.interactionEvents.slice(-10),
-        mouseEvents: testTracker.mouseEvents.slice(-50),
-        scrollEvents: testTracker.scrollEvents.slice(-50),
-        currentScore: score,
-      })
-
-      // Registrar respuesta en contador diario (solo usuarios FREE)
-      if (hasLimit) recordAnswer().catch(() => {})
-      // Registrar para meta diaria (todos los usuarios)
-      recordAnswerForGoal()
-
-      // Crear sesión de usuario si no existe
-      if (!userSession) {
-        createUserSession(user.id).then(s => { if (s) setUserSession(s) }).catch(() => {})
-      }
-    }
-
-    // ═══════════════════════════════════════════════════════════════
-    // MODO ADAPTATIVO (client-only)
-    // ═══════════════════════════════════════════════════════════════
-    if (adaptiveMode) {
-      const totalAnswered = newAnsweredQuestions.length
-      const totalCorrect = newAnsweredQuestions.filter(q => q.correct).length
-      const currentAccuracy = totalAnswered > 0 ? (totalCorrect / totalAnswered) * 100 : 100
-      const questionsSinceLastAdaptation = currentQuestion - lastAdaptedQuestion
-
-      if (currentAccuracy < 60 && totalAnswered >= 3 && questionsSinceLastAdaptation >= 3) {
-        setIsAdaptiveMode(true)
-        adaptDifficulty('easier')
-        setLastAdaptedQuestion(currentQuestion)
-        setTimeout(() => setIsAdaptiveMode(false), 4000)
-      }
-    }
-
-    // ═══════════════════════════════════════════════════════════════
-    // FINALIZACIÓN DEL TEST
-    // ═══════════════════════════════════════════════════════════════
-    const allQuestionsAnswered = newDetailedAnswers.length >= effectiveQuestions.length
-
-    if (currentQuestion === effectiveQuestions.length - 1 || allQuestionsAnswered) {
-      setIsExplicitlyCompleted(true)
-
-      trackTestAction('test_completed', undefined, {
-        totalQuestions: effectiveQuestions.length, correctAnswers: newScore,
-        accuracy: Math.round((newScore / effectiveQuestions.length) * 100),
-        totalTimeMs: Date.now() - startTime, testType: tema ? 'tema' : 'general'
-      })
-
-      if (user && session) {
-        setSaveStatus('saving')
-
-        completeTestOnServer({
-          sessionId: session.id,
-          finalScore: newScore,
-          totalQuestions: effectiveQuestions.length,
-          detailedAnswers: newDetailedAnswers.map(a => ({
-            questionIndex: a.questionIndex ?? 0,
-            selectedAnswer: a.selectedAnswer ?? -1,
-            isCorrect: !!a.isCorrect,
-            timeSpent: a.timeSpent ?? 0,
-            confidence: (['very_sure', 'sure', 'unsure', 'guessing', 'unknown'].includes(a.confidence as string)
-              ? a.confidence : 'unknown') as 'very_sure' | 'sure' | 'unsure' | 'guessing' | 'unknown',
-            interactions: a.interactions ?? 1,
-            questionData: a.questionData ? {
-              id: a.questionData.id ?? null,
-              metadata: a.questionData.metadata ? {
-                difficulty: (['easy', 'medium', 'hard', 'extreme'].includes(a.questionData.metadata.difficulty as string)
-                  ? a.questionData.metadata.difficulty : null) as 'easy' | 'medium' | 'hard' | 'extreme' | null,
-              } : null,
-              article: a.questionData.article ? {
-                id: a.questionData.article.id ?? null,
-                number: a.questionData.article.number != null ? String(a.questionData.article.number) : null,
-                law_short_name: a.questionData.article.law_short_name ?? null,
-              } : null,
-            } : null,
-          })),
-          startTime,
-          interactionEvents: testTracker.interactionEvents.slice(-500),
-          userSessionId: userSession?.id ?? null,
-          tema: typeof tema === 'number' ? tema : null,
+      // Guardado en background (fire-and-forget via cola offline)
+      if (user && capturedSession) {
+        enqueueAnswer({
+          questionId: currentQ.id,
+          userAnswer: answerIndex,
+          sessionId: capturedSession.id,
+          questionIndex: currentQuestion,
+          questionText: currentQ.question_text || currentQ.question || '',
+          options: currentQ.options || [currentQ.option_a, currentQ.option_b, currentQ.option_c, currentQ.option_d].filter(Boolean),
+          tema,
+          questionType: (currentQ.question_type === 'psychometric' ? 'psychometric' : 'legislative'),
+          article: currentQ.article ? {
+            id: currentQ.article.id || currentQ.primary_article_id || null,
+            number: currentQ.article.number || currentQ.article_number || null,
+            law_id: null,
+            law_short_name: currentQ.article.law_short_name || currentQ.law_short_name || null,
+          } : currentQ.primary_article_id ? {
+            id: currentQ.primary_article_id,
+            number: currentQ.article_number || null,
+            law_id: null,
+            law_short_name: currentQ.law_short_name || null,
+          } : null,
+          metadata: {
+            id: currentQ.id,
+            difficulty: currentQ.difficulty || null,
+            question_type: currentQ.question_type || null,
+            tags: null,
+          },
+          explanation: currentQ.explanation || null,
+          timeSpent,
+          confidenceLevel: newConfidence,
+          interactionCount,
+          questionStartTime,
+          firstInteractionTime: capturedFirstInteractionTime || 0,
+          interactionEvents: testTracker.interactionEvents.slice(-10),
+          mouseEvents: testTracker.mouseEvents.slice(-50),
+          scrollEvents: testTracker.scrollEvents.slice(-50),
+          currentScore: score,
         })
-          .then(result => {
-            setSaveStatus(result.status as 'saving' | 'saved' | 'error')
-            if (result.success && tema && typeof tema === 'number') {
-              const accuracy = Math.round((newScore / effectiveQuestions.length) * 100)
-              notifyTestCompletion(tema, accuracy, effectiveQuestions.length).catch(() => {})
-            }
-          })
-          .catch(err => {
-            console.error('❌ Error en finalización de test (server-side):', err)
-            setSaveStatus('error')
-          })
+
+        if (hasLimit) recordAnswer().catch(() => {})
+        recordAnswerForGoal()
+
+        if (!capturedUserSession) {
+          createUserSession(user.id).then(s => { if (s) setUserSession(s) }).catch(() => {})
+        }
       }
-    }
 
-    if (currentQuestion >= effectiveQuestions.length - 1) {
-      setIsExplicitlyCompleted(true)
-    }
+      // Modo adaptativo
+      if (adaptiveMode) {
+        const totalAnswered = newAnsweredQuestions.length
+        const totalCorrect = newAnsweredQuestions.filter(q => q.correct).length
+        const currentAccuracy = totalAnswered > 0 ? (totalCorrect / totalAnswered) * 100 : 100
+        const questionsSinceLastAdaptation = currentQuestion - lastAdaptedQuestion
 
-    // Hot article check (client-only, no bloquea)
-    const questionLawName = (currentQ.law_short_name || currentQ.article?.law_short_name || currentQ.law) as string | null
-    if (user && currentQ.primary_article_id && isLegalArticle(questionLawName)) {
-      checkHotArticle(currentQ.primary_article_id, user.id, !!(currentQ.is_official_exam || currentQ.metadata?.is_official_exam)).catch(() => {})
-    }
+        if (currentAccuracy < 60 && totalAnswered >= 3 && questionsSinceLastAdaptation >= 3) {
+          setIsAdaptiveMode(true)
+          adaptDifficulty('easier')
+          setLastAdaptedQuestion(currentQuestion)
+          setTimeout(() => setIsAdaptiveMode(false), 4000)
+        }
+      }
+
+      // Finalización del test
+      const allQuestionsAnswered = newDetailedAnswers.length >= effectiveQuestions.length
+
+      if (currentQuestion === effectiveQuestions.length - 1 || allQuestionsAnswered) {
+        setIsExplicitlyCompleted(true)
+
+        trackTestAction('test_completed', undefined, {
+          totalQuestions: effectiveQuestions.length, correctAnswers: newScore,
+          accuracy: Math.round((newScore / effectiveQuestions.length) * 100),
+          totalTimeMs: Date.now() - startTime, testType: tema ? 'tema' : 'general'
+        })
+
+        if (user && capturedSession) {
+          setSaveStatus('saving')
+
+          completeTestOnServer({
+            sessionId: capturedSession.id,
+            finalScore: newScore,
+            totalQuestions: effectiveQuestions.length,
+            detailedAnswers: newDetailedAnswers.map(a => ({
+              questionIndex: a.questionIndex ?? 0,
+              selectedAnswer: a.selectedAnswer ?? -1,
+              isCorrect: !!a.isCorrect,
+              timeSpent: a.timeSpent ?? 0,
+              confidence: (['very_sure', 'sure', 'unsure', 'guessing', 'unknown'].includes(a.confidence as string)
+                ? a.confidence : 'unknown') as 'very_sure' | 'sure' | 'unsure' | 'guessing' | 'unknown',
+              interactions: a.interactions ?? 1,
+              questionData: a.questionData ? {
+                id: a.questionData.id ?? null,
+                metadata: a.questionData.metadata ? {
+                  difficulty: (['easy', 'medium', 'hard', 'extreme'].includes(a.questionData.metadata.difficulty as string)
+                    ? a.questionData.metadata.difficulty : null) as 'easy' | 'medium' | 'hard' | 'extreme' | null,
+                } : null,
+                article: a.questionData.article ? {
+                  id: a.questionData.article.id ?? null,
+                  number: a.questionData.article.number != null ? String(a.questionData.article.number) : null,
+                  law_short_name: a.questionData.article.law_short_name ?? null,
+                } : null,
+              } : null,
+            })),
+            startTime,
+            interactionEvents: testTracker.interactionEvents.slice(-500),
+            userSessionId: capturedUserSession?.id ?? null,
+            tema: typeof tema === 'number' ? tema : null,
+          })
+            .then(result => {
+              setSaveStatus(result.status as 'saving' | 'saved' | 'error')
+              if (result.success && tema && typeof tema === 'number') {
+                const accuracy = Math.round((newScore / effectiveQuestions.length) * 100)
+                notifyTestCompletion(tema, accuracy, effectiveQuestions.length).catch(() => {})
+              }
+            })
+            .catch(err => {
+              console.error('❌ Error en finalización de test (server-side):', err)
+              setSaveStatus('error')
+            })
+        }
+      }
+
+      if (currentQuestion >= effectiveQuestions.length - 1) {
+        setIsExplicitlyCompleted(true)
+      }
+
+      // Hot article check
+      const questionLawName = (currentQ.law_short_name || currentQ.article?.law_short_name || currentQ.law) as string | null
+      if (user && currentQ.primary_article_id && isLegalArticle(questionLawName)) {
+        checkHotArticle(currentQ.primary_article_id, user.id, !!(currentQ.is_official_exam || currentQ.metadata?.is_official_exam)).catch(() => {})
+      }
+    }, 0)
   }
 
   // Navegación a siguiente pregunta con scroll específico
