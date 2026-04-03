@@ -783,7 +783,7 @@ export default function TemaPage({ params }: PageProps) {
                   <div className="border-t border-gray-200 pt-6">
                     <h4 className="font-bold text-gray-800 mb-4 flex items-center">
                       <span className="mr-2">🎯</span>
-                      Análisis Inteligente de Estudio - Tema {tema}
+                      Análisis Inteligente de Estudio - Tema {temaDisplay}
                     </h4>
 
                     <ArticulosEstudioPrioritario
@@ -806,7 +806,7 @@ export default function TemaPage({ params }: PageProps) {
               <div className="text-4xl mb-3">📊</div>
               <h3 className="font-bold text-blue-800 mb-2">¡Empieza a practicar!</h3>
               <p className="text-blue-700 text-sm">
-                Completa algunos tests para ver tus estadísticas personales del Tema {tema}.
+                Completa algunos tests para ver tus estadísticas personales del Tema {temaDisplay}.
               </p>
             </div>
           </section>
@@ -886,13 +886,14 @@ export default function TemaPage({ params }: PageProps) {
 
 // COMPONENTE: Artículos de Estudio Prioritario
 function ArticulosEstudioPrioritario({ userAnswers, tema, totalRespuestas, openArticleModal }: ArticulosEstudioPrioritarioProps) {
+  const temaDisplayLocal = getBlockForTopic('auxiliar-administrativo-estado', tema)?.displayNum ?? tema
   const { articulosFallados, recomendaciones } = useMemo(() => {
     const totalRespuestasReales = userAnswers.length
 
     if (totalRespuestasReales === 0) {
       return {
         articulosFallados: [] as ArticuloProblematico[],
-        recomendaciones: generarRecomendacionesInteligentes([], 0, tema),
+        recomendaciones: generarRecomendacionesInteligentes([], 0, tema, temaDisplayLocal),
       }
     }
 
@@ -968,19 +969,20 @@ function ArticulosEstudioPrioritario({ userAnswers, tema, totalRespuestas, openA
 
     return {
       articulosFallados: articulosProblematicos,
-      recomendaciones: generarRecomendacionesInteligentes(articulosProblematicos, totalRespuestasReales, tema),
+      recomendaciones: generarRecomendacionesInteligentes(articulosProblematicos, totalRespuestasReales, tema, temaDisplayLocal),
     }
-  }, [userAnswers, tema])
+  }, [userAnswers, tema, temaDisplayLocal])
 
-  function generarRecomendacionesInteligentes(articulosFalladosParam: ArticuloProblematico[], totalRespuestasReales: number, temaNumero: number): Recomendacion[] {
+  function generarRecomendacionesInteligentes(articulosFalladosParam: ArticuloProblematico[], totalRespuestasReales: number, temaNumero: number, temaDisplayNum?: number): Recomendacion[] {
+    const temaLabel = temaDisplayNum ?? temaNumero
     const recomendacionesGeneradas: Recomendacion[] = []
 
     if (totalRespuestasReales === 0) {
       recomendacionesGeneradas.push({
         tipo: 'sin_datos',
         prioridad: 'info',
-        titulo: `EMPIEZA TU ESTUDIO DEL TEMA ${temaNumero}`,
-        descripcion: `No tienes respuestas registradas en el Tema ${temaNumero} aún.`,
+        titulo: `EMPIEZA TU ESTUDIO DEL TEMA ${temaLabel}`,
+        descripcion: `No tienes respuestas registradas en el Tema ${temaLabel} aún.`,
         articulos: [],
         accion: 'Completa tu primer test para comenzar el análisis personalizado',
         iconoGrande: '🎯',
@@ -994,7 +996,7 @@ function ArticulosEstudioPrioritario({ userAnswers, tema, totalRespuestas, openA
         tipo: 'datos_insuficientes',
         prioridad: 'info',
         titulo: 'DATOS INSUFICIENTES PARA ANÁLISIS COMPLETO',
-        descripcion: `Solo tienes ${totalRespuestasReales} respuesta${totalRespuestasReales > 1 ? 's' : ''} en el Tema ${temaNumero}. Necesitas al menos 10-15 para un análisis confiable.`,
+        descripcion: `Solo tienes ${totalRespuestasReales} respuesta${totalRespuestasReales > 1 ? 's' : ''} en el Tema ${temaLabel}. Necesitas al menos 10-15 para un análisis confiable.`,
         articulos: [],
         accion: 'Completa más tests para obtener recomendaciones personalizadas detalladas',
         iconoGrande: '📈',
@@ -1006,7 +1008,7 @@ function ArticulosEstudioPrioritario({ userAnswers, tema, totalRespuestas, openA
           tipo: 'observacion_preliminar',
           prioridad: 'info',
           titulo: 'PRIMERAS OBSERVACIONES',
-          descripcion: `Hemos detectado ${articulosFalladosParam.length} artículo${articulosFalladosParam.length > 1 ? 's' : ''} con fallos iniciales en el Tema ${temaNumero}.`,
+          descripcion: `Hemos detectado ${articulosFalladosParam.length} artículo${articulosFalladosParam.length > 1 ? 's' : ''} con fallos iniciales en el Tema ${temaLabel}.`,
           articulos: articulosFalladosParam.slice(0, 3),
           accion: 'Estos artículos podrían necesitar atención, pero necesitamos más datos para confirmarlo',
           colorScheme: 'blue'
@@ -1021,7 +1023,7 @@ function ArticulosEstudioPrioritario({ userAnswers, tema, totalRespuestas, openA
         tipo: 'analisis_limitado',
         prioridad: 'info',
         titulo: 'ANÁLISIS PRELIMINAR',
-        descripcion: `Con ${totalRespuestasReales} respuestas en el Tema ${temaNumero} podemos dar recomendaciones básicas. Para análisis completo necesitas 25+ respuestas.`,
+        descripcion: `Con ${totalRespuestasReales} respuestas en el Tema ${temaLabel} podemos dar recomendaciones básicas. Para análisis completo necesitas 25+ respuestas.`,
         articulos: articulosFalladosParam.slice(0, 3),
         accion: 'Continúa practicando para obtener análisis más detallado y confiable',
         iconoGrande: '📊',
@@ -1034,7 +1036,7 @@ function ArticulosEstudioPrioritario({ userAnswers, tema, totalRespuestas, openA
           tipo: 'fallos_detectados',
           prioridad: 'media',
           titulo: 'ÁREAS DE MEJORA DETECTADAS',
-          descripcion: `${articulosMasFallados.length} artículo${articulosMasFallados.length > 1 ? 's' : ''} del Tema ${temaNumero} que ya muestra${articulosMasFallados.length > 1 ? 'n' : ''} dificultades`,
+          descripcion: `${articulosMasFallados.length} artículo${articulosMasFallados.length > 1 ? 's' : ''} del Tema ${temaLabel} que ya muestra${articulosMasFallados.length > 1 ? 'n' : ''} dificultades`,
           articulos: articulosMasFallados,
           accion: 'Revisar estos conceptos específicos del temario',
           colorScheme: 'orange'
@@ -1043,7 +1045,7 @@ function ArticulosEstudioPrioritario({ userAnswers, tema, totalRespuestas, openA
         recomendacionesGeneradas.push({
           tipo: 'buen_inicio',
           prioridad: 'positiva',
-          titulo: `BUEN INICIO EN EL TEMA ${temaNumero}`,
+          titulo: `BUEN INICIO EN EL TEMA ${temaLabel}`,
           descripcion: 'No se detectan problemas graves en tus primeras respuestas.',
           articulos: [],
           accion: 'Sigue practicando para consolidar tu conocimiento',
@@ -1058,17 +1060,17 @@ function ArticulosEstudioPrioritario({ userAnswers, tema, totalRespuestas, openA
       recomendacionesGeneradas.push({
         tipo: 'fallos_importantes',
         prioridad: 'alta',
-        titulo: `REVISAR CONCEPTOS DEL TEMA ${temaNumero}`,
+        titulo: `REVISAR CONCEPTOS DEL TEMA ${temaLabel}`,
         descripcion: `${articulosFalladosParam.length} artículo${articulosFalladosParam.length > 1 ? 's' : ''} que necesita${articulosFalladosParam.length > 1 ? 'n' : ''} más práctica`,
         articulos: articulosFalladosParam.slice(0, 6),
-        accion: `Repasar los conceptos fundamentales del Tema ${temaNumero}`,
+        accion: `Repasar los conceptos fundamentales del Tema ${temaLabel}`,
         colorScheme: 'red'
       })
     } else {
       recomendacionesGeneradas.push({
         tipo: 'excelente_dominio',
         prioridad: 'positiva',
-        titulo: `EXCELENTE DOMINIO DEL TEMA ${temaNumero}`,
+        titulo: `EXCELENTE DOMINIO DEL TEMA ${temaLabel}`,
         descripcion: `Con ${totalRespuestasReales} respuestas analizadas, no se detectan áreas problemáticas.`,
         articulos: [],
         accion: 'Mantén este excelente nivel y considera avanzar a otros temas',
