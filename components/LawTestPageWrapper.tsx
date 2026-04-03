@@ -58,6 +58,7 @@ interface FilteredQuestionResponse {
   question: string
   options: [string, string, string, string]
   explanation: string
+  correct_option: number
   primary_article_id: string
   tema: number | null
   article: {
@@ -100,6 +101,7 @@ function transformApiResponse(apiQuestions: FilteredQuestionResponse[]): Questio
     // TestLayout también usa 'options' array en algunos lugares
     options: q.options,
     explanation: q.explanation,
+    correct_option: q.correct_option,
     primary_article_id: q.primary_article_id,
     is_official_exam: q.metadata.is_official_exam,
     exam_source: q.metadata.exam_source,

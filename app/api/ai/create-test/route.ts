@@ -173,6 +173,7 @@ async function _POST(request: NextRequest) {
           option_b,
           option_c,
           option_d,
+          correct_option,
           explanation,
           difficulty,
           primary_article_id,
@@ -226,6 +227,7 @@ async function _POST(request: NextRequest) {
         question_text: q.question_text, // Mantener para compatibilidad
         options: [q.option_a, q.option_b, q.option_c, q.option_d],
         explanation: q.explanation,
+        correct_option: (q as any).correct_option ?? null,
         difficulty: q.difficulty,
         law_name: law?.name || 'Desconocida',
         law_slug: law?.short_name,

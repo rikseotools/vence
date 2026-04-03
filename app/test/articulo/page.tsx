@@ -44,6 +44,7 @@ function transformQuestions(apiQuestions: CreateTestResponse['questions']): Test
     question_text: q.question_text,
     options: q.options as [string, string, string, string],
     explanation: q.explanation,
+    correct_option: (q as any).correct_option ?? null,
     difficulty: q.difficulty,
     primary_article_id: null,
     article_number: q.article_number,
