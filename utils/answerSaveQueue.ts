@@ -37,10 +37,14 @@ function saveQueue(state: QueueState): void {
   try {
     localStorage.setItem(QUEUE_KEY, JSON.stringify(state))
   } catch {
-    // localStorage full — drop oldest entries
+    // localStorage full — mantener solo las últimas 10 respuestas
+    const dropped = state.answers.length - 10
     if (state.answers.length > 1) {
+      console.warn(`⚠️ [answerSaveQueue] localStorage lleno, descartando ${dropped > 0 ? dropped : 0} respuestas antiguas`)
       state.answers = state.answers.slice(-10)
-      try { localStorage.setItem(QUEUE_KEY, JSON.stringify(state)) } catch {}
+      try { localStorage.setItem(QUEUE_KEY, JSON.stringify(state)) } catch {
+        console.error('❌ [answerSaveQueue] No se pudo guardar ni con 10 respuestas. Respuestas solo en memoria.')
+      }
     }
   }
 }
@@ -113,7 +117,9 @@ async function getAccessToken(): Promise<string | null> {
  */
 export function enqueueAnswer(payload: Record<string, unknown>): void {
   const state = loadQueue()
-  const id = `${payload.questionId || 'unknown'}-${Date.now()}`
+  const id = typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `${payload.questionId || 'unknown'}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 
   state.answers.push({
     id,
