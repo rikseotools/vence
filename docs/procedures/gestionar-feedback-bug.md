@@ -175,6 +175,32 @@ const fecha = '2026-04-04T00:00:00';
   for (const e of errors || []) {
     console.log(\`  \${e.error_type}: \${e.error_message?.slice(0,80)} [deploy:\${e.deploy_version}]\`);
   }
+
+  // 5. Impugnaciones del usuario
+  const { data: disputes } = await supabase.from('question_disputes')
+    .select('id, question_id, dispute_type, description, status, created_at, admin_response')
+    .eq('user_id', userId).order('created_at', { ascending: false }).limit(5);
+  console.log('\\nImpugnaciones:', disputes?.length);
+  for (const d of disputes || []) {
+    console.log(\`  [\${d.created_at}] \${d.status} - \${d.description?.slice(0,80)}\`);
+  }
+
+  // 6. Impugnaciones psicotécnicas
+  const { data: psicoDisputes } = await supabase.from('psychometric_question_disputes')
+    .select('id, question_id, dispute_type, description, status, created_at')
+    .eq('user_id', userId).order('created_at', { ascending: false }).limit(5);
+  if (psicoDisputes?.length) {
+    console.log('Impugnaciones psicotécnicas:', psicoDisputes?.length);
+    for (const d of psicoDisputes || []) {
+      console.log(\`  [\${d.created_at}] \${d.status} - \${d.description?.slice(0,80)}\`);
+    }
+  }
 })();
 "
 ```
+
+## Manuales relacionados
+
+- **Investigar journey de usuario:** `docs/procedures/investigar-journey-usuario.md` — Timeline completa de interacciones, tests, sesiones, errores.
+- **Resolver impugnaciones:** `docs/maintenance/impugnaciones-claude-code.md` — Flujo completo para analizar, corregir y cerrar impugnaciones. **NUNCA cerrar sin aprobación explícita.**
+- **Revisar chat IA:** `docs/maintenance/revisar-chat-ai.md` — Analizar conversaciones del chat IA, detectar fallos de routing y mejorar prompts.
