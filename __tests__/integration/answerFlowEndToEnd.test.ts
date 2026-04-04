@@ -42,23 +42,18 @@ describe('TestLayout — flujo de respuesta end-to-end', () => {
     expect(setTimeoutAfter).toBeGreaterThan(showResultLine)
   })
 
-  it('enqueueAnswer usa capturedSession.id (no currentTestSession directo)', () => {
-    // Debe capturar la sesión antes del setTimeout para evitar stale closures
+  it('captura sesión antes del setTimeout para evitar stale closures', () => {
     expect(content).toContain('const capturedSession = currentTestSession')
-    expect(content).toMatch(/capturedSession\.id/)
   })
 
-  it('enqueueAnswer está dentro del setTimeout (no bloquea render)', () => {
-    // Encontrar el setTimeout que contiene enqueueAnswer
-    const timeoutStart = content.indexOf('setTimeout(() => {', content.indexOf('setShowResult(true)'))
-    const timeoutEnd = content.indexOf('}, 0)', timeoutStart)
-    const enqueuePos = content.indexOf('enqueueAnswer(', timeoutStart)
-    expect(enqueuePos).toBeGreaterThan(timeoutStart)
-    expect(enqueuePos).toBeLessThan(timeoutEnd)
+  it('guardado servidor está en función helper (saveAnswerToServer)', () => {
+    expect(content).toContain('saveAnswerToServer(')
+    expect(content).toContain('const saveAnswerToServer')
   })
 
-  it('enqueueAnswer solo se llama si hay user Y session', () => {
-    expect(content).toMatch(/if\s*\(user && capturedSession\)\s*\{[\s\S]*?enqueueAnswer/)
+  it('saveAnswerToServer usa enqueueAnswer con session.id', () => {
+    expect(content).toMatch(/enqueueAnswer[\s\S]*?sessionId:\s*session\.id/)
+    expect(content).toMatch(/if\s*\(!user \|\| !session\)\s*return/)
   })
 
   it('completeTestOnServer se llama en la finalización del test', () => {
