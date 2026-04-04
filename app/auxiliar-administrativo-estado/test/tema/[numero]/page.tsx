@@ -1,4 +1,4 @@
-// app/auxiliar-administrativo-estado/test/tema/[numero]/page.tsx - REFACTORIZADO CON API LAYER + LAZY LOADING
+// app/auxiliar-administrativo-estado/test/tema/[numero]/page.tsx - REFACTORIZADO CON API LAYER + LAZY LOADING + OPTIMISTIC UI
 'use client'
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import Link from 'next/link'
