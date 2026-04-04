@@ -1,7 +1,7 @@
 // Service Worker para notificaciones push - vence
 // Oposiciones Auxiliar Administrativo del Estado
 
-const CACHE_NAME = 'vence-v1'
+const CACHE_NAME = 'vence-v2'
 const urlsToCache = [
   '/',
   '/icon-192.png',
@@ -294,17 +294,44 @@ async function syncNotificationAnalytics() {
   }
 }
 
-// Manejo de fetch para cache (opcional)
+// Manejo de fetch — Network First para navegación, Cache First para iconos
 self.addEventListener('fetch', (event) => {
-  // Solo para recursos específicos, no interferir con la app principal
-  if (event.request.url.includes('/icon-') || event.request.url.includes('/badge-')) {
+  const { request } = event
+
+  // Iconos y badges → Cache First (cambian raramente)
+  if (request.url.includes('/icon-') || request.url.includes('/badge-')) {
     event.respondWith(
-      caches.match(event.request)
-        .then((response) => {
-          return response || fetch(event.request)
+      caches.match(request).then(cached => cached || fetch(request))
+    )
+    return
+  }
+
+  // Navegación (páginas HTML) → Network First (siempre contenido fresco)
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request)
+        .then(response => {
+          // Guardar en cache para offline
+          const clone = response.clone()
+          caches.open(CACHE_NAME).then(cache => cache.put(request, clone))
+          return response
+        })
+        .catch(() => {
+          // Red caída → servir de cache
+          return caches.match(request).then(cached => {
+            return cached || caches.match('/').then(home => {
+              return home || new Response('Sin conexión. Recarga cuando tengas internet.', {
+                status: 503,
+                headers: { 'Content-Type': 'text/html; charset=utf-8' }
+              })
+            })
+          })
         })
     )
+    return
   }
+
+  // Resto de requests (API, JS, CSS) → no interceptar, dejar que Next.js maneje
 })
 
 // Manejo de errores mejorado para móviles
