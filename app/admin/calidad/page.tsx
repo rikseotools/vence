@@ -251,7 +251,7 @@ export default function CalidadPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {(Object.keys(CHECK_CONFIG) as CheckKey[]).map((key) => {
             const config = CHECK_CONFIG[key]
-            const check = data.checks[key]
+            const check = (data.checks as Record<string, CheckResult>)[key]
             const isExpanded = expandedChecks.has(key)
 
             return (
