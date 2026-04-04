@@ -60,13 +60,18 @@ describeIf('Content Data Integrity', () => {
     // Obtener psicotécnicas activas con content_data vacío Y sin image_url
     const rows = await query(
       'psychometric_questions',
-      'select=id,question_text,content_data&is_active=eq.true&content_data=eq.%7B%7D&image_url=is.null'
-    ) as Array<{ id: string; question_text: string; content_data: Record<string, unknown> }>
+      'select=id,question_text,question_subtype,content_data&is_active=eq.true&content_data=eq.%7B%7D&image_url=is.null'
+    ) as Array<{ id: string; question_text: string; question_subtype: string; content_data: Record<string, unknown> }>
 
-    const patterns = ['cuadro', 'tabla', 'figura', 'imagen', 'gráfico']
+    const patterns = ['cuadro', 'figura', 'imagen', 'diagrama', 'casilla', 'recuadro']
+    // Patrones que requieren word-boundary para evitar falsos positivos:
+    // 'tabla' matchea 'tabla' pero no 'contable'; 'gráfico' pero no 'ortográfico'
+    const regexPatterns = [/\btabla\b/, /\bgráfico\b/, /\bcírculo\b/]
     const problematic = rows.filter(q => {
       const text = (q.question_text || '').toLowerCase()
-      return patterns.some(p => text.includes(p))
+      // Excluir subtipos que normalmente no necesitan imagen
+      if (['error_detection', 'text_question', 'word_analysis', 'synonym', 'antonym', 'definition', 'analogy'].includes(q.question_subtype)) return false
+      return patterns.some(p => text.includes(p)) || regexPatterns.some(r => r.test(text))
     })
 
     if (problematic.length > 0) {
@@ -165,6 +170,30 @@ describeIf('Content Data Integrity', () => {
     }
   }, 15000)
 
+  test('NO debe haber preguntas psicotécnicas activas con texto genérico sin contenido visual', async () => {
+    // Detecta preguntas cuyo question_text no contiene la serie/datos y dependen de una imagen que no existe
+    // Caso real: "Elija el número que sustituya a la interrogación:" sin image_url ni content_data
+    const genericPatterns = [
+      'sustituya a la interrogación',
+      'sustituya al interrogante',
+      'ocupe el lugar',
+    ]
+
+    let total = 0
+    for (const pattern of genericPatterns) {
+      const rows = await query(
+        'psychometric_questions',
+        `select=id,question_text&is_active=eq.true&content_data=eq.%7B%7D&image_url=is.null&question_text=ilike.*${encodeURIComponent(pattern)}*`
+      ) as Array<{ id: string; question_text: string }>
+      if (rows.length > 0) {
+        console.error(`${rows.length} preguntas con "${pattern}" sin contenido visual:`, rows.map(q => q.id.substring(0, 8)))
+      }
+      total += rows.length
+    }
+
+    expect(total).toBe(0)
+  }, 15000)
+
   test('NO debe haber preguntas legislativas activas que referencien imágenes no disponibles', async () => {
     // Patrones que indican referencia a imagen/tabla visual
     const patterns = [
@@ -221,5 +250,40 @@ describeIf('Content Data Integrity', () => {
 
       expect(prlWrong.length).toBe(0)
     }
+  }, 15000)
+
+  test('NO debe haber preguntas sobre normas autonómicas vinculadas a leyes estatales', async () => {
+    // Previene que preguntas de CyL/Madrid/etc aparezcan en otras oposiciones
+    // Caso real: pregunta sobre Decreto 7/2016 CyL vinculada a art. 24 Ley 19/2013 (estatal)
+
+    // Obtener IDs de leyes estatales conocidas donde se han filtrado preguntas autonómicas
+    const nationalLaws = await query('laws', 'select=id,short_name&scope=eq.national&is_active=eq.true') as Array<{ id: string; short_name: string }>
+    const organicLaws = await query('laws', 'select=id,short_name&scope=eq.organic&is_active=eq.true') as Array<{ id: string; short_name: string }>
+    const stateLawIds = new Set([...nationalLaws, ...organicLaws].map(l => l.id))
+
+    // Patrones de normas autonómicas específicas en question_text
+    const patterns = [
+      'Decreto 7/2016%acceso%información',  // CyL
+      'Ley 1/1998%Régimen Local%Castilla',  // CyL
+      'Decreto 7/2016%Castilla',            // CyL
+    ]
+
+    let total = 0
+    for (const pattern of patterns) {
+      const rows = await query(
+        'questions',
+        `select=id,question_text,primary_article_id&is_active=eq.true&primary_article_id=not.is.null&question_text=ilike.*${encodeURIComponent(pattern)}*`
+      ) as Array<{ id: string; question_text: string; primary_article_id: string }>
+
+      for (const q of rows) {
+        const arts = await query('articles', `select=law_id&id=eq.${q.primary_article_id}`) as Array<{ law_id: string }>
+        if (arts.length > 0 && stateLawIds.has(arts[0].law_id)) {
+          console.error(`Pregunta ${q.id.substring(0, 8)} menciona norma autonómica vinculada a ley estatal: ${q.question_text?.substring(0, 80)}`)
+          total++
+        }
+      }
+    }
+
+    expect(total).toBe(0)
   }, 15000)
 })

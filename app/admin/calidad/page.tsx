@@ -118,6 +118,11 @@ const CHECK_CONFIG = {
     description: 'Psicotécnicas con HTML en la explicación en vez de markdown',
     icon: '🏷️',
   },
+  regional_wrong_law: {
+    title: 'Norma autonómica → ley estatal',
+    description: 'Preguntas que mencionan normas autonómicas pero están vinculadas a leyes estatales (aparecen en oposiciones incorrectas)',
+    icon: '🗺️',
+  },
 } as const
 
 type CheckKey = keyof typeof CHECK_CONFIG

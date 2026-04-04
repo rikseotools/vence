@@ -37,6 +37,7 @@ interface QualityResponse {
     outdated_plan: CheckResult
     psy_missing_figures: CheckResult
     psy_html_explanation: CheckResult
+    regional_wrong_law: CheckResult
   }
 }
 
@@ -188,17 +189,38 @@ async function runCountsOnly(): Promise<number> {
           option_a = '' OR option_b = '' OR option_c = '' OR option_d = ''
         ) as psy_empty,
         count(*) FILTER (WHERE
-          (question_text ILIKE '%serie de figuras%' OR question_text ILIKE '%siguiente imagen%' OR question_text ILIKE '%siguiente gráfico%' OR question_text ILIKE '%tabla I y marcar%' OR question_text ILIKE '%observe la figura%')
+          (question_text ILIKE '%serie de figuras%' OR question_text ILIKE '%siguiente imagen%' OR question_text ILIKE '%siguiente gráfico%' OR question_text ILIKE '%tabla I y marcar%' OR question_text ILIKE '%observe la figura%' OR question_text ILIKE '%sustituya a la interrogaci%' OR question_text ILIKE '%sustituya al interrogante%' OR question_text ILIKE '%ocupe el lugar%')
           AND (content_data IS NULL OR content_data::text = '{}')
+          AND image_url IS NULL
         ) as psy_figures,
         count(*) FILTER (WHERE
           explanation ~* ${HTML_EXPLANATION_REGEX}
         ) as psy_html
       FROM psychometric_questions
       WHERE is_active = true
+    ),
+    regional_wrong AS (
+      SELECT count(*)::int as regional_mismatch
+      FROM questions q
+      JOIN articles a ON a.id = q.primary_article_id
+      JOIN laws l ON l.id = a.law_id
+      WHERE q.is_active = true
+        AND l.scope != 'regional'
+        AND (
+          q.question_text ILIKE '%Decreto%Castilla y León%'
+          OR q.question_text ILIKE '%Decreto%CyL%'
+          OR q.question_text ILIKE '%Ley%Castilla y León%'
+          OR q.question_text ILIKE '%Ley%CyL%'
+          OR q.question_text ILIKE '%Decreto%Comunidad de Madrid%'
+          OR q.question_text ILIKE '%Ley%Comunidad de Madrid%'
+          OR q.question_text ILIKE '%Ley%Región de Murcia%'
+          OR q.question_text ILIKE '%Ley%Principado de Asturias%'
+          OR q.question_text ILIKE '%Decreto%Castilla-La Mancha%'
+          OR q.question_text ILIKE '%Ley%Illes Balears%'
+        )
     )
-    SELECT (b.empty_options + b.banned_words + b.pending_explanation + b.missing_article + b.missing_image + b.excel_typo + b.html_explanation + b.cramped_explanation + b.outdated_plan + s.copied + dup.duplicates + wl.wrong_law + uc.uncited + pb.psy_empty + pb.psy_figures + pb.psy_html)::int as total
-    FROM base b, similarity_count s, duplicate_count dup, wrong_law_count wl, uncited_count uc, psy_base pb
+    SELECT (b.empty_options + b.banned_words + b.pending_explanation + b.missing_article + b.missing_image + b.excel_typo + b.html_explanation + b.cramped_explanation + b.outdated_plan + s.copied + dup.duplicates + wl.wrong_law + uc.uncited + pb.psy_empty + pb.psy_figures + pb.psy_html + rw.regional_mismatch)::int as total
+    FROM base b, similarity_count s, duplicate_count dup, wrong_law_count wl, uncited_count uc, psy_base pb, regional_wrong rw
   `)
 
   const rows = (result as any).rows ?? result ?? []
@@ -422,8 +444,9 @@ async function runChecks(): Promise<QualityResponse> {
              count(*) OVER()::int as total_count
       FROM psychometric_questions
       WHERE is_active = true
-        AND (question_text ILIKE '%serie de figuras%' OR question_text ILIKE '%siguiente imagen%' OR question_text ILIKE '%siguiente gráfico%' OR question_text ILIKE '%tabla I y marcar%' OR question_text ILIKE '%observe la figura%')
+        AND (question_text ILIKE '%serie de figuras%' OR question_text ILIKE '%siguiente imagen%' OR question_text ILIKE '%siguiente gráfico%' OR question_text ILIKE '%tabla I y marcar%' OR question_text ILIKE '%observe la figura%' OR question_text ILIKE '%sustituya a la interrogaci%' OR question_text ILIKE '%sustituya al interrogante%' OR question_text ILIKE '%ocupe el lugar%')
         AND (content_data IS NULL OR content_data::text = '{}')
+        AND image_url IS NULL
       LIMIT ${MAX_ITEMS}
     `),
 
@@ -436,11 +459,36 @@ async function runChecks(): Promise<QualityResponse> {
         AND explanation ~* ${HTML_EXPLANATION_REGEX}
       LIMIT ${MAX_ITEMS}
     `),
+
+    // 15. Preguntas sobre normas autonómicas vinculadas a leyes estatales
+    db.execute(sql`
+      SELECT q.id, LEFT(q.question_text, ${TEXT_LIMIT}) as question_text,
+             l.short_name as linked_law,
+             count(*) OVER()::int as total_count
+      FROM questions q
+      JOIN articles a ON a.id = q.primary_article_id
+      JOIN laws l ON l.id = a.law_id
+      WHERE q.is_active = true
+        AND l.scope != 'regional'
+        AND (
+          q.question_text ILIKE '%Decreto%Castilla y León%'
+          OR q.question_text ILIKE '%Decreto%CyL%'
+          OR q.question_text ILIKE '%Ley%Castilla y León%'
+          OR q.question_text ILIKE '%Ley%CyL%'
+          OR q.question_text ILIKE '%Decreto%Comunidad de Madrid%'
+          OR q.question_text ILIKE '%Ley%Comunidad de Madrid%'
+          OR q.question_text ILIKE '%Ley%Región de Murcia%'
+          OR q.question_text ILIKE '%Ley%Principado de Asturias%'
+          OR q.question_text ILIKE '%Decreto%Castilla-La Mancha%'
+          OR q.question_text ILIKE '%Ley%Illes Balears%'
+        )
+      LIMIT ${MAX_ITEMS}
+    `),
   ])
 
   const toRows = (r: any) => (r as any).rows ?? r ?? []
 
-  const [emptyOpts, bannedRaw, pendingExpl, missingArt, missingImg, excelTypoRaw, htmlExplRaw, wrongLawRaw, crampedExplRaw, copiedExplRaw, duplicateRaw, uncitedRaw, outdatedPlanRaw, psyEmptyRaw, psyFiguresRaw, psyHtmlRaw] = results
+  const [emptyOpts, bannedRaw, pendingExpl, missingArt, missingImg, excelTypoRaw, htmlExplRaw, wrongLawRaw, crampedExplRaw, copiedExplRaw, duplicateRaw, uncitedRaw, outdatedPlanRaw, psyEmptyRaw, psyFiguresRaw, psyHtmlRaw, regionalWrongRaw] = results
 
   const emptyRows = toRows(emptyOpts)
   const bannedRows = toRows(bannedRaw)
@@ -458,6 +506,7 @@ async function runChecks(): Promise<QualityResponse> {
   const psyEmptyRows = toRows(psyEmptyRaw)
   const psyFiguresRows = toRows(psyFiguresRaw)
   const psyHtmlRows = toRows(psyHtmlRaw)
+  const regionalWrongRows = toRows(regionalWrongRaw)
 
   // Detect which field has banned word
   const bannedRegexJs = new RegExp(BANNED_REGEX.replace('(?i)', ''), 'i')
@@ -581,6 +630,13 @@ async function runChecks(): Promise<QualityResponse> {
         id: q.id, question_text: q.question_text, field: 'explanation',
       })),
     },
+    regional_wrong_law: {
+      count: getCount(regionalWrongRows),
+      questions: regionalWrongRows.map((q: any) => ({
+        id: q.id, question_text: q.question_text, field: 'primary_article_id',
+        extra: q.linked_law,
+      })),
+    },
   }
 
   const totalIssues =
@@ -599,7 +655,8 @@ async function runChecks(): Promise<QualityResponse> {
     checks.outdated_plan.count +
     checks.psy_empty_options.count +
     checks.psy_missing_figures.count +
-    checks.psy_html_explanation.count
+    checks.psy_html_explanation.count +
+    checks.regional_wrong_law.count
 
   return { success: true, totalIssues, checks }
 }
