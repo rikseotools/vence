@@ -46,6 +46,7 @@ import { useOposicionPaths } from '@/hooks/useOposicionPaths'
 // validateAnswer ya no se usa — validación es client-side
 import { completeTestOnServer } from '@/lib/api/v2/complete-test/client'
 import { enqueueAnswer } from '@/utils/answerSaveQueue'
+import { usePendingAnswers } from '@/hooks/usePendingAnswers'
 import ContentDataRenderer from './ContentDataRenderer'
 
 import type {
@@ -204,6 +205,7 @@ export default function TestLayout({
   const { user, loading: authLoading, supabase, isPremium } = useAuth()
   const { setQuestionContext, clearQuestionContext } = useQuestionContext()
   const { notifyTestCompletion } = useTestCompletion()
+  const pendingAnswers = usePendingAnswers()
   const {
     hasLimit,
     isLimitReached,
@@ -1566,6 +1568,11 @@ export default function TestLayout({
                 <span>{config.icon}</span>
                 <span>{config.name}{config.description ? `: ${config.description}` : ''}</span>
                 {user && currentTestSession && <span className="ml-2">💾</span>}
+                {pendingAnswers > 0 && (
+                  <span className="ml-1 px-1.5 py-0.5 bg-yellow-400/80 text-yellow-900 text-xs rounded-full font-mono" title={`${pendingAnswers} respuesta${pendingAnswers > 1 ? 's' : ''} pendiente${pendingAnswers > 1 ? 's' : ''} de guardar`}>
+                    {pendingAnswers}
+                  </span>
+                )}
               </div>
               <p className="text-gray-600 dark:text-gray-400">{config.subtitle}</p>
             </div>
