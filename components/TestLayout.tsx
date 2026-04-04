@@ -301,6 +301,11 @@ export default function TestLayout({
   // Hook para obtener la URL actual
   const pathname = usePathname()
 
+  // Resetear sesión cuando cambia el tema o test (navegación entre temas sin desmontar)
+  useEffect(() => {
+    setCurrentTestSession(null)
+  }, [tema, testNumber])
+
   // ═══════════════════════════════════════════════════════════════
   // CREAR SESIÓN DE TEST AL MONTAR (eager)
   // Sin sesión, enqueueAnswer no guarda respuestas en el servidor.
