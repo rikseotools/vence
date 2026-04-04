@@ -198,7 +198,7 @@ describe('withErrorLogging — cobertura de endpoints', () => {
 
   it('todos los endpoints con handler exportado usan withErrorLogging', () => {
     // Excluir endpoints que intencionalmente no usan el wrapper (evitar loops)
-    const excluded = ['app/api/validation-error-log/route.ts', 'app/api/debug/psico-images/route.ts']
+    const excluded = ['app/api/validation-error-log/route.ts', 'app/api/debug/psico-images/route.ts', 'app/api/version/route.ts']
     let wrappedCount = 0
     for (const relPath of routeFiles) {
       if (excluded.includes(relPath)) continue

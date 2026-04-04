@@ -1,6 +1,8 @@
 // lib/logClientError.ts — Helper centralizado para logar errores client-side a BD
 // Fire-and-forget: nunca lanza, nunca bloquea.
 
+import { getClientVersion } from '@/hooks/useVersionCheck'
+
 export function logClientError(
   endpoint: string,
   error: unknown,
@@ -16,6 +18,7 @@ export function logClientError(
     : 'unknown'
 
   const prefix = context?.component ? `[${context.component} client] ` : ''
+  const clientVersion = getClientVersion()
 
   fetch('/api/validation-error-log', {
     method: 'POST',
@@ -23,9 +26,10 @@ export function logClientError(
     body: JSON.stringify({
       endpoint,
       errorType,
-      errorMessage: `${prefix}${err.message}`,
+      errorMessage: `${prefix}${err.message}${clientVersion ? ` [v:${clientVersion}]` : ''}`,
       questionId: context?.questionId || undefined,
       userId: context?.userId || undefined,
+      userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
       httpStatus: 0,
       durationMs: 0,
     })

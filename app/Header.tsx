@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react'
 import type { MouseEvent } from 'react'
 import { usePathname } from 'next/navigation'
 import UserAvatar from '@/components/UserAvatar'
+import { useVersionCheck } from '@/hooks/useVersionCheck'
 import NotificationBell from '@/components/NotificationBell'
 import RankingModal from '@/components/RankingModal'
 import FeedbackButton from '@/components/FeedbackButton'
@@ -46,6 +47,7 @@ interface PendingExam {
 // ── Component ────────────────────────────────────────────────────
 
 export default function HeaderES() {
+  useVersionCheck()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
   const [adminLoading, setAdminLoading] = useState(true)
