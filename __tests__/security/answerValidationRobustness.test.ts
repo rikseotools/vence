@@ -125,7 +125,7 @@ describe('PsychometricTestLayout.tsx — validación client-side', () => {
 
   it('usa correct_option para validación client-side instantánea', () => {
     expect(content).toContain('correct_option')
-    expect(content).toContain('enqueueAnswer')
+    expect(content).toContain('validatePsychometricAnswer')
   })
 
   it('no bloquea UI con isAnswering (validación instantánea)', () => {
@@ -136,8 +136,8 @@ describe('PsychometricTestLayout.tsx — validación client-side', () => {
     expect(content).not.toContain("'/api/emails/send-admin-notification'")
   })
 
-  it('usa enqueueAnswer para guardado en background', () => {
-    expect(content).toMatch(/import\s*\{[^}]*enqueueAnswer[^}]*\}/)
+  it('usa validatePsychometricAnswer para guardado en background', () => {
+    expect(content).toMatch(/import\s*\{[^}]*validatePsychometricAnswer[^}]*\}/)
   })
 })
 

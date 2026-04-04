@@ -298,6 +298,32 @@ export default function TestLayout({
 
   // Hook para obtener la URL actual
   const pathname = usePathname()
+
+  // ═══════════════════════════════════════════════════════════════
+  // CREAR SESIÓN DE TEST AL MONTAR (eager)
+  // Sin sesión, enqueueAnswer no guarda respuestas en el servidor.
+  // ═══════════════════════════════════════════════════════════════
+  useEffect(() => {
+    if (!user || currentTestSession || !activeQuestions.length || !tema || !testNumber || !config) return
+
+    const sessionKey = `${user.id}-${tema}-${testNumber}`
+    if (sessionCreationRef.current.has(sessionKey)) return
+    sessionCreationRef.current.add(sessionKey)
+
+    createDetailedTestSession(user.id, tema, testNumber, activeQuestions as any, config as any, startTime, pageLoadTime.current)
+      .then(session => {
+        if (session) {
+          setCurrentTestSession(session)
+          console.log('✅ Sesión de test creada (eager):', session.id)
+        }
+      })
+      .catch(err => {
+        console.error('❌ Error creando sesión de test:', err)
+      })
+      .finally(() => {
+        sessionCreationRef.current.delete(sessionKey)
+      })
+  }, [user, currentTestSession, activeQuestions.length, tema, testNumber, config, startTime])
   
   // Detectar si estamos en /test-oposiciones/ para desactivar modal de registro
   const isTestOposicionesSection = pathname?.startsWith('/test-oposiciones/')
