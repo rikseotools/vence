@@ -147,7 +147,7 @@ async function saveAnswerToAPI(
   testId: string,
   question: ExamQuestion,
   questionIndex: number,
-  selectedOption: string
+  selectedOption: string | null
 ): Promise<boolean> {
   try {
     const response = await fetch('/api/exam/answer', {
@@ -157,7 +157,7 @@ async function saveAnswerToAPI(
         testId,
         questionId: question.id || null,
         questionOrder: questionIndex + 1, // 1-indexed
-        userAnswer: selectedOption,
+        userAnswer: selectedOption ?? '',
         // 🔒 SEGURIDAD: correctAnswer se validará en /api/exam/validate al enviar el examen
         questionText: question.question_text || '',
         articleId: question.articles?.id || question.primary_article_id || null,
@@ -831,6 +831,36 @@ export default function ExamLayout({
       }
 
       console.log(`✅ ${allAnswers.length} respuestas preparadas para análisis`)
+
+      // Guardar preguntas sin respuesta como incorrectas (para historial de aprendizaje)
+      if (currentTestSession?.id) {
+        const unanswered = allAnswers.filter(a => a.selectedAnswer === -1)
+        if (unanswered.length > 0) {
+          console.log(`📝 Guardando ${unanswered.length} preguntas sin respuesta como incorrectas`)
+          for (const answer of unanswered) {
+            const correctLetter = apiResult?.results?.[answer.questionIndex]?.correctAnswer || 'a'
+            fetch('/api/exam/answer', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                testId: currentTestSession.id,
+                questionId: effectiveQuestions[answer.questionIndex]?.id || null,
+                questionOrder: answer.questionIndex + 1,
+                userAnswer: '',
+                correctAnswer: correctLetter,
+                questionText: effectiveQuestions[answer.questionIndex]?.question_text || '',
+                articleId: effectiveQuestions[answer.questionIndex]?.articles?.id || null,
+                articleNumber: effectiveQuestions[answer.questionIndex]?.articles?.article_number || null,
+                lawName: effectiveQuestions[answer.questionIndex]?.articles?.laws?.short_name || null,
+                temaNumber: effectiveQuestions[answer.questionIndex]?.tema_number || null,
+                difficulty: effectiveQuestions[answer.questionIndex]?.difficulty || null,
+                timeSpentSeconds: 0,
+                confidenceLevel: null,
+              })
+            }).catch(() => {})
+          }
+        }
+      }
 
       if (currentTestSession?.id) {
         // Score = COUNT de aciertos (no porcentaje). El % se deriva en stats.
