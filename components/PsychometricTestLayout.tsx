@@ -21,7 +21,7 @@ import MarkdownExplanation from './MarkdownExplanation'
 import PsychometricAIHelpButton from './PsychometricAIHelpButton'
 import { getDifficultyInfo, formatDifficultyDisplay, isFirstAttempt, type DifficultyInfo } from '../lib/psychometricDifficulty'
 import { useInteractionTracker } from '../hooks/useInteractionTracker'
-import { validatePsychometricAnswer } from '@/lib/api/psychometric-answer/client'
+import { enqueuePsychometricAnswer } from '@/utils/psychometricSaveQueue'
 import ContentDataRenderer from './ContentDataRenderer'
 
 // ============================================
@@ -336,20 +336,20 @@ export default function PsychometricTestLayout({
     setShowResult(true)
 
     // ═══════════════════════════════════════════════════════════════
-    // GUARDADO EN BACKGROUND (fire-and-forget via API psicotécnica)
+    // GUARDADO EN BACKGROUND (cola offline → /api/answer/psychometric)
     // ═══════════════════════════════════════════════════════════════
     if (testSession && user) {
-      const saveParams = {
+      enqueuePsychometricAnswer({
+        questionId: currentQ.id,
+        userAnswer: optionIndex,
         sessionId: testSession.id,
         userId: user.id,
         questionOrder: currentQuestion + 1,
         timeSpentSeconds: timeTakenSeconds,
         questionSubtype: currentQ.question_subtype || null,
         totalQuestions,
-      }
-      validatePsychometricAnswer(currentQ.id, optionIndex, saveParams)
-        .then(() => { recordAnswerForGoal() })
-        .catch(err => { console.error('❌ Error guardando respuesta psicotécnica:', err) })
+      })
+      recordAnswerForGoal()
     }
   }
 

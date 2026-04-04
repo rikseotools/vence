@@ -87,14 +87,13 @@ describe('PsychometricTestLayout — flujo de respuesta end-to-end', () => {
     expect(content).toMatch(/typeof currentQ\.correct_option === .number./)
   })
 
-  it('usa validatePsychometricAnswer para guardar (no enqueueAnswer)', () => {
-    expect(content).toContain('validatePsychometricAnswer')
+  it('usa cola offline propia (enqueuePsychometricAnswer, no enqueueAnswer)', () => {
+    expect(content).toContain('enqueuePsychometricAnswer')
     expect(content).not.toContain('enqueueAnswer')
   })
 
-  it('guardado es fire-and-forget (.then/.catch)', () => {
-    expect(content).toMatch(/validatePsychometricAnswer[\s\S]*?\.then/)
-    expect(content).toMatch(/validatePsychometricAnswer[\s\S]*?\.catch/)
+  it('no usa validatePsychometricAnswer bloqueante', () => {
+    expect(content).not.toMatch(/import.*validatePsychometricAnswer/)
   })
 
   it('isAnswering es constante false', () => {
