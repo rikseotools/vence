@@ -297,13 +297,16 @@ export default function TestLayout({
   const questionHeaderRef = useRef<HTMLDivElement | null>(null)
   const sessionCreationRef = useRef<Set<string>>(new Set())
   const registrationProcessingRef = useRef<Set<string>>(new Set())
+  // Buffer de respuestas pendientes de sesión — se flush cuando la sesión se crea
+  const pendingAnswersBuffer = useRef<Array<Record<string, unknown>>>([])
 
   // Hook para obtener la URL actual
   const pathname = usePathname()
 
-  // Resetear sesión cuando cambia el tema o test (navegación entre temas sin desmontar)
+  // Resetear sesión y buffer cuando cambia el tema o test
   useEffect(() => {
     setCurrentTestSession(null)
+    pendingAnswersBuffer.current = []
   }, [tema, testNumber])
 
   // ═══════════════════════════════════════════════════════════════
@@ -322,6 +325,14 @@ export default function TestLayout({
         if (session) {
           setCurrentTestSession(session)
           console.log('✅ Sesión de test creada (eager):', session.id)
+          // Flush respuestas que llegaron antes de que la sesión existiera
+          if (pendingAnswersBuffer.current.length > 0) {
+            console.log(`📤 Flushing ${pendingAnswersBuffer.current.length} respuestas pendientes con sesión ${session.id}`)
+            for (const payload of pendingAnswersBuffer.current) {
+              enqueueAnswer({ ...payload, sessionId: session.id })
+            }
+            pendingAnswersBuffer.current = []
+          }
         }
       })
       .catch(err => {
@@ -905,11 +916,12 @@ export default function TestLayout({
     currentQ: TestQuestion, answerIndex: number, questionIndex: number,
     timeSpent: number, confidence: string, capturedFirstInteractionTime: number | null
   ) => {
-    if (!user || !session) return
-    enqueueAnswer({
+    if (!user) return
+
+    const payload: Record<string, unknown> = {
       questionId: currentQ.id,
       userAnswer: answerIndex,
-      sessionId: session.id,
+      sessionId: session?.id ?? null,
       questionIndex,
       questionText: currentQ.question_text || currentQ.question || '',
       options: currentQ.options || [currentQ.option_a, currentQ.option_b, currentQ.option_c, currentQ.option_d].filter(Boolean),
@@ -942,7 +954,17 @@ export default function TestLayout({
       mouseEvents: testTracker.mouseEvents.slice(-50),
       scrollEvents: testTracker.scrollEvents.slice(-50),
       currentScore: score,
-    })
+    }
+
+    if (session) {
+      // Sesión existe → enviar inmediatamente
+      enqueueAnswer(payload)
+    } else {
+      // Sesión aún no creada → bufferea para flush cuando se cree
+      console.log('⏳ Sesión no disponible, buffereando respuesta para flush posterior')
+      pendingAnswersBuffer.current.push(payload)
+    }
+
     if (hasLimit) recordAnswer().catch(() => {})
     recordAnswerForGoal()
     if (!capturedUserSession) {

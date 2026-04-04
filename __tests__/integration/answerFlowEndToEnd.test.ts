@@ -51,9 +51,9 @@ describe('TestLayout — flujo de respuesta end-to-end', () => {
     expect(content).toContain('const saveAnswerToServer')
   })
 
-  it('saveAnswerToServer usa enqueueAnswer con session.id', () => {
-    expect(content).toMatch(/enqueueAnswer[\s\S]*?sessionId:\s*session\.id/)
-    expect(content).toMatch(/if\s*\(!user \|\| !session\)\s*return/)
+  it('saveAnswerToServer enqueue o buffer según sesión exista', () => {
+    expect(content).toMatch(/enqueueAnswer[\s\S]*?sessionId:\s*session\?\.id/)
+    expect(content).toContain('pendingAnswersBuffer.current.push(payload)')
   })
 
   it('completeTestOnServer se llama en la finalización del test', () => {
