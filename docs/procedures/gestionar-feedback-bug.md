@@ -98,6 +98,50 @@ const { data: errors } = await supabase.from('validation_error_logs')
 | Validación Zod 400 | sessionId null | Sesión no se creó antes de responder |
 | Network/Load failed | Red del usuario inestable | No es nuestro bug |
 
+## 5b. Diagnóstico fallo silencioso de sesión (desde 05/04/2026)
+
+Si el usuario reporta "mi test no se guardó" y cuadra: 0 tests en BD + N respuestas en interactions + 0 errores API, **ya no es silencioso** — desde abril 2026 `createDetailedTestSession` loguea en `validation_error_logs` cuando falla.
+
+**Causas esperadas (endpoint = `createDetailedTestSession`):**
+
+| error_message | Causa | Acción |
+|---------------|-------|--------|
+| "userId es requerido" | Auth context no cargado al montar TestLayout | Bug de timing client-side |
+| "Zod validation failed" | Datos preguntas malformados | Verificar topic_scope |
+| "0 preguntas disponibles" | topic_scope vacío o todas preguntas desactivadas | Revisar datos tema |
+| "Supabase session expired (no access_token)" | Token caducado durante el test | User debe re-loguear |
+| "Supabase INSERT error 42501" | RLS bloquea el insert | Bug policy BD |
+| "Supabase INSERT error 23503" | FK rota (user_id no existe) | Corrupción datos |
+| "Supabase INSERT returned empty data" | Bug cliente Supabase | Investigar |
+
+**Query diagnóstica:**
+
+```js
+// Errores de creación de sesión de un usuario específico
+const { data } = await supabase.from('validation_error_logs')
+  .select('created_at, endpoint, error_message, deploy_version')
+  .eq('user_id', userId)
+  .eq('endpoint', 'createDetailedTestSession')
+  .order('created_at', { ascending: false });
+```
+
+## 5c. Verificar versión del cliente al fallar (desde 05/04/2026)
+
+`user_interactions` y `tests` ahora incluyen `deploy_version` (hash commit 8 chars). Permite trazar qué versión del JS tenía el usuario al fallar.
+
+```js
+// ¿Qué versión tenía el usuario en sus interacciones del día del bug?
+const { data } = await supabase.from('user_interactions')
+  .select('deploy_version, created_at')
+  .eq('user_id', userId)
+  .gte('created_at', 'FECHA_INICIO')
+  .not('deploy_version', 'is', null)
+  .limit(1);
+
+// Si deploy_version viejo → cache del navegador con versión anterior
+// Si deploy_version actual → bug en el código, investigar esa versión
+```
+
 ## 6. Clasificar el bug
 
 | Situación | Diagnóstico | Acción |
