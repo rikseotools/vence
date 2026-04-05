@@ -182,3 +182,58 @@ const supabase = createClient(
 - [ ] Los artículos incluyen rangos completos de capítulos relevantes (no solo los que tienen preguntas)
 - [ ] El conteo de preguntas mostrado en la página es razonable para el tema
 - [ ] Si un tema similar existe en varias oposiciones, cada una tiene su propio scope adaptado a su epígrafe
+
+## Detección de Mismatches Epígrafe ↔ Topic Scope
+
+### Opción A: Verificación manual (1 tema concreto)
+
+Si un usuario reporta problemas con un tema específico, o hay sospecha de que el scope no coincide con el epígrafe, usar este flujo:
+
+1. **Leer el epígrafe oficial** del topic (`topics.epigrafe`)
+2. **Descomponerlo** en conceptos/secciones mencionadas. Ejemplo:
+   - "Estructura y contenido" → Título Preliminar (general)
+   - "Las atribuciones de la Corona" → Título II
+   - "El Tribunal Constitucional" → Título IX
+3. **Obtener los arts del scope actual** (`topic_scope.article_numbers`)
+4. **Verificar artículo por artículo**: ¿cada art del scope corresponde a algo mencionado en el epígrafe?
+5. **Verificar cobertura**: ¿todos los conceptos del epígrafe tienen arts que los cubren?
+
+### Opción B: Verificación con agentes IA (bulk)
+
+Para verificar muchos temas de forma sistemática, usar agentes IA. NO hay un test algorítmico fiable porque los epígrafes usan vocabulario pedagógico distinto al de los artículos legales (muchos falsos positivos).
+
+**Prompt sugerido para agente**:
+
+```
+Revisa si el topic_scope de este tema coincide con su epígrafe oficial.
+
+EPÍGRAFE (oficial BOE): [pegar epigrafe]
+
+LEYES Y ARTÍCULOS DEL SCOPE ACTUAL:
+- Ley X arts [1,2,3...]
+- Ley Y arts [45,46...]
+
+ARTÍCULOS (títulos) EN EL SCOPE:
+[listar title de cada art del scope]
+
+Responde:
+1. ¿CADA art del scope corresponde a algo del epígrafe? (lista excesos)
+2. ¿Todos los conceptos del epígrafe tienen cobertura? (lista faltantes)
+3. Veredicto: CORRECTO / NECESITA AJUSTE (+ descripción)
+```
+
+### Cuándo usar cada opción
+
+| Situación | Enfoque |
+|-----------|---------|
+| Usuario reporta bug concreto | Opción A (manual, 1 tema) |
+| Nueva oposición recién importada | Opción B (agentes, todos los temas) |
+| Auditoría periódica | Opción B (agentes, muestra aleatoria) |
+| Duda puntual sobre un scope | Opción A (manual) |
+
+### Señales de alerta (para decidir investigar)
+
+- Epígrafe menciona "Corona" pero scope no incluye arts 56-65 CE
+- Epígrafe menciona "Título III" pero el scope cubre arts de otros títulos
+- Scope usa `NULL` (toda la ley) pero el epígrafe es específico
+- Un art está en el scope pero su contenido no tiene relación con el epígrafe

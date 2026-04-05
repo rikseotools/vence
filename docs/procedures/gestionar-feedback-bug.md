@@ -204,3 +204,4 @@ const fecha = '2026-04-04T00:00:00';
 - **Investigar journey de usuario:** `docs/procedures/investigar-journey-usuario.md` — Timeline completa de interacciones, tests, sesiones, errores.
 - **Resolver impugnaciones:** `docs/maintenance/impugnaciones-claude-code.md` — Flujo completo para analizar, corregir y cerrar impugnaciones. **NUNCA cerrar sin aprobación explícita.**
 - **Revisar chat IA:** `docs/maintenance/revisar-chat-ai.md` — Analizar conversaciones del chat IA, detectar fallos de routing y mejorar prompts.
+- **Verificar epígrafe vs topic_scope:** `docs/maintenance/verificar-epigrafe-topic-scope.md` — Cuando el usuario reporta que "los títulos no coinciden con el contenido" o "falta ley X en un tema". Incluye flujo manual (1 tema) y con agentes (bulk).
