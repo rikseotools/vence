@@ -27,16 +27,19 @@ function scoreColor(score: number): string {
   return 'bg-gray-100 text-gray-700 border-gray-300'
 }
 
+type SignalScope = 'all' | 'known' | 'regional'
+
 export default function OepSignalsPage() {
   const [activeTab, setActiveTab] = useState<SignalStatus>('pending')
+  const [scope, setScope] = useState<SignalScope>('all')
   const [data, setData] = useState<ListResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
 
-  const loadData = useCallback(async (status: SignalStatus) => {
+  const loadData = useCallback(async (status: SignalStatus, currentScope: SignalScope) => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/admin/oep-signals?status=${status}&limit=200`)
+      const res = await fetch(`/api/admin/oep-signals?status=${status}&scope=${currentScope}&limit=200`)
       const json = await res.json() as ListResponse
       setData(json)
     } catch (err) {
@@ -47,8 +50,8 @@ export default function OepSignalsPage() {
   }, [])
 
   useEffect(() => {
-    loadData(activeTab)
-  }, [activeTab, loadData])
+    loadData(activeTab, scope)
+  }, [activeTab, scope, loadData])
 
   const handleReview = async (signalId: string, action: 'apply' | 'dismiss') => {
     setActionLoading(signalId)
@@ -60,7 +63,7 @@ export default function OepSignalsPage() {
       })
       const json = await res.json()
       if (json.success) {
-        await loadData(activeTab)
+        await loadData(activeTab, scope)
       } else {
         alert('Error: ' + json.error)
       }
@@ -71,13 +74,13 @@ export default function OepSignalsPage() {
     }
   }
 
-  const triggerCron = async (endpoint: 'detect-oep-llm' | 'detect-timeline-silence') => {
+  const triggerCron = async (endpoint: 'detect-oep-llm' | 'detect-timeline-silence' | 'detect-regional-oeps') => {
     if (!confirm(`¿Ejecutar cron "${endpoint}" ahora?`)) return
     try {
       const res = await fetch(`/api/admin/oep-signals/trigger-cron?cron=${endpoint}`, { method: 'POST' })
       const json = await res.json()
       alert(json.success ? `✅ ${endpoint} ejecutado` : `❌ ${json.error}`)
-      await loadData(activeTab)
+      await loadData(activeTab, scope)
     } catch (err) {
       alert('Error: ' + (err instanceof Error ? err.message : 'desconocido'))
     }
@@ -94,7 +97,7 @@ export default function OepSignalsPage() {
             Señales automáticas de nuevas convocatorias detectadas por múltiples sensores
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
           <button
             onClick={() => triggerCron('detect-oep-llm')}
             className="px-3 py-1.5 text-sm bg-purple-600 hover:bg-purple-700 text-white rounded-md font-medium"
@@ -107,7 +110,39 @@ export default function OepSignalsPage() {
           >
             ⏰ Check timeline
           </button>
+          <button
+            onClick={() => triggerCron('detect-regional-oeps')}
+            className="px-3 py-1.5 text-sm bg-green-600 hover:bg-green-700 text-white rounded-md font-medium"
+          >
+            🌍 Scan regional
+          </button>
+          <a
+            href="/admin/seguimiento-convocatorias"
+            className="text-xs text-gray-500 hover:text-gray-700 underline"
+            title="Histórico técnico de hashes (debug)"
+          >
+            Histórico hashes →
+          </a>
         </div>
+      </div>
+
+      {/* Scope filter */}
+      <div className="flex gap-2 mb-4">
+        {(['all', 'known', 'regional'] as SignalScope[]).map(s => (
+          <button
+            key={s}
+            onClick={() => setScope(s)}
+            className={`px-3 py-1.5 text-sm rounded-md font-medium border ${
+              scope === s
+                ? 'bg-blue-600 text-white border-blue-600'
+                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            {s === 'all' && 'Todas'}
+            {s === 'known' && '🔗 Oposiciones existentes'}
+            {s === 'regional' && '🌍 Nuevas regionales'}
+          </button>
+        ))}
       </div>
 
       {/* Tabs */}
@@ -172,7 +207,17 @@ export default function OepSignalsPage() {
                     </div>
 
                     <div className="font-semibold text-gray-900 dark:text-white mb-1">
-                      {sig.oposicionNombre ?? 'Oposición sin nombre'}
+                      {sig.oposicionNombre ?? (
+                        <span>
+                          🌍 <span className="text-green-700 dark:text-green-400">{sig.regionName}</span>
+                          {sig.detectedOposicionName && (
+                            <span className="text-gray-700 dark:text-gray-300"> → {sig.detectedOposicionName}</span>
+                          )}
+                          {sig.positionCategory && (
+                            <span className="ml-2 text-xs px-2 py-0.5 bg-green-100 text-green-800 rounded">{sig.positionCategory}</span>
+                          )}
+                        </span>
+                      )}
                     </div>
                     <div className="text-sm text-gray-700 dark:text-gray-300 mb-2">
                       {sig.signalSummary}

@@ -64,7 +64,11 @@ export async function insertSignal(input: CreateSignalInput): Promise<{ inserted
     const result = await db
       .insert(oepDetectionSignals)
       .values({
-        oposicionId: input.oposicionId,
+        oposicionId: input.oposicionId ?? null,
+        sourceId: input.sourceId ?? null,
+        regionName: input.regionName ?? null,
+        positionCategory: input.positionCategory ?? null,
+        detectedOposicionName: input.detectedOposicionName ?? null,
         sensorType: input.sensorType,
         sourceUrl: input.sourceUrl ?? null,
         detectedYear: input.detectedYear ?? null,
@@ -99,12 +103,14 @@ export async function insertSignal(input: CreateSignalInput): Promise<{ inserted
 // LISTAR SEÑALES (admin)
 // ============================================
 
-export async function listSignals(filters: { status?: SignalStatus; limit?: number }): Promise<ListSignalsResponse> {
+export async function listSignals(filters: { status?: SignalStatus; limit?: number; scope?: 'all' | 'known' | 'regional' }): Promise<ListSignalsResponse> {
   const db = getDb()
   const limit = filters.limit ?? 100
 
   const conds = []
   if (filters.status) conds.push(eq(oepDetectionSignals.status, filters.status))
+  if (filters.scope === 'regional') conds.push(sql`${oepDetectionSignals.oposicionId} IS NULL`)
+  if (filters.scope === 'known') conds.push(sql`${oepDetectionSignals.oposicionId} IS NOT NULL`)
 
   const rows = await db
     .select({
@@ -112,6 +118,10 @@ export async function listSignals(filters: { status?: SignalStatus; limit?: numb
       oposicionId: oepDetectionSignals.oposicionId,
       oposicionNombre: oposiciones.nombre,
       oposicionSlug: oposiciones.slug,
+      sourceId: oepDetectionSignals.sourceId,
+      regionName: oepDetectionSignals.regionName,
+      positionCategory: oepDetectionSignals.positionCategory,
+      detectedOposicionName: oepDetectionSignals.detectedOposicionName,
       sensorType: oepDetectionSignals.sensorType,
       sourceUrl: oepDetectionSignals.sourceUrl,
       detectedYear: oepDetectionSignals.detectedYear,
@@ -210,6 +220,79 @@ export async function reviewSignal(input: ReviewSignalInput): Promise<{ success:
     return { success: false, error: 'Señal no encontrada' }
   }
   return { success: true }
+}
+
+// ============================================
+// MATCH DETECTED OEP vs existing oposiciones
+// ============================================
+
+export interface MatchResult {
+  matched: boolean
+  oposicionId: string | null
+  oposicionNombre: string | null
+  matchConfidence: 'exact' | 'fuzzy' | 'none'
+}
+
+/**
+ * Intenta match de una OEP extraída vía LLM contra oposiciones existentes.
+ * Usa normalización + keyword matching por administración/tipo.
+ */
+export async function matchDetectedOepToOposicion(params: {
+  detectedName: string
+  regionName: string
+  bocRef?: string | null
+}): Promise<MatchResult> {
+  const db = getDb()
+
+  // 1) Si hay BOC ref, match exacto por convocatoria_numero
+  if (params.bocRef) {
+    const byBoc = await db
+      .select({ id: oposiciones.id, nombre: oposiciones.nombre })
+      .from(oposiciones)
+      .where(eq(oposiciones.convocatoriaNumero, params.bocRef))
+      .limit(1)
+    if (byBoc.length > 0) {
+      return { matched: true, oposicionId: byBoc[0].id, oposicionNombre: byBoc[0].nombre, matchConfidence: 'exact' }
+    }
+  }
+
+  // 2) Match fuzzy por nombre + región
+  const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9ñ]/g, ' ').replace(/\s+/g, ' ').trim()
+  const detected = normalize(params.detectedName)
+  const region = normalize(params.regionName)
+
+  // Keywords clave
+  const hasAuxAdmin = /auxiliar\s*admin/.test(detected)
+  const hasAdmin = /administrativ/.test(detected) && !hasAuxAdmin
+
+  // Buscar oposiciones activas que mencionen la región
+  const all = await db
+    .select({
+      id: oposiciones.id,
+      nombre: oposiciones.nombre,
+      slug: oposiciones.slug,
+      subgrupo: oposiciones.subgrupo,
+    })
+    .from(oposiciones)
+    .where(eq(oposiciones.isActive, true))
+
+  for (const o of all) {
+    const nomNorm = normalize(o.nombre)
+    const slugNorm = normalize(o.slug ?? '')
+    const regionInSlug = slugNorm.includes(region) || nomNorm.includes(region)
+    if (!regionInSlug) continue
+
+    // Match C2 (aux admin)
+    if (hasAuxAdmin && /auxiliar|c2/.test(nomNorm + ' ' + (o.subgrupo ?? ''))) {
+      return { matched: true, oposicionId: o.id, oposicionNombre: o.nombre, matchConfidence: 'fuzzy' }
+    }
+    // Match C1 (admin)
+    if (hasAdmin && /administrativ|c1/.test(nomNorm + ' ' + (o.subgrupo ?? ''))) {
+      return { matched: true, oposicionId: o.id, oposicionNombre: o.nombre, matchConfidence: 'fuzzy' }
+    }
+  }
+
+  return { matched: false, oposicionId: null, oposicionNombre: null, matchConfidence: 'none' }
 }
 
 // ============================================

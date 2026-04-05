@@ -6,7 +6,7 @@ import { z } from 'zod/v3'
 // ENUMS
 // ============================================
 
-export const sensorTypeOptions = ['llm_semantic', 'timeline_silence', 'hash_change', 'rss', 'boe_api', 'google_cse', 'manual'] as const
+export const sensorTypeOptions = ['llm_semantic', 'timeline_silence', 'hash_change', 'regional_scan', 'rss', 'boe_api', 'google_cse', 'manual'] as const
 export const signalStatusOptions = ['pending', 'applied', 'dismissed', 'auto_applied'] as const
 
 export type SensorType = typeof sensorTypeOptions[number]
@@ -36,7 +36,11 @@ export type LlmExtraction = z.infer<typeof llmExtractionSchema>
 // ============================================
 
 export const createSignalSchema = z.object({
-  oposicionId: z.string().uuid(),
+  oposicionId: z.string().uuid().nullable().optional(),
+  sourceId: z.string().uuid().nullable().optional(),
+  regionName: z.string().nullable().optional(),
+  positionCategory: z.string().nullable().optional(),
+  detectedOposicionName: z.string().nullable().optional(),
   sensorType: z.enum(sensorTypeOptions),
   sourceUrl: z.string().url().nullable().optional(),
   detectedYear: z.number().int().nullable().optional(),
@@ -62,9 +66,13 @@ export type CreateSignalInput = z.infer<typeof createSignalSchema>
 
 export const signalRowSchema = z.object({
   id: z.string().uuid(),
-  oposicionId: z.string().uuid(),
+  oposicionId: z.string().uuid().nullable(),
   oposicionNombre: z.string().nullable(),
   oposicionSlug: z.string().nullable(),
+  sourceId: z.string().uuid().nullable(),
+  regionName: z.string().nullable(),
+  positionCategory: z.string().nullable(),
+  detectedOposicionName: z.string().nullable(),
   sensorType: z.enum(sensorTypeOptions),
   sourceUrl: z.string().nullable(),
   detectedYear: z.number().int().nullable(),
@@ -146,6 +154,7 @@ export function safeParseLlmExtraction(data: unknown) {
 export function baseScoreBySensor(sensor: SensorType): number {
   switch (sensor) {
     case 'timeline_silence': return 70
+    case 'regional_scan': return 55
     case 'llm_semantic': return 40
     case 'rss': return 35
     case 'hash_change': return 30

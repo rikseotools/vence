@@ -177,14 +177,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     )}
                   </a>
                   <a
-                    href="/admin/seguimiento-convocatorias"
-                    className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1 opacity-60"
-                    title="Histórico de hashes (alertas fusionadas en 🎯 OEPs)"
-                  >
-                    <span>📋</span>
-                    <span className="text-xs">Hist. Seg.</span>
-                  </a>
-                  <a
                     href="/admin/revision-temas"
                     className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1"
                   >

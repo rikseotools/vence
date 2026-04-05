@@ -1,0 +1,44 @@
+name: Detect Regional OEPs
+
+on:
+  schedule:
+    # Semanal, lunes 08:00 UTC (09/10:00 España) - escanea ~30 fuentes regionales
+    - cron: '0 8 * * 1'
+  workflow_dispatch: # Permite ejecutar manualmente desde GitHub UI
+
+jobs:
+  detect-regional-oeps:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Run regional OEP scanner
+        id: scan
+        run: |
+          RESPONSE=$(curl -s -X GET \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            --max-time 900 \
+            "https://www.vence.es/api/cron/detect-regional-oeps")
+
+          echo "Response: $RESPONSE"
+
+          SOURCES=$(echo $RESPONSE | jq -r '.stats.totalSources // 0')
+          NOVEL=$(echo $RESPONSE | jq -r '.stats.novelSignals // 0')
+          EXISTING=$(echo $RESPONSE | jq -r '.stats.existingSignals // 0')
+          ERRORS=$(echo $RESPONSE | jq -r '.stats.errors // 0')
+          DURATION=$(echo $RESPONSE | jq -r '.duration // "?"')
+
+          echo "sources=$SOURCES" >> $GITHUB_OUTPUT
+          echo "novel=$NOVEL" >> $GITHUB_OUTPUT
+          echo "existing=$EXISTING" >> $GITHUB_OUTPUT
+          echo "errors=$ERRORS" >> $GITHUB_OUTPUT
+          echo "duration=$DURATION" >> $GITHUB_OUTPUT
+
+      - name: Log results
+        run: |
+          echo "🌍 Regional OEP Scan completado - $(date)"
+          echo "   Fuentes escaneadas: ${{ steps.scan.outputs.sources }}"
+          echo "   OEPs nuevas detectadas: ${{ steps.scan.outputs.novel }}"
+          echo "   OEPs ya existentes: ${{ steps.scan.outputs.existing }}"
+          echo "   Errores: ${{ steps.scan.outputs.errors }}"
+          echo "   Duración: ${{ steps.scan.outputs.duration }}"

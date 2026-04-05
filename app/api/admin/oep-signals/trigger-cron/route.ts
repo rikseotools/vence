@@ -5,7 +5,7 @@ import { withErrorLogging } from '@/lib/api/withErrorLogging'
 
 export const maxDuration = 300
 
-const ALLOWED_CRONS = ['detect-oep-llm', 'detect-timeline-silence'] as const
+const ALLOWED_CRONS = ['detect-oep-llm', 'detect-timeline-silence', 'detect-regional-oeps'] as const
 type AllowedCron = typeof ALLOWED_CRONS[number]
 
 async function _POST(request: NextRequest) {

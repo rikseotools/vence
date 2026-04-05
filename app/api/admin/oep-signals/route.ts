@@ -11,14 +11,16 @@ async function _GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const statusParam = searchParams.get('status')
+    const scopeParam = searchParams.get('scope')
     const limitParam = searchParams.get('limit')
 
     const status: SignalStatus | undefined = statusParam && (signalStatusOptions as readonly string[]).includes(statusParam)
       ? (statusParam as SignalStatus)
       : undefined
+    const scope: 'all' | 'known' | 'regional' = scopeParam === 'known' || scopeParam === 'regional' ? scopeParam : 'all'
     const limit = limitParam ? Math.min(500, Math.max(1, parseInt(limitParam, 10) || 100)) : 100
 
-    const result = await listSignals({ status, limit })
+    const result = await listSignals({ status, scope, limit })
     return NextResponse.json(result)
   } catch (err) {
     console.error('❌ [API/admin/oep-signals] GET error:', err)

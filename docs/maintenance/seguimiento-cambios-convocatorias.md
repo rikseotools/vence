@@ -2,10 +2,45 @@
 
 ## Resumen
 
-Cuando el admin dice "el seguimiento ha detectado cambios" o se ven badges de CAMBIO en `/admin/seguimiento-convocatorias`, seguir este manual para sincronizar las landing pages con la realidad.
+Cuando el admin dice "el seguimiento ha detectado cambios" o se ven badges de **🎯 OEPs** en el sidebar admin, seguir este manual para sincronizar las landing pages con la realidad.
 
-## 1. Identificar que oposiciones tienen cambios
+## Arquitectura actual (desde 06/04/2026): sistema multi-sensor
 
+Todas las alertas de convocatorias se centralizan en **`/admin/oep-signals`** con 3 sensores activos:
+
+| Sensor | Qué detecta | Score base | Cron |
+|--------|-------------|------------|------|
+| `llm_semantic` | Entidades OEP extraídas con Claude Haiku (año, plazas, BOC ref, fechas, estado) | 40 | L-V 10:00 UTC |
+| `timeline_silence` | Hitos `current` con fecha pasada +3 días sin avance | 70 | Diario 7:00 UTC |
+| `hash_change` | SHA-256 del contenido de la página cambió (sensor antiguo, integrado como complemento) | 30 | L-V 9:00 UTC |
+
+**Score final** (con bonus por evidencias): 0-100. Score ≥ 60 → badge rojo, 40-59 → amarillo, <40 → normal.
+
+**Flujo:** cada sensor genera señales en la tabla `oep_detection_signals`. El admin las revisa en `/admin/oep-signals` y decide `Aplicar` (requiere acción manual siguiendo este manual) o `Descartar` (falso positivo).
+
+> **Nota:** La página `/admin/seguimiento-convocatorias` queda como vista histórica técnica de hashes. Ya no tiene badge — todas las alertas van a **🎯 OEPs**.
+
+## 1. Identificar qué oposiciones tienen señales pendientes
+
+### Opción A — Panel admin (recomendado)
+`/admin/oep-signals` → tab "Sin revisar". Muestra:
+- Oposición + sensor que detectó
+- Score con color por urgencia
+- Datos extraídos (año, plazas, BOC ref, fechas)
+- Diff resumido con BD
+- Link a página origen
+
+### Opción B — Query directa
+```javascript
+// Señales pendientes ordenadas por confianza
+supabase
+  .from('oep_detection_signals')
+  .select('*, oposiciones(slug, nombre)')
+  .eq('status', 'pending')
+  .order('confidence_score', { ascending: false })
+```
+
+### Opción C — Compatibilidad sistema viejo (solo hash_change)
 ```javascript
 // Oposiciones con seguimiento_change_status = 'changed'
 supabase
@@ -171,10 +206,19 @@ No todos los procesos tienen todos los hitos. Incluir solo los que se han public
 
 ## 6. Marcar como revisado
 
-Despues de actualizar la BD:
+### Opción A — Desde panel admin (recomendado)
+En `/admin/oep-signals` pulsar **Aplicar** (si se han aplicado los cambios a BD) o **Descartar** (si es falso positivo). El botón actualiza el `status` de la señal — pero **NO aplica cambios a BD automáticamente**, los cambios los haces TÚ siguiendo este manual.
+
+### Opción B — Vía BD directa
 
 ```javascript
-// Marcar los checks como revisados
+// Marcar señal oep-signals como applied
+await supabase
+  .from('oep_detection_signals')
+  .update({ status: 'applied', reviewed_at: new Date().toISOString(), admin_notes: '...' })
+  .eq('id', '<signal_uuid>')
+
+// Marcar checks hash_change antiguos como revisados (compatibilidad)
 await supabase
   .from('convocatoria_seguimiento_checks')
   .update({ change_reviewed: true, reviewed_at: new Date().toISOString() })
@@ -182,7 +226,7 @@ await supabase
   .eq('has_changed', true)
   .eq('change_reviewed', false)
 
-// Resetear el status de la oposicion
+// Resetear el status de la oposicion (solo si era 'changed' por hash)
 await supabase
   .from('oposiciones')
   .update({ seguimiento_change_status: 'ok' })
@@ -246,7 +290,33 @@ for (const op of ops) {
 6. Landing se regenera en 24h (o forzar revalidacion)
 ```
 
-## 10. Cambios cosmeticos (falsos positivos)
+## 10. Escaneo regional (Sensor 4 — detect-regional-oeps)
+
+Cron semanal (lunes 08:00 UTC) que escanea ~30 fuentes regionales:
+- 1 estado + 17 CCAA + Ceuta/Melilla + 10 top ayuntamientos
+- Tabla: `detection_sources` (URLs genéricas de "convocatorias en curso")
+- LLM extrae TODAS las convocatorias C1/C2 de cada listado
+- Cruza contra `oposiciones` existentes
+- Si no match → señal `regional_scan` con `oposicion_id=NULL` (OEP nueva)
+
+### Admin: ver detecciones regionales
+`/admin/oep-signals` → filtro "🌍 Nuevas regionales" → muestra OEPs no cubiertas por Vence.
+
+### Ampliar fuentes
+```javascript
+// Insertar nueva fuente regional
+await supabase.from('detection_sources').insert({
+  source_type: 'ayuntamiento',
+  region_name: 'Ayto. Córdoba',
+  boletin_name: 'BOP Córdoba',
+  listing_url: 'https://www.cordoba.es/...',
+  position_groups: ['C1', 'C2'],
+})
+```
+
+Seed inicial: `scripts/seed-detection-sources.js` (30 fuentes).
+
+## 11. Cambios cosmeticos (falsos positivos)
 
 A veces el hash cambia sin novedad real (timestamps, tokens de sesion, contenido dinamico de la web). Indicadores de cambio cosmetico:
 

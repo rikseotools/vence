@@ -3675,10 +3675,38 @@ export const convocatoriaHitos = pgTable("convocatoria_hitos", {
 	check("convocatoria_hitos_status_check", sql`status IN ('completed', 'current', 'upcoming')`),
 ]);
 
+// Capa 1: fuentes regionales (entidades) para descubrir OEPs nuevas
+export const detectionSources = pgTable("detection_sources", {
+	id: uuid().default(sql`uuid_generate_v4()`).primaryKey().notNull(),
+	sourceType: text("source_type").notNull(),
+	regionName: text("region_name").notNull(),
+	boletinName: text("boletin_name"),
+	listingUrl: text("listing_url").notNull(),
+	searchKeywords: text("search_keywords").array().default(['auxiliar administrativo', 'administrativo', 'oposicion', 'convocatoria', 'C1', 'C2']),
+	positionGroups: text("position_groups").array().default(['C1', 'C2']),
+	isActive: boolean("is_active").default(true).notNull(),
+	notes: text(),
+	lastChecked: timestamp("last_checked", { withTimezone: true, mode: 'string' }),
+	lastHash: text("last_hash"),
+	lastSuccessAt: timestamp("last_success_at", { withTimezone: true, mode: 'string' }),
+	lastError: text("last_error"),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("idx_detection_sources_type").using("btree", table.sourceType, table.isActive),
+	index("idx_detection_sources_region").using("btree", table.regionName),
+	uniqueIndex("idx_detection_sources_url_unique").using("btree", table.listingUrl),
+	check("detection_sources_source_type_check", sql`source_type IN ('estado', 'ccaa', 'ayuntamiento', 'diputacion')`),
+]);
+
 // Sistema proactivo de detección de nuevas OEPs — multi-sensor con confidence scoring
 export const oepDetectionSignals = pgTable("oep_detection_signals", {
 	id: uuid().default(sql`uuid_generate_v4()`).primaryKey().notNull(),
-	oposicionId: uuid("oposicion_id").notNull(),
+	oposicionId: uuid("oposicion_id"),
+	sourceId: uuid("source_id"),
+	regionName: text("region_name"),
+	positionCategory: text("position_category"),
+	detectedOposicionName: text("detected_oposicion_name"),
 	sensorType: text("sensor_type").notNull(),
 	sourceUrl: text("source_url"),
 	detectedYear: integer("detected_year"),
@@ -3704,7 +3732,8 @@ export const oepDetectionSignals = pgTable("oep_detection_signals", {
 }, (table) => [
 	index("idx_oep_signals_oposicion").using("btree", table.oposicionId, table.createdAt.desc()),
 	foreignKey({ columns: [table.oposicionId], foreignColumns: [oposiciones.id], name: "oep_detection_signals_oposicion_id_fkey" }).onDelete("cascade"),
-	check("oep_signals_sensor_type_check", sql`sensor_type IN ('llm_semantic', 'timeline_silence', 'rss', 'boe_api', 'google_cse', 'manual', 'hash_change')`),
+	foreignKey({ columns: [table.sourceId], foreignColumns: [detectionSources.id], name: "oep_detection_signals_source_id_fkey" }).onDelete("set null"),
+	check("oep_signals_sensor_type_check", sql`sensor_type IN ('llm_semantic', 'timeline_silence', 'hash_change', 'regional_scan', 'rss', 'boe_api', 'google_cse', 'manual')`),
 	check("oep_signals_status_check", sql`status IN ('pending', 'applied', 'dismissed', 'auto_applied')`),
 	check("oep_signals_confidence_check", sql`confidence_score >= 0 AND confidence_score <= 100`),
 ]);
