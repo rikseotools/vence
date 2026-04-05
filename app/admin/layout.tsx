@@ -11,6 +11,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const { hasUnreviewedChanges } = useLawChanges()
   const { supabase } = useAuth() as any
   const [seguimientoChanges, setSeguimientoChanges] = useState(0)
+  const [oepSignals, setOepSignals] = useState({ pending: 0, critical: 0 })
 
   const checkSeguimiento = useCallback(async () => {
     if (!supabase) return
@@ -23,11 +24,25 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     } catch {}
   }, [supabase])
 
+  const checkOepSignals = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/oep-signals/pending-count')
+      const json = await res.json()
+      if (json.success) {
+        setOepSignals({ pending: json.pendingCount ?? 0, critical: json.criticalCount ?? 0 })
+      }
+    } catch {}
+  }, [])
+
   useEffect(() => {
     checkSeguimiento()
-    const interval = setInterval(checkSeguimiento, 300000) // 5 minutos
+    checkOepSignals()
+    const interval = setInterval(() => {
+      checkSeguimiento()
+      checkOepSignals()
+    }, 300000) // 5 minutos
     return () => clearInterval(interval)
-  }, [checkSeguimiento])
+  }, [checkSeguimiento, checkOepSignals])
 
   return (
     <ProtectedRoute>
@@ -158,6 +173,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     {hasUnreviewedChanges && (
                       <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold animate-pulse">
                         !
+                      </span>
+                    )}
+                  </a>
+                  <a
+                    href="/admin/oep-signals"
+                    className={`text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1 relative ${
+                      oepSignals.pending > 0 ? 'animate-pulse' : ''
+                    }`}
+                  >
+                    <span>🎯</span>
+                    <span>OEPs</span>
+                    {oepSignals.pending > 0 && (
+                      <span className={`absolute -top-1 -right-1 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold animate-pulse ${
+                        oepSignals.critical > 0 ? 'bg-red-500' : 'bg-orange-500'
+                      }`}>
+                        {oepSignals.pending > 99 ? '99+' : oepSignals.pending}
                       </span>
                     )}
                   </a>

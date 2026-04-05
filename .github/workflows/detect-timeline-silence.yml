@@ -1,0 +1,38 @@
+name: Detect Timeline Silence
+
+on:
+  schedule:
+    # Diario a las 7:00 UTC (8:00/9:00 España) - todos los días
+    - cron: '0 7 * * *'
+  workflow_dispatch: # Permite ejecutar manualmente desde GitHub UI
+
+jobs:
+  detect-timeline-silence:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Run timeline silence detector
+        id: detect
+        run: |
+          RESPONSE=$(curl -s -X GET \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            --max-time 60 \
+            "https://www.vence.es/api/cron/detect-timeline-silence")
+
+          echo "Response: $RESPONSE"
+
+          CANDIDATES=$(echo $RESPONSE | jq -r '.stats.candidates // 0')
+          SIGNALS=$(echo $RESPONSE | jq -r '.stats.signals // 0')
+          DURATION=$(echo $RESPONSE | jq -r '.duration // "?"')
+
+          echo "candidates=$CANDIDATES" >> $GITHUB_OUTPUT
+          echo "signals=$SIGNALS" >> $GITHUB_OUTPUT
+          echo "duration=$DURATION" >> $GITHUB_OUTPUT
+
+      - name: Log results
+        run: |
+          echo "⏰ Timeline Silence Detection completado - $(date)"
+          echo "   Candidatos detectados: ${{ steps.detect.outputs.candidates }}"
+          echo "   Señales generadas: ${{ steps.detect.outputs.signals }}"
+          echo "   Duración: ${{ steps.detect.outputs.duration }}"

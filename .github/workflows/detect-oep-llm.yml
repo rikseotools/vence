@@ -1,0 +1,41 @@
+name: Detect OEP LLM
+
+on:
+  schedule:
+    # Diario a las 10:00 UTC (11:00/12:00 España) - L-V
+    - cron: '0 10 * * 1-5'
+  workflow_dispatch: # Permite ejecutar manualmente desde GitHub UI
+
+jobs:
+  detect-oep-llm:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Run LLM semantic detection
+        id: detect
+        run: |
+          RESPONSE=$(curl -s -X GET \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            --max-time 600 \
+            "https://www.vence.es/api/cron/detect-oep-llm")
+
+          echo "Response: $RESPONSE"
+
+          SCANNED=$(echo $RESPONSE | jq -r '.stats.scanned // 0')
+          SIGNALS=$(echo $RESPONSE | jq -r '.stats.signals // 0')
+          ERRORS=$(echo $RESPONSE | jq -r '.stats.errors // 0')
+          DURATION=$(echo $RESPONSE | jq -r '.duration // "?"')
+
+          echo "scanned=$SCANNED" >> $GITHUB_OUTPUT
+          echo "signals=$SIGNALS" >> $GITHUB_OUTPUT
+          echo "errors=$ERRORS" >> $GITHUB_OUTPUT
+          echo "duration=$DURATION" >> $GITHUB_OUTPUT
+
+      - name: Log results
+        run: |
+          echo "🤖 OEP LLM Detection completado - $(date)"
+          echo "   Oposiciones escaneadas: ${{ steps.detect.outputs.scanned }}"
+          echo "   Señales generadas: ${{ steps.detect.outputs.signals }}"
+          echo "   Errores: ${{ steps.detect.outputs.errors }}"
+          echo "   Duración: ${{ steps.detect.outputs.duration }}"

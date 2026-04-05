@@ -3656,3 +3656,55 @@ export const emailTemplates = pgTable("email_templates", {
 	check("email_templates_category_check", sql`category IN ('broadcast', 'transactional', 'marketing')`),
 	pgPolicy("Service role full access", { as: "permissive", for: "all", to: ["service_role"], using: sql`true`, withCheck: sql`true` }),
 ]);
+
+// Hitos del timeline de cada oposición (fases del proceso selectivo)
+export const convocatoriaHitos = pgTable("convocatoria_hitos", {
+	id: uuid().default(sql`uuid_generate_v4()`).primaryKey().notNull(),
+	oposicionId: uuid("oposicion_id").notNull(),
+	fecha: date().notNull(),
+	titulo: text().notNull(),
+	descripcion: text(),
+	url: text(),
+	status: text().notNull(),
+	orderIndex: integer("order_index").notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+}, (table) => [
+	index("idx_convocatoria_hitos_oposicion").using("btree", table.oposicionId, table.orderIndex),
+	foreignKey({ columns: [table.oposicionId], foreignColumns: [oposiciones.id], name: "convocatoria_hitos_oposicion_id_fkey" }).onDelete("cascade"),
+	check("convocatoria_hitos_status_check", sql`status IN ('completed', 'current', 'upcoming')`),
+]);
+
+// Sistema proactivo de detección de nuevas OEPs — multi-sensor con confidence scoring
+export const oepDetectionSignals = pgTable("oep_detection_signals", {
+	id: uuid().default(sql`uuid_generate_v4()`).primaryKey().notNull(),
+	oposicionId: uuid("oposicion_id").notNull(),
+	sensorType: text("sensor_type").notNull(),
+	sourceUrl: text("source_url"),
+	detectedYear: integer("detected_year"),
+	detectedPlazasLibre: integer("detected_plazas_libre"),
+	detectedPlazasDiscapacidad: integer("detected_plazas_discapacidad"),
+	detectedPlazasPromocionInterna: integer("detected_plazas_promocion_interna"),
+	detectedBocRef: text("detected_boc_ref"),
+	detectedFechaPublicacion: date("detected_fecha_publicacion"),
+	detectedFechaInscripcionFin: date("detected_fecha_inscripcion_fin"),
+	detectedFechaExamen: date("detected_fecha_examen"),
+	detectedEstado: text("detected_estado"),
+	confidenceScore: integer("confidence_score").notNull(),
+	isNovel: boolean("is_novel").default(false).notNull(),
+	signalSummary: text("signal_summary").notNull(),
+	rawExtraction: jsonb("raw_extraction").default({}),
+	status: text().default('pending').notNull(),
+	reviewedAt: timestamp("reviewed_at", { withTimezone: true, mode: 'string' }),
+	reviewedBy: uuid("reviewed_by"),
+	adminNotes: text("admin_notes"),
+	dedupeKey: text("dedupe_key"),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("idx_oep_signals_oposicion").using("btree", table.oposicionId, table.createdAt.desc()),
+	foreignKey({ columns: [table.oposicionId], foreignColumns: [oposiciones.id], name: "oep_detection_signals_oposicion_id_fkey" }).onDelete("cascade"),
+	check("oep_signals_sensor_type_check", sql`sensor_type IN ('llm_semantic', 'timeline_silence', 'rss', 'boe_api', 'google_cse', 'manual')`),
+	check("oep_signals_status_check", sql`status IN ('pending', 'applied', 'dismissed', 'auto_applied')`),
+	check("oep_signals_confidence_check", sql`confidence_score >= 0 AND confidence_score <= 100`),
+]);

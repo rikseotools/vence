@@ -1,0 +1,271 @@
+// lib/api/oep-signals/queries.ts
+// Queries tipadas para señales de detección de OEPs
+import { getDb } from '@/db/client'
+import { oepDetectionSignals, oposiciones, convocatoriaHitos } from '@/db/schema'
+import { eq, and, desc, sql, gte, lt, isNotNull } from 'drizzle-orm'
+import type {
+  CreateSignalInput,
+  SignalRow,
+  ReviewSignalInput,
+  ListSignalsResponse,
+  PendingSignalsCountResponse,
+  SignalStatus,
+} from './schemas'
+
+// ============================================
+// OPOSICIONES ACTIVAS CON seguimiento_url (para Sensor 1 LLM)
+// ============================================
+
+export interface OposicionToScan {
+  id: string
+  nombre: string
+  slug: string | null
+  shortName: string | null
+  seguimientoUrl: string
+  estadoProceso: string | null
+  plazasLibres: number | null
+  plazasDiscapacidad: number | null
+  oepFecha: string | null
+  convocatoriaNumero: string | null
+}
+
+export async function getOposicionesForLlmScan(): Promise<OposicionToScan[]> {
+  const db = getDb()
+  const rows = await db
+    .select({
+      id: oposiciones.id,
+      nombre: oposiciones.nombre,
+      slug: oposiciones.slug,
+      shortName: oposiciones.shortName,
+      seguimientoUrl: oposiciones.seguimientoUrl,
+      estadoProceso: oposiciones.estadoProceso,
+      plazasLibres: oposiciones.plazasLibres,
+      plazasDiscapacidad: oposiciones.plazasDiscapacidad,
+      oepFecha: oposiciones.oepFecha,
+      convocatoriaNumero: oposiciones.convocatoriaNumero,
+    })
+    .from(oposiciones)
+    .where(and(
+      eq(oposiciones.isActive, true),
+      isNotNull(oposiciones.seguimientoUrl),
+    ))
+    .orderBy(oposiciones.nombre)
+
+  return rows.filter(r => r.seguimientoUrl !== null) as OposicionToScan[]
+}
+
+// ============================================
+// INSERT SIGNAL (dedupe via ON CONFLICT)
+// ============================================
+
+export async function insertSignal(input: CreateSignalInput): Promise<{ inserted: boolean; id: string | null }> {
+  const db = getDb()
+  try {
+    const result = await db
+      .insert(oepDetectionSignals)
+      .values({
+        oposicionId: input.oposicionId,
+        sensorType: input.sensorType,
+        sourceUrl: input.sourceUrl ?? null,
+        detectedYear: input.detectedYear ?? null,
+        detectedPlazasLibre: input.detectedPlazasLibre ?? null,
+        detectedPlazasDiscapacidad: input.detectedPlazasDiscapacidad ?? null,
+        detectedPlazasPromocionInterna: input.detectedPlazasPromocionInterna ?? null,
+        detectedBocRef: input.detectedBocRef ?? null,
+        detectedFechaPublicacion: input.detectedFechaPublicacion ?? null,
+        detectedFechaInscripcionFin: input.detectedFechaInscripcionFin ?? null,
+        detectedFechaExamen: input.detectedFechaExamen ?? null,
+        detectedEstado: input.detectedEstado ?? null,
+        confidenceScore: input.confidenceScore,
+        isNovel: input.isNovel,
+        signalSummary: input.signalSummary,
+        rawExtraction: (input.rawExtraction ?? {}) as Record<string, unknown>,
+        dedupeKey: input.dedupeKey ?? null,
+      })
+      .onConflictDoNothing({ target: oepDetectionSignals.dedupeKey })
+      .returning({ id: oepDetectionSignals.id })
+
+    if (result.length === 0) {
+      return { inserted: false, id: null }
+    }
+    return { inserted: true, id: result[0].id }
+  } catch (err) {
+    console.error('❌ [OepSignals] Error insertSignal:', err)
+    throw err
+  }
+}
+
+// ============================================
+// LISTAR SEÑALES (admin)
+// ============================================
+
+export async function listSignals(filters: { status?: SignalStatus; limit?: number }): Promise<ListSignalsResponse> {
+  const db = getDb()
+  const limit = filters.limit ?? 100
+
+  const conds = []
+  if (filters.status) conds.push(eq(oepDetectionSignals.status, filters.status))
+
+  const rows = await db
+    .select({
+      id: oepDetectionSignals.id,
+      oposicionId: oepDetectionSignals.oposicionId,
+      oposicionNombre: oposiciones.nombre,
+      oposicionSlug: oposiciones.slug,
+      sensorType: oepDetectionSignals.sensorType,
+      sourceUrl: oepDetectionSignals.sourceUrl,
+      detectedYear: oepDetectionSignals.detectedYear,
+      detectedPlazasLibre: oepDetectionSignals.detectedPlazasLibre,
+      detectedPlazasDiscapacidad: oepDetectionSignals.detectedPlazasDiscapacidad,
+      detectedPlazasPromocionInterna: oepDetectionSignals.detectedPlazasPromocionInterna,
+      detectedBocRef: oepDetectionSignals.detectedBocRef,
+      detectedFechaPublicacion: oepDetectionSignals.detectedFechaPublicacion,
+      detectedFechaInscripcionFin: oepDetectionSignals.detectedFechaInscripcionFin,
+      detectedFechaExamen: oepDetectionSignals.detectedFechaExamen,
+      detectedEstado: oepDetectionSignals.detectedEstado,
+      confidenceScore: oepDetectionSignals.confidenceScore,
+      isNovel: oepDetectionSignals.isNovel,
+      signalSummary: oepDetectionSignals.signalSummary,
+      status: oepDetectionSignals.status,
+      reviewedAt: oepDetectionSignals.reviewedAt,
+      adminNotes: oepDetectionSignals.adminNotes,
+      createdAt: oepDetectionSignals.createdAt,
+    })
+    .from(oepDetectionSignals)
+    .leftJoin(oposiciones, eq(oepDetectionSignals.oposicionId, oposiciones.id))
+    .where(conds.length > 0 ? and(...conds) : undefined)
+    .orderBy(desc(oepDetectionSignals.createdAt))
+    .limit(limit)
+
+  // Counts por estado
+  const countsRows = await db
+    .select({
+      status: oepDetectionSignals.status,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(oepDetectionSignals)
+    .groupBy(oepDetectionSignals.status)
+
+  const counts = { pending: 0, applied: 0, dismissed: 0 }
+  for (const r of countsRows) {
+    if (r.status === 'pending') counts.pending = r.count
+    else if (r.status === 'applied' || r.status === 'auto_applied') counts.applied += r.count
+    else if (r.status === 'dismissed') counts.dismissed = r.count
+  }
+
+  return {
+    success: true,
+    signals: rows as SignalRow[],
+    counts,
+  }
+}
+
+// ============================================
+// COUNT PENDING (para badge admin)
+// ============================================
+
+export async function getPendingSignalsCount(): Promise<PendingSignalsCountResponse> {
+  const db = getDb()
+  const [total, critical] = await Promise.all([
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(oepDetectionSignals)
+      .where(eq(oepDetectionSignals.status, 'pending')),
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(oepDetectionSignals)
+      .where(and(
+        eq(oepDetectionSignals.status, 'pending'),
+        gte(oepDetectionSignals.confidenceScore, 60),
+      )),
+  ])
+
+  return {
+    success: true,
+    pendingCount: total[0]?.count ?? 0,
+    criticalCount: critical[0]?.count ?? 0,
+  }
+}
+
+// ============================================
+// REVIEW SIGNAL (apply | dismiss)
+// ============================================
+
+export async function reviewSignal(input: ReviewSignalInput): Promise<{ success: boolean; error?: string }> {
+  const db = getDb()
+  const newStatus: SignalStatus = input.action === 'apply' ? 'applied' : 'dismissed'
+
+  const result = await db
+    .update(oepDetectionSignals)
+    .set({
+      status: newStatus,
+      reviewedAt: new Date().toISOString(),
+      adminNotes: input.adminNotes ?? null,
+      updatedAt: new Date().toISOString(),
+    })
+    .where(eq(oepDetectionSignals.id, input.signalId))
+    .returning({ id: oepDetectionSignals.id })
+
+  if (result.length === 0) {
+    return { success: false, error: 'Señal no encontrada' }
+  }
+  return { success: true }
+}
+
+// ============================================
+// TIMELINE SILENCE (Sensor 3)
+// ============================================
+
+export interface TimelineSilenceCandidate {
+  oposicionId: string
+  oposicionNombre: string
+  oposicionSlug: string | null
+  hitoId: string
+  hitoTitulo: string
+  hitoFecha: string
+  diasRetraso: number
+}
+
+/**
+ * Detecta hitos con status='current' cuya fecha ya pasó hace >3 días sin haberse
+ * actualizado a 'completed'. Señal de que esperábamos algo y no ha pasado.
+ */
+export async function findTimelineSilences(graceDays = 3): Promise<TimelineSilenceCandidate[]> {
+  const db = getDb()
+  const thresholdDate = new Date()
+  thresholdDate.setDate(thresholdDate.getDate() - graceDays)
+  const threshold = thresholdDate.toISOString().slice(0, 10)
+
+  const rows = await db
+    .select({
+      oposicionId: convocatoriaHitos.oposicionId,
+      oposicionNombre: oposiciones.nombre,
+      oposicionSlug: oposiciones.slug,
+      hitoId: convocatoriaHitos.id,
+      hitoTitulo: convocatoriaHitos.titulo,
+      hitoFecha: convocatoriaHitos.fecha,
+    })
+    .from(convocatoriaHitos)
+    .leftJoin(oposiciones, eq(convocatoriaHitos.oposicionId, oposiciones.id))
+    .where(and(
+      eq(convocatoriaHitos.status, 'current'),
+      lt(convocatoriaHitos.fecha, threshold),
+      eq(oposiciones.isActive, true),
+    ))
+
+  return rows.map(r => {
+    const fechaDate = new Date(r.hitoFecha)
+    const hoyDate = new Date()
+    const diffMs = hoyDate.getTime() - fechaDate.getTime()
+    const diasRetraso = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+    return {
+      oposicionId: r.oposicionId,
+      oposicionNombre: r.oposicionNombre ?? '',
+      oposicionSlug: r.oposicionSlug,
+      hitoId: r.hitoId,
+      hitoTitulo: r.hitoTitulo,
+      hitoFecha: r.hitoFecha,
+      diasRetraso,
+    }
+  })
+}
