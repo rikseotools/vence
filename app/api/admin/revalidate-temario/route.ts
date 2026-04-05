@@ -7,7 +7,8 @@ import { revalidateTag } from 'next/cache'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 
 async function _POST(_request: NextRequest) {
-  revalidateTag('temario')
+  // Next.js 16 requiere segundo argumento con el profile de cacheLife
+  revalidateTag('temario', 'max')
   return NextResponse.json({
     success: true,
     message: 'Cache temario invalidada. Las próximas requests regenerarán desde BD.',
@@ -15,4 +16,4 @@ async function _POST(_request: NextRequest) {
   })
 }
 
-export const POST = withErrorLogging(_POST, '/api/admin/revalidate-temario')
+export const POST = withErrorLogging('/api/admin/revalidate-temario', _POST)
