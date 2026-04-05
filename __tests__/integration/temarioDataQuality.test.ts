@@ -27,7 +27,7 @@ describeIf('Calidad datos temario (escalable - todas las oposiciones)', () => {
     if (client) await client.end()
   })
 
-  it('refs de topic_scope apuntan a artículos activos (tolerancia 350)', async () => {
+  it('refs de topic_scope apuntan a artículos activos (0 rotas)', async () => {
     const { rows } = await client.query(`
       WITH refs AS (
         SELECT ts.topic_id, ts.law_id, unnest(ts.article_numbers) as article_num
@@ -41,7 +41,7 @@ describeIf('Calidad datos temario (escalable - todas las oposiciones)', () => {
     `)
     const broken = parseInt(rows[0].broken)
     console.log(`topic_scope refs rotas: ${broken}`)
-    expect(broken).toBeLessThan(350)
+    expect(broken).toBe(0)
   })
 
   it('topics disponibles tienen preguntas asociadas', async () => {
