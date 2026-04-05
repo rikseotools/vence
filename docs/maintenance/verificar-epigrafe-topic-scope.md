@@ -1,40 +1,70 @@
 # Verificar Epígrafe vs Topic Scope de un Tema
 
+## ⚠️ Principio fundamental
+
+**El epígrafe DEBE ser el texto LITERAL del boletín oficial** (BOE, BOP, BOCYL, BOJA, DOG, DOGV, BORM, etc.) que publicó la convocatoria. NUNCA:
+
+- Inventar redacciones ni resumirlas
+- Copiar de webs de academias (opositatest, adams, etc.)
+- Traducir ni reformular
+
+La fuente oficial está en la columna `oposiciones.programa_url` (enlace directo al PDF del boletín).
+
 ## Contexto
 
 Cada tema de cada oposición tiene:
 
-1. **Epígrafe** → Texto oficial del programa (BOE). Se almacena en `topics.description`.
+1. **Epígrafe** → Texto oficial del programa (boletín oficial). Se almacena en `topics.epigrafe` (columna dedicada). También se suele guardar en `topics.description` por compatibilidad histórica.
 2. **topic_scope** → Mapeo de qué artículos de qué leyes forman ese tema. Se almacena en la tabla `topic_scope` vinculado al `topic_id`.
-3. **Artículos** → Fuente de verdad. El contenido legal real (tabla `articles`).
+3. **Artículos** → Fuente de verdad del contenido legal (tabla `articles`).
 
 El topic_scope determina qué preguntas se muestran para un tema. Si el scope es incorrecto, el tema mostrará preguntas que no corresponden al epígrafe o le faltarán preguntas relevantes.
 
 ## Arquitectura
 
 ```
-topics (description = epígrafe oficial)
+Boletín oficial (BOE/BOP/BOCYL/...) → oposiciones.programa_url
+   ↓ (copia LITERAL)
+topics.epigrafe (texto oficial)
    ↓ topic_id
-topic_scope (law_id + article_numbers)
+topic_scope (law_id + article_numbers — debe coincidir con los conceptos del epígrafe)
    ↓ law_id + article_numbers
-articles (contenido legal)
+articles (contenido legal oficial)
    ↓ primary_article_id
 questions (preguntas vinculadas a artículos)
 ```
 
+### Regla de oro
+
+> **Todo lo que el usuario ve en un tema debe poder trazarse al boletín oficial de la convocatoria.**
+> Epígrafe literal → scope que refleja esos conceptos → artículos existentes → preguntas verificadas.
+
 ### Páginas involucradas
 
-- **Temario** (`/[oposicion]/temario/tema-X`) → Muestra el epígrafe y los artículos del scope. Usa `lib/api/temario/queries.ts`.
+- **Temario listado** (`/[oposicion]/temario`) → Muestra `title` + `descripcion_corta`. Usa `DynamicTemarioPage`.
+- **Tema individual** (`/[oposicion]/temario/tema-X`) → Muestra `title` + `description` + artículos del scope. Usa `lib/api/temario/queries.ts`.
 - **Test** (`/[oposicion]/test/tema/X`) → Carga preguntas según el scope. Usa `lib/api/topic-data/queries.ts`.
 
-## Oposiciones disponibles
+## Oposiciones disponibles (17)
 
-| position_type | Slug URL | Temas |
-|---|---|---|
-| `auxiliar_administrativo` | `auxiliar-administrativo-estado` | 28 (T1-T16 + T101-T112) |
-| `administrativo` | `administrativo-estado` | 45 |
-| `tramitacion_procesal` | `tramitacion-procesal` | 37 |
-| `auxilio_judicial` | `auxilio-judicial` | 26 |
+Para ver la lista actualizada con `programa_url`:
+
+```sql
+SELECT slug, nombre, temas_count, programa_url, boe_reference
+FROM oposiciones WHERE is_active = true
+ORDER BY slug;
+```
+
+**Boletín oficial por oposición** (diario_oficial en tabla `oposiciones`):
+- Auxiliar/Administrativo Estado, Auxilio Judicial, Tramitación Procesal → **BOE**
+- Madrid (CM) → **BOCM** (Boletín CA Madrid)
+- CyL → **BOCYL**
+- Andalucía → **BOJA**
+- Galicia → **DOG**
+- Comunitat Valenciana → **DOGV**
+- Ayto Valencia → **BOP Valencia**
+- CARM (Murcia) → **BORM**
+- Etc.
 
 ## Procedimiento de Verificación
 
@@ -43,16 +73,36 @@ questions (preguntas vinculadas a artículos)
 ```js
 const { data: topic } = await supabase
   .from('topics')
-  .select('id, topic_number, title, description, position_type')
+  .select('id, topic_number, title, description, epigrafe, position_type')
   .eq('topic_number', NUMERO_TEMA)
   .eq('position_type', 'POSITION_TYPE')
   .single();
 
 console.log('Título:', topic.title);
-console.log('Epígrafe:', topic.description);
+console.log('Epígrafe (oficial):', topic.epigrafe);
+console.log('Description:', topic.description);
 ```
 
-El campo `description` contiene el epígrafe oficial del BOE. Es lo que se muestra en la página del tema como subtítulo.
+- **`topics.epigrafe`** es el texto literal del boletín oficial (fuente de verdad).
+- **`topics.description`** se usa como subtítulo en la página individual del tema; normalmente es igual al epigrafe.
+- **`topics.descripcion_corta`** es una versión reducida (1-2 oraciones) para el listado del temario.
+
+### Paso 1b: Verificar contra el boletín oficial
+
+```js
+// Obtener el programa_url de la convocatoria
+const { data: oposicion } = await supabase
+  .from('oposiciones')
+  .select('nombre, programa_url, boe_reference, diario_oficial')
+  .eq('slug', 'SLUG_OPOSICION')
+  .single();
+
+console.log('Boletín oficial:', oposicion.diario_oficial);
+console.log('Referencia:', oposicion.boe_reference);
+console.log('PDF oficial:', oposicion.programa_url);
+```
+
+Abrir el PDF y comprobar que el `epigrafe` en BD es el texto LITERAL del ANEXO con el temario.
 
 ### Paso 2: Obtener el topic_scope
 
