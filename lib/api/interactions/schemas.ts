@@ -47,6 +47,9 @@ export const trackInteractionRequestSchema = z.object({
     z.number().int().min(0).max(2147483647).optional().nullable()
   ),
 
+  // Versión del despliegue del cliente (para correlacionar bugs con versión)
+  deployVersion: z.string().max(40).optional().nullable(),
+
   // Dispositivo - acepta objeto o string (para compatibilidad con datos de localStorage/sendBeacon)
   deviceInfo: z.preprocess(
     (val) => {

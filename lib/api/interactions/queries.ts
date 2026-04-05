@@ -33,7 +33,8 @@ export async function trackInteraction(
         elementId: params.elementId || null,
         elementText: params.elementText || null,
         responseTimeMs: params.responseTimeMs || null,
-        deviceInfo: params.deviceInfo || {}
+        deviceInfo: params.deviceInfo || {},
+        deployVersion: params.deployVersion || null
       })
       .returning({ id: userInteractions.id })
 
@@ -80,7 +81,8 @@ export async function trackBatchInteractions(
       elementId: event.elementId || null,
       elementText: event.elementText || null,
       responseTimeMs: event.responseTimeMs || null,
-      deviceInfo: event.deviceInfo || {}
+      deviceInfo: event.deviceInfo || {},
+      deployVersion: event.deployVersion || null
     }))
 
     await db.insert(userInteractions).values(values)

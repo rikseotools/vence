@@ -1,6 +1,7 @@
 // hooks/useInteractionTracker.ts - Hook para tracking de interacciones de usuario
 import { useCallback, useEffect, useRef } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+import { getClientVersion } from '@/hooks/useVersionCheck'
 
 // ============================================
 // TIPOS
@@ -25,6 +26,7 @@ interface QueuedEvent extends InteractionEvent {
   userId?: string | null
   sessionId?: string
   deviceInfo?: DeviceInfo
+  deployVersion?: string | null
   timestamp?: number
 }
 
@@ -276,6 +278,7 @@ export function useInteractionTracker() {
       userId: user?.id || null,
       sessionId: sessionIdRef.current || undefined,
       deviceInfo: deviceInfoRef.current || undefined,
+      deployVersion: getClientVersion() || null,
       pageUrl: event.pageUrl || (typeof window !== 'undefined' ? window.location.pathname : undefined),
       timestamp: Date.now()
     }
@@ -429,6 +432,7 @@ export const InteractionTracker = {
       ...event,
       sessionId: typeof window !== 'undefined' ? getSessionId() : undefined,
       deviceInfo: typeof window !== 'undefined' ? getDeviceInfo() : undefined,
+      deployVersion: getClientVersion() || null,
       pageUrl: event.pageUrl || (typeof window !== 'undefined' ? window.location.pathname : undefined),
       timestamp: Date.now()
     }

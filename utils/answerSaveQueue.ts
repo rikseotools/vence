@@ -1,5 +1,7 @@
 // utils/answerSaveQueue.ts — Cola offline-first para guardar respuestas en background
 // Guarda en localStorage primero, sincroniza con el servidor sin bloquear la UI.
+import { logClientError } from '@/lib/logClientError'
+import { answerAndSaveRequestSchema } from '@/lib/api/v2/answer-and-save/schemas'
 
 const QUEUE_KEY = 'vence_answer_queue'
 const MAX_RETRIES = 3
@@ -75,8 +77,23 @@ async function syncOne(answer: QueuedAnswer, accessToken: string): Promise<boole
       return false
     }
 
+    // Si la respuesta no es OK, loguear solo en último intento para no spamear
+    if (!response.ok && answer.retries >= MAX_RETRIES - 1) {
+      logClientError('/api/v2/answer-and-save', new Error(`HTTP ${response.status} tras ${answer.retries + 1} reintentos`), {
+        component: 'answerSaveQueue',
+        userId: typeof answer.payload.userId === 'string' ? answer.payload.userId : undefined,
+      })
+    }
+
     return response.ok
-  } catch {
+  } catch (err) {
+    // Solo log en último reintento para no spamear
+    if (answer.retries >= MAX_RETRIES - 1) {
+      logClientError('/api/v2/answer-and-save', err, {
+        component: 'answerSaveQueue',
+        userId: typeof answer.payload.userId === 'string' ? answer.payload.userId : undefined,
+      })
+    }
     return false
   }
 }
@@ -114,8 +131,19 @@ async function getAccessToken(): Promise<string | null> {
 
 /**
  * Añadir una respuesta a la cola y sincronizar inmediatamente.
+ * Valida el payload con Zod antes de encolar (fail-fast).
  */
 export function enqueueAnswer(payload: Record<string, unknown>): void {
+  // Validar payload con Zod antes de encolar — si está corrupto, loguear y descartar
+  const validation = answerAndSaveRequestSchema.safeParse(payload)
+  if (!validation.success) {
+    logClientError('/api/v2/answer-and-save', new Error('Payload inválido: ' + JSON.stringify(validation.error.issues)), {
+      component: 'answerSaveQueue',
+      userId: typeof payload.userId === 'string' ? payload.userId : undefined,
+    })
+    return
+  }
+
   const state = loadQueue()
   const id = typeof crypto !== 'undefined' && crypto.randomUUID
     ? crypto.randomUUID()
@@ -123,7 +151,7 @@ export function enqueueAnswer(payload: Record<string, unknown>): void {
 
   state.answers.push({
     id,
-    payload,
+    payload: validation.data as Record<string, unknown>,
     retries: 0,
     createdAt: Date.now(),
     lastAttempt: null,
@@ -132,8 +160,13 @@ export function enqueueAnswer(payload: Record<string, unknown>): void {
   saveQueue(state)
   notifyListeners()
 
-  // Intentar sincronizar inmediatamente (fire-and-forget)
-  flush().catch(() => {})
+  // Intentar sincronizar inmediatamente (fire-and-forget, pero loguear si falla)
+  flush().catch(err => {
+    logClientError('/api/v2/answer-and-save', err, {
+      component: 'answerSaveQueue flush',
+      userId: typeof payload.userId === 'string' ? payload.userId : undefined,
+    })
+  })
 }
 
 /**

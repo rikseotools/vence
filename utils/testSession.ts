@@ -5,6 +5,8 @@
 
 import { z } from 'zod'
 import { getSupabaseClient } from '../lib/supabase'
+import { getClientVersion } from '@/hooks/useVersionCheck'
+import { logClientError } from '@/lib/logClientError'
 
 const supabase = getSupabaseClient()
 
@@ -420,6 +422,7 @@ export async function createDetailedTestSession(
     } else {
       // userId es null/undefined - retornar temprano
       console.error('❌ createDetailedTestSession: userId es requerido')
+      logClientError('createDetailedTestSession', new Error('userId es requerido'), { component: 'testSession' })
       return null
     }
 
@@ -427,6 +430,7 @@ export async function createDetailedTestSession(
     const validation = createTestSessionSchema.safeParse(params)
     if (!validation.success) {
       console.error('❌ [Zod] Validación fallida:', validation.error.issues)
+      logClientError('createDetailedTestSession', new Error('Zod validation failed: ' + JSON.stringify(validation.error.issues)), { component: 'testSession' })
       return null
     }
 
@@ -435,6 +439,10 @@ export async function createDetailedTestSession(
 
     if (validatedParams.questions.length === 0) {
       console.error('❌ No se puede crear sesión: No hay preguntas disponibles')
+      logClientError('createDetailedTestSession', new Error('0 preguntas disponibles para crear sesión'), {
+        component: 'testSession',
+        userId: validatedParams.userId,
+      })
       return null
     }
 
@@ -510,12 +518,17 @@ export async function createDetailedTestSession(
         expected_duration_minutes: validatedParams.questions.length * 2,
         load_time: Date.now() - validatedParams.pageLoadTime,
       }),
+      deploy_version: getClientVersion() || null,
     }
 
     // Verificar sesión antes de insertar (evita fallos silenciosos por RLS)
     const { data: { session: currentSession } } = await supabase.auth.getSession()
     if (!currentSession?.access_token) {
       console.error('🔒 [testSession] Sesión expirada — no se puede crear test')
+      logClientError('createDetailedTestSession', new Error('Supabase session expired (no access_token)'), {
+        component: 'testSession',
+        userId: validatedParams.userId,
+      })
       return null
     }
 
@@ -542,11 +555,19 @@ export async function createDetailedTestSession(
         details: error.details,
         hint: error.hint,
       })
+      logClientError('createDetailedTestSession', new Error(`Supabase INSERT error ${error.code}: ${error.message}`), {
+        component: 'testSession',
+        userId: validatedParams.userId,
+      })
       return null
     }
 
     if (!data?.id) {
       console.error('❌ ERROR: INSERT no devolvió data válida')
+      logClientError('createDetailedTestSession', new Error('Supabase INSERT returned empty data'), {
+        component: 'testSession',
+        userId: validatedParams.userId,
+      })
       return null
     }
 

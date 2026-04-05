@@ -1869,6 +1869,7 @@ export const tests = pgTable("tests", {
 	performanceMetrics: jsonb("performance_metrics").default({}),
 	userSessionData: jsonb("user_session_data").default({}),
 	testUrl: varchar("test_url", { length: 500 }),
+	deployVersion: text("deploy_version"),
 }, (table) => [
 	index("idx_tests_analytics").using("gin", table.detailedAnalytics.asc().nullsLast().op("jsonb_ops")),
 	index("idx_tests_completion_time").using("btree", table.completedAt.asc().nullsLast().op("timestamptz_ops")).where(sql`(is_completed = true)`),
@@ -2783,6 +2784,7 @@ export const userInteractions = pgTable("user_interactions", {
 	elementText: text("element_text"),
 	responseTimeMs: integer("response_time_ms"),
 	deviceInfo: jsonb("device_info").default({}),
+	deployVersion: text("deploy_version"),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 }, (table) => [
 	index("idx_user_interactions_category").using("btree", table.eventCategory.asc().nullsLast().op("text_ops")),
