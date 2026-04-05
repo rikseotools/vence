@@ -4,6 +4,39 @@
 
 Este manual documenta el proceso para importar preguntas scrapeadas de OpositaTest u otras fuentes a la base de datos de Vence, asegurando calidad y correcta vinculación con artículos.
 
+## ⚠️ PRINCIPIO CRÍTICO: Usar Temario Oficial del Boletín
+
+**ANTES de importar preguntas a cualquier oposición, es OBLIGATORIO:**
+
+1. **Obtener el temario oficial del boletín** (BOE, BOP, BOCYL, BOJA, DOG, DOGV, BORM, BOCM…) de la convocatoria correspondiente
+2. **Verificar la estructura de temas** (numeración, títulos, epígrafes)
+3. **Alinear la BD con el temario oficial**, NO con la estructura de OpositaTest
+
+### ¿Por qué es crítico?
+
+- **OpositaTest puede tener una numeración/estructura diferente al temario oficial**
+- Los usuarios estudian según el temario oficial de la convocatoria
+- Una discrepancia en la numeración o contenido **confunde al opositor**
+- El contenido de cada tema debe coincidir EXACTAMENTE con el boletín oficial
+
+### Ejemplo de discrepancia detectada:
+
+| OpositaTest | BOE Oficial (C1 Administrativo) |
+|-------------|--------------------------------|
+| Tema 2: La Corona | Tema 4: La Corona |
+| Tema 3: Las Cortes | Tema 5: Las Cortes |
+
+### Fuente oficial:
+
+Cada oposición tiene su `programa_url` en la tabla `oposiciones` apuntando al PDF oficial del boletín:
+
+```sql
+SELECT slug, programa_url, boe_reference, diario_oficial
+FROM oposiciones WHERE slug = 'SLUG_OPOSICION';
+```
+
+**Siempre verificar contra ese PDF antes de importar preguntas o modificar topic_scope.**
+
 ## PRINCIPIO FUNDAMENTAL: Importar Desactivadas, Activar Tras Revisión
 
 **Todas las preguntas importadas se insertan desactivadas** (`is_active: false`) con `deactivation_reason: 'Pendiente de revisión post-importación'`. Esto aplica tanto a preguntas legislativas como psicotécnicas.
