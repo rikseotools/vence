@@ -625,14 +625,76 @@ app/<slug-con-guiones>/
       test-examen/page.js              -- Test examen por tema
   temario/
     layout.js                           -- Metadata
-    page.tsx                            -- Lista de temas con TemarioClient
-    TemarioClient.tsx                   -- Copiar y adaptar
+    page.tsx                            -- Thin wrapper (20 lineas, ver abajo)
     [slug]/
       page.tsx                          -- getTopicContent + generateStaticParams
       TopicContentView.tsx              -- Copiar y adaptar getBlockInfo
 ```
 
-**En `temario/page.tsx`:** marcar `disponible: true` los temas que YA tienen topic_scope con preguntas. Los temas SIN scope (ej: leyes autonomicas no importadas) se dejan como `disponible: false` — el componente TemarioClient muestra "En elaboracion" automaticamente.
+### 5.1 Temario dinamico (desde 05/04/2026)
+
+**El temario se lee de BD — NO hay hardcoded.** El `page.tsx` es un thin wrapper que usa el componente compartido `DynamicTemarioPage`:
+
+```tsx
+// app/<slug>/temario/page.tsx
+import DynamicTemarioPage from '@/components/temario/DynamicTemarioPage'
+
+export const revalidate = false  // static, invalidar con revalidateTag('temario')
+
+export const metadata = {
+  title: 'Temario <Nombre Oposicion> | Vence.es',
+  description: 'Temario oficial de <nombre> con legislación literal del BOE...',
+  alternates: { canonical: 'https://www.vence.es/<slug>/temario' },
+}
+
+export default async function TemarioPage() {
+  return (
+    <DynamicTemarioPage
+      oposicionSlug="<slug>"
+      oposicionDisplayName="<Nombre Display>"
+    />
+  )
+}
+```
+
+**NO crear `TemarioClient.tsx`** — ya es compartido en `/components/temario/TemarioClient.tsx`.
+
+**Datos que lee de BD:**
+- `oposicion_bloques` (position_type, bloque_number, titulo, icon)
+- `topics` (title, descripcion_corta, bloque_number, display_number, disponible)
+
+**Flujo de creación completo:**
+
+1. **Insertar bloques** en `oposicion_bloques`:
+```sql
+INSERT INTO oposicion_bloques (position_type, bloque_number, titulo, icon, sort_order)
+VALUES
+  ('<position_type>', 1, 'Bloque I: Nombre', '🏛️', 1),
+  ('<position_type>', 2, 'Bloque II: Nombre', '⚖️', 2);
+```
+
+2. **Insertar topics** con `bloque_number` + `descripcion_corta` + `disponible`:
+```sql
+INSERT INTO topics (position_type, topic_number, title, description, epigrafe,
+                    bloque_number, descripcion_corta, disponible, is_active)
+VALUES (...);
+```
+
+3. **Marcar `disponible = false`** los temas sin topic_scope con preguntas (aparecen "En elaboracion" en el listado automaticamente).
+
+4. **Invalidar cache:**
+```bash
+curl -X POST https://www.vence.es/api/admin/revalidate-temario
+```
+
+**Verificación:**
+```bash
+# Test de integridad BD
+npm test __tests__/integration/temarioEpigrafeIntegrity.test.ts
+
+# Build local (debe generar la ruta como estática)
+npm run build | grep "<slug>/temario"
+```
 
 ### 5a. Landing page (AUTOMATICA - no hay que crear archivo)
 
