@@ -61,6 +61,29 @@ const nextConfig = {
         destination: '/test/aleatorio-examen',
         permanent: false, // 302 temporal para poder cambiar si hay problemas
       },
+      // 🗂️ Convocatorias archivadas → canónica actual (preserva equity SEO)
+      // Cuando caduca una OEP, la fila antigua pasa a slug -YYYY (is_active=false)
+      // y creamos nueva fila con slug canónico para OEP activa.
+      {
+        source: '/auxiliar-administrativo-madrid-2025',
+        destination: '/auxiliar-administrativo-madrid',
+        permanent: true,
+      },
+      {
+        source: '/auxiliar-administrativo-madrid-2025/:path*',
+        destination: '/auxiliar-administrativo-madrid/:path*',
+        permanent: true,
+      },
+      {
+        source: '/auxiliar-administrativo-canarias-2024',
+        destination: '/auxiliar-administrativo-canarias',
+        permanent: true,
+      },
+      {
+        source: '/auxiliar-administrativo-canarias-2024/:path*',
+        destination: '/auxiliar-administrativo-canarias/:path*',
+        permanent: true,
+      },
       // 🔄 Redirecciones de temario viejo gamificado a temario nuevo gratis
       {
         source: '/temario/auxiliar-administrativo-estado/tema/:numero',
