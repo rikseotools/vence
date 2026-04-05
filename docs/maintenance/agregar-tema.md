@@ -7,6 +7,21 @@ Esta guía explica el proceso completo para crear un tema de oposición desde ce
 ---
 IMPRESCINDIBLE: sistema de codificación de respuestas: sistema 0=A, 1=B, 2=C, 3=D
 
+---
+
+## ⚠️ **IMPORTANTE (desde 05/04/2026): Temario Dinámico**
+
+El temario se lee **directamente de BD** — NO hay hardcoded en `page.tsx`.
+
+**Para crear/modificar un tema necesitas:**
+1. INSERT/UPDATE en tabla `topics` (con `bloque_number`, `descripcion_corta`, `disponible`)
+2. Asegurar que existe el bloque en `oposicion_bloques`
+3. Invalidar cache: `POST /api/admin/revalidate-temario`
+
+**NO hace falta tocar código** (`/app/{oposicion}/temario/page.tsx`).
+
+---
+
 ## 📋 **PASO 1: PREPARAR EL TEMA**
 
 ### 1.1 Crear el tema en la tabla `topics`
@@ -18,18 +33,44 @@ INSERT INTO topics (
   topic_number,
   title,
   description,
+  epigrafe,                 -- epígrafe oficial BOE (texto completo)
+  descripcion_corta,        -- texto breve para listado temario (1-2 líneas)
+  bloque_number,            -- a qué bloque pertenece (debe existir en oposicion_bloques)
+  display_number,           -- NULL si coincide con topic_number
+  disponible,               -- true por defecto (false = "En elaboración")
   difficulty,
   estimated_hours,
   is_active
 ) VALUES (
-  'auxiliar_administrativo',
+  'auxiliar_administrativo_estado',
   8,
-  'Tema 8: Título del tema oficial',
-  'Descripción detallada del contenido del tema según el temario oficial',
+  'La Administración General del Estado',
+  'Descripción detallada según temario oficial...',
+  'Epígrafe oficial BOE completo con enumeración de subtemas...',
+  'Estructura orgánica. Ministerios. Órganos periféricos.',
+  1,                         -- Bloque I
+  NULL,
+  true,
   'medium',
   15,
   true
 );
+```
+
+### 1.2 Asegurar que el bloque existe
+
+```sql
+-- Si el bloque no existe aún, créalo
+INSERT INTO oposicion_bloques (position_type, bloque_number, titulo, icon, sort_order)
+VALUES ('auxiliar_administrativo_estado', 1, 'Bloque I: Organización del Estado', '🏛️', 1)
+ON CONFLICT (position_type, bloque_number) DO NOTHING;
+```
+
+### 1.3 Invalidar cache del temario
+
+```bash
+# Tras cualquier cambio en topics/oposicion_bloques/topic_scope:
+curl -X POST https://www.vence.es/api/admin/revalidate-temario
 ```
 
 ### 1.2 Verificar que se creó correctamente
