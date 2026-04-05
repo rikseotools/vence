@@ -94,13 +94,30 @@ export default function SeguimientoConvocatoriasPage() {
 
   return (
     <div className="p-4 sm:p-6 max-w-6xl mx-auto">
+      {/* Banner deprecación: alertas fusionadas en /admin/oep-signals */}
+      <div className="mb-6 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+        <div className="flex items-start gap-3">
+          <span className="text-xl">📋</span>
+          <div className="flex-1">
+            <div className="font-semibold text-blue-900 dark:text-blue-100">
+              Esta vista es solo histórica
+            </div>
+            <p className="text-sm text-blue-800 dark:text-blue-200 mt-1">
+              Las alertas de cambios detectados por hash ahora aparecen en{' '}
+              <a href="/admin/oep-signals" className="font-medium underline">🎯 OEPs</a>{' '}
+              junto a las señales del LLM semántico y detector de silencio. Esta página muestra solo el histórico técnico de hashes para debugging.
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            Seguimiento de Convocatorias
+            Seguimiento de Convocatorias (Histórico)
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Monitoreo de cambios en páginas oficiales de seguimiento
+            Monitoreo técnico de hashes. Alertas en <a href="/admin/oep-signals" className="underline">🎯 OEPs</a>.
           </p>
         </div>
         <div className="flex items-center gap-3">

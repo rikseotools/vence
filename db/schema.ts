@@ -3704,7 +3704,7 @@ export const oepDetectionSignals = pgTable("oep_detection_signals", {
 }, (table) => [
 	index("idx_oep_signals_oposicion").using("btree", table.oposicionId, table.createdAt.desc()),
 	foreignKey({ columns: [table.oposicionId], foreignColumns: [oposiciones.id], name: "oep_detection_signals_oposicion_id_fkey" }).onDelete("cascade"),
-	check("oep_signals_sensor_type_check", sql`sensor_type IN ('llm_semantic', 'timeline_silence', 'rss', 'boe_api', 'google_cse', 'manual')`),
+	check("oep_signals_sensor_type_check", sql`sensor_type IN ('llm_semantic', 'timeline_silence', 'rss', 'boe_api', 'google_cse', 'manual', 'hash_change')`),
 	check("oep_signals_status_check", sql`status IN ('pending', 'applied', 'dismissed', 'auto_applied')`),
 	check("oep_signals_confidence_check", sql`confidence_score >= 0 AND confidence_score <= 100`),
 ]);

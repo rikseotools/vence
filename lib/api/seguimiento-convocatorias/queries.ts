@@ -4,6 +4,8 @@
 import { getDb } from '@/db/client'
 import { sql } from 'drizzle-orm'
 import crypto from 'crypto'
+import { insertSignal } from '@/lib/api/oep-signals/queries'
+import { baseScoreBySensor, buildDedupeKey } from '@/lib/api/oep-signals/schemas'
 
 export interface OposicionToCheck {
   id: string
@@ -152,7 +154,7 @@ export async function checkSeguimientoUrl(
   }
 }
 
-/** Guarda el resultado de un check en BD */
+/** Guarda el resultado de un check en BD + genera señal si hay cambio */
 export async function saveSeguimientoCheck(result: CheckResult): Promise<void> {
   const db = getDb()
 
@@ -182,6 +184,29 @@ export async function saveSeguimientoCheck(result: CheckResult): Promise<void> {
         seguimiento_change_status = 'changed'
       WHERE id = ${result.oposicionId}::uuid
     `)
+
+    // Fusión con oep-signals: generar señal hash_change
+    try {
+      const today = new Date().toISOString().slice(0, 10)
+      await insertSignal({
+        oposicionId: result.oposicionId,
+        sensorType: 'hash_change',
+        sourceUrl: null,
+        confidenceScore: baseScoreBySensor('hash_change'),
+        isNovel: false,
+        signalSummary: `Hash de página oficial cambió (${result.contentLength} bytes). Revisar manualmente vs BD. Preview: ${result.contentPreview.slice(0, 200)}`,
+        rawExtraction: {
+          oldHash: result.oldHash,
+          newHash: result.newHash,
+          contentLength: result.contentLength,
+          contentPreview: result.contentPreview.slice(0, 500),
+          httpStatus: result.httpStatus,
+        } as Record<string, unknown>,
+        dedupeKey: `hash_change:${result.oposicionId}:0:${today}`,
+      })
+    } catch (err) {
+      console.warn('⚠️ [Seguimiento] No se pudo crear señal hash_change:', err)
+    }
   } else {
     await db.execute(sql`
       UPDATE oposiciones SET
