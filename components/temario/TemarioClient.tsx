@@ -1,3 +1,4 @@
+
 'use client'
 
 import { useState, useMemo } from 'react'
@@ -31,16 +32,14 @@ interface TemarioClientProps {
 
 export default function TemarioClient({ bloques, oposicion, fechaActualizacion }: TemarioClientProps) {
   const { user } = useAuth() as { user: any }
-  // Convertir slug de URL a positionType de BD (ej: 'auxiliar-administrativo-cyl' -> 'auxiliar_administrativo_cyl')
+  // Convertir slug de URL a positionType de BD
   const positionType = useMemo(() => slugToPositionType(oposicion), [oposicion])
   const { getTopicProgress } = useTopicUnlock({ positionType: positionType ?? undefined }) as { getTopicProgress: (id: number) => { accuracy: number; questionsAnswered: number } }
-  const [expandedBlocks, setExpandedBlocks] = useState<Record<string, boolean>>({
-    bloque1: true,
-    bloque2: false,
-    bloque3: false,
-    bloque4: false,
-    bloque5: false,
-    bloque6: false
+  // Expandir solo el primer bloque por defecto (resto colapsados). Funciona con cualquier número de bloques.
+  const [expandedBlocks, setExpandedBlocks] = useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = {}
+    bloques.forEach((b, idx) => { initial[b.id] = idx === 0 })
+    return initial
   })
 
   const toggleBlock = (blockId: string) => {
@@ -52,13 +51,13 @@ export default function TemarioClient({ bloques, oposicion, fechaActualizacion }
 
   const getProgressColor = (accuracy: number) => {
     if (accuracy >= 70) return 'bg-green-500'
-    if (accuracy > 0) return 'bg-rose-500'
+    if (accuracy > 0) return 'bg-amber-500'
     return 'bg-gray-200'
   }
 
   const getProgressBg = (accuracy: number) => {
     if (accuracy >= 70) return 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
-    if (accuracy > 0) return 'bg-rose-50 dark:bg-rose-900/20 border-rose-200 dark:border-rose-800'
+    if (accuracy > 0) return 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800'
     return ''
   }
 
@@ -72,10 +71,10 @@ export default function TemarioClient({ bloques, oposicion, fechaActualizacion }
       return (
         <div
           key={tema.id}
-          className="flex items-center gap-4 p-4 bg-rose-50 dark:bg-rose-900/20 rounded-xl border border-rose-200 dark:border-rose-700"
+          className="flex items-center gap-4 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-700"
         >
-          <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-rose-100 dark:bg-rose-800/50 flex items-center justify-center">
-            <span className="text-base font-bold text-rose-600 dark:text-rose-400">
+          <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-amber-100 dark:bg-amber-800/50 flex items-center justify-center">
+            <span className="text-base font-bold text-amber-600 dark:text-amber-400">
               {displayNumber}
             </span>
           </div>
@@ -83,11 +82,11 @@ export default function TemarioClient({ bloques, oposicion, fechaActualizacion }
             <h3 className="font-medium text-gray-700 dark:text-gray-300">
               {tema.titulo}
             </h3>
-            <p className="text-sm text-rose-600 dark:text-rose-400">
-              En elaboración · Disponible próximamente
+            <p className="text-sm text-amber-600 dark:text-amber-400">
+              En elaboración · Disponible a partir de abril 2026
             </p>
           </div>
-          <div className="flex-shrink-0 flex items-center gap-1.5 text-rose-500">
+          <div className="flex-shrink-0 flex items-center gap-1.5 text-amber-500">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
@@ -119,7 +118,7 @@ export default function TemarioClient({ bloques, oposicion, fechaActualizacion }
         <div className="flex-shrink-0 flex items-center gap-3">
           {hasProgress && (
             <div className="text-right hidden sm:block">
-              <div className={`text-sm font-semibold ${progress.accuracy >= 70 ? 'text-green-600' : 'text-rose-600'}`}>
+              <div className={`text-sm font-semibold ${progress.accuracy >= 70 ? 'text-green-600' : 'text-amber-600'}`}>
                 {progress.accuracy}%
               </div>
               <div className="w-16 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">

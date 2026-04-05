@@ -299,3 +299,126 @@ export async function getTopicContent(
     generatedAt: new Date().toISOString(),
   }
 }
+
+// ============================================
+// OBTENER TEMARIO COMPLETO DE UNA OPOSICIÓN (bloques + temas)
+// ============================================
+// Usado por la página listado del temario /[oposicion]/temario
+// Lee de tabla `oposicion_bloques` + `topics` (fuente única de verdad)
+
+export type TemaListItem = {
+  id: number              // topic_number (usado por URL: /temario/tema-N)
+  displayNum: number      // número mostrado al usuario (ej: 3 para T103)
+  titulo: string          // título del tema
+  descripcion: string | null  // descripción corta pedagógica
+  disponible: boolean     // si false, marcado "En elaboración"
+}
+
+export type BloqueListItem = {
+  bloqueNumber: number
+  titulo: string
+  icon: string | null
+  temas: TemaListItem[]
+}
+
+export type TemarioCompleto = {
+  positionType: string
+  oposicionName: string
+  bloques: BloqueListItem[]
+  totalTemas: number
+  lastUpdated: string
+}
+
+async function getTemarioByPositionTypeInternal(
+  positionType: string
+): Promise<TemarioCompleto | null> {
+  const db = getDb()
+
+  // 1. Obtener bloques
+  const bloquesResult = await db.execute(sql`
+    SELECT bloque_number, titulo, icon, sort_order
+    FROM oposicion_bloques
+    WHERE position_type = ${positionType}
+    ORDER BY sort_order, bloque_number
+  `)
+
+  const bloquesRows = (bloquesResult as any).rows ?? bloquesResult ?? []
+
+  if (bloquesRows.length === 0) {
+    return null
+  }
+
+  // 2. Obtener temas de todos los bloques
+  const topicsResult = await db
+    .select({
+      topicNumber: topics.topicNumber,
+      title: topics.title,
+      descripcionCorta: sql<string>`descripcion_corta`.as('descripcion_corta'),
+      displayNumber: sql<number>`display_number`.as('display_number'),
+      bloqueNumber: sql<number>`bloque_number`.as('bloque_number'),
+      disponible: sql<boolean>`disponible`.as('disponible'),
+    })
+    .from(topics)
+    .where(
+      and(
+        eq(topics.positionType, positionType),
+        eq(topics.isActive, true)
+      )
+    )
+    .orderBy(topics.topicNumber)
+
+  // 3. Obtener nombre de oposición (desde primer topic o configuración)
+  // Usamos el position_type tal cual como identificador
+  const oposicionName = positionType
+    .split('_')
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ')
+
+  // 4. Agrupar temas por bloque
+  const bloques: BloqueListItem[] = bloquesRows.map((b: any) => {
+    const temasBloque = topicsResult
+      .filter(t => t.bloqueNumber === b.bloque_number)
+      .map(t => ({
+        id: t.topicNumber,
+        displayNum: t.displayNumber ?? t.topicNumber,
+        titulo: t.title,
+        descripcion: t.descripcionCorta,
+        disponible: t.disponible ?? true,
+      }))
+
+    return {
+      bloqueNumber: b.bloque_number,
+      titulo: b.titulo,
+      icon: b.icon,
+      temas: temasBloque,
+    }
+  })
+
+  return {
+    positionType,
+    oposicionName,
+    bloques,
+    totalTemas: topicsResult.length,
+    lastUpdated: new Date().toISOString(),
+  }
+}
+
+// 🚀 Cacheado permanente (invalidar con revalidateTag('temario'))
+const getTemarioByPositionTypeCached = unstable_cache(
+  getTemarioByPositionTypeInternal,
+  ['temario-by-position-type-v1'],
+  { revalidate: false, tags: ['temario'] }
+)
+
+/**
+ * Obtiene el temario completo (bloques + temas) de una oposición.
+ * Lee desde BD (oposicion_bloques + topics). Cacheado permanente.
+ *
+ * @param positionType - ej: 'auxilio_judicial', 'auxiliar_administrativo_estado'
+ * @returns Estructura completa con bloques y temas, o null si no existe la oposición
+ */
+export async function getTemarioByPositionType(
+  positionType: string
+): Promise<TemarioCompleto | null> {
+  return getTemarioByPositionTypeCached(positionType)
+}
