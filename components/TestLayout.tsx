@@ -918,6 +918,12 @@ export default function TestLayout({
   ) => {
     if (!user) return
 
+    // Usar el tema específico de la pregunta si está disponible (test-personalizado pasa tema=0
+    // pero cada pregunta tiene su source_topic). Esto evita que el servidor haga resolveTemaNumber
+    // (5-8 queries BD) por cada respuesta, reduciendo latencia de 2000-2700ms a ~500ms.
+    const questionTema = (currentQ as any).tema ?? (currentQ as any).source_topic ?? null
+    const effectiveTema = typeof questionTema === 'number' && questionTema > 0 ? questionTema : tema
+
     const payload: Record<string, unknown> = {
       questionId: currentQ.id,
       userAnswer: answerIndex,
@@ -925,7 +931,7 @@ export default function TestLayout({
       questionIndex,
       questionText: currentQ.question_text || currentQ.question || '',
       options: currentQ.options || [currentQ.option_a, currentQ.option_b, currentQ.option_c, currentQ.option_d].filter(Boolean),
-      tema,
+      tema: effectiveTema,
       questionType: (currentQ.question_type === 'psychometric' ? 'psychometric' : 'legislative'),
       article: currentQ.article ? {
         id: currentQ.article.id || currentQ.primary_article_id || null,
