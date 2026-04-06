@@ -316,7 +316,46 @@ await supabase.from('detection_sources').insert({
 
 Seed inicial: `scripts/seed-detection-sources.js` (30 fuentes).
 
-## 11. Cambios cosmeticos (falsos positivos)
+## 11. Filosofia de landings: siempre activas para captar
+
+**Regla: NUNCA desactivar una landing solo porque no haya convocatoria activa.**
+
+Aunque una OEP haya terminado (nombramientos) y no haya nueva convocatoria, la landing sigue activa (`is_active=true`) porque:
+- Google la tiene indexada con autoridad SEO acumulada
+- Usuarios buscan "auxiliar administrativo [CCAA]" antes de que salga la convocatoria
+- La landing muestra la previsión de plazas de la próxima OEP para ir captando leads
+
+### Que mostrar según el estado
+
+| Estado | Que mostrar en landing |
+|--------|----------------------|
+| `inscripcion_abierta` / `inscripcion_cerrada` | Datos completos: plazas, fechas, hitos, temario, tests |
+| `pendiente_examen` / `examen_realizado` | Datos + countdown al examen o resultados |
+| `resultados` / `nombramientos` | "Proceso anterior finalizado. Próxima OEP: X plazas previstas (estimación)" |
+| `oep_aprobada` (sin convocatoria) | "OEP aprobada con X plazas. Pendiente de convocatoria. Prepárate ya." |
+| `sin_oep` | "Se esperan X plazas en próxima OEP. Empieza a prepararte." |
+
+### Campos a mantener actualizados (aunque no haya convocatoria)
+
+```
+is_active = true                    -- SIEMPRE, landing nunca se desactiva
+is_convocatoria_activa = false      -- Solo true si hay inscripción/examen activo
+estado_proceso = 'sin_oep'          -- O 'oep_aprobada' si hay decreto
+plazas_libres = N                   -- Previsión o dato OEP (si existe)
+oep_decreto = '...'                 -- Si hay OEP aprobada
+oep_fecha = '...'                   -- Fecha del decreto OEP
+```
+
+### Cuando archivar (crear fila -YYYY)
+
+Solo archivar si hay **nueva convocatoria/OEP** que reemplaza a la anterior:
+1. Crear nueva fila con slug canónico (sin año)
+2. Renombrar vieja a slug-YYYY + `is_active=false`
+3. Redirect 301 en next.config.mjs
+
+Si NO hay nueva OEP → mantener la fila actual con estado actualizado. No archivar.
+
+## 12. Cambios cosmeticos (falsos positivos)
 
 A veces el hash cambia sin novedad real (timestamps, tokens de sesion, contenido dinamico de la web). Indicadores de cambio cosmetico:
 
