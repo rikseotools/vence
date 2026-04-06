@@ -92,6 +92,8 @@ export function oposicionToCcaa(opoSlug: string): string | null {
     'tcae-sermas-madrid': 'madrid',
     'celador-sermas-madrid': 'madrid',
     'guardia-civil': 'estado',
+    'policia-nacional': 'estado',
+    'policia-municipal-madrid': 'madrid',
   }
   return map[opoSlug] ?? null
 }

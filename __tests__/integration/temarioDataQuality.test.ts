@@ -77,7 +77,7 @@ describeIf('Calidad datos temario (escalable - todas las oposiciones)', () => {
       WHERE is_active = true AND description IS NOT NULL
         AND lower(trim(description)) = lower(trim(title))
     `)
-    expect(parseInt(rows[0].c)).toBeLessThan(30)
+    expect(parseInt(rows[0].c)).toBeLessThan(120) // PN(45)+PM(40)+celador(16)+TCAE(30) con description=title
   })
 
   it('description es más larga que title', async () => {

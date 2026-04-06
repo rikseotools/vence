@@ -1953,6 +1953,70 @@ export const OPOSICIONES: Oposicion[] = [
       { href: '/guardia-civil/test', label: 'Tests', icon: '🎯' },
     ],
   },
+  // ========================================
+  // POLICÍA NACIONAL - ESCALA BÁSICA (C1)
+  // ========================================
+  {
+    id: 'policia_nacional',
+    slug: 'policia-nacional',
+    positionType: 'policia_nacional',
+    name: 'Policía Nacional - Escala Básica',
+    shortName: 'Policía Nacional',
+    emoji: '👮',
+    badge: 'C1',
+    color: 'blue',
+    administracion: 'estado',
+    blocks: [
+      { id: 'bloque1', title: 'Bloque A: Ciencias Jurídicas', subtitle: '26 temas de Derecho', icon: '⚖️',
+        themes: Array.from({ length: 26 }, (_, i) => ({ id: i + 1, name: `Tema ${i + 1}` })) },
+      { id: 'bloque2', title: 'Bloque B: Ciencias Sociales', subtitle: '11 temas', icon: '🌍',
+        themes: Array.from({ length: 11 }, (_, i) => ({ id: 27 + i, name: `Tema ${27 + i}` })) },
+      { id: 'bloque3', title: 'Bloque C: Ciencias Técnico-Científicas', subtitle: '8 temas', icon: '💻',
+        themes: Array.from({ length: 8 }, (_, i) => ({ id: 38 + i, name: `Tema ${38 + i}` })) },
+    ],
+    totalTopics: 45,
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/policia-nacional', label: 'Mi Oposición', icon: '👮', featured: true },
+      { href: '/policia-nacional/temario', label: 'Temario', icon: '📚' },
+      { href: '/policia-nacional/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+  // ========================================
+  // POLICÍA MUNICIPAL MADRID (C1)
+  // ========================================
+  {
+    id: 'policia_municipal_madrid',
+    slug: 'policia-municipal-madrid',
+    positionType: 'policia_municipal_madrid',
+    name: 'Policía Municipal del Ayuntamiento de Madrid',
+    shortName: 'Policía Municipal Madrid',
+    emoji: '🚔',
+    badge: 'C1',
+    color: 'blue',
+    administracion: 'local',
+    blocks: [
+      { id: 'bloque1', title: 'Constitucional y Administrativo', subtitle: null, icon: '⚖️',
+        themes: Array.from({ length: 7 }, (_, i) => ({ id: i + 1, name: `Tema ${i + 1}` })) },
+      { id: 'bloque2', title: 'Policía Local', subtitle: null, icon: '🚔',
+        themes: Array.from({ length: 5 }, (_, i) => ({ id: 8 + i, name: `Tema ${8 + i}` })) },
+      { id: 'bloque3', title: 'Ordenanzas Municipales', subtitle: null, icon: '📋',
+        themes: Array.from({ length: 7 }, (_, i) => ({ id: 13 + i, name: `Tema ${13 + i}` })) },
+      { id: 'bloque4', title: 'Justicia y Penal', subtitle: null, icon: '⚖️',
+        themes: Array.from({ length: 8 }, (_, i) => ({ id: 20 + i, name: `Tema ${20 + i}` })) },
+      { id: 'bloque5', title: 'Tráfico y Circulación', subtitle: null, icon: '🚗',
+        themes: Array.from({ length: 5 }, (_, i) => ({ id: 28 + i, name: `Tema ${28 + i}` })) },
+      { id: 'bloque6', title: 'Seguridad y Derechos', subtitle: null, icon: '🛡️',
+        themes: Array.from({ length: 8 }, (_, i) => ({ id: 33 + i, name: `Tema ${33 + i}` })) },
+    ],
+    totalTopics: 40,
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/policia-municipal-madrid', label: 'Mi Oposición', icon: '🚔', featured: true },
+      { href: '/policia-municipal-madrid/temario', label: 'Temario', icon: '📚' },
+      { href: '/policia-municipal-madrid/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
 ]
 
 // ============================================

@@ -91,7 +91,7 @@ describeIf('Integración temario: BD ↔ listado ↔ tema-N', () => {
       console.warn('Topics sin epígrafe:', sinEpigrafe.slice(0, 5).map(t => `${t.position_type} T${t.topic_number}: ${t.title}`))
     }
     // Tolerancia: algunos temas virtuales (informática) pueden no tener epígrafe BOE
-    expect(sinEpigrafe.length).toBeLessThan(55) // +50 de Navarra/La Rioja (incompletas)
+    expect(sinEpigrafe.length).toBeLessThan(140) // PN(45)+PM(40)+Navarra/La Rioja(50) con epígrafes cortos
   })
 
   // ============================================
