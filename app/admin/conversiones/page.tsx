@@ -1614,92 +1614,6 @@ export default function ConversionesPage() {
                 </div>
               </div>
 
-              {/* Estimaciones */}
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                  <span>📈</span>
-                  Estimaciones de Proxima Venta
-                </h3>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Registros necesarios */}
-                  <div>
-                    <h4 className="font-medium text-gray-700 dark:text-gray-300 mb-3">Usuarios Necesarios Para:</h4>
-                    <div className="space-y-3">
-                      <div>
-                        <div className="flex justify-between text-sm mb-1">
-                          <span>50% probabilidad</span>
-                          <span className="font-medium">{predictionData.prediction.registrationsFor50} usuarios</span>
-                        </div>
-                        <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-yellow-500"
-                            style={{ width: `${Math.min((predictionData.current.pool.total / predictionData.prediction.registrationsFor50) * 100, 100)}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                      <div>
-                        <div className="flex justify-between text-sm mb-1">
-                          <span>75% probabilidad</span>
-                          <span className="font-medium">{predictionData.prediction.registrationsFor75} usuarios</span>
-                        </div>
-                        <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-orange-500"
-                            style={{ width: `${Math.min((predictionData.current.pool.total / predictionData.prediction.registrationsFor75) * 100, 100)}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                      <div>
-                        <div className="flex justify-between text-sm mb-1">
-                          <span>90% probabilidad</span>
-                          <span className="font-medium">{predictionData.prediction.registrationsFor90} usuarios</span>
-                        </div>
-                        <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-red-500"
-                            style={{ width: `${Math.min((predictionData.current.pool.total / predictionData.prediction.registrationsFor90) * 100, 100)}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="mt-3 text-sm text-gray-500">
-                      Pool activo: {predictionData.current.pool.total} usuarios (últimos 30 días)
-                    </div>
-                  </div>
-
-                  {/* Usuarios en proceso */}
-                  <div>
-                    <h4 className="font-medium text-gray-700 dark:text-gray-300 mb-3">Pool de Usuarios:</h4>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                        <div>
-                          <div className="font-medium text-green-700 dark:text-green-300">Nuevos (0-7 dias)</div>
-                          <div className="text-xs text-green-600 dark:text-green-400">Recien llegados</div>
-                        </div>
-                        <div className="text-2xl font-bold text-green-600">{predictionData.current.pool.new}</div>
-                      </div>
-                      <div className="flex items-center justify-between p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
-                        <div>
-                          <div className="font-medium text-yellow-700 dark:text-yellow-300">Activos (7-30 dias)</div>
-                          <div className="text-xs text-yellow-600 dark:text-yellow-400">Probando la app</div>
-                        </div>
-                        <div className="text-2xl font-bold text-yellow-600">{predictionData.current.pool.active}</div>
-                      </div>
-                      <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                        <div>
-                          <div className="font-medium text-gray-700 dark:text-gray-300">Dormidos (30+ dias)</div>
-                          <div className="text-xs text-gray-600 dark:text-gray-400">Baja probabilidad</div>
-                        </div>
-                        <div className="text-2xl font-bold text-gray-600">{predictionData.current.pool.dormant}</div>
-                      </div>
-                    </div>
-                    <div className="mt-3 text-sm text-gray-500">
-                      Velocidad: {predictionData.prediction.dailyRegistrationRate} registros/dia
-                    </div>
-                  </div>
-                </div>
-              </div>
 
               {/* MRR y Proyecciones de Facturación */}
               {predictionData.mrr && (
@@ -1797,74 +1711,63 @@ export default function ConversionesPage() {
                   </div>
                   )}
 
-                  <div className="mt-4 text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 rounded p-3 space-y-2">
-                    <div className="font-semibold text-gray-700 dark:text-gray-300">Cómo se calcula:</div>
-                    <div>
-                      <strong>MRR actual:</strong> {predictionData.mrr.explanation?.mrrCurrent || `${predictionData.mrr.activeSubscriptions} suscripciones activas`}
-                    </div>
-                    <div>
-                      <strong>MRR por nueva sub:</strong> {predictionData.mrr.explanation?.mrrPerNewSub || `${predictionData.mrr.mrrPerNewSub?.toFixed(2)}€`}
-                      <span className="text-gray-400 ml-1">
-                        ({predictionData.mrr.byPlan?.pctSemester || 0}% semestrales, {predictionData.mrr.byPlan?.pctQuarterly || 0}% trimestrales, {predictionData.mrr.byPlan?.pctMonthly || 0}% mensuales)
-                      </span>
-                    </div>
-                    <div>
-                      <strong>Nuevas subs/mes:</strong> {predictionData.mrr.newSubsPerMonth?.toFixed(1) || 0}
-                      <span className="text-gray-400 ml-1">({predictionData.mrr.explanation?.newSubsSource || 'proyección combinada'})</span>
-                    </div>
-                    <div>
-                      <strong>Proyección 6m:</strong> {predictionData.mrr.explanation?.projection6m || 'N/A'}
-                    </div>
-                    <div className="text-green-600 dark:text-green-400">
-                      ✅ {predictionData.mrr.explanation?.churnApplied || `Churn mensual ${predictionData.mrr.churn?.monthlyRate || 5}% aplicado a proyecciones`}
-                    </div>
-                    {predictionData.mrr.churn?.totalCancellations > 0 && (
-                      <div className="text-red-500 dark:text-red-400">
-                        📊 {predictionData.mrr.explanation?.cancellationsNote || `${predictionData.mrr.churn.totalCancellations} cancelaciones de ${predictionData.mrr.churn.payingUsers} pagadores`}
+                  {/* Proyección MRR mes a mes */}
+                  {predictionData.mrr.projection && (
+                    <div className="mt-6">
+                      <h4 className="font-medium text-gray-700 dark:text-gray-300 mb-3">Proyección MRR mes a mes</h4>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="border-b border-gray-200 dark:border-gray-700">
+                              <th className="text-left py-2 px-1 text-gray-500">Mes</th>
+                              <th className="text-right py-2 px-1 text-gray-500">Inicio</th>
+                              <th className="text-right py-2 px-1 text-red-500">Churn examen</th>
+                              <th className="text-right py-2 px-1 text-orange-500">Churn natural</th>
+                              <th className="text-right py-2 px-1 text-green-500">Nuevas</th>
+                              <th className="text-right py-2 px-1 text-gray-500">Final</th>
+                              <th className="text-right py-2 px-1 font-bold text-gray-700 dark:text-gray-300">MRR</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {predictionData.mrr.projection.map((m: any, i: number) => (
+                              <tr key={i} className={`border-b border-gray-100 dark:border-gray-800 ${m.examChurn > 0 ? 'bg-red-50 dark:bg-red-900/10' : ''}`}>
+                                <td className="py-1.5 px-1 font-medium">{m.month}</td>
+                                <td className="text-right py-1.5 px-1">{m.startSubs}</td>
+                                <td className="text-right py-1.5 px-1 text-red-600 font-medium">{m.examChurn > 0 ? `-${m.examChurn}` : '-'}</td>
+                                <td className="text-right py-1.5 px-1 text-orange-500">{m.naturalChurn > 0 ? `-${m.naturalChurn}` : '-'}</td>
+                                <td className="text-right py-1.5 px-1 text-green-600">+{m.newSubs}</td>
+                                <td className="text-right py-1.5 px-1 font-medium">{m.endSubs}</td>
+                                <td className="text-right py-1.5 px-1 font-bold">{m.mrr.toLocaleString('es-ES', { maximumFractionDigits: 0 })}€</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
+
+                  {/* Premisas del modelo */}
+                  {predictionData.mrr.premises && (
+                    <div className="mt-4 text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 rounded p-3 space-y-1">
+                      <div className="font-semibold text-gray-700 dark:text-gray-300 mb-2">Premisas:</div>
+                      <div>Churn post-examen: <strong>{(predictionData.mrr.premises.postExamChurnRate * 100)}%</strong> <span className="text-orange-500">({predictionData.mrr.premises.postExamChurnSource})</span></div>
+                      <div>Churn natural mensual: <strong>{predictionData.mrr.premises.naturalMonthlyChurn}%</strong> ({predictionData.mrr.premises.naturalChurnSource})</div>
+                      <div>Nuevas subs/mes: <strong>{predictionData.mrr.premises.newSubsPerMonth}</strong> ({predictionData.mrr.premises.newSubsFormula}) <span className="text-green-600">(datos reales últimos 7 días)</span></div>
+                      <div>MRR por sub: <strong>{predictionData.mrr.premises.mrrPerSub}€</strong> ({predictionData.mrr.premises.mrrPerSubSource})</div>
+                      {predictionData.mrr.premises.examDatesUsed && Object.keys(predictionData.mrr.premises.examDatesUsed).length > 0 && (
+                        <div className="mt-1">
+                          Exámenes contemplados: {Object.entries(predictionData.mrr.premises.examDatesUsed).map(([slug, date]: [string, any]) => {
+                            const subs = predictionData.mrr.premises.currentPremiumByOpos?.[slug.replace(/-/g, '_')] || 0;
+                            return subs > 0 ? `${slug} (${date}, ${subs} subs)` : null;
+                          }).filter(Boolean).join(', ') || 'Ninguno con suscriptores activos'}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 
-              {/* Historial de pagos */}
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                  <span>💳</span>
-                  Historial de Pagos ({predictionData.current.totalPayments} total)
-                </h3>
-                <div className="space-y-2">
-                  {predictionData.trend.paymentHistory.map((payment: any, i: number) => (
-                    <div key={i} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                      <div className="text-sm">
-                        <span className="font-medium text-gray-900 dark:text-white">Pago #{predictionData.current.totalPayments - i}</span>
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        {new Date(payment.date).toLocaleDateString('es-ES', {
-                          day: 'numeric',
-                          month: 'short',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
 
-              {/* Explicacion */}
-              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-6 border border-blue-200 dark:border-blue-800">
-                <h3 className="font-bold text-blue-900 dark:text-blue-200 mb-2">Como funcionan las predicciones</h3>
-                <ul className="text-sm text-blue-800 dark:text-blue-300 space-y-1">
-                  <li><strong>Tasa de conversion:</strong> Calculada con TODOS los usuarios y TODAS las ventas (datos reales)</li>
-                  <li><strong>Intervalo de confianza (IC):</strong> Rango donde esta el valor real con 95% de certeza. Se estrecha automaticamente con mas ventas.</li>
-                  <li><strong>Probabilidad:</strong> Calculada con distribucion binomial sobre el pool activo (nuevos + activos, excluyendo dormidos)</li>
-                  <li><strong>Pool activo:</strong> Nuevos (0-7d) + Activos (7-30d). Dormidos (30+d) excluidos del calculo por baja probabilidad de conversion</li>
-                  <li><strong>Tiempo medio:</strong> Dias promedio desde registro hasta pago (puede ser 0 = mismo dia)</li>
-                  <li><strong>Fiabilidad:</strong> Con menos de 10 ventas es baja, 10-20 media, mas de 20 alta</li>
-                </ul>
-              </div>
             </>
           ) : (
             <div className="text-center py-12 text-gray-500">

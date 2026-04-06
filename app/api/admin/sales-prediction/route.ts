@@ -726,27 +726,133 @@ async function _GET() {
       ? Math.max(0.03, Math.min(0.15, canceledPerMonth / stripeSubs.length))
       : 0.05
 
-    // Proyección de MRR CON CHURN
-    const newSubsIn6Months = expectedSalesPerMonth * 6
-    const newSubsIn12Months = expectedSalesPerMonth * 12
+    // ═══════════════════════════════════════════════════════════════
+    // PROYECCIÓN MRR MES A MES CON CHURN POR EXAMEN (dinámico)
+    // ═══════════════════════════════════════════════════════════════
 
-    const mrrAfterChurn6 = mrr * Math.pow(1 - churnMonthly, 6)
-    const mrrAfterChurn12 = mrr * Math.pow(1 - churnMonthly, 12)
+    // 1. Obtener suscriptores premium por oposición
+    const { userProfiles: upTable } = await import('@/db/schema')
+    const premiumCountByOpos: Record<string, number> = {}
+    const premiumUsers = await getDbForIntent()
+      .select({ targetOposicion: upTable.targetOposicion })
+      .from(upTable)
+      .where(eq(upTable.planType, 'premium'))
 
-    const avgChurnFactor6 = Math.pow(1 - churnMonthly, 3)
-    const avgChurnFactor12 = Math.pow(1 - churnMonthly, 6)
+    premiumUsers?.forEach(u => {
+      const o = u.targetOposicion || 'sin_oposicion'
+      premiumCountByOpos[o] = (premiumCountByOpos[o] || 0) + 1
+    })
 
-    const mrr6Months = mrrAfterChurn6 + (newSubsIn6Months * mrrPerNewSub * avgChurnFactor6)
-    const mrr12Months = mrrAfterChurn12 + (newSubsIn12Months * mrrPerNewSub * avgChurnFactor12)
+    // 2. Obtener fechas de examen de cada oposición
+    const { oposiciones: oposTable } = await import('@/db/schema')
+    const examDates = await getDbForIntent()
+      .select({ slug: oposTable.slug, examDate: oposTable.examDate })
+      .from(oposTable)
+      .where(and(
+        eq(oposTable.isActive, true),
+        sql`${oposTable.examDate} IS NOT NULL`
+      ))
+
+    const examBySlug: Record<string, Date> = {}
+    examDates?.forEach(o => {
+      if (o.examDate) examBySlug[o.slug] = new Date(o.examDate)
+    })
+
+    // 3. Premisas dinámicas (todas calculadas de datos reales)
+    const POST_EXAM_CHURN_RATE = 0.60 // Estimación — sin datos históricos de churn post-examen
+    const NATURAL_MONTHLY_CHURN = churnMonthly // churn mensual base (calculado de cancelaciones reales)
+    const newSubsPerMonth = dailyRegistrationRate * 30 * conversionRate // registros/día × 30 × tasa conversión
+    // MRR por sub: usar el real (MRR actual ÷ subs activas), no la media ponderada teórica
+    const realMrrPerSub = stripeSubs.length > 0 ? mrr / stripeSubs.length : mrrPerNewSub
+
+    // 4. Proyectar mes a mes (12 meses)
+    const mrrProjection: Array<{
+      month: string
+      startSubs: number
+      examChurn: number
+      naturalChurn: number
+      newSubs: number
+      endSubs: number
+      mrr: number
+      examDetails?: string
+    }> = []
+
+    let currentSubs = stripeSubs.length
+    let runningPremiumByOpos = { ...premiumCountByOpos }
+
+    for (let m = 1; m <= 12; m++) {
+      const monthStart = new Date(now.getFullYear(), now.getMonth() + m, 1)
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() + m + 1, 0)
+      const monthStr = monthStart.toLocaleDateString('es-ES', { month: 'short', year: 'numeric' })
+
+      const startSubs = currentSubs
+
+      // Churn por exámenes este mes
+      let examChurnCount = 0
+      const examDetails: string[] = []
+
+      for (const [slug, examDate] of Object.entries(examBySlug)) {
+        if (examDate >= monthStart && examDate <= monthEnd) {
+          // Map slug to target_oposicion format
+          const oposKey = slug.replace(/-/g, '_')
+          const subsForOpos = runningPremiumByOpos[oposKey] || 0
+          if (subsForOpos > 0) {
+            const churnFromExam = Math.round(subsForOpos * POST_EXAM_CHURN_RATE)
+            examChurnCount += churnFromExam
+            examDetails.push(`${slug}: -${churnFromExam} de ${subsForOpos}`)
+            runningPremiumByOpos[oposKey] = Math.max(0, subsForOpos - churnFromExam)
+          }
+        }
+      }
+
+      // Churn natural (no examen)
+      const naturalChurn = Math.round((startSubs - examChurnCount) * NATURAL_MONTHLY_CHURN)
+
+      // Nuevas suscripciones
+      const newSubs = Math.round(newSubsPerMonth)
+
+      currentSubs = Math.max(0, startSubs - examChurnCount - naturalChurn + newSubs)
+      const monthMrr = currentSubs * realMrrPerSub
+
+      mrrProjection.push({
+        month: monthStr,
+        startSubs,
+        examChurn: examChurnCount,
+        naturalChurn,
+        newSubs,
+        endSubs: currentSubs,
+        mrr: Math.round(monthMrr * 100) / 100,
+        examDetails: examDetails.length > 0 ? examDetails.join(', ') : undefined,
+      })
+    }
+
+    const mrr6Months = mrrProjection[5]?.mrr || mrr
+    const mrr12Months = mrrProjection[11]?.mrr || mrr
 
     const arr = mrr * 12
     const arr6Months = mrr6Months * 12
     const arr12Months = mrr12Months * 12
 
-    const billing6Months = renewalProjection.slice(0, 6).reduce((acc, m) => acc + m.revenue, 0) * avgChurnFactor6 +
-                           (expectedSalesPerMonth * avgTicket * 6 * avgChurnFactor6)
-    const billing12Months = renewalProjection.reduce((acc, m) => acc + m.revenue, 0) * avgChurnFactor12 +
-                            (expectedSalesPerMonth * avgTicket * 12 * avgChurnFactor12)
+    const billing6Months = mrrProjection.slice(0, 6).reduce((acc, m) => acc + m.mrr, 0)
+    const billing12Months = mrrProjection.reduce((acc, m) => acc + m.mrr, 0)
+
+    // Premisas para mostrar en UI
+    const mrrPremises = {
+      postExamChurnRate: POST_EXAM_CHURN_RATE,
+      postExamChurnSource: 'estimación (sin datos históricos)',
+      naturalMonthlyChurn: Math.round(NATURAL_MONTHLY_CHURN * 1000) / 10,
+      naturalChurnSource: 'calculado de cancelaciones reales',
+      newSubsPerMonth: Math.round(newSubsPerMonth * 10) / 10,
+      newSubsFormula: `${Math.round(dailyRegistrationRate * 10) / 10} reg/día × 30 × ${Math.round(conversionRate * 1000) / 10}%`,
+      mrrPerSub: Math.round(realMrrPerSub * 100) / 100,
+      mrrPerSubSource: `MRR actual (${Math.round(mrr)}€) ÷ ${stripeSubs.length} subs`,
+      currentPremiumByOpos: premiumCountByOpos,
+      examDatesUsed: Object.fromEntries(
+        Object.entries(examBySlug)
+          .filter(([, d]) => d >= now)
+          .map(([slug, d]) => [slug, d.toISOString().slice(0, 10)])
+      ),
+    }
 
     const responseData = {
       conversion: {
@@ -889,6 +995,8 @@ async function _GET() {
         arr: Math.round(arr * 100) / 100,
         arrIn6Months: Math.round(arr6Months * 100) / 100,
         arrIn12Months: Math.round(arr12Months * 100) / 100,
+        projection: mrrProjection,
+        premises: mrrPremises,
         activeSubscriptions: activeSubscriptions.length,
         cancelingSubscriptions: cancelingSubscriptions.length,
         mrrPerNewSub: Math.round(mrrPerNewSub * 100) / 100,
