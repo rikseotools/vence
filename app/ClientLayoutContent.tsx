@@ -13,9 +13,9 @@ import { captureMetaParams } from '../lib/metaPixelCapture'
 
 // Componente interno que usa el contexto de Auth
 export default function ClientLayoutContent({ children }: { children: ReactNode }) {
-  const { user, loading } = useAuth()
+  const { user, userProfile, loading } = useAuth()
   const pathname = usePathname()
-  const { showModal, handleComplete, handleSkip } = useOnboarding()
+  const { showModal, handleComplete, handleSkip, forceShow } = useOnboarding()
 
   // Capturar parámetros de Meta Ads (fbclid, utm_source, etc.) al cargar
   useEffect(() => {
@@ -25,6 +25,20 @@ export default function ClientLayoutContent({ children }: { children: ReactNode 
   return (
     <>
       <HeaderES />
+      {/* Banner para usuarios sin oposición seleccionada */}
+      {user && userProfile && !userProfile.target_oposicion && !loading && (
+        <div className="bg-amber-50 dark:bg-amber-900/30 border-b border-amber-200 dark:border-amber-800 px-4 py-2.5 text-center text-sm">
+          <span className="text-amber-800 dark:text-amber-200">
+            Selecciona tu oposición para que tus estadísticas y temario sean precisos
+          </span>
+          <button
+            onClick={forceShow}
+            className="ml-3 px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white text-xs font-medium rounded-md transition-colors"
+          >
+            Seleccionar
+          </button>
+        </div>
+      )}
       {/* Breadcrumbs eliminados del layout global — cada página usa InteractiveBreadcrumbs */}
       {children}
       <FooterES />
