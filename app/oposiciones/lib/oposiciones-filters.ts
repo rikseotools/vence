@@ -88,6 +88,8 @@ export function oposicionToCcaa(opoSlug: string): string | null {
     'administrativo-navarra': 'navarra',
     'auxiliar-administrativo-la-rioja': 'la-rioja',
     'enfermero-sas-andalucia': 'andalucia',
+    'tcae-sermas-madrid': 'madrid',
+    'celador-sermas-madrid': 'madrid',
   }
   return map[opoSlug] ?? null
 }

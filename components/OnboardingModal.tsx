@@ -652,7 +652,7 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
 // Mapa de regiones (ipapi.co) → oposiciones prioritarias de esa comunidad autónoma
 // Las oposiciones estatales (Estado, Justicia) siempre se incluyen como relevantes
 const REGION_PRIORITY_OPOSICIONES: Record<string, string[]> = {
-  'Madrid': ['auxiliar_administrativo_madrid', 'auxiliar_administrativo_estado', 'administrativo_estado'],
+  'Madrid': ['auxiliar_administrativo_madrid', 'tcae_sermas_madrid', 'celador_sermas_madrid', 'auxiliar_administrativo_estado', 'administrativo_estado'],
   'Community of Madrid': ['auxiliar_administrativo_madrid', 'auxiliar_administrativo_estado', 'administrativo_estado'],
   'Murcia': ['auxiliar_administrativo_carm', 'auxiliar_administrativo_estado'],
   'Region of Murcia': ['auxiliar_administrativo_carm', 'auxiliar_administrativo_estado'],
@@ -703,6 +703,8 @@ const AVAILABLE_OPOSICIONES_BY_DEMAND: string[] = [
   'administrativo_navarra',            // nueva
   'auxiliar_administrativo_la_rioja',  // nueva
   'enfermero_sas_andalucia',          // sanitaria
+  'tcae_sermas_madrid',               // sanitaria Madrid
+  'celador_sermas_madrid',            // sanitaria Madrid
 ]
 
 /** Reordena oposiciones: 1) región del usuario, 2) disponibles por demanda, 3) resto */

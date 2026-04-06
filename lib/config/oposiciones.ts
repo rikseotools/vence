@@ -1788,6 +1788,118 @@ export const OPOSICIONES: Oposicion[] = [
       { href: '/enfermero-sas-andalucia/test', label: 'Tests', icon: '🎯' },
     ],
   },
+  // ========================================
+  // TCAE SERMAS MADRID (C2)
+  // ========================================
+  {
+    id: 'tcae_sermas_madrid',
+    slug: 'tcae-sermas-madrid',
+    positionType: 'tcae_sermas_madrid',
+    name: 'TCAE del Servicio Madrileño de Salud (SERMAS)',
+    shortName: 'TCAE SERMAS',
+    emoji: '🏥',
+    badge: 'C2',
+    color: 'red',
+    administracion: 'autonomica',
+    blocks: [
+      {
+        id: 'bloque1', title: 'Parte Común', subtitle: 'Legislación sanitaria, igualdad y PRL', icon: '⚖️',
+        themes: [
+          { id: 1, name: 'Derecho a la salud en la CE y Ley General de Sanidad. Ley 41/2002' },
+          { id: 2, name: 'Profesiones sanitarias (Ley 44/2003) y Estatuto Marco (Ley 55/2003)' },
+          { id: 3, name: 'Estructura Sanitaria de Madrid: LOSCAM y SERMAS' },
+          { id: 4, name: 'Igualdad y violencia de género: normativa estatal y madrileña' },
+          { id: 5, name: 'Prevención de riesgos laborales (Ley 31/1995)' },
+          { id: 6, name: 'Protección de datos (LO 3/2018)' },
+          { id: 7, name: 'Bioética y secreto profesional' },
+          { id: 8, name: 'Trabajo en equipo multidisciplinar' },
+          { id: 9, name: 'Comunicación con el paciente y relación de ayuda' },
+        ],
+      },
+      {
+        id: 'bloque2', title: 'Parte Específica', subtitle: 'Cuidados auxiliares de enfermería', icon: '🏥',
+        themes: [
+          { id: 10, name: 'Actividades del TCAE en Atención Primaria y Hospitalaria' },
+          { id: 11, name: 'Archivo y documentación sanitaria' },
+          { id: 12, name: 'Higiene del paciente' },
+          { id: 13, name: 'Paciente encamado: posiciones y cambios posturales' },
+          { id: 14, name: 'Persona anciana: envejecimiento y demencia' },
+          { id: 15, name: 'Preparación del paciente quirúrgico' },
+          { id: 16, name: 'Constantes vitales y balance hídrico' },
+          { id: 17, name: 'Eliminación: sondajes, ostomías y enemas' },
+          { id: 18, name: 'Recogida de muestras biológicas' },
+          { id: 19, name: 'Gestión de residuos sanitarios' },
+          { id: 20, name: 'Alimentación: dietas y nutrición enteral' },
+          { id: 21, name: 'Medicamentos: tipos, vías y conservación' },
+          { id: 22, name: 'Oxigenoterapia' },
+          { id: 23, name: 'Aplicación local de frío y calor' },
+          { id: 24, name: 'Esterilización y desinfección' },
+          { id: 25, name: 'Infecciones nosocomiales y aislamiento' },
+          { id: 26, name: 'Paciente terminal: duelo y cuidados post mortem' },
+          { id: 27, name: 'Salud mental y toxicomanías' },
+          { id: 28, name: 'Úlceras por presión' },
+          { id: 29, name: 'Mujer gestante' },
+          { id: 30, name: 'Urgencias: primeros auxilios y RCP básica' },
+        ],
+      },
+    ],
+    totalTopics: 30,
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/tcae-sermas-madrid', label: 'Mi Oposición', icon: '🏥', featured: true },
+      { href: '/tcae-sermas-madrid/temario', label: 'Temario', icon: '📚' },
+      { href: '/tcae-sermas-madrid/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+  // ========================================
+  // CELADOR SERMAS MADRID (E)
+  // ========================================
+  {
+    id: 'celador_sermas_madrid',
+    slug: 'celador-sermas-madrid',
+    positionType: 'celador_sermas_madrid',
+    name: 'Celador del Servicio Madrileño de Salud (SERMAS)',
+    shortName: 'Celador SERMAS',
+    emoji: '🏥',
+    badge: 'E',
+    color: 'blue',
+    administracion: 'autonomica',
+    blocks: [
+      {
+        id: 'bloque1', title: 'Parte Común', subtitle: 'Legislación sanitaria y derechos', icon: '⚖️',
+        themes: [
+          { id: 1, name: 'Derecho a la salud y Estatuto de Autonomía de Madrid' },
+          { id: 2, name: 'Ley General de Sanidad: SNS y áreas de salud' },
+          { id: 3, name: 'Asistencia sanitaria: Atención Primaria y Hospitalaria' },
+          { id: 4, name: 'LOSCAM: derechos y deberes de los ciudadanos' },
+          { id: 5, name: 'Igualdad, violencia de género y LGTBfobia' },
+          { id: 6, name: 'Buen Gobierno del SERMAS (Ley 11/2017)' },
+          { id: 7, name: 'Autonomía del paciente (Ley 41/2002)' },
+          { id: 8, name: 'Estatuto Marco (Ley 55/2003)' },
+          { id: 9, name: 'PRL: riesgo biológico, cargas y ergonomía' },
+        ],
+      },
+      {
+        id: 'bloque2', title: 'Parte Específica', subtitle: 'Funciones del celador', icon: '🏥',
+        themes: [
+          { id: 10, name: 'Funciones del celador: vigilancia y apoyo' },
+          { id: 11, name: 'Celador en hospitalización, quirófano, UCI y urgencias' },
+          { id: 12, name: 'Celador en Atención Primaria y consultas externas' },
+          { id: 13, name: 'Trabajo en equipo y posiciones anatómicas' },
+          { id: 14, name: 'Farmacia, mortuorio y almacenaje' },
+          { id: 15, name: 'Movilización de pacientes: técnicas de traslado' },
+          { id: 16, name: 'Documentación clínica y confidencialidad' },
+        ],
+      },
+    ],
+    totalTopics: 16,
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/celador-sermas-madrid', label: 'Mi Oposición', icon: '🏥', featured: true },
+      { href: '/celador-sermas-madrid/temario', label: 'Temario', icon: '📚' },
+      { href: '/celador-sermas-madrid/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
 ]
 
 // ============================================

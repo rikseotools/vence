@@ -34,6 +34,8 @@ const KNOWN_SLUGS = [
   'administrativo-navarra',
   'auxiliar-administrativo-la-rioja',
   'enfermero-sas-andalucia',
+  'tcae-sermas-madrid',
+  'celador-sermas-madrid',
 ]
 
 const KNOWN_POSITION_TYPES = [
@@ -58,6 +60,8 @@ const KNOWN_POSITION_TYPES = [
   'administrativo_navarra',
   'auxiliar_administrativo_la_rioja',
   'enfermero_sas_andalucia',
+  'tcae_sermas_madrid',
+  'celador_sermas_madrid',
 ]
 
 describe('Config central de oposiciones', () => {
@@ -65,14 +69,14 @@ describe('Config central de oposiciones', () => {
     for (const slug of KNOWN_SLUGS) {
       expect(ALL_OPOSICION_SLUGS).toContain(slug)
     }
-    expect(ALL_OPOSICION_SLUGS.length).toBe(21)
+    expect(ALL_OPOSICION_SLUGS.length).toBe(23)
   })
 
   test('ALL_POSITION_TYPES contiene los 11 positionTypes conocidos', () => {
     for (const pt of KNOWN_POSITION_TYPES) {
       expect(ALL_POSITION_TYPES).toContain(pt)
     }
-    expect(ALL_POSITION_TYPES.length).toBe(21)
+    expect(ALL_POSITION_TYPES.length).toBe(23)
   })
 
   test('SLUG_TO_POSITION_TYPE mapea correctamente cada slug', () => {
@@ -134,7 +138,7 @@ describe('Config central de oposiciones', () => {
     const byAdmin = (admin: string) => OPOSICIONES.filter(o => o.administracion === admin)
     expect(byAdmin('estado').length).toBe(2)
     expect(byAdmin('justicia').length).toBe(2)
-    expect(byAdmin('autonomica').length).toBe(16)
+    expect(byAdmin('autonomica').length).toBe(18)
   })
 
   test('getOposicionBySlug() devuelve datos correctos', () => {
