@@ -1648,24 +1648,9 @@ export function getThemeNames(identifier: string, themeIds: number[]): Record<nu
   return result
 }
 
-/**
- * Obtiene mapa {themeId → nombre} desde BD (fuente de verdad).
- * Usar en server components/pages en vez de getThemeNames() sync.
- * Fallback a config si BD no disponible (ej: build time).
- */
-export async function getThemeNamesFromBd(identifier: string): Promise<Record<number, string>> {
-  const opo = getOposicion(identifier)
-  if (!opo) return {}
-  try {
-    const { getTopicNamesMap } = await import('@/lib/api/topic-names/queries')
-    const bdNames = await getTopicNamesMap(opo.positionType)
-    if (Object.keys(bdNames).length > 0) return bdNames
-  } catch {
-    // BD no disponible (build, CI) → fallback a config
-  }
-  // Fallback sync desde config
-  return getThemeNames(identifier, getAllThemes(identifier).map(t => t.id))
-}
+// Para obtener nombres de temas desde BD en server components, usar directamente:
+//   import { getTopicNamesMap } from '@/lib/api/topic-names/queries'
+// NO importar BD queries desde este archivo — es compartido server+client.
 
 /** Lista de oposiciones disponibles (datos básicos) */
 export function getAvailableOposiciones() {
