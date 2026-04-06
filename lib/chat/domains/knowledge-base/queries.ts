@@ -307,6 +307,8 @@ export function isPlatformQuery(message: string): boolean {
     /la\s+(app|aplicaci[oó]n|plataforma|p[aá]gina)/i,
     /vence/i,
     /soporte|contacto/i,
+    /hablar\s+(con\s+)?(un\w?\s+)?(agente|persona|humano|alguien)/i,
+    /atenci[oó]n\s+al?\s+cliente/i,
     // "ayuda" solo cuando es sobre la plataforma, no cuando es "ayúdame con el artículo 14"
     /ayuda.*(plataforma|app|suscripci|plan\b|cuenta|contrase|perfil|configurar)/i,
     /(plataforma|app|suscripci|plan\b|cuenta|contrase|perfil|configurar).*ayuda/i,
