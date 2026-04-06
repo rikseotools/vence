@@ -29,6 +29,10 @@ const KNOWN_SLUGS = [
   'auxiliar-administrativo-aragon',
   'auxiliar-administrativo-asturias',
   'auxiliar-administrativo-baleares',
+  'auxiliar-administrativo-ayuntamiento-valencia',
+  'auxiliar-administrativo-cantabria',
+  'administrativo-navarra',
+  'auxiliar-administrativo-la-rioja',
 ]
 
 const KNOWN_POSITION_TYPES = [
@@ -48,6 +52,10 @@ const KNOWN_POSITION_TYPES = [
   'auxiliar_administrativo_aragon',
   'auxiliar_administrativo_asturias',
   'auxiliar_administrativo_baleares',
+  'auxiliar_administrativo_ayuntamiento_valencia',
+  'auxiliar_administrativo_cantabria',
+  'administrativo_navarra',
+  'auxiliar_administrativo_la_rioja',
 ]
 
 describe('Config central de oposiciones', () => {
@@ -55,14 +63,14 @@ describe('Config central de oposiciones', () => {
     for (const slug of KNOWN_SLUGS) {
       expect(ALL_OPOSICION_SLUGS).toContain(slug)
     }
-    expect(ALL_OPOSICION_SLUGS.length).toBe(17)
+    expect(ALL_OPOSICION_SLUGS.length).toBe(20)
   })
 
   test('ALL_POSITION_TYPES contiene los 11 positionTypes conocidos', () => {
     for (const pt of KNOWN_POSITION_TYPES) {
       expect(ALL_POSITION_TYPES).toContain(pt)
     }
-    expect(ALL_POSITION_TYPES.length).toBe(17)
+    expect(ALL_POSITION_TYPES.length).toBe(20)
   })
 
   test('SLUG_TO_POSITION_TYPE mapea correctamente cada slug', () => {
@@ -82,6 +90,10 @@ describe('Config central de oposiciones', () => {
     expect(SLUG_TO_POSITION_TYPE['auxiliar-administrativo-aragon']).toBe('auxiliar_administrativo_aragon')
     expect(SLUG_TO_POSITION_TYPE['auxiliar-administrativo-asturias']).toBe('auxiliar_administrativo_asturias')
     expect(SLUG_TO_POSITION_TYPE['auxiliar-administrativo-baleares']).toBe('auxiliar_administrativo_baleares')
+    expect(SLUG_TO_POSITION_TYPE['auxiliar-administrativo-ayuntamiento-valencia']).toBe('auxiliar_administrativo_ayuntamiento_valencia')
+    expect(SLUG_TO_POSITION_TYPE['auxiliar-administrativo-cantabria']).toBe('auxiliar_administrativo_cantabria')
+    expect(SLUG_TO_POSITION_TYPE['administrativo-navarra']).toBe('administrativo_navarra')
+    expect(SLUG_TO_POSITION_TYPE['auxiliar-administrativo-la-rioja']).toBe('auxiliar_administrativo_la_rioja')
   })
 
   test('OPOSICION_SLUGS_ENUM funciona con z.enum()', () => {
@@ -120,7 +132,7 @@ describe('Config central de oposiciones', () => {
     const byAdmin = (admin: string) => OPOSICIONES.filter(o => o.administracion === admin)
     expect(byAdmin('estado').length).toBe(2)
     expect(byAdmin('justicia').length).toBe(2)
-    expect(byAdmin('autonomica').length).toBe(12)
+    expect(byAdmin('autonomica').length).toBe(15)
   })
 
   test('getOposicionBySlug() devuelve datos correctos', () => {

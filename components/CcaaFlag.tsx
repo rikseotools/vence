@@ -129,6 +129,14 @@ const FLAG_PATHS: Record<string, ReactNode> = {
       <rect x="2.5" y="1" width="2" height="5" rx="0.3" fill="#fff" opacity="0.7"/>
     </>
   ),
+  // Cantabria: blanca con franja roja horizontal y escudo simplificado
+  auxiliar_administrativo_cantabria: (
+    <>
+      <rect width="20" height="14" fill="#fff"/>
+      <rect y="5.25" width="20" height="3.5" fill="#DA121A"/>
+      <rect x="8.5" y="3" width="3" height="3" rx="0.5" fill="#DA121A" opacity="0.6"/>
+    </>
+  ),
   // Andalucía: franjas verde-blanco-verde horizontales
   auxiliar_administrativo_andalucia: (
     <>

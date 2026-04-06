@@ -479,6 +479,16 @@ function PerfilPageContent() {
         categoria: 'C2',
         administracion: 'Local'
       }
+    },
+    {
+      value: 'auxiliar_administrativo_cantabria',
+      label: 'Auxiliar Administrativo Gobierno de Cantabria (C2)',
+      data: {
+        name: 'Auxiliar Administrativo Gobierno de Cantabria',
+        slug: 'auxiliar-administrativo-cantabria',
+        categoria: 'C2',
+        administracion: 'Autonómica'
+      }
     }
   ]
 
