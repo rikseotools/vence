@@ -98,6 +98,34 @@ const { data: errors } = await supabase.from('validation_error_logs')
 | Validación Zod 400 | sessionId null | Sesión no se creó antes de responder |
 | Network/Load failed | Red del usuario inestable | No es nuestro bug |
 
+## 5a. Errores de answerSaveQueue (cola de guardado, desde 06/04/2026)
+
+Si el usuario reporta "no se guardan mis respuestas" y hay tests con `saved:0`, buscar errores de la cola:
+
+```js
+// Errores de la cola de guardado de un usuario específico
+const { data } = await supabase.from('validation_error_logs')
+  .select('created_at, endpoint, error_message, deploy_version')
+  .eq('user_id', userId)
+  .ilike('endpoint', '%answer%')
+  .order('created_at', { ascending: false });
+```
+
+**Componentes que loguean (campo `error_message` contiene `component:`):**
+
+| component | Qué significa |
+|-----------|--------------|
+| `answerSaveQueue auth` | Token de Supabase null — refreshSession y getSession fallaron ambos |
+| `answerSaveQueue syncOne 401` | Token obtenido pero el servidor lo rechaza (token inválido/expirado) |
+| `answerSaveQueue syncOne` | Servidor devolvió HTTP error (400, 500, etc.) |
+| `answerSaveQueue syncOne network` | Red caída, timeout o abort |
+| `answerSaveQueue flush expired` | Respuesta descartada por tener >24h de antigüedad |
+| `answerSaveQueue flush maxRetries` | Respuesta descartada tras 3 reintentos fallidos |
+| `answerSaveQueue getAccessToken exception` | Excepción inesperada al obtener token |
+| `answerSaveQueue enqueue` | Payload Zod inválido, respuesta ni se encola |
+
+**Si hay 0 errores con `%answer%` y aún así saved:0** → el bug NO está en answerSaveQueue. Investigar si `enqueueAnswer()` se llama (leer TestLayout.tsx handleAnswerClick).
+
 ## 5b. Diagnóstico fallo silencioso de sesión (desde 05/04/2026)
 
 Si el usuario reporta "mi test no se guardó" y cuadra: 0 tests en BD + N respuestas en interactions + 0 errores API, **ya no es silencioso** — desde abril 2026 `createDetailedTestSession` loguea en `validation_error_logs` cuando falla.
