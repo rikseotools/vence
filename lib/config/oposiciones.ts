@@ -1900,6 +1900,59 @@ export const OPOSICIONES: Oposicion[] = [
       { href: '/celador-sermas-madrid/test', label: 'Tests', icon: '🎯' },
     ],
   },
+  // ========================================
+  // GUARDIA CIVIL - ESCALA CABOS Y GUARDIAS (C1)
+  // ========================================
+  {
+    id: 'guardia_civil',
+    slug: 'guardia-civil',
+    positionType: 'guardia_civil',
+    name: 'Guardia Civil - Escala de Cabos y Guardias',
+    shortName: 'Guardia Civil',
+    emoji: '🛡️',
+    badge: 'C1',
+    color: 'green',
+    administracion: 'estado',
+    blocks: [
+      {
+        id: 'bloque1', title: 'Temario Oficial', subtitle: 'Derecho, seguridad, TIC e idiomas', icon: '🛡️',
+        themes: [
+          { id: 1, name: 'Derechos Humanos: ONU, Convenios y Carta de la UE' },
+          { id: 2, name: 'Igualdad efectiva de mujeres y hombres (LO 3/2007)' },
+          { id: 3, name: 'Prevención de riesgos laborales (Ley 31/1995)' },
+          { id: 4, name: 'Derecho Constitucional: CE, Defensor del Pueblo' },
+          { id: 5, name: 'Derecho de la Unión Europea: TUE y TFUE' },
+          { id: 6, name: 'Instituciones internacionales: ONU, OTAN, EUROPOL' },
+          { id: 7, name: 'Derecho Civil: Código Civil' },
+          { id: 8, name: 'Derecho Penal: Código Penal' },
+          { id: 9, name: 'Derecho Procesal Penal: LECrim, Habeas Corpus' },
+          { id: 10, name: 'Derecho Administrativo: Ley 39/2015 y Ley 40/2015' },
+          { id: 11, name: 'Protección de datos (LO 3/2018)' },
+          { id: 12, name: 'Extranjería e inmigración' },
+          { id: 13, name: 'Seguridad pública y seguridad privada' },
+          { id: 14, name: 'Ministerio del Interior y Ministerio de Defensa' },
+          { id: 15, name: 'Fuerzas y Cuerpos de Seguridad. La Guardia Civil' },
+          { id: 16, name: 'Protección civil y patrimonio natural' },
+          { id: 17, name: 'TIC: telecomunicaciones, firma digital y ciberseguridad' },
+          { id: 18, name: 'Topografía' },
+          { id: 19, name: 'Deontología profesional' },
+          { id: 20, name: 'Responsabilidad penal de menores (LO 5/2000)' },
+          { id: 21, name: 'Violencia de género (LO 1/2004)' },
+          { id: 22, name: 'Armas y explosivos' },
+          { id: 23, name: 'Derecho fiscal y aduanero' },
+          { id: 24, name: 'Inglés' },
+          { id: 25, name: 'Lengua española: ortografía y gramática' },
+        ],
+      },
+    ],
+    totalTopics: 25,
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/guardia-civil', label: 'Mi Oposición', icon: '🛡️', featured: true },
+      { href: '/guardia-civil/temario', label: 'Temario', icon: '📚' },
+      { href: '/guardia-civil/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
 ]
 
 // ============================================
