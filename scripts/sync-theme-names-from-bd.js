@@ -12,10 +12,14 @@ const path = require('path')
 const CONFIG_PATH = path.join(__dirname, '..', 'lib', 'config', 'oposiciones.ts')
 
 async function main() {
-  if (!process.env.DATABASE_URL) {
-    console.log('⏭️  DATABASE_URL no disponible, saltando sync')
+  // Soportar DATABASE_URL (local) y POSTGRES_URL (Vercel)
+  const dbUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.POSTGRES_URL_NON_POOLING
+  if (!dbUrl) {
+    console.log('⏭️  Sin conexión a BD (ni DATABASE_URL ni POSTGRES_URL), saltando sync')
     process.exit(0)
   }
+  // Usar la URL encontrada
+  process.env.DATABASE_URL = dbUrl
 
   const client = new Client({ connectionString: process.env.DATABASE_URL })
   await client.connect()
