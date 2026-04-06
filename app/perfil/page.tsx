@@ -499,6 +499,16 @@ function PerfilPageContent() {
         categoria: 'C1',
         administracion: 'Autonómica'
       }
+    },
+    {
+      value: 'auxiliar_administrativo_la_rioja',
+      label: 'Auxiliar Administrativo Gobierno de La Rioja (C2)',
+      data: {
+        name: 'Auxiliar Administrativo Gobierno de La Rioja',
+        slug: 'auxiliar-administrativo-la-rioja',
+        categoria: 'C2',
+        administracion: 'Autonómica'
+      }
     }
   ]
 

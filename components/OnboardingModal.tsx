@@ -309,6 +309,13 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     icon: '🏰'
   },
   {
+    id: 'auxiliar_administrativo_la_rioja',
+    nombre: 'Auxiliar Administrativo Gobierno de La Rioja',
+    categoria: 'C2',
+    administracion: 'Autonómica',
+    icon: '🍇'
+  },
+  {
     id: 'auxiliar_comunidad_autonoma',
     nombre: 'Auxiliar Administrativo Comunidad Autónoma',
     categoria: 'C2',
@@ -666,6 +673,7 @@ const REGION_PRIORITY_OPOSICIONES: Record<string, string[]> = {
   'Cantabria': ['auxiliar_administrativo_cantabria', 'auxiliar_administrativo_estado'],
   'Navarra': ['administrativo_navarra', 'auxiliar_administrativo_estado'],
   'Chartered Community of Navarre': ['administrativo_navarra', 'auxiliar_administrativo_estado'],
+  'La Rioja': ['auxiliar_administrativo_la_rioja', 'auxiliar_administrativo_estado'],
   'Galicia': ['auxiliar_administrativo_galicia', 'auxiliar_administrativo_estado'],
   'Comunidad Valenciana': ['auxiliar_administrativo_valencia', 'auxiliar_administrativo_ayuntamiento_valencia', 'auxiliar_administrativo_estado'],
   'Valencian Community': ['auxiliar_administrativo_valencia', 'auxiliar_administrativo_ayuntamiento_valencia', 'auxiliar_administrativo_estado'],
@@ -693,6 +701,7 @@ const AVAILABLE_OPOSICIONES_BY_DEMAND: string[] = [
   'auxiliar_administrativo_extremadura', // 1+
   'auxiliar_administrativo_cantabria',  // nueva
   'administrativo_navarra',            // nueva
+  'auxiliar_administrativo_la_rioja',  // nueva
 ]
 
 /** Reordena oposiciones: 1) región del usuario, 2) disponibles por demanda, 3) resto */

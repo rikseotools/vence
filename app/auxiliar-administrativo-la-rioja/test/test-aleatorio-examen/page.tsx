@@ -1,0 +1,7 @@
+// app/auxiliar-administrativo-la-rioja/test/test-aleatorio-examen/page.tsx
+// Server component: lee nombres de temas de BD y renderiza client.
+import ExamAleatorioServerWrapper from "@/components/test/ExamAleatorioServerWrapper"
+
+export default function Page() {
+  return <ExamAleatorioServerWrapper oposicionSlug="auxiliar-administrativo-la-rioja" />
+}
