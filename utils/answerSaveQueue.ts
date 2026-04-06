@@ -334,7 +334,7 @@ if (typeof window !== 'undefined') {
   import('@/lib/supabase').then(({ getSupabaseClient }) => {
     try {
       const supabase = getSupabaseClient()
-      supabase.auth.onAuthStateChange((event) => {
+      supabase.auth.onAuthStateChange((event: string) => {
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
           authFailCount = 0
           const pending = getPendingCount()
