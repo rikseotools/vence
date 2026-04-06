@@ -196,8 +196,17 @@ function calculateMethodWeights(accuracyData: { byMethod: Array<{ method_name: s
   return weights
 }
 
+// Cache en memoria (5 minutos)
+let cache: { data: any; ts: number } | null = null
+const CACHE_TTL_MS = 5 * 60 * 1000
+
 async function _GET() {
   try {
+    // Devolver caché si es reciente
+    if (cache && Date.now() - cache.ts < CACHE_TTL_MS) {
+      return NextResponse.json(cache.data)
+    }
+
     // 1. Obtener todos los usuarios con su fecha de registro
     const users = await getRegistrationData()
 
@@ -318,7 +327,9 @@ async function _GET() {
     const dormantUsers = nonPayingUsers.filter(u => new Date(u.createdAt!) < thirtyDaysAgo)
 
     const p = conversionRate
-    const n = nonPayingUsers.length
+    // Pool realista: solo usuarios activos últimos 7 días (no dormidos)
+    const activePool = newUsers.length + activeUsers.length
+    const n = activePool
 
     const currentProbability = probabilityAtLeastOne(p, n)
     const probWithLowerCI = probabilityAtLeastOne(conversionCI.lower, n)
@@ -350,7 +361,114 @@ async function _GET() {
       ? (now.getTime() - lastPaymentDate.getTime()) / (1000 * 60 * 60 * 24)
       : null
 
-    // 8. MRR y previsión de renovaciones
+    // 8. Intención de compra (últimos 7 días)
+    const { getDb: getDbForIntent } = await import('@/db/client')
+    const { conversionEvents } = await import('@/db/schema')
+    const { sql, eq, gte, and, countDistinct, count } = await import('drizzle-orm')
+    const dbIntent = getDbForIntent()
+    const intentSince = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString()
+
+    const intentPrevSince = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000).toISOString()
+    const { lt } = await import('drizzle-orm')
+
+    const [limitReachedResult, premiumPageResult, upgradeClickResult, limitPrevResult, premiumPrevResult, upgradePrevResult] = await Promise.all([
+      // Current week
+      dbIntent.select({ uniqueUsers: countDistinct(conversionEvents.userId) })
+        .from(conversionEvents)
+        .where(and(eq(conversionEvents.eventType, 'limit_reached'), gte(conversionEvents.createdAt, intentSince))),
+      dbIntent.select({ uniqueUsers: countDistinct(conversionEvents.userId) })
+        .from(conversionEvents)
+        .where(and(eq(conversionEvents.eventType, 'premium_page_viewed'), gte(conversionEvents.createdAt, intentSince))),
+      dbIntent.select({ total: count() })
+        .from(conversionEvents)
+        .where(and(eq(conversionEvents.eventType, 'upgrade_button_clicked'), gte(conversionEvents.createdAt, intentSince))),
+      // Previous week (7-14 days ago)
+      dbIntent.select({ uniqueUsers: countDistinct(conversionEvents.userId) })
+        .from(conversionEvents)
+        .where(and(eq(conversionEvents.eventType, 'limit_reached'), gte(conversionEvents.createdAt, intentPrevSince), lt(conversionEvents.createdAt, intentSince))),
+      dbIntent.select({ uniqueUsers: countDistinct(conversionEvents.userId) })
+        .from(conversionEvents)
+        .where(and(eq(conversionEvents.eventType, 'premium_page_viewed'), gte(conversionEvents.createdAt, intentPrevSince), lt(conversionEvents.createdAt, intentSince))),
+      dbIntent.select({ total: count() })
+        .from(conversionEvents)
+        .where(and(eq(conversionEvents.eventType, 'upgrade_button_clicked'), gte(conversionEvents.createdAt, intentPrevSince), lt(conversionEvents.createdAt, intentSince))),
+    ])
+
+    // Users who did each action (for cross-reference with payments)
+    const [limitUserIds, premiumUserIds] = await Promise.all([
+      dbIntent.selectDistinct({ userId: conversionEvents.userId })
+        .from(conversionEvents)
+        .where(and(eq(conversionEvents.eventType, 'limit_reached'), gte(conversionEvents.createdAt, intentSince))),
+      dbIntent.selectDistinct({ userId: conversionEvents.userId })
+        .from(conversionEvents)
+        .where(and(eq(conversionEvents.eventType, 'premium_page_viewed'), gte(conversionEvents.createdAt, intentSince))),
+    ])
+
+    const hotUserIds = new Set([
+      ...limitUserIds.map(r => r.userId),
+      ...premiumUserIds.map(r => r.userId),
+    ].filter(Boolean))
+
+    // How many hot users paid THIS WEEK (not all-time)?
+    const thisWeekPayments = payments.filter(p => new Date(p.createdAt!) >= new Date(intentSince))
+    const thisWeekPayingIds = new Set(thisWeekPayments.map(p => p.userId))
+    const hotWhoPaid = [...hotUserIds].filter(id => thisWeekPayingIds.has(id!)).length
+    const hotTotal = hotUserIds.size
+    const hotConversionRate = hotTotal > 0 ? Math.round((hotWhoPaid / hotTotal) * 1000) / 10 : 0
+
+    // Previous week hot users who paid THAT WEEK
+    const [limitPrevUserIds, premiumPrevUserIds] = await Promise.all([
+      dbIntent.selectDistinct({ userId: conversionEvents.userId })
+        .from(conversionEvents)
+        .where(and(eq(conversionEvents.eventType, 'limit_reached'), gte(conversionEvents.createdAt, intentPrevSince), lt(conversionEvents.createdAt, intentSince))),
+      dbIntent.selectDistinct({ userId: conversionEvents.userId })
+        .from(conversionEvents)
+        .where(and(eq(conversionEvents.eventType, 'premium_page_viewed'), gte(conversionEvents.createdAt, intentPrevSince), lt(conversionEvents.createdAt, intentSince))),
+    ])
+    const prevHotUserIds = new Set([
+      ...limitPrevUserIds.map(r => r.userId),
+      ...premiumPrevUserIds.map(r => r.userId),
+    ].filter(Boolean))
+    const prevWeekPayments = payments.filter(p => {
+      const d = new Date(p.createdAt!)
+      return d >= new Date(intentPrevSince) && d < new Date(intentSince)
+    })
+    const prevWeekPayingIds = new Set(prevWeekPayments.map(p => p.userId))
+    const prevHotWhoPaid = [...prevHotUserIds].filter(id => prevWeekPayingIds.has(id!)).length
+
+    // Previous week values
+    const prevLimitReached = Number(limitPrevResult[0]?.uniqueUsers) || 0
+    const prevPremiumPage = Number(premiumPrevResult[0]?.uniqueUsers) || 0
+    const prevUpgradeClick = Number(upgradePrevResult[0]?.total) || 0
+
+    const currLimitReached = Number(limitReachedResult[0]?.uniqueUsers) || 0
+    const currPremiumPage = Number(premiumPageResult[0]?.uniqueUsers) || 0
+    const currUpgradeClick = Number(upgradeClickResult[0]?.total) || 0
+
+    const pctChange = (curr: number, prev: number) => prev > 0 ? Math.round(((curr - prev) / prev) * 100) : null
+
+    const purchaseIntent = {
+      limitReachedUsers: currLimitReached,
+      premiumPageUsers: currPremiumPage,
+      upgradeClickEvents: currUpgradeClick,
+      hotWhoPaid,
+      hotTotal,
+      hotConversionRate,
+      prev: {
+        limitReachedUsers: prevLimitReached,
+        premiumPageUsers: prevPremiumPage,
+        upgradeClickEvents: prevUpgradeClick,
+      },
+      prevHotWhoPaid,
+      hotWhoPaidChange: pctChange(hotWhoPaid, prevHotWhoPaid),
+      change: {
+        limitReached: pctChange(currLimitReached, prevLimitReached),
+        premiumPage: pctChange(currPremiumPage, prevPremiumPage),
+        upgradeClick: pctChange(currUpgradeClick, prevUpgradeClick),
+      },
+    }
+
+    // 9. MRR y previsión de renovaciones
     let allStripeSubs: StripeSubscription[] = []
     let hasMore = true
     let startingAfter: string | null = null
@@ -673,12 +791,14 @@ async function _GET() {
         daysSinceLastPayment: daysSinceLastPayment ? Math.round(daysSinceLastPayment) : null,
         lastPaymentDate: lastPaymentDate?.toISOString() || null,
         pool: {
-          total: nonPayingUsers.length,
+          total: activePool,
+          totalAll: nonPayingUsers.length,
           new: newUsers.length,
           active: activeUsers.length,
           dormant: dormantUsers.length,
         },
       },
+      purchaseIntent,
       prediction: {
         probability: currentProbability,
         probabilityCI: { lower: probWithLowerCI, upper: probWithUpperCI },
@@ -816,6 +936,9 @@ async function _GET() {
         methodWeights,
       } : null,
     }
+
+    // Cachear resultado
+    cache = { data: responseData, ts: Date.now() }
 
     const response = NextResponse.json(responseData)
 

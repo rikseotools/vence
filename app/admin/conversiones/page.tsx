@@ -1497,75 +1497,6 @@ export default function ConversionesPage() {
                     </div>
                   )}
 
-                  {/* Precisión histórica de predicciones */}
-                  {predictionData.predictionAccuracy?.hasData && (
-                    <div className="mt-6 border-t border-gray-200 dark:border-gray-700 pt-4">
-                      <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-                        📈 Precisión Histórica de Predicciones
-                      </h4>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                        {predictionData.predictionAccuracy.byMethod
-                          .filter((m: any) => (m.methodName || m.method_name) !== 'by_historic') // Eliminado por impreciso (±109%)
-                          .map((method: any, idx: number) => {
-                            const name = method.methodName || method.method_name
-                            const absError = parseFloat(method.avgAbsoluteError ?? method.avg_absolute_error)
-                            const verified = method.verifiedPredictions ?? method.verified_predictions ?? 0
-                            const within20 = method.predictionsWithin20Pct ?? method.predictions_within_20pct
-                            return (
-                          <div
-                            key={`${name}-${idx}`}
-                            className={`rounded-lg p-3 ${
-                              absError <= 20
-                                ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
-                                : absError <= 50
-                                ? 'bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800'
-                                : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
-                            }`}
-                          >
-                            <div className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                              {name === 'by_registrations' ? 'Por registros' :
-                               name === 'by_active_users' ? 'Por activos' :
-                               name === 'combined' ? 'Combinado' : name}
-                            </div>
-                            <div className={`text-xl font-bold ${
-                              absError <= 20 ? 'text-green-600 dark:text-green-400' :
-                              absError <= 50 ? 'text-yellow-600 dark:text-yellow-400' :
-                              'text-red-600 dark:text-red-400'
-                            }`}>
-                              {!isNaN(absError) ? `±${absError.toFixed(1)}%` : '-'}
-                            </div>
-                            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                              {verified} verificadas
-                            </div>
-                            {within20 !== undefined && verified > 0 && (
-                              <div className="text-xs text-gray-400 mt-0.5">
-                                {Math.round((within20 / verified) * 100)}% dentro de ±20%
-                              </div>
-                            )}
-                          </div>
-                        )})}
-                      </div>
-                      <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg text-xs text-gray-500 dark:text-gray-400 space-y-1">
-                        <p className="font-medium text-gray-600 dark:text-gray-300">Como se calcula:</p>
-                        <p>Cada dia se guarda la prediccion mensual de cada metodo. {predictionData.predictionAccuracy.verificationDays || 7} dias despues, se compara con las ventas reales de ese periodo usando <span className="font-mono">sMAPE</span> (error porcentual simetrico, max 200%).</p>
-                        <p>Ej: si se predijeron 3 ventas/mes y en 7 dias hubo 2 ventas reales (= 8.6/mes), el error es <span className="font-mono">|8.6-3| / ((8.6+3)/2) * 100 = 96%</span>.</p>
-                        <p>El metodo con menor error recibe mayor peso en la proyeccion combinada.</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Mensaje cuando aún no hay datos de precisión */}
-                  {predictionData.predictionAccuracy && !predictionData.predictionAccuracy.hasData && (
-                    <div className="mt-6 border-t border-gray-200 dark:border-gray-700 pt-4">
-                      <div className="text-sm text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
-                        <span className="font-medium">📊 Tracking de precisión activo</span>
-                        <p className="text-xs mt-1">
-                          Las predicciones se guardan diariamente y se verifican cada {predictionData.predictionAccuracy.verificationDays || 7} días contra las ventas reales.
-                          En una semana verás qué método es más preciso y el sistema ajustará los pesos automáticamente.
-                        </p>
-                      </div>
-                    </div>
-                  )}
                 </div>
               )}
 
@@ -1592,29 +1523,60 @@ export default function ConversionesPage() {
                   </div>
                 </div>
 
-                {/* Probabilidad de proxima venta */}
+                {/* Intención de compra (últimos 7 días) */}
                 <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
                   <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
-                    Probabilidad Proxima Venta
+                    Usuarios Calientes (7 días)
                   </h3>
-                  <div className="text-4xl font-bold text-blue-600">
-                    {(predictionData.prediction.probability * 100).toFixed(0)}%
-                  </div>
-                  <div className="text-sm text-gray-500 mt-1">
-                    Pool: {predictionData.current.pool.total} usuarios sin pagar
-                  </div>
-                  <div className="mt-2 text-xs text-gray-400">
-                    IC: {(predictionData.prediction.probabilityCI.lower * 100).toFixed(0)}% - {(predictionData.prediction.probabilityCI.upper * 100).toFixed(0)}%
-                  </div>
-                  {/* Barra de progreso */}
-                  <div className="mt-3">
-                    <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-blue-500 to-emerald-500 transition-all duration-500"
-                        style={{ width: `${Math.min(predictionData.prediction.probability * 100, 100)}%` }}
-                      ></div>
-                    </div>
-                  </div>
+                  {predictionData.purchaseIntent ? (
+                    <>
+                      <div className="space-y-3">
+                        {[
+                          { label: 'Alcanzaron límite', value: predictionData.purchaseIntent.limitReachedUsers, change: predictionData.purchaseIntent.change?.limitReached, color: 'orange', sub: 'Necesitan premium' },
+                          { label: 'Vieron premium', value: predictionData.purchaseIntent.premiumPageUsers, change: predictionData.purchaseIntent.change?.premiumPage, color: 'blue', sub: 'Considerando pagar' },
+                          { label: 'Clickaron upgrade', value: predictionData.purchaseIntent.upgradeClickEvents, change: predictionData.purchaseIntent.change?.upgradeClick, color: 'green', sub: 'Clicks en botón' },
+                        ].map((item) => (
+                          <div key={item.label}>
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-gray-600 dark:text-gray-400">{item.label}</span>
+                              <div className="flex items-center gap-2">
+                                {item.change !== null && item.change !== undefined && (
+                                  <span className={`text-xs font-medium ${item.change > 0 ? 'text-green-500' : item.change < 0 ? 'text-red-500' : 'text-gray-400'}`}>
+                                    {item.change > 0 ? '↑' : item.change < 0 ? '↓' : '='}{Math.abs(item.change)}%
+                                  </span>
+                                )}
+                                <span className={`text-2xl font-bold text-${item.color}-600`}>{item.value}</span>
+                              </div>
+                            </div>
+                            <div className="text-xs text-gray-400 mt-1">{item.sub} {item.change !== null && item.change !== undefined ? `(vs sem. anterior)` : ''}</div>
+                          </div>
+                        ))}
+                        <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Compraron</span>
+                            <div className="flex items-center gap-2">
+                              {(() => {
+                                const curr = predictionData.purchaseIntent.hotWhoPaid
+                                const prev = predictionData.purchaseIntent.prevHotWhoPaid ?? 0
+                                const diff = curr - prev
+                                return (
+                                  <span className={`text-xs font-medium ${diff > 0 ? 'text-green-500' : diff < 0 ? 'text-red-500' : 'text-gray-400'}`}>
+                                    {diff > 0 ? `↑${diff}` : diff < 0 ? `↓${Math.abs(diff)}` : '='}
+                                  </span>
+                                )
+                              })()}
+                              <span className="text-2xl font-bold text-emerald-600">{predictionData.purchaseIntent.hotWhoPaid}</span>
+                            </div>
+                          </div>
+                          <div className="text-xs text-gray-400 mt-1">
+                            {predictionData.purchaseIntent.hotConversionRate}% de {predictionData.purchaseIntent.hotTotal} calientes — sem. anterior: {predictionData.purchaseIntent.prevHotWhoPaid ?? 0}
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-sm text-gray-400">Cargando...</div>
+                  )}
                 </div>
 
                 {/* Dias desde ultimo pago */}
@@ -1702,13 +1664,13 @@ export default function ConversionesPage() {
                       </div>
                     </div>
                     <div className="mt-3 text-sm text-gray-500">
-                      Pool actual: {predictionData.current.pool.total} usuarios sin pagar
+                      Pool activo: {predictionData.current.pool.total} usuarios (últimos 30 días)
                     </div>
                   </div>
 
                   {/* Usuarios en proceso */}
                   <div>
-                    <h4 className="font-medium text-gray-700 dark:text-gray-300 mb-3">Pool de Usuarios (sin pagar):</h4>
+                    <h4 className="font-medium text-gray-700 dark:text-gray-300 mb-3">Pool de Usuarios:</h4>
                     <div className="space-y-3">
                       <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
                         <div>
@@ -1897,8 +1859,8 @@ export default function ConversionesPage() {
                 <ul className="text-sm text-blue-800 dark:text-blue-300 space-y-1">
                   <li><strong>Tasa de conversion:</strong> Calculada con TODOS los usuarios y TODAS las ventas (datos reales)</li>
                   <li><strong>Intervalo de confianza (IC):</strong> Rango donde esta el valor real con 95% de certeza. Se estrecha automaticamente con mas ventas.</li>
-                  <li><strong>Probabilidad:</strong> Calculada con distribucion binomial sobre el pool de usuarios que aun no han pagado</li>
-                  <li><strong>Pool:</strong> Nuevos (0-7d), Activos (7-30d probando), Dormidos (30+d baja probabilidad)</li>
+                  <li><strong>Probabilidad:</strong> Calculada con distribucion binomial sobre el pool activo (nuevos + activos, excluyendo dormidos)</li>
+                  <li><strong>Pool activo:</strong> Nuevos (0-7d) + Activos (7-30d). Dormidos (30+d) excluidos del calculo por baja probabilidad de conversion</li>
                   <li><strong>Tiempo medio:</strong> Dias promedio desde registro hasta pago (puede ser 0 = mismo dia)</li>
                   <li><strong>Fiabilidad:</strong> Con menos de 10 ventas es baja, 10-20 media, mas de 20 alta</li>
                 </ul>

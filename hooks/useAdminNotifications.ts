@@ -102,13 +102,8 @@ export function useAdminNotifications(enabled = false) {
             setTimeout(() => reject(new Error('Timeout')), 15000)
           )
         ]),
-        // 5. Obtener problemas de calidad de preguntas
-        Promise.race([
-          fetch('/api/admin/question-quality?count_only=true').then(r => r.json()),
-          new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Timeout')), 15000)
-          )
-        ]),
+        // 5. Calidad de preguntas — desactivado del polling (tarda ~20s, solo se ejecuta en /admin/calidad)
+        Promise.resolve({ status: 'fulfilled', value: { totalIssues: 0, skipped: true } }),
         // 6. Contar errores de validación API (últimas 24h) — via API (usa service role, bypass RLS)
         Promise.race([
           fetch('/api/v2/admin/validation-errors?timeRange=1&limit=1').then(r => r.json()),

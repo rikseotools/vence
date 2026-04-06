@@ -59,7 +59,8 @@ export function useLawChanges() {
     const initialDelay = setTimeout(() => {
       checkForChanges()
       checkDiscrepancies()
-      checkBOEDates()
+      // checkBOEDates() — desactivado del auto-check (tarda ~10s, scrapea BOE entero)
+      // Se ejecuta solo manualmente desde /admin/monitoreo o via cron de GitHub Actions
     }, 3000)
 
     // Verificar BD cada 5 minutos
@@ -68,14 +69,10 @@ export function useLawChanges() {
     // Verificar discrepancias cada 5 minutos
     const discrepanciesInterval = setInterval(checkDiscrepancies, 5 * 60 * 1000)
 
-    // Verificar fechas BOE cada 30 minutos
-    const boeInterval = setInterval(checkBOEDates, 30 * 60 * 1000)
-
     return () => {
       clearTimeout(initialDelay)
       clearInterval(interval)
       clearInterval(discrepanciesInterval)
-      clearInterval(boeInterval)
     }
   }, [])
 
