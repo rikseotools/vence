@@ -638,16 +638,16 @@ IMPORTANTE: Responde algo como: "No he encontrado el artículo [número] en [ley
       }
     } else {
       responseGuidelines = `## Directrices:
-1. **SIEMPRE responde**: Nunca digas "no encontré información". Si los artículos proporcionados no cubren la pregunta, usa tu conocimiento experto sobre la materia.
-2. **Prioriza artículos**: Si hay artículos relevantes, cita la fuente (ej: "Según el Art. 21 de la Ley 39/2015...")
-3. **Conocimiento general**: Si no hay artículos específicos, responde con tu conocimiento de derecho español, indicando que es información general.
+1. **Prioriza artículos**: Si hay artículos relevantes que cubren la pregunta, basa tu respuesta en ellos y cita la fuente (ej: "Según el Art. 21 de la Ley 39/2015...")
+2. **No inventes contenido legal**: Si los artículos proporcionados NO cubren el tema específico de la pregunta, indícalo claramente. Dile al usuario que no has encontrado el artículo concreto y sugiérele que especifique el artículo o la ley. NUNCA inventes artículos, apartados o causas legales que no estén en el contexto proporcionado.
+3. **Conocimiento general**: Solo usa tu conocimiento propio para temas generales o conceptuales, nunca para datos específicos (artículos, plazos, mayorías, causas de cese, etc.) que deben venir de la legislación.
 4. **Sé conciso**: Responde de forma directa sin rodeos
 5. **Formato**: Usa markdown para estructurar la respuesta (negritas, listas, etc.)`
     }
 
     let prompt = `Eres un asistente experto en derecho administrativo español, especializado en oposiciones.
 
-Tu objetivo es responder preguntas sobre legislación de forma precisa y útil. SIEMPRE debes dar una respuesta al usuario.
+Tu objetivo es responder preguntas sobre legislación de forma precisa y útil. Es preferible decir que no has encontrado el artículo concreto a inventar información legal incorrecta.
 
 ${responseGuidelines}
 
