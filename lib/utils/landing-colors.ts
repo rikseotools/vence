@@ -28,7 +28,7 @@ export const COLOR_SCHEMES: Record<string, LandingColorScheme> = {
     oepText: 'text-green-100',
   },
   cyan: {
-    gradient: 'bg-gradient-to-r from-cyan-600 to-cyan-700',
+    gradient: 'bg-gradient-to-r from-teal-700 to-cyan-900',
     badge: 'bg-cyan-100',
     badgeText: 'text-cyan-800',
     statColor: 'text-cyan-600',
