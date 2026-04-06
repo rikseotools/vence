@@ -1558,12 +1558,16 @@ export default function ConversionesPage() {
                               {(() => {
                                 const curr = predictionData.purchaseIntent.hotWhoPaid
                                 const prev = predictionData.purchaseIntent.prevHotWhoPaid ?? 0
+                                if (prev > 0) {
+                                  const pct = Math.round(((curr - prev) / prev) * 100)
+                                  return (
+                                    <span className={`text-xs font-medium ${pct > 0 ? 'text-green-500' : pct < 0 ? 'text-red-500' : 'text-gray-400'}`}>
+                                      {pct > 0 ? '↑' : pct < 0 ? '↓' : '='}{Math.abs(pct)}%
+                                    </span>
+                                  )
+                                }
                                 const diff = curr - prev
-                                return (
-                                  <span className={`text-xs font-medium ${diff > 0 ? 'text-green-500' : diff < 0 ? 'text-red-500' : 'text-gray-400'}`}>
-                                    {diff > 0 ? `↑${diff}` : diff < 0 ? `↓${Math.abs(diff)}` : '='}
-                                  </span>
-                                )
+                                return diff > 0 ? <span className="text-xs font-medium text-green-500">↑{diff} nuevo</span> : null
                               })()}
                               <span className="text-2xl font-bold text-emerald-600">{predictionData.purchaseIntent.hotWhoPaid}</span>
                             </div>
