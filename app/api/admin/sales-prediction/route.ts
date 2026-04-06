@@ -755,7 +755,7 @@ async function _GET() {
 
     const examBySlug: Record<string, Date> = {}
     examDates?.forEach(o => {
-      if (o.examDate) examBySlug[o.slug] = new Date(o.examDate)
+      if (o.examDate && o.slug) examBySlug[o.slug] = new Date(o.examDate)
     })
 
     // 3. Premisas dinámicas (todas calculadas de datos reales)
