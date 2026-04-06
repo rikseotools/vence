@@ -903,25 +903,125 @@ Al importar, verificar si la pregunta tiene `imageLocal`/`imageOriginal` en el J
    - `anexo Excel`, `anexo de Excel`, `anexo Word`, `anexo Access`
    - `columna .{1,3} del anexo`
 
-### Arquitectura de preguntas con imágenes (aprendizaje 31/03/2026)
+### Arquitectura de preguntas con imágenes (actualizado 06/04/2026)
+
+**REGLA ABSOLUTA:** NUNCA activar una pregunta que dependa de una imagen sin haberla procesado. Siempre seguir el flujo completo de esta sección.
+
+#### Flujo OBLIGATORIO para cada pregunta con imagen
+
+```
+1. DETECTAR: ¿La pregunta tiene campo `image` en el JSON scrapeado?
+   → SI: marcar como pendiente de imagen, importar DESACTIVADA
+   → NO: importar normal
+
+2. DESCARGAR la imagen desde OpositaTest (necesita JWT válido)
+   → Guardar en preguntas-para-subir/{oposicion}/imagenes/{nombre}.png
+   → Si JWT expirado: obtener nuevo de cookies del navegador
+
+3. CLASIFICAR por tamaño:
+   → <5KB (iconos pequeños): ir a paso 4A
+   → >=5KB (imágenes grandes): ir a paso 4B
+   → Tablas de datos convertibles: ir a paso 4C
+
+4A. ICONOS <5KB → image_base64
+   - Leer archivo y convertir a base64
+   - Guardar en content_data: { "image_base64": "data:image/png;base64,..." }
+   - El componente ContentDataRenderer lo renderiza inline
+   - ACTIVAR la pregunta
+
+4B. IMÁGENES GRANDES >=5KB → Supabase Storage
+   - Subir a bucket `question-images` ruta `{oposicion}/{nombre}.png`
+   - Guardar URL pública en campo `image_url` de la pregunta
+   - El componente ContentDataRenderer muestra lupa + zoom modal
+   - ACTIVAR la pregunta
+
+4C. TABLAS CONVERTIBLES A DATOS → content_data table_data
+   - Leer la imagen (Claude es multimodal)
+   - Extraer headers y rows
+   - Guardar en content_data: { "table_data": { "title": "...", "headers": [...], "rows": [[...]] } }
+   - TAMBIÉN subir imagen original a Supabase Storage como backup visual
+   - El componente renderiza tabla HTML responsive con dark mode
+   - ACTIVAR la pregunta
+
+5. VERIFICAR: Comprobar que la pregunta se visualiza correctamente
+```
 
 #### Dónde van las preguntas según tipo
 
 | Tipo de pregunta | Tabla | content_data | image_url | option_a/b/c/d |
 |-----------------|-------|-------------|-----------|----------------|
-| **Legislativas** (leyes, CE, LPAC...) | `questions` | No suele necesitar | No suele necesitar | Texto |
-| **Informática con imagen** (Anexo Word/Excel) | `questions` | Opcional (tablas) | **Sí** (Supabase Storage) | Texto |
-| **Informática con icono en enunciado** | `questions` | `image_base64` | No | Texto |
+| **Legislativas** (leyes, CE, LPAC...) | `questions` | No necesita | No necesita | Texto |
+| **Informática con tabla/anexo** (Anexo Word/Excel/Calc) | `questions` | **Sí** (`table_data` JSON) | **Sí** (backup en Storage) | Texto |
+| **Informática con icono en enunciado** (<5KB) | `questions` | **Sí** (`image_base64`) | No | Texto |
+| **Informática con imagen grande en enunciado** (>=5KB) | `questions` | No | **Sí** (Supabase Storage) | Texto |
 | **Informática con iconos en opciones** | `questions` | No | No | **URL de imagen** (Supabase Storage) |
-| **Psicotécnicas con tabla** (equivalencias, instrucciones) | `psychometric_questions` | **Sí** (JSON) | No | Texto |
-| **Psicotécnicas con icono** (<5KB) | `psychometric_questions` | `image_base64` | No | Texto |
-| **Psicotécnicas con diagrama/cuadro grande** | `psychometric_questions` | Intentar JSON | `image_url` si no se puede | Texto |
+| **Psicotécnicas con tabla** (equivalencias, instrucciones) | `psychometric_questions` | **Sí** (`table_data` JSON) | No | Texto |
+| **Psicotécnicas con icono** (<5KB) | `psychometric_questions` | **Sí** (`image_base64`) | No | Texto |
+| **Psicotécnicas con diagrama/cuadro grande** (>=5KB) | `psychometric_questions` | Intentar JSON | **Sí** (`image_url` si no se puede) | Texto |
 
 #### Campos disponibles
 
-- **`questions.content_data`** (JSONB) — Añadido 31/03/2026. Mismo formato que psychometric.
-- **`questions.image_url`** (TEXT) — URL pública de Supabase Storage.
+- **`questions.content_data`** (JSONB) — Para image_base64 (<5KB) y table_data (tablas convertibles).
+- **`questions.image_url`** (TEXT) — URL pública de Supabase Storage para imágenes >=5KB.
 - **`psychometric_questions.content_data`** (JSONB) — Tablas, instrucciones, image_base64.
+
+#### Ejemplo: icono <5KB → image_base64
+
+```javascript
+const fs = require('fs');
+const buffer = fs.readFileSync('/path/to/icono.png');
+const base64 = buffer.toString('base64');
+
+await supabase.from('questions').update({
+  content_data: { image_base64: 'data:image/png;base64,' + base64 }
+}).eq('id', questionId);
+```
+
+#### Ejemplo: imagen grande → Supabase Storage
+
+```javascript
+const buffer = fs.readFileSync('/path/to/anexo-excel.png');
+await supabase.storage.from('question-images').upload('andalucia/anexo-excel.png', buffer, {
+  contentType: 'image/png', upsert: true
+});
+const { data } = supabase.storage.from('question-images').getPublicUrl('andalucia/anexo-excel.png');
+
+await supabase.from('questions').update({
+  image_url: data.publicUrl
+}).eq('id', questionId);
+```
+
+#### Ejemplo: tabla convertible → content_data + Storage
+
+```javascript
+// 1. Convertir datos de la imagen a JSON
+const contentData = {
+  table_data: {
+    title: 'Superficies agrarias CyL',
+    headers: ['Cultivo', 'Unidad', 'Campaña 18-19', 'Campaña 19-20', '% Var.'],
+    rows: [
+      ['Trigo', 'Has.', '865.282', '904.586', '4,5'],
+      ['Cebada', 'Has.', '803.961', '786.287', '-2,2'],
+    ]
+  }
+};
+
+// 2. Guardar content_data
+await supabase.from('questions').update({ content_data: contentData }).eq('id', questionId);
+
+// 3. También subir imagen original como backup
+await supabase.storage.from('question-images').upload('andalucia/tabla-datos.png', buffer, {
+  contentType: 'image/png', upsert: true
+});
+```
+
+#### Errores comunes a EVITAR
+
+1. **Activar preguntas con opciones vacías** — Si option_a/b/c/d tiene <3 chars, la pregunta depende de una imagen en las opciones que no se procesó
+2. **Describir la imagen en texto en vez de procesarla** — NO poner "El icono muestra..." en el enunciado. Usar image_base64 o Storage
+3. **No descargar las imágenes** — El scraper solo guarda la referencia, hay que descargar con JWT
+4. **Dejar preguntas con image_url vacío** — Si la pregunta necesita imagen, image_url o image_base64 es OBLIGATORIO antes de activar
+5. **No convertir tablas a table_data** — Si la imagen es una tabla legible, SIEMPRE convertir a JSON para accesibilidad y dark mode
 
 #### ContentDataRenderer (componente centralizado)
 
