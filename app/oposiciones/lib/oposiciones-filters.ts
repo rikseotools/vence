@@ -42,6 +42,7 @@ export const TIPO_FILTERS: Record<string, OposicionFilter> = {
   'estado': { type: 'tipo', slug: 'estado', label: 'Administración del Estado', value: 'estado', seoTitle: 'Oposiciones del Estado 2026', seoDescription: 'Convocatorias de la Administración General del Estado. Auxiliar, Administrativo, Justicia.' },
   'autonomicas': { type: 'tipo', slug: 'autonomicas', label: 'Autonómicas', value: 'autonomicas', seoTitle: 'Oposiciones Autonómicas 2026', seoDescription: 'Convocatorias de oposiciones en Comunidades Autónomas. Auxiliar Administrativo, Administrativo y Sanidad.' },
   'sanidad': { type: 'tipo', slug: 'sanidad', label: 'Sanidad', value: 'sanidad', seoTitle: 'Oposiciones de Sanidad 2026', seoDescription: 'Convocatorias de Enfermería, TCAE y Celador en los servicios de salud de España.' },
+  'seguridad': { type: 'tipo', slug: 'seguridad', label: 'Fuerzas de Seguridad', value: 'seguridad', seoTitle: 'Oposiciones Fuerzas de Seguridad 2026', seoDescription: 'Convocatorias de Guardia Civil, Policía Nacional, Policía Local e IIPP.' },
   'ayuntamientos': { type: 'tipo', slug: 'ayuntamientos', label: 'Ayuntamientos', value: 'ayuntamientos', seoTitle: 'Oposiciones en Ayuntamientos 2026', seoDescription: 'Convocatorias de Auxiliar Administrativo en ayuntamientos de España.' },
   'justicia': { type: 'tipo', slug: 'justicia', label: 'Justicia', value: 'justicia', seoTitle: 'Oposiciones de Justicia 2026', seoDescription: 'Convocatorias de Auxilio Judicial, Tramitación Procesal y Gestión Procesal.' },
 }
@@ -90,11 +91,13 @@ export function oposicionToCcaa(opoSlug: string): string | null {
     'enfermero-sas-andalucia': 'andalucia',
     'tcae-sermas-madrid': 'madrid',
     'celador-sermas-madrid': 'madrid',
+    'guardia-civil': 'estado',
   }
   return map[opoSlug] ?? null
 }
 
 export function oposicionToTipo(opoSlug: string): string {
+  if (opoSlug.includes('guardia-civil') || opoSlug.includes('policia-nacional') || opoSlug.includes('policia-local') || opoSlug.includes('policia-municipal') || opoSlug.includes('iipp') || opoSlug.includes('mossos') || opoSlug.includes('ertzaintza')) return 'seguridad'
   if (opoSlug.includes('estado')) return 'estado'
   if (opoSlug.includes('judicial') || opoSlug.includes('procesal')) return 'justicia'
   if (opoSlug.includes('ayuntamiento')) return 'ayuntamientos'
