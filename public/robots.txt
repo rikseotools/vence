@@ -8,8 +8,7 @@ Sitemap: https://www.vence.es/sitemap.xml
 # Admin y auth
 Disallow: /admin/
 
-# Convocatorias (URLs dinámicas con UUIDs que se eliminan — 566 errores 404 en GSC)
-Disallow: /convocatorias/
+# /convocatorias/* redirige 301 a /oposiciones (next.config.mjs) — NO bloquear para que Google siga el redirect y transfiera equity
 Disallow: /es/admin/
 Disallow: /api/
 Disallow: /_next/
