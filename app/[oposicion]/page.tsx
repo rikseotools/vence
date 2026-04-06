@@ -203,10 +203,10 @@ export default async function OposicionPage({ params }: { params: Promise<{ opos
               </span>
             </p>
 
-            {plazasLibres && (
+            {plazasLibres != null && plazasLibres > 0 && (
               <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
                 Oposición con <strong>{formatNumber(plazasLibres)} plazas de acceso libre</strong>.
-                {plazasDiscapacidad ? ` ${formatNumber(plazasDiscapacidad)} reservadas para discapacidad.` : ''}
+                {plazasDiscapacidad != null && plazasDiscapacidad > 0 ? ` ${formatNumber(plazasDiscapacidad)} reservadas para discapacidad.` : ''}
               </p>
             )}
 
@@ -236,13 +236,13 @@ export default async function OposicionPage({ params }: { params: Promise<{ opos
             <div className={`${colors.gradient} rounded-lg shadow-lg p-6 text-white mb-10`}>
               <h2 className="text-2xl font-bold mb-3">🚀 Convocatoria</h2>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                {plazasLibres && (
+                {plazasLibres != null && plazasLibres > 0 && (
                   <div className="text-center">
                     <div className="text-2xl font-bold">{formatNumber(plazasLibres)}</div>
                     <div className="text-sm opacity-80">Plazas libres</div>
                   </div>
                 )}
-                {plazasPromocion && (
+                {plazasPromocion != null && plazasPromocion > 0 && (
                   <div className="text-center">
                     <div className="text-2xl font-bold">{formatNumber(plazasPromocion)}</div>
                     <div className="text-sm opacity-80">Promoción int.</div>
