@@ -9,18 +9,19 @@ import OposicionCard from './components/OposicionCard'
 import { CCAA_FILTERS, SUBGRUPO_FILTERS, TIPO_FILTERS, ESTADO_FILTERS, oposicionToCcaa, oposicionToTipo } from './lib/oposiciones-filters'
 
 export const metadata: Metadata = {
-  title: 'Oposiciones C1 y C2 en España 2026 | Plazas y Convocatorias | Vence',
-  description: 'Directorio de oposiciones de Auxiliar Administrativo (C2) y Administrativo (C1) en toda España. Estado, Comunidades Autónomas y Ayuntamientos. Plazas, fechas de examen y temarios actualizados.',
+  title: 'Oposiciones en España 2026 | Plazas y Convocatorias | Vence',
+  description: 'Directorio de oposiciones en España: Auxiliar Administrativo (C2), Administrativo (C1), Enfermería (A2), TCAE y más. Estado, Comunidades Autónomas, Sanidad y Justicia. Plazas, fechas de examen y temarios actualizados.',
   keywords: [
     'oposiciones 2026',
     'auxiliar administrativo',
     'administrativo estado',
-    'oposiciones c1 c2',
+    'oposiciones enfermería',
+    'oposiciones sanidad',
     'convocatorias oposiciones españa',
     'plazas oposiciones',
   ],
   openGraph: {
-    title: 'Oposiciones C1 y C2 en España 2026 | Vence',
+    title: 'Oposiciones en España 2026 | Vence',
     description: 'Directorio de oposiciones con plazas, fechas y temarios actualizados',
     url: 'https://www.vence.es/oposiciones',
     type: 'website',
@@ -107,7 +108,7 @@ export default async function OposicionesPage() {
             Oposiciones en Espa&ntilde;a 2026
           </h1>
           <p className="mt-2 text-gray-600 dark:text-gray-400 max-w-2xl">
-            {oposiciones.length} oposiciones de Auxiliar Administrativo (C2) y Administrativo (C1) con{' '}
+            {oposiciones.length} oposiciones de Administraci&oacute;n, Sanidad y Justicia con{' '}
             <span className="font-semibold text-blue-600 dark:text-blue-400">{totalPlazas.toLocaleString('es-ES')} plazas</span>.
             {conInscripcion.length > 0 && (
               <span className="text-green-700 dark:text-green-400 font-semibold">

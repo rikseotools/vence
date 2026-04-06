@@ -26,16 +26,22 @@ export const CCAA_FILTERS: Record<string, OposicionFilter> = {
   'galicia': { type: 'ccaa', slug: 'galicia', label: 'Galicia', value: 'galicia', seoTitle: 'Oposiciones en Galicia 2026', seoDescription: 'Convocatorias de Auxiliar Administrativo de la Xunta de Galicia.' },
   'baleares': { type: 'ccaa', slug: 'baleares', label: 'Islas Baleares', value: 'baleares', seoTitle: 'Oposiciones en Baleares 2026', seoDescription: 'Convocatorias de Auxiliar Administrativo del Govern de les Illes Balears.' },
   'asturias': { type: 'ccaa', slug: 'asturias', label: 'Asturias', value: 'asturias', seoTitle: 'Oposiciones en Asturias 2026', seoDescription: 'Convocatorias de Auxiliar Administrativo del Principado de Asturias.' },
+  'cantabria': { type: 'ccaa', slug: 'cantabria', label: 'Cantabria', value: 'cantabria', seoTitle: 'Oposiciones en Cantabria 2026', seoDescription: 'Convocatorias de Auxiliar Administrativo del Gobierno de Cantabria.' },
+  'navarra': { type: 'ccaa', slug: 'navarra', label: 'Navarra', value: 'navarra', seoTitle: 'Oposiciones en Navarra 2026', seoDescription: 'Convocatorias de Administrativo del Gobierno de Navarra. 585 plazas.' },
+  'la-rioja': { type: 'ccaa', slug: 'la-rioja', label: 'La Rioja', value: 'la-rioja', seoTitle: 'Oposiciones en La Rioja 2026', seoDescription: 'Convocatorias de Auxiliar Administrativo del Gobierno de La Rioja.' },
+  'pais-vasco': { type: 'ccaa', slug: 'pais-vasco', label: 'País Vasco', value: 'pais-vasco', seoTitle: 'Oposiciones en el País Vasco 2026', seoDescription: 'Convocatorias de oposiciones en Osakidetza y Gobierno Vasco.' },
 }
 
 export const SUBGRUPO_FILTERS: Record<string, OposicionFilter> = {
-  'c2': { type: 'subgrupo', slug: 'c2', label: 'Subgrupo C2', value: 'C2', seoTitle: 'Oposiciones Subgrupo C2 (Auxiliar Administrativo) 2026', seoDescription: 'Todas las convocatorias de Auxiliar Administrativo (C2) en España. Estado, CCAA y ayuntamientos.' },
+  'a2': { type: 'subgrupo', slug: 'a2', label: 'Subgrupo A2', value: 'A2', seoTitle: 'Oposiciones Subgrupo A2 (Enfermería, Fisioterapia) 2026', seoDescription: 'Convocatorias de Enfermería y otras profesiones sanitarias (A2) en España.' },
   'c1': { type: 'subgrupo', slug: 'c1', label: 'Subgrupo C1', value: 'C1', seoTitle: 'Oposiciones Subgrupo C1 (Administrativo) 2026', seoDescription: 'Convocatorias de Administrativo (C1) en España. Estado, Justicia y CCAA.' },
+  'c2': { type: 'subgrupo', slug: 'c2', label: 'Subgrupo C2', value: 'C2', seoTitle: 'Oposiciones Subgrupo C2 (Auxiliar Administrativo, TCAE) 2026', seoDescription: 'Todas las convocatorias de Auxiliar Administrativo y TCAE (C2) en España.' },
 }
 
 export const TIPO_FILTERS: Record<string, OposicionFilter> = {
   'estado': { type: 'tipo', slug: 'estado', label: 'Administración del Estado', value: 'estado', seoTitle: 'Oposiciones del Estado 2026', seoDescription: 'Convocatorias de la Administración General del Estado. Auxiliar, Administrativo, Justicia.' },
-  'autonomicas': { type: 'tipo', slug: 'autonomicas', label: 'Autonómicas', value: 'autonomicas', seoTitle: 'Oposiciones Autonómicas 2026', seoDescription: 'Convocatorias de oposiciones en Comunidades Autónomas. Auxiliar Administrativo y Administrativo.' },
+  'autonomicas': { type: 'tipo', slug: 'autonomicas', label: 'Autonómicas', value: 'autonomicas', seoTitle: 'Oposiciones Autonómicas 2026', seoDescription: 'Convocatorias de oposiciones en Comunidades Autónomas. Auxiliar Administrativo, Administrativo y Sanidad.' },
+  'sanidad': { type: 'tipo', slug: 'sanidad', label: 'Sanidad', value: 'sanidad', seoTitle: 'Oposiciones de Sanidad 2026', seoDescription: 'Convocatorias de Enfermería, TCAE y Celador en los servicios de salud de España.' },
   'ayuntamientos': { type: 'tipo', slug: 'ayuntamientos', label: 'Ayuntamientos', value: 'ayuntamientos', seoTitle: 'Oposiciones en Ayuntamientos 2026', seoDescription: 'Convocatorias de Auxiliar Administrativo en ayuntamientos de España.' },
   'justicia': { type: 'tipo', slug: 'justicia', label: 'Justicia', value: 'justicia', seoTitle: 'Oposiciones de Justicia 2026', seoDescription: 'Convocatorias de Auxilio Judicial, Tramitación Procesal y Gestión Procesal.' },
 }
@@ -78,6 +84,10 @@ export function oposicionToCcaa(opoSlug: string): string | null {
     'auxiliar-administrativo-galicia': 'galicia',
     'auxiliar-administrativo-baleares': 'baleares',
     'auxiliar-administrativo-asturias': 'asturias',
+    'auxiliar-administrativo-cantabria': 'cantabria',
+    'administrativo-navarra': 'navarra',
+    'auxiliar-administrativo-la-rioja': 'la-rioja',
+    'enfermero-sas-andalucia': 'andalucia',
   }
   return map[opoSlug] ?? null
 }
@@ -86,5 +96,6 @@ export function oposicionToTipo(opoSlug: string): string {
   if (opoSlug.includes('estado')) return 'estado'
   if (opoSlug.includes('judicial') || opoSlug.includes('procesal')) return 'justicia'
   if (opoSlug.includes('ayuntamiento')) return 'ayuntamientos'
+  if (opoSlug.includes('enfermero') || opoSlug.includes('tcae') || opoSlug.includes('celador') || opoSlug.includes('sas') || opoSlug.includes('sermas') || opoSlug.includes('osakidetza')) return 'sanidad'
   return 'autonomicas'
 }
