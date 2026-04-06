@@ -658,8 +658,8 @@ const REGION_PRIORITY_OPOSICIONES: Record<string, string[]> = {
   'Region of Murcia': ['auxiliar_administrativo_carm', 'auxiliar_administrativo_estado'],
   'Castilla y León': ['auxiliar_administrativo_cyl', 'auxiliar_administrativo_estado'],
   'Castile and León': ['auxiliar_administrativo_cyl', 'auxiliar_administrativo_estado'],
-  'Andalucía': ['auxiliar_administrativo_andalucia', 'auxiliar_administrativo_estado'],
-  'Andalusia': ['auxiliar_administrativo_andalucia', 'auxiliar_administrativo_estado'],
+  'Andalucía': ['auxiliar_administrativo_andalucia', 'enfermero_sas_andalucia', 'auxiliar_administrativo_estado'],
+  'Andalusia': ['auxiliar_administrativo_andalucia', 'enfermero_sas_andalucia', 'auxiliar_administrativo_estado'],
   'Canarias': ['auxiliar_administrativo_canarias', 'auxiliar_administrativo_estado'],
   'Canary Islands': ['auxiliar_administrativo_canarias', 'auxiliar_administrativo_estado'],
   'Castilla-La Mancha': ['auxiliar_administrativo_clm', 'auxiliar_administrativo_estado'],
@@ -702,6 +702,7 @@ const AVAILABLE_OPOSICIONES_BY_DEMAND: string[] = [
   'auxiliar_administrativo_cantabria',  // nueva
   'administrativo_navarra',            // nueva
   'auxiliar_administrativo_la_rioja',  // nueva
+  'enfermero_sas_andalucia',          // sanitaria
 ]
 
 /** Reordena oposiciones: 1) región del usuario, 2) disponibles por demanda, 3) resto */

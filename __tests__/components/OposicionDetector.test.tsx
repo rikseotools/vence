@@ -106,9 +106,9 @@ describe('OposicionDetector', () => {
       }
     })
 
-    test('categorias son C1 o C2', () => {
+    test('categorias son A1, A2, B, C1 o C2', () => {
       for (const data of Object.values(OPOSICION_DETECTION)) {
-        expect(['C1', 'C2']).toContain(data.categoria)
+        expect(['A1', 'A2', 'B', 'C1', 'C2']).toContain(data.categoria)
       }
     })
 
@@ -121,7 +121,7 @@ describe('OposicionDetector', () => {
     test('incluye las CCAA: CARM, CyL, Andalucia, Madrid, Canarias, CLM, Extremadura, Valencia, Galicia, Aragon, Asturias y Baleares', () => {
       const autonomicas = Object.values(OPOSICION_DETECTION)
         .filter(d => d.administracion === 'autonomica')
-      expect(autonomicas).toHaveLength(15)
+      expect(autonomicas).toHaveLength(16)
       expect(autonomicas.map(a => a.slug).sort()).toEqual([
         'administrativo-navarra',
         'auxiliar-administrativo-andalucia',
@@ -138,6 +138,7 @@ describe('OposicionDetector', () => {
         'auxiliar-administrativo-la-rioja',
         'auxiliar-administrativo-madrid',
         'auxiliar-administrativo-valencia',
+        'enfermero-sas-andalucia',
       ])
     })
 

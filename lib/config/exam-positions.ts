@@ -53,6 +53,10 @@ export const EXAM_POSITION_MAP: Record<string, string[]> = {
     'gestion_procesal',
     'gestión procesal',
   ],
+  'auxiliar_administrativo_andalucia': [
+    'auxiliar_administrativo_andalucia',
+    'auxiliar administrativo andalucia',
+  ],
 }
 
 /**
