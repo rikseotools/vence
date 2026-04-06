@@ -17,6 +17,17 @@ export const PSYCHOMETRIC_SUBTYPES = [
   'sequence_letter',
   'sequence_alphanumeric',
   'word_analysis',
+  'calculation',
+  'text_question',
+  'analogy',
+  'code_equivalence',
+  'synonym',
+  'antonym',
+  'percentage',
+  'probability',
+  'definition',
+  'alphabetical_order',
+  'coding',
 ] as const
 
 export type PsychometricSubtype = typeof PSYCHOMETRIC_SUBTYPES[number]
