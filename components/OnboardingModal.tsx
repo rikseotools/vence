@@ -302,6 +302,13 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     icon: '⛰️'
   },
   {
+    id: 'administrativo_navarra',
+    nombre: 'Administrativo del Gobierno de Navarra',
+    categoria: 'C1',
+    administracion: 'Autonómica',
+    icon: '🏰'
+  },
+  {
     id: 'auxiliar_comunidad_autonoma',
     nombre: 'Auxiliar Administrativo Comunidad Autónoma',
     categoria: 'C2',
@@ -657,6 +664,8 @@ const REGION_PRIORITY_OPOSICIONES: Record<string, string[]> = {
   'Islas Baleares': ['auxiliar_administrativo_baleares', 'auxiliar_administrativo_estado'],
   'Balearic Islands': ['auxiliar_administrativo_baleares', 'auxiliar_administrativo_estado'],
   'Cantabria': ['auxiliar_administrativo_cantabria', 'auxiliar_administrativo_estado'],
+  'Navarra': ['administrativo_navarra', 'auxiliar_administrativo_estado'],
+  'Chartered Community of Navarre': ['administrativo_navarra', 'auxiliar_administrativo_estado'],
   'Galicia': ['auxiliar_administrativo_galicia', 'auxiliar_administrativo_estado'],
   'Comunidad Valenciana': ['auxiliar_administrativo_valencia', 'auxiliar_administrativo_ayuntamiento_valencia', 'auxiliar_administrativo_estado'],
   'Valencian Community': ['auxiliar_administrativo_valencia', 'auxiliar_administrativo_ayuntamiento_valencia', 'auxiliar_administrativo_estado'],
@@ -683,6 +692,7 @@ const AVAILABLE_OPOSICIONES_BY_DEMAND: string[] = [
   'auxiliar_administrativo_clm',         // 1+
   'auxiliar_administrativo_extremadura', // 1+
   'auxiliar_administrativo_cantabria',  // nueva
+  'administrativo_navarra',            // nueva
 ]
 
 /** Reordena oposiciones: 1) región del usuario, 2) disponibles por demanda, 3) resto */

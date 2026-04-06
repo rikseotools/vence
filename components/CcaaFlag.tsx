@@ -137,6 +137,15 @@ const FLAG_PATHS: Record<string, ReactNode> = {
       <rect x="8.5" y="3" width="3" height="3" rx="0.5" fill="#DA121A" opacity="0.6"/>
     </>
   ),
+  // Navarra: fondo rojo con cadenas doradas (simplificado)
+  administrativo_navarra: (
+    <>
+      <rect width="20" height="14" fill="#D4213D"/>
+      <rect x="8" y="5" width="4" height="4" rx="0.5" fill="#FFD700" opacity="0.7"/>
+      <rect x="6" y="6" width="1.5" height="2" fill="#FFD700" opacity="0.5"/>
+      <rect x="12.5" y="6" width="1.5" height="2" fill="#FFD700" opacity="0.5"/>
+    </>
+  ),
   // Andalucía: franjas verde-blanco-verde horizontales
   auxiliar_administrativo_andalucia: (
     <>

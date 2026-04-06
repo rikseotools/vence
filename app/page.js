@@ -208,6 +208,12 @@ export default function HomePage() {
               >
                 Aux. Administrativo Cantabria (C2)
               </Link>
+              <Link
+                href="/administrativo-navarra/test"
+                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
+              >
+                Administrativo Navarra (C1) - 585 plazas
+              </Link>
               <p className="text-xs text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wide pt-2">Administracion Local</p>
               <Link
                 href="/auxiliar-administrativo-ayuntamiento-valencia/test"
@@ -424,6 +430,14 @@ export default function HomePage() {
               <span className="block mb-2"><CcaaFlag oposicionId="auxiliar_administrativo_cantabria" size="md" /></span>
               <span className="block font-medium text-slate-700 dark:text-slate-300">Aux. Admin. Cantabria</span>
               <span className="block text-xs text-slate-500 dark:text-slate-400 mt-1">25 temas</span>
+            </Link>
+            <Link
+              href="/administrativo-navarra/temario"
+              className="block py-4 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg text-center transition-colors relative"
+            >
+              <span className="block mb-2"><CcaaFlag oposicionId="administrativo_navarra" size="md" /></span>
+              <span className="block font-medium text-slate-700 dark:text-slate-300">Admin. Navarra</span>
+              <span className="block text-xs text-slate-500 dark:text-slate-400 mt-1">27 temas</span>
             </Link>
             <Link
               href="/auxiliar-administrativo-ayuntamiento-valencia/temario"

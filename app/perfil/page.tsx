@@ -489,6 +489,16 @@ function PerfilPageContent() {
         categoria: 'C2',
         administracion: 'Autonómica'
       }
+    },
+    {
+      value: 'administrativo_navarra',
+      label: 'Administrativo del Gobierno de Navarra (C1)',
+      data: {
+        name: 'Administrativo del Gobierno de Navarra',
+        slug: 'administrativo-navarra',
+        categoria: 'C1',
+        administracion: 'Autonómica'
+      }
     }
   ]
 
