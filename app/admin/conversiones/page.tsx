@@ -36,7 +36,7 @@ export default function ConversionesPage() {
   }, [])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<TabType>('funnel')
+  const [activeTab, setActiveTab] = useState<TabType>('predictions')
 
   // Estados para predicciones
   const [predictionData, setPredictionData] = useState<any>(null)
