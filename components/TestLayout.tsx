@@ -1093,6 +1093,7 @@ export default function TestLayout({
     setSelectedAnswer(answerIndex)
     if (validationError) setValidationError(null)
     setVerifiedCorrectAnswer(correctOption)
+    setCurrentQuestionUuid(currentQ.id ?? null)
     setShowResult(true)
     setScore(newScore)
 
