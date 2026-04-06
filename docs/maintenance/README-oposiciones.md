@@ -13,7 +13,7 @@ Este README mapea qué manual usar según el caso de uso. Todos los manuales rel
 | Añadir un tema a oposición existente (1 tema manual) | [agregar-tema.md](./agregar-tema.md) |
 | Importar preguntas scrapeadas (OpositaTest, etc.) | [importar-preguntas-scrapeadas.md](./importar-preguntas-scrapeadas.md) |
 | Verificar calidad de preguntas con IA (bulk) | [revisar-temas-con-agente.md](./revisar-temas-con-agente.md) |
-| El cron de seguimiento detectó cambios en BOE/BOP | [seguimiento-cambios-convocatorias.md](./seguimiento-cambios-convocatorias.md) |
+| El cron de seguimiento detectó cambios en BOE/BOP | [oeps-convocatorias-seguimiento.md](./oeps-convocatorias-seguimiento.md) |
 | El cron de BOE detectó cambios en una ley | [monitoreo-boe.md](./monitoreo-boe.md) |
 | Caso específico: Tramitación Procesal | [importar-tema-tramitacion-procesal.md](./importar-tema-tramitacion-procesal.md) |
 
@@ -80,7 +80,7 @@ Desde 05/04/2026 el temario es dinámico: no hay datos hardcoded en `page.tsx`. 
 ```
 1. Cron detecta cambio (check-boe-changes / check-seguimiento)
    ↓
-2. seguimiento-cambios-convocatorias.md — analizar qué cambió
+2. oeps-convocatorias-seguimiento.md — analizar qué cambió
    ↓
 3. Decidir si afecta al temario (nuevos temas, cambios en epígrafes)
    ↓
