@@ -1,64 +1,66 @@
 # Gestionar Feedback de Bug
 
-**Este manual es una GUÍA DE INVESTIGACIÓN, no un diagnóstico.** Contiene las queries y herramientas para localizar datos relevantes. El diagnóstico del bug, la causa raíz y el fix los haces TÚ (Claude) analizando los resultados. No intentes clasificar automáticamente con la tabla — úsala solo como orientación inicial.
+**Este manual es una METODOLOGÍA DE INVESTIGACIÓN genérica.** No intenta diagnosticar bugs — te enseña DÓNDE buscar datos para que TÚ (Claude) hagas el diagnóstico. Funciona para cualquier tipo de bug: tests no guardados, contenido incorrecto, UI rota, errores de pago, etc.
 
-## 1. Identificar al usuario
+**Principio: recopilar datos primero, diagnosticar después.** Ejecuta TODOS los pasos antes de sacar conclusiones.
 
-El feedback tiene `user_id`. Obtener perfil:
+## Paso 1: Identificar al usuario y contexto
 
 ```js
+// Perfil del usuario
 const { data: profile } = await supabase.from('user_profiles')
   .select('id, email, full_name, plan_type, target_oposicion')
   .eq('id', userId).single();
 ```
 
-## 2. Verificar versión del deploy
+Datos clave: **plan_type** (free/premium afecta límites), **target_oposicion** (qué oposición usa).
 
-Los error logs incluyen `[v:xxx]` con la versión del cliente y `deploy_version` con la del servidor.
+## Paso 2: Verificar qué versión del código tiene el usuario
 
 ```js
-// Errores recientes del usuario
-const { data: errors } = await supabase.from('validation_error_logs')
-  .select('created_at, error_type, error_message, deploy_version')
+// deploy_version en interacciones recientes
+const { data } = await supabase.from('user_interactions')
+  .select('deploy_version, created_at')
   .eq('user_id', userId)
   .gte('created_at', 'FECHA')
-  .order('created_at', { ascending: false });
+  .not('deploy_version', 'is', null)
+  .order('created_at', { ascending: false })
+  .limit(5);
 ```
 
-**Si `deploy_version` es viejo** → el usuario tiene código cacheado. Desde abril 2026, el hook `useVersionCheck` fuerza recarga al volver de background. Si aún tiene versión vieja, no ha recargado.
-
-**Commit actual de producción:**
 ```bash
+# Commit actual en producción
 git log --oneline -1
 ```
 
-## 3. Reconstruir journey
+Si el `deploy_version` del usuario NO coincide con el commit actual → tiene código cacheado. Hook `useVersionCheck` fuerza recarga al volver de background, pero si no ha cambiado de pestaña no se activa.
 
-Seguir **docs/procedures/investigar-journey-usuario.md**. Resumen rápido:
+## Paso 3: Reconstruir el journey completo del usuario
 
 ```js
-// Timeline completa del usuario
+// Timeline: QUÉ hizo el usuario y CUÁNDO
 const { data } = await supabase.from('user_interactions')
-  .select('event_type, action, element_text, page_url, created_at')
+  .select('event_type, action, element_text, page_url, deploy_version, created_at')
   .eq('user_id', userId)
   .gte('created_at', 'FECHA_INICIO')
   .order('created_at', { ascending: true });
 ```
 
-**Qué buscar:**
-- Páginas visitadas (`page_view`)
-- Respuestas seleccionadas (`test_answer_selected`, `psycho_answer_selected`)
-- Tests completados (`test_test_completed`, `psycho_test_completed`)
-- Navegación entre temas sin recargar (posible bug de sesión)
+**Qué buscar en el journey:**
+- `page_view` → páginas visitadas (ruta del bug)
+- `test_answer_selected` → respuestas dadas
+- `test_test_completed` → tests terminados
+- `page_exit` → cuándo sale de la página
+- Patrones: ¿navegó entre temas sin recargar? ¿Hizo muchos tests seguidos? ¿Estuvo horas sin cerrar?
 
-## 4. Verificar tests guardados vs interacciones
+Ver también: `docs/procedures/investigar-journey-usuario.md`
 
-Comparar lo que el usuario hizo (interacciones) con lo que se guardó (tests + test_questions):
+## Paso 4: Comparar lo que hizo vs lo que se guardó
 
 ```js
-// Tests del usuario hoy
+// Tests del usuario en el periodo del bug
 const { data: tests } = await supabase.from('tests')
-  .select('id, score, total_questions, is_completed, created_at, test_type')
+  .select('id, score, total_questions, is_completed, created_at, test_type, deploy_version')
   .eq('user_id', userId)
   .gte('created_at', 'FECHA')
   .order('created_at', { ascending: false });
@@ -68,144 +70,120 @@ for (const t of tests) {
   const { count } = await supabase.from('test_questions')
     .select('*', { count: 'exact', head: true })
     .eq('test_id', t.id);
-  // Si count < total_questions → respuestas perdidas
+  console.log(`[${t.created_at}] ${t.test_type} score:${t.score}/${t.total_questions} saved:${count} done:${t.is_completed} [v:${t.deploy_version}]`);
 }
 
-// Comparar con interacciones
+// Total interacciones de respuesta
 const { count: interactions } = await supabase.from('user_interactions')
   .select('*', { count: 'exact', head: true })
   .eq('user_id', userId)
   .eq('event_type', 'test_answer_selected')
   .gte('created_at', 'FECHA');
-// Si interactions > 0 pero tests = 0 → sesión no se creó
+
+// daily_question_usage
+const { data: usage } = await supabase.from('daily_question_usage')
+  .select('date, questions_used')
+  .eq('user_id', userId)
+  .gte('date', 'FECHA')
+  .order('date', { ascending: false });
 ```
 
-## 5. Verificar errores API
+**Qué cruzar:**
+- `interactions` > 0 pero `tests` = 0 → sesión de test no se creó
+- `tests` con `saved:0` → respuestas no llegaron a `test_questions`
+- `tests` con `saved < total_questions` → algunas respuestas se perdieron a mitad
+- `daily_question_usage` null → contador de preguntas no se actualiza
+
+## Paso 5: Buscar TODOS los errores del usuario
 
 ```js
+// TODOS los errores, sin filtrar por endpoint
 const { data: errors } = await supabase.from('validation_error_logs')
-  .select('*')
+  .select('created_at, endpoint, error_type, error_message, deploy_version, http_status, severity')
   .eq('user_id', userId)
   .gte('created_at', 'FECHA')
   .order('created_at', { ascending: false });
+
+// Si el userId podría no estar en el log (errores client-side anónimos),
+// buscar también por endpoint + rango temporal
+const { data: globalErrors } = await supabase.from('validation_error_logs')
+  .select('created_at, endpoint, error_type, error_message, user_id, deploy_version')
+  .gte('created_at', 'FECHA')
+  .order('created_at', { ascending: false })
+  .limit(50);
 ```
 
-**Tipos de error comunes:**
-| Error | Causa | Solución |
-|-------|-------|----------|
-| Watchdog timeout 12s | Código viejo sin optimistic UI | Usuario debe recargar |
-| FK violation test_id | Sesión no creada o ID incorrecto | Bug de sesión |
-| Validación Zod 400 | sessionId null | Sesión no se creó antes de responder |
-| Network/Load failed | Red del usuario inestable | No es nuestro bug |
+**Campos clave de cada error:**
+- `endpoint` → qué API o componente falló
+- `error_message` → incluye `component:` si viene de client-side (answerSaveQueue, TestLayout, etc.)
+- `deploy_version` → qué versión del código generó el error
+- `http_status` → 400 (datos mal), 401 (auth), 500 (servidor)
 
-## 5a. Errores de answerSaveQueue (cola de guardado, desde 06/04/2026)
-
-Si el usuario reporta "no se guardan mis respuestas" y hay tests con `saved:0`, buscar errores de la cola:
+## Paso 6: Verificar alcance — ¿es solo este usuario o es global?
 
 ```js
-// Errores de la cola de guardado de un usuario específico
-const { data } = await supabase.from('validation_error_logs')
-  .select('created_at, endpoint, error_message, deploy_version')
-  .eq('user_id', userId)
-  .ilike('endpoint', '%answer%')
-  .order('created_at', { ascending: false });
+// Tests recientes con saved:0 de CUALQUIER usuario
+const { data: recentTests } = await supabase.from('tests')
+  .select('user_id, id, score, total_questions, is_completed, created_at')
+  .gte('created_at', 'FECHA_RECIENTE')
+  .eq('is_completed', true)
+  .order('created_at', { ascending: false })
+  .limit(50);
+
+// Contar cuántos tienen saved:0
+for (const t of recentTests) {
+  const { count } = await supabase.from('test_questions')
+    .select('*', { count: 'exact', head: true })
+    .eq('test_id', t.id);
+  if (count === 0) console.log(`saved:0 → user:${t.user_id.slice(0,8)} test:${t.id.slice(0,8)}`);
+}
+
+// Errores globales recientes (sin filtrar usuario)
+const { data: globalErrors } = await supabase.from('validation_error_logs')
+  .select('endpoint, error_type, user_id, created_at')
+  .gte('created_at', 'FECHA_RECIENTE')
+  .order('created_at', { ascending: false })
+  .limit(100);
 ```
 
-**Componentes que loguean (campo `error_message` contiene `component:`):**
+Si afecta a 1 usuario → problema específico (auth, dispositivo, red).
+Si afecta a muchos → bug de código o infraestructura.
 
-| component | Qué significa |
-|-----------|--------------|
-| `answerSaveQueue auth` | Token de Supabase null — refreshSession y getSession fallaron ambos |
-| `answerSaveQueue syncOne 401` | Token obtenido pero el servidor lo rechaza (token inválido/expirado) |
-| `answerSaveQueue syncOne` | Servidor devolvió HTTP error (400, 500, etc.) |
-| `answerSaveQueue syncOne network` | Red caída, timeout o abort |
-| `answerSaveQueue flush expired` | Respuesta descartada por tener >24h de antigüedad |
-| `answerSaveQueue flush maxRetries` | Respuesta descartada tras 3 reintentos fallidos |
-| `answerSaveQueue getAccessToken exception` | Excepción inesperada al obtener token |
-| `answerSaveQueue enqueue` | Payload Zod inválido, respuesta ni se encola |
+## Paso 7: Leer el código fuente involucrado
 
-**Si hay 0 errores con `%answer%` y aún así saved:0** → el bug NO está en answerSaveQueue. Investigar si `enqueueAnswer()` se llama (leer TestLayout.tsx handleAnswerClick).
+Con los datos recopilados, TÚ (Claude) decides QUÉ código leer. No hay una lista fija — depende de lo que hayas encontrado. Ejemplos:
 
-## 5b. Diagnóstico fallo silencioso de sesión (desde 05/04/2026)
+- Errores en `answerSaveQueue` → leer `utils/answerSaveQueue.ts`
+- Sesión no creada → leer `components/TestLayout.tsx` (creación de sesión)
+- Error de API → leer el endpoint en `app/api/`
+- Contenido incorrecto → leer fetchers (`lib/testFetchers.ts`, `lib/lawFetchers.ts`)
+- UI rota → leer componente mencionado en la URL del feedback
 
-Si el usuario reporta "mi test no se guardó" y cuadra: 0 tests en BD + N respuestas en interactions + 0 errores API, **ya no es silencioso** — desde abril 2026 `createDetailedTestSession` loguea en `validation_error_logs` cuando falla.
+**Buscar en el código:**
+- Catches vacíos (`catch {}`, `catch { return null }`) → puntos de fallo silencioso
+- Returns sin logging → datos que se pierden sin traza
+- Condiciones que asumen datos que pueden ser null
 
-**Causas esperadas (endpoint = `createDetailedTestSession`):**
+## Paso 8: Diagnosticar y proponer fix
 
-| error_message | Causa | Acción |
-|---------------|-------|--------|
-| "userId es requerido" | Auth context no cargado al montar TestLayout | Bug de timing client-side |
-| "Zod validation failed" | Datos preguntas malformados | Verificar topic_scope |
-| "0 preguntas disponibles" | topic_scope vacío o todas preguntas desactivadas | Revisar datos tema |
-| "Supabase session expired (no access_token)" | Token caducado durante el test | User debe re-loguear |
-| "Supabase INSERT error 42501" | RLS bloquea el insert | Bug policy BD |
-| "Supabase INSERT error 23503" | FK rota (user_id no existe) | Corrupción datos |
-| "Supabase INSERT returned empty data" | Bug cliente Supabase | Investigar |
+Con datos + código, identificar:
+1. **Causa raíz** (no el síntoma)
+2. **Por qué no había logging** (si es fallo silencioso)
+3. **Alcance** (1 usuario vs global)
+4. **Fix** con código concreto
+5. **Verificación** — cómo confirmar que el fix funciona
 
-**Query diagnóstica:**
+## Paso 9: Responder al usuario
 
-```js
-// Errores de creación de sesión de un usuario específico
-const { data } = await supabase.from('validation_error_logs')
-  .select('created_at, endpoint, error_message, deploy_version')
-  .eq('user_id', userId)
-  .eq('endpoint', 'createDetailedTestSession')
-  .order('created_at', { ascending: false });
-```
+**Esperar a tener diagnóstico antes de responder.** No decir "estamos investigando" sin haber investigado primero.
 
-## 5c. Verificar versión del cliente al fallar (desde 05/04/2026)
+Plantillas de respuesta:
+- **Bug arreglado:** "Hemos detectado y arreglado un problema técnico que afectaba a [descripción]. El arreglo ya está aplicado. Sentimos las molestias."
+- **Bug pendiente:** "Hemos identificado el problema y estamos trabajando en la solución. Te avisaremos cuando esté arreglado."
+- **Versión vieja:** "Tu navegador tenía una versión anterior. Cierra la pestaña y vuelve a abrir Vence (o Ctrl+Shift+R)."
+- **No es bug:** "[Explicar el comportamiento esperado]."
 
-`user_interactions` y `tests` ahora incluyen `deploy_version` (hash commit 8 chars). Permite trazar qué versión del JS tenía el usuario al fallar.
-
-```js
-// ¿Qué versión tenía el usuario en sus interacciones del día del bug?
-const { data } = await supabase.from('user_interactions')
-  .select('deploy_version, created_at')
-  .eq('user_id', userId)
-  .gte('created_at', 'FECHA_INICIO')
-  .not('deploy_version', 'is', null)
-  .limit(1);
-
-// Si deploy_version viejo → cache del navegador con versión anterior
-// Si deploy_version actual → bug en el código, investigar esa versión
-```
-
-## 6. Diagnosticar el bug
-
-Con los datos de los pasos 1-5, TÚ (Claude) debes:
-
-1. **Leer el código fuente** de los componentes/endpoints involucrados (TestLayout, answerSaveQueue, etc.)
-2. **Cruzar datos**: tests creados vs test_questions guardadas vs interacciones vs errores
-3. **Identificar la causa raíz** en el código, no solo el síntoma
-4. **Verificar alcance**: ¿afecta solo a este usuario o a más? Query de tests recientes con saved:0
-5. **Proponer fix** con código concreto
-
-**Pistas orientativas** (NO son diagnósticos definitivos, solo puntos de partida):
-
-| Patrón observado | Dónde mirar primero |
-|-----------|-------------|
-| deploy_version viejo | hooks/useVersionCheck, cache del navegador |
-| 0 tests + >0 interacciones | TestLayout: creación de sesión |
-| Tests con saved:0 | utils/answerSaveQueue.ts: flush(), getAccessToken() |
-| Tests con saved parcial | answerSaveQueue: syncOne(), backoff, token expiry |
-| 0 errores en logs | Buscar catches vacíos que silencian errores |
-| Exámenes con preguntas faltantes | ExamLayout: flujo de submit |
-
-## 7. Responder al usuario
-
-**Si es versión vieja:**
-> Hemos detectado que tu navegador tenía una versión anterior. Cierra la pestaña y vuelve a abrir Vence (o pulsa Ctrl+Shift+R). El problema debería resolverse.
-
-**Si es bug real (arreglado):**
-> Hemos detectado y arreglado un problema técnico que afectaba a [descripción]. El arreglo ya está aplicado. Sentimos las molestias.
-
-**Si es bug real (pendiente):**
-> Hemos identificado el problema y estamos trabajando en la solución. Te avisaremos cuando esté arreglado.
-
-**Si no es un bug:**
-> [Explicar el comportamiento esperado]. Si necesitas ayuda, aquí estamos.
-
-## 8. Marcar como revisado
+## Paso 10: Marcar como revisado
 
 ```js
 await supabase.from('user_feedback')
@@ -213,7 +191,7 @@ await supabase.from('user_feedback')
   .eq('id', feedbackId);
 ```
 
-## Script rápido
+## Script rápido (todo en uno)
 
 ```bash
 node -e "
@@ -221,60 +199,56 @@ require('dotenv').config({ path: '.env.local' });
 const { createClient } = require('@supabase/supabase-js');
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
-const userId = 'PONER_USER_ID_AQUI';
-const fecha = '2026-04-04T00:00:00';
+const userId = 'PONER_USER_ID';
+const fecha = 'PONER_FECHA';  // ej: '2026-04-04T00:00:00'
 
 (async () => {
   // 1. Perfil
   const { data: profile } = await supabase.from('user_profiles')
-    .select('email, full_name, plan_type').eq('id', userId).single();
+    .select('email, full_name, plan_type, target_oposicion').eq('id', userId).single();
   console.log('Perfil:', JSON.stringify(profile));
 
-  // 2. Tests
+  // 2. Tests + saved count
   const { data: tests } = await supabase.from('tests')
-    .select('id, score, total_questions, is_completed, created_at')
+    .select('id, score, total_questions, is_completed, created_at, test_type, deploy_version')
     .eq('user_id', userId).gte('created_at', fecha)
     .order('created_at', { ascending: false });
+  console.log('\\nTests:', tests?.length);
   for (const t of tests || []) {
     const { count } = await supabase.from('test_questions')
       .select('*', { count: 'exact', head: true }).eq('test_id', t.id);
-    console.log(\`[\${t.created_at}] score:\${t.score}/\${t.total_questions} saved:\${count}\`);
+    console.log(\`  [\${t.created_at?.slice(0,16)}] \${t.test_type} score:\${t.score}/\${t.total_questions} saved:\${count} done:\${t.is_completed} [v:\${t.deploy_version}]\`);
   }
 
   // 3. Interacciones
-  const { count } = await supabase.from('user_interactions')
+  const { count: interactions } = await supabase.from('user_interactions')
     .select('*', { count: 'exact', head: true })
     .eq('user_id', userId).eq('event_type', 'test_answer_selected')
     .gte('created_at', fecha);
-  console.log('Respuestas (interactions):', count);
+  console.log('\\nRespuestas (interactions):', interactions);
 
-  // 4. Errores
+  // 4. Errores (TODOS, sin filtrar endpoint)
   const { data: errors } = await supabase.from('validation_error_logs')
-    .select('created_at, error_type, error_message, deploy_version')
-    .eq('user_id', userId).gte('created_at', fecha);
-  console.log('Errores:', errors?.length);
+    .select('created_at, endpoint, error_type, error_message, deploy_version, http_status')
+    .eq('user_id', userId).gte('created_at', fecha)
+    .order('created_at', { ascending: false });
+  console.log('\\nErrores:', errors?.length);
   for (const e of errors || []) {
-    console.log(\`  \${e.error_type}: \${e.error_message?.slice(0,80)} [deploy:\${e.deploy_version}]\`);
+    console.log(\`  [\${e.created_at?.slice(0,16)}] \${e.endpoint} | \${e.error_type}: \${e.error_message?.slice(0,100)} [v:\${e.deploy_version}] http:\${e.http_status}\`);
   }
 
-  // 5. Impugnaciones del usuario
+  // 5. Daily usage
+  const { data: usage } = await supabase.from('daily_question_usage')
+    .select('date, questions_used').eq('user_id', userId).gte('date', fecha.slice(0,10));
+  console.log('\\nDaily usage:', usage);
+
+  // 6. Impugnaciones
   const { data: disputes } = await supabase.from('question_disputes')
-    .select('id, question_id, dispute_type, description, status, created_at, admin_response')
+    .select('id, dispute_type, description, status, created_at')
     .eq('user_id', userId).order('created_at', { ascending: false }).limit(5);
   console.log('\\nImpugnaciones:', disputes?.length);
   for (const d of disputes || []) {
-    console.log(\`  [\${d.created_at}] \${d.status} - \${d.description?.slice(0,80)}\`);
-  }
-
-  // 6. Impugnaciones psicotécnicas
-  const { data: psicoDisputes } = await supabase.from('psychometric_question_disputes')
-    .select('id, question_id, dispute_type, description, status, created_at')
-    .eq('user_id', userId).order('created_at', { ascending: false }).limit(5);
-  if (psicoDisputes?.length) {
-    console.log('Impugnaciones psicotécnicas:', psicoDisputes?.length);
-    for (const d of psicoDisputes || []) {
-      console.log(\`  [\${d.created_at}] \${d.status} - \${d.description?.slice(0,80)}\`);
-    }
+    console.log(\`  [\${d.created_at?.slice(0,10)}] \${d.status} - \${d.description?.slice(0,80)}\`);
   }
 })();
 "
@@ -282,7 +256,8 @@ const fecha = '2026-04-04T00:00:00';
 
 ## Manuales relacionados
 
-- **Investigar journey de usuario:** `docs/procedures/investigar-journey-usuario.md` — Timeline completa de interacciones, tests, sesiones, errores.
-- **Resolver impugnaciones:** `docs/maintenance/impugnaciones-claude-code.md` — Flujo completo para analizar, corregir y cerrar impugnaciones. **NUNCA cerrar sin aprobación explícita.**
-- **Revisar chat IA:** `docs/maintenance/revisar-chat-ai.md` — Analizar conversaciones del chat IA, detectar fallos de routing y mejorar prompts.
-- **Verificar epígrafe vs topic_scope:** `docs/maintenance/verificar-epigrafe-topic-scope.md` — Cuando el usuario reporta que "los títulos no coinciden con el contenido" o "falta ley X en un tema". Incluye flujo manual (1 tema) y con agentes (bulk).
+- **Journey detallado:** `docs/procedures/investigar-journey-usuario.md`
+- **Impugnaciones:** `docs/maintenance/impugnaciones-claude-code.md` — **NUNCA cerrar sin aprobación explícita.**
+- **Chat IA:** `docs/maintenance/revisar-chat-ai.md`
+- **Epígrafes vs topic_scope:** `docs/maintenance/verificar-epigrafe-topic-scope.md`
+- **OEPs y convocatorias:** `docs/maintenance/oeps-convocatorias-seguimiento.md`
