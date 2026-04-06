@@ -3,7 +3,7 @@
 // Las landings estáticas (app/auxiliar-administrativo-*/page.tsx) tienen prioridad
 // sobre esta ruta dinámica. Se migran una a una borrando el archivo estático.
 import { getOposicion, ALL_OPOSICION_SLUGS } from '@/lib/config/oposiciones'
-import { getOposicionLandingData, getHitosConvocatoria } from '@/lib/api/convocatoria/queries'
+import { getOposicionLandingData, getHitosConvocatoria, getTopicNamesForLanding } from '@/lib/api/convocatoria/queries'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
@@ -59,6 +59,13 @@ export default async function OposicionPage({ params }: { params: Promise<{ opos
   const data = await getOposicionLandingData(oposicion)
   const hitos = await getHitosConvocatoria(oposicion)
   const colors = getColorScheme(data?.colorPrimario ?? null)
+
+  // Fetch topic names from BD (para que el temario preview no dependa de oposiciones.ts)
+  const topicNamesFromBD = await getTopicNamesForLanding(config.positionType)
+
+  // Estado del proceso (para distinguir OEP vs convocatoria en los botones)
+  const estadoProceso = data?.estadoProceso ?? 'sin_oep'
+  const esOepSinConvocatoria = estadoProceso === 'oep_aprobada' || estadoProceso === 'sin_oep'
 
   // Datos de BD con fallbacks
   const plazasLibres = data?.plazasLibres ?? null
@@ -284,7 +291,9 @@ export default async function OposicionPage({ params }: { params: Promise<{ opos
                   className={`flex items-center gap-4 bg-white rounded-xl shadow-md border border-gray-200 p-5 hover:shadow-lg ${colors.hoverBorder} transition-all group`}>
                   <div className={`flex-shrink-0 w-12 h-12 ${colors.badge} rounded-lg flex items-center justify-center text-2xl`}>📄</div>
                   <div>
-                    <div className={`font-bold text-gray-800 group-${colors.linkHover} transition-colors`}>Ver convocatoria en {diarioOficial}</div>
+                    <div className={`font-bold text-gray-800 group-${colors.linkHover} transition-colors`}>
+                      {esOepSinConvocatoria ? `Ver OEP en ${diarioOficial}` : `Ver convocatoria en ${diarioOficial}`}
+                    </div>
                     <div className="text-sm text-gray-500">{boeRef} {boeFechaCorta ? `- ${boeFechaCorta}` : ''}</div>
                   </div>
                 </a>
@@ -352,13 +361,17 @@ export default async function OposicionPage({ params }: { params: Promise<{ opos
                   <h3 className="text-base font-bold mb-3 text-gray-800">{block.icon} {block.title}</h3>
                   {block.subtitle && <p className="text-xs text-gray-500 mb-2">{block.subtitle}</p>}
                   <ul className="space-y-1 text-xs text-gray-600">
-                    {block.themes.map(theme => (
-                      <li key={theme.id}>
-                        <Link href={`/${config.slug}/test/tema/${theme.id}`} className={`${colors.linkHover} hover:underline`}>
-                          {theme.displayNumber || theme.id}. {theme.name}
-                        </Link>
-                      </li>
-                    ))}
+                    {block.themes.map(theme => {
+                      const bdName = topicNamesFromBD.get(theme.id)
+                      const displayName = bdName || theme.name
+                      return (
+                        <li key={theme.id}>
+                          <Link href={`/${config.slug}/test/tema/${theme.id}`} className={`${colors.linkHover} hover:underline`}>
+                            {theme.displayNumber || theme.id}. {displayName}
+                          </Link>
+                        </li>
+                      )
+                    })}
                   </ul>
                 </div>
               ))}

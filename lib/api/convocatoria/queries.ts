@@ -4,7 +4,8 @@
 import { getDb } from '@/db/client'
 import { sql } from 'drizzle-orm'
 import { eq } from 'drizzle-orm'
-import { oposiciones } from '@/db/schema'
+import { oposiciones, topics } from '@/db/schema'
+import { asc, and } from 'drizzle-orm'
 
 export interface OposicionLandingData {
   nombre: string
@@ -152,6 +153,37 @@ export async function getHitosConvocatoria(
   } catch (error) {
     console.warn(`⚠️ [convocatoria] Error obteniendo hitos para ${slug}:`, (error as Error).message)
     return []
+  }
+}
+
+/**
+ * Obtiene los nombres de los topics desde BD para el preview del temario en la landing.
+ * Devuelve un mapa topic_number → title. Si falla, devuelve mapa vacío (fallback a config).
+ */
+export async function getTopicNamesForLanding(
+  positionType: string
+): Promise<Map<number, string>> {
+  try {
+    const db = getDb()
+    const rows = await db
+      .select({
+        topicNumber: topics.topicNumber,
+        title: topics.title,
+      })
+      .from(topics)
+      .where(and(
+        eq(topics.positionType, positionType),
+        eq(topics.isActive, true),
+      ))
+      .orderBy(asc(topics.topicNumber))
+
+    const map = new Map<number, string>()
+    for (const r of rows) {
+      if (r.topicNumber != null) map.set(r.topicNumber, r.title)
+    }
+    return map
+  } catch {
+    return new Map()
   }
 }
 
