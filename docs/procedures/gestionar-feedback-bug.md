@@ -173,23 +173,14 @@ Con datos + código, identificar:
 4. **Fix** con código concreto
 5. **Verificación** — cómo confirmar que el fix funciona
 
-## Paso 9: Responder al usuario
+## Paso 9: Proponer borrador de respuesta al usuario
 
-**Esperar a tener diagnóstico antes de responder.** No decir "estamos investigando" sin haber investigado primero.
+**Esperar a tener diagnóstico antes de redactar.** Proponer borrador al admin — NUNCA enviar directamente.
 
-Plantillas de respuesta:
-- **Bug arreglado:** "Hemos detectado y arreglado un problema técnico que afectaba a [descripción]. El arreglo ya está aplicado. Sentimos las molestias."
-- **Bug pendiente:** "Hemos identificado el problema y estamos trabajando en la solución. Te avisaremos cuando esté arreglado."
-- **Versión vieja:** "Tu navegador tenía una versión anterior. Cierra la pestaña y vuelve a abrir Vence (o Ctrl+Shift+R)."
-- **No es bug:** "[Explicar el comportamiento esperado]."
-
-## Paso 10: Marcar como revisado
-
-```js
-await supabase.from('user_feedback')
-  .update({ status: 'resolved', admin_response: 'RESPUESTA' })
-  .eq('id', feedbackId);
-```
+El borrador debe incluir:
+- Qué pasó (sin tecnicismos)
+- Si está arreglado o pendiente
+- Qué debe hacer el usuario (recargar, esperar, nada)
 
 ## Script rápido (todo en uno)
 
