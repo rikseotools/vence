@@ -1,326 +1,222 @@
 /**
- * Página principal de oposiciones - Convocatorias BOE
- * /oposiciones
+ * Directorio de oposiciones C1/C2 — /oposiciones
+ * Muestra NUESTRAS oposiciones (tabla oposiciones) con filtros SEO.
  */
-
-import { Metadata } from 'next';
-import { createClient } from '@supabase/supabase-js';
-import Link from 'next/link';
-import { Suspense } from 'react';
-import FiltrosHorizontales from './components/FiltrosHorizontales';
-import ConvocatoriasLista from './components/ConvocatoriasLista';
+import { Metadata } from 'next'
+import { createClient } from '@supabase/supabase-js'
+import Link from 'next/link'
+import OposicionCard from './components/OposicionCard'
+import { CCAA_FILTERS, SUBGRUPO_FILTERS, TIPO_FILTERS, ESTADO_FILTERS, oposicionToCcaa, oposicionToTipo } from './lib/oposiciones-filters'
 
 export const metadata: Metadata = {
-  title: 'Oposiciones 2026 | Convocatorias BOE Actualizadas | Vence',
-  description: 'Todas las convocatorias de oposiciones del BOE actualizadas diariamente. Auxiliar Administrativo, Administrativo del Estado, Gestión Procesal y más. Plazas, fechas y requisitos.',
+  title: 'Oposiciones C1 y C2 en España 2026 | Plazas y Convocatorias | Vence',
+  description: 'Directorio de oposiciones de Auxiliar Administrativo (C2) y Administrativo (C1) en toda España. Estado, Comunidades Autónomas y Ayuntamientos. Plazas, fechas de examen y temarios actualizados.',
   keywords: [
     'oposiciones 2026',
-    'convocatorias oposiciones',
-    'BOE oposiciones',
+    'auxiliar administrativo',
+    'administrativo estado',
+    'oposiciones c1 c2',
+    'convocatorias oposiciones españa',
     'plazas oposiciones',
-    'auxiliar administrativo convocatoria',
-    'administrativo estado convocatoria',
-    'oposiciones administración general estado'
   ],
   openGraph: {
-    title: 'Oposiciones 2026 | Convocatorias BOE | Vence',
-    description: 'Todas las convocatorias del BOE actualizadas diariamente',
+    title: 'Oposiciones C1 y C2 en España 2026 | Vence',
+    description: 'Directorio de oposiciones con plazas, fechas y temarios actualizados',
     url: 'https://www.vence.es/oposiciones',
-    type: 'website'
+    type: 'website',
   },
-  alternates: {
-    canonical: 'https://www.vence.es/oposiciones'
-  }
-};
-
-// Revalidar cada hora
-export const revalidate = 3600;
-
-interface SearchParams {
-  categoria?: string;
-  oposicion?: string;
-  departamento?: string;
-  ambito?: string;
-  ccaa?: string;
-  provincia?: string;
-  q?: string;
-  orden?: string;
-  page?: string;
-  plazoAbierto?: string;
+  alternates: { canonical: 'https://www.vence.es/oposiciones' },
 }
 
-async function getConvocatorias(searchParams: SearchParams) {
-  // En CI/build sin variables de entorno, devolver datos vacíos
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    return { convocatorias: [], total: 0 };
-  }
+export const revalidate = 3600
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  );
-
-  const page = parseInt(searchParams.page || '1');
-  const limit = 20;
-  const offset = (page - 1) * limit;
-
-  // Si se filtra por plazo abierto, usar query directa
-  if (searchParams.plazoAbierto === '1') {
-    const hoy = new Date();
-    const hoyStr = hoy.toISOString().split('T')[0];
-
-    // Obtener convocatorias recientes (últimos 30 días) para filtrar por plazo
-    let query = supabase
-      .from('convocatorias_boe')
-      .select('*')
-      .eq('is_active', true)
-      .eq('tipo', 'convocatoria')
-      .gte('boe_fecha', new Date(hoy.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
-
-    // Aplicar filtros adicionales
-    if (searchParams.categoria) query = query.eq('categoria', searchParams.categoria);
-    if (searchParams.ambito) query = query.eq('ambito', searchParams.ambito);
-    if (searchParams.ccaa) query = query.eq('comunidad_autonoma', searchParams.ccaa);
-    if (searchParams.provincia) query = query.ilike('provincia', searchParams.provincia);
-    if (searchParams.q) query = query.or(`titulo_limpio.ilike.%${searchParams.q}%,resumen.ilike.%${searchParams.q}%`);
-
-    const { data: allData, error } = await query;
-
-    if (error) {
-      console.error('Error fetching convocatorias plazo abierto:', error);
-      return { convocatorias: [], total: 0 };
-    }
-
-    // Filtrar las que tienen plazo abierto
-    // Usar plazo_inscripcion_dias de la BD (extraído del BOE), o 20 días por defecto
-    const PLAZO_DEFAULT = 20;
-
-    const conPlazoAbierto = (allData || []).filter(conv => {
-      // Si tiene fecha_limite_inscripcion calculada, usar esa
-      if (conv.fecha_limite_inscripcion) {
-        return conv.fecha_limite_inscripcion >= hoyStr;
-      }
-      // Si no, calcular: boe_fecha + plazo_inscripcion_dias (o 20 por defecto)
-      if (conv.boe_fecha) {
-        const boeFecha = new Date(conv.boe_fecha);
-        const plazoDias = conv.plazo_inscripcion_dias || PLAZO_DEFAULT;
-        const fechaLimite = new Date(boeFecha.getTime() + plazoDias * 24 * 60 * 60 * 1000);
-        return fechaLimite >= hoy;
-      }
-      return false;
-    });
-
-    // Ordenar
-    conPlazoAbierto.sort((a, b) => {
-      if (searchParams.orden === 'plazas') {
-        return (b.num_plazas || 0) - (a.num_plazas || 0);
-      } else if (searchParams.orden === 'antiguos') {
-        return new Date(a.boe_fecha).getTime() - new Date(b.boe_fecha).getTime();
-      }
-      // Por defecto: más recientes primero
-      return new Date(b.boe_fecha).getTime() - new Date(a.boe_fecha).getTime();
-    });
-
-    // Paginar
-    const paginado = conPlazoAbierto.slice(offset, offset + limit);
-
-    return {
-      convocatorias: paginado,
-      total: conPlazoAbierto.length
-    };
-  }
-
-  // Usar función RPC agrupada que incluye publicaciones relacionadas
-  // p_tipo se omite porque ahora solo mostramos convocatorias
-  const { data, error } = await supabase.rpc('search_convocatorias_grouped', {
-    search_term: searchParams.q || '',
-    p_categoria: searchParams.categoria || null,
-    p_tipo: null, // Siempre null - la función filtra por tipo='convocatoria'
-    p_ambito: searchParams.ambito || null,
-    p_ccaa: searchParams.ccaa || null,
-    p_provincia: searchParams.provincia || null,
-    p_orden: searchParams.orden || 'recientes',
-    p_limit: limit,
-    p_offset: offset
-  });
-
-  if (error) {
-    console.error('Error fetching convocatorias:', error);
-    return { convocatorias: [], total: 0 };
-  }
-
-  // El total viene en cada fila como total_count
-  const total = data?.[0]?.total_count || 0;
-
-  return {
-    convocatorias: data || [],
-    total: Number(total)
-  };
+interface OposicionRow {
+  slug: string
+  nombre: string
+  plazas_libres: number | null
+  plazas_discapacidad: number | null
+  estado_proceso: string | null
+  is_convocatoria_activa: boolean
+  exam_date: string | null
+  inscription_deadline: string | null
+  subgrupo: string | null
 }
 
-async function getEstadisticas() {
-  // En CI/build sin variables de entorno, devolver datos vacíos
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    return { total: 0, porTipo: { convocatoria: 0, admitidos: 0 }, ultimaFecha: null };
-  }
-
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  );
-
-  const [totalResult, convocatoriasResult, admitidosResult, ultimaResult] = await Promise.all([
-    supabase
-      .from('convocatorias_boe')
-      .select('*', { count: 'exact', head: true })
-      .eq('is_active', true),
-    supabase
-      .from('convocatorias_boe')
-      .select('*', { count: 'exact', head: true })
-      .eq('is_active', true)
-      .eq('tipo', 'convocatoria'),
-    supabase
-      .from('convocatorias_boe')
-      .select('*', { count: 'exact', head: true })
-      .eq('is_active', true)
-      .eq('tipo', 'admitidos'),
-    supabase
-      .from('convocatorias_boe')
-      .select('boe_fecha')
-      .eq('is_active', true)
-      .order('boe_fecha', { ascending: false })
-      .limit(1)
-      .single()
-  ]);
-
-  return {
-    total: totalResult.count || 0,
-    porTipo: {
-      'convocatoria': convocatoriasResult.count || 0,
-      'admitidos': admitidosResult.count || 0
-    },
-    ultimaFecha: ultimaResult.data?.boe_fecha || null
-  };
+async function getOposiciones(): Promise<OposicionRow[]> {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) return []
+  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+  const { data } = await supabase
+    .from('oposiciones')
+    .select('slug, nombre, plazas_libres, plazas_discapacidad, estado_proceso, is_convocatoria_activa, exam_date, inscription_deadline, subgrupo')
+    .eq('is_active', true)
+    .order('plazas_libres', { ascending: false, nullsFirst: false })
+  return (data ?? []) as OposicionRow[]
 }
 
-export default async function OposicionesPage({
-  searchParams
-}: {
-  searchParams: Promise<SearchParams>
-}) {
-  const params = await searchParams;
-  const [{ convocatorias, total }, estadisticas] = await Promise.all([
-    getConvocatorias(params),
-    getEstadisticas()
-  ]);
+function estadoOrder(estado: string | null): number {
+  const order: Record<string, number> = {
+    inscripcion_abierta: 0,
+    convocada: 1,
+    inscripcion_cerrada: 2,
+    lista_admitidos: 3,
+    pendiente_examen: 4,
+    examen_realizado: 5,
+    oep_aprobada: 6,
+    resultados: 7,
+    nombramientos: 8,
+    sin_oep: 9,
+  }
+  return order[estado ?? ''] ?? 10
+}
 
-  const page = parseInt(params.page || '1');
-  const totalPages = Math.ceil(total / 20);
+export default async function OposicionesPage() {
+  const oposiciones = await getOposiciones()
+
+  // Ordenar: inscripción abierta primero, luego por plazas
+  const sorted = [...oposiciones].sort((a, b) => {
+    const estadoDiff = estadoOrder(a.estado_proceso) - estadoOrder(b.estado_proceso)
+    if (estadoDiff !== 0) return estadoDiff
+    return (b.plazas_libres ?? 0) - (a.plazas_libres ?? 0)
+  })
+
+  const totalPlazas = oposiciones.reduce((sum, o) => sum + (o.plazas_libres ?? 0) + (o.plazas_discapacidad ?? 0), 0)
+  const conInscripcion = oposiciones.filter(o => o.estado_proceso === 'inscripcion_abierta')
+
+  // JSON-LD
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: 'Oposiciones C1 y C2 en España',
+    numberOfItems: oposiciones.length,
+    itemListElement: sorted.map((o, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      url: `https://www.vence.es/${o.slug}`,
+      name: o.nombre,
+    })),
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Header compacto */}
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
-                Oposiciones 2026
-              </h1>
-              <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                Convocatorias del BOE actualizadas diariamente
-              </p>
-            </div>
-            <div className="flex items-center gap-6 sm:gap-8">
-              {/* Stats compactas */}
-              <div className="hidden sm:flex items-center gap-4 text-sm">
-                <div className="text-center">
-                  <span className="font-bold text-blue-600 dark:text-blue-400">
-                    {estadisticas.total.toLocaleString('es-ES')}
-                  </span>
-                  <span className="text-gray-500 dark:text-gray-400 ml-1">publicaciones</span>
-                </div>
-                <div className="text-center">
-                  <span className="font-bold text-green-600 dark:text-green-400">
-                    {(estadisticas.porTipo['convocatoria'] || 0).toLocaleString('es-ES')}
-                  </span>
-                  <span className="text-gray-500 dark:text-gray-400 ml-1">convocatorias</span>
-                </div>
-              </div>
-              <Link
-                href="/nuestras-oposiciones"
-                className="inline-flex items-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors shrink-0"
-              >
-                Preparar oposición
-              </Link>
-            </div>
-          </div>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
+      {/* Header */}
+      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white">
+            Oposiciones en Espa&ntilde;a 2026
+          </h1>
+          <p className="mt-2 text-gray-600 dark:text-gray-400 max-w-2xl">
+            {oposiciones.length} oposiciones de Auxiliar Administrativo (C2) y Administrativo (C1) con{' '}
+            <span className="font-semibold text-blue-600 dark:text-blue-400">{totalPlazas.toLocaleString('es-ES')} plazas</span>.
+            {conInscripcion.length > 0 && (
+              <span className="text-green-700 dark:text-green-400 font-semibold">
+                {' '}{conInscripcion.length} con inscripci&oacute;n abierta ahora.
+              </span>
+            )}
+          </p>
+
+          {/* Stats */}
+          <div className="mt-4 flex flex-wrap gap-4 text-sm">
+            <div className="bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 rounded-lg">
+              <span className="font-bold text-blue-700 dark:text-blue-300">{oposiciones.length}</span>
+              <span className="text-blue-600 dark:text-blue-400 ml-1">oposiciones</span>
+            </div>
+            <div className="bg-green-50 dark:bg-green-900/30 px-3 py-1.5 rounded-lg">
+              <span className="font-bold text-green-700 dark:text-green-300">{totalPlazas.toLocaleString('es-ES')}</span>
+              <span className="text-green-600 dark:text-green-400 ml-1">plazas totales</span>
+            </div>
+            {conInscripcion.length > 0 && (
+              <div className="bg-emerald-50 dark:bg-emerald-900/30 px-3 py-1.5 rounded-lg animate-pulse">
+                <span className="font-bold text-emerald-700 dark:text-emerald-300">{conInscripcion.length}</span>
+                <span className="text-emerald-600 dark:text-emerald-400 ml-1">inscripci&oacute;n abierta</span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Filtros horizontales */}
-      <Suspense fallback={<div className="h-24 bg-white dark:bg-gray-800 border-b animate-pulse" />}>
-        <FiltrosHorizontales currentFilters={params} total={total} />
-      </Suspense>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
 
-      {/* Lista de convocatorias */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <Suspense fallback={
-          <div className="animate-pulse space-y-4">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="h-32 bg-gray-200 dark:bg-gray-700 rounded-lg" />
-            ))}
-          </div>
-        }>
-          <ConvocatoriasLista convocatorias={convocatorias} />
-        </Suspense>
+          {/* Sidebar: filtros */}
+          <aside className="lg:col-span-1">
+            <div className="sticky top-4 space-y-6">
+              {/* Por tipo */}
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2 uppercase tracking-wide">Por tipo</h3>
+                <div className="space-y-1">
+                  {Object.values(TIPO_FILTERS).map(f => (
+                    <Link key={f.slug} href={`/oposiciones/${f.slug}`}
+                      className="block px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md">
+                      {f.label}
+                    </Link>
+                  ))}
+                </div>
+              </div>
 
-        {/* Paginación */}
-        {totalPages > 1 && (
-          <nav className="mt-8 flex justify-center">
-            <div className="flex gap-2">
-              {page > 1 && (
-                <Link
-                  href={`/oposiciones?${new URLSearchParams({ ...params, page: String(page - 1) } as Record<string, string>)}`}
-                  className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-sm"
-                >
-                  Anterior
-                </Link>
-              )}
-              <span className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400">
-                Página {page} de {totalPages}
-              </span>
-              {page < totalPages && (
-                <Link
-                  href={`/oposiciones?${new URLSearchParams({ ...params, page: String(page + 1) } as Record<string, string>)}`}
-                  className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-sm"
-                >
-                  Siguiente
-                </Link>
-              )}
+              {/* Por subgrupo */}
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2 uppercase tracking-wide">Por subgrupo</h3>
+                <div className="space-y-1">
+                  {Object.values(SUBGRUPO_FILTERS).map(f => (
+                    <Link key={f.slug} href={`/oposiciones/${f.slug}`}
+                      className="block px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md">
+                      {f.label}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+
+              {/* Por CCAA */}
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2 uppercase tracking-wide">Por comunidad</h3>
+                <div className="space-y-1">
+                  {Object.values(CCAA_FILTERS).map(f => (
+                    <Link key={f.slug} href={`/oposiciones/${f.slug}`}
+                      className="block px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md">
+                      {f.label}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+
+              {/* Por estado */}
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2 uppercase tracking-wide">Por estado</h3>
+                <div className="space-y-1">
+                  {Object.values(ESTADO_FILTERS).map(f => (
+                    <Link key={f.slug} href={`/oposiciones/${f.slug}`}
+                      className="block px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md">
+                      {f.label}
+                    </Link>
+                  ))}
+                </div>
+              </div>
             </div>
-          </nav>
-        )}
+          </aside>
 
-        {/* Sin resultados */}
-        {convocatorias.length === 0 && (
-          <div className="text-center py-12">
-            <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <p className="mt-4 text-gray-500 dark:text-gray-400">
-              No se encontraron oposiciones con estos filtros
-            </p>
-            <Link
-              href="/oposiciones"
-              className="mt-4 inline-block text-blue-600 hover:underline"
-            >
-              Ver todas las oposiciones
-            </Link>
-          </div>
-        )}
+          {/* Main: cards */}
+          <main className="lg:col-span-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {sorted.map(o => (
+                <OposicionCard
+                  key={o.slug}
+                  slug={o.slug}
+                  nombre={o.nombre}
+                  plazasLibres={o.plazas_libres}
+                  plazasDiscapacidad={o.plazas_discapacidad}
+                  estadoProceso={o.estado_proceso}
+                  isConvocatoriaActiva={o.is_convocatoria_activa}
+                  examDate={o.exam_date}
+                  inscriptionDeadline={o.inscription_deadline}
+                  subgrupo={o.subgrupo}
+                />
+              ))}
+            </div>
+          </main>
+        </div>
       </div>
     </div>
-  );
+  )
 }
