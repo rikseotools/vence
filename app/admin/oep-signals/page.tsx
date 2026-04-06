@@ -14,6 +14,7 @@ const SENSOR_LABELS: Record<string, { label: string; emoji: string; color: strin
   llm_semantic: { label: 'LLM Semántico', emoji: '🤖', color: 'bg-purple-100 text-purple-800' },
   timeline_silence: { label: 'Silencio Timeline', emoji: '⏰', color: 'bg-orange-100 text-orange-800' },
   hash_change: { label: 'Cambio Hash', emoji: '📋', color: 'bg-yellow-100 text-yellow-800' },
+  regional_scan: { label: 'Regional C1/C2', emoji: '🌍', color: 'bg-green-100 text-green-800' },
   rss: { label: 'RSS Boletín', emoji: '📰', color: 'bg-blue-100 text-blue-800' },
   boe_api: { label: 'BOE API', emoji: '📄', color: 'bg-gray-100 text-gray-800' },
   google_cse: { label: 'Google', emoji: '🔎', color: 'bg-green-100 text-green-800' },
@@ -96,6 +97,16 @@ export default function OepSignalsPage() {
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             Señales automáticas de nuevas convocatorias detectadas por múltiples sensores
           </p>
+          <div className="mt-2 text-xs text-gray-400 dark:text-gray-500 space-y-0.5">
+            <div>LLM: <span className="font-mono">claude-haiku-4-5-20251001</span> (~$2-5/mes)</div>
+            <div>
+              Crons automáticos:
+              {' '}<span className="font-medium">LLM semántico</span> L-V 10:00 UTC (17 oposiciones)
+              {' '}· <span className="font-medium">Timeline silence</span> diario 7:00 UTC
+              {' '}· <span className="font-medium">Hash change</span> L-V 9:00 UTC
+              {' '}· <span className="font-medium">Regional scan</span> lunes 8:00 UTC (30 fuentes C1/C2)
+            </div>
+          </div>
         </div>
         <div className="flex gap-2 items-center">
           <button
