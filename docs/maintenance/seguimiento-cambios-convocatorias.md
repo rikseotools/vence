@@ -267,27 +267,82 @@ for (const op of ops) {
 }
 ```
 
-## 9. Flujo completo resumido
+## 9. Flujo completo: cuando el admin dice "revisa oposiciones" o hay señales en 🎯 OEPs
 
+### Paso 1: Auditoría con agentes paralelos
+
+Lanzar 4-5 agentes en paralelo (uno por grupo de 3-4 oposiciones). Cada agente:
+1. Recibe datos BD (estado, plazas, hitos, seguimiento_url)
+2. Hace WebFetch a la seguimiento_url
+3. Busca WebSearch si la web no da info suficiente
+4. Compara y reporta discrepancias
+
+Agrupar por afinidad: Estado (INAP), Justicia (MJusticia), CCAA examen próximo, CCAA inscripción cerrada, resto.
+
+### Paso 2: Clasificar cada oposición
+
+Para cada una, determinar en qué caso cae:
+
+| Caso | Señal típica | Acción |
+|------|-------------|--------|
+| **A. Proceso en curso, datos correctos** | Sin discrepancias | Marcar revisado. Nada que hacer. |
+| **B. Proceso en curso, datos incorrectos** | Plazas mal, estado mal, hitos desactualizados | Corregir datos BD (estado, plazas, hitos, fechas). |
+| **C. Proceso acabado, HAY nueva OEP** | Nombramientos hechos + nueva convocatoria publicada | Archivar fila vieja (slug-YYYY), crear fila nueva con datos de la nueva OEP, redirect 301. |
+| **D. Proceso acabado, NO hay nueva OEP** | Nombramientos hechos, sin convocatoria nueva | **Transicionar a modo captación** (ver Paso 3). |
+| **E. OEP detectada que no tenemos** | Señal regional_scan con oposicion_id=NULL | Decidir si crear nueva oposición en Vence (nueva landing, temario). |
+
+### Paso 3: Transicionar a modo captación (Caso D)
+
+Cuando un proceso se ha acabado y NO hay nueva convocatoria, la landing debe **mirar al futuro** para captar usuarios que se están preparando.
+
+**Buscar previsiones:**
+1. WebSearch "auxiliar administrativo [CCAA] OEP [año+1] plazas previsión"
+2. Buscar en BOE/boletín autonómico si hay OEP aprobada con plazas pendientes de convocar
+3. Buscar en fuentes tipo Adams, OpositaTest, OpoBusca las previsiones
+
+**Actualizar la fila en BD:**
+```javascript
+await supabase.from('oposiciones').update({
+  // Mirar al futuro
+  estado_proceso: 'oep_aprobada',  // o 'sin_oep' si no hay OEP
+  plazas_libres: 64,               // previsión próxima OEP
+  plazas_discapacidad: null,       // desconocido aún
+  is_convocatoria_activa: false,
+  oep_decreto: 'OEP 2025 Junta de Andalucía',
+  oep_fecha: '2025-10-15',         // fecha decreto OEP si existe
+  exam_date: null,                  // desconocido
+  inscription_deadline: null,       // desconocido
+  // Actualizar textos landing
+  landing_description: 'Prepárate para la próxima convocatoria de Auxiliar Administrativo de [CCAA]. X plazas previstas en la OEP [año].',
+}).eq('slug', '<slug>')
+
+// Limpiar hitos viejos y poner previsión
+await supabase.from('convocatoria_hitos').delete().eq('oposicion_id', '<uuid>')
+await supabase.from('convocatoria_hitos').insert([
+  { oposicion_id: '<uuid>', order_index: 1, status: 'completed', fecha: '2025-10-15', titulo: 'OEP aprobada (X plazas previstas)' },
+  { oposicion_id: '<uuid>', order_index: 2, status: 'upcoming', fecha: '2026-06-01', titulo: 'Convocatoria (estimación)' },
+  { oposicion_id: '<uuid>', order_index: 3, status: 'upcoming', fecha: '2027-03-01', titulo: 'Examen (estimación)' },
+])
 ```
-1. Admin dice "hay cambios en seguimiento" o badge CAMBIO en panel
-   |
-2. Identificar oposiciones con seguimiento_change_status = 'changed'
-   |
-3. Para cada una:
-   |-- Leer pagina de seguimiento (WebFetch)
-   |-- Ver hitos actuales en BD
-   |-- Comparar: plazas, estado_proceso, hitos, fechas
-   |-- Proponer cambios al usuario
-   |
-4. Con aprobacion del usuario:
-   |-- Actualizar/insertar hitos
-   |-- Actualizar estado_proceso si cambio de fase
-   |-- Corregir plazas/fechas si hay discrepancias
-   |
-5. Marcar checks como revisados
-   |
-6. Landing se regenera en 24h (o forzar revalidacion)
+
+**Objetivo:** un usuario que busca "auxiliar administrativo andalucía 2026" llega a la landing y ve:
+- "64 plazas previstas"
+- "OEP aprobada, pendiente de convocatoria"
+- "Prepárate ya con nuestros tests y temario"
+- Timeline con estimación de convocatoria y examen
+→ Convierte a premium porque empieza a prepararse antes de que salga la convocatoria.
+
+### Paso 4: Marcar revisado
+
+- En `/admin/oep-signals`: pulsar Aplicar o Descartar en cada señal procesada
+- Si había checks hash_change: marcar revisados en `convocatoria_seguimiento_checks`
+- Resetear `seguimiento_change_status = 'ok'` en oposiciones afectadas
+
+### Paso 5: Verificar landing
+
+La landing se regenera automáticamente cada 24h (ISR). Para forzar:
+```bash
+curl "https://www.vence.es/api/revalidate?secret=<REVALIDATION_SECRET>&path=/auxiliar-administrativo-andalucia"
 ```
 
 ## 10. Escaneo regional (Sensor 4 — detect-regional-oeps)
