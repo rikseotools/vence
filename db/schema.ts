@@ -3726,7 +3726,7 @@ export const oepDetectionSignals = pgTable("oep_detection_signals", {
 	reviewedAt: timestamp("reviewed_at", { withTimezone: true, mode: 'string' }),
 	reviewedBy: uuid("reviewed_by"),
 	adminNotes: text("admin_notes"),
-	dedupeKey: text("dedupe_key"),
+	dedupeKey: text("dedupe_key").unique("oep_detection_signals_dedupe_key_unique"),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 }, (table) => [
