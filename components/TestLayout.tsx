@@ -1596,6 +1596,13 @@ export default function TestLayout({
             )}
 
             {/* Header del test con dark mode */}
+            {saveAuthFailed && (
+              <div className="mb-4 mx-auto max-w-lg bg-red-50 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg px-4 py-3 text-sm text-red-800 dark:text-red-200">
+                <span className="font-semibold">Tus respuestas no se están guardando.</span>{' '}
+                Cierra esta pestaña y vuelve a abrir Vence, o pulsa{' '}
+                <button onClick={() => window.location.reload()} className="underline font-medium">recargar página</button>.
+              </div>
+            )}
             <div className="text-center mb-8">
               <div className={`inline-flex items-center space-x-2 px-4 py-2 rounded-full text-white text-sm font-semibold bg-gradient-to-r ${config.color} mb-4 shadow-lg`}>
                 <span>{config.icon}</span>
