@@ -358,7 +358,8 @@ export function isPlatformQuery(message: string): boolean {
     /pregunta.*oficial/i,
     /ex[aá]me?n(es)?\s+oficial/i,
     // Donde veo X (funcionalidad de la plataforma)
-    /d[oó]nde\s+(veo|est[aá]n?|encuentro)\s+(mis\s+)?(estad[ií]stica|impugnaci|notificaci|perfil|suscripci)/i,
+    /d[oó]nde\s+(veo|est[aá]n?|encuentro|puedo\s+ver)\s+(mis\s+|los\s+|las\s+|mi\s+)?(estad[ií]stica|impugnaci|notificaci|perfil|suscripci|test|tests|resultado|historial)/i,
+    /ver\s+(mis|los)\s+(test|tests|resultado|historial)/i,
     // Impugnaciones y disputas
     /impugna(r|ci[oó]n(es)?|da|das)\s+(una\s+|la\s+|de\s+)?(pregunta|respuesta|cuesti[oó]n|test)/i,
     /\b(mis|ver|las)\s+impugnaci/i,
