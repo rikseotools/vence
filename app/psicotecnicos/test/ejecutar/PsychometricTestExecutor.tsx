@@ -42,6 +42,7 @@ function mapApiToLayout(q: ApiQuestion): LayoutQuestion {
     time_limit_seconds: q.timeLimitSeconds,
     cognitive_skills: q.cognitiveSkills,
     correct_option: q.correctOption,
+    explanation: q.explanation ?? null,
     is_official_exam: q.isOfficialExam,
     exam_source: q.examSource,
   }

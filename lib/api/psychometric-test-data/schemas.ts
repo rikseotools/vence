@@ -76,6 +76,7 @@ export const psychometricQuestionSchema = z.object({
   difficulty: z.string().nullable(),
   timeLimitSeconds: z.number().nullable(),
   cognitiveSkills: z.array(z.string()).nullable(),
+  explanation: z.string().nullable().optional(),
   isOfficialExam: z.boolean().nullable(),
   examSource: z.string().nullable(),
   imageUrl: z.string().nullable().optional(),

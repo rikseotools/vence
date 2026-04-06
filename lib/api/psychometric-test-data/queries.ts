@@ -340,6 +340,7 @@ export async function getPsychometricQuestions(
         optionC: psychometricQuestions.optionC,
         optionD: psychometricQuestions.optionD,
         correctOption: psychometricQuestions.correctOption,
+        explanation: psychometricQuestions.explanation,
         contentData: psychometricQuestions.contentData,
         imageUrl: psychometricQuestions.imageUrl,
         difficulty: psychometricQuestions.difficulty,
