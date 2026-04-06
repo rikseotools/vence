@@ -1,11 +1,13 @@
 // utils/answerSaveQueue.ts — Cola offline-first para guardar respuestas en background
 // Guarda en localStorage primero, sincroniza con el servidor sin bloquear la UI.
+// NUNCA descarta respuestas por auth — las mantiene hasta que se envíen con éxito.
 import { logClientError } from '@/lib/logClientError'
 import { answerAndSaveRequestSchema } from '@/lib/api/v2/answer-and-save/schemas'
 
 const QUEUE_KEY = 'vence_answer_queue'
-const MAX_RETRIES = 3
+const MAX_RETRIES = 5 // Subido de 3 a 5 para dar más oportunidades
 const BASE_DELAY_MS = 2000
+const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000 // 7 días (antes 24h) — alineado con JWT expiry
 
 interface QueuedAnswer {
   id: string
@@ -75,22 +77,19 @@ async function syncOne(answer: QueuedAnswer, accessToken: string): Promise<boole
 
     clearTimeout(timeoutId)
 
-    // ❌ PUNTO DE FALLO 1: 401 = token inválido/expirado
     if (response.status === 401) {
-      console.error(`❌ [answerSaveQueue] 401 Unauthorized — token obtenido pero rechazado por el servidor`)
-      logClientError('/api/v2/answer-and-save', new Error(`401 Unauthorized: token rechazado por servidor. Retry #${answer.retries}`), {
+      console.error(`❌ [answerSaveQueue] 401 Unauthorized — token rechazado`)
+      logClientError('/api/v2/answer-and-save', new Error(`401 Unauthorized retry #${answer.retries}`), {
         component: 'answerSaveQueue syncOne 401',
         userId: extractUserId(answer),
       })
       return false
     }
 
-    // ❌ PUNTO DE FALLO 2: otro HTTP error
     if (!response.ok) {
       let errorBody = ''
       try { errorBody = (await response.text()).slice(0, 200) } catch {}
-      console.error(`❌ [answerSaveQueue] HTTP ${response.status} en retry #${answer.retries}: ${errorBody}`)
-      // Loguear SIEMPRE (no solo en último retry) para tener traza completa
+      console.error(`❌ [answerSaveQueue] HTTP ${response.status} retry #${answer.retries}: ${errorBody}`)
       logClientError('/api/v2/answer-and-save', new Error(`HTTP ${response.status} retry #${answer.retries}: ${errorBody}`), {
         component: 'answerSaveQueue syncOne',
         userId: extractUserId(answer),
@@ -99,7 +98,6 @@ async function syncOne(answer: QueuedAnswer, accessToken: string): Promise<boole
 
     return response.ok
   } catch (err) {
-    // ❌ PUNTO DE FALLO 3: network error / timeout / abort
     const msg = err instanceof Error ? err.message : String(err)
     console.error(`❌ [answerSaveQueue] Network error retry #${answer.retries}: ${msg}`)
     logClientError('/api/v2/answer-and-save', err, {
@@ -131,7 +129,6 @@ async function getAccessToken(): Promise<string | null> {
     const { getSupabaseClient } = await import('@/lib/supabase')
     const supabase = getSupabaseClient()
 
-    // ❌ PUNTO DE FALLO 4: refreshSession falla
     const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
     if (refreshError) {
       console.warn(`⚠️ [answerSaveQueue] refreshSession error: ${refreshError.message}`)
@@ -141,7 +138,6 @@ async function getAccessToken(): Promise<string | null> {
       return refreshData.session.access_token
     }
 
-    // ❌ PUNTO DE FALLO 5: getSession también falla
     const { data: { session }, error: sessionError } = await supabase.auth.getSession()
     if (sessionError) {
       console.warn(`⚠️ [answerSaveQueue] getSession error: ${sessionError.message}`)
@@ -151,10 +147,9 @@ async function getAccessToken(): Promise<string | null> {
       return session.access_token
     }
 
-    // Ambos fallaron → sin token
     authFailCount++
     const pending = getPendingCount()
-    console.error(`❌ [answerSaveQueue] Sin token de auth (intento #${authFailCount}, ${pending} pendientes). refreshError=${refreshError?.message ?? 'none'}, sessionError=${sessionError?.message ?? 'none'}`)
+    console.error(`❌ [answerSaveQueue] Sin token (intento #${authFailCount}, ${pending} pendientes)`)
 
     if (authFailCount >= 2 && pending > 0) {
       logClientError('/api/v2/answer-and-save', new Error(`Auth null x${authFailCount}. ${pending} pendientes. refresh=${refreshError?.message ?? 'empty'} session=${sessionError?.message ?? 'empty'}`), {
@@ -163,7 +158,6 @@ async function getAccessToken(): Promise<string | null> {
     }
     return null
   } catch (err) {
-    // ❌ PUNTO DE FALLO 6: excepción inesperada en auth
     authFailCount++
     console.error('❌ [answerSaveQueue] Excepción en getAccessToken:', err)
     logClientError('/api/v2/answer-and-save', err, {
@@ -212,6 +206,8 @@ export function enqueueAnswer(payload: Record<string, unknown>): void {
 
 /**
  * Sincronizar todas las respuestas pendientes con el servidor.
+ * MEJORA #1: nunca descarta por auth — si no hay token, las respuestas
+ * se quedan en localStorage hasta que el auth se restaure.
  */
 export async function flush(): Promise<void> {
   if (flushInProgress) return
@@ -220,9 +216,11 @@ export async function flush(): Promise<void> {
   try {
     const token = await getAccessToken()
     if (!token) {
+      // MEJORA #1: NO descartar respuestas. Se quedan en localStorage.
+      // Se reintentará cuando vuelva la conexión, visibilidad, o auth se restaure.
       const pending = getPendingCount()
       if (pending > 0) {
-        console.warn(`⚠️ [answerSaveQueue] flush abortado: sin token, ${pending} pendientes en localStorage`)
+        console.warn(`⚠️ [answerSaveQueue] flush pausado: sin token, ${pending} respuestas seguras en localStorage`)
       }
       flushInProgress = false
       notifyListeners()
@@ -233,24 +231,28 @@ export async function flush(): Promise<void> {
     const remaining: QueuedAnswer[] = []
 
     for (const answer of state.answers) {
-      // ❌ PUNTO DE FALLO 7: descarte por antigüedad (>24h)
-      if (Date.now() - answer.createdAt > 24 * 60 * 60 * 1000) {
-        console.warn(`⚠️ [answerSaveQueue] Descartando respuesta >24h antigua (creada ${new Date(answer.createdAt).toISOString()})`)
-        logClientError('/api/v2/answer-and-save', new Error(`Respuesta descartada por antigüedad >24h. Creada: ${new Date(answer.createdAt).toISOString()}`), {
+      // Solo descartar si son MUY antiguas (7 días, alineado con JWT expiry)
+      if (Date.now() - answer.createdAt > MAX_AGE_MS) {
+        console.warn(`⚠️ [answerSaveQueue] Descartando respuesta >7d antigua`)
+        logClientError('/api/v2/answer-and-save', new Error(`Respuesta descartada por antigüedad >7d. Creada: ${new Date(answer.createdAt).toISOString()}`), {
           component: 'answerSaveQueue flush expired',
           userId: extractUserId(answer),
         })
         continue
       }
 
-      // ❌ PUNTO DE FALLO 8: descarte por max retries
+      // Si superó MAX_RETRIES por errores de red/server, resetear retries
+      // para que se reintente con el token fresco (puede haber sido un 401 temporal)
       if (answer.retries >= MAX_RETRIES) {
-        console.error(`❌ [answerSaveQueue] Descartando respuesta tras ${answer.retries} reintentos fallidos`)
-        logClientError('/api/v2/answer-and-save', new Error(`Respuesta descartada tras ${MAX_RETRIES} reintentos. Última: ${answer.lastAttempt ? new Date(answer.lastAttempt).toISOString() : 'nunca'}`), {
-          component: 'answerSaveQueue flush maxRetries',
-          userId: extractUserId(answer),
-        })
-        continue
+        // Resetear retries — el token puede haber cambiado desde el último intento
+        const timeSinceLastAttempt = answer.lastAttempt ? Date.now() - answer.lastAttempt : Infinity
+        if (timeSinceLastAttempt > 60000) { // 1 min desde último intento → reintentar
+          answer.retries = 0
+          answer.lastAttempt = null
+        } else {
+          remaining.push(answer)
+          continue
+        }
       }
 
       // Backoff exponencial
@@ -267,7 +269,6 @@ export async function flush(): Promise<void> {
         continue
       }
 
-      // Falló — incrementar retries
       answer.retries++
       answer.lastAttempt = Date.now()
       remaining.push(answer)
@@ -304,6 +305,15 @@ export function hasAuthFailure(): boolean {
   return authFailCount >= 2 && getPendingCount() > 0
 }
 
+/**
+ * MEJORA #2: verificar auth ANTES de empezar un test.
+ * Devuelve true si hay token válido, false si auth está roto.
+ */
+export async function verifyAuthReady(): Promise<boolean> {
+  const token = await getAccessToken()
+  return token !== null
+}
+
 // ============================================
 // AUTO-SYNC: listeners de conectividad
 // ============================================
@@ -318,4 +328,22 @@ if (typeof window !== 'undefined') {
       flush().catch(() => {})
     }
   })
+
+  // MEJORA #3: escuchar cambios de auth para flush automático
+  // Cuando el usuario se re-autentica, flushear cola pendiente
+  import('@/lib/supabase').then(({ getSupabaseClient }) => {
+    try {
+      const supabase = getSupabaseClient()
+      supabase.auth.onAuthStateChange((event) => {
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+          authFailCount = 0
+          const pending = getPendingCount()
+          if (pending > 0) {
+            console.log(`🔄 [answerSaveQueue] Auth restaurado (${event}), flushing ${pending} pendientes`)
+            flush().catch(() => {})
+          }
+        }
+      })
+    } catch {}
+  }).catch(() => {})
 }

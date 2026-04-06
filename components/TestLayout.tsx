@@ -1599,7 +1599,8 @@ export default function TestLayout({
             {saveAuthFailed && (
               <div className="mb-4 mx-auto max-w-lg bg-red-50 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg px-4 py-3 text-sm text-red-800 dark:text-red-200">
                 <span className="font-semibold">Tus respuestas no se están guardando.</span>{' '}
-                Cierra esta pestaña y vuelve a abrir Vence, o pulsa{' '}
+                <button onClick={() => window.location.href = '/auth/callback?redirect=' + encodeURIComponent(window.location.pathname)} className="underline font-medium">Reconectar</button>{' '}
+                o{' '}
                 <button onClick={() => window.location.reload()} className="underline font-medium">recargar página</button>.
               </div>
             )}
