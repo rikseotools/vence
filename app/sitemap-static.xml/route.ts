@@ -25,8 +25,7 @@ export async function GET() {
   // ============================================
   const staticPages = [
     { loc: '/', priority: 1.0, changefreq: 'weekly' },
-    // Oposiciones
-    { loc: '/oposiciones', priority: 0.9, changefreq: 'daily' },
+    // Oposiciones (directorio principal en sitemap-oposiciones.xml)
     { loc: '/nuestras-oposiciones', priority: 0.9, changefreq: 'weekly' },
     // Temarios
     { loc: '/temarios', priority: 0.9, changefreq: 'weekly' },
