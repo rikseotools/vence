@@ -49,7 +49,7 @@ CREATE INDEX idx_oep_signals_sensor_type ON oep_detection_signals(sensor_type, c
 -- Formato: "{sensor_type}:{oposicion_id}:{detected_year|0}:{detected_boc_ref|null}"
 ALTER TABLE oep_detection_signals ADD COLUMN dedupe_key TEXT;
 CREATE UNIQUE INDEX idx_oep_signals_dedupe ON oep_detection_signals (dedupe_key)
-  WHERE status = 'pending' AND dedupe_key IS NOT NULL;
+  WHERE dedupe_key IS NOT NULL;
 
 COMMENT ON TABLE oep_detection_signals IS 'Señales de detección proactiva de nuevas OEPs/convocatorias. Alimentado por múltiples sensores con confidence scoring.';
 COMMENT ON COLUMN oep_detection_signals.sensor_type IS 'Tipo de sensor que generó la señal';
