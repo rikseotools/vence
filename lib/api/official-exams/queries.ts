@@ -79,6 +79,7 @@ const oposicionToExamPosition: Record<string, string> = {
   'auxilio-judicial': 'auxilio_judicial',
   'administrativo-estado': 'administrativo_estado',
   'gestion-procesal': 'cuerpo_gestion_administracion_civil',
+  'auxiliar-administrativo-andalucia': 'auxiliar_administrativo_andalucia',
 }
 
 // Fallback: exam_source LIKE pattern for psychometric_questions (which lacks exam_position column)
@@ -86,6 +87,7 @@ const oposicionToExamSourcePattern: Record<string, string> = {
   'auxiliar-administrativo-estado': '%Auxiliar Administrativo Estado%',
   'auxiliar-administrativo-madrid': '%Auxiliar Administrativo Madrid%',
   'auxiliar-administrativo-cyl': '%Auxiliar Administrativo CyL%',
+  'auxiliar-administrativo-andalucia': '%Auxiliar Administrativo Andalucía%',
   'tramitacion-procesal': '%Tramitación Procesal%',
   'auxilio-judicial': '%Auxilio Judicial%',
   'administrativo-estado': '%Administrativo Estado%',
