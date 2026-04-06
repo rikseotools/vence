@@ -4,6 +4,7 @@
 import type { ChatContext, ChatDomain, ChatResponse, ChatResponseMetadata } from './types'
 import { ChatResponseBuilder, createChatStream, StreamEncoder } from './ChatResponseBuilder'
 import { getOpenAI, CHAT_MODEL, CHAT_MODEL_PREMIUM } from '../shared/openai'
+import { getAnthropic, ANTHROPIC_MODEL } from '../shared/anthropic'
 import { logger } from '../shared/logger'
 import { ChatError, handleError } from '../shared/errors'
 import { AITracer, createTracer } from './AITracer'
@@ -701,28 +702,59 @@ ${articlesContext}`
       messagesArray: messages,
     })
 
-    const completion = await openai.chat.completions.create({
-      model,
-      messages,
-      temperature: 0.7,
-      max_tokens: 1500,
-    })
+    // Detectar terminología jurídica para usar Sonnet (más preciso en derecho)
+    const LEGAL_TERMS = /\b(mayor[ií]a\s+(simple|absoluta|cualificada|de\s+miembros)|qu[oó]rum|veto|vetar|moci[oó]n|investidura|disoluci[oó]n|cese|cesa[rd]|destituci[oó]n|dimisi[oó]n|incompatibilidad|inhabilitaci[oó]n|aforamiento|inmunidad|inviolabilidad|prerrogativa|indulto|amnist[ií]a|decreto[- ]?ley|estado\s+de\s+(alarma|excepci[oó]n|sitio)|cuesti[oó]n\s+de\s+confianza|tribunal\s+constitucional|defensor\s+del\s+pueblo|consejo\s+de\s+estado)\b/i
+    const isLegalConceptual = LEGAL_TERMS.test(context.currentMessage)
 
-    const content = completion.choices[0]?.message?.content || 'No pude generar una respuesta.'
-    const totalTokens = completion.usage?.total_tokens
+    let content: string
+    let totalTokens: number | undefined
+    let usedModel: string
+
+    if (isLegalConceptual) {
+      // Sonnet para preguntas conceptuales de derecho
+      const anthropic = await getAnthropic()
+      usedModel = ANTHROPIC_MODEL
+      logger.info(`Fallback using Anthropic (legal conceptual query)`, { domain: 'orchestrator' })
+
+      const anthropicMessages = messages
+        .filter(m => m.role !== 'system')
+        .map(m => ({ role: m.role as 'user' | 'assistant', content: m.content }))
+
+      const systemContent = messages.find(m => m.role === 'system')?.content || ''
+
+      const response = await anthropic.messages.create({
+        model: usedModel,
+        system: systemContent,
+        messages: anthropicMessages,
+        temperature: 0.5,
+        max_tokens: 1500,
+      })
+
+      content = response.content[0]?.type === 'text' ? response.content[0].text : 'No pude generar una respuesta.'
+      totalTokens = (response.usage?.input_tokens || 0) + (response.usage?.output_tokens || 0)
+    } else {
+      // GPT-4o para el resto
+      usedModel = model
+      const completion = await openai.chat.completions.create({
+        model,
+        messages,
+        temperature: 0.7,
+        max_tokens: 1500,
+      })
+
+      content = completion.choices[0]?.message?.content || 'No pude generar una respuesta.'
+      totalTokens = completion.usage?.total_tokens
+    }
 
     // Finalizar span LLM - COMPLETO sin truncar
     llmSpan?.setOutput({
       responseContent: content,
-      finishReason: completion.choices[0]?.finish_reason,
-      promptTokens: completion.usage?.prompt_tokens,
-      completionTokens: completion.usage?.completion_tokens,
+      finishReason: 'stop',
       totalTokens,
     })
-    llmSpan?.addMetadata('tokensIn', completion.usage?.prompt_tokens)
-    llmSpan?.addMetadata('tokensOut', completion.usage?.completion_tokens)
-    llmSpan?.addMetadata('model', model)
+    llmSpan?.addMetadata('model', usedModel)
     llmSpan?.addMetadata('responseLength', content.length)
+    llmSpan?.addMetadata('isLegalConceptual', isLegalConceptual)
     llmSpan?.end()
 
     const builder = new ChatResponseBuilder()
