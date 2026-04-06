@@ -1,22 +1,25 @@
 // hooks/usePendingAnswers.ts — Hook para mostrar respuestas pendientes de sincronizar
 import { useState, useEffect } from 'react'
-import { getPendingCount, onPendingChange } from '@/utils/answerSaveQueue'
+import { getPendingCount, onPendingChange, hasAuthFailure } from '@/utils/answerSaveQueue'
 
 /**
- * Devuelve el número de respuestas pendientes de sincronizar.
- * Se actualiza automáticamente cuando cambia la cola.
+ * Devuelve el número de respuestas pendientes de sincronizar
+ * y si hay un fallo de auth persistente.
  */
-export function usePendingAnswers(): number {
+export function usePendingAnswers(): { pending: number; authFailed: boolean } {
   const [pending, setPending] = useState(0)
+  const [authFailed, setAuthFailed] = useState(false)
 
   useEffect(() => {
-    // Valor inicial
     setPending(getPendingCount())
+    setAuthFailed(hasAuthFailure())
 
-    // Suscribirse a cambios
-    const unsubscribe = onPendingChange(setPending)
+    const unsubscribe = onPendingChange((count) => {
+      setPending(count)
+      setAuthFailed(hasAuthFailure())
+    })
     return unsubscribe
   }, [])
 
-  return pending
+  return { pending, authFailed }
 }

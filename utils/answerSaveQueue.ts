@@ -39,16 +39,19 @@ function saveQueue(state: QueueState): void {
   try {
     localStorage.setItem(QUEUE_KEY, JSON.stringify(state))
   } catch {
-    // localStorage full — mantener solo las últimas 10 respuestas
     const dropped = state.answers.length - 10
     if (state.answers.length > 1) {
       console.warn(`⚠️ [answerSaveQueue] localStorage lleno, descartando ${dropped > 0 ? dropped : 0} respuestas antiguas`)
       state.answers = state.answers.slice(-10)
       try { localStorage.setItem(QUEUE_KEY, JSON.stringify(state)) } catch {
-        console.error('❌ [answerSaveQueue] No se pudo guardar ni con 10 respuestas. Respuestas solo en memoria.')
+        console.error('❌ [answerSaveQueue] No se pudo guardar ni con 10 respuestas.')
       }
     }
   }
+}
+
+function extractUserId(answer: QueuedAnswer): string | undefined {
+  return typeof answer.payload.userId === 'string' ? answer.payload.userId : undefined
 }
 
 // ============================================
@@ -72,28 +75,37 @@ async function syncOne(answer: QueuedAnswer, accessToken: string): Promise<boole
 
     clearTimeout(timeoutId)
 
+    // ❌ PUNTO DE FALLO 1: 401 = token inválido/expirado
     if (response.status === 401) {
-      // Sesión expirada — no reintentar, se sincronizará cuando el usuario vuelva a autenticarse
+      console.error(`❌ [answerSaveQueue] 401 Unauthorized — token obtenido pero rechazado por el servidor`)
+      logClientError('/api/v2/answer-and-save', new Error(`401 Unauthorized: token rechazado por servidor. Retry #${answer.retries}`), {
+        component: 'answerSaveQueue syncOne 401',
+        userId: extractUserId(answer),
+      })
       return false
     }
 
-    // Si la respuesta no es OK, loguear solo en último intento para no spamear
-    if (!response.ok && answer.retries >= MAX_RETRIES - 1) {
-      logClientError('/api/v2/answer-and-save', new Error(`HTTP ${response.status} tras ${answer.retries + 1} reintentos`), {
-        component: 'answerSaveQueue',
-        userId: typeof answer.payload.userId === 'string' ? answer.payload.userId : undefined,
+    // ❌ PUNTO DE FALLO 2: otro HTTP error
+    if (!response.ok) {
+      let errorBody = ''
+      try { errorBody = (await response.text()).slice(0, 200) } catch {}
+      console.error(`❌ [answerSaveQueue] HTTP ${response.status} en retry #${answer.retries}: ${errorBody}`)
+      // Loguear SIEMPRE (no solo en último retry) para tener traza completa
+      logClientError('/api/v2/answer-and-save', new Error(`HTTP ${response.status} retry #${answer.retries}: ${errorBody}`), {
+        component: 'answerSaveQueue syncOne',
+        userId: extractUserId(answer),
       })
     }
 
     return response.ok
   } catch (err) {
-    // Solo log en último reintento para no spamear
-    if (answer.retries >= MAX_RETRIES - 1) {
-      logClientError('/api/v2/answer-and-save', err, {
-        component: 'answerSaveQueue',
-        userId: typeof answer.payload.userId === 'string' ? answer.payload.userId : undefined,
-      })
-    }
+    // ❌ PUNTO DE FALLO 3: network error / timeout / abort
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error(`❌ [answerSaveQueue] Network error retry #${answer.retries}: ${msg}`)
+    logClientError('/api/v2/answer-and-save', err, {
+      component: 'answerSaveQueue syncOne network',
+      userId: extractUserId(answer),
+    })
     return false
   }
 }
@@ -104,6 +116,7 @@ async function syncOne(answer: QueuedAnswer, accessToken: string): Promise<boole
 
 let flushInProgress = false
 let listeners: Array<(pending: number) => void> = []
+let authFailCount = 0
 
 function notifyListeners(): void {
   const count = getPendingCount()
@@ -112,33 +125,62 @@ function notifyListeners(): void {
 
 /**
  * Obtener token de auth actual.
- * Importa dinámicamente para evitar dependencias circulares.
  */
 async function getAccessToken(): Promise<string | null> {
   try {
     const { getSupabaseClient } = await import('@/lib/supabase')
     const supabase = getSupabaseClient()
 
-    const { data: refreshData } = await supabase.auth.refreshSession()
-    if (refreshData?.session?.access_token) return refreshData.session.access_token
+    // ❌ PUNTO DE FALLO 4: refreshSession falla
+    const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
+    if (refreshError) {
+      console.warn(`⚠️ [answerSaveQueue] refreshSession error: ${refreshError.message}`)
+    }
+    if (refreshData?.session?.access_token) {
+      authFailCount = 0
+      return refreshData.session.access_token
+    }
 
-    const { data: { session } } = await supabase.auth.getSession()
-    return session?.access_token || null
-  } catch {
+    // ❌ PUNTO DE FALLO 5: getSession también falla
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    if (sessionError) {
+      console.warn(`⚠️ [answerSaveQueue] getSession error: ${sessionError.message}`)
+    }
+    if (session?.access_token) {
+      authFailCount = 0
+      return session.access_token
+    }
+
+    // Ambos fallaron → sin token
+    authFailCount++
+    const pending = getPendingCount()
+    console.error(`❌ [answerSaveQueue] Sin token de auth (intento #${authFailCount}, ${pending} pendientes). refreshError=${refreshError?.message ?? 'none'}, sessionError=${sessionError?.message ?? 'none'}`)
+
+    if (authFailCount >= 2 && pending > 0) {
+      logClientError('/api/v2/answer-and-save', new Error(`Auth null x${authFailCount}. ${pending} pendientes. refresh=${refreshError?.message ?? 'empty'} session=${sessionError?.message ?? 'empty'}`), {
+        component: 'answerSaveQueue auth',
+      })
+    }
+    return null
+  } catch (err) {
+    // ❌ PUNTO DE FALLO 6: excepción inesperada en auth
+    authFailCount++
+    console.error('❌ [answerSaveQueue] Excepción en getAccessToken:', err)
+    logClientError('/api/v2/answer-and-save', err, {
+      component: 'answerSaveQueue getAccessToken exception',
+    })
     return null
   }
 }
 
 /**
  * Añadir una respuesta a la cola y sincronizar inmediatamente.
- * Valida el payload con Zod antes de encolar (fail-fast).
  */
 export function enqueueAnswer(payload: Record<string, unknown>): void {
-  // Validar payload con Zod antes de encolar — si está corrupto, loguear y descartar
   const validation = answerAndSaveRequestSchema.safeParse(payload)
   if (!validation.success) {
     logClientError('/api/v2/answer-and-save', new Error('Payload inválido: ' + JSON.stringify(validation.error.issues)), {
-      component: 'answerSaveQueue',
+      component: 'answerSaveQueue enqueue',
       userId: typeof payload.userId === 'string' ? payload.userId : undefined,
     })
     return
@@ -160,10 +202,9 @@ export function enqueueAnswer(payload: Record<string, unknown>): void {
   saveQueue(state)
   notifyListeners()
 
-  // Intentar sincronizar inmediatamente (fire-and-forget, pero loguear si falla)
   flush().catch(err => {
     logClientError('/api/v2/answer-and-save', err, {
-      component: 'answerSaveQueue flush',
+      component: 'answerSaveQueue flush catch',
       userId: typeof payload.userId === 'string' ? payload.userId : undefined,
     })
   })
@@ -171,7 +212,6 @@ export function enqueueAnswer(payload: Record<string, unknown>): void {
 
 /**
  * Sincronizar todas las respuestas pendientes con el servidor.
- * Procesa una a una para evitar sobrecargar.
  */
 export async function flush(): Promise<void> {
   if (flushInProgress) return
@@ -180,7 +220,12 @@ export async function flush(): Promise<void> {
   try {
     const token = await getAccessToken()
     if (!token) {
+      const pending = getPendingCount()
+      if (pending > 0) {
+        console.warn(`⚠️ [answerSaveQueue] flush abortado: sin token, ${pending} pendientes en localStorage`)
+      }
       flushInProgress = false
+      notifyListeners()
       return
     }
 
@@ -188,11 +233,25 @@ export async function flush(): Promise<void> {
     const remaining: QueuedAnswer[] = []
 
     for (const answer of state.answers) {
-      // Descartar si es muy antiguo (> 24h)
-      if (Date.now() - answer.createdAt > 24 * 60 * 60 * 1000) continue
+      // ❌ PUNTO DE FALLO 7: descarte por antigüedad (>24h)
+      if (Date.now() - answer.createdAt > 24 * 60 * 60 * 1000) {
+        console.warn(`⚠️ [answerSaveQueue] Descartando respuesta >24h antigua (creada ${new Date(answer.createdAt).toISOString()})`)
+        logClientError('/api/v2/answer-and-save', new Error(`Respuesta descartada por antigüedad >24h. Creada: ${new Date(answer.createdAt).toISOString()}`), {
+          component: 'answerSaveQueue flush expired',
+          userId: extractUserId(answer),
+        })
+        continue
+      }
 
-      // Descartar si superó máximo de reintentos
-      if (answer.retries >= MAX_RETRIES) continue
+      // ❌ PUNTO DE FALLO 8: descarte por max retries
+      if (answer.retries >= MAX_RETRIES) {
+        console.error(`❌ [answerSaveQueue] Descartando respuesta tras ${answer.retries} reintentos fallidos`)
+        logClientError('/api/v2/answer-and-save', new Error(`Respuesta descartada tras ${MAX_RETRIES} reintentos. Última: ${answer.lastAttempt ? new Date(answer.lastAttempt).toISOString() : 'nunca'}`), {
+          component: 'answerSaveQueue flush maxRetries',
+          userId: extractUserId(answer),
+        })
+        continue
+      }
 
       // Backoff exponencial
       if (answer.lastAttempt) {
@@ -205,11 +264,10 @@ export async function flush(): Promise<void> {
 
       const success = await syncOne(answer, token)
       if (success) {
-        // Guardado exitosamente — no la añadimos a remaining
         continue
       }
 
-      // Falló — incrementar retries y guardar para después
+      // Falló — incrementar retries
       answer.retries++
       answer.lastAttempt = Date.now()
       remaining.push(answer)
@@ -231,7 +289,6 @@ export function getPendingCount(): number {
 
 /**
  * Suscribirse a cambios en el número de pendientes.
- * Devuelve función para desuscribirse.
  */
 export function onPendingChange(fn: (count: number) => void): () => void {
   listeners.push(fn)
@@ -240,17 +297,22 @@ export function onPendingChange(fn: (count: number) => void): () => void {
   }
 }
 
+/**
+ * Indica si el flush ha fallado por auth repetidamente.
+ */
+export function hasAuthFailure(): boolean {
+  return authFailCount >= 2 && getPendingCount() > 0
+}
+
 // ============================================
 // AUTO-SYNC: listeners de conectividad
 // ============================================
 
 if (typeof window !== 'undefined') {
-  // Reintentar cuando vuelve la conexión
   window.addEventListener('online', () => {
     flush().catch(() => {})
   })
 
-  // Reintentar cuando la pestaña vuelve a ser visible
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
       flush().catch(() => {})

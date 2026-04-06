@@ -205,7 +205,7 @@ export default function TestLayout({
   const { user, loading: authLoading, supabase, isPremium } = useAuth()
   const { setQuestionContext, clearQuestionContext } = useQuestionContext()
   const { notifyTestCompletion } = useTestCompletion()
-  const pendingAnswers = usePendingAnswers()
+  const { pending: pendingAnswers, authFailed: saveAuthFailed } = usePendingAnswers()
   const {
     hasLimit,
     isLimitReached,

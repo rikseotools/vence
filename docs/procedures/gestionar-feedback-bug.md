@@ -1,6 +1,6 @@
 # Gestionar Feedback de Bug
 
-Procedimiento cuando un usuario reporta un bug vía soporte o feedback.
+**Este manual es una GUÍA DE INVESTIGACIÓN, no un diagnóstico.** Contiene las queries y herramientas para localizar datos relevantes. El diagnóstico del bug, la causa raíz y el fix los haces TÚ (Claude) analizando los resultados. No intentes clasificar automáticamente con la tabla — úsala solo como orientación inicial.
 
 ## 1. Identificar al usuario
 
@@ -142,17 +142,26 @@ const { data } = await supabase.from('user_interactions')
 // Si deploy_version actual → bug en el código, investigar esa versión
 ```
 
-## 6. Clasificar el bug
+## 6. Diagnosticar el bug
 
-| Situación | Diagnóstico | Acción |
-|-----------|-------------|--------|
-| deploy_version viejo + watchdog timeouts | Código cacheado | Pedir que recargue |
-| 0 tests pero >0 interacciones | Sesión no se creó | Investigar TestLayout |
-| Tests con saved:0 | enqueueAnswer no envió | Verificar sessionId en cola |
-| Tests con saved parcial (ej: 5/25) | Cola se detuvo a mitad | Investigar flush de cola |
-| Exámenes con preguntas faltantes | Preguntas en blanco no guardadas | Revisar ExamLayout |
-| "No me muestra Premium" | Perfil no cargó a tiempo | Bug de AuthContext |
-| "No me cuenta preguntas" | daily_question_usage no registra premiums | Por diseño (premiums no cuentan) |
+Con los datos de los pasos 1-5, TÚ (Claude) debes:
+
+1. **Leer el código fuente** de los componentes/endpoints involucrados (TestLayout, answerSaveQueue, etc.)
+2. **Cruzar datos**: tests creados vs test_questions guardadas vs interacciones vs errores
+3. **Identificar la causa raíz** en el código, no solo el síntoma
+4. **Verificar alcance**: ¿afecta solo a este usuario o a más? Query de tests recientes con saved:0
+5. **Proponer fix** con código concreto
+
+**Pistas orientativas** (NO son diagnósticos definitivos, solo puntos de partida):
+
+| Patrón observado | Dónde mirar primero |
+|-----------|-------------|
+| deploy_version viejo | hooks/useVersionCheck, cache del navegador |
+| 0 tests + >0 interacciones | TestLayout: creación de sesión |
+| Tests con saved:0 | utils/answerSaveQueue.ts: flush(), getAccessToken() |
+| Tests con saved parcial | answerSaveQueue: syncOne(), backoff, token expiry |
+| 0 errores en logs | Buscar catches vacíos que silencian errores |
+| Exámenes con preguntas faltantes | ExamLayout: flujo de submit |
 
 ## 7. Responder al usuario
 
