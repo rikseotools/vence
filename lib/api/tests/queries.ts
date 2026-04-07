@@ -1,12 +1,55 @@
 // lib/api/tests/queries.ts - Queries tipadas para tests
 import { getDb } from '@/db/client'
-import { tests, testQuestions, userProfiles } from '@/db/schema'
-import { eq } from 'drizzle-orm'
+import { tests, testQuestions, userProfiles, questions, articles, laws } from '@/db/schema'
+import { eq, sql } from 'drizzle-orm'
 import type {
   RecoverTestRequest,
   RecoverTestResponse,
   PendingTest,
 } from './schemas'
+
+/**
+ * Genera título descriptivo para un test recuperado.
+ * Consulta la ley de la primera pregunta para dar contexto.
+ * Fallback: "Test recuperado" si no se puede determinar.
+ */
+async function generateRecoveredTestTitle(
+  db: ReturnType<typeof getDb>,
+  pendingTest: PendingTest
+): Promise<string> {
+  try {
+    // Intentar obtener el nombre de la ley de la primera pregunta
+    const firstQuestion = pendingTest.answeredQuestions[0]
+    if (firstQuestion?.question) {
+      const questionId = typeof firstQuestion.question === 'string'
+        ? firstQuestion.question
+        : firstQuestion.question
+
+      if (questionId && typeof questionId === 'string' && questionId.length > 10) {
+        const result = await db
+          .select({ shortName: laws.shortName })
+          .from(questions)
+          .innerJoin(articles, eq(questions.primaryArticleId, articles.id))
+          .innerJoin(laws, eq(articles.lawId, laws.id))
+          .where(eq(questions.id, questionId))
+          .limit(1)
+
+        if (result[0]?.shortName) {
+          const tema = pendingTest.tema ? ` - Tema ${pendingTest.tema}` : ''
+          return `Test recuperado - ${result[0].shortName}${tema}`
+        }
+      }
+    }
+  } catch {
+    // No bloquear si falla
+  }
+
+  // Fallback
+  if (pendingTest.tema && pendingTest.tema > 0) {
+    return `Test recuperado - Tema ${pendingTest.tema}`
+  }
+  return 'Test recuperado'
+}
 
 // ============================================
 // RECUPERAR TEST DESDE LOCALSTORAGE
@@ -35,10 +78,13 @@ export async function recoverTest(
       ? Math.round((pendingTest.savedAt - pendingTest.startTime) / 1000)
       : 0
 
+    // Generar título descriptivo desde los datos disponibles
+    const title = await generateRecoveredTestTitle(db, pendingTest)
+
     // 1. Crear el test
     const [newTest] = await db.insert(tests).values({
       userId: userId,
-      title: `Test recuperado - Tema ${pendingTest.tema}`,
+      title,
       testType: 'practice',
       totalQuestions: totalQuestions,
       startedAt: new Date(pendingTest.startTime || pendingTest.savedAt).toISOString(),
