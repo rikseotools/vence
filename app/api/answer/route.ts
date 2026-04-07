@@ -4,10 +4,30 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { safeParseAnswerRequest, validateAnswer } from '../../../lib/api/answers'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { checkRateLimit, getClientIp, RATE_LIMIT_ANSWER } from '@/lib/api/rateLimit'
+import { logValidationError } from '@/lib/api/validation-error-log'
 // Dar margen al cold start de Vercel + conexión a Supabase
 export const maxDuration = 30
 
 async function _POST(request: NextRequest) {
+  // Rate limiting anti-scraping
+  const ip = getClientIp(request)
+  const rateCheck = checkRateLimit(ip, RATE_LIMIT_ANSWER)
+  if (!rateCheck.allowed) {
+    logValidationError({
+      endpoint: '/api/answer',
+      errorType: 'rate_limit',
+      errorMessage: `Rate limit exceeded: ${ip}`,
+      severity: 'warning',
+      httpStatus: 429,
+      userAgent: request.headers.get('user-agent'),
+    })
+    return NextResponse.json(
+      { success: false, error: 'Demasiadas solicitudes. Espera un momento.' },
+      { status: 429, headers: { 'Retry-After': String(Math.ceil(rateCheck.resetMs / 1000)) } }
+    )
+  }
+
   const startTime = Date.now()
   let body: Record<string, unknown> | undefined
 

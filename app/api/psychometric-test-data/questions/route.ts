@@ -8,9 +8,29 @@ import {
 } from '@/lib/api/psychometric-test-data'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { checkRateLimit, getClientIp, RATE_LIMIT_PSYCHOMETRIC } from '@/lib/api/rateLimit'
+import { logValidationError } from '@/lib/api/validation-error-log'
 export const dynamic = 'force-dynamic'
 
 async function _GET(request: NextRequest) {
+  // Rate limiting anti-scraping
+  const ip = getClientIp(request)
+  const rateCheck = checkRateLimit(ip, RATE_LIMIT_PSYCHOMETRIC)
+  if (!rateCheck.allowed) {
+    logValidationError({
+      endpoint: '/api/psychometric-test-data/questions',
+      errorType: 'rate_limit',
+      errorMessage: `Rate limit exceeded: ${ip}`,
+      severity: 'warning',
+      httpStatus: 429,
+      userAgent: request.headers.get('user-agent'),
+    })
+    return NextResponse.json(
+      { success: false, error: 'Demasiadas solicitudes. Espera un momento.' },
+      { status: 429, headers: { 'Retry-After': String(Math.ceil(rateCheck.resetMs / 1000)) } }
+    )
+  }
+
   try {
     const searchParams = request.nextUrl.searchParams
     const categoriesParam = searchParams.get('categories')

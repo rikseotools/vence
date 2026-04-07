@@ -10,6 +10,8 @@ import {
 } from '@/lib/api/filtered-questions'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { checkRateLimit, getClientIp, RATE_LIMIT_QUESTIONS } from '@/lib/api/rateLimit'
+import { logValidationError } from '@/lib/api/validation-error-log'
 
 /** Extract userId from Bearer token (optional — returns null if not authenticated) */
 async function getOptionalUserId(request: NextRequest): Promise<string | null> {
@@ -35,6 +37,24 @@ async function getOptionalUserId(request: NextRequest): Promise<string | null> {
 // Obtener preguntas filtradas para test
 // ============================================
 async function _POST(request: NextRequest) {
+  // Rate limiting anti-scraping
+  const ip = getClientIp(request)
+  const rateCheck = checkRateLimit(ip, RATE_LIMIT_QUESTIONS)
+  if (!rateCheck.allowed) {
+    logValidationError({
+      endpoint: '/api/questions/filtered',
+      errorType: 'rate_limit',
+      errorMessage: `Rate limit exceeded: ${ip}`,
+      severity: 'warning',
+      httpStatus: 429,
+      userAgent: request.headers.get('user-agent'),
+    })
+    return NextResponse.json(
+      { success: false, error: 'Demasiadas solicitudes. Espera un momento.' },
+      { status: 429, headers: { 'Retry-After': String(Math.ceil(rateCheck.resetMs / 1000)) } }
+    )
+  }
+
   try {
     const body = await request.json()
 
