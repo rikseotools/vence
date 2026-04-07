@@ -74,9 +74,16 @@ export function useOnboarding() {
       setNeedsOnboarding(needsIt)
       setHasChecked(true)
 
-      // Mostrar modal con pequeño delay si necesita y debe mostrarse
+      // Mostrar modal si necesita y debe mostrarse
       if (needsIt && await shouldShowModal(profile)) {
-        setTimeout(() => setShowModal(true), 2000)
+        const isFirstTime = !profile.onboarding_completed_at && (profile.onboarding_skip_count || 0) === 0
+        if (isFirstTime) {
+          // Primera vez: mostrar inmediatamente (no dejar que navegue sin oposición)
+          setShowModal(true)
+        } else {
+          // Recordatorio: delay de 2s para no interrumpir
+          setTimeout(() => setShowModal(true), 2000)
+        }
       }
 
     } catch (err) {
