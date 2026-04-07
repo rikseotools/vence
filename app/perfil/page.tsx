@@ -351,6 +351,26 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'auxiliar_administrativo_diputacion_zaragoza',
+      label: 'Auxiliar Administrativo Dip. Zaragoza',
+      data: {
+        name: 'Auxiliar Administrativo Diputación Provincial de Zaragoza',
+        slug: 'auxiliar-administrativo-diputacion-zaragoza',
+        categoria: 'C2',
+        administracion: 'Local'
+      }
+    },
+    {
+      value: 'auxiliar_administrativo_ayuntamiento_murcia',
+      label: 'Auxiliar Administrativo Ayto. Murcia',
+      data: {
+        name: 'Auxiliar Administrativo Ayuntamiento de Murcia',
+        slug: 'auxiliar-administrativo-ayuntamiento-murcia',
+        categoria: 'C2',
+        administracion: 'Local'
+      }
+    },
+    {
       value: 'auxiliar_administrativo_carm',
       label: 'Auxiliar Administrativo CARM (Murcia)',
       data: {

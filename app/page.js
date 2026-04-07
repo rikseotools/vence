@@ -227,6 +227,18 @@ export default function HomePage() {
               >
                 Aux. Administrativo Ayto. Valencia (C2) - 274 plazas
               </Link>
+              <Link
+                href="/auxiliar-administrativo-ayuntamiento-murcia/test"
+                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
+              >
+                Aux. Administrativo Ayto. Murcia (C2) - 20 plazas
+              </Link>
+              <Link
+                href="/auxiliar-administrativo-diputacion-zaragoza/test"
+                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
+              >
+                Aux. Administrativo Dip. Zaragoza (C2) - 26 plazas
+              </Link>
               <p className="text-xs text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wide pt-2">Justicia</p>
               <Link
                 href="/auxilio-judicial/test"
@@ -460,6 +472,22 @@ export default function HomePage() {
               <span className="block mb-2">🏛️</span>
               <span className="block font-medium text-slate-700 dark:text-slate-300">Ayto. Valencia</span>
               <span className="block text-xs text-slate-500 dark:text-slate-400 mt-1">21 temas</span>
+            </Link>
+            <Link
+              href="/auxiliar-administrativo-ayuntamiento-murcia/temario"
+              className="block py-4 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg text-center transition-colors relative"
+            >
+              <span className="block mb-2">🏛️</span>
+              <span className="block font-medium text-slate-700 dark:text-slate-300">Ayto. Murcia</span>
+              <span className="block text-xs text-slate-500 dark:text-slate-400 mt-1">20 temas</span>
+            </Link>
+            <Link
+              href="/auxiliar-administrativo-diputacion-zaragoza/temario"
+              className="block py-4 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-amber-100 dark:hover:bg-amber-900/30 rounded-lg text-center transition-colors relative"
+            >
+              <span className="block mb-2">🏛️</span>
+              <span className="block font-medium text-slate-700 dark:text-slate-300">Dip. Zaragoza</span>
+              <span className="block text-xs text-slate-500 dark:text-slate-400 mt-1">20 temas</span>
             </Link>
             <Link
               href="/administrativo-castilla-leon/temario"

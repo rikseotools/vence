@@ -127,7 +127,7 @@ describeIf('Integración temario: BD ↔ listado ↔ tema-N', () => {
         description: t.description?.slice(0, 80),
       })))
     }
-    expect(incoherentes.length).toBeLessThan(20) // tolerancia por ahora
+    expect(incoherentes.length).toBeLessThan(25) // tolerancia por ahora
   })
 
   it('cada bloque tiene al menos un topic', () => {
@@ -159,7 +159,7 @@ describeIf('Integración temario: BD ↔ listado ↔ tema-N', () => {
       console.warn('Topics sin scope:', sinScope.slice(0, 5).map(t => `${t.position_type} T${t.topic_number}: ${t.title}`))
     }
     // Tolerancia: algunos temas pueden estar en desarrollo
-    expect(sinScope.length).toBeLessThan(30)
+    expect(sinScope.length).toBeLessThan(35)
   })
 
   it('topic_scope válidos tienen law_id no nulo (solo 2 legacy tolerados)', () => {

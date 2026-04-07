@@ -202,6 +202,24 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     icon: '⚖️'
   },
 
+  // === DIPUTACIÓN DE ZARAGOZA ===
+  {
+    id: 'auxiliar_administrativo_diputacion_zaragoza',
+    nombre: 'Auxiliar Administrativo Dip. Zaragoza',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
+
+  // === AYUNTAMIENTO DE MURCIA ===
+  {
+    id: 'auxiliar_administrativo_ayuntamiento_murcia',
+    nombre: 'Auxiliar Administrativo Ayuntamiento de Murcia',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
+
   // === COMUNIDADES AUTÓNOMAS ===
   {
     id: 'auxiliar_administrativo_carm',
@@ -654,8 +672,8 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
 const REGION_PRIORITY_OPOSICIONES: Record<string, string[]> = {
   'Madrid': ['auxiliar_administrativo_madrid', 'tcae_sermas_madrid', 'celador_sermas_madrid', 'auxiliar_administrativo_estado', 'administrativo_estado'],
   'Community of Madrid': ['auxiliar_administrativo_madrid', 'auxiliar_administrativo_estado', 'administrativo_estado'],
-  'Murcia': ['auxiliar_administrativo_carm', 'auxiliar_administrativo_estado'],
-  'Region of Murcia': ['auxiliar_administrativo_carm', 'auxiliar_administrativo_estado'],
+  'Murcia': ['auxiliar_administrativo_ayuntamiento_murcia', 'auxiliar_administrativo_carm', 'auxiliar_administrativo_estado'],
+  'Region of Murcia': ['auxiliar_administrativo_ayuntamiento_murcia', 'auxiliar_administrativo_carm', 'auxiliar_administrativo_estado'],
   'Castilla y León': ['auxiliar_administrativo_cyl', 'auxiliar_administrativo_estado'],
   'Castile and León': ['auxiliar_administrativo_cyl', 'auxiliar_administrativo_estado'],
   'Andalucía': ['auxiliar_administrativo_andalucia', 'enfermero_sas_andalucia', 'auxiliar_administrativo_estado'],
@@ -687,6 +705,8 @@ const AVAILABLE_OPOSICIONES_BY_DEMAND: string[] = [
   'tramitacion_procesal',                // incluida por relevancia
   'auxilio_judicial',                    // incluida por relevancia
   'auxiliar_administrativo_cyl',         // 24
+  'auxiliar_administrativo_diputacion_zaragoza', // 20
+  'auxiliar_administrativo_ayuntamiento_murcia', // 20
   'auxiliar_administrativo_carm',        // 21
   'auxiliar_administrativo_canarias',    // 10
   'auxiliar_administrativo_andalucia',   // 7
