@@ -14,7 +14,8 @@ export const eventCategories = [
   'auth',
   'error',
   'conversion',
-  'psychometric'
+  'psychometric',
+  'video'
 ] as const
 
 export type EventCategory = typeof eventCategories[number]

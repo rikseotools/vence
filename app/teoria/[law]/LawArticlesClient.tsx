@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import Link from 'next/link'
 import ArticleModal from '@/components/ArticleModal'
 import SectionFilterModal from '@/components/SectionFilterModal'
+import YouTubePlayer from '@/components/YouTubePlayer'
 import {
   ArrowLeftIcon
 } from '@heroicons/react/24/outline'
@@ -57,10 +58,14 @@ function isVirtualLaw(law: { description?: string | null }) {
 }
 
 // Función para extraer ID de video de YouTube
-function getYouTubeEmbedUrl(url: string | null | undefined) {
+function getYouTubeVideoId(url: string | null | undefined): string | null {
   if (!url) return null
   const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/)
-  return match ? `https://www.youtube.com/embed/${match[1]}` : null
+  return match ? match[1] : null
+}
+function getYouTubeEmbedUrl(url: string | null | undefined) {
+  const id = getYouTubeVideoId(url)
+  return id ? `https://www.youtube.com/embed/${id}` : null
 }
 
 // Mapeo temporal de videos para leyes virtuales (hasta que se añada video_url a la BD)
@@ -355,6 +360,7 @@ export default function LawArticlesClient({ params, searchParams }: LawArticlesC
   const isVirtual = isVirtualLaw(law)
   // Usar video_url de BD o del mapeo temporal
   const videoUrl = law.video_url || VIRTUAL_LAW_VIDEOS[law.short_name]
+  const videoId = getYouTubeVideoId(videoUrl)
   const embedUrl = getYouTubeEmbedUrl(videoUrl)
 
   console.log('🎥 Ley virtual check:', {
@@ -397,19 +403,10 @@ export default function LawArticlesClient({ params, searchParams }: LawArticlesC
 
         {/* Contenido del video */}
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {embedUrl ? (
+          {videoId ? (
             <div className="space-y-6">
-              {/* Video incrustado */}
-              <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
-                <iframe
-                  className="absolute top-0 left-0 w-full h-full rounded-xl shadow-lg"
-                  src={embedUrl}
-                  title={law.name}
-                  frameBorder="0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                ></iframe>
-              </div>
+              {/* Video con tracking */}
+              <YouTubePlayer videoId={videoId} lawName={law.short_name} />
 
               {/* Descripción */}
               {law.description && (
