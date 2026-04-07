@@ -1,5 +1,9 @@
 # Revisar Errores API (Panel Admin)
 
+## Objetivo
+
+Detectar y reparar **bugs reales** (validaciones que fallan, datos que no se guardan) y **problemas de UX** (pantallas de error confusas, mensajes poco claros, flujos que frustran al usuario). No basta con clasificar el error — hay que investigar qué experiencia tuvo el usuario y si se puede mejorar.
+
 ## Acceso
 
 Panel admin > **Errores API** (tab con badge parpadeante si hay errores sin revisar)
