@@ -76,7 +76,7 @@ export default function FailedQuestionsModal({
         </div>
 
         {/* Content */}
-        <div className="p-6 max-h-[70vh] overflow-y-auto">
+        <div className="p-4 sm:p-6 max-h-[70vh] overflow-y-auto">
 
           {/* Info */}
           <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg">

@@ -1,7 +1,7 @@
 // lib/api/user-failed-questions/queries.ts - Queries Drizzle para preguntas falladas del usuario
 import { getDb } from '@/db/client'
 import { questions, articles, laws, tests, testQuestions, topics } from '@/db/schema'
-import { eq, and, inArray, desc, gte, sql, isNotNull } from 'drizzle-orm'
+import { eq, and, inArray, desc, gte, gt, sql, isNotNull } from 'drizzle-orm'
 import type {
   GetUserFailedQuestionsRequest,
   GetUserFailedQuestionsResponse,
@@ -149,7 +149,7 @@ export async function getFailedQuestionsByTopic(
       eq(tests.userId, userId),
       eq(testQuestions.isCorrect, false),
       eq(questions.isActive, true),
-      isNotNull(testQuestions.temaNumber),
+      gt(testQuestions.temaNumber, 0),
     ]
 
     if (positionType) {

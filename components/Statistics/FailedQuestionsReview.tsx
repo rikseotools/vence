@@ -23,6 +23,8 @@ export default function FailedQuestionsReview() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  const [showAll, setShowAll] = useState(false)
+
   // Modal state
   const [selectedTopic, setSelectedTopic] = useState<TopicFailed | null>(null)
   const [modalData, setModalData] = useState<FailedQuestionsData | null>(null)
@@ -180,6 +182,9 @@ export default function FailedQuestionsReview() {
   }
 
   const totalFailed = topics.reduce((sum, t) => sum + t.failedQuestions, 0)
+  const INITIAL_COUNT = 10
+  const visibleTopics = showAll ? topics : topics.slice(0, INITIAL_COUNT)
+  const hasMore = topics.length > INITIAL_COUNT
 
   return (
     <>
@@ -192,31 +197,37 @@ export default function FailedQuestionsReview() {
         </div>
 
         <div className="space-y-2">
-          {topics.map((topic) => (
+          {visibleTopics.map((topic) => (
             <button
               key={topic.topicNumber}
               onClick={() => handleTopicClick(topic)}
               className="w-full p-4 rounded-lg border border-red-100 bg-red-50 hover:bg-red-100 hover:border-red-200 transition-all text-left"
             >
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-3">
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium text-gray-800 truncate">
-                    {topic.topicTitle || `Tema ${topic.topicNumber}`}
+                  <div className="font-medium text-gray-800 text-sm sm:text-base line-clamp-2">
+                    Tema {topic.topicNumber}{topic.topicTitle ? ` - ${topic.topicTitle}` : ''}
                   </div>
-                  <div className="text-xs text-gray-500">
+                  <div className="text-xs text-gray-500 mt-0.5">
                     {topic.totalFailures} fallos en {topic.failedQuestions} preguntas
                   </div>
                 </div>
-                <div className="flex items-center space-x-3 flex-shrink-0 ml-3">
-                  <div className="text-right">
-                    <div className="text-lg font-bold text-red-600">{topic.failedQuestions}</div>
-                    <div className="text-xs text-red-500">falladas</div>
-                  </div>
-                  <span className="text-gray-400">→</span>
+                <div className="text-right flex-shrink-0">
+                  <div className="text-lg font-bold text-red-600">{topic.failedQuestions}</div>
+                  <div className="text-xs text-red-500">falladas</div>
                 </div>
               </div>
             </button>
           ))}
+
+          {hasMore && !showAll && (
+            <button
+              onClick={() => setShowAll(true)}
+              className="w-full p-3 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 transition-all text-center text-sm font-medium text-gray-600"
+            >
+              Ver {topics.length - INITIAL_COUNT} temas más
+            </button>
+          )}
         </div>
       </div>
 
