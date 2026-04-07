@@ -1,7 +1,7 @@
 // lib/api/tests/queries.ts - Queries tipadas para tests
 import { getDb } from '@/db/client'
 import { tests, testQuestions, userProfiles, questions, articles, laws } from '@/db/schema'
-import { eq, sql } from 'drizzle-orm'
+import { eq, sql, inArray, gte, and, desc } from 'drizzle-orm'
 import type {
   RecoverTestRequest,
   RecoverTestResponse,
@@ -214,8 +214,6 @@ export async function checkNeedsOnboarding(userId: string): Promise<boolean> {
 // TEST DE REPASO DE FALLOS (Drizzle + Zod)
 // ============================================
 
-import { questions, articles, laws } from '@/db/schema'
-import { inArray, gte, and, sql, desc } from 'drizzle-orm'
 import type {
   CreateFailedQuestionsTestRequest,
   CreateFailedQuestionsTestResponse,
