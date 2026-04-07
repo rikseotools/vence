@@ -155,7 +155,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                           </span>
                         )}
                         {adminNotifications.impugnacionesByType?.psicotecnicas > 0 && (
-                          <span className="bg-green-500 text-white text-xs rounded-full h-5 min-w-5 px-1 flex items-center justify-center font-bold animate-pulse" title="Psicotécnicas">
+                          <span className="bg-orange-500 text-white text-xs rounded-full h-5 min-w-5 px-1 flex items-center justify-center font-bold animate-pulse" title="Psicotécnicas">
                             {adminNotifications.impugnacionesByType.psicotecnicas}
                           </span>
                         )}
