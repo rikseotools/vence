@@ -658,6 +658,40 @@ async function handleSubscriptionUpdated(
       console.log(`⏰ Subscription programada para cancelar. Premium hasta ${periodEnd || 'fecha desconocida'}`)
     }
 
+    // Detectar reactivación: cancel_at_period_end cambió a false en una sub activa
+    if (!subscription.cancel_at_period_end && subscription.status === 'active') {
+      try {
+        const { data: subData } = await supabase
+          .from('user_subscriptions')
+          .select('user_id')
+          .eq('stripe_subscription_id', subscription.id)
+          .limit(1)
+
+        if (subData?.[0]?.user_id) {
+          const userId = subData[0].user_id
+          const { data: lastFeedback } = await supabase
+            .from('cancellation_feedback')
+            .select('cancellation_type')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false })
+            .limit(1)
+
+          if (lastFeedback?.[0] && lastFeedback[0].cancellation_type !== 'reactivation') {
+            await supabase.from('cancellation_feedback').insert({
+              user_id: userId,
+              subscription_id: subscription.id,
+              reason: 'reactivated',
+              cancellation_type: 'reactivation',
+              period_end_at: periodEnd,
+            })
+            console.log(`🟢 Reactivation detected and logged for user ${userId}`)
+          }
+        }
+      } catch (reactivateErr) {
+        console.warn('⚠️ Error logging reactivation:', reactivateErr)
+      }
+    }
+
     if (subscription.status === 'canceled') {
       const now = Math.floor(Date.now() / 1000)
       const periodEndTimestamp = subscription.current_period_end || subscription.cancel_at || 0
