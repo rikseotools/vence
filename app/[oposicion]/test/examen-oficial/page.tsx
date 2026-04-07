@@ -30,6 +30,7 @@ function OfficialExamContent() {
   const [metadata, setMetadata] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [errorType, setErrorType] = useState<string | null>(null)
 
   const [resumeTestId, setResumeTestId] = useState<string | undefined>(undefined)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -65,6 +66,7 @@ function OfficialExamContent() {
 
         if (!data.success) {
           setError(data.error || 'Error al cargar el examen')
+          setErrorType(data.errorType || null)
           setLoading(false)
           return
         }
@@ -131,6 +133,7 @@ function OfficialExamContent() {
 
         if (!data.success) {
           setError(data.error || 'Error al reanudar el examen')
+          setErrorType(data.errorType || null)
           setLoading(false)
           return
         }
@@ -206,12 +209,32 @@ function OfficialExamContent() {
   }
 
   if (error) {
+    // UX diferenciada según el tipo de error
+    const errorConfig: Record<string, { icon: string; title: string; titleColor: string; description: string }> = {
+      completed: {
+        icon: '✅',
+        title: 'Examen completado',
+        titleColor: 'text-green-600',
+        description: 'Ya completaste este examen. Puedes volver a la sección de tests para ver tus resultados o iniciar uno nuevo.',
+      },
+      forbidden: {
+        icon: '🔒',
+        title: 'Sin acceso',
+        titleColor: 'text-amber-600',
+        description: 'No tienes acceso a este examen. Puede que la sesión haya expirado.',
+      },
+    }
+
+    const config = errorType ? errorConfig[errorType] : null
+
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center max-w-md">
-          <div className="text-6xl mb-4">⚠️</div>
-          <h1 className="text-2xl font-bold text-red-600 mb-4">Error</h1>
-          <p className="text-gray-600 mb-6">{error}</p>
+          <div className="text-6xl mb-4">{config?.icon ?? '⚠️'}</div>
+          <h1 className={`text-2xl font-bold mb-4 ${config?.titleColor ?? 'text-red-600'}`}>
+            {config?.title ?? 'Error'}
+          </h1>
+          <p className="text-gray-600 mb-6">{config?.description ?? error}</p>
           <Link
             href={backUrl}
             className="bg-amber-600 hover:bg-amber-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"

@@ -81,9 +81,14 @@ async function _GET(request: NextRequest) {
     const result = await getOfficialExamResume(testId, user.id)
 
     if (!result.success) {
+      const statusMap: Record<string, number> = {
+        forbidden: 403,
+        not_found: 404,
+        completed: 409,
+      }
       return NextResponse.json(
-        { success: false, error: result.error },
-        { status: result.error?.includes('acceso') ? 403 : 404 }
+        { success: false, error: result.error, errorType: result.errorType },
+        { status: statusMap[result.errorType ?? ''] ?? 400 }
       )
     }
 

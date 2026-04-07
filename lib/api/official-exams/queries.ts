@@ -777,17 +777,17 @@ export async function getOfficialExamResume(
       .limit(1)
 
     if (testResult.length === 0) {
-      return { success: false, error: 'Test no encontrado' }
+      return { success: false, error: 'Test no encontrado', errorType: 'not_found' as const }
     }
 
     const test = testResult[0]
 
     if (test.userId !== userId) {
-      return { success: false, error: 'No tienes acceso a este test' }
+      return { success: false, error: 'No tienes acceso a este test', errorType: 'forbidden' as const }
     }
 
     if (test.isCompleted) {
-      return { success: false, error: 'Este examen ya está completado' }
+      return { success: false, error: 'Este examen ya está completado', errorType: 'completed' as const }
     }
 
     // Get saved answers from test_questions

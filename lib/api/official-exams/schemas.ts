@@ -263,6 +263,7 @@ export const resumeOfficialExamResponseSchema = z.object({
     createdAt: z.string(),
   }).optional(),
   error: z.string().optional(),
+  errorType: z.enum(['not_found', 'forbidden', 'completed']).optional(),
 })
 
 export type ResumeOfficialExamResponse = z.infer<typeof resumeOfficialExamResponseSchema>
