@@ -541,13 +541,6 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
     }
   }, [selectedLaws]);
 
-  // Auto-abrir modal de preguntas falladas si viene con autoOpenFailed=true
-  useEffect(() => {
-    if (autoOpenFailed && currentUser && tema) {
-      loadFailedQuestions('all')
-    }
-  }, [autoOpenFailed, currentUser?.id, tema]) // eslint-disable-line react-hooks/exhaustive-deps
-
   // 🆕 Funciones para manejar filtro de leyes
   const toggleLawSelection = (lawShortName: string) => {
     const newSelectedLaws = new Set(selectedLaws);

@@ -5,13 +5,16 @@ export {
   getUserFailedQuestionsRequestSchema,
   getUserFailedQuestionsResponseSchema,
   failedQuestionItemSchema,
+  failedByTopicItemSchema,
   safeParseGetUserFailedQuestions,
   type GetUserFailedQuestionsRequest,
   type GetUserFailedQuestionsResponse,
   type FailedQuestionItem,
+  type FailedByTopicItem,
 } from './schemas'
 
 // Queries
 export {
   getUserFailedQuestions,
+  getFailedQuestionsByTopic,
 } from './queries'

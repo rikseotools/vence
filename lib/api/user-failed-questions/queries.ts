@@ -1,11 +1,12 @@
 // lib/api/user-failed-questions/queries.ts - Queries Drizzle para preguntas falladas del usuario
 import { getDb } from '@/db/client'
-import { questions, articles, laws, tests, testQuestions } from '@/db/schema'
-import { eq, and, inArray, desc, gte } from 'drizzle-orm'
+import { questions, articles, laws, tests, testQuestions, topics } from '@/db/schema'
+import { eq, and, inArray, desc, gte, sql, isNotNull } from 'drizzle-orm'
 import type {
   GetUserFailedQuestionsRequest,
   GetUserFailedQuestionsResponse,
   FailedQuestionItem,
+  FailedByTopicItem,
 } from './schemas'
 
 // ============================================
@@ -131,5 +132,70 @@ export async function getUserFailedQuestions(
       success: false,
       error: error instanceof Error ? error.message : 'Error desconocido',
     }
+  }
+}
+
+// ============================================
+// OBTENER CONTEOS DE FALLADAS AGRUPADOS POR TEMA
+// ============================================
+export async function getFailedQuestionsByTopic(
+  userId: string,
+  positionType?: string
+): Promise<{ success: boolean; topics?: FailedByTopicItem[]; error?: string }> {
+  try {
+    const db = getDb()
+
+    const conditions = [
+      eq(tests.userId, userId),
+      eq(testQuestions.isCorrect, false),
+      eq(questions.isActive, true),
+      isNotNull(testQuestions.temaNumber),
+    ]
+
+    if (positionType) {
+      conditions.push(eq(topics.positionType, positionType))
+    }
+
+    const rows = await db
+      .select({
+        temaNumber: testQuestions.temaNumber,
+        topicTitle: topics.title,
+        questionId: testQuestions.questionId,
+      })
+      .from(testQuestions)
+      .innerJoin(tests, eq(testQuestions.testId, tests.id))
+      .innerJoin(questions, eq(testQuestions.questionId, questions.id))
+      .leftJoin(topics, and(
+        eq(topics.topicNumber, testQuestions.temaNumber),
+        positionType ? eq(topics.positionType, positionType) : sql`true`
+      ))
+      .where(and(...conditions))
+
+    // Agrupar por tema
+    const byTopic = new Map<number, { title: string | null; questionIds: Set<string>; totalFailures: number }>()
+
+    for (const row of rows) {
+      const tema = row.temaNumber!
+      if (!byTopic.has(tema)) {
+        byTopic.set(tema, { title: row.topicTitle, questionIds: new Set(), totalFailures: 0 })
+      }
+      const entry = byTopic.get(tema)!
+      if (row.questionId) entry.questionIds.add(row.questionId)
+      entry.totalFailures++
+    }
+
+    const result: FailedByTopicItem[] = Array.from(byTopic.entries())
+      .map(([topicNumber, data]) => ({
+        topicNumber,
+        topicTitle: data.title,
+        failedQuestions: data.questionIds.size,
+        totalFailures: data.totalFailures,
+      }))
+      .sort((a, b) => b.failedQuestions - a.failedQuestions)
+
+    return { success: true, topics: result }
+  } catch (error) {
+    console.error('❌ Error obteniendo falladas por tema:', error)
+    return { success: false, error: error instanceof Error ? error.message : 'Error desconocido' }
   }
 }

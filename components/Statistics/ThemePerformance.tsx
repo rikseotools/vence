@@ -334,15 +334,7 @@ export default function ThemePerformance({ themePerformance, articlePerformance,
                     )}
                   </div>
 
-                  <div className="action-buttons flex items-center space-x-2">
-                    <a
-                      href={`/${oposicionSlug}/test/tema/${theme.theme}?failedOnly=true`}
-                      onClick={(e) => e.stopPropagation()}
-                      className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-2"
-                    >
-                      <span>❌</span>
-                      <span className="hidden sm:inline">Falladas</span>
-                    </a>
+                  <div className="action-buttons">
                     <button
                       onClick={(e) => {
                         e.stopPropagation()
@@ -351,7 +343,7 @@ export default function ThemePerformance({ themePerformance, articlePerformance,
                       className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-2"
                     >
                       <span>📊</span>
-                      <span className="hidden sm:inline">Artículos</span>
+                      <span>Artículos</span>
                     </button>
                   </div>
                 </div>

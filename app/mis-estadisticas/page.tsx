@@ -21,6 +21,7 @@ import ExamReadiness from '@/components/Statistics/ExamReadiness'
 import ExamPredictionMarch2025 from '@/components/Statistics/ExamPredictionMarch2025'
 import PersonalDifficultyInsights from '@/components/Statistics/PersonalDifficultyInsights' // .tsx - usa API v2
 import DetailedCharts from '@/components/Statistics/DetailedCharts'
+import FailedQuestionsReview from '@/components/Statistics/FailedQuestionsReview'
 
 // Lazy load PsychometricStatsTab - solo se carga cuando se usa
 const PsychometricStatsTab = dynamic(
@@ -1565,6 +1566,7 @@ function EstadisticasContent() {
                 recentTests={stats.recentTests as any}
                 onInfoClick={() => setShowRecentTestsInfo(true)}
               />
+              <FailedQuestionsReview />
               <PersonalDifficultyInsights />
             </div>
           )}

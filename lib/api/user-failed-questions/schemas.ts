@@ -50,6 +50,19 @@ export const getUserFailedQuestionsResponseSchema = z.object({
 export type GetUserFailedQuestionsResponse = z.infer<typeof getUserFailedQuestionsResponseSchema>
 
 // ============================================
+// SCHEMA DE FALLADAS POR TEMA
+// ============================================
+
+export const failedByTopicItemSchema = z.object({
+  topicNumber: z.number().int(),
+  topicTitle: z.string().nullable(),
+  failedQuestions: z.number().int(),
+  totalFailures: z.number().int(),
+})
+
+export type FailedByTopicItem = z.infer<typeof failedByTopicItemSchema>
+
+// ============================================
 // VALIDADORES
 // ============================================
 
