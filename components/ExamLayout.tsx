@@ -12,6 +12,7 @@ import { validateExam, type ValidatedResults, type ValidatedQuestionResult } fro
 import { ApiTimeoutError, ApiNetworkError } from '@/lib/api/client'
 import { useAnswerWatchdog } from '@/hooks/useAnswerWatchdog'
 import { logClientError } from '@/lib/logClientError'
+import { normalizeDifficulty } from '@/lib/api/shared/difficulty'
 import { useQuestionContext } from '@/contexts/QuestionContext'
 
 // Type for useAuth context (AuthContext is JS, so we type it manually)
@@ -164,7 +165,7 @@ async function saveAnswerToAPI(
         articleNumber: question.articles?.article_number || null,
         lawName: question.articles?.laws?.short_name || null,
         temaNumber: question.tema_number || null,
-        difficulty: question.difficulty || null,
+        difficulty: normalizeDifficulty(question.difficulty),
         timeSpentSeconds: 0, // Se actualizará al corregir
         confidenceLevel: 'sure'
       })
@@ -853,7 +854,7 @@ export default function ExamLayout({
                 articleNumber: effectiveQuestions[answer.questionIndex]?.articles?.article_number || null,
                 lawName: effectiveQuestions[answer.questionIndex]?.articles?.laws?.short_name || null,
                 temaNumber: effectiveQuestions[answer.questionIndex]?.tema_number || null,
-                difficulty: effectiveQuestions[answer.questionIndex]?.difficulty || null,
+                difficulty: normalizeDifficulty(effectiveQuestions[answer.questionIndex]?.difficulty),
                 timeSpentSeconds: 0,
                 confidenceLevel: null,
               })
