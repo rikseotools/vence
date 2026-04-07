@@ -7,6 +7,7 @@ interface AdminNotificationState {
   feedback: number
   feedbackByType: { deletion: number; bug: number; other: number }
   impugnaciones: number
+  impugnacionesByType: { legislativas: number; psicotecnicas: number }
   ventas: number
   ventasImporte: number
   calidad: number
@@ -19,6 +20,7 @@ const EMPTY_STATE: AdminNotificationState = {
   feedback: 0,
   feedbackByType: { deletion: 0, bug: 0, other: 0 },
   impugnaciones: 0,
+  impugnacionesByType: { legislativas: 0, psicotecnicas: 0 },
   ventas: 0,
   ventasImporte: 0,
   calidad: 0,
@@ -134,6 +136,7 @@ export function useAdminNotifications(enabled = false) {
       let pendingFeedback = 0
       const feedbackTypeCounts = { deletion: 0, bug: 0, other: 0 }
       let pendingImpugnaciones = 0
+      const impugnacionesTypeCounts = { legislativas: 0, psicotecnicas: 0 }
       let pendingVentas = 0
       let pendingCalidad = 0
       let pendingErroresApi = 0
@@ -176,11 +179,13 @@ export function useAdminNotifications(enabled = false) {
         console.warn('Error cargando feedbacks:', feedbacksResult.reason?.message)
       }
 
-      // Obtener conteo de impugnaciones desde la API
+      // Obtener conteo de impugnaciones desde la API (legislativas + psicotécnicas)
       if (impugnacionesApiResult.status === 'fulfilled') {
         const apiData = impugnacionesApiResult.value
         if (apiData.success) {
           pendingImpugnaciones = apiData.impugnaciones || 0
+          impugnacionesTypeCounts.legislativas = apiData.detail?.normal || 0
+          impugnacionesTypeCounts.psicotecnicas = apiData.detail?.psychometric || 0
         }
       }
 
@@ -213,6 +218,7 @@ export function useAdminNotifications(enabled = false) {
         feedback: pendingFeedback,
         feedbackByType: feedbackTypeCounts,
         impugnaciones: pendingImpugnaciones,
+        impugnacionesByType: impugnacionesTypeCounts,
         ventas: pendingVentas,
         ventasImporte,
         calidad: pendingCalidad,
