@@ -7,6 +7,7 @@ import FooterES from './Footer'
 import PushNotificationManager from '../components/PushNotificationManager'
 import OnboardingModal from '../components/OnboardingModal'
 import { useAuth } from '../contexts/AuthContext'
+import { useOposicion } from '../contexts/OposicionContext'
 import { usePathname } from 'next/navigation'
 import { useOnboarding } from '../hooks/useOnboarding'
 import { captureMetaParams } from '../lib/metaPixelCapture'
@@ -14,6 +15,7 @@ import { captureMetaParams } from '../lib/metaPixelCapture'
 // Componente interno que usa el contexto de Auth
 export default function ClientLayoutContent({ children }: { children: ReactNode }) {
   const { user, userProfile, loading } = useAuth()
+  const { needsOposicionFix } = useOposicion()
   const pathname = usePathname()
   const { showModal, handleComplete, handleSkip, forceShow } = useOnboarding()
 
@@ -37,6 +39,20 @@ export default function ClientLayoutContent({ children }: { children: ReactNode 
           >
             Seleccionar
           </button>
+        </div>
+      )}
+      {/* Banner para usuarios con oposición no disponible (custom) */}
+      {user && needsOposicionFix && !loading && (
+        <div className="bg-blue-50 dark:bg-blue-900/30 border-b border-blue-200 dark:border-blue-800 px-4 py-2.5 text-center text-sm">
+          <span className="text-blue-800 dark:text-blue-200">
+            Tu oposición no tiene temario específico, pero puedes practicar con leyes comunes a todas las oposiciones
+          </span>
+          <a
+            href="/leyes"
+            className="ml-3 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-md transition-colors inline-block"
+          >
+            Ver leyes
+          </a>
         </div>
       )}
       {/* Breadcrumbs eliminados del layout global — cada página usa InteractiveBreadcrumbs */}
