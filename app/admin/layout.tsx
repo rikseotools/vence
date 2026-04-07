@@ -150,12 +150,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     {adminNotifications?.impugnaciones > 0 && (
                       <span className="absolute -top-1 -right-1 flex space-x-0.5">
                         {adminNotifications.impugnacionesByType?.legislativas > 0 && (
-                          <span className="bg-indigo-500 text-white text-xs rounded-full h-5 min-w-5 px-1 flex items-center justify-center font-bold animate-pulse" title="Legislativas">
+                          <span className="bg-red-500 text-white text-xs rounded-full h-5 min-w-5 px-1 flex items-center justify-center font-bold animate-pulse" title="Legislativas">
                             {adminNotifications.impugnacionesByType.legislativas}
                           </span>
                         )}
                         {adminNotifications.impugnacionesByType?.psicotecnicas > 0 && (
-                          <span className="bg-purple-500 text-white text-xs rounded-full h-5 min-w-5 px-1 flex items-center justify-center font-bold animate-pulse" title="Psicotécnicas">
+                          <span className="bg-green-500 text-white text-xs rounded-full h-5 min-w-5 px-1 flex items-center justify-center font-bold animate-pulse" title="Psicotécnicas">
                             {adminNotifications.impugnacionesByType.psicotecnicas}
                           </span>
                         )}
