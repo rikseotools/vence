@@ -348,7 +348,7 @@ function AuthCallbackContent() {
           const separator = redirectUrl.includes('?') ? '&' : '?'
           const urlWithSuccess = `${redirectUrl}${separator}auth=success&t=${Date.now()}`
           console.log('🔄 [CALLBACK] Redirigiendo a:', urlWithSuccess)
-          window.location.href = urlWithSuccess
+          window.location.replace(urlWithSuccess)
         }, delay)
 
       } catch (error) {
