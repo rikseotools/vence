@@ -6,7 +6,7 @@ import { createClient } from '@supabase/supabase-js'
 import { OPOSICIONES } from '@/lib/config/oposiciones'
 import CcaaFlag from '@/components/CcaaFlag'
 
-export const revalidate = 86400 // ISR 24h
+export const revalidate = false // estática, se regenera solo en deploy
 
 const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
 
