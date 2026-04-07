@@ -45,6 +45,7 @@ export const getSubscriptionResponseSchema = z.object({
   planType: z.string().nullable().optional(),
   stripeCustomerId: z.string().nullable().optional(),
   subscription: subscriptionInfoSchema.optional(),
+  timeline: z.array(z.object({ type: z.string(), date: z.string() })).optional(),
   error: z.string().optional()
 })
 
