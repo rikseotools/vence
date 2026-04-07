@@ -1615,6 +1615,22 @@ function PerfilPageContent() {
                   <div className="font-semibold text-gray-800 dark:text-white">
                     {formatDate(subscriptionData.subscription.currentPeriodEnd)}
                   </div>
+                  {!subscriptionData.subscription.cancelAtPeriodEnd && subscriptionData.subscription.planAmount && (() => {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const loyalty = (subscriptionData.subscription as any)?.loyaltyDiscount
+                    const amount = subscriptionData.subscription.planAmount!
+                    if (loyalty?.percentOff) {
+                      const discounted = (amount * (100 - loyalty.percentOff) / 100).toFixed(0)
+                      return (
+                        <div className="text-sm mt-1">
+                          <span className="text-emerald-600 dark:text-emerald-400 font-medium">{discounted}€</span>
+                          <span className="text-gray-400 line-through text-xs ml-1">{amount}€</span>
+                          <span className="text-emerald-600 dark:text-emerald-400 text-xs ml-1">(-{loyalty.percentOff}% fidelidad)</span>
+                        </div>
+                      )
+                    }
+                    return <div className="text-sm text-gray-500 mt-1">{amount}€</div>
+                  })()}
                 </div>
               </div>
 
@@ -1745,24 +1761,39 @@ function PerfilPageContent() {
             </div>
 
             {/* Timeline / Historial */}
-            {(subscriptionData as any)?.timeline && (subscriptionData as any).timeline.length > 1 && (
-              <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-5">
-                <h5 className="font-medium text-gray-800 dark:text-white mb-3 text-sm">Historial</h5>
-                <div className="space-y-2">
-                  {(subscriptionData as any).timeline.map((event: { type: string; date: string }, i: number) => {
-                    const icons: Record<string, string> = { activated: '🟢', cancelled: '🔴', reactivated: '🟢', renewal: '📅' }
-                    const labels: Record<string, string> = { activated: 'Suscripción activada', cancelled: 'Cancelación programada', reactivated: 'Suscripción reactivada', renewal: 'Próxima renovación' }
-                    return (
-                      <div key={i} className="flex items-center space-x-3 text-sm">
-                        <span>{icons[event.type] || '•'}</span>
-                        <span className="text-gray-500 dark:text-gray-400 w-20">{event.date}</span>
-                        <span className="text-gray-700 dark:text-gray-300">{labels[event.type] || event.type}</span>
-                      </div>
-                    )
-                  })}
+            {(subscriptionData as any)?.timeline && (subscriptionData as any).timeline.length > 1 && (() => {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const loyalty = (subscriptionData.subscription as any)?.loyaltyDiscount
+              const amount = subscriptionData.subscription.planAmount || 0
+              const discountedAmount = loyalty?.percentOff ? (amount * (100 - loyalty.percentOff) / 100).toFixed(0) : null
+
+              return (
+                <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-5">
+                  <h5 className="font-medium text-gray-800 dark:text-white mb-3 text-sm">Historial</h5>
+                  <div className="space-y-2">
+                    {(subscriptionData as any).timeline.map((event: { type: string; date: string }, i: number) => {
+                      const icons: Record<string, string> = { activated: '🟢', cancelled: '🔴', reactivated: '🟢', renewal: '📅' }
+                      const labels: Record<string, string> = { activated: 'Suscripción activada', cancelled: 'Cancelación programada', reactivated: 'Suscripción reactivada', renewal: 'Próxima renovación' }
+                      return (
+                        <div key={i} className="flex items-center space-x-3 text-sm">
+                          <span>{icons[event.type] || '•'}</span>
+                          <span className="text-gray-500 dark:text-gray-400 w-20">{event.date}</span>
+                          <span className="text-gray-700 dark:text-gray-300">{labels[event.type] || event.type}</span>
+                          {event.type === 'renewal' && discountedAmount && (
+                            <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+                              {discountedAmount}€ <span className="line-through text-gray-400 text-xs">{amount}€</span>
+                            </span>
+                          )}
+                          {event.type === 'renewal' && !discountedAmount && amount > 0 && (
+                            <span className="text-gray-500">{amount}€</span>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
-              </div>
-            )}
+              )
+            })()}
 
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
               <div className="flex items-start space-x-2">

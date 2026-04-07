@@ -179,6 +179,72 @@ for (let i = 0; i < hitos.length; i++) {
 }
 ```
 
+## 4e. Reglas de integridad de hitos y fechas de examen
+
+### Principio fundamental
+
+**Hitos = solo hechos con fecha oficial.** Un hito solo debe existir si el evento ya ocurrio o tiene una fecha publicada oficialmente (en BOE, BORM, BOA, etc.). Las previsiones y estimaciones NUNCA van en hitos.
+
+**Previsiones = solo en `oposiciones.exam_date` + `exam_date_approximate`.** Cuando no hay fecha oficial de examen pero se puede estimar (por convocatorias anteriores, plazos legales, etc.), se pone en `exam_date` con `exam_date_approximate = true`. La landing ya muestra "(fecha aproximada)" automaticamente.
+
+### Reglas de hitos
+
+| Regla | Descripcion |
+|-------|-------------|
+| **Sin estimaciones** | No crear hitos upcoming con fechas inventadas o redondas (1 de mes, etc.). Si no hay fecha oficial, no hay hito. |
+| **Sin duplicados** | No dos hitos con el mismo titulo o mismo significado (ej: "Fin plazo solicitudes" y "Cierre plazo inscripcion" son lo mismo). |
+| **order_index secuencial** | Sin gaps ni duplicados. Si se borran hitos, reindexar con el script de la seccion 4d. |
+| **Status coherente** | `completed` = fecha pasada. `upcoming` = fecha futura. `current` = evento en curso o muy proximo (dias, no meses). |
+| **Orden cronologico** | Los hitos deben estar ordenados por fecha. order_index debe reflejar el orden cronologico. |
+
+### Reglas de exam_date en oposiciones
+
+| Situacion | exam_date | exam_date_approximate |
+|-----------|-----------|----------------------|
+| Fecha oficial confirmada (BOE, etc.) | Fecha exacta | `false` |
+| Estimacion/prevision sin fecha oficial | Fecha estimada | `true` |
+| Sin fecha conocida ni estimable | `NULL` | `false` |
+| Examen ya realizado | Fecha real del examen pasado | `false` |
+
+**Nunca:** `exam_date = NULL` con `approximate = true` (no tiene sentido).
+**Nunca:** `exam_date` futura con `approximate = false` si no esta confirmada oficialmente.
+
+### Cuando un examen ya se ha realizado
+
+Si `estado_proceso` es `examen_realizado`, `resultados` o `nombramientos`:
+- `exam_date` debe ser la fecha real del examen pasado (no una fecha futura)
+- `exam_date_approximate` debe ser `false`
+- No debe haber hitos upcoming de "Examen" (el examen ya paso)
+
+### Ejemplo: oposicion sin fecha de examen oficial
+
+```
+oposiciones:
+  exam_date: '2026-10-01'
+  exam_date_approximate: true    ← prevision
+
+convocatoria_hitos:
+  [completed] Convocatoria publicada en BOE
+  [completed] Cierre plazo inscripcion
+  [current] Listas definitivas admitidos
+  ← NO hay hito "Examen" porque no hay fecha oficial
+```
+
+La landing mostrara "Examen previsto: octubre de 2026 (fecha aproximada)" en el hero, pero el timeline NO mostrara un hito de examen.
+
+### Ejemplo: oposicion con fecha de examen confirmada
+
+```
+oposiciones:
+  exam_date: '2026-05-23'
+  exam_date_approximate: false   ← confirmada
+
+convocatoria_hitos:
+  [completed] Convocatoria publicada en BOE
+  [current] Listas definitivas admitidos
+  [upcoming] 2026-05-23 Examen   ← SI hay hito porque la fecha es oficial
+```
+
 ## 5. Crear hitos para oposiciones que no tienen
 
 Si una oposicion tiene `seguimiento_url` pero 0 hitos:
@@ -199,10 +265,10 @@ Si una oposicion tiene `seguimiento_url` pero 0 hitos:
 | 5 | Fin plazo subsanacion | completed |
 | 6 | Listas definitivas admitidos | completed/current |
 | 7 | Composicion tribunal | completed |
-| 8 | Examen | upcoming/current |
-| 9 | Resultados | upcoming |
+| 8 | Examen | upcoming/current (solo si fecha oficial) |
+| 9 | Resultados | upcoming (solo si fecha oficial) |
 
-No todos los procesos tienen todos los hitos. Incluir solo los que se han publicado oficialmente o tienen fecha conocida.
+**IMPORTANTE:** Solo incluir hitos que tengan fecha oficial publicada. No crear hitos con fechas estimadas o inventadas (ver seccion 4e).
 
 ## 6. Marcar como revisado
 
