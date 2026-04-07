@@ -1,94 +1,192 @@
 // app/page.tsx
+// Home page — datos de OPOSICIONES config + leyes top de BD. HTML estático (ISR 24h).
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { createClient } from '@supabase/supabase-js'
+import { OPOSICIONES } from '@/lib/config/oposiciones'
 import CcaaFlag from '@/components/CcaaFlag'
+
+export const revalidate = 86400 // ISR 24h
 
 const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
 
-// Fecha dinámica en español para "Última revisión"
-function getFormattedDate() {
-  const now = new Date()
-  const day = now.getDate()
-  const months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-                  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
-  const month = months[now.getMonth()]
-  const year = now.getFullYear()
-  return `${day} ${month} ${year}`
-}
-
 export const metadata: Metadata = {
   title: 'Test de Oposiciones y Leyes | Vence',
-  description: 'Tests gratuitos de leyes españolas y oposiciones. Constitución Española, Ley 39/2015, Guardia Civil, Administrativo. +5000 preguntas actualizadas.',
+  description: 'Tests gratuitos de leyes españolas y oposiciones. Constitución Española, Ley 39/2015, Guardia Civil, Administrativo. +20.000 preguntas actualizadas.',
   keywords: [
-    'test de ley',
-    'test oposiciones',
-    'test constitución española', 
-    'ley 39/2015 test',
-    'test de leyes',
-    'test oposiciones gratis',
-    'test guardia civil',
-    'test administrativo del estado',
-    'test auxilio judicial',
-    'test tramitación procesal',
-    'tests jurídicos españa'
+    'test de ley', 'test oposiciones', 'test constitución española',
+    'ley 39/2015 test', 'test de leyes', 'test oposiciones gratis',
+    'test guardia civil', 'test administrativo del estado',
+    'test auxilio judicial', 'test tramitación procesal', 'tests jurídicos españa'
   ].join(', '),
-  authors: [{ name: 'Tests Jurídicos España' }],
-  creator: 'Tests Jurídicos España',
-  publisher: 'Tests Jurídicos España',
+  authors: [{ name: 'Vence' }],
+  creator: 'Vence',
+  publisher: 'Vence',
   metadataBase: new URL(SITE_URL),
-  formatDetection: {
-    email: false,
-    address: false,
-    telephone: false,
-  },
+  formatDetection: { email: false, address: false, telephone: false },
   alternates: {
     canonical: SITE_URL,
-    languages: {
-      'es-ES': SITE_URL,
-      'x-default': SITE_URL
-    }
+    languages: { 'es-ES': SITE_URL, 'x-default': SITE_URL }
   },
   openGraph: {
     title: 'Tests de Oposiciones y Leyes | Vence',
-    description: 'Practica con +5000 tests gratuitos de legislación española y prepara tus oposiciones online. Constitución, Ley 39/2015, Guardia Civil y más.',
+    description: 'Practica con +20.000 tests gratuitos de legislación española y prepara tus oposiciones online.',
     url: SITE_URL,
     siteName: 'Vence',
     locale: 'es_ES',
     type: 'website',
-    images: [
-      {
-        url: '/og-image-es.jpg',
-        width: 1200,
-        height: 630,
-        alt: 'Vence',
-      },
-    ],
+    images: [{ url: '/og-image-es.jpg', width: 1200, height: 630, alt: 'Vence' }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Tests de Oposiciones y Leyes| Vence',
+    title: 'Tests de Oposiciones y Leyes | Vence',
     description: 'Prepara tus oposiciones con Vence.',
     images: ['/twitter-image-es.jpg'],
   },
   robots: {
-    index: true,
-    follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-      'max-video-preview': -1,
-      'max-image-preview': 'large',
-      'max-snippet': -1,
-    },
+    index: true, follow: true,
+    googleBot: { index: true, follow: true, 'max-video-preview': -1, 'max-image-preview': 'large' as const, 'max-snippet': -1 },
   },
 }
 
-export default function HomePage() {
+// Categorías para agrupar oposiciones
+const ADMIN_LABELS: Record<string, string> = {
+  estado: 'Administración General del Estado',
+  autonomica: 'Comunidades Autónomas',
+  local: 'Administración Local',
+  justicia: 'Justicia',
+}
+
+// Emojis según categoría para temarios
+const CATEGORY_EMOJI: Record<string, string> = {
+  estado: '🏛️',
+  autonomica: '🏛️',
+  local: '🏛️',
+  justicia: '⚖️',
+}
+
+// Detectar si es sanitario o seguridad por el nombre
+function getOpoCategory(o: typeof OPOSICIONES[number]): string {
+  const name = o.name.toLowerCase()
+  if (name.includes('celador') || name.includes('tcae') || name.includes('enfermero')) return 'sanidad'
+  if (name.includes('guardia civil') || name.includes('policía') || name.includes('policia')) return 'seguridad'
+  return o.administracion
+}
+
+function getCategoryLabel(cat: string): string {
+  if (cat === 'sanidad') return 'Sanidad'
+  if (cat === 'seguridad') return 'Seguridad'
+  return ADMIN_LABELS[cat] || cat
+}
+
+function getCategoryEmoji(cat: string): string {
+  if (cat === 'sanidad') return '🏥'
+  if (cat === 'seguridad') return '🛡️'
+  return CATEGORY_EMOJI[cat] || '🏛️'
+}
+
+interface TopLaw {
+  short_name: string
+  slug: string
+  question_count: number
+}
+
+async function getTopLaws(): Promise<TopLaw[]> {
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+
+  // Step 1: Get articles grouped by law_id with question count
+  // articles → questions is the join path (questions.primary_article_id → articles.id)
+  const { data: articles } = await supabase
+    .from('articles')
+    .select('law_id')
+    .eq('is_active', true)
+
+  if (!articles) return []
+
+  // Step 2: Get law metadata
+  const { data: laws } = await supabase
+    .from('laws')
+    .select('id, short_name, slug')
+    .eq('is_active', true)
+    .eq('is_virtual', false)
+    .not('slug', 'is', null)
+
+  if (!laws) return []
+
+  const lawMap = new Map(laws.map(l => [l.id, l]))
+
+  // Step 3: Count articles per law (as proxy — laws with more articles tend to have more questions)
+  // For accuracy, count questions per law in parallel but only for non-virtual laws with slugs
+  const lawIds = laws.map(l => l.id)
+  const articlesByLaw = new Map<string, string[]>()
+  for (const art of articles) {
+    if (!lawIds.includes(art.law_id)) continue
+    if (!articlesByLaw.has(art.law_id)) articlesByLaw.set(art.law_id, [])
+    articlesByLaw.get(art.law_id)!.push(art.law_id) // just counting
+  }
+
+  // Step 4: For laws with articles, count questions in parallel (only ~50 laws to check)
+  const lawsWithArticles = [...articlesByLaw.keys()]
+  const counts = await Promise.all(
+    lawsWithArticles.map(async (lawId) => {
+      const { data: artIds } = await supabase
+        .from('articles')
+        .select('id')
+        .eq('law_id', lawId)
+        .eq('is_active', true)
+
+      if (!artIds || artIds.length === 0) return { lawId, count: 0 }
+
+      const { count } = await supabase
+        .from('questions')
+        .select('id', { count: 'exact', head: true })
+        .in('primary_article_id', artIds.map(a => a.id))
+        .eq('is_active', true)
+
+      return { lawId, count: count ?? 0 }
+    })
+  )
+
+  return counts
+    .filter(c => c.count >= 100 && lawMap.has(c.lawId))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 15)
+    .map(c => {
+      const law = lawMap.get(c.lawId)!
+      return { short_name: law.short_name, slug: law.slug!, question_count: c.count }
+    })
+}
+
+function getFormattedDate(): string {
+  const now = new Date()
+  const day = now.getDate()
+  const months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+                  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+  return `${day} ${months[now.getMonth()]} ${now.getFullYear()}`
+}
+
+export default async function HomePage() {
+  const topLaws = await getTopLaws()
+
+  // Group oposiciones by category, preserving config order
+  const categoryOrder = ['estado', 'autonomica', 'local', 'justicia', 'sanidad', 'seguridad']
+  const grouped = new Map<string, typeof OPOSICIONES>()
+  for (const cat of categoryOrder) grouped.set(cat, [])
+
+  for (const o of OPOSICIONES) {
+    const cat = getOpoCategory(o)
+    if (!grouped.has(cat)) grouped.set(cat, [])
+    grouped.get(cat)!.push(o)
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-gray-900 dark:to-gray-800">
       <div className="container mx-auto px-4 py-16 max-w-3xl">
 
-        {/* Hero Simple */}
+        {/* Hero */}
         <div className="text-center mb-16">
           <h1 className="text-4xl md:text-5xl font-bold text-slate-800 dark:text-white mb-4">
             Vence
@@ -104,199 +202,39 @@ export default function HomePage() {
           </p>
         </div>
 
-        {/* Dos opciones principales */}
         <p className="text-center text-slate-600 dark:text-slate-400 mb-6">
           Puedes hacer Test por oposición o por leyes
         </p>
+
         <div className="grid md:grid-cols-2 gap-6 mb-12">
 
-          {/* Opción 1: Oposiciones */}
+          {/* Tests por Oposición */}
           <div className="bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl p-8 text-center">
             <div className="text-4xl mb-4">🏛️</div>
             <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">
               Test por Oposición
             </h2>
             <div className="space-y-3">
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wide">Administración General</p>
-              <Link
-                href="/auxiliar-administrativo-estado/test"
-                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
-              >
-                Auxiliar Administrativo (C2)
-              </Link>
-              <Link
-                href="/administrativo-estado/test"
-                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
-              >
-                Administrativo del Estado (C1)
-              </Link>
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wide pt-2">Comunidades Autónomas</p>
-              <Link
-                href="/auxiliar-administrativo-carm/test"
-                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
-              >
-                Aux. Administrativo CARM (C2)
-              </Link>
-              <Link
-                href="/auxiliar-administrativo-cyl/test"
-                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
-              >
-                Aux. Administrativo CyL (C2)
-              </Link>
-              <Link
-                href="/auxiliar-administrativo-andalucia/test"
-                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
-              >
-                Aux. Administrativo Andalucía (C2)
-              </Link>
-              <Link
-                href="/auxiliar-administrativo-madrid/test"
-                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
-              >
-                Aux. Administrativo Madrid (C2)
-              </Link>
-              <Link
-                href="/auxiliar-administrativo-canarias/test"
-                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
-              >
-                Aux. Administrativo Canarias (C2)
-              </Link>
-              <Link
-                href="/auxiliar-administrativo-clm/test"
-                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
-              >
-                Aux. Administrativo CLM (C2)
-              </Link>
-              <Link
-                href="/auxiliar-administrativo-extremadura/test"
-                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
-              >
-                Aux. Administrativo Extremadura (C2)
-              </Link>
-              <Link
-                href="/auxiliar-administrativo-valencia/test"
-                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
-              >
-                Aux. Administrativo Valencia (C2)
-              </Link>
-              <Link
-                href="/auxiliar-administrativo-galicia/test"
-                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
-              >
-                Aux. Administrativo Galicia (C2)
-              </Link>
-              <Link
-                href="/auxiliar-administrativo-aragon/test"
-                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
-              >
-                Aux. Administrativo Aragón (C2)
-              </Link>
-              <Link
-                href="/auxiliar-administrativo-asturias/test"
-                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
-              >
-                Aux. Administrativo Asturias (C2)
-              </Link>
-              <Link
-                href="/auxiliar-administrativo-baleares/test"
-                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
-              >
-                Aux. Administrativo Baleares (C2)
-              </Link>
-              <Link
-                href="/auxiliar-administrativo-cantabria/test"
-                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
-              >
-                Aux. Administrativo Cantabria (C2)
-              </Link>
-              <Link
-                href="/administrativo-navarra/test"
-                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
-              >
-                Administrativo Navarra (C1) - 585 plazas
-              </Link>
-              <Link
-                href="/auxiliar-administrativo-la-rioja/test"
-                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
-              >
-                Aux. Administrativo La Rioja (C2)
-              </Link>
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wide pt-2">Administracion Local</p>
-              <Link
-                href="/auxiliar-administrativo-ayuntamiento-valencia/test"
-                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
-              >
-                Aux. Administrativo Ayto. Valencia (C2) - 274 plazas
-              </Link>
-              <Link
-                href="/auxiliar-administrativo-ayuntamiento-murcia/test"
-                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
-              >
-                Aux. Administrativo Ayto. Murcia (C2) - 20 plazas
-              </Link>
-              <Link
-                href="/auxiliar-administrativo-diputacion-zaragoza/test"
-                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
-              >
-                Aux. Administrativo Dip. Zaragoza (C2) - 26 plazas
-              </Link>
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wide pt-2">Justicia</p>
-              <Link
-                href="/auxilio-judicial/test"
-                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
-              >
-                Auxilio Judicial (C2)
-              </Link>
-              <Link
-                href="/tramitacion-procesal/test"
-                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
-              >
-                Tramitación Procesal (C1)
-              </Link>
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wide pt-2">Sanidad</p>
-              <Link
-                href="/celador-sermas-madrid/test"
-                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
-              >
-                Celador SERMAS Madrid - 688 plazas
-              </Link>
-              <Link
-                href="/celador-scs-canarias/test"
-                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
-              >
-                Celador SCS Canarias - 530 plazas
-              </Link>
-              <Link
-                href="/tcae-sermas-madrid/test"
-                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
-              >
-                TCAE SERMAS Madrid - 1.747 plazas
-              </Link>
-              <Link
-                href="/enfermero-sas-andalucia/test"
-                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
-              >
-                Enfermero SAS Andalucía - 5.101 plazas
-              </Link>
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wide pt-2">Seguridad</p>
-              <Link
-                href="/guardia-civil/test"
-                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
-              >
-                Guardia Civil - 1.704 plazas
-              </Link>
-              <Link
-                href="/policia-nacional/test"
-                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
-              >
-                Policía Nacional - 2.163 plazas
-              </Link>
-              <Link
-                href="/policia-municipal-madrid/test"
-                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
-              >
-                Policía Municipal Madrid - 561 plazas
-              </Link>
+              {categoryOrder.map(cat => {
+                const opos = grouped.get(cat)
+                if (!opos || opos.length === 0) return null
+                return (
+                  <div key={cat}>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wide pt-2">
+                      {getCategoryLabel(cat)}
+                    </p>
+                    {opos.map(o => (
+                      <Link
+                        key={o.slug}
+                        href={`/${o.slug}/test`}
+                        className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
+                      >
+                        {o.shortName} ({o.badge})
+                      </Link>
+                    ))}
+                  </div>
+                )
+              })}
               <Link
                 href="/oposiciones"
                 className="block py-2 px-4 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors text-sm font-medium"
@@ -306,84 +244,27 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Opción 2: Leyes */}
+          {/* Test de Leyes */}
           <div className="bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl p-8 text-center">
             <div className="text-4xl mb-4">📚</div>
             <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">
               Test de Leyes
             </h2>
             <div className="space-y-2">
-              <Link
-                href="/leyes/constitucion-espanola"
-                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
-              >
-                Constitución Española
-              </Link>
-              <Link
-                href="/leyes/ley-39-2015"
-                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
-              >
-                Ley 39/2015 (LPAC)
-              </Link>
-              <Link
-                href="/leyes/ley-40-2015"
-                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
-              >
-                Ley 40/2015 (LRJSP)
-              </Link>
-              <Link
-                href="/leyes/rdl-5-2015"
-                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
-              >
-                EBEP (RDL 5/2015)
-              </Link>
-              <Link
-                href="/leyes/ley-19-2013"
-                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
-              >
-                Ley 19/2013 (Transparencia)
-              </Link>
-              <Link
-                href="/leyes/ley-29-1998"
-                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
-              >
-                Ley 29/1998 (LJCA)
-              </Link>
-              <Link
-                href="/leyes/ley-9-2017"
-                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
-              >
-                Ley 9/2017 (Contratos)
-              </Link>
-              <Link
-                href="/leyes/ley-47-2003"
-                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
-              >
-                Ley 47/2003 (Presupuestaria)
-              </Link>
-              <Link
-                href="/leyes/ley-7-1985"
-                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
-              >
-                Ley 7/1985 (LBRL)
-              </Link>
-              <Link
-                href="/leyes/lo-3-2018"
-                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
-              >
-                LO 3/2018 (Protección de datos)
-              </Link>
-              <Link
-                href="/leyes/tue"
-                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
-              >
-                TUE (Tratado Unión Europea)
-              </Link>
+              {topLaws.map(law => (
+                <Link
+                  key={law.slug}
+                  href={`/leyes/${law.slug}`}
+                  className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
+                >
+                  {law.short_name}
+                </Link>
+              ))}
               <Link
                 href="/leyes"
                 className="block py-2 px-4 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors text-sm font-medium"
               >
-                +40 leyes más →
+                Ver todas las leyes →
               </Link>
             </div>
           </div>
@@ -402,182 +283,19 @@ export default function HomePage() {
             </p>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Link
-              href="/auxiliar-administrativo-estado/temario"
-              className="block py-4 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-center transition-colors"
-            >
-              <span className="block text-2xl mb-2">🏛️</span>
-              <span className="block font-medium text-slate-700 dark:text-slate-300">Auxiliar Administrativo</span>
-              <span className="block text-xs text-slate-500 dark:text-slate-400 mt-1">28 temas</span>
-            </Link>
-            <Link
-              href="/administrativo-estado/temario"
-              className="block py-4 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-center transition-colors"
-            >
-              <span className="block text-2xl mb-2">🏢</span>
-              <span className="block font-medium text-slate-700 dark:text-slate-300">Administrativo del Estado</span>
-              <span className="block text-xs text-slate-500 dark:text-slate-400 mt-1">45 temas</span>
-            </Link>
-            <Link
-              href="/tramitacion-procesal/temario"
-              className="block py-4 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-center transition-colors"
-            >
-              <span className="block text-2xl mb-2">⚖️</span>
-              <span className="block font-medium text-slate-700 dark:text-slate-300">Tramitación Procesal</span>
-              <span className="block text-xs text-slate-500 dark:text-slate-400 mt-1">37 temas</span>
-            </Link>
-            <Link
-              href="/auxiliar-administrativo-carm/temario"
-              className="block py-4 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-amber-100 dark:hover:bg-amber-900/30 rounded-lg text-center transition-colors relative"
-            >
-              <span className="block mb-2"><CcaaFlag oposicionId="auxiliar_administrativo_carm" size="md" /></span>
-              <span className="block font-medium text-slate-700 dark:text-slate-300">Aux. Admin. CARM</span>
-              <span className="block text-xs text-slate-500 dark:text-slate-400 mt-1">16 temas</span>
-            </Link>
-            <Link
-              href="/auxiliar-administrativo-cyl/temario"
-              className="block py-4 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-rose-100 dark:hover:bg-rose-900/30 rounded-lg text-center transition-colors relative"
-            >
-              <span className="block mb-2"><CcaaFlag oposicionId="auxiliar_administrativo_cyl" size="md" /></span>
-              <span className="block font-medium text-slate-700 dark:text-slate-300">Aux. Admin. CyL</span>
-              <span className="block text-xs text-slate-500 dark:text-slate-400 mt-1">28 temas</span>
-            </Link>
-            <Link
-              href="/auxiliar-administrativo-andalucia/temario"
-              className="block py-4 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-teal-100 dark:hover:bg-teal-900/30 rounded-lg text-center transition-colors relative"
-            >
-              <span className="block mb-2"><CcaaFlag oposicionId="auxiliar_administrativo_andalucia" size="md" /></span>
-              <span className="block font-medium text-slate-700 dark:text-slate-300">Aux. Admin. Andalucía</span>
-              <span className="block text-xs text-slate-500 dark:text-slate-400 mt-1">22 temas</span>
-            </Link>
-            <Link
-              href="/auxiliar-administrativo-madrid/temario"
-              className="block py-4 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg text-center transition-colors relative"
-            >
-              <span className="block mb-2"><CcaaFlag oposicionId="auxiliar_administrativo_madrid" size="md" /></span>
-              <span className="block font-medium text-slate-700 dark:text-slate-300">Aux. Admin. Madrid</span>
-              <span className="block text-xs text-slate-500 dark:text-slate-400 mt-1">21 temas</span>
-            </Link>
-            <Link
-              href="/auxiliar-administrativo-canarias/temario"
-              className="block py-4 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-amber-100 dark:hover:bg-amber-900/30 rounded-lg text-center transition-colors relative"
-            >
-              <span className="block mb-2"><CcaaFlag oposicionId="auxiliar_administrativo_canarias" size="md" /></span>
-              <span className="block font-medium text-slate-700 dark:text-slate-300">Aux. Admin. Canarias</span>
-              <span className="block text-xs text-slate-500 dark:text-slate-400 mt-1">40 temas</span>
-            </Link>
-            <Link
-              href="/auxiliar-administrativo-clm/temario"
-              className="block py-4 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-amber-100 dark:hover:bg-amber-900/30 rounded-lg text-center transition-colors relative"
-            >
-              <span className="block mb-2"><CcaaFlag oposicionId="auxiliar_administrativo_clm" size="md" /></span>
-              <span className="block font-medium text-slate-700 dark:text-slate-300">Aux. Admin. CLM</span>
-              <span className="block text-xs text-slate-500 dark:text-slate-400 mt-1">24 temas</span>
-            </Link>
-            <Link
-              href="/auxiliar-administrativo-extremadura/temario"
-              className="block py-4 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-teal-100 dark:hover:bg-teal-900/30 rounded-lg text-center transition-colors relative"
-            >
-              <span className="block mb-2"><CcaaFlag oposicionId="auxiliar_administrativo_extremadura" size="md" /></span>
-              <span className="block font-medium text-slate-700 dark:text-slate-300">Aux. Admin. Extremadura</span>
-              <span className="block text-xs text-slate-500 dark:text-slate-400 mt-1">25 temas</span>
-            </Link>
-            <Link
-              href="/auxiliar-administrativo-valencia/temario"
-              className="block py-4 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg text-center transition-colors relative"
-            >
-              <span className="block mb-2"><CcaaFlag oposicionId="auxiliar_administrativo_valencia" size="md" /></span>
-              <span className="block font-medium text-slate-700 dark:text-slate-300">Aux. Admin. Valencia</span>
-              <span className="block text-xs text-slate-500 dark:text-slate-400 mt-1">24 temas</span>
-            </Link>
-            <Link
-              href="/auxiliar-administrativo-galicia/temario"
-              className="block py-4 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-sky-100 dark:hover:bg-sky-900/30 rounded-lg text-center transition-colors relative"
-            >
-              <span className="block mb-2"><CcaaFlag oposicionId="auxiliar_administrativo_galicia" size="md" /></span>
-              <span className="block font-medium text-slate-700 dark:text-slate-300">Aux. Admin. Galicia</span>
-              <span className="block text-xs text-slate-500 dark:text-slate-400 mt-1">17 temas</span>
-            </Link>
-            <Link
-              href="/auxiliar-administrativo-aragon/temario"
-              className="block py-4 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-yellow-100 dark:hover:bg-yellow-900/30 rounded-lg text-center transition-colors relative"
-            >
-              <span className="block mb-2"><CcaaFlag oposicionId="auxiliar_administrativo_aragon" size="md" /></span>
-              <span className="block font-medium text-slate-700 dark:text-slate-300">Aux. Admin. Aragón</span>
-              <span className="block text-xs text-slate-500 dark:text-slate-400 mt-1">20 temas</span>
-            </Link>
-            <Link
-              href="/auxiliar-administrativo-asturias/temario"
-              className="block py-4 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 rounded-lg text-center transition-colors relative"
-            >
-              <span className="block mb-2"><CcaaFlag oposicionId="auxiliar_administrativo_asturias" size="md" /></span>
-              <span className="block font-medium text-slate-700 dark:text-slate-300">Aux. Admin. Asturias</span>
-              <span className="block text-xs text-slate-500 dark:text-slate-400 mt-1">25 temas</span>
-            </Link>
-            <Link
-              href="/auxiliar-administrativo-baleares/temario"
-              className="block py-4 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-cyan-100 dark:hover:bg-cyan-900/30 rounded-lg text-center transition-colors relative"
-            >
-              <span className="block mb-2"><CcaaFlag oposicionId="auxiliar_administrativo_baleares" size="md" /></span>
-              <span className="block font-medium text-slate-700 dark:text-slate-300">Aux. Admin. Baleares</span>
-              <span className="block text-xs text-slate-500 dark:text-slate-400 mt-1">36 temas</span>
-            </Link>
-            <Link
-              href="/auxiliar-administrativo-cantabria/temario"
-              className="block py-4 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-teal-100 dark:hover:bg-teal-900/30 rounded-lg text-center transition-colors relative"
-            >
-              <span className="block mb-2"><CcaaFlag oposicionId="auxiliar_administrativo_cantabria" size="md" /></span>
-              <span className="block font-medium text-slate-700 dark:text-slate-300">Aux. Admin. Cantabria</span>
-              <span className="block text-xs text-slate-500 dark:text-slate-400 mt-1">25 temas</span>
-            </Link>
-            <Link
-              href="/administrativo-navarra/temario"
-              className="block py-4 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg text-center transition-colors relative"
-            >
-              <span className="block mb-2"><CcaaFlag oposicionId="administrativo_navarra" size="md" /></span>
-              <span className="block font-medium text-slate-700 dark:text-slate-300">Admin. Navarra</span>
-              <span className="block text-xs text-slate-500 dark:text-slate-400 mt-1">27 temas</span>
-            </Link>
-            <Link
-              href="/auxiliar-administrativo-la-rioja/temario"
-              className="block py-4 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-rose-100 dark:hover:bg-rose-900/30 rounded-lg text-center transition-colors relative"
-            >
-              <span className="block mb-2">🍇</span>
-              <span className="block font-medium text-slate-700 dark:text-slate-300">Aux. Admin. La Rioja</span>
-              <span className="block text-xs text-slate-500 dark:text-slate-400 mt-1">23 temas</span>
-            </Link>
-            <Link
-              href="/auxiliar-administrativo-ayuntamiento-valencia/temario"
-              className="block py-4 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-orange-100 dark:hover:bg-orange-900/30 rounded-lg text-center transition-colors relative"
-            >
-              <span className="block mb-2">🏛️</span>
-              <span className="block font-medium text-slate-700 dark:text-slate-300">Ayto. Valencia</span>
-              <span className="block text-xs text-slate-500 dark:text-slate-400 mt-1">21 temas</span>
-            </Link>
-            <Link
-              href="/auxiliar-administrativo-ayuntamiento-murcia/temario"
-              className="block py-4 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg text-center transition-colors relative"
-            >
-              <span className="block mb-2">🏛️</span>
-              <span className="block font-medium text-slate-700 dark:text-slate-300">Ayto. Murcia</span>
-              <span className="block text-xs text-slate-500 dark:text-slate-400 mt-1">20 temas</span>
-            </Link>
-            <Link
-              href="/auxiliar-administrativo-diputacion-zaragoza/temario"
-              className="block py-4 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-amber-100 dark:hover:bg-amber-900/30 rounded-lg text-center transition-colors relative"
-            >
-              <span className="block mb-2">🏛️</span>
-              <span className="block font-medium text-slate-700 dark:text-slate-300">Dip. Zaragoza</span>
-              <span className="block text-xs text-slate-500 dark:text-slate-400 mt-1">20 temas</span>
-            </Link>
-            <Link
-              href="/administrativo-castilla-leon/temario"
-              className="block py-4 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-amber-100 dark:hover:bg-amber-900/30 rounded-lg text-center transition-colors relative"
-            >
-              <span className="block text-2xl mb-2">🦁</span>
-              <span className="block font-medium text-slate-700 dark:text-slate-300">Administrativo CyL</span>
-              <span className="block text-xs text-slate-500 dark:text-slate-400 mt-1">41 temas</span>
-            </Link>
+            {OPOSICIONES.map(o => (
+              <Link
+                key={o.slug}
+                href={`/${o.slug}/temario`}
+                className="block py-4 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg text-center transition-colors relative"
+              >
+                <span className="block mb-2">
+                  <CcaaFlag oposicionId={o.id} size="md" />
+                </span>
+                <span className="block font-medium text-slate-700 dark:text-slate-300 text-sm">{o.shortName}</span>
+                <span className="block text-xs text-slate-500 dark:text-slate-400 mt-1">{o.totalTopics} temas</span>
+              </Link>
+            ))}
           </div>
         </div>
 
