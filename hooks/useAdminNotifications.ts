@@ -10,6 +10,7 @@ interface AdminNotificationState {
   ventasImporte: number
   calidad: number
   erroresApi: number
+  rateLimitHits: number
   loading: boolean
 }
 
@@ -19,6 +20,7 @@ const EMPTY_STATE: AdminNotificationState = {
   ventas: 0,
   ventasImporte: 0,
   calidad: 0,
+  rateLimitHits: 0,
   erroresApi: 0,
   loading: false
 }
@@ -110,16 +112,29 @@ export function useAdminNotifications(enabled = false) {
           new Promise((_, reject) =>
             setTimeout(() => reject(new Error('Timeout')), 15000)
           )
+        ]),
+        // 7. Contar rate limit hits (últimas 24h) — indica posible scraping
+        Promise.race([
+          supabase
+            .from('validation_error_logs')
+            .select('id', { count: 'exact', head: true })
+            .eq('error_type', 'rate_limit')
+            .is('reviewed_at', null)
+            .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Timeout')), 15000)
+          )
         ])
       ])
 
-      const [conversationsResult, feedbacksResult, impugnacionesApiResult, salesResult, calidadResult, erroresApiResult] = results
+      const [conversationsResult, feedbacksResult, impugnacionesApiResult, salesResult, calidadResult, erroresApiResult, rateLimitResult] = results
 
       let pendingFeedback = 0
       let pendingImpugnaciones = 0
       let pendingVentas = 0
       let pendingCalidad = 0
       let pendingErroresApi = 0
+      let pendingRateLimitHits = 0
 
       // Contar conversaciones donde el último mensaje es del USUARIO (necesita respuesta del admin)
       if (conversationsResult.status === 'fulfilled') {
@@ -183,6 +198,11 @@ export function useAdminNotifications(enabled = false) {
         pendingErroresApi = erroresApiResult.value?.unreviewedCount ?? erroresApiResult.value?.summary?.totalErrors ?? 0
       }
 
+      // Obtener rate limit hits no revisados (últimas 24h)
+      if (rateLimitResult.status === 'fulfilled') {
+        pendingRateLimitHits = (rateLimitResult.value as any)?.count ?? 0
+      }
+
       setNotifications({
         feedback: pendingFeedback,
         impugnaciones: pendingImpugnaciones,
@@ -190,6 +210,7 @@ export function useAdminNotifications(enabled = false) {
         ventasImporte,
         calidad: pendingCalidad,
         erroresApi: pendingErroresApi,
+        rateLimitHits: pendingRateLimitHits,
         loading: false
       })
 
