@@ -202,6 +202,8 @@ function PerfilPageContent() {
   const [subscriptionLoading, setSubscriptionLoading] = useState<boolean>(true)
   const [portalLoading, setPortalLoading] = useState<boolean>(false)
   const [showCancellationFlow, setShowCancellationFlow] = useState<boolean>(false)
+  const [reactivateLoading, setReactivateLoading] = useState<boolean>(false)
+  const [showReactivatedBanner, setShowReactivatedBanner] = useState<boolean>(false)
 
   // 🤖 AVATAR AUTOMÁTICO - Por defecto activado
   const [avatarMode, setAvatarMode] = useState<'manual' | 'automatic'>('automatic')
@@ -1465,6 +1467,42 @@ function PerfilPageContent() {
     return null
   }
 
+  // 🆕 REACTIVAR SUSCRIPCIÓN
+  const handleReactivate = async () => {
+    if (!user) return
+    try {
+      setReactivateLoading(true)
+      const response = await fetch('/api/stripe/reactivate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id })
+      })
+      const data = await response.json()
+      if (response.ok && data.success) {
+        setSubscriptionData((prev: SubscriptionData | null): SubscriptionData | null => {
+          if (!prev) return null
+          return {
+            ...prev,
+            subscription: prev.subscription ? {
+              ...prev.subscription,
+              cancelAtPeriodEnd: false,
+            } : undefined,
+          }
+        })
+        setShowReactivatedBanner(true)
+        setTimeout(() => setShowReactivatedBanner(false), 8000)
+      } else {
+        setMessage('Error al reactivar: ' + (data.error || 'Intenta de nuevo'))
+        setTimeout(() => setMessage(''), 5000)
+      }
+    } catch {
+      setMessage('Error de conexión. Intenta de nuevo.')
+      setTimeout(() => setMessage(''), 5000)
+    } finally {
+      setReactivateLoading(false)
+    }
+  }
+
   // 🆕 ABRIR PORTAL DE STRIPE
   const openStripePortal = async () => {
     if (!user) return
@@ -1635,7 +1673,19 @@ function PerfilPageContent() {
                 </div>
               )}
 
-              {/* Aviso de cancelación pendiente */}
+              {/* Banner de reactivación exitosa */}
+              {showReactivatedBanner && (
+                <div className="mt-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-green-600">✓</span>
+                    <span className="text-green-800 dark:text-green-200 font-medium">
+                      Tu suscripción ha sido reactivada. Se renovará automáticamente el {formatDate(subscriptionData.subscription.currentPeriodEnd)}.
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Aviso de cancelación pendiente + botón reactivar */}
               {subscriptionData.subscription.cancelAtPeriodEnd && (
                 <div className="mt-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
                   <div className="flex items-center space-x-2">
@@ -1645,8 +1695,22 @@ function PerfilPageContent() {
                     </span>
                   </div>
                   <p className="text-yellow-700 dark:text-yellow-300 text-sm mt-1">
-                    Seguirás teniendo acceso Premium hasta esa fecha.
+                    Seguirás teniendo acceso Premium hasta esa fecha. Si cambias de opinión, puedes reactivarla.
                   </p>
+                  <button
+                    onClick={handleReactivate}
+                    disabled={reactivateLoading}
+                    className="mt-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white py-2 px-4 rounded-lg font-medium hover:opacity-90 transition-all disabled:opacity-50 flex items-center space-x-2"
+                  >
+                    {reactivateLoading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Reactivando...</span>
+                      </>
+                    ) : (
+                      <span>Reactivar suscripción</span>
+                    )}
+                  </button>
                 </div>
               )}
             </div>
@@ -1679,6 +1743,26 @@ function PerfilPageContent() {
                 </button>
               )}
             </div>
+
+            {/* Timeline / Historial */}
+            {(subscriptionData as any)?.timeline && (subscriptionData as any).timeline.length > 1 && (
+              <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-5">
+                <h5 className="font-medium text-gray-800 dark:text-white mb-3 text-sm">Historial</h5>
+                <div className="space-y-2">
+                  {(subscriptionData as any).timeline.map((event: { type: string; date: string }, i: number) => {
+                    const icons: Record<string, string> = { activated: '🟢', cancelled: '🔴', reactivated: '🟢', renewal: '📅' }
+                    const labels: Record<string, string> = { activated: 'Suscripción activada', cancelled: 'Cancelación programada', reactivated: 'Suscripción reactivada', renewal: 'Próxima renovación' }
+                    return (
+                      <div key={i} className="flex items-center space-x-3 text-sm">
+                        <span>{icons[event.type] || '•'}</span>
+                        <span className="text-gray-500 dark:text-gray-400 w-20">{event.date}</span>
+                        <span className="text-gray-700 dark:text-gray-300">{labels[event.type] || event.type}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
 
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
               <div className="flex items-start space-x-2">

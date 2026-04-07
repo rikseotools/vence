@@ -13,9 +13,13 @@ export {
   cancelSubscriptionRequestSchema,
   cancelSubscriptionResponseSchema,
   errorResponseSchema,
+  reactivateSubscriptionRequestSchema,
+  reactivateSubscriptionResponseSchema,
+  timelineEventSchema,
   safeParseGetSubscriptionRequest,
   safeParseCreatePortalSessionRequest,
   safeParseCancelSubscriptionRequest,
+  safeParseReactivateSubscriptionRequest,
   validateGetSubscriptionRequest,
   validateCreatePortalSessionRequest,
   validateCancelSubscriptionRequest,
@@ -29,12 +33,16 @@ export {
   type CancellationFeedback,
   type CancelSubscriptionRequest,
   type CancelSubscriptionResponse,
-  type ErrorResponse
+  type ErrorResponse,
+  type ReactivateSubscriptionRequest,
+  type ReactivateSubscriptionResponse,
+  type TimelineEvent,
 } from './schemas'
 
 // Queries
 export {
   getSubscription,
   createPortalSession,
-  cancelSubscription
+  cancelSubscription,
+  reactivateSubscription,
 } from './queries'

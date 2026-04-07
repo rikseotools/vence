@@ -139,6 +139,35 @@ export const errorResponseSchema = z.object({
 export type ErrorResponse = z.infer<typeof errorResponseSchema>
 
 // ============================================
+// REQUEST/RESPONSE: REACTIVATE SUBSCRIPTION
+// ============================================
+
+export const reactivateSubscriptionRequestSchema = z.object({
+  userId: z.string().uuid(),
+})
+
+export type ReactivateSubscriptionRequest = z.infer<typeof reactivateSubscriptionRequestSchema>
+
+export const reactivateSubscriptionResponseSchema = z.object({
+  success: z.boolean(),
+  message: z.string().optional(),
+  error: z.string().optional(),
+})
+
+export type ReactivateSubscriptionResponse = z.infer<typeof reactivateSubscriptionResponseSchema>
+
+// ============================================
+// TIMELINE EVENT
+// ============================================
+
+export const timelineEventSchema = z.object({
+  type: z.enum(['activated', 'cancelled', 'reactivated', 'renewal']),
+  date: z.string(),
+})
+
+export type TimelineEvent = z.infer<typeof timelineEventSchema>
+
+// ============================================
 // VALIDADORES
 // ============================================
 
@@ -152,6 +181,10 @@ export function safeParseCreatePortalSessionRequest(data: unknown) {
 
 export function safeParseCancelSubscriptionRequest(data: unknown) {
   return cancelSubscriptionRequestSchema.safeParse(data)
+}
+
+export function safeParseReactivateSubscriptionRequest(data: unknown) {
+  return reactivateSubscriptionRequestSchema.safeParse(data)
 }
 
 export function validateGetSubscriptionRequest(data: unknown): GetSubscriptionRequest {

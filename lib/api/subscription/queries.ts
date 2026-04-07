@@ -133,7 +133,8 @@ export async function getSubscription(
           percentOff: discountCoupon.percent_off,
           name: discountCoupon.name
         } : null
-      }
+      },
+      timeline: await buildTimeline(db, params.userId, subscription, periodEnd),
     }
 
   } catch (error) {
@@ -143,6 +144,52 @@ export async function getSubscription(
       error: error instanceof Error ? error.message : 'Error desconocido'
     }
   }
+}
+
+/**
+ * Construye timeline de la suscripción a partir de cancellation_feedback + Stripe data.
+ */
+async function buildTimeline(
+  db: ReturnType<typeof getDb>,
+  userId: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  subscription: any,
+  periodEnd: string | null,
+): Promise<Array<{ type: string; date: string }>> {
+  const timeline: Array<{ type: string; date: string }> = []
+
+  // 1. Activación
+  timeline.push({
+    type: 'activated',
+    date: new Date(subscription.created * 1000).toISOString().substring(0, 10),
+  })
+
+  // 2. Cancelaciones y reactivaciones de cancellation_feedback
+  try {
+    const rows = await db.execute(sql`
+      SELECT created_at, cancellation_type
+      FROM cancellation_feedback
+      WHERE user_id = ${userId}
+      ORDER BY created_at ASC
+    `)
+    const feedbacks = (rows as any).rows ?? rows ?? []
+    for (const fb of feedbacks) {
+      if (fb.cancellation_type === 'reactivation') {
+        timeline.push({ type: 'reactivated', date: new Date(fb.created_at).toISOString().substring(0, 10) })
+      } else {
+        timeline.push({ type: 'cancelled', date: new Date(fb.created_at).toISOString().substring(0, 10) })
+      }
+    }
+  } catch {
+    // No bloquear si falla
+  }
+
+  // 3. Próxima renovación (solo si no está cancelada)
+  if (!subscription.cancel_at_period_end && periodEnd) {
+    timeline.push({ type: 'renewal', date: periodEnd.substring(0, 10) })
+  }
+
+  return timeline
 }
 
 // ============================================
@@ -183,6 +230,74 @@ export async function createPortalSession(
   } catch (error) {
     console.error('❌ [Subscription] Error creando portal session:', error)
     return { error: error instanceof Error ? error.message : 'Error desconocido' }
+  }
+}
+
+// ============================================
+// REACTIVAR SUSCRIPCIÓN
+// ============================================
+
+export async function reactivateSubscription(
+  params: { userId: string }
+): Promise<{ success: boolean; message?: string; error?: string }> {
+  try {
+    const db = getDb()
+
+    const [profile] = await db
+      .select({ stripeCustomerId: userProfiles.stripeCustomerId })
+      .from(userProfiles)
+      .where(eq(userProfiles.id, params.userId))
+      .limit(1)
+
+    if (!profile?.stripeCustomerId) {
+      return { success: false, error: 'No se encontró suscripción' }
+    }
+
+    const subscriptions = await stripe().subscriptions.list({
+      customer: profile.stripeCustomerId,
+      status: 'active',
+      limit: 1,
+    })
+
+    if (subscriptions.data.length === 0) {
+      return { success: false, error: 'Tu suscripción ya ha expirado. Puedes contratar un nuevo plan.' }
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const subscription = subscriptions.data[0] as any
+
+    if (!subscription.cancel_at_period_end) {
+      return { success: false, error: 'La suscripción ya está activa' }
+    }
+
+    // Reactivar en Stripe
+    await stripe().subscriptions.update(subscription.id, {
+      cancel_at_period_end: false,
+    })
+
+    console.log(`✅ [Reactivate] Subscription ${subscription.id} reactivated`)
+
+    // Registrar en cancellation_feedback como reactivation
+    try {
+      await db.execute(sql`
+        INSERT INTO cancellation_feedback (
+          user_id, subscription_id, reason, cancellation_type, period_end_at
+        ) VALUES (
+          ${params.userId},
+          ${subscription.id},
+          ${'reactivated'},
+          ${'reactivation'},
+          ${new Date(subscription.current_period_end * 1000).toISOString()}
+        )
+      `)
+    } catch (fbErr) {
+      console.warn('⚠️ [Reactivate] Error guardando feedback:', fbErr)
+    }
+
+    return { success: true, message: 'Suscripción reactivada' }
+  } catch (error) {
+    console.error('❌ [Reactivate] Error:', error)
+    return { success: false, error: error instanceof Error ? error.message : 'Error desconocido' }
   }
 }
 
