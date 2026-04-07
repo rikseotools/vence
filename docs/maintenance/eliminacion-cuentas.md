@@ -62,15 +62,74 @@ console.log('Completó onboarding:', profile.onboarding_completed ? 'Sí' : 'No'
 | ¿De dónde vino? | Para evaluar calidad del tráfico |
 | ¿Qué URL de registro? | Identifica páginas con mala conversión |
 
+### Investigar el journey paso a paso (CRÍTICO)
+
+**El valor de investigar no es solo saber por qué se fue — es descubrir bugs y mala UX que afectan a TODOS los usuarios.**
+
+Reconstruir el journey completo con `user_interactions`:
+
+```javascript
+const { data: interactions } = await supabase
+  .from('user_interactions')
+  .select('event_type, page_url, created_at, metadata')
+  .eq('user_id', userId)
+  .order('created_at')
+
+// Reconstruir cronología paso a paso:
+// - page_view: a dónde navegó
+// - click: qué pulsó (y cuántos clicks frustrados = confusión)
+// - page_exit: cuándo salió
+// - test_answer_selected: respondió una pregunta
+// - test_navigation_next: pasó a la siguiente
+// - test_test_completed: completó un test
+```
+
+**Señales de frustración a buscar:**
+- Muchos clicks en la misma página en poco tiempo (no encuentra lo que busca)
+- Ida y vuelta entre páginas (está perdido)
+- page_exit sin test_test_completed (abandonó un test a medias)
+- Visita a /test-recuperado sin test pendiente (redirect confuso)
+- Visita a /perfil justo antes de pedir eliminación (buscaba cómo irse)
+
+**Señales de bugs a buscar:**
+- `test_test_completed` en user_interactions pero 0 registros en `tests` o `user_test_sessions` → respuestas no se guardaron
+- Redirect a /test-recuperado cuando el usuario ya estaba logueado → el auth callback redirigió sin necesidad
+- Muchos clicks en una página que debería ser simple → UI confusa o elementos que no responden
+
+### Ejemplo Real: Tania (07-Abr-2026) — 3 bugs descubiertos
+
+**Journey reconstruido:**
+```
+09:49 — Hizo 2 preguntas de LO 3/2018 sin registro (pre-registro)
+09:52 — Se registró con Google
+09:53 — Redirigida a /test-recuperado → recuperó 2 preguntas → "Test recuperado - Tema 0"
+09:53 — 10+ clicks frustrados en /test-recuperado (nombre confuso, no entendía)
+09:54 — Fue a /leyes/lo-3-2018, navegó la ley
+09:55 — Empezó test avanzado de 25 preguntas
+10:04 — Completó el test (test_test_completed en interacciones)
+10:04 — Clicks buscando resultados/cómo salir
+10:05 — Entró a otro test, salió sin completar
+10:06 — Botón atrás del navegador → /test-recuperado (otra vez)
+10:06 — Fue a /perfil → pidió eliminar cuenta
+```
+
+**Bugs descubiertos:**
+1. **"Test recuperado - Tema 0"** — nombre inútil. Tests de leyes tienen tema=0. Fix: consultar ley de la primera pregunta en BD → "Test recuperado - LO 3/2018"
+2. **25 respuestas PERDIDAS** — completó 25 preguntas pero 0 se guardaron en BD. Causa: `!tema` bloqueaba `tema=0` al crear la sesión de test. Sin sesión, `enqueueAnswer` no guardaba. Fix: `!tema` → `tema == null`
+3. **Doble redirect a /test-recuperado** — el auth callback usaba `location.href` que dejaba /test-recuperado en el historial del navegador. El botón atrás la llevaba de vuelta. Fix: `location.replace()` para no dejar rastro en historial
+
+**Impacto:** Estos 3 bugs afectaban a TODOS los tests de leyes (/leyes/X/avanzado), no solo a Tania. Sin la investigación del journey, nunca los habríamos descubierto.
+
 ### Documentar el motivo
 
-Antes de eliminar, anotar en `deletion_reason` un resumen:
+Antes de eliminar, anotar en `deletion_reason` un resumen que incluya los hallazgos del journey:
 
 ```
 // Ejemplos de motivos:
 "Usuario nuevo (0 tests). Se registró, saltó onboarding, pidió eliminar en 6 min. Posible problema de UX."
 "Usuario premium canceló. 45 tests en 3 meses. Motivo: cambió a otra plataforma."
 "Usuario free inactivo 60 días. Solicitó eliminación por email."
+"PSX Sergas custom. Completó 25 preguntas LO 3/2018 pero respuestas perdidas (bug tema=0). Frustración con redirect /test-recuperado. 14 min activa."
 ```
 
 ## 2. Registrar en deleted_users_log
