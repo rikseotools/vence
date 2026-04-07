@@ -2021,6 +2021,96 @@ export const OPOSICIONES: Oposicion[] = [
     ],
   },
   // ========================================
+  // CELADOR SCS CANARIAS (E)
+  // ========================================
+  {
+    id: 'celador_scs_canarias',
+    slug: 'celador-scs-canarias',
+    positionType: 'celador_scs_canarias',
+    name: 'Celador/a del Servicio Canario de Salud (SCS)',
+    shortName: 'Celador SCS',
+    emoji: '🏥',
+    badge: 'E',
+    color: 'teal',
+    administracion: 'autonomica',
+    blocks: [
+      {
+        id: 'bloque1', title: 'Temario Oficial', subtitle: 'Funciones del celador en el SCS', icon: '🏥',
+        themes: [
+          { id: 1, name: 'Atención al usuario y tarjeta sanitaria' },
+          { id: 2, name: 'Funciones del Celador y del Jefe de Personal Subalterno' },
+          { id: 3, name: 'Admisión, vigilancia y actuación con familiares' },
+          { id: 4, name: 'Movilización y traslado de pacientes' },
+          { id: 5, name: 'Quirófanos: normas de higiene y esterilización' },
+          { id: 6, name: 'Pacientes fallecidos, autopsias y mortuorio' },
+          { id: 7, name: 'Suministros: recepción, almacén y distribución' },
+          { id: 8, name: 'Celador en farmacia y animalario' },
+          { id: 9, name: 'Traslado de documentos y documentación sanitaria' },
+          { id: 10, name: 'Psiquiatría: enfermo mental y urgencias psiquiátricas' },
+          { id: 11, name: 'Emergencias: métodos de traslado y plan de catástrofes' },
+          { id: 12, name: 'Enfermo contagioso: tipos de aislamientos' },
+          { id: 13, name: 'Celador en urgencias y transporte en ambulancias' },
+          { id: 14, name: 'Material de transporte sanitario' },
+        ],
+      },
+    ],
+    totalTopics: 14,
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/celador-scs-canarias', label: 'Mi Oposición', icon: '🏥', featured: true },
+      { href: '/celador-scs-canarias/temario', label: 'Temario', icon: '📚' },
+      { href: '/celador-scs-canarias/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+  // ========================================
+  // CELADOR SESCAM CLM (E)
+  // ========================================
+  {
+    id: 'celador_sescam_clm',
+    slug: 'celador-sescam-clm',
+    positionType: 'celador_sescam_clm',
+    name: 'Celador/a del SESCAM (Castilla-La Mancha)',
+    shortName: 'Celador SESCAM',
+    emoji: '🏥',
+    badge: 'E',
+    color: 'red',
+    administracion: 'autonomica',
+    blocks: [
+      {
+        id: 'bloque1', title: 'Parte Común', subtitle: 'Legislación y sistema sanitario', icon: '⚖️',
+        themes: [
+          { id: 1, name: 'CE: derechos fundamentales, salud e igualdad' },
+          { id: 2, name: 'Estatuto de Autonomía de CLM y Administración autonómica' },
+          { id: 3, name: 'Ley General de Sanidad: SNS y áreas de salud' },
+          { id: 4, name: 'Ordenación sanitaria CLM y estructura del SESCAM' },
+          { id: 5, name: 'Estatuto Marco (I): normas generales, clasificación y derechos' },
+          { id: 6, name: 'Estatuto Marco (II): provisión, selección y carrera profesional' },
+          { id: 7, name: 'Estatuto Marco (III): retribuciones, jornada y régimen disciplinario' },
+          { id: 8, name: 'PRL: derechos, obligaciones y Plan Perseo' },
+          { id: 9, name: 'Atención primaria: zona básica, equipos y urgencias' },
+          { id: 10, name: 'Asistencia especializada: hospitales y centros' },
+          { id: 11, name: 'Derechos del usuario, tarjeta sanitaria y documentación clínica' },
+        ],
+      },
+      {
+        id: 'bloque2', title: 'Parte Específica', subtitle: 'Funciones del celador', icon: '🏥',
+        themes: [
+          { id: 12, name: 'Funciones del Celador: vigilancia, asistencia y aseo' },
+          { id: 13, name: 'Movilización de pacientes: técnicas y material auxiliar' },
+          { id: 14, name: 'Quirófanos, urgencias y primeros auxilios' },
+          { id: 15, name: 'Pacientes fallecidos, autopsias y mortuorio' },
+        ],
+      },
+    ],
+    totalTopics: 15,
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/celador-sescam-clm', label: 'Mi Oposición', icon: '🏥', featured: true },
+      { href: '/celador-sescam-clm/temario', label: 'Temario', icon: '📚' },
+      { href: '/celador-sescam-clm/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+  // ========================================
   // GUARDIA CIVIL - ESCALA CABOS Y GUARDIAS (C1)
   // ========================================
   {
