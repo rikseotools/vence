@@ -12,20 +12,32 @@ const REAL_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
 const REAL_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 const hasRealDb = !!(REAL_URL && REAL_KEY && !REAL_URL.includes('test.supabase.co'))
 
-function supabaseGet<T = unknown>(table: string, params: string): Promise<T[]> {
-  const url = `${REAL_URL}/rest/v1/${table}?${params}`
-  return new Promise((resolve, reject) => {
-    https.get(url, {
-      headers: { apikey: REAL_KEY!, Authorization: `Bearer ${REAL_KEY}` },
-    }, (res) => {
-      let data = ''
-      res.on('data', (chunk: string) => { data += chunk })
-      res.on('end', () => {
-        if (res.statusCode !== 200) return reject(new Error(`${table}: ${res.statusCode}`))
-        try { resolve(JSON.parse(data)) } catch (e) { reject(e) }
-      })
-    }).on('error', reject)
-  })
+/** Paginated fetch — Supabase REST caps at 1000 rows per request */
+async function supabaseGet<T = unknown>(table: string, params: string): Promise<T[]> {
+  const PAGE_SIZE = 1000
+  const all: T[] = []
+  let offset = 0
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const sep = params ? '&' : ''
+    const url = `${REAL_URL}/rest/v1/${table}?${params}${sep}limit=${PAGE_SIZE}&offset=${offset}`
+    const page = await new Promise<T[]>((resolve, reject) => {
+      https.get(url, {
+        headers: { apikey: REAL_KEY!, Authorization: `Bearer ${REAL_KEY}` },
+      }, (res) => {
+        let data = ''
+        res.on('data', (chunk: string) => { data += chunk })
+        res.on('end', () => {
+          if (res.statusCode !== 200) return reject(new Error(`${table}: ${res.statusCode}`))
+          try { resolve(JSON.parse(data)) } catch (e) { reject(e) }
+        })
+      }).on('error', reject)
+    })
+    all.push(...page)
+    if (page.length < PAGE_SIZE) break
+    offset += PAGE_SIZE
+  }
+  return all
 }
 
 interface Topic {
@@ -159,7 +171,7 @@ describeIf('Integración temario: BD ↔ listado ↔ tema-N', () => {
       console.warn('Topics sin scope:', sinScope.slice(0, 5).map(t => `${t.position_type} T${t.topic_number}: ${t.title}`))
     }
     // Tolerancia: algunos temas pueden estar en desarrollo
-    expect(sinScope.length).toBeLessThan(40)
+    expect(sinScope.length).toBeLessThan(35)
   })
 
   it('topic_scope válidos tienen law_id no nulo (solo 2 legacy tolerados)', () => {
