@@ -1,7 +1,7 @@
 // lib/api/user-failed-questions/queries.ts - Queries Drizzle para preguntas falladas del usuario
 import { getDb } from '@/db/client'
 import { questions, articles, laws, tests, testQuestions } from '@/db/schema'
-import { eq, and, inArray, desc } from 'drizzle-orm'
+import { eq, and, inArray, desc, gte } from 'drizzle-orm'
 import type {
   GetUserFailedQuestionsRequest,
   GetUserFailedQuestionsResponse,
@@ -16,7 +16,7 @@ export async function getUserFailedQuestions(
 ): Promise<GetUserFailedQuestionsResponse> {
   try {
     const db = getDb()
-    const { userId, topicNumber, selectedLaws } = params
+    const { userId, topicNumber, selectedLaws, since } = params
 
     console.log(`🔍 [v2] Cargando preguntas falladas para usuario ${userId.substring(0, 8)}...`)
 
@@ -35,6 +35,11 @@ export async function getUserFailedQuestions(
     // Filtrar por leyes si se especifican
     if (selectedLaws && selectedLaws.length > 0) {
       conditions.push(inArray(laws.shortName, selectedLaws))
+    }
+
+    // Filtrar por fecha si se especifica
+    if (since) {
+      conditions.push(gte(testQuestions.createdAt, since))
     }
 
     // Si no hay ni tema ni leyes, no podemos filtrar

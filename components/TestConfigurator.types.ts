@@ -53,6 +53,8 @@ export interface TestConfiguratorProps {
   officialQuestionsCount?: number
   testMode?: TestMode
   positionType?: string
+  /** Abrir automáticamente el modal de preguntas falladas al montar */
+  autoOpenFailed?: boolean
 }
 
 // ============================================

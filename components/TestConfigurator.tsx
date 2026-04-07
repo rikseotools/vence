@@ -36,7 +36,8 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
   hideEssentialArticles = false,
   officialQuestionsCount = 0,
   testMode = 'practica',
-  positionType = 'auxiliar_administrativo_estado'
+  positionType = 'auxiliar_administrativo_estado',
+  autoOpenFailed = false
 }) => {
   // Estados de configuración
   const [selectedQuestions, setSelectedQuestions] = useState(25);
@@ -59,6 +60,7 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
   const [failedQuestionsData, setFailedQuestionsData] = useState<FailedQuestionsData | null>(null);
   const [failedQuestionsCount, setFailedQuestionsCount] = useState<number | 'all'>(25);
   const [selectedFailedOrder, setSelectedFailedOrder] = useState<string | null>(null);
+  const [failedPeriod, setFailedPeriod] = useState<'all' | '7d' | '30d'>('all');
 
   // 🆕 Estados para filtro de leyes
   const [selectedLaws, setSelectedLaws] = useState<Set<string>>(new Set());
@@ -539,6 +541,13 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
     }
   }, [selectedLaws]);
 
+  // Auto-abrir modal de preguntas falladas si viene con autoOpenFailed=true
+  useEffect(() => {
+    if (autoOpenFailed && currentUser && tema) {
+      loadFailedQuestions('all')
+    }
+  }, [autoOpenFailed, currentUser?.id, tema]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // 🆕 Funciones para manejar filtro de leyes
   const toggleLawSelection = (lawShortName: string) => {
     const newSelectedLaws = new Set(selectedLaws);
@@ -641,11 +650,11 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
   };
 
   // 🆕 Función para cargar preguntas falladas del usuario (v2 - Drizzle + Zod)
-  const loadFailedQuestions = async () => {
+  const loadFailedQuestions = async (period: 'all' | '7d' | '30d' = failedPeriod) => {
     if (!currentUser) return
 
     try {
-      console.log(`🔍 [v2] Cargando preguntas falladas para ${tema ? `tema ${tema}` : 'configurador específico'}...`)
+      console.log(`🔍 [v2] Cargando preguntas falladas para ${tema ? `tema ${tema}` : 'configurador específico'} (periodo: ${period})...`)
 
       // Validar que hay filtros suficientes
       if (!tema && selectedLaws.size === 0) {
@@ -653,6 +662,14 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
         alert('No se puede determinar qué preguntas buscar. Selecciona una ley primero.')
         setOnlyFailedQuestions(false)
         return
+      }
+
+      // Calcular fecha since según periodo
+      let since: string | undefined
+      if (period === '7d') {
+        since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+      } else if (period === '30d') {
+        since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
       }
 
       // Llamar a la API v2
@@ -663,6 +680,7 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
           userId: currentUser.id,
           topicNumber: tema || undefined,
           selectedLaws: tema ? [] : Array.from(selectedLaws),
+          since,
         })
       })
 
@@ -2387,6 +2405,38 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
                       ({failedQuestionsData.totalFailures} fallos en total entre todas)
                     </div>
                   </div>
+                </div>
+              </div>
+
+              {/* Filtro de periodo */}
+              <div className="mb-6">
+                <h4 className="font-bold text-gray-800 mb-3 flex items-center">
+                  <span className="mr-2">📅</span>
+                  ¿De qué periodo?
+                </h4>
+                <div className="grid grid-cols-3 gap-2">
+                  {([
+                    { id: 'all' as const, label: 'Todas', desc: 'Historial completo' },
+                    { id: '30d' as const, label: 'Último mes', desc: 'Últimos 30 días' },
+                    { id: '7d' as const, label: 'Última semana', desc: 'Últimos 7 días' },
+                  ]).map((opt) => (
+                    <button
+                      key={opt.id}
+                      onClick={() => {
+                        setFailedPeriod(opt.id)
+                        setSelectedFailedOrder(null)
+                        loadFailedQuestions(opt.id)
+                      }}
+                      className={`p-3 border-2 rounded-lg transition-all text-center ${
+                        failedPeriod === opt.id
+                          ? 'border-indigo-500 bg-indigo-50'
+                          : 'border-gray-200 hover:border-indigo-300 hover:bg-indigo-50'
+                      }`}
+                    >
+                      <div className="font-bold text-sm text-gray-800">{opt.label}</div>
+                      <div className="text-xs text-gray-500">{opt.desc}</div>
+                    </button>
+                  ))}
                 </div>
               </div>
 

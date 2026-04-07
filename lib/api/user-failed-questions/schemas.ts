@@ -11,6 +11,8 @@ export const getUserFailedQuestionsRequestSchema = z.object({
   topicNumber: z.number().int().min(1).optional(),
   // Filtro por leyes (opcional, para configurador de leyes)
   selectedLaws: z.array(z.string()).default([]),
+  // Filtro temporal: solo fallos desde esta fecha (ISO string)
+  since: z.string().datetime().optional(),
 })
 
 export type GetUserFailedQuestionsRequest = z.infer<typeof getUserFailedQuestionsRequestSchema>

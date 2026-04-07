@@ -3,6 +3,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { getSupabaseClient } from '@/lib/supabase'
 import TestConfigurator from '@/components/TestConfigurator'
@@ -42,6 +43,8 @@ interface TemaTestPageProps {
 }
 
 export default function TemaTestPage({ oposicionSlug, params }: TemaTestPageProps) {
+  const searchParams = useSearchParams()
+  const autoOpenFailed = searchParams.get('failedOnly') === 'true'
   const { getSlug: generateLawSlug } = useLawSlugs()
   const config = getOposicion(oposicionSlug)
 
@@ -433,6 +436,7 @@ export default function TemaTestPage({ oposicionSlug, params }: TemaTestPageProp
               officialQuestionsCount={officialQuestionsCount}
               testMode={testMode}
               positionType={positionType}
+              autoOpenFailed={autoOpenFailed}
             />
           </section>
         ) : (
