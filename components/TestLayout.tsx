@@ -46,6 +46,7 @@ import { useOposicionPaths } from '@/hooks/useOposicionPaths'
 // validateAnswer ya no se usa — validación es client-side
 import { completeTestOnServer } from '@/lib/api/v2/complete-test/client'
 import { enqueueAnswer } from '@/utils/answerSaveQueue'
+import { normalizeDifficulty } from '@/lib/api/shared/difficulty'
 import { usePendingAnswers } from '@/hooks/usePendingAnswers'
 import ContentDataRenderer from './ContentDataRenderer'
 
@@ -946,7 +947,7 @@ export default function TestLayout({
       } : null,
       metadata: {
         id: currentQ.id,
-        difficulty: currentQ.difficulty || null,
+        difficulty: currentQ.difficulty ? normalizeDifficulty(currentQ.difficulty as string) : null,
         question_type: currentQ.question_type || null,
         tags: null,
       },

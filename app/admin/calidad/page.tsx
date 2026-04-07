@@ -45,7 +45,7 @@ const CHECK_CONFIG = {
   },
   banned_words: {
     title: 'Palabras prohibidas',
-    description: 'Menciones a "opositatest" u otras marcas',
+    description: 'Menciones a "opositatest", "tutestdigital" u otras marcas',
     icon: '🚫',
   },
   pending_explanation: {
