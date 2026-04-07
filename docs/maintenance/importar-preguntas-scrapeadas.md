@@ -75,6 +75,16 @@ FROM oposiciones WHERE slug = 'SLUG_OPOSICION';
 }
 ```
 
+## ANTES DE IMPORTAR: Limpieza de Enunciados (OBLIGATORIO)
+
+Cada fuente de scraping puede incluir basura en los enunciados (coletillas, URLs, metadatos). Antes de insertar, revisar una muestra de preguntas y limpiar patrones específicos de la fuente.
+
+**Consultar el manual de scraping de cada fuente para los patrones concretos:**
+- TuTestDigital: ver `docs/scraping/tutestdigital-api-manual.md` → sección "Limpieza de Enunciados"
+- OpositaTest: ver `docs/scraping/opositatest-api-manual.md`
+
+**Regla universal:** Limpiar ANTES de calcular el content_hash y ANTES de insertar. Si se importa sin limpiar, hay que corregir con UPDATE masivo post-importación.
+
 ## ANTES DE IMPORTAR: Detección de Duplicados (OBLIGATORIO)
 
 Muchas preguntas scrapeadas ya existen en la BD (de otras oposiciones que comparten leyes). Importar duplicados degrada la experiencia del usuario. Hay que detectarlos ANTES de hacer el trabajo de verificación y mejora.
@@ -1092,20 +1102,56 @@ option_a: 'https://...supabase.../question-images/cyl-exams/options/6502db4f...p
 - Sopas de letras → `table_data` con rows (cada fila es una línea de letras)
 - Cuadros con formato visual específico → evaluar caso a caso
 
-## 13. Checklist Completo por Tema
+## 13. Errores Comunes al Importar (Lecciones Aprendidas)
 
-Flujo validado (Marzo 2026):
+### Error 1: No limpiar enunciados antes de insertar
+
+Cada fuente de scraping tiene patrones de basura distintos. Si no se limpia ANTES de insertar, hay que hacer UPDATE masivo después.
+
+**Regla:** Revisar una muestra de preguntas, identificar patrones de basura, y limpiar ANTES de calcular el content_hash y ANTES de insertar. Ver el manual de scraping de cada fuente para los patrones concretos.
+
+### Error 2: No reescribir explicaciones ANTES de la verificación
+
+Las explicaciones scrapeadas son casi siempre insuficientes: solo repiten la respuesta correcta sin analizar las opciones incorrectas ni citar el artículo. Si se insertan tal cual, el paso de verificación marca el 90%+ como `bad_explanation` y hay que reescribirlas todas igual.
+
+**Regla:** Reescribir TODAS las explicaciones con agentes ANTES de la verificación (paso 6 del checklist). No confiar en que las explicaciones scrapeadas "están bien".
+
+### Error 3: Asignar artículo solo por el número mencionado en el enunciado
+
+La pregunta puede decir "Según el artículo 29..." pero la información real estar en otro artículo. Esto pasa cuando la fuente etiqueta mal o cuando hay artículos con contenido reorganizado.
+
+**Regla:** Al asignar `primary_article_id`, SIEMPRE leer el contenido del artículo candidato y verificar que contiene la información que la pregunta evalúa. No confiar ciegamente en el número que aparece en el enunciado.
+
+### Error 4: Activar preguntas antes de verificación completa
+
+Si se activan preguntas antes de que pasen la verificación con agentes, los usuarios ven preguntas con explicaciones malas o respuestas potencialmente incorrectas.
+
+**Regla:** NUNCA activar manualmente. El flujo es: insertar desactivadas → verificar con agentes → las `perfect` se activan automáticamente.
+
+### Error 5: La tabla `questions` NO tiene columna `source`
+
+**Regla:** Usar `tags` para marcar el origen: `['Tema 2', 'Estatuto Murcia', 'CARM']`. No inventar columnas que no existen en el schema.
+
+## 14. Checklist Completo por Tema
+
+Flujo validado (Abril 2026):
 
 ```
+0. LIMPIAR ENUNCIADOS (obligatorio para cualquier fuente)
+   - Revisar muestra de preguntas e identificar patrones de basura
+   - Aplicar limpieza ANTES de calcular content_hash
+   - Ver manual de scraping de la fuente para patrones concretos
+
 1. DETECCIÓN DUPLICADOS (obligatorio antes de trabajar)
    - Hash exacto (SHA-256 normalizado)
+   - Opciones barajadas (normalizar y ordenar opciones)
    - Similitud Jaccard >=80% (revisar rápido)
    - Similitud 60-80% (comparar opciones manualmente)
    - Contra TODA la BD, no solo el tema
 
 2. VERIFICAR LEYES Y ARTÍCULOS
    - Las leyes del tema existen en BD
-   - Los artículos están sincronizados desde BOE
+   - Los artículos están sincronizados desde BOE (usar /api/verify-articles/sync-all)
    - El Preámbulo existe si la ley lo tiene
    - Si hay preguntas teóricas sin ley → crear ley virtual (ver sección 11)
 
@@ -1114,27 +1160,35 @@ Flujo validado (Marzo 2026):
    - No faltan artículos que el epígrafe menciona
    - No sobran artículos que no corresponden
 
-4. INSERTAR PREGUNTAS NUEVAS (DESACTIVADAS)
+4. ASIGNAR ARTÍCULOS VERIFICANDO CONTENIDO
+   - Para cada pregunta, leer el artículo candidato
+   - Verificar que el contenido del artículo responde a la pregunta
+   - NO confiar ciegamente en el número de artículo del enunciado
+   - Si hay discrepancia entre el número mencionado y el contenido, vincular al artículo correcto
+
+5. INSERTAR PREGUNTAS NUEVAS (DESACTIVADAS)
    - Solo las que no son duplicados
-   - Con primary_article_id correcto
-   - Con content_hash generado
+   - Con primary_article_id verificado contra contenido
+   - Con content_hash generado (sobre texto limpio)
    - Con tags apropiados
    - is_active: false
    - deactivation_reason: 'Pendiente de revisión post-importación'
    - topic_review_status: 'pending'
 
-5. EXPLICACIONES DIDÁCTICAS
-   - Reescribir con agentes Opus/Sonnet en paralelo
+6. REESCRIBIR EXPLICACIONES (ANTES de verificar, NO después)
+   - Reescribir TODAS con agentes Sonnet en paralelo
    - Formato: blockquote + por qué correcta + por qué incorrectas
+   - Las explicaciones scrapeadas son casi siempre insuficientes
    - Actualizar en BD
 
-6. VERIFICACIÓN CON AGENTE (las preguntas siguen desactivadas)
+7. VERIFICACIÓN CON AGENTE (las preguntas siguen desactivadas)
    - articleOk, answerOk, explanationOk
+   - Guardar en ai_verification_results con ai_provider 'claude_code'
    - Las 'perfect' se reactivan automáticamente
    - Las que fallen se corrigen y luego se reactivan
    - No dar el tema por bueno hasta que TODAS estén perfect o desactivadas con motivo
 
-7. CORRECCIÓN DE ERRORES
+8. CORRECCIÓN DE ERRORES
    - Agentes revisan preguntas con status de error
    - Falsos positivos → perfect (se reactivan)
    - Errores reales → corregir explicación/respuesta/artículo → perfect
