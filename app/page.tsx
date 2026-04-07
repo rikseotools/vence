@@ -1,4 +1,5 @@
-// app/page.js
+// app/page.tsx
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import CcaaFlag from '@/components/CcaaFlag'
 
@@ -15,7 +16,7 @@ function getFormattedDate() {
   return `${day} ${month} ${year}`
 }
 
-export const metadata = {
+export const metadata: Metadata = {
   title: 'Test de Oposiciones y Leyes | Vence',
   description: 'Tests gratuitos de leyes españolas y oposiciones. Constitución Española, Ley 39/2015, Guardia Civil, Administrativo. +5000 preguntas actualizadas.',
   keywords: [
@@ -252,9 +253,53 @@ export default function HomePage() {
               >
                 Tramitación Procesal (C1)
               </Link>
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wide pt-2">Sanidad</p>
               <Link
-                href="/nuestras-oposiciones"
-                className="block py-2 px-4 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors text-sm"
+                href="/celador-sermas-madrid/test"
+                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
+              >
+                Celador SERMAS Madrid - 688 plazas
+              </Link>
+              <Link
+                href="/celador-scs-canarias/test"
+                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
+              >
+                Celador SCS Canarias - 530 plazas
+              </Link>
+              <Link
+                href="/tcae-sermas-madrid/test"
+                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
+              >
+                TCAE SERMAS Madrid - 1.747 plazas
+              </Link>
+              <Link
+                href="/enfermero-sas-andalucia/test"
+                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
+              >
+                Enfermero SAS Andalucía - 5.101 plazas
+              </Link>
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wide pt-2">Seguridad</p>
+              <Link
+                href="/guardia-civil/test"
+                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
+              >
+                Guardia Civil - 1.704 plazas
+              </Link>
+              <Link
+                href="/policia-nacional/test"
+                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
+              >
+                Policía Nacional - 2.163 plazas
+              </Link>
+              <Link
+                href="/policia-municipal-madrid/test"
+                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
+              >
+                Policía Municipal Madrid - 561 plazas
+              </Link>
+              <Link
+                href="/oposiciones"
+                className="block py-2 px-4 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors text-sm font-medium"
               >
                 Ver todas las oposiciones →
               </Link>
@@ -299,10 +344,46 @@ export default function HomePage() {
                 Ley 19/2013 (Transparencia)
               </Link>
               <Link
-                href="/leyes"
-                className="block py-2 px-4 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors text-sm"
+                href="/leyes/ley-29-1998"
+                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
               >
-                +45 leyes más →
+                Ley 29/1998 (LJCA)
+              </Link>
+              <Link
+                href="/leyes/ley-9-2017"
+                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
+              >
+                Ley 9/2017 (Contratos)
+              </Link>
+              <Link
+                href="/leyes/ley-47-2003"
+                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
+              >
+                Ley 47/2003 (Presupuestaria)
+              </Link>
+              <Link
+                href="/leyes/ley-7-1985"
+                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
+              >
+                Ley 7/1985 (LBRL)
+              </Link>
+              <Link
+                href="/leyes/lo-3-2018"
+                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
+              >
+                LO 3/2018 (Protección de datos)
+              </Link>
+              <Link
+                href="/leyes/tue"
+                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
+              >
+                TUE (Tratado Unión Europea)
+              </Link>
+              <Link
+                href="/leyes"
+                className="block py-2 px-4 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors text-sm font-medium"
+              >
+                +40 leyes más →
               </Link>
             </div>
           </div>
