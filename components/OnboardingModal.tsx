@@ -1023,6 +1023,7 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }: On
       ...formData,
       selectedOposicion: oposicionData
     })
+    setError(null)
 
     // 💾 Guardar inmediatamente
     saveField('target_oposicion', oposicion.id)
@@ -1043,6 +1044,7 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }: On
       ...formData,
       selectedOposicion: oposicionData
     })
+    setError(null)
 
     // 💾 Guardar inmediatamente
     saveField('target_oposicion', oposicion.id)
@@ -1371,7 +1373,7 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }: On
 
           {/* Sección: Oposición - Solo mostrar si no está completa */}
           {!completedFields.oposicion && (
-          <div>
+          <div id="onboarding-oposicion" className={`${error && !formData.selectedOposicion ? 'ring-2 ring-amber-400 rounded-lg p-2 -m-2' : ''}`}>
             <h3 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-gray-100 mb-2">
               ¿Qué oposición estás preparando? *
             </h3>
@@ -1668,9 +1670,17 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }: On
             💾 Todos tus datos se guardan automáticamente
           </p>
 
-          {/* Botón Completar después */}
+          {/* Botón Completar después — requiere oposición seleccionada */}
           <button
-            onClick={onSkip}
+            onClick={() => {
+              if (!formData.selectedOposicion) {
+                setError('Selecciona tu oposición para continuar. Puedes buscarla o crear una personalizada.')
+                // Scroll al selector de oposición
+                document.getElementById('onboarding-oposicion')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                return
+              }
+              onSkip()
+            }}
             disabled={loading}
             className="w-full py-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors disabled:opacity-50"
           >
