@@ -710,31 +710,28 @@ function PerfilPageContent() {
   }, [user])
 
   // 🆕 CARGAR DATOS DE SUSCRIPCIÓN
-  useEffect(() => {
-    async function loadSubscription() {
-      if (!user) return
-
-      try {
-        setSubscriptionLoading(true)
-
-        const response = await fetch(`/api/stripe/subscription?userId=${user.id}`)
-        const data = await response.json()
-
-        if (response.ok) {
-          setSubscriptionData(data)
-        } else {
-          console.error('Error loading subscription:', data.error)
-          setSubscriptionData({ hasSubscription: false })
-        }
-      } catch (error) {
-        console.error('Error loading subscription:', error)
+  const reloadSubscription = async () => {
+    if (!user) return
+    try {
+      setSubscriptionLoading(true)
+      const response = await fetch(`/api/stripe/subscription?userId=${user.id}`)
+      const data = await response.json()
+      if (response.ok) {
+        setSubscriptionData(data)
+      } else {
+        console.error('Error loading subscription:', data.error)
         setSubscriptionData({ hasSubscription: false })
-      } finally {
-        setSubscriptionLoading(false)
       }
+    } catch (error) {
+      console.error('Error loading subscription:', error)
+      setSubscriptionData({ hasSubscription: false })
+    } finally {
+      setSubscriptionLoading(false)
     }
+  }
 
-    loadSubscription()
+  useEffect(() => {
+    reloadSubscription()
   }, [user])
 
   // CARGAR PERFIL VIA API TIPADA
@@ -1479,18 +1476,9 @@ function PerfilPageContent() {
       })
       const data = await response.json()
       if (response.ok && data.success) {
-        setSubscriptionData((prev: SubscriptionData | null): SubscriptionData | null => {
-          if (!prev) return null
-          return {
-            ...prev,
-            subscription: prev.subscription ? {
-              ...prev.subscription,
-              cancelAtPeriodEnd: false,
-            } : undefined,
-          }
-        })
         setShowReactivatedBanner(true)
         setTimeout(() => setShowReactivatedBanner(false), 8000)
+        await reloadSubscription()
       } else {
         setMessage('Error al reactivar: ' + (data.error || 'Intenta de nuevo'))
         setTimeout(() => setMessage(''), 5000)
@@ -2809,18 +2797,9 @@ function PerfilPageContent() {
         onClose={() => setShowCancellationFlow(false)}
         userId={user?.id}
         periodEndDate={subscriptionData?.subscription?.currentPeriodEnd}
-        onCancelled={(_periodEnd: string | number | undefined) => {
-          // Actualizar datos de suscripción localmente
-          setSubscriptionData((prev: SubscriptionData | null): SubscriptionData | null => {
-            if (!prev) return null
-            return {
-              ...prev,
-              subscription: prev.subscription ? {
-                ...prev.subscription,
-                cancelAtPeriodEnd: true
-              } : undefined
-            }
-          })
+        onCancelled={async () => {
+          // Recargar datos completos (incluido timeline)
+          await reloadSubscription()
         }}
       />
     </div>
