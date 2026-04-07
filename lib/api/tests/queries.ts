@@ -19,25 +19,21 @@ async function generateRecoveredTestTitle(
 ): Promise<string> {
   try {
     // Intentar obtener el nombre de la ley de la primera pregunta
-    const firstQuestion = pendingTest.answeredQuestions[0]
-    if (firstQuestion?.question) {
-      const questionId = typeof firstQuestion.question === 'string'
-        ? firstQuestion.question
-        : firstQuestion.question
+    const firstQuestionData = pendingTest.questions?.[0]
+    const questionId = firstQuestionData?.id
 
-      if (questionId && typeof questionId === 'string' && questionId.length > 10) {
-        const result = await db
-          .select({ shortName: laws.shortName })
-          .from(questions)
-          .innerJoin(articles, eq(questions.primaryArticleId, articles.id))
-          .innerJoin(laws, eq(articles.lawId, laws.id))
-          .where(eq(questions.id, questionId))
-          .limit(1)
+    if (questionId && questionId.length > 10) {
+      const result = await db
+        .select({ shortName: laws.shortName })
+        .from(questions)
+        .innerJoin(articles, eq(questions.primaryArticleId, articles.id))
+        .innerJoin(laws, eq(articles.lawId, laws.id))
+        .where(eq(questions.id, questionId))
+        .limit(1)
 
-        if (result[0]?.shortName) {
-          const tema = pendingTest.tema ? ` - Tema ${pendingTest.tema}` : ''
-          return `Test recuperado - ${result[0].shortName}${tema}`
-        }
+      if (result[0]?.shortName) {
+        const tema = pendingTest.tema ? ` - Tema ${pendingTest.tema}` : ''
+        return `Test recuperado - ${result[0].shortName}${tema}`
       }
     }
   } catch {
