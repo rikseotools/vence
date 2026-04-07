@@ -120,8 +120,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     <span>💬</span>
                     <span>Feedback</span>
                     {adminNotifications?.feedback > 0 && (
-                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold animate-pulse">
-                        {adminNotifications.feedback}
+                      <span className="absolute -top-1 -right-1 flex space-x-0.5">
+                        {adminNotifications.feedbackByType?.deletion > 0 && (
+                          <span className="bg-red-600 text-white text-xs rounded-full h-5 min-w-5 px-1 flex items-center justify-center font-bold animate-pulse" title="Eliminación de cuenta">
+                            {adminNotifications.feedbackByType.deletion}
+                          </span>
+                        )}
+                        {adminNotifications.feedbackByType?.bug > 0 && (
+                          <span className="bg-amber-500 text-white text-xs rounded-full h-5 min-w-5 px-1 flex items-center justify-center font-bold" title="Bug reportado">
+                            {adminNotifications.feedbackByType.bug}
+                          </span>
+                        )}
+                        {adminNotifications.feedbackByType?.other > 0 && (
+                          <span className="bg-blue-500 text-white text-xs rounded-full h-5 min-w-5 px-1 flex items-center justify-center font-bold" title="Otro feedback">
+                            {adminNotifications.feedbackByType.other}
+                          </span>
+                        )}
                       </span>
                     )}
                   </a>

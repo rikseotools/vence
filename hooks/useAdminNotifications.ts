@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 
 interface AdminNotificationState {
   feedback: number
+  feedbackByType: { deletion: number; bug: number; other: number }
   impugnaciones: number
   ventas: number
   ventasImporte: number
@@ -16,6 +17,7 @@ interface AdminNotificationState {
 
 const EMPTY_STATE: AdminNotificationState = {
   feedback: 0,
+  feedbackByType: { deletion: 0, bug: 0, other: 0 },
   impugnaciones: 0,
   ventas: 0,
   ventasImporte: 0,
@@ -84,7 +86,7 @@ export function useAdminNotifications(enabled = false) {
         Promise.race([
           supabase
             .from('user_feedback')
-            .select('id, feedback_conversations(id)')
+            .select('id, type, feedback_conversations(id)')
             .in('status', ['pending', 'in_progress']),
           new Promise((_, reject) =>
             setTimeout(() => reject(new Error('Timeout')), 15000)
@@ -130,6 +132,7 @@ export function useAdminNotifications(enabled = false) {
       const [conversationsResult, feedbacksResult, impugnacionesApiResult, salesResult, calidadResult, erroresApiResult, rateLimitResult] = results
 
       let pendingFeedback = 0
+      const feedbackTypeCounts = { deletion: 0, bug: 0, other: 0 }
       let pendingImpugnaciones = 0
       let pendingVentas = 0
       let pendingCalidad = 0
@@ -157,13 +160,16 @@ export function useAdminNotifications(enabled = false) {
         console.warn('Error cargando conversaciones:', conversationsResult.reason?.message)
       }
 
-      // Contar feedbacks sin conversación
+      // Contar feedbacks sin conversación (por tipo)
       if (feedbacksResult.status === 'fulfilled') {
         const feedbacks = feedbacksResult.value.data || []
         feedbacks.forEach((fb: any) => {
           const hasConversation = fb.feedback_conversations && fb.feedback_conversations.length > 0
           if (!hasConversation) {
             pendingFeedback++
+            if (fb.type === 'account_deletion') feedbackTypeCounts.deletion++
+            else if (fb.type === 'bug') feedbackTypeCounts.bug++
+            else feedbackTypeCounts.other++
           }
         })
       } else {
@@ -205,6 +211,7 @@ export function useAdminNotifications(enabled = false) {
 
       setNotifications({
         feedback: pendingFeedback,
+        feedbackByType: feedbackTypeCounts,
         impugnaciones: pendingImpugnaciones,
         ventas: pendingVentas,
         ventasImporte,
