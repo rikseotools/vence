@@ -988,6 +988,27 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }: On
     }
   }
 
+  // Aliases de búsqueda: términos alternativos que los usuarios escriben
+  const SEARCH_ALIASES: Record<string, string[]> = {
+    'auxiliar_administrativo_estado': ['age', 'administracion general', 'gobierno'],
+    'auxiliar_administrativo_madrid': ['comunidad de madrid', 'cam', 'madrid'],
+    'auxiliar_administrativo_valencia': ['generalitat valenciana', 'gva', 'comunitat valenciana', 'valenciana'],
+    'auxiliar_administrativo_ayuntamiento_valencia': ['ayuntamiento valencia', 'ajuntament'],
+    'auxiliar_administrativo_canarias': ['gobierno canarias', 'canario'],
+    'auxiliar_administrativo_carm': ['murcia', 'region de murcia'],
+    'auxiliar_administrativo_cyl': ['castilla y leon', 'junta castilla', 'jcyl'],
+    'auxiliar_administrativo_andalucia': ['junta andalucia', 'andaluz'],
+    'auxiliar_administrativo_aragon': ['gobierno aragon', 'dga'],
+    'auxiliar_administrativo_galicia': ['xunta galicia', 'xunta'],
+    'auxiliar_administrativo_baleares': ['govern balear', 'illes balears', 'baleares'],
+    'auxiliar_administrativo_extremadura': ['junta extremadura'],
+    'auxiliar_administrativo_asturias': ['principado asturias', 'asturias'],
+    'auxiliar_administrativo_clm': ['castilla la mancha', 'jccm'],
+    'administrativo_estado': ['c1 estado', 'administrativo general'],
+    'tramitacion_procesal': ['tramitacion', 'procesal', 'justicia'],
+    'auxilio_judicial': ['auxilio', 'judicial'],
+  }
+
   // Filtrar y reordenar oposiciones por búsqueda y región detectada
   const filteredOposiciones = useMemo(() => {
     const term = searchTerm.toLowerCase().trim()
@@ -996,11 +1017,13 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }: On
     if (!term) return { official: sorted, custom: customOposiciones }
 
     return {
-      official: sorted.filter(op =>
-        op.nombre.toLowerCase().includes(term) ||
-        op.categoria.toLowerCase().includes(term) ||
-        op.administracion.toLowerCase().includes(term)
-      ),
+      official: sorted.filter(op => {
+        const aliases = SEARCH_ALIASES[op.id] || []
+        return op.nombre.toLowerCase().includes(term) ||
+          op.categoria.toLowerCase().includes(term) ||
+          op.administracion.toLowerCase().includes(term) ||
+          aliases.some(a => a.includes(term) || term.includes(a))
+      }),
       custom: customOposiciones.filter(op =>
         op.nombre.toLowerCase().includes(term) ||
         (op.categoria && op.categoria.toLowerCase().includes(term)) ||
