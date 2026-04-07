@@ -314,7 +314,7 @@ export default function TestLayout({
   // Sin sesión, enqueueAnswer no guarda respuestas en el servidor.
   // ═══════════════════════════════════════════════════════════════
   useEffect(() => {
-    if (!user || currentTestSession || !activeQuestions.length || !tema || !testNumber || !config) return
+    if (!user || currentTestSession || !activeQuestions.length || tema == null || !testNumber || !config) return
 
     const sessionKey = `${user.id}-${tema}-${testNumber}`
     if (sessionCreationRef.current.has(sessionKey)) return
