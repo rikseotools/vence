@@ -1180,82 +1180,21 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }: On
       setLoading(true)
       setError(null)
 
-      // 🔴 NUEVO: Verificar que los campos críticos estén en BD antes de marcar completado
-      const { data: currentProfile, error: fetchError } = await supabase
-        .from('user_profiles')
-        .select('target_oposicion, age, gender, ciudad')
-        .eq('id', user.id)
-        .single()
+      const { completeOnboardingOnServer } = await import('@/lib/api/v2/complete-onboarding/client')
+      const result = await completeOnboardingOnServer({
+        targetOposicion: formData.selectedOposicion!.id,
+        targetOposicionData: formData.selectedOposicion as unknown as Record<string, unknown>,
+        age: parseInt(formData.age),
+        gender: formData.gender,
+        ciudad: formData.ciudad.trim(),
+        dailyStudyHours: formData.daily_study_hours ? parseInt(formData.daily_study_hours) : null,
+      })
 
-      if (fetchError) throw fetchError
-
-      // Validar que los campos obligatorios estén guardados
-      const missingFields = []
-      if (!currentProfile.target_oposicion) missingFields.push('oposición')
-      if (!currentProfile.age) missingFields.push('edad')
-      if (!currentProfile.gender) missingFields.push('género')
-      if (!currentProfile.ciudad) missingFields.push('ciudad')
-
-      if (missingFields.length > 0) {
-        console.error('❌ Campos faltantes en BD:', missingFields)
-        setError(`Error: No se guardaron algunos campos (${missingFields.join(', ')}). Por favor, intenta nuevamente.`)
-
-        // 🔴 NUEVO: Intentar guardar los campos faltantes
-        const updates: Record<string, any> = {}
-        if (!currentProfile.target_oposicion && formData.selectedOposicion) {
-          updates.target_oposicion = formData.selectedOposicion.id
-          updates.target_oposicion_data = formData.selectedOposicion
-        }
-        if (!currentProfile.age && formData.age) {
-          updates.age = parseInt(formData.age)
-        }
-        if (!currentProfile.gender && formData.gender) {
-          updates.gender = formData.gender
-        }
-        if (!currentProfile.ciudad && formData.ciudad) {
-          updates.ciudad = formData.ciudad
-        }
-
-        // Si hay campos para actualizar, intentar guardarlos
-        if (Object.keys(updates).length > 0) {
-          console.log('🔄 Intentando guardar campos faltantes:', Object.keys(updates))
-          const { error: updateError } = await supabase
-            .from('user_profiles')
-            .update(updates)
-            .eq('id', user.id)
-
-          if (updateError) {
-            console.error('❌ Error guardando campos faltantes:', updateError)
-            throw new Error('No se pudieron guardar todos los datos. Por favor, recarga la página e intenta nuevamente.')
-          }
-          console.log('✅ Campos faltantes guardados exitosamente')
-        }
+      if (!result.success) {
+        throw new Error(result.error || 'Error al completar onboarding')
       }
 
-      // Guardar daily_study_hours si está presente (opcional)
-      if (formData.daily_study_hours) {
-        const { error: hoursError } = await supabase
-          .from('user_profiles')
-          .update({ daily_study_hours: formData.daily_study_hours })
-          .eq('id', user.id)
-
-        if (hoursError) {
-          console.warn('⚠️ No se pudo guardar horas de estudio (opcional):', hoursError)
-          // No es crítico, continuar
-        }
-      }
-
-      // Ahora sí marcar onboarding como completado
-      const { error } = await supabase
-        .from('user_profiles')
-        .update({
-          onboarding_completed_at: new Date().toISOString()
-        })
-        .eq('id', user.id)
-
-      if (error) throw error
-
-      console.log('✅ Onboarding completado con todos los campos verificados!')
+      console.log('✅ Onboarding completado via API v2')
       onComplete()
     } catch (err) {
       console.error('Error completando onboarding:', err)
