@@ -476,7 +476,67 @@ Solo archivar si hay **nueva convocatoria/OEP** que reemplaza a la anterior:
 
 Si NO hay nueva OEP → mantener la fila actual con estado actualizado. No archivar.
 
-## 12. Cambios cosmeticos (falsos positivos)
+## 12. Referencia rápida: nombres de columnas
+
+Las tablas usan nombres en español (no en inglés). Referencia para evitar errores:
+
+### Tabla `oposiciones`
+| Columna | Tipo | Nota |
+|---------|------|------|
+| `nombre` | text | NO es `name` |
+| `slug` | text | Identificador URL |
+| `estado_proceso` | text | Ver tabla de estados en sección 3c |
+| `plazas_libres` | integer | |
+| `plazas_discapacidad` | integer | |
+| `plazas_promocion_interna` | integer | |
+| `exam_date` | date | |
+| `exam_date_approximate` | boolean | |
+| `seguimiento_url` | text | URL de la página oficial de seguimiento |
+| `inscription_start` | date | |
+| `inscription_deadline` | date | |
+| `boe_reference` | text | |
+
+### Tabla `convocatoria_hitos`
+| Columna | Tipo | Nota |
+|---------|------|------|
+| `oposicion_id` | uuid | FK a oposiciones.id — NO es `oposicion_slug` |
+| `titulo` | text | NO es `title` |
+| `fecha` | date | NO es `date` |
+| `descripcion` | text | |
+| `url` | text | |
+| `status` | text | `completed`, `current`, `upcoming` |
+| `order_index` | integer | Secuencial, sin duplicados |
+
+### Tabla `oep_detection_signals`
+| Columna | Tipo | Nota |
+|---------|------|------|
+| `oposicion_id` | uuid | FK a oposiciones.id |
+| `source_url` | text | URL de la fuente donde se detectó (coincide con `seguimiento_url` de oposiciones) |
+| `status` | text | `pending`, `applied`, `dismissed`, `auto_applied` |
+| `sensor_type` | text | `llm_semantic`, `timeline_silence`, `hash_change`, `regional_scan`, etc. |
+| `confidence_score` | integer | 0-100 |
+| `reviewed_at` | timestamp | |
+| `admin_notes` | text | |
+
+### Matchear señales con oposiciones
+
+Las señales tienen `oposicion_id` pero a veces las queries de Supabase no resuelven bien por RLS. Para cruzar señales con oposiciones, usar `source_url` de la señal contra `seguimiento_url` de la oposición:
+
+```javascript
+// Con postgres.js (bypass RLS)
+const pg = require('postgres');
+const conn = pg(process.env.DATABASE_URL, { max: 1, prepare: false });
+const [op] = await conn`SELECT * FROM oposiciones WHERE seguimiento_url = ${signal.source_url}`;
+```
+
+### API para contar señales pendientes
+
+```
+GET /api/admin/oep-signals/pending-count
+→ { success: true, pendingCount: 6, criticalCount: 4 }
+```
+
+## 13. Cambios cosmeticos (falsos positivos)
 
 A veces el hash cambia sin novedad real (timestamps, tokens de sesion, contenido dinamico de la web). Indicadores de cambio cosmetico:
 
