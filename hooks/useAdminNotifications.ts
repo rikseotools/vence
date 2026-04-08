@@ -74,21 +74,11 @@ export function useAdminNotifications(enabled = false) {
     try {
       // Usar Promise.allSettled para manejar errores independientemente
       const results = await Promise.allSettled([
-        // 1. Obtener conversaciones NO cerradas con sus mensajes para ver cuál necesita respuesta
-        Promise.race([
-          supabase
-            .from('feedback_conversations')
-            .select('id, status, feedback_messages(id, is_admin, created_at)')
-            .neq('status', 'closed'),
-          new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Timeout')), 15000)
-          )
-        ]),
-        // 2. Contar feedbacks pending/in_progress sin conversación
+        // 1. Contar feedbacks pending/in_progress (con conversaciones y tipo para badges)
         Promise.race([
           supabase
             .from('user_feedback')
-            .select('id, type, feedback_conversations(id)')
+            .select('id, type, feedback_conversations(id, status, feedback_messages(id, is_admin, created_at))')
             .in('status', ['pending', 'in_progress']),
           new Promise((_, reject) =>
             setTimeout(() => reject(new Error('Timeout')), 15000)
@@ -131,7 +121,7 @@ export function useAdminNotifications(enabled = false) {
         ])
       ])
 
-      const [conversationsResult, feedbacksResult, impugnacionesApiResult, salesResult, calidadResult, erroresApiResult, rateLimitResult] = results
+      const [feedbacksResult, impugnacionesApiResult, salesResult, calidadResult, erroresApiResult, rateLimitResult] = results
 
       let pendingFeedback = 0
       const feedbackTypeCounts = { deletion: 0, bug: 0, other: 0 }
@@ -142,33 +132,29 @@ export function useAdminNotifications(enabled = false) {
       let pendingErroresApi = 0
       let pendingRateLimitHits = 0
 
-      // Contar conversaciones donde el último mensaje es del USUARIO (necesita respuesta del admin)
-      if (conversationsResult.status === 'fulfilled') {
-        const conversations = conversationsResult.value.data || []
-        conversations.forEach((conv: any) => {
-          const msgs = conv.feedback_messages || []
-
-          if (msgs.length === 0) {
-            pendingFeedback++
-            return
-          }
-
-          const sorted = msgs.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-          const lastMsg = sorted[0]
-          if (lastMsg && lastMsg.is_admin === false) {
-            pendingFeedback++
-          }
-        })
-      } else {
-        console.warn('Error cargando conversaciones:', conversationsResult.reason?.message)
-      }
-
-      // Contar feedbacks sin conversación (por tipo)
+      // Contar feedbacks pendientes y clasificar por tipo
       if (feedbacksResult.status === 'fulfilled') {
         const feedbacks = feedbacksResult.value.data || []
         feedbacks.forEach((fb: any) => {
-          const hasConversation = fb.feedback_conversations && fb.feedback_conversations.length > 0
-          if (!hasConversation) {
+          const conv = fb.feedback_conversations?.[0]
+          let needsAttention = false
+
+          if (!conv) {
+            // Sin conversación = ticket nuevo sin responder
+            needsAttention = true
+          } else if (conv.status !== 'closed') {
+            const msgs = conv.feedback_messages || []
+            if (msgs.length === 0) {
+              needsAttention = true
+            } else {
+              const sorted = msgs.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+              if (sorted[0] && sorted[0].is_admin === false) {
+                needsAttention = true
+              }
+            }
+          }
+
+          if (needsAttention) {
             pendingFeedback++
             if (fb.type === 'account_deletion') feedbackTypeCounts.deletion++
             else if (fb.type === 'bug') feedbackTypeCounts.bug++

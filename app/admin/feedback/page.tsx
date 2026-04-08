@@ -1903,6 +1903,9 @@ export default function AdminFeedbackPage() {
                         <div className="min-w-0 flex-1">
                           <div className="font-medium text-gray-900 dark:text-gray-100 truncate flex items-center gap-1.5">
                             {userData.name || userData.email || 'Usuario anónimo'}
+                            {!userData.id && userData.email && (
+                              <span className="bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 text-xs px-1.5 py-0.5 rounded font-medium" title="Email entrante (no es usuario registrado)">📧 Inbound</span>
+                            )}
                             {(userData.planType === 'premium' || userData.planType === 'pro') && (
                               <span className="text-yellow-500" title="Usuario Premium">👑</span>
                             )}
@@ -1976,14 +1979,20 @@ export default function AdminFeedbackPage() {
                     <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
                       {selectedUser.name || 'Usuario'}
                     </h2>
-                    {/* Badge Premium/Free */}
-                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                      selectedUser.planType === 'premium' || selectedUser.planType === 'pro'
-                        ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300'
-                        : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
-                    }`}>
-                      {selectedUser.planType === 'premium' || selectedUser.planType === 'pro' ? '⭐ Premium' : 'Free'}
-                    </span>
+                    {/* Badge Premium/Free/Inbound */}
+                    {!selectedUser.id && selectedUser.email ? (
+                      <span className="px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300">
+                        📧 Inbound
+                      </span>
+                    ) : (
+                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                        selectedUser.planType === 'premium' || selectedUser.planType === 'pro'
+                          ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300'
+                          : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+                      }`}>
+                        {selectedUser.planType === 'premium' || selectedUser.planType === 'pro' ? '⭐ Premium' : 'Free'}
+                      </span>
+                    )}
                     {selectedUser.pendingConversations > 0 && (
                       <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded">
                         {selectedUser.pendingConversations} por responder
