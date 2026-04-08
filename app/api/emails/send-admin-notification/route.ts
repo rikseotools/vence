@@ -136,7 +136,8 @@ function generateFeedbackEmailHTML(data: Record<string, unknown>) {
 function generateDisputeEmailHTML(data: Record<string, unknown>) {
   const disputeTypeEmoji: Record<string, string> = {
     'no_literal': '📖',
-    'ai_detected_error': '📊',
+    'ai_detected_error': '🤖',
+    'error_pregunta_respuesta': '📊',
     'respuesta_incorrecta': '❌',
     'desacuerdo_correcta': '🤔',
     'mal_formulada': '⚠️',

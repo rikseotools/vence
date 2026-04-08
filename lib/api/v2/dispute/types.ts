@@ -6,7 +6,7 @@
 export const LEGISLATIVE_ONLY_TYPES = ['no_literal'] as const
 
 /** Tipos exclusivos de preguntas psicotécnicas */
-export const PSYCHOMETRIC_ONLY_TYPES = ['ai_detected_error'] as const
+export const PSYCHOMETRIC_ONLY_TYPES = ['error_pregunta_respuesta'] as const
 
 /** Tipos comunes a ambos tipos de pregunta */
 export const COMMON_DISPUTE_TYPES = [
@@ -46,7 +46,7 @@ export type PsychometricDisputeType = (typeof PSYCHOMETRIC_DISPUTE_TYPES)[number
 /** Labels para mostrar en UI */
 export const DISPUTE_TYPE_LABELS: Record<DisputeType, string> = {
   no_literal: 'Pregunta no literal (no se ajusta exactamente al artículo)',
-  ai_detected_error: 'Error detectado en la pregunta o respuesta',
+  error_pregunta_respuesta: 'Error detectado en la pregunta o respuesta',
   respuesta_incorrecta: 'La respuesta marcada como correcta es errónea',
   desacuerdo_correcta: 'No estoy de acuerdo con la opción marcada como correcta',
   mal_formulada: 'Pregunta mal formulada',

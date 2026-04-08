@@ -79,7 +79,8 @@ const DISPUTE_STATUS_CONFIG: Record<string, { label: string; color: string }> = 
 
 const DISPUTE_TYPES: Record<string, string> = {
   'no_literal': '📝 No Literal',
-  'ai_detected_error': '📊 Error en datos/gráficos',
+  'ai_detected_error': '🤖 Error auto-detectado IA',
+  'error_pregunta_respuesta': '📊 Error en pregunta/respuesta',
   'respuesta_incorrecta': '❌ Respuesta Incorrecta',
   'desacuerdo_correcta': '🤔 Desacuerdo con Correcta',
   'mal_formulada': '⚠️ Mal Formulada',

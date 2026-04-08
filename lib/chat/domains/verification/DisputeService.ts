@@ -14,7 +14,7 @@ const getSupabase = () => createClient(
 // TIPOS
 // ============================================
 
-export type DisputeType = 'no_literal' | 'ai_detected_error' | 'respuesta_incorrecta' | 'desacuerdo_correcta' | 'mal_formulada' | 'pregunta_repetida' | 'explicacion_confusa' | 'explicacion_mejorable' | 'tema_incorrecto' | 'otro'
+export type DisputeType = 'no_literal' | 'ai_detected_error' | 'error_pregunta_respuesta' | 'respuesta_incorrecta' | 'desacuerdo_correcta' | 'mal_formulada' | 'pregunta_repetida' | 'explicacion_confusa' | 'explicacion_mejorable' | 'tema_incorrecto' | 'otro'
 export type DisputeStatus = 'pending' | 'reviewing' | 'resolved' | 'rejected'
 
 export interface Dispute {
@@ -347,6 +347,7 @@ export async function getDisputeStats(questionId: string): Promise<DisputeStats>
     byType: {
       no_literal: 0,
       ai_detected_error: 0,
+      error_pregunta_respuesta: 0,
       respuesta_incorrecta: 0,
       desacuerdo_correcta: 0,
       mal_formulada: 0,

@@ -58,6 +58,7 @@ export type VerificationResultSchema = z.infer<typeof verificationResultSchema>
 
 export const disputeTypeSchema = z.enum([
   'ai_detected_error',
+  'error_pregunta_respuesta',
   'no_literal',
   'respuesta_incorrecta',
   'otro',

@@ -69,7 +69,7 @@ describe('API /api/dispute/psychometric - Validaciones', () => {
   })
 
   describe('Validación de dispute_type', () => {
-    const validTypes = ['ai_detected_error', 'respuesta_incorrecta', 'otro']
+    const validTypes = ['error_pregunta_respuesta', 'ai_detected_error', 'respuesta_incorrecta', 'otro']
 
     test.each(validTypes)('debe aceptar tipo válido: %s', (type) => {
       expect(validTypes.includes(type)).toBe(true)
@@ -246,7 +246,7 @@ describe('Integración API - PsychometricQuestionDispute', () => {
     const componentData = {
       questionId: 'psycho-question-uuid',
       userId: 'user-uuid',
-      disputeType: 'ai_detected_error',
+      disputeType: 'error_pregunta_respuesta',
       description: 'Error en los datos del gráfico'
     }
 
@@ -254,7 +254,7 @@ describe('Integración API - PsychometricQuestionDispute', () => {
     const apiExpected = {
       questionId: expect.any(String),
       userId: expect.any(String),
-      disputeType: expect.stringMatching(/^(ai_detected_error|respuesta_incorrecta|otro)$/),
+      disputeType: expect.stringMatching(/^(error_pregunta_respuesta|ai_detected_error|respuesta_incorrecta|otro)$/),
       description: expect.any(String)
     }
 
@@ -274,8 +274,8 @@ describe('Integración API - PsychometricQuestionDispute', () => {
     expect(formatDescription('respuesta_incorrecta', '')).toBe('Motivo: respuesta_incorrecta')
 
     // Tipo predefinido con detalles
-    expect(formatDescription('ai_detected_error', 'Gráfico incorrecto'))
-      .toBe('Motivo: ai_detected_error - Detalles: Gráfico incorrecto')
+    expect(formatDescription('error_pregunta_respuesta', 'Gráfico incorrecto'))
+      .toBe('Motivo: error_pregunta_respuesta - Detalles: Gráfico incorrecto')
   })
 })
 

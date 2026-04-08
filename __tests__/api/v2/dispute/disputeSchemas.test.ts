@@ -90,7 +90,7 @@ describe('Dispute V2 - CreateDispute Schema', () => {
   const validPsychometric = {
     questionId: '550e8400-e29b-41d4-a716-446655440000',
     questionType: 'psychometric',
-    disputeType: 'ai_detected_error',
+    disputeType: 'error_pregunta_respuesta',
     description: 'La respuesta marcada como correcta no es la correcta',
   }
 
@@ -98,7 +98,7 @@ describe('Dispute V2 - CreateDispute Schema', () => {
     expect(createDisputeRequestSchema.safeParse(validLegislative).success).toBe(true)
   })
 
-  it('acepta impugnacion psicotecnica con ai_detected_error', () => {
+  it('acepta impugnacion psicotecnica con error_pregunta_respuesta', () => {
     expect(createDisputeRequestSchema.safeParse(validPsychometric).success).toBe(true)
   })
 
@@ -126,10 +126,10 @@ describe('Dispute V2 - CreateDispute Schema', () => {
     expect(result.success).toBe(false)
   })
 
-  it('rechaza ai_detected_error para legislativa', () => {
+  it('rechaza error_pregunta_respuesta para legislativa', () => {
     const result = createDisputeRequestSchema.safeParse({
       ...validLegislative,
-      disputeType: 'ai_detected_error',
+      disputeType: 'error_pregunta_respuesta',
     })
     expect(result.success).toBe(false)
   })

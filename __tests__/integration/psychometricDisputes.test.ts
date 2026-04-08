@@ -36,7 +36,7 @@ describe('Integración - Flujo de creación de impugnación psicotécnica', () =
     expect(disputeData).toMatchObject({
       questionId: expect.any(String),
       userId: expect.any(String),
-      disputeType: expect.stringMatching(/^(respuesta_incorrecta|ai_detected_error|otro)$/),
+      disputeType: expect.stringMatching(/^(respuesta_incorrecta|error_pregunta_respuesta|ai_detected_error|otro)$/),
       description: expect.any(String)
     })
 
@@ -50,16 +50,16 @@ describe('Integración - Flujo de creación de impugnación psicotécnica', () =
     expect(apiResponse.disputeId).toBeDefined()
   })
 
-  test('flujo: usuario impugna con tipo "ai_detected_error"', () => {
+  test('flujo: usuario impugna con tipo "error_pregunta_respuesta"', () => {
     const disputeData = {
       questionId: 'psycho-q-chart',
       userId: 'user-456',
-      disputeType: 'ai_detected_error',
-      description: 'Motivo: ai_detected_error - Detalles: El gráfico muestra datos incorrectos'
+      disputeType: 'error_pregunta_respuesta',
+      description: 'Motivo: error_pregunta_respuesta - Detalles: El gráfico muestra datos incorrectos'
     }
 
-    // Tipo ai_detected_error es exclusivo de psicotécnicas
-    expect(disputeData.disputeType).toBe('ai_detected_error')
+    // Tipo error_pregunta_respuesta es exclusivo de psicotécnicas
+    expect(disputeData.disputeType).toBe('error_pregunta_respuesta')
     expect(disputeData.description).toContain('gráfico')
   })
 })
@@ -331,12 +331,13 @@ describe('Regresiones - Bugs que NO deben volver', () => {
   })
 
   test('BUG: dispute_type debe ser válido para la constraint', () => {
-    const validTypes = ['ai_detected_error', 'respuesta_incorrecta', 'otro']
+    const validTypes = ['error_pregunta_respuesta', 'ai_detected_error', 'respuesta_incorrecta', 'otro']
 
     // No deben incluirse tipos de impugnaciones normales
     expect(validTypes).not.toContain('no_literal')
 
-    // Debe incluir tipo específico de psicotécnicas
+    // Debe incluir tipo específico de psicotécnicas (usuario y auto-IA)
+    expect(validTypes).toContain('error_pregunta_respuesta')
     expect(validTypes).toContain('ai_detected_error')
   })
 
@@ -400,7 +401,7 @@ describe('Comparativa - Normal vs Psicotécnica', () => {
       table: 'psychometric_question_disputes',
       questionsTable: 'psychometric_questions',
       emailEndpoint: '/api/send-dispute-email/psychometric',
-      disputeTypes: ['ai_detected_error', 'respuesta_incorrecta', 'otro'],
+      disputeTypes: ['error_pregunta_respuesta', 'ai_detected_error', 'respuesta_incorrecta', 'otro'],
       canAppeal: false,
       hasArticleInfo: false
     }
@@ -419,9 +420,9 @@ describe('Comparativa - Normal vs Psicotécnica', () => {
   })
 
   test('tipos de disputa tienen diferencias', () => {
-    // ai_detected_error solo en psicotécnicas
-    expect(systemComparison.psychometric.disputeTypes).toContain('ai_detected_error')
-    expect(systemComparison.normal.disputeTypes).not.toContain('ai_detected_error')
+    // error_pregunta_respuesta solo en psicotécnicas (usuario manual)
+    expect(systemComparison.psychometric.disputeTypes).toContain('error_pregunta_respuesta')
+    expect(systemComparison.normal.disputeTypes).not.toContain('error_pregunta_respuesta')
 
     // no_literal solo en normales
     expect(systemComparison.normal.disputeTypes).toContain('no_literal')

@@ -577,7 +577,7 @@ export default function QuestionDispute({
                     placeholder={
                       disputeType === 'no_literal'
                         ? 'Opcionalmente, explica por qué la pregunta no es literal...'
-                        : disputeType === 'ai_detected_error'
+                        : disputeType === 'error_pregunta_respuesta'
                         ? 'Opcionalmente, explica qué error has detectado...'
                         : 'Opcionalmente, explica cuál debería ser la respuesta correcta...'
                     }
