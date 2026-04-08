@@ -928,6 +928,7 @@ export default function AdminFeedbackPage() {
           operatingSystem: profile?.operatingSystem,
           deviceModel: profile?.deviceModel,
           feedbacks: [],
+          feedbackTypes: new Set<string>(),
           totalConversations: 0,
           pendingConversations: 0,
           lastActivity: feedback.created_at
@@ -936,6 +937,7 @@ export default function AdminFeedbackPage() {
 
       const userData = usersMap.get(userKey)
       userData.feedbacks.push(feedback)
+      if (feedback.type) userData.feedbackTypes.add(feedback.type)
       userData.totalConversations++
 
       // Contar pendientes para el admin:
@@ -1892,11 +1894,22 @@ export default function AdminFeedbackPage() {
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3 min-w-0 flex-1">
-                        {/* Avatar */}
-                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center flex-shrink-0">
-                          <span className="text-lg sm:text-xl">
-                            {userData.name ? userData.name.charAt(0).toUpperCase() : '👤'}
-                          </span>
+                        {/* Avatar con indicador de tipo */}
+                        <div className="relative w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0">
+                          <div className="w-full h-full rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+                            <span className="text-lg sm:text-xl">
+                              {userData.name ? userData.name.charAt(0).toUpperCase() : '👤'}
+                            </span>
+                          </div>
+                          {userData.feedbackTypes?.has('account_deletion') && (
+                            <span className="absolute -top-0.5 -left-0.5 w-3 h-3 rounded-full bg-red-500 border-2 border-white dark:border-gray-800" title="Eliminación de cuenta"></span>
+                          )}
+                          {userData.feedbackTypes?.has('bug') && !userData.feedbackTypes?.has('account_deletion') && (
+                            <span className="absolute -top-0.5 -left-0.5 w-3 h-3 rounded-full bg-amber-500 border-2 border-white dark:border-gray-800" title="Bug"></span>
+                          )}
+                          {!userData.feedbackTypes?.has('account_deletion') && !userData.feedbackTypes?.has('bug') && userData.feedbackTypes?.size > 0 && (
+                            <span className="absolute -top-0.5 -left-0.5 w-3 h-3 rounded-full bg-blue-500 border-2 border-white dark:border-gray-800" title="Otro"></span>
+                          )}
                         </div>
 
                         {/* Info del usuario */}
