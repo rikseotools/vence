@@ -94,9 +94,21 @@ async function syncOne(answer: QueuedAnswer, accessToken: string): Promise<boole
         component: 'answerSaveQueue syncOne',
         userId: extractUserId(answer),
       })
+      return false
     }
 
-    return response.ok
+    // Verificar que el save realmente se completó (no solo la validación)
+    try {
+      const data = await response.json()
+      if (data.saveAction === 'save_failed') {
+        console.error(`❌ [answerSaveQueue] save_failed para questionId=${(answer.payload as any)?.questionId}`)
+        return false
+      }
+    } catch {
+      // Si no se puede parsear JSON, considerar como éxito (la validación pasó)
+    }
+
+    return true
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     console.error(`❌ [answerSaveQueue] Network error retry #${answer.retries}: ${msg}`)

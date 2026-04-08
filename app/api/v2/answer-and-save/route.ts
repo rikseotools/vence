@@ -81,7 +81,10 @@ async function _POST(request: NextRequest): Promise<NextResponse<AnswerAndSaveRe
     })
 
     if (!result.success) {
-      return NextResponse.json(result, { status: 404 })
+      // save_failed: validación OK pero insert en test_questions falló
+      // 404: pregunta no encontrada (correctOption === null)
+      const status = result.saveAction === 'save_failed' ? 500 : 404
+      return NextResponse.json(result, { status })
     }
 
     return NextResponse.json(result)

@@ -122,8 +122,16 @@ export async function validateAndSaveAnswer(
     }
   }
 
+  const saveAction = saveResult.success
+    ? (saveResult.action as 'saved_new' | 'already_saved')
+    : 'save_failed'
+
+  if (!saveResult.success) {
+    console.error(`❌ [answer-and-save] save_failed questionId=${params.questionId} sessionId=${params.sessionId}: ${saveResult.error}`)
+  }
+
   return {
-    success: true,
+    success: saveResult.success,
     isCorrect,
     correctAnswer: correctOption,
     explanation,
@@ -131,9 +139,7 @@ export async function validateAndSaveAnswer(
     lawShortName,
     lawName,
     newScore,
-    saveAction: saveResult.success
-      ? (saveResult.action as 'saved_new' | 'already_saved')
-      : 'save_failed',
+    saveAction,
     questionDbId: saveResult.question_id ?? null,
   }
 }
