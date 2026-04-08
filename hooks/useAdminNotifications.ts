@@ -74,12 +74,23 @@ export function useAdminNotifications(enabled = false) {
     try {
       // Usar Promise.allSettled para manejar errores independientemente
       const results = await Promise.allSettled([
-        // 1. Contar feedbacks pending/in_progress (con conversaciones y tipo para badges)
+        // 1a. Feedbacks pending/in_progress (con conversaciones y tipo para badges)
         Promise.race([
           supabase
             .from('user_feedback')
             .select('id, type, feedback_conversations(id, status, feedback_messages(id, is_admin, created_at))')
             .in('status', ['pending', 'in_progress']),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Timeout')), 15000)
+          )
+        ]),
+        // 1b. Conversaciones reabiertas: feedback ya resolved pero conversación no cerrada con último msg del usuario
+        Promise.race([
+          supabase
+            .from('feedback_conversations')
+            .select('id, status, feedback_id, feedback_messages(id, is_admin, created_at), user_feedback!inner(id, type, status)')
+            .neq('status', 'closed')
+            .eq('user_feedback.status', 'resolved'),
           new Promise((_, reject) =>
             setTimeout(() => reject(new Error('Timeout')), 15000)
           )
@@ -121,7 +132,7 @@ export function useAdminNotifications(enabled = false) {
         ])
       ])
 
-      const [feedbacksResult, impugnacionesApiResult, salesResult, calidadResult, erroresApiResult, rateLimitResult] = results
+      const [feedbacksResult, reopenedConvsResult, impugnacionesApiResult, salesResult, calidadResult, erroresApiResult, rateLimitResult] = results
 
       let pendingFeedback = 0
       const feedbackTypeCounts = { deletion: 0, bug: 0, other: 0 }
@@ -163,6 +174,30 @@ export function useAdminNotifications(enabled = false) {
         })
       } else {
         console.warn('Error cargando feedbacks:', feedbacksResult.reason?.message)
+      }
+
+      // Contar conversaciones reabiertas (feedback resolved pero conversación necesita atención)
+      if (reopenedConvsResult.status === 'fulfilled') {
+        const convs = reopenedConvsResult.value.data || []
+        convs.forEach((conv: any) => {
+          const msgs = conv.feedback_messages || []
+          let needsAttention = false
+          if (msgs.length === 0) {
+            needsAttention = true
+          } else {
+            const sorted = msgs.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+            if (sorted[0] && sorted[0].is_admin === false) {
+              needsAttention = true
+            }
+          }
+          if (needsAttention) {
+            pendingFeedback++
+            const fbType = conv.user_feedback?.type
+            if (fbType === 'account_deletion') feedbackTypeCounts.deletion++
+            else if (fbType === 'bug') feedbackTypeCounts.bug++
+            else feedbackTypeCounts.other++
+          }
+        })
       }
 
       // Obtener conteo de impugnaciones desde la API (legislativas + psicotécnicas)
