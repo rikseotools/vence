@@ -222,8 +222,6 @@ export async function flush(): Promise<void> {
   try {
     const token = await getAccessToken()
     if (!token) {
-      // MEJORA #1: NO descartar respuestas. Se quedan en localStorage.
-      // Se reintentará cuando vuelva la conexión, visibilidad, o auth se restaure.
       const pending = getPendingCount()
       if (pending > 0) {
         console.warn(`⚠️ [answerSaveQueue] flush pausado: sin token, ${pending} respuestas seguras en localStorage`)
@@ -234,54 +232,71 @@ export async function flush(): Promise<void> {
     }
 
     const state = loadQueue()
-    const remaining: QueuedAnswer[] = []
+    // Track IDs that were sent successfully or expired, so we can remove them
+    // without overwriting answers added to localStorage during the flush
+    const processedIds = new Set<string>()
 
     for (const answer of state.answers) {
-      // Solo descartar si son MUY antiguas (7 días, alineado con JWT expiry)
       if (Date.now() - answer.createdAt > MAX_AGE_MS) {
         console.warn(`⚠️ [answerSaveQueue] Descartando respuesta >7d antigua`)
         logClientError('/api/v2/answer-and-save', new Error(`Respuesta descartada por antigüedad >7d. Creada: ${new Date(answer.createdAt).toISOString()}`), {
           component: 'answerSaveQueue flush expired',
           userId: extractUserId(answer),
         })
+        processedIds.add(answer.id)
         continue
       }
 
-      // Si superó MAX_RETRIES por errores de red/server, resetear retries
-      // para que se reintente con el token fresco (puede haber sido un 401 temporal)
       if (answer.retries >= MAX_RETRIES) {
-        // Resetear retries — el token puede haber cambiado desde el último intento
         const timeSinceLastAttempt = answer.lastAttempt ? Date.now() - answer.lastAttempt : Infinity
-        if (timeSinceLastAttempt > 60000) { // 1 min desde último intento → reintentar
+        if (timeSinceLastAttempt > 60000) {
           answer.retries = 0
           answer.lastAttempt = null
         } else {
-          remaining.push(answer)
-          continue
+          continue // skip, leave in queue
         }
       }
 
-      // Backoff exponencial
       if (answer.lastAttempt) {
         const delay = BASE_DELAY_MS * Math.pow(2, answer.retries)
         if (Date.now() - answer.lastAttempt < delay) {
-          remaining.push(answer)
-          continue
+          continue // skip, leave in queue
         }
       }
 
       const success = await syncOne(answer, token)
       if (success) {
+        processedIds.add(answer.id)
         continue
       }
 
       answer.retries++
       answer.lastAttempt = Date.now()
-      remaining.push(answer)
+      // Update this answer in-place in localStorage so retry state persists
+      // (will be preserved in the merge below)
     }
 
-    saveQueue({ answers: remaining })
+    // MERGE: re-read localStorage to pick up answers added during the flush,
+    // then remove only the ones we successfully processed.
+    const freshState = loadQueue()
+    const merged = freshState.answers.filter(a => !processedIds.has(a.id))
+    // Apply retry state updates to answers that failed
+    for (const updated of state.answers) {
+      if (!processedIds.has(updated.id) && updated.lastAttempt) {
+        const idx = merged.findIndex(a => a.id === updated.id)
+        if (idx !== -1) {
+          merged[idx].retries = updated.retries
+          merged[idx].lastAttempt = updated.lastAttempt
+        }
+      }
+    }
+    saveQueue({ answers: merged })
     notifyListeners()
+
+    // If there are still pending answers (added during flush), schedule another flush
+    if (merged.length > 0) {
+      setTimeout(() => flush().catch(() => {}), 500)
+    }
   } finally {
     flushInProgress = false
   }
