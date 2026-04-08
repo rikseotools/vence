@@ -28,27 +28,44 @@ export function useOnboarding() {
     // Esperar a que el perfil esté cargado desde AuthContext
     // userProfile será null mientras carga, undefined si no existe
     if (userProfile === null) {
-      // Aún cargando el perfil, esperar
-      return
+      // Aún cargando el perfil — poner timeout de seguridad
+      // Si tras 5s sigue null, consultar BD directamente
+      const fallbackTimer = setTimeout(async () => {
+        if (hasChecked) return
+        try {
+          console.log('🎯 Onboarding: userProfile null tras 5s, consultando BD directamente')
+          const { data: profile } = await supabase
+            .from('user_profiles')
+            .select('target_oposicion, onboarding_completed_at, age, gender, ciudad, daily_study_hours, onboarding_skip_count, onboarding_last_skip_at')
+            .eq('id', user.id)
+            .single()
+          if (profile && !hasChecked) {
+            checkOnboardingStatus(profile)
+          }
+        } catch (e) {
+          console.warn('⚠️ Onboarding fallback error:', e)
+        }
+      }, 5000)
+      return () => clearTimeout(fallbackTimer)
     }
 
     checkOnboardingStatus()
+    return undefined
   }, [user, userProfile, authLoading, hasChecked])
 
-  const checkOnboardingStatus = async () => {
+  const checkOnboardingStatus = async (fallbackProfile?: any) => {
     try {
       setChecking(true)
 
+      const profile = fallbackProfile || userProfile
+
       // Si no hay perfil aún (usuario recién creado), no mostrar onboarding todavía
-      if (!userProfile) {
+      if (!profile) {
         console.log('🎯 Onboarding: Perfil aún no existe, esperando...')
         setNeedsOnboarding(false)
         setChecking(false)
         return
       }
-
-      // Usar userProfile del AuthContext en lugar de hacer query separada
-      const profile = userProfile
 
       // Verificar si necesita onboarding
       // NOTA: daily_study_hours es OPCIONAL ahora
