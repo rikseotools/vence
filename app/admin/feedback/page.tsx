@@ -261,25 +261,36 @@ export default function AdminFeedbackPage() {
       loadFeedbacks()
       loadConversations()
 
-      // 🔄 Suscripción real-time para cambios en feedback
-      console.log('🔔 Configurando suscripción real-time para user_feedback...')
+      // 🔄 Suscripción real-time para cambios en feedback y mensajes
+      console.log('🔔 Configurando suscripciones real-time...')
       const feedbackSubscription = supabase
         .channel('feedback_changes')
-        .on('postgres_changes', 
-          { 
-            event: 'UPDATE', 
-            schema: 'public', 
+        .on('postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
             table: 'user_feedback'
-          }, 
+          },
           (payload) => {
             console.log('🔄 Feedback actualizado en tiempo real:', payload.new)
-            loadFeedbacks() // Recargar feedbacks cuando hay cambios
+            loadFeedbacks()
+          }
+        )
+        .on('postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'feedback_messages'
+          },
+          (payload) => {
+            console.log('🔄 Nuevo mensaje en tiempo real:', payload.new)
+            loadConversations()
           }
         )
         .subscribe()
 
       return () => {
-        console.log('🧹 Limpiando suscripción real-time...')
+        console.log('🧹 Limpiando suscripciones real-time...')
         feedbackSubscription.unsubscribe()
       }
     }
@@ -937,7 +948,6 @@ export default function AdminFeedbackPage() {
 
       const userData = usersMap.get(userKey)
       userData.feedbacks.push(feedback)
-      if (feedback.type) userData.feedbackTypes.add(feedback.type)
       userData.totalConversations++
 
       // Contar pendientes para el admin:
@@ -967,6 +977,8 @@ export default function AdminFeedbackPage() {
 
       if (isPendingForAdmin) {
         userData.pendingConversations++
+        // Solo registrar tipo de feedbacks que necesitan atención del admin
+        if (feedback.type) userData.feedbackTypes.add(feedback.type)
       }
 
       // Actualizar última actividad (considerar también la conversación)
