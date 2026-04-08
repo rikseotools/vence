@@ -63,6 +63,7 @@ export default function UserAvatar() {
   const { user, loading: authLoading, signOut, supabase, isPremium, userProfile } = useAuth()
   const pathname = usePathname()
   const [showDropdown, setShowDropdown] = useState(false)
+  const [signingOut, setSigningOut] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
   const [adminLoading, setAdminLoading] = useState(true)
   const adminNotifications = useAdminNotifications(isAdmin && !adminLoading)
@@ -217,7 +218,8 @@ export default function UserAvatar() {
   // ── Handlers ──
 
   const handleSignOut = () => {
-    setShowDropdown(false)
+    if (signingOut) return
+    setSigningOut(true)
     signOut()
   }
 
@@ -624,10 +626,13 @@ export default function UserAvatar() {
 
               <button
                 onClick={handleSignOut}
-                className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg flex items-center space-x-3"
+                disabled={signingOut}
+                className={`w-full text-left px-3 py-2 text-sm rounded-lg flex items-center space-x-3 ${
+                  signingOut ? 'text-gray-400 cursor-not-allowed' : 'text-red-600 hover:bg-red-50'
+                }`}
               >
-                <span>🚪</span>
-                <span>Cerrar Sesion</span>
+                <span>{signingOut ? '⏳' : '🚪'}</span>
+                <span>{signingOut ? 'Cerrando sesión...' : 'Cerrar Sesion'}</span>
               </button>
             </div>
           </div>
