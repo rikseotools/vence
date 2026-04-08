@@ -2460,7 +2460,7 @@ function ArticleDropdown({ article, currentQuestion }: ArticleDropdownProps) {
           const willOpen = !isOpen
           setIsOpen(willOpen)
           if (willOpen) {
-            setTimeout(() => contentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100)
+            setTimeout(() => contentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 300)
           }
         }}
         className="w-full p-4 text-left flex items-center justify-between hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors rounded-lg"
