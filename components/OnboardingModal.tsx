@@ -1,7 +1,7 @@
 // components/OnboardingModal.tsx
 // Modal de Onboarding Compacto - Una sola pantalla
 'use client'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { getSupabaseClient } from '../lib/supabase'
 
 export interface OposicionItem {
@@ -1166,11 +1166,15 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }: On
   }
 
   // Completar onboarding - MEJORADO: Verifica que todos los campos estén guardados
+  const completingRef = useRef(false)
+
   const handleComplete = async () => {
     if (!isFormValid()) {
       setError('Por favor, completa todos los campos obligatorios')
       return
     }
+    if (completingRef.current) return
+    completingRef.current = true
 
     try {
       setLoading(true)
@@ -1258,6 +1262,7 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }: On
       setError((err as Error).message || 'Error al completar onboarding')
     } finally {
       setLoading(false)
+      completingRef.current = false
     }
   }
 
