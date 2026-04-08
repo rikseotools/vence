@@ -236,7 +236,15 @@ export async function flush(): Promise<void> {
     // without overwriting answers added to localStorage during the flush
     const processedIds = new Set<string>()
 
-    for (const answer of state.answers) {
+    // Process newest answers first (LIFO) so the current test gets priority
+    // over old retries from completed sessions
+    const sortedAnswers = [...state.answers].sort((a, b) => b.createdAt - a.createdAt)
+
+    // Limit batch size to avoid blocking the queue for minutes
+    const MAX_BATCH = 15
+    let sent = 0
+
+    for (const answer of sortedAnswers) {
       if (Date.now() - answer.createdAt > MAX_AGE_MS) {
         console.warn(`⚠️ [answerSaveQueue] Descartando respuesta >7d antigua`)
         logClientError('/api/v2/answer-and-save', new Error(`Respuesta descartada por antigüedad >7d. Creada: ${new Date(answer.createdAt).toISOString()}`), {
@@ -264,7 +272,11 @@ export async function flush(): Promise<void> {
         }
       }
 
+      // Stop after MAX_BATCH to avoid blocking; remaining will be processed in next flush
+      if (sent >= MAX_BATCH) break
+
       const success = await syncOne(answer, token)
+      sent++
       if (success) {
         processedIds.add(answer.id)
         continue
@@ -272,8 +284,6 @@ export async function flush(): Promise<void> {
 
       answer.retries++
       answer.lastAttempt = Date.now()
-      // Update this answer in-place in localStorage so retry state persists
-      // (will be preserved in the merge below)
     }
 
     // MERGE: re-read localStorage to pick up answers added during the flush,
