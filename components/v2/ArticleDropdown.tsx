@@ -1,7 +1,7 @@
 // components/v2/ArticleDropdown.tsx
 // Componente desplegable para mostrar artículo completo con resaltado inteligente
 'use client'
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 
 interface ArticleData {
   article_number?: string | null
@@ -132,6 +132,7 @@ export function formatTextContent(content: string | undefined | null, question: 
 
 export default function ArticleDropdown({ article, currentQuestion }: ArticleDropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const contentRef = useRef<HTMLDivElement>(null)
 
   // No mostrar si no hay contenido del artículo
   if (!article.full_text && !article.content) {
@@ -145,7 +146,13 @@ export default function ArticleDropdown({ article, currentQuestion }: ArticleDro
     <div className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg mt-4">
       {/* Header clickeable */}
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          const willOpen = !isOpen
+          setIsOpen(willOpen)
+          if (willOpen) {
+            setTimeout(() => contentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100)
+          }
+        }}
         className="w-full p-4 text-left flex items-center justify-between hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors rounded-lg"
       >
         <div className="flex items-center space-x-2">
@@ -165,7 +172,7 @@ export default function ArticleDropdown({ article, currentQuestion }: ArticleDro
 
       {/* Contenido desplegable con formato mejorado */}
       {isOpen && (
-        <div className="px-4 pb-4 border-t border-gray-200 dark:border-gray-600">
+        <div ref={contentRef} className="px-4 pb-4 border-t border-gray-200 dark:border-gray-600">
 
           {/* Título del artículo */}
           {article.title && (

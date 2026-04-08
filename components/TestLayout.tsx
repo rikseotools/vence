@@ -2343,6 +2343,7 @@ interface ArticleDropdownProps {
 
 function ArticleDropdown({ article, currentQuestion }: ArticleDropdownProps) {
   const [isOpen, setIsOpen] = useState<boolean>(false)
+  const contentRef = useRef<HTMLDivElement>(null)
 
   // Función para extraer palabras clave de la pregunta y respuesta correcta
   const extractKeywords = (question: string | undefined, correctAnswer: number | null | undefined, options: string[] | undefined): string[] => {
@@ -2455,7 +2456,13 @@ function ArticleDropdown({ article, currentQuestion }: ArticleDropdownProps) {
     <div className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg mt-4">
       {/* Header clickeable */}
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          const willOpen = !isOpen
+          setIsOpen(willOpen)
+          if (willOpen) {
+            setTimeout(() => contentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100)
+          }
+        }}
         className="w-full p-4 text-left flex items-center justify-between hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors rounded-lg"
       >
         <div className="flex items-center space-x-2">
@@ -2475,7 +2482,7 @@ function ArticleDropdown({ article, currentQuestion }: ArticleDropdownProps) {
 
       {/* Contenido desplegable con formato mejorado */}
       {isOpen && (
-        <div className="px-4 pb-4 border-t border-gray-200 dark:border-gray-600">
+        <div ref={contentRef} className="px-4 pb-4 border-t border-gray-200 dark:border-gray-600">
           
           {/* Título del artículo */}
           {article.title && (
