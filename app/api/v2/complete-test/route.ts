@@ -3,12 +3,16 @@
 // Reemplaza el completeDetailedTest client-side que bloqueaba processingAnswer.
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
+import { after } from 'next/server'
 import {
   safeParseCompleteTestRequest,
   completeTest,
   type CompleteTestResponse,
 } from '@/lib/api/v2/complete-test'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { getDb } from '@/db/client'
+import { testQuestions } from '@/db/schema'
+import { eq, count } from 'drizzle-orm'
 
 // Margen generoso: incluye cálculo de analytics + múltiples queries BD
 export const maxDuration = 30
@@ -72,6 +76,27 @@ async function _POST(request: NextRequest): Promise<NextResponse<CompleteTestRes
     if (!result.success) {
       return NextResponse.json(result, { status: 500 })
     }
+
+    // Verificar respuestas guardadas DESPUÉS de responder al cliente
+    // La queue puede estar procesando las últimas respuestas en paralelo
+    after(async () => {
+      try {
+        // Esperar a que la queue termine de procesar
+        await new Promise(resolve => setTimeout(resolve, 10000))
+        const db = getDb()
+        const [savedCount] = await db
+          .select({ count: count() })
+          .from(testQuestions)
+          .where(eq(testQuestions.testId, parsed.data.sessionId))
+        const saved = Number(savedCount?.count ?? 0)
+        const expected = parsed.data.detailedAnswers.length
+        if (saved < expected) {
+          console.error(`🚨 [complete-test] ALERTA: solo ${saved}/${expected} respuestas guardadas en test_questions (tras 10s). sessionId=${parsed.data.sessionId} userId=${user.id}`)
+        }
+      } catch (e) {
+        console.warn('⚠️ [complete-test after] Error verificando respuestas:', e)
+      }
+    })
 
     return NextResponse.json(result)
   } catch (error) {

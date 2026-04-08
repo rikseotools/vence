@@ -241,11 +241,9 @@ export async function completeTest(
     }
   }
 
-  // Alerta temprana: si falta alguna respuesta en test_questions,
-  // la queue del cliente está perdiendo datos
-  if (savedQuestionsCount < detailedAnswers.length) {
-    console.error(`🚨 [complete-test] ALERTA: solo ${savedQuestionsCount}/${detailedAnswers.length} respuestas guardadas en test_questions. sessionId=${sessionId} userId=${userId}`)
-  }
+  // La verificación de respuestas guardadas se hace en after() con delay,
+  // porque la queue del cliente puede estar procesando las últimas respuestas
+  // en paralelo con completeTest.
 
   console.log(`✅ [complete-test] Test ${sessionId} completado: ${finalScore}/${detailedAnswers.length} (saved: ${savedQuestionsCount})`)
   return { success: true, status: 'saved', savedQuestionsCount }
