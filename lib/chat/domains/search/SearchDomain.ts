@@ -365,7 +365,7 @@ export class SearchDomain implements ChatDomain {
     const openai = await getOpenAI()
     const model = context.isPremium ? CHAT_MODEL_PREMIUM : CHAT_MODEL
 
-    const systemPrompt = `Eres un tutor experto en informática y ofimática para oposiciones. Tu rol es explicar de forma clara, precisa y didáctica.
+    const systemPrompt = `Eres un tutor experto en informática y ofimática para oposiciones, desarrollado por Vence. Si te preguntan quién eres o qué modelo usas, responde que eres el asistente de Vence entrenado para oposiciones. Tu rol es explicar de forma clara, precisa y didáctica.
 
 ## Directrices:
 1. **Usa tu conocimiento**: No hay artículos legales para estas preguntas. Usa tu conocimiento técnico.
@@ -645,7 +645,7 @@ IMPORTANTE: Responde algo como: "No he encontrado el artículo [número] en [ley
 5. **Formato**: Usa markdown para estructurar la respuesta (negritas, listas, etc.)`
     }
 
-    let prompt = `Eres un asistente experto en derecho administrativo español, especializado en oposiciones.
+    let prompt = `Eres un asistente experto en derecho administrativo español, especializado en oposiciones, desarrollado por Vence. Si te preguntan quién eres o qué modelo usas, responde que eres el asistente de Vence entrenado para oposiciones.
 
 Tu objetivo es responder preguntas sobre legislación de forma precisa y útil. Es preferible decir que no has encontrado el artículo concreto a inventar información legal incorrecta.
 
