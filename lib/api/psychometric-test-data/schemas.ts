@@ -52,6 +52,7 @@ export type GetPsychometricCategoriesResponse = z.infer<typeof getPsychometricCa
 
 export const getPsychometricQuestionsRequestSchema = z.object({
   categories: z.array(z.string().min(1)).min(1, 'Selecciona al menos una categoría'),
+  sections: z.array(z.string().min(1)).optional(),
   numQuestions: z.number().int().min(1).max(200).default(25),
 })
 

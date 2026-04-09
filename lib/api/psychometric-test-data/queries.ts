@@ -298,7 +298,8 @@ export async function getPsychometricCategories(userId?: string): Promise<GetPsy
  */
 export async function getPsychometricQuestions(
   categoryKeys: string[],
-  numQuestions: number
+  numQuestions: number,
+  sectionKeys?: string[]
 ): Promise<GetPsychometricQuestionsResponse> {
   try {
     const db = getDb()
@@ -327,7 +328,32 @@ export async function getPsychometricQuestions(
       }
     }
 
-    // 2. Fetch questions — includes correctOption for client-side validation
+    // 1b. Si se pasan secciones específicas, resolver a IDs
+    let sectionIds: string[] | null = null
+    if (sectionKeys && sectionKeys.length > 0) {
+      const secs = await db
+        .select({ id: psychometricSections.id })
+        .from(psychometricSections)
+        .where(
+          and(
+            eq(psychometricSections.isActive, true),
+            inArray(psychometricSections.sectionKey, sectionKeys)
+          )
+        )
+      sectionIds = secs.map(s => s.id)
+    }
+
+    // 2. Fetch questions — filtrar por sección si se especifica, si no por categoría
+    const questionFilter = sectionIds && sectionIds.length > 0
+      ? and(
+          eq(psychometricQuestions.isActive, true),
+          inArray(psychometricQuestions.sectionId, sectionIds)
+        )
+      : and(
+          eq(psychometricQuestions.isActive, true),
+          inArray(psychometricQuestions.categoryId, categoryIds)
+        )
+
     const allQuestions = await db
       .select({
         id: psychometricQuestions.id,
@@ -350,12 +376,7 @@ export async function getPsychometricQuestions(
         examSource: psychometricQuestions.examSource,
       })
       .from(psychometricQuestions)
-      .where(
-        and(
-          eq(psychometricQuestions.isActive, true),
-          inArray(psychometricQuestions.categoryId, categoryIds)
-        )
-      )
+      .where(questionFilter)
 
     const totalAvailable = allQuestions.length
 

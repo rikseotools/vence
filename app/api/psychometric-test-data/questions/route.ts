@@ -34,6 +34,7 @@ async function _GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
     const categoriesParam = searchParams.get('categories')
+    const sectionsParam = searchParams.get('sections')
     const numQuestionsParam = searchParams.get('numQuestions')
 
     if (!categoriesParam) {
@@ -44,11 +45,13 @@ async function _GET(request: NextRequest) {
     }
 
     const categories = categoriesParam.split(',').filter(Boolean)
+    const sections = sectionsParam ? sectionsParam.split(',').filter(Boolean) : undefined
     const numQuestions = numQuestionsParam ? parseInt(numQuestionsParam, 10) : 25
 
     // Validate with Zod
     const parseResult = safeParseGetPsychometricQuestionsRequest({
       categories,
+      sections,
       numQuestions,
     })
 
@@ -65,7 +68,8 @@ async function _GET(request: NextRequest) {
 
     const result = await getPsychometricQuestions(
       parseResult.data.categories,
-      parseResult.data.numQuestions
+      parseResult.data.numQuestions,
+      parseResult.data.sections
     )
 
     if (!result.success) {

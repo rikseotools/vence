@@ -106,6 +106,7 @@ function MultipleCategoriesPsychometricTestContent() {
     async function loadNewQuestions() {
       try {
         const categoriesParam = searchParams.get('categories')
+        const sectionsParam = searchParams.get('sections')
         const numQuestionsParam = searchParams.get('numQuestions')
         if (!categoriesParam) {
           setError('No se especificaron categorías')
@@ -113,6 +114,7 @@ function MultipleCategoriesPsychometricTestContent() {
         }
 
         const categories = categoriesParam.split(',').filter(Boolean)
+        const sections = sectionsParam ? sectionsParam.split(',').filter(Boolean) : undefined
         const numQuestions = numQuestionsParam ? parseInt(numQuestionsParam, 10) : 25
         setSelectedCategories(categories)
 
@@ -122,6 +124,9 @@ function MultipleCategoriesPsychometricTestContent() {
           categories: categories.join(','),
           numQuestions: numQuestions.toString(),
         })
+        if (sections && sections.length > 0) {
+          params.set('sections', sections.join(','))
+        }
 
         const res = await fetch(`/api/psychometric-test-data/questions?${params.toString()}`)
         const data: GetPsychometricQuestionsResponse = await res.json()

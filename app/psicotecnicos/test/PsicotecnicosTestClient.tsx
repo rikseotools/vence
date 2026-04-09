@@ -442,6 +442,25 @@ export default function PsicotecnicosTestClient() {
                       numQuestions: adjustedNum.toString(),
                     })
 
+                    // Si el usuario seleccionó secciones específicas (no todas),
+                    // pasar las secciones para filtrar correctamente
+                    const selectedSecKeys: string[] = []
+                    let hasPartialSelection = false
+                    for (const catKey of selectedCatKeys) {
+                      const cat = categories.find((c: PsychometricCategory) => c.key === catKey)
+                      if (!cat || cat.sections.length === 0) continue
+                      const allSelected = cat.sections.every((s: PsychometricSection) => selectedSections[s.key])
+                      if (!allSelected) {
+                        hasPartialSelection = true
+                        for (const sec of cat.sections) {
+                          if (selectedSections[sec.key]) selectedSecKeys.push(sec.key)
+                        }
+                      }
+                    }
+                    if (hasPartialSelection && selectedSecKeys.length > 0) {
+                      urlParams.set('sections', selectedSecKeys.join(','))
+                    }
+
                     router.push(`/psicotecnicos/test/ejecutar?${urlParams.toString()}`)
                   }}
                   className={`px-6 py-3 rounded-lg font-bold transition-all duration-300 focus:outline-none ${
