@@ -273,13 +273,9 @@ export default function MultirreincidenciaPage() {
           <p className="text-blue-100 mb-6">
             Regístrate para acceder al temario actualizado, hacer tests y consultarnos tus dudas.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/tramitacion-procesal/test"
-              className="inline-block bg-white text-blue-700 px-6 py-3 rounded-lg font-bold hover:bg-blue-50 transition-colors">
-              Test Tramitación Procesal
-            </Link>
+          <div className="flex justify-center">
             <Link href="/oposiciones"
-              className="inline-block bg-blue-500 text-white px-6 py-3 rounded-lg font-bold hover:bg-blue-400 transition-colors border border-blue-400">
+              className="inline-block bg-white text-blue-700 px-6 py-3 rounded-lg font-bold hover:bg-blue-50 transition-colors">
               Ver todas las oposiciones
             </Link>
           </div>
