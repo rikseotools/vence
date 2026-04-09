@@ -247,14 +247,18 @@ export async function getPsychometricCategories(userId?: string): Promise<GetPsy
             subtypeFrequency.set(row.subtype, freq)
           }
 
-          // Asignar a cada categoría la mayor frecuencia de sus secciones
+          // Asignar examFrequency a cada sección Y categoría
           for (const cat of categories) {
             let maxFreq: 'frequent' | 'appears' | null = null
-            // Comprobar las secciones de la categoría
+            // Asignar a cada sección individual
             for (const sec of cat.sections) {
               const freq = subtypeFrequency.get(sec.key)
-              if (freq === 'frequent') { maxFreq = 'frequent'; break }
-              if (freq === 'appears') maxFreq = 'appears'
+              if (freq) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                ;(sec as any).examFrequency = freq
+                if (freq === 'frequent') maxFreq = 'frequent'
+                else if (freq === 'appears' && maxFreq !== 'frequent') maxFreq = 'appears'
+              }
             }
             // También comprobar el key de la categoría directamente (categorías sin secciones)
             if (!maxFreq) {

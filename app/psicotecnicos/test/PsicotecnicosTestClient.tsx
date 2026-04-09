@@ -367,6 +367,12 @@ export default function PsicotecnicosTestClient() {
                                 <span className={`text-sm ${section.count === 0 ? 'text-gray-400' : 'text-gray-700'}`}>
                                   {section.name}
                                 </span>
+                                {(section as any).examFrequency === 'frequent' && (
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-800">⭐ Frecuente</span>
+                                )}
+                                {(section as any).examFrequency === 'appears' && (
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-700">📋 En examen</span>
+                                )}
                               </div>
                               <div className="flex items-center gap-2">
                                 {section.answeredCount !== undefined && section.count > 0 && (
