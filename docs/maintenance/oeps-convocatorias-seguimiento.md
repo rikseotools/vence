@@ -303,13 +303,96 @@ await supabase
 
 La landing se regenera automaticamente cada 24h (ISR con `revalidate = 86400`).
 
-Para forzar regeneracion inmediata, llamar a la API de revalidacion:
+Para forzar regeneracion inmediata, usar el endpoint `/api/purge-cache`:
 
 ```bash
-curl "https://www.vence.es/api/revalidate?secret=<REVALIDATION_SECRET>&path=/auxiliar-administrativo-baleares"
+curl -X POST "https://www.vence.es/api/purge-cache" \
+  -H "Content-Type: application/json" \
+  -H "x-cron-secret: <CRON_SECRET>" \
+  -d '{"path": "/auxiliar-administrativo-carm"}'
 ```
 
-O esperar 24h a que se regenere sola.
+**IMPORTANTE:** El secret es el `CRON_SECRET` de `.env.local` (no `REVALIDATION_SECRET`). Se envia en el header `x-cron-secret`.
+
+Siempre forzar la revalidacion despues de actualizar hitos o estado de la oposicion — no esperar 24h si los usuarios van a recibir un email con el link a la landing.
+
+## 7b. Notificar a los usuarios
+
+Cuando hay un cambio relevante (fecha de examen, listas definitivas, etc.), enviar newsletter a los usuarios de esa oposicion usando la plantilla `novedad-convocatoria`:
+
+### Paso 1: Verificar audiencia
+
+```javascript
+// Usuarios de la oposicion
+const { data: users } = await supabase
+  .from('user_profiles')
+  .select('id, email')
+  .eq('target_oposicion', '<slug_oposicion>')
+  .not('email', 'is', null)
+
+// Excluir bloqueados
+const { data: blocked } = await supabase
+  .from('email_preferences')
+  .select('user_id')
+  .or('unsubscribed_all.eq.true,email_newsletter_disabled.eq.true')
+const blockedIds = new Set((blocked || []).map(b => b.user_id))
+const eligible = users.filter(u => !blockedIds.has(u.id))
+console.log('Elegibles:', eligible.length)
+```
+
+### Paso 2: Enviar test al admin primero
+
+```javascript
+const res = await fetch('https://www.vence.es/api/admin/newsletters/send', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    templateSlug: 'novedad-convocatoria',
+    templateVariables: {
+      nombreOposicion: 'Auxiliar Administrativo CARM',
+      titulo: 'Examen el 21 de junio',
+      descripcion: 'Ya se han publicado las listas definitivas...',
+      novedadesHtml: '<li style="padding: 8px 0;">✅ Novedad 1</li><li style="padding: 8px 0;">📅 Novedad 2</li>',
+      mensajeMotivacional: 'Quedan X meses. Ahora es cuando cuenta.',
+      ctaUrl: 'https://www.vence.es/<slug>/test?utm_source=email&utm_campaign=novedad',
+      ctaTexto: 'Seguir practicando',
+      infoUrl: 'https://www.vence.es/<slug>?utm_source=email&utm_campaign=novedad',
+    },
+    selectedUserIds: ['<admin_user_id>'],
+    testMode: false,
+  }),
+})
+```
+
+### Paso 3: Verificar el email y enviar a todos
+
+Una vez aprobado el test, enviar con `selectedUserIds` de todos los elegibles.
+
+### Variables de la plantilla `novedad-convocatoria`
+
+| Variable | Descripcion | Auto? |
+|----------|-------------|-------|
+| `userName` | Nombre del usuario | Si |
+| `nombreOposicion` | Nombre completo de la oposicion | No |
+| `titulo` | Titulo corto (aparece en subject y header) | No |
+| `descripcion` | Texto explicativo del cambio | No |
+| `novedadesHtml` | HTML con items `<li>` de novedades | No |
+| `mensajeMotivacional` | Mensaje motivacional en caja azul | No |
+| `ctaUrl` | URL boton verde "Seguir practicando" | No |
+| `ctaTexto` | Texto del boton verde | No |
+| `infoUrl` | URL boton azul "Ver toda la info" | No |
+| `unsubscribeUrl` | Link de baja | Si (lo añade el sistema) |
+
+### Cuando enviar newsletter
+
+| Cambio | ¿Enviar? |
+|--------|----------|
+| Fecha de examen confirmada | Si |
+| Listas definitivas publicadas | Si |
+| Resultados publicados | Si |
+| Cambio cosmetico en la web | No |
+| Listas provisionales | Opcional |
+| Nuevo hito menor | No |
 
 ## 8. Oposiciones sin hitos (pendientes de crear)
 
@@ -404,12 +487,19 @@ await supabase.from('convocatoria_hitos').insert([
 - Si había checks hash_change: marcar revisados en `convocatoria_seguimiento_checks`
 - Resetear `seguimiento_change_status = 'ok'` en oposiciones afectadas
 
-### Paso 5: Verificar landing
+### Paso 5: Revalidar landing
 
-La landing se regenera automáticamente cada 24h (ISR). Para forzar:
+Forzar regeneracion de la landing para que muestre los datos actualizados:
 ```bash
-curl "https://www.vence.es/api/revalidate?secret=<REVALIDATION_SECRET>&path=/auxiliar-administrativo-andalucia"
+curl -X POST "https://www.vence.es/api/purge-cache" \
+  -H "Content-Type: application/json" \
+  -H "x-cron-secret: <CRON_SECRET>" \
+  -d '{"path": "/auxiliar-administrativo-carm"}'
 ```
+
+### Paso 6: Enviar newsletter (si el cambio es relevante)
+
+Si hay fecha de examen, listas definitivas o resultados, avisar a los usuarios con la plantilla `novedad-convocatoria` (ver seccion 7b).
 
 ## 10. Escaneo regional (Sensor 4 — detect-regional-oeps)
 
