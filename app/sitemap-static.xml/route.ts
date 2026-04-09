@@ -43,6 +43,8 @@ export async function GET() {
     { loc: '/psicotecnicos/secuencias-numericas', priority: 0.8, changefreq: 'weekly' },
     { loc: '/psicotecnicos/series-letras', priority: 0.8, changefreq: 'weekly' },
     { loc: '/test-oposiciones', priority: 0.9, changefreq: 'weekly' },
+    // Actualidad legislativa
+    { loc: '/actualidad/lo-1-2026-multirreincidencia', priority: 0.7, changefreq: 'monthly' },
   ];
 
   staticPages.forEach(page => {
