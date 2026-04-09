@@ -90,8 +90,12 @@ async function _POST(request: NextRequest): Promise<NextResponse<CompleteTestRes
           .where(eq(testQuestions.testId, parsed.data.sessionId))
         const saved = Number(savedCount?.count ?? 0)
         const expected = parsed.data.detailedAnswers.length
-        if (saved < expected) {
-          console.error(`🚨 [complete-test] ALERTA: solo ${saved}/${expected} respuestas guardadas en test_questions (tras 10s). sessionId=${parsed.data.sessionId} userId=${user.id}`)
+        const missing = expected - saved
+        const ratio = expected > 0 ? saved / expected : 1
+        // Alertar solo si faltan más de 2 respuestas Y el ratio es <90%
+        // Evita falsos positivos por 1-2 respuestas en vuelo al completar
+        if (missing > 2 && ratio < 0.9) {
+          console.error(`🚨 [complete-test] ALERTA: solo ${saved}/${expected} respuestas guardadas en test_questions (${Math.round(ratio * 100)}%, tras 10s). sessionId=${parsed.data.sessionId} userId=${user.id}`)
         }
       } catch (e) {
         console.warn('⚠️ [complete-test after] Error verificando respuestas:', e)
