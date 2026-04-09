@@ -269,9 +269,9 @@ export default function MultirreincidenciaPage() {
 
         {/* CTA */}
         <section className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl p-8 text-center text-white mb-10">
-          <h2 className="text-2xl font-bold mb-3">Estudia con la legislación actualizada</h2>
+          <h2 className="text-2xl font-bold mb-3">Prepara tu oposición con Vence</h2>
           <p className="text-blue-100 mb-6">
-            Ya hemos actualizado todos los artículos y explicaciones en Vence. Practica con el temario vigente.
+            Regístrate para acceder al temario actualizado, hacer tests y consultarnos tus dudas.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/tramitacion-procesal/test"
