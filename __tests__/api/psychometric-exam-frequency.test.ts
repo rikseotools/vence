@@ -54,6 +54,24 @@ describe('Psicotécnicas — examFrequency en secciones', () => {
     })
   })
 
+  describe('Botón "Solo lo frecuente" selecciona por sección, no categoría', () => {
+    const clientContent = fs.readFileSync(
+      path.join(ROOT, 'app/psicotecnicos/test/PsicotecnicosTestClient.tsx'),
+      'utf-8'
+    )
+
+    it('usa examFrequency de la sección individual, no de la categoría', () => {
+      // Debe usar sec.examFrequency, no cat.examFrequency para seleccionar secciones
+      expect(clientContent).toContain('(sec as any).examFrequency')
+    })
+
+    it('NO selecciona todas las secciones cuando la categoría es frecuente', () => {
+      // El viejo código tenía: secSel[sec.key] = !!cat.examFrequency
+      // No debe existir esa línea
+      expect(clientContent).not.toMatch(/secSel\[sec\.key\]\s*=\s*!!cat\.examFrequency/)
+    })
+  })
+
   describe('UI muestra badges en secciones', () => {
     const clientContent = fs.readFileSync(
       path.join(ROOT, 'app/psicotecnicos/test/PsicotecnicosTestClient.tsx'),

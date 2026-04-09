@@ -227,9 +227,12 @@ export default function PsicotecnicosTestClient() {
                               const catSel: Record<string, boolean> = {}
                               const secSel: Record<string, boolean> = {}
                               for (const cat of categories) {
-                                catSel[cat.key] = !!cat.examFrequency && cat.questionCount > 0
+                                // Seleccionar categoría si tiene alguna sección frecuente
+                                const hasExamSection = cat.sections.some((s: any) => s.examFrequency)
+                                catSel[cat.key] = (hasExamSection || !!cat.examFrequency) && cat.questionCount > 0
                                 for (const sec of cat.sections) {
-                                  secSel[sec.key] = !!cat.examFrequency
+                                  // Seleccionar solo secciones que son frecuentes en examen
+                                  secSel[sec.key] = !!(sec as any).examFrequency
                                 }
                               }
                               setSelectedCategories(catSel)
