@@ -278,7 +278,7 @@ export default function MultirreincidenciaPage() {
               className="inline-block bg-white text-blue-700 px-6 py-3 rounded-lg font-bold hover:bg-blue-50 transition-colors">
               Test Tramitación Procesal
             </Link>
-            <Link href="/test-oposiciones"
+            <Link href="/oposiciones"
               className="inline-block bg-blue-500 text-white px-6 py-3 rounded-lg font-bold hover:bg-blue-400 transition-colors border border-blue-400">
               Ver todas las oposiciones
             </Link>
