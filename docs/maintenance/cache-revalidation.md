@@ -326,10 +326,53 @@ Si después de un deploy quieres asegurar que todas las páginas están cacheada
 
 ---
 
+## Revalidación de páginas ISR (landings, leyes, temarios)
+
+Además de las cachés de datos (tags), las **páginas ISR** (landings de oposiciones, páginas de leyes, temarios) están cacheadas con `revalidate = 86400` (24h). Cuando se actualizan hitos, plazas o artículos de leyes en la BD, hay que revalidar estas páginas.
+
+### Revalidar TODO de golpe
+
+Cuando hay cambios masivos (sincronización BOE, actualización de hitos, etc.):
+
+```bash
+node scripts/purge-all-cache.js
+```
+
+Este script lee oposiciones y leyes activas de la BD y revalida:
+- Landing + test + temario de cada oposición
+- Página de cada ley
+- Páginas estáticas (home, /leyes, /oposiciones, etc.)
+- ~550 rutas en ~2 minutos
+
+### Revalidar una ruta específica
+
+```bash
+curl -X POST "https://www.vence.es/api/purge-cache" \
+  -H "Content-Type: application/json" \
+  -H "x-cron-secret: <CRON_SECRET>" \
+  -d '{"path": "/auxiliar-administrativo-carm"}'
+```
+
+**IMPORTANTE:** El secret va en el header `x-cron-secret` (es el `CRON_SECRET` de `.env.local`, el segundo si hay dos).
+
+### Cuándo revalidar páginas ISR
+
+| Situación | Qué revalidar |
+|-----------|---------------|
+| Actualización de hitos/plazas | Landing de esa oposición |
+| Sincronización de ley desde BOE | Página de esa ley |
+| Cambio legislativo masivo | `node scripts/purge-all-cache.js` (todo) |
+| Antes de enviar newsletter con links | Las rutas enlazadas en el email |
+| Deploy con cambios de código | Se revalida automáticamente |
+
+---
+
 ## Historial de cambios
 
 | Fecha | Cambio |
 |-------|--------|
+| 2026-04-09 | Añadido script `purge-all-cache.js` para revalidar todas las rutas ISR |
+| 2026-04-09 | Documentada revalidación por ruta con `/api/purge-cache` |
 | 2026-02-11 | Añadido `generateStaticParams` a páginas de temario para pre-generar en build |
 | 2026-02-11 | Páginas de temario cambiadas de `force-dynamic` a `revalidate: false` |
 | 2026-02-06 | Todas las cachés de temario y teoría cambiadas a `revalidate: false` |
