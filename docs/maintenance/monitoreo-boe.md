@@ -245,21 +245,91 @@ SCRIPT
 1. "hay cambios en el monitoreo BOE?"
    → Claude lista leyes con change_status: 'changed'
 
-2. "verifica los artículos de [LEY]"
+2. Buscar en el BOE del dia que ley causo el cambio
+   → WebFetch a https://www.boe.es/boe/dias/YYYY/MM/DD/
+   → Identificar la ley organica o ley que modifica la ley detectada
+   → Entender el contexto del cambio (ej: LO 1/2026 de multirreincidencia)
+
+3. Guardar el contenido ANTES de sincronizar
+   → Guardar el contenido actual de los articulos afectados en un JSON temporal
+   → Esto permite comparar antes/despues y documentar los cambios
+
+4. "verifica los artículos de [LEY]"
    → Claude ejecuta /api/verify-articles
    → Muestra diferencias encontradas
 
-3. "sincroniza [LEY] desde el BOE"
+5. "sincroniza [LEY] desde el BOE"
    → Claude ejecuta /api/verify-articles/sync-all
    → Muestra artículos añadidos/actualizados
 
-4. "hay preguntas sobre el artículo [X]?"
-   → Claude busca en questions y question_articles
-   → Si hay, las lista para revisión
+6. Comparar antes/despues y documentar
+   → Generar documento en docs/fixes/boe-cambios-YYYY-MM-DD-[nombre].md
+   → Incluir: ley que motiva el cambio, articulos antes/despues, preguntas afectadas
 
-5. "marca [LEY] como revisada"
-   → Claude actualiza change_status a 'reviewed'
+7. "hay preguntas sobre los artículos modificados?"
+   → Claude busca en questions y question_articles
+   → Si hay, revisar una a una si siguen siendo validas con el nuevo texto
+   → Actualizar explicaciones con referencia a la nueva redaccion
+
+8. Identificar oposiciones afectadas
+   → Buscar en topic_scope que topics usan la ley modificada
+   → Listar oposiciones (position_type) de esos topics
+
+9. Revalidar landings de TODAS las oposiciones afectadas
+   → Usar /api/purge-cache con x-cron-secret para cada landing
+   → Incluir tanto la landing principal como /temario si existe
+
+10. Enviar newsletter a usuarios de oposiciones afectadas
+    → Usar plantilla 'cambio-legislativo' (ver abajo)
+    → Un email diferente por oposicion (el impacto puede variar)
+    → Enviar test a manueltrader@gmail.com primero
+    → Luego enviar a todos los elegibles
+
+11. "marca [LEY] como revisada"
+    → Claude actualiza change_status a 'reviewed'
 ```
+
+## Notificar a usuarios de cambios legislativos
+
+Cuando un cambio del BOE afecta a articulos con preguntas o temario de oposiciones, hay que avisar a los usuarios.
+
+### Plantilla 'cambio-legislativo'
+
+Plantilla en BD con header rojo (vs azul de convocatorias). Variables:
+
+| Variable | Descripcion | Auto? |
+|----------|-------------|-------|
+| `userName` | Nombre del usuario | Si |
+| `nombreOposicion` | Nombre de la oposicion | No |
+| `titulo` | Titulo corto (aparece en subject y header) | No |
+| `descripcion` | Texto explicativo del cambio con HTML | No |
+| `cambiosHtml` | HTML con items `<li>` de cambios concretos | No |
+| `mensajeMotivacional` | Mensaje en caja azul | No |
+| `ctaUrl` | URL boton verde "Practicar test" | No |
+| `temarioUrl` | URL boton azul "Ver temario" | No |
+
+### Diferencia con 'novedad-convocatoria'
+
+| Plantilla | Cuando usar | Header |
+|-----------|-------------|--------|
+| `novedad-convocatoria` | Hitos de convocatoria (examen, listas, plazas) | Azul |
+| `cambio-legislativo` | Modificacion de leyes que afecta al temario | Rojo |
+
+### Cuando enviar newsletter por cambio legislativo
+
+| Situacion | Enviar? |
+|-----------|---------|
+| Ley modificada con preguntas vinculadas | Si |
+| Ley modificada con temario en oposiciones activas | Si |
+| Ley modificada sin preguntas ni temario | No |
+| Cambio menor (fechas, erratas) | No |
+
+### Email diferente por oposicion
+
+Si un cambio legislativo afecta a varias oposiciones, preparar un email por cada una:
+- Adaptar `nombreOposicion` y URLs
+- Adaptar `cambiosHtml` al impacto especifico (ej: Tramitacion Procesal → LECrim + CP, Policia → solo CP)
+- Enviar test a admin primero, luego masivo
 
 ## Sincronización de Disposiciones
 
