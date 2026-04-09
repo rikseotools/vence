@@ -17,6 +17,7 @@ jest.mock('@/lib/stripe', () => ({
   stripe: () => ({
     invoices: {
       retrieveUpcoming: mockRetrieveUpcoming,
+      createPreview: mockRetrieveUpcoming,
     },
   }),
 }))

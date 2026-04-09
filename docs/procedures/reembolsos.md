@@ -9,7 +9,50 @@ Cuando un usuario solicita un reembolso, hay que realizar **4 pasos** porque el 
 
 ## Pasos del Procedimiento
 
-### 1. Procesar Reembolso en Stripe
+### 0. Investigar Journey del Usuario (Claude Code)
+
+Antes de procesar nada, Claude investiga al usuario para tener contexto:
+
+```
+investiga el journey de [usuario] — tests, puntuaciones, URLs visitadas
+```
+
+Claude ejecutará:
+
+```javascript
+const userId = 'UUID';
+
+// 1. Perfil: plan, oposición, fecha registro
+const { data: profile } = await supabase.from('user_profiles')
+  .select('full_name, email, plan_type, target_oposicion, created_at')
+  .eq('id', userId).single();
+
+// 2. Suscripción: fecha pago, stripe IDs
+const { data: sub } = await supabase.from('user_subscriptions')
+  .select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(1);
+
+// 3. Tests realizados + puntuaciones
+const { data: tests } = await supabase.from('tests')
+  .select('id, score, total_questions, is_completed, created_at, test_type')
+  .eq('user_id', userId).order('created_at', { ascending: false });
+
+// 4. Páginas visitadas (journey)
+const { data: pages } = await supabase.from('user_interactions')
+  .select('page_url, created_at')
+  .eq('user_id', userId).eq('event_type', 'page_view')
+  .order('created_at', { ascending: true });
+```
+
+**Datos clave a reportar:**
+- Fecha de pago (de `user_subscriptions.current_period_start`)
+- Días desde el pago (¿dentro de garantía 15 días?)
+- Cuántos tests hizo y puntuación media
+- Si visitó `/cancelacion-y-devoluciones` antes (señal de duda)
+- Motivo que da el usuario
+
+**La garantía de 15 días se cuenta desde la fecha de PAGO, no desde el registro.**
+
+### 1. Procesar Reembolso en Stripe (Manuel)
 
 1. Ir a [Stripe Dashboard → Payments](https://dashboard.stripe.com/payments)
 2. Buscar el pago del usuario
@@ -18,7 +61,7 @@ Cuando un usuario solicita un reembolso, hay que realizar **4 pasos** porque el 
 
 **Nota:** El reembolso tarda 5-10 días hábiles en aparecer en la cuenta del usuario.
 
-### 2. Cancelar Suscripción en Stripe
+### 2. Cancelar Suscripción en Stripe (Manuel)
 
 1. Ir a [Stripe Dashboard → Subscriptions](https://dashboard.stripe.com/subscriptions)
 2. Buscar la suscripción del usuario (por email o customer ID)
@@ -28,7 +71,7 @@ Cuando un usuario solicita un reembolso, hay que realizar **4 pasos** porque el 
 
 **Verificar:** El status debe cambiar a `canceled`
 
-### 3. Degradar Usuario en Base de Datos
+### 3. Degradar Usuario en Base de Datos (Claude Code)
 
 Ejecutar este script en la terminal del proyecto:
 
@@ -67,7 +110,7 @@ const SUBSCRIPTION_ID = 'sub_xxxxx';     // <-- CAMBIAR (obtener de Stripe)
 "
 ```
 
-### 4. Registrar Reembolso en Base de Datos
+### 4. Registrar Reembolso en Base de Datos (Claude Code)
 
 **IMPORTANTE:** Este paso es necesario para que aparezca el badge 🔴 en el panel de admin/feedback.
 
@@ -128,6 +171,24 @@ const REASON = 'Usuario solicitó devolución';    // <-- CAMBIAR si es necesari
 - [ ] `user_subscriptions.status` = `canceled`
 - [ ] Registro en `cancellation_feedback` con `cancellation_type = 'manual_refund'`
 - [ ] Badge 🔴 visible en admin/feedback
+
+## Flujo Resumen
+
+```
+1. Usuario solicita devolución (feedback/soporte/email)
+   ↓
+2. Manuel dice a Claude: "investiga el journey de [usuario]"
+   ↓
+3. Claude reporta: fecha pago, días, tests, actividad, ¿dentro de garantía?
+   ↓
+4. Manuel procesa refund + cancela suscripción en Stripe
+   ↓
+5. Manuel dice a Claude: "cancela el plan de [usuario]"
+   ↓
+6. Claude ejecuta: user_profiles → free, user_subscriptions → canceled, cancellation_feedback → insert
+   ↓
+7. Manuel responde al usuario (o Claude propone borrador)
+```
 
 ## Comunicación con el Usuario
 
