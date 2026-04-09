@@ -946,7 +946,13 @@ export const emailTemplates: Record<string, { subject: (...args: any[]) => strin
 
   recordatorio_renovacion: {
     subject: (userName, diasRestantes) => `Tu suscripción Premium de Vence se renueva en ${diasRestantes} ${diasRestantes === 1 ? 'día' : 'días'}`,
-    html: (userName, diasRestantes, fechaRenovacion, importe, gestionarUrl, unsubscribeUrl) => `
+    html: (userName, diasRestantes, fechaRenovacion, importe, gestionarUrl, unsubscribeUrl, baseAmount?: number | null, discountPercent?: number | null) => {
+      const hasDiscount = discountPercent && discountPercent > 0 && baseAmount && baseAmount > importe
+      const precioTexto = hasDiscount
+        ? `<strong>${importe}€</strong> (precio base ${baseAmount}€ con tu <strong>${discountPercent}% de descuento de fidelidad</strong> aplicado)`
+        : `<strong>${importe}€</strong>`
+
+      return `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="text-align: center; margin-bottom: 30px;">
           <h1 style="color: #2563eb; margin: 0;">Vence</h1>
@@ -957,7 +963,7 @@ export const emailTemplates: Record<string, { subject: (...args: any[]) => strin
 
         <p style="font-size: 16px; line-height: 1.6; color: #374151;">
           Te escribimos para avisarte de que tu suscripción Premium de Vence
-          se renovará automáticamente el <strong>${fechaRenovacion}</strong> por <strong>${importe}€</strong>.
+          se renovará automáticamente el <strong>${fechaRenovacion}</strong> por ${precioTexto}.
         </p>
 
         <div style="background: #f0fdf4; border-left: 4px solid #10b981; padding: 20px; margin: 25px 0; border-radius: 6px;">
@@ -999,6 +1005,7 @@ export const emailTemplates: Record<string, { subject: (...args: any[]) => strin
         </div>
       </div>
     `
+    }
   }
 }
 

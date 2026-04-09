@@ -44,6 +44,8 @@ export const userWithSubscriptionSchema = z.object({
   currentPeriodEnd: z.string(),
   daysUntilRenewal: z.number(),
   planAmount: z.number().nullable(),
+  baseAmount: z.number().nullable(),
+  discountPercent: z.number().nullable(),
 })
 
 export type UserWithSubscription = z.infer<typeof userWithSubscriptionSchema>
@@ -78,6 +80,8 @@ export const sendReminderRequestSchema = z.object({
   daysUntilRenewal: z.number(),
   renewalDate: z.string(), // Fecha formateada
   planAmount: z.number(),
+  baseAmount: z.number().nullable(),
+  discountPercent: z.number().nullable(),
 })
 
 export type SendReminderRequest = z.infer<typeof sendReminderRequestSchema>

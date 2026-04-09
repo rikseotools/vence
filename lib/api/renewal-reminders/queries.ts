@@ -5,6 +5,7 @@ import { eq, and, gte, lte, sql } from 'drizzle-orm'
 import { Resend } from 'resend'
 import { emailTemplates } from '@/lib/emails/templates'
 import { generateUnsubscribeToken, getUnsubscribeUrl } from '@/lib/api/emails'
+import { stripe } from '@/lib/stripe'
 import type {
   GetSubscriptionsForReminderResponse,
   UserWithSubscription,
@@ -23,11 +24,47 @@ import type {
 const BASE_URL = 'https://www.vence.es'
 const EMAIL_TYPE = 'recordatorio_renovacion'
 
-// Precios por plan (en euros)
+// Precios base por plan (fallback si Stripe no responde)
 const PLAN_PRICES: Record<string, number> = {
+  'premium_monthly': 20,
+  'premium_quarterly': 35,
   'premium_semester': 59,
-  'premium_monthly': 12,
   'premium': 59, // Default
+}
+
+interface UpcomingInvoiceInfo {
+  amount: number        // Importe final en euros (con descuento)
+  baseAmount: number    // Importe base sin descuento en euros
+  discountPercent: number // % de descuento aplicado (0 si no hay)
+}
+
+/**
+ * Obtiene el importe real de la próxima factura desde Stripe.
+ * Incluye descuentos de fidelidad y cualquier cupón aplicado.
+ */
+async function getUpcomingInvoiceInfo(stripeCustomerId: string): Promise<UpcomingInvoiceInfo | null> {
+  try {
+    const invoice = await stripe().invoices.retrieveUpcoming({ customer: stripeCustomerId })
+    if (invoice.amount_due == null) return null
+
+    const amount = Math.round(invoice.amount_due / 100)
+    const subtotal = Math.round((invoice.subtotal ?? invoice.amount_due) / 100)
+    const totalDiscount = invoice.total_discount_amounts?.reduce(
+      (sum, d) => sum + (d.amount || 0), 0
+    ) ?? 0
+    const discountPercent = subtotal > 0 && totalDiscount > 0
+      ? Math.round((totalDiscount / (invoice.subtotal ?? 1)) * 100)
+      : (invoice.discount?.coupon?.percent_off ?? 0)
+
+    return {
+      amount,
+      baseAmount: subtotal,
+      discountPercent,
+    }
+  } catch (error) {
+    console.warn(`⚠️ No se pudo obtener factura próxima de Stripe para ${stripeCustomerId}:`, error instanceof Error ? error.message : error)
+    return null
+  }
 }
 
 // ============================================
@@ -82,12 +119,23 @@ export async function getSubscriptionsForReminder(
 
     console.log(`📊 Encontradas ${subscriptions.length} suscripciones próximas a renovar`)
 
-    // Mapear a formato de respuesta
-    const mappedSubscriptions: UserWithSubscription[] = subscriptions.map(sub => {
+    // Mapear a formato de respuesta (consulta Stripe para precio real con descuentos)
+    const mappedSubscriptions: UserWithSubscription[] = []
+    for (const sub of subscriptions) {
       const periodEnd = new Date(sub.currentPeriodEnd!)
       const daysUntil = Math.ceil((periodEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
 
-      return {
+      // Intentar obtener precio real de Stripe (incluye descuento fidelidad)
+      const invoiceInfo = await getUpcomingInvoiceInfo(sub.stripeCustomerId!)
+      const fallbackAmount = PLAN_PRICES[sub.planType || 'premium'] || 59
+
+      if (invoiceInfo) {
+        console.log(`💰 ${sub.email}: Stripe dice ${invoiceInfo.amount}€ (base ${invoiceInfo.baseAmount}€, -${invoiceInfo.discountPercent}%)`)
+      } else {
+        console.log(`⚠️ ${sub.email}: Usando precio fallback ${fallbackAmount}€`)
+      }
+
+      mappedSubscriptions.push({
         userId: sub.userId!,
         email: sub.email,
         fullName: sub.fullName,
@@ -96,9 +144,11 @@ export async function getSubscriptionsForReminder(
         planType: sub.planType,
         currentPeriodEnd: sub.currentPeriodEnd!,
         daysUntilRenewal: daysUntil,
-        planAmount: PLAN_PRICES[sub.planType || 'premium'] || 59,
-      }
-    })
+        planAmount: invoiceInfo?.amount ?? fallbackAmount,
+        baseAmount: invoiceInfo?.baseAmount ?? fallbackAmount,
+        discountPercent: invoiceInfo?.discountPercent ?? 0,
+      })
+    }
 
     return {
       success: true,
@@ -178,7 +228,7 @@ export async function sendRenewalReminder(
   params: SendReminderRequest
 ): Promise<SendReminderResponse> {
   try {
-    const { userId, email, fullName, daysUntilRenewal, renewalDate, planAmount } = params
+    const { userId, email, fullName, daysUntilRenewal, renewalDate, planAmount, baseAmount, discountPercent } = params
 
     console.log(`📧 Enviando recordatorio de renovación a ${email}`)
 
@@ -220,7 +270,7 @@ export async function sendRenewalReminder(
 
     const userName = fullName || 'Usuario'
     const subject = template.subject(userName, daysUntilRenewal)
-    const html = template.html(userName, daysUntilRenewal, formattedDate, planAmount, gestionarUrl, unsubscribeUrl)
+    const html = template.html(userName, daysUntilRenewal, formattedDate, planAmount, gestionarUrl, unsubscribeUrl, baseAmount, discountPercent)
 
     // Enviar con Resend
     if (!process.env.RESEND_API_KEY) {
@@ -330,6 +380,8 @@ export async function runRenewalReminderCampaign(
         daysUntilRenewal: sub.daysUntilRenewal,
         renewalDate: sub.currentPeriodEnd,
         planAmount: sub.planAmount || 59,
+        baseAmount: sub.baseAmount ?? sub.planAmount ?? 59,
+        discountPercent: sub.discountPercent ?? 0,
       })
 
       results.push({
