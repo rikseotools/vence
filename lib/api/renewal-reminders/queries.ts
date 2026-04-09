@@ -44,7 +44,7 @@ interface UpcomingInvoiceInfo {
  */
 async function getUpcomingInvoiceInfo(stripeCustomerId: string): Promise<UpcomingInvoiceInfo | null> {
   try {
-    const invoice = await stripe().invoices.retrieveUpcoming({ customer: stripeCustomerId })
+    const invoice = await stripe().invoices.createPreview({ customer: stripeCustomerId })
     if (invoice.amount_due == null) return null
 
     const amount = Math.round(invoice.amount_due / 100)
@@ -52,9 +52,13 @@ async function getUpcomingInvoiceInfo(stripeCustomerId: string): Promise<Upcomin
     const totalDiscount = invoice.total_discount_amounts?.reduce(
       (sum, d) => sum + (d.amount || 0), 0
     ) ?? 0
+    const firstDiscount = Array.isArray(invoice.discounts) && invoice.discounts.length > 0
+      ? invoice.discounts[0] : null
+    const couponPercentOff = typeof firstDiscount === 'object' && firstDiscount !== null
+      && 'coupon' in firstDiscount ? (firstDiscount as any).coupon?.percent_off ?? 0 : 0
     const discountPercent = subtotal > 0 && totalDiscount > 0
       ? Math.round((totalDiscount / (invoice.subtotal ?? 1)) * 100)
-      : (invoice.discount?.coupon?.percent_off ?? 0)
+      : couponPercentOff
 
     return {
       amount,
