@@ -115,7 +115,7 @@ export default function MultirreincidenciaPage() {
                 </div>
                 <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
                   <p className="font-semibold text-green-600 dark:text-green-400 text-sm mb-1">AHORA</p>
-                  <p className="text-sm">Si el condenado tiene <strong>3 o más condenas previas</strong> por delitos similares (al menos uno leve), se le impone la pena del hurto agravado (prisión de 6 a 18 meses).</p>
+                  <p className="text-sm">Si el condenado tiene <strong>3 o más condenas previas</strong> por delitos similares (al menos uno leve), se le impone la pena del tipo básico del hurto (prisión de 6 a 18 meses) en vez de la simple multa.</p>
                 </div>
                 <p className="text-sm">Además, se añade un nuevo <strong>numeral 10.º al art. 235</strong>: el robo de <strong>teléfonos móviles y dispositivos digitales</strong> con datos personales se considera hurto agravado.</p>
               </div>
