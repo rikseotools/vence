@@ -325,6 +325,24 @@ export async function flush(): Promise<void> {
 }
 
 /**
+ * Eliminar de la cola todas las respuestas de un test completado.
+ * Se llama al completar un test — las respuestas que no se enviaron
+ * ya no tienen valor porque el test ya está cerrado con su score final.
+ */
+export function purgeSessionAnswers(sessionId: string): void {
+  if (!sessionId) return
+  const state = loadQueue()
+  const before = state.answers.length
+  state.answers = state.answers.filter(a => (a.payload as any)?.sessionId !== sessionId)
+  const purged = before - state.answers.length
+  if (purged > 0) {
+    saveQueue(state)
+    notifyListeners()
+    console.log(`🧹 [answerSaveQueue] Purgadas ${purged} respuestas del test completado ${sessionId.slice(0, 8)}`)
+  }
+}
+
+/**
  * Número de respuestas pendientes de sincronizar.
  */
 export function getPendingCount(): number {

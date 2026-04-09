@@ -45,7 +45,7 @@ import SessionExpiredModal from './SessionExpiredModal'
 import { useOposicionPaths } from '@/hooks/useOposicionPaths'
 // validateAnswer ya no se usa — validación es client-side
 import { completeTestOnServer } from '@/lib/api/v2/complete-test/client'
-import { enqueueAnswer } from '@/utils/answerSaveQueue'
+import { enqueueAnswer, purgeSessionAnswers } from '@/utils/answerSaveQueue'
 import { normalizeDifficulty } from '@/lib/api/shared/difficulty'
 import { usePendingAnswers } from '@/hooks/usePendingAnswers'
 import ContentDataRenderer from './ContentDataRenderer'
@@ -1040,9 +1040,13 @@ export default function TestLayout({
         })
           .then(result => {
             setSaveStatus(result.status as 'saving' | 'saved' | 'error')
-            if (result.success && tema && typeof tema === 'number') {
-              const accuracy = Math.round((newScore / effectiveQuestions.length) * 100)
-              notifyTestCompletion(tema, accuracy, effectiveQuestions.length).catch(() => {})
+            if (result.success) {
+              // Purgar respuestas de este test de la cola — ya no son necesarias
+              purgeSessionAnswers(session.id)
+              if (tema && typeof tema === 'number') {
+                const accuracy = Math.round((newScore / effectiveQuestions.length) * 100)
+                notifyTestCompletion(tema, accuracy, effectiveQuestions.length).catch(() => {})
+              }
             }
           })
           .catch(err => {
