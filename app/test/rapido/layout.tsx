@@ -1,6 +1,9 @@
+import type { Metadata } from 'next'
+import type { ReactNode } from 'react'
+
 const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
 
-export const metadata = {
+export const metadata: Metadata = {
   title: 'Test Rápido de Oposiciones | Práctica Express | Vence',
   description: 'Test rápido para retomar el estudio y practicar con preguntas aleatorias. Ideal para mantener el ritmo de preparación y reactivar el aprendizaje.',
   keywords: [
@@ -55,6 +58,6 @@ export const metadata = {
   },
 }
 
-export default function TestRapidoLayout({ children }) {
+export default function TestRapidoLayout({ children }: { children: ReactNode }): ReactNode {
   return children
 }

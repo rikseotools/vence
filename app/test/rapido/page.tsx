@@ -1,4 +1,4 @@
-// app/test/rapido/page.js
+// app/test/rapido/page.tsx
 import TestPageWrapper from '@/components/TestPageWrapper'
 
 export const dynamic = 'force-dynamic'
