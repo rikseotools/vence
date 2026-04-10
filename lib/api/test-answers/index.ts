@@ -13,4 +13,4 @@ export {
   type SaveAnswerResponse,
 } from './schemas'
 
-export { insertTestAnswer } from './queries'
+export { insertTestAnswer, insertTestAnswersBatch, type InsertBatchResult } from './queries'

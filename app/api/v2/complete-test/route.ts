@@ -3,18 +3,14 @@
 // Reemplaza el completeDetailedTest client-side que bloqueaba processingAnswer.
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
-import { after } from 'next/server'
 import {
   safeParseCompleteTestRequest,
   completeTest,
   type CompleteTestResponse,
 } from '@/lib/api/v2/complete-test'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
-import { getDb } from '@/db/client'
-import { testQuestions } from '@/db/schema'
-import { eq, count } from 'drizzle-orm'
 
-// Margen generoso: incluye cálculo de analytics + múltiples queries BD
+// Margen generoso: incluye cálculo de analytics + múltiples queries BD + safety-net insert
 export const maxDuration = 30
 
 async function _POST(request: NextRequest): Promise<NextResponse<CompleteTestResponse | { success: false; error: string }>> {
@@ -77,30 +73,17 @@ async function _POST(request: NextRequest): Promise<NextResponse<CompleteTestRes
       return NextResponse.json(result, { status: 500 })
     }
 
-    // Verificar respuestas guardadas DESPUÉS de responder al cliente
-    // La queue puede estar procesando las últimas respuestas en paralelo
-    after(async () => {
-      try {
-        // Esperar a que la queue termine de procesar
-        await new Promise(resolve => setTimeout(resolve, 10000))
-        const db = getDb()
-        const [savedCount] = await db
-          .select({ count: count() })
-          .from(testQuestions)
-          .where(eq(testQuestions.testId, parsed.data.sessionId))
-        const saved = Number(savedCount?.count ?? 0)
-        const expected = parsed.data.detailedAnswers.length
-        const missing = expected - saved
-        const ratio = expected > 0 ? saved / expected : 1
-        // Alertar solo si faltan más de 2 respuestas Y el ratio es <90%
-        // Evita falsos positivos por 1-2 respuestas en vuelo al completar
-        if (missing > 2 && ratio < 0.9) {
-          console.error(`🚨 [complete-test] ALERTA: solo ${saved}/${expected} respuestas guardadas en test_questions (${Math.round(ratio * 100)}%, tras 10s). sessionId=${parsed.data.sessionId} userId=${user.id}`)
-        }
-      } catch (e) {
-        console.warn('⚠️ [complete-test after] Error verificando respuestas:', e)
-      }
-    })
+    // Nota: completeTest ya garantiza test_questions con su safety-net
+    // (fillMissingTestQuestions). Si `savedQuestionsCount < detailedAnswers.length`
+    // al devolver aquí es porque el cliente no mandó datos suficientes para
+    // reconstruir las filas (cliente antiguo o payload tampered). En ese caso
+    // ya se loguea un WARN dentro de completeTest.
+    const expected = parsed.data.detailedAnswers.length
+    const saved = result.savedQuestionsCount ?? 0
+    if (saved < expected) {
+      const missing = expected - saved
+      console.warn(`⚠️ [complete-test] Test ${parsed.data.sessionId} respondió con ${saved}/${expected} filas guardadas (${missing} faltantes tras safety-net). userId=${user.id}`)
+    }
 
     return NextResponse.json(result)
   } catch (error) {

@@ -327,26 +327,83 @@ export async function flush(): Promise<void> {
 /**
  * Eliminar de la cola todas las respuestas de un test completado.
  * Se llama al completar un test — las respuestas que no se enviaron
- * ya no tienen valor porque el test ya está cerrado con su score final.
+ * ya no tienen valor porque el test ya está cerrado con su score final
+ * Y el servidor garantiza su persistencia via el safety-net de completeTest.
+ *
+ * @param force si true purga todas las respuestas de esa sesión incluso si
+ *   hay pendientes en vuelo. Por defecto false: se salvaguarda contra un bug
+ *   histórico donde se purgaba la cola antes de que la cola drenara,
+ *   perdiendo las respuestas. Con force=false solo purga si no hay pendientes.
  */
-export function purgeSessionAnswers(sessionId: string): void {
+export function purgeSessionAnswers(sessionId: string, force: boolean = false): void {
   if (!sessionId) return
   const state = loadQueue()
-  const before = state.answers.length
-  state.answers = state.answers.filter(a => (a.payload as any)?.sessionId !== sessionId)
-  const purged = before - state.answers.length
-  if (purged > 0) {
-    saveQueue(state)
-    notifyListeners()
-    console.log(`🧹 [answerSaveQueue] Purgadas ${purged} respuestas del test completado ${sessionId.slice(0, 8)}`)
+  const sessionAnswers = state.answers.filter(a => (a.payload as any)?.sessionId === sessionId)
+  if (sessionAnswers.length === 0) return
+
+  if (!force) {
+    // Defensa: si hay respuestas sin enviar, no purgar. El safety-net del
+    // servidor las rellenará, pero por si acaso dejamos que flushean.
+    // Una respuesta se considera "en vuelo" si lastAttempt es null (nunca
+    // intentada) o si su último intento fue hace menos de 60s.
+    const hasInFlight = sessionAnswers.some(a => {
+      if (a.lastAttempt == null) return true
+      return Date.now() - a.lastAttempt < 60_000
+    })
+    if (hasInFlight) {
+      console.log(`🕰️ [answerSaveQueue] No purgo ${sessionAnswers.length} respuestas de ${sessionId.slice(0, 8)} — hay pendientes en vuelo`)
+      return
+    }
   }
+
+  state.answers = state.answers.filter(a => (a.payload as any)?.sessionId !== sessionId)
+  const purged = sessionAnswers.length
+  saveQueue(state)
+  notifyListeners()
+  console.log(`🧹 [answerSaveQueue] Purgadas ${purged} respuestas del test completado ${sessionId.slice(0, 8)}`)
 }
 
 /**
  * Número de respuestas pendientes de sincronizar.
+ * Si se pasa sessionId, devuelve el count solo para ese test.
  */
-export function getPendingCount(): number {
-  return loadQueue().answers.length
+export function getPendingCount(sessionId?: string): number {
+  const answers = loadQueue().answers
+  if (!sessionId) return answers.length
+  return answers.filter(a => (a.payload as any)?.sessionId === sessionId).length
+}
+
+/**
+ * Espera a que la cola drene antes de continuar. Útil antes de completar
+ * un test — garantiza que /answer-and-save tuvo oportunidad de enviar todas
+ * las respuestas antes de que el cliente llame a /complete-test.
+ *
+ * - Si `sessionId` se pasa, solo mira las pendientes de esa sesión.
+ * - Hace polling cada 250ms hasta que pendingCount===0 o se agote el timeout.
+ * - Fuerza un flush al iniciar por si el usuario venía sin red y volvió.
+ * - Devuelve `true` si drenó, `false` si timeout.
+ *
+ * Nota: aunque esta función no drene (timeout), no se pierde información
+ * porque el servidor tiene un safety-net que rellena lo que falte via
+ * fillMissingTestQuestions en completeTest. Esta función es defensa en
+ * profundidad para minimizar la carga del safety-net.
+ */
+export async function waitForQueueDrain(
+  sessionId?: string,
+  timeoutMs: number = 20000,
+): Promise<boolean> {
+  if (getPendingCount(sessionId) === 0) return true
+
+  // Kick off a flush in case nothing was running (non-blocking)
+  flush().catch(() => {})
+
+  const start = Date.now()
+  const POLL_MS = 250
+  while (Date.now() - start < timeoutMs) {
+    await new Promise<void>(resolve => setTimeout(resolve, POLL_MS))
+    if (getPendingCount(sessionId) === 0) return true
+  }
+  return false
 }
 
 /**

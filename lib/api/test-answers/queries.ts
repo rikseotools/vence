@@ -85,30 +85,27 @@ function buildLearningAnalytics(req: SaveAnswerRequest): Record<string, unknown>
   }
 }
 
-// ============================================
-// INSERT PRINCIPAL
-// ============================================
-
-export async function insertTestAnswer(
+/**
+ * Resuelve el tema number: si el cliente lo pasa > 0 lo usa; si es 0 intenta
+ * resolverlo via resolveTemaNumber. Extraído para poder cachear por userId
+ * en inserciones batch.
+ */
+async function computeTema(
   req: SaveAnswerRequest,
   userId: string,
-): Promise<SaveAnswerResponse> {
-  try {
-    const isPsychometric = req.questionData.questionType === 'psychometric'
+  resolvedOposicionCache?: { current: string | null },
+): Promise<number> {
+  let calculatedTema = parseInt(String(req.questionData.tema || req.tema)) || 0
 
-    // Resolver tema server-side si es 0
-    let calculatedTema = parseInt(String(req.questionData.tema || req.tema)) || 0
+  if (calculatedTema === 0 && req.questionData.id) {
+    try {
+      let oposicionId = req.oposicionId || ''
 
-    if (calculatedTema === 0 && req.questionData.id) {
-      try {
-        // Obtener oposición válida para resolver tema
-        // IMPORTANTE: Validar SIEMPRE contra ALL_OPOSICION_IDS, incluso si el cliente envía oposicionId
-        // porque puede ser un UUID de oposición custom que no tiene positionType en el mapa
-        let oposicionId = req.oposicionId || ''
-
-        // Validar que el oposicionId sea un ID conocido (no UUID custom, no 'explorador')
-        if (!oposicionId || !ALL_OPOSICION_IDS.includes(oposicionId) || oposicionId === 'explorador') {
-          // Intentar obtener del perfil del usuario
+      if (!oposicionId || !ALL_OPOSICION_IDS.includes(oposicionId) || oposicionId === 'explorador') {
+        // Usar caché si se pasó (batch) para evitar N queries al userProfiles
+        if (resolvedOposicionCache && resolvedOposicionCache.current) {
+          oposicionId = resolvedOposicionCache.current
+        } else {
           const db = getDb()
           const result = await db
             .select({ targetOposicion: userProfiles.targetOposicion })
@@ -122,41 +119,57 @@ export async function insertTestAnswer(
           oposicionId = (userOposicion && ALL_OPOSICION_IDS.includes(userOposicion) && userOposicion !== 'explorador')
             ? userOposicion
             : 'auxiliar_administrativo_estado'
+          if (resolvedOposicionCache) resolvedOposicionCache.current = oposicionId
         }
-        const resolved = await resolveTemaNumber(
-          req.questionData.id,
-          req.questionData.article?.id,
-          req.questionData.article?.number,
-          req.questionData.article?.law_id,
-          req.questionData.article?.law_short_name,
-          oposicionId as any,
-        )
-        if (resolved) {
-          calculatedTema = resolved
-        }
-      } catch {
-        // graceful degradation - keep tema as 0
       }
+      const resolved = await resolveTemaNumber(
+        req.questionData.id,
+        req.questionData.article?.id,
+        req.questionData.article?.number,
+        req.questionData.article?.law_id,
+        req.questionData.article?.law_short_name,
+        oposicionId as any,
+      )
+      if (resolved) {
+        calculatedTema = resolved
+      }
+    } catch {
+      // graceful degradation - keep tema as 0
     }
+  }
+  return calculatedTema
+}
 
-    // Determinar question_id
-    const questionId =
-      req.questionData.id ||
-      req.questionData.metadata?.id ||
-      `tema-${calculatedTema}-art-${req.questionData.article?.number || 'unknown'}-${req.questionData.article?.law_short_name || 'unknown'}-${generateContentHash(req.questionData.question, req.questionData.options)}`
+/**
+ * Construye el objeto de row listo para insertar en test_questions.
+ * Función pura excepto por la resolución de tema. Usada tanto por inserción
+ * individual como por batch.
+ */
+async function buildTestAnswerRow(
+  req: SaveAnswerRequest,
+  userId: string,
+  resolvedOposicionCache?: { current: string | null },
+) {
+  const isPsychometric = req.questionData.questionType === 'psychometric'
+  const calculatedTema = await computeTema(req, userId, resolvedOposicionCache)
 
-    // article_id solo si es UUID valido
-    const articleId = req.questionData.article?.id || null
+  // Determinar question_id
+  const questionId =
+    req.questionData.id ||
+    req.questionData.metadata?.id ||
+    `tema-${calculatedTema}-art-${req.questionData.article?.number || 'unknown'}-${req.questionData.article?.law_short_name || 'unknown'}-${generateContentHash(req.questionData.question, req.questionData.options)}`
 
-    // Calcular hesitation
-    const hesitationTime = req.firstInteractionTime
-      ? Math.max(0, req.firstInteractionTime - req.questionStartTime)
-      : 0
+  const articleId = req.questionData.article?.id || null
 
-    // Device info (del body o defaults)
-    const device: Partial<DeviceInfo> = req.deviceInfo || {}
+  const hesitationTime = req.firstInteractionTime
+    ? Math.max(0, req.firstInteractionTime - req.questionStartTime)
+    : 0
 
-    const insertData = {
+  const device: Partial<DeviceInfo> = req.deviceInfo || {}
+
+  return {
+    questionId,
+    row: {
       testId: req.sessionId,
       questionOrder: (req.answerData.questionIndex || 0) + 1,
       questionText: req.questionData.question || 'Pregunta sin texto',
@@ -199,10 +212,23 @@ export async function insertTestAnswer(
       fullQuestionContext: buildQuestionContext(req, questionId, articleId),
       userBehaviorData: buildBehaviorData(req),
       learningAnalytics: buildLearningAnalytics(req),
-    }
+    },
+  }
+}
+
+// ============================================
+// INSERT PRINCIPAL (1 row)
+// ============================================
+
+export async function insertTestAnswer(
+  req: SaveAnswerRequest,
+  userId: string,
+): Promise<SaveAnswerResponse> {
+  try {
+    const { questionId, row } = await buildTestAnswerRow(req, userId)
 
     const db = getDb()
-    await db.insert(testQuestions).values(insertData)
+    await db.insert(testQuestions).values(row)
 
     return {
       success: true,
@@ -226,6 +252,89 @@ export async function insertTestAnswer(
       success: false,
       error: error instanceof Error ? error.message : 'Error desconocido',
       action: 'error',
+    }
+  }
+}
+
+// ============================================
+// INSERT BATCH (N rows) — idempotente vía ON CONFLICT
+// ============================================
+
+export interface InsertBatchResult {
+  /** Filas enviadas al INSERT (antes de ON CONFLICT). */
+  attempted: number
+  /** Filas que quedaron persistidas tras ON CONFLICT DO NOTHING. */
+  inserted: number
+  /** Filas descartadas por ON CONFLICT (ya existían). */
+  skipped: number
+  /** true si el batch completo falló (error de red, constraint distinta, etc). */
+  errored: boolean
+  /** Mensaje de error si errored=true. */
+  error?: string
+}
+
+/**
+ * Insert en batch idempotente contra test_questions.
+ *
+ * - Usa ON CONFLICT (test_id, question_order) DO NOTHING para que re-ejecutarlo
+ *   con filas que ya existen sea un no-op (no falla).
+ * - Resuelve tema una sola vez por oposición (caché para evitar N queries).
+ * - Si el array viene vacío, devuelve 0/0/0 sin tocar la BD.
+ * - Si alguna row individual no puede prepararse (error en buildTestAnswerRow),
+ *   la salta sin abortar el batch.
+ *
+ * Este método NO reemplaza a insertTestAnswer (camino rápido online). Está
+ * pensado para el safety-net de completeTest: rellenar huecos en test_questions
+ * cuando la cola del cliente no pudo drenar a tiempo.
+ */
+export async function insertTestAnswersBatch(
+  requests: SaveAnswerRequest[],
+  userId: string,
+): Promise<InsertBatchResult> {
+  if (!requests || requests.length === 0) {
+    return { attempted: 0, inserted: 0, skipped: 0, errored: false }
+  }
+
+  try {
+    // Caché compartida de oposicionId para minimizar lookups a userProfiles
+    const cache = { current: null as string | null }
+
+    const rows: any[] = []
+    for (const req of requests) {
+      try {
+        const { row } = await buildTestAnswerRow(req, userId, cache)
+        rows.push(row)
+      } catch (err) {
+        console.warn('⚠️ [insertTestAnswersBatch] Fila descartada en build:', err)
+      }
+    }
+
+    if (rows.length === 0) {
+      return { attempted: 0, inserted: 0, skipped: 0, errored: false }
+    }
+
+    const db = getDb()
+    const returned = await db
+      .insert(testQuestions)
+      .values(rows)
+      .onConflictDoNothing({ target: [testQuestions.testId, testQuestions.questionOrder] })
+      .returning({ id: testQuestions.id })
+
+    const inserted = returned?.length ?? 0
+    return {
+      attempted: rows.length,
+      inserted,
+      skipped: rows.length - inserted,
+      errored: false,
+    }
+  } catch (error) {
+    console.error('❌ [insertTestAnswersBatch] Error en batch insert:', error)
+    return {
+      attempted: requests.length,
+      inserted: 0,
+      skipped: 0,
+      errored: true,
+      error: error instanceof Error ? error.message : 'Error desconocido',
     }
   }
 }

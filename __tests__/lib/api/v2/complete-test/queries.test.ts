@@ -103,20 +103,40 @@ jest.mock('@/db/client', () => ({
 
 jest.mock('@/db/schema', () => ({
   tests: { id: 'tests.id', userId: 'tests.userId', temaNumber: 'tests.temaNumber' },
-  testQuestions: { testId: 'testQuestions.testId' },
+  testQuestions: { testId: 'testQuestions.testId', questionOrder: 'testQuestions.questionOrder' },
   userSessions: { id: 'userSessions.id' },
   userProgress: { userId: 'userProgress.userId', topicId: 'userProgress.topicId' },
   topics: { id: 'topics.id', topicNumber: 'topics.topicNumber', positionType: 'topics.positionType' },
+  questions: { id: 'questions.id', correctOption: 'questions.correctOption' },
+  psychometricQuestions: { id: 'psychometricQuestions.id', correctOption: 'psychometricQuestions.correctOption' },
 }))
 
 jest.mock('drizzle-orm', () => ({
   eq: (a: any, b: any) => ({ type: 'eq', a, b }),
   and: (...args: any[]) => ({ type: 'and', args }),
+  inArray: (a: any, b: any) => ({ type: 'inArray', a, b }),
   sql: jest.fn(),
   count: () => 'count()',
 }))
 
+// Mock del safety-net insert: por defecto no hace nada (0 inserted).
+// Tests específicos del safety-net lo configuran.
+type InsertBatchMockResult = { attempted: number; inserted: number; skipped: number; errored: boolean; error?: string }
+const mockInsertBatch: jest.Mock<Promise<InsertBatchMockResult>, [any[], string]> = jest.fn(
+  async (_reqs: any[], _userId: string) => ({ attempted: 0, inserted: 0, skipped: 0, errored: false }),
+)
+jest.mock('@/lib/api/test-answers', () => ({
+  insertTestAnswersBatch: (reqs: any[], userId: string) => mockInsertBatch(reqs, userId),
+}))
+
 import type { CompleteTestRequest, DetailedAnswerInput } from '@/lib/api/v2/complete-test/schemas'
+
+// Helper: simular el SELECT de question_orders ya guardados.
+// Tras el refactor, complete-test lee las órdenes existentes (no el count)
+// para poder identificar huecos y rellenarlos con el safety-net.
+function savedOrders(n: number): Array<{ questionOrder: number }> {
+  return Array.from({ length: n }, (_, i) => ({ questionOrder: i + 1 }))
+}
 
 // ============================================
 // Helpers para construir datos de test
@@ -179,6 +199,8 @@ describe('completeTest', () => {
     jest.resetModules()
     resetDbMock()
     mockDb = createMockDb()
+    mockInsertBatch.mockClear()
+    mockInsertBatch.mockImplementation(async () => ({ attempted: 0, inserted: 0, skipped: 0, errored: false }))
   })
 
   async function loadModule() {
@@ -223,7 +245,7 @@ describe('completeTest', () => {
 
       dbResponses.select = [
         [{ id: 'test-session-123', userId: 'user-abc', temaNumber: 1 }], // test found
-        [{ count: 10 }], // savedQuestionsCount
+        savedOrders(10), // savedQuestionsCount
         [{ id: 'topic-1' }], // topic lookup
         [{ userId: 'user-abc', topicId: 'topic-1', totalAttempts: 20, correctAttempts: 15 }], // existing progress
       ]
@@ -544,7 +566,7 @@ describe('completeTest', () => {
 
       dbResponses.select = [
         [{ id: 'test-session-123', userId: 'user-abc', temaNumber: 1 }],
-        [{ count: 10 }],
+        savedOrders(10),
         [{ id: 'topic-1' }],
         [], // no existing progress
       ]
@@ -578,7 +600,7 @@ describe('completeTest', () => {
 
       dbResponses.select = [
         [{ id: 'test-session-123', userId: 'user-abc', temaNumber: 1 }],
-        [{ count: 10 }],
+        savedOrders(10),
       ]
       dbResponses.update = [
         [], // update returns nothing (failed)
@@ -607,7 +629,7 @@ describe('completeTest', () => {
 
       dbResponses.select = [
         [{ id: 'test-session-123', userId: 'user-abc', temaNumber: 5 }],
-        [{ count: 10 }],
+        savedOrders(10),
         [{ id: 'topic-5' }],     // topic found
         [],                        // no existing progress
       ]
@@ -636,7 +658,7 @@ describe('completeTest', () => {
 
       dbResponses.select = [
         [{ id: 'test-session-123', userId: 'user-abc', temaNumber: 5 }],
-        [{ count: 10 }],
+        savedOrders(10),
         [{ id: 'topic-5' }],
         // Existing progress with previous stats
         [{ userId: 'user-abc', topicId: 'topic-5', totalAttempts: 20, correctAttempts: 15 }],
@@ -665,7 +687,7 @@ describe('completeTest', () => {
 
       dbResponses.select = [
         [{ id: 'test-session-123', userId: 'user-abc', temaNumber: null }],
-        [{ count: 10 }],
+        savedOrders(10),
       ]
       dbResponses.update = [
         [{ id: 'test-session-123' }],
@@ -687,7 +709,7 @@ describe('completeTest', () => {
 
       dbResponses.select = [
         [{ id: 'test-session-123', userId: 'user-abc', temaNumber: null }],
-        [{ count: 10 }],
+        savedOrders(10),
       ]
       dbResponses.update = [
         [{ id: 'test-session-123' }], // test update returning
@@ -722,7 +744,7 @@ describe('completeTest', () => {
 
       dbResponses.select = [
         [{ id: 'test-session-123', userId: 'user-abc', temaNumber: null }],
-        [{ count: 10 }],
+        savedOrders(10),
       ]
       dbResponses.update = [
         [{ id: 'test-session-123' }], // only test update
@@ -748,7 +770,7 @@ describe('completeTest', () => {
 
       dbResponses.select = [
         [{ id: 'test-session-123', userId: 'user-abc', temaNumber: 5 }],
-        [{ count: 10 }],
+        savedOrders(10),
         [{ id: 'topic-5' }],
       ]
       dbResponses.update = [
@@ -801,7 +823,7 @@ describe('completeTest', () => {
 
       dbResponses.select = [
         [{ id: 'test-session-123', userId: 'user-abc', temaNumber: null }],
-        [{ count: 10 }],
+        savedOrders(10),
       ]
       dbResponses.update = [
         [{ id: 'test-session-123' }], // test update OK
@@ -830,7 +852,7 @@ describe('completeTest', () => {
 
       dbResponses.select = [
         [{ id: 'test-session-123', userId: 'user-abc', temaNumber: null }],
-        [{ count: 15 }], // 15 saved questions
+        savedOrders(15), // 15 saved questions
       ]
       dbResponses.update = [
         [{ id: 'test-session-123' }],
@@ -881,6 +903,255 @@ describe('completeTest', () => {
 
       // 0.8 * (100 / 5) = 0.8 * 20 = 16
       expect(efficiency).toBe(16)
+    })
+  })
+
+  // ============================================
+  // 7. Safety-net: rellenar huecos en test_questions
+  // ============================================
+  describe('Safety-net: fillMissingTestQuestions', () => {
+    /** Construye detailedAnswer con datos mínimos suficientes para gap-fill */
+    function makeRichAnswer(qi: number, overrides: Partial<DetailedAnswerInput> = {}): DetailedAnswerInput {
+      return makeAnswer({
+        questionIndex: qi,
+        selectedAnswer: 1,
+        isCorrect: true,
+        questionData: {
+          id: `q${qi}`,
+          question: `Pregunta número ${qi}`,
+          options: ['Opción A', 'Opción B', 'Opción C', 'Opción D'],
+          questionType: 'legislative',
+          metadata: { difficulty: 'medium' },
+          article: { id: `art${qi}`, number: String(qi), law_short_name: 'CE' },
+        },
+        ...overrides,
+      })
+    }
+
+    test('NO llama al batch insert si todas las respuestas ya están guardadas', async () => {
+      completeTest = await loadModule()
+
+      const request = makeRequest({
+        detailedAnswers: [makeRichAnswer(0), makeRichAnswer(1), makeRichAnswer(2)],
+      })
+
+      dbResponses.select = [
+        [{ id: 'test-session-123', userId: 'user-abc', temaNumber: null }],
+        savedOrders(3), // todas guardadas
+      ]
+      dbResponses.update = [
+        [{ id: 'test-session-123' }],
+      ]
+
+      const result = await completeTest(request, 'user-abc')
+
+      expect(result.success).toBe(true)
+      expect(result.gapFilledCount).toBe(0)
+      expect(mockInsertBatch).not.toHaveBeenCalled()
+    })
+
+    test('Llama al batch insert SOLO con los que faltan (gap-fill parcial)', async () => {
+      completeTest = await loadModule()
+
+      const request = makeRequest({
+        detailedAnswers: [makeRichAnswer(0), makeRichAnswer(1), makeRichAnswer(2), makeRichAnswer(3)],
+      })
+
+      // Solo preguntas 1 y 3 (orders 2 y 4) guardadas. Faltan 1 y 3 (orders 1 y 3).
+      dbResponses.select = [
+        [{ id: 'test-session-123', userId: 'user-abc', temaNumber: null }],
+        [{ questionOrder: 2 }, { questionOrder: 4 }],
+        // SELECT questions.correctOption IN (q0, q2)
+        [{ id: 'q0', correctOption: 1 }, { id: 'q2', correctOption: 2 }],
+      ]
+      dbResponses.update = [
+        [{ id: 'test-session-123' }],
+      ]
+
+      mockInsertBatch.mockResolvedValueOnce({ attempted: 2, inserted: 2, skipped: 0, errored: false })
+
+      const result = await completeTest(request, 'user-abc')
+
+      expect(result.success).toBe(true)
+      expect(result.gapFilledCount).toBe(2)
+      expect(mockInsertBatch).toHaveBeenCalledTimes(1)
+      const [saveRequests, userId] = mockInsertBatch.mock.calls[0]
+      expect(userId).toBe('user-abc')
+      expect(Array.isArray(saveRequests)).toBe(true)
+      expect((saveRequests as any[])).toHaveLength(2)
+      // Verifica que son exactamente los questionIndex faltantes (0 y 2)
+      const indexes = (saveRequests as any[]).map(r => r.answerData.questionIndex).sort()
+      expect(indexes).toEqual([0, 2])
+      // Y que el correctAnswer se resolvió desde la BD, no inventado
+      const byIndex = new Map((saveRequests as any[]).map(r => [r.answerData.questionIndex, r]))
+      expect(byIndex.get(0).answerData.correctAnswer).toBe(1)
+      expect(byIndex.get(2).answerData.correctAnswer).toBe(2)
+    })
+
+    test('Llama al batch insert con TODAS las respuestas cuando test_questions vacío (caso crítico)', async () => {
+      completeTest = await loadModule()
+
+      const request = makeRequest({
+        detailedAnswers: [makeRichAnswer(0), makeRichAnswer(1), makeRichAnswer(2)],
+      })
+
+      // CASO CRÍTICO: test_questions totalmente vacío (la cola cliente falló)
+      dbResponses.select = [
+        [{ id: 'test-session-123', userId: 'user-abc', temaNumber: null }],
+        [], // NADA guardado
+        // SELECT questions WHERE id IN (q0, q1, q2)
+        [{ id: 'q0', correctOption: 0 }, { id: 'q1', correctOption: 1 }, { id: 'q2', correctOption: 2 }],
+      ]
+      dbResponses.update = [
+        [{ id: 'test-session-123' }],
+      ]
+
+      mockInsertBatch.mockResolvedValueOnce({ attempted: 3, inserted: 3, skipped: 0, errored: false })
+
+      const result = await completeTest(request, 'user-abc')
+
+      expect(result.success).toBe(true)
+      expect(result.gapFilledCount).toBe(3)
+      expect(result.savedQuestionsCount).toBe(3) // 0 previos + 3 rellenados
+      expect(mockInsertBatch).toHaveBeenCalledTimes(1)
+      expect((mockInsertBatch.mock.calls[0][0] as any[])).toHaveLength(3)
+    })
+
+    test('NO rellena respuestas sin datos mínimos (question + options)', async () => {
+      completeTest = await loadModule()
+
+      // Cliente antiguo que no manda question/options → no podemos reconstruir
+      const oldStyleAnswer: DetailedAnswerInput = makeAnswer({
+        questionIndex: 0,
+        questionData: {
+          id: 'q0',
+          metadata: { difficulty: 'medium' },
+          article: { id: 'art0', number: '1', law_short_name: 'CE' },
+          // NO hay question ni options
+        },
+      })
+
+      const request = makeRequest({ detailedAnswers: [oldStyleAnswer] })
+
+      dbResponses.select = [
+        [{ id: 'test-session-123', userId: 'user-abc', temaNumber: null }],
+        [], // vacío
+      ]
+      dbResponses.update = [[{ id: 'test-session-123' }]]
+
+      const result = await completeTest(request, 'user-abc')
+
+      expect(result.success).toBe(true)
+      expect(result.gapFilledCount).toBe(0)
+      // No debe intentar el batch insert — no hay rows rellenables
+      expect(mockInsertBatch).not.toHaveBeenCalled()
+    })
+
+    test('Salta respuestas cuyo correctOption no se encontró en BD', async () => {
+      completeTest = await loadModule()
+
+      const request = makeRequest({
+        detailedAnswers: [makeRichAnswer(0), makeRichAnswer(1)],
+      })
+
+      dbResponses.select = [
+        [{ id: 'test-session-123', userId: 'user-abc', temaNumber: null }],
+        [], // nada guardado
+        // Solo q0 tiene correctOption, q1 no existe en la tabla
+        [{ id: 'q0', correctOption: 1 }],
+      ]
+      dbResponses.update = [[{ id: 'test-session-123' }]]
+
+      mockInsertBatch.mockResolvedValueOnce({ attempted: 1, inserted: 1, skipped: 0, errored: false })
+
+      const result = await completeTest(request, 'user-abc')
+
+      expect(result.success).toBe(true)
+      expect(result.gapFilledCount).toBe(1) // solo q0
+      expect((mockInsertBatch.mock.calls[0][0] as any[])).toHaveLength(1)
+      expect((mockInsertBatch.mock.calls[0][0] as any[])[0].questionData.id).toBe('q0')
+    })
+
+    test('ON CONFLICT: si insertBatch reporta skipped, gapFilledCount refleja solo lo realmente insertado', async () => {
+      completeTest = await loadModule()
+
+      const request = makeRequest({
+        detailedAnswers: [makeRichAnswer(0), makeRichAnswer(1)],
+      })
+
+      dbResponses.select = [
+        [{ id: 'test-session-123', userId: 'user-abc', temaNumber: null }],
+        [], // vacío
+        [{ id: 'q0', correctOption: 0 }, { id: 'q1', correctOption: 1 }],
+      ]
+      dbResponses.update = [[{ id: 'test-session-123' }]]
+
+      // Simulamos que una de las dos ya existía (race con /answer-and-save)
+      mockInsertBatch.mockResolvedValueOnce({ attempted: 2, inserted: 1, skipped: 1, errored: false })
+
+      const result = await completeTest(request, 'user-abc')
+
+      expect(result.gapFilledCount).toBe(1)
+    })
+
+    test('Si el batch insert falla, no propaga el error al usuario', async () => {
+      completeTest = await loadModule()
+
+      const request = makeRequest({
+        detailedAnswers: [makeRichAnswer(0)],
+      })
+
+      dbResponses.select = [
+        [{ id: 'test-session-123', userId: 'user-abc', temaNumber: null }],
+        [],
+        [{ id: 'q0', correctOption: 0 }],
+      ]
+      dbResponses.update = [[{ id: 'test-session-123' }]]
+
+      mockInsertBatch.mockResolvedValueOnce({
+        attempted: 1, inserted: 0, skipped: 0, errored: true, error: 'boom',
+      })
+
+      const result = await completeTest(request, 'user-abc')
+
+      // El test se completa igualmente (los analytics se guardaron en `tests`)
+      expect(result.success).toBe(true)
+      expect(result.gapFilledCount).toBe(0)
+    })
+
+    test('Respuestas psicotécnicas van al lookup correcto (psychometric_questions)', async () => {
+      completeTest = await loadModule()
+
+      const request = makeRequest({
+        detailedAnswers: [
+          makeRichAnswer(0, {
+            questionData: {
+              id: 'psy0',
+              question: 'Series numéricas',
+              options: ['1', '2', '3', '4'],
+              questionType: 'psychometric',
+              metadata: { difficulty: 'medium' },
+            },
+          }),
+        ],
+      })
+
+      dbResponses.select = [
+        [{ id: 'test-session-123', userId: 'user-abc', temaNumber: null }],
+        [], // vacío
+        [{ id: 'psy0', correctOption: 3 }], // lookup en psychometric_questions
+      ]
+      dbResponses.update = [[{ id: 'test-session-123' }]]
+
+      mockInsertBatch.mockResolvedValueOnce({ attempted: 1, inserted: 1, skipped: 0, errored: false })
+
+      const result = await completeTest(request, 'user-abc')
+
+      expect(result.success).toBe(true)
+      expect(result.gapFilledCount).toBe(1)
+      const saveReq = (mockInsertBatch.mock.calls[0][0] as any[])[0]
+      expect(saveReq.questionData.questionType).toBe('psychometric')
+      expect(saveReq.answerData.correctAnswer).toBe(3)
     })
   })
 })

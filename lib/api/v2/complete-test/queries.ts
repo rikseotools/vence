@@ -1,9 +1,11 @@
 // lib/api/v2/complete-test/queries.ts
 // Server-side: completar test con analytics (replica completeDetailedTest + updateUserProgressDirect)
 import { getDb } from '@/db/client'
-import { tests, testQuestions, userSessions, userProgress, topics } from '@/db/schema'
-import { eq, and, sql, count } from 'drizzle-orm'
+import { tests, testQuestions, userSessions, userProgress, topics, questions, psychometricQuestions } from '@/db/schema'
+import { eq, and, inArray } from 'drizzle-orm'
 import type { CompleteTestRequest, DetailedAnswerInput } from './schemas'
+import { insertTestAnswersBatch } from '@/lib/api/test-answers'
+import type { SaveAnswerRequest } from '@/lib/api/test-answers'
 
 interface ArticleStat {
   article_id: string
@@ -20,7 +22,7 @@ interface ArticleStat {
 export async function completeTest(
   params: CompleteTestRequest,
   userId: string,
-): Promise<{ success: boolean; status: 'saved' | 'error'; savedQuestionsCount?: number }> {
+): Promise<{ success: boolean; status: 'saved' | 'error'; savedQuestionsCount?: number; gapFilledCount?: number }> {
   const db = getDb()
 
   const {
@@ -44,13 +46,16 @@ export async function completeTest(
     return { success: false, status: 'error' }
   }
 
-  // 2. Verificar preguntas guardadas en test_questions
-  const [savedCountResult] = await db
-    .select({ count: count() })
+  // 2. Leer los question_orders ya guardados en test_questions
+  //    Necesitamos los orders (no solo el count) para poder identificar
+  //    huecos y rellenarlos en la fase de safety-net más abajo.
+  const savedOrderRows = await db
+    .select({ questionOrder: testQuestions.questionOrder })
     .from(testQuestions)
     .where(eq(testQuestions.testId, sessionId))
 
-  const savedQuestionsCount = Number(savedCountResult?.count ?? 0)
+  const savedOrders = new Set<number>(savedOrderRows.map(r => r.questionOrder))
+  let savedQuestionsCount = savedOrders.size
 
   // 3. Calcular analytics
   const totalTime = Math.round((Date.now() - startTime) / 1000)
@@ -241,12 +246,188 @@ export async function completeTest(
     }
   }
 
-  // La verificación de respuestas guardadas se hace en after() con delay,
-  // porque la queue del cliente puede estar procesando las últimas respuestas
-  // en paralelo con completeTest.
+  // 7. SAFETY NET: Rellenar huecos en test_questions
+  //
+  //    Si la cola del cliente (/answer-and-save) no drenó a tiempo antes de
+  //    completar el test, algunas respuestas no estarán en test_questions.
+  //    Usamos los detailedAnswers del request como fuente de verdad para
+  //    rellenar los huecos, garantizando que el test queda con todas sus
+  //    filas de respuesta aunque /answer-and-save haya fallado o vaya lento.
+  //
+  //    Idempotente por ON CONFLICT (test_id, question_order) DO NOTHING.
+  //    Escala: 1 SELECT de correctOption por tabla (legislative/psychometric)
+  //    + 1 INSERT batch. Complejidad O(1) en round-trips, independiente de N.
+  const gapFilledCount = await fillMissingTestQuestions({
+    sessionId,
+    userId,
+    detailedAnswers,
+    savedOrders,
+    topLevelTema: typeof params.tema === 'number' ? params.tema : null,
+    oposicionId: params.oposicionId ?? null,
+    deviceInfo: params.deviceInfo ?? null,
+  })
 
-  console.log(`✅ [complete-test] Test ${sessionId} completado: ${finalScore}/${detailedAnswers.length} (saved: ${savedQuestionsCount})`)
-  return { success: true, status: 'saved', savedQuestionsCount }
+  if (gapFilledCount > 0) {
+    savedQuestionsCount += gapFilledCount
+    console.log(`🛟 [complete-test] Safety-net rellenó ${gapFilledCount} respuestas faltantes en test ${sessionId}`)
+  }
+
+  // Si tras el gap-fill siguen faltando filas Y el cliente mandó datos
+  // suficientes para insertarlas, es un bug real (no un retraso de cola).
+  const expectedRows = detailedAnswers.length
+  if (savedQuestionsCount < expectedRows) {
+    const missing = expectedRows - savedQuestionsCount
+    console.warn(`⚠️ [complete-test] Tras safety-net faltan ${missing}/${expectedRows} respuestas en test ${sessionId} userId=${userId}`)
+  }
+
+  console.log(`✅ [complete-test] Test ${sessionId} completado: ${finalScore}/${detailedAnswers.length} (saved: ${savedQuestionsCount}, gapFilled: ${gapFilledCount})`)
+  return { success: true, status: 'saved', savedQuestionsCount, gapFilledCount }
+}
+
+// ============================================
+// HELPER: Safety-net para rellenar respuestas faltantes
+// ============================================
+
+interface FillMissingArgs {
+  sessionId: string
+  userId: string
+  detailedAnswers: DetailedAnswerInput[]
+  savedOrders: Set<number>
+  topLevelTema: number | null
+  oposicionId: string | null
+  deviceInfo: NonNullable<CompleteTestRequest['deviceInfo']> | null
+}
+
+/**
+ * Rellena respuestas que el cliente no llegó a guardar via /answer-and-save.
+ *
+ * Fuente de verdad: los `detailedAnswers` del request. Para cada respuesta
+ * cuya `questionOrder` no está en `savedOrders` Y tiene datos mínimos
+ * (question + options), reconstruimos el row y lo insertamos via
+ * insertTestAnswersBatch con ON CONFLICT DO NOTHING.
+ *
+ * El `correctAnswer` (índice 0-3) se resuelve consultando la BD — el cliente
+ * solo envía `isCorrect: boolean`, no sabemos cuál era la correcta. Una sola
+ * query agrupada por tabla (legislative / psychometric) resuelve todos los IDs.
+ */
+async function fillMissingTestQuestions(args: FillMissingArgs): Promise<number> {
+  const { sessionId, userId, detailedAnswers, savedOrders, topLevelTema, oposicionId, deviceInfo } = args
+  const db = getDb()
+
+  // 1. Identificar huecos rellenables
+  const missing = detailedAnswers.filter(a => {
+    const order = (a.questionIndex ?? 0) + 1
+    if (savedOrders.has(order)) return false
+    const qd = a.questionData
+    // Datos mínimos imprescindibles para reconstruir una fila válida
+    if (!qd?.question || !qd?.options || qd.options.length < 2) return false
+    return true
+  })
+
+  if (missing.length === 0) return 0
+
+  // 2. Resolver correctOption batch para todos los IDs
+  //    (legislative en `questions`, psychometric en `psychometric_questions`)
+  const legIds: string[] = []
+  const psyIds: string[] = []
+  for (const a of missing) {
+    const id = a.questionData?.id
+    if (!id) continue
+    if (a.questionData?.questionType === 'psychometric') psyIds.push(id)
+    else legIds.push(id)
+  }
+
+  const correctMap = new Map<string, number>()
+  try {
+    if (legIds.length > 0) {
+      const rows = await db
+        .select({ id: questions.id, correctOption: questions.correctOption })
+        .from(questions)
+        .where(inArray(questions.id, legIds))
+      for (const r of rows) {
+        if (typeof r.correctOption === 'number') correctMap.set(r.id, r.correctOption)
+      }
+    }
+    if (psyIds.length > 0) {
+      const rows = await db
+        .select({ id: psychometricQuestions.id, correctOption: psychometricQuestions.correctOption })
+        .from(psychometricQuestions)
+        .where(inArray(psychometricQuestions.id, psyIds))
+      for (const r of rows) {
+        if (typeof r.correctOption === 'number') correctMap.set(r.id, r.correctOption)
+      }
+    }
+  } catch (e) {
+    console.warn('⚠️ [complete-test gap-fill] Error resolviendo correctOption:', e)
+    // Sin correctOption no podemos insertar con datos correctos — abortamos el gap-fill
+    return 0
+  }
+
+  // 3. Construir SaveAnswerRequest para cada hueco rellenable
+  const saveRequests: SaveAnswerRequest[] = []
+  for (const a of missing) {
+    const id = a.questionData?.id
+    if (!id) continue
+    const correctOption = correctMap.get(id)
+    if (typeof correctOption !== 'number') continue // pregunta desconocida (AI-generated?) → saltar
+
+    const qd = a.questionData!
+    const req: SaveAnswerRequest = {
+      sessionId,
+      questionData: {
+        id: id,
+        question: qd.question!,
+        options: qd.options!,
+        tema: qd.tema ?? topLevelTema ?? 0,
+        questionType: (qd.questionType as 'legislative' | 'psychometric') ?? 'legislative',
+        article: qd.article
+          ? {
+              id: qd.article.id ?? null,
+              number: qd.article.number ?? null,
+              law_id: qd.article.law_id ?? null,
+              law_short_name: qd.article.law_short_name ?? null,
+            }
+          : null,
+        metadata: qd.metadata
+          ? {
+              id: qd.id ?? null,
+              difficulty: qd.metadata.difficulty ?? null,
+              question_type: qd.questionType ?? null,
+              tags: qd.metadata.tags ?? null,
+            }
+          : null,
+        explanation: qd.explanation ?? null,
+      },
+      answerData: {
+        questionIndex: a.questionIndex,
+        selectedAnswer: a.selectedAnswer,
+        correctAnswer: correctOption,
+        isCorrect: a.isCorrect,
+        timeSpent: a.timeSpent ?? 0,
+      },
+      tema: topLevelTema ?? 0,
+      confidenceLevel: a.confidence ?? 'unknown',
+      interactionCount: a.interactions ?? 1,
+      questionStartTime: a.questionStartTime ?? 0,
+      firstInteractionTime: a.firstInteractionTime ?? 0,
+      interactionEvents: [],
+      mouseEvents: [],
+      scrollEvents: [],
+      deviceInfo: deviceInfo ?? undefined,
+      oposicionId: oposicionId ?? null,
+    }
+    saveRequests.push(req)
+  }
+
+  if (saveRequests.length === 0) return 0
+
+  // 4. Batch insert idempotente
+  const result = await insertTestAnswersBatch(saveRequests, userId)
+  if (result.errored) {
+    console.error(`❌ [complete-test gap-fill] Batch insert falló: ${result.error}`)
+    return 0
+  }
+  return result.inserted
 }
 
 // ============================================

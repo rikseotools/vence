@@ -45,7 +45,7 @@ import SessionExpiredModal from './SessionExpiredModal'
 import { useOposicionPaths } from '@/hooks/useOposicionPaths'
 // validateAnswer ya no se usa — validación es client-side
 import { completeTestOnServer } from '@/lib/api/v2/complete-test/client'
-import { enqueueAnswer, purgeSessionAnswers } from '@/utils/answerSaveQueue'
+import { enqueueAnswer, purgeSessionAnswers, waitForQueueDrain } from '@/utils/answerSaveQueue'
 import { normalizeDifficulty } from '@/lib/api/shared/difficulty'
 import { usePendingAnswers } from '@/hooks/usePendingAnswers'
 import ContentDataRenderer from './ContentDataRenderer'
@@ -1008,51 +1008,98 @@ export default function TestLayout({
       })
       if (user && session) {
         setSaveStatus('saving')
-        completeTestOnServer({
-          sessionId: session.id,
-          finalScore: newScore,
-          totalQuestions: effectiveQuestions.length,
-          detailedAnswers: newDetailedAnswers.map(a => ({
-            questionIndex: a.questionIndex ?? 0,
-            selectedAnswer: a.selectedAnswer ?? -1,
-            isCorrect: !!a.isCorrect,
-            timeSpent: a.timeSpent ?? 0,
-            confidence: (['very_sure', 'sure', 'unsure', 'guessing', 'unknown'].includes(a.confidence as string)
-              ? a.confidence : 'unknown') as 'very_sure' | 'sure' | 'unsure' | 'guessing' | 'unknown',
-            interactions: a.interactions ?? 1,
-            questionData: a.questionData ? {
-              id: a.questionData.id ?? null,
-              metadata: a.questionData.metadata ? {
-                difficulty: (['easy', 'medium', 'hard', 'extreme'].includes(a.questionData.metadata.difficulty as string)
-                  ? a.questionData.metadata.difficulty : null) as 'easy' | 'medium' | 'hard' | 'extreme' | null,
-              } : null,
-              article: a.questionData.article ? {
-                id: a.questionData.article.id ?? null,
-                number: a.questionData.article.number != null ? String(a.questionData.article.number) : null,
-                law_short_name: a.questionData.article.law_short_name ?? null,
-              } : null,
-            } : null,
-          })),
-          startTime,
-          interactionEvents: testTracker.interactionEvents.slice(-500),
-          userSessionId: capturedUserSession?.id ?? null,
-          tema: typeof tema === 'number' ? tema : null,
-        })
-          .then(result => {
+        // Ejecutado en IIFE async porque necesitamos esperar a que la cola
+        // de /answer-and-save drene antes de completar el test. Si no drena,
+        // el server tiene un safety-net que rellena test_questions, pero
+        // esperar aquí reduce la carga de ese safety-net al caso común.
+        ;(async () => {
+          try {
+            // Dar hasta 20s para que la cola drene. Si timeout, seguimos
+            // igualmente — el server safety-net se encargará del resto.
+            const drained = await waitForQueueDrain(session.id, 20000)
+            if (!drained) {
+              console.warn(`⚠️ [TestLayout] Cola no drenó en 20s, el server usará safety-net para test ${session.id.slice(0, 8)}`)
+            }
+
+            const deviceInfo = getDeviceInfo() as {
+              userAgent?: string
+              screenResolution?: string
+              deviceType?: 'mobile' | 'tablet' | 'desktop' | 'unknown'
+              browserLanguage?: string
+              timezone?: string
+            }
+            const oposicionSlug = getOposicionSlugFromPathname(pathname ?? '') ?? null
+
+            const result = await completeTestOnServer({
+              sessionId: session.id,
+              finalScore: newScore,
+              totalQuestions: effectiveQuestions.length,
+              detailedAnswers: newDetailedAnswers.map(a => {
+                const qd = a.questionData
+                const difficultyRaw = (qd?.metadata as any)?.difficulty
+                const safeDifficulty = (['easy', 'medium', 'hard', 'extreme'].includes(difficultyRaw as string)
+                  ? difficultyRaw : null) as 'easy' | 'medium' | 'hard' | 'extreme' | null
+                const tagsRaw = (qd?.metadata as any)?.tags
+                const safeTags = Array.isArray(tagsRaw) ? (tagsRaw as string[]) : null
+                const questionTema = (qd as any)?.tema ?? null
+                return {
+                  questionIndex: a.questionIndex ?? 0,
+                  selectedAnswer: a.selectedAnswer ?? -1,
+                  isCorrect: !!a.isCorrect,
+                  timeSpent: a.timeSpent ?? 0,
+                  confidence: (['very_sure', 'sure', 'unsure', 'guessing', 'unknown'].includes(a.confidence as string)
+                    ? a.confidence : 'unknown') as 'very_sure' | 'sure' | 'unsure' | 'guessing' | 'unknown',
+                  interactions: a.interactions ?? 1,
+                  questionData: qd ? {
+                    id: qd.id ?? null,
+                    metadata: { difficulty: safeDifficulty, tags: safeTags },
+                    article: qd.article ? {
+                      id: qd.article.id ?? null,
+                      number: qd.article.number != null ? String(qd.article.number) : null,
+                      law_short_name: qd.article.law_short_name ?? null,
+                      law_id: (qd.article as any)?.law_id ?? null,
+                    } : null,
+                    // Campos opcionales para el safety-net server-side:
+                    // si la cola no drenó, el server los usa para reconstruir la fila.
+                    question: qd.question ?? null,
+                    options: Array.isArray(qd.options) ? (qd.options as string[]) : null,
+                    questionType: ((qd as any)?.question_type === 'psychometric' ? 'psychometric' : 'legislative') as 'legislative' | 'psychometric',
+                    tema: typeof questionTema === 'number' && questionTema >= 0 ? questionTema : null,
+                    explanation: (qd as any)?.explanation ?? null,
+                  } : null,
+                }
+              }),
+              startTime,
+              interactionEvents: testTracker.interactionEvents.slice(-500),
+              userSessionId: capturedUserSession?.id ?? null,
+              tema: typeof tema === 'number' ? tema : null,
+              oposicionId: oposicionSlug,
+              deviceInfo: {
+                userAgent: deviceInfo.userAgent ?? 'unknown',
+                screenResolution: deviceInfo.screenResolution ?? 'unknown',
+                deviceType: deviceInfo.deviceType ?? 'unknown',
+                browserLanguage: deviceInfo.browserLanguage ?? 'es',
+                timezone: deviceInfo.timezone ?? 'Europe/Madrid',
+              },
+            })
+
             setSaveStatus(result.status as 'saving' | 'saved' | 'error')
             if (result.success) {
-              // Purgar respuestas de este test de la cola — ya no son necesarias
+              // Purgar respuestas de este test de la cola — solo si la cola
+              // ya drenó (guard en purgeSessionAnswers evita perder datos).
+              // Si el server usó el safety-net (gapFilledCount > 0) también
+              // es seguro purgar: las filas ya están en BD.
               purgeSessionAnswers(session.id)
               if (tema && typeof tema === 'number') {
                 const accuracy = Math.round((newScore / effectiveQuestions.length) * 100)
                 notifyTestCompletion(tema, accuracy, effectiveQuestions.length).catch(() => {})
               }
             }
-          })
-          .catch(err => {
+          } catch (err) {
             console.error('❌ Error en finalización de test (server-side):', err)
             setSaveStatus('error')
-          })
+          }
+        })()
       }
     }
     if (questionIndex >= effectiveQuestions.length - 1) {
