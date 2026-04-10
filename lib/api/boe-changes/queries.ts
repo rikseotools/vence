@@ -1,7 +1,7 @@
 // lib/api/boe-changes/queries.ts - Queries y funciones para monitoreo BOE
 import { getDb } from '@/db/client'
 import { laws } from '@/db/schema'
-import { isNotNull, eq, and, ne } from 'drizzle-orm'
+import { isNotNull, eq, and, ne, asc, sql } from 'drizzle-orm'
 import {
   SIZE_TOLERANCE_BYTES,
   type LawForCheck,
@@ -14,12 +14,49 @@ import {
 } from './schemas'
 
 // ============================================
+// FETCH CON TIMEOUT
+// ============================================
+
+/**
+ * Timeout por defecto para fetches al BOE. Si el servidor del BOE se cuelga
+ * o está muy lento, el fetch se aborta y la función consumidora retorna
+ * { success: false }, permitiendo que el cron siga con otras leyes en lugar
+ * de bloquearse indefinidamente.
+ *
+ * Bug histórico: sin timeout, una sola ley colgada podía agotar los 300s
+ * del cron y dejar 45+ leyes sin verificar.
+ */
+export const FETCH_TIMEOUT_MS = 10_000
+
+/**
+ * Wrapper sobre `fetch()` que aborta la petición tras `timeoutMs`.
+ * Al abortar lanza un AbortError; los callers de este módulo ya tienen
+ * catch-all que lo convierten en `{ success: false, reason: 'fetch_error' }`.
+ */
+export async function fetchWithTimeout(
+  url: string,
+  options: RequestInit = {},
+  timeoutMs: number = FETCH_TIMEOUT_MS,
+): Promise<Response> {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    return await fetch(url, { ...options, signal: controller.signal })
+  } finally {
+    clearTimeout(timeoutId)
+  }
+}
+
+// ============================================
 // OBTENER LEYES PARA VERIFICAR
 // ============================================
 
 export async function getLawsForBoeCheck(): Promise<LawForCheck[]> {
   const db = getDb()
 
+  // ORDER BY last_checked ASC NULLS FIRST: prioriza las leyes nunca verificadas
+  // y las que llevan más tiempo sin comprobarse. Así, si el cron se corta por
+  // cualquier motivo, no dejamos leyes huérfanas de forma permanente.
   const result = await db
     .select({
       id: laws.id,
@@ -35,6 +72,7 @@ export async function getLawsForBoeCheck(): Promise<LawForCheck[]> {
       isNotNull(laws.boeUrl),
       ne(laws.scope, 'eu')
     ))
+    .orderBy(sql`${laws.lastChecked} ASC NULLS FIRST`)
 
   // Filtrar y mapear a LawForCheck
   // Excluir URLs doc.php: son documentos puntuales del BOE (resoluciones, órdenes)
@@ -126,7 +164,7 @@ export async function checkWithContentLength(
   cachedContentLength: number | null
 ): Promise<HeadCheckResult> {
   try {
-    const response = await fetch(url, {
+    const response = await fetchWithTimeout(url, {
       method: 'HEAD',
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; VenceBot/1.0)' }
     })
@@ -198,7 +236,7 @@ export async function checkWithPartialDownload(
     const end = cachedOffset + 5000
 
     try {
-      const response = await fetch(url, {
+      const response = await fetchWithTimeout(url, {
         headers: {
           'User-Agent': 'Mozilla/5.0 (compatible; VenceBot/1.0)',
           Range: `bytes=${start}-${end}`
@@ -229,7 +267,7 @@ export async function checkWithPartialDownload(
 
   for (const rangeEnd of ranges) {
     try {
-      const response = await fetch(url, {
+      const response = await fetchWithTimeout(url, {
         headers: {
           'User-Agent': 'Mozilla/5.0 (compatible; VenceBot/1.0)',
           Range: `bytes=0-${rangeEnd}`
@@ -279,9 +317,12 @@ export async function checkWithPartialDownload(
 
 export async function checkWithFullDownload(url: string): Promise<FullCheckResult> {
   try {
-    const response = await fetch(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; VenceBot/1.0)' }
-    })
+    // Timeout más generoso para descarga completa (puede ser MB).
+    const response = await fetchWithTimeout(
+      url,
+      { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; VenceBot/1.0)' } },
+      20_000,
+    )
 
     if (!response.ok) {
       return { success: false, reason: 'http_error', bytesDownloaded: 0 }

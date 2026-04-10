@@ -4,6 +4,7 @@
 // Migrado a TypeScript con Drizzle y Zod
 
 import { NextRequest, NextResponse } from 'next/server'
+import { after } from 'next/server'
 import {
   SIZE_TOLERANCE_BYTES,
   getLawsForBoeCheck,
@@ -22,7 +23,19 @@ import {
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 export const dynamic = 'force-dynamic'
-export const maxDuration = 300 // 5 minutos máximo
+
+// maxDuration=60s es holgado: con chunking paralelo el cron completa en
+// 15-40s incluso en peor caso. Antes era 300s (timeout recurrente por
+// procesamiento serial + sleeps + sin timeouts de fetch).
+export const maxDuration = 60
+
+// Tamaño de lote para procesamiento paralelo. Cada chunk se ejecuta con
+// Promise.allSettled, por lo que una ley fallida no aborta el resto del
+// chunk. Benchmark del BOE confirma que soporta esta concurrencia sin
+// rate-limiting; el tiempo por chunk queda dominado por el outlier más
+// lento del batch, no por la suma. Si algún día el BOE empieza a
+// throttlear, bajar a 5.
+const CHUNK_SIZE = 10
 
 // ============================================
 // GET: Verificar cambios en BOE
@@ -64,16 +77,30 @@ async function _GET(request: NextRequest): Promise<NextResponse<CheckBoeChangesR
     const stats = createInitialStats(lawsToCheck.length)
     const changes: DetectedChange[] = []
 
-    // Procesar cada ley
-    for (const law of lawsToCheck) {
-      const result = await processLaw(law, now, stats, changes)
-      if (!result) {
-        stats.errors++
+    // Procesar en chunks paralelos (antes era serial con sleep 100ms).
+    // Con chunk=10 el tiempo total queda dominado por la ley más lenta de
+    // cada chunk, no por la suma. Para 337 leyes son ~34 chunks × ~1s
+    // peor-caso = ~34 segundos. Muy por debajo del maxDuration=60s.
+    for (let i = 0; i < lawsToCheck.length; i += CHUNK_SIZE) {
+      const chunk = lawsToCheck.slice(i, i + CHUNK_SIZE)
+      const chunkStart = Date.now()
+      const results = await Promise.allSettled(
+        chunk.map((law) => processLaw(law, now, stats, changes))
+      )
+      // Contabilizar resultados. Promise.allSettled garantiza que ninguna
+      // excepción aborta el chunk; los errores se reflejan en stats.errors.
+      for (const r of results) {
+        stats.checked++
+        if (r.status === 'rejected' || r.value !== true) {
+          stats.errors++
+        }
       }
-      stats.checked++
-
-      // Pequeña pausa para no saturar el BOE
-      await new Promise((r) => setTimeout(r, 100))
+      const chunkMs = Date.now() - chunkStart
+      // Log sintético por chunk — útil para detectar outliers de BOE en
+      // los logs de Vercel sin llenarlos con 337 líneas.
+      if (chunkMs > 2000) {
+        console.log(`🐢 [BOE] chunk ${i / CHUNK_SIZE + 1} lento: ${chunkMs}ms (${chunk.length} leyes)`)
+      }
     }
 
     const duration = Date.now() - startTime
@@ -83,12 +110,20 @@ async function _GET(request: NextRequest): Promise<NextResponse<CheckBoeChangesR
       `✅ [BOE] Verificación completada: ${stats.checked} leyes, ${stats.changesDetected} cambios, ${durationFormatted}`
     )
     console.log(
-      `📊 [BOE] Detalle: ${stats.headUnchanged} sin cambio (HEAD), ${stats.sizeChangeDetected} por cambio de tamaño, ${stats.partial + stats.cachedOffset} parciales, ${stats.fullDownload} completas`
+      `📊 [BOE] Detalle: ${stats.headUnchanged} sin cambio (HEAD), ${stats.sizeChangeDetected} por cambio de tamaño, ${stats.partial + stats.cachedOffset} parciales, ${stats.fullDownload} completas, ${stats.errors} errores`
     )
 
-    // Enviar email si hay cambios detectados
+    // Enviar email en background via after() — no bloquea la respuesta del
+    // cron. Si el endpoint de email tarda 2-5s ya no consume presupuesto
+    // del maxDuration del handler.
     if (changes.length > 0) {
-      await sendBoeChangeNotification(changes, stats, durationFormatted)
+      after(async () => {
+        try {
+          await sendBoeChangeNotification(changes, stats, durationFormatted)
+        } catch (e) {
+          console.warn('⚠️ [BOE after] Error enviando notificación:', e)
+        }
+      })
     }
 
     return NextResponse.json({

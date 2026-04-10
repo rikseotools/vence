@@ -38,5 +38,7 @@ export {
   checkWithFullDownload,
   sendBoeChangeNotification,
   formatBytes,
-  createInitialStats
+  createInitialStats,
+  fetchWithTimeout,
+  FETCH_TIMEOUT_MS
 } from './queries'
