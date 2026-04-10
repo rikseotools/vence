@@ -2802,7 +2802,7 @@ export const userInteractions = pgTable("user_interactions", {
 	pgPolicy("Users can view own interactions", { as: "permissive", for: "select", to: ["public"], using: sql`(auth.uid() = user_id)` }),
 	pgPolicy("Users can insert own interactions", { as: "permissive", for: "insert", to: ["public"] }),
 	pgPolicy("Admins can view all interactions", { as: "permissive", for: "select", to: ["public"] }),
-	check("user_interactions_category_check", sql`event_category = ANY (ARRAY['test'::text, 'chat'::text, 'navigation'::text, 'ui'::text, 'auth'::text, 'error'::text, 'conversion'::text, 'psychometric'::text])`),
+	check("user_interactions_category_check", sql`event_category = ANY (ARRAY['test'::text, 'chat'::text, 'navigation'::text, 'ui'::text, 'auth'::text, 'error'::text, 'conversion'::text, 'psychometric'::text, 'video'::text])`),
 ]);
 
 export const payoutTransfers = pgTable("payout_transfers", {
