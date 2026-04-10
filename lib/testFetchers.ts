@@ -2108,12 +2108,13 @@ export async function fetchMantenerRacha(tema: number, searchParams: SearchParam
     // 🔧 Usar getParam helper para manejar URLSearchParams u objeto plano
     const n = parseInt(getParam(searchParams, 'n', '5'))
     const streakDays = parseInt(getParam(searchParams, 'streak_days', '0'))
-    
+    const positionType = config?.positionType || 'auxiliar_administrativo_estado'
+
     // 🧠 PASO 1: Obtener usuario actual
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
       console.log('⚠️ Usuario no autenticado, usando fallback universal')
-      return await fetchMantenerRachaFallback(n, null)
+      return await fetchMantenerRachaFallback(n, null, positionType)
     }
 
     // 🎯 PASO 2: Detectar temas que el usuario ha estudiado
@@ -2129,12 +2130,12 @@ export async function fetchMantenerRacha(tema: number, searchParams: SearchParam
 
     if (temasError) {
       console.error('❌ Error obteniendo temas estudiados:', temasError)
-      return await fetchMantenerRachaFallback(n, user)
+      return await fetchMantenerRachaFallback(n, user, positionType)
     }
 
     if (!temasEstudiados || temasEstudiados.length === 0) {
       console.log('📚 Usuario sin temas estudiados, usando fallback universal')
-      return await fetchMantenerRachaFallback(n, user)
+      return await fetchMantenerRachaFallback(n, user, positionType)
     }
 
     console.log('🎯 Temas estudiados detectados:', temasEstudiados.map((t: any) => `Tema ${t.tema_number} (${t.tests_count} tests, ${Math.round(t.avg_score)}%)`))
@@ -2178,7 +2179,7 @@ export async function fetchMantenerRacha(tema: number, searchParams: SearchParam
     // 🎲 PASO 5: Mezclar y seleccionar cantidad final
     if (allQuestions.length === 0) {
       console.log('❌ No se obtuvieron preguntas de temas estudiados, usando fallback universal')
-      return await fetchMantenerRachaFallback(n, user)
+      return await fetchMantenerRachaFallback(n, user, positionType)
     }
 
     // Mezclar todas las preguntas obtenidas
@@ -2196,14 +2197,37 @@ export async function fetchMantenerRacha(tema: number, searchParams: SearchParam
   } catch (error) {
     console.error('❌ Error en fetchMantenerRacha inteligente:', error)
     const fallbackN = parseInt(getParam(searchParams, 'n', '5'))
-    return await fetchMantenerRachaFallback(fallbackN, null)
+    const fallbackPositionType = config?.positionType || 'auxiliar_administrativo_estado'
+    return await fetchMantenerRachaFallback(fallbackN, null, fallbackPositionType)
+  }
+}
+
+// Obtiene los short_names de leyes configuradas en topic_scope para un positionType.
+// Fuente de verdad: topic_scope JOIN topics WHERE position_type = positionType.
+// Evita hardcodear leyes por oposición — si se añade una ley al scope, se recoge automáticamente.
+async function getLawShortNamesForPosition(positionType: string): Promise<string[] | null> {
+  try {
+    const { data, error } = await supabase
+      .from('topic_scope')
+      .select('laws!inner(short_name), topics!inner(position_type)')
+      .eq('topics.position_type', positionType)
+
+    if (error || !data || data.length === 0) return null
+
+    const shortNames = [...new Set(
+      data.map((r: any) => r.laws?.short_name).filter(Boolean)
+    )] as string[]
+
+    return shortNames.length > 0 ? shortNames : null
+  } catch {
+    return null
   }
 }
 
 // 🔄 FUNCIÓN FALLBACK UNIVERSAL INTELIGENTE
-async function fetchMantenerRachaFallback(n: number, user: { id: string } | null): Promise<TransformedQuestion[]> {
+async function fetchMantenerRachaFallback(n: number, user: { id: string } | null, positionType: string = 'auxiliar_administrativo_estado'): Promise<TransformedQuestion[]> {
   try {
-    console.log('🔄 Ejecutando fallback universal inteligente')
+    console.log(`🔄 Ejecutando fallback universal inteligente (positionType: ${positionType})`)
     
     // 🧠 PASO 1: Detectar leyes que el usuario ha estudiado (si tiene historial)
     let studiedLaws = null
@@ -2240,28 +2264,27 @@ async function fetchMantenerRachaFallback(n: number, user: { id: string } | null
         }
       }
       
-      // FALLBACK: Si no hay historial de preguntas, intentar detectar por oposición
+      // FALLBACK: Si no hay historial de preguntas, usar topic_scope dinámico
       if (!studiedLaws) {
         const { data: userProfile } = await supabase
           .from('user_profiles')
           .select('target_oposicion')
           .eq('id', user.id)
           .single()
-        
-        if (userProfile?.target_oposicion) {
-          // Mapear oposición a leyes principales
-          const oposicionLaws: Record<string, string[]> = {
-            'auxiliar_administrativo_estado': ['Ley 19/2013', 'LRJSP', 'CE'],
-            'auxiliar_administrativo': ['Ley 19/2013', 'LRJSP', 'CE'],
-            'tecnico_hacienda': ['LRJSP', 'CE', 'Ley 7/1985'],
-            // Agregar más mapeos según oposiciones disponibles
-          }
 
-          studiedLaws = oposicionLaws[userProfile.target_oposicion] || null
-          if (studiedLaws) {
-            console.log(`🎯 Leyes detectadas por oposición (${userProfile.target_oposicion}):`, studiedLaws)
-          }
+        const oposicionToQuery = userProfile?.target_oposicion || positionType
+        studiedLaws = await getLawShortNamesForPosition(oposicionToQuery)
+        if (studiedLaws) {
+          console.log(`🎯 Leyes detectadas por oposición (${oposicionToQuery}):`, studiedLaws)
         }
+      }
+    }
+
+    // Si no hay usuario o no se pudo detectar leyes, aplicar scope del positionType
+    if (!studiedLaws) {
+      studiedLaws = await getLawShortNamesForPosition(positionType)
+      if (studiedLaws) {
+        console.log(`🎯 Leyes por scope de positionType (${positionType}):`, studiedLaws)
       }
     }
     
@@ -2281,12 +2304,16 @@ async function fetchMantenerRachaFallback(n: number, user: { id: string } | null
       .is('exam_case_id', null)
       .or('global_difficulty_category.in.(easy,medium),and(global_difficulty_category.is.null,difficulty.in.(easy,medium))') // Mantener motivación con preguntas no muy difíciles
 
-    // 🎯 PASO 3: Aplicar filtro de leyes solo si las detectamos
+    // 🎯 PASO 3: Aplicar filtro de leyes
+    // SIEMPRE se aplica: si studiedLaws es null aquí, significa que ni el historial
+    // ni el topic_scope devolvieron leyes → fallar en lugar de devolver preguntas de
+    // otras oposiciones (comportamiento anterior que causaba el bug de LECrim en auxiliar).
     if (studiedLaws && studiedLaws.length > 0) {
       query = query.in('articles.laws.short_name', studiedLaws)
-      console.log('🔍 Aplicando filtro por leyes estudiadas:', studiedLaws)
+      console.log('🔍 Aplicando filtro por leyes:', studiedLaws.length, 'leyes')
     } else {
-      console.log('🌍 Sin filtro de leyes - usando todas las leyes disponibles (comportamiento neutral)')
+      console.warn(`⚠️ fetchMantenerRachaFallback: sin leyes para positionType="${positionType}" — devolviendo vacío`)
+      return []
     }
     
     // 🎲 PASO 4: Obtener y mezclar preguntas
@@ -2296,36 +2323,35 @@ async function fetchMantenerRachaFallback(n: number, user: { id: string } | null
     if (fallbackError) throw fallbackError
 
     if (!fallbackData || fallbackData.length === 0) {
-      // Si el filtro no devuelve resultados, intentar sin filtro
-      if (studiedLaws) {
-        console.log('⚠️ Sin resultados con filtro de leyes, reintentando sin filtro...')
-        
-        const { data: universalData, error: universalError } = await supabase
-          .from('questions')
-          .select(`
-            id, question_text, option_a, option_b, option_c, option_d,
-            correct_option, explanation, difficulty, global_difficulty_category, is_official_exam,
-            primary_article_id, exam_source, exam_date, exam_entity, image_url, content_data,
-            articles!inner(
-              id, article_number, title, content,
-              laws!inner(short_name, name)
-            )
-          `)
-          .eq('is_active', true)
-      .is('exam_case_id', null)
-          .or('global_difficulty_category.in.(easy,medium),and(global_difficulty_category.is.null,difficulty.in.(easy,medium))')
-          .limit(n * 3)
-        
-        if (universalError) throw universalError
-        
-        if (universalData && universalData.length > 0) {
-          const shuffledQuestions = shuffleArray(universalData)
-          const finalQuestions = shuffledQuestions.slice(0, n)
-          console.log(`✅ Fallback universal: ${finalQuestions.length} preguntas de todas las leyes`)
-          return transformQuestions(finalQuestions)
-        }
+      // Si el filtro de dificultad no devuelve resultados, reintentar sin filtro de dificultad
+      // pero MANTENER el filtro de leyes del scope (no devolver preguntas de otras oposiciones)
+      console.log('⚠️ Sin resultados con filtro de dificultad, reintentando sin él (mismo scope de leyes)...')
+
+      const { data: nodifficultData, error: nodiffError } = await supabase
+        .from('questions')
+        .select(`
+          id, question_text, option_a, option_b, option_c, option_d,
+          correct_option, explanation, difficulty, global_difficulty_category, is_official_exam,
+          primary_article_id, exam_source, exam_date, exam_entity, image_url, content_data,
+          articles!inner(
+            id, article_number, title, content,
+            laws!inner(short_name, name)
+          )
+        `)
+        .eq('is_active', true)
+        .is('exam_case_id', null)
+        .in('articles.laws.short_name', studiedLaws)  // scope siempre aplicado
+        .limit(n * 3)
+
+      if (nodiffError) throw nodiffError
+
+      if (nodifficultData && nodifficultData.length > 0) {
+        const shuffledQuestions = shuffleArray(nodifficultData)
+        const finalQuestions = shuffledQuestions.slice(0, n)
+        console.log(`✅ Retry sin dificultad: ${finalQuestions.length} preguntas`)
+        return transformQuestions(finalQuestions)
       }
-      
+
       throw new Error('No hay preguntas disponibles para mantener racha')
     }
 

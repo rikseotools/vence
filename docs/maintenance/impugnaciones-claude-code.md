@@ -428,11 +428,16 @@ await supabase
    ↓
 6. "actualiza el registro AI"
    ↓
-7. Claude obtiene el NOMBRE del usuario (sección 11)
+7. Re-verifica la pregunta contra el artículo correcto:
+   - articleOk, answerOk, explanationOk
+   - Actualiza topic_review_status → "perfect" si todo OK
+   - Ver estados posibles en revisar-temas-con-agente.md
    ↓
-8. Claude propone mensaje personalizado con nombre
+8. Claude obtiene el NOMBRE del usuario (sección 11)
    ↓
-9. Usuario aprueba mensaje → Claude cierra la impugnación
+9. Claude propone mensaje personalizado con nombre
+   ↓
+10. Usuario aprueba mensaje → Claude cierra la impugnación
 ```
 
 ## 10. Ejemplo Real #1: Impugnación Válida (Corregir)
@@ -637,6 +642,7 @@ WHERE source = 'ai_auto';
 - **Personalizar** el mensaje con el nombre del usuario (nunca "Hola," genérico)
 - **Actualizar** `ai_verification_results` para que la verificación quede correcta
 - **Actualizar** `verification_status` y `verified_at` en la pregunta
+- **Actualizar** `topic_review_status` en la pregunta según los estados de `revisar-temas-con-agente.md` (`perfect` si articleOk + answerOk + explanationOk)
 - Si la pregunta **no tiene topic_id**, considerar asignarla al tema correcto
 
 ---

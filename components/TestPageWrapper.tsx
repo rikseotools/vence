@@ -66,8 +66,10 @@ export default function TestPageWrapper({
 }: TestPageWrapperProps) {
   // Guard: bloquear tests si usuario logueado no tiene oposición seleccionada
   // No aplicar a anónimos — no tiene sentido pedirles oposición
-  const { hasOposicion, loading: oposicionLoading } = useOposicion()
+  const { hasOposicion, loading: oposicionLoading, oposicionId } = useOposicion()
   const { user: authUser, loading: authLoading } = useAuth()
+  // Prop explícita > oposicionId del contexto > default. Evita preguntas de otras oposiciones.
+  const effectivePositionType = positionType || oposicionId || 'auxiliar_administrativo_estado'
 
   // Estados básicos
   const [questions, setQuestions] = useState<any>([])
@@ -303,7 +305,7 @@ export default function TestPageWrapper({
         // 🎲 MANEJAR TEST ALEATORIO MULTI-TEMA
         const multiTemaConfig = {
           ...testConfig,
-          positionType: positionType || 'auxiliar_administrativo_estado'
+          positionType: effectivePositionType
         }
         console.log('🎲 Cargando test aleatorio multi-tema con parámetros:', {
           themes,
@@ -329,7 +331,7 @@ export default function TestPageWrapper({
         // Para otros tipos de test, usar el fetcher normal
         let finalTestConfig: any = {
           ...testConfig,
-          positionType: positionType || 'auxiliar_administrativo_estado'
+          positionType: effectivePositionType
         }
 
         // 🎯 PARA TESTS PERSONALIZADOS: Extraer filtros de URL y agregarlos al config
@@ -369,7 +371,7 @@ export default function TestPageWrapper({
             selectedLaws,
             selectedArticlesByLaw,
             selectedSectionFilters, // 📚 FILTRO DE TÍTULOS
-            positionType: positionType || 'auxiliar_administrativo_estado'
+            positionType: effectivePositionType
           }
 
           if (selectedLaws.length > 0) {

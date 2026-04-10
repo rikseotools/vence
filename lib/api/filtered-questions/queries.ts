@@ -505,19 +505,48 @@ export async function getFilteredQuestions(
     // 🆕 MODO SIN TEMA: Si no hay tema pero sí hay leyes seleccionadas, filtrar directamente por ley
     const isLawOnlyMode = topicsToQuery.length === 0 && selectedLaws && selectedLaws.length > 0
 
-    // 🆕 MODO GLOBAL: Si no hay tema ni ley, query directa sin filtros de tema (test rápido general)
+    // 🆕 MODO GLOBAL: Si no hay tema ni ley, filtrar por topic_scope del positionType
+    // IMPORTANTE: NO hacer query sin scope — causaría que leyes de otras oposiciones
+    // (ej: LECrim para tramitacion_procesal) aparezcan en tests de auxiliar_administrativo.
     const isGlobalMode = topicsToQuery.length === 0 && !isLawOnlyMode
 
     if (isGlobalMode) {
-      console.log(`🎯 Modo global: Buscando ${numQuestions} preguntas aleatorias de ${positionType}`)
+      console.log(`🎯 Modo global con scope: Buscando ${numQuestions} preguntas de "${positionType}"`)
 
-      // Query directa: preguntas activas aleatorias, sin filtrar por tema
+      // Obtener las leyes válidas para esta oposición desde topic_scope.
+      // Fuente de verdad: solo leyes asignadas a algún tema del positionType.
+      const scopedLawsResult = await db
+        .selectDistinct({ lawId: topicScope.lawId })
+        .from(topicScope)
+        .innerJoin(topics, eq(topicScope.topicId, topics.id))
+        .where(eq(topics.positionType, positionType))
+
+      const validLawIds = scopedLawsResult
+        .map(r => r.lawId)
+        .filter((id): id is string => id !== null)
+
+      if (validLawIds.length === 0) {
+        console.warn(`⚠️ Modo global: no hay topic_scope configurado para "${positionType}"`)
+        return {
+          success: true,
+          questions: [],
+          totalAvailable: 0,
+          filtersApplied: { laws: 0, articles: 0, sections: 0 },
+          emptyReason: `No hay contenido configurado para la oposición "${positionType}"`,
+        }
+      }
+
+      console.log(`🔍 Modo global: ${validLawIds.length} leyes válidas para "${positionType}"`)
+
       const globalQuestions = await db
         .select({ ...questionColumns, ...articleColumns })
         .from(questions)
         .innerJoin(articles, eq(questions.primaryArticleId, articles.id))
         .innerJoin(laws, eq(articles.lawId, laws.id))
-        .where(eq(questions.isActive, true))
+        .where(and(
+          eq(questions.isActive, true),
+          inArray(laws.id, validLawIds)
+        ))
         .orderBy(sql`RANDOM()`)
         .limit(numQuestions)
 
@@ -526,22 +555,23 @@ export async function getFilteredQuestions(
           success: true,
           questions: [],
           totalAvailable: 0,
-          filtersApplied: { laws: 0, articles: 0, sections: 0 },
+          filtersApplied: { laws: validLawIds.length, articles: 0, sections: 0 },
           emptyReason: `No hay preguntas disponibles para la oposición "${positionType}"`,
         }
       }
 
-      console.log(`✅ Modo global: ${globalQuestions.length} preguntas encontradas`)
+      console.log(`✅ Modo global: ${globalQuestions.length} preguntas de ${validLawIds.length} leyes válidas`)
 
-      // Transformar al formato esperado
-      const transformedQuestions = globalQuestions.map((q, i) => transformQuestion({ ...q, sourceTopic: null } as QuestionRow, i))
+      const transformedQuestions = globalQuestions.map((q, i) =>
+        transformQuestion({ ...q, sourceTopic: null } as QuestionRow, i)
+      )
 
       return {
         success: true,
         questions: transformedQuestions,
         totalAvailable: globalQuestions.length,
         filtersApplied: {
-          laws: 0,
+          laws: validLawIds.length,
           articles: 0,
           sections: 0,
         },
