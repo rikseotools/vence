@@ -9,6 +9,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { useQuestionContext } from '@/contexts/QuestionContext'
+import { useAIChat } from '@/contexts/AIChatContext'
 import MarkdownExplanation from '@/components/MarkdownExplanation'
 import { useTestCompletion } from '@/hooks/useTestCompletion'
 import { useDailyQuestionLimit } from '@/hooks/useDailyQuestionLimit'
@@ -60,6 +61,7 @@ export default function TestLayoutV2({
     isPremium: boolean
   }
   const { setQuestionContext, clearQuestionContext } = useQuestionContext()
+  const { openChatWith } = useAIChat()
   const { testUrl } = useOposicionPaths()
   const { notifyTestCompletion } = useTestCompletion()
   const {
@@ -686,12 +688,24 @@ export default function TestLayoutV2({
                         onClick={() => {
                           const questionText = currentQ?.question_text || ''
                           const correctLetter = answerToLetter(verifiedCorrectAnswer)
-                          window.dispatchEvent(new CustomEvent('openAIChat', {
-                            detail: {
-                              message: `Explícame por qué la respuesta correcta es "${correctLetter}" en la pregunta: "${questionText.substring(0, 100)}..."`,
-                              suggestion: 'explicar_respuesta'
-                            }
-                          }))
+                          openChatWith({
+                            message: `Explícame por qué la respuesta correcta es "${correctLetter}" en la pregunta: "${questionText.substring(0, 100)}..."`,
+                            suggestion: 'explicar_respuesta',
+                            questionContext: currentQ ? {
+                              id: currentQ.id,
+                              question_text: currentQ.question,
+                              option_a: currentQ.options[0],
+                              option_b: currentQ.options[1],
+                              option_c: currentQ.options[2],
+                              option_d: currentQ.options[3],
+                              correct: verifiedCorrectAnswer,
+                              explanation: currentQ.explanation,
+                              law: currentQ.law_slug || currentQ.law_name || currentQ.article?.law_short_name || currentQ.article?.law_name,
+                              article_number: currentQ.article_number || currentQ.article?.number || currentQ.article?.article_number,
+                              difficulty: currentQ.difficulty,
+                              source: currentQ.exam_source,
+                            } : undefined,
+                          })
                         }}
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-xs font-medium"
                       >
@@ -721,12 +735,24 @@ export default function TestLayoutV2({
                       onClick={() => {
                         const questionText = currentQ?.question_text || ''
                         const correctLetter = answerToLetter(verifiedCorrectAnswer)
-                        window.dispatchEvent(new CustomEvent('openAIChat', {
-                          detail: {
-                            message: `Explícame por qué la respuesta correcta es "${correctLetter}" en la pregunta: "${questionText.substring(0, 100)}..."`,
-                            suggestion: 'explicar_respuesta'
-                          }
-                        }))
+                        openChatWith({
+                          message: `Explícame por qué la respuesta correcta es "${correctLetter}" en la pregunta: "${questionText.substring(0, 100)}..."`,
+                          suggestion: 'explicar_respuesta',
+                          questionContext: currentQ ? {
+                            id: currentQ.id,
+                            question_text: currentQ.question,
+                            option_a: currentQ.options[0],
+                            option_b: currentQ.options[1],
+                            option_c: currentQ.options[2],
+                            option_d: currentQ.options[3],
+                            correct: verifiedCorrectAnswer,
+                            explanation: currentQ.explanation,
+                            law: currentQ.law_slug || currentQ.law_name || currentQ.article?.law_short_name || currentQ.article?.law_name,
+                            article_number: currentQ.article_number || currentQ.article?.number || currentQ.article?.article_number,
+                            difficulty: currentQ.difficulty,
+                            source: currentQ.exam_source,
+                          } : undefined,
+                        })
                       }}
                       className="mt-4 flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium"
                     >

@@ -3,7 +3,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { usePathname } from 'next/navigation'
 import ReactMarkdown from 'react-markdown'
-import { useQuestionContext, answerToLetter } from '../contexts/QuestionContext'
+import { useQuestionContext, answerToLetter, normalizeQuestionContext } from '../contexts/QuestionContext'
+import { useAIChat } from '../contexts/AIChatContext'
 import { useOposicion } from '../contexts/OposicionContext'
 import { useAuth } from '../contexts/AuthContext'
 import { getChatEndpoint } from '../lib/chat/config'
@@ -12,6 +13,12 @@ import { useInteractionTracker } from '../hooks/useInteractionTracker'
 export default function AIChatWidget() {
   const pathname = usePathname()
   const { currentQuestionContext } = useQuestionContext()
+  // isOpen + pendingRequest vienen del AIChatContext. Todos los abridores
+  // externos del chat (Header, botones Explícame en TestLayout/ExamLayout/
+  // etc.) llaman a useAIChat().openChat() o openChatWith({...}) en lugar
+  // del patrón legacy de event bus. Esto elimina la race condition
+  // histórica donde el mensaje llegaba al server con contexto vacío.
+  const { isOpen, pendingRequest, openChat: _openChat, closeChat, clearPendingRequest } = useAIChat()
   const { oposicionId } = useOposicion()
   const { user, isPremium, loading: authLoading } = useAuth()
 
@@ -20,8 +27,6 @@ export default function AIChatWidget() {
 
   // Detectar si estamos en psicotécnicos
   const isPsicotecnico = pathname?.startsWith('/psicotecnicos')
-
-  const [isOpen, setIsOpen] = useState(false)
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -137,43 +142,35 @@ export default function AIChatWidget() {
     previousQuestionIdRef.current = currentQuestionId
   }, [currentQuestionContext?.id]) // Solo depende del ID de la pregunta, no de messages
 
-  // 🔔 Listener para abrir el chat desde otros componentes (ej: botón "Explícamela")
-  const pendingMessageRef = useRef(null)
-  useEffect(() => {
-    const handleOpenChat = (event) => {
-      const { message, suggestion } = event.detail || {}
-      console.log('🔔 Evento openAIChat recibido:', { message, suggestion })
-
-      // 📊 Tracking de apertura de chat
-      trackChatAction('opened', { source: 'event', hasMessage: !!message })
-
-      // Abrir el chat
-      setIsOpen(true)
-
-      // Guardar el mensaje pendiente para enviarlo después de abrir
-      if (message) {
-        pendingMessageRef.current = { message, suggestion }
-      }
-    }
-
-    window.addEventListener('openAIChat', handleOpenChat)
-    return () => window.removeEventListener('openAIChat', handleOpenChat)
-  }, [])
-
-  // Enviar mensaje pendiente cuando se abra el chat
-  // Nota: usamos sendMessageRef para evitar dependencia circular
+  // Drenar la pendingRequest del AIChatContext cuando el widget esté listo.
+  //
+  // Sustituye al viejo patrón de event bus global (window addEventListener
+  // con pendingMessageRef y setTimeout(100) anti-race) que tenía una race
+  // condition con setQuestionContext en algunos callers (ExamLayout,
+  // OfficialExamLayout, etc.). Ahora los callers llaman a
+  // useAIChat().openChatWith({ message, suggestion, questionContext }) y
+  // el contexto viaja en el mismo objeto síncrono que el mensaje, por lo
+  // que es imposible que sendMessage lea un context desincronizado.
+  //
+  // El effect captura `pendingRequest` del render actual en variables
+  // locales ANTES de llamar a clearPendingRequest(), garantizando el
+  // "at-most-once" delivery incluso si el widget se re-renderiza.
   const sendMessageRef = useRef(null)
   useEffect(() => {
-    if (isOpen && pendingMessageRef.current && !isLoading && !isStreaming && sendMessageRef.current) {
-      const { message, suggestion } = pendingMessageRef.current
-      pendingMessageRef.current = null
-
-      // Pequeño delay para asegurar que el chat está listo
-      setTimeout(() => {
-        sendMessageRef.current(message, suggestion)
-      }, 100)
+    if (isOpen && pendingRequest && !isLoading && !isStreaming && sendMessageRef.current) {
+      // Capturar el snapshot ANTES de limpiar para evitar reenvíos.
+      const { message, suggestion, questionContext } = pendingRequest
+      clearPendingRequest()
+      if (message) {
+        // 📊 Tracking de apertura con mensaje programático
+        trackChatAction('opened', { source: 'programmatic', hasMessage: true })
+        sendMessageRef.current(message, suggestion, questionContext)
+      } else {
+        // Apertura sin mensaje (Header). Solo tracking.
+        trackChatAction('opened', { source: 'programmatic', hasMessage: false })
+      }
     }
-  }, [isOpen, isLoading, isStreaming])
+  }, [isOpen, pendingRequest, isLoading, isStreaming, clearPendingRequest, trackChatAction])
 
   // Helper para formatear datos de psicotécnicos en texto legible para la IA
   const formatPsicotecnicoData = useCallback((questionContext) => {
@@ -261,18 +258,28 @@ export default function AIChatWidget() {
     return dataDescription
   }, [])
 
-  const sendMessage = useCallback(async (messageOverride = null, suggestionLabel = null) => {
+  const sendMessage = useCallback(async (messageOverride = null, suggestionLabel = null, questionContextOverride = null) => {
     const userMessage = (messageOverride || input).trim()
     if (!userMessage || isLoading || isStreaming) return
 
     const currentSuggestion = suggestionLabel || suggestionUsed
+
+    // Contexto efectivo: si el caller (via openChatWith) pasó un override
+    // explícito, lo normalizamos y usamos. Si no, caemos al provider.
+    //
+    // El override es la forma robusta de propagar el contexto: viaja en la
+    // misma llamada síncrona que el mensaje, por lo que es imposible que
+    // llegue desincronizado (bug histórico con setQuestionContext async).
+    const effectiveQuestionContext = questionContextOverride
+      ? normalizeQuestionContext(questionContextOverride)
+      : currentQuestionContext
 
     // 📊 Tracking de mensaje enviado
     trackChatAction('message_sent', {
       messageLength: userMessage.length,
       fromSuggestion: !!currentSuggestion,
       suggestionKey: currentSuggestion || null,
-      hasQuestionContext: !!currentQuestionContext,
+      hasQuestionContext: !!effectiveQuestionContext,
       isPsicotecnico
     })
 
@@ -282,7 +289,7 @@ export default function AIChatWidget() {
 
     // Añadir mensaje del usuario y placeholder para respuesta
     // Incluimos questionId para filtrar historial por pregunta actual
-    const currentQId = currentQuestionContext?.id || null
+    const currentQId = effectiveQuestionContext?.id || null
     const newMessages = [
       ...messages,
       { role: 'user', content: userMessage, questionId: currentQId },
@@ -309,30 +316,30 @@ export default function AIChatWidget() {
     try {
       // Limpiar el contexto de pregunta - extraer SOLO valores primitivos
       let cleanQuestionContext = null
-      if (currentQuestionContext) {
+      if (effectiveQuestionContext) {
         try {
           cleanQuestionContext = {
-            id: currentQuestionContext.id ? String(currentQuestionContext.id) : null,
-            questionText: currentQuestionContext.questionText ? String(currentQuestionContext.questionText) : null,
-            options: currentQuestionContext.options ? {
-              a: currentQuestionContext.options.a ? String(currentQuestionContext.options.a) : '',
-              b: currentQuestionContext.options.b ? String(currentQuestionContext.options.b) : '',
-              c: currentQuestionContext.options.c ? String(currentQuestionContext.options.c) : '',
-              d: currentQuestionContext.options.d ? String(currentQuestionContext.options.d) : ''
+            id: effectiveQuestionContext.id ? String(effectiveQuestionContext.id) : null,
+            questionText: effectiveQuestionContext.questionText ? String(effectiveQuestionContext.questionText) : null,
+            options: effectiveQuestionContext.options ? {
+              a: effectiveQuestionContext.options.a ? String(effectiveQuestionContext.options.a) : '',
+              b: effectiveQuestionContext.options.b ? String(effectiveQuestionContext.options.b) : '',
+              c: effectiveQuestionContext.options.c ? String(effectiveQuestionContext.options.c) : '',
+              d: effectiveQuestionContext.options.d ? String(effectiveQuestionContext.options.d) : ''
             } : null,
             // IMPORTANTE: correctAnswer ya es número (0-3) desde QuestionContext
-            correctAnswer: currentQuestionContext.correctAnswer != null ? currentQuestionContext.correctAnswer : null,
-            selectedAnswer: currentQuestionContext.selectedAnswer != null ? currentQuestionContext.selectedAnswer : null,
-            explanation: currentQuestionContext.explanation ? String(currentQuestionContext.explanation) : null,
-            lawName: currentQuestionContext.lawName ? String(currentQuestionContext.lawName) : null,
-            articleNumber: currentQuestionContext.articleNumber ? String(currentQuestionContext.articleNumber) : null,
-            difficulty: currentQuestionContext.difficulty ? String(currentQuestionContext.difficulty) : null,
-            source: currentQuestionContext.source ? String(currentQuestionContext.source) : null,
+            correctAnswer: effectiveQuestionContext.correctAnswer != null ? effectiveQuestionContext.correctAnswer : null,
+            selectedAnswer: effectiveQuestionContext.selectedAnswer != null ? effectiveQuestionContext.selectedAnswer : null,
+            explanation: effectiveQuestionContext.explanation ? String(effectiveQuestionContext.explanation) : null,
+            lawName: effectiveQuestionContext.lawName ? String(effectiveQuestionContext.lawName) : null,
+            articleNumber: effectiveQuestionContext.articleNumber ? String(effectiveQuestionContext.articleNumber) : null,
+            difficulty: effectiveQuestionContext.difficulty ? String(effectiveQuestionContext.difficulty) : null,
+            source: effectiveQuestionContext.source ? String(effectiveQuestionContext.source) : null,
             // Campos de psicotécnicos
-            isPsicotecnico: currentQuestionContext.isPsicotecnico || false,
-            questionSubtype: currentQuestionContext.questionSubtype || null,
-            questionTypeName: currentQuestionContext.questionTypeName || null,
-            contentData: currentQuestionContext.contentData || null
+            isPsicotecnico: effectiveQuestionContext.isPsicotecnico || false,
+            questionSubtype: effectiveQuestionContext.questionSubtype || null,
+            questionTypeName: effectiveQuestionContext.questionTypeName || null,
+            contentData: effectiveQuestionContext.contentData || null
           }
         } catch (e) {
           console.error('❌ Error limpiando questionContext:', e)
@@ -342,9 +349,8 @@ export default function AIChatWidget() {
 
       // Limpiar historial de mensajes - SOLO incluir mensajes de la pregunta actual
       // Esto evita que el AI se confunda con contexto de preguntas anteriores
-      // NOTA: Usamos currentQuestionContext?.id (no cleanQuestionContext) para ser consistentes
-      // con el questionId que se asigna a los mensajes en líneas 285-289
-      const currentQId = currentQuestionContext?.id || null
+      // Reusamos `currentQId` declarado arriba (línea 289) — derivado de
+      // effectiveQuestionContext, por lo que respeta el override del caller.
       const relevantMessages = messages.filter(m => {
         // Si no hay questionId en el mensaje, es un mensaje antiguo sin tracking
         // Solo incluirlo si no tenemos contexto de pregunta actual
@@ -780,7 +786,7 @@ export default function AIChatWidget() {
             onClick={() => {
               trackChatAction('closed', { messagesCount: messages.length })
               clearChat()
-              setIsOpen(false)
+              closeChat()
             }}
             className="w-7 h-7 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 rounded-full transition"
             aria-label="Cerrar chat"

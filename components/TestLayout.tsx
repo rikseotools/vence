@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useAuth } from '../contexts/AuthContext'
-import { useQuestionContext } from '../contexts/QuestionContext'
+import { useQuestionContext, type QuestionContextData } from '../contexts/QuestionContext'
+import { useAIChat } from '../contexts/AIChatContext'
 import PersistentRegistrationManager from './PersistentRegistrationManager'
 import { usePathname } from 'next/navigation'
 import { getOposicionSlugFromPathname } from '@/lib/config/oposiciones'
@@ -205,6 +206,7 @@ export default function TestLayout({
 }: TestLayoutProps) {
   const { user, loading: authLoading, supabase, isPremium } = useAuth()
   const { setQuestionContext, clearQuestionContext } = useQuestionContext()
+  const { openChatWith } = useAIChat()
   const { notifyTestCompletion } = useTestCompletion()
   const { pending: pendingAnswers, authFailed: saveAuthFailed } = usePendingAnswers()
   const {
@@ -1916,12 +1918,11 @@ export default function TestLayout({
                             onClick={() => {
                               const questionText = currentQ?.question_text || currentQ?.question || ''
                               const correctLetter = answerToLetter(verifiedCorrectAnswer)
-                              window.dispatchEvent(new CustomEvent('openAIChat', {
-                                detail: {
-                                  message: `Explícame por qué la respuesta correcta es "${correctLetter}" en la pregunta: "${questionText.substring(0, 100)}..."`,
-                                  suggestion: 'explicar_respuesta'
-                                }
-                              }))
+                              openChatWith({
+                                message: `Explícame por qué la respuesta correcta es "${correctLetter}" en la pregunta: "${questionText.substring(0, 100)}..."`,
+                                suggestion: 'explicar_respuesta',
+                                questionContext: buildQuestionContextForChat(currentQ, verifiedCorrectAnswer),
+                              })
                             }}
                             className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-xs font-medium"
                           >
@@ -1940,12 +1941,11 @@ export default function TestLayout({
                           onClick={() => {
                             const questionText = currentQ?.question_text || currentQ?.question || ''
                             const correctLetter = answerToLetter(verifiedCorrectAnswer)
-                            window.dispatchEvent(new CustomEvent('openAIChat', {
-                              detail: {
-                                message: `Explícame por qué la respuesta correcta es "${correctLetter}" en la pregunta: "${questionText.substring(0, 100)}..."`,
-                                suggestion: 'explicar_respuesta'
-                              }
-                            }))
+                            openChatWith({
+                              message: `Explícame por qué la respuesta correcta es "${correctLetter}" en la pregunta: "${questionText.substring(0, 100)}..."`,
+                              suggestion: 'explicar_respuesta',
+                              questionContext: buildQuestionContextForChat(currentQ, verifiedCorrectAnswer),
+                            })
                           }}
                           className="mt-4 flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium"
                         >
@@ -2609,5 +2609,33 @@ function generateQuestionId(questionData: TestQuestion | null | undefined, tema:
   const content = questionData?.question || questionData?.question_text || ''
   const articleInfo = questionData?.article?.display_number || questionData?.primary_article_id || ''
   return `tema-${tema}-q${questionIndex}-${content.slice(0, 20).replace(/\s+/g, '-')}-${articleInfo}`.toLowerCase()
+}
+
+/**
+ * Construye un objeto QuestionContextData para el chat IA a partir de la
+ * pregunta actual y el correctAnswer verificado. Se pasa por openChatWith()
+ * para que el contexto viaje síncronamente con el mensaje y evite la race
+ * condition del provider asíncrono.
+ */
+function buildQuestionContextForChat(
+  q: TestQuestion | null | undefined,
+  correctAnswer: number | null,
+): QuestionContextData | undefined {
+  if (!q) return undefined
+  const qAny = q as any
+  return {
+    id: q.id,
+    question_text: q.question_text || q.question || '',
+    option_a: q.option_a || qAny.options?.[0] || '',
+    option_b: q.option_b || qAny.options?.[1] || '',
+    option_c: q.option_c || qAny.options?.[2] || '',
+    option_d: q.option_d || qAny.options?.[3] || '',
+    correct: correctAnswer,
+    explanation: q.explanation || null,
+    law: qAny.law || qAny.article?.law?.short_name || qAny.article?.law?.name || qAny.article?.law_short_name || qAny.article?.law_name || null,
+    article_number: qAny.article_number || qAny.article?.article_number || qAny.article?.number || null,
+    difficulty: qAny.difficulty || qAny.metadata?.difficulty || null,
+    source: qAny.source || qAny.metadata?.exam_source || null,
+  }
 }
 

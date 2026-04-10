@@ -5,6 +5,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
+import { useAIChat } from '@/contexts/AIChatContext'
 import Link from 'next/link'
 import InteractiveBreadcrumbs from '@/components/InteractiveBreadcrumbs'
 import type { OfficialExamFailedQuestion } from '@/lib/api/official-exams/schemas'
@@ -123,6 +124,7 @@ interface FailedQuestionCardProps {
 }
 
 function FailedQuestionCard({ question, index }: FailedQuestionCardProps) {
+  const { openChatWith } = useAIChat()
   const [showExplanation, setShowExplanation] = useState(true)
 
   // Check if question was unanswered
@@ -278,12 +280,22 @@ function FailedQuestionCard({ question, index }: FailedQuestionCardProps) {
                 }
               }
 
-              window.dispatchEvent(new CustomEvent('openAIChat', {
-                detail: {
-                  message: `Explícame paso a paso cómo resolver esta pregunta psicotécnica: "${question.questionText}"${tablesContext}\n\nLas opciones son:\nA) ${question.optionA}\nB) ${question.optionB}\nC) ${question.optionC}\nD) ${question.optionD}\n\nLa respuesta correcta es: ${question.correctAnswer.toUpperCase()}`,
-                  suggestion: 'explicar_psico'
-                }
-              }))
+              openChatWith({
+                message: `Explícame paso a paso cómo resolver esta pregunta psicotécnica: "${question.questionText}"${tablesContext}\n\nLas opciones son:\nA) ${question.optionA}\nB) ${question.optionB}\nC) ${question.optionC}\nD) ${question.optionD}\n\nLa respuesta correcta es: ${question.correctAnswer.toUpperCase()}`,
+                suggestion: 'explicar_psico',
+                questionContext: {
+                  id: question.id,
+                  question_text: question.questionText,
+                  option_a: question.optionA,
+                  option_b: question.optionB,
+                  option_c: question.optionC,
+                  option_d: question.optionD,
+                  correct: question.correctAnswer,
+                  isPsicotecnico: true,
+                  questionSubtype: question.questionSubtype || null,
+                  contentData: question.contentData || null,
+                },
+              })
             }}
             className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium"
           >

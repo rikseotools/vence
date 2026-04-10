@@ -63,68 +63,81 @@ export interface QuestionContextValue {
 
 const QuestionContext = createContext<QuestionContextValue | null>(null)
 
+// Normalizar respuesta correcta a número (0-3)
+// IMPORTANTE: La base de datos usa 0-indexed (0=A, 1=B, 2=C, 3=D)
+// Mantenemos como número para compatibilidad con chat-v2
+function normalizeCorrectAnswer(correct: number | string | null | undefined): number | null {
+  if (correct === null || correct === undefined) return null
+
+  // Si ya es un número válido (0-3), devolverlo
+  if (typeof correct === 'number' && correct >= 0 && correct <= 3) {
+    return correct
+  }
+
+  // Si es una letra, convertir a número: A->0, B->1, C->2, D->3
+  if (typeof correct === 'string' && /^[a-dA-D]$/.test(correct)) {
+    const letterMap: Record<string, number> = { 'A': 0, 'B': 1, 'C': 2, 'D': 3 }
+    return letterMap[correct.toUpperCase()]
+  }
+
+  // Si es un string numérico, parsearlo
+  const num = parseInt(String(correct), 10)
+  if (!isNaN(num) && num >= 0 && num <= 3) {
+    return num
+  }
+
+  return null
+}
+
+/**
+ * Normaliza datos crudos de pregunta (`QuestionContextData`) al shape
+ * canónico `CurrentQuestionContext` usado por el provider y el chat.
+ *
+ * Exportado para que el AIChatWidget pueda usar la misma normalización
+ * cuando recibe un override directo desde `AIChatContext.openChatWith()`,
+ * sin depender del state del provider. Esto elimina la race condition
+ * histórica donde setQuestionContext (async) no había propagado antes de
+ * que sendMessage leyera el contexto.
+ */
+export function normalizeQuestionContext(
+  questionData: QuestionContextData | null,
+): CurrentQuestionContext | null {
+  if (!questionData) return null
+  const law = questionData.law
+  return {
+    id: questionData.id,
+    questionText: questionData.question_text || questionData.question || '',
+    options: {
+      a: questionData.option_a || '',
+      b: questionData.option_b || '',
+      c: questionData.option_c || '',
+      d: questionData.option_d || ''
+    },
+    correctAnswer: normalizeCorrectAnswer(questionData.correct),
+    explanation: questionData.explanation || null,
+    // Campos para tests de leyes
+    lawName: typeof law === 'object' && law !== null
+      ? (law.short_name || law.name || null)
+      : (typeof law === 'string' ? law : null),
+    articleNumber: questionData.article_number || null,
+    difficulty: questionData.difficulty || null,
+    source: questionData.source || null,
+    // Campos para psicotécnicos
+    isPsicotecnico: questionData.isPsicotecnico || false,
+    questionSubtype: questionData.questionSubtype || null,
+    questionTypeName: questionData.questionTypeName || null,
+    categoria: questionData.categoria || null,
+    // Datos del contenido (gráficos, series, tablas, etc.)
+    contentData: questionData.contentData || null
+  }
+}
+
 export function QuestionProvider({ children }: { children: ReactNode }) {
   const [currentQuestionContext, setCurrentQuestionContext] = useState<CurrentQuestionContext | null>(null)
 
-  // Normalizar respuesta correcta a número (0-3)
-  // IMPORTANTE: La base de datos usa 0-indexed (0=A, 1=B, 2=C, 3=D)
-  // Mantenemos como número para compatibilidad con chat-v2
-  const normalizeCorrectAnswer = (correct: number | string | null | undefined): number | null => {
-    if (correct === null || correct === undefined) return null
-
-    // Si ya es un número válido (0-3), devolverlo
-    if (typeof correct === 'number' && correct >= 0 && correct <= 3) {
-      return correct
-    }
-
-    // Si es una letra, convertir a número: A->0, B->1, C->2, D->3
-    if (typeof correct === 'string' && /^[a-dA-D]$/.test(correct)) {
-      const letterMap: Record<string, number> = { 'A': 0, 'B': 1, 'C': 2, 'D': 3 }
-      return letterMap[correct.toUpperCase()]
-    }
-
-    // Si es un string numérico, parsearlo
-    const num = parseInt(String(correct), 10)
-    if (!isNaN(num) && num >= 0 && num <= 3) {
-      return num
-    }
-
-    return null
-  }
-
   // Establecer contexto de pregunta actual (desde TestLayout o PsychometricTestLayout)
   const setQuestionContext = useCallback((questionData: QuestionContextData | null) => {
-    if (questionData) {
-      const law = questionData.law
-      setCurrentQuestionContext({
-        id: questionData.id,
-        questionText: questionData.question_text || questionData.question || '',
-        options: {
-          a: questionData.option_a || '',
-          b: questionData.option_b || '',
-          c: questionData.option_c || '',
-          d: questionData.option_d || ''
-        },
-        correctAnswer: normalizeCorrectAnswer(questionData.correct),
-        explanation: questionData.explanation || null,
-        // Campos para tests de leyes
-        lawName: typeof law === 'object' && law !== null
-          ? (law.short_name || law.name || null)
-          : (typeof law === 'string' ? law : null),
-        articleNumber: questionData.article_number || null,
-        difficulty: questionData.difficulty || null,
-        source: questionData.source || null,
-        // Campos para psicotécnicos
-        isPsicotecnico: questionData.isPsicotecnico || false,
-        questionSubtype: questionData.questionSubtype || null,
-        questionTypeName: questionData.questionTypeName || null,
-        categoria: questionData.categoria || null,
-        // Datos del contenido (gráficos, series, tablas, etc.)
-        contentData: questionData.contentData || null
-      })
-    } else {
-      setCurrentQuestionContext(null)
-    }
+    setCurrentQuestionContext(normalizeQuestionContext(questionData))
   }, [])
 
   // Limpiar contexto (cuando sale del test)

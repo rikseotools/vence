@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 import { getOposicionSlugFromPathname } from '@/lib/config/oposiciones'
 import { useAuth } from '../contexts/AuthContext'
 import { useQuestionContext } from '../contexts/QuestionContext'
+import { useAIChat } from '../contexts/AIChatContext'
 import { useDailyQuestionLimit } from '../hooks/useDailyQuestionLimit'
 import DailyLimitBanner from './DailyLimitBanner'
 import UpgradeLimitModal from './UpgradeLimitModal'
@@ -259,6 +260,7 @@ export default function OfficialExamLayout({
 
   // Contexto de pregunta para el chat AI
   const { setQuestionContext, clearQuestionContext } = useQuestionContext()
+  const { openChatWith } = useAIChat()
 
   // Estados del examen
   // Initialize with saved answers if resuming
@@ -1412,12 +1414,32 @@ export default function OfficialExamLayout({
                           chatMessage = `Explícame esta pregunta: "${question.question}"\n\nLas opciones son:\nA) ${question.options[0]}\nB) ${question.options[1]}\nC) ${question.options[2]}\nD) ${question.options[3]}\n\nLa respuesta correcta es: ${correctLetter}`
                         }
 
-                        window.dispatchEvent(new CustomEvent('openAIChat', {
-                          detail: {
-                            message: chatMessage,
-                            suggestion: isPsychometric ? 'explicar_psico' : 'explicar_respuesta'
-                          }
-                        }))
+                        // Construimos el questionContext inline con los datos
+                        // de la pregunta y el correctIndex validado. Viaja en
+                        // la misma llamada síncrona que el mensaje, eliminando
+                        // la race condition con el useEffect de setQuestionContext.
+                        const chatQuestionContext = {
+                          id: question.id,
+                          question_text: question.question || question.questionText,
+                          option_a: question.options?.[0],
+                          option_b: question.options?.[1],
+                          option_c: question.options?.[2],
+                          option_d: question.options?.[3],
+                          correct: validatedResult?.correctIndex ?? null,
+                          explanation: validatedResult?.explanation || question.explanation || null,
+                          law: question.lawName || null,
+                          article_number: question.articleNumber || null,
+                          difficulty: question.difficulty || null,
+                          isPsicotecnico: isPsychometric,
+                          questionSubtype: isPsychometric ? question.questionSubtype : null,
+                          questionTypeName: isPsychometric ? question.questionSubtype : null,
+                          contentData: isPsychometric ? question.contentData : null,
+                        }
+                        openChatWith({
+                          message: chatMessage,
+                          suggestion: isPsychometric ? 'explicar_psico' : 'explicar_respuesta',
+                          questionContext: chatQuestionContext,
+                        })
                       }}
                       className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium"
                     >

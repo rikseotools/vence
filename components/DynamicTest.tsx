@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useAuth } from '../contexts/AuthContext'
 import { useQuestionContext } from '../contexts/QuestionContext'
+import { useAIChat } from '../contexts/AIChatContext'
 import AdSenseComponent from './AdSenseComponent'
 import MarkdownExplanation from './MarkdownExplanation'
 import { validateAnswer } from '@/lib/api/answers/client'
@@ -58,6 +59,7 @@ interface DynamicTestProps {
 export default function DynamicTest({ titulo, dificultad }: DynamicTestProps) {
   const { isPremium, user } = useAuth()
   const { setQuestionContext, clearQuestionContext } = useQuestionContext()
+  const { openChatWith } = useAIChat()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [testData, setTestData] = useState<TestData | null>(null)
@@ -578,12 +580,24 @@ export default function DynamicTest({ titulo, dificultad }: DynamicTestProps) {
                         onClick={() => {
                           const questionText = currentQ?.question || ''
                           const correctLetter = answerToLetter(verifiedCorrectAnswer)
-                          window.dispatchEvent(new CustomEvent('openAIChat', {
-                            detail: {
-                              message: `Explícame por qué la respuesta correcta es "${correctLetter}" en la pregunta: "${questionText.substring(0, 100)}..."`,
-                              suggestion: 'explicar_respuesta'
-                            }
-                          }))
+                          openChatWith({
+                            message: `Explícame por qué la respuesta correcta es "${correctLetter}" en la pregunta: "${questionText.substring(0, 100)}..."`,
+                            suggestion: 'explicar_respuesta',
+                            questionContext: currentQ ? {
+                              id: currentQ.id,
+                              question_text: currentQ.question,
+                              option_a: currentQ.options?.[0],
+                              option_b: currentQ.options?.[1],
+                              option_c: currentQ.options?.[2],
+                              option_d: currentQ.options?.[3],
+                              correct: verifiedCorrectAnswer,
+                              explanation: currentQ.explanation,
+                              law: currentQ.law || null,
+                              article_number: currentQ.article?.number || null,
+                              difficulty: dificultad || null,
+                              source: 'ai_generated',
+                            } : undefined,
+                          })
                         }}
                         className="mt-2 flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium"
                       >

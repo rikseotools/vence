@@ -4,6 +4,7 @@ import ClientLayoutContent from './ClientLayoutContent'
 import GoogleAnalytics from '../components/GoogleAnalytics'
 import { AuthProvider } from '../contexts/AuthContext'
 import { QuestionProvider } from '../contexts/QuestionContext'
+import { AIChatProvider } from '../contexts/AIChatContext'
 import { OposicionProvider } from '../contexts/OposicionContext'
 import { LawSlugProvider } from '../contexts/LawSlugContext'
 import { getSlugMappingForApi } from '@/lib/api/laws'
@@ -33,21 +34,23 @@ export default async function SpanishLayout({ children }: { children: React.Reac
             <OposicionProvider>
               <LawSlugProvider initialMappings={lawMappings}>
               <QuestionProvider>
-                <GlobalClickTracker>
-                  <Suspense fallback={null}>
-                    <PageViewTracker />
-                  </Suspense>
-                  <div className="flex flex-col min-h-screen">
-                    <ClientLayoutContent>
-                      <main className="flex-1 min-h-0">
-                        {children}
-                      </main>
-                    </ClientLayoutContent>
-                  </div>
-                  <AIChatWidget />
-                  <GoogleOneTapWrapper />
-                  <FraudTracker />
-                </GlobalClickTracker>
+                <AIChatProvider>
+                  <GlobalClickTracker>
+                    <Suspense fallback={null}>
+                      <PageViewTracker />
+                    </Suspense>
+                    <div className="flex flex-col min-h-screen">
+                      <ClientLayoutContent>
+                        <main className="flex-1 min-h-0">
+                          {children}
+                        </main>
+                      </ClientLayoutContent>
+                    </div>
+                    <AIChatWidget />
+                    <GoogleOneTapWrapper />
+                    <FraudTracker />
+                  </GlobalClickTracker>
+                </AIChatProvider>
               </QuestionProvider>
               </LawSlugProvider>
             </OposicionProvider>

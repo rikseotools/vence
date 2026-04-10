@@ -8,6 +8,7 @@ import Link from 'next/link'
 import QuestionDispute from './QuestionDispute'
 import MarkdownExplanation from './MarkdownExplanation'
 import { useAuth } from '@/contexts/AuthContext'
+import { useAIChat } from '@/contexts/AIChatContext'
 import type {
   ReviewQuestion,
   TestInfo,
@@ -53,6 +54,7 @@ export default function ExamReviewLayout({
   examCase,
 }: ExamReviewLayoutProps) {
   const { user } = useAuth()
+  const { openChatWith } = useAIChat()
   const [filter, setFilter] = useState<FilterType>('all')
   // Start with all questions expanded by default
   const [expandedQuestions, setExpandedQuestions] = useState<Set<number>>(() => {
@@ -422,12 +424,24 @@ export default function ExamReviewLayout({
                         {!isCaseExam && (
                           <button
                             onClick={() => {
-                              window.dispatchEvent(new CustomEvent('openAIChat', {
-                                detail: {
-                                  message: `Explícame por qué la respuesta correcta es "${question.correctAnswer}" en la pregunta: "${question.questionText.substring(0, 100)}..."`,
-                                  suggestion: 'explicar_respuesta'
-                                }
-                              }))
+                              openChatWith({
+                                message: `Explícame por qué la respuesta correcta es "${question.correctAnswer}" en la pregunta: "${question.questionText.substring(0, 100)}..."`,
+                                suggestion: 'explicar_respuesta',
+                                questionContext: {
+                                  id: question.id,
+                                  question_text: question.questionText,
+                                  option_a: question.options?.[0],
+                                  option_b: question.options?.[1],
+                                  option_c: question.options?.[2],
+                                  option_d: question.options?.[3],
+                                  correct: typeof question.correctAnswer === 'string'
+                                    ? question.correctAnswer
+                                    : null,
+                                  explanation: question.explanation || null,
+                                  law: question.lawName || null,
+                                  article_number: question.articleNumber || null,
+                                },
+                              })
                             }}
                             className="mt-3 flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
                           >

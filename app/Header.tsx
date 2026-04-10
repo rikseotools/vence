@@ -15,6 +15,7 @@ import { useNewMedalsBadge } from '@/hooks/useNewMedalsBadge'
 import { LogoHorizontal, LogoIcon } from '@/components/Logo'
 import { useOposicion } from '../contexts/OposicionContext'
 import { useAuth } from '../contexts/AuthContext'
+import { useAIChat } from '../contexts/AIChatContext'
 import { getOposicion, ALL_OPOSICION_SLUGS, getTestsLink as configGetTestsLink } from '@/lib/config/oposiciones'
 import { useAdminNotifications } from '@/hooks/useAdminNotifications'
 import DailyGoalBanner from '@/components/DailyGoalBanner'
@@ -65,6 +66,7 @@ export default function HeaderES() {
 
   const { user, loading: authLoading, supabase, isPremium, isLegacy, userProfile } = useAuth()
   const oposicionContext = useOposicion()
+  const { openChat } = useAIChat()
   const adminNotifications = useAdminNotifications(isAdmin && !adminLoading)
   const { issuesCount: sentryIssuesCount } = useSentryIssues(isAdmin && !adminLoading)
 
@@ -512,7 +514,7 @@ export default function HeaderES() {
 
                 {/* Botón de Vence AI - Móvil */}
                 <button
-                  onClick={() => window.dispatchEvent(new CustomEvent('openAIChat', { detail: {} }))}
+                  onClick={() => openChat()}
                   className="flex items-center gap-1 px-2 py-1 bg-blue-900 text-white rounded-lg text-xs font-semibold shadow-sm"
                   title="Abrir Vence AI"
                 >
@@ -616,7 +618,7 @@ export default function HeaderES() {
               {/* Botón de Vence AI - Desktop */}
               {user && (
                 <button
-                  onClick={() => window.dispatchEvent(new CustomEvent('openAIChat', { detail: {} }))}
+                  onClick={() => openChat()}
                   className="hidden xl:flex items-center gap-1.5 px-3 py-2 rounded-lg bg-blue-900 hover:bg-blue-950 text-white font-semibold shadow-md hover:shadow-lg transition-all"
                   title="Abrir Vence AI"
                 >

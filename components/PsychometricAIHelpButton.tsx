@@ -1,5 +1,7 @@
 'use client'
 
+import { useAIChat } from '@/contexts/AIChatContext'
+
 const SUBTYPE_LABELS: Record<string, string> = {
   'sequence_numeric': 'Serie numérica',
   'sequence_letter': 'Serie alfabética',
@@ -32,6 +34,7 @@ const SUBTYPE_LABELS: Record<string, string> = {
 }
 
 interface PsychometricAIHelpButtonQuestion {
+  id?: string
   question_text: string
   option_a: string
   option_b: string
@@ -58,6 +61,8 @@ export default function PsychometricAIHelpButton({
   questionTypeLabel,
   className = ''
 }: PsychometricAIHelpButtonProps) {
+  const { openChatWith } = useAIChat()
+
   // Ocultar si es un subtype visual sin datos procesables por la IA
   // (tiene image_url pero content_data vacío → la IA no puede ver la imagen)
   const isVisualSubtype = VISUAL_SUBTYPES.has(question.question_subtype || '')
@@ -97,12 +102,23 @@ export default function PsychometricAIHelpButton({
       additionalContext = tableText
     }
 
-    window.dispatchEvent(new CustomEvent('openAIChat', {
-      detail: {
-        message: `Explícame paso a paso cómo resolver esta ${label}: "${question.question_text}"${additionalContext}\n\nLas opciones son:\nA) ${question.option_a}\nB) ${question.option_b}\nC) ${question.option_c}\nD) ${question.option_d}`,
-        suggestion: 'explicar_psico'
-      }
-    }))
+    openChatWith({
+      message: `Explícame paso a paso cómo resolver esta ${label}: "${question.question_text}"${additionalContext}\n\nLas opciones son:\nA) ${question.option_a}\nB) ${question.option_b}\nC) ${question.option_c}\nD) ${question.option_d}`,
+      suggestion: 'explicar_psico',
+      // Si el padre pasa `id`, mandamos el contexto completo para que el
+      // server pueda resolver el tema; si no, caemos al provider como fallback.
+      questionContext: question.id ? {
+        id: question.id,
+        question_text: question.question_text,
+        option_a: question.option_a,
+        option_b: question.option_b,
+        option_c: question.option_c,
+        option_d: question.option_d,
+        isPsicotecnico: true,
+        questionSubtype: question.question_subtype || null,
+        contentData: question.content_data || null,
+      } : undefined,
+    })
   }
 
   return (

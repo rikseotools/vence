@@ -14,6 +14,7 @@ import { useAnswerWatchdog } from '@/hooks/useAnswerWatchdog'
 import { logClientError } from '@/lib/logClientError'
 import { normalizeDifficulty } from '@/lib/api/shared/difficulty'
 import { useQuestionContext } from '@/contexts/QuestionContext'
+import { useAIChat } from '@/contexts/AIChatContext'
 
 // Type for useAuth context (AuthContext is JS, so we type it manually)
 interface AuthContextValue {
@@ -361,6 +362,7 @@ export default function ExamLayout({
   } = useDailyQuestionLimit()
   const { getSlug: generateLawSlug } = useLawSlugs()
   const { setQuestionContext } = useQuestionContext()
+  const { openChatWith } = useAIChat()
 
   // Estados del examen
   const [userAnswers, setUserAnswers] = useState<UserAnswers>(initialAnswers || {})
@@ -1257,8 +1259,11 @@ export default function ExamLayout({
                       onClick={() => {
                         const correctAnswer = validatedResults?.results?.[index]?.correctIndex
                         const correctLetter = answerToLetter(correctAnswer)
-                        // Setear contexto de pregunta para el chat IA
-                        setQuestionContext({
+                        // Contexto de pregunta para el chat IA. Se pasa en la misma
+                        // llamada de openChatWith para evitar la race condition
+                        // histórica donde setQuestionContext (async) no se había
+                        // propagado cuando el chat enviaba el mensaje.
+                        const questionContext = {
                           id: question.id,
                           question_text: question.question_text,
                           option_a: question.option_a,
@@ -1271,13 +1276,16 @@ export default function ExamLayout({
                           article_number: (question as unknown as Record<string, { article_number?: string }>).articles?.article_number || null,
                           difficulty: null,
                           source: null,
+                        }
+                        // Mantener setQuestionContext para sincronizar el provider
+                        // (el header del chat lee currentQuestionContext para mostrar
+                        // el indicador "Viendo pregunta del test").
+                        setQuestionContext(questionContext)
+                        openChatWith({
+                          message: `Explícame por qué la respuesta correcta es "${correctLetter}" en la pregunta: "${question.question_text.substring(0, 100)}..."`,
+                          suggestion: 'explicar_respuesta',
+                          questionContext,
                         })
-                        window.dispatchEvent(new CustomEvent('openAIChat', {
-                          detail: {
-                            message: `Explícame por qué la respuesta correcta es "${correctLetter}" en la pregunta: "${question.question_text.substring(0, 100)}..."`,
-                            suggestion: 'explicar_respuesta'
-                          }
-                        }))
                       }}
                       className="mt-3 flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium"
                     >
