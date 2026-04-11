@@ -156,16 +156,34 @@ async function _POST(request: NextRequest) {
           await new Promise(resolve => setTimeout(resolve, 1000))
         }
 
+        // Generar token de desuscripción obligatorio (hoisted: necesario para userVars)
+        const { generateUnsubscribeToken } = await import('@/lib/emails/emailService.server')
+        const unsubscribeToken = await generateUnsubscribeToken(user.id, user.email, 'newsletter')
+
+        const unsubscribeLink = unsubscribeToken
+          ? `https://www.vence.es/unsubscribe?token=${unsubscribeToken}`
+          : `https://www.vence.es/perfil?tab=emails`
+
+        // Detectar en el template ORIGINAL si declara {{unsubscribeUrl}}.
+        // Hay que hacerlo aquí (antes del render) porque previewData puede incluir
+        // un valor estático para unsubscribeUrl que provocaría que el placeholder
+        // ya estuviera reemplazado después del render.
+        const templateHasUnsubscribePlaceholder = rawHtmlTemplate.includes('{{unsubscribeUrl}}')
+
         // Personalizar HTML con variables del usuario
         let personalizedSubject = subject
         let personalizedHtml: string
 
         if (rawHtmlTemplate) {
           // Plantilla BD: renderizar con variables por usuario
-          const userVars = {
+          const userVars: Record<string, unknown> = {
             ...baseVars,
             userName: user.fullName?.split(' ')[0] || 'Opositor/a',
             oposicionActual: oposicionNames[user.targetOposicion || ''] || user.targetOposicion || 'tu oposicion',
+          }
+          // Si el template tiene {{unsubscribeUrl}}, inyectar el link real (sobrescribe previewData)
+          if (templateHasUnsubscribePlaceholder) {
+            userVars.unsubscribeUrl = unsubscribeLink
           }
           personalizedSubject = renderTemplate(rawSubjectTemplate, userVars)
           personalizedHtml = renderTemplate(rawHtmlTemplate, userVars)
@@ -199,22 +217,9 @@ async function _POST(request: NextRequest) {
           )
         }
 
-        // Generar token de desuscripción obligatorio
-        const { generateUnsubscribeToken } = await import('@/lib/emails/emailService.server')
-        const unsubscribeToken = await generateUnsubscribeToken(user.id, user.email, 'newsletter')
-
-        const unsubscribeLink = unsubscribeToken
-          ? `https://www.vence.es/unsubscribe?token=${unsubscribeToken}`
-          : `https://www.vence.es/perfil?tab=emails`
-
-        // Si el template declara {{unsubscribeUrl}} como variable, rellenarla y
-        // NO añadir el footer extra del sistema (evita doble pie de página).
-        // Los templates que tienen su propio footer de unsubscribe lo gestionan ellos.
-        const templateHasUnsubscribePlaceholder = personalizedHtml.includes('{{unsubscribeUrl}}')
-
-        if (templateHasUnsubscribePlaceholder) {
-          personalizedHtml = personalizedHtml.replace(/\{\{unsubscribeUrl\}\}/g, unsubscribeLink)
-        } else {
+        // Footer de unsubscribe del sistema: solo si el template NO lo gestiona
+        // ya vía {{unsubscribeUrl}} (ver detección hoisted al inicio del loop).
+        if (!templateHasUnsubscribePlaceholder) {
           const unsubscribeFooter = `
           <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; text-align: center; color: #999; font-size: 12px;">
             <p style="margin: 0;">
