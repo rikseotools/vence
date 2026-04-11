@@ -313,8 +313,13 @@ async function _POST(request: NextRequest) {
       }
 
       if (matchedConvId) {
-        if (!messageText.trim()) {
-          console.error(`📧 [Inbound] Reply con body vacío de ${fromEmail} — ignorando para no crear mensaje basura`)
+        // Si no hay body, pero el subject tiene contenido útil, usarlo como mensaje
+        // (típico: emails cortos con la info solo en el asunto).
+        const finalMessage = messageText.trim()
+          || (subject && subject !== '(sin asunto)' ? `📧 (Email sin cuerpo — asunto: "${subject}")` : '')
+
+        if (!finalMessage) {
+          console.error(`📧 [Inbound] Reply sin body y sin subject útil de ${fromEmail} — ignorando`)
           return NextResponse.json({ received: true, action: 'empty_body_ignored', conversationId: matchedConvId })
         }
         // Añadir mensaje a conversación existente
@@ -322,7 +327,7 @@ async function _POST(request: NextRequest) {
           conversationId: matchedConvId,
           senderId: userId,
           isAdmin: false,
-          message: messageText,
+          message: finalMessage,
         })
 
         // Actualizar timestamp y reabirir si estaba en espera
@@ -342,10 +347,13 @@ async function _POST(request: NextRequest) {
     // 3. Email nuevo → crear feedback + conversación + mensaje
     const messageText = isReply(subject) ? stripQuotedText(rawText) : rawText
 
-    // Si no hay contenido real, no crear feedback para evitar basura en BD.
-    // El logging del payload arriba nos permite diagnosticar qué campo faltó.
-    if (!messageText.trim()) {
-      console.error(`📧 [Inbound] Email nuevo con body vacío de ${fromEmail} — no se crea feedback. Subject: "${subject}"`)
+    // Si no hay body pero sí subject útil, crear feedback con placeholder explícito.
+    // Solo ignoramos si TANTO body como subject están vacíos.
+    const finalMessage = messageText.trim()
+      || (subject && subject !== '(sin asunto)' ? `📧 (Email sin cuerpo — asunto: "${subject}")` : '')
+
+    if (!finalMessage) {
+      console.error(`📧 [Inbound] Email sin body y sin subject útil de ${fromEmail} — no se crea feedback`)
       return NextResponse.json({ received: true, action: 'empty_body_ignored' })
     }
 
@@ -373,7 +381,7 @@ async function _POST(request: NextRequest) {
       conversationId: conversation.id,
       senderId: userId,
       isAdmin: false,
-      message: messageText,
+      message: finalMessage,
     })
 
     console.log(`📧 [Inbound] Nueva conversación ${conversation.id.substring(0, 8)} para ${fromEmail}`)
