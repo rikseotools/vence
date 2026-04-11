@@ -207,7 +207,15 @@ async function _POST(request: NextRequest) {
           ? `https://www.vence.es/unsubscribe?token=${unsubscribeToken}`
           : `https://www.vence.es/perfil?tab=emails`
 
-        const unsubscribeFooter = `
+        // Si el template declara {{unsubscribeUrl}} como variable, rellenarla y
+        // NO añadir el footer extra del sistema (evita doble pie de página).
+        // Los templates que tienen su propio footer de unsubscribe lo gestionan ellos.
+        const templateHasUnsubscribePlaceholder = personalizedHtml.includes('{{unsubscribeUrl}}')
+
+        if (templateHasUnsubscribePlaceholder) {
+          personalizedHtml = personalizedHtml.replace(/\{\{unsubscribeUrl\}\}/g, unsubscribeLink)
+        } else {
+          const unsubscribeFooter = `
           <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; text-align: center; color: #999; font-size: 12px;">
             <p style="margin: 0;">
               Si no quieres recibir más newsletters, puedes
@@ -219,11 +227,12 @@ async function _POST(request: NextRequest) {
           </div>
         `
 
-        // Insertar footer antes del </body> o al final
-        if (personalizedHtml.includes('</body>')) {
-          personalizedHtml = personalizedHtml.replace('</body>', `${unsubscribeFooter}</body>`)
-        } else {
-          personalizedHtml += unsubscribeFooter
+          // Insertar footer antes del </body> o al final
+          if (personalizedHtml.includes('</body>')) {
+            personalizedHtml = personalizedHtml.replace('</body>', `${unsubscribeFooter}</body>`)
+          } else {
+            personalizedHtml += unsubscribeFooter
+          }
         }
 
         // Enviar con Resend con retry en caso de rate limiting
