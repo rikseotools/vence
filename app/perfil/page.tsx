@@ -222,6 +222,10 @@ function PerfilPageContent() {
   const [deletingAccount, setDeletingAccount] = useState<boolean>(false)
   const [deleteError, setDeleteError] = useState<string>('')
   const [deletionRequested, setDeletionRequested] = useState<boolean>(false)
+  const [deletionSuccess, setDeletionSuccess] = useState<boolean>(false)
+  // Lock síncrono basado en ref para prevenir doble-click rápido antes de
+  // que React propague el state deletingAccount (caso real Cristina + Ana María)
+  const deletingAccountRef = useRef<boolean>(false)
   
   // Form data - SINCRONIZADO CON useUserOposicion
   const [formData, setFormData] = useState<FormData>({
@@ -1228,17 +1232,37 @@ function PerfilPageContent() {
   }
 
   // 🗑️ SOLICITAR ELIMINACIÓN DE CUENTA
+  //
+  // Flujo robusto contra doble-click, network hangs y pérdida de feedback
+  // visual. Motivado por los casos Cristina (10-abr-2026) y Ana María
+  // (07-feb-2026) — ambas clicaron "Confirmar eliminación" dos veces porque
+  // el botón no parecía reaccionar. Ver docs/maintenance/eliminacion-cuentas.md.
   const requestAccountDeletion = async () => {
-    if (!user || deletingAccount) return
+    // Lock SÍNCRONO via ref: no depende de que React re-renderice el
+    // state deletingAccount. Previene el caso de doble-click rápido.
+    if (deletingAccountRef.current) return
+    if (!user) return
     if (deleteConfirmText !== 'ELIMINAR') {
       setDeleteError('Escribe ELIMINAR para confirmar')
       return
     }
 
-    try {
-      setDeletingAccount(true)
-      setDeleteError('')
+    deletingAccountRef.current = true
+    setDeletingAccount(true)
+    setDeleteError('')
 
+    // Timeout de seguridad: si la operación se cuelga más de 15s,
+    // desbloqueamos el botón con mensaje para que la usuaria pueda
+    // reintentar en vez de quedarse mirando "Enviando..." para siempre.
+    const timeoutId = setTimeout(() => {
+      if (deletingAccountRef.current) {
+        setDeleteError('La operación está tardando más de lo normal. Comprueba tu conexión y vuelve a intentarlo.')
+        setDeletingAccount(false)
+        deletingAccountRef.current = false
+      }
+    }, 15000)
+
+    try {
       // Verificar si ya existe una solicitud pendiente (evita duplicados)
       const { count } = await supabase
         .from('user_feedback')
@@ -1248,9 +1272,15 @@ function PerfilPageContent() {
         .eq('status', 'pending')
 
       if (count && count > 0) {
+        // Ya había una solicitud pendiente: mostrar éxito igualmente
+        // (la intención de la usuaria se cumplió)
+        setDeletionSuccess(true)
         setDeletionRequested(true)
-        setShowDeleteAccountModal(false)
-        setDeleteConfirmText('')
+        setTimeout(() => {
+          setShowDeleteAccountModal(false)
+          setDeletionSuccess(false)
+          setDeleteConfirmText('')
+        }, 2500)
         return
       }
 
@@ -1267,16 +1297,25 @@ function PerfilPageContent() {
 
       if (error) throw error
 
-      // Cerrar modal y mostrar confirmación
-      setShowDeleteAccountModal(false)
-      setDeleteConfirmText('')
+      // ÉXITO: mostrar confirmación INLINE en el modal (no alert() nativo,
+      // que puede ser bloqueado por el navegador o pasar desapercibido).
+      // El modal queda visible 2.5s con un check verde para que la usuaria
+      // tenga confirmación clara antes de que se cierre solo.
+      setDeletionSuccess(true)
       setDeletionRequested(true)
-      alert('Solicitud recibida. Procesaremos tu petición en 24-48h. Recibirás un email de confirmación.')
+
+      setTimeout(() => {
+        setShowDeleteAccountModal(false)
+        setDeletionSuccess(false)
+        setDeleteConfirmText('')
+      }, 2500)
 
     } catch (error) {
       console.error('Error solicitando eliminación:', error)
       setDeleteError('Error al enviar la solicitud. Inténtalo de nuevo.')
     } finally {
+      clearTimeout(timeoutId)
+      deletingAccountRef.current = false
       setDeletingAccount(false)
     }
   }
@@ -2722,71 +2761,92 @@ function PerfilPageContent() {
       {showDeleteAccountModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-md w-full p-6">
-            <h3 className="text-xl font-bold text-red-600 dark:text-red-400 mb-4 flex items-center">
-              <span className="mr-2">⚠️</span>
-              Eliminar cuenta
-            </h3>
-
-            <div className="space-y-4">
-              <p className="text-gray-600 dark:text-gray-300">
-                Esta acción es <strong>irreversible</strong>. Se eliminarán permanentemente:
-              </p>
-
-              <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1 ml-4">
-                <li>• Tu perfil y datos personales</li>
-                <li>• Historial de tests y estadísticas</li>
-                <li>• Preferencias y configuración</li>
-              </ul>
-
-              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
-                <label className="block text-sm font-medium text-red-800 dark:text-red-300 mb-2">
-                  Escribe <strong>ELIMINAR</strong> para confirmar:
-                </label>
-                <input
-                  type="text"
-                  value={deleteConfirmText}
-                  onChange={(e) => {
-                    setDeleteConfirmText(e.target.value.toUpperCase())
-                    setDeleteError('')
-                  }}
-                  placeholder="ELIMINAR"
-                  className="w-full px-3 py-2 border border-red-300 dark:border-red-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                />
-                {deleteError && (
-                  <p className="text-red-600 text-sm mt-1">{deleteError}</p>
-                )}
+            {deletionSuccess ? (
+              // ✅ ESTADO DE ÉXITO — confirmación inline clara y visible durante 2.5s
+              <div className="py-6 text-center">
+                <div className="text-6xl mb-4">✅</div>
+                <h3 className="text-xl font-bold text-green-700 dark:text-green-400 mb-2">
+                  Solicitud enviada correctamente
+                </h3>
+                <p className="text-gray-600 dark:text-gray-300 text-sm">
+                  Procesaremos tu petición en 24-48 horas.
+                </p>
+                <p className="text-gray-500 dark:text-gray-400 text-xs mt-3">
+                  Recibirás un email cuando se complete.
+                </p>
               </div>
-            </div>
+            ) : (
+              <>
+                <h3 className="text-xl font-bold text-red-600 dark:text-red-400 mb-4 flex items-center">
+                  <span className="mr-2">⚠️</span>
+                  Eliminar cuenta
+                </h3>
 
-            <div className="flex justify-end space-x-3 mt-6">
-              <button
-                onClick={() => {
-                  setShowDeleteAccountModal(false)
-                  setDeleteConfirmText('')
-                  setDeleteError('')
-                }}
-                className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={requestAccountDeletion}
-                disabled={deletingAccount || deleteConfirmText !== 'ELIMINAR'}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-400 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors flex items-center space-x-2"
-              >
-                {deletingAccount ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                    <span>Enviando...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>🗑️</span>
-                    <span>Confirmar eliminación</span>
-                  </>
-                )}
-              </button>
-            </div>
+                <div className="space-y-4">
+                  <p className="text-gray-600 dark:text-gray-300">
+                    Esta acción es <strong>irreversible</strong>. Se eliminarán permanentemente:
+                  </p>
+
+                  <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1 ml-4">
+                    <li>• Tu perfil y datos personales</li>
+                    <li>• Historial de tests y estadísticas</li>
+                    <li>• Preferencias y configuración</li>
+                  </ul>
+
+                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+                    <label className="block text-sm font-medium text-red-800 dark:text-red-300 mb-2">
+                      Escribe <strong>ELIMINAR</strong> para confirmar:
+                    </label>
+                    <input
+                      type="text"
+                      value={deleteConfirmText}
+                      onChange={(e) => {
+                        setDeleteConfirmText(e.target.value.toUpperCase())
+                        setDeleteError('')
+                      }}
+                      placeholder="ELIMINAR"
+                      disabled={deletingAccount}
+                      className="w-full px-3 py-2 border border-red-300 dark:border-red-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500 focus:border-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    />
+                    {deleteError && (
+                      <p className="text-red-600 text-sm mt-1" role="alert">{deleteError}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex justify-end space-x-3 mt-6">
+                  <button
+                    onClick={() => {
+                      setShowDeleteAccountModal(false)
+                      setDeleteConfirmText('')
+                      setDeleteError('')
+                    }}
+                    disabled={deletingAccount}
+                    className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={requestAccountDeletion}
+                    disabled={deletingAccount || deleteConfirmText !== 'ELIMINAR'}
+                    aria-busy={deletingAccount}
+                    className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-400 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors flex items-center space-x-2"
+                  >
+                    {deletingAccount ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                        <span>Enviando solicitud…</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>🗑️</span>
+                        <span>Confirmar eliminación</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
