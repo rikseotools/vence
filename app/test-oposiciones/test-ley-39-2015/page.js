@@ -53,6 +53,26 @@ export default async function TestLey392015Page() {
 
       {/* Contenido principal */}
       <div className="max-w-6xl mx-auto px-4 py-12">
+        {/* CTA principal: test completo de la ley (configurador canónico) */}
+        <div className="mb-10 bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-emerald-200 rounded-2xl p-6 md:p-8 text-center">
+          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
+            ¿Quieres un test completo de la Ley 39/2015?
+          </h2>
+          <p className="text-gray-600 mb-6">
+            Configura número de preguntas, dificultad y filtra por títulos o artículos concretos.
+          </p>
+          <Link
+            href="/leyes/ley-39-2015"
+            className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all"
+          >
+            <span>🎯</span>
+            <span>Iniciar test de Ley 39/2015</span>
+          </Link>
+          <p className="text-xs text-gray-500 mt-4">
+            O selecciona abajo un título o sección específica para practicar
+          </p>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {sections.map((section) => (
             <Link
