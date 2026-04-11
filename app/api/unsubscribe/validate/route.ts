@@ -17,34 +17,39 @@ async function _POST(request: NextRequest) {
     if (!token) {
       return NextResponse.json({
         success: false,
-        error: 'Token requerido'
+        error: 'Token requerido',
+        errorCode: 'missing_token',
       }, { status: 400 })
     }
 
-    const tokenInfo = await validateUnsubscribeToken(token)
+    const tokenResult = await validateUnsubscribeToken(token)
 
-    if (!tokenInfo) {
+    if (!tokenResult.ok) {
+      // db_error → 500 critical, not_found → 400 info
+      const status = tokenResult.code === 'db_error' ? 500 : 400
       return NextResponse.json({
         success: false,
-        error: 'Token inválido, expirado o ya usado'
-      }, { status: 400 })
+        error: tokenResult.error,
+        errorCode: tokenResult.code,
+      }, { status })
     }
 
     return NextResponse.json({
       success: true,
-      email: tokenInfo.email,
+      email: tokenResult.email,
       user: {
-        email: tokenInfo.email,
-        name: tokenInfo.userProfile?.full_name || 'Usuario',
-        emailType: tokenInfo.emailType,
-        category: getCategory(tokenInfo.emailType),
+        email: tokenResult.email,
+        name: tokenResult.userProfile?.full_name || 'Usuario',
+        emailType: tokenResult.emailType,
+        category: getCategory(tokenResult.emailType),
       }
     })
   } catch (error) {
-    console.error('❌ Error validando token via POST:', error)
+    console.error('❌ [API/unsubscribe/validate POST] Unhandled exception:', error)
     return NextResponse.json({
       success: false,
-      error: 'Error interno del servidor'
+      error: 'Error interno del servidor',
+      errorCode: 'internal_error',
     }, { status: 500 })
   }
 }
@@ -57,33 +62,37 @@ async function _GET(request: NextRequest) {
     if (!token) {
       return NextResponse.json({
         success: false,
-        error: 'Token requerido'
+        error: 'Token requerido',
+        errorCode: 'missing_token',
       }, { status: 400 })
     }
 
-    const tokenInfo = await validateUnsubscribeToken(token)
+    const tokenResult = await validateUnsubscribeToken(token)
 
-    if (!tokenInfo) {
+    if (!tokenResult.ok) {
+      const status = tokenResult.code === 'db_error' ? 500 : 400
       return NextResponse.json({
         success: false,
-        error: 'Token inválido, expirado o ya usado'
-      }, { status: 400 })
+        error: tokenResult.error,
+        errorCode: tokenResult.code,
+      }, { status })
     }
 
     return NextResponse.json({
       success: true,
       user: {
-        email: tokenInfo.email,
-        name: tokenInfo.userProfile?.full_name || 'Usuario',
-        emailType: tokenInfo.emailType,
-        category: getCategory(tokenInfo.emailType),
+        email: tokenResult.email,
+        name: tokenResult.userProfile?.full_name || 'Usuario',
+        emailType: tokenResult.emailType,
+        category: getCategory(tokenResult.emailType),
       }
     })
   } catch (error) {
-    console.error('❌ Error validando token via GET:', error)
+    console.error('❌ [API/unsubscribe/validate GET] Unhandled exception:', error)
     return NextResponse.json({
       success: false,
-      error: 'Error interno del servidor'
+      error: 'Error interno del servidor',
+      errorCode: 'internal_error',
     }, { status: 500 })
   }
 }

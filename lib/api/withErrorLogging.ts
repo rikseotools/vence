@@ -1,8 +1,11 @@
 // lib/api/withErrorLogging.ts
 // Wrapper para route handlers que logea automáticamente errores a validation_error_logs.
 // Fire-and-forget: nunca bloquea, nunca modifica la respuesta del handler.
+// Para respuestas 5xx: genera un errorRef (UUID) que queda loggeado en BD y se inyecta
+// en el body de la respuesta para que el usuario lo pueda citar al soporte.
 
 import { NextResponse } from 'next/server'
+import { randomUUID } from 'crypto'
 import { logValidationError, classifyError } from '@/lib/api/validation-error-log'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -58,9 +61,10 @@ export function withErrorLogging(endpoint: string, handler: RouteHandler): Route
       // Logar respuestas 4xx y 5xx
       if (response.status >= 400) {
         let errorMessage = `HTTP ${response.status}`
+        let responseBody: Record<string, unknown> | null = null
         try {
-          const responseBody = await response.clone().json()
-          errorMessage = responseBody.error || responseBody.message || errorMessage
+          responseBody = await response.clone().json() as Record<string, unknown>
+          errorMessage = (responseBody?.error as string) || (responseBody?.message as string) || errorMessage
         } catch {}
 
         // Filtrar ruido: no logear 400 con body vacío (bots/crawlers haciendo requests sin parámetros)
@@ -71,7 +75,11 @@ export function withErrorLogging(endpoint: string, handler: RouteHandler): Route
           return response
         }
 
+        // Generar errorRef (solo para 5xx — errores críticos que el usuario podría reportar)
+        const errorRef = response.status >= 500 ? randomUUID() : undefined
+
         logValidationError({
+          id: errorRef,
           endpoint,
           errorType: response.status >= 500 ? 'unknown' : classifyHttpStatus(response.status),
           errorMessage,
@@ -83,12 +91,24 @@ export function withErrorLogging(endpoint: string, handler: RouteHandler): Route
           durationMs: Date.now() - startTime,
           userAgent,
         })
+
+        // Para 5xx: inyectar errorRef en el body y devolver una respuesta nueva.
+        // Preservamos headers/status del response original.
+        if (errorRef && responseBody) {
+          const newBody = { ...responseBody, errorRef }
+          return NextResponse.json(newBody, {
+            status: response.status,
+            headers: response.headers,
+          })
+        }
       }
 
       return response
     } catch (error) {
       // Error no manejado — logar como critical y devolver 500 genérico
+      const errorRef = randomUUID()
       logValidationError({
+        id: errorRef,
         endpoint,
         errorType: classifyError(error),
         errorMessage: error instanceof Error ? error.message : String(error),
@@ -103,7 +123,7 @@ export function withErrorLogging(endpoint: string, handler: RouteHandler): Route
       })
 
       return NextResponse.json(
-        { success: false, error: 'Error interno del servidor' },
+        { success: false, error: 'Error interno del servidor', errorRef },
         { status: 500 }
       )
     }

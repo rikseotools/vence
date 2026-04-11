@@ -56,6 +56,7 @@ async function _insertLog(input: ValidationErrorLogInput): Promise<void> {
   const sanitizedBody = input.requestBody ? sanitizeRequestBody(input.requestBody) : {}
 
   await db.insert(validationErrorLogs).values({
+    ...(input.id ? { id: input.id } : {}),
     endpoint: input.endpoint,
     errorType: input.errorType,
     errorMessage: input.errorMessage.slice(0, 2000),

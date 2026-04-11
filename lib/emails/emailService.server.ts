@@ -77,9 +77,11 @@ interface CampaignResults {
 interface UnsubscribeResult {
   success: boolean
   error?: string
+  errorCode?: 'invalid_token' | 'db_error' | 'internal_error'
   message?: string
   email?: string
   updatedPreferences?: Record<string, boolean | string>
+  warnings?: string[]
 }
 
 interface DetectedUser {
@@ -148,7 +150,22 @@ export async function generateUnsubscribeToken(
 // UNSUBSCRIBE (Supabase - no v2 equivalent yet)
 // ============================================
 
-export async function validateUnsubscribeToken(token: string) {
+export interface ValidateTokenOk {
+  ok: true
+  userId: string
+  email: string
+  emailType: string
+  userProfile: { email: string; full_name: string } | null
+}
+export interface ValidateTokenErr {
+  ok: false
+  code: 'not_found' | 'db_error'
+  error: string
+  dbError?: unknown
+}
+export type ValidateTokenResult = ValidateTokenOk | ValidateTokenErr
+
+export async function validateUnsubscribeToken(token: string): Promise<ValidateTokenResult> {
   try {
     const supabase = getSupabase()
     const { data: tokenData, error } = await supabase
@@ -162,19 +179,28 @@ export async function validateUnsubscribeToken(token: string) {
       .gt('expires_at', new Date().toISOString())
       .single()
 
-    if (error || !tokenData) {
-      return null
+    if (error) {
+      // PGRST116 = no rows returned (token no existe, expirado o ya usado)
+      if ((error as { code?: string }).code === 'PGRST116') {
+        return { ok: false, code: 'not_found', error: 'Token inválido, expirado o ya usado' }
+      }
+      console.error('❌ [validateUnsubscribeToken] DB error:', error)
+      return { ok: false, code: 'db_error', error: 'Error consultando token en BD', dbError: error }
+    }
+    if (!tokenData) {
+      return { ok: false, code: 'not_found', error: 'Token inválido, expirado o ya usado' }
     }
 
     return {
+      ok: true,
       userId: tokenData.user_id as string,
       email: tokenData.email as string,
       emailType: tokenData.email_type as string,
       userProfile: tokenData.user_profiles as { email: string; full_name: string } | null,
     }
   } catch (error) {
-    console.error('❌ Error validating token:', error)
-    return null
+    console.error('❌ [validateUnsubscribeToken] Exception:', error)
+    return { ok: false, code: 'db_error', error: 'Error interno validando token', dbError: error }
   }
 }
 
@@ -193,15 +219,16 @@ export async function processUnsubscribeByToken(
   categories: string[] | null = null
 ): Promise<UnsubscribeResult> {
   try {
-    const tokenInfo = await validateUnsubscribeToken(token)
-    if (!tokenInfo) {
+    const tokenResult = await validateUnsubscribeToken(token)
+    if (!tokenResult.ok) {
       return {
         success: false,
-        error: 'Token inválido, expirado o ya usado',
+        error: tokenResult.error,
+        errorCode: tokenResult.code === 'db_error' ? 'db_error' : 'invalid_token',
       }
     }
 
-    const { userId, email, emailType } = tokenInfo
+    const { userId, email, emailType } = tokenResult
     const updateData: Record<string, boolean | string> = {}
 
     if (unsubscribeAll) {
@@ -260,30 +287,51 @@ export async function processUnsubscribeByToken(
       .eq('user_id', userId)
 
     if (prefsError) {
-      console.error('❌ Error actualizando preferencias:', prefsError)
+      console.error('❌ [processUnsubscribeByToken] DB error updating email_preferences', {
+        userId,
+        email,
+        updateData,
+        error: prefsError,
+      })
       return {
         success: false,
         error: 'Error actualizando preferencias de email',
+        errorCode: 'db_error',
       }
     }
 
-    // Mark token as used
-    await supabase
+    // Mark token as used — no fatal si falla (baja ya aplicada) pero MUST ser traceable
+    const warnings: string[] = []
+    const { error: markUsedError } = await supabase
       .from('email_unsubscribe_tokens')
       .update({ used_at: new Date().toISOString() })
       .eq('token', token)
+
+    if (markUsedError) {
+      // CRÍTICO: token sigue siendo reutilizable hasta que expire.
+      // La baja ya está aplicada, así que no revertimos; solo queremos rastro.
+      console.error('❌ [processUnsubscribeByToken] Failed to mark token as used (token reusable until expiry)', {
+        userId,
+        email,
+        token: token.slice(0, 8) + '...',
+        error: markUsedError,
+      })
+      warnings.push('mark_token_used_failed')
+    }
 
     return {
       success: true,
       message: 'Preferencias de email actualizadas correctamente',
       email,
       updatedPreferences: updateData,
+      ...(warnings.length > 0 ? { warnings } : {}),
     }
   } catch (error) {
-    console.error('❌ Error in processUnsubscribeByToken:', error)
+    console.error('❌ [processUnsubscribeByToken] Unhandled exception:', error)
     return {
       success: false,
       error: 'Error interno procesando unsubscribe',
+      errorCode: 'internal_error',
     }
   }
 }

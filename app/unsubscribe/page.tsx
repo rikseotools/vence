@@ -1,11 +1,46 @@
-// app/unsubscribe/page.js - Página pública de unsubscribe sin login requerido
+// app/unsubscribe/page.tsx - Página pública de unsubscribe sin login requerido
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, Suspense, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
-const CATEGORIES = [
+type CategoryId = 'marketing' | 'newsletter' | 'soporte'
+
+interface Category {
+  id: CategoryId
+  label: string
+  description: string
+  color: 'blue' | 'purple' | 'orange'
+}
+
+type PageStatus = 'loading' | 'ready' | 'success' | 'error' | 'invalid'
+
+interface ValidateResponse {
+  success: boolean
+  email?: string
+  user?: {
+    email: string
+    name: string
+    emailType: string
+    category: CategoryId
+  }
+  error?: string
+  errorCode?: string
+  errorRef?: string
+}
+
+interface UnsubscribeResponse {
+  success: boolean
+  message?: string
+  email?: string
+  error?: string
+  errorCode?: string
+  errorRef?: string
+  warnings?: string[]
+}
+
+const CATEGORIES: Category[] = [
   {
     id: 'marketing',
     label: 'Emails de Vence',
@@ -28,40 +63,37 @@ const CATEGORIES = [
 
 function UnsubscribePageContent() {
   const searchParams = useSearchParams()
-  const [status, setStatus] = useState('loading')
+  const [status, setStatus] = useState<PageStatus>('loading')
   const [message, setMessage] = useState('')
+  const [errorRef, setErrorRef] = useState<string | null>(null)
   const [email, setEmail] = useState('')
-  const [selectedCategories, setSelectedCategories] = useState(new Set())
+  const [selectedCategories, setSelectedCategories] = useState<Set<CategoryId>>(new Set())
   const [showConfirmAll, setShowConfirmAll] = useState(false)
-  const [tokenCategory, setTokenCategory] = useState(null)
+  const [tokenCategory, setTokenCategory] = useState<CategoryId | null>(null)
 
   const token = searchParams.get('token')
 
-  useEffect(() => {
-    if (!token) {
-      setStatus('invalid')
-      setMessage('Token de unsubscribe no valido o expirado.')
-      return
-    }
-    validateToken()
-  }, [token])
-
-  const validateToken = async () => {
+  const validateToken = useCallback(async () => {
     try {
       const response = await fetch('/api/unsubscribe/validate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token })
+        body: JSON.stringify({ token }),
       })
 
-      const result = await response.json()
+      const result = (await response.json()) as ValidateResponse
 
       if (result.success) {
-        setEmail(result.email)
-        const category = result.user?.category || 'marketing'
+        setEmail(result.email || '')
+        const category: CategoryId = result.user?.category || 'marketing'
         setTokenCategory(category)
         setSelectedCategories(new Set([category]))
         setStatus('ready')
+      } else if (result.errorRef) {
+        // db_error (500) → mostrar como error con errorRef, no como "invalid"
+        setStatus('error')
+        setMessage(result.error || 'Error validando el enlace de unsubscribe')
+        setErrorRef(result.errorRef)
       } else {
         setStatus('invalid')
         setMessage(result.error || 'Token invalido o expirado')
@@ -70,11 +102,21 @@ function UnsubscribePageContent() {
       console.error('Error validando token:', error)
       setStatus('error')
       setMessage('Error validando el enlace de unsubscribe')
+      setErrorRef(null)
     }
-  }
+  }, [token])
 
-  const toggleCategory = (categoryId) => {
-    setSelectedCategories(prev => {
+  useEffect(() => {
+    if (!token) {
+      setStatus('invalid')
+      setMessage('Token de unsubscribe no valido o expirado.')
+      return
+    }
+    validateToken()
+  }, [token, validateToken])
+
+  const toggleCategory = (categoryId: CategoryId) => {
+    setSelectedCategories((prev) => {
       const next = new Set(prev)
       if (next.has(categoryId)) {
         next.delete(categoryId)
@@ -96,25 +138,27 @@ function UnsubscribePageContent() {
         body: JSON.stringify({
           token,
           categories: Array.from(selectedCategories),
-        })
+        }),
       })
 
-      const result = await response.json()
+      const result = (await response.json()) as UnsubscribeResponse
 
       if (result.success) {
-        const names = Array.from(selectedCategories).map(
-          id => CATEGORIES.find(c => c.id === id)?.label
-        ).filter(Boolean)
+        const names = Array.from(selectedCategories)
+          .map((id) => CATEGORIES.find((c) => c.id === id)?.label)
+          .filter((label): label is string => Boolean(label))
         setStatus('success')
         setMessage(`Has desactivado: ${names.join(', ')}. No recibiras mas esos emails.`)
       } else {
         setStatus('error')
         setMessage(result.error || 'Error procesando la baja de emails')
+        setErrorRef(result.errorRef || null)
       }
     } catch (error) {
       console.error('Error en unsubscribe:', error)
       setStatus('error')
       setMessage('Error procesando la solicitud')
+      setErrorRef(null)
     }
   }
 
@@ -129,10 +173,10 @@ function UnsubscribePageContent() {
         body: JSON.stringify({
           token,
           unsubscribeAll: true,
-        })
+        }),
       })
 
-      const result = await response.json()
+      const result = (await response.json()) as UnsubscribeResponse
 
       if (result.success) {
         setStatus('success')
@@ -140,11 +184,13 @@ function UnsubscribePageContent() {
       } else {
         setStatus('error')
         setMessage(result.error || 'Error procesando la baja de emails')
+        setErrorRef(result.errorRef || null)
       }
     } catch (error) {
       console.error('Error en unsubscribe:', error)
       setStatus('error')
       setMessage('Error procesando la solicitud')
+      setErrorRef(null)
     }
   }
 
@@ -224,7 +270,15 @@ function UnsubscribePageContent() {
             </svg>
           </div>
           <h2 className="text-xl font-semibold text-gray-900 mb-2">Error</h2>
-          <p className="text-gray-600 mb-6">{message}</p>
+          <p className="text-gray-600 mb-4">{message}</p>
+          {errorRef && (
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-6">
+              <p className="text-xs text-gray-500 mb-1">Hemos registrado el error y lo revisaremos.</p>
+              <p className="text-xs text-gray-400">
+                Ref: <code className="font-mono text-gray-600 select-all">{errorRef.slice(0, 8)}</code>
+              </p>
+            </div>
+          )}
           <button
             onClick={() => window.location.reload()}
             className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
@@ -274,11 +328,11 @@ function UnsubscribePageContent() {
                 >
                   <div className="flex items-start gap-3">
                     {/* Checkbox */}
-                    <div className={`mt-0.5 w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
-                      isSelected
-                        ? 'bg-blue-500 border-blue-500'
-                        : 'border-gray-300 bg-white'
-                    }`}>
+                    <div
+                      className={`mt-0.5 w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
+                        isSelected ? 'bg-blue-500 border-blue-500' : 'border-gray-300 bg-white'
+                      }`}
+                    >
                       {isSelected && (
                         <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
@@ -385,16 +439,16 @@ function UnsubscribePageContent() {
 
 export default function UnsubscribePage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-600 border-t-transparent mx-auto mb-6"></div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-3">
-            Cargando pagina...
-          </h2>
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-600 border-t-transparent mx-auto mb-6"></div>
+            <h2 className="text-2xl font-bold text-gray-800 mb-3">Cargando pagina...</h2>
+          </div>
         </div>
-      </div>
-    }>
+      }
+    >
       <UnsubscribePageContent />
     </Suspense>
   )

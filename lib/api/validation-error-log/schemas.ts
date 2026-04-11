@@ -4,6 +4,7 @@
 import { z } from 'zod/v3'
 
 export const validationErrorLogSchema = z.object({
+  id: z.string().uuid().optional(),
   endpoint: z.string().max(200),
   errorType: z.string().max(50),
   errorMessage: z.string().max(2000),

@@ -23,15 +23,19 @@ async function _POST(request: NextRequest) {
     const result = await processUnsubscribeByToken(token, specificTypes, unsubscribeAll, categories)
 
     if (!result.success) {
-      return NextResponse.json(result, { status: 400 })
+      // db_error / internal_error → 500 para que withErrorLogging los marque como critical
+      // invalid_token → 400 (error de cliente esperado)
+      const status = result.errorCode === 'db_error' || result.errorCode === 'internal_error' ? 500 : 400
+      return NextResponse.json(result, { status })
     }
 
     return NextResponse.json(result)
   } catch (error) {
-    console.error('❌ API Unsubscribe: Error interno:', (error as Error).message)
+    console.error('❌ [API/unsubscribe] Unhandled exception:', error)
     return NextResponse.json({
       success: false,
       error: 'Error interno del servidor',
+      errorCode: 'internal_error',
     }, { status: 500 })
   }
 }
