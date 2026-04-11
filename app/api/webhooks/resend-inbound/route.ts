@@ -135,37 +135,52 @@ async function _POST(request: NextRequest) {
     const fromName = extractName(email.from)
     const subject = email.subject || '(sin asunto)'
 
-    // Extraer body: probar campos conocidos + variantes comunes de otros providers.
-    // Resend Inbound es reciente y sus nombres de campo pueden cambiar.
+    // Resend Inbound webhook NO incluye el body del email en el payload, solo metadata
+    // + email_id. Para obtener text/html hay que hacer fetch a la Received Emails API:
+    //   GET https://api.resend.com/emails/receiving/{id}
+    // Ref: https://resend.com/docs/api-reference/emails/retrieve-received-email
     const e = email as unknown as Record<string, unknown>
-    const bodyCandidates: Array<[string, unknown]> = [
-      ['text', e.text],
-      ['html', e.html],
-      ['bodyText', e.bodyText],
-      ['bodyHtml', e.bodyHtml],
-      ['body_text', e.body_text],
-      ['body_html', e.body_html],
-      ['textBody', e.textBody],
-      ['htmlBody', e.htmlBody],
-      ['plainText', e.plainText],
-      ['body', e.body],
-      ['stripped-text', e['stripped-text']],
-      ['raw', e.raw],
-    ]
+    const emailId = typeof e.email_id === 'string' ? e.email_id : (typeof e.id === 'string' ? e.id : null)
 
     let rawText = ''
     let usedField = ''
-    for (const [name, val] of bodyCandidates) {
-      if (typeof val === 'string' && val.trim().length > 0) {
-        rawText = name.toLowerCase().includes('html') || name === 'body' || name === 'raw'
-          ? htmlToText(val)
-          : val
-        usedField = name
-        if (rawText.trim().length > 0) break
+
+    // Intento 1: leer text/html directamente del payload (por si Resend lo añade en el futuro)
+    if (typeof e.text === 'string' && e.text.trim()) {
+      rawText = e.text
+      usedField = 'payload.text'
+    } else if (typeof e.html === 'string' && e.html.trim()) {
+      rawText = htmlToText(e.html)
+      usedField = 'payload.html'
+    }
+
+    // Intento 2: fetch a la Received Emails API con el email_id
+    if (!rawText.trim() && emailId) {
+      try {
+        const apiRes = await fetch(`https://api.resend.com/emails/receiving/${emailId}`, {
+          headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}` },
+        })
+        if (apiRes.ok) {
+          const full = await apiRes.json() as { text?: string | null; html?: string | null }
+          if (full.text && full.text.trim()) {
+            rawText = full.text
+            usedField = 'api.text'
+          } else if (full.html && full.html.trim()) {
+            rawText = htmlToText(full.html)
+            usedField = 'api.html'
+          } else {
+            console.error(`📧 [Inbound] API de Resend devolvió text y html vacíos para email_id=${emailId}`)
+          }
+        } else {
+          const errBody = await apiRes.text().catch(() => '<no body>')
+          console.error(`📧 [Inbound] Received Emails API falló: HTTP ${apiRes.status} para email_id=${emailId} — ${errBody.slice(0, 200)}`)
+        }
+      } catch (fetchErr) {
+        console.error(`📧 [Inbound] Excepción llamando a Received Emails API para email_id=${emailId}:`, fetchErr)
       }
     }
 
-    // Si todos los campos están vacíos, loguear el payload completo para diagnóstico
+    // Si seguimos sin contenido, loguear el payload completo para diagnóstico
     if (!rawText.trim()) {
       const payloadKeys = Object.keys(e).sort()
       const sample: Record<string, unknown> = {}
@@ -179,10 +194,10 @@ async function _POST(request: NextRequest) {
           sample[k] = `[${Array.isArray(v) ? 'array' : 'object'}]`
         }
       }
-      console.error('📧 [Inbound] BODY VACÍO — payload del webhook (para diagnóstico):', JSON.stringify(sample))
+      console.error('📧 [Inbound] BODY VACÍO tras payload+API — snapshot del webhook:', JSON.stringify(sample))
     }
 
-    console.log(`📧 [Inbound] Email de ${fromEmail} — "${subject}" (bodyField=${usedField || 'NINGUNO'}, bodyLen=${rawText.length})`)
+    console.log(`📧 [Inbound] Email de ${fromEmail} — "${subject}" (source=${usedField || 'NINGUNO'}, len=${rawText.length}, emailId=${emailId || 'NO'})`)
 
     // 0a. Filtrar emails automáticos que no son de usuarios reales
     const ignoredSenders = [
