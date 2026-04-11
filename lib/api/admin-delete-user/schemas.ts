@@ -12,6 +12,21 @@ export const deleteUserRequestSchema = z.object({
 export type DeleteUserRequest = z.infer<typeof deleteUserRequestSchema>
 
 // ============================================
+// ARCHIVED USER DATA (datos con retención legal)
+// ============================================
+//
+// Dump JSONB de las tablas con obligación de conservación fiscal/contable
+// que se persiste en deleted_users_log.archived_data antes de borrar las
+// filas de las tablas operacionales. Ver Art. 17.3.b RGPD + Art. 30 CdC.
+
+export const archivedUserDataSchema = z.object({
+  archived_at: z.string(),
+  tables: z.record(z.string(), z.array(z.record(z.unknown()))),
+})
+
+export type ArchivedUserData = z.infer<typeof archivedUserDataSchema>
+
+// ============================================
 // RESPONSE: DELETE USER
 // ============================================
 

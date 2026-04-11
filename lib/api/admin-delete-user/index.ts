@@ -4,12 +4,16 @@ export {
   deleteUserRequestSchema,
   deleteUserResponseSchema,
   deleteUserErrorSchema,
+  archivedUserDataSchema,
   type DeleteUserRequest,
   type DeleteUserResponse,
   type DeleteUserError,
-  type DeletionResult
+  type DeletionResult,
+  type ArchivedUserData
 } from './schemas'
 
 export {
-  deleteUserData
+  deleteUserData,
+  archiveUserLegalData,
+  persistArchivedData
 } from './queries'

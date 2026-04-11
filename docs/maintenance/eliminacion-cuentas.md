@@ -1,289 +1,321 @@
-# Manual: Eliminación de Cuentas de Usuario
+# Manual: Eliminación de Cuentas de Usuario (RGPD)
 
-Este documento describe el proceso para eliminar cuentas de usuario cuando lo solicitan (GDPR compliance).
+Este documento describe el proceso para eliminar cuentas de usuario cuando lo solicitan, cumpliendo con el **Art. 17 RGPD** (derecho al olvido) y manteniendo la **obligación legal de retención contable** (Art. 30 Código de Comercio, Art. 66 LGT).
 
 ## Resumen del Proceso
 
-1. **Investigar al usuario** - Entender por qué se va
-2. **Cerrar feedbacks relacionados** - Limpiar tickets
-3. **Eliminar via API** - Borrar todos los datos (incluye `deleted_users_log` para evitar FK)
-4. **Registrar en `deleted_users_log`** - Re-insertar después de eliminar auth.users
+```
+1. INVESTIGAR     → Reconstruir journey completo (no resumen)
+2. DOCUMENTAR     → Escribir deletion_reason exhaustivo con el journey
+3. REGISTRAR      → Insertar en deleted_users_log
+4. EJECUTAR       → /api/admin/delete-user (archiva + cascade + auth)
+5. VERIFICAR      → Confirmar user_profiles=0, auth.users=0, archived_data OK
+```
+
+---
 
 ## 1. Investigar al Usuario (IMPORTANTE)
 
-Antes de eliminar, investigar el comportamiento del usuario para aprender y mejorar.
+**El `deletion_reason` debe contener el journey completo, no un resumen de tres líneas.** Es el único sitio donde queda preservada la investigación tras eliminar la cuenta. Si algún día alguien quiere entender por qué se fue un usuario, el deletion_reason es la referencia — no escribas "Se fue" y ya. Escribe:
 
-> **IMPORTANTE:** Seguir el procedimiento completo de `docs/procedures/investigar-journey-usuario.md` para reconstruir el journey del usuario: `user_interactions` (clicks, page views), sesiones, tests, errores del servidor, etc. El journey revela *por qué* se va, no solo *qué* hizo.
+- Perfil completo (email, plan, días activo, oposición, ciudad, fuente)
+- Actividad cuantificada (tests, respuestas, chat IA, disputas, errores)
+- Subscripción y ciclo de pago
+- **Journey completo del día de la solicitud** reconstruido de `user_interactions` minuto a minuto
+- Hallazgos UX (bugs descubiertos, patrones de frustración, clicks repetidos, etc.)
+- Motivo probable (natural vs frustración técnica)
 
-```javascript
-const userId = 'UUID_DEL_USUARIO';
+### Ejemplo de deletion_reason exhaustivo
 
-// 1. Perfil y origen
-const { data: profile } = await supabase
-  .from('user_profiles')
-  .select('*')
-  .eq('id', userId)
-  .single();
+```
+USUARIA PREMIUM CON USO CONSISTENTE, CESE NATURAL (58 DÍAS).
 
-console.log('Email:', profile.email);
-console.log('Plan:', profile.plan_type);
-console.log('Registrado:', profile.created_at);
-console.log('Fuente:', profile.registration_source);
-console.log('Funnel:', profile.registration_funnel);
-console.log('URL registro:', profile.registration_url);
-console.log('Ciudad:', profile.ciudad);
+=== PERFIL ===
+- Cristina H. · gimher@hotmail.com · Terrassa
+- Registro: 2026-02-11 (Aux Administrativo Estado C2)
+- Fuente: organic | funnel: test | stripe_customer: cus_TxvkmRbfonlJXK
+- Plan: premium_monthly (sub_1Szzw3IeJQ31GiECKMqxfvkD)
 
-// 2. Actividad
-const { count: testCount } = await supabase
-  .from('test_sessions')
-  .select('id', { count: 'exact', head: true })
-  .eq('user_id', userId);
+=== ACTIVIDAD ===
+- Días totales: 58 (11-feb a 10-abr)
+- Tests realizados: 61
+- Primer test: 12-feb (día siguiente al registro)
+- Último test: 21-feb
+- Periodo activo real: 10 días (12-21 feb), ráfaga intensiva
+- Periodo inactivo antes de pedir eliminación: 48 días
+- Errores técnicos: 0 | Impugnaciones: 0 | Mensajes chat IA: 0
 
-const { count: chatCount } = await supabase
-  .from('ai_chat_logs')
-  .select('id', { count: 'exact', head: true })
-  .eq('user_id', userId);
+=== SUBSCRIPCIÓN ===
+- Creada: 12-feb (pago inmediato tras probar)
+- Cancelación: cancel_at_period_end=true
+- Current period end: 12-abr
 
-console.log('Tests realizados:', testCount);
-console.log('Mensajes chat:', chatCount);
+=== JOURNEY DEL DÍA DE LA SOLICITUD (2026-04-10) ===
+07:35:29  page_view /auxiliar-administrativo-estado/temario/tema-1
+07:35:45  click [Mi Perfil] → /perfil
+07:36:10  click [🗑️Solicitar eliminación]
+07:36:17  click input [ELIMINAR]
+07:36:24  click [🗑️Confirmar eliminación]  ← PRIMER INTENTO
+07:39:24  page unload (3 minutos sin feedback visual)
+... etc
 
-// 3. Onboarding
-console.log('Saltó onboarding:', profile.onboarding_skip_count > 0 ? 'Sí' : 'No');
-console.log('Completó onboarding:', profile.onboarding_completed ? 'Sí' : 'No');
+=== HALLAZGO UX ===
+Clicó 'Confirmar eliminación' DOS VECES con 4 minutos de diferencia.
+El primer click no produjo feedback visible → pensó que no funcionó.
+Mismo patrón que Ana María (07-feb-2026).
+
+=== MOTIVO PROBABLE ===
+Cese natural de uso. Sin señales de frustración técnica.
 ```
 
-### Preguntas clave a responder:
+**Cualquier cosa más corta que esto es pereza.** El valor del log está en la exhaustividad.
 
-| Pregunta | Por qué importa |
-|----------|-----------------|
-| ¿Cuánto tiempo estuvo activo? | Si fue < 10 min, algo falló en el onboarding |
-| ¿Completó el onboarding? | Si lo saltó, quizás es muy largo |
-| ¿Hizo algún test? | Si no, no entendió el producto |
-| ¿De dónde vino? | Para evaluar calidad del tráfico |
-| ¿Qué URL de registro? | Identifica páginas con mala conversión |
+---
 
-### Investigar el journey paso a paso (CRÍTICO)
+## 2. Cómo investigar el journey (query reutilizable)
 
-**El valor de investigar no es solo saber por qué se fue — es descubrir bugs y mala UX que afectan a TODOS los usuarios.**
-
-Reconstruir el journey completo con `user_interactions`:
-
-```javascript
-const { data: interactions } = await supabase
-  .from('user_interactions')
-  .select('event_type, page_url, created_at, metadata')
+```js
+const { data: events } = await supabase.from('user_interactions')
+  .select('created_at, event_type, action, element_text, page_url, deploy_version, value')
   .eq('user_id', userId)
-  .order('created_at')
-
-// Reconstruir cronología paso a paso:
-// - page_view: a dónde navegó
-// - click: qué pulsó (y cuántos clicks frustrados = confusión)
-// - page_exit: cuándo salió
-// - test_answer_selected: respondió una pregunta
-// - test_navigation_next: pasó a la siguiente
-// - test_test_completed: completó un test
+  .gte('created_at', 'YYYY-MM-DDT00:00:00')
+  .order('created_at', { ascending: true })
 ```
 
-**Señales de frustración a buscar:**
-- Muchos clicks en la misma página en poco tiempo (no encuentra lo que busca)
-- Ida y vuelta entre páginas (está perdido)
-- page_exit sin test_test_completed (abandonó un test a medias)
-- Visita a /test-recuperado sin test pendiente (redirect confuso)
-- Visita a /perfil justo antes de pedir eliminación (buscaba cómo irse)
+**Señales a buscar**:
 
-**Señales de bugs a buscar:**
-- `test_test_completed` en user_interactions pero 0 registros en `tests` o `user_test_sessions` → respuestas no se guardaron
-- Redirect a /test-recuperado cuando el usuario ya estaba logueado → el auth callback redirigió sin necesidad
-- Muchos clicks en una página que debería ser simple → UI confusa o elementos que no responden
+- **Frustración**: clicks repetidos en la misma página/botón → UI confusa
+- **Bugs**: clicks en "Confirmar" sin efecto visible, luego reintento → falta feedback UX
+- **Abandono**: page_exit sin test_test_completed → test abandonado
+- **Deploy mid-test**: cambio de `deploy_version` durante una sesión activa → bug caso francofila (ver useVersionCheck.ts)
 
-### Ejemplo Real: Tania (07-Abr-2026) — 3 bugs descubiertos
+Ver también: `docs/procedures/investigar-journey-usuario.md`
 
-**Journey reconstruido:**
-```
-09:49 — Hizo 2 preguntas de LO 3/2018 sin registro (pre-registro)
-09:52 — Se registró con Google
-09:53 — Redirigida a /test-recuperado → recuperó 2 preguntas → "Test recuperado - Tema 0"
-09:53 — 10+ clicks frustrados en /test-recuperado (nombre confuso, no entendía)
-09:54 — Fue a /leyes/lo-3-2018, navegó la ley
-09:55 — Empezó test avanzado de 25 preguntas
-10:04 — Completó el test (test_test_completed en interacciones)
-10:04 — Clicks buscando resultados/cómo salir
-10:05 — Entró a otro test, salió sin completar
-10:06 — Botón atrás del navegador → /test-recuperado (otra vez)
-10:06 — Fue a /perfil → pidió eliminar cuenta
-```
+---
 
-**Bugs descubiertos:**
-1. **"Test recuperado - Tema 0"** — nombre inútil. Tests de leyes tienen tema=0. Fix: consultar ley de la primera pregunta en BD → "Test recuperado - LO 3/2018"
-2. **25 respuestas PERDIDAS** — completó 25 preguntas pero 0 se guardaron en BD. Causa: `!tema` bloqueaba `tema=0` al crear la sesión de test. Sin sesión, `enqueueAnswer` no guardaba. Fix: `!tema` → `tema == null`
-3. **Doble redirect a /test-recuperado** — el auth callback usaba `location.href` que dejaba /test-recuperado en el historial del navegador. El botón atrás la llevaba de vuelta. Fix: `location.replace()` para no dejar rastro en historial
+## 3. Arquitectura del flujo de eliminación
 
-**Impacto:** Estos 3 bugs afectaban a TODOS los tests de leyes (/leyes/X/avanzado), no solo a Tania. Sin la investigación del journey, nunca los habríamos descubierto.
+### Tablas involucradas
 
-### Documentar el motivo
+Tras la migración `2026-04-11-deleted-users-log-archived-data.sql`, `deleted_users_log` tiene una columna `archived_data` (JSONB) donde se preservan los datos con obligación legal de retención.
 
-Antes de eliminar, anotar en `deletion_reason` un resumen que incluya los hallazgos del journey:
+El módulo `lib/api/admin-delete-user/` implementa el flujo:
 
 ```
-// Ejemplos de motivos:
-"Usuario nuevo (0 tests). Se registró, saltó onboarding, pidió eliminar en 6 min. Posible problema de UX."
-"Usuario premium canceló. 45 tests en 3 meses. Motivo: cambió a otra plataforma."
-"Usuario free inactivo 60 días. Solicitó eliminación por email."
-"PSX Sergas custom. Completó 25 preguntas LO 3/2018 pero respuestas perdidas (bug tema=0). Frustración con redirect /test-recuperado. 14 min activa."
+┌────────────────────────────────────────────────┐
+│  /api/admin/delete-user (DELETE, Zod-validado) │
+└────────────────────┬───────────────────────────┘
+                     │
+                     ▼
+┌────────────────────────────────────────────────┐
+│ lib/api/admin-delete-user/queries.ts           │
+│                                                │
+│ 1. archiveUserLegalData(userId)                │
+│    → SELECT payment_settlements                │
+│    → devuelve JSONB { archived_at, tables }    │
+│                                                │
+│ 2. persistArchivedData(userId, archived)       │
+│    → UPDATE deleted_users_log SET archived_data│
+│                                                │
+│ 3. deleteUserData(userId)                      │
+│    → DELETE TABLES_WITH_LEGAL_RETENTION        │
+│    → DELETE TABLES_TO_CLEAN_NO_CASCADE         │
+│    → DELETE TABLES_TO_CLEAN_GDPR               │
+│    → DELETE user_profiles (CASCADE las demás)  │
+│                                                │
+│ 4. supabase.auth.admin.deleteUser              │
+└────────────────────────────────────────────────┘
 ```
 
-## 2. Registrar en deleted_users_log
+### Tres categorías de tablas
 
-**SIEMPRE** registrar antes de eliminar para estadísticas y GDPR:
+Las 59 tablas con columna `user_id` se clasifican en:
 
-```javascript
-await supabase
-  .from('deleted_users_log')
-  .insert({
-    original_user_id: userId,
-    email: profile.email,
-    full_name: profile.full_name,
-    plan_type: profile.plan_type,
-    target_oposicion: profile.target_oposicion,
-    registered_at: profile.created_at,
-    days_active: Math.floor((Date.now() - new Date(profile.created_at)) / 86400000),
-    total_tests: testCount || 0,
-    total_payments: 0, // Consultar tabla payments si aplica
-    deletion_reason: 'DESCRIBIR MOTIVO Y COMPORTAMIENTO',
-    requested_via: 'feedback' // o 'email', 'admin', etc.
-  });
+| Categoría | Qué hacer | Dónde está la lista | Por qué |
+|---|---|---|---|
+| **CASCADE con user_profiles.id** (11 tablas) | **Nada** — se limpian solas | FK constraint en BD | `ON DELETE CASCADE` ya hace el trabajo |
+| **Con obligación legal de retención** | **Archivar** + delete | `TABLES_WITH_LEGAL_RETENTION` en queries.ts | Art. 17.3.b RGPD: no se pueden borrar del todo |
+| **NO CASCADE + no legal** | **DELETE explícito** | `TABLES_TO_CLEAN_NO_CASCADE` en queries.ts | Bloquearían el DELETE de user_profiles |
+| **Sin FK pero con user_id** | **DELETE explícito** | `TABLES_TO_CLEAN_GDPR` en queries.ts | No bloquean, pero cumplen derecho al olvido |
+
+### Mantener la lista de tablas actualizada
+
+**Cada vez que se añade una tabla con columna `user_id`, hay que decidir qué categoría es y, si no es CASCADE, añadirla a la lista correspondiente en `queries.ts`.** Query para detectar tablas nuevas:
+
+```sql
+SELECT table_name, column_name
+FROM information_schema.columns
+WHERE table_schema = 'public'
+  AND column_name = 'user_id'
+ORDER BY table_name;
 ```
 
-### Campos de deleted_users_log
+Y para detectar FKs bloqueantes (NO ACTION) que hay que añadir a `TABLES_TO_CLEAN_NO_CASCADE`:
 
-| Campo | Descripción |
-|-------|-------------|
-| `original_user_id` | UUID original del usuario |
-| `email` | Email para referencia |
-| `full_name` | Nombre completo |
-| `plan_type` | free/premium |
-| `target_oposicion` | Qué oposición estudiaba |
-| `registered_at` | Cuándo se registró |
-| `days_active` | Días entre registro y eliminación |
-| `total_tests` | Tests realizados (engagement) |
-| `total_payments` | Total pagado (para análisis de churn) |
-| `deletion_reason` | **IMPORTANTE**: Describir comportamiento y posible causa |
-| `requested_via` | Cómo solicitó la eliminación |
-
-## 3. Cerrar Feedbacks Relacionados
-
-Si la solicitud vino por feedback:
-
-```javascript
-await supabase
-  .from('user_feedback')
-  .update({
-    status: 'resolved',
-    resolved_at: new Date().toISOString()
-  })
-  .eq('user_id', userId)
-  .eq('type', 'account_deletion');
+```sql
+SELECT tc.table_name, kcu.column_name, rc.delete_rule
+FROM information_schema.table_constraints tc
+JOIN information_schema.key_column_usage kcu ON tc.constraint_name = kcu.constraint_name
+JOIN information_schema.referential_constraints rc ON rc.constraint_name = tc.constraint_name
+JOIN information_schema.constraint_column_usage ccu ON ccu.constraint_name = tc.constraint_name
+WHERE tc.constraint_type = 'FOREIGN KEY'
+  AND ccu.table_name = 'user_profiles'
+  AND ccu.column_name = 'id'
+  AND rc.delete_rule = 'NO ACTION'
+ORDER BY tc.table_name;
 ```
 
-## 4. Eliminar Usuario via API
+---
 
-```javascript
-const response = await fetch('http://localhost:3000/api/admin/delete-user', {
+## 4. Retención legal de pagos
+
+### Base legal
+
+El **Art. 17.3.b RGPD** establece que el derecho al olvido **no aplica** cuando el tratamiento es necesario para cumplir una obligación legal. Para los registros contables/fiscales:
+
+- **Art. 30 Código de Comercio**: conservar libros, justificantes y documentación durante **6 años**
+- **Art. 66 LGT**: la Agencia Tributaria puede comprobar operaciones durante **4 años** (+ prescripción)
+
+### Qué hacer con payment_settlements
+
+1. **NO borrar los importes, fechas y referencias Stripe** → son necesarios para contabilidad
+2. **Archivar la fila completa en `archived_data` JSONB** → queda preservado de forma estructurada sin vincular a la tabla operacional
+3. **Borrar de `payment_settlements`** → la FK a `user_profiles` deja de existir y el DELETE del perfil funciona
+
+Tras la eliminación, los datos quedan:
+- **En `deleted_users_log.archived_data`**: disponibles para auditoría fiscal durante el plazo legal
+- **Sin vínculo FK**: no bloquean el DELETE ni aparecen en las queries operacionales
+- **Sin identificación directa**: aunque el dump contiene email/nombre, vive sólo en la tabla de bajas, no en producción
+
+### Si la AEPD alguna vez pregunta
+
+- **Tienes el log**: `deletion_reason` + `archived_data` prueban qué se eliminó, cuándo, y por qué se conservó lo mínimo.
+- **Justificación legal**: el `archived_data` tiene su base en Art. 17.3.b RGPD + Art. 30 CdC.
+- **Minimización**: los datos archivados son sólo los estrictamente necesarios para cumplir la obligación fiscal.
+
+---
+
+## 5. Ejecución práctica
+
+### Vía API (recomendado en producción)
+
+```js
+const response = await fetch('https://www.vence.es/api/admin/delete-user', {
   method: 'DELETE',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ userId })
-});
-
-const result = await response.json();
-console.log(result.success ? '✅ Eliminado' : '❌ Error:', result.error);
+})
+const result = await response.json()
 ```
 
-### Tablas que limpia la API
+**Antes de llamar a la API, primero hay que insertar la fila en `deleted_users_log`** con el `deletion_reason` investigado. La API asume que la fila ya existe para hacer el `UPDATE` del `archived_data`.
 
-La API `/api/admin/delete-user` elimina datos de:
+### Vía Node script (para desarrollo/casos puntuales)
 
-1. `pwa_events`
-2. `pwa_sessions`
-3. `notification_events`
-4. `email_events`
-5. `email_preferences`
-6. `user_notification_metrics`
-7. `user_question_history`
-8. `user_streaks`
-9. `ai_chat_logs`
-10. `detailed_answers`
-11. `test_questions`
-12. `tests`
-13. `test_sessions`
-14. `user_sessions`
-15. `user_subscriptions`
-16. `conversion_events`
-17. `user_feedback`
-18. `question_disputes`
-19. `deleted_users_log`
-20. `user_roles`
-21. `user_profiles`
-22. `auth.users`
-
-> **IMPORTANTE:** `deleted_users_log` se elimina ANTES de `auth.users` para evitar FK constraint. El log debe registrarse DESPUÉS de la eliminación si se quiere preservar (re-insertar sin FK).
-
-## 5. Verificación
-
-Confirmar que el usuario fue eliminado:
-
-```javascript
-const { data: check } = await supabase
-  .from('user_profiles')
-  .select('id')
-  .eq('id', userId);
-
-console.log(check?.length === 0 ? '✅ Usuario eliminado' : '❌ Aún existe');
-```
-
-## Ejemplo Completo: Proceso con Claude Code
+Si el deploy de la API no está listo, puedes replicar el flujo con un script Node que use `pg` directamente. El script debe seguir el orden exacto:
 
 ```
-1. "hay feedbacks de eliminación de cuenta?"
-   ↓
-2. Claude lista las solicitudes pendientes
-   ↓
-3. "investiga al usuario [nombre]"
-   ↓
-4. Claude muestra:
-   - Perfil completo
-   - Fuente de registro
-   - Actividad (tests, chat, etc.)
-   - Tiempo activo
-   - Comportamiento antes de pedir eliminación
-   ↓
-5. Claude propone motivo para deletion_reason
-   ↓
-6. "aplicar eliminación"
-   ↓
-7. Claude ejecuta los 4 pasos y confirma
+1. Leer perfil y tests count
+2. INSERT en deleted_users_log con deletion_reason completo
+3. Cerrar feedback como resolved (si vino por feedback)
+4. SELECT de payment_settlements (y otras tablas de retención legal)
+5. UPDATE deleted_users_log SET archived_data = JSONB_del_punto_4
+6. DELETE de payment_settlements (ya archivada)
+7. DELETE de TABLES_TO_CLEAN_NO_CASCADE
+8. DELETE de TABLES_TO_CLEAN_GDPR
+9. DELETE de user_profiles
+10. supabase.auth.admin.deleteUser
+11. Verificar
 ```
 
-## Ejemplo Real: Ana María (07-Feb-2026)
+### Verificación post-eliminación (OBLIGATORIO)
 
-**Investigación:**
-- Se registró a las 17:49 con Google
-- Saltó el onboarding
-- 6 minutos después pidió eliminar cuenta (2 veces, doble clic)
-- 0 tests, 0 chat, 0 pagos
-- Vino de página de test personalizado (orgánico)
-- Ciudad: Boadilla del Monte
+Tras cada eliminación confirma que todo quedó limpio:
 
-**Motivo registrado:**
+```js
+// user_profiles debe devolver 0 filas
+const { data: p } = await supabase.from('user_profiles').select('id').eq('id', userId)
+console.assert(p?.length === 0, '❌ user_profiles aún existe')
+
+// auth.users debe haber desaparecido
+const { data: a } = await supabase.auth.admin.getUserById(userId)
+console.assert(!a?.user, '❌ auth.users aún existe')
+
+// deleted_users_log debe tener archived_data si había retención legal
+const { data: log } = await supabase.from('deleted_users_log')
+  .select('archived_data, deletion_reason')
+  .eq('original_user_id', userId)
+  .single()
+console.assert(log?.deletion_reason?.length > 500, '❌ deletion_reason demasiado corto')
 ```
-Usuario nuevo (0 tests). Se registró, saltó onboarding, pidió eliminar en 6 min.
-Posible problema de UX o expectativas no cumplidas.
+
+---
+
+## 6. Fallos comunes y su diagnóstico
+
+### "violates foreign key constraint"
+
+Si el DELETE falla con un mensaje del tipo:
+```
+Key (id)=(XXX) is still referenced from table "Y"
 ```
 
-**Aprendizaje:**
-- El botón de eliminar cuenta no tenía feedback visual → Fix implementado
-- Usuarios que saltan onboarding tienen mayor tasa de abandono
+Significa que la tabla `Y` tiene una FK NO CASCADE a `user_profiles.id` y **NO está en las listas de `queries.ts`**. Añadirla:
+- Si tiene obligación legal → `TABLES_WITH_LEGAL_RETENTION` + actualizar `archiveUserLegalData` si procede
+- Si no → `TABLES_TO_CLEAN_NO_CASCADE`
 
-## Análisis Periódico
+### "column 'user_id' does not exist"
+
+La tabla no tiene columna `user_id`. Opciones:
+- No debería estar en la lista → quitar
+- Usa otra columna (ej. `sender_id`) → añadir con `{ column: 'sender_id' }`
+
+### Tests locales pasan pero producción falla
+
+La API en producción puede estar desplegando una versión anterior. Verificar con:
+```bash
+curl https://www.vence.es/api/version
+```
+Si el hash no coincide con HEAD, esperar al deploy de Vercel.
+
+---
+
+## 7. Ejemplos Reales
+
+### Ana María (07-Feb-2026) — Usuaria nueva, 6 min, UX
+
+Usuaria nueva. Se registró, saltó onboarding, pidió eliminar cuenta en 6 minutos (doble clic). 0 tests, 0 chat, 0 pagos.
+
+**Aprendizaje**: el botón de eliminar no tenía feedback visual → fix pendiente.
+
+### Tania (07-Abr-2026) — 3 bugs descubiertos
+
+Usuaria nueva, 14 min activa. Completó 25 preguntas pero 0 se guardaron.
+
+**Bugs descubiertos**:
+1. "Test recuperado - Tema 0" (nombre confuso, fix: usar nombre de ley)
+2. 25 respuestas perdidas (bug `!tema` bloqueando `tema=0`)
+3. Doble redirect a /test-recuperado (fix: `location.replace`)
+
+### Cristina (10-Abr-2026) — Premium con pagos, cese natural
+
+Usuaria premium 58 días, 61 tests en 10 días (12-21 feb), luego silencio 48 días. Ya había cancelado la subscripción. Volvió para cerrar el círculo RGPD.
+
+**Primera investigación**: `deletion_reason` inicial era un resumen de 200 chars. Reescrito a 2763 chars con journey completo + hallazgos.
+
+**Primera eliminación (fallida)**: la API tenía lista desactualizada de tablas. 3 tablas fallaron (`detailed_answers`, `test_questions`, `test_sessions` no tienen columna `user_id` — se limpian por CASCADE de `tests`). Luego `user_profiles` falló con FK violation de `payment_settlements` (8 filas, no estaba en la lista).
+
+**Segunda eliminación (exitosa)**: con el código reescrito y la migración `archived_data` aplicada, se archivaron los 8 pagos (~2000€ cada uno) en `deleted_users_log.archived_data` como JSONB, se borraron 5053 filas de GDPR (incluidas 3841 de `user_interactions`), y `user_profiles` + `auth.users` quedaron a 0. El `deleted_users_log` preservó `deletion_reason` (2763 chars) + `archived_data` (8 payment_settlements completos).
+
+**Aprendizajes del caso**:
+1. El `deletion_reason` debe ser exhaustivo, no un resumen
+2. La lista `TABLES_TO_CLEAN` de la API se desactualizaba con cada nueva tabla — ahora separada en 3 categorías semánticas con query SQL para detectar huecos
+3. Las tablas con retención legal necesitan flujo de archivado (JSONB), no simple DELETE
+4. `deleted_users_log` NO tiene FK constraint → no hay que re-insertarlo después del DELETE (como decía el manual anterior, erróneamente)
+
+---
+
+## 8. Análisis Periódico
 
 Consultar `deleted_users_log` mensualmente para identificar patrones:
 
@@ -297,9 +329,20 @@ GROUP BY deletion_reason;
 -- Por fuente de registro
 SELECT
   requested_via,
-  AVG(days_active) as avg_days,
-  AVG(total_tests) as avg_tests,
-  COUNT(*) as total
+  AVG(days_active) AS avg_days,
+  AVG(total_tests) AS avg_tests,
+  COUNT(*) AS total
 FROM deleted_users_log
 GROUP BY requested_via;
+
+-- Eliminaciones con datos archivados (tenían pagos)
+SELECT COUNT(*)
+FROM deleted_users_log
+WHERE archived_data IS NOT NULL;
+
+-- Tamaño promedio del dump archivado
+SELECT
+  AVG(jsonb_array_length(archived_data -> 'tables' -> 'payment_settlements')) AS avg_payments_per_user
+FROM deleted_users_log
+WHERE archived_data ? 'tables';
 ```

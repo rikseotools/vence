@@ -2252,6 +2252,9 @@ export const deletedUsersLog = pgTable("deleted_users_log", {
 	deletionReason: text("deletion_reason"),
 	requestedVia: text("requested_via").default('feedback'),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	// RGPD: datos con obligación legal de retención (pagos, contabilidad)
+	// archivados como dump JSONB sin referencias FK vivas a las tablas operacionales.
+	archivedData: jsonb("archived_data"),
 }, (table) => [
 	index("idx_deleted_users_deleted_at").using("btree", table.deletedAt.asc().nullsLast().op("timestamptz_ops")),
 	index("idx_deleted_users_email").using("btree", table.email.asc().nullsLast().op("text_ops")),
