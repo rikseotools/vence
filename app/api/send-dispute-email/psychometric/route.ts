@@ -92,7 +92,7 @@ async function _POST(request: Request) {
 
     // 3. Enviar email usando v2
     const baseUrl = 'https://www.vence.es'
-    const disputeUrl = `${baseUrl}/soporte?tab=impugnaciones`
+    const disputeUrl = `${baseUrl}/soporte?tab=impugnaciones&dispute_id=${disputeInfo.id}`
 
     const result = await sendEmailV2({
       userId: disputeInfo.user_id,

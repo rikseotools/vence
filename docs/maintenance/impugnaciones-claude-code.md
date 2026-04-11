@@ -886,11 +886,12 @@ const adminId = adminMsg.sender_id;
 
 Las notificaciones al usuario (email y campana) se envían **automáticamente** mediante triggers de PostgreSQL que usan la extensión `http` para llamar a las APIs de la app. Esto garantiza que las notificaciones se envíen independientemente de cómo se haga la operación (panel admin, Claude Code, o consulta SQL directa).
 
-### 15.1 Trigger de Impugnaciones
+### 15.1 Trigger de Impugnaciones Legislativas
 
 **Trigger:** `trigger_send_dispute_email` en tabla `question_disputes`
 **Función:** `send_dispute_email_notification()`
 **Evento:** `AFTER UPDATE`
+**Estado en repo:** ⚠️ NO versionado. La función vive solo en Supabase (creada manualmente en el SQL Editor). Pendiente de extraer y commitear.
 
 **Comportamiento:**
 - Se activa cuando el `status` cambia a `resolved` o `rejected`
@@ -914,6 +915,26 @@ Las notificaciones al usuario (email y campana) se envían **automáticamente** 
 1. **Trigger PG** (este): `{ disputeId, status, adminResponse, userId, questionId }`
 2. **Supabase Webhook**: `{ record: { id, user_id, ... } }`
 3. **Admin panel**: `{ disputeId }` (solo ID, datos se leen de BD)
+
+### 15.1bis Trigger de Impugnaciones Psicotécnicas
+
+**Trigger:** `trigger_send_psychometric_dispute_email` en tabla `psychometric_question_disputes`
+**Función:** `send_psychometric_dispute_email_notification()`
+**Evento:** `AFTER UPDATE`
+**Creado:** 11/04/2026
+**Estado en repo:** ✅ Versionado en `database/migrations/dispute_email_triggers_psychometric.sql`
+
+**Comportamiento:**
+- Idéntico al de legislativas (mismo payload, mismo manejo de errores)
+- Llama a `/api/send-dispute-email/psychometric` via `http_post()`
+- El endpoint psicotécnico solo lee `disputeId` del body y relee la disputa desde BD
+
+**Endpoint `/api/send-dispute-email/psychometric`:**
+- Acepta `{ disputeId }` en el body
+- Lee el resto desde `psychometric_question_disputes` + `user_profiles` + `psychometric_questions`
+- Si `admin_response` está vacío, no envía email (rechazo silencioso)
+
+**Cold start warning:** El primer trigger del día puede fallar silenciosamente si la función Vercel está fría (cold start >  timeout de `http_post`). Se observó el 11/04/2026 en el test de humo: primer UPDATE no envió, re-fire inmediato sí. Mitigación futura: aumentar `http.timeout_msec` o mantener la función warm con un cron de salud.
 
 ### 15.2 Trigger de Feedbacks
 
@@ -949,8 +970,9 @@ Las notificaciones al usuario (email y campana) se envían **automáticamente** 
                            ▼
 ┌─────────────────────────────────────────────────────────────┐
 │ API Endpoint (Vercel)                                        │
-│  - /api/send-dispute-email                                   │
-│  - /api/send-support-email                                   │
+│  - /api/send-dispute-email                (legislativas)     │
+│  - /api/send-dispute-email/psychometric   (psicotécnicas)    │
+│  - /api/send-support-email                (feedbacks)        │
 └──────────────────────────┬──────────────────────────────────┘
                            │ sendEmailV2()
                            ▼
@@ -971,10 +993,15 @@ SELECT * FROM pg_extension WHERE extname = 'http';
 ### 15.5 Verificar que los Triggers Existen
 
 ```sql
--- Listar triggers en question_disputes
+-- Listar triggers en question_disputes (legislativas)
 SELECT trigger_name, event_manipulation, action_timing
 FROM information_schema.triggers
 WHERE event_object_table = 'question_disputes';
+
+-- Listar triggers en psychometric_question_disputes (psicotécnicas)
+SELECT trigger_name, event_manipulation, action_timing
+FROM information_schema.triggers
+WHERE event_object_table = 'psychometric_question_disputes';
 
 -- Listar triggers en feedback_messages
 SELECT trigger_name, event_manipulation, action_timing
