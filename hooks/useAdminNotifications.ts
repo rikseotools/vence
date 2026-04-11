@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 
 interface AdminNotificationState {
   feedback: number
-  feedbackByType: { deletion: number; bug: number; other: number }
+  feedbackByType: { deletion: number; bug: number; email: number; other: number }
   impugnaciones: number
   impugnacionesByType: { legislativas: number; psicotecnicas: number }
   ventas: number
@@ -18,7 +18,7 @@ interface AdminNotificationState {
 
 const EMPTY_STATE: AdminNotificationState = {
   feedback: 0,
-  feedbackByType: { deletion: 0, bug: 0, other: 0 },
+  feedbackByType: { deletion: 0, bug: 0, email: 0, other: 0 },
   impugnaciones: 0,
   impugnacionesByType: { legislativas: 0, psicotecnicas: 0 },
   ventas: 0,
@@ -135,7 +135,7 @@ export function useAdminNotifications(enabled = false) {
       const [feedbacksResult, reopenedConvsResult, impugnacionesApiResult, salesResult, calidadResult, erroresApiResult, rateLimitResult] = results
 
       let pendingFeedback = 0
-      const feedbackTypeCounts = { deletion: 0, bug: 0, other: 0 }
+      const feedbackTypeCounts = { deletion: 0, bug: 0, email: 0, other: 0 }
       let pendingImpugnaciones = 0
       const impugnacionesTypeCounts = { legislativas: 0, psicotecnicas: 0 }
       let pendingVentas = 0
@@ -169,6 +169,7 @@ export function useAdminNotifications(enabled = false) {
             pendingFeedback++
             if (fb.type === 'account_deletion') feedbackTypeCounts.deletion++
             else if (fb.type === 'bug') feedbackTypeCounts.bug++
+            else if (fb.type === 'email') feedbackTypeCounts.email++
             else feedbackTypeCounts.other++
           }
         })
@@ -195,6 +196,7 @@ export function useAdminNotifications(enabled = false) {
             const fbType = conv.user_feedback?.type
             if (fbType === 'account_deletion') feedbackTypeCounts.deletion++
             else if (fbType === 'bug') feedbackTypeCounts.bug++
+            else if (fbType === 'email') feedbackTypeCounts.email++
             else feedbackTypeCounts.other++
           }
         })

@@ -131,6 +131,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             {adminNotifications.feedbackByType.bug}
                           </span>
                         )}
+                        {adminNotifications.feedbackByType?.email > 0 && (
+                          <span className="bg-indigo-500 text-white text-xs rounded-full h-5 min-w-5 px-1.5 flex items-center justify-center font-bold" title="Email recibido">
+                            @{adminNotifications.feedbackByType.email}
+                          </span>
+                        )}
                         {adminNotifications.feedbackByType?.other > 0 && (
                           <span className="bg-blue-500 text-white text-xs rounded-full h-5 min-w-5 px-1 flex items-center justify-center font-bold" title="Otro feedback">
                             {adminNotifications.feedbackByType.other}
