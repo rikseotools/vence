@@ -76,9 +76,11 @@ function stripReplyPrefix(subject: string): string {
 
 /** Limpia el texto de un reply quitando el contenido citado */
 function stripQuotedText(text: string): string {
-  // Cortar en la línea "El día X, Y escribió:" o "On X, Y wrote:"
+  // Cortar en la línea "El día/Xday X, Y escribió:" o "On X, Y wrote:"
+  // Gmail en español usa "El sáb, 11 abr 2026 a las 18:07, X escribió:"
+  // Gmail en inglés usa "On Sat, Apr 11, 2026 at 6:07 PM, X wrote:"
   const patterns = [
-    /\n\s*El\s+\d.*escribi[óo]:\s*\n/i,
+    /\n\s*El\s+.+escribi[óo]:\s*\n/i,
     /\n\s*On\s+.+wrote:\s*\n/i,
     /\n\s*---+\s*Original\s+Message/i,
     /\n\s*---+\s*Mensaje\s+original/i,
@@ -347,11 +349,14 @@ async function _POST(request: NextRequest) {
       return NextResponse.json({ received: true, action: 'empty_body_ignored' })
     }
 
+    // user_feedback.message guarda SOLO el subject (cabecera de "Solicitud original"
+    // en el admin). El body va únicamente en feedback_messages para evitar duplicación
+    // en la UI, que muestra ambos.
     const [feedback] = await db.insert(userFeedback).values({
       userId: userId,
       email: fromEmail,
       type: 'email',
-      message: subject !== '(sin asunto)' ? `${subject}\n\n${messageText}` : messageText,
+      message: subject,
       url: 'email-inbound',
       status: 'pending',
       priority: 'medium',

@@ -153,7 +153,7 @@ export interface FeedbackStats {
 // TIPOS PARA ESTADOS Y FILTROS
 // ============================================
 
-export const feedbackTypeValues = ['bug', 'suggestion', 'content', 'design', 'praise', 'other'] as const
+export const feedbackTypeValues = ['bug', 'suggestion', 'content', 'design', 'praise', 'email', 'other'] as const
 export type FeedbackType = typeof feedbackTypeValues[number]
 
 export const feedbackStatusValues = ['pending', 'in_review', 'in_progress', 'resolved', 'dismissed'] as const
@@ -210,6 +210,7 @@ export const FEEDBACK_TYPES: Record<FeedbackType, TypeConfig> = {
   'content': { label: '📚 Contenido', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300' },
   'design': { label: '🎨 Diseño', color: 'bg-pink-100 text-pink-800 dark:bg-pink-900/50 dark:text-pink-300' },
   'praise': { label: '⭐ Felicitación', color: 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300' },
+  'email': { label: '@ Email', color: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-300' },
   'other': { label: '❓ Otro', color: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300' }
 }
 
