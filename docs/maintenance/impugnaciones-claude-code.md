@@ -891,7 +891,7 @@ Las notificaciones al usuario (email y campana) se envían **automáticamente** 
 **Trigger:** `trigger_send_dispute_email` en tabla `question_disputes`
 **Función:** `send_dispute_email_notification()`
 **Evento:** `AFTER UPDATE`
-**Estado en repo:** ⚠️ NO versionado. La función vive solo en Supabase (creada manualmente en el SQL Editor). Pendiente de extraer y commitear.
+**Estado en repo:** ✅ Versionado en `database/migrations/dispute_email_triggers_legislativas.sql` (capturado el 11/04/2026 desde Supabase — antes vivía solo en el SQL Editor)
 
 **Comportamiento:**
 - Se activa cuando el `status` cambia a `resolved` o `rejected`
