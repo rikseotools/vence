@@ -29,6 +29,7 @@ import {
   getArticlesForLaw,
   estimateAvailableQuestions,
   getEssentialArticles,
+  getScopedLawSections,
 } from '../../../lib/api/test-config/queries'
 
 const mockGetDb = getDb as jest.MockedFunction<typeof getDb>
@@ -590,5 +591,197 @@ describe('getEssentialArticles', () => {
     expect(result.essentialCount).toBe(2)
     expect(result.totalQuestions).toBe(20)
     expect(result.byDifficulty).toEqual({ easy: 15, medium: 5 })
+  })
+})
+
+// ============================================
+// getScopedLawSections
+// ============================================
+
+describe('getScopedLawSections', () => {
+  test('caso Lucía: Tema 5 × Ley 39/2015 sólo Título VI en scope (art 128)', async () => {
+    setupMockDb([
+      // 1. law lookup
+      [{ id: 'law-ley-39-2015' }],
+      // 2. topic_scope: sólo art 128 de Ley 39/2015 en Tema 5
+      [{ articleNumbers: ['128'], lawId: 'law-ley-39-2015', lawShortName: 'Ley 39/2015' }],
+      // 3. law_sections: 7 títulos completos de la ley
+      [
+        { id: 's1', slug: 'titulo-preliminar', title: 'Título Preliminar. Disposiciones generales', description: null, articleRangeStart: 1, articleRangeEnd: 2, sectionNumber: '0', sectionType: 'titulo', orderPosition: 1 },
+        { id: 's2', slug: 'titulo-i', title: 'Título I. De los interesados en el procedimiento', description: null, articleRangeStart: 3, articleRangeEnd: 12, sectionNumber: '1', sectionType: 'titulo', orderPosition: 2 },
+        { id: 's3', slug: 'titulo-ii', title: 'Título II. De la actividad de las Administraciones', description: null, articleRangeStart: 13, articleRangeEnd: 33, sectionNumber: '2', sectionType: 'titulo', orderPosition: 3 },
+        { id: 's4', slug: 'titulo-iii', title: 'Título III. De los actos administrativos', description: null, articleRangeStart: 34, articleRangeEnd: 52, sectionNumber: '3', sectionType: 'titulo', orderPosition: 4 },
+        { id: 's5', slug: 'titulo-iv', title: 'Título IV. Del procedimiento administrativo común', description: null, articleRangeStart: 53, articleRangeEnd: 105, sectionNumber: '4', sectionType: 'titulo', orderPosition: 5 },
+        { id: 's6', slug: 'titulo-v', title: 'Título V. De la revisión de los actos', description: null, articleRangeStart: 106, articleRangeEnd: 126, sectionNumber: '5', sectionType: 'titulo', orderPosition: 6 },
+        { id: 's7', slug: 'titulo-vi', title: 'Título VI. De la iniciativa legislativa', description: null, articleRangeStart: 127, articleRangeEnd: 133, sectionNumber: '6', sectionType: 'titulo', orderPosition: 7 },
+      ],
+    ])
+
+    const result = await getScopedLawSections({
+      lawShortName: 'Ley 39/2015',
+      topicNumber: 5,
+      positionType: 'auxiliar_administrativo_estado',
+    })
+
+    expect(result.success).toBe(true)
+    expect(result.sections).toHaveLength(7)
+    expect(result.totalInScope).toBe(1)
+
+    // Sólo Título VI contiene art 128
+    const tituloVI = result.sections!.find(s => s.slug === 'titulo-vi')
+    expect(tituloVI?.scopeMeta.articleCountInScope).toBe(1)
+    expect(tituloVI?.scopeMeta.articlesInScope).toEqual(['128'])
+
+    // Los otros 6 títulos están fuera del scope
+    const fueraDeScope = result.sections!.filter(s => s.scopeMeta.articleCountInScope === 0)
+    expect(fueraDeScope).toHaveLength(6)
+    fueraDeScope.forEach(s => {
+      expect(s.scopeMeta.articlesInScope).toEqual([])
+    })
+  })
+
+  test('ley con múltiples artículos repartidos en varios títulos', async () => {
+    setupMockDb([
+      // 1. law lookup
+      [{ id: 'law-ce' }],
+      // 2. topic_scope: arts 1 (Tit Prelim), 14-16 (Tit I), 97 (Tit IV)
+      [{ articleNumbers: ['1', '14', '15', '16', '97'], lawId: 'law-ce', lawShortName: 'CE' }],
+      // 3. law_sections: 10 títulos CE
+      [
+        { id: 's1', slug: 'tit-prelim', title: 'Título Preliminar', description: null, articleRangeStart: 1, articleRangeEnd: 9, sectionNumber: '0', sectionType: 'titulo', orderPosition: 1 },
+        { id: 's2', slug: 'tit-i', title: 'Título I', description: null, articleRangeStart: 10, articleRangeEnd: 55, sectionNumber: '1', sectionType: 'titulo', orderPosition: 2 },
+        { id: 's3', slug: 'tit-iv', title: 'Título IV', description: null, articleRangeStart: 97, articleRangeEnd: 107, sectionNumber: '4', sectionType: 'titulo', orderPosition: 3 },
+      ],
+    ])
+
+    const result = await getScopedLawSections({
+      lawShortName: 'CE',
+      topicNumber: 1,
+      positionType: 'auxiliar_administrativo_estado',
+    })
+
+    expect(result.success).toBe(true)
+    expect(result.totalInScope).toBe(3)
+    expect(result.sections![0].scopeMeta.articlesInScope).toEqual(['1'])
+    expect(result.sections![1].scopeMeta.articlesInScope).toEqual(['14', '15', '16'])
+    expect(result.sections![2].scopeMeta.articlesInScope).toEqual(['97'])
+  })
+
+  test('ley no encontrada devuelve error', async () => {
+    setupMockDb([
+      // 1. law lookup empty
+      [],
+    ])
+
+    const result = await getScopedLawSections({
+      lawShortName: 'INEXISTENTE',
+      topicNumber: 1,
+      positionType: 'auxiliar_administrativo_estado',
+    })
+
+    expect(result.success).toBe(false)
+    expect(result.error).toContain('Ley no encontrada')
+  })
+
+  test('ley fuera del scope del tema devuelve sections vacío sin error', async () => {
+    setupMockDb([
+      // 1. law lookup
+      [{ id: 'law-foo' }],
+      // 2. topic_scope — empty (esta ley no pertenece al tema)
+      [],
+    ])
+
+    const result = await getScopedLawSections({
+      lawShortName: 'LeyRara',
+      topicNumber: 999,
+      positionType: 'auxiliar_administrativo_estado',
+    })
+
+    expect(result.success).toBe(true)
+    expect(result.sections).toEqual([])
+    expect(result.totalInScope).toBe(0)
+  })
+
+  test('ley sin secciones definidas en law_sections devuelve lista vacía', async () => {
+    setupMockDb([
+      // 1. law lookup
+      [{ id: 'law-sin-sec' }],
+      // 2. topic_scope con artículos
+      [{ articleNumbers: ['1', '2', '3'], lawId: 'law-sin-sec', lawShortName: 'LeyX' }],
+      // 3. law_sections: vacío
+      [],
+    ])
+
+    const result = await getScopedLawSections({
+      lawShortName: 'LeyX',
+      topicNumber: 1,
+      positionType: 'auxiliar_administrativo_estado',
+    })
+
+    expect(result.success).toBe(true)
+    expect(result.sections).toEqual([])
+    expect(result.totalInScope).toBe(0)
+  })
+
+  test('sección sin articleRange se trata como fuera de scope', async () => {
+    setupMockDb([
+      [{ id: 'law-1' }],
+      [{ articleNumbers: ['1', '5'], lawId: 'law-1', lawShortName: 'CE' }],
+      [
+        { id: 's1', slug: 'anexo', title: 'Anexo I', description: null, articleRangeStart: null, articleRangeEnd: null, sectionNumber: null, sectionType: 'anexo', orderPosition: 1 },
+        { id: 's2', slug: 'tit-i', title: 'Título I', description: null, articleRangeStart: 1, articleRangeEnd: 10, sectionNumber: '1', sectionType: 'titulo', orderPosition: 2 },
+      ],
+    ])
+
+    const result = await getScopedLawSections({
+      lawShortName: 'CE',
+      topicNumber: 1,
+      positionType: 'auxiliar_administrativo_estado',
+    })
+
+    expect(result.success).toBe(true)
+    expect(result.sections).toHaveLength(2)
+    // Anexo sin rango → articleCountInScope = 0 (fuera de scope)
+    expect(result.sections![0].scopeMeta.articleCountInScope).toBe(0)
+    expect(result.sections![0].articleRange).toBeNull()
+    // Título I → 2 arts en scope
+    expect(result.sections![1].scopeMeta.articleCountInScope).toBe(2)
+  })
+
+  test('ley virtual (topic_scope.articleNumbers = null) considera secciones como en scope', async () => {
+    setupMockDb([
+      [{ id: 'law-virtual' }],
+      // articleNumbers null = ley virtual (incluye todos los artículos)
+      [{ articleNumbers: null, lawId: 'law-virtual', lawShortName: 'LeyVirtual' }],
+      [
+        { id: 's1', slug: 'tit-i', title: 'Título I', description: null, articleRangeStart: 1, articleRangeEnd: 10, sectionNumber: '1', sectionType: 'titulo', orderPosition: 1 },
+      ],
+    ])
+
+    const result = await getScopedLawSections({
+      lawShortName: 'LeyVirtual',
+      topicNumber: 1,
+      positionType: 'auxiliar_administrativo_estado',
+    })
+
+    expect(result.success).toBe(true)
+    expect(result.sections).toHaveLength(1)
+    expect(result.sections![0].scopeMeta.articleCountInScope).toBeGreaterThan(0)
+    expect(result.totalInScope).toBe(1)
+  })
+
+  test('error de DB devuelve error response', async () => {
+    setupMockDb([
+      new Error('Connection refused'),
+    ])
+
+    const result = await getScopedLawSections({
+      lawShortName: 'CE',
+      topicNumber: 1,
+      positionType: 'auxiliar_administrativo_estado',
+    })
+
+    expect(result.success).toBe(false)
+    expect(result.error).toBe('Connection refused')
   })
 })

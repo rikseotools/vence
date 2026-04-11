@@ -1,6 +1,6 @@
 // lib/api/test-config/queries.ts - Queries Drizzle para configurador de tests
 import { getDb } from '@/db/client'
-import { questions, articles, laws, topicScope, topics } from '@/db/schema'
+import { questions, articles, laws, topicScope, topics, lawSections } from '@/db/schema'
 import { eq, and, inArray, sql } from 'drizzle-orm'
 import { getValidExamPositions } from '@/lib/config/exam-positions'
 import type {
@@ -10,6 +10,9 @@ import type {
   EstimateQuestionsResponse,
   GetEssentialArticlesRequest,
   GetEssentialArticlesResponse,
+  GetScopedSectionsRequest,
+  GetScopedSectionsResponse,
+  ScopedLawSection,
 } from './schemas'
 import type { SectionFilter } from '@/lib/api/filtered-questions/schemas'
 
@@ -470,6 +473,149 @@ export async function getEssentialArticles(
     }
   } catch (error) {
     console.error('❌ Error obteniendo artículos imprescindibles:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error desconocido',
+    }
+  }
+}
+
+// ============================================
+// 4. SECCIONES (TÍTULOS/CAPÍTULOS) CON SCOPE DE TEMA
+// ============================================
+//
+// Devuelve todas las secciones (law_sections) de una ley enriquecidas con
+// metadatos de intersección con topic_scope del tema indicado. Esto permite
+// al configurador de tests (cuando opera dentro de un tema) mostrar sólo los
+// títulos que realmente contienen artículos dentro del scope — evitando que
+// el usuario seleccione títulos que darían 0 preguntas.
+//
+// Los títulos fuera de scope no se eliminan: se devuelven con articleCountInScope=0
+// para que el frontend pueda mostrarlos deshabilitados y explicar por qué.
+
+export async function getScopedLawSections(
+  params: GetScopedSectionsRequest
+): Promise<GetScopedSectionsResponse> {
+  try {
+    const db = getDb()
+    const { lawShortName, topicNumber, positionType } = params
+
+    // 1. Resolver law_id (buscar ley activa por short_name)
+    const lawResult = await db
+      .select({ id: laws.id })
+      .from(laws)
+      .where(and(eq(laws.shortName, lawShortName), eq(laws.isActive, true)))
+      .limit(1)
+
+    if (!lawResult || lawResult.length === 0) {
+      return { success: false, error: `Ley no encontrada: ${lawShortName}` }
+    }
+
+    const lawId = lawResult[0].id
+
+    // 2. Obtener topic_scope para esta ley+tema
+    //    - null = ley virtual (incluye TODOS los artículos)
+    //    - []   = ley presente pero sin artículos asignados (caso raro)
+    //    - [...] = set específico de artículos
+    const mappings = await getTopicScopeMappings(db, topicNumber, positionType, lawShortName)
+
+    if (!mappings || mappings.length === 0) {
+      // La ley no pertenece al scope del tema → sin secciones útiles
+      return { success: true, sections: [], totalInScope: 0 }
+    }
+
+    const scopeArticleNumbers: string[] | null = mappings[0].articleNumbers
+
+    // 3. Obtener secciones activas de la ley (Drizzle)
+    const sections = await db
+      .select({
+        id: lawSections.id,
+        slug: lawSections.slug,
+        title: lawSections.title,
+        description: lawSections.description,
+        articleRangeStart: lawSections.articleRangeStart,
+        articleRangeEnd: lawSections.articleRangeEnd,
+        sectionNumber: lawSections.sectionNumber,
+        sectionType: lawSections.sectionType,
+        orderPosition: lawSections.orderPosition,
+      })
+      .from(lawSections)
+      .where(and(eq(lawSections.lawId, lawId), eq(lawSections.isActive, true)))
+      .orderBy(lawSections.orderPosition)
+
+    // 4. Enriquecer con intersección con topic_scope
+    //    Si scopeArticleNumbers === null → ley virtual, todos los artículos cuentan
+    //    Si scopeArticleNumbers === []   → ningún artículo, scopeMeta = 0 para todo
+    //    Si scopeArticleNumbers tiene valores → interseccionar por rango
+    const enriched: ScopedLawSection[] = sections.map(s => {
+      const hasRange = s.articleRangeStart != null && s.articleRangeEnd != null
+      let articlesInScope: string[] = []
+
+      if (hasRange) {
+        if (scopeArticleNumbers === null) {
+          // Ley virtual: no tenemos lista explícita — tratamos como "todos en rango"
+          // pero no podemos enumerar artículos sin consultar la tabla articles.
+          // En este caso devolvemos el propio rango como placeholder (count > 0 suficiente).
+          // Esto es seguro porque en el pipeline de filtros la ley virtual siempre pasa.
+          articlesInScope = []
+        } else {
+          articlesInScope = scopeArticleNumbers.filter(a => {
+            const n = parseInt(a, 10)
+            if (isNaN(n)) return false
+            return n >= s.articleRangeStart! && n <= s.articleRangeEnd!
+          })
+        }
+      }
+
+      // Para leyes virtuales, consideramos toda sección con rango como "en scope"
+      const countInScope =
+        scopeArticleNumbers === null && hasRange
+          ? Math.max(0, s.articleRangeEnd! - s.articleRangeStart! + 1)
+          : articlesInScope.length
+
+      return {
+        id: s.id,
+        slug: s.slug,
+        title: s.title,
+        description: s.description,
+        articleRange: hasRange
+          ? { start: s.articleRangeStart!, end: s.articleRangeEnd! }
+          : null,
+        sectionNumber: s.sectionNumber,
+        sectionType: s.sectionType,
+        orderPosition: s.orderPosition,
+        scopeMeta: {
+          articlesInScope,
+          articleCountInScope: countInScope,
+        },
+      }
+    })
+
+    const totalInScope = enriched.filter(s => s.scopeMeta.articleCountInScope > 0).length
+
+    // Telemetría estructurada: si hay secciones pero ninguna útil, probable
+    // tema mal mapeado o ley con un único artículo fuera de los títulos.
+    // No es un error — sólo una señal que monitorizamos en producción.
+    if (enriched.length > 0 && totalInScope === 0) {
+      console.warn(
+        `⚠️ [getScopedLawSections] ${lawShortName} tema ${topicNumber}/${positionType}: ` +
+        `${enriched.length} secciones, 0 con artículos en scope. ` +
+        `El botón Títulos quedará oculto para este caso.`
+      )
+    } else {
+      console.log(
+        `📚 [getScopedLawSections] ${lawShortName} tema ${topicNumber}/${positionType}: ` +
+        `${totalInScope}/${enriched.length} secciones útiles en scope`
+      )
+    }
+
+    return {
+      success: true,
+      sections: enriched,
+      totalInScope,
+    }
+  } catch (error) {
+    console.error('❌ Error obteniendo secciones con scope de tema:', error)
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Error desconocido',

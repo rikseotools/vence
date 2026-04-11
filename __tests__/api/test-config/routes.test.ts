@@ -9,17 +9,20 @@ jest.mock('../../../lib/api/test-config/queries', () => ({
   getArticlesForLaw: jest.fn(),
   estimateAvailableQuestions: jest.fn(),
   getEssentialArticles: jest.fn(),
+  getScopedLawSections: jest.fn(),
 }))
 
 import { NextRequest } from 'next/server'
-import { getArticlesForLaw, estimateAvailableQuestions, getEssentialArticles } from '../../../lib/api/test-config/queries'
+import { getArticlesForLaw, estimateAvailableQuestions, getEssentialArticles, getScopedLawSections } from '../../../lib/api/test-config/queries'
 import { GET as articlesGET } from '../../../app/api/v2/test-config/articles/route'
 import { GET as estimateGET } from '../../../app/api/v2/test-config/estimate/route'
 import { GET as essentialArticlesGET } from '../../../app/api/v2/test-config/essential-articles/route'
+import { GET as sectionsGET } from '../../../app/api/v2/test-config/sections/route'
 
 const mockGetArticlesForLaw = getArticlesForLaw as jest.MockedFunction<typeof getArticlesForLaw>
 const mockEstimateAvailableQuestions = estimateAvailableQuestions as jest.MockedFunction<typeof estimateAvailableQuestions>
 const mockGetEssentialArticles = getEssentialArticles as jest.MockedFunction<typeof getEssentialArticles>
+const mockGetScopedLawSections = getScopedLawSections as jest.MockedFunction<typeof getScopedLawSections>
 
 function createRequest(path: string) {
   return new NextRequest(`http://localhost:3000${path}`)
@@ -254,5 +257,104 @@ describe('GET /api/v2/test-config/essential-articles', () => {
     expect(response.status).toBe(500)
     expect(data.success).toBe(false)
     expect(data.error).toContain('No se encontró mapeo')
+  })
+})
+
+// ============================================
+// GET /api/v2/test-config/sections
+// ============================================
+
+describe('GET /api/v2/test-config/sections', () => {
+  test('request válido devuelve 200 con secciones + scopeMeta', async () => {
+    mockGetScopedLawSections.mockResolvedValue({
+      success: true,
+      sections: [
+        {
+          id: 's1',
+          slug: 'titulo-vi',
+          title: 'Título VI. De la iniciativa legislativa',
+          description: null,
+          articleRange: { start: 127, end: 133 },
+          sectionNumber: '6',
+          sectionType: 'titulo',
+          orderPosition: 7,
+          scopeMeta: {
+            articlesInScope: ['128'],
+            articleCountInScope: 1,
+          },
+        },
+      ],
+      totalInScope: 1,
+    })
+
+    const request = createRequest(
+      '/api/v2/test-config/sections?lawShortName=Ley%2039%2F2015&topicNumber=5&positionType=auxiliar_administrativo_estado'
+    )
+    const response = await sectionsGET(request)
+    const data = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(data.success).toBe(true)
+    expect(data.sections).toHaveLength(1)
+    expect(data.sections[0].scopeMeta.articleCountInScope).toBe(1)
+    expect(data.totalInScope).toBe(1)
+
+    // Asegurar que la query recibe los params parseados correctamente
+    expect(mockGetScopedLawSections).toHaveBeenCalledWith({
+      lawShortName: 'Ley 39/2015',
+      topicNumber: 5,
+      positionType: 'auxiliar_administrativo_estado',
+    })
+  })
+
+  test('falta lawShortName devuelve 400', async () => {
+    const request = createRequest(
+      '/api/v2/test-config/sections?topicNumber=1&positionType=auxiliar_administrativo_estado'
+    )
+    const response = await sectionsGET(request)
+    const data = await response.json()
+
+    expect(response.status).toBe(400)
+    expect(data.success).toBe(false)
+    expect(data.error).toContain('inválidos')
+  })
+
+  test('falta topicNumber devuelve 400', async () => {
+    const request = createRequest(
+      '/api/v2/test-config/sections?lawShortName=CE&positionType=auxiliar_administrativo_estado'
+    )
+    const response = await sectionsGET(request)
+    const data = await response.json()
+
+    expect(response.status).toBe(400)
+    expect(data.success).toBe(false)
+  })
+
+  test('positionType inválido devuelve 400', async () => {
+    const request = createRequest(
+      '/api/v2/test-config/sections?lawShortName=CE&topicNumber=1&positionType=invalido'
+    )
+    const response = await sectionsGET(request)
+    const data = await response.json()
+
+    expect(response.status).toBe(400)
+    expect(data.success).toBe(false)
+  })
+
+  test('error de query devuelve 500', async () => {
+    mockGetScopedLawSections.mockResolvedValue({
+      success: false,
+      error: 'Ley no encontrada: XXX',
+    })
+
+    const request = createRequest(
+      '/api/v2/test-config/sections?lawShortName=XXX&topicNumber=1&positionType=auxiliar_administrativo_estado'
+    )
+    const response = await sectionsGET(request)
+    const data = await response.json()
+
+    expect(response.status).toBe(500)
+    expect(data.success).toBe(false)
+    expect(data.error).toContain('Ley no encontrada')
   })
 })

@@ -8,12 +8,17 @@ import {
   estimateQuestionsResponseSchema,
   getEssentialArticlesRequestSchema,
   getEssentialArticlesResponseSchema,
+  getScopedSectionsRequestSchema,
+  getScopedSectionsResponseSchema,
+  scopedLawSectionSchema,
   safeParseGetArticles,
   safeParseEstimateQuestions,
   safeParseGetEssentialArticles,
+  safeParseGetScopedSections,
   validateGetArticles,
   validateEstimateQuestions,
   validateGetEssentialArticles,
+  validateGetScopedSections,
 } from '../../../lib/api/test-config/schemas'
 
 describe('getArticlesRequestSchema', () => {
@@ -225,5 +230,171 @@ describe('helpers validate*', () => {
 
   test('validateGetEssentialArticles lanza en datos invalidos', () => {
     expect(() => validateGetEssentialArticles({})).toThrow()
+  })
+
+  test('validateGetScopedSections lanza en datos invalidos', () => {
+    expect(() => validateGetScopedSections({})).toThrow()
+  })
+})
+
+describe('getScopedSectionsRequestSchema', () => {
+  test('valida request completo', () => {
+    const result = getScopedSectionsRequestSchema.safeParse({
+      lawShortName: 'Ley 39/2015',
+      topicNumber: 5,
+      positionType: 'auxiliar_administrativo_estado',
+    })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.lawShortName).toBe('Ley 39/2015')
+      expect(result.data.topicNumber).toBe(5)
+      expect(result.data.positionType).toBe('auxiliar_administrativo_estado')
+    }
+  })
+
+  test('rechaza lawShortName vacío', () => {
+    const result = getScopedSectionsRequestSchema.safeParse({
+      lawShortName: '',
+      topicNumber: 5,
+      positionType: 'auxiliar_administrativo_estado',
+    })
+    expect(result.success).toBe(false)
+  })
+
+  test('rechaza topicNumber cero o negativo', () => {
+    const zero = getScopedSectionsRequestSchema.safeParse({
+      lawShortName: 'CE',
+      topicNumber: 0,
+      positionType: 'auxiliar_administrativo_estado',
+    })
+    expect(zero.success).toBe(false)
+
+    const negative = getScopedSectionsRequestSchema.safeParse({
+      lawShortName: 'CE',
+      topicNumber: -3,
+      positionType: 'auxiliar_administrativo_estado',
+    })
+    expect(negative.success).toBe(false)
+  })
+
+  test('rechaza topicNumber no entero', () => {
+    const result = getScopedSectionsRequestSchema.safeParse({
+      lawShortName: 'CE',
+      topicNumber: 1.5,
+      positionType: 'auxiliar_administrativo_estado',
+    })
+    expect(result.success).toBe(false)
+  })
+
+  test('rechaza topicNumber ausente', () => {
+    const result = getScopedSectionsRequestSchema.safeParse({
+      lawShortName: 'CE',
+      positionType: 'auxiliar_administrativo_estado',
+    })
+    expect(result.success).toBe(false)
+  })
+
+  test('rechaza positionType inválido', () => {
+    const result = getScopedSectionsRequestSchema.safeParse({
+      lawShortName: 'CE',
+      topicNumber: 1,
+      positionType: 'invalid_type',
+    })
+    expect(result.success).toBe(false)
+  })
+})
+
+describe('getScopedSectionsResponseSchema', () => {
+  test('valida response exitoso con secciones', () => {
+    const result = getScopedSectionsResponseSchema.safeParse({
+      success: true,
+      sections: [
+        {
+          id: 's1',
+          slug: 'titulo-vi',
+          title: 'Título VI. De la iniciativa legislativa',
+          description: null,
+          articleRange: { start: 127, end: 133 },
+          sectionNumber: '6',
+          sectionType: 'titulo',
+          orderPosition: 7,
+          scopeMeta: {
+            articlesInScope: ['128'],
+            articleCountInScope: 1,
+          },
+        },
+      ],
+      totalInScope: 1,
+    })
+    expect(result.success).toBe(true)
+  })
+
+  test('valida response con sección sin articleRange', () => {
+    const result = getScopedSectionsResponseSchema.safeParse({
+      success: true,
+      sections: [
+        {
+          id: 's1',
+          slug: 'anexo',
+          title: 'Anexo I',
+          description: 'Anexo único',
+          articleRange: null,
+          sectionNumber: null,
+          sectionType: 'anexo',
+          orderPosition: 1,
+          scopeMeta: {
+            articlesInScope: [],
+            articleCountInScope: 0,
+          },
+        },
+      ],
+      totalInScope: 0,
+    })
+    expect(result.success).toBe(true)
+  })
+
+  test('valida response de error', () => {
+    const result = getScopedSectionsResponseSchema.safeParse({
+      success: false,
+      error: 'Ley no encontrada: INEXISTENTE',
+    })
+    expect(result.success).toBe(true)
+  })
+
+  test('rechaza response con scopeMeta.articleCountInScope negativo', () => {
+    const result = scopedLawSectionSchema.safeParse({
+      id: 's1',
+      slug: 'tit-i',
+      title: 'Título I',
+      description: null,
+      articleRange: { start: 1, end: 10 },
+      sectionNumber: '1',
+      sectionType: 'titulo',
+      orderPosition: 1,
+      scopeMeta: {
+        articlesInScope: [],
+        articleCountInScope: -1,
+      },
+    })
+    expect(result.success).toBe(false)
+  })
+})
+
+describe('safeParseGetScopedSections', () => {
+  test('válido', () => {
+    const result = safeParseGetScopedSections({
+      lawShortName: 'CE',
+      topicNumber: 1,
+      positionType: 'auxiliar_administrativo_estado',
+    })
+    expect(result.success).toBe(true)
+  })
+
+  test('inválido: falta positionType', () => {
+    const result = safeParseGetScopedSections({
+      lawShortName: 'CE',
+      topicNumber: 1,
+    })
+    expect(result.success).toBe(false)
   })
 })

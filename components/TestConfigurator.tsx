@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import SectionFilterModal from './SectionFilterModal';
 import { useLawSlugs } from '@/contexts/LawSlugContext';
 import { getOposicionByPositionType } from '@/lib/config/oposiciones';
+import { useInteractionTracker } from '@/hooks/useInteractionTracker';
 
 function getOposicionName(positionType: string): string {
   return getOposicionByPositionType(positionType)?.name || 'tu oposición'
@@ -47,6 +48,7 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
   const [showEssentialArticlesInfoModal, setShowEssentialArticlesInfoModal] = useState(false);
   
   const { getSlug: getCanonicalSlug } = useLawSlugs();
+  const { track } = useInteractionTracker();
 
   // Estados de dificultad
   const [difficultyMode, setDifficultyMode] = useState('random');
@@ -443,6 +445,57 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
     };
   }, [tema, positionType, onlyOfficialQuestions, focusEssentialArticles, difficultyMode, selectedLaws, selectedArticlesByLaw, selectedSectionFilters]);
 
+  // 🆕 Telemetría: detectar filtros que producen 0 preguntas en modo tema
+  //
+  // Esto monitoriza la UX rota que llevó al bug de Lucía: usuaria selecciona
+  // títulos/artículos dentro de un tema y termina con 0 preguntas disponibles
+  // sin un mensaje claro de por qué. Cada disparo debería ser *raro* tras el
+  // fix (porque las secciones fuera de scope están deshabilitadas). Si el
+  // contador crece en producción, es señal de un caso que no cubrimos.
+  //
+  // Evento: `config_empty_filter` con `reason` identificando el origen.
+  const lastEmptyFilterRef = useRef<string | null>(null);
+  useEffect(() => {
+    // Sólo trackeamos en modo tema (es donde ocurre el bug) y tras
+    // recibir la estimación real del servidor (no el fallback local).
+    if (!tema || apiEstimate === null || apiEstimate > 0) return;
+
+    const hasSectionFilter = selectedSectionFilters && selectedSectionFilters.length > 0;
+    const hasArticleFilter = Array.from(selectedArticlesByLaw.values()).some(s => s.size > 0);
+    const hasLawFilter = selectedLaws.size > 0;
+
+    // Sólo interesa cuando el usuario ha aplicado ALGÚN filtro y el resultado es 0
+    if (!hasSectionFilter && !hasArticleFilter && !hasLawFilter) return;
+
+    const reason = hasSectionFilter
+      ? 'section_filter_no_intersection'
+      : hasArticleFilter
+        ? 'article_filter_empty'
+        : 'law_filter_empty';
+
+    // De-duplicar: no trackear el mismo estado dos veces seguidas
+    const stateKey = `${tema}:${reason}:${Array.from(selectedLaws).join(',')}:${selectedSectionFilters?.map(s => s.title).join(',')}`;
+    if (lastEmptyFilterRef.current === stateKey) return;
+    lastEmptyFilterRef.current = stateKey;
+
+    track({
+      eventType: 'config_empty_filter',
+      eventCategory: 'test',
+      component: 'TestConfigurator',
+      action: reason,
+      value: {
+        tema,
+        positionType,
+        selectedLaws: Array.from(selectedLaws),
+        selectedSectionTitles: selectedSectionFilters?.map(s => s.title) ?? [],
+        selectedArticlesCount: Array.from(selectedArticlesByLaw.values()).reduce((sum, s) => sum + s.size, 0),
+        reason,
+      },
+    });
+
+    console.warn(`⚠️ [TestConfigurator] Filtro produjo 0 preguntas (${reason}) — tema ${tema}`);
+  }, [tema, positionType, apiEstimate, selectedLaws, selectedArticlesByLaw, selectedSectionFilters, track]);
+
   const maxQuestions = useMemo(() => {
     const result = Math.min(selectedQuestions, availableQuestions);
     // Validar que no sea NaN
@@ -507,8 +560,7 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
         // Cargar secciones si no están en cache (para determinar si mostrar el botón)
         if (!availableSectionsByLaw.has(lawShortName)) {
           console.log('📚 Cargando secciones automáticamente para LawTestConfigurator:', lawShortName);
-          const lawSlug = getCanonicalSlug(lawShortName);
-          loadSectionsForLaw(lawSlug).then(sections => {
+          loadSectionsForLaw(lawShortName).then(sections => {
             setAvailableSectionsByLaw(prev => {
               const newMap = new Map(prev);
               newMap.set(lawShortName, sections);
@@ -528,8 +580,7 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
       // Solo cargar si no están ya en cache
       if (!availableSectionsByLaw.has(selectedLawName)) {
         console.log('📚 Cargando secciones automáticamente para ley seleccionada:', selectedLawName);
-        const lawSlug = getCanonicalSlug(selectedLawName);
-        loadSectionsForLaw(lawSlug).then(sections => {
+        loadSectionsForLaw(selectedLawName).then(sections => {
           setAvailableSectionsByLaw(prev => {
             const newMap = new Map(prev);
             newMap.set(selectedLawName, sections);
@@ -615,30 +666,61 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
   };
 
   // 🆕 Función para cargar secciones de una ley específica (con dedup de requests en vuelo)
-  const loadSectionsForLaw = async (lawSlug: string) => {
-    // Si ya hay una request en vuelo para este slug, reusar la misma promise
-    if (sectionsInFlightRef.current.has(lawSlug)) {
-      console.log(`⏳ Reutilizando request de secciones en vuelo para ${lawSlug}`);
-      return sectionsInFlightRef.current.get(lawSlug);
+  //
+  // - Con `tema`: llama al endpoint v2 (/api/v2/test-config/sections) que
+  //   devuelve las secciones enriquecidas con `scopeMeta` (intersección con
+  //   topic_scope). Esto permite deshabilitar títulos sin artículos en el tema.
+  // - Sin `tema`: llama al endpoint legacy (/api/teoria/sections) que devuelve
+  //   todas las secciones de la ley sin filtrar — comportamiento original para
+  //   LawTestConfigurator y páginas de teoría.
+  //
+  // El cache key es `lawShortName` en ambos casos; para el flujo con tema se
+  // añade el tema al key para evitar colisiones al cambiar de tema sin refresh.
+  const loadSectionsForLaw = async (lawShortName: string) => {
+    const cacheKey = tema ? `${lawShortName}::tema${tema}` : lawShortName;
+
+    // Si ya hay una request en vuelo para este cache key, reusar la misma promise
+    if (sectionsInFlightRef.current.has(cacheKey)) {
+      console.log(`⏳ Reutilizando request de secciones en vuelo para ${cacheKey}`);
+      return sectionsInFlightRef.current.get(cacheKey);
     }
 
     const promise = (async () => {
       try {
-        console.log('📚 Cargando secciones para ley:', lawSlug);
-        const res = await fetch(`/api/teoria/sections?law=${encodeURIComponent(lawSlug)}`);
-        const data = await res.json();
-        return data.sections || [];
+        if (tema) {
+          // Flujo v2: secciones enriquecidas con scope del tema
+          console.log(`📚 Cargando secciones (v2, tema ${tema}) para ley:`, lawShortName);
+          const params = new URLSearchParams({
+            lawShortName,
+            topicNumber: String(tema),
+            positionType,
+          });
+          const res = await fetch(`/api/v2/test-config/sections?${params}`);
+          const data = await res.json();
+          if (!data.success) {
+            console.warn('⚠️ Error cargando secciones v2:', data.error);
+            return [];
+          }
+          return data.sections || [];
+        } else {
+          // Flujo legacy: secciones completas de la ley (sin scope de tema)
+          const lawSlug = getCanonicalSlug(lawShortName);
+          console.log('📚 Cargando secciones (legacy) para ley:', lawSlug);
+          const res = await fetch(`/api/teoria/sections?law=${encodeURIComponent(lawSlug)}`);
+          const data = await res.json();
+          return data.sections || [];
+        }
       } catch (error) {
         console.error('❌ Error cargando secciones:', error);
         return [];
       }
     })();
 
-    sectionsInFlightRef.current.set(lawSlug, promise);
+    sectionsInFlightRef.current.set(cacheKey, promise);
     try {
       return await promise;
     } finally {
-      sectionsInFlightRef.current.delete(lawSlug);
+      sectionsInFlightRef.current.delete(cacheKey);
     }
   };
 
@@ -1181,7 +1263,14 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
                     }).map((law) => {
                       const isSelected = selectedLaws.has(law.law_short_name);
                       const sectionsForLaw = availableSectionsByLaw.get(law.law_short_name) || [];
-                      const hasSections = sectionsForLaw.length > 0;
+                      // En modo tema, sólo contamos secciones con artículos en scope
+                      // (scopeMeta.articleCountInScope > 0). En modo sin tema, todas cuentan.
+                      const usefulSectionsCount = tema
+                        ? sectionsForLaw.filter((s: any) => (s?.scopeMeta?.articleCountInScope ?? 0) > 0).length
+                        : sectionsForLaw.length;
+                      // El botón de Títulos sólo tiene sentido si hay ≥2 secciones útiles
+                      // (con 0 o 1, filtrar por título es un no-op inútil).
+                      const hasSections = usefulSectionsCount >= 2;
                       const isOnlySelected = isSelected && selectedLaws.size === 1;
 
                       return (

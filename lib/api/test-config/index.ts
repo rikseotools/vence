@@ -10,12 +10,18 @@ export {
   getEssentialArticlesRequestSchema,
   getEssentialArticlesResponseSchema,
   essentialArticleItemSchema,
+  getScopedSectionsRequestSchema,
+  getScopedSectionsResponseSchema,
+  scopedLawSectionSchema,
+  sectionScopeMetaSchema,
   safeParseGetArticles,
   validateGetArticles,
   safeParseEstimateQuestions,
   validateEstimateQuestions,
   safeParseGetEssentialArticles,
   validateGetEssentialArticles,
+  safeParseGetScopedSections,
+  validateGetScopedSections,
   type GetArticlesRequest,
   type GetArticlesResponse,
   type ArticleItem,
@@ -24,6 +30,10 @@ export {
   type GetEssentialArticlesRequest,
   type GetEssentialArticlesResponse,
   type EssentialArticleItem,
+  type GetScopedSectionsRequest,
+  type GetScopedSectionsResponse,
+  type ScopedLawSection,
+  type SectionScopeMeta,
 } from './schemas'
 
 // Queries
@@ -31,4 +41,5 @@ export {
   getArticlesForLaw,
   estimateAvailableQuestions,
   getEssentialArticles,
+  getScopedLawSections,
 } from './queries'

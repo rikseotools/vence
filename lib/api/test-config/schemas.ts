@@ -60,6 +60,48 @@ export const estimateQuestionsResponseSchema = z.object({
 export type EstimateQuestionsResponse = z.infer<typeof estimateQuestionsResponseSchema>
 
 // ============================================
+// SECCIONES CON SCOPE DE TEMA (títulos/capítulos filtrados por topic_scope)
+// ============================================
+
+export const getScopedSectionsRequestSchema = z.object({
+  lawShortName: z.string().min(1),
+  topicNumber: z.number().int().min(1),
+  positionType: z.enum(POSITION_TYPES_ENUM),
+})
+
+export type GetScopedSectionsRequest = z.infer<typeof getScopedSectionsRequestSchema>
+
+export const sectionScopeMetaSchema = z.object({
+  articlesInScope: z.array(z.string()),
+  articleCountInScope: z.number().int().min(0),
+})
+
+export type SectionScopeMeta = z.infer<typeof sectionScopeMetaSchema>
+
+export const scopedLawSectionSchema = z.object({
+  id: z.string(),
+  slug: z.string(),
+  title: z.string(),
+  description: z.string().nullable(),
+  articleRange: z.object({ start: z.number().int(), end: z.number().int() }).nullable(),
+  sectionNumber: z.string().nullable(),
+  sectionType: z.string().nullable(),
+  orderPosition: z.number().int(),
+  scopeMeta: sectionScopeMetaSchema,
+})
+
+export type ScopedLawSection = z.infer<typeof scopedLawSectionSchema>
+
+export const getScopedSectionsResponseSchema = z.object({
+  success: z.boolean(),
+  sections: z.array(scopedLawSectionSchema).optional(),
+  totalInScope: z.number().int().min(0).optional(),
+  error: z.string().optional(),
+})
+
+export type GetScopedSectionsResponse = z.infer<typeof getScopedSectionsResponseSchema>
+
+// ============================================
 // ARTÍCULOS IMPRESCINDIBLES
 // ============================================
 
@@ -115,4 +157,12 @@ export function safeParseGetEssentialArticles(data: unknown) {
 
 export function validateGetEssentialArticles(data: unknown): GetEssentialArticlesRequest {
   return getEssentialArticlesRequestSchema.parse(data)
+}
+
+export function safeParseGetScopedSections(data: unknown) {
+  return getScopedSectionsRequestSchema.safeParse(data)
+}
+
+export function validateGetScopedSections(data: unknown): GetScopedSectionsRequest {
+  return getScopedSectionsRequestSchema.parse(data)
 }
