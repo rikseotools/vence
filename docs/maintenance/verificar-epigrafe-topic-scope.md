@@ -139,9 +139,52 @@ Dos casos especiales:
 
 | Valor | Significado |
 |---|---|
-| `null` | **Ley virtual** — Incluye TODAS las preguntas de esa ley. Correcto para leyes temáticas como "Windows 11", "Procesadores de texto", etc. |
+| `null` + `include_full_title: true` | **Ley virtual / completa** — Incluye TODAS las preguntas de esa ley. Correcto para leyes temáticas como "Windows 11", "Procesadores de texto", etc. o cuando el epígrafe cubre la ley entera. |
+| `null` + `include_full_title: false` | ⚠️ **FOOTGUN** — De facto se comporta como "toda la ley" (las queries filtran `primary_article_id in articles_of_law` sin respetar el null). **Caso real** del bug inicial Andalucía T12 ↔ Ley 19/2021 IMV, que mapeaba preguntas del IMV a un tema cuyo epígrafe no las cubre. Si la intención era "ley virtual", usar `include_full_title: true` explícito. Si era "solo algunos arts", rellenar `article_numbers`. **Nunca dejar ambos vacíos.** |
 | `[]` (vacío) | **Sin artículos** — No incluye nada de esa ley. Si una ley aparece con array vacío, o se eliminan los artículos específicos que correspondan, o se elimina la entrada del scope. |
 | `["1","2","3"]` | **Artículos específicos** — Solo incluye las preguntas vinculadas a esos artículos de esa ley. |
+
+## Solapamientos entre temas
+
+Un mismo artículo puede aparecer en el scope de dos temas distintos. Hay que distinguir dos casos, porque se tratan al revés:
+
+### Solapamiento legítimo (mantener)
+
+Cuando dos epígrafes oficiales del programa cubren el mismo concepto **desde ángulos distintos**, ambos temas legítimamente necesitan el mismo artículo.
+
+**Ejemplo real:** `Ley 39/2015 art 14` ("Derecho y obligación de relacionarse electrónicamente con las AAPP") aparece legítimamente en dos temas de Administrativo Seguridad Social:
+- T16 "Procedimiento administrativo común" → como "derechos del interesado"
+- T23 "Funcionamiento electrónico del sector público" → como obligación de relacionarse electrónicamente (literal en el epígrafe)
+
+Ambos lo necesitan. **No eliminar.**
+
+### Solapamiento erróneo (corregir)
+
+Cuando el solapamiento es consecuencia de un rango **demasiado amplio** y no refleja el epígrafe real.
+
+**Ejemplo real:** T101 "La SS en la CE. TRLGSS" tenía TRLGSS arts [1-12], y T102 "Campo de aplicación y composición del sistema SS" tenía arts [7-11]. Los arts 7-11 son "campo de aplicación" (scope natural de T102), no "normas preliminares" (scope natural de T101). T101 había "robado" contenido de T102 al tener un rango demasiado ancho. Corrección: `T101 → [1-6]`.
+
+### Regla práctica
+
+> **Ante duda genuina, mejor scope más extenso** — evita dejar al opositor sin cobertura de un concepto que podría preguntar.
+>
+> **Solo estrechar cuando el contenido extra pertenece claramente a otro tema del mismo programa** — porque un rango demasiado ancho arrastra preguntas que no corresponden al epígrafe.
+
+## Trampa de las "leyes legislativamente separadas"
+
+Cuando un epígrafe usa un nombre genérico (como "Ley General de la Seguridad Social") NO cubre automáticamente leyes especiales que desarrollan esa materia pero son técnicamente independientes.
+
+**Casos comunes a vigilar:**
+
+| Epígrafe dice... | ...pero NO incluye automáticamente... |
+|---|---|
+| "Ley General de la Seguridad Social" / "TRLGSS" | Ley 19/2021 del Ingreso Mínimo Vital (es ley independiente) |
+| "Protección de datos" / "LOPDGDD" | Reglamento (UE) 2016/679 (RGPD — reglamento europeo distinto) |
+| "Ley 39/2015" | Ley 40/2015 LRJSP (son dos leyes paralelas de la reforma 2015) |
+| "Estatuto de los Trabajadores" / "ET" | TRLGSS (son dos textos refundidos distintos) |
+| "Código Penal" | LO 5/2000 menores o leyes especiales penales |
+
+**Regla:** verificar siempre que **cada concepto** del epígrafe esté cubierto por la **ley específica**, no por el nombre genérico. Si el epígrafe dice "TRLGSS" y también habla expresamente de "ingreso mínimo vital", hay que incluir **dos** entradas en `topic_scope`: una para TRLGSS (RDL 8/2015) y otra para Ley 19/2021.
 
 ## Cómo Corregir un Topic Scope
 
@@ -222,6 +265,77 @@ const supabase = createClient(
   }
 })();
 ```
+
+## Script de Detección de Solapamientos Internos
+
+Detecta automáticamente solapamientos entre temas de **la misma oposición**. Útil tras crear una oposición nueva o refinar un topic_scope existente.
+
+```js
+require("dotenv").config({ path: ".env.local" });
+const { createClient } = require("@supabase/supabase-js");
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
+(async () => {
+  // === CONFIGURAR ===
+  const positionType = 'administrativo_seguridad_social';
+  // ==================
+
+  const { data: topics } = await supabase
+    .from('topics').select('id, topic_number')
+    .eq('position_type', positionType);
+  const topicIds = topics.map(t => t.id);
+  const tnByid = {}; topics.forEach(t => tnByid[t.id] = t.topic_number);
+
+  const { data: scopes } = await supabase
+    .from('topic_scope')
+    .select('topic_id, law_id, article_numbers, include_full_title, laws(short_name)')
+    .in('topic_id', topicIds);
+
+  // Agrupar entradas por ley
+  const byLaw = {};
+  for (const s of scopes) {
+    if (!byLaw[s.law_id]) byLaw[s.law_id] = { name: s.laws?.short_name, entries: [] };
+    byLaw[s.law_id].entries.push({
+      topic: tnByid[s.topic_id],
+      arts: s.article_numbers,
+      full: s.include_full_title
+    });
+  }
+
+  // Buscar artículos que aparecen en 2+ temas de la misma ley
+  let totalOverlaps = 0;
+  for (const [lawId, ld] of Object.entries(byLaw)) {
+    if (ld.entries.length < 2) continue;
+    const artToTemas = {};
+    for (const e of ld.entries) {
+      if (e.full) continue; // los full_title se tratan aparte
+      for (const a of (e.arts || [])) {
+        if (!artToTemas[a]) artToTemas[a] = [];
+        if (!artToTemas[a].includes(e.topic)) artToTemas[a].push(e.topic);
+      }
+    }
+    const overlaps = Object.entries(artToTemas).filter(([a, temas]) => temas.length > 1);
+    if (overlaps.length) {
+      console.log(`\n${ld.name}: ${overlaps.length} solapamientos`);
+      overlaps.forEach(([a, temas]) =>
+        console.log(`  art ${a} → T${temas.sort((a,b)=>a-b).join(', T')}`)
+      );
+      totalOverlaps += overlaps.length;
+    }
+  }
+  console.log(`\nTotal solapamientos internos: ${totalOverlaps}`);
+  console.log('(Algunos pueden ser legítimos — revisa cada uno contra el epígrafe)');
+})();
+```
+
+**Cómo interpretar la salida:**
+
+1. Si no hay solapamientos → scope limpio.
+2. Si hay pocos (<10) → revisar cada uno: ¿es legítimo o erróneo? Ver sección "Solapamientos entre temas".
+3. Si hay muchos (>20) → probablemente hay un rango demasiado amplio en algún tema que arrastra contenido de varios.
 
 ## Checklist de Verificación
 
