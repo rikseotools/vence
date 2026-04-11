@@ -95,7 +95,11 @@ function stripQuotedText(text: string): string {
     }
   }
 
-  return cleanText.trim()
+  const stripped = cleanText.trim()
+  // Si tras el stripping queda vacío pero el original no lo estaba,
+  // devolver el original trimmed para no perder contenido.
+  if (!stripped && text.trim()) return text.trim()
+  return stripped
 }
 
 async function _POST(request: NextRequest) {
@@ -130,9 +134,55 @@ async function _POST(request: NextRequest) {
     const fromEmail = extractEmail(email.from)
     const fromName = extractName(email.from)
     const subject = email.subject || '(sin asunto)'
-    const rawText = email.text || (email.html ? htmlToText(email.html) : '(sin contenido)')
 
-    console.log(`📧 [Inbound] Email de ${fromEmail} — "${subject}"`)
+    // Extraer body: probar campos conocidos + variantes comunes de otros providers.
+    // Resend Inbound es reciente y sus nombres de campo pueden cambiar.
+    const e = email as unknown as Record<string, unknown>
+    const bodyCandidates: Array<[string, unknown]> = [
+      ['text', e.text],
+      ['html', e.html],
+      ['bodyText', e.bodyText],
+      ['bodyHtml', e.bodyHtml],
+      ['body_text', e.body_text],
+      ['body_html', e.body_html],
+      ['textBody', e.textBody],
+      ['htmlBody', e.htmlBody],
+      ['plainText', e.plainText],
+      ['body', e.body],
+      ['stripped-text', e['stripped-text']],
+      ['raw', e.raw],
+    ]
+
+    let rawText = ''
+    let usedField = ''
+    for (const [name, val] of bodyCandidates) {
+      if (typeof val === 'string' && val.trim().length > 0) {
+        rawText = name.toLowerCase().includes('html') || name === 'body' || name === 'raw'
+          ? htmlToText(val)
+          : val
+        usedField = name
+        if (rawText.trim().length > 0) break
+      }
+    }
+
+    // Si todos los campos están vacíos, loguear el payload completo para diagnóstico
+    if (!rawText.trim()) {
+      const payloadKeys = Object.keys(e).sort()
+      const sample: Record<string, unknown> = {}
+      for (const k of payloadKeys) {
+        const v = e[k]
+        if (typeof v === 'string') {
+          sample[k] = v.length > 200 ? v.slice(0, 200) + '...' : v
+        } else if (v === null || v === undefined || typeof v !== 'object') {
+          sample[k] = v
+        } else {
+          sample[k] = `[${Array.isArray(v) ? 'array' : 'object'}]`
+        }
+      }
+      console.error('📧 [Inbound] BODY VACÍO — payload del webhook (para diagnóstico):', JSON.stringify(sample))
+    }
+
+    console.log(`📧 [Inbound] Email de ${fromEmail} — "${subject}" (bodyField=${usedField || 'NINGUNO'}, bodyLen=${rawText.length})`)
 
     // 0a. Filtrar emails automáticos que no son de usuarios reales
     const ignoredSenders = [
@@ -246,12 +296,16 @@ async function _POST(request: NextRequest) {
       }
 
       if (matchedConvId) {
+        if (!messageText.trim()) {
+          console.error(`📧 [Inbound] Reply con body vacío de ${fromEmail} — ignorando para no crear mensaje basura`)
+          return NextResponse.json({ received: true, action: 'empty_body_ignored', conversationId: matchedConvId })
+        }
         // Añadir mensaje a conversación existente
         await db.insert(feedbackMessages).values({
           conversationId: matchedConvId,
           senderId: userId,
           isAdmin: false,
-          message: messageText || '(sin contenido)',
+          message: messageText,
         })
 
         // Actualizar timestamp y reabirir si estaba en espera
@@ -270,6 +324,13 @@ async function _POST(request: NextRequest) {
 
     // 3. Email nuevo → crear feedback + conversación + mensaje
     const messageText = isReply(subject) ? stripQuotedText(rawText) : rawText
+
+    // Si no hay contenido real, no crear feedback para evitar basura en BD.
+    // El logging del payload arriba nos permite diagnosticar qué campo faltó.
+    if (!messageText.trim()) {
+      console.error(`📧 [Inbound] Email nuevo con body vacío de ${fromEmail} — no se crea feedback. Subject: "${subject}"`)
+      return NextResponse.json({ received: true, action: 'empty_body_ignored' })
+    }
 
     const [feedback] = await db.insert(userFeedback).values({
       userId: userId,
