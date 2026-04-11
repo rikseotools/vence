@@ -114,6 +114,13 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     icon: '🏢'
   },
   {
+    id: 'administrativo_seguridad_social',
+    nombre: 'Administrativo de la Seguridad Social',
+    categoria: 'C1',
+    administracion: 'Estado',
+    icon: '🩺'
+  },
+  {
     id: 'maestro_primaria',
     nombre: 'Maestro de Educación Primaria',
     categoria: 'A2',

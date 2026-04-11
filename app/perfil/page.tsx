@@ -277,6 +277,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'administrativo_seguridad_social',
+      label: 'Administrativo de la Seguridad Social',
+      data: {
+        name: 'Administrativo de la Administración de la Seguridad Social',
+        slug: 'administrativo-seguridad-social',
+        categoria: 'C1',
+        administracion: 'Estado'
+      }
+    },
+    {
       value: 'maestro_primaria',
       label: 'Maestro de Educación Primaria',
       data: {
