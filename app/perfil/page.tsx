@@ -467,6 +467,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'administrativo_galicia',
+      label: 'Administrativo Xunta de Galicia',
+      data: {
+        name: 'Administrativo Xunta de Galicia',
+        slug: 'administrativo-galicia',
+        categoria: 'C1',
+        administracion: 'Autonómica'
+      }
+    },
+    {
       value: 'auxiliar_administrativo_aragon',
       label: 'Auxiliar Administrativo de Aragón',
       data: {

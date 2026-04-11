@@ -1249,6 +1249,65 @@ export const OPOSICIONES: Oposicion[] = [
   },
 
   // ========================================
+  // ADMINISTRATIVO XUNTA DE GALICIA (C1)
+  // ========================================
+  {
+    id: 'administrativo_galicia',
+    slug: 'administrativo-galicia',
+    positionType: 'administrativo_galicia',
+    name: 'Administrativo Xunta de Galicia',
+    shortName: 'Adm. Galicia',
+    emoji: '🐚',
+    badge: 'C1',
+    color: 'emerald',
+    administracion: 'autonomica',
+    blocks: [
+      {
+        id: 'bloque1',
+        title: 'Bloque I: Parte General',
+        subtitle: 'CE, Estatuto Galicia, Unión Europea, Prevención de riesgos laborales',
+        icon: '🏛️',
+        themes: [
+          { id: 1, name: 'La Constitución Española de 1978' },
+          { id: 2, name: 'Estatuto de Autonomía de Galicia' },
+          { id: 3, name: 'La Unión Europea y el derecho derivado' },
+          { id: 4, name: 'Fuentes del derecho europeo' },
+          { id: 5, name: 'Las instituciones de la Unión Europea' },
+          { id: 6, name: 'Las competencias de la Unión Europea' },
+          { id: 7, name: 'Ley 31/1995 de prevención de riesgos laborales' },
+        ],
+      },
+      {
+        id: 'bloque2',
+        title: 'Bloque II: Parte Específica',
+        subtitle: 'LPAC, LRJSP, Contratos, Subvenciones, Empleo Público, ET, Seg. Social',
+        icon: '⚖️',
+        themes: [
+          { id: 8, name: 'Ley 39/2015 del Procedimiento Administrativo Común' },
+          { id: 9, name: 'Ley 40/2015 de Régimen Jurídico del Sector Público' },
+          { id: 10, name: 'Ley 16/2010 de organización de la Administración de Galicia' },
+          { id: 11, name: 'Ley 9/2017 de Contratos del Sector Público' },
+          { id: 12, name: 'Ley 9/2007 de Subvenciones de Galicia' },
+          { id: 13, name: 'Ley 2/2015 del Empleo Público de Galicia' },
+          { id: 14, name: 'Régimen financiero y presupuestario de Galicia' },
+          { id: 15, name: 'RDL 1/2013 Derechos de las personas con discapacidad' },
+          { id: 16, name: 'Ley 1/2016 de Transparencia y Buen Gobierno' },
+          { id: 17, name: 'Ley 7/2023 de Igualdad de Galicia' },
+          { id: 18, name: 'Estatuto de los Trabajadores' },
+          { id: 19, name: 'Ley General de la Seguridad Social' },
+        ],
+      },
+    ],
+    totalTopics: 19,
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/administrativo-galicia', label: 'Mi Oposicion', icon: '🐚', featured: true },
+      { href: '/administrativo-galicia/temario', label: 'Temario', icon: '📚' },
+      { href: '/administrativo-galicia/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
   // AUXILIAR ADMINISTRATIVO DGA ARAGÓN (C2)
   // ========================================
   {

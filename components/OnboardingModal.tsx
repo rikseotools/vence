@@ -285,6 +285,13 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     icon: '🐚'
   },
   {
+    id: 'administrativo_galicia',
+    nombre: 'Administrativo Xunta de Galicia',
+    categoria: 'C1',
+    administracion: 'Autonómica',
+    icon: '🐚'
+  },
+  {
     id: 'auxiliar_administrativo_aragon',
     nombre: 'Auxiliar Administrativo de Aragón',
     categoria: 'C2',
@@ -692,7 +699,7 @@ const REGION_PRIORITY_OPOSICIONES: Record<string, string[]> = {
   'Navarra': ['administrativo_navarra', 'auxiliar_administrativo_estado'],
   'Chartered Community of Navarre': ['administrativo_navarra', 'auxiliar_administrativo_estado'],
   'La Rioja': ['auxiliar_administrativo_la_rioja', 'auxiliar_administrativo_estado'],
-  'Galicia': ['auxiliar_administrativo_galicia', 'auxiliar_administrativo_estado'],
+  'Galicia': ['auxiliar_administrativo_galicia', 'administrativo_galicia', 'auxiliar_administrativo_estado'],
   'Comunidad Valenciana': ['auxiliar_administrativo_valencia', 'auxiliar_administrativo_ayuntamiento_valencia', 'auxiliar_administrativo_estado'],
   'Valencian Community': ['auxiliar_administrativo_valencia', 'auxiliar_administrativo_ayuntamiento_valencia', 'auxiliar_administrativo_estado'],
   'Valencia': ['auxiliar_administrativo_valencia', 'auxiliar_administrativo_ayuntamiento_valencia', 'auxiliar_administrativo_estado'],
@@ -716,6 +723,7 @@ const AVAILABLE_OPOSICIONES_BY_DEMAND: string[] = [
   'auxiliar_administrativo_ayuntamiento_valencia', // 3
   'auxiliar_administrativo_baleares',    // 3
   'auxiliar_administrativo_galicia',     // 2+
+  'administrativo_galicia',              // nueva C1
   'auxiliar_administrativo_valencia',    // 2+
   'auxiliar_administrativo_clm',         // 1+
   'auxiliar_administrativo_extremadura', // 1+
@@ -999,7 +1007,8 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }: On
     'auxiliar_administrativo_cyl': ['castilla y leon', 'junta castilla', 'jcyl', 'cyl', 'castilla leon', 'auxiliar castilla', 'admin castilla', 'sacyl', 'junta cyl'],
     'auxiliar_administrativo_andalucia': ['junta andalucia', 'andaluz', 'andalucia', 'auxiliar andalucia', 'admin andalucia', 'c2 andalucia', 'junta de andalucia', 'sevilla', 'malaga', 'cadiz', 'cordoba', 'granada'],
     'auxiliar_administrativo_aragon': ['gobierno aragon', 'dga', 'aragon', 'auxiliar aragon', 'admin aragon', 'c2 aragon', 'zaragoza'],
-    'auxiliar_administrativo_galicia': ['xunta galicia', 'xunta', 'galicia', 'auxiliar galicia', 'admin galicia', 'c2 galicia', 'xunta de galicia', 'sergas'],
+    'auxiliar_administrativo_galicia': ['xunta galicia', 'xunta', 'galicia', 'auxiliar galicia', 'c2 galicia', 'xunta de galicia', 'sergas'],
+    'administrativo_galicia': ['xunta galicia', 'xunta', 'galicia', 'administrativo galicia', 'admin galicia', 'c1 galicia', 'xunta de galicia'],
     'auxiliar_administrativo_baleares': ['govern balear', 'illes balears', 'baleares', 'islas baleares', 'auxiliar baleares', 'mallorca', 'ibiza', 'menorca', 'caib'],
     'auxiliar_administrativo_extremadura': ['junta extremadura', 'extremadura', 'auxiliar extremadura', 'admin extremadura', 'caceres', 'badajoz'],
     'auxiliar_administrativo_asturias': ['principado asturias', 'asturias', 'auxiliar asturias', 'admin asturias', 'principado', 'oviedo', 'gijon'],

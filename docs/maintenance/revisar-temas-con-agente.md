@@ -517,6 +517,41 @@ Al revisar preguntas, clasificar la explicación en uno de estos niveles:
 | **Copia del artículo** | Transcribe literalmente el artículo sin explicar nada didácticamente | Reescribir completa — es el error más frecuente |
 | **Incorrecta** | Habla de otro tema, referencia artículo equivocado, conclusión errónea | Corregir urgente |
 
+### 8.1 Criterio estricto para `explanation_ok` (post-11/04/2026)
+
+**Regla:** `explanation_ok = true` **SOLO** si la explicación cumple los 4 elementos del formato didáctico. De lo contrario, marcar `explanation_ok = false` y categoría `bad_explanation` (o, si ya hay otro error, el estado compuesto correspondiente).
+
+**Checklist automatizable (regex o función):**
+
+```javascript
+function isDidactic(explanation) {
+  if (!explanation) return false;
+  const hasMarkdown    = /\*\*[^*]+\*\*/.test(explanation);           // **negrita**
+  const hasBlockquote  = /^>\s|\n>\s/.test(explanation);               // > cita literal
+  // Acepta ambos formatos: "Por qué B es correcta" y "Por qué B) es correcta"
+  const hasPorQue      = /Por qué [A-D]\)?\s+es correcta/i.test(explanation);
+  const hasDemas       = /Por qué las demás son incorrectas/i.test(explanation);
+  return hasMarkdown && hasBlockquote && hasPorQue && hasDemas;
+}
+```
+
+Una explicación que cumpla solo el contenido pero NO el formato sigue siendo `bad_explanation`. No es suficiente que la respuesta sea correcta: el opositor necesita saber POR QUÉ, y por qué NO las demás.
+
+**Regla dura:** Si el estado de la pregunta es `perfect` en BD pero `isDidactic()` devuelve `false`, el orquestador de verificación debe **re-marcarla como `bad_explanation`** y devolverla al flujo de reescritura. El `perfect` es aspiracional.
+
+### 8.2 Incidente (11/04/2026 — C1 T18 ET)
+
+Durante la verificación inicial del T18 (Estatuto de los Trabajadores), los agentes marcaron 31 de 34 preguntas como `perfect` porque `article_ok`, `answer_ok` y `explanation_ok` eran `true` según el criterio laxo (contenido correcto). Pero el 88% de esas explicaciones eran **copia literal del artículo** sin análisis por opción.
+
+**Resultado del audit manual:**
+- 30 de 34 = "copia del artículo"
+- 1 = "correcta pero mejorable"
+- 3 = realmente didácticas (las que el agente sí había marcado como `bad_explanation` y reescrito)
+
+**Fix aplicado:** reescritura masiva con 2 agentes en paralelo (16 + 15 preguntas) usando el formato didáctico del §8. Tras el fix: 34/34 didácticas.
+
+**Lección:** los agentes verificadores deben usar la función `isDidactic()` como gate estricto, no la mera "correctness" del contenido.
+
 ### Cómo detectar cada nivel:
 
 **Copia del artículo** (más común):

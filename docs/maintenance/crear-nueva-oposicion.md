@@ -1095,6 +1095,53 @@ Si un tema requiere una ley virtual que no existe (ej: LibreOffice Writer, gesti
 
 **No vincular leyes de otra suite/sistema:** Si el programa pide LibreOffice, NO vincular leyes de Microsoft Office. Los contenidos son diferentes y las preguntas serían incorrectas.
 
+#### 2.1 Señales de "En elaboración" y cómo REACTIVAR un tema
+
+Un tema aparece como "En elaboración" en la UI por **3 señales independientes** (cualquiera de ellas lo activa):
+
+| Señal | Campo BD | Dónde se comprueba |
+|-------|----------|---------------------|
+| `topics.is_active = false` | booleano | `TestHubPage.tsx`, temario |
+| `topics.disponible = false` | booleano | `TemarioClient.tsx` (línea `disponible !== false`) |
+| `topics.descripcion_corta` empieza con `"En elaboracion."` o similar | texto hardcoded | Renderizado literal en listado |
+
+**Cuando un tema pasa de "En elaboración" a tener contenido real** (porque se han creado las leyes, scope y preguntas), hay que ejecutar **TODOS** estos pasos o el tema seguirá apareciendo como en elaboración:
+
+```
+□ topics.is_active = true
+□ topics.disponible = true
+□ topics.descripcion_corta — BORRAR el prefijo "En elaboracion." si lo tiene
+  (reescribir con una frase corta descriptiva del tema)
+□ Revalidar cache del temario:
+    curl -X POST https://www.vence.es/api/admin/revalidate-temario
+□ Revalidar páginas ISR de la oposición:
+    curl -X POST https://www.vence.es/api/purge-cache \
+      -H "x-cron-secret: $CRON_SECRET" \
+      -d '{"path": "/<slug>/temario"}'
+    curl -X POST https://www.vence.es/api/purge-cache \
+      -H "x-cron-secret: $CRON_SECRET" \
+      -d '{"path": "/<slug>"}'
+```
+
+**Query SQL de reactivación rápida:**
+```sql
+UPDATE topics SET
+  is_active = true,
+  disponible = true,
+  descripcion_corta = REGEXP_REPLACE(descripcion_corta, '^En elaboraci[oó]n\.\s*', '')
+WHERE position_type = '<slug_con_underscores>'
+  AND topic_number IN (N1, N2, ...);
+```
+
+**Verificación post-reactivación:**
+```javascript
+// Ninguna debe quedar con is_active=false, disponible=false, o "elaboracion" en descripcion_corta
+SELECT topic_number, is_active, disponible, descripcion_corta
+FROM topics
+WHERE position_type = '<slug>'
+  AND (is_active = false OR disponible = false OR descripcion_corta ILIKE '%elaboraci%');
+```
+
 ### 3. Epígrafes mandan sobre todo lo demás
 
 El epígrafe literal del programa oficial determina EXACTAMENTE qué artículos van en el topic_scope. Ejemplo real del caso Galicia:

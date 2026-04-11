@@ -85,6 +85,25 @@ Cada fuente de scraping puede incluir basura en los enunciados (coletillas, URLs
 
 **Regla universal:** Limpiar ANTES de calcular el content_hash y ANTES de insertar. Si se importa sin limpiar, hay que corregir con UPDATE masivo post-importación.
 
+**Tres pasos en el orden correcto:**
+
+```javascript
+// 1) Quitar basura sin paréntesis (TEST LEY X, TEMARIO OFICIAL, etc.)
+const noJunk = stripInlineJunk(raw)
+
+// 2) Extraer hints y limpiar coletillas entre paréntesis (TEST XXX), (Ley Y), (art. N)
+const parsed = parseQuestion(noJunk)
+
+// 3) Inyectar la ley si tras limpiar queda "Según el artículo N" sin mención de ley
+const final = ensureLawContext(parsed.question, lawFullName)
+```
+
+Ver `docs/scraping/tutestdigital-api-manual.md`:
+- "Basura SIN paréntesis al final del enunciado" (`stripInlineJunk`)
+- "Contextualización de ley tras la limpieza" (`ensureLawContext`)
+
+**Señal de que falta el paso 3:** preguntas activas en BD que contienen la regex `/(?:según|de acuerdo con|conforme a) el art[íi]culo \d+[^,.]*[,.]/i` sin mencionar el nombre de la ley a continuación. Se puede detectar con un sanity check post-importación.
+
 ## ANTES DE IMPORTAR: Detección de Duplicados (OBLIGATORIO)
 
 Muchas preguntas scrapeadas ya existen en la BD (de otras oposiciones que comparten leyes). Importar duplicados degrada la experiencia del usuario. Hay que detectarlos ANTES de hacer el trabajo de verificación y mejora.
@@ -1193,6 +1212,28 @@ Flujo validado (Abril 2026):
    - Falsos positivos → perfect (se reactivan)
    - Errores reales → corregir explicación/respuesta/artículo → perfect
    - Preguntas irrecuperables → desactivar con motivo específico
+
+9. REACTIVAR TOPIC (si estaba "En elaboración")
+   Si el tema estaba marcado como "En elaboración" antes de este import
+   (porque no tenía leyes o preguntas), hay que reactivarlo ahora. Revisar
+   TRES señales en la tabla topics:
+
+   □ topics.is_active          → poner true
+   □ topics.disponible         → poner true
+   □ topics.descripcion_corta  → eliminar prefijo "En elaboracion." si existe,
+                                 reescribir con una frase descriptiva del tema
+
+   Si falta CUALQUIERA de estas tres, el tema seguirá apareciendo como
+   "En elaboración" en la UI (TemarioClient lee `disponible`, TestHubPage
+   lee `is_active`, y el listado muestra literalmente `descripcion_corta`).
+
+   Después, invalidar cache:
+     curl -X POST https://www.vence.es/api/admin/revalidate-temario
+     curl -X POST https://www.vence.es/api/purge-cache \
+       -H "x-cron-secret: $CRON_SECRET" \
+       -d '{"path": "/<slug>/temario"}'
+
+   Ver detalle en crear-nueva-oposicion.md §2.1 "Señales de En elaboración".
 ```
 
 ### Comando rápido:
