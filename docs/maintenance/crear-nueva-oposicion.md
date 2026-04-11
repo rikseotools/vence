@@ -1174,3 +1174,68 @@ La página del temario (`app/[oposicion]/temario/page.tsx`) tiene los temas hard
 Las páginas del temario y tests se generan en build time (`revalidate = false` o `revalidate = 2592000`). Después de cambios en la BD hay que:
 - Hacer un deploy (push a main), o
 - Llamar a `/api/revalidate?secret=vence-revalidate-2024&path=/[ruta]` para invalidar la caché de una página específica
+
+---
+
+## Gotchas reales aprendidos en producción (cross-sell con otras oposiciones)
+
+Cuando una oposición nueva se anuncia, suele seguir un cross-sell newsletter promocionándola a opositores que preparan oposiciones relacionadas. Al redactar ese cross-sell hay dos errores reales que se han cometido.
+
+### 1. Overlap de temario: verificar tema a tema contra `lib/config/oposiciones.ts`
+
+Es tentador escribir frases tipo **"prepara las dos a la vez, comparten casi todo"**. Es falso en la mayoría de casos.
+
+**Dato verificado** (Estado C2 ↔ Galicia C2, abril 2026): solo **~40% del temario** es realmente común. Los 6 temas idénticos son:
+
+1. Constitución Española de 1978
+2. Ley 39/2015 (LPAC) — ley estatal, idéntica en ambas
+3. Ley 40/2015 (LRJSP) — ley estatal, idéntica en ambas
+4. Unión Europea (instituciones + derecho derivado)
+5. Informática básica y sistemas operativos
+6. Marco común de protección de datos, transparencia e igualdad
+
+**Lo que parece común pero NO lo es**:
+- **Transparencia**: Estado = Ley 19/2013 estatal / Galicia = Ley 1/2016 autonómica. El marco general coincide, pero el articulado no.
+- **Empleo público**: Estado = EBEP general / Galicia = Ley 2/2015 autonómica. Base común, desarrollo distinto.
+- **Igualdad**: Estado = LO 3/2007 / Galicia = Ley 7/2023 autonómica. Temas distintos en preguntas.
+
+**Lo específico de cada una** (no mencionar como común):
+- **Solo Estado**: Corona, Cortes Generales, TC, Poder Judicial, Gobierno, AGE
+- **Solo Galicia**: Estatuto de Autonomía, Ley 16/2010 organización Admin Galicia, régimen financiero y presupuestario gallego, Ley 31/1995 PRL (este en algunas otras CCAA tampoco está)
+
+**Regla para redactar cross-sell**:
+
+1. Abrir `lib/config/oposiciones.ts` y localizar los dos `positionType` implicados.
+2. Comparar `blocks[*].themes[*].name` tema a tema.
+3. Listar solo los **realmente idénticos** (misma ley, mismo programa).
+4. Para los que comparten "marco" pero no articulado (transparencia, empleo público, igualdad), mencionar como *"marco común"* sin prometer que sea el mismo tema.
+5. Nunca vender como común algo que el opositor tendría que re-estudiar.
+
+### 2. Ofimática Estado ≠ Ofimática Galicia (Microsoft vs LibreOffice)
+
+Aunque ambos temarios tienen un "bloque de ofimática" con nombres similares (Word, Excel, procesador de textos, hoja de cálculo), son **dos mundos incompatibles**:
+
+| Oposición | Suite ofimática | Programas específicos |
+|---|---|---|
+| Aux Admin Estado | Microsoft Office 365 | Word, Excel, Access, Windows 11 |
+| Aux Admin Xunta Galicia | LibreOffice | Writer, Calc, Impress |
+| Adm Galicia | LibreOffice | Writer, Calc, Impress |
+
+**Incidente a evitar**: incluir ofimática en `temasComunesHtml` de un cross-sell Estado↔Galicia es un error de fondo. Aunque el usuario domine Excel, tendría que aprender Calc desde cero (atajos distintos, menús distintos, formato de archivo distinto, preguntas distintas).
+
+**Regla**: si alguna de las dos oposiciones implica LibreOffice (la mayoría de CCAA) y la otra Microsoft Office (Estado + algunas), **nunca** listar ofimática como tema común en cross-sell. Recordar esta asimetría al escribir landing pages o material comercial.
+
+### 3. Cross-sell: excluir usuarios ya en la oposición destino
+
+Al construir la audiencia del cross-sell, filtrar explícitamente los `target_oposicion` de destino. Un email "prepara Galicia" a quien ya prepara Galicia es absurdo y daña la confianza.
+
+```javascript
+const DESTINO = new Set(['auxiliar_administrativo_galicia', 'administrativo_galicia']);
+const candidatos = gallegos.filter(u => !DESTINO.has(u.target_oposicion));
+```
+
+Esto se suma a los filtros genéricos de audiencias descritos en `docs/procedures/enviar-newsletter-con-plantilla-bd.md` (target_oposicion corrupto, paginación Supabase, etc.).
+
+### 4. Referencia cruzada con el manual de newsletters
+
+Para el resto de gotchas operativos al enviar el cross-sell (paginación Supabase a 1000 filas, `previewData` que rompe el render, subject sin userName, `fromEmail` correcto, matching de ciudades), ver `docs/procedures/enviar-newsletter-con-plantilla-bd.md` → sección *"Gotchas reales aprendidos en producción"*.
