@@ -253,3 +253,129 @@ describe('Archived User Data Schema', () => {
     expect(result.success).toBe(false)
   })
 })
+
+// ============================================
+// DELETION CONFIRMATION EMAIL
+// ============================================
+
+describe('sendDeletionConfirmationEmail', () => {
+  const mockSend = jest.fn()
+
+  beforeEach(() => {
+    jest.resetModules()
+    mockSend.mockReset()
+    jest.doMock('resend', () => ({
+      Resend: jest.fn().mockImplementation(() => ({
+        emails: { send: mockSend },
+      })),
+    }))
+    process.env.RESEND_API_KEY = 'test-key'
+    process.env.EMAIL_FROM_ADDRESS = 'info@vence.es'
+    process.env.EMAIL_FROM_NAME = 'Vence.es'
+  })
+
+  it('should send email with first name greeting when fullName provided', async () => {
+    mockSend.mockResolvedValue({ data: { id: 'email-123' }, error: null })
+
+    const { sendDeletionConfirmationEmail } = require('@/lib/api/admin-delete-user/email')
+    const result = await sendDeletionConfirmationEmail({
+      email: 'test@example.com',
+      fullName: 'Cristina Hernandez Espinosa',
+    })
+
+    expect(result.sent).toBe(true)
+    expect(result.emailId).toBe('email-123')
+    expect(mockSend).toHaveBeenCalledTimes(1)
+    const callArgs = mockSend.mock.calls[0][0]
+    expect(callArgs.to).toEqual(['test@example.com'])
+    expect(callArgs.subject).toContain('eliminación de cuenta')
+    expect(callArgs.html).toContain('Hola Cristina')
+    expect(callArgs.html).toContain('ha sido eliminada')
+  })
+
+  it('should fall back to generic greeting when fullName is null', async () => {
+    mockSend.mockResolvedValue({ data: { id: 'email-124' }, error: null })
+
+    const { sendDeletionConfirmationEmail } = require('@/lib/api/admin-delete-user/email')
+    const result = await sendDeletionConfirmationEmail({
+      email: 'test@example.com',
+      fullName: null,
+    })
+
+    expect(result.sent).toBe(true)
+    const callArgs = mockSend.mock.calls[0][0]
+    expect(callArgs.html).toContain('Hola,')
+    expect(callArgs.html).not.toContain('Hola null')
+  })
+
+  it('should extract only first name from full name', async () => {
+    mockSend.mockResolvedValue({ data: { id: 'email-125' }, error: null })
+
+    const { sendDeletionConfirmationEmail } = require('@/lib/api/admin-delete-user/email')
+    await sendDeletionConfirmationEmail({
+      email: 'test@example.com',
+      fullName: 'María José García López',
+    })
+
+    const callArgs = mockSend.mock.calls[0][0]
+    expect(callArgs.html).toContain('Hola María')
+    expect(callArgs.html).not.toContain('Hola María José')
+  })
+
+  it('should return error when email is invalid', async () => {
+    const { sendDeletionConfirmationEmail } = require('@/lib/api/admin-delete-user/email')
+    const result = await sendDeletionConfirmationEmail({ email: 'invalid' })
+
+    expect(result.sent).toBe(false)
+    expect(result.error).toContain('inválido')
+    expect(mockSend).not.toHaveBeenCalled()
+  })
+
+  it('should return error when email is empty', async () => {
+    const { sendDeletionConfirmationEmail } = require('@/lib/api/admin-delete-user/email')
+    const result = await sendDeletionConfirmationEmail({ email: '' })
+
+    expect(result.sent).toBe(false)
+    expect(mockSend).not.toHaveBeenCalled()
+  })
+
+  it('should handle Resend API errors gracefully', async () => {
+    mockSend.mockResolvedValue({ data: null, error: { message: 'Invalid recipient' } })
+
+    const { sendDeletionConfirmationEmail } = require('@/lib/api/admin-delete-user/email')
+    const result = await sendDeletionConfirmationEmail({
+      email: 'test@example.com',
+      fullName: 'Test',
+    })
+
+    expect(result.sent).toBe(false)
+    expect(result.error).toBe('Invalid recipient')
+  })
+
+  it('should handle Resend exceptions gracefully', async () => {
+    mockSend.mockRejectedValue(new Error('Network down'))
+
+    const { sendDeletionConfirmationEmail } = require('@/lib/api/admin-delete-user/email')
+    const result = await sendDeletionConfirmationEmail({
+      email: 'test@example.com',
+      fullName: 'Test',
+    })
+
+    expect(result.sent).toBe(false)
+    expect(result.error).toBe('Network down')
+  })
+
+  it('should return error when RESEND_API_KEY is missing', async () => {
+    delete process.env.RESEND_API_KEY
+
+    const { sendDeletionConfirmationEmail } = require('@/lib/api/admin-delete-user/email')
+    const result = await sendDeletionConfirmationEmail({
+      email: 'test@example.com',
+      fullName: 'Test',
+    })
+
+    expect(result.sent).toBe(false)
+    expect(result.error).toContain('RESEND_API_KEY')
+    expect(mockSend).not.toHaveBeenCalled()
+  })
+})

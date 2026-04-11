@@ -17,3 +17,9 @@ export {
   archiveUserLegalData,
   persistArchivedData
 } from './queries'
+
+export {
+  sendDeletionConfirmationEmail,
+  type SendDeletionEmailParams,
+  type SendDeletionEmailResult
+} from './email'
