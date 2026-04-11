@@ -117,17 +117,29 @@ async function syncOne(answer: QueuedAnswer, accessToken: string): Promise<boole
     const msg = err instanceof Error ? err.message : String(err)
     const isAbort = err instanceof Error && err.name === 'AbortError'
 
+    // Clasificar severity para distinguir ruido esperado de errores reales:
+    //  - abort externo (tab cerrada, navegación, red cortada): 'info' (visibilidad sin alarma)
+    //  - timeout de 8s de nuestro setTimeout: 'warning' (servidor lento, investigar)
+    //  - cualquier otro error de red: 'critical' (default)
+    let severity: 'critical' | 'warning' | 'info' = 'critical'
+    let component = 'answerSaveQueue syncOne network'
+
     if (isAbort && !timedOut) {
-      // Abort externo: tab cerrada, navegación, pérdida de conexión del navegador.
-      // La queue ya maneja el reintento — no es un bug del servidor. No logear.
+      severity = 'info'
+      component = 'answerSaveQueue syncOne abort_external'
       console.warn(`⚠️ [answerSaveQueue] Fetch abortado por cliente/navegador (retry #${answer.retries}) — reintentará`)
-      return false
+    } else if (isAbort && timedOut) {
+      severity = 'warning'
+      component = 'answerSaveQueue syncOne timeout_8s'
+      console.error(`⏱️ [answerSaveQueue] Timeout 8s del servidor retry #${answer.retries}`)
+    } else {
+      console.error(`❌ [answerSaveQueue] Network error retry #${answer.retries}: ${msg}`)
     }
 
-    console.error(`❌ [answerSaveQueue] Network error retry #${answer.retries}: ${msg}`)
     logClientError('/api/v2/answer-and-save', err, {
-      component: isAbort ? 'answerSaveQueue syncOne timeout' : 'answerSaveQueue syncOne network',
+      component,
       userId: extractUserId(answer),
+      severity,
     })
     return false
   }

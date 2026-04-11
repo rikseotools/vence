@@ -3,6 +3,8 @@
 
 import { getClientVersion } from '@/hooks/useVersionCheck'
 
+export type ClientErrorSeverity = 'critical' | 'warning' | 'info'
+
 export function logClientError(
   endpoint: string,
   error: unknown,
@@ -10,6 +12,7 @@ export function logClientError(
     component?: string
     questionId?: string | null
     userId?: string | null
+    severity?: ClientErrorSeverity
   }
 ): void {
   const err = error instanceof Error ? error : new Error(String(error))
@@ -32,6 +35,7 @@ export function logClientError(
       userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
       httpStatus: 0,
       durationMs: 0,
+      severity: context?.severity, // default 'critical' en el backend si no se pasa
     })
   }).catch(() => {})
 }
