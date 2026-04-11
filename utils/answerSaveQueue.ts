@@ -61,10 +61,13 @@ function extractUserId(answer: QueuedAnswer): string | undefined {
 // ============================================
 
 async function syncOne(answer: QueuedAnswer, accessToken: string): Promise<boolean> {
-  try {
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 8000)
+  // Distinguir timeout interno (servidor lento) de abort externo (tab cerrada,
+  // navegación). El flag nos permite filtrar ruido en logClientError.
+  let timedOut = false
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => { timedOut = true; controller.abort() }, 8000)
 
+  try {
     const response = await fetch('/api/v2/answer-and-save', {
       method: 'POST',
       headers: {
@@ -110,10 +113,20 @@ async function syncOne(answer: QueuedAnswer, accessToken: string): Promise<boole
 
     return true
   } catch (err) {
+    clearTimeout(timeoutId)
     const msg = err instanceof Error ? err.message : String(err)
+    const isAbort = err instanceof Error && err.name === 'AbortError'
+
+    if (isAbort && !timedOut) {
+      // Abort externo: tab cerrada, navegación, pérdida de conexión del navegador.
+      // La queue ya maneja el reintento — no es un bug del servidor. No logear.
+      console.warn(`⚠️ [answerSaveQueue] Fetch abortado por cliente/navegador (retry #${answer.retries}) — reintentará`)
+      return false
+    }
+
     console.error(`❌ [answerSaveQueue] Network error retry #${answer.retries}: ${msg}`)
     logClientError('/api/v2/answer-and-save', err, {
-      component: 'answerSaveQueue syncOne network',
+      component: isAbort ? 'answerSaveQueue syncOne timeout' : 'answerSaveQueue syncOne network',
       userId: extractUserId(answer),
     })
     return false
