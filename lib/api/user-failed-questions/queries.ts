@@ -1,7 +1,7 @@
 // lib/api/user-failed-questions/queries.ts - Queries Drizzle para preguntas falladas del usuario
 import { getDb } from '@/db/client'
 import { questions, articles, laws, tests, testQuestions, topics } from '@/db/schema'
-import { eq, and, inArray, desc, gte, gt, sql, isNotNull } from 'drizzle-orm'
+import { eq, and, inArray, desc, gte, gt, isNotNull } from 'drizzle-orm'
 import type {
   GetUserFailedQuestionsRequest,
   GetUserFailedQuestionsResponse,
@@ -140,22 +140,19 @@ export async function getUserFailedQuestions(
 // ============================================
 export async function getFailedQuestionsByTopic(
   userId: string,
-  positionType?: string
+  positionType: string
 ): Promise<{ success: boolean; topics?: FailedByTopicItem[]; error?: string }> {
   try {
-    const db = getDb()
-
-    const conditions = [
-      eq(tests.userId, userId),
-      eq(testQuestions.isCorrect, false),
-      eq(questions.isActive, true),
-      gt(testQuestions.temaNumber, 0),
-    ]
-
-    if (positionType) {
-      conditions.push(eq(topics.positionType, positionType))
+    if (!positionType) {
+      return { success: false, error: 'positionType es obligatorio' }
     }
 
+    const db = getDb()
+
+    // NOTA: El JOIN con `topics` DEBE filtrarse por position_type porque el mismo
+    // topic_number existe en 30+ oposiciones. Sin este filtro, el título devuelto
+    // podía ser el de otra oposición (bug detectado abr 2026 con Tatiana Madrid
+    // viendo temas de Galicia/Policía).
     const rows = await db
       .select({
         temaNumber: testQuestions.temaNumber,
@@ -167,9 +164,14 @@ export async function getFailedQuestionsByTopic(
       .innerJoin(questions, eq(testQuestions.questionId, questions.id))
       .leftJoin(topics, and(
         eq(topics.topicNumber, testQuestions.temaNumber),
-        positionType ? eq(topics.positionType, positionType) : sql`true`
+        eq(topics.positionType, positionType)
       ))
-      .where(and(...conditions))
+      .where(and(
+        eq(tests.userId, userId),
+        eq(testQuestions.isCorrect, false),
+        eq(questions.isActive, true),
+        gt(testQuestions.temaNumber, 0),
+      ))
 
     // Agrupar por tema
     const byTopic = new Map<number, { title: string | null; questionIds: Set<string>; totalFailures: number }>()

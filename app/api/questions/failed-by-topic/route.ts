@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getFailedQuestionsByTopic } from '@/lib/api/user-failed-questions'
+import { getFailedByTopicRequestSchema } from '@/lib/api/user-failed-questions/schemas'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 
 async function getOptionalUserId(request: NextRequest): Promise<string | null> {
@@ -28,9 +29,21 @@ async function _GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url)
-    const positionType = searchParams.get('positionType') || undefined
+    // positionType OBLIGATORIO: sin él el SQL no puede distinguir entre
+    // oposiciones con el mismo topic_number y devolvería títulos mezclados.
+    const parsed = getFailedByTopicRequestSchema.safeParse({
+      positionType: searchParams.get('positionType') ?? '',
+    })
 
-    const result = await getFailedQuestionsByTopic(userId, positionType)
+    if (!parsed.success) {
+      return NextResponse.json({
+        success: false,
+        error: 'positionType es obligatorio y debe ser un identificador válido',
+        details: parsed.error.flatten(),
+      }, { status: 400 })
+    }
+
+    const result = await getFailedQuestionsByTopic(userId, parsed.data.positionType)
 
     if (!result.success) {
       return NextResponse.json({ success: false, error: result.error }, { status: 400 })

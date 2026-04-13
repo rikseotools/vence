@@ -16,8 +16,15 @@ interface TopicFailed {
 }
 
 export default function FailedQuestionsReview() {
-  const { user, supabase } = useAuth() as any
-  const { oposicionSlug, positionType } = useOposicion() as any
+  const { user, supabase } = useAuth() as { user: { id: string } | null; supabase: ReturnType<typeof import('@supabase/supabase-js').createClient> }
+  // OposicionContext expone `oposicionId` (formato snake_case, = positionType) y `userOposicion` (config completa).
+  // Antes se desestructuraba `positionType`/`oposicionSlug` que NO existen en el context → siempre undefined.
+  // Eso causaba el bug por el que Madrid/Galicia/etc veían títulos de temas de otras oposiciones.
+  const { oposicionId, loading: oposicionLoading } = useOposicion()
+  const positionType = oposicionId ?? null
+  const oposicion = positionType ? getOposicionByPositionType(positionType) : null
+  const oposicionSlug = oposicion?.slug ?? null
+  const basePath = oposicionSlug ? `/${oposicionSlug}` : '/'
 
   const [topics, setTopics] = useState<TopicFailed[]>([])
   const [loading, setLoading] = useState(true)
@@ -31,18 +38,19 @@ export default function FailedQuestionsReview() {
   const [modalLoading, setModalLoading] = useState(false)
   const [modalPeriod, setModalPeriod] = useState<FailedPeriod>('all')
 
-  const oposicion = getOposicionByPositionType(positionType)
-  const basePath = oposicion ? `/${oposicion.slug}` : `/${oposicionSlug}`
-
-  // Cargar temas con falladas
+  // Cargar temas con falladas (solo si ya tenemos positionType del context)
   const loadTopics = useCallback(async () => {
     if (!user) return
+    // Esperar a que el context cargue positionType antes de consultar.
+    // Si no hay positionType, no podemos filtrar por oposición y la API
+    // devolverá 400 — evitamos el fetch.
+    if (oposicionLoading || !positionType) return
     try {
       const session = await supabase.auth.getSession()
       const token = session.data.session?.access_token
       if (!token) return
 
-      const res = await fetch(`/api/questions/failed-by-topic?positionType=${positionType || ''}`, {
+      const res = await fetch(`/api/questions/failed-by-topic?positionType=${encodeURIComponent(positionType)}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       const data = await res.json()
@@ -57,7 +65,7 @@ export default function FailedQuestionsReview() {
     } finally {
       setLoading(false)
     }
-  }, [user, supabase, positionType])
+  }, [user, supabase, positionType, oposicionLoading])
 
   useEffect(() => { loadTopics() }, [loadTopics])
 

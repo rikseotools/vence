@@ -62,6 +62,17 @@ export const failedByTopicItemSchema = z.object({
 
 export type FailedByTopicItem = z.infer<typeof failedByTopicItemSchema>
 
+/**
+ * Request de /api/questions/failed-by-topic.
+ * `positionType` es OBLIGATORIO para evitar que el SQL mezcle temas de distintas
+ * oposiciones (el mismo topic_number existe en 30+ oposiciones).
+ */
+export const getFailedByTopicRequestSchema = z.object({
+  positionType: z.string().regex(/^[a-z_]+$/, 'positionType inválido'),
+})
+
+export type GetFailedByTopicRequest = z.infer<typeof getFailedByTopicRequestSchema>
+
 // ============================================
 // VALIDADORES
 // ============================================

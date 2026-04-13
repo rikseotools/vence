@@ -7,6 +7,7 @@ import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext' // ✅ USAR CONTEXTO GLOBAL
 import { useOposicion } from '@/contexts/OposicionContext' // ✅ Para obtener oposición del usuario
 import { getOposicionByPositionType } from '@/lib/config/oposiciones'
+import { formatThemeName, isThemeValidForOposicion } from '@/lib/utils/themeFormatting'
 import OfficialExamAttempts from '@/components/Statistics/OfficialExamAttempts'
 
 // Importar todos los componentes
@@ -72,11 +73,6 @@ interface DbTest {
   config?: Record<string, unknown>
   focus_weak?: boolean
   [key: string]: unknown
-}
-
-interface ThemeRange {
-  min: number
-  max: number
 }
 
 interface DifficultyItem {
@@ -216,52 +212,9 @@ const formatTime = (seconds: number | null | undefined): string => {
   return minutes > 0 ? `${minutes}m` : `${seconds}s`
 }
 
-// ✅ Formatear número de tema interno a nombre legible por bloque
-// oposicionSlug determina qué bloques son válidos para esa oposición
-const formatThemeName = (num: number, oposicionSlug: string = 'auxiliar-administrativo-estado'): string => {
-  // Administrativo del Estado (C1) - Estructura según /administrativo-estado/test
-  if (oposicionSlug === 'administrativo-estado') {
-    if (num >= 1 && num <= 11) return `Bloque I - Tema ${num}`
-    if (num >= 201 && num <= 204) return `Bloque II - Tema ${num - 200}`
-    if (num >= 301 && num <= 307) return `Bloque III - Tema ${num - 300}`
-    if (num >= 401 && num <= 409) return `Bloque IV - Tema ${num - 400}`
-    if (num >= 501 && num <= 506) return `Bloque V - Tema ${num - 500}`
-    if (num >= 601 && num <= 608) return `Bloque VI - Tema ${num - 600}`
-    return `Tema ${num}`
-  }
-
-  // Auxiliar Administrativo del Estado (C2) - Estructura por defecto
-  if (num >= 1 && num <= 16) return `Bloque I - Tema ${num}`
-  if (num >= 101 && num <= 112) return `Bloque II - Tema ${num - 100}`
-
-  return `Tema ${num}`
-}
-
-// ✅ Obtener los rangos de temas válidos según la oposición
-const getValidThemeRanges = (oposicionSlug?: string): ThemeRange[] => {
-  if (oposicionSlug === 'administrativo-estado') {
-    // Administrativo C1: 6 bloques (según /administrativo-estado/test)
-    return [
-      { min: 1, max: 11 },      // Bloque I: 11 temas
-      { min: 201, max: 204 },   // Bloque II: 4 temas
-      { min: 301, max: 307 },   // Bloque III: 7 temas
-      { min: 401, max: 409 },   // Bloque IV: 9 temas
-      { min: 501, max: 506 },   // Bloque V: 6 temas
-      { min: 601, max: 608 },   // Bloque VI: 8 temas
-    ]
-  }
-  // Auxiliar Administrativo C2: 2 bloques (por defecto)
-  return [
-    { min: 1, max: 16 },      // Bloque I: 16 temas
-    { min: 101, max: 112 },   // Bloque II: 12 temas
-  ]
-}
-
-// ✅ Verificar si un tema pertenece a la oposición del usuario
-const isThemeValidForOposicion = (themeNumber: number, oposicionSlug: string): boolean => {
-  const ranges = getValidThemeRanges(oposicionSlug)
-  return ranges.some(r => themeNumber >= r.min && themeNumber <= r.max)
-}
+// Helpers de formato de temas importados desde @/lib/utils/themeFormatting:
+// formatThemeName, isThemeValidForOposicion. Basados en config OPOSICIONES,
+// soportan todas las oposiciones (no solo Aux Admin Estado).
 
 // ✅ FUNCIONES AUXILIARES MOVIDAS AL INICIO - ANTES DE SU USO
 const generateRealRecommendations = (responses: DbResponse[], articlePerformance: ArticleItem[], accuracy: number): Recommendation[] => {

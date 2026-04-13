@@ -1,355 +1,127 @@
-// __tests__/utils/themeFormatting.test.js
-// Tests para el formateo de temas según la oposición del usuario
+// __tests__/utils/themeFormatting.test.ts
+// Tests de formatThemeName + isThemeValidForOposicion.
+// Prueban la versión REAL del helper (no duplicada inline) y verifican
+// que todas las oposiciones funcionan — no solo Aux Admin Estado.
+//
+// Regresión: el bug de abr 2026 fue que estos helpers hardcodeaban los
+// rangos de Estado como default → usuarios de Madrid/Galicia/Policía veían
+// títulos de temas de otras oposiciones mezclados en /mis-estadisticas.
 
-// Reimplementamos las funciones para testear (deben coincidir con app/mis-estadisticas/page.js)
-const formatThemeName = (num, oposicionSlug = 'auxiliar-administrativo-estado') => {
-  // Administrativo del Estado (C1) - Estructura según /administrativo-estado/test
-  if (oposicionSlug === 'administrativo-estado') {
-    if (num >= 1 && num <= 11) return `Bloque I - Tema ${num}`
-    if (num >= 201 && num <= 204) return `Bloque II - Tema ${num - 200}`
-    if (num >= 301 && num <= 307) return `Bloque III - Tema ${num - 300}`
-    if (num >= 401 && num <= 409) return `Bloque IV - Tema ${num - 400}`
-    if (num >= 501 && num <= 506) return `Bloque V - Tema ${num - 500}`
-    if (num >= 601 && num <= 608) return `Bloque VI - Tema ${num - 600}`
-    return `Tema ${num}`
-  }
+import { formatThemeName, isThemeValidForOposicion } from '@/lib/utils/themeFormatting'
 
-  // Auxiliar Administrativo del Estado (C2) - Estructura por defecto
-  if (num >= 1 && num <= 16) return `Bloque I - Tema ${num}`
-  if (num >= 101 && num <= 112) return `Bloque II - Tema ${num - 100}`
-
-  return `Tema ${num}`
-}
-
-const getValidThemeRanges = (oposicionSlug) => {
-  if (oposicionSlug === 'administrativo-estado') {
-    return [
-      { min: 1, max: 11 },      // Bloque I: 11 temas
-      { min: 201, max: 204 },   // Bloque II: 4 temas
-      { min: 301, max: 307 },   // Bloque III: 7 temas
-      { min: 401, max: 409 },   // Bloque IV: 9 temas
-      { min: 501, max: 506 },   // Bloque V: 6 temas
-      { min: 601, max: 608 },   // Bloque VI: 8 temas
-    ]
-  }
-  // Auxiliar Administrativo C2: 2 bloques (por defecto)
-  return [
-    { min: 1, max: 16 },      // Bloque I: 16 temas
-    { min: 101, max: 112 },   // Bloque II: 12 temas
-  ]
-}
-
-const isThemeValidForOposicion = (themeNumber, oposicionSlug) => {
-  const ranges = getValidThemeRanges(oposicionSlug)
-  return ranges.some(r => themeNumber >= r.min && themeNumber <= r.max)
-}
-
-describe('Theme Formatting - Administrativo del Estado (C1)', () => {
-  const oposicion = 'administrativo-estado'
-
-  describe('formatThemeName para C1', () => {
-    // Bloque I: Temas 1-11
-    test('Bloque I - Tema 1', () => {
-      expect(formatThemeName(1, oposicion)).toBe('Bloque I - Tema 1')
+describe('formatThemeName', () => {
+  describe('Aux Admin del Estado (C2) — slug: auxiliar-administrativo-estado', () => {
+    const slug = 'auxiliar-administrativo-estado'
+    test('Tema 1 → Bloque I - Tema 1', () => {
+      expect(formatThemeName(1, slug)).toBe('Bloque I - Tema 1')
     })
-
-    test('Bloque I - Tema 11 (último del bloque)', () => {
-      expect(formatThemeName(11, oposicion)).toBe('Bloque I - Tema 11')
+    test('Tema 16 (último de B1) → Bloque I - Tema 16', () => {
+      expect(formatThemeName(16, slug)).toBe('Bloque I - Tema 16')
     })
-
-    test('Tema 12 NO pertenece al Bloque I en C1', () => {
-      expect(formatThemeName(12, oposicion)).toBe('Tema 12')
+    test('Tema 101 (primero de B2, displayNumber=1) → Bloque II - Tema 1', () => {
+      expect(formatThemeName(101, slug)).toBe('Bloque II - Tema 1')
     })
-
-    // Bloque II: Temas 201-204
-    test('Bloque II - Tema 1 (interno 201)', () => {
-      expect(formatThemeName(201, oposicion)).toBe('Bloque II - Tema 1')
-    })
-
-    test('Bloque II - Tema 4 (interno 204)', () => {
-      expect(formatThemeName(204, oposicion)).toBe('Bloque II - Tema 4')
-    })
-
-    // Bloque III: Temas 301-307
-    test('Bloque III - Tema 1 (interno 301)', () => {
-      expect(formatThemeName(301, oposicion)).toBe('Bloque III - Tema 1')
-    })
-
-    test('Bloque III - Tema 7 (interno 307)', () => {
-      expect(formatThemeName(307, oposicion)).toBe('Bloque III - Tema 7')
-    })
-
-    // Bloque IV: Temas 401-409
-    test('Bloque IV - Tema 1 (interno 401)', () => {
-      expect(formatThemeName(401, oposicion)).toBe('Bloque IV - Tema 1')
-    })
-
-    test('Bloque IV - Tema 9 (interno 409)', () => {
-      expect(formatThemeName(409, oposicion)).toBe('Bloque IV - Tema 9')
-    })
-
-    // Bloque V: Temas 501-506
-    test('Bloque V - Tema 1 (interno 501)', () => {
-      expect(formatThemeName(501, oposicion)).toBe('Bloque V - Tema 1')
-    })
-
-    test('Bloque V - Tema 6 (interno 506)', () => {
-      expect(formatThemeName(506, oposicion)).toBe('Bloque V - Tema 6')
-    })
-
-    // Bloque VI: Temas 601-608
-    test('Bloque VI - Tema 1 (interno 601)', () => {
-      expect(formatThemeName(601, oposicion)).toBe('Bloque VI - Tema 1')
-    })
-
-    test('Bloque VI - Tema 8 (interno 608)', () => {
-      expect(formatThemeName(608, oposicion)).toBe('Bloque VI - Tema 8')
-    })
-
-    // Temas fuera de rango
-    test('Tema 101 NO es válido para C1 (es de Auxiliar)', () => {
-      expect(formatThemeName(101, oposicion)).toBe('Tema 101')
-    })
-
-    test('Tema 999 fuera de rango', () => {
-      expect(formatThemeName(999, oposicion)).toBe('Tema 999')
+    test('Tema 112 (último de B2, displayNumber=12) → Bloque II - Tema 12', () => {
+      expect(formatThemeName(112, slug)).toBe('Bloque II - Tema 12')
     })
   })
 
-  describe('getValidThemeRanges para C1', () => {
-    test('Devuelve 6 rangos para C1', () => {
-      const ranges = getValidThemeRanges(oposicion)
-      expect(ranges).toHaveLength(6)
+  describe('Administrativo del Estado (C1) — slug: administrativo-estado', () => {
+    const slug = 'administrativo-estado'
+    test('Tema 1 → Bloque I - Tema 1', () => {
+      expect(formatThemeName(1, slug)).toBe('Bloque I - Tema 1')
     })
-
-    test('Bloque I tiene 11 temas (1-11)', () => {
-      const ranges = getValidThemeRanges(oposicion)
-      expect(ranges[0]).toEqual({ min: 1, max: 11 })
+    test('Tema 201 (displayNumber=12) → Bloque II - Tema 12', () => {
+      expect(formatThemeName(201, slug)).toBe('Bloque II - Tema 12')
     })
-
-    test('Bloque II tiene 4 temas (201-204)', () => {
-      const ranges = getValidThemeRanges(oposicion)
-      expect(ranges[1]).toEqual({ min: 201, max: 204 })
-    })
-
-    test('Bloque VI tiene 8 temas (601-608)', () => {
-      const ranges = getValidThemeRanges(oposicion)
-      expect(ranges[5]).toEqual({ min: 601, max: 608 })
+    test('Tema 301 → Bloque III', () => {
+      expect(formatThemeName(301, slug)).toMatch(/^Bloque III - Tema \d+$/)
     })
   })
 
-  describe('isThemeValidForOposicion para C1', () => {
-    test('Tema 1 es válido', () => {
-      expect(isThemeValidForOposicion(1, oposicion)).toBe(true)
+  describe('Aux Admin Xunta de Galicia (C2) — slug: auxiliar-administrativo-galicia', () => {
+    const slug = 'auxiliar-administrativo-galicia'
+    test('Tema 1 → Bloque I - Tema 1', () => {
+      expect(formatThemeName(1, slug)).toBe('Bloque I - Tema 1')
     })
-
-    test('Tema 11 es válido', () => {
-      expect(isThemeValidForOposicion(11, oposicion)).toBe(true)
+    test('Tema 14 (primero de B2) → Bloque II - Tema 14', () => {
+      expect(formatThemeName(14, slug)).toBe('Bloque II - Tema 14')
     })
+  })
 
-    test('Tema 12 NO es válido (fuera de Bloque I)', () => {
-      expect(isThemeValidForOposicion(12, oposicion)).toBe(false)
+  describe('Aux Admin Madrid (caso del bug) — slug: auxiliar-administrativo-madrid', () => {
+    const slug = 'auxiliar-administrativo-madrid'
+    test('Tema 5 (bloque I) devuelve Bloque I', () => {
+      expect(formatThemeName(5, slug)).toMatch(/^Bloque I - Tema \d+$/)
     })
-
-    test('Tema 101 NO es válido (es de Auxiliar C2)', () => {
-      expect(isThemeValidForOposicion(101, oposicion)).toBe(false)
+    test('Tema 20 (bloque II) devuelve Bloque II', () => {
+      expect(formatThemeName(20, slug)).toMatch(/^Bloque II - Tema \d+$/)
     })
+  })
 
-    test('Tema 201 es válido (Bloque II)', () => {
-      expect(isThemeValidForOposicion(201, oposicion)).toBe(true)
+  describe('Fallbacks seguros (antes bug: defaulteaba a Estado)', () => {
+    test('Sin slug → "Tema N"', () => {
+      expect(formatThemeName(5)).toBe('Tema 5')
     })
-
-    test('Tema 301 es válido (Bloque III)', () => {
-      expect(isThemeValidForOposicion(301, oposicion)).toBe(true)
+    test('Slug null → "Tema N"', () => {
+      expect(formatThemeName(5, null)).toBe('Tema 5')
     })
-
-    test('Tema 608 es válido (último de Bloque VI)', () => {
-      expect(isThemeValidForOposicion(608, oposicion)).toBe(true)
+    test('Slug vacío → "Tema N"', () => {
+      expect(formatThemeName(5, '')).toBe('Tema 5')
     })
-
-    test('Tema 609 NO es válido (fuera de Bloque VI)', () => {
-      expect(isThemeValidForOposicion(609, oposicion)).toBe(false)
+    test('Slug inexistente → "Tema N"', () => {
+      expect(formatThemeName(5, 'oposicion-que-no-existe')).toBe('Tema 5')
+    })
+    test('Tema que no pertenece a la oposición → "Tema N"', () => {
+      // Tema 999 no existe en Aux Admin Estado
+      expect(formatThemeName(999, 'auxiliar-administrativo-estado')).toBe('Tema 999')
     })
   })
 })
 
-describe('Theme Formatting - Auxiliar Administrativo del Estado (C2)', () => {
-  const oposicion = 'auxiliar-administrativo-estado'
-
-  describe('formatThemeName para C2', () => {
-    // Bloque I: Temas 1-16
-    test('Bloque I - Tema 1', () => {
-      expect(formatThemeName(1, oposicion)).toBe('Bloque I - Tema 1')
+describe('isThemeValidForOposicion', () => {
+  describe('Detecta temas que SÍ pertenecen a cada oposición', () => {
+    test('Aux Estado C2: Tema 1 válido', () => {
+      expect(isThemeValidForOposicion(1, 'auxiliar-administrativo-estado')).toBe(true)
     })
-
-    test('Bloque I - Tema 16 (último del bloque)', () => {
-      expect(formatThemeName(16, oposicion)).toBe('Bloque I - Tema 16')
+    test('Aux Estado C2: Tema 101 válido', () => {
+      expect(isThemeValidForOposicion(101, 'auxiliar-administrativo-estado')).toBe(true)
     })
-
-    // Bloque II: Temas 101-112
-    test('Bloque II - Tema 1 (interno 101)', () => {
-      expect(formatThemeName(101, oposicion)).toBe('Bloque II - Tema 1')
+    test('Admin Estado C1: Tema 201 válido', () => {
+      expect(isThemeValidForOposicion(201, 'administrativo-estado')).toBe(true)
     })
-
-    test('Bloque II - Tema 12 (interno 112)', () => {
-      expect(formatThemeName(112, oposicion)).toBe('Bloque II - Tema 12')
+    test('Madrid: Tema 15 válido', () => {
+      expect(isThemeValidForOposicion(15, 'auxiliar-administrativo-madrid')).toBe(true)
     })
-
-    // Temas de C1 NO deben formatearse con bloques en C2
-    test('Tema 201 NO tiene bloque en C2', () => {
-      expect(formatThemeName(201, oposicion)).toBe('Tema 201')
-    })
-
-    test('Tema 301 NO tiene bloque en C2', () => {
-      expect(formatThemeName(301, oposicion)).toBe('Tema 301')
+    test('Madrid: Tema 21 válido', () => {
+      expect(isThemeValidForOposicion(21, 'auxiliar-administrativo-madrid')).toBe(true)
     })
   })
 
-  describe('getValidThemeRanges para C2', () => {
-    test('Devuelve 2 rangos para C2', () => {
-      const ranges = getValidThemeRanges(oposicion)
-      expect(ranges).toHaveLength(2)
+  describe('Rechaza temas que NO pertenecen a la oposición (regresión bug Tatiana)', () => {
+    test('Madrid: Tema 101 (propio de Aux Estado) NO es válido', () => {
+      expect(isThemeValidForOposicion(101, 'auxiliar-administrativo-madrid')).toBe(false)
     })
-
-    test('Bloque I tiene 16 temas (1-16)', () => {
-      const ranges = getValidThemeRanges(oposicion)
-      expect(ranges[0]).toEqual({ min: 1, max: 16 })
+    test('Aux Estado C2: Tema 201 (propio de Admin C1) NO es válido', () => {
+      expect(isThemeValidForOposicion(201, 'auxiliar-administrativo-estado')).toBe(false)
     })
-
-    test('Bloque II tiene 12 temas (101-112)', () => {
-      const ranges = getValidThemeRanges(oposicion)
-      expect(ranges[1]).toEqual({ min: 101, max: 112 })
+    test('Admin Estado C1: Tema 101 (propio de Aux C2) NO es válido', () => {
+      expect(isThemeValidForOposicion(101, 'administrativo-estado')).toBe(false)
+    })
+    test('Galicia: Tema 999 inexistente NO es válido', () => {
+      expect(isThemeValidForOposicion(999, 'auxiliar-administrativo-galicia')).toBe(false)
     })
   })
 
-  describe('isThemeValidForOposicion para C2', () => {
-    test('Tema 1 es válido', () => {
-      expect(isThemeValidForOposicion(1, oposicion)).toBe(true)
+  describe('Fallbacks seguros', () => {
+    test('Sin slug → false', () => {
+      expect(isThemeValidForOposicion(1)).toBe(false)
     })
-
-    test('Tema 16 es válido', () => {
-      expect(isThemeValidForOposicion(16, oposicion)).toBe(true)
+    test('Slug null → false', () => {
+      expect(isThemeValidForOposicion(1, null)).toBe(false)
     })
-
-    test('Tema 17 NO es válido', () => {
-      expect(isThemeValidForOposicion(17, oposicion)).toBe(false)
+    test('Slug inexistente → false', () => {
+      expect(isThemeValidForOposicion(1, 'oposicion-que-no-existe')).toBe(false)
     })
-
-    test('Tema 101 es válido (Bloque II)', () => {
-      expect(isThemeValidForOposicion(101, oposicion)).toBe(true)
-    })
-
-    test('Tema 112 es válido (último Bloque II)', () => {
-      expect(isThemeValidForOposicion(112, oposicion)).toBe(true)
-    })
-
-    test('Tema 113 NO es válido', () => {
-      expect(isThemeValidForOposicion(113, oposicion)).toBe(false)
-    })
-
-    test('Tema 201 NO es válido (es de C1)', () => {
-      expect(isThemeValidForOposicion(201, oposicion)).toBe(false)
-    })
-  })
-})
-
-describe('Theme Formatting - Valor por defecto', () => {
-  test('Sin oposición especificada usa C2 por defecto', () => {
-    expect(formatThemeName(1)).toBe('Bloque I - Tema 1')
-    expect(formatThemeName(101)).toBe('Bloque II - Tema 1')
-    expect(formatThemeName(201)).toBe('Tema 201') // C1 tema, no válido en C2
-  })
-
-  test('getValidThemeRanges sin parámetro devuelve rangos de C2', () => {
-    const ranges = getValidThemeRanges()
-    expect(ranges).toHaveLength(2)
-  })
-})
-
-describe('Integración: Combinación de bloque + título descriptivo', () => {
-  // Simula la lógica de combinación usada en mis-estadisticas/page.js
-  function combineThemeTitle(temaNumber, descriptiveTitle, oposicionSlug) {
-    const bloquePrefix = formatThemeName(temaNumber, oposicionSlug)
-    if (!descriptiveTitle) return bloquePrefix
-    return `${bloquePrefix}: ${descriptiveTitle}`
-  }
-
-  test('C1: Tema 1 con título descriptivo', () => {
-    const result = combineThemeTitle(1, 'La Constitución Española de 1978', 'administrativo-estado')
-    expect(result).toBe('Bloque I - Tema 1: La Constitución Española de 1978')
-  })
-
-  test('C1: Tema 201 con título descriptivo', () => {
-    const result = combineThemeTitle(201, 'Atención al Público', 'administrativo-estado')
-    expect(result).toBe('Bloque II - Tema 1: Atención al Público')
-  })
-
-  test('C1: Tema 301 con título descriptivo', () => {
-    const result = combineThemeTitle(301, 'Las Fuentes del Derecho Administrativo', 'administrativo-estado')
-    expect(result).toBe('Bloque III - Tema 1: Las Fuentes del Derecho Administrativo')
-  })
-
-  test('C1: Tema 601 con título descriptivo', () => {
-    const result = combineThemeTitle(601, 'Informática Básica', 'administrativo-estado')
-    expect(result).toBe('Bloque VI - Tema 1: Informática Básica')
-  })
-
-  test('C2: Tema 1 con título descriptivo', () => {
-    const result = combineThemeTitle(1, 'La Constitución Española', 'auxiliar-administrativo-estado')
-    expect(result).toBe('Bloque I - Tema 1: La Constitución Española')
-  })
-
-  test('C2: Tema 101 con título descriptivo', () => {
-    const result = combineThemeTitle(101, 'Atención al ciudadano', 'auxiliar-administrativo-estado')
-    expect(result).toBe('Bloque II - Tema 1: Atención al ciudadano')
-  })
-
-  test('Sin título descriptivo solo muestra bloque', () => {
-    const result = combineThemeTitle(1, null, 'administrativo-estado')
-    expect(result).toBe('Bloque I - Tema 1')
-  })
-
-  test('Con título vacío solo muestra bloque', () => {
-    const result = combineThemeTitle(1, '', 'administrativo-estado')
-    expect(result).toBe('Bloque I - Tema 1')
-  })
-})
-
-describe('Casos Edge', () => {
-  test('Tema 0 (tests aleatorios)', () => {
-    expect(formatThemeName(0, 'administrativo-estado')).toBe('Tema 0')
-    expect(formatThemeName(0, 'auxiliar-administrativo-estado')).toBe('Tema 0')
-  })
-
-  test('Tema negativo', () => {
-    expect(formatThemeName(-1, 'administrativo-estado')).toBe('Tema -1')
-  })
-
-  test('Oposición desconocida usa formato por defecto (C2)', () => {
-    expect(formatThemeName(1, 'oposicion-desconocida')).toBe('Bloque I - Tema 1')
-    expect(formatThemeName(101, 'oposicion-desconocida')).toBe('Bloque II - Tema 1')
-    expect(formatThemeName(201, 'oposicion-desconocida')).toBe('Tema 201')
-  })
-
-  test('Límites exactos de cada bloque C1', () => {
-    const oposicion = 'administrativo-estado'
-    // Bloque I límites
-    expect(isThemeValidForOposicion(1, oposicion)).toBe(true)
-    expect(isThemeValidForOposicion(11, oposicion)).toBe(true)
-    // Bloque II límites
-    expect(isThemeValidForOposicion(201, oposicion)).toBe(true)
-    expect(isThemeValidForOposicion(204, oposicion)).toBe(true)
-    // Bloque III límites
-    expect(isThemeValidForOposicion(301, oposicion)).toBe(true)
-    expect(isThemeValidForOposicion(307, oposicion)).toBe(true)
-    // Bloque IV límites
-    expect(isThemeValidForOposicion(401, oposicion)).toBe(true)
-    expect(isThemeValidForOposicion(409, oposicion)).toBe(true)
-    // Bloque V límites
-    expect(isThemeValidForOposicion(501, oposicion)).toBe(true)
-    expect(isThemeValidForOposicion(506, oposicion)).toBe(true)
-    // Bloque VI límites
-    expect(isThemeValidForOposicion(601, oposicion)).toBe(true)
-    expect(isThemeValidForOposicion(608, oposicion)).toBe(true)
   })
 })
