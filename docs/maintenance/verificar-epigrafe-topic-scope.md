@@ -401,3 +401,174 @@ Responde:
 - Epígrafe menciona "Título III" pero el scope cubre arts de otros títulos
 - Scope usa `NULL` (toda la ley) pero el epígrafe es específico
 - Un art está en el scope pero su contenido no tiene relación con el epígrafe
+
+---
+
+## Vectores de descubrimiento de bugs (lecciones reales)
+
+El procedimiento descrito arriba es **proactivo** (vas tú a verificar). Pero los bugs reales en topic_scope se descubren también de otras formas que conviene tener presentes:
+
+### Vector 1 — Feedback de usuario + referrer
+
+Cuando un usuario reporta algo tipo *"pincho en X y me sale Y"*, el campo `referrer` del feedback (almacenado en `user_feedback.referrer`) suele apuntar exactamente al URL donde el componente generó el enlace mal con el scope incorrecto.
+
+**Caso real (Carmen, Asturias T7, abr 2026):**
+
+- Mensaje: *"¿Por qué no sale el temario y las preguntas de la Ley 39/2015? Pincho en el enlace y me sale para practicas con el Tratado de la UE"*
+- Referrer: `/leyes/constitucion-espanola/avanzado?selected_articles=11&source=temario`
+- Diagnóstico: ella estaba en `/auxiliar-administrativo-asturias/temario/tema-7` (Ley 39/2015), pero el `topic_scope` de ese tema apuntaba a TUE arts 13-19 → el componente generó el link a la ley incorrecta
+
+**Workflow:**
+
+1. Leer `referrer` del `user_feedback`.
+2. Si trae query params (`selected_articles=...`, `source=temario`), reconstruir el camino: el usuario pinchó en el temario X → el href se generó desde el `topic_scope` de X.
+3. Comprobar el `topic_scope` del tema origen y verificar que la ley/articles coinciden con el epígrafe.
+
+### Vector 2 — Comparación cruzada con oposiciones hermanas
+
+Cuando un epígrafe es **idéntico o casi idéntico** entre varias oposiciones (la misma ley estatal aparece en muchos temarios), el `topic_scope` debe ser equivalente. Si una oposición se desvía, es muy probable que sea un bug.
+
+**Caso real (Asturias T7):**
+
+| Oposición | Epígrafe | Cobertura |
+|---|---|---|
+| `administrativo_galicia` T8 | "Ley 39/2015 títulos preliminar a V" | **126 arts** ✅ |
+| `auxiliar_administrativo_galicia` T7 | "Ley 39/2015 títulos preliminar a V" | **126 arts** ✅ |
+| `auxiliar_administrativo_asturias` T7 | "Ley 39/2015 títulos preliminar a V" | **TUE 13-19** ❌ |
+
+Ver que las dos de Galicia coincidían (126 arts) y Asturias estaba sola con TUE → bug obvio sin necesidad de leer el PDF.
+
+**Script para encontrar oposiciones hermanas con epígrafe similar:**
+
+```js
+const KEYWORD = 'Ley 39/2015' // o 'Constitución Española', 'EBEP', etc.
+const { data } = await supabase
+  .from('topics')
+  .select('position_type, topic_number, title, epigrafe')
+  .eq('is_active', true)
+  .ilike('title', `%${KEYWORD}%`)
+  .order('position_type')
+
+// Para cada uno, mostrar qué leyes tiene en su topic_scope.
+// Buscar outliers (oposición que aparece con leyes muy distintas a las demás).
+```
+
+### Vector 3 — `programa_url` puede estar APUNTANDO MAL
+
+El manual asume que `oposiciones.programa_url` es la fuente de verdad. **No siempre lo es:**
+
+- Puede apuntar a una convocatoria **pasada** (la última publicada antes de la actual)
+- Puede apuntar a una convocatoria **paralela** distinta (caso real: Asturias `programa_url` apunta al PDF de "Cuerpo Auxiliar para discapacidad intelectual" — 10 temas adaptados — pero la oposición en BD es la **general** con 25 temas)
+
+**Antes de validar contra el PDF, comprobar coherencia:**
+
+```js
+// Si el PDF tiene 10 temas y BD tiene 25 → mismatch, programa_url no sirve para validar
+const { data: opo } = await supabase
+  .from('oposiciones')
+  .select('temas_count, programa_url, boe_reference, estado_proceso')
+  .eq('slug', SLUG)
+  .single()
+
+const { count: temasEnBd } = await supabase
+  .from('topics')
+  .select('*', { count: 'exact', head: true })
+  .eq('position_type', POSITION_TYPE)
+  .eq('is_active', true)
+```
+
+Si el `programa_url` apunta a un temario incoherente:
+1. Buscar el BOPA/DOG/BOJA actualizado (search en `iaap.asturias.es`, `xunta.gal/dog`, etc.)
+2. Si la convocatoria selectiva nueva no se ha publicado aún (`estado_proceso = oep_aprobada`), validar contra la **convocatoria anterior** (a veces solo está en BOPA/DOG, sin PDF unificado)
+3. Apuntar `programa_url` al recurso correcto cuando se publique
+
+### Vector 4 — Auditoría bulk de scope sospechoso
+
+Para detectar topics con `topic_scope` problemático sin revisar uno a uno:
+
+```js
+require('dotenv').config({ path: '.env.local' })
+const { createClient } = require('@supabase/supabase-js')
+const s = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
+
+;(async () => {
+  // 1. Cargar TODOS los topics activos (paginar, Supabase trunca a 1000)
+  let topics = []
+  for (let from = 0;; from += 1000) {
+    const { data } = await s.from('topics')
+      .select('id, position_type, topic_number, title, epigrafe')
+      .eq('is_active', true)
+      .range(from, from + 999)
+    if (!data || data.length === 0) break
+    topics.push(...data)
+    if (data.length < 1000) break
+  }
+  console.log('Topics activos:', topics.length)
+
+  // 2. Para cada topic, comprobar su topic_scope
+  const sospechosos = { sinScope: [], scopeVacio: [], leyMismatch: [] }
+
+  for (const t of topics) {
+    const { data: scopes } = await s.from('topic_scope')
+      .select('article_numbers, laws(short_name)')
+      .eq('topic_id', t.id)
+
+    if (!scopes || scopes.length === 0) {
+      sospechosos.sinScope.push(`${t.position_type} T${t.topic_number}: ${t.title}`)
+      continue
+    }
+
+    const totalArts = scopes.reduce((acc, sc) => acc + (sc.article_numbers?.length || 0), 0)
+    const someEmpty = scopes.some(sc => !sc.article_numbers || sc.article_numbers.length === 0)
+    if (totalArts === 0 || someEmpty) {
+      sospechosos.scopeVacio.push(`${t.position_type} T${t.topic_number}: ${t.title}`)
+    }
+
+    // Heurística: si el título menciona "Ley X/YYYY", debe aparecer en el scope
+    const m = (t.title || '').match(/Ley\s+(\d+\/\d{4}|O?\s*\d+\/\d{4})/i)
+    if (m) {
+      const leyToken = m[1].replace(/\s+/g, '')
+      const has = scopes.some(sc => sc.laws?.short_name && new RegExp(leyToken).test(sc.laws.short_name))
+      if (!has) {
+        sospechosos.leyMismatch.push(
+          `${t.position_type} T${t.topic_number}: título dice "${m[0]}" pero scope=${scopes.map(sc => sc.laws?.short_name).join(',')}`
+        )
+      }
+    }
+  }
+
+  for (const [tipo, lista] of Object.entries(sospechosos)) {
+    console.log(`\n═══ ${tipo} (${lista.length}) ═══`)
+    lista.slice(0, 30).forEach(l => console.log('  -', l))
+  }
+})()
+```
+
+Casos típicos que detecta:
+- `sinScope`: tema sin entradas en `topic_scope` → no muestra nada al usuario
+- `scopeVacio`: tema con entradas pero `article_numbers` vacíos en alguna → sin cobertura real
+- `leyMismatch`: título menciona "Ley X/YYYY" pero ninguna ley del scope coincide → bug de mapping
+
+### Vector 5 — Tipo de bug: ¿código o datos?
+
+Al investigar un feedback de usuario, distinguir desde el principio si es:
+
+- **Bug de código** (componente, query, lógica): el usuario ve algo raro pero la BD está OK. Ejemplo: `FailedQuestionsReview` con `as any` que devolvía `undefined` y la API trataba `positionType` vacío como "no filtrar" → tema pintado con título de otra oposición (caso Tatiana, abr 2026).
+- **Bug de datos** (BD): el código está OK pero los datos son incorrectos. Ejemplo: `topic_scope` de Asturias T7 apuntando a TUE en vez de Ley 39/2015 (caso Carmen, abr 2026).
+
+**Pista rápida**: si el usuario afectado es uno solo o un perfil específico → más probable bug de datos (un tema concreto, una oposición concreta). Si afecta a TODOS los usuarios de una oposición → puede ser código o datos.
+
+Ver también `docs/procedures/gestionar-feedback-bug.md` para metodología general de investigación.
+
+## Notas de incidentes reales
+
+### 2026-04-13 — Asturias T7 mapeado a TUE
+
+- **Reporte**: Carmen (auxiliar_administrativo_asturias) escribió "pincho Ley 39/2015 y sale Tratado de la UE"
+- **Bug**: `topic_scope` de Asturias T7 apuntaba a TUE arts 13-19 en vez de Ley 39/2015
+- **Fix**: DELETE scope incorrecto + INSERT Ley 39/2015 arts 1-126 (cobertura idéntica a Galicia C1 T8 y Galicia C2 T7 con el mismo epígrafe)
+- **Hallazgos paralelos**:
+  - `programa_url` de Asturias apunta al PDF de discapacidad intelectual (10 temas, BOPA 23/2/2022), no al temario general de 25 temas
+  - `auxiliar_administrativo_cantabria` T5 (Ley 39/2015) tiene `article_numbers` vacíos
+  - `auxiliar_administrativo_asturias` T10 (EBEP) sin scope
+- **Lección**: el feedback con `referrer` + comparación cruzada con Galicia llegaron al diagnóstico en minutos, sin necesidad de leer el PDF (que además estaba mal apuntado).
