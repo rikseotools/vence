@@ -117,7 +117,10 @@ describe('answerSaveQueue — estructura', () => {
 
   it('tiene AbortController con timeout', () => {
     expect(content).toContain('AbortController')
-    expect(content).toContain('setTimeout(() => controller.abort()')
+    // Acepta variantes: legacy `setTimeout(() => controller.abort()` y la actual
+    // que añade flag timedOut para distinguir abort interno vs externo:
+    //   `setTimeout(() => { timedOut = true; controller.abort() }, 8000)`
+    expect(content).toMatch(/setTimeout\(\(\)\s*=>\s*\{?\s*(?:timedOut\s*=\s*true;\s*)?controller\.abort\(\)/)
   })
 
   it('tiene deduplicación con flushInProgress', () => {
