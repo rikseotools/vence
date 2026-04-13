@@ -1151,6 +1151,41 @@ Si se activan preguntas antes de que pasen la verificación con agentes, los usu
 
 **Regla:** Usar `tags` para marcar el origen: `['Tema 2', 'Estatuto Murcia', 'CARM']`. No inventar columnas que no existen en el schema.
 
+### Error 6: Preguntas estructurales mal vinculadas a un artículo concreto
+
+Las preguntas que tratan sobre la **estructura** de la ley (qué Título cubre qué materia, cuántos capítulos tiene un Título, dónde se regula X) **no pertenecen a un artículo concreto**. Si el pipeline las vincula al primer artículo del Título mencionado, los usuarios que filtren por ese artículo verán preguntas confusas que no responden al contenido literal del artículo.
+
+**Incidente real (abril 2026, usuario emilopbra007):** pidió "Test del Art. 97 CE" y le apareció *"¿Qué Título de la Constitución está dedicado a la regulación del Gobierno?"*. Esa pregunta no es del Art. 97 — es sobre el Título IV completo. El pipeline TuTestDigital la vinculó al Art. 97 (primer artículo del Título IV) sin verificar el contenido. Detectadas 21 preguntas con el mismo patrón en varias importaciones (TuTestDigital Galicia abr 2026, CyL mar 2026, Tramitación Procesal feb 2026).
+
+**Regla:** Tras detectar las palabras clave de pregunta estructural en el enunciado, **vincular al `Art. 0 (Estructura)` de la MISMA ley** (la regla "no Art 0 de OTRA ley" del apartado 11 sigue vigente, pero NO prohíbe el Art 0 de la propia ley). Si la ley no tiene `Art. 0`, crearlo con la estructura/índice como contenido.
+
+**Keywords detectables (case-insensitive) en el enunciado:**
+
+| Patrón regex | Ejemplo de pregunta |
+|---|---|
+| `qué\s+t[íi]tulo\s+.+(dedicado|trata|regula)` | "¿Qué Título de la CE está dedicado al Poder Judicial?" |
+| `seg[úu]n\s+el\s+t[íi]tulo\s+[IVX]+` | "Según el Título VIII de la CE..." |
+| `a\s+tenor\s+.+t[íi]tulo` | "A tenor de lo dispuesto en el Título II..." |
+| `dispuesto\s+en\s+el\s+(t[íi]tulo|cap[íi]tulo)\s+[IVX0-9]+` | "...dispuesto en el Capítulo III del Título IV..." |
+| `conforme\s+al\s+t[íi]tulo` | "Conforme al Título VI..." |
+| `cu[áa]nt(os|as)\s+(cap[íi]tulos|secciones|art[íi]culos).+(t[íi]tulo|cap[íi]tulo)` | "¿En cuántas secciones se divide el Capítulo III del Título IV?" |
+
+**Excepción (mantener artículo específico):** si la pregunta menciona el Título pero la respuesta correcta requiere conocer el contenido literal de UN artículo concreto (no del Título completo), vincular al artículo concreto. Verificar pregunta a pregunta antes de aplicar el mapeo masivo a Art 0.
+
+**Helper para pipelines:** la función `detectStructuralQuestion(text)` en `lib/import-cleanup.cjs` aplica los regex anteriores y devuelve `true` si la pregunta es estructural. Usar SIEMPRE en pipelines de importación antes de asignar `primary_article_id`.
+
+```js
+const { detectStructuralQuestion } = require('./lib/import-cleanup.cjs')
+
+if (detectStructuralQuestion(question.text)) {
+  // Vincular a Art 0 de la ley (no al primer art del título mencionado)
+  primaryArticleId = await getOrCreateArt0(lawId)
+} else {
+  // Flujo normal: leer contenido del artículo candidato y verificar
+  primaryArticleId = await findArticleForQuestion(question, lawId)
+}
+```
+
 ## 14. Checklist Completo por Tema
 
 Flujo validado (Abril 2026):
