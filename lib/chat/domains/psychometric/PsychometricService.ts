@@ -210,8 +210,8 @@ export async function processPsychometricQuestion(
       const status = err?.status || err?.response?.status
       const isOverloaded = status === 529 || status === 503 || status === 429
       const userMsg = isOverloaded
-        ? '⚠️ **Nuestro sistema de razonamiento avanzado está saturado en este momento.**\n\nPor favor, espera unos segundos y vuelve a intentarlo. Si el problema persiste, prueba de nuevo en unos minutos.'
-        : '⚠️ **Ha ocurrido un error generando la explicación.**\n\nPor favor, vuelve a intentarlo en unos segundos.'
+        ? '⚠️ **Nuestro sistema de razonamiento avanzado está saturado en este momento.**\n\nPor favor, espera unos minutos y vuelve a intentarlo.'
+        : '⚠️ **Ha ocurrido un error generando la explicación.**\n\nPor favor, vuelve a intentarlo en unos minutos.'
 
       llmSpan?.setOutput({ responseContent: userMsg, finishReason: 'error', errorStatus: status, errorMessage: err?.message })
       llmSpan?.addMetadata('model', model)
