@@ -1925,7 +1925,10 @@ export default function AdminFeedbackPage() {
                           {userData.feedbackTypes?.has('bug') && !userData.feedbackTypes?.has('account_deletion') && (
                             <span className="absolute -top-0.5 -left-0.5 w-3 h-3 rounded-full bg-amber-500 border-2 border-white dark:border-gray-800" title="Bug"></span>
                           )}
-                          {!userData.feedbackTypes?.has('account_deletion') && !userData.feedbackTypes?.has('bug') && userData.feedbackTypes?.size > 0 && (
+                          {userData.feedbackTypes?.has('email') && !userData.feedbackTypes?.has('account_deletion') && !userData.feedbackTypes?.has('bug') && (
+                            <span className="absolute -top-0.5 -left-0.5 w-3 h-3 rounded-full bg-indigo-500 border-2 border-white dark:border-gray-800" title="Respuesta por email"></span>
+                          )}
+                          {!userData.feedbackTypes?.has('account_deletion') && !userData.feedbackTypes?.has('bug') && !userData.feedbackTypes?.has('email') && userData.feedbackTypes?.size > 0 && (
                             <span className="absolute -top-0.5 -left-0.5 w-3 h-3 rounded-full bg-blue-500 border-2 border-white dark:border-gray-800" title="Otro"></span>
                           )}
                         </div>
@@ -1936,6 +1939,9 @@ export default function AdminFeedbackPage() {
                             {userData.name || userData.email || 'Usuario anónimo'}
                             {!userData.id && userData.email && (
                               <span className="bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 text-xs px-1.5 py-0.5 rounded font-medium" title="Email entrante (no es usuario registrado)">📧 Inbound</span>
+                            )}
+                            {userData.id && userData.feedbackTypes?.has('email') && (
+                              <span className="bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 text-xs px-1.5 py-0.5 rounded font-medium" title="Respondió por email a una comunicación de Vence">📧 Email</span>
                             )}
                             {(userData.planType === 'premium' || userData.planType === 'pro') && (
                               <span className="text-yellow-500" title="Usuario Premium">👑</span>
