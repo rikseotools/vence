@@ -84,6 +84,12 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
   const userProfileRef = useRef<UserProfileRow | null>(null)
   const profileLoadingRef = useRef(false)
 
+  // 🎯 Singleflight: Map<userId, Promise> para deduplicar llamadas concurrentes.
+  // Si varios componentes piden el perfil a la vez, todos esperan a la MISMA
+  // promesa en curso en vez de recibir null/hacer queries duplicadas (bug que
+  // hacía que users con red lenta vieran UI de "no-Premium" pese a tener Premium).
+  const inflightProfileLoadsRef = useRef<Map<string, Promise<UserProfileRow | null>>>(new Map())
+
   const updateUserProfile = (profile: UserProfileRow | null) => {
     userProfileRef.current = profile
     setUserProfile(profile)
@@ -174,11 +180,18 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
   const loadUserProfile = useCallback(async (userId: string, retryCount = 0): Promise<UserProfileRow | null> => {
     const MAX_RETRIES = 3
 
-    // ✨ Evitar llamadas concurrentes (usar refs para evitar stale closures)
-    if (profileLoadingRef.current && retryCount === 0) {
-      console.log('📄 Ya cargando perfil, reutilizando resultado en curso')
-      if (userProfileRef.current) return userProfileRef.current
-      return null
+    // 🎯 Singleflight: si ya hay una carga en curso para este userId, devolver
+    // esa MISMA Promise para que los llamadores concurrentes reciban el resultado
+    // real (no null). Bug previo: devolvía null inmediatamente si profileLoadingRef
+    // estaba activo, haciendo que components como UserAvatar vieran isPremium=false
+    // pese a que el perfil estaba cargándose correctamente.
+    // Nota: retryCount > 0 salta el singleflight porque es recursión interna.
+    if (retryCount === 0) {
+      const existing = inflightProfileLoadsRef.current.get(userId)
+      if (existing) {
+        console.log('📄 Singleflight: esperando carga en curso para', userId)
+        return existing
+      }
     }
 
     // Si ya tenemos el perfil del usuario correcto, no recargar
@@ -187,11 +200,15 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
       return userProfileRef.current
     }
 
-    if (retryCount === 0) {
-      updateProfileLoading(true)
-    }
+    // Wrapper interno con el trabajo real. El Promise de esta IIFE se guarda en
+    // el Map de singleflight (solo en la llamada inicial, retryCount === 0) para
+    // que llamadas concurrentes lo compartan.
+    const doWork = async (): Promise<UserProfileRow | null> => {
+      if (retryCount === 0) {
+        updateProfileLoading(true)
+      }
 
-    try {
+      try {
       console.log(`📄 Cargando perfil del usuario... ${retryCount > 0 ? `(intento ${retryCount + 1}/${MAX_RETRIES})` : ''}`, { userId })
 
       // 🔧 FIX: Timeout más largo para consultas lentas + AbortController
@@ -278,6 +295,24 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
         updateProfileLoading(false)
       }
     }
+    } // fin doWork
+
+    // Registrar la Promise en el Map solo para la llamada raíz (retryCount === 0).
+    // Los retries internos ejecutan doWork() directamente sin singleflight.
+    if (retryCount === 0) {
+      const promise = doWork()
+      inflightProfileLoadsRef.current.set(userId, promise)
+      // Limpiar la entrada cuando la promesa termine (éxito o fallo).
+      // Comprobamos identidad antes de borrar para evitar borrar otra carga que
+      // se haya iniciado mientras tanto (defensa contra race conditions).
+      promise.finally(() => {
+        if (inflightProfileLoadsRef.current.get(userId) === promise) {
+          inflightProfileLoadsRef.current.delete(userId)
+        }
+      })
+      return promise
+    }
+    return doWork()
   }, [supabase])
 
   // 🎯 NUEVA FUNCIÓN: Crear/actualizar perfil según fuente

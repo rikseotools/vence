@@ -1162,3 +1162,254 @@ describe('AuthContext — invariantes globales', () => {
     expect(mockUnsubscribe).toHaveBeenCalledTimes(1)
   })
 })
+
+// ============================================================
+// SINGLEFLIGHT: deduplicación de llamadas concurrentes a loadUserProfile
+// Regresión del bug de Luisa (14/04/2026) donde varios componentes llamaban
+// a loadUserProfile en paralelo y el segundo recibía null inmediatamente,
+// haciendo que isPremium fuese false pese a tener plan_type='premium' en BD.
+// ============================================================
+describe('AuthContext — singleflight loadUserProfile', () => {
+  beforeEach(() => {
+    jest.useFakeTimers()
+    authCallback = null
+    mockUnsubscribe.mockClear()
+    ;(global.fetch as jest.Mock).mockResolvedValue({ ok: true })
+  })
+
+  afterEach(() => {
+    jest.useRealTimers()
+  })
+
+  test('múltiples eventos auth simultáneos → UNA sola query a user_profiles', async () => {
+    const premiumProfile = { id: 'u1', plan_type: 'premium', email: 'sf@test.com' }
+    const mockSingle = jest.fn().mockImplementation(() =>
+      new Promise(resolve =>
+        setTimeout(() => resolve({ data: premiumProfile, error: null }), 50)
+      )
+    )
+    const mockAbortSignal = jest.fn().mockReturnValue({ single: mockSingle })
+    const mockEq = jest.fn().mockReturnValue({ abortSignal: mockAbortSignal })
+    const mockSelect = jest.fn().mockReturnValue({ eq: mockEq })
+    const fromSpy = jest.fn().mockReturnValue({ select: mockSelect })
+
+    mockSupabase = {
+      auth: {
+        getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'u1', email: 'sf@test.com' } }, error: null }),
+        onAuthStateChange: jest.fn().mockImplementation((cb: AuthCallback) => {
+          authCallback = cb
+          setTimeout(() => cb('INITIAL_SESSION', { user: { id: 'u1', email: 'sf@test.com' } }), 0)
+          return { data: { subscription: { unsubscribe: mockUnsubscribe } } }
+        }),
+      },
+      from: fromSpy,
+      rpc: jest.fn().mockResolvedValue({ data: null, error: null }),
+    }
+
+    const renders: Array<{ isPremium: boolean; loading: boolean }> = []
+    await act(async () => {
+      render(
+        <AuthProvider>
+          <AuthConsumer onRender={(v) => renders.push({ isPremium: v.isPremium as boolean, loading: v.loading as boolean })} />
+        </AuthProvider>
+      )
+    })
+
+    // INITIAL_SESSION dispara 1ª carga de perfil (en curso, delay 50ms)
+    await act(async () => {
+      jest.advanceTimersByTime(1)
+    })
+
+    // Mientras la 1ª carga está viva (aún no ha pasado el delay), disparamos
+    // más eventos que también llaman loadUserProfile para el mismo userId.
+    if (authCallback) {
+      await act(async () => {
+        authCallback!('TOKEN_REFRESHED', { user: { id: 'u1', email: 'sf@test.com' } })
+        authCallback!('TOKEN_REFRESHED', { user: { id: 'u1', email: 'sf@test.com' } })
+        authCallback!('SIGNED_IN', { user: { id: 'u1', email: 'sf@test.com' } })
+      })
+    }
+
+    // Dejar que todo el delay transcurra y se resuelva
+    await act(async () => {
+      jest.advanceTimersByTime(100)
+    })
+
+    // Con singleflight, la misma Promise debe ser compartida → UNA sola query
+    expect(mockSingle).toHaveBeenCalledTimes(1)
+
+    // Estado final: premium (el segundo caller NO recibió null, recibió el perfil real)
+    const final = renders[renders.length - 1]
+    expect(final.loading).toBe(false)
+    expect(final.isPremium).toBe(true)
+  })
+
+  test('concurrent call recibe el MISMO perfil que la primera (no null)', async () => {
+    // Este es el caso exacto de Luisa: antes del fix, el segundo caller recibía
+    // null porque profileLoadingRef.current era true pero userProfileRef era null.
+    const premiumProfile = { id: 'u2', plan_type: 'premium', email: 'luisa@test.com' }
+
+    let renderedIsPremium: boolean[] = []
+
+    const mockSingle = jest.fn().mockImplementation(() =>
+      new Promise(resolve =>
+        setTimeout(() => resolve({ data: premiumProfile, error: null }), 30)
+      )
+    )
+    const mockAbortSignal = jest.fn().mockReturnValue({ single: mockSingle })
+    const mockEq = jest.fn().mockReturnValue({ abortSignal: mockAbortSignal })
+    const mockSelect = jest.fn().mockReturnValue({ eq: mockEq })
+
+    mockSupabase = {
+      auth: {
+        getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'u2', email: 'luisa@test.com' } }, error: null }),
+        onAuthStateChange: jest.fn().mockImplementation((cb: AuthCallback) => {
+          authCallback = cb
+          setTimeout(() => cb('INITIAL_SESSION', { user: { id: 'u2', email: 'luisa@test.com' } }), 0)
+          return { data: { subscription: { unsubscribe: mockUnsubscribe } } }
+        }),
+      },
+      from: jest.fn().mockReturnValue({ select: mockSelect }),
+      rpc: jest.fn().mockResolvedValue({ data: null, error: null }),
+    }
+
+    await act(async () => {
+      render(
+        <AuthProvider>
+          <AuthConsumer onRender={(v) => renderedIsPremium.push(v.isPremium as boolean)} />
+        </AuthProvider>
+      )
+    })
+
+    // Avanzar hasta que INITIAL_SESSION emita y empiece la carga
+    await act(async () => {
+      jest.advanceTimersByTime(1)
+    })
+
+    // Disparar TOKEN_REFRESHED que también quiere cargar el perfil → debe compartir la promesa
+    if (authCallback) {
+      await act(async () => {
+        authCallback!('TOKEN_REFRESHED', { user: { id: 'u2', email: 'luisa@test.com' } })
+      })
+    }
+
+    // Resolver todo
+    await act(async () => {
+      jest.advanceTimersByTime(100)
+    })
+
+    // El usuario debe terminar viendo Premium (no null / no "Free")
+    expect(renderedIsPremium[renderedIsPremium.length - 1]).toBe(true)
+    // Y la query se hizo UNA sola vez (no duplicada)
+    expect(mockSingle).toHaveBeenCalledTimes(1)
+  })
+
+  test('tras completar la carga, una nueva llamada puede disparar otra query', async () => {
+    // Verifica que la entrada del Map se limpia correctamente al resolver.
+    // Si no se limpiara, la próxima vez que cambie el user no haría nueva query.
+    const profile = { id: 'u3', plan_type: 'premium', email: 'u3@test.com' }
+    const mockSingle = jest.fn().mockResolvedValue({ data: profile, error: null })
+    const mockAbortSignal = jest.fn().mockReturnValue({ single: mockSingle })
+    const mockEq = jest.fn().mockReturnValue({ abortSignal: mockAbortSignal })
+    const mockSelect = jest.fn().mockReturnValue({ eq: mockEq })
+
+    mockSupabase = {
+      auth: {
+        getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'u3', email: 'u3@test.com' } }, error: null }),
+        onAuthStateChange: jest.fn().mockImplementation((cb: AuthCallback) => {
+          authCallback = cb
+          setTimeout(() => cb('INITIAL_SESSION', { user: { id: 'u3', email: 'u3@test.com' } }), 0)
+          return { data: { subscription: { unsubscribe: mockUnsubscribe } } }
+        }),
+      },
+      from: jest.fn().mockReturnValue({ select: mockSelect }),
+      rpc: jest.fn().mockResolvedValue({ data: null, error: null }),
+    }
+
+    await act(async () => {
+      render(
+        <AuthProvider>
+          <AuthConsumer onRender={() => {}} />
+        </AuthProvider>
+      )
+    })
+
+    // Primera carga (via INITIAL_SESSION)
+    await act(async () => {
+      jest.advanceTimersByTime(50)
+    })
+    const callsAfterFirst = mockSingle.mock.calls.length
+    expect(callsAfterFirst).toBeGreaterThanOrEqual(1)
+
+    // Forzar un SIGNED_OUT + SIGNED_IN de otro usuario → debe permitir nueva query
+    // (si el Map no se limpia, el siguiente load quedaría atascado en la Promise vieja)
+    if (authCallback) {
+      await act(async () => {
+        authCallback!('SIGNED_OUT', null)
+      })
+      await act(async () => {
+        authCallback!('SIGNED_IN', { user: { id: 'u4', email: 'u4@test.com' } })
+      })
+      await act(async () => {
+        jest.advanceTimersByTime(50)
+      })
+    }
+
+    // Debe haber habido al menos una query adicional para el nuevo usuario
+    expect(mockSingle.mock.calls.length).toBeGreaterThan(callsAfterFirst)
+  })
+
+  test('si la carga falla, el Map se limpia y la siguiente llamada reintenta', async () => {
+    // Si el Map no se limpia en rechazo, quedaría envenenado para siempre para ese userId.
+    let callCount = 0
+    const mockSingle = jest.fn().mockImplementation(() => {
+      callCount++
+      if (callCount === 1) {
+        // Primera: error de BD (no de red/abort, para no entrar en retry interno)
+        return Promise.resolve({ data: null, error: { message: 'DB error', code: 'UNKNOWN' } })
+      }
+      return Promise.resolve({ data: { id: 'u5', plan_type: 'premium', email: 'u5@test.com' }, error: null })
+    })
+    const mockAbortSignal = jest.fn().mockReturnValue({ single: mockSingle })
+    const mockEq = jest.fn().mockReturnValue({ abortSignal: mockAbortSignal })
+    const mockSelect = jest.fn().mockReturnValue({ eq: mockEq })
+
+    mockSupabase = {
+      auth: {
+        getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'u5', email: 'u5@test.com' } }, error: null }),
+        onAuthStateChange: jest.fn().mockImplementation((cb: AuthCallback) => {
+          authCallback = cb
+          setTimeout(() => cb('INITIAL_SESSION', { user: { id: 'u5', email: 'u5@test.com' } }), 0)
+          return { data: { subscription: { unsubscribe: mockUnsubscribe } } }
+        }),
+      },
+      from: jest.fn().mockReturnValue({ select: mockSelect }),
+      rpc: jest.fn().mockResolvedValue({ data: null, error: null }),
+    }
+
+    await act(async () => {
+      render(
+        <AuthProvider>
+          <AuthConsumer onRender={() => {}} />
+        </AuthProvider>
+      )
+    })
+
+    await act(async () => {
+      jest.advanceTimersByTime(50)
+    })
+
+    // Primera intento falló → Map debe estar limpio. TOKEN_REFRESHED fuerza otro intento.
+    if (authCallback) {
+      await act(async () => {
+        authCallback!('TOKEN_REFRESHED', { user: { id: 'u5', email: 'u5@test.com' } })
+      })
+      await act(async () => {
+        jest.advanceTimersByTime(50)
+      })
+    }
+
+    // Debe haber hecho al menos 2 llamadas (la primera falló, la segunda tuvo éxito)
+    expect(mockSingle.mock.calls.length).toBeGreaterThanOrEqual(2)
+  })
+})
