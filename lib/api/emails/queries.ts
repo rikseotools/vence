@@ -390,6 +390,22 @@ export async function sendEmailV2(params: SendEmailRequest): Promise<SendEmailRe
 
   if (error) {
     console.error(`❌ [Emails/v2] Resend error:`, error)
+    // Persistir el fallo en email_events para que sea visible en /admin/notificaciones/email/
+    // y queryable por SQL. Sin esto los fallos solo viven en stdout (invisibles).
+    try {
+      const db = getDb()
+      await db.insert(emailEvents).values({
+        userId,
+        emailType,
+        eventType: 'failed',
+        emailAddress: toEmail,
+        subject,
+        errorDetails: error.message || 'unknown',
+      })
+    } catch (logError) {
+      // No bloquear si el log falla: el fallo del email ya se está reportando al caller
+      console.error('⚠️ [Emails/v2] Error logueando fallo en email_events:', logError)
+    }
     return {
       success: false,
       error: error.message || 'Error enviando email',

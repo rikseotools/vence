@@ -93,17 +93,16 @@ describe('Integración - Flujo de respuesta del admin', () => {
     expect(updatedDispute.status).toBe('rejected')
     expect(updatedDispute.admin_response).toBeDefined()
 
-    // 3. Se determina el endpoint de email correcto
-    const emailEndpoint = dispute.isPsychometric
-      ? '/api/send-dispute-email/psychometric'
-      : '/api/send-dispute-email'
-
-    expect(emailEndpoint).toBe('/api/send-dispute-email/psychometric')
-
-    // 4. Se preparan datos del email
-    const emailBody = { disputeId: dispute.id }
-
-    expect(emailBody.disputeId).toBe('dispute-uuid')
+    // 3. Endpoint unificado post-14/04/2026: /api/v2/dispute/resolve
+    //    discrimina por questionType en el body, no por path.
+    const resolveBody = {
+      disputeId: dispute.id,
+      questionType: dispute.isPsychometric ? 'psychometric' : 'legislative',
+      status: 'rejected',
+      adminResponse: updatedDispute.admin_response,
+    }
+    expect(resolveBody.questionType).toBe('psychometric')
+    expect(resolveBody.disputeId).toBe('dispute-uuid')
   })
 
   test('flujo: admin responde con mensaje personalizado', () => {
@@ -341,18 +340,20 @@ describe('Regresiones - Bugs que NO deben volver', () => {
     expect(validTypes).toContain('ai_detected_error')
   })
 
-  test('BUG: closeDispute debe usar endpoint correcto según isPsychometric', () => {
-    const getEmailEndpoint = (isPsychometric) => {
-      return isPsychometric
-        ? '/api/send-dispute-email/psychometric'
-        : '/api/send-dispute-email'
-    }
+  test('post-14/04/2026: ambos tipos usan el endpoint unificado /api/v2/dispute/resolve', () => {
+    // Tras eliminar el trigger PG y los endpoints legacy, hay un solo endpoint
+    // que discrimina por questionType en el body.
+    const RESOLVE_ENDPOINT = '/api/v2/dispute/resolve'
+    const buildBody = (isPsychometric) => ({
+      disputeId: 'x',
+      questionType: isPsychometric ? 'psychometric' : 'legislative',
+      status: 'resolved',
+      adminResponse: 'ok',
+    })
 
-    // Psicotécnica debe usar endpoint correcto
-    expect(getEmailEndpoint(true)).toContain('psychometric')
-
-    // Normal NO debe usar endpoint de psicotécnicas
-    expect(getEmailEndpoint(false)).not.toContain('psychometric')
+    expect(buildBody(true).questionType).toBe('psychometric')
+    expect(buildBody(false).questionType).toBe('legislative')
+    expect(RESOLVE_ENDPOINT).toBe('/api/v2/dispute/resolve')
   })
 
   test('BUG: markAsRead debe usar tabla correcta según isPsychometric', () => {
@@ -392,7 +393,9 @@ describe('Comparativa - Normal vs Psicotécnica', () => {
     normal: {
       table: 'question_disputes',
       questionsTable: 'questions',
-      emailEndpoint: '/api/send-dispute-email',
+      // Endpoint unificado post-14/04/2026 (questionType discrimina)
+      resolveEndpoint: '/api/v2/dispute/resolve',
+      questionType: 'legislative',
       disputeTypes: ['no_literal', 'respuesta_incorrecta', 'otro'],
       canAppeal: true,
       hasArticleInfo: true
@@ -400,7 +403,8 @@ describe('Comparativa - Normal vs Psicotécnica', () => {
     psychometric: {
       table: 'psychometric_question_disputes',
       questionsTable: 'psychometric_questions',
-      emailEndpoint: '/api/send-dispute-email/psychometric',
+      resolveEndpoint: '/api/v2/dispute/resolve',
+      questionType: 'psychometric',
       disputeTypes: ['error_pregunta_respuesta', 'ai_detected_error', 'respuesta_incorrecta', 'otro'],
       canAppeal: false,
       hasArticleInfo: false
@@ -415,8 +419,10 @@ describe('Comparativa - Normal vs Psicotécnica', () => {
     expect(systemComparison.normal.questionsTable).not.toBe(systemComparison.psychometric.questionsTable)
   })
 
-  test('endpoints de email son diferentes', () => {
-    expect(systemComparison.normal.emailEndpoint).not.toBe(systemComparison.psychometric.emailEndpoint)
+  test('endpoint de resolve es el mismo, distinguen por questionType (post-14/04/2026)', () => {
+    expect(systemComparison.normal.resolveEndpoint).toBe('/api/v2/dispute/resolve')
+    expect(systemComparison.psychometric.resolveEndpoint).toBe('/api/v2/dispute/resolve')
+    expect(systemComparison.normal.questionType).not.toBe(systemComparison.psychometric.questionType)
   })
 
   test('tipos de disputa tienen diferencias', () => {
