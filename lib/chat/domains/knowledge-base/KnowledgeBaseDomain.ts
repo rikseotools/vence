@@ -300,10 +300,22 @@ ${kbContext}`
 
     const msg = context.currentMessage.trim()
 
+    // Señales fuertes de referencia a turnos anteriores — aplican
+    // aunque el mensaje sea largo (el usuario reformula su petición).
+    const strongFollowUpSignals = [
+      /^lo\s+que\s+(te|me|le)\s+(pid|dig|quier|aclar)/i,  // "lo que te pido", "lo que te digo"
+      /\b(vuelv(a|e|as|an|es)|volver)\s+a\s+(hacer|dar|explicar|decir|resumir|escribir|comentar|contar|ponerme?|mostrar|generar|sacar|escribir|reformular)/i,
+      /\b(otra\s+vez|de\s+nuevo|nuevamente|reformul|rehaz|rehacer)/i,
+      /\b(hacer|haz|dame|ponme|escribe|genera|resume)\s+(este|ese|esa|esta|el\s+mismo|la\s+misma)\s+/i, // "hacer este resumen", "resume ese apartado"
+      /\bmejor\s+(hazlo|dame|ponme|explicame|responde)/i,
+      /\ba\s+ver\s+si\s+(ahora|esta\s+vez)/i,
+    ]
+    if (strongFollowUpSignals.some(p => p.test(msg))) return true
+
     // Mensajes largos probablemente son standalone
     if (msg.length > 100) return false
 
-    // Patrones que indican continuación de conversación
+    // Patrones cortos de continuación de conversación
     const followUpStarters = [
       /^(y\s|pero\s|entonces\s|o\s+sea\s|es\s+decir)/i,
       /^(de(l|\s+(l[ao]s?\s+)?)\s*)\w/i,  // "de auxiliar...", "del tema..."
