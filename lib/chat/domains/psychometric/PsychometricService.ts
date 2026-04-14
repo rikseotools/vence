@@ -197,13 +197,36 @@ export async function processPsychometricQuestion(
       .filter(m => m.role !== 'system')
       .map(m => ({ role: m.role as 'user' | 'assistant', content: m.content }))
 
-    const response = await anthropic.messages.create({
-      model,
-      max_tokens: 2000,
-      temperature,
-      system: systemPrompt,
-      messages: anthropicMessages,
-    })
+    let response
+    try {
+      response = await anthropic.messages.create({
+        model,
+        max_tokens: 2000,
+        temperature,
+        system: systemPrompt,
+        messages: anthropicMessages,
+      })
+    } catch (err: any) {
+      const status = err?.status || err?.response?.status
+      const isOverloaded = status === 529 || status === 503 || status === 429
+      const userMsg = isOverloaded
+        ? '⚠️ **Nuestro sistema de razonamiento avanzado está saturado en este momento.**\n\nPor favor, espera unos segundos y vuelve a intentarlo. Si el problema persiste, prueba de nuevo en unos minutos.'
+        : '⚠️ **Ha ocurrido un error generando la explicación.**\n\nPor favor, vuelve a intentarlo en unos segundos.'
+
+      llmSpan?.setOutput({ responseContent: userMsg, finishReason: 'error', errorStatus: status, errorMessage: err?.message })
+      llmSpan?.addMetadata('model', model)
+      llmSpan?.addMetadata('provider', 'anthropic')
+      llmSpan?.addMetadata('anthropicError', String(status || 'unknown'))
+      llmSpan?.end()
+
+      logger.warn(`Psychometric Anthropic call failed: ${status}`, { domain: 'psychometric', model, error: err?.message })
+
+      return new ChatResponseBuilder()
+        .domain('psychometric')
+        .text(userMsg)
+        .processingTime(Date.now() - startTime)
+        .build()
+    }
 
     content = response.content[0]?.type === 'text' ? response.content[0].text : 'No pude generar una respuesta.'
     promptTokens = response.usage.input_tokens
