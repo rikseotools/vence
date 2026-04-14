@@ -27,6 +27,9 @@ export function detectDiscrepancy(
     { regex: /respuesta\s+correcta\s+(?:es|sería|debería\s+ser)\s+(?:la\s+)?(?:opción\s+)?([A-D])\b/i, confidence: 'high' as const },
     { regex: /la\s+opción\s+([A-D])\s+es\s+(?:la\s+)?correcta/i, confidence: 'high' as const },
     { regex: /correcta?\s+es\s+(?:la\s+)?([A-D])\b/i, confidence: 'high' as const },
+    // Formato habitual en psicotécnicos: "**RESPUESTA: A) Camarero**" o "Respuesta: C"
+    { regex: /\*\*respuesta:?\s+([A-D])\)/i, confidence: 'high' as const },
+    { regex: /respuesta\s*[:=]\s*([A-D])\)/i, confidence: 'high' as const },
 
     // Patrones para psicotécnicos de posición/ubicación
     { regex: /se\s+(?:colocaría|ubicaría|situaría)\s+en\s+(?:el\s+pasillo\s+)?([A-D])\d*/i, confidence: 'high' as const },
@@ -35,7 +38,9 @@ export function detectDiscrepancy(
 
     // Patrones de énfasis con negrita/asteriscos
     { regex: /\*\*([A-D])\)\s+[^*]+\*\*/i, confidence: 'medium' as const },
-    { regex: /\*\*(?:opción\s+)?([A-D])\*\*/i, confidence: 'medium' as const },
+    // OJO: antes permitía "**C**" suelto (opcion opcional), lo que daba falsos positivos
+    // en tablas de equivalencia de psicotécnicos (ej: "**Ψ** → **C**"). Ahora exige "opción".
+    { regex: /\*\*opción\s+([A-D])\*\*/i, confidence: 'medium' as const },
 
     // Patrones para series y secuencias
     { regex: /(?:el\s+)?(?:siguiente\s+)?(?:número|letra|elemento)\s+(?:es|sería)\s+(?:el\s+)?([A-D])\b/i, confidence: 'medium' as const },
