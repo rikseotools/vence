@@ -94,6 +94,53 @@ const linkifyText = (text: string | null | undefined, isAdminMessage = false): R
   return parts.length > 0 ? parts : text
 }
 
+/**
+ * Llama al endpoint unificado /api/v2/feedback/respond con Bearer token admin
+ * para responder/cerrar un feedback (INSERT mensaje + campana + email in-process).
+ *
+ * Sustituye el patrón anterior (3 INSERTs dispersos + fetch /api/send-support-email),
+ * coherente con /api/v2/dispute/resolve para impugnaciones.
+ *
+ * Ver docs/procedures/gestionar-feedback-bug.md §10.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function respondViaFeedbackEndpoint(supabase: any, params: {
+  feedbackId: string
+  adminUserId: string
+  message?: string
+  finalStatus?: 'resolved' | 'dismissed'
+  sendEmail?: boolean
+  sendBell?: boolean
+}): Promise<{ ok: boolean; detail?: string; messageId?: string | null; bellSent?: boolean; emailSent?: boolean; emailError?: string | null }> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.access_token) {
+      return { ok: false, detail: 'Sesión admin no disponible' }
+    }
+    const res = await fetch('/api/v2/feedback/respond', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify(params),
+    })
+    const body = await res.json()
+    if (!res.ok || !body.success) {
+      return { ok: false, detail: body.error || `HTTP ${res.status}` }
+    }
+    return {
+      ok: true,
+      messageId: body.messageId,
+      bellSent: body.bellSent,
+      emailSent: body.emailSent,
+      emailError: body.emailError,
+    }
+  } catch (err) {
+    return { ok: false, detail: err instanceof Error ? err.message : 'Error desconocido' }
+  }
+}
+
 export default function AdminFeedbackPage() {
   const { user, supabase } = useAuth() as AuthContextType
   const [feedbacks, setFeedbacks] = useState<FeedbackResponse[]>([])
