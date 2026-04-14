@@ -405,6 +405,10 @@ export function isPlatformQuery(message: string): boolean {
     /descargar/i,
     /\bpdf\b/i,
     /exportar/i,
+    // Quejas: no puedo hacer test / no me deja / no me cuenta progreso
+    /no\s+(me\s+|se\s+)?(puedo|deja|sale)\s+.*(hacer|realizar|acceder\s+al?)\s+(\w+\s+){0,2}(test|examen|pregunta|sim[iu]lacro)/i,
+    /por\s*qu[eé]\s+no\s+(me\s+|se\s+)?(puedo|deja|sale)\s+.*(test|pregunta|examen)/i,
+    /no\s+(me\s+|se\s+)?(cuenta|registra|guarda|contabiliza)\s+.*(test|pregunta|progreso|resultado|respuest)/i,
     // Onboarding / primeros pasos
     /no\s+s[eé]\s+por\s+d[oó]nde\s+empez/i,
     /por\s+d[oó]nde\s+(puedo\s+)?empez(ar|o)/i,

@@ -304,6 +304,33 @@ Vence usa tu cuenta de Google para entrar (no hay usuario ni contraseña propios
 Si el botón "Continuar con Google" da error, escríbenos desde **💬 Soporte** (mismo menú de tu avatar) con una captura.`
   }
 
+  // No puedo hacer test / no me deja / no me cuenta el progreso
+  if (
+    /no\s+(me\s+|se\s+)?(puedo|deja|sale)\s+.*(hacer|realizar|acceder\s+al?)\s+(\w+\s+){0,2}(test|examen|pregunta|sim[iu]lacro)/i.test(msgLower) ||
+    /por\s*qu[eé]\s+no\s+(me\s+|se\s+)?(puedo|deja|sale)\s+.*(test|pregunta|examen)/i.test(msgLower) ||
+    /no\s+(me\s+|se\s+)?(cuenta|registra|guarda|contabiliza)\s+.*(test|pregunta|progreso|resultado|respuest)/i.test(msgLower)
+  ) {
+    return `**No puedes hacer test o no se cuenta el progreso**
+
+**Causa más frecuente: límite gratuito agotado**
+
+Las cuentas gratuitas tienen un máximo de **25 preguntas al día**. Si lo has alcanzado, el límite se reinicia automáticamente mañana.
+
+👉 [Ver planes y pasarte a Premium](/premium) para tener tests ilimitados.
+
+**Otras causas posibles:**
+- **No tienes oposición activa**: pulsa tu **avatar** (arriba a la derecha) → **"👤 Mi Perfil"** → sección **"📚 Preferencias de Estudio"** → **"🎯 Oposición Objetivo"** → **Seleccionar**.
+- **La ley o tema no tiene preguntas para tu oposición**: prueba otra ley o usa **Test Aleatorio** (mezcla todas las leyes).
+- **Cookies/extensiones bloqueando**: prueba en una ventana incógnito.
+
+**Si el progreso no se cuenta correctamente:**
+
+Cierra sesión y vuelve a entrar para forzar el refresco. Si tras eso sigue sin contar:
+
+1. Pulsa tu **avatar** → **"💬 Soporte"**
+2. Pulsa **"Abrir chat soporte"** y describe el problema (qué oposición, qué tema/ley, captura si puedes)`
+  }
+
   // Primeros pasos / por dónde empezar / soy nuevo
   if (
     /no\s+s[eé]\s+por\s+d[oó]nde\s+empez/i.test(msgLower) ||
