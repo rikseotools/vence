@@ -11,6 +11,7 @@ import { shouldForceCheckout, forceCampaignCheckout } from '../lib/campaignTrack
 import { GoogleAdsEvents } from '../utils/googleAds'
 import { useSessionControl } from '../hooks/useSessionControl'
 import SessionWarningModal from '../components/SessionWarningModal'
+import { logClientError } from '../lib/logClientError'
 
 interface AccessCheckResult {
   can_access: boolean
@@ -215,6 +216,11 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 8000) // 8 segundos
 
+      // 🔭 Telemetría: medimos latencia de la query a user_profiles.
+      // Si tarda >3s la marcamos como info en validation_error_logs — así
+      // detectamos usuarios con red lenta (Luisa) antes de que lleguen al timeout.
+      const startedAt = Date.now()
+
       const { data: profile, error } = await supabase
         .from('user_profiles')
         .select('*')
@@ -223,6 +229,15 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
         .single()
 
       clearTimeout(timeoutId)
+
+      const elapsedMs = Date.now() - startedAt
+      if (elapsedMs > 3000 && !error) {
+        logClientError('auth/load-user-profile', new Error(`slow profile load ${elapsedMs}ms`), {
+          component: 'AuthContext.loadUserProfile',
+          userId,
+          severity: 'info',
+        })
+      }
 
       if (error) {
         // Si es abort/timeout, reintentar si no hemos excedido el límite
@@ -234,6 +249,14 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
             return loadUserProfile(userId, retryCount + 1)
           }
           console.warn('⏱️ Timeout en consulta de perfil (8s) tras reintentos, continuando sin perfil')
+          // 🔭 Caso crítico: tras agotar reintentos no conseguimos cargar el perfil.
+          // El usuario verá la UI como no-Premium aunque lo sea. Logueamos como
+          // warning para detectarlo proactivamente.
+          logClientError('auth/load-user-profile', new Error('profile load timeout after retries'), {
+            component: 'AuthContext.loadUserProfile',
+            userId,
+            severity: 'warning',
+          })
           updateUserProfile(null)
           return null
         }
@@ -260,6 +283,12 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
           details: error?.details,
           hint: error?.hint,
           error: error
+        })
+        // 🔭 Error de BD (no timeout, no PGRST116): puede ser RLS, permisos, etc.
+        logClientError('auth/load-user-profile', new Error(`db error: ${error?.message || error?.code || 'unknown'}`), {
+          component: 'AuthContext.loadUserProfile',
+          userId,
+          severity: 'warning',
         })
         return null
       }
