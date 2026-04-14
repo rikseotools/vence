@@ -182,50 +182,16 @@ El borrador debe incluir:
 - Si está arreglado o pendiente
 - Qué debe hacer el usuario (recargar, esperar, nada)
 
-## Paso 10: Enviar la respuesta y cerrar (5 pasos obligatorios — post-14/04/2026)
+## Paso 10: Enviar la respuesta y cerrar — `/api/v2/feedback/respond` (post-14/04/2026)
 
-**No basta con actualizar `user_feedback.admin_response`.** Esa columna es solo metadato interno; el usuario no la ve. La respuesta real vive en `feedback_messages`, y el panel del admin lee de ahí.
+> 🆕 **Post-refactor (14/04/2026):** usa el endpoint `POST /api/v2/feedback/respond`. Antes había que hacer 5 pasos manuales (INSERT message + INSERT notification_log + fetch send-support-email + cerrar conversation + cerrar feedback). Ahora **una sola llamada atómica** encapsula todo con garantías transaccionales.
 
-> 🆕 **Cambio importante (14/04/2026):** se eliminó el trigger PG `send_feedback_notification` por bug de cold-start (mismo problema que impugnaciones, ver `impugnaciones-claude-code.md` §16). Ahora **TÚ debes** ejecutar manualmente el INSERT en `notification_logs` (campana) y la llamada a `/api/send-support-email` (email). Si te saltas estos pasos, el feedback queda resuelto en BD pero el usuario **no recibe nada**.
+### Casos de uso
 
-Los **5 pasos en orden**:
+**A) Responder al usuario con mensaje (flujo normal)**
 
 ```js
-// 1. Buscar la conversación del feedback
-const { data: conv } = await supabase
-  .from('feedback_conversations')
-  .select('id')
-  .eq('feedback_id', feedbackId)
-  .single();
-
-// 2. Insertar el mensaje del admin
-const { data: msg } = await supabase.from('feedback_messages').insert({
-  conversation_id: conv.id,
-  sender_id: adminUserId,   // p.ej. 2fc60bc8-... (Manuel)
-  is_admin: true,
-  message: borradorAprobado
-}).select().single();
-
-// 3. Insertar en notification_logs (campana del usuario) — antes lo hacía el trigger
-const messagePreview = borradorAprobado.length > 100
-  ? borradorAprobado.slice(0, 100) + '...'
-  : borradorAprobado;
-await supabase.from('notification_logs').insert({
-  user_id: targetUserId,            // user_id del FEEDBACK (no el admin)
-  message_sent: 'El equipo de Vence: "' + messagePreview + '"',
-  delivery_status: 'sent',
-  context_data: {
-    type: 'feedback_response',
-    title: 'Nueva respuesta de Vence',
-    conversation_id: conv.id,
-    feedback_id: feedbackId
-  }
-});
-
-// 4. Llamar a /api/send-support-email (envía email vía Resend) — antes lo hacía el trigger
-// El endpoint requiere Bearer token de admin (post-14/04/2026). Patrón:
-//   - generateLink(type='magiclink') con service_role → hashed_token
-//   - verifyOtp(token_hash) con anon_key → session.access_token
+// Obtener Bearer token admin (generateLink + verifyOtp, igual que impugnaciones)
 const { data: link } = await adminClient.auth.admin.generateLink({
   type: 'magiclink', email: 'manueltrader@gmail.com',
 });
@@ -235,40 +201,78 @@ const { data: ses } = await anonClient.auth.verifyOtp({
 });
 const accessToken = ses.session.access_token;
 
-await fetch('https://www.vence.es/api/send-support-email', {
+const res = await fetch('https://www.vence.es/api/v2/feedback/respond', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
     'Authorization': `Bearer ${accessToken}`,
   },
   body: JSON.stringify({
-    userId: targetUserId,           // null si feedback es de email externo no registrado
-    adminMessage: borradorAprobado,
-    conversationId: conv.id,
-    email: emailExterno || null     // opcional, fallback para externos
-  })
+    feedbackId,
+    adminUserId,                   // 2fc60bc8-... (Manuel)
+    message: borradorAprobado,
+    finalStatus: 'resolved',       // default si hay mensaje
+  }),
 });
 
-// 5. Cerrar la conversación + feedback
-await supabase.from('feedback_conversations').update({
-  status: 'closed',
-  closed_at: new Date().toISOString(),
-  last_message_at: new Date().toISOString(),
-  admin_user_id: adminUserId
-}).eq('id', conv.id);
-
-await supabase.from('user_feedback').update({
-  status: 'resolved',          // o 'dismissed' si es spam/ruido
-  admin_response: borradorAprobado,
-  resolved_at: new Date().toISOString()
-}).eq('id', feedbackId);
+const result = await res.json();
+// result = {
+//   success: true, feedbackId, conversationId, messageId,
+//   bellSent: boolean, bellSkipReason: 'external_contact' | 'send_bell_false_flag' | null,
+//   emailSent: boolean, emailId: string | null, emailError: string | null,
+//   emailSkipReason: 'empty_message' | 'no_user_email' | 'user_actively_browsing' | 'user_preferences' | 'send_email_false_flag' | null,
+//   finalStatus: 'resolved' | 'dismissed' | null,
+// }
 ```
 
-**Notas:**
-- **Pasos 3 y 4 son obligatorios.** Si te los saltas, no hay campana ni email. El trigger PG ya no existe.
-- Si `targetUserId` es `null` (feedback de email externo no registrado), el endpoint usa `sendDirectEmail()` con el `email` del payload.
-- El endpoint `/api/send-support-email` chequea `isUserActivelyBrowsing()` y skip email si el usuario tiene sesión activa <5s (ya verá la respuesta en la campana).
-- Para feedbacks que no merecen respuesta (spam, pruebas propias), basta con `user_feedback.status='dismissed'` sin tocar las otras tablas (no INSERT, no notification, no email).
+**B) Cierre silencioso (spam, duplicado, prueba propia)**
+
+```js
+await fetch('https://www.vence.es/api/v2/feedback/respond', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}` },
+  body: JSON.stringify({
+    feedbackId,
+    adminUserId,
+    finalStatus: 'dismissed',
+    // Sin message → no INSERT, no campana, no email. Solo UPDATE de status.
+  }),
+});
+```
+
+**C) Responder sin enviar email** (ej. usuario sin email, o notificación interna)
+
+```js
+body: JSON.stringify({
+  feedbackId, adminUserId,
+  message: borrador,
+  sendEmail: false,    // solo campana
+})
+```
+
+**D) Responder sin campana** (poco habitual)
+
+```js
+body: JSON.stringify({
+  feedbackId, adminUserId,
+  message: borrador,
+  sendBell: false,     // solo email
+})
+```
+
+### Notas
+
+- **El endpoint requiere Bearer token admin.** Validado contra email whitelist (mismo patrón que `/api/v2/dispute/resolve`).
+- **Atomicidad:** INSERT de message + campana + UPDATE de estado van en una transacción Drizzle. Si falla cualquiera, se revierte todo (excepto el email, que va después de la TX para no rollback por fallos de Resend).
+- **Skip automático de campana** para contactos externos (`user_id = null`) — no se puede insertar por FK constraint. `bellSkipReason` = `'external_contact'`.
+- **Skip automático de email** si:
+  - No hay mensaje (`empty_message`).
+  - El usuario no tiene email (`no_user_email`).
+  - El usuario tiene sesión activa <5s (`user_actively_browsing`) — verá la campana.
+  - El usuario optó por no recibir emails de soporte (`user_preferences`).
+  - El caller pasó `sendEmail: false` (`send_email_false_flag`).
+- **Fallos de email NO revierten el feedback:** la respuesta incluye `emailError` con el motivo. El feedback queda resuelto y el email puede reintentarse manualmente si hace falta.
+- **Contactos externos con email:** el endpoint nuevo skippea automáticamente (emailSkipReason='no_user_email'). Para mandarles email, llamar también a `/api/send-support-email` con el email del payload — ese endpoint sigue vivo para ese caso concreto.
 
 ## Script rápido (todo en uno)
 
