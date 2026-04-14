@@ -182,11 +182,13 @@ El borrador debe incluir:
 - Si está arreglado o pendiente
 - Qué debe hacer el usuario (recargar, esperar, nada)
 
-## Paso 10: Enviar la respuesta y cerrar (3 pasos obligatorios)
+## Paso 10: Enviar la respuesta y cerrar (5 pasos obligatorios — post-14/04/2026)
 
-**No basta con actualizar `user_feedback.admin_response`.** Esa columna es solo metadato interno; el usuario no la ve y **no dispara email**. La respuesta real vive en `feedback_messages`, y el panel del admin lee de ahí.
+**No basta con actualizar `user_feedback.admin_response`.** Esa columna es solo metadato interno; el usuario no la ve. La respuesta real vive en `feedback_messages`, y el panel del admin lee de ahí.
 
-Para que el usuario reciba el email y el panel lo muestre como respondido hay que hacer **los 3 pasos en orden**:
+> 🆕 **Cambio importante (14/04/2026):** se eliminó el trigger PG `send_feedback_notification` por bug de cold-start (mismo problema que impugnaciones, ver `impugnaciones-claude-code.md` §16). Ahora **TÚ debes** ejecutar manualmente el INSERT en `notification_logs` (campana) y la llamada a `/api/send-support-email` (email). Si te saltas estos pasos, el feedback queda resuelto en BD pero el usuario **no recibe nada**.
+
+Los **5 pasos en orden**:
 
 ```js
 // 1. Buscar la conversación del feedback
@@ -196,16 +198,43 @@ const { data: conv } = await supabase
   .eq('feedback_id', feedbackId)
   .single();
 
-// 2. Insertar el mensaje del admin → dispara trigger PG `send_feedback_notification`
-//    que envía el email automáticamente al usuario
-await supabase.from('feedback_messages').insert({
+// 2. Insertar el mensaje del admin
+const { data: msg } = await supabase.from('feedback_messages').insert({
   conversation_id: conv.id,
   sender_id: adminUserId,   // p.ej. 2fc60bc8-... (Manuel)
   is_admin: true,
   message: borradorAprobado
+}).select().single();
+
+// 3. Insertar en notification_logs (campana del usuario) — antes lo hacía el trigger
+const messagePreview = borradorAprobado.length > 100
+  ? borradorAprobado.slice(0, 100) + '...'
+  : borradorAprobado;
+await supabase.from('notification_logs').insert({
+  user_id: targetUserId,            // user_id del FEEDBACK (no el admin)
+  message_sent: 'El equipo de Vence: "' + messagePreview + '"',
+  delivery_status: 'sent',
+  context_data: {
+    type: 'feedback_response',
+    title: 'Nueva respuesta de Vence',
+    conversation_id: conv.id,
+    feedback_id: feedbackId
+  }
 });
 
-// 3. Cerrar la conversación
+// 4. Llamar a /api/send-support-email (envía email vía Resend) — antes lo hacía el trigger
+await fetch('https://www.vence.es/api/send-support-email', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    userId: targetUserId,           // null si feedback es de email externo no registrado
+    adminMessage: borradorAprobado,
+    conversationId: conv.id,
+    email: emailExterno || null     // opcional, fallback para externos
+  })
+});
+
+// 5. Cerrar la conversación + feedback
 await supabase.from('feedback_conversations').update({
   status: 'closed',
   closed_at: new Date().toISOString(),
@@ -213,7 +242,6 @@ await supabase.from('feedback_conversations').update({
   admin_user_id: adminUserId
 }).eq('id', conv.id);
 
-// 4. Cerrar el feedback (metadata)
 await supabase.from('user_feedback').update({
   status: 'resolved',          // o 'dismissed' si es spam/ruido
   admin_response: borradorAprobado,
@@ -222,11 +250,10 @@ await supabase.from('user_feedback').update({
 ```
 
 **Notas:**
-- El email se envía por **trigger PostgreSQL** (`send_feedback_notification`) al insertar en `feedback_messages` con `is_admin=true`. No hay que llamar a ninguna API adicional.
-- Si solo actualizas `user_feedback.admin_response` sin insertar en `feedback_messages`, el usuario **no recibe nada** y el panel sigue mostrando el feedback como "1 por responder".
-- Para feedbacks que no merecen respuesta (spam, pruebas propias), basta con `user_feedback.status='dismissed'` sin tocar las otras tablas.
-
-> ⚠️ **Riesgo conocido — cold-start del trigger** *(igual que pasó con impugnaciones el 14/04/2026, ver `impugnaciones-claude-code.md` §16)*: el trigger `send_feedback_notification` llama a `/api/send-support-email` vía `http_post` síncrono con timeout ~5s. Si Vercel está frío (>5s de cold start), `http_post` da timeout y el trigger captura la excepción con `EXCEPTION WHEN OTHERS` → **el feedback queda respondido en BD pero el email nunca llega** y nadie se entera. El endpoint se calienta con uso, así que en la práctica funciona la mayor parte del tiempo. Si detectas un caso (usuario reclama "no recibí respuesta" pero `feedback_messages` tiene la fila), aplica el mismo refactor que se hizo con impugnaciones: reemplazar el trigger por una llamada in-process desde el endpoint admin que inserta el `feedback_messages` (admin endpoint llama a `sendEmailV2` directamente).
+- **Pasos 3 y 4 son obligatorios.** Si te los saltas, no hay campana ni email. El trigger PG ya no existe.
+- Si `targetUserId` es `null` (feedback de email externo no registrado), el endpoint usa `sendDirectEmail()` con el `email` del payload.
+- El endpoint `/api/send-support-email` chequea `isUserActivelyBrowsing()` y skip email si el usuario tiene sesión activa <5s (ya verá la respuesta en la campana).
+- Para feedbacks que no merecen respuesta (spam, pruebas propias), basta con `user_feedback.status='dismissed'` sin tocar las otras tablas (no INSERT, no notification, no email).
 
 ## Script rápido (todo en uno)
 
