@@ -19,7 +19,7 @@ import {
 } from './DisputeService'
 import { getLinkedArticle, type LinkedArticle } from './queries'
 import { checkIsPsychometric } from './queries'
-import type { ChatContext, ArticleSource } from '../../core/types'
+import type { ChatContext, ArticleSource, AITracerInterface } from '../../core/types'
 
 // ============================================
 // LEYES VIRTUALES (INFORMÁTICA)
@@ -97,7 +97,8 @@ type ArticleFromExplanation = {
  */
 export async function verifyAnswer(
   input: VerificationInput,
-  context: ChatContext
+  context: ChatContext,
+  tracer?: AITracerInterface
 ): Promise<VerificationResult> {
   const startTime = Date.now()
 
@@ -307,7 +308,8 @@ export async function verifyAnswer(
     linkedArticle, // Artículo vinculado en BD
     articleFromExplanation, // Artículo detectado en explicación
     articleFromQuestion, // Artículo citado en la pregunta
-    context.messages // Historial de conversación para follow-ups
+    context.messages, // Historial de conversación para follow-ups
+    tracer
   )
   const response = verificationGenResult.content
   const tokensUsed = verificationGenResult.tokensUsed
@@ -434,7 +436,8 @@ async function generateVerificationResponse(
   linkedArticle?: LinkedArticle | null,
   articleFromExplanation?: ArticleFromExplanation,
   articleFromQuestion?: ArticleFromExplanation,
-  conversationHistory?: Array<{ role: string; content: string }>
+  conversationHistory?: Array<{ role: string; content: string }>,
+  tracer?: AITracerInterface
 ): Promise<{ content: string; tokensUsed?: number }> {
   const openai = await getOpenAI()
   const model = isPremium ? CHAT_MODEL_PREMIUM : CHAT_MODEL
@@ -674,6 +677,20 @@ ${analysisInstructions}`
       }
     }
 
+    const llmSpan = tracer?.spanLLM({
+      model,
+      temperature: 0.3,
+      maxTokens: 1500,
+      systemPrompt,
+      userPrompt: question.questionText || '',
+      userPromptWithContext: userMessage,
+      messagesArray: openaiMessages,
+      articlesInContext: articles.length,
+      hasLinkedArticle: !!linkedArticle,
+      hasArticleFromQuestion: !!articleFromQuestion,
+      hasArticleFromExplanation: !!articleFromExplanation,
+    })
+
     const completion = await openai.chat.completions.create({
       model,
       messages: openaiMessages,
@@ -681,9 +698,23 @@ ${analysisInstructions}`
       max_tokens: 1500,
     })
 
+    const responseContent = completion.choices[0]?.message?.content || 'No pude generar una verificación.'
+    const promptTokens = completion.usage?.prompt_tokens
+    const completionTokens = completion.usage?.completion_tokens
+    const totalTokens = completion.usage?.total_tokens
+    const finishReason = completion.choices[0]?.finish_reason || undefined
+
+    llmSpan?.setOutput({ responseContent, finishReason, promptTokens, completionTokens, totalTokens })
+    llmSpan?.addMetadata('tokensIn', promptTokens)
+    llmSpan?.addMetadata('tokensOut', completionTokens)
+    llmSpan?.addMetadata('model', model)
+    llmSpan?.addMetadata('provider', 'openai')
+    llmSpan?.addMetadata('responseLength', responseContent.length)
+    llmSpan?.end()
+
     return {
-      content: completion.choices[0]?.message?.content || 'No pude generar una verificación.',
-      tokensUsed: completion.usage?.total_tokens,
+      content: responseContent,
+      tokensUsed: totalTokens,
     }
   } catch (error) {
     logger.error('Error generating verification response', error, { domain: 'verification' })
@@ -785,6 +816,14 @@ El 99.9% de las preguntas están verificadas - los errores son extremadamente ra
 - "Diputado al Congreso" NO es lo mismo que "Senador"
 - "Diputado al Congreso" NO es lo mismo que "miembro de las Cortes Generales"
 - Si el artículo menciona X, NO asumas que también aplica a Y
+
+## 🚨 OPCIÓN QUE CONTRADICE LITERALMENTE EL ARTÍCULO
+Si el usuario te señala (o detectas) que una opción del enunciado contradice LITERALMENTE el artículo (ej: opción dice "hábiles" cuando el artículo dice "inhábiles", o "organización" cuando el artículo dice "gestión"):
+- NO inventes "error tipográfico", "interpretación" ni excusas para defender la respuesta marcada
+- Reconoce abiertamente al usuario que su observación es correcta
+- Si la respuesta marcada es "Todas son correctas" y al menos una opción contradice la ley, dile claramente que esa respuesta NO puede ser correcta tal como está la pregunta
+- Sugiérele que use el botón de impugnación de la pregunta para reportar el error
+- NUNCA defiendas la respuesta de BD cuando es lógicamente imposible dado el texto literal de las opciones
 
 ## 🎨 EJEMPLO DE FORMATO
 ✅ **La respuesta correcta es la B**

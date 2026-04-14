@@ -161,8 +161,8 @@ export class VerificationDomain implements ChatDomain {
       articleNumber: input.articleNumber,
     })
 
-    // Realizar verificación
-    const result = await verifyAnswer(input, context)
+    // Realizar verificación (pasar tracer para emitir spanLLM con system prompt + tokens)
+    const result = await verifyAnswer(input, context, tracer)
 
     verifySpan?.setOutput({
       // Resultado de verificación
