@@ -482,8 +482,15 @@ Actualmente no hay opcion de exportar a CSV o Excel, pero puedes usar la impresi
 Tambien puedes pulsar sobre cualquier test completado para revisarlo pregunta por pregunta.`
   }
 
-  // Impugnaciones / disputas
-  if (/impugn|disput|reportar\s+(una\s+)?pregunta/i.test(msgLower)) {
+  // Impugnaciones / disputas — requiere contexto de plataforma (pregunta/test/cuestión/...)
+  // o expresiones específicas. El regex anterior matcheaba "impugnado" del uso legal
+  // (ej: "acto impugnado"), devolviendo respuesta off-topic sobre el sistema de impugnaciones.
+  if (
+    /\bimpugn\w*\s+(una\s+|la\s+|de\s+|mi\s+|las\s+|los\s+|esta\s+|este\s+|ese\s+|esa\s+)?(pregunta|respuesta|cuesti[oó]n|test|examen|tests)/i.test(msgLower) ||
+    /\b(mis|ver|las|como|c[oó]mo|d[oó]nde)\s+impugnaci/i.test(msgLower) ||
+    /\bdisputar?\b\s+(una\s+|la\s+|mi\s+)?(pregunta|respuesta|cuesti[oó]n|test)/i.test(msgLower) ||
+    /reportar\s+(una\s+)?pregunta/i.test(msgLower)
+  ) {
     return `**Sistema de impugnaciones**
 
 Si encuentras una pregunta con error, puedes impugnarla:
