@@ -1,0 +1,181 @@
+{
+  "capturedAt": "2026-04-14T07:08:26.450Z",
+  "rpc": "get_user_problematic_articles_weekly",
+  "note": "Baseline FASE 0 del refactor oposicion-scope. Contiene el bug cross-oposición (ver Mar).",
+  "users": [
+    {
+      "id": "9d2587b1-c799-476d-9797-b7a498a487b1",
+      "label": "mar-aux-estado",
+      "oposicion": "auxiliar_administrativo_estado",
+      "result": [
+        {
+          "article_id": "b697ac39-1bd6-49e6-8f7b-99aeeac9680f",
+          "article_number": "89",
+          "law_name": "LO 6/1985",
+          "total_attempts": 4,
+          "correct_attempts": 0,
+          "accuracy_percentage": 0,
+          "last_attempt_date": "2026-04-13T17:05:20.97958+00:00",
+          "recommendation": "📚 Repasar teoría urgente"
+        },
+        {
+          "article_id": "d7307801-a207-4b00-a254-a2977b52a63b",
+          "article_number": "45",
+          "law_name": "Reglamento Cortes CyL",
+          "total_attempts": 3,
+          "correct_attempts": 0,
+          "accuracy_percentage": 0,
+          "last_attempt_date": "2026-04-13T06:02:29.408518+00:00",
+          "recommendation": "📚 Repasar teoría urgente"
+        },
+        {
+          "article_id": "370eaa17-b8f3-4524-96c4-c6cf16ec5d00",
+          "article_number": "19",
+          "law_name": "TUE",
+          "total_attempts": 3,
+          "correct_attempts": 0,
+          "accuracy_percentage": 0,
+          "last_attempt_date": "2026-04-13T05:15:42.718795+00:00",
+          "recommendation": "📚 Repasar teoría urgente"
+        },
+        {
+          "article_id": "075e06ae-dd5a-4d82-b415-3974ce16e2d4",
+          "article_number": "95",
+          "law_name": "LO 6/1985",
+          "total_attempts": 2,
+          "correct_attempts": 0,
+          "accuracy_percentage": 0,
+          "last_attempt_date": "2026-04-13T17:01:47.23665+00:00",
+          "recommendation": "📚 Repasar teoría urgente"
+        },
+        {
+          "article_id": "3f78cda4-693a-4199-aab3-fc9b56997a8a",
+          "article_number": "9",
+          "law_name": "Ley 29/1998",
+          "total_attempts": 1,
+          "correct_attempts": 0,
+          "accuracy_percentage": 0,
+          "last_attempt_date": "2026-04-13T17:11:05.488417+00:00",
+          "recommendation": "📚 Repasar teoría urgente"
+        }
+      ],
+      "error": null
+    },
+    {
+      "id": "91b4a86b-14e5-4dbd-b2cb-8c8b90544bd7",
+      "label": "pilar-aux-carm",
+      "oposicion": "auxiliar_administrativo_carm",
+      "result": [
+        {
+          "article_id": "c1cbbed8-c3f3-44cd-badb-b8a58d1a017a",
+          "article_number": "17",
+          "law_name": "RD 951/2005",
+          "total_attempts": 4,
+          "correct_attempts": 0,
+          "accuracy_percentage": 0,
+          "last_attempt_date": "2026-04-09T15:50:23.311539+00:00",
+          "recommendation": "📚 Repasar teoría urgente"
+        },
+        {
+          "article_id": "b372c9e8-e42d-47b7-8229-12a3dc23131e",
+          "article_number": "15",
+          "law_name": "RD 951/2005",
+          "total_attempts": 3,
+          "correct_attempts": 0,
+          "accuracy_percentage": 0,
+          "last_attempt_date": "2026-04-13T11:16:49.041592+00:00",
+          "recommendation": "📚 Repasar teoría urgente"
+        },
+        {
+          "article_id": "111144b3-43d3-44c8-b2ed-2ad561e2f1ec",
+          "article_number": "12",
+          "law_name": "LO 3/2018",
+          "total_attempts": 2,
+          "correct_attempts": 0,
+          "accuracy_percentage": 0,
+          "last_attempt_date": "2026-04-11T09:36:38.037434+00:00",
+          "recommendation": "📚 Repasar teoría urgente"
+        },
+        {
+          "article_id": "09bf363c-afa9-4794-ab15-4b726644b4f6",
+          "article_number": "16",
+          "law_name": "Reglamento UE 2016/679",
+          "total_attempts": 2,
+          "correct_attempts": 0,
+          "accuracy_percentage": 0,
+          "last_attempt_date": "2026-04-11T09:35:47.876386+00:00",
+          "recommendation": "📚 Repasar teoría urgente"
+        },
+        {
+          "article_id": "3ded2c91-3fa8-4e20-8aad-38fd5d2182ec",
+          "article_number": "8",
+          "law_name": "Ley 19/2013",
+          "total_attempts": 2,
+          "correct_attempts": 0,
+          "accuracy_percentage": 0,
+          "last_attempt_date": "2026-04-11T09:33:56.866664+00:00",
+          "recommendation": "📚 Repasar teoría urgente"
+        }
+      ],
+      "error": null
+    },
+    {
+      "id": "fac82225-9a47-4471-b4d4-54b796238589",
+      "label": "tamara-aux-cyl",
+      "oposicion": "auxiliar_administrativo_cyl",
+      "result": [
+        {
+          "article_id": "261550f9-6c09-4588-80c9-bead0b12a167",
+          "article_number": "55",
+          "law_name": "CE",
+          "total_attempts": 4,
+          "correct_attempts": 0,
+          "accuracy_percentage": 0,
+          "last_attempt_date": "2026-04-08T22:35:25.48709+00:00",
+          "recommendation": "📚 Repasar teoría urgente"
+        },
+        {
+          "article_id": "4cb4ae5e-c640-4f3d-82e5-4cb7b60301d5",
+          "article_number": "31",
+          "law_name": "CE",
+          "total_attempts": 2,
+          "correct_attempts": 0,
+          "accuracy_percentage": 0,
+          "last_attempt_date": "2026-04-08T22:22:51.250095+00:00",
+          "recommendation": "📚 Repasar teoría urgente"
+        },
+        {
+          "article_id": "073ffebf-b22b-445c-958f-99c45b14c456",
+          "article_number": "3",
+          "law_name": "CE",
+          "total_attempts": 2,
+          "correct_attempts": 0,
+          "accuracy_percentage": 0,
+          "last_attempt_date": "2026-04-08T22:43:51.996807+00:00",
+          "recommendation": "📚 Repasar teoría urgente"
+        },
+        {
+          "article_id": "368a2030-9dd4-4d87-8973-b6b455910154",
+          "article_number": "47",
+          "law_name": "LO 14/2007",
+          "total_attempts": 1,
+          "correct_attempts": 0,
+          "accuracy_percentage": 0,
+          "last_attempt_date": "2026-04-12T14:57:40.551132+00:00",
+          "recommendation": "📚 Repasar teoría urgente"
+        },
+        {
+          "article_id": "2471f9d0-cbd5-41d6-ba8a-b92f464dbcd3",
+          "article_number": "33",
+          "law_name": "CE",
+          "total_attempts": 1,
+          "correct_attempts": 0,
+          "accuracy_percentage": 0,
+          "last_attempt_date": "2026-04-08T22:27:58.748501+00:00",
+          "recommendation": "📚 Repasar teoría urgente"
+        }
+      ],
+      "error": null
+    }
+  ]
+}
