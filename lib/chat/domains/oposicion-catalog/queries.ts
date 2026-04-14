@@ -1,0 +1,243 @@
+// lib/chat/domains/oposicion-catalog/queries.ts
+// Cache de oposiciones + registro de solicitudes de oposiciones no disponibles
+
+import { createClient } from '@supabase/supabase-js'
+import { logger } from '../../shared/logger'
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+
+function getSupabase() {
+  return createClient(supabaseUrl, supabaseServiceKey)
+}
+
+export interface OposicionEntry {
+  id: string
+  slug: string
+  nombre: string
+  shortName: string | null
+  categoria: string | null
+  administracion: string | null
+  isConvocatoriaActiva: boolean | null
+  keywords: string[] // tokens normalizados para matching
+}
+
+// ============================================
+// CACHE
+// ============================================
+
+const CACHE_TTL_MS = 30 * 60 * 1000 // 30 min
+let cache: OposicionEntry[] | null = null
+let cacheLoadedAt = 0
+
+const STOPWORDS = new Set([
+  'de','del','la','el','los','las','en','y','a','al','con','sin','para','por','que','o','u','e',
+  'oposicion','oposiciones','convocatoria','convocatorias',
+  'quiero','preparar','estudiar','tener','añadir','anadir','agregar','incorporar',
+  'mas','más','tambien','también','aqui','aquí','ahi','ahí',
+])
+
+// Tokens "de rol" — si el mensaje contiene uno de estos, exigimos que el
+// mismo rol aparezca en la oposición candidata (para evitar que "enfermero"
+// matchee contra "administrativo" sólo por compartir región).
+const ROLE_TOKENS = new Set([
+  'auxiliar','tecnico','celador','enfermero','enfermera','medico','policia',
+  'bombero','guardia','militar','tramitacion','gestor','gestora','administrativo',
+  'administrativa','subalterno','ordenanza','conserje','maestro','maestra',
+  'profesor','profesora','bibliotecario','archivero','secretario','secretaria',
+  'interventor','notario','registrador','abogado','ingeniero','arquitecto',
+  'veterinario','educador','operario','operaria',
+])
+
+// Normalización de variantes (plurales/género/regionales)
+const NORMALIZE_MAP: Record<string, string> = {
+  canarias: 'canario', canario: 'canario', canaria: 'canario',
+  enfermeria: 'enfermero', enfermera: 'enfermero', enfermero: 'enfermero',
+  administrativa: 'administrativo', administrativo: 'administrativo',
+  tecnica: 'tecnico', tecnico: 'tecnico',
+  gestora: 'gestor', gestor: 'gestor',
+  policias: 'policia', policia: 'policia',
+}
+
+function normalize(s: string): string {
+  return s.toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // quitar tildes
+    .replace(/[^a-z0-9ñ\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function tokenize(s: string): string[] {
+  return normalize(s).split(' ')
+    .filter(t => t.length > 2 && !STOPWORDS.has(t))
+    .map(t => NORMALIZE_MAP[t] || t)
+}
+
+function getRoleTokens(tokens: string[]): Set<string> {
+  return new Set(tokens.filter(t => ROLE_TOKENS.has(t)))
+}
+
+function extractKeywords(op: { nombre: string; shortName: string | null; administracion: string | null; categoria: string | null }): string[] {
+  const parts = [op.nombre, op.shortName, op.administracion, op.categoria].filter(Boolean) as string[]
+  const tokens = new Set<string>()
+  parts.forEach(p => tokenize(p).forEach(t => tokens.add(t)))
+  return [...tokens]
+}
+
+export async function loadOposicionesCache(force = false): Promise<OposicionEntry[]> {
+  const now = Date.now()
+  if (!force && cache && (now - cacheLoadedAt) < CACHE_TTL_MS) return cache
+
+  const supabase = getSupabase()
+  const { data, error } = await supabase
+    .from('oposiciones')
+    .select('id,slug,nombre,short_name,categoria,administracion,is_convocatoria_activa')
+    .eq('is_active', true)
+
+  if (error) {
+    logger.error('Error loading oposiciones cache', error, { domain: 'oposicion-catalog' })
+    return cache ?? []
+  }
+
+  cache = (data || []).map(r => ({
+    id: r.id,
+    slug: r.slug,
+    nombre: r.nombre,
+    shortName: r.short_name,
+    categoria: r.categoria,
+    administracion: r.administracion,
+    isConvocatoriaActiva: r.is_convocatoria_activa,
+    keywords: extractKeywords({
+      nombre: r.nombre,
+      shortName: r.short_name,
+      administracion: r.administracion,
+      categoria: r.categoria,
+    }),
+  }))
+  cacheLoadedAt = now
+  logger.info(`Oposiciones cache loaded: ${cache.length} entries`, { domain: 'oposicion-catalog' })
+  return cache
+}
+
+// ============================================
+// MATCHING
+// ============================================
+
+export interface MatchResult {
+  entry: OposicionEntry | null
+  score: number
+  alternatives: Array<{ entry: OposicionEntry; score: number }>
+}
+
+export function matchOposicion(message: string, cached: OposicionEntry[]): MatchResult {
+  const msgTokensArr = tokenize(message)
+  const msgTokens = new Set(msgTokensArr)
+  if (msgTokens.size === 0) return { entry: null, score: 0, alternatives: [] }
+
+  const msgRoles = getRoleTokens(msgTokensArr)
+
+  const scored = cached.map(entry => {
+    // Regla dura: si el mensaje menciona tokens de rol, TODOS deben aparecer
+    // en las keywords de la oposición. Esto evita que "enfermería" matchee
+    // contra "auxiliar administrativo" aunque compartan "auxiliar"+"canarias".
+    if (msgRoles.size > 0) {
+      for (const role of msgRoles) {
+        if (!entry.keywords.includes(role)) {
+          return { entry, score: 0, hits: 0 }
+        }
+      }
+    }
+
+    let hits = 0
+    for (const kw of entry.keywords) {
+      if (msgTokens.has(kw)) hits++
+    }
+    // Score: combinación de recall (qué fracción del mensaje matchea)
+    // y precision (qué fracción de la oposición está en el mensaje).
+    const recall = msgTokens.size > 0 ? hits / msgTokens.size : 0
+    const precision = entry.keywords.length > 0 ? hits / entry.keywords.length : 0
+    const score = Math.max(recall, precision)
+    return { entry, score, hits }
+  }).filter(s => s.hits > 0).sort((a, b) => b.score - a.score)
+
+  if (scored.length === 0) return { entry: null, score: 0, alternatives: [] }
+
+  const top = scored[0]
+  // Necesita al menos 2 tokens coincidentes o score >= 0.5
+  const matched = (top.hits >= 2 && top.score >= 0.25) || top.score >= 0.5
+
+  return {
+    entry: matched ? top.entry : null,
+    score: top.score,
+    alternatives: scored.slice(0, 3).map(s => ({ entry: s.entry, score: s.score })),
+  }
+}
+
+// ============================================
+// REGISTRO DE SOLICITUDES
+// ============================================
+
+export interface OposicionRequestInput {
+  userId: string | null
+  detectedName: string
+  userMessage: string
+  userOposicion: string | null
+  logId: string | null
+}
+
+/**
+ * Inserta una solicitud de oposición nueva en user_feedback (type='suggestion').
+ * Dedupe: no crea registro si el mismo user pidió la misma oposición en últimos 7 días.
+ * Devuelve el id del feedback creado, o null si fue deduplicado o falló.
+ */
+export async function registerOposicionRequest(input: OposicionRequestInput): Promise<string | null> {
+  const supabase = getSupabase()
+
+  // Dedupe
+  if (input.userId) {
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+    const { data: existing } = await supabase
+      .from('user_feedback')
+      .select('id')
+      .eq('user_id', input.userId)
+      .eq('type', 'suggestion')
+      .ilike('message', `%[SOLICITUD OPOSICIÓN]%${input.detectedName}%`)
+      .gte('created_at', sevenDaysAgo)
+      .limit(1)
+
+    if (existing && existing.length > 0) {
+      logger.info('Oposición request deduplicated', {
+        domain: 'oposicion-catalog',
+        userId: input.userId,
+        detectedName: input.detectedName,
+      })
+      return null
+    }
+  }
+
+  const message = `[SOLICITUD OPOSICIÓN] ${input.detectedName}
+
+Mensaje original del usuario: "${input.userMessage}"
+
+Oposición activa del usuario: ${input.userOposicion || 'ninguna'}
+Log chat: ${input.logId || 'n/a'}`
+
+  const { data, error } = await supabase
+    .from('user_feedback')
+    .insert({
+      user_id: input.userId,
+      type: 'suggestion',
+      message,
+      status: 'pending',
+      priority: 'medium',
+      wants_response: false,
+    })
+    .select('id')
+    .single()
+
+  if (error) {
+    logger.error('Error registering oposición request', error, { domain: 'oposicion-catalog' })
+    return null
+  }
+  return data?.id ?? null
+}

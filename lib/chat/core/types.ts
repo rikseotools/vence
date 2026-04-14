@@ -231,6 +231,7 @@ export const DOMAIN_PRIORITIES = {
   KNOWLEDGE_BASE: 2,
   TEMARIO: 2.5,
   SEARCH: 3,
+  OPOSICION_CATALOG: 3.5,
   STATS: 4,
   FALLBACK: 99,
 } as const

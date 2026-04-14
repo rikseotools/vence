@@ -15,6 +15,7 @@ import { getVerificationDomain } from '../domains/verification'
 import { getKnowledgeBaseDomain } from '../domains/knowledge-base'
 import { getTemarioDomain } from '../domains/temario/TemarioDomain'
 import { getStatsDomain } from '../domains/stats'
+import { getOposicionCatalogDomain } from '../domains/oposicion-catalog'
 import { getPsychometricDomain } from '../domains/psychometric'
 import { isPsychometricSubtype } from '../shared/constants'
 import { isPlatformQuery } from '../domains/knowledge-base/queries'
@@ -982,8 +983,9 @@ export function getOrchestrator(): ChatOrchestrator {
     orchestratorInstance.registerDomain(getPsychometricDomain())   // Prioridad 1.5
     orchestratorInstance.registerDomain(getKnowledgeBaseDomain())  // Prioridad 2
     orchestratorInstance.registerDomain(getTemarioDomain())        // Prioridad 2.5
-    orchestratorInstance.registerDomain(getSearchDomain())         // Prioridad 3
-    orchestratorInstance.registerDomain(getStatsDomain())          // Prioridad 4
+    orchestratorInstance.registerDomain(getSearchDomain())            // Prioridad 3
+    orchestratorInstance.registerDomain(getOposicionCatalogDomain())  // Prioridad 3.5
+    orchestratorInstance.registerDomain(getStatsDomain())             // Prioridad 4
   }
   return orchestratorInstance
 }
