@@ -376,22 +376,11 @@ export async function sendEmailV2(params: SendEmailRequest): Promise<SendEmailRe
   const fromAddress = process.env.EMAIL_FROM_ADDRESS || 'info@vence.es'
   const from = `${fromName} <${fromAddress}>`
 
-  const resend = new Resend(process.env.RESEND_API_KEY)
-  const { data, error } = await resend.emails.send({
-    from,
-    to: toEmail,
-    subject,
-    html,
-    headers: {
-      'List-Unsubscribe': `<${unsubscribeUrl}>`,
-      'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
-    },
-  })
-
-  if (error) {
-    console.error(`❌ [Emails/v2] Resend error:`, error)
-    // Persistir el fallo en email_events para que sea visible en /admin/notificaciones/email/
-    // y queryable por SQL. Sin esto los fallos solo viven en stdout (invisibles).
+  // Helper para persistir el fallo en email_events. Resend puede fallar de dos formas:
+  //   (a) devolver { error } en la respuesta (errores de API/auth/quota)
+  //   (b) lanzar excepción (errores de validación de input como `to` malformado)
+  // Ambas rutas pasan por aquí para que el fallo quede visible en SQL/admin UI.
+  async function logEmailFailure(errMsg: string) {
     try {
       const db = getDb()
       await db.insert(emailEvents).values({
@@ -400,12 +389,38 @@ export async function sendEmailV2(params: SendEmailRequest): Promise<SendEmailRe
         eventType: 'failed',
         emailAddress: toEmail,
         subject,
-        errorDetails: error.message || 'unknown',
+        errorDetails: errMsg || 'unknown',
       })
     } catch (logError) {
-      // No bloquear si el log falla: el fallo del email ya se está reportando al caller
       console.error('⚠️ [Emails/v2] Error logueando fallo en email_events:', logError)
     }
+  }
+
+  const resend = new Resend(process.env.RESEND_API_KEY)
+  let data, error
+  try {
+    const r = await resend.emails.send({
+      from,
+      to: toEmail,
+      subject,
+      html,
+      headers: {
+        'List-Unsubscribe': `<${unsubscribeUrl}>`,
+        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+      },
+    })
+    data = r.data
+    error = r.error
+  } catch (throwErr) {
+    const errMsg = throwErr instanceof Error ? throwErr.message : String(throwErr)
+    console.error(`❌ [Emails/v2] Resend threw exception:`, throwErr)
+    await logEmailFailure(errMsg)
+    return { success: false, error: errMsg || 'Error enviando email' }
+  }
+
+  if (error) {
+    console.error(`❌ [Emails/v2] Resend error:`, error)
+    await logEmailFailure(error.message || 'unknown')
     return {
       success: false,
       error: error.message || 'Error enviando email',
