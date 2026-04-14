@@ -403,6 +403,15 @@ export function isPlatformQuery(message: string): boolean {
     /descargar/i,
     /\bpdf\b/i,
     /exportar/i,
+    // Sesión / autenticación / perfil
+    /(iniciar|cerrar|abrir|salir\s+de\s+la)\s+sesi[oó]n/i,
+    /no\s+puedo\s+(entrar|iniciar\s+sesi[oó]n|acceder|loguearme|logearme|hacer\s+login)/i,
+    /\b(login|logout|log\s*in|log\s*out)\b/i,
+    /(olvid[eéó]|restabl|recuperar|cambiar|no\s+(me\s+)?(funciona|recuerdo|sé|se))\s+(la\s+|mi\s+)?(contrase[ñn]a|password)/i,
+    /(contrase[ñn]a|password)\s+(olvidad|olvidé|no\s+(me\s+)?funciona|restabl|no\s+(la|me)\s+(recuerdo|funciona|sé))/i,
+    /(mi\s+)?(foto|avatar|imagen\s+de\s+perfil|nombre\s+de\s+usuario)/i,
+    /(cambiar|actualizar|editar|modificar)\s+(mi\s+)?(email|correo|perfil|contrase[ñn]a|datos)/i,
+    /eliminar\s+(mi\s+)?cuenta/i,
   ]
 
   return platformIndicators.some(p => p.test(message))
