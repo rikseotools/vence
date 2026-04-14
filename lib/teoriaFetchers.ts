@@ -3,6 +3,7 @@ import 'server-only'
 import { getSupabaseClient } from './supabase'
 import { getShortNameBySlug, loadSlugMappingCache, generateSlugFromShortName } from './api/laws/queries'
 import { isDisposicionArticle } from './boe-extractor'
+import { normalizeArticleNumber } from './boeScrapingUtils'
 
 /**
  * Helper: carga el cache de slugs de BD (Drizzle) y devuelve una función sync para resolver slugs.
@@ -399,25 +400,40 @@ export async function fetchArticleContent(lawSlug: string, articleNumber: string
       throw new Error(`LEY_NO_RECONOCIDA: Ley "${lawSlug}" no es válida`)
     }
 
-    const { data, error } = await supabase
-      .from('articles')
-      .select(`
-        id,
-        article_number,
-        title,
-        content,
-        is_active,
-        created_at,
-        updated_at,
-        laws!inner(
-          id, name, short_name, slug, description, is_virtual
-        )
-      `)
-      .eq('is_active', true)
-      .eq('laws.is_active', true)
-      .eq('laws.short_name', lawShortName)
-      .eq('article_number', articleNumber.toString())
-      .single()
+    // Normalizar número si viene sin espacio ("55bis" → "55 bis", "4BIS" → "4 bis")
+    // para tolerar URLs externas/cacheadas con formato no canónico
+    const rawArticleNumber = articleNumber.toString()
+    const normalized = normalizeArticleNumber(rawArticleNumber)
+    const candidates = normalized && normalized !== rawArticleNumber
+      ? [rawArticleNumber, normalized]
+      : [rawArticleNumber]
+
+    let data: any = null
+    let error: any = null
+    for (const candidate of candidates) {
+      const res = await supabase
+        .from('articles')
+        .select(`
+          id,
+          article_number,
+          title,
+          content,
+          is_active,
+          created_at,
+          updated_at,
+          laws!inner(
+            id, name, short_name, slug, description, is_virtual
+          )
+        `)
+        .eq('is_active', true)
+        .eq('laws.is_active', true)
+        .eq('laws.short_name', lawShortName)
+        .eq('article_number', candidate)
+        .single()
+      data = res.data
+      error = res.error
+      if (!error) break
+    }
 
     if (error) {
       console.error('❌ Error cargando artículo:', error)
