@@ -292,6 +292,57 @@ contradicciones automáticamente en CI.
 **Cuando actualices una fecha, hazlo en los 3 sitios** o al menos ejecuta el
 test antes de commitear para detectar desajustes.
 
+### 4h. Detección de hitos con fechas estimadas (deuda §4e)
+
+Los hitos **upcoming** con descripción `"estimada" | "aproximada" | "prevista" | "tentativa"` violan §4e — ningún hito debe existir sin fecha oficial publicada. Detectar y limpiar periódicamente:
+
+```js
+const { data } = await supabase
+  .from('convocatoria_hitos')
+  .select('id, oposicion_id, titulo, fecha, status, descripcion, oposiciones(slug)')
+  .or('descripcion.ilike.%estimad%,descripcion.ilike.%aproximad%,descripcion.ilike.%previsto%,descripcion.ilike.%previsi%,descripcion.ilike.%tentativ%')
+
+for (const h of data) {
+  console.log(`[${h.oposiciones.slug}] ${h.status} ${h.fecha} — ${h.titulo}`)
+}
+```
+
+Para cada hito detectado:
+1. Borrarlo del timeline (`DELETE FROM convocatoria_hitos WHERE id = '<uuid>'`).
+2. Si la previsión tiene valor SEO para la landing, trasladar a `oposiciones.exam_date + exam_date_approximate=true` (solo para el **primer ejercicio**) o a `landing_description` (para cualquier otro hito).
+3. Reindexar `order_index` con el script de §4d (opcional pero recomendado si quedan huecos).
+
+**Incidente que motiva esta sección (14/04/2026):** audit de 3 oposiciones con `seguimiento_change_status=changed` detectó que las 3 tenían hitos upcoming con "Fecha estimada" violando §4e. Un escaneo global encontró 18 hitos en 10 oposiciones. Patrón generalizado a limpiar.
+
+### 4i. Detección de landings con fechas caducas
+
+Cuando pasa tiempo, el texto de `landing_description` puede quedar desfasado: la landing dice *"examen previsto junio 2025"* y ya estamos en 2026. Esto es peor que un hito estimado porque afecta directamente al SEO y a la captación.
+
+**Detección:**
+
+```js
+const { data: ops } = await supabase
+  .from('oposiciones')
+  .select('slug, landing_description, estado_proceso, exam_date, updated_at')
+  .eq('is_active', true)
+
+const now = new Date()
+for (const op of ops) {
+  const text = op.landing_description || ''
+  // Buscar referencias a años/meses antiguos
+  const yearMatch = text.match(/\b(20\d{2})\b/g)
+  if (yearMatch) {
+    const oldYears = yearMatch.filter(y => parseInt(y) < now.getFullYear())
+    if (oldYears.length) console.log(`[${op.slug}] menciona años antiguos: ${oldYears.join(',')}`)
+  }
+}
+```
+
+Para cada landing con año antiguo:
+1. Reescribir `landing_description` con fecha actualizada (si la oposición sigue activa).
+2. Si el proceso ya terminó y no hay nueva OEP → aplicar §9 Paso 3 (transición a modo captación).
+3. Verificar que coincide con `exam_date` (§4g).
+
 ## 5. Crear hitos para oposiciones que no tienen
 
 Si una oposicion tiene `seguimiento_url` pero 0 hitos:
@@ -321,6 +372,15 @@ Si una oposicion tiene `seguimiento_url` pero 0 hitos:
 
 ### Opción A — Desde panel admin (recomendado)
 En `/admin/oep-signals` pulsar **Aplicar** (si se han aplicado los cambios a BD) o **Descartar** (si es falso positivo). El botón actualiza el `status` de la señal — pero **NO aplica cambios a BD automáticamente**, los cambios los haces TÚ siguiendo este manual.
+
+### Convención para `admin_notes` (post-14/04/2026)
+Al aplicar o descartar una señal, escribir en `admin_notes` **una línea** que resuma la acción real tomada:
+
+- Si se aplicaron cambios: *"Aplicado: añadidos hitos X, Y. exam_date → 2026-06-15. Revalidado landing."*
+- Si fue falso positivo cosmético: *"Descartado: cambio cosmético (timestamps dinámicos). Sin novedad real en la fuente."*
+- Si requiere futura acción: *"Aplicado parcial: faltan listas definitivas oficiales. Reauditar en 2 semanas."*
+
+Sirve de trazabilidad para que el siguiente operador entienda el historial sin tener que volver a consultar la fuente.
 
 ### Opción B — Vía BD directa
 
@@ -682,3 +742,75 @@ A veces el hash cambia sin novedad real (timestamps, tokens de sesion, contenido
 - La pagina es un portal generico (no ficha del proceso)
 
 En estos casos: marcar como revisado sin hacer cambios en hitos.
+
+## 14. Debugging: cuando un sensor no produce señales esperadas
+
+Si un sensor deja de generar señales cuando cabría esperarlo (ej. llevas días sin ver alertas aunque sabes que un BOE salió), verificar:
+
+### 14.1 llm_semantic
+
+```js
+// Última ejecución exitosa
+const { data } = await supabase
+  .from('oep_detection_signals')
+  .select('created_at')
+  .eq('sensor_type', 'llm_semantic')
+  .order('created_at', { ascending: false })
+  .limit(1)
+console.log('Última señal LLM:', data?.[0]?.created_at)
+```
+
+Si >48h sin producir señales: verificar cron en GitHub Actions (`.github/workflows/detect-oep-llm.yml`), cuota Anthropic, rate limits Claude Haiku.
+
+### 14.2 timeline_silence
+
+```js
+// Hitos current con fecha pasada (deberían generar señal)
+const { data } = await supabase
+  .from('convocatoria_hitos')
+  .select('oposicion_id, titulo, fecha, oposiciones(slug)')
+  .eq('status', 'current')
+  .lt('fecha', new Date().toISOString().slice(0,10))
+
+console.log('Hitos current caducos que deberían disparar señal:', data?.length)
+```
+
+Si hay hitos `current` con fecha pasada >3 días pero sin señal correspondiente en `oep_detection_signals`, el cron `timeline_silence` puede estar caído.
+
+### 14.3 hash_change
+
+```js
+// Oposiciones con seguimiento_url cuyo último check falló o no hay check reciente
+const { data: ops } = await supabase
+  .from('oposiciones')
+  .select('slug, last_checked_at, seguimiento_url')
+  .eq('is_active', true)
+  .not('seguimiento_url', 'is', null)
+  .order('last_checked_at', { ascending: true, nullsFirst: true })
+  .limit(10)
+```
+
+Si `last_checked_at` es muy antiguo: el workflow `check-seguimiento.yml` puede estar fallando. Revisar runs en GitHub Actions.
+
+### 14.4 regional_scan
+
+```js
+// Cuántas fuentes se escanearon en el último run
+const { data } = await supabase
+  .from('oep_detection_signals')
+  .select('source_url, created_at')
+  .eq('sensor_type', 'regional_scan')
+  .gte('created_at', new Date(Date.now() - 7*24*60*60*1000).toISOString())
+
+const uniqueSources = new Set(data?.map(s => s.source_url))
+console.log('Fuentes distintas últimos 7 días:', uniqueSources.size, 'de 30')
+```
+
+Si el número es mucho menor que el total en `detection_sources`, algunas URLs pueden estar devolviendo 4xx/5xx o el LLM no extrae nada.
+
+## 15. Ver también
+
+- `lib/api/oposicion-scope/queries.ts` — helper que decide qué oposición ve cada usuario (fix cross-oposición del 14/04/2026). Si un usuario reporta ver preguntas fuera de su oposición, revisar ese módulo.
+- `docs/maintenance/impugnaciones-claude-code.md` — manual de impugnaciones: muchas relacionadas con contenido de oposiciones.
+- `docs/maintenance/verificar-epigrafe-topic-scope.md` — mapeo de leyes a temas por oposición.
+- `__tests__/integration/oposicionesDataConsistency.test.ts` — test que detecta automáticamente inconsistencias `exam_date` ↔ `landing_description` ↔ hitos (§4g) + hitos con títulos que mencionan "promoción interna" en oposiciones `tipo_acceso=libre` (§4f).
