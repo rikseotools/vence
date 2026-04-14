@@ -84,6 +84,39 @@ export const getDisputeResponseSchema = z.object({
 export type GetDisputeResponse = z.infer<typeof getDisputeResponseSchema>
 
 // ============================================
+// RESOLVE DISPUTE
+// ============================================
+
+export const disputeResolutionStatusSchema = z.enum(['resolved', 'rejected'])
+export type DisputeResolutionStatus = z.infer<typeof disputeResolutionStatusSchema>
+
+export const resolveDisputeRequestSchema = z.object({
+  disputeId: z.string().uuid('ID de impugnacion invalido'),
+  questionType: questionTypeSchema,
+  status: disputeResolutionStatusSchema,
+  adminResponse: z.string().max(5000, 'La respuesta no puede superar 5000 caracteres'),
+})
+
+export type ResolveDisputeRequest = z.infer<typeof resolveDisputeRequestSchema>
+
+export const resolveDisputeResponseSchema = z.object({
+  success: z.literal(true),
+  disputeId: z.string().uuid(),
+  status: disputeResolutionStatusSchema,
+  // Email puede no enviarse por dos motivos:
+  //   - adminResponse vacio (cierre generico)         → emailSent=false, emailSkipReason='empty_response'
+  //   - usuario sin email                              → emailSent=false, emailSkipReason='no_user_email'
+  //   - sendEmailV2 fallo                              → emailSent=false, emailError set
+  //   - sendEmailV2 cancelo (preferencias usuario)     → emailSent=false, emailSkipReason='user_preferences'
+  emailSent: z.boolean(),
+  emailId: z.string().nullable(),
+  emailError: z.string().nullable(),
+  emailSkipReason: z.enum(['empty_response', 'no_user_email', 'user_preferences']).nullable(),
+})
+
+export type ResolveDisputeResponse = z.infer<typeof resolveDisputeResponseSchema>
+
+// ============================================
 // ERROR
 // ============================================
 

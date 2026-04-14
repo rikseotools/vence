@@ -217,6 +217,18 @@ Fuente: [Microsoft Support - Título descriptivo](https://support.microsoft.com/
 
 **IMPORTANTE:** No inventar URLs. Siempre buscar y verificar que la fuente existe antes de incluirla.
 
+### 5.1.2 Verificación de preguntas técnicas con leyes virtuales (post-14/04/2026)
+
+**Hueco detectado:** el flujo `revisar-temas-con-agente.md` está pensado para preguntas legales (verificar contra artículo). Las preguntas técnicas vinculadas a "leyes virtuales" (Word, Excel, Access, Outlook, Windows, Internet) **no se enrutan al agente Opus/Sonnet**; solo pasan por `gpt-4o-mini` ligero. Cuando éste marca `answer_ok=false` o `explanation_ok=false`, el flag queda sin acción y la pregunta sigue activa con la explicación errónea hasta que un usuario impugna.
+
+**Regla:**
+
+1. **Al resolver impugnaciones de preguntas técnicas**, comprobar siempre `ai_verification_results`. Si solo hay verificación de `gpt-4o-mini` con flag negativo no resuelto, ese flag suele ser correcto y conviene reescribir.
+2. **Para verificación masiva de técnicas**, usar agente Opus/Sonnet con prompt adaptado: en lugar de "compara con el artículo", usar "compara con la documentación oficial de Microsoft Support en español; busca con WebSearch y verifica con WebFetch que la URL existe; si no encuentras fuente fiable, marca `explanation_ok=false`".
+3. **Auditoría periódica:** sacar lista de técnicas con `gpt-4o-mini` `answer_ok=false` o `explanation_ok=false` no resueltos y procesarlas con Opus/Sonnet en oleadas.
+
+**Incidente que motiva la regla (14/04/2026):** pregunta `7fc7f0b0...` Excel `=EXTRAE(A1;12;2)` tenía la explicación de OTRA pregunta (sobre concatenación con `&`), totalmente cruzada. `gpt-4o-mini` lo detectó (`answer_ok=false, explanation_ok=false`, descripción correcta) hace meses, pero la pregunta nunca fue revisada por agente Opus, así que siguió activa hasta que la impugnó la usuaria Farida.
+
 ### 5.2 Explicación (tabla `questions`)
 ```javascript
 supabase
@@ -268,20 +280,24 @@ Antes de cerrar, pedir el mensaje personalizado:
 cierra la impugnación pero antes dime qué le vas a poner al usuario
 ```
 
-**Formato del mensaje:**
+**Formato del mensaje (post-14/04/2026):**
 ```
 Hola [Nombre],
 
-[Confirmación del problema reportado]
+[Confirmación del problema reportado, reconociendo si tenían razón]
 
 [Explicación de la corrección aplicada]
 
-Gracias por el reporte. Mucho ánimo con la oposición!
+Muchas gracias.
 
 Equipo de Vence
 ```
 
-**Notas:** Siempre firmar con "Equipo de Vence" al final.
+**Notas de tono:**
+- Firmar siempre con "Equipo de Vence" al final.
+- **NO usar fórmulas tipo "gracias por ayudarnos a mejorar la plataforma"** ni "gracias por el reporte. Mucho ánimo con la oposición!". Los opositores no quieren ayudarnos, quieren resolver su asunto. Un simple "Muchas gracias." es suficiente.
+- Cuando el usuario tenía razón, decirlo claramente ("Tenías razón…", "Tienes razón…"). Refuerza confianza en la plataforma.
+- Mensajes concisos y aireados (no apelotonados): saltos de línea entre párrafos, frases cortas. El usuario no quiere leer un muro de texto.
 
 Una vez aprobado:
 
@@ -397,6 +413,106 @@ await supabase
   .update({ primary_article_id: correctArticleId })
   .eq('id', questionId);
 ```
+
+## 7.2 Impugnaciones de `tema_incorrecto` o "esta pregunta es de otro tema"
+
+Cuando la queja del usuario no es sobre el contenido de la pregunta sino sobre el **tema** en el que aparece, **no es un problema de la pregunta sino del `topic_scope`**. Antes de tocar nada:
+
+> 📖 **Lectura obligatoria:** `docs/maintenance/verificar-epigrafe-topic-scope.md` — explica cómo el `topic_scope` mapea artículos a temas y la regla de oro "scope debe reflejar el epígrafe oficial".
+
+### Checklist específica para `tema_incorrecto`
+
+1. **Buscar el `primary_article_id` en TODOS los `topic_scope` de la oposición**, no solo en el tema "esperado". Filtrar por `position_type` + `law_id` y comprobar qué temas (de cualquier bloque) tienen ese artículo. Lo habitual es encontrar 2+ temas y uno es el erróneo.
+2. **Comparar el contenido del artículo con el `topics.epigrafe` oficial** de cada tema donde aparece. Si el artículo trata de algo que **no se menciona en el epígrafe**, sobra ahí — quitarlo del `article_numbers` de ese scope.
+3. **Aplicar la regla del manual de epígrafes** (sección "Solapamientos entre temas"): solo estrechar cuando el contenido pertenece **claramente** a otro tema del mismo programa. Si hay duda genuina, mantener.
+4. **Usar la nomenclatura del usuario en TODO momento** (mensaje al usuario, análisis previo, borradores, e incluso comunicación con el desarrollador). NUNCA mencionar el `topic_number` interno (T5, T101, T201, etc.) — el opositor no lo entiende y al desarrollador le confunde igual. Regla **estricta y única** para todos los temas:
+   - **Siempre escribir "Tema X del Bloque Y"** (ej.: "Tema 5 del Bloque I", "Tema 1 del Bloque II"), incluso si es Bloque I.
+   - X = `display_number` si está informado; si no, `topic_number` (válido en Bloque I porque coinciden).
+   - Y = `bloque_number`, en romanos (I, II, III...).
+   - Consulta: `SELECT topic_number, bloque_number, display_number, title, epigrafe FROM topics WHERE …`.
+   - Si te descubres escribiendo "T101", "T5", etc. en cualquier lado → reescribir.
+
+### Incidente que motiva la regla (14/04/2026 — Isabel Iglesias, aux admin estado)
+
+Pregunta sobre art. 103.2 CE (órganos de la Admin del Estado creados por ley) aparecía en el "Tema 1 del Bloque II - Atención al ciudadano" (T101 interno), cuyo epígrafe oficial trata solo de acogida, información y discapacidad. El art. 103 estaba en el `topic_scope` de T101 sin justificación en el epígrafe; pertenece claramente a T5 ("El Gobierno y la Administración"). Fix: quitar `"103"` del `article_numbers` de T101.
+
+Misma usuaria, mismo día, otra impugnación: art. 13 CE (derechos de extranjeros) aparecía en T2 ("Tribunal Constitucional. Reforma. Corona") cuando solo encaja en T1 ("Derechos y deberes fundamentales"). Mismo patrón, misma solución.
+
+**Patrón a vigilar:** topic_scopes que añaden artículos "por contigüidad numérica" (porque el tema toca arts cercanos del mismo título) sin comprobar si cada artículo concreto encaja en el epígrafe.
+
+## 7.3 Filosofía: "no oficial + mejorable = se mejora" (post-14/04/2026)
+
+**Regla:** si una pregunta es `is_official_exam = false` y se puede dejar perfecta tocando algo, **se toca**, aunque la queja del usuario sea parcial o no apunte al punto débil real. Aprovechar cada impugnación para subir el nivel de la pregunta.
+
+**Por qué:** las preguntas no oficiales no tienen restricciones de literalidad de examen. Cualquier mejora — opción más literal, explicación didáctica, fuente añadida, errata corregida, programa especificado — sube la calidad del banco. Si el usuario notó algo, casi siempre hay más por pulir alrededor.
+
+**Casos típicos vistos el 14/04/2026:**
+
+- Eduardo (#5574b5e0) pidió añadir "sobre todo en materia criminal" → reformulamos opción C entera para que fuera **cita literal** del art. 120.2 CE.
+- Cristina (#e9cd059b, #8dd09f3b) pidió que se indicara el programa → añadimos "En Microsoft Word/Excel" + reescribimos explicación con análisis A/B/C/D + fuente Microsoft Support en español (estándar §5.1.1).
+- Tinokero (#e50300fb) discrepaba con la respuesta correcta → su queja era infundada, pero detectamos explicación monolínea sin formato; **rechazamos su queja PERO mejoramos la explicación** según §5.1.1.
+
+**Contraste:** si la pregunta es **oficial** (`is_official_exam = true`), no se toca enunciado ni opciones — solo se mejora la explicación, se corrige el `primary_article_id` y se reescribe la cita textual si era engañosa (caso #ca60036f Carmen Pavón, examen oficial CyL).
+
+## 7.4 Cross-contamination de explicaciones entre preguntas (post-14/04/2026)
+
+**Patrón detectado:** preguntas cuya explicación pertenece a **otra pregunta distinta** del banco — texto coherente y bien formateado, pero del tema equivocado.
+
+**Caso motivador (14/04/2026 — Farida Oulad, dispute `5a1f5508`):** pregunta sobre `=EXTRAE(A1;12;2)` en Excel cuya explicación hablaba enteramente del operador `&` y la función CONCAT (concatenación). La explicación estaba bien escrita, pero pertenecía a una pregunta distinta sobre concatenación. `gpt-4o-mini` lo detectó (`explanation_ok=false`) hace meses; `claude-opus-4-5` lo dejó pasar como `perfect`.
+
+**Por qué pasa:** sugiere bug en algún punto del pipeline de generación o importación masiva donde explicaciones se asignaron cruzadas (mismo lote, mismo tema técnico, distinta función concreta).
+
+**Cómo detectar masivamente:** auditar preguntas técnicas donde palabras clave del enunciado **no aparecen** en la explicación (ej.: enunciado contiene "EXTRAE" pero explicación no menciona "EXTRAE"). Script sugerido:
+
+```js
+// preguntas con función mencionada en enunciado pero no en explicación
+const keywords = ['EXTRAE','BUSCARV','CONCATENAR','SUMAR.SI','PROMEDIO','SI','HOY','AHORA','...'];
+for (const kw of keywords) {
+  const { data } = await s.from('questions')
+    .select('id, question_text, explanation')
+    .ilike('question_text', `%${kw}%`)
+    .not('explanation', 'ilike', `%${kw}%`)
+    .eq('is_active', true);
+  console.log(`${kw}: ${data?.length || 0} sospechosas`);
+}
+```
+
+## 7.5 Same-user clustering: red flag de fallo sistémico (post-14/04/2026)
+
+**Regla:** si un mismo usuario (mismo `user_id`) abre **3+ impugnaciones** seguidas en poco tiempo, antes de tratarlas como casos independientes, buscar el **denominador común**. Casi siempre revela un fallo sistémico (de scope, de pipeline, de versión de programa, etc.) en lugar de N preguntas malas independientes.
+
+**Caso motivador (14/04/2026):** Isabel Iglesias abrió 3 impugnaciones (`af869052`, `259780d8`, `70329edc`) en pocos días sobre 3 preguntas distintas. Tratadas individualmente parecían inconexas; en realidad las 3 tenían la misma raíz: artículos de la CE (art. 13, art. 103) que aparecían en topic_scopes equivocados (T2 Bloque I, T1 Bloque II) por error de configuración inicial. Un solo fix de scope cerró las 3.
+
+**Cómo detectar:**
+
+```js
+const { data } = await s.from('question_disputes')
+  .select('user_id, count(*)')
+  .eq('status', 'pending')
+  .group('user_id')
+  .order('count', { ascending: false });
+// Cualquier user_id con count >= 3 → investigar denominador común
+```
+
+**Qué buscar como denominador:** misma ley, mismo artículo, mismo topic, mismo bloque, misma oposición, mismo tipo de bug (scope, traducción, versión, errata).
+
+## 7.6 Verificación de fuentes Microsoft Support (post-14/04/2026)
+
+**Flujo obligatorio antes de incluir una URL `support.microsoft.com/es-es/...` en una explicación:**
+
+1. **Buscar con WebSearch** restringido al dominio:
+   ```
+   WebSearch(query: "tema concreto Excel Word Outlook ...", allowed_domains: ["support.microsoft.com"])
+   ```
+2. **Tomar la URL más relevante** del resultado (suele ser la primera de Office o de la app concreta).
+3. **Si la URL es `/en-us/`, sustituir por `/es-es/`** manteniendo el resto del slug y el ID hexadecimal final.
+4. **Verificar con WebFetch** que la página existe en español y trata el tema:
+   ```
+   WebFetch(url: "...", prompt: "¿Existe esta página en español? ¿Trata sobre [tema]?")
+   ```
+5. **Solo si WebFetch confirma** que la página existe y aborda el tema → incluir como `Fuente:` al final de la explicación. Si devuelve 404 o el contenido no encaja, repetir desde paso 1 con otra búsqueda.
+
+**Por qué:** las URLs de Microsoft Support cambian, los IDs caducan y la versión `es-es` no siempre existe para la misma URL `en-us`. Inventar o asumir URLs lleva a `Fuente:` rotas que dañan la confianza del usuario.
 
 ## 8. Columnas de `question_disputes`
 

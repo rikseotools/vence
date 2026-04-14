@@ -3,25 +3,32 @@
 export {
   questionTypeSchema,
   disputeTypeSchema,
+  disputeResolutionStatusSchema,
   createDisputeRequestSchema,
   createDisputeResponseSchema,
   getDisputeRequestSchema,
   getDisputeResponseSchema,
   existingDisputeSchema,
+  resolveDisputeRequestSchema,
+  resolveDisputeResponseSchema,
   disputeErrorSchema,
   type QuestionType,
   type DisputeType,
+  type DisputeResolutionStatus,
   type CreateDisputeRequest,
   type CreateDisputeResponse,
   type GetDisputeRequest,
   type GetDisputeResponse,
   type ExistingDispute,
+  type ResolveDisputeRequest,
+  type ResolveDisputeResponse,
   type DisputeError,
 } from './schemas'
 
 export {
   getExistingDispute,
   createDispute,
+  resolveDispute,
 } from './queries'
 
 export {
