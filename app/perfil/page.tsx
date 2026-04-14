@@ -2823,7 +2823,7 @@ function PerfilPageContent() {
                     setDeletionSuccess(false)
                     setDeleteConfirmText('')
                   }}
-                  className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
+                  className="w-full sm:w-auto px-6 py-3 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white rounded-lg font-medium transition-colors min-h-[44px]"
                 >
                   Entendido
                 </button>
