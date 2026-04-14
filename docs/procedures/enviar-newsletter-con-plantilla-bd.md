@@ -421,3 +421,25 @@ Antes de lanzar cualquier envío masivo, verifica:
 - [ ] Si filtras por geografía: ¿usas `ciudad` (no IP) con tokenización estricta?
 - [ ] Si el copy dice "temario común", ¿verificado contra `lib/config/oposiciones.ts`?
 - [ ] ¿Test a manueltrader@gmail.com primero y aprobación explícita?
+
+### Validación de datos (post-caso Isabel/Galicia, 14/04/2026)
+
+Cuando el newsletter incluye **datos específicos** (fecha examen, plazas,
+referencia BOE/DOG, listas publicadas, etc.) sacados de `oposiciones`, antes de
+enviar:
+
+- [ ] **Ejecutar test de consistencia**: `npx jest oposicionesDataConsistency`
+  para detectar contradicciones entre `exam_date`, `landing_description`, hitos,
+  `boe_reference`
+- [ ] **Cross-check con fuente oficial**: para cada fecha/plaza clave, WebFetch
+  a la fuente oficial (BOE/DOG/BOCYL) y verificar que los datos BD coinciden.
+  No confiar solo en BD como fuente de verdad — puede tener errores heredados.
+- [ ] **Verificar `tipo_acceso` coherente**: si el newsletter va a usuarios del
+  turno libre y menciona listas de admitidos, comprobar que el hito de la
+  lista no sea de promoción interna (ver §4f del manual `oeps-convocatorias-seguimiento.md`)
+
+**Caso Isabel (14/04/2026)**: newsletter cross-sell de Galicia incluía
+"examen en octubre" y "listas del DOG 27/03". La usuaria lo corrigió: el
+examen es el 20 septiembre y la lista del 27/03 era de promoción interna.
+Motivo: los 3 datos eran incorrectos en BD. El test de consistencia habría
+detectado la contradicción `exam_date=2026-10-01` vs `landing_description="previsto septiembre"`.

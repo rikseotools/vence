@@ -245,6 +245,53 @@ convocatoria_hitos:
   [upcoming] 2026-05-23 Examen   ← SI hay hito porque la fecha es oficial
 ```
 
+### 4f. Turno libre vs promoción interna (CRÍTICO)
+
+Muchas CCAA (Galicia, CyL, Andalucía, Madrid, etc.) y el Estado convocan **dos
+oposiciones en paralelo** con procedimientos distintos: **turno libre** y
+**turno de promoción interna**. Publican listas de admitidos, tribunales,
+exámenes y resultados por separado, **a veces el mismo día en el mismo BOE/DOG**.
+
+**En Vence cada oposición tiene `tipo_acceso`** (`libre`, `promocion_interna`,
+`estabilizacion`, etc.). Los hitos que añadas a un registro deben corresponder
+**exclusivamente** a ese turno.
+
+**Regla**: al aplicar una señal OEP que crea un hito tipo "Listas de admitidos"
+o similar, verificar que el DOG/BOE origen indique turno **libre** (o ambos).
+Si el documento es solo de promoción interna, **NO añadir el hito** a la
+oposición libre.
+
+**Caso real (Galicia, 14/04/2026)**: el DOG 27/03/2026 publicó listas
+provisionales de admitidos y excluidos de promoción interna C1/C2. Un sensor
+añadió el hito al timeline de `auxiliar-administrativo-galicia` (tipo_acceso
+libre), contradiciendo la realidad. Isabel lo detectó al recibir newsletter.
+
+**Heurísticas para distinguir turno en el texto del DOG/BOE**:
+- `"turno de promoción interna"`, `"promoción interna"`, `"acceso interno"` → NO aplicar a libre
+- `"turno libre"`, `"acceso libre"`, `"por el sistema de oposición libre"` → aplicar a libre
+- Si el texto menciona ambos turnos → se pueden aplicar a ambas oposiciones SI existen entradas separadas
+
+El test `__tests__/integration/oposicionesDataConsistency.test.ts` detecta este
+error: oposiciones con `tipo_acceso=libre` que tienen hitos con títulos que
+mencionan "promoción interna".
+
+### 4g. Integridad cruzada: exam_date ↔ landing_description ↔ hitos
+
+La información de fechas y plazas aparece en 3 sitios que deben coincidir:
+
+| Campo / ubicación | Qué contiene |
+|---|---|
+| `oposiciones.exam_date` | Fecha oficial o estimada del primer ejercicio |
+| `oposiciones.landing_description` | Texto SEO que menciona mes/año y plazas |
+| `convocatoria_hitos` con título "Primer ejercicio" o "Examen" | Fecha del hito |
+
+**Regla**: si la landing dice *"previsto septiembre 2026"* y `exam_date =
+2026-10-01`, hay un bug en uno de los dos. El test detecta estas
+contradicciones automáticamente en CI.
+
+**Cuando actualices una fecha, hazlo en los 3 sitios** o al menos ejecuta el
+test antes de commitear para detectar desajustes.
+
 ## 5. Crear hitos para oposiciones que no tienen
 
 Si una oposicion tiene `seguimiento_url` pero 0 hitos:
