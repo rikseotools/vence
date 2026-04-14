@@ -381,12 +381,14 @@ export function isPlatformQuery(message: string): boolean {
     /no\s+(es\s+)?mi\s+oposici[oó]n/i,
     /oposici[oó]n\s+(equivocada|incorrecta|mal)/i,
     /c[oó]mo\s+(cambio|elijo|selecciono).*oposici[oó]n/i,
-    // Peticiones de crear/preparar tests
-    /prep[aá]ra(me|nos)?\s+(un\s+)?test/i,
-    /hazme\s+(un\s+)?test/i,
-    /cr[eé]a(me)?\s+(un\s+)?test/i,
-    /gen[eé]ra(me)?\s+(un\s+)?test/i,
-    /quiero\s+(un\s+)?test\b/i,
+    // Peticiones de crear/preparar tests (incluye variantes "preguntas")
+    /prep[aá]ra(me|nos)?\s+(un\s+)?(test|preguntas?)/i,
+    /hazme\s+(un\s+)?(test|preguntas?)/i,
+    /me\s+(haces|creas|generas|preparas)\s+(un\s+)?(test|preguntas?)/i,
+    /puedes\s+(hacer|crear|generar|preparar)(me)?\s+(un\s+)?(test|preguntas?)/i,
+    /cr[eé]a(me)?\s+(un\s+)?(test|preguntas?)/i,
+    /gen[eé]ra(me)?\s+(un\s+)?(test|preguntas?)/i,
+    /quiero\s+(un\s+)?(test|practicar)\b/i,
     /necesito\s+(un\s+)?test\b/i,
     // Ver resultados / historial de tests y simulacros
     /(dame|ver|enseñ[aá]|muestra|dime)\s*(los\s*)?(resultado|estad[ií]stica|nota|puntuaci[oó]n)/i,
