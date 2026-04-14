@@ -185,12 +185,16 @@ export interface OposicionRequestInput {
   logId: string | null
 }
 
+export type RegisterResult =
+  | { status: 'created'; id: string }
+  | { status: 'deduplicated'; existingId: string }
+  | { status: 'failed'; error: string }
+
 /**
  * Inserta una solicitud de oposición nueva en user_feedback (type='suggestion').
  * Dedupe: no crea registro si el mismo user pidió la misma oposición en últimos 7 días.
- * Devuelve el id del feedback creado, o null si fue deduplicado o falló.
  */
-export async function registerOposicionRequest(input: OposicionRequestInput): Promise<string | null> {
+export async function registerOposicionRequest(input: OposicionRequestInput): Promise<RegisterResult> {
   const supabase = getSupabase()
 
   // Dedupe
@@ -211,7 +215,7 @@ export async function registerOposicionRequest(input: OposicionRequestInput): Pr
         userId: input.userId,
         detectedName: input.detectedName,
       })
-      return null
+      return { status: 'deduplicated', existingId: existing[0].id }
     }
   }
 
@@ -228,6 +232,7 @@ Log chat: ${input.logId || 'n/a'}`
       user_id: input.userId,
       type: 'suggestion',
       message,
+      url: 'chat:oposicion-catalog',
       status: 'pending',
       priority: 'medium',
       wants_response: false,
@@ -237,7 +242,7 @@ Log chat: ${input.logId || 'n/a'}`
 
   if (error) {
     logger.error('Error registering oposición request', error, { domain: 'oposicion-catalog' })
-    return null
+    return { status: 'failed', error: error.message }
   }
-  return data?.id ?? null
+  return { status: 'created', id: data!.id }
 }

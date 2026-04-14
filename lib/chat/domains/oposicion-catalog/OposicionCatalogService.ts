@@ -90,27 +90,27 @@ Puedes activarla como tu oposición desde tu perfil, o consultar el temario en:
 
 function formatNoMatchResponse(
   detectedName: string,
-  feedbackId: string | null,
-  deduplicated: boolean
+  registerStatus: 'created' | 'deduplicated' | 'failed'
 ): string {
-  if (deduplicated) {
-    return `ℹ️ **No tenemos esa oposición (${detectedName}) en el catálogo todavía.**
+  const header = `ℹ️ **No tenemos esa oposición (${detectedName}) en el catálogo todavía.**`
+  if (registerStatus === 'deduplicated') {
+    return `${header}
 
 Ya teníamos una solicitud tuya reciente sobre esta oposición, así que el equipo de Vence está al tanto. Te avisaremos cuando esté disponible.
 
 [oposicion-catalog]`
   }
-  if (feedbackId) {
-    return `ℹ️ **No tenemos esa oposición (${detectedName}) en el catálogo todavía.**
+  if (registerStatus === 'created') {
+    return `${header}
 
 He registrado una solicitud al equipo de Vence para que la añadan lo antes posible. Gracias por indicárnoslo; te avisaremos cuando esté disponible.
 
 [oposicion-catalog]`
   }
-  // Falló el registro
-  return `ℹ️ **No tenemos esa oposición (${detectedName}) en el catálogo todavía.**
+  // failed
+  return `${header}
 
-Puedes escribirnos a soporte para pedir que la añadamos.
+No he podido registrar la solicitud automáticamente. Puedes escribirnos a soporte para que la añadamos.
 
 [oposicion-catalog]`
 }
@@ -187,7 +187,7 @@ export async function processOposicionCatalog(input: {
 
   // Sin match → registrar solicitud
   const detectedName = extractDetectedName(input.message)
-  const feedbackId = await registerOposicionRequest({
+  const register = await registerOposicionRequest({
     userId: input.userId,
     detectedName,
     userMessage: input.message,
@@ -195,10 +195,12 @@ export async function processOposicionCatalog(input: {
     logId: input.logId,
   })
 
-  const deduplicated = feedbackId === null && !!input.userId
-  const responseText = formatNoMatchResponse(detectedName, feedbackId, deduplicated)
+  const feedbackId = register.status === 'created' ? register.id
+    : register.status === 'deduplicated' ? register.existingId
+    : null
+  const responseText = formatNoMatchResponse(detectedName, register.status)
 
-  logger.info(`Oposición not in catalog → request ${feedbackId ? 'created' : 'deduped/failed'}`, {
+  logger.info(`Oposición not in catalog → ${register.status}`, {
     domain: 'oposicion-catalog',
     detectedName,
     feedbackId,
