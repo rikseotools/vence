@@ -1,7 +1,8 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { sendEmailV2 } from '@/lib/api/emails'
 import { Resend } from 'resend'
+import { requireAdmin } from '@/lib/api/shared/auth'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 
@@ -84,7 +85,14 @@ async function sendDirectEmail(toEmail: string, adminMessage: string): Promise<{
   }
 }
 
-async function _POST(request: Request) {
+async function _POST(request: NextRequest) {
+  // Auth admin (post-14/04/2026). Antes el endpoint era público → cualquiera
+  // podía disparar emails en nombre de Vence. Ahora requiere Bearer token de admin.
+  // El admin UI lo pasa desde supabase.auth.getSession().access_token;
+  // los scripts de Claude usan el patrón generateLink + verifyOtp.
+  const auth = await requireAdmin(request)
+  if (!auth.ok) return auth.response
+
   try {
     const { userId, adminMessage, conversationId, email } = await request.json()
 

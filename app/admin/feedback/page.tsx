@@ -588,11 +588,15 @@ export default function AdminFeedbackPage() {
 
       if (msgError) throw msgError
 
-      // 4. Enviar email de notificación
+      // 4. Enviar email de notificación (endpoint requiere Bearer token admin post-14/04/2026)
       try {
+        const { data: { session } } = await supabase.auth.getSession()
         await fetch('/api/send-support-email', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(session?.access_token && { 'Authorization': `Bearer ${session.access_token}` }),
+          },
           body: JSON.stringify({
             userId: newConvUser.id,
             adminMessage: newConvMessage.trim(),
@@ -1242,12 +1246,14 @@ export default function AdminFeedbackPage() {
         }
       }
 
-      // Enviar email si el usuario no está online
+      // Enviar email si el usuario no está online (endpoint requiere Bearer admin post-14/04/2026)
       try {
+        const { data: { session } } = await supabase.auth.getSession()
         const emailResponse = await fetch('/api/send-support-email', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            ...(session?.access_token && { 'Authorization': `Bearer ${session.access_token}` }),
           },
           body: JSON.stringify({
             userId: conversation.data.user_id || null,

@@ -223,9 +223,24 @@ await supabase.from('notification_logs').insert({
 });
 
 // 4. Llamar a /api/send-support-email (envía email vía Resend) — antes lo hacía el trigger
+// El endpoint requiere Bearer token de admin (post-14/04/2026). Patrón:
+//   - generateLink(type='magiclink') con service_role → hashed_token
+//   - verifyOtp(token_hash) con anon_key → session.access_token
+const { data: link } = await adminClient.auth.admin.generateLink({
+  type: 'magiclink', email: 'manueltrader@gmail.com',
+});
+const anonClient = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+const { data: ses } = await anonClient.auth.verifyOtp({
+  token_hash: link.properties.hashed_token, type: 'magiclink',
+});
+const accessToken = ses.session.access_token;
+
 await fetch('https://www.vence.es/api/send-support-email', {
   method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${accessToken}`,
+  },
   body: JSON.stringify({
     userId: targetUserId,           // null si feedback es de email externo no registrado
     adminMessage: borradorAprobado,
