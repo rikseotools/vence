@@ -446,7 +446,8 @@ export default function AdminFeedbackPage() {
 
     setSendingInlineMessage(true)
     try {
-      // Usar service role para bypass RLS
+      // Usar service role para crear conversación si no existe (bypass RLS).
+      // El endpoint /api/v2/feedback/respond se encarga de INSERT msg + campana + email.
       const supabaseAdmin = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxYnBzdHhvd3ZnaXBxc3BxcmdvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MDg3NjcwMywiZXhwIjoyMDY2NDUyNzAzfQ.4yUKsfS-enlY6iGICFkKi-HPqNUyTkHczUqc5kgQB3w'
@@ -454,14 +455,14 @@ export default function AdminFeedbackPage() {
 
       let conversation = conversations[selectedFeedback.id]
 
-      // Si no hay conversación, crear una
+      // Si no hay conversación, crear una antes de llamar al endpoint
       if (!conversation) {
         const { data: newConv, error: convError } = await supabaseAdmin
           .from('feedback_conversations')
           .insert({
             feedback_id: selectedFeedback.id,
             user_id: selectedFeedback.user_id,
-            status: 'waiting_user',
+            status: 'waiting_admin',
             last_message_at: new Date().toISOString()
           })
           .select()
@@ -470,58 +471,33 @@ export default function AdminFeedbackPage() {
         if (convError) throw convError
         conversation = newConv
 
-        // Actualizar el mapa de conversaciones
         setConversations(prev => ({
           ...prev,
           [selectedFeedback.id]: conversation
         }))
       }
 
-      // Enviar el mensaje
-      const { data: newMsg, error: msgError } = await supabaseAdmin
-        .from('feedback_messages')
-        .insert({
-          conversation_id: conversation.id,
-          sender_id: user.id,
-          is_admin: true,
-          message: inlineNewMessage.trim()
-        })
-        .select()
-        .single()
+      // Llamada atómica al endpoint: INSERT msg + campana + email + cierre de estado.
+      // Semántica post-14/04/2026: admin reply = feedback 'resolved'.
+      const result = await respondViaFeedbackEndpoint(supabase, {
+        feedbackId: selectedFeedback.id,
+        adminUserId: user.id,
+        message: inlineNewMessage.trim(),
+        finalStatus: 'resolved',
+      })
 
-      if (msgError) throw msgError
-
-      // Actualizar estado de la conversación a waiting_user
-      const { error: updateError } = await supabaseAdmin
-        .from('feedback_conversations')
-        .update({
-          status: 'waiting_user',
-          last_message_at: new Date().toISOString()
-        })
-        .eq('id', conversation.id)
-
-      if (updateError) {
-        console.error('❌ Error actualizando status conversación:', updateError)
-      } else {
-        console.log('✅ Status actualizado a waiting_user')
+      if (!result.ok) {
+        console.error('❌ Error enviando respuesta inline:', result.detail)
+        alert('Error al enviar el mensaje: ' + (result.detail || 'desconocido'))
+        return
       }
 
-      // Actualizar feedback a in_review si estaba pending
-      if (selectedFeedback.status === 'pending') {
-        await supabaseAdmin
-          .from('user_feedback')
-          .update({ status: 'in_review' })
-          .eq('id', selectedFeedback.id)
-      }
+      console.log(`✅ Respuesta inline enviada. messageId=${result.messageId} bell=${result.bellSent} email=${result.emailSent}`)
+      if (result.emailError) console.warn(`⚠️ Email no enviado: ${result.emailError}`)
 
-      // Email + campana se envían automáticamente por trigger PostgreSQL
-      // (send_feedback_notification) al insertar feedback_messages con is_admin=true
-
-      // Añadir mensaje a la lista
-      setInlineChatMessages(prev => [...prev, newMsg])
       setInlineNewMessage('')
 
-      // Actualizar estado local inmediatamente
+      // Estado local optimista
       setConversations(prev => ({
         ...prev,
         [selectedFeedback.id]: {
@@ -531,11 +507,9 @@ export default function AdminFeedbackPage() {
         }
       }))
 
-      // Recargar datos del servidor
+      // Recargar desde servidor para ver el mensaje nuevo + estado
       loadConversations()
       loadFeedbacks()
-
-      console.log('✅ Mensaje inline enviado')
     } catch (error) {
       console.error('❌ Error enviando mensaje inline:', error)
       alert('Error al enviar el mensaje')
@@ -623,37 +597,24 @@ export default function AdminFeedbackPage() {
 
       if (convError) throw convError
 
-      // 3. Crear mensaje del admin
-      const { error: msgError } = await supabaseAdmin
-        .from('feedback_messages')
-        .insert({
-          conversation_id: conversation.id,
-          sender_id: user.id,
-          is_admin: true,
-          message: newConvMessage.trim()
-        })
+      // 3. Llamada atómica al endpoint: INSERT msg + campana + email + cierre de estado.
+      //    Semántica post-14/04/2026: admin reply = feedback 'resolved'.
+      //    Si el usuario responde, el endpoint /api/feedback/message lo reabrirá a 'pending'.
+      const result = await respondViaFeedbackEndpoint(supabase, {
+        feedbackId: feedback.id,
+        adminUserId: user.id,
+        message: newConvMessage.trim(),
+        finalStatus: 'resolved',
+      })
 
-      if (msgError) throw msgError
-
-      // 4. Enviar email de notificación (endpoint requiere Bearer token admin post-14/04/2026)
-      try {
-        const { data: { session } } = await supabase.auth.getSession()
-        await fetch('/api/send-support-email', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(session?.access_token && { 'Authorization': `Bearer ${session.access_token}` }),
-          },
-          body: JSON.stringify({
-            userId: newConvUser.id,
-            adminMessage: newConvMessage.trim(),
-            conversationId: conversation.id
-          })
-        })
-        console.log('✅ Email enviado')
-      } catch (emailError) {
-        console.error('⚠️ Error enviando email:', emailError)
+      if (!result.ok) {
+        console.error('❌ Error enviando mensaje inicial:', result.detail)
+        alert('Conversación creada pero mensaje no enviado: ' + (result.detail || 'desconocido'))
+        return
       }
+
+      console.log(`✅ Conversación creada. messageId=${result.messageId} bell=${result.bellSent} email=${result.emailSent}`)
+      if (result.emailError) console.warn(`⚠️ Email no enviado: ${result.emailError}`)
 
       // Cerrar modal y limpiar
       setShowNewConversationModal(false)
@@ -665,7 +626,7 @@ export default function AdminFeedbackPage() {
       loadFeedbacks()
       loadConversations()
 
-      alert(`Conversación creada y email enviado a ${newConvUser.email}`)
+      alert(`Conversación creada y ${result.emailSent ? 'email enviado' : 'mensaje guardado'} a ${newConvUser.email}`)
     } catch (error) {
       console.error('Error creando conversación:', error)
       alert('Error al crear la conversación')
