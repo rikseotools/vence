@@ -11,6 +11,9 @@ import {
 import type { EmailPreferences, EmailType } from '@/lib/api/emails'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 import { emailTemplates } from './templates'
+import { getUserProblematicArticlesWeekly } from '@/lib/api/notifications/queries'
+import { isInProblematicArticlesRollout } from '@/lib/api/rollout/problematic-articles'
+import { logRolloutEvent } from '@/lib/api/rollout/problematic-articles-logs'
 
 // ============================================
 // HELPERS
@@ -722,10 +725,30 @@ export async function detectUsersForWeeklyReport(): Promise<WeeklyReportUser[]> 
 
         if (recentEmail) continue
 
-        const { data: problematicArticles, error: articlesError } = await supabase
-          .rpc('get_user_problematic_articles_weekly', { user_uuid: user.id })
-
-        if (articlesError) continue
+        // Despliegue gradual. Ver docs/maintenance/despliegue-articulos-problematicos.md
+        let problematicArticles: any[] = []
+        const startedAt = Date.now()
+        const usingNewPath = isInProblematicArticlesRollout(user.id)
+        try {
+          if (usingNewPath) {
+            problematicArticles = await getUserProblematicArticlesWeekly({ userId: user.id })
+          } else {
+            const { data, error: articlesError } = await supabase
+              .rpc('get_user_problematic_articles_weekly', { user_uuid: user.id })
+            if (articlesError) continue
+            problematicArticles = data ?? []
+          }
+        } catch (e) {
+          console.warn('⚠️ problematic-articles fetch falló:', (e as Error).message)
+          continue
+        }
+        logRolloutEvent({
+          userId: user.id,
+          path: usingNewPath ? 'new' : 'old',
+          articlesCount: problematicArticles.length,
+          lawNames: problematicArticles.map((a: any) => a.law_name).filter(Boolean),
+          durationMs: Date.now() - startedAt,
+        })
 
         if (problematicArticles && problematicArticles.length > 0) {
           usersForWeeklyReport.push({

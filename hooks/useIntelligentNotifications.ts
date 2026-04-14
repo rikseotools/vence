@@ -1000,14 +1000,46 @@ export function useIntelligentNotifications(): UseIntelligentNotificationsReturn
         totalTestsCompleted = 0
       }
       
-      // ✅ USAR FUNCIÓN RPC get_user_problematic_articles_weekly - SIMULADA
+      // ✅ Artículos problemáticos — FASE 4/5 refactor oposicion-scope.
+      // Si NEXT_PUBLIC_NEW_PROBLEMATIC_ARTICLES_API=true → endpoint Drizzle con scope.
+      // Si no → RPC legacy (aún con bug cross-oposición, pendiente de DROP en FASE 5).
       let articles = []
       let error = null
 
       try {
-        const { data: rpcArticles, error: rpcError } = await supabase.rpc('get_user_problematic_articles_weekly', {
-          user_uuid: user.id  
-        })
+        // Canary rollout: hash(userId) % 100 < PCT → nuevo path.
+        // Ver docs/maintenance/despliegue-articulos-problematicos.md
+        const { isInProblematicArticlesRollout } = await import('@/lib/api/rollout/problematic-articles')
+        const useNewApi = isInProblematicArticlesRollout(user.id)
+
+        let rpcArticles: unknown = null
+        let rpcError: unknown = null
+
+        if (useNewApi) {
+          const { data: { session } } = await supabase.auth.getSession()
+          const token = session?.access_token
+          if (!token) {
+            rpcError = new Error('No session token')
+          } else {
+            const resp = await fetch('/api/notifications/problematic-articles', {
+              headers: { Authorization: `Bearer ${token}` },
+            })
+            const body = await resp.json().catch(() => null)
+            if (!resp.ok || !body?.success) {
+              rpcError = new Error(body?.error || `HTTP ${resp.status}`)
+            } else {
+              rpcArticles = body.articles
+            }
+          }
+        } else {
+          const r = await supabase.rpc('get_user_problematic_articles_weekly', {
+            user_uuid: user.id,
+          })
+          rpcArticles = r.data
+          rpcError = r.error
+        }
+
+        {
         
         if (rpcError) {
           console.log('⚠️ Función RPC no disponible, usando consulta directa alternativa')
@@ -1043,6 +1075,7 @@ export function useIntelligentNotifications(): UseIntelligentNotificationsReturn
           }
         } else {
           articles = rpcArticles
+        }
         }
       } catch (err) {
         console.error('❌ Error en carga de artículos problemáticos:', err)
