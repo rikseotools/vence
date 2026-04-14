@@ -339,7 +339,16 @@ export async function sendEmailV2(params: SendEmailRequest): Promise<SendEmailRe
     }
 
     if (emailType === 'soporte_respuesta') {
-      subject = template.subject()
+      // Si el feedback original vino por email, usar el subject original con
+      // prefijo "Re:" para que el cliente de email del usuario agrupe el
+      // mensaje en el mismo hilo. Si no hay original, usar el genérico.
+      const originalSubject = customData.originalSubject as string | null | undefined
+      if (originalSubject && originalSubject.trim()) {
+        const trimmed = originalSubject.trim()
+        subject = /^(Re|RE|Fwd|FW|RV):\s/i.test(trimmed) ? trimmed : `Re: ${trimmed}`
+      } else {
+        subject = template.subject()
+      }
       html = template.html(userName, customData.adminMessage, customData.chatUrl, unsubscribeUrl)
     } else if (emailType === 'impugnacion_respuesta') {
       subject = template.subject(customData.status)
@@ -399,6 +408,16 @@ export async function sendEmailV2(params: SendEmailRequest): Promise<SendEmailRe
   const resend = new Resend(process.env.RESEND_API_KEY)
   let data, error
   try {
+    // Email threading: si emailType=soporte_respuesta y customData incluye
+    // replyToMessageId, añadir In-Reply-To/References para que el cliente del
+    // usuario agrupe la respuesta en el hilo original (caso Resend Inbound).
+    const replyHeaders: Record<string, string> = {}
+    const replyToMessageId = customData.replyToMessageId as string | null | undefined
+    if (emailType === 'soporte_respuesta' && replyToMessageId) {
+      replyHeaders['In-Reply-To'] = replyToMessageId
+      replyHeaders['References'] = replyToMessageId
+    }
+
     const r = await resend.emails.send({
       from,
       to: toEmail,
@@ -407,6 +426,7 @@ export async function sendEmailV2(params: SendEmailRequest): Promise<SendEmailRe
       headers: {
         'List-Unsubscribe': `<${unsubscribeUrl}>`,
         'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+        ...replyHeaders,
       },
     })
     data = r.data

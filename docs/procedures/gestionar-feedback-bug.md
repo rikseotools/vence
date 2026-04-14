@@ -274,6 +274,21 @@ body: JSON.stringify({
 - **Fallos de email NO revierten el feedback:** la respuesta incluye `emailError` con el motivo. El feedback queda resuelto y el email puede reintentarse manualmente si hace falta.
 - **Contactos externos con email:** el endpoint nuevo skippea automáticamente (emailSkipReason='no_user_email'). Para mandarles email, llamar también a `/api/send-support-email` con el email del payload — ese endpoint sigue vivo para ese caso concreto.
 
+### Email threading (post-14/04/2026 — caso Isabel/Galicia)
+
+Cuando un usuario responde por email a un newsletter o aviso de Vence, Resend Inbound captura el reply y lo transforma en un feedback con `type='email'`. Antes de hoy, nuestra respuesta admin se enviaba como **email NUEVO** (asunto genérico, sin In-Reply-To), por lo que en Gmail aparecía como conversación distinta a la del usuario.
+
+**Ahora el flujo es automático:**
+
+1. **Webhook inbound (`/api/webhooks/resend-inbound`)** extrae `Message-ID` del email entrante y lo guarda en `user_feedback.referrer`. El asunto original ya se guardaba en `user_feedback.message`.
+2. **`/api/send-support-email`** lee `referrer` (Message-ID) y `message` (Subject) del feedback cuando `type='email'` y los pasa a:
+   - `sendEmailV2` (usuario registrado): añade headers `In-Reply-To` y `References`, y prefija subject con `Re: ` (sin duplicar si ya está).
+   - `sendDirectEmail` (contacto externo): mismo tratamiento.
+
+**Resultado**: la respuesta aparece en el mismo hilo del email original en Gmail/Outlook. Caso Isabel resuelto.
+
+**Si el Message-ID no se pudo capturar** (header ausente en payload y Received API), el reply va como email nuevo — comportamiento anterior, sin regresión.
+
 ## Script rápido (todo en uno)
 
 ```bash

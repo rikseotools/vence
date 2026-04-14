@@ -40,21 +40,47 @@ async function isUserActivelyBrowsing(userId: string): Promise<boolean> {
 }
 
 /**
+ * Construye el subject de respuesta. Si tenemos el original, prefijamos con
+ * "Re: " (sin duplicar si ya empieza por Re:/RE:/Fwd:). Si no, usamos genérico.
+ */
+function buildReplySubject(originalSubject: string | null | undefined): string {
+  if (!originalSubject || !originalSubject.trim()) return 'Respuesta del equipo de Vence'
+  const trimmed = originalSubject.trim()
+  if (/^(Re|RE|Fwd|FW|RV):\s/i.test(trimmed)) return trimmed
+  return `Re: ${trimmed}`
+}
+
+/**
  * Enviar respuesta directamente por email a un contacto externo (no registrado).
  * Usa Resend API directamente, sin pasar por sendEmailV2 (que requiere userId).
+ *
+ * Si se proporcionan `originalMessageId` y `originalSubject`, hace email
+ * threading correcto: añade In-Reply-To/References y prefija Subject con "Re:".
+ * Esto hace que en Gmail/Outlook el reply aparezca en la misma conversación.
  */
-async function sendDirectEmail(toEmail: string, adminMessage: string): Promise<{ sent: boolean; error?: string }> {
+async function sendDirectEmail(
+  toEmail: string,
+  adminMessage: string,
+  threadInfo?: { originalMessageId?: string | null; originalSubject?: string | null }
+): Promise<{ sent: boolean; error?: string }> {
   try {
     const resend = new Resend(process.env.RESEND_API_KEY)
 
     const fromAddress = process.env.EMAIL_FROM_ADDRESS || 'info@vence.es'
     const fromName = process.env.EMAIL_FROM_NAME || 'Vence.es'
+    const subject = buildReplySubject(threadInfo?.originalSubject)
+    const headers: Record<string, string> = {}
+    if (threadInfo?.originalMessageId) {
+      headers['In-Reply-To'] = threadInfo.originalMessageId
+      headers['References'] = threadInfo.originalMessageId
+    }
 
     const { error } = await resend.emails.send({
       from: `${fromName} <${fromAddress}>`,
       to: [toEmail],
-      subject: 'Respuesta del equipo de Vence',
+      subject,
       replyTo: fromAddress,
+      headers: Object.keys(headers).length > 0 ? headers : undefined,
       html: `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="background: linear-gradient(135deg, #2563eb, #7c3aed); padding: 24px; border-radius: 12px 12px 0 0; text-align: center;">
@@ -103,6 +129,33 @@ async function _POST(request: NextRequest) {
       )
     }
 
+    // Buscar info de threading: si la conversación viene de un feedback type='email'
+    // (Resend Inbound), recuperar el Message-ID original (guardado en referrer)
+    // y el Subject original (guardado en message) para hacer reply en mismo hilo.
+    const supabaseShared = getSupabase()
+    let originalMessageId: string | null = null
+    let originalSubject: string | null = null
+    try {
+      const { data: conv } = await supabaseShared
+        .from('feedback_conversations')
+        .select('feedback_id')
+        .eq('id', conversationId)
+        .single()
+      if (conv?.feedback_id) {
+        const { data: fb } = await supabaseShared
+          .from('user_feedback')
+          .select('type, message, referrer, email')
+          .eq('id', conv.feedback_id)
+          .single()
+        if (fb?.type === 'email') {
+          originalMessageId = fb.referrer || null
+          originalSubject = fb.message || null
+        }
+      }
+    } catch (err) {
+      console.warn('⚠️ [send-support-email] No se pudo leer threading info:', err)
+    }
+
     // --- Ruta 1: Usuario registrado (flujo existente) ---
     if (userId) {
       // Skip email if user is actively browsing (they'll see it in the chat)
@@ -119,6 +172,10 @@ async function _POST(request: NextRequest) {
         customData: {
           adminMessage,
           chatUrl,
+          // Email threading: si el feedback original vino por email, sendEmailV2
+          // usará estos para hacer reply en el mismo hilo.
+          replyToMessageId: originalMessageId,
+          originalSubject,
         },
       })
 
@@ -138,18 +195,15 @@ async function _POST(request: NextRequest) {
     }
 
     // --- Ruta 2: Contacto externo (email inbound, no registrado) ---
-    // Buscar email en el feedback asociado a la conversación
     let toEmail = email
     if (!toEmail) {
-      const supabase = getSupabase()
-      const { data: conv } = await supabase
+      const { data: conv } = await supabaseShared
         .from('feedback_conversations')
         .select('feedback_id')
         .eq('id', conversationId)
         .single()
-
       if (conv?.feedback_id) {
-        const { data: feedback } = await supabase
+        const { data: feedback } = await supabaseShared
           .from('user_feedback')
           .select('email')
           .eq('id', conv.feedback_id)
@@ -162,7 +216,10 @@ async function _POST(request: NextRequest) {
       return NextResponse.json({ sent: false, reason: 'no_email_found' })
     }
 
-    const result = await sendDirectEmail(toEmail, adminMessage)
+    const result = await sendDirectEmail(toEmail, adminMessage, {
+      originalMessageId,
+      originalSubject,
+    })
     return NextResponse.json(result)
 
   } catch (error) {

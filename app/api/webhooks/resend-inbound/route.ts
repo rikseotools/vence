@@ -137,6 +137,28 @@ async function _POST(request: NextRequest) {
     const fromName = extractName(email.from)
     const subject = email.subject || '(sin asunto)'
 
+    // Capturar Message-ID original para email threading. Lo guardamos en
+    // user_feedback.referrer (que para inbound emails es siempre null).
+    // Resend a veces lo pone en email.headers['message-id'] y a veces como
+    // 'Message-ID' (case-sensitive). También puede venir dentro de la
+    // Received Emails API. Buscamos en todos los sitios posibles.
+    function extractMessageId(src: Record<string, unknown> | undefined | null): string | null {
+      if (!src) return null
+      const h = src as Record<string, string>
+      const candidates = [
+        h['message-id'], h['Message-ID'], h['Message-Id'], h['MESSAGE-ID'],
+      ]
+      for (const c of candidates) {
+        if (typeof c === 'string' && c.trim()) {
+          // Limpieza: quitar < > si vienen pegados, y mantener formato <id@host>
+          const trimmed = c.trim()
+          return trimmed.startsWith('<') ? trimmed : `<${trimmed.replace(/[<>]/g, '')}>`
+        }
+      }
+      return null
+    }
+    let originalMessageId: string | null = extractMessageId(email.headers)
+
     // Resend Inbound webhook NO incluye el body del email en el payload, solo metadata
     // + email_id. Para obtener text/html hay que hacer fetch a la Received Emails API:
     //   GET https://api.resend.com/emails/receiving/{id}
@@ -157,21 +179,27 @@ async function _POST(request: NextRequest) {
     }
 
     // Intento 2: fetch a la Received Emails API con el email_id
-    if (!rawText.trim() && emailId) {
+    if ((!rawText.trim() || !originalMessageId) && emailId) {
       try {
         const apiRes = await fetch(`https://api.resend.com/emails/receiving/${emailId}`, {
           headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}` },
         })
         if (apiRes.ok) {
-          const full = await apiRes.json() as { text?: string | null; html?: string | null }
-          if (full.text && full.text.trim()) {
-            rawText = full.text
-            usedField = 'api.text'
-          } else if (full.html && full.html.trim()) {
-            rawText = htmlToText(full.html)
-            usedField = 'api.html'
-          } else {
-            console.error(`📧 [Inbound] API de Resend devolvió text y html vacíos para email_id=${emailId}`)
+          const full = await apiRes.json() as { text?: string | null; html?: string | null; headers?: Record<string, string> | null }
+          if (!rawText.trim()) {
+            if (full.text && full.text.trim()) {
+              rawText = full.text
+              usedField = 'api.text'
+            } else if (full.html && full.html.trim()) {
+              rawText = htmlToText(full.html)
+              usedField = 'api.html'
+            } else {
+              console.error(`📧 [Inbound] API de Resend devolvió text y html vacíos para email_id=${emailId}`)
+            }
+          }
+          // Capturar Message-ID también de los headers de la Received API
+          if (!originalMessageId && full.headers) {
+            originalMessageId = extractMessageId(full.headers)
           }
         } else {
           const errBody = await apiRes.text().catch(() => '<no body>')
@@ -369,6 +397,11 @@ async function _POST(request: NextRequest) {
       status: 'pending',
       priority: 'medium',
       wantsResponse: true,
+      // referrer se reusa para almacenar el Message-ID original del email
+      // entrante. Permite hacer email threading correcto al responder
+      // (In-Reply-To + References + Subject "Re: ..."). Si no hay header
+      // Message-ID accesible, queda null y se manda como email nuevo.
+      referrer: originalMessageId,
     }).returning({ id: userFeedback.id })
 
     const [conversation] = await db.insert(feedbackConversations).values({
