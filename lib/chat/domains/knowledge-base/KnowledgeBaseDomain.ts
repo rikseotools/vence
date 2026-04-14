@@ -59,8 +59,10 @@ export class KnowledgeBaseDomain implements ChatDomain {
       userId: context.userId,
     })
 
-    // 1. Verificar si hay respuesta predefinida
-    const predefinedResponse = getPredefinedResponse(context.currentMessage)
+    // 1. Verificar si hay respuesta predefinida (personaliza según plan)
+    const predefinedResponse = getPredefinedResponse(context.currentMessage, {
+      isPremium: context.isPremium,
+    })
     if (predefinedResponse) {
       logger.debug('Using predefined response', { domain: 'knowledge-base' })
 

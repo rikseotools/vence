@@ -240,8 +240,12 @@ export function generateKBSuggestions(category: KBCategory | null): string[] {
 /**
  * Obtiene una respuesta predefinida para consultas comunes
  */
-export function getPredefinedResponse(message: string): string | null {
+export function getPredefinedResponse(
+  message: string,
+  options: { isPremium?: boolean } = {}
+): string | null {
   const msgLower = message.toLowerCase()
+  const { isPremium = false } = options
 
   // Cambiar foto / avatar de perfil (válido para móvil y desktop)
   if (/(mi\s+)?(foto|avatar|imagen\s+de\s+perfil)/i.test(msgLower)) {
@@ -310,15 +314,19 @@ Si el botón "Continuar con Google" da error, escríbenos desde **💬 Soporte**
     /por\s*qu[eé]\s+no\s+(me\s+|se\s+)?(puedo|deja|sale)\s+.*(test|pregunta|examen)/i.test(msgLower) ||
     /no\s+(me\s+|se\s+)?(cuenta|registra|guarda|contabiliza)\s+.*(test|pregunta|progreso|resultado|respuest)/i.test(msgLower)
   ) {
-    return `**No puedes hacer test o no se cuenta el progreso**
+    // Personalizar según plan: usuarios Free ven primero el límite diario;
+    // usuarios Premium NO lo ven (ya tienen tests ilimitados).
+    const freeLimitBlock = !isPremium ? `**Causa más frecuente (cuenta gratuita): límite diario agotado**
 
-**Causa más frecuente: límite gratuito agotado**
-
-Las cuentas gratuitas tienen un máximo de **25 preguntas al día**. Si lo has alcanzado, el límite se reinicia automáticamente mañana.
+Las cuentas gratuitas tienen un máximo de **25 preguntas al día**. Si lo has alcanzado, se reinicia automáticamente mañana.
 
 👉 [Ver planes y pasarte a Premium](/premium) para tener tests ilimitados.
 
-**Otras causas posibles:**
+` : ''
+
+    return `**No puedes hacer test o no se cuenta el progreso**
+
+${freeLimitBlock}**${isPremium ? 'Posibles causas' : 'Otras causas posibles'}:**
 - **No tienes oposición activa**: pulsa tu **avatar** (arriba a la derecha) → **"👤 Mi Perfil"** → sección **"📚 Preferencias de Estudio"** → **"🎯 Oposición Objetivo"** → **Seleccionar**.
 - **La ley o tema no tiene preguntas para tu oposición**: prueba otra ley o usa **Test Aleatorio** (mezcla todas las leyes).
 - **Cookies/extensiones bloqueando**: prueba en una ventana incógnito.
