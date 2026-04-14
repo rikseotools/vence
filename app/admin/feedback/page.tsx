@@ -1920,7 +1920,7 @@ export default function AdminFeedbackPage() {
                             </span>
                           </div>
                           {userData.feedbackTypes?.has('account_deletion') && (
-                            <span className="absolute -top-0.5 -left-0.5 w-3 h-3 rounded-full bg-red-500 border-2 border-white dark:border-gray-800" title="Eliminación de cuenta"></span>
+                            <span className="absolute -top-0.5 -left-0.5 w-3 h-3 rounded-full bg-black border-2 border-white dark:border-gray-800" title="Eliminación de cuenta"></span>
                           )}
                           {userData.feedbackTypes?.has('bug') && !userData.feedbackTypes?.has('account_deletion') && (
                             <span className="absolute -top-0.5 -left-0.5 w-3 h-3 rounded-full bg-amber-500 border-2 border-white dark:border-gray-800" title="Bug"></span>

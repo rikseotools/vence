@@ -1303,14 +1303,10 @@ function PerfilPageContent() {
 
       if (count && count > 0) {
         // Ya había una solicitud pendiente: mostrar éxito igualmente
-        // (la intención de la usuaria se cumplió)
+        // (la intención de la usuaria se cumplió). El usuario cierra el
+        // modal manualmente con el botón "Entendido".
         setDeletionSuccess(true)
         setDeletionRequested(true)
-        setTimeout(() => {
-          setShowDeleteAccountModal(false)
-          setDeletionSuccess(false)
-          setDeleteConfirmText('')
-        }, 2500)
         return
       }
 
@@ -1327,18 +1323,12 @@ function PerfilPageContent() {
 
       if (error) throw error
 
-      // ÉXITO: mostrar confirmación INLINE en el modal (no alert() nativo,
-      // que puede ser bloqueado por el navegador o pasar desapercibido).
-      // El modal queda visible 2.5s con un check verde para que la usuaria
-      // tenga confirmación clara antes de que se cierre solo.
+      // ÉXITO: mostrar confirmación INLINE en el modal. El usuario cierra
+      // manualmente con el botón "Entendido" (caso Helga 11-abr-2026:
+      // auto-close de 2.5s no daba tiempo a leer y dejaba al usuario clicando
+      // botones al azar por no encontrar feedback persistente).
       setDeletionSuccess(true)
       setDeletionRequested(true)
-
-      setTimeout(() => {
-        setShowDeleteAccountModal(false)
-        setDeletionSuccess(false)
-        setDeleteConfirmText('')
-      }, 2500)
 
     } catch (error) {
       console.error('Error solicitando eliminación:', error)
@@ -2742,6 +2732,25 @@ function PerfilPageContent() {
                         Zona de peligro
                       </h3>
 
+                      {/* Banner persistente de solicitud pendiente — caso Helga 11-abr-2026.
+                          Se muestra destacado cuando hay solicitud para que el usuario NO
+                          se quede con la duda de si se envió correctamente. */}
+                      {deletionRequested && (
+                        <div className="mb-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 rounded-lg p-4">
+                          <div className="flex items-start gap-3">
+                            <span className="text-2xl">⏳</span>
+                            <div>
+                              <h4 className="font-semibold text-amber-900 dark:text-amber-200">
+                                Tu solicitud de eliminación está en curso
+                              </h4>
+                              <p className="text-sm text-amber-800 dark:text-amber-300 mt-1">
+                                Procesaremos tu petición en 24-48 horas. Recibirás un email de confirmación cuando se complete. Hasta entonces puedes seguir usando la cuenta con normalidad.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                           <div>
@@ -2792,7 +2801,11 @@ function PerfilPageContent() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-md w-full p-6">
             {deletionSuccess ? (
-              // ✅ ESTADO DE ÉXITO — confirmación inline clara y visible durante 2.5s
+              // ✅ ESTADO DE ÉXITO — confirmación inline. Ya NO auto-cierra
+              // (caso Helga 11-abr-2026: con auto-close de 2.5s seguía pinchando
+              // botones tras cerrar porque no encontraba señal persistente del
+              // cambio). Ahora el usuario cierra explícitamente y el banner
+              // persistente en la página deja clara la situación.
               <div className="py-6 text-center">
                 <div className="text-6xl mb-4">✅</div>
                 <h3 className="text-xl font-bold text-green-700 dark:text-green-400 mb-2">
@@ -2801,9 +2814,19 @@ function PerfilPageContent() {
                 <p className="text-gray-600 dark:text-gray-300 text-sm">
                   Procesaremos tu petición en 24-48 horas.
                 </p>
-                <p className="text-gray-500 dark:text-gray-400 text-xs mt-3">
+                <p className="text-gray-500 dark:text-gray-400 text-xs mt-3 mb-6">
                   Recibirás un email cuando se complete.
                 </p>
+                <button
+                  onClick={() => {
+                    setShowDeleteAccountModal(false)
+                    setDeletionSuccess(false)
+                    setDeleteConfirmText('')
+                  }}
+                  className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
+                >
+                  Entendido
+                </button>
               </div>
             ) : (
               <>
