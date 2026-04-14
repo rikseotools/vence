@@ -9,15 +9,22 @@ import {
   type OposicionEntry,
 } from './queries'
 
+// re-export para que isCatalogListingRequest sea accesible desde el dominio
+// (declarado más abajo)
+
 // ============================================
 // INTENT DETECTION
 // ============================================
 
 // Verbos/frases que indican intención de preparar o añadir una oposición
-const INTENT_VERBS = /(preparar|preparais|preparáis|prepareis|prepareis|tenemos|ten[eé]is|tienes|hay|estudiar|estudio|estudiais|añadir|anadir|agregar|incorporar|solicitar|ofreceis|ofrec[eé]is|conv[oó]cais|convocatoria\s+de|oposici[oó]n\s+de|oposici[oó]n\s+para|oposici[oó]n\s+a|oposiciones\s+de|quiero\s+preparar|me\s+interesa|me\s+gustaría\s+preparar)/i
+const INTENT_VERBS = /(preparar|preparais|preparáis|prepareis|prepareis|tenemos|ten[eé]is|tienes|hay|estudiar|estudio|estudiais|añadir|anadir|agregar|incorporar|solicitar|ofreceis|ofrec[eé]is|conv[oó]cais|convocatoria\s+de|oposici[oó]n\s+de|oposici[oó]n\s+para|oposici[oó]n\s+a|oposiciones\s+de|quiero\s+preparar|me\s+interesa|me\s+gustaría\s+preparar|temario\s+(de|para)|cuando\s+(esta|tendr[eé]is)|previsto\s+que\s+(suban|añadan))/i
 
 // Roles/carreras que suelen formar nombres de oposición
-const ROLE_KEYWORDS = /(auxiliar|t[eé]cnico|tecnico|celador|celadora|enfermer[oa]|m[eé]dico|polic[ií]a|bombero|guardia|militar|tramitaci[oó]n|gestor|gestora|administrativo|administrativa|subalterno|ordenanza|conserje|maestr[oa]|profesor|bibliotecario|archivero|secretari[oa]|interventor|notario|registrador|abogado|ingeniero|arquitecto|veterinario|trabajador\s+social|educador)/i
+const ROLE_KEYWORDS = /(auxiliar|t[eé]cnico|tecnico|celador|celadora|enfermer[oa]|m[eé]dico|polic[ií]a|bombero|guardia|militar|tramitaci[oó]n|gestor|gestora|administrativo|administrativa|subalterno|ordenanza|conserje|maestr[oa]|profesor|bibliotecario|archivero|secretari[oa]|interventor|notario|registrador|abogado|ingeniero|arquitecto|veterinario|trabajador\s+social|educador|tcae|tecae|aux\s+(advo|admvo|admin)|aux\.\s*adm)/i
+
+// Topónimos / abreviaturas geográficas que indican una oposición concreta
+// (cuando aparecen junto a una palabra de intención sin role explícito)
+const REGION_KEYWORDS = /(madrid|barcelona|valencia|gva|generalitat\s+valenciana|andaluc[ií]a|canarias|galicia|asturias|cantabria|navarra|arag[oó]n|extremadura|baleares|murcia|carm|castilla\s+y\s+le[oó]n|cyl|castilla[\s-]*la\s+mancha|clm|la\s+rioja|sermas|sescam|sas|scs)/i
 
 // Marcadores de follow-up (respuesta previa del assistant era de este dominio)
 const RESPONSE_MARKERS = [
@@ -32,16 +39,32 @@ const RESPONSE_MARKERS = [
  * Detecta si el mensaje tiene intención de preguntar/solicitar una oposición.
  */
 export function detectOposicionIntent(message: string): boolean {
-  // Debe mencionar un rol laboral típico de oposición
-  if (!ROLE_KEYWORDS.test(message)) return false
-
-  // Señales de intención: verbo de preparación, palabra "oposición",
-  // o un mensaje corto (probablemente el usuario está tecleando solo el nombre)
+  const hasRole = ROLE_KEYWORDS.test(message)
+  const hasRegion = REGION_KEYWORDS.test(message)
   const hasVerb = INTENT_VERBS.test(message)
   const mentionsOposicion = /oposici[oó]n/i.test(message)
+  const mentionsTemario = /temario/i.test(message)
   const isShortMessage = message.length <= 80
 
-  return hasVerb || mentionsOposicion || isShortMessage
+  // Caso 1: rol + (verbo|oposición|mensaje corto) — patrón clásico
+  if (hasRole && (hasVerb || mentionsOposicion || isShortMessage)) return true
+
+  // Caso 2: temario + región (sin role explícito) — "temario de Andalucía"
+  if (mentionsTemario && hasRegion) return true
+
+  // Caso 3: pregunta directa por catálogo — "qué oposiciones preparáis?"
+  if (isCatalogListingRequest(message)) return true
+
+  return false
+}
+
+/**
+ * Detecta si el mensaje pide la lista de oposiciones del catálogo
+ * (en lugar de una oposición concreta). En tal caso debemos responder con
+ * listado, no con solicitud de alta.
+ */
+export function isCatalogListingRequest(message: string): boolean {
+  return /(qu[eé]|cu[aá]les?)\s+oposici[oó]n(es)?\s+(prepar|ten|hay|ofrec|tene[ií]s|preparais|preparáis)/i.test(message)
 }
 
 /**
@@ -123,6 +146,28 @@ Si quieres añadir otra oposición que sí tengamos en el catálogo, dímela y t
 [oposicion-catalog]`
 }
 
+function formatListingResponse(entries: import('./queries').OposicionEntry[]): string {
+  // Agrupar por categoría para legibilidad
+  const grouped: Record<string, string[]> = {}
+  for (const e of entries) {
+    const cat = e.categoria || '—'
+    if (!grouped[cat]) grouped[cat] = []
+    const conv = e.isConvocatoriaActiva ? ' 📢' : ''
+    grouped[cat].push(`- [${e.shortName || e.nombre}](/${e.slug})${conv}`)
+  }
+  const sections = Object.entries(grouped)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([cat, lines]) => `**${cat}**\n${lines.sort().join('\n')}`)
+    .join('\n\n')
+  return `📚 **Oposiciones disponibles en Vence** (${entries.length} en total):
+
+${sections}
+
+📢 = convocatoria activa ahora mismo. Si la oposición que buscas no está aquí, dímela y registro una solicitud al equipo.
+
+[oposicion-catalog]`
+}
+
 /**
  * Extrae una descripción corta de la oposición mencionada para guardar en el registro.
  * Intenta dejar sólo los tokens significativos del mensaje del usuario.
@@ -169,6 +214,19 @@ export async function processOposicionCatalog(input: {
   }
 
   const cached = await loadOposicionesCache()
+
+  // Si pide la lista del catálogo → devolverla (no registrar solicitud)
+  if (isCatalogListingRequest(input.message)) {
+    return {
+      responseText: formatListingResponse(cached),
+      matched: false,
+      matchedSlug: null,
+      feedbackId: null,
+      detectedName: null,
+      isFollowUp: false,
+    }
+  }
+
   const match = matchOposicion(input.message, cached)
 
   if (match.entry) {

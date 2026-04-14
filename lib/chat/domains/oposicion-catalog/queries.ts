@@ -46,17 +46,27 @@ const ROLE_TOKENS = new Set([
   'administrativa','subalterno','ordenanza','conserje','maestro','maestra',
   'profesor','profesora','bibliotecario','archivero','secretario','secretaria',
   'interventor','notario','registrador','abogado','ingeniero','arquitecto',
-  'veterinario','educador','operario','operaria',
+  'veterinario','educador','operario','operaria','tcae',
 ])
 
-// Normalización de variantes (plurales/género/regionales)
+// Normalización de variantes (plurales/género/regionales/abreviaturas)
 const NORMALIZE_MAP: Record<string, string> = {
+  // regiones
   canarias: 'canario', canario: 'canario', canaria: 'canario',
+  gva: 'valenciana',                    // Generalitat Valenciana → token autonómico
+  generalitat: 'valenciana',
+  // roles - género/plural
   enfermeria: 'enfermero', enfermera: 'enfermero', enfermero: 'enfermero',
   administrativa: 'administrativo', administrativo: 'administrativo',
   tecnica: 'tecnico', tecnico: 'tecnico',
   gestora: 'gestor', gestor: 'gestor',
   policias: 'policia', policia: 'policia',
+  // roles - abreviaturas comunes
+  tecae: 'tcae', tcae: 'tcae',          // Técnico Cuidados Auxiliares Enfermería
+  aux: 'auxiliar',                      // "aux administrativo"
+  advo: 'administrativo',               // "aux advo"
+  admvo: 'administrativo',
+  admin: 'administrativo',              // "aux admin"
 }
 
 function normalize(s: string): string {
@@ -136,6 +146,12 @@ export function matchOposicion(message: string, cached: OposicionEntry[]): Match
 
   const msgRoles = getRoleTokens(msgTokensArr)
 
+  // Si el mensaje NO menciona explícitamente "ayuntamiento|ayto|municipal|diputaci",
+  // penalizamos opciones cuyo nombre incluye esos tokens (para no preferir municipales
+  // cuando el usuario habla de oposición autonómica).
+  const messageMentionsLocal = /\b(ayuntamiento|ayto|municipal|diputaci|local)\b/i.test(message)
+  const LOCAL_TOKENS = new Set(['ayuntamiento','ayto','diputacion','municipal','local'])
+
   const scored = cached.map(entry => {
     // Regla dura: si el mensaje menciona tokens de rol, TODOS deben aparecer
     // en las keywords de la oposición. Esto evita que "enfermería" matchee
@@ -156,7 +172,12 @@ export function matchOposicion(message: string, cached: OposicionEntry[]): Match
     // y precision (qué fracción de la oposición está en el mensaje).
     const recall = msgTokens.size > 0 ? hits / msgTokens.size : 0
     const precision = entry.keywords.length > 0 ? hits / entry.keywords.length : 0
-    const score = Math.max(recall, precision)
+    let score = Math.max(recall, precision)
+    // Penalizar opciones con tokens locales/municipales si el mensaje no los menciona
+    if (!messageMentionsLocal) {
+      const hasLocalToken = entry.keywords.some(k => LOCAL_TOKENS.has(k))
+      if (hasLocalToken) score *= 0.7
+    }
     return { entry, score, hits }
   }).filter(s => s.hits > 0).sort((a, b) => b.score - a.score)
 
@@ -164,7 +185,17 @@ export function matchOposicion(message: string, cached: OposicionEntry[]): Match
 
   const top = scored[0]
   // Necesita al menos 2 tokens coincidentes o score >= 0.5
-  const matched = (top.hits >= 2 && top.score >= 0.25) || top.score >= 0.5
+  let matched = (top.hits >= 2 && top.score >= 0.25) || top.score >= 0.5
+
+  // Excepción: si el mensaje sólo aporta un único role token (ej: "tcae"),
+  // y SOLO una oposición del catálogo lo contiene, aceptamos con 1 hit.
+  if (!matched && msgRoles.size === 1) {
+    const [onlyRole] = [...msgRoles]
+    const candidates = cached.filter(e => e.keywords.includes(onlyRole))
+    if (candidates.length === 1 && candidates[0] === top.entry) {
+      matched = true
+    }
+  }
 
   return {
     entry: matched ? top.entry : null,
