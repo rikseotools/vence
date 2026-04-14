@@ -243,6 +243,22 @@ export function generateKBSuggestions(category: KBCategory | null): string[] {
 export function getPredefinedResponse(message: string): string | null {
   const msgLower = message.toLowerCase()
 
+  // Cambiar foto / avatar de perfil (válido para móvil y desktop)
+  if (/(mi\s+)?(foto|avatar|imagen\s+de\s+perfil)/i.test(msgLower)) {
+    return `**Cambiar tu foto de perfil**
+
+1. Pulsa en **tu avatar** (el círculo con tu imagen o emoji actual, arriba a la derecha de la pantalla)
+2. En el menú que se abre, pulsa **"👤 Mi Perfil"**
+3. En tu perfil, pulsa directamente **sobre tu avatar actual** (el círculo grande de la tarjeta)
+4. Se abre un selector con dos opciones:
+   - **Elegir un emoji** de las categorías disponibles (animales, profesiones, etc.)
+   - **📸 Subir Imagen** — máximo 2 MB, formato JPG, PNG o GIF
+
+Si la nueva foto no aparece tras subirla, cierra sesión y vuelve a entrar para forzar el refresco.
+
+Si sigue sin funcionar, ábrelo como reporte desde **💬 Soporte** (mismo menú de tu avatar) y nuestro equipo lo revisa con una captura.`
+  }
+
   // Problema de suscripcion / ya pagué pero no soy premium
   if (/(ya\s+)?pagu[eé]|he\s+pagado|hice\s+el\s+pago/i.test(msgLower) && /(no\s+(soy|eres|es)\s+premium|no\s+me\s+(deja|aparece|sale)|suscr[ií]b|no\s+tengo\s+premium|pone\s+free|sigue\s+(free|gratis))/i.test(msgLower)) {
     return `**Problema con tu suscripcion**

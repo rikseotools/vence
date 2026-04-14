@@ -143,7 +143,18 @@ IMPORTANTE: No has encontrado información específica en la base de conocimient
 - Si el usuario no se explica bien o falta contexto, pídele más información de forma natural y amigable.
 - Si puedes ayudarle con lo que sabes de la plataforma, hazlo.
 - NO respondas con listas de preguntas frecuentes genéricas.
-- Sé breve y directo.`
+- Sé breve y directo.
+- IMPORTANTE: al final de tu respuesta, SIEMPRE añade exactamente el siguiente bloque (sin cambios) para que el usuario sepa cómo escalar a soporte humano si no resuelves su duda:
+
+---
+
+Si no encuentro la respuesta aquí, puedes escribir directamente a nuestro equipo:
+
+1. Pulsa en **tu avatar** (arriba a la derecha)
+2. Pulsa **"💬 Soporte"**
+3. Pulsa **"Abrir chat soporte"** y describe el problema (puedes adjuntar una captura)
+
+Te responderemos por ahí.`
 
     const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
       { role: 'system', content: systemPrompt },
