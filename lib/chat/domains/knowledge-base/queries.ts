@@ -405,6 +405,13 @@ export function isPlatformQuery(message: string): boolean {
     /descargar/i,
     /\bpdf\b/i,
     /exportar/i,
+    // Onboarding / primeros pasos
+    /no\s+s[eé]\s+por\s+d[oó]nde\s+empez/i,
+    /por\s+d[oó]nde\s+(puedo\s+)?empez(ar|o)/i,
+    /c[oó]mo\s+empiezo/i,
+    /\bsoy\s+nuevo\b/i,
+    /acabo\s+de\s+registr/i,
+    /primeros\s+pasos/i,
     // Sesión / autenticación / perfil
     /(iniciar|cerrar|abrir|salir\s+de\s+la)\s+sesi[oó]n/i,
     /no\s+puedo\s+(entrar|iniciar\s+sesi[oó]n|acceder|loguearme|logearme|hacer\s+login)/i,

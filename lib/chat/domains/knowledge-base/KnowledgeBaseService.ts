@@ -304,6 +304,39 @@ Vence usa tu cuenta de Google para entrar (no hay usuario ni contraseña propios
 Si el botón "Continuar con Google" da error, escríbenos desde **💬 Soporte** (mismo menú de tu avatar) con una captura.`
   }
 
+  // Primeros pasos / por dónde empezar / soy nuevo
+  if (
+    /no\s+s[eé]\s+por\s+d[oó]nde\s+empez/i.test(msgLower) ||
+    /por\s+d[oó]nde\s+(puedo\s+)?empez(ar|o)/i.test(msgLower) ||
+    /c[oó]mo\s+empiezo/i.test(msgLower) ||
+    /\bsoy\s+nuevo\b/i.test(msgLower) ||
+    /acabo\s+de\s+registr/i.test(msgLower) ||
+    /primeros\s+pasos/i.test(msgLower)
+  ) {
+    return `**Primeros pasos en Vence**
+
+👋 ¡Bienvenido! Aquí tienes el camino más corto para empezar a estudiar:
+
+**1. Activa tu oposición**
+- Pulsa en tu **avatar** (arriba a la derecha) → **"👤 Mi Perfil"** → sección **"📚 Preferencias de Estudio"** → en **"🎯 Oposición Objetivo"** pulsa **"Seleccionar"**.
+- O entra desde el [catálogo de oposiciones](/oposiciones) si quieres ver primero todas las disponibles.
+
+**2. Haz tu primer test (no necesitas saber nada todavía)**
+- 👉 [Test rápido](/test/rapido): 10 preguntas mezcladas de tu oposición. Es el atajo para arrancar.
+- Si aún no has activado oposición, te la pedirá antes de cargar el test.
+
+**3. Cuando quieras profundizar**
+- **Temario**: en la página de tu oposición, apartado "Temario", lees cada tema con sus leyes.
+- **Test por tema**: practicas un tema concreto cuando ya lo has estudiado.
+- **Test aleatorio**: mezcla preguntas de toda tu oposición (configurable).
+
+**4. Sigue tu progreso**
+- Tras cada test ves los aciertos y errores, y puedes repasar lo que fallaste.
+- Tu **racha diaria** aparece junto al avatar — entrena un poco cada día para mantenerla.
+
+Si te quedas atascado, vuelve a este chat y pregúntame.`
+  }
+
   // Eliminar cuenta / darse de baja / borrar cuenta
   if (/eliminar\s+(mi\s+)?cuenta|borrar\s+(mi\s+)?cuenta|dar(me)?\s+de\s+baja/i.test(msgLower)) {
     return `**Eliminar tu cuenta**
