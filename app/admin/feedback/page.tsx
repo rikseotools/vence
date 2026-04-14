@@ -1174,157 +1174,41 @@ export default function AdminFeedbackPage() {
 
   const sendAdminMessage = async (conversationId, message) => {
     try {
-      // Primero verificar el estado actual de la conversación Y el feedback asociado
-      const { data: currentConv } = await supabase
+      // Necesitamos feedbackId para el endpoint unificado
+      const { data: conv } = await supabase
         .from('feedback_conversations')
-        .select('status, feedback_id')
+        .select('feedback_id')
         .eq('id', conversationId)
         .single()
 
-      // Verificar estado del feedback asociado (más importante que el estado de la conversación)
-      let feedbackNeedsReopening = false
-      if (currentConv?.feedback_id) {
-        const { data: feedbackData } = await supabase
-          .from('user_feedback')
-          .select('status')
-          .eq('id', currentConv.feedback_id)
-          .single()
-        
-        feedbackNeedsReopening = feedbackData?.status === 'resolved' || feedbackData?.status === 'dismissed'
-        console.log(`🔍 Estado del feedback: ${feedbackData?.status}`)
-      }
-      
-      // Verificar si necesita reabrir (conversación cerrada O feedback resuelto)
-      const conversationNeedsReopening = currentConv?.status === 'closed' || 
-                                        currentConv?.status === 'resolved' ||
-                                        currentConv?.status === 'dismissed'
-      
-      const needsReopening = conversationNeedsReopening || feedbackNeedsReopening
-      
-      console.log(`🔍 Estado actual de conversación: ${currentConv?.status}`)
-      console.log(`🔍 Conversación necesita reabrirse: ${conversationNeedsReopening}`)
-      console.log(`🔍 Feedback necesita reabrirse: ${feedbackNeedsReopening}`)
-      console.log(`🔍 Acción final - Necesita reabrirse: ${needsReopening}`)
-      
-      const { error } = await supabase
-        .from('feedback_messages')
-        .insert({
-          conversation_id: conversationId,
-          sender_id: user.id,
-          is_admin: true,
-          message: message.trim()
-        })
-
-      if (error) throw error
-
-      // Actualizar conversación - siempre reabrir si estaba cerrada o resuelta
-      await supabase
-        .from('feedback_conversations')
-        .update({ 
-          status: 'waiting_user',
-          last_message_at: new Date().toISOString(),
-          admin_user_id: user.id
-        })
-        .eq('id', conversationId)
-
-      // Si la conversación estaba cerrada/resuelta, también reabrir el feedback
-      if (needsReopening && currentConv?.feedback_id) {
-        console.log('🔄 Reabriendo feedback asociado...')
-        const { error: feedbackError } = await supabase
-          .from('user_feedback')
-          .update({ 
-            status: 'pending', // Volver a pendiente para que aparezca en la lista
-            resolved_at: null  // Limpiar fecha de resolución
-          })
-          .eq('id', currentConv.feedback_id)
-        
-        if (feedbackError) {
-          console.error('❌ Error reabriendo feedback:', feedbackError)
-        } else {
-          console.log('✅ Feedback reabierto y marcado como pendiente')
-        }
+      if (!conv?.feedback_id) {
+        console.error('❌ No se pudo obtener feedback_id de la conversación')
+        return
       }
 
-      // Mostrar mensaje si se reabrió la conversación
-      if (needsReopening) {
-        console.log('🔄 Conversación reabierta automáticamente')
+      // Llamada atómica al endpoint: INSERT msg + campana + email + cierre de estado.
+      // Semántica post-14/04/2026: admin reply = feedback cerrado ('resolved').
+      // Si el user responde después, el endpoint /api/feedback/message reabre a 'pending'.
+      const result = await respondViaFeedbackEndpoint(supabase, {
+        feedbackId: conv.feedback_id,
+        adminUserId: user.id,
+        message: message.trim(),
+        finalStatus: 'resolved',
+      })
+
+      if (!result.ok) {
+        console.error('❌ Error enviando respuesta:', result.detail)
+        alert('Error al enviar la respuesta: ' + (result.detail || 'desconocido'))
+        return
       }
 
-      // Crear notificación para el usuario
-      const conversation = await supabase
-        .from('feedback_conversations')
-        .select('user_id, feedback_id')
-        .eq('id', conversationId)
-        .single()
+      console.log(`✅ Respuesta enviada. messageId=${result.messageId} bell=${result.bellSent} email=${result.emailSent}`)
+      if (result.emailError) console.warn(`⚠️ Email no enviado: ${result.emailError}`)
 
-      if (conversation.data?.user_id) {
-        console.log('💬 Creando notificación de feedback response para user:', conversation.data.user_id)
-        
-        // Crear preview del mensaje (primeras 100 caracteres)
-        const messagePreview = message.length > 100 
-          ? message.substring(0, 100) + '...' 
-          : message
-        
-        const { data: notifResult, error: notifError } = await supabase
-          .from('notification_logs')
-          .insert({
-            user_id: conversation.data.user_id,
-            message_sent: `El equipo de Vence: "${messagePreview}"`,
-            delivery_status: 'sent',
-            context_data: { 
-              type: 'feedback_response',
-              title: 'Nueva respuesta de Vence',
-              conversation_id: conversationId,
-              feedback_id: conversation.data.feedback_id
-            }
-          })
-          .select()
-
-        if (notifError) {
-          console.error('❌ Error creando notificación:', notifError)
-          console.error('❌ Detalles del error:', {
-            code: notifError.code,
-            message: notifError.message,
-            details: notifError.details,
-            hint: notifError.hint
-          })
-        } else {
-          console.log('✅ Notificación creada exitosamente:', notifResult)
-        }
-      }
-
-      // Enviar email si el usuario no está online (endpoint requiere Bearer admin post-14/04/2026)
-      try {
-        const { data: { session } } = await supabase.auth.getSession()
-        const emailResponse = await fetch('/api/send-support-email', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(session?.access_token && { 'Authorization': `Bearer ${session.access_token}` }),
-          },
-          body: JSON.stringify({
-            userId: conversation.data.user_id || null,
-            adminMessage: message.trim(),
-            conversationId: conversationId,
-            email: selectedUser?.email || null,
-          })
-        })
-        
-        const emailResult = await emailResponse.json()
-        
-        
-        if (!emailResult.sent) {
-          console.log(`📧 Email no enviado:`, emailResult)
-        }
-      } catch (emailError) {
-        console.error('❌ Error enviando email de soporte:', emailError)
-        // No fallar toda la operación por un error de email
-      }
-
-      // Recargar mensajes, conversaciones Y feedbacks para reflejar cambios
+      // Recargar UI state (mensajes, conversaciones, feedbacks)
       await loadChatMessages(conversationId)
       await loadConversations()
-      await loadFeedbacks() // 🔄 IMPORTANTE: Recargar feedbacks para ver estado actualizado
+      await loadFeedbacks()
     } catch (error) {
       console.error('Error enviando mensaje:', error)
     }
