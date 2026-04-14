@@ -45,6 +45,12 @@ export function isExamStatsQuery(message: string): boolean {
     /(cae|caen).*en.*examen/i,
     /qu[eé]\s*(tipo|clase)\s*(de)?\s*preguntas/i,
     /preguntas?\s*suele|suele.*caer/i,
+    // "más importantes" sobre artículos/leyes/temas (frecuencia en exámenes)
+    /(art[ií]culos?|leyes?|temas?)\s+(\w+\s+){0,3}(m[aá]s\s+)?(importantes?|relevantes?|frecuentes?)/i,
+    /(m[aá]s\s+)?(importantes?|relevantes?)\s+(art[ií]culos?|leyes?|temas?)/i,
+    // "porcentaje de preguntas / temas"
+    /porcentaje\s+de\s+(preguntas?|temas?|art)/i,
+    /qu[eé]\s+porcentaje.*examen/i,
   ]
 
   return patterns.some(p => p.test(msgLower))
