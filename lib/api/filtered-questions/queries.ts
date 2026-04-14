@@ -2,6 +2,10 @@
 import { getDb } from '@/db/client'
 import { questions, articles, laws, topicScope, topics, tests, testQuestions, userQuestionHistory } from '@/db/schema'
 import { eq, and, inArray, sql, notInArray, desc, or, lt } from 'drizzle-orm'
+import {
+  getAllowedLawIds,
+  filterSelectedLawsByScope,
+} from '@/lib/api/oposicion-scope/queries'
 import type {
   GetFilteredQuestionsRequest,
   GetFilteredQuestionsResponse,
@@ -513,17 +517,13 @@ export async function getFilteredQuestions(
     if (isGlobalMode) {
       console.log(`🎯 Modo global con scope: Buscando ${numQuestions} preguntas de "${positionType}"`)
 
-      // Obtener las leyes válidas para esta oposición desde topic_scope.
-      // Fuente de verdad: solo leyes asignadas a algún tema del positionType.
-      const scopedLawsResult = await db
-        .selectDistinct({ lawId: topicScope.lawId })
-        .from(topicScope)
-        .innerJoin(topics, eq(topicScope.topicId, topics.id))
-        .where(eq(topics.positionType, positionType))
-
-      const validLawIds = scopedLawsResult
-        .map(r => r.lawId)
-        .filter((id): id is string => id !== null)
+      // Fuente de verdad centralizada: helper getAllowedLawIds.
+      // Deriva positionType de user_profiles.target_oposicion si hay userId.
+      const allowed = await getAllowedLawIds({
+        userId,
+        fallbackPositionType: positionType,
+      })
+      const validLawIds = allowed.lawIds
 
       if (validLawIds.length === 0) {
         console.warn(`⚠️ Modo global: no hay topic_scope configurado para "${positionType}"`)
@@ -590,6 +590,32 @@ export async function getFilteredQuestions(
       // 🆕 MODO LEY: Obtener todos los artículos de las leyes seleccionadas
       console.log(`🎯 Modo ley-only: Buscando preguntas de leyes ${selectedLaws.join(', ')}`)
 
+      // 🔒 Scoping: bloquear selectedLaws fuera del scope del positionType.
+      // Evita bug cross-oposición (dispute 4e247ddc).
+      const scoped = await getAllowedLawIds({
+        userId,
+        fallbackPositionType: positionType,
+      })
+      const scopeCheck = filterSelectedLawsByScope({
+        selectedLaws,
+        allowedLawShortNames: scoped.lawShortNames,
+      })
+
+      if (scopeCheck.empty) {
+        console.warn(
+          `⚠️ Modo ley-only: selectedLaws=${JSON.stringify(selectedLaws)} fuera de scope "${scoped.positionType}"`
+        )
+        return {
+          success: true,
+          questions: [],
+          totalAvailable: 0,
+          filtersApplied: { laws: 0, articles: 0, sections: 0 },
+          emptyReason: scopeCheck.emptyReason,
+        }
+      }
+
+      const scopedSelectedLaws = scopeCheck.allowedLaws
+
       const lawResults = await db
         .select({
           lawId: laws.id,
@@ -597,7 +623,7 @@ export async function getFilteredQuestions(
           lawName: laws.name,
         })
         .from(laws)
-        .where(inArray(laws.shortName, selectedLaws))
+        .where(inArray(laws.shortName, scopedSelectedLaws))
 
       // Construir mappings con todos los artículos de cada ley
       for (const law of lawResults) {

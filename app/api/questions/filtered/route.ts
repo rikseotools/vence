@@ -68,10 +68,13 @@ async function _POST(request: NextRequest) {
     // Extract userId from auth token (secure, server-side)
     const authUserId = await getOptionalUserId(request)
 
-    // Validar request con Zod (ignoring client-sent userId for security)
+    // Validar request con Zod. userId SIEMPRE se deriva de la sesión:
+    // ignoramos cualquier userId que venga en el body para impedir que un
+    // cliente se haga pasar por otra oposición (refactor oposicion-scope).
+    const { userId: _clientUserId, ...safeBody } = body ?? {}
     const validation = safeParseGetFilteredQuestions({
-      ...body,
-      userId: authUserId ?? body.userId, // Prefer auth token, fallback to body for backward compat
+      ...safeBody,
+      userId: authUserId ?? undefined,
     })
     if (!validation.success) {
       const issues = validation.error?.issues || []

@@ -68,6 +68,38 @@ export async function getAuthenticatedUser(
 }
 
 // ============================================
+// Autenticación + target_oposicion desde user_profiles
+// ============================================
+// Usado por endpoints que deben filtrar por oposición — NUNCA confiar en
+// positionType que venga del cliente; derivarlo de la sesión autenticada.
+
+export type AuthWithOposicionResult =
+  | { ok: true; user: User; supabase: SupabaseClient; targetOposicion: string | null }
+  | { ok: false; response: NextResponse }
+
+export async function getAuthenticatedUserWithOposicion(
+  request: NextRequest
+): Promise<AuthWithOposicionResult> {
+  const auth = await getAuthenticatedUser(request)
+  if (!auth.ok) return auth
+
+  const { data, error } = await auth.supabase
+    .from('user_profiles')
+    .select('target_oposicion')
+    .eq('id', auth.user.id)
+    .maybeSingle()
+
+  if (error) {
+    console.warn('⚠️ [auth] No se pudo leer target_oposicion:', error.message)
+  }
+
+  const raw = (data as { target_oposicion?: string | null } | null)?.target_oposicion
+  const targetOposicion = raw && raw.trim().length > 0 ? raw : null
+
+  return { ok: true, user: auth.user, supabase: auth.supabase, targetOposicion }
+}
+
+// ============================================
 // Verificación de admin (email whitelist)
 // ============================================
 
