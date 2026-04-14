@@ -6,22 +6,16 @@ export {
   conversationStatusOptions,
   filterTypeOptions,
   getFeedbacksQuerySchema,
-  adminSendMessageSchema,
   updateFeedbackStatusSchema,
-  createConversationSchema,
   markMessagesReadSchema,
   safeParseGetFeedbacksQuery,
-  safeParseAdminSendMessage,
   safeParseUpdateFeedbackStatus,
-  safeParseCreateConversation,
   safeParseMarkMessagesRead,
   type FeedbackStatus,
   type ConversationStatus,
   type FilterType,
   type GetFeedbacksQuery,
-  type AdminSendMessageRequest,
   type UpdateFeedbackStatusRequest,
-  type CreateConversationRequest,
   type MarkMessagesReadRequest,
   type FeedbackWithDetails,
   type ConversationWithMessages,
@@ -33,14 +27,16 @@ export {
 } from './schemas'
 
 // Queries
+// NOTA post-14/04/2026: adminSendMessage() y createConversation() fueron
+// eliminadas. El envío de respuestas admin pasa por /api/v2/feedback/respond
+// (patrón resolveDispute/respondFeedback). La creación de conversation se
+// hace inline en el admin UI (antes de llamar al endpoint).
 export {
   getAllFeedbacks,
   getConversationsWithMessages,
   getFeedbackStats,
   getUserProfiles,
-  adminSendMessage,
   updateFeedbackStatus,
-  createConversation,
   markMessagesAsRead,
   getPendingCounts,
 } from './queries'

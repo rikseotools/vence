@@ -3,9 +3,7 @@ import { getDb } from '@/db/client'
 import { userFeedback, feedbackConversations, feedbackMessages, userProfiles } from '@/db/schema'
 import { eq, desc, and, sql, inArray, isNull, ne } from 'drizzle-orm'
 import type {
-  AdminSendMessageRequest,
   UpdateFeedbackStatusRequest,
-  CreateConversationRequest,
   MarkMessagesReadRequest,
   FeedbackWithDetails,
   ConversationWithMessages,
@@ -318,80 +316,6 @@ export async function getUserProfiles(userIds: string[]): Promise<AdminFeedbackR
   }
 }
 
-// ============================================
-// ADMIN SEND MESSAGE
-// ============================================
-
-export async function adminSendMessage(
-  params: AdminSendMessageRequest
-): Promise<AdminFeedbackResponse<MessageWithSender>> {
-  try {
-    const db = getDb()
-
-    // Verify conversation exists
-    const convResult = await db
-      .select({ id: feedbackConversations.id })
-      .from(feedbackConversations)
-      .where(eq(feedbackConversations.id, params.conversationId))
-      .limit(1)
-
-    if (convResult.length === 0) {
-      return {
-        success: false,
-        error: 'Conversación no encontrada'
-      }
-    }
-
-    // Insert message
-    const [newMessage] = await db
-      .insert(feedbackMessages)
-      .values({
-        conversationId: params.conversationId,
-        senderId: params.adminUserId,
-        message: params.message.trim(),
-        isAdmin: true
-      })
-      .returning({
-        id: feedbackMessages.id,
-        conversationId: feedbackMessages.conversationId,
-        senderId: feedbackMessages.senderId,
-        isAdmin: feedbackMessages.isAdmin,
-        message: feedbackMessages.message,
-        createdAt: feedbackMessages.createdAt,
-        readAt: feedbackMessages.readAt,
-      })
-
-    // Update conversation status to waiting_user
-    await db
-      .update(feedbackConversations)
-      .set({
-        status: 'waiting_user',
-        lastMessageAt: new Date().toISOString(),
-        adminUserId: params.adminUserId,
-        adminViewedAt: new Date().toISOString()
-      })
-      .where(eq(feedbackConversations.id, params.conversationId))
-
-    console.log('✅ [AdminFeedback] Admin message sent:', {
-      messageId: newMessage.id,
-      conversationId: params.conversationId
-    })
-
-    return {
-      success: true,
-      data: {
-        ...newMessage,
-        sender: null
-      }
-    }
-  } catch (error) {
-    console.error('❌ [AdminFeedback] Error sending admin message:', error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Error enviando mensaje'
-    }
-  }
-}
 
 // ============================================
 // UPDATE FEEDBACK STATUS
@@ -479,85 +403,6 @@ export async function updateFeedbackStatus(
   }
 }
 
-// ============================================
-// CREATE CONVERSATION FOR FEEDBACK
-// ============================================
-
-export async function createConversation(
-  params: CreateConversationRequest
-): Promise<AdminFeedbackResponse<ConversationWithMessages>> {
-  try {
-    const db = getDb()
-
-    // Get feedback to get userId
-    const feedbackResult = await db
-      .select({ userId: userFeedback.userId })
-      .from(userFeedback)
-      .where(eq(userFeedback.id, params.feedbackId))
-      .limit(1)
-
-    if (feedbackResult.length === 0) {
-      return {
-        success: false,
-        error: 'Feedback no encontrado'
-      }
-    }
-
-    // Check if conversation already exists
-    const existingConv = await db
-      .select({ id: feedbackConversations.id })
-      .from(feedbackConversations)
-      .where(eq(feedbackConversations.feedbackId, params.feedbackId))
-      .limit(1)
-
-    if (existingConv.length > 0) {
-      return {
-        success: false,
-        error: 'Ya existe una conversación para este feedback'
-      }
-    }
-
-    // Create conversation
-    const [newConv] = await db
-      .insert(feedbackConversations)
-      .values({
-        feedbackId: params.feedbackId,
-        userId: feedbackResult[0].userId,
-        adminUserId: params.adminUserId,
-        status: 'open'
-      })
-      .returning({
-        id: feedbackConversations.id,
-        feedbackId: feedbackConversations.feedbackId,
-        userId: feedbackConversations.userId,
-        adminUserId: feedbackConversations.adminUserId,
-        status: feedbackConversations.status,
-        lastMessageAt: feedbackConversations.lastMessageAt,
-        createdAt: feedbackConversations.createdAt,
-        adminViewedAt: feedbackConversations.adminViewedAt,
-      })
-
-    console.log('✅ [AdminFeedback] Conversation created:', {
-      conversationId: newConv.id,
-      feedbackId: params.feedbackId
-    })
-
-    return {
-      success: true,
-      data: {
-        ...newConv,
-        messages: [],
-        feedback: null
-      }
-    }
-  } catch (error) {
-    console.error('❌ [AdminFeedback] Error creating conversation:', error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Error creando conversación'
-    }
-  }
-}
 
 // ============================================
 // MARK MESSAGES AS READ

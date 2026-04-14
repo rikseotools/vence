@@ -27,18 +27,6 @@ export const getFeedbacksQuerySchema = z.object({
 export type GetFeedbacksQuery = z.infer<typeof getFeedbacksQuerySchema>
 
 // ============================================
-// REQUEST: ADMIN SEND MESSAGE
-// ============================================
-
-export const adminSendMessageSchema = z.object({
-  conversationId: z.string().uuid('ID de conversación inválido'),
-  message: z.string().min(1, 'El mensaje no puede estar vacío').max(10000, 'Mensaje demasiado largo'),
-  adminUserId: z.string().uuid('ID de admin inválido'),
-})
-
-export type AdminSendMessageRequest = z.infer<typeof adminSendMessageSchema>
-
-// ============================================
 // REQUEST: UPDATE FEEDBACK STATUS
 // ============================================
 
@@ -50,17 +38,6 @@ export const updateFeedbackStatusSchema = z.object({
 })
 
 export type UpdateFeedbackStatusRequest = z.infer<typeof updateFeedbackStatusSchema>
-
-// ============================================
-// REQUEST: CREATE CONVERSATION
-// ============================================
-
-export const createConversationSchema = z.object({
-  feedbackId: z.string().uuid('ID de feedback inválido'),
-  adminUserId: z.string().uuid('ID de admin inválido'),
-})
-
-export type CreateConversationRequest = z.infer<typeof createConversationSchema>
 
 // ============================================
 // REQUEST: MARK MESSAGES AS READ
@@ -175,16 +152,8 @@ export function safeParseGetFeedbacksQuery(data: unknown) {
   return getFeedbacksQuerySchema.safeParse(data)
 }
 
-export function safeParseAdminSendMessage(data: unknown) {
-  return adminSendMessageSchema.safeParse(data)
-}
-
 export function safeParseUpdateFeedbackStatus(data: unknown) {
   return updateFeedbackStatusSchema.safeParse(data)
-}
-
-export function safeParseCreateConversation(data: unknown) {
-  return createConversationSchema.safeParse(data)
 }
 
 export function safeParseMarkMessagesRead(data: unknown) {
