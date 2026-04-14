@@ -1,0 +1,175 @@
+{
+  "oposicion": {
+    "nombre": "Auxiliar Administrativo de la Diputación de León",
+    "slug": "auxiliar-administrativo-diputacion-leon",
+    "short_name": "Aux. Dip. León",
+    "grupo": "C",
+    "categoria": "C2",
+    "administracion": "Diputación Provincial de León",
+    "position_type": "auxiliar_administrativo_diputacion_leon",
+    "diario_oficial": "BOCYL",
+    "boe_referencia": "BOCYL-D-15012026-9-19",
+    "boe_fecha": "2026-01-15",
+    "plazas_libres": 17,
+    "plazas_total": 17,
+    "titulo_requerido": "Graduado en ESO o equivalente",
+    "programa_url": "https://bocyl.jcyl.es/boletines/2026/01/15/pdf/BOCYL-D-15012026-9-19.pdf"
+  },
+  "bloques": [
+    { "numero": 1, "nombre": "Bloque I: Derecho Constitucional, Autonómico y Comunitario", "temas": [1, 2, 3, 4, 5, 6, 7, 8] },
+    { "numero": 2, "nombre": "Bloque II: Derecho Administrativo General", "temas": [9, 10, 11, 12, 13, 14, 15, 16] },
+    { "numero": 3, "nombre": "Bloque III: Administración Local y Función Pública", "temas": [17, 18, 19, 20, 21, 22, 23, 24, 25] }
+  ],
+  "temas": [
+    {
+      "numero": 1,
+      "bloque": 1,
+      "titulo": "La Constitución Española de 1978",
+      "epigrafe": "La Constitución Española de 1978: Estructura. Principios generales. La reforma Constitucional. El Tribunal Constitucional."
+    },
+    {
+      "numero": 2,
+      "bloque": 1,
+      "titulo": "Derechos y deberes fundamentales",
+      "epigrafe": "Derechos y deberes fundamentales. El Defensor del Pueblo. La Corona."
+    },
+    {
+      "numero": 3,
+      "bloque": 1,
+      "titulo": "Poder legislativo y Gobierno",
+      "epigrafe": "El Poder Legislativo: las Cortes Generales. Procedimiento de elaboración de las leyes. El Gobierno. Relaciones entre el Gobierno y las Cortes Generales. El control parlamentario del Gobierno."
+    },
+    {
+      "numero": 4,
+      "bloque": 1,
+      "titulo": "Organización territorial del Estado y Estatuto de Autonomía de CyL",
+      "epigrafe": "La Organización Territorial del Estado. Las Comunidades Autónomas. El Estatuto de Autonomía de Castilla y León: Estructura. Título Preliminar. Derechos y principios rectores. Instituciones de autogobierno."
+    },
+    {
+      "numero": 5,
+      "bloque": 1,
+      "titulo": "La Unión Europea",
+      "epigrafe": "La Unión Europea: El Consejo de la Unión Europea, la Comisión Europea, el Parlamento Europeo y el Consejo Europeo."
+    },
+    {
+      "numero": 6,
+      "bloque": 1,
+      "titulo": "Igualdad y no discriminación en CyL",
+      "epigrafe": "Igualdad de oportunidades entre mujeres y hombres en Castilla y León. Competencia de las entidades locales. Igualdad de oportunidades para las personas con discapacidad en Castilla y León. Igualdad LGTBI."
+    },
+    {
+      "numero": 7,
+      "bloque": 1,
+      "titulo": "Protección de datos y transparencia",
+      "epigrafe": "Protección de datos de carácter personal. La transparencia: publicidad activa. El derecho de acceso a la información pública."
+    },
+    {
+      "numero": 8,
+      "bloque": 1,
+      "titulo": "Prevención de Riesgos Laborales",
+      "epigrafe": "La Ley 31/1995, de 8 de noviembre, de Prevención de Riesgos Laborales: objeto, ámbito de aplicación y definiciones. Derechos y obligaciones."
+    },
+    {
+      "numero": 9,
+      "bloque": 2,
+      "titulo": "Ley 39/2015: objeto, interesados y actividad",
+      "epigrafe": "Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas: Objeto y ámbito de aplicación. Los interesados en el procedimiento. La actividad de las Administraciones Públicas."
+    },
+    {
+      "numero": 10,
+      "bloque": 2,
+      "titulo": "El acto administrativo",
+      "epigrafe": "El acto administrativo: concepto, clases y requisitos. Eficacia de los actos administrativos."
+    },
+    {
+      "numero": 11,
+      "bloque": 2,
+      "titulo": "Validez, invalidez y revisión de los actos administrativos",
+      "epigrafe": "Validez e invalidez de los actos administrativos: nulidad y anulabilidad. La revisión de los actos administrativos. Los recursos administrativos."
+    },
+    {
+      "numero": 12,
+      "bloque": 2,
+      "titulo": "El procedimiento administrativo común",
+      "epigrafe": "El procedimiento administrativo común: garantías y fases del procedimiento. La tramitación simplificada del procedimiento administrativo común."
+    },
+    {
+      "numero": 13,
+      "bloque": 2,
+      "titulo": "Administración electrónica",
+      "epigrafe": "El acceso electrónico de los ciudadanos a los servicios públicos. La administración electrónica. La sede electrónica. La firma electrónica."
+    },
+    {
+      "numero": 14,
+      "bloque": 2,
+      "titulo": "Ley 40/2015 LRJSP",
+      "epigrafe": "Ley 40/2015, de 1 de octubre, de Régimen Jurídico del Sector Público: disposiciones generales y principios. Abstención y recusación."
+    },
+    {
+      "numero": 15,
+      "bloque": 2,
+      "titulo": "Contratos del Sector Público I",
+      "epigrafe": "Los contratos del Sector Público: tipos de contratos. Contratos administrativos y contratos privados. Contenido mínimo del contrato. Perfección de los contratos."
+    },
+    {
+      "numero": 16,
+      "bloque": 2,
+      "titulo": "Contratos del Sector Público II",
+      "epigrafe": "Los contratos del Sector Público: órgano de contratación. Expediente de contratación. Procedimiento abierto y procedimiento restringido."
+    },
+    {
+      "numero": 17,
+      "bloque": 3,
+      "titulo": "La Administración Local en la Constitución",
+      "epigrafe": "La Administración Local en la Constitución. La autonomía local. Las entidades locales."
+    },
+    {
+      "numero": 18,
+      "bloque": 3,
+      "titulo": "La Provincia en el régimen local",
+      "epigrafe": "La provincia en el régimen local. La asistencia a los municipios."
+    },
+    {
+      "numero": 19,
+      "bloque": 3,
+      "titulo": "Órganos de gobierno provinciales",
+      "epigrafe": "Los órganos de gobierno provinciales. Régimen, composición y mandato corporativo."
+    },
+    {
+      "numero": 20,
+      "bloque": 3,
+      "titulo": "El Municipio",
+      "epigrafe": "El Municipio y sus elementos. Organización de los municipios de régimen común."
+    },
+    {
+      "numero": 21,
+      "bloque": 3,
+      "titulo": "Órganos colegiados locales",
+      "epigrafe": "Órganos colegiados locales: convocatoria, votaciones, sesiones, acuerdos y actas."
+    },
+    {
+      "numero": 22,
+      "bloque": 3,
+      "titulo": "Ordenanzas y Reglamentos de las Entidades Locales",
+      "epigrafe": "Las Ordenanzas y Reglamentos de las Entidades Locales."
+    },
+    {
+      "numero": 23,
+      "bloque": 3,
+      "titulo": "Actividad de los Entes Locales y subvenciones",
+      "epigrafe": "La actividad de los Entes Locales: Policía, Fomento y Servicio Público. Ley 38/2003, de 17 de noviembre, General de Subvenciones."
+    },
+    {
+      "numero": 24,
+      "bloque": 3,
+      "titulo": "Personal al servicio de las entidades locales",
+      "epigrafe": "El personal al servicio de las entidades locales. Clases de personal. Oferta de empleo público."
+    },
+    {
+      "numero": 25,
+      "bloque": 3,
+      "titulo": "Estatuto Básico del Empleado Público",
+      "epigrafe": "El Estatuto Básico del Empleado Público: Derechos y deberes. Retribuciones. Situaciones administrativas. Régimen disciplinario."
+    }
+  ]
+}

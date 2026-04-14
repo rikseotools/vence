@@ -377,6 +377,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'auxiliar_administrativo_diputacion_leon',
+      label: 'Auxiliar Administrativo Dip. León',
+      data: {
+        name: 'Auxiliar Administrativo Diputación Provincial de León',
+        slug: 'auxiliar-administrativo-diputacion-leon',
+        categoria: 'C2',
+        administracion: 'Local'
+      }
+    },
+    {
       value: 'auxiliar_administrativo_ayuntamiento_murcia',
       label: 'Auxiliar Administrativo Ayto. Murcia',
       data: {

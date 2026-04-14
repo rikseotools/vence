@@ -218,6 +218,15 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     icon: '🏛️'
   },
 
+  // === DIPUTACIÓN DE LEÓN ===
+  {
+    id: 'auxiliar_administrativo_diputacion_leon',
+    nombre: 'Auxiliar Administrativo Dip. León',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
+
   // === AYUNTAMIENTO DE MURCIA ===
   {
     id: 'auxiliar_administrativo_ayuntamiento_murcia',
@@ -720,6 +729,7 @@ const AVAILABLE_OPOSICIONES_BY_DEMAND: string[] = [
   'auxilio_judicial',                    // incluida por relevancia
   'auxiliar_administrativo_cyl',         // 24
   'auxiliar_administrativo_diputacion_zaragoza', // 20
+  'auxiliar_administrativo_diputacion_leon',     // 25
   'auxiliar_administrativo_ayuntamiento_murcia', // 20
   'auxiliar_administrativo_carm',        // 21
   'auxiliar_administrativo_canarias',    // 10

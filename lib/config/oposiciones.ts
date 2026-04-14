@@ -596,6 +596,79 @@ export const OPOSICIONES: Oposicion[] = [
   },
 
   // ========================================
+  // AUXILIAR ADMINISTRATIVO DIPUTACIÓN DE LEÓN (C2)
+  // ========================================
+  {
+    id: 'auxiliar_administrativo_diputacion_leon',
+    slug: 'auxiliar-administrativo-diputacion-leon',
+    positionType: 'auxiliar_administrativo_diputacion_leon',
+    name: 'Auxiliar Administrativo Diputación Provincial de León',
+    shortName: 'Aux. Dip. León',
+    emoji: '🏛️',
+    badge: 'C2',
+    color: 'amber',
+    administracion: 'local',
+    blocks: [
+      {
+        id: 'bloque-1',
+        title: 'Bloque I: Derecho Constitucional, Autonómico y Comunitario',
+        subtitle: null,
+        icon: '📜',
+        themes: [
+          { id: 1, name: 'La Constitución Española de 1978' },
+          { id: 2, name: 'Derechos y deberes fundamentales' },
+          { id: 3, name: 'Poder legislativo y Gobierno' },
+          { id: 4, name: 'Organización territorial del Estado y Estatuto de Autonomía de CyL' },
+          { id: 5, name: 'La Unión Europea' },
+          { id: 6, name: 'Igualdad y no discriminación en CyL' },
+          { id: 7, name: 'Protección de datos y transparencia' },
+          { id: 8, name: 'Prevención de Riesgos Laborales' },
+        ],
+      },
+      {
+        id: 'bloque-2',
+        title: 'Bloque II: Derecho Administrativo General',
+        subtitle: null,
+        icon: '⚖️',
+        themes: [
+          { id: 9, name: 'Ley 39/2015: objeto, interesados y actividad' },
+          { id: 10, name: 'El acto administrativo' },
+          { id: 11, name: 'Validez, invalidez y revisión de los actos administrativos' },
+          { id: 12, name: 'El procedimiento administrativo común' },
+          { id: 13, name: 'Administración electrónica' },
+          { id: 14, name: 'Ley 40/2015 LRJSP' },
+          { id: 15, name: 'Contratos del Sector Público I' },
+          { id: 16, name: 'Contratos del Sector Público II' },
+        ],
+      },
+      {
+        id: 'bloque-3',
+        title: 'Bloque III: Administración Local y Función Pública',
+        subtitle: null,
+        icon: '🏛️',
+        themes: [
+          { id: 17, name: 'La Administración Local en la Constitución' },
+          { id: 18, name: 'La Provincia en el régimen local' },
+          { id: 19, name: 'Órganos de gobierno provinciales' },
+          { id: 20, name: 'El Municipio' },
+          { id: 21, name: 'Órganos colegiados locales' },
+          { id: 22, name: 'Ordenanzas y Reglamentos de las Entidades Locales' },
+          { id: 23, name: 'Actividad de los Entes Locales y subvenciones' },
+          { id: 24, name: 'Personal al servicio de las entidades locales' },
+          { id: 25, name: 'Estatuto Básico del Empleado Público' },
+        ],
+      },
+    ],
+    totalTopics: 25,
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/auxiliar-administrativo-diputacion-leon', label: 'Mi Oposición', icon: '🏛️', featured: true },
+      { href: '/auxiliar-administrativo-diputacion-leon/temario', label: 'Temario', icon: '📚' },
+      { href: '/auxiliar-administrativo-diputacion-leon/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
   // AUXILIAR ADMINISTRATIVO AYUNTAMIENTO DE MURCIA (C2)
   // ========================================
   {

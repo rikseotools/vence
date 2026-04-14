@@ -180,7 +180,7 @@ describe('TopicContentView files consistency', () => {
   const topicContentFiles = glob.sync('app/**/temario/*/TopicContentView.tsx')
 
   it('should find all 20 TopicContentView files', () => {
-    expect(topicContentFiles.length).toBe(24)
+    expect(topicContentFiles.length).toBe(25)
   })
 
   it.each(topicContentFiles)('%s should check article.questionCount before showing test button', (filePath: string) => {
