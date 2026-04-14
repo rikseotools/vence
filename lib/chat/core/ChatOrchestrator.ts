@@ -554,142 +554,8 @@ export class ChatOrchestrator {
 
     const messages = this.buildOpenAIMessages(context)
 
-    // RAG híbrido: busca artículos por embedding + full-text (keywords)
-    // Combina ambos scores para encontrar artículos relevantes incluso
-    // cuando la query coloquial no matchea semánticamente con el texto legal.
-    try {
-      const { embedding } = await generateEmbedding(context.currentMessage)
-
-      // Obtener leyes prioritarias del temario del usuario
-      let priorityLawIds: string[] = []
-      if (context.userDomain) {
-        try {
-          // userDomain puede ser slug (auxiliar-administrativo-estado) o position_type (auxiliar_administrativo)
-          const domainNorm = context.userDomain.replace(/-/g, '_')
-          // Buscar topics que matcheen (position_type puede no tener _estado)
-          const { data: scopeLaws } = await getSupabaseForSearch()
-            .from('topic_scope')
-            .select('law_id, topics!inner(position_type)')
-            .eq('topics.position_type', domainNorm)
-          if (scopeLaws && scopeLaws.length > 0) {
-            priorityLawIds = [...new Set(scopeLaws.map((s: Record<string, unknown>) => s.law_id as string))]
-            logger.info(`Fallback RAG: ${priorityLawIds.length} priority laws for ${context.userDomain}`, { domain: 'orchestrator' })
-          }
-        } catch { /* no bloquear si falla */ }
-      }
-
-      // Búsqueda híbrida (embedding + full-text con OR + boost por oposición)
-      const { data: hybridResults } = await getSupabaseForSearch().rpc('hybrid_search_articles', {
-        query_embedding: embedding,
-        query_text: context.currentMessage,
-        match_count: 15,
-        semantic_weight: 0.4,
-        text_weight: 0.6,
-        priority_law_ids: priorityLawIds,
-      })
-
-      const allArticles = hybridResults || []
-
-      if (allArticles.length > 0) {
-        // Diversificar: máximo 2 artículos por ley para cubrir más fuentes
-        const byLaw = new Map<string, number>()
-        const diversified = allArticles.filter((a: Record<string, unknown>) => {
-          const lawKey = (a.law_short_name || 'unknown') as string
-          const count = byLaw.get(lawKey) || 0
-          if (count >= 2) return false
-          byLaw.set(lawKey, count + 1)
-          return true
-        }).slice(0, 8)
-
-        // Extraer párrafos relevantes de cada artículo (chunking por párrafo)
-        // Escalable: funciona con artículos de cualquier longitud.
-        // Expande keywords con sinónimos legales para encontrar párrafos relevantes
-        // aunque usen terminología diferente (ej: "paternidad" → "progenitor")
-        const LEGAL_SYNONYMS: Record<string, string[]> = {
-          'paternidad': ['progenitor', 'padre', 'nacimiento'],
-          'maternidad': ['progenitora', 'madre', 'nacimiento', 'biologica'],
-          'vacaciones': ['descanso', 'permiso', 'dias'],
-          'despido': ['cese', 'extincion', 'separacion'],
-          'sueldo': ['retribucion', 'salario', 'remuneracion'],
-          'jefe': ['superior', 'director', 'responsable'],
-          'multa': ['sancion', 'infraccion', 'penalidad'],
-          'contrato': ['convenio', 'acuerdo', 'pacto'],
-          'recurso': ['impugnacion', 'reclamacion', 'alzada'],
-          'plazo': ['termino', 'periodo', 'duracion'],
-        }
-
-        const baseWords = context.currentMessage.toLowerCase()
-          .split(/\s+/)
-          .filter(w => w.length > 3)
-          .map(w => w.replace(/[áàä]/g, 'a').replace(/[éèë]/g, 'e').replace(/[íìï]/g, 'i').replace(/[óòö]/g, 'o').replace(/[úùü]/g, 'u'))
-
-        // Expandir con sinónimos
-        const expandedWords = new Set(baseWords)
-        for (const w of baseWords) {
-          const synonyms = LEGAL_SYNONYMS[w]
-          if (synonyms) synonyms.forEach(s => expandedWords.add(s))
-        }
-        const queryWords = [...expandedWords]
-
-        const articlesContext = diversified.map((a: Record<string, unknown>) => {
-          const content = String(a.content || '')
-          const header = `--- ${a.law_short_name || ''} Art. ${a.article_number} ${a.title ? '- ' + a.title : ''} ---`
-
-          // Artículos cortos: pasar completos
-          if (content.length <= 2500) return `${header}\n${content}`
-
-          // Artículos largos: extraer párrafos relevantes por score
-          const paragraphs = content.split(/\n\n+/).filter(p => p.trim().length > 20)
-          const scored = paragraphs.map((p, idx) => {
-            const pNorm = p.toLowerCase()
-              .replace(/[áàä]/g, 'a').replace(/[éèë]/g, 'e').replace(/[íìï]/g, 'i').replace(/[óòö]/g, 'o').replace(/[úùü]/g, 'u')
-            let score = 0
-            for (const w of queryWords) {
-              if (pNorm.includes(w)) score += 1
-            }
-            // Bonus para primeros párrafos (suelen tener contexto)
-            if (idx === 0) score += 0.5
-            return { p, score, idx }
-          })
-
-          // Ordenar por score y tomar los mejores párrafos
-          // Priorizar párrafos con más keywords y que sean encabezados de apartado (a), b), c)...)
-          const relevant = scored
-            .filter(s => s.score > 0)
-            .sort((a, b) => b.score - a.score || a.idx - b.idx)
-            .slice(0, 8)
-            .sort((a, b) => a.idx - b.idx) // Reordenar por posición original
-
-          // Si no hay párrafos relevantes, tomar los primeros
-          const selected = relevant.length > 0
-            ? relevant.map(r => r.p)
-            : paragraphs.slice(0, 3)
-
-          const extracted = selected.join('\n\n')
-          return `${header}\n${extracted.length > 3000 ? extracted.substring(0, 3000) : extracted}`
-        }).join('\n\n')
-
-        const systemIdx = messages.findIndex(m => m.role === 'system')
-        if (systemIdx >= 0) {
-          messages[systemIdx].content += `\n\n📖 LEGISLACIÓN VIGENTE (${diversified.length} artículos de ${byLaw.size} leyes):
-
-⚠️ INSTRUCCIÓN OBLIGATORIA:
-1. Los artículos de abajo son legislación VIGENTE y ACTUALIZADA. SIEMPRE tienen prioridad sobre lo que recuerdes de tu entrenamiento.
-2. Si un artículo dice "diecinueve semanas", la respuesta es 19 semanas. NO uses datos de tu entrenamiento que puedan estar desactualizados.
-3. Cita SIEMPRE la ley y artículo exacto de donde sacas el dato.
-4. Si no encuentras la respuesta en los artículos, di que no tienes suficiente información en la base de datos.
-
-${articlesContext}`
-        }
-
-        logger.info(`Fallback RAG hybrid: ${diversified.length} articles from ${byLaw.size} laws`, {
-          domain: 'orchestrator',
-          laws: [...byLaw.keys()],
-        })
-      }
-    } catch (ragError) {
-      logger.warn('Fallback RAG failed, continuing without articles', { domain: 'orchestrator' })
-    }
+    // Grounding: RAG híbrido sobre legislación vigente
+    await this.augmentMessagesWithFallbackRAG(context, messages, tracer)
 
     // Crear span LLM si hay tracer - COMPLETO sin truncar
     const llmSpan = tracer?.spanLLM({
@@ -784,6 +650,9 @@ ${articlesContext}`
 
     const messages = this.buildOpenAIMessages(context)
 
+    // Grounding: RAG híbrido sobre legislación vigente
+    await this.augmentMessagesWithFallbackRAG(context, messages, tracer)
+
     // Crear span LLM si hay tracer - COMPLETO sin truncar
     const llmSpan = tracer?.spanLLM({
       model,
@@ -857,6 +726,181 @@ ${articlesContext}`
         }
       },
     })
+  }
+
+  /**
+   * Grounding para fallback: ejecuta RAG híbrido (embedding + full-text) sobre
+   * legislación vigente y añade los artículos encontrados al system prompt.
+   *
+   * Mejoras 2026-04-14 tras auditoría sycophancy:
+   * - (a) Aumenta la query con los últimos turnos de conversación cuando el
+   *   mensaje actual es un follow-up corto (pronombres, "y...", "no es...",
+   *   "seguro?"), para que el RAG encuentre los artículos referenciados en
+   *   turnos anteriores.
+   * - (b) Emite un trace de spanDB('fallbackHybridSearch') con los artículos
+   *   recuperados, para permitir auditar el grounding en revisiones futuras.
+   *
+   * Compartido entre fallbackResponse (no-streaming) y fallbackStream.
+   */
+  private async augmentMessagesWithFallbackRAG(
+    context: ChatContext,
+    messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>,
+    tracer?: AITracer
+  ): Promise<void> {
+    try {
+      // (a) Follow-up detection: ¿el mensaje actual depende del historial?
+      const msgTrim = context.currentMessage.trim()
+      const isFollowUpLike =
+        msgTrim.length < 120 &&
+        /^(\?|y\s|y\b|no\b|no\s|entonces\b|ose[ae]\b|pero\b|por\s*qu[eé]\b|seguro\??$|est[aá]s?\s+segur|ya\s+pero|creo\s+que|no\s+es\s+esto)/i.test(msgTrim)
+
+      let queryText = context.currentMessage
+      if (isFollowUpLike && context.messages && context.messages.length > 1) {
+        const lastTurns = context.messages.slice(-6)
+        const extra = lastTurns
+          .filter(m => m.role === 'user' || m.role === 'assistant')
+          .map(m => m.content || '')
+          .join(' ')
+          .slice(0, 1500)
+        queryText = `${context.currentMessage} ${extra}`
+        logger.info('Fallback RAG: augmented query with conversation history', {
+          domain: 'orchestrator',
+          originalLen: context.currentMessage.length,
+          augmentedLen: queryText.length,
+        })
+      }
+
+      const { embedding } = await generateEmbedding(queryText)
+
+      // Leyes prioritarias del temario del usuario
+      let priorityLawIds: string[] = []
+      if (context.userDomain) {
+        try {
+          const domainNorm = context.userDomain.replace(/-/g, '_')
+          const { data: scopeLaws } = await getSupabaseForSearch()
+            .from('topic_scope')
+            .select('law_id, topics!inner(position_type)')
+            .eq('topics.position_type', domainNorm)
+          if (scopeLaws && scopeLaws.length > 0) {
+            priorityLawIds = [...new Set(scopeLaws.map((s: Record<string, unknown>) => s.law_id as string))]
+            logger.info(`Fallback RAG: ${priorityLawIds.length} priority laws for ${context.userDomain}`, { domain: 'orchestrator' })
+          }
+        } catch { /* no bloquear si falla */ }
+      }
+
+      // (b) Trace de auditoría del RAG
+      const ragSpan = tracer?.spanDB('fallbackHybridSearch', {
+        userMessage: context.currentMessage,
+        augmentedQuery: queryText !== context.currentMessage ? queryText.slice(0, 500) : undefined,
+        isFollowUpLike,
+        userDomain: context.userDomain,
+        priorityLawCount: priorityLawIds.length,
+      })
+
+      const { data: hybridResults } = await getSupabaseForSearch().rpc('hybrid_search_articles', {
+        query_embedding: embedding,
+        query_text: queryText,
+        match_count: 15,
+        semantic_weight: 0.4,
+        text_weight: 0.6,
+        priority_law_ids: priorityLawIds,
+      })
+
+      const allArticles = hybridResults || []
+
+      ragSpan?.setOutput({
+        articlesFound: allArticles.length,
+        articles: (allArticles as Array<Record<string, unknown>>).slice(0, 8).map(a => ({
+          lawName: a.law_short_name,
+          articleNumber: a.article_number,
+          title: a.title,
+        })),
+      })
+      ragSpan?.end()
+
+      if (allArticles.length === 0) return
+
+      // Diversificar: máximo 2 artículos por ley
+      const byLaw = new Map<string, number>()
+      const diversified = (allArticles as Array<Record<string, unknown>>).filter(a => {
+        const lawKey = (a.law_short_name || 'unknown') as string
+        const count = byLaw.get(lawKey) || 0
+        if (count >= 2) return false
+        byLaw.set(lawKey, count + 1)
+        return true
+      }).slice(0, 8)
+
+      // Expandir query con sinónimos legales
+      const LEGAL_SYNONYMS: Record<string, string[]> = {
+        paternidad: ['progenitor', 'padre', 'nacimiento'],
+        maternidad: ['progenitora', 'madre', 'nacimiento', 'biologica'],
+        vacaciones: ['descanso', 'permiso', 'dias'],
+        despido: ['cese', 'extincion', 'separacion'],
+        sueldo: ['retribucion', 'salario', 'remuneracion'],
+        jefe: ['superior', 'director', 'responsable'],
+        multa: ['sancion', 'infraccion', 'penalidad'],
+        contrato: ['convenio', 'acuerdo', 'pacto'],
+        recurso: ['impugnacion', 'reclamacion', 'alzada'],
+        plazo: ['termino', 'periodo', 'duracion'],
+      }
+
+      const baseWords = context.currentMessage
+        .toLowerCase()
+        .split(/\s+/)
+        .filter(w => w.length > 3)
+        .map(w => w.replace(/[áàä]/g, 'a').replace(/[éèë]/g, 'e').replace(/[íìï]/g, 'i').replace(/[óòö]/g, 'o').replace(/[úùü]/g, 'u'))
+      const expandedWords = new Set(baseWords)
+      for (const w of baseWords) {
+        const syns = LEGAL_SYNONYMS[w]
+        if (syns) syns.forEach(s => expandedWords.add(s))
+      }
+      const queryWords = [...expandedWords]
+
+      const articlesContext = diversified.map(a => {
+        const content = String(a.content || '')
+        const header = `--- ${a.law_short_name || ''} Art. ${a.article_number} ${a.title ? '- ' + a.title : ''} ---`
+        if (content.length <= 2500) return `${header}\n${content}`
+
+        const paragraphs = content.split(/\n\n+/).filter(p => p.trim().length > 20)
+        const scored = paragraphs.map((p, idx) => {
+          const pNorm = p.toLowerCase().replace(/[áàä]/g, 'a').replace(/[éèë]/g, 'e').replace(/[íìï]/g, 'i').replace(/[óòö]/g, 'o').replace(/[úùü]/g, 'u')
+          let score = 0
+          for (const w of queryWords) {
+            if (pNorm.includes(w)) score += 1
+          }
+          if (idx === 0) score += 0.5
+          return { p, score, idx }
+        })
+        const relevant = scored
+          .filter(s => s.score > 0)
+          .sort((a, b) => b.score - a.score || a.idx - b.idx)
+          .slice(0, 8)
+          .sort((a, b) => a.idx - b.idx)
+        const selected = relevant.length > 0 ? relevant.map(r => r.p) : paragraphs.slice(0, 3)
+        const extracted = selected.join('\n\n')
+        return `${header}\n${extracted.length > 3000 ? extracted.substring(0, 3000) : extracted}`
+      }).join('\n\n')
+
+      const systemIdx = messages.findIndex(m => m.role === 'system')
+      if (systemIdx >= 0) {
+        messages[systemIdx].content += `\n\n📖 LEGISLACIÓN VIGENTE (${diversified.length} artículos de ${byLaw.size} leyes):
+
+⚠️ INSTRUCCIÓN OBLIGATORIA:
+1. Los artículos de abajo son legislación VIGENTE y ACTUALIZADA. SIEMPRE tienen prioridad sobre lo que recuerdes de tu entrenamiento.
+2. Si un artículo dice "diecinueve semanas", la respuesta es 19 semanas. NO uses datos de tu entrenamiento que puedan estar desactualizados.
+3. Cita SIEMPRE la ley y artículo exacto de donde sacas el dato.
+4. Si el usuario aporta datos contradictorios (cifras, fechas) sin cita, contrasta con los artículos siguientes. Si no figuran allí, dilo abiertamente: "No tengo esa información confirmada en la base de datos" en lugar de aceptarlos sin más.
+
+${articlesContext}`
+      }
+
+      logger.info(`Fallback RAG hybrid: ${diversified.length} articles from ${byLaw.size} laws`, {
+        domain: 'orchestrator',
+        laws: [...byLaw.keys()],
+      })
+    } catch (ragError) {
+      logger.warn('Fallback RAG failed, continuing without articles', { domain: 'orchestrator', error: String(ragError) })
+    }
   }
 
   /**
