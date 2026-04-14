@@ -299,20 +299,42 @@ Equipo de Vence
 - Cuando el usuario tenía razón, decirlo claramente ("Tenías razón…", "Tienes razón…"). Refuerza confianza en la plataforma.
 - Mensajes concisos y aireados (no apelotonados): saltos de línea entre párrafos, frases cortas. El usuario no quiere leer un muro de texto.
 
-Una vez aprobado:
+Una vez aprobado, **llamar al endpoint `/api/v2/dispute/resolve`** (NO hacer UPDATE directo en BD):
 
 ```javascript
-supabase
-  .from('question_disputes')
-  .update({
-    status: 'resolved',
-    admin_response: mensaje,
-    resolved_at: new Date().toISOString()
-  })
-  .eq('id', disputeId);
+// Necesitas un access_token de admin. Para minteo programatico desde Node:
+//   1) generateLink type='magiclink' con SERVICE_ROLE_KEY
+//   2) verifyOtp con ANON_KEY → session.access_token
+// (Ver script de ejemplo en /tmp/test_e2e_auth.mjs si sigue existiendo.)
+
+const res = await fetch('https://www.vence.es/api/v2/dispute/resolve', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${accessToken}`,
+  },
+  body: JSON.stringify({
+    disputeId,
+    questionType: isPsychometric ? 'psychometric' : 'legislative',
+    status: 'resolved', // o 'rejected'
+    adminResponse: mensaje,
+  }),
+});
+
+const result = await res.json();
+// result = {
+//   success: true,
+//   disputeId, status,
+//   emailSent: boolean,
+//   emailId: string | null,
+//   emailError: string | null,
+//   emailSkipReason: 'empty_response' | 'no_user_email' | 'user_preferences' | null
+// }
 ```
 
-> **El email se envía automáticamente.** Al hacer el UPDATE, un trigger PostgreSQL (`send_dispute_email_notification`) detecta el cambio de status y envía el email al usuario via `/api/send-dispute-email`. No hace falta llamar a ninguna API adicional. Ver sección 15 para más detalles.
+> **El email se envía en el mismo flujo de aplicación** (`sendEmailV2` directo, sin saltos HTTP intermedios). Si `emailSent === false`, revisar `emailError` o `emailSkipReason`. La disputa **siempre queda resuelta** aunque el email falle (no hay rollback).
+
+> **NO hagas UPDATE directo en BD.** El trigger PG antiguo fue eliminado el 14/04/2026 porque fallaba en silencio por cold-start de Vercel. Si haces UPDATE directo, **NO se enviará email al usuario**.
 
 ## 7. Tablas Involucradas
 
@@ -998,59 +1020,29 @@ const adminId = adminMsg.sender_id;
 
 ---
 
-## 15. Sistema de Notificaciones Automáticas (Triggers PostgreSQL)
+## 15. Sistema de Notificaciones Automáticas
 
-Las notificaciones al usuario (email y campana) se envían **automáticamente** mediante triggers de PostgreSQL que usan la extensión `http` para llamar a las APIs de la app. Esto garantiza que las notificaciones se envíen independientemente de cómo se haga la operación (panel admin, Claude Code, o consulta SQL directa).
+Las notificaciones (email + campana) al cerrar una impugnación o responder a un feedback ya **NO** dependen de triggers PostgreSQL llamando a HTTP. Tras el incidente del 14/04/2026 (ver §16) se migró a un patrón **in-process**: el endpoint admin que actualiza la BD también envía el email en el mismo flujo TypeScript.
 
-### 15.1 Trigger de Impugnaciones Legislativas
+### 15.1 Impugnaciones (legislativas + psicotécnicas) — POST-14/04/2026
 
-**Trigger:** `trigger_send_dispute_email` en tabla `question_disputes`
-**Función:** `send_dispute_email_notification()`
-**Evento:** `AFTER UPDATE`
-**Estado en repo:** ✅ Versionado en `database/migrations/dispute_email_triggers_legislativas.sql` (capturado el 11/04/2026 desde Supabase — antes vivía solo en el SQL Editor)
+**Endpoint:** `POST /api/v2/dispute/resolve`
+**Función:** `resolveDispute()` en `lib/api/v2/dispute/queries.ts`
+**Auth:** `requireAdmin` (Bearer token de admin)
 
-**Comportamiento:**
-- Se activa cuando el `status` cambia a `resolved` o `rejected`
-- Envía los datos de la disputa directamente en el payload (no re-lee de BD)
-- Llama a `/api/send-dispute-email` via `http_post()`
-- El endpoint envía email al usuario con la respuesta del admin
+**Flujo:**
+1. Validación Zod del body (`resolveDisputeRequestSchema`).
+2. Carga de la disputa con LEFT JOIN a `user_profiles` y `questions`/`psychometric_questions`.
+3. Idempotencia: si `status` ya es `resolved`/`rejected` → 409.
+4. UPDATE atómico de la disputa.
+5. Llamada **directa** a `sendEmailV2(...)` (sin saltos HTTP, dentro del mismo contenedor Vercel del admin → sin cold start).
+6. Respuesta tipada con `emailSent`, `emailId`, `emailError`, `emailSkipReason`.
 
-**Payload enviado:**
-```json
-{
-  "disputeId": "uuid",
-  "status": "resolved",
-  "adminResponse": "Hola...",
-  "resolvedAt": "2026-02-24T...",
-  "userId": "uuid",
-  "questionId": "uuid"
-}
-```
+**Trigger PG eliminado:** los triggers `trigger_send_dispute_email` y `trigger_send_psychometric_dispute_email`, junto con sus funciones, **se eliminaron** vía `database/migrations/2026-04-14-drop-dispute-email-triggers.sql`.
 
-**Endpoint:** `/api/send-dispute-email` acepta 3 formatos:
-1. **Trigger PG** (este): `{ disputeId, status, adminResponse, userId, questionId }`
-2. **Supabase Webhook**: `{ record: { id, user_id, ... } }`
-3. **Admin panel**: `{ disputeId }` (solo ID, datos se leen de BD)
+**Endpoints HTTP legacy:** `/api/send-dispute-email` y `/api/send-dispute-email/psychometric` se mantienen temporalmente por compatibilidad pero ya no son llamados por nada interno. Pueden eliminarse en commit posterior si nada externo los necesita.
 
-### 15.1bis Trigger de Impugnaciones Psicotécnicas
-
-**Trigger:** `trigger_send_psychometric_dispute_email` en tabla `psychometric_question_disputes`
-**Función:** `send_psychometric_dispute_email_notification()`
-**Evento:** `AFTER UPDATE`
-**Creado:** 11/04/2026
-**Estado en repo:** ✅ Versionado en `database/migrations/dispute_email_triggers_psychometric.sql`
-
-**Comportamiento:**
-- Idéntico al de legislativas (mismo payload, mismo manejo de errores)
-- Llama a `/api/send-dispute-email/psychometric` via `http_post()`
-- El endpoint psicotécnico solo lee `disputeId` del body y relee la disputa desde BD
-
-**Endpoint `/api/send-dispute-email/psychometric`:**
-- Acepta `{ disputeId }` en el body
-- Lee el resto desde `psychometric_question_disputes` + `user_profiles` + `psychometric_questions`
-- Si `admin_response` está vacío, no envía email (rechazo silencioso)
-
-**Cold start warning:** El primer trigger del día puede fallar silenciosamente si la función Vercel está fría (cold start >  timeout de `http_post`). Se observó el 11/04/2026 en el test de humo: primer UPDATE no envió, re-fire inmediato sí. Mitigación futura: aumentar `http.timeout_msec` o mantener la función warm con un cron de salud.
+**Por qué se eliminaron los triggers (resumen):** ver §16.
 
 ### 15.2 Trigger de Feedbacks
 
@@ -1134,11 +1126,59 @@ Los triggers usan `current_setting('app.base_url', true)` con fallback a `https:
 SET app.base_url = 'https://staging.vence.es';
 ```
 
-### 15.7 Debugging de Triggers
+### 15.7 Debugging del flujo nuevo (post-14/04/2026)
 
-Si un email no se envía, verificar:
+Si un email no se envía:
 
-1. **¿El trigger existe?** → Consulta de sección 15.5
-2. **¿La extensión `http` funciona?** → `SELECT status FROM http_get('https://httpbin.org/get');`
-3. **¿El endpoint está desplegado?** → `curl https://www.vence.es/api/send-dispute-email` (debe devolver 400, no 404)
-4. **¿Hay errores en los logs?** → Los triggers usan `RAISE WARNING` para errores, visible en logs de PostgreSQL
+1. **Comprobar la respuesta del endpoint:** `result.emailSent`, `result.emailError`, `result.emailSkipReason`.
+2. **Si `emailSkipReason === 'empty_response'`:** el adminResponse iba vacío → comportamiento esperado.
+3. **Si `emailSkipReason === 'no_user_email'`:** el usuario no tiene email en `user_profiles` → arreglar a mano.
+4. **Si `emailSkipReason === 'user_preferences'`:** el usuario optó por no recibir email de soporte → respetar.
+5. **Si `emailError` está set:** error real de Resend o sendEmailV2. Mirar `email_events` por `event_type='failed'` y reintentar manualmente vía endpoint admin.
+6. **Reintento manual:** llamar de nuevo al endpoint `/api/v2/dispute/resolve`. Como la disputa ya estará `resolved`/`rejected`, devolverá 409 — para reintentar **solo el email** habrá que añadir un endpoint específico (pendiente Fase 5).
+
+### 15.8 Trigger de Feedbacks (sigue activo)
+
+Los feedbacks (no impugnaciones) **siguen usando trigger PG**:
+- `trigger_send_feedback_notification` en `feedback_messages` (AFTER INSERT)
+- Llama a `/api/send-support-email`
+- Si en el futuro presenta el mismo bug de cold-start, aplicar el mismo refactor (in-process).
+
+---
+
+## 16. Incidente 14/04/2026 — Cold-start de triggers PG y migración a in-process
+
+**Resumen:** los triggers PG `send_dispute_email_notification` y `send_psychometric_dispute_email_notification` fallaban en silencio cuando el endpoint Vercel correspondiente estaba frío. Diagnosticado tras detectar 6 impugnaciones psicotécnicas resueltas el 14/04/2026 cuyo email **nunca llegó al usuario**.
+
+**Hipótesis confirmada empíricamente:**
+- Test controlado: insert + UPDATE de una dispute psicotécnica de prueba → el `UPDATE` tardó 3,8 segundos.
+- Esos 3,8s son consistentes con un **timeout de la extensión `http`** (default 5s) esperando respuesta de Vercel.
+- Endpoints "activos" (legislativa, llamada >10x/día) → contenedor Vercel caliente → respuesta <500ms → trigger funciona "por suerte".
+- Endpoints "rara vez llamados" (psicotécnica, ≤1x/día) → cold start de Vercel >5s → `http_post` da timeout → la función PG captura excepción con `EXCEPTION WHEN OTHERS` y solo emite `RAISE WARNING` que no es visible desde Supabase Dashboard.
+
+**Por qué se descartaron alternativas:**
+
+| Alternativa | Por qué no |
+|---|---|
+| Migrar trigger a `pg_net` (async) | Sigue acoplando BD a HTTP. No corrige la causa raíz. Mejor que `http`, pero no necesario para nuestro volumen. |
+| Outbox pattern (cola en BD + cron worker) | Robusto pero overkill para 20 emails/semana. Cron requiere GitHub Actions cada 2 min → emails llegan en ráfagas, mala UX. |
+| Inngest / QStash externos | Añade dependencia externa. No queríamos. |
+| Database Webhooks de Supabase | Mismo problema de cold-start (llama HTTP). Configuración fuera del repo (no versionable). |
+
+**Decisión adoptada:** **`resolveDispute()` in-process**. El admin (UI o script) llama al endpoint `/api/v2/dispute/resolve` que está dentro del mismo contenedor Vercel ya caliente sirviendo al admin. La función:
+1. Hace UPDATE en BD.
+2. Llama directamente a `sendEmailV2(...)` (función JavaScript, no HTTP) → sin cold start posible.
+3. Devuelve resultado tipado.
+
+Sin colas, sin crons, sin dependencias externas, sin tablas nuevas. ~80 líneas de código.
+
+**Fases del rollout:**
+1. ✅ Función `resolveDispute()` + endpoint + tests (commit `1f9f4559`).
+2. ✅ Refactor de `/api/v2/admin/disputes` POST para usar el nuevo endpoint internamente.
+3. ✅ Manual actualizado para que las futuras sesiones de Claude usen el endpoint, no UPDATE directo.
+4. ✅ Migration SQL para eliminar los dos triggers PG: `database/migrations/2026-04-14-drop-dispute-email-triggers.sql`.
+5. ⏳ Pendiente: aplicar la migration tras validar fase 2 en producción.
+6. ⏳ Pendiente opcional: eliminar `/api/send-dispute-email` y `/api/send-dispute-email/psychometric` (legacy).
+7. ⏳ Pendiente opcional: página admin `/admin/dispute-emails-fallidos` para reintentar emails fallidos.
+
+**Lección general:** triggers PG llamando a HTTP desde Postgres son frágiles ante cold-starts de stack serverless. Cuando el productor del UPDATE es siempre código de la app (no jobs externos), preferir flujo in-process síncrono. Patrón documentado para futuros casos similares (feedbacks: §15.8).

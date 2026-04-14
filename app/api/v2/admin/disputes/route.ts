@@ -2,11 +2,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { resolveDispute } from '@/lib/api/v2/dispute'
 
 const getServiceSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
+
+// Mensaje genérico que se envía cuando el admin pulsa "Rechazar" sin texto.
+// Coincide literalmente con el mensaje histórico (preserva comportamiento de email
+// tras la migración del trigger PG → resolveDispute() in-process).
+const GENERIC_REJECT_MESSAGE =
+  'Impugnación cerrada por el administrador sin respuesta específica.'
 
 // GET: Cargar todas las impugnaciones con usuarios y preguntas
 async function _GET() {
@@ -80,7 +87,12 @@ async function _GET() {
   }
 }
 
-// POST: Cerrar/rechazar una impugnación
+// POST: Cerrar/rechazar una impugnación (sin texto custom)
+//
+// Ahora delega en resolveDispute() para usar el flujo in-process (Drizzle + sendEmailV2)
+// en lugar del antiguo trigger PG → http_post (frágil ante cold starts de Vercel).
+// El comportamiento visible para el usuario se preserva: status='rejected', mismo
+// admin_response hardcoded y mismo email.
 async function _POST(request: NextRequest) {
   try {
     const { disputeId, isPsychometric } = await request.json()
@@ -89,22 +101,25 @@ async function _POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'disputeId requerido' }, { status: 400 })
     }
 
-    const supabase = getServiceSupabase()
-    const tableName = isPsychometric ? 'psychometric_question_disputes' : 'question_disputes'
+    const result = await resolveDispute({
+      disputeId,
+      questionType: isPsychometric ? 'psychometric' : 'legislative',
+      status: 'rejected',
+      adminResponse: GENERIC_REJECT_MESSAGE,
+    })
 
-    const { error } = await supabase
-      .from(tableName)
-      .update({
-        status: 'rejected',
-        resolved_at: new Date().toISOString(),
-        admin_response: 'Impugnación cerrada por el administrador sin respuesta específica.',
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', disputeId)
+    if (!result.success) {
+      const status = result.error.includes('no encontrada') ? 404 :
+                     result.error.includes('ya estaba') ? 409 : 500
+      return NextResponse.json({ success: false, error: result.error }, { status })
+    }
 
-    if (error) throw error
-
-    return NextResponse.json({ success: true })
+    return NextResponse.json({
+      success: true,
+      emailSent: result.emailSent,
+      emailId: result.emailId,
+      emailError: result.emailError,
+    })
   } catch (error) {
     console.error('Error closing dispute:', error)
     return NextResponse.json({ success: false, error: 'Error interno' }, { status: 500 })
