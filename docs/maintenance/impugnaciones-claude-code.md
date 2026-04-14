@@ -839,7 +839,7 @@ await supabase
   });
 ```
 
-> **Email y campana se envían automáticamente.** Al insertar un mensaje con `is_admin: true`, un trigger PostgreSQL (`send_feedback_notification`) crea la notificación de campana y envía email al usuario via `/api/send-support-email`. No hace falta llamar a ninguna API adicional. Ver sección 15 para más detalles.
+> **⚠️ OBSOLETO (pre-14/04/2026):** el fragmento anterior insertaba directamente en `feedback_messages` y confiaba en un trigger PG para email + campana. **Ese trigger fue eliminado.** Ahora hay que llamar al endpoint **`POST /api/v2/feedback/respond`** que hace INSERT msg + campana + email de forma atómica. Ver manual dedicado `docs/procedures/gestionar-feedback-bug.md` §10 con el patrón completo.
 
 ### 14.4 Cerrar un Feedback
 
@@ -1044,50 +1044,53 @@ Las notificaciones (email + campana) al cerrar una impugnación o responder a un
 
 **Por qué se eliminaron los triggers (resumen):** ver §16.
 
-### 15.2 Trigger de Feedbacks
+### 15.2 Feedbacks (post-14/04/2026) — POST `/api/v2/feedback/respond`
 
-**Trigger:** `trigger_send_feedback_notification` en tabla `feedback_messages`
-**Función:** `send_feedback_notification()`
-**Evento:** `AFTER INSERT`
+**Endpoint:** `POST /api/v2/feedback/respond`
+**Función:** `respondFeedback()` en `lib/api/v2/feedback/queries.ts`
+**Auth:** `requireAdmin` (Bearer token).
 
-**Comportamiento:**
-- Se activa cuando se inserta un mensaje con `is_admin = true`
-- Busca el `user_id` desde `feedback_conversations`
-- Crea notificación de **campana** en `notification_logs`
-- Envía **email** via `/api/send-support-email`
-- El email se omite si el usuario está navegando activamente (lógica en el endpoint)
+**Flujo:**
+1. Valida body con Zod (`respondFeedbackRequestSchema`).
+2. Carga feedback + conversation + usuario con LEFT JOIN.
+3. En una transacción Drizzle: INSERT `feedback_messages` + INSERT `notification_logs` (campana) + UPDATE `feedback_conversations` + UPDATE `user_feedback` (status final).
+4. Fuera de la TX (para no rollback por Resend caído): llama a `sendEmailV2` si el mensaje no está vacío, respetando `isUserActivelyBrowsing` + preferencias del usuario.
+5. Devuelve respuesta tipada con `messageId`, `bellSent`, `emailSent`, `emailError`, `emailSkipReason`, `bellSkipReason`, `finalStatus`.
 
-**Acciones del trigger:**
-1. **Campana:** Inserta en `notification_logs` con preview del mensaje
-2. **Email:** Llama a `/api/send-support-email` con `{ userId, adminMessage, conversationId }`
+**Trigger PG eliminado:** `trigger_send_feedback_notification` y su función se eliminaron vía `database/migrations/2026-04-14-drop-feedback-trigger.sql`. Razón: mismo bug de cold-start que tenían los triggers de impugnaciones.
 
-### 15.3 Arquitectura
+**Semántica decidida:** admin reply = feedback `'resolved'`. Si el usuario responde, `/api/feedback/message` lo reabre a `'pending'`.
+
+**Manual detallado:** `docs/procedures/gestionar-feedback-bug.md` §10.
+
+### 15.3 Arquitectura (post-14/04/2026)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ Acción (Panel Admin / Claude Code / SQL directo)            │
+│ Admin UI /admin/impugnaciones   /admin/feedback             │
+│ Scripts Claude                                              │
 └──────────────────────────┬──────────────────────────────────┘
-                           │
+                           │ fetch + Bearer admin
                            ▼
 ┌─────────────────────────────────────────────────────────────┐
-│ PostgreSQL Trigger (AFTER UPDATE/INSERT)                     │
-│  - Disputa: status → resolved/rejected                       │
-│  - Feedback: is_admin = true                                 │
+│ Endpoint v2 (requireAdmin + Zod + withErrorLogging)         │
+│  - POST /api/v2/dispute/resolve     (impugnaciones)         │
+│  - POST /api/v2/feedback/respond    (feedbacks)             │
 └──────────────────────────┬──────────────────────────────────┘
-                           │ http_post()
+                           │ resolveDispute() / respondFeedback()
+                           │ (in-process, Drizzle TX)
                            ▼
 ┌─────────────────────────────────────────────────────────────┐
-│ API Endpoint (Vercel)                                        │
-│  - /api/send-dispute-email                (legislativas)     │
-│  - /api/send-dispute-email/psychometric   (psicotécnicas)    │
-│  - /api/send-support-email                (feedbacks)        │
+│ - UPDATE / INSERT en BD (Drizzle)                           │
+│ - sendEmailV2() directo (misma función JavaScript)          │
 └──────────────────────────┬──────────────────────────────────┘
-                           │ sendEmailV2()
                            ▼
 ┌─────────────────────────────────────────────────────────────┐
-│ Resend (email) + notification_logs (campana)                 │
+│ Resend (email) + email_events (logs éxito/fallo)            │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+**No hay triggers PG intermedios. Cero HTTP calls internos. Cero cold-start posible.**
 
 ### 15.4 Dependencia: Extensión `http`
 
@@ -1137,12 +1140,11 @@ Si un email no se envía:
 5. **Si `emailError` está set:** error real de Resend o sendEmailV2. Mirar `email_events` por `event_type='failed'` y reintentar manualmente vía endpoint admin.
 6. **Reintento manual:** llamar de nuevo al endpoint `/api/v2/dispute/resolve`. Como la disputa ya estará `resolved`/`rejected`, devolverá 409 — para reintentar **solo el email** habrá que añadir un endpoint específico (pendiente Fase 5).
 
-### 15.8 Trigger de Feedbacks (sigue activo)
+### 15.8 Histórico: trigger de feedbacks (eliminado 14/04/2026)
 
-Los feedbacks (no impugnaciones) **siguen usando trigger PG**:
-- `trigger_send_feedback_notification` en `feedback_messages` (AFTER INSERT)
-- Llama a `/api/send-support-email`
-- Si en el futuro presenta el mismo bug de cold-start, aplicar el mismo refactor (in-process).
+El trigger `trigger_send_feedback_notification` (AFTER INSERT en `feedback_messages`) tenía el mismo problema de cold-start que los de impugnaciones. Se eliminó el mismo día y se sustituyó por el flujo in-process `respondFeedback()` / `POST /api/v2/feedback/respond` descrito en §15.2.
+
+Migración documentada en §16 y en `docs/procedures/gestionar-feedback-bug.md`.
 
 ---
 
@@ -1172,13 +1174,20 @@ Los feedbacks (no impugnaciones) **siguen usando trigger PG**:
 
 Sin colas, sin crons, sin dependencias externas, sin tablas nuevas. ~80 líneas de código.
 
-**Fases del rollout:**
+**Fases del rollout (impugnaciones):**
 1. ✅ Función `resolveDispute()` + endpoint + tests (commit `1f9f4559`).
-2. ✅ Refactor de `/api/v2/admin/disputes` POST para usar el nuevo endpoint internamente.
-3. ✅ Manual actualizado para que las futuras sesiones de Claude usen el endpoint, no UPDATE directo.
-4. ✅ Migration SQL para eliminar los dos triggers PG: `database/migrations/2026-04-14-drop-dispute-email-triggers.sql`.
-5. ⏳ Pendiente: aplicar la migration tras validar fase 2 en producción.
-6. ⏳ Pendiente opcional: eliminar `/api/send-dispute-email` y `/api/send-dispute-email/psychometric` (legacy).
-7. ⏳ Pendiente opcional: página admin `/admin/dispute-emails-fallidos` para reintentar emails fallidos.
+2. ✅ Refactor de `/api/v2/admin/disputes` POST para usar el nuevo endpoint internamente (commit `68a08dfc`).
+3. ✅ Migration SQL aplicada en Supabase: triggers `trigger_send_dispute_email` y `trigger_send_psychometric_dispute_email` eliminados.
+4. ✅ Endpoints legacy `/api/send-dispute-email` y `/api/send-dispute-email/psychometric` eliminados (commit `3774509e`).
+5. ✅ Manual actualizado (§6, §15, §16).
+6. ✅ E2E en producción confirmado (15/15 tests).
 
-**Lección general:** triggers PG llamando a HTTP desde Postgres son frágiles ante cold-starts de stack serverless. Cuando el productor del UPDATE es siempre código de la app (no jobs externos), preferir flujo in-process síncrono. Patrón documentado para futuros casos similares (feedbacks: §15.8).
+**Fases del rollout (feedback — misma fecha 14/04/2026):**
+1. ✅ Función `respondFeedback()` + endpoint `/api/v2/feedback/respond` + 32 tests unit + 10 E2E.
+2. ✅ Auth Bearer admin en `/api/send-support-email` (el legacy, antes público).
+3. ✅ Admin UI `/admin/feedback` refactorizado: los 3 flujos (sendAdminMessage, sendInlineMessage, createAdminConversation) delegan en el endpoint v2.
+4. ✅ Migration SQL aplicada: trigger `trigger_send_feedback_notification` eliminado.
+5. ✅ Endpoint `/api/admin/feedback/message` eliminado (action='send_message' huérfana) + limpieza de `adminSendMessage()` / `createConversation()`.
+6. ✅ Manual `docs/procedures/gestionar-feedback-bug.md` §10 actualizado.
+
+**Lección general:** triggers PG llamando a HTTP desde Postgres son frágiles ante cold-starts de stack serverless. Cuando el productor del UPDATE es siempre código de la app (no jobs externos), preferir flujo in-process síncrono. Este patrón se aplicó a todos los flujos de notificación internos del 14/04/2026 (impugnaciones legislativas + psicotécnicas + feedback). Si aparecen nuevos casos similares, usar el mismo refactor.
