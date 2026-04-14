@@ -259,6 +259,66 @@ Si la nueva foto no aparece tras subirla, cierra sesión y vuelve a entrar para 
 Si sigue sin funcionar, ábrelo como reporte desde **💬 Soporte** (mismo menú de tu avatar) y nuestro equipo lo revisa con una captura.`
   }
 
+  // Cerrar sesión
+  if (/(cerrar|salir\s+de\s+la)\s+sesi[oó]n/i.test(msgLower)) {
+    return `**Cerrar sesión**
+
+1. Pulsa en **tu avatar** (arriba a la derecha de la pantalla)
+2. En el menú que se abre, baja hasta abajo
+3. Pulsa el botón rojo **🚪 Cerrar Sesión**
+
+Volverás a la pantalla de inicio. Cuando quieras volver a entrar, pulsa **"Continuar con Google"**.`
+  }
+
+  // Contraseña olvidada / no funciona / no recuerdo (Vence usa solo Google)
+  if (/(olvid[eéó]|recuperar|no\s+recuerdo|no\s+(la|me)\s+(s[eé]|recuerdo|funciona))\s+(la\s+|mi\s+)?(contrase[ñn]a|password)/i.test(msgLower)
+      || /(contrase[ñn]a|password)\s+(olvidad|olvidé|no\s+(la|me)\s+(s[eé]|recuerdo|funciona))/i.test(msgLower)) {
+    return `**Contraseña olvidada**
+
+En Vence no tienes contraseña propia — accedes con tu cuenta de **Google**.
+
+Por eso, si has olvidado tu contraseña, tienes que recuperarla en Google directamente:
+
+👉 [accounts.google.com/signin/recovery](https://accounts.google.com/signin/recovery)
+
+Una vez que recuperes el acceso a tu Google, entra en Vence pulsando **"Continuar con Google"** como siempre.`
+  }
+
+  // Iniciar sesión / no puedo entrar (Vence = Google OAuth)
+  if (/no\s+puedo\s+(entrar|iniciar\s+sesi[oó]n|acceder|loguearme|logearme|hacer\s+login)/i.test(msgLower)
+      || /(iniciar|abrir)\s+sesi[oó]n/i.test(msgLower)
+      || /\b(login|log\s*in)\b/i.test(msgLower)) {
+    return `**Iniciar sesión en Vence**
+
+Vence usa tu cuenta de Google para entrar (no hay usuario ni contraseña propios).
+
+1. En la pantalla de acceso, pulsa **"Continuar con Google"**
+2. Elige tu cuenta de Google y confirma el permiso
+
+**Si no puedes entrar:**
+- Verifica que tienes acceso a tu cuenta de Google
+- Prueba en ventana privada/incógnito por si hay cookies bloqueando
+- Desactiva temporalmente bloqueadores de anuncios o extensiones de privacidad
+- Si usas varias cuentas de Google, elige la correcta en el selector
+
+Si el botón "Continuar con Google" da error, escríbenos desde **💬 Soporte** (mismo menú de tu avatar) con una captura.`
+  }
+
+  // Eliminar cuenta / darse de baja / borrar cuenta
+  if (/eliminar\s+(mi\s+)?cuenta|borrar\s+(mi\s+)?cuenta|dar(me)?\s+de\s+baja/i.test(msgLower)) {
+    return `**Eliminar tu cuenta**
+
+1. Pulsa en **tu avatar** (arriba a la derecha)
+2. Pulsa **"👤 Mi Perfil"**
+3. Baja hasta el final de la página, hasta la sección **"⚠️ Zona de peligro"**
+4. Pulsa el botón rojo **🗑️ Solicitar eliminación**
+5. Confirma en el modal
+
+Tu solicitud se procesa en **24-48 horas**. Recibirás un email de confirmación cuando la cuenta y todos tus datos queden eliminados. Hasta entonces puedes seguir usando la cuenta con normalidad.
+
+⚠️ **Es irreversible**: se borran tus tests, progreso, suscripción y datos personales. No puede deshacerse después.`
+  }
+
   // Problema de suscripcion / ya pagué pero no soy premium
   if (/(ya\s+)?pagu[eé]|he\s+pagado|hice\s+el\s+pago/i.test(msgLower) && /(no\s+(soy|eres|es)\s+premium|no\s+me\s+(deja|aparece|sale)|suscr[ií]b|no\s+tengo\s+premium|pone\s+free|sigue\s+(free|gratis))/i.test(msgLower)) {
     return `**Problema con tu suscripcion**
