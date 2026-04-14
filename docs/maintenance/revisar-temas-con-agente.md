@@ -263,6 +263,19 @@ El agente determina uno de estos 12 estados:
 | ❌ | ✅ | `tech_bad_answer` |
 | ❌ | ❌ | `tech_bad_answer_and_explanation` |
 
+### 3.1 Criterio estricto para `article_ok` (post-14/04/2026)
+
+**Regla:** `article_ok = true` **SOLO** si el artículo vinculado contiene **literalmente** el supuesto, lista o regla por la que se pregunta, de modo que permita justificar por qué cada opción A/B/C/D es correcta o incorrecta citando *ese* artículo.
+
+**Casos en los que `article_ok` debe ser `false` aunque el artículo esté "relacionado":**
+- Apunta a **Preámbulo / Exposición de Motivos** (no contiene contenido normativo resolutivo).
+- Apunta a **disposición adicional, transitoria, derogatoria o final** que no resuelve el supuesto.
+- Apunta a un artículo "del mismo tema" pero que no enumera el supuesto concreto preguntado (típico cuando la pregunta es sobre causas/requisitos/plazos tasados y el artículo vinculado es uno introductorio o de principios).
+
+**Test rápido obligatorio:** *"¿Puedo justificar por qué cada opción A/B/C/D es correcta o incorrecta citando exclusivamente este artículo?"* Si la respuesta es no → `article_ok = false` y proponer `correct_article_suggestion` con el artículo que sí contiene el supuesto.
+
+**Incidente que motiva la regla (14/04/2026):** la pregunta `a41b8cf6...` (Ley 1/1998 CyL, causas de supresión de municipios) tenía `primary_article_id` apuntando al Preámbulo. El agente leyó la EM, no encontró contradicción con la respuesta marcada y validó `article_ok=true, answer_ok=true, explanation_ok=true` con confianza **alta**. Resultado: la opción "Falta de candidatos" parecía la falsa, pero el art. 13.d) sí contempla "falta reiterada de candidatos" como causa de supresión — fallo detectado por una impugnación de usuaria, no por la verificación.
+
 ## 4. Cómo Usar el Agente
 
 ### Opción 1: Revisión individual (pocos temas)
