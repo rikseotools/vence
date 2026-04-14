@@ -261,9 +261,34 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
           return null
         }
 
-        // Si no existe el perfil, es normal
+        // PGRST116 = "no rows returned". Dos casos posibles:
+        //   A) Usuario nuevo sin perfil → caller llama a ensureUserProfile que lo crea.
+        //   B) Blip intermitente de Supabase (RLS lag, edge cache, JWT en el límite)
+        //      para un perfil que SÍ existe — caso Luisa (14/04/2026).
+        //
+        // Si tenemos cache previo del MISMO userId, asumimos blip transitorio (caso B)
+        // y devolvemos el cache para no romper la UI Premium. Para usuarios genuinamente
+        // nuevos, userProfileRef.current es null y seguimos el flujo normal de creación.
+        //
+        // Antes del fix: cualquier PGRST116 reseteaba a null → "phantom logout" Premium.
         if (error.code === 'PGRST116') {
-          console.log('📝 Perfil no existe, será creado automáticamente')
+          if (userProfileRef.current && userProfileRef.current.id === userId) {
+            console.log('📝 PGRST116 transitorio para perfil cacheado — manteniendo cache')
+            logClientError('auth/load-user-profile', new Error('PGRST116 transient — kept cached profile'), {
+              component: 'AuthContext.loadUserProfile',
+              userId,
+              severity: 'info',
+            })
+            return userProfileRef.current
+          }
+          // Sin cache: reintentar UNA vez con backoff corto antes de asumir
+          // que el perfil realmente no existe (caso A → crear via ensureUserProfile)
+          if (retryCount === 0) {
+            console.log('📝 PGRST116 sin cache — reintentando una vez antes de crear perfil')
+            await new Promise(resolve => setTimeout(resolve, 300))
+            return loadUserProfile(userId, retryCount + 1)
+          }
+          console.log('📝 Perfil no existe (tras reintento), será creado automáticamente')
           return null
         }
 

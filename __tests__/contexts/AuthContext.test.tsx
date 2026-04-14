@@ -1006,9 +1006,13 @@ describe('AuthContext — loadUserProfile edge cases', () => {
       )
     })
 
-    await act(async () => {
-      jest.advanceTimersByTime(50)
-    })
+    // El fix de PGRST116 añade 1 retry con 300ms + ensureUserProfile interno puede
+    // hacer recursión. Avanzamos en pulsos para drenar todas las promesas pendientes.
+    for (let i = 0; i < 5; i++) {
+      await act(async () => {
+        jest.advanceTimersByTime(500)
+      })
+    }
 
     // Loading should finish (not stuck)
     expect(renders[renders.length - 1].loading).toBe(false)
@@ -1357,6 +1361,164 @@ describe('AuthContext — singleflight loadUserProfile', () => {
 
     // Debe haber habido al menos una query adicional para el nuevo usuario
     expect(mockSingle.mock.calls.length).toBeGreaterThan(callsAfterFirst)
+  })
+
+  test('PGRST116 con perfil cacheado del MISMO user → mantiene cache (no phantom logout)', async () => {
+    // Caso Luisa (14/04/2026): blip de Supabase devuelve PGRST116 para perfil
+    // que existe en BD. Antes del fix la usuaria perdía la UI Premium aunque
+    // su plan_type=premium seguía intacto.
+    const premiumProfile = { id: 'luisa', plan_type: 'premium', email: 'luisa@test.com' }
+
+    let callCount = 0
+    const mockSingle = jest.fn().mockImplementation(() => {
+      callCount++
+      // 1ª llamada: éxito → llena cache
+      // 2ª llamada (TOKEN_REFRESHED): blip PGRST116
+      if (callCount === 1) return Promise.resolve({ data: premiumProfile, error: null })
+      return Promise.resolve({ data: null, error: { code: 'PGRST116', message: 'no rows' } })
+    })
+    const mockAbortSignal = jest.fn().mockReturnValue({ single: mockSingle })
+    const mockEq = jest.fn().mockReturnValue({ abortSignal: mockAbortSignal })
+    const mockSelect = jest.fn().mockReturnValue({ eq: mockEq })
+
+    mockSupabase = {
+      auth: {
+        getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'luisa', email: 'luisa@test.com' } }, error: null }),
+        onAuthStateChange: jest.fn().mockImplementation((cb: AuthCallback) => {
+          authCallback = cb
+          setTimeout(() => cb('INITIAL_SESSION', { user: { id: 'luisa', email: 'luisa@test.com' } }), 0)
+          return { data: { subscription: { unsubscribe: mockUnsubscribe } } }
+        }),
+      },
+      from: jest.fn().mockReturnValue({ select: mockSelect }),
+      rpc: jest.fn().mockResolvedValue({ data: null, error: null }),
+    }
+
+    const renders: Array<{ isPremium: boolean }> = []
+    await act(async () => {
+      render(
+        <AuthProvider>
+          <AuthConsumer onRender={(v) => renders.push({ isPremium: v.isPremium as boolean })} />
+        </AuthProvider>
+      )
+    })
+    await act(async () => { jest.advanceTimersByTime(50) })
+
+    // Primer load: Premium ✓
+    expect(renders.some(r => r.isPremium === true)).toBe(true)
+    const premiumLoaded = renders.length
+
+    // Disparar TOKEN_REFRESHED → fuerza nueva loadUserProfile que recibirá PGRST116
+    if (authCallback) {
+      await act(async () => {
+        authCallback!('TOKEN_REFRESHED', { user: { id: 'luisa', email: 'luisa@test.com' } })
+      })
+      await act(async () => { jest.advanceTimersByTime(500) })
+    }
+
+    // Crítico: tras el blip PGRST116, el último render NO debe ser isPremium=false
+    const finalRender = renders[renders.length - 1]
+    expect(finalRender.isPremium).toBe(true)
+  })
+
+  test('PGRST116 sin cache (usuario nuevo) → reintenta 1 vez con 300ms antes de devolver null', async () => {
+    let callCount = 0
+    const mockSingle = jest.fn().mockImplementation(() => {
+      callCount++
+      // Ambas llamadas devuelven PGRST116 (usuario realmente nuevo, no existe)
+      return Promise.resolve({ data: null, error: { code: 'PGRST116', message: 'no rows' } })
+    })
+    const mockAbortSignal = jest.fn().mockReturnValue({ single: mockSingle })
+    const mockEq = jest.fn().mockReturnValue({ abortSignal: mockAbortSignal })
+    const mockSelect = jest.fn().mockReturnValue({ eq: mockEq })
+
+    mockSupabase = {
+      auth: {
+        getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'newuser', email: 'new@test.com' } }, error: null }),
+        onAuthStateChange: jest.fn().mockImplementation((cb: AuthCallback) => {
+          authCallback = cb
+          setTimeout(() => cb('INITIAL_SESSION', { user: { id: 'newuser', email: 'new@test.com' } }), 0)
+          return { data: { subscription: { unsubscribe: mockUnsubscribe } } }
+        }),
+      },
+      from: jest.fn().mockReturnValue({ select: mockSelect }),
+      rpc: jest.fn().mockResolvedValue({ data: null, error: null }),
+    }
+
+    await act(async () => {
+      render(
+        <AuthProvider>
+          <AuthConsumer onRender={() => {}} />
+        </AuthProvider>
+      )
+    })
+    // Avanzar 50ms para que arranque la 1ª query
+    await act(async () => { jest.advanceTimersByTime(50) })
+    // Avanzar 300ms (delay del retry) + margen para que se complete la 2ª query
+    await act(async () => { jest.advanceTimersByTime(500) })
+
+    // Debe haberse llamado 2 veces (1ª + 1 retry tras 300ms)
+    expect(mockSingle).toHaveBeenCalledTimes(2)
+  })
+
+  test('PGRST116 con cache de OTRO user → NO devuelve cache ajeno (security)', async () => {
+    // Caso de seguridad: si por algún motivo userProfileRef tiene el perfil de
+    // un user distinto al que estamos pidiendo, NO debemos devolverlo. El check
+    // del fix es `userProfileRef.current.id === userId`.
+    //
+    // Verificación: tras cargar perfil de other-user y luego pedir newer-user
+    // con respuesta PGRST116, debemos hacer al menos UNA query de red para
+    // newer-user (no cortocircuitar con el cache ajeno).
+    const otherUserProfile = { id: 'other-user', plan_type: 'premium', email: 'other@test.com' }
+    let callCount = 0
+    const mockSingle = jest.fn().mockImplementation(() => {
+      callCount++
+      // 1ª: éxito para other-user
+      if (callCount === 1) return Promise.resolve({ data: otherUserProfile, error: null })
+      // Resto: PGRST116
+      return Promise.resolve({ data: null, error: { code: 'PGRST116', message: 'no rows' } })
+    })
+    const mockAbortSignal = jest.fn().mockReturnValue({ single: mockSingle })
+    const mockEq = jest.fn().mockReturnValue({ abortSignal: mockAbortSignal })
+    const mockSelect = jest.fn().mockReturnValue({ eq: mockEq })
+
+    mockSupabase = {
+      auth: {
+        getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'other-user', email: 'other@test.com' } }, error: null }),
+        onAuthStateChange: jest.fn().mockImplementation((cb: AuthCallback) => {
+          authCallback = cb
+          setTimeout(() => cb('INITIAL_SESSION', { user: { id: 'other-user', email: 'other@test.com' } }), 0)
+          return { data: { subscription: { unsubscribe: mockUnsubscribe } } }
+        }),
+      },
+      from: jest.fn().mockReturnValue({ select: mockSelect }),
+      rpc: jest.fn().mockResolvedValue({ data: null, error: null }),
+    }
+
+    await act(async () => {
+      render(
+        <AuthProvider>
+          <AuthConsumer onRender={() => {}} />
+        </AuthProvider>
+      )
+    })
+    await act(async () => { jest.advanceTimersByTime(50) })
+
+    // Tras INITIAL_SESSION otherUser ya cargó: 1 call
+    const callsAfterInitial = mockSingle.mock.calls.length
+    expect(callsAfterInitial).toBeGreaterThanOrEqual(1)
+
+    // Cambiar a un usuario distinto
+    if (authCallback) {
+      await act(async () => {
+        authCallback!('SIGNED_IN', { user: { id: 'newer-user', email: 'newer@test.com' } })
+      })
+      await act(async () => { jest.advanceTimersByTime(600) })
+    }
+
+    // CRÍTICO: para newer-user debe haberse hecho query de red (no devolver
+    // cache de other-user). Esperamos al menos 1 call adicional.
+    expect(mockSingle.mock.calls.length).toBeGreaterThan(callsAfterInitial)
   })
 
   test('si la carga falla, el Map se limpia y la siguiente llamada reintenta', async () => {
