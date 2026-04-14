@@ -1239,3 +1239,77 @@ Esto se suma a los filtros genéricos de audiencias descritos en `docs/procedure
 ### 4. Referencia cruzada con el manual de newsletters
 
 Para el resto de gotchas operativos al enviar el cross-sell (paginación Supabase a 1000 filas, `previewData` que rompe el render, subject sin userName, `fromEmail` correcto, matching de ciudades), ver `docs/procedures/enviar-newsletter-con-plantilla-bd.md` → sección *"Gotchas reales aprendidos en producción"*.
+
+---
+
+## Lecciones aprendidas creando Aux. Admin. Diputación de León (abr 2026)
+
+Gotchas que el manual no dejaba claros y se descubrieron al crear la oposición 33:
+
+### 1. `topics.description` debe estar poblado (no solo `descripcion_corta`)
+
+El test `temarioEpigrafeIntegrity` exige que `description` no sea nulo/vacío. Y el test `temarioSemanticCoherence` exige que `descripcion_corta` tenga **≥40% de keywords presentes en `title`+`description`**. La receta segura:
+
+```sql
+UPDATE topics
+SET descripcion_corta = title,
+    description       = epigrafe
+WHERE position_type = '<position_type>';
+```
+
+Si pones `descripcion_corta = epigrafe` (el texto largo) sueles caer por debajo del 40% de overlap con el title y el test `temarioSemanticCoherence` falla.
+
+### 2. BOCYL/BOPZ ≠ BOE: la fecha que dispara el plazo es la del BOE
+
+En oposiciones autonómicas/locales hay **dos publicaciones**:
+- **Boletín autonómico** (BOCYL, BOPZ, DOG, etc.) → publica las bases completas
+- **BOE** → publica el *resumen* de convocatoria. **Esta es la que dispara el plazo de 20 días hábiles**.
+
+Consecuencia en BD:
+- `boe_publication_date` debe ser la del **BOE** (no la del boletín autonómico), porque de ahí se calcula el `inscription_deadline`
+- `boe_reference` puede ser del BOE; opcional añadir "(BOCYL dd/mm/yyyy)" entre paréntesis
+- El hito BOCYL y el hito BOE son dos entradas distintas en `convocatoria_hitos`
+
+### 3. Tests con conteos hardcoded que se rompen al añadir oposición
+
+Al incorporar una oposición nueva hay que incrementar los literales en **tres tests**:
+
+| Test | Qué actualizar |
+|------|----------------|
+| `__tests__/config/oposicionesCentralConfig.test.ts` | `ALL_OPOSICION_SLUGS.length` y `ALL_POSITION_TYPES.length` |
+| `__tests__/api/theme-stats/themeStats.test.ts` | `VALID_OPOSICIONES.toHaveLength(N)` (×2) + lista de `toContain` |
+| `__tests__/temario/articleTestButton.test.ts` | Conteo de `TopicContentView.tsx` (uno por oposición con rutas propias) |
+
+### 4. `PositionType` Zod schema es derivado (NO editar a mano)
+
+`lib/api/tema-resolver/schemas.ts` genera el enum Zod dinámicamente desde `OPOSICIONES`:
+```ts
+export const PositionTypeSchema = z.enum(OPOSICIONES.map(o => o.positionType) as [string, ...string[]])
+```
+Basta con añadir la entrada en `lib/config/oposiciones.ts`. No hay enum manual que actualizar.
+
+### 5. `convocatoria_hitos.fecha` es NOT NULL
+
+No se pueden insertar hitos *upcoming* sin fecha como placeholder. O se espera a tener la fecha real, o se pone una estimada y se corrige después. Insertar solo los hitos ya ocurridos es una estrategia válida: el cron de seguimiento (`/api/cron/check-seguimiento`) detecta cambios en la web oficial y se añaden posteriormente.
+
+### 6. Técnica cp+sed para duplicar rutas Next.js de una oposición hermana
+
+Para oposiciones con estructura de rutas similar a otra ya existente (p.ej. Diputación León ← Diputación Zaragoza):
+
+```bash
+cp -r app/<oposicion-hermana> app/<oposicion-nueva>
+cd app/<oposicion-nueva>
+find . -type f \( -name "*.tsx" -o -name "*.ts" -o -name "*.js" \) \
+  -exec sed -i 's/<slug-hermana>/<slug-nueva>/g; s/<position_type_hermana>/<position_type_nueva>/g; s/<Nombre Hermano>/<Nombre Nuevo>/g' {} +
+```
+
+**Después, revisar a mano:**
+- `temario/[slug]/page.tsx` → `generateStaticParams` usa `length: N` (número de temas)
+- `temario/[slug]/TopicContentView.tsx` → función `getBlockInfo` tiene rangos de bloques cableados
+- `temario/layout.js`, `test/page.tsx`, `test/layout.tsx` → keywords SEO con literales "N temas" y "M bloques" — hay que sustituirlos también
+
+### 7. Reutilización máxima de leyes ya existentes
+
+Antes de crear leyes nuevas, hacer inventario en BD. Muchas oposiciones CyL/La Rioja/Zaragoza ya tienen cargadas **todas** las leyes autonómicas y estatales habituales (Estatuto CyL, Función Pública CyL, Régimen Local CyL, Transparencia CyL, Igualdad CyL, etc.). Querying por `short_name` con los códigos típicos (`Ley X/YYYY CyL`, `LO 14/2007`, `LPRL`, etc.) evita duplicar y asegura que las preguntas heredadas se reutilizan automáticamente vía `topic_scope`.
+
+Ejemplo real: al añadir Dip. León (25 temas), **no hubo que crear ninguna ley nueva** y se heredaron ~10k preguntas automáticamente de las otras oposiciones.
