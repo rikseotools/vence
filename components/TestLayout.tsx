@@ -2423,9 +2423,10 @@ export default function TestLayout({
                           userId={user.id}
                           questionId={currentQuestionUuid}
                           currentResult={{
-                            is_correct: verifiedCorrectAnswer !== null && selectedAnswer === verifiedCorrectAnswer,
-                            timeSpent: Math.round((Date.now() - questionStartTime) / 1000),
-                            confidence: confidenceLevel
+                            is_correct: !isBlank && verifiedCorrectAnswer !== null && selectedAnswer === verifiedCorrectAnswer,
+                            was_blank: isBlank,
+                            time_spent_seconds: Math.round((Date.now() - questionStartTime) / 1000),
+                            confidence_level: confidenceLevel as 'very_sure' | 'sure' | 'unsure' | 'guessing' | null
                           }}
                         />
                       </>
