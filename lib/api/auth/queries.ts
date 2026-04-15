@@ -3,6 +3,7 @@ import { getDb } from '@/db/client'
 import { emailLogs, userProfiles } from '@/db/schema'
 import { eq, and } from 'drizzle-orm'
 import { sendEmailV2 } from '@/lib/api/emails/queries'
+import { extractOposicionFromUrl } from './extract-oposicion'
 import type { ProcessCallbackRequest, ProcessCallbackResponse } from './schemas'
 
 // ============================================
@@ -49,6 +50,23 @@ export async function processAuthCallback(
 
     console.log('🎯 [AuthCallback/v2] Deteccion usuario nuevo:', { userId, isNewUser })
 
+    // Fallback: si el caller no pasó `oposicion` pero returnUrl contiene un
+    // slug conocido del catálogo, auto-asignar. Resuelve el caso de usuarios
+    // que se registran sin completar onboarding tras navegar contenido de una
+    // oposición concreta (ver docs memoria: project_auto_oposicion_registro).
+    let effectiveOposicion = oposicion
+    if (!effectiveOposicion && returnUrl) {
+      const extracted = extractOposicionFromUrl(returnUrl)
+      if (extracted.positionType) {
+        effectiveOposicion = extracted.positionType
+        console.log('🎯 [AuthCallback/v2] target_oposicion auto-extraído de returnUrl:', {
+          returnUrl,
+          positionType: extracted.positionType,
+          reason: extracted.reason,
+        })
+      }
+    }
+
     // 2. Upsert perfil
     const [existingProfile] = await db
       .select({
@@ -57,6 +75,7 @@ export async function processAuthCallback(
         registrationSource: userProfiles.registrationSource,
         registrationUrl: userProfiles.registrationUrl,
         registrationFunnel: userProfiles.registrationFunnel,
+        targetOposicion: userProfiles.targetOposicion,
       })
       .from(userProfiles)
       .where(eq(userProfiles.id, userId))
@@ -92,9 +111,15 @@ export async function processAuthCallback(
       if (!existingProfile.registrationFunnel) {
         if (funnel) {
           updateData.registrationFunnel = funnel
-        } else if (oposicion) {
+        } else if (effectiveOposicion) {
           updateData.registrationFunnel = 'temario_pdf'
         }
+      }
+
+      // Guardar target_oposicion si no existe (perfil antiguo sin target)
+      if (!existingProfile.targetOposicion && effectiveOposicion) {
+        updateData.targetOposicion = effectiveOposicion
+        updateData.firstOposicionDetectedAt = new Date().toISOString()
       }
 
       await db
@@ -132,13 +157,13 @@ export async function processAuthCallback(
         updatedAt: new Date().toISOString(),
       }
 
-      if (oposicion) {
-        newProfileData.targetOposicion = oposicion
+      if (effectiveOposicion) {
+        newProfileData.targetOposicion = effectiveOposicion
       }
 
       if (funnel) {
         newProfileData.registrationFunnel = funnel
-      } else if (oposicion) {
+      } else if (effectiveOposicion) {
         newProfileData.registrationFunnel = 'temario_pdf'
       }
 

@@ -428,11 +428,26 @@ describe('perfil nuevo - logica de insert', () => {
     expect(insertData.targetOposicion).toBe('tramitacion_procesal')
   })
 
-  test('sin oposicion: no se incluye targetOposicion', async () => {
+  test('sin oposicion explícito pero returnUrl con slug: auto-asigna desde URL', async () => {
+    // Post-15/04/2026: processAuthCallback extrae target_oposicion de returnUrl
+    // cuando el caller no pasa `oposicion` explícito. El baseParams tiene
+    // returnUrl='/auxiliar-administrativo-estado' → debe asignar estado.
     const { mockValues } = createMockDb({ welcomeEmails: [], existingProfile: null })
 
     await processAuthCallback(
       baseParams({ oposicion: null }),
+      mockRequest()
+    )
+
+    const insertData = mockValues.mock.calls[0][0]
+    expect(insertData.targetOposicion).toBe('auxiliar_administrativo_estado')
+  })
+
+  test('sin oposicion y returnUrl ambigua: no se incluye targetOposicion', async () => {
+    const { mockValues } = createMockDb({ welcomeEmails: [], existingProfile: null })
+
+    await processAuthCallback(
+      baseParams({ oposicion: null, returnUrl: '/leyes/constitucion-espanola/avanzado' }),
       mockRequest()
     )
 
@@ -464,11 +479,11 @@ describe('perfil nuevo - logica de insert', () => {
     expect(insertData.registrationFunnel).toBe('temario_pdf')
   })
 
-  test('ni oposicion ni funnel → no se incluye registrationFunnel', async () => {
+  test('ni oposicion ni funnel y returnUrl ambigua → no se incluye registrationFunnel', async () => {
     const { mockValues } = createMockDb({ welcomeEmails: [], existingProfile: null })
 
     await processAuthCallback(
-      baseParams({ oposicion: null, funnel: null }),
+      baseParams({ oposicion: null, funnel: null, returnUrl: '/leyes/constitucion-espanola/avanzado' }),
       mockRequest()
     )
 
