@@ -3,6 +3,7 @@
 
 import { getOpenAI, CHAT_MODEL, CHAT_MODEL_PREMIUM } from '../../shared/openai'
 import { logger } from '../../shared/logger'
+import { classifyOpenAIError, logOpenAIError } from '../../utils/openai-error-handler'
 import { searchArticles, formatArticlesForContext, detectLawsFromText, extractArticleNumbers, findArticleInLaw } from '../search'
 import {
   detectErrorInResponse,
@@ -717,8 +718,24 @@ ${analysisInstructions}`
       tokensUsed: totalTokens,
     }
   } catch (error) {
-    logger.error('Error generating verification response', error, { domain: 'verification' })
-    return { content: 'Hubo un error al verificar la respuesta. Por favor, intenta de nuevo.' }
+    // Clasificar el error (quota, rate_limit, auth, etc.) para dar un mensaje
+    // más honesto al usuario y alertar al admin si es crítico (quota agotada).
+    // Caso origen: 14-15/4/2026 cuota OpenAI agotada, 72/77 chats fallaron sin
+    // visibilidad en validation_error_logs hasta que un usuario lo reportó.
+    const classified = classifyOpenAIError(error)
+    logger.error('Error generating verification response', error, {
+      domain: 'verification',
+      category: classified.category,
+      status: classified.status,
+    })
+    await logOpenAIError(classified, {
+      endpoint: 'chat/verification',
+      userId: typeof (error as { userId?: string } | null)?.userId === 'string'
+        ? (error as { userId?: string }).userId
+        : null,
+      deployVersion: process.env.VERCEL_GIT_COMMIT_SHA || null,
+    })
+    return { content: classified.userFacingMessage }
   }
 }
 
