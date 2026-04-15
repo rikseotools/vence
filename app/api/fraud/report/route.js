@@ -41,14 +41,19 @@ async function _POST(request) {
                'unknown'
 
     // Determinar severidad basada en scores
+    // Umbrales revisados 2026-04-15 tras auditoría de falsos positivos:
+    // usuarios Chrome legítimos con BotD activando 'headless_chrome' (60)
+    // + cualquier señal pequeña adicional disparaban HIGH=70.
+    // Subimos HIGH a 90 para exigir señales confirmativas (webdriver,
+    // puppeteer, etc.) además de la heurística de BotD.
     let severity = 'low'
     const score = botScore || behaviorScore || 0
 
-    if (score >= 100) {
+    if (score >= 120) {
       severity = 'critical'
-    } else if (score >= 70) {
+    } else if (score >= 90) {
       severity = 'high'
-    } else if (score >= 40) {
+    } else if (score >= 50) {
       severity = 'medium'
     }
 

@@ -16,6 +16,7 @@ import type {
 } from './schemas'
 
 import { getValidExamPositions } from '@/lib/config/exam-positions'
+import { buildOfficialExamFilter } from '@/lib/api/oposicion-scope/queries'
 
 // ============================================
 // COLUMNAS COMPARTIDAS: Usado por todos los selects de preguntas
@@ -753,22 +754,13 @@ export async function getFilteredQuestions(
           eq(questions.isActive, true),
           eq(laws.id, mapping.lawId!),
           ...(hasSpecificArticles ? [inArray(articles.articleNumber, mapping.articleNumbers!)] : []),
-          // 🏛️ Filtro de preguntas oficiales POR OPOSICIÓN
-          // Las preguntas sin exam_position NO se incluyen (deben categorizarse primero)
-          onlyOfficialQuestions
-            ? (() => {
-                const validPositions = getValidExamPositions(positionType)
-                // Si hay posiciones válidas, filtrar: is_official AND exam_position IN validPositions
-                // Si no hay mapeo para esta oposición, solo filtrar por is_official (comportamiento legacy)
-                if (validPositions.length > 0) {
-                  return and(
-                    eq(questions.isOfficialExam, true),
-                    inArray(questions.examPosition, validPositions)
-                  )
-                }
-                return eq(questions.isOfficialExam, true)
-              })()
-            : sql`true`,
+          // 🏛️ Filtro cross-oposición SIEMPRE activo: oficiales solo si exam_position
+          // del usuario coincide. Necesario porque una pregunta oficial de Andalucía
+          // vinculada a TREBEP es elegible desde el scope de Estado/CARM/etc, y sin
+          // este filtro contamina tests practice (caso Laura, 14/04/2026).
+          buildOfficialExamFilter(positionType),
+          // Si el usuario pidió SOLO oficiales, además forzar is_official_exam=true
+          onlyOfficialQuestions ? eq(questions.isOfficialExam, true) : sql`true`,
           // Filtro de dificultad
           difficultyMode && difficultyMode !== 'random'
             ? eq(questions.globalDifficultyCategory, difficultyMode)
@@ -985,8 +977,8 @@ export async function countFilteredQuestions(
           eq(questions.isActive, true),
           eq(articles.lawId, mapping.lawId!),
           ...(hasSpecificArticles ? [inArray(articles.articleNumber, mapping.articleNumbers!)] : []),
-          // 🏛️ Filtro de preguntas oficiales POR OPOSICIÓN
-          // Las preguntas sin exam_position NO se incluyen (deben categorizarse primero)
+          // 🏛️ Filtro cross-oposición SIEMPRE activo (mismo motivo que en getFilteredQuestions)
+          buildOfficialExamFilter(positionType),
           onlyOfficialQuestions
             ? (() => {
                 const validPositions = getValidExamPositions(positionType)

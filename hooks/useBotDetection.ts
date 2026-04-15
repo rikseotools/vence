@@ -59,9 +59,14 @@ export function useBotDetection(userId: string | null) {
           evidence.push('puppeteer_detected')
         }
 
-        // 5. Detectar ausencia de plugins (bots típicamente no tienen)
+        // 5. [DESACTIVADO 2026-04-15] Detectar ausencia de plugins
+        // Chrome moderno (120+) NO expone plugins estándar a JS por defecto,
+        // por lo que `navigator.plugins.length === 0` ya no discrimina bots
+        // de humanos. Esta señal generaba +15 puntos a TODOS los usuarios
+        // Chrome legítimos, causando falsos positivos HIGH al combinarse
+        // con botd:headless_chrome. Mantenemos el evidence por si BotD o
+        // equivalente lo necesita, pero el score ya no se incrementa.
         if (navigator.plugins && navigator.plugins.length === 0) {
-          score += 15
           evidence.push('no_plugins')
         }
 

@@ -8,8 +8,9 @@
 // Ver project_oposicion_scope_refactor.md para contexto y fases.
 
 import { getDb } from '@/db/client'
-import { laws, topicScope, topics, userProfiles } from '@/db/schema'
-import { eq } from 'drizzle-orm'
+import { laws, questions, topicScope, topics, userProfiles } from '@/db/schema'
+import { and, eq, inArray, or, sql } from 'drizzle-orm'
+import { getValidExamPositions } from '@/lib/config/exam-positions'
 
 export type AllowedLawsResult = {
   positionType: string
@@ -122,4 +123,50 @@ export function filterSelectedLawsByScope(
   }
 
   return { allowedLaws, empty: false }
+}
+
+// ============================================
+// Filtro de preguntas oficiales por exam_position
+// ============================================
+// Bug histórico (Laura Abellan, 14/04/2026): preguntas oficiales con
+// exam_position de OTRA oposición se colaban en tests "practice" porque el
+// filtro exam_position SOLO se aplicaba en modo onlyOfficialQuestions=true.
+// Las oficiales vinculadas a leyes estatales (TREBEP, L39, L40, CE...) son
+// elegibles desde el scope, por lo que sin este filtro contaminan tests
+// de cualquier oposición que comparta esas leyes.
+//
+// Este helper devuelve una cláusula Drizzle que SIEMPRE permite preguntas
+// no oficiales y solo permite oficiales si su exam_position está mapeada al
+// positionType del usuario. Aplicarlo en TODA query que sirva preguntas.
+
+/**
+ * Comportamiento (post-15/04/2026, caso Laura):
+ *
+ * - Oposición CON mapeo en exam-positions.ts: admite oficiales solo si su
+ *   exam_position está en la lista permitida.
+ * - Oposición SIN mapeo: BLOQUEA todas las oficiales (no admite ninguna).
+ *   Más seguro porque hoy en BD solo hay oficiales de 8 cuerpos (estado,
+ *   madrid, cyl, andalucia, tramitación, auxilio, administrativo,
+ *   gestion_admin_civil). Cualquier oficial que aparezca a una oposición
+ *   sin mapeo es necesariamente cross-contaminación.
+ *
+ * Emite warn para que se detecte y se añada el mapeo si la oposición
+ * empezara a tener oficiales propias en el futuro.
+ */
+export function buildOfficialExamFilter(positionType: string) {
+  const validPositions = getValidExamPositions(positionType)
+  if (!validPositions || validPositions.length === 0) {
+    console.warn(
+      `[scope] sin mapeo exam_position para "${positionType}" — bloqueando todas las oficiales. ` +
+      `Si esta oposición empieza a tener oficiales propias, añadir entrada en lib/config/exam-positions.ts.`
+    )
+    return eq(questions.isOfficialExam, false)
+  }
+  return or(
+    eq(questions.isOfficialExam, false),
+    and(
+      eq(questions.isOfficialExam, true),
+      inArray(questions.examPosition, validPositions),
+    ),
+  )
 }
