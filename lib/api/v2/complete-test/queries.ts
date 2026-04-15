@@ -1,7 +1,7 @@
 // lib/api/v2/complete-test/queries.ts
 // Server-side: completar test con analytics (replica completeDetailedTest + updateUserProgressDirect)
 import { getDb } from '@/db/client'
-import { tests, testQuestions, userSessions, userProgress, topics, questions, psychometricQuestions } from '@/db/schema'
+import { tests, testQuestions, userSessions, questions, psychometricQuestions } from '@/db/schema'
 import { eq, and, inArray } from 'drizzle-orm'
 import type { CompleteTestRequest, DetailedAnswerInput } from './schemas'
 import { insertTestAnswersBatch } from '@/lib/api/test-answers'
@@ -218,12 +218,24 @@ export async function completeTest(
     return { success: false, status: 'error' }
   }
 
-  // 5. Update user_progress (background-safe, errors don't fail the whole operation)
-  try {
-    await updateUserProgress(db, userId, sessionId, finalScore, detailedAnswers.length, testRow.temaNumber)
-  } catch (e) {
-    console.warn('⚠️ [complete-test] Error actualizando user_progress (no-fatal):', e)
-  }
+  // 5. [ELIMINADO 2026-04-15] Update user_progress
+  //    Tras auditoría de performance (log Vercel 4093ms en este endpoint)
+  //    se verificó que NADIE lee la tabla `user_progress`:
+  //    - El código V2 (getUserProgressForTopicV2 en lib/api/topic-data)
+  //      deriva todo el progreso desde test_questions filtrando por
+  //      article_id vía topic_scope. No consulta user_progress.
+  //    - La RPC get_user_progress_trends calcula desde test_questions + tests,
+  //      no lee user_progress.
+  //    - Ninguna view, trigger u otra RPC del schema public la consume
+  //      (verificado con pg_get_functiondef sobre todas las funciones).
+  //    - Ningún componente frontend la lee.
+  //    Además la lógica antigua era incorrecta para cross-oposición (agregaba
+  //    al topic de la primera position_type del loop, no a la del usuario).
+  //    Cross-oposición funciona porque test_questions es la fuente de verdad.
+  //    Eliminar este paso ahorra 5 SELECT topic + SELECT/UPDATE user_progress
+  //    (~600-700ms de round-trips secuenciales Vercel↔Supabase).
+  //    La tabla `user_progress` queda sin escrituras nuevas — se puede
+  //    eliminar en cleanup futuro o rediseñar si algún consumer la necesita.
 
   // 6. Update user_sessions si tenemos ID
   if (userSessionId) {
@@ -430,83 +442,10 @@ async function fillMissingTestQuestions(args: FillMissingArgs): Promise<number> 
   return result.inserted
 }
 
-// ============================================
-// HELPER: Update user_progress
-// ============================================
+// NOTA: helper updateUserProgress ELIMINADO 2026-04-15.
+// Cross-oposición funciona derivando desde test_questions vía
+// getUserProgressForTopicV2 + topic_scope. La tabla user_progress
+// no se lee en ningún consumer (verificado con pg_get_functiondef
+// sobre todas las funciones, views y triggers del schema public).
+// Ver histórico git para el código eliminado y contexto completo.
 
-async function updateUserProgress(
-  db: ReturnType<typeof getDb>,
-  userId: string,
-  sessionId: string,
-  correctAnswers: number,
-  totalQuestions: number,
-  temaNumber: number | null,
-) {
-  if (!temaNumber) return
-
-  // Buscar topic_id para este tema
-  const positionTypes = [
-    'auxiliar_administrativo',
-    'auxiliar_administrativo_estado',
-    'administrativo_estado',
-    'tramitacion_procesal',
-    'auxilio_judicial',
-  ]
-
-  let topicId: string | null = null
-  for (const posType of positionTypes) {
-    const [row] = await db
-      .select({ id: topics.id })
-      .from(topics)
-      .where(and(eq(topics.topicNumber, temaNumber), eq(topics.positionType, posType)))
-      .limit(1)
-    if (row?.id) {
-      topicId = row.id
-      break
-    }
-  }
-
-  if (!topicId) return
-
-  const accuracy = Math.round((correctAnswers / totalQuestions) * 100)
-  const now = new Date().toISOString()
-
-  // Check existing progress
-  const [existing] = await db
-    .select()
-    .from(userProgress)
-    .where(and(eq(userProgress.userId, userId), eq(userProgress.topicId, topicId)))
-    .limit(1)
-
-  if (existing) {
-    const newTotalAttempts = (existing.totalAttempts ?? 0) + totalQuestions
-    const newCorrectAttempts = (existing.correctAttempts ?? 0) + correctAnswers
-    const newAccuracy = Math.round((newCorrectAttempts / newTotalAttempts) * 100)
-
-    await db
-      .update(userProgress)
-      .set({
-        totalAttempts: newTotalAttempts,
-        correctAttempts: newCorrectAttempts,
-        accuracyPercentage: String(newAccuracy),
-        lastAttemptDate: now,
-        updatedAt: now,
-        needsReview: newAccuracy < 70,
-      })
-      .where(and(eq(userProgress.userId, userId), eq(userProgress.topicId, topicId)))
-  } else {
-    await db
-      .insert(userProgress)
-      .values({
-        userId,
-        topicId,
-        totalAttempts: totalQuestions,
-        correctAttempts: correctAnswers,
-        accuracyPercentage: String(accuracy),
-        lastAttemptDate: now,
-        needsReview: accuracy < 70,
-        createdAt: now,
-        updatedAt: now,
-      })
-  }
-}

@@ -614,10 +614,13 @@ describe('completeTest', () => {
   })
 
   // ============================================
-  // 5. Update de user_progress
+  // 5. user_progress NO se escribe (eliminado 2026-04-15)
   // ============================================
-  describe('Update de user_progress', () => {
-    test('inserta nuevo progress si no existe', async () => {
+  // Nadie lee user_progress (verificado con pg_get_functiondef sobre
+  // funciones/views/triggers y grep en frontend). El progreso se deriva
+  // desde test_questions vía getUserProgressForTopicV2 + topic_scope.
+  describe('user_progress NO se escribe', () => {
+    test('no inserta user_progress aunque haya tema', async () => {
       completeTest = await loadModule()
 
       let insertCalled = false
@@ -630,23 +633,18 @@ describe('completeTest', () => {
       dbResponses.select = [
         [{ id: 'test-session-123', userId: 'user-abc', temaNumber: 5 }],
         savedOrders(10),
-        [{ id: 'topic-5' }],     // topic found
-        [],                        // no existing progress
       ]
       dbResponses.update = [
-        [{ id: 'test-session-123' }], // test update
-      ]
-      dbResponses.insert = [
-        [], // progress insert
+        [{ id: 'test-session-123' }],
       ]
 
       const result = await completeTest(makeRequest({ tema: 5 }), 'user-abc')
 
       expect(result.success).toBe(true)
-      expect(insertCalled).toBe(true)
+      expect(insertCalled).toBe(false)
     })
 
-    test('actualiza progress existente acumulando totals', async () => {
+    test('solo actualiza tests (no user_progress) con tema presente', async () => {
       completeTest = await loadModule()
 
       let updateCount = 0
@@ -659,20 +657,15 @@ describe('completeTest', () => {
       dbResponses.select = [
         [{ id: 'test-session-123', userId: 'user-abc', temaNumber: 5 }],
         savedOrders(10),
-        [{ id: 'topic-5' }],
-        // Existing progress with previous stats
-        [{ userId: 'user-abc', topicId: 'topic-5', totalAttempts: 20, correctAttempts: 15 }],
       ]
       dbResponses.update = [
-        [{ id: 'test-session-123' }], // test update
-        [],                             // progress update
+        [{ id: 'test-session-123' }],
       ]
 
       const result = await completeTest(makeRequest({ finalScore: 7 }), 'user-abc')
 
       expect(result.success).toBe(true)
-      // 2 updates: tests + user_progress
-      expect(updateCount).toBe(2)
+      expect(updateCount).toBe(1)
     })
 
     test('no actualiza progress si temaNumber es null', async () => {
