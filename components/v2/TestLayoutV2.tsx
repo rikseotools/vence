@@ -83,6 +83,11 @@ export default function TestLayoutV2({
   // Estado básico del test
   const [currentQuestion, setCurrentQuestion] = useState(0)
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null)
+  // Feature "Dejar en blanco" (15/4/2026, sugerencia Tinokero).
+  // NOTA: TestLayoutV2 NO persiste respuestas en BD (a diferencia de TestLayout
+  // clásico). Aquí isBlank solo afecta la UI del test en curso — útil para
+  // flows efímeros de repaso donde el usuario quiere saltar sin elegir opción.
+  const [isBlank, setIsBlank] = useState(false)
   const [showResult, setShowResult] = useState(false)
   const [verifiedCorrectAnswer, setVerifiedCorrectAnswer] = useState<number | null>(null)
   const [score, setScore] = useState(0)
@@ -258,6 +263,87 @@ export default function TestLayoutV2({
     recordAnswer
   ])
 
+  // Handler "Dejar en blanco" (feature 15/4/2026, sugerencia Tinokero).
+  // En V2 no persistimos — solo actualizamos UI local. Validamos via /api/answer
+  // solo para obtener la respuesta correcta y mostrarla al usuario.
+  const handleBlankClick = useCallback(async () => {
+    if (showResult || processingAnswer || isValidating) return
+
+    setIsBlank(true)
+    setSelectedAnswer(null)
+    setInteractionCount(prev => prev + 1)
+    setProcessingAnswer(true)
+
+    trackTestAction('answer_blank', currentQ?.id, {
+      questionIndex: currentQuestion,
+      timeToDecide: Date.now() - questionStartTime,
+    })
+
+    try {
+      // Validar solo para obtener la correcta y mostrarla — no cuenta como acierto
+      const result = await validateAnswer(currentQ?.id || '', -1)
+      setVerifiedCorrectAnswer(result.correctAnswer)
+      setShowResult(true)
+      // score NO suma — blanco nunca acierta
+
+      const timeSpent = Math.round((Date.now() - questionStartTime) / 1000)
+      const newAnsweredQuestion: AnsweredQuestion = {
+        question: currentQuestion,
+        selectedAnswer: -1,
+        correct: false,
+        timestamp: new Date().toISOString(),
+      }
+      setAnsweredQuestions(prev => [...prev, newAnsweredQuestion])
+
+      const newDetailedAnswer: DetailedAnswer = {
+        questionIndex: currentQuestion,
+        questionOrder: currentQuestion + 1,
+        selectedAnswer: -1,
+        correctAnswer: result.correctAnswer,
+        isCorrect: false,
+        timeSpent,
+        timestamp: new Date().toISOString(),
+        questionData: currentQ ? {
+          id: currentQ.id,
+          question: currentQ.question,
+          options: currentQ.options as string[],
+          correct: result.correctAnswer,
+          article: currentQ.article_number ? {
+            number: currentQ.article_number,
+            law_short_name: currentQ.law_slug ?? null,
+          } : null,
+          metadata: null,
+        } : null,
+        confidence: null,
+        interactions: interactionCount,
+      }
+      setDetailedAnswers(prev => [...prev, newDetailedAnswer])
+
+      // Registrar para límite diario (blanco SÍ cuenta — evita exploit)
+      if (recordAnswer) recordAnswer()
+
+      // Explicación on-the-fly si hace falta
+      if (!currentQ?.explanation && currentQ?.id) {
+        generateExplanationIfMissing(currentQ.id, currentQ.question, currentQ.options as string[], result.correctAnswer)
+      }
+    } catch (error) {
+      console.error('Error validando respuesta en blanco:', error)
+    } finally {
+      setProcessingAnswer(false)
+    }
+  }, [
+    showResult,
+    processingAnswer,
+    isValidating,
+    currentQ,
+    currentQuestion,
+    questionStartTime,
+    interactionCount,
+    validateAnswer,
+    recordAnswer,
+    trackTestAction,
+  ])
+
   // Handler para compartir rápido en redes sociales
   const handleQuickShare = useCallback((platform: string) => {
     if (!currentQ) return
@@ -330,6 +416,7 @@ export default function TestLayoutV2({
 
       setCurrentQuestion(prev => prev + 1)
       setSelectedAnswer(null)
+      setIsBlank(false) // Reset del flag blanco entre preguntas
       setShowResult(false)
       setVerifiedCorrectAnswer(null)
       setQuestionStartTime(Date.now())
@@ -637,31 +724,52 @@ export default function TestLayoutV2({
               </div>
             )}
 
+            {/* Botón "Dejar en blanco" */}
+            {!showResult && currentQ?.options && (
+              <div className="flex justify-center mb-6">
+                <button
+                  onClick={handleBlankClick}
+                  disabled={processingAnswer}
+                  className="px-5 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm text-gray-600 dark:text-gray-300 transition-colors inline-flex items-center gap-2 min-h-[40px] disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Pasa a la siguiente pregunta sin marcarla como correcta o incorrecta. Verás cuál era la respuesta correcta."
+                >
+                  <span className="text-base">⚪</span>
+                  <span>Dejar en blanco</span>
+                </button>
+              </div>
+            )}
+
             {/* Sección de resultado */}
             {showResult && verifiedCorrectAnswer !== null && (
               <div ref={explanationRef} className="mt-6 border-t dark:border-gray-600 pt-6">
-                {/* Box de resultado (Correcto/Incorrecto) */}
+                {/* Box de resultado (Correcto/Incorrecto/Blanco) */}
                 <div className={`p-4 rounded-lg mb-4 ${
-                  selectedAnswer === verifiedCorrectAnswer
-                    ? 'bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700'
-                    : 'bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700'
+                  isBlank
+                    ? 'bg-gray-50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-600'
+                    : selectedAnswer === verifiedCorrectAnswer
+                      ? 'bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700'
+                      : 'bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700'
                 }`}>
                   <div className="flex items-center space-x-2 mb-2">
                     <span className="text-2xl">
-                      {selectedAnswer === verifiedCorrectAnswer ? '🎉' : '😔'}
+                      {isBlank ? '⚪' : selectedAnswer === verifiedCorrectAnswer ? '🎉' : '😔'}
                     </span>
                     <span className={`font-bold ${
-                      selectedAnswer === verifiedCorrectAnswer
-                        ? 'text-green-800 dark:text-green-300'
-                        : 'text-red-800 dark:text-red-300'
+                      isBlank
+                        ? 'text-gray-700 dark:text-gray-300'
+                        : selectedAnswer === verifiedCorrectAnswer
+                          ? 'text-green-800 dark:text-green-300'
+                          : 'text-red-800 dark:text-red-300'
                     }`}>
-                      {selectedAnswer === verifiedCorrectAnswer ? '¡Correcto!' : 'Incorrecto'}
+                      {isBlank ? 'Dejaste en blanco' : selectedAnswer === verifiedCorrectAnswer ? '¡Correcto!' : 'Incorrecto'}
                     </span>
                   </div>
                   <p className={`text-sm ${
-                    selectedAnswer === verifiedCorrectAnswer
-                      ? 'text-green-700 dark:text-green-400'
-                      : 'text-red-700 dark:text-red-400'
+                    isBlank
+                      ? 'text-gray-600 dark:text-gray-400'
+                      : selectedAnswer === verifiedCorrectAnswer
+                        ? 'text-green-700 dark:text-green-400'
+                        : 'text-red-700 dark:text-red-400'
                   }`}>
                     La respuesta correcta es: <strong>{String.fromCharCode(65 + verifiedCorrectAnswer)}</strong>
                   </p>
@@ -795,9 +903,10 @@ export default function TestLayoutV2({
                     userId={user.id}
                     questionId={currentQ.id}
                     currentResult={{
-                      is_correct: verifiedCorrectAnswer !== null && selectedAnswer === verifiedCorrectAnswer,
-                      timeSpent: Math.round((Date.now() - questionStartTime) / 1000),
-                      confidence: null
+                      is_correct: !isBlank && verifiedCorrectAnswer !== null && selectedAnswer === verifiedCorrectAnswer,
+                      was_blank: isBlank,
+                      time_spent_seconds: Math.round((Date.now() - questionStartTime) / 1000),
+                      confidence_level: null
                     }}
                   />
                 )}
