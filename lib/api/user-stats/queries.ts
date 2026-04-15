@@ -10,11 +10,15 @@ export async function getUserPublicStats(userId: string): Promise<UserPublicStat
 
   const mondayThisWeek = getMondayThisWeek()
 
-  // Query 1: total + accuracy + this week (un solo scan de test_questions)
+  // Query 1: total + accuracy + this week + desglose correct/blank (un solo
+  // scan de test_questions). blankAnswers requiere was_blank=true (añadido
+  // 15/4/2026 con la feature "Dejar en blanco"). Para filas legacy (before
+  // was_blank), el valor default es false y cuentan como incorrectas.
   const [statsResult] = await db
     .select({
       totalQuestions: sql<number>`count(*)::int`,
       correctAnswers: sql<number>`sum(case when ${testQuestions.isCorrect} then 1 else 0 end)::int`,
+      blankAnswers: sql<number>`sum(case when ${testQuestions.wasBlank} then 1 else 0 end)::int`,
       questionsThisWeek: sql<number>`sum(case when ${testQuestions.createdAt} >= ${mondayThisWeek} then 1 else 0 end)::int`,
     })
     .from(testQuestions)
@@ -32,12 +36,21 @@ export async function getUserPublicStats(userId: string): Promise<UserPublicStat
 
   const total = statsResult?.totalQuestions ?? 0
   const correct = statsResult?.correctAnswers ?? 0
+  const blank = statsResult?.blankAnswers ?? 0
+  // incorrectas REALES = no acertadas Y no en blanco. Rama legacy: filas con
+  // wasBlank=false pero que eran -1 en realidad (rare edge case de respuestas
+  // pre-15/4/2026 que podrían haber quedado con letra incorrecta) cuentan como
+  // incorrectas — pérdida aceptable, era pre-feature.
+  const incorrect = total - correct - blank
 
   return {
     totalQuestions: total,
     globalAccuracy: total > 0 ? Math.round((correct / total) * 1000) / 10 : 0,
     currentStreak: streakResult?.currentStreak ?? 0,
     questionsThisWeek: statsResult?.questionsThisWeek ?? 0,
+    correctAnswers: correct,
+    incorrectAnswers: Math.max(0, incorrect),
+    blankAnswers: blank,
   }
 }
 
