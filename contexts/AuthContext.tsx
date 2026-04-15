@@ -310,11 +310,20 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
           error: error
         })
         // 🔭 Error de BD (no timeout, no PGRST116): puede ser RLS, permisos, etc.
-        logClientError('auth/load-user-profile', new Error(`db error: ${error?.message || error?.code || 'unknown'}`), {
-          component: 'AuthContext.loadUserProfile',
-          userId,
-          severity: 'warning',
-        })
+        // Filtrar AbortError naturales del flujo OAuth/navegación (browsing context
+        // going away, signal aborted sin razón, etc). No son bugs; ocurren siempre
+        // en registro por Google → redirect → refresh. Ver análisis 15/04/2026.
+        const msg = String(error?.message || '')
+        const isNaturalAbort =
+          error?.name === 'AbortError' ||
+          /browsing context is going away|signal is aborted|operation was aborted|Fetch is aborted/i.test(msg)
+        if (!isNaturalAbort) {
+          logClientError('auth/load-user-profile', new Error(`db error: ${error?.message || error?.code || 'unknown'}`), {
+            component: 'AuthContext.loadUserProfile',
+            userId,
+            severity: 'warning',
+          })
+        }
         return null
       }
 
