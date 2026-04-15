@@ -77,6 +77,8 @@ jest.mock('drizzle-orm', () => ({
   __esModule: true,
   eq: (...args: unknown[]) => ({ __op: 'eq', args }),
   desc: (x: unknown) => ({ __op: 'desc', args: [x] }),
+  and: (...args: unknown[]) => ({ __op: 'and', args }),
+  isNull: (x: unknown) => ({ __op: 'isNull', args: [x] }),
 }))
 
 // SUT

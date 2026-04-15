@@ -22,7 +22,7 @@ import {
   userProfiles,
   userSessions,
 } from '@/db/schema'
-import { eq, desc } from 'drizzle-orm'
+import { eq, desc, and, isNull } from 'drizzle-orm'
 import { sendEmailV2 } from '@/lib/api/emails'
 import type {
   RespondFeedbackRequest,
@@ -146,18 +146,23 @@ export async function respondFeedback(
           bellSent = true
         }
 
-        // 2.3 UPDATE conversation → waiting_user + adminUserId + lastMessageAt
+        // 2.3 UPDATE conversation → status coherente con finalStatus
+        // Post-15/04/2026 (bug Iván): antes se ponía 'waiting_user' incluso al
+        // cerrar. Eso dejaba la conversación con status incongruente respecto
+        // al feedback (resolved) y permitía que el usuario reabriera el flujo
+        // respondiendo "gracias", generando un badge "1 por responder" falso.
         await tx
           .update(feedbackConversations)
           .set({
-            status: finalStatus === 'dismissed' ? 'dismissed' : 'waiting_user',
+            status: finalStatus ?? 'waiting_user',
             adminUserId,
             adminViewedAt: now,
             lastMessageAt: now,
+            ...(finalStatus ? { closedAt: now } : {}),
           })
           .where(eq(feedbackConversations.id, conversationId))
       } else if (conversationId && finalStatus) {
-        // Cierre sin mensaje: solo UPDATE status de la conversation
+        // Cierre sin mensaje: UPDATE status + closedAt
         await tx
           .update(feedbackConversations)
           .set({
@@ -166,6 +171,23 @@ export async function respondFeedback(
             closedAt: now,
           })
           .where(eq(feedbackConversations.id, conversationId))
+      }
+
+      // 2.3b Al cerrar (con o sin mensaje): marcar como leídos los mensajes
+      // del usuario que queden pendientes. Arregla bug badge "1 por responder"
+      // residual cuando el usuario había enviado un "muchas gracias" final
+      // antes de que el admin cerrara.
+      if (finalStatus && conversationId) {
+        await tx
+          .update(feedbackMessages)
+          .set({ readAt: now })
+          .where(
+            and(
+              eq(feedbackMessages.conversationId, conversationId),
+              eq(feedbackMessages.isAdmin, false),
+              isNull(feedbackMessages.readAt),
+            ),
+          )
       }
 
       // 2.4 UPDATE user_feedback (si hay finalStatus)
