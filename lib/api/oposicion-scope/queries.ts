@@ -8,9 +8,55 @@
 // Ver project_oposicion_scope_refactor.md para contexto y fases.
 
 import { getDb } from '@/db/client'
-import { laws, questions, topicScope, topics, userProfiles } from '@/db/schema'
-import { and, eq, inArray, or, sql } from 'drizzle-orm'
+import { laws, questions, topicScope, topics, userProfiles, validationErrorLogs } from '@/db/schema'
+import { and, eq, gte, inArray, or, sql } from 'drizzle-orm'
 import { getValidExamPositions } from '@/lib/config/exam-positions'
+import { ALL_POSITION_TYPES } from '@/lib/config/oposiciones'
+
+// Dedupe intra-proceso del aviso "oposición sin mapeo de exam_position":
+// 1 entrada por (positionType, YYYY-MM-DD). Evita spam en Vercel y en la
+// tabla validation_error_logs. Ver análisis 15/04/2026 (bugs de logs).
+const loggedNoMappingToday = new Set<string>()
+
+function recordNoExamPositionMapping(positionType: string) {
+  const dayKey = new Date().toISOString().slice(0, 10) // YYYY-MM-DD
+  const cacheKey = `${positionType}|${dayKey}`
+  if (loggedNoMappingToday.has(cacheKey)) return
+  loggedNoMappingToday.add(cacheKey)
+
+  // Fire-and-forget: no bloquear la respuesta.
+  ;(async () => {
+    try {
+      const db = getDb()
+      const dayStart = new Date()
+      dayStart.setUTCHours(0, 0, 0, 0)
+      const existing = await db
+        .select({ id: validationErrorLogs.id })
+        .from(validationErrorLogs)
+        .where(
+          and(
+            eq(validationErrorLogs.endpoint, 'lib/oposicion-scope'),
+            eq(validationErrorLogs.errorType, 'no_exam_position_mapping'),
+            eq(validationErrorLogs.severity, 'info'),
+            gte(validationErrorLogs.createdAt, dayStart.toISOString()),
+            sql`${validationErrorLogs.requestBody}->>'positionType' = ${positionType}`,
+          ),
+        )
+        .limit(1)
+      if (existing.length > 0) return
+
+      await db.insert(validationErrorLogs).values({
+        endpoint: 'lib/oposicion-scope',
+        errorType: 'no_exam_position_mapping',
+        severity: 'info',
+        errorMessage: `Oposición "${positionType}" sin mapeo en EXAM_POSITION_MAP — bloqueando todas las oficiales (comportamiento defensivo). Si empieza a tener oficiales propias, añadir entrada en lib/config/exam-positions.ts.`,
+        requestBody: { positionType },
+      })
+    } catch {
+      // La telemetría no debe bloquear ni hacer ruido por sí misma.
+    }
+  })()
+}
 
 export type AllowedLawsResult = {
   positionType: string
@@ -156,10 +202,18 @@ export function filterSelectedLawsByScope(
 export function buildOfficialExamFilter(positionType: string) {
   const validPositions = getValidExamPositions(positionType)
   if (!validPositions || validPositions.length === 0) {
-    console.warn(
-      `[scope] sin mapeo exam_position para "${positionType}" — bloqueando todas las oficiales. ` +
-      `Si esta oposición empieza a tener oficiales propias, añadir entrada en lib/config/exam-positions.ts.`
-    )
+    if (ALL_POSITION_TYPES.includes(positionType)) {
+      // Oposición conocida pero sin mapeo todavía. Registrar 1 vez al día en
+      // validation_error_logs (severity=info) para trazabilidad en admin sin
+      // spam de logs. Ver análisis 15/04/2026.
+      recordNoExamPositionMapping(positionType)
+    } else {
+      // positionType inesperado (no está en OPOSICIONES). Bug real: warn inmediato.
+      console.warn(
+        `[scope] sin mapeo exam_position para "${positionType}" (positionType no reconocido) — ` +
+        `bloqueando todas las oficiales. Revisa el origen del positionType.`
+      )
+    }
     return eq(questions.isOfficialExam, false)
   }
   return or(
