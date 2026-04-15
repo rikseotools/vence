@@ -387,6 +387,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'auxiliar_administrativo_diputacion_cadiz',
+      label: 'Auxiliar Administrativo Dip. Cádiz',
+      data: {
+        name: 'Auxiliar Administrativo de la Diputación Provincial de Cádiz',
+        slug: 'auxiliar-administrativo-diputacion-cadiz',
+        categoria: 'C2',
+        administracion: 'Local'
+      }
+    },
+    {
       value: 'auxiliar_administrativo_ayuntamiento_murcia',
       label: 'Auxiliar Administrativo Ayto. Murcia',
       data: {

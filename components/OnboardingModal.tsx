@@ -218,6 +218,15 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     icon: '🏛️'
   },
 
+  // === DIPUTACIÓN DE CÁDIZ ===
+  {
+    id: 'auxiliar_administrativo_diputacion_cadiz',
+    nombre: 'Auxiliar Administrativo Dip. Cádiz',
+    categoria: 'C2',
+    administracion: 'Local',
+    icon: '🏛️'
+  },
+
   // === DIPUTACIÓN DE LEÓN ===
   {
     id: 'auxiliar_administrativo_diputacion_leon',
@@ -730,6 +739,7 @@ const AVAILABLE_OPOSICIONES_BY_DEMAND: string[] = [
   'auxiliar_administrativo_cyl',         // 24
   'auxiliar_administrativo_diputacion_zaragoza', // 20
   'auxiliar_administrativo_diputacion_leon',     // 25
+  'auxiliar_administrativo_diputacion_cadiz',    // 24
   'auxiliar_administrativo_ayuntamiento_murcia', // 20
   'auxiliar_administrativo_carm',        // 21
   'auxiliar_administrativo_canarias',    // 10

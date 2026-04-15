@@ -583,6 +583,7 @@ Importan de `lib/config/oposiciones.ts` y se actualizan solos:
 | Archivo | Que actualizar |
 |---------|---------------|
 | `lib/api/topic-data/schemas.ts` | `VALID_TOPIC_RANGES` (rangos de temas por bloque) |
+| `lib/config/exam-positions.ts` | **OBLIGATORIO** si la oposición tiene examenes oficiales propios. Añadir entrada en `EXAM_POSITION_MAP` y `HOT_ARTICLE_TARGET_MAP`. Sin esto, el filtro cross-oposición bloquea todas las oficiales (default seguro post-15/04/2026). El log emite `[scope] sin mapeo exam_position para "..."` cuando falta. |
 | `components/InteractiveBreadcrumbs.tsx` | **No requiere cambios** — se adapta automáticamente desde OPOSICIONES |
 | `components/OnboardingModal.js` | `OFFICIAL_OPOSICIONES` array |
 | `app/perfil/page.tsx` | Array `oposiciones` del selector |

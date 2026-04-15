@@ -596,6 +596,70 @@ export const OPOSICIONES: Oposicion[] = [
   },
 
   // ========================================
+  // AUXILIAR ADMINISTRATIVO DIPUTACIÓN DE CÁDIZ (C2)
+  // ========================================
+  {
+    id: 'auxiliar_administrativo_diputacion_cadiz',
+    slug: 'auxiliar-administrativo-diputacion-cadiz',
+    positionType: 'auxiliar_administrativo_diputacion_cadiz',
+    name: 'Auxiliar Administrativo de la Diputación Provincial de Cádiz',
+    shortName: 'Aux. Dip. Cádiz',
+    emoji: '🏛️',
+    badge: 'C2',
+    color: 'amber',
+    administracion: 'local',
+    blocks: [
+      {
+        id: 'comunes',
+        title: 'Bloque I: Materias Comunes',
+        subtitle: null,
+        icon: '🏛️',
+        themes: [
+          { id: 1, name: 'La Constitución Española de 1978' },
+          { id: 2, name: 'La Corona y los poderes del Estado' },
+          { id: 3, name: 'La Administración Pública en el ordenamiento jurídico español' },
+          { id: 4, name: 'El Estatuto de Autonomía para Andalucía' },
+          { id: 5, name: 'El Régimen Local Español' },
+          { id: 6, name: 'La Provincia' },
+          { id: 7, name: 'El Municipio' },
+          { id: 8, name: 'Los derechos de los ciudadanos ante la Administración Pública' },
+          { id: 9, name: 'Ley de Prevención de Riesgos Laborales' },
+          { id: 10, name: 'Igualdad de oportunidades y no discriminación' },
+        ],
+      },
+      {
+        id: 'especificas',
+        title: 'Bloque II: Materias Específicas',
+        subtitle: null,
+        icon: '⚖️',
+        themes: [
+          { id: 11, name: 'El personal al servicio de las Administraciones Públicas' },
+          { id: 12, name: 'Los funcionarios públicos' },
+          { id: 13, name: 'El Procedimiento Administrativo Común' },
+          { id: 14, name: 'Fases del procedimiento administrativo' },
+          { id: 15, name: 'El acto administrativo' },
+          { id: 16, name: 'Recursos administrativos y revisión' },
+          { id: 17, name: 'Funcionamiento de los órganos colegiados locales' },
+          { id: 18, name: 'Contratos administrativos en la esfera local' },
+          { id: 19, name: 'Haciendas locales' },
+          { id: 20, name: 'Bienes de las entidades locales' },
+          { id: 21, name: 'El interesado y la identificación en el procedimiento electrónico' },
+          { id: 22, name: 'El archivo' },
+          { id: 23, name: 'Protección de datos personales y derechos digitales' },
+          { id: 24, name: 'Sistemas ofimáticos e internet' },
+        ],
+      },
+    ],
+    totalTopics: 24,
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/auxiliar-administrativo-diputacion-cadiz', label: 'Mi Oposición', icon: '🏛️', featured: true },
+      { href: '/auxiliar-administrativo-diputacion-cadiz/temario', label: 'Temario', icon: '📚' },
+      { href: '/auxiliar-administrativo-diputacion-cadiz/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
   // AUXILIAR ADMINISTRATIVO DIPUTACIÓN DE LEÓN (C2)
   // ========================================
   {
