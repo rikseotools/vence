@@ -247,6 +247,19 @@ export function getPredefinedResponse(
   const msgLower = message.toLowerCase()
   const { isPremium = false } = options
 
+  // Mnemotécnicas: no tenemos servicio implementado (ni banco validado, ni
+  // generador propio). Evitar invenciones tipo "PACO" inventada al vuelo.
+  if (
+    /memotecn|mnemotec/i.test(msgLower) ||
+    /regla\s+(para\s+(recordar|no\s+olvidar|memorizar|el|la|las?|los)|mnemotec|memotec)/i.test(msgLower) ||
+    /^regla\s+(para|de|mnemot|memot)/i.test(message.trim()) ||
+    /truco\s+para\s+(recordar|memorizar|no\s+olvidar)/i.test(msgLower) ||
+    /\bhay\s+una\s+de\s+\w{3,}/i.test(message) ||
+    /\bla\s+de\s+[A-ZÁÉÍÓÚÑ]{3,}/.test(message)
+  ) {
+    return `Lo siento, no tengo este servicio implementado.`
+  }
+
   // Cambiar foto / avatar de perfil (válido para móvil y desktop)
   if (/(mi\s+)?(foto|avatar|imagen\s+de\s+perfil)/i.test(msgLower)) {
     return `**Cambiar tu foto de perfil**
