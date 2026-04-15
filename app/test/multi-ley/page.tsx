@@ -226,7 +226,9 @@ function MultiLeyTestContent() {
         }
 
         if (!result.questions || result.questions.length === 0) {
-          throw new Error('No se encontraron preguntas con los filtros seleccionados')
+          // Si el backend indica la razón (ej: scope_violation), mostrársela al usuario.
+          // Antes se devolvía mensaje genérico ignorando emptyReason.
+          throw new Error(result.emptyReason || 'No se encontraron preguntas con los filtros seleccionados')
         }
 
         // Transformar al formato que espera TestLayout

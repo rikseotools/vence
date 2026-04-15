@@ -332,6 +332,10 @@ export default function LawTestPageWrapper({
       }
 
       if (!data.questions || data.questions.length === 0) {
+        // Si backend indica razón concreta (scope_violation, etc.), priorizarla
+        if (data.emptyReason) {
+          throw new Error(data.emptyReason)
+        }
         const articleInfo = Object.keys(selectedArticlesByLaw).length > 0
           ? ` para los artículos ${Object.values(selectedArticlesByLaw).flat().join(', ')}`
           : ''

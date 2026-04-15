@@ -118,6 +118,11 @@ function TestExamenContent({ oposicionSlug, params }: TestExamenPageProps) {
       const data = await response.json()
       if (!response.ok || !data.success) throw new Error(data.error || 'Error obteniendo preguntas')
 
+      // Si el backend devuelve emptyReason (ej: scope_violation), mostrarlo al usuario
+      if ((!data.questions || data.questions.length === 0) && data.emptyReason) {
+        throw new Error(data.emptyReason)
+      }
+
       const transformedQuestions = (data.questions || []).map((q: any) => ({
         id: q.id,
         question_text: q.question,

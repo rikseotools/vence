@@ -1,6 +1,6 @@
 // lib/api/filtered-questions/queries.ts - Queries Drizzle para preguntas filtradas
 import { getDb } from '@/db/client'
-import { questions, articles, laws, topicScope, topics, tests, testQuestions, userQuestionHistory } from '@/db/schema'
+import { questions, articles, laws, topicScope, topics, tests, testQuestions, userQuestionHistory, validationErrorLogs } from '@/db/schema'
 import { eq, and, inArray, sql, notInArray, desc, or, lt } from 'drizzle-orm'
 import {
   getAllowedLawIds,
@@ -606,6 +606,29 @@ export async function getFilteredQuestions(
         console.warn(
           `⚠️ Modo ley-only: selectedLaws=${JSON.stringify(selectedLaws)} fuera de scope "${scoped.positionType}"`
         )
+        // Telemetría observable: registrar en validation_error_logs para
+        // poder agrupar/filtrar desde /admin/errores-validacion.
+        // severity='warning' — no es error crítico, el backend responde 200
+        // con emptyReason y el frontend debería mostrar banner explicativo.
+        try {
+          await db.insert(validationErrorLogs).values({
+            endpoint: '/api/questions/filtered',
+            errorType: 'scope_violation',
+            errorMessage: `selectedLaws fuera de scope "${scoped.positionType}"`,
+            userId: userId ?? null,
+            requestBody: {
+              mode: 'ley-only',
+              selectedLaws,
+              positionType: scoped.positionType,
+              allowedLawShortNamesSample: scoped.lawShortNames.slice(0, 15),
+              emptyReason: scopeCheck.emptyReason,
+            },
+            severity: 'warning',
+          })
+        } catch (logErr) {
+          // No bloquear la respuesta al usuario si falla la telemetría
+          console.error('validation_error_logs insert failed (scope_violation):', logErr)
+        }
         return {
           success: true,
           questions: [],
