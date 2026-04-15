@@ -116,8 +116,10 @@ export async function recoverTest(
         })
         .map((answer, index) => {
           // Mapear índices de respuesta a letras
+          // selectedAnswer === -1 marca "dejada en blanco" (feature 15/04/2026)
           const answerLetters = ['A', 'B', 'C', 'D']
-          const userAnswerLetter = answerLetters[answer.selectedAnswer] || 'A'
+          const wasBlank = answer.selectedAnswer === -1
+          const userAnswerLetter = wasBlank ? 'BLANK' : (answerLetters[answer.selectedAnswer] || 'A')
           const correctAnswerLetter = answerLetters[answer.correctAnswer] || 'A'
 
           return {
@@ -128,6 +130,7 @@ export async function recoverTest(
             userAnswer: userAnswerLetter,
             correctAnswer: correctAnswerLetter,
             isCorrect: answer.isCorrect,
+            wasBlank,
             timeSpentSeconds: answer.timeSpent || 0,
             confidenceLevel: answer.confidence || null,
             interactionCount: answer.interactions || 1,

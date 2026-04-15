@@ -8,7 +8,8 @@ import { z } from 'zod/v3'
 
 export const detailedAnswerSchema = z.object({
   questionIndex: z.number().int().min(0),
-  selectedAnswer: z.number().int().min(0).max(3),
+  // -1 = pregunta dejada en blanco (feature 15/04/2026); 0-3 = respuesta normal
+  selectedAnswer: z.number().int().min(-1).max(3),
   correctAnswer: z.number().int().min(0).max(3),
   isCorrect: z.boolean(),
   timeSpent: z.number().int().min(0),
@@ -37,7 +38,8 @@ export type DetailedAnswer = z.infer<typeof detailedAnswerSchema>
 
 export const answeredQuestionSchema = z.object({
   question: z.number().int().min(0),
-  selectedAnswer: z.number().int().min(0).max(3),
+  // -1 = pregunta dejada en blanco; 0-3 = respuesta normal
+  selectedAnswer: z.number().int().min(-1).max(3),
   correct: z.boolean(),
   timestamp: z.string(),
 })
