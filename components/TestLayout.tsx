@@ -241,6 +241,11 @@ export default function TestLayout({
   // Estados del test básicos
   const [currentQuestion, setCurrentQuestion] = useState<number>(0)
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null)
+  // Feature "Dejar en blanco" (15/4/2026, sugerencia Tinokero). Cuando
+  // isBlank=true, selectedAnswer es null y el usuario ve el resultado pero
+  // la pregunta cuenta como no-acertada en el score. Descuenta del límite
+  // diario Free y cuenta como "vista" para exclude_recent.
+  const [isBlank, setIsBlank] = useState<boolean>(false)
   const [showResult, setShowResult] = useState<boolean>(false)
   const [verifiedCorrectAnswer, setVerifiedCorrectAnswer] = useState<number | null>(null) // 🔒 Respuesta correcta validada por API
   const [score, setScore] = useState<number>(0)
@@ -917,7 +922,8 @@ export default function TestLayout({
   const saveAnswerToServer = (
     session: TestSession | null, capturedUserSession: UserSession | null,
     currentQ: TestQuestion, answerIndex: number, questionIndex: number,
-    timeSpent: number, confidence: string, capturedFirstInteractionTime: number | null
+    timeSpent: number, confidence: string, capturedFirstInteractionTime: number | null,
+    isBlankFlag = false
   ) => {
     if (!user) return
 
@@ -929,7 +935,10 @@ export default function TestLayout({
 
     const payload: Record<string, unknown> = {
       questionId: currentQ.id,
-      userAnswer: answerIndex,
+      // Feature "Dejar en blanco": userAnswer=null cuando isBlank=true.
+      // El backend valida con .refine() la coherencia (ver schemas.ts).
+      userAnswer: isBlankFlag ? null : answerIndex,
+      isBlank: isBlankFlag,
       sessionId: session?.id ?? null,
       questionIndex,
       questionText: currentQ.question_text || currentQ.question || '',
@@ -1212,6 +1221,83 @@ export default function TestLayout({
     }, 0)
   }
 
+  // ═══════════════════════════════════════════════════════════════
+  // DEJAR EN BLANCO — feature añadida 15/4/2026 (sugerencia Tinokero)
+  // ═══════════════════════════════════════════════════════════════
+  // Flujo: mismo que handleAnswerClick pero con selectedAnswer=null,
+  // isBlank=true, isCorrect=false (siempre), score no suma.
+  // Se guarda en test_questions con was_blank=true para distinguirla
+  // de una respuesta incorrecta normal en los desgloses de stats.
+  const handleBlankClick = (): void => {
+    if (showResult) return
+
+    if (hasLimit && isLimitReached) {
+      setShowUpgradeModal(true)
+      return
+    }
+
+    if (!effectiveQuestions || !effectiveQuestions[currentQuestion]) {
+      console.error('❌ No hay pregunta actual disponible')
+      return
+    }
+
+    const currentQ = effectiveQuestions[currentQuestion]
+    if (answeredQuestions.some(aq => aq.question === currentQuestion)) return
+
+    const correctOption = currentQ.correct_option ?? currentQ.correct ?? null
+
+    // UI inmediata — selectedAnswer=null + isBlank=true
+    setSelectedAnswer(null)
+    setIsBlank(true)
+    if (validationError) setValidationError(null)
+    setVerifiedCorrectAnswer(correctOption)
+    setCurrentQuestionUuid(currentQ.id ?? null)
+    setShowResult(true)
+    // score NO suma (blanco nunca acierta)
+
+    const timeToDecide = Date.now() - questionStartTime
+    const timeSpent = Math.round(timeToDecide / 1000)
+    const newConfidence = 'unknown' // blanco = no sabe
+
+    const capturedAnsweredQuestions = answeredQuestions
+    const capturedDetailedAnswers = detailedAnswers
+    const capturedFirstInteractionTime = firstInteractionTime
+    const capturedSession = currentTestSession
+    const capturedUserSession = userSession
+
+    setTimeout(() => {
+      try {
+        setConfidenceLevel(newConfidence)
+        setInteractionCount(prev => prev + 1)
+        scrollToResult()
+
+        const detailedAnswer = createDetailedAnswer(
+          currentQuestion, -1, correctOption ?? 0, false,
+          timeSpent, currentQ, newConfidence, interactionCount
+        ) as unknown as DetailedAnswerEntry
+
+        const newAnsweredQuestions: AnsweredQuestionEntry[] = [...capturedAnsweredQuestions, {
+          question: currentQuestion, selectedAnswer: -1,
+          correct: false, timestamp: new Date().toISOString()
+        }]
+        const newDetailedAnswers = [...capturedDetailedAnswers, detailedAnswer]
+
+        setAnsweredQuestions(newAnsweredQuestions)
+        setDetailedAnswers(newDetailedAnswers)
+        savePendingTestState(newAnsweredQuestions, score, newDetailedAnswers)
+
+        // Guardado servidor con isBlank=true → endpoint marca was_blank en BD
+        saveAnswerToServer(capturedSession, capturedUserSession, currentQ, -1, currentQuestion, timeSpent, newConfidence, capturedFirstInteractionTime, true)
+
+        checkAdaptiveMode(newAnsweredQuestions, currentQuestion)
+        checkTestCompletion(newDetailedAnswers, score, capturedSession, capturedUserSession, currentQuestion)
+        checkHotArticleForQuestion(currentQ)
+      } catch (err) {
+        console.error('❌ Error en trabajo diferido post-blanco:', err)
+      }
+    }, 0)
+  }
+
   // Navegación a siguiente pregunta con scroll específico
   const handleNextQuestion = (): void => {
     // Prevenir navegación si ya está completado
@@ -1237,6 +1323,7 @@ export default function TestLayout({
       
       setCurrentQuestion(currentQuestion + 1)
       setSelectedAnswer(null)
+      setIsBlank(false) // Feature "Dejar en blanco": resetear entre preguntas
       setShowResult(false)
       setVerifiedCorrectAnswer(null) // 🔒 Resetear respuesta verificada
       setValidationError(null) // Limpiar error de validación de pregunta anterior
@@ -1866,6 +1953,21 @@ export default function TestLayout({
                       </button>
                     ))}
                   </div>
+
+                  {/* Botón "Dejar en blanco" — separado, tono neutro para no competir
+                      con A/B/C/D. Feature 15/4/2026 (sugerencia Tinokero).
+                      Cuenta al límite diario Free y como "vista" para exclude_recent,
+                      pero no suma al score (ver handleBlankClick). */}
+                  <div className="flex justify-center mt-4">
+                    <button
+                      onClick={handleBlankClick}
+                      className="px-5 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm text-gray-600 dark:text-gray-300 transition-colors inline-flex items-center gap-2 min-h-[40px]"
+                      title="Pasa a la siguiente pregunta sin marcarla como correcta o incorrecta. Verás cuál era la respuesta correcta."
+                    >
+                      <span className="text-base">⚪</span>
+                      <span>Dejar en blanco</span>
+                    </button>
+                  </div>
                   {/* 📤 Compartir pregunta - oculto temporalmente */}
                 </div>
               )}
@@ -1878,20 +1980,24 @@ export default function TestLayout({
                   
                   <div className="border-t dark:border-gray-600 pt-6">
                     <div className={`p-4 rounded-lg mb-4 ${
-                      selectedAnswer === verifiedCorrectAnswer
+                      isBlank
+                        ? 'bg-gray-50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-600'
+                        : selectedAnswer === verifiedCorrectAnswer
                         ? 'bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700'
                         : 'bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700'
                     }`}>
                       <div className="flex items-center space-x-2 mb-2">
                         <span className="text-2xl">
-                          {selectedAnswer === verifiedCorrectAnswer ? '🎉' : '😔'}
+                          {isBlank ? '⚪' : selectedAnswer === verifiedCorrectAnswer ? '🎉' : '😔'}
                         </span>
                         <span className={`font-bold ${
-                          selectedAnswer === verifiedCorrectAnswer
+                          isBlank
+                            ? 'text-gray-700 dark:text-gray-300'
+                            : selectedAnswer === verifiedCorrectAnswer
                             ? 'text-green-800 dark:text-green-300'
                             : 'text-red-800 dark:text-red-300'
                         }`}>
-                          {selectedAnswer === verifiedCorrectAnswer ? '¡Correcto!' : 'Incorrecto'}
+                          {isBlank ? 'Dejaste en blanco' : selectedAnswer === verifiedCorrectAnswer ? '¡Correcto!' : 'Incorrecto'}
                         </span>
                       </div>
                       <p className={`text-sm ${

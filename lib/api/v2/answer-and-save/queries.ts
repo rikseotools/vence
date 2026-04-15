@@ -117,7 +117,11 @@ export async function validateAndSaveAnswer(
     }
   }
 
-  const isCorrect = params.userAnswer === correctOption
+  // Respuestas en blanco: isBlank=true → isCorrect=false (no suma score ni
+  // se marca como acierto). Se guarda con was_blank=true en test_questions
+  // para distinguirlas visualmente en stats (correctas/falladas/blancas).
+  const isBlank = !!params.isBlank
+  const isCorrect = !isBlank && params.userAnswer === correctOption
   const newScore = isCorrect ? params.currentScore + 1 : params.currentScore
 
   // Si el resolver encontró tema, lo usamos. Si no, caemos al valor
@@ -141,10 +145,13 @@ export async function validateAndSaveAnswer(
     },
     answerData: {
       questionIndex: params.questionIndex,
-      selectedAnswer: params.userAnswer,
+      // Para blancas, pasamos -1 a selectedAnswer para que insertTestAnswer
+      // lo interprete como "sin selección" y lo traduzca al marcador en BD.
+      selectedAnswer: isBlank ? -1 : (params.userAnswer as number),
       correctAnswer: correctOption,
       isCorrect,
       timeSpent: params.timeSpent,
+      wasBlank: isBlank,
     },
     tema: effectiveTema,
     confidenceLevel: params.confidenceLevel,

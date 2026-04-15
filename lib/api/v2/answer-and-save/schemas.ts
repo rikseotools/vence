@@ -10,7 +10,11 @@ import { VALID_DIFFICULTIES } from '@/lib/api/shared/difficulty'
 export const answerAndSaveRequestSchema = z.object({
   // Identificadores
   questionId: z.string().uuid('ID de pregunta inválido'),
-  userAnswer: z.number().int().min(0).max(3), // 0=A, 1=B, 2=C, 3=D
+  // userAnswer: 0=A, 1=B, 2=C, 3=D. Puede ser null si isBlank=true (el usuario
+  // dejó la pregunta en blanco explícitamente, ver feature "Dejar en blanco"
+  // añadida 15/4/2026 tras sugerencia Tinokero).
+  userAnswer: z.number().int().min(0).max(3).nullable(),
+  isBlank: z.boolean().optional().default(false),
 
   // Sesión de test (obligatorio para guardar)
   sessionId: z.string().uuid('ID de sesión inválido'),
@@ -61,7 +65,16 @@ export const answerAndSaveRequestSchema = z.object({
 
   // Score actual antes de esta respuesta (para calcular nuevo score)
   currentScore: z.number().int().min(0).default(0),
-})
+}).refine(
+  (data) => {
+    // Si isBlank=true, userAnswer debe ser null. Si isBlank=false, userAnswer
+    // debe ser 0..3. No permitimos combinaciones incoherentes (isBlank=true +
+    // userAnswer=2 sería ambiguo).
+    if (data.isBlank) return data.userAnswer === null
+    return data.userAnswer !== null
+  },
+  { message: 'isBlank=true requiere userAnswer=null; isBlank=false requiere userAnswer entre 0..3' }
+)
 
 export type AnswerAndSaveRequest = z.infer<typeof answerAndSaveRequestSchema>
 

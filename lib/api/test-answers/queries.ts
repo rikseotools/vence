@@ -11,11 +11,18 @@ import { normalizeDifficulty } from '@/lib/api/shared/difficulty'
 // HELPERS PRIVADOS
 // ============================================
 
-/** Mapea selectedAnswer numerico a letra A-D. -1 (sin respuesta) genera una letra incorrecta */
-function mapAnswerToLetter(selected: number, correct: number): string {
+/**
+ * Mapea selectedAnswer numerico a letra A-D. Casos:
+ * - 0..3 → 'A'..'D' (respuesta normal)
+ * - -1 con wasBlank=true → 'BLANK' (usuario dejó la pregunta en blanco)
+ * - -1 sin wasBlank → devuelve una letra incorrecta (legacy: safety-net
+ *   para batches que llegan sin respuesta por pérdida de conexión)
+ */
+function mapAnswerToLetter(selected: number, correct: number, wasBlank = false): string {
   if (selected >= 0 && selected <= 3) {
     return String.fromCharCode(65 + selected)
   }
+  if (wasBlank) return 'BLANK'
   // -1 = no respondio -> devolver una opcion incorrecta
   return String.fromCharCode(65 + ((correct + 1) % 4))
 }
@@ -173,9 +180,14 @@ async function buildTestAnswerRow(
       testId: req.sessionId,
       questionOrder: (req.answerData.questionIndex || 0) + 1,
       questionText: req.questionData.question || 'Pregunta sin texto',
-      userAnswer: mapAnswerToLetter(req.answerData.selectedAnswer, req.answerData.correctAnswer),
+      userAnswer: mapAnswerToLetter(
+        req.answerData.selectedAnswer,
+        req.answerData.correctAnswer,
+        req.answerData.wasBlank === true,
+      ),
       correctAnswer: String.fromCharCode(65 + (req.answerData.correctAnswer || 0)),
       isCorrect: req.answerData.isCorrect || false,
+      wasBlank: req.answerData.wasBlank === true,
 
       // IDs segun tipo
       questionId: isPsychometric ? null : questionId,

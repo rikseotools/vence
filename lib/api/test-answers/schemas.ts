@@ -50,6 +50,11 @@ export const answerDataSchema = z.object({
   correctAnswer: z.number().int().min(0).max(3),
   isCorrect: z.boolean(),
   timeSpent: z.number().min(0).default(0),
+  // Flag cuando el usuario dejó la pregunta en blanco explícitamente.
+  // Combinación válida: selectedAnswer=-1 + wasBlank=true + isCorrect=false.
+  // Opcional para retrocompatibilidad (tests y callers legacy no lo pasan).
+  // Ver feature "Dejar en blanco" (15/4/2026 tras sugerencia Tinokero).
+  wasBlank: z.boolean().optional(),
 })
 
 export type AnswerData = z.infer<typeof answerDataSchema>

@@ -571,6 +571,12 @@ export const testQuestions = pgTable("test_questions", {
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 	psychometricQuestionId: uuid("psychometric_question_id"),
+	// Flag para respuestas dejadas en blanco explícitamente por el usuario.
+	// Añadido 15/4/2026 (sugerencia Tinokero). was_blank=true implica que
+	// user_answer contiene cualquier valor (convención: "BLANK") y is_correct
+	// es false. En stats cuenta como no-acierto (correct/total incluye blanks
+	// en denominador) pero se muestra aparte del "Fallada" en desgloses.
+	wasBlank: boolean("was_blank").notNull().default(false),
 }, (table) => [
 	index("idx_test_questions_article_performance").using("btree", table.articleId.asc().nullsLast().op("bool_ops"), table.isCorrect.asc().nullsLast().op("bool_ops")),
 	index("idx_test_questions_confidence_accuracy").using("btree", table.confidenceLevel.asc().nullsLast().op("bool_ops"), table.isCorrect.asc().nullsLast().op("bool_ops")),
