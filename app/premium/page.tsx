@@ -366,7 +366,7 @@ function PremiumPageContent() {
                 "Preguntas ilimitadas",
                 "Chat AI ilimitado",
                 "Cursos de informática",
-                "Acceso a todas las oposiciones: cambia cuando quieras o estudia varias a la vez"
+                "Acceso a todas las oposiciones: cambia cuando quieras o estudia varias a la vez, con estadísticas independientes por oposición. Muchos contenidos son comunes (Constitución, Ley 39/2015, Ley 40/2015, informática, atención al ciudadano…), así que estudias una vez y avanzas en varias convocatorias"
               ].map((feature, index) => (
                 <div key={index} className="flex items-start">
                   <span className="text-green-500 mr-2">✓</span>
