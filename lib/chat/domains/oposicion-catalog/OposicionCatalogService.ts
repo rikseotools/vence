@@ -55,6 +55,9 @@ export function detectOposicionIntent(message: string): boolean {
   // Caso 3: pregunta directa por catálogo — "qué oposiciones preparáis?"
   if (isCatalogListingRequest(message)) return true
 
+  // Caso 4: pregunta por grupo funcionarial EBEP — "oposiciones grupo C1", "con C2 a qué optar"
+  if (detectGrupoFuncionarial(message)) return true
+
   return false
 }
 
@@ -65,6 +68,30 @@ export function detectOposicionIntent(message: string): boolean {
  */
 export function isCatalogListingRequest(message: string): boolean {
   return /(qu[eé]|cu[aá]les?)\s+oposici[oó]n(es)?\s+(prepar|ten|hay|ofrec|tene[ií]s|preparais|preparáis)/i.test(message)
+}
+
+/**
+ * Detecta si el mensaje pregunta por oposiciones de un grupo funcionarial EBEP
+ * (A1, A2, B, C1, C2). Ej: "oposiciones grupo C1", "con C2 a qué puedo optar".
+ *
+ * Devuelve el subgrupo detectado normalizado (A1/A2/B/C1/C2) o null.
+ */
+export function detectGrupoFuncionarial(message: string): string | null {
+  // 1) "grupo X" / "subgrupo X" / "del grupo X" — forma explícita
+  const mExplicit = message.match(/\b(?:sub)?grupo\s+([ABC][12]?)\b/i)
+  if (mExplicit) return mExplicit[1].toUpperCase()
+
+  // 2) "con X" / "tengo X" / "soy X" + contexto de oposiciones
+  //    Ej: "con C1 a qué oposiciones puedo optar"
+  //    Requiere mención explícita de oposición/acceso/optar para evitar falsos positivos
+  //    (el LLM confundía C1 con nivel de inglés).
+  const hasOposicionContext = /\b(oposici[oó]n|optar|acced[eí]|acceso|preparar|presentarme|examen(es)?|puesto|plaza)/i.test(message)
+  if (hasOposicionContext) {
+    const mImplicit = message.match(/\b(?:con|tengo|soy|para|siendo)\s+([ABC][12]?)\b/i)
+    if (mImplicit) return mImplicit[1].toUpperCase()
+  }
+
+  return null
 }
 
 /**
@@ -146,6 +173,49 @@ Si quieres añadir otra oposición que sí tengamos en el catálogo, dímela y t
 [oposicion-catalog]`
 }
 
+function formatGrupoFuncionarialResponse(
+  subgrupo: string,
+  entries: import('./queries').OposicionEntry[]
+): string {
+  // Normalizar: si piden "A" (sin 1/2), aceptar A1 y A2. Si piden "C", aceptar C1 y C2.
+  const filter = (e: import('./queries').OposicionEntry): boolean => {
+    if (!e.subgrupo) return false
+    if (subgrupo.length === 2) return e.subgrupo.toUpperCase() === subgrupo
+    return e.subgrupo.toUpperCase().startsWith(subgrupo)
+  }
+  const filtered = entries.filter(filter)
+
+  if (filtered.length === 0) {
+    return `ℹ️ **No tenemos oposiciones del grupo ${subgrupo} en el catálogo por ahora.**
+
+Puedes ver todas las oposiciones disponibles preguntándome "¿qué oposiciones preparáis?".
+
+[oposicion-catalog]`
+  }
+
+  const bySubgrupo: Record<string, string[]> = {}
+  for (const e of filtered) {
+    const sg = (e.subgrupo || '').toUpperCase()
+    if (!bySubgrupo[sg]) bySubgrupo[sg] = []
+    const conv = e.isConvocatoriaActiva ? ' 📢' : ''
+    const titulo = e.tituloRequerido ? ` — _${e.tituloRequerido}_` : ''
+    bySubgrupo[sg].push(`- [${e.shortName || e.nombre}](/${e.slug})${conv}${titulo}`)
+  }
+
+  const sections = Object.entries(bySubgrupo)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([sg, lines]) => `**Subgrupo ${sg}**\n${lines.sort().join('\n')}`)
+    .join('\n\n')
+
+  return `📚 **Oposiciones del grupo ${subgrupo}** que preparamos (${filtered.length}):
+
+${sections}
+
+📢 = convocatoria activa ahora mismo. Recuerda: el grupo funcionarial (EBEP) determina la titulación mínima exigida.
+
+[oposicion-catalog]`
+}
+
 function formatListingResponse(entries: import('./queries').OposicionEntry[]): string {
   // Agrupar por categoría para legibilidad
   const grouped: Record<string, string[]> = {}
@@ -214,6 +284,21 @@ export async function processOposicionCatalog(input: {
   }
 
   const cached = await loadOposicionesCache()
+
+  // Si pregunta por un grupo funcionarial (C1/C2/A1/A2/B) → filtrar BD y responder.
+  // IMPORTANTE: evaluar ANTES que isCatalogListingRequest para no perder el filtro
+  // cuando el usuario dice "qué oposiciones hay del grupo C1".
+  const subgrupo = detectGrupoFuncionarial(input.message)
+  if (subgrupo) {
+    return {
+      responseText: formatGrupoFuncionarialResponse(subgrupo, cached),
+      matched: false,
+      matchedSlug: null,
+      feedbackId: null,
+      detectedName: null,
+      isFollowUp: false,
+    }
+  }
 
   // Si pide la lista del catálogo → devolverla (no registrar solicitud)
   if (isCatalogListingRequest(input.message)) {

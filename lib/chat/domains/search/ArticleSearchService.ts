@@ -273,6 +273,40 @@ async function searchByMentionedLaws(
 ): Promise<SearchResult> {
   logger.info(`Searching by mentioned laws: ${mentionedLaws.join(', ')}`, { domain: 'search' })
 
+  // PASO 1: si el usuario cita números de artículo específicos (ej: "art 46 de la Ley 7/1985"),
+  // buscarlos directamente en cada ley mencionada. Así un "Artículo 46 de la ley 7/1985"
+  // no devuelve arts 1, 10, 100 por keyword sino el 46 exacto.
+  const articleNumbers = extractArticleNumbers(message)
+  if (articleNumbers.length > 0) {
+    const specificArticles: ArticleMatch[] = []
+    for (const lawName of mentionedLaws) {
+      const law = await findLawByName(lawName)
+      if (!law) continue
+      for (const artNum of articleNumbers) {
+        const found = await findArticleInLaw(law.shortName, artNum)
+        if (found) {
+          specificArticles.push({
+            id: found.id,
+            lawId: found.lawId,
+            articleNumber: found.articleNumber,
+            title: found.title,
+            content: found.content ?? '',
+            lawShortName: found.lawShortName,
+            lawName: found.lawName,
+          })
+        }
+      }
+    }
+    if (specificArticles.length > 0) {
+      logger.info(`searchByMentionedLaws: found ${specificArticles.length} specific article(s) by number`, { domain: 'search' })
+      return {
+        articles: specificArticles.slice(0, limit),
+        searchMethod: 'direct',
+        mentionedLaws,
+      }
+    }
+  }
+
   const allArticles: ArticleMatch[] = []
 
   // Buscar en cada ley mencionada

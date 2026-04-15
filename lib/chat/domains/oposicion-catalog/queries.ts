@@ -19,6 +19,9 @@ export interface OposicionEntry {
   categoria: string | null
   administracion: string | null
   isConvocatoriaActiva: boolean | null
+  grupo: string | null           // "A", "B", "C" (grupo funcionarial EBEP)
+  subgrupo: string | null        // "A1", "A2", "B", "C1", "C2" (subgrupo EBEP)
+  tituloRequerido: string | null // para mostrar requisitos al usuario
   keywords: string[] // tokens normalizados para matching
 }
 
@@ -101,7 +104,7 @@ export async function loadOposicionesCache(force = false): Promise<OposicionEntr
   const supabase = getSupabase()
   const { data, error } = await supabase
     .from('oposiciones')
-    .select('id,slug,nombre,short_name,categoria,administracion,is_convocatoria_activa')
+    .select('id,slug,nombre,short_name,categoria,administracion,is_convocatoria_activa,grupo,subgrupo,titulo_requerido')
     .eq('is_active', true)
 
   if (error) {
@@ -117,6 +120,9 @@ export async function loadOposicionesCache(force = false): Promise<OposicionEntr
     categoria: r.categoria,
     administracion: r.administracion,
     isConvocatoriaActiva: r.is_convocatoria_activa,
+    grupo: r.grupo,
+    subgrupo: r.subgrupo,
+    tituloRequerido: r.titulo_requerido,
     keywords: extractKeywords({
       nombre: r.nombre,
       shortName: r.short_name,

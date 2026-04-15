@@ -361,13 +361,14 @@ function PremiumPageContent() {
           {/* Beneficios */}
           <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
             <h3 className="font-bold text-gray-800 mb-4 text-center">Incluido en Premium:</h3>
-            <div className="grid md:grid-cols-3 gap-3">
+            <div className="grid md:grid-cols-2 gap-3">
               {[
                 "Preguntas ilimitadas",
                 "Chat AI ilimitado",
-                "Cursos de informática"
+                "Cursos de informática",
+                "Acceso a todas las oposiciones: cambia cuando quieras o estudia varias a la vez"
               ].map((feature, index) => (
-                <div key={index} className="flex items-center">
+                <div key={index} className="flex items-start">
                   <span className="text-green-500 mr-2">✓</span>
                   <span className="text-gray-700">{feature}</span>
                 </div>
