@@ -10,8 +10,8 @@ type BucketStats = {
   calls: number
   distinctUsers: number
   avgArticles: number
-  zeroCount: number
-  zeroPct: number
+  zeroUsers: number
+  zeroUsersPct: number
   avgDurationMs: number | null
 }
 
@@ -80,9 +80,9 @@ export default function DespliegueArticulosProblematicosPage() {
         <dd className="font-mono">{stats.distinctUsers}</dd>
         <dt className="text-gray-600 dark:text-gray-400">Media artículos</dt>
         <dd className="font-mono">{stats.avgArticles}</dd>
-        <dt className="text-gray-600 dark:text-gray-400">Con 0 artículos</dt>
-        <dd className={`font-mono ${stats.zeroPct > 50 && isNew ? 'text-red-600 font-bold' : ''}`}>
-          {stats.zeroCount} ({stats.zeroPct}%)
+        <dt className="text-gray-600 dark:text-gray-400">Usuarios sin artículos</dt>
+        <dd className={`font-mono ${stats.zeroUsersPct > 80 && isNew && stats.distinctUsers >= 5 ? 'text-red-600 font-bold' : ''}`} title="Usuarios únicos que nunca recibieron artículos en la ventana. El resto son usuarios que alguna vez sí los recibieron.">
+          {stats.zeroUsers} / {stats.distinctUsers} ({stats.zeroUsersPct}%)
         </dd>
         <dt className="text-gray-600 dark:text-gray-400">Latencia media</dt>
         <dd className="font-mono">{stats.avgDurationMs !== null ? `${stats.avgDurationMs}ms` : '—'}</dd>
@@ -132,10 +132,10 @@ export default function DespliegueArticulosProblematicosPage() {
               Aún no hay llamadas al path nuevo. Sube <code>NEXT_PUBLIC_PROBLEMATIC_ARTICLES_ROLLOUT_PCT</code> en Vercel.
             </div>
           )}
-          {data.summary.new.zeroPct > 50 && data.summary.new.calls > 10 && (
+          {data.summary.new.zeroUsersPct > 80 && data.summary.new.distinctUsers >= 5 && (
             <div className="rounded bg-red-100 text-red-800 p-3 mb-4 text-sm font-semibold">
-              ⚠️ {data.summary.new.zeroPct}% de llamadas al path nuevo devuelven 0 artículos.
-              Posible regresión — considera rollback (PCT=0).
+              ⚠️ {data.summary.new.zeroUsers} de {data.summary.new.distinctUsers} usuarios del path nuevo nunca recibieron artículos ({data.summary.new.zeroUsersPct}%).
+              Si el viejo tiene un ratio mucho menor, considera rollback (PCT=0).
             </div>
           )}
 

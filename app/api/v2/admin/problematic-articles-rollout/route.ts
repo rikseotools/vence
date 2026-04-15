@@ -29,37 +29,55 @@ async function _GET(request: NextRequest) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 })
   }
 
-  const summary = { new: { calls: 0, zeroCount: 0, sumArticles: 0, sumDuration: 0, durationCount: 0 },
-                    old: { calls: 0, zeroCount: 0, sumArticles: 0, sumDuration: 0, durationCount: 0 } }
-  const distinctUsers = { new: new Set<string>(), old: new Set<string>() }
+  // Agregar por usuario para métricas más fiables (el hook hace polling y
+  // un mismo usuario puede generar decenas de llamadas en una sesión).
+  // Un usuario se considera "con 0 artículos" solo si TODAS sus llamadas
+  // devolvieron 0 en la ventana (nunca tuvo resultados).
+  type UserAgg = { calls: number; sumArticles: number; maxArticles: number }
+  const perUser = { new: new Map<string, UserAgg>(), old: new Map<string, UserAgg>() }
+  const summary = { new: { calls: 0, sumArticles: 0, sumDuration: 0, durationCount: 0 },
+                    old: { calls: 0, sumArticles: 0, sumDuration: 0, durationCount: 0 } }
 
   for (const r of rows ?? []) {
-    const bucket = r.path === 'new' ? summary.new : summary.old
+    const bucketKey: 'new' | 'old' = r.path === 'new' ? 'new' : 'old'
+    const bucket = summary[bucketKey]
     bucket.calls += 1
-    bucket.sumArticles += r.articles_count ?? 0
-    if ((r.articles_count ?? 0) === 0) bucket.zeroCount += 1
+    const ac = r.articles_count ?? 0
+    bucket.sumArticles += ac
     if (typeof r.duration_ms === 'number') {
       bucket.sumDuration += r.duration_ms
       bucket.durationCount += 1
     }
-    if (r.user_id) distinctUsers[r.path === 'new' ? 'new' : 'old'].add(r.user_id)
+    if (r.user_id) {
+      const map = perUser[bucketKey]
+      const u = map.get(r.user_id) ?? { calls: 0, sumArticles: 0, maxArticles: 0 }
+      u.calls += 1
+      u.sumArticles += ac
+      if (ac > u.maxArticles) u.maxArticles = ac
+      map.set(r.user_id, u)
+    }
   }
 
-  const buildStats = (b: typeof summary.new, users: Set<string>) => ({
-    calls: b.calls,
-    distinctUsers: users.size,
-    avgArticles: b.calls > 0 ? Number((b.sumArticles / b.calls).toFixed(2)) : 0,
-    zeroCount: b.zeroCount,
-    zeroPct: b.calls > 0 ? Number(((b.zeroCount / b.calls) * 100).toFixed(1)) : 0,
-    avgDurationMs: b.durationCount > 0 ? Math.round(b.sumDuration / b.durationCount) : null,
-  })
+  const buildStats = (b: typeof summary.new, users: Map<string, UserAgg>) => {
+    const total = users.size
+    const zeroUsers = Array.from(users.values()).filter((u) => u.maxArticles === 0).length
+    return {
+      calls: b.calls,
+      distinctUsers: total,
+      avgArticles: b.calls > 0 ? Number((b.sumArticles / b.calls).toFixed(2)) : 0,
+      // Usuarios que NUNCA recibieron artículos en la ventana (métrica fiable)
+      zeroUsers,
+      zeroUsersPct: total > 0 ? Number(((zeroUsers / total) * 100).toFixed(1)) : 0,
+      avgDurationMs: b.durationCount > 0 ? Math.round(b.sumDuration / b.durationCount) : null,
+    }
+  }
 
   return NextResponse.json({
     success: true,
     hours,
     summary: {
-      new: buildStats(summary.new, distinctUsers.new),
-      old: buildStats(summary.old, distinctUsers.old),
+      new: buildStats(summary.new, perUser.new),
+      old: buildStats(summary.old, perUser.old),
     },
     rows: (rows ?? []).slice(0, 100),
   })
