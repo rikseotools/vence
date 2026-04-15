@@ -8,6 +8,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import ClientBreadcrumbsWrapper from '@/components/ClientBreadcrumbsWrapper'
+import AutoAssignOposicion from '@/components/AutoAssignOposicion'
 import { formatNumber, formatDateLarga, formatDateCorta } from '@/lib/utils/format'
 import { getColorScheme } from '@/lib/utils/landing-colors'
 
@@ -193,6 +194,7 @@ export default async function OposicionPage({ params }: { params: Promise<{ opos
       {schemaEvent && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaEvent) }} />}
 
       <div className="min-h-screen bg-gray-50">
+        <AutoAssignOposicion slug={oposicion} />
         <ClientBreadcrumbsWrapper />
         <div className="container mx-auto px-4 py-8">
 
