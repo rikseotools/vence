@@ -6,7 +6,7 @@ import { z } from 'zod/v3'
 // ENUMS
 // ============================================
 
-export const sensorTypeOptions = ['llm_semantic', 'timeline_silence', 'hash_change', 'regional_scan', 'rss', 'boe_api', 'google_cse', 'manual'] as const
+export const sensorTypeOptions = ['llm_semantic', 'timeline_silence', 'hash_change', 'regional_scan', 'rss', 'boe_api', 'google_cse', 'manual', 'generic_source'] as const
 export const signalStatusOptions = ['pending', 'applied', 'dismissed', 'auto_applied'] as const
 
 export type SensorType = typeof sensorTypeOptions[number]
@@ -161,6 +161,7 @@ export function baseScoreBySensor(sensor: SensorType): number {
     case 'boe_api': return 20
     case 'google_cse': return 15
     case 'manual': return 100
+    case 'generic_source': return 45
   }
 }
 

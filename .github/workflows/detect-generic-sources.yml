@@ -1,0 +1,45 @@
+name: Detect Generic Sources
+
+on:
+  schedule:
+    # Semanal: lunes 8:00 UTC (9:00/10:00 España)
+    # Las fuentes estatales cambian con baja frecuencia; diario sería overkill
+    - cron: '0 8 * * 1'
+  workflow_dispatch:
+
+jobs:
+  detect-generic-sources:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Run generic source detection
+        id: detect
+        run: |
+          RESPONSE=$(curl -s -X GET \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            --max-time 600 \
+            "https://www.vence.es/api/cron/detect-generic-sources")
+
+          echo "Response: $RESPONSE"
+
+          CHECKED=$(echo $RESPONSE | jq -r '.stats.checked // 0')
+          HASH_CHANGED=$(echo $RESPONSE | jq -r '.stats.hashChanged // 0')
+          SIGNALS=$(echo $RESPONSE | jq -r '.stats.signals // 0')
+          ERRORS=$(echo $RESPONSE | jq -r '.stats.errors // 0')
+          DURATION=$(echo $RESPONSE | jq -r '.duration // "?"')
+
+          echo "checked=$CHECKED" >> $GITHUB_OUTPUT
+          echo "hash_changed=$HASH_CHANGED" >> $GITHUB_OUTPUT
+          echo "signals=$SIGNALS" >> $GITHUB_OUTPUT
+          echo "errors=$ERRORS" >> $GITHUB_OUTPUT
+          echo "duration=$DURATION" >> $GITHUB_OUTPUT
+
+      - name: Log results
+        run: |
+          echo "🔍 Generic Sources completado - $(date)"
+          echo "   Fuentes revisadas: ${{ steps.detect.outputs.checked }}"
+          echo "   Hash cambió en: ${{ steps.detect.outputs.hash_changed }}"
+          echo "   Señales generadas (tras filtro LLM): ${{ steps.detect.outputs.signals }}"
+          echo "   Errores: ${{ steps.detect.outputs.errors }}"
+          echo "   Duración: ${{ steps.detect.outputs.duration }}"
