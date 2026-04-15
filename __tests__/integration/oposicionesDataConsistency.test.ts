@@ -70,6 +70,10 @@ interface OposicionRow {
   boe_reference: string | null
   plazas_libres: number | null
   landing_description: string | null
+  convocatoria_fecha: string | null
+  convocatoria_numero: string | null
+  convocatoria_dogv: string | null
+  programa_url: string | null
 }
 
 interface HitoRow {
@@ -119,6 +123,11 @@ const KNOWN_BOE_REFERENCE_MISMATCHES = new Set<string>([
   'auxiliar-administrativo-valencia',   // 2026-02-09 vs DOGV 27/03/2026
 ])
 
+const KNOWN_CONVOCATORIA_MISMATCHES = new Set<string>([
+  // Slugs con inconsistencia conocida convocatoria_fecha ↔ convocatoria_dogv o
+  // programa_url ↔ convocatoria_dogv pendiente de limpiar.
+])
+
 describeIfDb('Consistencia de datos en oposiciones (detecta contradicciones)', () => {
   let oposiciones: OposicionRow[]
   let hitos: HitoRow[]
@@ -126,7 +135,7 @@ describeIfDb('Consistencia de datos en oposiciones (detecta contradicciones)', (
   beforeAll(async () => {
     oposiciones = await supabaseGet<OposicionRow>(
       'oposiciones',
-      'select=id,slug,nombre,tipo_acceso,exam_date,exam_date_approximate,inscription_start,inscription_deadline,boe_publication_date,boe_reference,plazas_libres,landing_description&is_active=eq.true'
+      'select=id,slug,nombre,tipo_acceso,exam_date,exam_date_approximate,inscription_start,inscription_deadline,boe_publication_date,boe_reference,plazas_libres,landing_description,convocatoria_fecha,convocatoria_numero,convocatoria_dogv,programa_url&is_active=eq.true'
     )
     hitos = await supabaseGet<HitoRow>(
       'convocatoria_hitos',
@@ -306,6 +315,98 @@ describeIfDb('Consistencia de datos en oposiciones (detecta contradicciones)', (
     }
     if (conflicts.length > 0) {
       console.error('\nHitos de promoción interna en oposición libre:')
+      for (const c of conflicts) console.error('  ' + c)
+    }
+    expect(conflicts).toEqual([])
+  })
+
+  // ============================================================
+  // convocatoria_fecha vs fecha(s) mencionadas en convocatoria_dogv
+  // Detecta el patrón del caso Extremadura (15/04/2026): dogv decía
+  // "DOE núm. 21, 19/12/2025" pero DOE 21 es del 31/01/2025 — internamente
+  // inconsistente tras una acumulación que solo tocó algunos campos.
+  // ============================================================
+  test('convocatoria_fecha coincide con alguna fecha referenciada en convocatoria_dogv', () => {
+    const conflicts: string[] = []
+    for (const o of oposiciones) {
+      if (!o.convocatoria_fecha || !o.convocatoria_dogv) continue
+      const dates: string[] = []
+      const re = /(\d{1,2})\/(\d{1,2})\/(\d{4})/g
+      let m: RegExpExecArray | null
+      while ((m = re.exec(o.convocatoria_dogv)) !== null) {
+        const day = parseInt(m[1], 10)
+        const month = parseInt(m[2], 10)
+        const year = parseInt(m[3], 10)
+        dates.push(`${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`)
+      }
+      if (dates.length === 0) continue
+      if (!dates.includes(o.convocatoria_fecha)) {
+        const msg = `${o.slug}: convocatoria_fecha=${o.convocatoria_fecha} pero convocatoria_dogv dice "${o.convocatoria_dogv}" (fechas detectadas: ${dates.join(', ')})`
+        if (KNOWN_CONVOCATORIA_MISMATCHES.has(o.slug)) {
+          console.warn('  [KNOWN]', msg)
+        } else {
+          conflicts.push(msg)
+        }
+      }
+    }
+    if (conflicts.length > 0) {
+      console.error('\nContradicciones convocatoria_fecha ↔ convocatoria_dogv:')
+      for (const c of conflicts) console.error('  ' + c)
+    }
+    expect(conflicts).toEqual([])
+  })
+
+  // ============================================================
+  // programa_url referencia el mismo boletín que convocatoria_dogv
+  // Extrae número de boletín del URL (ej. "/2500o/" → 250, "/2440o/" → 244
+  // para DOE; "BOE-A-YYYY-NNNN" para BOE estatal) y lo compara con el número
+  // mencionado en convocatoria_dogv.
+  // ============================================================
+  test('programa_url referencia el mismo número de boletín que convocatoria_dogv', () => {
+    const conflicts: string[] = []
+    for (const o of oposiciones) {
+      if (!o.programa_url || !o.convocatoria_dogv) continue
+
+      // Para BOE estatal (boe.es), el URL tiene BOE-A-YYYY-NNNN donde NNNN es
+      // el ID del documento, distinto del número del boletín (que dogv cita
+      // como "BOE núm. 306"). Esos IDs no son comparables, skip.
+      if (/boe\.es\//i.test(o.programa_url)) continue
+
+      // Extraer números de boletín mencionados en el dogv. Patrones aceptados:
+      //   "DOE núm. 244", "DOE num. 244", "DOE número 244"
+      //   "DOE 250" (bare, sin núm.), "DOE Extraordinario 2"
+      const dogvNumRe = /\b(?:DOE|BOE|BOP|BOJA|BOA|BOCM|BOCYL|BOIB|BORM|BOPA|DOCM|DOGV|DOG)\s+(?:extraordinario\s+)?(?:n[uú]m(?:\.?|ero)?\s*)?(\d{1,4})/gi
+      const dogvNums: number[] = []
+      let m: RegExpExecArray | null
+      while ((m = dogvNumRe.exec(o.convocatoria_dogv)) !== null) {
+        dogvNums.push(parseInt(m[1], 10))
+      }
+      if (dogvNums.length === 0) continue
+
+      // Extraer número del programa_url. Patrones frecuentes:
+      //   /pdfs/doe/YYYY/NNNNo/...  (Extremadura DOE, NNN padded a 4 dígitos: 2440o = DOE 244)
+      //   /NN0o/                    (DOE número corto: 210o = DOE 21)
+      const urlNums = new Set<number>()
+      // DOE-style path "/NNNNo/" — el número DOE está sin padding: "2440o" = 244, "210o" = 21
+      const doePathRe = /\/(\d{1,4})0o\//g
+      while ((m = doePathRe.exec(o.programa_url)) !== null) {
+        urlNums.add(parseInt(m[1], 10))
+      }
+
+      if (urlNums.size === 0) continue // URL sin patrón reconocido — skip
+
+      const anyMatch = dogvNums.some(n => urlNums.has(n))
+      if (!anyMatch) {
+        const msg = `${o.slug}: convocatoria_dogv menciona núms [${dogvNums.join(', ')}] pero programa_url contiene [${[...urlNums].join(', ')}] → "${o.convocatoria_dogv}" vs "${o.programa_url}"`
+        if (KNOWN_CONVOCATORIA_MISMATCHES.has(o.slug)) {
+          console.warn('  [KNOWN]', msg)
+        } else {
+          conflicts.push(msg)
+        }
+      }
+    }
+    if (conflicts.length > 0) {
+      console.error('\nContradicciones programa_url ↔ convocatoria_dogv:')
       for (const c of conflicts) console.error('  ' + c)
     }
     expect(conflicts).toEqual([])
