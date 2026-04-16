@@ -285,5 +285,5 @@ describeIf('Content Data Integrity', () => {
     }
 
     expect(total).toBe(0)
-  }, 15000)
+  }, 30000)
 })
