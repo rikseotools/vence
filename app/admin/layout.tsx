@@ -122,8 +122,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     {adminNotifications?.feedback > 0 && (
                       <span className="absolute -top-1 -right-1 flex space-x-0.5">
                         {adminNotifications.feedbackByType?.deletion > 0 && (
-                          <span className="bg-red-600 text-white text-xs rounded-full h-5 min-w-5 px-1 flex items-center justify-center font-bold animate-pulse" title="Eliminación de cuenta">
-                            {adminNotifications.feedbackByType.deletion}
+                          <span className="bg-black text-white text-xs rounded-full h-5 min-w-5 px-1.5 flex items-center justify-center gap-0.5 font-bold animate-pulse" title="Solicitud de eliminación de cuenta (RGPD)">
+                            <span>🗑️</span>{adminNotifications.feedbackByType.deletion}
                           </span>
                         )}
                         {adminNotifications.feedbackByType?.bug > 0 && (
