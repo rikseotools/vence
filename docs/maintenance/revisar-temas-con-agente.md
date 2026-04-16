@@ -489,6 +489,22 @@ El agente escribe en las mismas tablas que la web:
 - topic_review_status: uno de los 12 estados
 ```
 
+### 5.1 Trazabilidad multifase: convención de `ai_provider` (post-16/04/2026)
+
+**Problema detectado:** la constraint única de `ai_verification_results` es `(question_id, ai_provider)`. Si haces varias rondas de verificación con el mismo `ai_provider='claude_code'`, **cada upsert sobrescribe el anterior** y pierdes la traza histórica. En BD solo queda el último.
+
+**Convención obligatoria** cuando hagas más de un pase sobre las mismas preguntas:
+
+| Fase | `ai_provider` | Cuándo |
+|---|---|---|
+| Procesamiento inicial | `claude_code` | Primera pasada (asignar artículo, elegir respuesta, escribir explicación) |
+| Rechequeo independiente | `claude_code_recheck` | Segundo pase con agentes ciegos al análisis anterior |
+| Auditoría final | `claude_code_audit` | Tercer pase con criterio §3.1+§8.1 estricto sobre activas perfect |
+
+Cada fase deja su propio registro con `ai_model`, `verified_at`, `confidence` y `explanation`. Así cualquiera que consulte la BD puede ver que una pregunta pasó los 3 controles, no solo el último.
+
+**Incidente que motiva la regla (16/04/2026):** las 354 preguntas activas de Aux. Admin. Extremadura pasaron 3 fases (procesamiento + rechequeo + auditoría), pero el upsert con `ai_provider='claude_code'` sobrescribió todos los registros. Hubo que hacer pase posterior añadiendo registros con `claude_code_recheck` y `claude_code_audit` para reconstruir la traza.
+
 ## 6. Ver Resultados
 
 Después de la verificación, los resultados aparecen en:

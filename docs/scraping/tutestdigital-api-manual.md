@@ -16,6 +16,31 @@
 7. **API .NET** (issuer: `TuTestOnline.Api`, audience: `TuTestOnline.Frontend`).
 8. **El endpoint `/api/Users/me` devuelve el passwordHash** — vulnerabilidad grave de seguridad.
 
+## ⚠️ ALERTA DE CALIDAD: Vinculación artículo↔contenido (post-15/04/2026)
+
+Las preguntas de TuTestDigital tienen un **patrón sistemático de desplazamiento de artículos**: el enunciado cita "Según el artículo N" pero el contenido real de la pregunta corresponde al artículo N±1, N±2 o incluso a otro completamente distinto del mismo cuerpo legal.
+
+**Patrones detectados (Aux. Admin. Junta Extremadura, libro 83):**
+
+| Tema | Casos | Ejemplo |
+|---|---|---|
+| T5 (FP II Ley 13/2015) | 8 mal vinculados | Pregunta cita "art. 136" (Servicio en otras AAPP) pero pregunta sobre servicios especiales (art. 135) |
+| T7 (FP IV Ley 13/2015) | 11 mal vinculados | Preguntas sobre violencia de género (arts. 130-132 reales) desplazadas a arts. 129-131 |
+| T12 (V Convenio JdE) | 22 mal vinculados | Sistemático +1 en numeración: art. 33 real (clasificación faltas) citado como art. 32 |
+| T23 (Decreto 225/2014 AE) | 22 mal vinculados | Pregunta sobre comparecencia electrónica (art. 60) citando art. 61 (Tablón de Anuncios) |
+
+**Patrón "explicación tautológica":** El campo `explanation` que devuelve el scraper **NO cita el texto real del artículo**. Es una reformulación de la opción marcada como correcta presentada como si fuera la ley. Ejemplo:
+
+> Pregunta: *"Según art. 52, ¿qué garantiza el sistema de notificaciones electrónicas?"* (B = "confidencialidad, integridad y disponibilidad")
+> Explicación scraper: *"Según el art. 52, el sistema garantiza la confidencialidad, integridad y disponibilidad."*
+> **Realidad:** Art. 52 regula el archivo de gestión electrónico (no notificaciones); además la tríada exacta no aparece en NINGÚN artículo del Decreto.
+
+**Implicación crítica:** **NUNCA** insertar preguntas TuTestDigital usando el `art. N` que cita el enunciado o la explicación. Hay que verificar contenido contra contenido real del artículo en BD. Ver flujo "ciclo completo con contexto completo" en `docs/maintenance/importar-preguntas-scrapeadas.md` §10.1.
+
+**Tasa típica de rescate:** 60-95% según el tema. En materias técnicas con citas literales (T22 — definiciones AE), el rescate llega a 100%. En materias transversales (T12, T23 — sistemas, garantías, supletoriedad) baja al 37-67% porque el scraper inventa preguntas plausibles sin base normativa.
+
+**Detección en lote:** comparar el `article_content` real de cada pregunta importada con el contenido de su `correct_option`. Si el texto literal de la opción correcta NO aparece en el `content` del artículo asignado → marcar para revisión.
+
 ---
 
 ## Arquitectura

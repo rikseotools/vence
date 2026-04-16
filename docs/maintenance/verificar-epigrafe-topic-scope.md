@@ -218,6 +218,25 @@ const { data } = await supabase
   .ilike('short_name', '%nombre_ley%');
 ```
 
+### Ampliación de scope basada en evidencia (post-16/04/2026)
+
+Durante la importación de preguntas scrapeadas puede aparecer este patrón: el scraper insiste en preguntas que apuntan a artículos contiguos al rango actual del scope. Antes de descartarlas como "fuera de scope", **revisar si el epígrafe oficial las cubre**.
+
+**Procedimiento:**
+
+1. Releer el `topics.epigrafe` literal del boletín oficial.
+2. Comprobar si los conceptos de las preguntas problemáticas encajan en alguno de los conceptos enumerados en el epígrafe.
+3. Si encajan, ampliar el `topic_scope.article_numbers` para incluir esos artículos. NO inventar epígrafes nuevos.
+
+**Caso real (T4 Aux. Admin. Extremadura, 16/04/2026):** el scope inicial de T4 abarcaba arts 1-42 de Ley 13/2015. Aparecieron 4 preguntas scrapeadas sobre el Registro General de Personal (arts 43-45 reales). El epígrafe oficial T4 dice *"Personal al servicio de las Administraciones Públicas de Extremadura. **Ordenación y estructura de los recursos humanos**"*. El Registro General de Personal es un instrumento de ordenación de RRHH explícitamente cubierto por ese epígrafe. **Ampliación correcta:** scope T4 → arts 1-45.
+
+**Cuando NO ampliar:**
+- Si el artículo trata una materia que el epígrafe no menciona ni implica.
+- Si el artículo está cubierto por otro tema del mismo programa (riesgo de solapamiento).
+- Si la regla está en disposiciones adicionales/transitorias colaterales (§3.1).
+
+**Antes de aplicar ampliación:** verificar que ningún otro tema del mismo `position_type` ya tiene esos artículos en su scope (evitar solapamiento erróneo).
+
 ## Script de Verificación Rápida
 
 Crear archivo `check_topic_scope.cjs` en la raíz del proyecto:

@@ -676,6 +676,61 @@ Las preguntas que fallen se corrigen antes de dar el tema por bueno.
 
 **Ver:** [revisar-temas-con-agente.md](./revisar-temas-con-agente.md)
 
+### 10.1 Patrón "ciclo completo con contexto completo" (post-16/04/2026, RECOMENDADO)
+
+Cuando el scraper tiene baja calidad de vinculación artículo↔contenido (caso TuTestDigital — ver `docs/scraping/tutestdigital-api-manual.md`), **no fiarse del `primary_article_id` extraído mecánicamente**. En lugar de procesar en cadena (insertar → verificar → reasignar → reescribir → re-verificar), hacer una sola pasada por agente con contexto completo:
+
+**Inputs al agente por cada lote (8-15 preguntas):**
+1. Las preguntas con su `correct_letter` y `explanation` original.
+2. **TODOS los artículos del scope del tema** (no solo el artículo que el scraper asignó).
+
+**Outputs del agente** por cada pregunta, en una sola pasada:
+- `article_number` correcto del scope (no el que dijo el scraper)
+- `answer_correct_letter` (puede diferir si el scraper se equivocó)
+- `question_text_final` con `ensureLawContext` aplicado
+- `explanation_final` didáctica con formato §8.1
+- `decision: "ready" | "deactivate"` con `deactivate_reason`
+
+**Por qué funciona mejor que el flujo en cadena:**
+- Múltiples agentes parciales (uno solo ve el artículo asignado) discrepan entre sí cuando el artículo está mal vinculado.
+- Un agente con contexto completo puede reasignar al artículo correcto del scope con criterio §3.1 estricto.
+
+**Incidente que motiva el patrón (15/04/2026):** en T23 Aux. Admin. Extremadura el scraper había asignado mal 22 de 24 preguntas. Tres rondas de agentes parciales discreparon. Una sola ronda con todo el scope (arts 42-65 del Decreto 225/2014) dio resultado decisivo: 9 ready directas + 7 recuperables tras reasignación + 8 verdaderamente no rescatables.
+
+### 10.2 Recuperación tras `deactivate` (post-16/04/2026)
+
+Antes de aceptar `deactivate` como definitivo, hacer **un pase de recuperación**. El agente revisa cada pregunta marcada `deactivate` y determina:
+
+- ¿Existe en el scope **otro artículo** cuyo contenido sí justifica la respuesta marcada? → Si sí, **reasignar** + reescribir explicación + reactivar.
+- ¿La respuesta marcada **no se puede justificar con ningún artículo** del scope? → Mantener desactivada con motivo explícito.
+
+**Ejemplo real (T23):** de 15 preguntas inicialmente `deactivate`, 7 eran recuperables reasignándolas a otro artículo del Decreto 225/2014 (notificaciones art. 55 vs comparecencia art. 60, etc.). 8 quedaron definitivamente fuera porque su respuesta correcta no aparecía en ningún artículo del Decreto.
+
+**Patrón típico recuperable:**
+- Scraper cita "art. 47" pero el contenido pregunta sobre "plazo notificación electrónica" → respuesta sí está en art. 55.4. Reasignar.
+
+**Patrón típico no recuperable:**
+- Pregunta dice "Según art X, la normativa supletoria es Y" pero ningún artículo del scope establece supletoriedad. La premisa es inventada.
+
+### 10.3 Re-tag entre temas (post-16/04/2026)
+
+Si el scraper colocó preguntas en el **tema equivocado** (caso T1→T2: 8 preguntas tageadas T1 sobre arts 23-30 que pertenecen al epígrafe T2), **NO desactivarlas**. Re-taggear:
+
+```javascript
+const newTags = q.tags.map(t => t === 'T1' ? 'T2' : t);
+await s.from('questions').update({
+  tags: newTags,
+  topic_review_status: 'pending',
+  verification_status: null,
+  is_active: false,
+  deactivation_reason: null
+}).eq('id', q.id);
+```
+
+Después se procesan junto con las del tema correcto en el mismo lote.
+
+**Cómo detectarlo:** el agente del flujo "ciclo completo" devuelve `decision: deactivate` con `deactivate_reason` mencionando "fuera del scope" + número de artículo concreto. Si ese artículo encaja en el scope de otro tema del mismo programa → re-tag, no descartar.
+
 ## 11. Preguntas sin artículo legal (conceptos teóricos)
 
 Algunas preguntas del temario no se basan en un artículo de una ley concreta, sino en conceptos teóricos (ej: elementos de la comunicación, tipos de documentos, conceptos de ofimática). Estas preguntas SÍ tienen cabida si el epígrafe del tema las incluye, pero no tienen un artículo legal al que vincularse.
