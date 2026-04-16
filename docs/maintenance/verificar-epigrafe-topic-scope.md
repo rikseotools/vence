@@ -218,6 +218,25 @@ const { data } = await supabase
   .ilike('short_name', '%nombre_ley%');
 ```
 
+### Tras modificar topic_scope: revalidar cache
+
+Cualquier cambio en `topic_scope` (INSERT/UPDATE/DELETE) **debe reflejarse en cache**, de lo contrario los usuarios seguirán viendo el temario y las preguntas antiguas hasta que caduque el ISR (hasta 24 h).
+
+Hay webhook automático de Supabase sobre la tabla `topic_scope` que invalida el tag `temario`, pero por seguridad conviene lanzarlo manualmente:
+
+```bash
+# 1. Tag temario (datos cacheados de tema + scope + artículos)
+curl -sS -X POST https://www.vence.es/api/admin/revalidate-temario
+
+# 2. Rutas ISR afectadas (landing temario, página del tema, test)
+curl -X POST https://www.vence.es/api/purge-cache \
+  -H "Content-Type: application/json" \
+  -H "x-cron-secret: $CRON_SECRET" \
+  -d '{"path": "/SLUG_OPOSICION/temario/tema-NUMERO"}'
+```
+
+Ver [docs/maintenance/cache-revalidation.md](./cache-revalidation.md) para detalle de todos los tags y rutas.
+
 ### Ampliación de scope basada en evidencia (post-16/04/2026)
 
 Durante la importación de preguntas scrapeadas puede aparecer este patrón: el scraper insiste en preguntas que apuntan a artículos contiguos al rango actual del scope. Antes de descartarlas como "fuera de scope", **revisar si el epígrafe oficial las cubre**.
@@ -236,6 +255,29 @@ Durante la importación de preguntas scrapeadas puede aparecer este patrón: el 
 - Si la regla está en disposiciones adicionales/transitorias colaterales (§3.1).
 
 **Antes de aplicar ampliación:** verificar que ningún otro tema del mismo `position_type` ya tiene esos artículos en su scope (evitar solapamiento erróneo).
+
+### Cobertura por contenido cuando el epígrafe es descriptivo (post-16/04/2026)
+
+Cuando el epígrafe oficial **describe una materia sin citar leyes** (ej.: T22 CyL *"La administración electrónica en las funciones de información y atención al ciudadano. El Servicio 012. El portal web de la Junta de CyL."*), el scope no se resuelve buscando literalidad en el PDF del programa — hay que ir por contenido.
+
+**Regla:** el `topic_scope` debe incluir todas las normas **cuyo contenido regula la materia descrita en el epígrafe**, aunque el boletín oficial no las cite. El epígrafe define la materia; el scope debe reflejar todo el marco normativo que la regula.
+
+**Implicaciones prácticas:**
+
+1. **No limitar la búsqueda a "Ley X/Y".** La materia puede estar regulada por Decretos, Órdenes, RDs, RDLs o resoluciones. Buscar por `nº/año` en `laws.short_name` y `laws.name` sin filtrar por tipo de norma.
+   ```js
+   const { data } = await supabase.from('laws')
+     .select('id, short_name, name, scope')
+     .or('short_name.ilike.%7/2013%,name.ilike.%7/2013%');
+   ```
+
+2. **Auditar el scope contra el epígrafe, no contra el PDF.** Para cada concepto del epígrafe, preguntarse "¿qué norma(s) lo regula(n)?" y comprobar que están vinculadas. Un scope puede ser literal-completo respecto al PDF y aun así estar incompleto respecto al epígrafe.
+
+3. **Hueco típico:** normas de desarrollo autonómico (decretos regionales sobre medios electrónicos, registros, archivos, transparencia) que no aparecen en el PDF de la convocatoria pero regulan directamente materias del programa.
+
+**Caso real (16/04/2026):** T22 CyL *"administración electrónica … 012 … portal web Junta CyL"*.
+- Scope inicial: solo Ley 2/2010 CyL (derechos de ciudadanos).
+- Hueco detectado: el **Decreto 7/2013 CyL, de utilización de medios electrónicos en la Administración de CyL** regula literalmente la materia del epígrafe y existía en BD, pero no estaba en el scope. Buscarlo por literal "Ley 7/2013" en el PDF del programa habría fallado (no aparece, y además es decreto, no ley). Solo un cruce por contenido lo detecta.
 
 ## Script de Verificación Rápida
 
