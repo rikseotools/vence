@@ -406,7 +406,11 @@ export default function LawTestPageWrapper({
               {config?.icon || '⚠️'} Test de {lawShortName} No Disponible
             </h2>
             <p className="text-gray-600 dark:text-gray-300 mb-3 text-sm">
-              {errorMessage || error || `No se encontraron preguntas para ${lawShortName} con esta configuración.`}
+              {/* error (viene de la API vía throw new Error(emptyReason)) tiene prioridad
+                  sobre errorMessage (prop hardcodeada por pantalla). Así una usuaria
+                  ve "Las leyes seleccionadas no pertenecen al temario de tu oposición"
+                  en vez del mensaje genérico "No hay suficientes preguntas" (caso M 16/04/2026). */}
+              {error || errorMessage || `No se encontraron preguntas para ${lawShortName} con esta configuración.`}
             </p>
 
             {/* Información del test de ley */}
