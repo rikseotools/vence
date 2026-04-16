@@ -47,6 +47,19 @@ const EMOJIS = [
 
 // FEEDBACK_TYPES, STATUS_CONFIG y getSenderInfo importados desde @/types/feedback
 
+// Estados que representan una conversación ya cerrada / atendida.
+// Históricamente solo existía 'closed' (cierre manual con botón). Desde el
+// 14/04/2026 el endpoint /api/v2/feedback/respond cierra directamente como
+// 'resolved' o 'dismissed'. Sin esta lista, las conversations de esos dos
+// estados se contaban como "pendientes" y salían como "1 por responder"
+// aunque ya estuvieran respondidas (caso Iván 15/04/2026).
+const CLOSED_CONVERSATION_STATUSES = ['closed', 'resolved', 'dismissed'] as const
+const isConversationClosed = (conv: { status?: string | null; closed_at?: string | null } | null | undefined): boolean => {
+  if (!conv) return false
+  if (CLOSED_CONVERSATION_STATUSES.includes(conv.status as typeof CLOSED_CONVERSATION_STATUSES[number])) return true
+  return !!conv.closed_at
+}
+
 // Función para convertir URLs en enlaces clickeables
 const linkifyText = (text: string | null | undefined, isAdminMessage = false): ReactNode => {
   if (!text) return null
@@ -968,7 +981,7 @@ export default function AdminFeedbackPage() {
       const conversation = conversationsMap[feedback.id]
       let isPendingForAdmin = false
 
-      if (conversation && conversation.status !== 'closed') {
+      if (conversation && !isConversationClosed(conversation)) {
         // Verificar si el último mensaje es del usuario
         const messages = conversation.feedback_messages || []
         if (messages.length === 0) {
@@ -1782,7 +1795,7 @@ export default function AdminFeedbackPage() {
                         // Buscar el primer feedback con conversación pendiente (último mensaje del usuario)
                         const pendingFeedback = userData.feedbacks.find(fb => {
                           const conv = conversations[fb.id]
-                          if (conv && conv.status !== 'closed') {
+                          if (conv && !isConversationClosed(conv)) {
                             const messages = conv.feedback_messages || []
                             if (messages.length > 0) {
                               const sorted = [...messages].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
