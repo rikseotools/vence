@@ -206,6 +206,38 @@ Es habitual que una convocatoria acumule plazas de varias OEPs (ej: OEP 2024 + O
 
 **Cuando se publique la convocatoria:** actualizar los campos de convocatoria (`convocatoria_numero`, `convocatoria_fecha`, `estado_proceso` → `convocada`, etc.) y ajustar las plazas si la convocatoria trae numeros distintos a la OEP.
 
+### 2a.3.1 Checklist post-acumulación: campos derivados que NO se deben olvidar
+
+Cuando una convocatoria existente se actualiza por acumulación (nueva Orden que acumula OEPs adicionales y añade plazas), es fácil actualizar los campos numéricos y olvidar los derivados en texto libre. El resultado son inconsistencias invisibles en hero vs SEO, timeline y enlaces.
+
+Caso real Extremadura (abril 2026): Orden original de 23/12/2024 con 30 plazas (DOE 250). Acumulación con Orden de 17/12/2025 elevó a 146 plazas (DOE 244). Se actualizaron `plazas_libres` 23→126, `plazas_discapacidad`, `boe_reference`, `convocatoria_dogv`. Se **olvidaron** y quedaron desincronizados:
+
+| Campo | Valor obsoleto | Síntoma |
+|-------|----------------|---------|
+| `seo_description` | "106 plazas" | Google mostraba cifra incorrecta en snippet |
+| `landing_description` | "DOE 27/12/2024" y "146 plazas convocadas" mezclados | Contradicción visible en la web |
+| `programa_url` | PDF de la Orden original (30 plazas) | Botón "Ver convocatoria" abría el PDF antiguo |
+| `convocatoria_hitos[order_index=1].descripcion` | "106 plazas acceso libre" | Timeline mostraba cifra incorrecta bajo del hero |
+| `convocatoria_hitos[order_index=1].url` | PDF de corrección de errores, no la Orden acumulada | Enlace del hito apuntaba al documento equivocado |
+
+**Checklist obligatorio tras cualquier acumulación o ampliación de plazas:**
+
+```
+□ oposiciones.plazas_libres y plazas_discapacidad actualizados (suma real)
+□ oposiciones.boe_reference menciona el nuevo DOE/BOE (y opcionalmente el acumulado)
+□ oposiciones.boe_publication_date = fecha del DOE/BOE de la acumulación
+□ oposiciones.convocatoria_dogv incluye ambos DOEs: "DOE núm. X (acum. DOE núm. Y)"
+□ oposiciones.seo_description menciona la cifra TOTAL actual (146, no 106)
+□ oposiciones.landing_description refleja DOE vigente y cifra total
+□ oposiciones.programa_url apunta al PDF de la Orden acumulada (no a la original)
+□ convocatoria_hitos[order_index=1].descripcion con cifra total correcta
+□ convocatoria_hitos[order_index=1].url apunta al PDF de la Orden acumulada
+□ Ejecutar node scripts/purge-all-cache.js tras los UPDATEs
+□ Verificar con tests: npx jest __tests__/integration/oposicionesDataConsistency --no-coverage
+```
+
+Los tests de consistencia (§6a) detectan automáticamente 4 de estas 5 inconsistencias. Si el test falla tras una acumulación, revisar el checklist entero antes de publicar.
+
 ### 2a.4 Campos JSONB para la landing page
 
 La landing dinamica usa varias columnas JSONB. Rellenarlas al crear la oposicion permite que la landing muestre informacion rica desde el primer dia.
@@ -833,6 +865,18 @@ npm run build     # Sin errores
 npm run test:ci   # Actualizar toHaveLength si procede
 ```
 
+**Tests de consistencia BD obligatorios antes de flip `is_active=true`:**
+
+```bash
+# Coherencia entre campos (plazas, URLs, fechas, hitos)
+npx jest __tests__/integration/oposicionesDataConsistency --no-coverage
+
+# Completitud de datos (campos mínimos para landing)
+npx jest __tests__/integration/oposicionDataCompleteness --no-coverage
+```
+
+Estos tests detectan el tipo de bug del caso Extremadura (§2a.3.1): cifras de plazas desincronizadas entre `plazas_libres` y los campos de texto (`seo_description`, hito #1 descripción), y `programa_url` apuntando a un PDF de boletín distinto al hito principal.
+
 **Test de integridad de landings** (`__tests__/config/landingDataIntegrity.test.ts`):
 
 Despues de migrar una landing, anadir el slug al array `MIGRATED_SLUGS` en el test:
@@ -1076,6 +1120,31 @@ Una landing con datos reales convierte mejor que una con placeholders.
 #### 12. No confundir convocatorias de universidad con administración general
 
 Al buscar "auxiliar administrativo BOJA", aparecen convocatorias de universidades andaluzas (Universidad de Huelva, Sevilla, etc.) que tienen temarios completamente diferentes (temas universitarios). Verificar que el organismo convocante sea la **Dirección General de Recursos Humanos y Función Pública** (administración general) o el organismo correcto.
+
+### Caso Extremadura (abril 2026)
+
+#### 13. Post-acumulación: actualizar TODOS los campos derivados
+
+Ver §2a.3.1 para el checklist completo. Resumen del incidente: la Orden original (23/12/2024, DOE 250, 30 plazas) se acumuló con una segunda Orden (17/12/2025, DOE 244, 116 plazas adicionales → 146 totales). Se actualizaron los campos numéricos pero quedaron obsoletos `seo_description` ("106 plazas"), `landing_description` (fecha antigua), `programa_url` (PDF de la Orden original con 30 plazas), `convocatoria_hitos[#1].descripcion` y `.url` (corrección de errores, no la Orden acumulada).
+
+**Regla:** después de un UPDATE por acumulación, recorrer el checklist §2a.3.1 punto por punto y ejecutar los tests de consistencia (§6a). Los tests cross-field detectan 4 de las 5 inconsistencias de este patrón.
+
+#### 14. Newsletter post-publish: dos plantillas distintas según audiencia
+
+Al publicar una oposición nueva, el envío de newsletter se hace en dos tandas con plantillas diferentes:
+
+| Audiencia | Filtro | Plantilla | Mensaje |
+|-----------|--------|-----------|---------|
+| Target directo | `user_profiles.target_oposicion = '<slug_underscores>'` | `novedad-convocatoria` | "Tu oposición ya está lista para practicar" |
+| Cross-sell local | `user_sessions.region` o `city` en la CCAA + `target_oposicion` distinto (excluir oposiciones administrativas incompatibles) | `oposicion-cruzada` | "Prepara <nueva oposición> sin empezar de cero" (aprovecha temas comunes con la actual) |
+
+Para el cross-sell local, filtrar por ciudades (mayor precisión que solo región) y descartar usuarios con pocas sesiones (ej: `>=5` sesiones o `>=50%` del total) para evitar falsos positivos de usuarios "de paso". Detalles de flujo en `docs/maintenance/oeps-convocatorias-seguimiento.md` §7b y `docs/procedures/enviar-newsletter-con-plantilla-bd.md`.
+
+**Variables específicas de `oposicion-cruzada`:**
+- `oposicionActual` — se resuelve automáticamente por destinatario (no se pasa manualmente)
+- `nuevaOposicion`, `nuevaOposicionCorta` — nombre de la oposición a promocionar
+- `temasComunesHtml` — lista de `<li>` con temas que comparten ambas oposiciones (ej: TREBEP, Ley 39/2015, Ley 40/2015, PRL). Ver regla anti-ofimática en "Gotchas reales aprendidos en producción (cross-sell)".
+- `ctaUrl` — apuntar a la landing (no al /test) para que el destinatario conozca primero la oposición nueva
 
 ### Caso Galicia (marzo 2026)
 

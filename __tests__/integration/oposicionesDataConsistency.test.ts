@@ -69,7 +69,10 @@ interface OposicionRow {
   boe_publication_date: string | null
   boe_reference: string | null
   plazas_libres: number | null
+  plazas_discapacidad: number | null
+  plazas_promocion_interna: number | null
   landing_description: string | null
+  seo_description: string | null
   convocatoria_fecha: string | null
   convocatoria_numero: string | null
   convocatoria_dogv: string | null
@@ -82,6 +85,9 @@ interface HitoRow {
   fecha: string
   titulo: string
   status: string
+  descripcion: string | null
+  url: string | null
+  order_index: number | null
 }
 
 function extraerMesAñoDeTexto(texto: string): Array<{ mes: number; año: number }> {
@@ -128,6 +134,32 @@ const KNOWN_CONVOCATORIA_MISMATCHES = new Set<string>([
   // programa_url ↔ convocatoria_dogv pendiente de limpiar.
 ])
 
+// Slugs cuyo seo_description menciona una cifra de plazas heredada/OEP-total
+// que no cuadra con plazas_libres+disc+interna actuales. Pendientes de
+// revisar uno a uno (ver project_seo_description_plazas_audit.md).
+const KNOWN_SEO_PLAZAS_MISMATCHES = new Set<string>([
+  'auxiliar-administrativo-cantabria',
+  'administrativo-navarra',
+  'auxiliar-administrativo-andalucia',
+  'policia-nacional',
+  'celador-sescam-clm',
+  'guardia-civil',
+])
+
+// Slugs cuyo hito #1 descripción menciona una cifra de plazas distinta a la
+// suma actual. Pendientes de revisar (ver project_hito_plazas_audit.md).
+const KNOWN_HITO_PLAZAS_MISMATCHES = new Set<string>([
+  'administrativo-navarra',
+  'auxiliar-administrativo-baleares',
+  'celador-sescam-clm',
+])
+
+// Slugs donde programa_url y hito #1 url apuntan a recursos legítimamente
+// distintos (uno al portal/temario, otro al BOE de convocatoria). El test
+// principal solo falla si ambos son del MISMO host y números de boletín
+// distintos, así que esta whitelist debería quedar vacía a futuro.
+const KNOWN_PROGRAMA_HITO_URL_DIFFERENT = new Set<string>([])
+
 describeIfDb('Consistencia de datos en oposiciones (detecta contradicciones)', () => {
   let oposiciones: OposicionRow[]
   let hitos: HitoRow[]
@@ -135,11 +167,11 @@ describeIfDb('Consistencia de datos en oposiciones (detecta contradicciones)', (
   beforeAll(async () => {
     oposiciones = await supabaseGet<OposicionRow>(
       'oposiciones',
-      'select=id,slug,nombre,tipo_acceso,exam_date,exam_date_approximate,inscription_start,inscription_deadline,boe_publication_date,boe_reference,plazas_libres,landing_description,convocatoria_fecha,convocatoria_numero,convocatoria_dogv,programa_url&is_active=eq.true'
+      'select=id,slug,nombre,tipo_acceso,exam_date,exam_date_approximate,inscription_start,inscription_deadline,boe_publication_date,boe_reference,plazas_libres,plazas_discapacidad,plazas_promocion_interna,landing_description,seo_description,convocatoria_fecha,convocatoria_numero,convocatoria_dogv,programa_url&is_active=eq.true'
     )
     hitos = await supabaseGet<HitoRow>(
       'convocatoria_hitos',
-      'select=id,oposicion_id,fecha,titulo,status'
+      'select=id,oposicion_id,fecha,titulo,status,descripcion,url,order_index'
     )
   }, 30000)
 
@@ -407,6 +439,173 @@ describeIfDb('Consistencia de datos en oposiciones (detecta contradicciones)', (
     }
     if (conflicts.length > 0) {
       console.error('\nContradicciones programa_url ↔ convocatoria_dogv:')
+      for (const c of conflicts) console.error('  ' + c)
+    }
+    expect(conflicts).toEqual([])
+  })
+
+  // ============================================================
+  // seo_description coherente con plazas_libres + plazas_discapacidad
+  // Detecta el patrón Extremadura (16/04/2026): seo_description quedó con
+  // "106 plazas" tras una acumulación que actualizó plazas_libres a 126 sin
+  // tocar el texto de SEO. Afecta cómo aparece la página en Google.
+  // ============================================================
+  test('seo_description menciona plazas coherentes con plazas_libres y total', () => {
+    const conflicts: string[] = []
+    for (const o of oposiciones) {
+      if (!o.plazas_libres || !o.seo_description) continue
+      const plazasEnTexto = extraerNumeroPlazasDeTexto(o.seo_description)
+      if (plazasEnTexto.length === 0) continue
+
+      const total = (o.plazas_libres ?? 0)
+        + (o.plazas_discapacidad ?? 0)
+        + (o.plazas_promocion_interna ?? 0)
+      const allowed = new Set<number>([
+        o.plazas_libres,
+        total,
+        o.plazas_libres + (o.plazas_discapacidad ?? 0),
+        o.plazas_libres + (o.plazas_promocion_interna ?? 0),
+      ])
+      const anyMatch = plazasEnTexto.some(n => allowed.has(n))
+      if (!anyMatch) {
+        const msg = `${o.slug}: seo_description menciona [${plazasEnTexto.join(', ')}] plazas pero plazas_libres=${o.plazas_libres}, disc=${o.plazas_discapacidad ?? 0}, interna=${o.plazas_promocion_interna ?? 0}, total=${total}`
+        if (KNOWN_SEO_PLAZAS_MISMATCHES.has(o.slug)) {
+          console.warn('  [KNOWN]', msg)
+        } else {
+          conflicts.push(msg)
+        }
+      }
+    }
+    if (conflicts.length > 0) {
+      console.error('\nNUEVAS contradicciones plazas en seo_description:')
+      for (const c of conflicts) console.error('  ' + c)
+    }
+    expect(conflicts).toEqual([])
+  })
+
+  // ============================================================
+  // Hito #1 (order_index=1) descripción coherente con plazas
+  // Mismo patrón Extremadura: el hito "Convocatoria publicada" decía
+  // "106 plazas acceso libre" tras la acumulación a 126.
+  // ============================================================
+  test('descripcion del primer hito menciona plazas coherentes con plazas_libres y total', () => {
+    const conflicts: string[] = []
+    for (const o of oposiciones) {
+      if (!o.plazas_libres) continue
+      const hito1 = hitos.find(h => h.oposicion_id === o.id && h.order_index === 1)
+      if (!hito1 || !hito1.descripcion) continue
+      const plazasEnTexto = extraerNumeroPlazasDeTexto(hito1.descripcion)
+      if (plazasEnTexto.length === 0) continue
+
+      const total = (o.plazas_libres ?? 0)
+        + (o.plazas_discapacidad ?? 0)
+        + (o.plazas_promocion_interna ?? 0)
+      const allowed = new Set<number>([
+        o.plazas_libres,
+        total,
+        o.plazas_libres + (o.plazas_discapacidad ?? 0),
+        o.plazas_libres + (o.plazas_promocion_interna ?? 0),
+      ])
+      const anyMatch = plazasEnTexto.some(n => allowed.has(n))
+      if (!anyMatch) {
+        const msg = `${o.slug}: hito #1 "${hito1.titulo}" descripcion menciona [${plazasEnTexto.join(', ')}] plazas pero plazas_libres=${o.plazas_libres}, disc=${o.plazas_discapacidad ?? 0}, total=${total}`
+        if (KNOWN_HITO_PLAZAS_MISMATCHES.has(o.slug)) {
+          console.warn('  [KNOWN]', msg)
+        } else {
+          conflicts.push(msg)
+        }
+      }
+    }
+    if (conflicts.length > 0) {
+      console.error('\nNUEVAS contradicciones plazas en descripcion del hito #1:')
+      for (const c of conflicts) console.error('  ' + c)
+    }
+    expect(conflicts).toEqual([])
+  })
+
+  // ============================================================
+  // programa_url debe coincidir con la url del primer hito
+  // Si la convocatoria se actualiza por acumulación, ambos deberían apuntar
+  // al PDF más reciente. Caso Extremadura (16/04/2026): programa_url
+  // apuntaba a la Orden original 30 plazas mientras el hito apuntaba a la
+  // corrección de errores — ninguno apuntaba a la Orden acumulada vigente.
+  // ============================================================
+  test('programa_url y hito #1 url no apuntan al mismo boletín con números distintos', () => {
+    // Solo flagueamos cuando AMBAS URLs son del mismo host (mismo diario
+    // oficial) Y los números de boletín extraídos del path son distintos.
+    // Eso descarta los casos legítimos en que programa_url apunta al portal
+    // de aspirantes (policia.es, sede.madrid.es) y el hito al BOE concreto.
+    const conflicts: string[] = []
+    const extractDoeNum = (url: string): number | null => {
+      const m = /\/(\d{1,4})0o\//.exec(url)
+      return m ? parseInt(m[1], 10) : null
+    }
+    for (const o of oposiciones) {
+      if (!o.programa_url) continue
+      const hito1 = hitos.find(h => h.oposicion_id === o.id && h.order_index === 1)
+      if (!hito1 || !hito1.url) continue
+      try {
+        const hostA = new URL(o.programa_url).host
+        const hostB = new URL(hito1.url).host
+        if (hostA !== hostB) continue // distinto diario → propósitos distintos
+      } catch { continue }
+      const numA = extractDoeNum(o.programa_url)
+      const numB = extractDoeNum(hito1.url)
+      if (numA && numB && numA !== numB) {
+        const msg = `${o.slug}: programa_url contiene boletín ${numA} pero hito #1 url contiene ${numB} (mismo host) → "${o.programa_url}" vs "${hito1.url}"`
+        if (KNOWN_PROGRAMA_HITO_URL_DIFFERENT.has(o.slug)) {
+          console.warn('  [KNOWN]', msg)
+        } else {
+          conflicts.push(msg)
+        }
+      }
+    }
+    if (conflicts.length > 0) {
+      console.error('\nContradicciones programa_url ↔ hito #1 url (mismo host, números distintos):')
+      for (const c of conflicts) console.error('  ' + c)
+    }
+    expect(conflicts).toEqual([])
+  })
+
+  // ============================================================
+  // Hito #1 url referencia el mismo número de boletín que convocatoria_dogv
+  // Mismo patrón que programa_url ↔ convocatoria_dogv pero aplicado al hito.
+  // ============================================================
+  test('url del primer hito referencia el mismo número de boletín que convocatoria_dogv', () => {
+    const conflicts: string[] = []
+    for (const o of oposiciones) {
+      if (!o.convocatoria_dogv) continue
+      const hito1 = hitos.find(h => h.oposicion_id === o.id && h.order_index === 1)
+      if (!hito1 || !hito1.url) continue
+      if (/boe\.es\//i.test(hito1.url)) continue
+
+      const dogvNumRe = /\b(?:DOE|BOE|BOP|BOJA|BOA|BOCM|BOCYL|BOIB|BORM|BOPA|DOCM|DOGV|DOG)\s+(?:extraordinario\s+)?(?:n[uú]m(?:\.?|ero)?\s*)?(\d{1,4})/gi
+      const dogvNums: number[] = []
+      let m: RegExpExecArray | null
+      while ((m = dogvNumRe.exec(o.convocatoria_dogv)) !== null) {
+        dogvNums.push(parseInt(m[1], 10))
+      }
+      if (dogvNums.length === 0) continue
+
+      const urlNums = new Set<number>()
+      const doePathRe = /\/(\d{1,4})0o\//g
+      while ((m = doePathRe.exec(hito1.url)) !== null) {
+        urlNums.add(parseInt(m[1], 10))
+      }
+      if (urlNums.size === 0) continue
+
+      const anyMatch = dogvNums.some(n => urlNums.has(n))
+      if (!anyMatch) {
+        const msg = `${o.slug}: convocatoria_dogv menciona núms [${dogvNums.join(', ')}] pero hito #1 url contiene [${[...urlNums].join(', ')}] → "${hito1.url}"`
+        if (KNOWN_CONVOCATORIA_MISMATCHES.has(o.slug)) {
+          console.warn('  [KNOWN]', msg)
+        } else {
+          conflicts.push(msg)
+        }
+      }
+    }
+    if (conflicts.length > 0) {
+      console.error('\nContradicciones hito #1 url ↔ convocatoria_dogv:')
       for (const c of conflicts) console.error('  ' + c)
     }
     expect(conflicts).toEqual([])
