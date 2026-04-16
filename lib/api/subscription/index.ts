@@ -19,6 +19,8 @@ export {
   safeParseGetSubscriptionRequest,
   safeParseCreatePortalSessionRequest,
   safeParseCancelSubscriptionRequest,
+  safeParseSubmitCancellationFeedback,
+  submitCancellationFeedbackRequestSchema,
   safeParseReactivateSubscriptionRequest,
   validateGetSubscriptionRequest,
   validateCreatePortalSessionRequest,
@@ -37,6 +39,7 @@ export {
   type ReactivateSubscriptionRequest,
   type ReactivateSubscriptionResponse,
   type TimelineEvent,
+  type SubmitCancellationFeedbackRequest,
 } from './schemas'
 
 // Queries
@@ -44,5 +47,6 @@ export {
   getSubscription,
   createPortalSession,
   cancelSubscription,
+  submitCancellationFeedback,
   reactivateSubscription,
 } from './queries'

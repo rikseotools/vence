@@ -17,12 +17,14 @@ import type {
 const reasonLabels: Record<string, string> = {
   'approved': 'He aprobado la oposición',
   'not_presenting': 'Ya no me voy a presentar',
+  'exam_done': 'Ya hice el examen y no lo necesito',
   'too_expensive': 'Es muy caro',
   'prefer_other': 'Prefiero estudiar de otra forma',
   'missing_features': 'La app no tiene lo que necesito',
   'no_progress': 'No veo progreso en mi preparación',
   'hard_to_use': 'La app es difícil de usar',
-  'other': 'Otro'
+  'other': 'Otro',
+  'pending_feedback': '(sin feedback enviado todavía)'
 }
 
 const alternativeLabels: Record<string, string> = {
@@ -350,6 +352,9 @@ export async function cancelSubscription(
     console.log(`✅ [Cancel] Subscription ${subscription.id} marked for cancellation at period end`)
 
     // 4. Guardar feedback en la base de datos (usando raw SQL ya que la tabla no está en Drizzle schema)
+    // Si no viene feedback (flujo 1-clic post-15/04/2026), se inserta con
+    // reason='pending_feedback' y puede actualizarse después vía submitCancellationFeedback.
+    const fb = params.feedback
     try {
       await db.execute(sql`
         INSERT INTO cancellation_feedback (
@@ -358,32 +363,34 @@ export async function cancelSubscription(
         ) VALUES (
           ${params.userId}::uuid,
           ${subscription.id},
-          ${params.feedback.reason},
-          ${params.feedback.reasonDetails || null},
-          ${params.feedback.alternative || null},
-          ${params.feedback.contactedSupport || false},
+          ${fb?.reason ?? 'pending_feedback'},
+          ${fb?.reasonDetails || null},
+          ${fb?.alternative || null},
+          ${fb?.contactedSupport || false},
           ${profile.planType},
           ${periodEnd.toISOString()}::timestamptz
         )
       `)
-      console.log(`✅ [Cancel] Feedback saved for user ${params.userId}`)
+      console.log(`✅ [Cancel] Feedback saved for user ${params.userId} (reason=${fb?.reason ?? 'pending_feedback'})`)
     } catch (feedbackError) {
       console.error('Error saving cancellation feedback:', feedbackError)
       // No fallamos si no se guarda el feedback, la cancelación ya se hizo
     }
 
-    // 5. Enviar notificación al admin (opcional)
-    try {
-      await sendAdminNotification({
-        userEmail: profile.email,
-        userName: profile.fullName,
-        reason: params.feedback.reason,
-        reasonDetails: params.feedback.reasonDetails,
-        alternative: params.feedback.alternative,
-        periodEnd
-      })
-    } catch (emailError) {
-      console.error('Error sending admin notification:', emailError)
+    // 5. Enviar notificación al admin (opcional; solo si hay feedback real)
+    if (fb) {
+      try {
+        await sendAdminNotification({
+          userEmail: profile.email,
+          userName: profile.fullName,
+          reason: fb.reason,
+          reasonDetails: fb.reasonDetails,
+          alternative: fb.alternative,
+          periodEnd
+        })
+      } catch (emailError) {
+        console.error('Error sending admin notification:', emailError)
+      }
     }
 
     return {
@@ -397,6 +404,83 @@ export async function cancelSubscription(
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Error desconocido'
+    }
+  }
+}
+
+// ============================================
+// FEEDBACK POST-CANCELACIÓN
+// ============================================
+
+/**
+ * Actualiza el registro de cancellation_feedback más reciente del usuario
+ * con el feedback enviado desde la pantalla de éxito post-cancelación.
+ * Solo actualiza registros con reason='pending_feedback' (los creados por
+ * el flujo 1-clic). Idempotente.
+ */
+export async function submitCancellationFeedback(params: {
+  userId: string
+  feedback: {
+    reason: string
+    reasonDetails?: string | null
+    alternative?: string | null
+    contactedSupport?: boolean
+  }
+}): Promise<{ success: boolean; error?: string }> {
+  try {
+    const db = getDb()
+
+    // Buscar el registro pending más reciente del usuario
+    const result = await db.execute(sql`
+      UPDATE cancellation_feedback
+      SET reason = ${params.feedback.reason},
+          reason_details = ${params.feedback.reasonDetails || null},
+          alternative = ${params.feedback.alternative || null},
+          contacted_support = ${params.feedback.contactedSupport || false}
+      WHERE id = (
+        SELECT id FROM cancellation_feedback
+        WHERE user_id = ${params.userId}::uuid
+          AND reason = 'pending_feedback'
+          AND cancellation_type IS DISTINCT FROM 'reactivation'
+        ORDER BY created_at DESC
+        LIMIT 1
+      )
+      RETURNING id
+    `)
+
+    const rowCount = Array.isArray(result) ? result.length : (result as { rowCount?: number })?.rowCount ?? 0
+    if (!rowCount) {
+      return { success: false, error: 'No hay cancelación pendiente de feedback para este usuario' }
+    }
+
+    // Intentar enviar notificación al admin (best-effort)
+    try {
+      const [profile] = await db
+        .select({ email: userProfiles.email, fullName: userProfiles.fullName })
+        .from(userProfiles)
+        .where(eq(userProfiles.id, params.userId))
+        .limit(1)
+
+      if (profile) {
+        await sendAdminNotification({
+          userEmail: profile.email,
+          userName: profile.fullName,
+          reason: params.feedback.reason,
+          reasonDetails: params.feedback.reasonDetails,
+          alternative: params.feedback.alternative,
+          periodEnd: new Date(),
+        })
+      }
+    } catch (emailError) {
+      console.error('Error sending admin notification (post-feedback):', emailError)
+    }
+
+    return { success: true }
+  } catch (error) {
+    console.error('❌ [Subscription] Error submitting cancellation feedback:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error desconocido',
     }
   }
 }

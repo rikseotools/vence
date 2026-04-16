@@ -79,12 +79,16 @@ export type CreatePortalSessionResponse = z.infer<typeof createPortalSessionResp
 export const cancellationReasons = [
   'approved',
   'not_presenting',
+  'exam_done',
   'too_expensive',
   'prefer_other',
   'missing_features',
   'no_progress',
   'hard_to_use',
-  'other'
+  'other',
+  // Marcador interno: cancelación ejecutada sin que el usuario haya enviado
+  // feedback todavía. Se puede actualizar a posteriori vía /api/stripe/cancel/feedback.
+  'pending_feedback'
 ] as const
 
 export const alternativeOptions = [
@@ -111,7 +115,9 @@ export type CancellationFeedback = z.infer<typeof cancellationFeedbackSchema>
 
 export const cancelSubscriptionRequestSchema = z.object({
   userId: z.string().uuid(),
-  feedback: cancellationFeedbackSchema
+  // Feedback opcional — post-15/04/2026 la cancelación va en 1 clic y el
+  // feedback se recoge después en la pantalla de éxito (opcional).
+  feedback: cancellationFeedbackSchema.optional()
 })
 
 export type CancelSubscriptionRequest = z.infer<typeof cancelSubscriptionRequestSchema>
@@ -182,6 +188,21 @@ export function safeParseCreatePortalSessionRequest(data: unknown) {
 
 export function safeParseCancelSubscriptionRequest(data: unknown) {
   return cancelSubscriptionRequestSchema.safeParse(data)
+}
+
+// ============================================
+// FEEDBACK POST-CANCELACIÓN (opcional)
+// ============================================
+
+export const submitCancellationFeedbackRequestSchema = z.object({
+  userId: z.string().uuid(),
+  feedback: cancellationFeedbackSchema
+})
+
+export type SubmitCancellationFeedbackRequest = z.infer<typeof submitCancellationFeedbackRequestSchema>
+
+export function safeParseSubmitCancellationFeedback(data: unknown) {
+  return submitCancellationFeedbackRequestSchema.safeParse(data)
 }
 
 export function safeParseReactivateSubscriptionRequest(data: unknown) {
