@@ -393,6 +393,17 @@ export async function cancelSubscription(
       }
     }
 
+    // 6. Confirmación por email al usuario (fire-and-forget, estándar del sector)
+    try {
+      await sendCancellationConfirmationToUser({
+        userEmail: profile.email,
+        userName: profile.fullName,
+        periodEnd
+      })
+    } catch (userEmailError) {
+      console.error('Error sending cancellation confirmation to user:', userEmailError)
+    }
+
     return {
       success: true,
       periodEnd: periodEnd.toISOString(),
@@ -533,4 +544,77 @@ async function sendAdminNotification({
       html: body
     })
   }
+}
+
+// ============================================
+// EMAIL DE CONFIRMACIÓN AL USUARIO
+// ============================================
+
+async function sendCancellationConfirmationToUser({
+  userEmail,
+  userName,
+  periodEnd,
+}: {
+  userEmail: string
+  userName: string | null
+  periodEnd: Date
+}) {
+  if (!process.env.RESEND_API_KEY) return
+
+  const firstName = (userName || '').split(' ')[0] || 'hola'
+  const formattedDate = periodEnd.toLocaleDateString('es-ES', {
+    day: 'numeric', month: 'long', year: 'numeric',
+  })
+
+  const html = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Suscripción cancelada</title></head>
+<body style="margin:0;padding:0;background:#f5f5f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1d1d1f;">
+<div style="max-width:560px;margin:0 auto;padding:32px 20px;">
+  <div style="background:#ffffff;border-radius:16px;padding:32px;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
+    <p style="font-size:16px;line-height:1.5;margin:0 0 16px 0;">Hola <strong>${firstName}</strong>,</p>
+    <p style="font-size:16px;line-height:1.5;margin:0 0 24px 0;">Te confirmamos que hemos <strong>cancelado tu suscripción Premium</strong>.</p>
+
+    <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:20px;margin:24px 0;text-align:center;">
+      <p style="font-size:14px;color:#1d4ed8;margin:0 0 4px 0;">📅 Mantendrás Premium hasta el</p>
+      <p style="font-size:20px;font-weight:700;color:#1d4ed8;margin:0;">${formattedDate}</p>
+    </div>
+
+    <p style="font-size:15px;line-height:1.55;color:#424248;margin:0 0 24px 0;">A partir de esa fecha pasarás al plan Free.</p>
+
+    <p style="font-size:14px;line-height:1.55;color:#424248;margin:0 0 16px 0;">Si tuviste algún problema o hay algo que podamos mejorar, responde a este email y te leemos. Gracias por usar Vence.</p>
+
+    <p style="font-size:14px;line-height:1.5;margin:20px 0 0 0;">Un saludo,<br><strong>Equipo Vence</strong></p>
+  </div>
+
+  <p style="font-size:12px;color:#8e8e93;text-align:center;margin:20px 0 0 0;">Si no reconoces esta acción o fue un error, contáctanos respondiendo a este email.</p>
+</div>
+</body>
+</html>`
+
+  const text = `Hola ${firstName},
+
+Te confirmamos que hemos cancelado tu suscripción Premium.
+
+📅 Mantendrás Premium hasta el ${formattedDate}
+
+A partir de esa fecha pasarás al plan Free.
+
+Si tuviste algún problema o hay algo que podamos mejorar, responde a este email y te leemos. Gracias por usar Vence.
+
+Un saludo,
+Equipo Vence
+
+---
+Si no reconoces esta acción o fue un error, contáctanos respondiendo a este email.`
+
+  const { Resend } = await import('resend')
+  const resend = new Resend(process.env.RESEND_API_KEY)
+  await resend.emails.send({
+    from: 'Vence <info@vence.es>',
+    to: [userEmail],
+    subject: 'Tu suscripción Premium ha sido cancelada',
+    html,
+    text,
+  })
 }
