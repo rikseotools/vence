@@ -75,7 +75,7 @@ const OUTDATED_PLAN_REVIEWED_IDS = [
   '815dd117-c237-4d36-bda3-e6bf774c537f', // "¿En qué año se presentó el I Plan?" — dato factual
 ]
 
-const BANNED_REGEX = '(?i)(oposita\\s*[-_./@*]?\\s*test|opositest|oposistatest|opossita|opositatets|opostia|opsita|opositatestt|opositates[^t]|oposiitatest|oppositatest|opoositatest|opositattest|opositateest|opositatesst|0positatest|opositat3st|op0sitatest|0p0sitatest|opos1tatest|oposi7atest|oposita7est|opositat€st|o[-_./@* ]p[-_./@* ]o[-_./@* ]s[-_./@* ]i[-_./@* ]t[-_./@* ]a[-_./@* ]t[-_./@* ]e[-_./@* ]s[-_./@* ]t|tu\\s*test\\s*digital|tutestdigital|tutest\\s*online|tutestonline|tu\\s*test\\s*on\\s*line|tutestdigita1|tut3stdigital|tu[-_./@* ]test[-_./@* ]digital)'
+const BANNED_REGEX = '(?i)(oposita\\s*[-_./@*]?\\s*test|opositest|oposistatest|opossita|opositatets|opostia|opsita|opositatestt|opositates[^t]|oposiitatest|oppositatest|opoositatest|opositattest|opositateest|opositatesst|0positatest|opositat3st|op0sitatest|0p0sitatest|opos1tatest|oposi7atest|oposita7est|opositat€st|o[-_./@* ]p[-_./@* ]o[-_./@* ]s[-_./@* ]i[-_./@* ]t[-_./@* ]a[-_./@* ]t[-_./@* ]e[-_./@* ]s[-_./@* ]t|tu\\s*test\\s*digital|tutestdigital|tutest\\s*online|tutestonline|tu\\s*test\\s*on\\s*line|tutestdigita1|tut3stdigital|tu[-_./@* ]test[-_./@* ]digital|aula\\s*[-_./@*]?\\s*plus|aulaplus\\s*formaci[óo]n|aulaplus\\.?(es|com|net|info)|aulap1us|au1aplus|auIaplus|aulapIus|aulapluz|aulapluss|a[-_./@* ]u[-_./@* ]l[-_./@* ]a[-_./@* ]p[-_./@* ]l[-_./@* ]u[-_./@* ]s)'
 
 function truncate(text: string): string {
   return text.length > TEXT_LIMIT ? text.slice(0, TEXT_LIMIT) + '...' : text

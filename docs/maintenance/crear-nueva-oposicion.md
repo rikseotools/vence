@@ -683,10 +683,7 @@ VALUES (...);
 
 3. **Marcar `disponible = false`** los temas sin topic_scope con preguntas (aparecen "En elaboracion" en el listado automaticamente).
 
-4. **Invalidar cache:**
-```bash
-curl -X POST https://www.vence.es/api/admin/revalidate-temario
-```
+4. **Invalidar cache:** ver [`docs/maintenance/cache-revalidation.md`](./cache-revalidation.md). Tras crear/modificar temas hay que invalidar al menos el tag `temario`. Si los cambios son masivos (leyes nuevas, scopes nuevos), usar `node scripts/purge-all-cache.js` que revalida ~550 rutas en ~2 min (landings + tests + temarios + leyes + estáticas).
 
 **Verificación:**
 ```bash
@@ -916,13 +913,13 @@ Campos minimos: slug, nombre, plazas, categoria (C1/C2), administracion, program
 
 ### 6f. Invalidar cache ISR (CRITICO despues de importar preguntas)
 
-La pagina `/<slug>/test` tiene cache ISR de 30 dias. Si se crean los topics primero (sin preguntas) y luego se importan las preguntas, el cache sirve la version vieja donde los temas aparecen como "En desarrollo".
+Las paginas de la oposicion (landing, /test, /temario, /tema-X) tienen cache ISR. Si se crean los topics primero y luego se importan las preguntas, el cache sirve la version vieja donde los temas aparecen como "En desarrollo".
 
-**Solucion:** Hacer un deploy (push a main) despues de importar las preguntas. El deploy regenera todas las paginas ISR con datos frescos.
+**Procedimiento detallado:** ver [`docs/maintenance/cache-revalidation.md`](./cache-revalidation.md).
 
-**Si no se hace deploy:** Los temas apareceran como "En desarrollo" hasta que expire el cache (30 dias) o se haga un nuevo deploy.
+**Resumen para esta fase:** despues de importar preguntas, ejecutar `node scripts/purge-all-cache.js` (revalida todas las rutas) o hacer un deploy (push a main, regenera ISR automaticamente).
 
-**Recomendacion:** Importar las preguntas ANTES del primer deploy de la oposicion. Si no es posible, hacer un deploy adicional despues de la importacion.
+**Recomendacion:** importar las preguntas ANTES del primer deploy de la oposicion. Si no es posible, ejecutar el script de purge-all o hacer un deploy adicional despues de la importacion.
 
 ---
 
@@ -1113,15 +1110,8 @@ Un tema aparece como "En elaboración" en la UI por **3 señales independientes*
 □ topics.disponible = true
 □ topics.descripcion_corta — BORRAR el prefijo "En elaboracion." si lo tiene
   (reescribir con una frase corta descriptiva del tema)
-□ Revalidar cache del temario:
-    curl -X POST https://www.vence.es/api/admin/revalidate-temario
-□ Revalidar páginas ISR de la oposición:
-    curl -X POST https://www.vence.es/api/purge-cache \
-      -H "x-cron-secret: $CRON_SECRET" \
-      -d '{"path": "/<slug>/temario"}'
-    curl -X POST https://www.vence.es/api/purge-cache \
-      -H "x-cron-secret: $CRON_SECRET" \
-      -d '{"path": "/<slug>"}'
+□ Revalidar cache (datos + paginas ISR de la oposicion):
+  ver docs/maintenance/cache-revalidation.md (recomendado: node scripts/purge-all-cache.js)
 ```
 
 **Query SQL de reactivación rápida:**
@@ -1172,9 +1162,9 @@ La página del temario (`app/[oposicion]/temario/page.tsx`) tiene los temas hard
 
 ### 7. Caché estático en Vercel
 
-Las páginas del temario y tests se generan en build time (`revalidate = false` o `revalidate = 2592000`). Después de cambios en la BD hay que:
-- Hacer un deploy (push a main), o
-- Llamar a `/api/revalidate?secret=vence-revalidate-2024&path=/[ruta]` para invalidar la caché de una página específica
+Las páginas del temario y tests se generan en build time (`revalidate = false` o `revalidate = 2592000`). Después de cambios en la BD hay que invalidar caché.
+
+**Procedimiento detallado, comandos vigentes y endpoints actuales:** ver [`docs/maintenance/cache-revalidation.md`](./cache-revalidation.md). No replicar comandos aquí — pueden quedar obsoletos.
 
 ---
 
