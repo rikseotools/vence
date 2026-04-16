@@ -89,43 +89,68 @@ describe('Modo ley-only: selectedLaws se usa directamente (sin scope-check)', ()
   })
 })
 
-describe('Interacción con filtro de oficiales (caso Laura sigue intacto)', () => {
-  // buildOfficialExamFilter se aplica aguas abajo en la query. No depende
-  // de selectedLaws sino del positionType, por lo que el bug Laura
-  // (preguntas oficiales de otras oposiciones colándose) sigue prevenido.
+describe('Filtro de oficiales: NO aplica en practice mode, SÍ en only-oficial', () => {
+  // Post-16/04/2026 (tras caso M + análisis contenido compartido):
+  // El filtro por exam_position solo se aplica cuando onlyOfficialQuestions=true.
   //
-  // Este test documenta que el fix de ley-only NO interfiere con el filtro
-  // de oficiales. Si en el futuro alguien elimina buildOfficialExamFilter
-  // creyendo que "ya no hace falta con el scope-check fuera", este test
-  // debería explotar.
+  // En practice mode, un usuario de CARM haciendo test sobre Art 43 CE ve
+  // también oficiales de AAE, Andalucía, CyL... si están vinculadas a ese
+  // artículo. Se consideran material de práctica válido (el contenido es el
+  // mismo). Los marcadores "🏛️ Oficial" solo se muestran si la oficial es
+  // de su oposición (isOfficialForUserOposicion).
 
-  // Simulación simplificada: el filtro de oficiales recibe positionType y
-  // devuelve un predicado que exige que exam_position coincida con valores
-  // válidos para ese positionType.
-  function officialExamFilterApplied(positionType: string, isOfficial: boolean, examPosition: string | null): boolean {
-    // Simplificación: AAE admite oficiales con exam_position 'auxiliar_administrativo_estado'
+  // Réplica del filtro post-cambio. Simula el .where(and(...)) de Drizzle.
+  function passesFilter(params: {
+    isOfficial: boolean
+    examPosition: string | null
+    positionType: string
+    onlyOfficial: boolean
+  }): boolean {
     const VALID: Record<string, string[]> = {
       auxiliar_administrativo_estado: ['auxiliar_administrativo_estado', 'auxiliar administrativo'],
+      auxiliar_administrativo_carm: ['auxiliar_administrativo_carm'],
     }
-    if (!isOfficial) return true
-    const valid = VALID[positionType]
-    if (!valid) return false
-    return !!examPosition && valid.includes(examPosition)
+
+    if (!params.onlyOfficial) {
+      // Practice mode: TODO pasa (no filter por exam_position)
+      return true
+    }
+    // Only-oficial mode: aplica el filtro de exam_position
+    if (!params.isOfficial) return false
+    const valid = VALID[params.positionType]
+    if (!valid || valid.length === 0) return false
+    return !!params.examPosition && valid.includes(params.examPosition)
   }
 
-  test('usuario AAE pide LPRL: preguntas no-oficiales pasan', () => {
-    expect(officialExamFilterApplied('auxiliar_administrativo_estado', false, null)).toBe(true)
+  // === Practice mode: pasa todo ===
+  test('practice: no-oficial siempre pasa', () => {
+    expect(passesFilter({ isOfficial: false, examPosition: null, positionType: 'auxiliar_administrativo_carm', onlyOfficial: false })).toBe(true)
   })
 
-  test('usuario AAE pide LPRL con onlyOfficial=true: 0 preguntas si no hay oficiales de LPRL para AAE', () => {
-    // Una oficial de LPRL con exam_position='auxiliar_administrativo_cyl' NO pasa
-    expect(officialExamFilterApplied('auxiliar_administrativo_estado', true, 'auxiliar_administrativo_cyl')).toBe(false)
+  test('practice (caso nuevo): Laura (CARM) en test tema ve oficial de AAE sobre artículo compartido', () => {
+    // Antes estaba bloqueado; ahora pasa para que haya más material.
+    expect(passesFilter({ isOfficial: true, examPosition: 'auxiliar_administrativo_estado', positionType: 'auxiliar_administrativo_carm', onlyOfficial: false })).toBe(true)
   })
 
-  test('usuario AAE pide LPRL con onlyOfficial=true: una oficial marcada para AAE sí pasa', () => {
-    // (En BD no hay oficiales de LPRL para AAE actualmente, pero el filtro
-    // sería consistente si las hubiera)
-    expect(officialExamFilterApplied('auxiliar_administrativo_estado', true, 'auxiliar_administrativo_estado')).toBe(true)
+  test('practice: usuario AAE ve oficial de Andalucía en LPRL (si el artículo entrara en su scope)', () => {
+    expect(passesFilter({ isOfficial: true, examPosition: 'auxiliar_administrativo_andalucia', positionType: 'auxiliar_administrativo_estado', onlyOfficial: false })).toBe(true)
+  })
+
+  // === Only-oficial mode: filtra por exam_position ===
+  test('only-oficial: usuario AAE con oficial AAE → pasa', () => {
+    expect(passesFilter({ isOfficial: true, examPosition: 'auxiliar_administrativo_estado', positionType: 'auxiliar_administrativo_estado', onlyOfficial: true })).toBe(true)
+  })
+
+  test('only-oficial: usuario AAE con oficial CyL → NO pasa (simulacro de SU examen)', () => {
+    expect(passesFilter({ isOfficial: true, examPosition: 'auxiliar_administrativo_cyl', positionType: 'auxiliar_administrativo_estado', onlyOfficial: true })).toBe(false)
+  })
+
+  test('only-oficial: no-oficiales no pasan', () => {
+    expect(passesFilter({ isOfficial: false, examPosition: null, positionType: 'auxiliar_administrativo_estado', onlyOfficial: true })).toBe(false)
+  })
+
+  test('only-oficial: positionType sin mapeo → 0 oficiales (default seguro, caso Laura)', () => {
+    expect(passesFilter({ isOfficial: true, examPosition: 'auxiliar_administrativo_estado', positionType: 'oposicion_sin_mapeo', onlyOfficial: true })).toBe(false)
   })
 })
 

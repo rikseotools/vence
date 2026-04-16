@@ -737,12 +737,14 @@ export async function getFilteredQuestions(
           eq(questions.isActive, true),
           eq(laws.id, mapping.lawId!),
           ...(hasSpecificArticles ? [inArray(articles.articleNumber, mapping.articleNumbers!)] : []),
-          // 🏛️ Filtro cross-oposición SIEMPRE activo: oficiales solo si exam_position
-          // del usuario coincide. Necesario porque una pregunta oficial de Andalucía
-          // vinculada a TREBEP es elegible desde el scope de Estado/CARM/etc, y sin
-          // este filtro contamina tests practice (caso Laura, 14/04/2026).
-          buildOfficialExamFilter(positionType),
-          // Si el usuario pidió SOLO oficiales, además forzar is_official_exam=true
+          // 🏛️ Filtro por exam_position SOLO cuando el usuario pide "solo oficiales".
+          // Post-16/04/2026 (tras caso M + discusión contenido compartido):
+          // - Practice mode: se muestran todas las preguntas del artículo, incluidas
+          //   oficiales de otras oposiciones. Lenguaje neutro + artículo compartido.
+          // - Only-oficial mode: se filtra por exam_position del usuario (simulacro).
+          // Antes se aplicaba siempre (caso Laura, 14/04/2026), pero eso privaba de
+          // material de práctica a usuarios de oposiciones con pocas oficiales propias.
+          onlyOfficialQuestions ? buildOfficialExamFilter(positionType) : sql`true`,
           onlyOfficialQuestions ? eq(questions.isOfficialExam, true) : sql`true`,
           // Filtro de dificultad
           difficultyMode && difficultyMode !== 'random'
@@ -960,8 +962,8 @@ export async function countFilteredQuestions(
           eq(questions.isActive, true),
           eq(articles.lawId, mapping.lawId!),
           ...(hasSpecificArticles ? [inArray(articles.articleNumber, mapping.articleNumbers!)] : []),
-          // 🏛️ Filtro cross-oposición SIEMPRE activo (mismo motivo que en getFilteredQuestions)
-          buildOfficialExamFilter(positionType),
+          // 🏛️ Filtro por exam_position SOLO en modo only-oficial (ver comentario en getFilteredQuestions).
+          onlyOfficialQuestions ? buildOfficialExamFilter(positionType) : sql`true`,
           onlyOfficialQuestions
             ? (() => {
                 const validPositions = getValidExamPositions(positionType)
