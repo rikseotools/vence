@@ -222,7 +222,7 @@ const { data } = await supabase
 
 Cualquier cambio en `topic_scope` (INSERT/UPDATE/DELETE) **debe reflejarse en cache**, de lo contrario los usuarios seguirán viendo el temario y las preguntas antiguas hasta que caduque el ISR (hasta 24 h).
 
-Hay webhook automático de Supabase sobre la tabla `topic_scope` que invalida el tag `temario`, pero por seguridad conviene lanzarlo manualmente:
+> ⚠️ **NO hay invalidación automática.** Los triggers PG fueron eliminados el 16/04/2026 (cada INSERT/UPDATE generaba ~1000 ISR Writes y disparaba la factura de Vercel). Tras tocar `topic_scope`, `topics`, `oposicion_bloques` u `oposiciones` debes lanzar manualmente:
 
 ```bash
 # 1. Tag temario (datos cacheados de tema + scope + artículos)

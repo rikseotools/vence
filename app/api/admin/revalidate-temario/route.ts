@@ -1,10 +1,18 @@
 // app/api/admin/revalidate-temario/route.ts
-// Invalida la cache del temario. Se dispara:
-// 1. Manualmente: POST sin body
-// 2. Automáticamente: Supabase Database Webhook (topics, oposicion_bloques, topic_scope)
+// Invalida la cache del temario. Solo se dispara manualmente: POST sin body.
 //
-// El webhook de Supabase envía un payload con { type, table, record, old_record }.
-// Verificamos con SUPABASE_WEBHOOK_SECRET para evitar llamadas no autorizadas.
+// Los triggers PG sobre topics/topic_scope/oposicion_bloques/oposiciones
+// fueron eliminados el 16/04/2026 (migración 20260416_drop_revalidate_triggers.sql)
+// porque generaban ~5M ISR Writes/mes (~$20 facturados por Vercel).
+// El cron check-seguimiento por sí solo disparaba 41 invalidaciones/día sin
+// que cambiara nada visible para el usuario. Mismo patrón ya aplicado a
+// feedback (commit 166c1ddf) y disputes (commit 3774509e).
+//
+// Tras cambios manuales en BD, invocar: curl -X POST https://www.vence.es/api/admin/revalidate-temario
+// Ver docs/maintenance/cache-revalidation.md.
+//
+// La verificación SUPABASE_WEBHOOK_SECRET se mantiene por compatibilidad
+// retroactiva (por si en el futuro se restablece algún trigger filtrado).
 
 import { NextRequest, NextResponse } from 'next/server'
 import { revalidateTag } from 'next/cache'

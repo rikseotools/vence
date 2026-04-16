@@ -371,6 +371,7 @@ curl -X POST "https://www.vence.es/api/purge-cache" \
 
 | Fecha | Cambio |
 |-------|--------|
+| 2026-04-16 | **Eliminados triggers PG de revalidación automática** sobre `topics`, `topic_scope`, `oposicion_bloques` y `oposiciones`. Cada UPDATE/INSERT disparaba regeneración de ~1000 páginas (~5M ISR Writes/mes, ~$20). El cron `check-seguimiento` solo ya generaba 41 disparos/día sin que cambiara nada visible. Migración: `supabase/migrations/20260416_drop_revalidate_triggers.sql`. Endpoint `/api/admin/revalidate-temario` se mantiene para invocación manual. Mismo patrón que feedback (`166c1ddf`) y disputes (`3774509e`) ya migrados. |
 | 2026-04-09 | Añadido script `purge-all-cache.js` para revalidar todas las rutas ISR |
 | 2026-04-09 | Documentada revalidación por ruta con `/api/purge-cache` |
 | 2026-02-11 | Añadido `generateStaticParams` a páginas de temario para pre-generar en build |
