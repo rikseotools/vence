@@ -1,10 +1,9 @@
 // lib/api/filtered-questions/queries.ts - Queries Drizzle para preguntas filtradas
 import { getDb } from '@/db/client'
-import { questions, articles, laws, topicScope, topics, tests, testQuestions, userQuestionHistory, validationErrorLogs } from '@/db/schema'
+import { questions, articles, laws, topicScope, topics, tests, testQuestions, userQuestionHistory } from '@/db/schema'
 import { eq, and, inArray, sql, notInArray, desc, or, lt } from 'drizzle-orm'
 import {
   getAllowedLawIds,
-  filterSelectedLawsByScope,
 } from '@/lib/api/oposicion-scope/queries'
 import type {
   GetFilteredQuestionsRequest,
@@ -591,55 +590,16 @@ export async function getFilteredQuestions(
       // 🆕 MODO LEY: Obtener todos los artículos de las leyes seleccionadas
       console.log(`🎯 Modo ley-only: Buscando preguntas de leyes ${selectedLaws.join(', ')}`)
 
-      // 🔒 Scoping: bloquear selectedLaws fuera del scope del positionType.
-      // Evita bug cross-oposición (dispute 4e247ddc).
-      const scoped = await getAllowedLawIds({
-        userId,
-        fallbackPositionType: positionType,
-      })
-      const scopeCheck = filterSelectedLawsByScope({
-        selectedLaws,
-        allowedLawShortNames: scoped.lawShortNames,
-      })
-
-      if (scopeCheck.empty) {
-        console.warn(
-          `⚠️ Modo ley-only: selectedLaws=${JSON.stringify(selectedLaws)} fuera de scope "${scoped.positionType}"`
-        )
-        // Telemetría observable: registrar en validation_error_logs para
-        // poder agrupar/filtrar desde /admin/errores-validacion.
-        // severity='warning' — no es error crítico, el backend responde 200
-        // con emptyReason y el frontend debería mostrar banner explicativo.
-        try {
-          await db.insert(validationErrorLogs).values({
-            endpoint: '/api/questions/filtered',
-            errorType: 'scope_violation',
-            errorMessage: `selectedLaws fuera de scope "${scoped.positionType}"`,
-            userId: userId ?? null,
-            requestBody: {
-              mode: 'ley-only',
-              selectedLaws,
-              positionType: scoped.positionType,
-              allowedLawShortNamesSample: scoped.lawShortNames.slice(0, 15),
-              emptyReason: scopeCheck.emptyReason,
-            },
-            severity: 'warning',
-          })
-        } catch (logErr) {
-          // No bloquear la respuesta al usuario si falla la telemetría
-          console.error('validation_error_logs insert failed (scope_violation):', logErr)
-        }
-        return {
-          success: true,
-          questions: [],
-          totalAvailable: 0,
-          filtersApplied: { laws: 0, articles: 0, sections: 0 },
-          emptyReason: scopeCheck.emptyReason,
-        }
-      }
-
-      const scopedSelectedLaws = scopeCheck.allowedLaws
-
+      // Post-16/04/2026 (caso M, daluamva): en modo ley-only NO aplicamos
+      // scope-check. El usuario ha entrado a /leyes/[slug] explícitamente
+      // — sabe lo que quiere. Coherente con la promesa de /premium ("estudia
+      // varias oposiciones a la vez"). El filtro anti-contaminación de
+      // preguntas OFICIALES (buildOfficialExamFilter — caso Laura) sigue
+      // aplicándose aguas abajo, por lo que no se cuelan oficiales de otras
+      // oposiciones.
+      //
+      // El scope-check del modo tema/global (bug Mar — dispute 4e247ddc) se
+      // mantiene intacto porque allí el sistema elige la ley, no el usuario.
       const lawResults = await db
         .select({
           lawId: laws.id,
@@ -647,7 +607,7 @@ export async function getFilteredQuestions(
           lawName: laws.name,
         })
         .from(laws)
-        .where(inArray(laws.shortName, scopedSelectedLaws))
+        .where(inArray(laws.shortName, selectedLaws))
 
       // Construir mappings con todos los artículos de cada ley
       for (const law of lawResults) {

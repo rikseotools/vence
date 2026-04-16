@@ -1,13 +1,16 @@
 // __tests__/api/filtered-questions/lawOnlyModeScoping.test.ts
-// Tests de regresión — FASE 2 del refactor oposicion-scope.
+// Tests del helper filterSelectedLawsByScope (intersección scope × selectedLaws).
 //
-// Demuestra el bug antes de arreglarlo: hoy `isLawOnlyMode` NO valida
-// que `selectedLaws` pertenezcan al scope del positionType del usuario.
-// Un Aux Estado puede pedir preguntas de "Reglamento Cortes CyL" y recibirlas.
+// Nota (post-16/04/2026, caso M daluamva): en `isLawOnlyMode` este helper
+// ya NO se aplica para bloquear — el usuario ha entrado a /leyes/[slug]
+// explícitamente, debe poder estudiar cualquier ley aunque no esté en su
+// scope. El filtro de preguntas OFICIALES (buildOfficialExamFilter — caso
+// Laura) sigue aplicándose por separado, por lo que no se cuelan oficiales
+// de otras oposiciones.
 //
-// Estos tests fallan hoy porque `filterSelectedLawsByScope` aún no existe —
-// se añadirá en FASE 3 junto con su uso real dentro de isLawOnlyMode.
-// Ver project_oposicion_scope_refactor.md.
+// El helper sigue activo y testeado aquí porque otros módulos lo pueden
+// usar (ej: cálculos de cobertura, auditorías). Los tests validan su
+// comportamiento como función pura.
 
 import { filterSelectedLawsByScope } from '@/lib/api/oposicion-scope/queries'
 
