@@ -49,9 +49,15 @@ export default function OposicionChangeModal({ open, onClose, onSelect }: Props)
   const { user } = useAuth() as { user: { id: string } | null }
   const [search, setSearch] = useState('')
   const [saving, setSaving] = useState(false)
+  // Mensaje cuando el usuario elige una oposición que aún no está
+  // implementada. La demanda queda capturada en user_profiles.target_oposicion.
+  const [pendingOposicion, setPendingOposicion] = useState<{ id: string; nombre: string } | null>(null)
 
   useEffect(() => {
-    if (open) setSearch('')
+    if (open) {
+      setSearch('')
+      setPendingOposicion(null)
+    }
   }, [open])
 
   useEffect(() => {
@@ -103,13 +109,34 @@ export default function OposicionChangeModal({ open, onClose, onSelect }: Props)
     }
 
     // Modo navegación: guardar en BD y navegar
-    setSaving(true)
-
     const info = OPOSICION_MAP[oposicionId]
+
+    // Oposición NO implementada todavía (está en OFFICIAL_OPOSICIONES pero no
+    // en OPOSICIONES). Mostramos mensaje inline — pero guardamos igualmente
+    // target_oposicion para capturar la demanda real (podremos consultar
+    // user_profiles GROUP BY target_oposicion para priorizar qué crear).
     if (!info) {
-      setSaving(false)
+      const oposItem = OFFICIAL_OPOSICIONES.find((o: OposicionItem) => o.id === oposicionId)
+      const nombre = oposItem?.nombre || oposicionId
+      if (user) {
+        try {
+          await supabase
+            .from('user_profiles')
+            .update({
+              target_oposicion: oposicionId,
+              target_oposicion_data: JSON.stringify({ id: oposicionId, name: nombre }),
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', user.id)
+        } catch {
+          // Seguir adelante mostrando el mensaje aunque falle el UPDATE
+        }
+      }
+      setPendingOposicion({ id: oposicionId, nombre })
       return
     }
+
+    setSaving(true)
 
     if (user) {
       try {
@@ -156,6 +183,24 @@ export default function OposicionChangeModal({ open, onClose, onSelect }: Props)
               Cambiando oposición...
             </p>
           </div>
+        ) : pendingOposicion ? (
+          <div className="py-6">
+            <div className="text-center mb-5">
+              <div className="text-4xl mb-3">🔜</div>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
+                {pendingOposicion.nombre}
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+                Esta oposición <strong>aún no está disponible</strong>. Estamos trabajando en ella y queda registrado tu interés — te avisaremos en cuanto esté lista.
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className="w-full py-3 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors"
+            >
+              Entendido
+            </button>
+          </div>
         ) : (
           <>
             <div className="flex items-center justify-between mb-4">
@@ -188,25 +233,33 @@ export default function OposicionChangeModal({ open, onClose, onSelect }: Props)
                     {ADMIN_ICONS[admin] || '📋'} {admin}
                   </h3>
                   <div className="space-y-1">
-                    {items.map((op: OposicionItem) => (
-                      <button
-                        key={op.id}
-                        onClick={() => handleSelect(op.id)}
-                        className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors flex items-center gap-3 group"
-                      >
-                        <span className="text-lg flex-shrink-0">
-                          {hasCcaaFlag(op.id) ? <CcaaFlag oposicionId={op.id} /> : op.icon}
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <span className="text-sm font-medium text-gray-800 dark:text-gray-200 group-hover:text-blue-700 dark:group-hover:text-blue-400 block truncate">
-                            {op.nombre}
+                    {items.map((op: OposicionItem) => {
+                      const isImplemented = !!OPOSICION_MAP[op.id]
+                      return (
+                        <button
+                          key={op.id}
+                          onClick={() => handleSelect(op.id)}
+                          className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors flex items-center gap-3 group"
+                        >
+                          <span className="text-lg flex-shrink-0">
+                            {hasCcaaFlag(op.id) ? <CcaaFlag oposicionId={op.id} /> : op.icon}
                           </span>
-                          <span className="text-xs text-gray-400 dark:text-gray-500">
-                            {op.categoria}
-                          </span>
-                        </div>
-                      </button>
-                    ))}
+                          <div className="min-w-0 flex-1">
+                            <span className="text-sm font-medium text-gray-800 dark:text-gray-200 group-hover:text-blue-700 dark:group-hover:text-blue-400 block truncate">
+                              {op.nombre}
+                            </span>
+                            <span className="text-xs text-gray-400 dark:text-gray-500">
+                              {op.categoria}
+                            </span>
+                          </div>
+                          {!isImplemented && (
+                            <span className="flex-shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 whitespace-nowrap">
+                              🔜 En elaboración
+                            </span>
+                          )}
+                        </button>
+                      )
+                    })}
                   </div>
                 </div>
               ))}

@@ -4,6 +4,90 @@ Manual para escalar Vence a nuevas oposiciones. Marzo 2026.
 
 ---
 
+## 0. Dos tipos de oposiciones en Vence (CRÍTICO)
+
+Antes de crear nada hay que entender esta distinción. **Todo el resto del manual presupone este concepto.**
+
+### 0.1 Catálogo implementado vs aspiracional
+
+| Tipo | Dónde vive | Qué tiene | Para qué sirve |
+|---|---|---|---|
+| **Implementada (real)** | `OPOSICIONES` en `lib/config/oposiciones.ts` | Temario completo, topics con epígrafes, topic_scope, landing, tests funcionales, FAQs, estadísticas, convocatoria | Oposición que el usuario puede estudiar de verdad |
+| **Aspiracional (fantasma)** | `OFFICIAL_OPOSICIONES` en `components/OnboardingModal.tsx` | Solo `{ id, nombre, categoria, administracion, icon }` | Capturar demanda: qué oposiciones quiere la gente que aún no hemos creado |
+
+### 0.2 Reglas fundamentales
+
+1. **Todas las implementadas deben estar también en OFFICIAL_OPOSICIONES.** El onboarding y el selector de cambio de oposición leen de ahí.
+2. **Las aspiracionales NO están en OPOSICIONES** (no tienen contenido, si lo tuvieran serían implementadas).
+3. **`user_profiles.target_oposicion` puede apuntar a cualquiera de las dos.** Cuando apunta a una aspiracional, eso **es** la captura de demanda: podemos consultar `GROUP BY target_oposicion` para saber qué oposiciones priorizar.
+4. **No hay tabla aparte de "demanda"**. La demanda vive directamente en `user_profiles.target_oposicion`.
+
+### 0.3 UX diferenciada (post-16/04/2026)
+
+Ambas aparecen mezcladas en el onboarding y el selector de cambio. Se distinguen visualmente:
+
+| Implementada | Aspiracional |
+|---|---|
+| Click guarda `target_oposicion` + navega a `/slug/test` | Click guarda `target_oposicion` + muestra mensaje inline "🔜 En elaboración. Estamos trabajando en ella. Queda registrado tu interés" + no navega |
+| Sin badge especial | Badge "🔜 En elaboración" visible antes de clickar |
+
+**Consulta rápida para ver demanda acumulada:**
+
+```sql
+SELECT target_oposicion, COUNT(*) AS interesados
+FROM user_profiles
+WHERE target_oposicion NOT IN (SELECT position_type FROM topics WHERE is_active = true)
+GROUP BY target_oposicion
+ORDER BY interesados DESC;
+```
+
+(O más preciso: verificar contra `OPOSICIONES` de `lib/config/oposiciones.ts`.)
+
+### 0.4 Promocionar una aspiracional a implementada
+
+Cuando decidimos crear una oposición que ya era aspiracional (ej. `auxiliar_ayuntamiento` pasa de aspiracional a implementada):
+
+**REGLA DE ORO: mantener el mismo `id`.**
+
+Si el id coincide:
+- Los usuarios con `target_oposicion = <id>` heredan automáticamente la implementación.
+- El badge "🔜 En elaboración" desaparece solo (es condicional a que no esté en `OPOSICIONES`).
+- El click empieza a navegar a `/slug/test` sin tocar nada más del modal.
+- El newsletter `novedad-convocatoria` (ver §14) los encuentra automáticamente con el filtro estándar `target_oposicion = '<slug_underscores>'` y les envía "Tu oposición ya está lista para practicar".
+
+Si el id tiene que cambiar (ej. aspiracional genérica `auxiliar_ayuntamiento` se desdobla en `auxiliar_ayuntamiento_madrid` + `auxiliar_ayuntamiento_valencia`):
+- Es una **mala idea** salvo que sea inevitable.
+- Los usuarios con target_oposicion antiguo quedarían huérfanos.
+- Hay que hacer migración explícita:
+  ```sql
+  UPDATE user_profiles
+  SET target_oposicion = 'auxiliar_ayuntamiento_madrid'
+  WHERE target_oposicion = 'auxiliar_ayuntamiento'
+    AND ciudad ILIKE '%madrid%';
+  -- etc por ciudad
+  ```
+- Documentar la migración en el PR.
+
+### 0.5 Retirar una aspiracional (si no se va a crear nunca)
+
+Casos raros (ej. oposición saturada en el mercado, demanda nula, o nos damos cuenta de que está mal llamada):
+
+1. Ver cuántos usuarios la tienen como target: `SELECT COUNT(*) FROM user_profiles WHERE target_oposicion = '<id>'`.
+2. Migrar esos usuarios a una oposición similar implementada: `UPDATE user_profiles SET target_oposicion = '<nueva>' WHERE target_oposicion = '<vieja>'`.
+3. Enviar email informando del cambio.
+4. Eliminar la entrada de `OFFICIAL_OPOSICIONES` en `OnboardingModal.tsx`.
+
+### 0.6 Añadir una nueva aspiracional sin implementarla
+
+Para captar demanda de una oposición nueva que aparece (ej. convocan Ayto Bilbao y queremos medir interés antes de crearla):
+
+1. Añadir entrada en `OFFICIAL_OPOSICIONES` de `OnboardingModal.tsx` con un id claro (usar convención `position_type` con underscores).
+2. **No añadir a `OPOSICIONES`** hasta que decidamos implementarla.
+3. Aparecerá con badge "🔜 En elaboración" automáticamente.
+4. Monitorizar la demanda con la query de §0.3.
+
+---
+
 ## Modelo de datos (entender antes de empezar)
 
 ```
@@ -617,7 +701,7 @@ Importan de `lib/config/oposiciones.ts` y se actualizan solos:
 | `lib/api/topic-data/schemas.ts` | `VALID_TOPIC_RANGES` (rangos de temas por bloque) |
 | `lib/config/exam-positions.ts` | **OBLIGATORIO** si la oposición tiene examenes oficiales propios. Añadir entrada en `EXAM_POSITION_MAP` y `HOT_ARTICLE_TARGET_MAP`. Sin esto, el filtro cross-oposición bloquea todas las oficiales (default seguro post-15/04/2026). El log emite `[scope] sin mapeo exam_position para "..."` cuando falta. |
 | `components/InteractiveBreadcrumbs.tsx` | **No requiere cambios** — se adapta automáticamente desde OPOSICIONES |
-| `components/OnboardingModal.js` | `OFFICIAL_OPOSICIONES` array |
+| `components/OnboardingModal.tsx` | `OFFICIAL_OPOSICIONES` array. **Obligatorio para toda oposición** (implementada o aspiracional — ver §0.1). Si no está aquí, no aparece ni en el onboarding ni en el selector de cambio. Si ya existía como aspiracional, **mantener el mismo id** para heredar los usuarios con target_oposicion en ese id (ver §0.4). |
 | `app/perfil/page.tsx` | Array `oposiciones` del selector |
 | `app/nuestras-oposiciones/page.js` | Tarjeta de la oposicion |
 | `app/page.js` | Links en "Test por Oposicion" y tarjeta en "Temarios" |

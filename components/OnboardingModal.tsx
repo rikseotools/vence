@@ -3,6 +3,12 @@
 'use client'
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { getSupabaseClient } from '../lib/supabase'
+import { OPOSICIONES } from '../lib/config/oposiciones'
+
+// Set de ids de oposiciones ya implementadas (con temario/tests reales).
+// Se usa para marcar las aspiracionales con badge "🔜 En elaboración".
+// Ver docs/maintenance/crear-nueva-oposicion.md §0.
+const IMPLEMENTED_OPOSICION_IDS = new Set(OPOSICIONES.map(o => o.id))
 
 export interface OposicionItem {
   id: string
@@ -1428,25 +1434,33 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }: On
                 {/* Lista de oposiciones */}
                 <div className="space-y-2 max-h-40 sm:max-h-48 overflow-y-auto">
                 {/* Oficiales */}
-                {filteredOposiciones.official.slice(0, 10).map((op) => (
-                  <button
-                    key={op.id}
-                    onClick={() => handleSelectOfficial(op)}
-                    className="w-full text-left p-2 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all text-sm"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg">{op.icon}</span>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium text-gray-900 dark:text-gray-100 truncate">
-                          {op.nombre}
+                {filteredOposiciones.official.slice(0, 10).map((op) => {
+                  const isImplemented = IMPLEMENTED_OPOSICION_IDS.has(op.id)
+                  return (
+                    <button
+                      key={op.id}
+                      onClick={() => handleSelectOfficial(op)}
+                      className="w-full text-left p-2 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all text-sm"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">{op.icon}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-gray-900 dark:text-gray-100 truncate">
+                            {op.nombre}
+                          </div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">
+                            {op.categoria} · {op.administracion}
+                          </div>
                         </div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">
-                          {op.categoria} · {op.administracion}
-                        </div>
+                        {!isImplemented && (
+                          <span className="flex-shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 whitespace-nowrap">
+                            🔜 En elaboración
+                          </span>
+                        )}
                       </div>
-                    </div>
-                  </button>
-                ))}
+                    </button>
+                  )
+                })}
 
                 {/* Custom */}
                 {filteredOposiciones.custom.map((op) => (
