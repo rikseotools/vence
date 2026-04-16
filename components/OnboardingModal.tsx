@@ -724,6 +724,9 @@ const REGION_PRIORITY_OPOSICIONES: Record<string, string[]> = {
   'Navarra': ['administrativo_navarra', 'auxiliar_administrativo_estado'],
   'Chartered Community of Navarre': ['administrativo_navarra', 'auxiliar_administrativo_estado'],
   'La Rioja': ['auxiliar_administrativo_la_rioja', 'auxiliar_administrativo_estado'],
+  'País Vasco': ['auxiliar_enfermeria_osakidetza', 'auxiliar_administrativo_estado'],
+  'Basque Country': ['auxiliar_enfermeria_osakidetza', 'auxiliar_administrativo_estado'],
+  'Euskadi': ['auxiliar_enfermeria_osakidetza', 'auxiliar_administrativo_estado'],
   'Galicia': ['auxiliar_administrativo_galicia', 'administrativo_galicia', 'auxiliar_administrativo_estado'],
   'Comunidad Valenciana': ['auxiliar_administrativo_valencia', 'auxiliar_administrativo_ayuntamiento_valencia', 'auxiliar_administrativo_estado'],
   'Valencian Community': ['auxiliar_administrativo_valencia', 'auxiliar_administrativo_ayuntamiento_valencia', 'auxiliar_administrativo_estado'],
@@ -760,6 +763,7 @@ const AVAILABLE_OPOSICIONES_BY_DEMAND: string[] = [
   'enfermero_sas_andalucia',          // sanitaria
   'tcae_sermas_madrid',               // sanitaria Madrid
   'celador_sermas_madrid',            // sanitaria Madrid
+  'auxiliar_enfermeria_osakidetza',   // sanitaria País Vasco (TCAE)
 ]
 
 /** Reordena oposiciones: 1) región del usuario, 2) disponibles por demanda, 3) resto */

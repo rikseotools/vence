@@ -1,0 +1,112 @@
+{
+  "meta": {
+    "slug": "auxiliar-enfermeria-osakidetza",
+    "position_type": "auxiliar_enfermeria_osakidetza",
+    "nombre": "Auxiliar de Enfermería Osakidetza — Servicio Vasco de Salud",
+    "short_name": "Aux. Enfermería Osakidetza",
+    "cuerpo": "Auxiliar de Enfermería (TCAE)",
+    "categoria": "C2",
+    "grupo": "C",
+    "subgrupo": "C2",
+    "administracion": "Comunidad Autónoma País Vasco - Osakidetza",
+    "titulo_requerido": "Técnico en Cuidados Auxiliares de Enfermería (FP Grado Medio)",
+    "convocatoria": {
+      "plazas_totales": 927,
+      "plazas_turno_libre_estabilizacion": "Ver desglose en BOPV",
+      "tasa_examen_euros": 15,
+      "resolucion": "Resolución 466/2026",
+      "diario_oficial": "BOPV",
+      "diario_referencia": "BOPV nº 54, viernes 20 de marzo de 2026 (2026/1237)",
+      "programa_url": "https://www.euskadi.eus/web01-bopv/es/bopv2/datos/2026/03/2601237a.pdf",
+      "seguimiento_url": "https://www.euskadi.eus/contenidos/informacion/dt_03_2024_auxenfer_1242/es_def/index.shtml",
+      "oep_origen": "OEP 23+24+25 (acumulada)",
+      "oep_aprobada": true,
+      "inscripcion_start": "2026-03-23",
+      "inscripcion_deadline": "2026-04-22T14:00:00+02:00",
+      "examen_fecha": "2026-06-20",
+      "examen_lugar": "Bilbao Exhibition Centre (BEC)",
+      "estado_proceso": "inscripcion_abierta"
+    },
+    "examen": {
+      "tipo": "test",
+      "preguntas_cuenta": 100,
+      "duracion_minutos": null,
+      "composicion": "Preguntas extraídas de batería oficial publicada por Osakidetza (con 12 semanas de antelación mínima)",
+      "fase_oposicion_peso": 60,
+      "fase_concurso_peso": 40,
+      "euskera": {
+        "obligatorio_para_aprobar": false,
+        "vale_como_merito": true,
+        "puntos_merito_maximos": 27,
+        "idioma_examen": "castellano (el examen se realiza en castellano; el euskera aporta puntos en la fase de concurso)"
+      }
+    }
+  },
+  "bloques": [
+    {
+      "numero": 1,
+      "titulo": "Temario Común - Legislación Sanitaria",
+      "origen": "Anexo IV.I del BOPV 20/03/2026",
+      "icon": "⚖️"
+    },
+    {
+      "numero": 2,
+      "titulo": "Temario Específico - TCAE",
+      "origen": "Anexo IV.II del BOPV 20/03/2026",
+      "icon": "🩺"
+    }
+  ],
+  "temas_comunes": [
+    { "numero": 1, "titulo": "Ordenación de las profesiones sanitarias", "epigrafe": "Ordenación de las profesiones sanitarias: Normas Generales. Del ejercicio de las profesiones sanitarias. De la formación de las profesiones sanitarias. Del desarrollo profesional y su reconocimiento.", "leyes_implicadas": ["Ley 44/2003 Ordenación Profesiones Sanitarias"] },
+    { "numero": 2, "titulo": "Cohesión y calidad del Sistema Nacional de Salud", "epigrafe": "Cohesión y calidad del Sistema Nacional de Salud: Disposiciones generales. De las prestaciones. De los profesionales. De la investigación. Del sistema de información sanitaria. De la calidad.", "leyes_implicadas": ["Ley 16/2003 Cohesión y Calidad SNS"] },
+    { "numero": 3, "titulo": "Estatuto Marco del personal estatutario de los servicios de salud", "epigrafe": "Estatuto Marco del personal estatutario de los servicios de salud: Normas generales. Clasificación del personal estatutario. Derechos y deberes. Adquisición y pérdida de la condición de personal estatutario fijo. Movilidad del personal. Carrera profesional. Situaciones del personal estatutario.", "leyes_implicadas": ["Ley 55/2003 Estatuto Marco"] },
+    { "numero": 4, "titulo": "Ordenación Sanitaria de Euskadi", "epigrafe": "De la Ordenación Sanitaria de Euskadi: Sistema sanitario de Euskadi-Ordenación. Organización de las estructuras públicas de provisión de servicios sanitarios-Configuración. Régimen de personal.", "leyes_implicadas": ["Ley 8/1997 Ordenación Sanitaria Euskadi"] },
+    { "numero": 5, "titulo": "Estatutos Sociales del Ente Público Osakidetza", "epigrafe": "Estatutos Sociales del Ente Público 'Osakidetza-Servicio vasco de salud'. Organización Rectora. Organización central.", "leyes_implicadas": ["Decreto 255/1997 Estatutos Osakidetza"] },
+    { "numero": 6, "titulo": "Organizaciones sanitarias integradas de Osakidetza", "epigrafe": "Las organizaciones sanitarias integradas del Ente Público Osakidetza-Servicio vasco de salud.", "leyes_implicadas": ["Decreto de OSIs de Osakidetza"] },
+    { "numero": 7, "titulo": "Derechos y Deberes de las personas en el sistema sanitario de Euskadi", "epigrafe": "Declaración sobre Derechos y Deberes de las personas en el sistema sanitario de Euskadi: Disposiciones generales. Derechos y Deberes. Servicios de atención a pacientes y personas usuarias.", "leyes_implicadas": ["Decreto 147/2015 Derechos y Deberes pacientes Euskadi"] },
+    { "numero": 8, "titulo": "Autonomía del paciente", "epigrafe": "Ley 41/2002, de 14 de noviembre, básica reguladora de la autonomía del paciente y de derechos y obligaciones en materia de información y documentación clínica: Principios generales. Derecho de información sanitaria. Derecho a la intimidad. Respeto a la autonomía del paciente.", "leyes_implicadas": ["Ley 41/2002"] },
+    { "numero": 9, "titulo": "Voluntades anticipadas en el ámbito de la sanidad", "epigrafe": "Ley 7/2002, de 12 de diciembre, de las voluntades anticipadas en el ámbito de la sanidad. Objeto. Contenido del derecho a la expresión anticipada de voluntades en el ámbito de la sanidad. Documento de voluntades anticipadas. Modificación, sustitución y revocación.", "leyes_implicadas": ["Ley 7/2002 Euskadi"] },
+    { "numero": 10, "titulo": "Protección de Datos Personales y garantía de los derechos digitales", "epigrafe": "Protección de Datos Personales y garantía de los derechos digitales. Disposiciones generales. Principios de protección de datos. Derechos de las personas. Autoridades autonómicas de protección de datos. Régimen sancionador.", "leyes_implicadas": ["LO 3/2018 LOPDGDD", "RGPD (Reglamento UE 2016/679)"] },
+    { "numero": 11, "titulo": "Igualdad de Mujeres y Hombres y Vidas Libres de Violencia Machista", "epigrafe": "Decreto Legislativo 1/2023, de 16 de marzo, por el que se aprueba el texto refundido de la Ley para la Igualdad de Mujeres y Hombres y Vidas Libres de Violencia Machista contra las Mujeres.", "leyes_implicadas": ["DL 1/2023 Igualdad Euskadi"] },
+    { "numero": 12, "titulo": "Plan de Salud de Euskadi 2030", "epigrafe": "Plan de Salud de Euskadi 2030: Principios rectores. Retos estratégicos. Objetivos y Líneas Estratégicas.", "leyes_implicadas": ["Plan de Salud de Euskadi 2030 (no es ley — ley virtual)"] },
+    { "numero": 13, "titulo": "Pacto Vasco de Salud", "epigrafe": "Pacto Vasco de Salud de Euskadi: Objetivos. Valores y principios. Líneas estratégicas.", "leyes_implicadas": ["Pacto Vasco de Salud (no es ley — ley virtual)"] },
+    { "numero": 14, "titulo": "Estrategia de Seguridad del Paciente en Osakidetza 2030", "epigrafe": "Estrategia de Seguridad del Paciente en Osakidetza 2030. Objetivos. Líneas de acción corporativas.", "leyes_implicadas": ["Estrategia Seguridad Paciente (no es ley — ley virtual)"] },
+    { "numero": 15, "titulo": "II Plan para la Igualdad de mujeres y hombres en Osakidetza 2025-2028", "epigrafe": "II Plan para la Igualdad de mujeres y hombres en Osakidetza 2025-2028: Objetivos. Líneas Estratégicas.", "leyes_implicadas": ["II Plan Igualdad Osakidetza (no es ley — ley virtual)"] },
+    { "numero": 16, "titulo": "III Plan de Normalización del Uso del Euskera en Osakidetza", "epigrafe": "III Plan de Normalización del Uso del Euskera en Osakidetza: Fundamentos. Objetivos. Áreas de actuación.", "leyes_implicadas": ["III Plan Normalización Euskera (no es ley — ley virtual)"] },
+    { "numero": 17, "titulo": "Plan Oncológico Integral de Euskadi 2025-2030", "epigrafe": "Plan Oncológico Integral de Euskadi 2025-2030.", "leyes_implicadas": ["Plan Oncológico Euskadi (no es ley — ley virtual)"] },
+    { "numero": 18, "titulo": "Regulación de la eutanasia", "epigrafe": "Ley Orgánica 3/2021, de 24 de marzo, de regulación de la eutanasia.", "leyes_implicadas": ["LO 3/2021 Eutanasia"] },
+    { "numero": 19, "titulo": "Incompatibilidades del personal al servicio de las Administraciones Públicas", "epigrafe": "Ley 53/1984, de 26 de diciembre, de Incompatibilidades del personal al servicio de las Administraciones Públicas.", "leyes_implicadas": ["Ley 53/1984 Incompatibilidades"] }
+  ],
+  "temas_especificos": [
+    { "numero": 1, "titulo": "Estructura del sistema sanitario y documentos clínicos", "epigrafe": "Estructura del sistema sanitario, organización, niveles de asistencia y tipos de prestaciones, Departamentos. Documentos clínicos y no clínicos y tramitación de dichos documentos, normas y protocolos. Historia clínica.", "teorico": true },
+    { "numero": 2, "titulo": "Salud pública y salud comunitaria", "epigrafe": "Salud pública. Salud comunitaria. Equipos de salud.", "teorico": true },
+    { "numero": 3, "titulo": "Proceso de atención de enfermería (PAE)", "epigrafe": "Evolución histórica. Métodos y procedimientos de atención de enfermería. Proceso de atención de enfermería (PAE). Funciones del auxiliar de enfermería.", "teorico": true },
+    { "numero": 4, "titulo": "Principios fundamentales de bioética", "epigrafe": "Principios fundamentales de bioética.", "teorico": true },
+    { "numero": 5, "titulo": "Almacenamiento y control de materiales", "epigrafe": "Almacenamiento y control de existencias de un almacén, normativa de conservación y mantenimiento de productos o materiales.", "teorico": true },
+    { "numero": 6, "titulo": "Higiene del paciente. Piel y mucosas. LCRD", "epigrafe": "Principio anatomofisiológicos de la piel. Higiene del paciente. Concepto. Higiene total y parcial. Cuidado de la piel y mucosas. Higiene de la boca, ojos, genitales, cabeza. Higiene del paciente encamado. Movilización del paciente. Recogida de excretas con utilización de cuña y/o botella. Lesiones Cutáneas Relacionadas con la Dependencia (LCRD). Etiología. Concepto factores que favorecen la aparición. Zonas de riesgo. Medidas de prevención. Cambios posturales y cuidados de la piel. Lesiones asociadas a la humedad (LESCAH).", "teorico": true },
+    { "numero": 7, "titulo": "Movilización, deambulación e higiene postural", "epigrafe": "Principio anatomofisiológicos de sostén y movimiento. Movilización y deambulación. Higiene postural. Posiciones del paciente en cama. Traslados y movilizaciones. Ayuda para caminar. Posiciones anatómicas. Medidas de prevención de riesgo de accidente para el paciente. Traslados y movilizaciones en patologías específicas (cirugías, procesos traumatológicos, hemiplejias...).", "teorico": true },
+    { "numero": 8, "titulo": "Aparato cardiovascular y respiratorio. Constantes vitales", "epigrafe": "Principio anatomofisiológicos del aparato cardiovascular y respiratorio. Características fisiológicas de las constantes vitales y balance hídrico. Conceptos generales y valores normales.", "teorico": true },
+    { "numero": 9, "titulo": "Administración de medicación. Farmacología general", "epigrafe": "Administración de medicación. Principios de farmacología general. Características anatomofisiológicas de las vías más frecuentes de administración de fármacos.", "teorico": true },
+    { "numero": 10, "titulo": "Aerosolterapia y oxigenoterapia", "epigrafe": "Principio anatomofisiológicos del aparato cardiovascular y respiratorio. Métodos de administración de aerosolterapia oxigenoterapia: Colaboración en los cuidados del paciente con trastornos cardiorrespiratorios.", "teorico": true },
+    { "numero": 11, "titulo": "Aparato digestivo. Alimentación y nutrición", "epigrafe": "Principio anatomofisiológicos del aparato digestivo. Conceptos generales, alimentos, clasificación según sus características nutritivas, dietas normales y terapéuticas. Vías de alimentación oral y enteral. Técnicas para alimentación a paciente encamado, disfagias, SNG. Alimentación por sonda nasogástrica, cuidados de enfermería. Eliminación intestinal, características de las heces. Recogida de muestra. Sondaje rectal, enemas, tipos y procedimientos. Ostomía, tipos y procedimientos de cuidados. Colaboración en los cuidados del paciente con trastornos gastrointestinales. Nutrición parenteral y enteral. Principios fundamentales.", "teorico": true },
+    { "numero": 12, "titulo": "Aparato urinario. Eliminación urinaria y sondajes", "epigrafe": "Principio anatomofisiológicos del aparato urinario. Eliminación urinaria. Conceptos generales. Diuresis. Características de la orina. Recogida de muestras. Procedimientos. Sondajes. Colaboración en los cuidados.", "teorico": true },
+    { "numero": 13, "titulo": "Cuidados post mortem", "epigrafe": "Cuidados post mortem. Finalidad y preparación del cadáver.", "teorico": true },
+    { "numero": 14, "titulo": "Primeros auxilios y RCP", "epigrafe": "Primeros auxilios. Principios anatomofisiológicos aplicados a los primeros auxilios. Criterios de urgencia y prioridad. Traumatismos. Técnicas de reanimación cardiopulmonar, asfixias, parada cardiorrespiratoria.", "teorico": true },
+    { "numero": 15, "titulo": "Cuidados en las distintas etapas del ciclo vital", "epigrafe": "Cuidados básicos de las necesidades humanas en las distintas etapas del ciclo vital: Lactante y escolar. Adulto. Embarazo y lactancia. Envejecimiento, final de vida, prestación de ayuda para morir. Cuidados de enfermería en unidades específicas. Pediatría, Geriatría, Ginecología, Neurología y Cirugía, cuidados paliativos.", "teorico": true },
+    { "numero": 16, "titulo": "Limpieza, desinfección y esterilización", "epigrafe": "Limpieza, desinfección y esterilización del material sanitario. Conceptos. Principios básicos. Métodos de desinfección. Métodos de esterilización. Preparación del material para esterilización.", "teorico": true },
+    { "numero": 17, "titulo": "Infecciones. Aislamiento y precauciones", "epigrafe": "Infección. Conceptos generales. Fuentes de infección. Aislamiento: Concepto. Tipos. Prevención de las infecciones. Lavado de manos. Precauciones estándar. Precauciones de transmisión aérea, por gotas y por contacto. Infección nosocomial.", "teorico": true },
+    { "numero": 18, "titulo": "Manipulación de muestras y residuos sanitarios", "epigrafe": "Manipulación de muestras. Eliminación de residuos sanitarios. Recogida y transporte de muestras según su origen biológico.", "teorico": true },
+    { "numero": 19, "titulo": "Fundamentos de psicología general y evolutiva", "epigrafe": "Fundamentos de la psicología general y evolutiva. Circunstancias psicológicas que pueden provocar disfunciones de comportamiento en pacientes con condiciones especiales. Desarrollo evolutivo y afectivo. Teorías psicológicas sobre el desarrollo de la personalidad.", "teorico": true },
+    { "numero": 20, "titulo": "Comunicación y humanización", "epigrafe": "Comunicación/Humanización. Concepto, El proceso de comunicación, y estilos de comunicación y relación. Factores y obstáculos en la comunicación sanitaria. Atención humanizada y centrada en la persona.", "teorico": true },
+    { "numero": 21, "titulo": "Salud y enfermedad. Influencia del medio", "epigrafe": "Salud y enfermedad, influencia del medio bio-psico-social y cultural, efectos generales del hecho de enfermar.", "teorico": true },
+    { "numero": 22, "titulo": "El auxiliar de enfermería en equipo multidisciplinar", "epigrafe": "El auxiliar de enfermería profesional sanitario como miembro de un equipo multidisciplinar. Multidisciplinariedad. Funciones del auxiliar de enfermería. Aptitudes y actitudes. Atención compartida.", "teorico": true },
+    { "numero": 23, "titulo": "Estados psicológicos de los pacientes en situaciones especiales", "epigrafe": "Estados psicológicos de los pacientes en situaciones especiales. El dolor y el sufrimiento humano, la vivencia de la enfermedad. El paciente como sujeto de su enfermedad. Reacciones a la enfermedad y al sufrimiento.", "teorico": true },
+    { "numero": 24, "titulo": "Educación sanitaria y promoción de la salud", "epigrafe": "Educación sanitaria. Promoción de salud. Prevención de la enfermedad y educación para la salud. Programas terapéuticos.", "teorico": true },
+    { "numero": 25, "titulo": "Salud mental. Trastornos psíquicos", "epigrafe": "Atención al paciente con trastornos psíquicos, salud mental. Trastornos mentales. Clasificación de los trastornos mentales. Hospitalización de los pacientes con trastornos mentales y la relación con el auxiliar de enfermería. Atención a pacientes con demencia y otros deterioros cognitivos.", "teorico": true },
+    { "numero": 26, "titulo": "Seguridad clínica del paciente", "epigrafe": "Seguridad clínica: Conceptos básicos de seguridad del paciente. Notificación y aprendizaje de incidentes de seguridad. La seguridad de pacientes como foco prioritario en TCAE. Prevención de Infecciones relacionadas con la atención sanitaria. Higiene de manos. Aislamientos, tipos y precauciones, cuidados específicos a pacientes en aislamiento.", "teorico": true },
+    { "numero": 27, "titulo": "Salud Laboral. Condiciones físico-ambientales del trabajo", "epigrafe": "Salud Laboral. Concepto. Condiciones físico-ambientales del trabajo. Accidentes de riesgo biológico: Ergonomía. Medidas de prevención. Métodos de movilización de enfermos.", "leyes_implicadas": ["Ley 31/1995 LPRL"], "teorico": true },
+    { "numero": 28, "titulo": "Vías de administración de medicamentos", "epigrafe": "Vías de administración de medicamentos. Oral, rectal y tópica. Precauciones y buenas prácticas en la administración de medicamentos.", "teorico": true },
+    { "numero": 29, "titulo": "Violencia de género. Protocolo de actuación", "epigrafe": "Violencia de género. Protocolo de actuación ante los malos tratos.", "leyes_implicadas": ["LO 1/2004 Violencia de Género", "DL 1/2023 Euskadi"] },
+    { "numero": 30, "titulo": "Buenas prácticas y evidencia científica", "epigrafe": "Buenas prácticas basadas en el conocimiento. Evidencia científica.", "teorico": true }
+  ]
+}
