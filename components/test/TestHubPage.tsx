@@ -153,5 +153,8 @@ export default async function TestHubPage({ oposicion }: Props) {
   )
 }
 
-// Revalidar cada mes (los temas no cambian)
-export const revalidate = 2592000 // 30 días
+// Cache estática (ISR on-demand). Revalidar con:
+//   - POST /api/purge-cache {"path": "/<slug>/test"}  (una ruta)
+//   - node scripts/purge-all-cache.js                  (todas las rutas ISR)
+// Ver docs/maintenance/cache-revalidation.md
+export const revalidate = false

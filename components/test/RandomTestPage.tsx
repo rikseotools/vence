@@ -54,5 +54,8 @@ export default async function RandomTestPage({ oposicion }: Props) {
   )
 }
 
-// Revalidar cada día (los conteos pueden cambiar con nuevas preguntas)
-export const revalidate = 86400 // 24 horas
+// Cache estática (ISR on-demand). Revalidar con:
+//   - POST /api/purge-cache {"path": "/<slug>/test/aleatorio"}  (una ruta)
+//   - node scripts/purge-all-cache.js                            (todas las rutas ISR)
+// Ver docs/maintenance/cache-revalidation.md
+export const revalidate = false
