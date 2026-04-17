@@ -91,6 +91,7 @@ function ExamAleatorioContent({ oposicionSlug, positionType, themeNames }: ExamA
 
       // Migrado a API centralizada (/api/questions/filtered) para cerrar vector de scraping
       const difficultyMode = testConfig.difficulty === 'mixed' ? 'random' : testConfig.difficulty
+
       const response = await fetch('/api/questions/filtered', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
