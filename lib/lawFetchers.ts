@@ -551,26 +551,8 @@ export async function fetchLawOfficialTest(lawShortName: string, searchParams: S
 // =================================================================
 export async function validateLawExists(lawShortName: string): Promise<boolean> {
   try {
-    // Resolver slug a short_name real de la BD
-    const resolvedShortName = mapLawSlugToShortName(lawShortName) || lawShortName
-
-    const { count, error } = await supabase
-      .from('questions')
-      .select('id, articles!inner(laws!inner(short_name))', { count: 'exact', head: true })
-      .eq('is_active', true)
-      .is('exam_case_id', null)
-      .eq('articles.laws.short_name', resolvedShortName)
-
-    if (error) {
-      console.error('❌ [LAW FETCHER] Error validando ley:', error)
-      return false
-    }
-
-    const hasQuestions = (count || 0) > 0
-    console.log(`🔍 [LAW FETCHER] Ley ${resolvedShortName}: ${count || 0} preguntas, válida: ${hasQuestions}`)
-
-    return hasQuestions
-
+    const stats = await getLawStats(lawShortName)
+    return stats.hasQuestions
   } catch (error) {
     console.error('❌ [LAW FETCHER] Error en validateLawExists:', error)
     return false
@@ -581,42 +563,31 @@ export async function validateLawExists(lawShortName: string): Promise<boolean> 
 // FUNCIÓN AUXILIAR: Obtener estadísticas de una ley
 // =================================================================
 export async function getLawStats(lawShortName: string): Promise<LawStats> {
-  // Resolver slug a short_name real de la BD
   const resolvedShortName = mapLawSlugToShortName(lawShortName) || lawShortName
 
   try {
-    console.log(`📊 [LAW FETCHER] Obteniendo estadísticas de ${resolvedShortName}`)
+    console.log(`📊 [LAW FETCHER] Obteniendo estadísticas de ${resolvedShortName} via API`)
 
-    // Contar total de preguntas
-    const { count: totalQuestions } = await supabase
-      .from('questions')
-      .select('id, articles!inner(laws!inner(short_name))', { count: 'exact', head: true })
-      .eq('is_active', true)
-      .is('exam_case_id', null)
-      .eq('articles.laws.short_name', resolvedShortName)
+    const response = await fetch(`/api/questions/law-stats?lawShortName=${encodeURIComponent(resolvedShortName)}`)
+    const data = await response.json()
 
-    // Contar preguntas oficiales
-    const { count: officialQuestions } = await supabase
-      .from('questions')
-      .select('id, articles!inner(laws!inner(short_name))', { count: 'exact', head: true })
-      .eq('is_active', true)
-      .is('exam_case_id', null)
-      .eq('is_official_exam', true)
-      .eq('articles.laws.short_name', resolvedShortName)
-
-    // Asegurar que totalQuestions sea al menos igual a officialQuestions
-    // (puede haber inconsistencias en las queries con joins)
-    const total = totalQuestions || 0
-    const official = officialQuestions || 0
-    const adjustedTotal = Math.max(total, official) // El total nunca puede ser menor que las oficiales
+    if (!response.ok || !data.success) {
+      console.error(`❌ [LAW FETCHER] Error API law-stats: ${data.error}`)
+      return {
+        lawShortName: resolvedShortName,
+        totalQuestions: 0, officialQuestions: 0, regularQuestions: 0,
+        hasQuestions: false, hasOfficialQuestions: false,
+        error: data.error || 'Error obteniendo estadísticas'
+      }
+    }
 
     const stats: LawStats = {
-      lawShortName: resolvedShortName,
-      totalQuestions: adjustedTotal,
-      officialQuestions: official,
-      regularQuestions: Math.max(0, adjustedTotal - official), // Nunca negativo
-      hasQuestions: adjustedTotal > 0,
-      hasOfficialQuestions: official > 0
+      lawShortName: data.lawShortName,
+      totalQuestions: data.totalQuestions,
+      officialQuestions: data.officialQuestions,
+      regularQuestions: data.regularQuestions,
+      hasQuestions: data.hasQuestions,
+      hasOfficialQuestions: data.hasOfficialQuestions,
     }
 
     console.log(`📊 [LAW FETCHER] Estadísticas de ${resolvedShortName}:`, stats)
@@ -626,11 +597,8 @@ export async function getLawStats(lawShortName: string): Promise<LawStats> {
     console.error(`❌ [LAW FETCHER] Error obteniendo estadísticas de ${resolvedShortName}:`, error)
     return {
       lawShortName: resolvedShortName,
-      totalQuestions: 0,
-      officialQuestions: 0,
-      regularQuestions: 0,
-      hasQuestions: false,
-      hasOfficialQuestions: false,
+      totalQuestions: 0, officialQuestions: 0, regularQuestions: 0,
+      hasQuestions: false, hasOfficialQuestions: false,
       error: (error as Error).message
     }
   }
