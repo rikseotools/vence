@@ -94,7 +94,7 @@ interface TopLaw {
 async function getTopLaws(): Promise<TopLaw[]> {
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 
   // Step 1: Get articles grouped by law_id with question count

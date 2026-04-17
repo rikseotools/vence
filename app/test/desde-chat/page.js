@@ -35,37 +35,34 @@ function TestDesdeChatContent() {
             return
           }
 
-          // Cargar las preguntas directamente por IDs
-          const supabase = getSupabaseClient()
-          console.log('🎯 [desde-chat] Fetching questions from Supabase...')
-          const { data: questionsData, error: fetchError } = await supabase
-            .from('questions')
-            .select(`
-              id,
-              question_text,
-              options,
-              explanation,
-              difficulty,
-              law_id,
-              article_id,
-              laws(name, slug),
-              law_articles(article_number, title_text)
-            `)
-            .in('id', questionIds)
-            .eq('is_active', true)
-
-          console.log('🎯 [desde-chat] Supabase response:', {
-            hasData: !!questionsData,
-            count: questionsData?.length,
-            error: fetchError?.message
+          // Cargar las preguntas via API centralizada
+          console.log('🎯 [desde-chat] Fetching questions via API...')
+          const response = await fetch('/api/questions/filtered', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              topicNumber: 0,
+              positionType: 'auxiliar_administrativo_estado',
+              numQuestions: questionIds.length,
+              onlyFailedQuestions: true,
+              failedQuestionIds: questionIds,
+              selectedLaws: [],
+              selectedArticlesByLaw: {},
+              selectedSectionFilters: [],
+              difficultyMode: 'random',
+            })
           })
 
-          if (fetchError) {
-            console.error('🎯 [desde-chat] Error fetching questions:', fetchError)
+          const apiData = await response.json()
+
+          if (!response.ok || !apiData.success) {
+            console.error('🎯 [desde-chat] Error API:', apiData.error)
             setError('Error al cargar las preguntas')
             setLoading(false)
             return
           }
+
+          const questionsData = apiData.questions
 
           if (!questionsData || questionsData.length === 0) {
             console.error('🎯 [desde-chat] No questions found')
@@ -74,19 +71,19 @@ function TestDesdeChatContent() {
             return
           }
 
-          console.log('🎯 [desde-chat] Questions loaded:', questionsData.length)
+          console.log('🎯 [desde-chat] Questions loaded via API:', questionsData.length)
 
-          // Transformar preguntas al formato esperado por TestLayout
+          // La API ya devuelve en formato transformado
           const transformedQuestions = questionsData.map(q => ({
             id: q.id,
-            question_text: q.question_text,
+            question_text: q.question,
             options: q.options,
             explanation: q.explanation,
-            difficulty: q.difficulty,
-            law_name: q.laws?.name || 'Desconocida',
-            law_slug: q.laws?.slug,
-            article_number: q.law_articles?.article_number,
-            article_title: q.law_articles?.title_text
+            difficulty: q.metadata?.difficulty || 'medium',
+            law_name: q.article?.law_name || 'Desconocida',
+            law_slug: null,
+            article_number: q.article?.number,
+            article_title: q.article?.title
           }))
 
           setQuestions(transformedQuestions)
