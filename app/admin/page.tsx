@@ -1,10 +1,12 @@
 // app/admin/page.tsx - Dashboard con API v2 Drizzle
 'use client'
 import { useState, useEffect } from 'react'
-import AdminActivityChart from '@/components/AdminActivityChart'
-import AdminRegistrationsChart from '@/components/AdminRegistrationsChart'
+import dynamic from 'next/dynamic'
 import type { DashboardResponse } from '@/lib/api/admin-dashboard/schemas'
 import type { ActivityChartResponse, RegistrationsChartResponse } from '@/lib/api/admin-charts/schemas'
+
+const AdminActivityChart = dynamic(() => import('@/components/AdminActivityChart'), { ssr: false })
+const AdminRegistrationsChart = dynamic(() => import('@/components/AdminRegistrationsChart'), { ssr: false })
 
 // Tipos auxiliares para datos del dashboard
 type DashboardStats = DashboardResponse['stats']
