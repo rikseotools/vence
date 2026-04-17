@@ -523,7 +523,26 @@ export async function getFilteredQuestions(
 
     // 🔄 CASO: Preguntas falladas con IDs específicos (del sessionStorage)
     if (onlyFailedQuestions && failedQuestionIds && failedQuestionIds.length > 0) {
-      console.log(`🔄 Modo preguntas falladas por IDs: ${failedQuestionIds.length} específicas`)
+      console.log(`🔄 [failed-questions-ids] ${failedQuestionIds.length} IDs específicas, positionType=${positionType}`)
+
+      let allowed: AllowedLawsResult
+      try {
+        allowed = await getAllowedLawIds({ userId: userId || undefined, fallbackPositionType: positionType })
+      } catch (err) {
+        console.error('❌ [failed-questions-ids] getAllowedLawIds falló:', (err as Error).message)
+        logValidationError({
+          endpoint: '/api/questions/filtered',
+          errorType: 'scope_resolution',
+          errorMessage: `getAllowedLawIds falló en failed-by-ids: ${(err as Error).message}`,
+          severity: 'critical',
+          userId: userId || undefined,
+        })
+        return { success: true, questions: [], totalAvailable: 0, filtersApplied: { laws: 0, articles: 0, sections: 0 }, emptyReason: 'Error resolviendo scope de oposición' }
+      }
+
+      const scopeFilter = allowed.lawIds.length > 0
+        ? inArray(laws.id, allowed.lawIds)
+        : sql`false`
 
       const failedQuestions = await db
         .select({ ...questionColumns, ...articleColumns })
@@ -532,7 +551,8 @@ export async function getFilteredQuestions(
         .innerJoin(laws, eq(articles.lawId, laws.id))
         .where(and(
           eq(questions.isActive, true),
-          inArray(questions.id, failedQuestionIds)
+          inArray(questions.id, failedQuestionIds),
+          scopeFilter
         ))
 
       // Ordenar según el orden de failedQuestionIds (mantener orden original)
@@ -541,9 +561,14 @@ export async function getFilteredQuestions(
         .map(id => questionMap.get(id))
         .filter((q): q is NonNullable<typeof q> => q !== undefined)
 
+      const filtered = failedQuestionIds.length - orderedQuestions.length
+      if (filtered > 0) {
+        console.warn(`🔒 [failed-questions-ids] ${filtered} preguntas filtradas por scope (de ${failedQuestionIds.length})`)
+      }
+
       const finalQuestions = orderedQuestions.slice(0, numQuestions)
 
-      console.log(`✅ Encontradas ${finalQuestions.length} de ${failedQuestionIds.length} preguntas falladas`)
+      console.log(`✅ [failed-questions-ids] ${finalQuestions.length} preguntas (${filtered} filtradas por scope)`)
 
       // Transformar al formato esperado
       const transformedQuestions = finalQuestions.map((q, i) => transformQuestion({ ...q, sourceTopic: topicNumber || null } as QuestionRow, i))
@@ -604,7 +629,9 @@ export async function getFilteredQuestions(
         .innerJoin(laws, eq(articles.lawId, laws.id))
         .where(and(
           eq(questions.isActive, true),
-          inArray(laws.id, validLawIds)
+          inArray(laws.id, validLawIds),
+          onlyOfficialQuestions ? buildOfficialExamFilter(positionType) : sql`true`,
+          onlyOfficialQuestions ? eq(questions.isOfficialExam, true) : sql`true`,
         ))
         .orderBy(sql`RANDOM()`)
         .limit(numQuestions)

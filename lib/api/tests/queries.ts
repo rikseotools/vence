@@ -2,6 +2,7 @@
 import { getDb } from '@/db/client'
 import { tests, testQuestions, userProfiles, questions, articles, laws } from '@/db/schema'
 import { eq, sql, inArray, gte, and, desc } from 'drizzle-orm'
+import { getAllowedLawIds } from '@/lib/api/oposicion-scope/queries'
 import type {
   RecoverTestRequest,
   RecoverTestResponse,
@@ -331,7 +332,12 @@ export async function getFailedQuestionsForUser(
       }
     }
 
-    // Paso 3: Cargar preguntas completas con artículos y leyes
+    // Paso 3: Cargar preguntas completas con artículos y leyes (filtradas por scope)
+    const allowed = await getAllowedLawIds({ userId })
+    const scopeFilter = allowed.lawIds.length > 0
+      ? inArray(laws.id, allowed.lawIds)
+      : sql`true`
+
     const questionsWithDetails = await db
       .select({
         id: questions.id,
@@ -358,12 +364,13 @@ export async function getFailedQuestionsForUser(
         lawActualSlug: laws.slug,
       })
       .from(questions)
-      .leftJoin(articles, eq(questions.primaryArticleId, articles.id))
-      .leftJoin(laws, eq(articles.lawId, laws.id))
+      .innerJoin(articles, eq(questions.primaryArticleId, articles.id))
+      .innerJoin(laws, eq(articles.lawId, laws.id))
       .where(
         and(
           inArray(questions.id, questionIds),
-          eq(questions.isActive, true)
+          eq(questions.isActive, true),
+          scopeFilter
         )
       )
 
