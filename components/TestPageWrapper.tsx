@@ -99,9 +99,16 @@ export default function TestPageWrapper({
       return fetchAleatorioMultiTema
     }
 
-    // 🚀 NUEVO: Usar API centralizada para tests personalizados con tema
-    // La API maneja filtros de leyes, artículos y secciones via Drizzle + Zod
+    // 🚀 Usar API centralizada para tests personalizados con tema
+    // Si modo adaptativo activo, usar fetchQuestionsByTopicScope que construye
+    // el catálogo de 500 preguntas agrupadas por dificultad × historial.
+    // Sin adaptativo, fetchQuestionsViaAPI es suficiente (más rápido, sin catálogo).
     if (temaParam && temaParam > 0 && testTypeParam === 'personalizado') {
+      const isAdaptive = finalSearchParams?.get?.('adaptive') === 'true'
+      if (isAdaptive) {
+        console.log(`🧠 Tema ${temaParam} personalizado con modo adaptativo → fetchQuestionsByTopicScope`)
+        return fetchQuestionsByTopicScope
+      }
       console.log(`🚀 Tema ${temaParam} usando API centralizada (Drizzle + Zod)`)
       return fetchQuestionsViaAPI
     }
