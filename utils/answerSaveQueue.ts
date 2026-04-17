@@ -93,6 +93,19 @@ async function syncOne(answer: QueuedAnswer, accessToken: string): Promise<boole
       return false
     }
 
+    if (response.status === 403) {
+      // Límite diario o dispositivo bloqueado — respuesta definitiva, no reintentar.
+      // Marcar como éxito para que flush() la saque de la cola.
+      let errorBody = ''
+      try { errorBody = (await response.text()).slice(0, 200) } catch {}
+      logClientError('/api/v2/answer-and-save', new Error(`403 Forbidden (descartado): ${errorBody}`), {
+        component: 'answerSaveQueue syncOne 403',
+        userId: extractUserId(answer),
+        severity: 'info',
+      })
+      return true
+    }
+
     if (!response.ok) {
       let errorBody = ''
       try { errorBody = (await response.text()).slice(0, 200) } catch {}
