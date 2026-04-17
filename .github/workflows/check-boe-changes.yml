@@ -14,14 +14,52 @@ jobs:
       - name: Check BOE for law changes
         id: check
         run: |
-          RESPONSE=$(curl -s -X GET \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            -H "Content-Type: application/json" \
-            "https://www.vence.es/api/cron/check-boe-changes")
+          call_boe() {
+            curl -s -w "\n%{http_code}" -X GET \
+              -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+              -H "Content-Type: application/json" \
+              --max-time 90 \
+              "https://www.vence.es/api/cron/check-boe-changes"
+          }
+
+          is_error() {
+            [ "$1" -ge 500 ] 2>/dev/null || [ -z "$1" ]
+          }
+
+          # 4 intentos: inmediato, +30min, +1h, +1h
+          DELAYS=(0 1800 3600 3600)
+
+          for i in 0 1 2 3; do
+            if [ "$i" -gt 0 ]; then
+              echo "⚠️ Intento $i falló (HTTP $HTTP_CODE), reintentando en $((${DELAYS[$i]}/60)) minutos..."
+              sleep ${DELAYS[$i]}
+            fi
+
+            OUTPUT=$(call_boe)
+            HTTP_CODE=$(echo "$OUTPUT" | tail -1)
+            RESPONSE=$(echo "$OUTPUT" | sed '$d')
+
+            if ! is_error "$HTTP_CODE"; then
+              break
+            fi
+          done
+
+          # Si todos los intentos fallaron, registrar en observabilidad y salir sin error
+          if is_error "$HTTP_CODE"; then
+            echo "❌ Los 4 intentos fallaron (último HTTP $HTTP_CODE). Se reintentará mañana."
+            curl -s -X POST \
+              -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+              -H "Content-Type: application/json" \
+              -d "{\"endpoint\":\"/api/cron/check-boe-changes\",\"message\":\"4 intentos fallaron (último HTTP $HTTP_CODE)\",\"httpStatus\":${HTTP_CODE:-504}}" \
+              "https://www.vence.es/api/cron/log-failure" || true
+            echo "changes=0" >> $GITHUB_OUTPUT
+            echo "checked=0" >> $GITHUB_OUTPUT
+            echo "duration=failed" >> $GITHUB_OUTPUT
+            exit 0
+          fi
 
           echo "Response: $RESPONSE"
 
-          # Extraer estadísticas
           CHANGES=$(echo $RESPONSE | jq -r '.stats.changesDetected // 0')
           CHECKED=$(echo $RESPONSE | jq -r '.stats.checked // 0')
           DURATION=$(echo $RESPONSE | jq -r '.duration // "?"')
