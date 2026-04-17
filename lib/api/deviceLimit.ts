@@ -35,6 +35,10 @@ export function getDeviceIdFromRequest(request: NextRequest): string | null {
   return request.headers.get('x-device-id') ?? null
 }
 
+export function getHwFingerprintFromRequest(request: NextRequest): string | null {
+  return request.headers.get('x-hw-fingerprint') ?? null
+}
+
 /**
  * Register a device for a user and check if it's within limits.
  * - Free: max 2 devices. 3rd device → blocked.

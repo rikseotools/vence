@@ -39,24 +39,21 @@ export interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 // 🎯 TRACKING DE IP Y LOCALIDAD - Fire and forget, no bloquea UI
-// También envía device_id si existe (para usuarios bajo vigilancia de fraude)
 const trackSessionIP = (userId: string, sessionId: string | null = null) => {
   if (typeof window === 'undefined') return
 
-  // Obtener device_id si existe (solo para usuarios vigilados)
   const deviceId = localStorage.getItem('vence_device_id') || null
+  const hwFingerprint = localStorage.getItem('vence_hw_fingerprint') || null
 
-  // Fire and forget - no await, no bloquea nada
   fetch('/api/auth/track-session-ip', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId, sessionId, deviceId })
+    body: JSON.stringify({ userId, sessionId, deviceId, hwFingerprint })
   }).then(res => {
     if (res.ok) {
-      console.log('📍 IP y localidad tracked en background', deviceId ? '(con device_id)' : '')
+      console.log('📍 IP y localidad tracked en background')
     }
   }).catch(err => {
-    // Silencioso - no es crítico
     console.warn('⚠️ Error tracking IP (no crítico):', err.message)
   })
 }

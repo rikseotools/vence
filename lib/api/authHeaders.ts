@@ -16,9 +16,9 @@ export async function getAuthHeaders(): Promise<Record<string, string>> {
 
   if (typeof window !== 'undefined') {
     const deviceId = localStorage.getItem(DEVICE_ID_KEY)
-    if (deviceId) {
-      headers['X-Device-Id'] = deviceId
-    }
+    if (deviceId) headers['X-Device-Id'] = deviceId
+    const hwFp = localStorage.getItem('vence_hw_fingerprint')
+    if (hwFp) headers['X-Hw-Fingerprint'] = hwFp
   }
 
   return headers

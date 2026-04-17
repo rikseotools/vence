@@ -11,6 +11,7 @@ const trackSessionIpSchema = z.object({
   userId: z.string().uuid(),
   sessionId: z.string().uuid().nullish(),
   deviceId: z.string().nullish(),
+  hwFingerprint: z.string().nullish(),
 })
 
 interface GeoLocation {
@@ -71,7 +72,7 @@ async function _POST(request: Request) {
       )
     }
 
-    const { userId, sessionId, deviceId } = parsed.data
+    const { userId, sessionId, deviceId, hwFingerprint } = parsed.data
 
     // Obtener IP del request
     const forwardedFor = request.headers.get('x-forwarded-for')
@@ -96,7 +97,10 @@ async function _POST(request: Request) {
 
     if (deviceId) {
       updateData.deviceFingerprint = deviceId
-      console.log('🔒 [SessionIP] Device ID tracking:', deviceId.substring(0, 8) + '...')
+    }
+
+    if (hwFingerprint) {
+      updateData.deviceId = hwFingerprint
     }
 
     if (geo) {
@@ -139,7 +143,21 @@ async function _POST(request: Request) {
       }
     }
 
-    console.log('✅ [SessionIP] IP y localidad guardadas')
+    // Update hw_fingerprint in user_devices if both deviceId and hwFingerprint present
+    if (deviceId && hwFingerprint) {
+      try {
+        const { createClient } = await import('@supabase/supabase-js')
+        const admin = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!,
+        )
+        await admin
+          .from('user_devices')
+          .update({ hw_fingerprint: hwFingerprint })
+          .eq('user_id', userId)
+          .eq('device_id', deviceId)
+      } catch {}
+    }
 
     return NextResponse.json({
       success: true,
