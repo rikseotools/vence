@@ -46,7 +46,7 @@ export const getFilteredQuestionsRequestSchema = z.object({
   onlyOfficialQuestions: z.boolean().default(false),
 
   // Modo de dificultad
-  difficultyMode: z.enum(['random', 'easy', 'medium', 'hard', 'adaptive']).default('random'),
+  difficultyMode: z.enum(['random', 'easy', 'medium', 'hard', 'extreme', 'adaptive']).default('random'),
 
   // 🆕 Excluir preguntas recientes del usuario
   excludeRecentDays: z.number().int().min(0).max(365).default(0),

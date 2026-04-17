@@ -603,7 +603,7 @@ export async function fetchPersonalizedQuestions(tema: number, searchParams: Sea
     const positionType = config?.positionType || 'auxiliar_administrativo_estado'
 
     // Pedir más preguntas para compensar las que filtrará el session cache
-    const requestSize = numQuestions + sessionUsedIds.size
+    const requestSize = Math.min(numQuestions + sessionUsedIds.size, 500)
 
     console.log('🎛️ Cargando test personalizado via API, tema:', tema, 'n:', numQuestions,
       'request:', requestSize, 'pos:', positionType, 'cached:', sessionUsedIds.size)

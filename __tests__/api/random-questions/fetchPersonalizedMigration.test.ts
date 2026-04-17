@@ -431,6 +431,25 @@ describe('fetchPersonalizedQuestions — session cache avanzado', () => {
     ).rejects.toThrow('No hay preguntas disponibles')
   })
 
+  test('requestSize nunca supera 500 (max del schema Zod)', async () => {
+    // Simular cache con 490 IDs
+    const hugeQs = Array.from({ length: 500 }, (_, i) => makeApiQuestion(`huge-${i}`))
+    const mockFetch = jest.fn().mockImplementation(async () => ({
+      ok: true, status: 200,
+      json: async () => ({ success: true, questions: [...hugeQs], totalAvailable: 500 }),
+    }))
+    global.fetch = mockFetch
+
+    // Primera ronda: consume 490 preguntas para llenar el cache
+    await fetchPersonalizedQuestions(0, { n: '490' }, { positionType: 'auxiliar_administrativo_estado' })
+
+    // Segunda ronda: n=25 + cache(490) = 515, pero se capa a 500
+    await fetchPersonalizedQuestions(0, { n: '25' }, { positionType: 'auxiliar_administrativo_estado' })
+    const body = JSON.parse(mockFetch.mock.calls[1][1].body)
+    expect(body.numQuestions).toBeLessThanOrEqual(500)
+    expect(body.numQuestions).toBe(500)
+  })
+
   test('requestSize aumenta cuando hay preguntas en cache', async () => {
     const allQs = Array.from({ length: 20 }, (_, i) => makeApiQuestion(`req-${i}`))
     const mockFetch = jest.fn().mockImplementation(async () => ({
