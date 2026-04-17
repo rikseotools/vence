@@ -275,9 +275,10 @@ SCRIPT
    → Buscar en topic_scope que topics usan la ley modificada
    → Listar oposiciones (position_type) de esos topics
 
-9. Revalidar landings de TODAS las oposiciones afectadas
-   → Usar /api/purge-cache con x-cron-secret para cada landing
-   → Incluir tanto la landing principal como /temario si existe
+9. Revalidar cachés (ver docs/maintenance/cache-revalidation.md)
+   → Tags de datos: POST /api/admin/revalidate con tag "temario" y "teoria"
+   → Páginas ISR: POST /api/purge-cache para cada landing + /temario
+   → IMPORTANTE: son dos mecanismos independientes, hay que hacer ambos
 
 10. Enviar newsletter a usuarios de oposiciones afectadas
     → Usar plantilla 'cambio-legislativo' (ver abajo)

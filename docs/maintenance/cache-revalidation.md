@@ -182,39 +182,63 @@ revalidateTag('teoria')   // Invalida toda la teoría
 revalidateTag('laws')     // Invalida lista de leyes
 ```
 
-### Opción 2: Endpoint de admin
+### Opción 2: Endpoint genérico `/api/admin/revalidate`
 
-Si no existe, crear `/app/api/admin/revalidate/route.ts`:
+Acepta cualquier tag válido (`temario`, `teoria`, `laws`, `landing`). Requiere `x-cron-secret`.
 
-```typescript
-import { revalidateTag } from 'next/cache'
-import { NextRequest, NextResponse } from 'next/server'
-
-const VALID_TAGS = ['temario', 'teoria', 'laws']
-
-export async function POST(request: NextRequest) {
-  // TODO: Verificar que es admin
-  const { tag } = await request.json()
-
-  if (!VALID_TAGS.includes(tag)) {
-    return NextResponse.json({ error: 'Tag no válido' }, { status: 400 })
-  }
-
-  revalidateTag(tag)
-  return NextResponse.json({ success: true, revalidated: tag })
-}
-```
-
-Uso:
 ```bash
+# Revalidar un tag específico
 curl -X POST https://www.vence.es/api/admin/revalidate \
   -H "Content-Type: application/json" \
-  -d '{"tag": "temario"}'
+  -H "x-cron-secret: <CRON_SECRET>" \
+  -d '{"tag": "teoria"}'
 ```
 
-### Opción 3: Redeploy en Vercel
+### Opción 3: Endpoint especializado `/api/admin/revalidate-temario`
+
+Revalida tags `temario` + `landing` de golpe. No requiere body.
+
+```bash
+curl -X POST https://www.vence.es/api/admin/revalidate-temario
+```
+
+### Opción 4: Redeploy en Vercel
 
 Un redeploy completo también limpia todas las cachés, pero es más lento.
+
+---
+
+## Qué revalidar según el tipo de cambio
+
+| Cambio | Tags de datos | Páginas ISR |
+|--------|--------------|-------------|
+| Sincronización de ley desde BOE | `temario` + `teoria` | Landing + temario de oposiciones afectadas |
+| Añadir/modificar artículos | `temario` + `teoria` | — |
+| Actualizar hitos/plazas de oposición | — | Landing de esa oposición (`purge-cache`) |
+| Añadir ley nueva | `temario` + `teoria` + `laws` | — |
+| Añadir muchas preguntas | `laws` | — |
+| Cambio masivo (varias leyes + oposiciones) | `node scripts/purge-all-cache.js` (ISR) + tags manuales | Todo |
+
+**Importante:** `purge-cache` (revalidatePath) y `revalidateTag` son mecanismos **independientes**. Tras sincronizar artículos desde BOE hay que hacer ambos:
+
+```bash
+# 1. Tags de datos (cachés permanentes)
+curl -X POST https://www.vence.es/api/admin/revalidate \
+  -H "Content-Type: application/json" \
+  -H "x-cron-secret: <CRON_SECRET>" \
+  -d '{"tag": "temario"}'
+
+curl -X POST https://www.vence.es/api/admin/revalidate \
+  -H "Content-Type: application/json" \
+  -H "x-cron-secret: <CRON_SECRET>" \
+  -d '{"tag": "teoria"}'
+
+# 2. Páginas ISR (landings, temarios por ruta)
+curl -X POST https://www.vence.es/api/purge-cache \
+  -H "Content-Type: application/json" \
+  -H "x-cron-secret: <CRON_SECRET>" \
+  -d '{"path": "/auxilio-judicial/temario"}'
+```
 
 ---
 
