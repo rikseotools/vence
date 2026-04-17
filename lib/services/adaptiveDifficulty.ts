@@ -2,6 +2,9 @@
 'use client'
 
 import { getSupabaseClient } from '@/lib/supabase'
+import { getDb } from '@/db/client'
+import { questions as questionsTable } from '@/db/schema'
+import { eq } from 'drizzle-orm'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SupabaseClientAny = any
@@ -97,17 +100,16 @@ export class AdaptiveDifficultyService {
       }
 
       if (!data || data.length === 0) {
-        // No hay historial, devolver dificultad estándar de la pregunta
-        const { data: questionData, error: qError } = await supabase
-          .from('questions')
-          .select('difficulty')
-          .eq('id', questionId)
-          .single()
-
-        if (qError) throw qError
+        // No hay historial, devolver dificultad estándar de la pregunta via Drizzle
+        const db = getDb()
+        const [questionRow] = await db
+          .select({ difficulty: questionsTable.difficulty })
+          .from(questionsTable)
+          .where(eq(questionsTable.id, questionId))
+          .limit(1)
 
         return {
-          personal_difficulty: questionData.difficulty,
+          personal_difficulty: questionRow?.difficulty || 'medium',
           success_rate: null,
           total_attempts: 0,
           trend: 'stable',
