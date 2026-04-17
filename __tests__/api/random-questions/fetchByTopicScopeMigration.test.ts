@@ -461,7 +461,261 @@ describe('fetchQuestionsByTopicScope — TestLayout compatibility', () => {
 })
 
 // ============================================
-// 6. EDGE CASES
+// 6. MODO ADAPTATIVO AVANZADO
+// ============================================
+
+describe('fetchQuestionsByTopicScope — modo adaptativo avanzado', () => {
+  test('focusWeakAreas=true activa modo adaptativo (pide 500)', async () => {
+    const mockFetch = jest.fn().mockResolvedValue(makeSuccessResponse(100))
+    global.fetch = mockFetch
+
+    await fetchQuestionsByTopicScope(5, { n: '25' }, {
+      positionType: 'auxiliar_administrativo_estado',
+      focusWeakAreas: true,
+    })
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body)
+    expect(body.numQuestions).toBe(500)
+  })
+
+  test('adaptive=true pide requestSize=500', async () => {
+    const mockFetch = jest.fn().mockResolvedValue(makeSuccessResponse(100))
+    global.fetch = mockFetch
+
+    await fetchQuestionsByTopicScope(5, { n: '25', adaptive: 'true' }, { positionType: 'auxiliar_administrativo_estado' })
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body)
+    expect(body.numQuestions).toBe(500)
+  })
+
+  test('modo adaptativo fuerza difficultyMode=random (ignora filtro de dificultad)', async () => {
+    const mockFetch = jest.fn().mockResolvedValue(makeSuccessResponse(100))
+    global.fetch = mockFetch
+
+    await fetchQuestionsByTopicScope(5, { n: '25', adaptive: 'true', difficulty_mode: 'hard' }, { positionType: 'auxiliar_administrativo_estado' })
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body)
+    expect(body.difficultyMode).toBe('random')
+  })
+
+  test('modo NO adaptativo respeta difficultyMode del searchParams', async () => {
+    const mockFetch = jest.fn().mockResolvedValue(makeSuccessResponse(25))
+    global.fetch = mockFetch
+
+    await fetchQuestionsByTopicScope(5, { n: '25', difficulty_mode: 'hard' }, { positionType: 'auxiliar_administrativo_estado' })
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body)
+    expect(body.difficultyMode).toBe('hard')
+  })
+
+  test('catálogo distribuye preguntas correctamente por dificultad', async () => {
+    const questions = [
+      ...Array.from({ length: 3 }, (_, i) => makeApiQuestion(`e-${i}`, { metadata: { ...makeApiQuestion('x').metadata, difficulty: 'easy' } })),
+      ...Array.from({ length: 7 }, (_, i) => makeApiQuestion(`m-${i}`, { metadata: { ...makeApiQuestion('x').metadata, difficulty: 'medium' } })),
+      ...Array.from({ length: 4 }, (_, i) => makeApiQuestion(`h-${i}`, { metadata: { ...makeApiQuestion('x').metadata, difficulty: 'hard' } })),
+      ...Array.from({ length: 2 }, (_, i) => makeApiQuestion(`x-${i}`, { metadata: { ...makeApiQuestion('x').metadata, difficulty: 'extreme' } })),
+    ]
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true, status: 200,
+      json: async () => ({ success: true, questions, totalAvailable: 16 }),
+    })
+
+    const result = await fetchQuestionsByTopicScope(5, { n: '10', adaptive: 'true' }, { positionType: 'auxiliar_administrativo_estado' }) as any
+
+    const catalog = result.adaptiveCatalog
+    expect(catalog.neverSeen.easy).toHaveLength(3)
+    expect(catalog.neverSeen.medium).toHaveLength(7)
+    expect(catalog.neverSeen.hard).toHaveLength(4)
+    expect(catalog.neverSeen.extreme).toHaveLength(2)
+  })
+
+  test('selección inicial prioriza medium > easy > hard', async () => {
+    const questions = [
+      ...Array.from({ length: 20 }, (_, i) => makeApiQuestion(`m-${i}`, { metadata: { ...makeApiQuestion('x').metadata, difficulty: 'medium' } })),
+      ...Array.from({ length: 10 }, (_, i) => makeApiQuestion(`e-${i}`, { metadata: { ...makeApiQuestion('x').metadata, difficulty: 'easy' } })),
+      ...Array.from({ length: 5 }, (_, i) => makeApiQuestion(`h-${i}`, { metadata: { ...makeApiQuestion('x').metadata, difficulty: 'hard' } })),
+    ]
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true, status: 200,
+      json: async () => ({ success: true, questions, totalAvailable: 35 }),
+    })
+
+    const result = await fetchQuestionsByTopicScope(5, { n: '15', adaptive: 'true' }, { positionType: 'auxiliar_administrativo_estado' }) as any
+
+    expect(result.activeQuestions).toHaveLength(15)
+    const difficulties = result.activeQuestions.map((q: any) => q.metadata.difficulty)
+    expect(difficulties.every((d: string) => d === 'medium')).toBe(true)
+  })
+
+  test('selección inicial con pocas medium: mezcla medium + easy', async () => {
+    const questions = [
+      ...Array.from({ length: 5 }, (_, i) => makeApiQuestion(`m-${i}`, { metadata: { ...makeApiQuestion('x').metadata, difficulty: 'medium' } })),
+      ...Array.from({ length: 15 }, (_, i) => makeApiQuestion(`e-${i}`, { metadata: { ...makeApiQuestion('x').metadata, difficulty: 'easy' } })),
+    ]
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true, status: 200,
+      json: async () => ({ success: true, questions, totalAvailable: 20 }),
+    })
+
+    const result = await fetchQuestionsByTopicScope(5, { n: '10', adaptive: 'true' }, { positionType: 'auxiliar_administrativo_estado' }) as any
+
+    expect(result.activeQuestions).toHaveLength(10)
+    const difficulties = new Set(result.activeQuestions.map((q: any) => q.metadata.difficulty))
+    expect(difficulties.has('medium')).toBe(true)
+    expect(difficulties.has('easy')).toBe(true)
+  })
+
+  test('adaptativo con pocas preguntas: fallback a todas las disponibles', async () => {
+    const questions = Array.from({ length: 5 }, (_, i) =>
+      makeApiQuestion(`few-${i}`, { metadata: { ...makeApiQuestion('x').metadata, difficulty: 'hard' } })
+    )
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true, status: 200,
+      json: async () => ({ success: true, questions, totalAvailable: 5 }),
+    })
+
+    const result = await fetchQuestionsByTopicScope(5, { n: '10', adaptive: 'true' }, { positionType: 'auxiliar_administrativo_estado' }) as any
+
+    expect(result.isAdaptive).toBe(true)
+    expect(result.activeQuestions.length).toBeLessThanOrEqual(10)
+    expect(result.activeQuestions.length).toBeGreaterThan(0)
+  })
+})
+
+// ============================================
+// 7. RESTRICTIVE MODE
+// ============================================
+
+describe('fetchQuestionsByTopicScope — restrictive mode', () => {
+  test('focusEssentialArticles=true desactiva adaptativo (pide numQuestions, no 500)', async () => {
+    const mockFetch = jest.fn().mockResolvedValue(makeSuccessResponse(25))
+    global.fetch = mockFetch
+
+    await fetchQuestionsByTopicScope(5, { n: '25', adaptive: 'true', focus_essential: 'true' }, { positionType: 'auxiliar_administrativo_estado' })
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body)
+    expect(body.numQuestions).toBe(25)
+
+    const result = await fetchQuestionsByTopicScope(5, { n: '25', focus_essential: 'true' }, { positionType: 'auxiliar_administrativo_estado' })
+    expect(Array.isArray(result)).toBe(true)
+  })
+
+  test('onlyFailedQuestions=true desactiva adaptativo', async () => {
+    const mockFetch = jest.fn().mockResolvedValue(makeSuccessResponse(10))
+    global.fetch = mockFetch
+
+    await fetchQuestionsByTopicScope(5, { n: '25', adaptive: 'true' }, {
+      positionType: 'auxiliar_administrativo_estado',
+      onlyFailedQuestions: true,
+      failedQuestionIds: ['id-1', 'id-2'],
+    })
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body)
+    expect(body.numQuestions).toBe(25)
+  })
+})
+
+// ============================================
+// 8. SEARCHPARAMS Y CONFIG EDGE CASES
+// ============================================
+
+describe('fetchQuestionsByTopicScope — params edge cases', () => {
+  test('failedQuestionIds desde searchParams (JSON string)', async () => {
+    const mockFetch = jest.fn().mockResolvedValue(makeSuccessResponse(5))
+    global.fetch = mockFetch
+
+    const ids = ['uuid-1', 'uuid-2']
+    await fetchQuestionsByTopicScope(5, { n: '5', failed_question_ids: JSON.stringify(ids), only_failed: 'true' }, { positionType: 'auxiliar_administrativo_estado' })
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body)
+    expect(body.failedQuestionIds).toEqual(ids)
+    expect(body.onlyFailedQuestions).toBe(true)
+  })
+
+  test('exclude_recent=true sin recent_days usa default 15', async () => {
+    const mockFetch = jest.fn().mockResolvedValue(makeSuccessResponse(25))
+    global.fetch = mockFetch
+
+    await fetchQuestionsByTopicScope(5, { n: '25', exclude_recent: 'true' }, { positionType: 'auxiliar_administrativo_estado' })
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body)
+    expect(body.excludeRecentDays).toBe(15)
+  })
+
+  test('selectedArticlesByLaw con strings se convierte a números', async () => {
+    const mockFetch = jest.fn().mockResolvedValue(makeSuccessResponse(25))
+    global.fetch = mockFetch
+
+    await fetchQuestionsByTopicScope(5, { n: '25' }, {
+      positionType: 'auxiliar_administrativo_estado',
+      selectedArticlesByLaw: { 'CE': ['1', '2', '14'] as any },
+    })
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body)
+    expect(body.selectedArticlesByLaw['CE']).toEqual([1, 2, 14])
+  })
+
+  test('searchParams como URLSearchParams funciona', async () => {
+    const mockFetch = jest.fn().mockResolvedValue(makeSuccessResponse(15))
+    global.fetch = mockFetch
+
+    const params = new URLSearchParams('n=15&difficulty_mode=easy')
+    await fetchQuestionsByTopicScope(5, params, { positionType: 'auxiliar_administrativo_estado' })
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body)
+    expect(body.numQuestions).toBe(15)
+    expect(body.difficultyMode).toBe('easy')
+  })
+
+  test('config vacío usa defaults', async () => {
+    const mockFetch = jest.fn().mockResolvedValue(makeSuccessResponse(25))
+    global.fetch = mockFetch
+
+    await fetchQuestionsByTopicScope(5, { n: '25' }, {})
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body)
+    expect(body.positionType).toBe('auxiliar_administrativo_estado')
+    expect(body.selectedLaws).toEqual([])
+    expect(body.onlyFailedQuestions).toBe(false)
+    expect(body.focusEssentialArticles).toBe(false)
+  })
+
+  test('numQuestions > preguntas disponibles: devuelve todas sin error', async () => {
+    global.fetch = jest.fn().mockResolvedValue(makeSuccessResponse(8))
+
+    const result = await fetchQuestionsByTopicScope(5, { n: '50' }, { positionType: 'auxiliar_administrativo_estado' }) as any[]
+    expect(result).toHaveLength(8)
+  })
+
+  test('preguntas con content_data se pasan correctamente', async () => {
+    const cd = { type: 'chart', data: [1, 2, 3] }
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true, status: 200,
+      json: async () => ({
+        success: true,
+        questions: [makeApiQuestion('cd-1', { content_data: cd })],
+        totalAvailable: 1,
+      }),
+    })
+
+    const result = await fetchQuestionsByTopicScope(5, { n: '1' }, { positionType: 'auxiliar_administrativo_estado' }) as any[]
+    expect(result[0].content_data).toEqual(cd)
+  })
+
+  test('getUser falla → error se propaga (no llama a la API)', async () => {
+    mockAuthFns.getUser.mockRejectedValue(new Error('Auth error'))
+    const mockFetch = jest.fn()
+    global.fetch = mockFetch
+
+    await expect(
+      fetchQuestionsByTopicScope(5, { n: '10' }, { positionType: 'auxiliar_administrativo_estado' })
+    ).rejects.toThrow('Auth error')
+    expect(mockFetch).not.toHaveBeenCalled()
+  })
+})
+
+// ============================================
+// 9. EDGE CASES
 // ============================================
 
 describe('fetchQuestionsByTopicScope — edge cases', () => {
