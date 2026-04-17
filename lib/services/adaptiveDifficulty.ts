@@ -2,9 +2,6 @@
 'use client'
 
 import { getSupabaseClient } from '@/lib/supabase'
-import { getDb } from '@/db/client'
-import { questions as questionsTable } from '@/db/schema'
-import { eq } from 'drizzle-orm'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SupabaseClientAny = any
@@ -64,13 +61,15 @@ interface MigrationResult {
   message: string
 }
 
-const supabase: SupabaseClientAny = getSupabaseClient()
+const defaultSupabase: SupabaseClientAny = getSupabaseClient()
 
 export class AdaptiveDifficultyService {
   difficultyMapping: Record<string, number>
   difficultyLabels: Record<number, string>
+  private supabase: SupabaseClientAny
 
-  constructor() {
+  constructor(supabaseClient?: SupabaseClientAny) {
+    this.supabase = supabaseClient || defaultSupabase
     this.difficultyMapping = {
       'easy': 1,
       'medium': 2,
@@ -89,27 +88,28 @@ export class AdaptiveDifficultyService {
   async getPersonalDifficulty(userId: string, questionId: string): Promise<PersonalDifficulty> {
     try {
       // Calcular desde test_questions
-      const { data, error } = await supabase
+      const { data, error } = await this.supabase
         .from('test_questions')
         .select('is_correct')
         .eq('question_id', questionId)
-        .eq('test_id', supabase.from('tests').select('id').eq('user_id', userId))
+        .eq('test_id', this.supabase.from('tests').select('id').eq('user_id', userId))
 
       if (error && error.code !== 'PGRST116') {
         throw error
       }
 
       if (!data || data.length === 0) {
-        // No hay historial, devolver dificultad estándar de la pregunta via Drizzle
-        const db = getDb()
-        const [questionRow] = await db
-          .select({ difficulty: questionsTable.difficulty })
-          .from(questionsTable)
-          .where(eq(questionsTable.id, questionId))
-          .limit(1)
+        // No hay historial, devolver dificultad estándar de la pregunta
+        const { data: questionData, error: qError } = await this.supabase
+          .from('questions')
+          .select('difficulty')
+          .eq('id', questionId)
+          .single()
+
+        if (qError) throw qError
 
         return {
-          personal_difficulty: questionRow?.difficulty || 'medium',
+          personal_difficulty: questionData?.difficulty || 'medium',
           success_rate: null,
           total_attempts: 0,
           trend: 'stable',
@@ -161,7 +161,7 @@ export class AdaptiveDifficultyService {
 
   async getUserDifficultyMetrics(userId: string): Promise<DifficultyMetrics> {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await this.supabase
         .rpc('get_user_difficulty_metrics', { p_user_id: userId })
 
       if (error) {
@@ -222,7 +222,7 @@ export class AdaptiveDifficultyService {
   async getPersonalDifficultyBreakdown(userId: string): Promise<DifficultyBreakdown> {
     try {
       // Obtener todas las preguntas respondidas por el usuario
-      const { data: testData, error: testError } = await supabase
+      const { data: testData, error: testError } = await this.supabase
         .from('tests')
         .select('id')
         .eq('user_id', userId)
@@ -241,7 +241,7 @@ export class AdaptiveDifficultyService {
 
       const testIds = testData.map((t: { id: string }) => t.id)
 
-      const { data, error } = await supabase
+      const { data, error } = await this.supabase
         .from('test_questions')
         .select('question_id, is_correct')
         .in('test_id', testIds)
@@ -300,7 +300,7 @@ export class AdaptiveDifficultyService {
 
   async getStrugglingQuestions(userId: string, limit: number = 10): Promise<QuestionResult[]> {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await this.supabase
         .rpc('get_struggling_questions', {
           p_user_id: userId,
           p_limit: limit
@@ -327,7 +327,7 @@ export class AdaptiveDifficultyService {
 
   async getMasteredQuestions(userId: string, limit: number = 10): Promise<QuestionResult[]> {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await this.supabase
         .rpc('get_mastered_questions', {
           p_user_id: userId,
           p_limit: limit
@@ -353,7 +353,7 @@ export class AdaptiveDifficultyService {
 
   async getUserProgressTrends(userId: string): Promise<ProgressTrends> {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await this.supabase
         .rpc('get_user_progress_trends', { p_user_id: userId })
 
       if (error) throw error
@@ -393,7 +393,7 @@ export class AdaptiveDifficultyService {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async getPersonalizedRecommendations(userId: string): Promise<any[]> {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await this.supabase
         .rpc('get_personalized_recommendations', { p_user_id: userId })
 
       if (error) throw error

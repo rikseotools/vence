@@ -1,13 +1,15 @@
 // app/api/adaptive-difficulty/route.js
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { adaptiveDifficultyService } from '@/lib/services/adaptiveDifficulty'
+import { AdaptiveDifficultyService } from '@/lib/services/adaptiveDifficulty'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
+
+const adaptiveDifficultyService = new AdaptiveDifficultyService(getSupabase())
 
 async function _GET(request) {
   try {
