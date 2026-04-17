@@ -861,7 +861,7 @@ export async function fetchArticulosDirigido(lawName: string, searchParams: Sear
     const articles = getParam(searchParams, 'articles')
     const requestedCount = parseInt(getParam(searchParams, 'n', '10') || '10')
     const positionType = config?.positionType || 'auxiliar_administrativo_estado'
-    const lawShortName = mapLawSlugToShortName(lawName)
+    const lawShortName = mapLawSlugToShortName(lawName) || lawName
 
     console.log('🎯 fetchArticulosDirigido via API:', { lawName, lawShortName, articles, n: requestedCount, pos: positionType })
 
