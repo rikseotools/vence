@@ -312,15 +312,14 @@ describe('fetchQuestionsByTopicScope — parámetros', () => {
 
 describe('fetchQuestionsByTopicScope — modo adaptativo', () => {
   test('con adaptive=true devuelve estructura AdaptiveResult', async () => {
-    // Para adaptativo, pide muchas preguntas con metadata de dificultad
     const questions = [
       ...Array.from({ length: 20 }, (_, i) => makeApiQuestion(`med-${i}`, { metadata: { ...makeApiQuestion('x').metadata, difficulty: 'medium' } })),
       ...Array.from({ length: 10 }, (_, i) => makeApiQuestion(`easy-${i}`, { metadata: { ...makeApiQuestion('x').metadata, difficulty: 'easy' } })),
     ]
-    global.fetch = jest.fn().mockResolvedValue({
-      ok: true, status: 200,
-      json: async () => ({ success: true, questions, totalAvailable: 30 }),
-    })
+    const mockFetch = jest.fn()
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ success: true, questions, totalAvailable: 30 }) })
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ success: true, history: [] }) })
+    global.fetch = mockFetch
 
     const result = await fetchQuestionsByTopicScope(5, { n: '25', adaptive: 'true' }, { positionType: 'auxiliar_administrativo_estado' })
 
@@ -339,10 +338,10 @@ describe('fetchQuestionsByTopicScope — modo adaptativo', () => {
       ...Array.from({ length: 5 }, (_, i) => makeApiQuestion(`h-${i}`, { metadata: { ...makeApiQuestion('x').metadata, difficulty: 'hard' } })),
       ...Array.from({ length: 5 }, (_, i) => makeApiQuestion(`x-${i}`, { metadata: { ...makeApiQuestion('x').metadata, difficulty: 'extreme' } })),
     ]
-    global.fetch = jest.fn().mockResolvedValue({
-      ok: true, status: 200,
-      json: async () => ({ success: true, questions, totalAvailable: 20 }),
-    })
+    const mockFetch = jest.fn()
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ success: true, questions, totalAvailable: 20 }) })
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ success: true, history: [] }) })
+    global.fetch = mockFetch
 
     const result = await fetchQuestionsByTopicScope(5, { n: '10', adaptive: 'true' }, { positionType: 'auxiliar_administrativo_estado' }) as any
 
@@ -444,10 +443,10 @@ describe('fetchQuestionsByTopicScope — TestLayout compatibility', () => {
     const questions = Array.from({ length: 30 }, (_, i) =>
       makeApiQuestion(`compat-${i}`, { metadata: { ...makeApiQuestion('x').metadata, difficulty: 'medium' } })
     )
-    global.fetch = jest.fn().mockResolvedValue({
-      ok: true, status: 200,
-      json: async () => ({ success: true, questions, totalAvailable: 30 }),
-    })
+    const mockFetch = jest.fn()
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ success: true, questions, totalAvailable: 30 }) })
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ success: true, history: [] }) })
+    global.fetch = mockFetch
 
     const result = await fetchQuestionsByTopicScope(5, { n: '10', adaptive: 'true' }, { positionType: 'auxiliar_administrativo_estado' }) as any
 
@@ -466,7 +465,9 @@ describe('fetchQuestionsByTopicScope — TestLayout compatibility', () => {
 
 describe('fetchQuestionsByTopicScope — modo adaptativo avanzado', () => {
   test('focusWeakAreas=true activa modo adaptativo (pide 500)', async () => {
-    const mockFetch = jest.fn().mockResolvedValue(makeSuccessResponse(100))
+    const mockFetch = jest.fn()
+      .mockResolvedValueOnce(makeSuccessResponse(100))
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ success: true, history: [] }) })
     global.fetch = mockFetch
 
     await fetchQuestionsByTopicScope(5, { n: '25' }, {
@@ -479,7 +480,9 @@ describe('fetchQuestionsByTopicScope — modo adaptativo avanzado', () => {
   })
 
   test('adaptive=true pide requestSize=500', async () => {
-    const mockFetch = jest.fn().mockResolvedValue(makeSuccessResponse(100))
+    const mockFetch = jest.fn()
+      .mockResolvedValueOnce(makeSuccessResponse(100))
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ success: true, history: [] }) })
     global.fetch = mockFetch
 
     await fetchQuestionsByTopicScope(5, { n: '25', adaptive: 'true' }, { positionType: 'auxiliar_administrativo_estado' })
@@ -489,7 +492,9 @@ describe('fetchQuestionsByTopicScope — modo adaptativo avanzado', () => {
   })
 
   test('modo adaptativo fuerza difficultyMode=random (ignora filtro de dificultad)', async () => {
-    const mockFetch = jest.fn().mockResolvedValue(makeSuccessResponse(100))
+    const mockFetch = jest.fn()
+      .mockResolvedValueOnce(makeSuccessResponse(100))
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ success: true, history: [] }) })
     global.fetch = mockFetch
 
     await fetchQuestionsByTopicScope(5, { n: '25', adaptive: 'true', difficulty_mode: 'hard' }, { positionType: 'auxiliar_administrativo_estado' })
@@ -515,10 +520,18 @@ describe('fetchQuestionsByTopicScope — modo adaptativo avanzado', () => {
       ...Array.from({ length: 4 }, (_, i) => makeApiQuestion(`h-${i}`, { metadata: { ...makeApiQuestion('x').metadata, difficulty: 'hard' } })),
       ...Array.from({ length: 2 }, (_, i) => makeApiQuestion(`x-${i}`, { metadata: { ...makeApiQuestion('x').metadata, difficulty: 'extreme' } })),
     ]
-    global.fetch = jest.fn().mockResolvedValue({
-      ok: true, status: 200,
-      json: async () => ({ success: true, questions, totalAvailable: 16 }),
-    })
+
+    // Mock: dos llamadas fetch — primero la API de preguntas, luego la de historial
+    const mockFetch = jest.fn()
+      .mockResolvedValueOnce({
+        ok: true, status: 200,
+        json: async () => ({ success: true, questions, totalAvailable: 16 }),
+      })
+      .mockResolvedValueOnce({
+        ok: true, status: 200,
+        json: async () => ({ success: true, history: [] }),
+      })
+    global.fetch = mockFetch
 
     const result = await fetchQuestionsByTopicScope(5, { n: '10', adaptive: 'true' }, { positionType: 'auxiliar_administrativo_estado' }) as any
 
@@ -527,6 +540,43 @@ describe('fetchQuestionsByTopicScope — modo adaptativo avanzado', () => {
     expect(catalog.neverSeen.medium).toHaveLength(7)
     expect(catalog.neverSeen.hard).toHaveLength(4)
     expect(catalog.neverSeen.extreme).toHaveLength(2)
+    // Sin historial → answered vacío
+    expect(catalog.answered.easy).toHaveLength(0)
+    expect(catalog.answered.medium).toHaveLength(0)
+  })
+
+  test('catálogo clasifica answered correctamente cuando hay historial', async () => {
+    const questions = [
+      makeApiQuestion('seen-1', { metadata: { ...makeApiQuestion('x').metadata, difficulty: 'easy' } }),
+      makeApiQuestion('seen-2', { metadata: { ...makeApiQuestion('x').metadata, difficulty: 'medium' } }),
+      makeApiQuestion('new-1', { metadata: { ...makeApiQuestion('x').metadata, difficulty: 'medium' } }),
+      makeApiQuestion('new-2', { metadata: { ...makeApiQuestion('x').metadata, difficulty: 'hard' } }),
+    ]
+
+    const mockFetch = jest.fn()
+      .mockResolvedValueOnce({
+        ok: true, status: 200,
+        json: async () => ({ success: true, questions, totalAvailable: 4 }),
+      })
+      .mockResolvedValueOnce({
+        ok: true, status: 200,
+        json: async () => ({
+          success: true,
+          history: [
+            { questionId: 'seen-1', lastAnsweredAt: '2025-01-01' },
+            { questionId: 'seen-2', lastAnsweredAt: '2025-01-02' },
+          ],
+        }),
+      })
+    global.fetch = mockFetch
+
+    const result = await fetchQuestionsByTopicScope(5, { n: '10', adaptive: 'true' }, { positionType: 'auxiliar_administrativo_estado' }) as any
+
+    const catalog = result.adaptiveCatalog
+    expect(catalog.answered.easy).toHaveLength(1)
+    expect(catalog.answered.medium).toHaveLength(1)
+    expect(catalog.neverSeen.medium).toHaveLength(1)
+    expect(catalog.neverSeen.hard).toHaveLength(1)
   })
 
   test('selección inicial prioriza medium > easy > hard', async () => {
@@ -535,10 +585,10 @@ describe('fetchQuestionsByTopicScope — modo adaptativo avanzado', () => {
       ...Array.from({ length: 10 }, (_, i) => makeApiQuestion(`e-${i}`, { metadata: { ...makeApiQuestion('x').metadata, difficulty: 'easy' } })),
       ...Array.from({ length: 5 }, (_, i) => makeApiQuestion(`h-${i}`, { metadata: { ...makeApiQuestion('x').metadata, difficulty: 'hard' } })),
     ]
-    global.fetch = jest.fn().mockResolvedValue({
-      ok: true, status: 200,
-      json: async () => ({ success: true, questions, totalAvailable: 35 }),
-    })
+    const mockFetch = jest.fn()
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ success: true, questions, totalAvailable: 35 }) })
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ success: true, history: [] }) })
+    global.fetch = mockFetch
 
     const result = await fetchQuestionsByTopicScope(5, { n: '15', adaptive: 'true' }, { positionType: 'auxiliar_administrativo_estado' }) as any
 
@@ -552,10 +602,10 @@ describe('fetchQuestionsByTopicScope — modo adaptativo avanzado', () => {
       ...Array.from({ length: 5 }, (_, i) => makeApiQuestion(`m-${i}`, { metadata: { ...makeApiQuestion('x').metadata, difficulty: 'medium' } })),
       ...Array.from({ length: 15 }, (_, i) => makeApiQuestion(`e-${i}`, { metadata: { ...makeApiQuestion('x').metadata, difficulty: 'easy' } })),
     ]
-    global.fetch = jest.fn().mockResolvedValue({
-      ok: true, status: 200,
-      json: async () => ({ success: true, questions, totalAvailable: 20 }),
-    })
+    const mockFetch = jest.fn()
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ success: true, questions, totalAvailable: 20 }) })
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ success: true, history: [] }) })
+    global.fetch = mockFetch
 
     const result = await fetchQuestionsByTopicScope(5, { n: '10', adaptive: 'true' }, { positionType: 'auxiliar_administrativo_estado' }) as any
 
@@ -569,10 +619,10 @@ describe('fetchQuestionsByTopicScope — modo adaptativo avanzado', () => {
     const questions = Array.from({ length: 5 }, (_, i) =>
       makeApiQuestion(`few-${i}`, { metadata: { ...makeApiQuestion('x').metadata, difficulty: 'hard' } })
     )
-    global.fetch = jest.fn().mockResolvedValue({
-      ok: true, status: 200,
-      json: async () => ({ success: true, questions, totalAvailable: 5 }),
-    })
+    const mockFetch = jest.fn()
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ success: true, questions, totalAvailable: 5 }) })
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ success: true, history: [] }) })
+    global.fetch = mockFetch
 
     const result = await fetchQuestionsByTopicScope(5, { n: '10', adaptive: 'true' }, { positionType: 'auxiliar_administrativo_estado' }) as any
 

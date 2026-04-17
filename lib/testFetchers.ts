@@ -783,20 +783,35 @@ export async function fetchQuestionsByTopicScope(tema: number, searchParams: Sea
     if (needsAdaptiveCatalog) {
       console.log('🧠 Construyendo catálogo adaptativo client-side')
 
+      // Obtener historial del usuario para clasificar neverSeen vs answered
+      const answeredIds = new Set<string>()
+      if (user) {
+        const { history } = await fetchUserQuestionHistory(user.id, true)
+        history.forEach(item => answeredIds.add(item.questionId))
+        console.log(`📊 Historial: ${answeredIds.size} preguntas respondidas`)
+      }
+
+      const neverSeenQs = allQuestions.filter(q => !answeredIds.has(q.id))
+      const answeredQs = allQuestions.filter(q => answeredIds.has(q.id))
+
+      const getDifficulty = (q: TransformedQuestion) => q.metadata.difficulty || 'medium'
+
       const catalogByDifficulty = {
         neverSeen: {
-          easy: allQuestions.filter(q => q.metadata.difficulty === 'easy'),
-          medium: allQuestions.filter(q => q.metadata.difficulty === 'medium'),
-          hard: allQuestions.filter(q => q.metadata.difficulty === 'hard'),
-          extreme: allQuestions.filter(q => q.metadata.difficulty === 'extreme'),
+          easy: neverSeenQs.filter(q => getDifficulty(q) === 'easy'),
+          medium: neverSeenQs.filter(q => getDifficulty(q) === 'medium'),
+          hard: neverSeenQs.filter(q => getDifficulty(q) === 'hard'),
+          extreme: neverSeenQs.filter(q => getDifficulty(q) === 'extreme'),
         },
         answered: {
-          easy: [] as TransformedQuestion[],
-          medium: [] as TransformedQuestion[],
-          hard: [] as TransformedQuestion[],
-          extreme: [] as TransformedQuestion[],
+          easy: answeredQs.filter(q => getDifficulty(q) === 'easy'),
+          medium: answeredQs.filter(q => getDifficulty(q) === 'medium'),
+          hard: answeredQs.filter(q => getDifficulty(q) === 'hard'),
+          extreme: answeredQs.filter(q => getDifficulty(q) === 'extreme'),
         }
       }
+
+      console.log(`🧠 Catálogo: neverSeen=${neverSeenQs.length}, answered=${answeredQs.length}`)
 
       // Selección inteligente de preguntas iniciales
       let initialQuestions: TransformedQuestion[] = []
