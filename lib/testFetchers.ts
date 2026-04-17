@@ -389,37 +389,56 @@ async function fetchRecentQuestions(userId: string, days = 7): Promise<{ questio
 }
 
 // =================================================================
-// 🎲 FETCHER: TEST ALEATORIO
+// 🎲 FETCHER: TEST ALEATORIO - USA API CENTRALIZADA
+// Migrado de supabase.rpc('get_questions_dynamic') a /api/questions/filtered
+// para cerrar vector de scraping vía Supabase directo con anon key.
 // =================================================================
 export async function fetchRandomQuestions(tema: number, searchParams: SearchParamsLike, config: FetchConfig): Promise<TransformedQuestion[] | AdaptiveResult> {
   try {
-    console.log('🎲 Cargando test aleatorio para tema:', tema)
-
     const numQuestions = parseInt(getParam(searchParams, 'n', '25'))
     const adaptiveMode = getParam(searchParams, 'adaptive') === 'true'
-    
-    // 🧠 Si modo adaptativo, cargar pool más grande
     const poolSize = adaptiveMode ? numQuestions * 2 : numQuestions
-    
-    const { data, error } = await supabase.rpc('get_questions_dynamic', {
-      tema_number: tema,
-      total_questions: poolSize
+    const positionType = config?.positionType || 'auxiliar_administrativo_estado'
+
+    console.log('🎲 Cargando test aleatorio via API, tema:', tema, 'n:', poolSize, 'pos:', positionType)
+
+    const response = await fetch('/api/questions/filtered', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        topicNumber: tema || 0,
+        positionType,
+        numQuestions: poolSize,
+        selectedLaws: [],
+        selectedArticlesByLaw: {},
+        selectedSectionFilters: [],
+        difficultyMode: 'random',
+      })
     })
-    
-    if (error) {
-      console.error('❌ Error en get_questions_dynamic:', error)
-      throw error
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      const errorMsg = errorData.error || `HTTP ${response.status}`
+      console.error(`❌ Error en fetchRandomQuestions (API): ${errorMsg}`, { status: response.status, tema, positionType })
+      throw new Error(errorMsg)
     }
-    
-    if (!data || data.length === 0) {
-      throw new Error(`No hay preguntas disponibles para el tema ${tema}`)
+
+    const data = await response.json()
+
+    if (!data.success) {
+      const errorMsg = data.emptyReason || data.error || 'Error desconocido'
+      console.error('❌ fetchRandomQuestions: API devolvió success=false:', errorMsg)
+      throw new Error(errorMsg)
     }
-    
-    const questions = transformQuestions(data)
-    
+
+    const questions: TransformedQuestion[] = data.questions || []
+
+    if (questions.length === 0) {
+      throw new Error(data.emptyReason || `No hay preguntas disponibles para el tema ${tema}`)
+    }
+
     if (adaptiveMode) {
       console.log('🧠 Modo adaptativo:', questions.length, 'preguntas en pool,', numQuestions, 'activas')
-      // Separar en activas y pool de reserva
       return {
         activeQuestions: questions.slice(0, numQuestions),
         questionPool: questions,
@@ -428,10 +447,10 @@ export async function fetchRandomQuestions(tema: number, searchParams: SearchPar
         isAdaptive: true
       }
     }
-    
-    console.log('✅ Test aleatorio cargado:', questions.length, 'preguntas')
+
+    console.log('✅ Test aleatorio cargado via API:', questions.length, 'preguntas')
     return questions
-    
+
   } catch (error) {
     console.error('❌ Error en fetchRandomQuestions:', error)
     throw error
