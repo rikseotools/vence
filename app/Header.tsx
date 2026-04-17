@@ -67,8 +67,9 @@ export default function HeaderES() {
   const { user, loading: authLoading, supabase, isPremium, isLegacy, userProfile } = useAuth()
   const oposicionContext = useOposicion()
   const { openChat } = useAIChat()
-  const adminNotifications = useAdminNotifications(isAdmin && !adminLoading)
-  const { issuesCount: sentryIssuesCount } = useSentryIssues(isAdmin && !adminLoading)
+  const isOnAdminPage = pathname?.startsWith('/admin') ?? false
+  const adminNotifications = useAdminNotifications(isAdmin && !adminLoading && !isOnAdminPage)
+  const { issuesCount: sentryIssuesCount } = useSentryIssues(isAdmin && !adminLoading && !isOnAdminPage)
 
   // 📊 Tracking de interacciones de usuario
   const { trackClick, trackNavigation } = useInteractionTracker()
@@ -294,15 +295,14 @@ export default function HeaderES() {
       }
     }
 
-    if (!authLoading && isAdmin) {
+    if (!authLoading && isAdmin && !isOnAdminPage) {
       checkPendingFeedbacks()
 
-      // Verificar cada 30 segundos
       const interval = setInterval(checkPendingFeedbacks, 30000)
       return () => clearInterval(interval)
     }
     return undefined
-  }, [user, supabase, authLoading, isAdmin])
+  }, [user, supabase, authLoading, isAdmin, isOnAdminPage])
 
   // Enlaces simplificados para usuarios logueados
   const getLoggedInNavLinks = (): NavLink[] => {
