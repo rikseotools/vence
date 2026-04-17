@@ -11,6 +11,17 @@ import { logValidationError, classifyError } from '@/lib/api/validation-error-lo
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type RouteHandler = (...args: any[]) => Promise<Response> | Response
 
+const HEAVY_BODY_KEYS = ['mouseEvents', 'scrollEvents', 'interactionEvents', 'explanation', 'options', 'questionText', 'metadata']
+
+function sanitizeRequestBody(body: Record<string, unknown>): Record<string, unknown> {
+  const clean: Record<string, unknown> = {}
+  for (const [key, val] of Object.entries(body)) {
+    if (HEAVY_BODY_KEYS.includes(key)) continue
+    clean[key] = val
+  }
+  return clean
+}
+
 /**
  * Determina la severidad según el HTTP status code.
  * - 500+: critical (errores del servidor)
@@ -75,8 +86,15 @@ export function withErrorLogging(endpoint: string, handler: RouteHandler): Route
           return response
         }
 
+        // No logear 403 de límite diario — es operación normal, no un error
+        if (response.status === 403 && errorMessage.includes('límite diario')) {
+          return response
+        }
+
         // Generar errorRef (solo para 5xx — errores críticos que el usuario podría reportar)
         const errorRef = response.status >= 500 ? randomUUID() : undefined
+
+        const sanitizedBody = body ? sanitizeRequestBody(body) : undefined
 
         logValidationError({
           id: errorRef,
@@ -85,7 +103,7 @@ export function withErrorLogging(endpoint: string, handler: RouteHandler): Route
           errorMessage,
           questionId: (body?.questionId as string) || undefined,
           userId: (body?.userId as string) || undefined,
-          requestBody: body,
+          requestBody: sanitizedBody,
           severity: getSeverity(response.status),
           httpStatus: response.status,
           durationMs: Date.now() - startTime,
@@ -115,7 +133,7 @@ export function withErrorLogging(endpoint: string, handler: RouteHandler): Route
         errorStack: error instanceof Error ? error.stack : undefined,
         questionId: (body?.questionId as string) || undefined,
         userId: (body?.userId as string) || undefined,
-        requestBody: body,
+        requestBody: body ? sanitizeRequestBody(body) : undefined,
         severity: 'critical',
         httpStatus: 500,
         durationMs: Date.now() - startTime,
