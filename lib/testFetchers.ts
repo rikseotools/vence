@@ -1497,12 +1497,23 @@ export async function fetchAleatorioMultiTema(themes: number[], searchParams: Se
 
     console.log('🎛️ Configuración multi-tema:', { numQuestions, difficultyMode, excludeRecent, excludeDays, onlyOfficialQuestions, focusEssentialArticles })
 
-    // Llamar a la API centralizada
+    // Obtener token para que la API resuelva userId (excludeRecent, prioritizeNeverSeen)
+    let authToken: string | null = null
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      authToken = session?.access_token ?? null
+    } catch {
+      console.warn('⚠️ No se pudo obtener token de sesión')
+    }
+
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    if (authToken) headers['Authorization'] = `Bearer ${authToken}`
+
     const response = await fetch('/api/questions/filtered', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({
-        topicNumber: 0, // Indica que usamos multipleTopics
+        topicNumber: 0,
         positionType,
         multipleTopics: themes,
         numQuestions,
@@ -1512,10 +1523,9 @@ export async function fetchAleatorioMultiTema(themes: number[], searchParams: Se
         onlyOfficialQuestions,
         difficultyMode,
         excludeRecentDays: excludeRecent ? excludeDays : 0,
-        userId: user?.id || undefined,
         focusEssentialArticles,
-        prioritizeNeverSeen: true, // Multi-tema siempre prioriza nunca vistas
-        proportionalByTopic: themes.length > 1, // Distribución proporcional si hay múltiples temas
+        prioritizeNeverSeen: true,
+        proportionalByTopic: themes.length > 1,
       })
     })
 
