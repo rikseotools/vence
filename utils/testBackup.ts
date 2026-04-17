@@ -42,6 +42,7 @@ class TestBackupSystem {
   constructor(testId: string) {
     this.testId = testId;
     this.storageKey = `test_backup_${testId}`;
+    this.cleanOldBackups();
     this.initBackup();
   }
 
@@ -177,30 +178,56 @@ class TestBackupSystem {
     }
   }
 
-  // Limpiar backups antiguos (más de 7 días)
   cleanOldBackups(): void {
+    const MAX_BACKUPS = 20
+    const MAX_AGE_MS = 3 * 24 * 60 * 60 * 1000 // 3 días
+
     try {
-      const now = new Date();
-      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const now = Date.now()
+      const cutoff = new Date(now - MAX_AGE_MS)
+      const backupKeys: { key: string; lastModified: Date; allSynced: boolean }[] = []
 
-      Object.keys(localStorage).forEach(key => {
-        if (key.startsWith('test_backup_')) {
-          try {
-            const backup = JSON.parse(localStorage.getItem(key) || '{}');
-            const lastModified = new Date(backup.lastModified || backup.createdAt);
+      for (const key of Object.keys(localStorage)) {
+        if (!key.startsWith('test_backup_')) continue
+        try {
+          const backup = JSON.parse(localStorage.getItem(key) || '{}') as BackupData
+          const lastModified = new Date(backup.lastModified || backup.createdAt)
+          const answers = Object.values(backup.answers || {})
+          const allSynced = answers.length > 0 && answers.every(a => a.synced)
+          backupKeys.push({ key, lastModified, allSynced })
+        } catch {
+          localStorage.removeItem(key)
+        }
+      }
 
-            if (lastModified < sevenDaysAgo) {
-              localStorage.removeItem(key);
-              console.log(`🗑️ Backup antiguo eliminado: ${key}`);
-            }
-          } catch (e) {
-            // Si no se puede parsear, eliminar
-            localStorage.removeItem(key);
+      // 1) Purge fully synced backups (data already on server)
+      for (const b of backupKeys) {
+        if (b.allSynced) {
+          localStorage.removeItem(b.key)
+        }
+      }
+      const remaining = backupKeys.filter(b => !b.allSynced)
+
+      // 2) Purge backups older than 3 days
+      for (const b of remaining) {
+        if (b.lastModified < cutoff) {
+          localStorage.removeItem(b.key)
+        }
+      }
+      const afterAge = remaining.filter(b => b.lastModified >= cutoff)
+
+      // 3) If still over limit, drop oldest first (keep current test)
+      if (afterAge.length > MAX_BACKUPS) {
+        afterAge.sort((a, b) => a.lastModified.getTime() - b.lastModified.getTime())
+        const toDrop = afterAge.length - MAX_BACKUPS
+        for (let i = 0; i < toDrop; i++) {
+          if (afterAge[i].key !== this.storageKey) {
+            localStorage.removeItem(afterAge[i].key)
           }
         }
-      });
+      }
     } catch (e) {
-      console.error('❌ Error limpiando backups antiguos:', e);
+      console.error('❌ Error limpiando backups:', e);
     }
   }
 

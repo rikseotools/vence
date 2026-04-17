@@ -490,7 +490,7 @@ async function queryRevenue(dates: ReturnType<typeof getMadridDates>) {
         case
           when ${conversionEvents.createdAt} >= ${dates.startOfToday} then 'today'
           when ${conversionEvents.createdAt} >= ${dates.startOfLastWeekSameDay}
-           and ${conversionEvents.createdAt} < ${dates.startOfLastWeekSameDay}::timestamp + interval '1 day' then 'same_day_7d'
+           and ${conversionEvents.createdAt} < ${dates.lastWeekAtThisHour} then 'same_day_7d'
           when ${conversionEvents.createdAt} >= ${dates.startOfLastWeekSameDay}
            and ${conversionEvents.createdAt} < ${dates.startOfToday} then 'last7'
           else 'prev7'

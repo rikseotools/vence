@@ -199,10 +199,20 @@ async function getAccessToken(): Promise<string | null> {
     }
     return null
   } catch (err) {
-    // "browsing context is going away" = usuario cerró pestaña (Safari/WebKit).
-    // La respuesta está segura en localStorage, no es un error real.
     const msg = err instanceof Error ? err.message : String(err)
+    // "browsing context is going away" = usuario cerró pestaña (Safari/WebKit).
     if (msg.includes('browsing context is going away')) {
+      return null
+    }
+    // localStorage lleno — no reintentar, las respuestas están seguras localmente.
+    // Solo logear la primera vez para no spamear el error log.
+    if (msg.includes('exceeded the quota') || msg.includes('QuotaExceededError')) {
+      if (authFailCount === 0) {
+        logClientError('/api/v2/answer-and-save', err, {
+          component: 'answerSaveQueue getAccessToken exception',
+        })
+      }
+      authFailCount++
       return null
     }
     authFailCount++
