@@ -1,15 +1,16 @@
-// app/api/adaptive-difficulty/route.js
-import { NextResponse } from 'next/server'
+// app/api/adaptive-difficulty/route.ts
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import type { AdaptiveDifficultyService as ServiceType } from '@/lib/services/adaptiveDifficulty'
+
 const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-let _service = null
-async function getService() {
+let _service: ServiceType | null = null
+async function getService(): Promise<ServiceType> {
   if (!_service) {
     const { AdaptiveDifficultyService } = await import('@/lib/services/adaptiveDifficulty')
     _service = new AdaptiveDifficultyService(getSupabase())
@@ -17,7 +18,7 @@ async function getService() {
   return _service
 }
 
-async function _GET(request) {
+async function _GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get('userId')
@@ -28,83 +29,92 @@ async function _GET(request) {
       return NextResponse.json({ error: 'userId is required' }, { status: 400 })
     }
 
-    const adaptiveDifficultyService = await getService()
+    const service = await getService()
 
     switch (action) {
-      case 'personal_difficulty':
+      case 'personal_difficulty': {
         if (!questionId) {
           return NextResponse.json({ error: 'questionId is required for personal_difficulty' }, { status: 400 })
         }
-        const personalDifficulty = await adaptiveDifficultyService.getPersonalDifficulty(userId, questionId)
+        const personalDifficulty = await service.getPersonalDifficulty(userId, questionId)
         return NextResponse.json(personalDifficulty)
+      }
 
-      case 'metrics':
-        const metrics = await adaptiveDifficultyService.getUserDifficultyMetrics(userId)
+      case 'metrics': {
+        const metrics = await service.getUserDifficultyMetrics(userId)
         return NextResponse.json(metrics)
+      }
 
-      case 'breakdown':
-        const breakdown = await adaptiveDifficultyService.getPersonalDifficultyBreakdown(userId)
+      case 'breakdown': {
+        const breakdown = await service.getPersonalDifficultyBreakdown(userId)
         return NextResponse.json(breakdown)
+      }
 
-      case 'history':
+      case 'history': {
         const difficulty = searchParams.get('difficulty')
         const trend = searchParams.get('trend')
-        const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')) : undefined
-        
-        const history = await adaptiveDifficultyService.getUserDifficultyHistory(userId, {
+        const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : undefined
+
+        const history = await service.getUserDifficultyHistory(userId, {
           difficulty,
           trend,
           limit
         })
         return NextResponse.json(history)
+      }
 
-      case 'struggling':
-        const limitStruggling = searchParams.get('limit') ? parseInt(searchParams.get('limit')) : 10
-        const struggling = await adaptiveDifficultyService.getStrugglingQuestions(userId, limitStruggling)
+      case 'struggling': {
+        const limitStruggling = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 10
+        const struggling = await service.getStrugglingQuestions(userId, limitStruggling)
         return NextResponse.json(struggling)
+      }
 
-      case 'mastered':
-        const limitMastered = searchParams.get('limit') ? parseInt(searchParams.get('limit')) : 10
-        const mastered = await adaptiveDifficultyService.getMasteredQuestions(userId, limitMastered)
+      case 'mastered': {
+        const limitMastered = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 10
+        const mastered = await service.getMasteredQuestions(userId, limitMastered)
         return NextResponse.json(mastered)
+      }
 
-      case 'trends':
-        const trends = await adaptiveDifficultyService.getUserProgressTrends(userId)
+      case 'trends': {
+        const trends = await service.getUserProgressTrends(userId)
         return NextResponse.json(trends)
+      }
 
-      case 'recommendations':
-        const recommendations = await adaptiveDifficultyService.getPersonalizedRecommendations(userId)
+      case 'recommendations': {
+        const recommendations = await service.getPersonalizedRecommendations(userId)
         return NextResponse.json(recommendations)
+      }
 
-      case 'questions_by_difficulty':
+      case 'questions_by_difficulty': {
         const targetDifficulty = searchParams.get('difficulty')
         const targetTrend = searchParams.get('trend')
-        const limitQuestions = searchParams.get('limit') ? parseInt(searchParams.get('limit')) : undefined
-        
+        const limitQuestions = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : undefined
+
         if (!targetDifficulty) {
           return NextResponse.json({ error: 'difficulty parameter is required' }, { status: 400 })
         }
 
-        const questions = await adaptiveDifficultyService.getQuestionsByPersonalDifficulty(userId, targetDifficulty, {
+        const questions = await service.getQuestionsByPersonalDifficulty(userId, targetDifficulty, {
           trend: targetTrend,
           limit: limitQuestions
         })
         return NextResponse.json(questions)
+      }
 
       default:
         return NextResponse.json({ error: 'Invalid action parameter' }, { status: 400 })
     }
 
   } catch (error) {
-    console.error('Adaptive difficulty API error:', error)
+    console.error('❌ [API/adaptive-difficulty] GET error:', error)
     return NextResponse.json(
-      { error: 'Internal server error', details: error.message },
+      { error: 'Internal server error', details: (error as Error).message },
       { status: 500 }
     )
   }
 }
 
-async function _POST(request) {
+async function _POST(request: NextRequest) {
   try {
     const body = await request.json()
     const { action, userId } = body
@@ -113,34 +123,36 @@ async function _POST(request) {
       return NextResponse.json({ error: 'userId is required' }, { status: 400 })
     }
 
-    const adaptiveDifficultyService = await getService()
+    const service = await getService()
 
     switch (action) {
-      case 'migrate_data':
-        const migrationResult = await adaptiveDifficultyService.runDataMigration()
+      case 'migrate_data': {
+        const migrationResult = await service.runDataMigration()
         return NextResponse.json(migrationResult)
+      }
 
-      case 'create_initial_metrics':
-        const metrics = await adaptiveDifficultyService.createInitialUserMetrics(userId)
+      case 'create_initial_metrics': {
+        const metrics = await service.createInitialUserMetrics(userId)
         return NextResponse.json(metrics)
+      }
 
-      case 'recalculate_metrics':
-        // Recalcular métricas de usuario desde cero
+      case 'recalculate_metrics': {
         const { data, error } = await getSupabase()
           .rpc('recalculate_user_metrics', { p_user_id: userId })
 
         if (error) throw error
 
         return NextResponse.json({ success: true, data })
+      }
 
       default:
         return NextResponse.json({ error: 'Invalid action parameter' }, { status: 400 })
     }
 
   } catch (error) {
-    console.error('Adaptive difficulty POST API error:', error)
+    console.error('❌ [API/adaptive-difficulty] POST error:', error)
     return NextResponse.json(
-      { error: 'Internal server error', details: error.message },
+      { error: 'Internal server error', details: (error as Error).message },
       { status: 500 }
     )
   }
