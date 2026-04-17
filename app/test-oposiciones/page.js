@@ -2,9 +2,6 @@
 'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { getSupabaseClient } from '../../lib/supabase'
-
-const supabase = getSupabaseClient()
 
 export default function TestOposicionesPage() {
   const [loading, setLoading] = useState(true)
@@ -56,45 +53,27 @@ export default function TestOposicionesPage() {
 
   const loadGeneralStats = async () => {
     try {
-      // Obtener estadísticas generales de todas las leyes
-      const { data: laws, error: lawsError } = await supabase
-        .from('laws')
-        .select('id, short_name, name')
-        .in('short_name', ['CONST', 'LPAC'])
+      // Obtener estadísticas via API (no Supabase directo)
+      let totalQuestions = 0
 
-      if (lawsError) {
-        console.error('Error cargando leyes:', lawsError)
-        setStats({ totalLaws: 2, totalQuestions: 0, totalSections: 26 })
-      } else {
-        // Contar preguntas totales (aproximación)
-        let totalQuestions = 0
-        
-        if (laws && laws.length > 0) {
-          const { data: articles, error: articlesError } = await supabase
-            .from('articles')
-            .select('id')
-            .in('law_id', laws.map(l => l.id))
-
-          if (!articlesError && articles) {
-            const { data: questions, error: questionsError } = await supabase
-              .from('questions')
-              .select('id')
-              .in('primary_article_id', articles.map(a => a.id))
-              .eq('is_active', true)
-
-            if (!questionsError && questions) {
-              totalQuestions = questions.length
-            }
+      for (const lawName of ['CE', 'Ley 39/2015']) {
+        try {
+          const response = await fetch(`/api/questions/law-stats?lawShortName=${encodeURIComponent(lawName)}`)
+          const data = await response.json()
+          if (data.success) {
+            totalQuestions += data.totalQuestions
           }
+        } catch {
+          console.warn(`Error obteniendo stats de ${lawName}`)
         }
-
-        setStats({
-          totalLaws: availableLaws.length,
-          totalQuestions,
-          totalSections: 26, // 11 + 15
-          totalArticles: laws?.length || 0
-        })
       }
+
+      setStats({
+        totalLaws: availableLaws.length,
+        totalQuestions,
+        totalSections: 26,
+        totalArticles: 2
+      })
     } catch (error) {
       console.error('Error cargando estadísticas:', error)
       setStats({ totalLaws: 2, totalQuestions: 0, totalSections: 26 })
