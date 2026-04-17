@@ -87,53 +87,20 @@ export default function QuestionPage({ params }: { params: Promise<{ id: string 
       setLoading(true)
       setError(null)
 
-      // 1. Obtener la pregunta
-      const { data: questionData, error: questionError } = await supabase
-        .from('questions')
-        .select('*')
-        .eq('id', questionId)
-        .single()
+      const response = await fetch(`/api/questions/by-id?id=${encodeURIComponent(questionId)}`)
+      const data = await response.json()
 
-      if (questionError || !questionData) {
+      if (!response.ok || !data.success || !data.question) {
         setError('Pregunta no encontrada')
         return
       }
 
-      const qData = questionData as Record<string, unknown>
-
-      // 2. Si tiene artículo vinculado, obtenerlo
-      if (qData.primary_article_id) {
-        const { data: articleData } = await supabase
-          .from('articles')
-          .select('id, article_number, title, content, law_id')
-          .eq('id', qData.primary_article_id as string)
-          .single()
-
-        if (articleData) {
-          const article = articleData as Record<string, unknown>
-          qData.articles = article
-
-          // 3. Si el artículo tiene ley, obtenerla
-          if (article.law_id) {
-            const { data: lawData } = await supabase
-              .from('laws')
-              .select('id, short_name, name')
-              .eq('id', article.law_id as string)
-              .single()
-
-            if (lawData) {
-              (qData.articles as Record<string, unknown>).laws = lawData
-              const lawName = (lawData as Record<string, unknown>).short_name as string || (lawData as Record<string, unknown>).name as string
-              if (lawName) {
-                setLawSlug(generateLawSlug(lawName))
-              }
-            }
-          }
-        }
+      const q = data.question
+      if (q.articles?.laws?.short_name) {
+        setLawSlug(generateLawSlug(q.articles.laws.short_name))
       }
 
-      setQuestion(qData as unknown as QuestionData)
-      // Iniciar timer para medir tiempo de respuesta
+      setQuestion(q as QuestionData)
       setAnswerStartTime(Date.now())
     } catch (err) {
       console.error('Error cargando pregunta:', err)
