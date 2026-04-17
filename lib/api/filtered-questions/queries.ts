@@ -4,6 +4,7 @@ import { questions, articles, laws, topicScope, topics, tests, testQuestions, us
 import { eq, and, inArray, sql, notInArray, desc, or, lt } from 'drizzle-orm'
 import {
   getAllowedLawIds,
+  type AllowedLawsResult,
 } from '@/lib/api/oposicion-scope/queries'
 import type {
   GetFilteredQuestionsRequest,
@@ -16,6 +17,7 @@ import type {
 
 import { getValidExamPositions } from '@/lib/config/exam-positions'
 import { buildOfficialExamFilter } from '@/lib/api/oposicion-scope/queries'
+import { logValidationError } from '@/lib/api/validation-error-log'
 
 // ============================================
 // COLUMNAS COMPARTIDAS: Usado por todos los selects de preguntas
@@ -450,7 +452,36 @@ export async function getFilteredQuestions(
 
     // 🔄 CASO: "Solo falladas" sin IDs — single JOIN con user_question_history
     if (onlyFailedQuestions && (!failedQuestionIds || failedQuestionIds.length === 0) && userId) {
-      console.log(`🔄 Modo preguntas falladas por historial (single JOIN): userId=${userId}`)
+      console.log(`🔄 Modo preguntas falladas por historial (single JOIN): userId=${userId}, positionType=${positionType}`)
+
+      let allowed: AllowedLawsResult
+      try {
+        allowed = await getAllowedLawIds({ userId, fallbackPositionType: positionType })
+      } catch (err) {
+        console.error('❌ [failed-questions] getAllowedLawIds falló:', (err as Error).message)
+        logValidationError({
+          endpoint: '/api/questions/filtered',
+          errorType: 'scope_resolution',
+          errorMessage: `getAllowedLawIds falló para userId=${userId} positionType=${positionType}: ${(err as Error).message}`,
+          severity: 'critical',
+          userId,
+        })
+        return { success: true, questions: [], totalAvailable: 0, filtersApplied: { laws: 0, articles: 0, sections: 0 }, emptyReason: 'Error resolviendo scope de oposición' }
+      }
+
+      if (allowed.lawIds.length === 0) {
+        console.error(`❌ [failed-questions] 0 leyes en scope para positionType="${allowed.positionType}" userId=${userId}`)
+        logValidationError({
+          endpoint: '/api/questions/filtered',
+          errorType: 'empty_scope',
+          errorMessage: `0 leyes en scope para positionType="${allowed.positionType}". userId=${userId}. Preguntas falladas no se pueden servir sin scope.`,
+          severity: 'warning',
+          userId,
+        })
+        return { success: true, questions: [], totalAvailable: 0, filtersApplied: { laws: 0, articles: 0, sections: 0 }, emptyReason: `No hay contenido configurado para "${allowed.positionType}"` }
+      }
+
+      console.log(`🔒 [failed-questions] Scope: ${allowed.lawIds.length} leyes para "${allowed.positionType}"`)
 
       const failedQuestions = await db
         .select({ ...questionColumns, ...articleColumns })
@@ -465,13 +496,16 @@ export async function getFilteredQuestions(
             lt(userQuestionHistory.successRate, '1.00')
           )
         )
-        .where(eq(questions.isActive, true))
+        .where(and(
+          eq(questions.isActive, true),
+          inArray(laws.id, allowed.lawIds)
+        ))
         .orderBy(sql`random()`)
         .limit(numQuestions)
 
       const finalQuestions = failedQuestions
 
-      console.log(`✅ Single JOIN: ${finalQuestions.length} preguntas falladas (limit ${numQuestions})`)
+      console.log(`✅ [failed-questions] ${finalQuestions.length} preguntas falladas de ${allowed.lawIds.length} leyes (limit ${numQuestions})`)
 
       if (finalQuestions.length === 0) {
         return { success: true, questions: [], totalAvailable: 0, filtersApplied: { laws: 0, articles: 0, sections: 0 } }
