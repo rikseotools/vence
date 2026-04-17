@@ -1,7 +1,7 @@
 // lib/api/boe-changes/queries.ts - Queries y funciones para monitoreo BOE
 import { getDb } from '@/db/client'
 import { laws } from '@/db/schema'
-import { isNotNull, eq, and, ne, asc, sql } from 'drizzle-orm'
+import { isNotNull, eq, and, ne, or, lt, sql } from 'drizzle-orm'
 import {
   SIZE_TOLERANCE_BYTES,
   type LawForCheck,
@@ -54,9 +54,10 @@ export async function fetchWithTimeout(
 export async function getLawsForBoeCheck(): Promise<LawForCheck[]> {
   const db = getDb()
 
-  // ORDER BY last_checked ASC NULLS FIRST: prioriza las leyes nunca verificadas
-  // y las que llevan más tiempo sin comprobarse. Así, si el cron se corta por
-  // cualquier motivo, no dejamos leyes huérfanas de forma permanente.
+  const today = new Date()
+  today.setUTCHours(0, 0, 0, 0)
+  const todayStr = today.toISOString()
+
   const result = await db
     .select({
       id: laws.id,
@@ -70,7 +71,11 @@ export async function getLawsForBoeCheck(): Promise<LawForCheck[]> {
     .from(laws)
     .where(and(
       isNotNull(laws.boeUrl),
-      ne(laws.scope, 'eu')
+      ne(laws.scope, 'eu'),
+      or(
+        sql`${laws.lastChecked} IS NULL`,
+        lt(laws.lastChecked, todayStr)
+      )
     ))
     .orderBy(sql`${laws.lastChecked} ASC NULLS FIRST`)
 

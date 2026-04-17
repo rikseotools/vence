@@ -24,9 +24,9 @@ import {
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 export const dynamic = 'force-dynamic'
 
-// maxDuration=60s es holgado: con chunking paralelo el cron completa en
-// 15-40s incluso en peor caso. Antes era 300s (timeout recurrente por
-// procesamiento serial + sleeps + sin timeouts de fetch).
+// maxDuration=60s. La query ahora excluye leyes ya chequeadas hoy, así que
+// los reintentos del workflow solo procesan las que faltan en vez de repetir
+// las 350. Con chunking paralelo y este filtro, 60s es suficiente.
 export const maxDuration = 60
 
 // Tamaño de lote para procesamiento paralelo. Cada chunk se ejecuta con
