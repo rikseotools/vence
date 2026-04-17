@@ -263,10 +263,12 @@ export function useAdminNotifications(enabled = false) {
       return
     }
 
-    // Retrasar 3s para no competir con las APIs del dashboard por conexiones del navegador
-    const initialDelay = setTimeout(loadPendingCounts, 3000)
+    // Retrasar 10s para no competir con el dashboard por conexiones del navegador.
+    // En dev, Turbopack compila cada ruta API secuencialmente (~5s por ruta).
+    // Si estos fetches se disparan antes de que /api/v2/admin/dashboard compile,
+    // ocupan las 6 conexiones de Chrome y el dashboard queda en cola.
+    const initialDelay = setTimeout(loadPendingCounts, 10000)
 
-    // Polling cada 30s (empieza después del delay inicial)
     const interval = setInterval(loadPendingCounts, 30000)
 
     return () => {

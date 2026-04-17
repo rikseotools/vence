@@ -55,13 +55,14 @@ export function useLawChanges() {
   }
 
   useEffect(() => {
-    // Retrasar 3s para no competir con las APIs del dashboard por conexiones del navegador
+    // Retrasar 12s — en dev, Turbopack compila rutas API secuencialmente
+    // y las conexiones del navegador (max 6) se saturan si todo dispara a la vez.
     const initialDelay = setTimeout(() => {
       checkForChanges()
       checkDiscrepancies()
       // checkBOEDates() — desactivado del auto-check (tarda ~10s, scrapea BOE entero)
       // Se ejecuta solo manualmente desde /admin/monitoreo o via cron de GitHub Actions
-    }, 3000)
+    }, 12000)
 
     // Verificar BD cada 5 minutos
     const interval = setInterval(checkForChanges, 5 * 60 * 1000)

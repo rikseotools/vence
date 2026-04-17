@@ -23,9 +23,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, [])
 
   useEffect(() => {
-    checkOepSignals()
-    const interval = setInterval(checkOepSignals, 300000) // 5 minutos
-    return () => clearInterval(interval)
+    const delay = setTimeout(checkOepSignals, 10000)
+    const interval = setInterval(checkOepSignals, 300000)
+    return () => { clearTimeout(delay); clearInterval(interval) }
   }, [checkOepSignals])
 
   return (
