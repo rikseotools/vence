@@ -87,52 +87,61 @@ function ExamAleatorioContent({ oposicionSlug, positionType, themeNames }: ExamA
         throw new Error('No se han seleccionado temas para el test')
       }
 
-      setLoadingProgress(prev => ({ ...prev, currentPhase: 'fetching_mappings', message: 'Obteniendo estructura de temas...' }))
+      setLoadingProgress(prev => ({ ...prev, currentPhase: 'fetching', message: 'Obteniendo preguntas...' }))
 
-      const { data: mappings, error: mappingError } = await supabase
-        .from('topic_scope')
-        .select(`article_numbers, laws!inner(short_name, id, name), topics!inner(topic_number, position_type)`)
-        .in('topics.topic_number', testConfig.themes)
-        .eq('topics.position_type', positionType)
+      // Migrado a API centralizada (/api/questions/filtered) para cerrar vector de scraping
+      const difficultyMode = testConfig.difficulty === 'mixed' ? 'random' : testConfig.difficulty
+      const response = await fetch('/api/questions/filtered', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          topicNumber: 0,
+          positionType,
+          multipleTopics: testConfig.themes,
+          numQuestions: Math.min(testConfig.numQuestions * 3, 500),
+          selectedLaws: [],
+          selectedArticlesByLaw: {},
+          selectedSectionFilters: [],
+          onlyOfficialQuestions: testConfig.onlyOfficialQuestions,
+          difficultyMode,
+          focusEssentialArticles: testConfig.focusEssentialArticles,
+          proportionalByTopic: testConfig.themes.length > 1,
+        })
+      })
 
-      if (mappingError) throw mappingError
-      if (!mappings || mappings.length === 0) throw new Error('No se encontraron mapeos para los temas seleccionados')
-
-      setLoadingProgress(prev => ({ ...prev, totalMappings: mappings.length, currentPhase: 'processing_laws', message: `Procesando ${mappings.length} combinaciones de leyes y temas...` }))
-
-      let allQuestions: Question[] = []
-      let mappingIndex = 0
-
-      for (const mapping of mappings) {
-        mappingIndex++
-        const normalizedLawName = normalizeName(mapping.laws?.short_name || '')
-        setLoadingProgress(prev => ({ ...prev, currentMapping: mappingIndex, currentLaw: normalizedLawName, message: `Buscando preguntas en ${normalizedLawName} (${mappingIndex}/${mappings.length})` }))
-
-        const hasSpecificArticles = mapping.article_numbers && mapping.article_numbers.length > 0
-        try {
-          let query = supabase
-            .from('questions')
-            .select(`id, question_text, option_a, option_b, option_c, option_d, correct_option, explanation, difficulty, is_official_exam, primary_article_id, exam_source, exam_date, exam_entity, articles!inner(id, article_number, title, content, laws!inner(short_name, name))`)
-            .eq('is_active', true)
-            .eq('articles.laws.short_name', normalizedLawName)
-
-          if (hasSpecificArticles) query = query.in('articles.article_number', mapping.article_numbers!)
-          if (testConfig.difficulty && testConfig.difficulty !== 'mixed') query = query.eq('global_difficulty_category', testConfig.difficulty)
-          if (testConfig.onlyOfficialQuestions) query = query.eq('is_official_exam', true)
-
-          const { data: lawQuestions, error: questionsError } = await query
-          if (questionsError) { console.error(`Error con ley ${normalizedLawName}:`, questionsError.message) }
-          else if (lawQuestions && lawQuestions.length > 0) {
-            const questionsWithTopic = lawQuestions.map((q: Question) => ({ ...q, source_topic: mapping.topics?.topic_number || 0 }))
-            allQuestions = [...allQuestions, ...questionsWithTopic]
-            setLoadingProgress(prev => ({ ...prev, questionsFound: prev.questionsFound + lawQuestions.length }))
-          }
-        } catch (err) { console.error(`Error procesando ley ${normalizedLawName}:`, err) }
+      const data = await response.json()
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Error obteniendo preguntas')
       }
+
+      const allQuestions: Question[] = (data.questions || []).map((q: any) => ({
+        id: q.id,
+        question_text: q.question,
+        option_a: q.options[0],
+        option_b: q.options[1],
+        option_c: q.options[2],
+        option_d: q.options[3],
+        correct_option: q.correct_option,
+        explanation: q.explanation,
+        difficulty: q.metadata?.difficulty || 'medium',
+        is_official_exam: q.metadata?.is_official_exam || false,
+        primary_article_id: q.primary_article_id,
+        exam_source: q.metadata?.exam_source || null,
+        exam_date: q.metadata?.exam_date || null,
+        exam_entity: q.metadata?.exam_entity || null,
+        articles: {
+          id: q.article?.id,
+          article_number: q.article?.number,
+          title: q.article?.title,
+          content: q.article?.full_text,
+          laws: { short_name: q.article?.law_short_name, name: q.article?.law_name },
+        },
+        source_topic: q.tema || 0,
+      }))
 
       if (allQuestions.length === 0) throw new Error('No se encontraron preguntas con los criterios seleccionados')
 
-      setLoadingProgress({ currentPhase: 'selecting', currentMapping: mappings.length, totalMappings: mappings.length, currentLaw: '', questionsFound: allQuestions.length, message: `Seleccionando ${testConfig.numQuestions} preguntas de ${allQuestions.length} disponibles...` })
+      setLoadingProgress({ currentPhase: 'selecting', currentMapping: 1, totalMappings: 1, currentLaw: '', questionsFound: allQuestions.length, message: `Seleccionando ${testConfig.numQuestions} preguntas de ${allQuestions.length} disponibles...` })
 
       let selectedQuestions: Question[] = []
       if (testConfig.themes.length > 1) {

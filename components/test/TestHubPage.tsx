@@ -2,6 +2,9 @@
 import { createClient } from '@supabase/supabase-js'
 import { OPOSICIONES, SLUG_TO_POSITION_TYPE, getOposicionBySlug } from '@/lib/config/oposiciones'
 import TestHubClient from './TestHubClient'
+import { getDb } from '@/db/client'
+import { questions } from '@/db/schema'
+import { eq, and, inArray, sql } from 'drizzle-orm'
 
 type OposicionSlug = string
 
@@ -108,8 +111,15 @@ export default async function TestHubPage({ oposicion }: Props) {
     }
 
     if (articleIds.length > 0) {
-      const { count } = await supabase.from('questions').select('id', { count: 'exact', head: true }).eq('is_active', true).in('primary_article_id', articleIds.slice(0, 500))
-      if (count && count > 0) topicsWithQuestions.add(topicId)
+      const db = getDb()
+      const [{ count: qCount }] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(questions)
+        .where(and(
+          eq(questions.isActive, true),
+          inArray(questions.primaryArticleId, articleIds.slice(0, 500))
+        ))
+      if (qCount && Number(qCount) > 0) topicsWithQuestions.add(topicId)
     }
   }
 
