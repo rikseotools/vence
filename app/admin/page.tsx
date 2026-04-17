@@ -244,16 +244,36 @@ export default function AdminDashboard() {
                     return <span className={`text-xs font-medium ${color}`}>{sign}{change}%</span>
                   })()}
                 </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  {stats.testsCompletedToday > 0
-                    ? (() => {
-                        const activeUsers = recentActivity.map(a => a.user_profiles?.full_name?.split(' ')[0] || a.user_profiles?.email?.split('@')[0] || 'Usuario')
-                        const uniqueUsers = [...new Set(activeUsers)]
-                        return uniqueUsers.join(', ')
-                      })()
-                    : 'Sin actividad hoy'
-                  }
-                </p>
+                <div className="text-xs mt-1 space-y-0.5">
+                  <div className="flex items-center gap-1 flex-wrap">
+                    <span className="text-green-600 dark:text-green-400 font-semibold">💰 {stats.revenueToday}€ hoy</span>
+                    <span className="text-gray-400">vs</span>
+                    <span className="text-gray-500">{stats.revenueSameDayLastWeek}€ hace 7d</span>
+                    {(() => {
+                      const prev = stats.revenueSameDayLastWeek
+                      if (prev === 0 && stats.revenueToday === 0) return null
+                      if (prev === 0) return <span className="text-green-600 font-medium">+100%</span>
+                      const pct = Math.round(((stats.revenueToday - prev) / prev) * 100)
+                      return <span className={`font-medium ${pct >= 0 ? 'text-green-600' : 'text-red-600'}`}>{pct >= 0 ? '+' : ''}{pct}%</span>
+                    })()}
+                  </div>
+                  <div className="flex items-center gap-1 text-gray-500 flex-wrap">
+                    <span>media 7d: {Math.round(stats.revenueLast7Days / 7)}€/día</span>
+                    <span className="text-gray-400">vs</span>
+                    <span>sem ant: {Math.round(stats.revenuePrev7Days / 7)}€/día</span>
+                    {(() => {
+                      const avg7 = stats.revenueLast7Days / 7
+                      const avgPrev = stats.revenuePrev7Days / 7
+                      if (avgPrev === 0 && avg7 === 0) return null
+                      if (avgPrev === 0) return <span className="text-green-600 font-medium">↑</span>
+                      const pct = Math.round(((avg7 - avgPrev) / avgPrev) * 100)
+                      return <span className={`font-medium ${pct >= 0 ? 'text-green-600' : 'text-red-600'}`}>{pct >= 0 ? '↑' : '↓'}{Math.abs(pct)}%</span>
+                    })()}
+                  </div>
+                  <div className="text-gray-500">
+                    14d: {stats.revenueLast7Days + stats.revenuePrev7Days}€
+                  </div>
+                </div>
                 {/* Desglose Premium vs Free de usuarios activos hoy */}
                 {(() => {
                   // Obtener usuarios únicos con su info de premium

@@ -176,6 +176,15 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     icon: '⚖️'
   },
 
+  // === CORREOS ===
+  {
+    id: 'correos_personal_operativo',
+    nombre: 'Personal Operativo de Correos',
+    categoria: 'C2',
+    administracion: 'Empresa Pública',
+    icon: '📮'
+  },
+
   // === AYUNTAMIENTOS (MUY POPULARES) ===
   {
     id: 'auxiliar_ayuntamiento',

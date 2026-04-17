@@ -63,7 +63,7 @@ const OposicionSchema = z.object({
   emoji: z.string(),
   badge: z.string(),
   color: z.string(),
-  administracion: z.enum(['estado', 'justicia', 'autonomica', 'local']),
+  administracion: z.enum(['estado', 'justicia', 'autonomica', 'local', 'empresa_publica']),
   blocks: z.array(BlockSchema),
   totalTopics: z.number(),
   navLinks: z.array(NavLinkSchema),
@@ -2673,6 +2673,58 @@ export const OPOSICIONES: Oposicion[] = [
       { href: '/administrativo-seguridad-social', label: 'Mi Oposición', icon: '🩺', featured: true },
       { href: '/administrativo-seguridad-social/temario', label: 'Temario', icon: '📚' },
       { href: '/administrativo-seguridad-social/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ============================================
+  // CORREOS — Personal Operativo C2
+  // ============================================
+  {
+    id: 'correos_personal_operativo',
+    slug: 'correos-personal-operativo',
+    positionType: 'correos_personal_operativo',
+    name: 'Personal Operativo de Correos',
+    shortName: 'Correos C2',
+    emoji: '📮',
+    badge: 'C2',
+    color: 'yellow',
+    administracion: 'empresa_publica',
+    blocks: [
+      {
+        id: 'bloque1',
+        title: 'Bloque I: La Empresa y sus Productos',
+        subtitle: 'Marco normativo, productos, servicios y herramientas',
+        icon: '📮',
+        themes: [
+          { id: 1, name: 'Correos: Marco Normativo Postal y Naturaleza Jurídica' },
+          { id: 2, name: 'Experiencia de Personas en Correos' },
+          { id: 3, name: 'Productos y Servicios: Comunicación y Paquetería' },
+          { id: 4, name: 'Productos y Servicios: Oficinas, Financieros y Digitales' },
+          { id: 5, name: 'Nuevas Líneas de Negocio' },
+          { id: 6, name: 'Herramientas Corporativas' },
+        ],
+      },
+      {
+        id: 'bloque2',
+        title: 'Bloque II: Operaciones y Normativa',
+        subtitle: 'Procesos operativos, atención al cliente y cumplimiento',
+        icon: '📦',
+        themes: [
+          { id: 7, name: 'Procesos Operativos I: Admisión' },
+          { id: 8, name: 'Procesos Operativos II: Tratamiento y Transporte' },
+          { id: 9, name: 'Procesos Operativos III: Distribución y Entrega' },
+          { id: 10, name: 'El Cliente: Atención y Calidad' },
+          { id: 11, name: 'Internacionalización y Aduanas' },
+          { id: 12, name: 'Normas de Cumplimiento' },
+        ],
+      },
+    ],
+    totalTopics: 12,
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/correos-personal-operativo', label: 'Mi Oposición', icon: '📮', featured: true },
+      { href: '/correos-personal-operativo/temario', label: 'Temario', icon: '📚' },
+      { href: '/correos-personal-operativo/test', label: 'Tests', icon: '🎯' },
     ],
   },
 ]

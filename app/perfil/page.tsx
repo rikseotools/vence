@@ -387,6 +387,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'correos_personal_operativo',
+      label: 'Personal Operativo de Correos',
+      data: {
+        name: 'Personal Operativo de Correos',
+        slug: 'correos-personal-operativo',
+        categoria: 'C2',
+        administracion: 'Empresa Pública'
+      }
+    },
+    {
       value: 'auxiliar_administrativo_diputacion_cadiz',
       label: 'Auxiliar Administrativo Dip. Cádiz',
       data: {

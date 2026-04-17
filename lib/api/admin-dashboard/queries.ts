@@ -1,7 +1,7 @@
 // lib/api/admin-dashboard/queries.ts - Drizzle queries para Admin Dashboard v2
 // Consolida 13 queries secuenciales del cliente en ~6 queries paralelas en servidor
 import { getAdminDb as getDb } from '@/db/client'
-import { userProfiles, tests, testQuestions, emailLogs, adminUsersWithRoles } from '@/db/schema'
+import { userProfiles, tests, testQuestions, emailLogs, adminUsersWithRoles, conversionEvents } from '@/db/schema'
 import { eq, sql, gte, lt, lte, and, isNotNull, desc } from 'drizzle-orm'
 import type { DashboardResponse } from './schemas'
 
@@ -480,12 +480,55 @@ function computeDauMauHistory(dauByDay: Map<string, number>, mau30d: number) {
   return history
 }
 
+async function queryRevenue(dates: ReturnType<typeof getMadridDates>) {
+  const db = getDb()
+  const fourteenDaysAgo = new Date(new Date(dates.startOfToday).getTime() - 14 * 24 * 3600 * 1000).toISOString()
+
+  const rows = await db
+    .select({
+      period: sql<string>`
+        case
+          when ${conversionEvents.createdAt} >= ${dates.startOfToday} then 'today'
+          when ${conversionEvents.createdAt} >= ${dates.startOfLastWeekSameDay}
+           and ${conversionEvents.createdAt} < ${dates.startOfLastWeekSameDay}::timestamp + interval '1 day' then 'same_day_7d'
+          when ${conversionEvents.createdAt} >= ${dates.startOfLastWeekSameDay}
+           and ${conversionEvents.createdAt} < ${dates.startOfToday} then 'last7'
+          else 'prev7'
+        end`,
+      total: sql<string>`coalesce(sum((${conversionEvents.eventData}->>'amount')::numeric), 0)`,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(conversionEvents)
+    .where(
+      and(
+        eq(conversionEvents.eventType, 'payment_completed'),
+        gte(conversionEvents.createdAt, fourteenDaysAgo),
+      )
+    )
+    .groupBy(sql`1`)
+
+  const byPeriod: Record<string, { total: number; count: number }> = {}
+  rows.forEach(r => { byPeriod[r.period] = { total: Number(r.total), count: r.count } })
+
+  const today = byPeriod['today'] ?? { total: 0, count: 0 }
+  const sameDay7d = byPeriod['same_day_7d'] ?? { total: 0, count: 0 }
+  const last7 = byPeriod['last7'] ?? { total: 0, count: 0 }
+  const prev7 = byPeriod['prev7'] ?? { total: 0, count: 0 }
+
+  return {
+    revenueToday: today.total,
+    salesToday: today.count,
+    revenueSameDayLastWeek: sameDay7d.total,
+    revenueLast7Days: last7.total,
+    revenuePrev7Days: prev7.total,
+  }
+}
+
 // -- Main: ejecutar todo en paralelo --
 
 export async function getDashboardData(): Promise<DashboardResponse> {
   const dates = getMadridDates()
 
-  // 10 queries paralelas en vez de 13 secuenciales del cliente
   const [
     userStats,
     sourceStats,
@@ -497,6 +540,7 @@ export async function getDashboardData(): Promise<DashboardResponse> {
     dauByDay,
     recentUsers,
     engagement,
+    revenue,
   ] = await Promise.all([
     queryUserStats(dates),
     queryRegistrationBySource(dates),
@@ -508,6 +552,7 @@ export async function getDashboardData(): Promise<DashboardResponse> {
     queryDauHistory(dates),
     queryRecentUsers(),
     queryEngagement(),
+    queryRevenue(dates),
   ])
 
   const projections = computeProjections(
@@ -579,6 +624,11 @@ export async function getDashboardData(): Promise<DashboardResponse> {
         porLey: testStats.porLey15d,
         personalizado: testStats.personalizado15d,
       },
+      revenueToday: revenue.revenueToday,
+      salesToday: revenue.salesToday,
+      revenueSameDayLastWeek: revenue.revenueSameDayLastWeek,
+      revenueLast7Days: revenue.revenueLast7Days,
+      revenuePrev7Days: revenue.revenuePrev7Days,
     },
     emailStats,
     users: recentUsers.map(u => ({
