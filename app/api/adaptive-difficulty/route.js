@@ -1,7 +1,6 @@
 // app/api/adaptive-difficulty/route.js
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { AdaptiveDifficultyService } from '@/lib/services/adaptiveDifficulty'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 const getSupabase = () => createClient(
@@ -9,7 +8,14 @@ const getSupabase = () => createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
 
-const adaptiveDifficultyService = new AdaptiveDifficultyService(getSupabase())
+let _service = null
+async function getService() {
+  if (!_service) {
+    const { AdaptiveDifficultyService } = await import('@/lib/services/adaptiveDifficulty')
+    _service = new AdaptiveDifficultyService(getSupabase())
+  }
+  return _service
+}
 
 async function _GET(request) {
   try {
@@ -21,6 +27,8 @@ async function _GET(request) {
     if (!userId) {
       return NextResponse.json({ error: 'userId is required' }, { status: 400 })
     }
+
+    const adaptiveDifficultyService = await getService()
 
     switch (action) {
       case 'personal_difficulty':
@@ -104,6 +112,8 @@ async function _POST(request) {
     if (!userId) {
       return NextResponse.json({ error: 'userId is required' }, { status: 400 })
     }
+
+    const adaptiveDifficultyService = await getService()
 
     switch (action) {
       case 'migrate_data':
