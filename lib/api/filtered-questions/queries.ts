@@ -746,9 +746,13 @@ export async function getFilteredQuestions(
           // material de práctica a usuarios de oposiciones con pocas oficiales propias.
           onlyOfficialQuestions ? buildOfficialExamFilter(positionType) : sql`true`,
           onlyOfficialQuestions ? eq(questions.isOfficialExam, true) : sql`true`,
-          // Filtro de dificultad
+          // Filtro de dificultad: prioriza global_difficulty_category (calculada con
+          // datos reales de usuarios); si es NULL (pregunta sin respuestas aún), usa
+          // difficulty (legacy, asignada al crearla). Mismo patrón que random-test.
+          // Sin esto, el 43% del banco de preguntas con NULL se excluye silenciosamente.
           difficultyMode && difficultyMode !== 'random'
-            ? eq(questions.globalDifficultyCategory, difficultyMode)
+            ? sql`(${questions.globalDifficultyCategory} = ${difficultyMode} OR
+                  (${questions.globalDifficultyCategory} IS NULL AND ${questions.difficulty} = ${difficultyMode}))`
             : sql`true`
         ))
 

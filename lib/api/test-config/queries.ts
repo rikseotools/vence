@@ -329,9 +329,15 @@ export async function estimateAvailableQuestions(
         }
       }
 
-      // Filtro de dificultad
+      // Filtro de dificultad: prioriza global_difficulty_category (datos reales);
+      // fallback a difficulty (legacy) si NULL. Mismo patrón que random-test y
+      // filtered-questions. Asegura que el conteo del configurador coincida con
+      // las preguntas reales que devolverá la query de filtered-questions.
       if (difficultyMode && difficultyMode !== 'random' && difficultyMode !== 'adaptive') {
-        conditions.push(eq(questions.difficulty, difficultyMode))
+        conditions.push(
+          sql`(${questions.globalDifficultyCategory} = ${difficultyMode} OR
+              (${questions.globalDifficultyCategory} IS NULL AND ${questions.difficulty} = ${difficultyMode}))`
+        )
       }
 
       const countResult = await db
