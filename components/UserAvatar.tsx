@@ -6,7 +6,6 @@ import { usePathname } from 'next/navigation'
 import { getOposicionSlugFromPathname } from '@/lib/config/oposiciones'
 import { useAuth } from '../contexts/AuthContext'
 import { useAdminNotifications } from '@/hooks/useAdminNotifications'
-import { useSentryIssues } from '@/hooks/useSentryIssues'
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -67,7 +66,7 @@ export default function UserAvatar() {
   const [isAdmin, setIsAdmin] = useState(false)
   const [adminLoading, setAdminLoading] = useState(true)
   const adminNotifications = useAdminNotifications(isAdmin && !adminLoading)
-  const { issuesCount: sentryIssuesCount } = useSentryIssues(isAdmin && !adminLoading)
+  const sentryIssuesCount = 0
   const [userStats, setUserStats] = useState<UserStats>(EMPTY_STATS)
   const [statsLoading, setStatsLoading] = useState(false)
   const [pendingExams, setPendingExams] = useState<PendingExam[]>([])

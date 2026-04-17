@@ -372,7 +372,7 @@ class PWATracker {
       }
 
       // Filtrar sessionId, retroactive y otros campos que no deberían ir a la BD
-      const { sessionId, retroactive, ...cleanAdditionalData } = additionalData || {}
+      const { sessionId, retroactive, hasNotifications, hasServiceWorker, ...cleanAdditionalData } = additionalData || {}
 
       const eventData = {
         user_id: user.id,

@@ -20,7 +20,6 @@ import { getOposicion, ALL_OPOSICION_SLUGS, getTestsLink as configGetTestsLink }
 import { useAdminNotifications } from '@/hooks/useAdminNotifications'
 import DailyGoalBanner from '@/components/DailyGoalBanner'
 import { useInteractionTracker } from '@/hooks/useInteractionTracker'
-import { useSentryIssues } from '@/hooks/useSentryIssues'
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -69,7 +68,6 @@ export default function HeaderES() {
   const { openChat } = useAIChat()
   const isOnAdminPage = pathname?.startsWith('/admin') ?? false
   const adminNotifications = useAdminNotifications(isAdmin && !adminLoading && !isOnAdminPage)
-  const { issuesCount: sentryIssuesCount } = useSentryIssues(isAdmin && !adminLoading && !isOnAdminPage)
 
   // 📊 Tracking de interacciones de usuario
   const { trackClick, trackNavigation } = useInteractionTracker()
@@ -370,7 +368,7 @@ export default function HeaderES() {
           icon: '👨‍💼',
           isAdmin: true,
           badge: pendingFeedbacks > 0 ? pendingFeedbacks : null,
-          sentryBadge: sentryIssuesCount > 0 ? sentryIssuesCount : null
+          sentryBadge: null
         }
       ]
     }

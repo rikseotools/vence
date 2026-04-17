@@ -59,8 +59,7 @@ export default function ClientLayoutContent({ children }: { children: ReactNode 
       {children}
       <FooterES />
 
-      {/* Manager de notificaciones solo para usuarios logueados */}
-      {user && <PushNotificationManager />}
+      {/* PushNotificationManager desactivado — no usamos PWA/push actualmente */}
 
       {/* Modal de Onboarding solo para usuarios logueados */}
       {user && (
