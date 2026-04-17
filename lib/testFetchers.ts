@@ -165,6 +165,11 @@ export function clearSessionQuestionCache(userId: string | null, tema: number | 
   }
 }
 
+// Limpiar TODO el cache de sesión (útil para tests)
+export function clearAllSessionQuestionCache(): void {
+  sessionQuestionCache.clear()
+}
+
 // =================================================================
 // HELPER: BATCHED QUERIES PARA EVITAR URLs MUY LARGAS
 // =================================================================
@@ -569,263 +574,107 @@ export async function fetchOfficialQuestions(tema: number, searchParams: SearchP
 }
 
 // =================================================================
-// 🎛️ FETCHER: TEST PERSONALIZADO - MONO-LEY (Tema 7, etc.)
+// 🎛️ FETCHER: TEST PERSONALIZADO - USA API CENTRALIZADA
+// Migrado de queries Supabase directas a /api/questions/filtered
+// para cerrar vector de scraping. Mantiene session cache como post-filter.
 // =================================================================
 export async function fetchPersonalizedQuestions(tema: number, searchParams: SearchParamsLike, config: FetchConfig): Promise<TransformedQuestion[]> {
   try {
-    const timestamp = new Date().toLocaleTimeString()
-    console.log(`🎛️🔥 EJECUTANDO fetchPersonalizedQuestions para tema ${tema} - TIMESTAMP: ${timestamp}`)
-    console.log(`🎛️🔥 STACK TRACE CORTO:`, new Error().stack?.split('\n')[2]?.trim())
-
-    // LIMPIAR CACHE VIEJO Y CREAR CLAVE DE SESIÓN
-    cleanOldCacheEntries()
+    // Auth check — personalizado requiere usuario
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
       throw new Error('Usuario no autenticado')
     }
-    
+
+    // Session cache — evita repetir preguntas en la misma sesión de browser
+    cleanOldCacheEntries()
     const sessionKey = `${user.id}-${tema}-personalizado-session`
-    
-    // 🔥 OBTENER O CREAR CACHE DE SESIÓN
     if (!sessionQuestionCache.has(sessionKey)) {
-      sessionQuestionCache.set(sessionKey, {
-        usedQuestionIds: new Set(),
-        timestamp: Date.now()
+      sessionQuestionCache.set(sessionKey, { usedQuestionIds: new Set(), timestamp: Date.now() })
+    }
+    const sessionUsedIds = sessionQuestionCache.get(sessionKey)!.usedQuestionIds
+
+    // Leer parámetros
+    const numQuestions = parseInt(getParam(searchParams, 'n', '25'))
+    const excludeRecent = getParam(searchParams, 'exclude_recent') === 'true'
+    const recentDays = parseInt(getParam(searchParams, 'recent_days', '15'))
+    const difficultyMode = getParam(searchParams, 'difficulty_mode', 'random')
+    const onlyOfficialQuestions = getParam(searchParams, 'only_official') === 'true'
+    const positionType = config?.positionType || 'auxiliar_administrativo_estado'
+
+    // Pedir más preguntas para compensar las que filtrará el session cache
+    const requestSize = numQuestions + sessionUsedIds.size
+
+    console.log('🎛️ Cargando test personalizado via API, tema:', tema, 'n:', numQuestions,
+      'request:', requestSize, 'pos:', positionType, 'cached:', sessionUsedIds.size)
+
+    // Obtener token para que la API resuelva userId y active excludeRecent/prioritizeNeverSeen
+    let authToken: string | null = null
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      authToken = session?.access_token ?? null
+    } catch {
+      console.warn('⚠️ No se pudo obtener token de sesión')
+    }
+
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    if (authToken) headers['Authorization'] = `Bearer ${authToken}`
+
+    const response = await fetch('/api/questions/filtered', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        topicNumber: tema || 0,
+        positionType,
+        numQuestions: requestSize,
+        selectedLaws: [],
+        selectedArticlesByLaw: {},
+        selectedSectionFilters: [],
+        onlyOfficialQuestions,
+        difficultyMode,
+        excludeRecentDays: excludeRecent ? recentDays : 0,
+        prioritizeNeverSeen: true,
       })
-      console.log(`🆕🎛️ NUEVA SESIÓN PERSONALIZADA CREADA: ${sessionKey}`)
-    } else {
-      const existingCache = sessionQuestionCache.get(sessionKey)
-      console.log(`♻️🎛️ USANDO SESIÓN PERSONALIZADA EXISTENTE: ${sessionKey}`)
-      console.log(`♻️🎛️ IDs ya usados en esta sesión: ${Array.from(existingCache!.usedQuestionIds).slice(0, 5).join(', ')}...`)
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      const errorMsg = errorData.error || `HTTP ${response.status}`
+      console.error(`❌ Error en fetchPersonalizedQuestions (API): ${errorMsg}`, { status: response.status, tema, positionType })
+      throw new Error(errorMsg)
     }
 
-    // Leer parámetros de configuración (usando helper para URLSearchParams u objeto)
-    const configParams = {
-      numQuestions: parseInt(getParam(searchParams, 'n', '25')),
-      excludeRecent: getParam(searchParams, 'exclude_recent') === 'true',
-      recentDays: parseInt(getParam(searchParams, 'recent_days', '15')),
-      difficultyMode: getParam(searchParams, 'difficulty_mode', 'random'),
-      // customDifficulty eliminado
-      onlyOfficialQuestions: getParam(searchParams, 'only_official') === 'true',
-      focusWeakAreas: getParam(searchParams, 'focus_weak') === 'true',
-      timeLimit: getParam(searchParams, 'time_limit') ? parseInt(getParam(searchParams, 'time_limit')!) : null
+    const data = await response.json()
+
+    if (!data.success) {
+      const errorMsg = data.emptyReason || data.error || 'Error desconocido'
+      console.error('❌ fetchPersonalizedQuestions: API devolvió success=false:', errorMsg)
+      throw new Error(errorMsg)
     }
 
-    console.log('🎛️ Configuración personalizada MONO-LEY:', configParams)
+    let questions: TransformedQuestion[] = data.questions || []
 
-    // 🔥 PASO 1: Obtener preguntas a excluir
-    let excludedQuestionIds: string[] = []
-    if (configParams.excludeRecent && user) {
-      console.log(`🚫 Excluyendo preguntas respondidas en los últimos ${configParams.recentDays} días`)
-
-      const cutoffDate = new Date(Date.now() - configParams.recentDays * 24 * 60 * 60 * 1000).toISOString()
-
-      // ✅ OPTIMIZACIÓN: Query en dos pasos para evitar timeout
-      const { data: userTests } = await supabase
-        .from('tests')
-        .select('id')
-        .eq('user_id', user.id)
-
-      const testIds = userTests?.map((t: any) => t.id) || []
-
-      const { data: recentAnswers, error: recentError } = await batchedTestQuestionsQuery(
-        testIds,
-        'question_id, test_id',
-        { gte: { column: 'created_at', value: cutoffDate } }
-      )
-
-      if (!recentError && recentAnswers && recentAnswers.length > 0) {
-        excludedQuestionIds = [...new Set(recentAnswers.map((answer: any) => answer.question_id))] as string[]
-        console.log(`📊 Total de preguntas a excluir: ${excludedQuestionIds.length}`)
+    // Post-filter: excluir preguntas ya mostradas en esta sesión de browser
+    if (sessionUsedIds.size > 0) {
+      const before = questions.length
+      questions = questions.filter(q => !sessionUsedIds.has(q.id))
+      if (before !== questions.length) {
+        console.log(`🎛️ Session cache: ${before} → ${questions.length} (excluidas ${before - questions.length})`)
       }
     }
 
-    // 🔥 PASO 2: Construir query base para Ley 19/2013 (tema 7)
-    let baseQuery = supabase
-      .from('questions')
-      .select(`
-        id, question_text, option_a, option_b, option_c, option_d,
-        correct_option, explanation, difficulty, global_difficulty_category, question_type, tags,
-        primary_article_id, is_official_exam, exam_source, exam_date, image_url, content_data,
-        exam_entity, official_difficulty_level, is_active, created_at, updated_at,
-        articles!inner (
-          id, article_number, title, content, section,
-          laws!inner (id, name, short_name, slug, year, type, scope, current_version)
-        )
-      `)
-      .eq('is_active', true)
-      .is('exam_case_id', null)
-      .eq('articles.laws.short_name', 'Ley 19/2013')
+    // Tomar solo las que necesitamos
+    questions = questions.slice(0, numQuestions)
 
-    // 🏛️ Filtro por preguntas oficiales si está activado (CON FILTRO POR OPOSICIÓN)
-    if (configParams.onlyOfficialQuestions) {
-      baseQuery = baseQuery.eq('is_official_exam', true)
-      baseQuery = applyExamPositionFilter(baseQuery, config?.positionType || 'auxiliar_administrativo_estado')
-      console.log('🏛️ Filtro aplicado: Solo preguntas oficiales de la oposición')
+    if (questions.length === 0) {
+      throw new Error(data.emptyReason || 'No hay preguntas disponibles con esta configuración.')
     }
 
-    // 🎯 Aplicar filtro de dificultad (prioriza global_difficulty_category calculada, fallback a difficulty estática)
-    switch (configParams.difficultyMode) {
-      case 'easy':
-        baseQuery = baseQuery.or(`global_difficulty_category.eq.easy,and(global_difficulty_category.is.null,difficulty.eq.easy)`)
-        break
-      case 'medium':
-        baseQuery = baseQuery.or(`global_difficulty_category.eq.medium,and(global_difficulty_category.is.null,difficulty.eq.medium)`)
-        break
-      case 'hard':
-        baseQuery = baseQuery.or(`global_difficulty_category.eq.hard,and(global_difficulty_category.is.null,difficulty.eq.hard)`)
-        break
-      case 'extreme':
-        baseQuery = baseQuery.or(`global_difficulty_category.eq.extreme,and(global_difficulty_category.is.null,difficulty.eq.extreme)`)
-        break
-      // 'custom' eliminado
-    }
+    // Actualizar session cache
+    questions.forEach(q => sessionUsedIds.add(q.id))
 
-    // 🔥 PASO 3: Obtener todas las preguntas
-    const { data: allQuestions, error: questionsError } = await baseQuery
-      .order('created_at', { ascending: false })
-
-    if (questionsError) {
-      console.error('❌ Error en consulta personalizada:', questionsError)
-      throw questionsError
-    }
-
-    if (!allQuestions || allQuestions.length === 0) {
-      throw new Error('No hay preguntas disponibles con esta configuración.')
-    }
-
-    // 🔥 PASO 4: Filtrar preguntas excluidas Y del cache de sesión
-    let filteredQuestions = allQuestions
-    
-    // Filtrar exclusiones por fecha
-    if (excludedQuestionIds.length > 0) {
-      const excludedSet = new Set(excludedQuestionIds.map((id: any) => String(id)))
-      filteredQuestions = allQuestions.filter((question: any) => {
-        const questionId = String(question.id)
-        return !excludedSet.has(questionId)
-      })
-      console.log(`✅ Después de exclusión por fecha: ${filteredQuestions.length} preguntas disponibles`)
-    }
-
-    // Filtrar preguntas ya usadas en esta sesión
-    const sessionCache = sessionQuestionCache.get(sessionKey)!
-    const sessionUsedIds = sessionCache.usedQuestionIds
-    
-    filteredQuestions = filteredQuestions.filter((question: any) => {
-      return !sessionUsedIds.has(question.id)
-    })
-    
-    console.log(`🎛️🔥 Después de exclusión de sesión: ${filteredQuestions.length} preguntas disponibles`)
-    console.log(`🎛️🔥 IDs excluidos de sesión: ${Array.from(sessionUsedIds).slice(0, 3).join(', ')}...`)
-
-    if (filteredQuestions.length === 0) {
-      throw new Error('No hay preguntas disponibles después de aplicar exclusiones.')
-    }
-
-    // 🔥 PASO 5: Obtener historial del usuario para selección inteligente
-    console.log(`🎛️🔥 PASO 5: Obteniendo historial del usuario para selección inteligente...`)
-
-    // ✅ OPTIMIZACIÓN: Query en dos pasos para evitar timeout
-    const { data: userTests } = await supabase
-      .from('tests')
-      .select('id')
-      .eq('user_id', user.id)
-
-    const testIds = userTests?.map((t: any) => t.id) || []
-
-    const { data: userAnswers, error: answersError } = await batchedTestQuestionsQuery(
-      testIds,
-      'question_id, created_at, test_id',
-      { order: { column: 'created_at', ascending: false } }
-    )
-
-    if (answersError) {
-      console.warn('⚠️🎛️ Error obteniendo historial, usando selección aleatoria:', (answersError as any).message)
-      // Fallback a selección aleatoria
-      const shuffledQuestions = shuffleArray(filteredQuestions)
-      const finalQuestions = shuffledQuestions.slice(0, configParams.numQuestions)
-
-      // Agregar al cache de sesión
-      finalQuestions.forEach((q: any) => sessionUsedIds.add(q.id))
-      
-      console.log('✅🎛️ Test personalizado MONO-LEY cargado (fallback):', finalQuestions.length, 'preguntas')
-      return transformQuestions(finalQuestions)
-    }
-
-    // 🔥 PASO 6: Clasificar preguntas en nunca vistas vs ya respondidas
-    const answeredQuestionIds = new Set()
-    const questionLastAnswered = new Map()
-
-    if (userAnswers && userAnswers.length > 0) {
-      userAnswers.forEach(answer => {
-        answeredQuestionIds.add(answer.question_id)
-        const answerDate = new Date(answer.created_at)
-        
-        if (!questionLastAnswered.has(answer.question_id) || 
-            answerDate > questionLastAnswered.get(answer.question_id)) {
-          questionLastAnswered.set(answer.question_id, answerDate)
-        }
-      })
-    }
-
-    const neverSeenQuestions = filteredQuestions.filter((q: any) => !answeredQuestionIds.has(q.id))
-    const answeredQuestions = filteredQuestions.filter((q: any) => answeredQuestionIds.has(q.id))
-
-    // Ordenar respondidas por fecha (más antiguas primero para spaced repetition)
-    answeredQuestions.sort((a: any, b: any) => {
-      const dateA = questionLastAnswered.get(a.id) || new Date(0)
-      const dateB = questionLastAnswered.get(b.id) || new Date(0)
-      return dateA - dateB
-    })
-
-    console.log(`🎛️🔥 CLASIFICACIÓN:`)
-    console.log(`🎛️🔥   📚 Total preguntas disponibles: ${filteredQuestions.length}`)
-    console.log(`🎛️🔥   🟢 Nunca vistas: ${neverSeenQuestions.length}`)
-    console.log(`🎛️🔥   🟡 Ya respondidas: ${answeredQuestions.length}`)
-
-    // 🔥 PASO 7: Aplicar algoritmo inteligente de selección
-    let selectedQuestions = []
-    
-    if (neverSeenQuestions.length >= configParams.numQuestions) {
-      // ✅ 1º PRIORIDAD: Si hay suficientes preguntas nunca vistas, usar solo esas
-      console.log('🎯🎛️ ESTRATEGIA: Solo preguntas nunca vistas')
-      const shuffledNeverSeen = shuffleArray(neverSeenQuestions)
-      selectedQuestions = shuffledNeverSeen.slice(0, configParams.numQuestions)
-      
-      console.log(`✅🎛️ Seleccionadas ${selectedQuestions.length} preguntas nunca vistas`)
-      
-    } else {
-      // ✅ 2º PRIORIDAD: Distribución mixta - todas las nunca vistas + las más antiguas respondidas
-      console.log('🎯🎛️ ESTRATEGIA: Distribución mixta')
-      
-      const neverSeenCount = neverSeenQuestions.length
-      const reviewCount = configParams.numQuestions - neverSeenCount
-      
-      console.log(`📊🎛️ Distribución: ${neverSeenCount} nunca vistas + ${reviewCount} para repaso`)
-      
-      const shuffledNeverSeen = shuffleArray(neverSeenQuestions)
-      const oldestForReview = answeredQuestions.slice(0, reviewCount)
-      
-      selectedQuestions = [...shuffledNeverSeen, ...oldestForReview]
-      
-      console.log(`✅🎛️ Combinadas: ${shuffledNeverSeen.length} + ${oldestForReview.length} = ${selectedQuestions.length}`)
-    }
-
-    // 🔥 PASO 8: Mezcla final y actualizar cache de sesión
-    selectedQuestions = shuffleArray(selectedQuestions)
-    
-    // Agregar IDs al cache de sesión
-    selectedQuestions.forEach(q => {
-      sessionUsedIds.add(q.id)
-      console.log(`🎛️📝 Agregado al cache de sesión: ${q.id}`)
-    })
-    
-    console.log(`🎛️🔥 RESULTADO FINAL PERSONALIZADO:`)
-    console.log(`🎛️🔥   📚 Preguntas seleccionadas: ${selectedQuestions.length}`)
-    console.log(`🎛️🔥   🎯 IDs: ${selectedQuestions.map(q => q.id).slice(0, 3).join(', ')}...`)
-    console.log(`🎛️🔥   📊 Total en cache de sesión: ${sessionUsedIds.size}`)
-
-    return transformQuestions(selectedQuestions)
+    console.log(`✅ Test personalizado cargado via API: ${questions.length} preguntas (cache: ${sessionUsedIds.size})`)
+    return questions
 
   } catch (error) {
     console.error('❌ Error en fetchPersonalizedQuestions:', error)
