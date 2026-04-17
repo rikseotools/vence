@@ -32,10 +32,11 @@ function createDbClient() {
     ? `${connectionString}&options=-c statement_timeout=30000 -c idle_in_transaction_session_timeout=60000`
     : `${connectionString}?options=-c statement_timeout=30000 -c idle_in_transaction_session_timeout=60000`
 
+  const isBuild = process.env.NEXT_PHASE === 'phase-production-build' || process.argv.includes('build')
   const conn = postgres(urlWithTimeout, {
-    max: 3,            // 3 conexiones por instancia (DB tiene 90 max, 32 idle)
+    max: isBuild ? 1 : 3,  // 1 durante build (3 workers × 1 = 3 total), 3 en runtime
     idle_timeout: 20,
-    connect_timeout: 5,
+    connect_timeout: isBuild ? 10 : 5,
     prepare: false, // Requerido para Supabase Transaction Pooler (puerto 6543)
   })
 
