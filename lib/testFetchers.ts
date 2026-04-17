@@ -1241,6 +1241,9 @@ export async function fetchQuestionsViaAPI(tema: number, searchParams: SearchPar
     const onlyOfficialQuestions = getParam(searchParams, 'only_official') === 'true' || config?.onlyOfficialQuestions || false
     const difficultyMode = getParam(searchParams, 'difficulty_mode') || config?.difficultyMode || 'random'
     const positionType = config?.positionType || 'auxiliar_administrativo_estado'
+    const focusEssentialArticles = getParam(searchParams, 'focus_essential') === 'true'
+    const excludeRecent = getParam(searchParams, 'exclude_recent') === 'true'
+    const recentDays = parseInt(getParam(searchParams, 'recent_days', '15'))
 
     // 🔄 Filtro de preguntas falladas
     const onlyFailedQuestions = getParam(searchParams, 'only_failed') === 'true' || config?.onlyFailedQuestions || false
@@ -1283,15 +1286,14 @@ export async function fetchQuestionsViaAPI(tema: number, searchParams: SearchPar
     })
 
     // Obtener token de auth para que la API resuelva userId server-side
+    // Necesario para: excludeRecentDays, prioritizeNeverSeen, onlyFailedQuestions
     let authToken: string | null = null
-    if (onlyFailedQuestions) {
-      try {
-        const supabase = getSupabaseClient()
-        const { data: { session } } = await supabase.auth.getSession()
-        authToken = session?.access_token ?? null
-      } catch {
-        console.warn('⚠️ No se pudo obtener token para filtrar falladas')
-      }
+    try {
+      const supabase = getSupabaseClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      authToken = session?.access_token ?? null
+    } catch {
+      console.warn('⚠️ No se pudo obtener token de sesión')
     }
 
     // Llamar a la API
@@ -1312,6 +1314,9 @@ export async function fetchQuestionsViaAPI(tema: number, searchParams: SearchPar
         difficultyMode,
         onlyFailedQuestions,
         failedQuestionIds,
+        focusEssentialArticles,
+        excludeRecentDays: excludeRecent ? recentDays : 0,
+        prioritizeNeverSeen: true,
       })
     })
 
