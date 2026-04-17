@@ -2,21 +2,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
-import type { AdaptiveDifficultyService as ServiceType } from '@/lib/services/adaptiveDifficulty'
+import { AdaptiveDifficultyService } from '@/lib/services/adaptiveDifficulty'
 
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-let _service: ServiceType | null = null
-async function getService(): Promise<ServiceType> {
-  if (!_service) {
-    const { AdaptiveDifficultyService } = await import('@/lib/services/adaptiveDifficulty')
-    _service = new AdaptiveDifficultyService(getSupabase())
-  }
-  return _service
-}
+const service = new AdaptiveDifficultyService(getSupabase())
 
 async function _GET(request: NextRequest) {
   try {
@@ -28,8 +21,6 @@ async function _GET(request: NextRequest) {
     if (!userId) {
       return NextResponse.json({ error: 'userId is required' }, { status: 400 })
     }
-
-    const service = await getService()
 
     switch (action) {
       case 'personal_difficulty': {
@@ -122,8 +113,6 @@ async function _POST(request: NextRequest) {
     if (!userId) {
       return NextResponse.json({ error: 'userId is required' }, { status: 400 })
     }
-
-    const service = await getService()
 
     switch (action) {
       case 'migrate_data': {

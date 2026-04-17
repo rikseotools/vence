@@ -1,6 +1,4 @@
 // lib/services/adaptiveDifficulty.ts
-'use client'
-
 import { getSupabaseClient } from '@/lib/supabase'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
