@@ -257,10 +257,14 @@ SCRIPT
 4. "verifica los artículos de [LEY]"
    → Claude ejecuta /api/verify-articles
    → Muestra diferencias encontradas
+   → ⚠️ verify puede dar falsos "matching" si el cambio es pequeño
+     (ej: añadir 1 letra a un art de 10K chars supera el umbral de similitud)
 
 5. "sincroniza [LEY] desde el BOE"
    → Claude ejecuta /api/verify-articles/sync-all
    → Muestra artículos añadidos/actualizados
+   → SIEMPRE ejecutar sync-all, no confiar solo en verify para decidir
+     si hay cambios (sync puede encontrar más diffs que verify)
 
 6. Comparar antes/despues y documentar
    → Generar documento en docs/fixes/boe-cambios-YYYY-MM-DD-[nombre].md
@@ -321,8 +325,12 @@ Plantilla en BD con header rojo (vs azul de convocatorias). Variables:
 |-----------|---------|
 | Ley modificada con preguntas vinculadas | Si |
 | Ley modificada con temario en oposiciones activas | Si |
+| Cambio menor orgánico (sin preguntas afectadas) pero con usuarios en oposiciones que usan la ley | Si — como "tu temario está actualizado" (confianza/marketing) |
 | Ley modificada sin preguntas ni temario | No |
-| Cambio menor (fechas, erratas) | No |
+| Cambio menor (fechas, erratas) sin impacto en temario | No |
+
+**Caso real (17/04/2026):** RD 204/2024 modificado (nueva oficina en DG Libertad Religiosa). 0 preguntas afectadas, pero 165 usuarios en Auxilio Judicial + Tramitación Procesal recibieron newsletter "temario actualizado" con detalle de artículos. El valor no era el contenido del cambio sino transmitir que Vence monitoriza y actualiza.
+
 
 ### Email diferente por oposicion
 
