@@ -6,6 +6,7 @@ import {
   verifyTestOwnership
 } from '@/lib/api/exam'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { checkRateLimit, getClientIp, RATE_LIMIT_ANON_ANSWER } from '@/lib/api/rateLimit'
 import { checkAndIncrementDailyLimit, checkDeviceDailyUsage, getUserIdFromToken } from '@/lib/api/dailyLimit'
 import { registerAndCheckDevice, getDeviceIdFromRequest } from '@/lib/api/deviceLimit'
 // Evitar 504 de Vercel (default 300s): fail fast
@@ -37,6 +38,19 @@ return NextResponse.json(
 
     // Extract userId from Bearer token (trusted) instead of body (untrusted)
     const tokenUserId = await getUserIdFromToken(request)
+
+    // Anonymous users: max 5 per IP per day
+    if (!tokenUserId) {
+      const ip = getClientIp(request)
+      const anonCheck = checkRateLimit(ip, RATE_LIMIT_ANON_ANSWER)
+      if (!anonCheck.allowed) {
+        return NextResponse.json(
+          { success: false, error: 'Inicia sesión para seguir respondiendo preguntas.', authRequired: true },
+          { status: 401 }
+        )
+      }
+    }
+
     const deviceId = getDeviceIdFromRequest(request)
 
     const deviceCheck = await registerAndCheckDevice(tokenUserId, deviceId, request.headers.get('user-agent'))

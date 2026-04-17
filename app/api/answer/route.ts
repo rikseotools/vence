@@ -4,7 +4,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { safeParseAnswerRequest, validateAnswer } from '../../../lib/api/answers'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
-import { checkRateLimit, getClientIp, RATE_LIMIT_ANSWER } from '@/lib/api/rateLimit'
+import { checkRateLimit, getClientIp, RATE_LIMIT_ANSWER, RATE_LIMIT_ANON_ANSWER } from '@/lib/api/rateLimit'
 import { logValidationError } from '@/lib/api/validation-error-log'
 import { checkAndIncrementDailyLimit, checkDeviceDailyUsage, getUserIdFromToken } from '@/lib/api/dailyLimit'
 import { registerAndCheckDevice, getDeviceIdFromRequest } from '@/lib/api/deviceLimit'
@@ -53,6 +53,22 @@ async function _POST(request: NextRequest) {
 
     // Extract userId from Bearer token (trusted) instead of body (untrusted)
     const tokenUserId = await getUserIdFromToken(request)
+
+    // Anonymous users: max 5 answer validations per IP per day
+    if (!tokenUserId) {
+      const anonCheck = checkRateLimit(ip, RATE_LIMIT_ANON_ANSWER)
+      if (!anonCheck.allowed) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Inicia sesión para seguir respondiendo preguntas.',
+            authRequired: true,
+          },
+          { status: 401 }
+        )
+      }
+    }
+
     const deviceId = getDeviceIdFromRequest(request)
 
     // Device limit check (free: 2, premium: 3)

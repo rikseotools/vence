@@ -114,6 +114,13 @@ export const RATE_LIMIT_PSYCHOMETRIC: RateLimitConfig = {
   windowMs: 60 * 1000,
 }
 
+/** Anonymous answer validation — 5 per IP per day (rolling 24h window) */
+export const RATE_LIMIT_ANON_ANSWER: RateLimitConfig = {
+  name: 'anon-answer',
+  maxRequests: 5,
+  windowMs: 24 * 60 * 60 * 1000,
+}
+
 // ============================================
 // HELPER para extraer IP del request
 // ============================================
