@@ -34,15 +34,18 @@ export default function AdminDashboard() {
   const [registrationsData, setRegistrationsData] = useState<RegistrationDay[] | null>(null)
 
   useEffect(() => {
+    const controller = new AbortController()
+
     async function loadDashboardData() {
       try {
         setLoading(true)
 
-        // Dashboard + Charts en paralelo (2 fetches en vez de 28+)
         const [dashRes, chartsRes] = await Promise.all([
-          fetch('/api/v2/admin/dashboard'),
-          fetch('/api/v2/admin/charts?days=14'),
+          fetch('/api/v2/admin/dashboard', { signal: controller.signal }),
+          fetch('/api/v2/admin/charts?days=14', { signal: controller.signal }),
         ])
+
+        if (controller.signal.aborted) return
 
         if (!dashRes.ok) throw new Error(`Error ${dashRes.status}: ${dashRes.statusText}`)
         const data = await dashRes.json()
@@ -55,21 +58,22 @@ export default function AdminDashboard() {
         setActiveUsersYesterday(data.activeUsersYesterday)
         setOnlineUsers(data.onlineUsers || [])
 
-        // Charts
         if (chartsRes.ok) {
           const charts = await chartsRes.json()
           setActivityData(charts.activity?.data || null)
           setRegistrationsData(charts.registrations?.data || null)
         }
       } catch (err) {
+        if (controller.signal.aborted) return
         console.error('Error cargando dashboard:', err)
         setError(err instanceof Error ? err.message : String(err))
       } finally {
-        setLoading(false)
+        if (!controller.signal.aborted) setLoading(false)
       }
     }
 
     loadDashboardData()
+    return () => controller.abort()
   }, [])
 
   function formatTimeAgo(dateString: string) {
