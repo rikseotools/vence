@@ -7,6 +7,7 @@ import {
 } from '@/lib/api/exam'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { checkAndIncrementDailyLimit, getUserIdFromToken } from '@/lib/api/dailyLimit'
+import { registerAndCheckDevice, getDeviceIdFromRequest } from '@/lib/api/deviceLimit'
 // Evitar 504 de Vercel (default 300s): fail fast
 export const maxDuration = 30
 
@@ -36,6 +37,22 @@ return NextResponse.json(
 
     // Extract userId from Bearer token (trusted) instead of body (untrusted)
     const tokenUserId = await getUserIdFromToken(request)
+    const deviceId = getDeviceIdFromRequest(request)
+
+    const deviceCheck = await registerAndCheckDevice(tokenUserId, deviceId, request.headers.get('user-agent'))
+    if (!deviceCheck.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Has alcanzado el límite de dispositivos. Usa uno de tus dispositivos registrados o hazte premium.',
+          deviceLimitReached: true,
+          deviceCount: deviceCheck.deviceCount,
+          maxDevices: deviceCheck.maxDevices,
+        },
+        { status: 403 }
+      )
+    }
+
     const dailyLimit = await checkAndIncrementDailyLimit(tokenUserId)
     if (!dailyLimit.allowed) {
       return NextResponse.json(

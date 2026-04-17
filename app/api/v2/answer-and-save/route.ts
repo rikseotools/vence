@@ -12,6 +12,7 @@ import {
 } from '@/lib/api/v2/answer-and-save'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { checkAndIncrementDailyLimit } from '@/lib/api/dailyLimit'
+import { registerAndCheckDevice, getDeviceIdFromRequest } from '@/lib/api/deviceLimit'
 
 // Margen para cold start + conexión BD
 export const maxDuration = 30
@@ -64,7 +65,23 @@ async function _POST(request: NextRequest): Promise<NextResponse<AnswerAndSaveRe
       )
     }
 
-    // 3. Enforce daily limit (userId from token, not body)
+    // 3. Device limit check
+    const deviceId = getDeviceIdFromRequest(request)
+    const deviceCheck = await registerAndCheckDevice(user.id, deviceId, request.headers.get('user-agent'))
+    if (!deviceCheck.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Has alcanzado el límite de dispositivos. Usa uno de tus dispositivos registrados o hazte premium.',
+          deviceLimitReached: true,
+          deviceCount: deviceCheck.deviceCount,
+          maxDevices: deviceCheck.maxDevices,
+        } as const,
+        { status: 403 },
+      )
+    }
+
+    // 4. Enforce daily limit (userId from token, not body)
     const dailyLimit = await checkAndIncrementDailyLimit(user.id)
     if (!dailyLimit.allowed) {
       return NextResponse.json(

@@ -7,6 +7,7 @@ import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { checkRateLimit, getClientIp, RATE_LIMIT_ANSWER } from '@/lib/api/rateLimit'
 import { logValidationError } from '@/lib/api/validation-error-log'
 import { checkAndIncrementDailyLimit, getUserIdFromToken } from '@/lib/api/dailyLimit'
+import { registerAndCheckDevice, getDeviceIdFromRequest } from '@/lib/api/deviceLimit'
 // Dar margen al cold start de Vercel + conexión a Supabase
 export const maxDuration = 30
 
@@ -52,6 +53,24 @@ async function _POST(request: NextRequest) {
 
     // Extract userId from Bearer token (trusted) instead of body (untrusted)
     const tokenUserId = await getUserIdFromToken(request)
+    const deviceId = getDeviceIdFromRequest(request)
+
+    // Device limit check (free: 2, premium: 3)
+    const deviceCheck = await registerAndCheckDevice(tokenUserId, deviceId, request.headers.get('user-agent'))
+    if (!deviceCheck.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Has alcanzado el límite de dispositivos. Usa uno de tus dispositivos registrados o hazte premium.',
+          deviceLimitReached: true,
+          deviceCount: deviceCheck.deviceCount,
+          maxDevices: deviceCheck.maxDevices,
+        },
+        { status: 403 }
+      )
+    }
+
+    // Daily limit check (25/day for free users)
     const dailyLimit = await checkAndIncrementDailyLimit(tokenUserId)
     if (!dailyLimit.allowed) {
       return NextResponse.json(

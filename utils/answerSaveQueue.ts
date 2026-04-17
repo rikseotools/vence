@@ -68,12 +68,16 @@ async function syncOne(answer: QueuedAnswer, accessToken: string): Promise<boole
   const timeoutId = setTimeout(() => { timedOut = true; controller.abort() }, 8000)
 
   try {
+    const deviceId = typeof window !== 'undefined' ? localStorage.getItem('vence_device_id') : null
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${accessToken}`,
+    }
+    if (deviceId) headers['X-Device-Id'] = deviceId
+
     const response = await fetch('/api/v2/answer-and-save', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${accessToken}`,
-      },
+      headers,
       body: JSON.stringify(answer.payload),
       signal: controller.signal,
     })
