@@ -142,7 +142,7 @@ describe('Config central de oposiciones', () => {
   })
 
   test('Cada oposición tiene administracion válida', () => {
-    const VALID_ADMINISTRACIONES = ['estado', 'justicia', 'autonomica', 'local']
+    const VALID_ADMINISTRACIONES = ['estado', 'justicia', 'autonomica', 'local', 'empresa_publica']
     for (const oposicion of OPOSICIONES) {
       expect(VALID_ADMINISTRACIONES).toContain(oposicion.administracion)
     }
