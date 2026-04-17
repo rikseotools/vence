@@ -3,24 +3,22 @@
  */
 // __tests__/api/admin/salesBadge.integration.test.ts
 // Tests de integración que ejecutan queries reales contra la BD.
-// Detectan errores SQL (aliases rotos, columnas inexistentes, etc.)
-// que TypeScript no puede detectar en compile-time.
-//
-// Requiere BD real. Ejecutar con:
-//   npx jest salesBadge.integration --no-coverage
+// Se salta si no hay DATABASE_URL (CI-safe).
 
-// Cargar .env.local para tener DATABASE_URL
 import { config } from 'dotenv'
 config({ path: '.env.local' })
 
-// Importar DESPUÉS de cargar env
+const hasDb = !!process.env.DATABASE_URL
+const describeIfDb = hasDb ? describe : describe.skip
+
 import { getUnreadSalesCount, markSalesAsRead } from '@/lib/api/admin/salesBadge'
 
-describe('salesBadge queries (integración)', () => {
-  it('getUnreadSalesCount ejecuta sin error SQL y devuelve número', async () => {
-    const count = await getUnreadSalesCount()
-    expect(typeof count).toBe('number')
-    expect(count).toBeGreaterThanOrEqual(0)
+describeIfDb('salesBadge queries (integración)', () => {
+  it('getUnreadSalesCount ejecuta sin error SQL y devuelve { count, totalAmount }', async () => {
+    const result = await getUnreadSalesCount()
+    expect(typeof result.count).toBe('number')
+    expect(result.count).toBeGreaterThanOrEqual(0)
+    expect(typeof result.totalAmount).toBe('number')
   })
 
   it('markSalesAsRead ejecuta sin error SQL', async () => {
@@ -29,7 +27,7 @@ describe('salesBadge queries (integración)', () => {
 
   it('markSalesAsRead resetea el conteo a 0', async () => {
     await markSalesAsRead()
-    const count = await getUnreadSalesCount()
-    expect(count).toBe(0)
+    const result = await getUnreadSalesCount()
+    expect(result.count).toBe(0)
   })
 })
