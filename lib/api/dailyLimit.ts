@@ -92,6 +92,38 @@ export async function checkAndIncrementDailyLimit(
 }
 
 /**
+ * Check if a device (across all its free accounts) has exceeded the daily limit.
+ * If user A used 15 questions and user B used 10 on the same device, total = 25 → blocked.
+ * Returns null if no deviceId or check fails (fail open).
+ */
+export async function checkDeviceDailyUsage(
+  deviceId: string | null | undefined,
+): Promise<{ allowed: boolean; deviceTotal: number } | null> {
+  if (!deviceId) return null
+
+  try {
+    const { data, error } = await getSupabaseAdmin().rpc('get_device_daily_usage', {
+      p_device_id: deviceId,
+    })
+
+    if (error) {
+      if (error.code === '42P01' || error.code === 'PGRST202') return null
+      console.error('❌ [DailyLimit] Device usage RPC error:', error.message)
+      return null
+    }
+
+    const total = typeof data === 'number' ? data : 0
+
+    return {
+      allowed: total < DAILY_LIMIT,
+      deviceTotal: total,
+    }
+  } catch {
+    return null
+  }
+}
+
+/**
  * Read-only check (doesn't increment). Use before loading questions, not after answering.
  */
 export async function getDailyLimitStatus(

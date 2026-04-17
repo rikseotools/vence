@@ -6,7 +6,7 @@ import {
   verifyTestOwnership
 } from '@/lib/api/exam'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
-import { checkAndIncrementDailyLimit, getUserIdFromToken } from '@/lib/api/dailyLimit'
+import { checkAndIncrementDailyLimit, checkDeviceDailyUsage, getUserIdFromToken } from '@/lib/api/dailyLimit'
 import { registerAndCheckDevice, getDeviceIdFromRequest } from '@/lib/api/deviceLimit'
 // Evitar 504 de Vercel (default 300s): fail fast
 export const maxDuration = 30
@@ -48,6 +48,19 @@ return NextResponse.json(
           deviceLimitReached: true,
           deviceCount: deviceCheck.deviceCount,
           maxDevices: deviceCheck.maxDevices,
+        },
+        { status: 403 }
+      )
+    }
+
+    const deviceUsage = await checkDeviceDailyUsage(deviceId)
+    if (deviceUsage && !deviceUsage.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Este dispositivo ha alcanzado el límite diario de preguntas. Vuelve mañana o hazte premium.',
+          limitReached: true,
+          questionsToday: deviceUsage.deviceTotal,
         },
         { status: 403 }
       )

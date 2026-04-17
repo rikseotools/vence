@@ -11,7 +11,7 @@ import {
   type AnswerAndSaveResponse,
 } from '@/lib/api/v2/answer-and-save'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
-import { checkAndIncrementDailyLimit } from '@/lib/api/dailyLimit'
+import { checkAndIncrementDailyLimit, checkDeviceDailyUsage } from '@/lib/api/dailyLimit'
 import { registerAndCheckDevice, getDeviceIdFromRequest } from '@/lib/api/deviceLimit'
 
 // Margen para cold start + conexión BD
@@ -81,7 +81,21 @@ async function _POST(request: NextRequest): Promise<NextResponse<AnswerAndSaveRe
       )
     }
 
-    // 4. Enforce daily limit (userId from token, not body)
+    // 4. Shared device daily limit
+    const deviceUsage = await checkDeviceDailyUsage(deviceId)
+    if (deviceUsage && !deviceUsage.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Este dispositivo ha alcanzado el límite diario de preguntas. Vuelve mañana o hazte premium.',
+          limitReached: true,
+          questionsToday: deviceUsage.deviceTotal,
+        } as const,
+        { status: 403 },
+      )
+    }
+
+    // 5. Per-user daily limit (userId from token, not body)
     const dailyLimit = await checkAndIncrementDailyLimit(user.id)
     if (!dailyLimit.allowed) {
       return NextResponse.json(

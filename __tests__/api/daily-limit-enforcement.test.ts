@@ -18,7 +18,7 @@ jest.mock('@supabase/supabase-js', () => ({
   }),
 }))
 
-import { checkAndIncrementDailyLimit, getDailyLimitStatus, getUserIdFromToken } from '@/lib/api/dailyLimit'
+import { checkAndIncrementDailyLimit, checkDeviceDailyUsage, getDailyLimitStatus, getUserIdFromToken } from '@/lib/api/dailyLimit'
 
 // Minimal NextRequest-like object for testing getUserIdFromToken
 function fakeRequest(headers: Record<string, string> = {}) {
@@ -257,5 +257,88 @@ describe('Attack scenarios', () => {
       expect((await checkAndIncrementDailyLimit('u')).allowed).toBe(true)
     }
     expect((await checkAndIncrementDailyLimit('u')).allowed).toBe(true)
+  })
+})
+
+// ============================================
+// checkDeviceDailyUsage (shared device limit)
+// ============================================
+
+describe('checkDeviceDailyUsage', () => {
+  it('returns null for null deviceId (fail open)', async () => {
+    expect(await checkDeviceDailyUsage(null)).toBeNull()
+    expect(mockRpc).not.toHaveBeenCalled()
+  })
+
+  it('returns null for undefined deviceId', async () => {
+    expect(await checkDeviceDailyUsage(undefined)).toBeNull()
+  })
+
+  it('allows when device total < 25', async () => {
+    mockRpc.mockResolvedValue({ data: 10, error: null })
+    const r = await checkDeviceDailyUsage('device-1')
+    expect(r).not.toBeNull()
+    expect(r!.allowed).toBe(true)
+    expect(r!.deviceTotal).toBe(10)
+  })
+
+  it('BLOCKS when device total >= 25', async () => {
+    mockRpc.mockResolvedValue({ data: 25, error: null })
+    const r = await checkDeviceDailyUsage('device-1')
+    expect(r!.allowed).toBe(false)
+    expect(r!.deviceTotal).toBe(25)
+  })
+
+  it('BLOCKS when device total > 25 (over limit)', async () => {
+    mockRpc.mockResolvedValue({ data: 30, error: null })
+    expect((await checkDeviceDailyUsage('device-1'))!.allowed).toBe(false)
+  })
+
+  it('returns null if function does not exist (PGRST202)', async () => {
+    mockRpc.mockResolvedValue({ data: null, error: { code: 'PGRST202', message: 'not found' } })
+    expect(await checkDeviceDailyUsage('device-1')).toBeNull()
+  })
+
+  it('returns null if table does not exist (42P01)', async () => {
+    mockRpc.mockResolvedValue({ data: null, error: { code: '42P01', message: 'not found' } })
+    expect(await checkDeviceDailyUsage('device-1')).toBeNull()
+  })
+
+  it('returns null on exception (fail open)', async () => {
+    mockRpc.mockRejectedValue(new Error('timeout'))
+    expect(await checkDeviceDailyUsage('device-1')).toBeNull()
+  })
+
+  it('calls get_device_daily_usage with correct param', async () => {
+    mockRpc.mockResolvedValue({ data: 0, error: null })
+    await checkDeviceDailyUsage('my-device-uuid')
+    expect(mockRpc).toHaveBeenCalledWith('get_device_daily_usage', { p_device_id: 'my-device-uuid' })
+  })
+})
+
+// ============================================
+// MULTI-ACCOUNT ATTACK SCENARIO
+// ============================================
+
+describe('Multi-account on same device', () => {
+  it('ATTACK: 2 free accounts on same device, each uses 13 questions = 26 total — device blocked', async () => {
+    // User A answers 13 questions (under per-user limit)
+    // User B answers 13 questions (under per-user limit)
+    // But device total = 26 → over 25 → BLOCKED on next attempt
+
+    // Device daily usage check returns 26
+    mockRpc.mockResolvedValue({ data: 26, error: null })
+    const r = await checkDeviceDailyUsage('shared-device')
+    expect(r!.allowed).toBe(false)
+    expect(r!.deviceTotal).toBe(26)
+  })
+
+  it('LEGITIMATE: Premium user on shared device — not counted in device total', async () => {
+    // The SQL function excludes premium accounts from the sum
+    // So even if premium user answered 100 questions, device total only counts free users
+    mockRpc.mockResolvedValue({ data: 5, error: null }) // Only free user's 5 questions
+    const r = await checkDeviceDailyUsage('family-device')
+    expect(r!.allowed).toBe(true)
+    expect(r!.deviceTotal).toBe(5)
   })
 })

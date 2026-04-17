@@ -6,7 +6,7 @@ import { safeParseAnswerRequest, validateAnswer } from '../../../lib/api/answers
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { checkRateLimit, getClientIp, RATE_LIMIT_ANSWER } from '@/lib/api/rateLimit'
 import { logValidationError } from '@/lib/api/validation-error-log'
-import { checkAndIncrementDailyLimit, getUserIdFromToken } from '@/lib/api/dailyLimit'
+import { checkAndIncrementDailyLimit, checkDeviceDailyUsage, getUserIdFromToken } from '@/lib/api/dailyLimit'
 import { registerAndCheckDevice, getDeviceIdFromRequest } from '@/lib/api/deviceLimit'
 // Dar margen al cold start de Vercel + conexión a Supabase
 export const maxDuration = 30
@@ -70,7 +70,21 @@ async function _POST(request: NextRequest) {
       )
     }
 
-    // Daily limit check (25/day for free users)
+    // Shared device daily limit (sum across all free accounts on this device)
+    const deviceUsage = await checkDeviceDailyUsage(deviceId)
+    if (deviceUsage && !deviceUsage.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Este dispositivo ha alcanzado el límite diario de preguntas. Vuelve mañana o hazte premium.',
+          limitReached: true,
+          questionsToday: deviceUsage.deviceTotal,
+        },
+        { status: 403 }
+      )
+    }
+
+    // Per-user daily limit check (25/day for free users)
     const dailyLimit = await checkAndIncrementDailyLimit(tokenUserId)
     if (!dailyLimit.allowed) {
       return NextResponse.json(
