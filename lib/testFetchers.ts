@@ -974,7 +974,8 @@ export async function fetchMantenerRacha(tema: number, searchParams: SearchParam
       return await fetchMantenerRachaViaAPI(n, positionType, [])
     }
 
-    const uniqueTemas = [...new Set(temasEstudiados.map((t: any) => t.tema_number as number))]
+    const uniqueTemas: number[] = [...new Set(temasEstudiados.map((t: any) => Number(t.tema_number)))]
+      .filter(n => !isNaN(n))
       .slice(0, 3)
 
     console.log('🎯 Temas para racha:', uniqueTemas)
