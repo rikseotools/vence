@@ -421,7 +421,32 @@ export async function getFilteredQuestions(
       proportionalByTopic,
       onlyFailedQuestions,
       failedQuestionIds,
+      primaryArticleIds,
     } = params
+
+    // 📋 CASO: Filtro por article UUIDs (content_scope)
+    if (primaryArticleIds && primaryArticleIds.length > 0) {
+      console.log(`📋 Modo content_scope: ${primaryArticleIds.length} artículos específicos`)
+
+      const scopeQuestions = await db
+        .select({ ...questionColumns, ...articleColumns })
+        .from(questions)
+        .innerJoin(articles, eq(questions.primaryArticleId, articles.id))
+        .innerJoin(laws, eq(articles.lawId, laws.id))
+        .where(and(
+          eq(questions.isActive, true),
+          inArray(questions.primaryArticleId, primaryArticleIds)
+        ))
+        .orderBy(sql`RANDOM()`)
+        .limit(numQuestions)
+
+      return {
+        success: true,
+        questions: scopeQuestions.map((q, i) => transformQuestion({ ...q, sourceTopic: null } as QuestionRow, i)),
+        totalAvailable: scopeQuestions.length,
+        filtersApplied: { laws: 0, articles: primaryArticleIds.length, sections: 0 },
+      }
+    }
 
     // 🔄 CASO: "Solo falladas" sin IDs — single JOIN con user_question_history
     if (onlyFailedQuestions && (!failedQuestionIds || failedQuestionIds.length === 0) && userId) {

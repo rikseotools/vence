@@ -60,6 +60,9 @@ export const getFilteredQuestionsRequestSchema = z.object({
   // 🔄 Filtro de preguntas falladas
   onlyFailedQuestions: z.boolean().default(false),     // Solo preguntas que el usuario ha fallado
   failedQuestionIds: z.array(z.string().uuid()).default([]),  // IDs específicos de preguntas falladas
+
+  // 📋 Filtro por article UUIDs (para content_scope)
+  primaryArticleIds: z.array(z.string().uuid()).default([]),
 })
 
 export type GetFilteredQuestionsRequest = z.infer<typeof getFilteredQuestionsRequestSchema>

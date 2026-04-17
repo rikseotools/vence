@@ -850,612 +850,227 @@ export async function fetchQuestionsByTopicScope(tema: number, searchParams: Sea
 }
 
 // =================================================================
-// 🔧 FUNCIÓN AUXILIAR: Contar preguntas por tema multi-ley
-// =================================================================
-export async function countQuestionsByTopicScope(tema: number): Promise<number> {
-  try {
-    // 1. Obtener mapeo del tema
-    const { data: mappings } = await supabase
-      .from('topic_scope')
-      .select(`
-        article_numbers,
-        laws!inner(short_name),
-        topics!inner(topic_number, position_type)
-      `)
-      .eq('topics.topic_number', tema)
-      .eq('topics.position_type', 'auxiliar_administrativo_estado')
-    
-    if (!mappings?.length) {
-      return 0
-    }
-    
-    // 2. ENFOQUE ALTERNATIVO: Contar con múltiples consultas separadas
-    let totalCount = 0
-    
-    for (const mapping of mappings) {
-      const { count, error } = await supabase
-        .from('questions')
-        .select('id', { count: 'exact', head: true })
-        .eq('is_active', true)
-      .is('exam_case_id', null)
-        .eq('articles.laws.short_name', mapping.laws.short_name)
-        .in('articles.article_number', mapping.article_numbers)
-      
-      if (!error && count) {
-        totalCount += count
-        console.log(`📊 ${mapping.laws.short_name}: ${count} preguntas`)
-      }
-    }
-    
-    console.log(`📊 Tema ${tema} tiene ${totalCount} preguntas disponibles (total)`)
-    return totalCount
-    
-  } catch (error) {
-    console.error('Error en countQuestionsByTopicScope:', error)
-    return 0
-  }
-}
-
-// =================================================================
-// 🎯 FETCHER PRINCIPAL: TEST DE ARTÍCULOS DIRIGIDO POR LEY ESPECÍFICA - CORREGIDO
+// 🎯 FETCHER: TEST DIRIGIDO POR ARTÍCULOS - USA API CENTRALIZADA
+// 3 estrategias: (1) artículos específicos, (2) ley completa, (3) random.
+// Migrado de Supabase directo con loop de variantes de nombres.
 // =================================================================
 export async function fetchArticulosDirigido(lawName: string, searchParams: SearchParamsLike, config: FetchConfig): Promise<TransformedQuestion[]> {
-  console.log('🎯 INICIO fetchArticulosDirigido:', { lawName, timestamp: new Date().toISOString() })
-
-  // Calentar cache BD → lawMappingUtils (no-op si ya cargado)
   try { const { warmSlugCache } = await import('./api/laws/warmCache'); await warmSlugCache() } catch {}
 
   try {
-    // MANEJAR searchParams como objeto plano o URLSearchParams
-    const getLocalParam = (key: string, defaultValue: string | null = null): string | null => {
-      if (!searchParams) return defaultValue
+    const articles = getParam(searchParams, 'articles')
+    const requestedCount = parseInt(getParam(searchParams, 'n', '10') || '10')
+    const positionType = config?.positionType || 'auxiliar_administrativo_estado'
+    const lawShortName = mapLawSlugToShortName(lawName)
 
-      // Si es URLSearchParams (desde hook)
-      if (typeof (searchParams as URLSearchParams).get === 'function') {
-        return (searchParams as URLSearchParams).get(key) || defaultValue
+    console.log('🎯 fetchArticulosDirigido via API:', { lawName, lawShortName, articles, n: requestedCount, pos: positionType })
+
+    // Estrategia 1: Artículos específicos
+    if (articles?.trim()) {
+      const articleNumbers = articles.split(',').map(a => parseInt(a.trim())).filter(n => !isNaN(n))
+      console.log('🎯 Estrategia 1: artículos específicos:', articleNumbers)
+
+      const result = await callFilteredAPI({
+        positionType, numQuestions: requestedCount,
+        selectedLaws: [lawShortName],
+        selectedArticlesByLaw: { [lawShortName]: articleNumbers },
+      })
+
+      if (result.length > 0) {
+        console.log(`✅ Estrategia 1: ${result.length} preguntas de artículos específicos`)
+        return result
       }
-
-      // Si es objeto plano (desde server component)
-      return (searchParams as Record<string, string | undefined>)[key] || defaultValue
+      console.log('⚠️ Estrategia 1 sin resultados, probando ley completa...')
     }
-    
-    const articles = getLocalParam('articles')
-    const mode = getLocalParam('mode', 'intensive')
-    const requestedCount = parseInt(getLocalParam('n', '10') || '10')
-    
-    console.log('📋 Parámetros extraídos:', { 
-      lawName, 
-      articles, 
-      mode, 
-      requestedCount,
-      searchParamsType: typeof searchParams?.get === 'function' ? 'URLSearchParams' : 'object'
+
+    // Estrategia 2: Ley completa
+    console.log('📚 Estrategia 2: ley completa:', lawShortName)
+    const lawResult = await callFilteredAPI({
+      positionType, numQuestions: requestedCount,
+      selectedLaws: [lawShortName],
     })
 
-    // 🔄 ESTRATEGIA 1: Test dirigido por artículos específicos
-    if (articles && articles.trim()) {
-      console.log('🎯 Intentando test dirigido por artículos específicos...')
-      
-      const articleNumbers = articles.split(',').map(a => a.trim()).filter(Boolean)
-      console.log('🔢 Tipos de articleNumbers:', articleNumbers.map(a => typeof a + ':' + a))
-      
-      // 🎯 SISTEMA UNIVERSAL: Intentar múltiples estrategias de mapeo
-      let lawShortName = mapLawSlugToShortName(lawName)
-      console.log('🔍 PASO 1 - Mapeo inicial:', lawName, '→', lawShortName)
-      
-      // 🚀 ESTRATEGIA UNIVERSAL: Probar múltiples variantes hasta encontrar preguntas
-      const possibleNames = [
-        lawShortName,  // Mapeo normal
-        lawName,       // Slug original
-        lawName.toUpperCase(), // MAYÚSCULAS
-        lawName.replace(/-/g, ' '), // Reemplazar guiones por espacios
-        lawName.replace(/^ley-/, 'Ley ').replace(/-(\d+)-(\d+)$/, ' $1/$2'), // ley-39-2015 → Ley 39/2015
-        lawName.replace(/^constitucion-espanola$/, 'CE'), // Caso específico CE
-        lawName.replace(/^ce$/, 'CE'), // ce → CE
-      ].filter(Boolean).filter((name, index, arr) => arr.indexOf(name) === index) // Remover duplicados
-      
-      console.log('🔍 PASO 2 - Variantes a probar:', possibleNames)
-      
-      console.log('📚 Buscando artículos:')
-      console.log('   articleNumbers:', articleNumbers)
-      
-      // 🚀 SISTEMA UNIVERSAL: Probar cada variante hasta encontrar resultados
-      let specificQuestions = null
-      let specificError = null
-      let successfulLawName = null
-      
-      for (const testLawName of possibleNames) {
-        console.log(`🔍 PROBANDO variante: "${testLawName}"`)
-        
-        try {
-          const { data: questions, error } = await supabase
-            .from('questions')
-            .select(`
-              id, question_text, option_a, option_b, option_c, option_d,
-              correct_option, explanation, difficulty, is_official_exam,
-              primary_article_id, exam_source, exam_date, exam_entity,
-              articles!inner(
-                id, article_number, title, content,
-                laws!inner(short_name, name)
-              )
-            `)
-            .eq('articles.laws.short_name', testLawName)
-            .in('articles.article_number', articleNumbers)
-            .eq('is_active', true)
-      .is('exam_case_id', null)
-            .limit(requestedCount * 2)
-          
-          if (!error && questions && questions.length > 0) {
-            console.log(`✅ ÉXITO con variante: "${testLawName}" - ${questions.length} preguntas encontradas`)
-            specificQuestions = questions
-            specificError = error
-            successfulLawName = testLawName
-            break
-          } else {
-            console.log(`❌ Sin resultados para: "${testLawName}" (${questions?.length || 0} preguntas)`)
-          }
-        } catch (err) {
-          console.log(`❌ Error probando "${testLawName}":`, (err as Error).message)
-        }
-      }
-      
-      try {
-        
-        console.log('🔍 Resultado de consulta específica:', {
-          error: specificError,
-          questionsFound: specificQuestions?.length || 0,
-          firstQuestion: specificQuestions?.[0]?.question_text?.substring(0, 50) + '...' || 'N/A',
-          queryParams: { lawShortName, articleNumbers },
-          actualError: specificError
-        })
-        
-        if (specificError) {
-          console.error('❌ Error en consulta específica:', specificError)
-        }
-        
-        if (!specificError && specificQuestions && specificQuestions.length > 0) {
-          // 🧪 Log detallado de qué artículos encontró
-          const foundArticles = [...new Set(specificQuestions.map((q: any) => q.articles.article_number))].sort((a: any, b: any) => a - b)
-          console.log('📋 Artículos encontrados en preguntas:', foundArticles)
-          console.log('🎯 Preguntas por artículo:',
-            foundArticles.map((art: any) => `Art.${art}: ${specificQuestions.filter((q: any) => q.articles.article_number === art).length} preguntas`).join(', ')
-          )
-          
-          const shuffled = shuffleArray(specificQuestions).slice(0, requestedCount)
-          console.log(`✅ ${shuffled.length} preguntas específicas encontradas para test dirigido`)
-          return transformQuestions(shuffled)
-        } else {
-          console.log('❌ No se encontraron preguntas específicas, activando fallback...')
-          console.log('   Razón: specificError =', !!specificError, ', questionsLength =', specificQuestions?.length || 0)
-        }
-      } catch (specificErr) {
-        console.log('⚠️ Error en búsqueda específica:', (specificErr as Error).message)
-      }
+    if (lawResult.length > 0) {
+      console.log(`✅ Estrategia 2: ${lawResult.length} preguntas de ${lawShortName}`)
+      return lawResult
     }
+    console.log('⚠️ Estrategia 2 sin resultados, probando random...')
 
-    // 🔄 ESTRATEGIA 2: Test por ley completa
-    console.log('📚 Fallback: Cargando preguntas por ley completa...')
-    
-    // 🚀 SISTEMA UNIVERSAL FALLBACK: Probar múltiples variantes
-    let lawShortName = mapLawSlugToShortName(lawName)
-    const possibleNames = [
-      lawShortName,
-      lawName,
-      lawName.toUpperCase(),
-      lawName.replace(/-/g, ' '),
-      lawName.replace(/^ley-/, 'Ley ').replace(/-(\d+)-(\d+)$/, ' $1/$2'),
-      lawName.replace(/^constitucion-espanola$/, 'CE'),
-      lawName.replace(/^ce$/, 'CE'),
-    ].filter(Boolean).filter((name, index, arr) => arr.indexOf(name) === index)
-    
-    console.log('🔍 FALLBACK - Variantes a probar:', possibleNames)
-    
-    let lawQuestions = null
-    let lawError = null
-    let successfulFallbackLaw = null
-    
-    for (const testLawName of possibleNames) {
-      console.log(`🔍 FALLBACK - Probando: "${testLawName}"`)
-      
-      try {
-        const { data: questions, error } = await supabase
-          .from('questions')
-          .select(`
-            id, question_text, option_a, option_b, option_c, option_d,
-            correct_option, explanation, difficulty, is_official_exam,
-            primary_article_id, exam_source, exam_date, exam_entity, image_url, content_data,
-            articles!inner(
-              id, article_number, title, content,
-              laws!inner(short_name, name)
-            )
-          `)
-          .eq('articles.laws.short_name', testLawName)
-          .eq('is_active', true)
-      .is('exam_case_id', null)
-          .limit(requestedCount * 2)
-        
-        if (!error && questions && questions.length > 0) {
-          console.log(`✅ FALLBACK ÉXITO con: "${testLawName}" - ${questions.length} preguntas`)
-          lawQuestions = questions
-          lawError = error
-          successfulFallbackLaw = testLawName
-          break
-        } else {
-          console.log(`❌ FALLBACK sin resultados para: "${testLawName}"`)
-        }
-      } catch (err) {
-        console.log(`❌ FALLBACK error con "${testLawName}":`, (err as Error).message)
-      }
-    }
-    
-    try {
-      if (!lawError && lawQuestions && lawQuestions.length > 0) {
-        const shuffled = shuffleArray(lawQuestions).slice(0, requestedCount)
-        console.log(`✅ ${shuffled.length} preguntas por ley encontradas con: ${successfulFallbackLaw}`)
-        return transformQuestions(shuffled)
-      }
-    } catch (lawErr) {
-      console.log('⚠️ Error en búsqueda por ley:', (lawErr as Error).message)
-    }
+    // Estrategia 3: Random general
+    console.log('🎲 Estrategia 3: random general')
+    const randomResult = await callFilteredAPI({
+      positionType, numQuestions: requestedCount,
+    })
 
-    // 🔄 ESTRATEGIA 3: Fallback final - test rápido
-    console.log('🎲 Fallback final: Test rápido general...')
-    
-    const { data: randomQuestions, error: randomError } = await supabase
-      .from('questions')
-      .select(`
-        id, question_text, option_a, option_b, option_c, option_d,
-        correct_option, explanation, difficulty, is_official_exam,
-        primary_article_id, exam_source, exam_date, exam_entity,
-        articles(
-          id, article_number, title, content,
-          laws(short_name, name)
-        )
-      `)
-      .eq('is_active', true)
-      .is('exam_case_id', null)
-      .limit(requestedCount)
-    
-    if (randomError) throw randomError
-    
-    if (randomQuestions && randomQuestions.length > 0) {
-      console.log(`✅ ${randomQuestions.length} preguntas aleatorias como último recurso`)
-      return transformQuestions(shuffleArray(randomQuestions))
+    if (randomResult.length > 0) {
+      console.log(`✅ Estrategia 3: ${randomResult.length} preguntas aleatorias`)
+      return randomResult
     }
 
     throw new Error('No se encontraron preguntas')
-
   } catch (error) {
     console.error('❌ Error en fetchArticulosDirigido:', error)
     throw new Error(`Error cargando test dirigido: ${(error as Error).message}`)
   }
 }
 
-// 🔧 mapLawSlugToShortName importada desde ./lawMappingUtils (600+ mapeos canónicos)
+async function callFilteredAPI(params: {
+  positionType: string; numQuestions: number;
+  selectedLaws?: string[]; selectedArticlesByLaw?: Record<string, number[]>;
+}): Promise<TransformedQuestion[]> {
+  const response = await fetch('/api/questions/filtered', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      topicNumber: 0,
+      positionType: params.positionType,
+      numQuestions: params.numQuestions,
+      selectedLaws: params.selectedLaws || [],
+      selectedArticlesByLaw: params.selectedArticlesByLaw || {},
+      selectedSectionFilters: [],
+      difficultyMode: 'random',
+    })
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}))
+    throw new Error(errorData.error || `HTTP ${response.status}`)
+  }
+
+  const data = await response.json()
+  if (!data.success) return []
+  return data.questions || []
+}
 
 
 // =================================================================
-// 🚀 FETCHER: MANTENER RACHA - 
-// Prioriza temas con mejor rendimiento (≥50% aciertos), Distribuye preguntas entre 3 temas máximo para variedad, Solo preguntas fáciles para mantener motivación, mezcla aleatoria,
-// =================================================================
-
-// =================================================================
-// 🚀 FETCHER: MANTENER RACHA - VERSIÓN UNIVERSAL INTELIGENTE
+// 🚀 FETCHER: MANTENER RACHA - USA API CENTRALIZADA
+// Detecta temas estudiados (query a tests, no a questions),
+// luego obtiene preguntas fáciles de esos temas via API.
 // =================================================================
 export async function fetchMantenerRacha(tema: number, searchParams: SearchParamsLike, config: FetchConfig): Promise<TransformedQuestion[]> {
   try {
-    console.log('🚀 Cargando test inteligente para mantener racha')
-
-    // 🔧 Usar getParam helper para manejar URLSearchParams u objeto plano
     const n = parseInt(getParam(searchParams, 'n', '5'))
-    const streakDays = parseInt(getParam(searchParams, 'streak_days', '0'))
     const positionType = config?.positionType || 'auxiliar_administrativo_estado'
 
-    // 🧠 PASO 1: Obtener usuario actual
+    console.log('🚀 Cargando test para mantener racha via API, n:', n, 'pos:', positionType)
+
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
-      console.log('⚠️ Usuario no autenticado, usando fallback universal')
-      return await fetchMantenerRachaFallback(n, null, positionType)
+      console.log('⚠️ Usuario no autenticado, usando API en modo global')
+      return await callFilteredAPI({ positionType, numQuestions: n })
     }
 
-    // 🎯 PASO 2: Detectar temas que el usuario ha estudiado
+    // Detectar temas estudiados (query a tests, NO a questions → no afectada por RLS)
     const { data: temasEstudiados, error: temasError } = await supabase
       .from('tests')
-      .select('tema_number, COUNT(*) as tests_count, AVG(score) as avg_score')
+      .select('tema_number')
       .eq('user_id', user.id)
       .not('tema_number', 'is', null)
       .eq('is_completed', true)
-      .group('tema_number')
-      .having('COUNT(*)', 'gte', 1) // Al menos 1 test completado
-      .order('tests_count', { ascending: false })
 
-    if (temasError) {
-      console.error('❌ Error obteniendo temas estudiados:', temasError)
-      return await fetchMantenerRachaFallback(n, user, positionType)
+    if (temasError || !temasEstudiados?.length) {
+      console.log('📚 Sin temas estudiados, usando API en modo global')
+      return await fetchMantenerRachaViaAPI(n, positionType, [])
     }
 
-    if (!temasEstudiados || temasEstudiados.length === 0) {
-      console.log('📚 Usuario sin temas estudiados, usando fallback universal')
-      return await fetchMantenerRachaFallback(n, user, positionType)
-    }
+    const uniqueTemas = [...new Set(temasEstudiados.map((t: any) => t.tema_number as number))]
+      .slice(0, 3)
 
-    console.log('🎯 Temas estudiados detectados:', temasEstudiados.map((t: any) => `Tema ${t.tema_number} (${t.tests_count} tests, ${Math.round(t.avg_score)}%)`))
+    console.log('🎯 Temas para racha:', uniqueTemas)
 
-    // 🔥 PASO 3: Estrategia inteligente de selección
-    // Priorizar temas con mejor rendimiento para mantener motivación
-    const temasParaRacha = temasEstudiados
-      .filter((t: any) => t.avg_score >= 50) // Solo temas con rendimiento decente
-      .slice(0, 3) // Máximo 3 temas para mantener enfoque
-      .map((t: any) => t.tema_number)
-
-    if (temasParaRacha.length === 0) {
-      // Si no hay temas con buen rendimiento, usar todos los estudiados
-      temasParaRacha.push(...temasEstudiados.map((t: any) => t.tema_number))
-    }
-
-    console.log('🎯 Temas seleccionados para racha:', temasParaRacha)
-
-    // 🚀 PASO 4: Obtener preguntas de temas estudiados con distribución inteligente
-    const questionsPerTema = Math.ceil(n * 1.5 / temasParaRacha.length) // 1.5x para mezclar mejor
-    const allQuestions = []
-
-    for (const temaNummer of temasParaRacha) {
-      console.log(`🔍 Obteniendo preguntas del tema ${temaNummer}...`)
-      
-      // Intentar con función específica para el tema
-      const { data: temaQuestions, error: temaError } = await supabase.rpc('get_questions_by_tema_and_difficulty', {
-        tema_number: temaNummer,
-        total_questions: questionsPerTema,
-        difficulty_filter: 'easy' // Preguntas fáciles para mantener motivación
-      })
-
-      if (!temaError && temaQuestions && temaQuestions.length > 0) {
-        console.log(`✅ Tema ${temaNummer}: ${temaQuestions.length} preguntas obtenidas`)
-        allQuestions.push(...temaQuestions)
-      } else {
-        console.log(`⚠️ Tema ${temaNummer}: Sin preguntas disponibles`)
-      }
-    }
-
-    // 🎲 PASO 5: Mezclar y seleccionar cantidad final
-    if (allQuestions.length === 0) {
-      console.log('❌ No se obtuvieron preguntas de temas estudiados, usando fallback universal')
-      return await fetchMantenerRachaFallback(n, user, positionType)
-    }
-
-    // Mezclar todas las preguntas obtenidas
-    const shuffledQuestions = shuffleArray(allQuestions)
-    const finalQuestions = shuffledQuestions.slice(0, n)
-
-    console.log(`✅ Mantener racha INTELIGENTE: ${finalQuestions.length} preguntas de ${temasParaRacha.length} temas estudiados`)
-    console.log(`📊 Distribución final: ${JSON.stringify(finalQuestions.map((q: any) => q.articles?.laws?.short_name || 'N/A').reduce((acc: Record<string, number>, law: string) => {
-      acc[law] = (acc[law] || 0) + 1
-      return acc
-    }, {} as Record<string, number>))}`)
-
-    return transformQuestions(finalQuestions)
-
+    return await fetchMantenerRachaViaAPI(n, positionType, uniqueTemas)
   } catch (error) {
-    console.error('❌ Error en fetchMantenerRacha inteligente:', error)
+    console.error('❌ Error en fetchMantenerRacha:', error)
     const fallbackN = parseInt(getParam(searchParams, 'n', '5'))
-    const fallbackPositionType = config?.positionType || 'auxiliar_administrativo_estado'
-    return await fetchMantenerRachaFallback(fallbackN, null, fallbackPositionType)
+    const fallbackPos = config?.positionType || 'auxiliar_administrativo_estado'
+    return await fetchMantenerRachaViaAPI(fallbackN, fallbackPos, [])
   }
 }
 
-// Obtiene los short_names de leyes configuradas en topic_scope para un positionType.
-// Fuente de verdad: topic_scope JOIN topics WHERE position_type = positionType.
-// Evita hardcodear leyes por oposición — si se añade una ley al scope, se recoge automáticamente.
-async function getLawShortNamesForPosition(positionType: string): Promise<string[] | null> {
+async function fetchMantenerRachaViaAPI(n: number, positionType: string, topics: number[]): Promise<TransformedQuestion[]> {
+  let authToken: string | null = null
   try {
-    const { data, error } = await supabase
-      .from('topic_scope')
-      .select('laws!inner(short_name), topics!inner(position_type)')
-      .eq('topics.position_type', positionType)
+    const { data: { session } } = await supabase.auth.getSession()
+    authToken = session?.access_token ?? null
+  } catch {}
 
-    if (error || !data || data.length === 0) return null
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (authToken) headers['Authorization'] = `Bearer ${authToken}`
 
-    const shortNames = [...new Set(
-      data.map((r: any) => r.laws?.short_name).filter(Boolean)
-    )] as string[]
+  const response = await fetch('/api/questions/filtered', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      topicNumber: 0,
+      positionType,
+      multipleTopics: topics,
+      numQuestions: n,
+      selectedLaws: [],
+      selectedArticlesByLaw: {},
+      selectedSectionFilters: [],
+      difficultyMode: 'easy',
+      prioritizeNeverSeen: true,
+      proportionalByTopic: topics.length > 1,
+    })
+  })
 
-    return shortNames.length > 0 ? shortNames : null
-  } catch {
-    return null
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}))
+    throw new Error(errorData.error || `HTTP ${response.status}`)
   }
-}
 
-// 🔄 FUNCIÓN FALLBACK UNIVERSAL INTELIGENTE
-async function fetchMantenerRachaFallback(n: number, user: { id: string } | null, positionType: string = 'auxiliar_administrativo_estado'): Promise<TransformedQuestion[]> {
-  try {
-    console.log(`🔄 Ejecutando fallback universal inteligente (positionType: ${positionType})`)
-    
-    // 🧠 PASO 1: Detectar leyes que el usuario ha estudiado (si tiene historial)
-    let studiedLaws = null
-    
-    if (user) {
-      console.log('👤 Usuario detectado, analizando historial de leyes estudiadas...')
-      
-      // Obtener leyes de preguntas que ha respondido
-      // ✅ OPTIMIZACIÓN: Query en dos pasos para evitar timeout
-      const { data: userTests } = await supabase
-        .from('tests')
-        .select('id')
-        .eq('user_id', user.id)
-
-      const testIds = userTests?.map((t: any) => t.id) || []
-
-      const { data: userQuestionHistory, error: historyError } = await batchedTestQuestionsQuery(
-        testIds,
-        `articles!inner(laws!inner(short_name)), test_id`,
-        { limit: 10000 }
-      )
-
-      if (!historyError && userQuestionHistory && userQuestionHistory.length > 0) {
-        // Extraer leyes únicas del historial
-        const lawsFromHistory = [...new Set(
-          userQuestionHistory
-            .map(item => item.articles?.laws?.short_name)
-            .filter(Boolean)
-        )]
-        
-        if (lawsFromHistory.length > 0) {
-          studiedLaws = lawsFromHistory
-          console.log('🎯 Leyes detectadas del historial del usuario:', studiedLaws)
-        }
-      }
-      
-      // FALLBACK: Si no hay historial de preguntas, usar topic_scope dinámico
-      if (!studiedLaws) {
-        const { data: userProfile } = await supabase
-          .from('user_profiles')
-          .select('target_oposicion')
-          .eq('id', user.id)
-          .single()
-
-        const oposicionToQuery = userProfile?.target_oposicion || positionType
-        studiedLaws = await getLawShortNamesForPosition(oposicionToQuery)
-        if (studiedLaws) {
-          console.log(`🎯 Leyes detectadas por oposición (${oposicionToQuery}):`, studiedLaws)
-        }
-      }
-    }
-
-    // Si no hay usuario o no se pudo detectar leyes, aplicar scope del positionType
-    if (!studiedLaws) {
-      studiedLaws = await getLawShortNamesForPosition(positionType)
-      if (studiedLaws) {
-        console.log(`🎯 Leyes por scope de positionType (${positionType}):`, studiedLaws)
-      }
-    }
-    
-    // 🚀 PASO 2: Construir query con filtro inteligente
-    let query = supabase
-      .from('questions')
-      .select(`
-        id, question_text, option_a, option_b, option_c, option_d,
-        correct_option, explanation, difficulty, global_difficulty_category, is_official_exam,
-        primary_article_id, exam_source, exam_date, exam_entity,
-        articles!inner(
-          id, article_number, title, content,
-          laws!inner(short_name, name)
-        )
-      `)
-      .eq('is_active', true)
-      .is('exam_case_id', null)
-      .or('global_difficulty_category.in.(easy,medium),and(global_difficulty_category.is.null,difficulty.in.(easy,medium))') // Mantener motivación con preguntas no muy difíciles
-
-    // 🎯 PASO 3: Aplicar filtro de leyes
-    // SIEMPRE se aplica: si studiedLaws es null aquí, significa que ni el historial
-    // ni el topic_scope devolvieron leyes → fallar en lugar de devolver preguntas de
-    // otras oposiciones (comportamiento anterior que causaba el bug de LECrim en auxiliar).
-    if (studiedLaws && studiedLaws.length > 0) {
-      query = query.in('articles.laws.short_name', studiedLaws)
-      console.log('🔍 Aplicando filtro por leyes:', studiedLaws.length, 'leyes')
-    } else {
-      console.warn(`⚠️ fetchMantenerRachaFallback: sin leyes para positionType="${positionType}" — devolviendo vacío`)
-      return []
-    }
-    
-    // 🎲 PASO 4: Obtener y mezclar preguntas
-    const { data: fallbackData, error: fallbackError } = await query
-      .limit(n * 3) // Obtener más para mezclar mejor
-
-    if (fallbackError) throw fallbackError
-
-    if (!fallbackData || fallbackData.length === 0) {
-      // Si el filtro de dificultad no devuelve resultados, reintentar sin filtro de dificultad
-      // pero MANTENER el filtro de leyes del scope (no devolver preguntas de otras oposiciones)
-      console.log('⚠️ Sin resultados con filtro de dificultad, reintentando sin él (mismo scope de leyes)...')
-
-      const { data: nodifficultData, error: nodiffError } = await supabase
-        .from('questions')
-        .select(`
-          id, question_text, option_a, option_b, option_c, option_d,
-          correct_option, explanation, difficulty, global_difficulty_category, is_official_exam,
-          primary_article_id, exam_source, exam_date, exam_entity, image_url, content_data,
-          articles!inner(
-            id, article_number, title, content,
-            laws!inner(short_name, name)
-          )
-        `)
-        .eq('is_active', true)
-        .is('exam_case_id', null)
-        .in('articles.laws.short_name', studiedLaws)  // scope siempre aplicado
-        .limit(n * 3)
-
-      if (nodiffError) throw nodiffError
-
-      if (nodifficultData && nodifficultData.length > 0) {
-        const shuffledQuestions = shuffleArray(nodifficultData)
-        const finalQuestions = shuffledQuestions.slice(0, n)
-        console.log(`✅ Retry sin dificultad: ${finalQuestions.length} preguntas`)
-        return transformQuestions(finalQuestions)
-      }
-
-      throw new Error('No hay preguntas disponibles para mantener racha')
-    }
-
-    // 🎲 Mezclar y seleccionar
-    const shuffledQuestions = shuffleArray(fallbackData)
-    const finalQuestions = shuffledQuestions.slice(0, n)
-
-    const lawDistribution = finalQuestions.reduce((acc: Record<string, number>, q: any) => {
-      const law = q.articles?.laws?.short_name || 'N/A'
-      acc[law] = (acc[law] || 0) + 1
-      return acc
-    }, {} as Record<string, number>)
-
-    console.log(`✅ Fallback inteligente: ${finalQuestions.length} preguntas`)
-    console.log(`📊 Distribución por ley:`, lawDistribution)
-    
-    return transformQuestions(finalQuestions)
-
-  } catch (error) {
-    console.error('❌ Error en fallback universal de mantener racha:', error)
-    throw error
+  const data = await response.json()
+  if (!data.success || !data.questions?.length) {
+    console.log('⚠️ API sin preguntas para racha, probando sin filtros...')
+    return await callFilteredAPI({ positionType, numQuestions: n })
   }
+
+  console.log(`✅ Mantener racha via API: ${data.questions.length} preguntas de ${topics.length || 'todos los'} temas`)
+  return data.questions
 }
 
 
 
 // =================================================================
-// 🔍 FETCHER: EXPLORAR CONTENIDO (Nuevo contenido añadido)
+// 🔍 FETCHER: EXPLORAR CONTENIDO - USA API CENTRALIZADA
+// Migrado de Supabase directo a /api/questions/filtered.
+// La API no tiene filtro por created_at, así que pedimos preguntas
+// aleatorias en modo global — el usuario descubre contenido variado.
 // =================================================================
 export async function fetchExplorarContenido(tema: number, searchParams: SearchParamsLike, config: FetchConfig): Promise<TransformedQuestion[]> {
   try {
-    console.log('🔍 Cargando contenido nuevo para explorar')
-
-    // 🔧 Usar getParam helper para manejar URLSearchParams u objeto plano
     const n = parseInt(getParam(searchParams, 'n', '8'))
-    const weeks = parseInt(getParam(searchParams, 'weeks', '1'))
-    const weekAgo = new Date(Date.now() - weeks * 7 * 24 * 60 * 60 * 1000).toISOString()
-    
-    const { data, error } = await supabase
-      .from('questions')
-      .select(`
-        id, question_text, option_a, option_b, option_c, option_d,
-        correct_option, explanation, difficulty, is_official_exam,
-        primary_article_id, exam_source, exam_date, exam_entity,
-        articles!inner(
-          id, article_number, title, content,
-          laws!inner(short_name, name)
-        )
-      `)
-      .eq('is_active', true)
-      .is('exam_case_id', null)
-      .gte('created_at', weekAgo)
-      .order('created_at', { ascending: false })
-      .limit(n)
-      
-    if (error) throw error
-    
-    if (!data || data.length === 0) {
-      throw new Error(`No hay contenido nuevo de las últimas ${weeks} semanas`)
+    const positionType = config?.positionType || 'auxiliar_administrativo_estado'
+
+    console.log('🔍 Cargando contenido para explorar via API, n:', n, 'pos:', positionType)
+
+    const response = await fetch('/api/questions/filtered', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        topicNumber: 0,
+        positionType,
+        numQuestions: n,
+        selectedLaws: [],
+        selectedArticlesByLaw: {},
+        selectedSectionFilters: [],
+        difficultyMode: 'random',
+      })
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData.error || `HTTP ${response.status}`)
     }
-    
-    console.log(`✅ ${data.length} preguntas nuevas cargadas`)
-    return transformQuestions(data)
-    
+
+    const data = await response.json()
+    if (!data.success || !data.questions?.length) {
+      throw new Error(data.emptyReason || 'No hay contenido disponible para explorar')
+    }
+
+    console.log(`✅ ${data.questions.length} preguntas para explorar via API`)
+    return data.questions
   } catch (error) {
     console.error('❌ Error en fetchExplorarContenido:', error)
     throw error
@@ -1546,59 +1161,65 @@ export async function fetchAleatorioMultiTema(themes: number[], searchParams: Se
 }
 
 // =================================================================
-// 📋 FETCHEER PARA CONTENT_SCOPE - NUEVO
+// 📋 FETCHER: CONTENT SCOPE - USA API CENTRALIZADA
+// Migrado de Supabase directo a /api/questions/filtered con primaryArticleIds.
 // =================================================================
 export async function fetchContentScopeQuestions(config: FetchConfig = {}, contentScopeConfig: ContentScopeConfig): Promise<TransformedQuestion[]> {
   try {
-    console.log('📋 Iniciando fetchContentScopeQuestions')
-    console.log('📝 Config:', config)
-    console.log('📋 Content Scope Config:', contentScopeConfig)
-    
-    if (!contentScopeConfig || !contentScopeConfig.articleIds || contentScopeConfig.articleIds.length === 0) {
+    if (!contentScopeConfig?.articleIds?.length) {
       throw new Error('No se encontraron artículos en el content scope')
     }
-    
-    const defaultQuestions = config.numQuestions || 20
-    
-    console.log(`🔍 Buscando preguntas para ${contentScopeConfig.articleIds.length} artículos específicos`)
-    
-    // Buscar preguntas por primary_article_id específicos
-    const { data: questions, error } = await supabase
-      .from('questions')
-      .select(`
-        id, question_text, option_a, option_b, option_c, option_d,
-        correct_option, explanation, difficulty, is_official_exam,
-        primary_article_id, exam_source, exam_date, exam_entity,
-        articles!inner(
-          id, article_number, title, content,
-          laws!inner(short_name, name)
-        )
-      `)
-      .in('primary_article_id', contentScopeConfig.articleIds)
-      .eq('is_active', true)
-      .is('exam_case_id', null)
-      .order('id')
-      .limit(defaultQuestions * 3) // Obtener más preguntas para seleccionar las mejores
-    
-    if (error) {
-      console.error('❌ Error en query content_scope:', error)
-      throw error
-    }
-    
-    if (!questions || questions.length === 0) {
-      throw new Error(`No se encontraron preguntas para los artículos del content_scope`)
-    }
-    
-    console.log(`✅ Content scope: Encontradas ${questions.length} preguntas`)
-    
-    // Mezclar y limitar al número solicitado
-    const shuffledQuestions = [...questions].sort(() => Math.random() - 0.5)
-    const selectedQuestions = shuffledQuestions.slice(0, defaultQuestions)
-    
-    console.log(`📋 Content scope final: ${selectedQuestions.length} preguntas para "${contentScopeConfig.sectionInfo.name}"`)
-    
-    return transformQuestions(selectedQuestions)
 
+    const numQuestions = config.numQuestions || 20
+    const positionType = config?.positionType || 'auxiliar_administrativo_estado'
+
+    console.log('📋 Cargando content scope via API:', {
+      articleIds: contentScopeConfig.articleIds.length,
+      section: contentScopeConfig.sectionInfo?.name,
+      n: numQuestions,
+      pos: positionType,
+    })
+
+    let authToken: string | null = null
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      authToken = session?.access_token ?? null
+    } catch {
+      console.warn('⚠️ No se pudo obtener token de sesión')
+    }
+
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    if (authToken) headers['Authorization'] = `Bearer ${authToken}`
+
+    const response = await fetch('/api/questions/filtered', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        topicNumber: 0,
+        positionType,
+        numQuestions,
+        primaryArticleIds: contentScopeConfig.articleIds,
+        selectedLaws: [],
+        selectedArticlesByLaw: {},
+        selectedSectionFilters: [],
+        difficultyMode: 'random',
+      })
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      const errorMsg = errorData.error || `HTTP ${response.status}`
+      console.error(`❌ Error en fetchContentScopeQuestions (API): ${errorMsg}`)
+      throw new Error(errorMsg)
+    }
+
+    const data = await response.json()
+    if (!data.success || !data.questions?.length) {
+      throw new Error(data.emptyReason || 'No se encontraron preguntas para los artículos del content_scope')
+    }
+
+    console.log(`✅ Content scope via API: ${data.questions.length} preguntas para "${contentScopeConfig.sectionInfo?.name}"`)
+    return data.questions
   } catch (error) {
     console.error('❌ Error en fetchContentScopeQuestions:', error)
     throw error
