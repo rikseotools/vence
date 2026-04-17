@@ -1,6 +1,10 @@
 // __tests__/lib/api/answers/client.test.ts
 // Tests exhaustivos para validateAnswer() client-side
 
+jest.mock('@/lib/api/authHeaders', () => ({
+  getAuthHeaders: jest.fn().mockResolvedValue({}),
+}))
+
 import { validateAnswer } from '@/lib/api/answers/client'
 import {
   ApiTimeoutError,

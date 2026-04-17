@@ -1,6 +1,7 @@
 // lib/api/answers/client.ts — Client-side validateAnswer()
 import { apiFetch } from '../client'
 import { validateAnswerResponseSchema, type ValidateAnswerResponse } from './schemas'
+import { getAuthHeaders } from '../authHeaders'
 
 /**
  * Valida una respuesta de pregunta legislativa via /api/answer.
@@ -27,7 +28,8 @@ export async function validateAnswer(
       timeoutMs: 10000,
       retries: 2,
       retryDelayMs: 1000,
-      responseSchema: validateAnswerResponseSchema
+      responseSchema: validateAnswerResponseSchema,
+      headers: await getAuthHeaders(),
     }
   )
 }

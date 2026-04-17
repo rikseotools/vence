@@ -11,6 +11,7 @@ import {
   type AnswerAndSaveResponse,
 } from '@/lib/api/v2/answer-and-save'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { checkAndIncrementDailyLimit } from '@/lib/api/dailyLimit'
 
 // Margen para cold start + conexión BD
 export const maxDuration = 30
@@ -63,7 +64,21 @@ async function _POST(request: NextRequest): Promise<NextResponse<AnswerAndSaveRe
       )
     }
 
-    // 3. Ejecutar: validar + guardar + actualizar score
+    // 3. Enforce daily limit (userId from token, not body)
+    const dailyLimit = await checkAndIncrementDailyLimit(user.id)
+    if (!dailyLimit.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Has alcanzado el límite diario de preguntas. Vuelve mañana o hazte premium.',
+          limitReached: true,
+          questionsToday: dailyLimit.questionsToday,
+        } as const,
+        { status: 403 },
+      )
+    }
+
+    // 4. Ejecutar: validar + guardar + actualizar score
     const result = await validateAndSaveAnswer(parsed.data, user.id)
 
     const totalMs = Date.now() - startTime

@@ -48,6 +48,7 @@ export interface ApiFetchOptions<T> {
   retries?: number           // default: 2 (total attempts)
   retryDelayMs?: number      // default: 1000
   responseSchema?: ZodLikeSchema<T>  // validación Zod opcional (v3 o v4)
+  headers?: Record<string, string>   // headers adicionales (e.g. Authorization)
 }
 
 // ============================================
@@ -84,7 +85,8 @@ export async function apiFetch<T>(
     timeoutMs = 10000,
     retries = 2,
     retryDelayMs = 1000,
-    responseSchema
+    responseSchema,
+    headers: extraHeaders,
   } = options ?? {}
 
   let lastError: unknown
@@ -101,7 +103,7 @@ export async function apiFetch<T>(
     try {
       const response = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...extraHeaders },
         body: JSON.stringify(body),
         signal: controller.signal
       })

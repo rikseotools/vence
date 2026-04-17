@@ -1,6 +1,7 @@
 // lib/api/psychometric-answer/client.ts — Client-side validatePsychometricAnswer()
 import { apiFetch } from '../client'
 import { psychometricAnswerResponseSchema, type PsychometricAnswerResponse } from './schemas'
+import { getAuthHeaders } from '../authHeaders'
 
 export type { PsychometricAnswerResponse } from './schemas'
 
@@ -44,7 +45,8 @@ export async function validatePsychometricAnswer(
       timeoutMs: 10000,
       retries: 2,
       retryDelayMs: 1000,
-      responseSchema: psychometricAnswerResponseSchema
+      responseSchema: psychometricAnswerResponseSchema,
+      headers: await getAuthHeaders(),
     }
   )
 }

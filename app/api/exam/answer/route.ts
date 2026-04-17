@@ -6,6 +6,7 @@ import {
   verifyTestOwnership
 } from '@/lib/api/exam'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { checkAndIncrementDailyLimit, getUserIdFromToken } from '@/lib/api/dailyLimit'
 // Evitar 504 de Vercel (default 300s): fail fast
 export const maxDuration = 30
 
@@ -32,6 +33,21 @@ return NextResponse.json(
     }
 
     const data = parseResult.data
+
+    // Extract userId from Bearer token (trusted) instead of body (untrusted)
+    const tokenUserId = await getUserIdFromToken(request)
+    const dailyLimit = await checkAndIncrementDailyLimit(tokenUserId)
+    if (!dailyLimit.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Has alcanzado el límite diario de preguntas. Vuelve mañana o hazte premium.',
+          limitReached: true,
+          questionsToday: dailyLimit.questionsToday,
+        },
+        { status: 403 }
+      )
+    }
 
     // Si se proporciona userId, verificar propiedad del test
     if (body?.userId) {

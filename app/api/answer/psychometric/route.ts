@@ -12,6 +12,7 @@ import {
   validateAndSavePsychometricAnswer,
 } from '@/lib/api/psychometric-answer'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { checkAndIncrementDailyLimit, getUserIdFromToken } from '@/lib/api/dailyLimit'
 // ============================================
 // ENDPOINT POST
 // ============================================
@@ -35,6 +36,21 @@ return NextResponse.json(
           details: validation.error.flatten(),
         },
         { status: 400 }
+      )
+    }
+
+    // Extract userId from Bearer token (trusted) instead of body (untrusted)
+    const tokenUserId = await getUserIdFromToken(request)
+    const dailyLimit = await checkAndIncrementDailyLimit(tokenUserId)
+    if (!dailyLimit.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Has alcanzado el límite diario de preguntas. Vuelve mañana o hazte premium.',
+          limitReached: true,
+          questionsToday: dailyLimit.questionsToday,
+        },
+        { status: 403 }
       )
     }
 

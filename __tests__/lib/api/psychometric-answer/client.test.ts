@@ -1,6 +1,10 @@
 // __tests__/lib/api/psychometric-answer/client.test.ts
 // Tests exhaustivos para validatePsychometricAnswer() client-side
 
+jest.mock('@/lib/api/authHeaders', () => ({
+  getAuthHeaders: jest.fn().mockResolvedValue({}),
+}))
+
 import { validatePsychometricAnswer } from '@/lib/api/psychometric-answer/client'
 import type { PsychometricSaveParams } from '@/lib/api/psychometric-answer/client'
 import {

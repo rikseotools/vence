@@ -13,6 +13,7 @@ import { ApiTimeoutError, ApiNetworkError } from '@/lib/api/client'
 import { useAnswerWatchdog } from '@/hooks/useAnswerWatchdog'
 import { logClientError } from '@/lib/logClientError'
 import { normalizeDifficulty } from '@/lib/api/shared/difficulty'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 import { useQuestionContext } from '@/contexts/QuestionContext'
 import { useAIChat } from '@/contexts/AIChatContext'
 
@@ -152,22 +153,22 @@ async function saveAnswerToAPI(
   selectedOption: string | null
 ): Promise<boolean> {
   try {
+    const authHeaders = await getAuthHeaders()
     const response = await fetch('/api/exam/answer', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders },
       body: JSON.stringify({
         testId,
         questionId: question.id || null,
         questionOrder: questionIndex + 1, // 1-indexed
         userAnswer: selectedOption ?? '',
-        // 🔒 SEGURIDAD: correctAnswer se validará en /api/exam/validate al enviar el examen
         questionText: question.question_text || '',
         articleId: question.articles?.id || question.primary_article_id || null,
         articleNumber: question.articles?.article_number || null,
         lawName: question.articles?.laws?.short_name || null,
         temaNumber: question.tema_number || null,
         difficulty: normalizeDifficulty(question.difficulty),
-        timeSpentSeconds: 0, // Se actualizará al corregir
+        timeSpentSeconds: 0,
         confidenceLevel: 'sure'
       })
     })
@@ -840,11 +841,12 @@ export default function ExamLayout({
         const unanswered = allAnswers.filter(a => a.selectedAnswer === -1)
         if (unanswered.length > 0) {
           console.log(`📝 Guardando ${unanswered.length} preguntas sin respuesta como incorrectas`)
+          const examAuthHeaders = await getAuthHeaders()
           for (const answer of unanswered) {
             const correctLetter = apiResult?.results?.[answer.questionIndex]?.correctAnswer || 'a'
             fetch('/api/exam/answer', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: { 'Content-Type': 'application/json', ...examAuthHeaders },
               body: JSON.stringify({
                 testId: currentTestSession.id,
                 questionId: effectiveQuestions[answer.questionIndex]?.id || null,
