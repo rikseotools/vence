@@ -37,9 +37,9 @@ describe('fetchQuestionsViaAPI - failedQuestionIds source', () => {
     expect(content).toContain('isOnlyFailed')
   })
 
-  it('should read failedQuestionsOrder from config first', () => {
+  it('should pass failedQuestionIds to the API', () => {
     const content = fs.readFileSync('lib/testFetchers.ts', 'utf-8')
-    expect(content).toContain('config?.failedQuestionsOrder')
+    expect(content).toContain('config?.failedQuestionIds')
   })
 })
 

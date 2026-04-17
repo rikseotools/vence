@@ -683,993 +683,150 @@ export async function fetchPersonalizedQuestions(tema: number, searchParams: Sea
 }
 
 // =================================================================
-// 🎯 FETCHER: TEST MULTI-LEY - PARA TEMAS CON MÚLTIPLES LEYES (Tema 6, etc.)
-// =================================================================
-
+// 🎯 FETCHER: TEST MULTI-LEY - USA API CENTRALIZADA
+// Migrado de ~830 líneas de queries Supabase directas a /api/questions/filtered.
+// Mantiene catálogo adaptativo client-side (agrupa por dificultad × historial).
 // =================================================================
 export async function fetchQuestionsByTopicScope(tema: number, searchParams: SearchParamsLike, config: FetchConfig): Promise<TransformedQuestion[] | AdaptiveResult> {
   try {
-    const timestamp = new Date().toLocaleTimeString()
-    console.log(`🎯🔥 EJECUTANDO fetchQuestionsByTopicScope para tema ${tema} - TIMESTAMP: ${timestamp}`)
-    console.log(`🎯🔥 STACK TRACE CORTO:`, new Error().stack?.split('\n')[2]?.trim())
-    
-    // 🔥 OBTENER USUARIO PARA ALGORITMO DE HISTORIAL
     const { data: { user } } = await supabase.auth.getUser()
-    
-    // 🚨 CACHE DE SESIÓN ELIMINADO: El sistema ahora usa solo el historial
-    // real de la base de datos para determinar qué preguntas ha visto el usuario
-    console.log(`✅ SISTEMA SIMPLIFICADO: Sin cache de sesión artificial`)
-    
-    // 🔧 Usar getParam helper para manejar URLSearchParams u objeto plano
+
     const numQuestions = parseInt(getParam(searchParams, 'n', '25'))
     const onlyOfficialQuestions = getParam(searchParams, 'only_official') === 'true'
     const excludeRecent = getParam(searchParams, 'exclude_recent') === 'true'
     const recentDays = parseInt(getParam(searchParams, 'recent_days', '15'))
     const difficultyMode = getParam(searchParams, 'difficulty_mode', 'random')
     const focusEssentialArticles = getParam(searchParams, 'focus_essential') === 'true'
-    const adaptiveMode = getParam(searchParams, 'adaptive') === 'true' // 🧠 MODO ADAPTATIVO
-    const focusWeakAreas = config?.focusWeakAreas ?? (getParam(searchParams, 'focus_weak') === 'true') // 🎯 ÁREAS DÉBILES (prioriza config)
-    const onlyFailedQuestions = config?.onlyFailedQuestions ?? (getParam(searchParams, 'only_failed') === 'true') // 🆕 SOLO PREGUNTAS FALLADAS
+    const adaptiveMode = getParam(searchParams, 'adaptive') === 'true'
+    const focusWeakAreas = config?.focusWeakAreas ?? (getParam(searchParams, 'focus_weak') === 'true')
+    const onlyFailedQuestions = config?.onlyFailedQuestions ?? (getParam(searchParams, 'only_failed') === 'true')
     const failedQuestionIdsStr = getParam(searchParams, 'failed_question_ids')
-    const failedQuestionIds = config?.failedQuestionIds || (failedQuestionIdsStr ? JSON.parse(failedQuestionIdsStr) : null) // 🆕 IDs: priorizar config (sessionStorage) sobre URL
-    const failedQuestionsOrder = config?.failedQuestionsOrder || getParam(searchParams, 'failed_questions_order') // 🆕 TIPO DE ORDEN
-    const positionType = config?.positionType || 'auxiliar_administrativo_estado' // 🏢 TIPO DE OPOSICIÓN
-    const timeLimitStr = getParam(searchParams, 'time_limit')
-    const timeLimit = timeLimitStr ? parseInt(timeLimitStr) : null // ⏱️ LÍMITE DE TIEMPO
-    
-    // 🆕 FILTROS DE LEYES Y ARTÍCULOS DESDE CONFIG
+    const failedQuestionIds = config?.failedQuestionIds || (failedQuestionIdsStr ? JSON.parse(failedQuestionIdsStr) : [])
+    const positionType = config?.positionType || 'auxiliar_administrativo_estado'
     const selectedLaws = config?.selectedLaws || []
     const selectedArticlesByLaw = config?.selectedArticlesByLaw || {}
-    const selectedSectionFilters = config?.selectedSectionFilters || [] // 📚 FILTRO DE SECCIONES/TÍTULOS (MULTI-SELECT)
+    const selectedSectionFilters = config?.selectedSectionFilters || []
 
-    // Debug removido - sistema funcionando
-
-    console.log('🎛️ Configuración MULTI-LEY:', {
-      numQuestions,
-      focusWeakAreas, // 🧠 DEBUG: Ver si se activa modo adaptativo
-      onlyOfficialQuestions,
-      excludeRecent,
-      recentDays,
-      difficultyMode,
-      focusEssentialArticles,
-      adaptiveMode, // 🧠 NUEVO
-      // focusWeakAreas already logged above
-      onlyFailedQuestions, // 🆕 NUEVO
-      failedQuestionIds: failedQuestionIds?.length || 0, // 🆕 NUEVO
-      failedQuestionsOrder, // 🆕 NUEVO
-      timeLimit, // ⏱️ NUEVO
-      selectedLaws: selectedLaws.length,
-      selectedArticlesByLaw: Object.keys(selectedArticlesByLaw).length,
-      selectedSectionFilters: selectedSectionFilters.length > 0 ? selectedSectionFilters.map(s => s.title).join(', ') : null // 📚 FILTRO DE SECCIONES
-    })
-
-    // 🆕 CASO: "Solo falladas" sin IDs — buscar en historial del usuario
-    let resolvedFailedIds = failedQuestionIds
-    if (onlyFailedQuestions && (!failedQuestionIds || failedQuestionIds.length === 0) && user) {
-      console.log(`🔄 Modo falladas por historial: buscando preguntas falladas del usuario ${user.id}`)
-      const { data: failedHistory } = await supabase
-        .from('user_question_history')
-        .select('question_id')
-        .eq('user_id', user.id)
-        .lt('success_rate', 1.00)
-
-      resolvedFailedIds = failedHistory?.map((h: any) => h.question_id) || []
-      console.log(`❌ Encontradas ${resolvedFailedIds.length} preguntas falladas en historial`)
-
-      if (resolvedFailedIds.length === 0) {
-        console.log('📭 El usuario no tiene preguntas falladas')
-        return []
-      }
-    }
-
-    // 🆕 MANEJO ESPECIAL PARA PREGUNTAS FALLADAS CON IDs
-    if (onlyFailedQuestions && resolvedFailedIds && resolvedFailedIds.length > 0) {
-      console.log(`❌ Modo preguntas falladas: ${resolvedFailedIds.length} preguntas, orden: ${failedQuestionsOrder}`)
-
-      try {
-        // Obtener las preguntas específicas en el orden correcto
-        const { data: specificQuestions, error: specificError } = await supabase
-          .from('questions')
-          .select(`
-            id, question_text, option_a, option_b, option_c, option_d,
-            correct_option, explanation, difficulty, is_official_exam,
-            primary_article_id, exam_source, exam_date, exam_entity, image_url, content_data,
-            articles!inner(
-              id, article_number, title, content,
-              laws!inner(short_name, slug, name)
-            )
-          `)
-          .eq('is_active', true)
-      .is('exam_case_id', null)
-          .in('id', resolvedFailedIds)
-        
-        if (specificError) {
-          console.error('❌ Error obteniendo preguntas falladas específicas:', specificError)
-          throw specificError
-        }
-        
-        if (!specificQuestions || specificQuestions.length === 0) {
-          throw new Error('No se encontraron las preguntas falladas especificadas')
-        }
-        
-        // Ordenar las preguntas según la lista de IDs (mantener el orden elegido por el usuario)
-        const orderedQuestions = resolvedFailedIds
-          .map((id: any) => specificQuestions.find((q: any) => q.id === id))
-          .filter((q: any) => q) // Filtrar preguntas no encontradas
-        
-        // Tomar solo el número solicitado
-        const finalQuestions = orderedQuestions.slice(0, numQuestions)
-        
-        console.log(`✅ Test de preguntas falladas cargado: ${finalQuestions.length} preguntas en orden ${failedQuestionsOrder}`)
-        return transformQuestions(finalQuestions)
-        
-      } catch (error) {
-        console.error('❌ Error en modo preguntas falladas específicas:', error)
-        throw error
-      }
-    }
-    
-    
-    // 1. Obtener mapeo del tema desde topic_scope o construcción directa
-    let mappings = []
-    
-    if (tema && tema > 0) {
-      // Flujo normal: usar topic_scope para un tema específico
-      const { data: topicMappings, error: mappingError } = await supabase
-        .from('topic_scope')
-        .select(`
-          article_numbers,
-          laws!inner(short_name, slug, id, name),
-          topics!inner(topic_number, position_type)
-        `)
-        .eq('topics.topic_number', tema)
-        .eq('topics.position_type', positionType)
-
-      if (mappingError) {
-        console.warn('⚠️ Error obteniendo mapeo:', mappingError?.message || 'Error desconocido')
-        throw mappingError
-      }
-      
-      if (!topicMappings?.length) {
-        throw new Error(`No se encontró mapeo para tema ${tema}`)
-      }
-
-      // 🔧 FIX: Si article_numbers es null, obtener TODOS los artículos de esa ley (leyes virtuales)
-      mappings = []
-      for (const mapping of topicMappings) {
-        if (mapping.article_numbers === null || mapping.article_numbers?.length === 0) {
-          // Obtener todos los artículos de esta ley
-          const { data: allArticles } = await supabase
-            .from('articles')
-            .select('article_number')
-            .eq('law_id', mapping.laws.id)
-            .order('article_number')
-
-          const articleNumbers = allArticles?.map((a: any) => a.article_number) || []
-          // console.log(`📚 Ley virtual ${mapping.laws.short_name}: ${articleNumbers.length} artículos obtenidos`)
-
-          mappings.push({
-            ...mapping,
-            article_numbers: articleNumbers
-          })
-        } else {
-          mappings.push(mapping)
-        }
-      }
-      // Debug mapeo tema (comentado para producción)
-      // console.log(`📊 Mapeo tema ${tema}:`, mappings.map(m => `${m.laws.short_name}: ${m.article_numbers.length} arts`))
-      
-    } else if (selectedLaws.length > 0) {
-      // Flujo alternativo: construir mapeo directo desde leyes seleccionadas
-      console.log(`🔧 Construyendo mapeo directo para leyes:`, selectedLaws)
-      
-      for (const lawShortName of selectedLaws) {
-        const { data: lawData, error: lawError } = await supabase
-          .from('laws')
-          .select('id, name, short_name')
-          .eq('short_name', lawShortName)
-          .single()
-        
-        if (lawError || !lawData) {
-          console.warn(`⚠️ No se pudo obtener ley ${lawShortName}:`, lawError?.message || 'No encontrada')
-          continue
-        }
-        
-        // Obtener todos los artículos de esta ley (o los filtrados si se especifican)
-        let articleNumbers = []
-        if (selectedArticlesByLaw[lawShortName]?.length > 0) {
-          articleNumbers = selectedArticlesByLaw[lawShortName]
-        } else {
-          // Si no hay filtros específicos, obtener todos los artículos de la ley
-          const { data: allArticles, error: articlesError } = await supabase
-            .from('articles')
-            .select('article_number')
-            .eq('law_id', lawData.id)
-            .order('article_number')
-          
-          if (!articlesError && allArticles) {
-            articleNumbers = allArticles.map((a: any) => a.article_number)
-          }
-        }
-        
-        if (articleNumbers.length > 0) {
-          mappings.push({
-            article_numbers: articleNumbers,
-            laws: {
-              id: lawData.id,
-              name: lawData.name,
-              short_name: lawData.short_name
-            }
-          })
-        }
-      }
-      
-      console.log(`📊 Mapeo directo construido:`, mappings.map(m => `${m.laws.short_name}: ${m.article_numbers.length} arts`))
-      
-    } else {
-      throw new Error('No se especificó tema ni leyes para filtrar')
-    }
-    
-    
-    // 🆕 FILTRAR MAPEOS POR LEYES SELECCIONADAS
-    let filteredMappings = mappings
-
-    if (selectedLaws.length > 0) {
-      filteredMappings = mappings.filter(mapping => {
-        const lawShortName = mapping.laws.short_name
-        return selectedLaws.includes(lawShortName)
-      })
-      console.log(`🔧 Filtrado por leyes seleccionadas: ${filteredMappings.length}/${mappings.length} leyes`)
-    }
-    
-    // 🆕 APLICAR FILTRO DE ARTÍCULOS POR LEY
-    if (Object.keys(selectedArticlesByLaw).length > 0) {
-      filteredMappings = filteredMappings.map(mapping => {
-        const lawShortName = mapping.laws.short_name
-        const selectedArticles = selectedArticlesByLaw[lawShortName]
-        
-        if (selectedArticles && selectedArticles.length > 0) {
-          // Filtrar solo los artículos seleccionados
-          // 🔧 FIX: Convertir selectedArticles a strings para comparar con article_numbers (que son strings)
-          const selectedArticlesAsStrings = selectedArticles.map((num: any) => String(num))
-          const filteredArticleNumbers = mapping.article_numbers.filter((articleNum: any) => {
-            return selectedArticlesAsStrings.includes(articleNum)
-          })
-          console.log(`🔧 Ley ${mapping.laws.short_name}: ${filteredArticleNumbers.length}/${mapping.article_numbers.length} artículos seleccionados`)
-          
-          return {
-            ...mapping,
-            article_numbers: filteredArticleNumbers
-          }
-        }
-        
-        return mapping
-      }).filter(mapping => mapping.article_numbers.length > 0) // Eliminar mapeos sin artículos
-    }
-
-    // 📚 APLICAR FILTRO DE SECCIONES/TÍTULOS (MULTI-SELECT)
-    if (selectedSectionFilters && selectedSectionFilters.length > 0) {
-      // Extraer todos los rangos de las secciones seleccionadas
-      const ranges = selectedSectionFilters
-        .filter(s => s.articleRange)
-        .map(s => ({ start: s.articleRange!.start, end: s.articleRange!.end, title: s.title }))
-
-      if (ranges.length > 0) {
-        const rangeDescriptions = ranges.map(r => `${r.title} (${r.start}-${r.end})`).join(', ')
-        console.log(`📚 Aplicando filtro de secciones: ${rangeDescriptions}`)
-
-        filteredMappings = filteredMappings.map(mapping => {
-          // Filtrar artículos que estén dentro de AL MENOS UNO de los rangos seleccionados
-          const filteredArticleNumbers = mapping.article_numbers.filter((articleNum: any) => {
-            if (isDisposicionArticle(articleNum)) return true  // Siempre incluir disposiciones
-            const num = parseInt(articleNum)
-            return ranges.some(range => num >= range.start && num <= range.end)
-          })
-
-          console.log(`📚 Ley ${mapping.laws.short_name}: ${filteredArticleNumbers.length}/${mapping.article_numbers.length} artículos en rangos seleccionados`)
-
-          return {
-            ...mapping,
-            article_numbers: filteredArticleNumbers
-          }
-        }).filter(mapping => mapping.article_numbers.length > 0)
-      }
-    }
-
-    if (filteredMappings.length === 0) {
-      throw new Error('No hay leyes o artículos seleccionados para generar el test')
-    }
-
-    // 2. Obtener usuario actual para exclusiones
-    let excludedQuestionIds: string[] = []
-    if (excludeRecent) {
-      try {
-        // Reutilizar la variable user ya declarada en la línea 485
-        if (user) {
-          console.log(`🚫 Excluyendo preguntas respondidas en los últimos ${recentDays} días`)
-          
-          const cutoffDate = new Date(Date.now() - recentDays * 24 * 60 * 60 * 1000).toISOString()
-
-          // ✅ OPTIMIZACIÓN: Query en dos pasos para evitar timeout
-          const { data: userTests } = await supabase
-            .from('tests')
-            .select('id')
-            .eq('user_id', user.id)
-
-          const testIds = userTests?.map((t: any) => t.id) || []
-
-          const { data: recentAnswers, error: recentError } = await batchedTestQuestionsQuery(
-            testIds,
-            'question_id, test_id',
-            { gte: { column: 'created_at', value: cutoffDate } }
-          )
-
-          if (!recentError && recentAnswers && recentAnswers.length > 0) {
-            excludedQuestionIds = [...new Set(recentAnswers.map((answer: any) => answer.question_id))] as string[]
-            console.log(`📊 Total de preguntas a excluir: ${excludedQuestionIds.length}`)
-          }
-        }
-      } catch (userError) {
-        console.log('⚠️ No se pudo obtener usuario para exclusiones:', (userError as Error).message)
-      }
-    }
-
-    // 3. ENFOQUE MEJORADO: Hacer múltiples consultas separadas con todos los filtros
-    const allQuestions = []
-    
-    for (const mapping of filteredMappings) {
-      // console.log(`🔍 Consultando ${mapping.laws.short_name}: ${mapping.article_numbers.length} artículos`)
-      
-      // Construir consulta base
-      let baseQuery = supabase
-        .from('questions')
-        .select(`
-          id, question_text, option_a, option_b, option_c, option_d,
-          correct_option, explanation, difficulty, global_difficulty_category, question_type, tags,
-          primary_article_id, is_official_exam, exam_source, exam_date, image_url, content_data,
-          exam_entity, official_difficulty_level, is_active, created_at, updated_at,
-          articles!inner (
-            id, article_number, title, content, section,
-            laws!inner (id, name, short_name, slug, year, type, scope, current_version)
-          )
-        `)
-        .eq('is_active', true)
-      .is('exam_case_id', null)
-        .eq('articles.laws.short_name', mapping.laws.short_name)
-        .in('articles.article_number', mapping.article_numbers)
-
-      // 🏛️ FILTRO CORREGIDO: Solo preguntas oficiales si está activado (CON FILTRO POR OPOSICIÓN)
-      if (onlyOfficialQuestions) {
-        baseQuery = baseQuery.eq('is_official_exam', true)
-        baseQuery = applyExamPositionFilter(baseQuery, positionType)
-        console.log(`🏛️ ${mapping.laws.short_name}: Filtro aplicado - Solo preguntas oficiales de ${positionType}`)
-      }
-
-      // 🎯 Aplicar filtro de dificultad (prioriza global_difficulty_category calculada, fallback a difficulty estática)
-      switch (difficultyMode) {
-        case 'easy':
-          baseQuery = baseQuery.or(`global_difficulty_category.eq.easy,and(global_difficulty_category.is.null,difficulty.eq.easy)`)
-          console.log(`🎯 ${mapping.laws.short_name}: Aplicando filtro dificultad = 'easy'`)
-          break
-        case 'medium':
-          baseQuery = baseQuery.or(`global_difficulty_category.eq.medium,and(global_difficulty_category.is.null,difficulty.eq.medium)`)
-          console.log(`🎯 ${mapping.laws.short_name}: Aplicando filtro dificultad = 'medium'`)
-          break
-        case 'hard':
-          baseQuery = baseQuery.or(`global_difficulty_category.eq.hard,and(global_difficulty_category.is.null,difficulty.eq.hard)`)
-          console.log(`🎯 ${mapping.laws.short_name}: Aplicando filtro dificultad = 'hard'`)
-          break
-        case 'extreme':
-          baseQuery = baseQuery.or(`global_difficulty_category.eq.extreme,and(global_difficulty_category.is.null,difficulty.eq.extreme)`)
-          console.log(`🎯 ${mapping.laws.short_name}: Aplicando filtro dificultad = 'extreme'`)
-          break
-        default:
-          // console.log(`🎲 ${mapping.laws.short_name}: Sin filtro de dificultad (modo: ${difficultyMode})`)
-          break
-      }
-      
-      // Ejecutar consulta
-      const { data: lawQuestions, error: lawError } = await baseQuery
-        .order('created_at', { ascending: false })
-      
-      if (lawError) {
-        console.warn(`⚠️ Error consultando ${mapping.laws.short_name}:`, lawError?.message || 'Error desconocido')
-        continue // Continuar con la siguiente ley en lugar de fallar todo
-      }
-      
-      
-      if (lawQuestions && lawQuestions.length > 0) {
-        // console.log(`✅ ${mapping.laws.short_name}: ${lawQuestions.length} preguntas encontradas`)
-        allQuestions.push(...lawQuestions)
-      } else {
-        console.log(`⚠️ ${mapping.laws.short_name}: Sin preguntas disponibles con filtros aplicados`)
-      }
-    }
-    
-    if (allQuestions.length === 0) {
-      const filterInfo = []
-      if (onlyOfficialQuestions) filterInfo.push('solo oficiales')
-      if (difficultyMode !== 'random') filterInfo.push(`dificultad: ${difficultyMode}`)
-      if (excludeRecent) filterInfo.push(`excluyendo recientes`)
-      if (focusEssentialArticles) filterInfo.push('artículos imprescindibles')
-      
-      const filtersApplied = filterInfo.length > 0 ? ` (filtros: ${filterInfo.join(', ')})` : ''
-      throw new Error(`No hay preguntas disponibles para tema ${tema}${filtersApplied}`)
-    }
-    
-    console.log(`📋 Total preguntas encontradas: ${allQuestions.length}`)
-    
-    // 4. Aplicar filtro de exclusión de preguntas recientes EN MEMORIA
-    let filteredQuestions = allQuestions
-    
-    if (excludedQuestionIds.length > 0) {
-      const excludedSet = new Set(excludedQuestionIds.map(id => String(id)))
-      filteredQuestions = allQuestions.filter(question => {
-        const questionId = String(question.id)
-        return !excludedSet.has(questionId)
-      })
-      
-      console.log(`✅ Después de exclusión: ${filteredQuestions.length} preguntas disponibles`)
-      
-      if (filteredQuestions.length === 0) {
-        throw new Error('No hay preguntas disponibles después de aplicar exclusiones.')
-      }
-    }
-
-    
-    // 5. Aplicar filtro de artículos imprescindibles si está activado
-    let prioritizedQuestions = filteredQuestions
-    
-    if (focusEssentialArticles) {
-      console.log('⭐ Aplicando filtro de artículos imprescindibles...')
-
-      // CORRECCIÓN: Identificar artículos imprescindibles consultando TODA la base de datos
-      const articleOfficialCount: Record<string, number> = {}
-
-      // Obtener todos los artículos que tienen preguntas oficiales para los artículos FILTRADOS
-      // 🔧 FIX: Usar filteredMappings en lugar de mappings para solo contar artículos seleccionados
-      for (const mapping of filteredMappings) {
-        for (const articleNumber of mapping.article_numbers) {
-          let countQuery = supabase
-            .from('questions')
-            .select('id, articles!inner(laws!inner(short_name))', { count: 'exact', head: true })
-            .eq('is_active', true)
-      .is('exam_case_id', null)
-            .eq('is_official_exam', true)
-            .eq('articles.laws.short_name', mapping.laws.short_name)
-            .eq('articles.article_number', articleNumber)
-
-          countQuery = applyExamPositionFilter(countQuery, positionType)
-
-          const { count } = await countQuery
-
-          if (count > 0) {
-            const articleKey = `${mapping.laws.short_name}-${articleNumber}`
-            articleOfficialCount[articleKey] = count
-          }
-        }
-      }
-      
-      console.log('📊 Artículos con preguntas oficiales (CORREGIDO):', articleOfficialCount)
-      
-      // Separar preguntas por si son de artículos imprescindibles o no
-      const essentialQuestions: SupabaseQuestionAny[] = []
-      const nonEssentialQuestions: SupabaseQuestionAny[] = []
-      
-      filteredQuestions.forEach(question => {
-        if (question.articles?.article_number) {
-          const articleKey = `${question.articles.laws.short_name}-${question.articles.article_number}`
-          if (articleOfficialCount[articleKey] >= 1) {
-            essentialQuestions.push(question)
-          } else {
-            nonEssentialQuestions.push(question)
-          }
-        } else {
-          nonEssentialQuestions.push(question)
-        }
-      })
-      
-      console.log(`⭐ Artículos imprescindibles: ${essentialQuestions.length} preguntas`)
-      console.log(`📝 Artículos normales: ${nonEssentialQuestions.length} preguntas`)
-      
-      // 🔍 DEBUG: Verificar dificultades de preguntas imprescindibles
-      const difficultyStats: Record<string, number> = {}
-      essentialQuestions.forEach((q: any) => {
-        const difficulty = q.difficulty || 'unknown'
-        difficultyStats[difficulty] = (difficultyStats[difficulty] || 0) + 1
-      })
-      console.log('📊 Distribución de dificultades en artículos imprescindibles:', difficultyStats)
-      
-      if (difficultyMode !== 'random') {
-        const filteredByDifficulty = essentialQuestions.filter(q => q.difficulty === difficultyMode)
-        console.log(`🎯 Preguntas imprescindibles con dificultad "${difficultyMode}": ${filteredByDifficulty.length}`)
-      }
-      
-      // 🔥 FILTRO EXCLUSIVO: Solo artículos imprescindibles (100%)
-      console.log('⭐ MODO EXCLUSIVO: Solo preguntas de artículos imprescindibles')
-      
-      if (essentialQuestions.length === 0) {
-        throw new Error(`No hay preguntas de artículos imprescindibles para tema ${tema}. Los artículos imprescindibles son aquellos que tienen preguntas oficiales.`)
-      }
-      
-      // ✅ USAR TODAS las preguntas de artículos imprescindibles para priorización inteligente
-      // NO hacer selección aleatoria aquí - dejar que la priorización inteligente decida
-      prioritizedQuestions = essentialQuestions
-      
-      console.log(`⭐ Filtro exclusivo aplicado: ${prioritizedQuestions.length} preguntas SOLO de artículos imprescindibles`)
-      console.log('📊 Artículos imprescindibles disponibles:', Object.keys(articleOfficialCount))
-      
-      // Debug: Mostrar qué artículos van a aparecer en el test
-      const testArticles = new Set()
-      prioritizedQuestions.forEach(q => {
-        if (q.articles?.article_number) {
-          const articleKey = `Art. ${q.articles.article_number} ${q.articles.laws.short_name}`
-          testArticles.add(articleKey)
-        }
-      })
-      
-      console.log('🎯 ARTÍCULOS QUE APARECERÁN EN EL TEST:', Array.from(testArticles).sort())
-    }
-    
-    // 🧠 CALCULAR TAMAÑO DEL POOL SEGÚN MODO ADAPTATIVO
-    const poolSize = adaptiveMode ? Math.max(numQuestions * 2, 50) : numQuestions
-    console.log(`🧠 Tamaño del pool: ${poolSize} preguntas (adaptativo: ${adaptiveMode})`)
-    
-    // 🧠 PRIORIZACIÓN INTELIGENTE (como en test aleatorio)
-    let questionsToProcess = focusEssentialArticles ? prioritizedQuestions : filteredQuestions
-    let finalQuestions = []
-    
-    // 🚨 LOG CRÍTICO: ¿Cuántas preguntas llegan al algoritmo?
-    console.log(`\n🔍 PREGUNTAS ANTES DEL ALGORITMO:`)
-    console.log(`   📊 questionsToProcess.length: ${questionsToProcess?.length || 0}`)
-    console.log(`   📊 focusEssentialArticles: ${focusEssentialArticles}`)
-    console.log(`   📊 filteredQuestions: ${filteredQuestions?.length || 0}`)
-    console.log(`   📊 prioritizedQuestions: ${prioritizedQuestions?.length || 0}`)
-    
-    // Reutilizar la variable user ya declarada en la línea 485
-    if (user) {
-      // Aplicando priorización inteligente para test individual
-
-      // 1. Obtener historial de respuestas del usuario SOLO a preguntas que siguen activas
-      // 🚀 OPTIMIZADO: Usa API con Drizzle en lugar de IN clause con 250+ UUIDs
-      const { history: userHistory, error: historyError } = await fetchUserQuestionHistory(user.id, true)
-
-      console.log(`🚀 API OPTIMIZADA: Historial obtenido con ${userHistory.length} preguntas`)
-
-      if (!historyError && userHistory && userHistory.length > 0) {
-        // 2. Clasificar preguntas por prioridad
-        const answeredQuestionIds = new Set()
-        const questionLastAnswered = new Map()
-
-        userHistory.forEach(item => {
-          answeredQuestionIds.add(item.questionId)
-          const answerDate = new Date(item.lastAnsweredAt)
-          questionLastAnswered.set(item.questionId, answerDate)
-        })
-        
-        // 3. Separar preguntas por prioridad
-        const neverSeenQuestions: SupabaseQuestionAny[] = []
-        const answeredQuestions: SupabaseQuestionAny[] = []
-        
-        questionsToProcess.forEach(question => {
-          if (answeredQuestionIds.has(question.id)) {
-            // Pregunta ya respondida - agregar fecha para ordenamiento
-            question._lastAnswered = questionLastAnswered.get(question.id)
-            answeredQuestions.push(question)
-          } else {
-            // Pregunta nunca vista - máxima prioridad
-            neverSeenQuestions.push(question)
-          }
-        })
-        
-        
-        // 4. Ordenar preguntas respondidas por fecha (más antiguas primero)
-        answeredQuestions.sort((a, b) => a._lastAnswered - b._lastAnswered)
-        
-        // Logs de priorización comentados para producción
-        // console.log(`🎯 DECISIÓN DE PRIORIZACIÓN TEMA ${tema}:`)
-        // console.log(`- Nunca vistas: ${neverSeenQuestions.length}`)
-        // console.log(`- Ya respondidas: ${answeredQuestions.length}`)
-        // console.log(`- Pool solicitado: ${poolSize} (activas: ${numQuestions})`)
-
-        // 5. Calcular distribución inteligente
-        // 🔥 FIX CRÍTICO: Eliminar duplicados antes de procesar
-        const uniqueNeverSeen = neverSeenQuestions.filter((question, index, arr) => 
-          arr.findIndex(q => q.id === question.id) === index
-        )
-        
-        const uniqueAnswered = answeredQuestions.filter((question, index, arr) => 
-          arr.findIndex(q => q.id === question.id) === index
-        )
-        
-        const neverSeenCount = uniqueNeverSeen.length
-        
-        console.log(`🔍 DEBUG: neverSeen originales: ${neverSeenQuestions.length}, únicos: ${uniqueNeverSeen.length}`)
-        console.log(`🔍 DEBUG: answered originales: ${answeredQuestions.length}, únicos: ${uniqueAnswered.length}`)
-        
-        // 🚨 LOGS CRÍTICOS PARA DEBUG DEL FALLO
-        console.log(`\n🎯 ANÁLISIS CRÍTICO:`)
-        console.log(`   📊 neverSeenCount = ${neverSeenCount}`)
-        console.log(`   📊 numQuestions = ${numQuestions}`)
-        console.log(`   🔍 CONDICIÓN: ${neverSeenCount} >= ${numQuestions} = ${neverSeenCount >= numQuestions}`)
-        console.log(`   📝 Tipo neverSeenCount: ${typeof neverSeenCount}`)
-        console.log(`   📝 Tipo numQuestions: ${typeof numQuestions}`)
-        
-        // 🚨 FIX PROBLEMA PREGUNTAS REPETIDAS: Priorizar nunca vistas SIEMPRE
-        if (neverSeenCount >= numQuestions) {
-          // CASO A: Suficientes nunca vistas - NO incluir repaso
-          console.log('🎯 CASO 2A: Solo preguntas nunca vistas (suficientes disponibles)')
-          console.log(`📊 Distribución: ${numQuestions} nunca vistas (de ${neverSeenCount} disponibles)`)
-          
-          const shuffledNeverSeen = uniqueNeverSeen.sort(() => Math.random() - 0.5)
-          finalQuestions = shuffledNeverSeen.slice(0, numQuestions)
-          
-          // 🔍 LOG CRÍTICO: IDs de las preguntas seleccionadas como "nunca vistas"
-          const neverSeenIds = finalQuestions.map(q => q.id)
-          console.log('🔍 IDS NUNCA VISTAS SELECCIONADAS:', neverSeenIds)
-          console.log('🔍 IDS NUNCA VISTAS (JSON):', JSON.stringify(neverSeenIds))
-          
-        } else {
-          // CASO B: Insuficientes nunca vistas - completar con repaso
-          const reviewCount = numQuestions - neverSeenCount
-          
-          console.log('🎯 CASO 2B: Distribución mixta - insuficientes nunca vistas')
-          console.log(`📊 Distribución: ${neverSeenCount} nunca vistas + ${reviewCount} para repaso`)
-          
-          // Todas las nunca vistas (mezcladas)
-          const shuffledNeverSeen = uniqueNeverSeen.sort(() => Math.random() - 0.5)
-          
-          console.log(`🔍 IDS NUNCA VISTAS (CASO B):`, shuffledNeverSeen.map(q => q.id))
-          
-          // 🚨 FIX CRÍTICO: Filtrar preguntas respondidas recientemente para repaso
-          const cutoffDate = new Date(Date.now() - (excludeRecent ? recentDays * 24 * 60 * 60 * 1000 : 0))
-          const eligibleForReview = uniqueAnswered.filter(q => {
-            const lastAnswered = questionLastAnswered.get(q.id)
-            return !lastAnswered || lastAnswered < cutoffDate
-          })
-
-          console.log(`🔍 DEBUG REPASO: ${uniqueAnswered.length} respondidas → ${eligibleForReview.length} elegibles para repaso (${excludeRecent ? recentDays : 0} días mínimo)`)
-          
-          // Tomar las más elegibles para repaso
-          const oldestForReview = eligibleForReview.slice(0, reviewCount)
-          
-          console.log(`🔍 IDS REPASO SELECCIONADAS:`, oldestForReview.map(q => q.id))
-          
-          finalQuestions = [...shuffledNeverSeen, ...oldestForReview]
-        }
-        
-        // 6. Mezclar orden final para que no sea predecible
-        finalQuestions = finalQuestions.sort(() => Math.random() - 0.5)
-        
-        // 🔥 VERIFICACIÓN FINAL: Eliminar duplicados del resultado final
-        const finalUniqueQuestions = finalQuestions.filter((question, index, arr) => 
-          arr.findIndex(q => q.id === question.id) === index
-        )
-        
-        if (finalUniqueQuestions.length !== finalQuestions.length) {
-          console.log(`🚨 DUPLICADOS DETECTADOS: ${finalQuestions.length} → ${finalUniqueQuestions.length}`)
-          finalQuestions = finalUniqueQuestions
-        }
-        
-        // Limpiar propiedades temporales
-        finalQuestions.forEach(q => {
-          delete q._lastAnswered
-        })
-        
-      } else {
-        // Fallback si no hay historial o error
-        console.log('📊 Sin historial de usuario, usando selección aleatoria')
-        
-        // 🔥 FIX: Deduplicar también en fallback
-        const uniqueQuestions = questionsToProcess.filter((question, index, arr) => 
-          arr.findIndex(q => q.id === question.id) === index
-        )
-        console.log(`🔍 DEBUG fallback: originales: ${questionsToProcess.length}, únicos: ${uniqueQuestions.length}`)
-        
-        finalQuestions = shuffleArray(uniqueQuestions).slice(0, numQuestions)
-      }
-    } else {
-      // Fallback si no hay usuario
-      console.log('📊 Usuario no autenticado, usando selección aleatoria')
-      
-      // 🔥 FIX: Deduplicar también en fallback
-      const uniqueQuestions = questionsToProcess.filter((question, index, arr) => 
-        arr.findIndex(q => q.id === question.id) === index
-      )
-      console.log(`🔍 DEBUG no-auth: originales: ${questionsToProcess.length}, únicos: ${uniqueQuestions.length}`)
-      
-      finalQuestions = shuffleArray(uniqueQuestions).slice(0, numQuestions)
-    }
-    
-    // 6. Log de resumen
-    const lawDistribution = finalQuestions.reduce((acc: Record<string, number>, q: SupabaseQuestionAny) => {
-      const law = q.articles?.laws?.short_name || 'N/A'
-      acc[law] = (acc[law] || 0) + 1
-      return acc
-    }, {})
-
-    const officialCount = finalQuestions.filter((q: SupabaseQuestionAny) => q.is_official_exam).length
-    
-    console.log(`\n✅ Tema ${tema} MULTI-LEY cargado: ${finalQuestions.length} preguntas de ${mappings.length} leyes`)
-    console.log(`📊 Distribución por ley:`, lawDistribution)
-    console.log(`🏛️ Preguntas oficiales: ${officialCount}/${finalQuestions.length}`)
-    if (focusEssentialArticles) {
-      console.log(`⭐ Filtro aplicado: SOLO artículos imprescindibles`)
-    }
-    
-    // 🔍 DEBUG: Verificar dificultades de preguntas finales
-    const finalDifficultyStats: Record<string, number> = {}
-    finalQuestions.forEach((q: any) => {
-      const difficulty = q.difficulty || 'unknown'
-      finalDifficultyStats[difficulty] = (finalDifficultyStats[difficulty] || 0) + 1
-    })
-    console.log(`🎯 Dificultades en test final:`, finalDifficultyStats)
-    
-    if (difficultyMode !== 'random') {
-      const expectedDifficulty = difficultyMode
-      const matchingCount = finalQuestions.filter(q => q.difficulty === expectedDifficulty).length
-      console.log(`✅ Filtro de dificultad "${expectedDifficulty}": ${matchingCount}/${finalQuestions.length} preguntas coinciden`)
-      
-      if (matchingCount === 0) {
-        console.log(`⚠️ ADVERTENCIA: No hay preguntas de dificultad "${expectedDifficulty}" en el test final`)
-      } else if (matchingCount < finalQuestions.length) {
-        console.log(`⚠️ ADVERTENCIA: Solo ${matchingCount} de ${finalQuestions.length} preguntas son de dificultad "${expectedDifficulty}"`)
-      }
-    }
-    
-    // 🔍 DEBUG MEJORADO: Análisis detallado de artículos en el test
-    if (focusEssentialArticles) {
-      console.log('\n🔍 ===== ANÁLISIS DETALLADO DE ARTÍCULOS IMPRESCINDIBLES =====')
-      
-      // Re-obtener articleOfficialCount para el debug (ya se calculó antes)
-      const debugArticleOfficialCount: Record<string, number> = {}
-      for (const mapping of mappings) {
-        for (const articleNumber of mapping.article_numbers) {
-          let debugCountQuery = supabase
-            .from('questions')
-            .select('id, articles!inner(laws!inner(short_name))', { count: 'exact', head: true })
-            .eq('is_active', true)
-      .is('exam_case_id', null)
-            .eq('is_official_exam', true)
-            .eq('articles.laws.short_name', mapping.laws.short_name)
-            .eq('articles.article_number', articleNumber)
-
-          debugCountQuery = applyExamPositionFilter(debugCountQuery, positionType)
-
-          const { count } = await debugCountQuery
-
-          if (count > 0) {
-            const articleKey = `${mapping.laws.short_name}-${articleNumber}`
-            debugArticleOfficialCount[articleKey] = count
-          }
-        }
-      }
-      
-      // Mostrar todos los artículos imprescindibles identificados
-      const allEssentialArticles = Object.keys(debugArticleOfficialCount || {}).map(key => {
-        const [law, article] = key.split('-')
-        return `Art. ${article} ${law} (${debugArticleOfficialCount[key]} oficiales)`
-      })
-      
-      console.log('⭐ ARTÍCULOS IMPRESCINDIBLES IDENTIFICADOS:')
-      allEssentialArticles.forEach(article => console.log(`   • ${article}`))
-      
-      // Analizar artículos que realmente aparecen en el test
-      const testArticleStats: Record<string, { count: number; isEssential: boolean; officialCount: number }> = {}
-      finalQuestions.forEach((q: any) => {
-        if (q.articles?.article_number) {
-          const articleDisplay = `Art. ${q.articles.article_number} ${q.articles.laws.short_name}`
-          const articleKey = `${q.articles.laws.short_name}-${q.articles.article_number}`
-          const isEssential = (debugArticleOfficialCount || {})[articleKey] >= 1
-          
-          if (!testArticleStats[articleDisplay]) {
-            testArticleStats[articleDisplay] = {
-              count: 0,
-              isEssential: isEssential,
-              officialCount: (debugArticleOfficialCount || {})[articleKey] || 0
-            }
-          }
-          testArticleStats[articleDisplay].count++
-        }
-      })
-      
-      console.log('\n🎯 ARTÍCULOS QUE APARECEN EN ESTE TEST:')
-      Object.entries(testArticleStats)
-        .sort(([a], [b]) => a.localeCompare(b))
-        .forEach(([article, stats]) => {
-          const marker = stats.isEssential ? '⭐' : '📄'
-          const essentialInfo = stats.isEssential ? ` (${stats.officialCount} oficiales)` : ' (NO imprescindible)'
-          console.log(`   ${marker} ${article}: ${stats.count} preguntas${essentialInfo}`)
-        })
-
-      const essentialInTest = Object.values(testArticleStats).filter(s => s.isEssential).length
-      const totalInTest = Object.keys(testArticleStats).length
-      
-      console.log(`\n📊 RESUMEN: ${essentialInTest}/${totalInTest} artículos del test son imprescindibles`)
-      console.log('================================================================\n')
-    }
-    
-    // 🔥 VERIFICACIÓN FINAL ABSOLUTA: Eliminar duplicados del resultado
-    const absoluteFinalQuestions = finalQuestions.filter((question, index, arr) => 
-      arr.findIndex(q => q.id === question.id) === index
-    )
-    
-    if (absoluteFinalQuestions.length !== finalQuestions.length) {
-      console.log(`🚨 DUPLICADOS FINALES ELIMINADOS: ${finalQuestions.length} → ${absoluteFinalQuestions.length}`)
-    }
-    
-    console.log(`✅ RESULTADO FINAL: ${absoluteFinalQuestions.length} preguntas únicas confirmadas`)
-    
-    // 🚨 CACHE DE SESIÓN ELIMINADO: Ya no es necesario porque el algoritmo
-    // de historial funciona correctamente. Las preguntas respondidas se marcan
-    // automáticamente como "ya vistas" en la base de datos.
-    
-    console.log(`✅ SISTEMA LIMPIO: Sin cache de sesión artificial`)
-    console.log(`🎯 ALGORITMO DIRECTO: Solo lógica de historial real`)
-    
-    // Usar directamente el resultado del algoritmo inteligente
-    const finalSessionQuestions = absoluteFinalQuestions.slice(0, numQuestions)
-    
-    // Log de IDs para debugging - CRÍTICO PARA DETECTAR DUPLICADOS
-    const questionIds = finalSessionQuestions.map(q => q.id)
-    const uniqueIds = new Set(questionIds)
-    console.log(`🔍 IDS FINALES SELECCIONADOS:`, questionIds)
-    console.log(`🔍 IDS FINALES (JSON):`, JSON.stringify(questionIds))
-    
-    if (uniqueIds.size !== questionIds.length) {
-      console.error(`🚨 BUG CRÍTICO: AÚN HAY DUPLICADOS EN EL RESULTADO FINAL`)
-      console.error(`IDs duplicados:`, questionIds)
-      console.error(`Únicos: ${uniqueIds.size}, Total: ${questionIds.length}`)
-    }
-    
-    // 🧠 VERIFICAR SI SE NECESITA CATÁLOGO ADAPTATIVO
-    // ⚠️ DESACTIVAR en modos restrictivos (artículos imprescindibles, preguntas falladas)
     const isRestrictiveMode = focusEssentialArticles || onlyFailedQuestions
-    const needsAdaptiveCatalog = !isRestrictiveMode && (focusWeakAreas || getParam(searchParams, 'adaptive') === 'true' || adaptiveMode)
+    const needsAdaptiveCatalog = !isRestrictiveMode && (focusWeakAreas || adaptiveMode)
+    const requestSize = needsAdaptiveCatalog ? 500 : numQuestions
 
-    // Debug de activación removido
+    console.log('🎯 Cargando test multi-ley via API, tema:', tema, 'n:', numQuestions,
+      'adaptive:', needsAdaptiveCatalog, 'pos:', positionType)
 
-    if (needsAdaptiveCatalog && user) {
-      console.log('🧠 PREPARANDO CATÁLOGO ADAPTATIVO para TestLayout')
 
-      // Obtener historial del usuario para clasificar preguntas
-      // ✅ OPTIMIZACIÓN: Query en dos pasos para evitar timeout
-      const { data: userTests } = await supabase
-        .from('tests')
-        .select('id')
-        .eq('user_id', user.id)
+    // Obtener token para auth server-side
+    let authToken = null
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      authToken = session?.access_token ?? null
+    } catch {
+      console.warn('⚠️ No se pudo obtener token de sesión')
+    }
 
-      const testIds = userTests?.map((t: any) => t.id) || []
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    if (authToken) headers['Authorization'] = `Bearer ${authToken}`
 
-      const { data: userAnswers, error: answersError } = await batchedTestQuestionsQuery(
-        testIds,
-        'question_id, created_at, test_id'
-      )
-
-      console.log(`📊 Usuario tiene ${userAnswers?.length || 0} respuestas en total`)
-
-      // Clasificar TODAS las preguntas disponibles por historial y dificultad
-      const answeredQuestionIds = new Set()
-      const questionLastAnswered = new Map()
-
-      if (!answersError && userAnswers && userAnswers.length > 0) {
-        userAnswers.forEach(answer => {
-          answeredQuestionIds.add(answer.question_id)
-
-          // 🕐 Guardar fecha de última respuesta para spaced repetition
-          const answerDate = new Date(answer.created_at)
-          if (!questionLastAnswered.has(answer.question_id) ||
-              answerDate > questionLastAnswered.get(answer.question_id)) {
-            questionLastAnswered.set(answer.question_id, answerDate)
-          }
-        })
+    // Convertir selectedArticlesByLaw a formato API (números)
+    const articlesForAPI: Record<string, number[]> = {}
+    for (const [lawName, arts] of Object.entries(selectedArticlesByLaw)) {
+      if (arts && (Array.isArray(arts) ? arts.length > 0 : false)) {
+        const artsArray = Array.isArray(arts) ? arts : []
+        articlesForAPI[lawName] = artsArray.map((a: any) => parseInt(a, 10)).filter((n: number) => !isNaN(n))
       }
+    }
 
-      // Separar nunca vistas vs ya respondidas
-      const neverSeenQuestions: SupabaseQuestionAny[] = []
-      const answeredQuestions: SupabaseQuestionAny[] = []
-
-      questionsToProcess.forEach(question => {
-        if (answeredQuestionIds.has(question.id)) {
-          // Agregar fecha de última respuesta para ordenamiento
-          question._lastAnswered = questionLastAnswered.get(question.id)
-          answeredQuestions.push(question)
-        } else {
-          neverSeenQuestions.push(question)
-        }
+    const response = await fetch('/api/questions/filtered', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        topicNumber: tema,
+        positionType,
+        numQuestions: requestSize,
+        selectedLaws,
+        selectedArticlesByLaw: Object.keys(articlesForAPI).length > 0 ? articlesForAPI : selectedArticlesByLaw,
+        selectedSectionFilters,
+        onlyOfficialQuestions,
+        difficultyMode: needsAdaptiveCatalog ? 'random' : difficultyMode,
+        excludeRecentDays: excludeRecent ? recentDays : 0,
+        focusEssentialArticles,
+        prioritizeNeverSeen: true,
+        onlyFailedQuestions,
+        failedQuestionIds: failedQuestionIds || [],
       })
+    })
 
-      // 🕐 Ordenar preguntas respondidas por antigüedad (más antiguas primero = spaced repetition)
-      answeredQuestions.sort((a, b) => a._lastAnswered - b._lastAnswered)
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      const errorMsg = errorData.error || `HTTP ${response.status}`
+      console.error(`❌ Error en fetchQuestionsByTopicScope (API): ${errorMsg}`, { status: response.status, tema, positionType })
+      throw new Error(errorMsg)
+    }
 
-      console.log(`📊 Spaced repetition activado: ${answeredQuestions.length} preguntas ordenadas por antigüedad`)
+    const data = await response.json()
 
-      // Clasificar por dificultad (prioriza global_difficulty_category, fallback a difficulty)
+    if (!data.success) {
+      const errorMsg = data.emptyReason || data.error || 'Error desconocido'
+      console.error('❌ fetchQuestionsByTopicScope: API devolvió success=false:', errorMsg)
+      throw new Error(errorMsg)
+    }
+
+    const allQuestions: TransformedQuestion[] = data.questions || []
+
+    if (allQuestions.length === 0) {
+      throw new Error(data.emptyReason || `No hay preguntas disponibles para tema ${tema}`)
+    }
+
+    console.log(`✅ API devolvió ${allQuestions.length} preguntas (${data.totalAvailable} disponibles)`)
+
+    // Modo adaptativo: construir catálogo por dificultad client-side
+    if (needsAdaptiveCatalog) {
+      console.log('🧠 Construyendo catálogo adaptativo client-side')
+
       const catalogByDifficulty = {
         neverSeen: {
-          easy: neverSeenQuestions.filter((q: any) => (q.global_difficulty_category || q.difficulty) === 'easy'),
-          medium: neverSeenQuestions.filter((q: any) => (q.global_difficulty_category || q.difficulty) === 'medium'),
-          hard: neverSeenQuestions.filter((q: any) => (q.global_difficulty_category || q.difficulty) === 'hard'),
-          extreme: neverSeenQuestions.filter((q: any) => (q.global_difficulty_category || q.difficulty) === 'extreme')
+          easy: allQuestions.filter(q => q.metadata.difficulty === 'easy'),
+          medium: allQuestions.filter(q => q.metadata.difficulty === 'medium'),
+          hard: allQuestions.filter(q => q.metadata.difficulty === 'hard'),
+          extreme: allQuestions.filter(q => q.metadata.difficulty === 'extreme'),
         },
         answered: {
-          easy: answeredQuestions.filter((q: any) => (q.global_difficulty_category || q.difficulty) === 'easy'),
-          medium: answeredQuestions.filter((q: any) => (q.global_difficulty_category || q.difficulty) === 'medium'),
-          hard: answeredQuestions.filter((q: any) => (q.global_difficulty_category || q.difficulty) === 'hard'),
-          extreme: answeredQuestions.filter((q: any) => (q.global_difficulty_category || q.difficulty) === 'extreme')
+          easy: [] as TransformedQuestion[],
+          medium: [] as TransformedQuestion[],
+          hard: [] as TransformedQuestion[],
+          extreme: [] as TransformedQuestion[],
         }
       }
 
-      console.log('🧠 CATÁLOGO ADAPTATIVO GENERADO (usando global_difficulty_category):')
-      console.log(`   📊 Nunca vistas: easy=${catalogByDifficulty.neverSeen.easy.length}, medium=${catalogByDifficulty.neverSeen.medium.length}, hard=${catalogByDifficulty.neverSeen.hard.length}, extreme=${catalogByDifficulty.neverSeen.extreme.length}`)
-      console.log(`   📊 Ya respondidas: easy=${catalogByDifficulty.answered.easy.length}, medium=${catalogByDifficulty.answered.medium.length}, hard=${catalogByDifficulty.answered.hard.length}, extreme=${catalogByDifficulty.answered.extreme.length}`)
+      // Selección inteligente de preguntas iniciales
+      let initialQuestions: TransformedQuestion[] = []
+      const medNS = catalogByDifficulty.neverSeen.medium
+      const easyNS = catalogByDifficulty.neverSeen.easy
+      const hardNS = catalogByDifficulty.neverSeen.hard
 
-      // 🔥 CRÍTICO: Transformar TODAS las preguntas del catálogo (question_text → question)
-      const transformedCatalog = {
-        neverSeen: {
-          easy: transformQuestions(catalogByDifficulty.neverSeen.easy),
-          medium: transformQuestions(catalogByDifficulty.neverSeen.medium),
-          hard: transformQuestions(catalogByDifficulty.neverSeen.hard),
-          extreme: transformQuestions(catalogByDifficulty.neverSeen.extreme)
-        },
-        answered: {
-          easy: transformQuestions(catalogByDifficulty.answered.easy),
-          medium: transformQuestions(catalogByDifficulty.answered.medium),
-          hard: transformQuestions(catalogByDifficulty.answered.hard),
-          extreme: transformQuestions(catalogByDifficulty.answered.extreme)
-        }
+      if (medNS.length >= numQuestions) {
+        initialQuestions = shuffleArray([...medNS]).slice(0, numQuestions)
+      } else if (medNS.length + easyNS.length >= numQuestions) {
+        initialQuestions = shuffleArray([...medNS, ...easyNS]).slice(0, numQuestions)
+      } else {
+        const allNS = [...medNS, ...easyNS, ...hardNS]
+        initialQuestions = shuffleArray(allNS.length >= numQuestions ? allNS : [...allQuestions]).slice(0, numQuestions)
       }
 
-      // 🎯 SELECCIÓN INTELIGENTE DE PREGUNTAS INICIALES con 4 niveles de fallback
-      let initialQuestions = []
+      console.log(`✅ Catálogo adaptativo: ${initialQuestions.length} iniciales, total: ${allQuestions.length}`)
 
-      // Prioridad 1: Medium nunca vistas (óptimo)
-      if (transformedCatalog.neverSeen.medium.length >= numQuestions) {
-        initialQuestions = shuffleArray(transformedCatalog.neverSeen.medium).slice(0, numQuestions)
-      }
-      // Prioridad 2: Mezclar medium + easy nunca vistas
-      else if (transformedCatalog.neverSeen.medium.length + transformedCatalog.neverSeen.easy.length >= numQuestions) {
-        initialQuestions = shuffleArray([...transformedCatalog.neverSeen.medium, ...transformedCatalog.neverSeen.easy]).slice(0, numQuestions)
-      }
-      // Prioridad 3: Usar todas las nunca vistas + completar con hard
-      else {
-        const allNeverSeen = [
-          ...transformedCatalog.neverSeen.medium,
-          ...transformedCatalog.neverSeen.easy,
-          ...transformedCatalog.neverSeen.hard
-        ]
-
-        if (allNeverSeen.length >= numQuestions) {
-          initialQuestions = shuffleArray(allNeverSeen).slice(0, numQuestions)
-        } else {
-          // Prioridad 4: No hay suficientes nunca vistas, usar ya respondidas (ordenadas por antigüedad)
-          const needed = numQuestions - allNeverSeen.length
-          const fromAnswered = [
-            ...transformedCatalog.answered.medium,
-            ...transformedCatalog.answered.easy,
-            ...transformedCatalog.answered.hard
-          ].slice(0, needed)
-
-          // 🎲 Mezclar todo para que el orden sea aleatorio cada vez
-          initialQuestions = shuffleArray([...allNeverSeen, ...fromAnswered])
-          console.log(`⚠️ MODO ADAPTATIVO: Solo ${allNeverSeen.length} nunca vistas, completando con ${fromAnswered.length} ya respondidas (mezcladas aleatoriamente)`)
-        }
-      }
-
-      // Retornar estructura adaptativa completa
-      const adaptiveResult: AdaptiveResult = {
+      return {
         isAdaptive: true,
         activeQuestions: initialQuestions,
-        questionPool: initialQuestions, // Pool inicial = preguntas activas
-        adaptiveCatalog: transformedCatalog
-      }
-
-      console.log(`✅ Resultado adaptativo: ${initialQuestions.length} preguntas iniciales + catálogo completo`)
-      return adaptiveResult
+        questionPool: initialQuestions,
+        adaptiveCatalog: catalogByDifficulty,
+      } as AdaptiveResult
     }
-    
-    // En modo NO adaptativo, devolver solo las preguntas activas
-    return transformQuestions(finalSessionQuestions)
+
+    // Modo normal: devolver las N preguntas
+    const finalQuestions = allQuestions.slice(0, numQuestions)
+    console.log(`✅ Test multi-ley cargado via API: ${finalQuestions.length} preguntas`)
+    return finalQuestions
     
   } catch (error) {
     console.warn(`⚠️ Error en fetchQuestionsByTopicScope tema ${tema}:`, (error as Error)?.message || 'Error desconocido')
