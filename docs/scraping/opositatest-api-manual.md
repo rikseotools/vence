@@ -1,6 +1,6 @@
 # Manual de API de OpositaTest
 
-> **Fecha:** Marzo 2026
+> **Fecha:** Marzo 2026 (actualizado Abril 2026 — análisis estático APK)
 > **Propósito:** Documentación completa de endpoints, flujos de scraping y hallazgos de seguridad
 
 ---
@@ -25,8 +25,11 @@ OpositaTest usa una arquitectura de microservicios:
 |----------|----------|---------|
 | **API Principal** | `api.opositatest.com` | Endpoints de datos (tests, preguntas, usuarios) |
 | **Admin** | `admin.opositatest.com` | API administrativa (exámenes, oposiciones, contenidos) |
-| **Subscriptions** | `subscriptions.opositatest.com` | Gestión de suscripciones |
+| **Subscriptions** | `subscriptions.opositatest.com` | Gestión de suscripciones + ecommerce |
 | **Aula** | `aula.opositatest.com` | Frontend web |
+| **Blog** | `blog.opositatest.com` | WordPress — artículos y noticias |
+| **Cursos** | `cursos.opositatest.com` | WordPress — cursos (API `/wp-json/v1/courses/info`) |
+| **Soporte** | `soporte.opositatest.com` | Soporte al usuario |
 
 ### URLs Principales del Frontend
 
@@ -1565,3 +1568,287 @@ Psicotecnicos (8 bloques, 28 secciones/niveles)
 | 23283175 | Examen 2a Sesion TL 2022 (OEP 2017-2019) | ~50 | No |
 | 53041925 | Primer ejercicio Ordinario TL 2023 (OEP 2020-2022) | 58 | Si (3 bloques) |
 | 53187191 | Primer ejercicio Extraordinario TL 2023 (OEP 2020-2022) | 58 | Si (3 bloques) |
+
+---
+
+## Análisis Estático del APK (Abril 2026)
+
+> **Fecha:** 17 Abril 2026
+> **App:** `com.opositatest.app` v3.29.2 (56 MB XAPK desde APKCombo)
+> **Framework:** React Native con Hermes bytecode v96
+> **Bundle:** `assets/index.android.bundle` (16 MB, bytecode compilado — no texto plano)
+
+### Procedimiento de Extracción
+
+```bash
+# 1. Descargar XAPK desde APKCombo
+#    https://apkcombo.com/opositatest/com.opositatest.app/
+
+# 2. Extraer XAPK (es un ZIP)
+mkdir -p /tmp/opositatest-analysis && cd /tmp/opositatest-analysis
+unzip -q ~/Descargas/OpositaTest*.xapk
+
+# 3. Extraer APK principal
+mkdir apk-contents && cd apk-contents
+unzip -q ../com.opositatest.apk
+
+# 4. El bundle JS está en assets/
+file assets/index.android.bundle
+# → Hermes JavaScript bytecode, version 96
+
+# 5. Extraer strings (el bytecode Hermes conserva los string literals)
+strings -n 8 assets/index.android.bundle | grep -oP '/api/v2\.0/[a-z][a-z0-9-]+(/[a-z][a-z0-9-]+)*' | sort -u
+
+# 6. Para análisis más profundo, usar Node:
+node -e "
+const fs = require('fs');
+const buf = fs.readFileSync('assets/index.android.bundle');
+const content = buf.toString('latin1');
+const regex = /api\/v2\.0\/[a-z][a-z0-9\/-]*/g;
+let m;
+while ((m = regex.exec(content)) !== null) {
+  let ep = m[0].replace(/[A-Z].*$/, '').replace(/-$/, '');
+  if (ep.length > 12) console.log('/' + ep);
+}
+"
+```
+
+**Nota sobre Hermes bytecode:** A diferencia de Cordova (texto plano) o Expo sin compilar, Hermes compila el JS a bytecode. Las strings literales siguen accesibles con `strings`, pero están concatenadas con otras constantes del binario. Los paths de API se extraen con regex y limpieza manual de basura adyacente.
+
+Para versiones futuras, si `hbctool` (Python) soporta la versión de Hermes (v96 no soportada en abril 2026), se puede desensamblar completamente con `hbctool disasm`.
+
+---
+
+## Endpoints Descubiertos desde el APK (Abril 2026)
+
+### Catálogo Completo de Endpoints
+
+62 endpoints descubiertos en la app vs 6 documentados previamente de la web. Organizados por categoría:
+
+#### Tests
+
+| Método | Endpoint | Descripción | Probado |
+|--------|----------|-------------|---------|
+| POST | `/api/v2.0/tests` | Crear test (requiere `examId`) | ✅ |
+| GET | `/api/v2.0/tests/{id}?embedded=questions,responses` | Obtener test con preguntas | ✅ |
+| GET | `/api/v2.0/tests/saved?pageSize=25&sort=-createdAt` | Listar tests guardados (max pageSize=25) | ✅ |
+| PUT | `/api/v2.0/tests/{id}/discard` | Descartar test (libera slot) | ✅ |
+| PUT | `/api/v2.0/tests/{id}` | Finalizar test (`{state: "finished"}`) | ✅ 204 |
+| GET | `/api/v2.0/tests/config` | Config del configurador. Devuelve `{maxSavedTest: 10}` | ✅ |
+| GET | `/api/v2.0/tests/saved/stats` | Estadísticas de tests guardados | ✅ |
+| GET | `/api/v2.0/tests/participated-in-challenge` | Tests de retos en los que participé | ✅ |
+| GET | `/api/v2.0/tests/stats/completed-tests/main-contents` | Tests completados por tema | ✅ |
+| GET | `/api/v2.0/tests/stats/completed-tests-trends` | Tendencias de tests completados | ✅ |
+| GET | `/api/v2.0/tests/stats/number-completed-tests-days-streak` | Racha de días consecutivos | ✅ |
+| GET | `/api/v2.0/tests/stats/doing` | Test en progreso actual | ✅ |
+
+#### Exámenes
+
+| Método | Endpoint | Descripción | Probado |
+|--------|----------|-------------|---------|
+| POST | `/api/v2.0/exams` | Crear exam personalizado. Body: `{oppositionId, type: "random", numberOfQuestions, contents: [uuid]}`. Devuelve `{id: examId}`. **Requiere suscripción** | ✅ |
+| GET | `/api/v2.0/exam-types?filters[opposition]={id}` | Tipos de examen disponibles por oposición. Devuelve `resources[]` con `{type, enabled, examCount}`. Tipos: `random`, `fails`, `blank`, `favorite`, `oficial`, `previousCall`, `alleged`, `demo`, `challenge` | ✅ |
+| GET | `/api/v2.0/exam-stats?examIds={id}` | Estadísticas de examen. Requiere param `examIds` (formato desconocido) | ✅ 400 |
+| GET | `admin.opositatest.com/api/v2.0/exams?filters[opposition]={id}&pageSize=100` | Listar exámenes de una oposición (admin, sin restricción de suscripción) | ✅ |
+
+#### Preguntas y Respuestas
+
+| Método | Endpoint | Descripción | Probado |
+|--------|----------|-------------|---------|
+| GET | `/api/v2.0/questions/{id}/reason` | Explicación de pregunta. **Funciona para TODAS las 596K preguntas sin restricción de suscripción.** Devuelve `{title, content}` con HTML | ✅ |
+| GET | `/api/v2.0/questions/stats` | Total de preguntas en la plataforma. Devuelve `{count: 596558, lastUpdated}` | ✅ |
+| GET | `/api/v2.0/responses?filters[opposition]={id}` | Respuestas del usuario por oposición | ✅ |
+| GET | `/api/v2.0/responses/stats` | Estadísticas de respuestas. Devuelve `{countFailed, countBlank}` | ✅ |
+| GET | `/api/v2.0/responses/stats?filters[opposition]={id}` | Stats filtradas por oposición | ✅ |
+| GET | `/api/v2.0/responses/stats/by-contents-item` | Stats de respuestas por tema | 404 |
+| GET | `/api/v2.0/question-reports/main-contents?filters[opposition]={id}` | Reportes de preguntas por oposición | ✅ [] |
+
+#### Contenidos y Estructura
+
+| Método | Endpoint | Descripción | Probado |
+|--------|----------|-------------|---------|
+| GET | `/api/v2.0/oppositions` | Listar oposiciones (api principal) | 404 |
+| GET | `admin.opositatest.com/api/v2.0/oppositions/{id}` | Detalle de oposición (admin). Campos: `hasFreeAccess`, `state`, `oppositionState`, `maxQuestionsCustomExam` | ✅ |
+| GET | `admin.opositatest.com/api/v2.0/opposition-categories?embedded=oppositions&pageSize=100` | Todas las oposiciones agrupadas por categoría (admin). **161 oposiciones** | ✅ |
+| GET | `/api/v2.0/contents/by-blank-responses` | Temas con preguntas sin responder del usuario | ✅ |
+| GET | `/api/v2.0/contents/by-failed-responses` | Temas con preguntas falladas del usuario | ✅ |
+| POST | `/api/v2.0/contents/structured-by-ids` | Batch de temas por IDs (body con `{ids: [...]}`) | 404 |
+| GET | `/api/v2.0/interests/with-children` | Árbol de intereses con hijos | 405 |
+| GET | `/api/v2.0/interests/user-interests/stats` | Estadísticas de intereses del usuario | ✅ |
+
+#### Favoritos
+
+| Método | Endpoint | Descripción | Probado |
+|--------|----------|-------------|---------|
+| GET | `/api/v2.0/favorite-questions/stats` | Cuenta de favoritos. Devuelve `{count}` | ✅ |
+| GET | `/api/v2.0/favorite-questions/by-questions-count` | Preguntas favoritas ordenadas por cantidad | ✅ |
+| GET | `/api/v2.0/favorite-questions/main-contents` | Favoritas agrupadas por tema | ✅ |
+| POST | `/api/v2.0/favorite-questions` | Añadir favorita. Body: `{questionId, testId}` | ✅ 400 |
+
+#### Gamificación (Challenges / Championships)
+
+| Método | Endpoint | Descripción | Probado |
+|--------|----------|-------------|---------|
+| GET | `/api/v2.0/challenges?pageSize={n}` | Listar retos públicos. Devuelve `{resources: [{token, title, type, visibility, oppositionId, dateStart, dateFinish}]}` | ✅ |
+| GET | `/api/v2.0/challenges/{token}` | Detalle de un reto por token | ✅ |
+| GET | `/api/v2.0/championships/participant/my-championships` | Campeonatos en los que participo | ✅ |
+| GET | `/api/v2.0/championships/with-challenges` | Campeonatos con sus retos | ✅ |
+| GET | `/api/v2.0/championships/navigation/main-content` | Navegación de campeonatos | ✅ |
+| GET | `/api/v2.0/championships/main-contents` | Campeonatos por tema | ✅ |
+| GET | `/api/v2.0/rankings/main-contents?filters[opposition]={id}` | Rankings por tema de una oposición. Devuelve `{resources: [{mainContentId}]}` | ✅ |
+
+#### Usuario y Perfil
+
+| Método | Endpoint | Descripción | Probado |
+|--------|----------|-------------|---------|
+| GET | `/api/v2.0/me/profile` | Perfil del usuario autenticado | ✅ |
+| GET | `/api/v2.0/students/profiles` | Perfiles de estudiantes | ✅ |
+| GET | `/api/v2.0/avatar-categories` | Categorías de avatares | ✅ |
+| GET | `/api/v2.0/avatars` | Lista de avatares disponibles | ✅ |
+| GET | `/api/v2.0/notifications/stats` | Stats de notificaciones. Devuelve `{notRead: 0}` | ✅ |
+| GET | `/api/v2.0/recommendations/my-recommendation` | Recomendaciones para el usuario | ✅ |
+
+#### NPS / Encuestas
+
+| Método | Endpoint | Descripción | Probado |
+|--------|----------|-------------|---------|
+| GET | `/api/v2.0/nps/ratings/exams` | Valoraciones de exámenes | ✅ |
+| GET | `/api/v2.0/nps/ratings/surveys` | Encuestas de satisfacción | ✅ |
+| GET | `/api/v2.0/nps/surveys/pending-to-vote` | Encuestas pendientes. Requiere param `subjectType` | ✅ 400 |
+
+#### Suscripciones y Pagos
+
+| Método | Endpoint | Descripción | Probado |
+|--------|----------|-------------|---------|
+| GET | `subscriptions.opositatest.com/api/v2.0/subscriptions?pageSize=25` | Historial completo de suscripciones. Devuelve `{resources: [{dateInit, dateFinish, pack: {name, resources: [{externalId, name, type: "Opposition"}]}}]}` | ✅ |
+| GET | `subscriptions.opositatest.com/api/v2.0/subscriptions/has-subscription` | Check booleano. Devuelve `{hasSubscription: true/false}` | ✅ |
+| GET | `/api/v2.0/subscriptions/is-subscribed-to-resource?resourceType=opposition&resourceId={id}` | Check de suscripción a recurso específico | 404 |
+| GET | `/api/v2.0/subscriptions/are-users-subscribed-to-opposition-or-has-tests?oppositionId={id}` | Check combinado suscripción + tests | 405 |
+| POST | `/api/v2.0/invalidate-refresh-token` | Invalidar refresh token | ✅ |
+| POST | `/api/v2.0/appstore/purchase` | Compra vía App Store | — |
+
+#### Academias y Trainers
+
+| Método | Endpoint | Descripción | Probado |
+|--------|----------|-------------|---------|
+| GET | `/api/v2.0/academies` | Lista de academias. Devuelve `{resources: [{code: "opositatest", name, logo}]}` | ✅ |
+| GET | `/api/v2.0/trainers/students` | Alumnos del trainer | ✅ |
+
+#### Soporte
+
+| Método | Endpoint | Descripción | Probado |
+|--------|----------|-------------|---------|
+| POST | `/api/v2.0/support/call` | Solicitar llamada de soporte | — |
+| POST | `/api/v2.0/report` | Reportar problema | — |
+
+#### Blog / Cursos (WordPress)
+
+| Método | Endpoint | Host | Descripción | Probado |
+|--------|----------|------|-------------|---------|
+| GET | `/wp-json/wp/v2/posts` | `blog.opositatest.com` | Posts del blog | — |
+| GET | `/wp-json/wp/v2/categories` | `blog.opositatest.com` | Categorías del blog | — |
+| GET | `/wp-json/wp/v2/media` | `blog.opositatest.com` | Media del blog | — |
+| GET | `/wp-json/v1/courses/info` | `cursos.opositatest.com` | Información de cursos | — |
+
+#### Rutas Internas de la App (Deep Links)
+
+| Ruta | Función |
+|------|---------|
+| `classroom/challenges/create` | Crear reto |
+| `classroom/challenges/challenge_detail_modal` | Detalle de reto |
+| `my_account/change_avatar` | Cambiar avatar |
+| `/area-personal/notificaciones` | Panel de notificaciones |
+| `opositatest://` | Deep link scheme de la app |
+
+---
+
+## Hallazgos de Seguridad (Abril 2026)
+
+### Suscripción POR OPOSICIÓN (no por plataforma)
+
+La suscripción de OpositaTest es **por oposición individual**, no acceso global. Cada oposición requiere su propia suscripción mensual (~10-15 EUR).
+
+**Verificación de suscripciones activas:**
+```javascript
+const res = await fetch('https://subscriptions.opositatest.com/api/v2.0/subscriptions?pageSize=25', { headers });
+const data = await res.json();
+for (const sub of data.resources) {
+  const active = new Date(sub.dateFinish) > new Date();
+  console.log(active ? '✅' : '❌', sub.pack.name, '→', sub.dateFinish);
+  // sub.pack.resources[].externalId = oppositionId
+}
+```
+
+### Control de Acceso
+
+| Acción | Sin suscripción | Con suscripción |
+|--------|----------------|-----------------|
+| Listar oposiciones (admin) | ✅ | ✅ |
+| Listar exámenes (admin) | ✅ | ✅ |
+| Ver estructura de oposición (admin) | ✅ | ✅ |
+| Crear test tipo `oficial` (prueba gratis) | ✅ ~26 preguntas | ✅ |
+| `correctAnswerId` en test gratis | ❌ null | — |
+| Crear test tipo `random` | ❌ 403 InsufficientPermissions | ✅ con `correctAnswerId` |
+| `POST /exams` (exam personalizado) | ❌ 403 | ✅ devuelve `{id: examId}` |
+| `/questions/{id}/reason` | ✅ **TODAS las 596K preguntas** | ✅ |
+| `/questions/stats` | ✅ | ✅ |
+
+### Vulnerabilidad: `/questions/{id}/reason` sin restricción
+
+El endpoint de explicaciones **no verifica suscripción**. Con IDs secuenciales (1 a ~596,000), se puede obtener la explicación de cualquier pregunta de cualquier oposición:
+
+```javascript
+// Funciona para TODAS las preguntas, sin importar la suscripción
+for (let id = 1; id <= 596558; id++) {
+  const res = await fetch(`https://api.opositatest.com/api/v2.0/questions/${id}/reason`, { headers });
+  if (res.status === 200) {
+    const data = await res.json();
+    // data.title → "*Art. 33 LBRL"
+    // data.content → HTML con cita textual del artículo
+  }
+  await sleep(200); // respetar rate limit
+}
+```
+
+**Limitación:** `/reason` devuelve la explicación y el artículo de referencia, pero **no** devuelve el texto de la pregunta, las opciones, ni `correctAnswerId`. Para obtener pregunta + opciones se necesita suscripción (test tipo `random`) o el test gratis (que solo da ~26 preguntas fijas por examId).
+
+### Vía Teórica: Inferir Respuesta Correcta con IA
+
+Para preguntas de oposiciones sin suscripción, es posible:
+1. Obtener pregunta + 4 opciones del test gratis (sin `correctAnswerId`)
+2. Llamar `/reason` para la explicación del artículo
+3. Usar IA para inferir la correcta comparando opciones con la cita textual
+
+**Precisión estimada:** ~95% en preguntas legislativas (la explicación suele citar el artículo exacto).
+**Limitación práctica:** solo ~26 preguntas distintas por test gratis.
+
+### Conclusión para Scraping Multi-Oposición
+
+La estrategia más eficiente sigue siendo contratar 1 mes de suscripción (~10 EUR) por cada oposición nueva. Con suscripción activa, el flujo `POST /exams → POST /tests → correctAnswerId + /reason` da acceso completo.
+
+### IDs de Oposiciones Relevantes para Vence
+
+| ID | Oposición | Exams totales | Estado |
+|----|-----------|---------------|--------|
+| 24 | Auxiliares Administrativos del Estado TL | — | Scrapeada |
+| 49 | Auxiliares Junta de Andalucía TL | 62 | Suscrita (abr 2026) |
+| 7 | Tramitación Procesal TL | 425 | Scrapeada |
+| 77 | Auxiliares Comunidad de Madrid | 47 | Scrapeada |
+| 175 | Auxiliares Castilla y León TL | 22 | Pendiente |
+| 192 | Auxiliares Castilla-La Mancha | — | Pendiente |
+| 89 | Auxiliares Generalitat Valenciana TL | — | Pendiente |
+| 70 | Auxiliares Xunta de Galicia TL | — | Pendiente |
+| 173 | Auxiliares Extremadura TL | — | Pendiente |
+| 33 | Administrativos del Estado TL | — | Scrapeada |
+| 10 | Auxilio Judicial | — | Pendiente |
+
+### Volumen Total de la Plataforma (Abril 2026)
+
+| Métrica | Valor |
+|---------|-------|
+| Preguntas totales | **596,558** |
+| Oposiciones | **161** |
+| Categorías | 18 |
+| Academias | 1 (OpositaTest) |
+| Max tests simultáneos | 10 |
+| Max pageSize (tests/saved) | 25 |
