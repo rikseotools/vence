@@ -3,7 +3,7 @@ import { Suspense } from 'react'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { resolveLawBySlug, getCanonicalSlugAsync, getAllActiveSlugs } from '@/lib/api/laws'
-import { getLawStats } from '@/lib/lawFetchers'
+import { queryLawStats } from '@/lib/api/law-stats/queries'
 import { notFound } from 'next/navigation'
 import LawArticlesClient from '../../teoria/[law]/LawArticlesClient'
 import ClientBreadcrumbsWrapper from '@/components/ClientBreadcrumbsWrapper'
@@ -122,7 +122,7 @@ export async function generateStaticParams() {
 // 🔧 COMPONENTE PARA CARGAR ESTADÍSTICAS
 async function LawStatsLoader({ lawShortName }: { lawShortName: string }) {
   try {
-    const stats = await getLawStats(lawShortName)
+    const stats = await queryLawStats(lawShortName)
 
     if (!stats.hasQuestions) {
       return (
