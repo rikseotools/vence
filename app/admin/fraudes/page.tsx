@@ -31,6 +31,15 @@ interface BotSuspect {
   last_answer: string
 }
 
+interface ScriptSuspect {
+  user_id: string
+  email: string
+  full_name: string
+  plan_type: string
+  questions_total: number
+  last_usage: string
+}
+
 export default function FraudesPage() {
   const { supabase, user } = useAuth() as any
   const [isAdmin, setIsAdmin] = useState(false)
@@ -40,6 +49,7 @@ export default function FraudesPage() {
   const [premiumData, setPremiumData] = useState<PremiumSharing[]>([])
   const [multiData, setMultiData] = useState<MultiAccount[]>([])
   const [botData, setBotData] = useState<BotSuspect[]>([])
+  const [scriptData, setScriptData] = useState<ScriptSuspect[]>([])
 
   useEffect(() => {
     if (!supabase || !user) return
@@ -52,7 +62,7 @@ export default function FraudesPage() {
   }, [supabase, user])
 
   async function loadAll() {
-    await Promise.all([loadPremium(), loadMulti(), loadBots()])
+    await Promise.all([loadPremium(), loadMulti(), loadBots(), loadScripts()])
   }
 
   async function loadPremium() {
@@ -260,13 +270,71 @@ export default function FraudesPage() {
     }))
   }
 
+  async function loadScripts() {
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+
+    // Users with recent daily usage
+    const { data: recentUsage } = await supabase
+      .from('daily_question_usage')
+      .select('user_id, questions_answered, usage_date')
+      .gte('usage_date', sevenDaysAgo)
+
+    if (!recentUsage?.length) return
+
+    // Get all users who have devices registered
+    const usageUserIds = [...new Set(recentUsage.map((u: any) => u.user_id))]
+    const { data: deviceUsers } = await supabase
+      .from('user_devices')
+      .select('user_id')
+      .in('user_id', usageUserIds)
+
+    const usersWithDevices = new Set((deviceUsers || []).map((d: any) => d.user_id))
+
+    // Users who answered questions but have NO device registered = script/curl
+    const suspectIds = usageUserIds.filter(id => !usersWithDevices.has(id))
+    if (!suspectIds.length) { setScriptData([]); return }
+
+    // Sum their total questions
+    const totalByUser = new Map<string, { total: number; last: string }>()
+    for (const u of recentUsage as any[]) {
+      if (!suspectIds.includes(u.user_id)) continue
+      const entry = totalByUser.get(u.user_id) || { total: 0, last: '' }
+      entry.total += u.questions_answered
+      if (u.usage_date > entry.last) entry.last = u.usage_date
+      totalByUser.set(u.user_id, entry)
+    }
+
+    const { data: profiles } = await supabase
+      .from('user_profiles')
+      .select('id, email, full_name, plan_type')
+      .in('id', suspectIds)
+
+    const profileMap: Map<string, any> = new Map((profiles || []).map((p: any) => [p.id, p]))
+
+    const results: ScriptSuspect[] = [...totalByUser.entries()]
+      .map(([uid, entry]) => {
+        const p = profileMap.get(uid)
+        return {
+          user_id: uid,
+          email: p?.email || '?',
+          full_name: p?.full_name || '',
+          plan_type: p?.plan_type || 'free',
+          questions_total: entry.total,
+          last_usage: entry.last,
+        }
+      })
+      .sort((a, b) => b.questions_total - a.questions_total)
+
+    setScriptData(results)
+  }
+
   if (loading) return <div className="p-8 text-center text-gray-500">Cargando...</div>
   if (!user || !isAdmin) return <div className="p-8 text-center text-red-500">No autorizado</div>
 
   const tabs: { id: Tab; label: string; count: number }[] = [
     { id: 'premium', label: 'Premium compartido', count: premiumData.length },
     { id: 'multicuenta', label: 'Multicuentas free', count: multiData.length },
-    { id: 'bots', label: 'Bots detectados', count: botData.length },
+    { id: 'bots', label: 'Bots detectados', count: botData.length + scriptData.length },
   ]
 
   return (
@@ -296,7 +364,7 @@ export default function FraudesPage() {
 
       {tab === 'premium' && <PremiumTab data={premiumData} />}
       {tab === 'multicuenta' && <MultiTab data={multiData} />}
-      {tab === 'bots' && <BotTab data={botData} />}
+      {tab === 'bots' && <BotTab data={botData} scriptData={scriptData} />}
     </div>
   )
 }
@@ -353,20 +421,49 @@ function MultiTab({ data }: { data: MultiAccount[] }) {
   )
 }
 
-function BotTab({ data }: { data: BotSuspect[] }) {
-  if (!data.length) return <Empty msg="No se detectan bots (media < 3s/pregunta y 10+ respuestas en 7 dias)" />
-
+function BotTab({ data, scriptData }: { data: BotSuspect[]; scriptData: ScriptSuspect[] }) {
   return (
-    <Table
-      headers={['Email', 'Nombre', 'Media (s)', 'Respuestas', 'Ultima']}
-      rows={data.map(d => [
-        d.email,
-        d.full_name,
-        <span key="a" className={d.avg_seconds < 1.5 ? 'text-red-600 font-bold' : 'text-orange-500'}>{d.avg_seconds}s</span>,
-        String(d.total_answers),
-        formatDate(d.last_answer),
-      ])}
-    />
+    <div className="space-y-8">
+      <div>
+        <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-3 uppercase tracking-wide">
+          Respuestas demasiado rapidas (media &lt; 3s)
+        </h3>
+        {!data.length ? (
+          <Empty msg="No se detectan bots por velocidad en los ultimos 7 dias" />
+        ) : (
+          <Table
+            headers={['Email', 'Nombre', 'Media (s)', 'Respuestas', 'Ultima']}
+            rows={data.map(d => [
+              d.email,
+              d.full_name,
+              <span key="a" className={d.avg_seconds < 1.5 ? 'text-red-600 font-bold' : 'text-orange-500'}>{d.avg_seconds}s</span>,
+              String(d.total_answers),
+              formatDate(d.last_answer),
+            ])}
+          />
+        )}
+      </div>
+
+      <div>
+        <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-3 uppercase tracking-wide">
+          Sin dispositivo registrado (posible script/curl)
+        </h3>
+        {!scriptData.length ? (
+          <Empty msg="No se detectan usuarios sin dispositivo en los ultimos 7 dias" />
+        ) : (
+          <Table
+            headers={['Email', 'Nombre', 'Plan', 'Preguntas (7d)', 'Ultimo uso']}
+            rows={scriptData.map(d => [
+              d.email,
+              d.full_name,
+              <Badge key="p" text={d.plan_type} color={d.plan_type === 'free' ? 'gray' : 'green'} />,
+              <span key="q" className={d.questions_total > 25 ? 'text-red-600 font-bold' : ''}>{d.questions_total}</span>,
+              formatDate(d.last_usage),
+            ])}
+          />
+        )}
+      </div>
+    </div>
   )
 }
 
