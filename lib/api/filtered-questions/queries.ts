@@ -47,6 +47,7 @@ const questionColumns = {
   imageUrl: questions.imageUrl,
   contentData: questions.contentData,
   correctOption: questions.correctOption,
+  globalDifficultyCategory: questions.globalDifficultyCategory,
 } as const
 
 const articleColumns = {
@@ -83,6 +84,7 @@ type QuestionRow = {
   imageUrl: string | null
   contentData: Record<string, unknown> | null
   correctOption: number
+  globalDifficultyCategory: string | null
   articleId: string
   articleNumber: string
   articleTitle: string | null
@@ -115,7 +117,7 @@ function transformQuestion(q: QuestionRow, index: number): FilteredQuestion {
     },
     metadata: {
       id: q.id,
-      difficulty: q.difficulty || 'medium',
+      difficulty: q.globalDifficultyCategory || q.difficulty || 'medium',
       question_type: q.questionType || 'single',
       tags: q.tags,
       is_active: q.isActive ?? true,
