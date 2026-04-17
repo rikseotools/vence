@@ -275,10 +275,9 @@ SCRIPT
    → Buscar en topic_scope que topics usan la ley modificada
    → Listar oposiciones (position_type) de esos topics
 
-9. Revalidar cachés (ver docs/maintenance/cache-revalidation.md)
-   → Tags de datos: POST /api/admin/revalidate con tag "temario" y "teoria"
-   → Páginas ISR: POST /api/purge-cache para cada landing + /temario
-   → IMPORTANTE: son dos mecanismos independientes, hay que hacer ambos
+9. Revalidar cachés → seguir docs/maintenance/cache-revalidation.md
+   → Consultar la tabla "Qué revalidar según el tipo de cambio" (fila "Sincronización de ley desde BOE")
+   → Resumen: hay que revalidar tags de datos (temario + teoria) Y páginas ISR (purge-cache)
 
 10. Enviar newsletter a usuarios de oposiciones afectadas
     → Usar plantilla 'cambio-legislativo' (ver abajo)
