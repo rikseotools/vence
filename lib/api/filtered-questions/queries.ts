@@ -464,37 +464,19 @@ export async function getFilteredQuestions(
     }
 
     // 🔄 CASO: "Solo falladas" sin IDs — single JOIN con user_question_history
+    // Filtro por selectedLaws (lo que el usuario eligió en el configurador),
+    // NO por scope de oposición. El usuario ya respondió estas preguntas —
+    // filtrarlas por scope descartaría su historial real.
     if (onlyFailedQuestions && (!failedQuestionIds || failedQuestionIds.length === 0) && userId) {
-      console.log(`🔄 Modo preguntas falladas por historial (single JOIN): userId=${userId}, positionType=${positionType}`)
+      const hasLawFilter = selectedLaws && selectedLaws.length > 0
+      console.log(`🔄 [failed-questions] Modo historial: userId=${userId}, selectedLaws=${hasLawFilter ? selectedLaws.join(', ') : '(todas)'}`)
 
-      let allowed: AllowedLawsResult
-      try {
-        allowed = await getAllowedLawIds({ userId, fallbackPositionType: positionType })
-      } catch (err) {
-        console.error('❌ [failed-questions] getAllowedLawIds falló:', (err as Error).message)
-        logValidationError({
-          endpoint: '/api/questions/filtered',
-          errorType: 'scope_resolution',
-          errorMessage: `getAllowedLawIds falló para userId=${userId} positionType=${positionType}: ${(err as Error).message}`,
-          severity: 'critical',
-          userId,
-        })
-        return { success: true, questions: [], totalAvailable: 0, filtersApplied: { laws: 0, articles: 0, sections: 0 }, emptyReason: 'Error resolviendo scope de oposición' }
+      const lawConditions = []
+      lawConditions.push(eq(questions.isActive, true))
+
+      if (hasLawFilter) {
+        lawConditions.push(inArray(laws.shortName, selectedLaws))
       }
-
-      if (allowed.lawIds.length === 0) {
-        console.error(`❌ [failed-questions] 0 leyes en scope para positionType="${allowed.positionType}" userId=${userId}`)
-        logValidationError({
-          endpoint: '/api/questions/filtered',
-          errorType: 'empty_scope',
-          errorMessage: `0 leyes en scope para positionType="${allowed.positionType}". userId=${userId}. Preguntas falladas no se pueden servir sin scope.`,
-          severity: 'warning',
-          userId,
-        })
-        return { success: true, questions: [], totalAvailable: 0, filtersApplied: { laws: 0, articles: 0, sections: 0 }, emptyReason: `No hay contenido configurado para "${allowed.positionType}"` }
-      }
-
-      console.log(`🔒 [failed-questions] Scope: ${allowed.lawIds.length} leyes para "${allowed.positionType}"`)
 
       const failedQuestions = await db
         .select({ ...questionColumns, ...articleColumns })
@@ -509,53 +491,30 @@ export async function getFilteredQuestions(
             lt(userQuestionHistory.successRate, '1.00')
           )
         )
-        .where(and(
-          eq(questions.isActive, true),
-          inArray(laws.id, allowed.lawIds)
-        ))
+        .where(and(...lawConditions))
         .orderBy(sql`random()`)
         .limit(numQuestions)
 
-      const finalQuestions = failedQuestions
+      console.log(`✅ [failed-questions] ${failedQuestions.length} preguntas falladas${hasLawFilter ? ` de ${selectedLaws.join(', ')}` : ' (todas las leyes)'} (limit ${numQuestions})`)
 
-      console.log(`✅ [failed-questions] ${finalQuestions.length} preguntas falladas de ${allowed.lawIds.length} leyes (limit ${numQuestions})`)
-
-      if (finalQuestions.length === 0) {
-        return { success: true, questions: [], totalAvailable: 0, filtersApplied: { laws: 0, articles: 0, sections: 0 } }
+      if (failedQuestions.length === 0) {
+        return { success: true, questions: [], totalAvailable: 0, filtersApplied: { laws: selectedLaws?.length || 0, articles: 0, sections: 0 }, emptyReason: hasLawFilter ? `No tienes preguntas falladas en ${selectedLaws.join(', ')}` : 'No tienes preguntas falladas aún' }
       }
 
-      const transformedQuestions = finalQuestions.map((q, i) => transformQuestion({ ...q, sourceTopic: topicNumber || null } as QuestionRow, i))
+      const transformedQuestions = failedQuestions.map((q, i) => transformQuestion({ ...q, sourceTopic: topicNumber || null } as QuestionRow, i))
 
       return {
         success: true,
         questions: transformedQuestions,
         totalAvailable: transformedQuestions.length,
-        filtersApplied: { laws: 0, articles: 0, sections: 0 },
+        filtersApplied: { laws: selectedLaws?.length || 0, articles: 0, sections: 0 },
       }
     }
 
     // 🔄 CASO: Preguntas falladas con IDs específicos (del sessionStorage)
+    // Sin scope filter — el usuario ya falló estas preguntas concretas.
     if (onlyFailedQuestions && failedQuestionIds && failedQuestionIds.length > 0) {
-      console.log(`🔄 [failed-questions-ids] ${failedQuestionIds.length} IDs específicas, positionType=${positionType}`)
-
-      let allowed: AllowedLawsResult
-      try {
-        allowed = await getAllowedLawIds({ userId: userId || undefined, fallbackPositionType: positionType })
-      } catch (err) {
-        console.error('❌ [failed-questions-ids] getAllowedLawIds falló:', (err as Error).message)
-        logValidationError({
-          endpoint: '/api/questions/filtered',
-          errorType: 'scope_resolution',
-          errorMessage: `getAllowedLawIds falló en failed-by-ids: ${(err as Error).message}`,
-          severity: 'critical',
-          userId: userId || undefined,
-        })
-        return { success: true, questions: [], totalAvailable: 0, filtersApplied: { laws: 0, articles: 0, sections: 0 }, emptyReason: 'Error resolviendo scope de oposición' }
-      }
-
-      const scopeFilter = allowed.lawIds.length > 0
-        ? inArray(laws.id, allowed.lawIds)
-        : sql`false`
+      console.log(`🔄 [failed-questions-ids] ${failedQuestionIds.length} IDs específicas`)
 
       const failedQuestions = await db
         .select({ ...questionColumns, ...articleColumns })
@@ -565,7 +524,6 @@ export async function getFilteredQuestions(
         .where(and(
           eq(questions.isActive, true),
           inArray(questions.id, failedQuestionIds),
-          scopeFilter
         ))
 
       // Ordenar según el orden de failedQuestionIds (mantener orden original)
@@ -574,14 +532,14 @@ export async function getFilteredQuestions(
         .map(id => questionMap.get(id))
         .filter((q): q is NonNullable<typeof q> => q !== undefined)
 
-      const filtered = failedQuestionIds.length - orderedQuestions.length
-      if (filtered > 0) {
-        console.warn(`🔒 [failed-questions-ids] ${filtered} preguntas filtradas por scope (de ${failedQuestionIds.length})`)
+      const missing = failedQuestionIds.length - orderedQuestions.length
+      if (missing > 0) {
+        console.warn(`⚠️ [failed-questions-ids] ${missing} preguntas no encontradas o inactivas (de ${failedQuestionIds.length})`)
       }
 
       const finalQuestions = orderedQuestions.slice(0, numQuestions)
 
-      console.log(`✅ [failed-questions-ids] ${finalQuestions.length} preguntas (${filtered} filtradas por scope)`)
+      console.log(`✅ [failed-questions-ids] ${finalQuestions.length} preguntas${missing > 0 ? ` (${missing} no encontradas)` : ''}`)
 
       // Transformar al formato esperado
       const transformedQuestions = finalQuestions.map((q, i) => transformQuestion({ ...q, sourceTopic: topicNumber || null } as QuestionRow, i))

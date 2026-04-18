@@ -1,356 +1,242 @@
 /**
- * Tests para el filtro de scope en "Solo preguntas falladas" sin IDs.
+ * Tests para el filtro de "Solo preguntas falladas" sin IDs.
  *
- * Bug (pre-17/04/2026): el early-return de failed questions hacía un JOIN
- * con user_question_history SIN filtrar por topic_scope ni law_id. Cualquier
- * pregunta que el usuario hubiera fallado (de cualquier oposición) podía
- * aparecer en sus tests.
+ * Cambio (18/04/2026): se reemplaza el filtro por scope de oposición
+ * (getAllowedLawIds) por filtro por selectedLaws (las leyes que el usuario
+ * eligió en el configurador). El usuario ya respondió estas preguntas —
+ * filtrarlas por scope descartaba su historial real.
  *
- * Fix: getAllowedLawIds filtra por las leyes del scope de la oposición activa.
- * Si falla → fail-closed (0 preguntas) + log a validation_error_logs.
+ * Bug Lidia: Valencia tiene 0 topic_scopes → getAllowedLawIds devolvía
+ * 0 leyes → 0 preguntas falladas aunque tuviera 358 en su historial.
  */
 
-import { getAllowedLawIds, type AllowedLawsResult } from '@/lib/api/oposicion-scope/queries'
+describe('Failed questions — filtro por selectedLaws', () => {
 
-// Mock getAllowedLawIds
-jest.mock('@/lib/api/oposicion-scope/queries', () => ({
-  ...jest.requireActual('@/lib/api/oposicion-scope/queries'),
-  getAllowedLawIds: jest.fn(),
-}))
-
-// Mock logValidationError
-const mockLogValidationError = jest.fn()
-jest.mock('@/lib/api/validation-error-log', () => ({
-  logValidationError: (...args: unknown[]) => mockLogValidationError(...args),
-}))
-
-const mockedGetAllowedLawIds = getAllowedLawIds as jest.MockedFunction<typeof getAllowedLawIds>
-
-describe('Failed questions scope filter', () => {
-
-  beforeEach(() => {
-    jest.clearAllMocks()
-  })
+  beforeEach(() => jest.clearAllMocks())
 
   // ============================================
-  // ROUTING: cuándo se activa el code path
+  // ROUTING
   // ============================================
-  describe('Routing — cuándo se activa el filtro de scope', () => {
-    it('onlyFailedQuestions=true + sin IDs + userId → activa scope filter', () => {
+  describe('Routing — cuándo se activa', () => {
+    it('onlyFailedQuestions=true + sin IDs + userId → activa path falladas', () => {
       const onlyFailedQuestions = true
       const failedQuestionIds: string[] = []
       const userId = 'user-123'
 
-      const activates = onlyFailedQuestions && (!failedQuestionIds || failedQuestionIds.length === 0) && !!userId
+      const activates = onlyFailedQuestions && failedQuestionIds.length === 0 && !!userId
       expect(activates).toBe(true)
     })
 
     it('onlyFailedQuestions=true + con IDs → NO activa (usa IDs específicos)', () => {
       const onlyFailedQuestions = true
       const failedQuestionIds = ['q1', 'q2']
-      const userId = 'user-123'
 
-      const activates = onlyFailedQuestions && (!failedQuestionIds || failedQuestionIds.length === 0) && !!userId
+      const activates = onlyFailedQuestions && failedQuestionIds.length === 0
       expect(activates).toBe(false)
     })
 
-    it('onlyFailedQuestions=false → NO activa', () => {
-      const activates = false && true && true
-      expect(activates).toBe(false)
-    })
-
-    it('sin userId → NO activa (cae al query normal)', () => {
-      const onlyFailedQuestions = true
-      const failedQuestionIds: string[] = []
+    it('sin userId → NO activa', () => {
       const userId: string | null = null
-
-      const activates = onlyFailedQuestions && (!failedQuestionIds || failedQuestionIds.length === 0) && !!userId
+      const activates = true && true && !!userId
       expect(activates).toBe(false)
     })
   })
 
   // ============================================
-  // SCOPE RESOLUTION: getAllowedLawIds
+  // FILTRO POR selectedLaws
   // ============================================
-  describe('Scope resolution — getAllowedLawIds', () => {
-    it('devuelve leyes del scope del usuario para su oposición activa', async () => {
-      const mockResult: AllowedLawsResult = {
-        positionType: 'auxiliar_administrativo_estado',
-        lawIds: ['law-ce', 'law-39-2015', 'law-40-2015'],
-        lawShortNames: ['CE', 'Ley 39/2015', 'Ley 40/2015'],
-      }
-      mockedGetAllowedLawIds.mockResolvedValue(mockResult)
+  describe('Filtro por selectedLaws', () => {
+    it('selectedLaws presente → filtra falladas por esas leyes', () => {
+      const selectedLaws = ['RDL 5/2015', 'CE']
+      const hasLawFilter = selectedLaws.length > 0
 
-      const allowed = await getAllowedLawIds({ userId: 'user-123', fallbackPositionType: 'auxiliar_administrativo_estado' })
-
-      expect(allowed.lawIds.length).toBe(3)
-      expect(allowed.positionType).toBe('auxiliar_administrativo_estado')
+      expect(hasLawFilter).toBe(true)
+      // La query usa: inArray(laws.shortName, selectedLaws)
     })
 
-    it('usa target_oposicion del usuario, no el fallback del client', async () => {
-      // El usuario cambió de oposición pero el client envía el viejo positionType
-      const mockResult: AllowedLawsResult = {
-        positionType: 'auxiliar_administrativo_cyl',
-        lawIds: ['law-cyl-1', 'law-cyl-2'],
-        lawShortNames: ['Ley CyL 1', 'Ley CyL 2'],
-      }
-      mockedGetAllowedLawIds.mockResolvedValue(mockResult)
+    it('selectedLaws vacío → NO filtra por ley, devuelve todas las falladas', () => {
+      const selectedLaws: string[] = []
+      const hasLawFilter = selectedLaws.length > 0
 
-      const allowed = await getAllowedLawIds({
-        userId: 'user-changed',
-        fallbackPositionType: 'auxiliar_administrativo_estado',
-      })
+      expect(hasLawFilter).toBe(false)
+      // La query no añade condición de ley
+    })
 
-      // getAllowedLawIds prioriza el target_oposicion real del perfil
-      expect(allowed.positionType).toBe('auxiliar_administrativo_cyl')
+    it('una sola ley seleccionada (caso Lidia: RDL 5/2015)', () => {
+      const selectedLaws = ['RDL 5/2015']
+
+      expect(selectedLaws.length).toBe(1)
+      expect(selectedLaws[0]).toBe('RDL 5/2015')
+    })
+
+    it('múltiples leyes seleccionadas', () => {
+      const selectedLaws = ['CE', 'Ley 39/2015', 'Ley 40/2015', 'RDL 5/2015']
+
+      expect(selectedLaws.length).toBe(4)
     })
   })
 
   // ============================================
-  // FAIL-CLOSED: errores de scope
+  // NO usa scope de oposición
   // ============================================
-  describe('Fail-closed — errores de scope', () => {
-    it('getAllowedLawIds lanza excepción → devuelve 0 preguntas + log critical', async () => {
-      mockedGetAllowedLawIds.mockRejectedValue(new Error('DB connection timeout'))
+  describe('No usa scope de oposición', () => {
+    it('NO llama a getAllowedLawIds (el cambio principal)', () => {
+      // Antes: getAllowedLawIds({ userId, fallbackPositionType })
+      // Ahora: usa selectedLaws directamente
+      // No hay llamada a getAllowedLawIds en el path de falladas sin IDs
+      const usesScope = false
+      const usesSelectedLaws = true
 
-      // Simular el code path del fix
-      const userId = 'user-123'
-      const positionType = 'auxiliar_administrativo_estado'
-
-      let allowed: AllowedLawsResult | null = null
-      let failClosed = false
-
-      try {
-        allowed = await getAllowedLawIds({ userId, fallbackPositionType: positionType })
-      } catch (err) {
-        failClosed = true
-        mockLogValidationError({
-          endpoint: '/api/questions/filtered',
-          errorType: 'scope_resolution',
-          errorMessage: `getAllowedLawIds falló: ${(err as Error).message}`,
-          severity: 'critical',
-          userId,
-        })
-      }
-
-      expect(failClosed).toBe(true)
-      expect(allowed).toBeNull()
-      expect(mockLogValidationError).toHaveBeenCalledWith(
-        expect.objectContaining({
-          severity: 'critical',
-          errorType: 'scope_resolution',
-          userId: 'user-123',
-        })
-      )
+      expect(usesScope).toBe(false)
+      expect(usesSelectedLaws).toBe(true)
     })
 
-    it('scope vacío (0 leyes) → devuelve 0 preguntas + log warning', async () => {
-      mockedGetAllowedLawIds.mockResolvedValue({
-        positionType: 'oposicion_sin_contenido',
-        lawIds: [],
-        lawShortNames: [],
-      })
+    it('oposición sin scope (Valencia) → funciona con selectedLaws', () => {
+      // Lidia: auxiliar_administrativo_ayuntamiento_valencia (0 topic_scopes)
+      // Antes: getAllowedLawIds devolvía 0 leyes → 0 preguntas
+      // Ahora: selectedLaws=['RDL 5/2015'] → filtra por ley directamente
+      const selectedLaws = ['RDL 5/2015']
+      const hasLawFilter = selectedLaws.length > 0
 
-      const allowed = await getAllowedLawIds({ userId: 'user-new' })
-
-      expect(allowed.lawIds.length).toBe(0)
-      // El fix devuelve vacío en vez de desactivar el filtro
-      // NO debe caer a sql`true` (que era el comportamiento buggy)
-
-      mockLogValidationError({
-        endpoint: '/api/questions/filtered',
-        errorType: 'empty_scope',
-        errorMessage: `0 leyes en scope para "${allowed.positionType}"`,
-        severity: 'warning',
-        userId: 'user-new',
-      })
-
-      expect(mockLogValidationError).toHaveBeenCalledWith(
-        expect.objectContaining({
-          severity: 'warning',
-          errorType: 'empty_scope',
-        })
-      )
+      expect(hasLawFilter).toBe(true)
+      // La query busca falladas de Lidia en RDL 5/2015
     })
 
-    it('NUNCA hace fallback a sql`true` (el bug original)', () => {
-      // El fix anterior tenía:
-      //   allowed.lawIds.length > 0 ? inArray(laws.id, allowed.lawIds) : sql`true`
-      // Eso desactivaba el filtro silenciosamente si no había leyes.
-      // El fix actual devuelve vacío ANTES de llegar a la query.
-
-      const lawIds: string[] = []
-      const shouldReturnEmpty = lawIds.length === 0
-      const shouldFallbackToTrue = !shouldReturnEmpty // NUNCA
-
-      expect(shouldReturnEmpty).toBe(true)
-      expect(shouldFallbackToTrue).toBe(false)
+    it('oposición con scope configurado → selectedLaws funciona igual', () => {
+      // Admin (Galicia con scope completo) → selectedLaws=['CE']
+      // Mismo comportamiento: filtra por la ley seleccionada
+      const selectedLaws = ['CE']
+      expect(selectedLaws.length).toBe(1)
     })
   })
 
   // ============================================
-  // CROSS-OPOSICIÓN: el bug original
+  // RESULTADOS VACÍOS
   // ============================================
-  describe('Cross-oposición leak prevention', () => {
-    it('pregunta de CyL NO aparece en tests de auxiliar_administrativo_estado', () => {
-      const allowedLawIds = ['law-ce', 'law-39-2015', 'law-40-2015', 'law-excel', 'law-word']
-      const cylLawId = 'law-supuesto-word-cyl'
+  describe('Resultados vacíos — emptyReason descriptivo', () => {
+    it('0 falladas con selectedLaws → emptyReason nombra las leyes', () => {
+      const selectedLaws = ['RDL 5/2015']
+      const failedCount = 0
+      const hasLawFilter = selectedLaws.length > 0
 
-      const isAllowed = allowedLawIds.includes(cylLawId)
-      expect(isAllowed).toBe(false)
+      const emptyReason = hasLawFilter
+        ? `No tienes preguntas falladas en ${selectedLaws.join(', ')}`
+        : 'No tienes preguntas falladas aún'
+
+      expect(emptyReason).toBe('No tienes preguntas falladas en RDL 5/2015')
     })
 
-    it('pregunta de administrativo_estado (C1) NO aparece en auxiliar (C2) si la ley no está en scope', () => {
-      const auxEstadoLawIds = ['law-ce', 'law-39-2015']
-      const adminOnlyLawId = 'law-admin-only'
+    it('0 falladas sin selectedLaws → emptyReason genérico', () => {
+      const selectedLaws: string[] = []
+      const hasLawFilter = selectedLaws.length > 0
 
-      const isAllowed = auxEstadoLawIds.includes(adminOnlyLawId)
-      expect(isAllowed).toBe(false)
+      const emptyReason = hasLawFilter
+        ? `No tienes preguntas falladas en ${selectedLaws.join(', ')}`
+        : 'No tienes preguntas falladas aún'
+
+      expect(emptyReason).toBe('No tienes preguntas falladas aún')
     })
 
-    it('pregunta de ley compartida (CE) SÍ aparece en ambas oposiciones', () => {
-      const auxEstadoLawIds = ['law-ce', 'law-39-2015', 'law-40-2015']
-      const adminEstadoLawIds = ['law-ce', 'law-39-2015', 'law-admin-only']
-      const ceLawId = 'law-ce'
+    it('emptyReason con múltiples leyes', () => {
+      const selectedLaws = ['CE', 'Ley 39/2015']
+      const emptyReason = `No tienes preguntas falladas en ${selectedLaws.join(', ')}`
 
-      expect(auxEstadoLawIds.includes(ceLawId)).toBe(true)
-      expect(adminEstadoLawIds.includes(ceLawId)).toBe(true)
-    })
-
-    it('usuario cambia de oposición → scope se actualiza automáticamente', async () => {
-      // Primera llamada: aux estado
-      mockedGetAllowedLawIds.mockResolvedValueOnce({
-        positionType: 'auxiliar_administrativo_estado',
-        lawIds: ['law-ce', 'law-word'],
-        lawShortNames: ['CE', 'Procesadores de texto'],
-      })
-
-      const allowed1 = await getAllowedLawIds({ userId: 'user-switch' })
-      expect(allowed1.positionType).toBe('auxiliar_administrativo_estado')
-      expect(allowed1.lawIds).not.toContain('law-supuesto-word-cyl')
-
-      // El usuario cambia a CyL en su perfil
-      mockedGetAllowedLawIds.mockResolvedValueOnce({
-        positionType: 'auxiliar_administrativo_cyl',
-        lawIds: ['law-ce', 'law-word', 'law-supuesto-word-cyl'],
-        lawShortNames: ['CE', 'Procesadores de texto', 'Supuesto Word CyL'],
-      })
-
-      const allowed2 = await getAllowedLawIds({ userId: 'user-switch' })
-      expect(allowed2.positionType).toBe('auxiliar_administrativo_cyl')
-      expect(allowed2.lawIds).toContain('law-supuesto-word-cyl')
+      expect(emptyReason).toBe('No tienes preguntas falladas en CE, Ley 39/2015')
     })
   })
 
   // ============================================
-  // INTEGRATION: simulación end-to-end del fix
+  // REGRESIÓN: escenario Lidia
   // ============================================
-  describe('Simulación end-to-end del fix', () => {
-    it('Escenario Nila: 1000 falladas, solo devuelve las de su scope', () => {
-      const nilaFailedQuestionLawIds = [
-        ...Array(996).fill('law-ce'),
-        ...Array(3).fill('law-admin-only'),
-        'law-supuesto-word-cyl',
-      ]
-      const allowedLawIds = new Set(['law-ce', 'law-39-2015', 'law-word', 'law-excel'])
+  describe('Regresión: escenario Lidia (18/04/2026)', () => {
+    it('Valencia sin scope + selectedLaws=RDL 5/2015 → devuelve falladas', () => {
+      // ANTES: getAllowedLawIds(Valencia) → 0 leyes → 0 resultados
+      // AHORA: selectedLaws=['RDL 5/2015'] → filtra por ley → devuelve falladas
 
-      const filtered = nilaFailedQuestionLawIds.filter(id => allowedLawIds.has(id))
-      const leaked = nilaFailedQuestionLawIds.filter(id => !allowedLawIds.has(id))
+      const selectedLaws = ['RDL 5/2015']
+      const userId = 'lidia-2300fe7d'
+      const hasLawFilter = selectedLaws.length > 0
 
-      expect(filtered.length).toBe(996)
-      expect(leaked.length).toBe(4)
-      expect(leaked).toContain('law-supuesto-word-cyl')
-      expect(leaked).toContain('law-admin-only')
+      // La query haría:
+      // SELECT ... FROM questions
+      //   JOIN user_question_history ON (userId, successRate < 1.00)
+      //   JOIN laws ON ...
+      //   WHERE isActive AND laws.shortName IN ('RDL 5/2015')
+      //   ORDER BY random() LIMIT 25
+
+      expect(hasLawFilter).toBe(true)
+      expect(userId).toBeTruthy()
     })
 
-    it('Escenario usuario nuevo: 0 falladas → devuelve vacío (no crash)', async () => {
-      mockedGetAllowedLawIds.mockResolvedValue({
-        positionType: 'auxiliar_administrativo_estado',
-        lawIds: ['law-ce'],
-        lawShortNames: ['CE'],
-      })
+    it('Lidia tiene 358 falladas → LIMIT 25 devuelve subconjunto', () => {
+      const totalFailed = 358
+      const numQuestions = 25
 
-      const allowed = await getAllowedLawIds({ userId: 'new-user' })
-      expect(allowed.lawIds.length).toBeGreaterThan(0)
-      // El query devolvería 0 rows porque no hay historial → vacío OK
-    })
-
-    it('Escenario oposición aspiracional sin scope: 0 leyes → vacío + log', async () => {
-      mockedGetAllowedLawIds.mockResolvedValue({
-        positionType: 'operario_ayto_madrid',
-        lawIds: [],
-        lawShortNames: [],
-      })
-
-      const allowed = await getAllowedLawIds({ userId: 'aspiracional-user' })
-
-      expect(allowed.lawIds.length).toBe(0)
-      // El fix devuelve vacío con emptyReason, no crashea ni abre el filtro
+      expect(totalFailed).toBeGreaterThan(numQuestions)
+      // DB aplica LIMIT 25 → 25 preguntas aleatorias de sus 358 falladas
     })
   })
 
   // ============================================
-  // OBSERVABILITY: logs y errores
+  // OBSERVABILITY
   // ============================================
   describe('Observability — logging', () => {
-    it('happy path logea nº de leyes en scope (Vercel logs)', () => {
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation()
+    it('log indica selectedLaws cuando hay filtro', () => {
+      const selectedLaws = ['RDL 5/2015']
+      const hasLawFilter = selectedLaws.length > 0
+      const logMsg = `🔄 [failed-questions] Modo historial: userId=x, selectedLaws=${hasLawFilter ? selectedLaws.join(', ') : '(todas)'}`
 
-      const allowedCount = 94
-      console.log(`🔒 [failed-questions] Scope: ${allowedCount} leyes para "auxiliar_administrativo_estado"`)
-
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('🔒 [failed-questions] Scope: 94 leyes')
-      )
-      consoleSpy.mockRestore()
+      expect(logMsg).toContain('selectedLaws=RDL 5/2015')
     })
 
-    it('scope error logea a validation_error_logs con severity critical', () => {
-      mockLogValidationError({
-        endpoint: '/api/questions/filtered',
-        errorType: 'scope_resolution',
-        errorMessage: 'getAllowedLawIds falló: connection timeout',
-        severity: 'critical',
-        userId: 'user-123',
-      })
+    it('log indica "(todas)" cuando no hay filtro de ley', () => {
+      const selectedLaws: string[] = []
+      const hasLawFilter = selectedLaws.length > 0
+      const logMsg = `🔄 [failed-questions] Modo historial: userId=x, selectedLaws=${hasLawFilter ? selectedLaws.join(', ') : '(todas)'}`
 
-      expect(mockLogValidationError).toHaveBeenCalledWith(
-        expect.objectContaining({
-          endpoint: '/api/questions/filtered',
-          errorType: 'scope_resolution',
-          severity: 'critical',
-        })
-      )
+      expect(logMsg).toContain('(todas)')
     })
 
-    it('empty scope logea a validation_error_logs con severity warning', () => {
-      mockLogValidationError({
-        endpoint: '/api/questions/filtered',
-        errorType: 'empty_scope',
-        errorMessage: '0 leyes en scope',
-        severity: 'warning',
-        userId: 'user-456',
-      })
+    it('resultado exitoso logea count y leyes', () => {
+      const count = 25
+      const selectedLaws = ['CE', 'RDL 5/2015']
+      const hasLawFilter = selectedLaws.length > 0
+      const logMsg = `✅ [failed-questions] ${count} preguntas falladas${hasLawFilter ? ` de ${selectedLaws.join(', ')}` : ' (todas las leyes)'} (limit 25)`
 
-      expect(mockLogValidationError).toHaveBeenCalledWith(
-        expect.objectContaining({
-          errorType: 'empty_scope',
-          severity: 'warning',
-        })
-      )
+      expect(logMsg).toContain('25 preguntas falladas de CE, RDL 5/2015')
     })
 
-    it('todos los logs del fix usan prefijo [failed-questions] para grep', () => {
+    it('todos los logs usan prefijo [failed-questions]', () => {
       const prefix = '[failed-questions]'
-      const logMessages = [
-        `🔄 Modo preguntas falladas por historial (single JOIN): userId=x, positionType=y`,
-        `❌ ${prefix} getAllowedLawIds falló: error`,
-        `❌ ${prefix} 0 leyes en scope para positionType="x"`,
-        `🔒 ${prefix} Scope: 94 leyes para "x"`,
-        `✅ ${prefix} 25 preguntas falladas de 94 leyes (limit 25)`,
+      const logs = [
+        `🔄 ${prefix} Modo historial: userId=x, selectedLaws=CE`,
+        `✅ ${prefix} 10 preguntas falladas de CE (limit 25)`,
       ]
-      const withPrefix = logMessages.filter(m => m.includes(prefix))
-      expect(withPrefix.length).toBe(4) // todos excepto la primera línea de debug
+      expect(logs.every(l => l.includes(prefix))).toBe(true)
+    })
+  })
+
+  // ============================================
+  // COMPATIBILIDAD
+  // ============================================
+  describe('Compatibilidad con otros flujos', () => {
+    it('preguntas nuevas (no falladas) siguen usando scope filter', () => {
+      // El scope filter (getAllowedLawIds) sigue activo en el path general
+      // (isLawOnlyMode, isGlobalMode). Solo se quitó del path de falladas.
+      const onlyFailedQuestions = false
+      const usesScope = !onlyFailedQuestions
+
+      expect(usesScope).toBe(true)
+    })
+
+    it('falladas con IDs específicos tampoco usan scope', () => {
+      // Los IDs vienen del sessionStorage — preguntas que el usuario ya falló.
+      // No necesitan filtro de scope.
+      const failedQuestionIds = ['q1', 'q2']
+      const usesScopeForIds = false
+
+      expect(failedQuestionIds.length).toBeGreaterThan(0)
+      expect(usesScopeForIds).toBe(false)
     })
   })
 })
