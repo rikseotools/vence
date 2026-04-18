@@ -808,7 +808,13 @@ En su lugar:
 - NO menciones "artículos" ni "legislación" - esto es contenido TÉCNICO de informática
 - NO incluyas sección de "Fuentes" al final
 - Enfócate en explicar el concepto técnico de forma práctica
-- NUNCA digas "posible error" a menos que estés 100% seguro`
+- NUNCA digas "posible error" a menos que estés 100% seguro
+
+## 💬 MENSAJES CORTOS SIN HISTORIAL
+Si el usuario envía un mensaje corto como "Ejemplo", "Ponme un ejemplo", "Explícame de otra forma", "No entiendo", "Más fácil" o similar, asume que ya leyó tu explicación anterior y quiere algo diferente:
+- "Ejemplo" → Genera un caso práctico ilustrativo, no repitas la explicación
+- "No entiendo" / "Más fácil" → Reexplica con lenguaje más sencillo y analogías
+- "Resumen" → Haz una versión ultra-corta de 2-3 líneas`
   }
 
   // Prompt estándar para preguntas de DERECHO
@@ -873,7 +879,13 @@ Si el usuario te señala (o detectas) que una opción del enunciado contradice L
 - Usa lenguaje cercano y motivador
 - NO incluyas sección de "Fuentes" al final (ya se muestran aparte)
 - Si no tienes el artículo exacto, usa tu conocimiento pero acláralo
-- NUNCA digas "posible error" a menos que estés 100% seguro`
+- NUNCA digas "posible error" a menos que estés 100% seguro
+
+## 💬 MENSAJES CORTOS SIN HISTORIAL
+Si el usuario envía un mensaje corto como "Ejemplo", "Ponme un ejemplo", "Explícame de otra forma", "No entiendo", "Más fácil" o similar, asume que ya leyó tu explicación anterior y quiere algo diferente:
+- "Ejemplo" → Genera un caso práctico ilustrativo con un supuesto real, no repitas la explicación del test
+- "No entiendo" / "Más fácil" → Reexplica con lenguaje más sencillo y analogías cotidianas
+- "Resumen" → Haz una versión ultra-corta de 2-3 líneas`
 }
 
 // ============================================
