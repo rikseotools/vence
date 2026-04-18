@@ -40,13 +40,10 @@ export default function AdminDashboard() {
       try {
         setLoading(true)
 
-        const [dashRes, chartsRes] = await Promise.all([
-          fetch('/api/v2/admin/dashboard', { signal: controller.signal }),
-          fetch('/api/v2/admin/charts?days=14', { signal: controller.signal }),
-        ])
-
+        // Dashboard primero, charts después (en dev, Turbopack bloquea si dos
+        // API routes que comparten el pool de BD se llaman en paralelo)
+        const dashRes = await fetch('/api/v2/admin/dashboard', { signal: controller.signal })
         if (controller.signal.aborted) return
-
         if (!dashRes.ok) throw new Error(`Error ${dashRes.status}: ${dashRes.statusText}`)
         const data = await dashRes.json()
 
@@ -57,7 +54,11 @@ export default function AdminDashboard() {
         setActiveUsersLastWeekAtThisHour(data.activeUsersLastWeekAtThisHour)
         setActiveUsersYesterday(data.activeUsersYesterday)
         setOnlineUsers(data.onlineUsers || [])
+        setLoading(false)
 
+        // Charts se cargan después sin bloquear el dashboard
+        const chartsRes = await fetch('/api/v2/admin/charts?days=14', { signal: controller.signal })
+        if (controller.signal.aborted) return
         if (chartsRes.ok) {
           const charts = await chartsRes.json()
           setActivityData(charts.activity?.data || null)
