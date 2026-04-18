@@ -102,6 +102,9 @@ async function runCountsOnly(): Promise<number> {
         count(*) FILTER (WHERE question_text ~* ${MISSING_IMAGE_REGEX} AND question_text NOT ILIKE '%Observatorio de la Imagen%' AND image_url IS NULL AND (content_data IS NULL OR content_data::text = '{}')) as missing_image,
         count(*) FILTER (WHERE
           CONCAT_WS(' ', question_text, option_a, option_b, option_c, option_d) ~* ${EXCEL_TYPO_REGEX}
+          AND question_text NOT ILIKE '%Calc%'
+          AND question_text NOT ILIKE '%LibreOffice%'
+          AND question_text NOT ILIKE '%OpenOffice%'
         ) as excel_typo,
         count(*) FILTER (WHERE
           explanation ~* ${HTML_EXPLANATION_REGEX}
@@ -288,6 +291,7 @@ async function runChecks(): Promise<QualityResponse> {
     `),
 
     // 6. Excel function typos (e.g. SIERROR instead of SI.ERROR)
+    // Exclude questions about LibreOffice Calc where SIERROR is the correct syntax
     db.execute(sql`
       SELECT id, LEFT(question_text, ${TEXT_LIMIT}) as question_text,
              question_text as full_question_text,
@@ -296,6 +300,9 @@ async function runChecks(): Promise<QualityResponse> {
       FROM questions
       WHERE is_active = true
         AND CONCAT_WS(' ', question_text, option_a, option_b, option_c, option_d) ~* ${EXCEL_TYPO_REGEX}
+        AND question_text NOT ILIKE '%Calc%'
+        AND question_text NOT ILIKE '%LibreOffice%'
+        AND question_text NOT ILIKE '%OpenOffice%'
       LIMIT ${MAX_ITEMS}
     `),
 
