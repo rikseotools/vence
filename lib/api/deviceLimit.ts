@@ -1,5 +1,5 @@
 // lib/api/deviceLimit.ts — Server-side device registration and limit enforcement
-// Free users: max 2 devices. Premium: max 3 (alert only, no block).
+// All users: max 2 devices (computer + phone). Blocks 3rd device.
 
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest } from 'next/server'
@@ -76,11 +76,11 @@ export async function registerAndCheckDevice(
     if (!result) return FAIL_OPEN
 
     return {
-      allowed: result.allowed,
-      deviceCount: result.device_count,
-      maxDevices: result.max_devices,
-      isNewDevice: result.is_new_device,
-      isPremium: result.is_premium,
+      allowed: result.out_allowed ?? result.allowed,
+      deviceCount: result.out_device_count ?? result.device_count,
+      maxDevices: result.out_max_devices ?? result.max_devices,
+      isNewDevice: result.out_is_new_device ?? result.is_new_device,
+      isPremium: result.out_is_premium ?? result.is_premium,
     }
   } catch (err) {
     console.error('❌ [DeviceLimit] Unexpected error:', err)

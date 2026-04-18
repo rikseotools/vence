@@ -1,7 +1,7 @@
 -- ============================================================
 -- TABLA USER_DEVICES
 -- Registra dispositivos por usuario para limitar multi-dispositivo
--- Free: max 2 dispositivos, Premium: max 3
+-- Todos: max 2 dispositivos (ordenador + móvil)
 -- Dispositivos inactivos 30+ días se liberan automáticamente
 -- ============================================================
 
@@ -37,11 +37,11 @@ CREATE OR REPLACE FUNCTION register_device(
   p_device_label TEXT DEFAULT NULL
 )
 RETURNS TABLE(
-  allowed BOOLEAN,
-  device_count INTEGER,
-  max_devices INTEGER,
-  is_new_device BOOLEAN,
-  is_premium BOOLEAN
+  out_allowed BOOLEAN,
+  out_device_count INTEGER,
+  out_max_devices INTEGER,
+  out_is_new_device BOOLEAN,
+  out_is_premium BOOLEAN
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -65,7 +65,7 @@ BEGIN
   WHERE up.id = p_user_id;
 
   v_is_premium := COALESCE(v_plan_type, 'free') IN ('premium', 'trial', 'legacy_free', 'premium_semester', 'admin');
-  v_max := CASE WHEN v_is_premium THEN 3 ELSE 2 END;
+  v_max := 2; -- max 2 dispositivos para todos (ordenador + móvil)
 
   -- Check if device already registered for this user
   SELECT ud.id INTO v_existing_id
@@ -89,7 +89,7 @@ BEGIN
   IF v_current_count >= v_max THEN
     -- Over limit
     RETURN QUERY SELECT
-      CASE WHEN v_is_premium THEN TRUE ELSE FALSE END, -- premium: allow but alert; free: block
+      FALSE, -- bloquear para todos cuando se supera el límite
       v_current_count,
       v_max,
       TRUE,

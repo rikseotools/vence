@@ -838,12 +838,15 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
   }
 
   // 🔒 CONTROL DE SESIONES SIMULTÁNEAS (solo para usuarios específicos)
-  const { showWarning: showSessionWarning } = useSessionControl(user, supabase)
+  const {
+    showWarning: showSessionWarning,
+    sessions: conflictingSessions,
+    isClosingOthers,
+    closeOtherSessions
+  } = useSessionControl(user, supabase)
 
-  // Estado para logout desde el modal de sesiones
   const [isLoggingOutFromWarning, setIsLoggingOutFromWarning] = useState(false)
 
-  // Función para hacer logout desde el modal de warning
   const handleLogoutFromWarning = async () => {
     setIsLoggingOutFromWarning(true)
     await signOut()
@@ -873,7 +876,10 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
       {/* 🔒 Modal BLOQUEANTE por sesiones simultáneas */}
       <SessionWarningModal
         isOpen={showSessionWarning}
+        sessions={conflictingSessions}
+        onCloseOthers={closeOtherSessions}
         onLogout={handleLogoutFromWarning}
+        isClosingOthers={isClosingOthers}
         isLoggingOut={isLoggingOutFromWarning}
       />
     </AuthContext.Provider>

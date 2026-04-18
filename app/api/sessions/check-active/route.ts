@@ -1,13 +1,15 @@
 // app/api/sessions/check-active/route.ts
-// API para verificar sesiones activas de un usuario bajo control
+// Detecta uso simultáneo real desde IPs distintas (últimos 15 min con actividad)
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
-// Lista de emails bajo control de sesiones simultáneas
+
 const CONTROLLED_EMAILS: string[] = [
   'edu77santoyo@gmail.com'
 ]
+
+const SIMULTANEITY_WINDOW_MINUTES = 15
 
 interface SessionData {
   id: string
@@ -16,6 +18,7 @@ interface SessionData {
   city: string | null
   screen_resolution: string | null
   user_agent: string | null
+  questions_answered: number | null
 }
 
 interface FormattedSession {
@@ -33,12 +36,18 @@ interface CheckActiveResponse {
   otherSessionsCount?: number
   sessions?: FormattedSession[]
   currentSessionId?: string
+  currentIp?: string
   error?: string
+}
+
+function getClientIp(request: NextRequest): string | null {
+  return request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    ?? request.headers.get('x-real-ip')
+    ?? null
 }
 
 async function _GET(request: NextRequest): Promise<NextResponse<CheckActiveResponse>> {
   try {
-    // Obtener el token de autenticación
     const authHeader = request.headers.get('authorization')
     if (!authHeader?.startsWith('Bearer ')) {
       return NextResponse.json({
@@ -50,18 +59,12 @@ async function _GET(request: NextRequest): Promise<NextResponse<CheckActiveRespo
 
     const token = authHeader.split(' ')[1]
 
-    // Crear cliente de Supabase con el token del usuario
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        global: {
-          headers: { Authorization: `Bearer ${token}` }
-        }
-      }
+      { global: { headers: { Authorization: `Bearer ${token}` } } }
     )
 
-    // Obtener usuario actual
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
       return NextResponse.json({
@@ -71,7 +74,6 @@ async function _GET(request: NextRequest): Promise<NextResponse<CheckActiveRespo
       }, { status: 401 })
     }
 
-    // Verificar si el usuario está en la lista de control
     if (!user.email || !CONTROLLED_EMAILS.includes(user.email)) {
       return NextResponse.json({
         isControlled: false,
@@ -80,25 +82,26 @@ async function _GET(request: NextRequest): Promise<NextResponse<CheckActiveRespo
       })
     }
 
-    // Usar service role para consultar sesiones (bypass RLS)
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
-    // Buscar sesiones activas (sin session_end) de las últimas 24 horas
-    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+    const currentIp = getClientIp(request)
+    const windowStart = new Date(Date.now() - SIMULTANEITY_WINDOW_MINUTES * 60 * 1000).toISOString()
 
+    // Sesiones activas con actividad real en los últimos 15 min
     const { data: sessions, error: sessionsError } = await supabaseAdmin
       .from('user_sessions')
-      .select('id, session_start, ip_address, city, screen_resolution, user_agent')
+      .select('id, session_start, ip_address, city, screen_resolution, user_agent, questions_answered')
       .eq('user_id', user.id)
       .is('session_end', null)
-      .gte('session_start', twentyFourHoursAgo)
+      .gte('session_start', windowStart)
+      .gt('questions_answered', 0)
       .order('session_start', { ascending: false })
 
     if (sessionsError) {
-      console.error('Error consultando sesiones:', sessionsError)
+      console.error('[SessionControl] Error consultando sesiones:', sessionsError)
       return NextResponse.json({
         isControlled: true,
         hasOtherSessions: false,
@@ -106,8 +109,14 @@ async function _GET(request: NextRequest): Promise<NextResponse<CheckActiveRespo
       }, { status: 500 })
     }
 
-    // Formatear sesiones para el frontend
-    const formattedSessions: FormattedSession[] = (sessions as SessionData[] || []).map(s => ({
+    const typedSessions = (sessions as SessionData[]) || []
+
+    // Filtrar sesiones desde IPs DISTINTAS a la actual
+    const sessionsFromOtherIps = currentIp
+      ? typedSessions.filter(s => s.ip_address && s.ip_address !== currentIp)
+      : []
+
+    const formattedOtherSessions: FormattedSession[] = sessionsFromOtherIps.map(s => ({
       id: s.id,
       startedAt: s.session_start,
       ip: s.ip_address,
@@ -115,26 +124,26 @@ async function _GET(request: NextRequest): Promise<NextResponse<CheckActiveRespo
       device: formatDevice(s.screen_resolution, s.user_agent)
     }))
 
-    // Obtener ID de sesión actual desde query param o header
-    const currentSessionId = request.headers.get('x-session-id') ||
-                            new URL(request.url).searchParams.get('currentSessionId')
+    const hasSimultaneousFromOtherIp = formattedOtherSessions.length > 0
 
-    // Filtrar otras sesiones (excluir la actual si se proporciona)
-    const otherSessions = currentSessionId
-      ? formattedSessions.filter(s => s.id !== currentSessionId)
-      : formattedSessions.slice(1) // Asumir que la más reciente es la actual
+    if (hasSimultaneousFromOtherIp) {
+      console.log(
+        `[SessionControl] Simultaneidad detectada para ${user.email}: ` +
+        `IP actual=${currentIp}, otras IPs=[${sessionsFromOtherIps.map(s => s.ip_address).join(', ')}]`
+      )
+    }
 
     return NextResponse.json({
       isControlled: true,
-      hasOtherSessions: otherSessions.length > 0,
-      totalSessions: formattedSessions.length,
-      otherSessionsCount: otherSessions.length,
-      sessions: otherSessions,
-      currentSessionId: currentSessionId || formattedSessions[0]?.id
+      hasOtherSessions: hasSimultaneousFromOtherIp,
+      totalSessions: typedSessions.length,
+      otherSessionsCount: formattedOtherSessions.length,
+      sessions: formattedOtherSessions,
+      currentIp: currentIp ?? undefined
     })
 
   } catch (error) {
-    console.error('Error en check-active:', error)
+    console.error('[SessionControl] Error en check-active:', error)
     return NextResponse.json({
       isControlled: false,
       hasOtherSessions: false,
@@ -143,7 +152,6 @@ async function _GET(request: NextRequest): Promise<NextResponse<CheckActiveRespo
   }
 }
 
-// Helper para formatear información del dispositivo
 function formatDevice(resolution: string | null, userAgent: string | null): string {
   if (!resolution && !userAgent) return 'Dispositivo desconocido'
 
