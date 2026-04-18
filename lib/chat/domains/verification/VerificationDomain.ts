@@ -247,7 +247,7 @@ export class VerificationDomain implements ChatDomain {
    */
   private isShortGenericMessage(message: string): boolean {
     // Si es muy largo, probablemente es una pregunta específica sobre otro tema
-    if (message.length > 100) return false
+    if (message.length > 120) return false
 
     // Si parece un follow-up de búsqueda (ej: "y del tribunal constitucional"),
     // NO es un seguimiento de verificación - déjalo para SearchDomain

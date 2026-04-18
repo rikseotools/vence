@@ -215,9 +215,19 @@ export class SearchDomain implements ChatDomain {
       effectiveLawName = followUpResult.previousLaw
     } else {
       // No es follow-up - detectar ley del mensaje actual
+      // Solo sobrescribir la ley del contexto si el usuario menciona una ley
+      // EXPLÍCITAMENTE (por nombre/número), no por inferencia de keywords
       const userMentionedLaws = detectMentionedLaws(effectiveMessage)
-      if (userMentionedLaws.length > 0) {
+      const hasExplicitLawRef = /\b(ley|lo|rd|rdl)\s+\d+\/?\d*/i.test(effectiveMessage) ||
+                                /\b(CE|LOPJ|LOTC|LEC|LECrim|TREBEP|EBEP|LPAC|LRJSP)\b/.test(effectiveMessage)
+      if (userMentionedLaws.length > 0 && hasExplicitLawRef) {
         logger.info(`🔎 SearchDomain: User explicitly mentioned law: ${userMentionedLaws[0]}`, {
+          domain: 'search',
+        })
+        effectiveLawName = userMentionedLaws[0]
+      } else if (!effectiveLawName && userMentionedLaws.length > 0) {
+        // Sin ley de contexto, usar la inferida
+        logger.info(`🔎 SearchDomain: No context law, using inferred: ${userMentionedLaws[0]}`, {
           domain: 'search',
         })
         effectiveLawName = userMentionedLaws[0]
