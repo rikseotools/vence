@@ -38,6 +38,7 @@ interface QualityResponse {
     psy_missing_figures: CheckResult
     psy_html_explanation: CheckResult
     regional_wrong_law: CheckResult
+    mismatched_answer: CheckResult
   }
 }
 
@@ -74,6 +75,9 @@ const OUTDATED_PLAN_REVIEWED_IDS = [
   '6b4f9c91-6fcc-4470-b8c0-9e4bc48e5b99', // "¿Qué Plan incluyó el Foro?" — pregunta histórica en pasado
   '815dd117-c237-4d36-bda3-e6bf774c537f', // "¿En qué año se presentó el I Plan?" — dato factual
 ]
+
+// Explanation says "La respuesta correcta es **X" but correct_option doesn't match
+const MISMATCHED_ANSWER_REGEX = '(?i)(?:respuesta|opci[oó]n) correcta es (?:la )?\\*?\\*?([A-D])'
 
 const BANNED_REGEX = '(?i)(oposita\\s*[-_./@*]?\\s*test|opositest|oposistatest|opossita|opositatets|opostia|opsita|opositatestt|opositates[^t]|oposiitatest|oppositatest|opoositatest|opositattest|opositateest|opositatesst|0positatest|opositat3st|op0sitatest|0p0sitatest|opos1tatest|oposi7atest|oposita7est|opositat€st|o[-_./@* ]p[-_./@* ]o[-_./@* ]s[-_./@* ]i[-_./@* ]t[-_./@* ]a[-_./@* ]t[-_./@* ]e[-_./@* ]s[-_./@* ]t|tu\\s*test\\s*digital|tutestdigital|tutest\\s*online|tutestonline|tu\\s*test\\s*on\\s*line|tutestdigita1|tut3stdigital|tu[-_./@* ]test[-_./@* ]digital|aula\\s*[-_./@*]?\\s*plus|aulaplus\\s*formaci[óo]n|aulaplus\\.?(es|com|net|info)|aulap1us|au1aplus|auIaplus|aulapIus|aulapluz|aulapluss|a[-_./@* ]u[-_./@* ]l[-_./@* ]a[-_./@* ]p[-_./@* ]l[-_./@* ]u[-_./@* ]s)'
 
@@ -116,7 +120,13 @@ async function runCountsOnly(): Promise<number> {
         count(*) FILTER (WHERE
           CONCAT_WS(' ', question_text, option_a, option_b, option_c, option_d) ~* ${OUTDATED_PLAN_REGEX}
           AND id NOT IN (${sql.join(OUTDATED_PLAN_REVIEWED_IDS.map(id => sql`${id}::uuid`), sql`, `)})
-        ) as outdated_plan
+        ) as outdated_plan,
+        count(*) FILTER (WHERE
+          explanation ~* ${MISMATCHED_ANSWER_REGEX}
+          AND correct_option != CASE upper(substring(explanation from ${MISMATCHED_ANSWER_REGEX}))
+            WHEN 'A' THEN 0 WHEN 'B' THEN 1 WHEN 'C' THEN 2 WHEN 'D' THEN 3
+          END
+        ) as mismatched_answer
       FROM questions
       WHERE is_active = true
     ),
@@ -223,7 +233,7 @@ async function runCountsOnly(): Promise<number> {
           OR q.question_text ILIKE '%Ley%Illes Balears%'
         )
     )
-    SELECT (b.empty_options + b.banned_words + b.pending_explanation + b.missing_article + b.missing_image + b.excel_typo + b.html_explanation + b.cramped_explanation + b.outdated_plan + s.copied + dup.duplicates + wl.wrong_law + uc.uncited + pb.psy_empty + pb.psy_figures + pb.psy_html + rw.regional_mismatch)::int as total
+    SELECT (b.empty_options + b.banned_words + b.pending_explanation + b.missing_article + b.missing_image + b.excel_typo + b.html_explanation + b.cramped_explanation + b.outdated_plan + b.mismatched_answer + s.copied + dup.duplicates + wl.wrong_law + uc.uncited + pb.psy_empty + pb.psy_figures + pb.psy_html + rw.regional_mismatch)::int as total
     FROM base b, similarity_count s, duplicate_count dup, wrong_law_count wl, uncited_count uc, psy_base pb, regional_wrong rw
   `)
 
@@ -434,6 +444,21 @@ async function runChecks(): Promise<QualityResponse> {
       LIMIT ${MAX_ITEMS}
     `),
 
+    // 16. Mismatched answer (explanation says one letter but correct_option is different)
+    db.execute(sql`
+      SELECT id, LEFT(question_text, ${TEXT_LIMIT}) as question_text,
+             correct_option,
+             upper(substring(explanation from ${MISMATCHED_ANSWER_REGEX})) as explanation_letter,
+             count(*) OVER()::int as total_count
+      FROM questions
+      WHERE is_active = true
+        AND explanation ~* ${MISMATCHED_ANSWER_REGEX}
+        AND correct_option != CASE upper(substring(explanation from ${MISMATCHED_ANSWER_REGEX}))
+          WHEN 'A' THEN 0 WHEN 'B' THEN 1 WHEN 'C' THEN 2 WHEN 'D' THEN 3
+        END
+      LIMIT ${MAX_ITEMS}
+    `),
+
     // --- PSICOTÉCNICAS ---
 
     // 13. Opciones vacías en psicotécnicas
@@ -497,7 +522,7 @@ async function runChecks(): Promise<QualityResponse> {
 
   const toRows = (r: any) => (r as any).rows ?? r ?? []
 
-  const [emptyOpts, bannedRaw, pendingExpl, missingArt, missingImg, excelTypoRaw, htmlExplRaw, wrongLawRaw, crampedExplRaw, copiedExplRaw, duplicateRaw, uncitedRaw, outdatedPlanRaw, psyEmptyRaw, psyFiguresRaw, psyHtmlRaw, regionalWrongRaw] = results
+  const [emptyOpts, bannedRaw, pendingExpl, missingArt, missingImg, excelTypoRaw, htmlExplRaw, wrongLawRaw, crampedExplRaw, copiedExplRaw, duplicateRaw, uncitedRaw, outdatedPlanRaw, mismatchedRaw, psyEmptyRaw, psyFiguresRaw, psyHtmlRaw, regionalWrongRaw] = results
 
   const emptyRows = toRows(emptyOpts)
   const bannedRows = toRows(bannedRaw)
@@ -512,6 +537,7 @@ async function runChecks(): Promise<QualityResponse> {
   const duplicateRows = toRows(duplicateRaw)
   const uncitedRows = toRows(uncitedRaw)
   const outdatedPlanRows = toRows(outdatedPlanRaw)
+  const mismatchedRows = toRows(mismatchedRaw)
   const psyEmptyRows = toRows(psyEmptyRaw)
   const psyFiguresRows = toRows(psyFiguresRaw)
   const psyHtmlRows = toRows(psyHtmlRaw)
@@ -646,6 +672,16 @@ async function runChecks(): Promise<QualityResponse> {
         extra: q.linked_law,
       })),
     },
+    mismatched_answer: {
+      count: getCount(mismatchedRows),
+      questions: mismatchedRows.map((q: any) => {
+        const correctLetter = ['A', 'B', 'C', 'D'][q.correct_option] || '?'
+        return {
+          id: q.id, question_text: q.question_text,
+          field: `dice ${q.explanation_letter}, correcta ${correctLetter}`,
+        }
+      }),
+    },
   }
 
   const totalIssues =
@@ -665,7 +701,8 @@ async function runChecks(): Promise<QualityResponse> {
     checks.psy_empty_options.count +
     checks.psy_missing_figures.count +
     checks.psy_html_explanation.count +
-    checks.regional_wrong_law.count
+    checks.regional_wrong_law.count +
+    checks.mismatched_answer.count
 
   return { success: true, totalIssues, checks }
 }

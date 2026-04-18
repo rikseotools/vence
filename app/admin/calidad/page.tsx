@@ -34,6 +34,8 @@ interface QualityData {
     psy_empty_options: CheckResult
     psy_missing_figures: CheckResult
     psy_html_explanation: CheckResult
+    regional_wrong_law: CheckResult
+    mismatched_answer: CheckResult
   }
 }
 
@@ -122,6 +124,11 @@ const CHECK_CONFIG = {
     title: 'Norma autonómica → ley estatal',
     description: 'Preguntas que mencionan normas autonómicas pero están vinculadas a leyes estatales (aparecen en oposiciones incorrectas)',
     icon: '🗺️',
+  },
+  mismatched_answer: {
+    title: 'Explicación contradice respuesta',
+    description: 'La explicación dice que la correcta es X pero correct_option apunta a otra letra',
+    icon: '🔄',
   },
 } as const
 
