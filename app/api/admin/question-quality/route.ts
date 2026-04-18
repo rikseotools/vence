@@ -209,6 +209,7 @@ async function runCountsOnly(): Promise<number> {
       JOIN laws l ON l.id = a.law_id
       WHERE q.is_active = true
         AND l.scope != 'regional'
+        AND l.name NOT ILIKE '%Estatuto de Autonomía%'
         AND (
           q.question_text ILIKE '%Decreto%Castilla y León%'
           OR q.question_text ILIKE '%Decreto%CyL%'
@@ -477,6 +478,7 @@ async function runChecks(): Promise<QualityResponse> {
       JOIN laws l ON l.id = a.law_id
       WHERE q.is_active = true
         AND l.scope != 'regional'
+        AND l.name NOT ILIKE '%Estatuto de Autonomía%'
         AND (
           q.question_text ILIKE '%Decreto%Castilla y León%'
           OR q.question_text ILIKE '%Decreto%CyL%'
