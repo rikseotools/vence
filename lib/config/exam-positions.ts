@@ -57,6 +57,11 @@ export const EXAM_POSITION_MAP: Record<string, string[]> = {
     'auxiliar_administrativo_andalucia',
     'auxiliar administrativo andalucia',
   ],
+  'auxiliar_administrativo_carm': [
+    'auxiliar_administrativo_carm',
+    'auxiliar administrativo carm',
+    'auxiliar administrativo murcia',
+  ],
 }
 
 /**
@@ -82,6 +87,8 @@ export const HOT_ARTICLE_TARGET_MAP: Record<string, string[]> = {
   'gestion_estado': ['gestion-estado'],
   'gestion-procesal': ['gestion-estado'],
   'gestion_procesal': ['gestion-estado'],
+  'auxiliar-administrativo-carm': ['auxiliar-administrativo-carm'],
+  'auxiliar_administrativo_carm': ['auxiliar-administrativo-carm'],
 }
 
 /**
