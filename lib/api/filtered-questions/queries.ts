@@ -452,6 +452,17 @@ export async function getFilteredQuestions(
       }
     }
 
+    // Guard: onlyFailedQuestions sin userId → fallback con warning observable
+    if (onlyFailedQuestions && !userId) {
+      console.warn(`⚠️ [failed-questions] onlyFailedQuestions=true pero userId es null/undefined. Fallback a preguntas aleatorias.`)
+      logValidationError({
+        endpoint: '/api/questions/filtered',
+        errorType: 'failed_questions_no_auth',
+        errorMessage: `onlyFailedQuestions=true pero userId es null. Fallback a preguntas aleatorias. positionType=${positionType}, failedQuestionIds=${failedQuestionIds?.length || 0}`,
+        severity: 'warning',
+      })
+    }
+
     // 🔄 CASO: "Solo falladas" sin IDs — single JOIN con user_question_history
     if (onlyFailedQuestions && (!failedQuestionIds || failedQuestionIds.length === 0) && userId) {
       console.log(`🔄 Modo preguntas falladas por historial (single JOIN): userId=${userId}, positionType=${positionType}`)

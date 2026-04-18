@@ -8,6 +8,7 @@ import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import TestLayout from '@/components/TestLayout'
 import { useAuth } from '@/contexts/AuthContext'
+import { getSupabaseClient } from '@/lib/supabase'
 
 // Tipos
 interface Question {
@@ -197,10 +198,38 @@ function MultiLeyTestContent() {
           articlesAsNumbers[law] = articles.map(a => parseInt(a, 10)).filter(n => !isNaN(n))
         }
 
+        // Obtener token de sesión para que la API resuelva userId
+        let authToken: string | null = null
+        try {
+          const supabase = getSupabaseClient()
+          const { data: { session } } = await supabase.auth.getSession()
+          authToken = session?.access_token ?? null
+        } catch {
+          console.warn('⚠️ [MultiLey] No se pudo obtener token de sesión')
+        }
+
+        // Leer failedQuestionIds de sessionStorage (guardados por por-leyes/page.tsx)
+        let failedQuestionIds: string[] = []
+        if (onlyFailedQuestions) {
+          try {
+            const stored = sessionStorage.getItem('vence_failed_question_ids')
+            if (stored) {
+              failedQuestionIds = JSON.parse(stored)
+              sessionStorage.removeItem('vence_failed_question_ids')
+              sessionStorage.removeItem('vence_failed_questions_order')
+            }
+          } catch {
+            console.warn('⚠️ [MultiLey] No se pudieron leer failedQuestionIds de sessionStorage')
+          }
+        }
+
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+        if (authToken) headers['Authorization'] = `Bearer ${authToken}`
+
         // Llamar a la API de preguntas filtradas
         const response = await fetch('/api/questions/filtered', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({
             topicNumber: 0,
             positionType: 'auxiliar_administrativo_estado',
@@ -214,8 +243,8 @@ function MultiLeyTestContent() {
             onlyOfficialQuestions,
             focusEssentialArticles,
             onlyFailedQuestions,
+            failedQuestionIds,
             selectedSectionFilters,
-            userId: user?.id
           })
         })
 

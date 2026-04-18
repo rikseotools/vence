@@ -105,6 +105,16 @@ function TestConfiguradorContent() {
     // Solo preguntas falladas
     if (config.onlyFailedQuestions) {
       params.set('only_failed', 'true')
+      if (config.failedQuestionIds && config.failedQuestionIds.length > 0) {
+        try {
+          sessionStorage.setItem('vence_failed_question_ids', JSON.stringify(config.failedQuestionIds))
+          if (config.failedQuestionsOrder) {
+            sessionStorage.setItem('vence_failed_questions_order', config.failedQuestionsOrder)
+          }
+        } catch {
+          console.warn('⚠️ [Configurar] No se pudieron guardar failedQuestionIds en sessionStorage')
+        }
+      }
     }
 
     // Leyes seleccionadas
