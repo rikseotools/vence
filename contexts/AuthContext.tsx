@@ -174,6 +174,13 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
     return 'organic'
   }
 
+  function isRetriableNetworkError(error: { name?: string; message?: string; code?: string }): boolean {
+    if (error.name === 'AbortError') return true
+    if (error.code === 'NETWORK_ERROR') return true
+    const msg = error.message || ''
+    return /network|fetch|Load failed/i.test(msg)
+  }
+
   // 🎯 OPTIMIZADA: Cargar perfil con timeout, reintentos y mejor manejo
   const loadUserProfile = useCallback(async (userId: string, retryCount = 0): Promise<UserProfileRow | null> => {
     const MAX_RETRIES = 3
@@ -290,7 +297,7 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
         }
 
         // 🆕 Error de red: reintentar
-        if (error.message?.includes('network') || error.message?.includes('fetch') || error.code === 'NETWORK_ERROR') {
+        if (isRetriableNetworkError(error)) {
           if (retryCount < MAX_RETRIES - 1) {
             console.warn(`🔄 Error de red cargando perfil, reintentando... (${retryCount + 1}/${MAX_RETRIES})`)
             const delay = 1000 * Math.pow(2, retryCount)
@@ -336,7 +343,7 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
       console.error('❌ Error en loadUserProfile:', error)
 
       // 🆕 Reintentar en errores de red/timeout
-      if (retryCount < MAX_RETRIES - 1 && (error.name === 'AbortError' || error.message?.includes('network') || error.message?.includes('fetch'))) {
+      if (retryCount < MAX_RETRIES - 1 && isRetriableNetworkError(error)) {
         console.warn(`🔄 Reintentando loadUserProfile... (${retryCount + 1}/${MAX_RETRIES})`)
         const delay = 1000 * Math.pow(2, retryCount)
         await new Promise(resolve => setTimeout(resolve, delay))
