@@ -89,6 +89,9 @@ export function isUserStatsQuery(message: string): boolean {
     /en\s*qu[eé]\s*(art[ií]culos?|temas?)\s*fallos?\s*m[aá]s/i, // "en que articulos fallo/fallos mas"
     /(art[ií]culos?|temas?)\s*(que|donde|en\s*los?\s*que)\s*fallos?\s*m[aá]s/i, // "articulos que fallo mas"
     /fallos?\s*m[aá]s/i, // Patrón general: cualquier mención de "fallo/fallos más"
+    /(tasa|porcentaje|ratio)\s*(de\s*)?(aciertos?|fallos?|errores?)/i, // "tasa de aciertos", "porcentaje de fallos"
+    /(aciertos?|fallos?)\s*(tengo|llevo|he\s*tenido)/i, // "cuantos fallos tengo", "aciertos que llevo"
+    /c[oó]mo\s*me\s*(va|ha\s*ido|fue)/i, // "cómo me ha ido esta semana"
   ]
 
   return patterns.some(p => p.test(msgLower))
