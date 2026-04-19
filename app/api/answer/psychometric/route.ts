@@ -117,9 +117,8 @@ return NextResponse.json(
       )
     }
 
-    if (!dailyLimit.isPremium && tokenUserId) {
-      incrementDailyCount(tokenUserId).catch(() => {})
-    }
+    // Daily count se incrementa en el frontend (useDailyQuestionLimit.recordAnswer)
+    // No incrementar aquí para evitar doble conteo
 
     return NextResponse.json(result)
   } catch (error) {

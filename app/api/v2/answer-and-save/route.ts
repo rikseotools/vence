@@ -139,10 +139,8 @@ async function _POST(request: NextRequest): Promise<NextResponse<AnswerAndSaveRe
       return NextResponse.json(result, { status })
     }
 
-    // Increment daily count SOLO tras save exitoso (evita doble conteo en reintentos)
-    if (!dailyLimit.isPremium) {
-      after(() => incrementDailyCount(user.id))
-    }
+    // Daily count se incrementa en el frontend (useDailyQuestionLimit.recordAnswer)
+    // No incrementar aquí para evitar doble conteo
 
     return NextResponse.json(result)
   } catch (error) {

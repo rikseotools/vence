@@ -119,10 +119,8 @@ return NextResponse.json(
       )
     }
 
-    // Increment daily count solo tras save exitoso
-    if (!dailyLimit.isPremium && tokenUserId) {
-      incrementDailyCount(tokenUserId).catch(() => {})
-    }
+    // Daily count se incrementa en el frontend (useDailyQuestionLimit.recordAnswer)
+    // No incrementar aquí para evitar doble conteo
 
     return NextResponse.json({
       success: true,
