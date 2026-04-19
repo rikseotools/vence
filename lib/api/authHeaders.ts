@@ -3,14 +3,32 @@ import { getSupabaseClient } from '@/lib/supabase'
 
 const DEVICE_ID_KEY = 'vence_device_id'
 
+/**
+ * Obtiene headers de autenticación para llamadas fetch a API routes.
+ * Intenta refreshSession() primero para garantizar token válido,
+ * con fallback a getSession() (cache) si el refresh falla.
+ */
 export async function getAuthHeaders(): Promise<Record<string, string>> {
   const headers: Record<string, string> = {}
 
   try {
     const supabase = getSupabaseClient()
-    const { data: { session } } = await supabase.auth.getSession()
-    if (session?.access_token) {
-      headers['Authorization'] = `Bearer ${session.access_token}`
+
+    // 1. Intentar refresh para obtener token fresco
+    let accessToken: string | undefined
+    try {
+      const { data: refreshData } = await supabase.auth.refreshSession()
+      accessToken = refreshData?.session?.access_token
+    } catch {}
+
+    // 2. Fallback a sesión cacheada
+    if (!accessToken) {
+      const { data: { session } } = await supabase.auth.getSession()
+      accessToken = session?.access_token
+    }
+
+    if (accessToken) {
+      headers['Authorization'] = `Bearer ${accessToken}`
     }
   } catch {}
 

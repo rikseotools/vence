@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import FeedbackModal from '@/components/FeedbackModal'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 import MarkdownExplanation from '@/components/MarkdownExplanation'
 import { formatTextContent } from '@/components/v2/ArticleDropdown'
 import type {
@@ -123,16 +124,8 @@ interface UploadedImage {
   path: string
 }
 
-async function getAuthToken(supabase: any): Promise<string | null> {
-  // Intentar refrescar primero para obtener token válido
-  try {
-    const { data: refreshData } = await supabase.auth.refreshSession()
-    if (refreshData?.session?.access_token) return refreshData.session.access_token
-  } catch {}
-  // Fallback a sesión cacheada
-  const { data: { session } } = await supabase.auth.getSession()
-  return session?.access_token ?? null
-}
+// Auth tokens: usar getAuthHeaders() centralizado (lib/api/authHeaders.ts)
+// que hace refreshSession() + fallback a getSession()
 
 // ============================================
 // COMPONENTE PRINCIPAL
@@ -177,12 +170,10 @@ function SoporteContent() {
     if (!supabase) return
     try {
       setLoading(true)
-      const token = await getAuthToken(supabase)
-      if (!token) return
+      const authHeaders = await getAuthHeaders()
+      if (!authHeaders['Authorization']) return
 
-      const res = await fetch('/api/soporte', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
+      const res = await fetch('/api/soporte', { headers: authHeaders })
       const data = await res.json()
 
       if (data.success) {
@@ -212,11 +203,11 @@ function SoporteContent() {
     if (!supabase) return
     try {
       setInlineChatLoading(true)
-      const token = await getAuthToken(supabase)
-      if (!token) return
+      const authHeaders = await getAuthHeaders()
+      if (!authHeaders['Authorization']) return
 
       const res = await fetch(`/api/soporte/messages?conversationId=${conversationId}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: authHeaders
       })
       const data = await res.json()
 
@@ -574,13 +565,13 @@ function SoporteContent() {
 
     try {
       setAppealLoading(true)
-      const token = await getAuthToken(supabase)
-      if (!token) return
+      const authHeaders = await getAuthHeaders()
+      if (!authHeaders['Authorization']) return
 
       const res = await fetch('/api/dispute', {
         method: 'PATCH',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          ...authHeaders,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ disputeId: dispute.id, action: 'accept' }),
@@ -604,13 +595,13 @@ function SoporteContent() {
 
     try {
       setAppealLoading(true)
-      const token = await getAuthToken(supabase)
-      if (!token) return
+      const authHeaders = await getAuthHeaders()
+      if (!authHeaders['Authorization']) return
 
       const res = await fetch('/api/dispute', {
         method: 'PATCH',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          ...authHeaders,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ disputeId, action: 'appeal', appealText: appealText.trim() }),
