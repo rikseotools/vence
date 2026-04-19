@@ -14,13 +14,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const checkOepSignals = useCallback(async () => {
     try {
-      const res = await fetch('/api/admin/oep-signals/pending-count')
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) return
+      const res = await fetch('/api/admin/oep-signals/pending-count', {
+        headers: { 'Authorization': `Bearer ${session.access_token}` },
+      })
       const json = await res.json()
       if (json.success) {
         setOepSignals({ pending: json.pendingCount ?? 0, critical: json.criticalCount ?? 0 })
       }
     } catch {}
-  }, [])
+  }, [supabase])
 
   useEffect(() => {
     const delay = setTimeout(checkOepSignals, 10000)

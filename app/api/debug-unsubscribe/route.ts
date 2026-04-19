@@ -1,7 +1,8 @@
 // app/api/debug-unsubscribe/route.ts - Debug endpoint para desuscripción
 // Usa raw REST fetch + crypto HMAC intencionalmente (testea conectividad REST)
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
+import { requireAdmin } from '@/lib/api/shared/auth'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 interface DebugResult {
@@ -19,7 +20,10 @@ interface DebugResult {
   } | null
 }
 
-async function _GET(request: Request) {
+async function _GET(request: NextRequest) {
+  const admin = await requireAdmin(request)
+  if (!admin.ok) return admin.response
+
   try {
     const { searchParams } = new URL(request.url)
     const email = searchParams.get('email') ?? 'ilovetestpro@gmail.com'

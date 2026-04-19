@@ -2,6 +2,7 @@
 // Panel admin de señales de detección de OEPs (multi-sensor)
 'use client'
 import { useState, useEffect, useCallback } from 'react'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 import type { SignalRow, SignalStatus } from '@/lib/api/oep-signals/schemas'
 
 interface ListResponse {
@@ -40,7 +41,8 @@ export default function OepSignalsPage() {
   const loadData = useCallback(async (status: SignalStatus, currentScope: SignalScope) => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/admin/oep-signals?status=${status}&scope=${currentScope}&limit=200`)
+      const headers = await getAuthHeaders()
+      const res = await fetch(`/api/admin/oep-signals?status=${status}&scope=${currentScope}&limit=200`, { headers })
       const json = await res.json() as ListResponse
       setData(json)
     } catch (err) {
@@ -57,9 +59,10 @@ export default function OepSignalsPage() {
   const handleReview = async (signalId: string, action: 'apply' | 'dismiss') => {
     setActionLoading(signalId)
     try {
+      const authHeaders = await getAuthHeaders()
       const res = await fetch('/api/admin/oep-signals', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify({ signalId, action }),
       })
       const json = await res.json()
@@ -78,7 +81,8 @@ export default function OepSignalsPage() {
   const triggerCron = async (endpoint: 'detect-oep-llm' | 'detect-timeline-silence' | 'detect-regional-oeps') => {
     if (!confirm(`¿Ejecutar cron "${endpoint}" ahora?`)) return
     try {
-      const res = await fetch(`/api/admin/oep-signals/trigger-cron?cron=${endpoint}`, { method: 'POST' })
+      const triggerHeaders = await getAuthHeaders()
+      const res = await fetch(`/api/admin/oep-signals/trigger-cron?cron=${endpoint}`, { method: 'POST', headers: triggerHeaders })
       const json = await res.json()
       alert(json.success ? `✅ ${endpoint} ejecutado` : `❌ ${json.error}`)
       await loadData(activeTab, scope)

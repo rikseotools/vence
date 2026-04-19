@@ -1,9 +1,14 @@
 // app/api/admin/ai-config/usage/route.ts
+import { NextRequest } from 'next/server'
 import { aiUsageQuerySchema } from '@/lib/api/admin-ai-usage/schemas'
 import { getAiUsageStats } from '@/lib/api/admin-ai-usage'
+import { requireAdmin } from '@/lib/api/shared/auth'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
-async function _GET(request: Request) {
+async function _GET(request: NextRequest) {
+  const admin = await requireAdmin(request)
+  if (!admin.ok) return admin.response
+
   try {
     const { searchParams } = new URL(request.url)
 

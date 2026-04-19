@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 
 // Spinner component
 const Spinner = ({ size = 'sm' }) => {
@@ -295,7 +296,8 @@ export default function VerificarArticulosPage() {
   useEffect(() => {
     const loadAiConfigs = async () => {
       try {
-        const response = await fetch('/api/admin/ai-config')
+        const headers = await getAuthHeaders()
+        const response = await fetch('/api/admin/ai-config', { headers })
         const data = await response.json()
         if (data.success) {
           setAiConfigs(data.configs)

@@ -1,8 +1,9 @@
 // app/api/admin/ai-config/route.ts
 // API para gestionar configuración de APIs de IA
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { getAllConfigs, upsertConfig } from '@/lib/api/admin-ai-config'
 import { updateAiConfigRequestSchema } from '@/lib/api/admin-ai-config/schemas'
+import { requireAdmin } from '@/lib/api/shared/auth'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 // Modelos disponibles por proveedor
@@ -32,7 +33,10 @@ const DEFAULT_MODELS: Record<string, string> = {
   google: 'gemini-1.5-flash',
 }
 
-async function _GET() {
+async function _GET(request: NextRequest) {
+  const admin = await requireAdmin(request)
+  if (!admin.ok) return admin.response
+
   try {
     const configs = await getAllConfigs()
 
@@ -113,7 +117,10 @@ async function _GET() {
   }
 }
 
-async function _POST(request: Request) {
+async function _POST(request: NextRequest) {
+  const admin = await requireAdmin(request)
+  if (!admin.ok) return admin.response
+
   try {
     const body = await request.json()
     const parsed = updateAiConfigRequestSchema.safeParse(body)

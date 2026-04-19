@@ -1,8 +1,9 @@
 // app/api/admin/ai-config/test/route.ts
 // API para probar APIs de IA
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { getConfigByProvider, updateVerificationStatus } from '@/lib/api/admin-ai-config'
 import { testAiConfigRequestSchema } from '@/lib/api/admin-ai-config/schemas'
+import { requireAdmin } from '@/lib/api/shared/auth'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 // Precios por millón de tokens (input/output) en USD
@@ -79,7 +80,10 @@ interface TestResult {
   message?: string
 }
 
-async function _POST(request: Request) {
+async function _POST(request: NextRequest) {
+  const admin = await requireAdmin(request)
+  if (!admin.ok) return admin.response
+
   try {
     const body = await request.json()
     const parsed = testAiConfigRequestSchema.safeParse(body)

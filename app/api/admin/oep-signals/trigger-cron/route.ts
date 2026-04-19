@@ -1,6 +1,7 @@
 // app/api/admin/oep-signals/trigger-cron/route.ts
 // Permite al admin disparar los crons manualmente desde el panel.
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAdmin } from '@/lib/api/shared/auth'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 
 export const maxDuration = 300
@@ -9,6 +10,9 @@ const ALLOWED_CRONS = ['detect-oep-llm', 'detect-timeline-silence', 'detect-regi
 type AllowedCron = typeof ALLOWED_CRONS[number]
 
 async function _POST(request: NextRequest) {
+  const admin = await requireAdmin(request)
+  if (!admin.ok) return admin.response
+
   try {
     const { searchParams } = new URL(request.url)
     const cron = searchParams.get('cron') as AllowedCron | null

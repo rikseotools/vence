@@ -358,7 +358,12 @@ async function disableUserNotifications(userId) {
 }
 
 // Endpoint GET para verificar estado del sistema
-async function _GET() {
+async function _GET(request) {
+  const authHeader = request.headers.get('authorization')
+  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  }
+
   try {
     // Verificar configuración
     const hasVapidKeys = !!(process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY)

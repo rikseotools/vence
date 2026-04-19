@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 import EmbeddingReviewTab from './EmbeddingReviewTab'
 
 // Spinner component
@@ -342,7 +343,8 @@ export default function TopicReviewTab() {
   const loadAiConfig = async () => {
     try {
       setLoadingAiConfig(true)
-      const response = await fetch('/api/admin/ai-config')
+      const headers = await getAuthHeaders()
+      const response = await fetch('/api/admin/ai-config', { headers })
       const data = await response.json()
 
       if (data.success && data.configs) {

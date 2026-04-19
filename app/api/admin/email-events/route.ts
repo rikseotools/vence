@@ -1,8 +1,9 @@
 // app/api/admin/email-events/route.ts - Admin API for email events
 import { createClient } from '@supabase/supabase-js'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { getEmailEvents } from '@/lib/api/admin-email-events'
 import { emailEventsQuerySchema } from '@/lib/api/admin-email-events'
+import { requireAdmin } from '@/lib/api/shared/auth'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 // Supabase admin client — para RPC calls (POST + subscriptionCount en GET)
@@ -11,7 +12,10 @@ const getSupabaseAdmin = () => createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-async function _GET(request: Request) {
+async function _GET(request: NextRequest) {
+  const admin = await requireAdmin(request)
+  if (!admin.ok) return admin.response
+
   try {
     const { searchParams } = new URL(request.url)
     const parsed = emailEventsQuerySchema.safeParse({
@@ -43,7 +47,10 @@ async function _GET(request: Request) {
 }
 
 // Verify admin access — se mantiene con Supabase RPC (no migrable a Drizzle)
-async function _POST(request: Request) {
+async function _POST(request: NextRequest) {
+  const admin = await requireAdmin(request)
+  if (!admin.ok) return admin.response
+
   try {
     const { userId } = await request.json()
 

@@ -13,11 +13,16 @@ import {
 } from '@/lib/api/admin-feedback'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { requireAdmin } from '@/lib/api/shared/auth'
+
 // ============================================
 // GET - Cargar feedbacks, conversaciones y stats
 // ============================================
 
 async function _GET(request: NextRequest) {
+  const admin = await requireAdmin(request)
+  if (!admin.ok) return admin.response
+
   try {
     const { searchParams } = new URL(request.url)
 

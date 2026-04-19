@@ -21,7 +21,9 @@ export default function ImpugnacionesPage() {
   const loadImpugnaciones = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/v2/admin/disputes')
+      const { data: { session } } = await supabase.auth.getSession()
+      const authHeaders = session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}
+      const response = await fetch('/api/v2/admin/disputes', { headers: authHeaders })
       const data = await response.json()
 
       if (!data.success) throw new Error(data.error || 'Error cargando impugnaciones')
@@ -39,9 +41,13 @@ export default function ImpugnacionesPage() {
 
   const closeDispute = async (disputeId, isPsychometric = false) => {
     try {
+      const { data: { session } } = await supabase.auth.getSession()
       const response = await fetch('/api/v2/admin/disputes', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
+        },
         body: JSON.stringify({ disputeId, isPsychometric }),
       })
 

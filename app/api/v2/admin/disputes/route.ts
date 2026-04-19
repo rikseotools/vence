@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { requireAdmin } from '@/lib/api/shared/auth'
 import { resolveDispute } from '@/lib/api/v2/dispute'
 
 const getServiceSupabase = () => createClient(
@@ -16,7 +17,10 @@ const GENERIC_REJECT_MESSAGE =
   'Impugnación cerrada por el administrador sin respuesta específica.'
 
 // GET: Cargar todas las impugnaciones con usuarios y preguntas
-async function _GET() {
+async function _GET(request: NextRequest) {
+  const admin = await requireAdmin(request)
+  if (!admin.ok) return admin.response
+
   try {
     const supabase = getServiceSupabase()
 
@@ -94,6 +98,9 @@ async function _GET() {
 // El comportamiento visible para el usuario se preserva: status='rejected', mismo
 // admin_response hardcoded y mismo email.
 async function _POST(request: NextRequest) {
+  const admin = await requireAdmin(request)
+  if (!admin.ok) return admin.response
+
   try {
     const { disputeId, isPsychometric } = await request.json()
 

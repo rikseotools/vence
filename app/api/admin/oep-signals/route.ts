@@ -3,11 +3,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { listSignals, reviewSignal } from '@/lib/api/oep-signals/queries'
 import { safeParseReviewSignal, signalStatusOptions, type SignalStatus } from '@/lib/api/oep-signals/schemas'
+import { requireAdmin } from '@/lib/api/shared/auth'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 
 export const maxDuration = 15
 
 async function _GET(request: NextRequest) {
+  const admin = await requireAdmin(request)
+  if (!admin.ok) return admin.response
+
   try {
     const { searchParams } = new URL(request.url)
     const statusParam = searchParams.get('status')
@@ -32,6 +36,9 @@ async function _GET(request: NextRequest) {
 }
 
 async function _POST(request: NextRequest) {
+  const admin = await requireAdmin(request)
+  if (!admin.ok) return admin.response
+
   try {
     const body = await request.json()
     const validation = safeParseReviewSignal(body)

@@ -84,8 +84,11 @@ export default function EmailDetailPage() {
     })
     
     try {
-      // Call admin API with service_role access
-      const response = await fetch(`/api/admin/email-events?timeRange=${timeRange}`)
+      // Call admin API with auth
+      const { data: { session } } = await supabase.auth.getSession()
+      const response = await fetch(`/api/admin/email-events?timeRange=${timeRange}`, {
+        headers: session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {},
+      })
       
       if (!response.ok) {
         throw new Error(`API Error: ${response.status}`)
