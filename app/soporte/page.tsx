@@ -124,6 +124,12 @@ interface UploadedImage {
 }
 
 async function getAuthToken(supabase: any): Promise<string | null> {
+  // Intentar refrescar primero para obtener token válido
+  try {
+    const { data: refreshData } = await supabase.auth.refreshSession()
+    if (refreshData?.session?.access_token) return refreshData.session.access_token
+  } catch {}
+  // Fallback a sesión cacheada
   const { data: { session } } = await supabase.auth.getSession()
   return session?.access_token ?? null
 }
