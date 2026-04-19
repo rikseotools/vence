@@ -86,22 +86,25 @@ async function _POST(request: NextRequest) {
       )
     }
 
-    // Shared device daily limit (sum across all free accounts on this device)
-    const deviceUsage = await checkDeviceDailyUsage(deviceId)
-    if (deviceUsage && !deviceUsage.allowed) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Este dispositivo ha alcanzado el límite diario de preguntas. Vuelve mañana o hazte premium.',
-          limitReached: true,
-          questionsToday: deviceUsage.deviceTotal,
-        },
-        { status: 403 }
-      )
-    }
-
     // Per-user daily limit check (25/day for free users)
     const dailyLimit = await checkAndIncrementDailyLimit(tokenUserId)
+
+    // Shared device daily limit (solo free users — premium bypass)
+    if (!dailyLimit.isPremium) {
+      const deviceUsage = await checkDeviceDailyUsage(deviceId)
+      if (deviceUsage && !deviceUsage.allowed) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Este dispositivo ha alcanzado el límite diario de preguntas. Vuelve mañana o hazte premium.',
+            limitReached: true,
+            questionsToday: deviceUsage.deviceTotal,
+          },
+          { status: 403 }
+        )
+      }
+    }
+
     if (!dailyLimit.allowed) {
       return NextResponse.json(
         {

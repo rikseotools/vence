@@ -81,22 +81,27 @@ async function _POST(request: NextRequest): Promise<NextResponse<AnswerAndSaveRe
       )
     }
 
-    // 4. Shared device daily limit
-    const deviceUsage = await checkDeviceDailyUsage(deviceId)
-    if (deviceUsage && !deviceUsage.allowed) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Este dispositivo ha alcanzado el límite diario de preguntas. Vuelve mañana o hazte premium.',
-          limitReached: true,
-          questionsToday: deviceUsage.deviceTotal,
-        } as const,
-        { status: 403 },
-      )
+    // 4. Per-user daily limit (userId from token, not body)
+    // Evaluado ANTES del device limit para que premium bypass ambos checks
+    const dailyLimit = await checkAndIncrementDailyLimit(user.id)
+
+    // 5. Shared device daily limit (solo para free users)
+    if (!dailyLimit.isPremium) {
+      const deviceUsage = await checkDeviceDailyUsage(deviceId)
+      if (deviceUsage && !deviceUsage.allowed) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Este dispositivo ha alcanzado el límite diario de preguntas. Vuelve mañana o hazte premium.',
+            limitReached: true,
+            questionsToday: deviceUsage.deviceTotal,
+          } as const,
+          { status: 403 },
+        )
+      }
     }
 
-    // 5. Per-user daily limit (userId from token, not body)
-    const dailyLimit = await checkAndIncrementDailyLimit(user.id)
+    // 6. Per-user daily limit enforcement (free users only)
     if (!dailyLimit.allowed) {
       return NextResponse.json(
         {
