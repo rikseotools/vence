@@ -10,6 +10,7 @@
 
 import { useEffect, useRef } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 
 export default function AutoAssignOposicion({ slug }: { slug: string }) {
   const { user, supabase, userProfile } = useAuth()
@@ -24,14 +25,14 @@ export default function AutoAssignOposicion({ slug }: { slug: string }) {
 
     ;(async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession()
-        if (!session?.access_token) return
+        const authHeaders = await getAuthHeaders()
+        if (!authHeaders['Authorization']) return
 
         await fetch('/api/v2/auto-assign-target', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${session.access_token}`,
+            ...authHeaders,
           },
           body: JSON.stringify({ slug }),
         })

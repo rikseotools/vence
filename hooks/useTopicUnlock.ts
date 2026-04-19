@@ -3,6 +3,7 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 
 interface TopicProgress {
   accuracy: number
@@ -114,8 +115,8 @@ export function useTopicUnlock({ positionType }: UseTopicUnlockOptions = {}) {
 
     try {
       // Obtener token de sesión
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session?.access_token) {
+      const authHeaders = await getAuthHeaders()
+      if (!authHeaders['Authorization']) {
         console.error('No session token for weak articles API')
         return
       }
@@ -131,7 +132,7 @@ export function useTopicUnlock({ positionType }: UseTopicUnlockOptions = {}) {
       // Llamar a la API v2
       const response = await fetch(url, {
         headers: {
-          'Authorization': `Bearer ${session.access_token}`,
+          ...authHeaders,
         },
       })
 

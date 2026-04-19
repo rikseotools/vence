@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 
 interface InfraStats {
   database: {
@@ -31,11 +32,11 @@ export default function InfraStatsTab() {
     try {
       setLoading(true)
       setError(null)
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) { setError('No autenticado'); return }
+      const authHeaders = await getAuthHeaders()
+      if (!authHeaders['Authorization']) { setError('No autenticado'); return }
 
       const res = await fetch('/api/admin/infra-stats', {
-        headers: { Authorization: `Bearer ${session.access_token}` },
+        headers: authHeaders,
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()

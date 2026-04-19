@@ -2,6 +2,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 
 // ============================================
 // TIPOS
@@ -350,9 +351,8 @@ export default function FeedbackModal({
           ? formData.message.trim()
           : `Motivo: ${formData.disputeType}${formData.message.trim() ? ` - Detalles: ${formData.message.trim()}` : ''}`
 
-        // Obtener token de sesión para autenticación
-        const { data: { session } } = await supabase.auth.getSession()
-        if (!session?.access_token) {
+        const authHeaders = await getAuthHeaders()
+        if (!authHeaders['Authorization']) {
           setError('Error de autenticación. Intenta iniciar sesión de nuevo.')
           setLoading(false)
           return
@@ -362,7 +362,7 @@ export default function FeedbackModal({
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
+            ...authHeaders,
           },
           body: JSON.stringify({
             questionId: detectedQuestionId,

@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 interface SentryIssue {
@@ -38,15 +39,15 @@ export function useSentryIssues(enabled: boolean = true): UseSentryIssuesResult 
 
     try {
       // Obtener token de sesión
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session?.access_token) {
+      const authHeaders = await getAuthHeaders()
+      if (!authHeaders['Authorization']) {
         setError('No hay sesión activa')
         return
       }
 
       const response = await fetch('/api/admin/sentry-issues', {
         headers: {
-          'Authorization': `Bearer ${session.access_token}`
+          ...authHeaders
         }
       })
 

@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 
 interface Lesson {
   id: string
@@ -62,8 +63,6 @@ export default function VideoCoursePage({ course, lessons }: VideoCoursePageProp
   const saveProgressTimeout = useRef<NodeJS.Timeout | null>(null)
   const urlCacheRef = useRef<Map<string, CachedVideoData>>(new Map())
   const preloadedVideosRef = useRef<Map<string, HTMLVideoElement>>(new Map())
-  const sessionTokenRef = useRef<string | null>(null)
-  const sessionExpiryRef = useRef<number>(0)
 
   // Get next lesson for preloading
   const getNextLesson = useCallback((currentId: string): Lesson | null => {
@@ -85,7 +84,7 @@ export default function VideoCoursePage({ course, lessons }: VideoCoursePageProp
   }, [])
 
   // Fetch video URL (with caching)
-  const fetchVideoUrl = useCallback(async (lessonId: string, token: string): Promise<CachedVideoData | null> => {
+  const fetchVideoUrl = useCallback(async (lessonId: string, authHeaders: Record<string, string>): Promise<CachedVideoData | null> => {
     // Check cache first
     const cached = getCachedUrl(lessonId)
     if (cached) {
@@ -96,7 +95,7 @@ export default function VideoCoursePage({ course, lessons }: VideoCoursePageProp
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
+        ...authHeaders,
       },
       body: JSON.stringify({ lessonId }),
     })
@@ -119,11 +118,11 @@ export default function VideoCoursePage({ course, lessons }: VideoCoursePageProp
   }, [getCachedUrl])
 
   // Preload next video
-  const preloadVideo = useCallback(async (lesson: Lesson, token: string) => {
+  const preloadVideo = useCallback(async (lesson: Lesson, authHeaders: Record<string, string>) => {
     // Skip if already preloaded
     if (preloadedVideosRef.current.has(lesson.id)) return
 
-    const videoData = await fetchVideoUrl(lesson.id, token)
+    const videoData = await fetchVideoUrl(lesson.id, authHeaders)
     if (!videoData) return
 
     // Create hidden video element for preloading
@@ -133,26 +132,6 @@ export default function VideoCoursePage({ course, lessons }: VideoCoursePageProp
     preloadedVideosRef.current.set(lesson.id, preloadElement)
   }, [fetchVideoUrl])
 
-  // Get cached session token or fetch new one
-  const getSessionToken = useCallback(async (): Promise<string | null> => {
-    // Use cached token if still valid (with 5 min buffer)
-    const now = Date.now()
-    if (sessionTokenRef.current && sessionExpiryRef.current > now + 300000) {
-      return sessionTokenRef.current
-    }
-
-    // Fetch new session
-    const { data: { session } } = await supabase.auth.getSession()
-
-    if (session?.access_token) {
-      sessionTokenRef.current = session.access_token
-      // Cache for session duration (usually 1 hour) minus buffer
-      sessionExpiryRef.current = now + 3600000 - 300000
-      return session.access_token
-    }
-    return null
-  }, [supabase])
-
   // Load video URL when lesson changes (optimized with cache and parallel requests)
   const loadVideo = useCallback(async (lesson: Lesson) => {
     if (!user || !supabase) {
@@ -160,9 +139,9 @@ export default function VideoCoursePage({ course, lessons }: VideoCoursePageProp
       return
     }
 
-    // Get session token (cached or fresh)
-    const token = await getSessionToken()
-    if (!token) {
+    // Get auth headers (with automatic token refresh)
+    const authHeaders = await getAuthHeaders()
+    if (!authHeaders['Authorization']) {
       setError('Inicia sesión para ver los videos')
       return
     }
@@ -186,9 +165,9 @@ export default function VideoCoursePage({ course, lessons }: VideoCoursePageProp
     try {
       // Fetch video URL and progress in parallel
       const [videoData, progressRes] = await Promise.all([
-        cached ? Promise.resolve(cached) : fetchVideoUrl(lesson.id, token),
+        cached ? Promise.resolve(cached) : fetchVideoUrl(lesson.id, authHeaders),
         fetch(`/api/cursos/progress?lessonId=${lesson.id}`, {
-          headers: { 'Authorization': `Bearer ${token}` },
+          headers: { ...authHeaders },
         }).then(res => res.json()).catch(() => ({ success: false }))
       ])
 
@@ -218,7 +197,7 @@ export default function VideoCoursePage({ course, lessons }: VideoCoursePageProp
       // Preload next video
       const nextLesson = getNextLesson(lesson.id)
       if (nextLesson) {
-        preloadVideo(nextLesson, token)
+        preloadVideo(nextLesson, authHeaders)
       }
     } catch (err) {
       setError('Error de conexión')
@@ -226,7 +205,7 @@ export default function VideoCoursePage({ course, lessons }: VideoCoursePageProp
       setIsLoading(false)
       setIsTransitioning(false)
     }
-  }, [user, supabase, getSessionToken, getCachedUrl, fetchVideoUrl, getNextLesson, preloadVideo])
+  }, [user, supabase, getCachedUrl, fetchVideoUrl, getNextLesson, preloadVideo])
 
   // Load video when lesson changes and auth is ready
   useEffect(() => {
@@ -266,15 +245,15 @@ export default function VideoCoursePage({ course, lessons }: VideoCoursePageProp
   const saveProgress = useCallback(async (lessonId: string, currentTime: number, completed: boolean = false) => {
     if (!supabase) return
 
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session?.access_token) return
+    const authHeaders = await getAuthHeaders()
+    if (!authHeaders['Authorization']) return
 
     try {
       await fetch('/api/cursos/progress', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
+          ...authHeaders,
         },
         body: JSON.stringify({
           lessonId,

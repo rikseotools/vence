@@ -3,6 +3,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 import type { SupabaseClient, User } from '@supabase/supabase-js'
 
 export const CONTROLLED_EMAILS: string[] = [
@@ -53,12 +54,12 @@ export function useSessionControl(
     try {
       setIsChecking(true)
 
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session?.access_token) return
+      const authHeaders = await getAuthHeaders()
+      if (!authHeaders['Authorization']) return
 
       const response = await fetch('/api/sessions/check-active', {
         headers: {
-          'Authorization': `Bearer ${session.access_token}`
+          ...authHeaders
         }
       })
 
@@ -82,7 +83,7 @@ export function useSessionControl(
           await fetch('/api/sessions/track-block', {
             method: 'POST',
             headers: {
-              'Authorization': `Bearer ${session.access_token}`,
+              ...authHeaders,
               'Content-Type': 'application/json'
             },
             body: JSON.stringify({
@@ -109,13 +110,13 @@ export function useSessionControl(
     try {
       setIsClosingOthers(true)
 
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session?.access_token) return
+      const authHeaders = await getAuthHeaders()
+      if (!authHeaders['Authorization']) return
 
       const response = await fetch('/api/sessions/close-others', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${session.access_token}`,
+          ...authHeaders,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ currentSessionId })
