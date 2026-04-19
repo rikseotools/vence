@@ -4,27 +4,26 @@ import { useState, useEffect, useCallback } from 'react'
 import ProtectedRoute from '@/components/Admin/ProtectedRoute'
 import { useAdminNotifications } from '@/hooks/useAdminNotifications'
 import { useLawChanges } from '@/hooks/useLawChanges'
-import { useAuth } from '@/contexts/AuthContext'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const adminNotifications = useAdminNotifications(true)
   const { hasUnreviewedChanges } = useLawChanges()
-  const { supabase } = useAuth() as any
   const [oepSignals, setOepSignals] = useState({ pending: 0, critical: 0 })
 
   const checkOepSignals = useCallback(async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session?.access_token) return
+      const authHeaders = await getAuthHeaders()
+      if (!authHeaders['Authorization']) return
       const res = await fetch('/api/admin/oep-signals/pending-count', {
-        headers: { 'Authorization': `Bearer ${session.access_token}` },
+        headers: authHeaders,
       })
       const json = await res.json()
       if (json.success) {
         setOepSignals({ pending: json.pendingCount ?? 0, critical: json.criticalCount ?? 0 })
       }
     } catch {}
-  }, [supabase])
+  }, [])
 
   useEffect(() => {
     const delay = setTimeout(checkOepSignals, 10000)

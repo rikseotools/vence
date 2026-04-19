@@ -2,6 +2,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 import { createClient } from '@supabase/supabase-js'
 import Link from 'next/link'
 
@@ -85,9 +86,9 @@ export default function EmailDetailPage() {
     
     try {
       // Call admin API with auth
-      const { data: { session } } = await supabase.auth.getSession()
+      const authHeaders = await getAuthHeaders()
       const response = await fetch(`/api/admin/email-events?timeRange=${timeRange}`, {
-        headers: session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {},
+        headers: authHeaders,
       })
       
       if (!response.ok) {

@@ -4,6 +4,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 import TestLayoutV2 from '@/components/v2/TestLayoutV2'
 import type { TestLayoutQuestion, TestConfig } from '@/lib/api/tests'
 
@@ -66,10 +67,9 @@ function transformQuestions(apiQuestions: CreateTestResponse['questions']): Test
 
 function TestArticuloContent() {
   const searchParams = useSearchParams()
-  const { user, loading: authLoading, supabase } = useAuth() as {
+  const { user, loading: authLoading } = useAuth() as {
     user: { id: string } | null
     loading: boolean
-    supabase: { auth: { getSession: () => Promise<{ data: { session: { access_token: string } | null } }> } }
   }
   const [error, setError] = useState<string | null>(null)
   const [questions, setQuestions] = useState<TestLayoutQuestion[]>([])
@@ -99,8 +99,8 @@ function TestArticuloContent() {
       setArticleInfo({ articleNumber, lawName: lawShortName })
 
       try {
-        const { data: { session } } = await supabase.auth.getSession()
-        if (!session?.access_token) {
+        const authHeaders = await getAuthHeaders()
+        if (!authHeaders['Authorization']) {
           setError('Debes iniciar sesión')
           setLoading(false)
           return
@@ -110,7 +110,7 @@ function TestArticuloContent() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`
+            ...authHeaders
           },
           body: JSON.stringify({
             type: 'article',
@@ -146,7 +146,7 @@ function TestArticuloContent() {
     }
 
     loadArticleQuestions()
-  }, [user, authLoading, supabase, searchParams])
+  }, [user, authLoading, searchParams])
 
   if (loading) {
     return (

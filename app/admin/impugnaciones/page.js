@@ -2,6 +2,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 import Link from 'next/link'
 
 export default function ImpugnacionesPage() {
@@ -21,8 +22,7 @@ export default function ImpugnacionesPage() {
   const loadImpugnaciones = async () => {
     try {
       setLoading(true)
-      const { data: { session } } = await supabase.auth.getSession()
-      const authHeaders = session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}
+      const authHeaders = await getAuthHeaders()
       const response = await fetch('/api/v2/admin/disputes', { headers: authHeaders })
       const data = await response.json()
 
@@ -41,12 +41,12 @@ export default function ImpugnacionesPage() {
 
   const closeDispute = async (disputeId, isPsychometric = false) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession()
+      const authHeaders = await getAuthHeaders()
       const response = await fetch('/api/v2/admin/disputes', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
+          ...authHeaders,
         },
         body: JSON.stringify({ disputeId, isPsychometric }),
       })

@@ -5,20 +5,20 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 import ExamReviewLayout from '@/components/ExamReviewLayout'
 import InteractiveBreadcrumbs from '@/components/InteractiveBreadcrumbs'
 import Link from 'next/link'
 
 interface AuthContextValue {
   user: { id: string } | null
-  supabase: { auth: { getSession: () => Promise<{ data: { session: { access_token: string } | null } }> } }
   loading: boolean
 }
 
 function RevisarExamenContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const { user, supabase, loading: authLoading } = useAuth() as AuthContextValue
+  const { user, loading: authLoading } = useAuth() as AuthContextValue
 
   const [reviewData, setReviewData] = useState<{
     test: { id: string; title: string; testType: string | null; tema: number | null; createdAt: string | null; completedAt: string | null; totalTimeSeconds: number }
@@ -73,10 +73,9 @@ function RevisarExamenContent() {
       }
 
       try {
-        const session = await supabase.auth.getSession()
-        const token = session.data.session?.access_token
+        const authHeaders = await getAuthHeaders()
 
-        if (!token) {
+        if (!authHeaders['Authorization']) {
           setError('No hay sesión activa')
           setLoading(false)
           return
@@ -86,9 +85,7 @@ function RevisarExamenContent() {
         const response = await fetch(
           `/api/v2/official-exams/review?examDate=${examDate}&oposicion=${oposicion}${parteParam}`,
           {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
+            headers: authHeaders,
           }
         )
 
@@ -110,7 +107,7 @@ function RevisarExamenContent() {
     }
 
     loadExamReview()
-  }, [user, authLoading, examDate, parte, router, supabase])
+  }, [user, authLoading, examDate, parte, router])
 
   // Loading state
   if (authLoading || loading) {

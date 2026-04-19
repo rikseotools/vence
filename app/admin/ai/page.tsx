@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import ReactMarkdown from 'react-markdown'
-import { useAuth } from '@/contexts/AuthContext'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 
 // ============================================
@@ -546,19 +545,18 @@ function ProviderCard({ config, onUpdate, onTest }: {
 // ============================================
 
 function LogDetailModal({ log, onClose }: { log: LogEntry; onClose: () => void }) {
-  const { supabase } = useAuth() as { supabase?: { auth: { getSession: () => Promise<{ data: { session: { access_token: string } | null } }> } } }
   const [traceData, setTraceData] = useState<LogTraceDetail | null>(null)
   const [loadingTraces, setLoadingTraces] = useState(false)
   const [showTraces, setShowTraces] = useState(false)
 
   const fetchTraces = useCallback(async () => {
-    if (!supabase || traceData) return
+    if (traceData) return
     setLoadingTraces(true)
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
+      const authHeaders = await getAuthHeaders()
+      if (!authHeaders['Authorization']) return
       const res = await fetch(`/api/admin/ai-traces/${log.id}`, {
-        headers: { Authorization: `Bearer ${session.access_token}` }
+        headers: authHeaders
       })
       if (res.ok) {
         setTraceData(await res.json())
@@ -568,7 +566,7 @@ function LogDetailModal({ log, onClose }: { log: LogEntry; onClose: () => void }
     } finally {
       setLoadingTraces(false)
     }
-  }, [log.id, supabase, traceData])
+  }, [log.id, traceData])
 
   const handleShowTraces = () => {
     setShowTraces(true)

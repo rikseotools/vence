@@ -5,6 +5,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 import { useAIChat } from '@/contexts/AIChatContext'
 import Link from 'next/link'
 import InteractiveBreadcrumbs from '@/components/InteractiveBreadcrumbs'
@@ -349,14 +350,13 @@ function FailedQuestionCard({ question, index }: FailedQuestionCardProps) {
 
 interface AuthContextValue {
   user: { id: string } | null
-  supabase: { auth: { getSession: () => Promise<{ data: { session: { access_token: string } | null } }> } }
   loading: boolean
 }
 
 function VerFallosContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const { user, supabase, loading: authLoading } = useAuth() as AuthContextValue
+  const { user, loading: authLoading } = useAuth() as AuthContextValue
   const [questions, setQuestions] = useState<OfficialExamFailedQuestion[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -380,10 +380,9 @@ function VerFallosContent() {
       }
 
       try {
-        const session = await supabase.auth.getSession()
-        const token = session.data.session?.access_token
+        const authHeaders = await getAuthHeaders()
 
-        if (!token) {
+        if (!authHeaders['Authorization']) {
           setError('No hay sesion activa')
           setLoading(false)
           return
@@ -393,9 +392,7 @@ function VerFallosContent() {
         const response = await fetch(
           `/api/v2/official-exams/failed-questions?examDate=${examDate}&oposicion=${oposicion}${parteParam}`,
           {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
+            headers: authHeaders,
           }
         )
 
@@ -417,7 +414,7 @@ function VerFallosContent() {
     }
 
     loadFailedQuestions()
-  }, [user, authLoading, examDate, parte, router, supabase])
+  }, [user, authLoading, examDate, parte, router])
 
   // Loading state
   if (authLoading || loading) {

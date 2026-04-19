@@ -4,6 +4,7 @@
 'use client'
 import { useState, useEffect, useRef, useCallback, ReactNode } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 import { createClient } from '@supabase/supabase-js'
 
 // Importar tipos desde el archivo centralizado
@@ -126,15 +127,15 @@ async function respondViaFeedbackEndpoint(supabase: any, params: {
   sendBell?: boolean
 }): Promise<{ ok: boolean; detail?: string; messageId?: string | null; bellSent?: boolean; emailSent?: boolean; emailError?: string | null }> {
   try {
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session?.access_token) {
+    const authHeaders = await getAuthHeaders()
+    if (!authHeaders['Authorization']) {
       return { ok: false, detail: 'Sesión admin no disponible' }
     }
     const res = await fetch('/api/v2/feedback/respond', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session.access_token}`,
+        ...authHeaders,
       },
       body: JSON.stringify(params),
     })

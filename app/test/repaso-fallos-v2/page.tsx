@@ -4,6 +4,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 import TestLayoutV2 from '@/components/v2/TestLayoutV2'
 import type { TestLayoutQuestion, TestConfig } from '@/lib/api/tests'
 
@@ -38,9 +39,8 @@ function RepasoFallosV2Content() {
       }
 
       try {
-        // Obtener token de sesión
-        const { data: { session } } = await supabase.auth.getSession()
-        if (!session?.access_token) {
+        const authHeaders = await getAuthHeaders()
+        if (!authHeaders['Authorization']) {
           setError('Debes iniciar sesión para ver tus preguntas falladas')
           setLoading(false)
           return
@@ -73,7 +73,7 @@ function RepasoFallosV2Content() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
+            ...authHeaders,
           },
           body: JSON.stringify(requestBody),
         })

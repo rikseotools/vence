@@ -1,10 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useAuth } from '@/contexts/AuthContext'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 
 export default function EngagementPage() {
-  const { supabase } = useAuth()
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -19,20 +18,15 @@ export default function EngagementPage() {
 
   useEffect(() => {
     async function fetchEngagementStats() {
-      if (!supabase) {
-        console.log('❌ No supabase instance available')
-        return
-      }
-
       try {
         // Get auth token for API call
-        const { data: { session } } = await supabase.auth.getSession()
-        if (!session?.access_token) {
+        const authHeaders = await getAuthHeaders()
+        if (!authHeaders['Authorization']) {
           throw new Error('No session token available')
         }
 
         const response = await fetch('/api/admin/engagement-stats', {
-          headers: { 'Authorization': `Bearer ${session.access_token}` },
+          headers: authHeaders,
         })
 
         if (!response.ok) {
@@ -52,7 +46,7 @@ export default function EngagementPage() {
     }
 
     fetchEngagementStats()
-  }, [supabase])
+  }, [])
 
   if (loading) {
     return (
