@@ -124,6 +124,26 @@ export async function checkDeviceDailyUsage(
 }
 
 /**
+ * Increment the daily counter AFTER a successful save.
+ * Call this only when the answer was actually persisted — never before.
+ * Fail-silent: if increment fails, the user just gets a free question.
+ */
+export async function incrementDailyCount(
+  userId: string | null | undefined,
+): Promise<void> {
+  if (!userId) return
+
+  try {
+    await getSupabaseAdmin().rpc('increment_daily_questions', {
+      p_user_id: userId,
+      p_limit: DAILY_LIMIT,
+    })
+  } catch {
+    // Fail silent — better to give a free question than block a paying user
+  }
+}
+
+/**
  * Read-only check (doesn't increment). Use before loading questions, not after answering.
  */
 export async function getDailyLimitStatus(

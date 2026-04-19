@@ -11,7 +11,7 @@ import {
   type AnswerAndSaveResponse,
 } from '@/lib/api/v2/answer-and-save'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
-import { checkAndIncrementDailyLimit, checkDeviceDailyUsage } from '@/lib/api/dailyLimit'
+import { getDailyLimitStatus, incrementDailyCount, checkDeviceDailyUsage } from '@/lib/api/dailyLimit'
 import { registerAndCheckDevice, getDeviceIdFromRequest } from '@/lib/api/deviceLimit'
 
 // Margen para cold start + conexión BD
@@ -81,9 +81,9 @@ async function _POST(request: NextRequest): Promise<NextResponse<AnswerAndSaveRe
       )
     }
 
-    // 4. Per-user daily limit (userId from token, not body)
-    // Evaluado ANTES del device limit para que premium bypass ambos checks
-    const dailyLimit = await checkAndIncrementDailyLimit(user.id)
+    // 4. Per-user daily limit CHECK (read-only, no incrementa)
+    // El increment se hace DESPUÉS del save exitoso para evitar doble conteo en reintentos
+    const dailyLimit = await getDailyLimitStatus(user.id)
 
     // 5. Shared device daily limit (solo para free users)
     if (!dailyLimit.isPremium) {
@@ -134,8 +134,14 @@ async function _POST(request: NextRequest): Promise<NextResponse<AnswerAndSaveRe
     if (!result.success) {
       // save_failed: validación OK pero insert en test_questions falló
       // 404: pregunta no encontrada (correctOption === null)
+      // NO incrementar daily count — la respuesta no se guardó
       const status = result.saveAction === 'save_failed' ? 500 : 404
       return NextResponse.json(result, { status })
+    }
+
+    // Increment daily count SOLO tras save exitoso (evita doble conteo en reintentos)
+    if (!dailyLimit.isPremium) {
+      after(() => incrementDailyCount(user.id))
     }
 
     return NextResponse.json(result)

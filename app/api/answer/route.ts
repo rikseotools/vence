@@ -6,7 +6,7 @@ import { safeParseAnswerRequest, validateAnswer } from '../../../lib/api/answers
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { checkRateLimit, getClientIp, RATE_LIMIT_ANSWER, RATE_LIMIT_ANON_ANSWER } from '@/lib/api/rateLimit'
 import { logValidationError } from '@/lib/api/validation-error-log'
-import { checkAndIncrementDailyLimit, checkDeviceDailyUsage, getUserIdFromToken } from '@/lib/api/dailyLimit'
+import { getDailyLimitStatus, incrementDailyCount, checkDeviceDailyUsage, getUserIdFromToken } from '@/lib/api/dailyLimit'
 import { registerAndCheckDevice, getDeviceIdFromRequest } from '@/lib/api/deviceLimit'
 // Dar margen al cold start de Vercel + conexión a Supabase
 export const maxDuration = 30
@@ -86,8 +86,8 @@ async function _POST(request: NextRequest) {
       )
     }
 
-    // Per-user daily limit check (25/day for free users)
-    const dailyLimit = await checkAndIncrementDailyLimit(tokenUserId)
+    // Per-user daily limit CHECK (read-only, increment after save)
+    const dailyLimit = await getDailyLimitStatus(tokenUserId)
 
     // Shared device daily limit (solo free users — premium bypass)
     if (!dailyLimit.isPremium) {
@@ -138,6 +138,11 @@ async function _POST(request: NextRequest) {
         },
         { status: 404 }
       )
+    }
+
+    // Increment daily count solo tras validación exitosa
+    if (!dailyLimit.isPremium && tokenUserId) {
+      incrementDailyCount(tokenUserId).catch(() => {})
     }
 
     return NextResponse.json(result)

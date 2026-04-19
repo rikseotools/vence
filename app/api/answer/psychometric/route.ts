@@ -13,7 +13,7 @@ import {
 } from '@/lib/api/psychometric-answer'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { checkRateLimit, getClientIp, RATE_LIMIT_ANON_ANSWER } from '@/lib/api/rateLimit'
-import { checkAndIncrementDailyLimit, checkDeviceDailyUsage, getUserIdFromToken } from '@/lib/api/dailyLimit'
+import { getDailyLimitStatus, incrementDailyCount, checkDeviceDailyUsage, getUserIdFromToken } from '@/lib/api/dailyLimit'
 import { registerAndCheckDevice, getDeviceIdFromRequest } from '@/lib/api/deviceLimit'
 // ============================================
 // ENDPOINT POST
@@ -72,7 +72,7 @@ return NextResponse.json(
       )
     }
 
-    const dailyLimit = await checkAndIncrementDailyLimit(tokenUserId)
+    const dailyLimit = await getDailyLimitStatus(tokenUserId)
 
     // Shared device daily limit (solo free users — premium bypass)
     if (!dailyLimit.isPremium) {
@@ -115,6 +115,10 @@ return NextResponse.json(
         },
         { status: 404 }
       )
+    }
+
+    if (!dailyLimit.isPremium && tokenUserId) {
+      incrementDailyCount(tokenUserId).catch(() => {})
     }
 
     return NextResponse.json(result)
