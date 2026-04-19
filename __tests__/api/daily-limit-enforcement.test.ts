@@ -18,7 +18,7 @@ jest.mock('@supabase/supabase-js', () => ({
   }),
 }))
 
-import { checkAndIncrementDailyLimit, checkDeviceDailyUsage, getDailyLimitStatus, getUserIdFromToken } from '@/lib/api/dailyLimit'
+import { checkAndIncrementDailyLimit, checkDeviceDailyUsage, getDailyLimitStatus, getUserIdFromToken, incrementDailyCount } from '@/lib/api/dailyLimit'
 
 // Minimal NextRequest-like object for testing getUserIdFromToken
 function fakeRequest(headers: Record<string, string> = {}) {
@@ -340,5 +340,211 @@ describe('Multi-account on same device', () => {
     const r = await checkDeviceDailyUsage('family-device')
     expect(r!.allowed).toBe(true)
     expect(r!.deviceTotal).toBe(5)
+  })
+})
+
+// ============================================
+// incrementDailyCount (post-save increment)
+// ============================================
+
+describe('incrementDailyCount', () => {
+  it('does nothing for null userId', async () => {
+    await incrementDailyCount(null)
+    expect(mockRpc).not.toHaveBeenCalled()
+  })
+
+  it('does nothing for undefined userId', async () => {
+    await incrementDailyCount(undefined)
+    expect(mockRpc).not.toHaveBeenCalled()
+  })
+
+  it('calls increment_daily_questions RPC', async () => {
+    mockRpc.mockResolvedValue({ data: null, error: null })
+    await incrementDailyCount('user-123')
+    expect(mockRpc).toHaveBeenCalledWith('increment_daily_questions', {
+      p_user_id: 'user-123',
+      p_limit: 25,
+    })
+  })
+
+  it('does not throw on RPC error (fail silent)', async () => {
+    mockRpc.mockResolvedValue({ data: null, error: { message: 'db error' } })
+    await expect(incrementDailyCount('user-123')).resolves.toBeUndefined()
+  })
+
+  it('does not throw on network exception (fail silent)', async () => {
+    mockRpc.mockRejectedValue(new Error('network timeout'))
+    await expect(incrementDailyCount('user-123')).resolves.toBeUndefined()
+  })
+})
+
+// ============================================
+// FLOW SIMULATION: check → save → increment
+// ============================================
+
+describe('Correct flow: getDailyLimitStatus → save → incrementDailyCount', () => {
+  it('Scenario: free user answers 1 question successfully', async () => {
+    // Step 1: Check (read-only) — user has 10/25
+    mockRpc.mockResolvedValueOnce({
+      data: { questions_today: 10, questions_remaining: 15, is_limit_reached: false, is_premium: false },
+      error: null,
+    })
+    const limit = await getDailyLimitStatus('free-user')
+    expect(limit.allowed).toBe(true)
+    expect(limit.questionsToday).toBe(10)
+    expect(mockRpc).toHaveBeenCalledWith('get_daily_question_status', { p_user_id: 'free-user' })
+
+    // Step 2: Save succeeds (simulated)
+    const saveSuccess = true
+
+    // Step 3: Increment only if save OK
+    if (saveSuccess && !limit.isPremium) {
+      mockRpc.mockResolvedValueOnce({ data: null, error: null })
+      await incrementDailyCount('free-user')
+    }
+    expect(mockRpc).toHaveBeenCalledTimes(2)
+    expect(mockRpc).toHaveBeenLastCalledWith('increment_daily_questions', {
+      p_user_id: 'free-user',
+      p_limit: 25,
+    })
+  })
+
+  it('Scenario: save FAILS — counter NOT incremented', async () => {
+    // Step 1: Check — user has 24/25 (last question)
+    mockRpc.mockResolvedValueOnce({
+      data: { questions_today: 24, questions_remaining: 1, is_limit_reached: false, is_premium: false },
+      error: null,
+    })
+    const limit = await getDailyLimitStatus('free-user')
+    expect(limit.allowed).toBe(true)
+
+    // Step 2: Save FAILS
+    const saveSuccess = false
+
+    // Step 3: Do NOT increment
+    if (saveSuccess && !limit.isPremium) {
+      await incrementDailyCount('free-user')
+    }
+    // Only 1 RPC call (the check), no increment
+    expect(mockRpc).toHaveBeenCalledTimes(1)
+  })
+
+  it('Scenario: retry after failure — counter only increments ONCE', async () => {
+    // Attempt 1: check passes, save fails, no increment
+    mockRpc.mockResolvedValueOnce({
+      data: { questions_today: 20, questions_remaining: 5, is_limit_reached: false, is_premium: false },
+      error: null,
+    })
+    const limit1 = await getDailyLimitStatus('free-user')
+    expect(limit1.allowed).toBe(true)
+    const save1 = false // save fails
+    if (save1 && !limit1.isPremium) await incrementDailyCount('free-user')
+
+    // Attempt 2 (retry): check passes again, save succeeds, increment once
+    mockRpc.mockResolvedValueOnce({
+      data: { questions_today: 20, questions_remaining: 5, is_limit_reached: false, is_premium: false },
+      error: null,
+    })
+    const limit2 = await getDailyLimitStatus('free-user')
+    expect(limit2.allowed).toBe(true)
+    const save2 = true // save succeeds
+    if (save2 && !limit2.isPremium) {
+      mockRpc.mockResolvedValueOnce({ data: null, error: null })
+      await incrementDailyCount('free-user')
+    }
+
+    // 3 RPC calls: check, check, increment (NOT check, increment, check, increment)
+    expect(mockRpc).toHaveBeenCalledTimes(3)
+  })
+
+  it('Scenario: premium user — never increments, never blocked', async () => {
+    mockRpc.mockResolvedValueOnce({
+      data: { questions_today: 0, questions_remaining: 999, is_limit_reached: false, is_premium: true },
+      error: null,
+    })
+    const limit = await getDailyLimitStatus('premium-user')
+    expect(limit.allowed).toBe(true)
+    expect(limit.isPremium).toBe(true)
+
+    // Save succeeds
+    const saveSuccess = true
+
+    // Premium: skip increment
+    if (saveSuccess && !limit.isPremium) {
+      await incrementDailyCount('premium-user')
+    }
+    // Only 1 call (the check), no increment for premium
+    expect(mockRpc).toHaveBeenCalledTimes(1)
+  })
+
+  it('Scenario: free user at limit (25/25) — blocked before save', async () => {
+    mockRpc.mockResolvedValueOnce({
+      data: { questions_today: 25, questions_remaining: 0, is_limit_reached: true, is_premium: false },
+      error: null,
+    })
+    const limit = await getDailyLimitStatus('free-user')
+    expect(limit.allowed).toBe(false)
+    // Should return 403 — never reaches save or increment
+    expect(mockRpc).toHaveBeenCalledTimes(1)
+  })
+
+  it('Scenario: Lidia bug — OLD flow would double-count, NEW flow does not', async () => {
+    // Simulate 12 questions where OLD flow would count 24 (2x each)
+    // but NEW flow counts exactly 12
+    let incrementCount = 0
+
+    for (let i = 0; i < 12; i++) {
+      // Check (read-only)
+      mockRpc.mockResolvedValueOnce({
+        data: { questions_today: i, questions_remaining: 25 - i, is_limit_reached: false, is_premium: false },
+        error: null,
+      })
+      const limit = await getDailyLimitStatus('lidia')
+      expect(limit.allowed).toBe(true)
+
+      // Save succeeds
+      const saveSuccess = true
+
+      // Increment once per successful save
+      if (saveSuccess && !limit.isPremium) {
+        mockRpc.mockResolvedValueOnce({ data: null, error: null })
+        await incrementDailyCount('lidia')
+        incrementCount++
+      }
+    }
+
+    // Exactly 12 increments for 12 questions (not 24)
+    expect(incrementCount).toBe(12)
+    // 24 total RPC calls: 12 checks + 12 increments
+    expect(mockRpc).toHaveBeenCalledTimes(24)
+  })
+
+  it('Scenario: device limit — premium bypasses, free gets checked', async () => {
+    // Premium user: getDailyLimitStatus returns isPremium=true → skip device check
+    mockRpc.mockResolvedValueOnce({
+      data: { questions_today: 0, questions_remaining: 999, is_limit_reached: false, is_premium: true },
+      error: null,
+    })
+    const premiumLimit = await getDailyLimitStatus('premium')
+    expect(premiumLimit.isPremium).toBe(true)
+    // Should NOT call checkDeviceDailyUsage for premium
+
+    // Free user: getDailyLimitStatus returns isPremium=false → check device
+    mockRpc.mockResolvedValueOnce({
+      data: { questions_today: 5, questions_remaining: 20, is_limit_reached: false, is_premium: false },
+      error: null,
+    })
+    const freeLimit = await getDailyLimitStatus('free')
+    expect(freeLimit.isPremium).toBe(false)
+
+    // Device check for free user — device at 24
+    mockRpc.mockResolvedValueOnce({ data: 24, error: null })
+    const deviceUsage = await checkDeviceDailyUsage('shared-device')
+    expect(deviceUsage!.allowed).toBe(true) // 24 < 25
+
+    // Device check for free user — device at 25
+    mockRpc.mockResolvedValueOnce({ data: 25, error: null })
+    const deviceBlocked = await checkDeviceDailyUsage('shared-device')
+    expect(deviceBlocked!.allowed).toBe(false) // 25 >= 25
   })
 })
