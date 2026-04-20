@@ -191,11 +191,20 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
     // estaba activo, haciendo que components como UserAvatar vieran isPremium=false
     // pese a que el perfil estaba cargándose correctamente.
     // Nota: retryCount > 0 salta el singleflight porque es recursión interna.
+    // Timeout: si la Promise lleva más de 15s sin resolver, ignorarla y reintentar
+    // (previene bloqueo infinito cuando la query original se queda colgada).
     if (retryCount === 0) {
       const existing = inflightProfileLoadsRef.current.get(userId)
       if (existing) {
         console.log('📄 Singleflight: esperando carga en curso para', userId)
-        return existing
+        const timeout = new Promise<null>(resolve => setTimeout(() => {
+          console.warn('⏱️ Singleflight timeout (15s) — limpiando y reintentando')
+          inflightProfileLoadsRef.current.delete(userId)
+          resolve(null)
+        }, 15_000))
+        const result = await Promise.race([existing, timeout])
+        if (result !== null) return result
+        // Timeout: la Promise original no resolvió, continuar con nueva carga
       }
     }
 
