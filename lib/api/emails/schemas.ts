@@ -42,7 +42,6 @@ export const EMAIL_TYPES = [
   'bienvenida_motivacional',
   'bienvenida_inmediato',
   'resumen_semanal',
-  'topic_unlock',
   'medal_congratulation',
   // Templates sin categoría de preferencia (admin/internal)
   'modal_articulos_mejora',
@@ -75,7 +74,6 @@ export const EMAIL_TYPE_TO_CATEGORY: Record<EmailType, EmailCategory> = {
   bienvenida_motivacional: 'marketing',
   bienvenida_inmediato: 'marketing',
   resumen_semanal: 'marketing',
-  topic_unlock: 'marketing',
   medal_congratulation: 'marketing',
   // Marketing (sin toggle individual, bloqueados por unsubscribed_all)
   modal_articulos_mejora: 'marketing',

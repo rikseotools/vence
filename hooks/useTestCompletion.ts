@@ -14,54 +14,6 @@ interface TestData {
   testType?: string
 }
 
-// Lista de nombres de temas para personalización
-const TOPIC_NAMES: Record<number, string> = {
-  1: "La Constitución Española de 1978",
-  2: "Los Derechos Fundamentales y Libertades Públicas", 
-  3: "La Corona",
-  4: "Las Cortes Generales",
-  5: "El Gobierno y la Administración",
-  6: "El Poder Judicial",
-  7: "La Ley 19/2013 de Transparencia",
-  8: "Personal al servicio de las Administraciones Públicas"
-}
-
-// Función para enviar email de desbloqueo personalizado
-async function sendUnlockEmail(user: any, completedTopic: number, unlockedTopic: number, accuracy: number) {
-  if (!user?.email) {
-    console.log('❌ No se puede enviar email: usuario sin email')
-    return
-  }
-
-  try {
-    const response = await fetch('/api/send-unlock-email', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        userEmail: user.email,
-        userName: user.user_metadata?.full_name || user.user_metadata?.name || 'Estudiante',
-        completedTopic,
-        completedTopicName: TOPIC_NAMES[completedTopic] || `Tema ${completedTopic}`,
-        unlockedTopic,
-        unlockedTopicName: TOPIC_NAMES[unlockedTopic] || `Tema ${unlockedTopic}`,
-        accuracy: Math.round(accuracy),
-        userId: user.id
-      })
-    })
-
-    if (response.ok) {
-      console.log('✅ Email de desbloqueo enviado correctamente')
-    } else {
-      const errorText = await response.text()
-      console.error('❌ Error enviando email de desbloqueo:', errorText)
-    }
-  } catch (error) {
-    console.error('❌ Error en sendUnlockEmail:', error)
-  }
-}
-
 export function useTestCompletion() {
   const { user, supabase } = useAuth() as any
   const { updateTopicProgress } = useTopicUnlock()
@@ -186,48 +138,15 @@ export function useTestCompletion() {
         console.warn('❌ Error auto-descartando notificaciones:', dismissError)
       }
 
-      // Actualizar progreso de desbloqueo
+      // Actualizar progreso
       if (tema && typeof tema === 'number') {
-        console.log(`🔄 Actualizando progreso de desbloqueo para tema ${tema}`)
         await updateTopicProgress()
-        
-        // Si el usuario alcanzó el threshold, mostrar notificación de desbloqueo
-        if (accuracy >= 70 && questions.length >= 10) {
-          console.log(`🎉 Tema ${tema} completado con ${accuracy}% - Siguiente tema desbloqueado`)
-          
-          // Intentar notificación push primero
-          let pushSent = false
-          if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-            try {
-              new Notification(`🎉 ¡Tema ${tema + 1} Desbloqueado!`, {
-                body: `Completaste el Tema ${tema} con ${Math.round(accuracy)}% de precisión`,
-                icon: '/icon-192.png',
-                tag: `topic-unlock-${tema + 1}`
-              })
-              pushSent = true
-              console.log('✅ Notificación push enviada correctamente')
-            } catch (error) {
-              console.log('❌ Error enviando notificación push:', error)
-            }
-          }
-          
-          // Si no se pudo enviar push, enviar email de fallback
-          if (!pushSent) {
-            console.log('📧 Push no disponible, enviando email de desbloqueo...')
-            try {
-              await sendUnlockEmail(user, tema, tema + 1, accuracy)
-            } catch (emailError) {
-              console.error('❌ Error enviando email de desbloqueo:', emailError)
-            }
-          }
-        }
       }
 
       return {
         success: true,
         testId: testInsert.id,
-        accuracy,
-        nextTopicUnlocked: accuracy >= 70 && questions.length >= 10
+        accuracy
       }
 
     } catch (error: any) {
@@ -264,41 +183,10 @@ export function useTestCompletion() {
         console.warn('❌ Error auto-descartando notificaciones:', dismissError)
       }
 
-      // Solo actualizar progreso de desbloqueo
+      // Actualizar progreso
       await updateTopicProgress()
 
-      // Mostrar notificación si se desbloqueó el siguiente tema
-      if (accuracy >= 70 && questionCount >= 10) {
-        console.log(`🎉 Tema ${tema} completado - Siguiente tema desbloqueado`)
-        
-        // Intentar notificación push primero
-        let pushSent = false
-        if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-          try {
-            new Notification(`🎉 ¡Tema ${tema + 1} Desbloqueado!`, {
-              body: `Completaste el Tema ${tema} con ${Math.round(accuracy)}% de precisión`,
-              icon: '/icon-192.png',
-              tag: `topic-unlock-${tema + 1}`
-            })
-            pushSent = true
-            console.log('✅ Notificación push enviada correctamente')
-          } catch (error) {
-            console.log('❌ Error enviando notificación push:', error)
-          }
-        }
-        
-        // Si no se pudo enviar push, enviar email de fallback
-        if (!pushSent) {
-          console.log('📧 Push no disponible, enviando email de desbloqueo...')
-          try {
-            await sendUnlockEmail(user, tema, tema + 1, accuracy)
-          } catch (emailError) {
-            console.error('❌ Error enviando email de desbloqueo:', emailError)
-          }
-        }
-      }
-
-      return { success: true, nextTopicUnlocked: accuracy >= 70 && questionCount >= 10 }
+      return { success: true }
     } catch (error: any) {
       console.error('Error in notifyTestCompletion:', error)
       return { success: false, error: error.message }
