@@ -7,6 +7,7 @@ import {
   safeParseDeleteFavoriteRequest,
   getUserFavorites,
   createFavorite,
+  updateFavorite,
   deleteFavorite
 } from '@/lib/api/test-favorites'
 
@@ -93,6 +94,56 @@ async function _POST(request: NextRequest) {
 }
 
 // ============================================
+// PUT: Sobreescribir favorito existente (busca por userId + name)
+// ============================================
+
+async function _PUT(request: NextRequest) {
+  try {
+    const body = await request.json()
+
+    const parseResult = safeParseCreateFavoriteRequest(body)
+    if (!parseResult.success) {
+      return NextResponse.json(
+        { success: false, error: 'Datos invalidos', details: parseResult.error.issues },
+        { status: 400 }
+      )
+    }
+
+    // Buscar el favorito existente por userId + name
+    const existingResult = await getUserFavorites({ userId: parseResult.data.userId })
+    const existing = existingResult.success && Array.isArray(existingResult.data)
+      ? existingResult.data.find((f: { name: string }) => f.name === parseResult.data.name)
+      : null
+
+    if (!existing) {
+      // No existe — crear nuevo
+      const result = await createFavorite(parseResult.data)
+      return NextResponse.json(result, { status: result.success ? 201 : 400 })
+    }
+
+    // Existe — actualizar
+    const result = await updateFavorite({
+      id: existing.id,
+      userId: parseResult.data.userId,
+      name: parseResult.data.name,
+      description: parseResult.data.description,
+      selectedLaws: parseResult.data.selectedLaws,
+      selectedArticlesByLaw: parseResult.data.selectedArticlesByLaw,
+      positionType: parseResult.data.positionType,
+    })
+
+    return NextResponse.json(result, { status: result.success ? 200 : 400 })
+
+  } catch (error) {
+    console.error('❌ [API/test-favorites] Error PUT:', error)
+    return NextResponse.json(
+      { success: false, error: 'Error interno del servidor' },
+      { status: 500 }
+    )
+  }
+}
+
+// ============================================
 // DELETE: Eliminar favorito
 // ============================================
 
@@ -147,7 +198,7 @@ async function _DELETE(request: NextRequest) {
 export async function OPTIONS() {
   return NextResponse.json({}, {
     headers: {
-      'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type'
     }
   })
@@ -155,4 +206,5 @@ export async function OPTIONS() {
 
 export const GET = withErrorLogging('/api/profile/test-favorites', _GET)
 export const POST = withErrorLogging('/api/profile/test-favorites', _POST)
+export const PUT = withErrorLogging('/api/profile/test-favorites', _PUT)
 export const DELETE = withErrorLogging('/api/profile/test-favorites', _DELETE)

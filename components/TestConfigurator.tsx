@@ -214,13 +214,20 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
       return;
     }
 
+    // Check si ya existe un favorito con ese nombre
+    const trimmedName = favoriteName.trim();
+    const existingFavorite = savedFavorites.find(f => f.name === trimmedName);
+    if (existingFavorite && !confirm(`Ya tienes un favorito llamado "${trimmedName}". ¿Quieres sobreescribirlo?`)) {
+      return;
+    }
+
     setSavingFavorite(true);
     setFavoriteError('');
 
     try {
       const favoriteData = {
         userId: currentUser!.id,
-        name: favoriteName.trim(),
+        name: trimmedName,
         description: favoriteDescription.trim() || null,
         selectedLaws: Array.from(selectedLaws),
         selectedArticlesByLaw: Object.fromEntries(
@@ -229,13 +236,14 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
             Array.from(articlesSet)
           ])
         ),
-        positionType: positionType
+        positionType: positionType,
+        upsert: !!existingFavorite,
       };
 
       console.log('💾 [Favorites] Enviando datos:', JSON.stringify(favoriteData, null, 2));
 
       const response = await fetch('/api/profile/test-favorites', {
-        method: 'POST',
+        method: existingFavorite ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(favoriteData)
       });
@@ -243,14 +251,17 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
       const result = await response.json();
 
       if (result.success && result.data) {
-        setSavedFavorites(prev => [result.data, ...prev]);
+        if (existingFavorite) {
+          setSavedFavorites(prev => prev.map(f => f.id === existingFavorite.id ? result.data : f));
+        } else {
+          setSavedFavorites(prev => [result.data, ...prev]);
+        }
         setFavoriteName('');
         setFavoriteDescription('');
         setShowSaveFavoriteModal(false);
         console.log('✅ [Favorites] Favorito guardado:', result.data.name);
       } else {
         console.error('❌ [Favorites] Error de validación:', result);
-        // Mostrar detalles de validación si existen
         if (result.details && Array.isArray(result.details)) {
           const detailMsg = result.details.map((d: any) => d.message || d.path?.join('.')).join(', ');
           setFavoriteError(detailMsg || result.error || 'Error al guardar');
