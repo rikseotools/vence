@@ -779,6 +779,16 @@ export async function fetchQuestionsByTopicScope(tema: number, searchParams: Sea
 
     console.log(`✅ API devolvió ${allQuestions.length} preguntas (${data.totalAvailable} disponibles)`)
 
+    // Pool pequeño (< numQuestions): saltar adaptativo y devolver todo.
+    // Caso típico: "solo oficiales" en temas con pocas preguntas oficiales (ej. Outlook con 9).
+    // El adaptativo filtra por neverSeen/dificultad y reduce el pool a 2-3 preguntas,
+    // confundiendo al usuario que ve "(9)" en el configurador pero recibe 3.
+    // Bug reportado por gaditadelgado@gmail.com (21/04/2026).
+    if (needsAdaptiveCatalog && allQuestions.length <= numQuestions) {
+      console.log(`⏩ Pool pequeño (${allQuestions.length} ≤ ${numQuestions}): saltando adaptativo, devolviendo todo`)
+      return shuffleArray([...allQuestions]).slice(0, numQuestions)
+    }
+
     // Modo adaptativo: construir catálogo por dificultad client-side
     if (needsAdaptiveCatalog) {
       console.log('🧠 Construyendo catálogo adaptativo client-side')
