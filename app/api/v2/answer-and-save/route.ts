@@ -65,9 +65,15 @@ async function _POST(request: NextRequest): Promise<NextResponse<AnswerAndSaveRe
       )
     }
 
-    // 3. Device limit check
+    // 3. Anti-fraud checks in parallel (device limit + daily limits)
+    // All three RPCs are independent — run them concurrently to save ~400ms
     const deviceId = getDeviceIdFromRequest(request)
-    const deviceCheck = await registerAndCheckDevice(user.id, deviceId, request.headers.get('user-agent'))
+    const [deviceCheck, dailyLimit, deviceUsage] = await Promise.all([
+      registerAndCheckDevice(user.id, deviceId, request.headers.get('user-agent')),
+      getDailyLimitStatus(user.id),
+      checkDeviceDailyUsage(deviceId),
+    ])
+
     if (!deviceCheck.allowed) {
       return NextResponse.json(
         {
@@ -81,27 +87,20 @@ async function _POST(request: NextRequest): Promise<NextResponse<AnswerAndSaveRe
       )
     }
 
-    // 4. Per-user daily limit CHECK (read-only, no incrementa)
-    // El increment se hace DESPUÉS del save exitoso para evitar doble conteo en reintentos
-    const dailyLimit = await getDailyLimitStatus(user.id)
-
-    // 5. Shared device daily limit (solo para free users)
-    if (!dailyLimit.isPremium) {
-      const deviceUsage = await checkDeviceDailyUsage(deviceId)
-      if (deviceUsage && !deviceUsage.allowed) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: 'Este dispositivo ha alcanzado el límite diario de preguntas. Vuelve mañana o hazte premium.',
-            limitReached: true,
-            questionsToday: deviceUsage.deviceTotal,
-          } as const,
-          { status: 403 },
-        )
-      }
+    // Shared device daily limit (solo para free users)
+    if (!dailyLimit.isPremium && deviceUsage && !deviceUsage.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Este dispositivo ha alcanzado el límite diario de preguntas. Vuelve mañana o hazte premium.',
+          limitReached: true,
+          questionsToday: deviceUsage.deviceTotal,
+        } as const,
+        { status: 403 },
+      )
     }
 
-    // 6. Per-user daily limit enforcement (free users only)
+    // Per-user daily limit enforcement (free users only)
     if (!dailyLimit.allowed) {
       return NextResponse.json(
         {
