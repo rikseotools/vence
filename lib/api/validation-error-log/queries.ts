@@ -1,7 +1,7 @@
 // lib/api/validation-error-log/queries.ts
 // Insert fire-and-forget de errores de validación via Drizzle
 
-import { getDb } from '@/db/client'
+import { getTraceDb } from '@/db/client'
 import { validationErrorLogs } from '@/db/schema'
 import type { ValidationErrorLogInput } from './schemas'
 
@@ -50,7 +50,7 @@ export function logValidationError(input: ValidationErrorLogInput): void {
 }
 
 async function _insertLog(input: ValidationErrorLogInput): Promise<void> {
-  const db = getDb()
+  const db = getTraceDb()
 
   // Sanitizar requestBody: quitar campos sensibles
   const sanitizedBody = input.requestBody ? sanitizeRequestBody(input.requestBody) : {}
