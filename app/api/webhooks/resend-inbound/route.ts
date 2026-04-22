@@ -237,6 +237,7 @@ async function _POST(request: NextRequest) {
       'postmaster@',
       'noreply@',
       'no-reply@',
+      'ses@web-cursos.es', // spam: cursos IA (21/04/2026)
     ]
 
     const isAutomated = ignoredSenders.some(pattern =>
