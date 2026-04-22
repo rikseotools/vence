@@ -62,6 +62,16 @@ export const EXAM_POSITION_MAP: Record<string, string[]> = {
     'auxiliar administrativo carm',
     'auxiliar administrativo murcia',
   ],
+  'auxiliar_administrativo_valencia': [
+    'auxiliar_administrativo_valencia',
+    'auxiliar administrativo valencia',
+    'auxiliar administrativo generalitat valenciana',
+    'auxiliar administrativo gva',
+  ],
+  'auxiliar_administrativo_ayuntamiento_valencia': [
+    'auxiliar_administrativo_ayuntamiento_valencia',
+    'auxiliar administrativo ayuntamiento valencia',
+  ],
 }
 
 /**
@@ -89,6 +99,10 @@ export const HOT_ARTICLE_TARGET_MAP: Record<string, string[]> = {
   'gestion_procesal': ['gestion-estado'],
   'auxiliar-administrativo-carm': ['auxiliar-administrativo-carm'],
   'auxiliar_administrativo_carm': ['auxiliar-administrativo-carm'],
+  'auxiliar-administrativo-valencia': ['auxiliar-administrativo-valencia'],
+  'auxiliar_administrativo_valencia': ['auxiliar-administrativo-valencia'],
+  'auxiliar-administrativo-ayuntamiento-valencia': ['auxiliar-administrativo-ayuntamiento-valencia'],
+  'auxiliar_administrativo_ayuntamiento_valencia': ['auxiliar-administrativo-ayuntamiento-valencia'],
 }
 
 /**

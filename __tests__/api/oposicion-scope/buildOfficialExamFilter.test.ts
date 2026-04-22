@@ -109,13 +109,13 @@ describe('buildOfficialExamFilter', () => {
   })
 
   test('dedupe por oposición: oposiciones distintas generan inserts separados', async () => {
-    buildOfficialExamFilter('auxiliar_administrativo_baleares')
-    buildOfficialExamFilter('auxiliar_administrativo_valencia')
+    buildOfficialExamFilter('auxiliar_administrativo_extremadura')
+    buildOfficialExamFilter('auxiliar_administrativo_galicia')
     await flush()
     expect(insertValuesSpy).toHaveBeenCalledTimes(2)
     const positions = insertValuesSpy.mock.calls.map((c) => c[0].requestBody.positionType)
     expect(positions).toEqual(
-      expect.arrayContaining(['auxiliar_administrativo_baleares', 'auxiliar_administrativo_valencia']),
+      expect.arrayContaining(['auxiliar_administrativo_extremadura', 'auxiliar_administrativo_galicia']),
     )
   })
 
