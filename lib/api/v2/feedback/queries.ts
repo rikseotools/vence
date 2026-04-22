@@ -146,15 +146,15 @@ export async function respondFeedback(
           bellSent = true
         }
 
-        // 2.3 UPDATE conversation → status coherente con finalStatus
-        // Post-15/04/2026 (bug Iván): antes se ponía 'waiting_user' incluso al
-        // cerrar. Eso dejaba la conversación con status incongruente respecto
-        // al feedback (resolved) y permitía que el usuario reabriera el flujo
-        // respondiendo "gracias", generando un badge "1 por responder" falso.
+        // 2.3 UPDATE conversation → 'closed' si hay finalStatus, 'waiting_user' si no.
+        // Usar 'closed' (no 'resolved') porque useAdminNotifications cuenta
+        // conversaciones con status != 'closed' como pendientes para el badge.
+        // Bug 22/04/2026: 31 conversaciones huérfanas con status='resolved'
+        // generaban badge "3 por responder" falso en el panel admin.
         await tx
           .update(feedbackConversations)
           .set({
-            status: finalStatus ?? 'waiting_user',
+            status: finalStatus ? 'closed' : 'waiting_user',
             adminUserId,
             adminViewedAt: now,
             lastMessageAt: now,
