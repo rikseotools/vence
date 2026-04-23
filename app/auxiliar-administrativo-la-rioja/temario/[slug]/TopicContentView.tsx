@@ -3,6 +3,7 @@
 'use client'
 
 import { useState } from 'react'
+import ArticleTTS from '@/components/ArticleTTS'
 import Link from 'next/link'
 import type { TopicContent, LawWithArticles, Article } from '@/lib/api/temario/schemas'
 import { useAuth } from '@/contexts/AuthContext'
@@ -337,7 +338,8 @@ function LawSection({ lawData, isExpanded, onToggle, isFirst }: { lawData: LawWi
         </div>
       </button>
 
-      <div className="no-print flex justify-end mt-1 -mb-1">
+      <div className="no-print flex items-center justify-between mt-1 -mb-1 px-1">
+        <ArticleTTS text={articles.filter(a => a.content).map(a => "Artículo " + a.articleNumber + ". " + (a.content || "")).join("\n\n")} articleNumber="" lawName={law.shortName} />
         <Link href={`/leyes/${getSlug(law.shortName)}`} className="text-sm text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 hover:underline">
           Hacer test de {law.shortName} →
         </Link>
@@ -394,6 +396,7 @@ function ArticleCard({ article, lawShortName }: { article: Article; lawShortName
           </div>
         )}
       </div>
+
 
       <div className="px-4 py-4 article-content text-gray-700 dark:text-gray-300 leading-relaxed">
         {article.content ? formatContent(article.content) : <p className="text-gray-400 dark:text-gray-500 italic">Contenido no disponible</p>}

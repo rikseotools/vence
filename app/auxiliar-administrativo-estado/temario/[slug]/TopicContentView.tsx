@@ -4,6 +4,7 @@
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import ReactMarkdown from 'react-markdown'
+import ArticleTTS from '@/components/ArticleTTS'
 import type { TopicContent, LawWithArticles, Article } from '@/lib/api/temario/schemas'
 import { useTopicUnlock } from '@/hooks/useTopicUnlock'
 import { useAuth } from '@/contexts/AuthContext'
@@ -504,7 +505,8 @@ function LawSection({ lawData, isExpanded, onToggle, isFirst, weakArticlesMap }:
       </button>
 
       {/* Enlace a test - siempre visible */}
-      <div className="no-print flex justify-end mt-1 -mb-1">
+      <div className="no-print flex items-center justify-between mt-1 -mb-1 px-1">
+        <ArticleTTS text={articles.filter(a => a.content).map(a => "Artículo " + a.articleNumber + ". " + (a.content || "")).join("\n\n")} articleNumber="" lawName={law.shortName} />
         <Link
           href={`/leyes/${getSlug(law.shortName)}`}
           className="text-sm text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 hover:underline"
@@ -690,6 +692,7 @@ function ArticleCard({ article, weakInfo, lawShortName, lawName }: ArticleCardPr
           </div>
         )}
       </div>
+
 
       {/* Article content */}
       <div className="px-4 py-4 article-content text-gray-700 dark:text-gray-300 leading-relaxed prose prose-sm dark:prose-invert max-w-none prose-headings:text-gray-800 dark:prose-headings:text-gray-200 prose-headings:font-semibold prose-h2:text-base prose-h2:mt-4 prose-h2:mb-2 prose-h3:text-sm prose-strong:text-gray-900 dark:prose-strong:text-white prose-ul:my-2 prose-li:my-0.5">
