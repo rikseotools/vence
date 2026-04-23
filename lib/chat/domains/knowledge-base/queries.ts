@@ -406,13 +406,8 @@ export function isPlatformQuery(message: string): boolean {
     /descargar/i,
     /\bpdf\b/i,
     /exportar/i,
-    // Mnemotécnicas (servicio no implementado)
-    /memotecn|mnemotec/i,
-    /regla\s+(para\s+(recordar|no\s+olvidar|memorizar|el|la|las?|los)|mnemotec|memotec)/i,
-    /^regla\s+(para|de|mnemot|memot)/i, // "REGLA PARA EL ART X", "regla de X"
-    /truco\s+para\s+(recordar|memorizar|no\s+olvidar)/i,
-    /\bhay\s+una\s+de\s+\w{3,}/i, // "HAY UNA DE PACO" (cualquier caps)
-    /\bla\s+de\s+[A-ZÁÉÍÓÚÑ]{3,}/, // "la de PACO" (solo si el nombre es TODO mayús)
+    // Mnemotécnicas: ya NO se interceptan aquí — el LLM (verification/search/fallback)
+    // las genera correctamente. Antes respondía "no tengo este servicio" pero sí funciona.
     // Quejas: no puedo hacer test / no me deja / no me cuenta progreso
     /no\s+(me\s+|se\s+)?(puedo|deja|sale)\s+.*(hacer|realizar|acceder\s+al?)\s+(\w+\s+){0,2}(test|examen|pregunta|sim[iu]lacro)/i,
     /por\s*qu[eé]\s+no\s+(me\s+|se\s+)?(puedo|deja|sale)\s+.*(test|pregunta|examen)/i,
