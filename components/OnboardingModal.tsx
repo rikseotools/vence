@@ -162,6 +162,41 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     icon: '👨‍⚕️'
   },
   {
+    id: 'auxiliar_enfermeria_gva',
+    nombre: 'Auxiliar de Enfermería Generalitat Valenciana',
+    categoria: 'C2',
+    administracion: 'Sanitaria',
+    icon: '💉'
+  },
+  {
+    id: 'tcae_aragon',
+    nombre: 'TCAE del Servicio Aragonés de Salud',
+    categoria: 'C2',
+    administracion: 'Sanitaria',
+    icon: '💉'
+  },
+  {
+    id: 'tcae_canarias',
+    nombre: 'TCAE del Servicio Canario de Salud',
+    categoria: 'C2',
+    administracion: 'Sanitaria',
+    icon: '💉'
+  },
+  {
+    id: 'tcae_galicia',
+    nombre: 'TCAE del SERGAS (Galicia)',
+    categoria: 'C2',
+    administracion: 'Sanitaria',
+    icon: '💉'
+  },
+  {
+    id: 'tcae_murcia',
+    nombre: 'TCAE del Servicio Murciano de Salud',
+    categoria: 'C2',
+    administracion: 'Sanitaria',
+    icon: '💉'
+  },
+  {
     id: 'tramitacion_procesal',
     nombre: 'Tramitación Procesal y Administrativa',
     categoria: 'C2',
@@ -719,17 +754,17 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
 const REGION_PRIORITY_OPOSICIONES: Record<string, string[]> = {
   'Madrid': ['auxiliar_administrativo_madrid', 'tcae_sermas_madrid', 'celador_sermas_madrid', 'auxiliar_administrativo_estado', 'administrativo_estado'],
   'Community of Madrid': ['auxiliar_administrativo_madrid', 'auxiliar_administrativo_estado', 'administrativo_estado'],
-  'Murcia': ['auxiliar_administrativo_ayuntamiento_murcia', 'auxiliar_administrativo_carm', 'auxiliar_administrativo_estado'],
-  'Region of Murcia': ['auxiliar_administrativo_ayuntamiento_murcia', 'auxiliar_administrativo_carm', 'auxiliar_administrativo_estado'],
+  'Murcia': ['auxiliar_administrativo_ayuntamiento_murcia', 'auxiliar_administrativo_carm', 'tcae_murcia', 'auxiliar_administrativo_estado'],
+  'Region of Murcia': ['auxiliar_administrativo_ayuntamiento_murcia', 'auxiliar_administrativo_carm', 'tcae_murcia', 'auxiliar_administrativo_estado'],
   'Castilla y León': ['auxiliar_administrativo_cyl', 'auxiliar_administrativo_estado'],
   'Castile and León': ['auxiliar_administrativo_cyl', 'auxiliar_administrativo_estado'],
   'Andalucía': ['auxiliar_administrativo_andalucia', 'enfermero_sas_andalucia', 'auxiliar_administrativo_estado'],
   'Andalusia': ['auxiliar_administrativo_andalucia', 'enfermero_sas_andalucia', 'auxiliar_administrativo_estado'],
-  'Canarias': ['auxiliar_administrativo_canarias', 'auxiliar_administrativo_estado'],
+  'Canarias': ['auxiliar_administrativo_canarias', 'tcae_canarias', 'auxiliar_administrativo_estado'],
   'Canary Islands': ['auxiliar_administrativo_canarias', 'auxiliar_administrativo_estado'],
   'Castilla-La Mancha': ['auxiliar_administrativo_clm', 'auxiliar_administrativo_estado'],
   'Extremadura': ['auxiliar_administrativo_extremadura', 'auxiliar_administrativo_estado'],
-  'Aragón': ['auxiliar_administrativo_aragon', 'auxiliar_administrativo_estado'],
+  'Aragón': ['auxiliar_administrativo_aragon', 'tcae_aragon', 'auxiliar_administrativo_estado'],
   'Aragon': ['auxiliar_administrativo_aragon', 'auxiliar_administrativo_estado'],
   'Asturias': ['auxiliar_administrativo_asturias', 'auxiliar_administrativo_estado'],
   'Principality of Asturias': ['auxiliar_administrativo_asturias', 'auxiliar_administrativo_estado'],
@@ -742,9 +777,9 @@ const REGION_PRIORITY_OPOSICIONES: Record<string, string[]> = {
   'País Vasco': ['auxiliar_enfermeria_osakidetza', 'auxiliar_administrativo_estado'],
   'Basque Country': ['auxiliar_enfermeria_osakidetza', 'auxiliar_administrativo_estado'],
   'Euskadi': ['auxiliar_enfermeria_osakidetza', 'auxiliar_administrativo_estado'],
-  'Galicia': ['auxiliar_administrativo_galicia', 'administrativo_galicia', 'auxiliar_administrativo_estado'],
-  'Comunidad Valenciana': ['auxiliar_administrativo_valencia', 'auxiliar_administrativo_ayuntamiento_valencia', 'auxiliar_administrativo_estado'],
-  'Valencian Community': ['auxiliar_administrativo_valencia', 'auxiliar_administrativo_ayuntamiento_valencia', 'auxiliar_administrativo_estado'],
+  'Galicia': ['auxiliar_administrativo_galicia', 'administrativo_galicia', 'tcae_galicia', 'auxiliar_administrativo_estado'],
+  'Comunidad Valenciana': ['auxiliar_administrativo_valencia', 'auxiliar_administrativo_ayuntamiento_valencia', 'auxiliar_enfermeria_gva', 'auxiliar_administrativo_estado'],
+  'Valencian Community': ['auxiliar_administrativo_valencia', 'auxiliar_administrativo_ayuntamiento_valencia', 'auxiliar_enfermeria_gva', 'auxiliar_administrativo_estado'],
   'Valencia': ['auxiliar_administrativo_valencia', 'auxiliar_administrativo_ayuntamiento_valencia', 'auxiliar_administrativo_estado'],
 }
 
@@ -779,6 +814,11 @@ const AVAILABLE_OPOSICIONES_BY_DEMAND: string[] = [
   'tcae_sermas_madrid',               // sanitaria Madrid
   'celador_sermas_madrid',            // sanitaria Madrid
   'auxiliar_enfermeria_osakidetza',   // sanitaria País Vasco (TCAE)
+  'auxiliar_enfermeria_gva',          // sanitaria Valencia (TCAE)
+  'tcae_aragon',                      // sanitaria Aragón (TCAE)
+  'tcae_canarias',                    // sanitaria Canarias (TCAE)
+  'tcae_galicia',                     // sanitaria Galicia (TCAE)
+  'tcae_murcia',                      // sanitaria Murcia (TCAE)
 ]
 
 /** Reordena oposiciones: 1) región del usuario, 2) disponibles por demanda, 3) resto */

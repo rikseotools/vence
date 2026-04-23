@@ -267,6 +267,31 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'tcae_aragon',
+      label: 'TCAE Aragón (SALUD)',
+      data: { name: 'TCAE del Servicio Aragonés de Salud', slug: 'tcae-aragon', categoria: 'C2', administracion: 'Sanitaria' }
+    },
+    {
+      value: 'auxiliar_enfermeria_gva',
+      label: 'Aux Enfermería GVA',
+      data: { name: 'Auxiliar de Enfermería Generalitat Valenciana', slug: 'auxiliar-enfermeria-gva', categoria: 'C2', administracion: 'Sanitaria' }
+    },
+    {
+      value: 'tcae_canarias',
+      label: 'TCAE Canarias (SCS)',
+      data: { name: 'TCAE del Servicio Canario de Salud', slug: 'tcae-canarias', categoria: 'C2', administracion: 'Sanitaria' }
+    },
+    {
+      value: 'tcae_galicia',
+      label: 'TCAE Galicia (SERGAS)',
+      data: { name: 'TCAE del SERGAS', slug: 'tcae-galicia', categoria: 'C2', administracion: 'Sanitaria' }
+    },
+    {
+      value: 'tcae_murcia',
+      label: 'TCAE Murcia (SMS)',
+      data: { name: 'TCAE del Servicio Murciano de Salud', slug: 'tcae-murcia', categoria: 'C2', administracion: 'Sanitaria' }
+    },
+    {
       value: 'administrativo_estado',
       label: 'Administrativo del Estado',
       data: {
