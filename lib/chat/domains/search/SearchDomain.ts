@@ -98,6 +98,7 @@ export class SearchDomain implements ChatDomain {
       /art[ií]culo\s+\d+/i,
       /\bley\s+\d+/i,
       /\bla\s+\d+\/\d+/i,
+      /\b\d{1,4}\/\d{4}\b/i, // Bare law reference: "951/2005"
 
       // Patrones legales
       /plazo|plazos/i,

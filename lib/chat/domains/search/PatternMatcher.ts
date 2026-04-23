@@ -331,6 +331,17 @@ export function extractSpecificLawMentions(message: string): string[] {
     }
   }
 
+  // Catch-all: bare "951/2005" without prefix — pass as-is to findLawByName
+  // which does fuzzy matching against laws.short_name and laws.name
+  const bareRef = /\b(\d{1,4}\/\d{4})\b/g
+  let bareMatch
+  while ((bareMatch = bareRef.exec(message)) !== null) {
+    const ref = bareMatch[1]
+    if (!mentions.some(m => m.includes(ref))) {
+      mentions.push(ref)
+    }
+  }
+
   return mentions
 }
 
