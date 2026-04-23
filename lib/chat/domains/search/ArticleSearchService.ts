@@ -196,7 +196,7 @@ export async function searchArticles(
       articles: [contextArticle],
       searchMethod: 'direct',
       mentionedLaws: contextArticle.lawShortName ? [contextArticle.lawShortName] : [],
-      contextLaw: contextArticle.lawShortName || contextLaw,
+      contextLaw: contextArticle.lawShortName || contextLaw || undefined,
     }
   }
 
