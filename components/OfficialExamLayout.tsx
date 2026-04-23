@@ -11,6 +11,7 @@ import { useDailyQuestionLimit } from '../hooks/useDailyQuestionLimit'
 import DailyLimitBanner from './DailyLimitBanner'
 import UpgradeLimitModal from './UpgradeLimitModal'
 import { useLawSlugs } from '@/contexts/LawSlugContext'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 
 // Type for useAuth context (AuthContext is JS, so we type it manually)
 interface AuthContextValue {
@@ -371,10 +372,9 @@ export default function OfficialExamLayout({
     try {
       console.log('🎯 [OfficialExam] Initializing exam session')
 
-      const { data: sessionData } = await supabase.auth.getSession()
-      const token = sessionData?.session?.access_token
+      const authHeaders = await getAuthHeaders()
 
-      if (!token) {
+      if (!authHeaders['Authorization']) {
         console.error('❌ [OfficialExam] No auth token available')
         return
       }
@@ -384,7 +384,7 @@ export default function OfficialExamLayout({
       // Check if there's already a pending test for this exam
       try {
         const pendingResponse = await fetch(`/api/v2/official-exams/pending`, {
-          headers: { 'Authorization': `Bearer ${token}` }
+          headers: { ...authHeaders }
         })
         const pendingResult = await pendingResponse.json()
 
@@ -425,7 +425,7 @@ export default function OfficialExamLayout({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          ...authHeaders
         },
         body: JSON.stringify({
           examDate,
@@ -643,10 +643,9 @@ export default function OfficialExamLayout({
           const examDateFormatted = metadata?.examDate || config?.examDate || ''
 
           // Obtener token de autenticación
-          const { data: sessionData } = await supabase.auth.getSession()
-          const token = sessionData?.session?.access_token
+          const authHeaders = await getAuthHeaders()
 
-          if (!token) {
+          if (!authHeaders['Authorization']) {
             console.error('❌ No se pudo obtener token de autenticación')
             return
           }
@@ -673,7 +672,7 @@ export default function OfficialExamLayout({
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                ...authHeaders
               },
               body: JSON.stringify({
                 testId: currentTestSession.id,
@@ -717,7 +716,7 @@ export default function OfficialExamLayout({
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                ...authHeaders
               },
               body: JSON.stringify({
                 examDate: examDateFormatted,

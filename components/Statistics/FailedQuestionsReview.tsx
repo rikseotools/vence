@@ -7,6 +7,7 @@ import { getOposicionByPositionType } from '@/lib/config/oposiciones'
 import FailedQuestionsModal, { type FailedPeriod } from '@/components/FailedQuestionsModal'
 import type { FailedQuestionsData } from '@/components/TestConfigurator.types'
 import { buildTestUrl } from '@/lib/test-url/buildTestUrl'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 
 interface TopicFailed {
   topicNumber: number
@@ -16,7 +17,7 @@ interface TopicFailed {
 }
 
 export default function FailedQuestionsReview() {
-  const { user, supabase } = useAuth() as { user: { id: string } | null; supabase: ReturnType<typeof import('@supabase/supabase-js').createClient> }
+  const { user } = useAuth() as { user: { id: string } | null }
   // OposicionContext expone `oposicionId` (formato snake_case, = positionType) y `userOposicion` (config completa).
   // Antes se desestructuraba `positionType`/`oposicionSlug` que NO existen en el context → siempre undefined.
   // Eso causaba el bug por el que Madrid/Galicia/etc veían títulos de temas de otras oposiciones.
@@ -46,12 +47,11 @@ export default function FailedQuestionsReview() {
     // devolverá 400 — evitamos el fetch.
     if (oposicionLoading || !positionType) return
     try {
-      const session = await supabase.auth.getSession()
-      const token = session.data.session?.access_token
-      if (!token) return
+      const authHeaders = await getAuthHeaders()
+      if (!authHeaders['Authorization']) return
 
       const res = await fetch(`/api/questions/failed-by-topic?positionType=${encodeURIComponent(positionType)}`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { ...authHeaders },
       })
       const data = await res.json()
 
@@ -65,7 +65,7 @@ export default function FailedQuestionsReview() {
     } finally {
       setLoading(false)
     }
-  }, [user, supabase, positionType, oposicionLoading])
+  }, [user, positionType, oposicionLoading])
 
   useEffect(() => { loadTopics() }, [loadTopics])
 

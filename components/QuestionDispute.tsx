@@ -1,7 +1,6 @@
 // components/QuestionDispute.tsx - Componente unificado para impugnar preguntas
 'use client'
 import { useState, useEffect, useCallback } from 'react'
-import { useAuth } from '@/contexts/AuthContext'
 import type { ExistingDisputeData } from '@/lib/api/dispute'
 import {
   LEGISLATIVE_DISPUTE_TYPES,
@@ -9,14 +8,11 @@ import {
   DISPUTE_TYPE_LABELS,
   type DisputeType,
 } from '@/lib/api/v2/dispute/types'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 
 // ============================================
 // TIPOS
 // ============================================
-
-interface AuthContextValue {
-  supabase: ReturnType<typeof import('@supabase/supabase-js').createClient>
-}
 
 interface QuestionDisputeProps {
   questionId: string | null | undefined
@@ -80,7 +76,6 @@ export default function QuestionDispute({
 }: QuestionDisputeProps) {
   const questionType = isPsychometric ? 'psychometric' : 'legislative'
   const apiBase = '/api/v2/dispute'
-  const { supabase } = useAuth() as AuthContextValue
 
   const [internalIsOpen, setInternalIsOpen] = useState(false)
   const isOpen = externalIsOpen !== null ? externalIsOpen : internalIsOpen
@@ -97,16 +92,8 @@ export default function QuestionDispute({
   const [hasChecked, setHasChecked] = useState(false)
 
   // ------------------------------------------
-  // Obtener token de sesión
+  // Obtener headers de autenticación
   // ------------------------------------------
-  const getToken = useCallback(async (): Promise<string | null> => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      return session?.access_token ?? null
-    } catch {
-      return null
-    }
-  }, [supabase])
 
   // ------------------------------------------
   // Verificar impugnación existente (GET)
@@ -117,8 +104,8 @@ export default function QuestionDispute({
     setErrorMessage('')
 
     try {
-      const token = await getToken()
-      if (!token) {
+      const authHeaders = await getAuthHeaders()
+      if (!authHeaders['Authorization']) {
         // Sin token: mostrar formulario (fallback graceful)
         setCheckingExisting(false)
         setHasChecked(true)
@@ -126,7 +113,7 @@ export default function QuestionDispute({
       }
 
       const res = await fetch(`${apiBase}?questionId=${questionId}&questionType=${questionType}`, {
-        headers: { 'Authorization': `Bearer ${token}` },
+        headers: { ...authHeaders },
       })
 
       if (res.ok) {
@@ -142,7 +129,7 @@ export default function QuestionDispute({
       setCheckingExisting(false)
       setHasChecked(true)
     }
-  }, [questionId, getToken])
+  }, [questionId])
 
   // Al abrir, verificar si ya existe
   useEffect(() => {
@@ -172,8 +159,8 @@ export default function QuestionDispute({
       return
     }
 
-    const token = await getToken()
-    if (!token) {
+    const authHeaders = await getAuthHeaders()
+    if (!authHeaders['Authorization']) {
       setErrorMessage('Error de autenticación. Intenta iniciar sesión de nuevo.')
       return
     }
@@ -187,7 +174,7 @@ export default function QuestionDispute({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          ...authHeaders,
         },
         body: JSON.stringify({
           questionId,

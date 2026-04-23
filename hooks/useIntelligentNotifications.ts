@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useLawSlugs } from '../contexts/LawSlugContext'
 import { MotivationalAnalyzer } from '../lib/notifications/motivationalAnalyzer'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 import type {
   Notification,
   NotificationTypeId,
@@ -1016,13 +1017,12 @@ export function useIntelligentNotifications(): UseIntelligentNotificationsReturn
         let rpcError: unknown = null
 
         if (useNewApi) {
-          const { data: { session } } = await supabase.auth.getSession()
-          const token = session?.access_token
-          if (!token) {
+          const authHeaders = await getAuthHeaders()
+          if (!authHeaders['Authorization']) {
             rpcError = new Error('No session token')
           } else {
             const resp = await fetch('/api/notifications/problematic-articles', {
-              headers: { Authorization: `Bearer ${token}` },
+              headers: { ...authHeaders },
             })
             const body = await resp.json().catch(() => null)
             if (!resp.ok || !body?.success) {
