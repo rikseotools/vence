@@ -12,6 +12,7 @@ import {
   findLawByName,
   extractArticleNumbers,
   findArticleInLaw,
+  getArticleByQuestionId,
 } from './queries'
 import {
   detectQueryPattern,
@@ -59,6 +60,25 @@ export async function searchArticles(
   // Usar searchQuery si está disponible, sino el mensaje del usuario
   const message = options.searchQuery || context.currentMessage
 
+  // 0. PRIORIDAD ABSOLUTA: Si hay pregunta con artículo vinculado, incluirlo siempre
+  // En follow-ups ("Y en qué casos..."), el artículo de la pregunta es el contexto más relevante
+  let contextArticle: ArticleMatch | null = null
+  if (context.questionContext?.questionId) {
+    const linked = await getArticleByQuestionId(context.questionContext.questionId)
+    if (linked) {
+      contextArticle = {
+        id: linked.id,
+        lawId: linked.lawId,
+        articleNumber: linked.articleNumber,
+        title: linked.title,
+        content: linked.content,
+        lawShortName: linked.lawShortName,
+        lawName: linked.lawName,
+      }
+      logger.info(`🔎 Context article from question: Art. ${linked.articleNumber} of ${linked.lawShortName}`, { domain: 'search' })
+    }
+  }
+
   // 1. Obtener ley del contexto - PRIORIDAD: options.contextLawName (detectada dinámicamente) > questionContext.lawName (vinculación estática)
   // Cuando detectamos una ley específica en la pregunta/explicación, esa tiene prioridad sobre el artículo vinculado
   const contextLaw = options.contextLawName || context.questionContext?.lawName
@@ -97,10 +117,16 @@ export async function searchArticles(
   if (contextLaw) {
     logger.info(`🔎 Using context law: ${contextLaw}`, { domain: 'search' })
     const result = await searchByContextLaw(message, contextLaw, limit)
-    // Si encontramos artículos, devolverlos
-    if (result.articles.length > 0) {
+
+    // Prepend context article if it exists and isn't already in results
+    const articles = contextArticle && !result.articles.some(a => a.id === contextArticle!.id)
+      ? [contextArticle, ...result.articles]
+      : result.articles
+
+    if (articles.length > 0) {
       return {
         ...result,
+        articles,
         contextLaw,
         mentionedLaws: [contextLaw],
       }
@@ -163,7 +189,18 @@ export async function searchArticles(
     }
   }
 
-  // 7. Fallback: búsqueda por keywords
+  // 7. Fallback: if we have the context article from the question, use it
+  if (contextArticle) {
+    logger.info(`🔎 Using context article as fallback: Art. ${contextArticle.articleNumber} of ${contextArticle.lawShortName}`, { domain: 'search' })
+    return {
+      articles: [contextArticle],
+      searchMethod: 'direct',
+      mentionedLaws: contextArticle.lawShortName ? [contextArticle.lawShortName] : [],
+      contextLaw: contextArticle.lawShortName || contextLaw,
+    }
+  }
+
+  // 8. Fallback: búsqueda por keywords
   const keywordResult = await searchByKeywords(message, limit)
   return {
     ...keywordResult,

@@ -1095,3 +1095,36 @@ export async function hasQuestionsForArticle(articleId: string): Promise<boolean
     return false
   }
 }
+
+/**
+ * Obtiene el artículo vinculado a una pregunta (primary_article_id).
+ * Usado para incluir el artículo de contexto en follow-ups de chat.
+ */
+export async function getArticleByQuestionId(
+  questionId: string
+): Promise<{ id: string; articleNumber: string; title: string; content: string; lawId: string; lawShortName: string; lawName: string } | null> {
+  try {
+    const { data, error } = await getSupabase()
+      .from('questions')
+      .select('primary_article_id, articles(id, article_number, title, content, law_id, laws(short_name, name))')
+      .eq('id', questionId)
+      .not('primary_article_id', 'is', null)
+      .limit(1)
+      .single()
+
+    if (error || !data?.articles) return null
+
+    const art = data.articles as any
+    return {
+      id: art.id,
+      articleNumber: art.article_number,
+      title: art.title ?? '',
+      content: art.content ?? '',
+      lawId: art.law_id,
+      lawShortName: art.laws?.short_name ?? '',
+      lawName: art.laws?.name ?? '',
+    }
+  } catch {
+    return null
+  }
+}
