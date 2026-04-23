@@ -1,6 +1,11 @@
-// lib/logClientError.ts — Helper centralizado para logar errores client-side a BD
+// lib/logClientError.ts — Helper centralizado para logar errores client-side
+// Estrategia mixta: errores client-side → Sentry (no satura BD),
+// errores server-side → validation_error_logs (panel admin).
+// Cambio 23/04/2026: los inserts a validation_error_logs saturaban el pool
+// de conexiones (max:1 en traceDb) con ~1000 errores/día client-side.
 // Fire-and-forget: nunca lanza, nunca bloquea.
 
+import * as Sentry from '@sentry/nextjs'
 import { getClientVersion } from '@/hooks/useVersionCheck'
 
 export type ClientErrorSeverity = 'critical' | 'warning' | 'info'
@@ -16,26 +21,28 @@ export function logClientError(
   }
 ): void {
   const err = error instanceof Error ? error : new Error(String(error))
-  const errorType = err.name === 'ApiTimeoutError' ? 'timeout'
-    : err.name === 'ApiNetworkError' ? 'network'
-    : 'unknown'
-
   const prefix = context?.component ? `[${context.component} client] ` : ''
   const clientVersion = getClientVersion()
+  const message = `${prefix}${err.message}${clientVersion ? ` [v:${clientVersion}]` : ''}`
 
-  fetch('/api/validation-error-log', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      endpoint,
-      errorType,
-      errorMessage: `${prefix}${err.message}${clientVersion ? ` [v:${clientVersion}]` : ''}`,
-      questionId: context?.questionId || undefined,
-      userId: context?.userId || undefined,
-      userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
-      httpStatus: 0,
-      durationMs: 0,
-      severity: context?.severity, // default 'critical' en el backend si no se pasa
+  // Send to Sentry (no DB insert, no pool saturation)
+  try {
+    Sentry.withScope(scope => {
+      scope.setTag('endpoint', endpoint)
+      scope.setTag('source', 'client')
+      scope.setLevel(
+        context?.severity === 'info' ? 'info'
+          : context?.severity === 'warning' ? 'warning'
+          : 'error'
+      )
+      if (context?.component) scope.setTag('component', context.component)
+      if (context?.questionId) scope.setTag('questionId', context.questionId)
+      if (context?.userId) scope.setTag('userId', context.userId)
+      if (clientVersion) scope.setTag('deploy', clientVersion)
+
+      Sentry.captureException(new Error(message), { originalException: err })
     })
-  }).catch(() => {})
+  } catch {
+    // Sentry not available — silent fail
+  }
 }
