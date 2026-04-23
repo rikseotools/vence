@@ -270,7 +270,7 @@ export class VerificationDomain implements ChatDomain {
     if (otherTopicKeywords.test(message)) return false
 
     // Si pide funcionalidades de la app (progreso, estadísticas, etc.), no es verificación
-    const appFunctionKeywords = /\b(progreso|estad[ií]sticas?|simulacro|c[oó]mo funciona|c[oó]mo va|aciertos|fallos|racha|temario|test|premium|suscripci[oó]n|plan|precio)\b/i
+    const appFunctionKeywords = /\b(progreso|estad[ií]sticas?|simulacro|c[oó]mo funciona|c[oó]mo va|aciertos|fallos|racha|temario|test|premium|suscripci[oó]n|plan|precio|nivel|dificultad|propones|adapt[aá]|aprobar|preparaci[oó]n)\b/i
     if (appFunctionKeywords.test(message)) return false
 
     // Mensaje corto sin temas específicos = probablemente seguimiento
