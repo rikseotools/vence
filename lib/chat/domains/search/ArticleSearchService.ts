@@ -493,6 +493,9 @@ export function wantsLiteralContent(message: string): boolean {
     // "número + ley" sin "art" - ej: "131 ley 39", "168 CE", "21 de la ley 39/2015"
     /\b\d{1,3}\s+(?:de\s+)?(?:la\s+)?(?:ley|ce\b|constituci[oó]n)/i,
   ]
+  // If the user explicitly asks for a summary/scheme, they don't want literal text
+  if (/\b(resum|esquema|sintetiza|simplifica)/i.test(message)) return false
+
   return patterns.some(p => p.test(message))
 }
 
