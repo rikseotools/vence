@@ -310,7 +310,8 @@ export async function verifyAnswer(
     articleFromExplanation, // Artículo detectado en explicación
     articleFromQuestion, // Artículo citado en la pregunta
     context.messages, // Historial de conversación para follow-ups
-    tracer
+    tracer,
+    { userDomain: context.userDomain }
   )
   const response = verificationGenResult.content
   const tokensUsed = verificationGenResult.tokensUsed
@@ -438,7 +439,8 @@ async function generateVerificationResponse(
   articleFromExplanation?: ArticleFromExplanation,
   articleFromQuestion?: ArticleFromExplanation,
   conversationHistory?: Array<{ role: string; content: string }>,
-  tracer?: AITracerInterface
+  tracer?: AITracerInterface,
+  context?: { userDomain?: string | null }
 ): Promise<{ content: string; tokensUsed?: number }> {
   const openai = await getOpenAI()
   const model = isPremium ? CHAT_MODEL_PREMIUM : CHAT_MODEL
@@ -527,7 +529,7 @@ ${ourExplanation}
   let systemPrompt = buildVerificationSystemPrompt(isVirtual ?? false)
 
   // Añadir contexto de oposición del usuario para respuestas más precisas
-  if (context.userDomain) {
+  if (context?.userDomain) {
     const oposName = context.userDomain.replace(/_/g, ' ')
     systemPrompt += `\n\n## 🎓 OPOSICIÓN DEL USUARIO\nEl usuario prepara: **${oposName}**. Si pregunta "esto me cae" o "entra en mi oposición", usa este dato para responder con precisión. No confundas Auxiliar (C2) con Administrativo (C1).`
   }
