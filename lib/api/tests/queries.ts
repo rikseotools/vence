@@ -142,6 +142,7 @@ export async function recoverTest(
               options: answer.questionData?.options || [],
               recovered: true,
             },
+            userId,
           }
         })
 

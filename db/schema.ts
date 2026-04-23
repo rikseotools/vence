@@ -538,6 +538,7 @@ export const oposicionTopics = pgTable("oposicion_topics", {
 export const testQuestions = pgTable("test_questions", {
 	id: uuid().defaultRandom().primaryKey().notNull(),
 	testId: uuid("test_id"),
+	userId: uuid("user_id"),
 	questionId: uuid("question_id"),
 	articleId: uuid("article_id"),
 	questionOrder: integer("question_order").notNull(),

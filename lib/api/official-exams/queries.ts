@@ -424,6 +424,7 @@ export async function saveOfficialExamResults(
         lawName: isLegislative ? (result.lawName ?? null) : null,
         difficulty: normalizeDifficulty(result.difficulty),
         questionType: result.questionType,
+        userId,
       }
     })
 
@@ -664,6 +665,7 @@ export async function initOfficialExam(
         difficulty: normalizeDifficulty(q.difficulty),
         questionType: q.questionType,
         timeSpentSeconds: 0,
+        userId,
       }
     })
 

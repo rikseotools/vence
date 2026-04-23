@@ -124,17 +124,19 @@ export async function saveAnswer(params: SaveAnswerParams): Promise<SaveAnswerRe
     let correctAnswer = params.correctAnswer
     let temaNumber = params.temaNumber
 
+    // Obtener userId del test (necesario para resolver temas y para el insert)
+    const testInfo = await db
+      .select({ userId: tests.userId })
+      .from(tests)
+      .where(eq(tests.id, params.testId))
+      .limit(1)
+
+    const testUserId = testInfo[0]?.userId ?? null
+
     // Si no hay temaNumber, intentar resolverlo
     if (temaNumber == null && (params.questionId || params.articleId)) {
-      // Obtener userId del test para determinar la oposición
-      const testInfo = await db
-        .select({ userId: tests.userId })
-        .from(tests)
-        .where(eq(tests.id, params.testId))
-        .limit(1)
-
-      if (testInfo[0]?.userId) {
-        const oposicionId = await getUserOposicion(testInfo[0].userId)
+      if (testUserId) {
+        const oposicionId = await getUserOposicion(testUserId)
         temaNumber = await resolveTemaForQuestion(params.questionId, params.articleId, oposicionId)
       }
     }
@@ -231,6 +233,7 @@ export async function saveAnswer(params: SaveAnswerParams): Promise<SaveAnswerRe
           difficulty: normalizeDifficulty(params.difficulty),
           timeSpentSeconds: params.timeSpentSeconds ?? 0,
           confidenceLevel: params.confidenceLevel,
+          userId: testUserId,
         })
         .onConflictDoUpdate({
           target: [testQuestions.testId, testQuestions.questionOrder],
@@ -684,6 +687,7 @@ export async function initExamQuestions(
         temaNumber,
         difficulty: q.difficulty,
         timeSpentSeconds: 0,
+        userId,
       }
     })
 

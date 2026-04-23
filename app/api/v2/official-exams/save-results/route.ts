@@ -143,6 +143,7 @@ async function _POST(request: NextRequest) {
         law_name: isLegislative ? (result.lawName ?? null) : null,
         difficulty: result.difficulty,
         question_type: result.questionType,
+        user_id: user.id,
       }
     })
 

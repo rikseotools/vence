@@ -178,6 +178,7 @@ async function buildTestAnswerRow(
     questionId,
     row: {
       testId: req.sessionId,
+      userId,
       questionOrder: (req.answerData.questionIndex || 0) + 1,
       questionText: req.questionData.question || 'Pregunta sin texto',
       userAnswer: mapAnswerToLetter(
