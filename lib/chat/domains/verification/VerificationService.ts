@@ -524,7 +524,13 @@ ${ourExplanation}
   }
 
   // Construir el system prompt (diferente para informática vs derecho)
-  const systemPrompt = buildVerificationSystemPrompt(isVirtual ?? false)
+  let systemPrompt = buildVerificationSystemPrompt(isVirtual ?? false)
+
+  // Añadir contexto de oposición del usuario para respuestas más precisas
+  if (context.userDomain) {
+    const oposName = context.userDomain.replace(/_/g, ' ')
+    systemPrompt += `\n\n## 🎓 OPOSICIÓN DEL USUARIO\nEl usuario prepara: **${oposName}**. Si pregunta "esto me cae" o "entra en mi oposición", usa este dato para responder con precisión. No confundas Auxiliar (C2) con Administrativo (C1).`
+  }
 
   // Construir el mensaje del usuario con contexto
   // NOTA: 'question' ya viene con los valores detectados (effectiveLawName, effectiveArticleNumber)
