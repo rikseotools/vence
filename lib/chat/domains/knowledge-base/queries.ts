@@ -341,6 +341,7 @@ export function isPlatformQuery(message: string): boolean {
     /practicar\s+(un\s+)?examen/i,
     // Funcionalidades de test
     /repas(o|ar)\s+(de\s+)?fallo/i,
+    /test\s+(de\s+)?(mis\s+)?fallo/i,
     /test\s+(de\s+)?art[ií]culo/i,
     /test\s+(de\s+)?ley/i,
     /test\s+(de\s+)?examen/i,
