@@ -238,20 +238,14 @@ describe('logClientError — source code', () => {
     expect(content).toMatch(/export function logClientError/)
   })
 
-  it('hace fetch a /api/validation-error-log', () => {
-    expect(content).toMatch(/fetch\('\/api\/validation-error-log'/)
+  it('sends to Sentry (not DB fetch)', () => {
+    expect(content).toMatch(/Sentry\.captureException/)
+    expect(content).toMatch(/Sentry\.withScope/)
   })
 
-  it('es fire-and-forget (.catch)', () => {
-    expect(content).toMatch(/\.catch\(\(\) => \{\}\)/)
-  })
-
-  it('clasifica ApiTimeoutError como timeout', () => {
-    expect(content).toMatch(/ApiTimeoutError.*timeout/)
-  })
-
-  it('clasifica ApiNetworkError como network', () => {
-    expect(content).toMatch(/ApiNetworkError.*network/)
+  it('sets endpoint and source tags', () => {
+    expect(content).toMatch(/scope\.setTag\('endpoint'/)
+    expect(content).toMatch(/scope\.setTag\('source', 'client'/)
   })
 
   it('incluye component como prefijo en errorMessage', () => {

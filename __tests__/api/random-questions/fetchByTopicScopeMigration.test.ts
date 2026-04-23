@@ -546,6 +546,7 @@ describe('fetchQuestionsByTopicScope — modo adaptativo avanzado', () => {
   })
 
   test('catálogo clasifica answered correctamente cuando hay historial', async () => {
+    // Pool (4) must be > numQuestions (3) for adaptive to activate (not bypass)
     const questions = [
       makeApiQuestion('seen-1', { metadata: { ...makeApiQuestion('x').metadata, difficulty: 'easy' } }),
       makeApiQuestion('seen-2', { metadata: { ...makeApiQuestion('x').metadata, difficulty: 'medium' } }),
@@ -570,7 +571,8 @@ describe('fetchQuestionsByTopicScope — modo adaptativo avanzado', () => {
       })
     global.fetch = mockFetch
 
-    const result = await fetchQuestionsByTopicScope(5, { n: '10', adaptive: 'true' }, { positionType: 'auxiliar_administrativo_estado' }) as any
+    // n=3 so pool(4) > numQuestions(3) → adaptive activates normally
+    const result = await fetchQuestionsByTopicScope(5, { n: '3', adaptive: 'true' }, { positionType: 'auxiliar_administrativo_estado' }) as any
 
     const catalog = result.adaptiveCatalog
     expect(catalog.answered.easy).toHaveLength(1)
@@ -615,20 +617,22 @@ describe('fetchQuestionsByTopicScope — modo adaptativo avanzado', () => {
     expect(difficulties.has('easy')).toBe(true)
   })
 
-  test('adaptativo con pocas preguntas: fallback a todas las disponibles', async () => {
+  test('adaptativo con pocas preguntas: bypass devuelve array directo (no adaptivo)', async () => {
+    // Pool (5) <= numQuestions (10) → bypass adaptativo, devuelve array directo
+    // Bug fix: gaditadelgado@gmail.com — Outlook con 9 oficiales, adaptativo
+    // filtraba a 3. Ahora devuelve todas sin catálogo.
     const questions = Array.from({ length: 5 }, (_, i) =>
       makeApiQuestion(`few-${i}`, { metadata: { ...makeApiQuestion('x').metadata, difficulty: 'hard' } })
     )
     const mockFetch = jest.fn()
       .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ success: true, questions, totalAvailable: 5 }) })
-      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ success: true, history: [] }) })
     global.fetch = mockFetch
 
     const result = await fetchQuestionsByTopicScope(5, { n: '10', adaptive: 'true' }, { positionType: 'auxiliar_administrativo_estado' }) as any
 
-    expect(result.isAdaptive).toBe(true)
-    expect(result.activeQuestions.length).toBeLessThanOrEqual(10)
-    expect(result.activeQuestions.length).toBeGreaterThan(0)
+    // Small pool bypass: returns plain array, not { isAdaptive, activeQuestions }
+    expect(Array.isArray(result)).toBe(true)
+    expect(result.length).toBe(5)
   })
 })
 
