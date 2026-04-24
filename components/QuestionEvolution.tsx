@@ -495,7 +495,7 @@ export default function QuestionEvolution({ userId, questionId, currentResult }:
             created_at,
             test_id,
             question_order,
-            tests!inner(
+            tests(
               id,
               title,
               completed_at,
@@ -507,7 +507,7 @@ export default function QuestionEvolution({ userId, questionId, currentResult }:
             )
           `)
           .eq('question_id', questionId)
-          .eq('tests.user_id', userId)
+          .eq('user_id', userId)
           .order('created_at', { ascending: true })
 
         const { data: questionStats } = await supabase

@@ -52,12 +52,7 @@ export default function PsychometricQuestionEvolution({
             time_spent_seconds,
             created_at,
             test_session_id,
-            question_order,
-            psychometric_test_sessions!inner(
-              id,
-              session_type,
-              total_questions
-            )
+            question_order
           `)
           .eq('question_id', questionId)
           .eq('user_id', userId)

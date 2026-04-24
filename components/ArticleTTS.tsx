@@ -58,6 +58,7 @@ export default function ArticleTTS({ text, articleNumber, lawName }: ArticleTTSP
     return () => {
       window.speechSynthesis.removeEventListener('voiceschanged', loadVoices)
       window.speechSynthesis.cancel()
+      if (keepAliveRef.current) clearInterval(keepAliveRef.current)
     }
   }, [])
 
@@ -83,10 +84,32 @@ export default function ArticleTTS({ text, articleNumber, lawName }: ArticleTTSP
       || null
   }, [])
 
+  // Chrome bug: speechSynthesis se "duerme" después de ~15s y deja de hablar.
+  // Workaround: pause+resume cada 10s para mantenerlo vivo.
+  const keepAliveRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const startKeepAlive = useCallback(() => {
+    stopKeepAlive()
+    keepAliveRef.current = setInterval(() => {
+      if (window.speechSynthesis.speaking && !window.speechSynthesis.paused) {
+        window.speechSynthesis.pause()
+        window.speechSynthesis.resume()
+      }
+    }, 10_000)
+  }, [])
+
+  const stopKeepAlive = useCallback(() => {
+    if (keepAliveRef.current) {
+      clearInterval(keepAliveRef.current)
+      keepAliveRef.current = null
+    }
+  }, [])
+
   const speakChunk = useCallback((index: number) => {
     if (stoppedRef.current || index >= chunksRef.current.length) {
       setIsPlaying(false)
       setIsPaused(false)
+      stopKeepAlive()
       return
     }
 
@@ -104,14 +127,14 @@ export default function ArticleTTS({ text, articleNumber, lawName }: ArticleTTSP
       }
     }
     utterance.onerror = (e) => {
-      // 'interrupted' is normal when stopping/pausing
+      // 'interrupted' is normal when stopping/pausing or keepalive
       if (e.error !== 'interrupted' && !stoppedRef.current) {
         speakChunk(index + 1)
       }
     }
 
     window.speechSynthesis.speak(utterance)
-  }, [rate, getSpanishVoice])
+  }, [rate, getSpanishVoice, stopKeepAlive])
 
   const play = useCallback(() => {
     if (!isSupported || !text) return
@@ -120,6 +143,7 @@ export default function ArticleTTS({ text, articleNumber, lawName }: ArticleTTSP
       window.speechSynthesis.resume()
       setIsPaused(false)
       setIsPlaying(true)
+      startKeepAlive()
       return
     }
 
@@ -133,22 +157,25 @@ export default function ArticleTTS({ text, articleNumber, lawName }: ArticleTTSP
     setIsPlaying(true)
     setIsPaused(false)
     speakChunk(0)
-  }, [isSupported, text, isPaused, cleanText, speakChunk])
+    startKeepAlive()
+  }, [isSupported, text, isPaused, cleanText, speakChunk, startKeepAlive])
 
   const pause = useCallback(() => {
     if (!isSupported) return
     window.speechSynthesis.pause()
+    stopKeepAlive()
     setIsPaused(true)
     setIsPlaying(false)
-  }, [isSupported])
+  }, [isSupported, stopKeepAlive])
 
   const stop = useCallback(() => {
     if (!isSupported) return
     stoppedRef.current = true
     window.speechSynthesis.cancel()
+    stopKeepAlive()
     setIsPlaying(false)
     setIsPaused(false)
-  }, [isSupported])
+  }, [isSupported, stopKeepAlive])
 
   const changeRate = useCallback(() => {
     const rates = [1.0, 1.25, 1.5, 0.75]
