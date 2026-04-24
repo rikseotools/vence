@@ -6,11 +6,13 @@
 //
 // Robustez:
 // - Chunks de 250 chars (Chrome descarta utterances largas)
-// - KeepAlive: pause+resume cada 10s (Chrome mata speech tras ~15s)
-// - Watchdog: cada 3s verifica que sigue hablando, re-lanza si murió
-// - Progreso visual: muestra chunk actual / total
+// - Watchdog cada 2s: detecta muerte silenciosa + chunks zombie (>30s)
+// - NO usa pause()+resume() keepalive (corrompe onend en Chrome 147)
+// - Progreso visual + diagnóstico de dispositivo
+// - Errores del watchdog → Sentry (observable sin coste de BD)
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { logClientError } from '@/lib/logClientError'
 
 interface ArticleTTSProps {
   text: string
@@ -72,7 +74,6 @@ export default function ArticleTTS({ text, articleNumber, lawName }: ArticleTTSP
     return () => {
       window.speechSynthesis.removeEventListener('voiceschanged', loadVoices)
       window.speechSynthesis.cancel()
-      if (keepAliveRef.current) clearInterval(keepAliveRef.current)
       if (watchdogRef.current) clearInterval(watchdogRef.current)
     }
   }, [])
@@ -104,28 +105,14 @@ export default function ArticleTTS({ text, articleNumber, lawName }: ArticleTTSP
       || null
   }, [selectedVoiceURI])
 
-  // ── KeepAlive: pause+resume cada 10s para evitar que Chrome mate el speech ──
-  const keepAliveRef = useRef<ReturnType<typeof setInterval> | null>(null)
-
-  const stopKeepAlive = useCallback(() => {
-    if (keepAliveRef.current) {
-      clearInterval(keepAliveRef.current)
-      keepAliveRef.current = null
-    }
-  }, [])
-
-  const startKeepAlive = useCallback(() => {
-    stopKeepAlive()
-    keepAliveRef.current = setInterval(() => {
-      if (window.speechSynthesis.speaking && !window.speechSynthesis.paused) {
-        window.speechSynthesis.pause()
-        window.speechSynthesis.resume()
-      }
-    }, 10_000)
-  }, [stopKeepAlive])
-
   // ── Watchdog: detecta muerte silenciosa y re-lanza el chunk actual ──
+  // Estrategia: NO usamos pause()+resume() keepalive (causa pérdida de onend
+  // en Chrome 147). En vez, el watchdog verifica cada 2s si el speech murió
+  // y lo re-lanza. También detecta chunks "zombie" (speaking=true pero sin
+  // producir sonido) via timeout de 30s por chunk.
   const watchdogRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const chunkStartTimeRef = useRef(0) // timestamp de cuando empezó el chunk actual
+  const CHUNK_TIMEOUT_MS = 30_000 // si un chunk lleva >30s, está muerto
 
   const stopWatchdog = useCallback(() => {
     if (watchdogRef.current) {
@@ -135,31 +122,47 @@ export default function ArticleTTS({ text, articleNumber, lawName }: ArticleTTSP
   }, [])
 
   // speakChunk necesita ser estable para que el watchdog lo llame.
-  // Usamos un ref para la función actual.
   const speakChunkRef = useRef<(index: number) => void>(() => {})
 
   const startWatchdog = useCallback(() => {
     stopWatchdog()
     watchdogRef.current = setInterval(() => {
-      // Si debería estar hablando pero no lo está → re-lanzar
-      if (
-        playingRef.current &&
-        !pausedRef.current &&
-        !stoppedRef.current &&
-        !window.speechSynthesis.speaking &&
-        !window.speechSynthesis.pending &&
-        currentChunkRef.current < chunksRef.current.length
-      ) {
-        console.warn(`🔄 [TTS Watchdog] Speech murió en chunk ${currentChunkRef.current}/${chunksRef.current.length}, re-lanzando...`)
+      if (!playingRef.current || pausedRef.current || stoppedRef.current) return
+      if (currentChunkRef.current >= chunksRef.current.length) return
+
+      const now = Date.now()
+      const chunkAge = now - chunkStartTimeRef.current
+
+      // Caso 1: speech murió silenciosamente (speaking=false, pending=false)
+      if (!window.speechSynthesis.speaking && !window.speechSynthesis.pending) {
+        const reason = `Speech murió silenciosamente en chunk ${currentChunkRef.current}/${chunksRef.current.length}`
+        console.warn(`🔄 [TTS Watchdog] ${reason}, re-lanzando...`)
+        logClientError('tts/watchdog', new Error(reason), {
+          component: 'ArticleTTS',
+          severity: 'warning',
+        })
+        window.speechSynthesis.cancel()
+        speakChunkRef.current(currentChunkRef.current)
+        return
+      }
+
+      // Caso 2: chunk zombie (speaking=true pero lleva >30s sin onend)
+      if (window.speechSynthesis.speaking && chunkAge > CHUNK_TIMEOUT_MS) {
+        const reason = `Chunk ${currentChunkRef.current}/${chunksRef.current.length} zombie (${Math.round(chunkAge/1000)}s sin onend)`
+        console.warn(`🔄 [TTS Watchdog] ${reason}, re-lanzando...`)
+        logClientError('tts/watchdog', new Error(reason), {
+          component: 'ArticleTTS',
+          severity: 'warning',
+        })
+        window.speechSynthesis.cancel()
         speakChunkRef.current(currentChunkRef.current)
       }
-    }, 3_000)
+    }, 2_000)
   }, [stopWatchdog])
 
   const stopAllTimers = useCallback(() => {
-    stopKeepAlive()
     stopWatchdog()
-  }, [stopKeepAlive, stopWatchdog])
+  }, [stopWatchdog])
 
   const speakChunk = useCallback((index: number) => {
     if (stoppedRef.current || index >= chunksRef.current.length) {
@@ -173,6 +176,7 @@ export default function ArticleTTS({ text, articleNumber, lawName }: ArticleTTSP
     }
 
     currentChunkRef.current = index
+    chunkStartTimeRef.current = Date.now()
     setProgress({ current: index + 1, total: chunksRef.current.length })
 
     const utterance = new SpeechSynthesisUtterance(chunksRef.current[index])
@@ -237,7 +241,6 @@ export default function ArticleTTS({ text, articleNumber, lawName }: ArticleTTSP
       pausedRef.current = false
       setIsPlaying(true)
       playingRef.current = true
-      startKeepAlive()
       startWatchdog()
       return
     }
@@ -270,9 +273,8 @@ export default function ArticleTTS({ text, articleNumber, lawName }: ArticleTTSP
     pausedRef.current = false
     setProgress({ current: 1, total: chunksRef.current.length })
     speakChunk(0)
-    startKeepAlive()
     startWatchdog()
-  }, [isSupported, text, isPaused, cleanText, speakChunk, startKeepAlive, startWatchdog, getDiagnostic])
+  }, [isSupported, text, isPaused, cleanText, speakChunk, startWatchdog, getDiagnostic])
 
   const pause = useCallback(() => {
     if (!isSupported) return

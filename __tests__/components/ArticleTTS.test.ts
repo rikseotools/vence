@@ -99,45 +99,51 @@ describe('splitIntoChunks', () => {
 // 2. SOURCE CODE — mecanismos de robustez
 // ============================================
 describe('ArticleTTS — mecanismos de robustez', () => {
-  it('tiene keepAlive timer (pause+resume cada 10s)', () => {
-    expect(SRC).toMatch(/keepAliveRef/)
-    expect(SRC).toMatch(/startKeepAlive/)
-    expect(SRC).toMatch(/stopKeepAlive/)
-    expect(SRC).toMatch(/10[_,]?000/)
-    expect(SRC).toMatch(/speechSynthesis\.pause\(\)/)
-    expect(SRC).toMatch(/speechSynthesis\.resume\(\)/)
+  it('NO usa keepAlive pause+resume (causa pérdida de onend en Chrome 147)', () => {
+    // El keepalive con pause()+resume() corrompe el estado de Chrome
+    // y hace que chunks mueran sin disparar onend tras ~3 min
+    expect(SRC).not.toMatch(/startKeepAlive/)
+    expect(SRC).not.toMatch(/keepAliveRef/)
   })
 
-  it('tiene watchdog timer (detecta muerte silenciosa cada 3s)', () => {
+  it('tiene watchdog timer (detecta muerte silenciosa cada 2s)', () => {
     expect(SRC).toMatch(/watchdogRef/)
     expect(SRC).toMatch(/startWatchdog/)
     expect(SRC).toMatch(/stopWatchdog/)
-    expect(SRC).toMatch(/3[_,]?000/)
+    expect(SRC).toMatch(/2[_,]?000/)
   })
 
-  it('watchdog verifica condiciones correctas antes de re-lanzar', () => {
-    // Debe verificar: playing + !paused + !stopped + !speaking + !pending + chunks restantes
-    expect(SRC).toMatch(/playingRef\.current/)
-    expect(SRC).toMatch(/pausedRef\.current/)
-    expect(SRC).toMatch(/stoppedRef\.current/)
-    expect(SRC).toMatch(/speechSynthesis\.speaking/)
-    expect(SRC).toMatch(/speechSynthesis\.pending/)
-    expect(SRC).toMatch(/currentChunkRef\.current < chunksRef\.current\.length/)
+  it('watchdog detecta caso 1: speech murió (speaking=false)', () => {
+    expect(SRC).toMatch(/!window\.speechSynthesis\.speaking/)
+    expect(SRC).toMatch(/!window\.speechSynthesis\.pending/)
+  })
+
+  it('watchdog detecta caso 2: chunk zombie (speaking=true >30s)', () => {
+    expect(SRC).toMatch(/CHUNK_TIMEOUT_MS/)
+    expect(SRC).toMatch(/30[_,]?000/)
+    expect(SRC).toMatch(/chunkAge > CHUNK_TIMEOUT_MS/)
+    expect(SRC).toMatch(/chunk.*zombie/)
+  })
+
+  it('watchdog hace cancel() antes de re-lanzar', () => {
+    // Importante: cancel() limpia el estado de Chrome antes de re-intentar
+    expect(SRC).toMatch(/speechSynthesis\.cancel\(\)\s*\n\s*speakChunkRef\.current/)
   })
 
   it('watchdog re-lanza desde el chunk actual (no desde 0)', () => {
     expect(SRC).toMatch(/speakChunkRef\.current\(currentChunkRef\.current\)/)
   })
 
+  it('registra timestamp de inicio de cada chunk', () => {
+    expect(SRC).toMatch(/chunkStartTimeRef\.current = Date\.now\(\)/)
+  })
+
   it('limpia todos los timers al parar', () => {
     expect(SRC).toMatch(/stopAllTimers/)
-    // stop() llama stopAllTimers
     expect(SRC).toMatch(/const stop = useCallback\(\(\) =>[\s\S]*?stopAllTimers/)
   })
 
-  it('limpia todos los timers al desmontar componente', () => {
-    // useEffect cleanup
-    expect(SRC).toMatch(/keepAliveRef\.current\) clearInterval\(keepAliveRef\.current\)/)
+  it('limpia watchdog al desmontar componente', () => {
     expect(SRC).toMatch(/watchdogRef\.current\) clearInterval\(watchdogRef\.current\)/)
   })
 
@@ -147,38 +153,26 @@ describe('ArticleTTS — mecanismos de robustez', () => {
     expect(SRC).toMatch(/progress\.total/)
   })
 
-  it('play() inicia keepAlive + watchdog', () => {
-    // Ambos deben iniciarse al reproducir
+  it('play() inicia watchdog (no keepalive)', () => {
     const playFn = SRC.match(/const play = useCallback\(\(\) =>[\s\S]*?\}, \[/)?.[0] || ''
-    expect(playFn).toContain('startKeepAlive()')
     expect(playFn).toContain('startWatchdog()')
+    expect(playFn).not.toContain('startKeepAlive()')
   })
 
-  it('pause() para ambos timers', () => {
+  it('pause() para timers', () => {
     const pauseFn = SRC.match(/const pause = useCallback\(\(\) =>[\s\S]*?\}, \[/)?.[0] || ''
     expect(pauseFn).toContain('stopAllTimers()')
-  })
-
-  it('resume (isPaused → play) reinicia ambos timers', () => {
-    // Dentro de play(), el branch isPaused también inicia los timers
-    const playFn = SRC.match(/const play = useCallback\(\(\) =>[\s\S]*?\}, \[/)?.[0] || ''
-    // Hay dos llamadas a startKeepAlive y startWatchdog (una para resume, otra para play nuevo)
-    const keepAliveCount = (playFn.match(/startKeepAlive\(\)/g) || []).length
-    const watchdogCount = (playFn.match(/startWatchdog\(\)/g) || []).length
-    expect(keepAliveCount).toBeGreaterThanOrEqual(2)
-    expect(watchdogCount).toBeGreaterThanOrEqual(2)
   })
 
   it('speakChunk actualiza progreso', () => {
     expect(SRC).toMatch(/setProgress\(\{ current: index \+ 1, total: chunksRef\.current\.length \}\)/)
   })
 
-  it('onerror con interrupted no es error (keepalive causa esto)', () => {
+  it('onerror con interrupted se ignora', () => {
     expect(SRC).toMatch(/e\.error !== 'interrupted'/)
   })
 
   it('usa refs para estado en timers (no state stale)', () => {
-    // Los timers deben leer refs, no state (que se cierra en el closure)
     expect(SRC).toMatch(/playingRef\.current/)
     expect(SRC).toMatch(/pausedRef\.current/)
     expect(SRC).toMatch(/stoppedRef\.current/)
