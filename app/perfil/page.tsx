@@ -267,6 +267,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'tcae_sermas_madrid',
+      label: 'TCAE SERMAS Madrid',
+      data: { name: 'TCAE del Servicio Madrileño de Salud', slug: 'tcae-sermas-madrid', categoria: 'C2', administracion: 'Sanitaria' }
+    },
+    {
+      value: 'auxiliar_enfermeria_osakidetza',
+      label: 'TCAE Osakidetza (País Vasco)',
+      data: { name: 'TCAE de Osakidetza', slug: 'auxiliar-enfermeria-osakidetza', categoria: 'C2', administracion: 'Sanitaria' }
+    },
+    {
       value: 'tcae_aragon',
       label: 'TCAE Aragón (SALUD)',
       data: { name: 'TCAE del Servicio Aragonés de Salud', slug: 'tcae-aragon', categoria: 'C2', administracion: 'Sanitaria' }
