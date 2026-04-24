@@ -344,17 +344,24 @@ export async function fetchLawArticles(lawSlug: string): Promise<LawArticlesResu
       return sortArticleNumbers(a.article_number as string, b.article_number as string)
     })
 
-    // Procesar artículos
+    // Procesar artículos — enviar solo preview del contenido (200 chars) en la lista.
+    // El cliente solo muestra 150 chars truncados; el contenido completo
+    // se carga bajo demanda en ArticleModal via fetchArticleContent.
+    // Esto reduce el payload de ~1.3MB a ~50KB para leyes grandes como la CE.
+    const CONTENT_PREVIEW_LENGTH = 200
     const processedArticles: ProcessedArticle[] = sortedData.map((article: Record<string, unknown>) => {
       const laws = article.laws as Record<string, unknown>
+      const fullContent = article.content as string
       return {
         id: article.id as string,
         article_number: article.article_number as string,
         title: article.title as string | null,
-        content: article.content as string,
-        contentLength: (article.content as string)?.length || 0,
-        contentPreview: extractContentPreview(article.content as string),
-        hasRichContent: isRichContent(article.content as string),
+        content: fullContent?.length > CONTENT_PREVIEW_LENGTH
+          ? fullContent.substring(0, CONTENT_PREVIEW_LENGTH)
+          : fullContent,
+        contentLength: fullContent?.length || 0,
+        contentPreview: extractContentPreview(fullContent),
+        hasRichContent: isRichContent(fullContent),
         law: {
           id: laws.id as string,
           name: laws.name as string,
