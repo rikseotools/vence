@@ -46,6 +46,10 @@ export default function ArticleTTS({ text, articleNumber, lawName }: ArticleTTSP
   const [rate, setRate] = useState(1.0)
   const [voicesLoaded, setVoicesLoaded] = useState(false)
   const [progress, setProgress] = useState({ current: 0, total: 0 })
+  const [showDiag, setShowDiag] = useState(false)
+  const [diagInfo, setDiagInfo] = useState('')
+  const [selectedVoiceURI, setSelectedVoiceURI] = useState<string | null>(null)
+  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([])
   const chunksRef = useRef<string[]>([])
   const currentChunkRef = useRef(0)
   const stoppedRef = useRef(false)
@@ -58,7 +62,10 @@ export default function ArticleTTS({ text, articleNumber, lawName }: ArticleTTSP
 
     const loadVoices = () => {
       const voices = window.speechSynthesis.getVoices()
-      if (voices.length > 0) setVoicesLoaded(true)
+      if (voices.length > 0) {
+        setVoicesLoaded(true)
+        setAvailableVoices(voices.filter(v => v.lang.startsWith('es')))
+      }
     }
     loadVoices()
     window.speechSynthesis.addEventListener('voiceschanged', loadVoices)
@@ -86,11 +93,16 @@ export default function ArticleTTS({ text, articleNumber, lawName }: ArticleTTSP
 
   const getSpanishVoice = useCallback(() => {
     const voices = window.speechSynthesis.getVoices()
+    // Si el usuario eligió una voz específica, usarla
+    if (selectedVoiceURI) {
+      const selected = voices.find(v => v.voiceURI === selectedVoiceURI)
+      if (selected) return selected
+    }
     return voices.find(v => v.lang === 'es-ES' && v.name.includes('Google'))
       || voices.find(v => v.lang === 'es-ES')
       || voices.find(v => v.lang.startsWith('es'))
       || null
-  }, [])
+  }, [selectedVoiceURI])
 
   // ── KeepAlive: pause+resume cada 10s para evitar que Chrome mate el speech ──
   const keepAliveRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -190,6 +202,32 @@ export default function ArticleTTS({ text, articleNumber, lawName }: ArticleTTSP
     speakChunkRef.current = speakChunk
   }, [speakChunk])
 
+  const getDiagnostic = useCallback((): string => {
+    if (!('speechSynthesis' in window)) return 'Tu navegador no soporta lectura en voz alta.'
+    const allVoices = window.speechSynthesis.getVoices()
+    const esVoices = allVoices.filter(v => v.lang.startsWith('es'))
+    const browser = navigator.userAgent
+    const isMobile = /Android|iPhone|iPad/i.test(browser)
+    const isChrome = /Chrome/i.test(browser) && !/Edge/i.test(browser)
+    const isFirefox = /Firefox/i.test(browser)
+    const isSafari = /Safari/i.test(browser) && !isChrome
+
+    let info = `Voces totales: ${allVoices.length}\n`
+    info += `Voces en español: ${esVoices.length}\n`
+    if (esVoices.length > 0) {
+      info += `Voces: ${esVoices.map(v => v.name).join(', ')}\n`
+    }
+    info += `Dispositivo: ${isMobile ? 'Móvil' : 'Escritorio'}\n`
+    info += `Navegador: ${isChrome ? 'Chrome' : isFirefox ? 'Firefox' : isSafari ? 'Safari' : 'Otro'}\n`
+
+    if (allVoices.length === 0) {
+      info += '\n⚠️ No se detectan voces. Prueba a recargar la página o usar Chrome.'
+    } else if (esVoices.length === 0) {
+      info += '\n⚠️ No hay voces en español. Instala un paquete de idioma español en tu dispositivo.'
+    }
+    return info
+  }, [])
+
   const play = useCallback(() => {
     if (!isSupported || !text) return
 
@@ -204,6 +242,21 @@ export default function ArticleTTS({ text, articleNumber, lawName }: ArticleTTSP
       return
     }
 
+    // Verificar que hay voces disponibles
+    const voices = window.speechSynthesis.getVoices()
+    if (voices.length === 0) {
+      setDiagInfo(getDiagnostic())
+      setShowDiag(true)
+      return
+    }
+    const esVoices = voices.filter(v => v.lang.startsWith('es'))
+    if (esVoices.length === 0) {
+      setDiagInfo(getDiagnostic())
+      setShowDiag(true)
+      return
+    }
+
+    setShowDiag(false)
     window.speechSynthesis.cancel()
     stoppedRef.current = false
 
@@ -219,7 +272,7 @@ export default function ArticleTTS({ text, articleNumber, lawName }: ArticleTTSP
     speakChunk(0)
     startKeepAlive()
     startWatchdog()
-  }, [isSupported, text, isPaused, cleanText, speakChunk, startKeepAlive, startWatchdog])
+  }, [isSupported, text, isPaused, cleanText, speakChunk, startKeepAlive, startWatchdog, getDiagnostic])
 
   const pause = useCallback(() => {
     if (!isSupported) return
@@ -253,71 +306,126 @@ export default function ArticleTTS({ text, articleNumber, lawName }: ArticleTTSP
   const progressPercent = progress.total > 0 ? Math.round((progress.current / progress.total) * 100) : 0
 
   return (
-    <div className="no-print inline-flex items-center gap-1">
-      {!isPlaying && !isPaused && (
-        <>
-          <button
-            onClick={play}
-            className="inline-flex items-center px-2 py-1 text-xs font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded transition-colors"
-            title={`Escuchar ${lawName || ''}`}
-          >
-            <svg className="w-3.5 h-3.5 mr-1" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" />
-            </svg>
-            Escuchar
-          </button>
-          <span className="text-xs text-gray-500 dark:text-gray-400 ml-2 hidden sm:inline">
-            🔊 Aprovecha el transporte, conducción, gimnasio, paseos, deporte y rutinas diarias para escuchar las leyes — todo suma
-          </span>
-        </>
-      )}
-
-      {(isPlaying || isPaused) && (
-        <>
-          {isPlaying ? (
-            <button
-              onClick={pause}
-              className="inline-flex items-center px-2 py-1 text-xs font-medium text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-900/50 rounded transition-colors"
-              title="Pausar"
-            >
-              <svg className="w-3.5 h-3.5 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-              Pausar
-            </button>
-          ) : (
+    <div className="no-print">
+      <div className="inline-flex items-center gap-1">
+        {!isPlaying && !isPaused && (
+          <>
             <button
               onClick={play}
-              className="inline-flex items-center px-2 py-1 text-xs font-medium text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-900/30 hover:bg-green-100 dark:hover:bg-green-900/50 rounded transition-colors"
-              title="Continuar"
+              className="inline-flex items-center px-2 py-1 text-xs font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded transition-colors"
+              title={`Escuchar ${lawName || ''}`}
             >
               <svg className="w-3.5 h-3.5 mr-1" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" />
               </svg>
-              Continuar
+              Escuchar
             </button>
+            <button
+              onClick={() => { setDiagInfo(getDiagnostic()); setShowDiag(!showDiag) }}
+              className="inline-flex items-center justify-center w-5 h-5 text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              title="Configurar voz"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </button>
+            {!showDiag && (
+              <span className="text-xs text-gray-500 dark:text-gray-400 ml-1 hidden sm:inline">
+                🔊 Aprovecha el transporte, conducción, gimnasio, paseos, deporte y rutinas diarias para escuchar las leyes — todo suma
+              </span>
+            )}
+          </>
+        )}
+
+        {(isPlaying || isPaused) && (
+          <>
+            {isPlaying ? (
+              <button
+                onClick={pause}
+                className="inline-flex items-center px-2 py-1 text-xs font-medium text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-900/50 rounded transition-colors"
+                title="Pausar"
+              >
+                <svg className="w-3.5 h-3.5 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+                Pausar
+              </button>
+            ) : (
+              <button
+                onClick={play}
+                className="inline-flex items-center px-2 py-1 text-xs font-medium text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-900/30 hover:bg-green-100 dark:hover:bg-green-900/50 rounded transition-colors"
+                title="Continuar"
+              >
+                <svg className="w-3.5 h-3.5 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" />
+                </svg>
+                Continuar
+              </button>
+            )}
+            <button
+              onClick={stop}
+              className="inline-flex items-center px-2 py-1 text-xs font-medium text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 rounded transition-colors"
+              title="Parar"
+            >
+              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clipRule="evenodd" />
+              </svg>
+            </button>
+            <button
+              onClick={changeRate}
+              className="inline-flex items-center px-1.5 py-1 text-xs font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+              title="Cambiar velocidad"
+            >
+              {rate}x
+            </button>
+            <span className="text-xs text-gray-500 dark:text-gray-400 ml-1 tabular-nums">
+              {progressPercent}%
+            </span>
+          </>
+        )}
+      </div>
+
+      {/* Panel de configuración / diagnóstico */}
+      {showDiag && (
+        <div className="mt-2 p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-xs space-y-2">
+          <div className="font-semibold text-gray-700 dark:text-gray-300">Configuración de voz</div>
+
+          {/* Selector de voz */}
+          {availableVoices.length > 0 ? (
+            <div>
+              <label className="block text-gray-500 dark:text-gray-400 mb-1">Voz ({availableVoices.length} disponibles):</label>
+              <select
+                value={selectedVoiceURI || ''}
+                onChange={(e) => setSelectedVoiceURI(e.target.value || null)}
+                className="w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
+              >
+                <option value="">Automática (mejor disponible)</option>
+                {availableVoices.map((v) => (
+                  <option key={v.voiceURI} value={v.voiceURI}>
+                    {v.name} ({v.lang})
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : (
+            <div className="text-amber-600 dark:text-amber-400">
+              No se detectan voces en español en tu dispositivo.
+            </div>
           )}
+
+          {/* Info del dispositivo */}
+          <div className="pt-2 border-t border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 whitespace-pre-line">
+            {diagInfo}
+          </div>
+
           <button
-            onClick={stop}
-            className="inline-flex items-center px-2 py-1 text-xs font-medium text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 rounded transition-colors"
-            title="Parar"
+            onClick={() => setShowDiag(false)}
+            className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
           >
-            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clipRule="evenodd" />
-            </svg>
+            Cerrar
           </button>
-          <button
-            onClick={changeRate}
-            className="inline-flex items-center px-1.5 py-1 text-xs font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
-            title="Cambiar velocidad"
-          >
-            {rate}x
-          </button>
-          {/* Progreso */}
-          <span className="text-xs text-gray-500 dark:text-gray-400 ml-1 tabular-nums">
-            {progressPercent}%
-          </span>
-        </>
+        </div>
       )}
     </div>
   )

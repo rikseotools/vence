@@ -224,3 +224,63 @@ describe('ArticleTTS — integración con temarios', () => {
     expect(found).toBe(true)
   })
 })
+
+// ============================================
+// 4. CONFIGURACIÓN Y DIAGNÓSTICO
+// ============================================
+describe('ArticleTTS — configuración y diagnóstico', () => {
+  it('tiene panel de diagnóstico con info del dispositivo', () => {
+    expect(SRC).toMatch(/getDiagnostic/)
+    expect(SRC).toMatch(/showDiag/)
+    expect(SRC).toMatch(/diagInfo/)
+  })
+
+  it('detecta navegador (Chrome, Firefox, Safari)', () => {
+    expect(SRC).toMatch(/isChrome/)
+    expect(SRC).toMatch(/isFirefox/)
+    expect(SRC).toMatch(/isSafari/)
+  })
+
+  it('detecta dispositivo (móvil vs escritorio)', () => {
+    expect(SRC).toMatch(/isMobile/)
+    expect(SRC).toMatch(/Android|iPhone|iPad/)
+  })
+
+  it('muestra número de voces disponibles', () => {
+    expect(SRC).toMatch(/Voces totales/)
+    expect(SRC).toMatch(/Voces en español/)
+  })
+
+  it('tiene selector de voz si hay varias opciones', () => {
+    expect(SRC).toMatch(/selectedVoiceURI/)
+    expect(SRC).toMatch(/availableVoices/)
+    expect(SRC).toMatch(/<select/)
+    expect(SRC).toMatch(/<option/)
+  })
+
+  it('getSpanishVoice respeta la selección del usuario', () => {
+    expect(SRC).toMatch(/selectedVoiceURI/)
+    expect(SRC).toMatch(/v\.voiceURI === selectedVoiceURI/)
+  })
+
+  it('muestra aviso si no hay voces en español', () => {
+    expect(SRC).toMatch(/No se detectan voces en español/)
+  })
+
+  it('play() verifica voces antes de reproducir', () => {
+    const playFn = SRC.match(/const play = useCallback\(\(\) =>[\s\S]*?\}, \[/)?.[0] || ''
+    expect(playFn).toContain('voices.length === 0')
+    expect(playFn).toContain('esVoices.length === 0')
+    expect(playFn).toContain('setShowDiag(true)')
+  })
+
+  it('tiene botón de configuración con icono engranaje', () => {
+    expect(SRC).toMatch(/Configurar voz/)
+    expect(SRC).toMatch(/strokeLinecap="round"/) // SVG gear icon
+  })
+
+  it('tiene botón cerrar en el panel', () => {
+    expect(SRC).toMatch(/Cerrar/)
+    expect(SRC).toMatch(/setShowDiag\(false\)/)
+  })
+})
