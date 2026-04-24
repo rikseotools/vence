@@ -274,9 +274,11 @@ describe('ArticleTTS — configuración y diagnóstico', () => {
     expect(playFn).toContain('setShowDiag(true)')
   })
 
-  it('tiene botón de configuración con icono engranaje', () => {
-    expect(SRC).toMatch(/Configurar voz/)
-    expect(SRC).toMatch(/strokeLinecap="round"/) // SVG gear icon
+  it('tiene botón de configuración con icono engranaje y texto responsive', () => {
+    expect(SRC).toMatch(/Configurar voz/) // title
+    expect(SRC).toMatch(/hidden sm:inline.*Configurar/) // texto solo en desktop
+    expect(SRC).toMatch(/hover:bg-gray-200/) // hover visible
+    expect(SRC).toMatch(/hover:border-gray-300/) // borde en hover
   })
 
   it('tiene botón cerrar en el panel', () => {
