@@ -3,6 +3,12 @@
 // Usa Web Speech Synthesis API (nativa del navegador, sin coste).
 // Divide texto largo en chunks para evitar el bug de Chrome que
 // descarta silenciosamente utterances muy largas.
+//
+// Robustez:
+// - Chunks de 250 chars (Chrome descarta utterances largas)
+// - KeepAlive: pause+resume cada 10s (Chrome mata speech tras ~15s)
+// - Watchdog: cada 3s verifica que sigue hablando, re-lanza si murió
+// - Progreso visual: muestra chunk actual / total
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 
@@ -13,7 +19,6 @@ interface ArticleTTSProps {
 }
 
 // Chrome limita utterances a ~200-300 chars antes de fallar silenciosamente.
-// Dividimos por frases/párrafos para garantizar que se reproduzca.
 const MAX_CHUNK_LENGTH = 250
 
 function splitIntoChunks(text: string): string[] {
@@ -40,15 +45,17 @@ export default function ArticleTTS({ text, articleNumber, lawName }: ArticleTTSP
   const [isSupported, setIsSupported] = useState(false)
   const [rate, setRate] = useState(1.0)
   const [voicesLoaded, setVoicesLoaded] = useState(false)
+  const [progress, setProgress] = useState({ current: 0, total: 0 })
   const chunksRef = useRef<string[]>([])
   const currentChunkRef = useRef(0)
   const stoppedRef = useRef(false)
+  const playingRef = useRef(false) // mirror of isPlaying for timers
+  const pausedRef = useRef(false)  // mirror of isPaused for timers
 
   useEffect(() => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) return
     setIsSupported(true)
 
-    // Chrome loads voices asynchronously
     const loadVoices = () => {
       const voices = window.speechSynthesis.getVoices()
       if (voices.length > 0) setVoicesLoaded(true)
@@ -59,6 +66,7 @@ export default function ArticleTTS({ text, articleNumber, lawName }: ArticleTTSP
       window.speechSynthesis.removeEventListener('voiceschanged', loadVoices)
       window.speechSynthesis.cancel()
       if (keepAliveRef.current) clearInterval(keepAliveRef.current)
+      if (watchdogRef.current) clearInterval(watchdogRef.current)
     }
   }, [])
 
@@ -84,9 +92,15 @@ export default function ArticleTTS({ text, articleNumber, lawName }: ArticleTTSP
       || null
   }, [])
 
-  // Chrome bug: speechSynthesis se "duerme" después de ~15s y deja de hablar.
-  // Workaround: pause+resume cada 10s para mantenerlo vivo.
+  // ── KeepAlive: pause+resume cada 10s para evitar que Chrome mate el speech ──
   const keepAliveRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const stopKeepAlive = useCallback(() => {
+    if (keepAliveRef.current) {
+      clearInterval(keepAliveRef.current)
+      keepAliveRef.current = null
+    }
+  }, [])
 
   const startKeepAlive = useCallback(() => {
     stopKeepAlive()
@@ -96,24 +110,59 @@ export default function ArticleTTS({ text, articleNumber, lawName }: ArticleTTSP
         window.speechSynthesis.resume()
       }
     }, 10_000)
-  }, [])
+  }, [stopKeepAlive])
 
-  const stopKeepAlive = useCallback(() => {
-    if (keepAliveRef.current) {
-      clearInterval(keepAliveRef.current)
-      keepAliveRef.current = null
+  // ── Watchdog: detecta muerte silenciosa y re-lanza el chunk actual ──
+  const watchdogRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const stopWatchdog = useCallback(() => {
+    if (watchdogRef.current) {
+      clearInterval(watchdogRef.current)
+      watchdogRef.current = null
     }
   }, [])
+
+  // speakChunk necesita ser estable para que el watchdog lo llame.
+  // Usamos un ref para la función actual.
+  const speakChunkRef = useRef<(index: number) => void>(() => {})
+
+  const startWatchdog = useCallback(() => {
+    stopWatchdog()
+    watchdogRef.current = setInterval(() => {
+      // Si debería estar hablando pero no lo está → re-lanzar
+      if (
+        playingRef.current &&
+        !pausedRef.current &&
+        !stoppedRef.current &&
+        !window.speechSynthesis.speaking &&
+        !window.speechSynthesis.pending &&
+        currentChunkRef.current < chunksRef.current.length
+      ) {
+        console.warn(`🔄 [TTS Watchdog] Speech murió en chunk ${currentChunkRef.current}/${chunksRef.current.length}, re-lanzando...`)
+        speakChunkRef.current(currentChunkRef.current)
+      }
+    }, 3_000)
+  }, [stopWatchdog])
+
+  const stopAllTimers = useCallback(() => {
+    stopKeepAlive()
+    stopWatchdog()
+  }, [stopKeepAlive, stopWatchdog])
 
   const speakChunk = useCallback((index: number) => {
     if (stoppedRef.current || index >= chunksRef.current.length) {
       setIsPlaying(false)
+      playingRef.current = false
       setIsPaused(false)
-      stopKeepAlive()
+      pausedRef.current = false
+      stopAllTimers()
+      setProgress({ current: chunksRef.current.length, total: chunksRef.current.length })
       return
     }
 
     currentChunkRef.current = index
+    setProgress({ current: index + 1, total: chunksRef.current.length })
+
     const utterance = new SpeechSynthesisUtterance(chunksRef.current[index])
     utterance.lang = 'es-ES'
     utterance.rate = rate
@@ -134,7 +183,12 @@ export default function ArticleTTS({ text, articleNumber, lawName }: ArticleTTSP
     }
 
     window.speechSynthesis.speak(utterance)
-  }, [rate, getSpanishVoice, stopKeepAlive])
+  }, [rate, getSpanishVoice, stopAllTimers])
+
+  // Keep speakChunkRef in sync for the watchdog
+  useEffect(() => {
+    speakChunkRef.current = speakChunk
+  }, [speakChunk])
 
   const play = useCallback(() => {
     if (!isSupported || !text) return
@@ -142,8 +196,11 @@ export default function ArticleTTS({ text, articleNumber, lawName }: ArticleTTSP
     if (isPaused) {
       window.speechSynthesis.resume()
       setIsPaused(false)
+      pausedRef.current = false
       setIsPlaying(true)
+      playingRef.current = true
       startKeepAlive()
+      startWatchdog()
       return
     }
 
@@ -155,27 +212,35 @@ export default function ArticleTTS({ text, articleNumber, lawName }: ArticleTTSP
     currentChunkRef.current = 0
 
     setIsPlaying(true)
+    playingRef.current = true
     setIsPaused(false)
+    pausedRef.current = false
+    setProgress({ current: 1, total: chunksRef.current.length })
     speakChunk(0)
     startKeepAlive()
-  }, [isSupported, text, isPaused, cleanText, speakChunk, startKeepAlive])
+    startWatchdog()
+  }, [isSupported, text, isPaused, cleanText, speakChunk, startKeepAlive, startWatchdog])
 
   const pause = useCallback(() => {
     if (!isSupported) return
     window.speechSynthesis.pause()
-    stopKeepAlive()
+    stopAllTimers()
     setIsPaused(true)
+    pausedRef.current = true
     setIsPlaying(false)
-  }, [isSupported, stopKeepAlive])
+    playingRef.current = false
+  }, [isSupported, stopAllTimers])
 
   const stop = useCallback(() => {
     if (!isSupported) return
     stoppedRef.current = true
     window.speechSynthesis.cancel()
-    stopKeepAlive()
+    stopAllTimers()
     setIsPlaying(false)
+    playingRef.current = false
     setIsPaused(false)
-  }, [isSupported, stopKeepAlive])
+    pausedRef.current = false
+  }, [isSupported, stopAllTimers])
 
   const changeRate = useCallback(() => {
     const rates = [1.0, 1.25, 1.5, 0.75]
@@ -184,6 +249,8 @@ export default function ArticleTTS({ text, articleNumber, lawName }: ArticleTTSP
   }, [rate])
 
   if (!isSupported || !text) return null
+
+  const progressPercent = progress.total > 0 ? Math.round((progress.current / progress.total) * 100) : 0
 
   return (
     <div className="no-print inline-flex items-center gap-1">
@@ -246,6 +313,10 @@ export default function ArticleTTS({ text, articleNumber, lawName }: ArticleTTSP
           >
             {rate}x
           </button>
+          {/* Progreso */}
+          <span className="text-xs text-gray-500 dark:text-gray-400 ml-1 tabular-nums">
+            {progressPercent}%
+          </span>
         </>
       )}
     </div>
