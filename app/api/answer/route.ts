@@ -77,12 +77,11 @@ async function _POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: deviceCheck.isPremium
-            ? 'Has alcanzado el límite de dispositivos. Usa uno de tus dispositivos registrados o contacta con soporte.'
-            : 'Has alcanzado el límite de dispositivos. Usa uno de tus dispositivos registrados o hazte premium.',
+          error: `Ya tienes ${deviceCheck.deviceCount} dispositivos conectados (${deviceCheck.existingDevices || 'desconocidos'}). Para usar este, desconecta uno desde tu perfil.`,
           deviceLimitReached: true,
           deviceCount: deviceCheck.deviceCount,
           maxDevices: deviceCheck.maxDevices,
+          existingDevices: deviceCheck.existingDevices,
         },
         { status: 403 }
       )

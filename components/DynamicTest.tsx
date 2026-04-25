@@ -10,6 +10,8 @@ import MarkdownExplanation from './MarkdownExplanation'
 import { validateAnswer } from '@/lib/api/answers/client'
 import { useAnswerWatchdog } from '@/hooks/useAnswerWatchdog'
 import { logClientError } from '@/lib/logClientError'
+import DeviceLimitModal from './DeviceLimitModal'
+import { useDeviceLimitModal } from '@/hooks/useDeviceLimitModal'
 
 // 🔒 Validación segura: usa lib/api/answers/client.ts (timeout 10s, retry x2, Zod)
 
@@ -63,6 +65,7 @@ export default function DynamicTest({ titulo, dificultad }: DynamicTestProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [testData, setTestData] = useState<TestData | null>(null)
+  const { isDeviceLimitOpen, closeDeviceLimit, retryAfterDeviceRemoval } = useDeviceLimitModal()
   const [currentQuestion, setCurrentQuestion] = useState(0)
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null)
   const [showResult, setShowResult] = useState(false)
@@ -729,6 +732,13 @@ export default function DynamicTest({ titulo, dificultad }: DynamicTestProps) {
           )}
         </div>
       </div>
+
+      {/* Modal de límite de dispositivos */}
+      <DeviceLimitModal
+        isOpen={isDeviceLimitOpen}
+        onClose={closeDeviceLimit}
+        onRetry={retryAfterDeviceRemoval}
+      />
     </div>
   )
 }

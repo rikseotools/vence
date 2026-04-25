@@ -21,6 +21,7 @@ export interface DeviceCheckResult {
   maxDevices: number
   isNewDevice: boolean
   isPremium: boolean
+  existingDevices: string
 }
 
 const FAIL_OPEN: DeviceCheckResult = {
@@ -29,6 +30,7 @@ const FAIL_OPEN: DeviceCheckResult = {
   maxDevices: 2,
   isNewDevice: false,
   isPremium: false,
+  existingDevices: '',
 }
 
 export function getDeviceIdFromRequest(request: NextRequest): string | null {
@@ -81,6 +83,7 @@ export async function registerAndCheckDevice(
       maxDevices: result.out_max_devices ?? result.max_devices,
       isNewDevice: result.out_is_new_device ?? result.is_new_device,
       isPremium: result.out_is_premium ?? result.is_premium,
+      existingDevices: result.out_existing_devices ?? result.existing_devices ?? '',
     }
   } catch (err) {
     console.error('❌ [DeviceLimit] Unexpected error:', err)

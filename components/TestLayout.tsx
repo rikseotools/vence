@@ -43,6 +43,8 @@ import DailyLimitBanner from './DailyLimitBanner'
 import AdSenseComponent from './AdSenseComponent'
 import UpgradeLimitModal from './UpgradeLimitModal'
 import SessionExpiredModal from './SessionExpiredModal'
+import DeviceLimitModal from './DeviceLimitModal'
+import { useDeviceLimitModal } from '@/hooks/useDeviceLimitModal'
 import { useOposicionPaths } from '@/hooks/useOposicionPaths'
 // validateAnswer ya no se usa — validación es client-side
 import { completeTestOnServer } from '@/lib/api/v2/complete-test/client'
@@ -237,6 +239,9 @@ export default function TestLayout({
 
   // 🔒 Sesión expirada durante test
   const [showSessionExpired, setShowSessionExpired] = useState(false)
+
+  // 📱 Límite de dispositivos
+  const { isDeviceLimitOpen, closeDeviceLimit, retryAfterDeviceRemoval } = useDeviceLimitModal()
 
   // Estados del test básicos
   const [currentQuestion, setCurrentQuestion] = useState<number>(0)
@@ -2488,6 +2493,13 @@ export default function TestLayout({
           window.location.href = '/login'
         }}
         onDismiss={() => setShowSessionExpired(false)}
+      />
+
+      {/* Modal de límite de dispositivos */}
+      <DeviceLimitModal
+        isOpen={isDeviceLimitOpen}
+        onClose={closeDeviceLimit}
+        onRetry={retryAfterDeviceRemoval}
       />
     </PersistentRegistrationManager>
   )

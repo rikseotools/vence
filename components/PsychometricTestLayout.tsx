@@ -23,6 +23,8 @@ import { getDifficultyInfo, formatDifficultyDisplay, isFirstAttempt, type Diffic
 import { useInteractionTracker } from '../hooks/useInteractionTracker'
 import { enqueuePsychometricAnswer } from '@/utils/psychometricSaveQueue'
 import ContentDataRenderer from './ContentDataRenderer'
+import DeviceLimitModal from './DeviceLimitModal'
+import { useDeviceLimitModal } from '@/hooks/useDeviceLimitModal'
 
 // ============================================
 // TIPOS
@@ -138,6 +140,9 @@ export default function PsychometricTestLayout({
 
   // 📊 Tracking de interacciones de usuario
   const { trackPsychometricAction } = useInteractionTracker()
+
+  // 📱 Límite de dispositivos
+  const { isDeviceLimitOpen, closeDeviceLimit, retryAfterDeviceRemoval } = useDeviceLimitModal()
 
   // Estados del test básicos
   const [currentQuestion, setCurrentQuestion] = useState<number>(resumeData?.questionsAnswered ?? 0)
@@ -832,6 +837,12 @@ export default function PsychometricTestLayout({
       <div className="h-16"></div>
       
       </div>
+      {/* Modal de límite de dispositivos */}
+      <DeviceLimitModal
+        isOpen={isDeviceLimitOpen}
+        onClose={closeDeviceLimit}
+        onRetry={retryAfterDeviceRemoval}
+      />
     </PsychometricRegistrationManager>
   )
 }

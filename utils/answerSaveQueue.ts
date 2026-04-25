@@ -95,14 +95,20 @@ async function syncOne(answer: QueuedAnswer, accessToken: string): Promise<boole
 
     if (response.status === 403) {
       // Límite diario o dispositivo bloqueado — respuesta definitiva, no reintentar.
-      // Marcar como éxito para que flush() la saque de la cola.
-      let errorBody = ''
-      try { errorBody = (await response.text()).slice(0, 200) } catch {}
-      logClientError('/api/v2/answer-and-save', new Error(`403 Forbidden (descartado): ${errorBody}`), {
+      let errorBody: Record<string, unknown> = {}
+      try { errorBody = await response.json() } catch {}
+
+      // Si es device limit, emitir evento para que el modal se abra
+      if (errorBody.deviceLimitReached && typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('vence:deviceLimitReached'))
+      }
+
+      logClientError('/api/v2/answer-and-save', new Error(`403 Forbidden: ${JSON.stringify(errorBody).slice(0, 200)}`), {
         component: 'answerSaveQueue syncOne 403',
         userId: extractUserId(answer),
         severity: 'info',
       })
+      // Marcar como éxito para que flush() la saque de la cola.
       return true
     }
 

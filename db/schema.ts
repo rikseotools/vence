@@ -3747,3 +3747,17 @@ export const oepDetectionSignals = pgTable("oep_detection_signals", {
 	check("oep_signals_status_check", sql`status IN ('pending', 'applied', 'dismissed', 'auto_applied')`),
 	check("oep_signals_confidence_check", sql`confidence_score >= 0 AND confidence_score <= 100`),
 ]);
+
+export const userDevices = pgTable("user_devices", {
+	id: uuid().default(sql`gen_random_uuid()`).primaryKey().notNull(),
+	userId: uuid("user_id").notNull(),
+	deviceId: text("device_id").notNull(),
+	deviceLabel: text("device_label"),
+	firstSeenAt: timestamp("first_seen_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	lastSeenAt: timestamp("last_seen_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	hwFingerprint: text("hw_fingerprint"),
+}, (table) => [
+	index("idx_user_devices_user_id").using("btree", table.userId),
+	index("idx_user_devices_device_id").using("btree", table.deviceId),
+	unique("user_devices_user_id_device_id_key").on(table.userId, table.deviceId),
+]);
