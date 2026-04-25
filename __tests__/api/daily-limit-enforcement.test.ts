@@ -18,6 +18,20 @@ jest.mock('@supabase/supabase-js', () => ({
   }),
 }))
 
+// Mock the graduated limit module to always return default limit (25)
+// so existing tests that assume a fixed 25 limit still pass
+jest.mock('@/lib/api/daily-limit', () => ({
+  getDynamicLimit: jest.fn().mockResolvedValue({
+    dailyLimit: 25,
+    tierLabel: null,
+    isGraduated: false,
+    registrationAgeDays: 0,
+    totalLimitHits: 0,
+  }),
+  invalidateLimitCache: jest.fn(),
+  GRADUATED_LIMIT_CONFIG: { defaultLimit: 25 },
+}))
+
 import { checkAndIncrementDailyLimit, checkDeviceDailyUsage, getDailyLimitStatus, getUserIdFromToken, incrementDailyCount } from '@/lib/api/dailyLimit'
 
 // Minimal NextRequest-like object for testing getUserIdFromToken

@@ -1,17 +1,21 @@
-// lib/api/dailyLimit.ts — Server-side enforcement of 25 questions/day for free users
+// lib/api/dailyLimit.ts — Server-side enforcement of daily question limits
+// Uses graduated limits: new users get 25/day, veterans who repeatedly hit the limit get less.
 // The client hook (useDailyQuestionLimit) shows the UI modal,
 // but this module is the actual gate that prevents bypassing via direct API calls.
 
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest } from 'next/server'
-
-const DAILY_LIMIT = 25
+import { getDynamicLimit, invalidateLimitCache, GRADUATED_LIMIT_CONFIG } from './daily-limit'
+import type { DailyLimitStatus } from './daily-limit'
 
 interface DailyLimitResult {
   allowed: boolean
   questionsToday: number
   questionsRemaining: number
+  dailyLimit: number
   isPremium: boolean
+  isGraduated: boolean
+  tierLabel: string | null
 }
 
 let _supabaseAdmin: ReturnType<typeof createClient> | null = null
@@ -49,51 +53,68 @@ export async function getUserIdFromToken(request: NextRequest): Promise<string |
 
 /**
  * Check and increment the daily question counter for a user.
- * Returns { allowed: true } for premium users or free users under the limit.
- * Returns { allowed: false } for free users who've hit 25/day.
+ * Uses graduated limits based on registration age and limit hit history.
  *
  * If userId is null (anonymous), always allows (rate limiting handles anonymous abuse).
  */
 export async function checkAndIncrementDailyLimit(
   userId: string | null | undefined,
 ): Promise<DailyLimitResult> {
+  const defaultLimit = GRADUATED_LIMIT_CONFIG.defaultLimit
+
   if (!userId) {
-    return { allowed: true, questionsToday: 0, questionsRemaining: DAILY_LIMIT, isPremium: false }
+    return { allowed: true, questionsToday: 0, questionsRemaining: defaultLimit, dailyLimit: defaultLimit, isPremium: false, isGraduated: false, tierLabel: null }
   }
 
   try {
+    // Get the personalized limit for this user
+    const dynamicLimit = await getDynamicLimit(userId)
+
     const { data, error } = await getSupabaseAdmin().rpc('increment_daily_questions', {
       p_user_id: userId,
-      p_limit: DAILY_LIMIT,
+      p_limit: dynamicLimit.dailyLimit,
     })
 
     if (error) {
       console.error('❌ [DailyLimit] RPC error:', error.message)
       // Fail open: don't block users if the check itself fails
-      return { allowed: true, questionsToday: 0, questionsRemaining: DAILY_LIMIT, isPremium: false }
+      return { allowed: true, questionsToday: 0, questionsRemaining: defaultLimit, dailyLimit: defaultLimit, isPremium: false, isGraduated: false, tierLabel: null }
     }
 
     const result = Array.isArray(data) ? data[0] : data
 
     if (!result) {
-      return { allowed: true, questionsToday: 0, questionsRemaining: DAILY_LIMIT, isPremium: false }
+      return { allowed: true, questionsToday: 0, questionsRemaining: defaultLimit, dailyLimit: defaultLimit, isPremium: false, isGraduated: false, tierLabel: null }
+    }
+
+    // Log graduated limits for observability
+    if (dynamicLimit.isGraduated) {
+      console.log(`📉 [DailyLimit] Graduated limit applied: user=${userId.slice(0, 8)} tier=${dynamicLimit.tierLabel} limit=${dynamicLimit.dailyLimit} today=${result.questions_today} age=${dynamicLimit.registrationAgeDays}d hits=${dynamicLimit.totalLimitHits}`)
+    }
+
+    // Log when a graduated user hits their reduced limit
+    if (dynamicLimit.isGraduated && !result.can_answer) {
+      console.log(`🚫 [DailyLimit] Graduated user blocked: user=${userId.slice(0, 8)} tier=${dynamicLimit.tierLabel} limit=${dynamicLimit.dailyLimit}`)
     }
 
     return {
       allowed: result.can_answer,
       questionsToday: result.questions_today,
       questionsRemaining: result.questions_remaining,
+      dailyLimit: dynamicLimit.dailyLimit,
       isPremium: result.is_premium,
+      isGraduated: dynamicLimit.isGraduated,
+      tierLabel: dynamicLimit.tierLabel,
     }
   } catch (err) {
     console.error('❌ [DailyLimit] Unexpected error:', err)
-    return { allowed: true, questionsToday: 0, questionsRemaining: DAILY_LIMIT, isPremium: false }
+    return { allowed: true, questionsToday: 0, questionsRemaining: defaultLimit, dailyLimit: defaultLimit, isPremium: false, isGraduated: false, tierLabel: null }
   }
 }
 
 /**
  * Check if a device (across all its free accounts) has exceeded the daily limit.
- * If user A used 15 questions and user B used 10 on the same device, total = 25 → blocked.
+ * Uses the DEFAULT limit (25) for device-level checks — graduation is per-user.
  * Returns null if no deviceId or check fails (fail open).
  */
 export async function checkDeviceDailyUsage(
@@ -115,7 +136,7 @@ export async function checkDeviceDailyUsage(
     const total = typeof data === 'number' ? data : 0
 
     return {
-      allowed: total < DAILY_LIMIT,
+      allowed: total < GRADUATED_LIMIT_CONFIG.defaultLimit,
       deviceTotal: total,
     }
   } catch {
@@ -134,9 +155,11 @@ export async function incrementDailyCount(
   if (!userId) return
 
   try {
+    const dynamicLimit = await getDynamicLimit(userId)
+
     await getSupabaseAdmin().rpc('increment_daily_questions', {
       p_user_id: userId,
-      p_limit: DAILY_LIMIT,
+      p_limit: dynamicLimit.dailyLimit,
     })
   } catch {
     // Fail silent — better to give a free question than block a paying user
@@ -149,34 +172,50 @@ export async function incrementDailyCount(
 export async function getDailyLimitStatus(
   userId: string | null | undefined,
 ): Promise<DailyLimitResult> {
+  const defaultLimit = GRADUATED_LIMIT_CONFIG.defaultLimit
+
   if (!userId) {
-    return { allowed: true, questionsToday: 0, questionsRemaining: DAILY_LIMIT, isPremium: false }
+    return { allowed: true, questionsToday: 0, questionsRemaining: defaultLimit, dailyLimit: defaultLimit, isPremium: false, isGraduated: false, tierLabel: null }
   }
 
   try {
+    // Get the personalized limit for this user
+    const dynamicLimit = await getDynamicLimit(userId)
+
     const { data, error } = await getSupabaseAdmin().rpc('get_daily_question_status', {
       p_user_id: userId,
     })
 
     if (error) {
       console.error('❌ [DailyLimit] Status RPC error:', error.message)
-      return { allowed: true, questionsToday: 0, questionsRemaining: DAILY_LIMIT, isPremium: false }
+      return { allowed: true, questionsToday: 0, questionsRemaining: defaultLimit, dailyLimit: defaultLimit, isPremium: false, isGraduated: false, tierLabel: null }
     }
 
     const result = Array.isArray(data) ? data[0] : data
 
     if (!result) {
-      return { allowed: true, questionsToday: 0, questionsRemaining: DAILY_LIMIT, isPremium: false }
+      return { allowed: true, questionsToday: 0, questionsRemaining: defaultLimit, dailyLimit: defaultLimit, isPremium: false, isGraduated: false, tierLabel: null }
     }
 
+    // Override the RPC's hardcoded limit with our dynamic calculation
+    const questionsToday = result.questions_today || 0
+    const remaining = Math.max(0, dynamicLimit.dailyLimit - questionsToday)
+    const isLimitReached = questionsToday >= dynamicLimit.dailyLimit
+
     return {
-      allowed: !result.is_limit_reached,
-      questionsToday: result.questions_today,
-      questionsRemaining: result.questions_remaining,
+      allowed: !isLimitReached,
+      questionsToday,
+      questionsRemaining: remaining,
+      dailyLimit: dynamicLimit.dailyLimit,
       isPremium: result.is_premium,
+      isGraduated: dynamicLimit.isGraduated,
+      tierLabel: dynamicLimit.tierLabel,
     }
   } catch (err) {
     console.error('❌ [DailyLimit] Unexpected error:', err)
-    return { allowed: true, questionsToday: 0, questionsRemaining: DAILY_LIMIT, isPremium: false }
+    return { allowed: true, questionsToday: 0, questionsRemaining: defaultLimit, dailyLimit: defaultLimit, isPremium: false, isGraduated: false, tierLabel: null }
   }
 }
+
+// Re-export for convenience
+export { invalidateLimitCache } from './daily-limit'

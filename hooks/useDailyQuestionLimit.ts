@@ -1,5 +1,6 @@
 // hooks/useDailyQuestionLimit.ts
-// Hook para gestionar el limite diario de preguntas (25/dia para usuarios FREE)
+// Hook para gestionar el limite diario de preguntas con graduación dinámica.
+// Usuarios nuevos: 25/día. Veteranos que tocan el límite repetidamente: se reduce.
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
@@ -12,12 +13,13 @@ interface DailyLimitStatus {
   dailyLimit: number
   isLimitReached: boolean
   isPremiumUser: boolean
+  isGraduated: boolean
   resetTime: string | null
   loading: boolean
   error: string | null
 }
 
-const DAILY_LIMIT = 25
+const DEFAULT_LIMIT = 25
 const CACHE_TTL = 60000 // 1 minuto
 
 export function useDailyQuestionLimit() {
@@ -25,10 +27,11 @@ export function useDailyQuestionLimit() {
 
   const [status, setStatus] = useState<DailyLimitStatus>({
     questionsToday: 0,
-    questionsRemaining: DAILY_LIMIT,
-    dailyLimit: DAILY_LIMIT,
+    questionsRemaining: DEFAULT_LIMIT,
+    dailyLimit: DEFAULT_LIMIT,
     isLimitReached: false,
     isPremiumUser: false,
+    isGraduated: false,
     resetTime: null,
     loading: true,
     error: null
@@ -38,6 +41,8 @@ export function useDailyQuestionLimit() {
   const lastFetchRef = useRef(0)
   const isMountedRef = useRef(true)
   const limitTrackedTodayRef = useRef(false)
+  // Store the dynamic limit fetched from server
+  const dynamicLimitRef = useRef<number>(DEFAULT_LIMIT)
 
   // Determinar si usuario tiene limite (solo FREE y no premium/legacy)
   const hasLimit = !!(
@@ -51,6 +56,29 @@ export function useDailyQuestionLimit() {
     userProfile.plan_type !== 'admin'
   )
 
+  // Fetch the dynamic limit from the server API
+  const fetchDynamicLimit = useCallback(async (): Promise<number> => {
+    if (!user || !supabase) return DEFAULT_LIMIT
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) return DEFAULT_LIMIT
+
+      const res = await fetch('/api/daily-limit', {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
+
+      if (!res.ok) return DEFAULT_LIMIT
+
+      const data = await res.json()
+      dynamicLimitRef.current = data.dailyLimit || DEFAULT_LIMIT
+
+      return dynamicLimitRef.current
+    } catch {
+      return DEFAULT_LIMIT
+    }
+  }, [user, supabase])
+
   // Obtener estado actual desde BD
   const fetchStatus = useCallback(async (force = false) => {
     if (!user || !supabase) {
@@ -63,9 +91,10 @@ export function useDailyQuestionLimit() {
       setStatus({
         questionsToday: 0,
         questionsRemaining: 999,
-        dailyLimit: DAILY_LIMIT,
+        dailyLimit: DEFAULT_LIMIT,
         isLimitReached: false,
         isPremiumUser: true,
+        isGraduated: false,
         resetTime: null,
         loading: false,
         error: null
@@ -80,22 +109,30 @@ export function useDailyQuestionLimit() {
     }
 
     try {
-      const { data, error } = await supabase.rpc('get_daily_question_status', {
-        p_user_id: user.id
-      })
+      // Fetch dynamic limit and RPC status in parallel
+      const [userDailyLimit, rpcResult] = await Promise.all([
+        fetchDynamicLimit(),
+        supabase.rpc('get_daily_question_status', { p_user_id: user.id }),
+      ])
 
+      const { data, error } = rpcResult
       if (error) throw error
       if (!isMountedRef.current) return
 
       const result = Array.isArray(data) ? data[0] : data
 
       if (result) {
+        const questionsToday = result.questions_today || 0
+        const remaining = Math.max(0, userDailyLimit - questionsToday)
+        const isLimitReached = questionsToday >= userDailyLimit
+
         setStatus({
-          questionsToday: result.questions_today || 0,
-          questionsRemaining: result.questions_remaining ?? DAILY_LIMIT,
-          dailyLimit: result.daily_limit || DAILY_LIMIT,
-          isLimitReached: result.is_limit_reached || false,
+          questionsToday,
+          questionsRemaining: remaining,
+          dailyLimit: userDailyLimit,
+          isLimitReached,
           isPremiumUser: result.is_premium || false,
+          isGraduated: userDailyLimit < DEFAULT_LIMIT,
           resetTime: result.reset_time ?? null,
           loading: false,
           error: null
@@ -114,7 +151,7 @@ export function useDailyQuestionLimit() {
         }))
       }
     }
-  }, [user, userProfile, isPremium, isLegacy, supabase])
+  }, [user, userProfile, isPremium, isLegacy, supabase, fetchDynamicLimit])
 
   // Registrar respuesta (llamar DESPUES de guardar respuesta exitosamente)
   const recordAnswer = useCallback(async () => {
@@ -127,10 +164,12 @@ export function useDailyQuestionLimit() {
       return { success: true, canContinue: true, isPremium: true }
     }
 
+    const currentLimit = dynamicLimitRef.current
+
     try {
       const { data, error } = await supabase.rpc('increment_daily_questions', {
         p_user_id: user.id,
-        p_limit: DAILY_LIMIT
+        p_limit: currentLimit
       })
 
       if (error) throw error
@@ -138,12 +177,17 @@ export function useDailyQuestionLimit() {
       const result = Array.isArray(data) ? data[0] : data
 
       if (result && isMountedRef.current) {
+        const questionsToday = result.questions_today
+        const remaining = Math.max(0, currentLimit - questionsToday)
+        const isLimitReached = questionsToday >= currentLimit
+
         const newStatus = {
-          questionsToday: result.questions_today,
-          questionsRemaining: result.questions_remaining,
-          dailyLimit: DAILY_LIMIT,
-          isLimitReached: result.is_limit_reached,
+          questionsToday,
+          questionsRemaining: remaining,
+          dailyLimit: currentLimit,
+          isLimitReached,
           isPremiumUser: result.is_premium,
+          isGraduated: currentLimit < DEFAULT_LIMIT,
           resetTime: result.reset_time ?? null,
           loading: false,
           error: null
@@ -159,30 +203,33 @@ export function useDailyQuestionLimit() {
         }
 
         // Mostrar modal si alcanzó el limite
-        if (result.is_limit_reached) {
+        if (isLimitReached) {
           setShowUpgradeModal(true)
 
           // Trackear evento de conversion SOLO UNA VEZ por día
-          // Verificar ref (sesión actual) y localStorage (entre recargas)
           const today = new Date().toISOString().split('T')[0]
           const storageKey = `limit_tracked_${user.id}_${today}`
           const alreadyTracked = limitTrackedTodayRef.current ||
             (typeof window !== 'undefined' && localStorage.getItem(storageKey))
 
-          if (result.questions_today === DAILY_LIMIT && !alreadyTracked) {
+          if (questionsToday === currentLimit && !alreadyTracked) {
             limitTrackedTodayRef.current = true
             if (typeof window !== 'undefined') {
               localStorage.setItem(storageKey, 'true')
             }
-            trackLimitReached(supabase, user.id, result.questions_today)
+            // Track with graduated limit context for observability
+            trackLimitReached(supabase, user.id, questionsToday, {
+              daily_limit: currentLimit,
+              is_graduated: currentLimit < DEFAULT_LIMIT,
+            })
           }
         }
 
         return {
           success: true,
-          canContinue: !result.is_limit_reached,
-          questionsRemaining: result.questions_remaining,
-          isLimitReached: result.is_limit_reached
+          canContinue: !isLimitReached,
+          questionsRemaining: remaining,
+          isLimitReached
         }
       }
 
@@ -253,6 +300,7 @@ export function useDailyQuestionLimit() {
     dailyLimit: status.dailyLimit,
     isLimitReached: status.isLimitReached,
     isPremiumUser: status.isPremiumUser,
+    isGraduated: status.isGraduated,
     resetTime: status.resetTime,
     loading: status.loading,
     error: status.error,

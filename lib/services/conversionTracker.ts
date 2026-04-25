@@ -88,10 +88,11 @@ export async function trackUpgradeButtonClick(supabase: SupabaseClientAny, userI
   })
 }
 
-export async function trackLimitReached(supabase: SupabaseClientAny, userId: string, questionsToday: number): Promise<unknown> {
+export async function trackLimitReached(supabase: SupabaseClientAny, userId: string, questionsToday: number, extra: Record<string, unknown> = {}): Promise<unknown> {
   return trackConversionEvent(supabase, userId, CONVERSION_EVENTS.LIMIT_REACHED, {
     questions_today: questionsToday,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    ...extra,
   })
 }
 

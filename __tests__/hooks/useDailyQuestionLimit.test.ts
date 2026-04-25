@@ -105,7 +105,8 @@ describe('useDailyQuestionLimit Hook', () => {
       expect(mockTrackLimitReached).toHaveBeenCalledWith(
         mockSupabase,
         mockUser.id,
-        25
+        25,
+        { daily_limit: 25, is_graduated: false }
       )
     })
 
