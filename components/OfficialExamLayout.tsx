@@ -253,6 +253,7 @@ export default function OfficialExamLayout({
     questionsRemaining,
     questionsToday,
     dailyLimit,
+    isGraduated,
     showUpgradeModal,
     setShowUpgradeModal,
     recordAnswer
@@ -1518,6 +1519,11 @@ export default function OfficialExamLayout({
       <UpgradeLimitModal
         isOpen={showUpgradeModal}
         onClose={() => setShowUpgradeModal(false)}
+        questionsAnswered={questionsToday}
+        dailyLimit={dailyLimit}
+        isGraduated={isGraduated}
+        supabase={supabase}
+        userId={user?.id}
       />
     </div>
   )

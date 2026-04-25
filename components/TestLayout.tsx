@@ -215,6 +215,8 @@ export default function TestLayout({
     hasLimit,
     isLimitReached,
     questionsToday,
+    dailyLimit,
+    isGraduated,
     resetTime,
     showUpgradeModal,
     setShowUpgradeModal,
@@ -2477,6 +2479,8 @@ export default function TestLayout({
         isOpen={showUpgradeModal}
         onClose={() => setShowUpgradeModal(false)}
         questionsAnswered={questionsToday}
+        dailyLimit={dailyLimit}
+        isGraduated={isGraduated}
         resetTime={resetTime}
         supabase={supabase}
         userId={user?.id}

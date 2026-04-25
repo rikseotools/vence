@@ -418,7 +418,7 @@ export default function ConversionesPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 border-b border-gray-200 dark:border-gray-700">
+      <div className="flex gap-2 border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
         <button
           onClick={() => setActiveTab('funnel')}
           className={`px-4 py-2 font-medium transition-colors ${
@@ -457,7 +457,7 @@ export default function ConversionesPage() {
               : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
           }`}
         >
-          Limites Graduados
+          Limites
         </button>
       </div>
 
@@ -1334,7 +1334,7 @@ export default function ConversionesPage() {
               </div>
 
               {/* Resumen */}
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+              <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
                 <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 text-center">
                   <div className="text-3xl font-bold text-orange-600">{graduatedData.summary.totalAffected}</div>
                   <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">Con limite reducido</div>
@@ -1368,32 +1368,32 @@ export default function ConversionesPage() {
                   <table className="w-full text-sm">
                     <thead className="bg-gray-50 dark:bg-gray-900 sticky top-0">
                       <tr>
-                        <th className="text-left py-2 px-3 text-gray-500 dark:text-gray-400">Email</th>
-                        <th className="text-center py-2 px-3 text-gray-500 dark:text-gray-400">Limite</th>
-                        <th className="text-center py-2 px-3 text-gray-500 dark:text-gray-400">Tier</th>
-                        <th className="text-center py-2 px-3 text-gray-500 dark:text-gray-400">Dias reg.</th>
-                        <th className="text-center py-2 px-3 text-gray-500 dark:text-gray-400">Hits</th>
-                        <th className="text-left py-2 px-3 text-gray-500 dark:text-gray-400">Oposicion</th>
+                        <th className="text-left py-2 px-2 text-gray-500 dark:text-gray-400 text-xs">Email</th>
+                        <th className="text-center py-2 px-2 text-gray-500 dark:text-gray-400 text-xs">Limite</th>
+                        <th className="text-center py-2 px-2 text-gray-500 dark:text-gray-400 text-xs hidden sm:table-cell">Tier</th>
+                        <th className="text-center py-2 px-2 text-gray-500 dark:text-gray-400 text-xs">Dias</th>
+                        <th className="text-center py-2 px-2 text-gray-500 dark:text-gray-400 text-xs">Hits</th>
+                        <th className="text-left py-2 px-2 text-gray-500 dark:text-gray-400 text-xs hidden md:table-cell">Oposicion</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                       {graduatedData.users.map((user: any, i: number) => (
                         <tr key={i} className={user.isGraduated ? 'bg-orange-50/50 dark:bg-orange-900/10' : ''}>
-                          <td className="py-2 px-3 text-gray-800 dark:text-gray-200 font-mono text-xs">{user.email}</td>
-                          <td className="py-2 px-3 text-center">
+                          <td className="py-2 px-2 text-gray-800 dark:text-gray-200 font-mono text-xs truncate max-w-[180px]">{user.email}</td>
+                          <td className="py-2 px-2 text-center">
                             <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold ${
                               user.dailyLimit === 25 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
                               user.dailyLimit === 15 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
                               user.dailyLimit === 10 ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
                               'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
                             }`}>
-                              {user.dailyLimit}/dia
+                              {user.dailyLimit}
                             </span>
                           </td>
-                          <td className="py-2 px-3 text-center text-xs text-gray-500 dark:text-gray-400">{user.tierLabel || '-'}</td>
-                          <td className="py-2 px-3 text-center text-gray-600 dark:text-gray-300">{user.registrationAgeDays}d</td>
-                          <td className="py-2 px-3 text-center font-mono text-gray-600 dark:text-gray-300">{user.totalLimitHits}</td>
-                          <td className="py-2 px-3 text-xs text-gray-500 dark:text-gray-400 truncate max-w-[150px]">{user.targetOposicion?.replace(/_/g, ' ') || '-'}</td>
+                          <td className="py-2 px-2 text-center text-xs text-gray-500 dark:text-gray-400 hidden sm:table-cell">{user.tierLabel || '-'}</td>
+                          <td className="py-2 px-2 text-center text-xs text-gray-600 dark:text-gray-300">{user.registrationAgeDays}</td>
+                          <td className="py-2 px-2 text-center text-xs font-mono text-gray-600 dark:text-gray-300">{user.totalLimitHits}</td>
+                          <td className="py-2 px-2 text-xs text-gray-500 dark:text-gray-400 truncate max-w-[120px] hidden md:table-cell">{user.targetOposicion?.replace(/_/g, ' ') || '-'}</td>
                         </tr>
                       ))}
                     </tbody>

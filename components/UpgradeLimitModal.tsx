@@ -1,14 +1,16 @@
-// components/UpgradeLimitModal.js
+// components/UpgradeLimitModal.tsx
 // Modal persuasivo con A/B testing - mensajes desde BD
+// Shows different messaging for graduated users (reduced daily limit)
 'use client'
 
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback, type FC } from 'react'
 import { useRouter } from 'next/navigation'
 import { trackUpgradeModalView, trackUpgradeButtonClick } from '@/lib/services/conversionTracker'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 // Iconos SVG para cada tipo de mensaje
-const MessageIcon = ({ type }) => {
-  const icons = {
+function MessageIcon({ type }: { type: string }) {
+  const icons: Record<string, React.ReactNode> = {
     money: (
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
     ),
@@ -35,7 +37,10 @@ const MessageIcon = ({ type }) => {
     ),
     lock: (
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-    )
+    ),
+    fire: (
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
+    ),
   }
 
   return (
@@ -45,8 +50,19 @@ const MessageIcon = ({ type }) => {
   )
 }
 
+interface UpgradeMessage {
+  id: string | null
+  message_key: string
+  title: string
+  subtitle: string
+  body_message: string
+  highlight: string
+  icon: string
+  gradient: string
+}
+
 // Mensaje por defecto si falla la BD
-const DEFAULT_MESSAGE = {
+const DEFAULT_MESSAGE: UpgradeMessage = {
   id: null,
   message_key: 'default',
   title: 'Has llegado al limite',
@@ -57,30 +73,63 @@ const DEFAULT_MESSAGE = {
   gradient: 'from-amber-500 via-orange-500 to-red-500'
 }
 
-export default function UpgradeLimitModal({
+// Mensaje especial para usuarios con limite graduado (alta demanda)
+const GRADUATED_MESSAGE: UpgradeMessage = {
+  id: null,
+  message_key: 'graduated_demand',
+  title: 'Alta demanda en Vence',
+  subtitle: 'Actualiza para acceso prioritario',
+  body_message: 'Vence tiene mucha demanda en este momento. Los usuarios Premium tienen acceso prioritario y sin limites.',
+  highlight: 'Acceso ilimitado y prioritario',
+  icon: 'fire',
+  gradient: 'from-purple-600 via-indigo-600 to-blue-600'
+}
+
+export interface UpgradeLimitModalProps {
+  isOpen: boolean
+  onClose: () => void
+  questionsAnswered?: number
+  dailyLimit?: number
+  isGraduated?: boolean
+  resetTime?: string | null
+  supabase?: SupabaseClient | null
+  userId?: string | null
+  userName?: string | null
+}
+
+const UpgradeLimitModal: FC<UpgradeLimitModalProps> = ({
   isOpen,
   onClose,
   questionsAnswered = 25,
+  dailyLimit = 25,
+  isGraduated = false,
   resetTime = null,
   supabase = null,
   userId = null,
-  userName = null  // Nombre del usuario para personalizar
-}) {
+  userName = null,
+}) => {
   const router = useRouter()
-  const [message, setMessage] = useState(null)
-  const [impressionId, setImpressionId] = useState(null)
+  const [message, setMessage] = useState<UpgradeMessage | null>(null)
+  const [impressionId, setImpressionId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const hasTrackedRef = useRef(false)
 
   // Reemplazar {nombre} en los textos
-  const personalize = (text) => {
-    if (!text) return text
+  const personalize = (text: string | null | undefined): string => {
+    if (!text) return ''
     const name = userName || 'opositor'
     return text.replace(/\{nombre\}/g, name)
   }
 
   // Cargar mensaje aleatorio de la BD (excluyendo los ya vistos)
   const loadMessage = useCallback(async () => {
+    // For graduated users, always show the high-demand message
+    if (isGraduated) {
+      setMessage(GRADUATED_MESSAGE)
+      setIsLoading(false)
+      return
+    }
+
     if (!supabase) {
       setMessage(DEFAULT_MESSAGE)
       setIsLoading(false)
@@ -88,8 +137,7 @@ export default function UpgradeLimitModal({
     }
 
     try {
-      // Pasar userId para excluir mensajes ya vistos
-      const { data, error } = await supabase.rpc('get_random_upgrade_message', {
+      const { data, error } = await (supabase as any).rpc('get_random_upgrade_message', {
         p_user_id: userId
       })
 
@@ -105,14 +153,14 @@ export default function UpgradeLimitModal({
     } finally {
       setIsLoading(false)
     }
-  }, [supabase])
+  }, [supabase, isGraduated, userId])
 
   // Trackear que el mensaje fue mostrado
-  const trackImpression = useCallback(async (messageData) => {
+  const trackImpression = useCallback(async (messageData: UpgradeMessage) => {
     if (!supabase || !userId || !messageData?.id || hasTrackedRef.current) return
 
     try {
-      const { data, error } = await supabase.rpc('track_upgrade_message_shown', {
+      const { data, error } = await (supabase as any).rpc('track_upgrade_message_shown', {
         p_user_id: userId,
         p_message_id: messageData.id,
         p_trigger_type: 'daily_limit',
@@ -123,41 +171,47 @@ export default function UpgradeLimitModal({
         setImpressionId(data)
         hasTrackedRef.current = true
         console.log('Impresion trackeada:', data, '| Mensaje:', messageData.message_key)
-        // También trackear en conversion_events
-        trackUpgradeModalView(supabase, userId, 'daily_limit')
+        trackUpgradeModalView(supabase, userId, isGraduated ? 'graduated_limit' : 'daily_limit')
       }
     } catch (err) {
       console.error('Error trackeando impresion:', err)
     }
-  }, [supabase, userId, questionsAnswered])
+  }, [supabase, userId, questionsAnswered, isGraduated])
 
   // Efecto al abrir modal
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden'
-      hasTrackedRef.current = false
-      setImpressionId(null)
-      loadMessage()
+    if (!isOpen) return
+    document.body.style.overflow = 'hidden'
+    hasTrackedRef.current = false
+    setImpressionId(null)
+    loadMessage()
 
-      return () => {
-        document.body.style.overflow = 'unset'
-      }
+    return () => {
+      document.body.style.overflow = 'unset'
     }
   }, [isOpen, loadMessage])
 
   // Trackear impresion cuando tenemos el mensaje
   useEffect(() => {
-    if (isOpen && message && message.id && !hasTrackedRef.current) {
-      trackImpression(message)
+    if (isOpen && message && !hasTrackedRef.current) {
+      // For graduated messages (no BD id), track via conversion_events only
+      if (isGraduated && !message.id) {
+        if (supabase && userId) {
+          trackUpgradeModalView(supabase, userId, 'graduated_limit')
+          hasTrackedRef.current = true
+        }
+      } else if (message.id) {
+        trackImpression(message)
+      }
     }
-  }, [isOpen, message, trackImpression])
+  }, [isOpen, message, trackImpression, isGraduated, supabase, userId])
 
   // Calcular tiempo hasta reset
-  const getTimeUntilReset = () => {
+  const getTimeUntilReset = (): string | null => {
     if (!resetTime) return null
     const now = new Date()
     const reset = new Date(resetTime)
-    const diffMs = reset - now
+    const diffMs = reset.getTime() - now.getTime()
     if (diffMs <= 0) return null
 
     const hours = Math.floor(diffMs / (1000 * 60 * 60))
@@ -169,48 +223,39 @@ export default function UpgradeLimitModal({
     return `${minutes} minutos`
   }
 
-  // Handler para clic en upgrade con plan específico
-  const handleUpgradeWithPlan = async (plan) => {
-    // Trackear clic (sistema A/B)
+  // Handler para clic en upgrade con plan especifico
+  const handleUpgradeWithPlan = async (plan: string) => {
     if (supabase && impressionId) {
       try {
-        await supabase.rpc('track_upgrade_message_click', {
+        await (supabase as any).rpc('track_upgrade_message_click', {
           p_impression_id: impressionId
         })
-        console.log('Clic en upgrade trackeado')
       } catch (err) {
         console.error('Error trackeando clic:', err)
       }
     }
-    // También trackear en conversion_events
     if (supabase && userId) {
-      trackUpgradeButtonClick(supabase, userId, 'modal')
+      trackUpgradeButtonClick(supabase, userId, isGraduated ? 'graduated_modal' : 'modal')
     }
 
-    // Redirigir a premium con el plan seleccionado
     router.push(`/premium?plan=${plan}`)
     onClose()
   }
 
-  // Handler para clic en botón principal (usa plan por defecto: semester)
   const handleUpgrade = async () => {
     await handleUpgradeWithPlan('semester')
   }
 
-  // Handler para dismiss
   const handleDismiss = async () => {
-    // Trackear dismiss
     if (supabase && impressionId) {
       try {
-        await supabase.rpc('track_upgrade_message_dismiss', {
+        await (supabase as any).rpc('track_upgrade_message_dismiss', {
           p_impression_id: impressionId
         })
-        console.log('Dismiss trackeado')
       } catch (err) {
         console.error('Error trackeando dismiss:', err)
       }
     }
-
     onClose()
   }
 
@@ -227,9 +272,9 @@ export default function UpgradeLimitModal({
         onClick={handleDismiss}
       />
 
-      {/* Modal - compacto en móvil */}
+      {/* Modal */}
       <div className="relative bg-white dark:bg-gray-900 rounded-xl sm:rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-in fade-in zoom-in duration-200">
-        {/* Header con gradiente dinamico - más compacto en móvil */}
+        {/* Header con gradiente dinamico */}
         <div className={`bg-gradient-to-r ${currentMessage.gradient} p-3 sm:p-5 text-center`}>
           <div className="w-10 h-10 sm:w-14 sm:h-14 mx-auto mb-2 sm:mb-3 bg-white/20 rounded-full flex items-center justify-center">
             {isLoading ? (
@@ -248,12 +293,12 @@ export default function UpgradeLimitModal({
           </p>
         </div>
 
-        {/* Contenido - más compacto en móvil */}
+        {/* Contenido */}
         <div className="p-3 sm:p-5">
           {/* Contador de preguntas */}
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-2 sm:p-3 mb-2 sm:mb-3 text-center">
-            <span className="text-red-600 dark:text-red-400 font-semibold text-xs sm:text-sm">
-              {questionsAnswered} preguntas hoy - Limite alcanzado
+          <div className={`${isGraduated ? 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800' : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'} border rounded-lg p-2 sm:p-3 mb-2 sm:mb-3 text-center`}>
+            <span className={`${isGraduated ? 'text-purple-600 dark:text-purple-400' : 'text-red-600 dark:text-red-400'} font-semibold text-xs sm:text-sm`}>
+              {questionsAnswered}/{dailyLimit} preguntas hoy - Limite alcanzado
             </span>
           </div>
 
@@ -267,7 +312,7 @@ export default function UpgradeLimitModal({
             </p>
           </div>
 
-          {/* Beneficios - grid en móvil para ahorrar espacio */}
+          {/* Beneficios */}
           <div className="bg-gray-50 dark:bg-gray-800 rounded-lg sm:rounded-xl p-2 sm:p-3 mb-2 sm:mb-4">
             <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1.5 sm:mb-2 text-xs uppercase tracking-wider">
               Con Premium:
@@ -289,7 +334,7 @@ export default function UpgradeLimitModal({
             </ul>
           </div>
 
-          {/* Precios - clic directo a checkout */}
+          {/* Precios */}
           <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-2 sm:mb-4">
             <button
               type="button"
@@ -318,7 +363,7 @@ export default function UpgradeLimitModal({
               onClick={handleUpgrade}
               className={`w-full py-2.5 sm:py-3.5 px-3 bg-gradient-to-r ${currentMessage.gradient} hover:opacity-90 text-white font-bold rounded-lg sm:rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:scale-[1.02] text-sm sm:text-base`}
             >
-              Desbloquear Acceso Ilimitado
+              {isGraduated ? 'Acceso Prioritario Ilimitado' : 'Desbloquear Acceso Ilimitado'}
             </button>
 
             <button
@@ -343,3 +388,5 @@ export default function UpgradeLimitModal({
     </div>
   )
 }
+
+export default UpgradeLimitModal

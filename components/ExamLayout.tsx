@@ -354,6 +354,7 @@ export default function ExamLayout({
     questionsToday,
     questionsRemaining,
     dailyLimit,
+    isGraduated,
     resetTime,
     loading: limitLoading,
     showUpgradeModal,
@@ -1419,6 +1420,8 @@ export default function ExamLayout({
         isOpen={showUpgradeModal}
         onClose={() => setShowUpgradeModal(false)}
         questionsAnswered={questionsToday}
+        dailyLimit={dailyLimit}
+        isGraduated={isGraduated}
         resetTime={resetTime}
         supabase={supabase}
         userId={user?.id}
