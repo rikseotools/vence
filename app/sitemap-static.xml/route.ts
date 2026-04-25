@@ -150,21 +150,27 @@ export async function GET() {
   // PÁGINAS DE LEYES DINÁMICAS
   // ============================================
   try {
+    // Una sola query: leyes con conteo de preguntas (en vez de N+1 queries)
     const { data: laws } = await supabase
       .from('laws')
       .select('short_name, slug, updated_at')
       .eq('is_active', true);
 
+    const { data: questionCounts } = await supabase
+      .rpc('get_question_counts_by_law');
+
+    // Fallback si el RPC no existe: map vacío (todas las leyes se incluyen)
+    const countMap = new Map<string, number>();
+    if (questionCounts) {
+      for (const row of questionCounts as { law_short_name: string; question_count: number }[]) {
+        countMap.set(row.law_short_name, row.question_count);
+      }
+    }
+
     if (laws) {
       for (const law of laws) {
-        // Verificar que tiene preguntas suficientes
-        const { count } = await supabase
-          .from('questions')
-          .select('id, articles!inner(laws!inner(short_name))', { count: 'exact', head: true })
-          .eq('is_active', true)
-          .eq('articles.laws.short_name', law.short_name);
-
-        if ((count || 0) >= 5) {
+        const count = countMap.get(law.short_name) ?? 0;
+        if (count >= 5 || !questionCounts) {
           const canonicalSlug = law.slug || generateSlugFromShortName(law.short_name);
           const lastmod = law.updated_at
             ? new Date(law.updated_at).toISOString().split('T')[0]
