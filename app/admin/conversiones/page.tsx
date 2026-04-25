@@ -1401,6 +1401,40 @@ export default function ConversionesPage() {
                 </div>
               </div>
 
+              {/* Comparativa de conversion: antes vs despues */}
+              {graduatedData.conversionComparison && (
+                <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                  <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+                    <h3 className="font-bold text-gray-700 dark:text-gray-200">Conversion: antes vs despues</h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Compara tasa de conversion de usuarios que tocaron el limite antes y despues del sistema graduado</p>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-0 sm:gap-0 divide-y sm:divide-y-0 sm:divide-x divide-gray-200 dark:divide-gray-700">
+                    {[
+                      { key: 'preGraduation', color: 'gray', icon: '⏮' },
+                      { key: 'postGraduated', color: 'purple', icon: '📉' },
+                      { key: 'postNormal', color: 'blue', icon: '📊' },
+                    ].map(({ key, color, icon }) => {
+                      const data = graduatedData.conversionComparison[key]
+                      if (!data) return null
+                      const rateColor = data.conversionRate > 10 ? 'text-green-600 dark:text-green-400' :
+                        data.conversionRate > 5 ? 'text-yellow-600 dark:text-yellow-400' :
+                        'text-red-500 dark:text-red-400'
+                      return (
+                        <div key={key} className="p-4 text-center">
+                          <div className="text-lg mb-1">{icon}</div>
+                          <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 leading-tight">{data.label}</div>
+                          <div className={`text-3xl font-bold ${rateColor}`}>{data.conversionRate}%</div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            {data.usersWhoConverted} de {data.usersWhoHitLimit} convirtieron
+                          </div>
+                          <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-2 leading-tight">{data.description}</p>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* Boton refrescar */}
               <div className="text-center">
                 <button
