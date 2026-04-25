@@ -77,9 +77,9 @@ const DEFAULT_MESSAGE: UpgradeMessage = {
 const GRADUATED_MESSAGE: UpgradeMessage = {
   id: null,
   message_key: 'graduated_demand',
-  title: 'Alta demanda en Vence',
+  title: 'Alta demanda actualmente',
   subtitle: 'Actualiza para acceso prioritario',
-  body_message: 'Vence tiene mucha demanda en este momento. Los usuarios Premium tienen acceso prioritario y sin limites.',
+  body_message: 'Vence tiene mucha demanda actualmente. Los usuarios Premium tienen acceso prioritario y sin limites.',
   highlight: 'Acceso ilimitado y prioritario',
   icon: 'fire',
   gradient: 'from-purple-600 via-indigo-600 to-blue-600'

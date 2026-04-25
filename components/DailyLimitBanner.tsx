@@ -84,7 +84,7 @@ const DailyLimitBanner: FC<DailyLimitBannerProps> = ({ className = '' }) => {
           <div className="flex items-center justify-between mb-1">
             <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
               {isAtLimit
-                ? isGraduated ? 'Alta demanda' : 'Limite diario alcanzado'
+                ? isGraduated ? 'Alta demanda actualmente' : 'Limite diario alcanzado'
                 : `${questionsToday}/${dailyLimit} preguntas hoy`
               }
             </span>

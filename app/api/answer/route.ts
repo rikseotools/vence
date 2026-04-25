@@ -110,9 +110,13 @@ async function _POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: 'Has alcanzado el límite diario de preguntas. Vuelve mañana o hazte premium.',
+          error: dailyLimit.isGraduated
+            ? 'Vence tiene mucha demanda actualmente. Actualiza a Premium para acceso prioritario.'
+            : 'Has alcanzado el límite diario de preguntas. Vuelve mañana o hazte premium.',
           limitReached: true,
           questionsToday: dailyLimit.questionsToday,
+          dailyLimit: dailyLimit.dailyLimit,
+          isGraduated: dailyLimit.isGraduated,
         },
         { status: 403 }
       )
