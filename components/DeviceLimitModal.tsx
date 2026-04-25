@@ -5,6 +5,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
+import { logClientError } from '@/lib/logClientError'
 
 interface DeviceInfo {
   id: string
@@ -39,9 +40,17 @@ export default function DeviceLimitModal({
         setDevices(data.devices)
       } else {
         setError('No se pudieron cargar los dispositivos')
+        logClientError('/api/v2/devices', new Error(`GET devices failed: ${JSON.stringify(data)}`), {
+          component: 'DeviceLimitModal',
+          severity: 'warning',
+        })
       }
-    } catch {
+    } catch (err) {
       setError('Error de conexion')
+      logClientError('/api/v2/devices', err, {
+        component: 'DeviceLimitModal',
+        severity: 'warning',
+      })
     } finally {
       setLoading(false)
     }
@@ -68,10 +77,18 @@ export default function DeviceLimitModal({
         onRetry()
       } else {
         setError('No se pudo desconectar el dispositivo')
+        logClientError('/api/v2/devices', new Error(`DELETE device failed: ${JSON.stringify(data)}`), {
+          component: 'DeviceLimitModal',
+          severity: 'warning',
+        })
         await fetchDevices()
       }
-    } catch {
+    } catch (err) {
       setError('Error de conexion')
+      logClientError('/api/v2/devices', err, {
+        component: 'DeviceLimitModal',
+        severity: 'warning',
+      })
     } finally {
       setRemoving(null)
     }
