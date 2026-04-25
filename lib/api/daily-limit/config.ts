@@ -33,14 +33,8 @@ export const GRADUATED_LIMIT_CONFIG: GraduatedLimitConfig = {
     },
     {
       minDaysRegistered: 61,
-      maxDaysRegistered: 91,
-      dailyLimit: 10,
-      label: 'second-reduction',
-    },
-    {
-      minDaysRegistered: 91,
       maxDaysRegistered: null,
-      dailyLimit: 5,
+      dailyLimit: 10,
       label: 'veteran',
     },
   ],
