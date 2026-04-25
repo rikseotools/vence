@@ -61,6 +61,7 @@ export default function TemaTestPage({ oposicionSlug, params }: TemaTestPageProp
   const [testLoading, setTestLoading] = useState(false)
   const [userRecentStats, setUserRecentStats] = useState<any>(null)
   const [userAnswers, setUserAnswers] = useState<any[]>([])
+  const [globalStreak, setGlobalStreak] = useState(0)
   const [testMode, setTestMode] = useState<'practica' | 'examen'>('practica')
 
   // ArticleModal state
@@ -237,6 +238,11 @@ export default function TemaTestPage({ oposicionSlug, params }: TemaTestPageProp
 
         if (user) {
           setUserStatsLoading(true)
+          // Cargar racha global en paralelo con topic data
+          fetch(`/api/v2/user-stats?userId=${user.id}`)
+            .then(r => r.json())
+            .then(d => { if (d.success) setGlobalStreak(d.currentStreak ?? 0) })
+            .catch(() => {})
           const userData = await loadTopicData(temaNumber!, user.id)
           const up2 = userData?.success ? userData.userProgress : null
           if (up2) {
@@ -488,14 +494,7 @@ export default function TemaTestPage({ oposicionSlug, params }: TemaTestPageProp
                   <div className="font-bold text-purple-800 mb-2 text-sm">Racha</div>
                   <div className="text-xl font-bold text-purple-600 mb-1">
                     {(() => {
-                      const dates = [...new Set(userAnswers?.map((a: any) => new Date(a.createdAt).toDateString()) || [])].sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
-                      let streak = 0
-                      let currentDate = new Date()
-                      for (const date of dates) {
-                        const diffDays = Math.floor((currentDate.getTime() - new Date(date).getTime()) / (1000 * 60 * 60 * 24))
-                        if (diffDays === streak) { streak++; currentDate = new Date(date) } else break
-                      }
-                      return streak
+                      return globalStreak
                     })()}
                   </div>
                   <div className="text-xs text-purple-600">dias seguidos</div>

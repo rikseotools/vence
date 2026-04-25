@@ -128,6 +128,7 @@ export default function TemaPage({ params }: PageProps) {
   const [testLoading, setTestLoading] = useState(false)
   const [userRecentStats, setUserRecentStats] = useState<UserRecentStats | null>(null)
   const [userAnswers, setUserAnswers] = useState<any[]>([])
+  const [globalStreak, setGlobalStreak] = useState(0)
 
   // Estados para modal de artículo
   const [modalOpen, setModalOpen] = useState(false)
@@ -328,6 +329,11 @@ export default function TemaPage({ params }: PageProps) {
 
         if (user) {
           setUserStatsLoading(true)
+          // Cargar racha global en paralelo
+          fetch(`/api/v2/user-stats?userId=${user.id}`)
+            .then(r => r.json())
+            .then(d => { if (d.success) setGlobalStreak(d.currentStreak ?? 0) })
+            .catch(() => {})
 
           const userData = await loadTopicData(temaNumber!, user.id)
 
@@ -741,30 +747,11 @@ export default function TemaPage({ params }: PageProps) {
                       <div className="text-xs text-green-600">por pregunta</div>
                     </div>
 
-                    {/* Métrica 3: Racha Actual */}
+                    {/* Métrica 3: Racha Actual (global, desde user_streaks) */}
                     <div className="text-center p-4 bg-purple-50 rounded-lg border border-purple-200">
                       <div className="font-bold text-purple-800 mb-2 text-sm">Racha</div>
                       <div className="text-xl font-bold text-purple-600 mb-1">
-                        {(() => {
-                          const dates = [...new Set(userAnswers?.map(a =>
-                            new Date(a.createdAt).toDateString()
-                          ) || [])].sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
-
-                          let streak = 0
-                          let currentDate = new Date()
-
-                          for (const date of dates) {
-                            const diffDays = Math.floor((currentDate.getTime() - new Date(date).getTime()) / (1000 * 60 * 60 * 24))
-                            if (diffDays === streak) {
-                              streak++
-                              currentDate = new Date(date)
-                            } else {
-                              break
-                            }
-                          }
-
-                          return streak
-                        })()}
+                        {globalStreak}
                       </div>
                       <div className="text-xs text-purple-600">días seguidos</div>
                     </div>
