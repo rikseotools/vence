@@ -102,6 +102,76 @@ Ver `docs/scraping/tutestdigital-api-manual.md`:
 - "Basura SIN paréntesis al final del enunciado" (`stripInlineJunk`)
 - "Contextualización de ley tras la limpieza" (`ensureLawContext`)
 
+## Parseo de Referencia a Artículo (OpositaTest)
+
+El endpoint `/questions/{id}/reason` de OpositaTest devuelve dos campos:
+- `reason.content` → HTML con la explicación completa
+- `reason.title` → referencia al artículo, formato `"*Art. 6 Ley 39/2015"` (guardado como `explanationTitle`)
+
+El `explanationTitle` contiene la referencia al artículo de la ley en la que se basa la pregunta. **Es la clave para vincular la pregunta al `primary_article_id` correcto** en nuestra BD durante la importación.
+
+### Parseo a campos estructurados
+
+Tras descargar, parsear `explanationTitle` en dos campos para facilitar el mapeo:
+
+```javascript
+function parseArticleRef(title) {
+  if (!title) return { law_ref: null, article_ref: null };
+  // "*Art. 6 Ley 39/2015" → { article_ref: "6", law_ref: "Ley 39/2015" }
+  // "*Art. 288 TFUE"      → { article_ref: "288", law_ref: "TFUE" }
+  // "*Art. 50 EA Valencia" → { article_ref: "50", law_ref: "EA Valencia" }
+  const m = title.match(/\*?Art\.?\s*([\d.]+(?:\.\d+)?)\s+(.+)/i);
+  if (m) return { article_ref: m[1], law_ref: m[2].trim() };
+  // Sin match → metadato (derogada, fuera temario)
+  return { law_ref: null, article_ref: null, meta: title.replace('*', '').trim() };
+}
+```
+
+Cada pregunta del JSON queda con:
+```json
+{
+  "explanationTitle": "*Art. 6 Ley 39/2015",
+  "article_ref": "6",
+  "law_ref": "Ley 39/2015",
+  ...
+}
+```
+
+### Casos especiales del `explanationTitle`
+
+| Valor | Significado | Acción |
+|-------|-------------|--------|
+| `*Pregunta derogada` | Ley reformada, pregunta ya no vigente | Importar con `is_active: false`, campo `isRepealed: true` |
+| `*Fuera de temario` | No entra en el temario actual | Descartar o importar desactivada |
+| `*Art. 9.2 CE + comentario` | Referencia compuesta | Parsear primer artículo, ignorar comentario |
+| `*Art. 103 CE, art. 110 CE` | Referencia múltiple | Vincular al primer artículo; los demás se citan en la explicación |
+
+### Mapeo `law_ref` → `laws.short_name`
+
+Los nombres de ley de OpositaTest no siempre coinciden con nuestros `short_name`. Mapeo manual necesario:
+
+```javascript
+const LAW_MAP = {
+  'CE': 'CE',
+  'Ley 39/2015': 'Ley 39/2015',
+  'Ley 40/2015': 'Ley 40/2015',
+  'EA Valencia': 'Estatuto Autonomía CV',  // verificar short_name en BD
+  'Ley 5/1983 Valencia': 'Ley 5/1983 CV',  // verificar
+  'Ley 4/2021 Valencia': 'Ley 4/2021 CV',  // verificar
+  'TFUE': 'TFUE',
+  'TUE': 'TUE',
+  'LO 3/2007': 'LO 3/2007',
+  // ... completar según la oposición
+};
+```
+
+**Flujo de vinculación:**
+1. Parsear `explanationTitle` → `law_ref` + `article_ref`
+2. Mapear `law_ref` → `laws.short_name` via `LAW_MAP`
+3. Buscar `articles` con `law_id` + `article_number = article_ref`
+4. Si existe → `primary_article_id = articles.id`
+5. Si no existe → marcar para revisión (puede faltar el artículo en BD)
+
 **Señal de que falta el paso 3:** preguntas activas en BD que contienen la regex `/(?:según|de acuerdo con|conforme a) el art[íi]culo \d+[^,.]*[,.]/i` sin mencionar el nombre de la ley a continuación. Se puede detectar con un sanity check post-importación.
 
 ## ANTES DE IMPORTAR: Detección de Duplicados (OBLIGATORIO)
@@ -1349,3 +1419,71 @@ Importar preguntas → Verificar con agente → Revisar en web → Corregir prob
 ```
 
 Los resultados aparecen en: `/admin/revision-temas/[topicId]`
+
+---
+
+## Importar Preguntas de Ortografía/Gramática (Multi-respuesta)
+
+Las preguntas de ortografía y gramática (GC, PN) son **multi-respuesta** y NO encajan en la tabla `questions` (que usa `correct_option` integer 0-3). Tienen su propio sistema.
+
+### Arquitectura
+
+| Componente | Ubicación |
+|---|---|
+| Tabla BD | `spelling_questions` (JSONB options, category, oposicion_slug) |
+| API validación | `/api/answer/spelling` (Drizzle + Zod) |
+| API sesiones | `/api/spelling/session` (crear/completar) |
+| Tracking | `spelling_test_sessions` + `spelling_test_answers` |
+| Componente UI | `SpellingQuestion.tsx` (multi-select checkboxes) |
+| Layout | `SpellingTestLayout.tsx` (navegación, resultados) |
+| Página | `/[oposicion]/test/ortografia` |
+| Config | `hasSpellingTest: true` en oposiciones.ts |
+
+### Formato de datos InnoTest (ortografía)
+
+```json
+{
+  "bloque": "ortografia_tests",
+  "questions": [{
+    "innotest_id": 93744,
+    "question": "Me <b>fié</b> de que hubiera tantas <b>vallas</b>...",
+    "options": [
+      { "letter": "A", "text": "fié.", "correct": true },
+      { "letter": "B", "text": "vallas.", "correct": false }
+    ],
+    "tipoPregunta": "multi-respuesta"
+  }]
+}
+```
+
+**Semántica de `correct`**: `true` = es respuesta correcta = la palabra ESTÁ mal escrita. Mapear a `isCorrectlyWritten = !correct`.
+
+### Conversión HTML → Markdown (orden crítico)
+
+Procesar `<span>` de color **ANTES** que `<b>`/`<u>`, porque los spans envuelven tags de formato:
+
+```
+Entrada:  <span style="color:#F94646"><u>otea</u></span>
+MAL:      <span>**otea**</span> → ****otea**** (incorrecto)
+BIEN:     Primero span → **otea** (incorrecto), luego u/b ya no existe
+```
+
+```javascript
+// 1. PRIMERO: spans de color (stripear HTML interno)
+.replace(/<span[^>]*#F94646[^>]*>([\s\S]*?)<\/span>/gi,
+  (_, inner) => '**' + inner.replace(/<[^>]+>/g, '') + '** (incorrecto)')
+.replace(/<span[^>]*#00C951[^>]*>([\s\S]*?)<\/span>/gi,
+  (_, inner) => '**' + inner.replace(/<[^>]+>/g, '') + '** (correcto)')
+// 2. DESPUÉS: bold, italic, underline...
+.replace(/<b>/gi, '**').replace(/<\/b>/gi, '**')
+```
+
+### Scoring
+
+**Todo-o-nada** (como en el examen real GC): correcto solo si marca EXACTAMENTE las palabras incorrectas, ni más ni menos.
+
+### Notas técnicas
+
+- Supabase **no soporta upsert** con índices parciales (`WHERE source IS NOT NULL`). Usar insert directo + dedup en memoria.
+- `correctAnswer` en el JSON es **poco fiable** (a veces null, a veces solo la primera letra). La verdad está en `options[].correct`.
+- Las preguntas con todas las opciones `correct: false` significan que **todas las palabras están bien escritas** y no hay que marcar nada.

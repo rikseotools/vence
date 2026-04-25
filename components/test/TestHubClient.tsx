@@ -61,6 +61,7 @@ interface Props {
   basePath: string
   positionType: string
   officialExams?: OfficialExamConvocatoria[]
+  hasSpellingTest?: boolean
 }
 
 // Helpers de colores
@@ -104,7 +105,7 @@ function getExamStat(
   return examStats[parteKey] || examStats[examDate]
 }
 
-export default function TestHubClient({ oposicion, oposicionInfo, bloques, basePath, positionType, officialExams }: Props) {
+export default function TestHubClient({ oposicion, oposicionInfo, bloques, basePath, positionType, officialExams, hasSpellingTest }: Props) {
   const { user, loading } = useAuth() as { user: { id: string } | null; loading: boolean }
   const [userStats, setUserStats] = useState<Record<number, ThemeStats>>({})
   const [statsLoading, setStatsLoading] = useState(false)
@@ -370,6 +371,24 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
                   onInfoClick={() => setShowStatsInfo(true)}
                 />
               ))}
+
+              {/* Test de Ortografía y Gramática (config-driven) */}
+              {hasSpellingTest && (
+                <Link
+                  href={`/${oposicion}/test/ortografia`}
+                  className="block bg-gradient-to-r from-pink-600 to-rose-600 text-white py-4 px-8 rounded-lg font-semibold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-xl active:scale-95 focus:outline-none focus:ring-4 focus:ring-pink-300 group"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <span className="mr-3 text-2xl group-hover:animate-bounce">Aa</span>
+                      <span>Ortografía y Gramática</span>
+                    </div>
+                    <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-medium">
+                      Multi-respuesta
+                    </span>
+                  </div>
+                </Link>
+              )}
             </div>
 
             {/* Modal de información de estadísticas */}

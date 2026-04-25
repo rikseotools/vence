@@ -1989,6 +1989,91 @@ export const psychometricTestAnswers = pgTable("psychometric_test_answers", {
 	check("psychometric_test_answers_user_answer_check", sql`user_answer = ANY (ARRAY[0, 1, 2, 3])`),
 ]);
 
+// ============================================
+// SPELLING (ORTOGRAFÍA / GRAMÁTICA)
+// ============================================
+
+export const spellingQuestions = pgTable("spelling_questions", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	questionText: text("question_text").notNull(),
+	options: jsonb().notNull(),
+	explanation: text(),
+	category: text().notNull(),
+	oposicionSlug: text("oposicion_slug").notNull().default('guardia-civil'),
+	source: text().default('innotest'),
+	sourceId: text("source_id"),
+	difficulty: text().default('medium'),
+	isActive: boolean("is_active").default(false),
+	isVerified: boolean("is_verified").default(false),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+}, (table) => [
+	index("idx_spelling_active").using("btree", table.isActive.asc().nullsLast()).where(sql`is_active = true`),
+	index("idx_spelling_category").using("btree", table.category.asc().nullsLast()),
+	index("idx_spelling_oposicion").using("btree", table.oposicionSlug.asc().nullsLast()),
+	check("spelling_questions_category_check", sql`category IN ('ortografia', 'gramatica')`),
+	check("spelling_questions_difficulty_check", sql`difficulty IN ('easy', 'medium', 'hard')`),
+	pgPolicy("Public read spelling_questions", { as: "permissive", for: "select", to: ["public"], using: sql`true` }),
+]);
+
+export const spellingTestSessions = pgTable("spelling_test_sessions", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	userId: uuid("user_id").notNull(),
+	category: text(),
+	totalQuestions: integer("total_questions").notNull(),
+	correctAnswers: integer("correct_answers").default(0),
+	questionsAnswered: integer("questions_answered").default(0),
+	isCompleted: boolean("is_completed").default(false),
+	startedAt: timestamp("started_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	completedAt: timestamp("completed_at", { withTimezone: true, mode: 'string' }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+}, (table) => [
+	index("idx_spelling_sessions_user").using("btree", table.userId.asc().nullsLast()),
+	index("idx_spelling_sessions_completed").using("btree", table.isCompleted.asc().nullsLast(), table.createdAt.asc().nullsLast()),
+	foreignKey({
+		columns: [table.userId],
+		foreignColumns: [users.id],
+		name: "spelling_test_sessions_user_id_fkey"
+	}).onDelete("cascade"),
+	pgPolicy("Users can view own spelling sessions", { as: "permissive", for: "select", to: ["public"], using: sql`auth.uid() = user_id` }),
+	pgPolicy("Users can insert own spelling sessions", { as: "permissive", for: "insert", to: ["public"] }),
+	pgPolicy("Users can update own spelling sessions", { as: "permissive", for: "update", to: ["public"], using: sql`auth.uid() = user_id` }),
+]);
+
+export const spellingTestAnswers = pgTable("spelling_test_answers", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	sessionId: uuid("session_id").notNull(),
+	userId: uuid("user_id").notNull(),
+	questionId: uuid("question_id").notNull(),
+	questionOrder: integer("question_order").notNull(),
+	selectedIndices: integer("selected_indices").array().notNull().default([]),
+	incorrectIndices: integer("incorrect_indices").array().notNull().default([]),
+	isCorrect: boolean("is_correct").notNull(),
+	timeSpentSeconds: integer("time_spent_seconds"),
+	answeredAt: timestamp("answered_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+}, (table) => [
+	index("idx_spelling_answers_session").using("btree", table.sessionId.asc().nullsLast()),
+	index("idx_spelling_answers_user").using("btree", table.userId.asc().nullsLast()),
+	index("idx_spelling_answers_question").using("btree", table.questionId.asc().nullsLast()),
+	foreignKey({
+		columns: [table.sessionId],
+		foreignColumns: [spellingTestSessions.id],
+		name: "spelling_test_answers_session_id_fkey"
+	}).onDelete("cascade"),
+	foreignKey({
+		columns: [table.userId],
+		foreignColumns: [users.id],
+		name: "spelling_test_answers_user_id_fkey"
+	}),
+	foreignKey({
+		columns: [table.questionId],
+		foreignColumns: [spellingQuestions.id],
+		name: "spelling_test_answers_question_id_fkey"
+	}),
+	pgPolicy("Users can view own spelling answers", { as: "permissive", for: "select", to: ["public"], using: sql`auth.uid() = user_id` }),
+	pgPolicy("Users can insert own spelling answers", { as: "permissive", for: "insert", to: ["public"] }),
+]);
+
 export const laws = pgTable("laws", {
 	id: uuid().default(sql`uuid_generate_v4()`).primaryKey().notNull(),
 	name: text().notNull(),

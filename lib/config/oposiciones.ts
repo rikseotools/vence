@@ -68,6 +68,7 @@ const OposicionSchema = z.object({
   totalTopics: z.number(),
   navLinks: z.array(NavLinkSchema),
   officialExams: z.array(OfficialExamConvocatoriaSchema).optional(),
+  hasSpellingTest: z.boolean().optional(),
 })
 
 // ============================================
@@ -2425,7 +2426,7 @@ export const OPOSICIONES: Oposicion[] = [
       {
         id: 'bloque1', title: 'Parte General', subtitle: 'Legislación sanitaria', icon: '⚖️',
         themes: [
-          { id: 1, name: 'La Constitución y Estatuto de Autonomía de Murcia' },
+          { id: 1, name: 'La Constitución Española y Estatuto de Autonomía de Murcia' },
           { id: 2, name: 'Ley General de Sanidad y ordenación sanitaria de Murcia' },
           { id: 3, name: 'Derechos y deberes de los usuarios del SMS' },
           { id: 4, name: 'Personal estatutario del SMS y Estatuto Marco' },
@@ -2672,7 +2673,7 @@ export const OPOSICIONES: Oposicion[] = [
     ],
   },
   // ========================================
-  // GUARDIA CIVIL - ESCALA CABOS Y GUARDIAS (C1)
+  // GUARDIA CIVIL - ESCALA CABOS Y GUARDIAS (C1 por Ley 29/2014, acceso con ESO)
   // ========================================
   {
     id: 'guardia_civil',
@@ -2686,7 +2687,7 @@ export const OPOSICIONES: Oposicion[] = [
     administracion: 'estado',
     blocks: [
       {
-        id: 'bloque1', title: 'Temario Oficial', subtitle: 'Derecho, seguridad, TIC e idiomas', icon: '🛡️',
+        id: 'conocimientos', title: 'Conocimientos', subtitle: '23 temas — 100 preguntas en el examen', icon: '⚖️',
         themes: [
           { id: 1, name: 'Derechos Humanos: ONU, Convenios y Carta de la UE' },
           { id: 2, name: 'Igualdad efectiva de mujeres y hombres (LO 3/2007)' },
@@ -2711,7 +2712,17 @@ export const OPOSICIONES: Oposicion[] = [
           { id: 21, name: 'Violencia de género (LO 1/2004)' },
           { id: 22, name: 'Armas y explosivos: reglamentos' },
           { id: 23, name: 'Derecho fiscal: contrabando y Código Aduanero de la UE' },
+        ],
+      },
+      {
+        id: 'ingles', title: 'Lengua Inglesa', subtitle: '20 preguntas en el examen', icon: '🇬🇧',
+        themes: [
           { id: 24, name: 'Inglés: comprensión lectora y ortografía' },
+        ],
+      },
+      {
+        id: 'lengua', title: 'Lengua Española', subtitle: 'Ortografía y gramática', icon: '📝',
+        themes: [
           { id: 25, name: 'Lengua española: ortografía y gramática' },
         ],
       },
@@ -2723,6 +2734,7 @@ export const OPOSICIONES: Oposicion[] = [
       { href: '/guardia-civil/temario', label: 'Temario', icon: '📚' },
       { href: '/guardia-civil/test', label: 'Tests', icon: '🎯' },
     ],
+    hasSpellingTest: true,
   },
   // ========================================
   // POLICÍA NACIONAL - ESCALA BÁSICA (C1)

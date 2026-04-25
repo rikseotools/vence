@@ -159,6 +159,7 @@ export default async function TestHubPage({ oposicion }: Props) {
       basePath={basePath}
       positionType={positionType}
       officialExams={officialExams}
+      hasSpellingTest={oposicionConfig?.hasSpellingTest}
     />
   )
 }
