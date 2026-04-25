@@ -51,17 +51,17 @@ export default function WordAnalysisQuestion({
               key={letter}
               onClick={() => !showResult && onAnswer(index)}
               disabled={showResult || isAnswering}
-              className={`text-left p-4 rounded-lg border transition-all duration-200 ${
+              className={`text-left p-4 rounded-lg border-2 transition-all duration-200 ${
                 showResult
                   ? isCorrectOption
-                    ? 'bg-green-100 border-green-500 text-green-800'
+                    ? 'border-green-500 bg-green-50 dark:bg-green-900/30 text-green-800 dark:text-green-300'
                     : isSelected
-                      ? 'bg-red-100 border-red-500 text-red-800'
-                      : 'bg-gray-50 border-gray-300 text-gray-600'
+                      ? 'border-red-500 bg-red-50 dark:bg-red-900/30 text-red-800 dark:text-red-300'
+                      : 'border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
                   : isSelected
-                    ? 'bg-blue-100 border-blue-500 text-blue-800'
-                    : 'bg-gray-50 border-gray-300 hover:bg-gray-100'
-              }`}
+                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300'
+                    : 'border-gray-200 dark:border-gray-600 hover:border-blue-300 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-800 dark:text-gray-200'
+              } ${!showResult ? 'cursor-pointer' : 'cursor-default'}`}
             >
               <div className="flex items-start gap-3">
                 <span className="font-bold text-lg">{letter})</span>
