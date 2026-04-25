@@ -58,7 +58,9 @@ return NextResponse.json(
       return NextResponse.json(
         {
           success: false,
-          error: 'Has alcanzado el límite de dispositivos. Usa uno de tus dispositivos registrados o hazte premium.',
+          error: deviceCheck.isPremium
+            ? 'Has alcanzado el límite de dispositivos. Usa uno de tus dispositivos registrados o contacta con soporte.'
+            : 'Has alcanzado el límite de dispositivos. Usa uno de tus dispositivos registrados o hazte premium.',
           deviceLimitReached: true,
           deviceCount: deviceCheck.deviceCount,
           maxDevices: deviceCheck.maxDevices,
