@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import MarkdownExplanation from './MarkdownExplanation'
 
 /**
  * ContentDataRenderer — Componente centralizado para renderizar content_data
@@ -40,7 +41,9 @@ export default function ContentDataRenderer({ contentData, imageUrl }: ContentDa
         {instructions && Array.isArray(instructions) && (
           <div className="bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-200 dark:border-amber-700 rounded-lg p-4 mb-4">
             <div className="text-gray-800 dark:text-gray-200 text-sm space-y-2">
-              {instructions.map((line: string, i: number) => <p key={i}>{line}</p>)}
+              {instructions.map((line: string, i: number) => (
+                <div key={i}><MarkdownExplanation content={line} /></div>
+              ))}
             </div>
           </div>
         )}
@@ -48,7 +51,9 @@ export default function ContentDataRenderer({ contentData, imageUrl }: ContentDa
         {/* Pasaje de texto */}
         {textPassage && (
           <div className="bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 dark:border-blue-700 rounded-lg p-4 mb-4">
-            <p className="text-gray-800 dark:text-gray-200 text-sm">{textPassage}</p>
+            <div className="text-gray-800 dark:text-gray-200 text-sm">
+              <MarkdownExplanation content={textPassage} />
+            </div>
           </div>
         )}
 

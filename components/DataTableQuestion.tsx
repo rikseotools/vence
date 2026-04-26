@@ -1,6 +1,7 @@
 'use client'
 import React, { useState, useEffect } from 'react'
 import ChartQuestion from './ChartQuestion'
+import MarkdownExplanation from './MarkdownExplanation'
 import { type ChartBasedQuestionProps } from './psychometric-types'
 
 export default function DataTableQuestion({
@@ -50,9 +51,9 @@ export default function DataTableQuestion({
         {instructions && Array.isArray(instructions) && (
           <div className="mb-6">
             <div className="bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-200 dark:border-amber-700 rounded-lg p-4">
-              <div className="text-gray-800 dark:text-gray-200 text-sm space-y-2 whitespace-pre-line">
+              <div className="text-gray-800 dark:text-gray-200 text-sm space-y-2">
                 {instructions.map((line: string, i: number) => (
-                  <p key={i}>{line}</p>
+                  <div key={i}><MarkdownExplanation content={line} /></div>
                 ))}
               </div>
             </div>
@@ -63,7 +64,7 @@ export default function DataTableQuestion({
         {textPassage && (
           <div className="mb-6">
             <div className="bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 dark:border-blue-700 rounded-lg p-4">
-              <p className="text-gray-800 dark:text-gray-200 text-sm">{textPassage}</p>
+              <div className="text-gray-800 dark:text-gray-200 text-sm"><MarkdownExplanation content={textPassage} /></div>
             </div>
           </div>
         )}
