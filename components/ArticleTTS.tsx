@@ -287,7 +287,22 @@ export default function ArticleTTS({ text, articleNumber, lawName }: ArticleTTSP
     setProgress({ current: 1, total: chunksRef.current.length })
     speakChunk(0)
     startWatchdog()
-  }, [isSupported, text, isPaused, cleanText, speakChunk, startWatchdog, getDiagnostic])
+
+    // Track TTS usage (fire-and-forget)
+    fetch('/api/interactions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ events: [{
+        eventType: 'tts_play',
+        eventCategory: 'ui',
+        component: 'ArticleTTS',
+        action: 'play',
+        label: articleNumber ? `Art. ${articleNumber} - ${lawName || ''}` : lawName || '',
+        value: { chunks: chunksRef.current.length, articleNumber, lawName },
+        pageUrl: window.location.pathname,
+      }] }),
+    }).catch(() => {})
+  }, [isSupported, text, isPaused, cleanText, speakChunk, startWatchdog, getDiagnostic, articleNumber, lawName])
 
   const pause = useCallback(() => {
     if (!isSupported) return
