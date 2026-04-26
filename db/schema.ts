@@ -341,10 +341,14 @@ export const aiVerificationResults = pgTable("ai_verification_results", {
 	explanationOk: boolean("explanation_ok"),
 	correctArticleSuggestion: text("correct_article_suggestion"),
 	explanationFix: text("explanation_fix"),
+	psychometricQuestionId: uuid("psychometric_question_id"),
+	spellingQuestionId: uuid("spelling_question_id"),
 }, (table) => [
 	index("idx_ai_verification_article").using("btree", table.articleId.asc().nullsLast().op("uuid_ops")),
 	index("idx_ai_verification_law").using("btree", table.lawId.asc().nullsLast().op("uuid_ops")),
 	index("idx_ai_verification_question").using("btree", table.questionId.asc().nullsLast().op("uuid_ops")),
+	index("idx_ai_verification_psychometric").using("btree", table.psychometricQuestionId.asc().nullsLast()).where(sql`psychometric_question_id IS NOT NULL`),
+	index("idx_ai_verification_spelling").using("btree", table.spellingQuestionId.asc().nullsLast()).where(sql`spelling_question_id IS NOT NULL`),
 	foreignKey({
 			columns: [table.articleId],
 			foreignColumns: [articles.id],
@@ -365,6 +369,16 @@ export const aiVerificationResults = pgTable("ai_verification_results", {
 			foreignColumns: [users.id],
 			name: "ai_verification_results_verified_by_fkey"
 		}),
+	foreignKey({
+			columns: [table.psychometricQuestionId],
+			foreignColumns: [psychometricQuestions.id],
+			name: "ai_verification_results_psychometric_question_id_fkey"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.spellingQuestionId],
+			foreignColumns: [spellingQuestions.id],
+			name: "ai_verification_results_spelling_question_id_fkey"
+		}).onDelete("cascade"),
 	unique("ai_verification_results_question_id_ai_provider_key").on(table.questionId, table.aiProvider),
 ]);
 

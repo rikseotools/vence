@@ -825,3 +825,71 @@ Sí, el orquestador reporta el progreso: "Procesadas 19/57", y al final da un re
 - Corrección: Explicación actualizada para clarificar que "materia clasificada" no está en las excepciones del art. 4.2
 
 ### Tiempo total: ~5 minutos para 57 preguntas
+
+---
+
+## Verificación de Preguntas Psicotécnicas y Ortografía
+
+Las psicotécnicas y ortografía NO tienen artículo vinculado. El flujo de verificación es diferente.
+
+### Qué se verifica
+
+| Check | Legislativas | Psicotécnicas | Ortografía |
+|-------|-------------|---------------|------------|
+| articleOk | Artículo correcto | N/A (poner `true`) | N/A (poner `true`) |
+| answerOk | Respuesta según artículo | Respuesta correcta (hacer el cálculo, verificar sinónimo, etc.) | Todas las palabras incorrectas bien marcadas |
+| explanationOk | Cita artículo + didáctica | Paso a paso + por qué correcta + por qué incorrectas | Explicación de cada palabra |
+
+### Flujo
+
+1. **Extraer preguntas** de `psychometric_questions` o `spelling_questions` con `is_active = false` y `deactivation_reason = 'Pendiente de revisión post-importación'`
+2. **Guardar en /tmp** como JSON para que los agentes las lean
+3. **Lanzar agentes Sonnet** en paralelo (batches de 50-300 preguntas por agente)
+4. **Cada agente** devuelve `answerOk`, `questionOk`, `explanationOk` por pregunta
+5. **Guardar en `ai_verification_results`** usando el campo correcto:
+   - `psychometric_question_id` para psicotécnicas
+   - `spelling_question_id` para ortografía
+   - `ai_provider = 'claude_code'`
+6. **Activar** las que pasen los 3 checks (`is_active = true`, `is_verified = true`)
+7. **Desactivar** las que fallen con `deactivation_reason` específico
+
+### Prompt para agente verificador (psicotécnicas)
+
+```
+For EACH question verify:
+1. answerOk: Is correct_option (0=A,1=B,2=C,3=D) actually correct?
+   - Calculations: do the math
+   - Synonyms/antonyms: verify meaning
+   - Sequences: verify the pattern
+   - Analogies: verify the relationship
+2. questionOk: Is the text clear, complete, standalone?
+   No references to missing images/tables?
+3. explanationOk: Does it explain the specific answer?
+   Not generic filler?
+
+Save results as JSON: [{id, answerOk, questionOk, explanationOk, issue}, ...]
+```
+
+### Checks adicionales para psicotécnicas (antes de activar)
+
+```javascript
+// Verificar ANTES de activar:
+const NEEDS_VISUAL = /siguiente tabla|siguiente cuadro|CUADRO.BASE|observe la imagen/i;
+const text = q.question_text || '';
+const hasData = q.content_data && JSON.stringify(q.content_data) !== '{}';
+const hasImage = !!q.image_url;
+
+if (NEEDS_VISUAL.test(text) && !hasData && !hasImage) {
+  // NO ACTIVAR — falta content_data o image_url
+}
+```
+
+### Ejemplo real (Abril 2026 — InnoTest GC)
+
+Importación de 3.027 preguntas psicotécnicas texto puro:
+- 10 agentes paralelos × 300 preguntas = verificación completa en ~10 min
+- Resultado: 96% OK, 12 respuesta incorrecta, 71 sin contexto visual, 51 explicación pobre
+- 51 explicaciones reescritas con 3 agentes paralelos
+- Re-verificación de las 51 corregidas: 47/51 OK, 4 corregidas manualmente
+- 59 preguntas reconstruidas con content_data (tablas extraídas de explicaciones)
+- 3.027 registros en `ai_verification_results` con `psychometric_question_id`

@@ -1367,6 +1367,14 @@ Flujo validado (Abril 2026):
    - Las que fallen se corrigen y luego se reactivan
    - No dar el tema por bueno hasta que TODAS estén perfect o desactivadas con motivo
 
+   **Para psicotécnicas y ortografía:** La tabla `ai_verification_results` acepta los 3 tipos:
+   - `question_id` → preguntas legislativas (tabla `questions`)
+   - `psychometric_question_id` → psicotécnicas (tabla `psychometric_questions`)
+   - `spelling_question_id` → ortografía (tabla `spelling_questions`)
+   
+   Solo uno de los tres debe ser NOT NULL por registro. Además marcar `is_verified = true` en la tabla de origen.
+   Para psicotécnicas no aplica `articleOk` (poner `true` por defecto).
+
 8. CORRECCIÓN DE ERRORES
    - Agentes revisan preguntas con status de error
    - Falsos positivos → perfect (se reactivan)
