@@ -57,6 +57,8 @@ export default function ArticleTTS({ text, articleNumber, lawName }: ArticleTTSP
   const stoppedRef = useRef(false)
   const playingRef = useRef(false) // mirror of isPlaying for timers
   const pausedRef = useRef(false)  // mirror of isPaused for timers
+  const watchdogRetriesRef = useRef(0) // retries for current chunk
+  const MAX_WATCHDOG_RETRIES = 2 // skip chunk after N failed retries
 
   useEffect(() => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) return
@@ -135,27 +137,37 @@ export default function ArticleTTS({ text, articleNumber, lawName }: ArticleTTSP
 
       // Caso 1: speech murió silenciosamente (speaking=false, pending=false)
       if (!window.speechSynthesis.speaking && !window.speechSynthesis.pending) {
-        const reason = `Speech murió silenciosamente en chunk ${currentChunkRef.current}/${chunksRef.current.length}`
-        console.warn(`🔄 [TTS Watchdog] ${reason}, re-lanzando...`)
-        logClientError('tts/watchdog', new Error(reason), {
-          component: 'ArticleTTS',
-          severity: 'warning',
-        })
+        watchdogRetriesRef.current++
         window.speechSynthesis.cancel()
-        speakChunkRef.current(currentChunkRef.current)
+
+        if (watchdogRetriesRef.current > MAX_WATCHDOG_RETRIES) {
+          const reason = `Speech murió en chunk ${currentChunkRef.current}/${chunksRef.current.length}, saltando (${watchdogRetriesRef.current} retries)`
+          console.warn(`⏭️ [TTS Watchdog] ${reason}`)
+          logClientError('tts/watchdog', new Error(reason), { component: 'ArticleTTS', severity: 'warning' })
+          watchdogRetriesRef.current = 0
+          speakChunkRef.current(currentChunkRef.current + 1)
+        } else {
+          console.warn(`🔄 [TTS Watchdog] Speech murió en chunk ${currentChunkRef.current}, reintento ${watchdogRetriesRef.current}/${MAX_WATCHDOG_RETRIES}`)
+          speakChunkRef.current(currentChunkRef.current)
+        }
         return
       }
 
       // Caso 2: chunk zombie (speaking=true pero lleva >30s sin onend)
       if (window.speechSynthesis.speaking && chunkAge > CHUNK_TIMEOUT_MS) {
-        const reason = `Chunk ${currentChunkRef.current}/${chunksRef.current.length} zombie (${Math.round(chunkAge/1000)}s sin onend)`
-        console.warn(`🔄 [TTS Watchdog] ${reason}, re-lanzando...`)
-        logClientError('tts/watchdog', new Error(reason), {
-          component: 'ArticleTTS',
-          severity: 'warning',
-        })
+        watchdogRetriesRef.current++
         window.speechSynthesis.cancel()
-        speakChunkRef.current(currentChunkRef.current)
+
+        if (watchdogRetriesRef.current > MAX_WATCHDOG_RETRIES) {
+          const reason = `Chunk ${currentChunkRef.current}/${chunksRef.current.length} zombie, saltando (${watchdogRetriesRef.current} retries)`
+          console.warn(`⏭️ [TTS Watchdog] ${reason}`)
+          logClientError('tts/watchdog', new Error(reason), { component: 'ArticleTTS', severity: 'warning' })
+          watchdogRetriesRef.current = 0
+          speakChunkRef.current(currentChunkRef.current + 1)
+        } else {
+          console.warn(`🔄 [TTS Watchdog] Chunk ${currentChunkRef.current} zombie, reintento ${watchdogRetriesRef.current}/${MAX_WATCHDOG_RETRIES}`)
+          speakChunkRef.current(currentChunkRef.current)
+        }
       }
     }, 2_000)
   }, [stopWatchdog])
@@ -187,6 +199,7 @@ export default function ArticleTTS({ text, articleNumber, lawName }: ArticleTTSP
     if (voice) utterance.voice = voice
 
     utterance.onend = () => {
+      watchdogRetriesRef.current = 0 // reset retries on success
       if (!stoppedRef.current) {
         speakChunk(index + 1)
       }
