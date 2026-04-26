@@ -105,8 +105,10 @@ async function _GET(request: Request) {
     summary.totals.billingFees = summary.platformFees.totalFees
     summary.totals.totalAllFees = summary.totals.chargeFees + summary.totals.payoutFees + summary.totals.billingFees
     summary.totals.trueNet = summary.totals.grossRevenue - summary.totals.totalAllFees
-    summary.totals.manuelAmount = Math.round(summary.totals.trueNet * 0.9)
-    summary.totals.armandoAmount = summary.totals.trueNet - summary.totals.manuelAmount
+    // Nota: los porcentajes reales se calculan al final con stripeCommissionPct
+    // Estos valores son placeholder que se recalculan abajo
+    summary.totals.manuelAmount = 0
+    summary.totals.armandoAmount = 0
 
     // Obtener pagos pendientes de confirmar desde BD (Drizzle inline)
     const db = getDb()
@@ -135,8 +137,8 @@ async function _GET(request: Request) {
       chargeFees: pendingChargeFees,
       estimatedPayoutFees: estimatedPendingPayoutFee,
       trueNet: pendingTrueNet,
-      manuelAmount: Math.round(pendingTrueNet * 0.9),
-      armandoAmount: pendingTrueNet - Math.round(pendingTrueNet * 0.9),
+      manuelAmount: 0, // recalculado abajo con comisión dinámica
+      armandoAmount: 0,
     }
 
     const allTransactions = transactions.data.map(t => ({
@@ -157,11 +159,39 @@ async function _GET(request: Request) {
       pending: balance.pending.reduce((sum, b) => sum + b.amount, 0),
     }
 
+    // Calcular volumen neto últimas 4 semanas para determinar comisión Stripe
+    const fourWeeksAgo = Math.floor(Date.now() / 1000) - (28 * 24 * 60 * 60)
+    const recentCharges = await getStripe().balanceTransactions.list({
+      type: 'charge',
+      created: { gte: fourWeeksAgo },
+      limit: 100,
+    })
+    const netVolume4w = recentCharges.data.reduce((sum, t) => sum + t.net, 0)
+
+    // Comisión Stripe escalonada según volumen neto (en céntimos)
+    // >= 6000€ → 5%, >= 5000€ → 6%, >= 4000€ → 7%, >= 3000€ → 8%, >= 2000€ → 9%, < 2000€ → 10%
+    const netEuros = netVolume4w / 100
+    let stripeCommissionPct = 10
+    if (netEuros >= 6000) stripeCommissionPct = 5
+    else if (netEuros >= 5000) stripeCommissionPct = 6
+    else if (netEuros >= 4000) stripeCommissionPct = 7
+    else if (netEuros >= 3000) stripeCommissionPct = 8
+    else if (netEuros >= 2000) stripeCommissionPct = 9
+
+    // Recalcular montos con comisión dinámica
+    const manuelPct = (100 - stripeCommissionPct) / 100
+    summary.totals.manuelAmount = Math.round(summary.totals.trueNet * manuelPct)
+    summary.totals.armandoAmount = summary.totals.trueNet - summary.totals.manuelAmount
+    summary.pending.manuelAmount = Math.round(pendingTrueNet * manuelPct)
+    summary.pending.armandoAmount = pendingTrueNet - summary.pending.manuelAmount
+
     return NextResponse.json({
       success: true,
       summary,
       transactions: allTransactions,
       currentBalance,
+      netVolume4w,
+      stripeCommissionPct,
       timestamp: new Date().toISOString(),
     })
   } catch (error) {
