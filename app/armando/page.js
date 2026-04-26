@@ -19,6 +19,7 @@ export default function ArmandoPage() {
   const [expandedPayouts, setExpandedPayouts] = useState({})
   const [apiError, setApiError] = useState(null)
   const [stripeCommission, setStripeCommission] = useState({ pct: 10, netVolume4w: 0 })
+  const [eurUsdRate, setEurUsdRate] = useState(null)
 
   // Verificar si ya está autenticado (sessionStorage)
   useEffect(() => {
@@ -104,6 +105,16 @@ export default function ArmandoPage() {
         console.error('Error loading transfers:', dbError)
       }
       setPayoutTransfers(transfers || [])
+
+      // Cargar tipo de cambio EUR→USD
+      try {
+        const fxRes = await fetch('https://api.frankfurter.app/latest?from=EUR&to=USD')
+        const fxData = await fxRes.json()
+        if (fxData.rates?.USD) setEurUsdRate(fxData.rates.USD)
+      } catch (e) {
+        console.warn('No se pudo obtener tipo de cambio EUR/USD:', e)
+      }
+
       console.log('✅ [Armando] Datos cargados correctamente')
     } catch (err) {
       console.error('❌ [Armando] Error loading data:', err)
@@ -480,6 +491,9 @@ export default function ArmandoPage() {
                                 <div className="bg-green-100 rounded-lg p-4 text-center">
                                   <p className="text-green-800 text-sm font-medium">Manuel ({100 - stripeCommission.pct}%)</p>
                                   <p className="text-green-900 text-2xl font-bold">{formatCurrency(manuelAmount)}</p>
+                                  {eurUsdRate && (
+                                    <p className="text-green-700 text-sm mt-1">Aprox. ${(manuelAmount / 100 * eurUsdRate).toFixed(2)} USD <span className="text-green-600 text-xs">(tipo: {eurUsdRate.toFixed(4)})</span></p>
+                                  )}
                                 </div>
                                 <div className="bg-blue-100 rounded-lg p-4 text-center">
                                   <p className="text-blue-800 text-sm font-medium">Armando ({stripeCommission.pct}%)</p>
@@ -490,7 +504,7 @@ export default function ArmandoPage() {
                                 onClick={() => markAsSent(t.source, t.amount, t.fee, t.date)}
                                 className="w-full px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium"
                               >
-                                ✓ Armando envió a Manuel ({formatCurrency(manuelAmount)})
+                                ✓ Armando envió a Manuel ({formatCurrency(manuelAmount)}{eurUsdRate ? ` · Aprox. $${(manuelAmount / 100 * eurUsdRate).toFixed(2)} USD` : ''})
                               </button>
                             </div>
                           )}
