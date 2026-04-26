@@ -63,7 +63,7 @@ return NextResponse.json(
       return NextResponse.json(
         {
           success: false,
-          error: `Ya tienes ${deviceCheck.deviceCount} dispositivos conectados (${deviceCheck.existingDevices || 'desconocidos'}). Para usar este, desconecta uno desde tu perfil.`,
+          error: `Ya tienes ${deviceCheck.deviceCount} dispositivos conectados (${deviceCheck.existingDevices || 'desconocidos'}). Para usar este, desconecta uno de ellos.`,
           deviceLimitReached: true,
           deviceCount: deviceCheck.deviceCount,
           maxDevices: deviceCheck.maxDevices,
