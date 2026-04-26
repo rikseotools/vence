@@ -210,21 +210,27 @@ async function _POST(request: NextRequest) {
       }
     }
 
-    // Si seguimos sin contenido, loguear el payload completo para diagnóstico
+    // Si seguimos sin contenido, loguear solo si es un sender real (no DMARC/automated)
     if (!rawText.trim()) {
-      const payloadKeys = Object.keys(e).sort()
-      const sample: Record<string, unknown> = {}
-      for (const k of payloadKeys) {
-        const v = e[k]
-        if (typeof v === 'string') {
-          sample[k] = v.length > 200 ? v.slice(0, 200) + '...' : v
-        } else if (v === null || v === undefined || typeof v !== 'object') {
-          sample[k] = v
-        } else {
-          sample[k] = `[${Array.isArray(v) ? 'array' : 'object'}]`
+      const isAutoSender = ['noreply-dmarc-support@google.com', 'noreply@google.com', 'mailer-daemon@', 'postmaster@', 'noreply@', 'no-reply@', 'ses@web-cursos.es']
+        .some(p => p.endsWith('@') ? fromEmail.startsWith(p) : fromEmail === p)
+      const isDmarcSubject = subject.toLowerCase().includes('report domain:') || subject.toLowerCase().includes('dmarc report')
+
+      if (!isAutoSender && !isDmarcSubject) {
+        const payloadKeys = Object.keys(e).sort()
+        const sample: Record<string, unknown> = {}
+        for (const k of payloadKeys) {
+          const v = e[k]
+          if (typeof v === 'string') {
+            sample[k] = v.length > 200 ? v.slice(0, 200) + '...' : v
+          } else if (v === null || v === undefined || typeof v !== 'object') {
+            sample[k] = v
+          } else {
+            sample[k] = `[${Array.isArray(v) ? 'array' : 'object'}]`
+          }
         }
+        console.error('📧 [Inbound] BODY VACÍO tras payload+API — snapshot del webhook:', JSON.stringify(sample))
       }
-      console.error('📧 [Inbound] BODY VACÍO tras payload+API — snapshot del webhook:', JSON.stringify(sample))
     }
 
     console.log(`📧 [Inbound] Email de ${fromEmail} — "${subject}" (source=${usedField || 'NINGUNO'}, len=${rawText.length}, emailId=${emailId || 'NO'})`)

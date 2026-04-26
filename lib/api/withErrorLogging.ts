@@ -86,8 +86,13 @@ export function withErrorLogging(endpoint: string, handler: RouteHandler): Route
           return response
         }
 
-        // No logear 403 de límite diario — es operación normal, no un error
-        if (response.status === 403 && errorMessage.includes('límite diario')) {
+        // No logear 403 de límites operacionales — es comportamiento esperado, no errores
+        if (response.status === 403 && (
+          errorMessage.includes('límite diario') ||
+          errorMessage.includes('mucha demanda') ||
+          errorMessage.includes('dispositivos conectados') ||
+          errorMessage.includes('límite de dispositivos')
+        )) {
           return response
         }
 
