@@ -86,12 +86,11 @@ export function withErrorLogging(endpoint: string, handler: RouteHandler): Route
           return response
         }
 
-        // No logear 403 de límites operacionales — es comportamiento esperado, no errores
+        // No logear 403 de límites diarios — es comportamiento esperado, no errores.
+        // Device limit SÍ se loguea: alimenta la tab "Device limit" en /admin/fraudes.
         if (response.status === 403 && (
           errorMessage.includes('límite diario') ||
-          errorMessage.includes('mucha demanda') ||
-          errorMessage.includes('dispositivos conectados') ||
-          errorMessage.includes('límite de dispositivos')
+          errorMessage.includes('mucha demanda')
         )) {
           return response
         }
