@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 
-type Tab = 'premium' | 'multicuenta' | 'bots'
+type Tab = 'premium' | 'multicuenta' | 'bots' | 'bloqueados'
 
 interface PremiumSharing {
   user_id: string
@@ -40,6 +40,16 @@ interface ScriptSuspect {
   last_usage: string
 }
 
+interface DeviceBlocked {
+  user_id: string
+  email: string
+  full_name: string
+  plan_type: string
+  existing_devices: string
+  block_count: number
+  last_blocked: string
+}
+
 export default function FraudesPage() {
   const { supabase, user } = useAuth() as any
   const [isAdmin, setIsAdmin] = useState(false)
@@ -50,6 +60,7 @@ export default function FraudesPage() {
   const [multiData, setMultiData] = useState<MultiAccount[]>([])
   const [botData, setBotData] = useState<BotSuspect[]>([])
   const [scriptData, setScriptData] = useState<ScriptSuspect[]>([])
+  const [blockedData, setBlockedData] = useState<DeviceBlocked[]>([])
 
   useEffect(() => {
     if (!supabase || !user) return
@@ -62,7 +73,7 @@ export default function FraudesPage() {
   }, [supabase, user])
 
   async function loadAll() {
-    await Promise.all([loadPremium(), loadMulti(), loadBots(), loadScripts()])
+    await Promise.all([loadPremium(), loadMulti(), loadBots(), loadScripts(), loadBlocked()])
   }
 
   async function loadPremium() {
@@ -328,6 +339,59 @@ export default function FraudesPage() {
     setScriptData(results)
   }
 
+  async function loadBlocked() {
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+
+    const { data: logs } = await supabase
+      .from('validation_error_logs')
+      .select('user_id, error_message, created_at')
+      .ilike('error_message', '%dispositivos conectados%')
+      .gte('created_at', sevenDaysAgo)
+      .not('user_id', 'is', null)
+
+    if (!logs?.length) { setBlockedData([]); return }
+
+    // Agrupar por usuario
+    const byUser = new Map<string, { count: number; last: string; devices: string }>()
+    for (const log of logs) {
+      if (!log.user_id) continue
+      const entry = byUser.get(log.user_id) || { count: 0, last: '', devices: '' }
+      entry.count++
+      if (log.created_at > entry.last) {
+        entry.last = log.created_at
+        // Extraer dispositivos del mensaje: "Ya tienes 2 dispositivos conectados (Chrome / Android, Edge / Windows)"
+        const match = (log.error_message || '').match(/\(([^)]+)\)/)
+        if (match) entry.devices = match[1]
+      }
+      byUser.set(log.user_id, entry)
+    }
+
+    const userIds = [...byUser.keys()]
+    const { data: profiles } = await supabase
+      .from('user_profiles')
+      .select('id, email, full_name, plan_type')
+      .in('id', userIds)
+
+    const profileMap: Map<string, any> = new Map((profiles || []).map((p: any) => [p.id, p]))
+
+    const results: DeviceBlocked[] = [...byUser.entries()]
+      .map(([uid, entry]) => {
+        const p = profileMap.get(uid)
+        return {
+          user_id: uid,
+          email: p?.email || '?',
+          full_name: p?.full_name || '',
+          plan_type: p?.plan_type || 'free',
+          existing_devices: entry.devices,
+          block_count: entry.count,
+          last_blocked: entry.last,
+        }
+      })
+      .sort((a, b) => b.block_count - a.block_count)
+
+    setBlockedData(results)
+  }
+
   if (loading) return <div className="p-8 text-center text-gray-500">Cargando...</div>
   if (!user || !isAdmin) return <div className="p-8 text-center text-red-500">No autorizado</div>
 
@@ -335,6 +399,7 @@ export default function FraudesPage() {
     { id: 'premium', label: 'Premium compartido', count: premiumData.length },
     { id: 'multicuenta', label: 'Multicuentas free', count: multiData.length },
     { id: 'bots', label: 'Bots detectados', count: botData.length + scriptData.length },
+    { id: 'bloqueados', label: 'Device limit', count: blockedData.length },
   ]
 
   return (
@@ -365,6 +430,7 @@ export default function FraudesPage() {
       {tab === 'premium' && <PremiumTab data={premiumData} />}
       {tab === 'multicuenta' && <MultiTab data={multiData} />}
       {tab === 'bots' && <BotTab data={botData} scriptData={scriptData} />}
+      {tab === 'bloqueados' && <BlockedTab data={blockedData} />}
     </div>
   )
 }
@@ -463,6 +529,33 @@ function BotTab({ data, scriptData }: { data: BotSuspect[]; scriptData: ScriptSu
           />
         )}
       </div>
+    </div>
+  )
+}
+
+function BlockedTab({ data }: { data: DeviceBlocked[] }) {
+  if (!data.length) return <Empty msg="No se detectan bloqueos por device limit en los ultimos 7 dias" />
+
+  return (
+    <div>
+      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+        Usuarios que intentaron usar un dispositivo adicional y fueron bloqueados (ultimos 7 dias).
+      </p>
+      <Table
+        headers={['Email', 'Nombre', 'Plan', 'Dispositivos actuales', 'Bloqueos', 'Ultimo']}
+        rows={data.map(d => [
+          d.email,
+          d.full_name,
+          <Badge key="p" text={d.plan_type} color={d.plan_type === 'free' ? 'gray' : 'green'} />,
+          d.existing_devices
+            ? <span key="d" className="flex flex-wrap gap-1">{d.existing_devices.split(', ').map(dev => <Badge key={dev} text={dev} color="gray" />)}</span>
+            : <span key="d" className="text-gray-400 text-xs">-</span>,
+          <span key="c" className={`font-bold ${d.block_count >= 10 ? 'text-red-600' : d.block_count >= 5 ? 'text-orange-500' : 'text-gray-600 dark:text-gray-400'}`}>
+            {d.block_count}
+          </span>,
+          formatDate(d.last_blocked),
+        ])}
+      />
     </div>
   )
 }
