@@ -135,6 +135,8 @@ export default function ArmandoPage() {
     const manuelAmount = Math.round(netAmount * manuelPct)
     const armandoAmount = netAmount - manuelAmount
 
+    const expectedUsd = eurUsdRate ? Math.round(manuelAmount * eurUsdRate) / 100 : null
+
     const { error } = await supabase
       .from('payout_transfers')
       .upsert({
@@ -145,12 +147,81 @@ export default function ArmandoPage() {
         manuel_amount: manuelAmount,
         armando_amount: armandoAmount,
         sent_to_manuel: true,
-        sent_date: new Date().toISOString()
+        sent_date: new Date().toISOString(),
+        expected_usd: expectedUsd,
       }, { onConflict: 'stripe_payout_id' })
 
     if (!error) {
       setExpandedPayouts(prev => ({ ...prev, [payoutId]: false }))
       loadData()
+      // Verificar recepción USDT en 5 minutos
+      if (expectedUsd) {
+        console.log(`⏰ Auto-confirm scheduled in 5 min for ${expectedUsd} USDT`)
+        setTimeout(() => verifyUsdtReceived(payoutId, expectedUsd), 5 * 60 * 1000)
+      }
+    }
+  }
+
+  // Verificar recepción USDT en BSC Smart Chain
+  const verifyUsdtReceived = async (payoutId, expectedUsd) => {
+    try {
+      const WALLET = '0x8f80bcE9C6012048e6c248Cb5471145fcFD17291'
+      const USDT_CONTRACT = '0x55d398326f99059fF775485246999027B3197955'
+      const TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'
+      const RECIPIENT_TOPIC = '0x000000000000000000000000' + WALLET.slice(2).toLowerCase()
+
+      // Buscar transfers del día de hoy (~28800 blocks = 24h en BSC, 3s/block)
+      const blockRes = await fetch('https://bsc-dataseed.binance.org/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', method: 'eth_blockNumber', params: [], id: 1 })
+      }).then(r => r.json())
+
+      const currentBlock = parseInt(blockRes.result, 16)
+      const fromBlock = '0x' + (currentBlock - 28800).toString(16)
+
+      const logsRes = await fetch('https://bsc-dataseed.binance.org/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'eth_getLogs',
+          params: [{ fromBlock, toBlock: 'latest', address: USDT_CONTRACT, topics: [TRANSFER_TOPIC, null, RECIPIENT_TOPIC] }],
+          id: 2
+        })
+      }).then(r => r.json())
+
+      const transfers = logsRes.result || []
+      console.log(`🔍 [USDT] ${transfers.length} transfers found, expecting ~$${expectedUsd}`)
+
+      // Buscar transfer que coincida ±5%
+      const tolerance = 0.05
+      const match = transfers.find(log => {
+        const amount = Number(BigInt(log.data)) / 1e18
+        return Math.abs(amount - expectedUsd) / expectedUsd <= tolerance
+      })
+
+      if (match) {
+        const amount = (Number(BigInt(match.data)) / 1e18).toFixed(2)
+        const txHash = match.transactionHash
+        console.log(`✅ [USDT] Match! ${amount} USDT received. Auto-confirming payout ${payoutId}`)
+
+        await supabase
+          .from('payout_transfers')
+          .update({
+            manuel_confirmed: true,
+            manuel_confirmed_date: new Date().toISOString(),
+            crypto_tx_hash: txHash,
+            crypto_amount_received: parseFloat(amount),
+          })
+          .eq('stripe_payout_id', payoutId)
+
+        loadData()
+      } else {
+        console.log(`⏳ [USDT] No matching transfer found for $${expectedUsd}. Manual confirmation needed.`)
+      }
+    } catch (err) {
+      console.error('❌ [USDT] Error checking blockchain:', err)
     }
   }
 

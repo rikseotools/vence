@@ -96,6 +96,7 @@ export default function ManuelPage() {
         console.error('Error loading transfers:', dbError)
       }
       setPayoutTransfers(transfers || [])
+
     } catch (err) {
       console.error('Error loading data:', err)
       if (err.name === 'AbortError') {
