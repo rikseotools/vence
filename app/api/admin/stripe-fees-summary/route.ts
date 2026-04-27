@@ -159,14 +159,16 @@ async function _GET(request: Request) {
       pending: balance.pending.reduce((sum, b) => sum + b.amount, 0),
     }
 
-    // Calcular volumen neto últimas 4 semanas para determinar comisión Stripe
+    // Calcular volumen neto últimas 4 semanas (= gross charges - refunds)
+    // Esto coincide con el "Volumen neto" que muestra Stripe en Billing > Resumen
     const fourWeeksAgo = Math.floor(Date.now() / 1000) - (28 * 24 * 60 * 60)
-    const recentCharges = await getStripe().balanceTransactions.list({
-      type: 'charge',
-      created: { gte: fourWeeksAgo },
-      limit: 100,
-    })
-    const netVolume4w = recentCharges.data.reduce((sum, t) => sum + t.net, 0)
+    const [recentCharges, recentRefunds] = await Promise.all([
+      getStripe().balanceTransactions.list({ type: 'charge', created: { gte: fourWeeksAgo }, limit: 100 }),
+      getStripe().balanceTransactions.list({ type: 'refund', created: { gte: fourWeeksAgo }, limit: 100 }),
+    ])
+    const grossCharges = recentCharges.data.reduce((sum, t) => sum + t.amount, 0)
+    const totalRefunds = recentRefunds.data.reduce((sum, t) => sum + Math.abs(t.amount), 0)
+    const netVolume4w = grossCharges - totalRefunds
 
     // Comisión Stripe escalonada según volumen neto (en céntimos)
     // >= 6000€ → 5%, >= 5000€ → 6%, >= 4000€ → 7%, >= 3000€ → 8%, >= 2000€ → 9%, < 2000€ → 10%

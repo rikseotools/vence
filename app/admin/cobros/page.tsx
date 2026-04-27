@@ -304,7 +304,7 @@ export default function CobrosPage() {
                         {isPayout && payoutStatus.sent && (
                           <div className="flex items-center justify-between px-4 py-2 bg-green-50 border-t border-green-200 text-sm">
                             <span className="text-green-800">
-                              Manuel: <strong>{formatCurrency(manuelAmount)}</strong>{eurUsdRate && <span className="text-blue-600 font-medium"> → Aprox. ${(manuelAmount / 100 * eurUsdRate).toFixed(2)} USD</span>} · Armando: <strong>{formatCurrency(armandoAmount)}</strong>
+                              Manuel ({100 - stripeCommission.pct}%): <strong>{formatCurrency(manuelAmount)}</strong>{eurUsdRate && <span className="text-blue-600 font-medium"> → Aprox. ${(manuelAmount / 100 * eurUsdRate).toFixed(2)} USD</span>} · Armando ({stripeCommission.pct}%): <strong>{formatCurrency(armandoAmount)}</strong>
                               {(payoutStatus as any).cryptoTxHash && (
                                 <span className="ml-2 text-green-600 text-xs">
                                   (USDT: ${(payoutStatus as any).cryptoAmount?.toFixed(2)} · <a href={`https://bscscan.com/tx/${(payoutStatus as any).cryptoTxHash}`} target="_blank" rel="noopener noreferrer" className="underline">tx</a>)
