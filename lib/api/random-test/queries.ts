@@ -30,12 +30,20 @@ async function getThemeQuestionCountsInternal(
   const config = getOposicionConfig(oposicion)
   const allThemeIds = config.blocks.flatMap(b => b.themes.map(t => t.id))
 
+  // Obtener posiciones válidas para contar solo oficiales propias
+  const { getValidExamPositions } = await import('@/lib/config/exam-positions')
+  const validPositions = getValidExamPositions(positionType)
+
   // UNA SOLA QUERY: Obtener conteos agrupados por tema
+  // officialCount: solo cuenta oficiales de esta oposición (por exam_position),
+  // NO de otras oposiciones que comparten leyes — para no confundir al usuario.
   const countsResult = await db
     .select({
       topicNumber: topics.topicNumber,
       total: sql<number>`count(DISTINCT ${questions.id})::int`,
-      official: sql<number>`count(DISTINCT CASE WHEN ${questions.isOfficialExam} = true THEN ${questions.id} END)::int`,
+      official: validPositions.length > 0
+        ? sql<number>`count(DISTINCT CASE WHEN ${questions.isOfficialExam} = true AND ${questions.examPosition} IN (${sql.join(validPositions.map(p => sql`${p}`), sql`, `)}) THEN ${questions.id} END)::int`
+        : sql<number>`0`,
     })
     .from(topics)
     .innerJoin(topicScope, eq(topicScope.topicId, topics.id))
