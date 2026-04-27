@@ -466,13 +466,13 @@ export default function TestLayout({
         .reduce((sum, bucket) => sum + (Array.isArray(bucket) ? bucket.length : 0), 0)
       const totalAnswered = Object.values(questions.adaptiveCatalog.answered)
         .reduce((sum, bucket) => sum + (Array.isArray(bucket) ? bucket.length : 0), 0)
-      const topicDist = questions.adaptiveCatalog.topicDistribution
+      const catalog = questions.adaptiveCatalog as AdaptiveCatalog & { topicDistribution?: Record<string, number>; articlesSeen?: string[] }
       console.log('🧠 Catálogo recibido:', {
         keys: catalogKeys.length,
         totalNeverSeen,
         totalAnswered,
-        topicDistribution: topicDist || 'N/A',
-        articlesSeen: questions.adaptiveCatalog.articlesSeen?.length || 0,
+        topicDistribution: catalog.topicDistribution || 'N/A',
+        articlesSeen: catalog.articlesSeen?.length || 0,
       })
     }
   }, [questions])
