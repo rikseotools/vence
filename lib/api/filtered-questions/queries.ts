@@ -372,6 +372,106 @@ function selectEquitativeByLaw<T extends { lawShortName: string }>(
 }
 
 // ============================================
+// HELPER: Distribución proporcional por artículo
+// Evita que artículos con muchas preguntas monopolicen el test
+// ============================================
+export function selectProportionallyByArticle<T extends { id: string; articleNumber: string; lawShortName: string }>(
+  candidates: T[],
+  fullPool: T[],
+  numQuestions: number,
+  options?: { maxPerArticle?: number; log?: boolean }
+): T[] {
+  if (candidates.length <= numQuestions && fullPool.length <= numQuestions) {
+    return candidates // No hay margen para redistribuir
+  }
+
+  const log = options?.log ?? true
+
+  // Agrupar por artículo (clave compuesta para evitar colisiones entre leyes)
+  const articleKey = (q: T) => `${q.articleNumber}@${q.lawShortName}`
+  const byArticle = new Map<string, T[]>()
+
+  // Usar el pool completo para tener más candidatos por artículo
+  const poolById = new Map<string, T>()
+  for (const q of fullPool) poolById.set(q.id, q)
+  for (const q of candidates) poolById.set(q.id, q) // candidates tienen prioridad
+
+  for (const q of poolById.values()) {
+    const key = articleKey(q)
+    if (!byArticle.has(key)) byArticle.set(key, [])
+    byArticle.get(key)!.push(q)
+  }
+
+  const uniqueArticles = byArticle.size
+  const maxPerArticle = options?.maxPerArticle ?? Math.max(1, Math.ceil(numQuestions / uniqueArticles))
+
+  // Shuffle cada grupo de artículo
+  for (const [, qs] of byArticle) {
+    for (let i = qs.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[qs[i], qs[j]] = [qs[j], qs[i]]
+    }
+  }
+
+  // Round-robin: 1 pregunta por artículo por ronda
+  const selected: T[] = []
+  const selectedIds = new Set<string>()
+  const articleKeys = [...byArticle.keys()].sort(() => Math.random() - 0.5)
+  const articleCounts = new Map<string, number>()
+
+  const maxRounds = Math.max(maxPerArticle, Math.ceil(numQuestions / Math.max(1, uniqueArticles)))
+  let round = 0
+  while (selected.length < numQuestions && round < maxRounds) {
+    let addedThisRound = false
+    for (const key of articleKeys) {
+      if (selected.length >= numQuestions) break
+      const qs = byArticle.get(key)!
+      const used = articleCounts.get(key) || 0
+      if (used < qs.length && used === round) {
+        const q = qs[used]
+        if (!selectedIds.has(q.id)) {
+          selected.push(q)
+          selectedIds.add(q.id)
+          articleCounts.set(key, used + 1)
+          addedThisRound = true
+        }
+      }
+    }
+    if (!addedThisRound) break
+    round++
+  }
+
+  // Fallback: si el round-robin no llenó, añadir preguntas restantes del pool
+  if (selected.length < numQuestions) {
+    for (const q of [...poolById.values()].sort(() => Math.random() - 0.5)) {
+      if (selected.length >= numQuestions) break
+      if (!selectedIds.has(q.id)) {
+        selected.push(q)
+        selectedIds.add(q.id)
+      }
+    }
+  }
+
+  // Shuffle final para mezclar artículos
+  for (let i = selected.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[selected[i], selected[j]] = [selected[j], selected[i]]
+  }
+
+  if (log) {
+    const diversityScore = (new Set(selected.map(articleKey)).size / selected.length).toFixed(2)
+    const topArticles = [...articleCounts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([k, v]) => `${k}:${v}`)
+      .join(', ')
+    console.log(`[ArticleDist] ${selected.length} preguntas, ${new Set(selected.map(articleKey)).size} artículos distintos (max ${maxPerArticle}/art). Diversity: ${diversityScore}. Top: ${topArticles}`)
+  }
+
+  return selected
+}
+
+// ============================================
 // HELPER: Aplicar filtro de secciones a artículos
 // ============================================
 function applyArticleSectionFilter(
@@ -903,6 +1003,16 @@ export async function getFilteredQuestions(
     } else {
       // Shuffle completo y limitar
       finalQuestions = sortedQuestions.sort(() => Math.random() - 0.5).slice(0, numQuestions)
+    }
+
+    // 7b. Distribución proporcional por artículo (evita que artículos con muchas preguntas monopolicen)
+    if (finalQuestions.length > 3) {
+      finalQuestions = selectProportionallyByArticle(
+        finalQuestions,
+        sortedQuestions,
+        numQuestions,
+        { log: true }
+      )
     }
 
     // 8️⃣ Transformar al formato esperado por el frontend
