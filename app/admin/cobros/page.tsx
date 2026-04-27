@@ -73,15 +73,22 @@ export default function CobrosPage() {
   }
 
   const markAsConfirmed = async (payoutId: string) => {
+    const now = new Date().toISOString()
     const { error } = await supabase
       .from('payout_transfers')
       .update({
         manuel_confirmed: true,
-        manuel_confirmed_date: new Date().toISOString()
+        manuel_confirmed_date: now
       })
       .eq('stripe_payout_id', payoutId)
 
-    if (!error) loadData()
+    if (!error) {
+      setPayoutTransfers(prev => prev.map(t =>
+        t.stripe_payout_id === payoutId
+          ? { ...t, manuel_confirmed: true, manuel_confirmed_date: now }
+          : t
+      ))
+    }
   }
 
   const getPayoutStatus = (payoutId: string) => {
