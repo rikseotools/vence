@@ -720,6 +720,14 @@ export async function fetchQuestionsByTopicScope(tema: number, searchParams: Sea
       console.warn('⚠️ No se pudo obtener token de sesión')
     }
 
+    // Si el usuario pidió "solo falladas" pero no hay sesión (SSR),
+    // retornar vacío — el cliente re-hará el fetch con auth.
+    // Evita un fetch inútil que siempre devuelve aleatorias.
+    if (onlyFailedQuestions && !authToken) {
+      console.log('⏭️ [fetchByTopicScope] onlyFailedQuestions sin auth (SSR) — skip, el cliente re-hará el fetch')
+      return []
+    }
+
     const headers: Record<string, string> = { 'Content-Type': 'application/json' }
     if (authToken) headers['Authorization'] = `Bearer ${authToken}`
 
@@ -1303,6 +1311,13 @@ export async function fetchQuestionsViaAPI(tema: number, searchParams: SearchPar
       authToken = session?.access_token ?? null
     } catch {
       console.warn('⚠️ No se pudo obtener token de sesión')
+    }
+
+    // Si el usuario pidió "solo falladas" pero no hay sesión (SSR),
+    // retornar vacío — el cliente re-hará el fetch con auth.
+    if (onlyFailedQuestions && !authToken) {
+      console.log('⏭️ [fetchExamByTopicScope] onlyFailedQuestions sin auth (SSR) — skip')
+      return []
     }
 
     // Llamar a la API

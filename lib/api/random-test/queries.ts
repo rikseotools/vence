@@ -161,11 +161,22 @@ export async function checkQuestionAvailability(
   // Filtro de preguntas oficiales
   if (request.onlyOfficialQuestions) {
     conditions.push(eq(questions.isOfficialExam, true))
-    // Filtrar por exam_position de la oposición del usuario, salvo que pida compartidas
+    // Filtrar por exam_position solo si la oposición tiene oficiales propias Y no pide compartidas
     if (!request.includeSharedOfficials) {
-      const { buildOfficialExamFilter } = await import('@/lib/api/oposicion-scope/queries')
-      const filter = buildOfficialExamFilter(positionType)
-      if (filter) conditions.push(filter)
+      const { getValidExamPositions } = await import('@/lib/config/exam-positions')
+      const validPositions = getValidExamPositions(positionType)
+      if (validPositions && validPositions.length > 0) {
+        // Verificar si realmente existen preguntas con esas posiciones
+        const hasOwn = await db.select({ c: sql<number>`count(*)::int` })
+          .from(questions)
+          .where(and(eq(questions.isActive, true), eq(questions.isOfficialExam, true), inArray(questions.examPosition, validPositions)))
+        if ((hasOwn[0]?.c || 0) > 0) {
+          const { buildOfficialExamFilter } = await import('@/lib/api/oposicion-scope/queries')
+          const filter = buildOfficialExamFilter(positionType)
+          if (filter) conditions.push(filter)
+        }
+        // Si no tiene oficiales propias → no filtrar → muestra compartidas
+      }
     }
   }
 
