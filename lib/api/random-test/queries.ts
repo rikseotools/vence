@@ -161,6 +161,12 @@ export async function checkQuestionAvailability(
   // Filtro de preguntas oficiales
   if (request.onlyOfficialQuestions) {
     conditions.push(eq(questions.isOfficialExam, true))
+    // Filtrar por exam_position de la oposición del usuario, salvo que pida compartidas
+    if (!request.includeSharedOfficials) {
+      const { buildOfficialExamFilter } = await import('@/lib/api/oposicion-scope/queries')
+      const filter = buildOfficialExamFilter(positionType)
+      if (filter) conditions.push(filter)
+    }
   }
 
   // UNA SOLA QUERY con GROUP BY

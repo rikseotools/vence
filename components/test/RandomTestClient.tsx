@@ -82,6 +82,7 @@ export default function RandomTestClient({
   const [difficulty, setDifficulty] = useState<DifficultyLevel>('mixed')
   const [testMode, setTestMode] = useState<TestMode>('practica')
   const [onlyOfficialQuestions, setOnlyOfficialQuestions] = useState(false)
+  const [includeSharedOfficials, setIncludeSharedOfficials] = useState(false)
   const [focusEssentialArticles, setFocusEssentialArticles] = useState(false)
   const [adaptiveMode, setAdaptiveMode] = useState(true)
 
@@ -139,7 +140,7 @@ export default function RandomTestClient({
     } else {
       setAvailableQuestions(0)
     }
-  }, [selectedThemes, difficulty, onlyOfficialQuestions, focusEssentialArticles])
+  }, [selectedThemes, difficulty, onlyOfficialQuestions, includeSharedOfficials, focusEssentialArticles])
 
   const loadUserStats = async (userId: string) => {
     setStatsLoading(true)
@@ -177,6 +178,7 @@ export default function RandomTestClient({
           selectedThemes,
           difficulty,
           onlyOfficialQuestions,
+          includeSharedOfficials,
           focusEssentialArticles,
         }),
       })
@@ -250,6 +252,7 @@ export default function RandomTestClient({
         mode: 'aleatorio',
       })
       if (onlyOfficialQuestions) testParams.append('official_only', 'true')
+      if (includeSharedOfficials) testParams.append('include_shared_officials', 'true')
       if (focusEssentialArticles) testParams.append('focus_essential', 'true')
       if (selectedThemes.length === 1 && adaptiveMode) testParams.append('adaptive', 'true')
 
@@ -409,9 +412,18 @@ export default function RandomTestClient({
               </label>
 
               {onlyOfficialQuestions && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg space-y-2">
                   <p className="text-sm font-bold text-red-800">Modo Oficial Activado</p>
                   <p className="text-xs text-red-700">Solo preguntas de exámenes oficiales de {config.shortName}</p>
+                  <label className="flex items-center space-x-2 cursor-pointer pt-1">
+                    <input
+                      type="checkbox"
+                      checked={includeSharedOfficials}
+                      onChange={(e) => setIncludeSharedOfficials(e.target.checked)}
+                      className="rounded border-red-300 text-red-600 focus:ring-red-500"
+                    />
+                    <span className="text-xs text-red-700">Incluir oficiales de otras oposiciones con temario compartido</span>
+                  </label>
                 </div>
               )}
 

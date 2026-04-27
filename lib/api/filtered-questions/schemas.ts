@@ -45,6 +45,9 @@ export const getFilteredQuestionsRequestSchema = z.object({
   // Solo preguntas oficiales
   onlyOfficialQuestions: z.boolean().default(false),
 
+  // Incluir oficiales de oposiciones con temario compartido
+  includeSharedOfficials: z.boolean().default(false),
+
   // Modo de dificultad
   difficultyMode: z.enum(['random', 'easy', 'medium', 'hard', 'extreme', 'adaptive']).default('random'),
 
@@ -167,6 +170,7 @@ export const countFilteredQuestionsRequestSchema = z.object({
   selectedArticlesByLaw: z.record(z.string(), z.array(z.union([z.number().int(), z.string()]))).default({}),
   selectedSectionFilters: z.array(sectionFilterSchema).default([]),
   onlyOfficialQuestions: z.boolean().default(false),
+  includeSharedOfficials: z.boolean().default(false),
 })
 
 export type CountFilteredQuestionsRequest = z.infer<typeof countFilteredQuestionsRequestSchema>

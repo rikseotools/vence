@@ -60,6 +60,7 @@ export const CheckAvailabilityRequestSchema = z.object({
   selectedThemes: z.array(z.number()).min(1, 'Selecciona al menos un tema'),
   difficulty: z.enum(DIFFICULTY_LEVELS).default('mixed'),
   onlyOfficialQuestions: z.boolean().default(false),
+  includeSharedOfficials: z.boolean().default(false),
   focusEssentialArticles: z.boolean().default(false),
   userId: z.string().uuid().nullable().optional(),
 })
@@ -70,6 +71,7 @@ export const GenerateTestRequestSchema = z.object({
   numQuestions: z.number().min(5).max(100).default(25),
   difficulty: z.enum(DIFFICULTY_LEVELS).default('mixed'),
   onlyOfficialQuestions: z.boolean().default(false),
+  includeSharedOfficials: z.boolean().default(false),
   focusEssentialArticles: z.boolean().default(false),
   adaptiveMode: z.boolean().default(false),
   testMode: z.enum(TEST_MODES).default('practica'),

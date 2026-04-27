@@ -688,6 +688,7 @@ export async function fetchQuestionsByTopicScope(tema: number, searchParams: Sea
 
     const numQuestions = parseInt(getParam(searchParams, 'n', '25'))
     const onlyOfficialQuestions = getParam(searchParams, 'only_official') === 'true'
+    const includeSharedOfficials = getParam(searchParams, 'include_shared_officials') === 'true'
     const excludeRecent = getParam(searchParams, 'exclude_recent') === 'true'
     const recentDays = parseInt(getParam(searchParams, 'recent_days', '15'))
     const difficultyMode = getParam(searchParams, 'difficulty_mode', 'random')
@@ -742,6 +743,7 @@ export async function fetchQuestionsByTopicScope(tema: number, searchParams: Sea
         selectedArticlesByLaw: Object.keys(articlesForAPI).length > 0 ? articlesForAPI : selectedArticlesByLaw,
         selectedSectionFilters,
         onlyOfficialQuestions,
+        includeSharedOfficials,
         difficultyMode: needsAdaptiveCatalog ? 'random' : difficultyMode,
         excludeRecentDays: excludeRecent ? recentDays : 0,
         focusEssentialArticles,
@@ -1112,6 +1114,7 @@ export async function fetchAleatorioMultiTema(themes: number[], searchParams: Se
     const excludeRecent = getParam(searchParams, 'exclude_recent') === 'true'
     const excludeDays = parseInt(getParam(searchParams, 'exclude_days', '15'))
     const onlyOfficialQuestions = getParam(searchParams, 'official_only') === 'true'
+    const includeSharedOfficials = getParam(searchParams, 'include_shared_officials') === 'true'
     const focusEssentialArticles = getParam(searchParams, 'focus_essential') === 'true'
     // Mapear 'mixed' (UI) → 'random' (API), el resto coincide ('easy','medium','hard')
     const rawDifficulty = getParam(searchParams, 'difficulty', 'mixed')
@@ -1143,6 +1146,7 @@ export async function fetchAleatorioMultiTema(themes: number[], searchParams: Se
         selectedArticlesByLaw: {},
         selectedSectionFilters: [],
         onlyOfficialQuestions,
+        includeSharedOfficials,
         difficultyMode,
         excludeRecentDays: excludeRecent ? excludeDays : 0,
         focusEssentialArticles,
