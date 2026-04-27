@@ -89,7 +89,8 @@ export interface QuestionInput {
   option_a?: string
   option_b?: string
   option_c?: string
-  option_d?: string
+  option_d?: string | null
+  option_e?: string | null
   difficulty?: string
   // Campos adicionales comunes
   tema_number?: number

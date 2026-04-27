@@ -329,6 +329,7 @@ export async function generateRandomTest(
           optionB: questions.optionB,
           optionC: questions.optionC,
           optionD: questions.optionD,
+        optionE: questions.optionE,
           difficulty: questions.difficulty,
           globalDifficultyCategory: questions.globalDifficultyCategory,
           isOfficialExam: questions.isOfficialExam,

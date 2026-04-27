@@ -278,12 +278,7 @@ export function transformQuestions(supabaseQuestions: SupabaseQuestionAny[] | nu
       // ✅ PRESERVAR ID ORIGINAL DE LA BASE DE DATOS
       id: q.id,
       question: q.question_text,
-      options: [
-        q.option_a,
-        q.option_b,
-        q.option_c,
-        q.option_d
-      ],
+      options: [q.option_a, q.option_b, q.option_c, q.option_d, q.option_e].filter((v: string | null | undefined): v is string => v != null && v !== ''),
       // Respuesta correcta incluida para validación client-side instantánea
       correct_option: q.correct_option,
       explanation: q.explanation,

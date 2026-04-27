@@ -46,8 +46,8 @@ export type QuestionData = z.infer<typeof questionDataSchema>
 
 export const answerDataSchema = z.object({
   questionIndex: z.number().int().min(0),
-  selectedAnswer: z.number().int().min(-1).max(3), // -1 = sin respuesta
-  correctAnswer: z.number().int().min(0).max(3),
+  selectedAnswer: z.number().int().min(-1).max(4), // -1 = sin respuesta
+  correctAnswer: z.number().int().min(0).max(4),
   isCorrect: z.boolean(),
   timeSpent: z.number().min(0).default(0),
   // Flag cuando el usuario dejó la pregunta en blanco explícitamente.

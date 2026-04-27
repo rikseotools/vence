@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import PsychometricAIHelpButton from './PsychometricAIHelpButton'
 import PsychometricExplanation from './PsychometricExplanation'
 import ContentDataRenderer from './ContentDataRenderer'
+import MarkdownQuestionText from './MarkdownQuestionText'
 
 interface ChartQuestionData {
   id: string
@@ -11,8 +12,9 @@ interface ChartQuestionData {
   option_a: string
   option_b: string
   option_c: string
-  option_d: string
-  options?: { A?: string; B?: string; C?: string; D?: string }
+  option_d?: string | null
+  option_e?: string | null
+  options?: { A?: string; B?: string; C?: string; D?: string; E?: string }
   explanation?: string | null
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   content_data?: Record<string, any> | null
@@ -146,8 +148,9 @@ export default function ChartQuestion({
     { value: question.option_a || question.options?.A },
     { value: question.option_b || question.options?.B },
     { value: question.option_c || question.options?.C },
-    { value: question.option_d || question.options?.D }
-  ]
+    { value: question.option_d || question.options?.D },
+    { value: question.option_e || question.options?.E },
+  ].filter(o => o.value != null && o.value !== '')
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-6">
@@ -239,7 +242,7 @@ export default function ChartQuestion({
       {/* Texto de la pregunta */}
       {question.question_text && (
         <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          {question.question_text}
+          <MarkdownQuestionText text={question.question_text} />
         </h3>
       )}
 

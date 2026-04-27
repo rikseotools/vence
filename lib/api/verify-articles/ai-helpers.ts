@@ -88,7 +88,8 @@ interface Question {
   optionA: string
   optionB: string
   optionC: string
-  optionD: string
+  optionD: string | null
+  optionE?: string | null
   correctOption: number
   explanation: string | null
 }
@@ -102,15 +103,14 @@ export function buildBatchVerificationPrompt(params: {
   const { lawName, articleNumber, articleContent, questions: qs } = params
 
   const questionsText = qs.map((q, i) => {
-    const correctLetter = ['A', 'B', 'C', 'D'][q.correctOption]
+    const correctLetter = ['A', 'B', 'C', 'D', 'E'][q.correctOption]
     return `
 ### Pregunta ${i + 1} (ID: ${q.id})
 ${q.questionText}
 
 A) ${q.optionA}
 B) ${q.optionB}
-C) ${q.optionC}
-D) ${q.optionD}
+C) ${q.optionC}${q.optionD ? `\nD) ${q.optionD}` : ''}${q.optionE ? `\nE) ${q.optionE}` : ''}
 
 Respuesta marcada como correcta: ${correctLetter}
 Explicación actual: ${q.explanation || 'No disponible'}
@@ -176,7 +176,7 @@ export function buildSingleVerificationPrompt(params: {
   articleNumber: string
   articleContent: string
   questionText: string
-  options: { a: string; b: string; c: string; d: string }
+  options: { a: string; b: string; c: string; d: string; e?: string }
   correctOption: string
   correctAnswer: string
   explanation: string | null
@@ -195,8 +195,7 @@ ${questionText}
 
 A) ${options.a}
 B) ${options.b}
-C) ${options.c}
-D) ${options.d}
+C) ${options.c}${options.d ? `\nD) ${options.d}` : ''}${options.e ? `\nE) ${options.e}` : ''}
 
 Respuesta marcada como correcta: ${correctOption}) ${correctAnswer}
 

@@ -24,7 +24,8 @@ export interface QuestionFullData {
   optionA: string
   optionB: string
   optionC: string
-  optionD: string
+  optionD: string | null
+  optionE?: string | null
   correctOption: number
   explanation: string | null
   primaryArticleId: string | null

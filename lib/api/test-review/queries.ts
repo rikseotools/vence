@@ -96,6 +96,7 @@ export async function getTestReview(
           optionB: questions.optionB,
           optionC: questions.optionC,
           optionD: questions.optionD,
+          optionE: questions.optionE,
           explanation: questions.explanation,
         })
         .from(questions)
@@ -103,7 +104,7 @@ export async function getTestReview(
 
       for (const q of questionRows) {
         questionDataMap.set(q.id, {
-          options: [q.optionA, q.optionB, q.optionC, q.optionD],
+          options: [q.optionA, q.optionB, q.optionC, q.optionD, q.optionE].filter((v): v is string => v != null && v !== ''),
           explanation: q.explanation,
         })
       }

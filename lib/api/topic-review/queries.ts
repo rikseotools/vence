@@ -656,6 +656,7 @@ export async function getTopicDetail(topicId: string) {
           optionB: questions.optionB,
           optionC: questions.optionC,
           optionD: questions.optionD,
+        optionE: questions.optionE,
           correctOption: questions.correctOption,
           explanation: questions.explanation,
           verifiedAt: questions.verifiedAt,

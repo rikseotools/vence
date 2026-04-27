@@ -34,6 +34,7 @@ import SequenceNumericQuestion from './SequenceNumericQuestion'
 import SequenceLetterQuestion from './SequenceLetterQuestion'
 import SequenceAlphanumericQuestion from './SequenceAlphanumericQuestion'
 import MarkdownExplanation from './MarkdownExplanation'
+import MarkdownQuestionText from './MarkdownQuestionText'
 import { validateExam } from '@/lib/api/exam/client'
 import { validatePsychometricAnswer } from '@/lib/api/psychometric-answer/client'
 import ContentDataRenderer from './ContentDataRenderer'
@@ -141,7 +142,7 @@ interface MotivationalMessage {
 // Helper para convertir indice de respuesta a letra (0='A', 1='B', etc.)
 function answerToLetter(index: number | null | undefined): string {
   if (index === null || index === undefined) return '?'
-  const letters = ['A', 'B', 'C', 'D']
+  const letters = ['A', 'B', 'C', 'D', 'E']
   return letters[index] || '?'
 }
 
@@ -316,7 +317,8 @@ export default function OfficialExamLayout({
         option_a: q.options?.[0],
         option_b: q.options?.[1],
         option_c: q.options?.[2],
-        option_d: q.options?.[3],
+        option_d: q.options?.[3] ?? null,
+        option_e: q.options?.[4] ?? null,
         // Solo exponer respuesta correcta si el examen está validado
         correct: isSubmitted && validationResult?.correctIndex !== undefined
           ? validationResult.correctIndex
@@ -466,9 +468,9 @@ export default function OfficialExamLayout({
       return
     }
 
-    // Option puede ser un indice (0-3) o una letra ('a'-'d')
+    // Option puede ser un indice (0-4) o una letra ('a'-'e')
     const normalizedOption = typeof option === 'number'
-      ? ['a', 'b', 'c', 'd'][option]
+      ? ['a', 'b', 'c', 'd', 'e'][option]
       : option.toLowerCase()
 
     // Verificar si es una respuesta NUEVA (no un cambio)
@@ -789,8 +791,8 @@ export default function OfficialExamLayout({
 
     return (
       <div className="space-y-3">
-        {(['a', 'b', 'c', 'd'] as const).map((option, optIndex) => {
-          const optionText = question.options[optIndex]
+        {question.options.map((optionText: string, optIndex: number) => {
+          const option = ['a', 'b', 'c', 'd', 'e'][optIndex] || '?'
           const isSelected = selectedOption === option
           const isCorrectOption = option === correctOptionLetter
 
@@ -875,7 +877,8 @@ export default function OfficialExamLayout({
         option_a: question.options[0],
         option_b: question.options[1],
         option_c: question.options[2],
-        option_d: question.options[3],
+        option_d: question.options[3] ?? null,
+        option_e: question.options[4] ?? null,
         content_data: question.contentData,
         explanation: question.explanation,
         question_subtype: question.questionSubtype
@@ -932,7 +935,7 @@ export default function OfficialExamLayout({
     return (
       <div className="space-y-3">
         <ContentDataRenderer contentData={question.contentData as Record<string, unknown> | null} />
-        {(['A', 'B', 'C', 'D'] as const).map((letter, optIndex) => {
+        {(['A', 'B', 'C', 'D', 'E'] as const).slice(0, question.options.length).map((letter, optIndex) => {
           const optionText = question.options[optIndex]
           const isSelected = selectedIndex === optIndex
           const isCorrectOption = showFeedback && verifiedCorrectAnswer !== null
@@ -1289,7 +1292,7 @@ export default function OfficialExamLayout({
                 {(!isPsychometric || !['pie_chart', 'bar_chart', 'line_chart', 'data_tables', 'mixed_chart', 'error_detection', 'word_analysis', 'sequence_numeric', 'sequence_letter', 'sequence_alphanumeric'].includes(question.questionSubtype || '')) && (
                   <div className="mb-6">
                     <p className="text-lg text-gray-900 leading-relaxed">
-                      {question.question}
+                      <MarkdownQuestionText text={question.question || ''} />
                     </p>
                   </div>
                 )}
@@ -1400,18 +1403,19 @@ export default function OfficialExamLayout({
                           }
                         }
 
-                        const correctLetter = ['A', 'B', 'C', 'D'][validatedResult?.correctIndex ?? -1] || '?'
+                        const correctLetter = ['A', 'B', 'C', 'D', 'E'][validatedResult?.correctIndex ?? -1] || '?'
 
                         // Solo "paso a paso" para preguntas de tablas, resto sin ello
                         const isTableQuestion = question.questionSubtype === 'data_tables'
                         let chatMessage: string
+                        const optionsText = question.options.map((opt: string, i: number) => `${String.fromCharCode(65 + i)}) ${opt}`).join('\n')
 
                         if (isPsychometric && isTableQuestion) {
-                          chatMessage = `Explícame paso a paso cómo resolver esta pregunta psicotécnica: "${question.question}"${tablesContext}\n\nLas opciones son:\nA) ${question.options[0]}\nB) ${question.options[1]}\nC) ${question.options[2]}\nD) ${question.options[3]}\n\nLa respuesta correcta es: ${correctLetter}`
+                          chatMessage = `Explícame paso a paso cómo resolver esta pregunta psicotécnica: "${question.question}"${tablesContext}\n\nLas opciones son:\n${optionsText}\n\nLa respuesta correcta es: ${correctLetter}`
                         } else if (isPsychometric) {
-                          chatMessage = `Explícame esta pregunta psicotécnica: "${question.question}"${tablesContext}\n\nLas opciones son:\nA) ${question.options[0]}\nB) ${question.options[1]}\nC) ${question.options[2]}\nD) ${question.options[3]}\n\nLa respuesta correcta es: ${correctLetter}`
+                          chatMessage = `Explícame esta pregunta psicotécnica: "${question.question}"${tablesContext}\n\nLas opciones son:\n${optionsText}\n\nLa respuesta correcta es: ${correctLetter}`
                         } else {
-                          chatMessage = `Explícame esta pregunta: "${question.question}"\n\nLas opciones son:\nA) ${question.options[0]}\nB) ${question.options[1]}\nC) ${question.options[2]}\nD) ${question.options[3]}\n\nLa respuesta correcta es: ${correctLetter}`
+                          chatMessage = `Explícame esta pregunta: "${question.question}"\n\nLas opciones son:\n${optionsText}\n\nLa respuesta correcta es: ${correctLetter}`
                         }
 
                         // Construimos el questionContext inline con los datos
@@ -1424,7 +1428,8 @@ export default function OfficialExamLayout({
                           option_a: question.options?.[0],
                           option_b: question.options?.[1],
                           option_c: question.options?.[2],
-                          option_d: question.options?.[3],
+                          option_d: question.options?.[3] ?? null,
+                          option_e: question.options?.[4] ?? null,
                           correct: validatedResult?.correctIndex ?? null,
                           explanation: validatedResult?.explanation || question.explanation || null,
                           law: question.lawName || null,

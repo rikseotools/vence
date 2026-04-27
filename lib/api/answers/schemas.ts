@@ -8,7 +8,7 @@ import { z } from 'zod/v3'
 
 export const validateAnswerRequestSchema = z.object({
   questionId: z.string().uuid('ID de pregunta inválido'),
-  userAnswer: z.number().int().min(0).max(3), // 0=A, 1=B, 2=C, 3=D
+  userAnswer: z.number().int().min(0).max(4), // 0=A, 1=B, 2=C, 3=D
   userId: z.string().uuid().optional().nullable(),
   responseTimeMs: z.number().int().min(0).optional(),
   testId: z.string().uuid().optional().nullable()
@@ -23,7 +23,7 @@ export type ValidateAnswerRequest = z.infer<typeof validateAnswerRequestSchema>
 export const validateAnswerResponseSchema = z.object({
   success: z.boolean(),
   isCorrect: z.boolean(),
-  correctAnswer: z.number().int().min(0).max(3),
+  correctAnswer: z.number().int().min(0).max(4),
   explanation: z.string().nullable(),
   articleNumber: z.string().nullable().optional(),
   lawShortName: z.string().nullable().optional(),

@@ -165,6 +165,7 @@ export async function getOfficialExamQuestions(
         optionB: questions.optionB,
         optionC: questions.optionC,
         optionD: questions.optionD,
+        optionE: questions.optionE,
         explanation: questions.explanation,
         difficulty: questions.difficulty,
         examSource: questions.examSource,
@@ -199,6 +200,7 @@ export async function getOfficialExamQuestions(
         optionB: psychometricQuestions.optionB,
         optionC: psychometricQuestions.optionC,
         optionD: psychometricQuestions.optionD,
+          optionE: psychometricQuestions.optionE,
         explanation: psychometricQuestions.explanation,
         difficulty: psychometricQuestions.difficulty,
         examSource: psychometricQuestions.examSource,
@@ -228,7 +230,8 @@ export async function getOfficialExamQuestions(
         optionA: q.optionA,
         optionB: q.optionB,
         optionC: q.optionC,
-        optionD: q.optionD,
+        optionD: q.optionD ?? null,
+        optionE: q.optionE ?? null,
         explanation: q.explanation,
         difficulty: q.difficulty,
         questionType: 'legislative' as const,
@@ -255,6 +258,7 @@ export async function getOfficialExamQuestions(
         optionB: q.optionB || '',
         optionC: q.optionC || '',
         optionD: q.optionD || '',
+        optionE: q.optionE || '',
         explanation: q.explanation,
         difficulty: q.difficulty,
         questionType: 'psychometric' as const,
@@ -825,7 +829,8 @@ export async function getOfficialExamResume(
       optionA: string
       optionB: string
       optionC: string
-      optionD: string
+      optionD: string | null
+      optionE: string | null
       explanation: string | null
       difficulty: string | null
       examSource: string | null
@@ -842,6 +847,7 @@ export async function getOfficialExamResume(
           optionB: questions.optionB,
           optionC: questions.optionC,
           optionD: questions.optionD,
+        optionE: questions.optionE,
           explanation: questions.explanation,
           difficulty: questions.difficulty,
           examSource: questions.examSource,
@@ -866,6 +872,7 @@ export async function getOfficialExamResume(
       optionB: string | null
       optionC: string | null
       optionD: string | null
+      optionE: string | null
       explanation: string | null
       difficulty: string | null
       examSource: string | null
@@ -882,6 +889,7 @@ export async function getOfficialExamResume(
           optionB: psychometricQuestions.optionB,
           optionC: psychometricQuestions.optionC,
           optionD: psychometricQuestions.optionD,
+          optionE: psychometricQuestions.optionE,
           explanation: psychometricQuestions.explanation,
           difficulty: psychometricQuestions.difficulty,
           examSource: psychometricQuestions.examSource,
@@ -920,7 +928,8 @@ export async function getOfficialExamResume(
           optionA: leg.optionA,
           optionB: leg.optionB,
           optionC: leg.optionC,
-          optionD: leg.optionD,
+          optionD: leg.optionD ?? null,
+          optionE: leg.optionE ?? null,
           explanation: leg.explanation,
           difficulty: leg.difficulty,
           questionType: 'legislative' as const,
@@ -943,6 +952,7 @@ export async function getOfficialExamResume(
           optionB: psy.optionB || '',
           optionC: psy.optionC || '',
           optionD: psy.optionD || '',
+          optionE: psy.optionE || '',
           explanation: psy.explanation,
           difficulty: psy.difficulty,
           questionType: 'psychometric' as const,
@@ -1194,7 +1204,8 @@ export async function getOfficialExamFailedQuestions(
       optionA: string
       optionB: string
       optionC: string
-      optionD: string
+      optionD: string | null
+      optionE: string | null
       explanation: string | null
       difficulty: string | null
       articleNumber: string | null
@@ -1211,6 +1222,7 @@ export async function getOfficialExamFailedQuestions(
           optionB: questions.optionB,
           optionC: questions.optionC,
           optionD: questions.optionD,
+        optionE: questions.optionE,
           explanation: questions.explanation,
           difficulty: questions.difficulty,
           articleNumber: articles.articleNumber,
@@ -1235,6 +1247,7 @@ export async function getOfficialExamFailedQuestions(
       optionB: string | null
       optionC: string | null
       optionD: string | null
+      optionE: string | null
       explanation: string | null
       difficulty: string | null
       questionSubtype: string | null
@@ -1250,6 +1263,7 @@ export async function getOfficialExamFailedQuestions(
           optionB: psychometricQuestions.optionB,
           optionC: psychometricQuestions.optionC,
           optionD: psychometricQuestions.optionD,
+          optionE: psychometricQuestions.optionE,
           explanation: psychometricQuestions.explanation,
           difficulty: psychometricQuestions.difficulty,
           questionSubtype: psychometricQuestions.questionSubtype,
@@ -1441,7 +1455,8 @@ export async function getOfficialExamReview(
       optionA: string
       optionB: string
       optionC: string
-      optionD: string
+      optionD: string | null
+      optionE: string | null
       explanation: string | null
       difficulty: string | null
       articleNumber: string | null
@@ -1458,6 +1473,7 @@ export async function getOfficialExamReview(
           optionB: questions.optionB,
           optionC: questions.optionC,
           optionD: questions.optionD,
+        optionE: questions.optionE,
           explanation: questions.explanation,
           difficulty: questions.difficulty,
           articleNumber: articles.articleNumber,
@@ -1482,6 +1498,7 @@ export async function getOfficialExamReview(
       optionB: string | null
       optionC: string | null
       optionD: string | null
+      optionE: string | null
       explanation: string | null
       difficulty: string | null
     }>()
@@ -1495,6 +1512,7 @@ export async function getOfficialExamReview(
           optionB: psychometricQuestions.optionB,
           optionC: psychometricQuestions.optionC,
           optionD: psychometricQuestions.optionD,
+          optionE: psychometricQuestions.optionE,
           explanation: psychometricQuestions.explanation,
           difficulty: psychometricQuestions.difficulty,
         })
@@ -1530,7 +1548,7 @@ export async function getOfficialExamReview(
             id: legQ.id,
             order: tq.questionOrder,
             questionText: legQ.questionText,
-            options: [legQ.optionA, legQ.optionB, legQ.optionC, legQ.optionD],
+            options: [legQ.optionA, legQ.optionB, legQ.optionC, legQ.optionD, legQ.optionE].filter((v): v is string => v != null && v !== ''),
             difficulty: legQ.difficulty || tq.difficulty,
             tema: null, // tema is not stored in questions table
             articleNumber: legQ.articleNumber || tq.articleNumber,

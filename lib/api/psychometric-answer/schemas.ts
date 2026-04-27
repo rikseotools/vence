@@ -10,7 +10,7 @@ import { z } from 'zod/v3'
 
 export const psychometricAnswerRequestSchema = z.object({
   questionId: z.string().uuid('ID de pregunta inválido'),
-  userAnswer: z.number().int().min(0).max(3), // 0=A, 1=B, 2=C, 3=D
+  userAnswer: z.number().int().min(0).max(4), // 0=A, 1=B, 2=C, 3=D
 
   // Campos opcionales para guardar respuesta (usuarios logueados)
   sessionId: z.string().uuid('ID de sesión inválido').nullish(),
@@ -30,7 +30,7 @@ export type PsychometricAnswerRequest = z.infer<typeof psychometricAnswerRequest
 export const psychometricAnswerResponseSchema = z.object({
   success: z.literal(true),
   isCorrect: z.boolean(),
-  correctAnswer: z.number().int().min(0).max(3),
+  correctAnswer: z.number().int().min(0).max(4),
   explanation: z.string().nullable(),
   solutionSteps: z.string().nullable(),
   // Info de guardado (solo si se proporcionó sessionId)

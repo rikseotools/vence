@@ -9,8 +9,8 @@ import { z } from 'zod/v3'
 export const detailedAnswerSchema = z.object({
   questionIndex: z.number().int().min(0),
   // -1 = pregunta dejada en blanco (feature 15/04/2026); 0-3 = respuesta normal
-  selectedAnswer: z.number().int().min(-1).max(3),
-  correctAnswer: z.number().int().min(0).max(3),
+  selectedAnswer: z.number().int().min(-1).max(4),
+  correctAnswer: z.number().int().min(0).max(4),
   isCorrect: z.boolean(),
   timeSpent: z.number().int().min(0),
   timestamp: z.string(),
@@ -39,7 +39,7 @@ export type DetailedAnswer = z.infer<typeof detailedAnswerSchema>
 export const answeredQuestionSchema = z.object({
   question: z.number().int().min(0),
   // -1 = pregunta dejada en blanco; 0-3 = respuesta normal
-  selectedAnswer: z.number().int().min(-1).max(3),
+  selectedAnswer: z.number().int().min(-1).max(4),
   correct: z.boolean(),
   timestamp: z.string(),
 })
@@ -146,9 +146,9 @@ export const testLayoutQuestionSchema = z.object({
   id: z.string().uuid(),
   question: z.string().min(1),
   question_text: z.string().optional(),
-  options: z.tuple([z.string(), z.string(), z.string(), z.string()]),
+  options: z.array(z.string()).min(3).max(5),
   explanation: z.string().nullable(),
-  correct_option: z.number().int().min(0).max(3),
+  correct_option: z.number().int().min(0).max(4),
   difficulty: z.string().nullable(),
   primary_article_id: z.string().uuid().nullable(),
   article_number: z.string().nullable().optional(),

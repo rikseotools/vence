@@ -546,10 +546,19 @@ describe('detailedAnswerSchema - edge cases', () => {
     expect(result.success).toBe(true)
   })
 
-  it('rechaza selectedAnswer = 4 (fuera de rango)', () => {
+  it('acepta selectedAnswer = 4 (5 opciones)', () => {
     const result = completeTestRequestSchema.safeParse(
       validRequest({
         detailedAnswers: [validDetailedAnswer({ selectedAnswer: 4 })],
+      })
+    )
+    expect(result.success).toBe(true)
+  })
+
+  it('rechaza selectedAnswer = 5 (fuera de rango)', () => {
+    const result = completeTestRequestSchema.safeParse(
+      validRequest({
+        detailedAnswers: [validDetailedAnswer({ selectedAnswer: 5 })],
       })
     )
     expect(result.success).toBe(false)

@@ -36,6 +36,7 @@ async function _GET(
         optionB: questions.optionB,
         optionC: questions.optionC,
         optionD: questions.optionD,
+        optionE: questions.optionE,
         explanation: questions.explanation,
         primaryArticleId: questions.primaryArticleId,
         imageUrl: questions.imageUrl,

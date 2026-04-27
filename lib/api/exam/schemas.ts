@@ -10,10 +10,10 @@ export const saveAnswerRequestSchema = z.object({
   testId: z.string().uuid('ID de test inválido'),
   questionId: z.string().uuid('ID de pregunta inválido').optional().nullable(),
   questionOrder: z.number().int().min(1, 'Orden de pregunta inválido'),
-  userAnswer: z.enum(['a', 'b', 'c', 'd', '']),
+  userAnswer: z.enum(['a', 'b', 'c', 'd', 'e', '']),
   // correctAnswer es opcional porque en modo examen se guarda en /api/exam/init
   // y se recupera del registro existente al actualizar la respuesta del usuario
-  correctAnswer: z.enum(['a', 'b', 'c', 'd']).optional(),
+  correctAnswer: z.enum(['a', 'b', 'c', 'd', 'e']).optional(),
   questionText: z.string().optional().default(''),
   // Datos opcionales de la pregunta
   articleId: z.string().uuid().optional().nullable(),
@@ -167,7 +167,8 @@ export const resumedQuestionSchema = z.object({
   option_a: z.string(),
   option_b: z.string(),
   option_c: z.string(),
-  option_d: z.string(),
+  option_d: z.string().nullable().optional(),
+  option_e: z.string().nullable().optional(),
   difficulty: z.string().nullable().optional(),
   is_official_exam: z.boolean().nullable().optional(),
   primary_article_id: z.string().uuid().nullable().optional(),

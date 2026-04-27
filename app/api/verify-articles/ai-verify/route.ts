@@ -89,16 +89,16 @@ async function _POST(request: NextRequest) {
       )
     }
 
-    const correctOptionLetter = ['A', 'B', 'C', 'D'][question.correctOption]
-    const optionKey = `option${correctOptionLetter}` as 'optionA' | 'optionB' | 'optionC' | 'optionD'
-    const correctAnswer = question[optionKey]
+    const correctOptionLetter = ['A', 'B', 'C', 'D', 'E'][question.correctOption]
+    const optionKey = `option${correctOptionLetter}` as 'optionA' | 'optionB' | 'optionC' | 'optionD' | 'optionE'
+    const correctAnswer = question[optionKey] ?? ''
 
     const prompt = buildSingleVerificationPrompt({
       lawName: `${law.shortName} - ${law.name}`,
       articleNumber,
       articleContent: boeContent,
       questionText: question.questionText,
-      options: { a: question.optionA, b: question.optionB, c: question.optionC, d: question.optionD },
+      options: { a: question.optionA, b: question.optionB, c: question.optionC, d: question.optionD ?? '', e: question.optionE ?? '' },
       correctOption: correctOptionLetter,
       correctAnswer,
       explanation: question.explanation,

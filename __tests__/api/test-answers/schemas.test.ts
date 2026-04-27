@@ -256,10 +256,18 @@ describe('answerDataSchema', () => {
     expect(result.success).toBe(false)
   })
 
-  it('debe rechazar selectedAnswer 4', () => {
+  it('debe aceptar selectedAnswer 4 (5 opciones)', () => {
     const result = answerDataSchema.safeParse({
       ...validAnswerData,
       selectedAnswer: 4,
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('debe rechazar selectedAnswer 5', () => {
+    const result = answerDataSchema.safeParse({
+      ...validAnswerData,
+      selectedAnswer: 5,
     })
     expect(result.success).toBe(false)
   })

@@ -39,7 +39,8 @@ interface PsychometricAIHelpButtonQuestion {
   option_a: string
   option_b: string
   option_c: string
-  option_d: string
+  option_d?: string | null
+  option_e?: string | null
   question_subtype?: string
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   content_data?: Record<string, any> | null
@@ -103,7 +104,7 @@ export default function PsychometricAIHelpButton({
     }
 
     openChatWith({
-      message: `Explícame paso a paso cómo resolver esta ${label}: "${question.question_text}"${additionalContext}\n\nLas opciones son:\nA) ${question.option_a}\nB) ${question.option_b}\nC) ${question.option_c}\nD) ${question.option_d}`,
+      message: `Explícame paso a paso cómo resolver esta ${label}: "${question.question_text}"${additionalContext}\n\nLas opciones son:\n${[question.option_a, question.option_b, question.option_c, question.option_d, question.option_e].filter(Boolean).map((opt, i) => `${String.fromCharCode(65 + i)}) ${opt}`).join('\n')}`,
       suggestion: 'explicar_psico',
       // Si el padre pasa `id`, mandamos el contexto completo para que el
       // server pueda resolver el tema; si no, caemos al provider como fallback.

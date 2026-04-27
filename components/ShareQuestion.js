@@ -33,7 +33,7 @@ export default function ShareQuestion({
     if (isTestLayoutFormat) {
       return question.options || []
     }
-    return [question.option_a, question.option_b, question.option_c, question.option_d]
+    return [question.option_a, question.option_b, question.option_c, question.option_d, question.option_e].filter(Boolean)
   }
 
   // Formatear texto para compartir

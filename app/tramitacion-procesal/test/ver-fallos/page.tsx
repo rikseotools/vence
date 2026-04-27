@@ -136,7 +136,7 @@ function FailedQuestionCard({ question, index }: FailedQuestionCardProps) {
     question.optionA,
     question.optionB,
     question.optionC,
-    question.optionD,
+    question.optionD ?? '',
   ]
 
   return (
@@ -281,7 +281,7 @@ function FailedQuestionCard({ question, index }: FailedQuestionCardProps) {
               }
 
               openChatWith({
-                message: `Explícame paso a paso cómo resolver esta pregunta psicotécnica: "${question.questionText}"${tablesContext}\n\nLas opciones son:\nA) ${question.optionA}\nB) ${question.optionB}\nC) ${question.optionC}\nD) ${question.optionD}\n\nLa respuesta correcta es: ${question.correctAnswer.toUpperCase()}`,
+                message: `Explícame paso a paso cómo resolver esta pregunta psicotécnica: "${question.questionText}"${tablesContext}\n\nLas opciones son:\nA) ${question.optionA}\nB) ${question.optionB}\nC) ${question.optionC}\nD) ${question.optionD ?? ''}\n\nLa respuesta correcta es: ${question.correctAnswer.toUpperCase()}`,
                 suggestion: 'explicar_psico',
                 questionContext: {
                   id: question.id,
@@ -289,7 +289,7 @@ function FailedQuestionCard({ question, index }: FailedQuestionCardProps) {
                   option_a: question.optionA,
                   option_b: question.optionB,
                   option_c: question.optionC,
-                  option_d: question.optionD,
+                  option_d: question.optionD ?? '',
                   correct: question.correctAnswer,
                   isPsicotecnico: true,
                   questionSubtype: question.questionSubtype || null,

@@ -20,7 +20,8 @@ interface SupabaseQuestion {
   option_a: string
   option_b: string
   option_c: string
-  option_d: string
+  option_d: string | null
+  option_e?: string | null
   correct_option: number
   explanation: string | null
   difficulty: string | null
@@ -134,12 +135,7 @@ export function transformQuestions(supabaseQuestions: SupabaseQuestion[] | null 
       // PRESERVAR ID ORIGINAL DE LA BASE DE DATOS
       id: q.id,
       question: q.question_text,
-      options: [
-        q.option_a,
-        q.option_b,
-        q.option_c,
-        q.option_d
-      ],
+      options: [q.option_a, q.option_b, q.option_c, q.option_d, q.option_e].filter((v): v is string => v != null && v !== ''),
       // Respuesta correcta incluida para validación client-side instantánea
       correct_option: q.correct_option,
       explanation: q.explanation,
@@ -229,7 +225,7 @@ export async function fetchQuestionsByLaw(lawShortName: string, searchParams: Se
     let baseQuery = supabase
       .from('questions')
       .select(`
-        id, question_text, option_a, option_b, option_c, option_d,
+        id, question_text, option_a, option_b, option_c, option_d, option_e,
         correct_option, explanation, difficulty, question_type, tags,
         primary_article_id, is_official_exam, exam_source, exam_date, image_url, content_data,
         exam_entity, official_difficulty_level, is_active, created_at, updated_at,
@@ -373,7 +369,7 @@ export async function fetchQuestionsByLaw(lawShortName: string, searchParams: Se
     // Validar que las preguntas tienen la estructura correcta
     const validQuestions = (lawQuestions as SupabaseQuestion[]).filter(q => {
       const isValid = q.question_text &&
-                     q.option_a && q.option_b && q.option_c && q.option_d &&
+                     q.option_a && q.option_b && q.option_c &&
                      typeof q.correct_option === 'number' &&
                      q.articles && q.articles.laws
 

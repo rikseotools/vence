@@ -112,9 +112,9 @@ export type QuestionMetadata = z.infer<typeof questionMetadataSchema>
 export const filteredQuestionSchema = z.object({
   id: z.string().uuid(),
   question: z.string(),
-  options: z.tuple([z.string(), z.string(), z.string(), z.string()]),
+  options: z.array(z.string()).min(3).max(5),
   explanation: z.string(),
-  correct_option: z.number().int().min(0).max(3),
+  correct_option: z.number().int().min(0).max(4),
   primary_article_id: z.string().uuid(),
   tema: z.number().nullable(),
   image_url: z.string().nullable().optional(),

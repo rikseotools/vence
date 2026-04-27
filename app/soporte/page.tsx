@@ -1285,7 +1285,7 @@ function SoporteContent() {
                                   {dispute.question.correctOption === 0 ? dispute.question.optionA :
                                    dispute.question.correctOption === 1 ? dispute.question.optionB :
                                    dispute.question.correctOption === 2 ? dispute.question.optionC :
-                                   dispute.question.correctOption === 3 ? dispute.question.optionD : 'N/A'}
+                                   dispute.question.correctOption === 3 ? dispute.question.optionD ?? '' : 'N/A'}
                                 </p>
                               </div>
                             )}
@@ -1567,7 +1567,7 @@ function SoporteContent() {
                                 selectedQuestionModal.question.optionA,
                                 selectedQuestionModal.question.optionB,
                                 selectedQuestionModal.question.optionC,
-                                selectedQuestionModal.question.optionD,
+                                selectedQuestionModal.question.optionD ?? '',
                               ].filter((o): o is string => o !== null)
                             )
                           }}

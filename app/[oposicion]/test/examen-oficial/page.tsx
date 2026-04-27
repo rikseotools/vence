@@ -83,7 +83,7 @@ function OfficialExamContent() {
         const formattedQuestions = data.questions.map((q: any, index: number) => ({
           id: q.id,
           question: q.questionText,
-          options: [q.optionA, q.optionB, q.optionC, q.optionD],
+          options: [q.optionA, q.optionB, q.optionC, q.optionD, q.optionE].filter((v): v is string => v != null && v !== ''),
           explanation: q.explanation,
           difficulty: q.difficulty,
           questionType: q.questionType,
@@ -150,7 +150,7 @@ function OfficialExamContent() {
         const formattedQuestions = data.questions.map((q: any, index: number) => ({
           id: q.id,
           question: q.questionText,
-          options: [q.optionA, q.optionB, q.optionC, q.optionD],
+          options: [q.optionA, q.optionB, q.optionC, q.optionD, q.optionE].filter((v): v is string => v != null && v !== ''),
           explanation: q.explanation,
           difficulty: q.difficulty,
           questionType: q.questionType,

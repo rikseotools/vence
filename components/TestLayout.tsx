@@ -74,7 +74,7 @@ function isAdaptiveInput(q: TestQuestion[] | AdaptiveQuestionsInput): q is Adapt
 // Helper para convertir índice de respuesta a letra (0='A', 1='B', etc.)
 function answerToLetter(index: number | null | undefined): string {
   if (index === null || index === undefined) return '?'
-  const letters = ['A', 'B', 'C', 'D']
+  const letters = ['A', 'B', 'C', 'D', 'E']
   return letters[index] || '?'
 }
 
@@ -786,7 +786,7 @@ export default function TestLayout({
         const questionData = {
           id: question.id,
           question: question.question_text,
-          options: [question.option_a, question.option_b, question.option_c, question.option_d],
+          options: [question.option_a, question.option_b, question.option_c, question.option_d, question.option_e].filter(Boolean),
           correctAnswer: question.correct_option ?? question.correct ?? 0,
           explanation: question.explanation,
           article: {
@@ -950,7 +950,7 @@ export default function TestLayout({
       sessionId: session?.id ?? null,
       questionIndex,
       questionText: currentQ.question_text || currentQ.question || '',
-      options: currentQ.options || [currentQ.option_a, currentQ.option_b, currentQ.option_c, currentQ.option_d].filter(Boolean),
+      options: currentQ.options || [currentQ.option_a, currentQ.option_b, currentQ.option_c, currentQ.option_d, currentQ.option_e].filter(Boolean),
       tema: effectiveTema,
       questionType: (currentQ.question_type === 'psychometric' ? 'psychometric' : 'legislative'),
       article: currentQ.article ? {

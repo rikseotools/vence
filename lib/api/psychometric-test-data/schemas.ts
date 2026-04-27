@@ -73,7 +73,7 @@ export const psychometricQuestionSchema = z.object({
   optionB: z.string().nullable(),
   optionC: z.string().nullable(),
   optionD: z.string().nullable(),
-  correctOption: z.number().int().min(0).max(3).nullable(),
+  correctOption: z.number().int().min(0).max(4).nullable(),
   contentData: z.any(),
   difficulty: z.string().nullable(),
   timeLimitSeconds: z.number().nullable(),

@@ -1402,6 +1402,7 @@ export const psychometricQuestions = pgTable("psychometric_questions", {
 	optionB: text("option_b"),
 	optionC: text("option_c"),
 	optionD: text("option_d"),
+	optionE: text("option_e"),
 	correctOption: integer("correct_option"),
 	contentData: jsonb("content_data").default({}).notNull(),
 	explanation: text(),
@@ -1439,7 +1440,7 @@ export const psychometricQuestions = pgTable("psychometric_questions", {
 			foreignColumns: [psychometricSections.id],
 			name: "psychometric_questions_section_id_fkey"
 		}),
-	check("psychometric_questions_correct_option_check", sql`correct_option = ANY (ARRAY[0, 1, 2, 3])`),
+	check("psychometric_questions_correct_option_check", sql`correct_option = ANY (ARRAY[0, 1, 2, 3, 4])`),
 	check("psychometric_questions_difficulty_check", sql`difficulty = ANY (ARRAY['easy'::text, 'medium'::text, 'hard'::text, 'expert'::text])`),
 ]);
 
@@ -2229,7 +2230,8 @@ export const questions = pgTable("questions", {
 	optionA: text("option_a").notNull(),
 	optionB: text("option_b").notNull(),
 	optionC: text("option_c").notNull(),
-	optionD: text("option_d").notNull(),
+	optionD: text("option_d"),
+	optionE: text("option_e"),
 	correctOption: integer("correct_option").notNull(),
 	explanation: text().notNull(),
 	difficulty: text().default('medium'),
@@ -2274,7 +2276,7 @@ export const questions = pgTable("questions", {
 			name: "questions_primary_article_id_fkey"
 		}),
 	pgPolicy("Enable read access for questions", { as: "permissive", for: "select", to: ["public"], using: sql`true` }),
-	check("questions_correct_option_check", sql`(correct_option >= 0) AND (correct_option <= 3)`),
+	check("questions_correct_option_check", sql`(correct_option >= 0) AND (correct_option <= 4)`),
 	check("questions_question_type_check", sql`question_type = ANY (ARRAY['single'::text, 'multiple'::text, 'true_false'::text])`),
 ]);
 

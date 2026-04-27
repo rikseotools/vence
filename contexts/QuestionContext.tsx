@@ -37,7 +37,8 @@ export interface QuestionContextData {
   option_a?: string
   option_b?: string
   option_c?: string
-  option_d?: string
+  option_d?: string | null
+  option_e?: string | null
   correct?: number | string | null
   explanation?: string | null
   law?: { short_name?: string; name?: string } | string | null

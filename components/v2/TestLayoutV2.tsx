@@ -38,7 +38,7 @@ const ShareQuestion = dynamic(() => import('@/components/ShareQuestion'), { ssr:
 // Helper para convertir índice de respuesta a letra (0='A', 1='B', etc.)
 function answerToLetter(index: number | null | undefined): string {
   if (index === null || index === undefined) return '?'
-  const letters = ['A', 'B', 'C', 'D']
+  const letters = ['A', 'B', 'C', 'D', 'E']
   return letters[index] || '?'
 }
 

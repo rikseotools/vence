@@ -188,6 +188,7 @@ export async function getQuestionById(questionId: string) {
       optionB: questions.optionB,
       optionC: questions.optionC,
       optionD: questions.optionD,
+      optionE: questions.optionE,
       correctOption: questions.correctOption,
       explanation: questions.explanation,
     })
@@ -214,6 +215,7 @@ export async function getActiveQuestionsByArticleId(articleId: string, questionI
       optionB: questions.optionB,
       optionC: questions.optionC,
       optionD: questions.optionD,
+      optionE: questions.optionE,
       correctOption: questions.correctOption,
       explanation: questions.explanation,
     })
@@ -268,6 +270,7 @@ export async function getQuestionsByArticleForDisplay(articleId: string) {
       optionB: questions.optionB,
       optionC: questions.optionC,
       optionD: questions.optionD,
+        optionE: questions.optionE,
       correctOption: questions.correctOption,
       explanation: questions.explanation,
       isOfficialExam: questions.isOfficialExam,

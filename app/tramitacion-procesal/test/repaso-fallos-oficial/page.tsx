@@ -31,8 +31,8 @@ function transformFailedQuestions(failedQuestions: any[]) {
     option_a: q.optionA,
     option_b: q.optionB,
     option_c: q.optionC,
-    option_d: q.optionD,
-    options: [q.optionA, q.optionB, q.optionC, q.optionD],
+    option_d: q.optionD ?? '',
+    options: [q.optionA, q.optionB, q.optionC, q.optionD, q.optionE].filter((v): v is string => v != null && v !== ''),
     explanation: q.explanation ?? undefined,
     article: q.primaryArticleId ? {
       id: q.primaryArticleId,

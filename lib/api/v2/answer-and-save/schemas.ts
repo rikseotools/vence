@@ -13,7 +13,7 @@ export const answerAndSaveRequestSchema = z.object({
   // userAnswer: 0=A, 1=B, 2=C, 3=D. Puede ser null si isBlank=true (el usuario
   // dejó la pregunta en blanco explícitamente, ver feature "Dejar en blanco"
   // añadida 15/4/2026 tras sugerencia Tinokero).
-  userAnswer: z.number().int().min(0).max(3).nullable(),
+  userAnswer: z.number().int().min(0).max(4).nullable(),
   isBlank: z.boolean().optional().default(false),
 
   // Sesión de test (obligatorio para guardar)
@@ -73,7 +73,7 @@ export const answerAndSaveRequestSchema = z.object({
     if (data.isBlank) return data.userAnswer === null
     return data.userAnswer !== null
   },
-  { message: 'isBlank=true requiere userAnswer=null; isBlank=false requiere userAnswer entre 0..3' }
+  { message: 'isBlank=true requiere userAnswer=null; isBlank=false requiere userAnswer entre 0..4' }
 )
 
 export type AnswerAndSaveRequest = z.infer<typeof answerAndSaveRequestSchema>
@@ -86,7 +86,7 @@ export const answerAndSaveResponseSchema = z.object({
   success: z.boolean(),
   // Resultado de la validación
   isCorrect: z.boolean(),
-  correctAnswer: z.number().int().min(0).max(3),
+  correctAnswer: z.number().int().min(0).max(4),
   explanation: z.string().nullable().optional(),
   articleNumber: z.string().nullable().optional(),
   lawShortName: z.string().nullable().optional(),

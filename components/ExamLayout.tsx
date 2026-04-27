@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useAuth } from '../contexts/AuthContext'
 import { usePathname } from 'next/navigation'
 import MarkdownExplanation from './MarkdownExplanation'
+import MarkdownQuestionText from './MarkdownQuestionText'
 import { useLawSlugs } from '@/contexts/LawSlugContext'
 import { getOposicionSlugFromPathname } from '@/lib/config/oposiciones'
 import { validateExam, type ValidatedResults, type ValidatedQuestionResult } from '@/lib/api/exam/client'
@@ -77,7 +78,8 @@ interface ExamQuestion {
   option_a: string
   option_b: string
   option_c: string
-  option_d: string
+  option_d?: string | null
+  option_e?: string | null
   correct_option?: number // 🔒 Solo disponible en servidor, no se usa en cliente
   explanation?: string
   difficulty?: string
@@ -302,7 +304,7 @@ function getMotivationalMessage(notaSobre10: string | number, userName: string |
 /** Helper para convertir índice de respuesta a letra (0='A', 1='B', etc.) */
 function answerToLetter(index: number | null | undefined): string {
   if (index === null || index === undefined) return '?'
-  const letters = ['A', 'B', 'C', 'D']
+  const letters = ['A', 'B', 'C', 'D', 'E']
   return letters[index] || '?'
 }
 
@@ -806,7 +808,7 @@ export default function ExamLayout({
         const questionData = {
           id: question.id,
           question: question.question_text,
-          options: [question.option_a, question.option_b, question.option_c, question.option_d],
+          options: [question.option_a, question.option_b, question.option_c, question.option_d, question.option_e].filter((v: string | null | undefined): v is string => v != null && v !== ''),
           correctAnswer: correctIndex,
           explanation: apiResultForQuestion?.explanation || question.explanation,
           article: {
@@ -1184,7 +1186,7 @@ export default function ExamLayout({
                 <ContentDataRenderer contentData={question.content_data as Record<string, unknown> | null} imageUrl={question.image_url} />
 
                 <div className="mb-6">
-                  <p className="text-lg text-gray-900 leading-relaxed">{question.question_text}</p>
+                  <p className="text-lg text-gray-900 leading-relaxed"><MarkdownQuestionText text={question.question_text} /></p>
                 </div>
 
                 <div className="space-y-3">
@@ -1272,7 +1274,8 @@ export default function ExamLayout({
                           option_a: question.option_a,
                           option_b: question.option_b,
                           option_c: question.option_c,
-                          option_d: question.option_d,
+                          option_d: question.option_d ?? null,
+                          option_e: question.option_e ?? null,
                           correct: correctAnswer ?? null,
                           explanation: question.explanation || null,
                           law: (question as unknown as Record<string, { laws?: { short_name?: string }; article_number?: string }>).articles?.laws?.short_name || null,
@@ -1396,8 +1399,9 @@ export default function ExamLayout({
           selectedQuestionForModal.option_a,
           selectedQuestionForModal.option_b,
           selectedQuestionForModal.option_c,
-          selectedQuestionForModal.option_d
-        ] : null}
+          selectedQuestionForModal.option_d,
+          selectedQuestionForModal.option_e,
+        ].filter((v): v is string => v != null && v !== '') : null}
       />
 
       {showSharePrompt && isSubmitted && (

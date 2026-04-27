@@ -35,7 +35,8 @@ export const officialExamQuestionSchema = z.object({
   optionA: z.string(),
   optionB: z.string(),
   optionC: z.string(),
-  optionD: z.string(),
+  optionD: z.string().nullable(),
+  optionE: z.string().nullable().optional(),
   explanation: z.string().nullable(),
   difficulty: z.string().nullable(),
   questionType: z.enum(['legislative', 'psychometric']),
@@ -201,7 +202,7 @@ export type InitOfficialExamResponse = z.infer<typeof initOfficialExamResponseSc
 export const saveOfficialExamAnswerRequestSchema = z.object({
   testId: z.string().uuid(),
   questionOrder: z.number().int().min(1),
-  userAnswer: z.enum(['a', 'b', 'c', 'd']),
+  userAnswer: z.enum(['a', 'b', 'c', 'd', 'e']),
 })
 
 export type SaveOfficialExamAnswerRequest = z.infer<typeof saveOfficialExamAnswerRequestSchema>
@@ -232,7 +233,8 @@ export const resumedOfficialExamQuestionSchema = z.object({
   optionA: z.string(),
   optionB: z.string(),
   optionC: z.string(),
-  optionD: z.string(),
+  optionD: z.string().nullable(),
+  optionE: z.string().nullable().optional(),
   explanation: z.string().nullable(),
   difficulty: z.string().nullable(),
   questionType: z.enum(['legislative', 'psychometric']),
@@ -352,7 +354,8 @@ export const officialExamFailedQuestionSchema = z.object({
   optionA: z.string(),
   optionB: z.string(),
   optionC: z.string(),
-  optionD: z.string(),
+  optionD: z.string().nullable(),
+  optionE: z.string().nullable().optional(),
   userAnswer: z.string(),
   correctAnswer: z.string(),
   explanation: z.string().nullable(),

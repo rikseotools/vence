@@ -22,7 +22,7 @@ const deviceInfoSchema = z.object({
 
 const detailedAnswerSchema = z.object({
   questionIndex: z.number().int().min(0),
-  selectedAnswer: z.number().int().min(-1).max(3),
+  selectedAnswer: z.number().int().min(-1).max(4),
   isCorrect: z.boolean(),
   timeSpent: z.number().min(0).default(0),
   confidence: z.enum(['very_sure', 'sure', 'unsure', 'guessing', 'unknown']).default('unknown'),

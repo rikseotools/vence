@@ -30,6 +30,7 @@ const questionColumns = {
   optionB: questions.optionB,
   optionC: questions.optionC,
   optionD: questions.optionD,
+  optionE: questions.optionE,
   explanation: questions.explanation,
   difficulty: questions.difficulty,
   questionType: questions.questionType,
@@ -66,7 +67,8 @@ type QuestionRow = {
   optionA: string
   optionB: string
   optionC: string
-  optionD: string
+  optionD: string | null
+  optionE: string | null
   explanation: string
   difficulty: string | null
   questionType: string | null
@@ -99,7 +101,7 @@ function transformQuestion(q: QuestionRow, index: number): FilteredQuestion {
   return {
     id: q.id,
     question: q.questionText,
-    options: [q.optionA, q.optionB, q.optionC, q.optionD] as [string, string, string, string],
+    options: [q.optionA, q.optionB, q.optionC, q.optionD, q.optionE].filter((v): v is string => v != null && v !== ''),
     explanation: q.explanation,
     correct_option: q.correctOption,
     primary_article_id: q.primaryArticleId,
