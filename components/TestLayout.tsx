@@ -2333,8 +2333,8 @@ export default function TestLayout({
                             </div>
                           )}
 
-                          {/* Botón de revisar fallos */}
-                          {currentTestSession && score < effectiveQuestions.length && (
+                          {/* Botón de revisar fallos — solo si el test se guardó correctamente */}
+                          {currentTestSession && score < effectiveQuestions.length && saveStatus === 'saved' && (
                             <div className="mb-4">
                               <Link
                                 href={`/revisar/${currentTestSession.id}`}
