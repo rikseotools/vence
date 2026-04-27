@@ -149,6 +149,22 @@ export async function syncArticlesFromBoe(
     // Si no hay artículos, verificar si es doc.php (sin texto consolidado)
     if (boeArticles.length === 0) {
       const isDocPhp = law.boeUrl.includes('doc.php')
+
+      // Protección contra rate-limit del BOE: si la ley ya tiene artículos en BD,
+      // el extractor devolviendo 0 artículos indica un problema con el fetch
+      // (HTML de rate-limit, CAPTCHA, etc.), no un cambio real en la ley.
+      // No sobrescribir el summary bueno con uno malo.
+      if (!isDocPhp) {
+        const dbArticles = await getDbArticles(lawId)
+        if (dbArticles.length > 0) {
+          console.warn(`⚠️ [ArticleSync] ${law.shortName}: El BOE devolvió 0 artículos pero la BD tiene ${dbArticles.length}. Probable rate-limit — no se sobrescribe el summary.`)
+          return {
+            success: false,
+            error: `El BOE devolvió 0 artículos pero la BD tiene ${dbArticles.length}. Posible rate-limit del BOE.`,
+          }
+        }
+      }
+
       return await handleNoArticlesCase(lawId, law.shortName, isDocPhp)
     }
 
