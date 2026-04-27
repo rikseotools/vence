@@ -159,15 +159,35 @@ async function _GET(request: Request) {
       pending: balance.pending.reduce((sum, b) => sum + b.amount, 0),
     }
 
-    // Calcular volumen neto últimas 4 semanas (= gross charges - refunds)
-    // Esto coincide con el "Volumen neto" que muestra Stripe en Billing > Resumen
+    // Calcular facturado últimas 4 semanas (pagos recibidos - reembolsos)
+    // Nota: no coincide exactamente con el "Volumen neto" de Stripe Billing
+    // porque Stripe aplica ajustes internos que no expone via API
     const fourWeeksAgo = Math.floor(Date.now() / 1000) - (28 * 24 * 60 * 60)
-    const [recentCharges, recentRefunds] = await Promise.all([
-      getStripe().balanceTransactions.list({ type: 'charge', created: { gte: fourWeeksAgo }, limit: 100 }),
-      getStripe().balanceTransactions.list({ type: 'refund', created: { gte: fourWeeksAgo }, limit: 100 }),
-    ])
-    const grossCharges = recentCharges.data.reduce((sum, t) => sum + t.amount, 0)
-    const totalRefunds = recentRefunds.data.reduce((sum, t) => sum + Math.abs(t.amount), 0)
+    let grossCharges = 0
+    let totalRefunds = 0
+    let hasMore = true
+    let startingAfter: string | undefined
+
+    while (hasMore) {
+      const params: Record<string, unknown> = { type: 'charge', created: { gte: fourWeeksAgo }, limit: 100 }
+      if (startingAfter) params.starting_after = startingAfter
+      const batch = await getStripe().balanceTransactions.list(params as any)
+      for (const t of batch.data) grossCharges += t.amount
+      hasMore = batch.has_more
+      if (batch.data.length) startingAfter = batch.data[batch.data.length - 1].id
+    }
+
+    hasMore = true
+    startingAfter = undefined
+    while (hasMore) {
+      const params: Record<string, unknown> = { type: 'refund', created: { gte: fourWeeksAgo }, limit: 100 }
+      if (startingAfter) params.starting_after = startingAfter
+      const batch = await getStripe().balanceTransactions.list(params as any)
+      for (const t of batch.data) totalRefunds += Math.abs(t.amount)
+      hasMore = batch.has_more
+      if (batch.data.length) startingAfter = batch.data[batch.data.length - 1].id
+    }
+
     const netVolume4w = grossCharges - totalRefunds
 
     // Comisión Stripe escalonada según volumen neto (en céntimos)
