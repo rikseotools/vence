@@ -463,7 +463,7 @@ export default function RandomTestClient({
               )}
               {selectedThemes.length === 1 && adaptiveMode && (
                 <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                  <p className="text-xs text-blue-700">Prioriza preguntas que no has visto y artículos donde tienes menor acierto, para optimizar tu estudio.</p>
+                  <p className="text-xs text-blue-700">Ajusta la dificultad en tiempo real según tus respuestas. Si fallas varias seguidas, las siguientes preguntas serán más fáciles. Empieza con preguntas que aún no has visto.</p>
                 </div>
               )}
             </div>
