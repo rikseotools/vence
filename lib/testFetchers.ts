@@ -82,16 +82,118 @@ interface AdaptiveResult {
   adaptiveCatalog?: AdaptiveCatalog
 }
 
-interface AdaptiveCatalog {
-  neverSeen: DifficultyBuckets
-  answered: DifficultyBuckets
+// Tipos adaptativo importados de lib/types/adaptive.ts
+import { topicKey, articleKey, emptyBuckets } from '@/lib/types/adaptive'
+import type { AdaptiveCatalog as AdaptiveCatalogNew, DifficultyBuckets } from '@/lib/types/adaptive'
+
+// Legacy compat: el viejo AdaptiveCatalog era flat (difficulty como clave directa)
+// El nuevo usa topic como clave intermedia. Para backward compat con TestLayout,
+// convertimos al formato viejo al devolver al cliente.
+type AdaptiveCatalog = {
+  neverSeen: Record<string, TransformedQuestion[]>
+  answered: Record<string, TransformedQuestion[]>
+  topicDistribution?: Record<string, number>
+  articlesSeen?: string[]
 }
 
-interface DifficultyBuckets {
-  easy: TransformedQuestion[]
-  medium: TransformedQuestion[]
-  hard: TransformedQuestion[]
-  extreme: TransformedQuestion[]
+/**
+ * Construye el catálogo adaptativo organizado por tema → dificultad × visto/no-visto.
+ * Funciona para 1 o N temas.
+ */
+function buildAdaptiveCatalog(
+  allQuestions: TransformedQuestion[],
+  answeredIds: Set<string>,
+  themes: number[],
+  numQuestions: number
+): { catalog: AdaptiveCatalog; initialQuestions: TransformedQuestion[] } {
+  const getDifficulty = (q: TransformedQuestion) => q.metadata?.difficulty || 'medium'
+
+  // Clasificar por tema
+  const byTopic = new Map<string, TransformedQuestion[]>()
+  for (const q of allQuestions) {
+    const key = themes.length <= 1 ? 'all' : topicKey(q.tema)
+    if (!byTopic.has(key)) byTopic.set(key, [])
+    byTopic.get(key)!.push(q)
+  }
+
+  // Construir catálogo con formato legacy (difficulty como clave directa en neverSeen/answered)
+  const catalogNeverSeen: Record<string, TransformedQuestion[]> = {}
+  const catalogAnswered: Record<string, TransformedQuestion[]> = {}
+  const topicDistribution: Record<string, number> = {}
+
+  for (const [tKey, questions] of byTopic) {
+    const neverSeen = questions.filter(q => !answeredIds.has(q.id))
+    const answered = questions.filter(q => answeredIds.has(q.id))
+
+    // Formato legacy: difficulty como clave
+    for (const diff of ['easy', 'medium', 'hard', 'extreme'] as const) {
+      const nsKey = themes.length <= 1 ? diff : `${tKey}:${diff}`
+      catalogNeverSeen[nsKey] = neverSeen.filter(q => getDifficulty(q) === diff)
+      catalogAnswered[nsKey] = answered.filter(q => getDifficulty(q) === diff)
+    }
+
+    console.log(`[AdaptCatalog] ${tKey}: ${neverSeen.length} neverSeen, ${answered.length} answered`)
+  }
+
+  // Selección inicial: proporcional por tema, diversificada por artículo
+  let initialQuestions: TransformedQuestion[]
+
+  if (themes.length <= 1) {
+    // Single tema: priorizar neverSeen medium
+    const neverSeenAll = allQuestions.filter(q => !answeredIds.has(q.id))
+    const medNS = neverSeenAll.filter(q => getDifficulty(q) === 'medium')
+    const easyNS = neverSeenAll.filter(q => getDifficulty(q) === 'easy')
+    const hardNS = neverSeenAll.filter(q => getDifficulty(q) === 'hard')
+
+    let pool: TransformedQuestion[]
+    if (medNS.length >= numQuestions) pool = medNS
+    else if (medNS.length + easyNS.length >= numQuestions) pool = [...medNS, ...easyNS]
+    else pool = [...medNS, ...easyNS, ...hardNS]
+
+    if (pool.length < numQuestions) pool = [...pool, ...allQuestions.filter(q => !pool.includes(q))]
+
+    // Shuffle y seleccionar con distribución por artículo
+    pool = pool.sort(() => Math.random() - 0.5)
+    initialQuestions = pool.slice(0, numQuestions)
+  } else {
+    // Multi-tema: proporcional por tema, luego diversificar artículos
+    const perTopic = Math.floor(numQuestions / themes.length)
+    const remainder = numQuestions % themes.length
+    const selected: TransformedQuestion[] = []
+
+    const topicKeys = [...byTopic.keys()].sort(() => Math.random() - 0.5)
+    let extra = remainder
+
+    for (const tKey of topicKeys) {
+      const topicQs = byTopic.get(tKey) || []
+      const neverSeen = topicQs.filter(q => !answeredIds.has(q.id)).sort(() => Math.random() - 0.5)
+      const count = perTopic + (extra > 0 ? 1 : 0)
+      if (extra > 0) extra--
+
+      const pick = neverSeen.length >= count ? neverSeen.slice(0, count) : [...neverSeen, ...topicQs.filter(q => answeredIds.has(q.id)).sort(() => Math.random() - 0.5)].slice(0, count)
+      selected.push(...pick)
+      topicDistribution[tKey] = pick.length
+    }
+
+    initialQuestions = selected.sort(() => Math.random() - 0.5)
+  }
+
+  // Registrar distribución para single tema
+  if (themes.length <= 1) {
+    topicDistribution['all'] = initialQuestions.length
+  }
+
+  console.log(`[AdaptCatalog] Initial: ${initialQuestions.length} preguntas, topics: ${JSON.stringify(topicDistribution)}`)
+
+  return {
+    catalog: {
+      neverSeen: catalogNeverSeen,
+      answered: catalogAnswered,
+      topicDistribution,
+      articlesSeen: initialQuestions.map(q => articleKey(q.article?.number, q.article?.law_short_name)),
+    },
+    initialQuestions,
+  }
 }
 
 interface TopicMapping {
@@ -786,11 +888,10 @@ export async function fetchQuestionsByTopicScope(tema: number, searchParams: Sea
       return shuffleArray([...allQuestions]).slice(0, numQuestions)
     }
 
-    // Modo adaptativo: construir catálogo por dificultad client-side
+    // Modo adaptativo: construir catálogo con buildAdaptiveCatalog()
     if (needsAdaptiveCatalog) {
-      console.log('🧠 Construyendo catálogo adaptativo client-side')
+      console.log('🧠 Construyendo catálogo adaptativo')
 
-      // Obtener historial del usuario para clasificar neverSeen vs answered
       const answeredIds = new Set<string>()
       if (user) {
         const { history } = await fetchUserQuestionHistory(user.id, true)
@@ -798,42 +899,9 @@ export async function fetchQuestionsByTopicScope(tema: number, searchParams: Sea
         console.log(`📊 Historial: ${answeredIds.size} preguntas respondidas`)
       }
 
-      const neverSeenQs = allQuestions.filter(q => !answeredIds.has(q.id))
-      const answeredQs = allQuestions.filter(q => answeredIds.has(q.id))
-
-      const getDifficulty = (q: TransformedQuestion) => q.metadata.difficulty || 'medium'
-
-      const catalogByDifficulty = {
-        neverSeen: {
-          easy: neverSeenQs.filter(q => getDifficulty(q) === 'easy'),
-          medium: neverSeenQs.filter(q => getDifficulty(q) === 'medium'),
-          hard: neverSeenQs.filter(q => getDifficulty(q) === 'hard'),
-          extreme: neverSeenQs.filter(q => getDifficulty(q) === 'extreme'),
-        },
-        answered: {
-          easy: answeredQs.filter(q => getDifficulty(q) === 'easy'),
-          medium: answeredQs.filter(q => getDifficulty(q) === 'medium'),
-          hard: answeredQs.filter(q => getDifficulty(q) === 'hard'),
-          extreme: answeredQs.filter(q => getDifficulty(q) === 'extreme'),
-        }
-      }
-
-      console.log(`🧠 Catálogo: neverSeen=${neverSeenQs.length}, answered=${answeredQs.length}`)
-
-      // Selección inteligente de preguntas iniciales
-      let initialQuestions: TransformedQuestion[] = []
-      const medNS = catalogByDifficulty.neverSeen.medium
-      const easyNS = catalogByDifficulty.neverSeen.easy
-      const hardNS = catalogByDifficulty.neverSeen.hard
-
-      if (medNS.length >= numQuestions) {
-        initialQuestions = shuffleArray([...medNS]).slice(0, numQuestions)
-      } else if (medNS.length + easyNS.length >= numQuestions) {
-        initialQuestions = shuffleArray([...medNS, ...easyNS]).slice(0, numQuestions)
-      } else {
-        const allNS = [...medNS, ...easyNS, ...hardNS]
-        initialQuestions = shuffleArray(allNS.length >= numQuestions ? allNS : [...allQuestions]).slice(0, numQuestions)
-      }
+      const { catalog, initialQuestions } = buildAdaptiveCatalog(
+        allQuestions, answeredIds, [tema], numQuestions
+      )
 
       console.log(`✅ Catálogo adaptativo: ${initialQuestions.length} iniciales, total: ${allQuestions.length}`)
 
@@ -841,7 +909,7 @@ export async function fetchQuestionsByTopicScope(tema: number, searchParams: Sea
         isAdaptive: true,
         activeQuestions: initialQuestions,
         questionPool: initialQuestions,
-        adaptiveCatalog: catalogByDifficulty,
+        adaptiveCatalog: catalog,
       } as AdaptiveResult
     }
 
@@ -1101,7 +1169,7 @@ function getDifficultyFromPercentage(percentage: number): string {
 // =================================================================
 // 🎲 FETCHER: TEST ALEATORIO MULTI-TEMA - MIGRADO A API CENTRALIZADA
 // =================================================================
-export async function fetchAleatorioMultiTema(themes: number[], searchParams: SearchParamsLike, config: FetchConfig): Promise<TransformedQuestion[]> {
+export async function fetchAleatorioMultiTema(themes: number[], searchParams: SearchParamsLike, config: FetchConfig): Promise<TransformedQuestion[] | AdaptiveResult> {
   try {
     console.log('🎲 fetchAleatorioMultiTema via API centralizada, temas:', themes)
 
@@ -1111,6 +1179,8 @@ export async function fetchAleatorioMultiTema(themes: number[], searchParams: Se
     // Leer parámetros de configuración (usando helper para URLSearchParams u objeto)
     const positionType = config?.positionType || 'auxiliar_administrativo_estado'
     const numQuestions = parseInt(getParam(searchParams, 'n', '20'))
+    const isAdaptive = getParam(searchParams, 'adaptive') === 'true'
+    const requestSize = isAdaptive ? 500 : numQuestions
     const excludeRecent = getParam(searchParams, 'exclude_recent') === 'true'
     const excludeDays = parseInt(getParam(searchParams, 'exclude_days', '15'))
     const onlyOfficialQuestions = getParam(searchParams, 'official_only') === 'true'
@@ -1141,7 +1211,7 @@ export async function fetchAleatorioMultiTema(themes: number[], searchParams: Se
         topicNumber: 0,
         positionType,
         multipleTopics: themes,
-        numQuestions,
+        numQuestions: requestSize,
         selectedLaws: [],
         selectedArticlesByLaw: {},
         selectedSectionFilters: [],
@@ -1161,9 +1231,32 @@ export async function fetchAleatorioMultiTema(themes: number[], searchParams: Se
       throw new Error(data.error || 'Error obteniendo preguntas multi-tema')
     }
 
-    console.log(`✅ Test aleatorio multi-tema generado: ${data.questions?.length || 0} preguntas de ${themes.length} temas`)
+    const allQuestions: TransformedQuestion[] = data.questions || []
+    console.log(`✅ Test aleatorio multi-tema: ${allQuestions.length} preguntas de ${themes.length} temas`)
 
-    return data.questions || []
+    // Modo adaptativo multi-tema
+    const adaptiveMode = getParam(searchParams, 'adaptive') === 'true'
+    if (adaptiveMode && allQuestions.length > numQuestions) {
+      console.log('🧠 Construyendo catálogo adaptativo multi-tema')
+      const answeredIds = new Set<string>()
+      if (user) {
+        const { history } = await fetchUserQuestionHistory(user.id, true)
+        history.forEach(item => answeredIds.add(item.questionId))
+      }
+
+      const { catalog, initialQuestions } = buildAdaptiveCatalog(
+        allQuestions, answeredIds, themes, numQuestions
+      )
+
+      return {
+        isAdaptive: true,
+        activeQuestions: initialQuestions,
+        questionPool: initialQuestions,
+        adaptiveCatalog: catalog,
+      } as AdaptiveResult
+    }
+
+    return allQuestions
 
   } catch (error) {
     console.error('❌ Error en fetchAleatorioMultiTema:', error)
