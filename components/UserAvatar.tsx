@@ -68,7 +68,7 @@ export default function UserAvatar() {
   const adminNotifications = useAdminNotifications(isAdmin && !adminLoading)
   const sentryIssuesCount = 0
   const [userStats, setUserStats] = useState<UserStats>(EMPTY_STATS)
-  const [statsLoading, setStatsLoading] = useState(false)
+  const [statsLoading, setStatsLoading] = useState(true)
   const [pendingExams, setPendingExams] = useState<PendingExam[]>([])
   const [pendingPsychometric, setPendingPsychometric] = useState<PendingPsychometricSession[]>([])
   const [pendingExamsExpanded, setPendingExamsExpanded] = useState(false)
@@ -111,14 +111,16 @@ export default function UserAvatar() {
 
   useEffect(() => {
     if (!user || authLoading) {
-      if (!authLoading && !user) setUserStats(EMPTY_STATS)
+      if (!authLoading && !user) {
+        setUserStats(EMPTY_STATS)
+        setStatsLoading(false)
+      }
       return
     }
 
     let cancelled = false
 
     async function load() {
-      if (statsLoading) return
       if (!user || !user.created_at) return
 
       const userCreatedAt = new Date(user.created_at)
@@ -434,45 +436,53 @@ export default function UserAvatar() {
               className="block p-4 border-b border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer"
             >
               <div className="text-sm font-medium text-gray-700 mb-3">📊 Tu Progreso</div>
-              <div className="grid grid-cols-2 gap-3 text-xs">
-                <div className="bg-orange-50 p-3 rounded-lg text-center">
-                  <div className="text-orange-600 text-xs mb-1">🔥 Racha</div>
-                  <div className="font-bold text-orange-700 text-xl" data-testid="stat-streak">
-                    {userStats.streak > 30 ? '30+' : userStats.streak}
-                  </div>
-                  <div className="text-orange-600 text-xs">dias consecutivos</div>
+              {statsLoading ? (
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  {[1, 2, 3, 4].map(i => (
+                    <div key={i} className="bg-gray-100 p-3 rounded-lg h-[76px] animate-pulse" />
+                  ))}
                 </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div className="bg-orange-50 p-3 rounded-lg text-center">
+                    <div className="text-orange-600 text-xs mb-1">🔥 Racha</div>
+                    <div className="font-bold text-orange-700 text-xl" data-testid="stat-streak">
+                      {userStats.streak > 30 ? '30+' : userStats.streak}
+                    </div>
+                    <div className="text-orange-600 text-xs">dias consecutivos</div>
+                  </div>
 
-                <div className="bg-green-50 p-3 rounded-lg text-center">
-                  <div className="text-green-600 text-xs mb-1">🎯 Precision</div>
-                  <div className="font-bold text-green-700 text-xl" data-testid="stat-accuracy">
-                    {userStats.accuracy}%
+                  <div className="bg-green-50 p-3 rounded-lg text-center">
+                    <div className="text-green-600 text-xs mb-1">🎯 Precision</div>
+                    <div className="font-bold text-green-700 text-xl" data-testid="stat-accuracy">
+                      {userStats.accuracy}%
+                    </div>
+                    <div className="text-green-600 text-xs">de aciertos</div>
                   </div>
-                  <div className="text-green-600 text-xs">de aciertos</div>
-                </div>
 
-                <div className="bg-blue-50 p-3 rounded-lg text-center">
-                  <div className="text-blue-600 text-xs mb-1">📝 Esta semana</div>
-                  <div className="font-bold text-blue-700 text-xl" data-testid="stat-weekly">
-                    {userStats.weeklyQuestions}
+                  <div className="bg-blue-50 p-3 rounded-lg text-center">
+                    <div className="text-blue-600 text-xs mb-1">📝 Esta semana</div>
+                    <div className="font-bold text-blue-700 text-xl" data-testid="stat-weekly">
+                      {userStats.weeklyQuestions}
+                    </div>
+                    <div className="text-blue-600 text-xs">preguntas hechas</div>
                   </div>
-                  <div className="text-blue-600 text-xs">preguntas hechas</div>
-                </div>
 
-                <div className="bg-purple-50 p-3 rounded-lg text-center">
-                  <div className="text-purple-600 text-xs mb-1">📚 Total preguntas hechas</div>
-                  <div className="font-bold text-purple-700 text-xl" data-testid="stat-total">
-                    {userStats.totalQuestions}
-                  </div>
-                  <div className="text-purple-600 text-xs">
-                    desde {userStats.userRegisteredDate.toLocaleDateString('es-ES', {
-                      day: 'numeric',
-                      month: 'short',
-                      year: 'numeric',
-                    })}
+                  <div className="bg-purple-50 p-3 rounded-lg text-center">
+                    <div className="text-purple-600 text-xs mb-1">📚 Total preguntas hechas</div>
+                    <div className="font-bold text-purple-700 text-xl" data-testid="stat-total">
+                      {userStats.totalQuestions}
+                    </div>
+                    <div className="text-purple-600 text-xs">
+                      desde {userStats.userRegisteredDate.toLocaleDateString('es-ES', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                      })}
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </Link>
 
             {/* Menu options */}
