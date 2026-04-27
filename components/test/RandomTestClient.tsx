@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import InteractiveBreadcrumbs from '@/components/InteractiveBreadcrumbs'
+import { useDailyQuestionLimit } from '@/hooks/useDailyQuestionLimit'
 import type {
   OposicionSlug,
   DifficultyLevel,
@@ -64,6 +65,13 @@ export default function RandomTestClient({
 }: Props) {
   const { user, loading: authLoading } = useAuth()
   const router = useRouter()
+  const {
+    questionsRemaining,
+    dailyLimit,
+    hasLimit,
+    isPremiumUser,
+    loading: limitLoading,
+  } = useDailyQuestionLimit()
 
   // Theme config
   const themeBlocks = config.blocks
@@ -98,6 +106,13 @@ export default function RandomTestClient({
 
   // Lista plana de temas
   const allThemes = config.blocks.flatMap(block => block.themes)
+
+  // Ajustar numQuestions si la cuota diaria es menor que la selección actual
+  useEffect(() => {
+    if (hasLimit && !limitLoading && questionsRemaining > 0 && numQuestions > questionsRemaining) {
+      setNumQuestions(questionsRemaining)
+    }
+  }, [hasLimit, limitLoading, questionsRemaining])
 
   // Cargar preferencia de modo
   useEffect(() => {
@@ -218,13 +233,19 @@ export default function RandomTestClient({
     return stats?.accuracy || 0
   }
 
+  // Número efectivo de preguntas considerando cuota diaria
+  const effectiveNumQuestions = hasLimit
+    ? Math.min(numQuestions, availableQuestions || numQuestions, questionsRemaining)
+    : Math.min(numQuestions, availableQuestions || numQuestions)
+
   const generateTest = async () => {
     if (selectedThemes.length === 0) return
+    if (hasLimit && questionsRemaining <= 0) return
     setGenerating(true)
     try {
       const testParams = new URLSearchParams({
         themes: selectedThemes.join(','),
-        n: numQuestions.toString(),
+        n: effectiveNumQuestions.toString(),
         difficulty: difficulty,
         mode: 'aleatorio',
       })
@@ -287,21 +308,53 @@ export default function RandomTestClient({
               <label className="block text-sm font-bold text-gray-700 mb-3">
                 📝 Numero de preguntas: <span className="text-blue-600">{numQuestions}</span>
               </label>
+              {/* Aviso de cuota diaria para usuarios free */}
+              {hasLimit && !limitLoading && (
+                <div className="mb-3 flex items-center gap-2 text-sm">
+                  <span className={questionsRemaining === 0 ? 'text-red-600 font-medium' : 'text-gray-600'}>
+                    {questionsRemaining === 0
+                      ? 'Has agotado tus preguntas de hoy'
+                      : `Te quedan ${questionsRemaining} preguntas hoy`}
+                  </span>
+                  <span className="text-gray-400">·</span>
+                  <Link href="/premium" className="text-purple-600 hover:text-purple-700 font-medium hover:underline">
+                    Sin límites con Premium
+                  </Link>
+                </div>
+              )}
               <div className="grid grid-cols-4 gap-2 mb-2">
-                {[10, 25, 50, 100].map((num) => (
-                  <button
-                    key={num}
-                    onClick={() => setNumQuestions(num)}
-                    disabled={num > availableQuestions && availableQuestions > 0}
-                    className={`py-2 px-3 rounded-lg text-sm font-medium transition-all ${
-                      numQuestions === num
-                        ? 'bg-blue-600 text-white shadow-lg scale-105'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    } ${num > availableQuestions && availableQuestions > 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  >
-                    {num}
-                  </button>
-                ))}
+                {[10, 25, 50, 100].map((num) => {
+                  const exceedsAvailable = num > availableQuestions && availableQuestions > 0
+                  const exceedsDailyLimit = hasLimit && num > questionsRemaining
+                  const needsPremium = exceedsDailyLimit && !exceedsAvailable
+
+                  if (needsPremium) {
+                    return (
+                      <Link
+                        key={num}
+                        href="/premium"
+                        className="py-2 px-3 rounded-lg text-sm font-medium transition-all bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 text-purple-700 hover:from-purple-100 hover:to-indigo-100 text-center"
+                      >
+                        {num} 👑
+                      </Link>
+                    )
+                  }
+
+                  return (
+                    <button
+                      key={num}
+                      onClick={() => setNumQuestions(num)}
+                      disabled={exceedsAvailable}
+                      className={`py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+                        numQuestions === num
+                          ? 'bg-blue-600 text-white shadow-lg scale-105'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      } ${exceedsAvailable ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      {num}
+                    </button>
+                  )
+                })}
               </div>
             </div>
 
@@ -500,7 +553,7 @@ export default function RandomTestClient({
                   <h4 className="font-semibold text-blue-800 mb-2">📋 Resumen del test</h4>
                   <div className="text-sm text-blue-700 space-y-1">
                     <p>• <strong>{selectedThemes.length}</strong> temas seleccionados</p>
-                    <p>• <strong>{numQuestions}</strong> preguntas</p>
+                    <p>• <strong>{effectiveNumQuestions}</strong> preguntas</p>
                     <p>• Modo: <strong>{testMode === 'practica' ? '📚 Practica' : '📝 Examen'}</strong></p>
                     <p>• Dificultad: <strong>{difficulty === 'mixed' ? 'Mixto' : difficulty}</strong></p>
                   </div>
@@ -562,28 +615,37 @@ export default function RandomTestClient({
 
             {/* Boton generar */}
             <div className="mt-6">
-              <button
-                onClick={generateTest}
-                disabled={generating || selectedThemes.length === 0 || availableQuestions === 0}
-                className={`w-full py-4 rounded-xl font-bold text-lg transition-all ${
-                  generating || selectedThemes.length === 0 || availableQuestions === 0
-                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl'
-                }`}
-              >
-                {generating ? (
-                  <span className="flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
-                    Generando...
-                  </span>
-                ) : selectedThemes.length === 0 ? (
-                  'Selecciona al menos un tema'
-                ) : availableQuestions === 0 ? (
-                  'No hay preguntas disponibles'
-                ) : (
-                  `🎲 Generar Test de ${Math.min(numQuestions, availableQuestions)} preguntas`
-                )}
-              </button>
+              {hasLimit && questionsRemaining <= 0 ? (
+                <Link
+                  href="/premium"
+                  className="block w-full py-4 rounded-xl font-bold text-lg text-center transition-all bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 shadow-lg hover:shadow-xl"
+                >
+                  👑 Hazte Premium para seguir practicando
+                </Link>
+              ) : (
+                <button
+                  onClick={generateTest}
+                  disabled={generating || selectedThemes.length === 0 || availableQuestions === 0}
+                  className={`w-full py-4 rounded-xl font-bold text-lg transition-all ${
+                    generating || selectedThemes.length === 0 || availableQuestions === 0
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl'
+                  }`}
+                >
+                  {generating ? (
+                    <span className="flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
+                      Generando...
+                    </span>
+                  ) : selectedThemes.length === 0 ? (
+                    'Selecciona al menos un tema'
+                  ) : availableQuestions === 0 ? (
+                    'No hay preguntas disponibles'
+                  ) : (
+                    `🎲 Generar Test de ${effectiveNumQuestions} preguntas`
+                  )}
+                </button>
+              )}
             </div>
           </div>
         </div>

@@ -14,6 +14,7 @@ import QuestionDispute from './QuestionDispute'
 import ShareQuestion from './ShareQuestion'
 import InteractiveBreadcrumbs from './InteractiveBreadcrumbs'
 import MarkdownExplanation from './MarkdownExplanation'
+import MarkdownQuestionText from './MarkdownQuestionText'
 
 // Imports modularizados
 import {
@@ -1640,6 +1641,40 @@ export default function TestLayout({
     )
   }
 
+  // Bloqueo para usuarios free sin cuota restante (antes de mostrar preguntas)
+  if (hasLimit && isLimitReached && !showResult && answeredQuestions.length === 0) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 max-w-md text-center">
+          <span className="text-6xl mb-4 block">{isGraduated ? '🔥' : '⏳'}</span>
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-3">
+            {isGraduated ? 'Has alcanzado tu límite diario' : 'Límite diario alcanzado'}
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-2">
+            Has completado tus <strong>{dailyLimit}</strong> preguntas de hoy.
+          </p>
+          <p className="text-gray-500 dark:text-gray-400 text-sm mb-6">
+            Vuelve mañana o hazte Premium para practicar sin límites.
+          </p>
+          <div className="space-y-3">
+            <Link
+              href="/premium"
+              className="block w-full py-3 px-6 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold rounded-xl hover:from-purple-700 hover:to-indigo-700 transition-all shadow-lg"
+            >
+              👑 Hazte Premium — Sin límites
+            </Link>
+            <button
+              onClick={() => window.history.back()}
+              className="block w-full py-3 px-6 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition-all"
+            >
+              ← Volver
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   // Componente de notificación hot article
   const HotArticleNotification = (): React.ReactElement | null => {
 
@@ -1875,7 +1910,7 @@ export default function TestLayout({
                   onDragStart={(e) => e.preventDefault()}
                 >
                   <p className="text-lg text-gray-800 dark:text-gray-200 leading-relaxed">
-                    {currentQ?.question}
+                    <MarkdownQuestionText text={currentQ?.question || ''} />
                   </p>
                 </div>
               </div>

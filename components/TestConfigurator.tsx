@@ -1,10 +1,12 @@
 // components/TestConfigurator.tsx - CON FILTRO DE PREGUNTAS OFICIALES POR TEMA CORREGIDO
 'use client'
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import Link from 'next/link';
 import SectionFilterModal from './SectionFilterModal';
 import { useLawSlugs } from '@/contexts/LawSlugContext';
 import { getOposicionByPositionType } from '@/lib/config/oposiciones';
 import { useInteractionTracker } from '@/hooks/useInteractionTracker';
+import { useDailyQuestionLimit } from '@/hooks/useDailyQuestionLimit';
 
 function getOposicionName(positionType: string): string {
   return getOposicionByPositionType(positionType)?.name || 'tu oposición'
@@ -40,13 +42,22 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
   positionType = 'auxiliar_administrativo_estado',
   autoOpenFailed = false
 }) => {
+  // Límite diario de preguntas
+  const {
+    questionsRemaining,
+    dailyLimit,
+    hasLimit,
+    isPremiumUser,
+    loading: limitLoading,
+  } = useDailyQuestionLimit();
+
   // Estados de configuración
   const [selectedQuestions, setSelectedQuestions] = useState(25);
   const [showPrioritizationModal, setShowPrioritizationModal] = useState(false);
   const [showEssentialArticlesModal, setShowEssentialArticlesModal] = useState(false);
   const [showOfficialQuestionsModal, setShowOfficialQuestionsModal] = useState(false);
   const [showEssentialArticlesInfoModal, setShowEssentialArticlesInfoModal] = useState(false);
-  
+
   const { getSlug: getCanonicalSlug } = useLawSlugs();
   const { track } = useInteractionTracker();
 
@@ -508,14 +519,19 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
   }, [tema, positionType, apiEstimate, selectedLaws, selectedArticlesByLaw, selectedSectionFilters, track]);
 
   const maxQuestions = useMemo(() => {
-    const result = Math.min(selectedQuestions, availableQuestions);
+    const candidates = [selectedQuestions, availableQuestions];
+    // Considerar cuota diaria para usuarios free
+    if (hasLimit && questionsRemaining >= 0) {
+      candidates.push(questionsRemaining);
+    }
+    const result = Math.min(...candidates);
     // Validar que no sea NaN
     if (isNaN(result) || result < 0) {
-      console.warn('⚠️ maxQuestions es NaN o negativo:', { selectedQuestions, availableQuestions, result });
+      console.warn('⚠️ maxQuestions es NaN o negativo:', { selectedQuestions, availableQuestions, questionsRemaining, result });
       return 0;
     }
     return result;
-  }, [selectedQuestions, availableQuestions]);
+  }, [selectedQuestions, availableQuestions, hasLimit, questionsRemaining]);
 
   // Funciones existentes (getDifficulty* eliminadas)...
 
@@ -531,6 +547,13 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
       setSelectedQuestions(Math.min(25, officialQuestionsCount));
     }
   }, [onlyOfficialQuestions, officialQuestionsCount, selectedQuestions]);
+
+  // Ajustar selección si la cuota diaria es menor
+  useEffect(() => {
+    if (hasLimit && !limitLoading && questionsRemaining > 0 && selectedQuestions > questionsRemaining) {
+      setSelectedQuestions(questionsRemaining);
+    }
+  }, [hasLimit, limitLoading, questionsRemaining]);
 
   // 🆕 Inicializar leyes seleccionadas SOLO la primera vez que lawsData tiene datos
   // 🔧 FIX: Usar ref para evitar resetear la selección del usuario cada vez que lawsData cambie
@@ -1111,21 +1134,53 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
               <span className="ml-2 text-red-600 text-xs">🏛️ Solo oficiales</span>
             )}
           </label>
+          {/* Aviso de cuota diaria para usuarios free */}
+          {hasLimit && !limitLoading && (
+            <div className="mb-3 flex items-center gap-2 text-sm">
+              <span className={questionsRemaining === 0 ? 'text-red-600 font-medium' : 'text-gray-600'}>
+                {questionsRemaining === 0
+                  ? 'Has agotado tus preguntas de hoy'
+                  : `Te quedan ${questionsRemaining} preguntas hoy`}
+              </span>
+              <span className="text-gray-400">·</span>
+              <Link href="/premium" className="text-purple-600 hover:text-purple-700 font-medium hover:underline">
+                Sin límites con Premium
+              </Link>
+            </div>
+          )}
           <div className="grid grid-cols-4 gap-2 mb-2">
-            {[10, 25, 50, 100].map((num) => (
-              <button
-                key={num}
-                onClick={() => setSelectedQuestions(num)}
-                className={`py-2 px-3 rounded-lg text-sm font-medium transition-all ${
-                  selectedQuestions === num
-                    ? 'bg-blue-600 text-white shadow-lg scale-105'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                } ${num > availableQuestions ? 'opacity-50 cursor-not-allowed' : ''}`}
-                disabled={num > availableQuestions}
-              >
-                {num > availableQuestions ? `${num}*` : num}
-              </button>
-            ))}
+            {[10, 25, 50, 100].map((num) => {
+              const exceedsAvailable = num > availableQuestions
+              const exceedsDailyLimit = hasLimit && num > questionsRemaining
+              const needsPremium = exceedsDailyLimit && !exceedsAvailable
+
+              if (needsPremium) {
+                return (
+                  <Link
+                    key={num}
+                    href="/premium"
+                    className="py-2 px-3 rounded-lg text-sm font-medium transition-all bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 text-purple-700 hover:from-purple-100 hover:to-indigo-100 text-center"
+                  >
+                    {num} 👑
+                  </Link>
+                )
+              }
+
+              return (
+                <button
+                  key={num}
+                  onClick={() => setSelectedQuestions(num)}
+                  className={`py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+                    selectedQuestions === num
+                      ? 'bg-blue-600 text-white shadow-lg scale-105'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  } ${exceedsAvailable ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  disabled={exceedsAvailable}
+                >
+                  {exceedsAvailable ? `${num}*` : num}
+                </button>
+              )
+            })}
           </div>
           {selectedQuestions > availableQuestions && (
             <p className="text-xs text-orange-600 mt-1">
@@ -1754,7 +1809,14 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
 
         {/* 6. Botón de Iniciar */}
         <div className="text-center">
-          {maxQuestions > 0 ? (
+          {hasLimit && questionsRemaining <= 0 ? (
+            <Link
+              href="/premium"
+              className="block w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white py-4 px-6 rounded-xl text-lg font-bold transition-all duration-300 hover:scale-105 hover:shadow-xl text-center leading-relaxed"
+            >
+              👑 Hazte Premium para seguir practicando
+            </Link>
+          ) : maxQuestions > 0 ? (
             <button
               onClick={handleStartTest}
               disabled={loading}
@@ -2599,49 +2661,94 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
                     ¿Cuántas preguntas quieres hacer?
                   </h4>
                   
+                  {/* Aviso cuota diaria en preguntas falladas */}
+                  {hasLimit && !limitLoading && (
+                    <div className="mb-3 flex items-center gap-2 text-sm">
+                      <span className={questionsRemaining === 0 ? 'text-red-600 font-medium' : 'text-gray-600'}>
+                        {questionsRemaining === 0
+                          ? 'Has agotado tus preguntas de hoy'
+                          : `Te quedan ${questionsRemaining} preguntas hoy`}
+                      </span>
+                      <span className="text-gray-400">·</span>
+                      <Link href="/premium" className="text-purple-600 hover:text-purple-700 font-medium hover:underline">
+                        Sin límites con Premium
+                      </Link>
+                    </div>
+                  )}
                   <div className="grid grid-cols-5 gap-1 sm:gap-2 mb-4">
                     {(() => {
                       const totalQuestions = failedQuestionsData.totalQuestions;
                       const options: (number | 'all')[] = [];
-                      
+
                       // Solo añadir opciones que sean menores al total disponible
                       if (totalQuestions > 10) options.push(10);
                       if (totalQuestions > 25) options.push(25);
                       if (totalQuestions > 50) options.push(50);
                       if (totalQuestions > 100) options.push(100);
-                      
+
                       // Siempre añadir la opción "Todas" (número exacto)
                       options.push('all');
-                      
-                      return options.map((count) => (
-                        <button
-                          key={count}
-                          onClick={() => setFailedQuestionsCount(count)}
-                          className={`p-2 sm:p-3 border-2 rounded-lg transition-all text-center font-medium ${
-                            failedQuestionsCount === count
-                              ? 'border-green-500 bg-green-50 text-green-700'
-                              : 'border-gray-200 hover:border-green-300 hover:bg-green-25'
-                          }`}
-                        >
-                          <div className="text-sm sm:text-lg font-bold">
-                            {count === 'all' ? totalQuestions : count}
-                          </div>
-                          <div className="text-xs text-gray-600 hidden sm:block">
-                            {count === 'all' ? 'Todas' : 'preguntas'}
-                          </div>
-                        </button>
-                      ));
+
+                      return options.map((count) => {
+                        const numericCount = count === 'all' ? totalQuestions : count;
+                        const exceedsDailyLimit = hasLimit && numericCount > questionsRemaining;
+
+                        if (exceedsDailyLimit && questionsRemaining > 0) {
+                          return (
+                            <Link
+                              key={count}
+                              href="/premium"
+                              className="p-2 sm:p-3 border-2 rounded-lg transition-all text-center font-medium bg-gradient-to-r from-purple-50 to-indigo-50 border-purple-200 text-purple-700 hover:from-purple-100 hover:to-indigo-100"
+                            >
+                              <div className="text-sm sm:text-lg font-bold">
+                                {numericCount} 👑
+                              </div>
+                              <div className="text-xs text-purple-500 hidden sm:block">
+                                Premium
+                              </div>
+                            </Link>
+                          );
+                        }
+
+                        return (
+                          <button
+                            key={count}
+                            onClick={() => setFailedQuestionsCount(count)}
+                            className={`p-2 sm:p-3 border-2 rounded-lg transition-all text-center font-medium ${
+                              failedQuestionsCount === count
+                                ? 'border-green-500 bg-green-50 text-green-700'
+                                : 'border-gray-200 hover:border-green-300 hover:bg-green-25'
+                            }`}
+                          >
+                            <div className="text-sm sm:text-lg font-bold">
+                              {count === 'all' ? totalQuestions : count}
+                            </div>
+                            <div className="text-xs text-gray-600 hidden sm:block">
+                              {count === 'all' ? 'Todas' : 'preguntas'}
+                            </div>
+                          </button>
+                        );
+                      });
                     })()}
                   </div>
-                  
+
                   {/* Botón para iniciar el test */}
                   <div className="flex justify-center">
-                    <button
-                      onClick={() => startFailedQuestionsTest(selectedFailedOrder)}
-                      className="px-8 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-bold rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
-                    >
-                      🚀 Comenzar Test de Repaso
-                    </button>
+                    {hasLimit && questionsRemaining <= 0 ? (
+                      <Link
+                        href="/premium"
+                        className="px-8 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold rounded-lg hover:from-purple-700 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
+                      >
+                        👑 Hazte Premium para seguir practicando
+                      </Link>
+                    ) : (
+                      <button
+                        onClick={() => startFailedQuestionsTest(selectedFailedOrder)}
+                        className="px-8 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-bold rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
+                      >
+                        🚀 Comenzar Test de Repaso
+                      </button>
+                    )}
                   </div>
                 </div>
               )}
