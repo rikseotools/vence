@@ -83,7 +83,7 @@ export default function TemarioClient({ bloques, oposicion, fechaActualizacion }
               {tema.titulo}
             </h3>
             <p className="text-sm text-amber-600 dark:text-amber-400">
-              En elaboración · Disponible a partir de abril 2026
+              En elaboración · Próximamente
             </p>
           </div>
           <div className="flex-shrink-0 flex items-center gap-1.5 text-amber-500">
