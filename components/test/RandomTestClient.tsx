@@ -134,9 +134,7 @@ export default function RandomTestClient({
   useEffect(() => {
     if (selectedThemes.length > 0) {
       checkAvailability()
-      if (selectedThemes.length > 1 && adaptiveMode) {
-        setAdaptiveMode(false)
-      }
+      // Adaptive mode ahora funciona con múltiples temas
     } else {
       setAvailableQuestions(0)
     }
@@ -254,7 +252,7 @@ export default function RandomTestClient({
       if (onlyOfficialQuestions) testParams.append('official_only', 'true')
       if (includeSharedOfficials) testParams.append('include_shared_officials', 'true')
       if (focusEssentialArticles) testParams.append('focus_essential', 'true')
-      if (selectedThemes.length === 1 && adaptiveMode) testParams.append('adaptive', 'true')
+      if (adaptiveMode) testParams.append('adaptive', 'true')
 
       const testPath = testMode === 'examen' ? 'test-aleatorio-examen' : 'test-personalizado'
       router.push(`/${oposicion}/test/${testPath}?${testParams.toString()}`)
@@ -450,7 +448,7 @@ export default function RandomTestClient({
               )}
 
               {/* Modo adaptativo */}
-              {selectedThemes.length === 1 && (
+              {selectedThemes.length >= 1 && (
                 <label className="flex items-center space-x-2 cursor-pointer border-t border-gray-200 pt-4">
                   <input
                     type="checkbox"
@@ -461,7 +459,7 @@ export default function RandomTestClient({
                   <span className="text-sm font-medium text-gray-700">✨ Modo adaptativo</span>
                 </label>
               )}
-              {selectedThemes.length === 1 && adaptiveMode && (
+              {selectedThemes.length >= 1 && adaptiveMode && (
                 <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
                   <p className="text-xs text-blue-700">Ajusta la dificultad en tiempo real según tus respuestas. Si fallas varias seguidas, las siguientes preguntas serán más fáciles. Empieza con preguntas que aún no has visto.</p>
                 </div>
