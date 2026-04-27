@@ -4,17 +4,13 @@
 import { getDb } from '@/db/client'
 import { topics } from '@/db/schema'
 import { eq, and } from 'drizzle-orm'
-
-// Cache en memoria (server-side, se limpia con cada deploy)
-const cache = new Map<string, Record<number, string>>()
+import { unstable_cache } from 'next/cache'
 
 /**
- * Devuelve mapa {topic_number → title} para una oposición.
- * Cacheado en memoria del servidor — se invalida con cada deploy.
+ * Implementación interna — query ligera pero se ejecuta 35× durante build
+ * (una por oposición × 3 workers). Cachear evita saturar conexiones.
  */
-export async function getTopicNamesMap(positionType: string): Promise<Record<number, string>> {
-  if (cache.has(positionType)) return cache.get(positionType)!
-
+async function getTopicNamesMapInternal(positionType: string): Promise<Record<number, string>> {
   const db = getDb()
   const rows = await db
     .select({ topicNumber: topics.topicNumber, title: topics.title })
@@ -30,9 +26,19 @@ export async function getTopicNamesMap(positionType: string): Promise<Record<num
     map[r.topicNumber] = r.title
   }
 
-  cache.set(positionType, map)
   return map
 }
+
+/**
+ * Devuelve mapa {topic_number → title} para una oposición.
+ * Cacheado permanentemente (mismo patrón que temario/teoría).
+ * Invalidar con: revalidateTag('test-counts')
+ */
+export const getTopicNamesMap = unstable_cache(
+  getTopicNamesMapInternal,
+  ['topic-names-map-v1'],
+  { revalidate: false, tags: ['test-counts'] }
+)
 
 /**
  * Devuelve el nombre de un tema específico desde BD.

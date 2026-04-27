@@ -2,9 +2,8 @@
 import { createClient } from '@supabase/supabase-js'
 import { OPOSICIONES, SLUG_TO_POSITION_TYPE, getOposicionBySlug } from '@/lib/config/oposiciones'
 import TestHubClient from './TestHubClient'
-import { getDb } from '@/db/client'
-import { questions } from '@/db/schema'
-import { eq, and, inArray, sql } from 'drizzle-orm'
+import { getThemeQuestionCounts } from '@/lib/api/random-test/queries'
+import type { OposicionSlug as RandomTestOposicionSlug } from '@/lib/api/random-test/schemas'
 
 type OposicionSlug = string
 
@@ -82,46 +81,14 @@ export default async function TestHubPage({ oposicion }: Props) {
     )
   }
 
-  // Consultar qué temas tienen contenido (topic_scope + preguntas)
-  const topicIds = (topics || []).map(t => t.id)
-  const { data: scopes } = await supabase
-    .from('topic_scope')
-    .select('topic_id')
-    .in('topic_id', topicIds)
-
-  const topicsWithScope = new Set((scopes || []).map(s => s.topic_id))
-
-  // Para temas con scope, verificar cuáles tienen al menos 1 pregunta
-  const topicsWithQuestions = new Set<string>()
-  for (const topicId of topicsWithScope) {
-    const { data: scopeRows } = await supabase
-      .from('topic_scope')
-      .select('law_id, article_numbers')
-      .eq('topic_id', topicId)
-
-    let articleIds: string[] = []
-    for (const s of scopeRows || []) {
-      if (!s.article_numbers) {
-        const { data: arts } = await supabase.from('articles').select('id').eq('law_id', s.law_id).limit(100)
-        articleIds.push(...(arts || []).map(a => a.id))
-      } else {
-        const { data: arts } = await supabase.from('articles').select('id').eq('law_id', s.law_id).in('article_number', s.article_numbers).limit(500)
-        articleIds.push(...(arts || []).map(a => a.id))
-      }
-    }
-
-    if (articleIds.length > 0) {
-      const db = getDb()
-      const [{ count: qCount }] = await db
-        .select({ count: sql<number>`count(*)` })
-        .from(questions)
-        .where(and(
-          eq(questions.isActive, true),
-          inArray(questions.primaryArticleId, articleIds.slice(0, 500))
-        ))
-      if (qCount && Number(qCount) > 0) topicsWithQuestions.add(topicId)
-    }
+  // Obtener conteos de preguntas por tema (1 query cacheada, no N+1)
+  let themeCounts: { themeId: number; count: number }[] = []
+  try {
+    themeCounts = await getThemeQuestionCounts(oposicion as RandomTestOposicionSlug)
+  } catch (error) {
+    console.error('Error fetching theme counts:', error)
   }
+  const themeCountMap = new Map(themeCounts.map(tc => [tc.themeId, tc.count]))
 
   // Transformar a formato esperado
   const displayMap = DISPLAY_NUMBER_MAP[oposicion] || {}
@@ -131,7 +98,7 @@ export default async function TestHubPage({ oposicion }: Props) {
     displayNumber: displayMap[t.topic_number] ?? t.topic_number,
     title: t.title,
     description: t.description,
-    hasContent: topicsWithQuestions.has(t.id),
+    hasContent: (themeCountMap.get(t.topic_number) || 0) > 0,
     isActive: t.is_active !== false,
   }))
 

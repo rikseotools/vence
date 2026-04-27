@@ -2,6 +2,7 @@
 import { getDb } from '@/db/client'
 import { topics, topicScope, laws, questions, articles, tests, testQuestions } from '@/db/schema'
 import { eq, and, sql, inArray, desc, gte, isNotNull } from 'drizzle-orm'
+import { unstable_cache } from 'next/cache'
 import type {
   OposicionSlug,
   ThemeQuestionCount,
@@ -17,10 +18,10 @@ import { getPositionType, getOposicionConfig } from './schemas'
 // ============================================
 
 /**
- * Obtiene el conteo de preguntas por tema para una oposición
- * OPTIMIZADO: Una sola query con JOIN y GROUP BY
+ * Implementación interna — la query pesada de 4-way JOIN.
+ * No llamar directamente; usar getThemeQuestionCounts() que cachea.
  */
-export async function getThemeQuestionCounts(
+async function getThemeQuestionCountsInternal(
   oposicion: OposicionSlug
 ): Promise<ThemeQuestionCount[]> {
   const db = getDb()
@@ -64,6 +65,17 @@ export async function getThemeQuestionCounts(
     officialCount: countsMap.get(themeId)?.official || 0,
   }))
 }
+
+/**
+ * Obtiene el conteo de preguntas por tema para una oposición.
+ * Cacheado permanentemente (mismo patrón que temario/teoría).
+ * Invalidar con: revalidateTag('test-counts')
+ */
+export const getThemeQuestionCounts = unstable_cache(
+  getThemeQuestionCountsInternal,
+  ['theme-question-counts-v1'],
+  { revalidate: false, tags: ['test-counts'] }
+)
 
 /**
  * Cuenta preguntas para un topic específico

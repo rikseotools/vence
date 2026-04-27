@@ -50,6 +50,7 @@ El contenido de leyes y artículos **casi nunca cambia**, así que no tiene sent
 | `temario` | Contenido de temas (scope, leyes, artículos) | `revalidateTag('temario')` |
 | `teoria` | Contenido de teoría (leyes, artículos, navegación) | `revalidateTag('teoria')` |
 | `laws` | Lista de leyes con conteo de preguntas | `revalidateTag('laws')` |
+| `test-counts` | Conteo preguntas por tema + nombres de temas | `revalidateTag('test-counts')` |
 
 ### Detalle de Cachés
 
@@ -161,6 +162,16 @@ Invalida cuando:
 - Cambias el nombre o descripción de leyes
 - Añades o eliminas leyes del sistema
 
+### Tag `test-counts`
+
+Invalida cuando:
+- Añades muchas preguntas nuevas a temas existentes
+- Cambias topic_scope (qué artículos pertenecen a qué tema)
+- Añades o renombras temas (topics)
+- Cambias is_active de preguntas en bloque
+
+Cachea: conteo de preguntas por tema (`getThemeQuestionCounts`), nombres de temas (`getTopicNamesMap`). Usado por las páginas `/test`, `/test/aleatorio` y `/test/test-aleatorio-examen` de todas las oposiciones.
+
 ### NO necesitas revalidar cuando:
 - Añades pocas preguntas (se actualizará automáticamente en 30 días)
 - Cambias usuarios o suscripciones
@@ -229,6 +240,8 @@ Un redeploy completo también limpia todas las cachés, pero es más lento.
 | Añadir/modificar artículos | `temario` + `teoria` | — |
 | Actualizar hitos/plazas de oposición | — | Landing de esa oposición (`purge-cache`) |
 | Añadir ley nueva | `temario` + `teoria` + `laws` | — |
+| Añadir muchas preguntas | `laws` + `test-counts` | — |
+| Cambiar topic_scope o temas | `temario` + `test-counts` | — |
 | Añadir muchas preguntas | `laws` | — |
 | Cambio masivo (varias leyes + oposiciones) | `node scripts/purge-all-cache.js` (ISR) + tags manuales | Todo |
 
