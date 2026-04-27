@@ -1509,98 +1509,102 @@ export default function TestLayout({
   const adaptDifficulty = (direction: 'easier' | 'harder' = 'easier'): void => {
     try {
       if (!adaptiveCatalog) {
-        console.log('🧠 Sin catálogo adaptativo - usando sistema legacy')
+        console.log('[AdaptReplace] Sin catálogo adaptativo - usando legacy')
         return adaptDifficultyLegacy(direction)
       }
 
       const remainingQuestions = effectiveQuestions.length - currentQuestion - 1
-      if (remainingQuestions <= 0) {
-        console.log('🧠 No hay preguntas restantes para adaptar')
-        return
-      }
+      if (remainingQuestions <= 0) return
 
-      // 🔥 CRÍTICO: Obtener IDs de preguntas ya en activeQuestions para excluirlas
       const existingQuestionIds = new Set(effectiveQuestions.map(q => q.id))
-      console.log(`🔍 Preguntas ya en test: ${existingQuestionIds.size} IDs`)
-
-      // Determinar dificultad objetivo
-      let targetDifficulty: 'easy' | 'medium' | 'hard' = direction === 'easier' ? 'easy' : 'medium'
-
-      console.log(`🧠 ADAPTACIÓN INTELIGENTE: Necesita preguntas ${targetDifficulty}`)
-
-      // 🎯 PRIORIDAD 1: Nunca vistas de la dificultad objetivo (filtrar duplicados)
-      const neverSeenTarget = (adaptiveCatalog.neverSeen[targetDifficulty] || [])
-        .filter(q => !existingQuestionIds.has(q.id))
-      console.log(`   👁️ Nunca vistas ${targetDifficulty} (sin duplicados): ${neverSeenTarget.length}`)
-
-      if (neverSeenTarget.length >= remainingQuestions) {
-        console.log(`✅ PERFECTO: Suficientes nunca vistas ${targetDifficulty}`)
-        const selectedQuestions = neverSeenTarget.slice(0, remainingQuestions)
-
-        console.log(`📋 Preguntas seleccionadas (IDs): ${selectedQuestions.map(q => q.id).join(', ')}`)
-        console.log(`📋 Preguntas seleccionadas (primeras palabras): ${selectedQuestions.map(q => q.question?.substring(0, 30) + '...').join(' | ')}`)
-
-        const newActiveQuestions = [
-          ...effectiveQuestions.slice(0, currentQuestion + 1),
-          ...selectedQuestions
-        ]
-
-        setActiveQuestions(newActiveQuestions)
-        setCurrentDifficulty(targetDifficulty)
-        console.log(`🧠 Adaptación exitosa: ${selectedQuestions.length} preguntas nunca vistas ${targetDifficulty}`)
-        console.log(`🔍 Total preguntas después de adaptar: ${newActiveQuestions.length}`)
-        return
-      }
-      
-      // 🎯 PRIORIDAD 2: Combinar nunca vistas de diferentes dificultades (filtrar duplicados)
-      console.log(`⚠️ Solo ${neverSeenTarget.length} nunca vistas ${targetDifficulty}, combinando...`)
-
+      const targetDifficulty: 'easy' | 'medium' | 'hard' = direction === 'easier' ? 'easy' : 'medium'
       const secondaryDifficulty = direction === 'easier' ? 'medium' : 'easy'
-      const neverSeenSecondary = (adaptiveCatalog.neverSeen[secondaryDifficulty] || [])
-        .filter(q => !existingQuestionIds.has(q.id))
 
-      const allNeverSeen = [
-        ...neverSeenTarget,
-        ...neverSeenSecondary
-      ]
+      // Artículos ya mostrados — priorizar artículos no vistos en reemplazos
+      const articlesShown = new Set(
+        effectiveQuestions.slice(0, currentQuestion + 1)
+          .map(q => `${q.article?.number || 'x'}@${q.article?.law_short_name || 'x'}`)
+      )
 
-      console.log(`   📊 Total nunca vistas combinadas (sin duplicados): ${allNeverSeen.length}`)
-
-      if (allNeverSeen.length >= remainingQuestions) {
-        console.log(`✅ BUENA OPCIÓN: Suficientes nunca vistas combinadas`)
-        const selectedQuestions = allNeverSeen.slice(0, remainingQuestions)
-
-        const newActiveQuestions = [
-          ...effectiveQuestions.slice(0, currentQuestion + 1),
-          ...selectedQuestions
-        ]
-
-        setActiveQuestions(newActiveQuestions)
-        setCurrentDifficulty(targetDifficulty)
-        console.log(`🧠 Adaptación combinada: ${selectedQuestions.length} preguntas nunca vistas mixtas`)
-        return
+      // Temas de las preguntas restantes (las que se reemplazan)
+      const remainingTopics: Record<string, number> = {}
+      for (const q of effectiveQuestions.slice(currentQuestion + 1)) {
+        const key = q.tema ? `topic:${q.tema}` : 'all'
+        remainingTopics[key] = (remainingTopics[key] || 0) + 1
       }
 
-      // 🎯 PRIORIDAD 3: Solo como último recurso - ya respondidas (filtrar duplicados)
-      console.log(`⚠️ FALLBACK: Incluyendo algunas preguntas ya respondidas`)
-      const answeredTarget = (adaptiveCatalog.answered[targetDifficulty] || [])
-        .filter(q => !existingQuestionIds.has(q.id))
+      console.log(`[AdaptReplace] Replacing ${remainingQuestions}q. Direction: ${direction}. Topics: ${JSON.stringify(remainingTopics)}. Articles shown: ${articlesShown.size}`)
 
-      const finalSelection = [
-        ...allNeverSeen,
-        ...answeredTarget.slice(0, remainingQuestions - allNeverSeen.length)
-      ]
+      // Helper: buscar candidatos en el catálogo para una dificultad y filtrar por IDs y artículos
+      const getCandidates = (seenStatus: 'neverSeen' | 'answered', difficulty: string, topicKey: string): TestQuestion[] => {
+        // Buscar con clave compuesta "topic:N:difficulty" o "difficulty" (single tema)
+        const compositeKey = topicKey === 'all' ? difficulty : `${topicKey}:${difficulty}`
+        const bucket = adaptiveCatalog[seenStatus][compositeKey] || adaptiveCatalog[seenStatus][difficulty] || []
+        return (Array.isArray(bucket) ? bucket : [])
+          .filter(q => !existingQuestionIds.has(q.id))
+          .sort((a, b) => {
+            // Priorizar artículos no vistos
+            const aKey = `${a.article?.number || 'x'}@${a.article?.law_short_name || 'x'}`
+            const bKey = `${b.article?.number || 'x'}@${b.article?.law_short_name || 'x'}`
+            return (articlesShown.has(aKey) ? 1 : 0) - (articlesShown.has(bKey) ? 1 : 0)
+          })
+      }
+
+      // Seleccionar reemplazos respetando proporción por tema
+      const replacements: TestQuestion[] = []
+
+      for (const [tKey, count] of Object.entries(remainingTopics)) {
+        let needed = count
+        // P1: neverSeen target difficulty
+        const p1 = getCandidates('neverSeen', targetDifficulty, tKey)
+        const take1 = p1.slice(0, needed)
+        replacements.push(...take1)
+        needed -= take1.length
+
+        if (needed > 0) {
+          // P2: neverSeen secondary difficulty
+          const p2 = getCandidates('neverSeen', secondaryDifficulty, tKey)
+          const take2 = p2.slice(0, needed)
+          replacements.push(...take2)
+          needed -= take2.length
+        }
+
+        if (needed > 0) {
+          // P3: answered target difficulty
+          const p3 = getCandidates('answered', targetDifficulty, tKey)
+          const take3 = p3.slice(0, needed)
+          replacements.push(...take3)
+          needed -= take3.length
+        }
+
+        // Marcar artículos de los reemplazos como vistos
+        for (const q of replacements.slice(-count + needed)) {
+          articlesShown.add(`${q.article?.number || 'x'}@${q.article?.law_short_name || 'x'}`)
+        }
+      }
+
+      if (replacements.length === 0) {
+        console.log('[AdaptReplace] No replacement questions available')
+        return
+      }
 
       const newActiveQuestions = [
         ...effectiveQuestions.slice(0, currentQuestion + 1),
-        ...finalSelection.slice(0, remainingQuestions)
+        ...replacements
       ]
 
       setActiveQuestions(newActiveQuestions)
       setCurrentDifficulty(targetDifficulty)
 
-      console.log(`🧠 Adaptación con fallback: ${allNeverSeen.length} nunca vistas + ${finalSelection.length - allNeverSeen.length} ya respondidas`)
-      
+      // Actualizar articlesSeen en el catálogo
+      if (adaptiveCatalog.articlesSeen) {
+        const newSeen = [...adaptiveCatalog.articlesSeen, ...replacements.map(q => `${q.article?.number}@${q.article?.law_short_name}`)]
+        setAdaptiveCatalog({ ...adaptiveCatalog, articlesSeen: newSeen })
+      }
+
+      const uniqueArts = new Set(replacements.map(q => `${q.article?.number}@${q.article?.law_short_name}`))
+      console.log(`[AdaptReplace] OK: ${replacements.length} replacements, ${uniqueArts.size} unique articles. Topics: ${JSON.stringify(remainingTopics)}`)
+
     } catch (error) {
       console.error('❌ Error en adaptación inteligente:', error)
     }
