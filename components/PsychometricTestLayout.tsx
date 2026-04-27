@@ -21,8 +21,11 @@ import MarkdownExplanation from './MarkdownExplanation'
 import PsychometricAIHelpButton from './PsychometricAIHelpButton'
 import { getDifficultyInfo, formatDifficultyDisplay, isFirstAttempt, type DifficultyInfo } from '../lib/psychometricDifficulty'
 import { useInteractionTracker } from '../hooks/useInteractionTracker'
+import { useDailyQuestionLimit } from '../hooks/useDailyQuestionLimit'
 import { enqueuePsychometricAnswer } from '@/utils/psychometricSaveQueue'
 import ContentDataRenderer from './ContentDataRenderer'
+import DailyLimitBanner from './DailyLimitBanner'
+import UpgradeLimitModal from './UpgradeLimitModal'
 import DeviceLimitModal from './DeviceLimitModal'
 import { useDeviceLimitModal } from '@/hooks/useDeviceLimitModal'
 
@@ -140,6 +143,19 @@ export default function PsychometricTestLayout({
 
   // 📊 Tracking de interacciones de usuario
   const { trackPsychometricAction } = useInteractionTracker()
+
+  // 🔒 Límite diario de preguntas
+  const {
+    hasLimit,
+    isLimitReached,
+    questionsToday,
+    dailyLimit,
+    isGraduated,
+    resetTime,
+    showUpgradeModal,
+    setShowUpgradeModal,
+    recordAnswer,
+  } = useDailyQuestionLimit()
 
   // 📱 Límite de dispositivos
   const { isDeviceLimitOpen, closeDeviceLimit, retryAfterDeviceRemoval } = useDeviceLimitModal()
@@ -286,6 +302,12 @@ export default function PsychometricTestLayout({
       return
     }
 
+    // 🔒 Verificar límite diario para usuarios FREE
+    if (hasLimit && isLimitReached) {
+      setShowUpgradeModal(true)
+      return
+    }
+
     const timeoutKey = `${currentQ.id}_${optionIndex}`
     if (answeringTimeouts.current.has(timeoutKey)) {
       console.log('🚫 Answer blocked - timeout exists')
@@ -355,6 +377,7 @@ export default function PsychometricTestLayout({
         totalQuestions,
       })
       recordAnswerForGoal()
+      if (hasLimit) recordAnswer().catch(() => {})
     }
   }
 
@@ -732,6 +755,40 @@ export default function PsychometricTestLayout({
     )
   }
 
+  // 🔒 Bloqueo para usuarios free sin cuota restante (antes de mostrar preguntas)
+  if (hasLimit && isLimitReached && !showResult && answeredQuestions.length === 0) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 max-w-md text-center">
+          <span className="text-6xl mb-4 block">{isGraduated ? '🔥' : '⏳'}</span>
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-3">
+            {isGraduated ? 'Has alcanzado tu límite diario' : 'Límite diario alcanzado'}
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-2">
+            Has completado tus <strong>{dailyLimit}</strong> preguntas de hoy.
+          </p>
+          <p className="text-gray-500 dark:text-gray-400 text-sm mb-6">
+            Vuelve mañana o hazte Premium para practicar sin límites.
+          </p>
+          <div className="space-y-3">
+            <Link
+              href="/premium"
+              className="block w-full py-3 px-6 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold rounded-xl hover:from-purple-700 hover:to-indigo-700 transition-all shadow-lg"
+            >
+              👑 Hazte Premium — Sin límites
+            </Link>
+            <button
+              onClick={() => window.history.back()}
+              className="block w-full py-3 px-6 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition-all"
+            >
+              ← Volver
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <PsychometricRegistrationManager
       categoria={categoria}
@@ -837,6 +894,22 @@ export default function PsychometricTestLayout({
       <div className="h-16"></div>
       
       </div>
+      {/* Banner de límite diario (solo usuarios FREE) */}
+      {hasLimit && <DailyLimitBanner />}
+
+      {/* Modal de upgrade cuando se alcanza el límite */}
+      <UpgradeLimitModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        questionsAnswered={questionsToday}
+        dailyLimit={dailyLimit}
+        isGraduated={isGraduated}
+        resetTime={resetTime}
+        supabase={supabase}
+        userId={user?.id}
+        userName={(user?.user_metadata?.full_name || user?.user_metadata?.name) as string | undefined}
+      />
+
       {/* Modal de límite de dispositivos */}
       <DeviceLimitModal
         isOpen={isDeviceLimitOpen}
