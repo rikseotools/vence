@@ -405,13 +405,13 @@ export default function RandomTestClient({
                   disabled={focusEssentialArticles}
                   className="rounded border-gray-300 text-red-600 focus:ring-red-500"
                 />
-                <span className="text-sm font-medium text-gray-700">🏛️ Solo preguntas oficiales</span>
+                <span className="text-sm font-medium text-gray-700">🏛️ Solo preguntas oficiales de <strong>{config.shortName}</strong></span>
               </label>
 
               {onlyOfficialQuestions && (
                 <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
                   <p className="text-sm font-bold text-red-800">Modo Oficial Activado</p>
-                  <p className="text-xs text-red-700">Solo preguntas de examenes oficiales reales</p>
+                  <p className="text-xs text-red-700">Solo preguntas de exámenes oficiales de {config.shortName}</p>
                 </div>
               )}
 
@@ -427,13 +427,13 @@ export default function RandomTestClient({
                   disabled={onlyOfficialQuestions}
                   className="rounded border-gray-300 text-yellow-600 focus:ring-yellow-500"
                 />
-                <span className="text-sm font-medium text-gray-700">⭐ Enfocar en articulos imprescindibles</span>
+                <span className="text-sm font-medium text-gray-700">⭐ Enfocar en artículos imprescindibles de <strong>{config.shortName}</strong></span>
               </label>
 
               {focusEssentialArticles && (
                 <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <p className="text-sm font-bold text-yellow-800">Articulos Imprescindibles Activado</p>
-                  <p className="text-xs text-yellow-700">Solo articulos que aparecen frecuentemente en examenes</p>
+                  <p className="text-sm font-bold text-yellow-800">Artículos Imprescindibles Activado</p>
+                  <p className="text-xs text-yellow-700">Solo artículos que aparecen frecuentemente en exámenes de {config.shortName}</p>
                 </div>
               )}
 

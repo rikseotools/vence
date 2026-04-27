@@ -1489,7 +1489,7 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
                   <span className={`text-sm font-medium ${
                     focusEssentialArticles ? 'text-gray-400' : 'text-gray-700'
                   }`}>
-                    🏛️ Preguntas oficiales 
+                    🏛️ Preguntas oficiales de <strong>{getOposicionName(positionType)}</strong>
                     <span className="text-xs text-red-600 ml-1">
                       ({officialQuestionsCount})
                     </span>
@@ -1590,7 +1590,7 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
                 <span className={`text-sm font-medium ${
                   onlyOfficialQuestions ? 'text-gray-400' : 'text-gray-700'
                 }`}>
-                  ⭐ Enfocar en artículos imprescindibles
+                  ⭐ Artículos imprescindibles de <strong>{getOposicionName(positionType)}</strong>
                   {loadingEssentialCount ? (
                     <span className="text-xs text-gray-500 ml-1">(cargando...)</span>
                   ) : essentialArticlesCount > 0 ? (
