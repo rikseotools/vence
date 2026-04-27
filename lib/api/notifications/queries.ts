@@ -72,7 +72,7 @@ export async function getUserProblematicArticlesWeekly(
     .innerJoin(laws, eq(articles.lawId, laws.id))
     .where(
       and(
-        eq(tests.userId, params.userId),
+        eq(testQuestions.userId, params.userId),
         eq(tests.isCompleted, true),
         gte(testQuestions.createdAt, sinceExpr),
         isNotNull(testQuestions.articleId),
