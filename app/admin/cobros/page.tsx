@@ -50,12 +50,18 @@ export default function CobrosPage() {
       }
       setPayoutTransfers(transfers || [])
 
-      // Tipo de cambio EUR→USD
+      // Tipo de cambio EUR→USD (con fallback)
       try {
         const fxRes = await fetch('https://api.frankfurter.app/latest?from=EUR&to=USD')
         const fxData = await fxRes.json()
-        if (fxData.rates?.USD) setEurUsdRate(fxData.rates.USD)
-      } catch {}
+        if (fxData.rates?.USD) {
+          setEurUsdRate(fxData.rates.USD)
+        } else {
+          setEurUsdRate(1.12) // fallback razonable
+        }
+      } catch {
+        setEurUsdRate(1.12) // fallback si API no responde
+      }
     } catch (err: any) {
       if (err.name === 'AbortError') {
         setApiError('Timeout: La API de Stripe tardó demasiado')
@@ -298,7 +304,7 @@ export default function CobrosPage() {
                         {isPayout && payoutStatus.sent && (
                           <div className="flex items-center justify-between px-4 py-2 bg-green-50 border-t border-green-200 text-sm">
                             <span className="text-green-800">
-                              Manuel: <strong>{formatCurrency(manuelAmount)}</strong>{eurUsdRate ? <span className="text-green-600"> (Aprox. ${(manuelAmount / 100 * eurUsdRate).toFixed(2)} USD)</span> : null} · Armando: <strong>{formatCurrency(armandoAmount)}</strong>
+                              Manuel: <strong>{formatCurrency(manuelAmount)}</strong>{eurUsdRate && <span className="text-blue-600 font-medium"> → Aprox. ${(manuelAmount / 100 * eurUsdRate).toFixed(2)} USD</span>} · Armando: <strong>{formatCurrency(armandoAmount)}</strong>
                               {(payoutStatus as any).cryptoTxHash && (
                                 <span className="ml-2 text-green-600 text-xs">
                                   (USDT: ${(payoutStatus as any).cryptoAmount?.toFixed(2)} · <a href={`https://bscscan.com/tx/${(payoutStatus as any).cryptoTxHash}`} target="_blank" rel="noopener noreferrer" className="underline">tx</a>)
