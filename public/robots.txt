@@ -30,10 +30,11 @@ Disallow: /cookies
 Disallow: /aviso-legal
 Disallow: /politica-privacidad
 
-# Tests dinámicos (contenido duplicado)
+# Tests dinámicos (contenido duplicado, sin valor SEO)
 Disallow: /*/test-rapido
-Disallow: /*/avanzado  
+Disallow: /*/avanzado
 Disallow: /*/test-personalizado
+Disallow: /*/test/tema/
 Disallow: /*/oficial
 
 # URLs de notificaciones push (no indexables)
