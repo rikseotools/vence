@@ -394,7 +394,7 @@ export default function ArmandoPage() {
             <p className="text-sm text-gray-500">
               Conectado como: <span className="font-medium text-gray-700">{userRole === 'armando' ? 'Armando' : 'Manuel'}</span>
               {' · '}Comisión: <span className="font-medium text-blue-600">{stripeCommission.pct}%</span>
-              {' '}(facturado 4 sem: {(stripeCommission.netVolume4w / 100).toFixed(0)}€)
+              {' '}(vol. neto 4 sem: {(stripeCommission.netVolume4w / 100).toFixed(2)}€)
             </p>
           </div>
           <div className="flex gap-2">

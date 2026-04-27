@@ -159,36 +159,60 @@ async function _GET(request: Request) {
       pending: balance.pending.reduce((sum, b) => sum + b.amount, 0),
     }
 
-    // Calcular facturado últimas 4 semanas (pagos recibidos - reembolsos)
-    // Nota: no coincide exactamente con el "Volumen neto" de Stripe Billing
-    // porque Stripe aplica ajustes internos que no expone via API
+    // Volumen neto últimas 4 semanas via Stripe Reporting API
+    // Usa el report balance_change_from_activity.summary que es la fuente
+    // del "Volumen neto" del dashboard de Stripe Billing
     const fourWeeksAgo = Math.floor(Date.now() / 1000) - (28 * 24 * 60 * 60)
-    let grossCharges = 0
-    let totalRefunds = 0
-    let hasMore = true
-    let startingAfter: string | undefined
+    const reportEnd = new Date()
+    reportEnd.setUTCHours(0, 0, 0, 0) // midnight UTC today
 
-    while (hasMore) {
-      const params: Record<string, unknown> = { type: 'charge', created: { gte: fourWeeksAgo }, limit: 100 }
-      if (startingAfter) params.starting_after = startingAfter
-      const batch = await getStripe().balanceTransactions.list(params as any)
-      for (const t of batch.data) grossCharges += t.amount
-      hasMore = batch.has_more
-      if (batch.data.length) startingAfter = batch.data[batch.data.length - 1].id
+    let netVolume4w = 0
+    try {
+      const run = await getStripe().reporting.reportRuns.create({
+        report_type: 'balance_change_from_activity.summary.1',
+        parameters: {
+          interval_start: fourWeeksAgo,
+          interval_end: Math.floor(reportEnd.getTime() / 1000),
+          currency: 'eur',
+        },
+      })
+
+      // Poll until done (max 30s)
+      let result = run
+      for (let i = 0; i < 10 && result.status !== 'succeeded'; i++) {
+        await new Promise(r => setTimeout(r, 3000))
+        result = await getStripe().reporting.reportRuns.retrieve(run.id)
+      }
+
+      if (result.status === 'succeeded' && result.result?.url) {
+        const csv = await fetch(result.result.url, {
+          headers: { 'Authorization': `Bearer ${process.env.STRIPE_SECRET_KEY}` },
+        }).then(r => r.text())
+
+        // Parse CSV: find charge net and refund net
+        const lines = csv.split('\n')
+        for (const line of lines) {
+          const cols = line.split(',').map(c => c.replace(/"/g, ''))
+          if (cols[0] === 'charge') netVolume4w += Math.round(parseFloat(cols[5]) * 100) // net in cents
+          if (cols[0] === 'refund') netVolume4w += Math.round(parseFloat(cols[5]) * 100) // negative
+        }
+      }
+    } catch (e) {
+      // Fallback: simple calculation with balance transactions
+      let hasMore = true
+      let startingAfter: string | undefined
+      while (hasMore) {
+        const params: Record<string, unknown> = { created: { gte: fourWeeksAgo }, limit: 100 }
+        if (startingAfter) params.starting_after = startingAfter
+        const batch = await getStripe().balanceTransactions.list(params as any)
+        for (const t of batch.data) {
+          if (t.type === 'charge') netVolume4w += t.net
+          if (t.type === 'refund') netVolume4w += t.net
+        }
+        hasMore = batch.has_more
+        if (batch.data.length) startingAfter = batch.data[batch.data.length - 1].id
+      }
     }
-
-    hasMore = true
-    startingAfter = undefined
-    while (hasMore) {
-      const params: Record<string, unknown> = { type: 'refund', created: { gte: fourWeeksAgo }, limit: 100 }
-      if (startingAfter) params.starting_after = startingAfter
-      const batch = await getStripe().balanceTransactions.list(params as any)
-      for (const t of batch.data) totalRefunds += Math.abs(t.amount)
-      hasMore = batch.has_more
-      if (batch.data.length) startingAfter = batch.data[batch.data.length - 1].id
-    }
-
-    const netVolume4w = grossCharges - totalRefunds
 
     // Comisión Stripe escalonada según volumen neto (en céntimos)
     // >= 6000€ → 5%, >= 5000€ → 6%, >= 4000€ → 7%, >= 3000€ → 8%, >= 2000€ → 9%, < 2000€ → 10%
