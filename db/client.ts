@@ -7,10 +7,9 @@ import * as schema from './schema'
 // Pool principal (APIs de usuario)
 // ============================================
 // max: 1 → Una conexión por instancia serverless (recomendado por Supabase)
-// connect_timeout: 2 → Fail fast: pooler saturado no mejora esperando más
 // ROLLBACK: Si se detectan errores de "too many clients", subir max a 2
 //           Si queries de admin fallan, usar getAdminDb() en vez de getDb()
-// VALORES ANTERIORES: max: 8, connect_timeout: 5
+// HISTORIAL: max:8 → max:3 → max:1 (27/04/2026, pool exhaustion con 261 eventos)
 
 // Singleton global para persistir entre invocaciones en serverless
 const globalForDb = globalThis as unknown as {
@@ -32,11 +31,10 @@ function createDbClient() {
     ? `${connectionString}&options=-c statement_timeout=30000 -c idle_in_transaction_session_timeout=60000`
     : `${connectionString}?options=-c statement_timeout=30000 -c idle_in_transaction_session_timeout=60000`
 
-  const isBuild = process.env.NEXT_PHASE === 'phase-production-build' || process.argv.includes('build')
   const conn = postgres(urlWithTimeout, {
-    max: isBuild ? 1 : 3,  // 1 durante build (3 workers × 1 = 3 total), 3 en runtime
+    max: 1,  // 1 conexión por instancia serverless (recomendado por Supabase)
     idle_timeout: 20,
-    connect_timeout: isBuild ? 10 : 5,
+    connect_timeout: 5,
     prepare: false, // Requerido para Supabase Transaction Pooler (puerto 6543)
   })
 

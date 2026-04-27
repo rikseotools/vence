@@ -51,7 +51,16 @@ async function _GET(request: NextRequest, { params }: { params: Promise<{ law: s
       ;(article as any).officialExamData = officialExamData
     }
 
-    return Response.json(article)
+    const response = Response.json(article)
+    // CDN cache: contenido de artículos cambia solo con sincronización BOE (manual).
+    // Vary por query string para que includeOfficialExams/userOposicion tengan caches separados.
+    return new Response(response.body, {
+      status: response.status,
+      headers: {
+        ...Object.fromEntries(response.headers),
+        'Cache-Control': 'public, s-maxage=86400, stale-while-revalidate=604800',
+      },
+    })
 
   } catch (error) {
     console.error('Error en API de artículo:', error)

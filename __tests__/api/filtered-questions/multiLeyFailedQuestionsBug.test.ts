@@ -34,17 +34,19 @@ describe('BUG multi-ley: failed questions sin Bearer token', () => {
   // ============================================
   describe('Guard: onlyFailedQuestions=true sin userId', () => {
 
-    it('debe loguear warning en validation_error_logs cuando falta userId', () => {
-      const onlyFailedQuestions = true
-      const userId: string | undefined = undefined
-      const positionType = 'auxiliar_administrativo_estado'
-      const failedQuestionIds: string[] = []
+    // Helper que replica la lógica exacta del guard en queries.ts
+    function shouldLogWarning(onlyFailedQuestions: boolean, userId: string | undefined, failedQuestionIds: string[]) {
+      return onlyFailedQuestions && !userId && (!failedQuestionIds || failedQuestionIds.length === 0)
+    }
 
-      if (onlyFailedQuestions && !userId) {
+    it('debe loguear warning cuando falta userId Y no hay IDs', () => {
+      const result = shouldLogWarning(true, undefined, [])
+      expect(result).toBe(true)
+
+      if (result) {
         mockLogValidationError({
           endpoint: '/api/questions/filtered',
           errorType: 'failed_questions_no_auth',
-          errorMessage: `onlyFailedQuestions=true pero userId es null. Fallback a preguntas aleatorias. positionType=${positionType}, failedQuestionIds=${failedQuestionIds?.length || 0}`,
           severity: 'warning',
         })
       }
@@ -53,31 +55,29 @@ describe('BUG multi-ley: failed questions sin Bearer token', () => {
         expect.objectContaining({
           errorType: 'failed_questions_no_auth',
           severity: 'warning',
-          endpoint: '/api/questions/filtered',
         })
       )
     })
 
+    it('NO debe loguear warning cuando hay failedQuestionIds (no necesita userId)', () => {
+      // Caso: desde-chat o FailedQuestionsReview envían IDs específicos sin auth
+      const result = shouldLogWarning(true, undefined, ['q1', 'q2', 'q3'])
+      expect(result).toBe(false)
+    })
+
     it('NO debe loguear warning cuando userId SÍ está presente', () => {
-      const onlyFailedQuestions = true
-      const userId = 'user-123'
-
-      if (onlyFailedQuestions && !userId) {
-        mockLogValidationError({ errorType: 'failed_questions_no_auth' })
-      }
-
-      expect(mockLogValidationError).not.toHaveBeenCalled()
+      const result = shouldLogWarning(true, 'user-123', [])
+      expect(result).toBe(false)
     })
 
     it('NO debe loguear warning cuando onlyFailedQuestions=false', () => {
-      const onlyFailedQuestions = false
-      const userId: string | undefined = undefined
+      const result = shouldLogWarning(false, undefined, [])
+      expect(result).toBe(false)
+    })
 
-      if (onlyFailedQuestions && !userId) {
-        mockLogValidationError({ errorType: 'failed_questions_no_auth' })
-      }
-
-      expect(mockLogValidationError).not.toHaveBeenCalled()
+    it('NO debe loguear warning cuando hay userId Y IDs', () => {
+      const result = shouldLogWarning(true, 'user-123', ['q1'])
+      expect(result).toBe(false)
     })
 
     it('el error type es grepeable en /admin/errores-validacion', () => {
@@ -388,15 +388,13 @@ describe('BUG multi-ley: failed questions sin Bearer token', () => {
   // ============================================
   describe('Edge cases', () => {
 
-    it('usuario no logueado (sin session) + onlyFailed → guard + fallback aleatorias', () => {
-      const authToken: string | null = null
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-      if (authToken) headers['Authorization'] = `Bearer ${authToken}`
-
+    it('usuario no logueado + onlyFailed sin IDs → guard + fallback aleatorias', () => {
       const authUserId: string | undefined = undefined
       const onlyFailedQuestions = true
+      const failedQuestionIds: string[] = []
 
-      if (onlyFailedQuestions && !authUserId) {
+      // Guard actualizado: solo loguea si NO hay IDs específicos
+      if (onlyFailedQuestions && !authUserId && failedQuestionIds.length === 0) {
         mockLogValidationError({
           endpoint: '/api/questions/filtered',
           errorType: 'failed_questions_no_auth',
@@ -405,7 +403,23 @@ describe('BUG multi-ley: failed questions sin Bearer token', () => {
       }
 
       expect(mockLogValidationError).toHaveBeenCalled()
-      expect(headers).not.toHaveProperty('Authorization')
+    })
+
+    it('usuario no logueado + onlyFailed CON IDs → NO loguea warning (funciona por IDs)', () => {
+      // Caso: desde-chat envía IDs específicos sin auth header
+      const authUserId: string | undefined = undefined
+      const onlyFailedQuestions = true
+      const failedQuestionIds = ['q1', 'q2', 'q3']
+
+      if (onlyFailedQuestions && !authUserId && failedQuestionIds.length === 0) {
+        mockLogValidationError({
+          endpoint: '/api/questions/filtered',
+          errorType: 'failed_questions_no_auth',
+          severity: 'warning',
+        })
+      }
+
+      expect(mockLogValidationError).not.toHaveBeenCalled()
     })
 
     it('getSession() lanza error → authToken null, request sigue con warning', () => {
