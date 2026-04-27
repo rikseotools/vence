@@ -1606,9 +1606,10 @@ export default function TestLayout({
       setCurrentDifficulty(targetDifficulty)
 
       // Actualizar articlesSeen en el catálogo
-      if (adaptiveCatalog.articlesSeen) {
-        const newSeen = [...adaptiveCatalog.articlesSeen, ...replacements.map(q => `${q.article?.number}@${q.article?.law_short_name}`)]
-        setAdaptiveCatalog({ ...adaptiveCatalog, articlesSeen: newSeen })
+      const catalogWithSeen = adaptiveCatalog as AdaptiveCatalog & { articlesSeen?: string[] }
+      if (catalogWithSeen.articlesSeen) {
+        const newSeen = [...catalogWithSeen.articlesSeen, ...replacements.map(q => `${q.article?.number}@${q.article?.law_short_name}`)]
+        setAdaptiveCatalog({ ...adaptiveCatalog, articlesSeen: newSeen } as AdaptiveCatalog)
       }
 
       const uniqueArts = new Set(replacements.map(q => `${q.article?.number}@${q.article?.law_short_name}`))
