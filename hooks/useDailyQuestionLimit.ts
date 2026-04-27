@@ -20,7 +20,11 @@ interface DailyLimitStatus {
 }
 
 const DEFAULT_LIMIT = 25
-const CACHE_TTL = 60000 // 1 minuto
+const CACHE_TTL = 60000 // 1 minuto — para evitar queries excesivas mid-test
+
+// Promise compartida a nivel de módulo: si dos componentes montan a la vez
+// y ambos hacen fetchStatus(true), solo se ejecuta 1 query real
+let inflightFetch: Promise<void> | null = null
 
 export function useDailyQuestionLimit() {
   const { user, userProfile, isPremium, isLegacy, supabase } = useAuth() as any
@@ -102,55 +106,66 @@ export function useDailyQuestionLimit() {
       return
     }
 
-    // Cache check (evitar queries excesivas)
+    // Cache check (evitar queries excesivas mid-test)
     const now = Date.now()
     if (!force && now - lastFetchRef.current < CACHE_TTL) {
       return
     }
 
-    try {
-      // Fetch dynamic limit and RPC status in parallel
-      const [userDailyLimit, rpcResult] = await Promise.all([
-        fetchDynamicLimit(),
-        supabase.rpc('get_daily_question_status', { p_user_id: user.id }),
-      ])
+    // Deduplicar: si otro componente ya está fetching, esperar su resultado
+    if (inflightFetch) {
+      await inflightFetch
+      return
+    }
 
-      const { data, error } = rpcResult
-      if (error) throw error
-      if (!isMountedRef.current) return
+    const doFetch = async () => {
+      try {
+        // Fetch dynamic limit and RPC status in parallel
+        const [userDailyLimit, rpcResult] = await Promise.all([
+          fetchDynamicLimit(),
+          supabase.rpc('get_daily_question_status', { p_user_id: user.id }),
+        ])
 
-      const result = Array.isArray(data) ? data[0] : data
+        const { data, error } = rpcResult
+        if (error) throw error
+        if (!isMountedRef.current) return
 
-      if (result) {
-        const questionsToday = result.questions_today || 0
-        const remaining = Math.max(0, userDailyLimit - questionsToday)
-        const isLimitReached = questionsToday >= userDailyLimit
+        const result = Array.isArray(data) ? data[0] : data
 
-        setStatus({
-          questionsToday,
-          questionsRemaining: remaining,
-          dailyLimit: userDailyLimit,
-          isLimitReached,
-          isPremiumUser: result.is_premium || false,
-          isGraduated: userDailyLimit < DEFAULT_LIMIT,
-          resetTime: result.reset_time ?? null,
-          loading: false,
-          error: null
-        })
-      }
+        if (result) {
+          const questionsToday = result.questions_today || 0
+          const remaining = Math.max(0, userDailyLimit - questionsToday)
+          const isLimitReached = questionsToday >= userDailyLimit
 
-      lastFetchRef.current = now
+          setStatus({
+            questionsToday,
+            questionsRemaining: remaining,
+            dailyLimit: userDailyLimit,
+            isLimitReached,
+            isPremiumUser: result.is_premium || false,
+            isGraduated: userDailyLimit < DEFAULT_LIMIT,
+            resetTime: result.reset_time ?? null,
+            loading: false,
+            error: null
+          })
+        }
 
-    } catch (error: any) {
-      console.error('Error fetching daily limit status:', error)
-      if (isMountedRef.current) {
-        setStatus(prev => ({
-          ...prev,
-          loading: false,
-          error: error.message
-        }))
+        lastFetchRef.current = now
+
+      } catch (error: any) {
+        console.error('Error fetching daily limit status:', error)
+        if (isMountedRef.current) {
+          setStatus(prev => ({
+            ...prev,
+            loading: false,
+            error: error.message
+          }))
+        }
       }
     }
+
+    // Envolver en promise compartida para deduplicar mounts simultáneos
+    inflightFetch = doFetch().finally(() => { inflightFetch = null })
   }, [user, userProfile, isPremium, isLegacy, supabase, fetchDynamicLimit])
 
   // Registrar respuesta (llamar DESPUES de guardar respuesta exitosamente)
@@ -241,10 +256,11 @@ export function useDailyQuestionLimit() {
     }
   }, [user, supabase, isPremium, isLegacy, status.isPremiumUser])
 
-  // Cargar estado inicial
+  // Cargar estado inicial — force=true para no usar cache viejo entre navegaciones
+  // inflightFetch deduplicata si múltiples componentes montan a la vez
   useEffect(() => {
     isMountedRef.current = true
-    fetchStatus()
+    fetchStatus(true)
 
     return () => {
       isMountedRef.current = false
