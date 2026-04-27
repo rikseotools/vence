@@ -17,10 +17,11 @@ import {
 // ============================================
 
 // Verbos/frases que indican intención de preparar o añadir una oposición
-const INTENT_VERBS = /(preparar|preparais|preparáis|prepareis|prepareis|tenemos|ten[eé]is|tienes|hay|estudiar|estudio|estudiais|añadir|anadir|agregar|incorporar|solicitar|ofreceis|ofrec[eé]is|conv[oó]cais|convocatoria\s+de|oposici[oó]n\s+de|oposici[oó]n\s+para|oposici[oó]n\s+a|oposiciones\s+de|quiero\s+preparar|me\s+interesa|me\s+gustaría\s+preparar|temario\s+(de|para)|cuando\s+(esta|tendr[eé]is)|previsto\s+que\s+(suban|añadan))/i
+const INTENT_VERBS = /(preparar|preparais|preparáis|prepareis|prepareis|tenemos|ten[eé]is|tienes|hay|estudiar|estudio|estudiais|añadir|anadir|agregar|incorporar|solicitar|ofreceis|ofrec[eé]is|conv[oó]cais|convocatoria\s+de|oposici[oó]n\s+de|oposici[oó]n\s+para|oposici[oó]n\s+a|oposiciones\s+de|quiero\s+preparar|me\s+interesa|me\s+gustar[ií]a\s+preparar|temario\s+(de|para)|cuando\s+(esta|tendr[eé]is)|previsto\s+que\s+(suban|añadan))/i
 
 // Roles/carreras que suelen formar nombres de oposición
-const ROLE_KEYWORDS = /(auxiliar|t[eé]cnico|tecnico|celador|celadora|enfermer[oa]|m[eé]dico|polic[ií]a|bombero|guardia|militar|tramitaci[oó]n|gestor|gestora|administrativo|administrativa|subalterno|ordenanza|conserje|maestr[oa]|profesor|bibliotecario|archivero|secretari[oa]|interventor|notario|registrador|abogado|ingeniero|arquitecto|veterinario|trabajador\s+social|educador|tcae|tecae|aux\s+(advo|admvo|admin)|aux\.\s*adm)/i
+// IMPORTANTE: \b al inicio para evitar falsos positivos con compuestos como "económico-administrativas"
+const ROLE_KEYWORDS = /\b(auxiliar|t[eé]cnico|tecnico|celador|celadora|enfermer[oa]|m[eé]dico|polic[ií]a|bombero|guardia|militar|tramitaci[oó]n|gestor|gestora|administrativo|administrativa|subalterno|ordenanza|conserje|maestr[oa]|profesor|bibliotecario|archivero|secretari[oa]|interventor|notario|registrador|abogado|ingeniero|arquitecto|veterinario|trabajador\s+social|educador|tcae|tecae|aux\s+(advo|admvo|admin)|aux\.\s*adm)/i
 
 // Topónimos / abreviaturas geográficas que indican una oposición concreta
 // (cuando aparecen junto a una palabra de intención sin role explícito)
@@ -46,8 +47,19 @@ export function detectOposicionIntent(message: string): boolean {
   const mentionsTemario = /temario/i.test(message)
   const isShortMessage = message.length <= 80
 
-  // Caso 1: rol + (verbo|oposición|mensaje corto) — patrón clásico
-  if (hasRole && (hasVerb || mentionsOposicion || isShortMessage)) return true
+  // Descartar falsos positivos: "administrativo/a" como adjetivo legal, no como rol
+  // "procedimiento administrativo", "silencio administrativo", "recurso contencioso-administrativo"
+  const roleInLegalContext = hasRole && /\b(procedimiento|silencio|acto|recurso|r[eé]gimen|derecho|contencioso|reclamaci[oó]n|potestad|jurisdicci[oó]n|v[ií]a|econ[oó]mico|regulaci[oó]n|regula)[\s-]+(administrativ)/i.test(message)
+  // Descartar si es claramente una pregunta sobre contenido (no solicitud de oposición)
+  const isContentQuestion = hasRole && /\b(art[ií]culo|qu[eé]\s+(quiere|significa|dice|establece|regula)|este\s+art|esta\s+ley)\b/i.test(message)
+  const effectiveHasRole = hasRole && !roleInLegalContext && !isContentQuestion
+
+  // Caso 1: rol + verbo de intención o mención explícita de "oposición" — patrón clásico
+  if (effectiveHasRole && (hasVerb || mentionsOposicion)) return true
+
+  // Caso 1b: rol + mensaje corto → probable solicitud de oposición
+  // Ej: "auxiliar administrativo madrid", "tcae murcia", "guardia civil"
+  if (effectiveHasRole && isShortMessage) return true
 
   // Caso 2: temario + región (sin role explícito) — "temario de Andalucía"
   if (mentionsTemario && hasRegion) return true

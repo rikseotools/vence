@@ -58,6 +58,47 @@ export class SearchDomain implements ChatDomain {
   }
 
   /**
+   * Comprueba si el mensaje es un follow-up genérico de una respuesta previa de search.
+   * Ej: "Que quiere decir?", "Y el art. 30 de esta ley", "Pero este artículo no regula...?"
+   */
+  private isSearchFollowUp(context: ChatContext): boolean {
+    const lastAssistant = [...context.messages].reverse().find(m => m.role === 'assistant')
+    if (!lastAssistant) return false
+
+    // Detectar si la respuesta anterior fue de search (contenido legal)
+    const searchMarkers = [
+      'Artículo',                // Cita de artículos
+      '/test/articulo?',         // Link a test de artículo
+      'Ley ',                    // Mención de ley
+      'Real Decreto',            // Mención de RD
+      'Ley Orgánica',            // Mención de LO
+      '📚 **Fuente:**',         // Fuente citada
+    ]
+    const wasSearch = searchMarkers.some(m => lastAssistant.content.includes(m))
+    if (!wasSearch) return false
+
+    // El mensaje actual debe parecer un follow-up (pregunta corta o referencia a lo anterior)
+    const msg = context.currentMessage.trim()
+    const followUpPatterns = [
+      /^(qu[eé]|qué)\s+(quiere|significa|es|dice|implica)/i,   // "Qué quiere decir?"
+      /^(y|pero)\s+(\w+\s+)?(el|la|los|las|este|esta|ese|esa)\s+art/i,  // "Y el art. 30...", "Y el el art. 30..."
+      /^(pero|y|entonces)\s+(\w+\s+)?(este|esta|ese|esa)\s+(art|ley|norma)/i, // "Pero este artículo..."
+      /^(pero|y|entonces)\s+(no|sí|si)\s+(regula|establece|dice|incluye|contempla)/i, // "Pero no regula...?"
+      /^(en|de)\s+(qu[eé]|qué)\s+(consiste|trata|habla|se\s+refiere)/i, // "En qué consiste?"
+      /^(cu[aá]l|cuál)\s+(es|son|ser[ií]a)/i,                  // "Cuál es la diferencia?"
+      /^(y|pero)\s+(cu[aá]l|qu[eé]|c[oó]mo)/i,                // "Y cuál...?", "Pero cómo...?"
+      /^(me\s+)?explic/i,                                       // "Explícame", "Me explicas"
+      /^(no\s+)?entiendo/i,                                     // "No entiendo"
+    ]
+    if (followUpPatterns.some(p => p.test(msg))) return true
+
+    // Mensajes cortos con signo de interrogación que refieren a lo anterior
+    if (msg.length <= 60 && msg.includes('?')) return true
+
+    return false
+  }
+
+  /**
    * Comprueba si la última respuesta del assistant fue de stats.
    * Usado para ceder el manejo a StatsDomain en follow-ups.
    */
@@ -154,6 +195,11 @@ export class SearchDomain implements ChatDomain {
 
     // Verificar indicadores de búsqueda
     if (searchIndicators.some(regex => regex.test(msg))) return true
+
+    // Follow-up de una respuesta previa de search
+    // Si la última respuesta fue de este dominio y el mensaje es una pregunta genérica
+    // ("Que quiere decir?", "Y el art. 30 de esta ley", "Pero este artículo no regula...?")
+    if (this.isSearchFollowUp(context)) return true
 
     // Patrones de recomendación de estudio (usan hot_articles)
     const studyPatterns = [
