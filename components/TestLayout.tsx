@@ -460,10 +460,19 @@ export default function TestLayout({
       setAdaptiveCatalog(questions.adaptiveCatalog)
       setAdaptiveMode(true)
 
+      // Contar preguntas en el catálogo (formato: claves directas "easy" o compuestas "topic:N:easy")
+      const catalogKeys = Object.keys(questions.adaptiveCatalog.neverSeen)
+      const totalNeverSeen = Object.values(questions.adaptiveCatalog.neverSeen)
+        .reduce((sum, bucket) => sum + (Array.isArray(bucket) ? bucket.length : 0), 0)
+      const totalAnswered = Object.values(questions.adaptiveCatalog.answered)
+        .reduce((sum, bucket) => sum + (Array.isArray(bucket) ? bucket.length : 0), 0)
+      const topicDist = questions.adaptiveCatalog.topicDistribution
       console.log('🧠 Catálogo recibido:', {
-        neverSeenEasy: questions.adaptiveCatalog.neverSeen.easy?.length ?? 0,
-        neverSeenMedium: questions.adaptiveCatalog.neverSeen.medium?.length ?? 0,
-        neverSeenHard: questions.adaptiveCatalog.neverSeen.hard?.length ?? 0
+        keys: catalogKeys.length,
+        totalNeverSeen,
+        totalAnswered,
+        topicDistribution: topicDist || 'N/A',
+        articlesSeen: questions.adaptiveCatalog.articlesSeen?.length || 0,
       })
     }
   }, [questions])
