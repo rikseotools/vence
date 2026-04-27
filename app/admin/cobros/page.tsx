@@ -165,7 +165,7 @@ export default function CobrosPage() {
         <div>
           <h1 className="text-2xl font-bold">Cobros y Liquidaciones</h1>
           <p className="text-sm text-gray-500">
-            Comisión Stripe: <span className="font-medium text-blue-600">{stripeCommission.pct}%</span>
+            Comisión Armando: <span className="font-medium text-blue-600">{stripeCommission.pct}%</span>
             {' '}(vol. neto 4 sem: {(stripeCommission.netVolume4w / 100).toFixed(2)}€)
           </p>
         </div>
