@@ -16,6 +16,7 @@ import type {
 } from './schemas'
 
 import { getValidExamPositions } from '@/lib/config/exam-positions'
+import { getOposicionByPositionType, EXCLUSIVE_QUESTION_TAGS } from '@/lib/config/oposiciones'
 import { buildOfficialExamFilter } from '@/lib/api/oposicion-scope/queries'
 import { logValidationError } from '@/lib/api/validation-error-log'
 
@@ -531,6 +532,17 @@ export async function getFilteredQuestions(
       primaryArticleIds,
     } = params
 
+    // 🏷️ Tag de oposición: filtra preguntas por tag cuando la oposición lo define.
+    // - Con questionTag (ej: PN): solo preguntas con ese tag
+    // - Sin questionTag: excluir preguntas de oposiciones exclusivas (ej: excluir tag PN)
+    const opoConfig = getOposicionByPositionType(positionType)
+    const questionTag = opoConfig?.questionTag ?? null
+    const tagFilter = questionTag
+      ? sql`${questions.tags} @> ARRAY[${sql.raw(`'${questionTag}'`)}]::text[]`
+      : EXCLUSIVE_QUESTION_TAGS.length > 0
+        ? sql`NOT (${questions.tags} && ARRAY[${sql.raw(EXCLUSIVE_QUESTION_TAGS.map(t => `'${t}'`).join(','))}]::text[])`
+        : sql`true`
+
     // 📋 CASO: Filtro por article UUIDs (content_scope)
     if (primaryArticleIds && primaryArticleIds.length > 0) {
       console.log(`📋 Modo content_scope: ${primaryArticleIds.length} artículos específicos`)
@@ -542,7 +554,8 @@ export async function getFilteredQuestions(
         .innerJoin(laws, eq(articles.lawId, laws.id))
         .where(and(
           eq(questions.isActive, true),
-          inArray(questions.primaryArticleId, primaryArticleIds)
+          inArray(questions.primaryArticleId, primaryArticleIds),
+          tagFilter,
         ))
         .orderBy(sql`RANDOM()`)
         .limit(numQuestions)
@@ -914,7 +927,9 @@ export async function getFilteredQuestions(
           difficultyMode && difficultyMode !== 'random'
             ? sql`(${questions.globalDifficultyCategory} = ${difficultyMode} OR
                   (${questions.globalDifficultyCategory} IS NULL AND ${questions.difficulty} = ${difficultyMode}))`
-            : sql`true`
+            : sql`true`,
+          // 🏷️ Filtro por tag: oposiciones con questionTag solo ven sus propias preguntas
+          tagFilter,
         ))
 
       const lawQuestions = await questionsQuery
@@ -1063,6 +1078,15 @@ export async function countFilteredQuestions(
       includeSharedOfficials,
     } = params
 
+    // 🏷️ Tag filter (same logic as getFilteredQuestions)
+    const opoConfigCount = getOposicionByPositionType(positionType)
+    const questionTagCount = opoConfigCount?.questionTag ?? null
+    const tagFilterCount = questionTagCount
+      ? sql`${questions.tags} @> ARRAY[${sql.raw(`'${questionTagCount}'`)}]::text[]`
+      : EXCLUSIVE_QUESTION_TAGS.length > 0
+        ? sql`NOT (${questions.tags} && ARRAY[${sql.raw(EXCLUSIVE_QUESTION_TAGS.map(t => `'${t}'`).join(','))}]::text[])`
+        : sql`true`
+
     // 1️⃣ Obtener topic_scope para este tema
     const topicScopeResults = await db
       .select({
@@ -1151,7 +1175,8 @@ export async function countFilteredQuestions(
                 }
                 return eq(questions.isOfficialExam, true)
               })()
-            : sql`true`
+            : sql`true`,
+          tagFilterCount,
         ))
 
       const count = Number(countResult[0]?.count || 0)

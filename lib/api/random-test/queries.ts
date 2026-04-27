@@ -2,6 +2,7 @@
 import { getDb } from '@/db/client'
 import { topics, topicScope, laws, questions, articles, tests, testQuestions } from '@/db/schema'
 import { eq, and, sql, inArray, desc, gte, isNotNull } from 'drizzle-orm'
+import { getOposicionByPositionType, EXCLUSIVE_QUESTION_TAGS } from '@/lib/config/oposiciones'
 import { unstable_cache } from 'next/cache'
 import type {
   OposicionSlug,
@@ -173,21 +174,17 @@ export async function checkQuestionAvailability(
   // Filtro de preguntas oficiales
   if (request.onlyOfficialQuestions) {
     conditions.push(eq(questions.isOfficialExam, true))
-    // Filtrar por exam_position solo si la oposición tiene oficiales propias Y no pide compartidas
+    // Filtrar por exam_position: solo mostrar oficiales de esta oposición
+    // Si includeSharedOfficials=true, no filtrar (muestra todas)
     if (!request.includeSharedOfficials) {
       const { getValidExamPositions } = await import('@/lib/config/exam-positions')
       const validPositions = getValidExamPositions(positionType)
       if (validPositions && validPositions.length > 0) {
-        // Verificar si realmente existen preguntas con esas posiciones
-        const hasOwn = await db.select({ c: sql<number>`count(*)::int` })
-          .from(questions)
-          .where(and(eq(questions.isActive, true), eq(questions.isOfficialExam, true), inArray(questions.examPosition, validPositions)))
-        if ((hasOwn[0]?.c || 0) > 0) {
-          const { buildOfficialExamFilter } = await import('@/lib/api/oposicion-scope/queries')
-          const filter = buildOfficialExamFilter(positionType)
-          if (filter) conditions.push(filter)
-        }
-        // Si no tiene oficiales propias → no filtrar → muestra compartidas
+        // Filtrar por las posiciones válidas de esta oposición
+        // Si no existen preguntas con estas posiciones, la query devuelve 0 — correcto
+        const { buildOfficialExamFilter } = await import('@/lib/api/oposicion-scope/queries')
+        const filter = buildOfficialExamFilter(positionType)
+        if (filter) conditions.push(filter)
       }
     }
   }
@@ -298,6 +295,15 @@ export async function generateRandomTest(
   const db = getDb()
   const positionType = getPositionType(request.oposicion)
 
+  // 🏷️ Tag filter
+  const opoConfig = getOposicionByPositionType(positionType)
+  const questionTag = opoConfig?.questionTag ?? null
+  const tagFilter = questionTag
+    ? sql`${questions.tags} @> ARRAY[${sql.raw(`'${questionTag}'`)}]::text[]`
+    : EXCLUSIVE_QUESTION_TAGS.length > 0
+      ? sql`NOT (${questions.tags} && ARRAY[${sql.raw(EXCLUSIVE_QUESTION_TAGS.map(t => `'${t}'`).join(','))}]::text[])`
+      : sql`true`
+
   const allQuestions: GeneratedQuestion[] = []
 
   // Obtener preguntas de cada tema seleccionado
@@ -335,6 +341,7 @@ export async function generateRandomTest(
         eq(questions.isActive, true),
         eq(articles.lawId, mapping.lawId),
         ...(hasSpecificArticles ? [inArray(articles.articleNumber, mapping.articleNumbers!)] : []),
+        tagFilter,
       ]
 
       // Filtro de dificultad

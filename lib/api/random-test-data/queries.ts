@@ -2,6 +2,7 @@
 import { getDb } from '@/db/client'
 import { topics, topicScope, laws, questions, articles, tests, testQuestions } from '@/db/schema'
 import { eq, and, sql, inArray, gte } from 'drizzle-orm'
+import { getOposicionByPositionType, EXCLUSIVE_QUESTION_TAGS } from '@/lib/config/oposiciones'
 import type {
   GetRandomTestDataResponse,
   ThemeQuestionCounts,
@@ -87,6 +88,15 @@ async function getThemeQuestionCounts(
 ): Promise<ThemeQuestionCounts> {
   const counts: ThemeQuestionCounts = {}
 
+  // 🏷️ Tag filter
+  const opoConfig = getOposicionByPositionType(positionType)
+  const questionTag = opoConfig?.questionTag ?? null
+  const tagFilter = questionTag
+    ? sql`${questions.tags} @> ARRAY[${sql.raw(`'${questionTag}'`)}]::text[]`
+    : EXCLUSIVE_QUESTION_TAGS.length > 0
+      ? sql`NOT (${questions.tags} && ARRAY[${sql.raw(EXCLUSIVE_QUESTION_TAGS.map(t => `'${t}'`).join(','))}]::text[])`
+      : sql`true`
+
   // Obtener todos los mapeos de topic_scope para esta oposición
   const allMappings = await db
     .select({
@@ -133,7 +143,8 @@ async function getThemeQuestionCounts(
         .where(and(
           eq(questions.isActive, true),
           eq(articles.lawId, mapping.lawId),
-          inArray(articles.articleNumber, mapping.articleNumbers)
+          inArray(articles.articleNumber, mapping.articleNumbers),
+          tagFilter,
         ))
 
       totalCount += Number(questionCount[0]?.count || 0)
@@ -235,6 +246,15 @@ export async function getDetailedThemeStats(
     const positionType = OPOSICION_TO_POSITION_TYPE[oposicion]
     const topicNumber = getTopicNumberFromThemeId(themeId, oposicion)
 
+    // 🏷️ Tag filter
+    const opoConfig = getOposicionByPositionType(positionType)
+    const questionTag = opoConfig?.questionTag ?? null
+    const tagFilter = questionTag
+      ? sql`${questions.tags} @> ARRAY[${sql.raw(`'${questionTag}'`)}]::text[]`
+      : EXCLUSIVE_QUESTION_TAGS.length > 0
+        ? sql`NOT (${questions.tags} && ARRAY[${sql.raw(EXCLUSIVE_QUESTION_TAGS.map(t => `'${t}'`).join(','))}]::text[])`
+        : sql`true`
+
     // 1. Obtener mapeo del tema
     const mappings = await db
       .select({
@@ -272,7 +292,8 @@ export async function getDetailedThemeStats(
         .where(and(
           eq(questions.isActive, true),
           eq(articles.lawId, mapping.lawId),
-          inArray(articles.articleNumber, mapping.articleNumbers)
+          inArray(articles.articleNumber, mapping.articleNumbers),
+          tagFilter,
         ))
 
       for (const q of questionResults) {

@@ -69,6 +69,7 @@ const OposicionSchema = z.object({
   navLinks: z.array(NavLinkSchema),
   officialExams: z.array(OfficialExamConvocatoriaSchema).optional(),
   hasSpellingTest: z.boolean().optional(),
+  questionTag: z.string().optional(), // Si se define, solo se muestran preguntas con este tag (ej: 'PN' para Policía Nacional)
 })
 
 // ============================================
@@ -2749,6 +2750,7 @@ export const OPOSICIONES: Oposicion[] = [
     badge: 'C1',
     color: 'blue',
     administracion: 'estado',
+    questionTag: 'PN',
     blocks: [
       { id: 'bloque1', title: 'Bloque A: Ciencias Jurídicas', subtitle: '26 temas de Derecho', icon: '⚖️',
         themes: [
@@ -3259,5 +3261,14 @@ export const OPOSICIONES_CONFIG: Record<string, {
 export function getOposicionConfig(identifier: string) {
   return getOposicion(identifier) ? OPOSICIONES_CONFIG[identifier] || Object.values(OPOSICIONES_CONFIG).find(c => c.slug === identifier) || null : null
 }
+
+/**
+ * Tags exclusivos de oposiciones con questionTag.
+ * Las oposiciones sin questionTag deben excluir preguntas con estos tags
+ * para no mezclar formatos (ej: 3 opciones de PN en oposiciones de 4 opciones).
+ */
+export const EXCLUSIVE_QUESTION_TAGS: string[] = OPOSICIONES
+  .map(o => o.questionTag)
+  .filter((t): t is string => !!t)
 
 export default OPOSICIONES

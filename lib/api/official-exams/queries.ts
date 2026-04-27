@@ -82,6 +82,7 @@ const oposicionToExamPosition: Record<string, string> = {
   'auxiliar-administrativo-andalucia': 'auxiliar_administrativo_andalucia',
   'auxiliar-administrativo-valencia': 'auxiliar_administrativo_valencia',
   'auxiliar-administrativo-ayuntamiento-valencia': 'auxiliar_administrativo_ayuntamiento_valencia',
+  'policia-nacional': 'policia_nacional',
 }
 
 // Fallback: exam_source LIKE pattern for psychometric_questions (which lacks exam_position column)
@@ -96,6 +97,7 @@ const oposicionToExamSourcePattern: Record<string, string> = {
   'gestion-procesal': '%Gestión%',
   'auxiliar-administrativo-valencia': '%Auxiliar Administrativo GVA%',
   'auxiliar-administrativo-ayuntamiento-valencia': '%Auxiliar Administrativo Ayuntamiento Valencia%',
+  'policia-nacional': '%Policía Nacional%',
 }
 
 /**

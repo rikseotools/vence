@@ -72,6 +72,17 @@ export const EXAM_POSITION_MAP: Record<string, string[]> = {
     'auxiliar_administrativo_ayuntamiento_valencia',
     'auxiliar administrativo ayuntamiento valencia',
   ],
+  'guardia_civil': [
+    'guardia_civil',
+    'guardia civil',
+    'escala cabos y guardias',
+  ],
+  'policia_nacional': [
+    'policia_nacional',
+    'policía nacional',
+    'policia nacional',
+    'escala basica policia nacional',
+  ],
 }
 
 /**
@@ -103,6 +114,8 @@ export const HOT_ARTICLE_TARGET_MAP: Record<string, string[]> = {
   'auxiliar_administrativo_valencia': ['auxiliar-administrativo-valencia'],
   'auxiliar-administrativo-ayuntamiento-valencia': ['auxiliar-administrativo-ayuntamiento-valencia'],
   'auxiliar_administrativo_ayuntamiento_valencia': ['auxiliar-administrativo-ayuntamiento-valencia'],
+  'policia-nacional': ['policia-nacional'],
+  'policia_nacional': ['policia-nacional'],
 }
 
 /**
