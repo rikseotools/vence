@@ -107,8 +107,16 @@ function getExamStat(
 
 export default function TestHubClient({ oposicion, oposicionInfo, bloques, basePath, positionType, officialExams, hasSpellingTest }: Props) {
   const { user, loading } = useAuth() as { user: { id: string } | null; loading: boolean }
-  const [userStats, setUserStats] = useState<Record<number, ThemeStats>>({})
-  const [statsLoading, setStatsLoading] = useState(false)
+  // Inicializar stats desde localStorage (instantáneo) y refrescar desde API
+  const [userStats, setUserStats] = useState<Record<number, ThemeStats>>(() => {
+    if (typeof window === 'undefined') return {}
+    try {
+      const cached = localStorage.getItem(`theme-stats:${oposicion}`)
+      if (cached) return JSON.parse(cached)
+    } catch { /* ignore */ }
+    return {}
+  })
+  const [statsLoading, setStatsLoading] = useState(true)
   const [showOposicionModal, setShowOposicionModal] = useState(false)
   const [sortBy, setSortBy] = useState<SortOption>('tema')
   const [showStatsInfo, setShowStatsInfo] = useState(false)
@@ -153,6 +161,8 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
           }
         })
         setUserStats(themeStats)
+        // Persistir en localStorage para carga instantánea en siguiente visita
+        try { localStorage.setItem(`theme-stats:${oposicion}`, JSON.stringify(themeStats)) } catch { /* ignore */ }
       }
     } catch (error) {
       console.warn('Error cargando estadísticas:', error)
@@ -367,6 +377,7 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
                   expanded={expandedBlocks[bloque.id] ?? false}
                   onToggle={toggleBlock}
                   userStats={userStats}
+                  statsLoading={statsLoading}
                   getThemeColor={getThemeColor}
                   onInfoClick={() => setShowStatsInfo(true)}
                 />
@@ -600,6 +611,7 @@ interface BlockSectionProps {
   expanded: boolean
   onToggle: (blockId: string) => void
   userStats: Record<number, ThemeStats>
+  statsLoading: boolean
   getThemeColor: (topicNumber: number) => string
   onInfoClick: () => void
 }
@@ -613,6 +625,7 @@ function BlockSection({
   expanded,
   onToggle,
   userStats,
+  statsLoading,
   getThemeColor,
   onInfoClick,
 }: BlockSectionProps) {
@@ -655,6 +668,7 @@ function BlockSection({
               topic={topic}
               basePath={basePath}
               stats={userStats[topic.topicNumber]}
+              statsLoading={statsLoading}
               color={getThemeColor(topic.topicNumber)}
               onInfoClick={onInfoClick}
             />
@@ -673,11 +687,12 @@ interface ThemeLinkProps {
   topic: Topic
   basePath: string
   stats: ThemeStats | undefined
+  statsLoading: boolean
   color: string
   onInfoClick: () => void
 }
 
-function ThemeLink({ topic, basePath, stats, color, onInfoClick }: ThemeLinkProps) {
+function ThemeLink({ topic, basePath, stats, statsLoading, color, onInfoClick }: ThemeLinkProps) {
   const hasStats = !!stats
   const href = `${basePath}/${topic.topicNumber}`
 
@@ -728,7 +743,11 @@ function ThemeLink({ topic, basePath, stats, color, onInfoClick }: ThemeLinkProp
       <div className="flex items-center justify-between">
         <span>Tema {topic.displayNumber}: {shortTitle}</span>
         <div className="flex items-center space-x-3">
-          {hasStats ? (
+          {statsLoading && !hasStats ? (
+            <span className="bg-gray-200 animate-pulse px-3 py-1 rounded-full text-sm font-bold text-transparent">
+              --% (-/-)
+            </span>
+          ) : hasStats ? (
             <>
               <div className="flex items-center space-x-1">
                 <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-bold">
