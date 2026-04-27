@@ -202,7 +202,20 @@ Revalida tags `temario` + `landing` de golpe. No requiere body.
 curl -X POST https://www.vence.es/api/admin/revalidate-temario
 ```
 
-### Opción 4: Redeploy en Vercel
+### Opción 4: Desarrollo local (IMPORTANTE)
+
+`revalidateTag()` y el endpoint `/api/admin/revalidate` **NO funcionan en el dev server local**. La caché de `unstable_cache` persiste en `.next/cache` incluso entre reinicios de `npm run dev`.
+
+Para invalidar en local:
+
+```bash
+# Parar el dev server, borrar .next y reiniciar
+rm -rf .next && npm run dev
+```
+
+Sin este paso, la lista de `/leyes` (y temarios, teoría, etc.) seguirá mostrando datos viejos aunque hayas añadido preguntas o leyes nuevas en la BD.
+
+### Opción 5: Redeploy en Vercel
 
 Un redeploy completo también limpia todas las cachés, pero es más lento.
 
