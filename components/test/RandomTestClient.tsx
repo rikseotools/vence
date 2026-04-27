@@ -439,13 +439,13 @@ export default function RandomTestClient({
                   disabled={onlyOfficialQuestions}
                   className="rounded border-gray-300 text-yellow-600 focus:ring-yellow-500"
                 />
-                <span className="text-sm font-medium text-gray-700">⭐ Enfocar en artículos imprescindibles de <strong>{config.shortName}</strong></span>
+                <span className="text-sm font-medium text-gray-700">⭐ Artículos imprescindibles de <strong>{config.shortName}</strong></span>
               </label>
 
               {focusEssentialArticles && (
                 <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                   <p className="text-sm font-bold text-yellow-800">Artículos Imprescindibles Activado</p>
-                  <p className="text-xs text-yellow-700">Solo artículos que aparecen frecuentemente en exámenes de {config.shortName}</p>
+                  <p className="text-xs text-yellow-700">Solo preguntas de los artículos que más se repiten en exámenes oficiales de {config.shortName}. Ideal para centrarte en lo que más cae.</p>
                 </div>
               )}
 
@@ -458,8 +458,13 @@ export default function RandomTestClient({
                     onChange={(e) => setAdaptiveMode(e.target.checked)}
                     className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                   />
-                  <span className="text-sm font-medium text-gray-700">✨ Modo adaptativo anti-frustracion</span>
+                  <span className="text-sm font-medium text-gray-700">✨ Modo adaptativo</span>
                 </label>
+              )}
+              {selectedThemes.length === 1 && adaptiveMode && (
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-xs text-blue-700">Prioriza preguntas que no has visto y artículos donde tienes menor acierto, para optimizar tu estudio.</p>
+                </div>
               )}
             </div>
 
