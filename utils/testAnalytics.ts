@@ -349,9 +349,9 @@ export const updateUserProgressDirect = async (
       .select('*')
       .eq('user_id', userId)
       .eq('topic_id', topicId)
-      .single()
+      .maybeSingle()
 
-    if (checkError && checkError.code !== 'PGRST116') {
+    if (checkError) {
       console.error('❌ Error verificando user_progress existente:', checkError)
       return
     }
@@ -451,9 +451,9 @@ export const registerQuestionsInHistory = async (
         .select('id, total_attempts, correct_attempts')
         .eq('user_id', userId)
         .eq('question_id', questionId)
-        .single()
+        .maybeSingle()
 
-      if (fetchError && fetchError.code !== 'PGRST116') {
+      if (fetchError) {
         console.error(`❌ Error buscando history para ${questionId}:`, fetchError)
         continue
       }

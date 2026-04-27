@@ -192,7 +192,7 @@ async function _POST(request: NextRequest) {
           .select('id, total_attempts, correct_attempts')
           .eq('user_id', user.id)
           .eq('question_id', result.questionId)
-          .single()
+          .maybeSingle()
 
         if (existing) {
           // Update existing
@@ -238,7 +238,7 @@ async function _POST(request: NextRequest) {
           .select('id, attempts, correct_attempts')
           .eq('user_id', user.id)
           .eq('question_id', result.questionId)
-          .single()
+          .maybeSingle()
 
         if (existing) {
           // Update existing

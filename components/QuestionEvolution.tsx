@@ -515,7 +515,7 @@ export default function QuestionEvolution({ userId, questionId, currentResult }:
           .select('first_attempt_at, last_attempt_at, total_attempts')
           .eq('user_id', userId)
           .eq('question_id', questionId)
-          .single()
+          .maybeSingle()
 
         if (histError) {
           console.error('Error fetching question history:', histError)
