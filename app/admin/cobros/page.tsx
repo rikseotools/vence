@@ -10,6 +10,7 @@ export default function CobrosPage() {
   const [loading, setLoading] = useState(true)
   const [apiError, setApiError] = useState<string | null>(null)
   const [stripeCommission, setStripeCommission] = useState({ pct: 10, netVolume4w: 0 })
+  const [eurUsdRate, setEurUsdRate] = useState<number | null>(null)
 
   useEffect(() => {
     loadData()
@@ -48,6 +49,13 @@ export default function CobrosPage() {
         console.error('Error loading transfers:', dbError)
       }
       setPayoutTransfers(transfers || [])
+
+      // Tipo de cambio EUR→USD
+      try {
+        const fxRes = await fetch('https://api.frankfurter.app/latest?from=EUR&to=USD')
+        const fxData = await fxRes.json()
+        if (fxData.rates?.USD) setEurUsdRate(fxData.rates.USD)
+      } catch {}
     } catch (err: any) {
       if (err.name === 'AbortError') {
         setApiError('Timeout: La API de Stripe tardó demasiado')
@@ -264,12 +272,19 @@ export default function CobrosPage() {
                             </span>
                           )}
                           {isPayout && payoutStatus.sent && !payoutStatus.confirmed && (
-                            <button
-                              onClick={() => markAsConfirmed(t.source)}
-                              className="ml-3 px-3 py-1 bg-yellow-500 text-yellow-900 text-xs rounded hover:bg-yellow-600 transition font-medium"
-                            >
-                              Confirmar recibido
-                            </button>
+                            <div className="ml-3 flex items-center gap-2">
+                              {eurUsdRate && (
+                                <span className="text-yellow-800 text-xs">
+                                  Aprox. ${(manuelAmount / 100 * eurUsdRate).toFixed(2)}
+                                </span>
+                              )}
+                              <button
+                                onClick={() => markAsConfirmed(t.source)}
+                                className="px-3 py-1 bg-yellow-500 text-yellow-900 text-xs rounded hover:bg-yellow-600 transition font-medium"
+                              >
+                                Confirmar recibido
+                              </button>
+                            </div>
                           )}
                           {isPayout && payoutStatus.confirmed && (
                             <span className="ml-3 px-3 py-1 bg-green-100 text-green-800 text-xs rounded font-medium">
@@ -283,7 +298,7 @@ export default function CobrosPage() {
                         {isPayout && payoutStatus.sent && (
                           <div className="flex items-center justify-between px-4 py-2 bg-green-50 border-t border-green-200 text-sm">
                             <span className="text-green-800">
-                              Manuel: <strong>{formatCurrency(manuelAmount)}</strong> · Armando: <strong>{formatCurrency(armandoAmount)}</strong>
+                              Manuel: <strong>{formatCurrency(manuelAmount)}</strong>{eurUsdRate ? <span className="text-green-600"> (Aprox. ${(manuelAmount / 100 * eurUsdRate).toFixed(2)} USD)</span> : null} · Armando: <strong>{formatCurrency(armandoAmount)}</strong>
                               {(payoutStatus as any).cryptoTxHash && (
                                 <span className="ml-2 text-green-600 text-xs">
                                   (USDT: ${(payoutStatus as any).cryptoAmount?.toFixed(2)} · <a href={`https://bscscan.com/tx/${(payoutStatus as any).cryptoTxHash}`} target="_blank" rel="noopener noreferrer" className="underline">tx</a>)
