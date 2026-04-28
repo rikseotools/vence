@@ -1,17 +1,12 @@
 // lib/api/daily-limit/config.ts
 // Graduated daily limit configuration
 //
-// Rules:
-// 1. New users (0-30 days): 25 questions/day (full experience, natural conversion window)
-// 2. After 30 days + 3 limit hits: graduated reduction kicks in
-// 3. The longer they stay free AND actively hit the limit, the lower their daily quota
+// All tiers set to 25 questions/day (uniform limit for all free users).
+// The graduated structure is preserved so it can be re-enabled with different
+// values if needed — just change the dailyLimit per tier.
 //
-// Data behind these numbers (April 2026 analysis):
-// - P80 conversion: 29 days (80% of paying users convert within 29 days)
-// - P90 conversion: 54 days
-// - P95 conversion: 82 days
-// - Premium users who hit limit before paying: avg 5 times, 67% only 1-3 times
-// - Conversion rate after hitting limit: 6% (current modal alone is not enough)
+// Previously had 15/day (31-60 days) and 10/day (61+ days) but analysis showed
+// it punished engaged users without driving conversions (April 2026).
 
 import type { GraduatedLimitConfig } from './schemas'
 
@@ -28,13 +23,13 @@ export const GRADUATED_LIMIT_CONFIG: GraduatedLimitConfig = {
     {
       minDaysRegistered: 31,
       maxDaysRegistered: 61,
-      dailyLimit: 15,
-      label: 'first-reduction',
+      dailyLimit: 25,
+      label: 'established',
     },
     {
       minDaysRegistered: 61,
       maxDaysRegistered: null,
-      dailyLimit: 10,
+      dailyLimit: 25,
       label: 'veteran',
     },
   ],

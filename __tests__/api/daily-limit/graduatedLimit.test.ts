@@ -151,8 +151,8 @@ describe('Graduated Daily Limit System', () => {
     it('expected tier values match the spec', () => {
       const tiers = GRADUATED_LIMIT_CONFIG.tiers
       expect(tiers[0]).toMatchObject({ minDaysRegistered: 0, maxDaysRegistered: 31, dailyLimit: 25, label: 'onboarding' })
-      expect(tiers[1]).toMatchObject({ minDaysRegistered: 31, maxDaysRegistered: 61, dailyLimit: 15, label: 'first-reduction' })
-      expect(tiers[2]).toMatchObject({ minDaysRegistered: 61, maxDaysRegistered: null, dailyLimit: 10, label: 'veteran' })
+      expect(tiers[1]).toMatchObject({ minDaysRegistered: 31, maxDaysRegistered: 61, dailyLimit: 25, label: 'established' })
+      expect(tiers[2]).toMatchObject({ minDaysRegistered: 61, maxDaysRegistered: null, dailyLimit: 25, label: 'veteran' })
     })
 
     it('PREMIUM_PLAN_TYPES includes all expected types', () => {
@@ -264,79 +264,80 @@ describe('Graduated Daily Limit System', () => {
       expect(r.tierLabel).toBe('onboarding')
     })
 
-    it('day 31: first-reduction, 110/day (exact transition)', () => {
+    it('day 31: established, 25/day (no reduction)', () => {
       const r = calculateDynamicLimit(makeProfile({ registrationAgeDays: 31, totalLimitHits: HITS }))
-      expect(r.dailyLimit).toBe(15)
-      expect(r.tierLabel).toBe('first-reduction')
-      expect(r.isGraduated).toBe(true)
+      expect(r.dailyLimit).toBe(25)
+      expect(r.tierLabel).toBe('established')
+      // isGraduated is false because tier limit equals default
+      expect(r.isGraduated).toBe(false)
     })
 
-    it('day 32: first-reduction, 110/day', () => {
+    it('day 32: established, 25/day', () => {
       const r = calculateDynamicLimit(makeProfile({ registrationAgeDays: 32, totalLimitHits: HITS }))
-      expect(r.dailyLimit).toBe(15)
+      expect(r.dailyLimit).toBe(25)
     })
 
-    // First Reduction → Second Reduction boundary at day 61
-    it('day 59: first-reduction, 110/day', () => {
+    // Established → Veteran boundary at day 61
+    it('day 59: established, 25/day', () => {
       const r = calculateDynamicLimit(makeProfile({ registrationAgeDays: 59, totalLimitHits: HITS }))
-      expect(r.dailyLimit).toBe(15)
+      expect(r.dailyLimit).toBe(25)
     })
 
-    it('day 60: first-reduction, 110/day (veteran boundary)', () => {
+    it('day 60: established, 25/day (veteran boundary)', () => {
       const r = calculateDynamicLimit(makeProfile({ registrationAgeDays: 60, totalLimitHits: HITS }))
-      expect(r.dailyLimit).toBe(15)
-      expect(r.tierLabel).toBe('first-reduction')
+      expect(r.dailyLimit).toBe(25)
+      expect(r.tierLabel).toBe('established')
     })
 
-    it('day 61: veteran, 10/day (exact transition)', () => {
+    it('day 61: veteran, 25/day (no reduction)', () => {
       const r = calculateDynamicLimit(makeProfile({ registrationAgeDays: 61, totalLimitHits: HITS }))
-      expect(r.dailyLimit).toBe(10)
+      expect(r.dailyLimit).toBe(25)
       expect(r.tierLabel).toBe('veteran')
-      expect(r.isGraduated).toBe(true)
+      expect(r.isGraduated).toBe(false)
     })
 
-    it('day 62: veteran, 10/day', () => {
+    it('day 62: veteran, 25/day', () => {
       const r = calculateDynamicLimit(makeProfile({ registrationAgeDays: 62, totalLimitHits: HITS }))
-      expect(r.dailyLimit).toBe(10)
+      expect(r.dailyLimit).toBe(25)
     })
 
-    it('day 89: veteran, 10/day', () => {
+    it('day 89: veteran, 25/day', () => {
       const r = calculateDynamicLimit(makeProfile({ registrationAgeDays: 89, totalLimitHits: HITS }))
-      expect(r.dailyLimit).toBe(10)
+      expect(r.dailyLimit).toBe(25)
     })
 
-    it('day 90: second-reduction, 10/day (veteran boundary)', () => {
+    it('day 90: veteran, 25/day', () => {
       const r = calculateDynamicLimit(makeProfile({ registrationAgeDays: 90, totalLimitHits: HITS }))
-      expect(r.dailyLimit).toBe(10)
+      expect(r.dailyLimit).toBe(25)
       expect(r.tierLabel).toBe('veteran')
     })
 
-    it('day 61 is now veteran (merged with old second-reduction)', () => {
+    it('day 91: veteran, 25/day', () => {
       const r = calculateDynamicLimit(makeProfile({ registrationAgeDays: 91, totalLimitHits: HITS }))
-      expect(r.dailyLimit).toBe(10)
+      expect(r.dailyLimit).toBe(25)
       expect(r.tierLabel).toBe('veteran')
-      expect(r.isGraduated).toBe(true)
+      expect(r.isGraduated).toBe(false)
     })
 
-    it('day 92: veteran, 10/day', () => {
+    it('day 92: veteran, 25/day', () => {
       const r = calculateDynamicLimit(makeProfile({ registrationAgeDays: 92, totalLimitHits: HITS }))
-      expect(r.dailyLimit).toBe(10)
+      expect(r.dailyLimit).toBe(25)
     })
 
-    // Veteran stays at 10/day indefinitely
-    it('day 180: veteran, 10/day', () => {
+    // Veteran stays at 25/day indefinitely
+    it('day 180: veteran, 25/day', () => {
       const r = calculateDynamicLimit(makeProfile({ registrationAgeDays: 180, totalLimitHits: HITS }))
-      expect(r.dailyLimit).toBe(10)
+      expect(r.dailyLimit).toBe(25)
     })
 
-    it('day 365: veteran, 10/day', () => {
+    it('day 365: veteran, 25/day', () => {
       const r = calculateDynamicLimit(makeProfile({ registrationAgeDays: 365, totalLimitHits: HITS }))
-      expect(r.dailyLimit).toBe(10)
+      expect(r.dailyLimit).toBe(25)
     })
 
-    it('day 1000: veteran, 10/day', () => {
+    it('day 1000: veteran, 25/day', () => {
       const r = calculateDynamicLimit(makeProfile({ registrationAgeDays: 1000, totalLimitHits: HITS }))
-      expect(r.dailyLimit).toBe(10)
+      expect(r.dailyLimit).toBe(25)
     })
   })
 
@@ -351,31 +352,30 @@ describe('Graduated Daily Limit System', () => {
       expect(r.tierLabel).toBeNull()
     })
 
-    it('3 hits at day 50: graduated (110/day)', () => {
+    it('3 hits at day 50: established tier but no reduction (25/day)', () => {
       const r = calculateDynamicLimit(makeProfile({ registrationAgeDays: 50, totalLimitHits: 3 }))
-      expect(r.dailyLimit).toBe(15)
-      expect(r.isGraduated).toBe(true)
-      expect(r.tierLabel).toBe('first-reduction')
-    })
-
-    it('4 hits at day 50: graduated (110/day)', () => {
-      const r = calculateDynamicLimit(makeProfile({ registrationAgeDays: 50, totalLimitHits: 4 }))
-      expect(r.dailyLimit).toBe(15)
-      expect(r.isGraduated).toBe(true)
-    })
-
-    it('3 hits at day 20: in onboarding, still 210/day (graduation doesnt help during onboarding)', () => {
-      const r = calculateDynamicLimit(makeProfile({ registrationAgeDays: 20, totalLimitHits: 3 }))
       expect(r.dailyLimit).toBe(25)
-      expect(r.tierLabel).toBe('onboarding')
-      // isGraduated is false because the tier limit equals the default
+      expect(r.isGraduated).toBe(false)
+      expect(r.tierLabel).toBe('established')
+    })
+
+    it('4 hits at day 50: established tier but no reduction (25/day)', () => {
+      const r = calculateDynamicLimit(makeProfile({ registrationAgeDays: 50, totalLimitHits: 4 }))
+      expect(r.dailyLimit).toBe(25)
       expect(r.isGraduated).toBe(false)
     })
 
-    it('3 hits at day 91: veteran (10/day)', () => {
+    it('3 hits at day 20: in onboarding, 25/day', () => {
+      const r = calculateDynamicLimit(makeProfile({ registrationAgeDays: 20, totalLimitHits: 3 }))
+      expect(r.dailyLimit).toBe(25)
+      expect(r.tierLabel).toBe('onboarding')
+      expect(r.isGraduated).toBe(false)
+    })
+
+    it('3 hits at day 91: veteran, 25/day (no reduction)', () => {
       const r = calculateDynamicLimit(makeProfile({ registrationAgeDays: 91, totalLimitHits: 3 }))
-      expect(r.dailyLimit).toBe(10)
-      expect(r.isGraduated).toBe(true)
+      expect(r.dailyLimit).toBe(25)
+      expect(r.isGraduated).toBe(false)
     })
   })
 
@@ -403,7 +403,7 @@ describe('Graduated Daily Limit System', () => {
       expect(r.tierLabel).toBeNull()
     })
 
-    it('graduated free returns a tier label string', () => {
+    it('free user with hits in non-onboarding tier returns a tier label string', () => {
       const r = calculateDynamicLimit(makeProfile({ totalLimitHits: 5, registrationAgeDays: 50 }))
       expect(typeof r.tierLabel).toBe('string')
       expect(r.tierLabel!.length).toBeGreaterThan(0)
@@ -437,16 +437,15 @@ describe('Graduated Daily Limit System', () => {
       expect(r.dailyLimit).toBe(25)
     })
 
-    it('very high registrationAgeDays (10000 days) with hits: veteran floor', () => {
+    it('very high registrationAgeDays (10000 days) with hits: veteran at 25/day', () => {
       const r = calculateDynamicLimit(makeProfile({ registrationAgeDays: 10000, totalLimitHits: 100 }))
-      expect(r.dailyLimit).toBe(10)
+      expect(r.dailyLimit).toBe(25)
       expect(r.tierLabel).toBe('veteran')
     })
 
-    it('very high totalLimitHits (1000) at day 31: still just first-reduction', () => {
+    it('very high totalLimitHits (1000) at day 31: established at 25/day', () => {
       const r = calculateDynamicLimit(makeProfile({ registrationAgeDays: 31, totalLimitHits: 1000 }))
-      expect(r.dailyLimit).toBe(15)
-      // Number of hits doesn't accelerate reduction, only age does
+      expect(r.dailyLimit).toBe(25)
     })
 
     it('isPremium overrides everything even with null planType', () => {
@@ -454,9 +453,9 @@ describe('Graduated Daily Limit System', () => {
       expect(r.dailyLimit).toBe(999)
     })
 
-    it('planType free with isPremium false: normal graduated logic', () => {
+    it('planType free with isPremium false: 25/day regardless of tier', () => {
       const r = calculateDynamicLimit(makeProfile({ isPremium: false, planType: 'free', registrationAgeDays: 50, totalLimitHits: 5 }))
-      expect(r.dailyLimit).toBe(15)
+      expect(r.dailyLimit).toBe(25)
     })
   })
 
@@ -492,29 +491,13 @@ describe('Graduated Daily Limit System', () => {
       })
     })
 
-    it('Simulation: freeloader who never pays — progressive reduction', () => {
+    it('Simulation: long-term free user — uniform 25/day at all tiers', () => {
       const journey = simulateJourney(10, [0, 15, 30, 31, 45, 60, 61, 75, 90, 91, 120, 180, 365])
 
-      // Day 0-30: onboarding, 210/day
-      expect(journey.find(s => s.day === 0)!.limit).toBe(25)
-      expect(journey.find(s => s.day === 15)!.limit).toBe(25)
-      expect(journey.find(s => s.day === 30)!.limit).toBe(25)
-
-      // Day 31-60: first reduction, 110/day
-      expect(journey.find(s => s.day === 31)!.limit).toBe(15)
-      expect(journey.find(s => s.day === 45)!.limit).toBe(15)
-      expect(journey.find(s => s.day === 60)!.limit).toBe(15)
-
-      // Day 61-90: second reduction, 10/day
-      expect(journey.find(s => s.day === 61)!.limit).toBe(10)
-      expect(journey.find(s => s.day === 75)!.limit).toBe(10)
-      expect(journey.find(s => s.day === 90)!.limit).toBe(10)
-
-      // Day 91+: veteran, 10/day
-      expect(journey.find(s => s.day === 91)!.limit).toBe(10)
-      expect(journey.find(s => s.day === 120)!.limit).toBe(10)
-      expect(journey.find(s => s.day === 180)!.limit).toBe(10)
-      expect(journey.find(s => s.day === 365)!.limit).toBe(10)
+      // All tiers now have the same limit: 25/day
+      journey.forEach(step => {
+        expect(step.limit).toBe(25)
+      })
     })
 
     it('Simulation: casual user who hits limit only twice — never reduced', () => {
@@ -526,37 +509,30 @@ describe('Graduated Daily Limit System', () => {
       })
     })
 
-    it('Simulation: user hits limit exactly 3 times on day 60 — reduction kicks in', () => {
+    it('Simulation: user hits limit exactly 3 times — stays at 25/day across all tiers', () => {
       const journey = simulateJourney(3, [29, 30, 31, 59, 60, 61])
 
-      // Before transition: 25
-      expect(journey.find(s => s.day === 29)!.limit).toBe(25)
-      expect(journey.find(s => s.day === 30)!.limit).toBe(25)
-      // After transition: 15
-      expect(journey.find(s => s.day === 31)!.limit).toBe(15)
-      expect(journey.find(s => s.day === 59)!.limit).toBe(15)
-      expect(journey.find(s => s.day === 60)!.limit).toBe(15)
-      // Next transition: 10
-      expect(journey.find(s => s.day === 61)!.limit).toBe(10)
+      journey.forEach(step => {
+        expect(step.limit).toBe(25)
+      })
     })
 
-    it('Simulation: ismaelaguileraofficial (42 hits, 128 days) — gets 10/day', () => {
-      // Real user from the analysis
+    it('Simulation: ismaelaguileraofficial (42 hits, 128 days) — gets 25/day', () => {
       const r = calculateDynamicLimit(makeProfile({ registrationAgeDays: 128, totalLimitHits: 42 }))
-      expect(r.dailyLimit).toBe(10)
+      expect(r.dailyLimit).toBe(25)
       expect(r.tierLabel).toBe('veteran')
-      expect(r.isGraduated).toBe(true)
+      expect(r.isGraduated).toBe(false)
     })
 
-    it('Simulation: burnodmonica5 (20 hits, 131 days) — gets 10/day', () => {
+    it('Simulation: burnodmonica5 (20 hits, 131 days) — gets 25/day', () => {
       const r = calculateDynamicLimit(makeProfile({ registrationAgeDays: 131, totalLimitHits: 20 }))
-      expect(r.dailyLimit).toBe(10)
+      expect(r.dailyLimit).toBe(25)
       expect(r.tierLabel).toBe('veteran')
     })
 
-    it('Simulation: mipetitparty (8 hits, 169 days) — gets 10/day', () => {
+    it('Simulation: mipetitparty (8 hits, 169 days) — gets 25/day', () => {
       const r = calculateDynamicLimit(makeProfile({ registrationAgeDays: 169, totalLimitHits: 8 }))
-      expect(r.dailyLimit).toBe(10)
+      expect(r.dailyLimit).toBe(25)
       expect(r.tierLabel).toBe('veteran')
     })
 
@@ -625,22 +601,10 @@ describe('Graduated Daily Limit System', () => {
       }
     })
 
-    it('correct limit at every day for a user with 10 hits', () => {
-      for (let day = 0; day <= 30; day++) {
+    it('correct limit at every day for a user with 10 hits — uniform 25/day', () => {
+      for (let day = 0; day <= 100; day++) {
         const r = calculateDynamicLimit(makeProfile({ registrationAgeDays: day, totalLimitHits: 10 }))
         expect(r.dailyLimit).toBe(25)
-      }
-      for (let day = 31; day <= 60; day++) {
-        const r = calculateDynamicLimit(makeProfile({ registrationAgeDays: day, totalLimitHits: 10 }))
-        expect(r.dailyLimit).toBe(15)
-      }
-      for (let day = 61; day <= 90; day++) {
-        const r = calculateDynamicLimit(makeProfile({ registrationAgeDays: day, totalLimitHits: 10 }))
-        expect(r.dailyLimit).toBe(10)
-      }
-      for (let day = 91; day <= 100; day++) {
-        const r = calculateDynamicLimit(makeProfile({ registrationAgeDays: day, totalLimitHits: 10 }))
-        expect(r.dailyLimit).toBe(10)
       }
     })
   })
