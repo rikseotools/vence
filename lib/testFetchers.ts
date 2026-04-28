@@ -83,7 +83,7 @@ interface AdaptiveResult {
 }
 
 // Tipos adaptativo importados de lib/types/adaptive.ts
-import { topicKey, articleKey, emptyBuckets } from '@/lib/types/adaptive'
+import { topicKey, articleKey, emptyBuckets, pickDiverseByArticle } from '@/lib/types/adaptive'
 import type { AdaptiveCatalog as AdaptiveCatalogNew, DifficultyBuckets } from '@/lib/types/adaptive'
 
 // Legacy compat: el viejo AdaptiveCatalog era flat (difficulty como clave directa)
@@ -152,9 +152,8 @@ function buildAdaptiveCatalog(
 
     if (pool.length < numQuestions) pool = [...pool, ...allQuestions.filter(q => !pool.includes(q))]
 
-    // Shuffle y seleccionar con distribución por artículo
-    pool = pool.sort(() => Math.random() - 0.5)
-    initialQuestions = pool.slice(0, numQuestions)
+    // Seleccionar sin repetir artículo hasta agotar los disponibles
+    initialQuestions = pickDiverseByArticle(pool, numQuestions, q => articleKey(q.article?.number, q.article?.law_short_name))
   } else {
     // Multi-tema: proporcional por tema, luego diversificar artículos
     const perTopic = Math.floor(numQuestions / themes.length)

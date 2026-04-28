@@ -55,3 +55,51 @@ export function articleKey(articleNumber: string | undefined, lawShortName: stri
 export function emptyBuckets<T>(): DifficultyBuckets<T> {
   return { easy: [], medium: [], hard: [], extreme: [] }
 }
+
+/**
+ * Selecciona N preguntas sin repetir artículo hasta agotar los disponibles.
+ * Agrupa por artículo, baraja los grupos, y toma 1 de cada artículo por ronda.
+ * Solo repite artículo cuando no quedan artículos sin cubrir.
+ *
+ * @param candidates - Pool de preguntas candidatas (ya filtradas por dificultad, etc.)
+ * @param count - Número de preguntas a seleccionar
+ * @param getArticleKey - Función que extrae la clave de artículo de cada pregunta
+ */
+export function pickDiverseByArticle<T>(
+  candidates: T[],
+  count: number,
+  getArticleKey: (q: T) => string
+): T[] {
+  if (candidates.length <= count) return [...candidates]
+
+  // Agrupar por artículo
+  const byArticle = new Map<string, T[]>()
+  for (const q of candidates) {
+    const key = getArticleKey(q)
+    if (!byArticle.has(key)) byArticle.set(key, [])
+    byArticle.get(key)!.push(q)
+  }
+
+  // Barajar el orden de los artículos y las preguntas dentro de cada grupo
+  const articleGroups = Array.from(byArticle.values())
+    .map(group => group.sort(() => Math.random() - 0.5))
+    .sort(() => Math.random() - 0.5)
+
+  // Round-robin: 1 de cada artículo por ronda
+  const result: T[] = []
+  let round = 0
+  while (result.length < count) {
+    let pickedThisRound = false
+    for (const group of articleGroups) {
+      if (result.length >= count) break
+      if (round < group.length) {
+        result.push(group[round])
+        pickedThisRound = true
+      }
+    }
+    if (!pickedThisRound) break // todos los grupos agotados
+    round++
+  }
+
+  return result
+}

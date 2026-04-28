@@ -1,6 +1,6 @@
 // components/TestPageWrapper.tsx
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useSearchParams, usePathname } from 'next/navigation'
 import { getOposicionSlugFromPathname } from '@/lib/config/oposiciones'
 import { useOposicion } from '@/contexts/OposicionContext'
@@ -85,11 +85,18 @@ export default function TestPageWrapper({
   // 🔒 Control de ejecución única para prevenir double-fetch
   const [loadingKey, setLoadingKey] = useState('')
   const loadingRef = useRef(false)
+  const loadedForRef = useRef<string | null>(null)
 
   // 🆕 USAR searchParams desde props si es de notificación, sino usar hook
   const hookSearchParams = useSearchParams()
   const pathname = usePathname()
   const finalSearchParams = propsSearchParams || hookSearchParams
+
+  // 🔒 Estabilizar referencia de searchParams para evitar re-renders espurios de useSearchParams()
+  const searchParamsKey = useMemo(
+    () => finalSearchParams?.toString?.() ?? '',
+    [finalSearchParams]
+  )
 
  // 🎯 Función para detectar fetcher correcto según el tema
   const getFetcherForTema = (temaParam: number | null | undefined, testTypeParam: string, hasLawFilters = false) => {
@@ -242,8 +249,15 @@ export default function TestPageWrapper({
 
   // 🚀 Función principal de carga
   const loadQuestions = async () => {
-    // 🔒 Generar clave única para esta ejecución
-    const currentKey = `${tema}-${testType}-${Date.now()}`
+    // 🔒 Generar clave de configuración para detectar re-ejecuciones
+    const loadKey = `${tema}-${testType}-${searchParamsKey}`
+    const currentKey = `${loadKey}-${Date.now()}`
+
+    // 🔒 Prevenir re-carga si ya se cargaron preguntas para esta configuración
+    if (loadedForRef.current === loadKey) {
+      console.log('🔒 TestPageWrapper: Preguntas ya cargadas para', loadKey, '— ignorando re-fetch')
+      return
+    }
 
     // 🔒 Prevenir ejecuciones múltiples simultáneas
     if (loadingRef.current) {
@@ -409,6 +423,9 @@ export default function TestPageWrapper({
       }
       console.log('✅ Config final aplicado:', testConfig)
 
+      // 🔒 Marcar como cargado para esta configuración
+      loadedForRef.current = loadKey
+
       // 🎯 Detener interval y completar progreso
       clearInterval(loadingInterval)
       setLoadedCount(numQuestions)
@@ -439,9 +456,10 @@ export default function TestPageWrapper({
   }
 
   // 🔄 Cargar preguntas al montar y cuando cambien los parámetros
+  // 🔒 Usar searchParamsKey (estable) en vez de finalSearchParams (referencia inestable de useSearchParams)
   useEffect(() => {
     loadQuestions()
-  }, [tema, testType, finalSearchParams, lawName, themes]) // ✅ AGREGAR lawName y themes a dependencias
+  }, [tema, testType, searchParamsKey, lawName, themes])
 
   // Guard: si usuario logueado no tiene oposición, mostrar selector antes del test
   // No bloquear a anónimos — el test se carga por URL

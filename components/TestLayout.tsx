@@ -53,6 +53,7 @@ import { enqueueAnswer, purgeSessionAnswers, waitForQueueDrain } from '@/utils/a
 import { normalizeDifficulty } from '@/lib/api/shared/difficulty'
 import { usePendingAnswers } from '@/hooks/usePendingAnswers'
 import ContentDataRenderer from './ContentDataRenderer'
+import { pickDiverseByArticle } from '@/lib/types/adaptive'
 
 import type {
   TestQuestion,
@@ -1544,51 +1545,42 @@ export default function TestLayout({
 
       console.log(`[AdaptReplace] Replacing ${remainingQuestions}q. Direction: ${direction}. Topics: ${JSON.stringify(remainingTopics)}. Articles shown: ${articlesShown.size}`)
 
-      // Helper: buscar candidatos en el catálogo para una dificultad y filtrar por IDs y artículos
+      // Helper: buscar candidatos en el catálogo para una dificultad, filtrar por IDs ya usados
       const getCandidates = (seenStatus: 'neverSeen' | 'answered', difficulty: string, topicKey: string): TestQuestion[] => {
-        // Buscar con clave compuesta "topic:N:difficulty" o "difficulty" (single tema)
         const compositeKey = topicKey === 'all' ? difficulty : `${topicKey}:${difficulty}`
         const bucket = adaptiveCatalog[seenStatus][compositeKey] || adaptiveCatalog[seenStatus][difficulty] || []
         return (Array.isArray(bucket) ? bucket : [])
           .filter(q => !existingQuestionIds.has(q.id))
-          .sort((a, b) => {
-            // Priorizar artículos no vistos
-            const aKey = `${a.article?.number || 'x'}@${a.article?.law_short_name || 'x'}`
-            const bKey = `${b.article?.number || 'x'}@${b.article?.law_short_name || 'x'}`
-            return (articlesShown.has(aKey) ? 1 : 0) - (articlesShown.has(bKey) ? 1 : 0)
-          })
       }
+
+      const articleKeyFn = (q: TestQuestion) => `${q.article?.number || 'x'}@${q.article?.law_short_name || 'x'}`
 
       // Seleccionar reemplazos respetando proporción por tema
       const replacements: TestQuestion[] = []
 
       for (const [tKey, count] of Object.entries(remainingTopics)) {
-        let needed = count
-        // P1: neverSeen target difficulty
-        const p1 = getCandidates('neverSeen', targetDifficulty, tKey)
-        const take1 = p1.slice(0, needed)
-        replacements.push(...take1)
-        needed -= take1.length
+        // Juntar candidatos por prioridad: neverSeen target > neverSeen secondary > answered target
+        const pool = [
+          ...getCandidates('neverSeen', targetDifficulty, tKey),
+          ...getCandidates('neverSeen', secondaryDifficulty, tKey),
+          ...getCandidates('answered', targetDifficulty, tKey),
+        ]
 
-        if (needed > 0) {
-          // P2: neverSeen secondary difficulty
-          const p2 = getCandidates('neverSeen', secondaryDifficulty, tKey)
-          const take2 = p2.slice(0, needed)
-          replacements.push(...take2)
-          needed -= take2.length
-        }
+        // Deduplicar (un candidato puede aparecer en varios buckets)
+        const seen = new Set<string>()
+        const uniquePool = pool.filter(q => {
+          if (seen.has(q.id)) return false
+          seen.add(q.id)
+          return true
+        })
 
-        if (needed > 0) {
-          // P3: answered target difficulty
-          const p3 = getCandidates('answered', targetDifficulty, tKey)
-          const take3 = p3.slice(0, needed)
-          replacements.push(...take3)
-          needed -= take3.length
-        }
+        // Seleccionar sin repetir artículo hasta agotar los disponibles
+        const picked = pickDiverseByArticle(uniquePool, count, articleKeyFn)
+        replacements.push(...picked)
 
-        // Marcar artículos de los reemplazos como vistos
-        for (const q of replacements.slice(-count + needed)) {
-          articlesShown.add(`${q.article?.number || 'x'}@${q.article?.law_short_name || 'x'}`)
+        // Marcar artículos como vistos
+        for (const q of picked) {
+          articlesShown.add(articleKeyFn(q))
         }
       }
 
