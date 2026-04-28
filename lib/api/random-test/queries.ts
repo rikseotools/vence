@@ -303,13 +303,13 @@ export async function generateRandomTest(
   const db = getDb()
   const positionType = getPositionType(request.oposicion)
 
-  // 🏷️ Tag filter
+  // 🏷️ Tag filter (NULL-safe: tags IS NULL no debe excluir preguntas)
   const opoConfig = getOposicionByPositionType(positionType)
   const questionTag = opoConfig?.questionTag ?? null
   const tagFilter = questionTag
     ? sql`${questions.tags} @> ARRAY[${sql.raw(`'${questionTag}'`)}]::text[]`
     : EXCLUSIVE_QUESTION_TAGS.length > 0
-      ? sql`NOT (${questions.tags} && ARRAY[${sql.raw(EXCLUSIVE_QUESTION_TAGS.map(t => `'${t}'`).join(','))}]::text[])`
+      ? sql`(${questions.tags} IS NULL OR NOT (${questions.tags} && ARRAY[${sql.raw(EXCLUSIVE_QUESTION_TAGS.map(t => `'${t}'`).join(','))}]::text[]))`
       : sql`true`
 
   const allQuestions: GeneratedQuestion[] = []

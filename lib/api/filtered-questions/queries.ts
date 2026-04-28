@@ -537,10 +537,12 @@ export async function getFilteredQuestions(
     // - Sin questionTag: excluir preguntas de oposiciones exclusivas (ej: excluir tag PN)
     const opoConfig = getOposicionByPositionType(positionType)
     const questionTag = opoConfig?.questionTag ?? null
+    // NULL-safe: `NOT (NULL && ARRAY[...])` es NULL (falsy) en PostgreSQL,
+    // lo que excluiría silenciosamente todas las preguntas con tags IS NULL.
     const tagFilter = questionTag
       ? sql`${questions.tags} @> ARRAY[${sql.raw(`'${questionTag}'`)}]::text[]`
       : EXCLUSIVE_QUESTION_TAGS.length > 0
-        ? sql`NOT (${questions.tags} && ARRAY[${sql.raw(EXCLUSIVE_QUESTION_TAGS.map(t => `'${t}'`).join(','))}]::text[])`
+        ? sql`(${questions.tags} IS NULL OR NOT (${questions.tags} && ARRAY[${sql.raw(EXCLUSIVE_QUESTION_TAGS.map(t => `'${t}'`).join(','))}]::text[]))`
         : sql`true`
 
     // 📋 CASO: Filtro por article UUIDs (content_scope)
@@ -1084,7 +1086,7 @@ export async function countFilteredQuestions(
     const tagFilterCount = questionTagCount
       ? sql`${questions.tags} @> ARRAY[${sql.raw(`'${questionTagCount}'`)}]::text[]`
       : EXCLUSIVE_QUESTION_TAGS.length > 0
-        ? sql`NOT (${questions.tags} && ARRAY[${sql.raw(EXCLUSIVE_QUESTION_TAGS.map(t => `'${t}'`).join(','))}]::text[])`
+        ? sql`(${questions.tags} IS NULL OR NOT (${questions.tags} && ARRAY[${sql.raw(EXCLUSIVE_QUESTION_TAGS.map(t => `'${t}'`).join(','))}]::text[]))`
         : sql`true`
 
     // 1️⃣ Obtener topic_scope para este tema
