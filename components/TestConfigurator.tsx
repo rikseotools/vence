@@ -1683,7 +1683,7 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
               />
               <span className="text-sm font-medium text-gray-700">
                 ✨ Modo adaptativo
-                <span className="text-xs text-blue-600 ml-1">(recomendado)</span>
+                <span className="text-xs text-blue-600 ml-1">(recomendado para principiantes)</span>
               </span>
             </label>
 
