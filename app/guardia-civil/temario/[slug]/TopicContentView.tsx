@@ -1,4 +1,4 @@
-// app/auxiliar-administrativo-andalucia/temario/[slug]/TopicContentView.tsx
+// app/guardia-civil/temario/[slug]/TopicContentView.tsx
 'use client'
 
 import { useState } from 'react'
@@ -15,17 +15,12 @@ interface TopicContentViewProps {
   oposicion?: string
 }
 
-// Determinar el bloque según el número de tema (Auxiliar Administrativo Junta de Andalucía)
+// Determinar el bloque según el número de tema (Guardia Civil - bloque único, 25 temas)
 function getBlockInfo(topicNumber: number): { block: string; displayNum: number } {
-  if (topicNumber >= 1 && topicNumber <= 12) {
-    return { block: 'Bloque I', displayNum: topicNumber }
-  } else if (topicNumber >= 13 && topicNumber <= 22) {
-    return { block: 'Bloque II', displayNum: topicNumber }
-  }
   return { block: '', displayNum: topicNumber }
 }
 
-export default function TopicContentView({ content, oposicion = 'auxiliar-administrativo-andalucia' }: TopicContentViewProps) {
+export default function TopicContentView({ content, oposicion = 'guardia-civil' }: TopicContentViewProps) {
   const { getSlug } = useLawSlugs()
   const [expandedLaws, setExpandedLaws] = useState<Set<string>>(
     new Set()
@@ -290,7 +285,7 @@ export default function TopicContentView({ content, oposicion = 'auxiliar-admini
 
               <div className="space-y-3">
                 <Link
-                  href="/login?oposicion=auxiliar_administrativo_andalucia&return_to=/auxiliar-administrativo-andalucia/temario"
+                  href="/login?oposicion=guardia_civil&return_to=/guardia-civil/temario"
                   className="block w-full py-3 px-4 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors"
                 >
                   Registrarse gratis

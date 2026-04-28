@@ -170,7 +170,7 @@ export default function TopicContentView({ content, oposicion = 'auxiliar-enferm
                     <p className="text-sm text-purple-900 dark:text-purple-100">
                       <span className="font-semibold">{userName}</span>, este temario está{' '}
                       <span className="font-semibold text-purple-700 dark:text-purple-300">personalizado para ti</span>.{' '}
-                      Entre más tests de repaso hagas, Vence más aprende de ti, para que seas más productivo y te enfoques en lo importante.
+                      Cuantos más tests de repaso hagas, más aprende Vence de ti, para que seas más productivo y te enfoques en lo importante.
                     </p>
                   </div>
                 </div>
