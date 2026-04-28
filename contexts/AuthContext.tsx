@@ -546,21 +546,68 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
             })
           } else {
             console.log('👤 INITIAL_SESSION: sin usuario')
-            updateUserProfile(null)
-            // 🔧 FIX: Limpiar localStorage para evitar que pre-hydrate o el safety timeout
-            // resuciten un usuario con token expirado (ghost user)
-            // PERO NO en /auth/callback — ahí el code_verifier PKCE está en localStorage
-            // y es necesario para completar el exchange del código OAuth
-            const isCallbackPage = typeof window !== 'undefined' && window.location.pathname.includes('/auth/callback')
-            if (!isCallbackPage) {
-              try {
-                const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-                if (supabaseUrl) {
-                  const storageKey = `sb-${supabaseUrl.split('://')[1]?.split('.')[0]}-auth`
-                  localStorage.removeItem(storageKey)
-                  console.log('🧹 localStorage limpiado (token expirado)')
+            // 🛡️ Resiliencia ante Supabase saturado: si teníamos un perfil cacheado,
+            // NO limpiar inmediatamente. Supabase puede devolver session=null cuando
+            // el token refresh falla por timeout (pool saturado). Si limpiamos, un
+            // usuario Premium ve "¡Regístrate Gratis!" — caso Nila 28/04/2026.
+            //
+            // Estrategia: mantener el perfil cacheado durante 30s y reintentar.
+            // Si tras el reintento sigue sin sesión, ENTONCES limpiar (logout real).
+            const hadCachedProfile = userProfileRef.current !== null
+            if (hadCachedProfile) {
+              console.warn('⚠️ INITIAL_SESSION sin usuario PERO hay perfil cacheado — reintentando en 5s')
+              // No limpiar aún: mantener perfil cacheado para que la UI siga funcional
+              setTimeout(async () => {
+                try {
+                  const { data: { session: retrySession } } = await supabase.auth.getSession()
+                  if (retrySession?.user) {
+                    console.log('✅ Sesión recuperada tras reintento:', retrySession.user.email)
+                    setUser(retrySession.user)
+                    // Perfil ya está en cache, no recargar
+                  } else {
+                    // Segundo intento tras 10s más
+                    setTimeout(async () => {
+                      try {
+                        const { data: { session: retry2 } } = await supabase.auth.getSession()
+                        if (retry2?.user) {
+                          console.log('✅ Sesión recuperada en segundo reintento')
+                          setUser(retry2.user)
+                        } else {
+                          // Sesión realmente perdida — limpiar
+                          console.log('👋 Sesión perdida tras 2 reintentos — limpiando')
+                          updateUserProfile(null)
+                          setUser(null)
+                        }
+                      } catch {
+                        console.log('👋 Error en segundo reintento — limpiando')
+                        updateUserProfile(null)
+                        setUser(null)
+                      }
+                    }, 10_000)
+                  }
+                } catch {
+                  // Network error en el reintento — mantener cache
+                  console.warn('⚠️ Error de red en reintento — manteniendo perfil cacheado')
                 }
-              } catch {}
+              }, 5_000)
+            } else {
+              // Sin cache previo — usuario genuinamente no logueado
+              updateUserProfile(null)
+              // 🔧 FIX: Limpiar localStorage para evitar que pre-hydrate o el safety timeout
+              // resuciten un usuario con token expirado (ghost user)
+              // PERO NO en /auth/callback — ahí el code_verifier PKCE está en localStorage
+              // y es necesario para completar el exchange del código OAuth
+              const isCallbackPage = typeof window !== 'undefined' && window.location.pathname.includes('/auth/callback')
+              if (!isCallbackPage) {
+                try {
+                  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+                  if (supabaseUrl) {
+                    const storageKey = `sb-${supabaseUrl.split('://')[1]?.split('.')[0]}-auth`
+                    localStorage.removeItem(storageKey)
+                    console.log('🧹 localStorage limpiado (token expirado)')
+                  }
+                } catch {}
+              }
             }
           }
           // Finalizar loading — este es el único punto que lo hace en carga inicial
