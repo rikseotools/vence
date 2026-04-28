@@ -398,7 +398,10 @@ async function getLawsWithQuestionCountsInternal(): Promise<GetLawsWithCountsRes
     console.log('🚀 Obteniendo leyes con conteo (Drizzle Query Builder)...')
     console.time('⏱️ getLawsWithQuestionCounts')
 
-    const result = await db
+    // Timeout de 15s para no bloquear el build de Vercel (límite 60s por página).
+    // Si Supabase está saturado, mejor fallar rápido y usar el cache anterior.
+    const timeoutMs = 15_000
+    const queryPromise = db
       .select({
         id: laws.id,
         name: laws.name,
@@ -421,6 +424,13 @@ async function getLawsWithQuestionCountsInternal(): Promise<GetLawsWithCountsRes
       .where(eq(laws.isActive, true))
       .groupBy(laws.id, laws.name, laws.shortName, laws.description, laws.year, laws.type)
       .orderBy(sql`COUNT(${questions.id}) DESC`)
+
+    const result = await Promise.race([
+      queryPromise,
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error(`getLawsWithQuestionCounts timeout after ${timeoutMs}ms`)), timeoutMs)
+      ),
+    ])
 
     console.timeEnd('⏱️ getLawsWithQuestionCounts')
 
