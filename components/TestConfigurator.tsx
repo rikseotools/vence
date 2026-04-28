@@ -67,7 +67,7 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
   // Estados adicionales
   const [onlyOfficialQuestions, setOnlyOfficialQuestions] = useState(false);
   const [focusEssentialArticles, setFocusEssentialArticles] = useState(false);
-  const [adaptiveMode, setAdaptiveMode] = useState(true); // ✨ Activado por defecto
+  const [adaptiveMode, setAdaptiveMode] = useState(false); // Desactivado por defecto (500 preguntas/request saturaba Supabase)
   const [onlyFailedQuestions, setOnlyFailedQuestions] = useState(false); // 🆕 Solo preguntas falladas
   const [showFailedQuestionsModal, setShowFailedQuestionsModal] = useState(false); // 🆕 Modal preguntas falladas
   const [failedQuestionsData, setFailedQuestionsData] = useState<FailedQuestionsData | null>(null);
