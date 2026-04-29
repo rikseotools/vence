@@ -529,7 +529,15 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
         }
 
         const newUser = session?.user || null
-        setUser(newUser)
+        // 🛡️ NO hacer setUser(null) si hay perfil cacheado — previene que
+        // ProgressiveRegistrationManager muestre "Regístrate" a usuarios Premium
+        // cuando Supabase no puede refrescar el token (pool saturado).
+        // setUser(null) se hace SOLO tras confirmar que la sesión está realmente perdida.
+        if (newUser || !userProfileRef.current) {
+          setUser(newUser)
+        } else {
+          console.warn('⚠️ session null PERO hay perfil cacheado — NO limpiando user aún')
+        }
 
         if (event === 'INITIAL_SESSION') {
           // === CARGA INICIAL (token ya refrescado por _initialize) ===
