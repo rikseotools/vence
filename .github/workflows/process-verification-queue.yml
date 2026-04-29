@@ -2,8 +2,9 @@ name: Process Verification Queue
 
 on:
   schedule:
-    # Ejecutar cada 6 horas (4 veces al día)
-    - cron: '0 */6 * * *'
+    # Ejecutar cada 6 horas (2:00, 8:00, 14:00, 20:00 UTC)
+    # Desfasado de fraud-detection (offset 1) para no saturar Supabase
+    - cron: '0 2,8,14,20 * * *'
   workflow_dispatch: # Permite ejecutar manualmente desde GitHub UI
 
 jobs:

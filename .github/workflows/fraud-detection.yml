@@ -2,8 +2,9 @@ name: Fraud Detection
 
 on:
   schedule:
-    # Ejecutar cada 6 horas (0:00, 6:00, 12:00, 18:00 UTC)
-    - cron: '0 */6 * * *'
+    # Ejecutar cada 6 horas desfasado (1:00, 7:00, 13:00, 19:00 UTC)
+    # Evita coincidir con verification-queue (*/6 offset 0) y hora punta ES (06-10 UTC)
+    - cron: '0 1,7,13,19 * * *'
   workflow_dispatch: # Permite ejecutar manualmente desde GitHub UI
 
 jobs:
