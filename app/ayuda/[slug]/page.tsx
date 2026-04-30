@@ -5,7 +5,10 @@ import { notFound } from 'next/navigation'
 import { getDb } from '@/db/client'
 import { sql } from 'drizzle-orm'
 
-export const revalidate = 3600
+// ISR: regenerar bajo demanda. Antes revalidate=3600 pero el build tardaba >60s
+// en /ayuda/preguntas-oficiales y fallaba. Con dynamic los artículos de ayuda
+// se renderizan al primer request y se cachean.
+export const dynamic = 'force-dynamic'
 
 interface HelpArticle {
   slug: string
@@ -41,10 +44,7 @@ async function getAllSlugs(): Promise<string[]> {
   return rows.map(r => r.slug)
 }
 
-export async function generateStaticParams() {
-  const slugs = await getAllSlugs()
-  return slugs.map(slug => ({ slug }))
-}
+// generateStaticParams eliminado: con force-dynamic no se pre-generan
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
