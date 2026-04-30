@@ -124,7 +124,7 @@ export class TemarioDomain implements ChatDomain {
     return result
   }
 
-  async handle(context: ChatContext, tracer?: AITracerInterface): Promise<ChatResponse> {
+  async handle(context: ChatContext, tracer?: AITracerInterface): Promise<ChatResponse | null> {
     const startTime = Date.now()
     const message = context.currentMessage
 
@@ -222,6 +222,13 @@ export class TemarioDomain implements ChatDomain {
       oposicion: oposicionInfo?.nombre,
     })
     dbSpan?.end()
+
+    // Si no encontró nada en ninguna oposición, declinar para que otro
+    // domain (OposicionCatalog o fallback) lo intente con mejor contexto.
+    if (topics.length === 0 && queryType === 'search_concept') {
+      logger.info('TemarioDomain: 0 topics found for search_concept, declining', { domain: 'temario' })
+      return null
+    }
 
     // 3. Generar respuesta con LLM usando los topics encontrados
     const { content, tokensUsed } = await this.generateResponse(
