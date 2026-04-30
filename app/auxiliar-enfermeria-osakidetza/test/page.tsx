@@ -1,5 +1,8 @@
 // app/auxiliar-enfermeria-osakidetza/test/page.tsx
 import TestHubPage from '@/components/test/TestHubPage'
+
+// force-dynamic: TestHubPage hace queries pesadas que causan timeout en build
+export const dynamic = 'force-dynamic'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {

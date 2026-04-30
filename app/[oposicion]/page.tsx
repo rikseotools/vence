@@ -13,11 +13,9 @@ import { formatNumber, formatDateLarga, formatDateCorta } from '@/lib/utils/form
 import { getColorScheme } from '@/lib/utils/landing-colors'
 
 const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
-export const revalidate = 86400 // ISR: regenerar cada 24h
-
-export function generateStaticParams() {
-  return ALL_OPOSICION_SLUGS.map(slug => ({ oposicion: slug }))
-}
+// force-dynamic: las landings hacen queries pesadas (landing data + hitos + topic names)
+// que causan timeout en build con 3600+ páginas concurrentes. Se renderizan bajo demanda.
+export const dynamic = 'force-dynamic'
 
 export async function generateMetadata({ params }: { params: Promise<{ oposicion: string }> }): Promise<Metadata> {
   const { oposicion } = await params

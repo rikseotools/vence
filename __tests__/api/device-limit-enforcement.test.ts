@@ -11,9 +11,12 @@ jest.mock('@supabase/supabase-js', () => ({
   createClient: jest.fn(() => ({ rpc: mockRpc })),
 }))
 
-import { registerAndCheckDevice, getAccountsOnDevice, getDeviceIdFromRequest } from '@/lib/api/deviceLimit'
+import { registerAndCheckDevice, getAccountsOnDevice, getDeviceIdFromRequest, clearDeviceCheckCache } from '@/lib/api/deviceLimit'
 
-beforeEach(() => mockRpc.mockReset())
+beforeEach(() => {
+  mockRpc.mockReset()
+  clearDeviceCheckCache()
+})
 
 // ============================================
 // getDeviceIdFromRequest
@@ -235,5 +238,107 @@ describe('Device limit attack scenarios', () => {
     expect(mockRpc).toHaveBeenLastCalledWith('register_device', expect.objectContaining({
       p_device_label: 'Firefox / Mac',
     }))
+  })
+})
+
+// ============================================
+// CACHE: 60s TTL para evitar RPC spam (bug Paloma 30/04/2026)
+// ============================================
+
+describe('Device check cache (60s TTL)', () => {
+  const ALLOWED_RESULT = {
+    allowed: true, device_count: 1, max_devices: 2, is_new_device: false, is_premium: false, existing_devices: '',
+  }
+  const BLOCKED_RESULT = {
+    allowed: false, device_count: 2, max_devices: 2, is_new_device: true, is_premium: false, existing_devices: 'Chrome / Mac, Safari / iOS',
+  }
+
+  it('returns cached result on second call (no RPC)', async () => {
+    mockRpc.mockResolvedValue({ data: ALLOWED_RESULT, error: null })
+
+    const r1 = await registerAndCheckDevice('user-1', 'device-1')
+    const r2 = await registerAndCheckDevice('user-1', 'device-1')
+
+    expect(r1.allowed).toBe(true)
+    expect(r2.allowed).toBe(true)
+    expect(mockRpc).toHaveBeenCalledTimes(1) // Solo 1 RPC, la 2a viene de cache
+  })
+
+  it('100 calls = 1 RPC (examen de 100 preguntas)', async () => {
+    mockRpc.mockResolvedValue({ data: ALLOWED_RESULT, error: null })
+
+    for (let i = 0; i < 100; i++) {
+      await registerAndCheckDevice('user-paloma', 'device-safari')
+    }
+
+    expect(mockRpc).toHaveBeenCalledTimes(1) // El bug de Paloma: antes eran 100
+  })
+
+  it('cache expires after TTL — makes new RPC', async () => {
+    // Primera llamada: allowed
+    mockRpc.mockResolvedValueOnce({ data: ALLOWED_RESULT, error: null })
+
+    await registerAndCheckDevice('user-1', 'device-1')
+    expect(mockRpc).toHaveBeenCalledTimes(1)
+
+    // Simular que pasaron 61 segundos manipulando Date.now
+    const realNow = Date.now
+    Date.now = () => realNow() + 61_000
+
+    // Segunda llamada: ahora está blocked (el estado cambió en BD)
+    mockRpc.mockResolvedValueOnce({ data: BLOCKED_RESULT, error: null })
+
+    const r2 = await registerAndCheckDevice('user-1', 'device-1')
+    expect(r2.allowed).toBe(false)
+    expect(mockRpc).toHaveBeenCalledTimes(2) // Cache expiró, nueva RPC
+
+    Date.now = realNow // Restaurar
+  })
+
+  it('different user:device combos are cached independently', async () => {
+    mockRpc.mockResolvedValue({ data: ALLOWED_RESULT, error: null })
+
+    await registerAndCheckDevice('user-a', 'device-1')
+    await registerAndCheckDevice('user-b', 'device-1')
+    await registerAndCheckDevice('user-a', 'device-2')
+
+    expect(mockRpc).toHaveBeenCalledTimes(3) // 3 claves distintas
+  })
+
+  it('cache returns blocked result correctly (no false positive)', async () => {
+    mockRpc.mockResolvedValue({ data: BLOCKED_RESULT, error: null })
+
+    const r1 = await registerAndCheckDevice('user-1', 'device-3')
+    const r2 = await registerAndCheckDevice('user-1', 'device-3')
+
+    expect(r1.allowed).toBe(false)
+    expect(r2.allowed).toBe(false)
+    expect(r2.existingDevices).toBe('Chrome / Mac, Safari / iOS')
+    expect(mockRpc).toHaveBeenCalledTimes(1)
+  })
+
+  it('clearDeviceCheckCache forces fresh RPC', async () => {
+    mockRpc.mockResolvedValue({ data: ALLOWED_RESULT, error: null })
+
+    await registerAndCheckDevice('user-1', 'device-1')
+    expect(mockRpc).toHaveBeenCalledTimes(1)
+
+    clearDeviceCheckCache()
+
+    await registerAndCheckDevice('user-1', 'device-1')
+    expect(mockRpc).toHaveBeenCalledTimes(2) // Cache cleared, nueva RPC
+  })
+
+  it('RPC error does NOT cache the failure (next call retries)', async () => {
+    // Primera llamada: error
+    mockRpc.mockResolvedValueOnce({ data: null, error: { code: '500', message: 'internal' } })
+    const r1 = await registerAndCheckDevice('user-1', 'device-1')
+    expect(r1.allowed).toBe(true) // fail open
+
+    // Segunda llamada: debería reintentar RPC (no usar cache del error)
+    mockRpc.mockResolvedValueOnce({ data: BLOCKED_RESULT, error: null })
+    const r2 = await registerAndCheckDevice('user-1', 'device-1')
+    expect(r2.allowed).toBe(false) // Ahora sí funciona
+    expect(mockRpc).toHaveBeenCalledTimes(2)
   })
 })

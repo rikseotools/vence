@@ -1,12 +1,12 @@
 // app/[oposicion]/test/page.tsx - Test hub dinámico
 import TestHubPage from '@/components/test/TestHubPage'
-import { getOposicion, ALL_OPOSICION_SLUGS } from '@/lib/config/oposiciones'
+import { getOposicion } from '@/lib/config/oposiciones'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 
-export function generateStaticParams() {
-  return ALL_OPOSICION_SLUGS.map(slug => ({ oposicion: slug }))
-}
+// force-dynamic: TestHubPage hace queries pesadas (theme counts) que
+// causan timeout en build con 3600+ páginas concurrentes
+export const dynamic = 'force-dynamic'
 
 export async function generateMetadata({ params }: { params: Promise<{ oposicion: string }> }): Promise<Metadata> {
   const { oposicion } = await params

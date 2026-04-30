@@ -2,8 +2,8 @@
 // Fuente única de verdad: BD (oposicion_bloques + topics).
 import DynamicTemarioPage from '@/components/temario/DynamicTemarioPage'
 
-// Static generation: cache infinito, invalidar con revalidateTag('temario')
-export const revalidate = false
+// force-dynamic: renderizar bajo demanda para no saturar BD en build (3600+ páginas)
+export const dynamic = 'force-dynamic'
 
 export const metadata = {
   title: 'Temario Auxiliar Administrativo Ayuntamiento Valencia | Vence.es',

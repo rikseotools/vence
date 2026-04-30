@@ -46,6 +46,8 @@ import DailyLimitBanner from './DailyLimitBanner'
 import UpgradeLimitModal from './UpgradeLimitModal'
 import { useDailyQuestionLimit } from '../hooks/useDailyQuestionLimit'
 import OptionContent from './OptionContent'
+import DeviceLimitModal from './DeviceLimitModal'
+import { useDeviceLimitModal } from '@/hooks/useDeviceLimitModal'
 
 // Imports modularizados
 import {
@@ -178,6 +180,10 @@ async function saveAnswerToAPI(
     const result = await response.json()
 
     if (!response.ok || !result.success) {
+      // Device limit: avisar al usuario una sola vez (mismo patrón que answerSaveQueue)
+      if (response.status === 403 && result.deviceLimitReached && typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('vence:deviceLimitReached'))
+      }
       console.error('❌ Error guardando respuesta en API:', {
         status: response.status,
         error: result.error,
@@ -364,6 +370,7 @@ export default function ExamLayout({
     recordAnswer,
     refreshStatus
   } = useDailyQuestionLimit()
+  const { isDeviceLimitOpen, closeDeviceLimit, retryAfterDeviceRemoval } = useDeviceLimitModal()
   const { getSlug: generateLawSlug } = useLawSlugs()
   const { setQuestionContext } = useQuestionContext()
   const { openChatWith } = useAIChat()
@@ -1430,6 +1437,12 @@ export default function ExamLayout({
         supabase={supabase}
         userId={user?.id}
         userName={user?.user_metadata?.full_name || user?.user_metadata?.name}
+      />
+
+      <DeviceLimitModal
+        isOpen={isDeviceLimitOpen}
+        onClose={closeDeviceLimit}
+        onRetry={retryAfterDeviceRemoval}
       />
     </div>
   )

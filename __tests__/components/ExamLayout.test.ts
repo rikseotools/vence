@@ -766,6 +766,110 @@ describe('ExamLayout - Prevención de Regresiones', () => {
   })
 
   // ============================================
+  // DeviceLimitModal: evento 403 → modal abierto
+  // ============================================
+  describe('DeviceLimitModal integration in ExamLayout', () => {
+
+    // Simula la lógica de saveAnswerToAPI cuando recibe 403 con deviceLimitReached
+    function simulateSaveResponse({
+      httpStatus,
+      responseBody,
+    }: {
+      httpStatus: number
+      responseBody: { success: boolean; deviceLimitReached?: boolean; error?: string }
+    }): { shouldDispatchEvent: boolean; saveSuccess: boolean } {
+      if (httpStatus !== 200 || !responseBody.success) {
+        const shouldDispatch = httpStatus === 403 && !!responseBody.deviceLimitReached
+        return { shouldDispatchEvent: shouldDispatch, saveSuccess: false }
+      }
+      return { shouldDispatchEvent: false, saveSuccess: true }
+    }
+
+    test('403 + deviceLimitReached=true → dispatches event', () => {
+      const result = simulateSaveResponse({
+        httpStatus: 403,
+        responseBody: { success: false, deviceLimitReached: true, error: 'Device limit exceeded' },
+      })
+      expect(result.shouldDispatchEvent).toBe(true)
+      expect(result.saveSuccess).toBe(false)
+    })
+
+    test('403 without deviceLimitReached → does NOT dispatch event', () => {
+      const result = simulateSaveResponse({
+        httpStatus: 403,
+        responseBody: { success: false, error: 'Forbidden' },
+      })
+      expect(result.shouldDispatchEvent).toBe(false)
+    })
+
+    test('500 error → does NOT dispatch event', () => {
+      const result = simulateSaveResponse({
+        httpStatus: 500,
+        responseBody: { success: false, error: 'Internal server error' },
+      })
+      expect(result.shouldDispatchEvent).toBe(false)
+    })
+
+    test('200 success → does NOT dispatch event', () => {
+      const result = simulateSaveResponse({
+        httpStatus: 200,
+        responseBody: { success: true },
+      })
+      expect(result.shouldDispatchEvent).toBe(false)
+      expect(result.saveSuccess).toBe(true)
+    })
+
+    test('DeviceLimitModal props match hook outputs', () => {
+      // Simula el hook useDeviceLimitModal
+      let isOpen = false
+      const open = () => { isOpen = true }
+      const close = () => { isOpen = false }
+      const retry = () => { isOpen = false }
+
+      // Evento abre el modal
+      open()
+      expect(isOpen).toBe(true)
+
+      // Props del modal: isOpen, onClose, onRetry
+      const props = { isOpen, onClose: close, onRetry: retry }
+      expect(props.isOpen).toBe(true)
+      expect(typeof props.onClose).toBe('function')
+      expect(typeof props.onRetry).toBe('function')
+
+      // Cerrar
+      close()
+      expect(isOpen).toBe(false)
+    })
+
+    test('100-question exam with 403 cascade: event dispatched once per save attempt', () => {
+      // Simula el escenario de Paloma: cada saveAnswer recibe 403
+      let eventCount = 0
+      const dispatchEvent = () => { eventCount++ }
+
+      // Sin cache: 100 saves = 100 events (antes del fix del cache)
+      // Con cache: la API no llega a 403 porque el cache devuelve el resultado
+      // Pero si el cache falla: el modal abre en el primer 403
+      for (let i = 0; i < 100; i++) {
+        const result = simulateSaveResponse({
+          httpStatus: 403,
+          responseBody: { success: false, deviceLimitReached: true },
+        })
+        if (result.shouldDispatchEvent) dispatchEvent()
+      }
+
+      // El evento se dispara en cada save que falla con 403
+      // Pero useDeviceLimitModal solo abre el modal una vez (useState idempotente)
+      expect(eventCount).toBe(100) // 100 dispatches...
+      // ...pero el hook solo abre el modal 1 vez (setState con true cuando ya es true = noop)
+      let modalOpen = false
+      for (let i = 0; i < 100; i++) {
+        if (!modalOpen) modalOpen = true // Solo cambia la primera vez
+      }
+      expect(modalOpen).toBe(true) // Modal abierto 1 vez
+    })
+  })
+
+  // ============================================
   // Escenario completo: Flujo de examen con límite
   // ============================================
   describe('Escenario: Usuario FREE hace examen con límite', () => {

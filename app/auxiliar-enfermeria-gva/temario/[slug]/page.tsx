@@ -5,13 +5,7 @@ import { getTopicContent } from '@/lib/api/temario/queries'
 import TopicContentView from './TopicContentView'
 import InteractiveBreadcrumbs from '@/components/InteractiveBreadcrumbs'
 
-export const revalidate = false
-
-// Pre-generar todos los temas en build time
-// Aux Enfermería GVA: 24 temas secuenciales (1-30)
-export async function generateStaticParams() {
-  return Array.from({ length: 24 }, (_, i) => ({ slug: `tema-${i + 1}` }))
-}
+export const dynamic = 'force-dynamic'
 
 interface PageProps {
   params: Promise<{

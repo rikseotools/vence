@@ -5,15 +5,7 @@ import { getTopicContent } from '@/lib/api/temario/queries'
 import TopicContentView from './TopicContentView'
 import InteractiveBreadcrumbs from '@/components/InteractiveBreadcrumbs'
 
-export const revalidate = false
-
-// Pre-generar todos los temas en build time
-export async function generateStaticParams() {
-  // Cantabria tiene 25 temas
-  return Array.from({ length: 25 }, (_, i) => ({
-    slug: `tema-${i + 1}`
-  }))
-}
+export const dynamic = 'force-dynamic'
 
 interface PageProps {
   params: Promise<{

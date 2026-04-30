@@ -52,6 +52,11 @@ interface DeviceCacheEntry {
 const deviceCheckCache = new Map<string, DeviceCacheEntry>()
 const DEVICE_CHECK_TTL = 60_000 // 60 segundos
 
+/** Clear the in-memory device check cache (for testing). */
+export function clearDeviceCheckCache() {
+  deviceCheckCache.clear()
+}
+
 /**
  * Register a device for a user and check if it's within limits.
  * - Free: max 2 devices. 3rd device → blocked.

@@ -1,4 +1,7 @@
 // app/teoria/page.tsx - PÁGINA PRINCIPAL DE TEORÍA CON SEO
+// force-dynamic: fetchLawsList timeout en build (57014 statement timeout con 3600 páginas)
+export const dynamic = 'force-dynamic'
+
 import { unstable_cache } from 'next/cache'
 import { fetchLawsList } from '@/lib/teoriaFetchers'
 import Link from 'next/link'

@@ -5,17 +5,9 @@ import { getTopicContent } from '@/lib/api/temario/queries'
 import TopicContentView from './TopicContentView'
 import InteractiveBreadcrumbs from '@/components/InteractiveBreadcrumbs'
 
-// Contenido estático - cachear para siempre (el temario casi nunca cambia)
-// Para forzar actualización: revalidateTag('temario')
-export const revalidate = false
+// force-dynamic: renderizar bajo demanda para no saturar BD en build
 
-// Pre-generar todos los temas en build time
-export async function generateStaticParams() {
-  // Tramitación Procesal tiene 37 temas
-  return Array.from({ length: 37 }, (_, i) => ({
-    slug: `tema-${i + 1}`
-  }))
-}
+export const dynamic = 'force-dynamic'
 
 interface PageProps {
   params: Promise<{

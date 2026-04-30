@@ -1,5 +1,8 @@
 // app/tramitacion-procesal/test/page.tsx - Hub de tests SSR para SEO
 import TestHubPage from '@/components/test/TestHubPage'
+
+// force-dynamic: TestHubPage hace queries pesadas que causan timeout en build
+export const dynamic = 'force-dynamic'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {

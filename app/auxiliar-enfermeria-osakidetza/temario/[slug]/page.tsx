@@ -5,15 +5,7 @@ import { getTopicContent } from '@/lib/api/temario/queries'
 import TopicContentView from './TopicContentView'
 import InteractiveBreadcrumbs from '@/components/InteractiveBreadcrumbs'
 
-export const revalidate = false
-
-// Pre-generar todos los temas en build time
-// TCAE Osakidetza: 19 temas comunes (1-19) + 30 temas específicos (101-130)
-export async function generateStaticParams() {
-  const common = Array.from({ length: 19 }, (_, i) => ({ slug: `tema-${i + 1}` }))
-  const specific = Array.from({ length: 30 }, (_, i) => ({ slug: `tema-${101 + i}` }))
-  return [...common, ...specific]
-}
+export const dynamic = 'force-dynamic'
 
 interface PageProps {
   params: Promise<{

@@ -5,17 +5,9 @@ import { getTopicContent } from '@/lib/api/temario/queries'
 import TopicContentView from './TopicContentView'
 import InteractiveBreadcrumbs from '@/components/InteractiveBreadcrumbs'
 
-// Contenido estático - cachear para siempre (el temario casi nunca cambia)
-// Para forzar actualización: revalidateTag('temario')
-export const revalidate = false
+// force-dynamic: renderizar bajo demanda para no saturar BD en build
 
-// Pre-generar todos los temas en build time
-export async function generateStaticParams() {
-  // Auxiliar Administrativo: Bloque I (1-16) + Bloque II (101-112)
-  const bloqueI = Array.from({ length: 16 }, (_, i) => ({ slug: `tema-${i + 1}` }))
-  const bloqueII = Array.from({ length: 12 }, (_, i) => ({ slug: `tema-${101 + i}` }))
-  return [...bloqueI, ...bloqueII]
-}
+export const dynamic = 'force-dynamic'
 
 interface PageProps {
   params: Promise<{

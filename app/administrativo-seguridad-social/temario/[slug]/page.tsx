@@ -5,16 +5,7 @@ import { getTopicContent } from '@/lib/api/temario/queries'
 import TopicContentView from './TopicContentView'
 import InteractiveBreadcrumbs from '@/components/InteractiveBreadcrumbs'
 
-export const revalidate = false
-
-// Pre-generar todos los temas en build time
-// Bloque I General: temas 1-23
-// Bloque II Específico SS: temas 101-113
-export async function generateStaticParams() {
-  const general = Array.from({ length: 23 }, (_, i) => ({ slug: `tema-${i + 1}` }))
-  const especifico = Array.from({ length: 13 }, (_, i) => ({ slug: `tema-${101 + i}` }))
-  return [...general, ...especifico]
-}
+export const dynamic = 'force-dynamic'
 
 interface PageProps {
   params: Promise<{
