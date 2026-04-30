@@ -1,107 +1,105 @@
-// lib/api/user-stats/queries.ts - Drizzle queries para User Stats v2
-// Reemplaza la RPC get_user_public_stats (5 CTEs, ~1.8s) con 2 queries simples
+// lib/api/user-stats/queries.ts - User Stats via tabla pre-computada
+// Antes: count(*) sobre test_questions (8s para heavy users, causaba 504s)
+// Ahora: lookup por PK en user_stats_summary (<1ms), actualizada por trigger
 import { getDb } from '@/db/client'
-import { tests, testQuestions, userStreaks } from '@/db/schema'
+import { userStreaks } from '@/db/schema'
 import { eq, sql } from 'drizzle-orm'
 import type { UserPublicStats } from './schemas'
 
-// Cache en memoria: evita que N page_views del mismo usuario en pocos minutos
-// disparen N full-scans de test_questions (733k+ filas). La query tarda 1-3s
-// para usuarios normales y >10s para heavy users → 504 en Vercel (10s timeout).
-// Cache TTL 5 min: stats no necesitan ser real-time (se actualizan al responder).
-interface CachedStats {
-  data: UserPublicStats
-  timestamp: number
-}
-const statsCache = new Map<string, CachedStats>()
-const STATS_CACHE_TTL = 5 * 60 * 1000 // 5 minutos
-
-/** Invalidar cache de un usuario (llamar después de guardar respuesta) */
-export function invalidateUserStatsCache(userId: string): void {
-  statsCache.delete(userId)
-}
-
 export async function getUserPublicStats(userId: string): Promise<UserPublicStats> {
-  // Check cache
-  const cached = statsCache.get(userId)
-  if (cached && Date.now() - cached.timestamp < STATS_CACHE_TTL) {
-    return cached.data
-  }
-
   const db = getDb()
 
-  const mondayThisWeek = getMondayThisWeek()
+  // Query 1: stats desde tabla pre-computada (PK lookup, <1ms)
+  // El trigger update_user_stats_summary_trigger actualiza estos contadores
+  // incrementalmente en cada INSERT en test_questions.
+  const summaryResult = await db.execute(
+    sql`SELECT total_questions, correct_answers, blank_answers,
+               questions_this_week, week_start
+        FROM user_stats_summary
+        WHERE user_id = ${userId}`
+  )
 
-  // Query 1: total + accuracy + this week + desglose correct/blank (un solo
-  // scan de test_questions). blankAnswers requiere was_blank=true (añadido
-  // 15/4/2026 con la feature "Dejar en blanco"). Para filas legacy (before
-  // was_blank), el valor default es false y cuentan como incorrectas.
-  //
-  // Timeout de 8s: si Supabase está lento, mejor devolver cache stale o
-  // defaults que bloquear la UI entera con un 504.
-  const timeoutMs = 8_000
-  const queryPromise = db
-    .select({
-      totalQuestions: sql<number>`count(*)::int`,
-      correctAnswers: sql<number>`sum(case when ${testQuestions.isCorrect} then 1 else 0 end)::int`,
-      blankAnswers: sql<number>`sum(case when ${testQuestions.wasBlank} then 1 else 0 end)::int`,
-      questionsThisWeek: sql<number>`sum(case when ${testQuestions.createdAt} >= ${mondayThisWeek} then 1 else 0 end)::int`,
-    })
-    .from(testQuestions)
-    .innerJoin(tests, eq(testQuestions.testId, tests.id))
-    .where(eq(tests.userId, userId))
+  const summary = (summaryResult as any)?.[0] as {
+    total_questions: number
+    correct_answers: number
+    blank_answers: number
+    questions_this_week: number
+    week_start: string
+  } | undefined
 
-  let statsResult: Awaited<typeof queryPromise>[0] | null = null
-  try {
-    const [result] = await Promise.race([
-      queryPromise,
-      new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('user-stats query timeout')), timeoutMs)
-      ),
-    ])
-    statsResult = result
-  } catch (err) {
-    // Timeout o error de BD: devolver cache stale si existe, sino defaults
-    if (cached) {
-      console.warn(`⏱️ [user-stats] timeout for ${userId.slice(0,8)}, returning stale cache`)
-      return cached.data
+  let total: number
+  let correct: number
+  let blank: number
+  let thisWeek: number
+
+  if (summary) {
+    total = Number(summary.total_questions)
+    correct = Number(summary.correct_answers)
+    blank = Number(summary.blank_answers)
+
+    // Si week_start no es la semana actual, questions_this_week está stale → 0
+    const currentWeekStart = getMondayThisWeek().slice(0, 10)
+    const summaryWeek = typeof summary.week_start === 'string'
+      ? summary.week_start.slice(0, 10)
+      : new Date(summary.week_start).toISOString().slice(0, 10)
+    thisWeek = summaryWeek === currentWeekStart ? Number(summary.questions_this_week) : 0
+  } else {
+    // Fallback: usuario sin fila en summary (nuevo o no backfilled).
+    // Hacer la query pesada UNA VEZ y crear la fila.
+    console.warn(`⚠️ [user-stats] No summary for ${userId.slice(0, 8)}, computing...`)
+    const fallbackResult = await db.execute(
+      sql`INSERT INTO user_stats_summary (user_id, total_questions, correct_answers, blank_answers, questions_this_week, week_start)
+          SELECT
+            t.user_id,
+            count(tq.id)::int,
+            sum(case when tq.is_correct then 1 else 0 end)::int,
+            coalesce(sum(case when tq.was_blank then 1 else 0 end)::int, 0),
+            sum(case when tq.created_at >= date_trunc('week', now()) then 1 else 0 end)::int,
+            date_trunc('week', now())::date
+          FROM test_questions tq
+          INNER JOIN tests t ON tq.test_id = t.id
+          WHERE t.user_id = ${userId}
+          GROUP BY t.user_id
+          ON CONFLICT (user_id) DO UPDATE SET
+            total_questions = EXCLUDED.total_questions,
+            correct_answers = EXCLUDED.correct_answers,
+            blank_answers = EXCLUDED.blank_answers,
+            questions_this_week = EXCLUDED.questions_this_week,
+            week_start = EXCLUDED.week_start,
+            updated_at = now()
+          RETURNING total_questions, correct_answers, blank_answers, questions_this_week`
+    )
+
+    const row = (fallbackResult as any)?.[0] as any
+    if (row) {
+      total = Number(row.total_questions)
+      correct = Number(row.correct_answers)
+      blank = Number(row.blank_answers)
+      thisWeek = Number(row.questions_this_week)
+    } else {
+      // Usuario sin preguntas respondidas
+      total = 0; correct = 0; blank = 0; thisWeek = 0
     }
-    console.warn(`⏱️ [user-stats] timeout for ${userId.slice(0,8)}, no cache, returning defaults`)
-    return { totalQuestions: 0, globalAccuracy: 0, currentStreak: 0, questionsThisWeek: 0, correctAnswers: 0, incorrectAnswers: 0, blankAnswers: 0 }
   }
 
-  // Query 2: streak (lookup directo por user_id, instantaneo)
+  // Query 2: streak (lookup directo por PK, instantáneo)
   const [streakResult] = await db
-    .select({
-      currentStreak: userStreaks.currentStreak,
-    })
+    .select({ currentStreak: userStreaks.currentStreak })
     .from(userStreaks)
     .where(eq(userStreaks.userId, userId))
     .limit(1)
 
-  const total = statsResult?.totalQuestions ?? 0
-  const correct = statsResult?.correctAnswers ?? 0
-  const blank = statsResult?.blankAnswers ?? 0
-  // incorrectas REALES = no acertadas Y no en blanco. Rama legacy: filas con
-  // wasBlank=false pero que eran -1 en realidad (rare edge case de respuestas
-  // pre-15/4/2026 que podrían haber quedado con letra incorrecta) cuentan como
-  // incorrectas — pérdida aceptable, era pre-feature.
   const incorrect = total - correct - blank
 
-  const result: UserPublicStats = {
+  return {
     totalQuestions: total,
     globalAccuracy: total > 0 ? Math.round((correct / total) * 1000) / 10 : 0,
     currentStreak: streakResult?.currentStreak ?? 0,
-    questionsThisWeek: statsResult?.questionsThisWeek ?? 0,
+    questionsThisWeek: thisWeek,
     correctAnswers: correct,
     incorrectAnswers: Math.max(0, incorrect),
     blankAnswers: blank,
   }
-
-  // Guardar en cache
-  statsCache.set(userId, { data: result, timestamp: Date.now() })
-
-  return result
 }
 
 function getMondayThisWeek(): string {
