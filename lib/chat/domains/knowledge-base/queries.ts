@@ -302,7 +302,7 @@ export function isPlatformQuery(message: string): boolean {
   }
 
   const platformIndicators = [
-    /plan(es)?|precio|suscripci[oó]n|premium|free/i,
+    /plan(es)?|precio|suscripci[oó]n|suscribi|premium|free|comprar.*apart|pagar.*apart|incluye.*premium|incluido.*premium/i,
     /c[oó]mo\s+(funciona|uso|hago)/i,
     /la\s+(app|aplicaci[oó]n|plataforma|p[aá]gina)/i,
     /vence/i,
