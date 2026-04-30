@@ -47,14 +47,41 @@ export function useTopicUnlock({ positionType }: UseTopicUnlockOptions = {}) {
   }, [user, supabase, positionType])
 
   // Cargar progreso del usuario desde la base de datos
+  // Antes usaba supabase.rpc('get_user_theme_stats') que hacía count(*) sobre
+  // test_questions (16s para Nila con 55k respuestas → 504 en Vercel).
+  // Ahora usa fetch con AbortController (8s timeout) + fallback a vacío.
   const loadUserProgress = async () => {
     if (!user) return
 
     try {
       setLoading(true)
 
-      const { data: themeStatsData, error } = await supabase
-        .rpc('get_user_theme_stats', { p_user_id: user.id })
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 8000)
+
+      let themeStatsData: any[] | null = null
+      let error: any = null
+
+      try {
+        const res = await fetch(
+          `/api/v2/topic-progress/theme-stats?userId=${user.id}`,
+          { signal: controller.signal }
+        )
+        clearTimeout(timeoutId)
+
+        if (res.ok) {
+          const data = await res.json()
+          themeStatsData = data.stats || data
+        } else {
+          error = { message: `HTTP ${res.status}` }
+        }
+      } catch (fetchErr: any) {
+        clearTimeout(timeoutId)
+        if (fetchErr.name === 'AbortError') {
+          console.warn('⏱️ [useTopicUnlock] theme stats timeout 8s, usando datos vacíos')
+        }
+        error = fetchErr
+      }
 
       if (error) {
         console.error('Error loading user theme stats:', error)
