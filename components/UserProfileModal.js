@@ -47,12 +47,17 @@ export default function UserProfileModal({ isOpen, onClose, userId, userName }) 
         .eq('user_id', userId)
         .maybeSingle()
 
-      // 2. Cargar estadísticas generales (incluyendo racha, oposición, actividad de hoy)
-      const { data: stats, error: statsError } = await supabase.rpc('get_user_public_stats', {
-        p_user_id: userId
-      })
-
-      if (statsError) {
+      // 2. Cargar estadísticas generales via API (usa user_stats_summary, <1ms)
+      // Antes usaba supabase.rpc('get_user_public_stats') que hacía count(*) sobre
+      // test_questions (11s para heavy users → 504 → cascada de saturación).
+      let stats = null
+      try {
+        const statsRes = await fetch(`/api/v2/user-stats?userId=${userId}`)
+        const statsData = await statsRes.json()
+        if (statsData) {
+          stats = [statsData] // Wrap en array para compatibilidad con el código que lee stats[0]
+        }
+      } catch (statsError) {
         console.error('Error loading stats:', statsError)
       }
 
