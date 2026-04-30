@@ -228,71 +228,68 @@ export async function getUserStats(
 ): Promise<UserStatsResult | null> {
   if (!userId) return null
 
-  const supabase = getSupabase()
-
   try {
-    // Usar la RPC optimizada que hace JOINs server-side
-    const { data: rpcResult, error: rpcError } = await supabase
-      .rpc('get_user_statistics_complete', { p_user_id: userId })
+    // Antes: supabase.rpc('get_user_statistics_complete') → 77s para heavy users (8 scans sobre test_questions).
+    // Ahora: 2 queries ligeras (~100ms total):
+    //   1. user_stats_summary (PK lookup, <1ms)
+    //   2. user_question_history + JOINs con LIMIT (99ms)
 
-    if (rpcError) {
-      logger.error('Error llamando RPC get_user_statistics_complete', rpcError, { domain: 'stats' })
-      return null
-    }
+    const { getDb } = await import('@/db/client')
+    const { sql } = await import('drizzle-orm')
+    const db = getDb()
 
-    if (!rpcResult) {
-      logger.debug('No se encontraron estadísticas para el usuario', { domain: 'stats' })
-      return null
-    }
+    // Query 1: Stats básicas desde tabla pre-computada
+    const summaryResult = await db.execute(
+      sql`SELECT total_questions, correct_answers FROM user_stats_summary WHERE user_id = ${userId}`
+    )
+    const summary = (summaryResult as any)?.[0]
+    const totalAnswers = Number(summary?.total_questions ?? 0)
+    const totalCorrect = Number(summary?.correct_answers ?? 0)
+    const overallAccuracy = totalAnswers > 0 ? Math.round((totalCorrect / totalAnswers) * 1000) / 10 : 0
 
-    // La RPC devuelve JSON con article_performance
-    const stats = rpcResult as {
-      total_questions: number
-      correct_answers: number
-      accuracy: number
-      article_performance?: Array<{
-        law_name: string
-        article_number: string | number
-        tema_number: number
-        total: number
-        correct: number
-        accuracy: number
-      }>
-    }
+    // Query 2: Peores artículos desde user_question_history (pre-agregado por pregunta)
+    const lawFilter = lawShortName
+      ? sql`AND l.short_name ILIKE ${'%' + lawShortName + '%'}`
+      : sql``
 
-    // Procesar article_performance para obtener mostFailed y worstAccuracy
-    let articlePerf = stats.article_performance || []
+    const articleResult = await db.execute(sql`
+      SELECT a.article_number, l.short_name as law_name,
+             uqh.total_attempts as total, uqh.correct_attempts as correct,
+             ROUND(uqh.success_rate::numeric * 100, 1) as accuracy
+      FROM user_question_history uqh
+      JOIN questions q ON q.id = uqh.question_id
+      JOIN articles a ON q.primary_article_id = a.id
+      JOIN laws l ON a.law_id = l.id
+      WHERE uqh.user_id = ${userId}
+        AND uqh.total_attempts >= 2
+        AND a.article_number IS NOT NULL
+        ${lawFilter}
+      ORDER BY uqh.success_rate ASC
+      LIMIT ${limit * 2}
+    `)
 
-    // Filtrar por ley si se especifica
-    if (lawShortName) {
-      articlePerf = articlePerf.filter(a =>
-        a.law_name?.includes(lawShortName) ||
-        a.law_name?.toLowerCase().includes(lawShortName.toLowerCase())
-      )
-    }
+    const articlePerf = (articleResult as any[]) || []
 
-    // Filtrar solo artículos con datos
-    articlePerf = articlePerf.filter(a => a.article_number != null)
-
-    if (articlePerf.length === 0 && stats.total_questions === 0) {
+    if (articlePerf.length === 0 && totalAnswers === 0) {
       logger.debug('No hay estadísticas para este usuario', { domain: 'stats' })
       return null
     }
 
     // Transformar al formato esperado
-    const articleStats: ArticleStats[] = articlePerf.map(a => {
+    const articleStats: ArticleStats[] = articlePerf.map((a: any) => {
       const article = a.article_number
-      const articleLabel = article === 0 || article === '0' ? 'Estructura' : `Art. ${article}`
+      const articleLabel = article === '0' || article === 0 ? 'Estructura' : `Art. ${article}`
       const lawShort = a.law_name?.split(' de ')[0] || a.law_name?.substring(0, 20) || 'Ley'
-      const failed = a.total - a.correct
+      const total = Number(a.total)
+      const correct = Number(a.correct)
 
       return {
         law: lawShort,
         article: articleLabel,
-        total: a.total,
-        correct: a.correct,
-        failed,
-        accuracy: a.accuracy,
+        total,
+        correct,
+        failed: total - correct,
+        accuracy: Number(a.accuracy),
       }
     })
 
@@ -302,18 +299,12 @@ export async function getUserStats(
       .sort((a, b) => b.failed - a.failed)
       .slice(0, limit)
 
-    // Artículos con peor porcentaje (mínimo 2 intentos)
+    // Artículos con peor porcentaje
     const worstAccuracy = [...articleStats]
-      .filter(s => s.total >= 2)
       .sort((a, b) => a.accuracy - b.accuracy)
       .slice(0, limit)
 
-    // Estadísticas generales
-    const totalAnswers = stats.total_questions || 0
-    const totalCorrect = stats.correct_answers || 0
-    const overallAccuracy = stats.accuracy || 0
-
-    logger.info('User stats calculated via RPC', {
+    logger.info('User stats calculated via summary + history', {
       domain: 'stats',
       totalAnswers,
       overallAccuracy,
