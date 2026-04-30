@@ -113,7 +113,7 @@ export interface ChatDomain {
   name: string
   priority: number
   canHandle(context: ChatContext): Promise<boolean>
-  handle(context: ChatContext, tracer?: AITracerInterface): Promise<ChatResponse>
+  handle(context: ChatContext, tracer?: AITracerInterface): Promise<ChatResponse | null>
   // Métodos opcionales para observabilidad
   getLastDecisionReason?(): string | undefined
   getConfidence?(): number

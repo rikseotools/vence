@@ -196,10 +196,13 @@ export class ChatOrchestrator {
           logger.info('Fast-path: PsychometricDomain (subtype detected)', { domain: 'orchestrator' })
 
           const response = await psychDomain.handle(context, tracer)
-          const duration = Date.now() - startTime
-          logger.info(`Request completed via fast-path in ${duration}ms`, { domain: 'orchestrator' })
-          await tracer.flush()
-          return response
+          if (response) {
+            const duration = Date.now() - startTime
+            logger.info(`Request completed via fast-path in ${duration}ms`, { domain: 'orchestrator' })
+            await tracer.flush()
+            return response
+          }
+          logger.info('Fast-path: PsychometricDomain returned null, falling through', { domain: 'orchestrator' })
         }
       }
 
@@ -276,6 +279,16 @@ export class ChatOrchestrator {
           })
 
           const response = await domain.handle(context, tracer)
+
+          // Si el domain devuelve null, no pudo manejar el mensaje
+          // (ej: KnowledgeBase matcheó keyword pero no encontró nada en BD).
+          // Continuar al siguiente domain en prioridad.
+          if (!response) {
+            domainSpan.setOutput({ declined: true })
+            domainSpan.end()
+            logger.info(`Domain ${domain.name} returned null, trying next domain`, { domain: 'orchestrator' })
+            continue
+          }
 
           domainSpan.setOutput({
             responseLength: response.content?.length || 0,
@@ -438,6 +451,13 @@ export class ChatOrchestrator {
 
           // Procesar con el dominio y convertir a stream
           const response = await domain.handle(context, tracer)
+
+          if (!response) {
+            domainSpan.setOutput({ declined: true })
+            domainSpan.end()
+            logger.info(`Domain ${domain.name} returned null in streaming, trying next`, { domain: 'orchestrator' })
+            continue
+          }
 
           domainSpan.setOutput({
             responseLength: response.content?.length || 0,

@@ -51,7 +51,7 @@ export class KnowledgeBaseDomain implements ChatDomain {
   /**
    * Procesa el contexto y genera una respuesta
    */
-  async handle(context: ChatContext, tracer?: AITracerInterface): Promise<ChatResponse> {
+  async handle(context: ChatContext, tracer?: AITracerInterface): Promise<ChatResponse | null> {
     const startTime = Date.now()
 
     logger.info('KnowledgeBaseDomain handling request', {
@@ -98,9 +98,12 @@ export class KnowledgeBaseDomain implements ChatDomain {
     })
     dbSpan?.end()
 
-    // 3. Si no hay resultados, usar LLM para pedir más contexto
+    // 3. Si no hay resultados, declinar y dejar que otro domain lo intente.
+    // Esto evita falsos positivos cuando isPlatformQuery matchea palabras ambiguas
+    // (ej: "plan" en "plan de gobierno abierto" vs "plan premium").
     if (searchResult.entries.length === 0) {
-      return this.handleNoResults(context, startTime, tracer)
+      logger.info('KnowledgeBaseDomain: no KB results, declining to let next domain try', { domain: 'knowledge-base' })
+      return null
     }
 
     // 4. Si hay respuesta corta y la pregunta es simple, usarla
