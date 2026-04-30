@@ -11,6 +11,9 @@ interface ThemeStat {
   total: number
   correct: number
   accuracy: number
+  total_30d: number
+  correct_30d: number
+  accuracy_30d: number | null  // null si no hay datos en los últimos 30 días
   last_study: string | null
 }
 
@@ -41,6 +44,13 @@ async function _GET(request: NextRequest) {
         SUM(CASE WHEN tq.is_correct = true THEN 1 ELSE 0 END)::int as correct,
         ROUND((SUM(CASE WHEN tq.is_correct = true THEN 1 ELSE 0 END)::numeric
           / NULLIF(COUNT(*), 0)) * 100, 0)::int as accuracy,
+        -- Accuracy últimos 30 días (mismo scan, sin coste extra)
+        SUM(CASE WHEN tq.created_at >= now() - interval '30 days' THEN 1 ELSE 0 END)::int as total_30d,
+        SUM(CASE WHEN tq.created_at >= now() - interval '30 days' AND tq.is_correct = true THEN 1 ELSE 0 END)::int as correct_30d,
+        CASE WHEN SUM(CASE WHEN tq.created_at >= now() - interval '30 days' THEN 1 ELSE 0 END) > 0
+          THEN ROUND((SUM(CASE WHEN tq.created_at >= now() - interval '30 days' AND tq.is_correct = true THEN 1 ELSE 0 END)::numeric
+            / SUM(CASE WHEN tq.created_at >= now() - interval '30 days' THEN 1 ELSE 0 END)) * 100, 0)::int
+          ELSE NULL END as accuracy_30d,
         MAX(tq.created_at)::text as last_study
       FROM test_questions tq
       JOIN tests t ON tq.test_id = t.id
@@ -61,6 +71,9 @@ async function _GET(request: NextRequest) {
       total: Number(r.total),
       correct: Number(r.correct),
       accuracy: Number(r.accuracy),
+      total_30d: Number(r.total_30d || 0),
+      correct_30d: Number(r.correct_30d || 0),
+      accuracy_30d: r.accuracy_30d != null ? Number(r.accuracy_30d) : null,
       last_study: r.last_study,
     }))
 
