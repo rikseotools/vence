@@ -31,7 +31,7 @@ interface UserAnswersCacheEntry {
 }
 
 const userAnswersCache = new Map<string, UserAnswersCacheEntry>()
-const USER_ANSWERS_TTL = 30 * 1000 // 30 segundos
+const USER_ANSWERS_TTL = 5 * 60 * 1000 // 5 minutos (antes 30s — insuficiente para heavy users)
 
 // ============================================
 // FUNCIÓN PRINCIPAL
@@ -49,9 +49,12 @@ const USER_ANSWERS_TTL = 30 * 1000 // 30 segundos
  * @returns Array de respuestas con info de artículo
  */
 export async function getUserAnswersWithArticles(
-  userId: string
+  userId: string,
+  topicNumber?: number
 ): Promise<UserAnswer[]> {
-  const cacheKey = `user-answers:${userId}`
+  const cacheKey = topicNumber != null
+    ? `user-answers:${userId}:t${topicNumber}`
+    : `user-answers:${userId}`
   const cached = userAnswersCache.get(cacheKey)
 
   if (cached && Date.now() - cached.timestamp < USER_ANSWERS_TTL) {
@@ -59,6 +62,11 @@ export async function getUserAnswersWithArticles(
   }
 
   const db = getDb()
+
+  // Filtrar por tema si se especifica — reduce de 54k a ~2k filas para heavy users
+  const topicFilter = topicNumber != null
+    ? sql`AND tq.tema_number = ${topicNumber}`
+    : sql``
 
   const result = await db.execute<{
     answer_id: string
@@ -90,6 +98,7 @@ export async function getUserAnswersWithArticles(
     WHERE t.user_id = ${userId}
       AND q.primary_article_id IS NOT NULL
       AND a.is_active = true
+      ${topicFilter}
   `)
 
   const rows = Array.isArray(result) ? result : (result as any).rows || []
