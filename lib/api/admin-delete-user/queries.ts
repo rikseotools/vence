@@ -88,6 +88,7 @@ const TABLES_TO_CLEAN_GDPR: Array<{ table: string; column: string }> = [
   { table: 'user_difficulty_metrics', column: 'user_id' },
   { table: 'user_feedback', column: 'user_id' },
   { table: 'user_interactions', column: 'user_id' },
+  { table: 'user_interactions_archive', column: 'user_id' },
   { table: 'user_learning_analytics', column: 'user_id' },
   { table: 'user_medals', column: 'user_id' },
   { table: 'user_message_interactions', column: 'user_id' },
