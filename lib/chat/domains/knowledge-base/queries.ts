@@ -324,6 +324,7 @@ export function isPlatformQuery(message: string): boolean {
     /reembolso/i,
     /garant[ií]a.*devoluci[oó]n/i,
     /dar(me)?\s+de\s+baja/i,
+    /(me\s+)?doy\s+de\s+baja/i,
     // Temarios (solo consultas genericas sobre la plataforma, no sobre contenido)
     /temario(s)?\s+(gratis|gratuito|free)/i,
     /contenido\s+(gratis|gratuito)/i,
