@@ -41,11 +41,23 @@ export function getHwFingerprintFromRequest(request: NextRequest): string | null
   return request.headers.get('x-hw-fingerprint') ?? null
 }
 
+// Cache de device checks: evita llamar a la RPC register_device en cada pregunta
+// de un examen (100 preguntas = 100 RPCs sin cache). TTL 60s: suficiente para
+// un examen, el estado del dispositivo no cambia durante un test.
+// Bug Paloma 30/04/2026: 100 RPCs de device check → 100 errores 403 → cascada 504s.
+interface DeviceCacheEntry {
+  result: DeviceCheckResult
+  timestamp: number
+}
+const deviceCheckCache = new Map<string, DeviceCacheEntry>()
+const DEVICE_CHECK_TTL = 60_000 // 60 segundos
+
 /**
  * Register a device for a user and check if it's within limits.
  * - Free: max 2 devices. 3rd device → blocked.
  * - Premium: max 3 devices. 4th device → allowed but flagged.
  * - Devices inactive 30+ days are auto-evicted by the SQL function.
+ * - Cached 60s to avoid RPC spam during exams (100 questions = 100 calls).
  *
  * Returns allowed=true if no userId or no deviceId (fail open).
  */
@@ -55,6 +67,13 @@ export async function registerAndCheckDevice(
   userAgent?: string | null,
 ): Promise<DeviceCheckResult> {
   if (!userId || !deviceId) return FAIL_OPEN
+
+  // Check cache: si ya verificamos este user+device hace <60s, reutilizar
+  const cacheKey = `${userId}:${deviceId}`
+  const cached = deviceCheckCache.get(cacheKey)
+  if (cached && Date.now() - cached.timestamp < DEVICE_CHECK_TTL) {
+    return cached.result
+  }
 
   try {
     const deviceLabel = userAgent ? parseDeviceLabel(userAgent) : null
@@ -77,7 +96,7 @@ export async function registerAndCheckDevice(
     const result = Array.isArray(data) ? data[0] : data
     if (!result) return FAIL_OPEN
 
-    return {
+    const checkResult: DeviceCheckResult = {
       allowed: result.out_allowed ?? result.allowed,
       deviceCount: result.out_device_count ?? result.device_count,
       maxDevices: result.out_max_devices ?? result.max_devices,
@@ -85,6 +104,11 @@ export async function registerAndCheckDevice(
       isPremium: result.out_is_premium ?? result.is_premium,
       existingDevices: result.out_existing_devices ?? result.existing_devices ?? '',
     }
+
+    // Guardar en cache
+    deviceCheckCache.set(cacheKey, { result: checkResult, timestamp: Date.now() })
+
+    return checkResult
   } catch (err) {
     console.error('❌ [DeviceLimit] Unexpected error:', err)
     return FAIL_OPEN
