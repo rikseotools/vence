@@ -117,7 +117,7 @@ export default function TemarioClient({ bloques, oposicion, fechaActualizacion }
         </div>
         <div className="flex-shrink-0 flex items-center gap-3">
           {hasProgress && (
-            <div className="text-right hidden sm:block">
+            <div className="text-right">
               <div className={`text-sm font-semibold ${progress.accuracy >= 70 ? 'text-green-600' : 'text-amber-600'}`}>
                 {progress.accuracy}%
                 {progress.accuracy30d != null && progress.accuracy30d !== progress.accuracy && (
