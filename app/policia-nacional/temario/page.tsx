@@ -2,8 +2,8 @@
 // Fuente única de verdad: BD (oposicion_bloques + topics).
 import DynamicTemarioPage from '@/components/temario/DynamicTemarioPage'
 
-// Static generation: cache infinito, invalidar con revalidateTag('temario')
-export const revalidate = false
+// PN es oposición nueva con poco tráfico — dynamic hasta que el pool se estabilice
+export const dynamic = 'force-dynamic'
 
 export const metadata = {
   title: 'Temario Policía Nacional 2026 - Escala Básica | Vence.es',

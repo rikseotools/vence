@@ -1,4 +1,5 @@
 // app/policia-nacional/test/aleatorio/page.tsx
+export const dynamic = 'force-dynamic'
 import RandomTestPage from '@/components/test/RandomTestPage'
 import type { Metadata } from 'next'
 
