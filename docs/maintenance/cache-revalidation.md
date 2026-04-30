@@ -298,81 +298,77 @@ Si vuelven a aparecer errores de `CONNECT_TIMEOUT` o `statement timeout` en Verc
 
 ---
 
-## Pre-generación de páginas (Build Time)
+## Renderizado de páginas (force-dynamic)
 
-Además de la caché de datos, las páginas de temario se **pre-generan en build time** usando `generateStaticParams`. Esto significa que **nunca** hay queries a la BD cuando un usuario visita un tema.
+Desde el 30/04/2026, las páginas de temario, test y landings usan `force-dynamic` en vez de generación estática (`generateStaticParams`). Esto significa que se renderizan en el servidor en la primera visita.
 
-### Páginas pre-generadas
+### Por qué no SSG
 
-| Ruta | Temas | Archivo |
-|------|-------|---------|
-| `/auxiliar-administrativo-estado/temario/tema-*` | 1-16, 101-112 (28 total) | `app/auxiliar.../temario/[slug]/page.tsx` |
-| `/tramitacion-procesal/temario/tema-*` | 1-37 | `app/tramitacion.../temario/[slug]/page.tsx` |
-| `/administrativo-estado/temario/tema-*` | 1-11, 201-204, 301-307, 401-409, 501-506, 601-608 (45 total) | `app/administrativo.../temario/[slug]/page.tsx` |
+El build intentaba generar ~3600 páginas estáticas con 3 workers. Con 90 conexiones máximas en Supabase, esto causaba:
+- `57014 statement timeout` — queries cancelados por timeout
+- Page timeouts (>60s) — Vercel abandona la página tras 3 intentos
+- Builds de 30+ minutos que fallaban frecuentemente
 
-### Cómo funciona
+### Cómo funciona ahora
 
 ```typescript
-// En cada page.tsx de temario
-export const revalidate = false  // Nunca revalidar automáticamente
-
-export async function generateStaticParams() {
-  // Pre-genera todas las páginas en build
-  // Ejemplo Auxiliar: Bloque I (1-16) + Bloque II (101-112)
-  const bloqueI = Array.from({ length: 16 }, (_, i) => ({ slug: `tema-${i + 1}` }))
-  const bloqueII = Array.from({ length: 12 }, (_, i) => ({ slug: `tema-${101 + i}` }))
-  return [...bloqueI, ...bloqueII]
-}
+// En cada page.tsx de temario, test y landings
+export const dynamic = 'force-dynamic'
 ```
 
-### Flujo
-
 ```
-BUILD TIME:
-  next build → genera HTML de tema-1, tema-2, ... tema-28
+PRIMERA VISITA:
+  Usuario visita /auxilio-judicial/temario/tema-5 → SSR (query a BD) → HTML cacheado
 
-RUNTIME:
-  Usuario visita /tema-5 → Sirve HTML pre-generado (0 queries)
+VISITAS SIGUIENTES:
+  Vercel sirve el HTML cacheado (0 queries)
 ```
+
+**SEO intacto:** Google recibe HTML completo con metadata, canonical URLs, Schema.org — igual que con SSG.
 
 ### Añadir temas nuevos
 
 Si se añaden más temas a una oposición:
-1. Actualizar `totalTopics` en `lib/api/temario/schemas.ts`
-2. Actualizar `generateStaticParams` en el page.tsx correspondiente con los nuevos números de bloque
-3. Actualizar `scripts/warm-temario-cache.sh` con los nuevos números
-4. Hacer deploy (el build generará los nuevos temas)
-
-**Nota sobre numeración por bloques:**
-- Auxiliar: Bloque I (1-16), Bloque II (101-112)
-- Tramitación: Secuencial (1-37)
-- Administrativo: 6 bloques (1-11, 201-204, 301-307, 401-409, 501-506, 601-608)
+1. Añadir el topic en la tabla `topics` con `disponible = true`
+2. Actualizar `totalTopics` en `lib/config/oposiciones.ts`
+3. El temario se renderizará automáticamente en la primera visita (no requiere cambios en page.tsx)
+4. El warmup post-deploy lo calentará automáticamente (lee temas de BD)
 
 ---
 
-## Cache Warming (Opcional)
+## Cache Warming (Automático tras deploy)
 
-Si después de un deploy quieres asegurar que todas las páginas están cacheadas (sin depender del build de Vercel), puedes ejecutar el script de cache warming:
+Dado que las páginas son `force-dynamic`, la primera visita tras un deploy hace queries a la BD. Para que ningún usuario experimente esa latencia, un script de warmup visita **todas** las páginas automáticamente tras cada deploy.
+
+### Script: `scripts/warm-cache-post-deploy.js`
 
 ```bash
-# Desde la raíz del proyecto
-./scripts/warm-temario-cache.sh
+# Manual desde la raíz del proyecto
+node scripts/warm-cache-post-deploy.js
 
-# O especificando URL base
-./scripts/warm-temario-cache.sh https://www.vence.es
+# Especificando URL
+node scripts/warm-cache-post-deploy.js https://www.vence.es
 ```
 
 **Qué hace:**
-- Visita las 110 páginas de temario (28 + 37 + 45)
-- Usa 5 peticiones concurrentes
-- Muestra ✅ o ❌ para cada URL
+- Lee oposiciones activas y temas disponibles de la BD
+- Genera ~963 URLs: landing + test + temario index + cada tema + estáticas
+- Visita todas con 8 peticiones concurrentes
+- Si no hay BD (CI sin secrets), parsea el sitemap como fallback
+- Reporta progreso y errores
+- Exit code 1 si >10% de fallos
 
-**Cuándo usarlo:**
-- Después de un deploy si sospechas que el build no generó todas las páginas
-- Si ves errores de timeout en Vercel logs para páginas de temario
-- Para verificar que todas las páginas responden correctamente
+### GitHub Actions: ejecución automática
 
-**Nota:** Normalmente NO es necesario. El deploy de Vercel debería generar todas las páginas gracias a `generateStaticParams`. Usar solo si hay problemas.
+El workflow `.github/workflows/warm-cache-post-deploy.yml`:
+1. Se dispara en cada push a `main`
+2. Espera 5 minutos para que Vercel termine el deploy
+3. Ejecuta el script de warmup (~963 URLs en ~3-5 minutos)
+4. También se puede lanzar manualmente desde GitHub UI (workflow_dispatch)
+
+### Script legacy: `scripts/warm-temario-cache.sh`
+
+El script bash original que solo calienta 110 páginas de 3 oposiciones. **Sustituido** por `warm-cache-post-deploy.js` que cubre todas las oposiciones y tipos de página.
 
 ---
 
@@ -421,6 +417,7 @@ curl -X POST "https://www.vence.es/api/purge-cache" \
 
 | Fecha | Cambio |
 |-------|--------|
+| 2026-04-30 | **Todas las páginas de temario, test y landings migradas a `force-dynamic`** para evitar saturar Supabase en build (~3600 páginas SSG → 0). Script `warm-cache-post-deploy.js` creado para calentar ~963 URLs tras deploy. Workflow automático en GitHub Actions. Script legacy `warm-temario-cache.sh` sustituido. |
 | 2026-04-16 | **Eliminados triggers PG de revalidación automática** sobre `topics`, `topic_scope`, `oposicion_bloques` y `oposiciones`. Cada UPDATE/INSERT disparaba regeneración de ~1000 páginas (~5M ISR Writes/mes, ~$20). El cron `check-seguimiento` solo ya generaba 41 disparos/día sin que cambiara nada visible. Migración: `supabase/migrations/20260416_drop_revalidate_triggers.sql`. Endpoint `/api/admin/revalidate-temario` se mantiene para invocación manual. Mismo patrón que feedback (`166c1ddf`) y disputes (`3774509e`) ya migrados. |
 | 2026-04-09 | Añadido script `purge-all-cache.js` para revalidar todas las rutas ISR |
 | 2026-04-09 | Documentada revalidación por ruta con `/api/purge-cache` |

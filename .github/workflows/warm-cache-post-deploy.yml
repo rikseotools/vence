@@ -1,0 +1,38 @@
+name: Cache Warmup Post-Deploy
+
+# Se ejecuta tras push a main (que dispara deploy en Vercel).
+# Espera 5 minutos para que Vercel termine el build, y luego
+# visita todas las páginas force-dynamic para calentar el cache.
+# ~963 URLs con concurrencia 8 → ~3-5 minutos.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # Permitir ejecución manual
+
+jobs:
+  warm-cache:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      # Esperar 5 minutos para que Vercel despliegue
+      - name: Wait for Vercel deploy
+        run: sleep 300
+
+      # Ejecutar warmup
+      # Si SUPABASE secrets están configurados, lee de BD (~963 URLs).
+      # Si no, usa sitemap como fallback.
+      - name: Warm cache
+        run: node scripts/warm-cache-post-deploy.js https://www.vence.es
+        timeout-minutes: 15
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
