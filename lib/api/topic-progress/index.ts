@@ -171,8 +171,11 @@ export async function getTopicProgressForUser(
     }
 
     const mapping = await getArticleTopicMapping(positionType)
-    // Filtrar por tema en SQL — reduce de 54k a ~2k filas para heavy users (6x más rápido)
-    const answers = await getUserAnswersWithArticles(userId, topicNumber)
+    // NO filtrar por tema_number en SQL: un artículo puede pertenecer a varios
+    // temas via topic_scope. getStatsForTopic filtra por law_id + article_number
+    // del mapping, así las respuestas a artículos compartidos cuentan en ambos temas.
+    // Cache de 5min protege contra re-ejecuciones.
+    const answers = await getUserAnswersWithArticles(userId)
     const progress = getStatsForTopic(answers, mapping, topicNumber, totalQuestionsAvailable)
 
     return { success: true, progress }
