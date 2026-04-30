@@ -1,0 +1,93 @@
+[
+  {
+    "id": "46fb9eeb-540e-4f96-89f0-ee4f0735ce3d",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "La evaluación del desempeño es el procedimiento mediante el cual se mide y valora la conducta profesional y el rendimiento o logro de resultados de los empleados públicos.",
+    "analysis": "El art. 83.1 define exactamente la evaluación del desempeño. La opción B reproduce la definición legal de forma fiel. La explicación cita correctamente el artículo y el contenido.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "49efec86-7985-4804-9add-620623e54c49",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "d) Tener cumplidos los dieciséis años y no exceder, en su caso, de la edad máxima de jubilación forzosa. e) Poseer las capacidades y aptitudes físicas y psíquicas que sean necesarias... b) Estar en posesión de la titulación exigida o estar en condiciones de obtenerla.",
+    "analysis": "El art. 50.1 recoge los requisitos generales. Las opciones A (apartado d), B (apartado e) y C (apartado b) están todas recogidas en el artículo, por lo que D ('todas correctas') es la respuesta válida. La explicación identifica correctamente cada opción con su letra del artículo.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "4ae0bf86-2354-4743-bf12-b3baeae96b0e",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "Son causas de pérdida de la condición de personal funcionario de carrera: a) La renuncia... b) La pérdida de la nacionalidad... c) La jubilación total. d) La sanción disciplinaria de separación del servicio que tenga carácter firme. e) La pena principal o accesoria de inhabilitación... f) El fallecimiento.",
+    "analysis": "El art. 64 enumera taxativamente las causas de pérdida. La 'jubilación parcial' no aparece en ninguna de las letras a)-f). La 'jubilación total' (opción D) sí es causa de pérdida. La respuesta A (jubilación parcial) es correcta como causa que NO produce pérdida de la condición. Explicación completa y precisa.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "4bf6a990-aa66-41db-ab67-f1cb54d01fa8",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "e) Las universidades públicas gallegas.",
+    "analysis": "El art. 4.1 solo incluye universidades públicas gallegas, no privadas. La opción D del enunciado dice 'universidades públicas y privadas gallegas', lo cual es incorrecto respecto a la ley. Por tanto D es la respuesta incorrecta (que es lo que pide la pregunta). Artículo, respuesta y explicación son correctos.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "4e06b34f-cbd2-4d35-a835-2afef1d0072c",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "Por lactancia de un hijo menor de doce meses, el personal funcionario tendrá derecho a una hora de ausencia del puesto de trabajo, que podrá dividir en dos fracciones.",
+    "analysis": "El art. 112.1 establece claramente el derecho a una hora de ausencia. La opción A es correcta. La explicación reproduce fielmente el tenor literal del artículo.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "4fa3b990-b481-47ae-8643-0ad5bb97b665",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "Mediante orden de la consejería competente en materia de función pública se regularán las características y funcionamiento del Registro único de personal y de puestos de trabajo de la Administración general de la Comunidad Autónoma de Galicia y de las entidades públicas instrumentales del sector público autonómico.",
+    "analysis": "El art. 46.5 atribuye expresamente la regulación del Registro único a una orden de la consejería de función pública. La opción C coincide con el artículo. Artículo, respuesta y explicación correctos.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "5d582f0a-11d3-4ac9-8c51-699b3de60b74",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "El personal directivo estará sometido al régimen disciplinario previsto en la presente ley para el personal funcionario, excepto en los casos en los que accedió a su puesto en virtud de contrato laboral de alta dirección, en los cuales le será de aplicación el régimen disciplinario previsto para el personal laboral.",
+    "analysis": "El art. 36.1 establece que el personal directivo está sometido al régimen disciplinario (opción C). La explicación recoge correctamente la excepción para los de contrato laboral de alta dirección. Todo correcto.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  }
+]

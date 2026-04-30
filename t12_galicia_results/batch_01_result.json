@@ -1,0 +1,93 @@
+[
+  {
+    "id": "02e72674-2607-4818-bf98-17674a2f9a5f",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "en el ejercicio de las competencias asumidas de conformidad con la Ley Orgánica 1/1981, de 6 de abril, del Estatuto de autonomía para Galicia.",
+    "analysis": "El artículo 20.1 cita literalmente la Ley Orgánica 1/1981, de 6 de abril, del Estatuto de autonomía para Galicia como marco para el ejercicio de las competencias. La respuesta B es correcta.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "042ce303-dd58-472a-81cd-6b2f6609a3f9",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "La igualdad de trato y oportunidades entre mujeres y hombres es un principio informador del ordenamiento jurídico autonómico",
+    "analysis": "El artículo 2 declara literalmente que la igualdad de trato y oportunidades es un principio informador del ordenamiento jurídico autonómico. La respuesta B es correcta.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "046d1f87-854d-4d78-a62b-e8253b552404",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "El mismo informe requerirá la tramitación de los planes de especial relevancia económica, social o cultural, con repercusión en cuestiones de género, que se sometan a la aprobación del Consejo de la Xunta.",
+    "analysis": "El artículo 24.1 establece literalmente que los planes de especial relevancia económica, social o cultural requieren el informe de impacto de género. La respuesta B es correcta.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "0d66f2d1-8932-4681-b122-de79a36b6fc4",
+    "status": "bad_explanation",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": false,
+    "confidence": "alta",
+    "article_quote": "a) La Presidencia, que corresponderá, de forma rotatoria y por períodos de dos años, a las personas titulares de las consejerías con competencias en materia de medio rural y de mar. [...] c) Dos secciones: la Sección de Mujeres del Medio Rural y la Sección de Mujeres del Mar.",
+    "analysis": "El artículo 180.1 establece literalmente que la Presidencia es rotatoria por períodos de dos años y que existen dos secciones: Mujeres del Medio Rural y Mujeres del Mar. La respuesta A coincide exactamente.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": "Según el artículo 180.1 de la Ley 7/2023, la Presidencia del Observatorio corresponde de forma rotatoria por períodos de dos años a las titulares de las consejerías con competencias en medio rural y mar, existiendo dos secciones: la Sección de Mujeres del Medio Rural y la Sección de Mujeres del Mar."
+  },
+  {
+    "id": "125e2042-8bdc-41a8-a34e-94bcafbf608b",
+    "status": "bad_explanation",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": false,
+    "confidence": "alta",
+    "article_quote": "g) La realización de actuaciones que tiendan a procurar que las mujeres y niñas con discapacidad necesitadas de apoyo personal para el acceso a un servicio público tengan la posibilidad de escoger a una persona de apoyo de su mismo sexo. Igualmente, se procurará que las mujeres y niñas sordas tengan la posibilidad de escoger entre intérpretes de su mismo sexo",
+    "analysis": "El artículo 74.2.g establece la posibilidad de escoger a una persona de apoyo o intérprete del mismo sexo para mujeres y niñas con discapacidad. La respuesta B es correcta.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": "Según el artículo 74.2.g de la Ley 7/2023, se fomentará que las mujeres y niñas con discapacidad que necesiten apoyo personal puedan escoger a una persona de apoyo de su mismo sexo, y que las mujeres y niñas sordas puedan escoger intérpretes de lengua de signos de su mismo sexo."
+  },
+  {
+    "id": "12cbdbc8-f83e-45ba-8045-ad982ee3ef6b",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "tendrán en consideración el trabajo realizado por la Comisión de Estudio para la Igualdad y para los Derechos de las Mujeres del Parlamento de Galicia",
+    "analysis": "El artículo 3 cita literalmente la Comisión de Estudio para la Igualdad y para los Derechos de las Mujeres del Parlamento de Galicia. La respuesta B es correcta.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "1c39c4dc-036b-4bda-8d2b-c0a1b1bba30e",
+    "status": "bad_explanation",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": false,
+    "confidence": "alta",
+    "article_quote": "La Comisión Interdepartamental de Igualdad es el órgano colegiado responsable de coordinar las medidas adoptadas por las distintas consejerías de la Administración general de la Comunidad Autónoma de Galicia, con el fin de promover la efectividad de las políticas de igualdad y la erradicación de la violencia de género.",
+    "analysis": "El artículo 173 define literalmente a la Comisión Interdepartamental de Igualdad como el órgano colegiado responsable de coordinar las medidas de las consejerías para promover las políticas de igualdad y erradicar la violencia de género. La respuesta B es correcta.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": "Según el artículo 173 de la Ley 7/2023, la Comisión Interdepartamental de Igualdad es el órgano colegiado responsable de coordinar las medidas adoptadas por las distintas consejerías para promover la efectividad de las políticas de igualdad y la erradicación de la violencia de género."
+  }
+]

@@ -66,7 +66,7 @@ describe('Theme Stats V2 - Oposición Schemas', () => {
 
   describe('VALID_OPOSICIONES constant', () => {
     test('debe tener exactamente 20 oposiciones', () => {
-      expect(VALID_OPOSICIONES).toHaveLength(36)
+      expect(VALID_OPOSICIONES).toHaveLength(41)
     })
 
     test('debe incluir todas las oposiciones esperadas', () => {
@@ -102,7 +102,7 @@ describe('Theme Stats V2 - Oposición Schemas', () => {
     })
 
     test('debe tener exactamente 20 mappings', () => {
-      expect(Object.keys(OPOSICION_TO_POSITION_TYPE)).toHaveLength(36)
+      expect(Object.keys(OPOSICION_TO_POSITION_TYPE)).toHaveLength(41)
     })
 
     test('cada oposición válida debe tener un mapping', () => {
@@ -1002,7 +1002,8 @@ describe('Theme Stats V2 - Tests de Regresión', () => {
     expect(VALID_OPOSICIONES).toContain('administrativo-navarra')
     expect(VALID_OPOSICIONES).toContain('auxiliar-administrativo-la-rioja')
     expect(VALID_OPOSICIONES).toContain('auxiliar-administrativo-diputacion-leon')
-    expect(VALID_OPOSICIONES).toHaveLength(36)
+    expect(VALID_OPOSICIONES).toContain('guardia-civil')
+    expect(VALID_OPOSICIONES).toHaveLength(41)
   })
 
   test('CRÍTICO: OPOSICION_TO_POSITION_TYPE mapea slugs URL a position_type DB', () => {

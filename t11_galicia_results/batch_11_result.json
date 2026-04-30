@@ -1,0 +1,93 @@
+[
+  {
+    "id": "bb1b6f64-6d9d-48f6-a305-735f705578fb",
+    "status": "bad_explanation",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": false,
+    "confidence": "alta",
+    "article_quote": "En caso de fallecimiento del cónyuge, pareja de hecho o familiar dentro del primer grado de consanguinidad o afinidad, el personal funcionario tendrá derecho a un permiso de tres días hábiles cuando el suceso se produzca en la misma localidad",
+    "analysis": "La respuesta A (3 días) es correcta para el supuesto de FALLECIMIENTO de familiar de primer grado en la misma localidad (art. 108.2). Sin embargo, el enunciado combina erróneamente 'fallecimiento, accidente o enfermedad grave' en un solo supuesto, cuando el artículo los regula por separado: el ap. 1 establece 5 días para accidente/enfermedad grave de primer grado, y el ap. 2 establece 3 días para fallecimiento de primer grado en la misma localidad. La explicación justifica la respuesta diciendo que se aplica el 'supuesto más restrictivo', lo que es metodológicamente incorrecto: no se trata de elegir el más restrictivo, sino que son supuestos distintos con duraciones distintas. La explicación debería aclarar que la respuesta correcta se aplica únicamente al caso de fallecimiento (art. 108.2), no al de accidente o enfermedad grave (que serían 5 días según art. 108.1).",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": "Según el art. 108.2 de la Ley 2/2015, en caso de fallecimiento del cónyuge, pareja de hecho o familiar dentro del primer grado de consanguinidad o afinidad, el permiso es de tres días hábiles cuando el suceso se produzca en la misma localidad (y cinco días si es en localidad distinta). La respuesta correcta es la A. Nota importante: el enunciado menciona también 'accidente o enfermedad grave', supuesto regulado en el art. 108.1, que otorga cinco días hábiles para el primer grado; son supuestos distintos con duraciones diferentes. La pregunta se resuelve por el supuesto de fallecimiento (ap. 2), que da tres días."
+  },
+  {
+    "id": "bfbf26b7-91c4-4a93-9774-771a79feabeb",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "La condición de personal laboral se adquiere por la firma del contrato de trabajo, previa acreditación de que se reúnen los requisitos y condiciones exigidos y, en su caso, de la superación del correspondiente proceso selectivo.",
+    "analysis": "El artículo 63 es claro y la respuesta C (firma del contrato de trabajo) es exactamente lo que establece el precepto. La explicación reproduce fielmente el contenido legal.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "c1559e05-7144-487d-b1e5-e5717b41b5e4",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "Los cuerpos y escalas del personal funcionario se crean, refunden, modifican y suprimen por ley.",
+    "analysis": "El artículo 40.2 es inequívoco: la respuesta A (ley) es correcta. La explicación cita correctamente el precepto.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "c5e72cda-ff7c-45fd-b0a9-75cf487c4eb0",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "Convocar y resolver los concursos ordinarios de provisión de puestos de trabajo incluidos en las relaciones de puestos de trabajo del personal funcionario y laboral de la Administración general de la Comunidad Autónoma de Galicia y de las entidades públicas instrumentales del sector público autonómico.",
+    "analysis": "El artículo 14.2.d) atribuye expresamente esta competencia a la persona titular de la consejería competente en materia de función pública. La respuesta B es correcta y la explicación lo reproduce con fidelidad.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "ca2c17cc-48f0-4d46-9123-32c7444bc175",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "Las administraciones públicas incluidas en el ámbito de aplicación de la presente ley pueden utilizar para la selección de su personal los sistemas de oposición, concurso-oposición y, excepcionalmente, concurso.",
+    "analysis": "El artículo 56.1 enumera los tres sistemas selectivos. Las opciones A, B y C son cada uno de ellos, por lo que la respuesta D (todas son correctas) es la adecuada. La explicación es correcta.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "d110d11e-2560-4cf0-8c26-8ba57891faed",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "Cada vez que la presente ley haga mención al personal funcionario de carrera, se entenderá comprendido el personal estatutario fijo del Servicio Gallego de Salud.",
+    "analysis": "El artículo 6.3 es literal y la respuesta A lo recoge exactamente. La explicación es fiel al precepto.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "d42eb0f1-39b2-442d-a98c-a430ec4126bd",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "De 501 a 750 funcionarios: 17.",
+    "analysis": "El artículo 156.4 establece la escala de representantes. Con 750 funcionarios se aplica el tramo 501-750, que corresponde a 17 representantes. La respuesta C es correcta y la explicación lo refleja.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  }
+]

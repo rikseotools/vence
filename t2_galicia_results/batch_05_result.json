@@ -1,0 +1,80 @@
+[
+  {
+    "id": "d65308b4-867f-48f7-97f5-add8fbeb6b34",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "Una ley del Parlamento regulará la organización territorial propia de Galicia, de acuerdo con el presente Estatuto.",
+    "analysis": "El artículo 2.3 establece literalmente que es una ley del Parlamento quien regula la organización territorial. La respuesta C es correcta y la explicación cita con precisión el precepto.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "df9a6e13-fe2a-4388-9547-9a9c2d4203ca",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "Los derechos, libertades y deberes fundamentales de los gallegos son los establecidos en la Constitución.",
+    "analysis": "El artículo 4.1 establece que los derechos y deberes fundamentales son los de la Constitución, sin extensión al Estatuto ni a otra fuente. La respuesta A y la explicación son exactas.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "dfeb8aaf-f348-4b8d-9854-1ab74e65d4b3",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "Una ley de Galicia regulará la organización de la Junta y las atribuciones y el Estatuto personal de sus componentes.",
+    "analysis": "La opción B atribuye al Presidente la regulación de la organización de la Junta, cuando el artículo 16.4 indica que es una ley de Galicia quien lo hace. Las otras opciones (A, C, D) corresponden a funciones presidenciales recogidas en otros preceptos del Estatuto. La respuesta B y la explicación son correctas.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "e5156870-d254-4693-82f2-5774d7716478",
+    "status": "wrong_article",
+    "article_ok": false,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "La Junta de Galicia responde políticamente ante el Parlamento de forma solidaria, sin perjuicio de la responsabilidad directa de cada uno de sus componentes por su gestión.",
+    "analysis": "El enunciado de la pregunta dice expresamente 'Según el artículo 10' (funciones del Parlamento), pero article_number está asignado como 17. El artículo 10 es el que enumera las funciones del Parlamento (A, B, C son funciones parlamentarias del art. 10); el artículo 17.1 se usa para demostrar que D no es función del Parlamento sino de la Junta. La respuesta D es correcta y la explicación es válida, pero el artículo vinculado debería ser el 10, que es al que el enunciado hace referencia.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": "10",
+    "explanation_fix": null
+  },
+  {
+    "id": "ea2c81f9-f7d8-41ea-a1ab-46fc16b66c75",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "Fuera de dicho territorio la responsabilidad penal será exigible en los mismos términos ante la Sala de lo Penal del Tribunal Supremo.",
+    "analysis": "El artículo 18 distingue claramente dos regímenes: dentro de Galicia corresponde al Tribunal Superior de Justicia; fuera del territorio, a la Sala de lo Penal del Tribunal Supremo. La respuesta B y la explicación reproducen fielmente el precepto.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "fa1bba74-2d69-4948-9ed2-a2d7b376ad29",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "Dos. Propiedad industrial e intelectual.",
+    "analysis": "El artículo 29 enumera las materias de ejecución de legislación estatal: laboral, propiedad industrial e intelectual, salvamento marítimo y vertidos industriales. Solo la opción B (propiedad industrial e intelectual) figura en ese listado. Las opciones A (régimen minero), C (sector pesquero) y D (cooperativas) corresponden a competencias exclusivas de Galicia del artículo 27, no a ejecución del artículo 29. Respuesta y explicación son correctas.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  }
+]

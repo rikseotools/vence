@@ -1,0 +1,93 @@
+[
+  {
+    "id": "2a3bdb32-d7eb-487f-aa88-f2024c9ad4ab",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "Pueden concederse licencias por asuntos propios sin retribución, con una duración que, acumulada, no excederá de tres meses cada dos años de prestación de servicios efectivos.",
+    "analysis": "La respuesta B es correcta y coincide exactamente con el art. 127.1. La explicación cita correctamente el artículo y el contenido. Todo correcto.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "2caf58f0-9c61-4608-81ce-f1688a7c14de",
+    "status": "bad_explanation",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": false,
+    "confidence": "alta",
+    "article_quote": "g) Adecuación entre el contenido de los procesos selectivos y las funciones o tareas a desarrollar.",
+    "analysis": "La respuesta D es correcta: la opción D de la pregunta dice 'las pruebas a desarrollar' cuando el artículo 49.g) dice 'las funciones o tareas a desarrollar'. La explicación identifica correctamente el artículo 49.g) y el contenido real, pero la justificación no explica explícitamente que la opción D es INCORRECTA (que es la que NO se establece en el artículo tal y como está redactada) porque la formulación de la opción D en la pregunta difiere de la ley. La explicación es algo confusa porque primero dice 'Según el artículo 49.g), Adecuación entre el contenido...' sin aclarar que la diferencia es 'pruebas' vs 'funciones o tareas'. Sería mejor explicitar que la opción D usa 'pruebas a desarrollar' en lugar de 'funciones o tareas a desarrollar', lo que la hace incorrecta.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": "La opción D afirma 'adecuación entre el contenido de los procesos selectivos y las pruebas a desarrollar', pero el artículo 49.g) establece 'adecuación entre el contenido de los procesos selectivos y las funciones o tareas a desarrollar'. La diferencia entre 'pruebas' y 'funciones o tareas' hace que la opción D no esté recogida literalmente en el artículo 49, siendo la respuesta incorrecta que se pide."
+  },
+  {
+    "id": "2e197f89-224b-412d-b453-ca61084bdbe0",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "Los cuerpos y escalas del personal funcionario de la Administración general de la Comunidad Autónoma de Galicia se clasifican en los siguientes grupos y subgrupos: a) Grupo A [...] b) Grupo B [...] c) Grupo C.",
+    "analysis": "El artículo 42 establece 3 grupos de clasificación (A, B y C), cada uno con sus subgrupos. La pregunta pregunta por 'grupos', no subgrupos. correct_option=2 → opción C = '3'. Correcto. La explicación menciona correctamente los tres grupos.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "2ec0c0e4-8e88-4cb5-9b41-b81fbdf74ed6",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "b) Los puestos cuyas actividades sean propias de oficios.",
+    "analysis": "La pregunta pide la respuesta INCORRECTA. La opción B dice 'cuyas actividades no sean propias de oficios', pero el artículo 26.3.b) dice 'cuyas actividades sean propias de oficios'. La negación hace que B sea la respuesta incorrecta, siendo la correcta. La explicación lo aclara correctamente.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "2f0b1e73-8f80-459a-86ff-0422246a46f7",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "Se entiende por funciones directivas las tareas gerenciales o de dirección o coordinación de unidades administrativas integradas por el número mínimo de efectivos de personal que se determine reglamentariamente.",
+    "analysis": "La respuesta D (todas son correctas) es correcta. El art. 33.2 engloba tareas gerenciales, de dirección y de coordinación. Las opciones A, B y C son tres componentes del mismo artículo. La explicación es precisa y correcta.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "2f8fc4d3-f80c-4fcc-af44-bba13cba267b",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "e) Las universidades públicas gallegas.",
+    "analysis": "El artículo 4.1 enumera las administraciones a las que se aplica la ley, incluyendo universidades PÚBLICAS gallegas, no privadas. La respuesta D (Las Universidades Privadas) es la incorrecta, siendo la respuesta correcta a la pregunta que pide la respuesta equivocada. La explicación es correcta.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "31bf6770-6fc6-4334-b0f0-2bed2bab22ee",
+    "status": "bad_explanation",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": false,
+    "confidence": "alta",
+    "article_quote": "b) Las personas, cualquiera que sea su nacionalidad, que sean cónyuges de personas que posean la nacionalidad española o de otros estados miembros de la Unión Europea, siempre que no estén separadas de derecho.",
+    "analysis": "La respuesta D es correcta porque los tres apartados (a, b y e del artículo) están incluidos en el art. 52.1. Sin embargo, la explicación parafrasea incorrectamente la opción B: el artículo dice que también tienen acceso los 'cónyuges de personas que posean la nacionalidad española o de otros estados miembros de la UE', y la opción B de la pregunta omite los descendientes (apartados c y d del artículo). La explicación dice '(opción B); b) cualquiera que sean sus cónyuges y descendientes bajo ciertas condiciones' mezclando cónyuges y descendientes, cuando la opción B solo menciona cónyuges. Los descendientes están en los apartados c) y d) del artículo 52.1 que la pregunta no incluye como opciones. La explicación induce a confusión al mezclar cónyuges y descendientes en la opción B.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": "Según el art. 52.1 de la Ley 2/2015, pueden acceder en igualdad de condiciones: a) nacionales de otros estados miembros de la UE (opción A de la pregunta); b) cónyuges de personas con nacionalidad española o de la UE, no separados de derecho (opción B de la pregunta); e) personas incluidas en tratados internacionales sobre libre circulación de trabajadores ratificados por España (opción C de la pregunta). Las tres opciones corresponden a letras del artículo 52.1, por lo que todas son correctas y la respuesta es D."
+  }
+]

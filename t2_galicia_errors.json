@@ -1,0 +1,54 @@
+[
+  {
+    "id": "0edc08f1-3533-4b9f-83f6-154e10277599",
+    "status": "wrong_article",
+    "article_ok": false,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "media",
+    "article_quote": "Uno. Los poderes de la Comunidad Autónoma se ejercen a través del Parlamento, de la Junta y de su Presidente.",
+    "analysis": "El artículo vinculado (art. 9) trata sobre los poderes de la CA, no sobre la estructura formal del Título I. La respuesta B (arts. 9-26) y la explicación son correctas estructuralmente, pero el article_content no proporciona la cita que lo verifica; debería enlazarse al índice/estructura general del Estatuto.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": "Estructura/índice del EAG (Título I, arts. 9-26)",
+    "explanation_fix": null
+  },
+  {
+    "id": "24385fd2-0f22-43da-9bec-f05fc722b916",
+    "status": "wrong_article",
+    "article_ok": false,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "DON JUAN CARLOS I, REY DE ESPAÑA... Sabed: Que las Cortes Generales han aprobado con el carácter de Orgánica y Yo vengo en sancionar la siguiente Ley:",
+    "analysis": "El artículo vinculado es el Preámbulo, que solo contiene la fórmula de sanción y no menciona en absoluto la estructura de títulos y capítulos. La respuesta D ('De la Junta y de su Presidente') y la explicación son correctas, pero el article_content no es el soporte normativo adecuado; debería referenciar la rúbrica del Capítulo II del Título I del EAG.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": "Rúbrica del Capítulo II del Título I del EAG (arts. 15-22)",
+    "explanation_fix": null
+  },
+  {
+    "id": "89cf296b-db9b-4399-9ac4-9bff8bb01519",
+    "status": "wrong_article",
+    "article_ok": false,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "DON JUAN CARLOS I, REY DE ESPAÑA...",
+    "analysis": "El artículo vinculado es el preámbulo (solo el encabezado de sanción real), que no contiene ninguna información sobre la estructura del Título I. La respuesta correcta (A, 3 capítulos) es factualmente correcta —el Título I del EAG tiene 3 capítulos (I: De los Gallegos, II: Del Parlamento, III: De la Xunta y del Presidente)— pero el artículo de referencia no lo respalda. Debería vincularse al índice o a la estructura del Título I.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": "Índice/Estructura del Título I (Capítulos I, II y III)",
+    "explanation_fix": null
+  },
+  {
+    "id": "99d8dd25-6f0b-430b-841d-18324dd719f8",
+    "status": "bad_answer",
+    "article_ok": true,
+    "answer_ok": false,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "Dos. El Parlamento será elegido por un plazo de cuatro años, de acuerdo con un sistema de representación proporcional que asegure, además, la representación de las diversas zonas del territorio gallego.",
+    "analysis": "La pregunta no pide la respuesta incorrecta, sino una respuesta correcta. La opción B —marcada como correcta— dice 'sistema de representación mayoritario', pero el art. 11.2 establece 'sistema de representación proporcional'. La opción B es por tanto incorrecta. La explicación, sin embargo, sí menciona 'proporcional', lo que confirma que la opción marcada tiene un error. La opción correcta debería ser la opción D ('Los Diputados no estarán sujetos a mandato imperativo'), que concuerda con el art. 11.7.",
+    "correct_option_should_be": "D",
+    "correct_article_suggestion": null,
+    "explanation_fix": "Según el artículo 11.7 del Estatuto de Autonomía de Galicia, los Diputados no estarán sujetos a mandato imperativo. Nota: la opción B es incorrecta porque el art. 11.2 establece un sistema de representación proporcional, no mayoritario."
+  }
+]

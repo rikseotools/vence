@@ -1,0 +1,67 @@
+[
+  {
+    "id": "e7320bc6-2765-4273-ae9c-565e4a9279bf",
+    "status": "bad_explanation",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": false,
+    "confidence": "alta",
+    "article_quote": "El Consejo Gallego de las Mujeres es el órgano colegiado e institucional de Galicia, de carácter consultivo, participación y asesoramiento en materia de políticas de igualdad entre mujeres y hombres y de lucha contra la violencia de género, con el fin esencial de servir de canal para la participación de las mujeres y de comunicación con la Administración autonómica.",
+    "analysis": "El artículo 177.1 define literalmente al Consejo Gallego de las Mujeres como órgano consultivo, de participación y asesoramiento, canal de participación de las mujeres y comunicación con la Administración autonómica, lo que coincide con la opción C.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": "Según el artículo 177.1 de la Ley 7/2023, el Consejo Gallego de las Mujeres es el órgano colegiado e institucional de carácter consultivo, de participación y asesoramiento en materia de igualdad y lucha contra la violencia de género, sirviendo de canal de participación de las mujeres y comunicación con la Administración autonómica."
+  },
+  {
+    "id": "f258b0b2-7d44-4418-a34b-8e366270a883",
+    "status": "bad_explanation",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": false,
+    "confidence": "alta",
+    "article_quote": "En el desarrollo de programas de acogimiento de las mujeres refugiadas o solicitantes de protección internacional se tendrán en consideración las situaciones de desigualdad por razón de sexo que pudieron haber sufrido en su país de origen.",
+    "analysis": "El artículo 80 indica literalmente que en los programas de acogida se tendrán en cuenta las situaciones de desigualdad por razón de sexo sufridas en el país de origen, lo que coincide exactamente con la opción B.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": "Según el artículo 80 de la Ley 7/2023, en los programas de acogimiento de mujeres refugiadas o solicitantes de protección internacional se tendrán en consideración las situaciones de desigualdad por razón de sexo que pudieron haber sufrido en su país de origen."
+  },
+  {
+    "id": "f6c2390f-a797-45be-8a48-dae066873dc2",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "El órgano competente en materia de estadística de la Comunidad Autónoma elaborará y publicará una cuenta satélite de producción doméstica en que se cuantificará el valor económico del trabajo doméstico, de cuidados y comunitario realizado por mujeres y hombres sin reflejo en el producto interior bruto y en la renta disponible bruta del sector hogares.",
+    "analysis": "El artículo 28.1 indica literalmente que se elaborará y publicará una cuenta satélite de producción doméstica para cuantificar el valor económico del trabajo doméstico, de cuidados y comunitario, coincidiendo con la opción C.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "f7dffab7-cbbe-458a-a63c-94fe49d60107",
+    "status": "bad_explanation",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": false,
+    "confidence": "alta",
+    "article_quote": "d) El acceso de las mujeres mayores a recursos educativos en aras de erradicar la brecha digital que sufren con respecto al resto de la población.",
+    "analysis": "El artículo 75.2.d) menciona expresamente entre los objetivos el acceso a recursos educativos para erradicar la brecha digital que sufren las mujeres mayores respecto al resto de la población, lo que coincide con la opción B.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": "Según el artículo 75.2.d) de la Ley 7/2023, uno de los objetivos es garantizar el acceso de las mujeres mayores a recursos educativos en aras de erradicar la brecha digital que sufren con respecto al resto de la población."
+  },
+  {
+    "id": "fd6c9e4d-8145-4777-94e0-ce3d1c71ee6e",
+    "status": "wrong_answer",
+    "article_ok": true,
+    "answer_ok": false,
+    "explanation_ok": false,
+    "confidence": "alta",
+    "article_quote": "Se produce discriminación sexista interseccional cuando, junto al sexo, concurren o interactúan otra u otras causas de discriminación, generando una forma específica de discriminación.",
+    "analysis": "La opción B describe la discriminación sexista MÚLTIPLE (simultánea o consecutiva por sexo y otra causa), no la interseccional. Según el artículo 11, la interseccional se caracteriza por la concurrencia o interacción de causas generando una forma específica de discriminación; ninguna de las opciones recoge fielmente esa definición, pero la opción C ('concurren varias causas') es la más cercana aunque errónea al añadir 'sin interacción'. La opción marcada (B) corresponde a la definición de discriminación sexista múltiple, no interseccional.",
+    "correct_option_should_be": "C",
+    "correct_article_suggestion": null,
+    "explanation_fix": "Según el artículo 11 de la Ley 7/2023, la discriminación sexista interseccional se produce cuando, junto al sexo, concurren o interactúan otra u otras causas de discriminación, generando una forma específica de discriminación. La definición de la opción B corresponde en realidad a la discriminación sexista múltiple."
+  }
+]

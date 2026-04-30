@@ -1,0 +1,93 @@
+[
+  {
+    "id": "92d9e217-e989-4bfc-90ec-950617f57888",
+    "status": "unverifiable",
+    "article_ok": false,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "baja",
+    "article_quote": "1. A efectos de esta ley, el acoso sexual y el acoso por razón de sexo se definen de la siguiente forma: [...] 2. Con arreglo a lo dispuesto en el artículo 7.3 de la Ley Orgánica 3/2007, de 22 de marzo, se considerarán en todo caso discriminatorios el acoso sexual y el acoso por razón de sexo.",
+    "analysis": "La pregunta se refiere al artículo 6.3 de la Ley Orgánica 3/2007 que regula la 'orden de discriminar', pero el article_content embebido corresponde al artículo 6 de la Ley 7/2023 de Galicia, que trata del acoso sexual y por razón de sexo, y no contiene el texto sobre 'orden de discriminar, directa o indirectamente, por razón de sexo'. No puede verificarse con el contenido proporcionado.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "93ad02b4-1381-4adb-930c-0902e453b260",
+    "status": "unverifiable",
+    "article_ok": false,
+    "answer_ok": false,
+    "explanation_ok": false,
+    "confidence": "baja",
+    "article_quote": "Constituye discriminación prohibida por esta ley el trato menos favorable dado a una persona, sea hombre o mujer, por razón de haber solicitado, estar disfrutando o haber disfrutado de sus derechos de conciliación de la vida personal, familiar y laboral.",
+    "analysis": "La pregunta se refiere al artículo 8 de la LO 3/2007 (discriminación por embarazo/maternidad), pero el article_content embebido corresponde al artículo 8 de la Ley 7/2023 de Galicia, sobre discriminación por el ejercicio de los derechos de conciliación. El texto embebido no menciona embarazo ni maternidad, por lo que la pregunta no puede verificarse con el contenido proporcionado.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "93d028ea-8a8b-4cb3-a546-234a689277a7",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "El Consejo de la Xunta de Galicia, a propuesta del órgano competente en materia de igualdad entre mujeres y hombres, aprobará periódicamente un plan estratégico de igualdad de oportunidades",
+    "analysis": "El artículo 26.1 atribuye literalmente al Consejo de la Xunta de Galicia la aprobación periódica del plan estratégico de igualdad de oportunidades, coincidiendo exactamente con la opción C.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "990b4a9c-fc09-490f-a6da-5cd6f1636a62",
+    "status": "bad_explanation",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": false,
+    "confidence": "alta",
+    "article_quote": "d) Tramitar los expedientes para la concesión de la Certificación Gallega de Excelencia en Igualdad.",
+    "analysis": "El artículo 175.d) atribuye expresamente a la unidad administrativa de igualdad de la consejería con competencias en empleo la función de tramitar los expedientes para la concesión de la Certificación Gallega de Excelencia en Igualdad, por lo que la opción B es correcta.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": "Según el artículo 175.d) de la Ley 7/2023, corresponde a la unidad administrativa de igualdad de la consejería con competencias en empleo 'tramitar los expedientes para la concesión de la Certificación Gallega de Excelencia en Igualdad'."
+  },
+  {
+    "id": "9aeccd28-5aba-4147-ad0f-93960c118875",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "b) Apoyar a las entidades, públicas o privadas, que presten servicios de información y asesoramiento a las mujeres.",
+    "analysis": "El artículo 29.b) establece literalmente que la Administración autonómica apoyará a las entidades públicas o privadas que presten servicios de información y asesoramiento a las mujeres, coincidiendo exactamente con la opción B.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "9e895c5a-3e03-43ae-9fcf-5c0efb16a8bb",
+    "status": "bad_explanation",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": false,
+    "confidence": "alta",
+    "article_quote": "Las medidas adoptadas por la Administración autonómica para luchar contra la pobreza y la aporofobia se diseñarán y aplicarán teniendo en cuenta el importante impacto que la pobreza tiene sobre las mujeres, en particular sobre las mujeres mayores.",
+    "analysis": "El artículo 81 señala expresamente que las medidas contra la pobreza tendrán en cuenta su impacto sobre las mujeres, 'en particular sobre las mujeres mayores', lo que confirma que la opción B es correcta.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": "Según el artículo 81 de la Ley 7/2023, las medidas para luchar contra la pobreza y la aporofobia tendrán en cuenta el impacto de la pobreza sobre las mujeres, 'en particular sobre las mujeres mayores', que constituyen el colectivo prioritario."
+  },
+  {
+    "id": "9efb942e-754e-4f56-a76e-f3b4c1091490",
+    "status": "bad_explanation",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": false,
+    "confidence": "alta",
+    "article_quote": "a) Prestar apoyo a las personas que hayan podido sufrir discriminación por razón de sexo para tramitar sus quejas y reclamaciones.",
+    "analysis": "El artículo 181.a) atribuye al Valedor del Pueblo la función de prestar apoyo a las personas que hayan podido sufrir discriminación por razón de sexo para tramitar sus quejas y reclamaciones, coincidiendo con la opción B.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": "Según el artículo 181.a) de la Ley 7/2023, corresponde al Valedor del Pueblo 'prestar apoyo a las personas que hayan podido sufrir discriminación por razón de sexo para tramitar sus quejas y reclamaciones'."
+  }
+]

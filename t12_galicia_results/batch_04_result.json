@@ -1,0 +1,93 @@
+[
+  {
+    "id": "53bb17ad-83e7-4b93-b622-c867397d96a6",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "no constituye discriminación por razón de sexo la diferencia de trato en base a una característica relacionada con el sexo de una persona cuando, debido a la naturaleza de las actividades profesionales concretas o al contexto en que se lleven a cabo, dicha característica constituya un requisito profesional esencial y determinante, siempre y cuando su objetivo sea legítimo y el requisito sea proporcionado.",
+    "analysis": "La opción B reproduce literalmente la excepción del artículo 5.1: que la característica sea un requisito profesional esencial y determinante, con objetivo legítimo y proporcionado. Nota: el enunciado menciona erróneamente la LO 3/2007 pero el article_content corresponde al art. 5 de la Ley 7/2023 de Galicia.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "59bc7c89-5f7d-45a6-bcfb-33ebb411d37a",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "el órgano competente en materia de igualdad, en colaboración con el órgano competente en materia de planificación presupuestaria y el Instituto Gallego de Estadística, elaborará un informe",
+    "analysis": "El artículo 23 cita literalmente al Instituto Gallego de Estadística como colaborador junto con el órgano de planificación presupuestaria para elaborar el informe de impacto de género.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "5d3e42a7-268d-492b-a2b9-f154b56764ef",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "A través de la promoción de la igualdad de oportunidades entre mujeres y hombres, se buscará que la igualdad y libertad de las personas sean reales y efectivas, con independencia de su sexo y de los estereotipos de género.",
+    "analysis": "La opción A reproduce literalmente el objetivo fijado en el artículo 17 de la Ley 7/2023.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "6bbd2f05-e18d-460c-ae98-df412675f9b0",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "en los nombramientos de altos cargos de la Administración general de la Comunidad Autónoma de Galicia y de las personas titulares y miembros de órganos de entidades integrantes del sector público autonómico se atenderá al principio de presencia equilibrada.",
+    "analysis": "El artículo 14 establece literalmente que los nombramientos atenderán al principio de presencia equilibrada, tal y como indica la opción B. Las opciones A, C y D mencionan conceptos no contemplados (igualdad total, paridad absoluta, exclusión).",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "6d0d1e7f-76e4-40d9-b4c3-e020c36be5ae",
+    "status": "bad_explanation",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": false,
+    "confidence": "alta",
+    "article_quote": "La consejería con competencias en materia de empleo habrá de contar con una unidad administrativa de igualdad con las funciones expresadas en el artículo 175, que tendrá como mínimo la categoría de servicio.",
+    "analysis": "El artículo 174.1 indica expresamente que la consejería con competencias en empleo debe contar con una unidad administrativa de igualdad con categoría mínima de servicio, lo que confirma la opción A. Las demás consejerías solo 'podrán' contar con ella (no obligatorio, descarta B).",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": "Según el artículo 174.1 de la Ley 7/2023, la consejería con competencias en materia de empleo habrá de contar con una unidad administrativa de igualdad con las funciones del artículo 175, que tendrá como mínimo la categoría de servicio. Las demás consejerías solo podrán (no están obligadas) contar con ella."
+  },
+  {
+    "id": "7437c922-1e03-4a26-bd62-497e33302faa",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "fomentarán la formalización de alianzas estratégicas para la consecución de un concreto objetivo de igualdad y, en general, la colaboración con los sujetos implicados en la igualdad de trato y oportunidades de mujeres y hombres, trátese de sujetos públicos, de ámbito internacional, europeo, estatal, autonómico, provincial o local, o trátese de privados",
+    "analysis": "El artículo 30.1 establece expresamente que las alianzas se fomentan con sujetos públicos o privados de diferentes ámbitos, descartando las opciones restrictivas A, C y D.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "74835fbd-c47e-43b9-b655-abe76a6bbc7c",
+    "status": "bad_explanation",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": false,
+    "confidence": "alta",
+    "article_quote": "La perspectiva de género se integrará de modo transversal en el ejercicio de las competencias de la Administración autonómica de Galicia relacionadas con las mujeres migrantes, singularmente en las relativas al retorno y a la atracción de nueva población, previstas en la legislación en materia de impulso demográfico.",
+    "analysis": "El artículo 79 indica expresamente que la perspectiva de género se integrará en las competencias relativas al retorno y atracción de nueva población, lo que coincide con la opción B.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": "Según el artículo 79 de la Ley 7/2023, la perspectiva de género se integrará de modo transversal en las competencias de la Administración autonómica relacionadas con las mujeres migrantes, singularmente en las relativas al retorno y a la atracción de nueva población, previstas en la legislación en materia de impulso demográfico."
+  }
+]

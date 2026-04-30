@@ -99,9 +99,13 @@ export interface TestLayoutConfig {
 // PROPS: MODO ADAPTATIVO
 // ============================================
 
+// Tipo legacy — será reemplazado por AdaptiveCatalog de @/lib/types/adaptive en Fase 4
 export interface AdaptiveCatalog {
   neverSeen: Record<string, TestQuestion[]>
   answered: Record<string, TestQuestion[]>
+  // Campos nuevos (opcionales para backward compat)
+  topicDistribution?: Record<string, number>
+  articlesSeen?: string[]
 }
 
 export interface AdaptiveQuestionsInput {

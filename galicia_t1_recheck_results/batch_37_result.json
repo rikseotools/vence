@@ -1,0 +1,80 @@
+[
+  {
+    "id": "f511926e-e953-427b-bdef-38e1c3c24c48",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "El Gobierno se compone del Presidente, de los Vicepresidentes, en su caso, de los Ministros y de los demás miembros que establezca la ley.",
+    "analysis": "El art. 98.1 enumera los componentes del Gobierno y los Secretarios de Estado no figuran en esa lista. La opción D es correcta y la explicación lo refleja fielmente.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "fb1aaf1c-3bd9-4d09-aa49-a1b5516a2054",
+    "status": "bad_explanation",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": false,
+    "confidence": "alta",
+    "article_quote": "d) Por el Tribunal de Cuentas, el económico y presupuestario.",
+    "analysis": "La respuesta D es correcta: el Ministerio Fiscal no aparece en el art. 153. Sin embargo, la explicación solo menciona tres órganos de control (TC, Gobierno, jurisdicción contencioso-administrativa) y omite al Tribunal de Cuentas, que sí figura como cuarto mecanismo de control en el apartado d). Esto puede inducir al alumno a pensar que el artículo solo contempla tres, cuando en realidad son cuatro.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": "El artículo 153 establece cuatro mecanismos de control: a) el Tribunal Constitucional (constitucionalidad de disposiciones con fuerza de ley), b) el Gobierno previo dictamen del Consejo de Estado (funciones delegadas del art. 150.2), c) la jurisdicción contencioso-administrativa (administración autónoma y reglamentos), y d) el Tribunal de Cuentas (control económico y presupuestario). El Ministerio Fiscal no figura en ninguno de estos apartados, por lo que la opción D es la incorrecta."
+  },
+  {
+    "id": "fc95d786-b378-4300-83b4-4b95976b884a",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "La propuesta de disolución no podrá presentarse cuando esté en trámite una moción de censura.",
+    "analysis": "El art. 115.2 prohíbe expresamente la propuesta de disolución cuando hay una moción de censura en trámite. La opción A es correcta y la explicación es precisa.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "fd16a084-c8a5-4c72-adc7-5397955dbecc",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "Todos los españoles tendrán el derecho de petición individual y colectiva, por escrito, en la forma y con los efectos que determine la ley.",
+    "analysis": "El art. 29.1 reconoce el derecho de petición individual y colectiva, por escrito, a todos los españoles. La opción D lo reproduce correctamente. La explicación distingue además la limitación del art. 29.2 para los miembros de las Fuerzas Armadas, que encaja con el enunciado.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "ff26af9a-b443-4f7f-8883-64fb9a6e547d",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "La iniciativa, en caso de no prosperar, solamente podrá reiterarse pasados cinco años.",
+    "analysis": "El art. 143.3 fija el plazo de cinco años para reiterar la iniciativa autonómica no prosperada. La opción D (5 años) es correcta y la explicación lo confirma de forma clara.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "ff4b58aa-b0a9-4c81-8d52-d8454c8cab51",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "TÍTULO VIII - ORGANIZACIÓN TERRITORIAL: Cap. I - Principios generales (Arts. 137-139), Cap. II - Administración Local (Arts. 140-142), Cap. III - Comunidades Autónomas (Arts. 143-158)",
+    "analysis": "El Título VIII consta de tres capítulos: Principios Generales, Administración Local y Comunidades Autónomas. La opción C (3) es correcta y la explicación los enumera correctamente.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  }
+]

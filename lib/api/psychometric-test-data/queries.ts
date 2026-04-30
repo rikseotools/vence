@@ -189,6 +189,7 @@ export async function getPsychometricCategories(userId?: string): Promise<GetPsy
             'tramitacion_procesal': '%Tramitación Procesal%',
             'auxilio_judicial': '%Auxilio Judicial%',
             'administrativo_estado': '%Administrativo Estado%',
+            'policia_nacional': '%Policía Nacional%',
           }
           const examSourcePattern = examSourcePatterns[userProfile.oposicion]
           if (!examSourcePattern) {
@@ -231,6 +232,10 @@ export async function getPsychometricCategories(userId?: string): Promise<GetPsy
             'text_question': 'pruebas-instrucciones',
             'code_equivalence': 'pruebas-instrucciones',
             'coding': 'pruebas-instrucciones',
+            'silogismo': 'silogismos',
+            'agilidad_mental': 'agilidad-mental',
+            'figuras': 'figuras',
+            'arbol_genealogico': 'arboles-genealogicos',
           }
 
           const subtypeFrequency = new Map<string, 'frequent' | 'appears'>()

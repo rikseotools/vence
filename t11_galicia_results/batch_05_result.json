@@ -1,0 +1,93 @@
+[
+  {
+    "id": "324a607d-ed54-4f5c-b253-9c93a6d19e14",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "En los casos de nacimiento, acogimiento, guarda con fines de adopción o adopción de un hijo o hija, el personal funcionario que no esté disfrutando del permiso por parto, acogimiento, guarda con fines de adopción o adopción previsto en esta ley tiene derecho a un permiso retribuido de diecinueve semanas.",
+    "analysis": "El art. 124.1 establece diecinueve semanas, y el art. 124.2.1.º fija seis semanas ininterrumpidas inmediatamente posteriores como obligatorias. La opción D recoge ambos datos correctamente. La explicación cita el precepto con precisión.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "336ee9d0-1301-43a7-92b9-86d4c0a0b76a",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "Las bases de la convocatoria, como mínimo, deben contener: a) El número de plazas... b) Las condiciones y requisitos... c) El sistema selectivo... d) El programa... e) El orden de actuación... f) El régimen aplicable al órgano de selección... g) Las características... de los cursos y/o período de prácticas... h) El porcentaje de plazas reservadas...",
+    "analysis": "El art. 58.2 no menciona en ningún momento el sueldo o salario a percibir como contenido mínimo de las bases. La opción A ('el suelo y salario a percibir') es la que no debe incluirse. La explicación enumera correctamente los contenidos mínimos del precepto.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "341ee964-30ae-44ea-8edd-400ccc8d3c8a",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "un mínimo de un veinticinco por ciento de las plazas convocadas se reservará para personal funcionario perteneciente a cuerpos o escalas del subgrupo o grupo de clasificación profesional, en el supuesto de que este no tenga subgrupo, inmediatamente inferior",
+    "analysis": "El art. 80.1 fija expresamente el 25% como mínimo reservado para la promoción interna vertical. La opción B es correcta y la explicación transcribe literalmente el precepto.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "384b8786-9f1a-4e8a-a3bd-982dc3ebc786",
+    "status": "bad_explanation",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": false,
+    "confidence": "alta",
+    "article_quote": "f) Independencia, confidencialidad y discrecionalidad técnica en la actuación de los órganos de selección.",
+    "analysis": "La respuesta correcta es C ('Privacidad y coordinación'), que no aparece en ninguna letra del art. 49. Los principios listados son: igualdad, mérito y capacidad, publicidad, transparencia y objetividad, imparcialidad y profesionalidad, independencia/confidencialidad/discrecionalidad técnica, adecuación del contenido, y eficacia/eficiencia/agilidad. La explicación actual es completamente vacía: solo parafrasea el enunciado sin indicar cuáles son los principios reales ni por qué 'privacidad y coordinación' no figura entre ellos.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": "Según el artículo 49, los principios por los que las administraciones públicas seleccionarán a su personal son: igualdad, mérito y capacidad, publicidad de las convocatorias, transparencia y objetividad, imparcialidad y profesionalidad de los órganos de selección, independencia, confidencialidad y discrecionalidad técnica, adecuación entre el contenido de los procesos selectivos y las funciones a desarrollar, y eficacia, eficiencia y agilidad. En ningún momento aparece la 'privacidad y coordinación' como principio rector, por lo que la opción C es la respuesta incorrecta."
+  },
+  {
+    "id": "389bf94a-51c4-455c-a153-ccd8eb78d55d",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "a) Las personas que posean la nacionalidad de otros estados miembros de la Unión Europea.",
+    "analysis": "El art. 52.1.a) exige que los estados sean miembros de la UE. La opción A añade 'aunque no sea miembro de la Unión Europea', lo que la convierte en incorrecta (es la respuesta que pide el enunciado). Las opciones B, C y D reproducen fielmente las letras b), c) y d) del precepto. La explicación es precisa.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "3b0b1e9b-7318-4841-af3e-c3d1b7289ff9",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "1. El personal funcionario tiene derecho, por año completo de servicios, a vacaciones retribuidas de, como mínimo, veintidós días hábiles anuales... 2. A efectos de lo previsto en este artículo, no se consideran como días hábiles los sábados... 3. Se reconoce el derecho a la elección del período de vacaciones de las mujeres gestantes y a la preferencia de elección de las personas con hijos menores de doce años o mayores dependientes a su cuidado, teniendo prioridad quienes reúnan la condición de progenitor de familia numerosa.",
+    "analysis": "Las opciones A, B y C reproducen literalmente los apartados 1, 2 y 3 del art. 132, por lo que todas son correctas y la opción D ('Todas son correctas') es la respuesta válida. La explicación cita correctamente los tres apartados.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "3b51d90d-7ce6-4503-85ce-96cd7647f3f8",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "1. La valoración de la conducta profesional de los empleados públicos mediante la evaluación del desempeño tendrá en cuenta necesariamente los siguientes criterios: a) El grado de cumplimiento de los deberes profesionales... b) El grado de interés, iniciativa y esfuerzo...",
+    "analysis": "El art. 84.1 solo recoge dos criterios: cumplimiento de deberes profesionales e interés/iniciativa/esfuerzo. Las horas extra (opción A) no aparecen en ningún apartado del artículo, por lo que es la afirmación falsa. Las opciones B y C reproducen exactamente las letras a) y b) del precepto. La explicación, aunque escueta, identifica correctamente por qué A es falsa.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  }
+]

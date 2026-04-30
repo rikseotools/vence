@@ -1,0 +1,93 @@
+[
+  {
+    "id": "0bb02a47-40c3-4ac1-a7ed-6bb1cc1193f7",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "el nombramiento de los altos cargos se realizará entre personas idóneas atendiendo a criterios de competencia profesional entre personas con cualificación, formación y experiencia en función del cargo a desempeñar",
+    "analysis": "Opción A es cita literal del art.38.1. Distractores B, C, D alteran correctamente los términos (cambian 'competencia' por 'experiencia' o eliminan 'formación'). Respuesta y explicación correctas.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "165890c9-0314-475a-8b44-e5df2ab7578b",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "Esta obligación de suministrar información se extenderá a: a) Todas las personas físicas o jurídicas adjudicatarias de contratos.",
+    "analysis": "Opción C recoge literalmente el art.4.2.a). La explicación es correcta aunque incompleta (también hay 4.2.b con beneficiarios de subvenciones), pero no es un error porque la pregunta solo pide confirmar qué opción es correcta. Respuesta C(2) correcta.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "1a71cb39-75b7-4d72-a5c6-17905793963e",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "En caso de que se produzca en el seno de un órgano colegiado, la abstención constará y se incorporará al acta elaborada por su secretaría.",
+    "analysis": "Opción A es literal del art.44.3. La explicación desmonta correctamente B (añade 'y recusación' que no aparece en ese apartado), C (dice 'Oficina de Incompatibilidades' cuando el artículo dice 'Registro de Actividades de Altos Cargos') y D (cambia 'podrá' por 'deberá'). Todo correcto.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "2cee3bb5-dd44-4e00-91ee-aa2ebe540d5b",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "El acceso de la ciudadanía a la información del Portal de transparencia y Gobierno abierto será gratuito y respetará los principios de accesibilidad, interoperabilidad y reutilización. La información estará disponible en gallego y castellano.",
+    "analysis": "Opción A es cita literal del art.29.3. Distractores válidos: B introduce tasas (falso), C omite gallego, D omite castellano. Respuesta A(0) correcta.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "3f209e3b-57f0-439e-aabf-8850b31b64ce",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "Para el ejercicio de las funciones docentes se requerirá la autorización expresa de la persona titular de la consejería competente en materia de función pública.",
+    "analysis": "El art.41.3 es inequívoco: titular de la consellería de función pública. Opción D(3) correcta. Distractores A (Consello), B (educación) y C (dirección general) son trampas válidas.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "4458578f-f667-4756-b918-24d93b98f69f",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "Se compondrá de los siguientes miembros: a) Presidente o presidenta [...] b) Vocales [...] c) Secretario o secretaria",
+    "analysis": "El art.33.2 no contempla vicepresidencia, por lo que B es incorrecta. La opción C (Presidente/a y Vocales) es la más precisa disponible. La explicación aclara correctamente que también existe Secretario/a con voz y voto, pero que la ley no contempla vicepresidencia. Respuesta C(2) correcta.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "55ecce70-8649-4514-ad05-571e5fdeae6f",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "c) La ordenación prevista para el suelo, con el grado de detalle adecuado.",
+    "analysis": "Pregunta por la respuesta FALSA. El art.18.1 menciona 'la ordenación prevista para el suelo', no 'la ordenación de las calles del municipio'. Las opciones A, B y D están en el artículo; C es invención. Respuesta C(2) correcta.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  }
+]

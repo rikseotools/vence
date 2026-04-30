@@ -1,0 +1,58 @@
+[
+  {
+    "original": "Para el ejercicio de las competencias de los órganos de la Administración General de la Comunidad Autónoma de Galicia, existe: la encomienda de gestión, la delegación de competencias y la avocación. ¿Cuál de ellas puede ser realizada mediante acuerdo motivado?",
+    "cleaned": "Para el ejercicio de las competencias de los órganos de la Administración General de la Comunidad Autónoma de Galicia, existe: la encomienda de gestión, la delegación de competencias y la avocación. ¿Cuál de ellas puede ser realizada mediante acuerdo motivado?",
+    "lawHint": null,
+    "articleHint": null,
+    "options": [
+      {
+        "letter": "A",
+        "text": "La encomienda de gestión."
+      },
+      {
+        "letter": "B",
+        "text": "La delegación de competencias."
+      },
+      {
+        "letter": "C",
+        "text": "La avocación."
+      },
+      {
+        "letter": "D",
+        "text": "La delegación de firma."
+      }
+    ],
+    "correctAnswer": "C",
+    "explanation": "Según la Ley 16/2010, de 17 de diciembre, la avocación se realizará mediante acuerdo motivado del órgano superior jerárquico.",
+    "source_book": "libro-67",
+    "_art": null
+  },
+  {
+    "original": "La encomienda de gestión intrasubjetiva se formalizará por medio de la resolución de autorización y de los acuerdos que se firmen entre los órganos correspondientes una vez autorizada la encomienda de gestión, y deberá ser publicada en el Diario Oficial de Galicia con el contenido mínimo siguiente: (indica la respuesta incorrecta)",
+    "cleaned": "La encomienda de gestión intrasubjetiva se formalizará por medio de la resolución de autorización y de los acuerdos que se firmen entre los órganos correspondientes una vez autorizada la encomienda de gestión, y deberá ser publicada en el Diario Oficial de Galicia con el contenido mínimo siguiente: (indica la respuesta incorrecta)",
+    "lawHint": null,
+    "articleHint": null,
+    "options": [
+      {
+        "letter": "A",
+        "text": "Actividad o actividades a que se refiera."
+      },
+      {
+        "letter": "B",
+        "text": "Naturaleza y alcance de la gestión encomendada."
+      },
+      {
+        "letter": "C",
+        "text": "Identificación de todo el personal funcionario involucrado laboralmente en dicha encomienda."
+      },
+      {
+        "letter": "D",
+        "text": "Plazo de vigencia y supuestos en que proceda la finalización anticipada de la encomienda o su prórroga."
+      }
+    ],
+    "correctAnswer": "C",
+    "explanation": "Según la Ley 16/2010, de 17 de diciembre, la publicación de la encomienda de gestión incluirá, como mínimo, la actividad encomendada, su naturaleza y alcance, así como el plazo de vigencia y los supuestos de finalización o prórroga.",
+    "source_book": "libro-67",
+    "_art": null
+  }
+]

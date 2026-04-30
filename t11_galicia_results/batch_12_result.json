@@ -1,0 +1,93 @@
+[
+  {
+    "id": "d46c58ab-6cac-4b55-a336-87422b7f6739",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "Las faltas leves pueden corregirse con alguna de las siguientes sanciones: a) Suspensión firme de funciones, o de empleo y sueldo en el caso del personal laboral, por un período inferior a quince días.",
+    "analysis": "Art. 190 del article_content confirma literalmente que la suspensión firme por período inferior a 15 días es sanción por falta leve. Respuesta C (correct_option=2) correcta. Explicación precisa.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "d4dd85bb-0047-4e8e-82c0-52d680166f83",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "Las relaciones de puestos de trabajo incluirán, como mínimo, por cada puesto: a) El código alfanumérico, denominación y naturaleza jurídica. b) La clasificación profesional. [...] f) Los requisitos y, en los casos en que proceda, las áreas funcionales, méritos, capacidades, experiencia o categoría profesional para su provisión.",
+    "analysis": "Art. 38.4 confirma que las tres opciones A, B y C están incluidas en la lista de mínimos. La respuesta D (todas son correctas) es correcta. La explicación identifica correctamente los apartados correspondientes del artículo.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "dafcc323-d34f-48ac-b1c5-0758458ab310",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "1. El concurso específico se aplicará como sistema de provisión para aquellos puestos de trabajo para los que, por sus peculiaridades, así se determine en la relación de puestos de trabajo.",
+    "analysis": "Art. 91 confirma A como correcta (literal). La explicación descarta B correctamente (la alternativa es libre designación, no concurso ordinario), C correctamente (antigüedad mínima es 3 años per art. 91.2, no 5) y D correctamente (valoración cada 5 años per art. 91.7, no 10).",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "dda32ee3-ac99-4a77-8655-ced93f4885e3",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "b) Traslado forzoso con cambio de localidad por un período de un año, que impedirá obtener destino, por ningún procedimiento, en la localidad desde la cual se produjo el traslado.",
+    "analysis": "Art. 189.b) confirma literalmente que este traslado forzoso es sanción por falta grave. Respuesta B (correct_option=1) correcta. Explicación precisa y suficiente.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "e0259c3a-e0b7-45c3-a147-8f5988e823c4",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "1. El personal funcionario incluido en el ámbito de aplicación de la presente ley se agrupa en cuerpos y escalas.",
+    "analysis": "Art. 40.1 confirma literalmente que la agrupación es en cuerpos y escalas. Respuesta D (correct_option=3) correcta. Explicación directa y exacta.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "e16c8832-faa5-43cb-a525-b2983e912ad4",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "1. El concurso ordinario es el procedimiento general de provisión de los puestos de trabajo que no tengan establecida otra forma de provisión en la relación de puestos de trabajo.",
+    "analysis": "Art. 90.1 confirma literalmente que el concurso ordinario es el procedimiento general supletorio. Respuesta B (correct_option=1) correcta. Explicación con cita literal del precepto.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "e1850165-211f-4295-90c2-e10cbf8a5582",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "2. Para que pueda procederse al nombramiento de personal funcionario interino tiene que concurrir alguna de las siguientes circunstancias: a) La existencia de puestos vacantes [...] b) La sustitución transitoria [...] c) La ejecución de programas de carácter temporal [...] d) El exceso o acumulación de tareas, de carácter excepcional y circunstancial, por un plazo máximo de nueve meses dentro de un período de dieciocho meses.",
+    "analysis": "Art. 23.2 lista cuatro circunstancias. Las opciones A, B y C corresponden a los apartados a), b) y d) respectivamente, todas presentes en la ley. La respuesta D (todas son correctas) es correcta. La explicación menciona el apartado c) para completar el cuadro, lo cual es correcto y pedagógico.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  }
+]

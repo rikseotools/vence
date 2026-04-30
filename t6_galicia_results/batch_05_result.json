@@ -1,0 +1,80 @@
+[
+  {
+    "id": "d759f505-8c2a-4464-aabb-a43d05086672",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "De cada sesión que celebre el órgano colegiado el secretario levantará el acta (art. 20.1)",
+    "analysis": "Correct_option=2→C (Secretaria del órgano colegiado). El art. 20.1 atribuye expresamente al secretario el levantamiento del acta. La explanation cita correctamente el art. 20.1 y menciona el 20.5 para la aprobación del acta. Todo correcto.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "d911e64b-b78d-4d18-a2e9-8f85e15006b3",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "En su organización se observarán los siguientes principios: a) Jerarquía, b) Descentralización, c) Desconcentración, d) Coordinación, e) Eficacia y eficiencia... (art. 4.3)",
+    "analysis": "Correct_option=0→A (Transparencia). El art. 4.3 enumera los principios de organización y la transparencia no figura entre ellos. La explanation reproduce fielmente los principios del art. 4.3. Todo correcto.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "e198cf80-db07-4cbf-9d2d-02bb41e5ec5a",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "Los reglamentos no podrán contener preceptos contrarios a la Constitución española, al Estatuto de autonomía y a las leyes u otras disposiciones de rango superior, ni regular materias reservadas a las leyes ni establecer la retroactividad de disposiciones sancionadoras restrictivas de derechos individuales o no favorables a éstos. (art. 39.2)",
+    "analysis": "Correct_option=3→D (Todas son correctas). Las tres prohibiciones A, B y C están literalmente recogidas en el art. 39.2, por lo que D es la respuesta correcta. La explanation cita el artículo y enumera las tres prohibiciones correctamente. Todo correcto.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "ee298a20-a291-4b6c-973d-e31819e057ce",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "La redacción del anteproyecto deberá realizarse en el plazo máximo de un mes desde la declaración de urgencia. (art. 44 bis.3)",
+    "analysis": "Correct_option=1→B (plazo máximo de un mes). El art. 44 bis.3 establece literalmente ese plazo. La explanation cita correctamente el art. 44 bis.3. Todo correcto.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "ee5c1129-8db6-454e-b6a1-dfac209a30c0",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "Las personas titulares de las secretarías generales técnicas, de las direcciones generales y de las delegaciones territoriales serán nombradas y separadas libremente por decreto del Consejo de la Xunta (art. 28.1)",
+    "analysis": "Correct_option=0→A (nombradas y separadas libremente por Decreto del Consejo de la Xunta). Coincide literalmente con el art. 28.1. La explanation cita el artículo con precisión. Todo correcto.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "ff87a47d-2343-4082-b209-aa43a85664a8",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "Coordinar, bajo la dirección de la persona titular de la consejería, los programas y actuaciones de las diferentes direcciones generales y entes del sector público adscritos a la consejería. (art. 29.1.b)",
+    "analysis": "Correct_option=0→A (Secretaria General Técnica). El art. 29.1.b atribuye expresamente esta función a la secretaría general técnica. La explanation cita el artículo y apartado concreto. Todo correcto.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  }
+]

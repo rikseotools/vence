@@ -1,0 +1,1249 @@
+[
+  {
+    "original": "¿Qué clase de Ley regula la organización territorial propia de Galicia, según el artículo 2? (Ley 1/1981)",
+    "cleaned": "¿Qué clase de Ley regula la organización territorial propia de Galicia, según el artículo 2?",
+    "lawHint": "Ley 1/1981",
+    "articleHint": null,
+    "options": [
+      {
+        "letter": "A",
+        "text": "Decreto Ley."
+      },
+      {
+        "letter": "B",
+        "text": "Ley Orgánica."
+      },
+      {
+        "letter": "C",
+        "text": "Ley del Parlamento."
+      },
+      {
+        "letter": "D",
+        "text": "Real Decreto."
+      }
+    ],
+    "correctAnswer": "C",
+    "explanation": "Según el artículo 2.3 del Estatuto de Autonomía de Galicia, una ley del Parlamento regulará la organización territorial propia de Galicia, de acuerdo con el presente Estatuto.",
+    "source_book": "libro-67",
+    "primary_article_id": "34416927-7c1c-427f-b9e6-e8230408aea7",
+    "article_number": "2"
+  },
+  {
+    "original": "De conformidad con el artículo 4.uno de la Ley orgánica 1/1981, de 6 de abril, del Estatuto de Autonomía de Galicia (EAG), los derechos, libertades y deberes fundamentales de los gallegos son los establecidos",
+    "cleaned": "De conformidad con el artículo 4.uno de la Ley orgánica 1/1981, de 6 de abril, del Estatuto de Autonomía de Galicia (EAG), los derechos, libertades y deberes fundamentales de los gallegos son los establecidos",
+    "lawHint": null,
+    "articleHint": null,
+    "options": [
+      {
+        "letter": "A",
+        "text": "En la Constitución."
+      },
+      {
+        "letter": "B",
+        "text": "En la Constitución y en el Estatuto de Autonomía de Galicia."
+      },
+      {
+        "letter": "C",
+        "text": "En el Estatuto de Autonomía de Galicia."
+      },
+      {
+        "letter": "D",
+        "text": "En la Constitución, en el Estatuto de Autonomía de Galicia y en el resto del ordenamiento jurídico."
+      }
+    ],
+    "correctAnswer": "A",
+    "explanation": "Según el artículo 4.1 del Estatuto de Autonomía de Galicia, los derechos, libertades y deberes fundamentales de los gallegos son los establecidos en la Constitución.",
+    "source_book": "libro-67",
+    "primary_article_id": "fd87f97a-75b1-4bdb-aaac-3f5005eb6a5a",
+    "article_number": "4"
+  },
+  {
+    "original": "Los poderes públicos de la Comunidad Autónoma de Galicia asumen, como uno de los principios rectores de su política social y económica: (artículo 4) (Ley 1/1981)",
+    "cleaned": "Los poderes públicos de la Comunidad Autónoma de Galicia asumen, como uno de los principios rectores de su política social y económica:",
+    "lawHint": "Ley 1/1981",
+    "articleHint": null,
+    "options": [
+      {
+        "letter": "A",
+        "text": "El derecho de los gallegos a vivir y trabajar en su propia tierra."
+      },
+      {
+        "letter": "B",
+        "text": "El deber de los gallegos a vivir y trabajar en su propia tierra."
+      },
+      {
+        "letter": "C",
+        "text": "El derecho de los españoles a vivir y trabajar en su propia tierra."
+      },
+      {
+        "letter": "D",
+        "text": "El derecho de los gallegos a vivir y trabajar en España."
+      }
+    ],
+    "correctAnswer": "A",
+    "explanation": "Según el artículo 4.3 del Estatuto de Autonomía de Galicia, los poderes públicos de la Comunidad Autónoma asumen como uno de los principios rectores de su política social y económica el derecho de los gallegos a vivir y trabajar en su propia tierra.",
+    "source_book": "libro-67",
+    "primary_article_id": "fd87f97a-75b1-4bdb-aaac-3f5005eb6a5a",
+    "article_number": "4"
+  },
+  {
+    "original": "El Estatuto de Autonomía de Galicia, en su artículo 5, establece en relación al idioma que: (Ley 1/1981)",
+    "cleaned": "El Estatuto de Autonomía de Galicia, en su artículo 5, establece en relación al idioma que:",
+    "lawHint": "Ley 1/1981",
+    "articleHint": null,
+    "options": [
+      {
+        "letter": "A",
+        "text": "La oficialidad en Galicia la reserva exclusivamente al gallego."
+      },
+      {
+        "letter": "B",
+        "text": "La lengua propia de Galicia es el idioma gallego."
+      },
+      {
+        "letter": "C",
+        "text": "La lengua propia de Galicia es el idioma castellano."
+      },
+      {
+        "letter": "D",
+        "text": "Se admiten ciertas discriminaciones por razón de la lengua en virtud de lo que establezca la ley."
+      }
+    ],
+    "correctAnswer": "B",
+    "explanation": "Según el artículo 5.1 del Estatuto de Autonomía de Galicia, la lengua propia de Galicia es el gallego.",
+    "source_book": "libro-67",
+    "primary_article_id": "b11ce8ce-3202-4d82-bc2e-e5e46a635bec",
+    "article_number": "5"
+  },
+  {
+    "original": "El artículo 5.2 del Estatuto de Autonomía de Galicia indica, sobre el idioma que: (Ley 1/1981)",
+    "cleaned": "El artículo 5.2 del Estatuto de Autonomía de Galicia indica, sobre el idioma que:",
+    "lawHint": "Ley 1/1981",
+    "articleHint": null,
+    "options": [
+      {
+        "letter": "A",
+        "text": "Los idiomas gallego y castellano son oficiales en Galicia y todos tienen el deber de conocerlos y usarlos."
+      },
+      {
+        "letter": "B",
+        "text": "El idioma gallego es el único oficial en Galicia y todos tienen el deber de conocerlo y usarlo."
+      },
+      {
+        "letter": "C",
+        "text": "Los idiomas gallego y castellano son cooficiales en Galicia y todos tienen la obligación de conocerlos y usarlos"
+      },
+      {
+        "letter": "D",
+        "text": "Los idiomas gallego y castellano son oficiales en Galicia y todos tienen el derecho de conocerlos y usarlos."
+      }
+    ],
+    "correctAnswer": "D",
+    "explanation": "Según el artículo 5.2 del Estatuto de Autonomía de Galicia, los idiomas gallego y castellano son oficiales en Galicia y todos tienen el derecho de conocerlos y usarlos.",
+    "source_book": "libro-67",
+    "primary_article_id": "b11ce8ce-3202-4d82-bc2e-e5e46a635bec",
+    "article_number": "5"
+  },
+  {
+    "original": "De acuerdo el artículo 6, ¿Cómo es la bandera de Galicia? (Ley 1/1981)",
+    "cleaned": "De acuerdo el artículo 6, ¿Cómo es la bandera de Galicia?",
+    "lawHint": "Ley 1/1981",
+    "articleHint": null,
+    "options": [
+      {
+        "letter": "A",
+        "text": "Es blanca con una banda recta de color azul que la atraviesa desde el ángulo superior izquierdo hasta el inferior derecho."
+      },
+      {
+        "letter": "B",
+        "text": "Es blanca con una banda diagonal de color verde que la atraviesa desde el ángulo superior izquierdo hasta el inferior derecho."
+      },
+      {
+        "letter": "C",
+        "text": "Es blanca con una banda diagonal de color azul que la atraviesa desde el ángulo inferior izquierdo hasta el superior derecho."
+      },
+      {
+        "letter": "D",
+        "text": "Es blanca con una banda diagonal de color azul que la atraviesa desde el ángulo superior izquierdo hasta el inferior derecho."
+      }
+    ],
+    "correctAnswer": "D",
+    "explanation": "Según el artículo 6.1 del Estatuto de Autonomía de Galicia, la bandera de Galicia es blanca con una banda diagonal de color azul que la atraviesa desde el ángulo superior izquierdo hasta el inferior derecho.",
+    "source_book": "libro-67",
+    "primary_article_id": "c1563136-cf35-44e0-81ce-9d8bb3f58dad",
+    "article_number": "6"
+  },
+  {
+    "original": "Una ley de Galicia fijará la sede de las instituciones autonómicas, para cuya aprobación se requerirá: (Ley 1/1981)",
+    "cleaned": "Una ley de Galicia fijará la sede de las instituciones autonómicas, para cuya aprobación se requerirá:",
+    "lawHint": "Ley 1/1981",
+    "articleHint": null,
+    "options": [
+      {
+        "letter": "A",
+        "text": "El voto favorable de las tres terceras partes de los miembros de su Parlamento."
+      },
+      {
+        "letter": "B",
+        "text": "El voto favorable de una tercera parte de los miembros de su Parlamento."
+      },
+      {
+        "letter": "C",
+        "text": "El voto favorable de las dos terceras partes de los miembros de su Parlamento."
+      },
+      {
+        "letter": "D",
+        "text": "El voto favorable de las dos terceras partes de la mitad de los miembros de su Parlamento."
+      }
+    ],
+    "correctAnswer": "C",
+    "explanation": "Según el artículo 8 del Estatuto de Autonomía de Galicia, una ley de Galicia fijará la sede de las instituciones autonómicas, para cuya aprobación se requerirá el voto favorable de las dos terceras partes de los miembros del Parlamento.",
+    "source_book": "libro-67",
+    "primary_article_id": "aea497be-1316-4675-9a9a-885595715a4b",
+    "article_number": "8"
+  },
+  {
+    "original": "¿Qué artículos abarca el Título Preliminar del Estatuto de Autonomía de Galicia? (Ley 1/1981)",
+    "cleaned": "¿Qué artículos abarca el Título Preliminar del Estatuto de Autonomía de Galicia?",
+    "lawHint": "Ley 1/1981",
+    "articleHint": null,
+    "options": [
+      {
+        "letter": "A",
+        "text": "Del 1 al 9."
+      },
+      {
+        "letter": "B",
+        "text": "Del 1 al 10."
+      },
+      {
+        "letter": "C",
+        "text": "Del 1 al 8."
+      },
+      {
+        "letter": "D",
+        "text": "Del 1 al 7."
+      }
+    ],
+    "correctAnswer": "C",
+    "explanation": "Según la estructura del Estatuto de Autonomía de Galicia, el Título Preliminar comprende los artículos 1 al 8.",
+    "source_book": "libro-67",
+    "primary_article_id": "ef3e200f-1511-496d-af18-ea02cc77e63d",
+    "article_number": "1"
+  },
+  {
+    "original": "Según el artículo 9 del Título I, los poderes de la Comunidad Autónoma de Galicia se ejercen a través de: (Ley 1/1981)",
+    "cleaned": "Según el artículo 9 del Título I, los poderes de la Comunidad Autónoma de Galicia se ejercen a través de:",
+    "lawHint": "Ley 1/1981",
+    "articleHint": null,
+    "options": [
+      {
+        "letter": "A",
+        "text": "El Parlamento, de su Presidente y del Senado."
+      },
+      {
+        "letter": "B",
+        "text": "El Parlamento, la Junta y de su Presidente."
+      },
+      {
+        "letter": "C",
+        "text": "El Parlamento, la Diputación y su Presidente."
+      },
+      {
+        "letter": "D",
+        "text": "El Parlamento, el Senado y la Diputación."
+      }
+    ],
+    "correctAnswer": "B",
+    "explanation": "Según el artículo 9.1 del Estatuto de Autonomía de Galicia, los poderes de la Comunidad Autónoma se ejercen a través del Parlamento, de la Junta y de su Presidente.",
+    "source_book": "libro-67",
+    "primary_article_id": "d17dce35-b706-4ffc-8952-d726fc88f832",
+    "article_number": "9"
+  },
+  {
+    "original": "¿Qué artículos componen el Título I del Estatuto de Autonomía de Galicia? (Ley 1/1981)",
+    "cleaned": "¿Qué artículos componen el Título I del Estatuto de Autonomía de Galicia?",
+    "lawHint": "Ley 1/1981",
+    "articleHint": null,
+    "options": [
+      {
+        "letter": "A",
+        "text": "Del 10 al 26."
+      },
+      {
+        "letter": "B",
+        "text": "Del 9 al 26."
+      },
+      {
+        "letter": "C",
+        "text": "Del 9 al 25."
+      },
+      {
+        "letter": "D",
+        "text": "Del 10 al 25."
+      }
+    ],
+    "correctAnswer": "B",
+    "explanation": "Según la estructura del Estatuto de Autonomía de Galicia, el Título I comprende el artículo 9 y los capítulos con artículos del 10 al 26.",
+    "source_book": "libro-67",
+    "primary_article_id": "d17dce35-b706-4ffc-8952-d726fc88f832",
+    "article_number": "9"
+  },
+  {
+    "original": "Según el artículo 10, indica cual no es una función del Parlamento de Galicia: (Ley 1/1981)",
+    "cleaned": "Según el artículo 10, indica cual no es una función del Parlamento de Galicia:",
+    "lawHint": "Ley 1/1981",
+    "articleHint": null,
+    "options": [
+      {
+        "letter": "A",
+        "text": "Ejercer la potestad legislativa de la Comunidad Autónoma."
+      },
+      {
+        "letter": "B",
+        "text": "Designar para cada legislatura de las Cortes Generales a los Senadores representantes de la Comunidad Autónoma Gallega, de acuerdo con lo previsto en el artículo sesenta y nueve, apartado cinco, de la Constitución."
+      },
+      {
+        "letter": "C",
+        "text": "Controlar la acción ejecutiva de la Junta, aprobar los presupuestos y ejercer las otras competencias que le sean atribuidas por la Constitución, por el presente Estatuto, por las leyes del Estado y las del Parlamento de Galicia."
+      },
+      {
+        "letter": "D",
+        "text": "Responde políticamente ante la Junta de forma solidaria, sin perjuicio de la responsabilidad directa de cada uno de sus componentes por su gestión."
+      }
+    ],
+    "correctAnswer": "D",
+    "explanation": "Según el artículo 17.1 del Estatuto de Autonomía de Galicia, la Junta de Galicia responde políticamente ante el Parlamento de forma solidaria, sin perjuicio de la responsabilidad directa de cada uno de sus componentes por su gestión.",
+    "source_book": "libro-67",
+    "primary_article_id": "b8e10f10-db87-46c7-b7b1-59446d609106",
+    "article_number": "17"
+  },
+  {
+    "original": "De acuerdo con el artículo 10 del Estatuto de Autonomía de Galicia, de todas las funciones indicadas a continuación ¿Cuál le corresponde al parlamento de Galicia? (Ley 1/1981)",
+    "cleaned": "De acuerdo con el artículo 10 del Estatuto de Autonomía de Galicia, de todas las funciones indicadas a continuación ¿Cuál le corresponde al parlamento de Galicia?",
+    "lawHint": "Ley 1/1981",
+    "articleHint": null,
+    "options": [
+      {
+        "letter": "A",
+        "text": "Ejercer la potestad reglamentaria de la Comunidad Autónoma."
+      },
+      {
+        "letter": "B",
+        "text": "Interponer recursos de inconstitucionalidad y personarse ante el Tribunal Constitucional en supuestos y en los términos previstos en la Constitución y en la Ley Orgánica del Tribunal Constitucional."
+      },
+      {
+        "letter": "C",
+        "text": "Exigir, en su caso, responsabilidad penal a la Xunta y a su Presidente."
+      },
+      {
+        "letter": "D",
+        "text": "Ordenación del territorio y del litoral, urbanismo y vivienda."
+      }
+    ],
+    "correctAnswer": "B",
+    "explanation": "Según el artículo 10.1.g) del Estatuto de Autonomía de Galicia, corresponde al Parlamento de Galicia interponer recursos de inconstitucionalidad y personarse ante el Tribunal Constitucional en los supuestos y en los términos previstos en la Constitución y en la Ley Orgánica del Tribunal Constitucional.",
+    "source_book": "libro-67",
+    "primary_article_id": "1e05ab5d-0e3a-44da-9773-c088bcef16c2",
+    "article_number": "10"
+  },
+  {
+    "original": "¿Qué determinará los plazos y elección de los miembros del Parlamento? (Ley 1/1981)",
+    "cleaned": "¿Qué determinará los plazos y elección de los miembros del Parlamento?",
+    "lawHint": "Ley 1/1981",
+    "articleHint": null,
+    "options": [
+      {
+        "letter": "A",
+        "text": "Una ley orgánica."
+      },
+      {
+        "letter": "B",
+        "text": "Un decreto Ley."
+      },
+      {
+        "letter": "C",
+        "text": "Una Ley del Parlamento."
+      },
+      {
+        "letter": "D",
+        "text": "Un reglamento interno."
+      }
+    ],
+    "correctAnswer": "C",
+    "explanation": "Según el artículo 11.5 del Estatuto de Autonomía de Galicia, una ley del Parlamento de Galicia determinará los plazos y regulará el procedimiento para elección de sus miembros.",
+    "source_book": "libro-67",
+    "primary_article_id": "c7d6f919-89ef-439e-a8a4-4a5ebebb0857",
+    "article_number": "11"
+  },
+  {
+    "original": "¿Cuántos miembros puede componer el Parlamento de Galicia? (Ley 1/1981)",
+    "cleaned": "¿Cuántos miembros puede componer el Parlamento de Galicia?",
+    "lawHint": "Ley 1/1981",
+    "articleHint": null,
+    "options": [
+      {
+        "letter": "A",
+        "text": "Entre sesenta y ochenta."
+      },
+      {
+        "letter": "B",
+        "text": "Entre sesenta y setenta."
+      },
+      {
+        "letter": "C",
+        "text": "Entre ochenta y noventa."
+      },
+      {
+        "letter": "D",
+        "text": "Entre cincuenta y sesenta."
+      }
+    ],
+    "correctAnswer": "A",
+    "explanation": "Según el artículo 11.5 del Estatuto de Autonomía de Galicia, una ley del Parlamento de Galicia fijará su número entre sesenta y ochenta.",
+    "source_book": "libro-67",
+    "primary_article_id": "c7d6f919-89ef-439e-a8a4-4a5ebebb0857",
+    "article_number": "11"
+  },
+  {
+    "original": "De acuerdo con el artículo 11 del EAG, (señale la opción INCORRECTA) (Ley 1/1981)",
+    "cleaned": "De acuerdo con el artículo 11 del EAG,",
+    "lawHint": "Ley 1/1981",
+    "articleHint": null,
+    "options": [
+      {
+        "letter": "A",
+        "text": "El Parlamento estará constituido por Diputados elegidos por sufragio universal, igual, libre, directo y secreto."
+      },
+      {
+        "letter": "B",
+        "text": "El Parlamento será elegido por un plazo de cuatro años, de acuerdo con un sistema de representación mayoritario que asegure, además, la representación de las diversas zonas del territorio gallego."
+      },
+      {
+        "letter": "C",
+        "text": "La circunscripción electoral será, en todo caso, la provincia."
+      },
+      {
+        "letter": "D",
+        "text": "Los Diputados no estarán sujetos a mandato imperativo."
+      }
+    ],
+    "correctAnswer": "B",
+    "explanation": "Según el artículo 11.2 del Estatuto de Autonomía de Galicia, el Parlamento será elegido por un plazo de cuatro años, de acuerdo con un sistema de representación proporcional que asegure, además, la representación de las diversas zonas del territorio gallego.",
+    "source_book": "libro-67",
+    "primary_article_id": "c7d6f919-89ef-439e-a8a4-4a5ebebb0857",
+    "article_number": "11"
+  },
+  {
+    "original": "Según el artículo 12 del Estatuto de Autonomía de Galicia ¿Qué órganos se formarán en el Parlamento? (Ley 1/1981)",
+    "cleaned": "Según el artículo 12 del Estatuto de Autonomía de Galicia ¿Qué órganos se formarán en el Parlamento?",
+    "lawHint": "Ley 1/1981",
+    "articleHint": null,
+    "options": [
+      {
+        "letter": "A",
+        "text": "Junta de Gobierno, Presidente y Vicepresidente."
+      },
+      {
+        "letter": "B",
+        "text": "Presidente, Mesa electoral y Diputación."
+      },
+      {
+        "letter": "C",
+        "text": "Presidente, la Mesa y una Diputación Permanente."
+      },
+      {
+        "letter": "D",
+        "text": "Presidente, vocales y Mesa."
+      }
+    ],
+    "correctAnswer": "C",
+    "explanation": "Según el artículo 12.1 del Estatuto de Autonomía de Galicia, el Parlamento elegirá de entre sus miembros un Presidente, la Mesa y una Diputación Permanente.",
+    "source_book": "libro-67",
+    "primary_article_id": "b42ded14-a054-4cdd-ad73-c1d8a8bf9c24",
+    "article_number": "12"
+  },
+  {
+    "original": "Según el artículo 12 del Estatuto de Autonomía de Galicia, el Parlamento: (Ley 1/1981)",
+    "cleaned": "Según el artículo 12 del Estatuto de Autonomía de Galicia, el Parlamento:",
+    "lawHint": "Ley 1/1981",
+    "articleHint": null,
+    "options": [
+      {
+        "letter": "A",
+        "text": "Elegirá de entre sus miembros un Presidente, la Mesa y una Diputación Permanente. El Reglamento, que deberá ser aprobado por mayoría absoluta, regulará su composición, régimen y funcionamiento."
+      },
+      {
+        "letter": "B",
+        "text": "Fijará su propio presupuesto."
+      },
+      {
+        "letter": "C",
+        "text": "Funcionará en Pleno y en Comisiones, y se reunirá en sesiones ordinarias y extraordinarias."
+      },
+      {
+        "letter": "D",
+        "text": "Todas las respuestas anteriores son correctas"
+      }
+    ],
+    "correctAnswer": "D",
+    "explanation": "Según el artículo 12 del Estatuto de Autonomía de Galicia, el Parlamento elegirá de entre sus miembros un Presidente, la Mesa y una Diputación Permanente, fijará su propio presupuesto y funcionará en Pleno y en Comisiones, reuniéndose en sesiones ordinarias y extraordinarias.",
+    "source_book": "libro-67",
+    "primary_article_id": "b42ded14-a054-4cdd-ad73-c1d8a8bf9c24",
+    "article_number": "12"
+  },
+  {
+    "original": "El Reglamento regulará la composición, régimen y funcionamiento del Parlamento, ¿cómo deberá ser aprobado? (Ley 1/1981)",
+    "cleaned": "El Reglamento regulará la composición, régimen y funcionamiento del Parlamento, ¿cómo deberá ser aprobado?",
+    "lawHint": "Ley 1/1981",
+    "articleHint": null,
+    "options": [
+      {
+        "letter": "A",
+        "text": "Por mayoría simple."
+      },
+      {
+        "letter": "B",
+        "text": "Por la mitad de los miembros."
+      },
+      {
+        "letter": "C",
+        "text": "Por mayoría absoluta."
+      },
+      {
+        "letter": "D",
+        "text": "Por más de 1/3 de los miembros asistentes."
+      }
+    ],
+    "correctAnswer": "C",
+    "explanation": "Según el artículo 12.1 del Estatuto de Autonomía de Galicia, el Reglamento, que deberá ser aprobado por mayoría absoluta, regulará su composición, régimen y funcionamiento.",
+    "source_book": "libro-67",
+    "primary_article_id": "b42ded14-a054-4cdd-ad73-c1d8a8bf9c24",
+    "article_number": "12"
+  },
+  {
+    "original": "¿Cómo son promulgadas las leyes de Galicia, según lo establecido en el apartado 2, del artículo 13? (Ley 1/1981)",
+    "cleaned": "¿Cómo son promulgadas las leyes de Galicia, según lo establecido en el apartado 2, del artículo 13?",
+    "lawHint": "Ley 1/1981",
+    "articleHint": null,
+    "options": [
+      {
+        "letter": "A",
+        "text": "Serán promulgadas por el Presidente de la Junta y publicadas en el «Diario Oficial de Galicia» y en el «Boletín Oficial del Estado». A efectos de su entrada en vigor regirá la fecha de su publicación en el «Diario Oficial de Galicia»."
+      },
+      {
+        "letter": "B",
+        "text": "Serán promulgadas en nombre del Presidente por el Rey y publicadas en el «Diario Oficial de Galicia» y en el «Boletín Oficial del Estado». A efectos de su entrada en vigor regirá la fecha de su publicación en el «Diario Oficial de Galicia»."
+      },
+      {
+        "letter": "C",
+        "text": "Serán promulgadas en nombre del Rey por el Presidente de la Junta y publicadas en el «Diario Oficial de Galicia» y en el «Boletín Oficial del Estado». A efectos de su entrada en vigor regirá la fecha del día después al de su publicación en el «Diario Oficial de Galicia»."
+      },
+      {
+        "letter": "D",
+        "text": "Serán promulgadas en nombre del Rey por el Presidente de la Junta y publicadas en el «Diario Oficial de Galicia» y en el «Boletín Oficial del Estado». A efectos de su entrada en vigor regirá la fecha de su publicación en el «Diario Oficial de Galicia»."
+      }
+    ],
+    "correctAnswer": "D",
+    "explanation": "Según el artículo 13.2 del Estatuto de Autonomía de Galicia, las leyes de Galicia serán promulgadas en nombre del Rey por el Presidente de la Junta y publicadas en el «Diario Oficial de Galicia» y en el «Boletín Oficial del Estado», rigiendo a efectos de entrada en vigor la fecha de su publicación en el «Diario Oficial de Galicia».",
+    "source_book": "libro-67",
+    "primary_article_id": "3b6cc747-488c-4460-986d-b538bff1a199",
+    "article_number": "13"
+  },
+  {
+    "original": "El control de la constitucionalidad de las leyes del Parlamento de Galicia corresponderá a: (artículo 13) (Ley 1/1981)",
+    "cleaned": "El control de la constitucionalidad de las leyes del Parlamento de Galicia corresponderá a:",
+    "lawHint": "Ley 1/1981",
+    "articleHint": null,
+    "options": [
+      {
+        "letter": "A",
+        "text": "Tribunal Constitucional."
+      },
+      {
+        "letter": "B",
+        "text": "Tribunal Supremo."
+      },
+      {
+        "letter": "C",
+        "text": "Al Parlamento."
+      },
+      {
+        "letter": "D",
+        "text": "A la Junta."
+      }
+    ],
+    "correctAnswer": "A",
+    "explanation": "Según el artículo 13.3 del Estatuto de Autonomía de Galicia, el control de la constitucionalidad de las leyes del Parlamento de Galicia corresponderá al Tribunal Constitucional.",
+    "source_book": "libro-67",
+    "primary_article_id": "3b6cc747-488c-4460-986d-b538bff1a199",
+    "article_number": "13"
+  },
+  {
+    "original": "La creación y organización de la figura del Valedor do Pobo como órgano similar a la institución del Defensor del Pueblo, se articulará: (Ley 1/1981)",
+    "cleaned": "La creación y organización de la figura del Valedor do Pobo como órgano similar a la institución del Defensor del Pueblo, se articulará:",
+    "lawHint": "Ley 1/1981",
+    "articleHint": null,
+    "options": [
+      {
+        "letter": "A",
+        "text": "Mediante Decreto."
+      },
+      {
+        "letter": "B",
+        "text": "Mediante Acuerdo."
+      },
+      {
+        "letter": "C",
+        "text": "Mediante Ley Orgánica."
+      },
+      {
+        "letter": "D",
+        "text": "Mediante ley del Parlamento de Galicia."
+      }
+    ],
+    "correctAnswer": "D",
+    "explanation": "Según el artículo 14 del Estatuto de Autonomía de Galicia, corresponde a la Comunidad Autónoma la creación y organización mediante ley de su Parlamento, con respeto a la institución del Defensor del Pueblo, de un órgano similar.",
+    "source_book": "libro-67",
+    "primary_article_id": "d1b7fe2d-8090-4579-acdf-681e3f328485",
+    "article_number": "14"
+  },
+  {
+    "original": "Indica cual no es una función del Presidente de la Junta: (artículo 15) (Ley 1/1981)",
+    "cleaned": "Indica cual no es una función del Presidente de la Junta:",
+    "lawHint": "Ley 1/1981",
+    "articleHint": null,
+    "options": [
+      {
+        "letter": "A",
+        "text": "El Presidente dirige y coordina la acción de la Junta."
+      },
+      {
+        "letter": "B",
+        "text": "Regulará la organización de la Junta y las atribuciones y el Estatuto personal de sus componentes."
+      },
+      {
+        "letter": "C",
+        "text": "El Presidente, ostenta la representación de la Comunidad Autónoma y la ordinaria del Estado en Galicia."
+      },
+      {
+        "letter": "D",
+        "text": "Será políticamente responsable ante el Parlamento. Una ley de Galicia determinará el alcance de tal responsabilidad, así como el Estatuto personal y atribuciones del Presidente."
+      }
+    ],
+    "correctAnswer": "B",
+    "explanation": "Según el artículo 16.4 del Estatuto de Autonomía de Galicia, una ley de Galicia regulará la organización de la Junta y las atribuciones y el Estatuto personal de sus componentes.",
+    "source_book": "libro-67",
+    "primary_article_id": "cfbb07af-ff92-4a5d-8bc1-db4639e6c9cd",
+    "article_number": "16"
+  },
+  {
+    "original": "Para ser elegido Presidente de la Junta: (Ley 1/1981)",
+    "cleaned": "Para ser elegido Presidente de la Junta:",
+    "lawHint": "Ley 1/1981",
+    "articleHint": null,
+    "options": [
+      {
+        "letter": "A",
+        "text": "El candidato deberá, en primera votación, obtener mayoría simple; de no obtenerla, se procederá a una nueva votación veinticuatro horas después de la anterior, y la confianza se entenderá otorgada si obtuviera mayoría simple."
+      },
+      {
+        "letter": "B",
+        "text": "El candidato deberá, en primera votación, obtener mayoría absoluta; de no obtenerla, se procederá a una nueva votación cuarenta y ocho horas después de la anterior, y la confianza se entenderá otorgada si obtuviera mayoría simple."
+      },
+      {
+        "letter": "C",
+        "text": "El candidato deberá, en primera votación, obtener mayoría absoluta; de no obtenerla, se procederá a una nueva votación veinticuatro horas después de la anterior, y la confianza se entenderá otorgada si obtuviera mayoría simple."
+      },
+      {
+        "letter": "D",
+        "text": "El candidato deberá, en primera votación, obtener mayoría simple; de no obtenerla, se procederá a una nueva votación doce horas después de la anterior, y la confianza se entenderá otorgada si obtuviera mayoría simple."
+      }
+    ],
+    "correctAnswer": "C",
+    "explanation": "Según el artículo 15.3 del Estatuto de Autonomía de Galicia, para ser elegido el candidato deberá, en primera votación, obtener mayoría absoluta; de no obtenerla, se procederá a una nueva votación veinticuatro horas después de la anterior, y la confianza se entenderá otorgada si obtuviera mayoría simple.",
+    "source_book": "libro-67",
+    "primary_article_id": "55488d15-79ca-4d8e-b87e-45e28440d413",
+    "article_number": "15"
+  },
+  {
+    "original": "¿Por quién está compuesta la Junta de Galicia, según el artículo 16? (Ley 1/1981)",
+    "cleaned": "¿Por quién está compuesta la Junta de Galicia, según el artículo 16?",
+    "lawHint": "Ley 1/1981",
+    "articleHint": null,
+    "options": [
+      {
+        "letter": "A",
+        "text": "Por el Presidente, el Secretario, en su caso, y los Consejeros."
+      },
+      {
+        "letter": "B",
+        "text": "Por el Presidente, Vicepresidente o Vicepresidentes, en su caso, y el Secretario."
+      },
+      {
+        "letter": "C",
+        "text": "Por el Presidente, Vicepresidente o Vicepresidentes, en su caso, y los Consejeros."
+      },
+      {
+        "letter": "D",
+        "text": "Por el Presidente, Vicepresidente o Vicepresidentes, en su caso, y los miembros de la Mesa."
+      }
+    ],
+    "correctAnswer": "C",
+    "explanation": "Según el artículo 16.2 del Estatuto de Autonomía de Galicia, la Junta de Galicia está compuesta por el Presidente, Vicepresidente o Vicepresidentes, en su caso, y los Consejeros.",
+    "source_book": "libro-67",
+    "primary_article_id": "cfbb07af-ff92-4a5d-8bc1-db4639e6c9cd",
+    "article_number": "16"
+  },
+  {
+    "original": "De acuerdo el artículo 18 del Estatuto de Autonomía de Galicia, la responsabilidad penal del Presidente y demás miembros de la Junta fuera del territorio de Galicia, será exigible ante los mismos términos ante:",
+    "cleaned": "De acuerdo el artículo 18 del Estatuto de Autonomía de Galicia, la responsabilidad penal del Presidente y demás miembros de la Junta fuera del territorio de Galicia, será exigible ante los mismos términos ante:",
+    "lawHint": null,
+    "articleHint": null,
+    "options": [
+      {
+        "letter": "A",
+        "text": "La Sala del Tribunal Superior de Justicia de Galicia."
+      },
+      {
+        "letter": "B",
+        "text": "La Sala de los Penal del Tribunal Supremo."
+      },
+      {
+        "letter": "C",
+        "text": "El Tribunal Constitucional."
+      },
+      {
+        "letter": "D",
+        "text": "El Tribunal de Cuentas."
+      }
+    ],
+    "correctAnswer": "B",
+    "explanation": "Según el artículo 18 del Estatuto de Autonomía de Galicia, fuera del territorio de Galicia la responsabilidad penal será exigible en los mismos términos ante la Sala de lo Penal del Tribunal Supremo.",
+    "source_book": "libro-67",
+    "primary_article_id": "59e884e4-294e-448f-9f85-5409989bf797",
+    "article_number": "18"
+  },
+  {
+    "original": "¿Qué órgano jurisdiccional culmina la organización judicial en su ámbito territorial de Galicia y ante el que se agotaran las sucesivas instancias procesales, según el artículo 21 del Estatuto de Autonomía de Galicia?",
+    "cleaned": "¿Qué órgano jurisdiccional culmina la organización judicial en su ámbito territorial de Galicia y ante el que se agotaran las sucesivas instancias procesales, según el artículo 21 del Estatuto de Autonomía de Galicia?",
+    "lawHint": null,
+    "articleHint": null,
+    "options": [
+      {
+        "letter": "A",
+        "text": "El Tribunal Superior de Justicia de Galicia."
+      },
+      {
+        "letter": "B",
+        "text": "El Tribunal Supremo."
+      },
+      {
+        "letter": "C",
+        "text": "El Tribunal Constitucional."
+      },
+      {
+        "letter": "D",
+        "text": "El Tribunal de Cuentas."
+      }
+    ],
+    "correctAnswer": "A",
+    "explanation": "Según el artículo 21 del Estatuto de Autonomía de Galicia, el Tribunal Superior de Justicia de Galicia es el órgano jurisdiccional en que culminará la organización judicial en su ámbito territorial.",
+    "source_book": "libro-67",
+    "primary_article_id": "b9949f98-f888-412d-9f7b-059538fff8c4",
+    "article_number": "21"
+  },
+  {
+    "original": "El artículo 22.1 del EAG establece que la competencia de los órganos jurisdiccionales en Galicia se extiende",
+    "cleaned": "El artículo 22.1 del EAG establece que la competencia de los órganos jurisdiccionales en Galicia se extiende",
+    "lawHint": null,
+    "articleHint": null,
+    "options": [
+      {
+        "letter": "A",
+        "text": "En el orden civil, a todas las instancias y grados, con excepción de los recursos de casación y de revisión en las materias de Derecho Civil gallego."
+      },
+      {
+        "letter": "B",
+        "text": "En el orden penal y social, a todas las instancias y grados incluidos los recursos de casación y de revisión."
+      },
+      {
+        "letter": "C",
+        "text": "A las cuestiones de competencia entre órganos judiciales en Galicia."
+      },
+      {
+        "letter": "D",
+        "text": "Todas las opciones son correctas."
+      }
+    ],
+    "correctAnswer": "C",
+    "explanation": "Según el artículo 22.1.d) del Estatuto de Autonomía de Galicia, la competencia de los órganos jurisdiccionales en Galicia se extiende a las cuestiones de competencia entre órganos judiciales en Galicia.",
+    "source_book": "libro-67",
+    "primary_article_id": "ee09670a-b75c-4532-a149-1acd2af0e28e",
+    "article_number": "22"
+  },
+  {
+    "original": "La competencia de los órganos jurisdiccionales en Galicia se extiende: (Ley 1/1981)",
+    "cleaned": "La competencia de los órganos jurisdiccionales en Galicia se extiende:",
+    "lawHint": "Ley 1/1981",
+    "articleHint": null,
+    "options": [
+      {
+        "letter": "A",
+        "text": "En el orden civil, a todas las instancias y grados, incluidos los recursos de casación y de revisión en las materias de Derecho Civil gallego."
+      },
+      {
+        "letter": "B",
+        "text": "En el orden penal y social, a todas las instancias y grados, con excepción de los recursos de casación y de revisión."
+      },
+      {
+        "letter": "C",
+        "text": "En el orden contencioso-administrativo, a todas las instancias y grados, cuando se trate de actos dictados por la Junta y por la Administración de Galicia, en las materias cuya legislación corresponda en exclusiva a la Comunidad Autónoma y la que, de acuerdo con la ley de dicha jurisdicción, le corresponda en relación con los actos dictados por la Administración del Estado en Galicia."
+      },
+      {
+        "letter": "D",
+        "text": "Todas son correctas."
+      }
+    ],
+    "correctAnswer": "D",
+    "explanation": "Según el artículo 22.1 del Estatuto de Autonomía de Galicia, la competencia de los órganos jurisdiccionales en Galicia se extiende a todos los órdenes jurisdiccionales, con reglas específicas para los recursos de casación y revisión, y alcanza también a determinados actos del Estado dictados en Galicia.",
+    "source_book": "libro-67",
+    "primary_article_id": "ee09670a-b75c-4532-a149-1acd2af0e28e",
+    "article_number": "22"
+  },
+  {
+    "original": "¿Cómo será nombrado el Presidente del Tribunal Superior de Justicia de Galicia? (Ley 1/1981)",
+    "cleaned": "¿Cómo será nombrado el Presidente del Tribunal Superior de Justicia de Galicia?",
+    "lawHint": "Ley 1/1981",
+    "articleHint": null,
+    "options": [
+      {
+        "letter": "A",
+        "text": "Será nombrado por el Presidente de la Xunta, a propuesta del Consejo General del Poder Judicial."
+      },
+      {
+        "letter": "B",
+        "text": "Será nombrado por el Rey a propuesta del Consejo General del Poder Judicial."
+      },
+      {
+        "letter": "C",
+        "text": "Será nombrado por el Rey, a propuesta del Presidente y los miembros de la Junta."
+      },
+      {
+        "letter": "D",
+        "text": "Todas son incorrectas."
+      }
+    ],
+    "correctAnswer": "B",
+    "explanation": "Según el artículo 23.1 del Estatuto de Autonomía de Galicia, el Presidente del Tribunal Superior de Justicia de Galicia será nombrado por el Rey a propuesta del Consejo General del Poder Judicial.",
+    "source_book": "libro-67",
+    "primary_article_id": "270b9783-2c00-4aed-a083-4aa1e17b0f60",
+    "article_number": "23"
+  },
+  {
+    "original": "Según el artículo 25 del Estatuto de Autonomía de Galicia, en la resolución de los concursos y oposiciones para proveer los puestos de Magistrados, Jueces, Secretarios Judiciales, Fiscales y todos los funcionarios al servicio de la Administración de Justicia, será mérito preferente:",
+    "cleaned": "Según el artículo 25 del Estatuto de Autonomía de Galicia, en la resolución de los concursos y oposiciones para proveer los puestos de Magistrados, Jueces, Secretarios Judiciales, Fiscales y todos los funcionarios al servicio de la Administración de Justicia, será mérito preferente:",
+    "lawHint": null,
+    "articleHint": null,
+    "options": [
+      {
+        "letter": "A",
+        "text": "Ser natural de Galicia y el conocimiento del gallego."
+      },
+      {
+        "letter": "B",
+        "text": "La especialización en Derecho Penal y Civil y el conocimiento del gallego."
+      },
+      {
+        "letter": "C",
+        "text": "La especialización en el Derecho gallego y el conocimiento del idioma del país."
+      },
+      {
+        "letter": "D",
+        "text": "Ser natural de Galicia y el conocimiento del español."
+      }
+    ],
+    "correctAnswer": "C",
+    "explanation": "Según el artículo 25 del Estatuto de Autonomía de Galicia, será mérito preferente la especialización en el Derecho gallego y el conocimiento del idioma del país.",
+    "source_book": "libro-67",
+    "primary_article_id": "58aeda2a-87c0-487b-88f6-9250dd40cef3",
+    "article_number": "25"
+  },
+  {
+    "original": "Según el Estatuto de Autonomía de Galicia, la competencia de la Comunidad Autónoma gallega en materia de salvamento marítimo es:",
+    "cleaned": "Según el Estatuto de Autonomía de Galicia, la competencia de la Comunidad Autónoma gallega en materia de salvamento marítimo es:",
+    "lawHint": null,
+    "articleHint": null,
+    "options": [
+      {
+        "letter": "A",
+        "text": "De desarrollo legislativo y ejecución de la legislación del Estado."
+      },
+      {
+        "letter": "B",
+        "text": "De ejecución de la legislación del Estado."
+      },
+      {
+        "letter": "C",
+        "text": "No tiene competencias en esta materia."
+      },
+      {
+        "letter": "D",
+        "text": "Solo de desarrollo legislativo."
+      }
+    ],
+    "correctAnswer": "B",
+    "explanation": "Según el artículo 29 del Estatuto de Autonomía de Galicia, corresponde a la Comunidad Autónoma gallega la ejecución de la legislación del Estado en las siguientes materias: Tres. Salvamento marítimo.",
+    "source_book": "libro-67",
+    "primary_article_id": "22dc7fe9-501f-4403-9e1c-874dc9699c8e",
+    "article_number": "29"
+  },
+  {
+    "original": "El artículo 29 del EAG establece que le corresponde a la Comunidad Autónoma gallega la ejecución de la legislación del Estado, entre otras, en las siguientes materias:",
+    "cleaned": "El artículo 29 del EAG establece que le corresponde a la Comunidad Autónoma gallega la ejecución de la legislación del Estado, entre otras, en las siguientes materias:",
+    "lawHint": null,
+    "articleHint": null,
+    "options": [
+      {
+        "letter": "A",
+        "text": "Régimen minero y energético."
+      },
+      {
+        "letter": "B",
+        "text": "Propiedad industrial e intelectual."
+      },
+      {
+        "letter": "C",
+        "text": "Ordenación del sector pesquero."
+      },
+      {
+        "letter": "D",
+        "text": "Entidades cooperativas."
+      }
+    ],
+    "correctAnswer": "B",
+    "explanation": "Según el artículo 29 del Estatuto de Autonomía de Galicia, corresponde a la Comunidad Autónoma gallega la ejecución de la legislación del Estado en las siguientes materias: Dos. Propiedad industrial e intelectual.",
+    "source_book": "libro-67",
+    "primary_article_id": "22dc7fe9-501f-4403-9e1c-874dc9699c8e",
+    "article_number": "29"
+  },
+  {
+    "original": "De acuerdo el artículo 31: La Comunidad Autónoma podrá establecer también acuerdos de cooperación con otras Comunidades Autónomas, previa autorización de: (Ley 1/1981)",
+    "cleaned": "De acuerdo el artículo 31: La Comunidad Autónoma podrá establecer también acuerdos de cooperación con otras Comunidades Autónomas, previa autorización de:",
+    "lawHint": "Ley 1/1981",
+    "articleHint": null,
+    "options": [
+      {
+        "letter": "A",
+        "text": "La Junta."
+      },
+      {
+        "letter": "B",
+        "text": "El Gobierno."
+      },
+      {
+        "letter": "C",
+        "text": "Las Cortes Generales."
+      },
+      {
+        "letter": "D",
+        "text": "La Diputación Permanente."
+      }
+    ],
+    "correctAnswer": "C",
+    "explanation": "Según el artículo 35.2 del Estatuto de Autonomía de Galicia, la Comunidad Autónoma podrá establecer también acuerdos de cooperación con otras Comunidades Autónomas, previa autorización de las Cortes Generales.",
+    "source_book": "libro-67",
+    "primary_article_id": "24e2eb9a-99b5-424e-b600-f199563db975",
+    "article_number": "35"
+  },
+  {
+    "original": "Según el artículo 32 del Título II del Estatuto de Galicia, Corresponde a la Comunidad Autónoma la defensa y promoción de los valores culturales del pueblo gallego. A tal fin, y mediante ley del Parlamento, se constituirá un:",
+    "cleaned": "Según el artículo 32 del Título II del Estatuto de Galicia, Corresponde a la Comunidad Autónoma la defensa y promoción de los valores culturales del pueblo gallego. A tal fin, y mediante ley del Parlamento, se constituirá un:",
+    "lawHint": null,
+    "articleHint": null,
+    "options": [
+      {
+        "letter": "A",
+        "text": "Fondo Cultural Gallego y el Consejo de la Cultura Gallega."
+      },
+      {
+        "letter": "B",
+        "text": "Fondo Monetario y el Consejo de la Cultura Gallega."
+      },
+      {
+        "letter": "C",
+        "text": "Fondo Cultural Gallego y el Consejo de la Cultura Nacional."
+      },
+      {
+        "letter": "D",
+        "text": "Fondo Cultural Nacional y el Consejo de la Cultura Gallega."
+      }
+    ],
+    "correctAnswer": "A",
+    "explanation": "Según el artículo 32 del Estatuto de Autonomía de Galicia, corresponde a la Comunidad Autónoma la defensa y promoción de los valores culturales del pueblo gallego y, a tal fin, y mediante ley del Parlamento, se constituirá un Fondo Cultural Gallego y el Consejo de la Cultura Gallega.",
+    "source_book": "libro-67",
+    "primary_article_id": "99a66229-a8d5-4d53-9b63-8cc7e8459a2b",
+    "article_number": "32"
+  },
+  {
+    "original": "¿Qué corresponde a la Comunidad Autónoma gallega en materia de sanidad interior?",
+    "cleaned": "¿Qué corresponde a la Comunidad Autónoma gallega en materia de sanidad interior?",
+    "lawHint": null,
+    "articleHint": null,
+    "options": [
+      {
+        "letter": "A",
+        "text": "La creación de normas básicas aplicables en toda España."
+      },
+      {
+        "letter": "B",
+        "text": "El desarrollo legislativo y la ejecución de la legislación básica del Estado."
+      },
+      {
+        "letter": "C",
+        "text": "La regulación de la sanidad interior de todas las Comunidades Autónomas."
+      },
+      {
+        "letter": "D",
+        "text": "La eliminación del régimen económico de la Seguridad Social."
+      }
+    ],
+    "correctAnswer": "B",
+    "explanation": "Según el artículo 33.1 del Estatuto de Autonomía de Galicia, corresponde a la Comunidad Autónoma el desarrollo legislativo y la ejecución de la legislación básica del Estado en materia de sanidad interior.",
+    "source_book": "libro-67",
+    "primary_article_id": "88677f1c-0d6f-45a8-b7aa-986e75ca4492",
+    "article_number": "33"
+  },
+  {
+    "original": "De acuerdo con el artículo 34, ¿qué puede regular Galicia en el ámbito de los medios de comunicación social? (Ley 1/1981)",
+    "cleaned": "De acuerdo con el artículo 34, ¿qué puede regular Galicia en el ámbito de los medios de comunicación social?",
+    "lawHint": "Ley 1/1981",
+    "articleHint": null,
+    "options": [
+      {
+        "letter": "A",
+        "text": "Su propia televisión, radio y prensa, en los términos establecidos por las normas básicas del Estado."
+      },
+      {
+        "letter": "B",
+        "text": "Todos los medios de comunicación en territorio español."
+      },
+      {
+        "letter": "C",
+        "text": "Las cadenas internacionales de televisión."
+      },
+      {
+        "letter": "D",
+        "text": "Los contenidos de todas las plataformas de comunicación digital."
+      }
+    ],
+    "correctAnswer": "A",
+    "explanation": "Según el artículo 34.3 del Estatuto de Autonomía de Galicia, la Comunidad Autónoma podrá regular, crear y mantener su propia televisión, radio y prensa y, en general, todos los medios de comunicación social para el cumplimiento de sus fines.",
+    "source_book": "libro-67",
+    "primary_article_id": "150ba09f-e9ba-4e53-9fcf-236a01670443",
+    "article_number": "34"
+  },
+  {
+    "original": "¿Qué indica el artículo 35 sobre los convenios entre Galicia y otras Comunidades Autónomas? (Ley 1/1981)",
+    "cleaned": "¿Qué indica el artículo 35 sobre los convenios entre Galicia y otras Comunidades Autónomas?",
+    "lawHint": "Ley 1/1981",
+    "articleHint": null,
+    "options": [
+      {
+        "letter": "A",
+        "text": "Deben ser comunicados a las Cortes Generales antes de entrar en vigor."
+      },
+      {
+        "letter": "B",
+        "text": "Pueden entrar en vigor sin ningún tipo de supervisión estatal."
+      },
+      {
+        "letter": "C",
+        "text": "Solo son válidos si incluyen a todas las Comunidades Autónomas."
+      },
+      {
+        "letter": "D",
+        "text": "No están permitidos según el Estatuto de Autonomía."
+      }
+    ],
+    "correctAnswer": "A",
+    "explanation": "Según el artículo 35.1 del Estatuto de Autonomía de Galicia, la celebración de los citados convenios, antes de su entrada en vigor, deberá ser comunicada a las Cortes Generales.",
+    "source_book": "libro-67",
+    "primary_article_id": "24e2eb9a-99b5-424e-b600-f199563db975",
+    "article_number": "35"
+  },
+  {
+    "original": "Según el artículo 36 del EAG, la competencia para solicitar del Estado la transferencia o delegación de competencias no asumidas en el Estatuto de Autonomía, le corresponde",
+    "cleaned": "Según el artículo 36 del EAG, la competencia para solicitar del Estado la transferencia o delegación de competencias no asumidas en el Estatuto de Autonomía, le corresponde",
+    "lawHint": null,
+    "articleHint": null,
+    "options": [
+      {
+        "letter": "A",
+        "text": "Al Gobierno de Galicia."
+      },
+      {
+        "letter": "B",
+        "text": "Al Parlamento de Galicia."
+      },
+      {
+        "letter": "C",
+        "text": "Al Parlamento de Galicia, a propuesta del Presidente de la Xunta de Galicia."
+      },
+      {
+        "letter": "D",
+        "text": "Al Presidente de la Xunta de Galicia."
+      }
+    ],
+    "correctAnswer": "B",
+    "explanation": "Según el artículo 36.2 del Estatuto de Autonomía de Galicia, corresponde al Parlamento de Galicia la competencia para formular las anteriores solicitudes, y para determinar el organismo de la Comunidad Autónoma gallega a cuyo favor se deberá atribuir en cada caso la competencia transferida o delegada.",
+    "source_book": "libro-67",
+    "primary_article_id": "7021ecb4-e3de-4747-931b-bedee2fe387d",
+    "article_number": "36"
+  },
+  {
+    "original": "Según indica el artículo 40, en los términos previstos en el artículo veintisiete, dos, de este Estatuto, por ley de Galicia se podrá: (indica la respuesta incorrecta) (Ley 1/1981)",
+    "cleaned": "Según indica el artículo 40, en los términos previstos en el artículo veintisiete, dos, de este Estatuto, por ley de Galicia se podrá: (indica la respuesta incorrecta)",
+    "lawHint": "Ley 1/1981",
+    "articleHint": null,
+    "options": [
+      {
+        "letter": "A",
+        "text": "La comarca no supondrá, necesariamente la supresión de los municipios que la integren."
+      },
+      {
+        "letter": "B",
+        "text": "Crear asimismo agrupaciones basadas en hechos urbanísticos y otros de carácter funcional con fines específicos."
+      },
+      {
+        "letter": "C",
+        "text": "Reconocer la comarca como entidad local con personalidad jurídica y demarcación propia."
+      },
+      {
+        "letter": "D",
+        "text": "Reconocer personalidad jurídica a las casas rurales."
+      }
+    ],
+    "correctAnswer": "D",
+    "explanation": "Según el artículo 40 del Estatuto de Autonomía de Galicia, por ley de Galicia se podrá reconocer la comarca como entidad local con personalidad jurídica y demarcación propia, crear agrupaciones con fines específicos y reconocer personalidad jurídica a la parroquia rural.",
+    "source_book": "libro-67",
+    "primary_article_id": "b2b07b3b-9625-4d85-a481-c397f3fd5b70",
+    "article_number": "40"
+  },
+  {
+    "original": "De acuerdo con el artículo 56.2 del Estatuto de Autonomía de Galicia, si la propuesta de reforma no es aprobada por el Parlamento gallego o por las Cortes Generales, o no es confirmada mediante referéndum por el Cuerpo electoral, no podrá ser sometida nuevamente a debate y votación del Parlamento hasta que haya transcurrido:",
+    "cleaned": "De acuerdo con el artículo 56.2 del Estatuto de Autonomía de Galicia, si la propuesta de reforma no es aprobada por el Parlamento gallego o por las Cortes Generales, o no es confirmada mediante referéndum por el Cuerpo electoral, no podrá ser sometida nuevamente a debate y votación del Parlamento hasta que haya transcurrido:",
+    "lawHint": null,
+    "articleHint": null,
+    "options": [
+      {
+        "letter": "A",
+        "text": "3 meses."
+      },
+      {
+        "letter": "B",
+        "text": "6 meses."
+      },
+      {
+        "letter": "C",
+        "text": "5 años."
+      },
+      {
+        "letter": "D",
+        "text": "1 año."
+      }
+    ],
+    "correctAnswer": "D",
+    "explanation": "Según el artículo 56.2 del Estatuto de Autonomía de Galicia, si la propuesta de reforma no es aprobada o no es confirmada en referéndum, no podrá ser sometida nuevamente a debate y votación del Parlamento hasta que haya transcurrido un año.",
+    "source_book": "libro-67",
+    "primary_article_id": "c0d68fd1-3628-480a-ae5d-8d5d7d1c9750",
+    "article_number": "56"
+  },
+  {
+    "original": "La iniciativa de la reforma del Estatuto de Galicia, corresponderá a la Junta, al Parlamento Gallego, a propuesta de: (Ley 1/1981)",
+    "cleaned": "La iniciativa de la reforma del Estatuto de Galicia, corresponderá a la Junta, al Parlamento Gallego, a propuesta de:",
+    "lawHint": "Ley 1/1981",
+    "articleHint": null,
+    "options": [
+      {
+        "letter": "A",
+        "text": "Una tercera parte de sus miembros, o a las Cortes Generales."
+      },
+      {
+        "letter": "B",
+        "text": "Una quinta parte de sus miembros, o al Presidente de la Junta."
+      },
+      {
+        "letter": "C",
+        "text": "La mitad más uno de sus miembros, o a las Cortes Generales."
+      },
+      {
+        "letter": "D",
+        "text": "Una quinta parte de sus miembros, o a las Cortes Generales."
+      }
+    ],
+    "correctAnswer": "D",
+    "explanation": "Según el artículo 56.1.a) del Estatuto de Autonomía de Galicia, la iniciativa de la reforma corresponderá a la Junta, al Parlamento gallego, a propuesta de una quinta parte de sus miembros, o a las Cortes Generales.",
+    "source_book": "libro-67",
+    "primary_article_id": "c0d68fd1-3628-480a-ae5d-8d5d7d1c9750",
+    "article_number": "56"
+  },
+  {
+    "original": "La propuesta de reforma del Estatuto de Galicia requerirá, en todo caso, la aprobación… (Ley 1/1981)",
+    "cleaned": "La propuesta de reforma del Estatuto de Galicia requerirá, en todo caso, la aprobación…",
+    "lawHint": "Ley 1/1981",
+    "articleHint": null,
+    "options": [
+      {
+        "letter": "A",
+        "text": "Del Parlamento gallego por mayoría de dos tercios, la aprobación de las Cortes Generales mediante ley orgánica y, finalmente, el referéndum positivo de los electores."
+      },
+      {
+        "letter": "B",
+        "text": "Del Parlamento gallego por mayoría de dos quintos, la aprobación de las Cortes Generales mediante ley orgánica y, finalmente, el referéndum positivo de los electores."
+      },
+      {
+        "letter": "C",
+        "text": "Del Presidente de la Junta por Decreto Ley, la aprobación de las Cortes Generales mediante ley orgánica y, finalmente, el referéndum positivo de los electores."
+      },
+      {
+        "letter": "D",
+        "text": "Del Parlamento gallego por mayoría absoluta, la aprobación de las Cortes Generales mediante ley orgánica y, finalmente, el referéndum positivo de los electores."
+      }
+    ],
+    "correctAnswer": "A",
+    "explanation": "Según el artículo 56.1.b) del Estatuto de Autonomía de Galicia, la propuesta de reforma requerirá, en todo caso, la aprobación del Parlamento gallego por mayoría de dos tercios, la aprobación de las Cortes Generales mediante ley orgánica y, finalmente, el referéndum positivo de los electores.",
+    "source_book": "libro-67",
+    "primary_article_id": "c0d68fd1-3628-480a-ae5d-8d5d7d1c9750",
+    "article_number": "56"
+  },
+  {
+    "original": "Si la propuesta de reforma no es aprobada por el Parlamento gallego o por las Cortes Generales, o no es confirmada mediante referéndum por el Cuerpo electoral, no podrá ser sometida nuevamente a debate y votación del Parlamento hasta que haya transcurrido: (Ley 1/1981)",
+    "cleaned": "Si la propuesta de reforma no es aprobada por el Parlamento gallego o por las Cortes Generales, o no es confirmada mediante referéndum por el Cuerpo electoral, no podrá ser sometida nuevamente a debate y votación del Parlamento hasta que haya transcurrido:",
+    "lawHint": "Ley 1/1981",
+    "articleHint": null,
+    "options": [
+      {
+        "letter": "A",
+        "text": "Un año."
+      },
+      {
+        "letter": "B",
+        "text": "Dos años."
+      },
+      {
+        "letter": "C",
+        "text": "Tres años."
+      },
+      {
+        "letter": "D",
+        "text": "Cuatro años."
+      }
+    ],
+    "correctAnswer": "A",
+    "explanation": "Según el artículo 56.2 del Estatuto de Autonomía de Galicia, si la propuesta de reforma no es aprobada por el Parlamento gallego o por las Cortes Generales, o no es confirmada mediante referéndum, no podrá ser sometida nuevamente a debate y votación del Parlamento hasta que haya transcurrido un año.",
+    "source_book": "libro-72",
+    "primary_article_id": "c0d68fd1-3628-480a-ae5d-8d5d7d1c9750",
+    "article_number": "56"
+  }
+]

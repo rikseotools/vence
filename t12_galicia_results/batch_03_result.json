@@ -1,0 +1,93 @@
+[
+  {
+    "id": "361db1bf-1f5a-4fe9-8311-5fa0b4862200",
+    "status": "unverifiable",
+    "article_ok": false,
+    "answer_ok": false,
+    "explanation_ok": false,
+    "confidence": "alta",
+    "article_quote": "constituye discriminación directa por razón de sexo todo trato desfavorable a las mujeres relacionado con el embarazo o la maternidad",
+    "analysis": "El article_content asignado (art. 7 de la Ley 7/2023) trata sobre discriminación por maternidad y paternidad, no sobre acoso sexual. La pregunta versa sobre el art. 7.3 de la LO 3/2007, pero el contenido embebido no contiene esa información, por lo que no es verificable con el artículo proporcionado.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "3cec4087-b198-4c50-9748-f50abff02cde",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "Los proyectos de ley presentados en el Parlamento de Galicia por la Xunta de Galicia se acompañarán de un informe sobre su impacto de género elaborado por el órgano competente en materia de igualdad entre mujeres y hombres.",
+    "analysis": "El artículo 22.1 cita literalmente que el informe lo elabora el órgano competente en materia de igualdad entre mujeres y hombres, coincidiendo con la opción C.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "46e0e1c0-2bfc-45cf-9200-0109de0e05fd",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "el principio de igualdad de trato entre mujeres y hombres implica la prohibición de toda discriminación, directa o indirecta, por razón de sexo y, especialmente, las derivadas de la maternidad, la asunción de obligaciones familiares y el estado civil.",
+    "analysis": "El artículo 4.1 reproduce literalmente el contenido de la opción C, confirmando la respuesta marcada.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "4a073cea-562d-42d6-8476-66b844c519c9",
+    "status": "bad_explanation",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": false,
+    "confidence": "alta",
+    "article_quote": "en particular, para erradicar la violencia lesbofóbica y la violencia contra las mujeres trans.",
+    "analysis": "El artículo 77 cita literalmente que se erradicará de forma prioritaria la violencia lesbofóbica y la violencia contra las mujeres trans, coincidiendo con la opción B. La explicación está pendiente de redacción.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": "Según el artículo 77 de la Ley 7/2023, se insta a prevenir situaciones de discriminación múltiple o interseccional y, en particular, a erradicar la violencia lesbofóbica y la violencia contra las mujeres trans."
+  },
+  {
+    "id": "4bc2010a-73b1-4877-b173-35dc3d692341",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "Constituye el objeto de la presente ley reforzar el compromiso de la Comunidad Autónoma de Galicia con la eliminación de la discriminación de las mujeres y con la promoción de la igualdad entre mujeres y hombres",
+    "analysis": "El artículo 1.1 reproduce literalmente el contenido de la opción A, confirmando la respuesta.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "50ae66af-5fd6-4b33-b2d5-684a1b29a4ec",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "media",
+    "article_quote": "La prohibición de la discriminación por razón de sexo incluye la discriminación sexista por asociación, entendida como la sufrida por una persona por razón del sexo, el embarazo, el parto o la maternidad, de la asunción de obligaciones familiares o del estado civil de otra con la que estuviera relacionada.",
+    "analysis": "El artículo 9 incluye la discriminación sexista por asociación relacionada con el embarazo, parto o maternidad de otra persona, lo cual coincide con la opción C. Las opciones A, B y D excluyen elementos que el artículo sí contempla.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "537a4775-386e-43c9-bf54-6c2b2fdac852",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "a) Incluir sistemáticamente la variable de sexo en las estadísticas, encuestas y recogida de datos que lleven a cabo.",
+    "analysis": "El artículo 27.1.a cita literalmente que debe incluirse sistemáticamente la variable de sexo, confirmando la opción B.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  }
+]

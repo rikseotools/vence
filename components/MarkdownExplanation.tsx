@@ -1,6 +1,7 @@
 'use client'
 
 import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 interface MarkdownExplanationProps {
   content: string
@@ -34,9 +35,13 @@ export default function MarkdownExplanation({ content, className = '', preserveL
       `}
     >
       <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
         components={{
           a: ({ href, children }) => (
             <a href={href} target="_blank" rel="noopener noreferrer">{children}</a>
+          ),
+          del: ({ children }) => (
+            <del className="text-red-600 dark:text-red-400">{children}</del>
           ),
         }}
       >{processed}</ReactMarkdown>

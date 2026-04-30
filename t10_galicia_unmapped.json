@@ -1,0 +1,86 @@
+[
+  {
+    "original": "¿Qué cuantía puede abarcar la multa por el incumplimiento del procedimiento a seguir indicado en la Ley 1/2016 del 18 de enero?",
+    "cleaned": "¿Qué cuantía puede abarcar la multa por el incumplimiento del procedimiento a seguir indicado en la Ley 1/2016 del 18 de enero?",
+    "lawHint": null,
+    "articleHint": null,
+    "options": [
+      {
+        "letter": "A",
+        "text": "De 100 a 10.000 euros."
+      },
+      {
+        "letter": "B",
+        "text": "De 100 a 1.000 euros."
+      },
+      {
+        "letter": "C",
+        "text": "De 200 a 1.000 euros."
+      },
+      {
+        "letter": "D",
+        "text": "De 50 a 100 euros."
+      }
+    ],
+    "correctAnswer": "B",
+    "explanation": "Según la Ley 1/2016, las sanciones económicas por incumplimiento del procedimiento pueden alcanzar una cuantía de entre 100 y 1.000 euros.",
+    "source_book": "libro-67",
+    "_art": null
+  },
+  {
+    "original": "¿Cómo se denomina el Capitulo II del Título I de la Ley 1/2016 de 18 de enero?",
+    "cleaned": "¿Cómo se denomina el Capitulo II del Título I de la Ley 1/2016 de 18 de enero?",
+    "lawHint": null,
+    "articleHint": null,
+    "options": [
+      {
+        "letter": "A",
+        "text": "Ámbito subjetivo de aplicación."
+      },
+      {
+        "letter": "B",
+        "text": "Derecho de acceso a la información pública."
+      },
+      {
+        "letter": "C",
+        "text": "Publicidad activa."
+      },
+      {
+        "letter": "D",
+        "text": "Actos administrativos relacionados con la transparencia."
+      }
+    ],
+    "correctAnswer": "C",
+    "explanation": "Según la estructura de la Ley 1/2016, el Capítulo II del Título I se denomina “Publicidad activa”.",
+    "source_book": "libro-67",
+    "_art": null
+  },
+  {
+    "original": "¿Cómo se denomina el Título II de la Ley 1/2016 de 18 de enero?",
+    "cleaned": "¿Cómo se denomina el Título II de la Ley 1/2016 de 18 de enero?",
+    "lawHint": null,
+    "articleHint": null,
+    "options": [
+      {
+        "letter": "A",
+        "text": "Transparencia de la actividad pública."
+      },
+      {
+        "letter": "B",
+        "text": "Buen gobierno."
+      },
+      {
+        "letter": "C",
+        "text": "Régimen sancionador."
+      },
+      {
+        "letter": "D",
+        "text": "Régimen disciplinario."
+      }
+    ],
+    "correctAnswer": "B",
+    "explanation": "Según la estructura de la Ley 1/2016, el Título II se denomina Buen gobierno.",
+    "source_book": "libro-67",
+    "_art": null
+  }
+]

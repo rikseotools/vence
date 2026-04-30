@@ -1,0 +1,80 @@
+[
+  {
+    "id": "f00ab67b-9e3e-4b77-a5f2-d3541823d25b",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "Es objeto de la presente ley la regulación de la protección, conservación y difusión del patrimonio documental de interés para Galicia y la organización, funcionamiento, acceso y difusión del contenido de los archivos de interés para Galicia y del Sistema de Archivos de Galicia.",
+    "analysis": "La opción A reproduce literalmente el artículo 1 de la Ley 7/2014. Las otras opciones sustituyen 'regulación' por 'desregulación', 'vinculación' o 'diversificación', por lo que son incorrectas. La explicación es adecuada, aunque breve.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "f385cb09-c063-426c-95af-44b0b24a500b",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "b) Elaborar las normas técnicas y de procedimiento para la gestión de los archivos del Sistema, sin perjuicio de las competencias de la consellería o de la entidad instrumental competente en materia de Administración electrónica y sistemas de información.",
+    "analysis": "La opción B reproduce literalmente el apartado b) del artículo 36.1 de la Ley 7/2014. La A falla al decir 'rechazar' (el artículo dice 'aprobar' y además habla solo de archivos 'públicos', no 'públicos y privados'). La C cambia 'técnicas' por 'económicas'. La D cambia 'técnico' por 'legal'. B es la única correcta.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "f740ff3f-5532-4dde-97ed-5c354fe9c6fe",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "En el Registro Electrónico General se hará el correspondiente asiento de todo documento que sea presentado o se reciba en cualquier órgano administrativo de la Administración general o entidad instrumental del sector público autonómico de Galicia. También se podrá anotar en él la salida de los documentos oficiales dirigidos a otros órganos o particulares.",
+    "analysis": "Pregunta por la INCORRECTA. A, B y C se corresponden literalmente con el artículo 27 de la Ley 4/2019. La D introduce un enunciado que no aparece en el artículo (habla de 'entrada de documentos oficiales de personas físicas y jurídicas dirigidos a cualquier órgano público instrumental'), por lo que es la incorrecta. La explicación es válida aunque algo confusa.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "f9e44809-1bad-4052-8b3d-d61b013ba6eb",
+    "status": "ambiguous",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "media",
+    "article_quote": "2. A efectos de la presente ley, son documentos de titularidad pública: [...] e) Los de las entidades locales de la Comunidad Autónoma de Galicia y los de los entes, organismos o empresas de ellas dependientes. [...] h) Los de los órganos de la Administración de justicia radicados en Galicia.",
+    "analysis": "Las opciones A y C son IDÉNTICAS (ambas reproducen el apartado e del artículo 5.2), lo que constituye un defecto formal de la pregunta. A, B (justicia, apartado h) y C corresponden todas a documentos de titularidad pública según el artículo 5.2, por lo que la respuesta 'Todas las anteriores' es materialmente correcta, pero la duplicación de A y C hace ambigua la pregunta. Se recomienda corregir una de las opciones duplicadas.",
+    "correct_option_should_be": "D",
+    "correct_article_suggestion": null,
+    "explanation_fix": "Según el artículo 5.2 de la Ley 7/2014, son documentos de titularidad pública los de las entidades locales de Galicia y sus entes dependientes (apartado e) y los de los órganos de la Administración de justicia radicados en Galicia (apartado h). Por tanto, todas las categorías enumeradas son de titularidad pública y la respuesta correcta es D. Nota: las opciones A y C están duplicadas en el enunciado, lo que debería corregirse."
+  },
+  {
+    "id": "fd0c76e0-d161-4bf5-a7d1-43e6d74b16e3",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "3. La eliminación de documentos consiste en la exclusión como bienes del patrimonio documental y la destrucción física de los documentos previamente evaluados y seleccionados, sin perjuicio de su posible conservación en un soporte distinto al original.",
+    "analysis": "La opción B reproduce literalmente el apartado 3 del artículo 19 de la Ley 7/2014. A y C añaden una obligación inexistente ('guardando siempre una copia'), y D suprime la exigencia de evaluación y selección previa. B es la única correcta.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "ff1fd975-fb01-4024-abef-2a578f4d6764",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "a) Los del Parlamento de Galicia, los del Consejo de Cuentas, los del Valedor del Pueblo y los del Consejo de la Cultura Gallega.",
+    "analysis": "La opción A reproduce literalmente el apartado a) del artículo 5.2 de la Ley 7/2014. La B es incorrecta porque el artículo exige que las notarías y registros estén 'radicados en Galicia', no 'en cualquier punto de España'. La C es incorrecta porque el artículo habla de los documentos generados 'en la prestación' de los servicios, no 'una vez finalizada' la prestación. A es la única correcta.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  }
+]

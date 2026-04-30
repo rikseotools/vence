@@ -1,0 +1,93 @@
+[
+  {
+    "id": "8a7fe24b-9fae-4823-8171-5549885ca5b9",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "La suspensión de funciones puede ser provisional o firme.",
+    "analysis": "La pregunta pide la respuesta INCORRECTA. La opción B afirma que la suspensión 'siempre es provisional', lo cual es falso según el art. 180.2, que establece que puede ser provisional O firme. Respuesta correcta B (correct_option: 1). Explicación clara y suficiente.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "8c78e310-99d4-4a36-b5b3-0dfbe3f4b03e",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "Las convocatorias para proveer puestos de trabajo por concurso deben incluir, en todo caso, los siguientes datos y circunstancias: a) La identificación de los puestos que se oferten. b) Los requisitos necesarios para participar en la convocatoria. c) El baremo de méritos.",
+    "analysis": "Art. 89.4 lista exactamente los tres elementos de las opciones A, B y C, por lo que D (todas son correctas) es la respuesta. correct_option: 3 (D). Explicación correcta.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "a60e6749-6c12-4a16-894c-a5f52c3a47a3",
+    "status": "bad_explanation",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": false,
+    "confidence": "alta",
+    "article_quote": "La potestad disciplinaria se ejercerá de acuerdo con los siguientes principios: a) Legalidad... c) Responsabilidad... f) Presunción de inocencia.",
+    "analysis": "La respuesta es correcta: la publicidad (opción C) no aparece en los principios del art. 184.2, por lo que es la que NO corresponde. Sin embargo, la explicación es contradictoria y engañosa: afirma que 'la potestad disciplinaria no se ejercerá de acuerdo con los principios de legalidad, responsabilidad y presunción de inocencia', lo cual es literalmente falso (esos tres sí están en el artículo). Debería decir lo contrario: que la publicidad es el elemento que NO figura en la lista de principios del art. 184.2.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": "Según el artículo 184.2, la potestad disciplinaria se ejercerá de acuerdo con los principios de legalidad, irretroactividad, responsabilidad, proporcionalidad y presunción de inocencia. El principio de publicidad no figura en dicha lista, por lo que es la opción que no pertenece a los principios del ejercicio de la potestad disciplinaria."
+  },
+  {
+    "id": "a8258304-15cf-4547-a1d5-abf45e2b4ca8",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "Si la solicitud de rehabilitación se presenta antes de que transcurran dos años desde la extinción de la relación de servicio como consecuencia de jubilación por incapacidad permanente para el servicio, el personal funcionario se reincorporará al último puesto de trabajo que haya ocupado con carácter definitivo.",
+    "analysis": "Art. 69.1 establece claramente el plazo de dos años. correct_option: 2 (C). Explicación correcta y fiel al artículo.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "a8659d2c-ddf0-4b51-9585-578d7601bddd",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "Son faltas leves del personal funcionario: a) El incumplimiento injustificado del horario de trabajo, cuando no suponga falta grave. [...] d) El descuido o negligencia en el ejercicio de sus funciones.",
+    "analysis": "Art. 187.1 letras a) y d) recogen exactamente las dos conductas mencionadas en la pregunta como faltas leves. correct_option: 2 (C = leve). Explicación correcta.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "ad28ce0f-4b08-49b5-aa0c-2eac476d117d",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "Esta ley es de aplicación al personal docente... y al personal estatutario del Servicio Gallego de Salud, excepto en lo relativo a las materias siguientes: a) Carrera profesional y promoción interna. b) Retribuciones complementarias. c) Movilidad voluntaria entre administraciones públicas.",
+    "analysis": "Art. 6.1 enumera exactamente las tres materias excluidas que se recogen en las opciones A, B y C, por lo que D (todas son correctas) es la respuesta correcta. correct_option: 3 (D). Explicación correcta.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "b2502bd5-c762-4aa5-be19-07ed14e967fa",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "Son instrumentos de planificación del empleo público los registros de personal y de puestos de trabajo, los planes de ordenación de recursos humanos y la oferta de empleo público.",
+    "analysis": "Art. 45.2 no menciona los calendarios laborales como instrumento de planificación. Las opciones A, B y C (registros de personal, de puestos de trabajo y planes de ordenación) sí están en el artículo; la D (calendarios laborales) no. correct_option: 3 (D). Explicación correcta.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  }
+]

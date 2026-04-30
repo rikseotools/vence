@@ -1,0 +1,93 @@
+[
+  {
+    "id": "031f355f-a0b3-43ef-8da4-19a800310584",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "Las entidades públicas instrumentales vinculadas o dependientes de las entidades locales gallegas (letra d). Las universidades públicas gallegas (letra e). No figura ninguna referencia a entidades instrumentales vinculadas a universidades.",
+    "analysis": "La pregunta pide la respuesta INCORRECTA (lo que NO está en el ámbito de aplicación). El art. 4.1 enumera cinco categorías: Admin. gral. CA Galicia, entidades locales gallegas, entidades públicas instrumentales del sector público autonómico, entidades instrumentales de entidades locales gallegas, y universidades públicas gallegas. Las entidades instrumentales vinculadas a universidades (opción C) no figuran, por lo que es la respuesta incorrecta y la correcta para la pregunta. Explicación justifica adecuadamente aunque omite la letra d), no induce a error.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "04e90d4c-8386-40d7-9898-2a88f95ece25",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "Queda excluido del ámbito de aplicación de la presente ley el personal funcionario al servicio de la Administración de justicia en Galicia, salvo lo previsto en la letra g) del apartado primero del artículo 155.",
+    "analysis": "Reproducción literal del art. 12. La opción D coincide exactamente con el texto legal. Explicación cita el artículo correctamente.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "04fcb0bd-692f-4378-95d5-10807cd09c63",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "a) Sección de personal funcionario y laboral. b) Sección de puestos de trabajo. c) Sección de personal eventual.",
+    "analysis": "El art. 46.2 establece tres secciones: personal funcionario y laboral, puestos de trabajo, y personal eventual. La opción D reproduce estas tres secciones correctamente. Explicación precisa.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "054f31b6-8761-4117-b731-d4649a1a41a4",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "Los empleados públicos se clasifican en: a) Personal funcionario de carrera. b) Personal funcionario interino. c) Personal laboral. d) Personal eventual.",
+    "analysis": "El art. 20.2 clasifica los empleados públicos en cuatro categorías; el personal directivo no aparece en dicha clasificación. La opción D (personal directivo) es la correcta como la que NO tiene condición de empleado público según este artículo. Explicación justifica correctamente enumerando las cuatro clases reconocidas.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "07394ade-fc30-43c6-9d65-2548bbc62cf7",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "La adscripción regulada en este artículo tiene carácter provisional, sin perjuicio de la aplicación de la normativa sobre riesgos laborales cuando la misma se base en motivos de salud o rehabilitación del personal funcionario.",
+    "analysis": "El art. 98.2 establece claramente el carácter provisional y la referencia al personal funcionario. La opción D replica el texto legal con precisión. Explicación correcta.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "0a436f82-649b-418c-9eb9-4bf606c19cc8",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "La propuesta de modificación de la relación de puestos de trabajo deberá efectuarse en el plazo máximo de tres meses, a contar a partir de la fecha de la firmeza de la sentencia judicial.",
+    "analysis": "El art. 28.1 fija el plazo de tres meses. La opción B coincide con ese plazo y la explicación cita el artículo correctamente.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "0a8bc8e4-806c-4ca6-b00f-29fdd9c5f587",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "c) Suspensión firme de funciones, o de empleo y sueldo en el caso del personal laboral, por un período de entre tres años y un día y seis años.",
+    "analysis": "El art. 188 encabeza las sanciones por faltas muy graves y en su letra c) recoge exactamente la suspensión firme por el período indicado. La opción A (muy grave) es correcta. Explicación precisa.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  }
+]

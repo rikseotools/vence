@@ -59,7 +59,7 @@ const MISSING_IMAGE_REGEX = '(?i)(siguiente imagen|imagen que se muestra|imagen 
 
 // HTML entities or tags in explanation (should be markdown)
 // Generic pattern: catches ANY HTML entity (&xxx;) and common HTML tags
-const HTML_EXPLANATION_REGEX = '(&[a-zA-Z]+;|<p>|<p |</p>|<strong>|</strong>|<br>|<br/>|<br />|<em>|</em>|<ul>|<li>|</li>|</ul>|<ol>|</ol>|<h[1-6]>)'
+const HTML_EXPLANATION_REGEX = '(&[a-zA-Z]+;|<p>|<p |</p>|<strong>|</strong>|<b>|<b |</b>|<i>|</i>|<br>|<br/>|<br />|<em>|</em>|<ul>|<li>|</li>|</ul>|<ol>|</ol>|<h[1-6]>|<div>|</div>|<span[ >]|</span>|<u>|</u>)'
 
 // Excel functions written without the required period (e.g. SIERROR instead of SI.ERROR)
 // eslint-disable-next-line no-useless-escape

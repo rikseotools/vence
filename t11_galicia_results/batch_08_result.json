@@ -1,0 +1,93 @@
+[
+  {
+    "id": "62fcb6be-b104-4c0d-a635-0d45de43e98c",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "La prestación de servicios como personal eventual no constituirá mérito alguno para el acceso al empleo público ni para la promoción dentro de este.",
+    "analysis": "La opción A reproduce literalmente el art. 31.4. La explicación cita correctamente el precepto. Todo correcto.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "63bf51b6-a98d-4586-8c46-bdaba7cd78f6",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "No pueden participar en los procesos selectivos las personas que ya pertenecen al respectivo cuerpo, escala o categoría profesional.",
+    "analysis": "La opción A transcribe fielmente el art. 50.3. La explicación es precisa y correcta.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "6be19900-2602-43df-810e-1e70e391a583",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "d) No desempeñar puestos de trabajo en el sector público bajo ningún tipo de relación funcionarial o contractual, salvo en los supuestos excepcionales contemplados por la normativa sobre incompatibilidades y previa la correspondiente autorización.",
+    "analysis": "Pregunta que pide la respuesta INCORRECTA. El art. 179.3.d impone la obligación de NO desempeñar puestos en el sector público. La opción A invierte exactamente esa obligación ('desempeñar... bajo cualquier tipo de relación'), haciéndola la opción incorrecta. La explicación lo razona bien.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "6e61704a-a45b-407e-81e6-d45dbf14a845",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "El personal funcionario de carrera tiene derecho a la excedencia por agrupación familiar [...] cuando el cónyuge o pareja de hecho resida en otra localidad por haber obtenido y estar desempeñando un puesto de trabajo de carácter definitivo como personal funcionario de carrera o como personal laboral fijo en cualquiera de las administraciones públicas [...].",
+    "analysis": "La opción B reproduce fielmente el art. 175.1. La explicación contrasta correctamente las opciones incorrectas (A=cuidado de hijos, C=promoción interna, D=cuidado de familiares). Todo correcto.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "706c3e84-9f79-49be-982b-85bc6f7f9a59",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "En los casos de accidente o enfermedad muy graves del cónyuge o pareja de hecho o de un familiar dentro del primer grado de consanguinidad o afinidad, el personal funcionario tiene derecho a un permiso para atender al cuidado de esas personas con una duración máxima de treinta días naturales.",
+    "analysis": "La opción A es la única que menciona 'treinta días naturales', coincidiendo exactamente con el art. 116.1. Las opciones B/C/D son incorrectas (un mes es diferente a treinta días naturales en precisión legal; cinco días hábiles y tres días hábiles son supuestos distintos). Respuesta y explicación correctas.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "71dbdb1b-bd97-42e8-909c-9ff228b5fde8",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "a) El incumplimiento de las órdenes o instrucciones de los superiores jerárquicos relacionadas con el servicio o de las obligaciones concretas del puesto de trabajo, así como las negligencias de las que se deriven o puedan derivarse perjuicios graves para el servicio.",
+    "analysis": "El art. 186.1.a tipifica expresamente esta conducta como falta grave. La opción B es correcta y la explicación cita el artículo adecuado.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "7347f753-7d14-4fab-a765-d7d218f7136d",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "Solamente pueden proveerse por el procedimiento de libre designación con convocatoria pública entre personal funcionario de carrera [...] excepcionalmente, aquellos puestos de trabajo de especial responsabilidad o cualificación profesional que se determinen en las relaciones de puestos de trabajo.",
+    "analysis": "El art. 92.2 limita la libre designación a 'personal funcionario de carrera', no a empleados públicos en general ni a personal eventual. La opción B reproduce correctamente esta restricción. La explicación es precisa.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  }
+]

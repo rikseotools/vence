@@ -633,3 +633,47 @@ Ver también `docs/procedures/gestionar-feedback-bug.md` para metodología gener
   - `auxiliar_administrativo_cantabria` T5 (Ley 39/2015) tiene `article_numbers` vacíos
   - `auxiliar_administrativo_asturias` T10 (EBEP) sin scope
 - **Lección**: el feedback con `referrer` + comparación cruzada con Galicia llegaron al diagnóstico en minutos, sin necesidad de leer el PDF (que además estaba mal apuntado).
+
+### 2026-04-19 — Generalitat Valenciana: epígrafe pide contenido sin nombrar la norma
+
+- **Situación**: T18 (Presupuestos GVA II) tenía scope solo con Ley 1/2015 arts 56-66. Pero el epígrafe pide "Proceso de ejecución del gasto público. Pagos a justificar. Anticipos de caja fija. Tramitación anticipada de los gastos" — ese procedimiento está regulado en el **Decreto 77/2019** (reglamento de desarrollo de la Ley 1/2015), no en la propia ley.
+- **Detección**: Al cruzar los artículos que referencian las preguntas scrapeadas de OpositaTest contra el scope, 15 preguntas del Decreto 77/2019 quedaban huérfanas (fuera de cualquier scope).
+- **Fix**: Añadir Decreto 77/2019 al scope de T17 (arts 1-15) y T18 (arts 16-41).
+- **Lección**: Cuando el epígrafe describe un procedimiento concreto, buscar no solo la ley que cita sino también el **reglamento de desarrollo** que regula ese procedimiento. Si el epígrafe dice "proceso de ejecución del gasto" y la ley marco solo define principios, el decreto que desarrolla ese proceso también debe estar en el scope.
+
+### 2026-04-19 — Ley 9/2003 Igualdad GVA: BOE sync trajo ley equivocada
+
+- **Situación**: Se sincronizó la Ley 9/2003 Igualdad GVA con `boe_id: BOE-A-2003-14402`. Resultaron 25 artículos sobre MEFF (mercados financieros de renta fija) en vez de igualdad de mujeres y hombres.
+- **Detección**: Al importar preguntas, los artículos 1, 3, 4 que referenciaban las preguntas de OpositaTest no existían. Al inspeccionar el art 35 ("General") se vio que el contenido hablaba de "entidad de contrapartida central".
+- **Fix**: Borrar artículos, buscar el `boe_id` correcto (`BOE-A-2003-9334`) y re-sincronizar.
+- **Lección**: Siempre verificar que el art 1 del resultado de sync habla del tema correcto. Checklist post-sync obligatorio:
+  ```javascript
+  const { data } = await supabase.from('articles')
+    .select('content').eq('law_id', lawId).eq('article_number', '1').single();
+  console.log('Art 1:', data?.content?.slice(0, 200));
+  // ¿Habla del tema esperado?
+  ```
+
+## Lecciones aprendidas (post-abril 2026)
+
+### `article_numbers: null` (ALL) casi siempre es incorrecto
+
+Usar `null` (toda la ley) solo es correcto cuando:
+- Es una **ley virtual** de ofimática (Windows 11, Word, Excel, etc.)
+- Es un **decreto/orden pequeño** cuyo epígrafe pide explícitamente toda la norma (ej: "Decreto 42/2019, de regulación de las condiciones de trabajo")
+
+Para leyes con 50+ artículos, `null` diluye el tema con preguntas irrelevantes. **Siempre seleccionar los artículos concretos** que corresponden a los títulos/capítulos del epígrafe.
+
+### Cruzar scope con preguntas scrapeadas de OpositaTest
+
+Si tenemos la oposición scrapeada en OpositaTest (carpeta `preguntas-para-subir/<oposicion>/`), las preguntas tienen `law_ref` y `article_ref` que indican qué artículos cubre cada tema según OpositaTest.
+
+**Paso obligatorio después de crear scopes:** Para cada tema de OpositaTest, listar qué artículos referencian sus preguntas y verificar que todos caen dentro de nuestro scope. Divergencias posibles:
+
+| Situación | Causa | Acción |
+|---|---|---|
+| Artículo de OpositaTest fuera de scope | Scope incompleto (falta reglamento de desarrollo) | Ampliar scope |
+| Artículo de OpositaTest fuera de scope | OpositaTest clasificó mal la pregunta | No hacer nada — el scope la pondrá en el tema correcto |
+| Artículo de OpositaTest fuera de scope | Contenido fuera del epígrafe | No hacer nada — la pregunta sirve para otras oposiciones |
+
+**Ejemplo real (Valencia T5 vs T6):** OpositaTest clasificó preguntas de Ley 5/1983 arts 32-43 en "Tema 5 Consell (I)", pero esos artículos son del Título III-V que corresponden a nuestro T6. No hay que hacer nada — el scope de T6 [31-79] las cubre automáticamente.

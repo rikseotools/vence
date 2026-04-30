@@ -595,7 +595,18 @@ BIEN: CE → arts. 1, 9, 53, 81-87, 93-94, 96-97, 128, 133, 149, 150
 
 Meter la ley entera diluye el tema con preguntas irrelevantes. El usuario de Tema 4 veria preguntas sobre la Corona o el Poder Judicial, que no tienen nada que ver.
 
-### 3f. Verificar resultado
+### 3f. Verificar epigrafes vs scope: trampas frecuentes
+
+**Ver manual detallado:** [`docs/maintenance/verificar-epigrafe-topic-scope.md`](./verificar-epigrafe-topic-scope.md) — sección "Lecciones aprendidas (post-abril 2026)".
+
+Resumen de las trampas mas frecuentes:
+
+1. **Epigrafe pide contenido sin nombrar la norma:** Buscar el reglamento de desarrollo ademas de la ley citada.
+2. **`article_numbers: null` (ALL):** Casi siempre incorrecto excepto para leyes virtuales o decretos pequenos.
+3. **BOE sync trae ley equivocada:** Verificar art 1 tras sincronizar.
+4. **OpositaTest clasifica mal:** Si tenemos la oposicion scrapeada, cruzar los articulos que referencian las preguntas contra el scope para detectar divergencias.
+
+### 3g. Verificar resultado
 
 Despues de crear todos los scopes, contar preguntas por tema:
 

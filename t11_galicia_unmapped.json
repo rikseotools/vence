@@ -1,0 +1,83 @@
+[
+  {
+    "cleaned": "¿Cómo se denomina al Título III de la Ley 2/2015 de 29 de abril?",
+    "lawHint": null,
+    "articleHint": null,
+    "options": [
+      {
+        "letter": "A",
+        "text": "Objeto, principios y ámbito de aplicación."
+      },
+      {
+        "letter": "B",
+        "text": "Órganos administrativos competentes en materia de personal."
+      },
+      {
+        "letter": "C",
+        "text": "Clases de personal."
+      },
+      {
+        "letter": "D",
+        "text": "Organización del empleo público."
+      }
+    ],
+    "correctAnswer": "C",
+    "explanation": "Según la estructura de la Ley 2/2015, el TÍTULO III se denomina Clases de personal.",
+    "source_book": "libro-67",
+    "_art": null
+  },
+  {
+    "cleaned": "Según el artículo 24 de la Ley 2/2015 del empleo público de Galicia, el cese del personal funcionario interino:",
+    "lawHint": null,
+    "articleHint": null,
+    "options": [
+      {
+        "letter": "A",
+        "text": "Dará lugar a indemnización, en todo caso."
+      },
+      {
+        "letter": "B",
+        "text": "No dará lugar a indemnización, excepto en los casos en los que a causa del mismo, la persona cesada no haya podido hacer efectivo el derecho de sus vacaciones."
+      },
+      {
+        "letter": "C",
+        "text": "No dará lugar a indemnización, en ningún caso."
+      },
+      {
+        "letter": "D",
+        "text": "No dará lugar a indemnización, excepto en los casos en los que a causa del mismo, la persona cesada, no pudiese hacer efectivo su derecho a licencias y permisos."
+      }
+    ],
+    "correctAnswer": "B",
+    "explanation": "Según el artículo 24.5 de la Ley 2/2015, el personal funcionario interino tendrá derecho a la indemnización en caso de que por causa de su cese no pueda hacer efectivo su derecho a vacaciones en los términos previstos en el artículo 132 de esta ley.",
+    "source_book": "libro-67",
+    "_art": "24"
+  },
+  {
+    "cleaned": "¿Cómo se denomina al Título IV de la Ley 2/2015 de 29 de abril?",
+    "lawHint": null,
+    "articleHint": null,
+    "options": [
+      {
+        "letter": "A",
+        "text": "Objeto, principios y ámbito de aplicación."
+      },
+      {
+        "letter": "B",
+        "text": "Órganos administrativos competentes en materia de personal."
+      },
+      {
+        "letter": "C",
+        "text": "Clases de personal."
+      },
+      {
+        "letter": "D",
+        "text": "Organización del empleo público."
+      }
+    ],
+    "correctAnswer": "D",
+    "explanation": "Según el Título IV: Organización del empleo público.",
+    "source_book": "libro-67",
+    "_art": null
+  }
+]

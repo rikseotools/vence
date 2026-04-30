@@ -1,0 +1,114 @@
+[
+  {
+    "id": "13147e5e-8803-45dd-9d77-d880421f9f99",
+    "question_text": "De acuerdo el artículo 25 de la Ley 16/2010 de Galicia, son órganos de dirección de la Administración General de la Comunidad Autónoma de Galicia:",
+    "option_a": "La Presidencia de la Xunta de Galicia.",
+    "option_b": "Las Consejerías.",
+    "option_c": "Las Secretarias Generales.",
+    "option_d": "Las direcciones generales y equivalente.",
+    "correct_option": 3,
+    "explanation": "Según el artículo 25.2, son órganos de dirección de la Administración general de la Comunidad Autónoma de Galicia las secretarías generales técnicas, las direcciones generales y equivalentes, las vicesecretarías generales, las subdirecciones generales, las delegaciones territoriales, las secretarías territoriales y las jefaturas territoriales.",
+    "articles": {
+      "content": "1. Son órganos superiores de la Administración general de la Comunidad Autónoma de Galicia la Presidencia de la Xunta de Galicia, las consejerías, la vicepresidencia o vicepresidencias, de existir éstas, y las secretarías generales.\n\n2. Son órganos de dirección de la Administración general de la Comunidad Autónoma de Galicia las secretarías generales técnicas, las direcciones generales y equivalentes, las vicesecretarías generales, las subdirecciones generales, las delegaciones territoriales, las secretarías territoriales y los departamentos territoriales.\n\n3. Todos los demás órganos y unidades administrativas de la Administración general de la Comunidad Autónoma están bajo la dependencia de un órgano superior o de dirección.\n\n4. Corresponde a los órganos superiores establecer los planes de actuación de la organización situada bajo su responsabilidad; y a los órganos de dirección, su desarrollo y ejecución.\n\n5. Corresponde a la Xunta de Galicia determinar la estructura orgánica superior de la vicepresidencia o vicepresidencias, de existir éstas, así como la de las consejerías de la Xunta de Galicia.",
+      "article_number": "25"
+    }
+  },
+  {
+    "id": "4374e055-51c4-41a8-a056-9902e28c569c",
+    "question_text": "De acuerdo con el artículo 44 bis, ¿qué informe es necesario durante la fase intermedia del procedimiento de tramitación urgente?",
+    "option_a": "Informe del Consejo Consultivo de Galicia.",
+    "option_b": "Informe del Parlamento de Galicia.",
+    "option_c": "Informe económico-financiero de la consejería competente en materia de hacienda.",
+    "option_d": "Informe de la Asesoría Jurídica General.",
+    "correct_option": 2,
+    "explanation": "Según el artículo 44 bis.4.a, solo se considerarán preceptivos el informe económico-financiero de la consejería competente en materia de hacienda, el informe sobre el impacto por razón de género, el informe previsto en el artículo 42.7 y el informe tecnológico y funcional previsto en el artículo 6 de la Ley 14/2013, de 26 de diciembre, de racionalización del sector público autonómico.",
+    "articles": {
+      "content": "Para que surtan efectos, los reglamentos autonómicos deberán publicarse íntegramente en el Diario Oficial de Galicia, y entrarán en vigor a los veinte días naturales de su publicación salvo que en ellos se disponga otra cosa.",
+      "article_number": "44"
+    }
+  },
+  {
+    "id": "54b6f12e-3316-4d44-a7de-f6fbd1b942a4",
+    "question_text": "Según el artículo 44 bis, ¿quién puede declarar urgente la tramitación de un procedimiento de elaboración de disposiciones de carácter general?",
+    "option_a": "La persona titular de la consejería donde se encuadre el centro directivo que haya tenido la iniciativa.",
+    "option_b": "El presidente de la Xunta de Galicia.",
+    "option_c": "El Consejo Consultivo de Galicia.",
+    "option_d": "El Parlamento de Galicia.",
+    "correct_option": 0,
+    "explanation": "Según el artículo 44 bis.1, la persona titular de la consejería en que se encuadre el centro directivo que haya tenido la iniciativa podrá declarar urgente, a propuesta de este, la tramitación del procedimiento de elaboración de disposiciones de carácter general con arreglo a las especialidades previstas en este precepto.",
+    "articles": {
+      "content": "Para que surtan efectos, los reglamentos autonómicos deberán publicarse íntegramente en el Diario Oficial de Galicia, y entrarán en vigor a los veinte días naturales de su publicación salvo que en ellos se disponga otra cosa.",
+      "article_number": "44"
+    }
+  },
+  {
+    "id": "8aab4715-c095-4e7e-9a25-92812d02f701",
+    "question_text": "Según el artículo 16.1 de la LOFAXGA, NO le corresponde a la presidenta o presidente de un órgano colegiado:",
+    "option_a": "Visar las actas y certificaciones de los acuerdos del órgano.",
+    "option_b": "Presidir las sesiones, moderar el desarrollo de los debates y suspenderlos por causas justificadas.",
+    "option_c": "Efectuar la convocatoria de las sesiones ordinarias y extraordinarias.",
+    "option_d": "Todas son correctas.",
+    "correct_option": 2,
+    "explanation": "Según el artículo 16.1 de la Ley 16/2010, de 17 de diciembre, corresponde a la presidenta o al presidente acordar la convocatoria de las sesiones ordinarias y extraordinarias y la fijación del orden del día, presidir las sesiones, moderar el desarrollo de los debates y suspenderlos por causas justificadas, y visar las actas y certificaciones de los acuerdos del órgano.",
+    "articles": {
+      "content": "1. En cada órgano colegiado corresponde a la presidenta o al presidente:\n\na) Desempeñar la representación del órgano.\n\nb) Acordar la convocatoria de las sesiones ordinarias y extraordinarias y la fijación del orden del día, teniendo en cuenta, en su caso, las peticiones de los demás miembros formuladas con la suficiente antelación.\n\nc) Presidir las sesiones, moderar el desarrollo de los debates y suspenderlos por causas justificadas.\n\nd) Dirimir con su voto los empates, a efectos de adoptar acuerdos, salvo que se trate de los órganos colegiados en que participen organizaciones representativas de intereses sociales, así como de aquéllos compuestos por representaciones de la Administración general de la Comunidad Autónoma de Galicia y de otras administraciones públicas, cuenten o no con participación de organizaciones representativas de intereses sociales, en que el voto será dirimente si así lo establecen sus propias normas.\n\ne) Asegurar el cumplimiento de las leyes.\n\nf) Visar las actas y certificaciones de los acuerdos del órgano.\n\ng) Ejercer cuantas otras funciones sean inherentes a su condición de presidente del órgano.\n\n2. La persona que ejerza la presidencia siempre tendrá la condición de miembro del órgano colegiado.\n\n3. En casos de vacante, ausencia, enfermedad u otra causa legal, el presidente será sustituido por el vicepresidente, si lo hubiere, y, en su falta, por el miembro del órgano colegiado de mayor jerarquía, antigüedad y edad, por este orden, de entre sus componentes.\n\nEsta norma no será de aplicación a los órganos colegiados en que participen organizaciones representativas de intereses sociales, ni tampoco a aquéllos compuestos por representaciones de la Administración general de la Comunidad Autónoma de Galicia y otras administraciones públicas, cuenten o no con participación de organizaciones representativas de intereses sociales, en que el régimen de sustitución del presidente debe estar específicamente regulado en cada caso, o establecido expresamente por acuerdo del pleno del órgano colegiado.",
+      "article_number": "16"
+    }
+  },
+  {
+    "id": "97e0432a-d6ee-455d-8550-dea1b690a01f",
+    "question_text": "Según el artículo 34 de la Ley 16/2010 de Galicia, en cada delegación territorial, bajo la dependencia orgánica y funcional de los delegados territoriales, existirá una secretaría territorial con nivel orgánico de subdirección general, que ejercerá, además de las competencias específicas que tenga atribuidas en el decreto de estructura orgánica, las siguientes funciones:",
+    "option_a": "El apoyo y asesoramiento a la persona titular de la delegación territorial en el ejercicio de sus competencias.",
+    "option_b": "La sustitución de la persona titular de la delegación territorial en caso de vacante, ausencia o enfermedad de ésta.",
+    "option_c": "La elaboración de los programas de actuación específicos de la subdirección.",
+    "option_d": "Cuantas otras competencias le sean atribuidas o delegadas.",
+    "correct_option": 2,
+    "explanation": "Según el artículo 34.1 de la Ley 16/2010, de 17 de diciembre, la secretaría territorial ejercerá el apoyo y asesoramiento a la persona titular de la delegación territorial en el ejercicio de sus competencias, la sustitución de la persona titular de la delegación territorial en caso de vacante, ausencia o enfermedad de ésta, y cuantas otras competencias le sean atribuidas o delegadas.",
+    "articles": {
+      "content": "1. En cada delegación territorial, bajo la dependencia orgánica y funcional de los delegados territoriales, existirá una secretaría territorial con nivel orgánico de subdirección general, que ejercerá, además de las competencias específicas que tenga atribuidas en el decreto de estructura orgánica, las siguientes funciones:\n\na) El apoyo y asesoramiento a la persona titular de la delegación territorial en el ejercicio de sus competencias.\n\nb) La sustitución de la persona titular de la delegación territorial en caso de vacante, ausencia o enfermedad de ésta.\n\nc) Cuantas otras competencias le sean atribuidas o delegadas.",
+      "article_number": "34"
+    }
+  },
+  {
+    "id": "aad5eb51-0c35-4df4-ad81-f69a97ed6792",
+    "question_text": "Según el artículo 53 bis de la Ley 16/2010 de Galicia, se autoriza al Consejo de la Xunta de Galicia para adecuar, conforme a criterios objetivos, los conceptos retributivos y las percepciones económicas de cualquier naturaleza que resultan aplicables a:",
+    "option_a": "Los órganos unipersonales de gobierno y los miembros de los consejos rectores de las entidades reguladas en el artículo 45.",
+    "option_b": "Los órganos unipersonales de gobierno o dirección y los miembros de los consejos de administración o los órganos equivalentes de las entidades que integran el sector público autonómico de Galicia.",
+    "option_c": "El personal directivo de las entidades a que se hace referencia en los apartados a) y b) anteriores.",
+    "option_d": "Todas son correctas.",
+    "correct_option": 3,
+    "explanation": "Según el artículo 53 bis, Ee Consejo de la Xunta puede adecuar los conceptos retributivos y percepciones económicas de los órganos de gobierno, órganos de dirección y del personal directivo de las entidades del sector público autonómico.",
+    "articles": {
+      "content": "Las indemnizaciones máximas que por asistencia puedan corresponder a los integrantes de los órganos superiores de dirección de las entidades instrumentales del sector público autonómico serán fijadas mediante acuerdo del Consejo de la Xunta, contando con el informe favorable de la consejería competente en materia de hacienda.",
+      "article_number": "53"
+    }
+  },
+  {
+    "id": "d759f505-8c2a-4464-aabb-a43d05086672",
+    "question_text": "¿Cuál es el órgano colegiado encargado de levantar y aprobar las actas?",
+    "option_a": "A la Presidenta o Presidente del órgano colegiado.",
+    "option_b": "A la Xunta de Galicia.",
+    "option_c": "A la Secretaria del órgano colegiado.",
+    "option_d": "A la Dirección General del órgano colegiado.",
+    "correct_option": 2,
+    "explanation": "Según el artículo 20.1, de cada sesión que celebre el órgano colegiado el secretario levantará el acta.",
+    "articles": {
+      "content": "1. De cada sesión que celebre el órgano colegiado el secretario levantará el acta, que especificará necesariamente los asistentes, el orden del día de la reunión, las circunstancias del lugar y tiempo en que se ha celebrado, los puntos principales de las deliberaciones, así como el contenido de los acuerdos adoptados.\n\n2. En el acta figurará, a solicitud de los respectivos miembros del órgano, el voto contrario al acuerdo adoptado, su abstención y los motivos que la justifiquen o el sentido de su voto favorable. Así mismo, cualquier miembro tiene derecho a solicitar la trascripción íntegra de su intervención o propuesta, siempre que se refiera a alguno de los puntos del orden del día y aporte en el acto, o en el plazo que señale el presidente, el texto que se corresponda fielmente con su intervención, haciéndose constar así en el acta o uniéndose copia a ésta.\n\n3. Los miembros que discrepen del acuerdo mayoritario podrán formular voto particular por escrito en el plazo de cuarenta y ocho horas contado desde el momento en que el presidente dé por finalizada la sesión, que se incorporará al texto aprobado.\n\n4. Cuando los miembros del órgano voten en contra o se abstengan, quedarán exentos de la responsabilidad que, en su caso, pueda derivarse de los acuerdos.\n\n5. Las actas se aprobarán en la misma o en la siguiente sesión; no obstante, el secretario podrá emitir certificación sobre los acuerdos específicos que se hubiesen adoptado, sin perjuicio de la ulterior aprobación del acta.\n\nEn las certificaciones de acuerdos adoptados emitidas con anterioridad a la aprobación del acta se hará constar expresamente tal circunstancia.",
+      "article_number": "20"
+    }
+  },
+  {
+    "id": "ee298a20-a291-4b6c-973d-e31819e057ce",
+    "question_text": "¿En qué plazo debe realizarse la redacción del anteproyecto desde la declaración de urgencia, según el artículo 44 bis?",
+    "option_a": "En el plazo máximo de tres meses.",
+    "option_b": "En el plazo máximo de un mes.",
+    "option_c": "En el plazo máximo de quince días.",
+    "option_d": "En el plazo máximo de una semana.",
+    "correct_option": 1,
+    "explanation": "Según el artículo 44 bis.3, la redacción del anteproyecto deberá realizarse en el plazo máximo de un mes desde la declaración de urgencia.",
+    "articles": {
+      "content": "Para que surtan efectos, los reglamentos autonómicos deberán publicarse íntegramente en el Diario Oficial de Galicia, y entrarán en vigor a los veinte días naturales de su publicación salvo que en ellos se disponga otra cosa.",
+      "article_number": "44"
+    }
+  }
+]

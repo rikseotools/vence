@@ -1,0 +1,93 @@
+[
+  {
+    "id": "175c51da-4b7a-4b75-a3c8-b82419afb646",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "La adopción de acuerdos manifiestamente ilegales que causen perjuicio grave a la Administración pública en la que presten servicios o a los ciudadanos. [art. 185.1.d)]",
+    "analysis": "El artículo 185.1.d) tipifica expresamente esta conducta como falta muy grave. La respuesta A (correct_option 0) es correcta y la explicación cita fielmente el artículo.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "199d3f82-7b74-46ee-9db8-643eb18d6076",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "En la aplicación de la presente ley al personal de investigación pueden dictarse normas singulares para adecuarla a sus peculiaridades.",
+    "analysis": "El artículo 5 usa el término exacto 'normas singulares', que corresponde a la opción B (correct_option 1). La opción C ('normas concretas') es un distractor incorrecto. Explicación precisa.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "1d9f168a-bf5d-46bb-a341-edeeb9865ea8",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "El exceso o acumulación de tareas, de carácter excepcional y circunstancial, por un plazo máximo de nueve meses dentro de un período de dieciocho meses. [art. 23.2.d)]",
+    "analysis": "El artículo 23.2.d) recoge literalmente el supuesto. La opción C (correct_option 2) es correcta. La explicación cita fielmente el apartado correspondiente.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "21ea4b69-f688-4239-b34e-032081b80558",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "Los empleados públicos gozan de los siguientes derechos de defensa en los procedimientos disciplinarios: a) ... b) ... c) ... d) ... [art. 193]",
+    "analysis": "Las opciones A, B y C reproducen los apartados a), b) y c) del artículo 193, todos ellos derechos reconocidos. La opción D 'Todas son correctas' (correct_option 3) es la respuesta adecuada. La explicación resume correctamente el contenido del artículo.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "263955d6-e894-45d0-95d0-66b285f8901d",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "el personal funcionario tiene derecho a ausentarse del puesto de trabajo durante un máximo de dos horas diarias mientras dure el período de hospitalización, percibiendo las retribuciones íntegras. [art. 113.1]",
+    "analysis": "El artículo 113.1 fija el límite en dos horas diarias con retribuciones íntegras. La opción B (correct_option 1) es correcta y la explicación es fiel al artículo.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "2667206b-d1a3-4a6b-9e28-3e437e02d664",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "La presente ley tiene por objeto la regulación del régimen jurídico de la función pública gallega y la determinación de las normas aplicables a todo el personal al servicio de las administraciones públicas incluidas en su ámbito de aplicación. [art. 1]",
+    "analysis": "El artículo 1 establece como objeto la regulación del régimen jurídico (no laboral ni fiscal) de la función pública gallega (no española). La opción C (correct_option 2) es correcta. La explicación recoge los elementos esenciales del artículo.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "28b10d75-92f6-439c-ae16-a5c890684217",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "Las personas que cesen en la situación de servicios especiales tienen derecho a reingresar al servicio activo en el mismo puesto de trabajo que hayan ocupado con anterioridad con carácter definitivo, si este se hubiera obtenido mediante concurso. [art. 169.1]",
+    "analysis": "El artículo 169.1 limita el derecho al reingreso en el mismo puesto al caso de que se hubiera obtenido mediante concurso. La opción C (correct_option 2) refleja exactamente esa condición. La explicación es precisa y fiel al artículo.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  }
+]

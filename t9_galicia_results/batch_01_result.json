@@ -1,0 +1,93 @@
+[
+  {
+    "id": "071888dd-9b3f-4b21-a4ed-14839e0dbb8d",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "las clasificaciones orgánica y económica informarán, respectivamente, sobre el agente que realiza el gasto y la naturaleza del mismo.",
+    "analysis": "La pregunta pregunta qué informa la clasificación económica. El art. 49 regla Primera.a) establece que la clasificación económica informa sobre 'la naturaleza del mismo' (gasto). La opción A es correcta y la explicación es precisa.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "0830efa1-6d30-4149-b8f6-a304a5b5aedd",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "b) La administración y gestión de los créditos para gastos incluidos en los presupuestos y que estén adscritos a las mismas. c) La autorización de los gastos propios de la Consejería, salvo que la misma esté reservada al Consejo de la Junta. d) La propuesta del pago de obligaciones a la Consejería de Economía y Hacienda.",
+    "analysis": "Las opciones A, B y C corresponden respectivamente a los apartados b), c) y d) del artículo 8. La respuesta D 'todas las anteriores' es correcta. El artículo también incluye otros apartados (a y e) que no se ofrecen como distractores, pero las tres enunciadas sí son competencias de las Consejerías.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "193fb929-a48a-4e33-a02c-52e2ae9ef063",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "Plan sectorial es un conjunto ordenado de actuaciones sectoriales que colaboran en la consecución de uno o varios objetivos estratégicos para Galicia.",
+    "analysis": "La opción A reproduce literalmente el art. 46 quater.2. La opción B es la definición de plan transversal (art. 46 quater.3). La explicación distingue correctamente ambos conceptos.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "1a619c8a-1ed6-433f-b433-e9a98cda9d3b",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "a) El procedimiento presupuestario en sus distintas fases de elaboración, gestión y liquidación. d) La contratación en régimen de derecho administrativo. g) El endeudamiento y la concesión de avales y otras garantías.",
+    "analysis": "Las tres opciones A, B y C corresponden a apartados del art. 1.2 (a, d y g respectivamente). La respuesta D 'Todo es correcto' es la correcta. La explicación cita correctamente los tres apartados.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "1ddcdec6-e971-4704-8001-341b06ec2dc9",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "La actividad económica-financiera de la Comunidad Autónoma de Galicia estará sometida al régimen de presupuesto anual y a los principios de control interno, de contabilidad y de unidad de caja que se determinan en la presente Ley.",
+    "analysis": "La opción A reproduce literalmente el art. 4.1. Las demás opciones mezclan conceptos no presentes en ese apartado. La explicación es precisa y cita el texto correctamente.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "237a3151-abdf-49fb-9f33-fb69734eac03",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "Podrán expedirse órdenes de pago a justificar en los supuestos siguientes: a) Cuando los documentos justificativos no puedan adjuntarse antes de efectuar la propuesta de pago. b) Cuando se considere conveniente la utilización de este sistema para agilizar significativamente la gestión de los créditos. c) Cuando las órdenes de pago tengan por objeto satisfacer gastos en localidades donde no existan dependencias del organismo autónomo de que se trate.",
+    "analysis": "La pregunta pide la opción INCORRECTA. El art. 77.2 enumera tres supuestos (a, b, c) que coinciden con las opciones A, C y D. La opción B ('cuando el pago se vaya a realizar a través de cualquier plataforma digital') no figura en el artículo, por lo que es la incorrecta buscada. Correct_option=1 (B) es acertado.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "2b2f50d6-885e-431b-a738-873dd98c872d",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "Con los actos de disposición queda formalizada la reserva del crédito por un importe y unas condiciones exactamente determinados.",
+    "analysis": "El art. 73.2 establece literalmente que con los actos de disposición queda formalizada la reserva del crédito. La opción B 'Con los actos de disposición' es la respuesta correcta. Explicación ajustada al texto legal.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  }
+]

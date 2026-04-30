@@ -1,0 +1,93 @@
+[
+  {
+    "id": "dd555578-0083-4071-b0dd-b210e66242cf",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "La ejecución o dirección de la política económica y financiera aprobada por la Junta, en la forma que ésta determine.",
+    "analysis": "La opción D dice 'La aprobación de la política económica y financiera' pero el artículo 7.f atribuye a la Consellería solo la ejecución o dirección de esa política (la aprobación es de la Junta). A, B y C sí están en el artículo. Pregunta y respuesta correctas.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "e3d6ad97-5282-4e4b-9036-9529e330bb6b",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "La Intervención General de la Comunidad Autónoma será el órgano encargado de la ejecución de las funciones de control interno y de contabilidad reguladas en la presente Ley.",
+    "analysis": "Artículo 4.3 identifica exactamente a la Intervención General. La respuesta B es correcta y la explicación reproduce fielmente el contenido legal.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "e464561d-87cd-4b16-ad57-25fb821a0915",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "sometidas al régimen de rendimiento de cuentas al Consejo de Cuentas y al Tribunal de Cuentas, de acuerdo con las disposiciones que los regulan.",
+    "analysis": "Artículo 4.2 menciona el Consejo de Cuentas y el Tribunal de Cuentas, coincidiendo con la opción A. La explicación usa 'rendición' en lugar del término exacto del artículo ('rendimiento'), pero es una adaptación terminológica menor aceptable sin impacto en el sentido jurídico.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "e57f320c-2ad3-43dd-90a3-e2aa8be864b9",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "a) Compromiso de ingreso... b) Contraído del recurso... c) Recaudación del recurso.",
+    "analysis": "Las tres fases del artículo 78 son compromiso de ingreso, contraído del recurso y recaudación del recurso. La opción C 'Informe del recurso' no existe en el artículo. Correcto.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "e9f5d8ba-1828-411d-be2a-a3fab90bf7d3",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "1. La autorización del gasto... 2. La disposición... 3. El reconocimiento de la obligación... 4. El ordenamiento del pago.",
+    "analysis": "El artículo 73 establece exactamente ese orden. La opción C lo refleja correctamente: autorización del gasto, disposición, reconocimiento de la obligación y ordenamiento del pago.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "f4ab0b8b-5dfd-438e-823c-f1f28c9983f9",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "a) La determinación de las directrices básicas de política económica y financiera, de acuerdo con el Estatuto de Autonomía de Galicia.",
+    "analysis": "El artículo 6.a del TRLRFPG atribuye al Consello de la Xunta la determinación de las directrices básicas de política económica y financiera. La opción B coincide exactamente. La explicación es precisa.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  },
+  {
+    "id": "f7cf6b15-513f-4a0e-8363-e993f27de516",
+    "status": "perfect",
+    "article_ok": true,
+    "answer_ok": true,
+    "explanation_ok": true,
+    "confidence": "alta",
+    "article_quote": "a) El procedimiento presupuestario en sus distintas fases de elaboración, gestión y liquidación.",
+    "analysis": "La opción C usa la palabra 'aprobación' donde el artículo 1.2.a dice 'liquidación'. Esa formulación alterada no existe en la ley, por lo que C es correctamente la respuesta (la que no es materia propia tal como se enuncia). La explicación lo aclara correctamente señalando que la fase correcta es 'liquidación', no 'aprobación'.",
+    "correct_option_should_be": null,
+    "correct_article_suggestion": null,
+    "explanation_fix": null
+  }
+]

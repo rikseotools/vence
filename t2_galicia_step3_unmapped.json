@@ -1,0 +1,111 @@
+[
+  {
+    "original": "Según lo regulado en el Título VIII de la Constitución Española de 1978, indique cuál de estas afirmaciones es incorrecta:",
+    "cleaned": "Según lo regulado en el Título VIII de la Constitución Española de 1978, indique cuál de estas afirmaciones es incorrecta:",
+    "lawHint": null,
+    "articleHint": null,
+    "options": [
+      {
+        "letter": "A",
+        "text": "Con el fin de corregir desequilibrios económicos interterritoriales y hacer efectivo el principio de solidaridad, se constituirá un Fondo de Compensación con destino a gastos de inversión, cuyos recursos serán distribuidos por el Gobierno entre las Comunidades Autónomas y provincias en su caso."
+      },
+      {
+        "letter": "B",
+        "text": "Los recursos de las Comunidades Autónomas estarán constituidos, entre otros, por los rendimientos procedentes de su patrimonio e ingresos de derecho privado."
+      },
+      {
+        "letter": "C",
+        "text": "Las Comunidades Autónomas no podrán en ningún caso adoptar medidas tributarias sobre bienes situados fuera de su territorio o que supongan obstáculo para la libre circulación de mercancías o servicios."
+      },
+      {
+        "letter": "D",
+        "text": "En los Presupuestos Generales del Estado podrá establecerse una asignación a las Comunidades Autónomas en función del volumen de los servicios y actividades estatales que hayan asumido y de la garantía de un nivel mínimo en la prestación de los servicios públicos fundamentales en todo el territorio español."
+      }
+    ],
+    "correctAnswer": "A",
+    "explanation": "Según el artículo 158.2 de la Constitución Española, el Fondo de Compensación será distribuido por las Cortes Generales, no por el Gobierno.",
+    "source_book": "libro-67",
+    "_missingArt": "158"
+  },
+  {
+    "original": "¿De qué fecha es el Estatuto de Autonomía de Galicia? (Ley 1/1981)",
+    "cleaned": "¿De qué fecha es el Estatuto de Autonomía de Galicia?",
+    "lawHint": "Ley 1/1981",
+    "articleHint": null,
+    "options": [
+      {
+        "letter": "A",
+        "text": "6 de abril de 1991."
+      },
+      {
+        "letter": "B",
+        "text": "6 de abril de 1981."
+      },
+      {
+        "letter": "C",
+        "text": "16 de abril de 1981."
+      },
+      {
+        "letter": "D",
+        "text": "6 de marzo de 1981."
+      }
+    ],
+    "correctAnswer": "B",
+    "explanation": "Según la Ley Orgánica 1/1981, de 6 de abril, se aprueba el Estatuto de Autonomía de Galicia.",
+    "source_book": "libro-67"
+  },
+  {
+    "original": "¿Cuántos Capítulos forman el Título I del Estatuto de Autonomía de Galicia? (Ley 1/1981)",
+    "cleaned": "¿Cuántos Capítulos forman el Título I del Estatuto de Autonomía de Galicia?",
+    "lawHint": "Ley 1/1981",
+    "articleHint": null,
+    "options": [
+      {
+        "letter": "A",
+        "text": "3 capítulos."
+      },
+      {
+        "letter": "B",
+        "text": "2 capítulos."
+      },
+      {
+        "letter": "C",
+        "text": "1 capitulo."
+      },
+      {
+        "letter": "D",
+        "text": "4 capítulos."
+      }
+    ],
+    "correctAnswer": "A",
+    "explanation": "Según la estructura del Título I del Estatuto de Autonomía de Galicia, este Título se organiza en tres capítulos.",
+    "source_book": "libro-67"
+  },
+  {
+    "original": "¿Cómo se titula el Capítulo II del Título I del Estatuto de Autonomía de Galicia? (Ley 1/1981)",
+    "cleaned": "¿Cómo se titula el Capítulo II del Título I del Estatuto de Autonomía de Galicia?",
+    "lawHint": "Ley 1/1981",
+    "articleHint": null,
+    "options": [
+      {
+        "letter": "A",
+        "text": "Del Parlamento."
+      },
+      {
+        "letter": "B",
+        "text": "De la Junta."
+      },
+      {
+        "letter": "C",
+        "text": "Del poder gallego."
+      },
+      {
+        "letter": "D",
+        "text": "De la Junta y de su Presidente."
+      }
+    ],
+    "correctAnswer": "D",
+    "explanation": "Según la estructura del Estatuto de Autonomía de Galicia, el Capítulo II del Título I se titula “De la Junta y de su Presidente”.",
+    "source_book": "libro-67"
+  }
+]

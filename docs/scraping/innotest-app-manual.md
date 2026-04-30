@@ -1,10 +1,11 @@
 # Manual de Scraping — InnoTest (Apps Android)
 
-> **Fecha:** 17 Abril 2026
-> **Estado:** ✅ API **mapeada, probada y scrapeada**. 13,609 preguntas descargadas (98.9% cobertura) + 1,145 imágenes + 170 artículos.
+> **Fecha:** 17-25 Abril 2026
+> **Estado:** ✅ API **mapeada, probada y scrapeada**. Correos: 13,609 preguntas (app). Guardia Civil: 36,954 preguntas + 3,340 imagenes (web). Cross-oposicion verificado.
 > **Developer:** INNOTEST IBERICA S.L.
-> **Backend real:** `https://server2.innotest.app/api-apps-nuevas/Api/public/` (apps móviles) / `https://server.innotest.app/api-apps-nuevas/Api/public/` (web)
-> **Web:** `https://web.innotest.app` (Angular, login solo vía QR desde app móvil)
+> **Backend real:** `https://server2.innotest.app/api-apps-nuevas/Api/public/` (apps moviles) / `https://server.innotest.app/api-apps-nuevas/Api/public/` (web — **RECOMENDADO**)
+> **Web:** `https://web.innotest.app` (Angular, login via Google/email)
+> **Metodo recomendado:** Web (seccion 10). Token de DevTools, cross-oposicion, sin adb/app.
 
 ---
 
@@ -575,31 +576,204 @@ Todos los IDs van en la URL (no en body ni headers), lo que facilita la enumerac
 
 ---
 
-## 10. Próximos pasos
+## 10. Metodo WEB (RECOMENDADO — descubierto abril 2026)
 
-### Para scraping completo de Correos (suscripción activa hasta 2026-05-17)
+El metodo via app (secciones 3-9) requiere instalar la app, `adb logcat`, capturar secrets, etc. El metodo web es **mucho mas simple** y permite acceder a CUALQUIER oposicion con una sola cuenta.
 
-1. **Obtener lista de temas** — `GET /api/v2/tests/{type}/oposicion/5/bloque/2/tipo/1` → testID y bloque_testID de cada tema
-2. **Para cada tema** — `POST /api/v1/preguntastest` con `limite: 100` → máximo de preguntas por tema
-3. **Repetir con diferentes bloques** — bloqueID 2 (Conocimientos), 4 (Psicotécnicos), 5 (Ex. Oficiales)
-4. **Deduplicar** por `pregunta.id` (pueden repetirse entre tests)
-5. **Hacer login fresco** antes de cada batch (token se invalida)
+### 10.1 Diferencias web vs app
 
-### Acceso cross-oposición: NO
+| Aspecto | App (`server2.innotest.app`) | Web (`server.innotest.app`) |
+|---------|----------------------------|---------------------------|
+| Login | `POST /base/login` con secret/keyentry | Login via web.innotest.app (Google/email) |
+| Token | Se invalida en cada login | Dura ~7 dias (JWT con `exp`) |
+| `deviceID` header | Obligatorio (valor real del dispositivo) | Aceptar cualquier valor (ej: `1`) |
+| `sub` en JWT | ID de usuario | Vacio (`""`) |
+| Cross-oposicion | NO (error 500) | **SI** — un token de Correos accede a GC, PN, etc. |
+| `bloque_tema` en body | Necesario con `bloque_testID` | **No necesario** — basta `testID: [id]` |
+| Setup | adb + app + capturar credenciales | Solo DevTools del navegador |
 
-La suscripción es **por oposición**. Con la cuenta de Correos (opoID 5) no se puede acceder a temas de otras oposiciones — el servidor devuelve error 500 interno. Cada oposición requiere:
-1. Instalar la app correspondiente en el móvil
-2. Registrarse / comprar suscripción
-3. Capturar `secret`, `identificador`, `keyentry` y `devicecharID` con `adb logcat`
+**Conclusion:** Usar SIEMPRE el metodo web. El metodo app solo es necesario si la web no funciona para una oposicion concreta.
 
-### Credenciales por app (capturadas)
+### 10.2 Obtener token web
+
+1. Ir a `web.innotest.app` y hacer login (Google, Facebook o email)
+2. Abrir DevTools (F12) → pestaña Network
+3. Hacer cualquier accion en la web (abrir un tema, etc.)
+4. Buscar cualquier peticion a `server.innotest.app`
+5. Copiar el header `Authorization: Bearer eyJ...`
+
+El token dura ~7 dias (`exp` en el JWT). No se invalida al hacer peticiones.
+
+### 10.3 Datos necesarios
+
+| Dato | Como obtenerlo | Ejemplo |
+|------|----------------|---------|
+| **Token** | DevTools → Network → header Authorization | `Bearer eyJ...` |
+| **usuarioID** | DevTools → Network → buscar peticion con `/usuario/NNNN` en la URL | `3313000` |
+| **oposicionID** | `GET /api/v1/oposicionesselectorce` (lista todas las oposiciones con sus IDs) | GC=1, PN=2, CO=5 |
+
+### 10.4 Descubrir estructura de una oposicion
+
+#### Paso 1: Listar bloques disponibles
+
+Cada oposicion tiene entre 2-5 bloques. Probar bloqueIDs 1-10 con el endpoint `iniciobloque`:
+
+```javascript
+for (const bloqueID of [1,2,3,4,5,6,7,8,9,10]) {
+  const r = await fetch(BASE + '/api/v1/iniciobloque/usuario/' + USUARIO_ID +
+    '/invitado/0/bloque/' + bloqueID + '/oposicion/' + OPO_ID + '/tipo/1', {headers: h});
+  const d = await r.json();
+  if (d.success && d.data?.bloqueMenu) {
+    console.log('Bloque ' + bloqueID + ':', d.data.bloqueMenu.map(m => m.nombre));
+  }
+}
+```
+
+El campo `bloqueMenu` lista los tipos de contenido dentro de cada bloque. Los menus relevantes:
+
+| Menu (slug) | typeID | Contenido |
+|-------------|--------|-----------|
+| `temas` | 2 | Temas con sub-bloques (conocimientos, ingles, psicotecnicos) |
+| `tests` | 3 | Tests individuales (ortografia, tests especificos) |
+| `oficiales` | 4 | Examenes oficiales (agrupados por ano) |
+| `gramatica` | 10 | Tests de gramatica (ortografia) |
+
+#### Paso 2: Listar temas de cada bloque
+
+```javascript
+// typeID viene del bloqueMenu, bloqueID del paso 1
+const r = await fetch(BASE + '/api/v2/tests/' + typeID + '/oposicion/' + OPO_ID +
+  '/bloque/' + bloqueID + '/tipo/1', {headers: h});
+const d = await r.json();
+```
+
+La respuesta tiene **3 formatos distintos** segun el typeID:
+
+**Formato "temas" (typeID 2):** Grupos con array `temas` dentro
+```json
+{ "data": [
+  { "nombre": "Ciencias Juridicas", "temas": [
+    { "nombre": "Derechos Humanos", "testID": 316071, "count_preguntas": 1541 }
+  ]}
+]}
+```
+
+**Formato "tests" (typeID 3, 10):** Lista plana de tests
+```json
+{ "data": [
+  { "nombre": "Test 01", "testID": 315564, "count_preguntas": 10 }
+]}
+```
+
+**Formato "oficiales" (typeID 4):** Agrupados por ano con array `detalle`
+```json
+{ "data": [
+  { "year": "2025", "detalle": [
+    { "nombre": "Examen Guardia Civil 2025", "testID": 318003, "count_preguntas": 100 }
+  ]}
+]}
+```
+
+El script debe manejar los 3 formatos.
+
+#### Paso 3: Estructura real de Guardia Civil (referencia)
+
+| bloqueID | Tipo | typeID | Contenido |
+|----------|------|--------|-----------|
+| 1 | tests | 3 | Ortografia (332 tests x 10 preguntas) |
+| 1 | gramatica | 10 | Gramatica (30 tests x 10 preguntas) |
+| 2 | temas | 2 | Conocimientos (23 temas, ~18.300 preguntas) |
+| 2 | oficiales | 4 | Examenes oficiales (42 examenes, 2000-2025) |
+| 3 | temas | 2 | Ingles (24 temas, ~7.000 preguntas) |
+| 4 | temas | 2 | Psicotecnicos (30 temas, ~7.200 preguntas) |
+
+**NOTA:** Los bloqueIDs de la web NO coinciden con los de la app para la misma oposicion. Ejemplo: en la app de Correos, bloqueID 2=Conocimientos, 4=Psicotecnicos, 5=Oficiales. En la web de GC, bloqueID 2=Conocimientos, 3=Ingles, 4=Psicotecnicos, 1=Ortografia. **Siempre descubrir la estructura antes de scrapear.**
+
+### 10.5 Pedir preguntas (web)
+
+```javascript
+const body = {
+  bloqueID: 2,                    // bloque del tema
+  dificultades: [4],              // 4=aleatorio
+  evaluacion_ranking: 0,
+  invitadoID: 0,                  // 0 para usuario logueado
+  limite: 100,                    // maximo que la UI permite
+  modoCorreccion: 1,              // 1=Estudio (muestra correcta)
+  oposicionID: '1',               // string, no numero
+  ponderado: false,
+  testID: [316071],               // array con UN testID
+  test_tipoID: 2,
+  tiempo: 999,
+  tipo: 1,
+  usuarioID: 3313000
+};
+
+const r = await fetch(BASE + '/api/v1/preguntastest', {
+  method: 'POST', headers: h, body: JSON.stringify(body)
+});
+```
+
+**Diferencia clave vs app:** En la web NO hace falta `bloque_tema` con `bloque_testID`. Basta poner `testID: [id]`. Esto simplifica enormemente el scraping porque los sub-bloques (`bloqueTemas`) de la web vienen sin `bloque_testID` (todos `undefined`).
+
+### 10.6 Cross-oposicion con token web
+
+Un token obtenido en `web.innotest.app` con suscripcion de Correos (opoID 5) permite acceder a **todas las oposiciones** cambiando solo el `oposicionID` en las peticiones. Esto NO funciona con tokens de la app.
+
+Verificado: token de Correos accediendo a Guardia Civil (opoID 1), descargando 36.954 preguntas sin ningun error de autorizacion.
+
+**Posible explicacion:** La web usa un OAuth client diferente (`aud: "5"` en el JWT se refiere al client_id de Laravel Passport, no a la oposicion). La app usa clients separados por oposicion.
+
+### 10.7 IDs de oposiciones (web)
+
+```javascript
+const r = await fetch(BASE + '/api/v1/oposicionesselectorce', {headers: h});
+```
+
+| ID | Codigo | Oposicion |
+|----|--------|-----------|
+| 1 | GC | Guardia Civil (ingreso) |
+| 2 | PN | Policia Nacional |
+| 5 | CO | Correos |
+| 6 | AE | Administrativo General del Estado |
+| 7 | AAE | Auxiliar Administrativo del Estado |
+| 8 | IP | Instituciones Penitenciarias |
+
+**Nota:** Estos IDs son diferentes a los de la lista `oposicionesotras` (que usa IDs 2500+). Los IDs del `selectorce` son los que funcionan en los endpoints de preguntas.
+
+### 10.8 Contenido premium accesible
+
+El token web da acceso a contenido premium aunque el campo `es_usuario_premium: false` aparezca en los metadatos de los tests. La API devuelve las preguntas igualmente. Verificado con ortografia (332 tests marcados `premium: true`) y examenes oficiales.
+
+### 10.9 Proximo paso: scrapear otras oposiciones
+
+Con un solo token web se puede scrapear cualquier oposicion de InnoTest. Proceso:
+
+1. Obtener token de `web.innotest.app` (un solo login)
+2. Listar oposiciones con `oposicionesselectorce`
+3. Para cada oposicion: descubrir estructura (§10.4) → scrapear (§10.5)
+
+Oposiciones potencialmente utiles para Vence:
+- **AAE (id 7):** Auxiliar Administrativo del Estado — comparar con nuestras preguntas
+- **AE (id 6):** Administrativo del Estado — comparar con nuestras preguntas
+- **IP (id 8):** Instituciones Penitenciarias — nueva oposicion potencial
+
+### 10.10 Credenciales por metodo (capturadas)
+
+#### App (server2.innotest.app)
 
 | App | identificador | oposicionID | secret | keyentry |
 |-----|---------------|-------------|--------|----------|
 | Correos | `android_co` | 5 | `lkkjlW0lMexBHItdFuQSnnKnEhPuT1dtapHWK2ir` | 1699 |
-| Policía Nacional | `android_pn` (probable) | 2 | `lkkjlW0lMexBHItdFuQSnnKnEhPuT1dtapHWK2ir` (probable, mismo secret) | 1725 |
-| Guardia Civil | ? | 16 | ? | ? |
-| Aux Admin Estado | ? | ? | ? | ? |
+| Policia Nacional | `android_pn` (probable) | 2 | mismo secret (probable) | 1725 |
+
+#### Web (server.innotest.app) — RECOMENDADO
+
+| Dato | Valor |
+|------|-------|
+| usuarioID | 3313000 |
+| Login | Google (`manueltrader@gmail.com`) via web.innotest.app |
+| Token | Bearer JWT, dura ~7 dias, obtenido de DevTools |
+| deviceID header | Cualquier valor (ej: `1`) |
 
 ### Catálogo de oposiciones en InnoTest (34 disponibles)
 
@@ -661,7 +835,78 @@ Las URLs de descarga son relativas a `server.innotest.app/recursos/` o `web.inno
 
 ## 11. Aprendizajes del scraping (Abril 2026)
 
-### Resultado del scraping de Correos
+### Resultado del scraping de Guardia Civil (web, 24-25 abril 2026)
+
+| Bloque | Temas | Descargado | Disponible | Cobertura |
+|--------|-------|------------|------------|-----------|
+| Conocimientos | 23 | 16,193 | 18,300 | 88.5% |
+| Ingles | 24 | 6,650 | 7,070 | 94.1% |
+| Psicotecnicos | 30 | 7,223 | 7,360 | 98.1% |
+| Ortografia (tests) | 341 | 3,411 | 3,320 | 100% |
+| Ortografia (gramatica) | 30 | 300 | 300 | 100% |
+| Examenes oficiales | 42 | 3,177 | 3,177 | 100% |
+| Imagenes | — | 3,340 | 3,340 | 100% |
+| **TOTAL** | **490** | **36,954** | — | — |
+
+Script: `scripts/scrape-innotest-gc.cjs`
+Output: `preguntas-para-subir/innotest-guardia-civil/`
+
+**Cobertura por tema grande (conocimientos):** Los temas con >1500 preguntas saturan alrededor del 60-90% porque la API aleatoriza de un pool grande y se repiten antes de cubrir todo. Los temas con <1000 preguntas alcanzan >95% facilmente.
+
+**Examenes oficiales:** 42 examenes desde 2000 hasta 2025 (Guardia Civil + Guardias Jovenes), todos al 93-100%.
+
+### Lecciones aprendidas del scraping web (GC)
+
+#### 13. La web permite cross-oposicion (HALLAZGO CLAVE)
+
+Con un token de web.innotest.app obtenido con una cuenta de Correos se accede a TODAS las oposiciones. Esto NO funciona con la app (error 500). Razon probable: la web usa un OAuth client unico (aud=5 en el JWT) mientras la app usa un client por oposicion.
+
+**Implicacion:** Un solo login en la web basta para scrapear las 7+ oposiciones del selectorce. No hay que comprar suscripcion por oposicion.
+
+#### 14. `bloque_tema` no es necesario en la web
+
+En la app habia que construir un body complejo con `bloque_tema: [{bloque_testID: X, testID: Y}]`. En la web basta con `testID: [id]` sin `bloque_tema`. Esto funciona porque la web no devuelve `bloque_testID` en los sub-bloques (todos vienen `undefined`).
+
+#### 15. Los 3 formatos de respuesta de estructura
+
+El endpoint `GET /api/v2/tests/{typeID}/oposicion/{opo}/bloque/{bloque}/tipo/1` devuelve datos en 3 formatos segun el tipo de contenido:
+- **typeID 2 (temas):** `data[].temas[]` con `testID` y `count_preguntas`
+- **typeID 3/10 (tests/gramatica):** `data[]` directamente con `testID`
+- **typeID 4 (oficiales):** `data[].year` + `data[].detalle[]` con `testID`
+
+El script debe detectar y manejar los 3 formatos.
+
+#### 16. BloqueIDs varian entre oposiciones
+
+No asumir que bloqueID 2 = Conocimientos en todas las oposiciones. Cada oposicion tiene su propia distribucion. Siempre descubrir la estructura con `iniciobloque` antes de scrapear.
+
+#### 17. Delays humanos para evitar deteccion
+
+Para no parecer un scraper:
+- Entre batches: 4-12 segundos (aleatorio)
+- Entre temas: 8-25 segundos
+- Entre bloques: 30-60 segundos
+- Descarga de imagenes: 1-3 segundos
+- `limite: 100` (lo que la UI permite, no 500)
+- Con estos delays, 37k preguntas tardan ~4 horas
+
+#### 18. Retry con backoff para timeouts
+
+El servidor da timeout ocasionalmente (ConnectTimeoutError tras ~10s). Solucion:
+- 3 intentos por peticion
+- AbortSignal.timeout(30000) en cada fetch
+- 15-45 segundos de espera entre reintentos
+- Si los 3 fallan, devolver `{success: false}` y continuar
+
+#### 19. Resume: saltar temas ya descargados
+
+El script comprueba si el archivo de salida ya existe y tiene >= 50% de cobertura. Si es asi, salta el tema. Esto permite relanzar el script tras un crash sin repetir trabajo.
+
+#### 20. Contenido premium accesible sin suscripcion activa
+
+Tests marcados con `premium: true` y `es_usuario_premium: false` devuelven preguntas igualmente. Verificado con ortografia (332 tests premium) y examenes oficiales. La API no bloquea el contenido premium en el endpoint `preguntastest`.
+
+### Resultado del scraping de Correos (app, abril 2026)
 
 | Contenido | Descargado | Disponible | Cobertura |
 |-----------|------------|------------|-----------|
@@ -746,6 +991,41 @@ Al pedir preguntas múltiples veces, la API aleatoriza el orden pero puede devol
 ### Archivos generados
 
 ```
+preguntas-para-subir/innotest-guardia-civil/
+├── conocimientos/
+│   ├── _temas.json                                             # Estructura de temas
+│   ├── tema1_derechos-humanos.json                             # 1385q
+│   ├── tema2_igualdad.json                                     # 463q
+│   ├── tema3_prevencion.json                                   # 666q
+│   ├── tema4_derecho-constitucional.json                       # 1035q
+│   ├── ...                                                     # 23 temas total
+│   └── tema23_derecho-fiscal.json                              # 246q
+├── ingles/
+│   ├── _temas.json
+│   ├── tema1_tiempos-verbales.json                             # 1102q
+│   ├── ...                                                     # 24 temas total
+│   └── tema24_make-do-lend-borrow-easily-confused-word.json    # 100q
+├── psicotecnicos/
+│   ├── _temas.json
+│   ├── tema1_conocimiento-verbal.json                          # 144q
+│   ├── ...                                                     # 30 temas total
+│   └── tema30_arboles-genealogicos.json                        # 211q
+├── ortografia/
+│   ├── _temas.json                                             # 341 tests + 30 gramatica
+│   ├── tema1_test-01.json                                      # 10q
+│   ├── ...                                                     # 371 archivos
+│   └── tema30_gramatica-30.json                                # 10q
+├── examenes-oficiales/
+│   ├── _temas.json
+│   ├── tema1_examen-guardia-civil-2025.json                    # 100q
+│   ├── ...                                                     # 42 examenes (2000-2025)
+│   └── tema42_examen-oficial-2000.json                         # 73q
+├── imagenes/
+│   └── {questionId}_pregunta.png                               # 3,340 imagenes
+└── _summary.json                                               # Resumen con stats
+```
+
+```
 preguntas-para-subir/innotest-correos/
 ├── conocimientos/
 │   ├── _temas.json                              # Estructura de temas
@@ -773,4 +1053,130 @@ preguntas-para-subir/innotest-correos/
 │   └── {questionId}_pregunta.png               # 1,145 imágenes
 └── recursos/
     └── _catalogo.json                          # Catálogo de 60 PDFs (no descargados)
+```
+
+---
+
+## 12. Importacion de preguntas InnoTest a Vence (lecciones GC abril 2026)
+
+### 12.1 Mapeo leyID InnoTest → law_id Vence
+
+InnoTest usa `leyID` internos (numeros 1-735) que no tienen relacion con nuestros UUIDs. Hay que construir un mapa manual.
+
+**Script:** `scripts/_tmp_gc_build_law_map.cjs` genera `_law_map.json` con el mapeo completo.
+
+**Proceso:**
+1. Extraer todos los `leyID` unicos de las preguntas scrapeadas
+2. Identificar la ley real de cada `leyID` a partir del contenido de las preguntas y articulos
+3. Buscar la ley correspondiente en nuestra BD por `short_name`
+4. Guardar el mapeo `leyID → { law_id, short_name }` o `null` para leyes virtuales
+
+**Resultado GC:** 95 leyIDs mapeados: 60 a leyes reales en BD, 35 a null (virtuales/internacionales).
+
+### 12.2 Patron cross-law (CRITICO)
+
+**El error mas frecuente de la importacion.** InnoTest asigna preguntas a un `leyID` + `articulo` (numero). Si dos leyes tienen articulos con el mismo numero, la pregunta se vincula a la ley equivocada.
+
+| Pregunta sobre | Vinculada a | Causa |
+|----------------|------------|-------|
+| CE Art. 15 (pena de muerte) | CP Art. 15 (tentativa) | Mismo numero |
+| CP Art. 21 (atenuantes) | LECrim Art. 21 (competencia) | Mismo numero |
+| Ley 5/2014 Art. 3 (seguridad privada) | Ley 43/2010 Art. 3 (servicio postal) | Ambas se llaman "LSP" |
+
+**Deteccion:** Los agentes de verificacion detectan el patron cuando el contenido del articulo no responde la pregunta (`wrong_article`).
+
+**Solucion:** Revincular al articulo correcto de la ley correcta. Script busca `articles` con `law_id` correcto + mismo `article_number`.
+
+**Resultado GC:** 847 preguntas revinculadas (516 CE, 166 CP, 165 LSP), 846 activadas.
+
+### 12.3 primary_article_id NOT NULL
+
+La tabla `questions` tiene `primary_article_id` NOT NULL. Las preguntas que no se vinculan a un articulo real (instituciones internacionales, topografia, ingles, ortografia) necesitan un Art 0 de una ley virtual.
+
+**Solucion:**
+1. Crear ley virtual (`is_virtual: true`) con slug descriptivo
+2. Crear Art 0 con titulo descriptivo
+3. Vincular las preguntas al Art 0 de la ley virtual
+4. Anadir la ley virtual al topic_scope del tema
+
+### 12.4 HTML en explicaciones de InnoTest
+
+Las explicaciones de InnoTest vienen en HTML rico:
+- `<b>`, `<i>`, `<u>` — formato de texto
+- `<br>` — saltos de linea (IMPORTANTE: no convertir a espacio, sino a `\n`)
+- `<ul><li>` — listas (convertir a `- ` bullets)
+- `<p>` — parrafos (convertir a doble salto)
+- `<span style="color:#00C951">` — verde = palabra correcta (ortografia)
+- `<span style="color:#F94646">` — rojo = palabra incorrecta (ortografia)
+- `&nbsp;`, `&amp;`, `&lt;`, `&gt;` — entidades HTML
+
+**Conversion correcta a markdown:**
+```javascript
+function htmlToMarkdown(html) {
+  let text = html;
+  text = text.replace(/<br\s*\/?>/gi, '\n');
+  text = text.replace(/<\/li>\s*/gi, '\n');
+  text = text.replace(/<li[^>]*>/gi, '- ');
+  text = text.replace(/<\/?ul[^>]*>/gi, '\n');
+  text = text.replace(/<\/p>/gi, '\n\n');
+  text = text.replace(/<p[^>]*>/gi, '');
+  text = text.replace(/<b>([^<]*)<\/b>/gi, '**$1**');
+  text = text.replace(/<i>([^<]*)<\/i>/gi, '*$1*');
+  text = text.replace(/<span[^>]*color:\s*#00C951[^>]*>([^<]*)<\/span>/gi, '**$1** (correcta)');
+  text = text.replace(/<span[^>]*color:\s*#F94646[^>]*>([^<]*)<\/span>/gi, '~~$1~~ (incorrecta)');
+  text = text.replace(/<[^>]+>/g, '');
+  text = text.replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&');
+  text = text.replace(/[ \t]+/g, ' ');
+  text = text.replace(/ *\n */g, '\n');
+  text = text.replace(/\n{3,}/g, '\n\n');
+  return text.trim();
+}
+```
+
+**Error a evitar:** Hacer `replace(/<[^>]*>/g, ' ')` bruto — convierte `<br>` a espacio y las explicaciones quedan apelotonadas sin saltos de linea.
+
+**Flujo correcto:** Importar con explicacion raw → DESPUES convertir HTML a markdown buscando por texto normalizado (no por content_hash, que usa formato diferente en BD).
+
+### 12.5 HTML en enunciados (ortografia)
+
+Las preguntas de ortografia usan `<b>` para resaltar las palabras a evaluar. Convertir a `**markdown**`:
+```
+<b>rehacio</b> → **rehacio**
+```
+
+### 12.6 Verificacion con agentes
+
+**Batches recomendados:** 400-600 preguntas por agente Sonnet. Mas de 600 puede agotar el contexto.
+
+**Para leyes reales:** Verificar articleOk + answerOk + explanationOk. Status: `perfect` o `wrong_article`/`bad_answer`/`bad_explanation`.
+
+**Para leyes virtuales (Art 0):** Solo verificar answerOk + explanationOk. Status: `tech_perfect` o `tech_bad_answer`/`tech_bad_explanation`.
+
+**Criterio de rescate:** Si la respuesta es correcta pero la explicacion es pobre → activar igualmente. Una pregunta con mala explicacion es mejor que ninguna pregunta.
+
+**Resultado GC:** 23.706/24.109 activadas (98.3%) tras 3 rondas de verificacion + 1 ronda de rescate.
+
+### 12.7 Duplicados InnoTest
+
+InnoTest repite las mismas preguntas en diferentes temas/tests/examenes. El `content_hash` unique constraint de la BD los detecta al importar. De 36.954 scrapeadas, 24.109 eran unicas.
+
+**Nota sobre examenes oficiales:** Muchas preguntas de examenes estan tambien en el pool de conocimientos. Al importar examenes despues de conocimientos, salen como "duplicadas". Hay que actualizar los metadatos (`is_official_exam`, `exam_position`, `exam_source`) de las que ya existen en BD.
+
+### 12.8 Flujo completo recomendado
+
+```
+1. Scrapear (§10)
+2. Crear leyes en BD + sync BOE (§12.3, monitoreo-boe.md)
+3. Crear leyes virtuales (§12.3)
+4. Construir mapa leyID → law_id (§12.1)
+5. Importar desactivadas (§12.3 primary_article_id)
+6. Convertir HTML a markdown en explicaciones (§12.4)
+7. Limpiar HTML en enunciados y opciones (§12.5)
+8. Verificar admin/calidad: 0 HTML, 0 palabras prohibidas
+9. Marcar exámenes oficiales (is_official_exam, exam_position, exam_source)
+10. Verificar con agentes tema por tema (§12.6)
+11. Revincular cross-law (§12.2)
+12. Ronda de rescate de inactivas (§12.6)
+13. Generar hot_articles (FASE 7b del manual crear-oposicion)
+14. Build + deploy
 ```
