@@ -157,7 +157,8 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
       if (data.success && data.stats) {
         const themeStats: Record<number, ThemeStats> = {}
         data.stats.forEach((stat: any) => {
-          const temaNumber = stat.tema_number + 1 // 0-indexed → 1-indexed
+          // tema_number ya es 1-indexed (coincide con topics.topic_number)
+          const temaNumber = stat.tema_number
           themeStats[temaNumber] = {
             total: stat.total,
             correct: stat.correct,

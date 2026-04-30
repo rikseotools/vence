@@ -98,8 +98,9 @@ export function useTopicUnlock({ positionType }: UseTopicUnlockOptions = {}) {
           const temaNumber = row.tema_number
           if (typeof temaNumber !== 'number') return
 
-          // Convertir de 0-indexed a 1-indexed
-          const actualTemaNumber = temaNumber + 1
+          // tema_number en test_questions ya es 1-indexed (coincide con topics.topic_number)
+          // Bug anterior: sumaba +1 desplazando todas las stats un tema
+          const actualTemaNumber = temaNumber
 
           const accuracy = parseInt(row.accuracy) || 0
           const questionsAnswered = parseInt(row.total) || 0
