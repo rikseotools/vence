@@ -27,17 +27,25 @@ let pendingVersion: string | null = null
 const CRITICAL_ROUTE_PATTERNS: RegExp[] = [
   // Tests por ley (/leyes/[slug]/avanzado, /rapido, /personalizado, /aleatorio, /repaso-fallos)
   /\/leyes\/[^/]+\/(avanzado|rapido|personalizado|aleatorio|repaso-fallos)/,
+  // Tests por oposición: personalizado, aleatorio-examen, examen-oficial, etc.
+  // Bug 30/04/2026: /administrativo-estado/test/test-personalizado NO estaba cubierto
+  // → version_check_reload_immediate interrumpía tests activos (caso Maria del Carmen)
+  /\/[^/]+\/test\/test-/,
   // Tests por oposición/tema (/[oposicion]/test/tema/N)
   /\/[^/]+\/test\/tema\/\d+/,
   // Exámenes oficiales
   /\/examen-oficial/,
   /\/aleatorio-examen/,
   // Tests psicotécnicos activos
-  /\/psicotecnicos\/test/,
+  /\/psicotecnicos\/test\/ejecutar/,
   // Test multi-ley
   /\/test\/multi-ley/,
-  // Tests desde chat / artículo / por-leyes
-  /\/test\/(desde-chat|articulo|por-leyes)/,
+  // Tests desde chat / artículo / por-leyes / rapido / repaso
+  /\/test\/(desde-chat|articulo|por-leyes|rapido|repaso-fallos|repaso-fallos-v2|mantener-racha|explorar)/,
+  // Test aleatorio-examen (ruta raíz)
+  /\/test\/aleatorio-examen/,
+  // Test recuperado (usuario volviendo a test interrumpido)
+  /\/test-recuperado/,
 ]
 
 /**
