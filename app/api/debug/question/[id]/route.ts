@@ -104,6 +104,7 @@ async function _GET(
         optionC: psychometricQuestions.optionC,
         optionD: psychometricQuestions.optionD,
         contentData: psychometricQuestions.contentData,
+        imageUrl: psychometricQuestions.imageUrl,
         explanation: psychometricQuestions.explanation,
         isActive: psychometricQuestions.isActive,
         createdAt: psychometricQuestions.createdAt,
@@ -153,6 +154,7 @@ async function _GET(
           D: q.optionD,
         },
         content_data: q.contentData,
+        image_url: q.imageUrl || null,
         explanation: q.explanation,
         category: {
           key: categoryKey,
