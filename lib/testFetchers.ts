@@ -806,7 +806,9 @@ export async function fetchQuestionsByTopicScope(tema: number, searchParams: Sea
 
     const isRestrictiveMode = focusEssentialArticles || onlyFailedQuestions
     const needsAdaptiveCatalog = !isRestrictiveMode && (focusWeakAreas || adaptiveMode)
-    const requestSize = needsAdaptiveCatalog ? 500 : numQuestions
+    // Pool adaptativo: 4x las preguntas solicitadas (suficiente para diversidad por
+    // dificultad y artículo). Antes era 500 fijo — saturaba Supabase con queries pesadas.
+    const requestSize = needsAdaptiveCatalog ? Math.min(numQuestions * 4, 200) : numQuestions
 
     console.log('🎯 Cargando test multi-ley via API, tema:', tema, 'n:', numQuestions,
       'adaptive:', needsAdaptiveCatalog, 'pos:', positionType)
@@ -1179,7 +1181,7 @@ export async function fetchAleatorioMultiTema(themes: number[], searchParams: Se
     const positionType = config?.positionType || 'auxiliar_administrativo_estado'
     const numQuestions = parseInt(getParam(searchParams, 'n', '20'))
     const isAdaptive = getParam(searchParams, 'adaptive') === 'true'
-    const requestSize = isAdaptive ? 500 : numQuestions
+    const requestSize = isAdaptive ? Math.min(numQuestions * 4, 200) : numQuestions
     const excludeRecent = getParam(searchParams, 'exclude_recent') === 'true'
     const excludeDays = parseInt(getParam(searchParams, 'exclude_days', '15'))
     const onlyOfficialQuestions = getParam(searchParams, 'official_only') === 'true'
