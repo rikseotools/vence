@@ -42,6 +42,7 @@ interface ThemeStats {
   correct: number
   accuracy: number
   accuracy30d: number | null
+  total_30d: number
   lastStudy: Date | null
   lastStudyFormatted: string
 }
@@ -146,6 +147,7 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
   // Cargar estadísticas del usuario usando API V2 con derivación dinámica por oposición
   const loadUserThemeStats = useCallback(async (userId: string) => {
     setStatsLoading(true)
+    console.log('📊 [TestHubClient] Cargando theme-stats para', userId.slice(0, 8))
     try {
       // Usa /api/v2/topic-progress/theme-stats (con timeout + cache + accuracy_30d)
       // Antes usaba /api/user/theme-stats que tardaba 16s para heavy users
@@ -161,12 +163,14 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
             correct: stat.correct,
             accuracy: stat.accuracy,
             accuracy30d: stat.accuracy_30d ?? null,
+            total_30d: stat.total_30d ?? 0,
             lastStudy: stat.last_study ? new Date(stat.last_study) : null,
             lastStudyFormatted: stat.last_study
               ? new Date(stat.last_study).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })
               : ''
           }
         })
+        console.log('📊 [TestHubClient] Stats cargadas:', Object.keys(themeStats).length, 'temas. Ejemplo T1:', themeStats[1] ? 'acc=' + themeStats[1].accuracy + ' acc30d=' + themeStats[1].accuracy30d : 'sin datos')
         setUserStats(themeStats)
         // Persistir en localStorage para carga instantánea en siguiente visita
         try { localStorage.setItem(`theme-stats:${oposicion}`, JSON.stringify(themeStats)) } catch { /* ignore */ }
@@ -252,7 +256,7 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
   // Obtener color del tema basado en stats
   const getThemeColor = (topicNumber: number): string => {
     const stats = userStats[topicNumber]
-    return stats ? getAccuracyColor(stats.accuracy30d ?? stats.accuracy) : 'gray'
+    return stats ? getAccuracyColor(stats.accuracy) : 'gray'
   }
 
   if (loading) {
@@ -757,8 +761,13 @@ function ThemeLink({ topic, basePath, stats, statsLoading, color, onInfoClick }:
           ) : hasStats ? (
             <>
               <div className="flex items-center space-x-1">
-                <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-bold" title={`Global: ${stats.accuracy}%${stats.accuracy30d != null ? ` · Último mes: ${stats.accuracy30d}%` : ''}`}>
-                  {stats.accuracy30d != null ? stats.accuracy30d : stats.accuracy}% ({stats.correct}/{stats.total})
+                <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-bold">
+                  {stats.accuracy}% ({stats.correct}/{stats.total})
+                  {stats.accuracy30d != null && stats.total_30d >= 5 && stats.accuracy30d !== stats.accuracy && (
+                    <span className={`ml-1 text-xs font-semibold ${stats.accuracy30d > stats.accuracy ? 'text-green-200' : 'text-red-200'}`}>
+                      {stats.accuracy30d > stats.accuracy ? '▲' : '▼'}{Math.abs(stats.accuracy30d - stats.accuracy)}%
+                    </span>
+                  )}
                 </span>
                 <button
                   onClick={(e) => {

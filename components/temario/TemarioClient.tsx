@@ -119,23 +119,17 @@ export default function TemarioClient({ bloques, oposicion, fechaActualizacion }
           {hasProgress && (
             <div className="text-right hidden sm:block">
               <div className={`text-sm font-semibold ${progress.accuracy >= 70 ? 'text-green-600' : 'text-amber-600'}`}>
-                {progress.accuracy30d != null ? (
-                  <span title={`Global: ${progress.accuracy}% · Último mes: ${progress.accuracy30d}%`}>
-                    {progress.accuracy30d}%
-                    {progress.accuracy30d !== progress.accuracy && (
-                      <span className="text-xs text-gray-400 dark:text-gray-500 ml-1 font-normal">
-                        ({progress.accuracy}%)
-                      </span>
-                    )}
+                {progress.accuracy}%
+                {progress.accuracy30d != null && progress.accuracy30d !== progress.accuracy && (
+                  <span className={`text-xs ml-1 font-semibold ${progress.accuracy30d > progress.accuracy ? 'text-green-500' : 'text-red-500'}`}>
+                    {progress.accuracy30d > progress.accuracy ? '▲' : '▼'}{Math.abs(progress.accuracy30d - progress.accuracy)}%
                   </span>
-                ) : (
-                  <>{progress.accuracy}%</>
                 )}
               </div>
               <div className="w-16 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                 <div
-                  className={`h-full rounded-full ${getProgressColor(progress.accuracy30d ?? progress.accuracy)}`}
-                  style={{ width: `${Math.min(100, progress.accuracy30d ?? progress.accuracy)}%` }}
+                  className={`h-full rounded-full ${getProgressColor(progress.accuracy)}`}
+                  style={{ width: `${Math.min(100, progress.accuracy)}%` }}
                 />
               </div>
             </div>
