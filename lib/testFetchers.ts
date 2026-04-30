@@ -96,6 +96,45 @@ type AdaptiveCatalog = {
   articlesSeen?: string[]
 }
 
+// =====================================================================
+// CACHE: Historial de preguntas del usuario (evita consultar la BD en
+// cada test cuando un usuario hace varios tests seguidos).
+// TTL 10 min — el historial solo cambia cuando el usuario responde
+// preguntas, y el cache se invalida al responder.
+// =====================================================================
+interface HistoryCacheEntry {
+  answeredIds: Set<string>
+  history: QuestionHistoryItem[]
+  timestamp: number
+}
+const historyCache = new Map<string, HistoryCacheEntry>()
+const HISTORY_CACHE_TTL = 10 * 60 * 1000 // 10 minutos
+
+/** Obtener answeredIds con cache. Evita re-consultar la BD en tests seguidos. */
+async function getCachedAnsweredIds(userId: string): Promise<Set<string>> {
+  const cached = historyCache.get(userId)
+  if (cached && Date.now() - cached.timestamp < HISTORY_CACHE_TTL) {
+    console.log(`📦 [AdaptCache] Hit para ${userId.slice(0, 8)}: ${cached.answeredIds.size} IDs`)
+    return cached.answeredIds
+  }
+
+  const { history } = await fetchUserQuestionHistory(userId, true)
+  const answeredIds = new Set(history.map(item => item.questionId))
+
+  historyCache.set(userId, {
+    answeredIds,
+    history,
+    timestamp: Date.now(),
+  })
+  console.log(`🔄 [AdaptCache] Cargado para ${userId.slice(0, 8)}: ${answeredIds.size} IDs`)
+  return answeredIds
+}
+
+/** Invalidar cache de un usuario (llamar tras guardar respuesta). */
+export function invalidateHistoryCache(userId: string): void {
+  historyCache.delete(userId)
+}
+
 /**
  * Construye el catálogo adaptativo organizado por tema → dificultad × visto/no-visto.
  * Funciona para 1 o N temas.
@@ -893,12 +932,7 @@ export async function fetchQuestionsByTopicScope(tema: number, searchParams: Sea
     if (needsAdaptiveCatalog) {
       console.log('🧠 Construyendo catálogo adaptativo')
 
-      const answeredIds = new Set<string>()
-      if (user) {
-        const { history } = await fetchUserQuestionHistory(user.id, true)
-        history.forEach(item => answeredIds.add(item.questionId))
-        console.log(`📊 Historial: ${answeredIds.size} preguntas respondidas`)
-      }
+      const answeredIds = user ? await getCachedAnsweredIds(user.id) : new Set<string>()
 
       const { catalog, initialQuestions } = buildAdaptiveCatalog(
         allQuestions, answeredIds, [tema], numQuestions
@@ -1239,11 +1273,7 @@ export async function fetchAleatorioMultiTema(themes: number[], searchParams: Se
     const adaptiveMode = getParam(searchParams, 'adaptive') === 'true'
     if (adaptiveMode && allQuestions.length > numQuestions) {
       console.log('🧠 Construyendo catálogo adaptativo multi-tema')
-      const answeredIds = new Set<string>()
-      if (user) {
-        const { history } = await fetchUserQuestionHistory(user.id, true)
-        history.forEach(item => answeredIds.add(item.questionId))
-      }
+      const answeredIds = user ? await getCachedAnsweredIds(user.id) : new Set<string>()
 
       const { catalog, initialQuestions } = buildAdaptiveCatalog(
         allQuestions, answeredIds, themes, numQuestions
