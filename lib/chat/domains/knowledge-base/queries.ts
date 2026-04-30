@@ -325,9 +325,10 @@ export function isPlatformQuery(message: string): boolean {
     /garant[ií]a.*devoluci[oó]n/i,
     /dar(me)?\s+de\s+baja/i,
     /(me\s+)?doy\s+de\s+baja/i,
-    // Descargar/imprimir temario (funcionalidad, no contenido)
-    /(descarg|imprim|guard|baj)\w*\s+(el\s+)?(temario|temas|pdf)/i,
-    /temario\s+(en\s+)?(pdf|descargar|imprimir)/i,
+    // Descargar/imprimir/escuchar temario (funcionalidad, no contenido)
+    /(descarg|imprim|guard|baj|escuch|le[eé]r|o[ií]r)\w*\s+(el\s+|en\s+)?(temario|temas|pdf|voz\s+alta)/i,
+    /temario\s+(en\s+)?(pdf|descargar|imprimir|voz|audio)/i,
+    /(voz\s+alta|audio)\s+(del?\s+)?(temario|temas)/i,
     // Temarios (solo consultas genericas sobre la plataforma, no sobre contenido)
     /temario(s)?\s+(gratis|gratuito|free)/i,
     /contenido\s+(gratis|gratuito)/i,
