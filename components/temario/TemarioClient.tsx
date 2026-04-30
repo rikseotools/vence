@@ -34,7 +34,7 @@ export default function TemarioClient({ bloques, oposicion, fechaActualizacion }
   const { user } = useAuth() as { user: any }
   // Convertir slug de URL a positionType de BD
   const positionType = useMemo(() => slugToPositionType(oposicion), [oposicion])
-  const { getTopicProgress } = useTopicUnlock({ positionType: positionType ?? undefined }) as { getTopicProgress: (id: number) => { accuracy: number; questionsAnswered: number } }
+  const { getTopicProgress } = useTopicUnlock({ positionType: positionType ?? undefined }) as { getTopicProgress: (id: number) => { accuracy: number; accuracy30d: number | null; questionsAnswered: number } }
   // Expandir solo el primer bloque por defecto (resto colapsados). Funciona con cualquier número de bloques.
   const [expandedBlocks, setExpandedBlocks] = useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = {}
@@ -62,7 +62,7 @@ export default function TemarioClient({ bloques, oposicion, fechaActualizacion }
   }
 
   const renderTema = (tema: Tema) => {
-    const progress = user ? getTopicProgress(tema.id) : { accuracy: 0, questionsAnswered: 0 }
+    const progress = user ? getTopicProgress(tema.id) : { accuracy: 0, accuracy30d: null as number | null, questionsAnswered: 0 }
     const hasProgress = progress.questionsAnswered > 0
     const displayNumber = tema.displayNum || tema.id
     const isDisponible = tema.disponible !== false
@@ -119,12 +119,23 @@ export default function TemarioClient({ bloques, oposicion, fechaActualizacion }
           {hasProgress && (
             <div className="text-right hidden sm:block">
               <div className={`text-sm font-semibold ${progress.accuracy >= 70 ? 'text-green-600' : 'text-amber-600'}`}>
-                {progress.accuracy}%
+                {progress.accuracy30d != null ? (
+                  <span title={`Global: ${progress.accuracy}% · Último mes: ${progress.accuracy30d}%`}>
+                    {progress.accuracy30d}%
+                    {progress.accuracy30d !== progress.accuracy && (
+                      <span className="text-xs text-gray-400 dark:text-gray-500 ml-1 font-normal">
+                        ({progress.accuracy}%)
+                      </span>
+                    )}
+                  </span>
+                ) : (
+                  <>{progress.accuracy}%</>
+                )}
               </div>
               <div className="w-16 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                 <div
-                  className={`h-full rounded-full ${getProgressColor(progress.accuracy)}`}
-                  style={{ width: `${Math.min(100, progress.accuracy)}%` }}
+                  className={`h-full rounded-full ${getProgressColor(progress.accuracy30d ?? progress.accuracy)}`}
+                  style={{ width: `${Math.min(100, progress.accuracy30d ?? progress.accuracy)}%` }}
                 />
               </div>
             </div>

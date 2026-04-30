@@ -7,6 +7,7 @@ import { getAuthHeaders } from '@/lib/api/authHeaders'
 
 interface TopicProgress {
   accuracy: number
+  accuracy30d: number | null
   questionsAnswered: number
   masteryLevel: string | null
   lastStudy: Date | null
@@ -105,6 +106,7 @@ export function useTopicUnlock({ positionType }: UseTopicUnlockOptions = {}) {
 
           progress[actualTemaNumber] = {
             accuracy,
+            accuracy30d: row.accuracy_30d != null ? parseInt(row.accuracy_30d) : null,
             questionsAnswered,
             masteryLevel: accuracy >= 90 ? 'expert' : accuracy >= 70 ? 'good' : 'beginner',
             lastStudy: row.last_study ? new Date(row.last_study) : null
@@ -126,6 +128,7 @@ export function useTopicUnlock({ positionType }: UseTopicUnlockOptions = {}) {
   const getTopicProgress = (topicNumber: number) => {
     return topicProgress[topicNumber] || {
       accuracy: 0,
+      accuracy30d: null,
       questionsAnswered: 0,
       masteryLevel: null
     }
