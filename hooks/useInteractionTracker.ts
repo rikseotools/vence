@@ -45,8 +45,8 @@ interface DeviceInfo {
 // CONSTANTES
 // ============================================
 
-const BATCH_SIZE = 10
-const FLUSH_INTERVAL = 5000 // 5 segundos
+const BATCH_SIZE = 25
+const FLUSH_INTERVAL = 10_000 // 10 segundos — reduce requests al servidor
 const SESSION_KEY = 'vence_tracking_session'
 const QUEUE_KEY = 'vence_tracking_queue'
 
