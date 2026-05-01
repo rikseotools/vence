@@ -97,60 +97,45 @@ async function getThemeQuestionCounts(
       ? sql`(${questions.tags} IS NULL OR NOT (${questions.tags} && ARRAY[${sql.raw(EXCLUSIVE_QUESTION_TAGS.map(t => `'${t}'`).join(','))}]::text[]))`
       : sql`true`
 
-  // Obtener todos los mapeos de topic_scope para esta oposición
-  const allMappings = await db
+  // FIX N+1 (1 may 2026): el código anterior iteraba themeId × mappings y
+  // ejecutaba 1 query por mapping (130-300 queries serializadas, ~5-15s en
+  // tablas grandes). Ahora UNA sola query agregada con GROUP BY topic_number,
+  // mismo patrón que lib/api/random-test/queries.ts:40-87.
+  //
+  // Mantiene comportamiento del original: skip mappings con article_numbers
+  // NULL (lo conseguimos con la condición `= ANY(...)` que excluye nulls).
+  // Mantiene tagFilter para filtrar preguntas por exclusividad de oposición.
+  const countsResult = await db
     .select({
       topicNumber: topics.topicNumber,
-      articleNumbers: topicScope.articleNumbers,
-      lawId: topicScope.lawId,
+      total: sql<number>`count(DISTINCT ${questions.id})::int`,
     })
-    .from(topicScope)
-    .innerJoin(topics, eq(topicScope.topicId, topics.id))
+    .from(topics)
+    .innerJoin(topicScope, eq(topicScope.topicId, topics.id))
+    .innerJoin(articles, and(
+      eq(articles.lawId, topicScope.lawId),
+      sql`${articles.articleNumber} = ANY(${topicScope.articleNumbers})`,
+    ))
+    .innerJoin(questions, and(
+      eq(questions.primaryArticleId, articles.id),
+      eq(questions.isActive, true),
+      tagFilter,
+    ))
     .where(eq(topics.positionType, positionType))
+    .groupBy(topics.topicNumber)
 
-  // Agrupar mappings por topic_number
-  const mappingsByTopic = new Map<number, Array<{ articleNumbers: string[] | null; lawId: string | null }>>()
-  for (const mapping of allMappings) {
-    if (!mapping.topicNumber) continue
-    if (!mappingsByTopic.has(mapping.topicNumber)) {
-      mappingsByTopic.set(mapping.topicNumber, [])
+  // Map topic_number → count para lookup O(1)
+  const countsByTopicNumber = new Map<number, number>()
+  for (const r of countsResult) {
+    if (r.topicNumber != null) {
+      countsByTopicNumber.set(r.topicNumber, Number(r.total))
     }
-    mappingsByTopic.get(mapping.topicNumber)!.push({
-      articleNumbers: mapping.articleNumbers,
-      lawId: mapping.lawId,
-    })
   }
 
-  // Para cada tema en el rango, contar preguntas
+  // Llenar counts para TODOS los themeIds del rango (incluyendo 0 si no hay)
   for (let themeId = themeRange.min; themeId <= themeRange.max; themeId++) {
     const topicNumber = getTopicNumberFromThemeId(themeId, oposicion)
-    const topicMappings = mappingsByTopic.get(topicNumber)
-
-    if (!topicMappings || topicMappings.length === 0) {
-      counts[themeId.toString()] = 0
-      continue
-    }
-
-    // Contar preguntas para este tema
-    let totalCount = 0
-    for (const mapping of topicMappings) {
-      if (!mapping.lawId || !mapping.articleNumbers?.length) continue
-
-      const questionCount = await db
-        .select({ count: sql<number>`count(*)` })
-        .from(questions)
-        .innerJoin(articles, eq(questions.primaryArticleId, articles.id))
-        .where(and(
-          eq(questions.isActive, true),
-          eq(articles.lawId, mapping.lawId),
-          inArray(articles.articleNumber, mapping.articleNumbers),
-          tagFilter,
-        ))
-
-      totalCount += Number(questionCount[0]?.count || 0)
-    }
-
-    counts[themeId.toString()] = totalCount
+    counts[themeId.toString()] = countsByTopicNumber.get(topicNumber) || 0
   }
 
   return counts
