@@ -17,7 +17,7 @@
 try { require('dotenv').config({ path: '.env.local' }) } catch {}
 
 const BASE_URL = process.argv[2] || 'https://www.vence.es'
-const CONCURRENT = 8      // peticiones simultáneas
+const CONCURRENT = 3      // peticiones simultáneas (8 saturaba BD con 963 SSR queries)
 const TIMEOUT_MS = 30_000 // 30s timeout por página
 
 // ============================================================================

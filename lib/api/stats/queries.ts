@@ -278,45 +278,43 @@ async function getRecentTests(db: ReturnType<typeof getDb>, userId: string): Pro
     .limit(1)
   const positionType = profileRow[0]?.targetOposicion?.replace(/-/g, '_') || 'auxiliar_administrativo_estado'
 
-  // Query principal con LEFT JOIN a topics para obtener el título del tema
-  const result = await db
-    .select({
-      id: tests.id,
-      title: tests.title,
-      temaNumber: tests.temaNumber,
-      score: sql<number>`COALESCE(${tests.score}::int, 0)`,
-      totalQuestions: sql<number>`COALESCE(${tests.totalQuestions}, 0)`,
-      completedAt: tests.completedAt,
-      timeSeconds: sql<number>`COALESCE(${tests.totalTimeSeconds}, 0)`,
-      topicTitle: sql<string | null>`(
-        SELECT t.title FROM topics t
-        WHERE t.topic_number = ${tests.temaNumber}
-          AND t.is_active = true
-        ORDER BY CASE WHEN t.position_type = ${positionType} THEN 0 ELSE 1 END
-        LIMIT 1
-      )`,
-      topicPositionType: sql<string | null>`(
-        SELECT t.position_type FROM topics t
-        WHERE t.topic_number = ${tests.temaNumber}
-          AND t.is_active = true
-        ORDER BY CASE WHEN t.position_type = ${positionType} THEN 0 ELSE 1 END
-        LIMIT 1
-      )`,
-      lawName: sql<string | null>`(
-        SELECT tq.law_name FROM test_questions tq
-        WHERE tq.test_id = ${tests.id}
-          AND tq.law_name IS NOT NULL
-        LIMIT 1
-      )`,
-    })
-    .from(tests)
-    .where(and(
-      eq(tests.userId, userId),
-      eq(tests.isCompleted, true),
-      isNotNull(tests.completedAt)
-    ))
-    .orderBy(desc(tests.completedAt))
-    .limit(10)
+  // Query principal con LEFT JOIN LATERAL a topics y test_questions
+  // Antes: 3 subqueries correladas (8.4s media por user con 55k filas).
+  // Ahora: LEFT JOIN LATERAL con Memoize de PostgreSQL (1.8ms). Misma lógica:
+  // - Prioriza el position_type del usuario para el título del tema
+  // - Fallback a otra oposición si el tema no existe en la del usuario
+  // - law_name de la primera test_question del test
+  const result = await db.execute(
+    sql`SELECT
+      tests.id, tests.title, tests.tema_number as "temaNumber",
+      COALESCE(tests.score::int, 0) as score,
+      COALESCE(tests.total_questions, 0) as "totalQuestions",
+      tests.completed_at as "completedAt",
+      COALESCE(tests.total_time_seconds, 0) as "timeSeconds",
+      topic_info.title as "topicTitle",
+      topic_info.position_type as "topicPositionType",
+      tq_law.law_name as "lawName"
+    FROM tests
+    LEFT JOIN LATERAL (
+      SELECT t.title, t.position_type FROM topics t
+      WHERE t.topic_number = tests.tema_number AND t.is_active = true
+      ORDER BY CASE WHEN t.position_type = ${positionType} THEN 0 ELSE 1 END
+      LIMIT 1
+    ) topic_info ON true
+    LEFT JOIN LATERAL (
+      SELECT tq.law_name FROM test_questions tq
+      WHERE tq.test_id = tests.id AND tq.law_name IS NOT NULL
+      LIMIT 1
+    ) tq_law ON true
+    WHERE tests.user_id = ${userId} AND tests.is_completed = true AND tests.completed_at IS NOT NULL
+    ORDER BY tests.completed_at DESC
+    LIMIT 10`
+  ) as unknown as Array<{
+    id: string; title: string | null; temaNumber: number | null;
+    score: number; totalQuestions: number; completedAt: string | null;
+    timeSeconds: number; topicTitle: string | null; topicPositionType: string | null;
+    lawName: string | null;
+  }>
 
   return result.map(row => ({
     id: row.id,
@@ -342,21 +340,22 @@ async function getThemePerformance(db: ReturnType<typeof getDb>, userId: string)
     .limit(1)
   const positionType = profileRow[0]?.targetOposicion?.replace(/-/g, '_') || 'auxiliar_administrativo_estado'
 
-  // Leer de caché con JOIN a topics para obtener título y position_type reales
+  // Leer de caché con LEFT JOIN LATERAL a topics para obtener título y position_type reales
+  // Antes: 2 subqueries correladas por fila. Ahora: LEFT JOIN LATERAL con Memoize.
   try {
     const cacheResult = await db.execute(
       sql`SELECT
           c.topic_number, c.topic_title, c.total_questions, c.correct_answers,
           c.accuracy, c.average_time, c.last_practiced,
-          (SELECT t.title FROM topics t
-           WHERE t.topic_number = c.topic_number AND t.is_active = true
-           ORDER BY CASE WHEN t.position_type = ${positionType} THEN 0 ELSE 1 END
-           LIMIT 1) AS resolved_title,
-          (SELECT t.position_type FROM topics t
-           WHERE t.topic_number = c.topic_number AND t.is_active = true
-           ORDER BY CASE WHEN t.position_type = ${positionType} THEN 0 ELSE 1 END
-           LIMIT 1) AS topic_position_type
+          topic_info.title AS resolved_title,
+          topic_info.position_type AS topic_position_type
         FROM user_theme_performance_cache c
+        LEFT JOIN LATERAL (
+          SELECT t.title, t.position_type FROM topics t
+          WHERE t.topic_number = c.topic_number AND t.is_active = true
+          ORDER BY CASE WHEN t.position_type = ${positionType} THEN 0 ELSE 1 END
+          LIMIT 1
+        ) topic_info ON true
         WHERE c.user_id = ${userId}::uuid
         ORDER BY c.topic_number`
     )
