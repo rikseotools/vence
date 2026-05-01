@@ -181,7 +181,46 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
     return /network|fetch|Load failed/i.test(msg)
   }
 
-  // 🎯 OPTIMIZADA: Cargar perfil con timeout, reintentos y mejor manejo
+  // Mapear respuesta camelCase de /api/profile a snake_case de UserProfileRow
+  function apiProfileToRow(data: Record<string, unknown>): UserProfileRow {
+    return {
+      id: data.id as string,
+      email: data.email as string,
+      full_name: (data.fullName ?? null) as string | null,
+      avatar_url: (data.avatarUrl ?? null) as string | null,
+      preferred_language: (data.preferredLanguage ?? null) as string | null,
+      study_goal: (data.studyGoal ?? null) as number | null,
+      created_at: (data.createdAt ?? null) as string | null,
+      updated_at: (data.updatedAt ?? null) as string | null,
+      target_oposicion: (data.targetOposicion ?? null) as string | null,
+      target_oposicion_data: data.targetOposicionData ?? null,
+      first_oposicion_detected_at: (data.firstOposicionDetectedAt ?? null) as string | null,
+      is_active_student: (data.isActiveStudent ?? null) as boolean | null,
+      first_test_completed_at: (data.firstTestCompletedAt ?? null) as string | null,
+      plan_type: (data.planType ?? null) as string | null,
+      registration_date: (data.registrationDate ?? null) as string | null,
+      trial_end_date: (data.trialEndDate ?? null) as string | null,
+      stripe_customer_id: (data.stripeCustomerId ?? null) as string | null,
+      registration_source: (data.registrationSource ?? null) as string | null,
+      requires_payment: (data.requiresPayment ?? null) as boolean | null,
+      nickname: (data.nickname ?? null) as string | null,
+      age: (data.age ?? null) as number | null,
+      gender: (data.gender ?? null) as string | null,
+      daily_study_hours: (data.dailyStudyHours ?? null) as number | null,
+      onboarding_completed_at: (data.onboardingCompletedAt ?? null) as string | null,
+      ciudad: (data.ciudad ?? null) as string | null,
+      onboarding_skip_count: (data.onboardingSkipCount ?? null) as number | null,
+      onboarding_last_skip_at: (data.onboardingLastSkipAt ?? null) as string | null,
+      registration_ip: (data.registrationIp ?? null) as string | null,
+      registration_funnel: (data.registrationFunnel ?? null) as string | null,
+      registration_url: (data.registrationUrl ?? null) as string | null,
+    }
+  }
+
+  // 🎯 OPTIMIZADA: Cargar perfil via /api/profile (Drizzle) en vez de supabase.from()
+  // Motivo: el SDK de Supabase deadlockeaba cuando había token refresh simultáneo —
+  // la query PostgREST se quedaba colgada sin respetar el AbortController.
+  // fetch() estándar SÍ respeta AbortController correctamente.
   const loadUserProfile = useCallback(async (userId: string, retryCount = 0): Promise<UserProfileRow | null> => {
     const MAX_RETRIES = 3
 
@@ -191,8 +230,7 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
     // estaba activo, haciendo que components como UserAvatar vieran isPremium=false
     // pese a que el perfil estaba cargándose correctamente.
     // Nota: retryCount > 0 salta el singleflight porque es recursión interna.
-    // Timeout: si la Promise lleva más de 15s sin resolver, ignorarla y reintentar
-    // (previene bloqueo infinito cuando la query original se queda colgada).
+    // Timeout: si la Promise lleva más de 5s sin resolver, ignorarla y reintentar.
     if (retryCount === 0) {
       const existing = inflightProfileLoadsRef.current.get(userId)
       if (existing) {
@@ -204,7 +242,6 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
         }, 5_000))
         const result = await Promise.race([existing, timeout])
         if (result !== null) return result
-        // Timeout: la Promise original no resolvió, continuar con nueva carga
       }
     }
 
@@ -214,9 +251,6 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
       return userProfileRef.current
     }
 
-    // Wrapper interno con el trabajo real. El Promise de esta IIFE se guarda en
-    // el Map de singleflight (solo en la llamada inicial, retryCount === 0) para
-    // que llamadas concurrentes lo compartan.
     const doWork = async (): Promise<UserProfileRow | null> => {
       if (retryCount === 0) {
         updateProfileLoading(true)
@@ -225,26 +259,21 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
       try {
       console.log(`📄 Cargando perfil del usuario... ${retryCount > 0 ? `(intento ${retryCount + 1}/${MAX_RETRIES})` : ''}`, { userId })
 
-      // 🔧 FIX: Timeout más largo para consultas lentas + AbortController
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 8000) // 8 segundos
+      const timeoutId = setTimeout(() => controller.abort(), 8000)
 
-      // 🔭 Telemetría: medimos latencia de la query a user_profiles.
-      // Si tarda >3s la marcamos como info en validation_error_logs — así
-      // detectamos usuarios con red lenta (Luisa) antes de que lleguen al timeout.
       const startedAt = Date.now()
 
-      const { data: profile, error } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('id', userId)
-        .abortSignal(controller.signal)
-        .single()
+      // 🔄 fetch() estándar en vez de supabase.from() — evita deadlock con token refresh
+      const response = await fetch(`/api/profile?userId=${encodeURIComponent(userId)}`, {
+        signal: controller.signal,
+        headers: { 'Accept': 'application/json' },
+      })
 
       clearTimeout(timeoutId)
 
       const elapsedMs = Date.now() - startedAt
-      if (elapsedMs > 3000 && !error) {
+      if (elapsedMs > 3000 && response.ok) {
         logClientError('auth/load-user-profile', new Error(`slow profile load ${elapsedMs}ms`), {
           component: 'AuthContext.loadUserProfile',
           userId,
@@ -252,98 +281,53 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
         })
       }
 
-      if (error) {
-        // Si es abort/timeout, reintentar si no hemos excedido el límite
-        if ((error as any).name === 'AbortError' || error.code === 'ABORT_ERR') {
-          if (retryCount < MAX_RETRIES - 1) {
-            console.warn(`⏱️ Timeout en consulta de perfil, reintentando... (${retryCount + 1}/${MAX_RETRIES})`)
-            const delay = 1000 * Math.pow(2, retryCount) // 1s, 2s, 4s
-            await new Promise(resolve => setTimeout(resolve, delay))
-            return loadUserProfile(userId, retryCount + 1)
-          }
-          console.warn('⏱️ Timeout en consulta de perfil (8s) tras reintentos, continuando sin perfil')
-          // 🔭 Caso crítico: tras agotar reintentos no conseguimos cargar el perfil.
-          // El usuario verá la UI como no-Premium aunque lo sea. Logueamos como
-          // warning para detectarlo proactivamente.
-          logClientError('auth/load-user-profile', new Error('profile load timeout after retries'), {
+      // Perfil no encontrado (404) — equivalente al antiguo PGRST116
+      if (response.status === 404) {
+        if (userProfileRef.current && userProfileRef.current.id === userId) {
+          console.log('📝 404 transitorio para perfil cacheado — manteniendo cache')
+          logClientError('auth/load-user-profile', new Error('404 transient — kept cached profile'), {
             component: 'AuthContext.loadUserProfile',
             userId,
-            severity: 'warning',
+            severity: 'info',
           })
-          updateUserProfile(null)
-          return null
+          return userProfileRef.current
         }
-
-        // PGRST116 = "no rows returned". Dos casos posibles:
-        //   A) Usuario nuevo sin perfil → caller llama a ensureUserProfile que lo crea.
-        //   B) Blip intermitente de Supabase (RLS lag, edge cache, JWT en el límite)
-        //      para un perfil que SÍ existe — caso Luisa (14/04/2026).
-        //
-        // Si tenemos cache previo del MISMO userId, asumimos blip transitorio (caso B)
-        // y devolvemos el cache para no romper la UI Premium. Para usuarios genuinamente
-        // nuevos, userProfileRef.current es null y seguimos el flujo normal de creación.
-        //
-        // Antes del fix: cualquier PGRST116 reseteaba a null → "phantom logout" Premium.
-        if (error.code === 'PGRST116') {
-          if (userProfileRef.current && userProfileRef.current.id === userId) {
-            console.log('📝 PGRST116 transitorio para perfil cacheado — manteniendo cache')
-            logClientError('auth/load-user-profile', new Error('PGRST116 transient — kept cached profile'), {
-              component: 'AuthContext.loadUserProfile',
-              userId,
-              severity: 'info',
-            })
-            return userProfileRef.current
-          }
-          // Sin cache: reintentar UNA vez con backoff corto antes de asumir
-          // que el perfil realmente no existe (caso A → crear via ensureUserProfile)
-          if (retryCount === 0) {
-            console.log('📝 PGRST116 sin cache — reintentando una vez antes de crear perfil')
-            await new Promise(resolve => setTimeout(resolve, 300))
-            return loadUserProfile(userId, retryCount + 1)
-          }
-          console.log('📝 Perfil no existe (tras reintento), será creado automáticamente')
-          return null
+        if (retryCount === 0) {
+          console.log('📝 Perfil no encontrado — reintentando una vez antes de crear perfil')
+          await new Promise(resolve => setTimeout(resolve, 300))
+          return loadUserProfile(userId, retryCount + 1)
         }
-
-        // 🆕 Error de red: reintentar
-        if (isRetriableNetworkError(error)) {
-          if (retryCount < MAX_RETRIES - 1) {
-            console.warn(`🔄 Error de red cargando perfil, reintentando... (${retryCount + 1}/${MAX_RETRIES})`)
-            const delay = 1000 * Math.pow(2, retryCount)
-            await new Promise(resolve => setTimeout(resolve, delay))
-            return loadUserProfile(userId, retryCount + 1)
-          }
-        }
-
-        console.error('❌ Error cargando perfil:', {
-          message: error?.message,
-          code: error?.code,
-          details: error?.details,
-          hint: error?.hint,
-          error: error
-        })
-        // 🔭 Error de BD (no timeout, no PGRST116): puede ser RLS, permisos, etc.
-        // Filtrar AbortError naturales del flujo OAuth/navegación (browsing context
-        // going away, signal aborted sin razón, etc). No son bugs; ocurren siempre
-        // en registro por Google → redirect → refresh. Ver análisis 15/04/2026.
-        const msg = String(error?.message || '')
-        const isNaturalAbort =
-          error?.name === 'AbortError' ||
-          /browsing context is going away|signal is aborted|operation was aborted|Fetch is aborted/i.test(msg)
-        if (!isNaturalAbort) {
-          logClientError('auth/load-user-profile', new Error(`db error: ${error?.message || error?.code || 'unknown'}`), {
-            component: 'AuthContext.loadUserProfile',
-            userId,
-            severity: 'warning',
-          })
-        }
+        console.log('📝 Perfil no existe (tras reintento), será creado automáticamente')
         return null
       }
 
-      if (profile) {
+      // Error del servidor
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => 'unknown')
+        console.error('❌ Error cargando perfil:', { status: response.status, body: errorText })
+
+        if (retryCount < MAX_RETRIES - 1) {
+          console.warn(`🔄 Error HTTP ${response.status} cargando perfil, reintentando... (${retryCount + 1}/${MAX_RETRIES})`)
+          const delay = 1000 * Math.pow(2, retryCount)
+          await new Promise(resolve => setTimeout(resolve, delay))
+          return loadUserProfile(userId, retryCount + 1)
+        }
+
+        logClientError('auth/load-user-profile', new Error(`HTTP ${response.status}: ${errorText}`), {
+          component: 'AuthContext.loadUserProfile',
+          userId,
+          severity: 'warning',
+        })
+        return null
+      }
+
+      const json = await response.json()
+
+      if (json.success && json.data) {
+        const profile = apiProfileToRow(json.data)
         console.log('✅ Perfil cargado:', profile.email, 'Tipo:', profile.plan_type)
-        updateUserProfile(profile as unknown as UserProfileRow)
-        return profile as unknown as UserProfileRow
+        updateUserProfile(profile)
+        return profile
       }
 
       return null
@@ -351,18 +335,30 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
     } catch (error: any) {
       console.error('❌ Error en loadUserProfile:', error)
 
-      // 🆕 Reintentar en errores de red/timeout
+      // Abort/timeout
+      if (error.name === 'AbortError') {
+        if (retryCount < MAX_RETRIES - 1) {
+          console.warn(`⏱️ Timeout en consulta de perfil, reintentando... (${retryCount + 1}/${MAX_RETRIES})`)
+          const delay = 1000 * Math.pow(2, retryCount)
+          await new Promise(resolve => setTimeout(resolve, delay))
+          return loadUserProfile(userId, retryCount + 1)
+        }
+        console.warn('⏱️ Timeout en consulta de perfil (8s) tras reintentos, continuando sin perfil')
+        logClientError('auth/load-user-profile', new Error('profile load timeout after retries'), {
+          component: 'AuthContext.loadUserProfile',
+          userId,
+          severity: 'warning',
+        })
+        updateUserProfile(null)
+        return null
+      }
+
+      // Error de red: reintentar
       if (retryCount < MAX_RETRIES - 1 && isRetriableNetworkError(error)) {
         console.warn(`🔄 Reintentando loadUserProfile... (${retryCount + 1}/${MAX_RETRIES})`)
         const delay = 1000 * Math.pow(2, retryCount)
         await new Promise(resolve => setTimeout(resolve, delay))
         return loadUserProfile(userId, retryCount + 1)
-      }
-
-      // Si es abort/timeout final, continuar sin perfil
-      if (error.name === 'AbortError') {
-        console.warn('⏱️ Timeout en loadUserProfile tras reintentos, continuando...')
-        updateUserProfile(null)
       }
 
       return null
@@ -374,13 +370,9 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
     } // fin doWork
 
     // Registrar la Promise en el Map solo para la llamada raíz (retryCount === 0).
-    // Los retries internos ejecutan doWork() directamente sin singleflight.
     if (retryCount === 0) {
       const promise = doWork()
       inflightProfileLoadsRef.current.set(userId, promise)
-      // Limpiar la entrada cuando la promesa termine (éxito o fallo).
-      // Comprobamos identidad antes de borrar para evitar borrar otra carga que
-      // se haya iniciado mientras tanto (defensa contra race conditions).
       promise.finally(() => {
         if (inflightProfileLoadsRef.current.get(userId) === promise) {
           inflightProfileLoadsRef.current.delete(userId)
@@ -389,7 +381,7 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
       return promise
     }
     return doWork()
-  }, [supabase])
+  }, [])
 
   // 🎯 NUEVA FUNCIÓN: Crear/actualizar perfil según fuente
   // 🔧 FIX: Verificar si el perfil ya existe ANTES de llamar RPCs para no resetear plan_type

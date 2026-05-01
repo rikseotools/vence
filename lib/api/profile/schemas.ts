@@ -44,7 +44,20 @@ export const profileDataSchema = z.object({
   createdAt: z.string().nullable().optional(),
   updatedAt: z.string().nullable().optional(),
   isActiveStudent: z.boolean().nullable().optional(),
-  stripeCustomerId: z.string().nullable().optional()
+  stripeCustomerId: z.string().nullable().optional(),
+  registrationSource: z.string().nullable().optional(),
+  requiresPayment: z.boolean().nullable().optional(),
+  registrationDate: z.string().nullable().optional(),
+  trialEndDate: z.string().nullable().optional(),
+  firstOposicionDetectedAt: z.string().nullable().optional(),
+  firstTestCompletedAt: z.string().nullable().optional(),
+  onboardingCompletedAt: z.string().nullable().optional(),
+  onboardingSkipCount: z.number().nullable().optional(),
+  onboardingLastSkipAt: z.string().nullable().optional(),
+  registrationIp: z.string().nullable().optional(),
+  registrationFunnel: z.string().nullable().optional(),
+  registrationUrl: z.string().nullable().optional(),
+  adminNotes: z.string().nullable().optional()
 })
 
 export type ProfileData = z.infer<typeof profileDataSchema>

@@ -21,26 +21,7 @@ export async function getProfile(
     const db = getDb()
 
     const [profile] = await db
-      .select({
-        id: userProfiles.id,
-        email: userProfiles.email,
-        fullName: userProfiles.fullName,
-        avatarUrl: userProfiles.avatarUrl,
-        preferredLanguage: userProfiles.preferredLanguage,
-        studyGoal: userProfiles.studyGoal,
-        targetOposicion: userProfiles.targetOposicion,
-        targetOposicionData: userProfiles.targetOposicionData,
-        nickname: userProfiles.nickname,
-        age: userProfiles.age,
-        gender: userProfiles.gender,
-        ciudad: userProfiles.ciudad,
-        dailyStudyHours: userProfiles.dailyStudyHours,
-        planType: userProfiles.planType,
-        createdAt: userProfiles.createdAt,
-        updatedAt: userProfiles.updatedAt,
-        isActiveStudent: userProfiles.isActiveStudent,
-        stripeCustomerId: userProfiles.stripeCustomerId
-      })
+      .select()
       .from(userProfiles)
       .where(eq(userProfiles.id, params.userId))
       .limit(1)
@@ -92,26 +73,7 @@ export async function updateProfile(
       .update(userProfiles)
       .set(updateData)
       .where(eq(userProfiles.id, params.userId))
-      .returning({
-        id: userProfiles.id,
-        email: userProfiles.email,
-        fullName: userProfiles.fullName,
-        avatarUrl: userProfiles.avatarUrl,
-        preferredLanguage: userProfiles.preferredLanguage,
-        studyGoal: userProfiles.studyGoal,
-        targetOposicion: userProfiles.targetOposicion,
-        targetOposicionData: userProfiles.targetOposicionData,
-        nickname: userProfiles.nickname,
-        age: userProfiles.age,
-        gender: userProfiles.gender,
-        ciudad: userProfiles.ciudad,
-        dailyStudyHours: userProfiles.dailyStudyHours,
-        planType: userProfiles.planType,
-        createdAt: userProfiles.createdAt,
-        updatedAt: userProfiles.updatedAt,
-        isActiveStudent: userProfiles.isActiveStudent,
-        stripeCustomerId: userProfiles.stripeCustomerId
-      })
+      .returning()
 
     if (!updated) {
       return {
