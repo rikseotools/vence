@@ -44,8 +44,21 @@ export function logValidationError(input: ValidationErrorLogInput): void {
 
   // Ejecutar async sin await — fire-and-forget
   _insertLog(input).catch((err) => {
-    // Si falla el logging mismo, solo console (no queremos loops)
-    console.error('⚠️ [validation-error-log] No se pudo guardar error log:', err?.message)
+    // Si falla el logging mismo, solo console (no queremos loops).
+    // Drizzle wrappea el error postgres-js, así que message es genérico
+    // ("Failed query: insert..."); el detalle real está en err.cause.
+    const cause = err?.cause
+    console.error('⚠️ [validation-error-log] No se pudo guardar error log:', {
+      message: err?.message?.slice(0, 200),
+      causeMessage: cause?.message,
+      causeCode: cause?.code,
+      causeDetail: cause?.detail,
+      causeColumn: cause?.column,
+      causeConstraint: cause?.constraint,
+      endpoint: input.endpoint,
+      errorType: input.errorType,
+      severity: input.severity,
+    })
   })
 }
 
