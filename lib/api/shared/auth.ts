@@ -109,7 +109,7 @@ const ADMIN_EMAILS = [
   'manueltrader@gmail.com',
 ]
 
-function isAdminEmail(email: string | undefined): boolean {
+export function isAdminEmail(email: string | undefined): boolean {
   if (!email) return false
   return ADMIN_EMAILS.includes(email) || email.endsWith('@vencemitfg.es')
 }
