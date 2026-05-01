@@ -8,6 +8,7 @@ import {
   questions,
   psychometricQuestions,
   userProfiles,
+  notificationLogs,
 } from '@/db/schema'
 import { eq, and } from 'drizzle-orm'
 import type {
@@ -324,12 +325,37 @@ export async function resolveDispute(
 
     console.log(`\u2705 [Dispute] ${questionType} ${disputeId} → ${status}`)
 
+    // 3.5 INSERT campana en notification_logs
+    let bellSent = false
+    if (trimmedResponse) {
+      try {
+        const preview =
+          trimmedResponse.length > 100
+            ? trimmedResponse.slice(0, 100) + '...'
+            : trimmedResponse
+        await db.insert(notificationLogs).values({
+          userId: userId!,
+          messageSent: `El equipo de Vence: "${preview}"`,
+          deliveryStatus: 'sent',
+          contextData: {
+            type: 'dispute_response',
+            title: 'Respuesta a tu impugnación',
+            dispute_id: disputeId,
+          },
+        })
+        bellSent = true
+      } catch (bellError) {
+        console.error(`[Dispute] Error insertando campana para ${disputeId}:`, bellError)
+      }
+    }
+
     // 4. Enviar email solo si hay respuesta real
     if (!trimmedResponse) {
       return {
         success: true,
         disputeId,
         status,
+        bellSent,
         emailSent: false,
         emailId: null,
         emailError: null,
@@ -343,6 +369,7 @@ export async function resolveDispute(
         success: true,
         disputeId,
         status,
+        bellSent,
         emailSent: false,
         emailId: null,
         emailError: null,
@@ -372,6 +399,7 @@ export async function resolveDispute(
           success: true,
           disputeId,
           status,
+          bellSent,
           emailSent: true,
           emailId: emailResult.emailId ?? null,
           emailError: null,
@@ -384,6 +412,7 @@ export async function resolveDispute(
           success: true,
           disputeId,
           status,
+          bellSent,
           emailSent: false,
           emailId: null,
           emailError: null,
@@ -395,6 +424,7 @@ export async function resolveDispute(
         success: true,
         disputeId,
         status,
+        bellSent,
         emailSent: false,
         emailId: null,
         emailError: ('error' in emailResult && emailResult.error) || 'Error desconocido enviando email',
@@ -406,6 +436,7 @@ export async function resolveDispute(
         success: true,
         disputeId,
         status,
+        bellSent,
         emailSent: false,
         emailId: null,
         emailError: emailError instanceof Error ? emailError.message : 'Excepcion desconocida enviando email',

@@ -103,6 +103,7 @@ export const resolveDisputeResponseSchema = z.object({
   success: z.literal(true),
   disputeId: z.string().uuid(),
   status: disputeResolutionStatusSchema,
+  bellSent: z.boolean(),
   // Email puede no enviarse por dos motivos:
   //   - adminResponse vacio (cierre generico)         → emailSent=false, emailSkipReason='empty_response'
   //   - usuario sin email                              → emailSent=false, emailSkipReason='no_user_email'
