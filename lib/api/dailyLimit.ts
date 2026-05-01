@@ -29,6 +29,20 @@ function getSupabaseAdmin() {
   return _supabaseAdmin
 }
 
+// ============================================
+// CACHE in-memory PREMIUM-ONLY (TTL 60s)
+// ============================================
+// Solo cachea getDailyLimitStatus cuando isPremium=true (no tienen límite,
+// cero riesgo de bypass). Free users SIEMPRE consultan BD para mantener
+// anti-fraud preciso. Cache in-memory por lambda (no shared) — no toca
+// Vercel Data Cache.
+//
+// Edge case: si user pierde premium (downgrade Stripe), cache devuelve
+// isPremium=true durante hasta 60s. Aceptable porque downgrade post-checkout
+// es muy raro y la ventana es corta.
+const dailyLimitPremiumCache = new Map<string, { data: DailyLimitResult; t: number }>()
+const DAILY_LIMIT_CACHE_TTL_MS = 60_000
+
 /**
  * Extract the authenticated userId from the Bearer token.
  * Returns null if no token or invalid — never throws.
@@ -178,6 +192,12 @@ export async function getDailyLimitStatus(
     return { allowed: true, questionsToday: 0, questionsRemaining: defaultLimit, dailyLimit: defaultLimit, isPremium: false, isGraduated: false, tierLabel: null }
   }
 
+  // Cache hit (premium only): ahorra ~100-200ms del round-trip a BD
+  const cached = dailyLimitPremiumCache.get(userId)
+  if (cached && cached.data.isPremium && Date.now() - cached.t < DAILY_LIMIT_CACHE_TTL_MS) {
+    return cached.data
+  }
+
   try {
     // Get the personalized limit for this user
     const dynamicLimit = await getDynamicLimit(userId)
@@ -202,7 +222,7 @@ export async function getDailyLimitStatus(
     const remaining = Math.max(0, dynamicLimit.dailyLimit - questionsToday)
     const isLimitReached = questionsToday >= dynamicLimit.dailyLimit
 
-    return {
+    const returnValue: DailyLimitResult = {
       allowed: !isLimitReached,
       questionsToday,
       questionsRemaining: remaining,
@@ -211,10 +231,26 @@ export async function getDailyLimitStatus(
       isGraduated: dynamicLimit.isGraduated,
       tierLabel: dynamicLimit.tierLabel,
     }
+
+    // Cachear SOLO si es premium (sin límite que respetar → cero riesgo)
+    if (returnValue.isPremium) {
+      dailyLimitPremiumCache.set(userId, { data: returnValue, t: Date.now() })
+    }
+
+    return returnValue
   } catch (err) {
     console.error('❌ [DailyLimit] Unexpected error:', err)
     return { allowed: true, questionsToday: 0, questionsRemaining: defaultLimit, dailyLimit: defaultLimit, isPremium: false, isGraduated: false, tierLabel: null }
   }
+}
+
+/**
+ * Invalida el cache premium para un user (usar tras downgrade Stripe).
+ * NO necesario para flujos normales — el TTL 60s lo cubre. Llamar solo si
+ * quieres invalidación inmediata (ej. webhook Stripe subscription.deleted).
+ */
+export function invalidateDailyLimitPremiumCache(userId: string): void {
+  dailyLimitPremiumCache.delete(userId)
 }
 
 // Re-export for convenience
