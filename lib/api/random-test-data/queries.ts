@@ -2,6 +2,7 @@
 import { getDb } from '@/db/client'
 import { topics, topicScope, laws, questions, articles, tests, testQuestions } from '@/db/schema'
 import { eq, and, sql, inArray, gte } from 'drizzle-orm'
+import { unstable_cache } from 'next/cache'
 import { getOposicionByPositionType, EXCLUSIVE_QUESTION_TAGS } from '@/lib/config/oposiciones'
 import type {
   GetRandomTestDataResponse,
@@ -46,8 +47,9 @@ export async function getRandomTestData(
     const positionType = OPOSICION_TO_POSITION_TYPE[oposicion]
     const themeRange = VALID_THEME_IDS[oposicion]
 
-    // 1️⃣ OBTENER CONTEO DE PREGUNTAS POR TEMA
-    const themeQuestionCounts = await getThemeQuestionCounts(db, oposicion, positionType, themeRange)
+    // 1️⃣ OBTENER CONTEO DE PREGUNTAS POR TEMA (cache compartido entre todos
+    // los users de la misma oposición — el conteo no depende de userId)
+    const themeQuestionCounts = await getThemeQuestionCountsCached(oposicion, positionType, themeRange)
 
     // 2️⃣ OBTENER ESTADÍSTICAS DEL USUARIO (si hay userId)
     let userStats: UserThemeStats | undefined
@@ -78,14 +80,19 @@ export async function getRandomTestData(
 }
 
 /**
- * Obtiene el conteo de preguntas por tema
+ * Obtiene el conteo de preguntas por tema.
+ *
+ * Args sin `db` (lo obtiene internamente) para que sean serializables y
+ * sirvan como cache key del wrapper getThemeQuestionCountsCached. Cada
+ * combinación (oposicion, positionType, themeRange) tiene su propia entrada
+ * de cache en Vercel Data Cache.
  */
-async function getThemeQuestionCounts(
-  db: ReturnType<typeof getDb>,
+async function getThemeQuestionCountsInternal(
   oposicion: OposicionKey,
   positionType: string,
   themeRange: { min: number; max: number }
 ): Promise<ThemeQuestionCounts> {
+  const db = getDb()
   const counts: ThemeQuestionCounts = {}
 
   // 🏷️ Tag filter (NULL-safe: tags IS NULL no debe excluir preguntas)
@@ -140,6 +147,32 @@ async function getThemeQuestionCounts(
 
   return counts
 }
+
+/**
+ * Versión cacheada (TTL 1h, tag 'test-counts').
+ *
+ * El conteo de preguntas por tema NO depende del usuario — todos los users
+ * de la misma oposición ven los mismos counts. Antes el cache solo aplicaba
+ * cuando !userId (linea 38), dejando 99% de hits (users logueados) sin
+ * cachear → 100k hits = 100k queries idénticas a BD.
+ *
+ * Ahora cache compartido. Hit ratio esperado: ~99.99% en sesiones reales.
+ * TTL 1h como red de seguridad si admin añade preguntas y olvida invalidar.
+ *
+ * Invalidar manualmente cuando admin añade/desactiva preguntas:
+ *   revalidateTag('test-counts') o
+ *   curl POST /api/admin/revalidate -d '{"tag":"test-counts"}'
+ *
+ * El tag 'test-counts' es compartido con lib/api/random-test/queries.ts:78-87
+ * (otra función `getThemeQuestionCounts` similar). Una invalidación afecta
+ * a ambos cachés — comportamiento correcto: si añaden preguntas, ambos
+ * deben refrescarse.
+ */
+const getThemeQuestionCountsCached = unstable_cache(
+  getThemeQuestionCountsInternal,
+  ['rtd-theme-question-counts-v1'],
+  { revalidate: 3600, tags: ['test-counts'] }
+)
 
 /**
  * Obtiene las estadísticas del usuario por tema (últimos 6 meses)
