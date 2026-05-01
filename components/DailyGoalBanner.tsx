@@ -6,6 +6,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useDailyGoal } from '../hooks/useDailyGoal'
+import { getAuthHeaders } from '../lib/api/authHeaders'
 
 export default function DailyGoalBanner() {
   const { user, isPremium } = useAuth() as any
@@ -104,7 +105,7 @@ export default function DailyGoalBanner() {
     try {
       await fetch('/api/profile', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...(await getAuthHeaders()), 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user.id, data: { studyGoal: goal } })
       })
       window.dispatchEvent(new CustomEvent('profileUpdated'))

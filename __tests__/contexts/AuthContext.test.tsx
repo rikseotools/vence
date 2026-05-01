@@ -41,6 +41,10 @@ jest.mock('../../utils/googleAds', () => ({
 }))
 
 // Mock de logClientError
+jest.mock('../../lib/api/authHeaders', () => ({
+  getAuthHeaders: jest.fn().mockResolvedValue({}),
+}))
+
 jest.mock('../../lib/logClientError', () => ({
   logClientError: jest.fn(),
 }))
@@ -275,9 +279,9 @@ describe('AuthContext — INITIAL_SESSION refactor', () => {
     // Initially loading=true (before INITIAL_SESSION fires)
     expect(renders[0]?.loading).toBe(true)
 
-    // Fire INITIAL_SESSION (setTimeout(0)) and advance past profile delay
+    // Fire INITIAL_SESSION (setTimeout(0)), flush getAuthHeaders microtask, advance past profile delay
     await act(async () => {
-      jest.advanceTimersByTime(200)
+      await jest.advanceTimersByTimeAsync(500)
     })
 
     // After profile loads, loading should be false

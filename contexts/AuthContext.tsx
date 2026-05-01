@@ -12,6 +12,7 @@ import { GoogleAdsEvents } from '../utils/googleAds'
 import { useSessionControl } from '../hooks/useSessionControl'
 import SessionWarningModal from '../components/SessionWarningModal'
 import { logClientError } from '../lib/logClientError'
+import { getAuthHeaders } from '../lib/api/authHeaders'
 
 interface AccessCheckResult {
   can_access: boolean
@@ -267,7 +268,7 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
       // 🔄 fetch() estándar en vez de supabase.from() — evita deadlock con token refresh
       const response = await fetch(`/api/profile?userId=${encodeURIComponent(userId)}`, {
         signal: controller.signal,
-        headers: { 'Accept': 'application/json' },
+        headers: { ...(await getAuthHeaders()), 'Accept': 'application/json' },
       })
 
       clearTimeout(timeoutId)

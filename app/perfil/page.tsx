@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useOposicion } from '@/contexts/OposicionContext'
 import { ALL_OPOSICION_IDS, getOposicion } from '@/lib/config/oposiciones'
 import notificationTracker from '@/lib/services/notificationTracker'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 import CancellationFlow from '@/components/CancellationFlow'
 import OposicionChangeModal from '@/components/OposicionChangeModal'
 import type { User, SupabaseClient } from '@supabase/supabase-js'
@@ -1432,7 +1433,7 @@ function PerfilPageContent() {
 
       const response = await fetch('/api/profile', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...(await getAuthHeaders()), 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId: user.id,
           data: apiData
@@ -2649,7 +2650,7 @@ function PerfilPageContent() {
                               const oposicionData = selectedOp?.data || null
                               await fetch('/api/profile', {
                                 method: 'PUT',
-                                headers: { 'Content-Type': 'application/json' },
+                                headers: { ...(await getAuthHeaders()), 'Content-Type': 'application/json' },
                                 body: JSON.stringify({
                                   userId: user?.id,
                                   data: { targetOposicion: id, targetOposicionData: oposicionData }
