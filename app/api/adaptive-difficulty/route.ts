@@ -1,8 +1,11 @@
 // app/api/adaptive-difficulty/route.ts
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import { createClient } from '@supabase/supabase-js'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { AdaptiveDifficultyService } from '@/lib/services/adaptiveDifficulty'
+
+const userIdSchema = z.string().uuid()
 
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -18,8 +21,8 @@ async function _GET(request: NextRequest) {
     const action = searchParams.get('action')
     const questionId = searchParams.get('questionId')
 
-    if (!userId) {
-      return NextResponse.json({ error: 'userId is required' }, { status: 400 })
+    if (!userId || !userIdSchema.safeParse(userId).success) {
+      return NextResponse.json({ error: 'userId inválido o faltante (debe ser UUID)' }, { status: 400 })
     }
 
     switch (action) {
@@ -110,8 +113,8 @@ async function _POST(request: NextRequest) {
     const body = await request.json()
     const { action, userId } = body
 
-    if (!userId) {
-      return NextResponse.json({ error: 'userId is required' }, { status: 400 })
+    if (!userId || !userIdSchema.safeParse(userId).success) {
+      return NextResponse.json({ error: 'userId inválido o faltante (debe ser UUID)' }, { status: 400 })
     }
 
     switch (action) {

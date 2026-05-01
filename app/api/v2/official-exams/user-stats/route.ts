@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import { createClient } from '@supabase/supabase-js'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+
+const userIdSchema = z.string().uuid()
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -22,9 +25,9 @@ async function _GET(request: NextRequest) {
     const userId = searchParams.get('userId')
     const oposicion = searchParams.get('oposicion')
 
-    if (!userId) {
+    if (!userId || !userIdSchema.safeParse(userId).success) {
       return NextResponse.json(
-        { success: false, error: 'userId es requerido' },
+        { success: false, error: 'userId inválido o faltante (debe ser UUID)' },
         { status: 400 }
       )
     }

@@ -2,9 +2,12 @@
 // Reemplaza supabase.rpc('get_user_theme_stats') que tardaba 16s para heavy users.
 // Usa Drizzle con timeout de 10s + cache en memoria 5 min.
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import { getDb } from '@/db/client'
 import { sql } from 'drizzle-orm'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+
+const userIdSchema = z.string().uuid()
 
 interface ThemeStat {
   tema_number: number
@@ -23,8 +26,8 @@ const CACHE_TTL = 5 * 60 * 1000 // 5 minutos
 
 async function _GET(request: NextRequest) {
   const userId = request.nextUrl.searchParams.get('userId')
-  if (!userId) {
-    return NextResponse.json({ success: false, error: 'userId required' }, { status: 400 })
+  if (!userId || !userIdSchema.safeParse(userId).success) {
+    return NextResponse.json({ success: false, error: 'userId inválido o faltante (debe ser UUID)' }, { status: 400 })
   }
 
   // Check cache

@@ -34,8 +34,15 @@ async function _GET(request) {
       )
     }
 
-    // Si se proporciona userId, verificar propiedad del test
+    // Si se proporciona userId, verificar propiedad del test (validar UUID antes de tocar SQL)
     if (userId) {
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+      if (!uuidRegex.test(userId)) {
+        return NextResponse.json(
+          { success: false, error: 'userId inválido (debe ser UUID)' },
+          { status: 400 }
+        )
+      }
       const isOwner = await verifyTestOwnership(testId, userId)
       if (!isOwner) {
         return NextResponse.json(
