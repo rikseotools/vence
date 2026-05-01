@@ -241,6 +241,25 @@ supabase
   .eq('id', questionId);
 ```
 
+> **⚠️ INVALIDAR CACHE:** desde el commit que añadió `unstable_cache` a la
+> validation query (`lib/api/v2/answer-and-save/queries.ts`), el endpoint
+> `/api/v2/answer-and-save` cachea la respuesta correcta + explicación con
+> tag `'questions'` (TTL 1h). Tras un UPDATE manual a `questions` desde
+> script (sin pasar por `/api/v2/dispute/resolve`), invalidar el cache:
+>
+> ```bash
+> curl -X POST https://www.vence.es/api/admin/revalidate \
+>   -H "Content-Type: application/json" \
+>   -H "x-cron-secret: $CRON_SECRET" \
+>   -d '{"tag":"questions"}'
+> ```
+>
+> Si NO se invalida, los users verán la explicación / respuesta antigua
+> hasta máximo 1h (TTL). Cerrar la dispute via `/api/v2/dispute/resolve`
+> invalida automáticamente el tag — solo es problema si haces UPDATE
+> manual y luego cierras la dispute via UPDATE directo en BD (lo cual
+> NO se debe hacer, ver §6).
+
 ### 5.3 Vincular artículo (tabla `question_articles`)
 ```javascript
 supabase

@@ -11,6 +11,7 @@ import {
   notificationLogs,
 } from '@/db/schema'
 import { eq, and } from 'drizzle-orm'
+import { revalidateTag } from 'next/cache'
 import type {
   QuestionType,
   CreateDisputeRequest,
@@ -324,6 +325,18 @@ export async function resolveDispute(
     }
 
     console.log(`\u2705 [Dispute] ${questionType} ${disputeId} → ${status}`)
+
+    // 3.4 Invalidar cache server-side de validation queries (tag 'questions').
+    // Resolver/rechazar una dispute correlaciona con que la pregunta haya sido
+    // editada antes (correct_option/explanation/article_id) segun
+    // docs/maintenance/impugnaciones-claude-code.md secciones 5.2-5.4.
+    // Invalidamos 'questions' aqui para que la siguiente lectura sea fresca,
+    // sin esperar al TTL de 1h del cache.
+    //
+    // Para UPDATEs DIRECTOS a questions/psychometric_questions desde scripts
+    // (fuera del flow dispute resolve), llamar manualmente:
+    //   curl POST /api/admin/revalidate -d '{"tag":"questions"}'
+    revalidateTag('questions', 'max')
 
     // 3.5 INSERT campana en notification_logs
     let bellSent = false
