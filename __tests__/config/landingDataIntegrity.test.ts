@@ -66,8 +66,7 @@ describe('Landing Data Integrity', () => {
     test('template dinámico existe y tiene las secciones necesarias', () => {
       expect(templateContent).toContain('getOposicionLandingData')
       expect(templateContent).toContain('getHitosConvocatoria')
-      expect(templateContent).toContain('revalidate')
-      expect(templateContent).toContain('generateStaticParams')
+      expect(templateContent).toContain("dynamic = 'force-dynamic'")
       expect(templateContent).toContain('application/ld+json')
       expect(templateContent).toContain('hitos.map')
     })

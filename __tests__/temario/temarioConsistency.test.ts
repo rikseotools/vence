@@ -48,8 +48,8 @@ describe('Temario dinámico — estructura de archivos', () => {
 
       // Debe importar el componente compartido
       expect(content).toContain('DynamicTemarioPage')
-      // Debe usar static generation (SEO)
-      expect(content).toContain('revalidate = false')
+      // Debe usar force-dynamic (evita saturar BD en build con 3600+ páginas)
+      expect(content).toContain("dynamic = 'force-dynamic'")
       // NO debe tener BLOQUES hardcoded
       expect(content).not.toMatch(/const\s+BLOQUES\s*=/)
     }

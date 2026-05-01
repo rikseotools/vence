@@ -36,8 +36,8 @@ const CRITICAL_ROUTE_PATTERNS: RegExp[] = [
   // Exámenes oficiales
   /\/examen-oficial/,
   /\/aleatorio-examen/,
-  // Tests psicotécnicos activos
-  /\/psicotecnicos\/test\/ejecutar/,
+  // Tests psicotécnicos activos (configuración, selección de series, y ejecución)
+  /\/psicotecnicos\/test/,
   // Test multi-ley
   /\/test\/multi-ley/,
   // Tests desde chat / artículo / por-leyes / rapido / repaso

@@ -476,7 +476,7 @@ describe('fetchQuestionsByTopicScope — modo adaptativo avanzado', () => {
     })
 
     const body = JSON.parse(mockFetch.mock.calls[0][1].body)
-    expect(body.numQuestions).toBe(500)
+    expect(body.numQuestions).toBe(100) // min(25*4, 200) = 100
   })
 
   test('adaptive=true pide requestSize=500', async () => {
