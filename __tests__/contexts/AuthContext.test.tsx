@@ -55,20 +55,31 @@ function createMockSupabase(options: {
 }) {
   const { user = null, profileData = null, profileDelay = 0, profileError = false } = options
 
-  const mockSingle = jest.fn().mockImplementation(() => {
-    const result = profileError
+  // Mock global.fetch para /api/v2/profile (AuthContext usa fetch, no supabase.from)
+  const profileResponse = profileError
+    ? { ok: false, status: 500, json: async () => ({ error: 'DB error' }) }
+    : { ok: true, status: 200, json: async () => ({ profile: profileData }) }
+
+  global.fetch = jest.fn().mockImplementation((url: string) => {
+    if (typeof url === 'string' && url.includes('/api/v2/profile')) {
+      if (profileDelay > 0) {
+        return new Promise(resolve => setTimeout(() => resolve(profileResponse), profileDelay))
+      }
+      return Promise.resolve(profileResponse)
+    }
+    return Promise.resolve({ ok: true, status: 200, json: async () => ({}) })
+  }) as any
+
+  // Supabase mock (from() kept for ensureUserProfile/other callers, not profile load)
+  const mockSingle = jest.fn().mockResolvedValue(
+    profileError
       ? { data: null, error: { message: 'DB error', code: 'UNKNOWN' } }
       : { data: profileData, error: null }
-
-    if (profileDelay > 0) {
-      return new Promise(resolve => setTimeout(() => resolve(result), profileDelay))
-    }
-    return Promise.resolve(result)
-  })
-
+  )
   const mockAbortSignal = jest.fn().mockReturnValue({ single: mockSingle })
-  const mockEq = jest.fn().mockReturnValue({ abortSignal: mockAbortSignal })
+  const mockEq = jest.fn().mockReturnValue({ abortSignal: mockAbortSignal, single: mockSingle })
   const mockSelect = jest.fn().mockReturnValue({ eq: mockEq })
+  const mockUpsert = jest.fn().mockResolvedValue({ data: profileData, error: null })
 
   return {
     auth: {
@@ -77,17 +88,20 @@ function createMockSupabase(options: {
           ? { data: { user }, error: null }
           : { data: { user: null }, error: null }
       ),
+      getSession: jest.fn().mockResolvedValue(
+        user
+          ? { data: { session: { access_token: 'mock-token', user } }, error: null }
+          : { data: { session: null }, error: null }
+      ),
       onAuthStateChange: jest.fn().mockImplementation((cb: AuthCallback) => {
         authCallback = cb
-        // 🎯 Emitir INITIAL_SESSION asíncronamente (como hace Supabase real)
-        // setTimeout(0) simula que _initialize() completa y luego emite el evento
         setTimeout(() => {
           cb('INITIAL_SESSION', user ? { user } : null)
         }, 0)
         return { data: { subscription: { unsubscribe: mockUnsubscribe } } }
       }),
     },
-    from: jest.fn().mockReturnValue({ select: mockSelect }),
+    from: jest.fn().mockReturnValue({ select: mockSelect, upsert: mockUpsert }),
     rpc: jest.fn().mockResolvedValue({ data: null, error: null }),
   }
 }

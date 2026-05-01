@@ -35,6 +35,7 @@ function createDbClient() {
     max: 1,  // 1 conexión por instancia serverless (recomendado por Supabase)
     idle_timeout: 20,
     connect_timeout: 5,
+    max_lifetime: 60 * 5, // 5 min: reciclar conexiones para evitar zombis persistentes
     prepare: false, // Requerido para Supabase Transaction Pooler (puerto 6543)
   })
 
