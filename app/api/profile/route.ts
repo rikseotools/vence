@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import {
   safeParseGetProfileRequest,
   safeParseUpdateProfileRequest,
-  getProfile,
+  getProfileForSelfCached,
   updateProfile
 } from '@/lib/api/profile'
 import { isAdminEmail } from '@/lib/api/shared/auth'
@@ -107,8 +107,10 @@ async function _GET(request: NextRequest) {
     // Shadow-mode auth check (paso 3/7) — sólo loguea, no bloquea (sync, 0 ms)
     shadowAuthCheck(request, parseResult.data.userId, 'GET')
 
-    // Obtener perfil
-    const result = await getProfile(parseResult.data)
+    // Obtener perfil (cache 60s, tag 'profile').
+    // Proyección "self": excluye stripeCustomerId, registrationIp,
+    // registrationUrl, adminNotes (sensibles, no necesarios al cliente).
+    const result = await getProfileForSelfCached(parseResult.data)
 
     if (!result.success) {
       return NextResponse.json(result, { status: 404 })

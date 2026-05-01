@@ -28,5 +28,8 @@ export {
 export {
   getProfile,
   updateProfile,
-  profileExists
+  profileExists,
+  getProfileForSelf,
+  getProfileForAdmin,
+  getProfileForSelfCached
 } from './queries'

@@ -2,6 +2,7 @@
 import { getDb } from '@/db/client'
 import { userProfiles } from '@/db/schema'
 import { eq } from 'drizzle-orm'
+import { unstable_cache, revalidateTag } from 'next/cache'
 import type {
   GetProfileRequest,
   GetProfileResponse,
@@ -135,6 +136,14 @@ export async function updateProfile(
       fields: Object.keys(params.data)
     })
 
+    // Invalidar cache server-side. Tag global 'profile' invalida TODOS los
+    // perfiles cacheados (no solo este userId) porque unstable_cache no
+    // soporta tags dinámicos. TTL 60s acota el blast radius incluso sin
+    // este revalidateTag, así que es defensa-en-profundidad.
+    // 'max' = perfil de cacheLife "max" en Next.js 16 (mismo arg que usan
+    // los otros endpoints admin/revalidate del repo).
+    revalidateTag('profile', 'max')
+
     return {
       success: true,
       data: updated as ProfileData
@@ -227,6 +236,28 @@ export async function getProfileForAdmin(
     }
   }
 }
+
+// ============================================
+// CACHED WRAPPER — getProfileForSelfCached (tag: 'profile')
+// ============================================
+// Mismo patrón que medals/landings/temario/teoria. Cache key se diferencia
+// automáticamente por el argumento `params.userId`. TTL 60s: corto para
+// minimizar inconsistencia con mutaciones cliente-side (OposicionContext y
+// otros que escriben a user_profiles vía Supabase REST sin invalidar el
+// cache server). Invalidar manualmente con:
+//   revalidateTag('profile')   // desde código server
+//   curl POST /api/admin/revalidate -d '{"tag":"profile"}'
+//
+// updateProfile() ya llama revalidateTag('profile') tras UPDATE OK. Otras
+// mutaciones server-side (auth/queries, complete-onboarding, Stripe webhook)
+// NO invalidan todavía — follow-up. Mientras: TTL 60s = peor caso 60s
+// de obsolescencia.
+
+export const getProfileForSelfCached = unstable_cache(
+  getProfileForSelf,
+  ['profile-self-v1'],
+  { revalidate: 60, tags: ['profile'] }
+)
 
 // ============================================
 // VERIFICAR SI PERFIL EXISTE
