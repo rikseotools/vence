@@ -84,6 +84,61 @@ describe('Landing Data Integrity', () => {
     })
   })
 
+  describe('Test aleatorio / examen: template dinámico cubre todas las oposiciones', () => {
+    // Si una oposición necesita comportamiento custom, añadir su slug aquí
+    // y crear app/<slug>/test/{aleatorio,test-aleatorio-examen}/page.tsx con
+    // su lógica. Next.js dará prioridad al estático sobre el dinámico.
+    const STATIC_OVERRIDES_ALEATORIO: string[] = []
+    const STATIC_OVERRIDES_EXAMEN: string[] = []
+
+    const aleatorioTemplate = path.join(process.cwd(), 'app/[oposicion]/test/aleatorio/page.tsx')
+    const examenTemplate = path.join(process.cwd(), 'app/[oposicion]/test/test-aleatorio-examen/page.tsx')
+
+    test('template app/[oposicion]/test/aleatorio/page.tsx existe con force-dynamic', () => {
+      expect(fs.existsSync(aleatorioTemplate)).toBe(true)
+      const content = fs.readFileSync(aleatorioTemplate, 'utf-8')
+      expect(content).toContain("dynamic = 'force-dynamic'")
+      expect(content).toContain('getOposicion')
+      expect(content).toContain('notFound')
+      expect(content).toContain('RandomTestPage')
+    })
+
+    test('template app/[oposicion]/test/test-aleatorio-examen/page.tsx existe con force-dynamic', () => {
+      expect(fs.existsSync(examenTemplate)).toBe(true)
+      const content = fs.readFileSync(examenTemplate, 'utf-8')
+      expect(content).toContain("dynamic = 'force-dynamic'")
+      expect(content).toContain('getOposicion')
+      expect(content).toContain('notFound')
+      expect(content).toContain('ExamAleatorioServerWrapper')
+    })
+
+    test.each(OPOSICIONES.map(o => [o.slug]))(
+      '%s: NO tiene app/<slug>/test/aleatorio/page.tsx estático (a menos que esté en STATIC_OVERRIDES_ALEATORIO)',
+      (slug) => {
+        const staticPath = path.join(process.cwd(), `app/${slug}/test/aleatorio/page.tsx`)
+        const exists = fs.existsSync(staticPath)
+        if (STATIC_OVERRIDES_ALEATORIO.includes(slug)) {
+          expect(exists).toBe(true)
+        } else {
+          expect(exists).toBe(false)
+        }
+      }
+    )
+
+    test.each(OPOSICIONES.map(o => [o.slug]))(
+      '%s: NO tiene app/<slug>/test/test-aleatorio-examen/page.tsx estático (a menos que esté en STATIC_OVERRIDES_EXAMEN)',
+      (slug) => {
+        const staticPath = path.join(process.cwd(), `app/${slug}/test/test-aleatorio-examen/page.tsx`)
+        const exists = fs.existsSync(staticPath)
+        if (STATIC_OVERRIDES_EXAMEN.includes(slug)) {
+          expect(exists).toBe(true)
+        } else {
+          expect(exists).toBe(false)
+        }
+      }
+    )
+  })
+
   describe('Nuestras oposiciones: Server Component', () => {
     test('page.tsx es Server Component (no use client)', () => {
       const filePath = path.join(process.cwd(), 'app/nuestras-oposiciones/page.tsx')
