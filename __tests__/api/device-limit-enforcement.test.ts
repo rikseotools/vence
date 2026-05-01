@@ -357,3 +357,119 @@ describe('Device check cache (60s TTL)', () => {
     expect(mockRpc).toHaveBeenCalledTimes(2)
   })
 })
+
+// ============================================
+// HW FINGERPRINT: deduplicación de dispositivos
+// ============================================
+
+describe('Hardware fingerprint deduplication', () => {
+  it('passes hw_fingerprint to RPC when provided', async () => {
+    mockRpc.mockResolvedValue({
+      data: { allowed: true, device_count: 1, max_devices: 2, is_new_device: false, is_premium: false },
+      error: null,
+    })
+    await registerAndCheckDevice('user-1', 'device-1', 'Chrome/120 Windows', 'hw_abc123')
+    expect(mockRpc).toHaveBeenCalledWith('register_device', expect.objectContaining({
+      p_hw_fingerprint: 'hw_abc123',
+    }))
+  })
+
+  it('passes null hw_fingerprint when undefined', async () => {
+    mockRpc.mockResolvedValue({
+      data: { allowed: true, device_count: 1, max_devices: 2, is_new_device: false, is_premium: false },
+      error: null,
+    })
+    await registerAndCheckDevice('user-1', 'device-1', 'Chrome/120')
+    expect(mockRpc).toHaveBeenCalledWith('register_device', expect.objectContaining({
+      p_hw_fingerprint: null,
+    }))
+  })
+
+  it('passes null hw_fingerprint when empty string', async () => {
+    mockRpc.mockResolvedValue({
+      data: { allowed: true, device_count: 1, max_devices: 2, is_new_device: false, is_premium: false },
+      error: null,
+    })
+    await registerAndCheckDevice('user-1', 'device-1', 'Chrome/120', '')
+    expect(mockRpc).toHaveBeenCalledWith('register_device', expect.objectContaining({
+      p_hw_fingerprint: null,
+    }))
+  })
+
+  it('dedup scenario: same user, new device_id, same fingerprint → RPC decides (allowed)', async () => {
+    // First call: device-old registered
+    mockRpc.mockResolvedValueOnce({
+      data: { allowed: true, device_count: 1, max_devices: 2, is_new_device: true, is_premium: false },
+      error: null,
+    })
+    const r1 = await registerAndCheckDevice('user-1', 'device-old', 'Firefox/150 Windows', 'hw_xyz')
+    expect(r1.allowed).toBe(true)
+
+    // Second call: device-new with SAME fingerprint (localStorage cleared)
+    // RPC should deduplicate (replace old device_id) → allowed
+    clearDeviceCheckCache()
+    mockRpc.mockResolvedValueOnce({
+      data: { allowed: true, device_count: 1, max_devices: 2, is_new_device: false, is_premium: false },
+      error: null,
+    })
+    const r2 = await registerAndCheckDevice('user-1', 'device-new', 'Firefox/150 Windows', 'hw_xyz')
+    expect(r2.allowed).toBe(true)
+    expect(r2.isNewDevice).toBe(false) // dedup, not new
+  })
+
+  it('different fingerprint = genuinely different device → RPC enforces limit', async () => {
+    // Phone: Chrome/Android with fingerprint A
+    mockRpc.mockResolvedValueOnce({
+      data: { allowed: true, device_count: 1, max_devices: 2, is_new_device: true, is_premium: false },
+      error: null,
+    })
+    await registerAndCheckDevice('user-1', 'phone', 'Chrome/120 Android', 'hw_phone')
+
+    // PC: Chrome/Windows with fingerprint B
+    clearDeviceCheckCache()
+    mockRpc.mockResolvedValueOnce({
+      data: { allowed: true, device_count: 2, max_devices: 2, is_new_device: true, is_premium: false },
+      error: null,
+    })
+    await registerAndCheckDevice('user-1', 'pc', 'Chrome/120 Windows', 'hw_pc')
+
+    // Tablet: Safari/iOS with fingerprint C → BLOCKED (3rd device)
+    clearDeviceCheckCache()
+    mockRpc.mockResolvedValueOnce({
+      data: { allowed: false, device_count: 2, max_devices: 2, is_new_device: true, is_premium: false },
+      error: null,
+    })
+    const r3 = await registerAndCheckDevice('user-1', 'tablet', 'Safari/604 iOS', 'hw_tablet')
+    expect(r3.allowed).toBe(false)
+    expect(r3.deviceCount).toBe(2)
+  })
+})
+
+// ============================================
+// FAIL OPEN: RPC ambiguity error (overloaded function)
+// ============================================
+
+describe('RPC ambiguity error (overloaded function)', () => {
+  it('fails open when PostgREST cannot choose between function overloads', async () => {
+    // This was the actual error: two register_device functions with 3 and 4 params
+    mockRpc.mockResolvedValue({
+      data: null,
+      error: {
+        code: 'PGRST203',
+        message: 'Could not choose the best candidate function between: public.register_device(p_user_id => uuid, p_device_id => text, p_device_label => text), public.register_device(p_user_id => uuid, p_device_id => text, p_device_label => text, p_hw_fingerprint => text)',
+      },
+    })
+    const r = await registerAndCheckDevice('user-1', 'device-1', 'Chrome/120', 'hw_test')
+    expect(r.allowed).toBe(true) // fail open — don't block users
+    expect(mockRpc).toHaveBeenCalledTimes(1)
+  })
+
+  it('fails open on any unexpected RPC error code', async () => {
+    mockRpc.mockResolvedValue({
+      data: null,
+      error: { code: 'XX000', message: 'internal error' },
+    })
+    const r = await registerAndCheckDevice('user-1', 'device-1')
+    expect(r.allowed).toBe(true)
+  })
+})
