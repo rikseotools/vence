@@ -44,22 +44,32 @@ export async function getUserPublicStats(userId: string): Promise<UserPublicStat
       : new Date(summary.week_start).toISOString().slice(0, 10)
     thisWeek = summaryWeek === currentWeekStart ? Number(summary.questions_this_week) : 0
   } else {
-    // Fallback: usuario sin fila en summary (nuevo o no backfilled).
-    // Hacer la query pesada UNA VEZ y crear la fila.
+    // Fallback: usuario sin fila en summary (race condition extrema o si el
+    // trigger init_user_stats_summary_on_signup fue dropeado por error).
+    // Defensa en profundidad: el trigger en user_profiles AFTER INSERT
+    // crea la fila default desde signup, así que este path NO debería
+    // ejecutarse en condiciones normales. Si lo hace, indica:
+    //   (a) race condition entre signup y primera consulta (raro)
+    //   (b) trigger dropeado/no instalado (alerta)
+    //
+    // BUG FIX (1 may 2026): la versión anterior usaba GROUP BY tq.user_id
+    // que devolvía 0 filas cuando el user no tiene actividad → INSERT no-op
+    // → fila nunca se creaba → bucle infinito de "computing" para 1.171
+    // users (27.2% del total). Ahora sin GROUP BY + COALESCE: la agregación
+    // sin filas devuelve 1 fila con NULL, COALESCE convierte a 0, INSERT
+    // SIEMPRE crea/actualiza 1 fila.
     console.warn(`⚠️ [user-stats] No summary for ${userId.slice(0, 8)}, computing...`)
-    // Usar tq.user_id directamente (sin JOIN tests)
     const fallbackResult = await db.execute(
       sql`INSERT INTO user_stats_summary (user_id, total_questions, correct_answers, blank_answers, questions_this_week, week_start)
           SELECT
-            tq.user_id,
-            count(tq.id)::int,
-            sum(case when tq.is_correct then 1 else 0 end)::int,
-            coalesce(sum(case when tq.was_blank then 1 else 0 end)::int, 0),
-            sum(case when tq.created_at >= date_trunc('week', now()) then 1 else 0 end)::int,
+            ${userId}::uuid,
+            COALESCE(count(tq.id)::int, 0),
+            COALESCE(sum(case when tq.is_correct then 1 else 0 end)::int, 0),
+            COALESCE(sum(case when tq.was_blank then 1 else 0 end)::int, 0),
+            COALESCE(sum(case when tq.created_at >= date_trunc('week', now()) then 1 else 0 end)::int, 0),
             date_trunc('week', now())::date
           FROM test_questions tq
           WHERE tq.user_id = ${userId}
-          GROUP BY tq.user_id
           ON CONFLICT (user_id) DO UPDATE SET
             total_questions = EXCLUDED.total_questions,
             correct_answers = EXCLUDED.correct_answers,
