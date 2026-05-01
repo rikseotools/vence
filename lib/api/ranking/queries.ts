@@ -246,17 +246,19 @@ export async function getRanking(params: GetRankingRequest): Promise<GetRankingR
     const db = getDb()
     const { startDate, endDate } = computeDateRange(params.timeFilter)
 
+    // Usar tq.user_id directamente (sin JOIN tests) — misma optimización que
+    // el trigger update_user_question_history. El JOIN añadía 500ms+ innecesarios.
     const result = await db.execute(
       sql`SELECT
-            t.user_id,
+            tq.user_id,
             COUNT(*)::bigint AS total_questions,
             COUNT(*) FILTER (WHERE tq.is_correct)::bigint AS correct_answers,
             ROUND((COUNT(*) FILTER (WHERE tq.is_correct)::numeric / COUNT(*)) * 100, 0) AS accuracy
           FROM test_questions tq
-          INNER JOIN tests t ON t.id = tq.test_id
-          WHERE tq.created_at >= ${startDate}::timestamptz
+          WHERE tq.user_id IS NOT NULL
+            AND tq.created_at >= ${startDate}::timestamptz
             ${endDate ? sql`AND tq.created_at <= ${endDate}::timestamptz` : sql``}
-          GROUP BY t.user_id
+          GROUP BY tq.user_id
           HAVING COUNT(*) >= ${params.minQuestions ?? 5}
           ORDER BY accuracy DESC, total_questions DESC
           LIMIT ${limit}
@@ -330,15 +332,15 @@ export async function getUserPosition(
     const result = await db.execute(
       sql`WITH user_stats AS (
             SELECT
-              t.user_id,
+              tq.user_id,
               COUNT(*)::bigint AS total_questions,
               COUNT(*) FILTER (WHERE tq.is_correct)::bigint AS correct_answers,
               ROUND((COUNT(*) FILTER (WHERE tq.is_correct)::numeric / COUNT(*)) * 100, 0) AS accuracy
             FROM test_questions tq
-            INNER JOIN tests t ON t.id = tq.test_id
-            WHERE tq.created_at >= ${startDate}::timestamptz
+            WHERE tq.user_id IS NOT NULL
+              AND tq.created_at >= ${startDate}::timestamptz
               ${endDate ? sql`AND tq.created_at <= ${endDate}::timestamptz` : sql``}
-            GROUP BY t.user_id
+            GROUP BY tq.user_id
             HAVING COUNT(*) >= ${minQuestions}
           ),
           ranked AS (
