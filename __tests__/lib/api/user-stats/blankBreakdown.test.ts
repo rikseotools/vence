@@ -12,6 +12,13 @@ jest.mock('@/db/client', () => {
     __setMockStats: (v: typeof mockStatsResult) => { mockStatsResult = v },
     __setMockStreak: (v: typeof mockStreakResult) => { mockStreakResult = v },
     getDb: () => ({
+      execute: () => Promise.resolve(mockStatsResult ? [{
+        total_questions: mockStatsResult.totalQuestions,
+        correct_answers: mockStatsResult.correctAnswers,
+        blank_answers: mockStatsResult.blankAnswers,
+        questions_this_week: mockStatsResult.questionsThisWeek,
+        week_start: new Date().toISOString().slice(0, 10),
+      }] : []),
       select: () => ({
         from: (table: unknown) => {
           const tableName = String(table) || ''

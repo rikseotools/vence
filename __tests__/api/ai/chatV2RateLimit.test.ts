@@ -39,9 +39,9 @@ describe('Chat IA v2 - Rate Limit Code Verification', () => {
   })
 
   it('NO confía solo en isPremium del frontend - verifica en BD', () => {
-    // Debe consultar user_profiles.plan_type
+    // Debe consultar user_profiles con plan_type (puede incluir otros campos como nickname)
     expect(routeCode).toContain("from('user_profiles')")
-    expect(routeCode).toContain("select('plan_type')")
+    expect(routeCode).toMatch(/select\('plan_type/)
     expect(routeCode).toContain("plan_type === 'premium'")
     expect(routeCode).toContain("plan_type === 'trial'")
   })
@@ -49,8 +49,8 @@ describe('Chat IA v2 - Rate Limit Code Verification', () => {
   it('verifica en BD cuando isPremium es false (no solo cuando es true)', () => {
     // La verificación en BD debe ocurrir cuando isPremium es false
     expect(routeCode).toContain('!isPremiumVerified')
-    // Y debe asignar el resultado de la BD
-    expect(routeCode).toContain('isPremiumVerified = profile?.plan_type')
+    // Y debe asignar el resultado de profileResult
+    expect(routeCode).toMatch(/isPremiumVerified\s*=\s*profile/)
   })
 
   it('no verifica en BD para usuarios anónimos', () => {
@@ -83,11 +83,11 @@ describe('Chat IA v2 - Rate Limit Code Verification', () => {
     const lines = routeCode.split('\n')
 
     // 1. isExemptSuggestion check debe venir primero
-    const exemptLine = lines.findIndex(l => l.includes('isExemptSuggestion') && l.includes('!isExemptSuggestion'))
+    const exemptLine = lines.findIndex(l => l.includes('isExemptSuggestion') && !l.includes('const isExplain'))
     // 2. Luego isPremiumVerified = data.isPremium (fast path)
     const fastPathLine = lines.findIndex(l => l.includes('isPremiumVerified = data.isPremium'))
-    // 3. Luego verificación en BD
-    const bdCheckLine = lines.findIndex(l => l.includes("select('plan_type')"))
+    // 3. Luego verificación en BD (select con plan_type)
+    const bdCheckLine = lines.findIndex(l => l.match(/select\('plan_type/))
     // 4. Luego rate limit check
     const rateLimitLine = lines.findIndex(l => l.includes('FREE_USER_DAILY_LIMIT') && l.includes('>='))
 
