@@ -23,10 +23,15 @@ export const getProfileRequestSchema = z.object({
 export type GetProfileRequest = z.infer<typeof getProfileRequestSchema>
 
 // ============================================
-// RESPONSE: GET PROFILE
+// RESPONSE: GET PROFILE - TIER SCHEMAS
 // ============================================
+// Tiers de visibilidad para columnas de user_profiles:
+// - self:  el dueño del perfil (excluye PII sensible que no necesita el cliente)
+// - admin: admin viendo perfil ajeno (todas las columnas)
 
-export const profileDataSchema = z.object({
+// Campos visibles para el propio usuario (NO incluye stripeCustomerId,
+// registrationIp, registrationUrl, adminNotes — esos son admin-only)
+export const selfProfileDataSchema = z.object({
   id: z.string().uuid(),
   email: z.string().email(),
   fullName: z.string().nullable().optional(),
@@ -44,7 +49,6 @@ export const profileDataSchema = z.object({
   createdAt: z.string().nullable().optional(),
   updatedAt: z.string().nullable().optional(),
   isActiveStudent: z.boolean().nullable().optional(),
-  stripeCustomerId: z.string().nullable().optional(),
   registrationSource: z.string().nullable().optional(),
   requiresPayment: z.boolean().nullable().optional(),
   registrationDate: z.string().nullable().optional(),
@@ -54,13 +58,41 @@ export const profileDataSchema = z.object({
   onboardingCompletedAt: z.string().nullable().optional(),
   onboardingSkipCount: z.number().nullable().optional(),
   onboardingLastSkipAt: z.string().nullable().optional(),
+  registrationFunnel: z.string().nullable().optional()
+})
+
+export type SelfProfileData = z.infer<typeof selfProfileDataSchema>
+
+// Admin = self + columnas sensibles (PII / interna)
+export const adminProfileDataSchema = selfProfileDataSchema.extend({
+  stripeCustomerId: z.string().nullable().optional(),
   registrationIp: z.string().nullable().optional(),
-  registrationFunnel: z.string().nullable().optional(),
   registrationUrl: z.string().nullable().optional(),
   adminNotes: z.string().nullable().optional()
 })
 
-export type ProfileData = z.infer<typeof profileDataSchema>
+export type AdminProfileData = z.infer<typeof adminProfileDataSchema>
+
+// Alias de back-compat: profileDataSchema mantiene su forma previa
+// (= adminProfileDataSchema). No cambies este nombre sin migrar callers.
+export const profileDataSchema = adminProfileDataSchema
+export type ProfileData = AdminProfileData
+
+export const getSelfProfileResponseSchema = z.object({
+  success: z.boolean(),
+  data: selfProfileDataSchema.optional(),
+  error: z.string().optional()
+})
+
+export type GetSelfProfileResponse = z.infer<typeof getSelfProfileResponseSchema>
+
+export const getAdminProfileResponseSchema = z.object({
+  success: z.boolean(),
+  data: adminProfileDataSchema.optional(),
+  error: z.string().optional()
+})
+
+export type GetAdminProfileResponse = z.infer<typeof getAdminProfileResponseSchema>
 
 export const getProfileResponseSchema = z.object({
   success: z.boolean(),
