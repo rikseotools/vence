@@ -12,7 +12,10 @@ export default {
     }]
   },
   moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/$1'
+    '^@/(.*)$': '<rootDir>/$1',
+    // Mock de módulos ESM que Jest no puede importar
+    '^react-markdown$': '<rootDir>/__mocks__/react-markdown.js',
+    '^@supabase/realtime-js$': '<rootDir>/__mocks__/@supabase/realtime-js.js',
   },
   setupFiles: ['<rootDir>/jest.setup.js'],
   setupFilesAfterEnv: ['<rootDir>/jest.afterEnv.js'],
