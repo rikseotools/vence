@@ -2,6 +2,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 import type { ConversionStatsResponse } from '@/lib/api/admin-conversion-stats'
 
 type TabType = 'funnel' | 'ab-testing' | 'predictions' | 'graduated-limits'
@@ -163,17 +164,33 @@ export default function ConversionesPage() {
     setDailyStats(data.dailyStats || [])
   }
 
-  const loadTimeAnalysis = async () => {
-    const { data, error } = await supabase
-      .from('conversion_time_analysis')
-      .select('*')
-
-    if (error) {
-      console.log('Time analysis view not available:', error.message)
+  // Carga conversion_time_analysis Y admin_upgrade_message_stats en una
+  // sola request. Antes el browser leía esas views directamente con cliente
+  // authenticated (anti-pattern: dependía del SECURITY DEFINER + GRANT
+  // public para bypassar RLS). Ahora el endpoint admin verifica auth y usa
+  // service_role server-side.
+  const loadAdminViews = async () => {
+    try {
+      const authHeaders = await getAuthHeaders()
+      const res = await fetch('/api/admin/conversions/views', { headers: authHeaders })
+      if (!res.ok) {
+        console.error('Error cargando admin views:', res.status)
+        setTimeAnalysis([])
+        setAbStats([])
+        return null
+      }
+      const json = await res.json()
+      setTimeAnalysis(json.timeAnalysis || [])
+      return json
+    } catch (err) {
+      console.error('Error cargando admin views:', err)
       setTimeAnalysis([])
-      return
+      return null
     }
-    setTimeAnalysis(data || [])
+  }
+
+  const loadTimeAnalysis = async () => {
+    await loadAdminViews()
   }
 
   const loadUserJourney = async (userId: string) => {
@@ -193,30 +210,23 @@ export default function ConversionesPage() {
   // Cargar datos de A/B testing de mensajes
   const loadABTestingData = async () => {
     try {
-      // Cargar estadisticas de mensajes
-      const { data: messageStats, error: statsError } = await supabase
-        .from('admin_upgrade_message_stats')
-        .select('*')
-        .order('total_impressions', { ascending: false })
+      // admin_upgrade_message_stats ahora vía /api/admin/conversions/views
+      // (mismo endpoint que loadAdminViews — combinado para 1 request)
+      const adminViews = await loadAdminViews()
+      const messageStats = adminViews?.abStats ?? []
+      setAbStats(messageStats)
 
-      if (statsError) {
-        console.error('Error cargando stats A/B:', statsError)
-      } else {
-        setAbStats(messageStats || [])
+      const totalImpressions = messageStats.reduce((sum: number, m: any) => sum + (m.total_impressions || 0), 0)
+      const totalClicks = messageStats.reduce((sum: number, m: any) => sum + (m.total_clicks || 0), 0)
+      const totalConversions = messageStats.reduce((sum: number, m: any) => sum + (m.total_conversions || 0), 0)
 
-        // Calcular totales
-        const totalImpressions = messageStats?.reduce((sum: number, m: any) => sum + (m.total_impressions || 0), 0) || 0
-        const totalClicks = messageStats?.reduce((sum: number, m: any) => sum + (m.total_clicks || 0), 0) || 0
-        const totalConversions = messageStats?.reduce((sum: number, m: any) => sum + (m.total_conversions || 0), 0) || 0
-
-        setAbTotals({
-          impressions: totalImpressions,
-          clicks: totalClicks,
-          conversions: totalConversions,
-          avgClickRate: totalImpressions > 0 ? ((totalClicks / totalImpressions) * 100).toFixed(1) : 0,
-          avgConversionRate: totalImpressions > 0 ? ((totalConversions / totalImpressions) * 100).toFixed(1) : 0
-        })
-      }
+      setAbTotals({
+        impressions: totalImpressions,
+        clicks: totalClicks,
+        conversions: totalConversions,
+        avgClickRate: totalImpressions > 0 ? ((totalClicks / totalImpressions) * 100).toFixed(1) : 0,
+        avgConversionRate: totalImpressions > 0 ? ((totalConversions / totalImpressions) * 100).toFixed(1) : 0
+      })
 
       // Cargar impresiones recientes
       const { data: impressions, error: impError } = await supabase

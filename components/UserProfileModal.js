@@ -117,35 +117,12 @@ export default function UserProfileModal({ isOpen, onClose, userId, userName }) 
       // Obtener nombre apropiado (evitar "Usuario" genérico)
       let displayName = userName // Fallback inicial
 
-      // Si tiene display_name pero no es genérico, usarlo
+      // Si tiene display_name pero no es genérico, usarlo.
+      // Si es genérico ("Usuario") o NULL, mantener el userName del prop
+      // (caller). NO leer de admin_users_with_roles — exponía email + full_name
+      // de cualquier user a cualquier authenticated vía SECURITY DEFINER.
       if (publicProfile?.display_name && publicProfile.display_name !== 'Usuario') {
         displayName = publicProfile.display_name
-      } else {
-        // Intentar obtener el nombre desde admin_users_with_roles
-        const { data: adminProfile } = await supabase
-          .from('admin_users_with_roles')
-          .select('full_name, email')
-          .eq('user_id', userId)
-          .maybeSingle()
-
-        if (adminProfile) {
-          // Usar full_name si no es genérico
-          if (adminProfile.full_name && adminProfile.full_name !== 'Usuario') {
-            const firstName = adminProfile.full_name.split(' ')[0]
-            if (firstName?.trim() && firstName !== 'Usuario') {
-              displayName = firstName.trim()
-            }
-          } else if (adminProfile.email) {
-            // Usar email como fallback
-            const emailName = adminProfile.email.split('@')[0]
-            const cleanName = emailName.replace(/[0-9]+/g, '').replace(/[._-]/g, ' ').trim()
-            if (cleanName) {
-              displayName = cleanName.charAt(0).toUpperCase() + cleanName.slice(1)
-            } else {
-              displayName = emailName
-            }
-          }
-        }
       }
 
       // Determinar avatar (prioridad: automático > manual)
