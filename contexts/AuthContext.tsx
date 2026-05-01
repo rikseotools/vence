@@ -12,7 +12,6 @@ import { GoogleAdsEvents } from '../utils/googleAds'
 import { useSessionControl } from '../hooks/useSessionControl'
 import SessionWarningModal from '../components/SessionWarningModal'
 import { logClientError } from '../lib/logClientError'
-import { getAuthHeaders } from '../lib/api/authHeaders'
 
 interface AccessCheckResult {
   can_access: boolean
@@ -266,9 +265,19 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
       const startedAt = Date.now()
 
       // 🔄 fetch() estándar en vez de supabase.from() — evita deadlock con token refresh
+      // Leer token de la sesión actual SIN refreshSession() — eso dispararía
+      // TOKEN_REFRESHED, que en este AuthContext recursivamente llama a
+      // loadUserProfile y choca con el singleflight ya activo (deadlock 5s+).
+      // La sesión recién emitida por INITIAL_SESSION/SIGNED_IN ya tiene un
+      // access_token válido; getSession() lo lee de localStorage sin red.
+      const { data: { session } } = await supabase.auth.getSession()
+      const authHeaders: Record<string, string> = session?.access_token
+        ? { Authorization: `Bearer ${session.access_token}` }
+        : {}
+
       const response = await fetch(`/api/profile?userId=${encodeURIComponent(userId)}`, {
         signal: controller.signal,
-        headers: { ...(await getAuthHeaders()), 'Accept': 'application/json' },
+        headers: { ...authHeaders, 'Accept': 'application/json' },
       })
 
       clearTimeout(timeoutId)

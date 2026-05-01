@@ -1,6 +1,7 @@
 // lib/api/medals/queries.ts - Queries tipadas para medallas de ranking
 import { getDb } from '@/db/client'
 import { sql } from 'drizzle-orm'
+import { unstable_cache } from 'next/cache'
 import {
   RANKING_MEDALS,
   type UserMedal,
@@ -169,12 +170,65 @@ function buildMedal(
 }
 
 // ============================================
+// QUERY DEL RANKING POR PERÍODO (cacheado)
+// ============================================
+// La query del ranking depende SOLO del período, no del usuario. Cacheamos
+// el ranking compartido (top 100) y luego cada caller calcula sus medallas
+// localmente vía assignMedalsForPeriod (función pura). Ratio de hit muy alto:
+// todos los users del mismo período comparten cache.
+//
+// statement_timeout de Supabase es 30s y la query con datos reales lo agota.
+// El cache reduce 99%+ de la presión sobre BD. Follow-up: crear índice en
+// test_questions(user_id, created_at, is_correct) para que la primera query
+// (cache miss) baje de >30s a <5s.
+//
+// Invalidar manualmente con: revalidateTag('medals') o
+// curl POST /api/admin/revalidate -d '{"tag":"medals"}'.
+
+async function getRankingForPeriodInternal(
+  startISO: string,
+  endISO: string
+): Promise<RankingUser[]> {
+  const db = getDb()
+  const result = await db.execute(
+    sql`SELECT
+          tq.user_id,
+          COUNT(*)::bigint AS total_questions,
+          COUNT(*) FILTER (WHERE tq.is_correct)::bigint AS correct_answers,
+          ROUND((COUNT(*) FILTER (WHERE tq.is_correct)::numeric / COUNT(*)) * 100, 0) AS accuracy
+        FROM test_questions tq
+        WHERE tq.user_id IS NOT NULL
+          AND tq.created_at >= ${startISO}::timestamptz
+          AND tq.created_at <= ${endISO}::timestamptz
+        GROUP BY tq.user_id
+        HAVING COUNT(*) >= 5
+        ORDER BY accuracy DESC, total_questions DESC
+        LIMIT 100`
+  )
+
+  return ((result as any[]) || []).map((row: any) => ({
+    userId: row.user_id,
+    totalQuestions: Number(row.total_questions),
+    correctAnswers: Number(row.correct_answers),
+    accuracy: Number(row.accuracy),
+  }))
+}
+
+// 5 minutos: trade-off entre frescura (medallas se ven al rato) y carga DB.
+// El ranking cambia con cada respuesta de cada usuario, pero rara vez en los
+// primeros puestos del top 100, así que 5 min es seguro UX-wise.
+const getRankingForPeriod = unstable_cache(
+  getRankingForPeriodInternal,
+  ['medals-ranking-period-v1'],
+  { revalidate: 300, tags: ['medals'] }
+)
+
+// ============================================
 // OBTENER MEDALLAS DEL USUARIO
 // ============================================
 
 export async function getUserMedals(userId: string): Promise<GetMedalsResponse> {
   try {
-    const db = getDb()
     const now = new Date()
     const periods = getMedalPeriods(now)
     const medals: UserMedal[] = []
@@ -182,29 +236,10 @@ export async function getUserMedals(userId: string): Promise<GetMedalsResponse> 
     for (const [, period] of Object.entries(periods)) {
       if (!period) continue
 
-      // Usar tq.user_id directamente (sin JOIN tests)
-      const result = await db.execute(
-        sql`SELECT
-              tq.user_id,
-              COUNT(*)::bigint AS total_questions,
-              COUNT(*) FILTER (WHERE tq.is_correct)::bigint AS correct_answers,
-              ROUND((COUNT(*) FILTER (WHERE tq.is_correct)::numeric / COUNT(*)) * 100, 0) AS accuracy
-            FROM test_questions tq
-            WHERE tq.user_id IS NOT NULL
-              AND tq.created_at >= ${period.startDate.toISOString()}::timestamptz
-              AND tq.created_at <= ${period.endDate.toISOString()}::timestamptz
-            GROUP BY tq.user_id
-            HAVING COUNT(*) >= 5
-            ORDER BY accuracy DESC, total_questions DESC
-            LIMIT 100`
+      const ranking = await getRankingForPeriod(
+        period.startDate.toISOString(),
+        period.endDate.toISOString()
       )
-
-      const ranking: RankingUser[] = ((result as any[]) || []).map((row: any) => ({
-        userId: row.user_id,
-        totalQuestions: Number(row.total_questions),
-        correctAnswers: Number(row.correct_answers),
-        accuracy: Number(row.accuracy),
-      }))
 
       const periodMedals = assignMedalsForPeriod(period.name, ranking, userId)
       medals.push(...periodMedals)
