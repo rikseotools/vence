@@ -8,7 +8,12 @@
 // - Borra datos archivados >6 meses (retención legal suficiente para investigar bugs)
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getDb } from '@/db/client'
+// getAdminDb (max:4) en vez de getDb (max:1): este cron procesa hasta 200k
+// filas en 20 batches paralelos. Con max:1 monopolizaba el pool de usuarios
+// durante los minutos de ejecución (3:30 UTC, fuera de pico) — aun así
+// movemos al pool admin para mantener consistencia con el resto de crons
+// y porque el día que coincida con un usuario madrugador no le bloqueamos.
+import { getAdminDb } from '@/db/client'
 import { sql } from 'drizzle-orm'
 
 const BATCH_SIZE = 10_000  // 10k por batch (50k causaba statement timeout en Supabase)
@@ -24,7 +29,7 @@ async function _GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const db = getDb()
+  const db = getAdminDb()
   const results = { archived: 0, deleted: 0, batches: 0, errors: [] as string[] }
 
   try {

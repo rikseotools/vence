@@ -10,7 +10,10 @@
 // Se ejecuta semanalmente (GitHub Actions lunes 8:00 UTC).
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getDb } from '@/db/client'
+// getAdminDb (max:4): cron semanal lunes 8 UTC (coincide con tráfico real).
+// Hace fetch+hash de fuentes externas + queries DB. Con max:1 saturaba el
+// pool de usuarios. Movido al admin pool para no bloquear tráfico real.
+import { getAdminDb } from '@/db/client'
 import { sql } from 'drizzle-orm'
 import { insertSignal } from '@/lib/api/oep-signals/queries'
 import { baseScoreBySensor } from '@/lib/api/oep-signals/schemas'
@@ -40,7 +43,7 @@ async function _GET(request: NextRequest) {
   }
 
   const startTime = Date.now()
-  const db = getDb()
+  const db = getAdminDb()
 
   const rows = (await db.execute(sql`
     SELECT id, source_key, source_name, source_url, last_hash, last_checked_at

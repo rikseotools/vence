@@ -1,5 +1,10 @@
 // lib/api/boe-changes/queries.ts - Queries y funciones para monitoreo BOE
-import { getDb } from '@/db/client'
+// getAdminDb (max:4) en vez de getDb (max:1): este módulo lo consume solo
+// el cron check-boe-changes, que procesa ~337 leyes en chunks paralelos.
+// Con max:1 monopolizaba el pool de usuarios a las 8 UTC (9-10 AM España)
+// coincidiendo con tráfico real → cascada de 504s. El admin pool (max:4)
+// soporta el paralelismo del cron sin saturar el pool de usuarios.
+import { getAdminDb } from '@/db/client'
 import { laws } from '@/db/schema'
 import { isNotNull, eq, and, ne, or, lt, sql } from 'drizzle-orm'
 import {
@@ -52,7 +57,7 @@ export async function fetchWithTimeout(
 // ============================================
 
 export async function getLawsForBoeCheck(): Promise<LawForCheck[]> {
-  const db = getDb()
+  const db = getAdminDb()
 
   const today = new Date()
   today.setUTCHours(0, 0, 0, 0)
@@ -106,7 +111,7 @@ export async function updateLawAfterCheck(
   data: LawUpdateData
 ): Promise<boolean> {
   try {
-    const db = getDb()
+    const db = getAdminDb()
 
     await db
       .update(laws)
