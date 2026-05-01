@@ -675,6 +675,7 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
         } else if (event === 'SIGNED_OUT') {
           // === LOGOUT ===
           console.log('👋 SIGNED_OUT')
+          setUser(null)
           updateUserProfile(null)
           setLoading(false)
         }

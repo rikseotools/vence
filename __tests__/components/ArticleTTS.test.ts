@@ -126,8 +126,14 @@ describe('ArticleTTS — mecanismos de robustez', () => {
   })
 
   it('watchdog hace cancel() antes de re-lanzar', () => {
-    // Importante: cancel() limpia el estado de Chrome antes de re-intentar
-    expect(SRC).toMatch(/speechSynthesis\.cancel\(\)\s*\n\s*speakChunkRef\.current/)
+    // Importante: cancel() limpia el estado de Chrome antes de re-intentar.
+    // cancel() debe aparecer ANTES de speakChunkRef.current en el watchdog.
+    // (entre ambos hay lógica de retries con MAX_WATCHDOG_RETRIES)
+    const watchdogSection = SRC.slice(SRC.indexOf('Caso 1: speech murió silenciosamente'))
+    const cancelIdx = watchdogSection.indexOf('speechSynthesis.cancel()')
+    const speakIdx = watchdogSection.indexOf('speakChunkRef.current(currentChunkRef.current')
+    expect(cancelIdx).toBeGreaterThan(0)
+    expect(speakIdx).toBeGreaterThan(cancelIdx)
   })
 
   it('watchdog re-lanza desde el chunk actual (no desde 0)', () => {
