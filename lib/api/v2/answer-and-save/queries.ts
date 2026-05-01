@@ -4,6 +4,7 @@ import { getDb } from '@/db/client'
 import { tests, userProfiles, questions, articles, laws, psychometricQuestions } from '@/db/schema'
 import { eq } from 'drizzle-orm'
 import { insertTestAnswer } from '@/lib/api/test-answers'
+import { invalidateProfileCache } from '@/lib/api/profile'
 import type { SaveAnswerRequest } from '@/lib/api/test-answers'
 import type { AnswerAndSaveRequest, AnswerAndSaveResponse } from './schemas'
 import { resolveTemaByQuestionIdFast } from '@/lib/api/tema-resolver/queries'
@@ -223,6 +224,7 @@ export async function markActiveStudentIfFirst(userId: string): Promise<void> {
           firstTestCompletedAt: new Date().toISOString(),
         })
         .where(eq(userProfiles.id, userId))
+      invalidateProfileCache()
       console.log('🎯 [after] Usuario marcado como ACTIVO:', userId)
     }
   } catch (error) {

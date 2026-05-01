@@ -7,6 +7,7 @@ import { Resend } from 'resend'
 import type Stripe from 'stripe'
 import { shouldDowngradeNow, formatPeriodEnd, determinePlanType } from '@/lib/stripe-webhook-handlers'
 import { sendEmailV2 } from '@/lib/api/emails'
+import { invalidateProfileCache } from '@/lib/api/profile'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -305,6 +306,7 @@ async function handleCheckoutSessionCompleted(
     if (error) {
       console.error('❌ Error actualizando usuario a premium:', error)
     } else {
+      invalidateProfileCache()
       console.log(`✅ User ${userId} ahora es PREMIUM`, data)
 
       let planType = 'subscription'
@@ -465,6 +467,7 @@ async function handleCheckoutSessionCompleted(
         if (updateError) {
           console.error('❌ Error actualizando usuario a premium (CASO 2):', updateError)
         } else {
+          invalidateProfileCache()
           console.log(`✅ User ${existingUser.id} ahora es PREMIUM (encontrado por email)`, updateData)
         }
 
@@ -488,6 +491,7 @@ async function handleCheckoutSessionCompleted(
           if (retryError) {
             console.error('❌ Error en reintento:', retryError)
           } else {
+            invalidateProfileCache()
             const { data: finalData } = await supabase
               .from('user_profiles')
               .select('plan_type')
@@ -710,6 +714,7 @@ async function handleSubscriptionUpdated(
             .from('user_profiles')
             .update({ plan_type: 'free' })
             .eq('id', subData.user_id)
+          invalidateProfileCache()
           console.log(`✅ User ${subData.user_id} degradado a FREE`)
         } else {
           const periodEnd = formatPeriodEnd(periodEndTimestamp)
@@ -801,6 +806,7 @@ async function handleSubscriptionDeleted(
         if (profileError) {
           console.error('❌ Error degradando usuario:', profileError)
         } else {
+          invalidateProfileCache()
           console.log(`✅ User ${subData.user_id} degradado a FREE`)
         }
       } else {
@@ -876,6 +882,7 @@ async function handlePaymentSucceeded(
           .from('user_profiles')
           .update({ plan_type: 'premium' })
           .eq('id', userId)
+        invalidateProfileCache()
 
         // Actualizar periodo en user_subscriptions (renovación)
         const { periodStart, periodEnd } = extractPeriodDates(subscription)

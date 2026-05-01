@@ -259,6 +259,19 @@ export const getProfileForSelfCached = unstable_cache(
   { revalidate: 60, tags: ['profile'] }
 )
 
+/**
+ * Invalida el cache server-side de /api/profile (tag 'profile').
+ * Llamar desde cualquier mutación server-side a user_profiles para que la
+ * próxima lectura sea fresca, sin esperar al TTL de 60s.
+ *
+ * Usar en: Stripe webhook, auth callback, complete-onboarding, etc.
+ * Ver `app/api/profile/route.ts` y `lib/api/profile/queries.ts:updateProfile`
+ * para ejemplos de uso.
+ */
+export function invalidateProfileCache(): void {
+  revalidateTag('profile', 'max')
+}
+
 // ============================================
 // VERIFICAR SI PERFIL EXISTE
 // ============================================

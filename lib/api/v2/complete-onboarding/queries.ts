@@ -3,6 +3,7 @@
 import { getDb } from '@/db/client'
 import { userProfiles } from '@/db/schema'
 import { eq } from 'drizzle-orm'
+import { invalidateProfileCache } from '@/lib/api/profile'
 import type { CompleteOnboardingRequest, CompleteOnboardingResponse } from './schemas'
 
 export async function completeOnboarding(
@@ -40,6 +41,7 @@ export async function completeOnboarding(
     return { success: false, error: 'Usuario no encontrado' }
   }
 
+  invalidateProfileCache()
   console.log(`✅ [complete-onboarding] Onboarding completado para ${userId}`)
   return { success: true }
 }

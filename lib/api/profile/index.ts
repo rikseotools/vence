@@ -31,5 +31,6 @@ export {
   profileExists,
   getProfileForSelf,
   getProfileForAdmin,
-  getProfileForSelfCached
+  getProfileForSelfCached,
+  invalidateProfileCache
 } from './queries'
