@@ -51,10 +51,10 @@ export async function getRandomTestData(
     // los users de la misma oposición — el conteo no depende de userId)
     const themeQuestionCounts = await getThemeQuestionCountsCached(oposicion, positionType, themeRange)
 
-    // 2️⃣ OBTENER ESTADÍSTICAS DEL USUARIO (si hay userId)
+    // 2️⃣ OBTENER ESTADÍSTICAS DEL USUARIO (si hay userId, cacheado 60s)
     let userStats: UserThemeStats | undefined
     if (userId) {
-      userStats = await getUserThemeStats(db, userId, oposicion)
+      userStats = await getUserThemeStatsCached(userId, oposicion)
     }
 
     const response: GetRandomTestDataResponse = {
@@ -175,13 +175,15 @@ const getThemeQuestionCountsCached = unstable_cache(
 )
 
 /**
- * Obtiene las estadísticas del usuario por tema (últimos 6 meses)
+ * Obtiene las estadísticas del usuario por tema (últimos 6 meses).
+ *
+ * Args sin `db` para que sean serializables como cache key del wrapper.
  */
-async function getUserThemeStats(
-  db: ReturnType<typeof getDb>,
+async function getUserThemeStatsInternal(
   userId: string,
   oposicion: OposicionKey
 ): Promise<UserThemeStats> {
+  const db = getDb()
   const stats: UserThemeStats = {}
 
   // Fecha de corte: 6 meses atrás
@@ -250,6 +252,35 @@ async function getUserThemeStats(
 
   return stats
 }
+
+/**
+ * Versión cacheada (TTL 60s, tag 'user-theme-stats').
+ *
+ * Cache compartido entre lambdas Vercel via Data Cache. Cache key automático
+ * por (userId, oposicion). Cada user tiene su propia entrada.
+ *
+ * Trade-off: tras user responde una pregunta, sus stats se refrescan a los
+ * 60s (no instantáneo). UX aceptable — el endpoint /api/v2/answer-and-save
+ * devuelve newScore inmediato, el frontend probablemente actualiza stats
+ * locales. /api/random-test-data se llama al abrir el configurador de tests
+ * (raro hacerlo justo tras responder).
+ *
+ * Antes: 100k users × 1 query DB cada hit = 100k queries/h
+ * Después: 100k users × ~1 cache miss/min/user = ~100k queries/h DISTRIBUIDAS
+ *          en 60s (vs todas a la vez), con cache hits intercalados.
+ *
+ * Mejora real: con tráfico estable (cache caliente), la mayoría de hits son
+ * cache hit. Hit ratio depende de comportamiento real, pero al menos el
+ * fan-out instantáneo a BD se elimina.
+ *
+ * Tag 'user-theme-stats' permite invalidación masiva (raro):
+ *   curl POST /api/admin/revalidate -d '{"tag":"user-theme-stats"}'
+ */
+const getUserThemeStatsCached = unstable_cache(
+  getUserThemeStatsInternal,
+  ['rtd-user-theme-stats-v1'],
+  { revalidate: 60, tags: ['user-theme-stats'] }
+)
 
 /**
  * Obtiene estadísticas detalladas de un tema específico (preguntas vistas/no vistas)

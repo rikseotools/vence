@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { revalidateTag } from 'next/cache'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 
-const VALID_TAGS = ['temario', 'teoria', 'laws', 'landing', 'test-counts', 'medals', 'profile', 'questions']
+const VALID_TAGS = ['temario', 'teoria', 'laws', 'landing', 'test-counts', 'medals', 'profile', 'questions', 'user-theme-stats']
 
 async function _POST(request: NextRequest) {
   const secret = request.headers.get('x-cron-secret')
