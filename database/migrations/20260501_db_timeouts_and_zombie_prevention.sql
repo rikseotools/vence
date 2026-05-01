@@ -5,10 +5,11 @@
 -- (estado ClientRead). Sin timeout, esa conexión ocupa 1 de 90 slots del pool
 -- indefinidamente → cascada de 504s.
 --
--- Fix: statement_timeout 30s mata queries antes de que Vercel las abandone.
+-- Fix: statement_timeout 45s mata queries antes de que se conviertan en zombis.
+-- 45s (no 30s): fetchLawArticles tarda >30s legítimamente con leyes grandes.
 -- idle_in_transaction_session_timeout 60s mata conexiones zombi en transacciones.
 
-ALTER DATABASE postgres SET statement_timeout = '30s';
+ALTER DATABASE postgres SET statement_timeout = '45s';
 ALTER DATABASE postgres SET idle_in_transaction_session_timeout = '60s';
 
 -- También optimizado el trigger update_user_streak_function:
