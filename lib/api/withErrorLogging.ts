@@ -100,13 +100,18 @@ export function withErrorLogging(endpoint: string, handler: RouteHandler): Route
 
         const sanitizedBody = body ? sanitizeRequestBody(body) : undefined
 
+        // userId: buscar en request body, luego en response body (device limit lo incluye ahí)
+        const resolvedUserId = (body?.userId as string)
+          || (responseBody?.userId as string)
+          || undefined
+
         logValidationError({
           id: errorRef,
           endpoint,
           errorType: response.status >= 500 ? 'unknown' : classifyHttpStatus(response.status),
           errorMessage,
           questionId: (body?.questionId as string) || undefined,
-          userId: (body?.userId as string) || undefined,
+          userId: resolvedUserId,
           requestBody: sanitizedBody,
           severity: getSeverity(response.status),
           httpStatus: response.status,

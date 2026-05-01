@@ -7,7 +7,7 @@ import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { checkRateLimit, getClientIp, RATE_LIMIT_ANSWER, RATE_LIMIT_ANON_ANSWER } from '@/lib/api/rateLimit'
 import { logValidationError } from '@/lib/api/validation-error-log'
 import { getDailyLimitStatus, checkDeviceDailyUsage, getUserIdFromToken } from '@/lib/api/dailyLimit'
-import { registerAndCheckDevice, getDeviceIdFromRequest } from '@/lib/api/deviceLimit'
+import { registerAndCheckDevice, getDeviceIdFromRequest, getHwFingerprintFromRequest } from '@/lib/api/deviceLimit'
 
 export const maxDuration = 30
 
@@ -56,7 +56,8 @@ async function _POST(request: NextRequest) {
 
     const deviceId = getDeviceIdFromRequest(request)
 
-    const deviceCheck = await registerAndCheckDevice(tokenUserId, deviceId, request.headers.get('user-agent'))
+    const hwFingerprint = getHwFingerprintFromRequest(request)
+    const deviceCheck = await registerAndCheckDevice(tokenUserId, deviceId, request.headers.get('user-agent'), hwFingerprint)
     if (!deviceCheck.allowed) {
       return NextResponse.json(
         {

@@ -123,16 +123,31 @@ describe('registerAndCheckDevice', () => {
     expect(r.allowed).toBe(false)
   })
 
-  it('sends correct RPC params including device_label', async () => {
+  it('sends correct RPC params including device_label and hw_fingerprint', async () => {
     mockRpc.mockResolvedValue({
       data: { allowed: true, device_count: 1, max_devices: 2, is_new_device: true, is_premium: false },
       error: null,
     })
-    await registerAndCheckDevice('uid', 'did', 'Mozilla/5.0 (Windows NT 10.0) Chrome/120')
+    await registerAndCheckDevice('uid', 'did', 'Mozilla/5.0 (Windows NT 10.0) Chrome/120', 'hw_abc123')
     expect(mockRpc).toHaveBeenCalledWith('register_device', {
       p_user_id: 'uid',
       p_device_id: 'did',
       p_device_label: 'Chrome / Windows',
+      p_hw_fingerprint: 'hw_abc123',
+    })
+  })
+
+  it('sends null hw_fingerprint when not provided', async () => {
+    mockRpc.mockResolvedValue({
+      data: { allowed: true, device_count: 1, max_devices: 2, is_new_device: true, is_premium: false },
+      error: null,
+    })
+    await registerAndCheckDevice('uid', 'did', 'Mozilla/5.0 Chrome/120')
+    expect(mockRpc).toHaveBeenCalledWith('register_device', {
+      p_user_id: 'uid',
+      p_device_id: 'did',
+      p_device_label: 'Chrome / Unknown',
+      p_hw_fingerprint: null,
     })
   })
 })

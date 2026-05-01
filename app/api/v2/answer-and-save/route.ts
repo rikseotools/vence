@@ -12,7 +12,7 @@ import {
 } from '@/lib/api/v2/answer-and-save'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { getDailyLimitStatus, incrementDailyCount, checkDeviceDailyUsage } from '@/lib/api/dailyLimit'
-import { registerAndCheckDevice, getDeviceIdFromRequest } from '@/lib/api/deviceLimit'
+import { registerAndCheckDevice, getDeviceIdFromRequest, getHwFingerprintFromRequest } from '@/lib/api/deviceLimit'
 
 // Margen para cold start + conexión BD
 export const maxDuration = 30
@@ -68,8 +68,9 @@ async function _POST(request: NextRequest): Promise<NextResponse<AnswerAndSaveRe
     // 3. Anti-fraud checks in parallel (device limit + daily limits)
     // All three RPCs are independent — run them concurrently to save ~400ms
     const deviceId = getDeviceIdFromRequest(request)
+    const hwFingerprint = getHwFingerprintFromRequest(request)
     const [deviceCheck, dailyLimit, deviceUsage] = await Promise.all([
-      registerAndCheckDevice(user.id, deviceId, request.headers.get('user-agent')),
+      registerAndCheckDevice(user.id, deviceId, request.headers.get('user-agent'), hwFingerprint),
       getDailyLimitStatus(user.id),
       checkDeviceDailyUsage(deviceId),
     ])
@@ -83,6 +84,7 @@ async function _POST(request: NextRequest): Promise<NextResponse<AnswerAndSaveRe
           deviceCount: deviceCheck.deviceCount,
           maxDevices: deviceCheck.maxDevices,
           existingDevices: deviceCheck.existingDevices,
+          userId: user.id, // Para que withErrorLogging pueda logar el userId en /admin/fraudes
         } as const,
         { status: 403 },
       )

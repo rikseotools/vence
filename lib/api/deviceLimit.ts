@@ -70,6 +70,7 @@ export async function registerAndCheckDevice(
   userId: string | null,
   deviceId: string | null,
   userAgent?: string | null,
+  hwFingerprint?: string | null,
 ): Promise<DeviceCheckResult> {
   if (!userId || !deviceId) return FAIL_OPEN
 
@@ -87,6 +88,7 @@ export async function registerAndCheckDevice(
       p_user_id: userId,
       p_device_id: deviceId,
       p_device_label: deviceLabel,
+      p_hw_fingerprint: hwFingerprint || null,
     })
 
     if (error) {

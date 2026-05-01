@@ -14,7 +14,7 @@ import {
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { checkRateLimit, getClientIp, RATE_LIMIT_ANON_ANSWER } from '@/lib/api/rateLimit'
 import { getDailyLimitStatus, incrementDailyCount, checkDeviceDailyUsage, getUserIdFromToken } from '@/lib/api/dailyLimit'
-import { registerAndCheckDevice, getDeviceIdFromRequest } from '@/lib/api/deviceLimit'
+import { registerAndCheckDevice, getDeviceIdFromRequest, getHwFingerprintFromRequest } from '@/lib/api/deviceLimit'
 // ============================================
 // ENDPOINT POST
 // ============================================
@@ -58,7 +58,8 @@ return NextResponse.json(
 
     const deviceId = getDeviceIdFromRequest(request)
 
-    const deviceCheck = await registerAndCheckDevice(tokenUserId, deviceId, request.headers.get('user-agent'))
+    const hwFingerprint = getHwFingerprintFromRequest(request)
+    const deviceCheck = await registerAndCheckDevice(tokenUserId, deviceId, request.headers.get('user-agent'), hwFingerprint)
     if (!deviceCheck.allowed) {
       return NextResponse.json(
         {
