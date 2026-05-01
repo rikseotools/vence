@@ -1,6 +1,10 @@
 // app/api/ai/chat-v2/route.ts
 // Nueva arquitectura de chat con TypeScript, Drizzle y Zod
 
+// Streaming responses pueden tardar más que el default de Vercel (30s)
+// 60s permite respuestas largas sin timeout
+export const maxDuration = 60
+
 import { NextRequest, NextResponse } from 'next/server'
 import { after } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
@@ -179,38 +183,43 @@ async function _POST(request: NextRequest) {
     // Las explicaciones de preguntas (EXEMPT_SUGGESTIONS) no cuentan contra el límite
     const isExemptSuggestion = data.suggestionUsed && EXEMPT_SUGGESTIONS.includes(data.suggestionUsed)
 
-    if (data.userId && !isExemptSuggestion) {
-      // Verificar plan en BD (no confiar en el frontend)
-      let isPremiumVerified = data.isPremium
-      if (!isPremiumVerified && data.userId !== 'anonymous') {
-        const { data: profile } = await getSupabase()
-          .from('user_profiles')
-          .select('plan_type')
-          .eq('id', data.userId)
-          .single()
-        isPremiumVerified = profile?.plan_type === 'premium' || profile?.plan_type === 'trial'
+    // Obtener perfil + conteo diario en paralelo (antes eran 3 queries secuenciales → ~300-900ms)
+    // Una sola query a user_profiles para plan_type + nickname (elimina getUserName posterior)
+    let isPremiumVerified = data.isPremium
+    let userName: string | undefined
+    if (data.userId && data.userId !== 'anonymous') {
+      const profilePromise = getSupabase()
+        .from('user_profiles')
+        .select('plan_type, nickname, full_name')
+        .eq('id', data.userId)
+        .single()
+      const dailyCountPromise = isExemptSuggestion ? Promise.resolve(0) : getUserDailyMessageCount(data.userId)
+
+      const [profileResult, dailyCount] = await Promise.all([profilePromise, dailyCountPromise])
+
+      if (profileResult.data) {
+        isPremiumVerified = profileResult.data.plan_type === 'premium' || profileResult.data.plan_type === 'trial'
+        const name = profileResult.data.nickname || profileResult.data.full_name
+        userName = name ? name.split(' ')[0] : undefined
       }
 
-      if (!isPremiumVerified) {
-        const dailyCount = await getUserDailyMessageCount(data.userId)
-        if (dailyCount >= FREE_USER_DAILY_LIMIT) {
-          logger.warn('Rate limit exceeded', {
-            domain: 'api',
-            userId: data.userId,
-            count: dailyCount,
-          })
+      if (!isPremiumVerified && !isExemptSuggestion && dailyCount >= FREE_USER_DAILY_LIMIT) {
+        logger.warn('Rate limit exceeded', {
+          domain: 'api',
+          userId: data.userId,
+          count: dailyCount,
+        })
 
-          return NextResponse.json(
-            {
-              success: false,
-              error: 'Límite diario de mensajes alcanzado',
-              code: 'RATE_LIMIT',
-              dailyUsed: dailyCount,
-              dailyLimit: FREE_USER_DAILY_LIMIT,
-            },
-            { status: 429 }
-          )
-        }
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Límite diario de mensajes alcanzado',
+            code: 'RATE_LIMIT',
+            dailyUsed: dailyCount,
+            dailyLimit: FREE_USER_DAILY_LIMIT,
+          },
+          { status: 429 }
+        )
       }
     }
 
@@ -262,8 +271,7 @@ async function _POST(request: NextRequest) {
       })
     }
 
-    // Obtener nombre del usuario para personalización
-    const userName = data.userId ? await getUserName(data.userId) : undefined
+    // userName ya obtenido arriba junto con el perfil (query paralela)
     logger.info(`👤 User info: userId=${data.userId}, userName=${userName}`, { domain: 'api' })
 
     // Construir contexto de chat

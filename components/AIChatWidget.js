@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { usePathname } from 'next/navigation'
 import ReactMarkdown from 'react-markdown'
 import { useQuestionContext, answerToLetter, normalizeQuestionContext } from '../contexts/QuestionContext'
@@ -9,6 +9,21 @@ import { useOposicion } from '../contexts/OposicionContext'
 import { useAuth } from '../contexts/AuthContext'
 import { getChatEndpoint } from '../lib/chat/config'
 import { useInteractionTracker } from '../hooks/useInteractionTracker'
+
+// Mensaje que aparece si el chat tarda >8s en responder
+function SlowLoadingHint() {
+  const [show, setShow] = useState(false)
+  useEffect(() => {
+    const timer = setTimeout(() => setShow(true), 8000)
+    return () => clearTimeout(timer)
+  }, [])
+  if (!show) return null
+  return (
+    <span className="text-xs text-gray-400 dark:text-gray-500 ml-1 animate-fade-in">
+      Un momento...
+    </span>
+  )
+}
 
 export default function AIChatWidget() {
   const pathname = usePathname()
@@ -310,8 +325,18 @@ export default function AIChatWidget() {
     contentBufferRef.current = ''
     lastUpdateRef.current = 0
 
-    // Crear AbortController para poder cancelar
+    // Crear AbortController para poder cancelar (cierre de chat o timeout)
     abortControllerRef.current = new AbortController()
+    // Timeout de 30s: si el servidor no responde, abortar con mensaje claro
+    const timeoutId = setTimeout(() => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+        setError('El servidor está tardando demasiado. Inténtalo de nuevo en unos segundos.')
+        setMessages(prev => prev.filter(m => m.content !== '' || m.role === 'user'))
+        setIsLoading(false)
+        setIsStreaming(false)
+      }
+    }, 30_000)
 
     try {
       // Limpiar el contexto de pregunta - extraer SOLO valores primitivos
@@ -412,6 +437,9 @@ export default function AIChatWidget() {
         }
         throw new Error(errorData.error || 'Error al procesar tu pregunta')
       }
+
+      // Respuesta recibida — cancelar timeout
+      clearTimeout(timeoutId)
 
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
@@ -536,15 +564,18 @@ export default function AIChatWidget() {
       })
 
     } catch (err) {
+      clearTimeout(timeoutId)
       if (err.name === 'AbortError') {
-        // Usuario canceló, eliminar mensaje vacío
-        setMessages(prev => prev.filter(m => m.content !== '' || m.role === 'user'))
+        // Si el error ya fue seteado por el timeout, no sobreescribir
+        if (!error) {
+          setMessages(prev => prev.filter(m => m.content !== '' || m.role === 'user'))
+        }
       } else {
         setError(err.message || 'Error de conexión. Inténtalo de nuevo.')
-        // Eliminar mensaje vacío si hubo error
         setMessages(prev => prev.filter(m => m.content !== '' || m.role === 'user'))
       }
     } finally {
+      clearTimeout(timeoutId)
       setIsLoading(false)
       setIsStreaming(false)
       abortControllerRef.current = null
@@ -1292,10 +1323,13 @@ export default function AIChatWidget() {
           {isLoading && !isStreaming && (
             <div className="flex justify-start">
               <div className="bg-gray-100 dark:bg-gray-700 px-4 py-3 rounded-2xl rounded-bl-md">
-                <div className="flex gap-1">
-                  <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                  <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                  <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                <div className="flex items-center gap-2">
+                  <div className="flex gap-1">
+                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                  </div>
+                  <SlowLoadingHint />
                 </div>
               </div>
             </div>
