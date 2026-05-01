@@ -69,11 +69,13 @@ async function syncOne(answer: QueuedAnswer, accessToken: string): Promise<boole
 
   try {
     const deviceId = typeof window !== 'undefined' ? localStorage.getItem('vence_device_id') : null
+    const hwFp = typeof window !== 'undefined' ? localStorage.getItem('vence_hw_fingerprint') : null
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${accessToken}`,
     }
     if (deviceId) headers['X-Device-Id'] = deviceId
+    if (hwFp) headers['X-Hw-Fingerprint'] = hwFp
 
     const response = await fetch('/api/v2/answer-and-save', {
       method: 'POST',
