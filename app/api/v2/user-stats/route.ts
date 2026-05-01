@@ -4,7 +4,7 @@ import { getUserPublicStats } from '@/lib/api/user-stats/queries'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 
-export const maxDuration = 10
+export const maxDuration = 30
 
 async function _GET(request: NextRequest) {
   try {

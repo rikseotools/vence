@@ -96,8 +96,8 @@ async function getMetricsFallback(db: ReturnType<typeof getDb>, userId: string):
       COUNT(DISTINCT tq.question_id) FILTER (
         WHERE tq.question_id IN (
           SELECT tq2.question_id FROM test_questions tq2
-          INNER JOIN tests t2 ON tq2.test_id = t2.id
-          WHERE t2.user_id = ${userId}::uuid
+          -- JOIN tests eliminado
+          WHERE tq2.user_id = ${userId}::uuid
           GROUP BY tq2.question_id
           HAVING AVG(CASE WHEN tq2.is_correct THEN 1.0 ELSE 0.0 END) >= 0.8
         )
@@ -105,15 +105,15 @@ async function getMetricsFallback(db: ReturnType<typeof getDb>, userId: string):
       COUNT(DISTINCT tq.question_id) FILTER (
         WHERE tq.question_id IN (
           SELECT tq2.question_id FROM test_questions tq2
-          INNER JOIN tests t2 ON tq2.test_id = t2.id
-          WHERE t2.user_id = ${userId}::uuid
+          -- JOIN tests eliminado
+          WHERE tq2.user_id = ${userId}::uuid
           GROUP BY tq2.question_id
           HAVING AVG(CASE WHEN tq2.is_correct THEN 1.0 ELSE 0.0 END) < 0.4
         )
       )::int AS questions_struggling
     FROM test_questions tq
-    INNER JOIN tests t ON tq.test_id = t.id
-    WHERE t.user_id = ${userId}::uuid
+    -- JOIN tests eliminado: usar tq.user_id directamente
+    WHERE tq.user_id = ${userId}::uuid
   `)
 
   const row = (result as Record<string, unknown>[])[0]
@@ -147,9 +147,9 @@ async function getStrugglingFallback(db: ReturnType<typeof getDb>, userId: strin
       ROUND(AVG(CASE WHEN tq.is_correct THEN 1.0 ELSE 0.0 END) * 100, 1) AS success_rate,
       ROUND((1 - AVG(CASE WHEN tq.is_correct THEN 1.0 ELSE 0.0 END)) * 100, 1) AS personal_difficulty
     FROM test_questions tq
-    INNER JOIN tests t ON tq.test_id = t.id
+    -- JOIN tests eliminado: usar tq.user_id directamente
     INNER JOIN questions q ON tq.question_id = q.id
-    WHERE t.user_id = ${userId}::uuid
+    WHERE tq.user_id = ${userId}::uuid
     GROUP BY tq.question_id, q.question_text
     HAVING COUNT(*) >= 2 AND AVG(CASE WHEN tq.is_correct THEN 1.0 ELSE 0.0 END) < 0.4
     ORDER BY AVG(CASE WHEN tq.is_correct THEN 1.0 ELSE 0.0 END) ASC
@@ -179,9 +179,9 @@ async function getMasteredFallback(db: ReturnType<typeof getDb>, userId: string,
       ROUND(AVG(CASE WHEN tq.is_correct THEN 1.0 ELSE 0.0 END) * 100, 1) AS success_rate,
       ROUND((1 - AVG(CASE WHEN tq.is_correct THEN 1.0 ELSE 0.0 END)) * 100, 1) AS personal_difficulty
     FROM test_questions tq
-    INNER JOIN tests t ON tq.test_id = t.id
+    -- JOIN tests eliminado: usar tq.user_id directamente
     INNER JOIN questions q ON tq.question_id = q.id
-    WHERE t.user_id = ${userId}::uuid
+    WHERE tq.user_id = ${userId}::uuid
     GROUP BY tq.question_id, q.question_text
     HAVING COUNT(*) >= 2 AND AVG(CASE WHEN tq.is_correct THEN 1.0 ELSE 0.0 END) >= 0.8
     ORDER BY AVG(CASE WHEN tq.is_correct THEN 1.0 ELSE 0.0 END) DESC
@@ -234,8 +234,8 @@ async function getPersonalBreakdown(db: ReturnType<typeof getDb>, userId: string
           tq.question_id,
           AVG(CASE WHEN tq.is_correct THEN 1.0 ELSE 0.0 END) AS success_rate
         FROM test_questions tq
-        INNER JOIN tests t ON tq.test_id = t.id
-        WHERE t.user_id = ${userId}::uuid
+        -- JOIN tests eliminado: usar tq.user_id directamente
+        WHERE tq.user_id = ${userId}::uuid
         GROUP BY tq.question_id
         HAVING COUNT(*) >= 2
       )

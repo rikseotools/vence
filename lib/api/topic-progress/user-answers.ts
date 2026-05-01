@@ -92,10 +92,10 @@ export async function getUserAnswersWithArticles(
       tq.confidence_level,
       tq.law_name
     FROM test_questions tq
-    INNER JOIN tests t ON tq.test_id = t.id
+    -- JOIN tests eliminado: usar tq.user_id directamente
     INNER JOIN questions q ON tq.question_id = q.id
     INNER JOIN articles a ON q.primary_article_id = a.id
-    WHERE t.user_id = ${userId}
+    WHERE tq.user_id = ${userId}
       AND q.primary_article_id IS NOT NULL
       AND a.is_active = true
       ${topicFilter}

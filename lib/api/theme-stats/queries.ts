@@ -201,8 +201,8 @@ async function getUserThemeStatsLegacy(userId: string): Promise<GetThemeStatsRes
         SUM(CASE WHEN tq.is_correct THEN 1 ELSE 0 END)::int as correct,
         MAX(tq.created_at)::text as last_study
       FROM test_questions tq
-      INNER JOIN tests t ON tq.test_id = t.id
-      WHERE t.user_id = ${userId}
+      -- JOIN tests eliminado: usar tq.user_id directamente
+      WHERE tq.user_id = ${userId}
         AND tq.tema_number IS NOT NULL
       GROUP BY tq.tema_number
       ORDER BY tq.tema_number

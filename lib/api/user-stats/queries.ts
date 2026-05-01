@@ -47,19 +47,19 @@ export async function getUserPublicStats(userId: string): Promise<UserPublicStat
     // Fallback: usuario sin fila en summary (nuevo o no backfilled).
     // Hacer la query pesada UNA VEZ y crear la fila.
     console.warn(`⚠️ [user-stats] No summary for ${userId.slice(0, 8)}, computing...`)
+    // Usar tq.user_id directamente (sin JOIN tests)
     const fallbackResult = await db.execute(
       sql`INSERT INTO user_stats_summary (user_id, total_questions, correct_answers, blank_answers, questions_this_week, week_start)
           SELECT
-            t.user_id,
+            tq.user_id,
             count(tq.id)::int,
             sum(case when tq.is_correct then 1 else 0 end)::int,
             coalesce(sum(case when tq.was_blank then 1 else 0 end)::int, 0),
             sum(case when tq.created_at >= date_trunc('week', now()) then 1 else 0 end)::int,
             date_trunc('week', now())::date
           FROM test_questions tq
-          INNER JOIN tests t ON tq.test_id = t.id
-          WHERE t.user_id = ${userId}
-          GROUP BY t.user_id
+          WHERE tq.user_id = ${userId}
+          GROUP BY tq.user_id
           ON CONFLICT (user_id) DO UPDATE SET
             total_questions = EXCLUDED.total_questions,
             correct_answers = EXCLUDED.correct_answers,
