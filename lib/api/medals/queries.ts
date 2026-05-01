@@ -170,20 +170,24 @@ function buildMedal(
 }
 
 // ============================================
-// QUERY DEL RANKING POR PERÍODO (cacheado)
+// QUERY DEL RANKING POR PERÍODO (cacheado + circuit breaker)
 // ============================================
-// La query del ranking depende SOLO del período, no del usuario. Cacheamos
-// el ranking compartido (top 100) y luego cada caller calcula sus medallas
-// localmente vía assignMedalsForPeriod (función pura). Ratio de hit muy alto:
-// todos los users del mismo período comparten cache.
+// La query depende SOLO del período. getMedalPeriods() siempre evalúa períodos
+// CERRADOS (ayer, semana pasada, mes pasado) — esos rankings NUNCA cambian
+// retroactivamente, así que el cache es permanente (revalidate: false). Una
+// vez populado, sirve para siempre hasta revalidateTag('medals').
 //
-// statement_timeout de Supabase es 30s y la query con datos reales lo agota.
-// El cache reduce 99%+ de la presión sobre BD. Follow-up: crear índice en
-// test_questions(user_id, created_at, is_correct) para que la primera query
-// (cache miss) baje de >30s a <5s.
+// IMPORTANTE: la query es estructuralmente cara (GROUP BY user_id sobre
+// 192k filas para período "month"). En BD saturada agota statement_timeout
+// 30s. Por eso encima del cache hay un circuit breaker: si la query falla
+// con statement_timeout, abrimos el circuit 5 min y devolvemos [] sin
+// tocar BD — evita que cada hit a /api/medals queme el pool 30s.
 //
-// Invalidar manualmente con: revalidateTag('medals') o
-// curl POST /api/admin/revalidate -d '{"tag":"medals"}'.
+// Cuando el cache se popula (1 vez por período), el circuit breaker queda
+// inerte porque las siguientes lecturas son cache hits.
+//
+// Invalidar manualmente: revalidateTag('medals') o
+//   curl POST /api/admin/revalidate -d '{"tag":"medals"}'.
 
 async function getRankingForPeriodInternal(
   startISO: string,
@@ -214,14 +218,48 @@ async function getRankingForPeriodInternal(
   }))
 }
 
-// 5 minutos: trade-off entre frescura (medallas se ven al rato) y carga DB.
-// El ranking cambia con cada respuesta de cada usuario, pero rara vez en los
-// primeros puestos del top 100, así que 5 min es seguro UX-wise.
-const getRankingForPeriod = unstable_cache(
+const getRankingForPeriodCached = unstable_cache(
   getRankingForPeriodInternal,
-  ['medals-ranking-period-v1'],
-  { revalidate: 300, tags: ['medals'] }
+  ['medals-ranking-period-v2'],
+  { revalidate: false, tags: ['medals'] }
 )
+
+// Circuit breaker: si la query agota statement_timeout (BD saturada),
+// abrimos el circuit 5 min — los siguientes hits devuelven [] sin tocar BD.
+// Estado en memoria del proceso → cada lambda Vercel tiene el suyo, pero
+// con TTL corto se autorrecupera.
+let circuitOpenUntil = 0
+const CIRCUIT_BREAKER_DURATION_MS = 5 * 60 * 1000
+
+function isStatementTimeoutError(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) return false
+  const e = error as { code?: string; message?: string }
+  return e.code === '57014' || /statement timeout/i.test(e.message ?? '')
+}
+
+async function getRankingForPeriod(
+  startISO: string,
+  endISO: string
+): Promise<RankingUser[]> {
+  if (Date.now() < circuitOpenUntil) {
+    console.warn('🚧 [Medals] Circuit breaker abierto — devolviendo [] sin tocar BD')
+    return []
+  }
+  try {
+    return await getRankingForPeriodCached(startISO, endISO)
+  } catch (error) {
+    if (isStatementTimeoutError(error)) {
+      circuitOpenUntil = Date.now() + CIRCUIT_BREAKER_DURATION_MS
+      console.warn(
+        `🚧 [Medals] Statement timeout en período ${startISO}..${endISO}. ` +
+        `Circuit breaker abierto durante 5 min.`
+      )
+    } else {
+      console.error('❌ [Medals] Error en getRankingForPeriod:', error)
+    }
+    return [] // degradado: medallas vacías mejor que cascada de 504s
+  }
+}
 
 // ============================================
 // OBTENER MEDALLAS DEL USUARIO
