@@ -6,6 +6,7 @@ import { sql } from 'drizzle-orm'
 import { eq } from 'drizzle-orm'
 import { oposiciones, topics } from '@/db/schema'
 import { asc, and } from 'drizzle-orm'
+import { unstable_cache } from 'next/cache'
 
 export interface OposicionLandingData {
   nombre: string
@@ -276,6 +277,41 @@ export async function getAllOposicionesCardData(): Promise<Map<string, Oposicion
     return new Map()
   }
 }
+
+// ============================================
+// CACHED WRAPPERS (tag: 'landing')
+// ============================================
+// Mismo patrón que random-test/queries.ts:78-87 y temario/teoria.
+// Las landings declaran `dynamic = 'force-dynamic'` (no SSG en build), pero
+// las queries internas se cachean permanentemente para evitar saturar Supabase
+// durante el warmup post-deploy de ~963 URLs y el tráfico SEO.
+// Invalidar con: revalidateTag('landing') — tag ya whitelisted en
+// /api/admin/revalidate y disparado por /api/admin/revalidate-temario.
+
+export const getOposicionLandingDataCached = unstable_cache(
+  getOposicionLandingData,
+  ['oposicion-landing-data-v1'],
+  { revalidate: false, tags: ['landing'] }
+)
+
+export const getHitosConvocatoriaCached = unstable_cache(
+  getHitosConvocatoria,
+  ['hitos-convocatoria-v1'],
+  { revalidate: false, tags: ['landing'] }
+)
+
+// Map<number, string> no es serializable a JSON; cacheamos como array de tuplas
+// y reconstruimos el Map en el caller con `new Map(result)`.
+async function getTopicNamesForLandingEntries(positionType: string): Promise<[number, string][]> {
+  const map = await getTopicNamesForLanding(positionType)
+  return Array.from(map.entries())
+}
+
+export const getTopicNamesForLandingCached = unstable_cache(
+  getTopicNamesForLandingEntries,
+  ['topic-names-for-landing-v1'],
+  { revalidate: false, tags: ['landing'] }
+)
 
 export interface ConvocatoriaActiva {
   año: number

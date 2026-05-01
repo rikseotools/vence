@@ -3,7 +3,11 @@
 // Las landings estáticas (app/auxiliar-administrativo-*/page.tsx) tienen prioridad
 // sobre esta ruta dinámica. Se migran una a una borrando el archivo estático.
 import { getOposicion, ALL_OPOSICION_SLUGS } from '@/lib/config/oposiciones'
-import { getOposicionLandingData, getHitosConvocatoria, getTopicNamesForLanding } from '@/lib/api/convocatoria/queries'
+import {
+  getOposicionLandingDataCached,
+  getHitosConvocatoriaCached,
+  getTopicNamesForLandingCached,
+} from '@/lib/api/convocatoria/queries'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
@@ -22,7 +26,7 @@ export async function generateMetadata({ params }: { params: Promise<{ oposicion
   const config = getOposicion(oposicion)
   if (!config) return {}
 
-  const data = await getOposicionLandingData(oposicion)
+  const data = await getOposicionLandingDataCached(oposicion)
   const title = data?.seoTitle || `${config.name} 2026 | Tests y Temario`
   // Description se genera dinámicamente para que plazas/temas siempre estén actualizados
   const plazas = data?.plazasLibres
@@ -55,12 +59,12 @@ export default async function OposicionPage({ params }: { params: Promise<{ opos
   const config = getOposicion(oposicion)
   if (!config) notFound()
 
-  const data = await getOposicionLandingData(oposicion)
-  const hitos = await getHitosConvocatoria(oposicion)
+  const data = await getOposicionLandingDataCached(oposicion)
+  const hitos = await getHitosConvocatoriaCached(oposicion)
   const colors = getColorScheme(data?.colorPrimario ?? null)
 
   // Fetch topic names from BD (para que el temario preview no dependa de oposiciones.ts)
-  const topicNamesFromBD = await getTopicNamesForLanding(config.positionType)
+  const topicNamesFromBD = new Map(await getTopicNamesForLandingCached(config.positionType))
 
   // Estado del proceso (para distinguir OEP vs convocatoria en los botones)
   const estadoProceso = data?.estadoProceso ?? 'sin_oep'
