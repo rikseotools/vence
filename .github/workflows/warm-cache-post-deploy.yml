@@ -3,12 +3,20 @@ name: Cache Warmup Post-Deploy
 # Se ejecuta tras push a main (que dispara deploy en Vercel).
 # Espera 5 minutos para que Vercel termine el build, y luego
 # visita todas las páginas force-dynamic para calentar el cache.
-# ~963 URLs con concurrencia 8 → ~3-5 minutos.
+# ~963 URLs con concurrencia 3 → ~8-10 minutos.
+#
+# concurrency: cancela warmups anteriores si hay un nuevo push.
+# Sin esto, pushes rápidos acumulan múltiples warmups simultáneos
+# que saturan la BD (75 errores el 01/05/2026 por 8 pushes en 2h).
 
 on:
   push:
     branches: [main]
   workflow_dispatch: # Permitir ejecución manual
+
+concurrency:
+  group: warmup-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   warm-cache:
