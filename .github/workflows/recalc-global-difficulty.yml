@@ -1,0 +1,36 @@
+name: Recalculate Global Difficulty (debounced)
+
+# Cron que procesa preguntas marcadas como global_dirty=true por trigger #4
+# (track_question_first_attempt). Actualiza questions.global_difficulty_category
+# usado para filtrar preguntas en /random-test y /filtered-questions.
+# Detalle: docs/ARCHITECTURE_ROADMAP.md, supabase/migrations/20260502_global_difficulty_debounced.sql
+
+on:
+  schedule:
+    - cron: '*/5 * * * *' # cada 5 minutos
+  workflow_dispatch: # ejecucion manual desde GitHub UI
+
+jobs:
+  recalc:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger recalc endpoint
+        run: |
+          response=$(curl -s -w "\n%{http_code}" -X GET \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            https://www.vence.es/api/cron/recalc-global-difficulty)
+
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+
+          echo "Response: $body"
+          echo "HTTP Status: $http_code"
+
+          if [ "$http_code" != "200" ]; then
+            echo "❌ Error: HTTP $http_code"
+            exit 1
+          fi
+
+      - name: Log completion
+        run: echo "✅ Recalc global difficulty - $(date -u +%Y-%m-%dT%H:%M:%SZ)"
