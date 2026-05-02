@@ -196,15 +196,21 @@ export default function ConversionesPage() {
   const loadUserJourney = async (userId: string) => {
     setSelectedUser(userId)
 
-    const { data, error } = await supabase
-      .rpc('get_user_conversion_journey', { p_user_id: userId })
-
-    if (error) {
-      console.error('Error loading journey:', error)
-      return
+    // Endpoint admin con requireAdmin + service_role.
+    // Antes era RPC directa SECURITY DEFINER → cualquier authenticated
+    // podía obtener journey de cualquier user.
+    try {
+      const authHeaders = await getAuthHeaders()
+      const res = await fetch(`/api/admin/conversions/user-journey?userId=${encodeURIComponent(userId)}`, { headers: authHeaders })
+      if (!res.ok) {
+        console.error('Error loading journey:', res.status)
+        return
+      }
+      const json = await res.json()
+      setUserJourney(json.journey || [])
+    } catch (err) {
+      console.error('Error loading journey:', err)
     }
-
-    setUserJourney(data || [])
   }
 
   // Cargar datos de A/B testing de mensajes

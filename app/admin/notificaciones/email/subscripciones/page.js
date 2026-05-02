@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { createClient } from '@supabase/supabase-js'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 import Link from 'next/link'
 
 export default function EmailSubscriptionsPage() {
@@ -51,9 +52,20 @@ export default function EmailSubscriptionsPage() {
     try {
       console.log('🔍 Cargando datos de suscripciones...')
       
-      // Usar función RPC para obtener todos los usuarios con suscripciones
-      const { data: usersData, error: rpcError } = await supabase
-        .rpc('get_all_users_with_subscriptions')
+      // Datos via /api/admin/users/subscriptions con requireAdmin + service_role.
+      // Antes se llamaba RPC directa (SECURITY DEFINER) desde el browser:
+      // cualquier user authenticated podía obtener emails+subscripciones de
+      // todos los users. Endpoint admin cierra ese leak.
+      const authHeaders = await getAuthHeaders()
+      const res = await fetch('/api/admin/users/subscriptions', { headers: authHeaders })
+      let usersData = null
+      let rpcError = null
+      if (res.ok) {
+        const json = await res.json()
+        usersData = json.users
+      } else {
+        rpcError = { message: `HTTP ${res.status}` }
+      }
 
       if (rpcError) {
         console.error('❌ Error obteniendo usuarios con suscripciones:', rpcError)
