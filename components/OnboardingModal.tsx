@@ -448,9 +448,16 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
 
   // === SANIDAD (OTROS) ===
   {
+    id: 'celador_scs_canarias',
+    nombre: 'Celador/a SCS (Canarias)',
+    categoria: 'E',
+    administracion: 'Sanitaria',
+    icon: '🏥'
+  },
+  {
     id: 'celador',
-    nombre: 'Celador',
-    categoria: 'C2',
+    nombre: 'Celador (otras CCAA)',
+    categoria: 'E',
     administracion: 'Sanitaria',
     icon: '🏥'
   },
@@ -760,8 +767,8 @@ const REGION_PRIORITY_OPOSICIONES: Record<string, string[]> = {
   'Castile and León': ['auxiliar_administrativo_cyl', 'auxiliar_administrativo_estado'],
   'Andalucía': ['auxiliar_administrativo_andalucia', 'enfermero_sas_andalucia', 'auxiliar_administrativo_estado'],
   'Andalusia': ['auxiliar_administrativo_andalucia', 'enfermero_sas_andalucia', 'auxiliar_administrativo_estado'],
-  'Canarias': ['auxiliar_administrativo_canarias', 'tcae_canarias', 'auxiliar_administrativo_estado'],
-  'Canary Islands': ['auxiliar_administrativo_canarias', 'auxiliar_administrativo_estado'],
+  'Canarias': ['auxiliar_administrativo_canarias', 'celador_scs_canarias', 'tcae_canarias', 'auxiliar_administrativo_estado'],
+  'Canary Islands': ['auxiliar_administrativo_canarias', 'celador_scs_canarias', 'auxiliar_administrativo_estado'],
   'Castilla-La Mancha': ['auxiliar_administrativo_clm', 'auxiliar_administrativo_estado'],
   'Extremadura': ['auxiliar_administrativo_extremadura', 'auxiliar_administrativo_estado'],
   'Aragón': ['auxiliar_administrativo_aragon', 'tcae_aragon', 'auxiliar_administrativo_estado'],

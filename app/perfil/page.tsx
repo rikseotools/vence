@@ -293,6 +293,11 @@ function PerfilPageContent() {
       data: { name: 'TCAE del Servicio Canario de Salud', slug: 'tcae-canarias', categoria: 'C2', administracion: 'Sanitaria' }
     },
     {
+      value: 'celador_scs_canarias',
+      label: 'Celador/a SCS (Canarias)',
+      data: { name: 'Celador/a del Servicio Canario de Salud', slug: 'celador-scs-canarias', categoria: 'E', administracion: 'Sanitaria' }
+    },
+    {
       value: 'tcae_galicia',
       label: 'TCAE Galicia (SERGAS)',
       data: { name: 'TCAE del SERGAS', slug: 'tcae-galicia', categoria: 'C2', administracion: 'Sanitaria' }
