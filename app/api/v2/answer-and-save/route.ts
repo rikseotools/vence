@@ -144,9 +144,10 @@ async function _POST(request: NextRequest): Promise<NextResponse<AnswerAndSaveRe
           `exam_pending:${user.id}:all:10`,
           `exam_pending:${user.id}:exam:10`,
           `exam_pending:${user.id}:practice:10`,
+          `theme_stats:${user.id}`,
         ])
       } catch {
-        // Si Redis falla, el TTL 30s eventualmente refresca el valor stale
+        // Si Redis falla, el TTL eventualmente refresca el valor stale
       }
     })
 

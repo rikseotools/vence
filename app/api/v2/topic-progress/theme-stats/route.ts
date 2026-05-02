@@ -1,11 +1,21 @@
 // app/api/v2/topic-progress/theme-stats/route.ts
 // Reemplaza supabase.rpc('get_user_theme_stats') que tardaba 16s para heavy users.
-// Usa Drizzle con timeout de 10s + cache en memoria 5 min.
+// Usa Drizzle con timeout de 10s + cache server-side compartido en Redis.
+//
+// Estrategia de cache (Fase 1 escalabilidad):
+// - Una sola key Redis con TTL 24h (stale fallback) y timestamp interno
+// - Si timestamp < 5min → fresh, devolver inmediato (no toca BD)
+// - Si timestamp ≥ 5min → query BD; si BD responde, refresh; si BD timeout,
+//   devolver versión stale (mejor servir datos viejos que pantalla vacía)
+//
+// Antes era Map in-memory (TTL 5min) que fragmentaba entre instancias Vercel
+// Fluid: cada cold start pagaba la query lenta. Redis comparte entre todas.
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getDb } from '@/db/client'
 import { sql } from 'drizzle-orm'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { getCached, setCached } from '@/lib/cache/redis'
 
 const userIdSchema = z.string().uuid()
 
@@ -20,9 +30,14 @@ interface ThemeStat {
   last_study: string | null
 }
 
-// Cache en memoria: las stats por tema cambian poco (solo al responder preguntas)
-const cache = new Map<string, { data: ThemeStat[]; timestamp: number }>()
-const CACHE_TTL = 5 * 60 * 1000 // 5 minutos
+interface CachedThemeStats {
+  data: ThemeStat[]
+  ts: number  // ms epoch — usado para freshness check, NO Redis TTL
+}
+
+const FRESH_WINDOW_MS = 5 * 60 * 1000   // 5 min: dentro de esta ventana se considera fresh
+const STALE_TTL_S = 24 * 60 * 60        // 24h: cuánto retiene Redis (para fallback en timeout BD)
+const BD_TIMEOUT_MS = 10_000            // 10s: tope query BD; si excede, fallback a stale
 
 async function _GET(request: NextRequest) {
   const userId = request.nextUrl.searchParams.get('userId')
@@ -30,16 +45,17 @@ async function _GET(request: NextRequest) {
     return NextResponse.json({ success: false, error: 'userId inválido o faltante (debe ser UUID)' }, { status: 400 })
   }
 
-  // Check cache
-  const cached = cache.get(userId)
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+  const cacheKey = `theme_stats:${userId}`
+  const cached = await getCached<CachedThemeStats>(cacheKey)
+
+  // Fast path: cache fresco (< 5min) → devolver sin tocar BD
+  if (cached && Date.now() - cached.ts < FRESH_WINDOW_MS) {
     return NextResponse.json({ success: true, stats: cached.data })
   }
 
   try {
     const db = getDb()
 
-    // Misma query que la RPC pero con timeout
     const queryPromise = db.execute(sql`
       SELECT
         tq.tema_number,
@@ -65,7 +81,7 @@ async function _GET(request: NextRequest) {
     const result = await Promise.race([
       queryPromise,
       new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('theme-stats timeout')), 10_000)
+        setTimeout(() => reject(new Error('theme-stats timeout')), BD_TIMEOUT_MS)
       ),
     ])
 
@@ -80,14 +96,15 @@ async function _GET(request: NextRequest) {
       last_study: r.last_study,
     }))
 
-    // Guardar en cache
-    cache.set(userId, { data: stats, timestamp: Date.now() })
+    // Guardar en Redis con TTL 24h y timestamp para freshness check
+    setCached(cacheKey, { data: stats, ts: Date.now() }, STALE_TTL_S)
 
     return NextResponse.json({ success: true, stats })
   } catch (err) {
-    // Timeout: devolver cache stale si existe
+    // Timeout o error BD: devolver cache stale si existe (mejor que pantalla vacía)
     if (cached) {
-      console.warn(`⏱️ [theme-stats] timeout for ${userId.slice(0, 8)}, returning stale cache`)
+      const ageS = Math.floor((Date.now() - cached.ts) / 1000)
+      console.warn(`⏱️ [theme-stats] timeout for ${userId.slice(0, 8)}, returning stale cache (${ageS}s old)`)
       return NextResponse.json({ success: true, stats: cached.data })
     }
 

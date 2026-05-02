@@ -136,6 +136,66 @@ El contenido de leyes y artículos **casi nunca cambia**, así que no tiene sent
 
 ---
 
+## Cache server-side compartido (Redis Upstash) — Fase 1 escalabilidad
+
+Capa adicional al `unstable_cache` de Next.js. **Diferencias clave:**
+
+| Aspecto | Next.js `unstable_cache` | Redis Upstash |
+|---|---|---|
+| Alcance | Vercel Data Cache (CDN edge) | Cross-instance shared (servidor) |
+| Tipo de invalidación | Por **tag** (`revalidateTag`) | Por **clave** (`invalidate`/`invalidateMany`) |
+| Casos de uso | Contenido global semi-estático | Datos por-usuario que cambian con frecuencia |
+| Fallback | Sirve stale + revalidate background | Cae a BD si Redis lento o caído |
+| TTL | `revalidate: false` (permanente) o segundos | Segundos (configurable por clave) |
+
+**No se invalidan entre sí.** `revalidateTag('temario')` no toca Redis. `invalidate('user_stats:x')` no toca Next.js. Son capas independientes.
+
+### Endpoints con cache Redis
+
+| Endpoint | Clave | TTL | Invalidación |
+|---|---|---|---|
+| `/api/v2/user-stats` | `user_stats:{userId}` | 30s | Tras INSERT en `test_questions` (`/api/v2/answer-and-save`) |
+| `/api/exam/pending` | `exam_pending:{userId}:{type}:{limit}` | 30s | Tras INSERT/UPDATE en `tests` (idem) |
+| `/api/v2/topic-progress/theme-stats` | `theme_stats:{userId}` | Fresh 5min, retain 24h | Tras INSERT en `test_questions` + freshness window expirada |
+
+### Patrón "fresh con stale fallback" (theme-stats)
+
+Para queries pesadas (>1s) cuyo timeout puede saturar la app, en vez del simple `getOrSet` se usan `getCached` + `setCached` con timestamp interno:
+
+- Si cached existe y `Date.now() - ts < FRESH_WINDOW_MS` → devolver inmediato (sin tocar BD)
+- Si cached existe pero stale → intentar BD; si BD timeout, devolver stale (mejor datos viejos que pantalla vacía)
+- Si cached no existe y BD timeout → devolver vacío
+
+Detalle: `Redis TTL = STALE_TTL_S` (24h) cubre todo el periodo. La "freshness" es lógica interna basada en `ts`. Esto evita una segunda escritura en Redis solo para "marcar fresh".
+
+### Feature flag
+
+```bash
+REDIS_CACHE_ENABLED=false  # Desactiva todos los Redis lookups (fallback a BD)
+```
+
+Útil si Upstash está caído o se sospecha que el cache devuelve datos corruptos.
+
+### Cuándo invalidar manualmente
+
+Tras cualquier escritura que afecte a las stats del usuario, añadir el `invalidateMany` correspondiente. Ejemplo en `answer-and-save/route.ts`:
+
+```typescript
+import { invalidateMany } from '@/lib/cache/redis'
+
+after(async () => {
+  await invalidateMany([
+    `user_stats:${user.id}`,
+    `exam_pending:${user.id}:all:10`,
+    `theme_stats:${user.id}`,
+  ])
+})
+```
+
+**No es bloqueante**: si Redis falla, el TTL natural eventualmente refresca el valor stale. Pero invalidar es preferible (datos frescos al instante para el usuario).
+
+---
+
 ## Cuándo revalidar manualmente
 
 ### Tag `temario`
@@ -417,6 +477,8 @@ curl -X POST "https://www.vence.es/api/purge-cache" \
 
 | Fecha | Cambio |
 |-------|--------|
+| 2026-05-02 | **Sección "Cache server-side compartido (Redis Upstash)"** añadida. Documenta los 3 endpoints con Redis (user-stats, exam/pending, theme-stats), el patrón "fresh con stale fallback" para queries pesadas, y cómo invalidar manualmente. Antes el manual solo cubría Next.js `unstable_cache` + ISR, no Redis. |
+| 2026-05-02 | **theme-stats promovido de Map in-memory a Redis** con stale fallback. Resuelve fragmentación del cache entre instancias Vercel Fluid en query de 16s. Invalidación añadida en `answer-and-save`. |
 | 2026-04-30 | **Todas las páginas de temario, test y landings migradas a `force-dynamic`** para evitar saturar Supabase en build (~3600 páginas SSG → 0). Script `warm-cache-post-deploy.js` creado para calentar ~963 URLs tras deploy. Workflow automático en GitHub Actions. Script legacy `warm-temario-cache.sh` sustituido. |
 | 2026-04-16 | **Eliminados triggers PG de revalidación automática** sobre `topics`, `topic_scope`, `oposicion_bloques` y `oposiciones`. Cada UPDATE/INSERT disparaba regeneración de ~1000 páginas (~5M ISR Writes/mes, ~$20). El cron `check-seguimiento` solo ya generaba 41 disparos/día sin que cambiara nada visible. Migración: `supabase/migrations/20260416_drop_revalidate_triggers.sql`. Endpoint `/api/admin/revalidate-temario` se mantiene para invocación manual. Mismo patrón que feedback (`166c1ddf`) y disputes (`3774509e`) ya migrados. |
 | 2026-04-09 | Añadido script `purge-all-cache.js` para revalidar todas las rutas ISR |

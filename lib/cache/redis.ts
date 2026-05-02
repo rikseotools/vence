@@ -89,6 +89,37 @@ export async function getOrSet<T>(
 }
 
 /**
+ * GET con timeout estricto y fallback graceful. Devuelve null si miss,
+ * timeout o Redis caído. Útil para patrones donde el caller quiere control
+ * fino sobre fresh/stale (p.ej. servir cache stale en caso de timeout BD).
+ */
+export async function getCached<T>(key: string): Promise<T | null> {
+  const redis = getRedis()
+  if (!redis) return null
+  try {
+    const cached = await raceTimeout(redis.get<T>(key), REDIS_TIMEOUT_MS)
+    if (cached !== TIMEOUT_SYMBOL && cached !== null && cached !== undefined) {
+      return cached
+    }
+  } catch {
+    // Network / parse error → tratar como miss
+  }
+  return null
+}
+
+/**
+ * SET fire-and-forget con TTL. No espera la confirmación de Redis: si falla,
+ * la próxima request será otro miss (aceptable). Sin bloquear la respuesta.
+ */
+export async function setCached<T>(key: string, value: T, ttlSeconds: number): Promise<void> {
+  const redis = getRedis()
+  if (!redis) return
+  redis.set(key, value, { ex: ttlSeconds }).catch(() => {
+    // Silently ignore - el caller ya tiene el valor correcto
+  })
+}
+
+/**
  * Invalidar una clave (DELETE). Best-effort, no bloquea si falla.
  * Útil tras UPDATE en BD para forzar refresh en próxima lectura.
  */
