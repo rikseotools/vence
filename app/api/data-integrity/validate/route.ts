@@ -1,4 +1,7 @@
-import { getDb } from '@/db/client'
+import { getAdminDb as getDb } from '@/db/client'
+// Mismo patron que /api/admin/question-quality: este endpoint hace queries
+// pesadas de validacion de integridad. Usar pool admin (max:4) para no robar
+// la unica conexion del pool user-facing (max:1) y bloquear a usuarios reales.
 import { laws, articles, topicScope } from '@/db/schema'
 import { eq, and, inArray } from 'drizzle-orm'
 
