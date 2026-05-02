@@ -1,7 +1,7 @@
 # Vence — Architecture Roadmap a 100k+ usuarios
 
-> **Última actualización:** 2026-05-02
-> **Estado:** Fase 0 prácticamente completa (4 de 5 puntos hechos: 0.1 trigger #7 NO-OP, 0.2 trigger #2 → debounced cron, 0.3 investigación pg_stat_statements + bug pool fix, 0.4 cache hot endpoints). Pendiente: 0.5 verificar p95 baja en producción tras 24h.
+> **Última actualización:** 2026-05-02 (noche)
+> **Estado:** Fase 0 prácticamente completa (4 de 5 puntos hechos: 0.1 trigger #7 NO-OP, 0.2 trigger #2 → debounced cron, 0.3 investigación pg_stat_statements + bug pool fix, 0.4 cache hot endpoints, 0.6 trigger #9 user_analytics → solo is_active_student). Pendiente: 0.5 verificar p95 baja en producción tras 24h.
 > **Objetivo:** preparar Vence para escalar a 100k+ usuarios sin perder features ni romper nada
 > **Coste extra estimado total (Fases 0-3):** $10-40/mes
 > **Coste extra estimado total (Fases 0-5):** $50-150/mes
@@ -69,6 +69,7 @@ Este roadmap cambia la arquitectura **sin reescribir** el código, en 6 fases in
 | 0.3 | Investigar 17B seq_scans en `questions` (índices faltantes) | ⏳ Pendiente | Read-only investigación con `pg_stat_statements`. CREATE INDEX CONCURRENTLY. |
 | 0.4 | Cache headers user-stats + exam/pending + in-memory cache availability | ✅ Hecho 2 may 2026 | Commit f5a1f4e8. /api/profile no se toca (no-store deliberado). Tras Fase 1 (Redis) se promueve a L2 compartido. |
 | 0.5 | Verificar p95 `/api/exam/answer` baja de >10s a <2s | ⏳ Pendiente | Vercel Analytics + alerta |
+| 0.6 | Trigger #9 `update_user_analytics_on_test_completion` (en `tests`) → simplificado a solo `is_active_student` | ✅ Hecho 2 may 2026 (commit 5363b8f4) | Migración `20260502_simplify_trigger_user_analytics.sql`. Hacía 6 aggregate scans de test_questions (2.2 GB) por completar test. Tabla `user_learning_analytics` (58k filas) verificada por 8 vías como dead-write. Parity test BD real: 2153ms → 38ms (-98%). Resuelve warnings 4-9.6s en `/api/v2/complete-test`. |
 
 **Resultado esperado:** 80% de los timeouts desaparecen. $0 extra.
 
@@ -359,6 +360,42 @@ Cada fase tiene su memo con detalles técnicos en `~/.claude/projects/-home-manu
 
 ---
 
+## Deuda técnica detectada (auditoría 2026-05-02 noche)
+
+Hallazgos durante la investigación a fondo del trigger #9 (`user_learning_analytics`). Priorizado por impacto e inversión.
+
+### 🔴 Dead code activo (impacto en producción)
+
+| Item | Detalle | Acción | Esfuerzo |
+|---|---|---|---|
+| Funciones SQL nunca llamadas | `predict_exam_readiness(user, opos)`, `get_complete_test_analytics(test_id)`, `detect_learning_style(user)`, `get_user_recommendations()` (esta última documentada como "PLACEHOLDER" desde hace meses). 0 callers en TS/JS/SQL. | DROP FUNCTION en migración tras 2-4 sem de monitorización post-Fase 0.6 | 30min |
+| Columnas dead-write en `user_learning_analytics` | `article_performance_history jsonb` (0 filas con datos, jamás se llenó). `current_weak_areas`, `peak_performance_hours`, `worst_performance_hours`, `best_day_of_week` (58k pobladas pero 0 lectores). | Tras 2 sem sin reclamaciones tras 0.6, DROP COLUMN o DROP TABLE entera | 30min |
+| Índices GIN sobre `tests.detailed_analytics` y `tests.performance_metrics` (jsonb) | `idx_tests_analytics`, `idx_tests_performance`. Sospechoso a auditar: ¿alguien consulta esos JSONB? Si no, son coste puro de escritura/storage en una tabla caliente. | Auditar lectores → si 0, DROP INDEX | 1h |
+
+### 🟡 Anti-patrones arquitectónicos
+
+| Item | Detalle | Acción | Esfuerzo |
+|---|---|---|---|
+| Doble taxonomía de "mastery_level" sin fuente de verdad | `user_learning_analytics.mastery_level`: `beginner\|intermediate\|advanced\|expert` vs `useTopicUnlock.ts` + `temario/schemas.ts`: `beginner\|good\|expert`. Dos sistemas que no se hablan. | Decidir taxonomía única tras eliminar la tabla muerta. Documentar en CLAUDE.md | 2h (decisión + refactor) |
+| `motivationalAnalyzer.getUserAnalyticsData` hace `fetch('/api/user/question-history')` desde el servidor | Llama a su propio API por HTTP en lugar de invocar `getUserAnalytics` de `lib/api/questions/queries.ts`. Overhead innecesario + frágil en SSR (URLs relativas). | Refactor: importar y llamar la fn directamente | 1-2h |
+| Patrón "trigger pesado en tabla caliente" repetido 9 veces | El equipo escogió Postgres triggers como motor de analytics. A escala chica funcionaba; a 100k DAU es la causa raíz que estamos apagando. **Lección:** los nuevos analytics deben ir vía outbox/cron desde el principio (Fase 2). | Documentar en CLAUDE.md como regla: **NUNCA añadir trigger pesado en tablas calientes**. Toda nueva agregación va a outbox o vista materializada con cron. | 15min (doc) |
+| `verify_triggers_working()` SQL fn no integrada en `/api/admin/health` | La función existe para diagnóstico pero la construimos en Fase 0.3 sin enchufarla. | Añadir sección `triggers` al endpoint health | 30min |
+
+### 🟢 Higiene del repo
+
+| Item | Detalle | Acción | Esfuerzo |
+|---|---|---|---|
+| ~500 archivos `_tmp_*.cjs` y `_tmp_*.json` en raíz | Scripts de migración históricos sueltos. Ensucian `git status`, lentifican IDEs, riesgo de `git add .` accidental. | Mover a `scripts/archive/` y añadir `_tmp_*` y `*_galicia_*` a `.gitignore` | 30min |
+| Archivos sin extensión en raíz (`Artículo`, `El`, `La`, `De`, `Esta`) | Outputs de scripts de scraping. | Borrar | 5min |
+| `docs/database/tablas.md` desactualizado | Sigue marcando triggers #2/#3/#4/#5/#7/#9 como "PRINCIPAL" cuando ya están neutralizados/migrados a debounced. Confunde a nuevos colaboradores. | Sección "Estado de triggers (2026-05-02)" con tabla actual. Tachar "PRINCIPAL" donde ya no aplique. | 1h |
+
+### Consolidado de inversión
+
+- **Quick wins (totales):** ~3-4h trabajo, $0 coste, deuda técnica reducida significativamente
+- **Recomendado:** atacar tras la verificación 0.5 (p95 baja en producción) para no mezclar ruido. La auditoría de los índices GIN en `tests.*` puede revelar más ahorro de escritura.
+
+---
+
 ## Histórico de decisiones
 
 | Fecha | Decisión | Razón |
@@ -372,3 +409,5 @@ Cada fase tiene su memo con detalles técnicos en `~/.claude/projects/-home-manu
 | 2026-05-02 | Pool fix data-integrity/validate (getDb→getAdminDb) | Identificado en Fase 0.3 con pg_stat_statements; 1 línea, riesgo cero |
 | 2026-05-02 | Fase 0.2 SOLO trigger #2 (no #3 #4 todavía) | Triggers #3/#4 escriben en `questions.global_difficulty` con 2 algoritmos paralelos diferentes (#B `calculate_question_global_difficulty` desde question_first_attempts vs #C `calculate_global_law_question_difficulty` desde law_question_first_attempts). Bug preexistente. Resolverlo requiere decisión de negocio: ¿qué algoritmo es el correcto? Por ahora solo se ataca el trigger #2 que es autónomo. |
 | 2026-05-02 | Aplicar Fase 0.2 inmediato pese a riesgo medio | Ráfaga de 504 timeouts en producción (10:51-11:21 UTC) con CONNECT_TIMEOUT a Supavisor confirmado. Trigger #2 era ~283ms/INSERT, contribuía al pool exhaustion. Algoritmo verificado byte-exact, rollback en 5s, riesgo justificado. |
+| 2026-05-02 | Trigger #9 simplificado en lugar de DROP trigger entero | Mantener `is_active_student=true` (parte ligera del trigger) por preservar feature de marca de "usuario activo" en `user_profiles`. La tabla `user_learning_analytics` queda CONGELADA con sus 58k filas históricas en lugar de truncarla, por reversibilidad. |
+| 2026-05-02 | Aplicar Fase 0.6 sin esperar verificación 0.5 | Warnings 4-9.6s en `/api/v2/complete-test` tenían causa raíz idéntica a #7 (trigger con aggregate scans de tabla caliente, dead-write verificado). Riesgo idéntico, parity confirmado. |
