@@ -1,7 +1,7 @@
 # Vence — Architecture Roadmap a 100k+ usuarios
 
 > **Última actualización:** 2026-05-02
-> **Estado:** Fase 0 en curso (1 de 5 puntos hechos)
+> **Estado:** Fase 0 en curso (3 de 5 puntos hechos: 0.1 trigger #7 NO-OP, 0.3 investigación pg_stat_statements + bug pool fix, 0.4 cache hot endpoints)
 > **Objetivo:** preparar Vence para escalar a 100k+ usuarios sin perder features ni romper nada
 > **Coste extra estimado total (Fases 0-3):** $10-40/mes
 > **Coste extra estimado total (Fases 0-5):** $50-150/mes
@@ -67,7 +67,7 @@ Este roadmap cambia la arquitectura **sin reescribir** el código, en 6 fases in
 | 0.1 | Trigger `update_article_stats_trigger` (#7) → NO-OP | ✅ Hecho 2 may 2026 | `supabase/migrations/20260502_disable_trigger_update_article_stats.sql` |
 | 0.2 | Triggers #2/#3/#4 → debounced + cron 5min | ⏳ Pendiente | Mover updates de `questions.difficulty` a cron batch. Requiere audit previo. |
 | 0.3 | Investigar 17B seq_scans en `questions` (índices faltantes) | ⏳ Pendiente | Read-only investigación con `pg_stat_statements`. CREATE INDEX CONCURRENTLY. |
-| 0.4 | Cache edge en /api/v2/user-stats, /api/exam/pending, /api/v2/profile | ⏳ Pendiente | `Cache-Control: s-maxage=30, stale-while-revalidate=120` |
+| 0.4 | Cache headers user-stats + exam/pending + in-memory cache availability | ✅ Hecho 2 may 2026 | Commit f5a1f4e8. /api/profile no se toca (no-store deliberado). Tras Fase 1 (Redis) se promueve a L2 compartido. |
 | 0.5 | Verificar p95 `/api/exam/answer` baja de >10s a <2s | ⏳ Pendiente | Vercel Analytics + alerta |
 
 **Resultado esperado:** 80% de los timeouts desaparecen. $0 extra.
@@ -367,3 +367,6 @@ Cada fase tiene su memo con detalles técnicos en `~/.claude/projects/-home-manu
 | 2026-05-02 | Trigger #7 NO-OP en lugar de DROP | Reversibilidad inmediata si algún sistema externo lo necesita |
 | 2026-05-02 | Pool split antes que subir max:1 | El problema antiguo (261 events Supavisor exhaustion 27 abr) volvería al subir max |
 | 2026-05-02 | Outbox híbrido (no full async) | Preservar UX en tiempo real (stats, streak); solo lo pesado va async |
+| 2026-05-02 | Cache in-memory para availability en Fase 0.4 (no Redis) | Quick win sin dependencia externa; tras Fase 1 se promueve a Redis L2 |
+| 2026-05-02 | NO cachear /api/profile en Fase 0.4 | Tiene Cache-Control: no-store deliberado; cambios deben ser inmediatos |
+| 2026-05-02 | Pool fix data-integrity/validate (getDb→getAdminDb) | Identificado en Fase 0.3 con pg_stat_statements; 1 línea, riesgo cero |
