@@ -1,7 +1,7 @@
 # Vence — Architecture Roadmap a 100k+ usuarios
 
 > **Última actualización:** 2026-05-02
-> **Estado:** Fase 0 en curso (3 de 5 puntos hechos: 0.1 trigger #7 NO-OP, 0.3 investigación pg_stat_statements + bug pool fix, 0.4 cache hot endpoints)
+> **Estado:** Fase 0 prácticamente completa (4 de 5 puntos hechos: 0.1 trigger #7 NO-OP, 0.2 trigger #2 → debounced cron, 0.3 investigación pg_stat_statements + bug pool fix, 0.4 cache hot endpoints). Pendiente: 0.5 verificar p95 baja en producción tras 24h.
 > **Objetivo:** preparar Vence para escalar a 100k+ usuarios sin perder features ni romper nada
 > **Coste extra estimado total (Fases 0-3):** $10-40/mes
 > **Coste extra estimado total (Fases 0-5):** $50-150/mes
@@ -65,7 +65,7 @@ Este roadmap cambia la arquitectura **sin reescribir** el código, en 6 fases in
 | # | Tarea | Estado | Detalle |
 |---|---|---|---|
 | 0.1 | Trigger `update_article_stats_trigger` (#7) → NO-OP | ✅ Hecho 2 may 2026 | `supabase/migrations/20260502_disable_trigger_update_article_stats.sql` |
-| 0.2 | Triggers #2/#3/#4 → debounced + cron 5min | ⏳ Pendiente | Mover updates de `questions.difficulty` a cron batch. Requiere audit previo. |
+| 0.2 | Trigger #2 → debounced + cron 5min | ✅ Hecho 2 may 2026 (commit 0f58feaf) | Trigger #2 (`update_question_difficulty_immediate`) ahora solo SET stats_dirty=true (UPDATE atómico). Cron `/api/cron/recalc-question-difficulty` (GH Actions cada 5min) procesa hasta 500 dirty/ejecución con algoritmo byte-exact al original (validado 50/50 matches). Triggers #3/#4 quedan para Fase 2 outbox por bug preexistente de algoritmos paralelos. |
 | 0.3 | Investigar 17B seq_scans en `questions` (índices faltantes) | ⏳ Pendiente | Read-only investigación con `pg_stat_statements`. CREATE INDEX CONCURRENTLY. |
 | 0.4 | Cache headers user-stats + exam/pending + in-memory cache availability | ✅ Hecho 2 may 2026 | Commit f5a1f4e8. /api/profile no se toca (no-store deliberado). Tras Fase 1 (Redis) se promueve a L2 compartido. |
 | 0.5 | Verificar p95 `/api/exam/answer` baja de >10s a <2s | ⏳ Pendiente | Vercel Analytics + alerta |
@@ -370,3 +370,5 @@ Cada fase tiene su memo con detalles técnicos en `~/.claude/projects/-home-manu
 | 2026-05-02 | Cache in-memory para availability en Fase 0.4 (no Redis) | Quick win sin dependencia externa; tras Fase 1 se promueve a Redis L2 |
 | 2026-05-02 | NO cachear /api/profile en Fase 0.4 | Tiene Cache-Control: no-store deliberado; cambios deben ser inmediatos |
 | 2026-05-02 | Pool fix data-integrity/validate (getDb→getAdminDb) | Identificado en Fase 0.3 con pg_stat_statements; 1 línea, riesgo cero |
+| 2026-05-02 | Fase 0.2 SOLO trigger #2 (no #3 #4 todavía) | Triggers #3/#4 escriben en `questions.global_difficulty` con 2 algoritmos paralelos diferentes (#B `calculate_question_global_difficulty` desde question_first_attempts vs #C `calculate_global_law_question_difficulty` desde law_question_first_attempts). Bug preexistente. Resolverlo requiere decisión de negocio: ¿qué algoritmo es el correcto? Por ahora solo se ataca el trigger #2 que es autónomo. |
+| 2026-05-02 | Aplicar Fase 0.2 inmediato pese a riesgo medio | Ráfaga de 504 timeouts en producción (10:51-11:21 UTC) con CONNECT_TIMEOUT a Supavisor confirmado. Trigger #2 era ~283ms/INSERT, contribuía al pool exhaustion. Algoritmo verificado byte-exact, rollback en 5s, riesgo justificado. |
