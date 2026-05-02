@@ -1,89 +1,108 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import supabase from '@/lib/supabase'
+// app/armando/page.tsx
+// Panel de Liquidaciones — usado SOLO por Armando para dividir payouts.
+// Manuel ya no entra aquí: confirma desde /admin/cobros con su user admin.
+//
+// Auth: cookie httpOnly server-side (POST /api/armando/auth con password).
+// Datos: APIs en /api/finance/transfers/* (service_role server-side).
+// La RLS de payout_transfers queda cerrada para anon/authenticated.
 
-// Contraseñas de acceso
-const ARMANDO_PASSWORD = 'V3nc3!Arm@nd0$2026#Liq'
-const MANUEL_PASSWORD = 'V3nc3!M@nu3l$2026#Admin'
+import { useState, useEffect, useCallback } from 'react'
+
+interface PayoutTransfer {
+  id: string
+  stripe_payout_id: string
+  payout_date: string
+  payout_amount: number
+  payout_fee: number
+  manuel_amount: number
+  armando_amount: number
+  sent_to_manuel: boolean
+  sent_date: string | null
+  manuel_confirmed: boolean
+  manuel_confirmed_date: string | null
+  notes: string | null
+  expected_usd: number | null
+  crypto_tx_hash: string | null
+  crypto_amount_received: number | null
+}
+
+interface StripeTransaction {
+  id?: string
+  type: string
+  source: string
+  amount: number
+  fee: number
+  net: number
+  date: string
+  description?: string
+  balanceAfter?: number
+}
+
+interface StripeBalance {
+  available: number
+  pending: number
+}
+
+interface PayoutStatus {
+  sent: boolean
+  confirmed: boolean
+  sentDate?: string | null
+  confirmedDate?: string | null
+}
 
 export default function ArmandoPage() {
   const [authenticated, setAuthenticated] = useState(false)
-  const [userRole, setUserRole] = useState(null) // 'armando' o 'manuel'
+  const [authChecked, setAuthChecked] = useState(false)
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
-  const [stripeTransactions, setStripeTransactions] = useState([])
-  const [stripeBalance, setStripeBalance] = useState(null)
-  const [payoutTransfers, setPayoutTransfers] = useState([])
+  const [stripeTransactions, setStripeTransactions] = useState<StripeTransaction[]>([])
+  const [stripeBalance, setStripeBalance] = useState<StripeBalance | null>(null)
+  const [payoutTransfers, setPayoutTransfers] = useState<PayoutTransfer[]>([])
   const [loading, setLoading] = useState(true)
-  const [expandedPayouts, setExpandedPayouts] = useState({})
-  const [apiError, setApiError] = useState(null)
+  const [expandedPayouts, setExpandedPayouts] = useState<Record<string, boolean>>({})
+  const [apiError, setApiError] = useState<string | null>(null)
+  const [transfersError, setTransfersError] = useState<string | null>(null)
+  const [fxError, setFxError] = useState<string | null>(null)
   const [stripeCommission, setStripeCommission] = useState({ pct: 10, netVolume4w: 0 })
-  const [eurUsdRate, setEurUsdRate] = useState(null)
+  const [eurUsdRate, setEurUsdRate] = useState<number | null>(null)
 
-  // Verificar si ya está autenticado (sessionStorage)
+  // Verificar sesión server-side al montar (cookie httpOnly)
   useEffect(() => {
-    const savedRole = sessionStorage.getItem('panel_role')
-    if (savedRole === 'armando' || savedRole === 'manuel') {
-      setUserRole(savedRole)
-      setAuthenticated(true)
-    } else {
-      setLoading(false)
+    const checkSession = async () => {
+      try {
+        const res = await fetch('/api/armando/me', { method: 'GET' })
+        if (res.ok) {
+          setAuthenticated(true)
+        }
+      } catch {
+        // sin sesión, mostrar login
+      } finally {
+        setAuthChecked(true)
+        if (!authenticated) setLoading(false)
+      }
     }
+    checkSession()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Cargar datos cuando está autenticado
-  useEffect(() => {
-    if (authenticated) {
-      console.log('🔐 [Armando] Autenticado, cargando datos...')
-      loadData()
-    }
-  }, [authenticated])
-
-  const handleLogin = (e) => {
-    e.preventDefault()
-    if (password === ARMANDO_PASSWORD) {
-      sessionStorage.setItem('panel_role', 'armando')
-      setUserRole('armando')
-      setAuthenticated(true)
-      setError('')
-    } else if (password === MANUEL_PASSWORD) {
-      sessionStorage.setItem('panel_role', 'manuel')
-      setUserRole('manuel')
-      setAuthenticated(true)
-      setError('')
-    } else {
-      setError('Contraseña incorrecta')
-    }
-  }
-
-  const handleLogout = () => {
-    sessionStorage.removeItem('panel_role')
-    setUserRole(null)
-    setAuthenticated(false)
-  }
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     console.log('🔄 [Armando] Iniciando carga de datos...')
     setLoading(true)
     setApiError(null)
+    setTransfersError(null)
+    setFxError(null)
     try {
-      // Cargar transacciones desde Stripe API con timeout
-      console.log('📡 [Armando] Llamando a /api/admin/stripe-fees-summary...')
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => {
-        console.log('⏰ [Armando] Timeout alcanzado, abortando...')
-        controller.abort()
-      }, 15000)
+      // Timeout amplio (35s) — endpoint puede tardar hasta 30s legítimamente cuando
+      // el caché de netVolume4w está frío y debe esperar al Stripe Reporting API
+      const timeoutId = setTimeout(() => controller.abort(), 35000)
 
-      const response = await fetch('/api/admin/stripe-fees-summary', {
-        signal: controller.signal
-      })
+      // La cookie httpOnly de armando viaja automáticamente (sameSite=strict, mismo origen)
+      const response = await fetch('/api/admin/stripe-fees-summary', { signal: controller.signal })
       clearTimeout(timeoutId)
-      console.log('✅ [Armando] Respuesta recibida, status:', response.status)
-
       const data = await response.json()
-      console.log('📊 [Armando] Stripe API response:', data)
 
       if (data.success) {
         setStripeTransactions(data.transactions || [])
@@ -95,86 +114,142 @@ export default function ArmandoPage() {
         setApiError(data.error || 'Error al cargar datos de Stripe')
       }
 
-      // Cargar registro de envíos a Manuel
-      const { data: transfers, error: dbError } = await supabase
-        .from('payout_transfers')
-        .select('*')
-        .order('payout_date', { ascending: false })
-
-      if (dbError) {
-        console.error('Error loading transfers:', dbError)
-      }
-      setPayoutTransfers(transfers || [])
-
-      // Cargar tipo de cambio EUR→USD
+      // Cargar payouts vía API server-side
       try {
-        const fxRes = await fetch('https://api.frankfurter.app/latest?from=EUR&to=USD')
-        const fxData = await fxRes.json()
-        if (fxData.rates?.USD) setEurUsdRate(fxData.rates.USD)
-      } catch (e) {
-        console.warn('No se pudo obtener tipo de cambio EUR/USD:', e)
+        const transfersRes = await fetch('/api/finance/transfers', { method: 'GET' })
+        if (transfersRes.status === 401) {
+          setAuthenticated(false)
+          return
+        }
+        if (!transfersRes.ok) {
+          const txt = await transfersRes.text().catch(() => '')
+          throw new Error(`HTTP ${transfersRes.status}: ${txt.slice(0, 200)}`)
+        }
+        const transfersJson = await transfersRes.json()
+        if (transfersJson.success) {
+          setPayoutTransfers(transfersJson.transfers || [])
+        } else {
+          throw new Error(transfersJson.error || 'Error desconocido cargando payouts')
+        }
+      } catch (err: unknown) {
+        setTransfersError('Error cargando payouts: ' + (err instanceof Error ? err.message : String(err)))
       }
 
-      console.log('✅ [Armando] Datos cargados correctamente')
-    } catch (err) {
-      console.error('❌ [Armando] Error loading data:', err)
-      if (err.name === 'AbortError') {
+      // Tipo de cambio EUR→USD — si falla, USD no se muestra y se avisa al usuario
+      try {
+        const fxRes = await fetch('https://api.frankfurter.dev/v1/latest?from=EUR&to=USD')
+        if (!fxRes.ok) throw new Error(`HTTP ${fxRes.status}`)
+        const fxData = await fxRes.json()
+        if (fxData.rates?.USD) {
+          setEurUsdRate(fxData.rates.USD)
+        } else {
+          setFxError('Frankfurter devolvió respuesta sin USD')
+        }
+      } catch (err: unknown) {
+        setFxError('No se pudo obtener tipo de cambio EUR/USD: ' + (err instanceof Error ? err.message : String(err)))
+      }
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === 'AbortError') {
         setApiError('Timeout: La API de Stripe tardó demasiado en responder')
       } else {
-        setApiError('Error de conexión: ' + err.message)
+        setApiError('Error de conexión: ' + (err instanceof Error ? err.message : String(err)))
       }
     }
-    console.log('🏁 [Armando] Carga finalizada')
     setLoading(false)
+  }, [])
+
+  useEffect(() => {
+    if (authenticated) {
+      loadData()
+    }
+  }, [authenticated, loadData])
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+    try {
+      const res = await fetch('/api/armando/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      })
+      const data = await res.json()
+      if (res.ok && data.success) {
+        setAuthenticated(true)
+        setPassword('')
+      } else {
+        setError(data.error || 'Contraseña incorrecta')
+      }
+    } catch {
+      setError('Error de conexión')
+    }
+  }
+
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/armando/logout', { method: 'POST' })
+    } catch {
+      // noop
+    }
+    setAuthenticated(false)
+    setPayoutTransfers([])
+    setStripeTransactions([])
   }
 
   // Marcar un payout como enviado a Manuel
-  const markAsSent = async (payoutId, payoutAmount, payoutFee, payoutDate) => {
+  const markAsSent = async (
+    payoutId: string,
+    payoutAmount: number,
+    payoutFee: number,
+    payoutDate: string,
+  ) => {
     const netAmount = Math.abs(payoutAmount) - payoutFee
     const manuelPct = (100 - stripeCommission.pct) / 100
     const manuelAmount = Math.round(netAmount * manuelPct)
     const armandoAmount = netAmount - manuelAmount
-
     const expectedUsd = eurUsdRate ? Math.round(manuelAmount * eurUsdRate) / 100 : null
 
-    const { error } = await supabase
-      .from('payout_transfers')
-      .upsert({
+    const res = await fetch('/api/finance/transfers/mark-sent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
         stripe_payout_id: payoutId,
         payout_date: payoutDate,
         payout_amount: Math.abs(payoutAmount),
         payout_fee: payoutFee,
         manuel_amount: manuelAmount,
         armando_amount: armandoAmount,
-        sent_to_manuel: true,
-        sent_date: new Date().toISOString(),
         expected_usd: expectedUsd,
-      }, { onConflict: 'stripe_payout_id' })
+      }),
+    })
 
-    if (!error) {
+    if (res.ok) {
       setExpandedPayouts(prev => ({ ...prev, [payoutId]: false }))
       loadData()
-      // Verificar recepción USDT en 5 minutos
       if (expectedUsd) {
         console.log(`⏰ Auto-confirm scheduled in 5 min for ${expectedUsd} USDT`)
         setTimeout(() => verifyUsdtReceived(payoutId, expectedUsd), 5 * 60 * 1000)
       }
+    } else {
+      const data = await res.json().catch(() => ({} as { error?: string }))
+      const msg = `Error marcando como enviado (HTTP ${res.status}): ${data.error || 'sin detalle'}`
+      console.error(msg)
+      alert(msg)
     }
   }
 
-  // Verificar recepción USDT en BSC Smart Chain
-  const verifyUsdtReceived = async (payoutId, expectedUsd) => {
+  // Verificar recepción USDT en BSC Smart Chain (auto-confirm)
+  const verifyUsdtReceived = async (payoutId: string, expectedUsd: number) => {
     try {
       const WALLET = '0x8f80bcE9C6012048e6c248Cb5471145fcFD17291'
       const USDT_CONTRACT = '0x55d398326f99059fF775485246999027B3197955'
       const TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'
       const RECIPIENT_TOPIC = '0x000000000000000000000000' + WALLET.slice(2).toLowerCase()
 
-      // Buscar transfers del día de hoy (~28800 blocks = 24h en BSC, 3s/block)
       const blockRes = await fetch('https://bsc-dataseed.binance.org/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jsonrpc: '2.0', method: 'eth_blockNumber', params: [], id: 1 })
+        body: JSON.stringify({ jsonrpc: '2.0', method: 'eth_blockNumber', params: [], id: 1 }),
       }).then(r => r.json())
 
       const currentBlock = parseInt(blockRes.result, 16)
@@ -187,16 +262,15 @@ export default function ArmandoPage() {
           jsonrpc: '2.0',
           method: 'eth_getLogs',
           params: [{ fromBlock, toBlock: 'latest', address: USDT_CONTRACT, topics: [TRANSFER_TOPIC, null, RECIPIENT_TOPIC] }],
-          id: 2
-        })
+          id: 2,
+        }),
       }).then(r => r.json())
 
       const transfers = logsRes.result || []
       console.log(`🔍 [USDT] ${transfers.length} transfers found, expecting ~$${expectedUsd}`)
 
-      // Buscar transfer que coincida ±5%
       const tolerance = 0.05
-      const match = transfers.find(log => {
+      const match = transfers.find((log: { data: string; transactionHash: string }) => {
         const amount = Number(BigInt(log.data)) / 1e18
         return Math.abs(amount - expectedUsd) / expectedUsd <= tolerance
       })
@@ -206,92 +280,61 @@ export default function ArmandoPage() {
         const txHash = match.transactionHash
         console.log(`✅ [USDT] Match! ${amount} USDT received. Auto-confirming payout ${payoutId}`)
 
-        await supabase
-          .from('payout_transfers')
-          .update({
-            manuel_confirmed: true,
-            manuel_confirmed_date: new Date().toISOString(),
+        const res = await fetch('/api/finance/transfers/auto-confirm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            stripe_payout_id: payoutId,
             crypto_tx_hash: txHash,
             crypto_amount_received: parseFloat(amount),
-          })
-          .eq('stripe_payout_id', payoutId)
+          }),
+        })
 
-        loadData()
+        if (res.ok) {
+          loadData()
+        } else {
+          const txt = await res.text().catch(() => '')
+          const msg = `Error auto-confirmando USDT (HTTP ${res.status}): ${txt.slice(0, 200)}`
+          console.error(msg)
+          alert(msg)
+        }
       } else {
         console.log(`⏳ [USDT] No matching transfer found for $${expectedUsd}. Manual confirmation needed.`)
       }
     } catch (err) {
-      console.error('❌ [USDT] Error checking blockchain:', err)
+      const msg = '❌ [USDT] Error checking blockchain: ' + (err instanceof Error ? err.message : String(err))
+      console.error(msg)
+      alert(msg)
     }
   }
 
-  // Manuel confirma que recibió el pago
-  const markAsConfirmed = async (payoutId) => {
-    const { error } = await supabase
-      .from('payout_transfers')
-      .update({
-        manuel_confirmed: true,
-        manuel_confirmed_date: new Date().toISOString()
-      })
-      .eq('stripe_payout_id', payoutId)
-
-    if (!error) {
-      loadData()
-    }
-  }
-
-  // Obtener estado de un payout
-  const getPayoutStatus = (payoutId) => {
+  const getPayoutStatus = (payoutId: string): PayoutStatus => {
     const transfer = payoutTransfers.find(t => t.stripe_payout_id === payoutId)
     if (!transfer) return { sent: false, confirmed: false }
     return {
       sent: transfer.sent_to_manuel,
       confirmed: transfer.manuel_confirmed,
       sentDate: transfer.sent_date,
-      confirmedDate: transfer.manuel_confirmed_date
+      confirmedDate: transfer.manuel_confirmed_date,
     }
   }
 
-  const formatCurrency = (cents) => {
-    return (cents / 100).toFixed(2) + ' €'
-  }
+  const formatCurrency = (cents: number): string => (cents / 100).toFixed(2) + ' €'
+  const formatDayHeader = (dateStr: string): string =>
+    new Date(dateStr).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+  const formatTime = (dateStr: string): string =>
+    new Date(dateStr).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
 
-  const formatDayHeader = (dateStr) => {
-    const date = new Date(dateStr)
-    return date.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
-  }
-
-  const formatTime = (dateStr) => {
-    return new Date(dateStr).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
-  }
-
-  // Verificar si un payout ya fue marcado como enviado
-  const isPayoutSent = (payoutId) => {
-    return payoutTransfers.some(t => t.stripe_payout_id === payoutId && t.sent_to_manuel)
-  }
-
-  // Calcular totales pendientes de enviar a Manuel
-  const getPendingTotals = () => {
-    const failedPayoutIds = stripeTransactions
-      .filter(t => t.type === 'payout_failure')
-      .map(t => {
-        const match = t.description?.match(/po_[A-Za-z0-9]+/)
-        return match ? match[0] : t.source
-      })
-      .filter(Boolean)
-
-    let totalManuel = 0
-
-    stripeTransactions.forEach(t => {
-      if (t.type !== 'payout') return
-      if (failedPayoutIds.includes(t.source)) return
-      if (isPayoutSent(t.source)) return
-
-      const netAmount = Math.abs(t.amount) - t.fee
-      totalManuel += Math.round(netAmount * (100 - stripeCommission.pct) / 100)
-    })
-
-    return { totalManuel }
+  // Pantalla de "verificando sesión"
+  if (!authChecked) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Verificando sesión...</p>
+        </div>
+      </div>
+    )
   }
 
   // Pantalla de login
@@ -311,9 +354,7 @@ export default function ArmandoPage() {
                 placeholder="Introduce la contraseña"
               />
             </div>
-            {error && (
-              <p className="text-red-500 text-sm mb-4">{error}</p>
-            )}
+            {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
             <button
               type="submit"
               className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition"
@@ -325,7 +366,6 @@ export default function ArmandoPage() {
       </div>
     )
   }
-
 
   // Procesar transacciones
   const failedPayoutIds = stripeTransactions
@@ -343,28 +383,23 @@ export default function ArmandoPage() {
     return true
   })
 
-  // Calcular saldo real (empezando desde el saldo actual de Stripe)
-  // El saldo actual = disponible + pendiente
   const currentTotalBalance = (stripeBalance?.available || 0) + (stripeBalance?.pending || 0)
-
-  // Calcular hacia atrás: el saldo después de la transacción más reciente = saldo actual
   let runningBalance = currentTotalBalance
   const withBalance = filtered.map(t => {
     const balanceAfter = runningBalance
-    runningBalance = runningBalance - t.net  // Saldo antes de esta transacción
+    runningBalance = runningBalance - t.net
     return { ...t, balanceAfter }
   })
 
-  // Agrupar por día
-  const groupedByDay = withBalance.reduce((groups, t) => {
+  const groupedByDay = withBalance.reduce<Record<string, typeof withBalance>>((groups, t) => {
     const day = t.date.split('T')[0]
     if (!groups[day]) groups[day] = []
     groups[day].push(t)
     return groups
   }, {})
 
-  const getTypeStyle = (type) => {
-    switch(type) {
+  const getTypeStyle = (type: string): string => {
+    switch (type) {
       case 'charge': return 'bg-green-100 text-green-800'
       case 'payout': return 'bg-blue-100 text-blue-800'
       case 'stripe_fee': return 'bg-red-100 text-red-800'
@@ -373,8 +408,8 @@ export default function ArmandoPage() {
     }
   }
 
-  const getTypeName = (type) => {
-    switch(type) {
+  const getTypeName = (type: string): string => {
+    switch (type) {
       case 'charge': return 'Pago'
       case 'payout': return 'Transfer.'
       case 'stripe_fee': return 'Comisión'
@@ -387,12 +422,20 @@ export default function ArmandoPage() {
   return (
     <div className="min-h-screen bg-gray-100 p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
+        {/* Banner de errores no-críticos */}
+        {(transfersError || fxError) && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800 space-y-1">
+            {transfersError && <p>⚠️ {transfersError}</p>}
+            {fxError && <p>⚠️ {fxError} — los importes en USD no se mostrarán.</p>}
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="text-2xl font-bold">Panel de Liquidaciones</h1>
             <p className="text-sm text-gray-500">
-              Conectado como: <span className="font-medium text-gray-700">{userRole === 'armando' ? 'Armando' : 'Manuel'}</span>
+              Conectado como: <span className="font-medium text-gray-700">Armando</span>
               {' · '}Comisión Armando: <span className="font-medium text-blue-600">{stripeCommission.pct}%</span>
               {' '}(vol. neto 4 sem: {(stripeCommission.netVolume4w / 100).toFixed(2)}€)
             </p>
@@ -444,7 +487,6 @@ export default function ArmandoPage() {
             </p>
           </div>
 
-          {/* Cabecera de columnas */}
           <div className="flex items-center px-4 py-2 bg-gray-100 border-b text-xs font-medium text-gray-500 uppercase">
             <span className="w-14">Hora</span>
             <span className="w-20 text-center">Tipo</span>
@@ -511,8 +553,8 @@ export default function ArmandoPage() {
                             <span className="w-24 text-right font-bold text-sm bg-gray-100 px-2 py-1 rounded">
                               {formatCurrency(t.balanceAfter)}
                             </span>
-                            {/* Estado del payout - según rol */}
-                            {isPayout && !payoutStatus.sent && !expandedPayouts[t.source] && userRole === 'armando' && (
+                            {/* Estado del payout — solo flujo Armando */}
+                            {isPayout && !payoutStatus.sent && !expandedPayouts[t.source] && (
                               <button
                                 onClick={() => setExpandedPayouts(prev => ({ ...prev, [t.source]: true }))}
                                 className="ml-3 px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition font-medium"
@@ -520,20 +562,7 @@ export default function ArmandoPage() {
                                 Dividir
                               </button>
                             )}
-                            {isPayout && !payoutStatus.sent && userRole === 'manuel' && (
-                              <span className="ml-3 px-3 py-1 bg-gray-100 text-gray-600 text-xs rounded font-medium">
-                                Pendiente dividir
-                              </span>
-                            )}
-                            {isPayout && payoutStatus.sent && !payoutStatus.confirmed && userRole === 'manuel' && (
-                              <button
-                                onClick={() => markAsConfirmed(t.source)}
-                                className="ml-3 px-3 py-1 bg-yellow-500 text-yellow-900 text-xs rounded hover:bg-yellow-600 transition font-medium"
-                              >
-                                Confirmar recibido
-                              </button>
-                            )}
-                            {isPayout && payoutStatus.sent && !payoutStatus.confirmed && userRole === 'armando' && (
+                            {isPayout && payoutStatus.sent && !payoutStatus.confirmed && (
                               <span className="ml-3 px-3 py-1 bg-yellow-100 text-yellow-800 text-xs rounded font-medium">
                                 Esperando confirmación
                               </span>
@@ -546,8 +575,8 @@ export default function ArmandoPage() {
                             {!isPayout && <span className="w-20"></span>}
                           </div>
 
-                          {/* Fila expandida con reparto 90/10 - solo Armando */}
-                          {isPayout && !payoutStatus.sent && expandedPayouts[t.source] && userRole === 'armando' && (
+                          {/* Fila expandida con reparto 90/10 */}
+                          {isPayout && !payoutStatus.sent && expandedPayouts[t.source] && (
                             <div className="bg-blue-50 border-t border-blue-200 p-4">
                               <div className="flex items-center justify-between mb-3">
                                 <span className="text-blue-800 font-medium">Reparto de {formatCurrency(netAmount)}</span>
@@ -600,7 +629,6 @@ export default function ArmandoPage() {
             </div>
           )}
 
-          {/* Leyenda */}
           <div className="p-4 bg-gray-50 border-t">
             <div className="flex flex-wrap gap-4 text-xs">
               <span className="inline-flex items-center gap-1">

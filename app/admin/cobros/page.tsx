@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import supabase from '@/lib/supabase'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 
 export default function CobrosPage() {
   const [stripeTransactions, setStripeTransactions] = useState<any[]>([])
@@ -9,6 +9,8 @@ export default function CobrosPage() {
   const [payoutTransfers, setPayoutTransfers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [apiError, setApiError] = useState<string | null>(null)
+  const [transfersError, setTransfersError] = useState<string | null>(null)
+  const [fxError, setFxError] = useState<string | null>(null)
   const [stripeCommission, setStripeCommission] = useState({ pct: 10, netVolume4w: 0 })
   const [eurUsdRate, setEurUsdRate] = useState<number | null>(null)
 
@@ -19,12 +21,18 @@ export default function CobrosPage() {
   const loadData = async () => {
     setLoading(true)
     setApiError(null)
+    setTransfersError(null)
+    setFxError(null)
     try {
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 15000)
+      // Timeout amplio (35s) — endpoint puede tardar hasta 30s legítimamente cuando
+      // el caché de netVolume4w está frío y debe esperar al Stripe Reporting API
+      const timeoutId = setTimeout(() => controller.abort(), 35000)
 
+      const stripeAuthHeaders = await getAuthHeaders()
       const response = await fetch('/api/admin/stripe-fees-summary', {
-        signal: controller.signal
+        signal: controller.signal,
+        headers: stripeAuthHeaders,
       })
       clearTimeout(timeoutId)
 
@@ -40,27 +48,39 @@ export default function CobrosPage() {
         setApiError(data.error || 'Error al cargar datos de Stripe')
       }
 
-      const { data: transfers, error: dbError } = await supabase
-        .from('payout_transfers')
-        .select('*')
-        .order('payout_date', { ascending: false })
-
-      if (dbError) {
-        console.error('Error loading transfers:', dbError)
-      }
-      setPayoutTransfers(transfers || [])
-
-      // Tipo de cambio EUR→USD (con fallback)
+      // Cargar payouts vía API server-side (RLS de payout_transfers cerrada para anon/authenticated)
       try {
-        const fxRes = await fetch('https://api.frankfurter.app/latest?from=EUR&to=USD')
+        const authHeaders = await getAuthHeaders()
+        const transfersRes = await fetch('/api/finance/transfers', {
+          method: 'GET',
+          headers: authHeaders,
+        })
+        if (!transfersRes.ok) {
+          const txt = await transfersRes.text().catch(() => '')
+          throw new Error(`HTTP ${transfersRes.status}: ${txt.slice(0, 200)}`)
+        }
+        const transfersJson = await transfersRes.json()
+        if (transfersJson.success) {
+          setPayoutTransfers(transfersJson.transfers || [])
+        } else {
+          throw new Error(transfersJson.error || 'Error desconocido cargando payouts')
+        }
+      } catch (err: unknown) {
+        setTransfersError('Error cargando payouts: ' + (err instanceof Error ? err.message : String(err)))
+      }
+
+      // Tipo de cambio EUR→USD — sin fallback: si falla, no se muestra USD
+      try {
+        const fxRes = await fetch('https://api.frankfurter.dev/v1/latest?from=EUR&to=USD')
+        if (!fxRes.ok) throw new Error(`HTTP ${fxRes.status}`)
         const fxData = await fxRes.json()
         if (fxData.rates?.USD) {
           setEurUsdRate(fxData.rates.USD)
         } else {
-          setEurUsdRate(1.12) // fallback razonable
+          setFxError('Frankfurter devolvió respuesta sin USD')
         }
-      } catch {
-        setEurUsdRate(1.12) // fallback si API no responde
+      } catch (err: unknown) {
+        setFxError('No se pudo obtener tipo de cambio EUR/USD: ' + (err instanceof Error ? err.message : String(err)))
       }
     } catch (err: any) {
       if (err.name === 'AbortError') {
@@ -73,21 +93,21 @@ export default function CobrosPage() {
   }
 
   const markAsConfirmed = async (payoutId: string) => {
-    const now = new Date().toISOString()
-    const { error } = await supabase
-      .from('payout_transfers')
-      .update({
-        manuel_confirmed: true,
-        manuel_confirmed_date: now
-      })
-      .eq('stripe_payout_id', payoutId)
+    const authHeaders = await getAuthHeaders()
+    const res = await fetch('/api/finance/transfers/confirm', {
+      method: 'POST',
+      headers: { ...authHeaders, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ stripe_payout_id: payoutId }),
+    })
 
-    if (!error) {
-      setPayoutTransfers(prev => prev.map(t =>
-        t.stripe_payout_id === payoutId
-          ? { ...t, manuel_confirmed: true, manuel_confirmed_date: now }
-          : t
-      ))
+    if (res.ok) {
+      // Re-fetch en vez de optimistic update — confirma estado real del server
+      await loadData()
+    } else {
+      const data = await res.json().catch(() => ({} as { error?: string }))
+      const msg = `Error confirmando payout (HTTP ${res.status}): ${data.error || 'sin detalle'}`
+      console.error(msg)
+      alert(msg)
     }
   }
 
@@ -167,6 +187,14 @@ export default function CobrosPage() {
 
   return (
     <div className="space-y-6">
+      {/* Banner de errores no-críticos */}
+      {(transfersError || fxError) && (
+        <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800 space-y-1">
+          {transfersError && <p>⚠️ {transfersError}</p>}
+          {fxError && <p>⚠️ {fxError} — los importes en USD no se mostrarán.</p>}
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>

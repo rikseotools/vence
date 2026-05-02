@@ -1,13 +1,83 @@
 // app/api/admin/stripe-fees-summary/route.ts
-// API para obtener resumen de fees de Stripe
-import { NextResponse } from 'next/server'
+// API para obtener resumen de fees de Stripe.
+// Auth: cookie armando OR admin Supabase (mismo dual-auth que /api/finance/*).
+// Caché in-memory de netVolume4w (TTL 1h) para evitar polling Stripe Reporting (~10-30s).
+import { NextResponse, type NextRequest } from 'next/server'
 import Stripe from 'stripe'
 import { getAdminDb as getDb } from '@/db/client'
 import { paymentSettlements } from '@/db/schema'
 import { eq } from 'drizzle-orm'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { authenticateFinanceRequest } from '@/lib/finance/auth'
 const getStripe = () => new Stripe(process.env.STRIPE_SECRET_KEY!)
+
+// Caché in-memory para netVolume4w (cambia poco, evita polling Stripe Reporting que tarda 10-30s)
+const NET_VOLUME_CACHE_TTL_MS = 60 * 60 * 1000 // 1h
+let netVolumeCache: { value: number; expiresAt: number } | null = null
+
+/**
+ * Calcula volumen neto de últimas 4 semanas via Stripe Reporting API.
+ * Si el polling no termina en 30s, lanza para entrar al fallback (paginación
+ * de balance_transactions, más lento pero garantizado a terminar).
+ */
+async function computeNetVolume4w(fourWeeksAgo: number, reportEnd: Date): Promise<number> {
+  let netVolume4w = 0
+  try {
+    const run = await getStripe().reporting.reportRuns.create({
+      report_type: 'balance_change_from_activity.summary.1',
+      parameters: {
+        interval_start: fourWeeksAgo,
+        interval_end: Math.floor(reportEnd.getTime() / 1000),
+        currency: 'eur',
+      },
+    })
+
+    // Poll until done (max ~30s)
+    let result = run
+    for (let i = 0; i < 10 && result.status !== 'succeeded'; i++) {
+      await new Promise(r => setTimeout(r, 3000))
+      result = await getStripe().reporting.reportRuns.retrieve(run.id)
+    }
+
+    // Si polling no terminó, lanzar para que el fallback se ejecute
+    // (antes el bracket se quedaba en 10% silenciosamente)
+    if (result.status !== 'succeeded' || !result.result?.url) {
+      throw new Error(`Stripe Reporting polling no terminó: status=${result.status}`)
+    }
+
+    const csv = await fetch(result.result.url, {
+      headers: { 'Authorization': `Bearer ${process.env.STRIPE_SECRET_KEY}` },
+    }).then(r => r.text())
+
+    // Parse CSV: find charge net and refund net
+    const lines = csv.split('\n')
+    for (const line of lines) {
+      const cols = line.split(',').map(c => c.replace(/"/g, ''))
+      if (cols[0] === 'charge') netVolume4w += Math.round(parseFloat(cols[5]) * 100) // net in cents
+      if (cols[0] === 'refund') netVolume4w += Math.round(parseFloat(cols[5]) * 100) // negative
+    }
+  } catch (e) {
+    console.warn('[stripe-fees-summary] Reporting API falló, usando fallback paginado:', (e as Error).message)
+    // Fallback: paginación de balance_transactions (lento pero garantizado)
+    netVolume4w = 0
+    let hasMore = true
+    let startingAfter: string | undefined
+    while (hasMore) {
+      const params: Record<string, unknown> = { created: { gte: fourWeeksAgo }, limit: 100 }
+      if (startingAfter) params.starting_after = startingAfter
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const batch = await getStripe().balanceTransactions.list(params as any)
+      for (const t of batch.data) {
+        if (t.type === 'charge') netVolume4w += t.net
+        if (t.type === 'refund') netVolume4w += t.net
+      }
+      hasMore = batch.has_more
+      if (batch.data.length) startingAfter = batch.data[batch.data.length - 1].id
+    }
+  }
+  return netVolume4w
+}
 
 // Descripciones en español para tipos de transacción
 function getTypeDescription(type: string): string {
@@ -24,8 +94,14 @@ function getTypeDescription(type: string): string {
   return descriptions[type] || type
 }
 
-async function _GET(request: Request) {
+async function _GET(request: NextRequest) {
   try {
+    // Auth: cookie armando OR admin Supabase
+    const auth = await authenticateFinanceRequest(request)
+    if (!auth.ok) {
+      return NextResponse.json({ success: false, error: auth.error }, { status: auth.status })
+    }
+
     const url = new URL(request.url)
     const sinceDate = url.searchParams.get('since')
 
@@ -159,59 +235,19 @@ async function _GET(request: Request) {
       pending: balance.pending.reduce((sum, b) => sum + b.amount, 0),
     }
 
-    // Volumen neto últimas 4 semanas via Stripe Reporting API
-    // Usa el report balance_change_from_activity.summary que es la fuente
-    // del "Volumen neto" del dashboard de Stripe Billing
+    // Volumen neto últimas 4 semanas via Stripe Reporting API.
+    // Cacheado in-memory (TTL 1h) — el bracket de comisión cambia poco y este
+    // cálculo tarda 10-30s entre polling de report + descarga CSV.
     const fourWeeksAgo = Math.floor(Date.now() / 1000) - (28 * 24 * 60 * 60)
     const reportEnd = new Date()
     reportEnd.setUTCHours(0, 0, 0, 0) // midnight UTC today
 
-    let netVolume4w = 0
-    try {
-      const run = await getStripe().reporting.reportRuns.create({
-        report_type: 'balance_change_from_activity.summary.1',
-        parameters: {
-          interval_start: fourWeeksAgo,
-          interval_end: Math.floor(reportEnd.getTime() / 1000),
-          currency: 'eur',
-        },
-      })
-
-      // Poll until done (max 30s)
-      let result = run
-      for (let i = 0; i < 10 && result.status !== 'succeeded'; i++) {
-        await new Promise(r => setTimeout(r, 3000))
-        result = await getStripe().reporting.reportRuns.retrieve(run.id)
-      }
-
-      if (result.status === 'succeeded' && result.result?.url) {
-        const csv = await fetch(result.result.url, {
-          headers: { 'Authorization': `Bearer ${process.env.STRIPE_SECRET_KEY}` },
-        }).then(r => r.text())
-
-        // Parse CSV: find charge net and refund net
-        const lines = csv.split('\n')
-        for (const line of lines) {
-          const cols = line.split(',').map(c => c.replace(/"/g, ''))
-          if (cols[0] === 'charge') netVolume4w += Math.round(parseFloat(cols[5]) * 100) // net in cents
-          if (cols[0] === 'refund') netVolume4w += Math.round(parseFloat(cols[5]) * 100) // negative
-        }
-      }
-    } catch (e) {
-      // Fallback: simple calculation with balance transactions
-      let hasMore = true
-      let startingAfter: string | undefined
-      while (hasMore) {
-        const params: Record<string, unknown> = { created: { gte: fourWeeksAgo }, limit: 100 }
-        if (startingAfter) params.starting_after = startingAfter
-        const batch = await getStripe().balanceTransactions.list(params as any)
-        for (const t of batch.data) {
-          if (t.type === 'charge') netVolume4w += t.net
-          if (t.type === 'refund') netVolume4w += t.net
-        }
-        hasMore = batch.has_more
-        if (batch.data.length) startingAfter = batch.data[batch.data.length - 1].id
-      }
+    let netVolume4w: number
+    if (netVolumeCache && netVolumeCache.expiresAt > Date.now()) {
+      netVolume4w = netVolumeCache.value
+    } else {
+      netVolume4w = await computeNetVolume4w(fourWeeksAgo, reportEnd)
+      netVolumeCache = { value: netVolume4w, expiresAt: Date.now() + NET_VOLUME_CACHE_TTL_MS }
     }
 
     // Comisión Stripe escalonada según volumen neto (en céntimos)
