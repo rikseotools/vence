@@ -326,7 +326,7 @@ export default function ArticleTTS({ text, articleNumber, lawName }: ArticleTTSP
   }, [isSupported, stopAllTimers])
 
   const changeRate = useCallback(() => {
-    const rates = [1.0, 1.25, 1.5, 0.75]
+    const rates = [0.25, 0.5, 0.75, 1.0, 1.25, 1.5]
     const currentIdx = rates.indexOf(rate)
     setRate(rates[(currentIdx + 1) % rates.length])
   }, [rate])
