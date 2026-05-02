@@ -24,7 +24,16 @@ async function _GET(request: NextRequest) {
     }
 
     const stats = await getUserPublicStats(parsed.data)
-    return NextResponse.json({ success: true, ...stats })
+    return NextResponse.json(
+      { success: true, ...stats },
+      {
+        // Cache navegador 30s. Reduce repeat hits cuando user refresca o navega
+        // rapido entre pantallas. NO se cachea en CDN (private) porque las
+        // stats son por-usuario. Tras Fase 1 (Redis) este cache sera el L2.
+        // SWR 60s: si caduca pero llega request, sirve cached + revalida atras.
+        headers: { 'Cache-Control': 'private, max-age=30, stale-while-revalidate=60' },
+      }
+    )
   } catch (error) {
     console.error('❌ [API/v2/user-stats]', error)
     return NextResponse.json(
