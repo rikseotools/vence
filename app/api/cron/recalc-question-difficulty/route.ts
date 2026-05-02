@@ -36,7 +36,12 @@ async function _GET(request: NextRequest): Promise<NextResponse> {
     )
 
     const { data, error } = await supabase.rpc('recalculate_dirty_question_difficulty', {
-      p_limit: 1000, // 1000 cada 5min = 12k/h, capacidad sobrada para ritmo actual
+      // LIMIT 500: 500 preguntas ~13s en plan optimo, dentro del statement_timeout
+      // PostgREST/Supavisor (observado: con LIMIT 1000 + backlog acumulado, cron
+      // fallaba con code 57014 'canceling statement due to statement timeout').
+      // Capacidad: 500 cada 5min = 6.000/h - suficiente para ritmo actual y 100k DAU.
+      // Si en futuro insuficiente: subir a cron 2-3min o pasar a Inngest queue.
+      p_limit: 500,
     })
 
     if (error) {
