@@ -36,7 +36,7 @@ async function _GET(request: NextRequest): Promise<NextResponse> {
     )
 
     const { data, error } = await supabase.rpc('recalculate_dirty_question_difficulty', {
-      p_limit: 500,
+      p_limit: 1000, // 1000 cada 5min = 12k/h, capacidad sobrada para ritmo actual
     })
 
     if (error) {
