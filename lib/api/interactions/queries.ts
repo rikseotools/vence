@@ -51,6 +51,15 @@ export async function trackInteraction(
     }
 
   } catch (error) {
+    // FK violation (user_id no existe en users): browser zombie de un usuario
+    // ya eliminado por admin-delete-user. No es bug — es esperado. Devolver
+    // success:true para que el browser deje de reintentar y no contaminar logs.
+    const pgCode = (error as { code?: string; cause?: { code?: string } })?.code
+                || (error as { cause?: { code?: string } })?.cause?.code
+    if (pgCode === '23503') {
+      console.info('🧟 [Interactions] FK violation (zombie session de user eliminado), ignorado')
+      return { success: true }
+    }
     console.error('❌ [Interactions] Error registrando evento:', error)
     return {
       success: false
@@ -98,6 +107,13 @@ export async function trackBatchInteractions(
     }
 
   } catch (error) {
+    // Mismo caso que trackInteraction: FK violation = zombie session de user eliminado.
+    const pgCode = (error as { code?: string; cause?: { code?: string } })?.code
+                || (error as { cause?: { code?: string } })?.cause?.code
+    if (pgCode === '23503') {
+      console.info('🧟 [Interactions] FK violation batch (zombie session de user eliminado), ignorado')
+      return { success: true, count: params.events.length }
+    }
     console.error('❌ [Interactions] Error registrando batch:', error)
     return {
       success: false

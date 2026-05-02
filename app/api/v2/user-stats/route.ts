@@ -35,6 +35,18 @@ async function _GET(request: NextRequest) {
       }
     )
   } catch (error) {
+    // FK violation: user_id no existe en user_profiles (eliminado por admin-delete-user).
+    // El browser sigue activo con sesion zombie. Devolver 401 para que cliente
+    // detecte y haga logout. NO loguear como error 500 (no es bug del servidor).
+    const pgCode = (error as { code?: string; cause?: { code?: string } })?.code
+                || (error as { cause?: { code?: string } })?.cause?.code
+    if (pgCode === '23503') {
+      console.info('🧟 [API/v2/user-stats] FK violation (zombie session de user eliminado)')
+      return NextResponse.json(
+        { success: false, error: 'Usuario no existe', sessionInvalid: true },
+        { status: 401 }
+      )
+    }
     console.error('❌ [API/v2/user-stats]', error)
     return NextResponse.json(
       { success: false, error: 'Error interno' },
