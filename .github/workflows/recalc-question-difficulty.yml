@@ -1,0 +1,35 @@
+name: Recalculate Question Difficulty (debounced)
+
+# Cron que procesa preguntas marcadas como stats_dirty=true por el trigger
+# update_question_difficulty_immediate (Fase 0.2 escalabilidad).
+# Detalle: docs/ARCHITECTURE_ROADMAP.md, supabase/migrations/20260502_questions_difficulty_debounced.sql
+
+on:
+  schedule:
+    - cron: '*/5 * * * *' # cada 5 minutos
+  workflow_dispatch: # ejecución manual desde GitHub UI
+
+jobs:
+  recalc:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger recalc endpoint
+        run: |
+          response=$(curl -s -w "\n%{http_code}" -X GET \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            https://www.vence.es/api/cron/recalc-question-difficulty)
+
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+
+          echo "Response: $body"
+          echo "HTTP Status: $http_code"
+
+          if [ "$http_code" != "200" ]; then
+            echo "❌ Error: HTTP $http_code"
+            exit 1
+          fi
+
+      - name: Log completion
+        run: echo "✅ Recalc question difficulty - $(date -u +%Y-%m-%dT%H:%M:%SZ)"
