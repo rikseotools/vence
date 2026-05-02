@@ -484,13 +484,6 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     administracion: 'Estatal',
     icon: '📬'
   },
-  {
-    id: 'administrativo_seguridad_social',
-    nombre: 'Administrativo Seguridad Social',
-    categoria: 'C1',
-    administracion: 'Estado',
-    icon: '🏛️'
-  },
 
   // === HACIENDA ===
   {
