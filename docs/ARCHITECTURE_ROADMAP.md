@@ -1,7 +1,7 @@
 # Vence — Architecture Roadmap a 100k+ usuarios
 
 > **Última actualización:** 2026-05-02 (noche)
-> **Estado:** Fase 0 prácticamente completa (4 de 5 puntos hechos: 0.1 trigger #7 NO-OP, 0.2 trigger #2 → debounced cron, 0.3 investigación pg_stat_statements + bug pool fix, 0.4 cache hot endpoints, 0.6 trigger #9 user_analytics → solo is_active_student). Pendiente: 0.5 verificar p95 baja en producción tras 24h.
+> **Estado:** Fase 0 prácticamente completa (0.1 trigger #7 NO-OP, 0.2 trigger #2 → debounced cron, 0.3 investigación pg_stat_statements + bug pool fix, 0.4 cache hot endpoints, 0.6 trigger #9 user_analytics simplificado). **Fase 1 Redis ✅ COMPLETA** (3 endpoints cacheados, 2 skip justificados, manual actualizado). Pendiente: 0.5 verificar p95 baja en producción tras 24h.
 > **Objetivo:** preparar Vence para escalar a 100k+ usuarios sin perder features ni romper nada
 > **Coste extra estimado total (Fases 0-3):** $10-40/mes
 > **Coste extra estimado total (Fases 0-5):** $50-150/mes
@@ -75,28 +75,29 @@ Este roadmap cambia la arquitectura **sin reescribir** el código, en 6 fases in
 
 ---
 
-## Fase 1 — Redis cache (Upstash)
+## Fase 1 — Redis cache (Upstash) ✅ COMPLETA (2026-05-02)
 
 **Objetivo:** que el 80%+ de las requests no lleguen a BD.
 
 **Setup:**
 - Upstash Redis serverless (gratis hasta 10k commands/día, ~$10/mes para 100k usuarios)
-- `lib/cache/redis.ts` con `getOrSet(key, ttl, fetcher)` (cache-aside)
-- Fallback a BD si Redis está down
+- `lib/cache/redis.ts` con `getOrSet(key, ttl, fetcher)` (cache-aside) + `getCached/setCached` (patrón stale-fallback)
+- Fallback a BD si Redis está down (timeout 100ms)
 
-**Endpoints a cachear (orden de impacto):**
-1. `/api/v2/user-stats` (TTL 30s, key `user_stats:{userId}`)
-2. `/api/v2/profile` (TTL 60s, key `profile:{userId}`)
-3. `/api/v2/daily-limit/check` (TTL 30s, key `daily_limit:{userId}`) — **NO el counter, solo el read**
-4. `/api/exam/pending` (TTL 30s)
-5. Catálogo oposiciones/leyes/themes (TTL 1h)
+| # | Endpoint | Estado | Detalle |
+|---|---|---|---|
+| 1 | `/api/v2/user-stats` | ✅ Hecho (commit 9262954c) | TTL 30s, key `user_stats:{userId}`, invalidación tras INSERT en `test_questions` |
+| 2 | `/api/v2/profile` | ⏭️ Skip | `Cache-Control: no-store` deliberado (cambios deben ser inmediatos) |
+| 3 | `/api/daily-limit` | ⏭️ Skip | Ya tiene cache premium-only in-memory (anti-fraude). Mover a Redis añadiría riesgo de bypass freemium sin beneficio claro |
+| 4 | `/api/exam/pending` | ✅ Hecho (commit 9262954c) | TTL 30s, key segmentada por testType+limit, invalidación tras INSERT/UPDATE en `tests` |
+| 5 | Catálogos oposiciones/leyes/themes | ⏭️ Skip | Ya cubiertos por Next.js `unstable_cache` con tags (`temario`, `teoria`, `laws`, `landing`). Manual: `docs/maintenance/cache-revalidation.md` |
+| 6 | `/api/v2/topic-progress/theme-stats` | ✅ Hecho (commit a0ef3078) | Promovido de Map in-memory → Redis. Patrón "fresh 5min + stale fallback 24h" para query pesada (16s en heavy users). Invalidación tras INSERT en `answer-and-save`. |
 
-**Invalidación:** UPDATE perfil → `DEL profile:{userId}`. Respuesta → `DEL user_stats:{userId}`.
-
-**Salvaguardas:**
-- Daily limit: cache solo el VALOR leído, NO el decremento. El INSERT sigue siempre en BD.
-- Tests de paridad (cache vs BD coinciden).
-- Feature flag `REDIS_CACHE_ENABLED=false` para desactivar instantáneo.
+**Salvaguardas implementadas:**
+- Feature flag `REDIS_CACHE_ENABLED=false` para desactivar instantáneo
+- Timeout 100ms en cada GET/SET — si Redis lento, cae a BD sin penalizar
+- Fire-and-forget en SET — no bloquea la respuesta del usuario
+- Stale fallback en theme-stats — datos viejos > pantalla vacía si BD timeout
 
 ---
 
