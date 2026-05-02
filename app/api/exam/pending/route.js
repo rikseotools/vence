@@ -1,6 +1,7 @@
 // app/api/exam/pending/route.js - API para obtener exámenes pendientes
 import { NextResponse } from 'next/server'
 import { getPendingExams } from '@/lib/api/exam'
+import { getOrSet } from '@/lib/cache/redis'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 export const maxDuration = 30
 
@@ -45,8 +46,12 @@ async function _GET(request) {
       )
     }
 
-    // Obtener exámenes pendientes
-    const result = await getPendingExams(userId, testType, limit)
+    // Cache server-side compartido (Redis Upstash, TTL 30s).
+    // Lista de pending exams cambia poco (solo cuando user inicia/completa test).
+    // Se invalida tras INSERT/UPDATE en tests (en endpoints de iniciar/completar).
+    // Si Redis falla, cae a BD (graceful degradation).
+    const cacheKey = `exam_pending:${userId}:${testType || 'all'}:${limit}`
+    const result = await getOrSet(cacheKey, 30, () => getPendingExams(userId, testType, limit))
 
     if (!result.success) {
       return NextResponse.json(

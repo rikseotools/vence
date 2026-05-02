@@ -135,6 +135,19 @@ async function _POST(request: NextRequest): Promise<NextResponse<AnswerAndSaveRe
       } catch (e) {
         console.warn('⚠️ [after] Error en operaciones background:', e)
       }
+      // Invalidar caches del user en Redis (fire-and-forget, no bloquea respuesta).
+      // Tras responder, sus stats y exam-pending pueden haber cambiado.
+      try {
+        const { invalidateMany } = await import('@/lib/cache/redis')
+        await invalidateMany([
+          `user_stats:${user.id}`,
+          `exam_pending:${user.id}:all:10`,
+          `exam_pending:${user.id}:exam:10`,
+          `exam_pending:${user.id}:practice:10`,
+        ])
+      } catch {
+        // Si Redis falla, el TTL 30s eventualmente refresca el valor stale
+      }
     })
 
     if (!result.success) {

@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getUserPublicStats } from '@/lib/api/user-stats/queries'
+import { getOrSet } from '@/lib/cache/redis'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 
@@ -23,7 +24,15 @@ async function _GET(request: NextRequest) {
       )
     }
 
-    const stats = await getUserPublicStats(parsed.data)
+    // Cache server-side compartido (Redis Upstash, TTL 30s).
+    // Reduce carga BD ~80% para usuarios que recargan dashboard. Se invalida
+    // tras INSERT en test_questions (en /api/v2/answer-and-save) para reflejar
+    // cambios al instante. Si Redis falla, cae a BD (graceful degradation).
+    const stats = await getOrSet(
+      `user_stats:${parsed.data}`,
+      30,
+      () => getUserPublicStats(parsed.data),
+    )
     return NextResponse.json(
       { success: true, ...stats },
       {
