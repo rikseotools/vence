@@ -1,7 +1,7 @@
 # Vence — Architecture Roadmap a 100k+ usuarios
 
-> **Última actualización:** 2026-05-02 (noche)
-> **Estado:** Fase 0 prácticamente completa (0.1 trigger #7 NO-OP, 0.2 trigger #2 → debounced cron, 0.3 investigación pg_stat_statements + bug pool fix, 0.4 cache hot endpoints, 0.6 trigger #9 user_analytics simplificado). **Fase 1 Redis ✅ COMPLETA** (3 endpoints cacheados, 2 skip justificados, manual actualizado). Pendiente: 0.5 verificar p95 baja en producción tras 24h.
+> **Última actualización:** 2026-05-03 (mañana)
+> **Estado:** Fase 0 casi completa (0.1 trigger #7 NO-OP, 0.2 trigger #2 → debounced cron, 0.3 investigación pg_stat_statements + bug pool fix, 0.4 cache hot endpoints, 0.6 trigger #9 user_analytics simplificado). **Fase 1 Redis ✅ COMPLETA**. Pendiente: 0.5 verificar p95 con stats limpias tras 2-4h de tráfico (reset 2026-05-03 07:23 UTC). **Nueva auditoría 10k DAU** identificó 15 hard gaps; top 3 (JWT local verify, audit getDb→getAdminDb, TTL eventos) son candidatos para nueva **Fase 0.7**.
 > **Objetivo:** preparar Vence para escalar a 100k+ usuarios sin perder features ni romper nada
 > **Coste extra estimado total (Fases 0-3):** $10-40/mes
 > **Coste extra estimado total (Fases 0-5):** $50-150/mes
@@ -44,14 +44,14 @@ Este roadmap cambia la arquitectura **sin reescribir** el código, en 6 fases in
 
 ## Las 6 fases
 
-| Fase | Duración | Coste mensual | Beneficio | Riesgo |
-|---|---|---|---|---|
-| **0 — Estabilizar** | 1 sem | $0 | Resuelve timeouts actuales | Cero |
-| **1 — Redis cache** | 1-2 sem | $10 | -80% load BD | Bajo |
-| **2 — Outbox pattern** | 2-3 sem | $0 | Estabilidad escrituras | Medio |
-| **3 — Pool split / replica** | 2-3 sem | $0-30 | Aislamiento OLTP/admin | Bajo |
-| **4 — Async queues** | 1-2 sem | $0-20 | -50% writes BD principal | Medio |
-| **5 — Data warehouse** | 3-6 sem | $30-100 | Analytics escalable | Bajo |
+| Fase | Estado | Duración | Coste mensual | Beneficio | Riesgo |
+|---|---|---|---|---|---|
+| **0 — Estabilizar** | 🟡 5/6 hechas (falta 0.5 verificación p95) | 1 sem | $0 | Resuelve timeouts actuales | Cero |
+| **1 — Redis cache** | ✅ COMPLETA (2026-05-02) | 1-2 sem | $10 | -80% load BD | Bajo |
+| **2 — Outbox pattern** | ⏳ Pendiente | 2-3 sem | $0 | Estabilidad escrituras | Medio |
+| **3 — Pool split / replica** | 🟡 Pool split parcial (`getDb` max:1 + `getAdminDb` max:4 ya existen). Read replica pendiente | 2-3 sem | $0-30 | Aislamiento OLTP/admin | Bajo |
+| **4 — Async queues** | ⏳ Pendiente | 1-2 sem | $0-20 | -50% writes BD principal | Medio |
+| **5 — Data warehouse** | ⏳ Pendiente | 3-6 sem | $30-100 | Analytics escalable | Bajo |
 
 **Para 100k cómodo**: Fases 0-3 (3-6 semanas, ~$10-40/mes).
 **Para 1M+**: Fases 0-5 (3-6 meses, ~$50-150/mes).
@@ -101,7 +101,7 @@ Este roadmap cambia la arquitectura **sin reescribir** el código, en 6 fases in
 
 ---
 
-## Fase 2 — Outbox pattern (sustituir triggers pesados)
+## Fase 2 — Outbox pattern (sustituir triggers pesados) ⏳ PENDIENTE
 
 **Objetivo:** eliminar lock contention de triggers manteniendo features intactas.
 
@@ -122,27 +122,27 @@ Este roadmap cambia la arquitectura **sin reescribir** el código, en 6 fases in
 
 ---
 
-## Fase 3 — Pool split / read replica
+## Fase 3 — Pool split / read replica 🟡 PARCIAL
 
 **Objetivo:** aislar lecturas pesadas de escrituras críticas.
 
 **Pool split (sin replica, $0):**
 ```typescript
-getWriteDb()  → max:1, timeout 5s   // INSERT/UPDATE críticos (answer, save)
-getReadDb()   → max:1, timeout 3s   // SELECTs cacheables (stats, profile)
-getAdminDb()  → max:4, timeout 60s  // ya existe, admin/dashboards
+getWriteDb()  → max:1, timeout 5s   // ⏳ PENDIENTE — hoy `getDb()` cubre lectura+escritura
+getReadDb()   → max:1, timeout 3s   // ⏳ PENDIENTE
+getAdminDb()  → max:4, timeout 60s  // ✅ HECHO — usado por crons (3 migrados commit 76dc3ffb + avatar 2026-05-03)
 ```
 
 Una stats lenta no bloquea un INSERT de respuesta.
 
-**Read replica (decisión de negocio, ~$30/mes extra):**
+**Read replica (decisión de negocio, ~$30/mes extra):** ⏳ PENDIENTE
 - Supabase Pro permite 1 read replica
 - `getReadDb()` apunta a la replica → admin/stats no compiten con OLTP
 - Latencia: ~100ms behind primary (acceptable)
 
 ---
 
-## Fase 4 — Async queues para escrituras no críticas
+## Fase 4 — Async queues para escrituras no críticas ⏳ PENDIENTE
 
 **Tablas candidatas:**
 - `user_interactions` (7.6M filas, 4.9M inserts) — verificar consumidores antes
@@ -158,7 +158,7 @@ Una stats lenta no bloquea un INSERT de respuesta.
 
 ---
 
-## Fase 5 — Data warehouse para analytics
+## Fase 5 — Data warehouse para analytics ⏳ PENDIENTE
 
 **Setup:**
 - ClickHouse (Aiven, ~$30-100/mes) o BigQuery (pay-per-query)
@@ -256,10 +256,11 @@ Para 100k DAU, no hace falta APM de pago. Vence ya tiene buena base; solo faltan
 - ✅ **pg_stat_statements** activo en Supabase
 
 ### Lo que FALTA añadir (1-2h setup)
-- **Slow query log de Supabase** activado y revisado weekly (Dashboard → Database → Query Performance)
-- **Alertas en Sentry** (no solo logging — que avise por email cuando algo se sale de baseline)
-- **Cron de revisión semanal**: query a `validation_error_logs` agrupando por endpoint/severity, email con top 10 si hay critical > N
-- **Endpoint `/api/admin/health`** simple que devuelve estado de Postgres, Redis (Fase 1+), outbox lag (Fase 2+) — para uptime monitor externo (UptimeRobot $0)
+- **Slow query log de Supabase** activado y revisado weekly (Dashboard → Database → Query Performance) — ⏳ Pendiente
+- **Alertas en Sentry** (no solo logging — que avise por email cuando algo se sale de baseline) — ⏳ Pendiente
+- **Cron de revisión semanal**: query a `validation_error_logs` agrupando por endpoint/severity, email con top 10 si hay critical > N — ⏳ Pendiente
+- **Endpoint `/api/admin/health`** simple que devuelve estado de Postgres, Redis (Fase 1+), outbox lag (Fase 2+) — para uptime monitor externo (UptimeRobot $0) — ✅ HECHO (commit a270f267, ampliado con DB stats / queues / crons / incidents). Pendiente conectar UptimeRobot.
+- **Tabla `cron_runs` + helper `runCronWithLogging`** para observabilidad de crons — ✅ HECHO (commit a270f267)
 
 ### Alertas mínimas (vía Sentry rules)
 - p95 de cualquier endpoint > 3s durante 5 min → alerta email
@@ -279,9 +280,9 @@ Para 100k DAU, no hace falta APM de pago. Vence ya tiene buena base; solo faltan
 
 ### Aprovechar `validation_error_logs` para esta migración
 La tabla ya está identificando puntos calientes en producción. Para Fase 0:
-- `/api/random-test/availability` (14 critical en 24h) → investigar
-- `/api/v2/user-stats` (4 critical en 24h) → investigar (relacionado con timeouts ya documentados)
-- `/api/v2/answer-and-save` (78 warnings, "respuesta lenta") → fase 2 outbox lo arregla
+- `/api/random-test/availability` (14 critical en 24h) → ⏳ pendiente
+- `/api/v2/user-stats` (4 critical en 24h) → ✅ Mitigado vía Fase 1 Redis cache (TTL 30s + invalidación)
+- `/api/v2/answer-and-save` (78 warnings, "respuesta lenta") → 🟡 Bajado por triggers optimizados (Fase 0.1/0.2/0.6) pero sigue con outliers 7-10s ocasionales — Fase 2 outbox lo arreglará del todo
 
 ### Lo que NO necesitas (sobre-engineering)
 - Datadog / New Relic / Honeycomb (>$100/mes, no merece la pena hasta multi-millones)
@@ -397,6 +398,78 @@ Hallazgos durante la investigación a fondo del trigger #9 (`user_learning_analy
 
 ---
 
+## Hard gaps para escalar a 10k DAU (auditoría 2026-05-03)
+
+Estimación honesta de qué REVENTARÍA a 10k DAU si no hacemos nada. Distinto de "deuda técnica" — esto es trabajo necesario, no oportunidades estéticas.
+
+### Math básico que justifica todo lo demás
+
+| Métrica | Hoy (~1k DAU) | A 10k DAU | Multiplicador |
+|---|---|---|---|
+| test_questions/día | ~5-10k | ~1M (100/user) | 100-200x |
+| test_questions cumulado / 30 días | +200k | +30M | 150x |
+| Bytes/día en test_questions | ~30 MB | ~3 GB | 100x |
+| Auth round-trips (`supabase.auth.getUser`) | ~50k/día | ~5M/día | 100x |
+| Concurrent lambdas pico | ~10-30 | ~200-500 | 15-20x |
+| BD requests/segundo pico | ~10-30 | ~200-500 | 15-20x |
+
+### 🔴 Top 5 que NO escalan (orden de impacto)
+
+| # | Gap | Cuándo revienta | Esfuerzo | ROI |
+|---|---|---|---|---|
+| 1 | **JWT verify con round-trip a Supabase Auth** en cada request autenticada (~250ms × 5M/día = 350h latencia agregada). El propio shadow log de `/api/profile` ya hace decode local sin verificar firma — extender a verificación con JWKS cacheado | 3-5k DAU | 4-6h | **Brutal** — baja TODOS los endpoints autenticados |
+| 2 | **Pool max:1 en endpoints/crons que deberían usar `getAdminDb` (max:4)** — 3 crons migrados (commit 76dc3ffb) + 1 hoy (avatar). Faltan auditar el resto. Cada cron lento con `getDb` monopoliza el pool de usuarios → cascada 504 | 3-5k DAU | 2-3h auditoría + N migraciones triviales | Alto |
+| 3 | **Cron batch LIMIT 100 vs tasa de inserción** — hoy 28k procesados/día sobra; a 10k DAU son 1M inserciones → 1M `stats_dirty` marks → backlog crece +972k/día. Subir LIMIT a 1000 o cron 1min, validar que no causa lock contention (incidente 2 may 17:14 fue por esto con LIMIT 500) | 5-7k DAU | 1h ajuste + monitorización | Medio |
+| 4 | **Tablas grandes sin partitioning ni TTL** — test_questions 2.2 GB → 30 GB/mes a 10k DAU. validation_error_logs / notification_events / email_events crecen sin parar. Quick wins: TTL >90 días en eventos. Estructural: partitioning declarativo de test_questions por mes (ya en Fase 3 roadmap) | 5-7k DAU para TTL, 7-10k para partitioning | TTL = 1h, partitioning = 4-8h | Alto a medio plazo |
+| 5 | **NO hay read replica** — todo va al primario. Reads de stats/catálogos compiten con INSERTs/UPDATEs por IO. Endpoints SOLO lectura (user-stats, exam/pending, ranking, theme-stats, catálogos) deberían usar réplica. Ya mencionado en Fase 3 del roadmap | 5-7k DAU (saturación primario) | 1-2 días | Crítico para últimos 3-5k DAU |
+
+### 🟡 Top 5 segunda capa (necesarios pero no urgentes)
+
+| # | Gap | Notas |
+|---|---|---|
+| 6 | **Cache invalidation rompe Redis para usuarios activos** — invalidamos `user_stats:{user}` tras cada answer → activos = cache miss permanente. Considerar **NO invalidar y solo TTL 30s** (datos hasta 30s viejos, aceptable para stats) | A 10k DAU activos hace que la inversión Redis sea inútil para ellos |
+| 7 | **Auditoría freemium** (`increment_daily_questions` vulnerable a bypass desde cliente — ya en MEMORY como pendiente) | A 10k DAU el impacto monetario crece linealmente |
+| 8 | **Triggers que aún escanean `tests`/`questions`** — `update_user_question_history` hace JOINs. A 1M INSERTs/día = 1M JOINs adicionales | Reducir, materializar agregados, o mover a outbox (Fase 2 roadmap) |
+| 9 | **`tests.detailed_analytics` + `performance_metrics` JSONB con índices GIN** — ya flagged en deuda técnica. Si nadie los lee, DROP INDEX | Cada UPDATE en tests recompone el GIN — coste puro |
+| 10 | **Daily-limit hace 2 queries secuenciales** (`getDynamicLimit` + RPC `get_daily_question_status`). Podría ser 1 RPC unificada | A 10k DAU = 10M queries/día evitables |
+
+### 🟢 Hard gaps menos críticos
+
+| # | Gap | Notas |
+|---|---|---|
+| 11 | **Rate limiting per user** — cualquier abuser puede hammer y degradar a otros | Upstash ratelimit, 5 líneas de código |
+| 12 | **Doble request a `/api/profile` por usuario** (200-300ms apart, sin Bearer) — completar migración shadow auth (paso 5/7) y deduplicar en cliente | Hoy son 2x peticiones inútiles por user |
+| 13 | **Webhook idempotency Stripe** — si una webhook se reentrega, ¿dobles el premium? Audit | Riesgo monetario raro pero existe |
+| 14 | **`force-dynamic` pages sin stale-while-revalidate ágil** — al invalidar el cache, herd de visitantes hits BD a la vez | A 10k DAU una invalidación de catálogo en hora pico = pico de carga |
+| 15 | **Búsqueda con LIKE en vez de FTS** (si existe buscador, no he auditado) | A 10k DAU + corpus grande, LIKE va a doler |
+
+### Orden de ataque recomendado
+
+Si solo pudieras hacer 3 cosas para escalar a 10k, en este orden:
+
+1. **JWT local verify** (#1) — ROI brutal, 4-6h, baja todos los endpoints autenticados ~250ms
+2. **Auditoría completa de getDb→getAdminDb** (#2) — 2-3h, elimina causa raíz de cascadas 504
+3. **TTL de tablas de eventos + plan de partitioning de test_questions** (#4) — 1h TTL inmediato, partitioning planificado para 1-2 meses vista
+
+Con esos 3 sobrevivimos hasta ~5-7k DAU. Para los últimos 3-5k DAU hace falta el **read replica** (#5).
+
+### Cómo encaja con las 6 fases del roadmap
+
+| Hard gap | Fase del roadmap donde encaja |
+|---|---|
+| #1 JWT local verify | Nueva: **Fase 0.7** (Estabilizar) — quick win, no encaja en otras fases |
+| #2 getDb→getAdminDb audit | Fase 0 (Estabilizar) — ya en proceso, falta cerrar auditoría |
+| #3 Cron batch size | Fase 2 (Outbox) — coincide con replanteamiento de async |
+| #4 TTL eventos + partitioning | TTL = Fase 0.7 quick win, partitioning = **Fase 3** o **Fase 5** |
+| #5 Read replica | **Fase 3** (Pool split / read replica) — ya mencionada |
+| #6 Cache invalidation refactor | Fase 1 (cierre, TODO añadido) |
+| #7 Auditoría freemium | Independiente, ya en MEMORY como pendiente |
+| #8 Triggers que escanean | Fase 2 (Outbox) |
+| #9 GIN sospechosos | Fase 0.7 quick win |
+| #10 Daily-limit 2 queries | Fase 0.7 quick win |
+
+---
+
 ## Histórico de decisiones
 
 | Fecha | Decisión | Razón |
@@ -412,3 +485,7 @@ Hallazgos durante la investigación a fondo del trigger #9 (`user_learning_analy
 | 2026-05-02 | Aplicar Fase 0.2 inmediato pese a riesgo medio | Ráfaga de 504 timeouts en producción (10:51-11:21 UTC) con CONNECT_TIMEOUT a Supavisor confirmado. Trigger #2 era ~283ms/INSERT, contribuía al pool exhaustion. Algoritmo verificado byte-exact, rollback en 5s, riesgo justificado. |
 | 2026-05-02 | Trigger #9 simplificado en lugar de DROP trigger entero | Mantener `is_active_student=true` (parte ligera del trigger) por preservar feature de marca de "usuario activo" en `user_profiles`. La tabla `user_learning_analytics` queda CONGELADA con sus 58k filas históricas en lugar de truncarla, por reversibilidad. |
 | 2026-05-02 | Aplicar Fase 0.6 sin esperar verificación 0.5 | Warnings 4-9.6s en `/api/v2/complete-test` tenían causa raíz idéntica a #7 (trigger con aggregate scans de tabla caliente, dead-write verificado). Riesgo idéntico, parity confirmado. |
+| 2026-05-03 | Migrar crons recalc-*-difficulty a Vercel Cron, mantener GH Actions como backup | GH Actions cron es best-effort: corrió 12 veces en 24h en lugar de ~288 (`*/5 * * * *`). Avg interval 70min (debería 5min). Vercel Cron es puntual al segundo. Doble disparo seguro por `pg_try_advisory_xact_lock`. Coste 576 invocations/día (negligible Pro). Backlog 2877 stats_dirty creciendo era el síntoma. |
+| 2026-05-03 | Migrar `calculateBulkUserProfiles` (cron avatar) a `getAdminDb` + `maxDuration` 300s | Weekly Avatar Rotation falló 04:00 UTC con timeout 1m3s. Función procesa cientos de usuarios con 2 aggregate scans pesadas (extract hour + 8 SUMs por user) y usaba pool max:1, monopolizando conexiones. Mismo patrón que commit 76dc3ffb. |
+| 2026-05-03 | Reset `pg_stat_statements` post-deploy de optimizaciones | Stats acumulaban desde 2026-03-01 (2 meses). Medias mostraban 8.4s en queries que post-optimización corren en 50-160ms. Sin reset es imposible distinguir mejoras reales de fantasmas históricos. Manual `revisar-errores-fallos.md` actualizado con esta lección como "Trampa #1". |
+| 2026-05-03 | Auditoría 10k DAU añadida al roadmap como sección dedicada | Identificados 15 hard gaps en 3 niveles (5 críticos / 5 segunda capa / 5 menos críticos). Top 3: JWT local verify, audit getDb→getAdminDb, TTL eventos. Permite priorizar trabajo de Fase 0.7 (nueva) y completar Fases 1-3 con foco. |
