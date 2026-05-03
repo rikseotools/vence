@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { getSupabaseClient } from '@/lib/supabase'
 
 // Google Client ID
@@ -13,9 +13,25 @@ function isIOSDevice() {
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
 }
 
+// Genera un nonce + su hash SHA-256 (Google requiere el hash, Supabase el raw)
+async function generateNonce() {
+  const nonce = crypto.randomUUID()
+  const encoder = new TextEncoder()
+  const data = encoder.encode(nonce)
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+  const hashedNonce = Array.from(new Uint8Array(hashBuffer))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('')
+  return { nonce, hashedNonce }
+}
+
 export default function GoogleOneTap({ onSuccess, onError, disabled = false }) {
   const [isLoaded, setIsLoaded] = useState(false)
   const [hasPrompted, setHasPrompted] = useState(false)
+  // Guardamos el nonce raw en ref para usarlo en el callback (Google nos
+  // devuelve el id_token con el HASH del nonce, Supabase necesita el RAW
+  // para hashearlo y comparar).
+  const nonceRef = useRef(null)
 
   // Manejar respuesta de Google
   const handleCredentialResponse = useCallback(async (response) => {
@@ -27,10 +43,12 @@ export default function GoogleOneTap({ onSuccess, onError, disabled = false }) {
         throw new Error('Supabase client no disponible')
       }
 
-      // signInWithIdToken sin nonce (más compatible con FedCM)
+      // signInWithIdToken con nonce — FedCM requiere nonce en id_token,
+      // Supabase verifica que el hash del nonce raw coincida con el del JWT.
       const { data, error } = await supabase.auth.signInWithIdToken({
         provider: 'google',
         token: response.credential,
+        nonce: nonceRef.current ?? undefined,
       })
 
       if (error) {
@@ -57,11 +75,15 @@ export default function GoogleOneTap({ onSuccess, onError, disabled = false }) {
   }, [onSuccess, onError])
 
   // Inicializar Google One Tap
-  const initializeOneTap = useCallback(() => {
+  const initializeOneTap = useCallback(async () => {
     if (!window.google || hasPrompted || disabled) return
 
     try {
       console.log('🚀 Inicializando Google One Tap...')
+
+      // Generar nonce nuevo para cada init y guardarlo en ref para el callback
+      const { nonce, hashedNonce } = await generateNonce()
+      nonceRef.current = nonce
 
       window.google.accounts.id.initialize({
         client_id: GOOGLE_CLIENT_ID,
@@ -72,6 +94,7 @@ export default function GoogleOneTap({ onSuccess, onError, disabled = false }) {
         ux_mode: 'popup',
         itp_support: true,
         use_fedcm_for_prompt: true, // Importante para Chrome sin third-party cookies
+        nonce: hashedNonce, // FedCM requiere nonce hasheado
       })
 
       // Mostrar el prompt de One Tap
