@@ -39,30 +39,35 @@ FROM oposiciones WHERE slug = 'SLUG_OPOSICION';
 
 ## PRINCIPIO FUNDAMENTAL: Importar Desactivadas, Activar Tras Revisión
 
-**Todas las preguntas importadas se insertan desactivadas** (`is_active: false`) con `deactivation_reason: 'Pendiente de revisión post-importación'`. Esto aplica tanto a preguntas legislativas como psicotécnicas.
+**Todas las preguntas importadas se insertan desactivadas** (visibilidad oculta hasta que un proceso explícito las apruebe).
+
+**Tras la migración lifecycle (fase A-D, 2026-05-03)** la fuente de verdad es `lifecycle_state` (8 estados: `draft`, `needs_review`, `needs_human`, `quarantine`, `approved`, `tech_approved`, `retired_duplicate`, `retired_irreparable`). El default del schema es `'draft'`. El sync trigger `tg_questions_lifecycle_sync_active` mantiene `is_active` derivado automáticamente: `is_active = lifecycle_state IN ('approved', 'tech_approved')`. Ver `docs/roadmap/sistema-desactivacion-preguntas.md` para diseño completo.
 
 **Razones:**
 - **Seguridad:** Ningún usuario ve preguntas sin verificar (respuesta incorrecta, artículo equivocado, explicación pobre)
 - **Sin presión:** Se puede importar en bloque sin pararse a revisar cada pregunta durante la importación
-- **Flujo existente:** El sistema de desactivación automática ya maneja `is_active` + `deactivation_reason` + reactivación al marcar `perfect`
-- **Activación por bloques:** Tras importar, se verifican con agentes tema a tema; las que pasan se reactivan solas
+- **Invariante por construcción:** `lifecycle_state='draft'` ⇒ `is_active=false`, garantizado por el sync trigger. Imposible que se desincronicen
+- **Activación por bloques:** Tras importar, se verifican con agentes tema a tema; las que pasan se transicionan a `approved`/`tech_approved` vía función SQL `transition_question_state()`
 
 **Flujo:**
 ```
-1. Importar todas desactivadas
-   → is_active: false
-   → deactivation_reason: 'Pendiente de revisión post-importación'
-   → topic_review_status: 'pending'
+1. Importar (NO pasar is_active; el default lifecycle_state='draft' lo deja invisible)
+   → lifecycle_state: 'draft' (automático)
+   → is_active: false (sincronizado por trigger)
+   → deactivation_reason: 'Pendiente de revisión post-importación' (legacy, eliminado en fase F)
+   → topic_review_status: 'pending' (legacy)
 
 2. Verificar con agentes (artículo + respuesta + explicación)
    → Agentes Opus/Sonnet en paralelo por batches
+   → Llaman al endpoint /api/topic-review/verify (que internamente llama a transition_question_state)
 
-3. Las 'perfect' se reactivan automáticamente
-   → is_active: true
-   → deactivation_reason: null
+3. Las 'perfect' transicionan a 'approved' / 'tech_approved'
+   → lifecycle_state: 'approved' o 'tech_approved'
+   → is_active: true (sincronizado por trigger)
+   → history audit row con reason_code='ai_verified_perfect' o 'ai_verified_tech_perfect'
 
-4. Las que fallen se corrigen y luego se reactivan
-   → Agentes de corrección o manual
+4. Las que fallen quedan en needs_review/needs_human/quarantine (invisibles)
+   → Pipelines de fix-batch o intervención manual desde admin panel
 ```
 
 **Al insertar preguntas, usar siempre:**

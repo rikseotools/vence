@@ -1,5 +1,28 @@
 # Manual: Revisar Temas con Agente de Claude Code
 
+## ⚠️ NOTA POST-LIFECYCLE (2026-05-03)
+
+A partir de la migración lifecycle (fase A-D, ver `docs/roadmap/sistema-desactivacion-preguntas.md`), el sistema bajo el capó usa una **state machine de 8 estados** (`draft`, `needs_review`, `needs_human`, `quarantine`, `approved`, `tech_approved`, `retired_duplicate`, `retired_irreparable`). Los 12+ valores de `topic_review_status` que aparecen en este manual se mapean automáticamente:
+
+| topic_review_status legacy | lifecycle_state |
+|---|---|
+| `perfect` | `approved` |
+| `tech_perfect` | `tech_approved` |
+| `bad_*`, `tech_bad_*`, `wrong_answer` | `needs_review` |
+| `wrong_article*`, `all_wrong`, `bad_article` | `needs_human` |
+| `invalid_structure`, `bad_options` | `quarantine` |
+| `pending` (active) | `approved` (legacy grandfather, cron 90d) |
+| `pending` (deact) | `draft` |
+
+**Cambios operativos:**
+- `is_active` ahora se sincroniza automáticamente desde `lifecycle_state` vía trigger (no se setea manualmente)
+- Toda transición de estado pasa por la función SQL `transition_question_state()` que crea audit row en `question_lifecycle_history`
+- El campo `deactivation_reason` (texto libre) será reemplazado en fase F por `reason_code` (taxonomía cerrada en `lib/constants/lifecycleReasons.ts`)
+
+El flujo del agente sigue funcionando igual; los cambios son transparentes para el orquestador.
+
+---
+
 ## Resumen
 
 Este manual documenta cómo usar el agente de Claude Code para verificar preguntas de oposiciones. El agente analiza cada pregunta contra su artículo vinculado y determina si:
@@ -434,29 +457,107 @@ PREGUNTA [ID]: [FALSO_POSITIVO / NECESITA_CORRECCIÓN]
 - Si corrección: nueva respuesta correcta (A/B/C/D) y por qué
 ```
 
-### Actualización masiva de resultados:
-```javascript
-// Falsos positivos - actualizar a perfect
-await supabase
-  .from('questions')
-  .update({
-    topic_review_status: 'perfect',
-    verified_at: new Date().toISOString(),
-    verification_status: 'ok'
-  })
-  .in('id', falsosPositivosIds);
+### Helper canónico para cambiar estado (post-lifecycle 2026-05-03)
 
-// Correcciones - actualizar respuesta
-await supabase
-  .from('questions')
-  .update({
-    correct_option: nuevoValor, // 0=A, 1=B, 2=C, 3=D
-    topic_review_status: 'perfect',
-    verified_at: new Date().toISOString(),
-    verification_status: 'ok',
-    explanation: nuevaExplicacion
-  })
-  .eq('id', questionId);
+**OBLIGATORIO desde fase E**: cualquier mutación de visibilidad de pregunta debe ir vía función SQL `transition_question_state()`. UPDATE directo a `is_active` falla con "column 'is_active' can only be updated to DEFAULT" (es GENERATED).
+
+```javascript
+/**
+ * Transiciona una pregunta a un nuevo lifecycle_state vía función SQL.
+ * - Lee lifecycle_state actual para optimistic check (anti-race con verificaciones IA concurrentes)
+ * - Llama a transition_question_state() (valida transiciones legales, rechaza terminales)
+ * - El sync trigger actualiza is_active automáticamente desde lifecycle_state
+ * - Opcionalmente actualiza campos legacy para compat (topic_review_status, verified_at, verification_status)
+ *
+ * Estados destino válidos:
+ *   'approved'             — pregunta válida, ley normal (visible)
+ *   'tech_approved'        — pregunta válida, ley técnica/virtual (visible)
+ *   'needs_review'         — IA detectó problema con fix sugerido (oculta)
+ *   'needs_human'          — requiere decisión humana (artículo wrong, ambiguous, etc.) (oculta)
+ *   'quarantine'           — estructural roto (opciones vacías, etc.) (oculta)
+ *   'retired_irreparable'  — imagen no disponible, derogada, anulada (oculta, terminal)
+ *   'retired_duplicate'    — duplicada de otra mejor (oculta, terminal)
+ *
+ * Reason codes (taxonomía cerrada en lib/constants/lifecycleReasons.ts):
+ *   'ai_verified_perfect', 'ai_verified_tech_perfect',
+ *   'ai_detected_bad_explanation', 'ai_detected_bad_answer', 'ai_detected_wrong_article',
+ *   'admin_marked_perfect', 'admin_marked_problem',
+ *   'admin_image_unavailable', 'admin_duplicate_of', 'admin_law_derogated', 'admin_exam_annulled',
+ *   'auto_fix_applied', 'structural_invalid'
+ */
+async function transitionQuestion(supabase, questionId, newState, reasonCode, opts = {}) {
+  // 1. Leer estado actual (optimistic check anti-race)
+  const { data: cur } = await supabase
+    .from('questions')
+    .select('lifecycle_state')
+    .eq('id', questionId)
+    .single();
+
+  if (!cur) return { error: `Pregunta ${questionId} no encontrada` };
+  if (cur.lifecycle_state === newState) return { skipped: 'same_state', state: newState };
+
+  // 2. Transición vía función SQL (single source of truth, audit row en history)
+  const { error } = await supabase.rpc('transition_question_state', {
+    p_question_id: questionId,
+    p_expected_state: cur.lifecycle_state,
+    p_new_state: newState,
+    p_reason_code: reasonCode,
+    p_changed_by: opts.changedBy ?? null,
+    p_ai_verification_id: opts.aiVerificationId ?? null,
+    p_notes: opts.notes ?? null,
+  });
+
+  if (error) return { error: error.message };
+
+  // 3. (Opcional) Actualizar campos legacy para compat
+  //    NO setear is_active — el sync trigger lo deriva de lifecycle_state automáticamente
+  if (opts.legacyTopicReviewStatus) {
+    await supabase
+      .from('questions')
+      .update({
+        topic_review_status: opts.legacyTopicReviewStatus,
+        verified_at: new Date().toISOString(),
+        verification_status: ['approved', 'tech_approved'].includes(newState) ? 'ok' : 'problem',
+      })
+      .eq('id', questionId);
+  }
+
+  return { success: true, from: cur.lifecycle_state, to: newState };
+}
+```
+
+### Actualización masiva de resultados (post-lifecycle):
+```javascript
+// Falsos positivos - mover a approved (ley normal) o tech_approved (ley virtual/técnica)
+for (const id of falsosPositivosIds) {
+  const r = await transitionQuestion(supabase, id, 'approved', 'admin_marked_perfect', {
+    legacyTopicReviewStatus: 'perfect',
+    notes: 'Falso positivo — confirmado en review manual'
+  });
+  if (r.error) console.warn(`[${id}] ${r.error}`);
+}
+
+// Correcciones - actualizar respuesta + transicionar a approved
+for (const { id, nuevoValor, nuevaExplicacion } of correcciones) {
+  // 1. Update de campos editables (respuesta, explicación) — NO toca lifecycle_state ni is_active
+  await supabase.from('questions')
+    .update({ correct_option: nuevoValor, explanation: nuevaExplicacion })
+    .eq('id', id);
+
+  // 2. Transición de estado vía helper
+  await transitionQuestion(supabase, id, 'approved', 'admin_marked_perfect', {
+    legacyTopicReviewStatus: 'perfect',
+    notes: `Corrección aplicada: respuesta → ${'ABCD'[nuevoValor]}`
+  });
+}
+
+// Errores no corregibles automáticamente - mover a needs_human (visible solo en admin)
+for (const id of errorsRequiriendoHumano) {
+  await transitionQuestion(supabase, id, 'needs_human', 'admin_marked_problem', {
+    legacyTopicReviewStatus: 'wrong_article',  // o el legacy code apropiado
+    notes: 'Detectado por agente — requiere decisión humana'
+  });
+}
 ```
 
 ## 5. Tablas Actualizadas
@@ -656,32 +757,32 @@ await supabase
 
 ## 10. Preguntas con Imágenes
 
-**IMPORTANTE:** Si una pregunta hace referencia a una imagen que no está disponible en el sistema, **hay que desactivarla** (`is_active: false`).
+**IMPORTANTE:** Si una pregunta hace referencia a una imagen que no está disponible en el sistema, **hay que jubilarla** transicionando a `retired_irreparable` (estado terminal — la pregunta no se reactivará automáticamente, hay que crear una nueva si la imagen aparece).
 
 ### Cómo identificar preguntas con imágenes:
 - Texto que menciona "la imagen", "en la figura", "observa el gráfico", etc.
 - Preguntas que preguntan por posiciones de celdas específicas sin contexto
 - Referencias a capturas de pantalla de Excel, Word, etc.
 
-### Acción a tomar:
+### Acción a tomar (post-lifecycle 2026-05-03):
 ```javascript
-// Desactivar pregunta con imagen no disponible
-await supabase
-  .from('questions')
-  .update({
-    is_active: false,
-    topic_review_status: 'pending',
-    verification_status: null,
-    verified_at: null
-  })
-  .eq('id', questionId);
+// Jubilar pregunta con imagen no disponible
+// NO usar UPDATE directo a is_active — falla con "column can only be updated to DEFAULT" (es GENERATED)
+await transitionQuestion(supabase, questionId, 'retired_irreparable', 'admin_image_unavailable', {
+  notes: 'Pregunta referencia imagen/figura/gráfico no disponible en el sistema'
+});
 
-// Eliminar verificación existente
+// Opcional: eliminar verificación IA previa (no es estrictamente necesario,
+// pero limpia el dashboard de calidad)
 await supabase
   .from('ai_verification_results')
   .delete()
   .eq('question_id', questionId);
 ```
+
+**¿Por qué `retired_irreparable` (terminal) y no `quarantine`?**
+- `quarantine` = problema estructural reparable (opciones vacías, correct_option fuera de rango, etc.)
+- `retired_irreparable` = pregunta no recuperable sin la imagen original; si algún día aparece la imagen, lo correcto es **crear una pregunta nueva** vinculando a esta jubilada como referencia (FK opcional). No "resucitar" la fila.
 
 ### Razón:
 Sin la imagen, no se puede:
@@ -689,59 +790,102 @@ Sin la imagen, no se puede:
 - Escribir una explicación útil para el estudiante
 - Garantizar la calidad de la pregunta
 
-## 11. Desactivación Automática por Calidad
+## 11. Lifecycle de Preguntas (post-2026-05-03, sustituye "Desactivación Automática")
 
-Desde marzo 2026, el sistema **desactiva automáticamente** las preguntas cuando se les asigna un status de error, y **las reactiva** cuando se marcan como perfectas.
+Desde la migración lifecycle (fase A-F, ver `docs/roadmap/sistema-desactivacion-preguntas.md`), la visibilidad de cada pregunta se rige por un **state machine de 8 estados** y `is_active` es una columna **GENERATED** derivada automáticamente.
 
-### Comportamiento automático
+### Estados y visibilidad
 
-| Status | Acción sobre `is_active` |
-|--------|--------------------------|
-| `perfect`, `tech_perfect` | `is_active = true` (reactivar) |
-| `bad_answer`, `bad_explanation`, `all_wrong`, etc. | `is_active = false` (desactivar) |
-| `pending`, `needs_review` | Sin cambio |
+| `lifecycle_state` | `is_active` (derivado) | Cuándo se asigna |
+|---|---|---|
+| `draft` | `false` | Importada, nunca verificada (default al INSERT) |
+| `needs_review` | `false` | IA detectó problema recuperable + sugiere fix |
+| `needs_human` | `false` | Requiere decisión humana (artículo wrong, ambiguous) |
+| `quarantine` | `false` | Estructural roto reparable (opciones vacías, etc.) |
+| `approved` | `true` | Verificada perfect (ley normal) — visible a estudiantes |
+| `tech_approved` | `true` | Verificada perfect (ley virtual/técnica) — visible |
+| `retired_duplicate` | `false` | Duplicada de otra mejor (TERMINAL — no se reactiva) |
+| `retired_irreparable` | `false` | Imagen perdida, derogada, anulada (TERMINAL) |
 
-Esto aplica tanto al panel admin (Revisión Temas) como a la verificación automática por IA.
+**Invariante por construcción**: `is_active = (lifecycle_state IN ('approved', 'tech_approved'))`. Garantizado por el motor Postgres. UPDATE directo a `is_active` falla con `"column 'is_active' can only be updated to DEFAULT"`.
 
-### Campo `deactivation_reason`
+### Mapeo de los 12+ legacy `topic_review_status` → 8 lifecycle states
 
-Al desactivar una pregunta por error, se escribe automáticamente un motivo legible en español en el campo `deactivation_reason`. Al reactivarla (marcar como perfect), se limpia automáticamente.
+| `topic_review_status` legacy | `lifecycle_state` | `reason_code` (admin) | `reason_code` (IA) |
+|---|---|---|---|
+| `perfect` | `approved` | `admin_marked_perfect` | `ai_verified_perfect` |
+| `tech_perfect` | `tech_approved` | `admin_marked_perfect` | `ai_verified_tech_perfect` |
+| `bad_explanation`, `bad_answer`, `bad_answer_and_explanation`, `tech_bad_*`, `wrong_answer` | `needs_review` | `admin_marked_problem` | `ai_detected_<status>` |
+| `wrong_article`, `wrong_article_bad_*`, `all_wrong`, `bad_article` | `needs_human` | `admin_marked_problem` | `ai_detected_<status>` |
+| `invalid_structure`, `bad_options` | `quarantine` | — | `structural_invalid` |
+| `pending` (active legacy) | `approved` | (cron grandfather 90d → `draft`) | — |
+| `pending` (deact) | `draft` | — | — |
 
-Ejemplos de motivos automáticos: "Respuesta incorrecta", "Artículo vinculado incorrecto", "Todo incorrecto (respuesta, explicación y artículo)".
+### Cómo cambiar el estado (siempre vía función SQL)
 
-Para desactivaciones manuales (imagen no disponible, duplicada, etc.), escribir el motivo manualmente:
 ```javascript
-await supabase
-  .from('questions')
-  .update({ is_active: false, deactivation_reason: 'Imagen no disponible' })
-  .eq('id', questionId);
+// SIEMPRE usar el helper transitionQuestion (definido en §4) o llamar
+// directamente a supabase.rpc('transition_question_state', { ... }).
+// NUNCA hacer UPDATE directo a is_active (falla) ni cambiar lifecycle_state
+// con UPDATE (deja entrada bypass_detected en history).
+
+await transitionQuestion(supabase, questionId, 'approved', 'admin_marked_perfect', {
+  legacyTopicReviewStatus: 'perfect',  // mantener compat hasta cleanup futuro
+  notes: 'Verificada por agente en review de tema X'
+});
 ```
 
-### Encontrar preguntas desactivadas por error
+### Audit trail completo
+
+Cada transición deja una fila en `question_lifecycle_history`:
+- `from_state`, `to_state`, `reason_code`, `changed_at`, `changed_by`
+- `ai_verification_id` (FK opcional a `ai_verification_results`)
+- `notes` (texto libre)
+
+Trigger `tg_questions_lifecycle_audit_fallback` registra cualquier UPDATE directo a `lifecycle_state` (sin pasar por la función) como `reason_code='bypass_detected'` para detección.
+
+### Encontrar preguntas pendientes de QA
 
 ```sql
-SELECT id, question_text, topic_review_status, deactivation_reason
+-- Preguntas en estados que requieren acción
+SELECT lifecycle_state, count(*)::int AS rows
 FROM questions
-WHERE is_active = false
-  AND deactivation_reason IS NOT NULL
-ORDER BY verified_at DESC;
+WHERE lifecycle_state IN ('draft', 'needs_review', 'needs_human', 'quarantine')
+GROUP BY 1 ORDER BY 2 DESC;
+
+-- Biografía completa de una pregunta
+SELECT * FROM public.get_question_lifecycle_history('<question_id>'::uuid);
+
+-- Cuántas se beneficiarían del cron grandfather (legacy approved sin verificar > 90d)
+SELECT count(*) FROM questions
+WHERE lifecycle_state = 'approved' AND verified_at IS NULL
+  AND created_at < NOW() - interval '90 days';
 ```
 
-### Panel admin Revisión Temas
+### Panel admin Revisión Temas (legacy, sigue funcionando)
 
-Las preguntas desactivadas por error **siguen visibles** en el panel de Revisión Temas para que se puedan reparar. Los fetchers de usuario sí las ocultan.
+El panel admin sigue mostrando los 12+ valores de `topic_review_status` que se mantienen escribiéndose en paralelo a `lifecycle_state` durante el período transicional. Pendiente actualizarlo para mostrar también `lifecycle_state` (task #7 follow-up).
 
-### Flujo para reparar una pregunta desactivada
+### Flujo para reparar una pregunta defectuosa
 
-1. Corregir la pregunta (respuesta, explicación, artículo)
-2. Marcar como `perfect` o `tech_perfect` en Revisión Temas
-3. La pregunta se **reactiva automáticamente** — no hace falta tocar `is_active` manualmente
+1. Corregir los campos editables: `correct_option`, `explanation`, `primary_article_id` (UPDATE directo está bien — NO son lifecycle)
+2. Transicionar a `approved` o `tech_approved` vía `transitionQuestion()`
+3. El sync (GENERATED) hace que `is_active` pase a `true` automáticamente
+4. La pregunta vuelve a aparecer en los tests de estudiantes
 
-### Al revisar con agentes
+### Al revisar con agentes — qué `lifecycle_state` asignar
 
-Cuando un agente detecta un error y lo corrige, debe marcar el status final:
-- Si la corrigió y quedó perfecta → `topic_review_status = 'perfect'` (se reactiva sola)
-- Si detectó error pero no pudo corregir → marcar el error específico (se desactiva sola)
+| Decisión del agente | Estado destino | Reason code |
+|---|---|---|
+| Pregunta correcta (false positive, ya estaba bien) | `approved` o `tech_approved` | `admin_marked_perfect` |
+| Aplicó fix de respuesta + ahora correcta | `approved` o `tech_approved` | `admin_marked_perfect` o `auto_fix_applied` |
+| Aplicó fix de explicación + ahora correcta | `approved` o `tech_approved` | `admin_marked_perfect` o `auto_fix_applied` |
+| Detectó error de respuesta/explicación pero no corrige | `needs_review` | `admin_marked_problem` |
+| Artículo vinculado mal y no sabe el correcto | `needs_human` | `admin_marked_problem` |
+| Imagen no disponible | `retired_irreparable` | `admin_image_unavailable` |
+| Duplicada de otra | `retired_duplicate` | `admin_duplicate_of` (notes con FK a la otra) |
+| Pregunta derogada / anulada en examen oficial | `retired_irreparable` | `admin_law_derogated` o `admin_exam_annulled` |
+| Estructural roto (opciones vacías que se pueden recomponer) | `quarantine` | `structural_invalid` |
 
 ## 12. Preguntas Frecuentes
 

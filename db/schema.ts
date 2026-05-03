@@ -2237,7 +2237,11 @@ export const questions = pgTable("questions", {
 	difficulty: text().default('medium'),
 	questionType: text("question_type").default('single'),
 	tags: text().array(),
-	isActive: boolean("is_active").default(true),
+	// GENERATED column desde fase E (2026-05-03): is_active = lifecycle_state IN ('approved','tech_approved').
+	// CUALQUIER intento de escribir is_active vía Drizzle/SQL fallará en runtime con
+	// "column 'is_active' can only be updated to DEFAULT". Para cambiar visibilidad,
+	// mutar lifecycle_state vía función transition_question_state().
+	isActive: boolean("is_active").generatedAlwaysAs(sql`(lifecycle_state = ANY (ARRAY['approved'::text, 'tech_approved'::text]))`),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 	primaryArticleId: uuid("primary_article_id").notNull(),
@@ -2260,6 +2264,11 @@ export const questions = pgTable("questions", {
 	contentData: jsonb("content_data").default({}),
 	imageUrl: text("image_url"),
 	examCaseId: uuid("exam_case_id"),
+	// Lifecycle state machine (fase A-F del roadmap docs/roadmap/sistema-desactivacion-preguntas.md).
+	// Mutación EXCLUSIVA vía función SQL public.transition_question_state(); writes
+	// directos a este campo dejan rastro reason_code='bypass_detected' en
+	// question_lifecycle_history vía trigger fallback.
+	lifecycleState: text("lifecycle_state").default('draft').notNull(),
 }, (table) => [
 	uniqueIndex("idx_questions_content_hash").using("btree", table.contentHash.asc().nullsLast().op("text_ops")).where(sql`(content_hash IS NOT NULL)`),
 	index("idx_questions_difficulty").using("btree", table.difficulty.asc().nullsLast().op("text_ops")),
@@ -2270,6 +2279,9 @@ export const questions = pgTable("questions", {
 	index("idx_questions_primary_article_id").using("btree", table.primaryArticleId.asc().nullsLast().op("uuid_ops")).where(sql`(primary_article_id IS NOT NULL)`),
 	index("idx_questions_verification_status").using("btree", table.verificationStatus.asc().nullsLast().op("text_ops")).where(sql`(verification_status IS NOT NULL)`),
 	index("idx_questions_verified_at").using("btree", table.verifiedAt.asc().nullsLast().op("timestamptz_ops")).where(sql`(verified_at IS NULL)`),
+	index("idx_questions_lifecycle_state").using("btree", table.lifecycleState.asc().nullsLast().op("text_ops")),
+	index("idx_questions_lifecycle_visible").using("btree", table.lifecycleState.asc().nullsLast().op("text_ops")).where(sql`(lifecycle_state = ANY (ARRAY['approved'::text, 'tech_approved'::text]))`),
+	check("questions_lifecycle_state_check", sql`lifecycle_state = ANY (ARRAY['draft'::text, 'needs_review'::text, 'needs_human'::text, 'quarantine'::text, 'approved'::text, 'tech_approved'::text, 'retired_duplicate'::text, 'retired_irreparable'::text])`),
 	foreignKey({
 			columns: [table.primaryArticleId],
 			foreignColumns: [articles.id],

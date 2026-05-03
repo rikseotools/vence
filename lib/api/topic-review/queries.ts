@@ -16,6 +16,7 @@ import {
   isOkStatus,
   ERROR_STATUS_LABELS,
 } from './schemas'
+import { legacyStatusToTransition } from '@/lib/constants/lifecycleReasons'
 
 // ============================================
 // HELPERS
@@ -866,30 +867,60 @@ export async function getTopicDetail(topicId: string) {
 export async function updateQuestionStatus(
   questionId: string,
   status: string,
+  changedBy: string | null = null,
 ): Promise<{ success: boolean; message?: string; error?: string; questionId?: string; newStatus?: string }> {
   const db = getDb()
 
-  // Actualizar questions + auto-desactivar/reactivar según status
-  const updatePayload: Record<string, unknown> = {
-    topicReviewStatus: status,
-    verifiedAt: new Date().toISOString(),
+  // 1) PRIMARY: Lifecycle transition (única fuente de verdad post fase D).
+  //    El sync trigger (fase D.1) actualiza is_active automáticamente.
+  //    No tocamos is_active ni deactivation_reason directamente.
+  const transition = legacyStatusToTransition(status, 'admin')
+  if (transition) {
+    // Leer estado actual para optimistic check de transition_question_state
+    const [current] = await db.execute(sql`
+      SELECT lifecycle_state FROM questions WHERE id = ${questionId}::uuid LIMIT 1
+    `) as unknown as Array<{ lifecycle_state: string }>
+
+    if (!current) {
+      return { success: false, error: 'Pregunta no encontrada' }
+    }
+
+    if (current.lifecycle_state !== transition.newState) {
+      try {
+        await db.execute(sql`
+          SELECT public.transition_question_state(
+            ${questionId}::uuid,
+            ${current.lifecycle_state}::text,
+            ${transition.newState}::text,
+            ${transition.reasonCode}::text,
+            ${changedBy}::uuid,
+            NULL::uuid,
+            NULL::text
+          )
+        `)
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e)
+        // Errores esperados (transición ilegal, terminal): devolver al caller
+        if (msg.includes('Illegal transition') || msg.includes('Cannot transition from terminal') || msg.includes('Same-state')) {
+          return { success: false, error: msg, questionId }
+        }
+        throw e
+      }
+    }
   }
 
-  if (isErrorStatus(status)) {
-    updatePayload.isActive = false
-    updatePayload.deactivationReason = ERROR_STATUS_LABELS[status] || status
-  } else if (isOkStatus(status)) {
-    updatePayload.isActive = true
-    updatePayload.deactivationReason = null
-  }
-  // 'pending' y 'needs_review' no tocan is_active ni deactivation_reason
-
+  // 2) LEGACY: Mantener topic_review_status + verified_at sincronizados.
+  //    Estas columnas se eliminan en fase F. Las readers que aún filtran por
+  //    topic_review_status seguirán viendo el valor coherente.
   await db
     .update(questions)
-    .set(updatePayload)
+    .set({
+      topicReviewStatus: status,
+      verifiedAt: new Date().toISOString(),
+    })
     .where(eq(questions.id, questionId))
 
-  // Si existe verificación IA, marcar como descartada (override manual)
+  // 3) Si existe verificación IA, marcar como descartada (override manual)
   const existingVerification = await db
     .select({ id: aiVerificationResults.id })
     .from(aiVerificationResults)

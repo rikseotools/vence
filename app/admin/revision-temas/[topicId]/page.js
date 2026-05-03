@@ -584,9 +584,10 @@ export default function TopicDetailPage() {
       // Para leyes virtuales, usar estados tech_*
       const finalStatus = isVirtualLaw && newStatus === 'perfect' ? 'tech_perfect' : newStatus
 
+      const authHeaders = await getAuthHeaders()
       const response = await fetch('/api/topic-review/update-status', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify({ questionId, status: finalStatus })
       })
 

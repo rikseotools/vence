@@ -2,6 +2,7 @@
 import { createClient } from '@supabase/supabase-js'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { legacyStatusToTransition } from '@/lib/constants/lifecycleReasons'
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -594,14 +595,27 @@ async function _POST(request) {
 
         if (emptyOptions.length > 0) {
           // Marcar como estructura inválida y saltar verificación IA
+          // Lifecycle transition vía función SQL (sync trigger se encarga de is_active)
+          const { data: cur } = await getSupabase().from('questions').select('lifecycle_state').eq('id', question.id).single()
+          if (cur && cur.lifecycle_state !== 'quarantine') {
+            const { error: txErr } = await getSupabase().rpc('transition_question_state', {
+              p_question_id: question.id,
+              p_expected_state: cur.lifecycle_state,
+              p_new_state: 'quarantine',
+              p_reason_code: 'structural_invalid',
+              p_changed_by: null,
+              p_ai_verification_id: null,
+              p_notes: null
+            })
+            if (txErr) console.warn(`[verify] structural quarantine transition failed for ${question.id}: ${txErr.message}`)
+          }
+          // Legacy fields (eliminados en fase F)
           await getSupabase()
             .from('questions')
             .update({
               verified_at: new Date().toISOString(),
               verification_status: 'problem',
-              topic_review_status: 'invalid_structure',
-              is_active: false,
-              deactivation_reason: 'Estructura inválida'
+              topic_review_status: 'invalid_structure'
             })
             .eq('id', question.id)
 
@@ -618,14 +632,27 @@ async function _POST(request) {
 
         // Verificar que el texto de la pregunta existe
         if (!question.question_text?.trim()) {
+          // Lifecycle transition vía función SQL (sync trigger se encarga de is_active)
+          const { data: cur } = await getSupabase().from('questions').select('lifecycle_state').eq('id', question.id).single()
+          if (cur && cur.lifecycle_state !== 'quarantine') {
+            const { error: txErr } = await getSupabase().rpc('transition_question_state', {
+              p_question_id: question.id,
+              p_expected_state: cur.lifecycle_state,
+              p_new_state: 'quarantine',
+              p_reason_code: 'structural_invalid',
+              p_changed_by: null,
+              p_ai_verification_id: null,
+              p_notes: null
+            })
+            if (txErr) console.warn(`[verify] structural quarantine transition failed for ${question.id}: ${txErr.message}`)
+          }
+          // Legacy fields (eliminados en fase F)
           await getSupabase()
             .from('questions')
             .update({
               verified_at: new Date().toISOString(),
               verification_status: 'problem',
-              topic_review_status: 'invalid_structure',
-              is_active: false,
-              deactivation_reason: 'Estructura inválida'
+              topic_review_status: 'invalid_structure'
             })
             .eq('id', question.id)
 
@@ -642,14 +669,27 @@ async function _POST(request) {
         // Verificar que correct_option es válido (0-3)
         if (question.correct_option === null || question.correct_option === undefined ||
             question.correct_option < 0 || question.correct_option > 3) {
+          // Lifecycle transition vía función SQL (sync trigger se encarga de is_active)
+          const { data: cur } = await getSupabase().from('questions').select('lifecycle_state').eq('id', question.id).single()
+          if (cur && cur.lifecycle_state !== 'quarantine') {
+            const { error: txErr } = await getSupabase().rpc('transition_question_state', {
+              p_question_id: question.id,
+              p_expected_state: cur.lifecycle_state,
+              p_new_state: 'quarantine',
+              p_reason_code: 'structural_invalid',
+              p_changed_by: null,
+              p_ai_verification_id: null,
+              p_notes: null
+            })
+            if (txErr) console.warn(`[verify] structural quarantine transition failed for ${question.id}: ${txErr.message}`)
+          }
+          // Legacy fields (eliminados en fase F)
           await getSupabase()
             .from('questions')
             .update({
               verified_at: new Date().toISOString(),
               verification_status: 'problem',
-              topic_review_status: 'invalid_structure',
-              is_active: false,
-              deactivation_reason: 'Estructura inválida'
+              topic_review_status: 'invalid_structure'
             })
             .eq('id', question.id)
 
@@ -759,25 +799,44 @@ async function _POST(request) {
             onConflict: 'question_id,ai_provider'
           })
 
-        // Actualizar pregunta + auto-desactivar/reactivar según status
+        // Update lifecycle vía función SQL (sync trigger se encarga de is_active).
+        // Mantener verified_at + topic_review_status legacy hasta fase F.
         const isPerfect = topicReviewStatus === 'perfect' || topicReviewStatus === 'tech_perfect'
-        const ERROR_STATUSES = ['bad_explanation', 'bad_answer', 'bad_answer_and_explanation', 'wrong_article', 'wrong_article_bad_explanation', 'wrong_article_bad_answer', 'all_wrong', 'tech_bad_explanation', 'tech_bad_answer', 'tech_bad_answer_and_explanation', 'invalid_structure']
-        const ERROR_LABELS = { bad_answer: 'Respuesta incorrecta', bad_explanation: 'Explicación incorrecta', bad_answer_and_explanation: 'Respuesta y explicación incorrectas', wrong_article: 'Artículo vinculado incorrecto', wrong_article_bad_explanation: 'Artículo incorrecto y explicación incorrecta', wrong_article_bad_answer: 'Artículo incorrecto y respuesta incorrecta', all_wrong: 'Todo incorrecto', tech_bad_answer: 'Respuesta incorrecta (informática)', tech_bad_answer_and_explanation: 'Respuesta y explicación incorrectas (informática)', tech_bad_explanation: 'Explicación incorrecta (informática)', invalid_structure: 'Estructura inválida' }
-        const updatePayload = {
+        const transition = legacyStatusToTransition(topicReviewStatus, 'ai')
+        if (transition) {
+          // Leer estado actual para optimistic check
+          const { data: currentRow } = await getSupabase()
+            .from('questions')
+            .select('lifecycle_state')
+            .eq('id', question.id)
+            .single()
+
+          if (currentRow && currentRow.lifecycle_state !== transition.newState) {
+            const { error: txError } = await getSupabase().rpc('transition_question_state', {
+              p_question_id: question.id,
+              p_expected_state: currentRow.lifecycle_state,
+              p_new_state: transition.newState,
+              p_reason_code: transition.reasonCode,
+              p_changed_by: null,
+              p_ai_verification_id: null,
+              p_notes: null
+            })
+            if (txError) {
+              // Errores esperados (estado mismatch concurrente, transición ilegal): log + continuar
+              // No bloqueamos la verificación entera por una pregunta
+              console.warn(`[verify] lifecycle transition failed for ${question.id}: ${txError.message}`)
+            }
+          }
+        }
+
+        // Legacy fields (eliminados en fase F)
+        await getSupabase()
+          .from('questions')
+          .update({
             verified_at: new Date().toISOString(),
             verification_status: isPerfect ? 'ok' : 'problem',
             topic_review_status: topicReviewStatus
-        }
-        if (ERROR_STATUSES.includes(topicReviewStatus)) {
-          updatePayload.is_active = false
-          updatePayload.deactivation_reason = ERROR_LABELS[topicReviewStatus] || topicReviewStatus
-        } else if (isPerfect) {
-          updatePayload.is_active = true
-          updatePayload.deactivation_reason = null
-        }
-        await getSupabase()
-          .from('questions')
-          .update(updatePayload)
+          })
           .eq('id', question.id)
 
         // Guardar uso de tokens

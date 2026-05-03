@@ -164,10 +164,26 @@ npm run typecheck
 git push origin main
 ```
 
+## Lifecycle de Preguntas (Implementado: 03/05/2026)
+
+**Sistema robusto de visibilidad de preguntas con state machine de 8 estados + audit trail completo + invariante por construcción.**
+
+- **Roadmap completo:** `docs/roadmap/sistema-desactivacion-preguntas.md`
+- **Estados:** `draft`, `needs_review`, `needs_human`, `quarantine`, `approved`, `tech_approved`, `retired_duplicate`, `retired_irreparable`
+- **Invariante física:** `is_active` es `GENERATED ALWAYS AS (lifecycle_state IN ('approved', 'tech_approved')) STORED`. Imposible que se desincronicen — el motor Postgres rechaza cualquier `UPDATE is_active` con "can only be updated to DEFAULT".
+- **Única vía legítima de cambio:** función SQL `transition_question_state(question_id, expected_state, new_state, reason_code, changed_by, ai_verification_id, notes)`. Valida transiciones legales, optimistic check anti-race, rechaza estados terminales (`retired_*`).
+- **Audit completo:** tabla `question_lifecycle_history` (append-only, fuente única de verdad). Trigger fallback `tg_questions_lifecycle_audit_fallback` registra cualquier UPDATE directo como `reason_code='bypass_detected'`.
+- **Endpoint admin:** `POST /api/admin/questions/lifecycle/transition` (requiere admin auth)
+- **Constants:** `lib/constants/lifecycleReasons.ts` (taxonomía cerrada de 25 `reason_code`s + helpers `isLegalTransition`, `legacyStatusToTransition`)
+- **Cron grandfather (no programado aún):** `SELECT public.lifecycle_grandfather_expire(90)` — degrada a `draft` preguntas legacy approved sin verificar tras 90d
+
+**Columnas legacy** (`topic_review_status`, `verification_status`, `deactivation_reason`) se siguen escribiendo por compatibilidad pero `lifecycle_state` es la fuente de verdad. Eliminación pendiente cuando todos los readers (admin UI, funciones SQL `get_topic_questions_*`, tests) migren.
+
 ## Base de Datos (Supabase)
 
 ### Tablas Principales
-- `questions` - Preguntas de exámenes
+- `questions` - Preguntas de exámenes (con `lifecycle_state`, `is_active` GENERATED)
+- `question_lifecycle_history` - Audit trail append-only de transiciones de estado
 - `test_sessions` - Sesiones de tests de usuarios
 - `detailed_answers` - Respuestas detalladas con analytics
 - `user_profiles` - Perfiles de usuario
