@@ -1,6 +1,11 @@
 // app/api/v2/admin/broadcast/route.ts
-// Envío masivo de email + push a usuarios filtrados por oposición.
-// Uso: POST con { oposicion, subject, message, channels: ['email', 'push'] }
+// Envío masivo de EMAIL a usuarios filtrados por oposición/región.
+// Uso: POST con { oposicion, subject, message, channels: ['email'] }
+//
+// 2026-05-03: eliminada parte push notifications (decision producto:
+// usuarios prefieren emails, push muy invasivo). Schema mantiene
+// `channels` como array por compatibilidad histórica de callers, pero
+// solo acepta 'email'.
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@supabase/supabase-js'
@@ -30,7 +35,7 @@ const BroadcastRequestSchema = z.object({
   region: z.string().optional(),
   subject: z.string().min(1, 'Asunto requerido'),
   message: z.string().min(1, 'Mensaje requerido'),
-  channels: z.array(z.enum(['email', 'push'])).min(1, 'Al menos un canal'),
+  channels: z.array(z.enum(['email'])).min(1, 'Al menos un canal'),
   testMode: z.boolean().default(false),
   oposicionDatos: z.object({
     plazas: z.string().optional(),
@@ -118,7 +123,7 @@ async function _POST(request: NextRequest) {
   if (allUsers.length === 0) {
     return NextResponse.json({
       success: true,
-      sent: { email: 0, push: 0 },
+      sent: { email: 0 },
       total: 0,
       message: `No hay usuarios con los filtros: oposición=${oposicion || 'todas'}, región=${region || 'todas'}`,
     })
@@ -133,7 +138,7 @@ async function _POST(request: NextRequest) {
   console.log(`📢 [BROADCAST] ${testMode ? '[TEST] ' : ''}Enviando a ${targetUsers.length} usuarios (${label})`)
   console.log(`   Canales: ${channels.join(', ')}`)
 
-  const results = { email: { sent: 0, failed: 0 }, push: { sent: 0, failed: 0 } }
+  const results = { email: { sent: 0, failed: 0 } }
 
   // 4. Enviar emails
   if (channels.includes('email')) {
@@ -175,29 +180,7 @@ async function _POST(request: NextRequest) {
     }
   }
 
-  // 5. Enviar push (delegar al endpoint existente)
-  if (channels.includes('push')) {
-    try {
-      const pushResponse = await fetch(`${process.env.NEXT_PUBLIC_URL || 'https://www.vence.es'}/api/admin/send-push-notification`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          notification: {
-            title: subject,
-            body: message,
-            data: { url: `/${oposicion}/test`, category: 'broadcast' },
-          },
-          targetType: oposicion,
-        }),
-      })
-
-      const pushResult = await pushResponse.json()
-      results.push.sent = pushResult.sent || 0
-      results.push.failed = pushResult.failed || 0
-    } catch (error) {
-      console.error('❌ Push broadcast falló:', (error as Error).message)
-    }
-  }
+  // (push notifications eliminadas 2026-05-03 — solo email)
 
   console.log(`📢 [BROADCAST] Completado:`, results)
 
