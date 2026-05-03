@@ -125,6 +125,167 @@ Los logs de Vercel no se consultan por API desde aquí. El usuario los copia del
 - `FUNCTION_INVOCATION_TIMEOUT` → función serverless tardó >60s
 - `504 Gateway Timeout` → BD no respondió
 - `EDGE_FUNCTION_INVOCATION_FAILED` → error en middleware
+- `⚠️ [...] Respuesta lenta: Xms` → warning, no error 5xx — ver sección 4
+
+### 4. Investigar lentitud (warnings ⚠️ que no son errores 5xx)
+
+Cuando los logs de Vercel muestran warnings de respuesta lenta sin que haya error real (status 200 con warning de 2-10s), la metodología es distinta. **No es un fallo, es performance degradada** — y el camino para diagnosticar evita varias trampas que parecen obvias pero no lo son.
+
+#### Trampa #1: NO confíes en `pg_stat_statements` sin verificar `stats_reset`
+
+`pg_stat_statements` agrega cumulativamente desde el último reset. Si la última vez que se reseteó fue hace meses, una query que se OPTIMIZÓ entre medias seguirá apareciendo con el `mean_exec_time` viejo durante mucho tiempo. **Las cifras viejas dominan las nuevas hasta que la query nueva se ejecuta cientos de veces.**
+
+Verifica SIEMPRE antes de interpretar means:
+
+```bash
+node -e "
+require('dotenv').config({ path: '.env.local' });
+const { Client } = require('pg');
+const c = new Client({ connectionString: process.env.DATABASE_URL });
+(async () => {
+  await c.connect();
+  const r = await c.query('SELECT stats_reset FROM pg_stat_statements_info');
+  console.log('stats_reset:', r.rows[0].stats_reset);
+  console.log('Si es de hace > 1 semana y has hecho optimizaciones, las medias mienten.');
+  await c.end();
+})();
+"
+```
+
+Si las stats son antiguas y has hecho optimizaciones recientes, **resetea**:
+
+```sql
+SELECT pg_stat_statements_reset();
+```
+
+Espera 2-4 horas con tráfico real antes de volver a interpretar.
+
+#### Trampa #2: NO asumas que la media coincide con la realidad actual
+
+Mide el query DIRECTAMENTE para 3 top users. Si pg_stat_statements dice 8s mean pero el bench da 50-160ms, la cifra acumulada es ruido histórico. Usa este patrón:
+
+```bash
+# Ejemplo: medir el query del endpoint sospechoso para los 3 usuarios con más actividad
+node -e "
+require('dotenv').config({ path: '.env.local' });
+const { Client } = require('pg');
+const c = new Client({ connectionString: process.env.DATABASE_URL });
+(async () => {
+  await c.connect();
+  const top = await c.query(\`SELECT user_id FROM tests WHERE user_id IS NOT NULL GROUP BY user_id ORDER BY count(*) DESC LIMIT 3\`);
+  for (const u of top.rows) {
+    const t0 = Date.now();
+    await c.query(\`SELECT ... WHERE user_id = \$1\`, [u.user_id]);  // tu query real
+    console.log('user', u.user_id.slice(0,8) + ':', Date.now() - t0 + 'ms');
+  }
+  await c.end();
+})();
+"
+```
+
+#### Checklist completo de health (ejecutar TODO de una pasada)
+
+```bash
+node -e "
+require('dotenv').config({ path: '.env.local' });
+const { Client } = require('pg');
+const c = new Client({ connectionString: process.env.DATABASE_URL });
+(async () => {
+  await c.connect();
+
+  // 1. Reset timing
+  const reset = await c.query('SELECT stats_reset FROM pg_stat_statements_info');
+  console.log('=== pg_stat_statements stats_reset:', reset.rows[0].stats_reset, '===');
+
+  // 2. Top queries lentas (RECUERDA: medias acumuladas desde stats_reset)
+  const top = await c.query(\`
+    SELECT calls, ROUND(mean_exec_time::numeric, 1) AS mean_ms,
+           ROUND(max_exec_time::numeric, 1) AS max_ms,
+           substring(query, 1, 150) AS q
+    FROM pg_stat_statements
+    WHERE mean_exec_time > 100
+    ORDER BY mean_exec_time DESC LIMIT 10
+  \`);
+  console.log('\\n=== Top queries lentas ===');
+  top.rows.forEach((r, i) => console.log(i+1+'.', r.mean_ms+'ms |', r.calls, 'calls |', r.q.replace(/\\s+/g,' ').slice(0,100)));
+
+  // 3. Crons salud (si la tabla existe)
+  try {
+    const cron = await c.query(\`
+      SELECT cron_name, count(*) AS runs, ROUND(avg(duration_ms)) AS avg_ms,
+             max(duration_ms) AS max_ms,
+             sum(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failures,
+             max(started_at) AS last
+      FROM cron_runs
+      WHERE started_at > now() - interval '12 hours'
+      GROUP BY cron_name ORDER BY avg_ms DESC
+    \`);
+    console.log('\\n=== Cron runs últimas 12h ===');
+    if (cron.rows.length === 0) console.log('  (vacío — verifica si los crons están corriendo)');
+    cron.rows.forEach(r => console.log(' ', r.cron_name, 'runs:', r.runs, 'avg:', r.avg_ms+'ms', 'fails:', r.failures, 'last:', r.last));
+  } catch {}
+
+  // 4. Backlog dirty
+  const dirty = await c.query(\`SELECT count(*) FILTER (WHERE stats_dirty=true) AS s, count(*) FILTER (WHERE global_dirty=true) AS g FROM questions\`);
+  console.log('\\n=== Backlog dirty (preguntas pendientes de recálculo) ===\\n ', dirty.rows[0]);
+
+  // 5. Pool state
+  const conns = await c.query(\`SELECT state, count(*) FROM pg_stat_activity WHERE datname = current_database() GROUP BY state\`);
+  console.log('\\n=== Conexiones activas ===');
+  conns.rows.forEach(r => console.log(' ', r.state || '(null)', ':', r.count));
+
+  // 6. Locks
+  const locks = await c.query(\`SELECT count(*) AS waiting FROM pg_stat_activity WHERE wait_event_type = 'Lock' AND datname = current_database()\`);
+  console.log('  locks waiting:', locks.rows[0].waiting);
+
+  // 7. Triggers ENABLED en tablas calientes (smoke test post-migración)
+  for (const tbl of ['test_questions', 'tests', 'questions']) {
+    const tr = await c.query(\`
+      SELECT t.tgname, p.proname FROM pg_trigger t JOIN pg_proc p ON p.oid = t.tgfoid
+      WHERE t.tgrelid = \$1::regclass AND NOT t.tgisinternal AND t.tgenabled != 'D'
+      ORDER BY t.tgname
+    \`, [tbl]);
+    console.log(\`\\n=== Triggers ENABLED en \${tbl} ===\`);
+    tr.rows.forEach(r => console.log(' ', r.tgname, '->', r.proname));
+  }
+
+  await c.end();
+})();
+"
+```
+
+#### Cómo interpretar lo que sale
+
+| Síntoma | Diagnóstico | Acción |
+|---|---|---|
+| `stats_reset` antiguo + means altos pero benchmark per-user rápido | Las cifras son fantasmas históricos | Reset stats, esperar 2-4h, re-evaluar |
+| Cron `runs` mucho menor de lo esperado para 12h | Schedule mal configurado o GH Actions parado | Verificar `.github/workflows/*.yml` y panel GH Actions |
+| Backlog `stats_dirty` o `global_dirty` creciendo (>1000) | Cron procesa menos que tasa de inserción | Subir LIMIT por run, o aumentar frecuencia, o ambos |
+| Pool con muchos `idle` y pocos `active` (ratio > 5:1) | Conexiones huérfanas que no se cierran | Revisar transacciones largas; `kill` selectivo si hay sesiones zombie |
+| `locks waiting > 0` repetidamente | Lock contention | `SELECT * FROM pg_locks WHERE NOT granted` para ver qué espera qué |
+| Triggers nuevos aparecen sin documentar | Migración aplicada sin actualizar docs | Actualizar `docs/database/tablas.md` y `docs/ARCHITECTURE_ROADMAP.md` |
+
+#### Trampa #3: warnings ≠ outliers ≠ problema sistémico
+
+Un warning de `2228ms` ocasional es probablemente cold start de Vercel Fluid (lambda recién despierta, conexión BD por inicializar). Solo te debe preocupar si:
+- Aparece >5 veces por hora
+- Los picos suben (5s, 7s, 10s+)
+- Coincide con cron pesado u otra actividad correlacionada
+
+Antes de gastar horas optimizando, **resetea `pg_stat_statements`** y **espera 2-4h con tráfico real**. Si tras eso siguen apareciendo medias altas en queries específicas, ahí sí merece la pena ir a fondo.
+
+#### Logs intencionales que NO son problemas
+
+Algunos `console.warn` se loguean a propósito como auditoría. No son bugs:
+
+| Patrón | Origen | Significado |
+|---|---|---|
+| `🔍 [shadow] /api/profile ... sin Bearer token` | `app/api/profile/route.ts` | Migración de auth paso 3/7 — log para identificar callers antes del enforcement |
+| `📉 [DailyLimit] Graduated limit applied` | `lib/api/dailyLimit.ts` | Observabilidad de límites graduados — info, no error |
+| `🚫 [DailyLimit] Graduated user blocked` | idem | Usuario bloqueado por límite — comportamiento correcto |
+| `🧟 [API/v2/user-stats] FK violation (zombie session...)` | `app/api/v2/user-stats/route.ts` | Sesión de usuario eliminado, devuelve 401 deliberado |
+
+Si encuentras un `console.warn` que no entiendes, **busca su origen primero** antes de declararlo bug — la mayoría de warnings deliberados están comentados explicando por qué.
 
 ## Componentes que loguean a Sentry (client-side)
 
