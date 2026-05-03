@@ -66,7 +66,6 @@ export default function UserAvatar() {
   const [isAdmin, setIsAdmin] = useState(false)
   const [adminLoading, setAdminLoading] = useState(true)
   const adminNotifications = useAdminNotifications(isAdmin && !adminLoading)
-  const sentryIssuesCount = 0
   const [userStats, setUserStats] = useState<UserStats>(EMPTY_STATS)
   const [statsLoading, setStatsLoading] = useState(true)
   const [pendingExams, setPendingExams] = useState<PendingExam[]>([])
@@ -619,11 +618,6 @@ export default function UserAvatar() {
                       {(adminNotifications?.feedback + adminNotifications?.impugnaciones) > 0 && (
                         <span className="bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold" title="Feedback pendiente">
                           {(adminNotifications?.feedback + adminNotifications?.impugnaciones) > 9 ? '9+' : (adminNotifications?.feedback + adminNotifications?.impugnaciones)}
-                        </span>
-                      )}
-                      {sentryIssuesCount > 0 && (
-                        <span className="bg-orange-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold" title="Errores en Sentry">
-                          {sentryIssuesCount > 9 ? '9+' : sentryIssuesCount}
                         </span>
                       )}
                     </span>

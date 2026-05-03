@@ -35,10 +35,6 @@ jest.mock('@/hooks/useAdminNotifications', () => ({
   useAdminNotifications: () => ({ feedback: 0, impugnaciones: 0, ventas: 0, loading: false }),
 }))
 
-jest.mock('@/hooks/useSentryIssues', () => ({
-  useSentryIssues: () => ({ issuesCount: 0, issues: [], loading: false, error: null, refetch: jest.fn() }),
-}))
-
 jest.mock('next/link', () => {
   return ({ children, href, ...rest }: { children: React.ReactNode; href: string; [key: string]: unknown }) => (
     <a href={href} {...rest}>{children}</a>

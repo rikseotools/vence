@@ -312,8 +312,13 @@ Todos usan `logClientError()` de `lib/logClientError.ts`.
 |---------|---------|
 | `lib/api/withErrorLogging.ts` | Wrapper server-side: captura 4xx/5xx → BD |
 | `lib/logClientError.ts` | Helper client-side: captura errores → Sentry |
-| `hooks/useSentryIssues.ts` | Hook admin: muestra badge con issues Sentry |
-| `app/api/admin/sentry-issues/route.ts` | API proxy a Sentry (para el panel admin) |
 | `sentry.client.config.ts` | Config Sentry client (ignoreErrors, etc.) |
 | `docs/maintenance/revisar-errores-api.md` | Manual detallado errores API |
 | `docs/maintenance/sentry-troubleshooting.md` | Manual detallado Sentry |
+
+**Nota (2026-05-03):** El antiguo badge admin con count de issues Sentry
+(`/api/admin/sentry-issues` + `hooks/useSentryIssues.ts`) fue eliminado
+por desuso (badge hardcoded a 0 desde hace meses, hook no importado por
+ningún componente). Para revisar issues Sentry: usa la **CLI con curl**
+documentada en la sección 2 (`Sentry`) más arriba, o el dashboard web
+de Sentry directamente (https://sentry.io).
