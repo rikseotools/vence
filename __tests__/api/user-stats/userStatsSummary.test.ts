@@ -12,11 +12,17 @@ const { TextEncoder: TE, TextDecoder: TD } = require('util')
 if (!globalThis.TextEncoder) { globalThis.TextEncoder = TE; (globalThis as any).TextDecoder = TD }
 const { Pool } = require('pg')
 
-const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://postgres.yqbpstxowvgipqspqrgo:WLukZmB5pA38MODL@aws-0-eu-west-2.pooler.supabase.com:6543/postgres'
+// SIN fallback hardcoded — el test SOLO corre si DATABASE_URL está en el entorno.
+// (Antes había un fallback con credenciales reales que GitGuardian detectó como
+// leak el 2026-04-30. Rotada la password el 2026-05-03.)
+const DATABASE_URL = process.env.DATABASE_URL
 
 let pool: Pool
 
 beforeAll(() => {
+  if (!DATABASE_URL) {
+    throw new Error('DATABASE_URL requerida para este test (cargar .env.local)')
+  }
   pool = new Pool({ connectionString: DATABASE_URL })
 })
 
