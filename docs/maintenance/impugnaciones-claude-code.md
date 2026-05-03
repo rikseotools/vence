@@ -101,12 +101,19 @@ Antes de corregir, es importante entender **por qué** la pregunta tiene errores
 Claude consultará:
 
 ### 4.1 Estado de la pregunta
+
+> 🆕 **Post-03/05/2026 (lifecycle):** la fuente de verdad de visibilidad es `lifecycle_state`. `is_active` es `GENERATED ALWAYS AS (lifecycle_state IN ('approved','tech_approved'))` — no se puede actualizar directo. Las columnas `verification_status`, `topic_review_status` y `verified_at` siguen existiendo para compatibilidad pero **no controlan visibilidad**.
+
 ```javascript
 supabase
   .from('questions')
-  .select('verified_at, verification_status, topic_review_status, topic_id')
+  .select('lifecycle_state, is_active, verified_at, verification_status, topic_review_status')
   .eq('id', questionId);
 ```
+
+> ⚠️ La relación pregunta↔tema **no** está en una columna `topic_id` de `questions` (no existe esa columna). Si te hace falta el tema, hay que mirar la(s) tabla(s) de unión correspondientes (`question_topics` y `topics`) — fuera del scope de la mayoría de impugnaciones.
+
+Estados lifecycle posibles: `draft`, `needs_review`, `needs_human`, `quarantine`, `approved`, `tech_approved`, `retired_duplicate`, `retired_irreparable`. Solo `approved` y `tech_approved` hacen visible la pregunta. Ver `lib/constants/lifecycleReasons.ts` para taxonomía completa.
 
 ### 4.2 Resultados de verificación AI
 ```javascript
@@ -124,7 +131,8 @@ supabase
 | **Modelo AI poco preciso** | Usado Haiku en vez de Opus/Sonnet | Re-verificar con mejor modelo |
 | **Sin topic_id** | Pregunta no asignada a ningún tema | Asignar al topic correcto |
 | **Sin artículo vinculado** | `question_articles` vacío | Buscar y vincular artículo |
-| **Verificación no ejecutada** | `verified_at: null` | Ejecutar verificación |
+| **Verificación no ejecutada** | `verified_at: null` + `lifecycle_state='draft'` | Ejecutar verificación |
+| **Pregunta oculta tras corrección** | Lleva en `needs_review`/`needs_human`/`quarantine` y no transicionó a `approved` | Transicionar lifecycle (ver §5.2) |
 | **AI dio conclusión errónea** | `answer_ok: false` pero respuesta es correcta | Corregir manualmente |
 
 ### 4.4 Ejemplo de diagnóstico real
@@ -229,17 +237,137 @@ Fuente: [Microsoft Support - Título descriptivo](https://support.microsoft.com/
 
 **Incidente que motiva la regla (14/04/2026):** pregunta `7fc7f0b0...` Excel `=EXTRAE(A1;12;2)` tenía la explicación de OTRA pregunta (sobre concatenación con `&`), totalmente cruzada. `gpt-4o-mini` lo detectó (`answer_ok=false, explanation_ok=false`, descripción correcta) hace meses, pero la pregunta nunca fue revisada por agente Opus, así que siguió activa hasta que la impugnó la usuaria Farida.
 
-### 5.2 Explicación (tabla `questions`)
+### 5.2 Explicación + transición lifecycle (post-03/05/2026)
+
+> 🆕 **Decide primero si hace falta transición:**
+>
+> - **Si la pregunta YA está en `approved` o `tech_approved`** (caso típico de bug menor: redacción mejorable, explicación pobre, errata) → **NO transicionar**. La función SQL rechaza same-state (`Same-state transition not allowed`). Solo `UPDATE explanation`/`question_text` + invalidar cache. La pregunta sigue visible mientras tanto.
+> - **Si la pregunta está en `needs_review`/`needs_human`/`quarantine`/`draft`** → **SÍ transicionar** a `approved`/`tech_approved` tras corregir. Sin esta transición, `is_active` (GENERATED) sigue en false y la pregunta queda invisible al estudiante aunque la explicación esté arreglada.
+>
+> Comprobar siempre `lifecycle_state` antes de decidir (consulta de §4.1).
+
+**Flujo en dos pasos:**
+
 ```javascript
-supabase
+// Paso 1: actualizar la explicación + columnas legacy (sin tocar is_active ni lifecycle_state directamente)
+await supabase
   .from('questions')
   .update({
     explanation: nuevaExplicacion,
-    verification_status: 'verified',
-    verified_at: new Date().toISOString()
+    verification_status: 'verified',           // legacy, opcional
+    verified_at: new Date().toISOString(),     // legacy, opcional
   })
   .eq('id', questionId);
 ```
+
+```javascript
+// Paso 2: transicionar lifecycle vía endpoint admin (única vía legítima).
+// Necesitas Bearer token admin (igual patrón que dispute/resolve).
+const res = await fetch('https://www.vence.es/api/admin/questions/lifecycle/transition', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+  body: JSON.stringify({
+    questionId,
+    expectedState: estadoActual,    // p.ej. 'needs_review' (lectura previa, sirve de optimistic check)
+    newState: 'approved',           // o 'tech_approved' si es pregunta de informática
+    reasonCode: 'admin_marked_perfect',
+    notes: 'Impugnación XYZ resuelta: explicación reescrita',
+  }),
+});
+```
+
+**Reason codes admin más usados** (taxonomía cerrada en `lib/constants/lifecycleReasons.ts`):
+
+| Caso | reasonCode | newState |
+|------|------------|----------|
+| Corregido y queda perfecto | `admin_marked_perfect` | `approved` (o `tech_approved` informática) |
+| Necesita aún decisión humana | `admin_marked_problem` | `needs_human` |
+| Pipeline IA aplicó fix | `auto_fix_applied` | `approved` |
+| Imagen no recuperable | `admin_image_unavailable` | `retired_irreparable` |
+| Ley derogada | `admin_law_derogated` | `retired_irreparable` |
+| Pregunta anulada en oficial | `admin_exam_annulled` | `retired_irreparable` |
+| Duplicada de otra | `admin_duplicate_of` | `retired_duplicate` |
+| Estructural reparada | `admin_repaired_quarantine` | `draft` |
+
+> Si haces UPDATE directo a `lifecycle_state` desde script, el trigger `tg_questions_lifecycle_audit_fallback` lo detecta y registra como `bypass_detected` en `question_lifecycle_history`. Funciona — pero **no lo hagas**: pasa siempre por el endpoint o llamando directamente a la función SQL `public.transition_question_state(...)` para tener audit con `changed_by` correcto.
+
+### 5.2.1 Atajo desde Claude Code: llamar la función SQL vía `pg` (sin Bearer token)
+
+Cuando Claude Code resuelve impugnaciones desde local con `DATABASE_URL` ya cargado de `.env.local`, mintear un Bearer admin (generateLink + verifyOtp) es engorroso. La función SQL `public.transition_question_state(...)` es `SECURITY DEFINER` y `EXECUTE` está dado a `service_role` (que es el rol del `DATABASE_URL` de servicio) — se puede invocar directamente:
+
+```bash
+node -e "
+require('dotenv').config({ path: '.env.local' });
+const postgres = require('postgres');
+const sql = postgres(process.env.DATABASE_URL, { prepare: false, max: 1 });
+
+const QUESTION_ID    = 'PONER_UUID';
+const EXPECTED_STATE = 'needs_review';                          // estado leído antes; sirve de optimistic check
+const NEW_STATE      = 'approved';                              // o 'tech_approved' (informática)
+const REASON_CODE    = 'admin_marked_perfect';                  // ver tabla §5.2
+const CHANGED_BY     = '2fc60bc8-1f9a-42c8-9c60-845c00af4a1f';  // admin user_id (Manuel)
+const NOTES          = 'Impugnación XYZ resuelta';              // opcional
+
+(async () => {
+  try {
+    // 0. Leer estado actual + is_active (sanity check)
+    const [before] = await sql\`
+      SELECT lifecycle_state, is_active FROM public.questions WHERE id = \${QUESTION_ID}\`;
+    console.log('ANTES:', before);
+
+    // 1. Transicionar
+    await sql\`
+      SELECT public.transition_question_state(
+        \${QUESTION_ID}::uuid,
+        \${EXPECTED_STATE}::text,
+        \${NEW_STATE}::text,
+        \${REASON_CODE}::text,
+        \${CHANGED_BY}::uuid,
+        NULL::uuid,                  -- ai_verification_id (opcional)
+        \${NOTES}::text
+      )\`;
+
+    // 2. Confirmar (is_active GENERATED debe seguir lifecycle_state)
+    const [after] = await sql\`
+      SELECT lifecycle_state, is_active FROM public.questions WHERE id = \${QUESTION_ID}\`;
+    console.log('DESPUÉS:', after);
+
+    // 3. Verificar audit en history
+    const hist = await sql\`
+      SELECT to_state, reason_code, changed_at
+      FROM public.question_lifecycle_history
+      WHERE question_id = \${QUESTION_ID}
+      ORDER BY changed_at DESC LIMIT 1\`;
+    console.log('HISTORY:', hist[0]);
+  } catch (e) {
+    console.error('ERROR:', e.message);
+  } finally {
+    await sql.end();
+  }
+})();
+"
+```
+
+**Errores típicos que devuelve la función SQL** (capturarlos por `e.message`):
+
+| Mensaje | Causa | Acción |
+|---------|-------|--------|
+| `State mismatch: expected X but is Y` | El `expectedState` no coincide con la BD (alguien cambió el estado entre tu lectura y este UPDATE) | Releer estado actual y reintentar |
+| `Cannot transition from terminal state X` | La pregunta está en `retired_*`. No admite transición de salida | Crear pregunta nueva o rechazar dispute |
+| `Illegal transition: X → Y` | El par estado-actual → estado-nuevo no está en la matriz de transiciones legales (ver `isLegalTransition` en `lib/constants/lifecycleReasons.ts`) | Revisar qué transición pretendías. Casi siempre es bug del caller |
+| `Same-state transition not allowed: X → X` | Ya está en ese estado | No transicionar — solo UPDATE de `explanation` |
+| `Invalid p_new_state: X` | El `newState` no está en los 8 estados válidos | Revisar typo |
+| `p_reason_code is required` | Pasaste null/empty | Pasar uno de la taxonomía |
+
+**Ventajas vs endpoint Bearer:**
+- Sin pasos de auth (un solo `node -e`).
+- Audit idéntico: history queda con `changed_by` correcto y `reason_code` taxonómico.
+- Errores con mensaje SQL claro, sin capa de mapeo HTTP.
+
+**Cuándo usar el endpoint (`POST /api/admin/questions/lifecycle/transition`) en lugar de este atajo:**
+- Desde la app web (admin UI) — ahí el Bearer ya existe en sesión.
+- Desde un cliente que NO tenga acceso a `DATABASE_URL` (ej. integración externa).
+- Cuando quieras los códigos HTTP estructurados (409 conflict, 404 not found, 400 bad request).
 
 > **⚠️ INVALIDAR CACHE:** desde el commit que añadió `unstable_cache` a la
 > validation query (`lib/api/v2/answer-and-save/queries.ts`), el endpoint
@@ -357,16 +485,19 @@ const result = await res.json();
 
 ## 7. Tablas Involucradas
 
-| Tabla | Uso |
+| Tabla / Endpoint | Uso |
 |-------|-----|
 | `question_disputes` | Impugnaciones de preguntas legislativas |
 | `psychometric_question_disputes` | Impugnaciones de preguntas psicotécnicas |
-| `questions` | Preguntas legislativas y explicaciones |
-| `psychometric_questions` | Preguntas psicotécnicas |
+| `questions` | Preguntas legislativas y explicaciones (lee `lifecycle_state`, NO actualizar `is_active` — es GENERATED) |
+| `question_lifecycle_history` | Audit append-only de transiciones de `lifecycle_state` (post-03/05/2026) |
+| `psychometric_questions` | Preguntas psicotécnicas (sin lifecycle aún, fuera de scope) |
 | `question_articles` | Relación pregunta-artículo (tabla de unión) |
 | `articles` | Artículos de leyes |
 | `ai_verification_results` | Resultados de verificación AI |
 | `user_profiles` / `auth.users` | Datos del usuario para personalizar mensaje |
+| `POST /api/admin/questions/lifecycle/transition` | **Única vía legítima** para cambiar `lifecycle_state` (= visibilidad) |
+| `public.transition_question_state(...)` | Función SQL `SECURITY DEFINER` que valida transiciones + escribe history |
 
 ### 7.0 Dos Tablas de Impugnaciones
 
@@ -587,8 +718,10 @@ const { data } = await s.from('question_disputes')
    ↓
 7. Re-verifica la pregunta contra el artículo correcto:
    - articleOk, answerOk, explanationOk
-   - Actualiza topic_review_status → "perfect" si todo OK
-   - Ver estados posibles en revisar-temas-con-agente.md
+   - **Transiciona `lifecycle_state` a `approved`** (o `tech_approved`) vía endpoint
+     `/api/admin/questions/lifecycle/transition` con `reasonCode: 'admin_marked_perfect'`
+   - Eso reactiva la pregunta (is_active=true GENERATED). El UPDATE legacy a
+     `topic_review_status` es opcional (compatibilidad), no controla visibilidad.
    ↓
 8. Claude obtiene el NOMBRE del usuario (sección 11)
    ↓
@@ -742,6 +875,8 @@ supabase
 
 **Importante:** Siempre explicar con detalle por qué se rechaza, citando el artículo relevante.
 
+> **Nota — cierre silencioso `resolved`:** el patrón de §12.1 (admin_response=null + is_read=true) **es válido también con `status='resolved'`** cuando hay una **regla operativa específica del admin** que lo justifique (p. ej. una memoria del tipo "para el usuario X siempre cierre silencioso"). NO es el flujo por defecto — solo aplicable a excepciones documentadas. El flujo normal sigue siendo el del §6 (con mensaje aprobado vía `/api/v2/dispute/resolve`).
+
 ### 12.1 Rechazo Silencioso (Impugnaciones Auto-Detectadas por IA)
 
 Las impugnaciones auto-detectadas se identifican por `source = 'ai_auto'` (y tienen `[AUTO-DETECTADO POR IA]` en la descripción). No son de usuarios reales. Se rechazan **sin notificación**:
@@ -798,8 +933,8 @@ WHERE source = 'ai_auto';
 - **No cerrar** la impugnación hasta aprobar el mensaje
 - **Personalizar** el mensaje con el nombre del usuario (nunca "Hola," genérico)
 - **Actualizar** `ai_verification_results` para que la verificación quede correcta
-- **Actualizar** `verification_status` y `verified_at` en la pregunta
-- **Actualizar** `topic_review_status` en la pregunta según los estados de `revisar-temas-con-agente.md` (`perfect` si articleOk + answerOk + explanationOk)
+- **Transicionar `lifecycle_state`** vía `/api/admin/questions/lifecycle/transition` — **paso obligatorio** si la pregunta estaba oculta. Sin esto, la pregunta sigue invisible para el estudiante (post-03/05/2026, ver §5.2).
+- **Opcional (compatibilidad legacy):** actualizar `verification_status`, `verified_at`, `topic_review_status`. No controlan visibilidad pero algunos readers todavía los leen.
 - Si la pregunta **no tiene topic_id**, considerar asignarla al tema correcto
 
 ---

@@ -583,18 +583,64 @@ export async function getFilteredQuestions(
     }
 
     // 🔄 CASO: "Solo falladas" sin IDs — single JOIN con user_question_history
-    // Filtro por selectedLaws (lo que el usuario eligió en el configurador),
-    // NO por scope de oposición. El usuario ya respondió estas preguntas —
-    // filtrarlas por scope descartaría su historial real.
+    //
+    // Filtros aplicados:
+    //   - selectedLaws (si el usuario eligió leyes concretas en el configurador)
+    //   - positionType: la pregunta debe pertenecer a algún topic de la oposición activa.
+    //     Evita que un usuario que estudia varias oposiciones desde la misma cuenta vea
+    //     falladas cruzadas (incidente Isabel Iglesias 2026-05-03).
+    //   - topicNumber (si > 0): además acota al tema concreto que está repasando.
+    //     Si topicNumber es 0/null (vista general), no se aplica este filtro y trae
+    //     falladas de cualquier tema de la oposición activa.
     if (onlyFailedQuestions && (!failedQuestionIds || failedQuestionIds.length === 0) && userId) {
       const hasLawFilter = selectedLaws && selectedLaws.length > 0
-      console.log(`🔄 [failed-questions] Modo historial: userId=${userId}, selectedLaws=${hasLawFilter ? selectedLaws.join(', ') : '(todas)'}`)
+      const hasTopicFilter = !!topicNumber && topicNumber > 0
+
+      // Pre-check: ¿la oposición activa tiene scopes configurados?
+      // Si no (ej. celador_sescam_clm, celador_sermas_madrid), aplicar el EXISTS
+      // dejaría 0 resultados — caso Lidia (18/04/2026). Fallback al modo legacy
+      // (filtro por selectedLaws solo) cuando la oposición carece de scopes.
+      const scopeAvailable = await db
+        .select({ n: sql<number>`count(*)::int` })
+        .from(topicScope)
+        .innerJoin(topics, eq(topics.id, topicScope.topicId))
+        .where(eq(topics.positionType, positionType))
+        .limit(1)
+      const hasScopes = (scopeAvailable[0]?.n ?? 0) > 0
+
+      console.log(`🔄 [failed-questions] Modo historial: userId=${userId}, positionType=${positionType}, topicNumber=${topicNumber || '(todos)'}, selectedLaws=${hasLawFilter ? selectedLaws.join(', ') : '(todas)'}, hasScopes=${hasScopes}`)
 
       const lawConditions = []
       lawConditions.push(eq(questions.isActive, true))
 
       if (hasLawFilter) {
         lawConditions.push(inArray(laws.shortName, selectedLaws))
+      }
+
+      // EXISTS contra topic_scope+topics: la pregunta debe estar en al menos un
+      // topic de la oposición activa (y opcionalmente del tema concreto solicitado).
+      // Solo se aplica si la oposición tiene scopes configurados (hasScopes).
+      // Usamos articles.articleNumber::text porque article_numbers es text[].
+      if (hasScopes) {
+        const scopeFilter = hasTopicFilter
+          ? sql`EXISTS (
+              SELECT 1 FROM ${topicScope} ts
+              INNER JOIN ${topics} t ON t.id = ts.topic_id
+              WHERE ts.law_id = ${articles.lawId}
+                AND t.position_type = ${positionType}
+                AND t.topic_number = ${topicNumber}
+                AND ${articles.articleNumber}::text = ANY(ts.article_numbers)
+            )`
+          : sql`EXISTS (
+              SELECT 1 FROM ${topicScope} ts
+              INNER JOIN ${topics} t ON t.id = ts.topic_id
+              WHERE ts.law_id = ${articles.lawId}
+                AND t.position_type = ${positionType}
+                AND ${articles.articleNumber}::text = ANY(ts.article_numbers)
+            )`
+        lawConditions.push(scopeFilter)
+      } else {
+        console.warn(`⚠️ [failed-questions] positionType="${positionType}" no tiene topic_scopes configurados — fallback a modo legacy (sin filtro de oposición). Solo se respeta selectedLaws.`)
       }
 
       const failedQuestions = await db
@@ -614,10 +660,17 @@ export async function getFilteredQuestions(
         .orderBy(sql`random()`)
         .limit(numQuestions)
 
-      console.log(`✅ [failed-questions] ${failedQuestions.length} preguntas falladas${hasLawFilter ? ` de ${selectedLaws.join(', ')}` : ' (todas las leyes)'} (limit ${numQuestions})`)
+      console.log(`✅ [failed-questions] ${failedQuestions.length} preguntas falladas${hasTopicFilter ? ` del T${topicNumber}` : ''} en ${positionType}${hasLawFilter ? ` (leyes: ${selectedLaws.join(', ')})` : ''} (limit ${numQuestions})`)
 
       if (failedQuestions.length === 0) {
-        return { success: true, questions: [], totalAvailable: 0, filtersApplied: { laws: selectedLaws?.length || 0, articles: 0, sections: 0 }, emptyReason: hasLawFilter ? `No tienes preguntas falladas en ${selectedLaws.join(', ')}` : 'No tienes preguntas falladas aún' }
+        const emptyReason = hasTopicFilter
+          ? (hasLawFilter
+              ? `No tienes preguntas falladas en ${selectedLaws.join(', ')} dentro del Tema ${topicNumber} de tu oposición`
+              : `No tienes preguntas falladas en el Tema ${topicNumber} de tu oposición`)
+          : (hasLawFilter
+              ? `No tienes preguntas falladas en ${selectedLaws.join(', ')} en tu oposición`
+              : 'No tienes preguntas falladas aún en tu oposición')
+        return { success: true, questions: [], totalAvailable: 0, filtersApplied: { laws: selectedLaws?.length || 0, articles: 0, sections: 0 }, emptyReason }
       }
 
       const transformedQuestions = failedQuestions.map((q, i) => transformQuestion({ ...q, sourceTopic: topicNumber || null } as QuestionRow, i))

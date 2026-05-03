@@ -2561,6 +2561,15 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
                     </div>
                   </div>
                 </div>
+                {/* Indicador de oposición activa — el repaso filtra por positionType
+                    para evitar mezclar falladas de oposiciones distintas (fix Isabel 2026-05-03). */}
+                <div className="mt-3 pt-3 border-t border-blue-200 flex items-center justify-center gap-2 text-xs text-blue-700">
+                  <span>📚</span>
+                  <span>
+                    Repasando: <strong>{getOposicionName(positionType)}</strong>
+                    {tema ? <> · Tema {temaDisplayName || tema}</> : null}
+                  </span>
+                </div>
               </div>
 
               {/* Filtro de periodo */}
