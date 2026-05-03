@@ -88,6 +88,59 @@ Trabajo paralelo a las 6 fases, gatillado por incidente GitGuardian (PostgreSQL 
 
 ---
 
+## Fase 0.7 — JWT local verify (CRÍTICO seguridad) ⏳ PENDIENTE
+
+**Origen:** Hard Gap #1 de la auditoría 10k DAU. Investigación a fondo del 3 may 2026 confirma que es **el principal cuello del hot path**.
+
+**Diagnóstico (3 may 2026, 18:30 UTC):**
+- 24 warnings/h de `⚠️ [answer-and-save] Respuesta lenta: 2-4s` en producción (consistente)
+- Trace del endpoint:
+  | Paso | Coste | Estado |
+  |---|---|---|
+  | `supabase.auth.getUser()` | **250-1000ms** | ❌ Sin atacar |
+  | `Promise.all([device, daily, deviceUsage])` | 50-200ms | OK paralelo |
+  | `getQuestionValidationCached` | <5ms | OK (cache hit) |
+  | INSERT `test_questions` (6 triggers I/O) | 100-500ms | 🟡 Parcial (Fases 0.1/0.2/0.6) |
+  | UPDATE `tests` SET score | 10-30ms | OK |
+- Total: 400-1700ms p50, **2-4s p99**
+- **El round-trip a Supabase Auth es el contribuyente único más grande**
+
+**Beneficio esperado:**
+- Round-trip Vercel → Supabase Auth: 250-1000ms → **<5ms** (verificación firma local)
+- p50 endpoint: 1.5s → **0.5s**
+- p99 endpoint: 4s → **1.5s**
+- ~5M req/día × ~250ms ahorrados = **350h latencia agregada eliminada**
+
+**Riesgos analizados (NO eliminables 100% incluso con mitigaciones):**
+1. **Algorithm confusion attack** (`alg: none`) — bypass total si verifier no enforce whitelist explícito
+2. **Usuarios baneados** continúan accediendo hasta 1h (TTL access token) porque local verify no consulta BD. Mitigación: añadir check `user.banned_at IS NULL` post-extracción userId
+3. **Token revocation tras logout** — access token sigue válido hasta `exp` (no es nuevo, comportamiento actual)
+4. **Rotación key Supabase** — wave de 401 falsos en window de cache stale. Mitigación: TTL corto + refetch on signature failure
+5. **Custom claims futuros** que Supabase añada — divergencia silenciosa post-shadow window
+
+**Investigación previa OBLIGATORIA (10-30 min, antes de tocar código):**
+1. **¿Vence usa JWKS asimétrico (RS256/ES256) o secreto simétrico (HS256)?** — `curl https://<project>.supabase.co/auth/v1/.well-known/jwks.json`. Modelo de riesgo distinto en cada caso.
+2. **Auditar TODOS los callers de `supabase.auth.getUser()`** — qué uso hacen: solo `user.id`? `app_metadata`? `email`? Algunos pueden necesitar el round-trip por roles.
+3. **Verificar OAuth Google flow** genera tokens compatibles con verifier local.
+
+**Plan de implementación (cuando se reanude):**
+1. Helper aislado `verifyAuthLocal(token): { userId, error }` con whitelist de algoritmos hardcoded
+2. Tests de paridad: 100 tokens reales × `verifyAuthLocal` debe matchear `getUser` 100/100
+3. Aplicar a `/api/v2/answer-and-save` con feature flag `JWT_LOCAL_VERIFY_ENABLED=false`
+4. Shadow log: ejecutar AMBAS verificaciones en paralelo durante 1-2h, log si discrepa
+5. Activar flag en producción, observar 2-4h sin parar
+6. Migrar resto endpoints hot path uno por uno
+
+**Esfuerzo:** 6-9h trabajo + observación
+
+**Cuándo abordarlo:**
+- Cabeza fresca, sesión dedicada
+- NO viernes (BD admin disponible si algo va mal)
+- Bloque de 4-6h sin otros cambios críticos en flight
+- Memo detallado: `~/.claude/projects/-home-manuel/memory/vence_jwt_local_verify_phase07.md`
+
+---
+
 ## Fase 1 — Redis cache (Upstash) ✅ COMPLETA (2026-05-02)
 
 **Objetivo:** que el 80%+ de las requests no lleguen a BD.
@@ -511,3 +564,4 @@ Con esos 3 sobrevivimos hasta ~5-7k DAU. Para los últimos 3-5k DAU hace falta e
 | 2026-05-03 | Cierre RLS `payout_transfers` (DROP 2 policies USING(true) + REVOKE all anon/authenticated) | Cierre del refactor 25d9a175 (2 may): `/armando` y `/admin/cobros` ahora son server-side con service_role. Auditado: 0 callers de Supabase JS browser sobre la tabla, 0 queries en `pg_stat_statements` desde reset. Migración `20260503_payout_transfers_close_rls.sql` aplicada. Cierra **fuga financiera severa** (datos de payouts eran legibles por anon). |
 | 2026-05-03 | Audit `is_current_user_admin()` → NO TOCAR | 10 callers legítimos (Header badges, UserAvatar, ProtectedRoute, finance/auth, 5 paneles admin). Función bien diseñada: returns boolean, sin side effects, `EXECUTE TO authenticated` es by design (los users normales reciben `false`). Documentado en Sprint 1.4 para no re-auditar. |
 | 2026-05-03 | BOE cron `check-boe-changes` — time budget guard 50s | 504 timeout a las 11:21 UTC: cuando BOE va lento, fetches caen al timeout 10s × 42 chunks > 60s `maxDuration`. Fix: break del loop si `Date.now() - startTime > 50s`, log `⚠️ parcial (time budget)`. Las leyes pendientes las recoge el siguiente run (filtro `last_checked < hoy` ya existe). Riesgo 0, graceful degradation. |
+| 2026-05-03 | Investigación a fondo de Fase 0.7 (JWT verify) — pausada para sesión dedicada | 24 warnings/h `answer-and-save` 2-4s persistentes pese a Fases 0.1/0.2/0.6. Trace confirma cuello principal en `supabase.auth.getUser()` (250-1000ms) — NO triggers. Fase 0.7 daría p50 1.5s→0.5s, p99 4s→1.5s. Riesgos analizados (algorithm confusion, banned users, key rotation, custom claims) — no eliminables 100%. **Decisión: NO empezar tarde/cansado/viernes en código crítico de seguridad**. Sección "Fase 0.7" del roadmap ampliada con plan completo. Memo `vence_jwt_local_verify_phase07.md`. |
