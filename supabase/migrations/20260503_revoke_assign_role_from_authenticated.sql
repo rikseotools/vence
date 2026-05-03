@@ -1,0 +1,49 @@
+-- Migration: revoke_assign_role_from_authenticated
+-- 2026-05-03
+--
+-- Cierra warning "authenticated_security_definer_function_executable" del
+-- Supabase Database Linter sobre `assign_role(p_user_id, p_role, p_notes)`.
+--
+-- Auditoría completa 2026-05-03:
+--
+-- 1. **Body de la función** (verificado con pg_get_functiondef):
+--    Tiene guarda interna `IF NOT is_current_user_admin() THEN RAISE EXCEPTION`.
+--    Por tanto, ya está protegida — un usuario authenticated que la invoque
+--    recibe exception, no daño.
+--
+-- 2. **Callers en código** (grep TS/JS/JSX/TSX/SQL):
+--    Cero. Solo aparece en docs/database/tablas.md y en migraciones SQL.
+--
+-- 3. **pg_stat_statements** (3h tráfico real post-reset 2026-05-03 07:23 UTC):
+--    0 llamadas. Nadie la usa.
+--
+-- 4. **Funciones SQL que la llamen internamente**: 0.
+--
+-- 5. **user_roles populated**: 1 admin (mcasadocano@gmail.com) creado
+--    manualmente vía SQL Editor de Supabase. Patrón confirmado: la función
+--    se invoca solo manualmente con role `service_role` o `postgres` desde
+--    SQL Editor — nunca desde código de la app.
+--
+-- Por qué REVOKE pese a tener guarda interna (defense in depth):
+-- - Si en el futuro la guarda `is_current_user_admin()` se rompe (bug, regresión),
+--   el atacante NO puede ni siquiera llegar a invocar la función.
+-- - Cierra el warning del linter, evitando ruido en futuras auditorías.
+-- - Cero coste: ningún flujo legítimo se ve afectado.
+--
+-- Patrón previo aplicable: la migración 20260502_revoke_anon_admin_functions.sql
+-- ya hizo REVOKE FROM anon. Este es el complemento natural para `authenticated`.
+--
+-- service_role y postgres mantienen EXECUTE intacto (uso desde SQL Editor /
+-- service_role webhooks).
+--
+-- Idempotente.
+
+REVOKE EXECUTE ON FUNCTION public.assign_role(p_user_id uuid, p_role text, p_notes text)
+  FROM authenticated;
+
+-- Verificación: la función debe seguir siendo ejecutable desde service_role.
+-- Esto NO es ejecutable durante migración (DO block), es solo documentación:
+--   GRANT verificable con:
+--   SELECT grantee, privilege_type FROM information_schema.routine_privileges
+--   WHERE routine_name = 'assign_role';
+--   Esperado tras esta migración: postgres, service_role (no anon, no authenticated).
