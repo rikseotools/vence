@@ -16,8 +16,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-// Aumentar timeout a 60s (Pro) o 300s (Pro con config)
-export const maxDuration = 60
+// 300s (5min) — el cron procesa cientos de usuarios con 2 aggregate scans
+// pesadas sobre test_questions JOIN tests. Falló por timeout 60s el 2026-05-03
+// (1m3s). Pro plan permite hasta 800s; 300s da margen sin abusar.
+export const maxDuration = 300
 import {
   getUsersWithAutomaticAvatar,
   calculateBulkUserProfiles,

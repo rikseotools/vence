@@ -1,6 +1,6 @@
 // lib/api/avatar-settings/profiles.ts - Lógica de cálculo de perfiles de avatar
 // Refactorizado para usar Drizzle ORM en lugar de Supabase JS client
-import { getDb } from '@/db/client'
+import { getDb, getAdminDb } from '@/db/client'
 import { tests, testQuestions, userStreaks, userAvatarSettings } from '@/db/schema'
 import { eq, and, gte, lt, inArray, sql } from 'drizzle-orm'
 import { getAllAvatarProfiles, getAvatarProfileById } from './queries'
@@ -444,7 +444,11 @@ interface LastWeekMetricsRow {
 export async function calculateBulkUserProfiles(userIds: string[]): Promise<BulkUserMetrics[]> {
   if (userIds.length === 0) return []
 
-  const db = getDb()
+  // getAdminDb (max:4) — esta función solo se llama desde cron/avatar-rotation
+  // (verificado 2026-05-03). Evita serializar las 2 aggregate scans pesadas
+  // por el pool max:1 de usuarios. Patrón establecido en commit 76dc3ffb
+  // ("perf(crons): migrar 3 crons a getAdminDb").
+  const db = getAdminDb()
   const now = new Date()
   const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
   const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000)
