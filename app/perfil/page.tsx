@@ -7,7 +7,6 @@ import AvatarChanger from '@/components/AvatarChanger'
 import { useAuth } from '@/contexts/AuthContext'
 import { useOposicion } from '@/contexts/OposicionContext'
 import { ALL_OPOSICION_IDS, getOposicion } from '@/lib/config/oposiciones'
-import notificationTracker from '@/lib/services/notificationTracker'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 import CancellationFlow from '@/components/CancellationFlow'
 import OposicionChangeModal from '@/components/OposicionChangeModal'
@@ -58,24 +57,6 @@ interface EmailPreferences {
   email_resumen_semanal: boolean
   email_soporte_disabled: boolean
   email_newsletter_disabled: boolean
-}
-
-interface PushNotificationSettings {
-  push_enabled?: boolean
-  push_subscription?: PushSubscriptionJSON | string | null
-  preferred_times?: string[]
-  timezone?: string
-  frequency?: string
-  oposicion_type?: string
-  motivation_level?: string
-}
-
-interface PushNotifications {
-  supported: boolean
-  permission: NotificationPermission | 'default'
-  enabled: boolean
-  subscription: PushSubscription | string | null
-  settings: PushNotificationSettings | null
 }
 
 interface SubscriptionData {
@@ -142,7 +123,7 @@ interface OposicionOption {
   data?: OposicionData
 }
 
-type TabType = 'general' | 'emails' | 'notificaciones' | 'suscripcion'
+type TabType = 'general' | 'emails' | 'suscripcion'
 
 // Tipo para AuthContext (no está tipado)
 interface AuthContextValue {
@@ -186,17 +167,6 @@ function PerfilPageContent() {
   })
   const [emailPrefLoading, setEmailPrefLoading] = useState<boolean>(true)
   const [emailPrefSaving, setEmailPrefSaving] = useState<boolean>(false)
-
-  // 🆕 PUSH NOTIFICATIONS
-  const [pushNotifications, setPushNotifications] = useState<PushNotifications>({
-    supported: false,
-    permission: 'default',
-    enabled: false,
-    subscription: null,
-    settings: null
-  })
-  const [pushLoading, setPushLoading] = useState<boolean>(true)
-  const [pushSaving, setPushSaving] = useState<boolean>(false)
 
   // 🆕 SUSCRIPCIÓN
   const [subscriptionData, setSubscriptionData] = useState<SubscriptionData | null>(null)
@@ -657,7 +627,9 @@ function PerfilPageContent() {
     } else if (tab === 'suscripcion') {
       setActiveTab('suscripcion')
     } else if (tab === 'notificaciones') {
-      setActiveTab('notificaciones')
+      // Tab notificaciones eliminado 2026-05-03 (sistema push retirado).
+      // Redirigir a 'emails' para preservar UX si llegan links viejos.
+      setActiveTab('emails')
     }
   }, [searchParams])
 
@@ -734,74 +706,6 @@ function PerfilPageContent() {
     }
 
     loadEmailPreferences()
-  }, [user])
-
-  // 🆕 CARGAR PUSH NOTIFICATIONS - VIA API TIPADA
-  useEffect(() => {
-    async function loadPushNotifications() {
-      if (!user) return
-
-      try {
-        setPushLoading(true)
-
-        // Verificar soporte del navegador
-        const supported = typeof window !== 'undefined' &&
-          'Notification' in window &&
-          'serviceWorker' in navigator &&
-          'PushManager' in window
-
-        const permission = supported ? Notification.permission : 'denied'
-
-        // Cargar configuración via API
-        const response = await fetch(`/api/profile/notification-settings?userId=${user.id}`)
-        const result = await response.json()
-
-        if (!result.success || !result.data || !result.data.id) {
-          // No existe configuración, usar valores por defecto
-          setPushNotifications({
-            supported,
-            permission,
-            enabled: false,
-            subscription: null,
-            settings: null
-          })
-        } else {
-          const settings = result.data
-          setPushNotifications({
-            supported,
-            permission,
-            enabled: settings.pushEnabled || false,
-            subscription: settings.pushSubscription || null,
-            settings: {
-              push_enabled: settings.pushEnabled,
-              push_subscription: settings.pushSubscription,
-              preferred_times: settings.preferredTimes,
-              timezone: settings.timezone,
-              frequency: settings.frequency,
-              oposicion_type: settings.oposicionType,
-              motivation_level: settings.motivationLevel
-            }
-          })
-        }
-      } catch (error) {
-        console.error('Error general cargando push notifications:', error)
-        const supported = typeof window !== 'undefined' &&
-          'Notification' in window &&
-          'serviceWorker' in navigator &&
-          'PushManager' in window
-        setPushNotifications({
-          supported,
-          permission: supported ? Notification.permission : 'denied',
-          enabled: false,
-          subscription: null,
-          settings: null
-        })
-      } finally {
-        setPushLoading(false)
-      }
-    }
-
-    loadPushNotifications()
   }, [user])
 
   // 🆕 CARGAR DATOS DE SUSCRIPCIÓN
@@ -1149,173 +1053,6 @@ function PerfilPageContent() {
 
     saveEmailPreferences(newPreferences)
   }
-
-  // 🆕 FUNCIONES PARA PUSH NOTIFICATIONS - VIA API TIPADA
-  const enablePushNotifications = async () => {
-    if (!pushNotifications.supported) {
-      setMessage('❌ Tu navegador no soporta notificaciones push')
-      setTimeout(() => setMessage(''), 3000)
-      return
-    }
-
-    setPushSaving(true)
-    try {
-      // Track permission request
-      await notificationTracker.trackPermissionRequested(user)
-
-      // Solicitar permiso
-      const permission = await Notification.requestPermission()
-
-      if (permission === 'granted') {
-        // Track permission granted
-        await notificationTracker.trackPermissionGranted(user)
-
-        // Registrar service worker
-        const registration = await navigator.serviceWorker.register('/sw.js')
-        await navigator.serviceWorker.ready
-
-        // Obtener o crear suscripción push
-        let subscription = await registration.pushManager.getSubscription()
-
-        if (!subscription) {
-          const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
-          subscription = await registration.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(vapidPublicKey || '')
-          })
-
-          // Track subscription created
-          await notificationTracker.trackSubscriptionCreated(user, subscription)
-        }
-
-        // Guardar en base de datos via API
-        const settingsData = {
-          pushEnabled: true,
-          pushSubscription: subscription.toJSON(),
-          preferredTimes: ['09:00', '14:00', '20:00'],
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          frequency: 'smart',
-          oposicionType: 'auxiliar-administrativo',
-          motivationLevel: 'medium'
-        }
-
-        const response = await fetch('/api/profile/notification-settings', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userId: user!.id,
-            data: settingsData
-          })
-        })
-
-        const result = await response.json()
-        if (!result.success) throw new Error(result.error || 'Error al guardar configuración')
-
-        // Track settings updated
-        await notificationTracker.trackSettingsUpdated(user, settingsData)
-
-        // Actualizar estado local
-        setPushNotifications(prev => ({
-          ...prev,
-          permission,
-          enabled: true,
-          subscription,
-          settings: {
-            push_enabled: true,
-            push_subscription: subscription.toJSON(),
-            preferred_times: ['09:00', '14:00', '20:00'],
-            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-            frequency: 'smart',
-            oposicion_type: 'auxiliar-administrativo',
-            motivation_level: 'medium'
-          }
-        }))
-
-        // Mostrar notificación de bienvenida
-        const welcomeNotification = new Notification('🎯 ¡Notificaciones activadas!', {
-          body: 'Te ayudaremos a mantener tu racha de estudio. ¡A por todas!',
-          icon: '/icon-192.png',
-          tag: 'welcome'
-        })
-
-        // Track notification sent
-        await notificationTracker.trackNotificationSent(user, {
-          type: 'welcome',
-          title: '🎯 ¡Notificaciones activadas!',
-          body: 'Te ayudaremos a mantener tu racha de estudio. ¡A por todas!',
-          tag: 'welcome'
-        })
-
-        setMessage('✅ Notificaciones push activadas correctamente')
-      } else {
-        // Track permission denied
-        await notificationTracker.trackPermissionDenied(user)
-        setMessage('❌ Permisos de notificación denegados')
-      }
-    } catch (error) {
-      console.error('Error enabling push notifications:', error)
-      setMessage('❌ Error al activar notificaciones push')
-    } finally {
-      setPushSaving(false)
-      setTimeout(() => setMessage(''), 3000)
-    }
-  }
-
-  const disablePushNotifications = async () => {
-    setPushSaving(true)
-    try {
-      // Actualizar en base de datos via API
-      const response = await fetch('/api/profile/notification-settings', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: user!.id,
-          data: { pushEnabled: false }
-        })
-      })
-
-      const result = await response.json()
-      if (!result.success) throw new Error(result.error || 'Error al desactivar notificaciones')
-
-      // Track subscription deleted (pasando usuario explícitamente)
-      await notificationTracker.trackSubscriptionDeleted(user)
-
-      // Track settings updated (pasando usuario explícitamente)
-      await notificationTracker.trackSettingsUpdated(user, { push_enabled: false })
-
-      // Actualizar estado local
-      setPushNotifications(prev => ({
-        ...prev,
-        enabled: false,
-        settings: { ...prev.settings, push_enabled: false }
-      }))
-
-      setMessage('✅ Notificaciones push desactivadas')
-    } catch (error) {
-      console.error('Error disabling push notifications:', error)
-      setMessage('❌ Error al desactivar notificaciones push')
-    } finally {
-      setPushSaving(false)
-      setTimeout(() => setMessage(''), 3000)
-    }
-  }
-
-  // Utility function para convertir VAPID key
-  function urlBase64ToUint8Array(base64String: string) {
-    const padding = '='.repeat((4 - base64String.length % 4) % 4)
-    const base64 = (base64String + padding)
-      .replace(/-/g, '+')
-      .replace(/_/g, '/')
-
-    const rawData = window.atob(base64)
-    const outputArray = new Uint8Array(rawData.length)
-
-    for (let i = 0; i < rawData.length; ++i) {
-      outputArray[i] = rawData.charCodeAt(i)
-    }
-    return outputArray
-  }
-
   // Función para extraer el primer nombre
   const getFirstName = (fullName: string | null | undefined) => {
     if (!fullName) return ''
@@ -1979,185 +1716,6 @@ function PerfilPageContent() {
   }
 
   // 🆕 COMPONENTE NOTIFICACIONES
-  const NotificationsTab = () => {
-    if (pushLoading || emailPrefLoading) {
-      return (
-        <div className="flex items-center justify-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <span className="ml-2 text-gray-600">Cargando configuración...</span>
-        </div>
-      )
-    }
-
-    return (
-      <div className="space-y-8">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">
-            🔔 Configuración de Notificaciones
-          </h3>
-          <p className="text-gray-600 dark:text-gray-300 mb-6">
-            Gestiona todas tus notificaciones en un solo lugar. Configura tanto las notificaciones push del navegador como los emails automáticos.
-          </p>
-        </div>
-
-        {/* NOTIFICACIONES PUSH */}
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6">
-          <div className="flex items-center space-x-3 mb-4">
-            <span className="text-2xl">📱</span>
-            <div>
-              <h4 className="text-lg font-semibold text-gray-800 dark:text-white">Notificaciones Push</h4>
-              <p className="text-sm text-gray-600 dark:text-gray-300">Recordatorios directos en tu navegador</p>
-            </div>
-          </div>
-
-          {!pushNotifications.supported ? (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-              <div className="flex items-center space-x-2 text-red-800">
-                <span>❌</span>
-                <span className="font-medium">Navegador no compatible</span>
-              </div>
-              <p className="text-red-700 text-sm mt-1">
-                Tu navegador no soporta notificaciones push. Prueba con Chrome, Firefox o Safari.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {/* Estado actual */}
-              <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 dark:border-gray-600 rounded-lg dark:bg-gray-700 p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h5 className="font-medium text-gray-800">
-                      Notificaciones Push
-                    </h5>
-                    <p className="text-sm text-gray-600 dark:text-gray-300">
-                      {pushNotifications.enabled 
-                        ? 'Recibirás recordatorios para mantener tu racha de estudio'
-                        : 'No recibirás notificaciones push en este navegador'
-                      }
-                    </p>
-                  </div>
-                  
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={pushNotifications.enabled}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          enablePushNotifications()
-                        } else {
-                          disablePushNotifications()
-                        }
-                      }}
-                      disabled={pushSaving}
-                      className="sr-only peer"
-                    />
-                    <div className="relative w-14 h-7 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:bg-blue-500 peer-disabled:opacity-50 transition-colors">
-                      <div className="absolute top-0.5 left-0.5 bg-white border border-gray-300 rounded-full h-6 w-6 transition-transform peer-checked:translate-x-7 flex items-center justify-center">
-                        {pushNotifications.enabled ? (
-                          <span className="text-xs text-blue-600">✓</span>
-                        ) : (
-                          <span className="text-xs text-gray-400">✕</span>
-                        )}
-                      </div>
-                    </div>
-                  </label>
-                </div>
-              </div>
-
-            </div>
-          )}
-        </div>
-
-        {/* NOTIFICACIONES POR EMAIL */}
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6">
-          <div className="flex items-center space-x-3 mb-4">
-            <span className="text-2xl">📧</span>
-            <div>
-              <h4 className="text-lg font-semibold text-gray-800">Emails de Vence</h4>
-              <p className="text-sm text-gray-600 dark:text-gray-300">Recibe alertas y noticias para tu oposición</p>
-            </div>
-          </div>
-
-          {/* Opción única simplificada */}
-          {/* Emails de Vence (marketing) */}
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg p-4 mb-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h5 className="font-medium text-gray-800 dark:text-white">Emails de Vence</h5>
-                <p className="text-sm text-gray-600 dark:text-gray-300">
-                  Reactivacion, bienvenida, motivacion, resumen semanal
-                </p>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={!emailPreferences.unsubscribed_all}
-                  onChange={(e) => handleEmailPrefChange('unsubscribed_all', !e.target.checked)}
-                  disabled={emailPrefSaving}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
-              </label>
-            </div>
-          </div>
-
-          {/* Emails de Soporte */}
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg p-4 mb-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h5 className="font-medium text-gray-800 dark:text-white">Soporte</h5>
-                <p className="text-sm text-gray-600 dark:text-gray-300">
-                  Respuestas a impugnaciones, soporte y renovacion
-                </p>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={!emailPreferences.email_soporte_disabled}
-                  onChange={(e) => handleEmailPrefChange('email_soporte_disabled', !e.target.checked)}
-                  disabled={emailPrefSaving}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
-              </label>
-            </div>
-          </div>
-
-          {/* Newsletter */}
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h5 className="font-medium text-gray-800 dark:text-white">Newsletter</h5>
-                <p className="text-sm text-gray-600 dark:text-gray-300">
-                  Boletines, alertas BOE, novedades de tu oposicion
-                </p>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={!emailPreferences.email_newsletter_disabled}
-                  onChange={(e) => handleEmailPrefChange('email_newsletter_disabled', !e.target.checked)}
-                  disabled={emailPrefSaving}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
-              </label>
-            </div>
-          </div>
-
-          {/* Estado de guardado de emails */}
-          {emailPrefSaving && (
-            <div className="flex items-center justify-center py-4">
-              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
-              <span className="ml-2 text-blue-600">Guardando preferencias de email...</span>
-            </div>
-          )}
-        </div>
-
-      </div>
-    )
-  }
-
   const EmailPreferencesTab = () => {
     if (emailPrefLoading) {
       return (
@@ -2311,12 +1869,11 @@ function PerfilPageContent() {
             </div>
           </div>
 
-          {/* Barra de estado flotante - Solo para email y push */}
-          {(emailPrefSaving || pushSaving) && (
+          {/* Barra de estado flotante - guardado preferencias email */}
+          {emailPrefSaving && (
             <div className="fixed top-4 right-4 z-50">
               <div className="bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg">
-                {emailPrefSaving ? '📧 Guardando preferencias...' :
-                 pushSaving ? '🔔 Configurando notificaciones...' : ''}
+                📧 Guardando preferencias...
               </div>
             </div>
           )}
@@ -2451,16 +2008,6 @@ function PerfilPageContent() {
                     }`}
                   >
                     ⚙️ General
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('notificaciones')}
-                    className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
-                      activeTab === 'notificaciones'
-                        ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                        : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
-                    }`}
-                  >
-                    🔔 Notificaciones
                   </button>
                   <button
                     onClick={() => setActiveTab('suscripcion')}
@@ -2842,9 +2389,6 @@ function PerfilPageContent() {
                   </div>
                 </div>
               )}
-
-              {/* 🆕 PESTAÑA DE NOTIFICACIONES */}
-              {activeTab === 'notificaciones' && <NotificationsTab />}
 
               {/* 🆕 PESTAÑA DE SUSCRIPCIÓN */}
               {activeTab === 'suscripcion' && <SubscriptionTab />}
