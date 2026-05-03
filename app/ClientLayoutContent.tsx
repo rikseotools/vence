@@ -4,7 +4,6 @@ import { ReactNode, useEffect } from 'react'
 import HeaderES from './Header'
 import FooterES from './Footer'
 // Breadcrumbs.js eliminado — InteractiveBreadcrumbs cubre todas las rutas
-import PushNotificationManager from '../components/PushNotificationManager'
 import OnboardingModal from '../components/OnboardingModal'
 import { useAuth } from '../contexts/AuthContext'
 import { useOposicion } from '../contexts/OposicionContext'
@@ -58,8 +57,6 @@ export default function ClientLayoutContent({ children }: { children: ReactNode 
       {/* Breadcrumbs eliminados del layout global — cada página usa InteractiveBreadcrumbs */}
       {children}
       <FooterES />
-
-      {/* PushNotificationManager desactivado — no usamos PWA/push actualmente */}
 
       {/* Modal de Onboarding solo para usuarios logueados */}
       {user && (
