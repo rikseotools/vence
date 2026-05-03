@@ -82,15 +82,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     <span>🎯</span>
                     <span>Engagement</span>
                   </a>
-                  <a 
-                    href="/admin/pwa" 
-                    className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1"
-                  >
-                    <span>📱</span>
-                    <span>PWA</span>
-                  </a>
-                  <a 
-                    href="/admin/notificaciones" 
+                  <a
+                    href="/admin/notificaciones"
                     className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1"
                   >
                     <span>🔔</span>
@@ -100,15 +93,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 
                 {/* Segunda fila */}
                 <div className="flex items-center justify-center flex-wrap gap-1">
-                  <a 
-                    href="/admin/notificaciones/push" 
-                    className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1"
-                  >
-                    <span>📱</span>
-                    <span>Push</span>
-                  </a>
-                  <a 
-                    href="/admin/notificaciones/email" 
+                  <a
+                    href="/admin/notificaciones/email"
                     className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1"
                   >
                     <span>📧</span>
