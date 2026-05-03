@@ -1,7 +1,7 @@
 # Vence — Architecture Roadmap a 100k+ usuarios
 
-> **Última actualización:** 2026-05-03 (mañana)
-> **Estado:** Fase 0 casi completa (0.1 trigger #7 NO-OP, 0.2 trigger #2 → debounced cron, 0.3 investigación pg_stat_statements + bug pool fix, 0.4 cache hot endpoints, 0.6 trigger #9 user_analytics simplificado). **Fase 1 Redis ✅ COMPLETA**. Pendiente: 0.5 verificar p95 con stats limpias tras 2-4h de tráfico (reset 2026-05-03 07:23 UTC). **Nueva auditoría 10k DAU** identificó 15 hard gaps; top 3 (JWT local verify, audit getDb→getAdminDb, TTL eventos) son candidatos para nueva **Fase 0.7**.
+> **Última actualización:** 2026-05-03 (tarde)
+> **Estado:** Fase 0 casi completa (0.1-0.6 hechas) + **Fase 1 Redis ✅ COMPLETA** + **Sprint 1 seguridad ✅ COMPLETO** (5 sub-sprints). Hoy: rotación password Supabase post-leak GitGuardian, custom domain auth.vence.es activado, One Tap nonce fix, sistema push completo retirado (12 fases, ~12k líneas eliminadas), 3 fugas de seguridad cerradas (assign_role, payout_transfers RLS, sentry-issues stack muerto). Pendiente: 0.5 verificar p95 producción, **Fase 0.7 (JWT local verify)** documentada como next big win, **Fase 11 push (DROP TABLES BD)** esperar 24-48h.
 > **Objetivo:** preparar Vence para escalar a 100k+ usuarios sin perder features ni romper nada
 > **Coste extra estimado total (Fases 0-3):** $10-40/mes
 > **Coste extra estimado total (Fases 0-5):** $50-150/mes
@@ -46,12 +46,25 @@ Este roadmap cambia la arquitectura **sin reescribir** el código, en 6 fases in
 
 | Fase | Estado | Duración | Coste mensual | Beneficio | Riesgo |
 |---|---|---|---|---|---|
-| **0 — Estabilizar** | 🟡 5/6 hechas (falta 0.5 verificación p95) | 1 sem | $0 | Resuelve timeouts actuales | Cero |
+| **0 — Estabilizar** | 🟡 6/7 hechas (falta 0.5 verificación p95). Fase 0.7 nueva (JWT local verify) pendiente | 1 sem | $0 | Resuelve timeouts actuales | Cero |
 | **1 — Redis cache** | ✅ COMPLETA (2026-05-02) | 1-2 sem | $10 | -80% load BD | Bajo |
 | **2 — Outbox pattern** | ⏳ Pendiente | 2-3 sem | $0 | Estabilidad escrituras | Medio |
-| **3 — Pool split / replica** | 🟡 Pool split parcial (`getDb` max:1 + `getAdminDb` max:4 ya existen). Read replica pendiente | 2-3 sem | $0-30 | Aislamiento OLTP/admin | Bajo |
+| **3 — Pool split / replica** | 🟡 Pool split parcial (`getDb` max:1 + `getAdminDb` max:4 ya existen, varios crons migrados). Read replica pendiente | 2-3 sem | $0-30 | Aislamiento OLTP/admin | Bajo |
 | **4 — Async queues** | ⏳ Pendiente | 1-2 sem | $0-20 | -50% writes BD principal | Medio |
 | **5 — Data warehouse** | ⏳ Pendiente | 3-6 sem | $30-100 | Analytics escalable | Bajo |
+
+## Sprint 1 seguridad/limpieza ✅ COMPLETO (2026-05-03)
+
+Trabajo paralelo a las 6 fases, gatillado por incidente GitGuardian (PostgreSQL URI leaked) + Database Linter Supabase warnings.
+
+| Sprint | Acción | Estado | Commit principal |
+|---|---|---|---|
+| **0** | Rotación password Supabase post-leak + custom domain `auth.vence.es` + One Tap nonce fix | ✅ Hecho | varios |
+| **1.1** | REVOKE EXECUTE `assign_role` FROM authenticated (defense in depth) | ✅ Hecho | `257a578b` |
+| **1.2** | DELETE stack admin sentry-issues (badge muerto, hook huérfano, endpoint sin callers) | ✅ Hecho | `2b1e2b9f` |
+| **1.3** | Sistema push completo retirado (12 fases): UI cliente + admin + endpoints + libs + tests + workflow + dependency npm + service worker NO-OP. **~12k líneas eliminadas**. Pendiente: Fase 11 DROP TABLES BD (esperar 24-48h sin código, backup previo) | 🟡 11/12 hechas | varios |
+| **1.4** | Audit `is_current_user_admin`: 10 callers legítimos (Header, UserAvatar, ProtectedRoute, finance/auth, 5 paneles admin). NO TOCAR. Función bien diseñada (boolean, sin side effects, callable por authenticated es by design) | ✅ Documentado | (sin cambio) |
+| **1.5** | Cierre RLS `payout_transfers` (DROP 2 policies USING true + REVOKE all anon/authenticated). Cierra fuga financiera severa post-refactor commit 25d9a175 | ✅ Hecho | `e9493d4c` |
 
 **Para 100k cómodo**: Fases 0-3 (3-6 semanas, ~$10-40/mes).
 **Para 1M+**: Fases 0-5 (3-6 meses, ~$50-150/mes).
@@ -489,3 +502,12 @@ Con esos 3 sobrevivimos hasta ~5-7k DAU. Para los últimos 3-5k DAU hace falta e
 | 2026-05-03 | Migrar `calculateBulkUserProfiles` (cron avatar) a `getAdminDb` + `maxDuration` 300s | Weekly Avatar Rotation falló 04:00 UTC con timeout 1m3s. Función procesa cientos de usuarios con 2 aggregate scans pesadas (extract hour + 8 SUMs por user) y usaba pool max:1, monopolizando conexiones. Mismo patrón que commit 76dc3ffb. |
 | 2026-05-03 | Reset `pg_stat_statements` post-deploy de optimizaciones | Stats acumulaban desde 2026-03-01 (2 meses). Medias mostraban 8.4s en queries que post-optimización corren en 50-160ms. Sin reset es imposible distinguir mejoras reales de fantasmas históricos. Manual `revisar-errores-fallos.md` actualizado con esta lección como "Trampa #1". |
 | 2026-05-03 | Auditoría 10k DAU añadida al roadmap como sección dedicada | Identificados 15 hard gaps en 3 niveles (5 críticos / 5 segunda capa / 5 menos críticos). Top 3: JWT local verify, audit getDb→getAdminDb, TTL eventos. Permite priorizar trabajo de Fase 0.7 (nueva) y completar Fases 1-3 con foco. |
+| 2026-05-03 | Rotación de password Supabase post-leak GitGuardian | Hardcoded DATABASE_URL en `__tests__/api/user-stats/userStatsSummary.test.ts` salió por git history → GitGuardian alert. Fix: REQUIRE env var (no fallback). Lambdas warm en Vercel mantuvieron pool con password viejo ~1h hasta reciclado → SASL_SIGNATURE_MISMATCH transitorio. Lección documentada: tras rotar password siempre force-redeploy en Vercel. |
+| 2026-05-03 | Activar Supabase Custom Domain `auth.vence.es` ($10/mes) | Quitar el project ID del consent screen de Google OAuth. Mejora confianza de signup. Configurado vía CNAME, propaga PostgREST/Auth/Storage transparente. **Solo en producción** (Vercel env vars) — NO en `.env.local` para evitar problemas de scope cookies/CORS en dev. |
+| 2026-05-03 | Fix One Tap nonce: generar nonce + SHA-256, pasar hash a `Google.accounts.id.initialize` y raw a `signInWithIdToken` | FedCM exige nonce verificable en el id_token. Sin esto, signInWithIdToken rechaza el token con "nonce mismatch". `components/GoogleOneTap.js` actualizado con `crypto.subtle.digest('SHA-256', ...)`. |
+| 2026-05-03 | Retirada COMPLETA del sistema push notifications (12 fases, ~12k líneas) | "Push es invasivo, los users prefieren email" (decisión de producto). Fases: workflow GH Actions desactivado → broadcast schema solo email → admin pages eliminadas → endpoints push DELETE → libs/services + tests + npm dep `web-push` + service worker NO-OP self-unregister. Pendiente solo Fase 11: DROP TABLES (`user_notification_settings`, `notification_events/logs/metrics/templates`, `user_notification_metrics` + 2 views) — esperar 24-48h sin código nuevo, backup previo. |
+| 2026-05-03 | REVOKE EXECUTE `assign_role(uuid,text)` FROM authenticated | Defense in depth post-Linter Supabase. La función ya tenía guard interno (`is_current_user_admin()`), pero quitar el grant a authenticated reduce blast radius. service_role mantiene acceso por bypass RLS. |
+| 2026-05-03 | DELETE stack admin sentry-issues (badge + hook + endpoint) | Audit reveló 0 callers reales. Badge en Header, hook `useSentryIssues`, endpoint `/api/admin/sentry-issues` huérfanos. -230 líneas. Sentry sigue activo via `@sentry/nextjs`, solo eliminada la integración admin custom. |
+| 2026-05-03 | Cierre RLS `payout_transfers` (DROP 2 policies USING(true) + REVOKE all anon/authenticated) | Cierre del refactor 25d9a175 (2 may): `/armando` y `/admin/cobros` ahora son server-side con service_role. Auditado: 0 callers de Supabase JS browser sobre la tabla, 0 queries en `pg_stat_statements` desde reset. Migración `20260503_payout_transfers_close_rls.sql` aplicada. Cierra **fuga financiera severa** (datos de payouts eran legibles por anon). |
+| 2026-05-03 | Audit `is_current_user_admin()` → NO TOCAR | 10 callers legítimos (Header badges, UserAvatar, ProtectedRoute, finance/auth, 5 paneles admin). Función bien diseñada: returns boolean, sin side effects, `EXECUTE TO authenticated` es by design (los users normales reciben `false`). Documentado en Sprint 1.4 para no re-auditar. |
+| 2026-05-03 | BOE cron `check-boe-changes` — time budget guard 50s | 504 timeout a las 11:21 UTC: cuando BOE va lento, fetches caen al timeout 10s × 42 chunks > 60s `maxDuration`. Fix: break del loop si `Date.now() - startTime > 50s`, log `⚠️ parcial (time budget)`. Las leyes pendientes las recoge el siguiente run (filtro `last_checked < hoy` ya existe). Riesgo 0, graceful degradation. |

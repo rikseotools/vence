@@ -81,7 +81,19 @@ async function _GET(request: NextRequest): Promise<NextResponse<CheckBoeChangesR
     // Con chunk=10 el tiempo total queda dominado por la ley más lenta de
     // cada chunk, no por la suma. Para 337 leyes son ~34 chunks × ~1s
     // peor-caso = ~34 segundos. Muy por debajo del maxDuration=60s.
+    //
+    // Time budget: si el BOE va lento y muchos fetches caen al timeout 10s,
+    // los chunks crecen y el cron puede pasarse de 60s → 504. Cortamos
+    // a los 50s y dejamos las leyes pendientes al próximo run (el filtro
+    // last_checked < hoy en getLawsForBoeCheck se encarga de retomarlas).
+    let stoppedEarly = false
     for (let i = 0; i < lawsToCheck.length; i += CHUNK_SIZE) {
+      if (Date.now() - startTime > 50_000) {
+        const remaining = lawsToCheck.length - i
+        console.log(`⏱️ [BOE] Time budget hit a los ${((Date.now() - startTime) / 1000).toFixed(1)}s, ${remaining} leyes pendientes para próximo run`)
+        stoppedEarly = true
+        break
+      }
       const chunk = lawsToCheck.slice(i, i + CHUNK_SIZE)
       const chunkStart = Date.now()
       const results = await Promise.allSettled(
@@ -107,7 +119,7 @@ async function _GET(request: NextRequest): Promise<NextResponse<CheckBoeChangesR
     const durationFormatted = `${(duration / 1000).toFixed(1)}s`
 
     console.log(
-      `✅ [BOE] Verificación completada: ${stats.checked} leyes, ${stats.changesDetected} cambios, ${durationFormatted}`
+      `${stoppedEarly ? '⚠️' : '✅'} [BOE] Verificación ${stoppedEarly ? 'parcial (time budget)' : 'completada'}: ${stats.checked}/${lawsToCheck.length} leyes, ${stats.changesDetected} cambios, ${durationFormatted}`
     )
     console.log(
       `📊 [BOE] Detalle: ${stats.headUnchanged} sin cambio (HEAD), ${stats.sizeChangeDetected} por cambio de tamaño, ${stats.partial + stats.cachedOffset} parciales, ${stats.fullDownload} completas, ${stats.errors} errores`
