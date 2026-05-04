@@ -120,32 +120,56 @@ async function _POST(request: NextRequest) {
       )
     }
 
-    console.log(`📝 [API/v2/official-exams/complete] Completing test ${testId}`)
+    console.log(`📝 [API/v2/official-exams/complete] Completing test ${testId} (${results.length} questions)`)
 
-    // 4. Update test_questions with validation results
-    // Results format: { questionOrder, isCorrect, correctAnswer, userAnswer, questionType }
-    let updatedCount = 0
-    for (const result of results) {
-      const { questionOrder, isCorrect, correctAnswer, userAnswer } = result
+    // 4. Batch UPDATE de test_questions con UPDATE ... FROM (VALUES ...).
+    //
+    // Refactor 2026-05-04 (incidente 504 a 300s): el patrón anterior de N
+    // UPDATEs secuenciales era O(N) round-trips a Postgres. Con pool max:1
+    // y un examen oficial de 100 questions: ~50ms × 100 = 5s mínimo, y bajo
+    // contención de pool llegaba a 300s (timeout del endpoint). Los users
+    // perdían el examen completado.
+    //
+    // El UPDATE batch lo hace en 1 query: Postgres planea un Hash Join
+    // entre la VALUES inline (small) y test_questions filtrado por test_id
+    // (índice por test_id existe). Coste estimado: 1 round-trip + ~50ms
+    // server-side independiente de N (hasta el chunk_size).
+    //
+    // Chunking de 500: límite preventivo de parámetros Postgres (PostgREST
+    // permite hasta 32k params; con 4 params/row × 500 rows = 2k params,
+    // muy debajo del límite, pero deja margen para crecer y para crear el
+    // SQL string sin que se vuelva enorme). Exámenes oficiales reales son
+    // 50-200 questions; chunk_size=500 = 1 chunk en práctica casi siempre.
+    //
+    // Telemetría: log con timing para detectar regresiones.
+    const startedUpdate = Date.now()
+    const CHUNK_SIZE = 500
+    let totalUpdated = 0
 
-      await db
-        .update(testQuestions)
-        .set({
-          isCorrect: isCorrect || false,
-          correctAnswer: correctAnswer || '',
-          userAnswer: userAnswer || '',
-        })
-        .where(
-          and(
-            eq(testQuestions.testId, testId),
-            eq(testQuestions.questionOrder, questionOrder)
-          )
-        )
+    for (let offset = 0; offset < results.length; offset += CHUNK_SIZE) {
+      const chunk = results.slice(offset, offset + CHUNK_SIZE)
 
-      updatedCount++
+      const valuesSql = sql.join(
+        chunk.map((r: { questionOrder: number; isCorrect?: boolean; correctAnswer?: string; userAnswer?: string }) =>
+          sql`(${r.questionOrder}::int, ${r.isCorrect || false}::boolean, ${r.correctAnswer || ''}::text, ${r.userAnswer || ''}::text)`
+        ),
+        sql`, `
+      )
+
+      await db.execute(sql`
+        UPDATE test_questions AS tq SET
+          is_correct = u.is_correct,
+          correct_answer = u.correct_answer,
+          user_answer = u.user_answer
+        FROM (VALUES ${valuesSql}) AS u(question_order, is_correct, correct_answer, user_answer)
+        WHERE tq.test_id = ${testId}::uuid
+          AND tq.question_order = u.question_order
+      `)
+
+      totalUpdated += chunk.length
     }
 
-    console.log(`✅ [API/v2/official-exams/complete] Updated ${updatedCount} questions`)
+    console.log(`✅ [API/v2/official-exams/complete] Batch updated ${totalUpdated} questions in ${Date.now() - startedUpdate}ms (${Math.ceil(results.length / CHUNK_SIZE)} chunk${results.length > CHUNK_SIZE ? 's' : ''})`)
 
     // 5. Calculate final stats
     const answeredQuestions = results.filter(
