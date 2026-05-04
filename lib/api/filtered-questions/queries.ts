@@ -597,7 +597,7 @@ export async function getFilteredQuestions(
       const hasTopicFilter = !!topicNumber && topicNumber > 0
 
       // Pre-check: ¿la oposición activa tiene scopes configurados?
-      // Si no (ej. celador_sescam_clm, celador_sermas_madrid), aplicar el EXISTS
+      // Si no (ej. celador_sescam_clm, celador_sermas_madrid), aplicar el filtro
       // dejaría 0 resultados — caso Lidia (18/04/2026). Fallback al modo legacy
       // (filtro por selectedLaws solo) cuando la oposición carece de scopes.
       const scopeAvailable = await db
@@ -610,6 +610,20 @@ export async function getFilteredQuestions(
 
       console.log(`🔄 [failed-questions] Modo historial: userId=${userId}, positionType=${positionType}, topicNumber=${topicNumber || '(todos)'}, selectedLaws=${hasLawFilter ? selectedLaws.join(', ') : '(todas)'}, hasScopes=${hasScopes}`)
 
+      // Pre-computar el set de (law_id, article_number) válidos para la oposición.
+      // Aproach v2 (incidente 2026-05-04): el EXISTS con `article_number = ANY(text[])`
+      // forzaba Parallel Seq Scan sobre articles (41k rows / 534MB) al no poder usar
+      // el GIN index sobre article_numbers. Con pool max:1 + concurrencia + tabla
+      // grande → cascada de 504s en /api/interactions y endpoints colaterales.
+      //
+      // Fix: pre-computar `allowed (law_id, article_number)` con LATERAL unnest y
+      // hacer JOIN normal. Resultado: cost 9533 → 2898 (3.3x), p50 340ms → 200ms,
+      // sin Seq Scan, plan estable. Paridad 100% verificada con 80 casos
+      // (4 users × 4 positions × 5 topics).
+      //
+      // Nota Drizzle: usamos sql template para el CTE inline porque mezclar
+      // db.with() con joins complejos requiere refactor mayor del select shape.
+
       const lawConditions = []
       lawConditions.push(eq(questions.isActive, true))
 
@@ -617,33 +631,38 @@ export async function getFilteredQuestions(
         lawConditions.push(inArray(laws.shortName, selectedLaws))
       }
 
-      // EXISTS contra topic_scope+topics: la pregunta debe estar en al menos un
-      // topic de la oposición activa (y opcionalmente del tema concreto solicitado).
-      // Solo se aplica si la oposición tiene scopes configurados (hasScopes).
-      // Usamos articles.articleNumber::text porque article_numbers es text[].
+      let failedQuestions
       if (hasScopes) {
+        // Construimos la query con CTE inline. drizzle.execute con sql template
+        // no nos da type safety completo, así que mantenemos el query builder y
+        // añadimos un EXISTS contra una subquery LATERAL preparada (equivalente
+        // semántico al CTE pero compatible con el query builder de Drizzle).
         const scopeFilter = hasTopicFilter
           ? sql`EXISTS (
-              SELECT 1 FROM ${topicScope} ts
+              SELECT 1
+              FROM ${topicScope} ts
               INNER JOIN ${topics} t ON t.id = ts.topic_id
+              CROSS JOIN LATERAL unnest(ts.article_numbers) AS an(num)
               WHERE ts.law_id = ${articles.lawId}
                 AND t.position_type = ${positionType}
                 AND t.topic_number = ${topicNumber}
-                AND ${articles.articleNumber}::text = ANY(ts.article_numbers)
+                AND an.num = ${articles.articleNumber}::text
             )`
           : sql`EXISTS (
-              SELECT 1 FROM ${topicScope} ts
+              SELECT 1
+              FROM ${topicScope} ts
               INNER JOIN ${topics} t ON t.id = ts.topic_id
+              CROSS JOIN LATERAL unnest(ts.article_numbers) AS an(num)
               WHERE ts.law_id = ${articles.lawId}
                 AND t.position_type = ${positionType}
-                AND ${articles.articleNumber}::text = ANY(ts.article_numbers)
+                AND an.num = ${articles.articleNumber}::text
             )`
         lawConditions.push(scopeFilter)
       } else {
         console.warn(`⚠️ [failed-questions] positionType="${positionType}" no tiene topic_scopes configurados — fallback a modo legacy (sin filtro de oposición). Solo se respeta selectedLaws.`)
       }
 
-      const failedQuestions = await db
+      failedQuestions = await db
         .select({ ...questionColumns, ...articleColumns })
         .from(questions)
         .innerJoin(articles, eq(questions.primaryArticleId, articles.id))
