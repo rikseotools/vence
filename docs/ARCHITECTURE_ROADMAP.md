@@ -192,19 +192,59 @@ Trabajo paralelo a las 6 fases, gatillado por incidente GitGuardian (PostgreSQL 
 
 **Objetivo:** aislar lecturas pesadas de escrituras críticas.
 
-**Pool split (sin replica, $0):**
+### ⚠️ TRAMPA HISTÓRICA — leer ANTES de tocar `max:` en `db/client.ts`
+
+**No subir `max` del pool sin read replica. Reproduce el incidente del 27 abril 2026.**
+
+Cronología documentada:
+- **Pre-27 abr**: `max:1` original. p99 `/api/answer` 12-20s con queries concurrentes (cola en pool max:1)
+- **~26 abr (commit `f7c506cf`)**: subido a `max:3` para arreglar los 12-20s
+- **27 abr 16:10 (commit `ccd991cb`)**: bajado de vuelta a `max:1` tras **261 events de pool exhaustion** ("reduce DB pool pressure")
+
+**Por qué falló subir el pool sin replica:**
+
+```
+Vercel Fluid: cada lambda activa tiene su propio pool con `max` conexiones
+Pico de tráfico: ~100-500 lambdas concurrentes
+Si max=3 → 200 lambdas × 3 = 600 conexiones permanentes al pooler Supavisor
+Supabase Pro: max_connections=90 en Postgres, Supavisor multiplexa pero también tiene límites
+Resultado: pooler exhausted → CONNECT_TIMEOUT en lambdas nuevas → cascada
+```
+
+**No es un problema de "lecturas vs escrituras"** — todos los pools del cliente llegan al MISMO pooler físico de Supabase. Subir `max` en cualquiera de ellos consume slots compartidos.
+
+**Implicación crítica para `getReadDb`:**
+
+Si HOY se sube `getReadDb` a `max:4` SIN read replica:
+- Por lambda: getDb max:1 + getReadDb max:4 + getAdminDb max:4 = **9 conn/lambda**
+- 200 lambdas × 9 = **1800 conexiones** → revienta el pooler igual que el 27 abr (peor)
+
+**Las 4 únicas formas de subir el pool sin reproducir el incidente:**
+
+| # | Opción | Coste | Notas |
+|---|---|---|---|
+| A | **Read Replica Supabase** | +$30/mes | La replica tiene su propio pooler. `getReadDb` apunta ahí. Lecturas no compiten con OLTP. **Esta es la solución profesional escalable.** |
+| B | Subir plan a Compute Large | +$60-100/mes | `max_connections` 90 → 200+. Brute force, sin separación read/write. |
+| C | Migrar a Supavisor "session" mode | $0 | Reusa conexiones más agresivamente. Pero pierdes prepared statements compatibility. Testing alto. |
+| D | NO subir el pool. Bajar latencia de queries | $0 | Si las queries son rápidas, max:1 sirve más requests/segundo. **Es lo que hicimos 4-5 may con 3 commits.** |
+
+### Pool split (HOY, sin coste extra adicional)
+
 ```typescript
 getWriteDb()  → max:1, timeout 5s   // ⏳ PENDIENTE — hoy `getDb()` cubre lectura+escritura
-getReadDb()   → max:1, timeout 3s   // ⏳ PENDIENTE
+getReadDb()   → max:1, timeout 3s   // ⏳ PENDIENTE — separar API ergonómicamente, NO subir max sin replica
 getAdminDb()  → max:4, timeout 60s  // ✅ HECHO — usado por crons (3 migrados commit 76dc3ffb + avatar 2026-05-03)
 ```
 
-Una stats lenta no bloquea un INSERT de respuesta.
+**Valor del split sin replica**: ergonomía de código (API explícita read-only vs write) + statement_timeout más estricto en reads. **NO da más concurrencia** porque ambos siguen contra el primario con `max:1`.
 
-**Read replica (decisión de negocio, ~$30/mes extra):** ⏳ PENDIENTE
+### Read replica (decisión de negocio, ~$30/mes extra) ⏳ PENDIENTE
+
 - Supabase Pro permite 1 read replica
 - `getReadDb()` apunta a la replica → admin/stats no compiten con OLTP
-- Latencia: ~100ms behind primary (acceptable)
+- **La replica tiene SU PROPIO pooler** → puedes subir `getReadDb` a `max:4` sin tocar slots del primario
+- Latencia: ~100ms behind primary (acceptable para stats/catálogos, no para POST de respuestas)
+- **Es el prerrequisito para realmente escalar más allá de los workarounds de baja latencia**
 
 ---
 
@@ -487,7 +527,7 @@ Estimación honesta de qué REVENTARÍA a 10k DAU si no hacemos nada. Distinto d
 | 2 | **Pool max:1 en endpoints/crons que deberían usar `getAdminDb` (max:4)** — 3 crons migrados (commit 76dc3ffb) + 1 hoy (avatar). Faltan auditar el resto. Cada cron lento con `getDb` monopoliza el pool de usuarios → cascada 504 | 3-5k DAU | 2-3h auditoría + N migraciones triviales | Alto |
 | 3 | **Cron batch LIMIT 100 vs tasa de inserción** — hoy 28k procesados/día sobra; a 10k DAU son 1M inserciones → 1M `stats_dirty` marks → backlog crece +972k/día. Subir LIMIT a 1000 o cron 1min, validar que no causa lock contention (incidente 2 may 17:14 fue por esto con LIMIT 500) | 5-7k DAU | 1h ajuste + monitorización | Medio |
 | 4 | **Tablas grandes sin partitioning ni TTL** — test_questions 2.2 GB → 30 GB/mes a 10k DAU. validation_error_logs / notification_events / email_events crecen sin parar. Quick wins: TTL >90 días en eventos. Estructural: partitioning declarativo de test_questions por mes (ya en Fase 3 roadmap) | 5-7k DAU para TTL, 7-10k para partitioning | TTL = 1h, partitioning = 4-8h | Alto a medio plazo |
-| 5 | **NO hay read replica** — todo va al primario. Reads de stats/catálogos compiten con INSERTs/UPDATEs por IO. Endpoints SOLO lectura (user-stats, exam/pending, ranking, theme-stats, catálogos) deberían usar réplica. Ya mencionado en Fase 3 del roadmap | 5-7k DAU (saturación primario) | 1-2 días | Crítico para últimos 3-5k DAU |
+| 5 | **NO hay read replica** — todo va al primario. Reads de stats/catálogos compiten con INSERTs/UPDATEs por IO. Endpoints SOLO lectura (user-stats, exam/pending, ranking, theme-stats, catálogos) deberían usar réplica. **PRERREQUISITO REAL para subir `getReadDb` max** — sin replica, subir el pool reproduce el incidente del 27 abr (ver "TRAMPA HISTÓRICA" en Fase 3) | 5-7k DAU (saturación primario) | 1-2 días | Crítico para últimos 3-5k DAU |
 
 ### 🟡 Top 5 segunda capa (necesarios pero no urgentes)
 
@@ -565,3 +605,7 @@ Con esos 3 sobrevivimos hasta ~5-7k DAU. Para los últimos 3-5k DAU hace falta e
 | 2026-05-03 | Audit `is_current_user_admin()` → NO TOCAR | 10 callers legítimos (Header badges, UserAvatar, ProtectedRoute, finance/auth, 5 paneles admin). Función bien diseñada: returns boolean, sin side effects, `EXECUTE TO authenticated` es by design (los users normales reciben `false`). Documentado en Sprint 1.4 para no re-auditar. |
 | 2026-05-03 | BOE cron `check-boe-changes` — time budget guard 50s | 504 timeout a las 11:21 UTC: cuando BOE va lento, fetches caen al timeout 10s × 42 chunks > 60s `maxDuration`. Fix: break del loop si `Date.now() - startTime > 50s`, log `⚠️ parcial (time budget)`. Las leyes pendientes las recoge el siguiente run (filtro `last_checked < hoy` ya existe). Riesgo 0, graceful degradation. |
 | 2026-05-03 | Investigación a fondo de Fase 0.7 (JWT verify) — pausada para sesión dedicada | 24 warnings/h `answer-and-save` 2-4s persistentes pese a Fases 0.1/0.2/0.6. Trace confirma cuello principal en `supabase.auth.getUser()` (250-1000ms) — NO triggers. Fase 0.7 daría p50 1.5s→0.5s, p99 4s→1.5s. Riesgos analizados (algorithm confusion, banned users, key rotation, custom claims) — no eliminables 100%. **Decisión: NO empezar tarde/cansado/viernes en código crítico de seguridad**. Sección "Fase 0.7" del roadmap ampliada con plan completo. Memo `vence_jwt_local_verify_phase07.md`. |
+| 2026-05-04 | Fix `/api/questions/filtered` 504s — LATERAL unnest en EXISTS | Cascadas 504 en producción (16:33, 18:27, 19:41 UTC) afectaban `/api/interactions`, `weak-articles`, `exam/validate`. Causa raíz: query introducido en `a54fc8c1` (fix Isabel) hacía `articles.article_number = ANY(ts.article_numbers)` forzando Parallel Seq Scan sobre articles 41k rows / 534MB. Fix: CROSS JOIN LATERAL unnest → HashAggregate one-shot. Verificado paridad 100% en 100 tests, speedup 1.66x. Commit `58fd5d1a`. |
+| 2026-05-04 | Fix pgvector — añadir `extensions` al search_path en 4 funciones | Bug recurrente en `/api/ai/chat-v2` (7 ocurrencias 12h): `operator does not exist: extensions.vector <=> extensions.vector`. Causa: post-migración pgvector a schema `extensions`, las funciones `hybrid_search_articles`, `match_articles`, `match_help_articles`, `match_knowledge_base` quedaron con `SET search_path TO 'public', 'pg_temp'` hardcoded. Bug silencioso (200 OK con catch) → calidad chat AI degradada sin que user lo perciba. Migración `20260504_fix_pgvector_search_path.sql`. Commit `aee191d8`. |
+| 2026-05-04 | Fix `/api/v2/official-exams/complete` 504 — batch UPDATE test_questions | 504 a 300s en flujo crítico (completar examen oficial). Causa: N UPDATEs secuenciales sobre test_questions (1 por pregunta). Para 182 questions: 7587ms en BD prod. Fix: 1 UPDATE batch con `UPDATE ... FROM (VALUES ...)` + chunking 500. Verificado paridad 100% en 182 rows, speedup **47.7x** (7587ms → 159ms). Edge cases OK. Scope: solo step 4; UPSERTs de user_history (steps 7+8) sin tocar (sueltan pool entre cada uno, contribuyen menos). Commit `ef60f619`. |
+| 2026-05-05 | Documentar TRAMPA HISTÓRICA del pool max — NO subir sin read replica | Investigación del incidente del 27 abr 2026: max:1 → max:3 → 261 events de pool exhaustion → max:1 de vuelta. Razón: Vercel Fluid 200 lambdas × 3 conn = 600 conexiones permanentes vs `max_connections=90` de Postgres + límites Supavisor. Implicación: subir `getReadDb` a max:4 sin read replica reproduciría el bug peor (9 conn/lambda). Sección "Fase 3" ampliada con bloque "TRAMPA HISTÓRICA" + 4 opciones reales (read replica $30/mes, Compute Large $60+, session mode $0 alta complejidad, NO subir y bajar latencia $0). Hard Gap #5 actualizado para destacar prerrequisito. **No requiere código — solo doc para evitar que futuras sesiones (humanas o IA) caigan en la trampa.** |
