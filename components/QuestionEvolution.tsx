@@ -210,23 +210,76 @@ export function calcularRachaMaximaIncorrecta(history: HistoryEntry[]): number {
 }
 
 /**
- * Determina el tipo de evolución comparando los últimos dos intentos.
+ * Determina el tipo de evolución del usuario en una pregunta concreta.
+ *
+ * **Contrato del array `history`:**
+ * Contiene los intentos del usuario sobre esta pregunta REGISTRADOS EN BD ANTES
+ * del intento que se está renderizando. NO incluye el intento actual (que en el
+ * flujo real aún no se ha persistido — `answerSaveQueue` es asíncrono;
+ * ver `TestLayout.tsx`/`DynamicTest.tsx`).
+ *
+ * Por tanto:
+ * - `history.length === 0` ⇒ es la PRIMERA vez que el usuario ve la pregunta.
+ * - `history.length === 1` ⇒ es la SEGUNDA vez (1 intento ya guardado + el actual).
+ * - `history.length === N` ⇒ es la (N+1).ª vez.
+ *
+ * Si `currentResult` viene definido, se compara el último intento previo con el
+ * resultado actual (mejora / retroceso / consistente / etc.). Si `currentResult`
+ * es null o undefined (caso renderizado sin pregunta activa, p.ej. revisión
+ * post-examen), se cae al modo legacy: comparar penúltimo vs último del historial.
+ *
  * Cubre las 9 transiciones posibles (3 estados x 3): correct/incorrect/blank.
  */
 export function determinarTipoEvolucion(
-  history: HistoryEntry[]
+  history: HistoryEntry[],
+  currentResult?: CurrentResult | null,
 ): { tipo: EvolutionType; mensaje: string; icono: string; color: EvolutionColor } {
   const total = history.length
+
   if (total === 0) {
     return { tipo: 'primera_vez', mensaje: 'Primera vez que ves esta pregunta', icono: '🆕', color: 'blue' }
   }
-  if (total === 1) {
-    const unico = history[0]
-    const t = clasificarIntento(unico)
-    if (t === 'blank') {
-      return { tipo: 'blanco_reciente', mensaje: 'La dejaste en blanco la primera vez', icono: '⚪', color: 'gray' }
+
+  // Hay al menos 1 intento previo — comparar último previo vs intento actual (si existe)
+  if (currentResult) {
+    const ultimo = clasificarIntento({ is_correct: currentResult.is_correct ?? false, was_blank: currentResult.was_blank ?? false })
+    const penultimo = clasificarIntento(history[history.length - 1])
+    const aciertos = history.filter(h => clasificarIntento(h) === 'correct').length + (ultimo === 'correct' ? 1 : 0)
+    const totalConActual = total + 1
+
+    // Transiciones (penultimo → ultimo)
+    if (penultimo === 'blank' && ultimo === 'correct') {
+      return { tipo: 'mejora_desde_blanco', mensaje: 'Antes no la sabías, ahora la has acertado. ¡Bien!', icono: '🎉', color: 'green' }
     }
-    return { tipo: 'primera_vez', mensaje: 'Primera vez que ves esta pregunta', icono: '🆕', color: 'blue' }
+    if (penultimo === 'incorrect' && ultimo === 'correct') {
+      return { tipo: 'mejora', mensaje: '¡Progreso! Antes fallaste, ahora acertaste', icono: '🎉', color: 'green' }
+    }
+    if (penultimo === 'correct' && ultimo === 'blank') {
+      return { tipo: 'retroceso_a_blanco', mensaje: 'Antes la sabías, ahora la dejaste en blanco. Repásala', icono: '⚠️', color: 'orange' }
+    }
+    if (penultimo === 'correct' && ultimo === 'incorrect') {
+      return { tipo: 'retroceso', mensaje: 'Antes acertaste, ahora fallaste', icono: '⚠️', color: 'orange' }
+    }
+    if (ultimo === 'correct') {
+      return { tipo: 'consistente_correcto', mensaje: `Siempre aciertas esta pregunta (${aciertos}/${totalConActual})`, icono: '✅', color: 'green' }
+    }
+    if (ultimo === 'blank') {
+      return { tipo: 'consistente_blanco', mensaje: `Sigues sin saberla (${aciertos}/${totalConActual} aciertos)`, icono: '⚪', color: 'gray' }
+    }
+    // ultimo === 'incorrect'
+    return { tipo: 'consistente_incorrecto', mensaje: `Sigues fallando esta pregunta (${aciertos}/${totalConActual})`, icono: '❌', color: 'red' }
+  }
+
+  // Modo legacy: sin currentResult, usar penúltimo vs último del historial
+  if (total === 1) {
+    const unico = clasificarIntento(history[0])
+    if (unico === 'blank') {
+      return { tipo: 'blanco_reciente', mensaje: 'La dejaste en blanco la última vez', icono: '⚪', color: 'gray' }
+    }
+    if (unico === 'correct') {
+      return { tipo: 'consistente_correcto', mensaje: 'La acertaste la última vez', icono: '✅', color: 'green' }
+    }
+    return { tipo: 'consistente_incorrecto', mensaje: 'La fallaste la última vez', icono: '❌', color: 'red' }
   }
 
   const penultimo = clasificarIntento(history[history.length - 2])
@@ -234,7 +287,6 @@ export function determinarTipoEvolucion(
 
   const aciertos = history.filter(h => clasificarIntento(h) === 'correct').length
 
-  // Transiciones (penultimo → ultimo)
   if (penultimo === 'blank' && ultimo === 'correct') {
     return { tipo: 'mejora_desde_blanco', mensaje: 'Antes no la sabías, ahora la has acertado. ¡Bien!', icono: '🎉', color: 'green' }
   }
@@ -425,14 +477,18 @@ function calcularEstadisticasAvanzadas(history: HistoryEntry[]): EstadisticasAva
   }
 }
 
-export function calcularEvolucionCompleta(history: HistoryEntry[], questionStats: QuestionStats | null = null): EvolutionData {
+export function calcularEvolucionCompleta(
+  history: HistoryEntry[],
+  questionStats: QuestionStats | null = null,
+  currentResult?: CurrentResult | null,
+): EvolutionData {
   const total = history.length
   const aciertos = history.filter(h => clasificarIntento(h) === 'correct').length
   const blancos = history.filter(h => clasificarIntento(h) === 'blank').length
   const fallos = total - aciertos - blancos
   const tasaAciertos = total > 0 ? Math.round((aciertos / total) * 100) : 0
 
-  const evo = determinarTipoEvolucion(history)
+  const evo = determinarTipoEvolucion(history, currentResult)
 
   return {
     tipoEvolucion: evo.tipo,
@@ -531,7 +587,8 @@ export default function QuestionEvolution({ userId, questionId, currentResult }:
 
         const evo = calcularEvolucionCompleta(
           historialCompleto,
-          (questionStats ?? null) as QuestionStats | null
+          (questionStats ?? null) as QuestionStats | null,
+          currentResult ?? null,
         )
         setEvolutionData(evo)
       } catch (err) {

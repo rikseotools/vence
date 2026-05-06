@@ -139,16 +139,27 @@ describe('calcularRachaMaximaIncorrecta — solo fallos reales (blanco no cuenta
   })
 })
 
-describe('determinarTipoEvolucion — mensajes por transición', () => {
-  test('primera vez con blanco → "blanco_reciente"', () => {
+describe('determinarTipoEvolucion — modo legacy (sin currentResult)', () => {
+  // Modo legacy: cuando el componente se renderiza sin pregunta activa
+  // (revisión post-examen, etc.), comparamos penúltimo vs último del historial.
+  test('history vacío → "primera_vez"', () => {
+    const r = determinarTipoEvolucion([])
+    expect(r.tipo).toBe('primera_vez')
+  })
+  test('1 previo blanco (sin current) → "blanco_reciente"', () => {
     const r = determinarTipoEvolucion([mkEntry({ correct: false, blank: true })])
     expect(r.tipo).toBe('blanco_reciente')
     expect(r.color).toBe('gray')
-    expect(r.icono).toBe('⚪')
   })
-  test('primera vez acertando → "primera_vez"', () => {
+  test('1 previo acertado (sin current) → "consistente_correcto"', () => {
     const r = determinarTipoEvolucion([mkEntry({ correct: true })])
-    expect(r.tipo).toBe('primera_vez')
+    expect(r.tipo).toBe('consistente_correcto')
+    expect(r.mensaje).toContain('última vez')
+  })
+  test('1 previo fallado (sin current) → "consistente_incorrecto"', () => {
+    const r = determinarTipoEvolucion([mkEntry({ correct: false })])
+    expect(r.tipo).toBe('consistente_incorrecto')
+    expect(r.mensaje).toContain('última vez')
   })
   test('blanco → acierto → "mejora_desde_blanco"', () => {
     const h = [mkEntry({ correct: false, blank: true }), mkEntry({ correct: true })]
@@ -197,6 +208,61 @@ describe('determinarTipoEvolucion — mensajes por transición', () => {
     ]
     const r = determinarTipoEvolucion(h)
     expect(r.tipo).toBe('consistente_incorrecto')
+  })
+})
+
+describe('determinarTipoEvolucion — modo contractual (con currentResult)', () => {
+  // CONTRATO: history contiene SOLO los intentos PREVIOS al actual.
+  // El intento actual viene en currentResult, no está en history.
+  // length=0 ⇒ primera vez. length=N ⇒ (N+1).ª vez.
+  // (Bug histórico hasta 05/05/2026: length=1 se trataba como "primera vez".)
+
+  test('history vacío + current acierto → "primera_vez" (sin comparación)', () => {
+    const r = determinarTipoEvolucion([], { is_correct: true })
+    expect(r.tipo).toBe('primera_vez')
+  })
+  test('1 previo acierto + current acierto → "consistente_correcto" (NO primera_vez)', () => {
+    const r = determinarTipoEvolucion([mkEntry({ correct: true })], { is_correct: true })
+    expect(r.tipo).toBe('consistente_correcto')
+    expect(r.mensaje).toContain('2/2')
+  })
+  test('1 previo fallo + current acierto → "mejora"', () => {
+    const r = determinarTipoEvolucion([mkEntry({ correct: false })], { is_correct: true })
+    expect(r.tipo).toBe('mejora')
+  })
+  test('1 previo acierto + current fallo → "retroceso"', () => {
+    const r = determinarTipoEvolucion([mkEntry({ correct: true })], { is_correct: false })
+    expect(r.tipo).toBe('retroceso')
+  })
+  test('1 previo blanco + current acierto → "mejora_desde_blanco"', () => {
+    const r = determinarTipoEvolucion(
+      [mkEntry({ correct: false, blank: true })],
+      { is_correct: true },
+    )
+    expect(r.tipo).toBe('mejora_desde_blanco')
+  })
+  test('1 previo acierto + current blanco → "retroceso_a_blanco"', () => {
+    const r = determinarTipoEvolucion(
+      [mkEntry({ correct: true })],
+      { is_correct: false, was_blank: true },
+    )
+    expect(r.tipo).toBe('retroceso_a_blanco')
+  })
+  test('3+ previos consistentes correctos + current acierto → "consistente_correcto" (4/4)', () => {
+    const h = [
+      mkEntry({ correct: true }),
+      mkEntry({ correct: true }),
+      mkEntry({ correct: true }),
+    ]
+    const r = determinarTipoEvolucion(h, { is_correct: true })
+    expect(r.tipo).toBe('consistente_correcto')
+    expect(r.mensaje).toContain('4/4')
+  })
+  test('current ignora penúltimo: previo [fallo, acierto] + current fallo → retroceso (último previo=acierto)', () => {
+    // Confirma que la lógica usa el último previo (no el penúltimo) para comparar con current
+    const h = [mkEntry({ correct: false }), mkEntry({ correct: true })]
+    const r = determinarTipoEvolucion(h, { is_correct: false })
+    expect(r.tipo).toBe('retroceso')
   })
 })
 
@@ -257,6 +323,21 @@ describe('calcularEvolucionCompleta — desglose correct/incorrect/blank', () =>
     expect(e.tasaAciertos).toBe(0)
     expect(e.estadisticasAvanzadas?.rachaMaximaCorrecta).toBe(0)
     expect(e.estadisticasAvanzadas?.rachaMaximaIncorrecta).toBe(0)
+  })
+
+  test('CONTRATO + REGRESIÓN: 1 previo + current → no es primera_vez', () => {
+    // Bug histórico (hasta 05/05/2026): cuando había 1 intento previo, el componente
+    // mostraba "Primera vez que ves esta pregunta" — síntoma reportado por Nila en
+    // feedback c294a029 (psicotécnicos) y feedbacks recurrentes en tests normales.
+    // Este test documenta el contrato y bloquea la regresión.
+    const h = [mkEntry({ correct: true })]
+    const eWithCurrent = calcularEvolucionCompleta(h, null, { is_correct: true })
+    expect(eWithCurrent.tipoEvolucion).not.toBe('primera_vez')
+    expect(eWithCurrent.tipoEvolucion).toBe('consistente_correcto')
+
+    // Modo legacy (sin currentResult): tampoco debe ser primera_vez si hay 1 previo
+    const eLegacy = calcularEvolucionCompleta(h)
+    expect(eLegacy.tipoEvolucion).not.toBe('primera_vez')
   })
 
   test('regresión: data legacy sin was_blank (antes del 15/4/2026) se trata como is_correct normal', () => {

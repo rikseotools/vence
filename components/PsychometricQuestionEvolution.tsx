@@ -203,9 +203,11 @@ export function calcularAnalisisTemporal(history: HistoryEntry[]): AnalisisTempo
 
   const diasEstudiando = Math.ceil((ultimoIntento.getTime() - primerIntento.getTime()) / (1000 * 60 * 60 * 24))
 
+  // Nota: history aquí representa los intentos PREVIOS al actual (ver calculateCompleteEvolution).
+  // length=1 ⇒ ya hay 1 intento previo (la pregunta no es nueva, el usuario la ve por 2.ª vez).
   let frecuenciaEstudio: string
   if (history.length === 1) {
-    frecuenciaEstudio = 'Primera vez'
+    frecuenciaEstudio = '1 intento previo'
   } else {
     frecuenciaEstudio = `${history.length} intentos en ${diasUnicos.length} días`
   }
@@ -287,9 +289,27 @@ export function calcularEstadisticasAvanzadas(history: HistoryEntry[]): Estadist
   }
 }
 
+/**
+ * Calcula la "evolución" del usuario en una pregunta concreta para mostrar
+ * un mensaje de tipo "Primera vez" / "Mejora" / "Retroceso" / "Consistente".
+ *
+ * **Contrato del array `previousHistory`:**
+ * Contiene los intentos del usuario sobre esta pregunta REGISTRADOS EN BD ANTES
+ * del intento que se está renderizando. NO incluye el intento actual (que en el
+ * flujo real aún no se ha persistido — `enqueuePsychometricAnswer` es asíncrono;
+ * ver `PsychometricTestLayout.tsx`).
+ *
+ * Por tanto:
+ * - `previousHistory.length === 0` ⇒ es la PRIMERA vez que el usuario ve la pregunta.
+ * - `previousHistory.length === 1` ⇒ es la SEGUNDA vez (1 intento ya guardado + el actual).
+ * - `previousHistory.length === N` ⇒ es la (N+1).ª vez.
+ *
+ * La evolución compara el ÚLTIMO intento previo con el resultado actual (`current`).
+ * Si solo hay 0 previos → no hay nada que comparar, es la primera vez.
+ */
 export function calculateCompleteEvolution(
   previousHistory: HistoryEntry[],
-  _current: PsychometricQuestionEvolutionProps['currentResult'],
+  current: PsychometricQuestionEvolutionProps['currentResult'],
 ): EvolutionData {
   const totalIntentos = previousHistory.length
   const intentosCorrectos = previousHistory.filter(h => h.is_correct).length
@@ -300,33 +320,39 @@ export function calculateCompleteEvolution(
   let icono = '🆕'
   let color: ColorEvolucion = 'blue'
 
-  if (totalIntentos <= 1) {
+  if (totalIntentos === 0) {
     tipoEvolucion = 'primera_vez'
     mensaje = 'Primera vez que ves esta pregunta psicotécnica'
     icono = '🆕'
     color = 'blue'
   } else {
-    const penultimoIntento = previousHistory[previousHistory.length - 2]
-    const ultimoIntento = previousHistory[previousHistory.length - 1]
+    // Hay al menos 1 intento previo → comparar último previo vs intento actual
+    const ultimoPrevio = previousHistory[previousHistory.length - 1]
+    const previoCorrect = ultimoPrevio.is_correct
+    const currentCorrect = current.isCorrect
 
-    if (!penultimoIntento.is_correct && ultimoIntento.is_correct) {
+    // Cuenta total incluyendo el actual (visible al usuario en el mensaje)
+    const totalConActual = totalIntentos + 1
+    const correctosConActual = intentosCorrectos + (currentCorrect ? 1 : 0)
+
+    if (!previoCorrect && currentCorrect) {
       tipoEvolucion = 'mejora'
       mensaje = '¡Progreso en psicotécnicos! Antes fallaste, ahora acertaste'
       icono = '🧠'
       color = 'green'
-    } else if (penultimoIntento.is_correct && !ultimoIntento.is_correct) {
+    } else if (previoCorrect && !currentCorrect) {
       tipoEvolucion = 'retroceso'
       mensaje = 'Antes acertaste esta pregunta psicotécnica, ahora fallaste'
       icono = '🤔'
       color = 'orange'
-    } else if (ultimoIntento.is_correct) {
+    } else if (currentCorrect) {
       tipoEvolucion = 'consistente_correcto'
-      mensaje = `Dominas este tipo de pregunta psicotécnica (${intentosCorrectos}/${totalIntentos})`
+      mensaje = `Dominas este tipo de pregunta psicotécnica (${correctosConActual}/${totalConActual})`
       icono = '⭐'
       color = 'green'
     } else {
       tipoEvolucion = 'consistente_incorrecto'
-      mensaje = `Esta pregunta psicotécnica te cuesta (${intentosCorrectos}/${totalIntentos})`
+      mensaje = `Esta pregunta psicotécnica te cuesta (${correctosConActual}/${totalConActual})`
       icono = '📚'
       color = 'red'
     }
@@ -524,46 +550,31 @@ export default function PsychometricQuestionEvolution({
         )}
       </div>
 
-      {/* Análisis temporal */}
+      {/* Análisis temporal — solo si hay 1+ intentos previos (analisisTemporal===null si 0) */}
       {evolutionData.analisisTemporal && (
         <div className="mb-4 p-3 bg-gray-100 rounded text-xs">
           <div className="font-semibold mb-2">📅 Historial de estudio psicotécnico:</div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
-            {evolutionData.totalIntentos === 1 ? (
-              <>
-                <div className="md:col-span-2">
-                  <span className="opacity-75">Primer intento:</span>
-                  <div className="font-medium">{formatearFechaRelativa(evolutionData.analisisTemporal.primerIntento)}</div>
-                </div>
-                <div>
-                  <span className="opacity-75">Sesiones:</span>
-                  <div className="font-medium">1 día</div>
-                </div>
-                <div>
-                  <span className="opacity-75">Frecuencia:</span>
-                  <div className="font-medium">Primera vez</div>
-                </div>
-              </>
-            ) : (
-              <>
-                <div>
-                  <span className="opacity-75">Primer intento:</span>
-                  <div className="font-medium">{formatearFechaRelativa(evolutionData.analisisTemporal.primerIntento)}</div>
-                </div>
-                <div>
-                  <span className="opacity-75">Último intento:</span>
-                  <div className="font-medium">{formatearFechaRelativa(evolutionData.analisisTemporal.ultimoIntento)}</div>
-                </div>
-                <div>
-                  <span className="opacity-75">Sesiones:</span>
-                  <div className="font-medium">{evolutionData.analisisTemporal.sesionesUnicas} días diferentes</div>
-                </div>
-                <div>
-                  <span className="opacity-75">Frecuencia:</span>
-                  <div className="font-medium">{evolutionData.analisisTemporal.frecuenciaEstudio}</div>
-                </div>
-              </>
-            )}
+            <div>
+              <span className="opacity-75">Primer intento:</span>
+              <div className="font-medium">{formatearFechaRelativa(evolutionData.analisisTemporal.primerIntento)}</div>
+            </div>
+            <div>
+              <span className="opacity-75">Último intento:</span>
+              <div className="font-medium">{formatearFechaRelativa(evolutionData.analisisTemporal.ultimoIntento)}</div>
+            </div>
+            <div>
+              <span className="opacity-75">Sesiones:</span>
+              <div className="font-medium">
+                {evolutionData.analisisTemporal.sesionesUnicas === 1
+                  ? '1 día'
+                  : `${evolutionData.analisisTemporal.sesionesUnicas} días diferentes`}
+              </div>
+            </div>
+            <div>
+              <span className="opacity-75">Frecuencia:</span>
+              <div className="font-medium">{evolutionData.analisisTemporal.frecuenciaEstudio}</div>
+            </div>
           </div>
         </div>
       )}

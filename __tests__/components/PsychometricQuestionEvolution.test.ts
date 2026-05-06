@@ -201,13 +201,15 @@ describe('calcularAnalisisTemporal', () => {
     expect(calcularAnalisisTemporal([])).toBeNull()
   })
 
-  it('calcula correctamente con un solo intento', () => {
+  it('1 intento previo → frecuencia "1 intento previo" (NO "Primera vez": ese caso es length===0 y devuelve null)', () => {
     const result = calcularAnalisisTemporal([
       makeEntry({ created_at: '2026-04-20T10:00:00Z' }),
     ])
     expect(result).not.toBeNull()
     expect(result!.sesionesUnicas).toBe(1)
-    expect(result!.frecuenciaEstudio).toBe('Primera vez')
+    // CONTRATO: history aquí son intentos PREVIOS al actual. length=1 ⇒ ya hay 1 intento
+    // guardado, el usuario está viendo la pregunta por 2.ª vez (no "Primera vez").
+    expect(result!.frecuenciaEstudio).toBe('1 intento previo')
   })
 
   it('calcula intervalos con múltiples intentos', () => {
@@ -340,64 +342,108 @@ describe('calculateCompleteEvolution', () => {
     expect(result.mensaje).toContain('Primera vez')
   })
 
-  it('primera_vez con 1 intento', () => {
+  // ============================================================================
+  // CONTRATO: previousHistory contiene SOLO los intentos previos al actual.
+  // El intento actual viene en `current`, no está en `previousHistory`.
+  // length=0 ⇒ primera vez. length=1 ⇒ segunda vez. length=N ⇒ (N+1).ª vez.
+  // (Bug histórico: hasta 05/05/2026, length=1 se trataba como primera vez.
+  //  Se corrigió y se documenta este contrato. Caso real: feedback c294a029
+  //  de Nila, captura mostraba "Primera vez" + "Primer intento: hace 1 mes".)
+  // ============================================================================
+
+  it('2.ª visita acertando previo + acertando current → consistente_correcto (no primera_vez)', () => {
     const result = calculateCompleteEvolution(
       [makeEntry({ is_correct: true })],
-      CURRENT_RESULT,
+      { isCorrect: true, timeSpent: 0, answer: 0 },
     )
-    expect(result.tipoEvolucion).toBe('primera_vez')
-    expect(result.totalIntentos).toBe(1)
+    expect(result.tipoEvolucion).toBe('consistente_correcto')
+    expect(result.totalIntentos).toBe(1)  // total previos, no incluye actual
     expect(result.tasaAciertos).toBe(100)
+    expect(result.mensaje).toContain('Dominas')
+    expect(result.mensaje).toContain('2/2')  // visible al usuario: 2 aciertos en 2 intentos (incl. actual)
   })
 
-  it('mejora: penúltimo incorrecto, último correcto', () => {
+  it('2.ª visita: previo fallo + current acierto → mejora', () => {
+    const result = calculateCompleteEvolution(
+      [makeEntry({ is_correct: false })],
+      { isCorrect: true, timeSpent: 0, answer: 0 },
+    )
+    expect(result.tipoEvolucion).toBe('mejora')
+    expect(result.color).toBe('green')
+    expect(result.mensaje).toContain('Antes fallaste')
+  })
+
+  it('2.ª visita: previo acierto + current fallo → retroceso', () => {
+    const result = calculateCompleteEvolution(
+      [makeEntry({ is_correct: true })],
+      { isCorrect: false, timeSpent: 0, answer: 0 },
+    )
+    expect(result.tipoEvolucion).toBe('retroceso')
+    expect(result.color).toBe('orange')
+    expect(result.mensaje).toContain('Antes acertaste')
+  })
+
+  it('2.ª visita: previo fallo + current fallo → consistente_incorrecto', () => {
+    const result = calculateCompleteEvolution(
+      [makeEntry({ is_correct: false })],
+      { isCorrect: false, timeSpent: 0, answer: 0 },
+    )
+    expect(result.tipoEvolucion).toBe('consistente_incorrecto')
+    expect(result.color).toBe('red')
+    expect(result.mensaje).toContain('te cuesta')
+    expect(result.mensaje).toContain('0/2')  // 0 aciertos en 2 intentos totales
+  })
+
+  it('3.ª+ visita con mejora: previos [fallo, fallo] + current acierto → mejora (compara último previo vs current)', () => {
     const result = calculateCompleteEvolution(
       [
         makeEntry({ is_correct: false }),
-        makeEntry({ is_correct: true }),
+        makeEntry({ is_correct: false }),
       ],
-      CURRENT_RESULT,
+      { isCorrect: true, timeSpent: 0, answer: 0 },
     )
     expect(result.tipoEvolucion).toBe('mejora')
     expect(result.color).toBe('green')
   })
 
-  it('retroceso: penúltimo correcto, último incorrecto', () => {
+  it('3.ª+ visita con retroceso: previos [acierto, acierto] + current fallo → retroceso', () => {
     const result = calculateCompleteEvolution(
       [
         makeEntry({ is_correct: true }),
-        makeEntry({ is_correct: false }),
+        makeEntry({ is_correct: true }),
       ],
-      CURRENT_RESULT,
+      { isCorrect: false, timeSpent: 0, answer: 0 },
     )
     expect(result.tipoEvolucion).toBe('retroceso')
     expect(result.color).toBe('orange')
   })
 
-  it('consistente_correcto: ambos últimos correctos', () => {
+  it('3.ª+ visita consistente correcta: previos [acierto, acierto] + current acierto → consistente_correcto (3/3)', () => {
     const result = calculateCompleteEvolution(
       [
         makeEntry({ is_correct: true }),
         makeEntry({ is_correct: true }),
       ],
-      CURRENT_RESULT,
+      { isCorrect: true, timeSpent: 0, answer: 0 },
     )
     expect(result.tipoEvolucion).toBe('consistente_correcto')
     expect(result.color).toBe('green')
     expect(result.mensaje).toContain('Dominas')
+    expect(result.mensaje).toContain('3/3')
   })
 
-  it('consistente_incorrecto: ambos últimos incorrectos', () => {
+  it('3.ª+ visita consistente incorrecta: previos [fallo, fallo] + current fallo → consistente_incorrecto (0/3)', () => {
     const result = calculateCompleteEvolution(
       [
         makeEntry({ is_correct: false }),
         makeEntry({ is_correct: false }),
       ],
-      CURRENT_RESULT,
+      { isCorrect: false, timeSpent: 0, answer: 0 },
     )
     expect(result.tipoEvolucion).toBe('consistente_incorrecto')
     expect(result.color).toBe('red')
     expect(result.mensaje).toContain('te cuesta')
+    expect(result.mensaje).toContain('0/3')
   })
 
   it('tasa de aciertos correcta con historial mixto', () => {
@@ -412,6 +458,85 @@ describe('calculateCompleteEvolution', () => {
     )
     expect(result.totalIntentos).toBe(4)
     expect(result.tasaAciertos).toBe(75) // 3/4
+  })
+
+  // ============================================================================
+  // SIMULACIONES DE REGRESIÓN — basadas en casos reales de feedback
+  // ============================================================================
+
+  describe('Regresión: caso real Nila (feedback c294a029, 04/05/2026)', () => {
+    // Captura del usuario:
+    //  - "Primera vez que ves esta pregunta psicotécnica" + "Frecuencia: Primera vez"
+    //  - PERO "Primer intento: Hace 1 meses" → contradicción visible
+    // Datos en BD verificados:
+    //  - q:716beef4 → 1 intento previo el 27-mar (acierto), respondida de nuevo el 04-may (acierto)
+    //  - previousHistory.length === 1, current.isCorrect === true
+    // Comportamiento esperado tras el fix: NO "primera_vez" → consistente_correcto.
+
+    it('simula el caso exacto de Nila: 1 previo acierto (27-mar) + current acierto (04-may) → consistente_correcto', () => {
+      const previousHistory = [
+        makeEntry({
+          is_correct: true,
+          created_at: '2026-03-27T17:47:00Z',
+          test_session_id: 'sess-marzo',
+        }),
+      ]
+      const current = { isCorrect: true, timeSpent: 17, answer: 0 }
+
+      const result = calculateCompleteEvolution(previousHistory, current)
+
+      expect(result.tipoEvolucion).not.toBe('primera_vez')
+      expect(result.tipoEvolucion).toBe('consistente_correcto')
+      expect(result.mensaje).not.toContain('Primera vez')
+      expect(result.mensaje).toContain('Dominas')
+      expect(result.color).toBe('green')
+
+      // El bloque temporal debe mostrarse (no null) y reflejar correctamente el historial
+      expect(result.analisisTemporal).not.toBeNull()
+      expect(result.analisisTemporal!.frecuenciaEstudio).toBe('1 intento previo')
+      expect(result.analisisTemporal!.frecuenciaEstudio).not.toBe('Primera vez')
+      expect(result.analisisTemporal!.sesionesUnicas).toBe(1)
+    })
+
+    it('CONTRATO: previousHistory NUNCA debe incluir el intento actual (asíncrono via cola offline)', () => {
+      // Si alguien refactoriza el flujo a guardado síncrono y mete el actual en previousHistory,
+      // este test no detecta el cambio (lo haría un test de integración). Pero documenta el contrato:
+      // el componente asume que el actual NO está en la lista que recibe.
+      const result = calculateCompleteEvolution([], { isCorrect: true, timeSpent: 0, answer: 0 })
+      expect(result.tipoEvolucion).toBe('primera_vez')
+      expect(result.totalIntentos).toBe(0)
+    })
+
+    it('simula caso "unas funcionan y otras no" (4 preguntas, solo 1 con bug histórico)', () => {
+      // Nila reportó: "unas preguntas funcionan y otras no". Verificación:
+      //  - q sin previos → "primera_vez" (correcto, siempre)
+      //  - q con 1 previo → ANTES bug "primera_vez", AHORA correcto
+      //  - q con 3+ previos → siempre correcto (no afectado)
+
+      // Caso 1: pregunta nueva (0 previos)
+      const r1 = calculateCompleteEvolution([], { isCorrect: true, timeSpent: 0, answer: 0 })
+      expect(r1.tipoEvolucion).toBe('primera_vez')
+
+      // Caso 2 (LA QUE TENÍA BUG): pregunta con 1 previo acierto
+      const r2 = calculateCompleteEvolution(
+        [makeEntry({ is_correct: true })],
+        { isCorrect: true, timeSpent: 0, answer: 0 },
+      )
+      expect(r2.tipoEvolucion).toBe('consistente_correcto')
+
+      // Caso 3: pregunta con 5 previos mixtos + acierto actual
+      const r3 = calculateCompleteEvolution(
+        [
+          makeEntry({ is_correct: true }),
+          makeEntry({ is_correct: false }),
+          makeEntry({ is_correct: true }),
+          makeEntry({ is_correct: true }),
+          makeEntry({ is_correct: false }),  // último previo: fallo
+        ],
+        { isCorrect: true, timeSpent: 0, answer: 0 },
+      )
+      expect(r3.tipoEvolucion).toBe('mejora') // último previo fallo → current acierto
+    })
   })
 
   it('incluye todos los campos de análisis', () => {
