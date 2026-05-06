@@ -1,6 +1,12 @@
 // __tests__/lib/db/timeout.test.ts
 // Tests del helper withDbTimeout + DbTimeoutError (Phase 3 — quick-fail).
 
+// Mock @sentry/nextjs antes de importar el módulo bajo test.
+const mockSentryCapture = jest.fn()
+jest.mock('@sentry/nextjs', () => ({
+  captureException: (...args: unknown[]) => mockSentryCapture(...args),
+}))
+
 import { withDbTimeout, DbTimeoutError, isDbTimeoutError } from '@/lib/db/timeout'
 
 function deferred<T>(): {
@@ -139,5 +145,84 @@ describe('isDbTimeoutError', () => {
     // El guard usa instanceof Error + name + timeoutMs check.
     // Como Error es global, fake SÍ es instanceof Error.
     expect(isDbTimeoutError(fake)).toBe(true)
+  })
+})
+
+describe('withDbTimeout — Sentry capture (Bug #3 fix)', () => {
+  beforeEach(() => {
+    mockSentryCapture.mockReset()
+  })
+
+  test('Sentry.captureException se llama cuando dispara el timeout', async () => {
+    const d = deferred<string>()
+    jest.useFakeTimers()
+    try {
+      const promise = withDbTimeout(() => d.promise, 100).catch(e => e)
+      await jest.advanceTimersByTimeAsync(101)
+      const err = await promise
+
+      expect(err).toBeInstanceOf(DbTimeoutError)
+      expect(mockSentryCapture).toHaveBeenCalledTimes(1)
+      const [capturedErr, ctx] = mockSentryCapture.mock.calls[0] as [unknown, Record<string, unknown>]
+      expect(capturedErr).toBe(err)
+      expect(ctx).toMatchObject({
+        level: 'warning',
+        tags: { quick_fail: 'db_timeout', component: 'db_timeout' },
+        extra: { timeoutMs: 100 },
+      })
+    } finally {
+      jest.useRealTimers()
+      d.resolve('late')
+    }
+  })
+
+  test('Sentry NO se llama si fn resuelve antes del timeout', async () => {
+    await withDbTimeout(async () => 'fast', 5000)
+    expect(mockSentryCapture).not.toHaveBeenCalled()
+  })
+
+  test('Sentry NO se llama si fn rechaza antes del timeout', async () => {
+    await expect(
+      withDbTimeout(async () => {
+        throw new Error('connection refused')
+      }, 5000),
+    ).rejects.toThrow('connection refused')
+    expect(mockSentryCapture).not.toHaveBeenCalled()
+  })
+
+  test('Si Sentry.captureException lanza, el reject sigue propagando (no rompe el flow)', async () => {
+    mockSentryCapture.mockImplementation(() => {
+      throw new Error('Sentry init failed')
+    })
+    const d = deferred<string>()
+    jest.useFakeTimers()
+    try {
+      const promise = withDbTimeout(() => d.promise, 100).catch(e => e)
+      await jest.advanceTimersByTimeAsync(101)
+      const err = await promise
+
+      // El error original (DbTimeoutError) debe llegar al caller
+      expect(err).toBeInstanceOf(DbTimeoutError)
+      expect((err as DbTimeoutError).timeoutMs).toBe(100)
+    } finally {
+      jest.useRealTimers()
+      d.resolve('late')
+    }
+  })
+
+  test('timeoutMs específico llega correctamente al extra de Sentry', async () => {
+    const d = deferred<string>()
+    jest.useFakeTimers()
+    try {
+      const promise = withDbTimeout(() => d.promise, 12345).catch(() => {})
+      await jest.advanceTimersByTimeAsync(12346)
+      await promise
+
+      const ctx = mockSentryCapture.mock.calls[0]?.[1] as Record<string, unknown>
+      expect((ctx?.extra as Record<string, unknown>)?.timeoutMs).toBe(12345)
+    } finally {
+      jest.useRealTimers()
+      d.resolve('late')
+    }
   })
 })

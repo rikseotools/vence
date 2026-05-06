@@ -21,6 +21,13 @@
 // queda ocupada hasta los 30s, pero el lambda ya respondió y está libre.
 // Mejora futura: integración con AbortController + cancelación nativa
 // de postgres-js (sql.cancel()) para liberar el slot inmediatamente.
+//
+// OBSERVABILIDAD: cuando el timeout dispara, capturamos el evento en Sentry
+// inmediatamente (Sentry.captureException). Sin esto, los handlers que
+// devuelven 503 retornado (no throw) no llegan a Sentry vía withErrorLogging.
+// El tag quick_fail=db_timeout permite filtrar en panel y medir saturación.
+
+import * as Sentry from '@sentry/nextjs'
 
 /**
  * Error específico que indica que una operación de BD excedió el timeout
@@ -90,7 +97,26 @@ export async function withDbTimeout<T>(
 
   const timeoutPromise = new Promise<never>((_, reject) => {
     timer = setTimeout(() => {
-      reject(new DbTimeoutError(timeoutMs))
+      const err = new DbTimeoutError(timeoutMs)
+      // Capturar a Sentry como warning ANTES de propagar el reject.
+      // Sin esto, los handlers de routes catchean DbTimeoutError y
+      // retornan NextResponse(503) — no throw → withErrorLogging no
+      // captura → Sentry ciego. Tags coherentes con sentry-hooks.ts:
+      // tagDbTimeoutEvent (defensa en profundidad: si en el futuro
+      // alguien throws el error, beforeSend también lo etiqueta).
+      try {
+        Sentry.captureException(err, {
+          level: 'warning',
+          tags: {
+            quick_fail: 'db_timeout',
+            component: 'db_timeout',
+          },
+          extra: { timeoutMs },
+        })
+      } catch {
+        // Sentry init issues / no DSN en dev — nunca romper el flow del timeout
+      }
+      reject(err)
     }, timeoutMs)
   })
 
@@ -99,6 +125,8 @@ export async function withDbTimeout<T>(
   } finally {
     // Cleanup garantizado: si fn resolvió/rechazó antes del timeout,
     // limpiamos el timer para no dejar el proceso vivo esperándolo.
+    // (clearTimeout cancela el callback antes de que ejecute → no hay
+    // capture a Sentry en este caso.)
     if (timer !== undefined) {
       clearTimeout(timer)
     }
