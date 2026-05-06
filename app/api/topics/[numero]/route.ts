@@ -9,7 +9,15 @@ import {
 import { ALL_OPOSICION_SLUGS } from '@/lib/config/oposiciones'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { withDbTimeout, isDbTimeoutError } from '@/lib/db/timeout'
+
 export const dynamic = 'force-dynamic'
+
+// Quick-fail timeout 12s — getTopicFullData hace varias queries
+// (topic_scope + counts + per-user analytics si hay userId). 12s da
+// margen para la versión per-user; en cascada del 5 may aparecía
+// /api/topics/12 y /api/topics/105 entre los 504s.
+const TOPIC_TIMEOUT_MS = 12000
 
 async function _GET(
   request: NextRequest,
@@ -65,10 +73,13 @@ async function _GET(
     }
 
     // Obtener datos del tema
-    const result = await getTopicFullData(
-      parseResult.data.topicNumber,
-      parseResult.data.oposicion as OposicionKey,
-      parseResult.data.userId
+    const result = await withDbTimeout(
+      () => getTopicFullData(
+        parseResult.data.topicNumber,
+        parseResult.data.oposicion as OposicionKey,
+        parseResult.data.userId
+      ),
+      TOPIC_TIMEOUT_MS,
     )
 
     if (!result.success) {
@@ -77,6 +88,13 @@ async function _GET(
 
     return NextResponse.json(result)
   } catch (error) {
+    if (isDbTimeoutError(error)) {
+      console.warn('⏱️ [API/topics] Timeout (quick-fail):', error.timeoutMs, 'ms')
+      return NextResponse.json(
+        { success: false, error: 'Servicio temporalmente saturado. Reintenta.', retryable: true },
+        { status: 503, headers: { 'Retry-After': '5' } },
+      )
+    }
     console.error('Error en API /api/topics/[numero]:', error)
     return NextResponse.json(
       {

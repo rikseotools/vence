@@ -3,6 +3,7 @@
 // https://docs.sentry.io/platforms/javascript/guides/nextjs/
 
 import * as Sentry from "@sentry/nextjs";
+import { tagDbTimeoutEvent } from "@/lib/observability/sentry-hooks";
 
 Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
@@ -21,4 +22,13 @@ Sentry.init({
     'NEXT_NOT_FOUND',
     'NEXT_REDIRECT',
   ],
+
+  // Phase 3 hardening — captura explícita de quick-fail timeouts
+  // (lib/db/timeout.ts:DbTimeoutError). Sin este hook, los timeouts solo
+  // aparecen en console.warn de la lambda y se pierden cuando muere.
+  // tagDbTimeoutEvent marca cada timeout con tag específico para poder
+  // filtrar en el panel Sentry y medir frecuencia (saturación del pooler).
+  // NO se silencia (no entra en ignoreErrors) — verlo es la señal que
+  // queremos para detectar el siguiente blip del pooler en tiempo real.
+  beforeSend: tagDbTimeoutEvent,
 });
