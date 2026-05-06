@@ -5,6 +5,7 @@ import { createClient } from '@supabase/supabase-js'
 import OpenAI from 'openai'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { invalidateQuestionsCache } from '@/lib/cache/questions'
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -121,6 +122,10 @@ INSTRUCCIONES:
         saved: false
       })
     }
+
+    // El UPDATE llegó: invalidar cache (tag 'questions') para que
+    // answer-and-save sirva la explicación nueva sin esperar TTL.
+    invalidateQuestionsCache()
 
     console.log(`✅ Explicación generada y guardada para pregunta ${questionId}`)
 

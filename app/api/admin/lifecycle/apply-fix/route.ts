@@ -21,6 +21,7 @@ import { getDb } from '@/db/client'
 import { sql } from 'drizzle-orm'
 import { requireAdmin } from '@/lib/api/shared/auth'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { invalidateQuestionsCache } from '@/lib/cache/questions'
 
 const bodySchema = z.object({
   questionId: z.string().uuid(),
@@ -138,6 +139,12 @@ async function _POST(request: NextRequest) {
     await db.execute(sql`
       UPDATE public.questions SET correct_option = ${updates.correct_option} WHERE id = ${questionId}::uuid
     `)
+  }
+
+  // Invalidar cache si se modificó algún campo cacheado (tag 'questions').
+  // Si solo cambia el lifecycle_state (sin updates de contenido), no invalidar.
+  if (updates.explanation !== undefined || updates.correct_option !== undefined) {
+    invalidateQuestionsCache()
   }
 
   // 4. Transición de lifecycle vía función SQL (sync trigger ajusta is_active)

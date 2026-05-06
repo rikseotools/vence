@@ -27,6 +27,7 @@ import { getDb } from '@/db/client'
 import { sql } from 'drizzle-orm'
 import { requireAdmin } from '@/lib/api/shared/auth'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { invalidateQuestionsCache } from '@/lib/cache/questions'
 
 const bodySchema = z.object({
   questionIds: z.array(z.string().uuid()).min(1).max(200),
@@ -93,6 +94,11 @@ async function _POST(request: NextRequest) {
   const applied: Array<{ questionId: string; applied: string[] }> = []
   const skipped: Array<{ questionId: string; reason: string }> = []
   const failed: Array<{ questionId: string; error: string }> = []
+  // Trackeamos UPDATEs de contenido independientemente del éxito de la
+  // transición lifecycle posterior — si el UPDATE commitea y la transición
+  // luego lanza, el contenido en BD ya cambió y el cache debe invalidarse.
+  // (Cada UPDATE es un statement autocommit; no están en una transacción.)
+  let contentUpdatesCommitted = 0
 
   for (const qid of questionIds) {
     const q = found.get(qid)
@@ -132,16 +138,19 @@ async function _POST(request: NextRequest) {
           WHERE id = ${qid}::uuid
         `)
         appliedList.push('explanation', `correct_option=${q.correct_option_should_be}`)
+        contentUpdatesCommitted++
       } else if (willApplyExplanation) {
         await db.execute(sql`
           UPDATE public.questions SET explanation = ${q.explanation_fix} WHERE id = ${qid}::uuid
         `)
         appliedList.push('explanation')
+        contentUpdatesCommitted++
       } else if (willApplyOption) {
         await db.execute(sql`
           UPDATE public.questions SET correct_option = ${newOption} WHERE id = ${qid}::uuid
         `)
         appliedList.push(`correct_option=${q.correct_option_should_be}`)
+        contentUpdatesCommitted++
       }
 
       // 2. Decidir estado destino
@@ -171,6 +180,14 @@ async function _POST(request: NextRequest) {
       const msg = e instanceof Error ? e.message : String(e)
       failed.push({ questionId: qid, error: msg })
     }
+  }
+
+  // Invalidar cache UNA sola vez al final si AL MENOS un UPDATE de contenido
+  // commiteó — incluso si el lifecycle posterior falló (esos quedan en
+  // `failed` pero el contenido en BD ya cambió). Sin esto, los users seguirían
+  // viendo la versión vieja durante el TTL de 1h.
+  if (contentUpdatesCommitted > 0) {
+    invalidateQuestionsCache()
   }
 
   return Response.json({

@@ -14,6 +14,7 @@ import {
   topics,
 } from '@/db/schema'
 import { eq, and, inArray, desc, sql } from 'drizzle-orm'
+import { invalidateQuestionsCache } from '@/lib/cache/questions'
 
 // ============================================
 // LAW QUERIES
@@ -258,6 +259,13 @@ export async function updateQuestion(
 ) {
   const db = getDb()
   await db.update(questions).set(data).where(eq(questions.id, questionId))
+  // Invalidar el cache servido por getQuestionValidationCached solo si
+  // se modificó algún campo realmente cacheado (correct_option / explanation).
+  // Cambios en metadata de verificación (verifiedAt, verificationStatus) no
+  // afectan al cache → no invalidar para no purgar gratuitamente.
+  if (data.correctOption !== undefined || data.explanation !== undefined) {
+    invalidateQuestionsCache()
+  }
 }
 
 export async function getQuestionsByArticleForDisplay(articleId: string) {
