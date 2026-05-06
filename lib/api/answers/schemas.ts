@@ -8,7 +8,12 @@ import { z } from 'zod/v3'
 
 export const validateAnswerRequestSchema = z.object({
   questionId: z.string().uuid('ID de pregunta inválido'),
-  userAnswer: z.number().int().min(0).max(4), // 0=A, 1=B, 2=C, 3=D
+  // -1 = pregunta dejada en blanco / saltada (signal interno).
+  // 0=A, 1=B, 2=C, 3=D. (max:4 deja margen para preguntas con 5 opciones futuras.)
+  // El handler trata -1 como "incorrect" automáticamente (-1 === correctOption es
+  // siempre false), devolviendo correctAnswer al frontend para mostrar la correcta
+  // sin contar como acierto. Caller: components/v2/TestLayoutV2.tsx:284.
+  userAnswer: z.number().int().min(-1).max(4),
   userId: z.string().uuid().optional().nullable(),
   responseTimeMs: z.number().int().min(0).optional(),
   testId: z.string().uuid().optional().nullable()
