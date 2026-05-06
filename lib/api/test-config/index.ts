@@ -45,10 +45,11 @@ export {
 } from './queries'
 
 // Queries cached (Fase 4 — tag 'test-config'). Las routes públicas usan
-// estas; los hits llegan a unstable_cache con TTL 6-24h. Para invalidar:
+// estas; los hits llegan a unstable_cache con TTL 1-24h. Para invalidar:
 // lib/cache/test-config.ts:invalidateTestConfigCache.
 export {
   getArticlesForLawCached,
   getEssentialArticlesCached,
   getScopedLawSectionsCached,
+  estimateAvailableQuestionsCached,
 } from './queries'

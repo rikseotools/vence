@@ -1,7 +1,7 @@
 // app/api/v2/test-config/estimate/route.ts
 // GET /api/v2/test-config/estimate?topicNumber=1&positionType=auxiliar_administrativo&...
 import { NextRequest, NextResponse } from 'next/server'
-import { safeParseEstimateQuestions, estimateAvailableQuestions } from '@/lib/api/test-config'
+import { safeParseEstimateQuestions, estimateAvailableQuestionsCached } from '@/lib/api/test-config'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 async function _GET(request: NextRequest) {
@@ -48,7 +48,7 @@ async function _GET(request: NextRequest) {
       }, { status: 400 })
     }
 
-    const result = await estimateAvailableQuestions(parseResult.data)
+    const result = await estimateAvailableQuestionsCached(parseResult.data)
 
     if (!result.success) {
       return NextResponse.json(result, { status: 500 })

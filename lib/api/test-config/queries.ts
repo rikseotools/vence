@@ -646,15 +646,13 @@ export async function getScopedLawSections(
 //   CACHE_TEST_CONFIG_SECTIONS=false        → bypass solo sections
 //   CACHE_TEST_CONFIG_ARTICLES=false        → bypass solo articles
 //   CACHE_TEST_CONFIG_ESSENTIAL=false       → bypass solo essential-articles
+//   CACHE_TEST_CONFIG_ESTIMATE=false        → bypass solo estimate (Phase 4f)
 // Por defecto (var no definida o 'true') → cache activado.
-//
-// estimateAvailableQuestions NO se cachea aquí — sus params incluyen objetos
-// (selectedArticlesByLaw, selectedSectionFilters) cuya serialización puede
-// no ser estable entre clientes. Se aborda en commit aparte.
 
 const TTL_SECTIONS = 21600       // 6h
 const TTL_ARTICLES = 21600       // 6h
 const TTL_ESSENTIAL_ARTS = 86400 // 24h
+const TTL_ESTIMATE = 3600        // 1h — más volátil, hits interactivos del configurador
 
 const _cachedScopedSections = unstable_cache(
   getScopedLawSections,
@@ -699,4 +697,85 @@ export async function getEssentialArticlesCached(
     return getEssentialArticles(params)
   }
   return _cachedEssentialArticles(params)
+}
+
+// ============================================
+// estimateAvailableQuestionsCached (Phase 4f) — KEY NORMALIZER
+// ============================================
+// estimate recibe params con objetos/arrays cuya serialización por defecto
+// es inestable entre clientes (orden de keys, orden de elementos). Sin
+// normalizar, dos requests con la misma intención lógica pueden caer en
+// keys de cache distintas → 0% hit rate.
+//
+// El normalizador `normalizeEstimateParams`:
+//   - Sortea selectedLaws alfabéticamente (es un set, no una lista)
+//   - Sortea las keys de selectedArticlesByLaw + sus arrays internos
+//   - Sortea selectedSectionFilters por title (campo siempre presente)
+//   - Mantiene el resto de campos primitivos sin tocar
+//
+// Tag 'test-config' compartido con sections/articles/essential — todos
+// dependen de questions.is_active (GENERATED desde lifecycle_state) y
+// los 3 sitios que invalidan ese tag (transition, apply-fix*) cubren
+// también estimate sin trabajo adicional.
+
+function normalizeEstimateParams(
+  params: EstimateQuestionsRequest,
+): EstimateQuestionsRequest {
+  // Sortear selectedLaws (set, no lista ordenada)
+  const sortedLaws = params.selectedLaws ? [...params.selectedLaws].sort() : []
+
+  // Sortear keys de selectedArticlesByLaw + valores internos.
+  // Los valores son (number | string)[] mixto — convertimos todo a string
+  // para sort estable, deduplicamos, y dejamos el shape mixto al runtime.
+  const articlesByLaw: Record<string, (number | string)[]> = {}
+  if (params.selectedArticlesByLaw) {
+    const sortedKeys = Object.keys(params.selectedArticlesByLaw).sort()
+    for (const lawKey of sortedKeys) {
+      const arr = params.selectedArticlesByLaw[lawKey] ?? []
+      // Deduplicar por toString y sortear
+      const dedupedSorted = Array.from(new Set(arr.map(v => String(v)))).sort()
+      articlesByLaw[lawKey] = dedupedSorted
+    }
+  }
+
+  // Sortear selectedSectionFilters por title (siempre presente).
+  // Si dos tienen el mismo title, ordena por sectionNumber como fallback.
+  const sortedFilters: SectionFilter[] = params.selectedSectionFilters
+    ? [...params.selectedSectionFilters].sort((a, b) => {
+        if (a.title !== b.title) return a.title.localeCompare(b.title)
+        return (a.sectionNumber ?? '').localeCompare(b.sectionNumber ?? '')
+      })
+    : []
+
+  return {
+    topicNumber: params.topicNumber,
+    positionType: params.positionType,
+    selectedLaws: sortedLaws,
+    selectedArticlesByLaw: articlesByLaw,
+    selectedSectionFilters: sortedFilters,
+    onlyOfficialQuestions: params.onlyOfficialQuestions,
+    difficultyMode: params.difficultyMode,
+    focusEssentialArticles: params.focusEssentialArticles,
+  }
+}
+
+// Export interno para tests del normalizer.
+export const _normalizeEstimateParamsForTests = normalizeEstimateParams
+
+const _cachedEstimateAvailableQuestions = unstable_cache(
+  estimateAvailableQuestions,
+  ['test-config-estimate-v1'],
+  { revalidate: TTL_ESTIMATE, tags: ['test-config'] },
+)
+
+export async function estimateAvailableQuestionsCached(
+  params: EstimateQuestionsRequest,
+): Promise<EstimateQuestionsResponse> {
+  if (process.env.CACHE_TEST_CONFIG_ESTIMATE === 'false') {
+    return estimateAvailableQuestions(params)
+  }
+  // Normalizar antes de cachear: dos requests con la misma intención
+  // lógica pero distinto orden de inputs comparten cache key.
+  const normalized = normalizeEstimateParams(params)
+  return _cachedEstimateAvailableQuestions(normalized)
 }
