@@ -7,6 +7,12 @@ import { eq, isNull, desc, and } from 'drizzle-orm'
 import { z } from 'zod/v3'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { withDbTimeout, isDbTimeoutError } from '@/lib/db/timeout'
+
+// Quick-fail timeout (Phase 3). Track-session-ip se llama en cada login;
+// si el pooler parpadea, el lambda quedaría 30s esperando. 10s es
+// suficiente para SELECT+UPDATE de userSessions con margen para latencia.
+const TRACK_TIMEOUT_MS = 10000
 const trackSessionIpSchema = z.object({
   userId: z.string().uuid(),
   sessionId: z.string().uuid().nullish(),
@@ -114,34 +120,38 @@ async function _POST(request: Request) {
       console.log('📍 [SessionIP] Localidad:', geo.city, geo.region, geo.country_code)
     }
 
-    if (sessionId) {
-      // Actualizar sesión específica
-      await db
-        .update(userSessions)
-        .set(updateData)
-        .where(eq(userSessions.id, sessionId))
-    } else {
-      // Sin sessionId: actualizar la sesión más reciente sin IP
-      // Drizzle no soporta .update().order().limit(), usamos select + update por ID
-      const recentSession = await db
-        .select({ id: userSessions.id })
-        .from(userSessions)
-        .where(
-          and(
-            eq(userSessions.userId, userId),
-            isNull(userSessions.ipAddress)
-          )
-        )
-        .orderBy(desc(userSessions.sessionStart))
-        .limit(1)
-
-      if (recentSession.length > 0) {
+    // Wrap todo el bloque de DB en quick-fail. Si el pooler parpadea,
+    // devolvemos 503 en 10s en vez de mantener el lambda 30s.
+    await withDbTimeout(async () => {
+      if (sessionId) {
+        // Actualizar sesión específica
         await db
           .update(userSessions)
           .set(updateData)
-          .where(eq(userSessions.id, recentSession[0].id))
+          .where(eq(userSessions.id, sessionId))
+      } else {
+        // Sin sessionId: actualizar la sesión más reciente sin IP
+        // Drizzle no soporta .update().order().limit(), usamos select + update por ID
+        const recentSession = await db
+          .select({ id: userSessions.id })
+          .from(userSessions)
+          .where(
+            and(
+              eq(userSessions.userId, userId),
+              isNull(userSessions.ipAddress)
+            )
+          )
+          .orderBy(desc(userSessions.sessionStart))
+          .limit(1)
+
+        if (recentSession.length > 0) {
+          await db
+            .update(userSessions)
+            .set(updateData)
+            .where(eq(userSessions.id, recentSession[0].id))
+        }
       }
-    }
+    }, TRACK_TIMEOUT_MS)
 
     // Update hw_fingerprint in user_devices if both deviceId and hwFingerprint present
     if (deviceId && hwFingerprint) {
@@ -165,6 +175,13 @@ async function _POST(request: Request) {
       geo: geo ? { city: geo.city, region: geo.region, country: geo.country_code } : null,
     })
   } catch (error) {
+    if (isDbTimeoutError(error)) {
+      console.warn('⏱️ [SessionIP] Timeout (quick-fail):', error.timeoutMs, 'ms')
+      return NextResponse.json(
+        { success: false, error: 'Servicio temporalmente saturado. Reintenta.', retryable: true },
+        { status: 503, headers: { 'Retry-After': '5' } },
+      )
+    }
     console.error('❌ [SessionIP] Error inesperado:', error)
     return NextResponse.json(
       { success: false, error: error instanceof Error ? error.message : 'Unknown error' },
