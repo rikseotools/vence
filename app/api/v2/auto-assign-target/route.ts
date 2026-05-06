@@ -15,6 +15,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getAuthenticatedUser, getServiceClient } from '@/lib/api/shared/auth'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { invalidateProfileCache } from '@/lib/api/profile'
 import { OPOSICIONES } from '@/lib/config/oposiciones'
 
 const SLUG_TO_POSITION_TYPE = new Map(OPOSICIONES.map(o => [o.slug, o.positionType]))
@@ -66,6 +67,12 @@ async function _POST(request: NextRequest) {
   if (updErr) {
     return NextResponse.json({ error: 'Error asignando' }, { status: 500 })
   }
+
+  // Invalidar cache (tag 'profile') tras UPDATE OK — sin esto, el user
+  // que acaba de aterrizar en la landing vería target_oposicion=null
+  // durante hasta 60s y seguiría con contenido por defecto pese a haberlo
+  // asignado ya en BD.
+  invalidateProfileCache()
 
   console.log('🎯 [auto-assign-target] Asignado', {
     userId: auth.user.id,

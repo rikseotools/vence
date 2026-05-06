@@ -4,6 +4,7 @@ import { emailLogs, userProfiles } from '@/db/schema'
 import { eq, and } from 'drizzle-orm'
 import { sendEmailV2 } from '@/lib/api/emails/queries'
 import { extractOposicionFromUrl } from './extract-oposicion'
+import { invalidateProfileCache } from '@/lib/api/profile'
 import type { ProcessCallbackRequest, ProcessCallbackResponse } from './schemas'
 
 // ============================================
@@ -127,6 +128,11 @@ export async function processAuthCallback(
         .set(updateData)
         .where(eq(userProfiles.id, userId))
 
+      // Invalidar cache (tag 'profile') tras UPDATE OK — sin esto, el user
+      // que entra recién logueado vería target_oposicion / registrationFunnel
+      // viejos durante hasta 60s.
+      invalidateProfileCache()
+
     } else {
       // Perfil no existe — crear nuevo
       console.log('🆕 [AuthCallback/v2] Creando perfil nuevo...')
@@ -180,6 +186,13 @@ export async function processAuthCallback(
             updatedAt: new Date().toISOString(),
           },
         })
+
+      // Invalidar cache. El INSERT crea un userId nuevo (sin entry previa),
+      // pero si una request previa hizo GET y cacheó "Perfil no encontrado"
+      // (negative result, también cacheado por unstable_cache durante 60s),
+      // el user vería 404 hasta que expire. La invalidación lo evita.
+      // También cubre el branch onConflictDoUpdate (perfil pre-existente).
+      invalidateProfileCache()
     }
 
     // 3. Welcome email para usuarios nuevos

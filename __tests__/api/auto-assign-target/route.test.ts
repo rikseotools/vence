@@ -17,7 +17,16 @@ jest.mock('@/lib/api/withErrorLogging', () => ({
   withErrorLogging: (_path: string, handler: any) => handler,
 }))
 
+// Mock de invalidateProfileCache para verificar el contrato de invalidación
+// del cache 'profile' tras un UPDATE exitoso de target_oposicion.
+jest.mock('@/lib/api/profile', () => ({
+  invalidateProfileCache: jest.fn(),
+}))
+
 import { POST } from '@/app/api/v2/auto-assign-target/route'
+import { invalidateProfileCache } from '@/lib/api/profile'
+
+const mockInvalidate = invalidateProfileCache as jest.Mock
 
 function mockReq(body: any) {
   return {
@@ -101,5 +110,47 @@ describe('POST /api/v2/auto-assign-target', () => {
 
     const res = await POST(mockReq({ slug: 'auxiliar-administrativo-estado' }))
     expect(res.status).toBe(500)
+  })
+
+  // ============================================
+  // Cache invalidation contract (Fase 0.2)
+  // ============================================
+
+  test('invalida cache profile tras UPDATE exitoso', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue({ ok: true, user: { id: 'u1' } })
+    const mockDb = mockProfileChain(null)
+    mockGetServiceClient.mockReturnValue(mockDb)
+
+    await POST(mockReq({ slug: 'auxiliar-administrativo-estado' }))
+
+    expect(mockInvalidate).toHaveBeenCalledTimes(1)
+  })
+
+  test('NO invalida cache si target ya estaba asignado (no hubo UPDATE)', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue({ ok: true, user: { id: 'u1' } })
+    const mockDb = mockProfileChain('auxiliar_administrativo_madrid')
+    mockGetServiceClient.mockReturnValue(mockDb)
+
+    await POST(mockReq({ slug: 'auxiliar-administrativo-estado' }))
+
+    expect(mockInvalidate).not.toHaveBeenCalled()
+  })
+
+  test('NO invalida cache si UPDATE falla', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue({ ok: true, user: { id: 'u1' } })
+    const mockDb = mockProfileChain(null, { message: 'db error' })
+    mockGetServiceClient.mockReturnValue(mockDb)
+
+    await POST(mockReq({ slug: 'auxiliar-administrativo-estado' }))
+
+    expect(mockInvalidate).not.toHaveBeenCalled()
+  })
+
+  test('NO invalida cache si slug es desconocido (no hubo UPDATE)', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue({ ok: true, user: { id: 'u1' } })
+
+    await POST(mockReq({ slug: 'oposicion-inventada-xyz' }))
+
+    expect(mockInvalidate).not.toHaveBeenCalled()
   })
 })

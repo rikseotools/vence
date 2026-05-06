@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAdminDb as getDb } from '@/db/client'
 import { userProfiles } from '@/db/schema'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { invalidateProfileCache } from '@/lib/api/profile'
 import { eq } from 'drizzle-orm'
 
 async function _POST(request: NextRequest) {
@@ -41,6 +42,11 @@ async function _POST(request: NextRequest) {
         targetOposicionData: toData || { id: toSlug, tipo: 'oficial' },
       })
       .where(eq(userProfiles.targetOposicion, fromUUID))
+
+    // Invalidar cache 'profile' (tag global, NO key-by-userId — afecta a
+    // TODOS los perfiles cacheados; aceptable porque migrate es un evento
+    // raro y N usuarios afectados pueden ser miles).
+    invalidateProfileCache()
 
     console.log(`✅ [Migrate] ${affected.length} usuarios migrados de ${fromUUID} a ${toSlug}`)
 

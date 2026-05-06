@@ -7,6 +7,7 @@ import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { invalidateProfileCache } from '@/lib/api/profile'
 const getResend = () => new Resend(process.env.RESEND_API_KEY)
 const ADMIN_EMAIL = 'manueltrader@gmail.com'
 
@@ -97,6 +98,11 @@ async function _GET(request: NextRequest) {
           if (updateError) {
             console.error(`❌ Error corrigiendo ${profile.email}:`, updateError)
           } else {
+            // Invalidar cache (tag 'profile') tras UPDATE OK — sin esto, el
+            // user vería plan_type='free' durante hasta 60s pese a estar
+            // ya corregido en BD. Importante para cron porque es el fallback
+            // si el webhook de Stripe se pierde.
+            invalidateProfileCache()
             console.log(`✅ Corregido: ${profile.email} ahora es premium`)
             inconsistency.fixed = true
           }
