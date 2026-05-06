@@ -11,11 +11,25 @@ import {
   type AnswerAndSaveResponse,
 } from '@/lib/api/v2/answer-and-save'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { withDbTimeout, isDbTimeoutError } from '@/lib/db/timeout'
 import { getDailyLimitStatus, incrementDailyCount, checkDeviceDailyUsage } from '@/lib/api/dailyLimit'
 import { registerAndCheckDevice, getDeviceIdFromRequest, getHwFingerprintFromRequest } from '@/lib/api/deviceLimit'
 
 // Margen para cold start + conexión BD
 export const maxDuration = 30
+
+// Quick-fail timeouts (Phase 3). El path tiene 2 fases lentas posibles:
+//   - Anti-fraud Promise.all: 3 RPCs en paralelo, normalmente <500ms
+//   - validateAndSaveAnswer: insert + 8 triggers, normalmente <500ms
+// Cuando el pooler parpadea, ambas pueden colgar 30s al statement_timeout.
+// Cortamos antes para liberar la lambda y devolver 503 retryable.
+//
+// NO se envuelve supabase.auth.getUser(): es HTTPS a Supabase Auth, no
+// pasa por el pooler de BD; tiene su propia infra. Es el cuello de
+// botella más documentado del path (250-1000ms) y se aborda en Phase 5
+// (JWT local verify).
+const ANTIFRAUD_TIMEOUT_MS = 10000
+const VALIDATE_AND_SAVE_TIMEOUT_MS = 15000
 
 async function _POST(request: NextRequest): Promise<NextResponse<AnswerAndSaveResponse | { success: false; error: string }>> {
   const startTime = Date.now()
@@ -69,11 +83,14 @@ async function _POST(request: NextRequest): Promise<NextResponse<AnswerAndSaveRe
     // All three RPCs are independent — run them concurrently to save ~400ms
     const deviceId = getDeviceIdFromRequest(request)
     const hwFingerprint = getHwFingerprintFromRequest(request)
-    const [deviceCheck, dailyLimit, deviceUsage] = await Promise.all([
-      registerAndCheckDevice(user.id, deviceId, request.headers.get('user-agent'), hwFingerprint),
-      getDailyLimitStatus(user.id),
-      checkDeviceDailyUsage(deviceId),
-    ])
+    const [deviceCheck, dailyLimit, deviceUsage] = await withDbTimeout(
+      () => Promise.all([
+        registerAndCheckDevice(user.id, deviceId, request.headers.get('user-agent'), hwFingerprint),
+        getDailyLimitStatus(user.id),
+        checkDeviceDailyUsage(deviceId),
+      ]),
+      ANTIFRAUD_TIMEOUT_MS,
+    )
 
     if (!deviceCheck.allowed) {
       return NextResponse.json(
@@ -121,7 +138,10 @@ async function _POST(request: NextRequest): Promise<NextResponse<AnswerAndSaveRe
     }
 
     // 4. Ejecutar: validar + guardar + actualizar score
-    const result = await validateAndSaveAnswer(parsed.data, user.id)
+    const result = await withDbTimeout(
+      () => validateAndSaveAnswer(parsed.data, user.id),
+      VALIDATE_AND_SAVE_TIMEOUT_MS,
+    )
 
     const totalMs = Date.now() - startTime
     if (totalMs > 2000) {
@@ -164,6 +184,18 @@ async function _POST(request: NextRequest): Promise<NextResponse<AnswerAndSaveRe
 
     return NextResponse.json(result)
   } catch (error) {
+    if (isDbTimeoutError(error)) {
+      const totalMs = Date.now() - startTime
+      console.warn(`⏱️ [answer-and-save] Timeout (quick-fail) tras ${totalMs}ms:`, error.timeoutMs, 'ms')
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Servicio temporalmente saturado. Reintenta en unos segundos.',
+          retryable: true,
+        } as const,
+        { status: 503, headers: { 'Retry-After': '5' } },
+      )
+    }
     const totalMs = Date.now() - startTime
     console.error(`❌ [answer-and-save] Error tras ${totalMs}ms:`, error)
     return NextResponse.json(
