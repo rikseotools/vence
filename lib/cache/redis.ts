@@ -43,13 +43,35 @@ async function raceTimeout<T>(p: Promise<T>, ms: number): Promise<T | typeof TIM
   return Promise.race([p, timeout])
 }
 
+// ============================================
+// SINGLEFLIGHT — deduplica fetchers in-flight
+// ============================================
+// Cuando una key caliente expira y N requests concurrentes hacen miss
+// simultáneamente, sin singleflight las N llamarían al fetcher (BD) → tormenta.
+// Con singleflight: la primera lanza el fetcher y guarda la Promise en este
+// Map; las N-1 siguientes encuentran la Promise existente y await sobre ella.
+// Resultado: 1 query a BD en vez de N por expiración.
+//
+// Map module-scoped → un slot por key por instancia serverless (cold start
+// resetea, lo cual es correcto). Cleanup en finally garantiza que ni éxitos
+// ni excepciones dejan entradas zombi.
+//
+// Nota: hay una ventana microscópica entre fetcher.resolve y redis.set landing
+// donde una request entrante podría no encontrar entrada inflight ni cache
+// fresh y disparar otro fetcher. Es aceptable (microsegundos) y resolverlo
+// requeriría hacer redis.set bloqueante, perdiendo la latencia ganada.
+const inflight = new Map<string, Promise<unknown>>()
+
 /**
- * Cache-aside pattern. Si hay cache hit, devuelve. Si miss o Redis falla,
- * llama fetcher y guarda el resultado (best-effort, sin bloquear).
+ * Cache-aside pattern con singleflight. Si hay cache hit, devuelve. Si miss
+ * o Redis falla, llama fetcher (deduplicado por key entre requests
+ * concurrentes) y guarda el resultado (best-effort, sin bloquear).
  *
  * @param key Clave única (incluir tipo + userId/identificador)
  * @param ttlSeconds TTL en segundos
- * @param fetcher Función que produce el valor desde la fuente real (BD)
+ * @param fetcher Función que produce el valor desde la fuente real (BD).
+ *                DEBE ser idempotente — singleflight comparte el resultado
+ *                entre N requests concurrentes con la misma key.
  * @returns El valor cacheado o recién obtenido
  */
 export async function getOrSet<T>(
@@ -59,7 +81,10 @@ export async function getOrSet<T>(
 ): Promise<T> {
   const redis = getRedis()
 
-  // Sin Redis: ir directo a fetcher (preserva disponibilidad)
+  // Sin Redis: ir directo a fetcher (preserva disponibilidad).
+  // No aplicamos singleflight tampoco — sin cache no hay tormenta de "expiración"
+  // que prevenir, y añadirlo cambiaría la semántica esperada por callers que
+  // hayan asumido que sin Redis cada request hace su propia query.
   if (!redis) {
     return fetcher()
   }
@@ -75,17 +100,44 @@ export async function getOrSet<T>(
     // Error de Redis (network, parse) → fetcher
   }
 
-  // 2. Cache miss o fail → fetcher
-  const value = await fetcher()
+  // 2. Singleflight: si ya hay un fetcher in-flight para esta key, esperar
+  // a que termine y reutilizar su resultado (o su error).
+  const existing = inflight.get(key)
+  if (existing) {
+    return existing as Promise<T>
+  }
 
-  // 3. Guardar en cache (fire-and-forget; si falla, no afecta a la respuesta)
-  // No await: el SET puede tardar 30ms y la respuesta del usuario no debería
-  // esperarlo. Si falla, próxima request será otro miss (aceptable).
-  redis.set(key, value, { ex: ttlSeconds }).catch(() => {
-    // Silently ignore - el fetcher ya devolvió el valor correcto al usuario
-  })
+  // 3. Cache miss y sin in-flight → lanzar fetcher, almacenar Promise
+  const promise = (async () => {
+    try {
+      const value = await fetcher()
+      // SET cache fire-and-forget (preserve la latencia ganada)
+      redis.set(key, value, { ex: ttlSeconds }).catch(() => {
+        // Silently ignore - el fetcher ya devolvió el valor correcto
+      })
+      return value
+    } finally {
+      // Cleanup garantizado: si el fetcher resuelve o rechaza, la entrada
+      // se libera para que la siguiente request pueda reintentar (en caso
+      // de error) o ver el cache fresco (en caso de éxito).
+      inflight.delete(key)
+    }
+  })()
 
-  return value
+  inflight.set(key, promise)
+  return promise
+}
+
+/**
+ * Test-only helper para inspeccionar/limpiar el Map de singleflight.
+ * No debe usarse en código de producción.
+ */
+export function _singleflightInternalForTests() {
+  return {
+    size: () => inflight.size,
+    has: (key: string) => inflight.has(key),
+    clear: () => inflight.clear(),
+  }
 }
 
 /**
