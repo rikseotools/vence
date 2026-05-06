@@ -8,12 +8,26 @@ import {
 } from '@/lib/api/video-courses'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { withDbTimeout, isDbTimeoutError } from '@/lib/db/timeout'
+
 export const dynamic = 'force-dynamic'
 
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
+
+// Quick-fail timeouts (Phase 3): si el pooler parpadea, devolver 503 en
+// vez de mantener el lambda 30s. Reads más permisivos que writes.
+const READ_TIMEOUT_MS = 8000
+const WRITE_TIMEOUT_MS = 12000  // los UPSERTs son escrituras + lookup
+
+function timeoutResponse() {
+  return NextResponse.json(
+    { success: false, error: 'Servicio temporalmente saturado. Reintenta.', retryable: true },
+    { status: 503, headers: { 'Retry-After': '5' } },
+  )
+}
 
 /**
  * POST /api/cursos/progress
@@ -60,7 +74,10 @@ async function _POST(request: NextRequest) {
     const { lessonId, currentTimeSeconds, completed } = parseResult.data
 
     // Save progress
-    const result = await saveVideoProgress(user.id, lessonId, currentTimeSeconds, completed)
+    const result = await withDbTimeout(
+      () => saveVideoProgress(user.id, lessonId, currentTimeSeconds, completed),
+      WRITE_TIMEOUT_MS,
+    )
 
     if (!result.success) {
       const status = result.error === 'Lección no encontrada' ? 404 : 500
@@ -69,6 +86,10 @@ async function _POST(request: NextRequest) {
 
     return NextResponse.json(result)
   } catch (error) {
+    if (isDbTimeoutError(error)) {
+      console.warn('⏱️ [API/progress POST] Timeout (quick-fail):', error.timeoutMs, 'ms')
+      return timeoutResponse()
+    }
     console.error('❌ [API/progress] Unexpected error:', error)
     return NextResponse.json(
       { success: false, error: 'Error interno del servidor' },
@@ -116,7 +137,10 @@ async function _GET(request: NextRequest) {
     }
 
     // Get progress
-    const result = await getVideoProgress(user.id, parseResult.data.lessonId)
+    const result = await withDbTimeout(
+      () => getVideoProgress(user.id, parseResult.data.lessonId),
+      READ_TIMEOUT_MS,
+    )
 
     if (!result.success) {
       return NextResponse.json(result, { status: 500 })
@@ -124,6 +148,10 @@ async function _GET(request: NextRequest) {
 
     return NextResponse.json(result)
   } catch (error) {
+    if (isDbTimeoutError(error)) {
+      console.warn('⏱️ [API/progress GET] Timeout (quick-fail):', error.timeoutMs, 'ms')
+      return timeoutResponse()
+    }
     console.error('❌ [API/progress] Unexpected error:', error)
     return NextResponse.json(
       { success: false, error: 'Error interno del servidor' },

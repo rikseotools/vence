@@ -11,9 +11,15 @@ import { getUserProblematicArticlesWeekly } from '@/lib/api/notifications/querie
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { logRolloutEvent } from '@/lib/api/rollout/problematic-articles-logs'
 import { getAllowedLawIds } from '@/lib/api/oposicion-scope/queries'
+import { withDbTimeout, isDbTimeoutError } from '@/lib/db/timeout'
 
 // Nunca cachear — la respuesta depende del userId de la sesión.
 export const dynamic = 'force-dynamic'
+
+// Timeout 10s — la query es analítica (computa weekly performance) y más
+// pesada que profile/daily-limit. 10s da margen suficiente para casos
+// normales y aún corta antes del statement_timeout=30s del DSN.
+const PROBLEMATIC_TIMEOUT_MS = 10000
 
 async function _GET(request: NextRequest) {
   const auth = await getAuthenticatedUser(request)
@@ -21,9 +27,10 @@ async function _GET(request: NextRequest) {
 
   const startedAt = Date.now()
   try {
-    const articles = await getUserProblematicArticlesWeekly({
-      userId: auth.user.id,
-    })
+    const articles = await withDbTimeout(
+      () => getUserProblematicArticlesWeekly({ userId: auth.user.id }),
+      PROBLEMATIC_TIMEOUT_MS,
+    )
 
     // Log fire-and-forget para el panel admin de rollout.
     const scope = await getAllowedLawIds({ userId: auth.user.id }).catch(() => null)
@@ -41,6 +48,13 @@ async function _GET(request: NextRequest) {
       articles,
     })
   } catch (error) {
+    if (isDbTimeoutError(error)) {
+      console.warn('⏱️ [problematic-articles] Timeout (quick-fail):', error.timeoutMs, 'ms')
+      return NextResponse.json(
+        { success: false, error: 'Servicio temporalmente saturado. Reintenta.', retryable: true },
+        { status: 503, headers: { 'Retry-After': '5' } },
+      )
+    }
     console.error('❌ [problematic-articles] Error:', error)
     return NextResponse.json(
       { success: false, error: 'Error interno del servidor' },
