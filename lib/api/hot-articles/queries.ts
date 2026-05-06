@@ -1,6 +1,7 @@
 import { getDb } from '@/db/client'
 import { hotArticles, questions } from '@/db/schema'
 import { eq, and, ne, inArray } from 'drizzle-orm'
+import { unstable_cache } from 'next/cache'
 import { normalizeOposicionSlug, type ArticleOfficialExamData, type CheckHotArticleRequest, type CheckHotArticleResponse } from './schemas'
 
 /**
@@ -244,4 +245,40 @@ export async function checkHotArticle(
     otherOposicionesInfo: otherInfo,
     curiosityMessage,
   }
+}
+
+// ============================================
+// CACHED WRAPPER (Fase 4b — tag 'hot-articles')
+// ============================================
+// hot_articles es una tabla de SOLO LECTURA desde la app: solo se mutan
+// vía scripts manuales (scripts/poblar-hot-articles-oposicion.cjs,
+// scripts/sync-hot-articles.cjs). No hay writers en runtime ni en crons,
+// así que NO necesitamos invalidación desde código de app.
+//
+// Si tras correr uno de esos scripts hay que purgar el cache:
+//   curl -X POST -H "x-cron-secret: $CRON_SECRET" \
+//     -H "Content-Type: application/json" \
+//     -d '{"tag":"hot-articles"}' \
+//     https://www.vence.es/api/admin/revalidate
+//
+// TTL alto (24h) porque la tabla cambia raramente. Combinado con
+// singleflight (Phase 2), thundering herd al expirar es despreciable.
+//
+// Feature flag: CACHE_HOT_ARTICLES=false → bypass al fetcher real.
+
+const TTL_HOT_ARTICLES = 86400 // 24h
+
+const _cachedCheckHotArticle = unstable_cache(
+  checkHotArticle,
+  ['hot-articles-check-v1'],
+  { revalidate: TTL_HOT_ARTICLES, tags: ['hot-articles'] },
+)
+
+export async function checkHotArticleCached(
+  params: CheckHotArticleRequest,
+): Promise<CheckHotArticleResponse> {
+  if (process.env.CACHE_HOT_ARTICLES === 'false') {
+    return checkHotArticle(params)
+  }
+  return _cachedCheckHotArticle(params)
 }
