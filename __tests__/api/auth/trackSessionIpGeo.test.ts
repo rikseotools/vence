@@ -90,7 +90,7 @@ describe('POST /api/auth/track-session-ip — geo desde Vercel headers', () => {
     expect(body.geo).toEqual({ city: 'Madrid', region: 'M', country: 'ES' })
 
     // updateSet recibe el geo
-    const setArg = updateSet.mock.calls[0]?.[0]
+    const setArg = ((updateSet.mock.calls as unknown as unknown[][])[0]?.[0] || {}) as Record<string, unknown>
     expect(setArg).toMatchObject({
       countryCode: 'ES',
       region: 'M',
@@ -131,7 +131,7 @@ describe('POST /api/auth/track-session-ip — geo desde Vercel headers', () => {
     expect(body.geo).toBe(null)
 
     // updateSet NO incluye geo
-    const setArg = updateSet.mock.calls[0]?.[0]
+    const setArg = ((updateSet.mock.calls as unknown as unknown[][])[0]?.[0] || {}) as Record<string, unknown>
     expect(setArg.countryCode).toBeUndefined()
     expect(setArg.city).toBeUndefined()
     expect(setArg.coordinates).toBeUndefined()
@@ -151,7 +151,7 @@ describe('POST /api/auth/track-session-ip — geo desde Vercel headers', () => {
     )
 
     await POST(req as any)
-    const setArg = updateSet.mock.calls[0]?.[0]
+    const setArg = ((updateSet.mock.calls as unknown as unknown[][])[0]?.[0] || {}) as Record<string, unknown>
     expect(setArg.countryCode).toBe('ES')
     expect(setArg.coordinates).toBeUndefined()
   })
@@ -169,7 +169,7 @@ describe('POST /api/auth/track-session-ip — geo desde Vercel headers', () => {
     )
 
     await POST(req as any)
-    const setArg = updateSet.mock.calls[0]?.[0]
+    const setArg = ((updateSet.mock.calls as unknown as unknown[][])[0]?.[0] || {}) as Record<string, unknown>
     expect(setArg.coordinates).toBeUndefined()
   })
 
