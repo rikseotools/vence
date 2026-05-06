@@ -6,7 +6,25 @@ const nextConfig = {
   experimental: {
     optimizeCss: true,
     cssChunking: 'strict',
-    inlineCss: true,
+    // inlineCss DESACTIVADO 2026-05-06 — Bug Next.js 16 + RSC streaming.
+    //
+    // Síntoma: TypeError "controller[kState].transformAlgorithm is not a function"
+    // intermitente durante render con force-dynamic + Suspense. Status 200 la
+    // mayoría de veces (response parcial), pero a veces 30s timeout. Detectado
+    // primero en /auxiliar-administrativo-asturias/temario/tema-12 (commit 77e3e107
+    // activó esta flag).
+    //
+    // Causa raíz confirmada en https://github.com/vercel/next.js/discussions/75995
+    // (causa #4 de las 7 documentadas). NO es Sentry-causado, es race condition
+    // de inlineCss durante streaming finalization.
+    //
+    // Coste de desactivar: pierde ~8-14KB de CSS crítico inline → FCP/LCP sube
+    // ~50-100ms en first paint. Mitigado por: optimizeCss activo (minify+dedup),
+    // cssChunking:'strict' (chunks pequeños), Vercel CDN cache agresivo,
+    // y la mayoría de users de Vence son recurrentes (CSS en cache navegador).
+    //
+    // Reactivar cuando Next.js publique parche del bug.
+    // inlineCss: true,
     // instrumentationHook ya no es necesario en Next.js 15+ (está habilitado por defecto)
   },
 
