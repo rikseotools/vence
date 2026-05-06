@@ -1,6 +1,6 @@
 // lib/api/v2/answer-and-save/queries.ts
 // Lógica server-side: validar respuesta + guardar + actualizar score
-import { getDb } from '@/db/client'
+import { getDb, getTraceDb } from '@/db/client'
 import { tests, userProfiles, questions, articles, laws, psychometricQuestions } from '@/db/schema'
 import { eq } from 'drizzle-orm'
 import { unstable_cache } from 'next/cache'
@@ -269,8 +269,14 @@ export async function validateAndSaveAnswer(
 // ============================================
 
 export async function markActiveStudentIfFirst(userId: string): Promise<void> {
+  // Usa getTraceDb() (pool dedicado para after(), max:1 separado del hot path).
+  // Si usara getDb() — el pool max:1 compartido — esta SELECT+UPDATE en
+  // background bloquearía la única conexión que la siguiente request entrante
+  // a la misma lambda necesita, causando head-of-line blocking auto-inducido
+  // y agravando cualquier blip del pooler de Supabase.
+  // getTraceDb() es Drizzle con la misma schema; sintaxis idéntica.
   try {
-    const db = getDb()
+    const db = getTraceDb()
     const result = await db
       .select({ isActiveStudent: userProfiles.isActiveStudent })
       .from(userProfiles)
