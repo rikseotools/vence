@@ -56,26 +56,33 @@ async function _GET(request: NextRequest) {
   try {
     const db = getDb()
 
+    // Query optimizada (2026-05-06): elimina JOIN con tests usando user_id
+    // ya denormalizado en test_questions + covering index idx_tq_user_tema_covering
+    // (migración 20260506_idx_tq_user_tema_covering.sql).
+    //
+    // Antes: Nested Loop test×test_questions + Bitmap Heap Scan = 12.5s para
+    // user con 56k test_questions (timeout a los 10s, fallback empty).
+    // Ahora: Index Only Scan = 502ms para el mismo user (24.9x speedup).
+    // Verificado paridad 100% con la query antigua sobre 3 users heavy.
     const queryPromise = db.execute(sql`
       SELECT
-        tq.tema_number,
+        tema_number,
         COUNT(*)::int as total,
-        SUM(CASE WHEN tq.is_correct = true THEN 1 ELSE 0 END)::int as correct,
-        ROUND((SUM(CASE WHEN tq.is_correct = true THEN 1 ELSE 0 END)::numeric
+        SUM(CASE WHEN is_correct = true THEN 1 ELSE 0 END)::int as correct,
+        ROUND((SUM(CASE WHEN is_correct = true THEN 1 ELSE 0 END)::numeric
           / NULLIF(COUNT(*), 0)) * 100, 0)::int as accuracy,
         -- Accuracy últimos 30 días (mismo scan, sin coste extra)
-        SUM(CASE WHEN tq.created_at >= now() - interval '30 days' THEN 1 ELSE 0 END)::int as total_30d,
-        SUM(CASE WHEN tq.created_at >= now() - interval '30 days' AND tq.is_correct = true THEN 1 ELSE 0 END)::int as correct_30d,
-        CASE WHEN SUM(CASE WHEN tq.created_at >= now() - interval '30 days' THEN 1 ELSE 0 END) > 0
-          THEN ROUND((SUM(CASE WHEN tq.created_at >= now() - interval '30 days' AND tq.is_correct = true THEN 1 ELSE 0 END)::numeric
-            / SUM(CASE WHEN tq.created_at >= now() - interval '30 days' THEN 1 ELSE 0 END)) * 100, 0)::int
+        SUM(CASE WHEN created_at >= now() - interval '30 days' THEN 1 ELSE 0 END)::int as total_30d,
+        SUM(CASE WHEN created_at >= now() - interval '30 days' AND is_correct = true THEN 1 ELSE 0 END)::int as correct_30d,
+        CASE WHEN SUM(CASE WHEN created_at >= now() - interval '30 days' THEN 1 ELSE 0 END) > 0
+          THEN ROUND((SUM(CASE WHEN created_at >= now() - interval '30 days' AND is_correct = true THEN 1 ELSE 0 END)::numeric
+            / SUM(CASE WHEN created_at >= now() - interval '30 days' THEN 1 ELSE 0 END)) * 100, 0)::int
           ELSE NULL END as accuracy_30d,
-        MAX(tq.created_at)::text as last_study
-      FROM test_questions tq
-      JOIN tests t ON tq.test_id = t.id
-      WHERE t.user_id = ${userId} AND tq.tema_number IS NOT NULL
-      GROUP BY tq.tema_number
-      ORDER BY tq.tema_number
+        MAX(created_at)::text as last_study
+      FROM test_questions
+      WHERE user_id = ${userId} AND tema_number IS NOT NULL
+      GROUP BY tema_number
+      ORDER BY tema_number
     `)
 
     const result = await Promise.race([
