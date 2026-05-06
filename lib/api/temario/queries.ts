@@ -278,12 +278,44 @@ const getTopicContentBaseCached = unstable_cache(
   { revalidate: false, tags: ['temario'] }
 )
 
+// Temas con scope que excede el límite hard de 2MB del Vercel Data Cache
+// (verificado en producción 2026-05-06: warning "items over 2MB can not
+// be cached" en `/policia-nacional/temario/tema-21`).
+//
+// Estos temas tienen 7+ leyes en scope con "all articles" (NULL en
+// topic_scope.article_numbers) → 1500-2100 artículos, ~1.5-2.1MB de
+// content raw. JSON serializado supera el límite y `unstable_cache`
+// rejecta el SET (logged como warning). Cada request termina pegando a BD.
+//
+// Bypass: llamar directo a getTopicContentBaseInternal (no cache) para
+// evitar el warning de logs. BD hit ~700ms por request. Aceptable porque
+// temario es lectura larga (usuario lee el contenido por minutos), el
+// 700ms inicial es despreciable, y son temas con tráfico moderado.
+//
+// Refactor proper documentado para sesión futura: cachear por-ley
+// (`getAllArticlesByLawCached(lawId)` — cada ley cabe en <1MB JSON,
+// reusable across temas). Esfuerzo ~3-4h con tests.
+const TOPICS_EXCEEDING_CACHE_LIMIT = new Set([
+  'policia-nacional:21',                 // Derecho Procesal Penal — 7 leyes, 1821 arts, 1.5MB
+  'auxiliar-administrativo-andalucia:12',// Régimen SS personal — 774 arts, 1.5MB
+  'tramitacion-procesal:23',             // Proceso laboral — 691 arts, 1.1MB
+  'guardia-civil:9',                     // LECrim/Habeas — 1291 arts, 1.0MB
+])
+
+function exceedsCacheLimit(slug: string, topicNumber: number): boolean {
+  return TOPICS_EXCEEDING_CACHE_LIMIT.has(`${slug}:${topicNumber}`)
+}
+
 // Función pública para obtener contenido del tema
 export async function getTopicContent(
   oposicionSlug: OposicionSlug,
   topicNumber: number
 ): Promise<TopicContent | null> {
-  const baseContent = await getTopicContentBaseCached(oposicionSlug, topicNumber)
+  // Bypass cache para temas conocidos que exceden el límite de 2MB.
+  // Sin esto, unstable_cache loguea warning en cada request a estos temas.
+  const baseContent = exceedsCacheLimit(oposicionSlug, topicNumber)
+    ? await getTopicContentBaseInternal(oposicionSlug, topicNumber)
+    : await getTopicContentBaseCached(oposicionSlug, topicNumber)
 
   if (!baseContent) {
     return null
@@ -299,6 +331,9 @@ export async function getTopicContent(
     generatedAt: new Date().toISOString(),
   }
 }
+
+// Exportar helper para tests
+export const _exceedsCacheLimitForTests = exceedsCacheLimit
 
 // ============================================
 // OBTENER TEMARIO COMPLETO DE UNA OPOSICIÓN (bloques + temas)
