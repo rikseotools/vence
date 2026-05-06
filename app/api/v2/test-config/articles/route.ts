@@ -1,7 +1,7 @@
 // app/api/v2/test-config/articles/route.ts
 // GET /api/v2/test-config/articles?lawShortName=CE&topicNumber=1&positionType=auxiliar_administrativo
 import { NextRequest, NextResponse } from 'next/server'
-import { safeParseGetArticles, getArticlesForLaw } from '@/lib/api/test-config'
+import { safeParseGetArticles, getArticlesForLawCached } from '@/lib/api/test-config'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 async function _GET(request: NextRequest) {
@@ -25,7 +25,7 @@ async function _GET(request: NextRequest) {
       }, { status: 400 })
     }
 
-    const result = await getArticlesForLaw(parseResult.data)
+    const result = await getArticlesForLawCached(parseResult.data)
 
     if (!result.success) {
       return NextResponse.json(result, { status: 500 })

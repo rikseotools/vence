@@ -22,6 +22,7 @@ import { sql } from 'drizzle-orm'
 import { requireAdmin } from '@/lib/api/shared/auth'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { invalidateQuestionsCache } from '@/lib/cache/questions'
+import { invalidateTestConfigCache } from '@/lib/cache/test-config'
 
 const bodySchema = z.object({
   questionId: z.string().uuid(),
@@ -168,6 +169,10 @@ async function _POST(request: NextRequest) {
     }
     throw e
   }
+
+  // Lifecycle transition cambia is_active → counts cachados en test-config
+  // se invalidan. Coherente con el patrón de transition/route.ts.
+  invalidateTestConfigCache()
 
   return Response.json({
     success: true,

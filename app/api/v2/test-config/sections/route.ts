@@ -10,7 +10,7 @@
 // para páginas de teoría y configuradores sin contexto de tema.
 
 import { NextRequest, NextResponse } from 'next/server'
-import { safeParseGetScopedSections, getScopedLawSections } from '@/lib/api/test-config'
+import { safeParseGetScopedSections, getScopedLawSectionsCached } from '@/lib/api/test-config'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 
 async function _GET(request: NextRequest) {
@@ -37,7 +37,7 @@ async function _GET(request: NextRequest) {
     )
   }
 
-  const result = await getScopedLawSections(parseResult.data)
+  const result = await getScopedLawSectionsCached(parseResult.data)
 
   if (!result.success) {
     return NextResponse.json(result, { status: 500 })

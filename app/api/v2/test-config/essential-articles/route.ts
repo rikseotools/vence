@@ -1,7 +1,7 @@
 // app/api/v2/test-config/essential-articles/route.ts
 // GET /api/v2/test-config/essential-articles?topicNumber=1&positionType=auxiliar_administrativo
 import { NextRequest, NextResponse } from 'next/server'
-import { safeParseGetEssentialArticles, getEssentialArticles } from '@/lib/api/test-config'
+import { safeParseGetEssentialArticles, getEssentialArticlesCached } from '@/lib/api/test-config'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 async function _GET(request: NextRequest) {
@@ -23,7 +23,7 @@ async function _GET(request: NextRequest) {
       }, { status: 400 })
     }
 
-    const result = await getEssentialArticles(parseResult.data)
+    const result = await getEssentialArticlesCached(parseResult.data)
 
     if (!result.success) {
       return NextResponse.json(result, { status: 500 })

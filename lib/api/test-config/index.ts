@@ -36,10 +36,19 @@ export {
   type SectionScopeMeta,
 } from './schemas'
 
-// Queries
+// Queries (uncached versions — para code paths que necesitan datos frescos)
 export {
   getArticlesForLaw,
   estimateAvailableQuestions,
   getEssentialArticles,
   getScopedLawSections,
+} from './queries'
+
+// Queries cached (Fase 4 — tag 'test-config'). Las routes públicas usan
+// estas; los hits llegan a unstable_cache con TTL 6-24h. Para invalidar:
+// lib/cache/test-config.ts:invalidateTestConfigCache.
+export {
+  getArticlesForLawCached,
+  getEssentialArticlesCached,
+  getScopedLawSectionsCached,
 } from './queries'

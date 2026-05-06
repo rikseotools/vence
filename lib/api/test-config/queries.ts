@@ -2,6 +2,7 @@
 import { getDb } from '@/db/client'
 import { questions, articles, laws, topicScope, topics, lawSections } from '@/db/schema'
 import { eq, and, inArray, sql } from 'drizzle-orm'
+import { unstable_cache } from 'next/cache'
 import { getValidExamPositions } from '@/lib/config/exam-positions'
 import type {
   GetArticlesRequest,
@@ -627,4 +628,75 @@ export async function getScopedLawSections(
       error: error instanceof Error ? error.message : 'Error desconocido',
     }
   }
+}
+
+// ============================================
+// CACHED WRAPPERS (Fase 4 — tag 'test-config')
+// ============================================
+// Endpoints test-config son globales (no auth, no userId), con params
+// primitivos deterministas → unstable_cache key-by-args funciona limpio.
+// Los 3 endpoints comparten un tag único 'test-config' invalidado por:
+//   - lifecycle transition (is_active de questions cambia → counts cambian)
+//   - apply-fix / apply-fix-bulk (idem)
+//   - verify-articles updateQuestion (idem si toca lifecycle metadata)
+//
+// Helper para invalidar: lib/cache/test-config.ts:invalidateTestConfigCache.
+//
+// Feature flag por endpoint para rollback granular:
+//   CACHE_TEST_CONFIG_SECTIONS=false        → bypass solo sections
+//   CACHE_TEST_CONFIG_ARTICLES=false        → bypass solo articles
+//   CACHE_TEST_CONFIG_ESSENTIAL=false       → bypass solo essential-articles
+// Por defecto (var no definida o 'true') → cache activado.
+//
+// estimateAvailableQuestions NO se cachea aquí — sus params incluyen objetos
+// (selectedArticlesByLaw, selectedSectionFilters) cuya serialización puede
+// no ser estable entre clientes. Se aborda en commit aparte.
+
+const TTL_SECTIONS = 21600       // 6h
+const TTL_ARTICLES = 21600       // 6h
+const TTL_ESSENTIAL_ARTS = 86400 // 24h
+
+const _cachedScopedSections = unstable_cache(
+  getScopedLawSections,
+  ['test-config-sections-v1'],
+  { revalidate: TTL_SECTIONS, tags: ['test-config'] },
+)
+
+const _cachedArticlesForLaw = unstable_cache(
+  getArticlesForLaw,
+  ['test-config-articles-v1'],
+  { revalidate: TTL_ARTICLES, tags: ['test-config'] },
+)
+
+const _cachedEssentialArticles = unstable_cache(
+  getEssentialArticles,
+  ['test-config-essential-v1'],
+  { revalidate: TTL_ESSENTIAL_ARTS, tags: ['test-config'] },
+)
+
+export async function getScopedLawSectionsCached(
+  params: GetScopedSectionsRequest,
+): Promise<GetScopedSectionsResponse> {
+  if (process.env.CACHE_TEST_CONFIG_SECTIONS === 'false') {
+    return getScopedLawSections(params)
+  }
+  return _cachedScopedSections(params)
+}
+
+export async function getArticlesForLawCached(
+  params: GetArticlesRequest,
+): Promise<GetArticlesResponse> {
+  if (process.env.CACHE_TEST_CONFIG_ARTICLES === 'false') {
+    return getArticlesForLaw(params)
+  }
+  return _cachedArticlesForLaw(params)
+}
+
+export async function getEssentialArticlesCached(
+  params: GetEssentialArticlesRequest,
+): Promise<GetEssentialArticlesResponse> {
+  if (process.env.CACHE_TEST_CONFIG_ESSENTIAL === 'false') {
+    return getEssentialArticles(params)
+  }
+  return _cachedEssentialArticles(params)
 }
