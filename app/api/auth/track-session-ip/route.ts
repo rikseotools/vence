@@ -24,46 +24,61 @@ interface GeoLocation {
   country_code: string
   region: string
   city: string
-  isp: string
-  lat: number
-  lon: number
+  lat: number | null
+  lon: number | null
 }
 
-async function getGeoLocation(ip: string): Promise<GeoLocation | null> {
+/**
+ * Extrae geolocation de los headers que Vercel inyecta en cada request
+ * server-side (gratis en todos los planes, incluido Hobby).
+ *
+ * Reemplaza la llamada externa a ip-api.com que tenía 3 problemas:
+ *   1. Bloqueaba el await de la respuesta hasta 3s (AbortSignal timeout) →
+ *      login lento si el proveedor estaba lento o caído
+ *   2. HTTP no HTTPS → tráfico de geolocalización en claro
+ *   3. Free tier 45 req/min → riesgo de rate limit a escala
+ *
+ * Vercel headers disponibles (verificado en producción 2026-05-06):
+ *   - x-vercel-ip-country         (e.g. 'ES')
+ *   - x-vercel-ip-country-region  (e.g. 'M' para Madrid)
+ *   - x-vercel-ip-city            (e.g. 'Madrid', URL-encoded)
+ *   - x-vercel-ip-latitude        (e.g. '40.4168')
+ *   - x-vercel-ip-longitude       (e.g. '-3.7038')
+ *
+ * En dev local (next dev) los headers no existen → devolvemos null y la
+ * sesión se guarda sin geo data. Comportamiento esperado.
+ *
+ * Pérdida controlada: el campo isp ya no se rellena. Verificado que NO
+ * se consume en ningún sitio del codebase (admin/fraudes solo usa city).
+ * Filas históricas mantienen su isp; nuevas serán null.
+ */
+function extractGeoFromVercelHeaders(request: Request): GeoLocation | null {
+  const country = request.headers.get('x-vercel-ip-country')
+  if (!country) return null // dev local o request sin pasar por Vercel edge
+
+  const cityEncoded = request.headers.get('x-vercel-ip-city')
+  // Vercel encodea el city con encodeURIComponent (espacios = %20, etc.)
+  const city = cityEncoded ? safeDecodeURIComponent(cityEncoded) : ''
+
+  const region = request.headers.get('x-vercel-ip-country-region') || ''
+  const lat = parseFloatOrNull(request.headers.get('x-vercel-ip-latitude'))
+  const lon = parseFloatOrNull(request.headers.get('x-vercel-ip-longitude'))
+
+  return { country_code: country, region, city, lat, lon }
+}
+
+function safeDecodeURIComponent(s: string): string {
   try {
-    if (!ip || ip === 'unknown' || ip.startsWith('192.168.') || ip.startsWith('10.') || ip === '127.0.0.1' || ip === '::1') {
-      return null
-    }
-
-    const response = await fetch(
-      `http://ip-api.com/json/${ip}?fields=status,country,countryCode,region,regionName,city,lat,lon,isp`,
-      { signal: AbortSignal.timeout(3000) }
-    )
-
-    if (!response.ok) {
-      console.warn('⚠️ [GeoIP] Error en respuesta:', response.status)
-      return null
-    }
-
-    const data = await response.json()
-
-    if (data.status !== 'success') {
-      console.warn('⚠️ [GeoIP] IP no localizable:', ip)
-      return null
-    }
-
-    return {
-      country_code: data.countryCode,
-      region: data.regionName,
-      city: data.city,
-      isp: data.isp,
-      lat: data.lat,
-      lon: data.lon,
-    }
-  } catch (error) {
-    console.warn('⚠️ [GeoIP] Error obteniendo localidad:', error instanceof Error ? error.message : 'Unknown error')
-    return null
+    return decodeURIComponent(s)
+  } catch {
+    return s
   }
+}
+
+function parseFloatOrNull(s: string | null): number | null {
+  if (!s) return null
+  const n = parseFloat(s)
+  return isFinite(n) ? n : null
 }
 
 async function _POST(request: Request) {
@@ -91,8 +106,8 @@ async function _POST(request: Request) {
       hasDeviceId: !!deviceId,
     })
 
-    // Obtener geolocalización (async, con timeout)
-    const geo = await getGeoLocation(ip)
+    // Obtener geolocalización de Vercel headers (sync, 0 latencia, 0 timeout)
+    const geo = extractGeoFromVercelHeaders(request)
 
     const db = getDb()
 
@@ -113,8 +128,9 @@ async function _POST(request: Request) {
       updateData.countryCode = geo.country_code
       updateData.region = geo.region
       updateData.city = geo.city
-      updateData.isp = geo.isp
-      if (typeof geo.lat === 'number' && typeof geo.lon === 'number' && isFinite(geo.lat) && isFinite(geo.lon)) {
+      // isp no se setea: Vercel headers no lo exponen y el campo no se
+      // consume en ningún sitio del codebase (admin/fraudes solo usa city)
+      if (geo.lat !== null && geo.lon !== null) {
         updateData.coordinates = [geo.lon, geo.lat]
       }
       console.log('📍 [SessionIP] Localidad:', geo.city, geo.region, geo.country_code)
