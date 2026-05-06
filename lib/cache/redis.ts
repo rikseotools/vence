@@ -62,6 +62,75 @@ async function raceTimeout<T>(p: Promise<T>, ms: number): Promise<T | typeof TIM
 // requeriría hacer redis.set bloqueante, perdiendo la latencia ganada.
 const inflight = new Map<string, Promise<unknown>>()
 
+// ============================================
+// MÉTRICAS — hit/miss por prefijo (Phase 6 obs)
+// ============================================
+// Sin telemetría no podemos saber si el cache está sirviendo lo que
+// esperábamos. Cada hit/miss hace HINCRBY fire-and-forget en Redis sobre
+// la clave 'cache_metrics' bajo el campo `${prefix}:hit` o `:miss`.
+// Para verlo: GET /api/admin/health/cache-stats.
+//
+// Feature flag: CACHE_METRICS_ENABLED=false → desactiva los HINCRBY.
+// Coste: ~1 op Redis extra por cache access. A 1k ops/s totales,
+// añade 200ms de Upstash bandwidth en pico, despreciable.
+
+const METRICS_HASH_KEY = 'cache_metrics'
+
+function metricsEnabled(): boolean {
+  return process.env.CACHE_METRICS_ENABLED !== 'false'
+}
+
+function metricPrefix(cacheKey: string): string {
+  // El convenio del repo es prefix:userId / prefix:userId:variant.
+  // Para agrupar por endpoint, tomamos hasta el primer ':'.
+  const idx = cacheKey.indexOf(':')
+  return idx === -1 ? cacheKey : cacheKey.slice(0, idx)
+}
+
+function recordCacheEvent(redis: Redis, key: string, kind: 'hit' | 'miss'): void {
+  if (!metricsEnabled()) return
+  const field = `${metricPrefix(key)}:${kind}`
+  // Fire-and-forget. Si Upstash falla, el cache funcional no se afecta.
+  redis.hincrby(METRICS_HASH_KEY, field, 1).catch(() => {})
+}
+
+/**
+ * Lee el snapshot actual de hits/misses por prefijo.
+ * Devuelve un Map { 'user_stats:hit': 1234, 'user_stats:miss': 56, ... }.
+ * Usa raceTimeout — si Redis tarda, devuelve {} (no es crítico).
+ */
+export async function getCacheMetrics(): Promise<Record<string, number>> {
+  const redis = getRedis()
+  if (!redis) return {}
+  try {
+    const result = await raceTimeout(
+      redis.hgetall<Record<string, string | number>>(METRICS_HASH_KEY),
+      REDIS_TIMEOUT_MS,
+    )
+    if (result === TIMEOUT_SYMBOL || !result) return {}
+    // Upstash devuelve string a veces, number otras — normalizar
+    const out: Record<string, number> = {}
+    for (const [k, v] of Object.entries(result)) {
+      out[k] = typeof v === 'number' ? v : parseInt(String(v), 10) || 0
+    }
+    return out
+  } catch {
+    return {}
+  }
+}
+
+/**
+ * Resetea contadores de cache_metrics. Solo para uso de operaciones
+ * (deploy, debug). Best-effort.
+ */
+export async function resetCacheMetrics(): Promise<void> {
+  const redis = getRedis()
+  if (!redis) return
+  try {
+    await raceTimeout(redis.del(METRICS_HASH_KEY), REDIS_TIMEOUT_MS)
+  } catch { /* idem */ }
+}
+
 /**
  * Cache-aside pattern con singleflight. Si hay cache hit, devuelve. Si miss
  * o Redis falla, llama fetcher (deduplicado por key entre requests
@@ -93,6 +162,7 @@ export async function getOrSet<T>(
   try {
     const cached = await raceTimeout(redis.get<T>(key), REDIS_TIMEOUT_MS)
     if (cached !== TIMEOUT_SYMBOL && cached !== null && cached !== undefined) {
+      recordCacheEvent(redis, key, 'hit')
       return cached
     }
     // Si timeout o miss, seguir a fetcher
@@ -102,12 +172,16 @@ export async function getOrSet<T>(
 
   // 2. Singleflight: si ya hay un fetcher in-flight para esta key, esperar
   // a que termine y reutilizar su resultado (o su error).
+  // Nota: contamos esto como hit porque el caller no toca BD —
+  // se reutiliza el resultado del fetcher in-flight.
   const existing = inflight.get(key)
   if (existing) {
+    recordCacheEvent(redis, key, 'hit')
     return existing as Promise<T>
   }
 
   // 3. Cache miss y sin in-flight → lanzar fetcher, almacenar Promise
+  recordCacheEvent(redis, key, 'miss')
   const promise = (async () => {
     try {
       const value = await fetcher()

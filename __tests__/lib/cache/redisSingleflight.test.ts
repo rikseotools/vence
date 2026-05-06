@@ -23,6 +23,10 @@ jest.mock('@upstash/redis', () => ({
     get: mockGet,
     set: mockSet,
     del: jest.fn().mockResolvedValue(0),
+    // Phase 6 — recordCacheEvent llama hincrby fire-and-forget.
+    // Mock devuelve promesa resuelta para que .catch() no rompa.
+    hincrby: jest.fn().mockResolvedValue(1),
+    hgetall: jest.fn().mockResolvedValue({}),
   })),
 }))
 
