@@ -3,15 +3,16 @@
 
 import { tagDbTimeoutEvent } from '@/lib/observability/sentry-hooks'
 import { DbTimeoutError } from '@/lib/db/timeout'
-import type { Event, EventHint } from '@sentry/nextjs'
+import type { ErrorEvent, EventHint } from '@sentry/nextjs'
 
-function makeEvent(): Event {
+function makeEvent(): ErrorEvent {
   return {
     event_id: 'abc',
     level: 'error',
     tags: {},
     extra: {},
-  } as Event
+    type: undefined,
+  } as ErrorEvent
 }
 
 describe('tagDbTimeoutEvent', () => {
@@ -54,7 +55,9 @@ describe('tagDbTimeoutEvent', () => {
 
   test('no toca event sin originalException', () => {
     const event = makeEvent()
-    const result = tagDbTimeoutEvent(event)
+    // EventHint sin originalException — Sentry siempre pasa hint, pero
+    // originalException puede ser undefined.
+    const result = tagDbTimeoutEvent(event, {} as EventHint)
 
     expect(result).toBe(event)
     expect(result!.tags).toEqual({})

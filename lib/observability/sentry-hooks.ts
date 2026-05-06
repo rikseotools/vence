@@ -7,7 +7,7 @@
 // DbTimeoutError (lib/db/timeout.ts) con tag específico para filtrar
 // en el panel Sentry y medir frecuencia de saturación del pooler.
 
-import type { Event, EventHint } from '@sentry/nextjs'
+import type { ErrorEvent, EventHint } from '@sentry/nextjs'
 
 /**
  * beforeSend hook para Sentry. Si el evento se originó por un
@@ -16,11 +16,16 @@ import type { Event, EventHint } from '@sentry/nextjs'
  *
  * Otros eventos pasan sin tocar.
  *
- * @param event Evento que Sentry está a punto de enviar
+ * Tipos: la signatura de `beforeSend` en Sentry SDK es
+ *   (event: ErrorEvent, hint: EventHint) => ErrorEvent | PromiseLike<ErrorEvent | null> | null
+ * (el tipo genérico `Event` cubre transactions/feedback además de errores).
+ *
+ * @param event Evento que Sentry está a punto de enviar (solo errores —
+ *              `beforeSendTransaction` es separado)
  * @param hint Datos auxiliares (incluye originalException si aplica)
  * @returns El evento (potencialmente modificado) o null para descartar
  */
-export function tagDbTimeoutEvent(event: Event, hint?: EventHint): Event | null {
+export function tagDbTimeoutEvent(event: ErrorEvent, hint: EventHint): ErrorEvent | null {
   const error = hint?.originalException
   if (!error || typeof error !== 'object') return event
   if (!('name' in error) || (error as { name?: string }).name !== 'DbTimeoutError') {
