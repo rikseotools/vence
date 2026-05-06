@@ -6,8 +6,14 @@ import {
 } from '@/lib/api/ranking'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { withDbTimeout, isDbTimeoutError } from '@/lib/db/timeout'
+
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
+
+// Quick-fail timeout 12s — getRanking hace aggregation sobre user_profiles
+// + test_questions. Apareció en el cascade del 5 may.
+const RANKING_TIMEOUT_MS = 12000
 
 // ============================================
 // GET: Obtener ranking
@@ -44,7 +50,10 @@ async function _GET(request: NextRequest) {
       )
     }
 
-    const result = await getRanking(parseResult.data)
+    const result = await withDbTimeout(
+      () => getRanking(parseResult.data),
+      RANKING_TIMEOUT_MS,
+    )
 
     if (!result.success) {
       return NextResponse.json(result, { status: 500 })
@@ -56,6 +65,13 @@ async function _GET(request: NextRequest) {
       },
     })
   } catch (error) {
+    if (isDbTimeoutError(error)) {
+      console.warn('⏱️ [API/ranking] Timeout (quick-fail):', error.timeoutMs, 'ms')
+      return NextResponse.json(
+        { success: false, error: 'Servicio temporalmente saturado. Reintenta.', retryable: true },
+        { status: 503, headers: { 'Retry-After': '5' } },
+      )
+    }
     console.error('❌ [API/ranking] Error GET:', error)
     return NextResponse.json(
       { success: false, error: 'Error interno del servidor' },

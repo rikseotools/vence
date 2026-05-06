@@ -6,8 +6,12 @@ import {
 } from '@/lib/api/ranking'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { withDbTimeout, isDbTimeoutError } from '@/lib/db/timeout'
+
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
+
+const STREAK_RANKING_TIMEOUT_MS = 12000
 
 // ============================================
 // GET: Obtener ranking de rachas
@@ -41,7 +45,10 @@ async function _GET(request: NextRequest) {
       )
     }
 
-    const result = await getStreakRanking(parseResult.data)
+    const result = await withDbTimeout(
+      () => getStreakRanking(parseResult.data),
+      STREAK_RANKING_TIMEOUT_MS,
+    )
 
     if (!result.success) {
       return NextResponse.json(result, { status: 500 })
@@ -53,6 +60,13 @@ async function _GET(request: NextRequest) {
       },
     })
   } catch (error) {
+    if (isDbTimeoutError(error)) {
+      console.warn('⏱️ [API/ranking/streaks] Timeout (quick-fail):', error.timeoutMs, 'ms')
+      return NextResponse.json(
+        { success: false, error: 'Servicio temporalmente saturado. Reintenta.', retryable: true },
+        { status: 503, headers: { 'Retry-After': '5' } },
+      )
+    }
     console.error('❌ [API/ranking/streaks] Error GET:', error)
     return NextResponse.json(
       { success: false, error: 'Error interno del servidor' },
