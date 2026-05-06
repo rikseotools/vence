@@ -1166,7 +1166,7 @@ InnoTest repite las mismas preguntas en diferentes temas/tests/examenes. El `con
 
 ```
 1. Scrapear (§10)
-2. Crear leyes en BD + sync BOE (§12.3, monitoreo-boe.md)
+2. Crear leyes en BD + sync BOE (§12.3, monitoreo-boe-y-crear-leyes-nuevas.md)
 3. Crear leyes virtuales (§12.3)
 4. Construir mapa leyID → law_id (§12.1)
 5. Importar desactivadas (§12.3 primary_article_id)

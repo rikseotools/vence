@@ -1,6 +1,12 @@
-# Manual de Monitoreo de Leyes del BOE
+# Manual de Monitoreo BOE y Creación de Leyes Nuevas
 
-Este documento describe cómo investigar y resolver los cambios detectados en leyes del BOE.
+Este documento describe dos flujos relacionados:
+
+1. **Monitoreo y sincronización** de cambios detectados en leyes ya existentes en BD (cron `check-boe-changes` → `change_status: 'changed'` → revisar y sincronizar).
+2. **Creación de leyes nuevas** a partir de la URL del BOE (orden anual nueva, ley nueva publicada, sustitución de orden anterior).
+
+Si la ley **ya existe** en BD y el cron detectó un cambio, sigue las secciones 1–6.
+Si necesitas **crear una ley nueva** desde una URL del BOE (típicamente porque se ha publicado una orden anual o porque un usuario reporta que falta), salta a la sección **"Crear ley nueva desde URL del BOE"** al final del manual.
 
 ## Resumen del Flujo
 
@@ -338,6 +344,282 @@ Si un cambio legislativo afecta a varias oposiciones, preparar un email por cada
 - Adaptar `nombreOposicion` y URLs
 - Adaptar `cambiosHtml` al impacto especifico (ej: Tramitacion Procesal → LECrim + CP, Policia → solo CP)
 - Enviar test a admin primero, luego masivo
+
+## Crear ley nueva desde URL del BOE
+
+Este flujo se usa cuando hay que **incorporar una ley nueva** que no existe todavía en BD. Casos típicos:
+
+- **Órdenes anuales** que se publican cada año (cotización SS, IPREM, presupuestos generales). Cada ejercicio tiene su propia orden con número y año en el slug (`orden-pjc-178-2025` → `orden-pjc-297-2026`). NO es una "actualización" de la del año anterior — es una ley distinta, hay que crearla nueva.
+- **Leyes nuevas** publicadas que afectan a temarios existentes (reforma de un código, ley orgánica que toca un tema).
+- **Usuario reporta que falta una ley** que sí debería estar en el temario.
+
+> ⚠️ **Cuándo NO usar este flujo:** si la ley ya existe en BD y solo cambió su contenido (modificación parcial), usa "Sincronizar Ley desde BOE" (sección 3). El criterio: si el slug y el `boe_url` son el mismo → es actualización. Si cambian → es ley nueva.
+
+### Paso 1: INSERT de la nueva ley en `laws`
+
+```bash
+node << 'SCRIPT'
+require('dotenv').config({ path: '.env.local' });
+const { createClient } = require('@supabase/supabase-js');
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+
+(async () => {
+  // Verificar que NO existe ya
+  const { data: existing } = await supabase.from('laws')
+    .select('id').eq('slug', 'SLUG_DE_LA_LEY').maybeSingle();
+  if (existing) { console.log('Ya existe:', existing.id); return; }
+
+  // INSERT
+  const { data: created, error } = await supabase.from('laws').insert({
+    name: 'Nombre completo oficial del BOE',
+    short_name: 'Abreviatura (ej: Orden PJC/297/2026)',
+    description: 'Descripción corta',
+    slug: 'orden-pjc-297-2026',
+    year: 2026,
+    type: 'law',
+    scope: 'national',     // 'national' | 'autonomic' | 'local' | 'eu'
+    is_active: true,
+    boe_url: 'https://www.boe.es/buscar/act.php?id=BOE-A-2026-7296',
+    verification_status: 'pendiente',
+    is_derogated: false,
+    current_version: '1.0',
+    last_update_boe: '31/03/2026',  // formato DD/MM/YYYY
+  }).select('id, slug').single();
+
+  if (error) { console.error('❌ Error INSERT:', error); return; }
+  console.log('✅ Ley creada:', created.id, '|', created.slug);
+})();
+SCRIPT
+```
+
+**Campos obligatorios:** `name`, `short_name`, `slug`, `year`, `boe_url`. El resto tienen defaults razonables, pero conviene rellenarlos todos para auditoría.
+
+### Paso 2: Sincronizar artículos desde el BOE
+
+Llamar al endpoint `/api/verify-articles/sync-all` con el `lawId` recién creado. **Funciona en producción**, no requiere dev local:
+
+```bash
+curl -s -X POST https://www.vence.es/api/verify-articles/sync-all \
+  -H "Content-Type: application/json" \
+  -d '{"lawId":"UUID_DE_LA_LEY_NUEVA","mode":"sync"}'
+```
+
+Respuesta esperada:
+
+```json
+{
+  "success": true,
+  "message": "Sincronización completada para Orden PJC/297/2026",
+  "stats": {
+    "boeTotal": 47,
+    "dbTotal": 47,
+    "added": 47,
+    "updated": 0,
+    "deactivated": 0,
+    "unchanged": 0,
+    "structureArticles": 0
+  }
+}
+```
+
+El endpoint hace fetch de la `boe_url`, parsea el HTML con `extractArticlesFromBOE` y crea las filas en `articles`. Si hay disposiciones (adicionales/transitorias/derogatorias/finales) que importan, añadir `"includeDisposiciones": true` al body (ver sección "Sincronización de Disposiciones" más abajo).
+
+### Paso 3: Verificar que la sincronización es completa y sin truncados
+
+```bash
+node << 'SCRIPT'
+require('dotenv').config({ path: '.env.local' });
+const { createClient } = require('@supabase/supabase-js');
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+
+(async () => {
+  const lawId = 'UUID_DE_LA_LEY_NUEVA';
+  const { data: arts, count } = await supabase.from('articles')
+    .select('article_number, content', { count: 'exact' })
+    .eq('law_id', lawId);
+  let shortCount = 0;
+  for (const a of (arts || [])) {
+    const len = a.content?.length || 0;
+    if (len < 200 && !['preámbulo','0'].includes(a.article_number)) shortCount++;
+  }
+  console.log('Artículos:', count, '| sospechosamente cortos (<200 chars):', shortCount);
+})();
+SCRIPT
+```
+
+Si `shortCount > 0`, revisar manualmente — puede haber artículos truncados que requieran corrección (ver sección "PROHIBIDO: Artículos Truncados o Parciales").
+
+### Paso 4: Marcar la ley como verificada
+
+```bash
+node << 'SCRIPT'
+require('dotenv').config({ path: '.env.local' });
+const { createClient } = require('@supabase/supabase-js');
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+
+(async () => {
+  const lawId = 'UUID_DE_LA_LEY_NUEVA';
+  const now = new Date().toISOString();
+  const { error } = await supabase.from('laws').update({
+    verification_status: 'actualizada',
+    last_checked: now,
+    last_verification_summary: {
+      is_ok: true,
+      db_count: 47,        // ajustar al count real
+      boe_count: 47,
+      matching: 47,
+      content_mismatch: 0,
+      missing_in_db: 0,
+      extra_in_db: 0,
+      title_mismatch: 0,
+      structure_articles: 0,
+      verified_at: now,
+      message: 'Sincronización inicial desde BOE — N artículos importados',
+      source: 'BOE-A-XXXX-XXXXX',
+    },
+  }).eq('id', lawId);
+  console.log(error ? '❌ ' + error.message : '✅ Ley marcada como verificada');
+})();
+SCRIPT
+```
+
+### Paso 5 (opcional): Sustitución anual — marcar la ley anterior como histórica
+
+Si la nueva ley **sustituye una versión anual anterior** (caso clásico: PJC/178/2025 → PJC/297/2026), no eliminar ni desactivar la antigua. Sigue siendo válida para hechos del ejercicio anterior. Marcarla con `derogated_by` + `last_verification_summary.historical: true`:
+
+```bash
+node << 'SCRIPT'
+require('dotenv').config({ path: '.env.local' });
+const { createClient } = require('@supabase/supabase-js');
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+
+(async () => {
+  const oldLawId = 'UUID_LEY_ANTIGUA';
+  const newLawId = 'UUID_LEY_NUEVA';
+  const newSlug  = 'orden-pjc-297-2026';
+  const newYear  = 2026;
+  const now = new Date().toISOString();
+
+  const { error } = await supabase.from('laws').update({
+    derogated_by: newLawId,
+    last_verification_summary: {
+      is_ok: true,
+      historical: true,
+      replaced_by_year: newYear,
+      replaced_by_law_id: newLawId,
+      replaced_by_slug: newSlug,
+      note: `Vigente para el ejercicio ${newYear - 1}. Para el ejercicio ${newYear} ver ${newSlug}.`,
+      verified_at: now,
+    },
+  }).eq('id', oldLawId);
+  console.log(error ? '❌ ' + error.message : '✅ Ley antigua marcada como histórica');
+})();
+SCRIPT
+```
+
+> ⚠️ **NO marcar `is_active: false`** salvo que la antigua haya sido **derogada expresamente** por una norma posterior. La sustitución anual ≠ derogación: la antigua sigue siendo la ley aplicable a los hechos de su ejercicio.
+
+### Paso 6: Migrar preguntas existentes a la nueva ley
+
+Si había preguntas en BD que apuntaban a artículos de la ley antigua y siguen siendo válidas para el ejercicio en curso (ej: estructura de grupos de cotización que no cambia entre años), migrarlas:
+
+```bash
+node << 'SCRIPT'
+require('dotenv').config({ path: '.env.local' });
+const { createClient } = require('@supabase/supabase-js');
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+
+(async () => {
+  const oldLawId = 'UUID_LEY_ANTIGUA';
+  const newArtId = 'UUID_DEL_ARTICULO_NUEVO_EQUIVALENTE';
+
+  // 1. Encontrar preguntas que apuntan a artículos de la ley antigua
+  const { data: oldArts } = await supabase.from('articles').select('id').eq('law_id', oldLawId);
+  const { data: qs } = await supabase.from('questions')
+    .select('id, question_text, explanation')
+    .in('primary_article_id', oldArts.map(a => a.id));
+
+  // 2. Para cada una: actualizar primary_article_id y reemplazar referencias textuales
+  for (const q of qs) {
+    const newText = q.question_text?.replace(/Orden PJC\/178\/2025[^\.]*/g,
+      'Orden PJC/297/2026, de 30 de marzo, por la que se desarrollan las normas legales de cotización a la Seguridad Social...');
+    const newExpl = q.explanation?.replace(/Orden PJC\/178\/2025/g, 'Orden PJC/297/2026');
+    // Si las cifras (bases mínimas/máximas) cambiaron, reemplazarlas también — verificar manualmente
+
+    await supabase.from('questions').update({
+      primary_article_id: newArtId,
+      question_text: newText,
+      explanation: newExpl,
+    }).eq('id', q.id);
+  }
+  console.log(`✅ ${qs.length} preguntas migradas`);
+})();
+SCRIPT
+```
+
+> ⚠️ **NO usar `transition_question_state`** para esto. Solo modificas contenido (`question_text`, `explanation`, `primary_article_id`), no estado del lifecycle. Un UPDATE directo es correcto.
+
+> ⚠️ Si las cifras concretas cambian (ej: bases de cotización, IPREM), **revisar caso a caso** las explicaciones — no basta con replace global de la referencia normativa.
+
+### Paso 7: Revalidar caché — OBLIGATORIO
+
+Tras añadir ley nueva hay que invalidar **tags de datos + páginas ISR** (ver `cache-revalidation.md`):
+
+```bash
+# Tags de datos
+for tag in temario teoria laws; do
+  curl -X POST https://www.vence.es/api/admin/revalidate \
+    -H "Content-Type: application/json" \
+    -H "x-cron-secret: $CRON_SECRET" \
+    -d "{\"tag\":\"$tag\"}"
+done
+
+# Páginas ISR específicas
+for path in /leyes /leyes/SLUG_NUEVA /leyes/SLUG_ANTIGUA; do
+  curl -X POST https://www.vence.es/api/purge-cache \
+    -H "Content-Type: application/json" \
+    -H "x-cron-secret: $CRON_SECRET" \
+    -d "{\"path\":\"$path\"}"
+done
+```
+
+Si la nueva ley afecta a temarios concretos (vinculada en `topic_law_relationships` o usada por preguntas de un tema), añadir también las rutas de esos temarios y considerar enviar newsletter a los usuarios de las oposiciones afectadas (ver "Notificar a usuarios de cambios legislativos" arriba).
+
+### Paso 8 (opcional): Vincular la ley a temas
+
+Si la nueva ley debe aparecer formalmente como contenido oficial de un tema (no solo como referencia de algunas preguntas), insertar una fila en `topic_law_relationships`:
+
+```bash
+node << 'SCRIPT'
+require('dotenv').config({ path: '.env.local' });
+const { createClient } = require('@supabase/supabase-js');
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+
+(async () => {
+  const { error } = await supabase.from('topic_law_relationships').insert({
+    topic_id: 'UUID_DEL_TEMA',
+    law_id: 'UUID_LEY_NUEVA',
+  });
+  console.log(error ? '❌ ' + error.message : '✅ Vinculación creada');
+})();
+SCRIPT
+```
+
+Y revalidar `temario` de nuevo.
+
+### Casos reales registrados
+
+#### 04/05/2026 — Orden PJC/297/2026 (cotización SS 2026)
+
+- **Disparador:** feedback de usuario `cb herranz` (`5e71a32f`) reportando que la PJC/178/2025 había sido sustituida.
+- **Verificación BOE:** Orden PJC/297/2026, de 30 de marzo (BOE-A-2026-7296, BOE 31/03/2026, EV 01/04/2026). No deroga expresamente la 178/2025 ("se mantiene la regulación de bases y tipos restantes prevista en la PJC/178/2025"), pero las bases mínimas/máximas y tope mensual sí se actualizan al SMI 2026.
+- **Acción:**
+  1. INSERT `orden-pjc-297-2026` (id `cdad0ee0-c94f-4950-a764-9a1be3e6f3d7`).
+  2. `sync-all` → 47 artículos importados (boeTotal=47, dbTotal=47, added=47, sin truncados).
+  3. PJC/178/2025 marcada `historical: true`, `derogated_by: cdad0ee0…`, sin desactivar.
+  4. 3 preguntas (grupos de cotización art. 3) migradas: `primary_article_id` al art. 3 de la 297/2026, referencias textuales actualizadas, base mínima Grupo 3 corregida 1.391,70 → 1.435,20 €/mes.
+  5. Revalidación: tags `temario`, `teoria`, `laws` + ISR `/leyes`, `/leyes/orden-pjc-297-2026`, `/leyes/orden-pjc-178-2025`.
+- **Lección:** las órdenes anuales (cotización SS, IPREM, presupuestos) tienen este patrón cada año. Mantener la antigua como histórica permite que las preguntas referenciadas a hechos del ejercicio anterior sigan siendo válidas.
 
 ## Sincronización de Disposiciones
 

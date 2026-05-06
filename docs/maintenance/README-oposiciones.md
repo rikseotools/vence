@@ -14,7 +14,8 @@ Este README mapea qué manual usar según el caso de uso. Todos los manuales rel
 | Importar preguntas scrapeadas (OpositaTest, etc.) | [importar-preguntas-scrapeadas.md](./importar-preguntas-scrapeadas.md) |
 | Verificar calidad de preguntas con IA (bulk) | [revisar-temas-con-agente.md](./revisar-temas-con-agente.md) |
 | El cron de seguimiento detectó cambios en BOE/BOP | [oeps-convocatorias-seguimiento.md](./oeps-convocatorias-seguimiento.md) |
-| El cron de BOE detectó cambios en una ley | [monitoreo-boe.md](./monitoreo-boe.md) |
+| El cron de BOE detectó cambios en una ley | [monitoreo-boe-y-crear-leyes-nuevas.md](./monitoreo-boe-y-crear-leyes-nuevas.md) |
+| Hay que crear una ley nueva (orden anual, ley nueva publicada) desde URL del BOE | [monitoreo-boe-y-crear-leyes-nuevas.md](./monitoreo-boe-y-crear-leyes-nuevas.md) — sección "Crear ley nueva" |
 | Caso específico: Tramitación Procesal | [importar-tema-tramitacion-procesal.md](./importar-tema-tramitacion-procesal.md) |
 
 ## 📋 Principios compartidos (se aplican a TODOS los manuales)
@@ -92,7 +93,7 @@ Desde 05/04/2026 el temario es dinámico: no hay datos hardcoded en `page.tsx`. 
 - [gestionar-feedback-bug.md](../procedures/gestionar-feedback-bug.md) — Procedimiento para feedbacks de usuarios
 - [investigar-journey-usuario.md](../procedures/investigar-journey-usuario.md) — Timeline interacciones usuario
 - [impugnaciones-claude-code.md](./impugnaciones-claude-code.md) — Gestión de impugnaciones
-- [monitoreo-boe.md](./monitoreo-boe.md) — Detección cambios en leyes
+- [monitoreo-boe-y-crear-leyes-nuevas.md](./monitoreo-boe-y-crear-leyes-nuevas.md) — Detección cambios en leyes + creación de leyes nuevas
 
 ## 📝 Mantenimiento de este índice
 
