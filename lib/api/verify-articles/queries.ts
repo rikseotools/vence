@@ -14,7 +14,9 @@ import {
   topics,
 } from '@/db/schema'
 import { eq, and, inArray, desc, sql } from 'drizzle-orm'
+import { unstable_cache } from 'next/cache'
 import { invalidateQuestionsCache } from '@/lib/cache/questions'
+import { invalidateVerifyStatsCache } from '@/lib/cache/verify-stats'
 
 // ============================================
 // LAW QUERIES
@@ -65,6 +67,29 @@ export async function getAllLawsWithVerification() {
     .from(laws)
 }
 
+// CACHED WRAPPER (Phase 4d — tag 'verify-stats')
+// Datos solo cambian cuando admin corre verificación de una ley
+// (vía updateLawVerification). Esa función invalida el tag.
+// TTL 6h: el panel admin no se golpea constantemente y ya verifica al
+// abrirlo; con singleflight (Phase 2) los cold cache misses se dedupean.
+//
+// Feature flag: CACHE_VERIFY_STATS=false → bypass al fetcher real.
+
+const TTL_VERIFY_STATS = 21600 // 6h
+
+const _cachedAllLawsWithVerification = unstable_cache(
+  getAllLawsWithVerification,
+  ['verify-stats-all-laws-v1'],
+  { revalidate: TTL_VERIFY_STATS, tags: ['verify-stats'] },
+)
+
+export async function getAllLawsWithVerificationCached() {
+  if (process.env.CACHE_VERIFY_STATS === 'false') {
+    return getAllLawsWithVerification()
+  }
+  return _cachedAllLawsWithVerification()
+}
+
 export async function updateLawVerification(lawId: string, summary: Record<string, unknown>) {
   const db = getDb()
   await db
@@ -74,6 +99,9 @@ export async function updateLawVerification(lawId: string, summary: Record<strin
       lastVerificationSummary: summary,
     })
     .where(eq(laws.id, lawId))
+  // Invalidar el cache de stats-by-law: la lista depende de lastChecked +
+  // lastVerificationSummary que acabamos de mutar.
+  invalidateVerifyStatsCache()
 }
 
 // ============================================

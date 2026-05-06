@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
-import { getAllLawsWithVerification } from '@/lib/api/verify-articles/queries'
+import { getAllLawsWithVerificationCached } from '@/lib/api/verify-articles/queries'
 import { calculateIsOk } from '@/lib/api/verify-articles/ai-helpers'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 async function _GET() {
   try {
-    const lawsList = await getAllLawsWithVerification()
+    const lawsList = await getAllLawsWithVerificationCached()
 
     const statsByLaw: Record<string, unknown> = {}
     let hasDiscrepancies = false
