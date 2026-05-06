@@ -378,14 +378,16 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
               )}
 
               {/* Bloques dinámicos */}
-              {bloques.map((bloque) => (
+              {bloques.map((bloque, idx) => (
                 <BlockSection
                   key={bloque.id}
                   blockId={bloque.id}
+                  bloqueNumber={idx + 1}
                   icon={bloque.icon}
                   title={bloque.name}
                   topics={bloque.topics}
                   basePath={basePath}
+                  positionType={positionType}
                   expanded={expandedBlocks[bloque.id] ?? false}
                   onToggle={toggleBlock}
                   userStats={userStats}
@@ -616,10 +618,12 @@ function ConvocatoriaCard({ convocatoria, oposicion, examStats, expanded, onTogg
 
 interface BlockSectionProps {
   blockId: string
+  bloqueNumber: number
   icon: string
   title: string
   topics: Topic[]
   basePath: string
+  positionType: string
   expanded: boolean
   onToggle: (blockId: string) => void
   userStats: Record<number, ThemeStats>
@@ -630,10 +634,12 @@ interface BlockSectionProps {
 
 function BlockSection({
   blockId,
+  bloqueNumber,
   icon,
   title,
   topics,
   basePath,
+  positionType,
   expanded,
   onToggle,
   userStats,
@@ -685,6 +691,23 @@ function BlockSection({
               onInfoClick={onInfoClick}
             />
           ))}
+
+          {/* Repaso de fallos del bloque (feature 06/05/2026, feedback Alba) */}
+          <Link
+            href={`/test/repaso-fallos-v2?bloque=${bloqueNumber}&positionType=${encodeURIComponent(positionType)}&n=20`}
+            className="flex items-center justify-between bg-gradient-to-r from-red-500 to-orange-600 text-white py-3 px-4 rounded-lg font-semibold transition-all duration-300 hover:shadow-lg hover:scale-[1.01] active:scale-[0.99] focus:outline-none focus:ring-4 focus:ring-red-300"
+          >
+            <div className="flex items-center min-w-0">
+              <span className="mr-3 text-xl flex-shrink-0">🎯</span>
+              <div className="flex flex-col min-w-0">
+                <span className="text-sm opacity-90">Repaso de Fallos</span>
+                <span className="font-bold truncate">{title}</span>
+              </div>
+            </div>
+            <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-medium flex-shrink-0 ml-2">
+              20 preguntas
+            </span>
+          </Link>
         </div>
       )}
     </div>

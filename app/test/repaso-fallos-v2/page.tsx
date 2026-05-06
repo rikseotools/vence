@@ -51,12 +51,21 @@ function RepasoFallosV2Content() {
         const days = searchParams.get('days') || '30'
         const fromDate = searchParams.get('fromDate')
 
+        // Filtro opcional por bloque (feature 06/05/2026, feedback Alba):
+        // /test/repaso-fallos-v2?bloque=2&positionType=auxiliar_administrativo_estado
+        const bloqueParam = searchParams.get('bloque')
+        const positionTypeParam = searchParams.get('positionType')
+
         // Construir body del request
+        type Scope =
+          | { type: 'block'; bloqueNumber: number; positionType: string }
+          | { type: 'topic'; topicNumbers: number[]; positionType: string }
         const requestBody: {
           numQuestions: number
           orderBy: string
           days?: number
           fromDate?: string
+          scope?: Scope
         } = {
           numQuestions: parseInt(numQuestions),
           orderBy,
@@ -66,6 +75,17 @@ function RepasoFallosV2Content() {
           requestBody.fromDate = fromDate
         } else {
           requestBody.days = parseInt(days)
+        }
+
+        if (bloqueParam && positionTypeParam) {
+          const bloqueNumber = parseInt(bloqueParam, 10)
+          if (Number.isInteger(bloqueNumber) && bloqueNumber > 0) {
+            requestBody.scope = {
+              type: 'block',
+              bloqueNumber,
+              positionType: positionTypeParam,
+            }
+          }
         }
 
         // Llamar a la API v2 (Drizzle + Zod)
@@ -167,8 +187,15 @@ function RepasoFallosV2Content() {
     )
   }
 
-  // Config del test
-  const config: TestConfig = {
+  // Config del test (con título adaptado si hay filtro por bloque)
+  const bloqueLabel = searchParams.get('bloque')
+  const config: TestConfig = bloqueLabel ? {
+    name: `Repaso de Fallos del Bloque ${bloqueLabel}`,
+    description: `Practicando ${questions.length} preguntas falladas del Bloque ${bloqueLabel}`,
+    subtitle: "Refuerza los temas de este bloque",
+    icon: "🎯",
+    color: "from-red-500 to-orange-600",
+  } : {
     name: "Test de Repaso de Fallos",
     description: `Practicando ${questions.length} preguntas que necesitas reforzar`,
     subtitle: "Repasa tus puntos débiles",

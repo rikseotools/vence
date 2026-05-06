@@ -1,6 +1,6 @@
 // lib/api/tests/queries.ts - Queries tipadas para tests
 import { getDb } from '@/db/client'
-import { tests, testQuestions, userProfiles, questions, articles, laws } from '@/db/schema'
+import { tests, testQuestions, userProfiles, questions, articles, laws, topics, topicScope } from '@/db/schema'
 import { eq, sql, inArray, gte, and, desc } from 'drizzle-orm'
 import { getAllowedLawIds } from '@/lib/api/oposicion-scope/queries'
 import type {
@@ -321,8 +321,14 @@ export async function getFailedQuestionsForUser(
         )
     }
 
-    const questionIds = sortedQuestions.slice(0, numQuestions).map(q => q.questionId)
-    console.log(`🎯 [DRIZZLE] Returning ${questionIds.length} question IDs`)
+    // Cuando hay scope (filtro por bloque/temas) NO podemos pre-cortar a numQuestions,
+    // porque los N más recientes podrían ser todos de OTRO bloque y el filtro
+    // dejaría 0 resultados. Traemos todos los IDs y limitamos tras aplicar el filtro.
+    const hasScope = !!params.scope
+    const questionIds = hasScope
+      ? sortedQuestions.map(q => q.questionId)
+      : sortedQuestions.slice(0, numQuestions).map(q => q.questionId)
+    console.log(`🎯 [DRIZZLE] Returning ${questionIds.length} question IDs (hasScope=${hasScope})`)
 
     if (!questionIds.length) {
       return {
@@ -338,6 +344,50 @@ export async function getFailedQuestionsForUser(
     const scopeFilter = allowed.lawIds.length > 0
       ? inArray(laws.id, allowed.lawIds)
       : sql`true`
+
+    // Filtro opcional por bloque/temas (feature 06/05/2026, feedback Alba).
+    // Si viene scope, resolver topic_numbers (BD si type=block, directo si type=topic)
+    // y aplicar EXISTS contra topic_scope×topics. position_type aísla cross-oposición
+    // (mismo patrón que getAllowedLawIds / lib/api/oposicion-scope/queries.ts:117).
+    let blockFilter = sql`true`
+    if (params.scope) {
+      let topicNumbers: number[] = []
+      const positionType = params.scope.positionType
+
+      if (params.scope.type === 'block') {
+        const topicRows = await db
+          .select({ topicNumber: topics.topicNumber })
+          .from(topics)
+          .where(and(
+            eq(topics.positionType, positionType),
+            sql`${topics.bloqueNumber} = ${params.scope.bloqueNumber}`,
+            eq(topics.isActive, true),
+          ))
+        topicNumbers = topicRows.map(r => r.topicNumber)
+
+        if (topicNumbers.length === 0) {
+          return {
+            success: true,
+            questions: [],
+            questionCount: 0,
+            message: `El Bloque ${params.scope.bloqueNumber} no tiene temas activos en esta oposición`,
+          }
+        }
+      } else {
+        topicNumbers = params.scope.topicNumbers
+      }
+
+      blockFilter = sql`EXISTS (
+        SELECT 1 FROM ${topicScope} ts
+        INNER JOIN ${topics} t ON t.id = ts.topic_id
+        WHERE ts.law_id = ${articles.lawId}
+          AND ${articles.articleNumber} = ANY(ts.article_numbers)
+          AND t.position_type = ${positionType}
+          AND t.topic_number IN (${sql.join(topicNumbers, sql`, `)})
+      )`
+
+      console.log(`🎯 [DRIZZLE] scope=${params.scope.type} positionType=${positionType} topics=${topicNumbers.length}`)
+    }
 
     const questionsWithDetails = await db
       .select({
@@ -372,19 +422,39 @@ export async function getFailedQuestionsForUser(
         and(
           inArray(questions.id, questionIds),
           eq(questions.isActive, true),
-          scopeFilter
+          scopeFilter,
+          blockFilter
         )
       )
 
     if (!questionsWithDetails.length) {
+      // Distinguir caso "scope activo y bloque/temas sin fallos" del caso de error real
+      if (hasScope) {
+        return {
+          success: true,
+          questions: [],
+          questionCount: 0,
+          message: `¡Enhorabuena! No tienes preguntas falladas en este bloque en ${periodLabel}`,
+        }
+      }
       return {
         success: false,
         error: 'Las preguntas falladas ya no están disponibles',
       }
     }
 
+    // Si hay scope, respetar el orderBy original y limitar a numQuestions
+    // (en paso 2 trajimos todas las falladas, no las primeras N).
+    let finalResults = questionsWithDetails
+    if (hasScope && questionsWithDetails.length > numQuestions) {
+      const idOrder = new Map(sortedQuestions.map((q, i) => [q.questionId, i]))
+      finalResults = [...questionsWithDetails].sort((a, b) =>
+        (idOrder.get(a.id) ?? Infinity) - (idOrder.get(b.id) ?? Infinity)
+      ).slice(0, numQuestions)
+    }
+
     // Transformar al formato de TestLayout
-    const formattedQuestions: TestLayoutQuestion[] = questionsWithDetails.map(q => ({
+    const formattedQuestions: TestLayoutQuestion[] = finalResults.map(q => ({
       id: q.id,
       question: q.questionText,
       question_text: q.questionText,

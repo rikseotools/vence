@@ -131,12 +131,33 @@ export const failedQuestionsOrderSchema = z.enum([
 
 export type FailedQuestionsOrder = z.infer<typeof failedQuestionsOrderSchema>
 
+// Scope polimórfico: limita las preguntas falladas a un bloque o conjunto de temas
+// concretos. Sin scope = comportamiento actual (todos los fallos del usuario).
+// 'block': el backend resuelve topic_numbers desde BD (oposicion_bloques + topics).
+// 'topic': el cliente pasa los topic_numbers directamente.
+// En ambos casos positionType acota a UNA oposición (anti cross-oposición).
+export const failedQuestionsScopeSchema = z.discriminatedUnion('type', [
+  z.object({
+    type: z.literal('block'),
+    bloqueNumber: z.number().int().min(1),
+    positionType: z.string().min(1),
+  }),
+  z.object({
+    type: z.literal('topic'),
+    topicNumbers: z.array(z.number().int().min(1)).min(1),
+    positionType: z.string().min(1),
+  }),
+])
+
+export type FailedQuestionsScope = z.infer<typeof failedQuestionsScopeSchema>
+
 export const createFailedQuestionsTestRequestSchema = z.object({
   userId: z.string().uuid('ID de usuario inválido'),
   numQuestions: z.number().int().min(1).max(100).default(10),
   orderBy: failedQuestionsOrderSchema.default('recent'),
   fromDate: z.string().datetime().optional(),
   days: z.number().int().min(1).max(365).optional(),
+  scope: failedQuestionsScopeSchema.optional(),
 })
 
 export type CreateFailedQuestionsTestRequest = z.infer<typeof createFailedQuestionsTestRequestSchema>

@@ -46,6 +46,11 @@ export const topics = pgTable("topics", {
 	estimatedHours: integer("estimated_hours").default(10),
 	epigrafe: text(),
 	isActive: boolean("is_active").default(true),
+	// Columnas del temario dinámico (migración 2026-04-05-temario-dinamico.sql)
+	bloqueNumber: integer("bloque_number"),
+	displayNumber: integer("display_number"),
+	disponible: boolean("disponible").default(true),
+	descripcionCorta: text("descripcion_corta"),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 }, (table) => [
