@@ -15,6 +15,7 @@ import { sql } from 'drizzle-orm'
 import { requireAdmin } from '@/lib/api/shared/auth'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { invalidateTestConfigCache } from '@/lib/cache/test-config'
+import { invalidateLawStatsCache } from '@/lib/cache/law-stats'
 import {
   LIFECYCLE_STATES,
   isValidReasonCode,
@@ -85,8 +86,9 @@ async function _POST(request: NextRequest) {
     `)
 
     // El lifecycle_state cambia → is_active (GENERATED) cambia → counts y
-    // listas que cachea test-config se quedan stale. Invalidar tag.
+    // listas que cachean test-config y law-stats se quedan stale.
     invalidateTestConfigCache()
+    invalidateLawStatsCache()
 
     return Response.json({
       success: true,

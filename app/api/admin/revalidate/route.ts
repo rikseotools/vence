@@ -14,6 +14,7 @@ const VALID_TAGS = [
   'user-theme-stats',
   'test-config',   // Fase 4a — sections / articles / essential-articles
   'hot-articles',  // Fase 4b — hot-articles/check
+  'law-stats',     // Fase 4c — questions/law-stats
 ]
 
 async function _POST(request: NextRequest) {

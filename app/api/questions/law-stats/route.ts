@@ -4,7 +4,7 @@
 // Server components llaman a queryLawStats() directamente.
 
 import { NextRequest, NextResponse } from 'next/server'
-import { queryLawStats } from '@/lib/api/law-stats/queries'
+import { queryLawStatsCached } from '@/lib/api/law-stats/queries'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 
 export const dynamic = 'force-dynamic'
@@ -21,7 +21,7 @@ async function _GET(request: NextRequest) {
     )
   }
 
-  const result = await queryLawStats(lawShortName)
+  const result = await queryLawStatsCached(lawShortName)
 
   if (!result.success) {
     return NextResponse.json(result, { status: 500 })

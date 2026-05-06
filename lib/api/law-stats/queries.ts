@@ -5,6 +5,7 @@
 import { getDb } from '@/db/client'
 import { questions, articles, laws } from '@/db/schema'
 import { eq, and, sql, isNull } from 'drizzle-orm'
+import { unstable_cache } from 'next/cache'
 
 export interface LawStatsResult {
   success: boolean
@@ -69,4 +70,31 @@ export async function queryLawStats(lawShortName: string): Promise<LawStatsResul
       error: (error as Error).message,
     }
   }
+}
+
+// ============================================
+// CACHED WRAPPER (Phase 4c — tag 'law-stats')
+// ============================================
+// Counts dependen de questions.isActive, que es GENERATED desde
+// lifecycle_state. Cambios de lifecycle invalidan el tag desde los mismos
+// 3 sitios que test-config (lib/cache/law-stats.ts:invalidateLawStatsCache).
+//
+// TTL 6h: balance entre carga BD (queries con JOIN sobre questions/articles/
+// laws) y frescura. Las invalidaciones manuales por admin propagan en <1s.
+//
+// Feature flag: CACHE_LAW_STATS=false → bypass al fetcher real.
+
+const TTL_LAW_STATS = 21600 // 6h
+
+const _cachedQueryLawStats = unstable_cache(
+  queryLawStats,
+  ['law-stats-v1'],
+  { revalidate: TTL_LAW_STATS, tags: ['law-stats'] },
+)
+
+export async function queryLawStatsCached(lawShortName: string): Promise<LawStatsResult> {
+  if (process.env.CACHE_LAW_STATS === 'false') {
+    return queryLawStats(lawShortName)
+  }
+  return _cachedQueryLawStats(lawShortName)
 }

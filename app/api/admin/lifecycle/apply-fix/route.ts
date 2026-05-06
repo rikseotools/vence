@@ -23,6 +23,7 @@ import { requireAdmin } from '@/lib/api/shared/auth'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { invalidateQuestionsCache } from '@/lib/cache/questions'
 import { invalidateTestConfigCache } from '@/lib/cache/test-config'
+import { invalidateLawStatsCache } from '@/lib/cache/law-stats'
 
 const bodySchema = z.object({
   questionId: z.string().uuid(),
@@ -171,8 +172,9 @@ async function _POST(request: NextRequest) {
   }
 
   // Lifecycle transition cambia is_active → counts cachados en test-config
-  // se invalidan. Coherente con el patrón de transition/route.ts.
+  // y law-stats se invalidan. Coherente con el patrón de transition/route.ts.
   invalidateTestConfigCache()
+  invalidateLawStatsCache()
 
   return Response.json({
     success: true,

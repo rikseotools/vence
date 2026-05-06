@@ -29,6 +29,7 @@ import { requireAdmin } from '@/lib/api/shared/auth'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { invalidateQuestionsCache } from '@/lib/cache/questions'
 import { invalidateTestConfigCache } from '@/lib/cache/test-config'
+import { invalidateLawStatsCache } from '@/lib/cache/law-stats'
 
 const bodySchema = z.object({
   questionIds: z.array(z.string().uuid()).min(1).max(200),
@@ -190,11 +191,12 @@ async function _POST(request: NextRequest) {
   if (contentUpdatesCommitted > 0) {
     invalidateQuestionsCache()
   }
-  // test-config cache (counts) se afecta por lifecycle transitions exitosas
-  // (que cambian is_active). `applied` se popula solo cuando la transición
-  // posterior tuvo éxito → uso esa señal para invalidar test-config.
+  // test-config y law-stats cache (counts) se afectan por lifecycle
+  // transitions exitosas (que cambian is_active). `applied` se popula solo
+  // cuando la transición posterior tuvo éxito → uso esa señal.
   if (applied.length > 0) {
     invalidateTestConfigCache()
+    invalidateLawStatsCache()
   }
 
   return Response.json({
