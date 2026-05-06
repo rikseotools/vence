@@ -255,7 +255,25 @@ revalidateTag('laws')     // Invalida lista de leyes
 
 ### Opción 2: Endpoint genérico `/api/admin/revalidate`
 
-Acepta cualquier tag válido (`temario`, `teoria`, `laws`, `landing`). Requiere `x-cron-secret`.
+Acepta cualquier tag de la allowlist en `app/api/admin/revalidate/route.ts`. Requiere `x-cron-secret`.
+
+**Tags válidos** (actualizado 2026-05-06 tras Sprint 2):
+
+| Tag | Qué cachea | Cuándo invalidar |
+|---|---|---|
+| `temario` | Estructura de temas + bloques + artículos del temario por oposición | Tras sync BOE, cambio scope, añadir/quitar artículos |
+| `teoria` | Contenido teórico de artículos (texto + navegación) | Tras editar contenido legal |
+| `laws` | Lista de leyes con counts de preguntas | Tras añadir muchas preguntas o ley nueva |
+| `landing` | Datos de oposición (plazas, hitos, descripción) | Tras editar oposición o subir hitos |
+| `test-counts` | Counts de preguntas por tema/ley para configurador | Tras importar preguntas masivas |
+| `medals` | Datos de medallas y rankings | Tras update de medallas |
+| `profile` | Perfil de usuario (60s TTL, tag-invalidate fuerza refresco) | Manualmente raro — auto via webhook Stripe + onboarding |
+| `questions` | Validación de preguntas en `getQuestionValidationCached` | Tras editar `correct_option` o `explanation` (auto via lib/cache/questions.ts) |
+| `user-theme-stats` | Stats por tema (Phase 1 Redis) | Tras INSERT en test_questions |
+| `test-config` | sections + articles + essential-articles + estimate del configurador | Auto via lifecycle transition; manual tras scripts mutación |
+| `hot-articles` | Hot articles per oposición | Manual tras `scripts/sync-hot-articles.cjs` |
+| `law-stats` | Counts de preguntas activas por ley | Auto via lifecycle transition |
+| `verify-stats` | Estado de verificación BOE por ley | Auto via `updateLawVerification`; manual raro |
 
 ```bash
 # Revalidar un tag específico

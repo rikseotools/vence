@@ -1,7 +1,7 @@
 # Vence — Architecture Roadmap a 100k+ usuarios
 
-> **Última actualización:** 2026-05-06
-> **Estado:** Fase 0 casi completa (0.1-0.6 hechas) + **Fase 1 Redis ✅ COMPLETA y AMPLIADA** + **Sprint 1 seguridad ✅ COMPLETO** (5 sub-sprints) + **Sprint 2 hardening cascade 5 may ✅ COMPLETO** (18 sub-sprints, 19 commits, en local pendientes de push). Sprint 2: invalidación caches existentes saneada, singleflight anti-stampede, regions:lhr1 (validado 80ms→3.37ms), 5 endpoints más cacheados (test-config family + hot-articles + law-stats + verify-stats + estimate), quick-fail wrapper en 11 endpoints, observability (Sentry beforeSend + cache hit-rate counters). Pendiente: 0.5 verificar p95 producción, **Fase 0.7 (JWT local verify)** documentada como next big win, **Fase 11 push (DROP TABLES BD)** esperar 24-48h.
+> **Última actualización:** 2026-05-06 (tarde)
+> **Estado:** Fase 0 casi completa (0.1-0.6 hechas) + **Fase 1 Redis ✅ COMPLETA y AMPLIADA** + **Sprint 1 seguridad ✅ COMPLETO** (5 sub-sprints) + **Sprint 2 hardening cascade ✅ COMPLETO** (18 sub-sprints, 19 commits, **deployed en producción**, validado en logs) + **Sprint 3 fallos post-deploy ✅ COMPLETO** (4 fallos detectados en logs Vercel tras Sprint 2 deploy y resueltos en sesión). Sprint 2: invalidación caches existentes saneada, singleflight anti-stampede, regions:lhr1 (validado 80ms→3.37ms), 5 endpoints más cacheados (test-config family + hot-articles + law-stats + verify-stats + estimate), quick-fail wrapper en 11 endpoints, observability (Sentry beforeSend + cache hit-rate counters). Sprint 3: TypeError streaming Next 16 (inlineCss disabled), userAnswer=-1 (schema fix), theme-stats timeout heavy users (covering index 12.5s→502ms = 24.9x), GeoIP timeout (Vercel headers sync, sin ip-api.com). Pendiente: 0.5 verificar p95 producción, **Fase 0.7 (JWT local verify)** documentada como next big win, **Fase 11 push (DROP TABLES BD)** esperar 24-48h.
 > **Objetivo:** preparar Vence para escalar a 100k+ usuarios sin perder features ni romper nada
 > **Coste extra estimado total (Fases 0-3):** $10-40/mes
 > **Coste extra estimado total (Fases 0-5):** $50-150/mes
@@ -109,6 +109,32 @@ Trabajo gatillado por el cascade del 5 may 21:29-21:35 UTC: 504s en TODOS los en
 - Sprints 2.4, 2.7-2.11, 2.17 son **extensiones de Fase 1 Redis cache** (singleflight + 5 endpoints más + telemetría)
 - Sprints 2.5-2.6 son **nuevo trabajo** orthogonal (co-localización infra)
 - Sprints 2.12-2.16, 2.18 son **nuevo trabajo** que complementa Fase 0 (graceful degradation con quick-fail timeouts)
+
+## Sprint 3 fallos post-deploy ✅ COMPLETO (2026-05-06 tarde)
+
+Tras hacer push de los 19 commits de Sprint 2, revisión de logs Vercel detectó 4 fallos. Investigación a fondo de cada uno (Sentry 403 por permisos, EXPLAIN ANALYZE, GitHub issues upstream, Vercel headers, validation_error_logs). 6 commits totales (4 fixes + 1 build fix Sentry types + 1 TS strict fix de tests).
+
+| Sprint | Acción | Estado | Commit |
+|---|---|---|---|
+| **3.0** | `tagDbTimeoutEvent` tipos `ErrorEvent` (no `Event`) — Sprint 2.16 falló build de Vercel por tipo más laxo en local. Sentry SDK acepta solo `ErrorEvent` en `beforeSend` | ✅ | `a83f4b12` |
+| **3.1** | **TypeError `controller[kState].transformAlgorithm`** intermitente en `/auxiliar-administrativo-asturias/temario/tema-12` y otras temario pages. Bug Next.js 16 con `experimental.inlineCss: true` (causa #4 de 7 documentadas en discussion #75995). Status 200 mayoría (response parcial) pero hasta 30s timeout intermitente. Fix: desactivar `inlineCss`. Coste: ~8-14KB CSS no inline (FCP +50-100ms first paint). Mitigado por `optimizeCss + cssChunking` activos + Vercel CDN + users recurrentes | ✅ | `ea1b18ad` |
+| **3.2** | **`/api/answer` 400 "Datos inválidos"** con `userAnswer: -1` (3 ocurrencias 48h, anonymous Chrome 147 / Firefox 150). Causa: `TestLayoutV2.tsx:284` envía `-1` como signal de "blank/skipped" pero schema rechazaba con `min(0)`. Frontend tenía fallback local — UX intacta, solo ruido en logs. Fix: schema `min(-1).max(4)` con comentario explicativo. Comportamiento server idéntico (`-1 === correctOption` siempre false). 19 tests del schema incluido regression del body exacto | ✅ | `02396a9d` |
+| **3.3** | **theme-stats timeout** para heavy user (4 timeouts en 30 min). User `c16c186a` con 56k test_questions, 1692 tests → query 12.5s (BD timeout 10s). EXPLAIN ANALYZE: Nested Loop con 35909 page reads. Top 10 heavy users (>10k test_questions) afectados igual. Fix doble: (1) eliminar JOIN test_questions×tests usando `tq.user_id` denormalizado, (2) covering index `(user_id, tema_number) INCLUDE (is_correct, created_at)`. Index Only Scan, 0 random heap reads. **12.5s → 502ms (24.9x)** medido en producción. Paridad 100% verificada en 3 users. Migración: `20260506_idx_tq_user_tema_covering.sql`. **Limitación**: a 100k DAU el heaviest user podría tener ~300-500k test_questions → query 3-5s, próximo paso es materializar `user_theme_stats` summary | ✅ | `aefd1951` |
+| **3.4** | **GeoIP timeout** en `/api/auth/track-session-ip` con `await getGeoLocation()` bloqueando 3s. Análisis: 99.97% success rate (3137/3138), pero cada login esperaba hasta 3s a ip-api.com. Fix: reemplazar fetch externa por extracción sync de Vercel headers (`x-vercel-ip-country/city/country-region/latitude/longitude`). 0 latencia, 0 dependencia externa, 0 timeout posible. Pérdida controlada: campo `isp` ya no se rellena (Vercel no lo expone). **Verificado**: `isp` NO se consume en código (admin/fraudes solo usa `city`). 7 tests cubren headers válidos, URL-encoded city, dev local sin headers, lat/lon faltantes/inválidos, encoding malformado | ✅ | `ecda3e67` |
+| **3.5** | TS strict cast en `updateSet.mock.calls` — Vercel build rechazaba el tipo `Tuple type '[]' of length '0'` que tsc local toleraba | ✅ | `c0acac60` |
+
+**Resumen Sprint 3:**
+- 0 regresiones causadas por Sprint 2 (los 4 fallos eran pre-existentes o latentes)
+- 24.9x speedup en theme-stats para heavy users (escalable a ~10k DAU sin más cambios)
+- Eliminada dependencia externa (ip-api.com)
+- Build TypeScript de Vercel ahora más estricto que tsc local — patrón a recordar
+
+**Pendiente flagged en Sprint 3:**
+- Materializar `user_theme_stats` summary table (para escalar theme-stats a 100k DAU)
+- Discriminated union para `userAnswer` (-1 vs null+isBlank) — deuda técnica heredada
+- Deprecar `/api/answer` con flag `dryRun` en `/api/v2/answer-and-save`
+
+---
 
 **Para 100k cómodo**: Fases 0-3 (3-6 semanas, ~$10-40/mes).
 **Para 1M+**: Fases 0-5 (3-6 meses, ~$50-150/mes).

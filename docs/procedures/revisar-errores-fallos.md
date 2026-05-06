@@ -10,6 +10,98 @@ Guía rápida para investigar errores de producción. Combina las 3 fuentes de d
 | **Sentry** | Excepciones client-side + server-side | API de Sentry o panel admin (badge) | Errores de UI, componentes que crashean, TTS watchdog |
 | **Vercel Logs** | stdout/stderr del runtime | Dashboard Vercel o logs que el usuario copie | Errores de build, cold starts, timeouts de función |
 
+## Endpoints de diagnóstico (Sprint 2/3 — 2026-05-06)
+
+Tras el cascade del 5 may y el hardening posterior, hay 4 endpoints admin que ayudan a diagnosticar saturación/rendimiento. Todos requieren `Authorization: Bearer $CRON_SECRET` (excepto revalidate que usa `x-cron-secret`).
+
+### `/api/admin/health` — dump completo de salud
+
+Estado de Postgres (conexiones, slow queries, pending locks), dirty queues, crons (último run + errores última hora), incidents (long-running crons + recent errors). Status `503` si crítico, `200` si OK.
+
+```bash
+curl -H "Authorization: Bearer $CRON_SECRET" 'https://www.vence.es/api/admin/health' | jq
+```
+
+Usar cuando: investigar cascada en curso, post-mortem de incidente, verificar tras deploy.
+
+### `/api/admin/health/db-latency` — probe de latencia BD
+
+Mide round-trip Vercel→Supabase. Ejecuta N (default 10, max 50) `SELECT 1` y reporta `coldStartMs + p50/p95/min/max + region + poolerHost`.
+
+```bash
+# Probe rápido
+curl -H "Authorization: Bearer $CRON_SECRET" \
+  'https://www.vence.es/api/admin/health/db-latency' | jq
+
+# Más samples para mejor distribución
+curl -H "Authorization: Bearer $CRON_SECRET" \
+  'https://www.vence.es/api/admin/health/db-latency?samples=20' | jq
+```
+
+Esperado tras Sprint 2 (region `lhr1`): `region: "lhr1"`, `p50: <5ms`, `p95: <10ms`. Si `p50 > 30ms`, sospechar pooler degradado o region mal configurada (era ~80ms desde `iad1` por transatlántico).
+
+### `/api/admin/health/cache-stats` — hit rate de cache Redis
+
+Hits/misses por prefijo de key (HINCRBY fire-and-forget en cada `getOrSet`).
+
+```bash
+# Ver stats
+curl -H "Authorization: Bearer $CRON_SECRET" \
+  'https://www.vence.es/api/admin/health/cache-stats' | jq
+
+# Resetear (tras deploy o para baselining)
+curl -X DELETE -H "Authorization: Bearer $CRON_SECRET" \
+  'https://www.vence.es/api/admin/health/cache-stats'
+```
+
+**Limitación**: solo ve caches `getOrSet` (Redis — `user_stats`, `exam_pending`, `theme_stats`). NO ve caches `unstable_cache` (Next.js Data Cache — `test-config`, `hot-articles`, `law-stats`, `verify-stats`, `profile`, etc.). Para esos, usar dashboard Vercel.
+
+Esperado: hit rate >70% tras 24h con tráfico estable.
+
+### `/api/admin/revalidate` — purgar tag de cache manualmente
+
+Útil tras correr scripts `_tmp_*.cjs` o de `scripts/` que mutan tablas sin pasar por la app (no disparan invalidación automática).
+
+```bash
+curl -X POST -H "x-cron-secret: $CRON_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"tag":"hot-articles"}' \
+  https://www.vence.es/api/admin/revalidate
+```
+
+Tags válidos (allowlist en `app/api/admin/revalidate/route.ts`):
+`temario`, `teoria`, `laws`, `landing`, `test-counts`, `medals`, `profile`, `questions`, `user-theme-stats`, `test-config`, `hot-articles`, `law-stats`, `verify-stats`.
+
+## Filtros Sentry útiles (post Sprint 2/3)
+
+Filtrar en panel Sentry (`https://sentry.io/organizations/vence-x2/issues/`):
+
+| Filtro | Qué muestra |
+|--------|-------------|
+| `quick_fail:db_timeout` | Eventos cuando `withDbTimeout` disparó (pool BD saturado o blip pooler). Tag añadido por `lib/observability/sentry-hooks.ts:tagDbTimeoutEvent`. Marcado como `warning` con `extra.timeoutMs`. |
+| `component:db_timeout` | Equivalente al anterior (tag complementario) |
+
+Si `quick_fail:db_timeout` empieza a aparecer en bursts, sospechar:
+1. Blip del pooler eu-west-2 → ver Supabase status page + `/api/admin/health`
+2. Cron pesado bloqueando hot path → revisar `cron_runs` en `/api/admin/health`
+3. Query lenta en endpoint específico → buscar el `endpoint` en el evento Sentry
+
+## Feature flags de runtime (toggleable sin deploy)
+
+| Variable | Default | Efecto cuando `false` |
+|----------|---------|----------------------|
+| `REDIS_CACHE_ENABLED` | `true` | Bypass total de Redis cache, ir directo a BD en `getOrSet` |
+| `CACHE_METRICS_ENABLED` | `true` | Desactiva HINCRBY de hit/miss counters (ahorra 1 op Redis/cache access) |
+| `CACHE_TEST_CONFIG_SECTIONS` | `true` | Bypass cache solo en `/api/v2/test-config/sections` |
+| `CACHE_TEST_CONFIG_ARTICLES` | `true` | Bypass cache solo en `/api/v2/test-config/articles` |
+| `CACHE_TEST_CONFIG_ESSENTIAL` | `true` | Bypass cache solo en `/api/v2/test-config/essential-articles` |
+| `CACHE_TEST_CONFIG_ESTIMATE` | `true` | Bypass cache solo en `/api/v2/test-config/estimate` |
+| `CACHE_HOT_ARTICLES` | `true` | Bypass cache solo en `/api/v2/hot-articles/check` |
+| `CACHE_LAW_STATS` | `true` | Bypass cache solo en `/api/questions/law-stats` |
+| `CACHE_VERIFY_STATS` | `true` | Bypass cache solo en `/api/verify-articles/stats-by-law` |
+
+Para desactivar instantáneo desde Vercel: Project Settings → Environment Variables → poner valor a `false` → redeploy. Reversible en <2 min.
+
 ## Flujo rápido de revisión
 
 ### 1. Errores API (lo más común)
