@@ -192,11 +192,17 @@ async function _POST(request: Request) {
     })
   } catch (error) {
     if (isDbTimeoutError(error)) {
-      console.warn('⏱️ [SessionIP] Timeout (quick-fail):', error.timeoutMs, 'ms')
-      return NextResponse.json(
-        { success: false, error: 'Servicio temporalmente saturado. Reintenta.', retryable: true },
-        { status: 503, headers: { 'Retry-After': '5' } },
-      )
+      // Track-session-ip es analytics de seguridad eventually-consistent:
+      // el cliente trata el call como fire-and-forget no crítico (ver
+      // contexts/AuthContext.tsx:41-59) y la fila se actualiza en el siguiente
+      // login. Devolver 503 era semánticamente incorrecto — no hay nada que el
+      // cliente pueda reintentar útilmente y no afecta al usuario.
+      // Devolvemos 200 { tracked: false } para no contaminar la métrica de
+      // errores 5xx. El timeout sigue capturado en Sentry vía withDbTimeout
+      // con tag quick_fail=db_timeout (lib/db/timeout.ts) → observabilidad
+      // intacta.
+      console.warn('⏱️ [SessionIP] Timeout (quick-fail) — degradado a 200/no-track:', error.timeoutMs, 'ms')
+      return NextResponse.json({ success: false, tracked: false, reason: 'db_unavailable' }, { status: 200 })
     }
     console.error('❌ [SessionIP] Error inesperado:', error)
     return NextResponse.json(
