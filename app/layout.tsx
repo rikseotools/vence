@@ -14,6 +14,7 @@ import SentryInit from '../components/SentryInit'
 import FraudTracker from '../components/FraudTracker'
 import { GlobalClickTracker, PageViewTracker } from '../components/tracking'
 import CookieBanner, { CookieConsentProvider } from '../components/CookieConsent'
+import { TTSChainProvider } from '../components/tts/TTSChainContext'
 
 export default async function SpanishLayout({ children }: { children: React.ReactNode }) {
   // Precargar mapping slug↔shortName para client components (cacheado en memoria 1h)
@@ -35,6 +36,7 @@ export default async function SpanishLayout({ children }: { children: React.Reac
               <LawSlugProvider initialMappings={lawMappings}>
               <QuestionProvider>
                 <AIChatProvider>
+                  <TTSChainProvider>
                   <GlobalClickTracker>
                     <Suspense fallback={null}>
                       <PageViewTracker />
@@ -50,6 +52,7 @@ export default async function SpanishLayout({ children }: { children: React.Reac
                     <GoogleOneTapWrapper />
                     <FraudTracker />
                   </GlobalClickTracker>
+                  </TTSChainProvider>
                 </AIChatProvider>
               </QuestionProvider>
               </LawSlugProvider>

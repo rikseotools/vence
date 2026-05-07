@@ -13,6 +13,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { logClientError } from '@/lib/logClientError'
+import { useTTSChain, ChainModeToggle } from '@/components/tts/TTSChainContext'
 
 interface ArticleTTSProps {
   text: string
@@ -22,6 +23,10 @@ interface ArticleTTSProps {
 
 // Chrome limita utterances a ~200-300 chars antes de fallar silenciosamente.
 const MAX_CHUNK_LENGTH = 250
+
+const RATE_OPTIONS = [0.25, 0.5, 0.75, 1.0, 1.25, 1.5]
+const TTS_RATE_STORAGE_KEY = 'vence_tts_rate'
+const TTS_VOICE_STORAGE_KEY = 'vence_tts_voice_uri'
 
 function splitIntoChunks(text: string): string[] {
   const sentences = text.split(/(?<=[.!?;])\s+/)
@@ -59,6 +64,44 @@ export default function ArticleTTS({ text, articleNumber, lawName }: ArticleTTSP
   const pausedRef = useRef(false)  // mirror of isPaused for timers
   const watchdogRetriesRef = useRef(0) // retries for current chunk
   const MAX_WATCHDOG_RETRIES = 2 // skip chunk after N failed retries
+
+  // Rate "actualmente en uso" (el del utterance vivo). Sirve para detectar
+  // si el state `rate` ha cambiado respecto al utterance en curso → entonces
+  // hay que cancelar+reiniciar el chunk con el nuevo rate.
+  const activeRateRef = useRef(1.0)
+  // Debounce del cancel+restart en cambios rápidos de rate.
+  const rateChangeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Chain context (opcional). Si está presente, registramos esta instancia
+  // para participar en lectura "todo el tema" → al terminar naturalmente
+  // notificamos al chain que pase al siguiente <ArticleTTS>.
+  const chain = useTTSChain()
+  const componentIdRef = useRef<string>('')
+  if (componentIdRef.current === '') {
+    componentIdRef.current = typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `tts-${Math.random().toString(36).slice(2)}-${Date.now()}`
+  }
+  // Ref a notifyEnded para que speakChunk la consulte sin meterla en deps
+  const chainNotifyEndedRef = useRef<((id: string) => void) | null>(null)
+  useEffect(() => {
+    chainNotifyEndedRef.current = chain?.notifyEnded ?? null
+  }, [chain])
+
+  // Hidratar rate y voz desde localStorage en mount (no en useState init para
+  // evitar hydration mismatch SSR/CSR). Se escriben sólo en onChange, no en
+  // cada render.
+  useEffect(() => {
+    try {
+      const savedRate = localStorage.getItem(TTS_RATE_STORAGE_KEY)
+      if (savedRate) {
+        const n = parseFloat(savedRate)
+        if (RATE_OPTIONS.includes(n)) setRate(n)
+      }
+      const savedVoice = localStorage.getItem(TTS_VOICE_STORAGE_KEY)
+      if (savedVoice) setSelectedVoiceURI(savedVoice)
+    } catch { /* Safari private mode, ignore */ }
+  }, [])
 
   useEffect(() => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) return
@@ -178,12 +221,19 @@ export default function ArticleTTS({ text, articleNumber, lawName }: ArticleTTSP
 
   const speakChunk = useCallback((index: number) => {
     if (stoppedRef.current || index >= chunksRef.current.length) {
+      const naturalEnd = !stoppedRef.current && index >= chunksRef.current.length
       setIsPlaying(false)
       playingRef.current = false
       setIsPaused(false)
       pausedRef.current = false
       stopAllTimers()
       setProgress({ current: chunksRef.current.length, total: chunksRef.current.length })
+      // Si terminó naturalmente (no por stop explícito), notificar al chain
+      // para que pase a la siguiente ley en modo "todo el tema". El chain
+      // ignora la notificación si el modo es "single".
+      if (naturalEnd) {
+        chainNotifyEndedRef.current?.(componentIdRef.current)
+      }
       return
     }
 
@@ -194,6 +244,7 @@ export default function ArticleTTS({ text, articleNumber, lawName }: ArticleTTSP
     const utterance = new SpeechSynthesisUtterance(chunksRef.current[index])
     utterance.lang = 'es-ES'
     utterance.rate = rate
+    activeRateRef.current = rate
 
     const voice = getSpanishVoice()
     if (voice) utterance.voice = voice
@@ -218,6 +269,40 @@ export default function ArticleTTS({ text, articleNumber, lawName }: ArticleTTSP
   useEffect(() => {
     speakChunkRef.current = speakChunk
   }, [speakChunk])
+
+  // Cambio de rate INSTANTÁNEO durante playback. La Web Speech API no soporta
+  // cambiar la velocidad de un utterance vivo → cancelamos y reiniciamos el
+  // chunk actual con el nuevo rate. Pérdida máxima: 250 chars (~10s) del
+  // chunk en curso. En estado "paused", no aplicamos aquí — se aplicará en
+  // el resume path de play() (cancel+speakChunk en lugar de browser.resume()).
+  // En estado "stopped" o no iniciado, el nuevo rate ya queda en state y se
+  // usará en el siguiente play.
+  useEffect(() => {
+    if (rate === activeRateRef.current) return
+    if (stoppedRef.current) return
+    if (!playingRef.current || pausedRef.current) return
+
+    // Cancelar timeout previo si llega otro cambio de rate antes de que
+    // se aplique (debounce).
+    if (rateChangeTimeoutRef.current) {
+      clearTimeout(rateChangeTimeoutRef.current)
+    }
+
+    window.speechSynthesis.cancel()
+    rateChangeTimeoutRef.current = setTimeout(() => {
+      rateChangeTimeoutRef.current = null
+      if (stoppedRef.current || pausedRef.current) return
+      if (!playingRef.current) return
+      speakChunkRef.current(currentChunkRef.current)
+    }, 50)
+
+    return () => {
+      if (rateChangeTimeoutRef.current) {
+        clearTimeout(rateChangeTimeoutRef.current)
+        rateChangeTimeoutRef.current = null
+      }
+    }
+  }, [rate])
 
   const getDiagnostic = useCallback((): string => {
     if (!('speechSynthesis' in window)) return 'Tu navegador no soporta lectura en voz alta.'
@@ -249,6 +334,26 @@ export default function ArticleTTS({ text, articleNumber, lawName }: ArticleTTSP
     if (!isSupported || !text) return
 
     if (isPaused) {
+      // Si el usuario cambió el rate durante la pausa, browser.resume()
+      // continuaría con el rate viejo. En su lugar, cancelamos y
+      // reiniciamos el chunk actual con el nuevo rate.
+      const rateChangedDuringPause = rate !== activeRateRef.current
+      if (rateChangedDuringPause) {
+        window.speechSynthesis.cancel()
+        setIsPaused(false)
+        pausedRef.current = false
+        setIsPlaying(true)
+        playingRef.current = true
+        // Pequeño defer para asegurar que el cancel se procese
+        setTimeout(() => {
+          if (!stoppedRef.current && playingRef.current) {
+            speakChunkRef.current(currentChunkRef.current)
+          }
+        }, 50)
+        startWatchdog()
+        return
+      }
+
       window.speechSynthesis.resume()
       setIsPaused(false)
       pausedRef.current = false
@@ -304,6 +409,19 @@ export default function ArticleTTS({ text, articleNumber, lawName }: ArticleTTSP
     }).catch(() => {})
   }, [isSupported, text, isPaused, cleanText, speakChunk, startWatchdog, getDiagnostic, articleNumber, lawName])
 
+  // Ref a play para que el chain pueda invocarlo sin caducar el closure.
+  // Necesario porque play se recrea con cada cambio de sus deps.
+  const playRef = useRef(play)
+  useEffect(() => { playRef.current = play }, [play])
+
+  // Registrar esta instancia con el chain (si existe). Cuando el modo es
+  // "todo el tema" y la ley anterior termina, el chain llama a playRef.current()
+  // para iniciar esta ley.
+  useEffect(() => {
+    if (!chain) return
+    return chain.register(componentIdRef.current, () => playRef.current())
+  }, [chain])
+
   const pause = useCallback(() => {
     if (!isSupported) return
     window.speechSynthesis.pause()
@@ -325,18 +443,21 @@ export default function ArticleTTS({ text, articleNumber, lawName }: ArticleTTSP
     pausedRef.current = false
   }, [isSupported, stopAllTimers])
 
-  const changeRate = useCallback(() => {
-    const rates = [0.25, 0.5, 0.75, 1.0, 1.25, 1.5]
-    const currentIdx = rates.indexOf(rate)
-    setRate(rates[(currentIdx + 1) % rates.length])
-  }, [rate])
-
   if (!isSupported || !text) return null
 
   const progressPercent = progress.total > 0 ? Math.round((progress.current / progress.total) * 100) : 0
+  // El toggle "Esta ley | Todo el tema" sólo lo renderiza la primera instancia
+  // del chain (la ley más alta del DOM en el tema actual). Las demás instancias
+  // del mismo tema usan el mismo modo via context.
+  const isFirstInChain = chain?.firstId === componentIdRef.current
 
   return (
     <div className="no-print">
+      {isFirstInChain && (
+        <div className="mb-2">
+          <ChainModeToggle />
+        </div>
+      )}
       <div className="inline-flex items-center gap-1">
         {!isPlaying && !isPaused && (
           <>
@@ -403,13 +524,20 @@ export default function ArticleTTS({ text, articleNumber, lawName }: ArticleTTSP
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clipRule="evenodd" />
               </svg>
             </button>
-            <button
-              onClick={changeRate}
-              className="inline-flex items-center px-1.5 py-1 text-xs font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
-              title="Cambiar velocidad"
+            <select
+              value={rate}
+              onChange={(e) => {
+                const newRate = parseFloat(e.target.value)
+                setRate(newRate)
+                try { localStorage.setItem(TTS_RATE_STORAGE_KEY, String(newRate)) } catch {}
+              }}
+              className="px-1.5 py-1 text-xs font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors border-0 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              title="Velocidad de lectura"
             >
-              {rate}x
-            </button>
+              {RATE_OPTIONS.map((r) => (
+                <option key={r} value={r}>{r}x</option>
+              ))}
+            </select>
             <span className="text-xs text-gray-500 dark:text-gray-400 ml-1 tabular-nums">
               {progressPercent}%
             </span>
@@ -428,7 +556,14 @@ export default function ArticleTTS({ text, articleNumber, lawName }: ArticleTTSP
               <label className="block text-gray-500 dark:text-gray-400 mb-1">Voz ({availableVoices.length} disponibles):</label>
               <select
                 value={selectedVoiceURI || ''}
-                onChange={(e) => setSelectedVoiceURI(e.target.value || null)}
+                onChange={(e) => {
+                  const newVoice = e.target.value || null
+                  setSelectedVoiceURI(newVoice)
+                  try {
+                    if (newVoice) localStorage.setItem(TTS_VOICE_STORAGE_KEY, newVoice)
+                    else localStorage.removeItem(TTS_VOICE_STORAGE_KEY)
+                  } catch {}
+                }}
                 className="w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
               >
                 <option value="">Automática (mejor disponible)</option>
