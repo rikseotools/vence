@@ -9,7 +9,6 @@
 import { getDb } from '@/db/client'
 import { articles, laws, testQuestions, tests } from '@/db/schema'
 import { and, eq, gte, inArray, isNotNull, sql } from 'drizzle-orm'
-import { unstable_cache } from 'next/cache'
 import { getAllowedLawIds } from '@/lib/api/oposicion-scope/queries'
 
 export type ProblematicArticle = {
@@ -109,46 +108,8 @@ export async function getUserProblematicArticlesWeekly(
     })
 }
 
-// ============================================
-// CACHED WRAPPER (2026-05-07 — tag 'problematic-articles')
-// ============================================
-// El endpoint /api/notifications/problematic-articles tenía 21 errores 503
-// críticos en 36h post-fix (covering index commit 068c5e5b) bajo blips del
-// pooler Supabase. El covering index reduce query a 47ms warm pero bajo
-// pool blip puede acumular > 10s timeout y disparar quick-fail.
-//
-// Solución: cachear server-side per-userId. Cuando el pooler parpadee,
-// el cache responde sin tocar BD → 0 errores user-facing.
-//
-// Cache key: incluye userId vía args de la función (unstable_cache keys
-// automáticamente por args). NO hay cross-oposición leakage porque:
-// - userId viene del Bearer token (auth.user.id), no de body untrusted
-// - cada cache key es {userId}, datos de un user nunca se sirven a otro
-//
-// TTL 5 min: balance entre frescura (data es "weekly performance" que no
-// cambia en 5 min de relevancia) y reducción de carga BD. Sin invalidación
-// explícita — la API es read-mostly y 5 min de staleness es aceptable
-// para una vista de "problematic articles last 7 days" (single answer
-// no cambia significativamente la lista de 5 problemáticos).
-//
-// Para invalidación manual (ej. tras script masivo): tag 'problematic-articles'
-// en /api/admin/revalidate.
-//
-// Feature flag: CACHE_PROBLEMATIC_ARTICLES=false → bypass.
-
-const TTL_PROBLEMATIC_ARTICLES = 300 // 5 min
-
-const _cachedGetUserProblematicArticlesWeekly = unstable_cache(
-  getUserProblematicArticlesWeekly,
-  ['problematic-articles-v1'],
-  { revalidate: TTL_PROBLEMATIC_ARTICLES, tags: ['problematic-articles'] },
-)
-
-export async function getUserProblematicArticlesWeeklyCached(
-  params: GetUserProblematicArticlesWeeklyParams,
-): Promise<ProblematicArticle[]> {
-  if (process.env.CACHE_PROBLEMATIC_ARTICLES === 'false') {
-    return getUserProblematicArticlesWeekly(params)
-  }
-  return _cachedGetUserProblematicArticlesWeekly(params)
-}
+// Cache: gestionado en el route con Redis stale-while-error (refactor 2026-05-07).
+// Antes este archivo exportaba un wrapper con `unstable_cache`, pero su modo
+// fail-on-error propagaba 503s en pool blips. Ahora el route usa el patrón
+// de theme-stats: getCached/setCached + fallback a stale en timeout.
+// Ver app/api/notifications/problematic-articles/route.ts.

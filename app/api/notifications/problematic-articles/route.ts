@@ -4,41 +4,65 @@
 //
 // userId SIEMPRE deriva de la sesión autenticada — nunca del cliente —
 // para impedir cross-oposición leakage.
+//
+// Estrategia de cache (refactor 2026-05-07): stale-while-error con Redis,
+// mismo patrón que /api/v2/topic-progress/theme-stats. Antes usaba
+// unstable_cache que en cache miss + BD timeout propagaba error → 503.
+// Ahora:
+//   - Cache fresco (<5 min) → devolver inmediato sin tocar BD
+//   - Cache stale + BD OK → refresh y devolver
+//   - Cache stale + BD timeout → devolver stale (200, mejor que pantalla vacía)
+//   - Cache vacío + BD timeout → devolver [] (200, no 503)
+// Resultado observado en theme-stats: 0 errores 5xx incluso en pool blips.
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthenticatedUser } from '@/lib/api/shared/auth'
-import { getUserProblematicArticlesWeeklyCached } from '@/lib/api/notifications/queries'
+import {
+  getUserProblematicArticlesWeekly,
+  type ProblematicArticle,
+} from '@/lib/api/notifications/queries'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { logRolloutEvent } from '@/lib/api/rollout/problematic-articles-logs'
 import { getAllowedLawIds } from '@/lib/api/oposicion-scope/queries'
-import { withDbTimeout, isDbTimeoutError } from '@/lib/db/timeout'
+import { getCached, setCached } from '@/lib/cache/redis'
 
-// Cache server-side per-userId (TTL 5min) introducido 2026-05-07.
-// Cache key incluye userId automáticamente vía args de la función — sin
-// cross-oposición leakage porque userId viene del Bearer token (auth, no
-// body). Bajo blip del pooler, el cache responde sin tocar BD.
-// force-dynamic en route es correcto: auth check ocurre en cada request,
-// el cache aplica sólo a la query de BD.
 export const dynamic = 'force-dynamic'
 
-// Timeout 10s — la query es analítica (computa weekly performance) y más
-// pesada que profile/daily-limit. 10s da margen suficiente para casos
-// normales y aún corta antes del statement_timeout=30s del DSN.
-// Solo aplica en cache miss; en hit el response es instantáneo.
-const PROBLEMATIC_TIMEOUT_MS = 10000
+interface CachedProblematic {
+  data: ProblematicArticle[]
+  ts: number  // ms epoch — usado para freshness check, NO Redis TTL
+}
+
+const FRESH_WINDOW_MS = 5 * 60 * 1000   // 5 min: dentro de esta ventana es fresh
+const STALE_TTL_S = 24 * 60 * 60        // 24h: cuánto retiene Redis (fallback en timeout)
+const BD_TIMEOUT_MS = 10_000            // 10s: tope query BD; si excede, fallback a stale
 
 async function _GET(request: NextRequest) {
   const auth = await getAuthenticatedUser(request)
   if (!auth.ok) return auth.response
 
   const startedAt = Date.now()
-  try {
-    const articles = await withDbTimeout(
-      () => getUserProblematicArticlesWeeklyCached({ userId: auth.user.id }),
-      PROBLEMATIC_TIMEOUT_MS,
-    )
+  const cacheKey = `problematic_articles:${auth.user.id}`
+  const cached = await getCached<CachedProblematic>(cacheKey)
 
-    // Log fire-and-forget para el panel admin de rollout.
+  // Fast path: cache fresco (<5min) → devolver sin tocar BD
+  if (cached && Date.now() - cached.ts < FRESH_WINDOW_MS) {
+    return NextResponse.json({ success: true, articles: cached.data })
+  }
+
+  try {
+    const queryPromise = getUserProblematicArticlesWeekly({ userId: auth.user.id })
+    const articles = await Promise.race([
+      queryPromise,
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('problematic-articles timeout')), BD_TIMEOUT_MS)
+      ),
+    ])
+
+    // Guardar en Redis con TTL 24h y timestamp para freshness check
+    setCached(cacheKey, { data: articles, ts: Date.now() }, STALE_TTL_S)
+
+    // Log fire-and-forget para el panel admin de rollout
     const scope = await getAllowedLawIds({ userId: auth.user.id }).catch(() => null)
     logRolloutEvent({
       userId: auth.user.id,
@@ -49,23 +73,17 @@ async function _GET(request: NextRequest) {
       durationMs: Date.now() - startedAt,
     })
 
-    return NextResponse.json({
-      success: true,
-      articles,
-    })
-  } catch (error) {
-    if (isDbTimeoutError(error)) {
-      console.warn('⏱️ [problematic-articles] Timeout (quick-fail):', error.timeoutMs, 'ms')
-      return NextResponse.json(
-        { success: false, error: 'Servicio temporalmente saturado. Reintenta.', retryable: true },
-        { status: 503, headers: { 'Retry-After': '5' } },
-      )
+    return NextResponse.json({ success: true, articles })
+  } catch (err) {
+    // Timeout o error BD: devolver cache stale si existe (mejor que pantalla vacía).
+    if (cached) {
+      const ageS = Math.floor((Date.now() - cached.ts) / 1000)
+      console.warn(`⏱️ [problematic-articles] timeout for ${auth.user.id.slice(0, 8)}, returning stale cache (${ageS}s old)`)
+      return NextResponse.json({ success: true, articles: cached.data })
     }
-    console.error('❌ [problematic-articles] Error:', error)
-    return NextResponse.json(
-      { success: false, error: 'Error interno del servidor' },
-      { status: 500 }
-    )
+
+    console.warn(`⏱️ [problematic-articles] timeout for ${auth.user.id.slice(0, 8)}, returning empty`)
+    return NextResponse.json({ success: true, articles: [] })
   }
 }
 
