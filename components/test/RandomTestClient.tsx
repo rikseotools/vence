@@ -98,6 +98,8 @@ export default function RandomTestClient({
   const [userStats, setUserStats] = useState<Record<number, UserThemeStats>>({})
   const [statsLoading, setStatsLoading] = useState(false)
   const [availableQuestions, setAvailableQuestions] = useState(0)
+  const [availableNeverSeen, setAvailableNeverSeen] = useState<number | null>(null)
+  const [includeSeenQuestions, setIncludeSeenQuestions] = useState(false)
   const [checkingAvailability, setCheckingAvailability] = useState(false)
 
   // Modales
@@ -137,6 +139,7 @@ export default function RandomTestClient({
       // Adaptive mode ahora funciona con múltiples temas
     } else {
       setAvailableQuestions(0)
+      setAvailableNeverSeen(null)
     }
   }, [selectedThemes, difficulty, onlyOfficialQuestions, includeSharedOfficials, focusEssentialArticles])
 
@@ -178,24 +181,30 @@ export default function RandomTestClient({
           onlyOfficialQuestions,
           includeSharedOfficials,
           focusEssentialArticles,
+          userId: user?.id ?? null,
         }),
       })
       const data = await response.json()
       console.log('📊 [RandomTest] Availability response:', data)
       if (data.success) {
         setAvailableQuestions(data.availableQuestions)
-        console.log('✅ [RandomTest] Set available questions:', data.availableQuestions)
+        setAvailableNeverSeen(
+          typeof data.availableNeverSeen === 'number' ? data.availableNeverSeen : null
+        )
+        console.log('✅ [RandomTest] Set available questions:', data.availableQuestions, 'neverSeen:', data.availableNeverSeen)
       } else {
         console.error('❌ [RandomTest] API error:', data.error)
         setAvailableQuestions(0)
+        setAvailableNeverSeen(null)
       }
     } catch (error) {
       console.error('❌ [RandomTest] Error checking availability:', error)
       setAvailableQuestions(0)
+      setAvailableNeverSeen(null)
     } finally {
       setCheckingAvailability(false)
     }
-  }, [selectedThemes, difficulty, onlyOfficialQuestions, focusEssentialArticles, oposicion])
+  }, [selectedThemes, difficulty, onlyOfficialQuestions, includeSharedOfficials, focusEssentialArticles, oposicion, user?.id])
 
   const handleTestModeChange = (newMode: TestMode) => {
     setTestMode(newMode)
@@ -233,10 +242,17 @@ export default function RandomTestClient({
     return stats?.accuracy || 0
   }
 
-  // Número efectivo de preguntas considerando cuota diaria
+  // Cap del pool según el toggle: nunca-vistas si el usuario quiere preguntas nuevas
+  // (default), pool total si activó "incluir vistas". Caemos a `availableQuestions`
+  // si el endpoint todavía no devolvió neverSeen (compat con respuestas antiguas).
+  const poolCap = includeSeenQuestions
+    ? availableQuestions
+    : (availableNeverSeen ?? availableQuestions)
+
+  // Número efectivo de preguntas considerando cuota diaria + pool real
   const effectiveNumQuestions = hasLimit
-    ? Math.min(numQuestions, availableQuestions || numQuestions, questionsRemaining)
-    : Math.min(numQuestions, availableQuestions || numQuestions)
+    ? Math.min(numQuestions, poolCap || numQuestions, questionsRemaining)
+    : Math.min(numQuestions, poolCap || numQuestions)
 
   const generateTest = async () => {
     if (selectedThemes.length === 0) return
@@ -253,6 +269,9 @@ export default function RandomTestClient({
       if (includeSharedOfficials) testParams.append('include_shared_officials', 'true')
       if (focusEssentialArticles) testParams.append('focus_essential', 'true')
       if (adaptiveMode) testParams.append('adaptive', 'true')
+      // Solo pasamos el flag cuando el usuario opta explícitamente por incluir vistas;
+      // el default del fetcher es prioritizar nunca-vistas (preserva comportamiento previo).
+      if (includeSeenQuestions) testParams.append('prioritize_never_seen', 'false')
 
       const testPath = testMode === 'examen' ? 'test-aleatorio-examen' : 'test-personalizado'
       router.push(`/${oposicion}/test/${testPath}?${testParams.toString()}`)
@@ -577,8 +596,8 @@ export default function RandomTestClient({
                 {/* Disponibilidad */}
                 <div className={`p-4 border rounded-lg ${
                   checkingAvailability ? 'bg-gray-50 border-gray-200' :
-                  availableQuestions >= numQuestions ? 'bg-green-50 border-green-200' :
-                  availableQuestions > 0 ? 'bg-yellow-50 border-yellow-200' :
+                  poolCap >= numQuestions ? 'bg-green-50 border-green-200' :
+                  poolCap > 0 ? 'bg-yellow-50 border-yellow-200' :
                   'bg-red-50 border-red-200'
                 }`}>
                   {checkingAvailability ? (
@@ -589,11 +608,43 @@ export default function RandomTestClient({
                   ) : (
                     <div>
                       <div className="flex items-center gap-2 mb-2">
-                        <span>{availableQuestions >= numQuestions ? '✅' : availableQuestions > 0 ? '⚠️' : '❌'}</span>
-                        <span className="font-semibold">📊 Preguntas disponibles: {availableQuestions}</span>
+                        <span>{poolCap >= numQuestions ? '✅' : poolCap > 0 ? '⚠️' : '❌'}</span>
+                        <span className="font-semibold">
+                          {availableNeverSeen !== null && availableNeverSeen < availableQuestions ? (
+                            <>📊 {availableQuestions} preguntas ({availableNeverSeen} nuevas · {availableQuestions - availableNeverSeen} ya vistas)</>
+                          ) : (
+                            <>📊 Preguntas disponibles: {availableQuestions}</>
+                          )}
+                        </span>
                       </div>
-                      {availableQuestions < numQuestions && availableQuestions > 0 && (
-                        <p className="text-sm text-yellow-700">Solo hay {availableQuestions} preguntas disponibles</p>
+
+                      {/* Toggle "incluir vistas" — solo se muestra si hay déficit de nunca-vistas */}
+                      {availableNeverSeen !== null
+                        && availableNeverSeen < numQuestions
+                        && availableQuestions > availableNeverSeen && (
+                        <div className="mt-3 p-3 bg-white border border-blue-200 rounded-lg">
+                          <label className="flex items-start gap-3 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={includeSeenQuestions}
+                              onChange={(e) => setIncludeSeenQuestions(e.target.checked)}
+                              className="mt-1 h-4 w-4 text-blue-600 rounded focus:ring-blue-500"
+                            />
+                            <div className="text-sm">
+                              <p className="font-medium text-gray-800">
+                                🔁 Incluir preguntas que ya he respondido
+                              </p>
+                              <p className="text-gray-600 mt-1">
+                                Solo hay <strong>{availableNeverSeen}</strong> preguntas nuevas.
+                                Marca esta opción para repasar también las que ya hiciste y llegar a las {numQuestions} que pediste.
+                              </p>
+                            </div>
+                          </label>
+                        </div>
+                      )}
+
+                      {poolCap < numQuestions && poolCap > 0 && !includeSeenQuestions && availableNeverSeen === null && (
+                        <p className="text-sm text-yellow-700">Solo hay {poolCap} preguntas disponibles</p>
                       )}
                     </div>
                   )}
@@ -640,9 +691,9 @@ export default function RandomTestClient({
               ) : (
                 <button
                   onClick={generateTest}
-                  disabled={generating || selectedThemes.length === 0 || availableQuestions === 0}
+                  disabled={generating || selectedThemes.length === 0 || poolCap === 0}
                   className={`w-full py-4 rounded-xl font-bold text-lg transition-all ${
-                    generating || selectedThemes.length === 0 || availableQuestions === 0
+                    generating || selectedThemes.length === 0 || poolCap === 0
                       ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                       : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl'
                   }`}
@@ -656,6 +707,8 @@ export default function RandomTestClient({
                     'Selecciona al menos un tema'
                   ) : availableQuestions === 0 ? (
                     'No hay preguntas disponibles'
+                  ) : poolCap === 0 ? (
+                    'Has visto todas — marca "incluir vistas" para repasar'
                   ) : (
                     `🎲 Generar Test de ${effectiveNumQuestions} preguntas`
                   )}

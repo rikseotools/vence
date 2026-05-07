@@ -1,6 +1,6 @@
 // lib/api/random-test/queries.ts - Queries Drizzle para Test Aleatorio
 import { getDb } from '@/db/client'
-import { topics, topicScope, laws, questions, articles, tests, testQuestions } from '@/db/schema'
+import { topics, topicScope, laws, questions, articles, tests, testQuestions, userQuestionHistory } from '@/db/schema'
 import { eq, and, sql, inArray, desc, gte, isNotNull } from 'drizzle-orm'
 import { getOposicionByPositionType, EXCLUSIVE_QUESTION_TAGS } from '@/lib/config/oposiciones'
 import { unstable_cache } from 'next/cache'
@@ -159,7 +159,7 @@ async function getQuestionCountForTopic(
  */
 export async function checkQuestionAvailability(
   request: CheckAvailabilityRequest
-): Promise<{ total: number; byTheme: Record<string, number> }> {
+): Promise<{ total: number; neverSeen: number; byTheme: Record<string, number> }> {
   const db = getDb()
   const positionType = getPositionType(request.oposicion)
 
@@ -224,7 +224,38 @@ export async function checkQuestionAvailability(
     total += count
   }
 
-  return { total, byTheme }
+  // Si el request no trae userId, neverSeen == total (sin historial que descontar).
+  // Mantiene compat para callers anónimos / pre-auth.
+  if (!request.userId) {
+    return { total, neverSeen: total, byTheme }
+  }
+
+  // Descontar las que el usuario YA respondió. Subquery: count distinct
+  // questions del pool actual que existen también en user_question_history.
+  // Replica la condición del pool (mismos JOINs + mismas conditions) y la
+  // intersecta con history. Postgres optimiza el plan; el coste es ~similar
+  // al count base, no se duplica.
+  const seenResult = await db
+    .select({
+      seen: sql<number>`count(DISTINCT ${questions.id})::int`,
+    })
+    .from(topics)
+    .innerJoin(topicScope, eq(topicScope.topicId, topics.id))
+    .innerJoin(articles, and(
+      eq(articles.lawId, topicScope.lawId),
+      sql`(${topicScope.articleNumbers} IS NULL OR ${articles.articleNumber} = ANY(${topicScope.articleNumbers}))`
+    ))
+    .innerJoin(questions, eq(questions.primaryArticleId, articles.id))
+    .innerJoin(userQuestionHistory, and(
+      eq(userQuestionHistory.questionId, questions.id),
+      eq(userQuestionHistory.userId, request.userId),
+    ))
+    .where(and(...conditions))
+
+  const seen = seenResult[0]?.seen ?? 0
+  const neverSeen = Math.max(0, total - seen)
+
+  return { total, neverSeen, byTheme }
 }
 
 // ============================================

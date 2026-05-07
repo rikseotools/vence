@@ -1221,6 +1221,9 @@ export async function fetchAleatorioMultiTema(themes: number[], searchParams: Se
     const onlyOfficialQuestions = getParam(searchParams, 'official_only') === 'true'
     const includeSharedOfficials = getParam(searchParams, 'include_shared_officials') === 'true'
     const focusEssentialArticles = getParam(searchParams, 'focus_essential') === 'true'
+    // Toggle UI "incluir preguntas vistas". Default true (preferir nuevas) preserva
+    // el comportamiento previo. Solo cuando el usuario activa el toggle pasa a false.
+    const prioritizeNeverSeen = getParam(searchParams, 'prioritize_never_seen', 'true') !== 'false'
     // Mapear 'mixed' (UI) → 'random' (API), el resto coincide ('easy','medium','hard')
     const rawDifficulty = getParam(searchParams, 'difficulty', 'mixed')
     const difficultyMode = rawDifficulty === 'mixed' ? 'random' : rawDifficulty
@@ -1255,7 +1258,7 @@ export async function fetchAleatorioMultiTema(themes: number[], searchParams: Se
         difficultyMode,
         excludeRecentDays: excludeRecent ? excludeDays : 0,
         focusEssentialArticles,
-        prioritizeNeverSeen: true,
+        prioritizeNeverSeen,
         proportionalByTopic: themes.length > 1,
       })
     })

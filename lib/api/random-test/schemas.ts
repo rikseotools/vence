@@ -110,6 +110,10 @@ export const ConfigResponseSchema = z.object({
 export const AvailabilityResponseSchema = z.object({
   success: z.boolean(),
   availableQuestions: z.number().default(0),
+  // Subconjunto del pool que el usuario aún no ha respondido. Solo se devuelve
+  // cuando el request incluye userId. UI lo usa para alinear el conteo del botón
+  // con lo que el fetcher entrega cuando prioritizeNeverSeen=true (default real).
+  availableNeverSeen: z.number().optional(),
   byTheme: z.record(z.string(), z.number()).optional(),
   error: z.string().optional(),
 })

@@ -21,7 +21,7 @@ export const dynamic = 'force-dynamic'
 // Con cache, requests del mismo input dentro de 60s no tocan BD.
 // Tras Fase 1 (Redis) este cache se promueve a L2 compartido entre instancias.
 const CACHE_TTL_MS = 60_000
-type CachedAvailability = { total: number; byTheme: Record<string, number> }
+type CachedAvailability = { total: number; neverSeen: number; byTheme: Record<string, number> }
 const cache = new Map<string, { value: CachedAvailability; expiresAt: number }>()
 
 function getCacheKey(body: Record<string, unknown>): string {
@@ -59,13 +59,15 @@ async function _POST(request: NextRequest): Promise<NextResponse<AvailabilityRes
       }, { status: 400 })
     }
 
-    // Cache lookup
+    // Cache lookup. La cache key incluye el body completo (incluyendo userId
+    // cuando se pasa), por lo que el conteo neverSeen queda aislado por usuario.
     const key = getCacheKey(parseResult.data as unknown as Record<string, unknown>)
     const cached = cache.get(key)
     if (cached && cached.expiresAt > Date.now()) {
       return NextResponse.json({
         success: true,
         availableQuestions: cached.value.total,
+        availableNeverSeen: cached.value.neverSeen,
         byTheme: cached.value.byTheme,
       })
     }
@@ -73,7 +75,11 @@ async function _POST(request: NextRequest): Promise<NextResponse<AvailabilityRes
     // Cache miss: query BD y guardar
     const availability = await checkQuestionAvailability(parseResult.data)
     cache.set(key, {
-      value: { total: availability.total, byTheme: availability.byTheme },
+      value: {
+        total: availability.total,
+        neverSeen: availability.neverSeen,
+        byTheme: availability.byTheme,
+      },
       expiresAt: Date.now() + CACHE_TTL_MS,
     })
     pruneCacheIfNeeded()
@@ -81,6 +87,7 @@ async function _POST(request: NextRequest): Promise<NextResponse<AvailabilityRes
     return NextResponse.json({
       success: true,
       availableQuestions: availability.total,
+      availableNeverSeen: availability.neverSeen,
       byTheme: availability.byTheme,
     })
   } catch (error) {
