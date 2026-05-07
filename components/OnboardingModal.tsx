@@ -353,6 +353,13 @@ export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
     icon: '🍊'
   },
   {
+    id: 'administrativo_gva',
+    nombre: 'Administrativo Generalitat Valenciana',
+    categoria: 'C1',
+    administracion: 'Autonómica',
+    icon: '🏛️'
+  },
+  {
     id: 'auxiliar_administrativo_galicia',
     nombre: 'Auxiliar Administrativo Xunta de Galicia',
     categoria: 'C2',
@@ -778,9 +785,9 @@ const REGION_PRIORITY_OPOSICIONES: Record<string, string[]> = {
   'Basque Country': ['auxiliar_enfermeria_osakidetza', 'auxiliar_administrativo_estado'],
   'Euskadi': ['auxiliar_enfermeria_osakidetza', 'auxiliar_administrativo_estado'],
   'Galicia': ['auxiliar_administrativo_galicia', 'administrativo_galicia', 'tcae_galicia', 'auxiliar_administrativo_estado'],
-  'Comunidad Valenciana': ['auxiliar_administrativo_valencia', 'auxiliar_administrativo_ayuntamiento_valencia', 'auxiliar_enfermeria_gva', 'auxiliar_administrativo_estado'],
-  'Valencian Community': ['auxiliar_administrativo_valencia', 'auxiliar_administrativo_ayuntamiento_valencia', 'auxiliar_enfermeria_gva', 'auxiliar_administrativo_estado'],
-  'Valencia': ['auxiliar_administrativo_valencia', 'auxiliar_administrativo_ayuntamiento_valencia', 'auxiliar_administrativo_estado'],
+  'Comunidad Valenciana': ['auxiliar_administrativo_valencia', 'administrativo_gva', 'auxiliar_administrativo_ayuntamiento_valencia', 'auxiliar_enfermeria_gva', 'auxiliar_administrativo_estado'],
+  'Valencian Community': ['auxiliar_administrativo_valencia', 'administrativo_gva', 'auxiliar_administrativo_ayuntamiento_valencia', 'auxiliar_enfermeria_gva', 'auxiliar_administrativo_estado'],
+  'Valencia': ['auxiliar_administrativo_valencia', 'administrativo_gva', 'auxiliar_administrativo_ayuntamiento_valencia', 'auxiliar_administrativo_estado'],
 }
 
 // Oposiciones con contenido disponible, ordenadas por demanda real de usuarios
@@ -805,6 +812,7 @@ const AVAILABLE_OPOSICIONES_BY_DEMAND: string[] = [
   'auxiliar_administrativo_galicia',     // 2+
   'administrativo_galicia',              // nueva C1
   'auxiliar_administrativo_valencia',    // 2+
+  'administrativo_gva',                  // nueva C1
   'auxiliar_administrativo_clm',         // 1+
   'auxiliar_administrativo_extremadura', // 1+
   'auxiliar_administrativo_cantabria',  // nueva
@@ -1087,6 +1095,7 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }: On
     'auxiliar_administrativo_estado': ['age', 'administracion general', 'gobierno', 'estado', 'c2 estado', 'auxiliar estado', 'admin estado', 'oposicion estado', 'funcionario'],
     'auxiliar_administrativo_madrid': ['comunidad de madrid', 'cam', 'madrid', 'auxiliar madrid', 'admin madrid', 'c2 madrid'],
     'auxiliar_administrativo_valencia': ['generalitat valenciana', 'gva', 'comunitat valenciana', 'valenciana', 'auxiliar valencia', 'admin valencia', 'c2 valencia', 'generalitat'],
+    'administrativo_gva': ['administrativo generalitat', 'administrativo gva', 'administrativo valencia', 'c1 valencia', 'c1-01 gva', 'cuerpo administrativo', 'administrativo c1', 'administrativo comunitat valenciana'],
     'auxiliar_administrativo_ayuntamiento_valencia': ['ayuntamiento valencia', 'ajuntament', 'ayto valencia', 'ayuntamiento de valencia'],
     'auxiliar_administrativo_canarias': ['gobierno canarias', 'canario', 'canarias', 'auxiliar canarias', 'admin canarias', 'c2 canarias', 'gobcan'],
     'auxiliar_administrativo_carm': ['murcia', 'region de murcia', 'auxiliar murcia', 'admin murcia', 'c2 murcia', 'carm', 'comunidad autonoma murcia'],

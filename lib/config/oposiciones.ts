@@ -1331,6 +1331,81 @@ export const OPOSICIONES: Oposicion[] = [
   },
 
   // ========================================
+  // ADMINISTRATIVO GENERALITAT VALENCIANA (C1-01)
+  // ========================================
+  {
+    id: 'administrativo_gva',
+    slug: 'administrativo-gva',
+    positionType: 'administrativo_gva',
+    name: 'Administrativo Generalitat Valenciana',
+    shortName: 'Admin. GVA',
+    emoji: '🏛️',
+    badge: 'C1',
+    color: 'amber',
+    administracion: 'autonomica',
+    blocks: [
+      {
+        id: 'bloque1',
+        title: 'Parte General',
+        subtitle: 'CE, Estatuto CV, Consell, UE, Igualdad, Violencia Género, Transparencia',
+        icon: '🏛️',
+        themes: [
+          { id: 1, name: 'CE: Título Preliminar y Derechos Fundamentales' },
+          { id: 2, name: 'CE: La Corona y Las Cortes Generales' },
+          { id: 3, name: 'CE: Gobierno, Administración y Relaciones Gobierno-Cortes' },
+          { id: 4, name: 'CE: Poder Judicial y Tribunal Constitucional' },
+          { id: 5, name: 'CE: Organización territorial del Estado' },
+          { id: 6, name: 'Estatuto de Autonomía de la Comunitat Valenciana' },
+          { id: 7, name: 'Ley 5/1983 del Consell (I): President, Consell y relaciones con Les Corts' },
+          { id: 8, name: 'Ley 5/1983 del Consell (II): Conselleria, Administración Pública y Responsabilidad' },
+          { id: 9, name: 'Tratado de la UE y TFUE' },
+          { id: 10, name: 'Igualdad mujeres-hombres + Ley 9/2003 GVA + Ley 4/2023 LGTBI' },
+          { id: 11, name: 'LO 1/2004: Violencia de Género' },
+          { id: 12, name: 'Transparencia: Ley 19/2013 + Ley 1/2022 GVA' },
+        ],
+      },
+      {
+        id: 'bloque2',
+        title: 'Parte Especial',
+        subtitle: 'Derecho administrativo, Función Pública GVA, Presupuestos, Informática y Ofimática',
+        icon: '⚖️',
+        themes: [
+          { id: 101, displayNumber: 1, name: 'Ley 39/2015 (I): Disposiciones generales, interesados, actividad AAPP' },
+          { id: 102, displayNumber: 2, name: 'Ley 39/2015 (II): Actos administrativos' },
+          { id: 103, displayNumber: 3, name: 'Ley 39/2015 (III): Procedimiento administrativo común y revisión' },
+          { id: 104, displayNumber: 4, name: 'Órganos de las AAPP: principios, competencia, relaciones' },
+          { id: 105, displayNumber: 5, name: 'Limitación, fomento + Subvenciones (Ley 38/2003 + Ley 1/2015 GVA)' },
+          { id: 106, displayNumber: 6, name: 'Contratos del Sector Público (Ley 9/2017)' },
+          { id: 107, displayNumber: 7, name: 'Admin electrónica CV + Protección datos + Decreto 30/2025 GVA' },
+          { id: 108, displayNumber: 8, name: 'Función pública: TREBEP + Ley 4/2021 LFPV' },
+          { id: 109, displayNumber: 9, name: 'Personal al servicio de las AAPP: clases y estructura' },
+          { id: 110, displayNumber: 10, name: 'Situaciones administrativas, derechos, disciplinario, provisión' },
+          { id: 111, displayNumber: 11, name: 'Presupuesto Generalitat (I): Concepto y elaboración' },
+          { id: 112, displayNumber: 12, name: 'Presupuesto Generalitat (II): Gestión y modificaciones' },
+          { id: 113, displayNumber: 13, name: 'Control interno + Tribunal Cuentas + Sindicatura' },
+          { id: 114, displayNumber: 14, name: 'Ley 1/2015 Hacienda GVA: Contabilidad' },
+          { id: 115, displayNumber: 15, name: 'Informática básica' },
+          { id: 116, displayNumber: 16, name: 'Sistema operativo Windows 11' },
+          { id: 117, displayNumber: 17, name: 'Explorador de archivos Windows 11 + OneDrive' },
+          { id: 118, displayNumber: 18, name: 'Outlook Microsoft 365' },
+          { id: 119, displayNumber: 19, name: 'Word Microsoft 365' },
+          { id: 120, displayNumber: 20, name: 'Excel Microsoft 365' },
+          { id: 121, displayNumber: 21, name: 'Teams Microsoft 365' },
+          { id: 122, displayNumber: 22, name: 'Navegadores web' },
+          { id: 123, displayNumber: 23, name: 'Herramientas de IA' },
+        ],
+      },
+    ],
+    totalTopics: 35,
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/administrativo-gva', label: 'Mi Oposición', icon: '🏛️', featured: true },
+      { href: '/administrativo-gva/temario', label: 'Temario', icon: '📚' },
+      { href: '/administrativo-gva/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
   // AUXILIAR ADMINISTRATIVO XUNTA DE GALICIA (C2)
   // ========================================
   {
