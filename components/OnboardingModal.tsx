@@ -4,6 +4,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { getSupabaseClient } from '../lib/supabase'
 import { OPOSICIONES } from '../lib/config/oposiciones'
+import { matchesOposicion } from '../lib/utils/searchOposicion'
 
 // Set de ids de oposiciones ya implementadas (con temario/tests reales).
 // Se usa para marcar las aspiracionales con badge "🔜 En elaboración".
@@ -95,32 +96,11 @@ const findMatchingOfficialOposicion = (customName: string): OposicionItem | unde
   })
 }
 
-// Aliases de búsqueda: términos alternativos que los usuarios escriben.
-// Usados tanto por el onboarding como por el modal de cambio de oposición
-// (OposicionChangeModal). Single source of truth para que añadir un alias
-// se propague a todos los buscadores.
-export const SEARCH_ALIASES: Record<string, string[]> = {
-  'auxiliar_administrativo_estado': ['age', 'administracion general', 'gobierno', 'estado', 'c2 estado', 'auxiliar estado', 'admin estado', 'oposicion estado', 'funcionario'],
-  'auxiliar_administrativo_madrid': ['comunidad de madrid', 'cam', 'madrid', 'auxiliar madrid', 'admin madrid', 'c2 madrid'],
-  'auxiliar_administrativo_valencia': ['generalitat valenciana', 'gva', 'comunitat valenciana', 'valenciana', 'auxiliar valencia', 'admin valencia', 'c2 valencia', 'generalitat'],
-  'administrativo_gva': ['administrativo generalitat', 'administrativo gva', 'administrativo valencia', 'gva', 'c1 valencia', 'c1-01 gva', 'cuerpo administrativo', 'administrativo c1', 'administrativo comunitat valenciana'],
-  'auxiliar_administrativo_ayuntamiento_valencia': ['ayuntamiento valencia', 'ajuntament', 'ayto valencia', 'ayuntamiento de valencia'],
-  'auxiliar_administrativo_canarias': ['gobierno canarias', 'canario', 'canarias', 'auxiliar canarias', 'admin canarias', 'c2 canarias', 'gobcan'],
-  'auxiliar_administrativo_carm': ['murcia', 'region de murcia', 'auxiliar murcia', 'admin murcia', 'c2 murcia', 'carm', 'comunidad autonoma murcia'],
-  'auxiliar_administrativo_cyl': ['castilla y leon', 'junta castilla', 'jcyl', 'cyl', 'castilla leon', 'auxiliar castilla', 'admin castilla', 'sacyl', 'junta cyl'],
-  'auxiliar_administrativo_andalucia': ['junta andalucia', 'andaluz', 'andalucia', 'auxiliar andalucia', 'admin andalucia', 'c2 andalucia', 'junta de andalucia', 'sevilla', 'malaga', 'cadiz', 'cordoba', 'granada'],
-  'auxiliar_administrativo_aragon': ['gobierno aragon', 'dga', 'aragon', 'auxiliar aragon', 'admin aragon', 'c2 aragon', 'zaragoza'],
-  'auxiliar_administrativo_galicia': ['xunta galicia', 'xunta', 'galicia', 'auxiliar galicia', 'c2 galicia', 'xunta de galicia', 'sergas'],
-  'administrativo_galicia': ['xunta galicia', 'xunta', 'galicia', 'administrativo galicia', 'admin galicia', 'c1 galicia', 'xunta de galicia'],
-  'auxiliar_administrativo_baleares': ['govern balear', 'illes balears', 'baleares', 'islas baleares', 'auxiliar baleares', 'mallorca', 'ibiza', 'menorca', 'caib'],
-  'auxiliar_administrativo_extremadura': ['junta extremadura', 'extremadura', 'auxiliar extremadura', 'admin extremadura', 'caceres', 'badajoz'],
-  'auxiliar_administrativo_asturias': ['principado asturias', 'asturias', 'auxiliar asturias', 'admin asturias', 'principado', 'oviedo', 'gijon'],
-  'auxiliar_administrativo_clm': ['castilla la mancha', 'jccm', 'clm', 'castilla mancha', 'auxiliar castilla la mancha', 'toledo', 'ciudad real', 'albacete', 'cuenca', 'guadalajara'],
-  'administrativo_estado': ['c1 estado', 'administrativo general', 'administrativo del estado', 'c1', 'grupo c1'],
-  'tramitacion_procesal': ['tramitacion', 'procesal', 'justicia', 'tramitacion procesal', 'turno libre justicia', 'ministerio justicia'],
-  'auxilio_judicial': ['auxilio', 'judicial', 'auxilio judicial', 'turno libre auxilio'],
-  'auxiliar_administrativo_ayuntamiento_murcia': ['ayuntamiento murcia', 'ayto murcia'],
-}
+// Aliases de búsqueda viven en lib/config/oposiciones.ts (campo `aliases` de
+// cada OposicionConfig). El filtrado se hace con matchesOposicion en
+// lib/utils/searchOposicion.ts — usado también por OposicionChangeModal y
+// OposicionGuard. Para añadir un alias nuevo: edita la oposición en
+// oposiciones.ts.
 
 // Oposiciones oficiales ordenadas por POPULARIDAD (más demandadas primero)
 export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
@@ -1117,28 +1097,24 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }: On
     }
   }
 
-  // Aliases definidos a nivel de módulo (ver SEARCH_ALIASES export más abajo)
-
-  // Filtrar y reordenar oposiciones por búsqueda y región detectada
+  // Filtrar y reordenar oposiciones por búsqueda y región detectada.
+  // Filtrado central en lib/utils/searchOposicion.ts (compartido con
+  // OposicionChangeModal y OposicionGuard). Aliases viven en lib/config/oposiciones.ts.
   const filteredOposiciones = useMemo(() => {
-    const term = searchTerm.toLowerCase().trim()
     const sorted = sortByRegionPriority(OFFICIAL_OPOSICIONES, detectedRegion)
-
+    const term = searchTerm.trim()
     if (!term) return { official: sorted, custom: customOposiciones }
 
+    // Lookup de aliases para cada item desde OPOSICIONES config (single source of truth)
+    const aliasesById = Object.fromEntries(OPOSICIONES.map(o => [o.id, o.aliases || []]))
+
     return {
-      official: sorted.filter(op => {
-        const aliases = SEARCH_ALIASES[op.id] || []
-        return op.nombre.toLowerCase().includes(term) ||
-          op.categoria.toLowerCase().includes(term) ||
-          op.administracion.toLowerCase().includes(term) ||
-          aliases.some(a => a.includes(term) || term.includes(a))
-      }),
+      official: sorted.filter(op =>
+        matchesOposicion({ ...op, aliases: aliasesById[op.id] }, term)
+      ),
       custom: customOposiciones.filter(op =>
-        op.nombre.toLowerCase().includes(term) ||
-        (op.categoria && op.categoria.toLowerCase().includes(term)) ||
-        (op.administracion && op.administracion.toLowerCase().includes(term))
-      )
+        matchesOposicion(op, term)
+      ),
     }
   }, [searchTerm, customOposiciones, detectedRegion])
 

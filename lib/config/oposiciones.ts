@@ -70,6 +70,11 @@ const OposicionSchema = z.object({
   officialExams: z.array(OfficialExamConvocatoriaSchema).optional(),
   hasSpellingTest: z.boolean().optional(),
   questionTag: z.string().optional(), // Si se define, solo se muestran preguntas con este tag (ej: 'PN' para Policía Nacional)
+  // Aliases de búsqueda: términos alternativos que los usuarios escriben en
+  // los buscadores (Onboarding, Cambio de oposición, Guard de tests). Vive
+  // junto al resto del config para que añadir una oposición incluya los
+  // aliases en el mismo sitio. Filtrado central en lib/utils/searchOposicion.ts.
+  aliases: z.array(z.string()).optional(),
 })
 
 // ============================================
@@ -148,6 +153,7 @@ export const OPOSICIONES: Oposicion[] = [
       },
     ],
     totalTopics: 28,
+    aliases: ['age', 'administracion general', 'gobierno', 'estado', 'c2 estado', 'auxiliar estado', 'admin estado', 'oposicion estado', 'funcionario'],
     navLinks: [
       { href: '/es', label: 'Inicio', icon: '🏠' },
       { href: '/auxiliar-administrativo-estado', label: 'Mi Oposición', icon: '🏛️', featured: true },
@@ -307,6 +313,7 @@ export const OPOSICIONES: Oposicion[] = [
       },
     ],
     totalTopics: 45,
+    aliases: ['c1 estado', 'administrativo general', 'administrativo del estado', 'c1', 'grupo c1'],
     navLinks: [
       { href: '/es', label: 'Inicio', icon: '🏠' },
       { href: '/administrativo-estado', label: 'Mi Oposición', icon: '🏢', featured: true },
@@ -392,6 +399,7 @@ export const OPOSICIONES: Oposicion[] = [
       },
     ],
     totalTopics: 37,
+    aliases: ['tramitacion', 'procesal', 'justicia', 'tramitacion procesal', 'turno libre justicia', 'ministerio justicia'],
     navLinks: [
       { href: '/es', label: 'Inicio', icon: '🏠' },
       { href: '/tramitacion-procesal', label: 'Mi Oposición', icon: '⚖️', featured: true },
@@ -529,6 +537,7 @@ export const OPOSICIONES: Oposicion[] = [
       },
     ],
     totalTopics: 21,
+    aliases: ['murcia', 'region de murcia', 'auxiliar murcia', 'admin murcia', 'c2 murcia', 'carm', 'comunidad autonoma murcia'],
     navLinks: [
       { href: '/es', label: 'Inicio', icon: '🏠' },
       { href: '/auxiliar-administrativo-carm', label: 'Mi Oposición', icon: '🏛️', featured: true },
@@ -786,6 +795,7 @@ export const OPOSICIONES: Oposicion[] = [
       },
     ],
     totalTopics: 20,
+    aliases: ['ayuntamiento murcia', 'ayto murcia'],
     navLinks: [
       { href: '/es', label: 'Inicio', icon: '🏠' },
       { href: '/auxiliar-administrativo-ayuntamiento-murcia', label: 'Mi Oposición', icon: '🏛️', featured: true },
@@ -854,6 +864,7 @@ export const OPOSICIONES: Oposicion[] = [
       },
     ],
     totalTopics: 28,
+    aliases: ['castilla y leon', 'junta castilla', 'jcyl', 'cyl', 'castilla leon', 'auxiliar castilla', 'admin castilla', 'sacyl', 'junta cyl'],
     navLinks: [
       { href: '/es', label: 'Inicio', icon: '🏠' },
       { href: '/auxiliar-administrativo-cyl', label: 'Mi Oposición', icon: '🏛️', featured: true },
@@ -950,6 +961,7 @@ export const OPOSICIONES: Oposicion[] = [
       },
     ],
     totalTopics: 22,
+    aliases: ['junta andalucia', 'andaluz', 'andalucia', 'auxiliar andalucia', 'admin andalucia', 'c2 andalucia', 'junta de andalucia', 'sevilla', 'malaga', 'cadiz', 'cordoba', 'granada'],
     navLinks: [
       { href: '/es', label: 'Inicio', icon: '🏠' },
       { href: '/auxiliar-administrativo-andalucia', label: 'Mi Oposición', icon: '🏛️', featured: true },
@@ -1011,6 +1023,7 @@ export const OPOSICIONES: Oposicion[] = [
       },
     ],
     totalTopics: 21,
+    aliases: ['comunidad de madrid', 'cam', 'madrid', 'auxiliar madrid', 'admin madrid', 'c2 madrid'],
     navLinks: [
       { href: '/es', label: 'Inicio', icon: '🏠' },
       { href: '/auxiliar-administrativo-madrid', label: 'Mi Oposición', icon: '🏛️', featured: true },
@@ -1129,6 +1142,7 @@ export const OPOSICIONES: Oposicion[] = [
       },
     ],
     totalTopics: 40,
+    aliases: ['gobierno canarias', 'canario', 'canarias', 'auxiliar canarias', 'admin canarias', 'c2 canarias', 'gobcan'],
     navLinks: [
       { href: '/es', label: 'Inicio', icon: '🏠' },
       { href: '/auxiliar-administrativo-canarias', label: 'Mi Oposición', icon: '🏛️', featured: true },
@@ -1193,6 +1207,7 @@ export const OPOSICIONES: Oposicion[] = [
       },
     ],
     totalTopics: 24,
+    aliases: ['castilla la mancha', 'jccm', 'clm', 'castilla mancha', 'auxiliar castilla la mancha', 'toledo', 'ciudad real', 'albacete', 'cuenca', 'guadalajara'],
     navLinks: [
       { href: '/es', label: 'Inicio', icon: '🏠' },
       { href: '/auxiliar-administrativo-clm', label: 'Mi Oposición', icon: '🏰', featured: true },
@@ -1258,6 +1273,7 @@ export const OPOSICIONES: Oposicion[] = [
       },
     ],
     totalTopics: 25,
+    aliases: ['junta extremadura', 'extremadura', 'auxiliar extremadura', 'admin extremadura', 'caceres', 'badajoz'],
     navLinks: [
       { href: '/es', label: 'Inicio', icon: '🏠' },
       { href: '/auxiliar-administrativo-extremadura', label: 'Mi Oposicion', icon: '🌿', featured: true },
@@ -1322,6 +1338,7 @@ export const OPOSICIONES: Oposicion[] = [
       },
     ],
     totalTopics: 24,
+    aliases: ['generalitat valenciana', 'gva', 'comunitat valenciana', 'valenciana', 'auxiliar valencia', 'admin valencia', 'c2 valencia', 'generalitat'],
     navLinks: [
       { href: '/es', label: 'Inicio', icon: '🏠' },
       { href: '/auxiliar-administrativo-valencia', label: 'Mi Oposicion', icon: '🍊', featured: true },
@@ -1350,18 +1367,18 @@ export const OPOSICIONES: Oposicion[] = [
         subtitle: 'CE, Estatuto CV, Consell, UE, Igualdad, Violencia Género, Transparencia',
         icon: '🏛️',
         themes: [
-          { id: 1, name: 'CE: Título Preliminar y Derechos Fundamentales' },
-          { id: 2, name: 'CE: La Corona y Las Cortes Generales' },
-          { id: 3, name: 'CE: Gobierno, Administración y Relaciones Gobierno-Cortes' },
-          { id: 4, name: 'CE: Poder Judicial y Tribunal Constitucional' },
-          { id: 5, name: 'CE: Organización territorial del Estado' },
-          { id: 6, name: 'Estatuto de Autonomía de la Comunitat Valenciana' },
+          { id: 1, name: 'La Constitución Española de 1978: Título Preliminar y Derechos Fundamentales' },
+          { id: 2, name: 'La Constitución Española de 1978: Corona y Cortes Generales' },
+          { id: 3, name: 'La Constitución Española de 1978: Gobierno y Administración' },
+          { id: 4, name: 'La Constitución Española de 1978: Poder Judicial y Tribunal Constitucional' },
+          { id: 5, name: 'La Constitución Española de 1978: Organización territorial del Estado' },
+          { id: 6, name: 'El Estatuto de Autonomía de la Comunitat Valenciana' },
           { id: 7, name: 'Ley 5/1983 del Consell (I): President, Consell y relaciones con Les Corts' },
-          { id: 8, name: 'Ley 5/1983 del Consell (II): Conselleria, Administración Pública y Responsabilidad' },
-          { id: 9, name: 'Tratado de la UE y TFUE' },
-          { id: 10, name: 'Igualdad mujeres-hombres + Ley 9/2003 GVA + Ley 4/2023 LGTBI' },
-          { id: 11, name: 'LO 1/2004: Violencia de Género' },
-          { id: 12, name: 'Transparencia: Ley 19/2013 + Ley 1/2022 GVA' },
+          { id: 8, name: 'Ley 5/1983 del Consell (II): Conselleria, Administración Pública y responsabilidad' },
+          { id: 9, name: 'El Tratado de la Unión Europea y de Funcionamiento de la UE' },
+          { id: 10, name: 'Igualdad de mujeres y hombres + Ley 9/2003 GVA + Ley 4/2023 LGTBI' },
+          { id: 11, name: 'Ley Orgánica 1/2004 de protección integral contra la violencia de género' },
+          { id: 12, name: 'Transparencia (Ley 19/2013) + Ley 1/2022 GVA de Transparencia' },
         ],
       },
       {
@@ -1397,6 +1414,7 @@ export const OPOSICIONES: Oposicion[] = [
       },
     ],
     totalTopics: 35,
+    aliases: ['administrativo generalitat', 'administrativo gva', 'administrativo valencia', 'gva', 'c1 valencia', 'c1-01 gva', 'cuerpo administrativo', 'administrativo c1', 'administrativo comunitat valenciana'],
     navLinks: [
       { href: '/es', label: 'Inicio', icon: '🏠' },
       { href: '/administrativo-gva', label: 'Mi Oposición', icon: '🏛️', featured: true },
@@ -1454,6 +1472,7 @@ export const OPOSICIONES: Oposicion[] = [
       },
     ],
     totalTopics: 17,
+    aliases: ['xunta galicia', 'xunta', 'galicia', 'auxiliar galicia', 'c2 galicia', 'xunta de galicia', 'sergas'],
     navLinks: [
       { href: '/es', label: 'Inicio', icon: '🏠' },
       { href: '/auxiliar-administrativo-galicia', label: 'Mi Oposicion', icon: '🐚', featured: true },
@@ -1513,6 +1532,7 @@ export const OPOSICIONES: Oposicion[] = [
       },
     ],
     totalTopics: 19,
+    aliases: ['xunta galicia', 'xunta', 'galicia', 'administrativo galicia', 'admin galicia', 'c1 galicia', 'xunta de galicia'],
     navLinks: [
       { href: '/es', label: 'Inicio', icon: '🏠' },
       { href: '/administrativo-galicia', label: 'Mi Oposicion', icon: '🐚', featured: true },
@@ -1573,6 +1593,7 @@ export const OPOSICIONES: Oposicion[] = [
       },
     ],
     totalTopics: 20,
+    aliases: ['gobierno aragon', 'dga', 'aragon', 'auxiliar aragon', 'admin aragon', 'c2 aragon', 'zaragoza'],
     navLinks: [
       { href: '/es', label: 'Inicio', icon: '🏠' },
       { href: '/auxiliar-administrativo-aragon', label: 'Mi Oposición', icon: '🏔️', featured: true },
@@ -1646,6 +1667,7 @@ export const OPOSICIONES: Oposicion[] = [
       },
     ],
     totalTopics: 25,
+    aliases: ['principado asturias', 'asturias', 'auxiliar asturias', 'admin asturias', 'principado', 'oviedo', 'gijon'],
     navLinks: [
       { href: '/es', label: 'Inicio', icon: '🏠' },
       { href: '/auxiliar-administrativo-asturias', label: 'Mi Oposición', icon: '⛰️', featured: true },
@@ -1722,6 +1744,7 @@ export const OPOSICIONES: Oposicion[] = [
       },
     ],
     totalTopics: 36,
+    aliases: ['govern balear', 'illes balears', 'baleares', 'islas baleares', 'auxiliar baleares', 'mallorca', 'ibiza', 'menorca', 'caib'],
     navLinks: [
       { href: '/es', label: 'Inicio', icon: '🏠' },
       { href: '/auxiliar-administrativo-baleares', label: 'Mi Oposición', icon: '🏝️', featured: true },
@@ -1796,6 +1819,7 @@ export const OPOSICIONES: Oposicion[] = [
       },
     ],
     totalTopics: 26,
+    aliases: ['auxilio', 'judicial', 'auxilio judicial', 'turno libre auxilio'],
     navLinks: [
       { href: '/es', label: 'Inicio', icon: '🏠' },
       { href: '/auxilio-judicial', label: 'Mi Oposición', icon: '⚖️', featured: true },
@@ -1856,6 +1880,7 @@ export const OPOSICIONES: Oposicion[] = [
       },
     ],
     totalTopics: 21,
+    aliases: ['ayuntamiento valencia', 'ajuntament', 'ayto valencia', 'ayuntamiento de valencia'],
     navLinks: [
       { href: '/es', label: 'Inicio', icon: '🏠' },
       { href: '/auxiliar-administrativo-ayuntamiento-valencia', label: 'Mi Oposición', icon: '🏛️', featured: true },

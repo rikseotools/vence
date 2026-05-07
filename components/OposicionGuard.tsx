@@ -5,7 +5,9 @@
 
 import { useState, useMemo } from 'react'
 import { useOposicion } from '@/contexts/OposicionContext'
-import { OFFICIAL_OPOSICIONES, SEARCH_ALIASES, type OposicionItem } from './OnboardingModal'
+import { OFFICIAL_OPOSICIONES, type OposicionItem } from './OnboardingModal'
+import { OPOSICIONES } from '@/lib/config/oposiciones'
+import { matchesOposicion } from '@/lib/utils/searchOposicion'
 
 // Orden de las agrupaciones por administración
 const ADMIN_ORDER = [
@@ -33,16 +35,18 @@ export default function OposicionGuard() {
   const [search, setSearch] = useState('')
   const [saving, setSaving] = useState(false)
 
+  // Lookup de aliases desde lib/config/oposiciones.ts (single source of truth)
+  const aliasesById = useMemo(
+    () => Object.fromEntries(OPOSICIONES.map(o => [o.id, o.aliases || []])),
+    []
+  )
+
   const filtered = useMemo(() => {
-    const term = search.toLowerCase().trim()
+    const term = search.trim()
     const list: OposicionItem[] = term
-      ? OFFICIAL_OPOSICIONES.filter((o: OposicionItem) => {
-          const aliases = SEARCH_ALIASES[o.id] || []
-          return o.nombre.toLowerCase().includes(term) ||
-            o.categoria.toLowerCase().includes(term) ||
-            o.administracion.toLowerCase().includes(term) ||
-            aliases.some(a => a.includes(term) || term.includes(a))
-        })
+      ? OFFICIAL_OPOSICIONES.filter((o: OposicionItem) =>
+          matchesOposicion({ ...o, aliases: aliasesById[o.id] }, term)
+        )
       : OFFICIAL_OPOSICIONES
 
     // Agrupar por administración
@@ -67,7 +71,7 @@ export default function OposicionGuard() {
     }
 
     return sorted
-  }, [search])
+  }, [search, aliasesById])
 
   const handleSelect = async (oposicionId: string) => {
     setSaving(true)
