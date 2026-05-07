@@ -156,11 +156,34 @@ async function _POST(request: NextRequest) {
         sql`, `
       )
 
+      // FIX (07-may-2026): NO sobrescribir correct_answer si el cliente lo envía
+      // vacío/'?'/'x'. initOfficialExam ya guardó la letra real desde la fuente
+      // (questions.correct_option o psychometric_questions.correct_option). Si la
+      // ruta del cliente no la pudo resolver (timeout/null en validatePsychometric,
+      // pregunta no contestada), el cliente envía placeholder; debemos preservar
+      // la letra original. Además recalculamos is_correct server-side con la letra
+      // FINAL (post-COALESCE) para no confiar en lo que dice el cliente.
+      // Bug original: 17/19 psicotécnicas de Iván Bueno (06-may) marcadas mal.
       await db.execute(sql`
         UPDATE test_questions AS tq SET
-          is_correct = u.is_correct,
-          correct_answer = u.correct_answer,
-          user_answer = u.user_answer
+          user_answer = u.user_answer,
+          correct_answer = COALESCE(
+            NULLIF(NULLIF(NULLIF(u.correct_answer, ''), '?'), 'x'),
+            tq.correct_answer
+          ),
+          is_correct = (
+            u.user_answer IS NOT NULL
+            AND u.user_answer != ''
+            AND u.user_answer != 'sin_respuesta'
+            AND COALESCE(
+              NULLIF(NULLIF(NULLIF(u.correct_answer, ''), '?'), 'x'),
+              tq.correct_answer
+            ) IS NOT NULL
+            AND lower(u.user_answer) = lower(COALESCE(
+              NULLIF(NULLIF(NULLIF(u.correct_answer, ''), '?'), 'x'),
+              tq.correct_answer
+            ))
+          )
         FROM (VALUES ${valuesSql}) AS u(question_order, is_correct, correct_answer, user_answer)
         WHERE tq.test_id = ${testId}::uuid
           AND tq.question_order = u.question_order
@@ -171,12 +194,21 @@ async function _POST(request: NextRequest) {
 
     console.log(`✅ [API/v2/official-exams/complete] Batch updated ${totalUpdated} questions in ${Date.now() - startedUpdate}ms (${Math.ceil(results.length / CHUNK_SIZE)} chunk${results.length > CHUNK_SIZE ? 's' : ''})`)
 
-    // 5. Calculate final stats
-    const answeredQuestions = results.filter(
-      (r: { userAnswer?: string }) => r.userAnswer && r.userAnswer !== 'sin_respuesta' && r.userAnswer.trim() !== ''
-    )
-    const correctCount = answeredQuestions.filter((r: { isCorrect?: boolean }) => r.isCorrect).length
-    const answeredCount = answeredQuestions.length
+    // 5. Calculate final stats — desde BD post-UPDATE, NO desde el array del cliente.
+    // El SQL anterior recalculó is_correct con la letra correcta real (preservada
+    // si el cliente envió basura). Si nos fiáramos del flag isCorrect del cliente,
+    // tendríamos el mismo bug que reportó Iván: psicotécnicas correctas marcadas
+    // mal porque validatePsychometric devolvió null y answerToLetter generó '?'.
+    const dbStats = await db
+      .select({
+        correctCount: sql<number>`COUNT(*) FILTER (WHERE ${testQuestions.isCorrect} = true)::int`,
+        answeredCount: sql<number>`COUNT(*) FILTER (WHERE ${testQuestions.userAnswer} IS NOT NULL AND ${testQuestions.userAnswer} != '' AND ${testQuestions.userAnswer} != 'sin_respuesta')::int`,
+      })
+      .from(testQuestions)
+      .where(eq(testQuestions.testId, testId))
+
+    const correctCount = dbStats[0]?.correctCount ?? 0
+    const answeredCount = dbStats[0]?.answeredCount ?? 0
     const score = answeredCount > 0 ? Math.round((correctCount / answeredCount) * 100) : 0
 
     // 6. Update test record

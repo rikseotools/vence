@@ -4,6 +4,24 @@ import { eq, and, like, sql, inArray, desc, count } from 'drizzle-orm'
 import fs from 'fs'
 import path from 'path'
 
+/**
+ * Valida que un valor de `correct_answer` sea una letra real de respuesta (a-e).
+ *
+ * Por qué existe: en algunos flujos antiguos `correct_answer` quedaba como ''
+ * (cliente no lo envió en /complete), '?' (answerToLetter de un null) o 'x'
+ * (initOfficialExam no pudo resolver la correcta). Si comparamos `userAnswer`
+ * con uno de esos placeholders, marcaríamos como incorrectas respuestas que
+ * en realidad SÍ eran correctas (caso reportado por Iván Bueno, 06-may-2026:
+ * 17 falsos negativos en psicotécnicas de un solo examen).
+ *
+ * Política: solo letra válida → comparar. Cualquier otro valor → isCorrect=false.
+ * No es la solución perfecta (idealmente reconciliaríamos contra la tabla origen),
+ * pero al menos no produce falsos negativos en el flujo /save individual.
+ */
+export function isValidAnswerLetter(value: string | null | undefined): value is string {
+  return !!value && /^[a-eA-E]$/.test(value)
+}
+
 // Type for nota_corte data from JSON
 interface NotaCorte {
   descripcion: string
@@ -733,8 +751,11 @@ export async function saveOfficialExamAnswer(
     }
 
     const record = existing[0]
-    const isCorrect = record.correctAnswer
-      ? userAnswer.toLowerCase() === record.correctAnswer.toLowerCase()
+    // Solo computamos is_correct si correct_answer es una letra válida (a-e).
+    // Valores como '', '?', 'x' indican que init no pudo resolver la correcta;
+    // marcamos isCorrect=false en lugar de hacer una comparación basura.
+    const isCorrect = isValidAnswerLetter(record.correctAnswer)
+      ? userAnswer.toLowerCase() === record.correctAnswer!.toLowerCase()
       : false
 
     // Update the answer
