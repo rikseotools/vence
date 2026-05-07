@@ -111,6 +111,10 @@ export default function TestLayoutV2({
   const [generatedExplanation, setGeneratedExplanation] = useState<string | null>(null)
   const [isGeneratingExplanation, setIsGeneratingExplanation] = useState(false)
 
+  // API error + retry
+  const [apiError, setApiError] = useState(false)
+  const [pendingRetryAnswer, setPendingRetryAnswer] = useState<number | null>(null)
+
   // Anti-duplicados
   const [processingAnswer, setProcessingAnswer] = useState(false)
 
@@ -192,6 +196,14 @@ export default function TestLayoutV2({
       // Validar respuesta via API
       const result = await validateAnswer(currentQ?.id || '', answerIndex)
 
+      // Si la API falló, NO mostrar respuesta correcta — ofrecer retry
+      if (result.apiError) {
+        setApiError(true)
+        setPendingRetryAnswer(answerIndex)
+        setProcessingAnswer(false)
+        return
+      }
+
       // Actualizar estado
       setVerifiedCorrectAnswer(result.correctAnswer)
       setShowResult(true)
@@ -247,6 +259,8 @@ export default function TestLayoutV2({
 
     } catch (error) {
       console.error('Error validando respuesta:', error)
+      setApiError(true)
+      setPendingRetryAnswer(answerIndex)
     } finally {
       setProcessingAnswer(false)
     }
@@ -282,6 +296,14 @@ export default function TestLayoutV2({
     try {
       // Validar solo para obtener la correcta y mostrarla — no cuenta como acierto
       const result = await validateAnswer(currentQ?.id || '', -1)
+
+      if (result.apiError) {
+        setApiError(true)
+        setPendingRetryAnswer(-1)
+        setProcessingAnswer(false)
+        return
+      }
+
       setVerifiedCorrectAnswer(result.correctAnswer)
       setShowResult(true)
       // score NO suma — blanco nunca acierta
@@ -328,6 +350,8 @@ export default function TestLayoutV2({
       }
     } catch (error) {
       console.error('Error validando respuesta en blanco:', error)
+      setApiError(true)
+      setPendingRetryAnswer(-1)
     } finally {
       setProcessingAnswer(false)
     }
@@ -405,6 +429,68 @@ export default function TestLayoutV2({
     }
   }, [currentQ?.article_number, currentQ?.law_name])
 
+  // Retry handler cuando la API falló al validar la respuesta
+  const handleRetryValidation = useCallback(async () => {
+    if (pendingRetryAnswer === null || !currentQ?.id) return
+    setApiError(false)
+    setProcessingAnswer(true)
+
+    try {
+      const result = await validateAnswer(currentQ.id, pendingRetryAnswer)
+
+      if (result.apiError) {
+        setApiError(true)
+        setProcessingAnswer(false)
+        return
+      }
+
+      setVerifiedCorrectAnswer(result.correctAnswer)
+      setShowResult(true)
+
+      const isCorrectAnswer = pendingRetryAnswer >= 0 && result.isCorrect
+      if (isCorrectAnswer) setScore(prev => prev + 1)
+
+      const timeSpent = Math.round((Date.now() - questionStartTime) / 1000)
+      setAnsweredQuestions(prev => [...prev, {
+        question: currentQuestion,
+        selectedAnswer: pendingRetryAnswer,
+        correct: isCorrectAnswer,
+        timestamp: new Date().toISOString(),
+      }])
+      setDetailedAnswers(prev => [...prev, {
+        questionIndex: currentQuestion,
+        questionOrder: currentQuestion + 1,
+        selectedAnswer: pendingRetryAnswer,
+        correctAnswer: result.correctAnswer,
+        isCorrect: isCorrectAnswer,
+        timeSpent,
+        timestamp: new Date().toISOString(),
+        questionData: {
+          id: currentQ.id,
+          question: currentQ.question,
+          options: currentQ.options as string[],
+          correct: result.correctAnswer,
+          article: currentQ.article_number ? { number: currentQ.article_number, law_short_name: currentQ.law_slug ?? null } : null,
+          metadata: null,
+        },
+        confidence: null,
+        interactions: interactionCount,
+      }])
+
+      if (recordAnswer) recordAnswer()
+      if (!currentQ.explanation && currentQ.id) {
+        generateExplanationIfMissing(currentQ.id, currentQ.question, currentQ.options as string[], result.correctAnswer)
+      }
+
+      setPendingRetryAnswer(null)
+    } catch (error) {
+      console.error('Error retrying validation:', error)
+      setApiError(true)
+    } finally {
+      setProcessingAnswer(false)
+    }
+  }, [pendingRetryAnswer, currentQ, currentQuestion, questionStartTime, interactionCount, validateAnswer, recordAnswer, generateExplanationIfMissing])
+
   const handleNextQuestion = useCallback(() => {
     if (currentQuestion < effectiveQuestions.length - 1) {
       // 📊 Tracking de navegación
@@ -419,6 +505,8 @@ export default function TestLayoutV2({
       setIsBlank(false) // Reset del flag blanco entre preguntas
       setShowResult(false)
       setVerifiedCorrectAnswer(null)
+      setApiError(false)
+      setPendingRetryAnswer(null)
       setQuestionStartTime(Date.now())
       setInteractionCount(0)
       setGeneratedExplanation(null) // Reset explicación generada
@@ -736,6 +824,36 @@ export default function TestLayoutV2({
                   <span className="text-base">⚪</span>
                   <span>Dejar en blanco</span>
                 </button>
+              </div>
+            )}
+
+            {/* Error de API — retry */}
+            {apiError && !showResult && (
+              <div className="mt-6 p-4 rounded-lg bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-700">
+                <div className="flex items-center space-x-2 mb-2">
+                  <span className="text-2xl">⚠️</span>
+                  <span className="font-bold text-yellow-800 dark:text-yellow-300">
+                    No se pudo verificar la respuesta
+                  </span>
+                </div>
+                <p className="text-sm text-yellow-700 dark:text-yellow-400 mb-3">
+                  Error de conexión con el servidor. Tu respuesta no se ha perdido.
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleRetryValidation}
+                    disabled={isValidating || processingAnswer}
+                    className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:opacity-50 transition"
+                  >
+                    {isValidating || processingAnswer ? 'Verificando...' : 'Reintentar'}
+                  </button>
+                  <button
+                    onClick={handleNextQuestion}
+                    className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition"
+                  >
+                    Saltar pregunta
+                  </button>
+                </div>
               </div>
             )}
 

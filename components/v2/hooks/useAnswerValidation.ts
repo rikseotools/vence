@@ -1,18 +1,31 @@
 // components/v2/hooks/useAnswerValidation.ts
 // Hook para validar respuestas de forma segura via API
+// NUNCA devuelve una respuesta correcta falsa si la API falla (anti-scraping)
 
 import { useCallback, useState } from 'react'
 import type { ValidateAnswerResult } from '../types'
 
 interface UseAnswerValidationReturn {
-  validateAnswer: (questionId: string, userAnswer: number, fallbackCorrect?: number) => Promise<ValidateAnswerResult>
+  validateAnswer: (questionId: string, userAnswer: number) => Promise<ValidateAnswerResult>
   isValidating: boolean
   lastError: string | null
 }
 
+/** Sentinel result when API fails — correctAnswer=-1 signals "unknown" */
+function apiErrorResult(errorMsg?: string): ValidateAnswerResult {
+  return {
+    isCorrect: false,
+    correctAnswer: -1,
+    explanation: null,
+    usedFallback: false,
+    apiError: true,
+  }
+}
+
 /**
- * Hook para validar respuestas de forma segura via API
- * Con fallback local si la API falla
+ * Hook para validar respuestas de forma segura via API.
+ * Si la API falla, devuelve apiError=true y correctAnswer=-1.
+ * NUNCA devuelve una respuesta correcta inventada (0/A) como fallback.
  */
 export function useAnswerValidation(): UseAnswerValidationReturn {
   const [isValidating, setIsValidating] = useState(false)
@@ -21,21 +34,16 @@ export function useAnswerValidation(): UseAnswerValidationReturn {
   const validateAnswer = useCallback(async (
     questionId: string,
     userAnswer: number,
-    fallbackCorrect?: number
   ): Promise<ValidateAnswerResult> => {
     setIsValidating(true)
     setLastError(null)
 
-    // Si no hay questionId válido, usar fallback local
+    // Sin questionId válido → error, no fallback
     if (!questionId || typeof questionId !== 'string' || questionId.length < 10) {
-      console.log('⚠️ [SecureAnswer] Sin questionId válido, usando fallback local')
+      console.warn('⚠️ [SecureAnswer] Sin questionId válido')
+      setLastError('questionId inválido')
       setIsValidating(false)
-      return {
-        isCorrect: fallbackCorrect !== undefined ? userAnswer === fallbackCorrect : false,
-        correctAnswer: fallbackCorrect ?? 0,
-        explanation: null,
-        usedFallback: true
-      }
+      return apiErrorResult('questionId inválido')
     }
 
     try {
@@ -46,14 +54,10 @@ export function useAnswerValidation(): UseAnswerValidationReturn {
       })
 
       if (!response.ok) {
-        console.warn('⚠️ [SecureAnswer] API error, usando fallback local')
+        console.warn('⚠️ [SecureAnswer] API error:', response.status)
+        setLastError(`API error: ${response.status}`)
         setIsValidating(false)
-        return {
-          isCorrect: fallbackCorrect !== undefined ? userAnswer === fallbackCorrect : false,
-          correctAnswer: fallbackCorrect ?? 0,
-          explanation: null,
-          usedFallback: true
-        }
+        return apiErrorResult(`HTTP ${response.status}`)
       }
 
       const data = await response.json()
@@ -67,32 +71,21 @@ export function useAnswerValidation(): UseAnswerValidationReturn {
           explanation: data.explanation,
           articleNumber: data.articleNumber,
           lawShortName: data.lawShortName,
-          usedFallback: false
+          usedFallback: false,
         }
       }
 
-      // Si la API no encuentra la pregunta, fallback
-      console.warn('⚠️ [SecureAnswer] Pregunta no encontrada en API, usando fallback')
+      // API respondió pero no encontró la pregunta
+      console.warn('⚠️ [SecureAnswer] Pregunta no encontrada en API')
+      setLastError('Pregunta no encontrada')
       setIsValidating(false)
-      return {
-        isCorrect: fallbackCorrect !== undefined ? userAnswer === fallbackCorrect : false,
-        correctAnswer: fallbackCorrect ?? 0,
-        explanation: null,
-        usedFallback: true
-      }
+      return apiErrorResult('Pregunta no encontrada')
 
     } catch (error) {
       console.error('❌ [SecureAnswer] Error llamando API:', error)
       setLastError(error instanceof Error ? error.message : 'Error desconocido')
       setIsValidating(false)
-
-      // Fallback a validación local en caso de error
-      return {
-        isCorrect: fallbackCorrect !== undefined ? userAnswer === fallbackCorrect : false,
-        correctAnswer: fallbackCorrect ?? 0,
-        explanation: null,
-        usedFallback: true
-      }
+      return apiErrorResult('Network error')
     }
   }, [])
 

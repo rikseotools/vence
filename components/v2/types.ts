@@ -142,11 +142,12 @@ export interface HotArticleInfo {
 
 export interface ValidateAnswerResult {
   isCorrect: boolean
-  correctAnswer: number
+  correctAnswer: number          // -1 = API failed, no valid answer available
   explanation: string | null
   articleNumber?: string | null
   lawShortName?: string | null
   usedFallback: boolean
+  apiError?: boolean             // true when API call failed entirely
 }
 
 export interface SaveAnswerResult {

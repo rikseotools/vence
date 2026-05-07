@@ -114,10 +114,14 @@ export const RATE_LIMIT_PSYCHOMETRIC: RateLimitConfig = {
   windowMs: 60 * 1000,
 }
 
-/** Anonymous answer validation — 5 per IP per day (rolling 24h window) */
+/** Anonymous answer validation — 30 per IP per day (rolling 24h window).
+ * Was 5, but logged-in users with expired Supabase tokens fall here too.
+ * With 5, premium users mid-session got 401 → fallback showed wrong answer.
+ * 30 allows a full test session to recover via retry while still limiting bots.
+ * Real anti-scraping is in RATE_LIMIT_ANSWER (60/min per IP for all users). */
 export const RATE_LIMIT_ANON_ANSWER: RateLimitConfig = {
   name: 'anon-answer',
-  maxRequests: 5,
+  maxRequests: 30,
   windowMs: 24 * 60 * 60 * 1000,
 }
 

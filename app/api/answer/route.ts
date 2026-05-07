@@ -136,12 +136,7 @@ async function _POST(request: NextRequest) {
 
     if (!result.success) {
       return NextResponse.json(
-        {
-          success: false,
-          error: 'Pregunta no encontrada',
-          isCorrect: false,
-          correctAnswer: 0
-        },
+        { success: false, error: 'Pregunta no encontrada' },
         { status: 404 }
       )
     }
@@ -155,12 +150,7 @@ async function _POST(request: NextRequest) {
     const totalMs = Date.now() - startTime
     console.error(`❌ [API/answer] Error tras ${totalMs}ms:`, error)
     return NextResponse.json(
-      {
-        success: false,
-        error: 'Error interno del servidor',
-        isCorrect: false,
-        correctAnswer: 0
-      },
+      { success: false, error: 'Error interno del servidor' },
       { status: 500 }
     )
   }
