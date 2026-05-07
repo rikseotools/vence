@@ -683,9 +683,21 @@ Anadir nueva entrada al array `OPOSICIONES`:
     },
   ],
   totalTopics: 21,
+  // Aliases de búsqueda (refactor 07-may-2026): términos alternativos que
+  // los usuarios escriben en los buscadores (Onboarding, Cambio de
+  // oposición, Guard de tests). El test `oposicionAliases.test.ts` exige
+  // ≥3 aliases para oposiciones con tráfico relevante. Filtrado central en
+  // `lib/utils/searchOposicion.ts`.
+  aliases: ['cam', 'comunidad de madrid', 'auxiliar madrid', 'admin madrid'],
   navLinks: [/* patron estandar */]
 }
 ```
+
+**Reglas para los aliases:**
+- Mínimo 3 caracteres por alias (regex anti-falsos-positivos en el helper).
+- Incluye siglas comunes (CAM, GVA, JCYL, JCCM, DGA, CAIB, etc.) y nombres usuales en español/lengua cooficial.
+- Si la oposición es popular (Estado, autonomías grandes, justicia), añadir mínimo 5-8 aliases.
+- Para añadir un alias después: editar el campo `aliases` aquí, propaga automáticamente a los 3 buscadores.
 
 ### 4b. Archivos que se actualizan AUTOMATICAMENTE (no tocar)
 
@@ -712,7 +724,7 @@ Importan de `lib/config/oposiciones.ts` y se actualizan solos:
 | `lib/api/topic-data/schemas.ts` | `VALID_TOPIC_RANGES` (rangos de temas por bloque) |
 | `lib/config/exam-positions.ts` | **OBLIGATORIO** si la oposición tiene examenes oficiales propios. Añadir entrada en `EXAM_POSITION_MAP` y `HOT_ARTICLE_TARGET_MAP`. Sin esto, el filtro cross-oposición bloquea todas las oficiales (default seguro post-15/04/2026). El log emite `[scope] sin mapeo exam_position para "..."` cuando falta. |
 | `components/InteractiveBreadcrumbs.tsx` | **No requiere cambios** — se adapta automáticamente desde OPOSICIONES |
-| `components/OnboardingModal.tsx` | `OFFICIAL_OPOSICIONES` array. **Obligatorio para toda oposición** (implementada o aspiracional — ver §0.1). Si no está aquí, no aparece ni en el onboarding ni en el selector de cambio. Si ya existía como aspiracional, **mantener el mismo id** para heredar los usuarios con target_oposicion en ese id (ver §0.4). |
+| `components/OnboardingModal.tsx` | `OFFICIAL_OPOSICIONES` array. **Obligatorio para toda oposición** (implementada o aspiracional — ver §0.1). Si no está aquí, no aparece ni en el onboarding ni en el selector de cambio. Si ya existía como aspiracional, **mantener el mismo id** para heredar los usuarios con target_oposicion en ese id (ver §0.4). **Los aliases YA NO se ponen aquí** (refactor 07-may-2026): viven en el campo `aliases` de la oposición en `lib/config/oposiciones.ts`. |
 | `app/perfil/page.tsx` | Array `oposiciones` del selector |
 | `app/nuestras-oposiciones/page.js` | Tarjeta de la oposicion |
 | `app/page.js` | Links en "Test por Oposicion" y tarjeta en "Temarios" |
@@ -721,8 +733,22 @@ Importan de `lib/config/oposiciones.ts` y se actualizan solos:
 
 | Archivo | Que cambiar |
 |---------|------------|
-| `__tests__/api/theme-stats/themeStats.test.js` | `toHaveLength(N)` |
-| `__tests__/config/oposicionesCentralConfig.test.ts` | `toHaveLength(N)` |
+| `__tests__/api/theme-stats/themeStats.test.ts` | `toHaveLength(N)` y conteos `byAdmin('autonomica')` etc. |
+| `__tests__/config/oposicionesCentralConfig.test.ts` | `ALL_OPOSICION_SLUGS.length` y `byAdmin(<administracion>).length` |
+| `__tests__/config/oposicionAliases.test.ts` | Si la nueva oposición es popular y necesita aliases obligatorios, añadir su id a `REQUIRES_ALIASES`. |
+
+### 4d.bis Buscador unificado (refactor 07-may-2026)
+
+Los 3 componentes que filtran oposiciones por término (`OnboardingModal`,
+`OposicionChangeModal`, `OposicionGuard`) usan `matchesOposicion(o, term)`
+de `lib/utils/searchOposicion.ts`. **No dupliques lógica de filtrado en
+componentes nuevos** — importa el helper.
+
+El helper:
+- Normaliza tildes (`Autonómica` === `autonomica`).
+- Es case-insensitive.
+- Matchea por `nombre`/`name`, `categoria`/`badge`, `administracion`, y `aliases`.
+- Anti-falsos-positivos: aliases <3 caracteres no permiten partial match.
 
 ### 4e. InteractiveBreadcrumbs.tsx — NO requiere cambios
 
