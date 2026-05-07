@@ -51,6 +51,7 @@ export default function ProgressiveRegistrationModal({
   isQuestionPrompt = false
 }: ProgressiveRegistrationModalProps) {
   const [loading, setLoading] = useState<boolean>(false)
+  const [skipping, setSkipping] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
   const [timeLeft, setTimeLeft] = useState<number>(30)
 
@@ -60,6 +61,7 @@ export default function ProgressiveRegistrationModal({
       setError(null)
       setTimeLeft(30)
       setLoading(false)
+      setSkipping(false)
 
       // ⚡ Verificar si ya hay usuario autenticado
       const checkUser = async () => {
@@ -168,9 +170,11 @@ export default function ProgressiveRegistrationModal({
 
   // ✅ FUNCIÓN DE SKIP
   const handleSkip = useCallback(() => {
+    if (skipping) return
     console.log('👋 [MODAL] Usuario saltó registro')
+    setSkipping(true)
     onClose()
-  }, [onClose])
+  }, [onClose, skipping])
 
   // ✅ CONTENIDO DINÁMICO DEL MODAL
   const getModalContent = useCallback((): ModalContent => {
@@ -341,8 +345,8 @@ export default function ProgressiveRegistrationModal({
             {/* Skip button */}
             <button
               onClick={handleSkip}
-              disabled={loading}
-              className={`w-full py-3 px-6 rounded-lg font-semibold transition-colors text-sm border disabled:opacity-50 ${
+              disabled={loading || skipping}
+              className={`w-full py-3 px-6 rounded-lg font-semibold transition-colors text-sm border disabled:opacity-50 disabled:cursor-not-allowed ${
                 attempt >= 3
                   ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/40 border-red-200 dark:border-red-700'
                   : attempt >= 2
@@ -350,7 +354,7 @@ export default function ProgressiveRegistrationModal({
                   : 'bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 border-gray-200 dark:border-gray-600'
               }`}
             >
-              {attempt >= 3 ? "Continuar sin registrarse" : "Continuar sin guardar"}
+              {skipping ? 'Cerrando…' : (attempt >= 3 ? 'Continuar sin registrarse' : 'Continuar sin guardar')}
             </button>
           </div>
 
