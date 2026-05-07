@@ -508,6 +508,16 @@ function PerfilPageContent() {
       }
     },
     {
+      value: 'administrativo_gva',
+      label: 'Administrativo Generalitat Valenciana',
+      data: {
+        name: 'Administrativo Generalitat Valenciana',
+        slug: 'administrativo-gva',
+        categoria: 'C1',
+        administracion: 'Autonómica'
+      }
+    },
+    {
       value: 'auxiliar_administrativo_galicia',
       label: 'Auxiliar Administrativo Xunta de Galicia',
       data: {
