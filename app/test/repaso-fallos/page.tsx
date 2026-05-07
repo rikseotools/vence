@@ -232,7 +232,7 @@ function RepasoFallosContent() {
       tema={0}
       testNumber="repaso_fallos"
       config={testConfig}
-      questions={questions}
+      questions={questions as any}
     />
   )
 }

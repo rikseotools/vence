@@ -209,7 +209,7 @@ function RepasoFallosV2Content() {
       tema={0}
       testNumber="repaso_fallos_v2"
       config={config}
-      questions={questions}
+      questions={questions as any}
     />
   )
 }

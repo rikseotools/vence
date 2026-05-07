@@ -204,7 +204,7 @@ function TestArticuloContent() {
       tema={0}
       testNumber={`articulo_${articleInfo.articleNumber}`}
       config={testConfig}
-      questions={questions}
+      questions={questions as any}
     />
   )
 }
