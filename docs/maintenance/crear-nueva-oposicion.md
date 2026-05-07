@@ -121,7 +121,7 @@ FASE 2: Base de datos          → oposicion, topics (con epigrafes)
 FASE 3: Topic scope con IA     → Analizar epigrafes, mapear a leyes/articulos
 FASE 4: Config y schemas       → oposiciones.ts, archivos manuales
 FASE 5: Frontend               → Rutas Next.js, landing, temario, tests
-FASE 6: Verificacion           → Build, tests, funcional
+FASE 6: Verificacion           → Build, tests, funcional, revalidar caches
 FASE 7: Examenes oficiales     → exam_position, hot_articles, mapas (si aplica)
 ```
 
@@ -1076,15 +1076,36 @@ Crear fila en la tabla `oposiciones` con datos de la convocatoria. Sin esta fila
 
 Campos minimos: slug, nombre, plazas, categoria (C1/C2), administracion, programa_url (BOE).
 
-### 6f. Invalidar cache ISR (CRITICO despues de importar preguntas)
-
-Las paginas de la oposicion (landing, /test, /temario, /tema-X) tienen cache ISR. Si se crean los topics primero y luego se importan las preguntas, el cache sirve la version vieja donde los temas aparecen como "En desarrollo".
+### 6f. Revalidar cachés (OBLIGATORIO al terminar)
 
 **Procedimiento detallado:** ver [`docs/maintenance/cache-revalidation.md`](./cache-revalidation.md).
 
-**Resumen para esta fase:** despues de importar preguntas, ejecutar `node scripts/purge-all-cache.js` (revalida todas las rutas) o hacer un deploy (push a main, regenera ISR automaticamente).
+Tras crear una oposición nueva (con cualquier combinación de los pasos anteriores), invalidar **al menos estos 3 tags**. Si no, los listados (homepage, `/nuestras-oposiciones`) y los conteos de temas servirán datos viejos hasta la próxima invalidación natural (24h+).
 
-**Recomendacion:** importar las preguntas ANTES del primer deploy de la oposicion. Si no es posible, ejecutar el script de purge-all o hacer un deploy adicional despues de la importacion.
+| Tag | Por qué hay que revalidar al crear oposición | Comando |
+|---|---|---|
+| `landing` | Lista de oposiciones en homepage, `/nuestras-oposiciones`, sitemaps | `curl -X POST .../api/admin/revalidate -d '{"tag":"landing"}'` |
+| `temario` | Topics nuevos + topic_scope nuevos. Sin esto, las páginas `/<slug>/temario` cacheadas pueden mostrar "En elaboración" en temas que sí tienen scope | `... -d '{"tag":"temario"}'` |
+| `test-counts` | Conteo de preguntas por tema (usado por `/test`, `/test/aleatorio`). Sin esto, los selectores muestran 0 en temas con preguntas reutilizadas | `... -d '{"tag":"test-counts"}'` |
+
+**Comando completo (con `CRON_SECRET` de `.env.local`):**
+
+```bash
+SECRET="<CRON_SECRET>"
+for tag in landing temario test-counts; do
+  curl -sS -X POST "https://www.vence.es/api/admin/revalidate" \
+    -H "Content-Type: application/json" \
+    -H "x-cron-secret: $SECRET" \
+    -d "{\"tag\": \"$tag\"}"
+  echo
+done
+```
+
+**Si después importas preguntas (FASE 7 o sesión posterior):** repetir `temario` + `test-counts` o ejecutar `node scripts/purge-all-cache.js` (revalida ISR completo).
+
+**Otras situaciones que requieren revalidar:** sincronización BOE (`teoria` + `temario`), cambios de hitos/plazas (`landing` + ruta específica via `purge-cache`), añadir leyes (`laws`). Tabla completa en el manual de cache-revalidation.
+
+**Workflow automático:** el push a `main` dispara `warm-cache-post-deploy.yml` que calienta ~963 URLs. Pero ese workflow **no invalida tags** — solo precarga páginas con cache existente. Por eso los 3 `revalidateTag` de arriba son obligatorios además del deploy.
 
 ---
 
