@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { OPOSICIONES } from '@/lib/config/oposiciones'
 import { getSupabaseClient } from '@/lib/supabase'
-import { OFFICIAL_OPOSICIONES, type OposicionItem } from './OnboardingModal'
+import { OFFICIAL_OPOSICIONES, SEARCH_ALIASES, type OposicionItem } from './OnboardingModal'
 import CcaaFlag, { hasCcaaFlag } from './CcaaFlag'
 
 const supabase = getSupabaseClient()
@@ -72,11 +72,13 @@ export default function OposicionChangeModal({ open, onClose, onSelect }: Props)
   const filtered = useMemo(() => {
     const term = search.toLowerCase().trim()
     const list: OposicionItem[] = term
-      ? OFFICIAL_OPOSICIONES.filter((o: OposicionItem) =>
-          o.nombre.toLowerCase().includes(term) ||
-          o.categoria.toLowerCase().includes(term) ||
-          o.administracion.toLowerCase().includes(term)
-        )
+      ? OFFICIAL_OPOSICIONES.filter((o: OposicionItem) => {
+          const aliases = SEARCH_ALIASES[o.id] || []
+          return o.nombre.toLowerCase().includes(term) ||
+            o.categoria.toLowerCase().includes(term) ||
+            o.administracion.toLowerCase().includes(term) ||
+            aliases.some(a => a.includes(term) || term.includes(a))
+        })
       : OFFICIAL_OPOSICIONES
 
     const groups: Record<string, OposicionItem[]> = {}

@@ -5,7 +5,7 @@
 
 import { useState, useMemo } from 'react'
 import { useOposicion } from '@/contexts/OposicionContext'
-import { OFFICIAL_OPOSICIONES, type OposicionItem } from './OnboardingModal'
+import { OFFICIAL_OPOSICIONES, SEARCH_ALIASES, type OposicionItem } from './OnboardingModal'
 
 // Orden de las agrupaciones por administración
 const ADMIN_ORDER = [
@@ -36,11 +36,13 @@ export default function OposicionGuard() {
   const filtered = useMemo(() => {
     const term = search.toLowerCase().trim()
     const list: OposicionItem[] = term
-      ? OFFICIAL_OPOSICIONES.filter((o: OposicionItem) =>
-          o.nombre.toLowerCase().includes(term) ||
-          o.categoria.toLowerCase().includes(term) ||
-          o.administracion.toLowerCase().includes(term)
-        )
+      ? OFFICIAL_OPOSICIONES.filter((o: OposicionItem) => {
+          const aliases = SEARCH_ALIASES[o.id] || []
+          return o.nombre.toLowerCase().includes(term) ||
+            o.categoria.toLowerCase().includes(term) ||
+            o.administracion.toLowerCase().includes(term) ||
+            aliases.some(a => a.includes(term) || term.includes(a))
+        })
       : OFFICIAL_OPOSICIONES
 
     // Agrupar por administración

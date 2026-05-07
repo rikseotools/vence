@@ -95,6 +95,33 @@ const findMatchingOfficialOposicion = (customName: string): OposicionItem | unde
   })
 }
 
+// Aliases de búsqueda: términos alternativos que los usuarios escriben.
+// Usados tanto por el onboarding como por el modal de cambio de oposición
+// (OposicionChangeModal). Single source of truth para que añadir un alias
+// se propague a todos los buscadores.
+export const SEARCH_ALIASES: Record<string, string[]> = {
+  'auxiliar_administrativo_estado': ['age', 'administracion general', 'gobierno', 'estado', 'c2 estado', 'auxiliar estado', 'admin estado', 'oposicion estado', 'funcionario'],
+  'auxiliar_administrativo_madrid': ['comunidad de madrid', 'cam', 'madrid', 'auxiliar madrid', 'admin madrid', 'c2 madrid'],
+  'auxiliar_administrativo_valencia': ['generalitat valenciana', 'gva', 'comunitat valenciana', 'valenciana', 'auxiliar valencia', 'admin valencia', 'c2 valencia', 'generalitat'],
+  'administrativo_gva': ['administrativo generalitat', 'administrativo gva', 'administrativo valencia', 'gva', 'c1 valencia', 'c1-01 gva', 'cuerpo administrativo', 'administrativo c1', 'administrativo comunitat valenciana'],
+  'auxiliar_administrativo_ayuntamiento_valencia': ['ayuntamiento valencia', 'ajuntament', 'ayto valencia', 'ayuntamiento de valencia'],
+  'auxiliar_administrativo_canarias': ['gobierno canarias', 'canario', 'canarias', 'auxiliar canarias', 'admin canarias', 'c2 canarias', 'gobcan'],
+  'auxiliar_administrativo_carm': ['murcia', 'region de murcia', 'auxiliar murcia', 'admin murcia', 'c2 murcia', 'carm', 'comunidad autonoma murcia'],
+  'auxiliar_administrativo_cyl': ['castilla y leon', 'junta castilla', 'jcyl', 'cyl', 'castilla leon', 'auxiliar castilla', 'admin castilla', 'sacyl', 'junta cyl'],
+  'auxiliar_administrativo_andalucia': ['junta andalucia', 'andaluz', 'andalucia', 'auxiliar andalucia', 'admin andalucia', 'c2 andalucia', 'junta de andalucia', 'sevilla', 'malaga', 'cadiz', 'cordoba', 'granada'],
+  'auxiliar_administrativo_aragon': ['gobierno aragon', 'dga', 'aragon', 'auxiliar aragon', 'admin aragon', 'c2 aragon', 'zaragoza'],
+  'auxiliar_administrativo_galicia': ['xunta galicia', 'xunta', 'galicia', 'auxiliar galicia', 'c2 galicia', 'xunta de galicia', 'sergas'],
+  'administrativo_galicia': ['xunta galicia', 'xunta', 'galicia', 'administrativo galicia', 'admin galicia', 'c1 galicia', 'xunta de galicia'],
+  'auxiliar_administrativo_baleares': ['govern balear', 'illes balears', 'baleares', 'islas baleares', 'auxiliar baleares', 'mallorca', 'ibiza', 'menorca', 'caib'],
+  'auxiliar_administrativo_extremadura': ['junta extremadura', 'extremadura', 'auxiliar extremadura', 'admin extremadura', 'caceres', 'badajoz'],
+  'auxiliar_administrativo_asturias': ['principado asturias', 'asturias', 'auxiliar asturias', 'admin asturias', 'principado', 'oviedo', 'gijon'],
+  'auxiliar_administrativo_clm': ['castilla la mancha', 'jccm', 'clm', 'castilla mancha', 'auxiliar castilla la mancha', 'toledo', 'ciudad real', 'albacete', 'cuenca', 'guadalajara'],
+  'administrativo_estado': ['c1 estado', 'administrativo general', 'administrativo del estado', 'c1', 'grupo c1'],
+  'tramitacion_procesal': ['tramitacion', 'procesal', 'justicia', 'tramitacion procesal', 'turno libre justicia', 'ministerio justicia'],
+  'auxilio_judicial': ['auxilio', 'judicial', 'auxilio judicial', 'turno libre auxilio'],
+  'auxiliar_administrativo_ayuntamiento_murcia': ['ayuntamiento murcia', 'ayto murcia'],
+}
+
 // Oposiciones oficiales ordenadas por POPULARIDAD (más demandadas primero)
 export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
   // === TOP 10 MÁS POPULARES ===
@@ -1090,29 +1117,7 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }: On
     }
   }
 
-  // Aliases de búsqueda: términos alternativos que los usuarios escriben
-  const SEARCH_ALIASES: Record<string, string[]> = {
-    'auxiliar_administrativo_estado': ['age', 'administracion general', 'gobierno', 'estado', 'c2 estado', 'auxiliar estado', 'admin estado', 'oposicion estado', 'funcionario'],
-    'auxiliar_administrativo_madrid': ['comunidad de madrid', 'cam', 'madrid', 'auxiliar madrid', 'admin madrid', 'c2 madrid'],
-    'auxiliar_administrativo_valencia': ['generalitat valenciana', 'gva', 'comunitat valenciana', 'valenciana', 'auxiliar valencia', 'admin valencia', 'c2 valencia', 'generalitat'],
-    'administrativo_gva': ['administrativo generalitat', 'administrativo gva', 'administrativo valencia', 'c1 valencia', 'c1-01 gva', 'cuerpo administrativo', 'administrativo c1', 'administrativo comunitat valenciana'],
-    'auxiliar_administrativo_ayuntamiento_valencia': ['ayuntamiento valencia', 'ajuntament', 'ayto valencia', 'ayuntamiento de valencia'],
-    'auxiliar_administrativo_canarias': ['gobierno canarias', 'canario', 'canarias', 'auxiliar canarias', 'admin canarias', 'c2 canarias', 'gobcan'],
-    'auxiliar_administrativo_carm': ['murcia', 'region de murcia', 'auxiliar murcia', 'admin murcia', 'c2 murcia', 'carm', 'comunidad autonoma murcia'],
-    'auxiliar_administrativo_cyl': ['castilla y leon', 'junta castilla', 'jcyl', 'cyl', 'castilla leon', 'auxiliar castilla', 'admin castilla', 'sacyl', 'junta cyl'],
-    'auxiliar_administrativo_andalucia': ['junta andalucia', 'andaluz', 'andalucia', 'auxiliar andalucia', 'admin andalucia', 'c2 andalucia', 'junta de andalucia', 'sevilla', 'malaga', 'cadiz', 'cordoba', 'granada'],
-    'auxiliar_administrativo_aragon': ['gobierno aragon', 'dga', 'aragon', 'auxiliar aragon', 'admin aragon', 'c2 aragon', 'zaragoza'],
-    'auxiliar_administrativo_galicia': ['xunta galicia', 'xunta', 'galicia', 'auxiliar galicia', 'c2 galicia', 'xunta de galicia', 'sergas'],
-    'administrativo_galicia': ['xunta galicia', 'xunta', 'galicia', 'administrativo galicia', 'admin galicia', 'c1 galicia', 'xunta de galicia'],
-    'auxiliar_administrativo_baleares': ['govern balear', 'illes balears', 'baleares', 'islas baleares', 'auxiliar baleares', 'mallorca', 'ibiza', 'menorca', 'caib'],
-    'auxiliar_administrativo_extremadura': ['junta extremadura', 'extremadura', 'auxiliar extremadura', 'admin extremadura', 'caceres', 'badajoz'],
-    'auxiliar_administrativo_asturias': ['principado asturias', 'asturias', 'auxiliar asturias', 'admin asturias', 'principado', 'oviedo', 'gijon'],
-    'auxiliar_administrativo_clm': ['castilla la mancha', 'jccm', 'clm', 'castilla mancha', 'auxiliar castilla la mancha', 'toledo', 'ciudad real', 'albacete', 'cuenca', 'guadalajara'],
-    'administrativo_estado': ['c1 estado', 'administrativo general', 'administrativo del estado', 'c1', 'grupo c1'],
-    'tramitacion_procesal': ['tramitacion', 'procesal', 'justicia', 'tramitacion procesal', 'turno libre justicia', 'ministerio justicia'],
-    'auxilio_judicial': ['auxilio', 'judicial', 'auxilio judicial', 'turno libre auxilio'],
-    'auxiliar_administrativo_ayuntamiento_murcia': ['ayuntamiento murcia', 'ayto murcia'],
-  }
+  // Aliases definidos a nivel de módulo (ver SEARCH_ALIASES export más abajo)
 
   // Filtrar y reordenar oposiciones por búsqueda y región detectada
   const filteredOposiciones = useMemo(() => {
