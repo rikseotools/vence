@@ -7,18 +7,24 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthenticatedUser } from '@/lib/api/shared/auth'
-import { getUserProblematicArticlesWeekly } from '@/lib/api/notifications/queries'
+import { getUserProblematicArticlesWeeklyCached } from '@/lib/api/notifications/queries'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { logRolloutEvent } from '@/lib/api/rollout/problematic-articles-logs'
 import { getAllowedLawIds } from '@/lib/api/oposicion-scope/queries'
 import { withDbTimeout, isDbTimeoutError } from '@/lib/db/timeout'
 
-// Nunca cachear — la respuesta depende del userId de la sesión.
+// Cache server-side per-userId (TTL 5min) introducido 2026-05-07.
+// Cache key incluye userId automáticamente vía args de la función — sin
+// cross-oposición leakage porque userId viene del Bearer token (auth, no
+// body). Bajo blip del pooler, el cache responde sin tocar BD.
+// force-dynamic en route es correcto: auth check ocurre en cada request,
+// el cache aplica sólo a la query de BD.
 export const dynamic = 'force-dynamic'
 
 // Timeout 10s — la query es analítica (computa weekly performance) y más
 // pesada que profile/daily-limit. 10s da margen suficiente para casos
 // normales y aún corta antes del statement_timeout=30s del DSN.
+// Solo aplica en cache miss; en hit el response es instantáneo.
 const PROBLEMATIC_TIMEOUT_MS = 10000
 
 async function _GET(request: NextRequest) {
@@ -28,7 +34,7 @@ async function _GET(request: NextRequest) {
   const startedAt = Date.now()
   try {
     const articles = await withDbTimeout(
-      () => getUserProblematicArticlesWeekly({ userId: auth.user.id }),
+      () => getUserProblematicArticlesWeeklyCached({ userId: auth.user.id }),
       PROBLEMATIC_TIMEOUT_MS,
     )
 
