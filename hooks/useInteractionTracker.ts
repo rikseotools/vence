@@ -183,7 +183,21 @@ async function flushQueue(forceAll = false): Promise<void> {
       keepalive: true
     })
 
+    // El server devuelve 200 con success:false cuando hay timeout/blip de pool
+    // (cascade prevention 2026-05-07). En ese caso NO borramos de la queue —
+    // los eventos quedan persistidos para reintentar.
+    let confirmed = false
     if (response.ok) {
+      try {
+        const body = await response.json()
+        confirmed = body?.success === true
+      } catch {
+        // Si el body no es JSON válido, ser conservador: NO confirmar
+        confirmed = false
+      }
+    }
+
+    if (confirmed) {
       // Remover eventos enviados
       globalQueue = globalQueue.slice(eventsToSend.length)
       clearQueueFromStorage()
@@ -191,6 +205,11 @@ async function flushQueue(forceAll = false): Promise<void> {
       if (globalQueue.length > 0) {
         saveQueueToStorage(globalQueue)
       }
+    } else if (response.ok) {
+      // Server respondió 200 pero success:false (blip de pool). Persistimos
+      // la queue para reintentar en el siguiente flush.
+      console.warn('⚠️ [Tracker] Server respondió queued=false (blip BD), reintentaremos')
+      saveQueueToStorage(globalQueue)
     }
 
   } catch (error) {

@@ -7,11 +7,18 @@ import {
   type OposicionSlug,
   VALID_OPOSICIONES
 } from '@/lib/api/theme-stats'
+import { withDbTimeout, isDbTimeoutError } from '@/lib/db/timeout'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
-export const maxDuration = 60
+// maxDuration bajado de 60s → 20s tras incidente cascade 2026-05-07. Endpoint
+// dashboard user-facing que comparte vulnerabilidad con weak-articles. La query
+// está respaldada por covering index idx_tq_user_tema_covering (commit 068c5e5b)
+// que la hace <500ms warm; 20s da margen sin permitir saturación de concurrency.
+export const maxDuration = 20
+
+const THEME_STATS_TIMEOUT_MS = 15000
 
 async function _GET(request: NextRequest) {
   try {
@@ -39,9 +46,9 @@ async function _GET(request: NextRequest) {
     // Obtener estadísticas por tema
     // Si oposicionId está presente, usa la nueva lógica V2 que deriva tema desde article_id
     // Si no, usa la lógica legacy basada en tema_number guardado
-    const stats = await getUserThemeStats(
-      parseResult.data.userId,
-      parseResult.data.oposicionId
+    const stats = await withDbTimeout(
+      () => getUserThemeStats(parseResult.data.userId, parseResult.data.oposicionId),
+      THEME_STATS_TIMEOUT_MS,
     )
 
     if (!stats.success) {
@@ -55,6 +62,13 @@ async function _GET(request: NextRequest) {
       }
     })
   } catch (error) {
+    if (isDbTimeoutError(error)) {
+      console.warn('⏱️ [API/theme-stats] Timeout (quick-fail):', error.timeoutMs, 'ms')
+      return NextResponse.json(
+        { success: false, error: 'Servicio temporalmente saturado. Reintenta.', retryable: true },
+        { status: 503, headers: { 'Retry-After': '5' } },
+      )
+    }
     console.error('Error en API de estadísticas por tema:', error)
     return NextResponse.json(
       { success: false, error: 'Error interno del servidor' },

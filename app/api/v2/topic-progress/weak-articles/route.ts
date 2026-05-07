@@ -7,9 +7,17 @@ import {
   safeParseGetWeakArticles,
   type GetWeakArticlesRequest,
 } from '@/lib/api/topic-progress'
+import { withDbTimeout, isDbTimeoutError } from '@/lib/db/timeout'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
-export const maxDuration = 60
+// maxDuration bajado de 60s → 20s tras incidente cascade 2026-05-07 12:34 UTC
+// (4× 504s en weak-articles durante blip). Read path analítico (agg sobre
+// test_questions); 20s da margen sin permitir que un blip sature concurrency.
+export const maxDuration = 20
+
+// Quick-fail timeout. La query es analítica (agg de weak articles por topic),
+// más pesada que profile/daily-limit. 15s da margen para casos cold-cache.
+const WEAK_ARTICLES_TIMEOUT_MS = 15000
 
 // Cliente Supabase solo para auth
 const getSupabase = () => createClient(
@@ -73,8 +81,12 @@ async function _GET(request: NextRequest) {
       maxPerTopic: validatedParams.maxPerTopic,
     })
 
-    // Ejecutar query con Drizzle
-    const result = await getWeakArticlesForUser(validatedParams)
+    // Ejecutar query con Drizzle (envuelta en quick-fail para evitar cascade
+    // si pool blip)
+    const result = await withDbTimeout(
+      () => getWeakArticlesForUser(validatedParams),
+      WEAK_ARTICLES_TIMEOUT_MS,
+    )
 
     if (!result.success) {
       return NextResponse.json(result, { status: 500 })
@@ -86,6 +98,13 @@ async function _GET(request: NextRequest) {
     return NextResponse.json(result)
 
   } catch (error) {
+    if (isDbTimeoutError(error)) {
+      console.warn('⏱️ [API/v2/weak-articles] Timeout (quick-fail):', error.timeoutMs, 'ms')
+      return NextResponse.json(
+        { success: false, error: 'Servicio temporalmente saturado. Reintenta.', retryable: true },
+        { status: 503, headers: { 'Retry-After': '5' } },
+      )
+    }
     console.error('❌ [API/v2/weak-articles] Error:', error)
     return NextResponse.json(
       { success: false, error: 'Error interno del servidor' },
