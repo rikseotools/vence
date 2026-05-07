@@ -434,7 +434,7 @@ Entra directamente a la pagina de tu oposicion. Por ejemplo:
 - **[Auxiliar Administrativo Estado](/auxiliar-administrativo-estado)**
 - **[Tramitacion Procesal](/tramitacion-procesal)**
 
-Puedes ver todas las oposiciones disponibles en **[Nuestras Oposiciones](/nuestras-oposiciones)**.
+Puedes ver todas las oposiciones disponibles en **[Catálogo de Oposiciones](/oposiciones)**.
 
 Al entrar a una oposicion y hacer un test, el sistema detecta automaticamente que quieres estudiar esa oposicion y la asigna a tu perfil.`
   }

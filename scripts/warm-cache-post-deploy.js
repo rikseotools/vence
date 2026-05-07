@@ -68,7 +68,8 @@ async function generateUrlsFromDB() {
 
   // 3. Páginas estáticas
   urls.push('/', '/leyes', '/oposiciones', '/teoria', '/test-oposiciones')
-  urls.push('/temarios', '/nuestras-oposiciones', '/psicotecnicos', '/ayuda')
+  urls.push('/temarios', '/psicotecnicos', '/ayuda')
+  // /nuestras-oposiciones es 308 redirect → /oposiciones (ya incluido arriba). No warmar.
 
   return urls
 }

@@ -139,27 +139,19 @@ describe('Landing Data Integrity', () => {
     )
   })
 
-  describe('Nuestras oposiciones: Server Component', () => {
-    test('page.tsx es Server Component (no use client)', () => {
+  describe('Legacy /nuestras-oposiciones → /oposiciones (308 redirect)', () => {
+    test('page.tsx hace permanentRedirect a /oposiciones', () => {
       const filePath = path.join(process.cwd(), 'app/nuestras-oposiciones/page.tsx')
       const content = fs.readFileSync(filePath, 'utf-8')
-      expect(content).not.toContain("'use client'")
-      expect(content).toContain('getAllOposicionesCardData')
-      expect(content).toContain('export default async function')
+      expect(content).toContain('permanentRedirect')
+      expect(content).toMatch(/permanentRedirect\(['"]\/oposiciones['"]\)/)
     })
 
-    test('OposicionCards.tsx es Client Component', () => {
-      const filePath = path.join(process.cwd(), 'app/nuestras-oposiciones/OposicionCards.tsx')
-      const content = fs.readFileSync(filePath, 'utf-8')
-      expect(content).toContain("'use client'")
-      expect(content).toContain('useOposicion')
-    })
-
-    test('page.tsx tiene JSON-LD ItemList', () => {
-      const filePath = path.join(process.cwd(), 'app/nuestras-oposiciones/page.tsx')
-      const content = fs.readFileSync(filePath, 'utf-8')
-      expect(content).toContain('ItemList')
-      expect(content).toContain('application/ld+json')
+    test('archivos huérfanos eliminados (OposicionCards.tsx, layout.js)', () => {
+      const cards = path.join(process.cwd(), 'app/nuestras-oposiciones/OposicionCards.tsx')
+      const layout = path.join(process.cwd(), 'app/nuestras-oposiciones/layout.js')
+      expect(fs.existsSync(cards)).toBe(false)
+      expect(fs.existsSync(layout)).toBe(false)
     })
   })
 

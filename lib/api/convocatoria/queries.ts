@@ -216,7 +216,9 @@ export interface OposicionCardData {
 }
 
 /**
- * Obtiene datos de todas las oposiciones activas para la página /nuestras-oposiciones.
+ * Obtiene datos de todas las oposiciones activas (originalmente para /nuestras-oposiciones,
+ * que ahora es 308 redirect a /oposiciones — esta query queda disponible para
+ * cualquier listado que necesite cards de oposiciones desde BD).
  * Devuelve un mapa slug → datos para merge rápido con la config.
  */
 export async function getAllOposicionesCardData(): Promise<Map<string, OposicionCardData>> {

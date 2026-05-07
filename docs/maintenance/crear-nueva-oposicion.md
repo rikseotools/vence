@@ -726,7 +726,7 @@ Importan de `lib/config/oposiciones.ts` y se actualizan solos:
 | `components/InteractiveBreadcrumbs.tsx` | **No requiere cambios** — se adapta automáticamente desde OPOSICIONES |
 | `components/OnboardingModal.tsx` | `OFFICIAL_OPOSICIONES` array. **Obligatorio para toda oposición** (implementada o aspiracional — ver §0.1). Si no está aquí, no aparece ni en el onboarding ni en el selector de cambio. Si ya existía como aspiracional, **mantener el mismo id** para heredar los usuarios con target_oposicion en ese id (ver §0.4). **Los aliases YA NO se ponen aquí** (refactor 07-may-2026): viven en el campo `aliases` de la oposición en `lib/config/oposiciones.ts`. |
 | `app/perfil/page.tsx` | Array `oposiciones` del selector |
-| `app/nuestras-oposiciones/page.js` | Tarjeta de la oposicion |
+| `app/oposiciones/page.tsx` | Tarjeta de la oposición (lee de tabla `oposiciones` automáticamente, no requiere cambio si la oposición está en BD). La ruta legacy `/nuestras-oposiciones` es 308 redirect → `/oposiciones` desde 07-may-2026. |
 | `app/page.js` | Links en "Test por Oposicion" y tarjeta en "Temarios" |
 
 ### 4d. Tests a actualizar
@@ -1080,11 +1080,11 @@ Campos minimos: slug, nombre, plazas, categoria (C1/C2), administracion, program
 
 **Procedimiento detallado:** ver [`docs/maintenance/cache-revalidation.md`](./cache-revalidation.md).
 
-Tras crear una oposición nueva (con cualquier combinación de los pasos anteriores), invalidar **al menos estos 3 tags**. Si no, los listados (homepage, `/nuestras-oposiciones`) y los conteos de temas servirán datos viejos hasta la próxima invalidación natural (24h+).
+Tras crear una oposición nueva (con cualquier combinación de los pasos anteriores), invalidar **al menos estos 3 tags**. Si no, los listados (homepage, `/oposiciones`) y los conteos de temas servirán datos viejos hasta la próxima invalidación natural (24h+).
 
 | Tag | Por qué hay que revalidar al crear oposición | Comando |
 |---|---|---|
-| `landing` | Lista de oposiciones en homepage, `/nuestras-oposiciones`, sitemaps | `curl -X POST .../api/admin/revalidate -d '{"tag":"landing"}'` |
+| `landing` | Lista de oposiciones en homepage, `/oposiciones` (incluye filtros `[filtro]`), sitemaps | `curl -X POST .../api/admin/revalidate -d '{"tag":"landing"}'` |
 | `temario` | Topics nuevos + topic_scope nuevos. Sin esto, las páginas `/<slug>/temario` cacheadas pueden mostrar "En elaboración" en temas que sí tienen scope | `... -d '{"tag":"temario"}'` |
 | `test-counts` | Conteo de preguntas por tema (usado por `/test`, `/test/aleatorio`). Sin esto, los selectores muestran 0 en temas con preguntas reutilizadas | `... -d '{"tag":"test-counts"}'` |
 

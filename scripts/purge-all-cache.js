@@ -81,7 +81,9 @@ async function main() {
   routes.push('/temarios')
   routes.push('/leyes-de-oposiciones')
   routes.push('/psicotecnicos')
-  routes.push('/nuestras-oposiciones')
+  routes.push('/oposiciones')
+  // /nuestras-oposiciones eliminado (07-may-2026): es 308 redirect a /oposiciones,
+  // no necesita purge (el redirect siempre devuelve la misma respuesta).
 
   // Actualidad
   routes.push('/actualidad/lo-1-2026-multirreincidencia')
