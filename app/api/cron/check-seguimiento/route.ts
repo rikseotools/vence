@@ -1,5 +1,12 @@
 // app/api/cron/check-seguimiento/route.ts
-// Cron diario: verifica cambios en páginas de seguimiento de convocatorias
+// Cron diario: verifica cambios en páginas de seguimiento de convocatorias.
+//
+// Arquitectura (refactor 2026-05-07): paralelización con throttle por dominio.
+// - Antes: bucle secuencial 42 ops × (3-5s fetch + 2s pausa) → ~210-294s, no
+//   cabía en maxDuration=120s, Vercel killing → workflow GH Actions failures.
+// - Ahora: agrupamos por dominio, procesamos dominios en paralelo (concurrency=5)
+//   pero dentro de cada dominio secuencial con pausa 1s. Así no martillamos
+//   un mismo servidor pero ganamos paralelismo entre dominios distintos.
 
 import { NextRequest, NextResponse } from 'next/server'
 import {
@@ -8,11 +15,18 @@ import {
   saveSeguimientoCheck,
   type CheckResult,
   type SeguimientoCheckStats,
+  type OposicionToCheck,
 } from '@/lib/api/seguimiento-convocatorias/queries'
+import { groupByDomain, runWithConcurrency } from '@/lib/api/seguimiento-convocatorias/concurrency'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 
 export const dynamic = 'force-dynamic'
-export const maxDuration = 120 // 2 minutos
+// 300s = 5 min. Para 42 ops con paralelización 5×, el peor caso (todas del
+// mismo dominio) tarda ~210s; con dominios distribuidos, ~50-80s.
+export const maxDuration = 300
+
+const CONCURRENCY = 5
+const DELAY_PER_DOMAIN_MS = 1000 // pausa entre requests al mismo servidor
 
 interface CheckSeguimientoResponse {
   success: boolean
@@ -57,28 +71,51 @@ async function _GET(request: NextRequest): Promise<NextResponse<CheckSeguimiento
     const changes: Array<{ nombre: string; slug: string | null }> = []
     const errors: Array<{ nombre: string; error: string }> = []
 
-    // Verificar secuencialmente (no saturar servidores externos)
-    for (const opo of oposiciones) {
-      console.log(`  🔎 Verificando: ${opo.shortName ?? opo.nombre}`)
-      const result = await checkSeguimientoUrl(opo)
-      results.push(result)
+    // Agrupar por dominio para no martillear el mismo servidor.
+    // Procesamos dominios en paralelo (concurrency=5), pero dentro de un
+    // dominio secuencial con pausa 1s. Así un dominio con 10 oposiciones
+    // (ej. junta CCAA con varios procesos) no recibe rafagas.
+    const domainGroups = groupByDomain(oposiciones, (opo) => opo.seguimientoUrl)
+    console.log(`🌐 [Seguimiento] ${domainGroups.length} dominios distintos, concurrency=${CONCURRENCY}`)
 
+    // Mutex para appends concurrentes a results/changes/errors
+    const pushResult = (result: CheckResult, opo: OposicionToCheck) => {
+      results.push(result)
       if (result.error) {
-        console.log(`  ❌ Error: ${result.error}`)
         errors.push({ nombre: opo.nombre, error: result.error })
       } else if (result.hasChanged) {
-        console.log(`  🔔 CAMBIO DETECTADO: ${opo.shortName ?? opo.nombre}`)
         changes.push({ nombre: opo.nombre, slug: opo.slug })
-      } else {
-        console.log(`  ✅ Sin cambios`)
       }
-
-      // Guardar resultado
-      await saveSeguimientoCheck(result)
-
-      // Pausa entre requests para no saturar
-      await new Promise(resolve => setTimeout(resolve, 2000))
     }
+
+    await runWithConcurrency(domainGroups, CONCURRENCY, async (group) => {
+      for (let i = 0; i < group.length; i++) {
+        const opo = group[i]
+        console.log(`  🔎 Verificando: ${opo.shortName ?? opo.nombre}`)
+        const result = await checkSeguimientoUrl(opo)
+        pushResult(result, opo)
+
+        if (result.error) {
+          console.log(`  ❌ Error ${opo.shortName ?? opo.nombre}: ${result.error}`)
+        } else if (result.hasChanged) {
+          console.log(`  🔔 CAMBIO DETECTADO: ${opo.shortName ?? opo.nombre}`)
+        } else {
+          console.log(`  ✅ Sin cambios: ${opo.shortName ?? opo.nombre}`)
+        }
+
+        // Guardar resultado (no abortar el cron si falla un save individual)
+        try {
+          await saveSeguimientoCheck(result)
+        } catch (saveErr) {
+          console.error(`  ⚠️ Error guardando check de ${opo.nombre}:`, (saveErr as Error).message)
+        }
+
+        // Pausa entre requests al MISMO dominio (no saturar). Skip en último item.
+        if (i < group.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, DELAY_PER_DOMAIN_MS))
+        }
+      }
+    })
 
     const stats: SeguimientoCheckStats = {
       total: oposiciones.length,
