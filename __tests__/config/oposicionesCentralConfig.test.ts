@@ -150,7 +150,7 @@ describe('Config central de oposiciones', () => {
     const byAdmin = (admin: string) => OPOSICIONES.filter(o => o.administracion === admin)
     expect(byAdmin('estado').length).toBe(5)
     expect(byAdmin('justicia').length).toBe(2)
-    expect(byAdmin('autonomica').length).toBe(27)
+    expect(byAdmin('autonomica').length).toBe(28)
     expect(byAdmin('empresa_publica').length).toBe(1)
   })
 
