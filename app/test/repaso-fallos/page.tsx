@@ -1,12 +1,12 @@
 // app/test/repaso-fallos/page.tsx
-// Test de repaso de preguntas falladas - Usa TestLayoutV2
+// Test de repaso de preguntas falladas
 'use client'
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
-import TestLayoutV2 from '@/components/v2/TestLayoutV2'
-import type { TestLayoutQuestion, TestConfig } from '@/lib/api/tests'
+import TestLayout from '@/components/TestLayout'
+import type { TestLayoutQuestion } from '@/lib/api/tests'
 
 interface CreateTestResponse {
   success: boolean
@@ -46,7 +46,7 @@ function transformQuestions(apiQuestions: CreateTestResponse['questions']): Test
     question_text: q.question_text,
     options: q.options as [string, string, string, string],
     explanation: q.explanation,
-    correct_option: (q as any).correct_option ?? null,
+    correct_option: (q as any).correct_option ?? 0,
     difficulty: q.difficulty,
     primary_article_id: null,
     article_number: q.article_number,
@@ -218,8 +218,7 @@ function RepasoFallosContent() {
     )
   }
 
-  // Config para TestLayoutV2
-  const testConfig: TestConfig = {
+  const testConfig = {
     name: "Test de Repaso de Fallos",
     description: `Practicando ${questions.length} preguntas que necesitas reforzar`,
     subtitle: "Repasa tus puntos débiles",
@@ -227,9 +226,9 @@ function RepasoFallosContent() {
     color: "from-red-500 to-orange-600",
   }
 
-  // Test cargado - renderizar TestLayoutV2
+  // Test cargado - renderizar TestLayout (con persistencia en BD)
   return (
-    <TestLayoutV2
+    <TestLayout
       tema={0}
       testNumber="repaso_fallos"
       config={testConfig}

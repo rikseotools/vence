@@ -1,12 +1,12 @@
 // app/test/repaso-fallos-v2/page.tsx
-// Test de repaso de preguntas falladas - Versión 2 con Drizzle + Zod + TestLayoutV2
+// Test de repaso de preguntas falladas - Versión 2 con Drizzle + Zod
 'use client'
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
-import TestLayoutV2 from '@/components/v2/TestLayoutV2'
-import type { TestLayoutQuestion, TestConfig } from '@/lib/api/tests'
+import TestLayout from '@/components/TestLayout'
+import type { TestLayoutQuestion } from '@/lib/api/tests'
 
 interface CreateTestResponse {
   success: boolean
@@ -189,7 +189,7 @@ function RepasoFallosV2Content() {
 
   // Config del test (con título adaptado si hay filtro por bloque)
   const bloqueLabel = searchParams.get('bloque')
-  const config: TestConfig = bloqueLabel ? {
+  const config = bloqueLabel ? {
     name: `Repaso de Fallos del Bloque ${bloqueLabel}`,
     description: `Practicando ${questions.length} preguntas falladas del Bloque ${bloqueLabel}`,
     subtitle: "Refuerza los temas de este bloque",
@@ -203,9 +203,9 @@ function RepasoFallosV2Content() {
     color: "from-red-500 to-orange-600",
   }
 
-  // Test cargado - renderizar TestLayoutV2
+  // Test cargado - renderizar TestLayout (con persistencia en BD)
   return (
-    <TestLayoutV2
+    <TestLayout
       tema={0}
       testNumber="repaso_fallos_v2"
       config={config}

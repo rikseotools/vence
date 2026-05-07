@@ -7,7 +7,7 @@ import Link from 'next/link'
 import FeedbackModal from '@/components/FeedbackModal'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 import MarkdownExplanation from '@/components/MarkdownExplanation'
-import { formatTextContent } from '@/components/v2/ArticleDropdown'
+import { formatTextContent } from '@/utils/formatArticleContent'
 import type {
   FeedbackWithConversation,
   ConversationMessage,
