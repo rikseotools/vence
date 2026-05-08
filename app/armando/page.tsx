@@ -65,7 +65,7 @@ export default function ArmandoPage() {
   const [apiError, setApiError] = useState<string | null>(null)
   const [transfersError, setTransfersError] = useState<string | null>(null)
   const [fxError, setFxError] = useState<string | null>(null)
-  const [stripeCommission, setStripeCommission] = useState({ pct: 10, netVolume4w: 0 })
+  const [stripeCommission, setStripeCommission] = useState<{ pct: number | null, netVolume4w: number }>({ pct: null, netVolume4w: 0 })
   const [eurUsdRate, setEurUsdRate] = useState<number | null>(null)
 
   // Verificar sesión server-side al montar (cookie httpOnly)
@@ -203,6 +203,7 @@ export default function ArmandoPage() {
     payoutFee: number,
     payoutDate: string,
   ) => {
+    if (stripeCommission.pct == null) return
     const netAmount = Math.abs(payoutAmount) - payoutFee
     const manuelPct = (100 - stripeCommission.pct) / 100
     const manuelAmount = Math.round(netAmount * manuelPct)
@@ -436,8 +437,8 @@ export default function ArmandoPage() {
             <h1 className="text-2xl font-bold">Panel de Liquidaciones</h1>
             <p className="text-sm text-gray-500">
               Conectado como: <span className="font-medium text-gray-700">Armando</span>
-              {' · '}Comisión Armando: <span className="font-medium text-blue-600">{stripeCommission.pct}%</span>
-              {' '}(vol. neto 4 sem: {(stripeCommission.netVolume4w / 100).toFixed(2)}€)
+              {' · '}Comisión Armando: <span className="font-medium text-blue-600">{stripeCommission.pct != null ? `${stripeCommission.pct}%` : 'Calculando...'}</span>
+              {stripeCommission.pct != null && <>{' '}(vol. neto 4 sem: {(stripeCommission.netVolume4w / 100).toFixed(2)}€)</>}
             </p>
           </div>
           <div className="flex gap-2">
@@ -483,7 +484,7 @@ export default function ArmandoPage() {
           <div className="p-4 border-b bg-gray-50">
             <h2 className="font-bold text-lg">Transacciones de Stripe</h2>
             <p className="text-sm text-gray-600">
-              Historial completo. En las transferencias a banco, marca cuando envíes el {100 - stripeCommission.pct}% a Manuel.
+              Historial completo. En las transferencias a banco, marca cuando envíes el {stripeCommission.pct != null ? `${100 - stripeCommission.pct}%` : '...'} a Manuel.
             </p>
           </div>
 
@@ -527,8 +528,9 @@ export default function ArmandoPage() {
                       const isPayout = t.type === 'payout'
                       const payoutStatus = isPayout ? getPayoutStatus(t.source) : { sent: false, confirmed: false }
                       const netAmount = isPayout ? Math.abs(t.amount) - t.fee : 0
-                      const manuelAmount = isPayout ? Math.round(netAmount * (100 - stripeCommission.pct) / 100) : 0
-                      const armandoAmount = isPayout ? netAmount - manuelAmount : 0
+                      const pctReady = stripeCommission.pct != null
+                      const manuelAmount = isPayout && pctReady ? Math.round(netAmount * (100 - stripeCommission.pct!) / 100) : 0
+                      const armandoAmount = isPayout && pctReady ? netAmount - manuelAmount : 0
 
                       return (
                         <div key={t.id || index} className={`${t.type === 'stripe_fee' ? 'bg-red-50' : ''} ${isPayout && payoutStatus.confirmed ? 'bg-green-50' : isPayout && payoutStatus.sent ? 'bg-yellow-50' : ''}`}>
@@ -554,7 +556,7 @@ export default function ArmandoPage() {
                               {formatCurrency(t.balanceAfter)}
                             </span>
                             {/* Estado del payout — solo flujo Armando */}
-                            {isPayout && !payoutStatus.sent && !expandedPayouts[t.source] && (
+                            {isPayout && !payoutStatus.sent && !expandedPayouts[t.source] && pctReady && (
                               <button
                                 onClick={() => setExpandedPayouts(prev => ({ ...prev, [t.source]: true }))}
                                 className="ml-3 px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition font-medium"
@@ -576,7 +578,7 @@ export default function ArmandoPage() {
                           </div>
 
                           {/* Fila expandida con reparto 90/10 */}
-                          {isPayout && !payoutStatus.sent && expandedPayouts[t.source] && (
+                          {isPayout && !payoutStatus.sent && expandedPayouts[t.source] && pctReady && (
                             <div className="bg-blue-50 border-t border-blue-200 p-4">
                               <div className="flex items-center justify-between mb-3">
                                 <span className="text-blue-800 font-medium">Reparto de {formatCurrency(netAmount)}</span>
@@ -589,14 +591,14 @@ export default function ArmandoPage() {
                               </div>
                               <div className="grid grid-cols-2 gap-4 mb-4">
                                 <div className="bg-green-100 rounded-lg p-4 text-center">
-                                  <p className="text-green-800 text-sm font-medium">Manuel ({100 - stripeCommission.pct}%)</p>
+                                  <p className="text-green-800 text-sm font-medium">Manuel ({100 - stripeCommission.pct!}%)</p>
                                   <p className="text-green-900 text-2xl font-bold">{formatCurrency(manuelAmount)}</p>
                                   {eurUsdRate && (
                                     <p className="text-green-700 text-sm mt-1">Aprox. ${(manuelAmount / 100 * eurUsdRate).toFixed(2)} USD <span className="text-green-600 text-xs">(tipo: {eurUsdRate.toFixed(4)})</span></p>
                                   )}
                                 </div>
                                 <div className="bg-blue-100 rounded-lg p-4 text-center">
-                                  <p className="text-blue-800 text-sm font-medium">Armando ({stripeCommission.pct}%)</p>
+                                  <p className="text-blue-800 text-sm font-medium">Armando ({stripeCommission.pct!}%)</p>
                                   <p className="text-blue-900 text-2xl font-bold">{formatCurrency(armandoAmount)}</p>
                                 </div>
                               </div>
