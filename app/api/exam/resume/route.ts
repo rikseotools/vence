@@ -93,6 +93,7 @@ async function _GET(request: NextRequest) {
         id, question_text, option_a, option_b, option_c, option_d,
         difficulty, is_official_exam,
         primary_article_id,
+        image_url, content_data,
         articles(
           id, article_number, title, content,
           laws(short_name, name)

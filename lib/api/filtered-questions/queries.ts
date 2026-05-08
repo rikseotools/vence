@@ -98,7 +98,7 @@ type QuestionRow = {
   sourceTopic: number | null
 }
 
-function transformQuestion(q: QuestionRow, index: number): FilteredQuestion {
+export function transformQuestion(q: QuestionRow, index: number): FilteredQuestion {
   return {
     id: q.id,
     question: q.questionText,

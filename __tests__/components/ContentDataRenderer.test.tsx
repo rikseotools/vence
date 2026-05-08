@@ -102,4 +102,62 @@ describe('ContentDataRenderer', () => {
       expect(container.innerHTML).toBe('')
     })
   })
+
+  describe('image_base64 rendering (preguntas técnicas: Word/Excel/Windows)', () => {
+    const TINY_PNG_B64 =
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='
+
+    test('renders <img> with image_base64 src when only image_base64 is set', () => {
+      const { container } = render(
+        <ContentDataRenderer contentData={{ image_base64: TINY_PNG_B64 }} />
+      )
+      const img = container.querySelector('img')
+      expect(img).not.toBeNull()
+      expect(img!.getAttribute('src')).toBe(TINY_PNG_B64)
+      expect(img!.getAttribute('alt')).toBe('Imagen de la pregunta')
+    })
+
+    test('prefers image_base64 over image_url when both present (no double render)', () => {
+      const { container } = render(
+        <ContentDataRenderer
+          contentData={{ image_base64: TINY_PNG_B64 }}
+          imageUrl="https://example.com/icon.png"
+        />
+      )
+      const imgs = container.querySelectorAll('img')
+      expect(imgs.length).toBe(1)
+      expect(imgs[0].getAttribute('src')).toBe(TINY_PNG_B64)
+    })
+
+    test('renders image_url when image_base64 is absent', () => {
+      const { container } = render(
+        <ContentDataRenderer
+          contentData={null}
+          imageUrl="https://example.com/icon.png"
+        />
+      )
+      const img = container.querySelector('img')
+      expect(img).not.toBeNull()
+      expect(img!.getAttribute('src')).toBe('https://example.com/icon.png')
+    })
+
+    test('renders image_base64 alongside instructions/text_passage without conflict', () => {
+      const { container } = render(
+        <ContentDataRenderer
+          contentData={{
+            image_base64: TINY_PNG_B64,
+            instructions: ['**Categoría A:** Texto.'],
+          }}
+        />
+      )
+      expect(container.querySelector('img')).not.toBeNull()
+      expect(container.querySelectorAll('strong').length).toBeGreaterThanOrEqual(1)
+    })
+
+    test('regresión: pregunta legislativa pura (sin content_data ni image) no renderiza nada', () => {
+      const { container } = render(<ContentDataRenderer contentData={null} />)
+      expect(container.querySelector('img')).toBeNull()
+      expect(container.innerHTML).toBe('')
+    })
+  })
 })
