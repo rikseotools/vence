@@ -58,6 +58,13 @@ jest.mock('@/components/FailedQuestionsModal', () => ({
   default: () => null,
 }))
 
+// Mock de getAuthHeaders: el componente lo llama (no usa el supabase de useAuth)
+// para obtener el Bearer token. Sin este mock, retorna {} y el componente
+// hace early return antes del fetch — todos los tests de fetch fallarían.
+jest.mock('@/lib/api/authHeaders', () => ({
+  getAuthHeaders: jest.fn().mockResolvedValue({ Authorization: 'Bearer token-test' }),
+}))
+
 // Mock global fetch
 const mockFetch = jest.fn()
 global.fetch = mockFetch as unknown as typeof fetch

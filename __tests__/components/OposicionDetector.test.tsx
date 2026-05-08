@@ -121,9 +121,10 @@ describe('OposicionDetector', () => {
     test('incluye las CCAA: CARM, CyL, Andalucia, Madrid, Canarias, CLM, Extremadura, Valencia, Galicia, Aragon, Asturias y Baleares', () => {
       const autonomicas = Object.values(OPOSICION_DETECTION)
         .filter(d => d.administracion === 'autonomica')
-      expect(autonomicas).toHaveLength(27)
+      expect(autonomicas).toHaveLength(28)
       expect(autonomicas.map(a => a.slug).sort()).toEqual([
         'administrativo-galicia',
+        'administrativo-gva',  // Añadida 07/05/2026: Administrativo Generalitat Valenciana C1-01
         'administrativo-navarra',
         'auxiliar-administrativo-andalucia',
         'auxiliar-administrativo-aragon',

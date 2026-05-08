@@ -37,6 +37,16 @@ jest.mock('../../lib/notifications/adminEmailNotifications', () => ({
   sendAdminFeedbackNotification: jest.fn().mockResolvedValue({ success: true }),
 }))
 
+// El componente usa getAuthHeaders() para obtener el Bearer token (no consume
+// useAuth().supabase). Mockeamos el helper para que devuelva el mismo token
+// que asumen los asserts del test ('Bearer mock-token-123').
+jest.mock('../../lib/api/authHeaders', () => ({
+  getAuthHeaders: jest.fn().mockResolvedValue({
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer mock-token-123',
+  }),
+}))
+
 // Importar después de mocks
 import FeedbackModal from '../../components/FeedbackModal'
 

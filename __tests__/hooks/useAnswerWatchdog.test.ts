@@ -131,10 +131,10 @@ describe('useAnswerWatchdog.ts — source code', () => {
 // 3. INTEGRACIÓN EN COMPONENTES
 // ============================================
 describe('Componentes — watchdog integrado', () => {
-  // TestLayout y PsychometricTestLayout ya no usan watchdog — validación client-side instantánea
+  // TestLayout y PsychometricTestLayout ya no usan watchdog — validación client-side instantánea.
+  // DynamicTest eliminado en refactor 7ee5c172 (07-may-2026), por eso solo queda ExamLayout.
   const components = [
     { name: 'ExamLayout', file: 'components/ExamLayout.tsx', flag: 'isSaving' },
-    { name: 'DynamicTest', file: 'components/DynamicTest.tsx', flag: 'processingAnswer' },
   ]
 
   for (const { name, file, flag } of components) {
@@ -171,39 +171,11 @@ describe('Componentes — watchdog integrado', () => {
   }
 })
 
-// ============================================
-// 4. DynamicTest — processingAnswer guard añadido
-// ============================================
-describe('DynamicTest — processingAnswer guard', () => {
-  const content = fs.readFileSync(
-    path.join(ROOT, 'components/DynamicTest.tsx'), 'utf-8'
-  )
-
-  it('tiene estado processingAnswer', () => {
-    expect(content).toMatch(/useState\(false\)/)
-    expect(content).toContain('processingAnswer')
-    expect(content).toContain('setProcessingAnswer')
-  })
-
-  it('usa processingAnswer como guard en handleAnswerClick', () => {
-    expect(content).toMatch(/if \(showResult \|\| processingAnswer\) return/)
-  })
-
-  it('setProcessingAnswer(true) al inicio de handleAnswerClick', () => {
-    expect(content).toContain('setProcessingAnswer(true)')
-  })
-
-  it('setProcessingAnswer(false) en el catch de error', () => {
-    // En el bloque catch, debe resetear
-    const catchBlock = content.match(/catch \(err[^)]*\) \{[\s\S]*?return\s*\n\s*\}/m)
-    expect(catchBlock).not.toBeNull()
-    expect(catchBlock![0]).toContain('setProcessingAnswer(false)')
-  })
-
-  it('setProcessingAnswer(false) al final del flujo exitoso', () => {
-    expect(content).toContain('setProcessingAnswer(false)')
-  })
-})
+// (Bloque "DynamicTest — processingAnswer guard" eliminado en refactor
+//  7ee5c172 (07-may-2026). El componente DynamicTest fue borrado y sus
+//  consumidores migraron a TestLayout, que NO usa watchdog porque la
+//  validación es client-side instantánea — no hay flujo asíncrono que
+//  pueda quedar colgado.)
 
 // ============================================
 // 5. SEGURIDAD: Watchdog no interfiere con flujo normal
