@@ -4,12 +4,27 @@
  * @jest-environment node
  */
 
+// Las routes usan los wrappers *Cached que envuelven getArticlesForLaw,
+// estimateAvailableQuestions, etc. con un layer de unstable_cache. Cuando
+// las env CACHE_TEST_CONFIG_* === 'false', el wrapper llama directamente a
+// la función subyacente — que es lo que mockeamos. Sin esto, tomaba la
+// versión cacheada y los mocks no se aplicaban.
+process.env.CACHE_TEST_CONFIG_ARTICLES = 'false'
+process.env.CACHE_TEST_CONFIG_ESTIMATE = 'false'
+process.env.CACHE_TEST_CONFIG_ESSENTIAL = 'false'
+process.env.CACHE_TEST_CONFIG_SECTIONS = 'false'
+
 // Mock de queries
 jest.mock('../../../lib/api/test-config/queries', () => ({
   getArticlesForLaw: jest.fn(),
   estimateAvailableQuestions: jest.fn(),
   getEssentialArticles: jest.fn(),
   getScopedLawSections: jest.fn(),
+  // Los wrappers *Cached delegan a la función base cuando env=false (ver código)
+  getArticlesForLawCached: (...args) => require('../../../lib/api/test-config/queries').getArticlesForLaw(...args),
+  estimateAvailableQuestionsCached: (...args) => require('../../../lib/api/test-config/queries').estimateAvailableQuestions(...args),
+  getEssentialArticlesCached: (...args) => require('../../../lib/api/test-config/queries').getEssentialArticles(...args),
+  getScopedLawSectionsCached: (...args) => require('../../../lib/api/test-config/queries').getScopedLawSections(...args),
 }))
 
 import { NextRequest } from 'next/server'

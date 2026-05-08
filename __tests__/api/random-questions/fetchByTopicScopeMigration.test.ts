@@ -41,7 +41,7 @@ jest.mock('@/lib/boe-extractor', () => ({
   isDisposicionArticle: jest.fn(() => false),
 }))
 
-import { fetchQuestionsByTopicScope } from '@/lib/testFetchers'
+import { fetchQuestionsByTopicScope, invalidateHistoryCache } from '@/lib/testFetchers'
 
 // ============================================
 // HELPERS
@@ -114,6 +114,11 @@ const mockToken = 'mock-access-token-scope'
 
 beforeEach(() => {
   jest.clearAllMocks()
+  // El historyCache de testFetchers es module-scoped (TTL 10 min) — sin invalidar
+  // entre tests, el segundo test del modo adaptativo lee el answeredIds vacío
+  // del primero y nunca consume el mock de fetch para /api/user/question-history,
+  // resultando en catalog.answered vacío.
+  invalidateHistoryCache(mockUser.id)
   mockAuthFns.getUser.mockResolvedValue({ data: { user: mockUser }, error: null })
   mockAuthFns.getSession.mockResolvedValue({
     data: { session: { access_token: mockToken } },
@@ -479,7 +484,10 @@ describe('fetchQuestionsByTopicScope — modo adaptativo avanzado', () => {
     expect(body.numQuestions).toBe(100) // min(25*4, 200) = 100
   })
 
-  test('adaptive=true pide requestSize=500', async () => {
+  test('adaptive=true pide pool 4× numQuestions (max 200)', async () => {
+    // Antes el pool era 500 fijo, ahora es Math.min(numQuestions * 4, 200).
+    // Cambio en testFetchers.ts: "500 saturaba Supabase con queries pesadas".
+    // Para n=25 → pool=100. Para n=60+ → pool=200 (capped).
     const mockFetch = jest.fn()
       .mockResolvedValueOnce(makeSuccessResponse(100))
       .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ success: true, history: [] }) })
@@ -488,7 +496,19 @@ describe('fetchQuestionsByTopicScope — modo adaptativo avanzado', () => {
     await fetchQuestionsByTopicScope(5, { n: '25', adaptive: 'true' }, { positionType: 'auxiliar_administrativo_estado' })
 
     const body = JSON.parse(mockFetch.mock.calls[0][1].body)
-    expect(body.numQuestions).toBe(500)
+    expect(body.numQuestions).toBe(100) // 25 * 4 = 100
+  })
+
+  test('adaptive=true cap del pool en 200 cuando numQuestions es grande', async () => {
+    const mockFetch = jest.fn()
+      .mockResolvedValueOnce(makeSuccessResponse(200))
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ success: true, history: [] }) })
+    global.fetch = mockFetch
+
+    await fetchQuestionsByTopicScope(5, { n: '60', adaptive: 'true' }, { positionType: 'auxiliar_administrativo_estado' })
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body)
+    expect(body.numQuestions).toBe(200) // min(60*4, 200) = 200
   })
 
   test('modo adaptativo fuerza difficultyMode=random (ignora filtro de dificultad)', async () => {

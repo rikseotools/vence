@@ -11,26 +11,27 @@
 const { TextEncoder: TE, TextDecoder: TD } = require('util')
 if (!globalThis.TextEncoder) { globalThis.TextEncoder = TE; (globalThis as any).TextDecoder = TD }
 const { Pool } = require('pg')
+require('dotenv').config({ path: '.env.local', override: true })
 
 // SIN fallback hardcoded — el test SOLO corre si DATABASE_URL está en el entorno.
 // (Antes había un fallback con credenciales reales que GitGuardian detectó como
 // leak el 2026-04-30. Rotada la password el 2026-05-03.)
 const DATABASE_URL = process.env.DATABASE_URL
+const hasDb = !!DATABASE_URL
+const describeIfDb = hasDb ? describe : describe.skip
 
 let pool: Pool
 
 beforeAll(() => {
-  if (!DATABASE_URL) {
-    throw new Error('DATABASE_URL requerida para este test (cargar .env.local)')
-  }
+  if (!hasDb) return // describe.skip lo gestiona; evita crear pool inválido
   pool = new Pool({ connectionString: DATABASE_URL })
 })
 
 afterAll(async () => {
-  await pool.end()
+  if (pool) await pool.end()
 })
 
-describe('user_stats_summary table', () => {
+describeIfDb('user_stats_summary table', () => {
   it('exists with correct columns', async () => {
     const { rows } = await pool.query(`
       SELECT column_name, data_type
@@ -68,7 +69,7 @@ describe('user_stats_summary table', () => {
   })
 })
 
-describe('trigger', () => {
+describeIfDb('trigger', () => {
   it('update_user_stats_summary_trigger exists on test_questions', async () => {
     const { rows } = await pool.query(`
       SELECT trigger_name, event_manipulation
@@ -81,7 +82,7 @@ describe('trigger', () => {
   })
 })
 
-describe('data accuracy', () => {
+describeIfDb('data accuracy', () => {
   it('summary matches count(*) for a heavy user', async () => {
     // Get heaviest user
     const { rows: [heaviest] } = await pool.query(`
@@ -116,7 +117,7 @@ describe('data accuracy', () => {
   })
 })
 
-describe('performance', () => {
+describeIfDb('performance', () => {
   it('summary lookup takes <100ms for heaviest user', async () => {
     const { rows: [heaviest] } = await pool.query(`
       SELECT user_id FROM user_stats_summary ORDER BY total_questions DESC LIMIT 1
