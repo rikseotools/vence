@@ -834,6 +834,8 @@ INSERT INTO topics (position_type, topic_number, title, description, epigrafe,
 VALUES (...);
 ```
 
+> ⚠️ **`descripcion_corta` es NOT NULL** desde la migración `2026-05-08-topics-descripcion-corta-not-null.sql`. Si no proporcionas un texto específico, usa `title` como fallback razonable. Es lo que se ve en el listado del temario y en las cards. El test `temarioEpigrafeIntegrity` falla si algún topic queda sin él.
+
 3. **Marcar `disponible = false`** los temas sin topic_scope con preguntas (aparecen "En elaboracion" en el listado automaticamente).
 
 4. **Invalidar cache:** ver [`docs/maintenance/cache-revalidation.md`](./cache-revalidation.md). Tras crear/modificar temas hay que invalidar al menos el tag `temario`. Si los cambios son masivos (leyes nuevas, scopes nuevos), usar `node scripts/purge-all-cache.js` que revalida ~550 rutas en ~2 min (landings + tests + temarios + leyes + estáticas).

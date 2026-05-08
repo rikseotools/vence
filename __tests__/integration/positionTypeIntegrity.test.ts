@@ -43,11 +43,24 @@ describeIfDb('position_type integrity', () => {
   let dbPositionTypes: string[]
 
   beforeAll(async () => {
-    const rows = await supabaseGet<{ position_type: string }>(
-      'topics',
-      'select=position_type&limit=10000'
-    )
-    dbPositionTypes = [...new Set(rows.map(r => r.position_type))]
+    // PostgREST aplica un cap de 1000 filas por defecto. La tabla topics tiene
+    // ~1200 filas (07-may-2026), por lo que un solo GET pierde los últimos
+    // position_types y produce falsos negativos. Paginamos con offset hasta
+    // que la página devuelva menos de 1000 filas.
+    const PAGE_SIZE = 1000
+    const allRows: { position_type: string }[] = []
+    let offset = 0
+    while (true) {
+      const page = await supabaseGet<{ position_type: string }>(
+        'topics',
+        `select=position_type&offset=${offset}&limit=${PAGE_SIZE}`
+      )
+      allRows.push(...page)
+      if (page.length < PAGE_SIZE) break
+      offset += PAGE_SIZE
+      if (offset > 50000) break  // safety
+    }
+    dbPositionTypes = [...new Set(allRows.map(r => r.position_type))]
   }, 30000)
 
   test('all SLUG_TO_POSITION_TYPE values exist in DB topics', () => {
