@@ -6,8 +6,10 @@ import * as path from 'path'
 
 const ROOT = path.resolve(__dirname, '../../../..')
 
+// /api/answer eliminado en refactor 7ee5c172 (07-may-2026): reemplazado por
+// /api/v2/answer-and-save (validar + guardar atómicamente).
 const apiRoutes = [
-  { file: 'app/api/answer/route.ts', endpoint: '/api/answer' },
+  { file: 'app/api/v2/answer-and-save/route.ts', endpoint: '/api/v2/answer-and-save' },
   { file: 'app/api/exam/validate/route.ts', endpoint: '/api/exam/validate' },
   { file: 'app/api/answer/psychometric/route.ts', endpoint: '/api/answer/psychometric' },
   { file: 'app/api/exam/answer/route.ts', endpoint: '/api/exam/answer' },
