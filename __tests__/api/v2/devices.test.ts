@@ -278,10 +278,12 @@ describe('answerSaveQueue — device limit event', () => {
 // 8. INTEGRACIÓN: componentes de test usan el modal
 // ============================================
 describe('componentes de test — DeviceLimitModal integrado', () => {
+  // DynamicTest eliminado en refactor 7ee5c172 (07-may-2026): era código
+  // duplicado que no persistía respuestas. Sus consumidores migraron a
+  // TestLayout. Por eso solo quedan los 2 componentes vivos abajo.
   const components = [
     { name: 'TestLayout', file: 'components/TestLayout.tsx' },
     { name: 'PsychometricTestLayout', file: 'components/PsychometricTestLayout.tsx' },
-    { name: 'DynamicTest', file: 'components/DynamicTest.tsx' },
   ]
 
   for (const { name, file } of components) {
@@ -317,9 +319,11 @@ describe('componentes de test — DeviceLimitModal integrado', () => {
 // 9. ERROR MESSAGES — no dice "hazte premium" a premium
 // ============================================
 describe('device limit error messages', () => {
+  // app/api/answer/route.ts eliminado en refactor 7ee5c172 (07-may-2026):
+  // sus consumidores migraron a /api/v2/answer-and-save (validar + guardar
+  // atómicamente). Por eso ese endpoint legacy ya no aparece aquí.
   const endpoints = [
     'app/api/v2/answer-and-save/route.ts',
-    'app/api/answer/route.ts',
     'app/api/answer/psychometric/route.ts',
     'app/api/exam/answer/route.ts',
   ]

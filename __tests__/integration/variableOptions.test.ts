@@ -5,76 +5,16 @@
  * Después de los cambios, se añaden tests para 3 y 5 opciones.
  */
 
-import { validateAnswerRequestSchema, validateAnswerResponseSchema } from '@/lib/api/answers/schemas'
 import { saveAnswerRequestSchema } from '@/lib/api/exam/schemas'
 import { saveOfficialExamAnswerRequestSchema } from '@/lib/api/official-exams/schemas'
 import { answerAndSaveRequestSchema } from '@/lib/api/v2/answer-and-save/schemas'
 
-// Valid UUIDs for Zod v4 (variant bits must be 8-b in position 19)
-const UUID1 = 'a0000000-0000-4000-a000-000000000001'
-const UUID2 = 'a0000000-0000-4000-a000-000000000002'
-
-// ============================================
-// BASELINE: Zod schemas con 4 opciones (0-3)
-// ============================================
-
-describe('Baseline: Zod schemas accept 4-option answers (0-3)', () => {
-  test('validateAnswerRequestSchema accepts userAnswer 0-3', () => {
-    for (let i = 0; i <= 3; i++) {
-      const result = validateAnswerRequestSchema.safeParse({
-        questionId: 'a0000000-0000-4000-a000-000000000001',
-        userAnswer: i,
-      })
-      expect(result.success).toBe(true)
-    }
-  })
-
-  test('validateAnswerRequestSchema accepts userAnswer 4 (5-option)', () => {
-    const result = validateAnswerRequestSchema.safeParse({
-      questionId: 'a0000000-0000-4000-a000-000000000001',
-      userAnswer: 4,
-    })
-    expect(result.success).toBe(true)
-  })
-
-  test('validateAnswerRequestSchema rejects userAnswer 5', () => {
-    const result = validateAnswerRequestSchema.safeParse({
-      questionId: 'a0000000-0000-4000-a000-000000000001',
-      userAnswer: 5,
-    })
-    expect(result.success).toBe(false)
-  })
-
-  test('validateAnswerRequestSchema rejects userAnswer -1', () => {
-    const result = validateAnswerRequestSchema.safeParse({
-      questionId: 'a0000000-0000-4000-a000-000000000001',
-      userAnswer: -1,
-    })
-    expect(result.success).toBe(false)
-  })
-
-  test('validateAnswerResponseSchema accepts correctAnswer 0-4', () => {
-    for (let i = 0; i <= 4; i++) {
-      const result = validateAnswerResponseSchema.safeParse({
-        success: true,
-        isCorrect: true,
-        correctAnswer: i,
-        explanation: null,
-      })
-      expect(result.success).toBe(true)
-    }
-  })
-
-  test('validateAnswerResponseSchema rejects correctAnswer 5', () => {
-    const result = validateAnswerResponseSchema.safeParse({
-      success: true,
-      isCorrect: false,
-      correctAnswer: 5,
-      explanation: null,
-    })
-    expect(result.success).toBe(false)
-  })
-})
+// NOTA: el bloque "Baseline: Zod schemas accept 4-option answers (0-3)" que
+// testaba `validateAnswerRequestSchema` y `validateAnswerResponseSchema` se
+// eliminó porque su módulo (`lib/api/answers/schemas.ts`) fue borrado en el
+// refactor 7ee5c172 (07-may-2026). La cobertura equivalente ahora vive en el
+// describe "Baseline: v2 answer-and-save schema" más abajo, que valida el
+// schema unificado actual `answerAndSaveRequestSchema`.
 
 describe('Exam schemas accept letters a-e', () => {
   test('saveAnswerRequestSchema accepts a, b, c, d, e', () => {

@@ -266,9 +266,9 @@ describe('logClientError — source code', () => {
 // 5. INTEGRACIÓN: componentes usan logClientError
 // ============================================
 describe('Componentes — logClientError integrado', () => {
-  // TestLayout y PsychometricTestLayout ya no usan logClientError — validación client-side
+  // TestLayout y PsychometricTestLayout ya no usan logClientError — validación client-side.
+  // DynamicTest eliminado en refactor 7ee5c172 (07-may-2026), por eso solo queda ExamLayout.
   const components = [
-    { name: 'DynamicTest', file: 'components/DynamicTest.tsx' },
     { name: 'ExamLayout', file: 'components/ExamLayout.tsx' },
   ]
 
