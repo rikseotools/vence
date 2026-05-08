@@ -6,6 +6,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { authenticateFinanceRequest } from '@/lib/finance/auth'
 import { getArmandoSupabaseAdmin } from '@/lib/armando/supabaseAdmin'
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 
 interface AutoConfirmBody {
   stripe_payout_id?: unknown
@@ -13,7 +14,7 @@ interface AutoConfirmBody {
   crypto_amount_received?: unknown
 }
 
-export async function POST(req: NextRequest): Promise<NextResponse> {
+async function _POST(req: NextRequest): Promise<NextResponse> {
   const auth = await authenticateFinanceRequest(req)
   if (!auth.ok) {
     return NextResponse.json({ success: false, error: auth.error }, { status: auth.status })
@@ -54,3 +55,5 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   return NextResponse.json({ success: true })
 }
+
+export const POST = withErrorLogging('/api/finance/transfers/auto-confirm', _POST)

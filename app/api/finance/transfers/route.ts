@@ -5,8 +5,9 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { authenticateFinanceRequest } from '@/lib/finance/auth'
 import { getArmandoSupabaseAdmin } from '@/lib/armando/supabaseAdmin'
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 
-export async function GET(req: NextRequest): Promise<NextResponse> {
+async function _GET(req: NextRequest): Promise<NextResponse> {
   const auth = await authenticateFinanceRequest(req)
   if (!auth.ok) {
     return NextResponse.json({ success: false, error: auth.error }, { status: auth.status })
@@ -25,3 +26,5 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   return NextResponse.json({ success: true, transfers: data ?? [] })
 }
+
+export const GET = withErrorLogging('/api/finance/transfers', _GET)

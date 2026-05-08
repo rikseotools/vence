@@ -4,8 +4,9 @@
 
 import { NextResponse, type NextRequest } from 'next/server'
 import { setSessionCookie, verifyPassword } from '@/lib/armando/session'
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 
-export async function POST(req: NextRequest): Promise<NextResponse> {
+async function _POST(req: NextRequest): Promise<NextResponse> {
   let body: unknown
   try {
     body = await req.json()
@@ -26,3 +27,5 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   setSessionCookie(res.cookies, role)
   return res
 }
+
+export const POST = withErrorLogging('/api/armando/auth', _POST)

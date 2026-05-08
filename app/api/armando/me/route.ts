@@ -4,11 +4,14 @@
 
 import { NextResponse, type NextRequest } from 'next/server'
 import { readSession } from '@/lib/armando/session'
+import { withErrorLogging } from '@/lib/api/withErrorLogging'
 
-export async function GET(req: NextRequest): Promise<NextResponse> {
+async function _GET(req: NextRequest): Promise<NextResponse> {
   const sess = readSession(req)
   if (!sess) {
     return NextResponse.json({ authenticated: false }, { status: 401 })
   }
   return NextResponse.json({ authenticated: true, role: sess.role })
 }
+
+export const GET = withErrorLogging('/api/armando/me', _GET)
