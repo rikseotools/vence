@@ -20,7 +20,7 @@ export const genericSourceExtractionSchema = z.object({
   items: z.array(z.object({
     title: z.string(),
     date: z.string().nullable(),   // ISO YYYY-MM-DD si se detecta
-    type: z.enum(['instruccion', 'circular', 'acuerdo', 'resolucion', 'plan', 'nota', 'otro']),
+    type: z.enum(['rd_oep', 'jornada', 'instruccion', 'circular', 'acuerdo', 'resolucion', 'plan', 'nota', 'otro']),
     affectsTopic: z.string(),       // ej: "TREBEP jornada/permisos", "Ley 39/2015 procedimiento"
     relevance: z.enum(['alta', 'media', 'baja']),
     url: z.string().nullable(),
@@ -48,7 +48,10 @@ function cleanHtml(html: string, maxChars = 30000): string {
 const SYSTEM_PROMPT = `Eres auditor de fuentes normativas del Estado (Dirección General de Función Pública, Secretaría de Estado de FP, Portal de Transparencia). Tu trabajo: leer el contenido actual de una página y determinar si contiene PUBLICACIONES NORMATIVAS NUEVAS que afecten al temario de oposiciones estatales (Aux/Admin Estado, Tramitación Procesal, Auxilio Judicial, Gestión Estado, Admin. Seguridad Social).
 
 Qué ES relevante:
-- Instrucciones de DGFP (teletrabajo, jornada, permisos, carrera profesional...)
+- Aprobación de OEP anual GENERAL (Real Decreto OEP, ej. RD 387/2026 OEP 2026)
+- Resoluciones / instrucciones de JORNADA, horarios, teletrabajo, permisos del personal AGE
+  (incluye reducciones de jornada: 35h, 37,5h, etc. — ej. BOE-A-2026-8287)
+- Instrucciones de DGFP (carrera profesional, evaluación del desempeño...)
 - Circulares Subsecretaría Función Pública
 - Acuerdos Mesa General Negociación Empleados Públicos
 - Resoluciones interpretativas TREBEP / Ley 39/2015 / Ley 40/2015
@@ -56,8 +59,10 @@ Qué ES relevante:
 - Pactos / resoluciones sobre retribuciones del sector público
 
 Qué NO es relevante (ignorar):
-- Noticias, notas de prensa sobre eventos
-- Ofertas de empleo concretas (ya se monitorizan por sus propias páginas)
+- Noticias y notas de prensa sobre eventos genéricos (cooperación internacional, premios,
+  jornadas técnicas, inauguraciones, visitas)
+- CONVOCATORIAS individuales de un cuerpo concreto con BOE-A propio
+  (ej. "Cuerpo Auxiliar AGE convocatoria 2025" — ya se monitorizan por su URL específica)
 - Fechas de "última actualización" de la web sin contenido normativo nuevo
 - Banners, pop-ups, tooltips de navegación
 - Menús, pie de página, cookies

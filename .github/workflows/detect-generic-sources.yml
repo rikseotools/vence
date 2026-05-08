@@ -2,9 +2,10 @@ name: Detect Generic Sources
 
 on:
   schedule:
-    # Semanal: lunes 8:00 UTC (9:00/10:00 España)
-    # Las fuentes estatales cambian con baja frecuencia; diario sería overkill
-    - cron: '0 8 * * 1'
+    # Diario L-V 8:00 UTC (9:00/10:00 España)
+    # Cambiado de semanal a diario al añadir Moncloa/MTDFP/INAP: publican entre semana
+    # y queremos detectar OEPs anuales (RD) y cambios de jornada en ≤24h
+    - cron: '0 8 * * 1-5'
   workflow_dispatch:
 
 jobs:
