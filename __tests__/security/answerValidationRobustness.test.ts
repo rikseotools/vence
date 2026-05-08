@@ -2,9 +2,16 @@
 // Tests para verificar las mejoras de robustez en la cadena de validación de respuestas:
 // 1. connect_timeout reducido (5s en vez de 30s)
 // 2. maxDuration en las 3 rutas API
-// 3. Error handling correcto en ExamLayout, PsychometricTestLayout, DynamicTest, TestLayout
+// 3. Error handling correcto en ExamLayout, PsychometricTestLayout, TestLayout
 // 4. No fallback inseguro que exponga correct_option
 // 5. Notificaciones admin con campos correctos
+//
+// NOTA: El refactor 7ee5c172 (07-may-2026) eliminó components/DynamicTest.tsx,
+// app/api/answer/route.ts y lib/api/answers/client.ts. Las referencias a esos
+// archivos se han migrado a su equivalente moderno (/api/v2/answer-and-save)
+// o se han eliminado cuando la lógica subyacente ya no aplica (e.g. el bloque
+// "Timeouts — jerarquía correcta" testaba la cadena cliente HTTP→servidor que
+// ahora es una cola persistente y un patrón distinto).
 
 import * as fs from 'fs'
 import * as path from 'path'
@@ -42,9 +49,9 @@ describe('db/client.ts — connect_timeout', () => {
 // ============================================
 describe('API Routes — maxDuration export', () => {
 
-  it('/api/answer/route.ts exporta maxDuration = 30', () => {
+  it('/api/v2/answer-and-save/route.ts exporta maxDuration = 30', () => {
     const content = fs.readFileSync(
-      path.join(ROOT, 'app/api/answer/route.ts'), 'utf-8'
+      path.join(ROOT, 'app/api/v2/answer-and-save/route.ts'), 'utf-8'
     )
     expect(content).toMatch(/export\s+const\s+maxDuration\s*=\s*30/)
   })
@@ -63,9 +70,9 @@ describe('API Routes — maxDuration export', () => {
     expect(content).toMatch(/export\s+const\s+maxDuration\s*=\s*30/)
   })
 
-  it('maxDuration de exam/validate es mayor que answer (batch vs individual)', () => {
+  it('maxDuration de exam/validate es mayor que answer-and-save (batch vs individual)', () => {
     const answerContent = fs.readFileSync(
-      path.join(ROOT, 'app/api/answer/route.ts'), 'utf-8'
+      path.join(ROOT, 'app/api/v2/answer-and-save/route.ts'), 'utf-8'
     )
     const examContent = fs.readFileSync(
       path.join(ROOT, 'app/api/exam/validate/route.ts'), 'utf-8'
@@ -141,26 +148,8 @@ describe('PsychometricTestLayout.tsx — validación client-side', () => {
   })
 })
 
-// ============================================
-// 5. DYNAMICTEST: Error handling
-// ============================================
-describe('DynamicTest — error handling', () => {
-  const content = fs.readFileSync(
-    path.join(ROOT, 'components/DynamicTest.tsx'), 'utf-8'
-  )
-
-  it('NO envía emails de notificación admin (se registran en validation_error_logs)', () => {
-    expect(content).not.toContain("'/api/emails/send-admin-notification'")
-  })
-
-  it('extrae user de useAuth()', () => {
-    expect(content).toMatch(/const\s*\{[^}]*user[^}]*\}\s*=\s*useAuth\(\)/)
-  })
-
-  it('usa validateAnswer centralizado (no fetch directo)', () => {
-    expect(content).toMatch(/import\s*\{[^}]*validateAnswer[^}]*\}/)
-  })
-})
+// (Bloque "DynamicTest — error handling" eliminado en refactor 7ee5c172.
+//  El componente ya no existe; sus consumidores migraron a TestLayout.)
 
 // ============================================
 // 6. TESTLAYOUT: Error handling
@@ -199,7 +188,6 @@ describe('TestLayout.tsx — error handling', () => {
 describe('Consistencia — ningún componente envía emails de error admin', () => {
   const components = [
     { name: 'TestLayout', file: 'components/TestLayout.tsx' },
-    { name: 'DynamicTest', file: 'components/DynamicTest.tsx' },
     { name: 'ExamLayout', file: 'components/ExamLayout.tsx' },
     { name: 'PsychometricTestLayout', file: 'components/PsychometricTestLayout.tsx' },
   ]
@@ -217,7 +205,7 @@ describe('Consistencia — ningún componente envía emails de error admin', () 
 // ============================================
 describe('Seguridad — rutas API bloquean GET', () => {
   const routes = [
-    'app/api/answer/route.ts',
+    'app/api/v2/answer-and-save/route.ts',
     'app/api/exam/validate/route.ts',
     'app/api/answer/psychometric/route.ts',
   ]
@@ -231,50 +219,14 @@ describe('Seguridad — rutas API bloquean GET', () => {
   }
 })
 
-// ============================================
-// 9. TIMEOUTS: Client timeout < Server connect_timeout < maxDuration
-// ============================================
-describe('Timeouts — jerarquía correcta', () => {
-  it('client timeout (10s) > server connect_timeout (5s)', () => {
-    // El cliente espera 10s, pero el servidor falla la conexión a DB en 5s
-    // Esto asegura que el servidor responde antes de que el cliente abandone
-    const clientContent = fs.readFileSync(
-      path.join(ROOT, 'lib/api/answers/client.ts'), 'utf-8'
-    )
-    const dbContent = fs.readFileSync(
-      path.join(ROOT, 'db/client.ts'), 'utf-8'
-    )
-
-    const clientTimeout = parseInt(
-      clientContent.match(/timeoutMs[:\s]*(\d+)/)![1]
-    )
-    const connectTimeout = parseInt(
-      dbContent.match(/connect_timeout:\s*(\d+)/)![1]
-    )
-
-    // Client debe esperar más que el connect_timeout del servidor
-    expect(clientTimeout / 1000).toBeGreaterThan(connectTimeout)
-  })
-
-  it('maxDuration (30s) > client timeout (10s) para /api/answer', () => {
-    const routeContent = fs.readFileSync(
-      path.join(ROOT, 'app/api/answer/route.ts'), 'utf-8'
-    )
-    const clientContent = fs.readFileSync(
-      path.join(ROOT, 'lib/api/answers/client.ts'), 'utf-8'
-    )
-
-    const maxDuration = parseInt(
-      routeContent.match(/maxDuration\s*=\s*(\d+)/)![1]
-    )
-    const clientTimeout = parseInt(
-      clientContent.match(/timeoutMs[:\s]*(\d+)/)![1]
-    )
-
-    // maxDuration en segundos, clientTimeout en ms
-    expect(maxDuration * 1000).toBeGreaterThan(clientTimeout)
-  })
-})
+// (Bloque "Timeouts — jerarquía correcta" eliminado en refactor 7ee5c172.
+//  Testaba la cadena cliente HTTP→servidor con timeoutMs en lib/api/answers/client.ts.
+//  Ese archivo ya no existe: la nueva arquitectura usa una cola persistente
+//  (answerSaveQueue → /api/v2/answer-and-save) con reintentos en background, así
+//  que el invariante "client timeout > server connect_timeout" ya no aplica
+//  literalmente. El timeout del DB sigue cubierto por el bloque "db/client.ts —
+//  connect_timeout" arriba; el maxDuration de las rutas por el bloque "API
+//  Routes — maxDuration export".)
 
 // ============================================
 // 10. LÓGICA DE ERROR HANDLING EN COMPONENTES
@@ -311,7 +263,6 @@ describe('Error handling — errores se registran en servidor, no por email', ()
   it('ningún componente envía emails de error (usan validation_error_logs)', () => {
     const components = [
       'components/TestLayout.tsx',
-      'components/DynamicTest.tsx',
       'components/ExamLayout.tsx',
       'components/PsychometricTestLayout.tsx',
     ]
@@ -328,11 +279,11 @@ describe('Error handling — errores se registran en servidor, no por email', ()
 // ============================================
 describe('Rutas API — validación Zod de entrada', () => {
 
-  it('/api/answer valida con safeParse (no lanza excepciones)', () => {
+  it('/api/v2/answer-and-save valida con safeParse (no lanza excepciones)', () => {
     const content = fs.readFileSync(
-      path.join(ROOT, 'app/api/answer/route.ts'), 'utf-8'
+      path.join(ROOT, 'app/api/v2/answer-and-save/route.ts'), 'utf-8'
     )
-    expect(content).toMatch(/safeParse|safeParseAnswerRequest/)
+    expect(content).toMatch(/safeParse|safeParseAnswerAndSaveRequest/)
   })
 
   it('/api/exam/validate valida con safeParse', () => {
@@ -351,7 +302,7 @@ describe('Rutas API — validación Zod de entrada', () => {
 
   it('las 3 rutas devuelven 400 con datos inválidos', () => {
     const routes = [
-      'app/api/answer/route.ts',
+      'app/api/v2/answer-and-save/route.ts',
       'app/api/exam/validate/route.ts',
       'app/api/answer/psychometric/route.ts',
     ]
@@ -364,7 +315,7 @@ describe('Rutas API — validación Zod de entrada', () => {
 
   it('las 3 rutas devuelven 500 en error interno', () => {
     const routes = [
-      'app/api/answer/route.ts',
+      'app/api/v2/answer-and-save/route.ts',
       'app/api/exam/validate/route.ts',
       'app/api/answer/psychometric/route.ts',
     ]
