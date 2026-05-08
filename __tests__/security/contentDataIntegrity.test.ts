@@ -67,10 +67,18 @@ describeIf('Content Data Integrity', () => {
     // Patrones que requieren word-boundary para evitar falsos positivos:
     // 'tabla' matchea 'tabla' pero no 'contable'; 'gráfico' pero no 'ortográfico'
     const regexPatterns = [/\btabla\b/, /\bgráfico\b/, /\bcírculo\b/]
+    // Subtipos que NO necesitan imagen aunque su texto contenga estas palabras:
+    // - text_question, word_analysis, synonym, antonym, definition, analogy: verbales
+    // - error_detection: detección de errores en texto
+    // - calculation: matemática pura. Si menciona "rombo" o "círculo", suele ser
+    //   simbólico (ecuaciones tipo "rombo=5 círculos") y no requiere visualización.
+    const excludedSubtypes = [
+      'error_detection', 'text_question', 'word_analysis',
+      'synonym', 'antonym', 'definition', 'analogy', 'calculation'
+    ]
     const problematic = rows.filter(q => {
       const text = (q.question_text || '').toLowerCase()
-      // Excluir subtipos que normalmente no necesitan imagen
-      if (['error_detection', 'text_question', 'word_analysis', 'synonym', 'antonym', 'definition', 'analogy'].includes(q.question_subtype)) return false
+      if (excludedSubtypes.includes(q.question_subtype)) return false
       return patterns.some(p => text.includes(p)) || regexPatterns.some(r => r.test(text))
     })
 
