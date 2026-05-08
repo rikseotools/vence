@@ -1,62 +1,54 @@
 /**
- * Tests para fetchLawArticles - verifica optimizacion N+1
+ * Tests para fetchLawArticles tras migración a Drizzle (commit e8d08529).
  *
- * Cuando mapLawSlugToShortName resuelve el slug correctamente,
- * NO debe hacer una query extra a laws para case-insensitive lookup.
+ * El fetcher resuelve un slug de ley a sus artículos vía:
+ *   1. Slug → short_name (cache Drizzle vía getShortNameBySlug)
+ *   2. Drizzle query: select * from articles inner join laws where ...
+ *
+ * Testeamos la lógica de postprocesado (filtrado, ordenamiento, notFound)
+ * mockeando el resultado de Drizzle. NO testeamos la query SQL en sí —
+ * eso sería un test de integración con BD real.
  */
 
 // Mock server-only (lanza error en cliente, necesita mock en tests)
 jest.mock('server-only', () => ({}))
 
-// Track which tables are queried
-const queriedTables: string[] = []
+// =============================================================================
+// 1. Mock del cliente Drizzle
+// =============================================================================
+// Devuelve un fake con la cadena fluida: select().from().innerJoin().where().orderBy()
+// + un select().from().where().limit() para el fallback de búsqueda por short_name.
+//
+// `mockOrderByQuery` controla el resultado de la query principal.
+// `mockLimitQuery` controla el resultado del fallback (cuando getShortNameBySlug devuelve null).
 
-// Per-table mocks (prefixed with mock so jest allows them in factory)
-const mockLawsSingle = jest.fn()
-const mockLawsLimit = jest.fn().mockReturnValue({ single: mockLawsSingle })
-const mockLawsEq = jest.fn().mockReturnValue({ limit: mockLawsLimit })
-const mockLawsOr = jest.fn().mockReturnValue({ eq: mockLawsEq })
-const mockLawsSelect = jest.fn().mockReturnValue({ or: mockLawsOr, eq: mockLawsEq })
+const mockOrderByQuery = jest.fn().mockResolvedValue([])
+const mockLimitQuery = jest.fn().mockResolvedValue([])
 
-const mockArticlesOrder = jest.fn()
-const mockArticlesNeq = jest.fn().mockReturnValue({ order: mockArticlesOrder })
-const mockArticlesNot2 = jest.fn().mockReturnValue({ neq: mockArticlesNeq })
-const mockArticlesNot1 = jest.fn().mockReturnValue({ not: mockArticlesNot2 })
-const mockArticlesEq3 = jest.fn().mockReturnValue({ not: mockArticlesNot1 })
-const mockArticlesEq2 = jest.fn().mockReturnValue({ eq: mockArticlesEq3 })
-const mockArticlesEq1 = jest.fn().mockReturnValue({ eq: mockArticlesEq2 })
-const mockArticlesSelect = jest.fn().mockReturnValue({ eq: mockArticlesEq1 })
+const mockOrderBy = jest.fn().mockImplementation(() => mockOrderByQuery())
+const mockLimit = jest.fn().mockImplementation(() => mockLimitQuery())
+const mockWhereForArticles = jest.fn().mockReturnValue({ orderBy: mockOrderBy })
+const mockWhereForLaws = jest.fn().mockReturnValue({ limit: mockLimit })
+const mockInnerJoin = jest.fn().mockReturnValue({ where: mockWhereForArticles })
+const mockFrom = jest.fn((table: unknown) => {
+  // Drizzle pasa la tabla — el primer call es articles, el segundo (en fallback) es laws
+  // Distinguimos por presencia de innerJoin.
+  return {
+    innerJoin: mockInnerJoin,
+    where: mockWhereForLaws,
+  }
+})
+const mockSelect = jest.fn().mockReturnValue({ from: mockFrom })
 
-// Mock supabase chain for loadSlugCache: .from('laws').select().eq().not()
-const mockSlugCacheNot = jest.fn().mockResolvedValue({ data: [
-  { slug: 'constitucion-espanola', short_name: 'CE' },
-  { slug: 'ley-39-2015', short_name: 'Ley 39/2015' },
-] })
-const mockSlugCacheEq = jest.fn().mockReturnValue({ not: mockSlugCacheNot })
-const mockSlugCacheSelect = jest.fn().mockReturnValue({ eq: mockSlugCacheEq })
+const mockDb = { select: mockSelect }
 
-jest.mock('@/lib/supabase', () => ({
-  getSupabaseClient: jest.fn(() => ({
-    from: jest.fn((table: string) => {
-      queriedTables.push(table)
-      if (table === 'laws') {
-        // Return different chain depending on what's being queried
-        return {
-          select: jest.fn((fields: string) => {
-            // loadSlugCache query: .select('slug, short_name')
-            if (fields === 'slug, short_name') {
-              return { eq: mockSlugCacheEq }
-            }
-            // Other laws queries
-            return mockLawsSelect(fields)
-          })
-        }
-      }
-      if (table === 'articles') return { select: mockArticlesSelect }
-      return { select: jest.fn().mockReturnValue({}) }
-    }),
-  })),
+jest.mock('@/db/client', () => ({
+  getDb: () => mockDb,
 }))
+
+// =============================================================================
+// 2. Mocks auxiliares
+// =============================================================================
 
 const mockMapSlug = jest.fn()
 jest.mock('@/lib/lawSlugSync', () => ({
@@ -71,194 +63,156 @@ jest.mock('@/lib/api/laws/warmCache', () => ({
 
 jest.mock('@/lib/api/laws/queries', () => ({
   getShortNameBySlug: jest.fn(async (slug: string) => {
-    const map: Record<string, string> = { 'constitucion-espanola': 'CE', 'ley-39-2015': 'Ley 39/2015' }
-    return map[slug] || null
+    const map: Record<string, string> = {
+      'constitucion-espanola': 'CE',
+      'ce': 'CE',
+      'ley-39-2015': 'Ley 39/2015',
+    }
+    return map[slug] ?? null
   }),
   loadSlugMappingCache: jest.fn(async () => ({
-    slugToShortName: new Map([['constitucion-espanola', 'CE'], ['ley-39-2015', 'Ley 39/2015']]),
-    shortNameToSlug: new Map([['CE', 'constitucion-espanola'], ['Ley 39/2015', 'ley-39-2015']]),
+    slugToShortName: new Map([['constitucion-espanola', 'CE']]),
+    shortNameToSlug: new Map([['CE', 'constitucion-espanola']]),
     lawsBySlug: new Map(),
     loadedAt: new Date(),
   })),
-  generateSlugFromShortName: jest.fn((s: string) => s?.toLowerCase().replace(/[^a-z0-9]+/g, '-')),
+  generateSlugFromShortName: jest.fn((s: string) => (s ?? '').toLowerCase().replace(/[^a-z0-9]+/g, '-')),
+}))
+
+jest.mock('@/lib/supabase', () => ({
+  getSupabaseClient: jest.fn(() => ({ from: jest.fn() })),
 }))
 
 import { fetchLawArticles } from '@/lib/teoriaFetchers'
 
-// Helper: make article data with law
-function makeArticle(num: string, lawData: { id: string; name: string; short_name: string; description: string | null } = { id: 'law-1', name: 'Test', short_name: 'CE', description: null }) {
+// =============================================================================
+// 3. Helper: forma de fila que devuelve Drizzle (post-select con alias)
+// =============================================================================
+type DrizzleRow = {
+  id: string
+  articleNumber: string
+  title: string | null
+  contentPreviewRaw: string
+  contentLength: number
+  fullContent: string
+  lawId: string
+  lawName: string
+  lawShortName: string
+  lawSlug: string
+  lawDescription: string | null
+}
+
+function makeRow(num: string, overrides: Partial<DrizzleRow> = {}): DrizzleRow {
   return {
     id: `art-${num}`,
-    article_number: num,
-    title: `Art ${num}`,
-    content: `Contenido del articulo ${num}`,
-    is_active: true,
-    created_at: '2024-01-01',
-    laws: lawData,
+    articleNumber: num,
+    title: overrides.title !== undefined ? overrides.title : `Art ${num}`,
+    contentPreviewRaw: `Contenido del articulo ${num}`,
+    contentLength: 100,
+    fullContent: `Contenido completo del articulo ${num}`,
+    lawId: 'law-1',
+    lawName: 'Constitucion Espanola',
+    lawShortName: 'CE',
+    lawSlug: 'constitucion-espanola',
+    lawDescription: null,
+    ...overrides,
   }
 }
 
-function rechainAll() {
-  // Laws chain
-  mockLawsSingle.mockReturnValue({ data: null, error: null })
-  mockLawsLimit.mockReturnValue({ single: mockLawsSingle })
-  mockLawsEq.mockReturnValue({ limit: mockLawsLimit })
-  mockLawsOr.mockReturnValue({ eq: mockLawsEq })
-  mockLawsSelect.mockReturnValue({ or: mockLawsOr, eq: mockLawsEq })
-
-  // Articles chain
-  mockArticlesOrder.mockResolvedValue({ data: [], error: null })
-  mockArticlesNeq.mockReturnValue({ order: mockArticlesOrder })
-  mockArticlesNot2.mockReturnValue({ neq: mockArticlesNeq })
-  mockArticlesNot1.mockReturnValue({ not: mockArticlesNot2 })
-  mockArticlesEq3.mockReturnValue({ not: mockArticlesNot1 })
-  mockArticlesEq2.mockReturnValue({ eq: mockArticlesEq3 })
-  mockArticlesEq1.mockReturnValue({ eq: mockArticlesEq2 })
-  mockArticlesSelect.mockReturnValue({ eq: mockArticlesEq1 })
-}
+// =============================================================================
+// 4. Tests
+// =============================================================================
 
 describe('fetchLawArticles', () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    queriedTables.length = 0
-    rechainAll()
+    mockOrderByQuery.mockResolvedValue([])
+    mockLimitQuery.mockResolvedValue([])
   })
 
-  describe('con slug reconocido por mapLawSlugToShortName', () => {
-    it('resuelve slug via Drizzle cache y consulta articles via supabase', async () => {
-      mockMapSlug.mockReturnValue('CE')
-      mockArticlesOrder.mockResolvedValueOnce({
-        data: [makeArticle('1')],
-        error: null,
-      })
+  describe('resolución de slug', () => {
+    it('usa getShortNameBySlug cuando el slug es conocido', async () => {
+      mockOrderByQuery.mockResolvedValueOnce([makeRow('1')])
 
-      await fetchLawArticles('constitucion-espanola')
+      const result = await fetchLawArticles('constitucion-espanola')
 
-      // Slug se resuelve via Drizzle (mockeado), articles se consultan via supabase
-      expect(queriedTables).toContain('articles')
+      expect(result.articles).toHaveLength(1)
+      expect(result.law?.short_name).toBe('CE')
     })
 
-    it('usa el short_name del mapeo para filtrar articles', async () => {
-      mockMapSlug.mockReturnValue('Ley 39/2015')
-      mockArticlesOrder.mockResolvedValueOnce({ data: [], error: null })
-
-      await fetchLawArticles('ley-39-2015')
-
-      // Check that eq was called with the mapped short_name
-      const allEqCalls = [
-        ...mockArticlesEq1.mock.calls,
-        ...mockArticlesEq2.mock.calls,
-        ...mockArticlesEq3.mock.calls,
-      ]
-      const shortNameFilter = allEqCalls.find(
-        (call: unknown[]) => call[0] === 'laws.short_name' && call[1] === 'Ley 39/2015'
-      )
-      expect(shortNameFilter).toBeTruthy()
-    })
-
-    it('retorna articulos procesados correctamente', async () => {
-      mockMapSlug.mockReturnValue('CE')
-      mockArticlesOrder.mockResolvedValueOnce({
-        data: [makeArticle('1'), makeArticle('2')],
-        error: null,
-      })
-
-      const result = await fetchLawArticles('ce')
-
-      expect(result.articles).toHaveLength(2)
-      expect(result.articles[0].article_number).toBe('1')
-      expect(result.law).toMatchObject({ short_name: 'CE' })
-    })
-  })
-
-  describe('con slug NO reconocido (fallback a BD)', () => {
-    it('consulta la tabla laws como fallback', async () => {
-      mockMapSlug.mockReturnValue(null)
-      mockLawsSingle.mockResolvedValueOnce({
-        data: { short_name: 'Ley Especial' },
-        error: null,
-      })
-      mockArticlesOrder.mockResolvedValueOnce({ data: [], error: null })
-
-      await fetchLawArticles('ley-especial-slug')
-
-      expect(queriedTables).toContain('laws')
-      expect(queriedTables).toContain('articles')
-    })
-
-    it('usa el short_name de BD para filtrar articles', async () => {
-      mockMapSlug.mockReturnValue(null)
-      mockLawsSingle.mockResolvedValueOnce({
-        data: { short_name: 'Ley Especial' },
-        error: null,
-      })
-      mockArticlesOrder.mockResolvedValueOnce({
-        data: [makeArticle('5', { id: 'l-esp', name: 'Ley Especial Completa', short_name: 'Ley Especial', description: null })],
-        error: null,
-      })
+    it('cae al fallback Drizzle cuando getShortNameBySlug devuelve null', async () => {
+      // Slug desconocido → busca en laws con ILIKE → encuentra "Ley Especial"
+      mockLimitQuery.mockResolvedValueOnce([{ shortName: 'Ley Especial' }])
+      mockOrderByQuery.mockResolvedValueOnce([
+        makeRow('5', { lawShortName: 'Ley Especial', lawName: 'Ley Especial Completa' }),
+      ])
 
       const result = await fetchLawArticles('ley-especial-slug')
 
-      const allEqCalls = [
-        ...mockArticlesEq1.mock.calls,
-        ...mockArticlesEq2.mock.calls,
-        ...mockArticlesEq3.mock.calls,
-      ]
-      const shortNameFilter = allEqCalls.find(
-        (call: unknown[]) => call[0] === 'laws.short_name' && call[1] === 'Ley Especial'
-      )
-      expect(shortNameFilter).toBeTruthy()
       expect(result.articles).toHaveLength(1)
+      expect(result.law?.short_name).toBe('Ley Especial')
     })
 
-    it('usa el slug original si la query a laws falla', async () => {
-      mockMapSlug.mockReturnValue(null)
-      mockLawsSingle.mockResolvedValueOnce({ data: null, error: null })
-      mockArticlesOrder.mockResolvedValueOnce({ data: [], error: null })
+    it('devuelve notFound si el slug no existe ni en cache ni en BD', async () => {
+      mockLimitQuery.mockResolvedValueOnce([]) // no match en laws
+      mockOrderByQuery.mockResolvedValueOnce([]) // no articles
 
       const result = await fetchLawArticles('ley-que-no-existe')
 
       expect(result.notFound).toBe(true)
+      expect(result.articles).toEqual([])
     })
   })
 
-  describe('filtrado y ordenamiento de articulos', () => {
-    beforeEach(() => {
-      mockMapSlug.mockReturnValue('CE')
-    })
-
-    it('filtra articulos no numericos (titulos, capitulos)', async () => {
-      mockArticlesOrder.mockResolvedValueOnce({
-        data: [
-          makeArticle('1'),
-          makeArticle('T1'),   // filtrado: no numerico
-          makeArticle('10'),
-          makeArticle('T1C1'), // filtrado: no numerico
-        ],
-        error: null,
-      })
+  describe('filtrado de artículos', () => {
+    it('filtra artículos con numero no estándar (T1, T1C1)', async () => {
+      mockOrderByQuery.mockResolvedValueOnce([
+        makeRow('1'),
+        makeRow('T1', { title: 'Título Preliminar' }),
+        makeRow('10'),
+        makeRow('T1C1', { title: 'Capítulo I' }),
+      ])
 
       const result = await fetchLawArticles('ce')
 
-      expect(result.articles).toHaveLength(2)
-      const nums = result.articles.map((a: { article_number: string }) => a.article_number)
+      const nums = result.articles.map(a => a.article_number)
       expect(nums).toEqual(['1', '10'])
     })
 
-    it('ordena articulos numericamente (no lexicografico)', async () => {
-      mockArticlesOrder.mockResolvedValueOnce({
-        data: [makeArticle('10'), makeArticle('2'), makeArticle('1')],
-        error: null,
-      })
+    it('filtra artículos cuyo title contiene "título"/"capítulo"/"preámbulo"', async () => {
+      // Aunque el numero sea válido, si el title indica que es estructura, filtrar
+      mockOrderByQuery.mockResolvedValueOnce([
+        makeRow('1'),
+        makeRow('5', { title: 'Capítulo II - Derechos' }),
+        makeRow('10', { title: 'Preámbulo' }),
+        makeRow('20'),
+      ])
 
       const result = await fetchLawArticles('ce')
 
-      const nums = result.articles.map((a: { article_number: string }) => a.article_number)
+      const nums = result.articles.map(a => a.article_number)
+      expect(nums).toEqual(['1', '20'])
+    })
+  })
+
+  describe('ordenamiento de artículos', () => {
+    it('ordena numéricamente (no lexicográfico: 2 antes que 10)', async () => {
+      mockOrderByQuery.mockResolvedValueOnce([
+        makeRow('10'),
+        makeRow('2'),
+        makeRow('1'),
+      ])
+
+      const result = await fetchLawArticles('ce')
+
+      const nums = result.articles.map(a => a.article_number)
       expect(nums).toEqual(['1', '2', '10'])
     })
+  })
 
-    it('retorna notFound cuando no hay articulos', async () => {
-      mockArticlesOrder.mockResolvedValueOnce({ data: [], error: null })
+  describe('manejo de errores', () => {
+    it('devuelve notFound si la query no devuelve filas', async () => {
+      mockOrderByQuery.mockResolvedValueOnce([])
 
       const result = await fetchLawArticles('ce')
 
@@ -266,35 +220,46 @@ describe('fetchLawArticles', () => {
       expect(result.articles).toEqual([])
     })
 
-    it('lanza error cuando la query falla', async () => {
-      mockArticlesOrder.mockResolvedValueOnce({
-        data: null,
-        error: { message: 'connection timeout' },
-      })
+    it('lanza error si la query a Drizzle falla', async () => {
+      mockOrderByQuery.mockRejectedValueOnce(new Error('connection timeout'))
 
-      await expect(fetchLawArticles('ce')).rejects.toThrow()
+      await expect(fetchLawArticles('ce')).rejects.toThrow(/connection timeout/)
     })
   })
 
-  describe('datos de ley en la respuesta', () => {
-    it('incluye law data procesada', async () => {
-      mockMapSlug.mockReturnValue('CE')
-      mockArticlesOrder.mockResolvedValueOnce({
-        data: [makeArticle('1', { id: 'law-ce', name: 'Constitucion Espanola', short_name: 'CE', description: 'La CE' })],
-        error: null,
-      })
+  describe('estructura de respuesta', () => {
+    it('incluye datos de la ley en cada artículo procesado', async () => {
+      mockOrderByQuery.mockResolvedValueOnce([
+        makeRow('1', {
+          lawId: 'law-ce',
+          lawName: 'Constitucion Espanola',
+          lawShortName: 'CE',
+          lawDescription: 'La CE',
+          lawSlug: 'constitucion-espanola',
+        }),
+      ])
 
       const result = await fetchLawArticles('ce')
 
-      expect(result.law).toMatchObject({
+      expect(result.articles).toHaveLength(1)
+      expect(result.articles[0].law).toMatchObject({
         id: 'law-ce',
         name: 'Constitucion Espanola',
         short_name: 'CE',
+        description: 'La CE',
+        slug: 'constitucion-espanola',
       })
-      expect(result.articles[0].law).toMatchObject({
-        id: 'law-ce',
-        short_name: 'CE',
-      })
+    })
+
+    it('expone law a nivel raíz tomada del primer artículo', async () => {
+      mockOrderByQuery.mockResolvedValueOnce([
+        makeRow('1'),
+        makeRow('2'),
+      ])
+
+      const result = await fetchLawArticles('ce')
+
+      expect(result.law).toMatchObject({ short_name: 'CE' })
     })
   })
 })

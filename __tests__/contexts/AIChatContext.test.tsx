@@ -226,9 +226,9 @@ describe('Migración completa del dispatchEvent legacy', () => {
     'app/Header.tsx',
     'app/auxiliar-administrativo-estado/test/ver-fallos/page.tsx',
     'app/tramitacion-procesal/test/ver-fallos/page.tsx',
-    'components/v2/TestLayoutV2.tsx',
+    // components/v2/TestLayoutV2.tsx eliminado en refactor 7ee5c172 (07-may-2026)
     'components/ExamReviewLayout.tsx',
-    'components/DynamicTest.tsx',
+    // components/DynamicTest.tsx eliminado en refactor 7ee5c172 (07-may-2026)
     'components/OfficialExamLayout.tsx',
     'components/PsychometricAIHelpButton.tsx',
     'components/ExamLayout.tsx',
