@@ -862,7 +862,8 @@ export default function TestLayout({
     const options = currentQ.options || []
     const questionId = currentQ.id
 
-    const shareText = `🤔 ¿Sabrías responder esta pregunta?\n\n${questionText}\n\nA) ${options[0] || ''}\nB) ${options[1] || ''}\nC) ${options[2] || ''}\nD) ${options[3] || ''}\n\n¿Cuál es la respuesta correcta?`
+    const optionsText = options.map((opt: string, i: number) => `${String.fromCharCode(65 + i)}) ${opt}`).join('\n')
+    const shareText = `🤔 ¿Sabrías responder esta pregunta?\n\n${questionText}\n\n${optionsText}\n\n¿Cuál es la respuesta correcta?`
 
     const cleanUrl = questionId ? `https://www.vence.es/pregunta/${questionId}` : 'https://www.vence.es'
     const utmUrl = `${cleanUrl}?utm_source=${platform}&utm_medium=social&utm_campaign=question_share`
@@ -879,7 +880,8 @@ export default function TestLayout({
         shareUrl = `https://t.me/share/url?url=${encodeURIComponent(cleanUrl)}&text=${encodeURIComponent(shareText)}`
         break
       case 'twitter':
-        const twitterText = `🤔 ¿Sabrías responder?\n\n${questionText.substring(0, 180)}${questionText.length > 180 ? '...' : ''}\n\nA, B, C o D?`
+        const optionLetters = options.map((_: string, i: number) => String.fromCharCode(65 + i)).join(', ')
+        const twitterText = `🤔 ¿Sabrías responder?\n\n${questionText.substring(0, 180)}${questionText.length > 180 ? '...' : ''}\n\n${optionLetters}?`
         shareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(twitterText)}&url=${encodeURIComponent(utmUrl)}`
         break
       case 'facebook':

@@ -1197,7 +1197,10 @@ export default function ExamLayout({
                 </div>
 
                 <div className="space-y-3">
-                  {(['a', 'b', 'c', 'd'] as const).map(option => {
+                  {(['a', 'b', 'c', 'd', 'e'] as const).filter(option => {
+                    const val = question[`option_${option}` as keyof ExamQuestion]
+                    return val != null && val !== ''
+                  }).map(option => {
                     const optionKey = `option_${option}` as keyof ExamQuestion
                     const isSelected = selectedOption === option
                     const isCorrectOption = option === correctOptionLetter
