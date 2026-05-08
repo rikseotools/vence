@@ -2908,6 +2908,7 @@ export const OPOSICIONES: Oposicion[] = [
         ] },
     ],
     totalTopics: 45,
+    aliases: ['cnp', 'policia nacional', 'escala basica', 'policía', 'pn oposiciones', 'oposiciones policia'],
     navLinks: [
       { href: '/es', label: 'Inicio', icon: '🏠' },
       { href: '/policia-nacional', label: 'Mi Oposición', icon: '👮', featured: true },
