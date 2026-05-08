@@ -137,7 +137,7 @@ export function useDailyQuestionLimit() {
           const remaining = Math.max(0, userDailyLimit - questionsToday)
           const isLimitReached = questionsToday >= userDailyLimit
 
-          setStatus({
+          const newStatus = {
             questionsToday,
             questionsRemaining: remaining,
             dailyLimit: userDailyLimit,
@@ -147,7 +147,19 @@ export function useDailyQuestionLimit() {
             resetTime: result.reset_time ?? null,
             loading: false,
             error: null
-          })
+          }
+          setStatus(newStatus)
+
+          // Sincronizar otros componentes que usen este hook. Necesario aquí
+          // (no solo en recordAnswer) porque cuando dos componentes se montan
+          // simultáneamente, el segundo cae en la rama de deduplicación
+          // (`inflightFetch`) y no escribe su propio state — solo se entera
+          // del fetch completado vía este evento.
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('dailyLimitUpdated', {
+              detail: newStatus
+            }))
+          }
         }
 
         lastFetchRef.current = now
