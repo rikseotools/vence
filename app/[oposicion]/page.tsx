@@ -8,6 +8,7 @@ import {
   getHitosConvocatoriaCached,
   getTopicNamesForLandingCached,
 } from '@/lib/api/convocatoria/queries'
+import { safeServerFetch } from '@/lib/db/safeServerFetch'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
@@ -20,13 +21,26 @@ const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
 // force-dynamic: las landings hacen queries pesadas (landing data + hitos + topic names)
 // que causan timeout en build con 3600+ páginas concurrentes. Se renderizan bajo demanda.
 export const dynamic = 'force-dynamic'
+// maxDuration 30s tras cascada del 8 may 23:27 UTC donde landings hit 300s
+// completos (504). Las queries normalmente <500ms cacheadas; 30s da margen sin
+// permitir que un blip de pool retenga el lambda los 5min.
+export const maxDuration = 30
+
+// Timeouts por query (cada una con su tag para identificar en logs).
+const LANDING_DATA_TIMEOUT_MS = 8000
+const HITOS_TIMEOUT_MS = 6000
+const TOPIC_NAMES_TIMEOUT_MS = 6000
 
 export async function generateMetadata({ params }: { params: Promise<{ oposicion: string }> }): Promise<Metadata> {
   const { oposicion } = await params
   const config = getOposicion(oposicion)
   if (!config) return {}
 
-  const data = await getOposicionLandingDataCached(oposicion)
+  const data = await safeServerFetch(
+    () => getOposicionLandingDataCached(oposicion),
+    LANDING_DATA_TIMEOUT_MS,
+    'landing-metadata',
+  )
   const title = data?.seoTitle || `${config.name} 2026 | Tests y Temario`
   // Description se genera dinámicamente para que plazas/temas siempre estén actualizados
   const plazas = data?.plazasLibres
@@ -59,12 +73,32 @@ export default async function OposicionPage({ params }: { params: Promise<{ opos
   const config = getOposicion(oposicion)
   if (!config) notFound()
 
-  const data = await getOposicionLandingDataCached(oposicion)
-  const hitos = await getHitosConvocatoriaCached(oposicion)
+  // 3 fetches con quick-fail; en timeout devuelven null y el render usa fallbacks
+  // (ya implementados — todos los accesos a `data` usan ?? con defaults).
+  const [data, hitos, topicNamesArr] = await Promise.all([
+    safeServerFetch(
+      () => getOposicionLandingDataCached(oposicion),
+      LANDING_DATA_TIMEOUT_MS,
+      'landing-data',
+    ),
+    safeServerFetch(
+      () => getHitosConvocatoriaCached(oposicion),
+      HITOS_TIMEOUT_MS,
+      'landing-hitos',
+    ),
+    safeServerFetch(
+      () => getTopicNamesForLandingCached(config.positionType),
+      TOPIC_NAMES_TIMEOUT_MS,
+      'landing-topics',
+    ),
+  ])
+  // hitos puede ser null si timeout — normalizar a [] para que el resto
+  // del render no crashee (.find, .length, .map).
+  const hitosSafe = hitos ?? []
   const colors = getColorScheme(data?.colorPrimario ?? null)
 
   // Fetch topic names from BD (para que el temario preview no dependa de oposiciones.ts)
-  const topicNamesFromBD = new Map(await getTopicNamesForLandingCached(config.positionType))
+  const topicNamesFromBD = new Map(topicNamesArr ?? [])
 
   // Estado del proceso (para distinguir OEP vs convocatoria en los botones)
   const estadoProceso = data?.estadoProceso ?? 'sin_oep'
@@ -179,7 +213,7 @@ export default async function OposicionPage({ params }: { params: Promise<{ opos
   }
 
   // Schema JSON-LD: Evento del examen
-  const examHito = hitos.find(h => h.titulo.toLowerCase().includes('examen') && h.status !== 'completed')
+  const examHito = hitosSafe.find(h => h.titulo.toLowerCase().includes('examen') && h.status !== 'completed')
   const schemaEvent = examHito ? {
     "@context": "https://schema.org",
     "@type": "Event",
@@ -316,14 +350,14 @@ export default async function OposicionPage({ params }: { params: Promise<{ opos
           )}
 
           {/* Timeline de hitos */}
-          {hitos.length > 0 && (
+          {hitosSafe.length > 0 && (
             <section className="mb-10">
               <h2 className="text-2xl font-bold text-gray-800 text-center mb-8">📅 Estado del Proceso Selectivo</h2>
               <div className="max-w-3xl mx-auto">
                 <div className="relative">
                   <div className="absolute left-4 md:left-6 top-0 bottom-0 w-0.5 bg-gray-200" />
                   <div className="space-y-6">
-                    {hitos.map((hito) => (
+                    {hitosSafe.map((hito) => (
                       <div key={hito.id} className="relative flex items-start gap-4 md:gap-6">
                         <div className={`relative z-10 flex-shrink-0 w-9 h-9 md:w-12 md:h-12 rounded-full flex items-center justify-center text-sm md:text-base ${
                           hito.status === 'completed' ? 'bg-green-100 text-green-600 border-2 border-green-500' :
