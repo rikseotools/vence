@@ -297,6 +297,7 @@ Si HOY se sube `getReadDb` a `max:4` SIN read replica:
 | B | Subir plan a Compute Large | +$60-100/mes | `max_connections` 90 → 200+. Brute force, sin separación read/write. |
 | C | Migrar a Supavisor "session" mode | $0 | Reusa conexiones más agresivamente. Pero pierdes prepared statements compatibility. Testing alto. |
 | D | NO subir el pool. Bajar latencia de queries | $0 | Si las queries son rápidas, max:1 sirve más requests/segundo. **Es lo que hicimos 4-5 may con 3 commits.** |
+| **E** | **Self-hosted Pooler (PgBouncer en AWS Lightsail London)** | **+$10/mes** | **Aísla nuestro tráfico del Supavisor regional compartido (que tuvo blips el 7-9 may). Misma red AWS = latencia ~3ms. Ver roadmap dedicado: [`docs/roadmap/self-hosted-pooler.md`](roadmap/self-hosted-pooler.md)** ⏳ Pendiente Fase 0 |
 
 ### Pool split (HOY, sin coste extra adicional)
 
@@ -308,6 +309,18 @@ getTraceDb()  → max:1, sin timeout   // ✅ HECHO — para after() background 
 ```
 
 **Valor del split sin replica**: ergonomía de código (API explícita read-only vs write) + statement_timeout más estricto en reads. **NO da más concurrencia** porque ambos siguen contra el primario con `max:1`.
+
+### Self-hosted Pooler (Opción E) ⏳ PENDIENTE arranque
+
+**Roadmap dedicado**: [`docs/roadmap/self-hosted-pooler.md`](roadmap/self-hosted-pooler.md) — implementación inicial: PgBouncer en AWS Lightsail London. El nombre genérico permite swap a PgCat u otro pooler sin renombrar el doc.
+
+**Motivación**: el cascade del 8 may + blips repetidos del Supavisor regional confirmaron que tanto primary como replica comparten la MISMA infra (`aws-0-eu-west-2.pooler.supabase.com:6543`). Stale-while-error mitiga 80% del impacto pero hay endpoints que no se pueden cachear. Para aislamiento real necesitamos pooler propio o Dedicated Pooler de Supabase ($100/mes estimado).
+
+**Decisión**: AWS Lightsail London + PgBouncer (no PgCat, no Coolify, no Hetzner — ver roadmap dedicado para análisis de alternativas).
+
+**Coste**: $10/mes single instance. $40-50/mes con HA (Fase 6 opcional).
+
+**Estado**: ⏳ Pendiente aprobación Fase 0 (provisión inicial). 6 fases con rollback en cada paso.
 
 ### Read replica ✅ HECHO (2026-05-09)
 
