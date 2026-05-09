@@ -29,6 +29,8 @@ export async function GET() {
     { loc: '/oposiciones', priority: 0.9, changefreq: 'weekly' },
     // Temarios
     { loc: '/temarios', priority: 0.9, changefreq: 'weekly' },
+    // Comparar temarios
+    { loc: '/comparar-temarios', priority: 0.7, changefreq: 'monthly' },
     // Oposiciones (generado desde config central)
     ...OPOSICIONES.flatMap(o => [
       { loc: `/${o.slug}`, priority: 0.9, changefreq: 'weekly' as const },

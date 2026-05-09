@@ -21,6 +21,24 @@ export interface OposicionOverlap {
   lawBreakdown: LawOverlap[]
 }
 
+/** Comparación bilateral entre dos oposiciones */
+export interface TemarioComparison {
+  /** Leyes compartidas con desglose de artículos */
+  shared: LawOverlap[]
+  /** Leyes solo en A (no en B) */
+  onlyA: { lawId: string; lawShortName: string; lawName: string; articleCount: number }[]
+  /** Leyes solo en B (no en A) */
+  onlyB: { lawId: string; lawShortName: string; lawName: string; articleCount: number }[]
+  /** Stats globales */
+  totalArticlesA: number
+  totalArticlesB: number
+  sharedArticles: number
+  /** % del temario de B cubierto por A */
+  overlapPctAcoversB: number
+  /** % del temario de A cubierto por B */
+  overlapPctBcoversA: number
+}
+
 /** Stats personales del usuario para una oposición target */
 export interface UserOverlapProgress {
   targetSlug: string
