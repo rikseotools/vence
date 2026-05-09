@@ -1,5 +1,20 @@
 // app/api/v2/topic-progress/weak-articles/route.ts
 // API v2 para obtener artículos débiles por tema - Usa Drizzle + Zod
+//
+// Estrategia de cache (refactor 2026-05-09): stale-while-error con Redis,
+// mismo patrón que /api/v2/topic-progress/theme-stats y
+// /api/notifications/problematic-articles. Sobrevive blips del pooler
+// regional Supavisor (que afectan tanto al primary como al replica).
+//
+// - Cache fresco (<5min) → devolver inmediato sin tocar BD
+// - Cache stale + BD OK → refresh y devolver
+// - Cache stale + BD timeout → devolver stale (200, NO 503)
+// - Cache vacío + BD timeout → devolver weakArticlesByTopic={} (200)
+// - Siempre 200 → 0 errores 5xx user-facing por este endpoint
+//
+// userId SIEMPRE deriva del Bearer token (auth.user.id) — nunca del body —
+// para impedir cross-user leakage en cache key.
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import {
@@ -7,17 +22,22 @@ import {
   safeParseGetWeakArticles,
   type GetWeakArticlesRequest,
 } from '@/lib/api/topic-progress'
-import { withDbTimeout, isDbTimeoutError } from '@/lib/db/timeout'
-
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
-// maxDuration bajado de 60s → 20s tras incidente cascade 2026-05-07 12:34 UTC
-// (4× 504s en weak-articles durante blip). Read path analítico (agg sobre
-// test_questions); 20s da margen sin permitir que un blip sature concurrency.
+import { getCached, setCached } from '@/lib/cache/redis'
+
+// maxDuration bajado de 60s → 20s tras incidente cascade 2026-05-07 12:34 UTC.
+// Read path analítico (agg sobre test_questions); 20s da margen sin permitir
+// que un blip sature concurrency.
 export const maxDuration = 20
 
-// Quick-fail timeout. La query es analítica (agg de weak articles por topic),
-// más pesada que profile/daily-limit. 15s da margen para casos cold-cache.
-const WEAK_ARTICLES_TIMEOUT_MS = 15000
+interface CachedWeakArticles {
+  data: { success: true; weakArticlesByTopic: Record<string, unknown> }
+  ts: number  // ms epoch — usado para freshness check
+}
+
+const FRESH_WINDOW_MS = 5 * 60 * 1000   // 5 min: dentro de esta ventana es fresh
+const STALE_TTL_S = 24 * 60 * 60        // 24h: cuánto retiene Redis (fallback timeout)
+const BD_TIMEOUT_MS = 15_000            // 15s: tope query BD; si excede, fallback a stale
 
 // Cliente Supabase solo para auth
 const getSupabase = () => createClient(
@@ -26,13 +46,10 @@ const getSupabase = () => createClient(
 )
 
 async function _GET(request: NextRequest) {
-  console.log('🎯 [API/v2/weak-articles] Request received')
-
   try {
     // Verificar autenticación
     const authHeader = request.headers.get('authorization')
     if (!authHeader?.startsWith('Bearer ')) {
-      console.log('🎯 [API/v2/weak-articles] No auth header')
       return NextResponse.json(
         { success: false, error: 'No autorizado' },
         { status: 401 }
@@ -43,14 +60,11 @@ async function _GET(request: NextRequest) {
     const { data: { user }, error: authError } = await getSupabase().auth.getUser(token)
 
     if (authError || !user) {
-      console.log('🎯 [API/v2/weak-articles] Auth error:', authError?.message)
       return NextResponse.json(
         { success: false, error: 'Token inválido' },
         { status: 401 }
       )
     }
-
-    console.log('🎯 [API/v2/weak-articles] User authenticated:', user.id.substring(0, 8))
 
     // Parsear query params
     const { searchParams } = new URL(request.url)
@@ -64,9 +78,7 @@ async function _GET(request: NextRequest) {
 
     // Validar con Zod
     const parseResult = safeParseGetWeakArticles(params)
-
     if (!parseResult.success) {
-      console.log('🎯 [API/v2/weak-articles] Validation error:', parseResult.error.errors)
       return NextResponse.json({
         success: false,
         error: 'Parámetros inválidos',
@@ -75,36 +87,52 @@ async function _GET(request: NextRequest) {
     }
 
     const validatedParams: GetWeakArticlesRequest = parseResult.data
-    console.log('🎯 [API/v2/weak-articles] Validated params:', {
-      minAttempts: validatedParams.minAttempts,
-      maxSuccessRate: validatedParams.maxSuccessRate,
-      maxPerTopic: validatedParams.maxPerTopic,
-    })
 
-    // Ejecutar query con Drizzle (envuelta en quick-fail para evitar cascade
-    // si pool blip)
-    const result = await withDbTimeout(
-      () => getWeakArticlesForUser(validatedParams),
-      WEAK_ARTICLES_TIMEOUT_MS,
-    )
+    // Cache key: incluye userId + todos los filtros para que requests con
+    // distintos params no colisionen.
+    const cacheKey = `weak_articles:${validatedParams.userId}:${validatedParams.minAttempts}:${validatedParams.maxSuccessRate}:${validatedParams.maxPerTopic}:${validatedParams.positionType ?? 'all'}`
+    const cached = await getCached<CachedWeakArticles>(cacheKey)
 
-    if (!result.success) {
-      return NextResponse.json(result, { status: 500 })
+    // Fast path: cache fresco (<5min) → devolver sin tocar BD
+    if (cached && Date.now() - cached.ts < FRESH_WINDOW_MS) {
+      return NextResponse.json(cached.data)
     }
 
-    const topicCount = Object.keys(result.weakArticlesByTopic || {}).length
-    console.log('🎯 [API/v2/weak-articles] Returning weak articles for', topicCount, 'topics')
+    try {
+      const queryPromise = getWeakArticlesForUser(validatedParams)
+      const result = await Promise.race([
+        queryPromise,
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('weak-articles timeout')), BD_TIMEOUT_MS)
+        ),
+      ])
 
-    return NextResponse.json(result)
+      if (!result.success) {
+        return NextResponse.json(result, { status: 500 })
+      }
 
+      const response = {
+        success: true as const,
+        weakArticlesByTopic: result.weakArticlesByTopic ?? {},
+      }
+
+      // Guardar en Redis con TTL 24h y timestamp para freshness check
+      setCached(cacheKey, { data: response, ts: Date.now() }, STALE_TTL_S)
+
+      return NextResponse.json(response)
+    } catch (err) {
+      // Timeout o error BD: si tenemos cache (aun stale), devolverlo;
+      // mejor servir datos viejos que 503. Si no hay cache, fallback a {}.
+      if (cached) {
+        const ageS = Math.floor((Date.now() - cached.ts) / 1000)
+        console.warn(`⏱️ [API/v2/weak-articles] timeout for ${user.id.slice(0, 8)}, returning stale cache (${ageS}s old)`)
+        return NextResponse.json(cached.data)
+      }
+
+      console.warn(`⏱️ [API/v2/weak-articles] timeout for ${user.id.slice(0, 8)}, returning empty`)
+      return NextResponse.json({ success: true, weakArticlesByTopic: {} })
+    }
   } catch (error) {
-    if (isDbTimeoutError(error)) {
-      console.warn('⏱️ [API/v2/weak-articles] Timeout (quick-fail):', error.timeoutMs, 'ms')
-      return NextResponse.json(
-        { success: false, error: 'Servicio temporalmente saturado. Reintenta.', retryable: true },
-        { status: 503, headers: { 'Retry-After': '5' } },
-      )
-    }
     console.error('❌ [API/v2/weak-articles] Error:', error)
     return NextResponse.json(
       { success: false, error: 'Error interno del servidor' },
