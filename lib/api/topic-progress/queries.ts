@@ -1,6 +1,6 @@
 // lib/api/topic-progress/queries.ts
 // Queries tipadas para progreso por tema y artículos débiles usando Drizzle
-import { getDb } from '@/db/client'
+import { getDb, getReadDb } from '@/db/client'
 import {
   userQuestionHistory,
   questions,
@@ -49,7 +49,8 @@ export async function getWeakArticlesForUser(
   } = params
 
   try {
-    const db = getDb()
+    // Read replica para weak-articles (analytics read-only, stale ≤1s OK)
+    const db = getReadDb()
 
     console.log(`🎯 [DRIZZLE/weak-articles] Getting weak articles for user ${userId.substring(0, 8)}...`)
 

@@ -1,5 +1,5 @@
 // lib/api/filtered-questions/queries.ts - Queries Drizzle para preguntas filtradas
-import { getDb } from '@/db/client'
+import { getDb, getReadDb } from '@/db/client'
 import { questions, articles, laws, topicScope, topics, tests, testQuestions, userQuestionHistory } from '@/db/schema'
 import { eq, and, inArray, sql, notInArray, desc, or, lt } from 'drizzle-orm'
 import {
@@ -510,7 +510,10 @@ export async function getFilteredQuestions(
   params: GetFilteredQuestionsRequest
 ): Promise<GetFilteredQuestionsResponse> {
   try {
-    const db = getDb()
+    // Read replica: queries de selección de preguntas para tests son read-only.
+    // Lag ≤1s aceptable (preguntas nuevas tardan ese tiempo en aparecer en
+    // tests recién creados — irrelevante UX-wise).
+    const db = getReadDb()
     const {
       topicNumber,
       positionType,
@@ -1141,7 +1144,8 @@ export async function countFilteredQuestions(
   params: CountFilteredQuestionsRequest
 ): Promise<CountFilteredQuestionsResponse> {
   try {
-    const db = getDb()
+    // Read replica para count (totalmente tolerable a stale)
+    const db = getReadDb()
     const {
       topicNumber,
       positionType,
