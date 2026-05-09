@@ -131,21 +131,6 @@ const lightweightArticleColumns = {
   lawShortName: laws.shortName,
 } as const
 
-/**
- * Feature flag: USE_FILTERED_ID_FIRST=true activa el refactor ID-first
- * en paths 5-6 (modo tema/multi-tema y modo ley-only). Default: false.
- *
- * Rollback: cambiar la env var a false en Vercel + redeploy. <30s.
- *
- * NO afecta paths 1-4 (content_scope, failed-questions, failed-IDs,
- * global) porque ya tienen LIMIT en SQL y son eficientes.
- *
- * Exportado para que el dispatcher tests pueda verificarlo unitariamente.
- */
-export function shouldUseIdFirst(): boolean {
-  return process.env.USE_FILTERED_ID_FIRST === 'true'
-}
-
 export function transformQuestion(q: QuestionRow, index: number): FilteredQuestion {
   return {
     id: q.id,
@@ -552,42 +537,11 @@ function applyArticleSectionFilter(
 }
 
 // ============================================
-// HELPERS ID-FIRST (refactor sesión Tier 1)
+// HELPERS ID-FIRST
 // ============================================
 
 /**
- * Detecta qué path tomará una request. Solo path 5-6 se beneficia del
- * refactor ID-first. Paths 1-4 ya tienen LIMIT y son eficientes.
- */
-export type FilteredPath = 'p1_content_scope' | 'p2_failed_with_scopes' | 'p3_failed_with_ids' | 'p4_global' | 'p5_6_topic_or_law'
-
-export function detectFilteredPath(params: GetFilteredQuestionsRequest): FilteredPath {
-  if (params.primaryArticleIds && params.primaryArticleIds.length > 0) return 'p1_content_scope'
-  if (
-    params.onlyFailedQuestions &&
-    (!params.failedQuestionIds || params.failedQuestionIds.length === 0) &&
-    !!params.userId
-  ) return 'p2_failed_with_scopes'
-  if (
-    params.onlyFailedQuestions &&
-    params.failedQuestionIds &&
-    params.failedQuestionIds.length > 0
-  ) return 'p3_failed_with_ids'
-
-  const topicsToQuery = params.multipleTopics && params.multipleTopics.length > 0
-    ? params.multipleTopics
-    : (params.topicNumber > 0 ? [params.topicNumber] : [])
-  const isLawOnlyMode = topicsToQuery.length === 0 && params.selectedLaws && params.selectedLaws.length > 0
-  const isGlobalMode = topicsToQuery.length === 0 && !isLawOnlyMode
-
-  if (isGlobalMode) return 'p4_global'
-  return 'p5_6_topic_or_law'
-}
-
-/**
- * Mapping post-construcción + filtros (artículos, secciones). Lo computa el
- * caller y se lo pasa a queryQuestionsForMappingsLightweight para evitar
- * duplicar la lógica de building.
+ * Mapping post-construcción + filtros (artículos, secciones).
  */
 type PathMapping = {
   articleNumbers: string[] | null
@@ -697,29 +651,17 @@ async function hydrateSelectedQuestions(
 }
 
 // ============================================
-// OBTENER PREGUNTAS FILTRADAS — DISPATCHER
+// OBTENER PREGUNTAS FILTRADAS
 // ============================================
-/**
- * Punto de entrada público. Decide entre legacy e id-first según
- * feature flag USE_FILTERED_ID_FIRST y path detectado.
- *
- * Solo path 5-6 (modo tema/multi-tema y modo ley-only) se beneficia
- * del refactor. Paths 1-4 (content_scope, failed-questions, global)
- * ya tienen LIMIT y siempre van por legacy.
- */
+// Paths 1-4 (content_scope, failed-questions con/sin IDs, global) usan
+// queries con LIMIT en SQL — eficientes desde siempre.
+//
+// Paths 5-6 (modo tema/multi-tema y modo ley-only) usan ID-first split:
+// Q1 ligera trae {id, articleNumber, lawShortName, isOfficialExam} para
+// los ~2.5k candidatos; JS filtra/selecciona; Q2 hidrata las ~25 ganadoras
+// con todas las columnas. Speedup real demostrado 6-9x vs traer las 25
+// columnas para todos los candidatos solo para shuffle in-memory.
 export async function getFilteredQuestions(
-  params: GetFilteredQuestionsRequest
-): Promise<GetFilteredQuestionsResponse> {
-  if (shouldUseIdFirst() && detectFilteredPath(params) === 'p5_6_topic_or_law') {
-    return getFilteredQuestionsIdFirst(params)
-  }
-  return getFilteredQuestionsLegacy(params)
-}
-
-// ============================================
-// LEGACY: implementación original sin tocar
-// ============================================
-export async function getFilteredQuestionsLegacy(
   params: GetFilteredQuestionsRequest
 ): Promise<GetFilteredQuestionsResponse> {
   try {
@@ -1180,60 +1122,17 @@ export async function getFilteredQuestionsLegacy(
       }
     }
 
-    // 5️⃣ Obtener preguntas para cada ley filtrada
-    let allQuestions: QuestionRow[] = []
-
-    for (const mapping of filteredMappings) {
-      // articleNumbers NULL = ley virtual (incluir TODAS las preguntas de la ley)
-      // articleNumbers [] = sin artículos específicos → SKIP
-      // articleNumbers con valores = filtrar solo esos artículos
-      if (mapping.articleNumbers !== null && mapping.articleNumbers.length === 0) continue
-
-      const hasSpecificArticles = mapping.articleNumbers && mapping.articleNumbers.length > 0
-
-      // Query base para preguntas de esta ley
-      const questionsQuery = db
-        .select({ ...questionColumns, ...articleColumns })
-        .from(questions)
-        .innerJoin(articles, eq(questions.primaryArticleId, articles.id))
-        .innerJoin(laws, eq(articles.lawId, laws.id))
-        .where(and(
-          eq(questions.isActive, true),
-          eq(laws.id, mapping.lawId!),
-          ...(hasSpecificArticles ? [inArray(articles.articleNumber, mapping.articleNumbers!)] : []),
-          // 🏛️ Filtro por exam_position SOLO cuando el usuario pide "solo oficiales".
-          // Post-16/04/2026 (tras caso M + discusión contenido compartido):
-          // - Practice mode: se muestran todas las preguntas del artículo, incluidas
-          //   oficiales de otras oposiciones. Lenguaje neutro + artículo compartido.
-          // - Only-oficial mode: se filtra por exam_position del usuario (simulacro).
-          // Antes se aplicaba siempre (caso Laura, 14/04/2026), pero eso privaba de
-          // material de práctica a usuarios de oposiciones con pocas oficiales propias.
-          onlyOfficialQuestions && !includeSharedOfficials ? buildOfficialExamFilter(positionType) : sql`true`,
-          onlyOfficialQuestions ? eq(questions.isOfficialExam, true) : sql`true`,
-          // Filtro de dificultad: prioriza global_difficulty_category (calculada con
-          // datos reales de usuarios); si es NULL (pregunta sin respuestas aún), usa
-          // difficulty (legacy, asignada al crearla). Mismo patrón que random-test.
-          // Sin esto, el 43% del banco de preguntas con NULL se excluye silenciosamente.
-          difficultyMode && difficultyMode !== 'random'
-            ? sql`(${questions.globalDifficultyCategory} = ${difficultyMode} OR
-                  (${questions.globalDifficultyCategory} IS NULL AND ${questions.difficulty} = ${difficultyMode}))`
-            : sql`true`,
-          // 🏷️ Filtro por tag: oposiciones con questionTag solo ven sus propias preguntas
-          tagFilter,
-        ))
-
-      const lawQuestions = await questionsQuery
-      // Add source topic to each question
-      if (!lawQuestions || !Array.isArray(lawQuestions)) {
-        console.warn('⚠️ lawQuestions vacío para ley:', mapping.lawShortName)
-        continue
-      }
-      const questionsWithTopic = lawQuestions.map(q => ({
-        ...q,
-        sourceTopic: mapping.topicNumber ?? null
-      })) as QuestionRow[]
-      allQuestions = [...allQuestions, ...questionsWithTopic]
-    }
+    // 5️⃣ Q1 LIGERA: trae {id, articleNumber, lawShortName, isOfficialExam} +
+    // sourceTopic (añadido en JS desde mapping). 5 cols vs 25 — payload de
+    // ~250 KB en vez de ~5 MB para 2.5k candidatos. Filtros idénticos al
+    // path 1-4 (tag, exam_position, difficulty NULL coalesce, isActive).
+    const allQuestions = await queryQuestionsForMappingsLightweight(db, filteredMappings, {
+      positionType,
+      onlyOfficialQuestions,
+      includeSharedOfficials,
+      difficultyMode,
+      tagFilter,
+    })
 
     if (allQuestions.length === 0) {
       const reasons: string[] = []
@@ -1320,7 +1219,6 @@ export async function getFilteredQuestionsLegacy(
       )
     }
 
-    // 8️⃣ Transformar al formato esperado por el frontend
     if (!finalQuestions || !Array.isArray(finalQuestions)) {
       console.error('❌ finalQuestions es undefined o no es array:', typeof finalQuestions)
       return {
@@ -1329,7 +1227,28 @@ export async function getFilteredQuestionsLegacy(
       }
     }
 
-    const transformedQuestions: FilteredQuestion[] = finalQuestions.map((q, i) => transformQuestion(q, i))
+    // 8️⃣ Q2 HIDRATACIÓN: trae filas completas para los IDs ganadores.
+    // Postgres no garantiza orden de WHERE id IN (...) → Map preserva orden
+    // de selección JS. Si una pregunta fue desactivada entre Q1 y Q2 (race
+    // muy poco probable, microsegundos), se loguea warn y se skippea.
+    const selectedIds = finalQuestions.map(q => q.id)
+    const hydrated = await hydrateSelectedQuestions(db, selectedIds)
+
+    const orderedRows: QuestionRow[] = []
+    let droppedDuringHydration = 0
+    for (const lite of finalQuestions) {
+      const full = hydrated.get(lite.id)
+      if (!full) {
+        droppedDuringHydration++
+        continue
+      }
+      orderedRows.push({ ...full, sourceTopic: lite.sourceTopic })
+    }
+    if (droppedDuringHydration > 0) {
+      console.warn(`⚠️ [hydrate] ${droppedDuringHydration}/${selectedIds.length} preguntas dropeadas (race con desactivación)`)
+    }
+
+    const transformedQuestions: FilteredQuestion[] = orderedRows.map((q, i) => transformQuestion(q, i))
 
     return {
       success: true,
@@ -1343,332 +1262,6 @@ export async function getFilteredQuestionsLegacy(
     }
   } catch (error) {
     console.error('❌ Error obteniendo preguntas filtradas:', error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Error desconocido',
-    }
-  }
-}
-
-// ============================================
-// ID-FIRST: solo path 5-6 (modo tema/multi-tema y modo ley-only)
-// ============================================
-// Replica el camino path 5-6 de getFilteredQuestionsLegacy con dos cambios:
-//  1. Q1 ligera (5 cols vs 25) en queryQuestionsForMappingsLightweight
-//  2. Q2 hidratación de las 25 ganadoras post-selección JS
-//
-// Steps 1-9 (build mappings + filtros), 11-13 (JS filters + selección):
-// IDÉNTICOS al legacy, copiados verbatim para preservar comportamiento
-// bit-a-bit. El refactor solo afecta a steps 10 (Q1) y 14 (Q2).
-//
-// Comportamiento garantizado:
-// - Mismas distribuciones (selectEquitativeByLaw, selectProportionally,
-//   selectProportionallyByArticle reciben el mismo set de candidatos)
-// - Mismos casos vacíos (early return con mismos mensajes)
-// - Mismos warnings (lawQuestions vacío para ley X)
-// - Mismo dedup behavior (multi-tema con scope solapado)
-// - sourceTopic preservado por mapping
-//
-// Si una pregunta es desactivada entre Q1 y Q2 (race muy poco probable —
-// microsegundos), no aparece en el output. Es degradación aceptable
-// (en legacy nunca pasa porque el read es atómico).
-export async function getFilteredQuestionsIdFirst(
-  params: GetFilteredQuestionsRequest
-): Promise<GetFilteredQuestionsResponse> {
-  try {
-    const db = getReadDb()
-    const {
-      topicNumber,
-      positionType,
-      multipleTopics,
-      numQuestions,
-      selectedLaws,
-      selectedArticlesByLaw,
-      selectedSectionFilters,
-      onlyOfficialQuestions,
-      includeSharedOfficials,
-      difficultyMode,
-      excludeRecentDays,
-      userId,
-      focusEssentialArticles,
-      prioritizeNeverSeen,
-      proportionalByTopic,
-      onlyFailedQuestions,
-      failedQuestionIds,
-    } = params
-
-    // 🏷️ Tag filter — IDÉNTICO al legacy
-    const opoConfig = getOposicionByPositionType(positionType)
-    const questionTag = opoConfig?.questionTag ?? null
-    const tagFilter = questionTag
-      ? sql`${questions.tags} @> ARRAY[${sql.raw(`'${questionTag}'`)}]::text[]`
-      : EXCLUSIVE_QUESTION_TAGS.length > 0
-        ? sql`(${questions.tags} IS NULL OR NOT (${questions.tags} && ARRAY[${sql.raw(EXCLUSIVE_QUESTION_TAGS.map(t => `'${t}'`).join(','))}]::text[]))`
-        : sql`true`
-
-    // Guard fallback (mismo que legacy líneas 789-797). Si onlyFailedQuestions
-    // sin userId y sin IDs, el dispatcher nos enrutó aquí (path 5-6) — log
-    // el warning y procedemos como path 5-6 normal.
-    if (onlyFailedQuestions && !userId && (!failedQuestionIds || failedQuestionIds.length === 0)) {
-      console.warn(`⚠️ [failed-questions/id-first] onlyFailedQuestions=true pero userId es null y no hay IDs. Fallback a preguntas aleatorias.`)
-      logValidationError({
-        endpoint: '/api/questions/filtered',
-        errorType: 'failed_questions_no_auth',
-        errorMessage: `onlyFailedQuestions=true sin userId ni IDs. Fallback a aleatorias. positionType=${positionType}`,
-        severity: 'warning',
-      })
-    }
-
-    // 1️⃣ Determinar topics + modo (IDÉNTICO al legacy)
-    const topicsToQuery = multipleTopics && multipleTopics.length > 0
-      ? multipleTopics
-      : topicNumber > 0 ? [topicNumber] : []
-    const isLawOnlyMode = topicsToQuery.length === 0 && selectedLaws && selectedLaws.length > 0
-
-    let filteredMappings: PathMapping[] = []
-
-    if (isLawOnlyMode) {
-      console.log(`🎯 [id-first] Modo ley-only: ${selectedLaws.join(', ')}`)
-      const lawResults = await db
-        .select({
-          lawId: laws.id,
-          lawShortName: laws.shortName,
-          lawName: laws.name,
-        })
-        .from(laws)
-        .where(inArray(laws.shortName, selectedLaws))
-
-      for (const law of lawResults) {
-        const specificArticles = selectedArticlesByLaw?.[law.lawShortName || ''] || []
-        if (specificArticles.length > 0) {
-          filteredMappings.push({
-            articleNumbers: specificArticles.map(String),
-            lawId: law.lawId,
-            lawShortName: law.lawShortName,
-            lawName: law.lawName,
-            topicNumber: null,
-          })
-        } else {
-          const allArticles = await db
-            .select({ articleNumber: articles.articleNumber })
-            .from(articles)
-            .where(eq(articles.lawId, law.lawId!))
-          filteredMappings.push({
-            articleNumbers: allArticles.map(a => a.articleNumber),
-            lawId: law.lawId,
-            lawShortName: law.lawShortName,
-            lawName: law.lawName,
-            topicNumber: null,
-          })
-        }
-      }
-    } else {
-      // Modo tema/multi-tema
-      const topicScopeResults = await db
-        .select({
-          articleNumbers: topicScope.articleNumbers,
-          lawId: topicScope.lawId,
-          lawShortName: laws.shortName,
-          lawName: laws.name,
-          topicNumber: topics.topicNumber,
-        })
-        .from(topicScope)
-        .innerJoin(topics, eq(topicScope.topicId, topics.id))
-        .innerJoin(laws, eq(topicScope.lawId, laws.id))
-        .where(and(
-          inArray(topics.topicNumber, topicsToQuery),
-          eq(topics.positionType, positionType),
-        ))
-
-      if (!topicScopeResults || topicScopeResults.length === 0) {
-        return {
-          success: true,
-          questions: [],
-          totalAvailable: 0,
-          filtersApplied: { laws: 0, articles: 0, sections: 0 },
-          emptyReason: `Los temas seleccionados no tienen preguntas asignadas todavía`,
-        }
-      }
-
-      filteredMappings = topicScopeResults
-
-      if (selectedLaws && selectedLaws.length > 0) {
-        filteredMappings = filteredMappings.filter(m =>
-          m.lawShortName && selectedLaws.includes(m.lawShortName)
-        )
-      }
-    }
-
-    // 3️⃣ Filtro de artículos por ley (IDÉNTICO al legacy)
-    if (selectedArticlesByLaw && Object.keys(selectedArticlesByLaw).length > 0) {
-      filteredMappings = filteredMappings.map(mapping => {
-        const lawShortName = mapping.lawShortName
-        if (!lawShortName) return mapping
-        const selectedArticles = selectedArticlesByLaw[lawShortName]
-        if (selectedArticles && selectedArticles.length > 0) {
-          const selectedArticlesAsStrings = selectedArticles.map(num => String(num))
-          const filteredArticleNumbers = (mapping.articleNumbers || []).filter(articleNum =>
-            selectedArticlesAsStrings.includes(String(articleNum))
-          )
-          return { ...mapping, articleNumbers: filteredArticleNumbers }
-        }
-        return mapping
-      }).filter(m => m.articleNumbers && m.articleNumbers.length > 0)
-    }
-
-    // 4️⃣ Filtro de secciones (IDÉNTICO al legacy)
-    if (selectedSectionFilters && selectedSectionFilters.length > 0) {
-      filteredMappings = filteredMappings.map(mapping => {
-        const filteredArticleNumbers = applyArticleSectionFilter(
-          mapping.articleNumbers || [],
-          selectedSectionFilters,
-        )
-        return { ...mapping, articleNumbers: filteredArticleNumbers }
-      }).filter(m => m.articleNumbers && m.articleNumbers.length > 0)
-    }
-
-    if (filteredMappings.length === 0) {
-      return {
-        success: true,
-        questions: [],
-        totalAvailable: 0,
-        filtersApplied: {
-          laws: selectedLaws?.length || 0,
-          articles: Object.keys(selectedArticlesByLaw || {}).length,
-          sections: selectedSectionFilters?.length || 0,
-        },
-        emptyReason: `No hay preguntas para las leyes o artículos seleccionados`,
-      }
-    }
-
-    // 5️⃣ Q1 LIGERA (vs legacy que trae 25 cols × ~2.5k filas)
-    const allQuestions = await queryQuestionsForMappingsLightweight(db, filteredMappings, {
-      positionType,
-      onlyOfficialQuestions,
-      includeSharedOfficials,
-      difficultyMode,
-      tagFilter,
-    })
-
-    if (allQuestions.length === 0) {
-      const reasons: string[] = []
-      if (difficultyMode && difficultyMode !== 'random') reasons.push(`dificultad "${difficultyMode}"`)
-      if (onlyOfficialQuestions) reasons.push('solo preguntas oficiales')
-      if (selectedLaws?.length) reasons.push(`leyes: ${selectedLaws.join(', ')}`)
-      return {
-        success: true,
-        questions: [],
-        totalAvailable: 0,
-        filtersApplied: {
-          laws: selectedLaws?.length || 0,
-          articles: Object.keys(selectedArticlesByLaw || {}).length,
-          sections: selectedSectionFilters?.length || 0,
-        },
-        emptyReason: reasons.length > 0
-          ? `No hay preguntas con los filtros: ${reasons.join(', ')}`
-          : 'No hay preguntas disponibles para esta configuración',
-      }
-    }
-
-    // 6️⃣ Filtros JS de usuario (IDÉNTICO al legacy)
-    let filteredQuestions: LightweightQuestionRow[] = [...allQuestions]
-
-    // 6a. Excluir recientes
-    if (excludeRecentDays && excludeRecentDays > 0 && userId) {
-      const recentIds = await getRecentlyAnsweredQuestionIds(db, userId, excludeRecentDays)
-      if (recentIds.length > 0) {
-        const recentSet = new Set(recentIds)
-        filteredQuestions = filteredQuestions.filter(q => !recentSet.has(q.id))
-        console.log(`🔄 [id-first] Excluidas ${recentIds.length} recientes, quedan ${filteredQuestions.length}`)
-      }
-    }
-
-    // 6b. Solo artículos esenciales (con preguntas oficiales)
-    if (focusEssentialArticles) {
-      const articlesWithOfficial = new Set(
-        allQuestions
-          .filter(q => q.isOfficialExam === true)
-          .map(q => q.articleNumber),
-      )
-      filteredQuestions = filteredQuestions.filter(q =>
-        articlesWithOfficial.has(q.articleNumber),
-      )
-      console.log(`📌 [id-first] Filtradas a ${filteredQuestions.length} preguntas de artículos esenciales`)
-    }
-
-    // 6c. Priorizar nunca vistas
-    let sortedQuestions: LightweightQuestionRow[] = filteredQuestions
-    if (prioritizeNeverSeen && userId) {
-      const allIds = filteredQuestions.map(q => q.id)
-      const neverSeenIds = await getNeverSeenQuestionIds(db, userId, allIds)
-      const neverSeenSet = new Set(neverSeenIds)
-      sortedQuestions = [
-        ...filteredQuestions.filter(q => neverSeenSet.has(q.id)),
-        ...filteredQuestions.filter(q => !neverSeenSet.has(q.id)),
-      ]
-      console.log(`👁️ [id-first] ${neverSeenIds.length} nunca vistas priorizadas`)
-    }
-
-    // 7️⃣ Selección final (los helpers operan sobre {id, articleNumber, lawShortName, ...} — IDÉNTICO al legacy)
-    let finalQuestions: LightweightQuestionRow[]
-    if (isLawOnlyMode && selectedLaws && selectedLaws.length > 1) {
-      finalQuestions = selectEquitativeByLaw(sortedQuestions, selectedLaws, numQuestions)
-    } else if (proportionalByTopic && topicsToQuery.length > 1) {
-      finalQuestions = selectProportionally(sortedQuestions, topicsToQuery, numQuestions)
-    } else if (prioritizeNeverSeen && userId) {
-      finalQuestions = sortedQuestions.slice(0, numQuestions)
-    } else {
-      finalQuestions = sortedQuestions.sort(() => Math.random() - 0.5).slice(0, numQuestions)
-    }
-
-    // 7b. Distribución por artículo (selectProportionallyByArticle es genérica sobre {id, articleNumber, lawShortName})
-    if (finalQuestions.length > 3) {
-      finalQuestions = selectProportionallyByArticle(
-        finalQuestions,
-        sortedQuestions,
-        numQuestions,
-        { log: true },
-      )
-    }
-
-    if (!finalQuestions || !Array.isArray(finalQuestions)) {
-      console.error('❌ [id-first] finalQuestions inválido:', typeof finalQuestions)
-      return { success: false, error: 'Error interno: resultado de preguntas inválido' }
-    }
-
-    // 8️⃣ Q2 HIDRATACIÓN: trae filas completas para los IDs ganadores
-    const selectedIds = finalQuestions.map(q => q.id)
-    const hydrated = await hydrateSelectedQuestions(db, selectedIds)
-
-    // Reconstruir orden + añadir sourceTopic desde la selección JS (que lo lleva por mapping)
-    const orderedRows: QuestionRow[] = []
-    let droppedDuringHydration = 0
-    for (const lite of finalQuestions) {
-      const full = hydrated.get(lite.id)
-      if (!full) {
-        droppedDuringHydration++
-        continue
-      }
-      orderedRows.push({ ...full, sourceTopic: lite.sourceTopic })
-    }
-    if (droppedDuringHydration > 0) {
-      console.warn(`⚠️ [id-first] ${droppedDuringHydration}/${selectedIds.length} preguntas dropeadas en hidratación (race con desactivación)`)
-    }
-
-    const transformedQuestions: FilteredQuestion[] = orderedRows.map((q, i) => transformQuestion(q, i))
-
-    return {
-      success: true,
-      questions: transformedQuestions,
-      totalAvailable: filteredQuestions.length,
-      filtersApplied: {
-        laws: selectedLaws?.length || 0,
-        articles: Object.keys(selectedArticlesByLaw || {}).length,
-        sections: selectedSectionFilters?.length || 0,
-      },
-    }
-  } catch (error) {
-    console.error('❌ [id-first] Error obteniendo preguntas filtradas:', error)
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Error desconocido',

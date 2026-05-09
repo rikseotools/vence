@@ -26,7 +26,5 @@ export {
 // Queries
 export {
   getFilteredQuestions,
-  getFilteredQuestionsLegacy,
-  getFilteredQuestionsIdFirst,
   countFilteredQuestions,
 } from './queries'
