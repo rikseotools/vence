@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import ClientBreadcrumbsWrapper from '@/components/ClientBreadcrumbsWrapper'
 import CompararTemariosClient from './CompararTemariosClient'
 import { OPOSICIONES } from '@/lib/config/oposiciones'
@@ -45,6 +46,17 @@ export default function CompararTemariosPage() {
             Selecciona dos oposiciones para ver qué leyes comparten, cuáles
             son exclusivas de cada una y el porcentaje exacto de solapamiento
             artículo por artículo.
+          </p>
+          <p className="mt-3">
+            <Link
+              href="/oposiciones"
+              className="inline-flex items-center gap-1.5 text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300"
+            >
+              O consulta las compatibilidades de una oposición concreta
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </Link>
           </p>
         </header>
 

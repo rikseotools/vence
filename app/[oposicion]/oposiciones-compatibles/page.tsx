@@ -299,6 +299,15 @@ export default async function OposicionesCompatiblesPage({
               </>
             )}
           </p>
+          <Link
+            href="/comparar-temarios"
+            className="inline-flex items-center gap-1.5 text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 mt-3"
+          >
+            O compara dos oposiciones concretas
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </Link>
         </header>
 
         {/* Summary stats */}
