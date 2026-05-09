@@ -1629,14 +1629,26 @@ function PerfilPageContent() {
                 } catch { return isoDate }
               }
 
-              const icons: Record<string, string> = { activated: '🟢', cancelled: '🔴', reactivated: '🟢', renewal: '📅', refunded: '💸' }
-              const labels: Record<string, string> = { activated: 'Suscripción activada', cancelled: 'Cancelación solicitada', reactivated: 'Suscripción reactivada', renewal: 'Próxima renovación', refunded: 'Reembolso procesado' }
+              const icons: Record<string, string> = { activated: '🟢', cancelled: '🔴', reactivated: '🟢', renewal: '📅', refunded: '💸', compensation: '🎁' }
+              const labels: Record<string, string> = { activated: 'Suscripción activada', cancelled: 'Cancelación solicitada', reactivated: 'Suscripción reactivada', renewal: 'Próxima renovación', refunded: 'Reembolso procesado', compensation: 'Compensación aplicada' }
+
+              // Formatea el detalle de un compensation event: "+7 días" / "5€ crédito" / "20% dto"
+              const formatCompensation = (e: { amountValue?: number; amountUnit?: string; reasonDetail?: string | null }): string => {
+                if (!e.amountValue || !e.amountUnit) return ''
+                const v = e.amountValue
+                const unit = e.amountUnit
+                const amountStr = unit === 'days' ? `+${v} ${v === 1 ? 'día' : 'días'}`
+                  : unit === 'eur' ? `${v}€ crédito`
+                  : unit === 'percent' ? `${v}% dto`
+                  : `${v} ${unit}`
+                return e.reasonDetail ? `${amountStr} — ${e.reasonDetail}` : amountStr
+              }
 
               return (
                 <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-5">
                   <h5 className="font-medium text-gray-800 dark:text-white mb-3 text-sm">Historial</h5>
                   <div className="space-y-3">
-                    {(subscriptionData as any).timeline.map((event: { type: string; date: string }, i: number) => (
+                    {(subscriptionData as any).timeline.map((event: { type: string; date: string; amountValue?: number; amountUnit?: string; reasonDetail?: string | null }, i: number) => (
                       <div key={i} className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-sm">
                         <span className="shrink-0">{icons[event.type] || '•'}</span>
                         <span className="text-gray-500 dark:text-gray-400 shrink-0">{formatShortDate(event.date)}</span>
@@ -1648,6 +1660,11 @@ function PerfilPageContent() {
                         )}
                         {event.type === 'renewal' && !discountedAmount && amount > 0 && (
                           <span className="text-gray-500">{amount}€</span>
+                        )}
+                        {event.type === 'compensation' && (
+                          <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+                            {formatCompensation(event)}
+                          </span>
                         )}
                       </div>
                     ))}

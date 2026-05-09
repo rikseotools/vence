@@ -188,7 +188,38 @@ async function buildTimeline(
     // No bloquear si falla
   }
 
-  // 3. Próxima renovación (solo si no está cancelada)
+  // 3. Adjustments admin (compensaciones, créditos, descuentos, reembolsos)
+  // Source: tabla subscription_adjustments (audit trail). Stripe = source of
+  // truth para el estado, esta tabla = contexto admin (quién, por qué).
+  try {
+    const adjRows = await db.execute(sql`
+      SELECT created_at, adjustment_type, amount_value, amount_unit, reason_detail
+      FROM public.subscription_adjustments
+      WHERE user_id = ${userId}::uuid
+        AND stripe_subscription_id = ${subscription.id}
+      ORDER BY created_at ASC
+    `)
+    const adjustments = (adjRows as { rows?: Array<Record<string, unknown>> }).rows
+      ?? (adjRows as unknown as Array<Record<string, unknown>>)
+      ?? []
+    for (const a of adjustments) {
+      // Mapeo a tipo timeline para que el front (que ya tiene icons hardcoded)
+      // pueda mostrar el evento. 'time_extension' y 'credit'/'discount' van como
+      // 'compensation' (icon 🎁) — el front maneja el detalle del amount/unit.
+      const evtType = a.adjustment_type === 'refund' ? 'refunded' : 'compensation'
+      timeline.push({
+        type: evtType,
+        date: new Date(a.created_at as string).toISOString().substring(0, 10),
+        amountValue: typeof a.amount_value === 'number' ? a.amount_value : Number(a.amount_value),
+        amountUnit: a.amount_unit as 'days' | 'eur' | 'percent',
+        reasonDetail: a.reason_detail as string | null,
+      } as { type: string; date: string; amountValue?: number; amountUnit?: string; reasonDetail?: string | null })
+    }
+  } catch {
+    // No bloquear si falla — timeline sin adjustments es degradación aceptable
+  }
+
+  // 4. Próxima renovación (solo si no está cancelada)
   if (!subscription.cancel_at_period_end && periodEnd) {
     timeline.push({ type: 'renewal', date: periodEnd.substring(0, 10) })
   }
