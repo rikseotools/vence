@@ -4,6 +4,7 @@ import { getDb } from '@/db/client'
 import { topics, topicScope, articles, laws, questions } from '@/db/schema'
 import { eq, and, inArray, sql, count } from 'drizzle-orm'
 import { unstable_cache } from 'next/cache'
+import { safeServerFetch } from '@/lib/db/safeServerFetch'
 import type {
   TopicContent,
   LawWithArticles,
@@ -306,6 +307,14 @@ function exceedsCacheLimit(slug: string, topicNumber: number): boolean {
   return TOPICS_EXCEEDING_CACHE_LIMIT.has(`${slug}:${topicNumber}`)
 }
 
+// Quick-fail timeout para getTopicContent. Las 37 SSR pages de temario lo
+// llaman; sin esto, un blip de pool cuelga el render hasta el límite de
+// Vercel (300s). El cached subyacente (unstable_cache) NO maneja errores
+// de BD por sí mismo, así que el wrap externo es la única protección.
+// Las pages tratan null → notFound() lo cual es UX subóptima en blip,
+// pero strictly mejor que 5min de carga blanca.
+const TOPIC_CONTENT_TIMEOUT_MS = 15000
+
 // Función pública para obtener contenido del tema
 export async function getTopicContent(
   oposicionSlug: OposicionSlug,
@@ -313,9 +322,16 @@ export async function getTopicContent(
 ): Promise<TopicContent | null> {
   // Bypass cache para temas conocidos que exceden el límite de 2MB.
   // Sin esto, unstable_cache loguea warning en cada request a estos temas.
-  const baseContent = exceedsCacheLimit(oposicionSlug, topicNumber)
-    ? await getTopicContentBaseInternal(oposicionSlug, topicNumber)
-    : await getTopicContentBaseCached(oposicionSlug, topicNumber)
+  const fetchBase = () =>
+    exceedsCacheLimit(oposicionSlug, topicNumber)
+      ? getTopicContentBaseInternal(oposicionSlug, topicNumber)
+      : getTopicContentBaseCached(oposicionSlug, topicNumber)
+
+  const baseContent = await safeServerFetch(
+    fetchBase,
+    TOPIC_CONTENT_TIMEOUT_MS,
+    `topic-content:${oposicionSlug}:${topicNumber}`,
+  )
 
   if (!baseContent) {
     return null
