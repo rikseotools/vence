@@ -767,7 +767,7 @@ export default function HeaderES() {
                 return opoConfig ? (
                   <Link
                     href={`/${opoConfig.slug}/oposiciones-compatibles`}
-                    className="hidden md:flex p-2 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg transition-colors"
+                    className="flex p-2 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg transition-colors"
                     aria-label="Oposiciones compatibles"
                     title="Oposiciones compatibles con tu temario"
                   >
