@@ -1629,8 +1629,8 @@ function PerfilPageContent() {
                 } catch { return isoDate }
               }
 
-              const icons: Record<string, string> = { activated: '🟢', cancelled: '🔴', reactivated: '🟢', renewal: '📅' }
-              const labels: Record<string, string> = { activated: 'Suscripción activada', cancelled: 'Cancelación solicitada', reactivated: 'Suscripción reactivada', renewal: 'Próxima renovación' }
+              const icons: Record<string, string> = { activated: '🟢', cancelled: '🔴', reactivated: '🟢', renewal: '📅', refunded: '💸' }
+              const labels: Record<string, string> = { activated: 'Suscripción activada', cancelled: 'Cancelación solicitada', reactivated: 'Suscripción reactivada', renewal: 'Próxima renovación', refunded: 'Reembolso procesado' }
 
               return (
                 <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-5">

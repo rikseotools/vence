@@ -178,6 +178,8 @@ async function buildTimeline(
     for (const fb of feedbacks) {
       if (fb.cancellation_type === 'reactivation') {
         timeline.push({ type: 'reactivated', date: new Date(fb.created_at).toISOString().substring(0, 10) })
+      } else if (fb.cancellation_type === 'manual_refund') {
+        timeline.push({ type: 'refunded', date: new Date(fb.created_at).toISOString().substring(0, 10) })
       } else {
         timeline.push({ type: 'cancelled', date: new Date(fb.created_at).toISOString().substring(0, 10) })
       }

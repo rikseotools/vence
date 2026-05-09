@@ -52,7 +52,27 @@ const { data: pages } = await supabase.from('user_interactions')
 
 **La garantía de 15 días se cuenta desde la fecha de PAGO, no desde el registro.**
 
-### 1. Procesar Reembolso en Stripe (Manuel)
+### 1. Procesar Reembolso en Stripe
+
+#### Opción A: Desde Claude Code (recomendado)
+
+```bash
+node -e "
+const Stripe = require('/home/manuel/Documentos/github/vence/node_modules/stripe').default;
+require('dotenv').config({ path: '.env.local' });
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+(async () => {
+  const refund = await stripe.refunds.create({
+    charge: 'ch_XXXXX',           // <-- CAMBIAR: ID del cargo a reembolsar
+    reason: 'requested_by_customer',
+  });
+  console.log('Refund:', refund.id, refund.amount / 100, refund.currency, refund.status);
+})();
+"
+```
+
+#### Opción B: Desde Stripe Dashboard (Manuel)
 
 1. Ir a [Stripe Dashboard → Payments](https://dashboard.stripe.com/payments)
 2. Buscar el pago del usuario
@@ -61,7 +81,24 @@ const { data: pages } = await supabase.from('user_interactions')
 
 **Nota:** El reembolso tarda 5-10 días hábiles en aparecer en la cuenta del usuario.
 
-### 2. Cancelar Suscripción en Stripe (Manuel)
+### 2. Cancelar Suscripción en Stripe
+
+#### Opción A: Desde Claude Code (recomendado)
+
+```bash
+node -e "
+const Stripe = require('/home/manuel/Documentos/github/vence/node_modules/stripe').default;
+require('dotenv').config({ path: '.env.local' });
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+(async () => {
+  const canceled = await stripe.subscriptions.cancel('sub_XXXXX');  // <-- CAMBIAR
+  console.log('Status:', canceled.status, '| Canceled at:', new Date(canceled.canceled_at * 1000).toISOString());
+})();
+"
+```
+
+#### Opción B: Desde Stripe Dashboard (Manuel)
 
 1. Ir a [Stripe Dashboard → Subscriptions](https://dashboard.stripe.com/subscriptions)
 2. Buscar la suscripción del usuario (por email o customer ID)
@@ -70,6 +107,13 @@ const { data: pages } = await supabase.from('user_interactions')
 5. Confirmar cancelación
 
 **Verificar:** El status debe cambiar a `canceled`
+
+### Caso real: Ana María Delgado (09/05/2026)
+
+- Suscripción trimestral 35€, renovación automática 31,50€ (con descuento fidelidad)
+- Refund `re_3TUrSXIeJQ31GiEC2dCmvimp` procesado via Stripe API (opción A)
+- Suscripción `sub_1Sya4mIeJQ31GiEChf3hI3eM` cancelada inmediatamente via API
+- Usuaria no recibió email de aviso de renovación (bug: `user_subscriptions` desincronizada con Stripe, test de integridad añadido)
 
 ### 3. Degradar Usuario en Base de Datos (Claude Code)
 
@@ -177,17 +221,18 @@ const REASON = 'Usuario solicitó devolución';    // <-- CAMBIAR si es necesari
 ```
 1. Usuario solicita devolución (feedback/soporte/email)
    ↓
-2. Manuel dice a Claude: "investiga el journey de [usuario]"
+2. Claude investiga: perfil, fecha pago, días, tests, actividad, ¿dentro de garantía?
    ↓
-3. Claude reporta: fecha pago, días, tests, actividad, ¿dentro de garantía?
+3. Manuel aprueba el reembolso
    ↓
-4. Manuel procesa refund + cancela suscripción en Stripe
+4. Claude ejecuta TODO via Stripe API + Supabase:
+   - Refund en Stripe (stripe.refunds.create)
+   - Cancelar suscripción en Stripe (stripe.subscriptions.cancel)
+   - user_profiles → free
+   - user_subscriptions → canceled
+   - cancellation_feedback → insert
    ↓
-5. Manuel dice a Claude: "cancela el plan de [usuario]"
-   ↓
-6. Claude ejecuta: user_profiles → free, user_subscriptions → canceled, cancellation_feedback → insert
-   ↓
-7. Manuel responde al usuario (o Claude propone borrador)
+5. Claude propone borrador de respuesta → Manuel aprueba → Claude envía
 ```
 
 ## Comunicación con el Usuario
