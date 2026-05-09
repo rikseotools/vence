@@ -12,6 +12,14 @@ import {
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { checkRateLimit, getClientIp, RATE_LIMIT_QUESTIONS } from '@/lib/api/rateLimit'
 import { logValidationError } from '@/lib/api/validation-error-log'
+import { withDbTimeout, isDbTimeoutError } from '@/lib/db/timeout'
+
+// maxDuration bajado a 20s tras cascada del 8 may 23:27 UTC (504 a 300s).
+// La query analítica de getFilteredQuestions puede ser pesada; 20s da margen.
+export const maxDuration = 20
+
+const FILTERED_TIMEOUT_MS = 15000
+const COUNT_TIMEOUT_MS = 8000
 
 /** Extract userId from Bearer token (optional — returns null if not authenticated) */
 async function getOptionalUserId(request: NextRequest): Promise<string | null> {
@@ -92,8 +100,11 @@ async function _POST(request: NextRequest) {
       )
     }
 
-    // Obtener preguntas filtradas via Drizzle
-    const result = await getFilteredQuestions(validation.data)
+    // Obtener preguntas filtradas via Drizzle (con quick-fail)
+    const result = await withDbTimeout(
+      () => getFilteredQuestions(validation.data),
+      FILTERED_TIMEOUT_MS,
+    )
 
     if (!result.success) {
       return NextResponse.json(
@@ -110,6 +121,13 @@ async function _POST(request: NextRequest) {
       ...(result.emptyReason && { emptyReason: result.emptyReason }),
     })
   } catch (error) {
+    if (isDbTimeoutError(error)) {
+      console.warn('⏱️ [API/questions/filtered] POST Timeout (quick-fail):', error.timeoutMs, 'ms')
+      return NextResponse.json(
+        { success: false, error: 'Servicio temporalmente saturado. Reintenta.', retryable: true },
+        { status: 503, headers: { 'Retry-After': '5' } },
+      )
+    }
     console.error('❌ Error en API /questions/filtered:', error)
     return NextResponse.json(
       { success: false, error: 'Error interno del servidor' },
@@ -173,8 +191,11 @@ async function _GET(request: NextRequest) {
       )
     }
 
-    // Contar preguntas via Drizzle
-    const result = await countFilteredQuestions(validation.data)
+    // Contar preguntas via Drizzle (con quick-fail)
+    const result = await withDbTimeout(
+      () => countFilteredQuestions(validation.data),
+      COUNT_TIMEOUT_MS,
+    )
 
     if (!result.success) {
       return NextResponse.json(
@@ -189,6 +210,13 @@ async function _GET(request: NextRequest) {
       byLaw: result.byLaw,
     })
   } catch (error) {
+    if (isDbTimeoutError(error)) {
+      console.warn('⏱️ [API/questions/filtered] GET Timeout (quick-fail):', error.timeoutMs, 'ms')
+      return NextResponse.json(
+        { success: false, error: 'Servicio temporalmente saturado. Reintenta.', retryable: true },
+        { status: 503, headers: { 'Retry-After': '5' } },
+      )
+    }
     console.error('❌ Error en API /questions/filtered (count):', error)
     return NextResponse.json(
       { success: false, error: 'Error interno del servidor' },

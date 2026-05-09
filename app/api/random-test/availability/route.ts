@@ -8,7 +8,13 @@ import {
 } from '@/lib/api/random-test/schemas'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { withDbTimeout, isDbTimeoutError } from '@/lib/db/timeout'
 export const dynamic = 'force-dynamic'
+// maxDuration bajado a 15s tras cascada del 8 may 23:27 UTC (504 ×3 simultáneos
+// en blip pool). La query subyacente normalmente <600ms, 15s da margen amplio.
+export const maxDuration = 15
+
+const AVAILABILITY_TIMEOUT_MS = 12000
 
 // ============================================
 // Cache in-memory por instancia Vercel Fluid (TTL 60s)
@@ -72,8 +78,11 @@ async function _POST(request: NextRequest): Promise<NextResponse<AvailabilityRes
       })
     }
 
-    // Cache miss: query BD y guardar
-    const availability = await checkQuestionAvailability(parseResult.data)
+    // Cache miss: query BD y guardar (con quick-fail)
+    const availability = await withDbTimeout(
+      () => checkQuestionAvailability(parseResult.data),
+      AVAILABILITY_TIMEOUT_MS,
+    )
     cache.set(key, {
       value: {
         total: availability.total,
@@ -91,6 +100,14 @@ async function _POST(request: NextRequest): Promise<NextResponse<AvailabilityRes
       byTheme: availability.byTheme,
     })
   } catch (error) {
+    if (isDbTimeoutError(error)) {
+      console.warn('⏱️ [API/random-test/availability] Timeout (quick-fail):', error.timeoutMs, 'ms')
+      return NextResponse.json({
+        success: false,
+        availableQuestions: 0,
+        error: 'Servicio temporalmente saturado. Reintenta.',
+      }, { status: 503, headers: { 'Retry-After': '5' } })
+    }
     console.error('❌ [API/random-test/availability] Error:', error)
     return NextResponse.json({
       success: false,

@@ -17,6 +17,11 @@ import {
 } from '@/lib/api/admin-sales-prediction'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+
+// maxDuration bajado a 30s tras cascada del 8 may 23:27 UTC (504 a 300s).
+// Endpoint admin con varias queries pesadas + Stripe API; 30s da margen sin
+// permitir que un blip pool retenga el lambda los 5 minutos completos.
+export const maxDuration = 30
 // Helper para llamar a la API de Stripe directamente
 function stripeGet(path: string): Promise<{ data: StripeSubscription[]; has_more: boolean }> {
   return new Promise((resolve, reject) => {

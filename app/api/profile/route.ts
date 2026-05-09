@@ -7,10 +7,19 @@ import {
   updateProfile
 } from '@/lib/api/profile'
 import { isAdminEmail } from '@/lib/api/shared/auth'
+import { withDbTimeout, isDbTimeoutError } from '@/lib/db/timeout'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
+// maxDuration bajado a 10s tras cascada del 8 may 23:27 UTC donde /api/profile
+// hit 300s sin protección. Endpoint llamado en cada page load del user logueado.
+export const maxDuration = 10
+
+// Quick-fail timeout. La query es proyección de user_profiles + cache 60s
+// (unstable_cache). 8s da margen para cold cache y aún corta antes del límite.
+const PROFILE_GET_TIMEOUT_MS = 8000
+const PROFILE_PUT_TIMEOUT_MS = 8000
 
 // ============================================
 // SHADOW-MODE AUTH CHECK (paso 3/7)
@@ -110,7 +119,10 @@ async function _GET(request: NextRequest) {
     // Obtener perfil (cache 60s, tag 'profile').
     // Proyección "self": excluye stripeCustomerId, registrationIp,
     // registrationUrl, adminNotes (sensibles, no necesarios al cliente).
-    const result = await getProfileForSelfCached(parseResult.data)
+    const result = await withDbTimeout(
+      () => getProfileForSelfCached(parseResult.data),
+      PROFILE_GET_TIMEOUT_MS,
+    )
 
     if (!result.success) {
       return NextResponse.json(result, { status: 404 })
@@ -124,6 +136,13 @@ async function _GET(request: NextRequest) {
     })
 
   } catch (error) {
+    if (isDbTimeoutError(error)) {
+      console.warn('⏱️ [API/profile] GET Timeout (quick-fail):', error.timeoutMs, 'ms')
+      return NextResponse.json(
+        { success: false, error: 'Servicio temporalmente saturado. Reintenta.', retryable: true },
+        { status: 503, headers: { 'Retry-After': '5' } },
+      )
+    }
     console.error('❌ [API/profile] Error GET:', error)
     return NextResponse.json(
       { success: false, error: 'Error interno del servidor' },
@@ -153,8 +172,11 @@ async function _PUT(request: NextRequest) {
     // Shadow-mode auth check (paso 3/7) — sólo loguea, no bloquea (sync, 0 ms)
     shadowAuthCheck(request, parseResult.data.userId, 'PUT')
 
-    // Actualizar perfil
-    const result = await updateProfile(parseResult.data)
+    // Actualizar perfil (write path)
+    const result = await withDbTimeout(
+      () => updateProfile(parseResult.data),
+      PROFILE_PUT_TIMEOUT_MS,
+    )
 
     if (!result.success) {
       return NextResponse.json(result, { status: 400 })
@@ -163,6 +185,13 @@ async function _PUT(request: NextRequest) {
     return NextResponse.json(result)
 
   } catch (error) {
+    if (isDbTimeoutError(error)) {
+      console.warn('⏱️ [API/profile] PUT Timeout (quick-fail):', error.timeoutMs, 'ms')
+      return NextResponse.json(
+        { success: false, error: 'Servicio temporalmente saturado. Reintenta.', retryable: true },
+        { status: 503, headers: { 'Retry-After': '5' } },
+      )
+    }
     console.error('❌ [API/profile] Error PUT:', error)
     return NextResponse.json(
       { success: false, error: 'Error interno del servidor' },
