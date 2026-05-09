@@ -1,18 +1,36 @@
 // app/api/questions/filtered/route.ts - API para obtener preguntas filtradas
 // Usa Drizzle ORM + Zod para validación tipada
+//
+// Estrategia de cache (refactor 2026-05-09 sprint cascade post-fix weak-articles):
+// - POST: stale-if-error puro (RFC 5861). NO hay fast-path de cache fresco
+//   porque las respuestas son aleatorias y reusarlas degrada UX (dos creates
+//   con mismo body devolverían los mismos 25 IDs). Siempre se va a BD; en
+//   timeout se sirve la cache stale si existe (200) en lugar de 503.
+// - GET ?action=count: fresh + stale (count es determinista, mismo patrón
+//   que weak-articles).
+//
+// Cache key: filtered_q[:count]:{userId|'anon'}:{sha256(normalized_body).slice(0,16)}
+// userId siempre del Bearer token (server-side). Body normalizado con orden
+// de claves fijo y arrays orden-insensibles ordenados.
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { createHash } from 'crypto'
 import {
   getFilteredQuestions,
   countFilteredQuestions,
   safeParseGetFilteredQuestions,
   safeParseCountFilteredQuestions,
+  type GetFilteredQuestionsRequest,
+  type GetFilteredQuestionsResponse,
+  type CountFilteredQuestionsRequest,
+  type CountFilteredQuestionsResponse,
 } from '@/lib/api/filtered-questions'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { checkRateLimit, getClientIp, RATE_LIMIT_QUESTIONS } from '@/lib/api/rateLimit'
 import { logValidationError } from '@/lib/api/validation-error-log'
 import { withDbTimeout, isDbTimeoutError } from '@/lib/db/timeout'
+import { getCached, setCached } from '@/lib/cache/redis'
 
 // maxDuration bajado a 20s tras cascada del 8 may 23:27 UTC (504 a 300s).
 // La query analítica de getFilteredQuestions puede ser pesada; 20s da margen.
@@ -20,6 +38,88 @@ export const maxDuration = 20
 
 const FILTERED_TIMEOUT_MS = 15000
 const COUNT_TIMEOUT_MS = 8000
+
+// TTL stale: 10 min. Cubre blips típicos (5-30s) y los atípicos del 8 may (3 min).
+// Más allá de 10 min cachear preguntas tiene riesgo de servir contenido desactualizado
+// (preguntas que pasaron a quarantine o fueron retiradas por lifecycle).
+const STALE_TTL_S = 10 * 60
+// Fresh window solo para count (determinista). 60s.
+const COUNT_FRESH_WINDOW_MS = 60 * 1000
+
+interface CachedFilteredResult {
+  data: GetFilteredQuestionsResponse
+  ts: number
+}
+
+interface CachedCountResult {
+  data: CountFilteredQuestionsResponse
+  ts: number
+}
+
+/**
+ * Serializa el body validado en un formato canónico (orden de claves fijo,
+ * arrays orden-insensibles ordenados) para usar como input del hash de cache key.
+ *
+ * Cualquier cambio de campo en GetFilteredQuestionsRequest debe reflejarse aquí
+ * o tendremos colisiones de cache (dos bodies semánticamente distintos pero con
+ * el mismo hash).
+ */
+function normalizeFilteredBody(b: GetFilteredQuestionsRequest): string {
+  const sortedArticlesByLaw: Record<string, Array<number | string>> = {}
+  for (const k of Object.keys(b.selectedArticlesByLaw || {}).sort()) {
+    sortedArticlesByLaw[k] = [...(b.selectedArticlesByLaw![k] || [])].map(String).sort()
+  }
+  return JSON.stringify({
+    topicNumber: b.topicNumber ?? 0,
+    positionType: b.positionType,
+    multipleTopics: [...(b.multipleTopics || [])].sort((a, b) => a - b),
+    numQuestions: b.numQuestions ?? 25,
+    selectedLaws: [...(b.selectedLaws || [])].sort(),
+    selectedArticlesByLaw: sortedArticlesByLaw,
+    // section filters: array de objetos — JSON.stringify con sort de claves manual
+    selectedSectionFilters: (b.selectedSectionFilters || []).map(s => ({
+      title: s.title,
+      articleRange: s.articleRange,
+      sectionNumber: s.sectionNumber,
+      sectionType: s.sectionType,
+    })),
+    onlyOfficialQuestions: !!b.onlyOfficialQuestions,
+    includeSharedOfficials: !!b.includeSharedOfficials,
+    difficultyMode: b.difficultyMode || 'random',
+    excludeRecentDays: b.excludeRecentDays ?? 0,
+    focusEssentialArticles: !!b.focusEssentialArticles,
+    prioritizeNeverSeen: !!b.prioritizeNeverSeen,
+    proportionalByTopic: !!b.proportionalByTopic,
+    onlyFailedQuestions: !!b.onlyFailedQuestions,
+    failedQuestionIds: [...(b.failedQuestionIds || [])].sort(),
+    primaryArticleIds: [...(b.primaryArticleIds || [])].sort(),
+  })
+}
+
+function normalizeCountBody(b: CountFilteredQuestionsRequest): string {
+  const sortedArticlesByLaw: Record<string, Array<number | string>> = {}
+  for (const k of Object.keys(b.selectedArticlesByLaw || {}).sort()) {
+    sortedArticlesByLaw[k] = [...(b.selectedArticlesByLaw![k] || [])].map(String).sort()
+  }
+  return JSON.stringify({
+    topicNumber: b.topicNumber,
+    positionType: b.positionType,
+    selectedLaws: [...(b.selectedLaws || [])].sort(),
+    selectedArticlesByLaw: sortedArticlesByLaw,
+    selectedSectionFilters: (b.selectedSectionFilters || []).map(s => ({
+      title: s.title,
+      articleRange: s.articleRange,
+      sectionNumber: s.sectionNumber,
+      sectionType: s.sectionType,
+    })),
+    onlyOfficialQuestions: !!b.onlyOfficialQuestions,
+    includeSharedOfficials: !!b.includeSharedOfficials,
+  })
+}
+
+function hashKey(normalized: string): string {
+  return createHash('sha256').update(normalized).digest('hex').slice(0, 16)
+}
 
 /** Extract userId from Bearer token (optional — returns null if not authenticated) */
 async function getOptionalUserId(request: NextRequest): Promise<string | null> {
@@ -100,34 +200,59 @@ async function _POST(request: NextRequest) {
       )
     }
 
-    // Obtener preguntas filtradas via Drizzle (con quick-fail)
-    const result = await withDbTimeout(
-      () => getFilteredQuestions(validation.data),
-      FILTERED_TIMEOUT_MS,
-    )
+    // Cache key: stale-if-error sólo. Sin fast-path de cache fresco para
+    // preservar aleatoriedad UX (cada POST debe dar selección nueva en
+    // condiciones normales).
+    const cacheKey = `filtered_q:${authUserId ?? 'anon'}:${hashKey(normalizeFilteredBody(validation.data))}`
 
-    if (!result.success) {
-      return NextResponse.json(
-        { success: false, error: result.error },
-        { status: result.error?.includes('No se encontró') ? 404 : 400 }
+    try {
+      const result = await withDbTimeout(
+        () => getFilteredQuestions(validation.data),
+        FILTERED_TIMEOUT_MS,
       )
-    }
 
-    return NextResponse.json({
-      success: true,
-      questions: result.questions,
-      totalAvailable: result.totalAvailable,
-      filtersApplied: result.filtersApplied,
-      ...(result.emptyReason && { emptyReason: result.emptyReason }),
-    })
+      if (!result.success) {
+        return NextResponse.json(
+          { success: false, error: result.error },
+          { status: result.error?.includes('No se encontró') ? 404 : 400 }
+        )
+      }
+
+      const response = {
+        success: true,
+        questions: result.questions,
+        totalAvailable: result.totalAvailable,
+        filtersApplied: result.filtersApplied,
+        ...(result.emptyReason && { emptyReason: result.emptyReason }),
+      }
+
+      // Cachear sólo respuestas útiles: éxito + al menos 1 pregunta. Cachear
+      // resultados vacíos podría perpetuar errores transitorios de scope/oposición
+      // en la cache stale. Fire-and-forget — Redis lento NO bloquea el usuario.
+      if (result.questions && result.questions.length > 0) {
+        setCached(cacheKey, { data: response, ts: Date.now() }, STALE_TTL_S)
+      }
+
+      return NextResponse.json(response)
+    } catch (error) {
+      if (isDbTimeoutError(error)) {
+        // Stale-if-error: si tenemos cache (de cualquier antigüedad <10min),
+        // servir stale en lugar de 503. Mejor UX en blips de pooler regional.
+        const cached = await getCached<CachedFilteredResult>(cacheKey)
+        if (cached?.data?.success && cached.data.questions && cached.data.questions.length > 0) {
+          const ageS = Math.floor((Date.now() - cached.ts) / 1000)
+          console.warn(`⏱️ [API/questions/filtered] POST timeout, sirviendo cache stale (${ageS}s old)`)
+          return NextResponse.json(cached.data)
+        }
+        console.warn('⏱️ [API/questions/filtered] POST Timeout (quick-fail) sin cache:', error.timeoutMs, 'ms')
+        return NextResponse.json(
+          { success: false, error: 'Servicio temporalmente saturado. Reintenta.', retryable: true },
+          { status: 503, headers: { 'Retry-After': '5' } },
+        )
+      }
+      throw error
+    }
   } catch (error) {
-    if (isDbTimeoutError(error)) {
-      console.warn('⏱️ [API/questions/filtered] POST Timeout (quick-fail):', error.timeoutMs, 'ms')
-      return NextResponse.json(
-        { success: false, error: 'Servicio temporalmente saturado. Reintenta.', retryable: true },
-        { status: 503, headers: { 'Retry-After': '5' } },
-      )
-    }
     console.error('❌ Error en API /questions/filtered:', error)
     return NextResponse.json(
       { success: false, error: 'Error interno del servidor' },
@@ -191,32 +316,55 @@ async function _GET(request: NextRequest) {
       )
     }
 
-    // Contar preguntas via Drizzle (con quick-fail)
-    const result = await withDbTimeout(
-      () => countFilteredQuestions(validation.data),
-      COUNT_TIMEOUT_MS,
-    )
+    // Cache: count es determinista → fast-path fresco (60s) + stale-if-error.
+    // Anonymous porque count NO depende del usuario (es global por
+    // topic/positionType/filtros). Si cambia esto, añadir userId a la key.
+    const cacheKey = `filtered_q_count:${hashKey(normalizeCountBody(validation.data))}`
+    const cached = await getCached<CachedCountResult>(cacheKey)
 
-    if (!result.success) {
-      return NextResponse.json(
-        { success: false, error: result.error },
-        { status: 400 }
-      )
+    if (cached && Date.now() - cached.ts < COUNT_FRESH_WINDOW_MS) {
+      return NextResponse.json(cached.data)
     }
 
-    return NextResponse.json({
-      success: true,
-      count: result.count,
-      byLaw: result.byLaw,
-    })
+    try {
+      const result = await withDbTimeout(
+        () => countFilteredQuestions(validation.data),
+        COUNT_TIMEOUT_MS,
+      )
+
+      if (!result.success) {
+        return NextResponse.json(
+          { success: false, error: result.error },
+          { status: 400 }
+        )
+      }
+
+      const response = {
+        success: true as const,
+        count: result.count,
+        byLaw: result.byLaw,
+      }
+
+      setCached(cacheKey, { data: response, ts: Date.now() }, STALE_TTL_S)
+
+      return NextResponse.json(response)
+    } catch (error) {
+      if (isDbTimeoutError(error)) {
+        // Stale-if-error: cache de cualquier antigüedad mejor que 503.
+        if (cached?.data?.success) {
+          const ageS = Math.floor((Date.now() - cached.ts) / 1000)
+          console.warn(`⏱️ [API/questions/filtered] GET count timeout, sirviendo cache stale (${ageS}s old)`)
+          return NextResponse.json(cached.data)
+        }
+        console.warn('⏱️ [API/questions/filtered] GET Timeout (quick-fail) sin cache:', error.timeoutMs, 'ms')
+        return NextResponse.json(
+          { success: false, error: 'Servicio temporalmente saturado. Reintenta.', retryable: true },
+          { status: 503, headers: { 'Retry-After': '5' } },
+        )
+      }
+      throw error
+    }
   } catch (error) {
-    if (isDbTimeoutError(error)) {
-      console.warn('⏱️ [API/questions/filtered] GET Timeout (quick-fail):', error.timeoutMs, 'ms')
-      return NextResponse.json(
-        { success: false, error: 'Servicio temporalmente saturado. Reintenta.', retryable: true },
-        { status: 503, headers: { 'Retry-After': '5' } },
-      )
-    }
     console.error('❌ Error en API /questions/filtered (count):', error)
     return NextResponse.json(
       { success: false, error: 'Error interno del servidor' },
