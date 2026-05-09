@@ -49,7 +49,7 @@ Este roadmap cambia la arquitectura **sin reescribir** el código, en 6 fases in
 | **0 — Estabilizar** | 🟡 6/7 hechas (falta 0.5 verificación p95). Fase 0.7 nueva (JWT local verify) pendiente | 1 sem | $0 | Resuelve timeouts actuales | Cero |
 | **1 — Redis cache** | ✅ COMPLETA (2026-05-02) | 1-2 sem | $10 | -80% load BD | Bajo |
 | **2 — Outbox pattern** | ⏳ Pendiente | 2-3 sem | $0 | Estabilidad escrituras | Medio |
-| **3 — Pool split / replica** | 🟡 Pool split parcial (`getDb` max:1 + `getAdminDb` max:4 ya existen, varios crons migrados). Read replica pendiente | 2-3 sem | $0-30 | Aislamiento OLTP/admin | Bajo |
+| **3 — Pool split / replica** | ✅ **COMPLETA (2026-05-09)** — `getDb` max:1 + `getAdminDb` max:4 + `getReadDb` apunta a read replica eu-west-2 (provisionada Small ~$15/mes). 3 endpoints migrados (theme-stats, problematic-articles, ranking). Feature flag `USE_READ_REPLICA` permite rollback 30s | 2-3 sem | ~$15/mes | Aislamiento OLTP + descarga lecturas del primary | Bajo |
 | **4 — Async queues** | ⏳ Pendiente | 1-2 sem | $0-20 | -50% writes BD principal | Medio |
 | **5 — Data warehouse** | ⏳ Pendiente | 3-6 sem | $30-100 | Analytics escalable | Bajo |
 
@@ -258,7 +258,7 @@ Tras hacer push de los 19 commits de Sprint 2, revisión de logs Vercel detectó
 
 ---
 
-## Fase 3 — Pool split / read replica 🟡 PARCIAL
+## Fase 3 — Pool split / read replica ✅ COMPLETA (2026-05-09)
 
 **Objetivo:** aislar lecturas pesadas de escrituras críticas.
 
@@ -301,14 +301,41 @@ Si HOY se sube `getReadDb` a `max:4` SIN read replica:
 ### Pool split (HOY, sin coste extra adicional)
 
 ```typescript
-getWriteDb()  → max:1, timeout 5s   // ⏳ PENDIENTE — hoy `getDb()` cubre lectura+escritura
-getReadDb()   → max:1, timeout 3s   // ⏳ PENDIENTE — separar API ergonómicamente, NO subir max sin replica
-getAdminDb()  → max:4, timeout 60s  // ✅ HECHO — usado por crons (3 migrados commit 76dc3ffb + avatar 2026-05-03)
+getDb()       → max:1                // ✅ Hot path (writes + reads críticos read-after-write)
+getReadDb()   → max:1, replica       // ✅ HECHO 2026-05-09 — apunta al replica si USE_READ_REPLICA=true
+getAdminDb()  → max:4                // ✅ HECHO — usado por crons (3 migrados commit 76dc3ffb + avatar 2026-05-03)
+getTraceDb()  → max:1, sin timeout   // ✅ HECHO — para after() background work
 ```
 
 **Valor del split sin replica**: ergonomía de código (API explícita read-only vs write) + statement_timeout más estricto en reads. **NO da más concurrencia** porque ambos siguen contra el primario con `max:1`.
 
-### Read replica (decisión de negocio, ~$30/mes extra) ⏳ PENDIENTE
+### Read replica ✅ HECHO (2026-05-09)
+
+**Provisionado**: Supabase Pro Read Replica, compute Small, región eu-west-2 (igual que primary), ~$15/mes (más barato de lo estimado $30).
+
+**Configuración**:
+- ID: `bmeqf`
+- Hostname (Shared Pooler IPv4): `aws-0-eu-west-2.pooler.supabase.com:6543`
+- User: `postgres.yqbpstxowvgipqspqrgo-rr-eu-west-2-bmeqf`
+- Lag medido: 0.4-0.6s (saludable)
+- Vars Vercel: `DATABASE_URL_REPLICA` + `USE_READ_REPLICA=true`
+
+**Migración cautelosa (3 endpoints inicial)**:
+- `/api/v2/topic-progress/theme-stats`
+- `/api/notifications/problematic-articles` (vía `getUserProblematicArticlesWeekly`)
+- `/api/ranking` (todas las funciones de `lib/api/ranking/queries.ts`)
+
+**Pendientes de migrar** (read-only candidatos):
+- weak-articles, hot-articles/check, topics/[numero], filtered count, catálogos varios
+
+**NO migrar** (read-after-write critical):
+- answer-and-save validation (usuario espera ver su respuesta)
+- daily-limit (usuario espera ver su contador)
+- Cualquier read justo después de un write del mismo user
+
+**Rollback en 30s**: cambiar `USE_READ_REPLICA=false` en Vercel + redeploy.
+
+### Read replica original — sección obsoleta ⏳ (mantenida por contexto histórico)
 
 - Supabase Pro permite 1 read replica
 - `getReadDb()` apunta a la replica → admin/stats no compiten con OLTP
@@ -597,7 +624,7 @@ Estimación honesta de qué REVENTARÍA a 10k DAU si no hacemos nada. Distinto d
 | 2 | **Pool max:1 en endpoints/crons que deberían usar `getAdminDb` (max:4) o `getTraceDb`** — 3 crons migrados (commit 76dc3ffb) + 1 (avatar) + **markActiveStudentIfFirst en after() de answer-and-save migrado a getTraceDb** (Sprint 2.3, commit `a396580a`). Faltan auditar el resto. Cada cron lento con `getDb` monopoliza el pool de usuarios → cascada 504 | 3-5k DAU | 2-3h auditoría + N migraciones triviales | Alto |
 | 3 | **Cron batch LIMIT 100 vs tasa de inserción** — hoy 28k procesados/día sobra; a 10k DAU son 1M inserciones → 1M `stats_dirty` marks → backlog crece +972k/día. Subir LIMIT a 1000 o cron 1min, validar que no causa lock contention (incidente 2 may 17:14 fue por esto con LIMIT 500) | 5-7k DAU | 1h ajuste + monitorización | Medio |
 | 4 | **Tablas grandes sin partitioning ni TTL** — test_questions 2.2 GB → 30 GB/mes a 10k DAU. validation_error_logs / notification_events / email_events crecen sin parar. Quick wins: TTL >90 días en eventos. Estructural: partitioning declarativo de test_questions por mes (ya en Fase 3 roadmap) | 5-7k DAU para TTL, 7-10k para partitioning | TTL = 1h, partitioning = 4-8h | Alto a medio plazo |
-| 5 | **NO hay read replica** — todo va al primario. Reads de stats/catálogos compiten con INSERTs/UPDATEs por IO. Endpoints SOLO lectura (user-stats, exam/pending, ranking, theme-stats, catálogos) deberían usar réplica. **PRERREQUISITO REAL para subir `getReadDb` max** — sin replica, subir el pool reproduce el incidente del 27 abr (ver "TRAMPA HISTÓRICA" en Fase 3) | 5-7k DAU (saturación primario) | 1-2 días | Crítico para últimos 3-5k DAU |
+| 5 | ✅ **Read replica HECHO 2026-05-09** — provisionada Small en eu-west-2 ($15/mes), feature flag `USE_READ_REPLICA=true`. 3 endpoints migrados (theme-stats, problematic-articles, ranking). Pendiente: migrar más read-only (weak-articles, hot-articles, topics, filtered count, catálogos). NO migrar read-after-write critical (answer-and-save validation, daily-limit) | — | Resuelto | — |
 
 ### 🟡 Top 5 segunda capa (necesarios pero no urgentes)
 
@@ -627,7 +654,7 @@ Si solo pudieras hacer 3 cosas para escalar a 10k, en este orden:
 2. **Auditoría completa de getDb→getAdminDb** (#2) — 2-3h, elimina causa raíz de cascadas 504
 3. **TTL de tablas de eventos + plan de partitioning de test_questions** (#4) — 1h TTL inmediato, partitioning planificado para 1-2 meses vista
 
-Con esos 3 sobrevivimos hasta ~5-7k DAU. Para los últimos 3-5k DAU hace falta el **read replica** (#5).
+✅ **Read replica (#5) ya HECHO 2026-05-09** — coste real $15/mes, pendiente migrar más endpoints read-only del primary al replica iterativamente.
 
 ### Cómo encaja con las 6 fases del roadmap
 
@@ -637,7 +664,7 @@ Con esos 3 sobrevivimos hasta ~5-7k DAU. Para los últimos 3-5k DAU hace falta e
 | #2 getDb→getAdminDb audit | Fase 0 (Estabilizar) — ya en proceso, falta cerrar auditoría |
 | #3 Cron batch size | Fase 2 (Outbox) — coincide con replanteamiento de async |
 | #4 TTL eventos + partitioning | TTL = Fase 0.7 quick win, partitioning = **Fase 3** o **Fase 5** |
-| #5 Read replica | **Fase 3** (Pool split / read replica) — ya mencionada |
+| #5 Read replica | **Fase 3** ✅ HECHO 2026-05-09 |
 | #6 Cache invalidation refactor | Fase 1 (cierre, TODO añadido) |
 | #7 Auditoría freemium | Independiente, ya en MEMORY como pendiente |
 | #8 Triggers que escanean | Fase 2 (Outbox) |
@@ -682,4 +709,7 @@ Con esos 3 sobrevivimos hasta ~5-7k DAU. Para los últimos 3-5k DAU hace falta e
 | 2026-05-06 | Co-localizar Vercel en `lhr1` con Supabase eu-west-2 — validación pre/post | Antes: `vercel.json` sin `regions` → default iad1 (Washington DC). Round-trip iad1→eu-west-2 (London) ~80ms transatlántico × ~5M queries/día = ~111h latencia agregada/día. Tras `regions: ["lhr1"]`: probe `/api/admin/health/db-latency` reporta p50 3.37ms / p95 5.15ms (medición real 2026-05-06 14:25 UTC). 24x reducción confirmada. Trade-off asumido: usuarios fuera de EU (Latam) tendrán más latencia browser→Vercel; aceptable porque Vence es España + autonómicas. |
 | 2026-05-06 | Singleflight como prerrequisito antes de ampliar cache (Phase 4 hardening) | Sin singleflight, cada expiración de TTL en una key caliente disparaba N queries simultáneas a BD (thundering herd). A 10k DAU con dashboards activos, picos de 50-200 queries/segundo en momentos de expiración. Implementado Map module-scoped en `lib/cache/redis.ts:getOrSet` con cleanup en finally (errores también liberan el slot). Ventana microscópica entre fetcher.resolve y redis.set landing aceptada (resolverla requeriría SET bloqueante perdiendo la latencia ganada). Tests: 50 concurrentes → 1 fetcher confirmado. |
 | 2026-05-06 | Quick-fail wrapper `withDbTimeout` aplicado solo a routes (NO a `getDb()` global) | Decisión: wrapper opt-in por route en lugar de impuesto global en `getDb()`. Razón: la decisión de "quanto esperar" es per-endpoint (auth simple 8s, write con triggers 15s, anti-fraud paralelo 10s). Imposición global rompería casos legítimos de queries lentas (admin reports). Cobertura: 11 endpoints golpeados en cascade del 5 may. **NO**: `/api/profile` (cacheado 60s), endpoints admin baja frecuencia. Limitación documentada: no cancela query subyacente; statement_timeout=30s es backstop. |
+| 2026-05-07 | Stale-while-error como patrón estándar (theme-stats, problematic-articles, topics) | Tras observar que `theme-stats` sobrevivía blips devolviendo cache stale (mejor UX que 503), migrado `/api/notifications/problematic-articles` y `/api/topics/[numero]` al mismo patrón. unstable_cache propaga error → 503; getCached/setCached + Redis con timestamp de freshness → 200 con stale en blip. Trade-off aceptado: stale silencioso si BD cae mucho rato (mitigado con log warning). Para datos "weekly performance" / "topic content", 5-30 min de stale son irrelevantes vs ruido de 503. |
+| 2026-05-08 | Cascade del 8 may 23:27-23:30 UTC — hardening de 5 endpoints + landing dinámica + 37 SSR temario pages | Blip externo del pooler de **3 minutos** (atípico vs los 5-30s habituales) saturó concurrency Vercel: endpoints sin quick-fail wrapper colgaron lambdas hasta el límite duro 300s × N requests. Causa raíz no controlable (pool externo). Mitigación: bajar `maxDuration` 60→10-30s + `withDbTimeout` 8-15s + degradación apropiada (200 silent / 503 retryable según endpoint). Endpoints hardenizados: `/api/profile`, `/api/v2/hot-articles/check`, `/api/random-test/availability`, `/api/questions/filtered`, `/api/admin/sales-prediction`. Helper `lib/db/safeServerFetch.ts` para SSR pages que retorna null en timeout (pages ya tenían fallbacks ?? con defaults). Aplicado a `app/[oposicion]/page.tsx` (landing dinámica) + `getTopicContent` (afecta 37 temario/[slug] pages a la vez). Resultado: ningún endpoint user-facing alcanza 300s en blip futuro. |
+| 2026-05-09 | Read replica Supabase ($15/mes) — Fase 3 cerrada | `pg_stat_statements` confirmó cuello arquitectónico: INSERT a test_questions max 18,347ms (mean 26ms, stddev 152) por pool max:1 contention con 9 triggers + concurrent inserts (~17/30s en pico). CPU primary 75-100% MAX diario. Sólo réplica resuelve sin reproducir incidente 27 abr (subir max sin replica). Provisionada Small eu-west-2 (lag 0.4-0.6s), `getReadDb()` con feature flag `USE_READ_REPLICA`, fallback rollback-safe a primary. 3 endpoints migrados cauteloso (theme-stats, problematic-articles, ranking — todos read-only stale-tolerant). NO migrado read-after-write critical (answer-and-save validation, daily-limit). Coste: $15/mes ($15 menos que estimación inicial $30). Roadmap Fase 3 cerrada — para >50k DAU se podrá subir `getReadDb` max:4 (la replica tiene su propio pooler). |
 | 2026-05-05 | Documentar TRAMPA HISTÓRICA del pool max — NO subir sin read replica | Investigación del incidente del 27 abr 2026: max:1 → max:3 → 261 events de pool exhaustion → max:1 de vuelta. Razón: Vercel Fluid 200 lambdas × 3 conn = 600 conexiones permanentes vs `max_connections=90` de Postgres + límites Supavisor. Implicación: subir `getReadDb` a max:4 sin read replica reproduciría el bug peor (9 conn/lambda). Sección "Fase 3" ampliada con bloque "TRAMPA HISTÓRICA" + 4 opciones reales (read replica $30/mes, Compute Large $60+, session mode $0 alta complejidad, NO subir y bajar latencia $0). Hard Gap #5 actualizado para destacar prerrequisito. **No requiere código — solo doc para evitar que futuras sesiones (humanas o IA) caigan en la trampa.** |
