@@ -1632,13 +1632,18 @@ function PerfilPageContent() {
               const icons: Record<string, string> = { activated: '🟢', cancelled: '🔴', reactivated: '🟢', renewal: '📅', refunded: '💸', compensation: '🎁' }
               const labels: Record<string, string> = { activated: 'Suscripción activada', cancelled: 'Cancelación solicitada', reactivated: 'Suscripción reactivada', renewal: 'Próxima renovación', refunded: 'Reembolso procesado', compensation: 'Compensación aplicada' }
 
-              // Formatea el detalle de un compensation event: "+7 días" / "5€ crédito" / "20% dto"
-              const formatCompensation = (e: { amountValue?: number; amountUnit?: string; reasonDetail?: string | null }): string => {
+              // Formatea el detalle de un adjustment event:
+              //   - compensation + eur → "5€ crédito"
+              //   - refunded + eur     → "5€" (sin la palabra "crédito" — es un reembolso real)
+              //   - cualquier + days   → "+7 días"
+              //   - cualquier + percent→ "20% dto"
+              const formatAdjustmentAmount = (e: { type: string; amountValue?: number; amountUnit?: string; reasonDetail?: string | null }): string => {
                 if (!e.amountValue || !e.amountUnit) return ''
                 const v = e.amountValue
                 const unit = e.amountUnit
+                const isRefund = e.type === 'refunded'
                 const amountStr = unit === 'days' ? `+${v} ${v === 1 ? 'día' : 'días'}`
-                  : unit === 'eur' ? `${v}€ crédito`
+                  : unit === 'eur' ? (isRefund ? `${v}€` : `${v}€ crédito`)
                   : unit === 'percent' ? `${v}% dto`
                   : `${v} ${unit}`
                 return e.reasonDetail ? `${amountStr} — ${e.reasonDetail}` : amountStr
@@ -1663,7 +1668,12 @@ function PerfilPageContent() {
                         )}
                         {event.type === 'compensation' && (
                           <span className="text-emerald-600 dark:text-emerald-400 font-medium">
-                            {formatCompensation(event)}
+                            {formatAdjustmentAmount(event)}
+                          </span>
+                        )}
+                        {event.type === 'refunded' && (event.amountValue || event.reasonDetail) && (
+                          <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+                            {formatAdjustmentAmount(event)}
                           </span>
                         )}
                       </div>
