@@ -1,13 +1,39 @@
+// Estrategia de cache (refactor 2026-05-09 — sprint blip pooler):
+// stale-if-error con Redis para sobrevivir blips del Shared Pooler regional
+// (mismo patrón que weak-articles, theme-stats, problematic-articles).
+//
+// - Cache fresco (<5min) → devolver inmediato sin tocar BD
+// - Cache stale + BD OK → refresh y devolver
+// - Cache stale + BD timeout → devolver stale (200, NO 500/503)
+// - Cache vacío + BD timeout → 503 retryable
+// - Read-only puro → migrado a getReadDb() (replica)
+//
+// El cómputo es per-user-per-source (key cache) e idempotente.
+
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { getDb } from '@/db/client'
+import { getReadDb } from '@/db/client'
 import { testQuestions, articles, topicScope, topics } from '@/db/schema'
 import { eq, and, inArray, sql } from 'drizzle-orm'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { withDbTimeout, isDbTimeoutError } from '@/lib/db/timeout'
+import { getCached, setCached } from '@/lib/cache/redis'
 import { OPOSICIONES } from '@/lib/config/oposiciones'
 import type { UserOverlapProgress } from '@/lib/api/oposiciones-compatibles/types'
 
-export const maxDuration = 25
+// Bajado 25s → 20s. La función hace ~85+ queries seriales (1 agg + chunks de
+// articles + 2 × N oposiciones). Con replica + max:1 + queries ligeras debería
+// estar bien por debajo, pero margen amplio para cold start.
+export const maxDuration = 20
+
+const FRESH_WINDOW_MS = 5 * 60 * 1000   // 5 min: dentro de esta ventana es fresh
+const STALE_TTL_S = 24 * 60 * 60        // 24h: cuánto retiene Redis para fallback
+const BD_TIMEOUT_MS = 18_000            // 18s: tope global del cómputo; si excede, fallback a stale
+
+interface CachedProgress {
+  data: { success: true; progress: UserOverlapProgress[] }
+  ts: number  // ms epoch — usado para freshness check
+}
 
 const paramsSchema = z.object({
   userId: z.string().uuid(),
@@ -33,28 +59,89 @@ async function _GET(request: NextRequest) {
     )
   }
 
-  const db = getDb()
+  // Cache key — el cómputo depende SOLO de userId + sourcePositionType.
+  // Si el usuario añade un test entre 2 polls, verá el mismo resultado durante
+  // hasta 5 min — aceptable (el progreso de overlap se mueve lento).
+  const cacheKey = `oposiciones_progress:${parsed.data.userId}:${parsed.data.sourcePositionType}`
+  const cached = await getCached<CachedProgress>(cacheKey)
+
+  // Fast path: cache fresco (<5min) → devolver sin tocar BD
+  if (cached && Date.now() - cached.ts < FRESH_WINDOW_MS) {
+    return NextResponse.json(cached.data)
+  }
+
+  try {
+    const result = await withDbTimeout(
+      () => computeProgress(parsed.data.userId, parsed.data.sourcePositionType),
+      BD_TIMEOUT_MS,
+    )
+
+    const response = { success: true as const, progress: result }
+
+    // Fire-and-forget — Redis lento NO bloquea al usuario
+    setCached(cacheKey, { data: response, ts: Date.now() }, STALE_TTL_S)
+
+    return NextResponse.json(response)
+  } catch (err) {
+    // Stale-if-error: si tenemos cache (de cualquier antigüedad <24h),
+    // servir stale en lugar de 500/503. Mejor UX en blips del pooler regional.
+    if (cached?.data) {
+      const ageS = Math.floor((Date.now() - cached.ts) / 1000)
+      console.warn(`⏱️ [oposiciones-progress] timeout/error para ${parsed.data.userId.slice(0, 8)}, sirviendo cache stale (${ageS}s old)`)
+      return NextResponse.json(cached.data)
+    }
+
+    if (isDbTimeoutError(err)) {
+      console.warn(`⏱️ [oposiciones-progress] timeout sin cache para ${parsed.data.userId.slice(0, 8)}: ${err.timeoutMs}ms`)
+      return NextResponse.json(
+        { success: false, error: 'Servicio temporalmente saturado. Reintenta.', retryable: true },
+        { status: 503, headers: { 'Retry-After': '5' } },
+      )
+    }
+
+    console.error('❌ [oposiciones-progress] Error:', err)
+    return NextResponse.json(
+      { success: false, error: 'Error interno del servidor' },
+      { status: 500 }
+    )
+  }
+}
+
+/**
+ * Computa el progreso del usuario hacia cada oposición compatible.
+ * Read-only puro: usa replica vía getReadDb. Si la query es lenta, el caller
+ * (con withDbTimeout) corta y sirve cache stale.
+ */
+async function computeProgress(
+  userId: string,
+  sourcePositionType: string,
+): Promise<UserOverlapProgress[]> {
+  const db = getReadDb()
 
   // 1. Get all article IDs the user has answered, grouped by article_id
   // Uses denormalized article_id in test_questions (no JOIN needed)
-  const userAnswers = await db.execute(sql`
+  //
+  // FIX 2026-05-09: db.execute() con postgres-js devuelve array directo,
+  // NO { rows: [...] }. La cast legacy estaba mal — esta función probablemente
+  // nunca funcionó (TypeError silencioso si nadie llamaba al endpoint).
+  const userAnswersRows = await db.execute(sql`
     SELECT
       article_id,
       COUNT(*)::int as total,
       SUM(CASE WHEN is_correct THEN 1 ELSE 0 END)::int as correct
     FROM test_questions
-    WHERE user_id = ${parsed.data.userId}
+    WHERE user_id = ${userId}
       AND article_id IS NOT NULL
     GROUP BY article_id
-  `) as unknown as { rows: { article_id: string; total: number; correct: number }[] }
+  `) as unknown as Array<{ article_id: string; total: number; correct: number }>
 
-  if (userAnswers.rows.length === 0) {
-    return NextResponse.json({ success: true, progress: [] })
+  if (userAnswersRows.length === 0) {
+    return []
   }
 
   // Build lookup: articleId → { total, correct }
   const userArticleStats = new Map(
-    userAnswers.rows.map((r) => [r.article_id, { total: r.total, correct: r.correct }])
+    userAnswersRows.map((r) => [r.article_id, { total: r.total, correct: r.correct }])
   )
 
   // 2. Get article_id → law_id mapping for all articles the user has touched
@@ -74,7 +161,7 @@ async function _GET(request: NextRequest) {
 
   // 3. For each target oposición, compute progress
   const targetOposiciones = OPOSICIONES.filter(
-    (op) => op.positionType !== parsed.data.sourcePositionType
+    (op) => op.positionType !== sourcePositionType
   )
 
   const results: UserOverlapProgress[] = []
@@ -189,7 +276,7 @@ async function _GET(request: NextRequest) {
   // Sort by correct answers descending
   results.sort((a, b) => b.correctAnswers - a.correctAnswers)
 
-  return NextResponse.json({ success: true, progress: results })
+  return results
 }
 
 export const GET = withErrorLogging('/api/v2/oposiciones-compatibles/progress', _GET)
