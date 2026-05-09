@@ -39,13 +39,23 @@ function extractPeriodDates(subscription: StripeSubscription): { periodStart: st
     periodEnd = new Date(subscription.current_period_end * 1000).toISOString()
   }
 
-  // Intento 2: usar cancel_at como period_end (cuando cancel_at_period_end=true, cancel_at = fin del periodo)
+  // Intento 2: SDK ≥18 (API 2025-06+) movió current_period_end al item.
+  // Stripe sigue garantizando que el primer item tiene la verdad del período.
+  if (!periodStart && subscription.items?.data?.[0]?.current_period_start) {
+    periodStart = new Date(subscription.items.data[0].current_period_start * 1000).toISOString()
+  }
+  if (!periodEnd && subscription.items?.data?.[0]?.current_period_end) {
+    periodEnd = new Date(subscription.items.data[0].current_period_end * 1000).toISOString()
+    console.log('📅 [extractPeriodDates] Usando items[0].current_period_end (SDK ≥18):', periodEnd)
+  }
+
+  // Intento 3: usar cancel_at como period_end (cuando cancel_at_period_end=true, cancel_at = fin del periodo)
   if (!periodEnd && subscription.cancel_at) {
     periodEnd = new Date(subscription.cancel_at * 1000).toISOString()
     console.log('📅 [extractPeriodDates] Usando cancel_at como period_end:', periodEnd)
   }
 
-  // Intento 3: calcular desde billing_cycle_anchor + interval
+  // Intento 4: calcular desde billing_cycle_anchor + interval (último fallback)
   if (!periodEnd && subscription.billing_cycle_anchor) {
     const anchor = subscription.billing_cycle_anchor * 1000
     const interval = subscription.items?.data?.[0]?.price?.recurring?.interval
