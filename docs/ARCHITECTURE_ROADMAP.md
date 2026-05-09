@@ -216,10 +216,12 @@ Tras hacer push de los 19 commits de Sprint 2, revisión de logs Vercel detectó
 **Objetivo:** que el 80%+ de las requests no lleguen a BD.
 
 **Setup:**
-- Upstash Redis serverless (gratis hasta 10k commands/día, ~$10/mes para 100k usuarios)
-- `lib/cache/redis.ts` con `getOrSet(key, ttl, fetcher)` (cache-aside) + `getCached/setCached` (patrón stale-fallback)
+- Upstash Redis serverless **Pay as You Go** ($0.20/100K commands, sin tope) eu-west-2
+- Coste real medido (2026-05-09): **~$6/mes** con 235 DAU y ~100K cmds/día. Break-even con Fixed $20/mes = 10M cmds/mes (~3.3x crecimiento).
+- `lib/cache/redis.ts` con `getOrSet(key, ttl, fetcher)` (cache-aside + singleflight) + `getCached/setCached` (patrón stale-fallback)
 - Fallback a BD si Redis está down (timeout 100ms)
 
+### Endpoints originales (Fase 1.0)
 | # | Endpoint | Estado | Detalle |
 |---|---|---|---|
 | 1 | `/api/v2/user-stats` | ✅ Hecho (commit 9262954c) | TTL 30s, key `user_stats:{userId}`, invalidación tras INSERT en `test_questions` |
@@ -229,11 +231,27 @@ Tras hacer push de los 19 commits de Sprint 2, revisión de logs Vercel detectó
 | 5 | Catálogos oposiciones/leyes/themes | ⏭️ Skip | Ya cubiertos por Next.js `unstable_cache` con tags (`temario`, `teoria`, `laws`, `landing`). Manual: `docs/maintenance/cache-revalidation.md` |
 | 6 | `/api/v2/topic-progress/theme-stats` | ✅ Hecho (commit a0ef3078) | Promovido de Map in-memory → Redis. Patrón "fresh 5min + stale fallback 24h" para query pesada (16s en heavy users). Invalidación tras INSERT en `answer-and-save`. |
 
+### Stale-if-error (Fase 1.1, sprint cascade 5-9 may)
+Endpoints donde **el cache stale es la red de seguridad** contra blips del Shared Pooler regional (que afecta primary y replica simultáneamente):
+
+| Endpoint | Patrón | Cache key | Notas |
+|---|---|---|---|
+| `theme-stats` | fresh 5min + stale 24h | `theme_stats:{userId}` | Originario (a0ef3078) |
+| `problematic-articles` | fresh 5min + stale 24h | `problematic:{userId}` | Sprint 2026-05-07 |
+| `topics/[numero]` | fresh 5min + stale 24h | `topic_data:{oposicion}:{topic}:{userId\|anon}` | Sprint 2026-05-07. Cache vacío + blip → 503 (decisión consciente) |
+| `weak-articles` | fresh 5min + stale 24h | `weak_articles:{userId}:{filters}` | Commit 60ba5538 |
+| `/api/questions/filtered` POST | **stale-if-error puro** (sin fast-path) | `filtered_q:{userId\|anon}:{sha256(body):16}` | Commit b45e3bae. NO fresh shortcut — randomness UX. |
+| `/api/questions/filtered` GET count | fresh 60s + stale-if-error | `filtered_q_count:{sha256(body):16}` | Count determinista, fresh OK |
+| `oposiciones-compatibles/progress` | fresh 5min + stale 24h | `oposiciones_progress:{userId}:{sourcePositionType}` | Commit 1fb1800f |
+
+**Pendientes de aplicar** (volumen marginal, no urgente): `/api/medals` GET, `/api/v2/hot-articles/check` (verificar fallback timeout), `/api/random-test/availability`.
+
 **Salvaguardas implementadas:**
 - Feature flag `REDIS_CACHE_ENABLED=false` para desactivar instantáneo
 - Timeout 100ms en cada GET/SET — si Redis lento, cae a BD sin penalizar
 - Fire-and-forget en SET — no bloquea la respuesta del usuario
-- Stale fallback en theme-stats — datos viejos > pantalla vacía si BD timeout
+- Singleflight en `getOrSet` — N requests concurrentes con mismo key → 1 fetcher (anti-stampede)
+- Stale fallback en endpoints listados — datos viejos > 503 si BD timeout
 
 ---
 
@@ -333,13 +351,18 @@ getTraceDb()  → max:1, sin timeout   // ✅ HECHO — para after() background 
 - Lag medido: 0.4-0.6s (saludable)
 - Vars Vercel: `DATABASE_URL_REPLICA` + `USE_READ_REPLICA=true`
 
-**Migración cautelosa (3 endpoints inicial)**:
-- `/api/v2/topic-progress/theme-stats`
-- `/api/notifications/problematic-articles` (vía `getUserProblematicArticlesWeekly`)
-- `/api/ranking` (todas las funciones de `lib/api/ranking/queries.ts`)
+**Migrados a `getReadDb()`** (orden cronológico):
+- `/api/v2/topic-progress/theme-stats` (commit `dadb3403`)
+- `/api/notifications/problematic-articles` vía `getUserProblematicArticlesWeekly` (commit `dadb3403`)
+- `/api/ranking` — todas las funciones de `lib/api/ranking/queries.ts` (commit `dadb3403`)
+- `/api/v2/topic-progress/weak-articles` vía `getWeakArticlesForUser` (commit `ddbf82ee`)
+- `/api/questions/filtered` vía `getFilteredQuestions` + `countFilteredQuestions` (commit `ddbf82ee`)
+- `/api/v2/oposiciones-compatibles/progress` (commit `1fb1800f`, 2026-05-09)
 
-**Pendientes de migrar** (read-only candidatos):
-- weak-articles, hot-articles/check, topics/[numero], filtered count, catálogos varios
+**Pendientes de migrar** (read-only candidatos no críticos):
+- `/api/v2/hot-articles/check` (ya cacheado 24h, marginal)
+- `/api/topics/[numero]` (ya con stale-if-error)
+- Catálogos varios (oposiciones, leyes, themes — usan `unstable_cache`)
 
 **NO migrar** (read-after-write critical):
 - answer-and-save validation (usuario espera ver su respuesta)
@@ -728,3 +751,9 @@ Si solo pudieras hacer 3 cosas para escalar a 10k, en este orden:
 | 2026-05-09 | Replica + Shared Pooler regional comparten infra — confirmar limitación | Ambos DSNs (primary y replica) van por `aws-0-eu-west-2.pooler.supabase.com:6543`. Cuando el pooler regional Supavisor tiene blip (`write CONNECT_TIMEOUT` en logs), AMBAS conexiones fallan simultáneamente. La replica AYUDA con CPU/IO del primary y pool max:1 contention; NO ayuda con blips del pooler regional. Para los blips de pooler la solución es **stale-while-error** (cache Redis). Aplicado a theme-stats, problematic-articles, topics, weak-articles. Filtered-questions POST queda pendiente (refactor mayor — ver entrada siguiente). Alternativa futura: Dedicated Pooler ($extra) para aislar replica. |
 | 2026-05-09 | Tech debt — `/api/questions/filtered` POST refactor a "ID-first" pendiente | Diagnóstico: pg_stat_statements dice mean=1849ms / max=5825ms / 676 calls. La query NO tiene ORDER BY ni LIMIT — trae TODAS las preguntas matching el filtro (cientos a miles, payload 1-5MB) para hacer Fisher-Yates shuffle in-memory. Si la request tiene 5 leyes seleccionadas → 5 queries × 1.8s ≈ 9s típico. Plan correcto: **ID-first refactor** = Query 1 trae solo `id` (light), JS hace shuffle/allocation, Query 2 hidrata por IDs seleccionados con `WHERE id IN(N)`. **Esfuerzo real estimado**: 4-6h con tests de paridad rigurosos (5+ paths distintos: ley-only, modo tema, modo global, failed-questions history, etc., cada uno con su lógica). **NO hecho hoy** porque: (1) los 503 son ocasionales y retryables, (2) refactor en hot path crítico (preguntas para tests) requiere ventana validación dedicada, (3) blast radius mayor del estimado inicialmente. **Sesión dedicada**: tests de paridad sobre 5 paths + feature flag + monitoreo 24h. Diagnóstico EXPLAIN ANALYZE ya hecho — listo para retomar. |
 | 2026-05-05 | Documentar TRAMPA HISTÓRICA del pool max — NO subir sin read replica | Investigación del incidente del 27 abr 2026: max:1 → max:3 → 261 events de pool exhaustion → max:1 de vuelta. Razón: Vercel Fluid 200 lambdas × 3 conn = 600 conexiones permanentes vs `max_connections=90` de Postgres + límites Supavisor. Implicación: subir `getReadDb` a max:4 sin read replica reproduciría el bug peor (9 conn/lambda). Sección "Fase 3" ampliada con bloque "TRAMPA HISTÓRICA" + 4 opciones reales (read replica $30/mes, Compute Large $60+, session mode $0 alta complejidad, NO subir y bajar latencia $0). Hard Gap #5 actualizado para destacar prerrequisito. **No requiere código — solo doc para evitar que futuras sesiones (humanas o IA) caigan en la trampa.** |
+| 2026-05-09 (tarde) | Stale-if-error en `/api/questions/filtered` POST + GET count (commit `b45e3bae`) | Cascade 12:09-15:37 UTC: 174× 503 en POST + 118× 503 en weak-articles (deploy `ddbf82ee` sin stale). Aplicado patrón stale-if-error puro (RFC 5861) — variante sobre weak-articles porque POST devuelve preguntas aleatorias y reusar cache fresco entre 2 peticiones idénticas degrada UX. POST: cache solo se sirve cuando BD timeout; GET ?action=count: fresh+stale completo (count determinista). Cache key normaliza body: `filtered_q[:count]:{userId|'anon'}:{sha256(body).slice(0,16)}`. TTL stale 10min. Vacíos NO se cachean. 11 tests nuevos `staleIfError.test.ts`. |
+| 2026-05-09 (noche) | Refactor ID-first `/api/questions/filtered` paths 5-6 (commits `d65775b4` + `a29d3be3`) — **CIERRA** la tech-debt 2026-05-09 (entrada anterior) | Implementación + cleanup en una sesión. Solo afecta paths 5-6 (modo tema/multi-tema y modo ley-only) que NO tenían LIMIT en SQL. Paths 1-4 (content_scope, failed-questions con/sin IDs, global) intactos — ya tenían LIMIT y eran eficientes. Q1 ligera trae solo `{id, articleNumber, lawShortName, isOfficialExam}` para los ~2.5k candidatos (5 cols vs 25); JS filters/select; Q2 hidrata las 25 ganadoras con `WHERE id IN(...)`. Helpers selección (`selectProportionallyByArticle`, `selectEquitativeByLaw`, `selectProportionally`) intactos — ya genéricos sobre `{id, articleNumber, lawShortName}`. **Validación**: 700 tests verdes (Capa 1 dispatcher 28 tests + Capa 2 paridad mocks 6 tests + Capa 4 paridad BD real 18 tests + 3 benchmarks; sin regresiones en 297 existentes). Edge cases cubiertos: caso M, Mar, Laura, Lidia, Isabel Iglesias, NULL difficulty coalesce, tag PN, multi-tema duplicados, hydration race. **Speedup BD real**: CE single law 7.85s→0.88s (8.91x), multi-ley CE+L39+L40 9.43s→1.37s (6.89x), Auxiliar T3 1.87s→1.64s (1.14x). Primer commit con feature flag opt-in `USE_FILTERED_ID_FIRST`; segundo commit borra flag/dispatcher/legacy/duplicación tras validación (–1830 LOC, +29 LOC). |
+| 2026-05-09 (noche) | Fix display bugs pre-existentes en panel "Ver Artículo Completo" (commit `79883123`) | Reportado por usuario haciendo `/leyes/constitucion-espanola/avanzado`: en pregunta 8 de 10 mostraba "📋 Artículo 8 📖 Ley: LRJSP" pero contenido era CE Art 152 (Asamblea Legislativa). BD verificada coherente — la relación pregunta↔artículo era correcta. Dos bugs pre-existentes: (1) `transformQuestion` fallback `title: q.articleTitle \|\| Artículo ${index + 1}` usaba índice del TEST (0-9) en vez del article_number real cuando articleTitle es NULL en BD. (2) `TestLayout.tsx:2858` tenía hardcodeado el string `LRJSP` para la etiqueta `📖 Ley:`. Fix: usar `q.articleNumber` y `article.law_short_name`. Cero impacto en lógica de selección/respuestas. |
+| 2026-05-09 (noche) | Fix `/api/v2/oposiciones-compatibles/progress` — endpoint roto desde siempre (commit `1fb1800f`) | Logs CONNECT_TIMEOUT 23:08-23:09 a `aws-0-eu-west-2.pooler:6543` parecían blip de pooler. **Causa raíz distinta**: bug pre-existente — `db.execute(sql\`...\`)` con postgres-js devuelve **array directo**, NO `{ rows: [...] }`. La cast del legacy `as { rows: [...] }` estaba mal: `userAnswers.rows.length` daba `TypeError` siempre. El endpoint llevaba dando 500 silencioso. Los CONNECT_TIMEOUT eran consecuencia: `withErrorLogging` intentaba INSERT del 500 a `validation_error_logs` durante blip simultáneo y fallaba. Fix: cast correcto + migrar `getDb()` → `getReadDb()` (read-only puro) + `withDbTimeout(18s)` quick-fail + stale-if-error con Redis (cache key `oposiciones_progress:{userId}:{sourcePositionType}`, fresh 5min, stale 24h). Verificado contra BD real: status 200, 36 entries, 8s sin cache (con cache hit <100ms cuando warm). |
+| 2026-05-09 (noche) | Upstash Redis quota agotada → migrar a Pay as You Go | Plan anterior tenía cap 500K commands. Llegado al máximo durante el día, todos los `getCached`/`setCached` fallaban silentes (degradación graceful en `lib/cache/redis.ts:raceTimeout` + 100ms timeout). Sin afectar funcionalidad (BD fallback) pero perdiendo TODOS los beneficios de cache. Migrado a Pay as You Go ($0.20/100K commands, sin tope) eu-west-2. Uso real medido: ~100K cmds/día estable = **~$6/mes**. Break-even con Fixed $20/mes = 10M cmds/mes (3.3x más usuarios). Pay as You Go es lo correcto para tier actual. |
+| 2026-05-09 (noche) | Lista actualizada de endpoints con stale-if-error como red de seguridad | Tras esta sesión: `theme-stats`, `problematic-articles`, `topics/[numero]`, `weak-articles`, `filtered-questions` (POST + count), `oposiciones-compatibles/progress`. **Pendiente**: `/api/medals` GET (2× 503 en último cascade, marginal), `/api/v2/hot-articles/check` (cacheado 24h pero verificar fallback en timeout), `/api/random-test/availability` (depende de freshness, marginal). Patrón establecido: read-only crítico → siempre `getReadDb` + `withDbTimeout` + stale-if-error con Redis cache key per-params. La replica protege contra primary-CPU/triggers; el cache stale protege contra blips del Shared Pooler regional (que afecta primary+replica simultáneamente). |
