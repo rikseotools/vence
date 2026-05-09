@@ -1,5 +1,5 @@
 // lib/api/ranking/queries.ts - Queries tipadas para ranking
-import { getDb } from '@/db/client'
+import { getDb, getReadDb } from '@/db/client'
 import { sql, inArray } from 'drizzle-orm'
 import { publicUserProfiles, userProfiles, userAvatarSettings, userStreaks } from '@/db/schema'
 import type {
@@ -243,7 +243,7 @@ export async function getRanking(params: GetRankingRequest): Promise<GetRankingR
       }
     }
 
-    const db = getDb()
+    const db = getReadDb()
     const { startDate, endDate } = computeDateRange(params.timeFilter)
 
     // Usar tq.user_id directamente (sin JOIN tests) — misma optimización que
@@ -326,7 +326,7 @@ export async function getUserPosition(
   minQuestions = 5
 ): Promise<UserPosition | null> {
   try {
-    const db = getDb()
+    const db = getReadDb()
     const { startDate, endDate } = computeDateRange(timeFilter)
 
     const result = await db.execute(
@@ -382,7 +382,7 @@ export async function getUserPosition(
 
 export async function getStreakRanking(params: GetStreakRankingRequest): Promise<GetStreakRankingResponse> {
   try {
-    const db = getDb()
+    const db = getReadDb()
     const limit = params.limit ?? 50
     const offset = params.offset ?? 0
     const now = new Date()

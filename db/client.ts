@@ -136,5 +136,73 @@ export function getTraceDb() {
   return globalForTraceDb.traceDb
 }
 
+// ============================================
+// Pool de READ REPLICA (lecturas analíticas)
+// ============================================
+// Para descargar lecturas pesadas del primary y aliviar la cola de pool max:1
+// que afecta a writes críticos (answer-and-save). Apunta a la réplica
+// Supabase eu-west-2 (provisionada 2026-05-09, ID bmeqf) vía Shared Pooler
+// del Supavisor (mismo hostname que primary, user con sufijo
+// `-rr-eu-west-2-bmeqf` distingue el destino).
+//
+// IMPORTANTE: solo usar en lecturas tolerables a stale ≤1s (lag típico
+// medido: 0.4s). NUNCA usar en read-after-write critical:
+//   - validación de answer-and-save
+//   - daily-limit (usuario espera ver su contador actualizado)
+//   - cualquier read justo después de un write del mismo user
+//
+// Feature flag USE_READ_REPLICA permite rollback instantáneo:
+//   - false (default): getReadDb() devuelve el mismo cliente que getDb() → primary
+//   - true:           getReadDb() devuelve el cliente del replica
+// Esto permite migrar endpoints uno a uno SIN tocar el flag, y activar/desactivar
+// la replica globalmente con una sola variable.
+
+const globalForReadDb = globalThis as unknown as {
+  readDb: ReturnType<typeof drizzle<typeof schema>> | undefined
+}
+
+function createReadDbClient() {
+  const replicaUrl = process.env.DATABASE_URL_REPLICA
+  if (!replicaUrl) return null
+
+  // Mismo statement_timeout que primary para consistencia
+  const urlWithTimeout = replicaUrl.includes('?')
+    ? `${replicaUrl}&options=-c statement_timeout=30000 -c idle_in_transaction_session_timeout=60000`
+    : `${replicaUrl}?options=-c statement_timeout=30000 -c idle_in_transaction_session_timeout=60000`
+
+  const conn = postgres(urlWithTimeout, {
+    max: 1,             // Igual que primary — replica también tiene Supavisor max
+    idle_timeout: 20,
+    connect_timeout: 5,
+    prepare: false,     // Requerido por Supavisor Transaction Pooler
+  })
+
+  // Warmup en background (no bloquea)
+  conn`SELECT 1`.catch(() => {})
+
+  return drizzle(conn, { schema })
+}
+
+/**
+ * Cliente Drizzle apuntando al read replica si USE_READ_REPLICA=true,
+ * o al primary en caso contrario (fallback rollback-safe).
+ *
+ * Usar en endpoints SOLO para lecturas tolerables a stale ≤1s.
+ */
+export function getReadDb() {
+  const useReplica = process.env.USE_READ_REPLICA === 'true'
+  if (!useReplica) return getDb()
+
+  if (!globalForReadDb.readDb) {
+    globalForReadDb.readDb = createReadDbClient() as any
+  }
+  // Si DATABASE_URL_REPLICA no está set pero USE_READ_REPLICA=true → fallback a primary
+  if (!globalForReadDb.readDb) {
+    console.warn('[getReadDb] USE_READ_REPLICA=true pero DATABASE_URL_REPLICA no está configurado — fallback a primary')
+    return getDb()
+  }
+  return globalForReadDb.readDb
+}
+
 // Re-exportar tipos útiles
 export type DbClient = typeof db

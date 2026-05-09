@@ -6,7 +6,7 @@
 // via getAllowedLawIds → impide que un Aux Estado reciba artículos de leyes
 // CCAA-específicas (dispute 4e247ddc, Mar Vazquez).
 
-import { getDb } from '@/db/client'
+import { getReadDb } from '@/db/client'
 import { articles, laws, testQuestions, tests } from '@/db/schema'
 import { and, eq, gte, inArray, isNotNull, sql } from 'drizzle-orm'
 import { getAllowedLawIds } from '@/lib/api/oposicion-scope/queries'
@@ -42,7 +42,9 @@ function derivRecommendation(accuracy: number): string {
 export async function getUserProblematicArticlesWeekly(
   params: GetUserProblematicArticlesWeeklyParams
 ): Promise<ProblematicArticle[]> {
-  const db = getDb()
+  // Read replica (USE_READ_REPLICA=true) → primary fallback. Read-only analytics,
+  // stale ≤1s aceptable para "weekly performance".
+  const db = getReadDb()
   const limit = params.limit ?? 5
   const accuracyMax = params.accuracyMaxPct ?? 60
   const windowDays = params.windowDays ?? 7

@@ -8,9 +8,11 @@
 // El scoping real (inArray laws.id) se delega a Drizzle y se cubre por el
 // snapshot de producción del endpoint + tests e2e en FASE 6.
 
-jest.mock('@/db/client', () => ({
-  getDb: jest.fn(),
-}))
+// getReadDb es alias rollback-safe del read replica; en tests apunta al mismo mock
+jest.mock('@/db/client', () => {
+  const mock = jest.fn()
+  return { getDb: mock, getReadDb: mock }
+})
 
 jest.mock('@/lib/api/oposicion-scope/queries', () => ({
   getAllowedLawIds: jest.fn(),

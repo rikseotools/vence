@@ -3,13 +3,19 @@
  */
 
 // Mock del modulo db/client ANTES de importar queries
-jest.mock('../../../db/client', () => ({
-  getDb: jest.fn(),
-}))
+// getReadDb es el alias rollback-safe que usan los reads (read replica si
+// USE_READ_REPLICA=true, primary en cualquier otro caso). En tests, ambos
+// apuntan al mismo mock para simplicidad.
+jest.mock('../../../db/client', () => {
+  const mock = jest.fn()
+  return { getDb: mock, getReadDb: mock }
+})
 
-import { getDb } from '../../../db/client'
+import { getDb, getReadDb } from '../../../db/client'
 
 const mockGetDb = getDb as jest.MockedFunction<typeof getDb>
+// getReadDb apunta al mismo mock function que getDb
+void getReadDb
 
 // Importar despues del mock
 import { getRanking, getUserPosition, getStreakRanking, invalidateRankingCache } from '../../../lib/api/ranking/queries'

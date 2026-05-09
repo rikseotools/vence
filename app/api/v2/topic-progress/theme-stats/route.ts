@@ -12,7 +12,7 @@
 // Fluid: cada cold start pagaba la query lenta. Redis comparte entre todas.
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { getDb } from '@/db/client'
+import { getReadDb } from '@/db/client'
 import { sql } from 'drizzle-orm'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { getCached, setCached } from '@/lib/cache/redis'
@@ -54,7 +54,9 @@ async function _GET(request: NextRequest) {
   }
 
   try {
-    const db = getDb()
+    // getReadDb apunta al replica si USE_READ_REPLICA=true, fallback primary.
+    // theme-stats es read-only y tolerable a stale (lag típico 0.4s).
+    const db = getReadDb()
 
     // Query optimizada (2026-05-06): elimina JOIN con tests usando user_id
     // ya denormalizado en test_questions + covering index idx_tq_user_tema_covering
