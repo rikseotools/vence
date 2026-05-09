@@ -717,6 +717,23 @@ export default function HeaderES() {
                 </button>
               )}
 
+              {/* 🔄 ICONO DE OPOSICIONES COMPATIBLES - Desktop */}
+              {user && oposicionContext?.oposicionId && (() => {
+                const opoConfig = getOposicion(oposicionContext.oposicionId!)
+                return opoConfig ? (
+                  <Link
+                    href={`/${opoConfig.slug}/oposiciones-compatibles`}
+                    className="hidden xl:flex p-2 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg transition-colors"
+                    aria-label="Oposiciones compatibles"
+                    title="Oposiciones compatibles con tu temario"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                    </svg>
+                  </Link>
+                ) : null
+              })()}
+
               {/* 🎯 ICONO DE TESTS - Solo en móvil */}
               {user && (
                 <Link

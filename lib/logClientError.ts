@@ -18,6 +18,7 @@ export function logClientError(
     questionId?: string | null
     userId?: string | null
     severity?: ClientErrorSeverity
+    extra?: Record<string, unknown>
   }
 ): void {
   const err = error instanceof Error ? error : new Error(String(error))
@@ -39,6 +40,11 @@ export function logClientError(
       if (context?.questionId) scope.setTag('questionId', context.questionId)
       if (context?.userId) scope.setTag('userId', context.userId)
       if (clientVersion) scope.setTag('deploy', clientVersion)
+      if (context?.extra) {
+        for (const [key, value] of Object.entries(context.extra)) {
+          scope.setExtra(key, value)
+        }
+      }
 
       Sentry.captureException(new Error(message), { originalException: err })
     })

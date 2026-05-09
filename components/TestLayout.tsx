@@ -52,6 +52,7 @@ import { completeTestOnServer } from '@/lib/api/v2/complete-test/client'
 import { enqueueAnswer, purgeSessionAnswers, waitForQueueDrain } from '@/utils/answerSaveQueue'
 import { normalizeDifficulty } from '@/lib/api/shared/difficulty'
 import { usePendingAnswers } from '@/hooks/usePendingAnswers'
+import { logClientError } from '@/lib/logClientError'
 import ContentDataRenderer from './ContentDataRenderer'
 import { pickDiverseByArticle } from '@/lib/types/adaptive'
 
@@ -316,6 +317,15 @@ export default function TestLayout({
   const registrationProcessingRef = useRef<Set<string>>(new Set())
   // Buffer de respuestas pendientes de sesión — se flush cuando la sesión se crea
   const pendingAnswersBuffer = useRef<Array<Record<string, unknown>>>([])
+  // Snapshot de la pregunta clicada (para detectar desync render vs click — bug repaso-fallos)
+  const clickSnapshotRef = useRef<{
+    questionId: string | null
+    questionTextStart: string
+    questionIndex: number
+    selectedAnswer: number
+    correctOption: number | null
+    timestamp: number
+  } | null>(null)
 
   // Hook para obtener la URL actual
   const pathname = usePathname()
@@ -573,6 +583,77 @@ export default function TestLayout({
       clearQuestionContext()
     }
   }, [currentQuestion, effectiveQuestions, setQuestionContext, clearQuestionContext, showResult, verifiedCorrectAnswer])
+
+  // 🔬 DETECCIÓN DE DESYNC RENDER vs CLICK (bug repaso-fallos por bloque)
+  // Compara el snapshot capturado al hacer click con la pregunta que se está
+  // renderizando cuando aparece el panel de resultado. Si difieren →
+  // significa que el usuario está viendo la pregunta anterior con los marcadores
+  // (✓/✗) de la actual. Logea a Sentry con contexto completo para debug.
+  useEffect(() => {
+    if (!showResult) return
+    const snap = clickSnapshotRef.current
+    if (!snap) return
+
+    const renderedQ = effectiveQuestions[currentQuestion]
+    if (!renderedQ) return
+
+    const renderedId = renderedQ.id ?? null
+    const renderedText = ((renderedQ as any).question || (renderedQ as any).question_text || '').slice(0, 80)
+    const renderedCorrect = (renderedQ as any).correct_option ?? (renderedQ as any).correct ?? null
+
+    const idDivergent = !!(snap.questionId && renderedId && snap.questionId !== renderedId)
+    const textDivergent = !!(snap.questionTextStart && renderedText && snap.questionTextStart !== renderedText)
+    const correctDivergent = snap.correctOption !== null && renderedCorrect !== null && snap.correctOption !== renderedCorrect
+
+    if (!idDivergent && !textDivergent && !correctDivergent) return
+
+    const detail: Record<string, unknown> = {
+      // Click-time (lo que el usuario realmente respondió)
+      click_question_id: snap.questionId,
+      click_question_text_start: snap.questionTextStart,
+      click_question_index: snap.questionIndex,
+      click_selected_answer: snap.selectedAnswer,
+      click_correct_option: snap.correctOption,
+      // Render-time (lo que el usuario está viendo)
+      render_question_id: renderedId,
+      render_question_text_start: renderedText,
+      render_question_index: currentQuestion,
+      render_selected_answer: selectedAnswer,
+      render_verified_correct: verifiedCorrectAnswer,
+      render_correct_option: renderedCorrect,
+      // Contexto del test
+      url: typeof window !== 'undefined' ? window.location.href : null,
+      pathname: typeof window !== 'undefined' ? window.location.pathname : null,
+      search: typeof window !== 'undefined' ? window.location.search : null,
+      test_number: testNumber,
+      tema,
+      effective_questions_length: effectiveQuestions.length,
+      adaptive_mode: adaptiveMode,
+      ms_since_click: Date.now() - snap.timestamp,
+      divergent_id: idDivergent,
+      divergent_text: textDivergent,
+      divergent_correct: correctDivergent,
+      // Para correlacionar con tests/test_questions
+      test_session_id: currentTestSession?.id ?? null,
+    }
+
+    // eslint-disable-next-line no-console
+    console.warn('🚨 [TestRenderDesync] click ≠ render', detail)
+
+    logClientError(
+      'TestLayout/render-desync',
+      new Error(
+        `TestRenderDesync click=${(snap.questionId || '').slice(0, 8)} render=${(renderedId || '').slice(0, 8)} kind=${idDivergent ? 'id' : textDivergent ? 'text' : 'correct'}`
+      ),
+      {
+        component: 'TestLayout',
+        questionId: snap.questionId,
+        userId: user?.id ?? null,
+        severity: 'critical',
+        extra: detail,
+      }
+    )
+  }, [showResult]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Guardar respuestas previas al registrarse
   const savePreviousAnswersOnRegistration = async (userId: string, previousAnswers: DetailedAnswerEntry[]): Promise<boolean> => {
@@ -1172,6 +1253,19 @@ export default function TestLayout({
     const isCorrect = correctOption !== null && answerIndex === correctOption
     const newScore = isCorrect ? score + 1 : score
 
+    // Snapshot de la pregunta en el momento del click — el useEffect de
+    // detección de desync (más abajo) lo compara contra effectiveQuestions[currentQuestion]
+    // cuando showResult flip a true. Bug repaso-fallos: la captura mostró el
+    // texto de la pregunta anterior con marcadores de la actual.
+    clickSnapshotRef.current = {
+      questionId: currentQ.id ?? null,
+      questionTextStart: ((currentQ as any).question || (currentQ as any).question_text || '').slice(0, 80),
+      questionIndex: currentQuestion,
+      selectedAnswer: answerIndex,
+      correctOption: correctOption,
+      timestamp: Date.now(),
+    }
+
     // UI inmediata — SOLO setState, nada más. React batchea y renderiza.
     setSelectedAnswer(answerIndex)
     if (validationError) setValidationError(null)
@@ -1265,6 +1359,16 @@ export default function TestLayout({
     if (answeredQuestions.some(aq => aq.question === currentQuestion)) return
 
     const correctOption = currentQ.correct_option ?? currentQ.correct ?? null
+
+    // Snapshot del click (equivalente a handleAnswerClick) — para detección de desync
+    clickSnapshotRef.current = {
+      questionId: currentQ.id ?? null,
+      questionTextStart: ((currentQ as any).question || (currentQ as any).question_text || '').slice(0, 80),
+      questionIndex: currentQuestion,
+      selectedAnswer: -1,
+      correctOption: correctOption,
+      timestamp: Date.now(),
+    }
 
     // UI inmediata — selectedAnswer=null + isBlank=true
     setSelectedAnswer(null)

@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, type ReactNode } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { getOposicionSlugFromPathname } from '@/lib/config/oposiciones'
+import { getOposicionSlugFromPathname, getOposicion } from '@/lib/config/oposiciones'
 import { useAuth } from '../contexts/AuthContext'
 import { useAdminNotifications } from '@/hooks/useAdminNotifications'
 
@@ -502,6 +502,29 @@ export default function UserAvatar() {
               >
                 <span>📊</span>
                 <span>Mis Estadisticas</span>
+              </Link>
+
+              {/* Oposiciones compatibles + Comparar temarios */}
+              {(() => {
+                const opoConfig = userProfile?.target_oposicion ? getOposicion(userProfile.target_oposicion) : null
+                return opoConfig ? (
+                  <Link
+                    href={`/${opoConfig.slug}/oposiciones-compatibles`}
+                    onClick={handleLinkClick}
+                    className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg flex items-center space-x-3 block"
+                  >
+                    <span>🔄</span>
+                    <span>Oposiciones compatibles</span>
+                  </Link>
+                ) : null
+              })()}
+              <Link
+                href="/comparar-temarios"
+                onClick={handleLinkClick}
+                className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg flex items-center space-x-3 block"
+              >
+                <span>⚖️</span>
+                <span>Comparar temarios</span>
               </Link>
 
               {/* Pending exams + psychometric */}
