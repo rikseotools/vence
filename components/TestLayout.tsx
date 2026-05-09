@@ -2855,7 +2855,7 @@ function ArticleDropdown({ article, currentQuestion }: ArticleDropdownProps) {
           <div className="mt-4 pt-3 border-t border-gray-200 dark:border-gray-600">
             <div className="grid grid-cols-2 gap-4 text-xs text-gray-500 dark:text-gray-400">
               <div>
-                <span className="font-medium">📖 Ley:</span> LRJSP
+                <span className="font-medium">📖 Ley:</span> {article.law_short_name || article.law_name || 'Ley'}
               </div>
               <div>
                 <span className="font-medium">📄 Artículo:</span> {article.article_number || article.display_number}

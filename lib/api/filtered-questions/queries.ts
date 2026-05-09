@@ -145,7 +145,9 @@ export function transformQuestion(q: QuestionRow, index: number): FilteredQuesti
     article: {
       id: q.articleId,
       number: q.articleNumber || (index + 1).toString(),
-      title: q.articleTitle || `Artículo ${index + 1}`,
+      // Fallback usa articleNumber real (no index de test, que confunde con
+      // "Pregunta N" cuando el title está NULL en BD).
+      title: q.articleTitle || `Artículo ${q.articleNumber || index + 1}`,
       full_text: q.articleContent || `Artículo ${q.articleNumber || index + 1}`,
       law_name: q.lawName || 'Ley desconocida',
       law_short_name: q.lawShortName || 'Ley',
