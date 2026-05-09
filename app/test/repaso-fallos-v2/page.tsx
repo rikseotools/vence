@@ -1,7 +1,7 @@
 // app/test/repaso-fallos-v2/page.tsx
 // Test de repaso de preguntas falladas - Versión 2 con Drizzle + Zod
 'use client'
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, useMemo, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
@@ -28,9 +28,23 @@ function RepasoFallosV2Content() {
   const [questions, setQuestions] = useState<TestLayoutQuestion[]>([])
   const [loading, setLoading] = useState(true)
 
+  // 🔒 Estabilizar searchParams para evitar re-fetch durante el test.
+  // useSearchParams() devuelve una referencia nueva en cada render aunque
+  // el valor no cambie. Si se usa como dependency directa del useEffect,
+  // cualquier re-render recarga las preguntas de la API con orden potencialmente
+  // diferente (orderBy='recent' + fallos del test en curso cambian lastFail).
+  // Bug reportado por Mar Vázquez 3 veces (mar, may 2026).
+  const searchParamsKey = useMemo(
+    () => searchParams?.toString() ?? '',
+    [searchParams]
+  )
+  // Guard: no recargar si ya tenemos preguntas (el test está en curso)
+  const hasLoadedRef = useRef(false)
+
   useEffect(() => {
     async function loadFailedQuestions() {
       if (authLoading) return
+      if (hasLoadedRef.current) return // Ya cargamos, no recargar
 
       if (!user) {
         setError('Debes iniciar sesión para ver tus preguntas falladas')
@@ -118,6 +132,7 @@ function RepasoFallosV2Content() {
 
         // Preguntas cargadas correctamente
         setQuestions(data.questions)
+        hasLoadedRef.current = true
         setLoading(false)
 
       } catch (e) {
@@ -128,7 +143,8 @@ function RepasoFallosV2Content() {
     }
 
     loadFailedQuestions()
-  }, [user, authLoading, supabase, searchParams])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, authLoading, searchParamsKey])
 
   // Estado de carga
   if (loading) {

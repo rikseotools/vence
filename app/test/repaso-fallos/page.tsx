@@ -1,7 +1,7 @@
 // app/test/repaso-fallos/page.tsx
 // Test de repaso de preguntas falladas
 'use client'
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, useMemo, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
@@ -78,9 +78,17 @@ function RepasoFallosContent() {
   const [questions, setQuestions] = useState<TestLayoutQuestion[]>([])
   const [loading, setLoading] = useState(true)
 
+  // 🔒 Misma estabilización que repaso-fallos-v2 (bug Mar Vázquez)
+  const searchParamsKey = useMemo(
+    () => searchParams?.toString() ?? '',
+    [searchParams]
+  )
+  const hasLoadedRef = useRef(false)
+
   useEffect(() => {
     async function loadFailedQuestions() {
       if (authLoading) return
+      if (hasLoadedRef.current) return
 
       if (!user) {
         setError('Debes iniciar sesión para ver tus preguntas falladas')
@@ -152,6 +160,7 @@ function RepasoFallosContent() {
         // Transformar preguntas al formato V2
         const transformedQuestions = transformQuestions(data.questions)
         setQuestions(transformedQuestions)
+        hasLoadedRef.current = true
         setLoading(false)
 
       } catch (e) {
@@ -162,7 +171,8 @@ function RepasoFallosContent() {
     }
 
     loadFailedQuestions()
-  }, [user, authLoading, supabase, searchParams])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, authLoading, searchParamsKey])
 
   // Estado de carga
   if (loading) {
