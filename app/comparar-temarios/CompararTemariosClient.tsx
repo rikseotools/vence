@@ -1,7 +1,9 @@
 'use client'
 
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import Link from 'next/link'
+import { useAuth } from '@/contexts/AuthContext'
+import { getOposicion } from '@/lib/config/oposiciones'
 import type { TemarioComparison } from '@/lib/api/oposiciones-compatibles/types'
 
 interface OposicionOption {
@@ -137,11 +139,20 @@ export default function CompararTemariosClient({
 }: {
   oposiciones: OposicionOption[]
 }) {
+  const { userProfile } = useAuth()
   const [slugA, setSlugA] = useState('')
   const [slugB, setSlugB] = useState('')
   const [result, setResult] = useState<ComparisonResult | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  // Link a oposiciones-compatibles del usuario
+  const userOposicionLink = useMemo(() => {
+    if (!userProfile?.target_oposicion) return null
+    const config = getOposicion(userProfile.target_oposicion)
+    if (!config) return null
+    return { slug: config.slug, name: config.shortName }
+  }, [userProfile?.target_oposicion])
 
   const compare = useCallback(async () => {
     if (!slugA || !slugB) return
@@ -173,6 +184,21 @@ export default function CompararTemariosClient({
 
   return (
     <div>
+      {/* Link a compatibilidades de la oposición del usuario */}
+      {userOposicionLink && (
+        <div className="text-center mb-6">
+          <Link
+            href={`/${userOposicionLink.slug}/oposiciones-compatibles`}
+            className="inline-flex items-center gap-1.5 text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300"
+          >
+            Ver todas las compatibilidades de {userOposicionLink.name}
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </Link>
+        </div>
+      )}
+
       {/* Selectors */}
       <div className="grid sm:grid-cols-[1fr,auto,1fr] gap-4 items-end mb-8">
         <SearchableSelect
