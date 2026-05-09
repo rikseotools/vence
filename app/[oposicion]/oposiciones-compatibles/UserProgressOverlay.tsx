@@ -80,7 +80,7 @@ export default function UserProgressOverlay({
             te sirven para{' '}
             <strong>
               {opsWithProgress}{' '}
-              {opsWithProgress === 1 ? 'oposici\u00f3n' : 'oposiciones'}
+              {opsWithProgress === 1 ? 'oposición' : 'oposiciones'}
             </strong>{' '}
             compatibles.
             {totalAnswered > 0 && (

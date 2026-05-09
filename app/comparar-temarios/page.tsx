@@ -10,11 +10,11 @@ export const dynamic = 'force-dynamic'
 export const metadata: Metadata = {
   title: 'Comparar temarios de oposiciones | Vence',
   description:
-    'Compara el temario de dos oposiciones art\u00edculo por art\u00edculo. Descubre qu\u00e9 leyes comparten y cu\u00e1nto se solapan los temarios.',
+    'Compara el temario de dos oposiciones artículo por artículo. Descubre qué leyes comparten y cuánto se solapan los temarios.',
   openGraph: {
     title: 'Comparar temarios de oposiciones | Vence',
     description:
-      'Compara el temario de dos oposiciones art\u00edculo por art\u00edculo.',
+      'Compara el temario de dos oposiciones artículo por artículo.',
     url: `${SITE_URL}/comparar-temarios`,
     siteName: 'Vence',
     locale: 'es_ES',
@@ -42,9 +42,9 @@ export default function CompararTemariosPage() {
             Comparar temarios de oposiciones
           </h1>
           <p className="text-gray-600 dark:text-gray-400 max-w-xl mx-auto">
-            Selecciona dos oposiciones para ver qu\u00e9 leyes comparten, cu\u00e1les
+            Selecciona dos oposiciones para ver qué leyes comparten, cuáles
             son exclusivas de cada una y el porcentaje exacto de solapamiento
-            art\u00edculo por art\u00edculo.
+            artículo por artículo.
           </p>
         </header>
 
@@ -58,13 +58,13 @@ export default function CompararTemariosPage() {
           <div className="space-y-6">
             <div>
               <h3 className="font-medium text-gray-900 dark:text-white mb-1">
-                ¿C\u00f3mo se comparan los temarios?
+                ¿Cómo se comparan los temarios?
               </h3>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Analizamos art\u00edculo por art\u00edculo las leyes de cada
-                oposici\u00f3n. Si ambas incluyen el mismo art\u00edculo de una
-                ley, cuenta como compartido. El porcentaje indica qu\u00e9
-                fracci\u00f3n del temario de cada oposici\u00f3n se solapa con
+                Analizamos artículo por artículo las leyes de cada
+                oposición. Si ambas incluyen el mismo artículo de una
+                ley, cuenta como compartido. El porcentaje indica qué
+                fracción del temario de cada oposición se solapa con
                 la otra.
               </p>
             </div>
@@ -73,9 +73,9 @@ export default function CompararTemariosPage() {
                 ¿Puedo preparar dos oposiciones a la vez?
               </h3>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                S\u00ed. Si dos oposiciones comparten un alto porcentaje de
+                Sí. Si dos oposiciones comparten un alto porcentaje de
                 temario, el esfuerzo adicional es mucho menor. Con Vence puedes
-                practicar tests de ambas con la misma suscripci\u00f3n.
+                practicar tests de ambas con la misma suscripción.
               </p>
             </div>
           </div>
@@ -91,18 +91,18 @@ export default function CompararTemariosPage() {
             mainEntity: [
               {
                 '@type': 'Question',
-                name: '\u00bfC\u00f3mo se comparan los temarios de oposiciones?',
+                name: '¿Cómo se comparan los temarios de oposiciones?',
                 acceptedAnswer: {
                   '@type': 'Answer',
-                  text: 'Se analizan art\u00edculo por art\u00edculo las leyes que componen cada temario. Los art\u00edculos compartidos se cuentan como solapamiento.',
+                  text: 'Se analizan artículo por artículo las leyes que componen cada temario. Los artículos compartidos se cuentan como solapamiento.',
                 },
               },
               {
                 '@type': 'Question',
-                name: '\u00bfPuedo preparar dos oposiciones a la vez?',
+                name: '¿Puedo preparar dos oposiciones a la vez?',
                 acceptedAnswer: {
                   '@type': 'Answer',
-                  text: 'S\u00ed, especialmente si comparten un alto porcentaje de temario. Con Vence puedes practicar tests de ambas oposiciones.',
+                  text: 'Sí, especialmente si comparten un alto porcentaje de temario. Con Vence puedes practicar tests de ambas oposiciones.',
                 },
               },
             ],

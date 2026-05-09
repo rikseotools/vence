@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import type { TemarioComparison } from '@/lib/api/oposiciones-compatibles/types'
 
@@ -9,6 +9,114 @@ interface OposicionOption {
   name: string
   shortName: string
   badge: string
+}
+
+// ============================================
+// SEARCHABLE SELECT COMPONENT
+// ============================================
+
+function SearchableSelect({
+  label,
+  options,
+  value,
+  onChange,
+  disabledSlug,
+}: {
+  label: string
+  options: OposicionOption[]
+  value: string
+  onChange: (slug: string) => void
+  disabledSlug: string
+}) {
+  const [query, setQuery] = useState('')
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  const selected = options.find((o) => o.slug === value)
+
+  const filtered = query
+    ? options.filter(
+        (o) =>
+          o.slug !== disabledSlug &&
+          (o.name.toLowerCase().includes(query.toLowerCase()) ||
+            o.badge.toLowerCase().includes(query.toLowerCase()))
+      )
+    : options.filter((o) => o.slug !== disabledSlug)
+
+  // Close on click outside
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
+  return (
+    <div ref={ref} className="relative">
+      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+        {label}
+      </label>
+      <input
+        type="text"
+        value={open ? query : selected ? `[${selected.badge}] ${selected.name}` : ''}
+        placeholder="Buscar oposición..."
+        onFocus={() => {
+          setOpen(true)
+          setQuery('')
+        }}
+        onChange={(e) => setQuery(e.target.value)}
+        className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+      />
+      {/* Clear button */}
+      {value && !open && (
+        <button
+          type="button"
+          onClick={() => { onChange(''); setQuery('') }}
+          className="absolute right-3 top-[38px] text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+          aria-label="Limpiar selección"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      )}
+      {open && (
+        <ul className="absolute z-50 mt-1 w-full max-h-60 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg">
+          {filtered.length === 0 ? (
+            <li className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">
+              Sin resultados
+            </li>
+          ) : (
+            filtered.map((o) => (
+              <li key={o.slug}>
+                <button
+                  type="button"
+                  className={`w-full text-left px-3 py-2 text-sm hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors ${
+                    o.slug === value
+                      ? 'bg-indigo-50 dark:bg-indigo-900/30 font-medium text-indigo-700 dark:text-indigo-300'
+                      : 'text-gray-800 dark:text-gray-200'
+                  }`}
+                  onClick={() => {
+                    onChange(o.slug)
+                    setOpen(false)
+                    setQuery('')
+                  }}
+                >
+                  <span className="text-xs text-gray-500 dark:text-gray-400 mr-1.5">
+                    [{o.badge}]
+                  </span>
+                  {o.name}
+                </button>
+              </li>
+            ))
+          )}
+        </ul>
+      )}
+    </div>
+  )
 }
 
 interface ComparisonResult {
@@ -57,7 +165,7 @@ export default function CompararTemariosClient({
       }
       setResult(data)
     } catch {
-      setError('Error de conexi\u00f3n')
+      setError('Error de conexión')
     } finally {
       setLoading(false)
     }
@@ -67,45 +175,25 @@ export default function CompararTemariosClient({
     <div>
       {/* Selectors */}
       <div className="grid sm:grid-cols-[1fr,auto,1fr] gap-4 items-end mb-8">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Oposici\u00f3n A
-          </label>
-          <select
-            value={slugA}
-            onChange={(e) => { setSlugA(e.target.value); setResult(null) }}
-            className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-          >
-            <option value="">Seleccionar...</option>
-            {oposiciones.map((o) => (
-              <option key={o.slug} value={o.slug} disabled={o.slug === slugB}>
-                [{o.badge}] {o.name}
-              </option>
-            ))}
-          </select>
-        </div>
+        <SearchableSelect
+          label="Oposición A"
+          options={oposiciones}
+          value={slugA}
+          onChange={(slug) => { setSlugA(slug); setResult(null) }}
+          disabledSlug={slugB}
+        />
 
         <div className="flex items-center justify-center">
           <span className="text-2xl text-gray-400 dark:text-gray-500">&#8596;</span>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Oposici\u00f3n B
-          </label>
-          <select
-            value={slugB}
-            onChange={(e) => { setSlugB(e.target.value); setResult(null) }}
-            className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-          >
-            <option value="">Seleccionar...</option>
-            {oposiciones.map((o) => (
-              <option key={o.slug} value={o.slug} disabled={o.slug === slugA}>
-                [{o.badge}] {o.name}
-              </option>
-            ))}
-          </select>
-        </div>
+        <SearchableSelect
+          label="Oposición B"
+          options={oposiciones}
+          value={slugB}
+          onChange={(slug) => { setSlugB(slug); setResult(null) }}
+          disabledSlug={slugA}
+        />
       </div>
 
       {/* Compare button */}
@@ -141,7 +229,7 @@ export default function CompararTemariosClient({
                 {result.comparison.sharedArticles}
               </div>
               <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Art\u00edculos compartidos
+                Artículos compartidos
               </div>
             </div>
             <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 text-center">
@@ -153,7 +241,7 @@ export default function CompararTemariosClient({
                 %
               </div>
               <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                M\u00e1ximo solapamiento
+                Máximo solapamiento
               </div>
             </div>
           </div>
@@ -178,7 +266,7 @@ export default function CompararTemariosClient({
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                 {result.comparison.sharedArticles} de{' '}
-                {result.comparison.totalArticlesB} art\u00edculos
+                {result.comparison.totalArticlesB} artículos
               </p>
             </div>
 
@@ -200,7 +288,7 @@ export default function CompararTemariosClient({
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                 {result.comparison.sharedArticles} de{' '}
-                {result.comparison.totalArticlesA} art\u00edculos
+                {result.comparison.totalArticlesA} artículos
               </p>
             </div>
           </div>

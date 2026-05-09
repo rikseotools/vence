@@ -25,7 +25,7 @@ export async function generateMetadata({
   if (!config) return {}
 
   const title = `Oposiciones compatibles con ${config.name} | Vence`
-  const description = `Descubre qu\u00e9 otras oposiciones puedes preparar si estudias ${config.name}. An\u00e1lisis art\u00edculo por art\u00edculo del solapamiento de temarios.`
+  const description = `Descubre qué otras oposiciones puedes preparar si estudias ${config.name}. Análisis artículo por artículo del solapamiento de temarios.`
 
   return {
     title,
@@ -93,7 +93,7 @@ function OverlapCard({ overlap }: { overlap: OposicionOverlap }) {
 
   return (
     <details className="group border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden hover:border-indigo-300 dark:hover:border-indigo-600 transition-colors">
-      <summary className="cursor-pointer p-5 flex items-center gap-4 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors list-none [&::-webkit-details-marker]:hidden">
+      <summary className="cursor-pointer p-4 sm:p-5 flex items-center gap-3 sm:gap-4 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors list-none [&::-webkit-details-marker]:hidden">
         {/* Badge grupo */}
         <span className="flex-shrink-0 inline-flex items-center justify-center w-11 h-11 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-sm font-bold">
           {overlap.badge}
@@ -124,7 +124,7 @@ function OverlapCard({ overlap }: { overlap: OposicionOverlap }) {
           </div>
 
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            {overlap.coveredArticles} de {overlap.totalArticles} art\u00edculos
+            {overlap.coveredArticles} de {overlap.totalArticles} artículos
             cubiertos
           </p>
         </div>
@@ -187,7 +187,7 @@ function OverlapCard({ overlap }: { overlap: OposicionOverlap }) {
         {missingLaws.length > 0 && (
           <div className="mb-4">
             <h4 className="text-sm font-semibold text-orange-700 dark:text-orange-400 mb-2">
-              Lo que te faltar\u00eda estudiar ({missingLaws.length}{' '}
+              Lo que te faltaría estudiar ({missingLaws.length}{' '}
               {missingLaws.length === 1 ? 'ley' : 'leyes'} nuevas)
             </h4>
             <div className="flex flex-wrap gap-1.5">
@@ -201,7 +201,7 @@ function OverlapCard({ overlap }: { overlap: OposicionOverlap }) {
               ))}
               {missingLaws.length > 8 && (
                 <span className="text-xs px-2 py-1 text-gray-500 dark:text-gray-400">
-                  +{missingLaws.length - 8} m\u00e1s
+                  +{missingLaws.length - 8} más
                 </span>
               )}
             </div>
@@ -254,18 +254,18 @@ export default async function OposicionesCompatiblesPage({
   // FAQ data for SEO
   const faqs = [
     {
-      q: `\u00bfQu\u00e9 otras oposiciones puedo preparar si estudio ${config.name}?`,
+      q: `¿Qué otras oposiciones puedo preparar si estudio ${config.name}?`,
       a: bestMatch
-        ? `Con tu preparaci\u00f3n de ${config.name}, la oposici\u00f3n m\u00e1s compatible es ${bestMatch.nombre} con un ${bestMatch.overlapPct}% de temario compartido. En total, ${over50Count} oposiciones comparten m\u00e1s del 50% del temario.`
+        ? `Con tu preparación de ${config.name}, la oposición más compatible es ${bestMatch.nombre} con un ${bestMatch.overlapPct}% de temario compartido. En total, ${over50Count} oposiciones comparten más del 50% del temario.`
         : `Actualmente no hay datos de compatibilidad para ${config.name}.`,
     },
     {
-      q: `\u00bfC\u00f3mo se calcula la compatibilidad de temarios?`,
-      a: `Analizamos art\u00edculo por art\u00edculo las leyes que componen el temario de cada oposici\u00f3n. Si dos oposiciones incluyen los mismos art\u00edculos de una ley, esos art\u00edculos cuentan como cubiertos. El porcentaje indica qu\u00e9 fracci\u00f3n del temario de la otra oposici\u00f3n ya cubres con tu estudio actual.`,
+      q: `¿Cómo se calcula la compatibilidad de temarios?`,
+      a: `Analizamos artículo por artículo las leyes que componen el temario de cada oposición. Si dos oposiciones incluyen los mismos artículos de una ley, esos artículos cuentan como cubiertos. El porcentaje indica qué fracción del temario de la otra oposición ya cubres con tu estudio actual.`,
     },
     {
-      q: `\u00bfPuedo preparar dos oposiciones a la vez?`,
-      a: `S\u00ed, y es una estrategia muy habitual. Si dos oposiciones comparten un alto porcentaje de temario, el esfuerzo adicional para preparar la segunda es mucho menor. Con Vence puedes practicar tests de ambas oposiciones con la misma suscripci\u00f3n.`,
+      q: `¿Puedo preparar dos oposiciones a la vez?`,
+      a: `Sí, y es una estrategia muy habitual. Si dos oposiciones comparten un alto porcentaje de temario, el esfuerzo adicional para preparar la segunda es mucho menor. Con Vence puedes practicar tests de ambas oposiciones con la misma suscripción.`,
     },
   ]
 
@@ -285,16 +285,16 @@ export default async function OposicionesCompatiblesPage({
           <p className="text-gray-600 dark:text-gray-400 text-lg">
             {bestMatch ? (
               <>
-                Con tu preparaci\u00f3n de {config.shortName},{' '}
-                <strong>{over50Count} oposiciones</strong> comparten m\u00e1s del
-                50% del temario. La m\u00e1s compatible es{' '}
+                Con tu preparación de {config.shortName},{' '}
+                <strong>{over50Count} oposiciones</strong> comparten más del
+                50% del temario. La más compatible es{' '}
                 <strong>{bestMatch.nombre}</strong> con un{' '}
                 <strong>{bestMatch.overlapPct}%</strong> de solapamiento
-                art\u00edculo por art\u00edculo.
+                artículo por artículo.
               </>
             ) : (
               <>
-                An\u00e1lisis de compatibilidad de temarios para{' '}
+                Análisis de compatibilidad de temarios para{' '}
                 {config.name}.
               </>
             )}
@@ -303,7 +303,7 @@ export default async function OposicionesCompatiblesPage({
 
         {/* Summary stats */}
         {overlaps.length > 0 && (
-          <div className="grid grid-cols-3 gap-4 mb-8">
+          <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-8">
             <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 text-center">
               <div className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
                 {overlaps.length}
@@ -325,7 +325,7 @@ export default async function OposicionesCompatiblesPage({
                 {bestMatch?.overlapPct ?? 0}%
               </div>
               <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                M\u00e1ximo solapamiento
+                Máximo solapamiento
               </div>
             </div>
           </div>
@@ -366,10 +366,10 @@ export default async function OposicionesCompatiblesPage({
         {overlaps.length === 0 && (
           <div className="text-center py-16 text-gray-500 dark:text-gray-400">
             <p className="text-lg">
-              A\u00fan no hay datos de compatibilidad para esta oposici\u00f3n.
+              Aún no hay datos de compatibilidad para esta oposición.
             </p>
             <p className="text-sm mt-2">
-              El temario puede no tener art\u00edculos configurados todav\u00eda.
+              El temario puede no tener artículos configurados todavía.
             </p>
           </div>
         )}
