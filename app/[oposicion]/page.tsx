@@ -416,6 +416,27 @@ export default async function OposicionPage({ params }: { params: Promise<{ opos
             </div>
           </section>
 
+          {/* Oposiciones compatibles CTA */}
+          <section className="mb-12 text-center">
+            <div className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-2xl p-8 border border-indigo-100 dark:border-indigo-800">
+              <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-2">
+                ¿Ya estudias para otra oposición?
+              </h2>
+              <p className="text-gray-600 dark:text-gray-400 mb-4 max-w-lg mx-auto">
+                Descubre qué porcentaje del temario de {config.shortName} ya cubres con tu preparación actual.
+              </p>
+              <Link
+                href={`/${config.slug}/oposiciones-compatibles`}
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium text-sm"
+              >
+                Ver oposiciones compatibles
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </Link>
+            </div>
+          </section>
+
           {/* FAQs */}
           {faqs.length > 0 && (
             <section className="mb-12">

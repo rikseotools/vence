@@ -34,6 +34,7 @@ export async function GET() {
       { loc: `/${o.slug}`, priority: 0.9, changefreq: 'weekly' as const },
       { loc: `/${o.slug}/test`, priority: 0.8, changefreq: 'weekly' as const },
       { loc: `/${o.slug}/temario`, priority: 0.7, changefreq: 'monthly' as const },
+      { loc: `/${o.slug}/oposiciones-compatibles`, priority: 0.6, changefreq: 'monthly' as const },
     ]),
     // Leyes
     { loc: '/leyes', priority: 0.9, changefreq: 'daily' },

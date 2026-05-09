@@ -68,7 +68,7 @@ describe('Landing Data Integrity', () => {
       expect(templateContent).toContain('getHitosConvocatoria')
       expect(templateContent).toContain("dynamic = 'force-dynamic'")
       expect(templateContent).toContain('application/ld+json')
-      expect(templateContent).toContain('hitos.map')
+      expect(templateContent).toContain('hitosSafe.map')
     })
 
     test.each(DYNAMIC_SLUGS)('%s: NO tiene page.tsx estático (usa template dinámico)', (slug) => {
