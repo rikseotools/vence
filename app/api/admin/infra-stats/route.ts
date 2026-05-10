@@ -295,6 +295,7 @@ async function _GET(request: NextRequest) {
       '/api/notifications/problematic-articles',   // GET único
       '/api/v2/topic-progress/weak-articles',      // GET único
       '/api/topics/[numero]',                      // GET único (path canonical con [numero])
+      '/api/v2/oposiciones-compatibles/progress',  // GET único (oleada 3, 2026-05-10)
       // EXCLUIDO /api/questions/filtered hasta migrar POST — su tráfico POST
       // domina y muestra 5xx de Supavisor que NO son del pooler.
     ])

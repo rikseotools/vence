@@ -1,4 +1,11 @@
-import { getDb } from '@/db/client'
+// CANARY self-hosted pooler (Fase 4, 2026-05-10):
+// /api/v2/oposiciones-compatibles/progress migrado en oleada 3. Read-only puro,
+// ya tiene unstable_cache + stale-if-error en la route.
+import { getDb, getPoolerDb } from '@/db/client'
+
+function getOposicionesCompatiblesDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
 import { topics, topicScope, articles, laws } from '@/db/schema'
 import { eq, and, inArray } from 'drizzle-orm'
 import { unstable_cache } from 'next/cache'
@@ -84,7 +91,7 @@ async function expandScope(
 async function computeOposicionesCompatiblesInternal(
   sourcePositionType: string
 ): Promise<OposicionOverlap[]> {
-  const db = getDb()
+  const db = getOposicionesCompatiblesDb()  // canary pooler
 
   // 1. Expand source scope
   const sourceScope = await expandScope(db, sourcePositionType)
@@ -229,7 +236,7 @@ async function compareTemariosBilateralInternal(
   positionTypeA: string,
   positionTypeB: string
 ): Promise<TemarioComparison> {
-  const db = getDb()
+  const db = getOposicionesCompatiblesDb()  // canary pooler
 
   const [scopeA, scopeB] = await Promise.all([
     expandScope(db, positionTypeA),
