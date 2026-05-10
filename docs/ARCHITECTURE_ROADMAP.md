@@ -503,6 +503,36 @@ getTraceDb()  → max:1, sin timeout   // ✅ HECHO — para after() background 
 
 ---
 
+## Tech debt evaluable: refactor PostgREST → Drizzle ⏳ NO URGENTE
+
+**Contexto** (descubierto 2026-05-10 tras migración masiva al pooler propio): el panel `/admin/infraestructura` muestra que **29 de las 58 conexiones a Supabase Postgres** son de **postgrest** (la REST API auto-generada de Supabase). Las usa el frontend cuando llama `supabase.from('table').select(...)` directamente.
+
+**Por qué NO se migran ahora**:
+- El pooler propio ya resolvió el dolor real (blips Supavisor afectando endpoints Drizzle)
+- 29 conexiones PostgREST son carga base ESTABLE — no crecen mucho con DAU
+- 58/90 = 64% (naranja pero estable), no es cuello de botella actual
+- Refactor implica ~1-2 semanas full-time + riesgo serio:
+  - **RLS automático** de PostgREST → replicar manualmente server-side (riesgo de leaks de seguridad si olvidas un filtro)
+  - **Realtime subscriptions** comparten path PostgREST — romper esto rompe notificaciones live
+  - **Cambios cliente-side**: cada `useEffect` / hook que llama supabase debe pasar por API route nueva
+  - **Tests**: cada flow afectado
+
+**Triggers para evaluar el refactor**:
+- 🚨 **Conexiones BD >80% sostenido** durante días → empezar a migrar hot paths PostgREST→Drizzle
+- 🚨 **Audit de seguridad** detecta RLS leak vía PostgREST → migrar endpoint afectado
+- ⚠️ **Latencia PostgREST en algún flow user-facing** se vuelve UX issue → migrar ese flow específico
+- 💼 **Independencia de Supabase** se convierte en objetivo estratégico → refactor completo
+
+**Cuando se decida migrar (futuro)**:
+- Empezar por endpoints más usados (medir con `/admin/infraestructura` → connections by app)
+- Mantener RLS o replicarla con cuidado (audit línea por línea)
+- Migrar 1 flow a la vez, verificar UI funciona, repetir
+- NO migrar Realtime subscriptions (las gestiona Supabase, no merece la pena)
+
+**Mi voto** (Claude, 2026-05-10): no es prioridad mientras 64% sea estable y no haya incidentes de seguridad o latencia. Lo verdaderamente profesional NO es "refactor por elegancia" — es atacar el cuello de botella REAL. El pool ya está atacado con el pooler propio.
+
+---
+
 ## Framework: Feature Audit (proceso por cada cambio)
 
 Antes de tocar código en cualquier fase:
