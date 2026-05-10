@@ -1,13 +1,21 @@
 // lib/api/user-stats/queries.ts - User Stats via tabla pre-computada
 // Antes: count(*) sobre test_questions (8s para heavy users, causaba 504s)
 // Ahora: lookup por PK en user_stats_summary (<1ms), actualizada por trigger
-import { getDb } from '@/db/client'
+//
+// CANARY self-hosted pooler (Fase 4 oleada 4 — URGENTE 2026-05-10 20:35 UTC):
+// Migrado tras blip activo de Supavisor causando 504s en user-stats.
+// Read-only puro (PK lookups + reads). Cero riesgo, alto impacto.
+import { getDb, getPoolerDb } from '@/db/client'
+
+function getUserStatsDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
 import { userStreaks } from '@/db/schema'
 import { eq, sql } from 'drizzle-orm'
 import type { UserPublicStats } from './schemas'
 
 export async function getUserPublicStats(userId: string): Promise<UserPublicStats> {
-  const db = getDb()
+  const db = getUserStatsDb()  // canary pooler
 
   // Query 1: stats desde tabla pre-computada (PK lookup, <1ms)
   // El trigger update_user_stats_summary_trigger actualiza estos contadores
