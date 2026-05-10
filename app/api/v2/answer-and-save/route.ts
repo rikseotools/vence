@@ -1,7 +1,6 @@
 // app/api/v2/answer-and-save/route.ts
 // Endpoint unificado: validar respuesta + guardar en test_questions + actualizar score
 // Reemplaza el flujo fragmentado de TestLayout (validate → save → updateScore → ...)
-import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 import { after } from 'next/server'
 import {
@@ -14,6 +13,7 @@ import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { withDbTimeout, isDbTimeoutError } from '@/lib/db/timeout'
 import { getDailyLimitStatus, incrementDailyCount, checkDeviceDailyUsage } from '@/lib/api/dailyLimit'
 import { registerAndCheckDevice, getDeviceIdFromRequest, getHwFingerprintFromRequest } from '@/lib/api/deviceLimit'
+import { verifyAuth } from '@/lib/api/auth/verifyAuth'
 
 // Margen para cold start + conexión BD
 export const maxDuration = 30
@@ -24,10 +24,12 @@ export const maxDuration = 30
 // Cuando el pooler parpadea, ambas pueden colgar 30s al statement_timeout.
 // Cortamos antes para liberar la lambda y devolver 503 retryable.
 //
-// NO se envuelve supabase.auth.getUser(): es HTTPS a Supabase Auth, no
-// pasa por el pooler de BD; tiene su propia infra. Es el cuello de
-// botella más documentado del path (250-1000ms) y se aborda en Phase 5
-// (JWT local verify).
+// AUTH: usa wrapper verifyAuth con shadow mode (Phase 0.7 piloto).
+// Modo controlado por env JWT_LOCAL_VERIFY_MODE:
+//   off    → Solo getUser() remoto (default, comportamiento actual 250-1000ms)
+//   shadow → Ambos en paralelo, log diff, sirve remoto (validación pre-flip)
+//   on     → Solo verifyJwtLocal (latencia <5ms, ahorra round-trip)
+// Plan: deploy con default off → activar shadow 24-48h → si 0 diff → flip a on.
 const ANTIFRAUD_TIMEOUT_MS = 10000
 const VALIDATE_AND_SAVE_TIMEOUT_MS = 15000
 
@@ -35,29 +37,17 @@ async function _POST(request: NextRequest): Promise<NextResponse<AnswerAndSaveRe
   const startTime = Date.now()
 
   try {
-    // 1. Auth: verificar Bearer token
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
+    // 1. Auth via wrapper (soporta off/shadow/on via env JWT_LOCAL_VERIFY_MODE)
+    const auth = await verifyAuth(request, '/api/v2/answer-and-save')
+    if (!auth.success) {
       return NextResponse.json(
-        { success: false, error: 'No autorizado' } as const,
+        { success: false, error: auth.reason === 'no_bearer_token' ? 'No autorizado' : 'Usuario no autenticado' } as const,
         { status: 401 },
       )
     }
-
-    const token = authHeader.split(' ')[1]
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      { global: { headers: { Authorization: `Bearer ${token}` } } },
-    )
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json(
-        { success: false, error: 'Usuario no autenticado' } as const,
-        { status: 401 },
-      )
-    }
+    // Variable `user` para mantener compatibilidad con código existente.
+    // Solo se usa user.id en el resto del handler.
+    const user = { id: auth.userId, email: auth.email }
 
     // 2. Parse + validate body
     let body: unknown
