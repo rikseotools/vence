@@ -402,7 +402,7 @@ getTraceDb()  → max:1, sin timeout   // ✅ HECHO — para after() background 
 
 > **Decisión arquitectónica 2026-05-10**: HA dejó de ser "opcional". Single VM = SPOF inaceptable para usuarios de pago. Eventos predecibles (kernel updates, cert renewal hooks, OOM, mantenimiento Lightsail) causarían downtime sin HA. Activación: antes de 5k DAU o ante el primer incidente de single-VM. Ver `docs/roadmap/self-hosted-pooler.md` § "Fase 6".
 
-**Estado canary (2026-05-10 ~21:00 UTC)**: ~20 endpoints migrados (reads + writes + helpers) tras 4 oleadas en una noche, incluyendo migración masiva URGENTE durante blip Supavisor activo a las 20:35 UTC.
+**Estado canary (2026-05-10 ~21:30 UTC)**: ~50+ endpoints user-facing migrados tras 5 oleadas en una sesión maratón. Cobertura total user-facing alcanzada. Solo admin/Stripe/cron permanecen en Supavisor (intencional). Validación canary 0/0/0/0 5xx en 24h confirma migración limpia.
 
 **Oleada 1** (validación):
 - `/api/ranking` (14:09 — primer canary)

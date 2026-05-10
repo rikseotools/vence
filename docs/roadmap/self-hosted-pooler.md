@@ -2,10 +2,10 @@
 
 > **Implementación elegida (mayo 2026)**: PgBouncer en AWS Lightsail London. Alternativas evaluadas (PgCat, Supabase Dedicated Pooler, Coolify) en sección "Comparación de opciones".
 
-> **Estado**: 🟢 Fase 5 EN ROLLOUT (2026-05-10) — ~20 endpoints canary (reads + writes + helpers transversales) tras blip Supavisor 20:35 UTC que forzó migración masiva. Fase 0-4 ✅ + Fase 5 (writes) HECHA esta misma noche. Pico real lunes mañana.
+> **Estado**: 🟢 Fase 5 COMPLETA (2026-05-10) — ~50+ endpoints user-facing en pooler tras 5 oleadas en una sesión. Único restante: admin/Stripe/cron (intencional). Pico real lunes mañana = prueba final.
 > **Propietario**: equipo Vence
 > **Coste recurrente real**: $7/mes (Lightsail plan 1GB) — primeros 90 días GRATIS con cuenta nueva ($200 USD créditos AWS)
-> **Última actualización**: 2026-05-10 ~21:00 UTC — sweep masivo tras blip activo. Hipótesis arquitectónica validada en directo: lo que va por pooler 0 errores, lo que va por Supavisor sufre. Panel admin `/admin/infraestructura` con stats vivos del PgBouncer (SHOW POOLS / STATS / MEM) + tabla endpoints + comparativa pooler vs Supavisor.
+> **Última actualización**: 2026-05-10 ~21:30 UTC — oleada 5 (34 archivos lib/api/ user-facing) + fix pgbouncer admin DB (pg vs postgres-js). Panel `/admin/infraestructura` con stats vivos del PgBouncer ya operativo. Validación canary 0/0/0/0 5xx en 24h confirma migración limpia.
 
 ---
 
@@ -260,6 +260,28 @@ function getRankingDb() {
 | Helper `oposicion-scope` (transversal) | 21:10 UTC | — | Usado por muchos endpoints | `fad5eedb` |
 | Helper `topic-names` | 21:10 UTC | — | Usado en varios sitios | `fad5eedb` |
 
+**Oleada 5 — SWEEP MASIVO TOTAL** (cobertura completa user-facing pre-pico lunes — 34 archivos):
+Tras blip + oleada 4 ya estable, decisión "todo lo que no sea admin/Stripe/cron al pooler". Sweep batch script con sed reemplazando `getDb()` → `getXxxDb()` con flag canary.
+
+| Módulo | Tipo | Función crítica |
+|---|---|---|
+| `auth/queries.ts` | GET | Login/sesiones |
+| `profile/queries.ts` | mixed | Perfil usuario |
+| `test-answers/queries.ts` | **WRITE** | Guardar respuestas (CRÍTICO) |
+| `test-config/queries.ts` | GET | Config tests |
+| `tests/queries.ts` + `questions/queries.ts` | mixed | CRUD tests/preguntas |
+| `psychometric-{session,test-data,stats}` | mixed | Psicotécnicos (3 archivos) |
+| `v2/{complete-test,complete-onboarding,feedback,devices,dispute}` | mixed | Endpoints v2 (5 archivos) |
+| `laws`, `laws-configurator`, `temario`, `stats` | GET | Datos curriculares |
+| `random-test`, `user-failed-questions`, `hot-articles`, `interactions` | mixed | Tests random + analytics |
+| `dispute`, `tema-resolver`, `chat`, `soporte` | mixed | Comunicación user |
+| `convocatoria`, `video-courses`, `email-preferences`, `test-favorites`, `test-review` | mixed | Misceláneos user |
+| `topic-progress/{user-answers,mapping}` | GET | Progresión usuarios |
+| `spelling-answer/queries.ts` | **WRITE** | Respuestas ortografía |
+| `avatar-settings/profiles.ts` | mixed | Avatar (cron + user) |
+
+Commits: `438c735d` (34 user-facing files) + `7c79202e` (avatar-settings + verificación exam/pending)
+
 **Variables de entorno añadidas a Vercel Production** (2026-05-10):
 - `USE_SELF_HOSTED_POOLER=true`
 - `DATABASE_URL_SELF_POOLER=postgresql://postgres:<PASSWORD>@pooler.vence.es:6543/postgres?sslmode=require`
@@ -491,6 +513,36 @@ ignore_startup_parameters = extra_float_digits,statement_timeout,idle_in_transac
 
 Aplicado ya en `infra/pooler/provision-pooler.sh` (commit pendiente). Re-provisión idempotente lo arregla.
 
+### Trampa: PgBouncer admin DB no soporta extended query protocol
+
+**Síntoma**: panel `/admin/infraestructura` muestra "Pooler propio: No disponible" aunque `DATABASE_URL_SELF_POOLER` esté configurada y la VM esté funcionando perfectamente. Logs server-side:
+
+```
+PostgresError: extended query protocol not supported by admin console
+code: '08P01'
+```
+
+**Causa**: PgBouncer admin console (la base de datos especial `pgbouncer` accesible vía la misma conexión TLS, port 6543) **solo soporta simple query protocol**. La librería `postgres` (postgres-js) usa extended protocol por defecto incluso con `prepare: false`. El extended protocol falla en handshake con admin console.
+
+**Fix**: usar `pg` (node-postgres) en lugar de `postgres-js` específicamente para conexiones a la admin DB. `pg.Client` usa simple query protocol que pgbouncer admin sí acepta.
+
+```typescript
+// ❌ NO funciona — postgres-js usa extended protocol
+import postgres from 'postgres'
+const conn = postgres(adminUrl, { prepare: false })
+await conn`SHOW POOLS`  // → 08P01 protocol violation
+
+// ✅ Sí funciona — pg usa simple protocol por default
+import { Client as PgClient } from 'pg'
+const client = new PgClient({ connectionString: adminUrl, ssl: { rejectUnauthorized: false } })
+await client.connect()
+await client.query('SHOW POOLS')  // → ✅ funciona
+```
+
+**Adicional**: pgbouncer admin tampoco maneja queries concurrentes bien (mismo error 08P01). Las queries deben ser **secuenciales**, no `Promise.all`.
+
+Aplicado en `app/api/admin/infra-stats/route.ts` (commit `d3927f4b`, 2026-05-10).
+
 ### Trampa: `db.<ref>.supabase.co` solo resuelve a IPv6
 
 ```
@@ -520,7 +572,9 @@ Más simple, más estándar, menos servicios que mantener.
 - [x] **Fase 2** — Validación pre-producción (skip Preview, fuimos directo a canary prod por confianza)
 - [x] **Fase 3** — Canary 1 endpoint (`/api/ranking`) validado tras fix `ignore_startup_parameters`
 - [x] **Fase 4 (oleada 1+2+3)** — 9 endpoints read migrados durante el día
-- [x] **Fase 4-5 sweep URGENTE (oleada 4)** — durante blip Supavisor 20:35 UTC migrados: 3 writes críticos (answer-and-save, psychometric/answer, official-exams/answer) + filtered POST + sweep masivo (random-test-data, exam, feedback, daily-limit, teoria, helpers oposicion-scope/topic-names). **~20 endpoints en pooler propio en total**
+- [x] **Fase 4-5 sweep URGENTE (oleada 4)** — durante blip Supavisor 20:35 UTC migrados: 3 writes críticos (answer-and-save, psychometric/answer, official-exams/answer) + filtered POST + sweep (random-test-data, exam, feedback, daily-limit, teoria, helpers)
+- [x] **Oleada 5 — SWEEP TOTAL** — 34 archivos lib/api/ user-facing al pooler (auth, profile, test-answers, psychometric-*, v2/*, etc.) + avatar-settings. **~50+ endpoints en pooler propio en total** (todo lo user-facing cubierto).
+- [x] **Fix bug pgbouncer admin DB** — extended query protocol no soportado en admin console; cambio a `pg` (node-postgres) en lugar de `postgres-js` para esa conexión específica. Panel admin con stats vivos del PgBouncer ya operativo.
 - [x] `db/client.ts:getPoolerDb()` con feature flag `USE_SELF_HOSTED_POOLER` + tests
 - [x] Panel admin `/admin/infraestructura` con:
   - Sección "Pooler propio" con stats vivos (SHOW POOLS / STATS / MEM via direct connection a admin DB)
