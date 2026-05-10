@@ -148,12 +148,71 @@ export default function InfraStatsTab() {
         </div>
       </div>
 
+      {/* Guía rápida — cómo leer este panel */}
+      <details className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+        <summary className="text-sm font-semibold text-blue-900 dark:text-blue-100 cursor-pointer">
+          📖 ¿Cómo leer este panel? (clic para expandir)
+        </summary>
+        <div className="mt-3 space-y-3 text-xs text-gray-700 dark:text-gray-300">
+          <div>
+            <strong className="text-blue-700 dark:text-blue-300">🟢 Todo bien si:</strong>
+            <ul className="list-disc list-inside mt-1 space-y-0.5 ml-2">
+              <li><strong>Conexiones BD &lt; 50%</strong> (verde) — pool de Supabase con margen</li>
+              <li><strong>Pooler propio · maxwait = 0</strong> — nadie espera por conexión</li>
+              <li><strong>Pooler propio · cl_waiting = 0</strong> — sin saturación</li>
+              <li><strong>Canary 0/0/0/0</strong> — sin errores 5xx en 1h ni 24h</li>
+            </ul>
+          </div>
+          <div>
+            <strong className="text-yellow-700 dark:text-yellow-400">🟡 Atención si:</strong>
+            <ul className="list-disc list-inside mt-1 space-y-0.5 ml-2">
+              <li><strong>Conexiones BD 50-75%</strong> (naranja) — vigilar tendencia, considerar migrar más al pooler</li>
+              <li><strong>Pooler · Avg wait &gt; 5ms</strong> — pool empieza a saturar</li>
+              <li><strong>Algún endpoint del pooler con 5xx</strong> en tabla — investigar bug</li>
+            </ul>
+          </div>
+          <div>
+            <strong className="text-red-700 dark:text-red-400">🔴 Acción inmediata si:</strong>
+            <ul className="list-disc list-inside mt-1 space-y-0.5 ml-2">
+              <li><strong>Conexiones BD &gt; 75%</strong> (rojo) — riesgo cercano de rechazo de conexiones (max 90)</li>
+              <li><strong>Pooler · maxwait &gt; 100ms</strong> — pool saturado, subir <code>default_pool_size</code> en pgbouncer.ini</li>
+              <li><strong>Pooler · cl_waiting &gt; 0 sostenido</strong> — clientes esperando, blip o saturación</li>
+              <li><strong>Errores 5xx en endpoints del pooler</strong> &gt; baseline — toggle <code>USE_SELF_HOSTED_POOLER=false</code> y avisar a Claude</li>
+            </ul>
+          </div>
+          <div>
+            <strong className="text-gray-700 dark:text-gray-300">🔄 Rollback global (&lt;30s):</strong> Vercel → Settings → Environment Variables → cambiar <code>USE_SELF_HOSTED_POOLER</code> a <code>false</code> → redeploy. Tráfico vuelve al Supavisor regional.
+          </div>
+        </div>
+      </details>
+
       {/* Cards principales */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card label="Conexiones BD" value={`${db.totalConnections}/${db.maxConnections}`} sub={`${db.usagePercent}% uso`} color={usageColor} />
-        <Card label="Usuarios hoy" value={traffic.usersToday.toString()} sub={`${traffic.sessionsToday} sesiones`} />
-        <Card label="Preguntas hoy" value={traffic.questionsToday.toLocaleString('es-ES')} sub={`${Math.round(traffic.questionsToday / Math.max(traffic.usersToday, 1))} por usuario`} />
-        <Card label="Pico concurrente" value={traffic.peakConcurrent.toString()} sub="sesiones simultaneas" />
+        <Card
+          label="Conexiones BD"
+          value={`${db.totalConnections}/${db.maxConnections}`}
+          sub={`${db.usagePercent}% uso · ideal <50%`}
+          color={usageColor}
+          hint="Conexiones abiertas a Supabase Postgres ahora mismo. Max 90 (Pro plan)."
+        />
+        <Card
+          label="Usuarios hoy"
+          value={traffic.usersToday.toString()}
+          sub={`${traffic.sessionsToday} sesiones`}
+          hint="DAU (daily active users) — resetea a medianoche UTC."
+        />
+        <Card
+          label="Preguntas hoy"
+          value={traffic.questionsToday.toLocaleString('es-ES')}
+          sub={`${Math.round(traffic.questionsToday / Math.max(traffic.usersToday, 1))} por usuario`}
+          hint="Total preguntas respondidas hoy. >10 por usuario = engagement saludable."
+        />
+        <Card
+          label="Pico concurrente"
+          value={traffic.peakConcurrent.toString()}
+          sub="sesiones simultáneas"
+          hint="Máximo simultáneo del día. Útil para capacity planning."
+        />
       </div>
 
       {/* Barra de uso de conexiones */}
@@ -395,12 +454,13 @@ export default function InfraStatsTab() {
   )
 }
 
-function Card({ label, value, sub, color }: { label: string; value: string; sub?: string; color?: string }) {
+function Card({ label, value, sub, color, hint }: { label: string; value: string; sub?: string; color?: string; hint?: string }) {
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
       <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{label}</p>
       <p className={`text-2xl font-bold ${color || 'text-gray-900 dark:text-white'}`}>{value}</p>
       {sub && <p className="text-xs text-gray-400 mt-1">{sub}</p>}
+      {hint && <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-2 leading-tight italic">{hint}</p>}
     </div>
   )
 }
