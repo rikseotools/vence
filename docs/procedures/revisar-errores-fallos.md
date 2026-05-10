@@ -86,6 +86,29 @@ Si `quick_fail:db_timeout` empieza a aparecer en bursts, sospechar:
 2. Cron pesado bloqueando hot path → revisar `cron_runs` en `/api/admin/health`
 3. Query lenta en endpoint específico → buscar el `endpoint` en el evento Sentry
 
+### CONNECT_TIMEOUT en Vercel logs (no llega a Sentry directamente)
+
+Cuando el cliente postgres-js no consigue establecer TCP al pooler regional, el error es `write CONNECT_TIMEOUT aws-0-eu-west-2.pooler.supabase.com:6543` (`.code === 'CONNECT_TIMEOUT'`). Aparece típicamente en:
+
+- `validation_error_logs` que NO se pudo escribir (warning meta-log: "No se pudo guardar error log: ... CONNECT_TIMEOUT")
+- Lambdas que no han adoptado `withConnectRetry` (helper en `lib/db/timeout.ts`)
+
+**Mitigación implementada (commit `06822135`, 2026-05-10):**
+- `withConnectRetry(fn, backoffMs=500)` envuelve la query: 1 reintento con backoff fijo si el primer intento lanza CONNECT_TIMEOUT. Cubre blips <1s sin propagar 503 al usuario.
+- Aplicado a `/api/questions/filtered` POST y GET ?action=count.
+
+**Cómo verificar que la mitigación funciona en Vercel logs:**
+
+```
+# Buscar en Vercel logs (Last 30 min):
+"sirviendo cache stale (per-user"   ← stale-if-error normal (caso usuario repite config)
+"sirviendo cache stale (global"     ← fallback global (caso usuario nuevo, otro ya cacheó)
+```
+
+Si ves el segundo log durante un blip, la mitigación de doble cache key está funcionando. Si después de un blip largo siguen apareciendo 503s con regularidad (no esporádicos), considerar arrancar Fase 0 del self-hosted pooler (`docs/roadmap/self-hosted-pooler.md`).
+
+**Endpoints pendientes de adoptar `withConnectRetry`** (si vuelven a aparecer 503 en blips): `/api/v2/topic-progress/theme-stats`, `/api/notifications/problematic-articles`, `/api/ranking`, `/api/v2/weak-articles`. Por ahora estos tienen suficiente cubrimiento con la cache fresh+stale-24h existente.
+
 ## Feature flags de runtime (toggleable sin deploy)
 
 | Variable | Default | Efecto cuando `false` |

@@ -5,7 +5,7 @@
 > **Estado**: ⏳ Pendiente arranque (Fase 0)
 > **Propietario**: equipo Vence
 > **Coste recurrente esperado**: ~$10/mes (Lightsail $10) → opcional escalar a HA $50/mes
-> **Última actualización**: 2026-05-09
+> **Última actualización**: 2026-05-10 (incidente recurrente — reforzada urgencia)
 
 ---
 
@@ -23,7 +23,17 @@ Primary DSN:  aws-0-eu-west-2.pooler.supabase.com:6543
 Replica DSN:  aws-0-eu-west-2.pooler.supabase.com:6543  ← MISMA infra
 ```
 
-Ya tenemos **stale-while-error** en 4 endpoints (theme-stats, problematic-articles, topics, weak-articles) que mitiga 80% del impacto. Pero hay endpoints que NO se pueden cachear (writes, `/api/questions/filtered` POST con random selection, etc.) que siguen sufriendo cada blip.
+Ya tenemos **stale-while-error** en 5 endpoints (theme-stats, problematic-articles, topics, weak-articles, oposiciones-compatibles/progress) que mitiga 70-80% del impacto. Pero hay endpoints que NO se pueden cachear (writes, `/api/questions/filtered` POST con random selection, etc.) que siguen sufriendo cada blip.
+
+### Recordatorio 2026-05-10 — incidente recurrente
+
+Tras el sprint cascade del 5-9 may con stale-if-error + replica completados, `/api/questions/filtered` siguió devolviendo 503s en clusters durante blips. Mitigación aplicada (commit `06822135`):
+- **Doble cache key** (per-user + global) — más probabilidad de hit stale durante blip
+- **`withConnectRetry`** — 1 reintento si CONNECT_TIMEOUT efímero <1s
+
+Detalle en `docs/ARCHITECTURE_ROADMAP.md` § "Incidente recurrente 2026-05-10".
+
+**Esto NO sustituye al self-hosted pooler.** Reduce los 503 visibles ~70-90% pero el SPOF arquitectónico sigue ahí. Si vuelven a verse 503s tras la mitigación → arrancar Fase 0 (provisión Lightsail).
 
 ### Soluciones evaluadas
 
