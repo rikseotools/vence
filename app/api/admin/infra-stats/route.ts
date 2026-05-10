@@ -203,12 +203,21 @@ async function _GET(request: NextRequest) {
         .order('created_at', { ascending: false })
         .limit(10), 5000, 'recent_errors'),
 
-      // 7. Peak concurrent sessions today (8s — puede haber muchas sesiones)
-      withTimeout(supabase.from('user_sessions')
-        .select('session_start, session_end')
-        .gte('session_start', `${today}T00:00:00`)
-        .not('session_end', 'is', null)
-        .order('session_start'), 8000, 'peak_concurrent'),
+      // 7. Peak concurrent sessions today — calculado en SQL en vez de
+      // traer todas las sesiones a memoria (5k+ rows hacían timeout @8s).
+      // Usa window function: marca eventos +1 (start) / -1 (end), suma corriente, MAX.
+      withTimeout(db.execute(sql`
+        SELECT COALESCE(MAX(concurrent_count), 0)::int AS peak FROM (
+          SELECT SUM(delta) OVER (ORDER BY moment) AS concurrent_count
+          FROM (
+            SELECT session_start AS moment, 1 AS delta FROM public.user_sessions
+              WHERE session_start >= ${`${today}T00:00:00Z`}::timestamptz
+            UNION ALL
+            SELECT session_end AS moment, -1 AS delta FROM public.user_sessions
+              WHERE session_end IS NOT NULL AND session_start >= ${`${today}T00:00:00Z`}::timestamptz
+          ) events
+        ) s
+      `), 5000, 'peak_concurrent'),
 
       // 8. Canary stats — 5xx por endpoint (1h y 24h) (5s)
       withTimeout(db.execute(sql`
@@ -222,9 +231,10 @@ async function _GET(request: NextRequest) {
         ORDER BY errors_24h DESC
       `), 5000, 'canary_stats'),
 
-      // 9. Stats por endpoint (todos los logueados, no solo 5xx) — 24h (5s)
+      // 9. Stats por endpoint (todos los logueados, no solo 5xx) — 24h.
+      // Timeout 8s porque validation_error_logs puede tener miles de rows en 24h
+      // (incluye 4xx que son frecuentes — validaciones de clientes/bots).
       // duration_ms solo se loguea en errores, así que esto es duración de errores.
-      // Igual nos da idea de qué endpoints son lentos cuando fallan.
       withTimeout(db.execute(sql`
         SELECT endpoint,
                count(*)::int AS total_errors_24h,
@@ -238,7 +248,7 @@ async function _GET(request: NextRequest) {
         GROUP BY endpoint
         ORDER BY errors_5xx_24h DESC, total_errors_24h DESC
         LIMIT 30
-      `), 5000, 'endpoint_stats'),
+      `), 8000, 'endpoint_stats'),
 
       // 10. PgBouncer admin stats (SHOW POOLS / STATS / MEM) — 4s
       withTimeout(getPgbouncerAdminStats(), 4000, 'pgbouncer_admin'),
@@ -272,21 +282,9 @@ async function _GET(request: NextRequest) {
       date: e.created_at,
     }))
 
-    // Calculate peak concurrent sessions
-    let peakConcurrent = 0
-    if (peakResult?.data?.length) {
-      const events: { time: number; delta: number }[] = []
-      for (const s of peakResult.data) {
-        events.push({ time: new Date(s.session_start).getTime(), delta: 1 })
-        if (s.session_end) events.push({ time: new Date(s.session_end).getTime(), delta: -1 })
-      }
-      events.sort((a, b) => a.time - b.time)
-      let current = 0
-      for (const e of events) {
-        current += e.delta
-        if (current > peakConcurrent) peakConcurrent = current
-      }
-    }
+    // Peak concurrent sessions — ya calculado en SQL (refactor 2026-05-10)
+    const peakRows = peakResult ? (Array.isArray(peakResult) ? peakResult : (peakResult as any).rows || []) : []
+    const peakConcurrent = peakRows[0]?.peak ?? 0
 
     // Canary endpoints: lista de endpoints migrados al self-hosted pooler.
     // Cualquier endpoint NO listado aquí va contra Supavisor (path histórico).
