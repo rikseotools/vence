@@ -46,7 +46,7 @@ Este roadmap cambia la arquitectura **sin reescribir** el código, en 6 fases in
 
 | Fase | Estado | Duración | Coste mensual | Beneficio | Riesgo |
 |---|---|---|---|---|---|
-| **0 — Estabilizar** | 🟡 6/7 hechas (falta 0.5 verificación p95). Fase 0.7 nueva (JWT local verify) pendiente | 1 sem | $0 | Resuelve timeouts actuales | Cero |
+| **0 — Estabilizar** | 🟡 6/7 hechas (falta 0.5 verificación p95). Fase 0.7 (JWT local verify) en rollout — infraestructura deployed 2026-05-10 con flag OFF, pendiente activar shadow → on | 1 sem | $0 | Resuelve timeouts actuales | Cero |
 | **1 — Redis cache** | ✅ COMPLETA (2026-05-02) | 1-2 sem | $10 | -80% load BD | Bajo |
 | **2 — Outbox pattern** | ⏳ Pendiente | 2-3 sem | $0 | Estabilidad escrituras | Medio |
 | **3 — Pool split / replica** | ✅ **COMPLETA (2026-05-09)** — `getDb` max:1 + `getAdminDb` max:4 + `getReadDb` apunta a read replica eu-west-2 (provisionada Small ~$15/mes). 3 endpoints migrados (theme-stats, problematic-articles, ranking). Feature flag `USE_READ_REPLICA` permite rollback 30s | 2-3 sem | ~$15/mes | Aislamiento OLTP + descarga lecturas del primary | Bajo |
@@ -158,56 +158,79 @@ Tras hacer push de los 19 commits de Sprint 2, revisión de logs Vercel detectó
 
 ---
 
-## Fase 0.7 — JWT local verify (CRÍTICO seguridad) ⏳ PENDIENTE
+## Fase 0.7 — JWT local verify (CRÍTICO seguridad) 🟡 EN ROLLOUT (2026-05-10)
 
-**Origen:** Hard Gap #1 de la auditoría 10k DAU. Investigación a fondo del 3 may 2026 confirma que es **el principal cuello del hot path**.
+**Estado actual**: infraestructura desplegada con `JWT_LOCAL_VERIFY_MODE=off` por defecto. Aplicada al endpoint piloto `/api/v2/answer-and-save`. Pendiente: activar shadow mode en Vercel (env var change), observar 24-48h, flip a `on`, migrar resto de 40 callers.
 
-**Diagnóstico (3 may 2026, 18:30 UTC):**
+**Origen:** Hard Gap #1 de la auditoría 10k DAU. Investigación a fondo del 3 may 2026 confirmó que era **el principal cuello del hot path**.
+
+**Diagnóstico inicial (3 may 2026, 18:30 UTC):**
 - 24 warnings/h de `⚠️ [answer-and-save] Respuesta lenta: 2-4s` en producción (consistente)
 - Trace del endpoint:
   | Paso | Coste | Estado |
   |---|---|---|
-  | `supabase.auth.getUser()` | **250-1000ms** | ❌ Sin atacar |
+  | `supabase.auth.getUser()` | **250-1000ms** | ✅ Atacado (commit 8aaa9171) |
   | `Promise.all([device, daily, deviceUsage])` | 50-200ms | OK paralelo |
   | `getQuestionValidationCached` | <5ms | OK (cache hit) |
   | INSERT `test_questions` (6 triggers I/O) | 100-500ms | 🟡 Parcial (Fases 0.1/0.2/0.6) |
   | UPDATE `tests` SET score | 10-30ms | OK |
 - Total: 400-1700ms p50, **2-4s p99**
-- **El round-trip a Supabase Auth es el contribuyente único más grande**
 
-**Beneficio esperado:**
-- Round-trip Vercel → Supabase Auth: 250-1000ms → **<5ms** (verificación firma local)
-- p50 endpoint: 1.5s → **0.5s**
-- p99 endpoint: 4s → **1.5s**
-- ~5M req/día × ~250ms ahorrados = **350h latencia agregada eliminada**
+**Hallazgos investigación previa (10 may 2026):**
+1. **Supabase usa HS256** (secreto simétrico), NO RS256/ES256 — confirmado: el endpoint `.well-known/jwks.json` devuelve `{"keys":[]}`. Implicación: necesario `SUPABASE_JWT_SECRET` en env vars (Dashboard → Settings → API → Legacy JWT Secret tab).
+2. **Auditoría 41 callers de `getUser()`**: ~25 usan solo `user.id`, ~10 usan `email`, **0 usan `app_metadata`/`user_metadata` del resultado de getUser** (las refs encontradas son páginas client-side leyendo de session, no de getUser). Implicación: 1 solo helper que devuelve `{userId, email}` cubre el 100% de uso.
+3. **Otros métodos auth no tocan**: `signInWithOAuth` (Google login), `admin.getUserById/deleteUser` (usan SERVICE_ROLE_KEY, no JWT user), `getSession` (solo cliente browser).
+
+**Implementación deployed (commit 8aaa9171, 2026-05-10):**
+
+Defense-in-depth con 2 capas:
+
+1. **Helper aislado** `lib/api/auth/verifyJwtLocal.ts`:
+   - Whitelist explícita `algorithms: ['HS256']` — anti algorithm confusion attack
+   - Validación strict de `audience: 'authenticated'`
+   - `clockTolerance: 5s` para skew Vercel↔Supabase
+   - Errores tipados: `no_token | no_secret_configured | invalid_signature | expired | malformed | unsupported_alg | wrong_audience | wrong_issuer`
+   - Sin secret → `no_secret_configured` (NO false positive de éxito — protección cuando se olvida set la env var)
+   - Lib: `jsonwebtoken@9.0.3` (CommonJS, Node-native, ampliamente probado). NO se usó `jose@6` por ser ESM-only y requerir config Jest no trivial.
+
+2. **Wrapper** `lib/api/auth/verifyAuth.ts` con 3 modos via env `JWT_LOCAL_VERIFY_MODE`:
+   - `off` (DEFAULT) → solo `getUser()` remoto, comportamiento idéntico a antes
+   - `shadow` → AMBAS verifs en paralelo, log diff a Sentry+`validation_error_logs`, sirve resultado del REMOTO (zero risk para usuarios). Detecta mismatch de userId/email/success.
+   - `on` → solo `verifyJwtLocal`, latencia <5ms, ahorra round-trip
+   - Flag inválido → fallback a `off` defensivo
+
+**Tests cubriendo:**
+- 27 tests en `verifyJwtLocal.test.ts`: happy path, algorithm confusion (none/HS384/HS512), payload tampering, firma rota, expiry con clock tolerance, audience inválido, secret missing, edge cases input
+- 10 tests en `verifyAuth.test.ts`: 3 modos, divergencia (userid_mismatch/email_mismatch/local_ok_remote_fail), no_bearer_token, flag inválido
+- 79 tests existentes de answer-flow + answer-save-queue + answer-validation siguen pasando
+
+**Plan de rollout (sin código adicional, solo env vars):**
+
+1. ✅ **Fase A (HOY)**: Deploy con `MODE=off` → 0 cambios user-facing, infraestructura lista
+2. ⏳ **Fase B (24-48h)**: User set `MODE=shadow` en Vercel + redeploy. Observar logs:
+   - Si 0 divergencias `🔒 [auth/shadow] DIVERGENCE` → confianza alta
+   - Si N divergencias → investigar antes de continuar
+3. ⏳ **Fase C**: User set `MODE=on` → latencia p50 1.5s→0.5s en answer-and-save
+4. ⏳ **Fase D (1-2 sem)**: Migrar resto de 40 callers de `getUser()` al wrapper
+5. ⏳ **Fase E (mes+)**: Eliminar `getUser()` residual, verificación pura local
+
+**Rollback**: env var `MODE=off` + redeploy. <2 min en cualquier fase.
 
 **Riesgos analizados (NO eliminables 100% incluso con mitigaciones):**
-1. **Algorithm confusion attack** (`alg: none`) — bypass total si verifier no enforce whitelist explícito
-2. **Usuarios baneados** continúan accediendo hasta 1h (TTL access token) porque local verify no consulta BD. Mitigación: añadir check `user.banned_at IS NULL` post-extracción userId
-3. **Token revocation tras logout** — access token sigue válido hasta `exp` (no es nuevo, comportamiento actual)
-4. **Rotación key Supabase** — wave de 401 falsos en window de cache stale. Mitigación: TTL corto + refetch on signature failure
-5. **Custom claims futuros** que Supabase añada — divergencia silenciosa post-shadow window
+1. ✅ **Algorithm confusion attack** — mitigado: whitelist explícita HS256, defense-in-depth con check post-jwt.verify
+2. ⚠️ **Usuarios baneados continúan accediendo hasta `exp`** — mitigación pendiente: añadir check `auth.users.banned_at IS NULL` post-extract userId. **CRÍTICO**: el `Access token expiry time` actual está en **604.800s (7 días)** vs recomendación 3.600s (1h). Decisión pendiente: bajar expiry (invalida sesiones activas → re-login forzoso) o añadir BD check (+10ms latencia). Por ahora seguimos con expiry alto + sin BD check, mismo comportamiento que `getUser()` actual.
+3. **Token revocation tras logout** — access token sigue válido hasta `exp` (mismo comportamiento que `getUser()` actual)
+4. **Rotación key Supabase** — improbable; si ocurre, env var update + redeploy. Wave de 401 hasta propagar.
+5. **Migración futura a JWT Signing Keys (asimétrico)** — Supabase está deprecando HS256. Cuando se migre, necesario reescribir `verifyJwtLocal.ts` para usar JWKS endpoint (~1-2h trabajo: cambiar `jsonwebtoken` por `jose` con remote JWKS cache).
 
-**Investigación previa OBLIGATORIA (10-30 min, antes de tocar código):**
-1. **¿Vence usa JWKS asimétrico (RS256/ES256) o secreto simétrico (HS256)?** — `curl https://<project>.supabase.co/auth/v1/.well-known/jwks.json`. Modelo de riesgo distinto en cada caso.
-2. **Auditar TODOS los callers de `supabase.auth.getUser()`** — qué uso hacen: solo `user.id`? `app_metadata`? `email`? Algunos pueden necesitar el round-trip por roles.
-3. **Verificar OAuth Google flow** genera tokens compatibles con verifier local.
+**Beneficio esperado tras flip a `on`:**
+- Round-trip Vercel → Supabase Auth: 250-1000ms → **<5ms** (verificación firma local)
+- p50 endpoint `/api/v2/answer-and-save`: 1.5s → **0.5s**
+- p99 endpoint: 4s → **1.5s**
+- ~5M req/día × ~250ms ahorrados = **350h latencia agregada eliminada/día**
+- Aplicable a TODOS los 41 endpoints autenticados tras Fase D
 
-**Plan de implementación (cuando se reanude):**
-1. Helper aislado `verifyAuthLocal(token): { userId, error }` con whitelist de algoritmos hardcoded
-2. Tests de paridad: 100 tokens reales × `verifyAuthLocal` debe matchear `getUser` 100/100
-3. Aplicar a `/api/v2/answer-and-save` con feature flag `JWT_LOCAL_VERIFY_ENABLED=false`
-4. Shadow log: ejecutar AMBAS verificaciones en paralelo durante 1-2h, log si discrepa
-5. Activar flag en producción, observar 2-4h sin parar
-6. Migrar resto endpoints hot path uno por uno
-
-**Esfuerzo:** 6-9h trabajo + observación
-
-**Cuándo abordarlo:**
-- Cabeza fresca, sesión dedicada
-- NO viernes (BD admin disponible si algo va mal)
-- Bloque de 4-6h sin otros cambios críticos en flight
-- Memo detallado: `~/.claude/projects/-home-manuel/memory/vence_jwt_local_verify_phase07.md`
+**Memo detallado**: `~/.claude/projects/-home-manuel/memory/vence_jwt_local_verify_phase07.md`
 
 ---
 
@@ -687,7 +710,7 @@ Estimación honesta de qué REVENTARÍA a 10k DAU si no hacemos nada. Distinto d
 
 | # | Gap | Cuándo revienta | Esfuerzo | ROI |
 |---|---|---|---|---|
-| 1 | **JWT verify con round-trip a Supabase Auth** en cada request autenticada (~250ms × 5M/día = 350h latencia agregada). El propio shadow log de `/api/profile` ya hace decode local sin verificar firma — extender a verificación con JWKS cacheado | 3-5k DAU | 4-6h | **Brutal** — baja TODOS los endpoints autenticados |
+| 1 | **JWT verify con round-trip a Supabase Auth** en cada request autenticada (~250ms × 5M/día = 350h latencia agregada). 🟡 **EN ROLLOUT 2026-05-10** — infraestructura deployed (commit `8aaa9171`): helper `verifyJwtLocal` con whitelist HS256 + wrapper `verifyAuth` con shadow mode + 37 tests + aplicado a `/api/v2/answer-and-save`. Flag `JWT_LOCAL_VERIFY_MODE=off` por defecto. Pendiente: user activa shadow 24-48h → flip a `on` → migrar 40 callers restantes. | 3-5k DAU | ~6h hechas + 1-2 sem rollout | **Brutal** — baja TODOS los endpoints autenticados |
 | 2 | **Pool max:1 en endpoints/crons que deberían usar `getAdminDb` (max:4) o `getTraceDb`** — 3 crons migrados (commit 76dc3ffb) + 1 (avatar) + **markActiveStudentIfFirst en after() de answer-and-save migrado a getTraceDb** (Sprint 2.3, commit `a396580a`). Faltan auditar el resto. Cada cron lento con `getDb` monopoliza el pool de usuarios → cascada 504 | 3-5k DAU | 2-3h auditoría + N migraciones triviales | Alto |
 | 3 | **Cron batch LIMIT 100 vs tasa de inserción** — hoy 28k procesados/día sobra; a 10k DAU son 1M inserciones → 1M `stats_dirty` marks → backlog crece +972k/día. Subir LIMIT a 1000 o cron 1min, validar que no causa lock contention (incidente 2 may 17:14 fue por esto con LIMIT 500) | 5-7k DAU | 1h ajuste + monitorización | Medio |
 | 4 | **Tablas grandes sin partitioning ni TTL** — test_questions 2.2 GB → 30 GB/mes a 10k DAU. validation_error_logs / notification_events / email_events crecen sin parar. Quick wins: TTL >90 días en eventos. Estructural: partitioning declarativo de test_questions por mes (ya en Fase 3 roadmap) | 5-7k DAU para TTL, 7-10k para partitioning | TTL = 1h, partitioning = 4-8h | Alto a medio plazo |
@@ -717,7 +740,7 @@ Estimación honesta de qué REVENTARÍA a 10k DAU si no hacemos nada. Distinto d
 
 Si solo pudieras hacer 3 cosas para escalar a 10k, en este orden:
 
-1. **JWT local verify** (#1) — ROI brutal, 4-6h, baja todos los endpoints autenticados ~250ms
+1. ~~**JWT local verify** (#1)~~ 🟡 **EN ROLLOUT 2026-05-10** — infra deployed, falta activar shadow→on. Una vez hecho, p50 1.5s→0.5s en answer-and-save y todos los endpoints autenticados.
 2. **Auditoría completa de getDb→getAdminDb** (#2) — 2-3h, elimina causa raíz de cascadas 504
 3. **TTL de tablas de eventos + plan de partitioning de test_questions** (#4) — 1h TTL inmediato, partitioning planificado para 1-2 meses vista
 
@@ -788,3 +811,4 @@ Si solo pudieras hacer 3 cosas para escalar a 10k, en este orden:
 | 2026-05-09 (noche) | Fix `/api/v2/oposiciones-compatibles/progress` — endpoint roto desde siempre (commit `1fb1800f`) | Logs CONNECT_TIMEOUT 23:08-23:09 a `aws-0-eu-west-2.pooler:6543` parecían blip de pooler. **Causa raíz distinta**: bug pre-existente — `db.execute(sql\`...\`)` con postgres-js devuelve **array directo**, NO `{ rows: [...] }`. La cast del legacy `as { rows: [...] }` estaba mal: `userAnswers.rows.length` daba `TypeError` siempre. El endpoint llevaba dando 500 silencioso. Los CONNECT_TIMEOUT eran consecuencia: `withErrorLogging` intentaba INSERT del 500 a `validation_error_logs` durante blip simultáneo y fallaba. Fix: cast correcto + migrar `getDb()` → `getReadDb()` (read-only puro) + `withDbTimeout(18s)` quick-fail + stale-if-error con Redis (cache key `oposiciones_progress:{userId}:{sourcePositionType}`, fresh 5min, stale 24h). Verificado contra BD real: status 200, 36 entries, 8s sin cache (con cache hit <100ms cuando warm). |
 | 2026-05-09 (noche) | Upstash Redis quota agotada → migrar a Pay as You Go | Plan anterior tenía cap 500K commands. Llegado al máximo durante el día, todos los `getCached`/`setCached` fallaban silentes (degradación graceful en `lib/cache/redis.ts:raceTimeout` + 100ms timeout). Sin afectar funcionalidad (BD fallback) pero perdiendo TODOS los beneficios de cache. Migrado a Pay as You Go ($0.20/100K commands, sin tope) eu-west-2. Uso real medido: ~100K cmds/día estable = **~$6/mes**. Break-even con Fixed $20/mes = 10M cmds/mes (3.3x más usuarios). Pay as You Go es lo correcto para tier actual. |
 | 2026-05-09 (noche) | Lista actualizada de endpoints con stale-if-error como red de seguridad | Tras esta sesión: `theme-stats`, `problematic-articles`, `topics/[numero]`, `weak-articles`, `filtered-questions` (POST + count), `oposiciones-compatibles/progress`. **Pendiente**: `/api/medals` GET (2× 503 en último cascade, marginal), `/api/v2/hot-articles/check` (cacheado 24h pero verificar fallback en timeout), `/api/random-test/availability` (depende de freshness, marginal). Patrón establecido: read-only crítico → siempre `getReadDb` + `withDbTimeout` + stale-if-error con Redis cache key per-params. La replica protege contra primary-CPU/triggers; el cache stale protege contra blips del Shared Pooler regional (que afecta primary+replica simultáneamente). |
+| 2026-05-10 | Fase 0.7 JWT local verify — infraestructura desplegada, rollout en marcha (commit `8aaa9171`) | Hard Gap #1 del roadmap a 10k DAU. `getUser()` round-trip era el contribuyente único más grande del p99 4s en `answer-and-save` (250-1000ms × cada request). Decisión: **shadow mode > canary %** para código de seguridad. Canary expone N% a comportamiento nuevo; shadow expone 0%. Ambos detectan divergencia, pero shadow no tiene riesgo user-facing si bug. Implementación: helper `verifyJwtLocal` con whitelist HS256 explícita (anti algorithm confusion attack), audience `authenticated`, clockTolerance 5s, errores tipados. Wrapper `verifyAuth` con env `JWT_LOCAL_VERIFY_MODE`: off (default, comportamiento legacy) / shadow (ambos paralelo, log diff a Sentry+validation_error_logs, sirve remoto) / on (solo local, <5ms). Aplicado a piloto `/api/v2/answer-and-save`. **Investigación previa**: confirmado HS256 (JWKS endpoint vacío `{"keys":[]}`); 41 callers auditados — 0 usan app_metadata del resultado de getUser, todos cubiertos con `{userId, email}`; lib `jsonwebtoken@9.0.3` (no `jose@6` por ESM-only y config Jest no trivial). **Tests críticos**: 27 cubriendo algorithm confusion (none/HS384/HS512), payload tampering (impersonar otro user), firma rota, expiry, audience inválido, secret missing → no_secret_configured (NO false positive). 10 wrapper tests cubriendo shadow divergence detection. 79 tests existentes answer-flow sin regresión. **Hallazgo lateral**: Access token expiry actual = 604.800s (7 días) vs recomendación 3.600s (1h). Decisión pendiente: bajar expiry (invalida sesiones) vs añadir BD check banned_at (+10ms). Por ahora no se toca. **Plan rollout**: A=hoy MODE=off ✅, B=user activa MODE=shadow 24-48h, C=flip MODE=on (p50 1.5s→0.5s), D=migrar 40 callers restantes, E=eliminar getUser residual. Rollback en cada fase: env var → off + redeploy <2min. |
