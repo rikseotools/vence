@@ -1,5 +1,6 @@
 import './globals.css'
 import { Suspense } from 'react'
+import { ThemeProvider } from 'next-themes'
 import ClientLayoutContent from './ClientLayoutContent'
 import GoogleAnalytics from '../components/GoogleAnalytics'
 import { AuthProvider } from '../contexts/AuthContext'
@@ -26,9 +27,10 @@ export default async function SpanishLayout({ children }: { children: React.Reac
   }
 
   return (
-    <html lang="es">
+    <html lang="es" suppressHydrationWarning>
       <head />
       <body className="min-h-screen">
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
         <SentryInit />
         <CookieConsentProvider>
           <AuthProvider initialUser={null}>
@@ -61,6 +63,7 @@ export default async function SpanishLayout({ children }: { children: React.Reac
           <CookieBanner />
         </CookieConsentProvider>
         <GoogleAnalytics />
+        </ThemeProvider>
       </body>
     </html>
   )
