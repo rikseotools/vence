@@ -59,6 +59,56 @@ export function isDbTimeoutError(err: unknown): err is DbTimeoutError {
 }
 
 /**
+ * Type guard: detecta CONNECT_TIMEOUT del cliente postgres-js cuando
+ * no consigue establecer conexión TCP al pooler (típicamente blips del
+ * Supavisor regional `aws-0-eu-west-2.pooler.supabase.com:6543`).
+ *
+ * postgres-js emite errores con `.code` para fallos de transporte. El
+ * mensaje suele ser "write CONNECT_TIMEOUT <hostname>:<port>". También
+ * incluimos CONNECTION_DESTROYED y el match por mensaje como fallback
+ * por si el .code cambia entre versiones del driver.
+ */
+export function isConnectTimeoutError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false
+  const code = (err as { code?: string }).code
+  if (code === 'CONNECT_TIMEOUT' || code === 'CONNECTION_DESTROYED') return true
+  return /CONNECT_TIMEOUT|CONNECTION_DESTROYED/i.test(err.message)
+}
+
+/**
+ * Reintenta `fn` una vez si el primer intento falla con CONNECT_TIMEOUT.
+ * Diseñado para mitigar blips cortos del pooler regional sin propagar
+ * 503 al usuario en el primer fallo.
+ *
+ * - Backoff fijo (default 500ms) entre intentos. No exponencial — los
+ *   blips típicos se resuelven en <1s y no queremos sumar latencia.
+ * - Si el segundo intento también falla → se propaga el error original
+ *   (caller decide: stale-if-error, 503, etc.).
+ * - NO reintenta otros errores (timeouts de query, errores SQL, etc.).
+ *
+ * IMPORTANTE: envolver en `withDbTimeout` para acotar el tiempo total.
+ * Sin acotar, dos CONNECT_TIMEOUT consecutivos pueden tardar >10s.
+ *
+ * @example
+ *   const result = await withDbTimeout(
+ *     () => withConnectRetry(() => getFilteredQuestions(input)),
+ *     15000,
+ *   )
+ */
+export async function withConnectRetry<T>(
+  fn: () => Promise<T>,
+  backoffMs: number = 500,
+): Promise<T> {
+  try {
+    return await fn()
+  } catch (err) {
+    if (!isConnectTimeoutError(err)) throw err
+    await new Promise((r) => setTimeout(r, backoffMs))
+    return await fn()
+  }
+}
+
+/**
  * Race una operación contra un timeout. Si la operación tarda más de
  * `timeoutMs`, rechaza con DbTimeoutError. Si la operación termina antes
  * (resolve o reject normal), el timer se limpia y el resultado se

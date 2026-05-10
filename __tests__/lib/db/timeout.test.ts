@@ -7,7 +7,13 @@ jest.mock('@sentry/nextjs', () => ({
   captureException: (...args: unknown[]) => mockSentryCapture(...args),
 }))
 
-import { withDbTimeout, DbTimeoutError, isDbTimeoutError } from '@/lib/db/timeout'
+import {
+  withDbTimeout,
+  DbTimeoutError,
+  isDbTimeoutError,
+  isConnectTimeoutError,
+  withConnectRetry,
+} from '@/lib/db/timeout'
 
 function deferred<T>(): {
   promise: Promise<T>
@@ -224,5 +230,111 @@ describe('withDbTimeout — Sentry capture (Bug #3 fix)', () => {
       jest.useRealTimers()
       d.resolve('late')
     }
+  })
+})
+
+describe('isConnectTimeoutError', () => {
+  test('true si .code === "CONNECT_TIMEOUT" en un Error', () => {
+    const err = Object.assign(new Error('write CONNECT_TIMEOUT host:6543'), {
+      code: 'CONNECT_TIMEOUT',
+    })
+    expect(isConnectTimeoutError(err)).toBe(true)
+  })
+
+  test('true si .code === "CONNECTION_DESTROYED"', () => {
+    const err = Object.assign(new Error('connection lost'), {
+      code: 'CONNECTION_DESTROYED',
+    })
+    expect(isConnectTimeoutError(err)).toBe(true)
+  })
+
+  test('true si el mensaje contiene CONNECT_TIMEOUT (fallback sin .code)', () => {
+    const err = new Error('write CONNECT_TIMEOUT aws-0-eu-west-2.pooler.supabase.com:6543')
+    expect(isConnectTimeoutError(err)).toBe(true)
+  })
+
+  test('match en mensaje es case-insensitive', () => {
+    const err = new Error('connect_timeout')
+    expect(isConnectTimeoutError(err)).toBe(true)
+  })
+
+  test('false para errores sin .code y sin mensaje matching', () => {
+    expect(isConnectTimeoutError(new Error('boom'))).toBe(false)
+    expect(isConnectTimeoutError(new Error('connection refused'))).toBe(false)
+  })
+
+  test('false para non-Error', () => {
+    expect(isConnectTimeoutError(null)).toBe(false)
+    expect(isConnectTimeoutError(undefined)).toBe(false)
+    expect(isConnectTimeoutError('CONNECT_TIMEOUT')).toBe(false)
+    expect(isConnectTimeoutError({ code: 'CONNECT_TIMEOUT' })).toBe(false)
+  })
+})
+
+describe('withConnectRetry', () => {
+  test('retorna el valor en el primer intento exitoso (no reintenta)', async () => {
+    const fn = jest.fn(async () => 'ok')
+    const r = await withConnectRetry(fn)
+    expect(r).toBe('ok')
+    expect(fn).toHaveBeenCalledTimes(1)
+  })
+
+  test('reintenta una vez si el primer intento lanza CONNECT_TIMEOUT', async () => {
+    let calls = 0
+    const fn = jest.fn(async () => {
+      calls++
+      if (calls === 1) {
+        throw Object.assign(new Error('write CONNECT_TIMEOUT host:6543'), {
+          code: 'CONNECT_TIMEOUT',
+        })
+      }
+      return 'recovered'
+    })
+
+    const r = await withConnectRetry(fn, 0)  // backoff 0 para test rápido
+    expect(r).toBe('recovered')
+    expect(fn).toHaveBeenCalledTimes(2)
+  })
+
+  test('si el segundo intento también falla CONNECT_TIMEOUT, propaga el error', async () => {
+    const fn = jest.fn(async () => {
+      throw Object.assign(new Error('write CONNECT_TIMEOUT host:6543'), {
+        code: 'CONNECT_TIMEOUT',
+      })
+    })
+
+    await expect(withConnectRetry(fn, 0)).rejects.toMatchObject({
+      code: 'CONNECT_TIMEOUT',
+    })
+    expect(fn).toHaveBeenCalledTimes(2)
+  })
+
+  test('NO reintenta si el error no es CONNECT_TIMEOUT', async () => {
+    const sqlErr = new Error('relation "x" does not exist')
+    const fn = jest.fn(async () => {
+      throw sqlErr
+    })
+
+    await expect(withConnectRetry(fn, 0)).rejects.toBe(sqlErr)
+    expect(fn).toHaveBeenCalledTimes(1)
+  })
+
+  test('respeta el backoffMs entre intentos', async () => {
+    let firstAttemptTime = 0
+    let secondAttemptTime = 0
+    let calls = 0
+
+    const fn = jest.fn(async () => {
+      calls++
+      if (calls === 1) {
+        firstAttemptTime = Date.now()
+        throw Object.assign(new Error('CONNECT_TIMEOUT'), { code: 'CONNECT_TIMEOUT' })
+      }
+      secondAttemptTime = Date.now()
+      return 'ok'
+    })
+
+    await withConnectRetry(fn, 50)
+    expect(secondAttemptTime - firstAttemptTime).toBeGreaterThanOrEqual(45)
   })
 })

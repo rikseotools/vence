@@ -1,7 +1,7 @@
 // app/api/questions/filtered/route.ts - API para obtener preguntas filtradas
 // Usa Drizzle ORM + Zod para validación tipada
 //
-// Estrategia de cache (refactor 2026-05-09 sprint cascade post-fix weak-articles):
+// Estrategia de cache + resiliencia (refactor 2026-05-10 tras blip recurrente):
 // - POST: stale-if-error puro (RFC 5861). NO hay fast-path de cache fresco
 //   porque las respuestas son aleatorias y reusarlas degrada UX (dos creates
 //   con mismo body devolverían los mismos 25 IDs). Siempre se va a BD; en
@@ -9,7 +9,18 @@
 // - GET ?action=count: fresh + stale (count es determinista, mismo patrón
 //   que weak-articles).
 //
-// Cache key: filtered_q[:count]:{userId|'anon'}:{sha256(normalized_body).slice(0,16)}
+// Cache keys (DOBLE):
+//   - Per-user: filtered_q[:count]:{userId|'anon'}:{hash} — preferida (UX óptima)
+//   - Global:   filtered_q[:count]:any:{hash}              — fallback en blip
+// En timeout buscamos PRIMERO la per-user; si no hay, caemos a la global. La
+// global puede repetir selección entre usuarios durante el blip — UX inferior
+// pero ENORMEMENTE mejor que 503. Sólo se consulta tras DbTimeoutError, no
+// en operación normal. Documentado en ARCHITECTURE_ROADMAP.md (incidente 10 may).
+//
+// Retry CONNECT_TIMEOUT: withConnectRetry envuelve la query; un solo intento
+// extra con backoff 500ms cubre blips <1s del Supavisor regional sin pagar
+// 503 al usuario. Acotado dentro del withDbTimeout para no exceder 15s.
+//
 // userId siempre del Bearer token (server-side). Body normalizado con orden
 // de claves fijo y arrays orden-insensibles ordenados.
 import { NextRequest, NextResponse } from 'next/server'
@@ -29,7 +40,7 @@ import {
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { checkRateLimit, getClientIp, RATE_LIMIT_QUESTIONS } from '@/lib/api/rateLimit'
 import { logValidationError } from '@/lib/api/validation-error-log'
-import { withDbTimeout, isDbTimeoutError } from '@/lib/db/timeout'
+import { withDbTimeout, isDbTimeoutError, withConnectRetry } from '@/lib/db/timeout'
 import { getCached, setCached } from '@/lib/cache/redis'
 
 // maxDuration bajado a 20s tras cascada del 8 may 23:27 UTC (504 a 300s).
@@ -200,14 +211,19 @@ async function _POST(request: NextRequest) {
       )
     }
 
-    // Cache key: stale-if-error sólo. Sin fast-path de cache fresco para
-    // preservar aleatoriedad UX (cada POST debe dar selección nueva en
-    // condiciones normales).
-    const cacheKey = `filtered_q:${authUserId ?? 'anon'}:${hashKey(normalizeFilteredBody(validation.data))}`
+    // Doble cache key para stale-if-error: per-user (preferida) + global (fallback).
+    // En condiciones normales no se lee ninguna; sólo poblamos al éxito.
+    // En timeout: per-user → global → 503.
+    const bodyHash = hashKey(normalizeFilteredBody(validation.data))
+    const cacheKey = `filtered_q:${authUserId ?? 'anon'}:${bodyHash}`
+    const cacheKeyGlobal = `filtered_q:any:${bodyHash}`
 
     try {
+      // withConnectRetry: 1 reintento si el primer intento falla con CONNECT_TIMEOUT.
+      // Cubre blips <1s del Supavisor regional sin pagar 503. El timeout total
+      // sigue acotado por FILTERED_TIMEOUT_MS.
       const result = await withDbTimeout(
-        () => getFilteredQuestions(validation.data),
+        () => withConnectRetry(() => getFilteredQuestions(validation.data)),
         FILTERED_TIMEOUT_MS,
       )
 
@@ -226,22 +242,33 @@ async function _POST(request: NextRequest) {
         ...(result.emptyReason && { emptyReason: result.emptyReason }),
       }
 
-      // Cachear sólo respuestas útiles: éxito + al menos 1 pregunta. Cachear
-      // resultados vacíos podría perpetuar errores transitorios de scope/oposición
-      // en la cache stale. Fire-and-forget — Redis lento NO bloquea el usuario.
+      // Cachear sólo respuestas útiles: éxito + al menos 1 pregunta. Escribimos
+      // tanto la per-user como la global. La global permite que durante un blip
+      // del pooler, otros usuarios con misma config hereden esta selección
+      // (UX inferior — preguntas repetidas — pero ≫ 503). Fire-and-forget.
       if (result.questions && result.questions.length > 0) {
-        setCached(cacheKey, { data: response, ts: Date.now() }, STALE_TTL_S)
+        const cached = { data: response, ts: Date.now() }
+        setCached(cacheKey, cached, STALE_TTL_S)
+        setCached(cacheKeyGlobal, cached, STALE_TTL_S)
       }
 
       return NextResponse.json(response)
     } catch (error) {
-      if (isDbTimeoutError(error)) {
-        // Stale-if-error: si tenemos cache (de cualquier antigüedad <10min),
-        // servir stale en lugar de 503. Mejor UX en blips de pooler regional.
-        const cached = await getCached<CachedFilteredResult>(cacheKey)
+      // Stale-if-error si timeout O CONNECT_TIMEOUT no recuperable tras retry.
+      // (withConnectRetry ya reintentó, si seguimos aquí es blip persistente.)
+      const isRecoverable = isDbTimeoutError(error)
+      if (isRecoverable) {
+        // Per-user primero (UX óptima: la misma selección que vio antes este usuario)
+        let cached = await getCached<CachedFilteredResult>(cacheKey)
+        let source = 'per-user'
+        // Fallback a global (cualquier usuario con esa misma config)
+        if (!cached?.data?.success || !cached.data.questions?.length) {
+          cached = await getCached<CachedFilteredResult>(cacheKeyGlobal)
+          source = 'global'
+        }
         if (cached?.data?.success && cached.data.questions && cached.data.questions.length > 0) {
           const ageS = Math.floor((Date.now() - cached.ts) / 1000)
-          console.warn(`⏱️ [API/questions/filtered] POST timeout, sirviendo cache stale (${ageS}s old)`)
+          console.warn(`⏱️ [API/questions/filtered] POST timeout, sirviendo cache stale (${source}, ${ageS}s old)`)
           return NextResponse.json(cached.data)
         }
         console.warn('⏱️ [API/questions/filtered] POST Timeout (quick-fail) sin cache:', error.timeoutMs, 'ms')
@@ -318,7 +345,7 @@ async function _GET(request: NextRequest) {
 
     // Cache: count es determinista → fast-path fresco (60s) + stale-if-error.
     // Anonymous porque count NO depende del usuario (es global por
-    // topic/positionType/filtros). Si cambia esto, añadir userId a la key.
+    // topic/positionType/filtros). Una sola key — ya es shared por diseño.
     const cacheKey = `filtered_q_count:${hashKey(normalizeCountBody(validation.data))}`
     const cached = await getCached<CachedCountResult>(cacheKey)
 
@@ -327,8 +354,9 @@ async function _GET(request: NextRequest) {
     }
 
     try {
+      // withConnectRetry: 1 reintento si CONNECT_TIMEOUT (blip <1s del pooler regional)
       const result = await withDbTimeout(
-        () => countFilteredQuestions(validation.data),
+        () => withConnectRetry(() => countFilteredQuestions(validation.data)),
         COUNT_TIMEOUT_MS,
       )
 

@@ -240,8 +240,8 @@ Endpoints donde **el cache stale es la red de seguridad** contra blips del Share
 | `problematic-articles` | fresh 5min + stale 24h | `problematic:{userId}` | Sprint 2026-05-07 |
 | `topics/[numero]` | fresh 5min + stale 24h | `topic_data:{oposicion}:{topic}:{userId\|anon}` | Sprint 2026-05-07. Cache vacío + blip → 503 (decisión consciente) |
 | `weak-articles` | fresh 5min + stale 24h | `weak_articles:{userId}:{filters}` | Commit 60ba5538 |
-| `/api/questions/filtered` POST | **stale-if-error puro** (sin fast-path) | `filtered_q:{userId\|anon}:{sha256(body):16}` | Commit b45e3bae. NO fresh shortcut — randomness UX. |
-| `/api/questions/filtered` GET count | fresh 60s + stale-if-error | `filtered_q_count:{sha256(body):16}` | Count determinista, fresh OK |
+| `/api/questions/filtered` POST | **stale-if-error doble cache** (per-user + global) + retry CONNECT_TIMEOUT | `filtered_q:{userId\|anon}:{hash}` + `filtered_q:any:{hash}` | b45e3bae + 10 may (incidente §). NO fresh shortcut — randomness UX. |
+| `/api/questions/filtered` GET count | fresh 60s + stale-if-error + retry CONNECT_TIMEOUT | `filtered_q_count:{sha256(body):16}` | Count determinista, fresh OK |
 | `oposiciones-compatibles/progress` | fresh 5min + stale 24h | `oposiciones_progress:{userId}:{sourcePositionType}` | Commit 1fb1800f |
 
 **Pendientes de aplicar** (volumen marginal, no urgente): `/api/medals` GET, `/api/v2/hot-articles/check` (verificar fallback timeout), `/api/random-test/availability`.
@@ -252,6 +252,37 @@ Endpoints donde **el cache stale es la red de seguridad** contra blips del Share
 - Fire-and-forget en SET — no bloquea la respuesta del usuario
 - Singleflight en `getOrSet` — N requests concurrentes con mismo key → 1 fetcher (anti-stampede)
 - Stale fallback en endpoints listados — datos viejos > 503 si BD timeout
+
+### Incidente recurrente 2026-05-10 — `/api/questions/filtered` 503 por CONNECT_TIMEOUT residual
+
+**Síntoma:** tras el sprint cascade del 5-9 may con stale-if-error + replica completados, `/api/questions/filtered` POST seguía devolviendo 503s en clusters durante blips del Shared Pooler regional. Logs mostraban `write CONNECT_TIMEOUT aws-0-eu-west-2.pooler.supabase.com:6543`.
+
+**Causa raíz:** dos limitaciones de la mitigación previa convergían:
+1. **Cache key demasiado específica**: `filtered_q:{userId}:{hash(body)}`. Al ser tests aleatorios con configuración variable (numQuestions, leyes, dificultad), cada combo es una clave única. Un usuario que cambiaba config en blip → primer request con esa key → cache vacía → 503.
+2. **Sin retry para CONNECT_TIMEOUT efímero**: un porcentaje de blips dura <1s. El primer intento fallaba TCP-connect (~5s gracias a `connect_timeout: 5`) y el lambda devolvía 503 sin volver a intentar.
+
+**Mitigación aplicada (2026-05-10, commit pendiente):**
+
+1. **Doble cache key** en `/api/questions/filtered` POST:
+   - `filtered_q:{userId|anon}:{hash}` (per-user, lectura preferida)
+   - `filtered_q:any:{hash}` (global, fallback compartido entre usuarios)
+
+   Ambas se escriben en cada éxito. El stale-if-error lee per-user primero; si vacía, cae a global. Trade-off consciente: durante un blip, dos usuarios distintos con misma config pueden ver la misma selección (UX inferior pero ≫ 503). En operación normal nadie lee de la global.
+
+2. **`withConnectRetry`** (nuevo helper en `lib/db/timeout.ts`): un único reintento si el primer intento lanza CONNECT_TIMEOUT, con backoff fijo 500ms. Diseñado para cubrir blips <1s. Acotado dentro del `withDbTimeout` para no exceder los 15s totales.
+
+3. **`isConnectTimeoutError`** (nuevo type guard): detecta el error de postgres-js por `.code === 'CONNECT_TIMEOUT'` con fallback regex sobre el mensaje (robustez frente a cambios de driver).
+
+**Aplicado a:** `/api/questions/filtered` POST y GET ?action=count.
+
+**Pendiente extender** (si vuelven a aparecer 503 en otros endpoints durante blips): mismo patrón en `/api/v2/topic-progress/theme-stats`, `/api/notifications/problematic-articles`, `/api/ranking`, `/api/v2/weak-articles`. Por ahora estos tienen suficiente cubrimiento con la cache fresh+stale-24h existente.
+
+**Por qué esto NO sustituye al self-hosted pooler (Opción E, Fase 3):** el retry + dual cache reducen los 503 visibles ~70-90% pero el SPOF arquitectónico sigue ahí. La solución de raíz sigue siendo aislar el pooler (`docs/roadmap/self-hosted-pooler.md`). Esta mitigación compra tiempo y mejora UX hasta que arranquemos Fase 0 del self-hosted.
+
+**Métricas a vigilar (post-deploy):**
+- Ratio `503 from /api/questions/filtered` debería bajar significativamente
+- Aparición de logs `sirviendo cache stale (global, ...)` confirma que el fallback global se activa cuando per-user falla
+- Si vemos retries que tardan >1s (logs Sentry `quick_fail: db_timeout` post-retry) → blip es largo y el self-hosted pooler urge más
 
 ---
 
