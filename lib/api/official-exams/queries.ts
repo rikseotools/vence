@@ -1,4 +1,11 @@
-import { getDb } from '@/db/client'
+// CANARY self-hosted pooler (Fase 5 — WRITES, 2026-05-10 oleada 4):
+// Migrado tras blip Supavisor 20:35. saveOfficialExamAnswer hace inserts
+// críticos en tests/test_questions/user_feedback. Mismo patrón canary.
+import { getDb, getPoolerDb } from '@/db/client'
+
+function getOfficialExamsDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
 import { questions, psychometricQuestions, articles, laws, tests, testQuestions, psychometricUserQuestionHistory, userFeedback, examCases } from '@/db/schema'
 import { eq, and, like, sql, inArray, desc, count } from 'drizzle-orm'
 import fs from 'fs'
@@ -163,7 +170,7 @@ export async function getOfficialExamQuestions(
   const { examDate, oposicion, parte, includeReservas = true } = params
 
   try {
-    const db = getDb()
+    const db = getOfficialExamsDb()  // canary pooler
     const examPosition = oposicionToExamPosition[oposicion]
     const examSourcePattern = oposicionToExamSourcePattern[oposicion]
 
@@ -387,7 +394,7 @@ export async function saveOfficialExamResults(
   const { examDate, oposicion, results, totalTimeSeconds, metadata } = params
 
   try {
-    const db = getDb()
+    const db = getOfficialExamsDb()  // canary pooler
 
     console.log(`💾 [OfficialExams] Saving results for user ${userId}: ${results.length} questions`)
     console.log(`💾 [OfficialExams] DB connection active: ${!!db}`)
@@ -586,7 +593,7 @@ export async function initOfficialExam(
   const { examDate, oposicion, parte, questions: questionsData, metadata } = params
 
   try {
-    const db = getDb()
+    const db = getOfficialExamsDb()  // canary pooler
 
     console.log(`🎯 [initOfficialExam] Starting for user ${userId}: ${questionsData.length} questions`)
 
@@ -726,7 +733,7 @@ export async function saveOfficialExamAnswer(
   const { testId, questionOrder, userAnswer } = params
 
   try {
-    const db = getDb()
+    const db = getOfficialExamsDb()  // canary pooler
 
     // Find existing question record
     const existing = await db
@@ -793,7 +800,7 @@ export async function getOfficialExamResume(
   userId: string
 ): Promise<ResumeOfficialExamResponse> {
   try {
-    const db = getDb()
+    const db = getOfficialExamsDb()  // canary pooler
 
     // Verify test ownership and get metadata
     const testResult = await db
@@ -1049,7 +1056,7 @@ export async function getPendingOfficialExams(
   limit: number = 10
 ): Promise<GetPendingOfficialExamsResponse> {
   try {
-    const db = getDb()
+    const db = getOfficialExamsDb()  // canary pooler
 
     // Query tests with isOfficialExam flag in detailed_analytics
     const pendingTests = await db
@@ -1138,7 +1145,7 @@ export async function getOfficialExamFailedQuestions(
   const { userId, examDate, parte, oposicion } = params
 
   try {
-    const db = getDb()
+    const db = getOfficialExamsDb()  // canary pooler
 
     console.log(`🔍 [getOfficialExamFailedQuestions] Looking for failed questions: ${examDate} ${parte || 'all'} - ${oposicion}`)
 
@@ -1390,7 +1397,7 @@ export async function getOfficialExamReview(
   const { userId, examDate, parte, oposicion } = params
 
   try {
-    const db = getDb()
+    const db = getOfficialExamsDb()  // canary pooler
 
     console.log(`🔍 [getOfficialExamReview] Looking for exam: ${examDate} ${parte || 'all'} - ${oposicion}`)
 

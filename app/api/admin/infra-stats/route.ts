@@ -296,7 +296,10 @@ async function _GET(request: NextRequest) {
       '/api/v2/topic-progress/weak-articles',      // GET único
       '/api/topics/[numero]',                      // GET único (path canonical con [numero])
       '/api/v2/oposiciones-compatibles/progress',  // GET único (oleada 3, 2026-05-10)
-      '/api/v2/user-stats',                        // GET único (oleada 4, urgente — blip 20:35)
+      '/api/v2/user-stats',                        // GET único (oleada 4 urgente — blip 20:35)
+      '/api/v2/answer-and-save',                   // WRITE (oleada 4 urgente — blip 20:35)
+      '/api/answer/psychometric',                  // WRITE (oleada 4 urgente — blip 20:35)
+      '/api/v2/official-exams/answer',             // WRITE (oleada 4 urgente — blip 20:35)
       // EXCLUIDO /api/questions/filtered hasta migrar POST — su tráfico POST
       // domina y muestra 5xx de Supavisor que NO son del pooler.
     ])

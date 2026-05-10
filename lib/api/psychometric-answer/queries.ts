@@ -1,8 +1,15 @@
 // lib/api/psychometric-answer/queries.ts
 // Query unificada: validar respuesta + guardar + actualizar sesión
 // Todo en una sola operación para máxima fiabilidad en conexiones inestables
+//
+// CANARY self-hosted pooler (Fase 5 — WRITES, 2026-05-10 oleada 4):
+// Misma justificación que answer-and-save: write crítico migrado al pooler
+// propio para evitar 504 timeouts contra Supavisor durante blips.
+import { getDb, getPoolerDb } from '@/db/client'
 
-import { getDb } from '@/db/client'
+function getPsychAnswerDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
 import { psychometricQuestions, psychometricTestAnswers, psychometricTestSessions } from '@/db/schema'
 import { eq, sql } from 'drizzle-orm'
 import type { PsychometricAnswerRequest, PsychometricAnswerResponse } from './schemas'
@@ -14,7 +21,7 @@ type AnswerResult =
 export async function validateAndSavePsychometricAnswer(
   params: PsychometricAnswerRequest
 ): Promise<AnswerResult> {
-  const db = getDb()
+  const db = getPsychAnswerDb()  // canary pooler
 
   // 1. Obtener respuesta correcta
   const result = await db

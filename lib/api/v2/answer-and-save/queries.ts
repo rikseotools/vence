@@ -1,6 +1,16 @@
 // lib/api/v2/answer-and-save/queries.ts
 // Lógica server-side: validar respuesta + guardar + actualizar score
-import { getDb, getTraceDb } from '@/db/client'
+//
+// CANARY self-hosted pooler (Fase 5 — WRITES, 2026-05-10 oleada 4 URGENTE):
+// Migrado tras blip Supavisor 20:35 UTC con 21+ errores 5xx perdiendo
+// respuestas de tests. SCRAM passthrough es transparente para writes.
+// Drizzle prepare:false ya configurado para transaction mode pgbouncer.
+// Rollback global: USE_SELF_HOSTED_POOLER=false → vuelve a Supavisor en 30s.
+import { getDb, getTraceDb, getPoolerDb } from '@/db/client'
+
+function getAnswerSaveDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
 import { tests, userProfiles, questions, articles, laws, psychometricQuestions } from '@/db/schema'
 import { eq } from 'drizzle-orm'
 import { unstable_cache } from 'next/cache'
@@ -49,7 +59,7 @@ interface QuestionValidation {
 async function getQuestionValidationInternal(
   questionId: string,
 ): Promise<QuestionValidation | null> {
-  const db = getDb()
+  const db = getAnswerSaveDb()  // canary pooler
 
   // 1. Probar tabla questions con JOIN articles+laws (preguntas legislativas)
   const result = await db
@@ -123,7 +133,7 @@ export async function validateAndSaveAnswer(
   params: AnswerAndSaveRequest,
   userId: string,
 ): Promise<AnswerAndSaveResponse> {
-  const db = getDb()
+  const db = getAnswerSaveDb()  // canary pooler
 
   // 1. VALIDAR RESPUESTA + (en paralelo) RESOLVER TEMA
   //
