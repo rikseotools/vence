@@ -1,5 +1,20 @@
 // lib/api/medals/queries.ts - Queries tipadas para medallas de ranking
-import { getDb } from '@/db/client'
+// CANARY self-hosted pooler (Fase 3, 2026-05-10):
+// El READ path de /api/medals (getRankingForPeriodInternal) participa en el
+// canary del pooler propio porque dio 503 hoy 17:31:23 contra Supavisor.
+// El WRITE path (checkAndSaveNewMedals con sus INSERTs) sigue contra primary
+// hasta que el canary lleve >24h estable y migremos writes en una fase posterior.
+import { getDb, getPoolerDb } from '@/db/client'
+
+/**
+ * Selector canary para reads del módulo medals: pooler propio si flag ON,
+ * primary si OFF (comportamiento histórico — este módulo nunca usó replica).
+ * Cuando el canary se considere estable se migra al pooler también el path
+ * de writes y eventualmente getDb() se mantiene sólo para emergencias.
+ */
+function getMedalsReadDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
 import { sql } from 'drizzle-orm'
 import { unstable_cache } from 'next/cache'
 import {
@@ -193,7 +208,7 @@ async function getRankingForPeriodInternal(
   startISO: string,
   endISO: string
 ): Promise<RankingUser[]> {
-  const db = getDb()
+  const db = getMedalsReadDb()  // canary: pooler si flag ON, primary si OFF
   const result = await db.execute(
     sql`SELECT
           tq.user_id,
