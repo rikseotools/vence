@@ -1,7 +1,23 @@
 // lib/api/ranking/queries.ts - Queries tipadas para ranking
-import { getDb, getReadDb } from '@/db/client'
+//
+// CANARY self-hosted pooler (Fase 2-3, 2026-05-10):
+// /api/ranking es el primer endpoint canary del pooler propio. Usa
+// `getRankingDb()` que respeta el flag USE_SELF_HOSTED_POOLER:
+//   - flag ON  → getPoolerDb() (pooler propio, aislado de Supavisor regional)
+//   - flag OFF → getReadDb()   (comportamiento actual, replica vía Supavisor)
+// Rollback instantáneo: bajar flag en Vercel y redeploy (~30s).
+import { getDb, getReadDb, getPoolerDb } from '@/db/client'
 import { sql, inArray } from 'drizzle-orm'
 import { publicUserProfiles, userProfiles, userAvatarSettings, userStreaks } from '@/db/schema'
+
+/**
+ * Selector canary: pooler propio si el flag está ON, replica si OFF.
+ * Cuando el canary se considere estable (Fase 4+), todos los read endpoints
+ * adoptarán este patrón y eventualmente getReadDb se eliminará.
+ */
+function getRankingDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getReadDb()
+}
 import type {
   TimeFilter,
   StreakTimeFilter,
@@ -243,7 +259,7 @@ export async function getRanking(params: GetRankingRequest): Promise<GetRankingR
       }
     }
 
-    const db = getReadDb()
+    const db = getRankingDb()
     const { startDate, endDate } = computeDateRange(params.timeFilter)
 
     // Usar tq.user_id directamente (sin JOIN tests) — misma optimización que
@@ -326,7 +342,7 @@ export async function getUserPosition(
   minQuestions = 5
 ): Promise<UserPosition | null> {
   try {
-    const db = getReadDb()
+    const db = getRankingDb()
     const { startDate, endDate } = computeDateRange(timeFilter)
 
     const result = await db.execute(
@@ -382,7 +398,7 @@ export async function getUserPosition(
 
 export async function getStreakRanking(params: GetStreakRankingRequest): Promise<GetStreakRankingResponse> {
   try {
-    const db = getReadDb()
+    const db = getRankingDb()
     const limit = params.limit ?? 50
     const offset = params.offset ?? 0
     const now = new Date()

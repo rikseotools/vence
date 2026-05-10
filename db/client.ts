@@ -204,5 +204,82 @@ export function getReadDb() {
   return globalForReadDb.readDb
 }
 
+// ============================================
+// Pool del SELF-HOSTED POOLER (PgBouncer en Lightsail London)
+// ============================================
+// Self-hosted PgBouncer 1.25.2 corriendo en pooler.vence.es:6543. Aísla
+// nuestro tráfico del Supavisor regional compartido (que tiene blips).
+// Provisión y arquitectura completas en docs/roadmap/self-hosted-pooler.md
+// y infra/pooler/README.md.
+//
+// Auth: SCRAM passthrough — cliente y upstream usan el mismo usuario `postgres`
+// con la misma password. PgBouncer reutiliza las SCRAM keys del cliente para
+// autenticar al upstream sin recomputar el proof (workaround de un bug
+// conocido de PgBouncer 1.22-1.25 contra Supabase Postgres 17).
+//
+// DSN esperado (Vercel env var DATABASE_URL_SELF_POOLER):
+//   postgresql://postgres:<MISMO_PASSWORD_QUE_DATABASE_URL>@pooler.vence.es:6543/postgres?sslmode=require
+//
+// IMPORTANTE: este pool inicialmente sirve como CANARY para 1 endpoint
+// read-only de bajo riesgo. Solo se activa con USE_SELF_HOSTED_POOLER=true.
+// Si el flag está OFF (default), getPoolerDb() devuelve getDb() (transparente).
+//
+// Patrón actual: feature flag binario (Patrón A del plan).
+// Pendiente Fase 4+: añadir fallback automático al primary si el self-pooler
+// devuelve errores de conexión (Patrón B del plan).
+
+const globalForPoolerDb = globalThis as unknown as {
+  poolerDb: ReturnType<typeof drizzle<typeof schema>> | undefined
+}
+
+function createPoolerDbClient() {
+  const poolerUrl = process.env.DATABASE_URL_SELF_POOLER
+  if (!poolerUrl) return null
+
+  const urlWithTimeout = poolerUrl.includes('?')
+    ? `${poolerUrl}&options=-c statement_timeout=30000 -c idle_in_transaction_session_timeout=60000`
+    : `${poolerUrl}?options=-c statement_timeout=30000 -c idle_in_transaction_session_timeout=60000`
+
+  const conn = postgres(urlWithTimeout, {
+    max: 1,             // 1 conn por instancia, igual patrón que primary
+    idle_timeout: 20,
+    connect_timeout: 5,
+    prepare: false,     // Requerido para Supavisor; mantenemos por simetría
+  })
+
+  // Warmup en background (no bloquea)
+  conn`SELECT 1`.catch(() => {})
+
+  return drizzle(conn, { schema })
+}
+
+/**
+ * Cliente Drizzle apuntando al self-hosted PgBouncer si USE_SELF_HOSTED_POOLER=true,
+ * o al primary en caso contrario (fallback rollback-safe).
+ *
+ * Usar en endpoints específicos durante canary. Migración gradual:
+ * - Fase 2-3: 1 endpoint read-only (canary)
+ * - Fase 4: todos los reads
+ * - Fase 5: writes
+ *
+ * El pool del pooler propio elimina los blips del Supavisor regional al usar
+ * un PgBouncer dedicado a nuestro tráfico (no compartido con otros clientes
+ * Supabase).
+ */
+export function getPoolerDb() {
+  const useSelfPooler = process.env.USE_SELF_HOSTED_POOLER === 'true'
+  if (!useSelfPooler) return getDb()
+
+  if (!globalForPoolerDb.poolerDb) {
+    globalForPoolerDb.poolerDb = createPoolerDbClient() as any
+  }
+  // Si DATABASE_URL_SELF_POOLER no está set pero USE_SELF_HOSTED_POOLER=true → fallback a primary
+  if (!globalForPoolerDb.poolerDb) {
+    console.warn('[getPoolerDb] USE_SELF_HOSTED_POOLER=true pero DATABASE_URL_SELF_POOLER no está configurado — fallback a primary')
+    return getDb()
+  }
+  return globalForPoolerDb.poolerDb
+}
+
 // Re-exportar tipos útiles
 export type DbClient = typeof db
