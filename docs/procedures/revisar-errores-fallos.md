@@ -95,23 +95,27 @@ Si `quick_fail:db_timeout` empieza a aparecer en bursts, sospechar:
 >
 > Es el primer sitio al que ir si quieres comprobar si el canary está causando problemas.
 
-Desde 2026-05-10 hay un canary del pooler propio (`pooler.vence.es:6543`) sirviendo 8 endpoints read-only:
+Desde 2026-05-10 hay un canary del pooler propio (`pooler.vence.es:6543`) sirviendo ~20 endpoints (reads + writes + helpers transversales) tras 4 oleadas en una sesión maratón:
 
 **Oleada 1** (validación):
-- `/api/ranking` (`d25e67b1`)
-- `/api/medals` GET (`5a633d11` — tras 503 17:31)
-- `/api/questions/law-stats` (`ef01a395` — tras queries lentas 3.5-7.7s)
+- `/api/ranking` (`d25e67b1`), `/api/medals` GET (`5a633d11`), `/api/questions/law-stats` (`ef01a395`)
 
 **Oleada 2** (expansión preventiva pre-pico lunes):
-- `/api/v2/topic-progress/theme-stats` (`ecef26e5`)
-- `/api/notifications/problematic-articles` (`ecef26e5`)
-- `/api/v2/topic-progress/weak-articles` (`ecef26e5`)
-- `/api/topics/[numero]` (`ecef26e5`)
-- `/api/questions/filtered` GET ?action=count (`ecef26e5` — solo el COUNT, NO el POST)
+- `/api/v2/topic-progress/theme-stats`, `/api/notifications/problematic-articles`, `/api/v2/topic-progress/weak-articles`, `/api/topics/[numero]`, `/api/questions/filtered` GET (`ecef26e5`)
 
-**No migrado** (mayor riesgo, pendiente):
-- `/api/questions/filtered` POST
-- `/api/v2/answer-and-save` (write)
+**Oleada 3** (lectura adicional):
+- `/api/v2/oposiciones-compatibles/progress` (`f22c9fee`)
+
+**Oleada 4 — URGENTE** durante blip Supavisor 20:35 UTC:
+- READS: `/api/v2/user-stats` (`b1dfd7b3`)
+- **WRITES**: `/api/v2/answer-and-save`, `/api/answer/psychometric`, `/api/v2/official-exams/answer` (`6843bc47`)
+- SWEEP MASIVO: `/api/questions/filtered POST`, random-test-data, exam, feedback, daily-limit, teoria + helpers `oposicion-scope` y `topic-names` (`fad5eedb`)
+
+**NO migrado por diseño**:
+- Admin endpoints (`/api/admin/*`) — panel observa el sistema
+- Stripe writes (`subscription/adjustments`) — sesión separada con tests cuidadosos
+- `/api/exam/pending` — usa Supabase REST API (requiere refactor a Drizzle)
+- Crons / background jobs — baja prioridad
 
 Ver `docs/roadmap/self-hosted-pooler.md` y `infra/pooler/README.md` para detalle de cada uno.
 

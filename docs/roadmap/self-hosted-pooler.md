@@ -2,10 +2,10 @@
 
 > **Implementación elegida (mayo 2026)**: PgBouncer en AWS Lightsail London. Alternativas evaluadas (PgCat, Supabase Dedicated Pooler, Coolify) en sección "Comparación de opciones".
 
-> **Estado**: 🟡 Fase 3-4 EN ROLLOUT (2026-05-10) — 8 endpoints canary activos en producción + panel admin de monitorización. Fase 0 ✅ + Fase 1-3 ✅ + Fase 4 expansión en curso. Pendiente: writes (Fase 5).
+> **Estado**: 🟢 Fase 5 EN ROLLOUT (2026-05-10) — ~20 endpoints canary (reads + writes + helpers transversales) tras blip Supavisor 20:35 UTC que forzó migración masiva. Fase 0-4 ✅ + Fase 5 (writes) HECHA esta misma noche. Pico real lunes mañana.
 > **Propietario**: equipo Vence
 > **Coste recurrente real**: $7/mes (Lightsail plan 1GB) — primeros 90 días GRATIS con cuenta nueva ($200 USD créditos AWS)
-> **Última actualización**: 2026-05-10 18:50 UTC — 8 endpoints en canary, panel `/admin/infraestructura` con sección canary, 0 errores 5xx en última hora (validado en pooler en pico de domingo tarde). Pico real lunes mañana.
+> **Última actualización**: 2026-05-10 ~21:00 UTC — sweep masivo tras blip activo. Hipótesis arquitectónica validada en directo: lo que va por pooler 0 errores, lo que va por Supavisor sufre. Panel admin `/admin/infraestructura` con stats vivos del PgBouncer (SHOW POOLS / STATS / MEM) + tabla endpoints + comparativa pooler vs Supavisor.
 
 ---
 
@@ -239,13 +239,36 @@ function getRankingDb() {
 | `/api/topics/[numero]` | 18:42 UTC | Hot path con stale-if-error | `ecef26e5` |
 | `/api/questions/filtered` GET ?action=count | 18:42 UTC | Determinista, fresh-cache 60s + stale | `ecef26e5` |
 
+**Oleada 3** (segundo read-only tras estabilidad):
+| Endpoint | Migrado | Razón | Commit |
+|---|---|---|---|
+| `/api/v2/oposiciones-compatibles/progress` | 20:30 UTC | GET puro, ya tenía stale-if-error | `f22c9fee` |
+
+**Oleada 4 — URGENTE** (durante blip activo Supavisor 20:35 UTC con 240+ 5xx):
+| Endpoint | Migrado | Tipo | Razón | Commit |
+|---|---|---|---|---|
+| `/api/v2/user-stats` | 20:50 UTC | GET | 504 timeouts en blip activo | `b1dfd7b3` |
+| `/api/v2/answer-and-save` | 20:55 UTC | **WRITE** | 21+ 503 en blip — perder respuestas de tests inaceptable | `6843bc47` |
+| `/api/answer/psychometric` | 20:55 UTC | **WRITE** | Blip activo en mismos timestamps | `6843bc47` |
+| `/api/v2/official-exams/answer` | 20:55 UTC | **WRITE** | Blip activo en mismos timestamps | `6843bc47` |
+| `/api/questions/filtered` POST | 21:10 UTC | POST | 240 5xx 24h — el más doloroso | `fad5eedb` |
+| `/api/v2/random-test-data/*` | 21:10 UTC | GET | Sweep masivo | `fad5eedb` |
+| `/api/exam/*` (resume/discard/etc.) | 21:10 UTC | mixed | Sweep masivo (8 call sites) | `fad5eedb` |
+| `/api/v2/feedback/*` | 21:10 UTC | mixed | Sweep masivo | `fad5eedb` |
+| `/api/daily-limit` | 21:10 UTC | GET | Sweep masivo | `fad5eedb` |
+| `/api/teoria/*` | 21:10 UTC | GET | Sweep masivo | `fad5eedb` |
+| Helper `oposicion-scope` (transversal) | 21:10 UTC | — | Usado por muchos endpoints | `fad5eedb` |
+| Helper `topic-names` | 21:10 UTC | — | Usado en varios sitios | `fad5eedb` |
+
 **Variables de entorno añadidas a Vercel Production** (2026-05-10):
 - `USE_SELF_HOSTED_POOLER=true`
 - `DATABASE_URL_SELF_POOLER=postgresql://postgres:<PASSWORD>@pooler.vence.es:6543/postgres?sslmode=require`
 
-**Pendiente migrar** (mañana con cabeza fresca, mayor riesgo):
-- `/api/questions/filtered` POST (random selection — alto tráfico, hot path crítico, requiere cache key sharing entre métodos)
-- `/api/v2/answer-and-save` (WRITE — perder respuestas de tests es el peor escenario, observar canary 24h primero)
+**Lo que sigue en Supavisor por diseño** (NO migrado intencionalmente):
+- **Admin endpoints** (`/api/admin/*`) — el panel `/admin/infraestructura` observa el sistema, no debe pasar por lo observado (sesgaría datos)
+- **Stripe writes** (`lib/api/subscription/adjustments.ts`) — sesión separada con tests rigurosos; el módulo es crítico para refunds/extensions
+- **`/api/exam/pending`** — usa Supabase REST API (PostgREST), no Drizzle. Refactor pendiente para migrar
+- **Crons / background jobs** — baja prioridad, no afectan UX
 
 **Dashboard visual de monitorización**: `/admin/infraestructura` (sección "Canary self-hosted pooler") — comparativa 5xx pooler vs Supavisor en 1h/24h, tabla por endpoint, color-coded. Implementado 2026-05-10 (commit `28787188`).
 
@@ -490,24 +513,29 @@ Más simple, más estándar, menos servicios que mantener.
 
 ## Pendientes (TODO) post-Fase 0
 
-### ✅ Hecho hoy 2026-05-10
+### ✅ Hecho hoy 2026-05-10 (sesión maratón)
 
-- [x] **Fase 0** — Provisión Lightsail + PgBouncer 1.25.2 + DNS + TLS
+- [x] **Fase 0** — Provisión Lightsail + PgBouncer 1.25.2 + DNS + TLS Let's Encrypt
 - [x] **Fase 1** — Test local: 5-6ms TCP latency, e2e OK
-- [x] **Fase 2** — Validación pre-producción (skip Preview, fuimos directo a canary prod por confianza tras tests locales)
+- [x] **Fase 2** — Validación pre-producción (skip Preview, fuimos directo a canary prod por confianza)
 - [x] **Fase 3** — Canary 1 endpoint (`/api/ranking`) validado tras fix `ignore_startup_parameters`
-- [x] **Fase 4 (parcial)** — Expansión a 8 endpoints read (oleada 1: ranking, medals GET, law-stats; oleada 2: theme-stats, problematic-articles, weak-articles, topics/[numero], filtered count)
+- [x] **Fase 4 (oleada 1+2+3)** — 9 endpoints read migrados durante el día
+- [x] **Fase 4-5 sweep URGENTE (oleada 4)** — durante blip Supavisor 20:35 UTC migrados: 3 writes críticos (answer-and-save, psychometric/answer, official-exams/answer) + filtered POST + sweep masivo (random-test-data, exam, feedback, daily-limit, teoria, helpers oposicion-scope/topic-names). **~20 endpoints en pooler propio en total**
 - [x] `db/client.ts:getPoolerDb()` con feature flag `USE_SELF_HOSTED_POOLER` + tests
-- [x] Panel admin de monitorización en `/admin/infraestructura` — sección "Canary self-hosted pooler" con 5xx por endpoint, comparativa pooler vs Supavisor (1h, 24h)
+- [x] Panel admin `/admin/infraestructura` con:
+  - Sección "Pooler propio" con stats vivos (SHOW POOLS / STATS / MEM via direct connection a admin DB)
+  - Tabla endpoints con badge Pooler/Supavisor + 5xx 24h + duración
+  - Comparativa 5xx pooler vs Supavisor (1h, 24h)
+  - Timeout per-query para que no se cuelgue todo si una falla
+- [x] Helpers `withConnectRetry` + `isConnectTimeoutError` en `lib/db/timeout.ts` (mitigación CONNECT_TIMEOUT del Supavisor — antes de tener pooler propio operativo)
+- [x] Mensajes 503 actualizados en 13 endpoints: "Reintenta en 5 minutos" + Retry-After 300
 
 ### ⏳ Pendiente (mañana o esta semana)
 
-- [ ] **Observar pico lunes 2026-05-11 mañana** — primer test real con tráfico de opositores. Mirar `/admin/infraestructura` cada par de horas. Si hay regresión → rollback con `USE_SELF_HOSTED_POOLER=false`.
-- [ ] **Fase 4 completa** — migrar `/api/questions/filtered` POST (random selection, alto tráfico) — actualmente excluido del panel canary porque su POST falsea los datos. Migrarlo desbloquea visión completa.
-- [ ] **Fase 5** — Migrar WRITES:
-  - `/api/v2/answer-and-save` (crítico — perder respuestas de tests es el peor caso)
-  - `/api/medals` POST (`checkAndSaveNewMedals`)
-  - Solo tras 24-48h estable con writes en otros endpoints menores
+- [ ] **Observar pico lunes 2026-05-11 mañana** — primer test real con tráfico de opositores. Mirar `/admin/infraestructura` cada par de horas. Si hay regresión → rollback global con `USE_SELF_HOSTED_POOLER=false` (1 toggle, deploy ~30s).
+- [ ] **Migrar Stripe writes** (`lib/api/subscription/adjustments.ts`) — sesión separada con tests cuidadosos por su criticidad (refunds, extensions, etc.)
+- [ ] **Refactor `/api/exam/pending`** de Supabase REST a Drizzle, luego migrar al pooler. Bajo prioridad (poco tráfico).
+- [ ] **HA del pooler** ⚠️ NECESARIA antes de 5k DAU — ver Fase 6 más arriba
 
 ### 🔧 Mejoras del panel admin (Versión 2)
 

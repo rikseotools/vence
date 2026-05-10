@@ -402,7 +402,7 @@ getTraceDb()  → max:1, sin timeout   // ✅ HECHO — para after() background 
 
 > **Decisión arquitectónica 2026-05-10**: HA dejó de ser "opcional". Single VM = SPOF inaceptable para usuarios de pago. Eventos predecibles (kernel updates, cert renewal hooks, OOM, mantenimiento Lightsail) causarían downtime sin HA. Activación: antes de 5k DAU o ante el primer incidente de single-VM. Ver `docs/roadmap/self-hosted-pooler.md` § "Fase 6".
 
-**Estado canary (2026-05-10 18:50 UTC)**: 8 endpoints read-only migrados + panel admin de monitorización.
+**Estado canary (2026-05-10 ~21:00 UTC)**: ~20 endpoints migrados (reads + writes + helpers) tras 4 oleadas en una noche, incluyendo migración masiva URGENTE durante blip Supavisor activo a las 20:35 UTC.
 
 **Oleada 1** (validación):
 - `/api/ranking` (14:09 — primer canary)
@@ -412,11 +412,25 @@ getTraceDb()  → max:1, sin timeout   // ✅ HECHO — para after() background 
 **Oleada 2** (expansión preventiva pre-pico lunes):
 - `/api/v2/topic-progress/theme-stats`, `/api/notifications/problematic-articles`, `/api/v2/topic-progress/weak-articles`, `/api/topics/[numero]`, `/api/questions/filtered` GET ?action=count
 
-**Dashboard visual**: `/admin/infraestructura` → sección "Canary self-hosted pooler" con 5xx por endpoint, comparativa pooler vs Supavisor (1h y 24h).
+**Oleada 3-4 — URGENTE durante blip Supavisor 20:35 UTC**:
+- READS: `/api/v2/oposiciones-compatibles/progress`, `/api/v2/user-stats`, `/api/questions/filtered POST`, random-test-data, exam, feedback, daily-limit, teoria
+- **WRITES** (mismas SCRAM passthrough, transparent): `/api/v2/answer-and-save`, `/api/answer/psychometric`, `/api/v2/official-exams/answer`
+- Helpers transversales: `oposicion-scope`, `topic-names`
 
-**Estado actual**: 0 errores 5xx en última hora en endpoints del pooler. Supavisor sigue mostrando blips (mayoría en `/api/questions/filtered` POST aún no migrado — ese es el próximo objetivo).
+**Dashboard visual**: `/admin/infraestructura` con 3 secciones:
+1. **Pooler propio** — stats vivos del PgBouncer (SHOW POOLS, STATS, MEM via direct connection)
+2. **Tabla endpoints** — top 30 con badge Pooler/Supavisor, 5xx 24h, duración media/máx
+3. **Comparativa 5xx** pooler vs Supavisor en 1h/24h
 
-**Pendiente**: Fase 4 completa (`/api/questions/filtered` POST) → Fase 5 writes (`/api/v2/answer-and-save`). Rollback global en <3 min vía `USE_SELF_HOSTED_POOLER=false`.
+**Detalles que NO se migran** (por diseño):
+- Admin endpoints (panel observa el sistema)
+- Stripe writes (`subscription/adjustments`) — sesión separada
+- `/api/exam/pending` (usa Supabase REST, requiere refactor a Drizzle)
+- Crons / background jobs (baja prioridad)
+
+**Próximo paso real** (mañana lunes pico): observar `/admin/infraestructura` y validar la hipótesis arquitectónica con tráfico real. Rollback global en <3 min vía `USE_SELF_HOSTED_POOLER=false` si hay regresión.
+
+**Pendiente futuro**: HA del pooler (Fase 6, NECESARIA antes de 5k DAU — decisión 2026-05-10).
 
 ### Read replica ✅ HECHO (2026-05-09)
 

@@ -66,19 +66,28 @@ const { Client } = require('pg');
 
 > **Visual dashboard**: [`/admin/infraestructura`](https://www.vence.es/admin/infraestructura) → sección "Canary self-hosted pooler". 5xx por endpoint en últimas 1h/24h, comparativa pooler vs Supavisor, badge de migración por endpoint. Vista rápida sin SSH.
 
-Lista actual (8 endpoints, orden de migración):
+Lista actual (~20 endpoints, 4 oleadas en sesión maratón 2026-05-10):
 
-**Oleada 1** (`d25e67b1`, `5a633d11`, `ef01a395`):
-- `/api/ranking` — 2026-05-10 14:09 UTC
-- `/api/medals` GET — 2026-05-10 18:05 UTC
-- `/api/questions/law-stats` — 2026-05-10 18:08 UTC
+**Oleada 1** — validación inicial (`d25e67b1`, `5a633d11`, `ef01a395`):
+- `/api/ranking`, `/api/medals` GET, `/api/questions/law-stats`
 
-**Oleada 2** (`ecef26e5`):
-- `/api/v2/topic-progress/theme-stats`
-- `/api/notifications/problematic-articles`
-- `/api/v2/topic-progress/weak-articles`
-- `/api/topics/[numero]`
-- `/api/questions/filtered` GET ?action=count
+**Oleada 2** — expansión preventiva (`ecef26e5`):
+- `/api/v2/topic-progress/theme-stats`, `/api/notifications/problematic-articles`,
+  `/api/v2/topic-progress/weak-articles`, `/api/topics/[numero]`,
+  `/api/questions/filtered` GET ?action=count
+
+**Oleada 3** (`f22c9fee`):
+- `/api/v2/oposiciones-compatibles/progress`
+
+**Oleada 4 — URGENTE durante blip Supavisor 20:35 UTC** (`b1dfd7b3`, `6843bc47`, `fad5eedb`):
+- READS: `/api/v2/user-stats`
+- WRITES: `/api/v2/answer-and-save`, `/api/answer/psychometric`, `/api/v2/official-exams/answer`
+- Sweep masivo: `/api/questions/filtered POST`, random-test-data, exam/*, feedback,
+  daily-limit, teoria, helpers `oposicion-scope` y `topic-names`
+
+**NO migrado por diseño**: admin/* (panel observa el sistema), Stripe writes
+(`subscription/adjustments`), `/api/exam/pending` (Supabase REST, refactor pendiente),
+crons.
 
 Las queries de estos endpoints van a `pooler.vence.es:6543` cuando
 `USE_SELF_HOSTED_POOLER=true`. Toggle del flag = rollback global instantáneo.
