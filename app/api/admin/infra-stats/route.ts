@@ -1,7 +1,7 @@
 // app/api/admin/infra-stats/route.ts - Estadísticas de infraestructura BD y carga
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import postgres from 'postgres'
+import { Client as PgClient } from 'pg'
 import { getDb } from '@/db/client'
 import { sql } from 'drizzle-orm'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
@@ -39,16 +39,27 @@ async function getPgbouncerAdminStats(): Promise<{
   // Reescribimos el DSN para apuntar a la admin DB pgbouncer
   const adminUrl = url.replace(/\/postgres(\?|$)/, '/pgbouncer$1')
 
-  const pgbConn = postgres(adminUrl, { max: 1, idle_timeout: 5, connect_timeout: 3, prepare: false })
+  // CRÍTICO: usamos pg (node-postgres) en lugar de postgres-js porque
+  // pgbouncer admin console NO soporta extended query protocol (que postgres-js
+  // usa por defecto incluso con prepare:false). El pg client usa simple
+  // protocol que pgbouncer admin sí acepta. Verificado 2026-05-10.
+  const client = new PgClient({
+    connectionString: adminUrl,
+    ssl: { rejectUnauthorized: false },
+    connectionTimeoutMillis: 3000,
+    statement_timeout: 3000,
+  })
+
   try {
-    const [pools, statsRows, memRows] = await Promise.all([
-      pgbConn`SHOW POOLS`,
-      pgbConn`SHOW STATS_TOTALS`,
-      pgbConn`SHOW MEM`,
-    ])
+    await client.connect()
+    // Queries secuenciales — el admin console de pgbouncer no maneja paralelismo
+    // bien (errores 08P01 protocol violation con queries concurrentes).
+    const pools = await client.query('SHOW POOLS')
+    const statsRows = await client.query('SHOW STATS_TOTALS')
+    const memRows = await client.query('SHOW MEM')
 
     return {
-      pools: pools.map((r: any) => ({
+      pools: pools.rows.map((r: any) => ({
         database: r.database,
         user: r.user,
         cl_active: Number(r.cl_active ?? 0),
@@ -60,7 +71,7 @@ async function getPgbouncerAdminStats(): Promise<{
         maxwait_us: Number(r.maxwait_us ?? 0),
         pool_mode: r.pool_mode ?? 'transaction',
       })),
-      stats: statsRows.map((r: any) => ({
+      stats: statsRows.rows.map((r: any) => ({
         database: r.database,
         xact_count: Number(r.xact_count ?? 0),
         query_count: Number(r.query_count ?? 0),
@@ -69,7 +80,7 @@ async function getPgbouncerAdminStats(): Promise<{
         query_time_us: Number(r.query_time ?? 0),
         wait_time_us: Number(r.wait_time ?? 0),
       })),
-      memory: memRows.map((r: any) => ({
+      memory: memRows.rows.map((r: any) => ({
         name: r.name,
         used: Number(r.used ?? 0),
         total: Number(r.size ?? 0),
@@ -79,7 +90,7 @@ async function getPgbouncerAdminStats(): Promise<{
     console.warn('[infra-stats] getPgbouncerAdminStats failed:', err instanceof Error ? err.message : err)
     return null
   } finally {
-    await pgbConn.end({ timeout: 1 }).catch(() => {})
+    await client.end().catch(() => {})
   }
 }
 
