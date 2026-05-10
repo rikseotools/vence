@@ -45,14 +45,31 @@ export default function InfraStatsTab() {
       const authHeaders = await getAuthHeaders()
       if (!authHeaders['Authorization']) { setError('No autenticado'); return }
 
-      const res = await fetch('/api/admin/infra-stats', {
-        headers: authHeaders,
-      })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data = await res.json()
-      setStats(data)
+      // Timeout 20s: si el server cuelga, mostramos error en lugar de spinner infinito.
+      // 8 queries paralelas en /api/admin/infra-stats deberían tardar <3s en condiciones normales.
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 20000)
+
+      try {
+        const res = await fetch('/api/admin/infra-stats', {
+          headers: authHeaders,
+          signal: controller.signal,
+        })
+        clearTimeout(timeoutId)
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const data = await res.json()
+        setStats(data)
+      } finally {
+        clearTimeout(timeoutId)
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error desconocido')
+      const msg = err instanceof Error ? err.message : 'Error desconocido'
+      // Detectar AbortError para mensaje más claro
+      if (err instanceof Error && err.name === 'AbortError') {
+        setError('Timeout: el servidor tardó >20s en responder. Refresca para reintentar.')
+      } else {
+        setError(msg)
+      }
     } finally {
       setLoading(false)
     }
