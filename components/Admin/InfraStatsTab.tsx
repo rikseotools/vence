@@ -29,6 +29,25 @@ interface InfraStats {
       nonCanaryErrors1h: number
     }
   }
+  endpoints?: Array<{
+    endpoint: string
+    totalErrors24h: number
+    errors5xx24h: number
+    errors4xx24h: number
+    avgDurationMs: number
+    maxDurationMs: number
+    inCanary: boolean
+  }>
+  pooler?:
+    | {
+        available: true
+        clActive: number; clWaiting: number
+        svActive: number; svIdle: number; svUsed: number
+        maxwaitMs: number; poolMode: string
+        queryCount: number; bytesReceived: number; bytesSent: number
+        avgQueryTimeMs: number; avgWaitTimeMs: number
+      }
+    | { available: false }
   timestamp: string
 }
 
@@ -182,6 +201,48 @@ export default function InfraStatsTab() {
         </div>
       </div>
 
+      {/* Self-hosted Pooler — stats vivos del pgbouncer */}
+      {stats.pooler && stats.pooler.available && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-blue-200 dark:border-blue-800 p-4">
+          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
+            <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+            Pooler propio — pooler.vence.es:6543 (PgBouncer)
+          </h3>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+            Stats en vivo desde la admin DB del PgBouncer self-hosted en AWS Lightsail London.
+            Si <code className="text-xs">maxwait</code> sube de 50ms consistentemente → considera subir <code className="text-xs">default_pool_size</code> en pgbouncer.ini.
+          </p>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+            <PoolerCard label="Clientes activos" value={stats.pooler.clActive} hint="lambdas Vercel conectadas ahora" />
+            <PoolerCard label="Clientes en espera" value={stats.pooler.clWaiting} alert={stats.pooler.clWaiting > 0} hint="esperando conexión upstream" />
+            <PoolerCard label="Server activas" value={stats.pooler.svActive} hint="conexiones a Supabase ocupadas" />
+            <PoolerCard label="Server idle" value={stats.pooler.svIdle} hint="listas para usar" />
+            <PoolerCard label="Maxwait" value={`${stats.pooler.maxwaitMs}ms`} alert={stats.pooler.maxwaitMs > 100} hint="máx. tiempo que un cliente esperó" />
+            <PoolerCard label="Avg query" value={`${stats.pooler.avgQueryTimeMs}ms`} hint="latencia media (pooler→Supabase)" />
+            <PoolerCard label="Avg wait" value={`${stats.pooler.avgWaitTimeMs}ms`} hint="espera media en pool" />
+            <PoolerCard label="Queries totales" value={stats.pooler.queryCount.toLocaleString('es-ES')} hint="desde último restart" />
+          </div>
+
+          <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 border-t border-gray-100 dark:border-gray-700 pt-3">
+            <span>
+              Tráfico: <span className="font-mono">{(stats.pooler.bytesReceived / 1024 / 1024).toFixed(1)} MB</span> in /
+              {' '}<span className="font-mono">{(stats.pooler.bytesSent / 1024 / 1024).toFixed(1)} MB</span> out
+            </span>
+            <span>Modo pool: <code>{stats.pooler.poolMode}</code></span>
+          </div>
+        </div>
+      )}
+
+      {stats.pooler && !stats.pooler.available && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Pooler propio</h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            No disponible. <code>DATABASE_URL_SELF_POOLER</code> no configurada o conexión a admin DB falló.
+          </p>
+        </div>
+      )}
+
       {/* Canary self-hosted pooler */}
       {stats.canary && (
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
@@ -259,6 +320,55 @@ export default function InfraStatsTab() {
         </div>
       )}
 
+      {/* Endpoints — tabla detallada con routing + duración + errores 24h */}
+      {stats.endpoints && stats.endpoints.length > 0 && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+            Endpoints — routing + errores 24h + latencia (cuando hay error)
+          </h3>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+            Top 30 endpoints con errores en las últimas 24h. Solo se loguean errores; las duraciones son de respuestas que fallaron.
+            Si un endpoint del pooler propio aparece con errores 5xx → algo va mal en el pooler. Si aparecen muchos en Supavisor → blip regional confirmado.
+          </p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="text-xs text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
+                <tr>
+                  <th className="text-left py-2 font-normal">Endpoint</th>
+                  <th className="text-center py-2 font-normal">Routing</th>
+                  <th className="text-right py-2 font-normal">5xx</th>
+                  <th className="text-right py-2 font-normal">4xx</th>
+                  <th className="text-right py-2 font-normal">Avg ms</th>
+                  <th className="text-right py-2 font-normal">Max ms</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stats.endpoints.map((r) => (
+                  <tr key={r.endpoint} className="border-b border-gray-100 dark:border-gray-800">
+                    <td className="py-2 font-mono text-xs text-gray-700 dark:text-gray-300 truncate max-w-md">{r.endpoint}</td>
+                    <td className="py-2 text-center">
+                      {r.inCanary ? (
+                        <span className="inline-block px-2 py-0.5 text-xs rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">Pooler</span>
+                      ) : (
+                        <span className="inline-block px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400">Supavisor</span>
+                      )}
+                    </td>
+                    <td className="py-2 text-right"><ErrorBadge count={r.errors5xx24h} /></td>
+                    <td className="py-2 text-right text-xs text-gray-500 dark:text-gray-400 font-mono">{r.errors4xx24h}</td>
+                    <td className="py-2 text-right text-xs font-mono">
+                      <DurationBadge ms={r.avgDurationMs} />
+                    </td>
+                    <td className="py-2 text-right text-xs font-mono">
+                      <DurationBadge ms={r.maxDurationMs} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* Errores recientes */}
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
         <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
@@ -316,6 +426,30 @@ function ErrorBadge({ count }: { count: number }) {
       {count}
     </span>
   )
+}
+
+function PoolerCard({ label, value, hint, alert }: { label: string; value: string | number; hint?: string; alert?: boolean }) {
+  const valueColor = alert ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'
+  const borderColor = alert ? 'border-red-200 dark:border-red-800 bg-red-50/30 dark:bg-red-900/10' : 'border-gray-200 dark:border-gray-700'
+  return (
+    <div className={`rounded-lg border ${borderColor} p-3`}>
+      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{label}</p>
+      <p className={`text-lg font-bold ${valueColor}`}>{value}</p>
+      {hint && <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1 leading-tight">{hint}</p>}
+    </div>
+  )
+}
+
+function DurationBadge({ ms }: { ms: number }) {
+  if (!ms || ms === 0) return <span className="text-gray-400">—</span>
+  const color = ms > 5000
+    ? 'text-red-600 dark:text-red-400'
+    : ms > 2000
+    ? 'text-orange-600 dark:text-orange-400'
+    : ms > 500
+    ? 'text-yellow-600 dark:text-yellow-400'
+    : 'text-gray-700 dark:text-gray-300'
+  return <span className={color}>{ms.toLocaleString('es-ES')}</span>
 }
 
 function CanarySummaryCard({ label, value, isPooler }: { label: string; value: number; isPooler?: boolean }) {

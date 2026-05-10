@@ -1,6 +1,7 @@
 // app/api/admin/infra-stats/route.ts - Estadísticas de infraestructura BD y carga
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import postgres from 'postgres'
 import { getDb } from '@/db/client'
 import { sql } from 'drizzle-orm'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
@@ -8,6 +9,79 @@ import { withErrorLogging } from '@/lib/api/withErrorLogging'
 // Timeout 30s para que Vercel no haga timeout antes de devolver al menos
 // resultados parciales si hay congestion en Supavisor.
 export const maxDuration = 30
+
+/**
+ * Conecta a la admin DB de PgBouncer (puerto 6543, dbname=pgbouncer) y
+ * ejecuta SHOW POOLS / SHOW STATS_TOTALS / SHOW MEM. Devuelve null si la
+ * conexión o cualquier query falla — no bloquea el endpoint.
+ *
+ * Solo funciona si DATABASE_URL_SELF_POOLER está configurada (modo canary
+ * activo). Si no, devolvemos null y el frontend muestra "no disponible".
+ */
+async function getPgbouncerAdminStats(): Promise<{
+  pools: Array<{
+    database: string; user: string;
+    cl_active: number; cl_waiting: number;
+    sv_active: number; sv_idle: number; sv_used: number;
+    maxwait: number; maxwait_us: number;
+    pool_mode: string;
+  }>
+  stats: Array<{
+    database: string; xact_count: number; query_count: number;
+    bytes_received: number; bytes_sent: number;
+    query_time_us: number; wait_time_us: number;
+  }>
+  memory: Array<{ name: string; used: number; total: number }>
+} | null> {
+  const url = process.env.DATABASE_URL_SELF_POOLER
+  if (!url) return null
+
+  // Reescribimos el DSN para apuntar a la admin DB pgbouncer
+  const adminUrl = url.replace(/\/postgres(\?|$)/, '/pgbouncer$1')
+
+  const pgbConn = postgres(adminUrl, { max: 1, idle_timeout: 5, connect_timeout: 3, prepare: false })
+  try {
+    const [pools, statsRows, memRows] = await Promise.all([
+      pgbConn`SHOW POOLS`,
+      pgbConn`SHOW STATS_TOTALS`,
+      pgbConn`SHOW MEM`,
+    ])
+
+    return {
+      pools: pools.map((r: any) => ({
+        database: r.database,
+        user: r.user,
+        cl_active: Number(r.cl_active ?? 0),
+        cl_waiting: Number(r.cl_waiting ?? 0),
+        sv_active: Number(r.sv_active ?? 0),
+        sv_idle: Number(r.sv_idle ?? 0),
+        sv_used: Number(r.sv_used ?? 0),
+        maxwait: Number(r.maxwait ?? 0),
+        maxwait_us: Number(r.maxwait_us ?? 0),
+        pool_mode: r.pool_mode ?? 'transaction',
+      })),
+      stats: statsRows.map((r: any) => ({
+        database: r.database,
+        xact_count: Number(r.xact_count ?? 0),
+        query_count: Number(r.query_count ?? 0),
+        bytes_received: Number(r.bytes_received ?? 0),
+        bytes_sent: Number(r.bytes_sent ?? 0),
+        query_time_us: Number(r.query_time ?? 0),
+        wait_time_us: Number(r.wait_time ?? 0),
+      })),
+      memory: memRows.map((r: any) => ({
+        name: r.name,
+        used: Number(r.used ?? 0),
+        total: Number(r.size ?? 0),
+      })),
+    }
+  } catch (err) {
+    console.warn('[infra-stats] getPgbouncerAdminStats failed:', err instanceof Error ? err.message : err)
+    return null
+  } finally {
+    await pgbConn.end({ timeout: 1 }).catch(() => {})
+  }
+}
 
 // Cada query del Promise.all tiene su propio timeout. Si una cuelga,
 // devolvemos null para esa y el resto se sirve normalmente. Mejor mostrar
@@ -69,24 +143,26 @@ async function _GET(request: NextRequest) {
       errorsResult,
       peakResult,
       canaryStatsResult,
+      endpointStatsResult,
+      pgbouncerStats,
     ] = await Promise.all([
-      // 1. Max connections + total (3s)
+      // 1. Max connections + total (5s — pg_stat_activity puede ser pesada)
       withTimeout(db.execute(sql`
         SELECT
           (SELECT setting::int FROM pg_settings WHERE name = 'max_connections') as max_connections,
           (SELECT count(*)::int FROM pg_stat_activity WHERE datname = current_database()) as total_connections
-      `), 3000, 'max_connections'),
+      `), 5000, 'max_connections'),
 
-      // 2. Connections by state (3s)
+      // 2. Connections by state (5s)
       withTimeout(db.execute(sql`
         SELECT state, count(*)::int as count
         FROM pg_stat_activity
         WHERE datname = current_database()
         GROUP BY state
         ORDER BY count DESC
-      `), 3000, 'connections_by_state'),
+      `), 5000, 'connections_by_state'),
 
-      // 3. Connections by application (3s)
+      // 3. Connections by application (5s)
       withTimeout(db.execute(sql`
         SELECT
           COALESCE(application_name, '(none)') as app,
@@ -97,7 +173,7 @@ async function _GET(request: NextRequest) {
         GROUP BY application_name, state
         ORDER BY count DESC
         LIMIT 15
-      `), 3000, 'connections_by_app'),
+      `), 5000, 'connections_by_app'),
 
       // 4. Sessions today (5s)
       withTimeout(supabase.from('user_sessions')
@@ -134,6 +210,27 @@ async function _GET(request: NextRequest) {
         GROUP BY endpoint
         ORDER BY errors_24h DESC
       `), 5000, 'canary_stats'),
+
+      // 9. Stats por endpoint (todos los logueados, no solo 5xx) — 24h (5s)
+      // duration_ms solo se loguea en errores, así que esto es duración de errores.
+      // Igual nos da idea de qué endpoints son lentos cuando fallan.
+      withTimeout(db.execute(sql`
+        SELECT endpoint,
+               count(*)::int AS total_errors_24h,
+               count(*) FILTER (WHERE http_status >= 500)::int AS errors_5xx_24h,
+               count(*) FILTER (WHERE http_status >= 400 AND http_status < 500)::int AS errors_4xx_24h,
+               coalesce(round(avg(duration_ms))::int, 0) AS avg_duration_ms,
+               coalesce(max(duration_ms), 0) AS max_duration_ms
+        FROM public.validation_error_logs
+        WHERE created_at >= ${twentyFourHoursAgo}::timestamptz
+          AND endpoint IS NOT NULL
+        GROUP BY endpoint
+        ORDER BY errors_5xx_24h DESC, total_errors_24h DESC
+        LIMIT 30
+      `), 5000, 'endpoint_stats'),
+
+      // 10. PgBouncer admin stats (SHOW POOLS / STATS / MEM) — 4s
+      withTimeout(getPgbouncerAdminStats(), 4000, 'pgbouncer_admin'),
     ])
 
     // Parse results — tolerante a null si alguna query timeoutó (con valores fallback "—")
@@ -227,11 +324,29 @@ async function _GET(request: NextRequest) {
       { canaryErrors24h: 0, canaryErrors1h: 0, nonCanaryErrors24h: 0, nonCanaryErrors1h: 0 },
     )
 
+    // Endpoint stats (errores + duración) — 24h
+    const endpointRows = endpointStatsResult
+      ? (Array.isArray(endpointStatsResult) ? endpointStatsResult : (endpointStatsResult as any).rows || [])
+      : []
+    const endpointStats = endpointRows.map((r: any) => ({
+      endpoint: r.endpoint,
+      totalErrors24h: r.total_errors_24h ?? 0,
+      errors5xx24h: r.errors_5xx_24h ?? 0,
+      errors4xx24h: r.errors_4xx_24h ?? 0,
+      avgDurationMs: r.avg_duration_ms ?? 0,
+      maxDurationMs: r.max_duration_ms ?? 0,
+      inCanary: CANARY_ENDPOINTS.has(r.endpoint),
+    }))
+
+    // Pgbouncer summary — solo el pool postgres/postgres que es el real (descartamos pgbouncer/pgbouncer admin)
+    const poolerSummary = pgbouncerStats?.pools.find((p: any) => p.database === 'postgres' && p.user === 'postgres')
+    const poolerStatsRow = pgbouncerStats?.stats.find((s: any) => s.database === 'postgres')
+
     return NextResponse.json({
       database: {
         maxConnections,
         totalConnections,
-        usagePercent: Math.round((totalConnections / maxConnections) * 100),
+        usagePercent: maxConnections > 0 ? Math.round((totalConnections / maxConnections) * 100) : 0,
         connectionsByState,
         connectionsByApp,
       },
@@ -247,6 +362,26 @@ async function _GET(request: NextRequest) {
         statsByEndpoint: canaryStats,
         summary: canarySummary,
       },
+      endpoints: endpointStats,
+      pooler: pgbouncerStats ? {
+        available: true,
+        clActive: poolerSummary?.cl_active ?? 0,
+        clWaiting: poolerSummary?.cl_waiting ?? 0,
+        svActive: poolerSummary?.sv_active ?? 0,
+        svIdle: poolerSummary?.sv_idle ?? 0,
+        svUsed: poolerSummary?.sv_used ?? 0,
+        maxwaitMs: Math.round((poolerSummary?.maxwait_us ?? 0) / 1000),
+        poolMode: poolerSummary?.pool_mode ?? 'transaction',
+        queryCount: poolerStatsRow?.query_count ?? 0,
+        bytesReceived: poolerStatsRow?.bytes_received ?? 0,
+        bytesSent: poolerStatsRow?.bytes_sent ?? 0,
+        avgQueryTimeMs: poolerStatsRow && poolerStatsRow.query_count > 0
+          ? Math.round(poolerStatsRow.query_time_us / poolerStatsRow.query_count / 1000 * 100) / 100
+          : 0,
+        avgWaitTimeMs: poolerStatsRow && poolerStatsRow.query_count > 0
+          ? Math.round(poolerStatsRow.wait_time_us / poolerStatsRow.query_count / 1000 * 100) / 100
+          : 0,
+      } : { available: false },
       timestamp: new Date().toISOString(),
     })
   } catch (error) {
