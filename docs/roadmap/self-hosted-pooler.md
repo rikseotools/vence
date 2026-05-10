@@ -2,10 +2,10 @@
 
 > **Implementación elegida (mayo 2026)**: PgBouncer en AWS Lightsail London. Alternativas evaluadas (PgCat, Supabase Dedicated Pooler, Coolify) en sección "Comparación de opciones".
 
-> **Estado**: ⏳ Pendiente arranque (Fase 0)
+> **Estado**: ✅ Fase 0 COMPLETA (2026-05-10) — pooler operativo, passthrough auth, end-to-end validado. Pendiente Fase 2+ (canary en Vercel).
 > **Propietario**: equipo Vence
-> **Coste recurrente esperado**: ~$10/mes (Lightsail $10) → opcional escalar a HA $50/mes
-> **Última actualización**: 2026-05-10 (incidente recurrente — reforzada urgencia)
+> **Coste recurrente real**: $7/mes (Lightsail plan 1GB) — primeros 90 días GRATIS con cuenta nueva ($200 USD créditos AWS)
+> **Última actualización**: 2026-05-10 — Fase 0 completada. PgBouncer 1.25.2 corriendo con passthrough auth. Pooler en `pooler.vence.es:6543`.
 
 ---
 
@@ -140,21 +140,31 @@ stats_period = 60
 
 > **Principio**: en CADA fase debe existir un rollback testado a Shared Pooler (cambiar 1 env var en Vercel).
 
-### Fase 0 — Provisión inicial 🟡 PENDIENTE
+### Fase 0 — Provisión inicial ✅ COMPLETA (2026-05-10)
 
 **Objetivo**: tener PgBouncer corriendo y accesible vía DNS, sin tocar producción.
 
-| Quién | Acción |
-|---|---|
-| Manuel | Crear cuenta AWS si no existe; activar región eu-west-2 |
-| Manuel | Crear instancia Lightsail Ubuntu 24.04 LTS, plan $10/mes en London |
-| Manuel | Asignar IP estática (incluida en plan) |
-| Manuel | DNS: añadir A record `pooler.vence.es` → IP estática Lightsail |
-| Claude | Genera `provision-pooler.sh` (instala PgBouncer + Caddy + systemd units + configura) |
-| Manuel | Ejecuta script vía SSH |
-| Claude | Verifica `psql "postgresql://postgres.{ref}:PASS@pooler.vence.es:6543/postgres"` desde local |
+**Estado real**:
 
-**Criterio de éxito**: conexión exitosa desde local, latencia <50ms desde EU.
+| Item | Resultado |
+|---|---|
+| Cuenta AWS | Creada (cuenta `VENCE`, $200 créditos, plan de pago para no expirar) |
+| Lightsail instance | Ubuntu 24.04, plan $7/mes (1GB RAM, 2 vCPU), London eu-west-2a, **90 días gratis** |
+| IP estática | `16.60.146.159` |
+| DNS | `pooler.vence.es` (A record en dondominio.com, TTL 600s) |
+| Firewall Lightsail | TCP 22/80/6543 abierto, IPv4 + IPv6 |
+| TLS | Let's Encrypt cert para `pooler.vence.es` (válido hasta 2026-08-08, auto-renovación) |
+| PgBouncer | 1.25.2 (PGDG repo — el de Ubuntu default 1.22 falla con PG17 SCRAM) |
+| Auth | SCRAM-SHA-256 PASSTHROUGH (cliente y upstream usan mismo `postgres` user) |
+| Smoke test local | ✅ `SELECT 1` desde Spain via `pooler.vence.es:6543` → 312-362ms (Vercel London ~50ms) |
+| Pool multiplexing | ✅ 5 queries reusan mismo backend PID — confirmado funcionando |
+
+**Latencia medida desde la VM a Supabase**:
+- TCP-handshake: 5-6 ms
+- TLS+query: ~10-15 ms
+- Pico esperado desde Vercel London: <20 ms (vs ~3 ms del Shared Pooler — pequeño peaje aceptable por aislamiento)
+
+**Memory footprint**: 3.7 MB RAM en PgBouncer (1GB Lightsail = sobra cómodo).
 
 **Rollback**: eliminar instancia Lightsail. Coste: $0.
 
@@ -331,16 +341,78 @@ Tras Fase 5 estable (1 mes):
 
 ---
 
-## Pendientes (TODO)
+## Aprendizajes Fase 0 (2026-05-10)
 
-- [ ] Fase 0: aprobación + AWS account verificada
-- [ ] Generar `provision-pooler.sh` (Claude)
-- [ ] Generar `pgbouncer.ini` tuneado (Claude)
-- [ ] Generar `Caddyfile` (Claude)
-- [ ] Generar systemd units (Claude)
-- [ ] Generar runbook operacional (Claude)
-- [ ] CI/CD para cambios de config (GitHub Actions)
-- [ ] Decidir monitoring backend (CloudWatch vs Better Stack)
+### Bug crítico: PgBouncer no autentica con plaintext contra Supabase PG17
+
+**Síntoma**: PgBouncer 1.22 y 1.25.2 reciben `FATAL password authentication failed for user "postgres"` al conectar a `db.<ref>.supabase.co:5432` con `password=PLAINTEXT` en `[databases]`. Mismo password funciona perfectamente con `psql` desde la misma máquina.
+
+**Verificación matemática**: cómputo manual con Python de PBKDF2-HMAC-SHA256(plaintext, salt, 4096) → storedKey/serverKey reproduce EXACTAMENTE los valores almacenados en `pg_authid`. **El password ES correcto**.
+
+**Hipótesis no confirmada**: bug en PgBouncer al computar el SCRAM proof desde plaintext cuando upstream es PostgreSQL 17. No documentado oficialmente; reportar en GitHub PgBouncer si vuelve a aparecer en futuras versiones.
+
+**Workaround validado**: **SCRAM passthrough auth**:
+1. Cliente (Vercel) y upstream (Supabase) usan el mismo usuario `postgres`
+2. PgBouncer almacena el SCRAM verifier (`SCRAM-SHA-256$4096:salt$storedKey:serverKey`) en `userlist.txt`, NO el plaintext
+3. `[databases]` SIN `password=` (fuerza a PgBouncer a leer el verifier de userlist.txt)
+4. Cliente se autentica vía SCRAM contra PgBouncer; PgBouncer reutiliza esas keys para autenticar al upstream **sin recomputar el proof**
+
+Esto bypasea el bug de PgBouncer al evitar la computación plaintext→proof en el lado servidor.
+
+**Implicación de seguridad**: Vercel usa el password real del usuario `postgres` (mismo que ya está en `DATABASE_URL` y `DATABASE_URL_REPLICA`). No se añade superficie de exposición.
+
+### Trampa: auto-ban de IP por Supabase tras N intentos fallidos
+
+Tras varios intentos consecutivos de auth fallida, **Supabase bloquea automáticamente la IP de origen** (visible en Dashboard → Database → Settings → Network bans con botón "Unban IP"). Esto:
+- Bloquea TODO el tráfico de la VM (incluso `psql` directo)
+- Es lo que confunde el debug: tras intentar X, parece que X "rompió" la conexión cuando en realidad la IP está banneada
+- Se desbanea manualmente (no expira solo en tiempo razonable)
+
+**Recomendación operacional**:
+- Detener pgbouncer (`sudo systemctl stop pgbouncer`) ANTES de cambiar config para evitar ban storm con retries
+- Cambiar config, restart, **un solo test**, si falla parar inmediatamente y revisar
+- Tener Dashboard de Supabase abierto en otra pestaña para unban rápido si pasa
+
+### Trampa: Ubuntu 24.04 default trae PgBouncer 1.22 (insuficiente)
+
+El paquete `pgbouncer` de Ubuntu 24.04 LTS es 1.22.0-1build4 (oct 2023), anterior a fixes relevantes para PostgreSQL 17. Hay que añadir el repo oficial **PGDG** (PostgreSQL Global Development Group) en `apt.postgresql.org` para tener 1.25.2+.
+
+```bash
+curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor -o /etc/apt/keyrings/pgdg.gpg
+echo "deb [signed-by=/etc/apt/keyrings/pgdg.gpg] http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list
+apt update && apt install -y pgbouncer
+```
+
+### Trampa: `db.<ref>.supabase.co` solo resuelve a IPv6
+
+```
+$ dig +short db.yqbpstxowvgipqspqrgo.supabase.co
+2a05:d01c:30c:9d0f:3cb7:1b0:7b0:a6f5
+$ dig +short db.yqbpstxowvgipqspqrgo.supabase.co A
+(empty)
+```
+
+Lightsail dual-stack maneja esto correctamente. Si en futuro Supabase cambia el endpoint, hay que reverificar conectividad.
+
+### TLS: certbot standalone vs Caddy
+
+El roadmap original mencionaba Caddy como TLS terminator. Descartado: Caddy es HTTP-first, no termina TLS para protocolo Postgres bien (necesitaría plugin caddy-l4 experimental). En su lugar:
+- **certbot standalone** para emisión + renovación
+- **PgBouncer nativo** consume el cert directamente (`client_tls_cert_file` / `client_tls_key_file`)
+- Hook de deploy en `/etc/letsencrypt/renewal-hooks/deploy/` copia el cert renovado a `/etc/pgbouncer-vence/tls/` con perms `postgres:postgres` y reload de pgbouncer
+
+Más simple, más estándar, menos servicios que mantener.
+
+## Pendientes (TODO) post-Fase 0
+
+- [ ] **Fase 2** — Canary en Vercel Preview (1 endpoint read-only, 24-48h observación)
+- [ ] **Fase 3** — Canary en producción (mismo endpoint, observar 24-48h con tráfico real)
+- [ ] **Fase 4** — Expansión: migrar todos los reads que usan `getReadDb()`
+- [ ] **Fase 5** — Migrar writes (`getDb()`)
+- [ ] Implementar `db/client.ts:getPoolerDb()` con feature flag `USE_SELF_HOSTED_POOLER`
+- [ ] Setup monitoring (CloudWatch básico para CPU/memoria + alarms si pgbouncer cae)
+- [ ] CI/CD para cambios de config (GitHub Actions) — opcional, baja prioridad
+- [ ] **Fase 6** (futuro) — HA con 2 instancias + NLB ($40-50/mes) si llegamos a >20k DAU
 
 ## Referencias
 

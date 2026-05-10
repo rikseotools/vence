@@ -382,17 +382,25 @@ getTraceDb()  → max:1, sin timeout   // ✅ HECHO — para after() background 
 
 **Valor del split sin replica**: ergonomía de código (API explícita read-only vs write) + statement_timeout más estricto en reads. **NO da más concurrencia** porque ambos siguen contra el primario con `max:1`.
 
-### Self-hosted Pooler (Opción E) ⏳ PENDIENTE arranque
+### Self-hosted Pooler (Opción E) ✅ Fase 0 COMPLETA (2026-05-10)
 
-**Roadmap dedicado**: [`docs/roadmap/self-hosted-pooler.md`](roadmap/self-hosted-pooler.md) — implementación inicial: PgBouncer en AWS Lightsail London. El nombre genérico permite swap a PgCat u otro pooler sin renombrar el doc.
+**Roadmap dedicado**: [`docs/roadmap/self-hosted-pooler.md`](roadmap/self-hosted-pooler.md) — implementación: PgBouncer 1.25.2 en AWS Lightsail London.
 
-**Motivación**: el cascade del 8 may + blips repetidos del Supavisor regional confirmaron que tanto primary como replica comparten la MISMA infra (`aws-0-eu-west-2.pooler.supabase.com:6543`). Stale-while-error mitiga 80% del impacto pero hay endpoints que no se pueden cachear. Para aislamiento real necesitamos pooler propio o Dedicated Pooler de Supabase ($100/mes estimado).
+**Motivación**: el cascade del 8 may + blips repetidos del Supavisor regional confirmaron que tanto primary como replica comparten la MISMA infra (`aws-0-eu-west-2.pooler.supabase.com:6543`). Stale-while-error mitiga 80% del impacto pero hay endpoints que no se pueden cachear. Para aislamiento real necesitamos pooler propio.
 
-**Decisión**: AWS Lightsail London + PgBouncer (no PgCat, no Coolify, no Hetzner — ver roadmap dedicado para análisis de alternativas).
+**Estado real (2026-05-10)**:
+- ✅ Lightsail VM London eu-west-2a, IP estática `16.60.146.159`, $7/mes (**90 días gratis** con $200 USD créditos cuenta nueva AWS)
+- ✅ DNS `pooler.vence.es` con TLS Let's Encrypt
+- ✅ PgBouncer 1.25.2 (PGDG repo — el de Ubuntu default 1.22 falla con SCRAM contra PG17)
+- ✅ End-to-end validado desde local: 312-362ms (Vercel London esperado <50ms)
+- ✅ Pool multiplexing confirmado, 3.7 MB RAM en pgbouncer
+- ✅ Infra-as-code: `infra/pooler/provision-pooler.sh` (idempotente) + `README.md`
 
-**Coste**: $10/mes single instance. $40-50/mes con HA (Fase 6 opcional).
+**Bug encontrado y workaround**: PgBouncer no consigue computar SCRAM proof desde plaintext contra PostgreSQL 17 ("Wrong password" aunque el password sea matemáticamente correcto). Solución: **SCRAM passthrough auth** — cliente y upstream usan el mismo usuario `postgres`, PgBouncer almacena el SCRAM verifier en userlist.txt y reutiliza las keys del cliente para autenticar al upstream sin recomputar. Detalle completo en `docs/roadmap/self-hosted-pooler.md` § "Aprendizajes Fase 0" (incluye trampa de auto-ban Supabase).
 
-**Estado**: ⏳ Pendiente aprobación Fase 0 (provisión inicial). 6 fases con rollback en cada paso.
+**Coste real**: $7/mes (gratis primeros 90 días). $40-50/mes con HA (Fase 6 opcional).
+
+**Pendiente**: Fase 2 (canary Vercel Preview, 1 endpoint) → Fase 3-5 (canary prod, expansión, writes). Cada fase con rollback en <3 min vía env var `USE_SELF_HOSTED_POOLER=false`.
 
 ### Read replica ✅ HECHO (2026-05-09)
 
