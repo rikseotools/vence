@@ -180,10 +180,10 @@ async function _POST(request: NextRequest): Promise<NextResponse<AnswerAndSaveRe
       return NextResponse.json(
         {
           success: false,
-          error: 'Servicio temporalmente saturado. Reintenta en unos segundos.',
+          error: 'Servicio saturado momentáneamente. Reintenta en 5 minutos.',
           retryable: true,
         } as const,
-        { status: 503, headers: { 'Retry-After': '5' } },
+        { status: 503, headers: { 'Retry-After': '300' } },
       )
     }
     const totalMs = Date.now() - startTime

@@ -133,7 +133,7 @@ export async function withConnectRetry<T>(
  *     if (isDbTimeoutError(e)) {
  *       return NextResponse.json(
  *         { error: 'Servicio saturado, reintenta' },
- *         { status: 503, headers: { 'Retry-After': '5' } },
+ *         { status: 503, headers: { 'Retry-After': '300' } },
  *       )
  *     }
  *     throw e

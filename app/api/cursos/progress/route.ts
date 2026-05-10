@@ -24,8 +24,8 @@ const WRITE_TIMEOUT_MS = 12000  // los UPSERTs son escrituras + lookup
 
 function timeoutResponse() {
   return NextResponse.json(
-    { success: false, error: 'Servicio temporalmente saturado. Reintenta.', retryable: true },
-    { status: 503, headers: { 'Retry-After': '5' } },
+    { success: false, error: 'Servicio saturado momentáneamente. Reintenta en 5 minutos.', retryable: true },
+    { status: 503, headers: { 'Retry-After': '300' } },
   )
 }
 

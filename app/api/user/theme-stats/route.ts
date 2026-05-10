@@ -65,8 +65,8 @@ async function _GET(request: NextRequest) {
     if (isDbTimeoutError(error)) {
       console.warn('⏱️ [API/theme-stats] Timeout (quick-fail):', error.timeoutMs, 'ms')
       return NextResponse.json(
-        { success: false, error: 'Servicio temporalmente saturado. Reintenta.', retryable: true },
-        { status: 503, headers: { 'Retry-After': '5' } },
+        { success: false, error: 'Servicio saturado momentáneamente. Reintenta en 5 minutos.', retryable: true },
+        { status: 503, headers: { 'Retry-After': '300' } },
       )
     }
     console.error('Error en API de estadísticas por tema:', error)

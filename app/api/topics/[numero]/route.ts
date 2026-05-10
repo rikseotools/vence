@@ -139,8 +139,8 @@ async function _GET(
       if (isDbTimeoutError(err)) {
         console.warn('⏱️ [API/topics] Timeout (quick-fail) — sin cache, devolviendo 503:', err.timeoutMs, 'ms')
         return NextResponse.json(
-          { success: false, error: 'Servicio temporalmente saturado. Reintenta.', retryable: true },
-          { status: 503, headers: { 'Retry-After': '5' } },
+          { success: false, error: 'Servicio saturado momentáneamente. Reintenta en 5 minutos.', retryable: true },
+          { status: 503, headers: { 'Retry-After': '300' } },
         )
       }
       throw err  // propaga al outer catch

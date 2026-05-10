@@ -38,8 +38,8 @@ export async function GET(request: NextRequest) {
     if (isDbTimeoutError(err)) {
       console.warn('⏱️ [API/daily-limit] Timeout (quick-fail):', err.timeoutMs, 'ms')
       return NextResponse.json(
-        { error: 'Servicio temporalmente saturado. Reintenta.', retryable: true },
-        { status: 503, headers: { 'Retry-After': '5' } },
+        { error: 'Servicio saturado momentáneamente. Reintenta en 5 minutos.', retryable: true },
+        { status: 503, headers: { 'Retry-After': '300' } },
       )
     }
     console.error('❌ [API/daily-limit] Error:', err)

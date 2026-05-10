@@ -105,8 +105,8 @@ async function _POST(request: NextRequest): Promise<NextResponse<AvailabilityRes
       return NextResponse.json({
         success: false,
         availableQuestions: 0,
-        error: 'Servicio temporalmente saturado. Reintenta.',
-      }, { status: 503, headers: { 'Retry-After': '5' } })
+        error: 'Servicio saturado momentáneamente. Reintenta en 5 minutos.',
+      }, { status: 503, headers: { 'Retry-After': '300' } })
     }
     console.error('❌ [API/random-test/availability] Error:', error)
     return NextResponse.json({
