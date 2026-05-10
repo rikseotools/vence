@@ -1,6 +1,11 @@
 // lib/api/spelling-answer/queries.ts - Validación y tracking para preguntas de ortografía
 // La respuesta correcta SOLO se revela después de que el usuario responde (anti-scraping)
-import { getDb } from '@/db/client'
+// CANARY pooler (sweep masivo oleada 5 — todos user-facing 2026-05-10):
+import { getDb, getPoolerDb } from '@/db/client'
+
+function getSpellingDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
 import { spellingQuestions, spellingTestSessions, spellingTestAnswers } from '@/db/schema'
 import { eq, and, sql } from 'drizzle-orm'
 import type {
@@ -25,7 +30,7 @@ interface SpellingOption {
 export async function validateSpellingAnswer(
   params: ValidateSpellingAnswerRequest
 ): Promise<ValidateSpellingAnswerResponse> {
-  const db = getDb()
+  const db = getSpellingDb()
 
   const result = await db
     .select({
@@ -93,7 +98,7 @@ export async function validateSpellingAnswer(
 export async function createSpellingSession(
   params: CreateSpellingSessionRequest
 ): Promise<CreateSpellingSessionResponse> {
-  const db = getDb()
+  const db = getSpellingDb()
 
   const [session] = await db
     .insert(spellingTestSessions)
@@ -112,7 +117,7 @@ export async function createSpellingSession(
 // ============================================
 
 export async function saveSpellingAnswer(params: SaveSpellingAnswerRequest): Promise<void> {
-  const db = getDb()
+  const db = getSpellingDb()
 
   await db.insert(spellingTestAnswers).values({
     sessionId: params.sessionId,
@@ -142,7 +147,7 @@ export async function saveSpellingAnswer(params: SaveSpellingAnswerRequest): Pro
 // ============================================
 
 export async function completeSpellingSession(params: CompleteSpellingSessionRequest): Promise<void> {
-  const db = getDb()
+  const db = getSpellingDb()
 
   await db
     .update(spellingTestSessions)

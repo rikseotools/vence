@@ -1,5 +1,10 @@
 // lib/api/interactions/queries.ts - Queries tipadas para tracking de interacciones
-import { getDb } from '@/db/client'
+// CANARY pooler (sweep masivo oleada 5 — todos user-facing 2026-05-10):
+import { getDb, getPoolerDb } from '@/db/client'
+
+function getInteractionsDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
 import { userInteractions } from '@/db/schema'
 import { eq, desc, and, gte, sql } from 'drizzle-orm'
 import type {
@@ -16,7 +21,7 @@ export async function trackInteraction(
   params: TrackInteractionRequest
 ): Promise<TrackInteractionResponse> {
   try {
-    const db = getDb()
+    const db = getInteractionsDb()
 
     const [result] = await db
       .insert(userInteractions)
@@ -75,7 +80,7 @@ export async function trackBatchInteractions(
   params: TrackBatchInteractionsRequest
 ): Promise<TrackInteractionResponse> {
   try {
-    const db = getDb()
+    const db = getInteractionsDb()
 
     const values = params.events.map(event => ({
       userId: event.userId || null,
@@ -134,7 +139,7 @@ export async function getInteractionsByUser(
   }
 ) {
   try {
-    const db = getDb()
+    const db = getInteractionsDb()
 
     const conditions = [eq(userInteractions.userId, userId)]
 
@@ -170,7 +175,7 @@ export async function getInteractionStats(options?: {
   userId?: string
 }) {
   try {
-    const db = getDb()
+    const db = getInteractionsDb()
 
     const conditions = []
 

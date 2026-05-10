@@ -2,7 +2,12 @@
 //
 // Capa de acceso a datos 100% tipada con Drizzle + Zod.
 // Reemplaza progresivamente a lawMappingUtils.ts como fuente de verdad.
-import { getDb } from '@/db/client'
+// CANARY pooler (sweep masivo oleada 5 — todos user-facing 2026-05-10):
+import { getDb, getPoolerDb } from '@/db/client'
+
+function getLawsDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
 import { laws, articles, questions } from '@/db/schema'
 import { eq, and, sql, count, isNotNull } from 'drizzle-orm'
 import { unstable_cache } from 'next/cache'
@@ -89,7 +94,7 @@ export async function loadSlugMappingCache(): Promise<SlugMappingCache> {
   }
 
   console.log('🔄 [LawsAPI] Cargando cache de slugs desde BD...')
-  const db = getDb()
+  const db = getLawsDb()
 
   const result = await db
     .select({
@@ -154,7 +159,7 @@ export async function resolveLawBySlug(rawSlug: string): Promise<LawResolved | n
   if (cached) return cached
 
   // 2. BD directa (slug nuevo no cacheado)
-  const db = getDb()
+  const db = getLawsDb()
   const [row] = await db
     .select({
       id: laws.id,
@@ -394,7 +399,7 @@ export function normalizeLawShortName(shortName: string): string {
 
 async function getLawsWithQuestionCountsInternal(): Promise<GetLawsWithCountsResponse> {
   try {
-    const db = getDb()
+    const db = getLawsDb()
     console.log('🚀 Obteniendo leyes con conteo (Drizzle Query Builder)...')
     console.time('⏱️ getLawsWithQuestionCounts')
 

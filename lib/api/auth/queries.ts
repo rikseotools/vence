@@ -1,5 +1,10 @@
 // lib/api/auth/queries.ts - Logica server-side para auth callback v2 (Drizzle)
-import { getDb } from '@/db/client'
+// CANARY pooler (sweep masivo oleada 5 — todos user-facing 2026-05-10):
+import { getDb, getPoolerDb } from '@/db/client'
+
+function getAuthDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
 import { emailLogs, userProfiles } from '@/db/schema'
 import { eq, and } from 'drizzle-orm'
 import { sendEmailV2 } from '@/lib/api/emails/queries'
@@ -32,7 +37,7 @@ export async function processAuthCallback(
     isMetaAds,
   } = params
 
-  const db = getDb()
+  const db = getAuthDb()
 
   try {
     // 1. Detectar usuario nuevo (sin welcome email previo)

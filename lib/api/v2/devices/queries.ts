@@ -1,7 +1,12 @@
 // lib/api/v2/devices/queries.ts
 // Queries Drizzle para gestión de dispositivos del usuario
 
-import { getDb } from '@/db/client'
+// CANARY pooler (sweep masivo oleada 5 — todos user-facing 2026-05-10):
+import { getDb, getPoolerDb } from '@/db/client'
+
+function getDevicesDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
 import { userDevices } from '@/db/schema'
 import { eq, and, desc } from 'drizzle-orm'
 import type { Device } from './schemas'
@@ -11,7 +16,7 @@ import type { Device } from './schemas'
  * Ordenados por última conexión (más reciente primero).
  */
 export async function listUserDevices(userId: string): Promise<Device[]> {
-  const db = getDb()
+  const db = getDevicesDb()
   const rows = await db
     .select({
       id: userDevices.id,
@@ -38,7 +43,7 @@ export async function removeUserDevice(
   userId: string,
   deviceId: string,
 ): Promise<boolean> {
-  const db = getDb()
+  const db = getDevicesDb()
   const result = await db
     .delete(userDevices)
     .where(and(eq(userDevices.id, deviceId), eq(userDevices.userId, userId)))

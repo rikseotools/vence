@@ -1,5 +1,10 @@
 // lib/api/questions/queries.ts - Queries tipadas para historial de preguntas
-import { getDb } from '@/db/client'
+// CANARY pooler (sweep masivo oleada 5 — todos user-facing 2026-05-10):
+import { getDb, getPoolerDb } from '@/db/client'
+
+function getQuestionsDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
 import { testQuestions, tests, questions } from '@/db/schema'
 import { eq, and, gte, sql, desc } from 'drizzle-orm'
 import type {
@@ -26,7 +31,7 @@ export async function getQuestionHistory(
   params: GetQuestionHistoryRequest
 ): Promise<GetQuestionHistoryResponse> {
   try {
-    const db = getDb()
+    const db = getQuestionsDb()
     const { userId, onlyActiveQuestions = true } = params
 
     // Query optimizada con JOIN directo (en lugar de IN clause con 250+ IDs)
@@ -103,7 +108,7 @@ export async function getRecentQuestions(
   params: GetRecentQuestionsRequest
 ): Promise<GetRecentQuestionsResponse> {
   try {
-    const db = getDb()
+    const db = getQuestionsDb()
     const { userId, days } = params
 
     // Calcular fecha de corte
@@ -145,7 +150,7 @@ export async function getUserAnalytics(
   params: GetUserAnalyticsRequest
 ): Promise<GetUserAnalyticsResponse> {
   try {
-    const db = getDb()
+    const db = getQuestionsDb()
     const { userId, days } = params
 
     // Calcular fecha de corte

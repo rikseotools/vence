@@ -1,6 +1,11 @@
 // lib/api/tema-resolver/queries.ts - Queries Drizzle para resolución de tema
 // OPTIMIZADO para escalar a 100k+ usuarios
-import { getDb } from '@/db/client'
+// CANARY pooler (sweep masivo oleada 5 — todos user-facing 2026-05-10):
+import { getDb, getPoolerDb } from '@/db/client'
+
+function getTemaResolverDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
 import { topics, topicScope, questions, articles, laws } from '@/db/schema'
 import { eq, and, sql, inArray } from 'drizzle-orm'
 import type {
@@ -116,7 +121,7 @@ export async function resolveTemaByArticle(
       return { ...cached.data, cached: true } as ResolveTemaResponse
     }
 
-    const db = getDb()
+    const db = getTemaResolverDb()
 
     let lawId: string | null = params.lawId || null
     let articleNumber: string | null = params.articleNumber || null
@@ -324,7 +329,7 @@ export async function resolveTemasBatch(
   let notFound = params.questions.length
 
   try {
-    const db = getDb()
+    const db = getTemaResolverDb()
 
     // QUERY 1: Resolver por questionIds (un solo query para todas las preguntas)
     if (questionIds.length > 0) {
@@ -464,7 +469,7 @@ export async function resolveTemasBatchByQuestionIds(
   const result = new Map<string, number>()
 
   try {
-    const db = getDb()
+    const db = getTemaResolverDb()
 
     // Convertir array a formato PostgreSQL ARRAY literal
     const questionIdsArray = sql.raw(`ARRAY['${questionIds.join("','")}']::uuid[]`)
@@ -574,7 +579,7 @@ export async function resolveTemaByQuestionIdFast(
   }
 
   try {
-    const db = getDb()
+    const db = getTemaResolverDb()
 
     // Una sola query: CTE con questions+articles, join a topic_scope + topics,
     // DISTINCT ON (question_id) + ORDER BY para preferir matches específicos

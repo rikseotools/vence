@@ -1,7 +1,12 @@
 // lib/api/psychometric-test-data/queries.ts
 // Queries Drizzle server-side para categorías y preguntas psicotécnicas
 
-import { getDb } from '@/db/client'
+// CANARY pooler (sweep masivo oleada 5 — todos user-facing 2026-05-10):
+import { getDb, getPoolerDb } from '@/db/client'
+
+function getPsychTestDataDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
 import {
   psychometricCategories,
   psychometricSections,
@@ -32,7 +37,7 @@ export async function getPsychometricCategories(userId?: string): Promise<GetPsy
       return _categoriesCache.data
     }
 
-    const db = getDb()
+    const db = getPsychTestDataDb()
 
     // 1. Get active categories ordered by display_order
     const cats = await db
@@ -311,7 +316,7 @@ export async function getPsychometricQuestions(
   sectionKeys?: string[]
 ): Promise<GetPsychometricQuestionsResponse> {
   try {
-    const db = getDb()
+    const db = getPsychTestDataDb()
 
     // 1. Resolve categoryKeys to IDs
     const cats = await db

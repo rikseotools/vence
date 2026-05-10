@@ -1,5 +1,10 @@
 // lib/api/dispute/queries.ts - Queries tipadas para impugnaciones de preguntas
-import { getDb } from '@/db/client'
+// CANARY pooler (sweep masivo oleada 5 — todos user-facing 2026-05-10):
+import { getDb, getPoolerDb } from '@/db/client'
+
+function getDisputeDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
 import { questionDisputes, questions } from '@/db/schema'
 import { eq, and, inArray } from 'drizzle-orm'
 import type { CreateDisputeResponse, DisputeData, GetExistingDisputeResponse, AppealDisputeResponse } from './schemas'
@@ -13,7 +18,7 @@ export async function getExistingDispute(
   userId: string
 ): Promise<GetExistingDisputeResponse> {
   try {
-    const db = getDb()
+    const db = getDisputeDb()
 
     const [dispute] = await db
       .select({
@@ -55,7 +60,7 @@ export async function createDispute(
   description: string
 ): Promise<CreateDisputeResponse> {
   try {
-    const db = getDb()
+    const db = getDisputeDb()
 
     // Verificar que la pregunta existe
     const [question] = await db
@@ -152,7 +157,7 @@ export async function handleDisputeAppeal(
   appealText?: string
 ): Promise<AppealDisputeResponse> {
   try {
-    const db = getDb()
+    const db = getDisputeDb()
 
     // Verificar que la disputa pertenece al usuario
     const [dispute] = await db

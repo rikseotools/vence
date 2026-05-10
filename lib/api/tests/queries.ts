@@ -1,5 +1,10 @@
 // lib/api/tests/queries.ts - Queries tipadas para tests
-import { getDb } from '@/db/client'
+// CANARY pooler (sweep masivo oleada 5 — todos user-facing 2026-05-10):
+import { getDb, getPoolerDb } from '@/db/client'
+
+function getTestsDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
 import { tests, testQuestions, userProfiles, questions, articles, laws, topics, topicScope } from '@/db/schema'
 import { eq, sql, inArray, gte, and, desc } from 'drizzle-orm'
 import { getAllowedLawIds } from '@/lib/api/oposicion-scope/queries'
@@ -57,7 +62,7 @@ export async function recoverTest(
   params: RecoverTestRequest
 ): Promise<RecoverTestResponse> {
   try {
-    const db = getDb()
+    const db = getTestsDb()
     const { userId, pendingTest } = params
 
     // Calcular métricas
@@ -193,7 +198,7 @@ export async function recoverTest(
 
 export async function checkNeedsOnboarding(userId: string): Promise<boolean> {
   try {
-    const db = getDb()
+    const db = getTestsDb()
 
     const [profile] = await db
       .select({
@@ -237,7 +242,7 @@ export async function getFailedQuestionsForUser(
   const { userId, numQuestions = 10, orderBy = 'recent', fromDate, days = 30 } = params
 
   try {
-    const db = getDb()
+    const db = getTestsDb()
 
     // Calcular fecha de corte
     const cutoffDate = fromDate

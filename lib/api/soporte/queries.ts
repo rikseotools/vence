@@ -1,5 +1,10 @@
 // lib/api/soporte/queries.ts - Queries tipadas para página de soporte
-import { getDb } from '@/db/client'
+// CANARY pooler (sweep masivo oleada 5 — todos user-facing 2026-05-10):
+import { getDb, getPoolerDb } from '@/db/client'
+
+function getSoporteDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
 import {
   userFeedback,
   feedbackConversations,
@@ -25,7 +30,7 @@ import type {
 export async function getUserFeedbacksWithConversations(
   userId: string
 ): Promise<FeedbackWithConversation[]> {
-  const db = getDb()
+  const db = getSoporteDb()
 
   // Obtener feedbacks (excluyendo question_dispute)
   const feedbackRows = await db
@@ -128,7 +133,7 @@ export async function getConversationMessages(
   conversationId: string,
   userId: string
 ): Promise<{ success: boolean; messages: ConversationMessage[]; feedbackMessage?: string; feedbackCreatedAt?: string; error?: string }> {
-  const db = getDb()
+  const db = getSoporteDb()
 
   // Verificar que la conversación pertenece al usuario + obtener feedbackId
   const convRows = await db
@@ -236,7 +241,7 @@ interface DisputeRow {
 }
 
 export async function getUserDisputes(userId: string): Promise<DisputeRow[]> {
-  const db = getDb()
+  const db = getSoporteDb()
 
   // 1. Impugnaciones normales con question → article → law
   const normalRows = await db

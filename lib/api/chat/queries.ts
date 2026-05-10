@@ -1,5 +1,10 @@
 // lib/api/chat/queries.ts - Queries tipadas para el chat AI
-import { getDb } from '@/db/client'
+// CANARY pooler (sweep masivo oleada 5 — todos user-facing 2026-05-10):
+import { getDb, getPoolerDb } from '@/db/client'
+
+function getChatDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
 import {
   topics,
   topicScope,

@@ -1,5 +1,10 @@
 // lib/api/user-failed-questions/queries.ts - Queries Drizzle para preguntas falladas del usuario
-import { getDb } from '@/db/client'
+// CANARY pooler (sweep masivo oleada 5 — todos user-facing 2026-05-10):
+import { getDb, getPoolerDb } from '@/db/client'
+
+function getUserFailedDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
 import { questions, articles, laws, tests, testQuestions, topics } from '@/db/schema'
 import { eq, and, inArray, desc, gte, gt, isNotNull } from 'drizzle-orm'
 import type {
@@ -16,7 +21,7 @@ export async function getUserFailedQuestions(
   params: GetUserFailedQuestionsRequest
 ): Promise<GetUserFailedQuestionsResponse> {
   try {
-    const db = getDb()
+    const db = getUserFailedDb()
     const { userId, topicNumber, selectedLaws, since } = params
 
     console.log(`🔍 [v2] Cargando preguntas falladas para usuario ${userId.substring(0, 8)}...`)
@@ -147,7 +152,7 @@ export async function getFailedQuestionsByTopic(
       return { success: false, error: 'positionType es obligatorio' }
     }
 
-    const db = getDb()
+    const db = getUserFailedDb()
 
     // NOTA: El JOIN con `topics` DEBE filtrarse por position_type porque el mismo
     // topic_number existe en 30+ oposiciones. Sin este filtro, el título devuelto

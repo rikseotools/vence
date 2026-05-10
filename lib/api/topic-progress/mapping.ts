@@ -2,7 +2,12 @@
 // Caché compartido para mapeo article → topic por position_type
 // TTL: 30 días (el mapeo raramente cambia)
 
-import { getDb } from '@/db/client'
+// CANARY pooler (sweep masivo oleada 5 — todos user-facing 2026-05-10):
+import { getDb, getPoolerDb } from '@/db/client'
+
+function getTopicProgressMappingDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
 import { sql } from 'drizzle-orm'
 
 // ============================================
@@ -51,7 +56,7 @@ export async function getArticleTopicMapping(
     return cached.mapping
   }
 
-  const db = getDb()
+  const db = getTopicProgressMappingDb()
 
   // Obtener todos los topic_scope para este position_type
   const scopeRows = await db.execute<{

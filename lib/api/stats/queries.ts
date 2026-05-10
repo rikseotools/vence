@@ -1,5 +1,10 @@
 // lib/api/stats/queries.ts - Queries optimizadas para estadísticas de usuario
-import { getDb } from '@/db/client'
+// CANARY pooler (sweep masivo oleada 5 — todos user-facing 2026-05-10):
+import { getDb, getPoolerDb } from '@/db/client'
+
+function getStatsDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
 import { tests, testQuestions, userStreaks, userProfiles, oposiciones, userSessions, topics } from '@/db/schema'
 import { eq, and, desc, sql, gte, isNotNull } from 'drizzle-orm'
 import type {
@@ -117,7 +122,7 @@ function getWorstHours(hourlyData: Array<{hour: number, questions: number, accur
 
 // Queries Drizzle en paralelo (9 queries: 8 stats + userOposicion)
 async function getUserStatsWithDrizzle(userId: string): Promise<GetUserStatsResponse> {
-  const db = getDb()
+  const db = getStatsDb()
   const now = new Date()
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
 

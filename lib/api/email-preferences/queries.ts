@@ -1,5 +1,10 @@
 // lib/api/email-preferences/queries.ts - Queries tipadas para preferencias de email
-import { getDb } from '@/db/client'
+// CANARY pooler (sweep masivo oleada 5 — todos user-facing 2026-05-10):
+import { getDb, getPoolerDb } from '@/db/client'
+
+function getEmailPrefsDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
 import { emailPreferences } from '@/db/schema'
 import { eq } from 'drizzle-orm'
 import type {
@@ -18,7 +23,7 @@ export async function getEmailPreferences(
   params: GetEmailPreferencesRequest
 ): Promise<GetEmailPreferencesResponse> {
   try {
-    const db = getDb()
+    const db = getEmailPrefsDb()
 
     const [prefs] = await db
       .select({
@@ -89,7 +94,7 @@ export async function upsertEmailPreferences(
   params: UpsertEmailPreferencesRequest
 ): Promise<UpsertEmailPreferencesResponse> {
   try {
-    const db = getDb()
+    const db = getEmailPrefsDb()
 
     // Construir objeto de actualización
     const updateData: Record<string, unknown> = {

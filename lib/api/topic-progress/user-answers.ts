@@ -1,7 +1,12 @@
 // lib/api/topic-progress/user-answers.ts
 // Query optimizada para obtener respuestas del usuario con info de artículo
 
-import { getDb } from '@/db/client'
+// CANARY pooler (sweep masivo oleada 5 — todos user-facing 2026-05-10):
+import { getDb, getPoolerDb } from '@/db/client'
+
+function getTopicProgressUserAnswersDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
 import { sql } from 'drizzle-orm'
 
 // ============================================
@@ -61,7 +66,7 @@ export async function getUserAnswersWithArticles(
     return cached.answers
   }
 
-  const db = getDb()
+  const db = getTopicProgressUserAnswersDb()
 
   // Filtrar por tema si se especifica — reduce de 54k a ~2k filas para heavy users
   const topicFilter = topicNumber != null

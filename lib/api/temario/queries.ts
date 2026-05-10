@@ -1,6 +1,11 @@
 // lib/api/temario/queries.ts - Queries Drizzle para Temario Dinámico
 // NOTA: Simplificado - ya no hay sistema de bloqueo, todos los temas son accesibles
-import { getDb } from '@/db/client'
+// CANARY pooler (sweep masivo oleada 5 — todos user-facing 2026-05-10):
+import { getDb, getPoolerDb } from '@/db/client'
+
+function getTemarioDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
 import { topics, topicScope, articles, laws, questions } from '@/db/schema'
 import { eq, and, inArray, sql, count } from 'drizzle-orm'
 import { unstable_cache } from 'next/cache'
@@ -37,7 +42,7 @@ async function getTopicContentBaseInternal(
   oposicionSlug: OposicionSlug,
   topicNumber: number
 ): Promise<TopicContentBase | null> {
-  const db = getDb()
+  const db = getTemarioDb()
   const oposicion = OPOSICIONES[oposicionSlug]
 
   if (!oposicion) {
@@ -383,7 +388,7 @@ export type TemarioCompleto = {
 async function getTemarioByPositionTypeInternal(
   positionType: string
 ): Promise<TemarioCompleto | null> {
-  const db = getDb()
+  const db = getTemarioDb()
 
   // 1. Obtener bloques
   const bloquesResult = await db.execute(sql`

@@ -1,5 +1,10 @@
 // lib/api/test-config/queries.ts - Queries Drizzle para configurador de tests
-import { getDb } from '@/db/client'
+// CANARY pooler (sweep masivo oleada 5 — todos user-facing 2026-05-10):
+import { getDb, getPoolerDb } from '@/db/client'
+
+function getTestConfigDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
 import { questions, articles, laws, topicScope, topics, lawSections } from '@/db/schema'
 import { eq, and, inArray, sql } from 'drizzle-orm'
 import { unstable_cache } from 'next/cache'
@@ -86,7 +91,7 @@ export async function getArticlesForLaw(
   params: GetArticlesRequest
 ): Promise<GetArticlesResponse> {
   try {
-    const db = getDb()
+    const db = getTestConfigDb()
     const { lawShortName, topicNumber, positionType, includeOfficialCount } = params
 
     // Buscar law_id
@@ -203,7 +208,7 @@ export async function estimateAvailableQuestions(
   params: EstimateQuestionsRequest
 ): Promise<EstimateQuestionsResponse> {
   try {
-    const db = getDb()
+    const db = getTestConfigDb()
     const {
       topicNumber,
       positionType,
@@ -376,7 +381,7 @@ export async function getEssentialArticles(
   params: GetEssentialArticlesRequest
 ): Promise<GetEssentialArticlesResponse> {
   try {
-    const db = getDb()
+    const db = getTestConfigDb()
     const { topicNumber, positionType } = params
 
     // 1. Obtener topic_scope
@@ -504,7 +509,7 @@ export async function getScopedLawSections(
   params: GetScopedSectionsRequest
 ): Promise<GetScopedSectionsResponse> {
   try {
-    const db = getDb()
+    const db = getTestConfigDb()
     const { lawShortName, topicNumber, positionType } = params
 
     // 1. Resolver law_id (buscar ley activa por short_name)

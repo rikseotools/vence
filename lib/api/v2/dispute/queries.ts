@@ -1,7 +1,12 @@
 // lib/api/v2/dispute/queries.ts
 // Queries Drizzle unificadas para impugnaciones (legislativas y psicotécnicas)
 
-import { getDb } from '@/db/client'
+// CANARY pooler (sweep masivo oleada 5 — todos user-facing 2026-05-10):
+import { getDb, getPoolerDb } from '@/db/client'
+
+function getV2DisputeDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
 import {
   questionDisputes,
   psychometricQuestionDisputes,
@@ -32,7 +37,7 @@ export async function getExistingDispute(
   questionType: QuestionType
 ): Promise<GetDisputeResponse | DisputeError> {
   try {
-    const db = getDb()
+    const db = getV2DisputeDb()
 
     if (questionType === 'psychometric') {
       const [existing] = await db
@@ -113,7 +118,7 @@ export async function createDispute(
   userId: string
 ): Promise<CreateDisputeResponse | DisputeError> {
   try {
-    const db = getDb()
+    const db = getV2DisputeDb()
     const { questionId, questionType, disputeType, description } = params
 
     // 1. Verificar que la pregunta existe
@@ -210,7 +215,7 @@ export async function resolveDispute(
   params: ResolveDisputeRequest
 ): Promise<ResolveDisputeResponse | DisputeError> {
   try {
-    const db = getDb()
+    const db = getV2DisputeDb()
     const { disputeId, questionType, status, adminResponse } = params
     const trimmedResponse = adminResponse.trim()
     const now = new Date().toISOString()

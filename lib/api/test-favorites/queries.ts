@@ -1,5 +1,10 @@
 // lib/api/test-favorites/queries.ts - Queries tipadas para favoritos de test
-import { getDb } from '@/db/client'
+// CANARY pooler (sweep masivo oleada 5 — todos user-facing 2026-05-10):
+import { getDb, getPoolerDb } from '@/db/client'
+
+function getTestFavoritesDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
 import { userTestFavorites } from '@/db/schema'
 import { eq, and, desc } from 'drizzle-orm'
 import type {
@@ -21,7 +26,7 @@ export async function getUserFavorites(
   params: GetUserFavoritesRequest
 ): Promise<GetUserFavoritesResponse> {
   try {
-    const db = getDb()
+    const db = getTestFavoritesDb()
 
     const favorites = await db
       .select({
@@ -66,7 +71,7 @@ export async function createFavorite(
   params: CreateFavoriteRequest
 ): Promise<CreateFavoriteResponse> {
   try {
-    const db = getDb()
+    const db = getTestFavoritesDb()
 
     // Convertir artículos a strings para compatibilidad con el schema de BD
     const normalizedArticlesByLaw: Record<string, string[]> = {}
@@ -142,7 +147,7 @@ export async function updateFavorite(
   params: UpdateFavoriteRequest
 ): Promise<CreateFavoriteResponse> {
   try {
-    const db = getDb()
+    const db = getTestFavoritesDb()
 
     // Construir objeto de actualización dinámicamente
     const updateData: Record<string, unknown> = {
@@ -223,7 +228,7 @@ export async function deleteFavorite(
   params: DeleteFavoriteRequest
 ): Promise<DeleteFavoriteResponse> {
   try {
-    const db = getDb()
+    const db = getTestFavoritesDb()
 
     const result = await db
       .delete(userTestFavorites)

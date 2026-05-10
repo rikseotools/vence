@@ -13,7 +13,12 @@
 // Documentado en docs/procedures/gestionar-feedback-bug.md §10 (post-14/04/2026)
 // y en docs/maintenance/impugnaciones-claude-code.md §16 (contexto del refactor).
 
-import { getDb } from '@/db/client'
+// CANARY pooler (sweep masivo oleada 5 — todos user-facing 2026-05-10):
+import { getDb, getPoolerDb } from '@/db/client'
+
+function getV2FeedbackDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
 import {
   userFeedback,
   feedbackConversations,
@@ -37,7 +42,7 @@ import type {
 // cuando el usuario está viendo la app y recibirá la campana en tiempo real.
 async function isUserActivelyBrowsing(userId: string): Promise<boolean> {
   try {
-    const db = getDb()
+    const db = getV2FeedbackDb()
     const [row] = await db
       .select({ updatedAt: userSessions.updatedAt })
       .from(userSessions)
@@ -56,7 +61,7 @@ export async function respondFeedback(
   params: RespondFeedbackRequest
 ): Promise<RespondFeedbackResponse | FeedbackError> {
   try {
-    const db = getDb()
+    const db = getV2FeedbackDb()
     const { feedbackId, adminUserId } = params
     const rawMessage = params.message ?? ''
     const trimmedMessage = rawMessage.trim()

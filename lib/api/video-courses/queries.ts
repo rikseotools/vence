@@ -1,4 +1,9 @@
-import { getDb } from '@/db/client'
+// CANARY pooler (sweep masivo oleada 5 — todos user-facing 2026-05-10):
+import { getDb, getPoolerDb } from '@/db/client'
+
+function getVideoCoursesDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
 import { videoCourses, videoLessons, userVideoProgress, userProfiles } from '@/db/schema'
 import { eq, and, asc, inArray } from 'drizzle-orm'
 import { createClient } from '@supabase/supabase-js'
@@ -44,7 +49,7 @@ const USER_CACHE_TTL = 60 * 1000
  */
 export async function getVideoCourses(): Promise<GetVideoCoursesResponse> {
   try {
-    const db = getDb()
+    const db = getVideoCoursesDb()
 
     const coursesData = await db
       .select({
@@ -97,7 +102,7 @@ export async function getCourseBySlug(
   userId?: string | null
 ): Promise<GetCourseBySlugResponse> {
   try {
-    const db = getDb()
+    const db = getVideoCoursesDb()
 
     // Get course
     const courseResult = await db
@@ -225,7 +230,7 @@ export async function getVideoSignedUrl(
   userId: string
 ): Promise<GetVideoUrlResponse> {
   try {
-    const db = getDb()
+    const db = getVideoCoursesDb()
     const now = Date.now()
 
     // Check caches first
@@ -359,7 +364,7 @@ export async function saveVideoProgress(
   completed: boolean = false
 ): Promise<SaveProgressResponse> {
   try {
-    const db = getDb()
+    const db = getVideoCoursesDb()
 
     // Verify lesson exists
     const lessonExists = await db
@@ -439,7 +444,7 @@ export async function getVideoProgress(
   lessonId: string
 ): Promise<GetProgressResponse> {
   try {
-    const db = getDb()
+    const db = getVideoCoursesDb()
 
     const progressResult = await db
       .select({

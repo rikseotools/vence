@@ -1,7 +1,12 @@
 // lib/api/psychometric-session/queries.ts
 // Queries Drizzle server-side para sesiones psicotécnicas (pending/resume/discard)
 
-import { getDb } from '@/db/client'
+// CANARY pooler (sweep masivo oleada 5 — todos user-facing 2026-05-10):
+import { getDb, getPoolerDb } from '@/db/client'
+
+function getPsychSessionDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
 import {
   psychometricTestSessions,
   psychometricTestAnswers,
@@ -27,7 +32,7 @@ export async function getPendingPsychometricSessions(
   limit: number = 10
 ): Promise<GetPendingPsychometricSessionsResponse | PsychometricSessionError> {
   try {
-    const db = getDb()
+    const db = getPsychSessionDb()
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
 
     const sessions = await db
@@ -83,7 +88,7 @@ export async function getResumedPsychometricSessionData(
   userId?: string
 ): Promise<ResumePsychometricSessionResponse | PsychometricSessionError> {
   try {
-    const db = getDb()
+    const db = getPsychSessionDb()
 
     // 1. Verify session exists and get metadata
     const [session] = await db
@@ -186,7 +191,7 @@ export async function discardPsychometricSession(
   userId: string
 ): Promise<DiscardPsychometricSessionResponse | PsychometricSessionError> {
   try {
-    const db = getDb()
+    const db = getPsychSessionDb()
 
     // Verify ownership + not already completed
     const [session] = await db
@@ -237,7 +242,7 @@ export async function createPsychometricSession(
   params: CreatePsychometricSessionRequest
 ): Promise<{ success: true; sessionId: string } | PsychometricSessionError> {
   try {
-    const db = getDb()
+    const db = getPsychSessionDb()
     const [result] = await db
       .insert(psychometricTestSessions)
       .values({
@@ -272,7 +277,7 @@ export async function completePsychometricSession(
   params: CompletePsychometricSessionRequest
 ): Promise<{ success: true; message: string } | PsychometricSessionError> {
   try {
-    const db = getDb()
+    const db = getPsychSessionDb()
 
     // Verificar propiedad
     const [session] = await db

@@ -1,4 +1,9 @@
-import { getDb } from '@/db/client'
+// CANARY pooler (sweep masivo oleada 5 — todos user-facing 2026-05-10):
+import { getDb, getPoolerDb } from '@/db/client'
+
+function getHotArticlesDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
 import { hotArticles, questions } from '@/db/schema'
 import { eq, and, ne, inArray } from 'drizzle-orm'
 import { unstable_cache } from 'next/cache'
@@ -15,7 +20,7 @@ export async function getArticleOfficialExamData(
 ): Promise<ArticleOfficialExamData | null> {
   if (!userOposicion) return null
 
-  const db = getDb()
+  const db = getHotArticlesDb()
   const normalizedOposicion = normalizeOposicionSlug(userOposicion)
 
   const [row] = await db
@@ -68,7 +73,7 @@ export async function getMultipleArticlesOfficialExamData(
 ): Promise<Record<string, ArticleOfficialExamData>> {
   if (!userOposicion || articleNumbers.length === 0) return {}
 
-  const db = getDb()
+  const db = getHotArticlesDb()
   const normalizedOposicion = normalizeOposicionSlug(userOposicion)
 
   const rows = await db
@@ -146,7 +151,7 @@ function extractFromBreakdown(breakdown: unknown, key: string): string[] {
 export async function checkHotArticle(
   params: CheckHotArticleRequest
 ): Promise<CheckHotArticleResponse> {
-  const db = getDb()
+  const db = getHotArticlesDb()
   const userOpo = normalizeOposicionSlug(params.userOposicion)
   const currentOpo = normalizeOposicionSlug(params.currentOposicion)
 

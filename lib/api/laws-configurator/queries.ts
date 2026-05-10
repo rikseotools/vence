@@ -1,5 +1,10 @@
 // lib/api/laws-configurator/queries.ts - Queries para configurador de leyes
-import { getDb } from '@/db/client'
+// CANARY pooler (sweep masivo oleada 5 — todos user-facing 2026-05-10):
+import { getDb, getPoolerDb } from '@/db/client'
+
+function getLawsConfDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
 import { questions, articles, laws } from '@/db/schema'
 import { eq, sql, and, isNotNull } from 'drizzle-orm'
 import type { GetAllLawsResponse, LawData } from './schemas'
@@ -10,7 +15,7 @@ import type { GetAllLawsResponse, LawData } from './schemas'
 
 export async function getAllLawsWithStats(): Promise<GetAllLawsResponse> {
   try {
-    const db = getDb()
+    const db = getLawsConfDb()
 
     // Query con joins: questions -> articles -> laws
     // Cuenta preguntas activas por ley

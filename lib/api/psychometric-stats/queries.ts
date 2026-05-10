@@ -1,5 +1,10 @@
 // lib/api/psychometric-stats/queries.ts
-import { getDb } from '@/db/client'
+// CANARY pooler (sweep masivo oleada 5 — todos user-facing 2026-05-10):
+import { getDb, getPoolerDb } from '@/db/client'
+
+function getPsychStatsDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
 import { sql, eq, and, desc, isNotNull } from 'drizzle-orm'
 import {
   psychometricTestAnswers,
@@ -14,7 +19,7 @@ import type {
 
 export async function getPsychometricStats(userId: string): Promise<GetPsychometricStatsResponse> {
   try {
-    const db = getDb()
+    const db = getPsychStatsDb()
 
     const [categoryStats, recentTests] = await Promise.all([
       getCategoryStats(db, userId),

@@ -1,6 +1,11 @@
 // lib/api/v2/complete-test/queries.ts
 // Server-side: completar test con analytics (replica completeDetailedTest + updateUserProgressDirect)
-import { getDb } from '@/db/client'
+// CANARY pooler (sweep masivo oleada 5 — todos user-facing 2026-05-10):
+import { getDb, getPoolerDb } from '@/db/client'
+
+function getCompleteTestDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
 import { tests, testQuestions, userSessions, questions, psychometricQuestions } from '@/db/schema'
 import { eq, and, inArray } from 'drizzle-orm'
 import type { CompleteTestRequest, DetailedAnswerInput } from './schemas'
@@ -23,7 +28,7 @@ export async function completeTest(
   params: CompleteTestRequest,
   userId: string,
 ): Promise<{ success: boolean; status: 'saved' | 'error'; savedQuestionsCount?: number; gapFilledCount?: number }> {
-  const db = getDb()
+  const db = getCompleteTestDb()
 
   const {
     sessionId,
@@ -324,7 +329,7 @@ interface FillMissingArgs {
  */
 async function fillMissingTestQuestions(args: FillMissingArgs): Promise<number> {
   const { sessionId, userId, detailedAnswers, savedOrders, topLevelTema, oposicionId, deviceInfo } = args
-  const db = getDb()
+  const db = getCompleteTestDb()
 
   // 1. Identificar huecos rellenables
   const missing = detailedAnswers.filter(a => {

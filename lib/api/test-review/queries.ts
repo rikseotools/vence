@@ -1,5 +1,10 @@
 // lib/api/test-review/queries.ts - Queries tipadas para revisión de tests completados
-import { getDb } from '@/db/client'
+// CANARY pooler (sweep masivo oleada 5 — todos user-facing 2026-05-10):
+import { getDb, getPoolerDb } from '@/db/client'
+
+function getTestReviewDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
 import { tests, testQuestions, questions, examCases } from '@/db/schema'
 import { eq, asc, inArray } from 'drizzle-orm'
 import type {
@@ -18,7 +23,7 @@ export async function getTestReview(
   params: GetTestReviewRequest
 ): Promise<GetTestReviewResponse> {
   try {
-    const db = getDb()
+    const db = getTestReviewDb()
     const { testId } = params
 
     // 1. Obtener datos del test

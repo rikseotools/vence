@@ -1,7 +1,12 @@
 // lib/api/convocatoria/queries.ts
 // Obtener convocatoria activa para una oposición
 
-import { getDb } from '@/db/client'
+// CANARY pooler (sweep masivo oleada 5 — todos user-facing 2026-05-10):
+import { getDb, getPoolerDb } from '@/db/client'
+
+function getConvocatoriaDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
 import { sql } from 'drizzle-orm'
 import { eq } from 'drizzle-orm'
 import { oposiciones, topics } from '@/db/schema'
@@ -50,7 +55,7 @@ export async function getOposicionLandingData(
   slug: string
 ): Promise<OposicionLandingData | null> {
   try {
-    const db = getDb()
+    const db = getConvocatoriaDb()
 
     const rows = await db
       .select({
@@ -123,7 +128,7 @@ export async function getHitosConvocatoria(
   slug: string
 ): Promise<HitoConvocatoria[]> {
   try {
-    const db = getDb()
+    const db = getConvocatoriaDb()
 
     const rows = await db.execute<{
       id: string
@@ -165,7 +170,7 @@ export async function getTopicNamesForLanding(
   positionType: string
 ): Promise<Map<number, string>> {
   try {
-    const db = getDb()
+    const db = getConvocatoriaDb()
     const rows = await db
       .select({
         topicNumber: topics.topicNumber,
@@ -223,7 +228,7 @@ export interface OposicionCardData {
  */
 export async function getAllOposicionesCardData(): Promise<Map<string, OposicionCardData>> {
   try {
-    const db = getDb()
+    const db = getConvocatoriaDb()
 
     const rows = await db.execute(sql`
       SELECT slug, nombre, short_name, grupo, subgrupo,
@@ -332,7 +337,7 @@ export async function getConvocatoriaActiva(
   oposicionSlug: string
 ): Promise<ConvocatoriaActiva | null> {
   try {
-    const db = getDb()
+    const db = getConvocatoriaDb()
 
     const result = await db.execute<{
       año: number

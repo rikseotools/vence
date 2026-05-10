@@ -1,5 +1,10 @@
 // lib/api/test-answers/queries.ts - Insert de respuestas via Drizzle
-import { getDb } from '@/db/client'
+// CANARY pooler (sweep masivo oleada 5 — todos user-facing 2026-05-10):
+import { getDb, getPoolerDb } from '@/db/client'
+
+function getTestAnswersDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
 import { testQuestions, userProfiles } from '@/db/schema'
 import { eq } from 'drizzle-orm'
 import { resolveTemaNumber } from '@/lib/api/tema-resolver/queries'
@@ -113,7 +118,7 @@ async function computeTema(
         if (resolvedOposicionCache && resolvedOposicionCache.current) {
           oposicionId = resolvedOposicionCache.current
         } else {
-          const db = getDb()
+          const db = getTestAnswersDb()
           const result = await db
             .select({ targetOposicion: userProfiles.targetOposicion })
             .from(userProfiles)
@@ -240,7 +245,7 @@ export async function insertTestAnswer(
   try {
     const { questionId, row } = await buildTestAnswerRow(req, userId)
 
-    const db = getDb()
+    const db = getTestAnswersDb()
     await db.insert(testQuestions).values(row)
 
     return {
@@ -326,7 +331,7 @@ export async function insertTestAnswersBatch(
       return { attempted: 0, inserted: 0, skipped: 0, errored: false }
     }
 
-    const db = getDb()
+    const db = getTestAnswersDb()
     const returned = await db
       .insert(testQuestions)
       .values(rows)

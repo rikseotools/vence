@@ -1,5 +1,10 @@
 // lib/api/profile/queries.ts - Queries tipadas para perfil de usuario
-import { getDb } from '@/db/client'
+// CANARY pooler (sweep masivo oleada 5 — todos user-facing 2026-05-10):
+import { getDb, getPoolerDb } from '@/db/client'
+
+function getProfileDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
 import { userProfiles } from '@/db/schema'
 import { eq } from 'drizzle-orm'
 import { unstable_cache, revalidateTag } from 'next/cache'
@@ -67,7 +72,7 @@ export async function getProfile(
   params: GetProfileRequest
 ): Promise<GetProfileResponse> {
   try {
-    const db = getDb()
+    const db = getProfileDb()
 
     const [profile] = await db
       .select()
@@ -110,7 +115,7 @@ export async function updateProfile(
   params: UpdateProfileRequest
 ): Promise<UpdateProfileResponse> {
   try {
-    const db = getDb()
+    const db = getProfileDb()
 
     // Construir objeto de actualización con timestamps
     const updateData: Record<string, unknown> = {
@@ -169,7 +174,7 @@ export async function getProfileForSelf(
   params: GetProfileRequest
 ): Promise<GetSelfProfileResponse> {
   try {
-    const db = getDb()
+    const db = getProfileDb()
 
     const [profile] = await db
       .select(SELF_PROFILE_COLUMNS)
@@ -208,7 +213,7 @@ export async function getProfileForAdmin(
   params: GetProfileRequest
 ): Promise<GetAdminProfileResponse> {
   try {
-    const db = getDb()
+    const db = getProfileDb()
 
     const [profile] = await db
       .select(ADMIN_PROFILE_COLUMNS)
@@ -278,7 +283,7 @@ export function invalidateProfileCache(): void {
 
 export async function profileExists(userId: string): Promise<boolean> {
   try {
-    const db = getDb()
+    const db = getProfileDb()
 
     const [result] = await db
       .select({ id: userProfiles.id })

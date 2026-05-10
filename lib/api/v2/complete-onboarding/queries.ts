@@ -1,6 +1,11 @@
 // lib/api/v2/complete-onboarding/queries.ts
 // Server-side: guardar todos los campos del onboarding en una sola operación atómica
-import { getDb } from '@/db/client'
+// CANARY pooler (sweep masivo oleada 5 — todos user-facing 2026-05-10):
+import { getDb, getPoolerDb } from '@/db/client'
+
+function getCompleteOnboardingDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
 import { userProfiles } from '@/db/schema'
 import { eq } from 'drizzle-orm'
 import { invalidateProfileCache } from '@/lib/api/profile'
@@ -10,7 +15,7 @@ export async function completeOnboarding(
   params: CompleteOnboardingRequest,
   userId: string,
 ): Promise<CompleteOnboardingResponse> {
-  const db = getDb()
+  const db = getCompleteOnboardingDb()
 
   const updates: Record<string, unknown> = {
     targetOposicion: params.targetOposicion,

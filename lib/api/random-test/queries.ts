@@ -1,5 +1,10 @@
 // lib/api/random-test/queries.ts - Queries Drizzle para Test Aleatorio
-import { getDb } from '@/db/client'
+// CANARY pooler (sweep masivo oleada 5 — todos user-facing 2026-05-10):
+import { getDb, getPoolerDb } from '@/db/client'
+
+function getRandomTestQDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
 import { topics, topicScope, laws, questions, articles, tests, testQuestions, userQuestionHistory } from '@/db/schema'
 import { eq, and, sql, inArray, desc, gte, isNotNull } from 'drizzle-orm'
 import { getOposicionByPositionType, EXCLUSIVE_QUESTION_TAGS } from '@/lib/config/oposiciones'
@@ -25,7 +30,7 @@ import { getPositionType, getOposicionConfig } from './schemas'
 async function getThemeQuestionCountsInternal(
   oposicion: OposicionSlug
 ): Promise<ThemeQuestionCount[]> {
-  const db = getDb()
+  const db = getRandomTestQDb()
   const positionType = getPositionType(oposicion)
   const config = getOposicionConfig(oposicion)
   const allThemeIds = config.blocks.flatMap(b => b.themes.map(t => t.id))
@@ -160,7 +165,7 @@ async function getQuestionCountForTopic(
 export async function checkQuestionAvailability(
   request: CheckAvailabilityRequest
 ): Promise<{ total: number; neverSeen: number; byTheme: Record<string, number> }> {
-  const db = getDb()
+  const db = getRandomTestQDb()
   const positionType = getPositionType(request.oposicion)
 
   // Construir condiciones base
@@ -270,7 +275,7 @@ export async function getUserThemeStats(
   oposicion: OposicionSlug,
   userId: string
 ): Promise<UserThemeStats[]> {
-  const db = getDb()
+  const db = getRandomTestQDb()
   const config = getOposicionConfig(oposicion)
   const allThemeIds = config.blocks.flatMap(b => b.themes.map(t => t.id))
 
@@ -331,7 +336,7 @@ export async function getUserThemeStats(
 export async function generateRandomTest(
   request: GenerateTestRequest
 ): Promise<{ questions: GeneratedQuestion[]; testId: string | null }> {
-  const db = getDb()
+  const db = getRandomTestQDb()
   const positionType = getPositionType(request.oposicion)
 
   // 🏷️ Tag filter (NULL-safe: tags IS NULL no debe excluir preguntas)
