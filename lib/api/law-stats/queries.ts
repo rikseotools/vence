@@ -1,8 +1,12 @@
 // lib/api/law-stats/queries.ts
 // Query Drizzle para estadísticas de preguntas por ley.
 // Usada directamente por server components y por la API route.
-
-import { getDb } from '@/db/client'
+//
+// CANARY self-hosted pooler (Fase 3, 2026-05-10):
+// /api/questions/law-stats tuvo 3 queries lentas hoy (3.5s, 6.9s, 7.7s) contra
+// Supavisor — riesgo de 503 si pasa los 8s. Lo migramos al pooler propio para
+// aislar del Supavisor regional. Read-only puro, mismo patrón que ranking/medals.
+import { getDb, getPoolerDb } from '@/db/client'
 import { questions, articles, laws } from '@/db/schema'
 import { eq, and, sql, isNull } from 'drizzle-orm'
 import { unstable_cache } from 'next/cache'
@@ -18,9 +22,14 @@ export interface LawStatsResult {
   error?: string
 }
 
+// Canary: pooler propio si flag ON, primary si OFF (comportamiento histórico).
+function getLawStatsDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
+
 export async function queryLawStats(lawShortName: string): Promise<LawStatsResult> {
   try {
-    const db = getDb()
+    const db = getLawStatsDb()
     const startTime = Date.now()
 
     const [result] = await db
