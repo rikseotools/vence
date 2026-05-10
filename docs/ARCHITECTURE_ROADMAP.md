@@ -400,12 +400,21 @@ getTraceDb()  → max:1, sin timeout   // ✅ HECHO — para after() background 
 
 **Coste real**: $7/mes (gratis primeros 90 días). $40-50/mes con HA (Fase 6 opcional).
 
-**Estado canary (2026-05-10 18:08 UTC)**: 3 endpoints read-only migrados:
+**Estado canary (2026-05-10 18:50 UTC)**: 8 endpoints read-only migrados + panel admin de monitorización.
+
+**Oleada 1** (validación):
 - `/api/ranking` (14:09 — primer canary)
 - `/api/medals` GET (18:05 — tras 503 a las 17:31)
 - `/api/questions/law-stats` (18:08 — preventivo tras queries lentas 3.5-7.7s)
 
-Funcionando estable. Pendiente: 24h observación → expandir a más reads → finalmente writes (`/api/v2/answer-and-save`). Rollback global en <3 min vía `USE_SELF_HOSTED_POOLER=false`.
+**Oleada 2** (expansión preventiva pre-pico lunes):
+- `/api/v2/topic-progress/theme-stats`, `/api/notifications/problematic-articles`, `/api/v2/topic-progress/weak-articles`, `/api/topics/[numero]`, `/api/questions/filtered` GET ?action=count
+
+**Dashboard visual**: `/admin/infraestructura` → sección "Canary self-hosted pooler" con 5xx por endpoint, comparativa pooler vs Supavisor (1h y 24h).
+
+**Estado actual**: 0 errores 5xx en última hora en endpoints del pooler. Supavisor sigue mostrando blips (mayoría en `/api/questions/filtered` POST aún no migrado — ese es el próximo objetivo).
+
+**Pendiente**: Fase 4 completa (`/api/questions/filtered` POST) → Fase 5 writes (`/api/v2/answer-and-save`). Rollback global en <3 min vía `USE_SELF_HOSTED_POOLER=false`.
 
 ### Read replica ✅ HECHO (2026-05-09)
 

@@ -2,10 +2,10 @@
 
 > **Implementación elegida (mayo 2026)**: PgBouncer en AWS Lightsail London. Alternativas evaluadas (PgCat, Supabase Dedicated Pooler, Coolify) en sección "Comparación de opciones".
 
-> **Estado**: 🟡 Fase 3 EN ROLLOUT (2026-05-10) — canary `/api/ranking` activo en producción. Fase 0 ✅ + Fase 1-2 ✅ + Fase 3 observación 24-48h en curso.
+> **Estado**: 🟡 Fase 3-4 EN ROLLOUT (2026-05-10) — 8 endpoints canary activos en producción + panel admin de monitorización. Fase 0 ✅ + Fase 1-3 ✅ + Fase 4 expansión en curso. Pendiente: writes (Fase 5).
 > **Propietario**: equipo Vence
 > **Coste recurrente real**: $7/mes (Lightsail plan 1GB) — primeros 90 días GRATIS con cuenta nueva ($200 USD créditos AWS)
-> **Última actualización**: 2026-05-10 16:00 UTC — canary activado en Vercel Production con env vars `USE_SELF_HOSTED_POOLER=true` + `DATABASE_URL_SELF_POOLER`. PgBouncer 1.25.2 sirviendo `/api/ranking` desde `pooler.vence.es:6543`.
+> **Última actualización**: 2026-05-10 18:50 UTC — 8 endpoints en canary, panel `/admin/infraestructura` con sección canary, 0 errores 5xx en última hora (validado en pooler en pico de domingo tarde). Pico real lunes mañana.
 
 ---
 
@@ -464,13 +464,36 @@ Más simple, más estándar, menos servicios que mantener.
 
 ## Pendientes (TODO) post-Fase 0
 
-- [ ] **Fase 2** — Canary en Vercel Preview (1 endpoint read-only, 24-48h observación)
-- [ ] **Fase 3** — Canary en producción (mismo endpoint, observar 24-48h con tráfico real)
-- [ ] **Fase 4** — Expansión: migrar todos los reads que usan `getReadDb()`
-- [ ] **Fase 5** — Migrar writes (`getDb()`)
-- [ ] Implementar `db/client.ts:getPoolerDb()` con feature flag `USE_SELF_HOSTED_POOLER`
-- [ ] Setup monitoring (CloudWatch básico para CPU/memoria + alarms si pgbouncer cae)
-- [ ] CI/CD para cambios de config (GitHub Actions) — opcional, baja prioridad
+### ✅ Hecho hoy 2026-05-10
+
+- [x] **Fase 0** — Provisión Lightsail + PgBouncer 1.25.2 + DNS + TLS
+- [x] **Fase 1** — Test local: 5-6ms TCP latency, e2e OK
+- [x] **Fase 2** — Validación pre-producción (skip Preview, fuimos directo a canary prod por confianza tras tests locales)
+- [x] **Fase 3** — Canary 1 endpoint (`/api/ranking`) validado tras fix `ignore_startup_parameters`
+- [x] **Fase 4 (parcial)** — Expansión a 8 endpoints read (oleada 1: ranking, medals GET, law-stats; oleada 2: theme-stats, problematic-articles, weak-articles, topics/[numero], filtered count)
+- [x] `db/client.ts:getPoolerDb()` con feature flag `USE_SELF_HOSTED_POOLER` + tests
+- [x] Panel admin de monitorización en `/admin/infraestructura` — sección "Canary self-hosted pooler" con 5xx por endpoint, comparativa pooler vs Supavisor (1h, 24h)
+
+### ⏳ Pendiente (mañana o esta semana)
+
+- [ ] **Observar pico lunes 2026-05-11 mañana** — primer test real con tráfico de opositores. Mirar `/admin/infraestructura` cada par de horas. Si hay regresión → rollback con `USE_SELF_HOSTED_POOLER=false`.
+- [ ] **Fase 4 completa** — migrar `/api/questions/filtered` POST (random selection, alto tráfico) — actualmente excluido del panel canary porque su POST falsea los datos. Migrarlo desbloquea visión completa.
+- [ ] **Fase 5** — Migrar WRITES:
+  - `/api/v2/answer-and-save` (crítico — perder respuestas de tests es el peor caso)
+  - `/api/medals` POST (`checkAndSaveNewMedals`)
+  - Solo tras 24-48h estable con writes en otros endpoints menores
+
+### 🔧 Mejoras del panel admin (Versión 2)
+
+- [ ] Endpoint `/health` en la VM (vía pgbouncer admin DB) que devuelva SHOW POOLS / SHOW STATS por HTTPS — para mostrar memoria, conexiones activas, queries servidas en el panel sin SSH
+- [ ] Añadir columna `method` (GET/POST) a `validation_error_logs` para distinguir migraciones parciales correctamente
+- [ ] Sentry issues count en el panel admin (4ª card)
+- [ ] Gráfico de serie temporal de 7 días con p50/p95 latencia por endpoint
+
+### 📡 Operaciones / monitoring
+
+- [ ] Setup CloudWatch básico para CPU/memoria de la VM Lightsail + alarms si pgbouncer cae
+- [ ] CI/CD para cambios de config pgbouncer (GitHub Actions) — opcional, baja prioridad
 - [ ] **Fase 6** (futuro) — HA con 2 instancias + NLB ($40-50/mes) si llegamos a >20k DAU
 
 ## Referencias
