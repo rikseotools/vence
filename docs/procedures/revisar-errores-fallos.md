@@ -88,10 +88,23 @@ Si `quick_fail:db_timeout` empieza a aparecer en bursts, sospechar:
 
 ### Canary self-hosted pooler — monitorización y rollback
 
-Desde 2026-05-10 hay un canary del pooler propio (`pooler.vence.es:6543`) sirviendo varios endpoints (read-only, expansión incremental):
-- `/api/ranking` (commit `d25e67b1` — primer canary)
-- `/api/medals` GET (commit `5a633d11` — tras 503 17:31)
-- `/api/questions/law-stats` (commit `ef01a395` — tras queries lentas 3.5-7.7s)
+Desde 2026-05-10 hay un canary del pooler propio (`pooler.vence.es:6543`) sirviendo 8 endpoints read-only:
+
+**Oleada 1** (validación):
+- `/api/ranking` (`d25e67b1`)
+- `/api/medals` GET (`5a633d11` — tras 503 17:31)
+- `/api/questions/law-stats` (`ef01a395` — tras queries lentas 3.5-7.7s)
+
+**Oleada 2** (expansión preventiva pre-pico lunes):
+- `/api/v2/topic-progress/theme-stats` (`ecef26e5`)
+- `/api/notifications/problematic-articles` (`ecef26e5`)
+- `/api/v2/topic-progress/weak-articles` (`ecef26e5`)
+- `/api/topics/[numero]` (`ecef26e5`)
+- `/api/questions/filtered` GET ?action=count (`ecef26e5` — solo el COUNT, NO el POST)
+
+**No migrado** (mayor riesgo, pendiente):
+- `/api/questions/filtered` POST
+- `/api/v2/answer-and-save` (write)
 
 Ver `docs/roadmap/self-hosted-pooler.md` y `infra/pooler/README.md` para detalle de cada uno.
 

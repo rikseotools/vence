@@ -64,10 +64,19 @@ const { Client } = require('pg');
 
 ### Canary monitoring — endpoints migrados al pooler propio
 
-Lista actual (orden de migración):
-- `/api/ranking` — desde 2026-05-10 14:09 UTC (primer canary)
-- `/api/medals` GET — desde 2026-05-10 18:05 UTC (tras 503 a las 17:31)
-- `/api/questions/law-stats` — desde 2026-05-10 18:08 UTC (preventivo, queries lentas)
+Lista actual (8 endpoints, orden de migración):
+
+**Oleada 1** (`d25e67b1`, `5a633d11`, `ef01a395`):
+- `/api/ranking` — 2026-05-10 14:09 UTC
+- `/api/medals` GET — 2026-05-10 18:05 UTC
+- `/api/questions/law-stats` — 2026-05-10 18:08 UTC
+
+**Oleada 2** (`ecef26e5`):
+- `/api/v2/topic-progress/theme-stats`
+- `/api/notifications/problematic-articles`
+- `/api/v2/topic-progress/weak-articles`
+- `/api/topics/[numero]`
+- `/api/questions/filtered` GET ?action=count
 
 Las queries de estos endpoints van a `pooler.vence.es:6543` cuando
 `USE_SELF_HOSTED_POOLER=true`. Toggle del flag = rollback global instantáneo.

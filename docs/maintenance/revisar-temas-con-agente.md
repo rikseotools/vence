@@ -972,6 +972,175 @@ Sí, el orquestador reporta el progreso: "Procesadas 19/57", y al final da un re
 
 ---
 
+## 14. Workflow paralelo Sonnet desde Claude Code (post-piloto 2026-05-04)
+
+El piloto del 03-04/05/2026 validó un workflow distinto al §4: en lugar de orquestar agentes con `topic_review_status` legacy y aplicar fixes en el mismo paso, **se separa el rol del agente (verificación + INSERT) del rol del humano (apply masivo)**. Más seguro y escalable cuando se procesan miles de preguntas.
+
+### 14.1 Selección priorizada por usuarios y verificación previa fuerte
+
+Antes de lanzar agentes, filtrar para no malgastar cupo:
+
+1. **Priorizar oposiciones por nº de usuarios activos**:
+   ```sql
+   SELECT target_oposicion, count(*) AS users
+   FROM public.user_profiles
+   WHERE target_oposicion IS NOT NULL
+   GROUP BY target_oposicion ORDER BY users DESC
+   ```
+   Atacar las top primero (en Vence, top 3 = 62% de usuarios).
+
+2. **Excluir preguntas ya verificadas con modelo fuerte** (Sonnet/Opus o human_verification_microsoft) para no duplicar:
+   ```sql
+   AND NOT EXISTS (
+     SELECT 1 FROM public.ai_verification_results av
+     WHERE av.question_id = q.id AND av.discarded = false
+       AND (av.ai_model ILIKE '%sonnet%' OR av.ai_model ILIKE '%opus%'
+            OR av.ai_provider = 'human_verification_microsoft')
+   )
+   ```
+
+3. **Excluir lifecycle terminales** (`retired_*`) y limitar a `approved`/`tech_approved` si el objetivo es prevenir impugnaciones (las que ven los estudiantes).
+
+### 14.2 Lanzamiento en paralelo desde Claude Code
+
+5 agentes Sonnet paralelos × 50 preguntas = 250 verificadas en ~25 min wall-clock.
+
+```
+Agent({
+  subagent_type: "general-purpose",
+  model: "sonnet",            // claude-sonnet-4-6
+  description: "Verif <oposicion>",
+  run_in_background: true,    // paralelo
+  prompt: "...metodología completa..."
+})
+```
+
+**Por qué Sonnet 4.6 (no Opus, no Haiku):**
+- Opus consume 5× más cupo del Max — agotaría el plan en pocos días para un catálogo grande.
+- Haiku se queda corto en razonamiento legal — replica el problema actual de `gpt-4o-mini` (ver §5.1.2 manual impugnaciones).
+- Sonnet 4.6 acertó en >95% en el piloto con metodología clara.
+
+**Volumen real validado:**
+- 1 lote de 50 preguntas: 18-45 min según complejidad (mediana ~30 min).
+- 5 agentes en paralelo: cupo equivalente a ~5h-eq de uso por sesión Max.
+- En sesiones de 2-3 h con 3-5 agentes paralelos: ~500-750 preguntas/día.
+
+### 14.3 Workflow seguro: agente INSERTA, humano APLICA
+
+**Regla bloqueante en el prompt del agente:**
+
+```
+NO transiciones lifecycle. Solo INSERT en ai_verification_results.
+Si detectas bug, propón explanation_fix / correct_option_should_be /
+correct_article_suggestion en el INSERT, pero NO modifiques `questions`
+ni llames a transition_question_state.
+```
+
+**Justificación:** si Sonnet se equivoca al juzgar (false positive), no oculta preguntas correctas ni reescribe sobre el catálogo activo. El humano revisa los resultados y decide qué aplicar.
+
+**Plantilla INSERT del agente:**
+```sql
+INSERT INTO public.ai_verification_results (
+  question_id, article_id, ai_provider, ai_model,
+  answer_ok, explanation_ok, article_ok,
+  explanation,                    -- análisis breve agente (≤300 chars)
+  explanation_fix,                -- reescritura propuesta si bad_explanation
+  correct_option_should_be,       -- 'A'/'B'/'C'/'D' si bad_answer
+  correct_article_suggestion,     -- artículo correcto si wrong_article
+  confidence                      -- 'alta'/'media'/'baja'
+) VALUES (...)
+```
+
+### 14.4 Aplicar fixes a preguntas ya `approved` (caso post-piloto)
+
+El endpoint `/api/admin/lifecycle/apply-fix-bulk` está diseñado para `needs_review → approved` (transiciona como parte del flujo). **NO sirve para preguntas que ya están `approved`** con bug menor detectado por agente — fallaría con "Same-state transition not allowed".
+
+**Solución:** UPDATE directo + cache invalidate. Audit queda en `ai_verification_results.fix_applied=true`. Patrón Node + pg validado sobre 168 preguntas en una sola transacción:
+
+```js
+const candidates = await sql`
+  SELECT av.id as av_id, av.question_id, av.explanation_fix
+  FROM public.ai_verification_results av
+  WHERE av.ai_provider = 'claude_code' AND av.ai_model = 'claude-sonnet-4-6'
+    AND av.verified_at >= '<timestamp_lote>'
+    AND av.explanation_ok = false
+    AND av.confidence = 'alta'
+    AND av.explanation_fix IS NOT NULL AND length(av.explanation_fix) > 100
+    AND coalesce(av.fix_applied, false) = false
+`;
+await sql.begin(async (tx) => {
+  for (const c of candidates) {
+    await tx`UPDATE public.questions SET explanation = ${c.explanation_fix}, updated_at = now() WHERE id = ${c.question_id}`;
+    await tx`UPDATE public.ai_verification_results SET fix_applied = true, fix_applied_at = now() WHERE id = ${c.av_id}`;
+  }
+});
+// Invalidar cache producción una vez al final
+await fetch('https://www.vence.es/api/admin/revalidate', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json', 'x-cron-secret': process.env.CRON_SECRET },
+  body: JSON.stringify({ tag: 'questions' }),
+});
+```
+
+**Para wrong_article** sí transicionar a `needs_human` (la pregunta deja de servirse hasta decisión humana sobre el artículo correcto):
+```js
+await sql`SELECT public.transition_question_state(
+  ${qid}::uuid, ${currentState}::text, 'needs_human'::text,
+  'ai_detected_wrong_article'::text, ${adminUuid}::uuid, ${avId}::uuid,
+  ${'Sugerencia agente: ' + correct_article_suggestion}::text
+)`;
+```
+
+### 14.5 Heurística cross-contamination para auditoría preventiva
+
+Patrón detectado en preguntas TUE durante el piloto (caso Farida 14/04 a escala): explicaciones contienen bloques copiados de otra pregunta. Detectable masivamente con SQL si el bloque contaminante usa keywords distintivas:
+
+```js
+const histKeywords = ['Acta Única','Maastricht','Ámsterdam','Lisboa','Niza','codecisión'];
+// Sospechosa: ≥3 keywords históricas en explicación pero ninguna en enunciado
+const histInExpl = histKeywords.filter(k => expl.includes(k.toLowerCase())).length;
+const histInEnq  = histKeywords.filter(k => enq.includes(k.toLowerCase())).length;
+if (histInExpl >= 3 && histInEnq === 0) → sospechosa
+```
+
+Aplicado a 1.677 preguntas TUE/TFUE → 5 sospechosas (1 confirmada cross-contamination, 4 a reescritura didáctica). Generalizable a:
+- CE: keywords "reforma 1992", "reforma 2011" en preguntas que no tratan de reformas.
+- Leyes muy reformadas: keywords de fechas de modificación.
+- Preguntas técnicas: keywords de funciones que no aparecen en el enunciado (caso EXTRAE→LARGO, CONTAR.SI→CONTARA).
+
+### 14.6 Estadísticas del piloto (calibración)
+
+| Métrica | Valor |
+|---|---|
+| Preguntas verificadas | 300 (6 lotes × 50) |
+| Agentes simultáneos | 5 (5 lotes paralelos + 1 piloto previo) |
+| Tiempo wall-clock | ~25 min para los 5 paralelos |
+| Tiempo por lote | 18-45 min (mediana ~30 min) |
+| `bad_answer` | **0 / 300** (catálogo factualmente sólido) |
+| `bad_explanation` | 167 (56%) — formato no-didáctico §5.1 |
+| `wrong_article` (variantes) | 26 (9%) |
+| `perfect`/`tech_perfect` | 109 (36%) |
+| Confianza alta | 278 (94%) |
+| Errores INSERT BD | 0 |
+
+**Lectura:** el catálogo Vence es factualmente correcto. El problema dominante es de **formato** (explicaciones cortas sin blockquote/análisis A-B-C-D), no de contenido erróneo. Esto cambia la prioridad: reescritura masiva de explicaciones es la mayor palanca de calidad percibida; cambios de respuesta correcta son raros.
+
+### 14.7 Plan de fases del proyecto de revisión completa
+
+Para escalar de los 300 del piloto a las 14k+ pendientes:
+
+| Fase | Trabajo | Estimación |
+|------|---------|------------|
+| Piloto | 50 preguntas + análisis flow | ✅ 18 min |
+| Ronda paralela | 5 lotes × 50 | ✅ 25 min |
+| Top 3 oposiciones (62% usuarios) | 14.245 preguntas | ~30-40 sesiones de 3h |
+| Top 8 oposiciones (90% usuarios) | ~20.000 preguntas | ~60-80 sesiones |
+| Catálogo completo | ~80.000 preguntas | proyecto a 3-6 meses |
+
+Distribuir en sesiones cortas, monitorizando el cupo del Max. La ROI del fix masivo de explicaciones se nota inmediatamente: bajada estimada de impugnaciones de 60-80% basado en patrón histórico (la mayoría de quejas son de bug real en explicación, no en respuesta).
+
+---
+
 ## Verificación de Preguntas Psicotécnicas y Ortografía
 
 Las psicotécnicas y ortografía NO tienen artículo vinculado. El flujo de verificación es diferente.

@@ -222,23 +222,29 @@ function getRankingDb() {
 
 **Endpoints en el canary** (read-only, expansión incremental el mismo día tras estabilidad):
 
+**Oleada 1** (validación inicial, post-fix `ignore_startup_parameters`):
 | Endpoint | Migrado | Razón | Commit |
 |---|---|---|---|
 | `/api/ranking` | 14:09 UTC | Primer canary (read-only, ya con cache local) | `d25e67b1` |
 | `/api/medals` GET | 18:05 UTC | Dio 503 a las 17:31:23 contra Supavisor | `5a633d11` |
 | `/api/questions/law-stats` | 18:08 UTC | 3 queries lentas (3.5/6.9/7.7s) — preventivo | `ef01a395` |
 
+**Oleada 2** (expansión preventiva ante pico de tráfico de lunes):
+| Endpoint | Migrado | Razón | Commit |
+|---|---|---|---|
+| `/api/v2/topic-progress/theme-stats` | 18:42 UTC | Hot path con cache; aislar de Supavisor | `ecef26e5` |
+| `/api/notifications/problematic-articles` | 18:42 UTC | Read analytics; ya tenía replica + stale-if-error | `ecef26e5` |
+| `/api/v2/topic-progress/weak-articles` | 18:42 UTC | Read analytics user-facing; misma justificación | `ecef26e5` |
+| `/api/topics/[numero]` | 18:42 UTC | Hot path con stale-if-error | `ecef26e5` |
+| `/api/questions/filtered` GET ?action=count | 18:42 UTC | Determinista, fresh-cache 60s + stale | `ecef26e5` |
+
 **Variables de entorno añadidas a Vercel Production** (2026-05-10):
 - `USE_SELF_HOSTED_POOLER=true`
 - `DATABASE_URL_SELF_POOLER=postgresql://postgres:<PASSWORD>@pooler.vence.es:6543/postgres?sslmode=require`
 
-**Pendiente migrar** (tras 24h estable con los 3 actuales):
-- `/api/v2/topic-progress/theme-stats` (replica + stale-if-error)
-- `/api/notifications/problematic-articles` (replica + stale-if-error)
-- `/api/v2/topic-progress/weak-articles` (replica + stale-if-error)
-- `/api/topics/[numero]` (alto tráfico, hot path)
-- `/api/questions/filtered` (POST + GET count, alto tráfico)
-- `/api/v2/answer-and-save` (write — última fase, mayor riesgo)
+**Pendiente migrar** (mañana con cabeza fresca, mayor riesgo):
+- `/api/questions/filtered` POST (random selection — alto tráfico, hot path crítico, requiere cache key sharing entre métodos)
+- `/api/v2/answer-and-save` (WRITE — perder respuestas de tests es el peor escenario, observar canary 24h primero)
 
 **Métricas a monitorizar 24-48h** (ver `docs/procedures/revisar-errores-fallos.md` § "Canary self-hosted pooler"):
 - 5xx en `/api/ranking` en `validation_error_logs` (vs baseline)
