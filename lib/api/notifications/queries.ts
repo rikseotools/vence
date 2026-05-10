@@ -6,7 +6,14 @@
 // via getAllowedLawIds → impide que un Aux Estado reciba artículos de leyes
 // CCAA-específicas (dispute 4e247ddc, Mar Vazquez).
 
-import { getReadDb } from '@/db/client'
+// CANARY self-hosted pooler (Fase 3, 2026-05-10):
+// /api/notifications/problematic-articles migrado en oleada 2.
+// Read-only con cache + stale-if-error.
+import { getReadDb, getPoolerDb } from '@/db/client'
+
+function getProblematicArticlesDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getReadDb()
+}
 import { articles, laws, testQuestions, tests } from '@/db/schema'
 import { and, eq, gte, inArray, isNotNull, sql } from 'drizzle-orm'
 import { getAllowedLawIds } from '@/lib/api/oposicion-scope/queries'
@@ -42,9 +49,9 @@ function derivRecommendation(accuracy: number): string {
 export async function getUserProblematicArticlesWeekly(
   params: GetUserProblematicArticlesWeeklyParams
 ): Promise<ProblematicArticle[]> {
-  // Read replica (USE_READ_REPLICA=true) → primary fallback. Read-only analytics,
+  // Canary pooler propio si flag ON, replica fallback. Read-only analytics,
   // stale ≤1s aceptable para "weekly performance".
-  const db = getReadDb()
+  const db = getProblematicArticlesDb()
   const limit = params.limit ?? 5
   const accuracyMax = params.accuracyMaxPct ?? 60
   const windowDays = params.windowDays ?? 7

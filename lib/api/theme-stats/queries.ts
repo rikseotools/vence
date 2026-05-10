@@ -1,7 +1,15 @@
 // lib/api/theme-stats/queries.ts - Queries optimizadas para estadísticas por tema
 // V2: Usa módulo compartido topic-progress para derivar stats desde article_id + topic_scope
+//
+// CANARY self-hosted pooler (Fase 3, 2026-05-10):
+// /api/v2/topic-progress/theme-stats migrado al pooler propio en oleada 2.
+// Read-only puro con cache fresh+stale, ideal para canary.
+import { getDb, getPoolerDb } from '@/db/client'
 
-import { getDb } from '@/db/client'
+// Canary: pooler propio si flag ON, primary si OFF (este módulo nunca usó replica históricamente).
+function getThemeStatsDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
 import { sql } from 'drizzle-orm'
 import type { GetThemeStatsResponse, ThemeStat, OposicionSlug } from './schemas'
 import { OPOSICION_TO_POSITION_TYPE } from './schemas'
@@ -186,7 +194,7 @@ async function getUserThemeStatsLegacy(userId: string): Promise<GetThemeStatsRes
     const cached = statsCache.get(cacheKey)
     if (cached) return cached
 
-    const db = getDb()
+    const db = getThemeStatsDb()  // canary pooler
 
     // Query legacy: agrupa por tema_number guardado
     const result = await db.execute<{

@@ -1,6 +1,14 @@
 // lib/api/topic-progress/queries.ts
 // Queries tipadas para progreso por tema y artículos débiles usando Drizzle
-import { getDb, getReadDb } from '@/db/client'
+//
+// CANARY self-hosted pooler (Fase 3, 2026-05-10):
+// /api/v2/topic-progress/weak-articles migrado en oleada 2.
+// Read-only con cache + stale-if-error.
+import { getDb, getReadDb, getPoolerDb } from '@/db/client'
+
+function getWeakArticlesDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getReadDb()
+}
 import {
   userQuestionHistory,
   questions,
@@ -49,8 +57,8 @@ export async function getWeakArticlesForUser(
   } = params
 
   try {
-    // Read replica para weak-articles (analytics read-only, stale ≤1s OK)
-    const db = getReadDb()
+    // Canary pooler propio (Fase 3) si flag ON, replica fallback. Read-only analytics, stale ≤1s OK.
+    const db = getWeakArticlesDb()
 
     console.log(`🎯 [DRIZZLE/weak-articles] Getting weak articles for user ${userId.substring(0, 8)}...`)
 

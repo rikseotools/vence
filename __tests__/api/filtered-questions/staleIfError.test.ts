@@ -167,8 +167,11 @@ describe('/api/questions/filtered POST — stale-if-error', () => {
     const body = await res.json()
     expect(body.success).toBe(true)
     expect(body.questions).toHaveLength(3)
-    expect(setCachedFn).toHaveBeenCalledTimes(1)
-    expect(setCachedFn.mock.calls[0][0]).toMatch(new RegExp(`^filtered_q:${VALID_USER_ID}:`))
+    // Doble cache: per-user + global (commit 06822135 — mejora cobertura stale-fallback)
+    expect(setCachedFn).toHaveBeenCalledTimes(2)
+    const keys = setCachedFn.mock.calls.map(c => c[0])
+    expect(keys.some((k: string) => k.startsWith(`filtered_q:${VALID_USER_ID}:`))).toBe(true)
+    expect(keys.some((k: string) => k.startsWith('filtered_q:any:'))).toBe(true)
     expect(setCachedFn.mock.calls[0][2]).toBe(600) // 10 min TTL
   })
 
@@ -252,7 +255,9 @@ describe('/api/questions/filtered POST — stale-if-error', () => {
     const body = await res.json()
     expect(body.success).toBe(false)
     expect(body.retryable).toBe(true)
-    expect(res.headers.get('retry-after')).toBe('5')
+    // Retry-After 300 (5 min) — commit b09961b4 cambió valor de 5s a 5min
+    // tras feedback "5s era engañoso, los blips duran 30s-2min"
+    expect(res.headers.get('retry-after')).toBe('300')
   })
 
   it('timeout + cache stale pero con questions=[] → 503 (no servir vacíos)', async () => {
@@ -327,10 +332,12 @@ describe('/api/questions/filtered POST — stale-if-error', () => {
     await POST(buildPostReq({ selectedLaws: ['CE'] }))
     await POST(buildPostReq({ selectedLaws: ['Ley 39/2015'] }))
 
-    expect(setCachedFn).toHaveBeenCalledTimes(2)
-    const key1 = setCachedFn.mock.calls[0][0]
-    const key2 = setCachedFn.mock.calls[1][0]
-    expect(key1).not.toBe(key2)
+    // Cada POST escribe doble cache (per-user + global) → 4 calls totales para 2 POSTs
+    expect(setCachedFn).toHaveBeenCalledTimes(4)
+    // Comparar keys per-user (calls 0 y 2) que deben diferir entre las 2 selectedLaws
+    const userKey1 = setCachedFn.mock.calls[0][0]
+    const userKey2 = setCachedFn.mock.calls[2][0]
+    expect(userKey1).not.toBe(userKey2)
   })
 
   it('cache key estable bajo permutación de selectedLaws (orden no significativo)', async () => {
@@ -356,8 +363,10 @@ describe('/api/questions/filtered POST — stale-if-error', () => {
     await POST(buildPostReq({ selectedLaws: ['CE', 'Ley 39/2015'] }))
     await POST(buildPostReq({ selectedLaws: ['Ley 39/2015', 'CE'] }))
 
-    expect(setCachedFn).toHaveBeenCalledTimes(2)
-    expect(setCachedFn.mock.calls[0][0]).toBe(setCachedFn.mock.calls[1][0])
+    // Cada POST escribe doble cache (per-user + global) → 4 calls para 2 POSTs
+    expect(setCachedFn).toHaveBeenCalledTimes(4)
+    // Permutación produce mismo hash → key per-user idéntica
+    expect(setCachedFn.mock.calls[0][0]).toBe(setCachedFn.mock.calls[2][0])
   })
 })
 

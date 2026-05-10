@@ -1,5 +1,15 @@
 // lib/api/filtered-questions/queries.ts - Queries Drizzle para preguntas filtradas
-import { getDb, getReadDb } from '@/db/client'
+//
+// CANARY self-hosted pooler (Fase 3, 2026-05-10):
+// /api/questions/filtered GET ?action=count migrado en oleada 2 (read-only,
+// determinista, ya tiene fresh-cache 60s + stale-if-error). El POST con
+// random-selection sigue contra replica/primary hasta migrar todo el módulo
+// en una fase posterior (alto tráfico, requiere observación cuidadosa).
+import { getDb, getReadDb, getPoolerDb } from '@/db/client'
+
+function getFilteredCountDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getReadDb()
+}
 import { questions, articles, laws, topicScope, topics, tests, testQuestions, userQuestionHistory } from '@/db/schema'
 import { eq, and, inArray, sql, notInArray, desc, or, lt } from 'drizzle-orm'
 import {
@@ -1278,8 +1288,8 @@ export async function countFilteredQuestions(
   params: CountFilteredQuestionsRequest
 ): Promise<CountFilteredQuestionsResponse> {
   try {
-    // Read replica para count (totalmente tolerable a stale)
-    const db = getReadDb()
+    // Canary pooler propio (Fase 3) si flag ON, replica fallback. Count totalmente tolerable a stale.
+    const db = getFilteredCountDb()
     const {
       topicNumber,
       positionType,

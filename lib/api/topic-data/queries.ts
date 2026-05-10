@@ -1,6 +1,13 @@
 // lib/api/topic-data/queries.ts - Queries optimizadas para datos de tema
 // V2: Usa módulo compartido topic-progress para el progreso del usuario
-import { getDb } from '@/db/client'
+//
+// CANARY self-hosted pooler (Fase 3, 2026-05-10):
+// /api/topics/[numero] migrado en oleada 2 — alto tráfico, cache + stale-if-error.
+import { getDb, getPoolerDb } from '@/db/client'
+
+function getTopicDataDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
 import { topics, topicScope, laws, questions, articles, tests, testQuestions } from '@/db/schema'
 import { eq, and, sql, inArray, isNotNull } from 'drizzle-orm'
 import type {
@@ -48,7 +55,7 @@ export async function getTopicFullData(
       }
     }
 
-    const db = getDb()
+    const db = getTopicDataDb()  // canary pooler
     const positionType = SLUG_TO_POSITION_TYPE[oposicion]
 
     // 1️⃣ OBTENER DATOS DEL TEMA
