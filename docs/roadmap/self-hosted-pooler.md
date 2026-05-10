@@ -2,10 +2,10 @@
 
 > **Implementación elegida (mayo 2026)**: PgBouncer en AWS Lightsail London. Alternativas evaluadas (PgCat, Supabase Dedicated Pooler, Coolify) en sección "Comparación de opciones".
 
-> **Estado**: ✅ Fase 0 COMPLETA (2026-05-10) — pooler operativo, passthrough auth, end-to-end validado. Pendiente Fase 2+ (canary en Vercel).
+> **Estado**: 🟡 Fase 3 EN ROLLOUT (2026-05-10) — canary `/api/ranking` activo en producción. Fase 0 ✅ + Fase 1-2 ✅ + Fase 3 observación 24-48h en curso.
 > **Propietario**: equipo Vence
 > **Coste recurrente real**: $7/mes (Lightsail plan 1GB) — primeros 90 días GRATIS con cuenta nueva ($200 USD créditos AWS)
-> **Última actualización**: 2026-05-10 — Fase 0 completada. PgBouncer 1.25.2 corriendo con passthrough auth. Pooler en `pooler.vence.es:6543`.
+> **Última actualización**: 2026-05-10 16:00 UTC — canary activado en Vercel Production con env vars `USE_SELF_HOSTED_POOLER=true` + `DATABASE_URL_SELF_POOLER`. PgBouncer 1.25.2 sirviendo `/api/ranking` desde `pooler.vence.es:6543`.
 
 ---
 
@@ -199,35 +199,43 @@ stats_period = 60
 
 **Rollback**: borrar la rama → Preview desaparece. Producción intacta.
 
-### Fase 3 — Producción canario (1 endpoint, 24-48h) ⏳
+### Fase 3 — Producción canario (1 endpoint, 24-48h) 🟡 EN ROLLOUT (2026-05-10)
 
 **Objetivo**: validar en tráfico real con un endpoint read-only no crítico.
 
-**Implementación**:
+**Implementación realizada** (commits `b4e15ad1` infra + `d25e67b1` código):
 
 ```ts
-// db/client.ts — añadir feature flag
+// db/client.ts (HECHO)
 export function getPoolerDb() {
   const useSelfHosted = process.env.USE_SELF_HOSTED_POOLER === 'true'
-  if (useSelfHosted) {
-    return /* cliente con DATABASE_URL_SELF_POOLER */
-  }
-  return getDb() // fallback Shared Pooler
+  if (!useSelfHosted) return getDb()
+  // Lazy init del cliente al pooler propio, fallback a getDb si la env no está
+  ...
+}
+
+// lib/api/ranking/queries.ts (HECHO)
+function getRankingDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getReadDb()
 }
 ```
 
-**Aplicar a UN endpoint**: `/api/ranking` (read-only, ya tiene cache, low risk).
+**Endpoint elegido**: `/api/ranking` — read-only, ya tiene cache local, low risk.
 
-**Métricas a monitorizar 24-48h**:
-- Latencia p50/p95/p99
-- Tasa de errores 5xx
-- Conexiones activas en pgbouncer (`SHOW POOLS`)
-- CPU/RAM de la instancia Lightsail
-- Sentry: 0 issues nuevos
+**Variables de entorno añadidas a Vercel Production** (2026-05-10):
+- `USE_SELF_HOSTED_POOLER=true`
+- `DATABASE_URL_SELF_POOLER=postgresql://postgres:<PASSWORD>@pooler.vence.es:6543/postgres?sslmode=require`
 
-**Criterio de éxito**: 24h sin incidentes, métricas iguales o mejores que Shared Pooler.
+**Métricas a monitorizar 24-48h** (ver `docs/procedures/revisar-errores-fallos.md` § "Canary self-hosted pooler"):
+- 5xx en `/api/ranking` en `validation_error_logs` (vs baseline)
+- p50/p95/p99 latencia (Vercel logs / Sentry transactions)
+- `SHOW POOLS` y `SHOW STATS` en pgbouncer (cl_active, server connections)
+- CPU/RAM de la instancia Lightsail (~3.7 MB pgbouncer + sistema base)
+- Sentry: 0 issues nuevos relacionados con `/api/ranking`
 
-**Rollback**: env var `USE_SELF_HOSTED_POOLER=false` + redeploy = 30 segundos.
+**Criterio de éxito**: 24-48h sin incidentes, métricas iguales o mejores que Shared Pooler.
+
+**Rollback** (<3 min): env var `USE_SELF_HOSTED_POOLER=false` + redeploy. Detalles en procedures.
 
 ### Fase 4 — Expansión canario (todos los reads) ⏳
 
@@ -382,6 +390,35 @@ curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor -o
 echo "deb [signed-by=/etc/apt/keyrings/pgdg.gpg] http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list
 apt update && apt install -y pgbouncer
 ```
+
+### Trampa: `ignore_startup_parameters` (descubierto en Fase 3 canary 2026-05-10)
+
+**Síntoma**: tras activar el canary en Vercel, `/api/ranking` devuelve 500. En logs de pgbouncer:
+
+```
+C-0x...:(nodb)/(nouser)@13.42.x.x:port  unsupported startup parameter in options: statement_timeout=30000
+C-0x...:(nodb)/(nouser)@13.42.x.x:port  closing because: unsupported startup parameter in options: statement_timeout
+```
+
+**Causa**: postgres-js (el cliente que usa Drizzle) envía `statement_timeout` y otros parámetros como startup options en el handshake. PgBouncer por default sólo acepta unos pocos parámetros estándar y cierra la conexión si recibe otros.
+
+Nuestro `db/client.ts` añade esto al DSN para limitar queries lentas a 30s:
+```
+options=-c statement_timeout=30000 -c idle_in_transaction_session_timeout=60000
+```
+
+Funciona contra Supabase direct/Supavisor (que sí ignoran/aceptan), pero PgBouncer lo rechaza.
+
+**Fix**: en `pgbouncer.ini` añadir:
+```
+ignore_startup_parameters = extra_float_digits,statement_timeout,idle_in_transaction_session_timeout,search_path,application_name
+```
+
+`extra_float_digits` lo añade automáticamente psql/postgres-js. `application_name` y `search_path` también son comunes. `statement_timeout` y `idle_in_transaction_session_timeout` son los nuestros. `application_name` lo añade Drizzle.
+
+**Sin esto**: TODA conexión al pooler falla en handshake. **Con esto**: ignorados en pgbouncer, pero los timeouts efectivos siguen funcionando porque Postgres tiene su propio `statement_timeout` global y pgbouncer también tiene `query_timeout`.
+
+Aplicado ya en `infra/pooler/provision-pooler.sh` (commit pendiente). Re-provisión idempotente lo arregla.
 
 ### Trampa: `db.<ref>.supabase.co` solo resuelve a IPv6
 

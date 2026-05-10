@@ -86,6 +86,47 @@ Si `quick_fail:db_timeout` empieza a aparecer en bursts, sospechar:
 2. Cron pesado bloqueando hot path → revisar `cron_runs` en `/api/admin/health`
 3. Query lenta en endpoint específico → buscar el `endpoint` en el evento Sentry
 
+### Canary self-hosted pooler — monitorización y rollback
+
+Desde 2026-05-10 hay un canary del pooler propio (`pooler.vence.es:6543`) sirviendo el endpoint `/api/ranking`. Ver `docs/roadmap/self-hosted-pooler.md` y `infra/pooler/README.md`.
+
+**Variables de entorno en Vercel que controlan el canary**:
+- `USE_SELF_HOSTED_POOLER=true` → `/api/ranking` usa pooler propio
+- `USE_SELF_HOSTED_POOLER=false` o vacío → `/api/ranking` vuelve a usar replica via Supavisor (comportamiento pre-canary)
+- `DATABASE_URL_SELF_POOLER` → DSN al pooler propio (postgresql://postgres:PASS@pooler.vence.es:6543/postgres?sslmode=require)
+
+**Rollback instantáneo (<3 min)**:
+1. Vercel → Settings → Environment Variables → `USE_SELF_HOSTED_POOLER` → cambiar a `false`
+2. Deployments → Redeploy último deploy (sin cache)
+3. Mientras se redeploya, opcional: `ssh ... 'sudo systemctl stop pgbouncer'` para garantizar que ningún tráfico residual lo toca
+
+**Cómo verificar que el canary está sirviendo tráfico**:
+
+```bash
+# Logs en tiempo real desde la VM
+ssh -i ~/.ssh/vence-pooler-key.pem ubuntu@pooler.vence.es \
+  'sudo journalctl -u pgbouncer -f'
+
+# Ver pools activos (queries en curso, conexiones abiertas)
+ssh -i ~/.ssh/vence-pooler-key.pem ubuntu@pooler.vence.es \
+  'sudo -u postgres psql -h /var/run/postgresql -p 6543 -U postgres pgbouncer -c "SHOW POOLS"'
+
+# Ver stats acumulados (queries servidas, bytes transferidos)
+ssh -i ~/.ssh/vence-pooler-key.pem ubuntu@pooler.vence.es \
+  'sudo -u postgres psql -h /var/run/postgresql -p 6543 -U postgres pgbouncer -c "SHOW STATS"'
+```
+
+**Señales de problema** que justifican rollback:
+- 5xx en `/api/ranking` (subida vs baseline) en `validation_error_logs`
+- p95 de `/api/ranking` >2× lo habitual
+- pgbouncer service inactive o reiniciándose en bucle
+- Sentry: aparición de `quick_fail:db_timeout` en eventos vinculados al pooler propio
+
+**Señales de que va bien**:
+- pgbouncer logs muestran conexiones desde IPs de Vercel (rangos AWS)
+- `SHOW POOLS` muestra `cl_active` > 0 cuando hay tráfico
+- Latencia `/api/ranking` similar o mejor que pre-canary
+
 ### CONNECT_TIMEOUT en Vercel logs (no llega a Sentry directamente)
 
 Cuando el cliente postgres-js no consigue establecer TCP al pooler regional, el error es `write CONNECT_TIMEOUT aws-0-eu-west-2.pooler.supabase.com:6543` (`.code === 'CONNECT_TIMEOUT'`). Aparece típicamente en:

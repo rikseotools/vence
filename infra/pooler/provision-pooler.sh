@@ -238,6 +238,14 @@ max_db_connections = 60
 server_idle_timeout = 600
 server_lifetime = 3600
 
+;; CRÍTICO: postgres-js (Drizzle) envía estos parámetros como startup options.
+;; PgBouncer los rechaza por default (cierra conexión con
+;; "unsupported startup parameter in options: statement_timeout"). Sin esto,
+;; CUALQUIER lambda que use db/client.ts da 500. Los timeouts ya están
+;; configurados internamente vía la connection string al upstream y el
+;; statement_timeout de Postgres, así que es seguro ignorarlos aquí.
+ignore_startup_parameters = extra_float_digits,statement_timeout,idle_in_transaction_session_timeout,search_path,application_name
+
 ;; TLS — clientes deben usar sslmode=require o superior
 client_tls_sslmode = require
 client_tls_cert_file = /etc/pgbouncer-vence/tls/fullchain.pem

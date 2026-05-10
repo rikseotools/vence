@@ -62,6 +62,39 @@ const { Client } = require('pg');
 "
 ```
 
+### Canary monitoring (`/api/ranking` activo desde 2026-05-10)
+
+```bash
+# Ver pools activos en tiempo real (cl_active, sv_active, etc.)
+ssh -i ~/.ssh/vence-pooler-key.pem ubuntu@pooler.vence.es \
+  'sudo -u postgres psql -h /var/run/postgresql -p 6543 -U postgres pgbouncer \
+    -c "SHOW POOLS"'
+
+# Stats acumulados desde el último restart (queries servidas, latencias)
+ssh -i ~/.ssh/vence-pooler-key.pem ubuntu@pooler.vence.es \
+  'sudo -u postgres psql -h /var/run/postgresql -p 6543 -U postgres pgbouncer \
+    -c "SHOW STATS"'
+
+# Logs de pgbouncer (filtra hits de Vercel — IPs AWS)
+ssh -i ~/.ssh/vence-pooler-key.pem ubuntu@pooler.vence.es \
+  'sudo journalctl -u pgbouncer --since "10 min ago" | grep -E "C-0x|S-0x" | tail -30'
+
+# Hit directo del endpoint canary
+curl -sI https://www.vence.es/api/ranking?timeFilter=week&limit=10 | head -5
+```
+
+### Rollback rápido del canary
+
+```bash
+# Opción 1: bajar el flag en Vercel (NO toca pgbouncer)
+# Vercel Dashboard → Settings → Environment Variables → USE_SELF_HOSTED_POOLER → false
+# Después: Deployments → Redeploy
+
+# Opción 2: parar pgbouncer mientras se redeploya (opcional, doble seguro)
+ssh -i ~/.ssh/vence-pooler-key.pem ubuntu@pooler.vence.es \
+  'sudo systemctl stop pgbouncer'
+```
+
 ### Ver estado del pooler
 ```bash
 ssh -i ~/.ssh/vence-pooler-key.pem ubuntu@pooler.vence.es \
