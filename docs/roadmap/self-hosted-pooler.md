@@ -246,6 +246,8 @@ function getRankingDb() {
 - `/api/questions/filtered` POST (random selection — alto tráfico, hot path crítico, requiere cache key sharing entre métodos)
 - `/api/v2/answer-and-save` (WRITE — perder respuestas de tests es el peor escenario, observar canary 24h primero)
 
+**Dashboard visual de monitorización**: `/admin/infraestructura` (sección "Canary self-hosted pooler") — comparativa 5xx pooler vs Supavisor en 1h/24h, tabla por endpoint, color-coded. Implementado 2026-05-10 (commit `28787188`).
+
 **Métricas a monitorizar 24-48h** (ver `docs/procedures/revisar-errores-fallos.md` § "Canary self-hosted pooler"):
 - 5xx en `/api/ranking` en `validation_error_logs` (vs baseline)
 - p50/p95/p99 latencia (Vercel logs / Sentry transactions)

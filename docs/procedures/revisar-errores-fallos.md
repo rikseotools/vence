@@ -88,6 +88,13 @@ Si `quick_fail:db_timeout` empieza a aparecer en bursts, sospechar:
 
 ### Canary self-hosted pooler — monitorización y rollback
 
+> **Vista rápida visual**: [`/admin/infraestructura`](https://www.vence.es/admin/infraestructura) tiene una sección "Canary self-hosted pooler" con:
+> - 4 cards resumen: 5xx en pooler vs Supavisor, ventanas 1h y 24h
+> - Tabla por endpoint con badge "Pooler propio: Sí/No (Supavisor)"
+> - Color-coded: verde 0 errores, amarillo 1-3, naranja 4-10, rojo >10
+>
+> Es el primer sitio al que ir si quieres comprobar si el canary está causando problemas.
+
 Desde 2026-05-10 hay un canary del pooler propio (`pooler.vence.es:6543`) sirviendo 8 endpoints read-only:
 
 **Oleada 1** (validación):

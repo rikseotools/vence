@@ -64,6 +64,8 @@ const { Client } = require('pg');
 
 ### Canary monitoring — endpoints migrados al pooler propio
 
+> **Visual dashboard**: [`/admin/infraestructura`](https://www.vence.es/admin/infraestructura) → sección "Canary self-hosted pooler". 5xx por endpoint en últimas 1h/24h, comparativa pooler vs Supavisor, badge de migración por endpoint. Vista rápida sin SSH.
+
 Lista actual (8 endpoints, orden de migración):
 
 **Oleada 1** (`d25e67b1`, `5a633d11`, `ef01a395`):
