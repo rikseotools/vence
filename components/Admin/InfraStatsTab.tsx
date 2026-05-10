@@ -174,6 +174,8 @@ export default function InfraStatsTab() {
           <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
             Endpoints en pooler propio (<code className="text-xs">pooler.vence.es</code>) vs los que siguen contra Supavisor regional.
             Si la hipótesis del canary funciona, los del pooler deberían tener 0 errores mientras los del Supavisor pueden mostrar blips.
+            <br />
+            <span className="italic">⚠️ El contador agrega todos los métodos HTTP por endpoint (validation_error_logs no guarda el método). Endpoints con migración parcial significativa (ej: <code className="text-xs">/api/questions/filtered</code> POST no migrado) se excluyen del flag canary para no falsear el panel.</span>
           </p>
 
           {/* Resumen comparativo */}

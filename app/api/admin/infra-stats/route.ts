@@ -167,15 +167,23 @@ async function _GET(request: NextRequest) {
     // Canary endpoints: lista de endpoints migrados al self-hosted pooler.
     // Cualquier endpoint NO listado aquí va contra Supavisor (path histórico).
     // Mantener sincronizado con docs/roadmap/self-hosted-pooler.md.
+    //
+    // ⚠️ Métodos parciales: validation_error_logs no guarda el método HTTP, así que
+    // los contadores 5xx aquí agregan TODOS los métodos del endpoint. Endpoints
+    // marcados aquí son aquellos donde la mayoría del tráfico (o el path crítico)
+    // está en pooler. Endpoints con migración parcial significativa (ej:
+    // /api/questions/filtered cuyo POST domina y aún no está migrado) se EXCLUYEN
+    // hasta migrar todo, para no falsear el panel con 5xx ajenos al pooler.
     const CANARY_ENDPOINTS = new Set([
-      '/api/ranking',
-      '/api/medals',
-      '/api/questions/law-stats',
-      '/api/v2/topic-progress/theme-stats',
-      '/api/notifications/problematic-articles',
-      '/api/v2/topic-progress/weak-articles',
-      '/api/topics/[numero]',  // route con param dinámico — nuestro logger usa el path canonical
-      '/api/questions/filtered',  // GET ?action=count migrado, POST aún no
+      '/api/ranking',                              // GET único
+      '/api/medals',                               // GET migrado; POST minoritario
+      '/api/questions/law-stats',                  // GET único
+      '/api/v2/topic-progress/theme-stats',        // GET único
+      '/api/notifications/problematic-articles',   // GET único
+      '/api/v2/topic-progress/weak-articles',      // GET único
+      '/api/topics/[numero]',                      // GET único (path canonical con [numero])
+      // EXCLUIDO /api/questions/filtered hasta migrar POST — su tráfico POST
+      // domina y muestra 5xx de Supavisor que NO son del pooler.
     ])
 
     const canaryRows = Array.isArray(canaryStatsResult)
