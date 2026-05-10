@@ -7,7 +7,6 @@ import { usePathname } from 'next/navigation'
 import UserAvatar from '@/components/UserAvatar'
 import { useVersionCheck } from '@/hooks/useVersionCheck'
 import NotificationBell from '@/components/NotificationBell'
-import ThemeToggle from '@/components/ThemeToggle'
 import RankingModal from '@/components/RankingModal'
 import FeedbackButton from '@/components/FeedbackButton'
 import QuestionDispute from '@/components/QuestionDispute'
@@ -778,9 +777,6 @@ export default function HeaderES() {
                   </Link>
                 ) : null
               })()}
-
-              {/* Toggle tema claro/oscuro */}
-              <ThemeToggle />
 
               {/* Campana de notificaciones (solo usuarios logueados) */}
               {user && <NotificationBell />}
