@@ -62,7 +62,15 @@ const { Client } = require('pg');
 "
 ```
 
-### Canary monitoring (`/api/ranking` activo desde 2026-05-10)
+### Canary monitoring — endpoints migrados al pooler propio
+
+Lista actual (orden de migración):
+- `/api/ranking` — desde 2026-05-10 14:09 UTC (primer canary)
+- `/api/medals` GET — desde 2026-05-10 18:05 UTC (tras 503 a las 17:31)
+- `/api/questions/law-stats` — desde 2026-05-10 18:08 UTC (preventivo, queries lentas)
+
+Las queries de estos endpoints van a `pooler.vence.es:6543` cuando
+`USE_SELF_HOSTED_POOLER=true`. Toggle del flag = rollback global instantáneo.
 
 ```bash
 # Ver pools activos en tiempo real (cl_active, sv_active, etc.)

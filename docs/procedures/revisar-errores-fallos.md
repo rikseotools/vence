@@ -88,12 +88,19 @@ Si `quick_fail:db_timeout` empieza a aparecer en bursts, sospechar:
 
 ### Canary self-hosted pooler — monitorización y rollback
 
-Desde 2026-05-10 hay un canary del pooler propio (`pooler.vence.es:6543`) sirviendo el endpoint `/api/ranking`. Ver `docs/roadmap/self-hosted-pooler.md` y `infra/pooler/README.md`.
+Desde 2026-05-10 hay un canary del pooler propio (`pooler.vence.es:6543`) sirviendo varios endpoints (read-only, expansión incremental):
+- `/api/ranking` (commit `d25e67b1` — primer canary)
+- `/api/medals` GET (commit `5a633d11` — tras 503 17:31)
+- `/api/questions/law-stats` (commit `ef01a395` — tras queries lentas 3.5-7.7s)
+
+Ver `docs/roadmap/self-hosted-pooler.md` y `infra/pooler/README.md` para detalle de cada uno.
 
 **Variables de entorno en Vercel que controlan el canary**:
-- `USE_SELF_HOSTED_POOLER=true` → `/api/ranking` usa pooler propio
-- `USE_SELF_HOSTED_POOLER=false` o vacío → `/api/ranking` vuelve a usar replica via Supavisor (comportamiento pre-canary)
+- `USE_SELF_HOSTED_POOLER=true` → todos los endpoints migrados usan pooler propio
+- `USE_SELF_HOSTED_POOLER=false` o vacío → todos vuelven a comportamiento pre-canary (replica/primary según el endpoint)
 - `DATABASE_URL_SELF_POOLER` → DSN al pooler propio (postgresql://postgres:PASS@pooler.vence.es:6543/postgres?sslmode=require)
+
+⚠️ El flag es **global**: poner `false` desactiva el canary en TODOS los endpoints migrados a la vez. Eso es deseado para rollback rápido — un solo toggle restaura todo.
 
 **Rollback instantáneo (<3 min)**:
 1. Vercel → Settings → Environment Variables → `USE_SELF_HOSTED_POOLER` → cambiar a `false`
@@ -117,15 +124,16 @@ ssh -i ~/.ssh/vence-pooler-key.pem ubuntu@pooler.vence.es \
 ```
 
 **Señales de problema** que justifican rollback:
-- 5xx en `/api/ranking` (subida vs baseline) en `validation_error_logs`
-- p95 de `/api/ranking` >2× lo habitual
+- 5xx en cualquiera de los endpoints canary (`/api/ranking`, `/api/medals`, `/api/questions/law-stats`) sobre baseline en `validation_error_logs`
+- p95 de cualquier endpoint canary >2× lo habitual
 - pgbouncer service inactive o reiniciándose en bucle
 - Sentry: aparición de `quick_fail:db_timeout` en eventos vinculados al pooler propio
 
 **Señales de que va bien**:
-- pgbouncer logs muestran conexiones desde IPs de Vercel (rangos AWS)
+- pgbouncer logs muestran conexiones desde IPs de Vercel (rangos AWS London: 13.x, 18.x, 35.x)
 - `SHOW POOLS` muestra `cl_active` > 0 cuando hay tráfico
-- Latencia `/api/ranking` similar o mejor que pre-canary
+- Latencia de los endpoints canary similar o mejor que pre-canary
+- 0 errores 5xx en los endpoints canary (compárese con los endpoints aún en Supavisor que sí pueden ver blips)
 
 ### CONNECT_TIMEOUT en Vercel logs (no llega a Sentry directamente)
 

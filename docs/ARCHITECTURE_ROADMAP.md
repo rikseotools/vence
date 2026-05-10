@@ -400,7 +400,12 @@ getTraceDb()  → max:1, sin timeout   // ✅ HECHO — para after() background 
 
 **Coste real**: $7/mes (gratis primeros 90 días). $40-50/mes con HA (Fase 6 opcional).
 
-**Pendiente**: Fase 2 (canary Vercel Preview, 1 endpoint) → Fase 3-5 (canary prod, expansión, writes). Cada fase con rollback en <3 min vía env var `USE_SELF_HOSTED_POOLER=false`.
+**Estado canary (2026-05-10 18:08 UTC)**: 3 endpoints read-only migrados:
+- `/api/ranking` (14:09 — primer canary)
+- `/api/medals` GET (18:05 — tras 503 a las 17:31)
+- `/api/questions/law-stats` (18:08 — preventivo tras queries lentas 3.5-7.7s)
+
+Funcionando estable. Pendiente: 24h observación → expandir a más reads → finalmente writes (`/api/v2/answer-and-save`). Rollback global en <3 min vía `USE_SELF_HOSTED_POOLER=false`.
 
 ### Read replica ✅ HECHO (2026-05-09)
 
