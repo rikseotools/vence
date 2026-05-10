@@ -1,6 +1,15 @@
 // lib/api/avatar-settings/profiles.ts - Lógica de cálculo de perfiles de avatar
 // Refactorizado para usar Drizzle ORM en lugar de Supabase JS client
-import { getDb, getAdminDb } from '@/db/client'
+//
+// CANARY pooler (oleada 5 — finalización 2026-05-10):
+// Usado por /api/profile/avatar-settings (user-facing) y /api/cron/avatar-rotation (cron).
+// Migración al pooler propio. El cron también lo usa pero es bajo tráfico.
+// getAdminDb() se mantiene porque es para queries paralelas pesadas (max:4).
+import { getDb, getAdminDb, getPoolerDb } from '@/db/client'
+
+function getAvatarProfilesDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
 import { tests, testQuestions, userStreaks, userAvatarSettings } from '@/db/schema'
 import { eq, and, gte, lt, inArray, sql } from 'drizzle-orm'
 import { getAllAvatarProfiles, getAvatarProfileById } from './queries'
@@ -25,7 +34,7 @@ export interface BulkUserMetrics {
 // ============================================
 
 export async function getStudyMetrics(userId: string): Promise<StudyMetrics> {
-  const db = getDb()
+  const db = getAvatarProfilesDb()
 
   // Fechas para los cálculos
   const now = new Date()
@@ -383,7 +392,7 @@ export async function previewUserProfile(userId: string): Promise<{
   wouldChange: boolean
 }> {
   try {
-    const db = getDb()
+    const db = getAvatarProfilesDb()
 
     // Obtener métricas y calcular perfil sugerido
     const metrics = await getStudyMetrics(userId)
