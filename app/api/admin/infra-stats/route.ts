@@ -300,8 +300,16 @@ async function _GET(request: NextRequest) {
       '/api/v2/answer-and-save',                   // WRITE (oleada 4 urgente — blip 20:35)
       '/api/answer/psychometric',                  // WRITE (oleada 4 urgente — blip 20:35)
       '/api/v2/official-exams/answer',             // WRITE (oleada 4 urgente — blip 20:35)
-      // EXCLUIDO /api/questions/filtered hasta migrar POST — su tráfico POST
-      // domina y muestra 5xx de Supavisor que NO son del pooler.
+      '/api/questions/filtered',                   // POST + GET count (oleada 4 sweep — 240 5xx 24h)
+      // Sweep masivo oleada 4 (lib/api migrated batch):
+      '/api/v2/random-test-data',                  // (random-test-data/queries.ts)
+      '/api/exam/[any]',                           // (exam/queries.ts cubre resume/discard/pending)
+      '/api/v2/feedback/[any]',                    // (feedback/queries.ts)
+      '/api/daily-limit',                          // (daily-limit/queries.ts)
+      '/api/teoria/[any]',                         // (teoria/queries.ts)
+      // Helpers transversales (oposicion-scope, topic-names): no son endpoints
+      // pero sus queries van por el pooler ahora. No se listan en CANARY_ENDPOINTS
+      // porque no aparecen como endpoints en validation_error_logs.
     ])
 
     const canaryRows = canaryStatsResult

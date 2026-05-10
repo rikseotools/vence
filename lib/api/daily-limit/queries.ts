@@ -1,6 +1,12 @@
 // lib/api/daily-limit/queries.ts
 // Drizzle queries for the graduated daily limit system
-import { getDb } from '@/db/client'
+// CANARY self-hosted pooler (Fase 4 oleada 4 — sweep masivo 2026-05-10):
+// daily-limit migrado al pooler propio para reducir presión Supavisor.
+import { getDb, getPoolerDb } from '@/db/client'
+
+function getDailyLimitDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
 import { conversionEvents, userProfiles } from '@/db/schema'
 import { eq, and, sql, count } from 'drizzle-orm'
 import { GRADUATED_LIMIT_CONFIG, PREMIUM_PLAN_TYPES } from './config'
@@ -20,7 +26,7 @@ const CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes - limit profile changes slowly
  * Used to calculate their personalized daily limit.
  */
 export async function getUserLimitProfile(userId: string): Promise<UserLimitProfile | null> {
-  const db = getDb()
+  const db = getDailyLimitDb()
 
   // Single query: join user_profiles with aggregated conversion_events
   const result = await db

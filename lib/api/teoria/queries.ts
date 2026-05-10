@@ -1,5 +1,11 @@
 // lib/api/teoria/queries.ts - Queries Drizzle Optimizadas para Teoría
-import { getDb } from '@/db/client'
+// CANARY self-hosted pooler (Fase 4 oleada 4 — sweep masivo 2026-05-10):
+// teoria migrado al pooler propio para reducir presión Supavisor.
+import { getDb, getPoolerDb } from '@/db/client'
+
+function getTeoriaDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
 import { articles, laws } from '@/db/schema'
 import { eq, and, ne, isNotNull, sql } from 'drizzle-orm'
 import { unstable_cache } from 'next/cache'
@@ -58,7 +64,7 @@ async function getArticleContentInternal(
   lawSlug: string,
   articleNumber: number
 ): Promise<ArticleDetail | null> {
-  const db = getDb()
+  const db = getTeoriaDb()
   const lawShortName = await getShortNameBySlug(lawSlug)
 
   if (!lawShortName) return null
@@ -163,7 +169,7 @@ export const getArticleContent = unstable_cache(
 async function getArticleNavigationInternal(
   lawSlug: string
 ): Promise<ArticleNavigation> {
-  const db = getDb()
+  const db = getTeoriaDb()
   const lawShortName = await getShortNameBySlug(lawSlug)
 
   if (!lawShortName) return { articleNumbers: [], totalCount: 0 }
@@ -215,7 +221,7 @@ async function getRelatedArticlesInternal(
   excludeArticleNumber: number,
   limit = 3
 ): Promise<RelatedArticle[]> {
-  const db = getDb()
+  const db = getTeoriaDb()
   const lawShortName = await getShortNameBySlug(lawSlug)
 
   if (!lawShortName) return []
@@ -273,7 +279,7 @@ export const getRelatedArticles = unstable_cache(
 async function getLawBasicInfoInternal(
   lawSlug: string
 ): Promise<LawBasic | null> {
-  const db = getDb()
+  const db = getTeoriaDb()
   const lawShortName = await getShortNameBySlug(lawSlug)
 
   if (!lawShortName) return null

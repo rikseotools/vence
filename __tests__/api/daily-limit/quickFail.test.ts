@@ -75,7 +75,7 @@ describe('GET /api/daily-limit — quick-fail (Phase 3)', () => {
 
       const res = await promise
       expect(res.status).toBe(503)
-      expect(res.headers.get('Retry-After')).toBe('5')
+      expect(res.headers.get('Retry-After')).toBe('300')
 
       const body = await res.json()
       expect(body.retryable).toBe(true)

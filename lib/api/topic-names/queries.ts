@@ -1,7 +1,13 @@
 // lib/api/topic-names/queries.ts
 // Fuente única de verdad para nombres de temas: tabla topics de BD.
 // Reemplaza el uso de oposiciones.ts blocks[].themes[].name
-import { getDb } from '@/db/client'
+// CANARY self-hosted pooler (Fase 4 oleada 4 — sweep masivo 2026-05-10):
+// topic-names migrado al pooler propio para reducir presión Supavisor.
+import { getDb, getPoolerDb } from '@/db/client'
+
+function getTopicNamesDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
 import { topics } from '@/db/schema'
 import { eq, and } from 'drizzle-orm'
 import { unstable_cache } from 'next/cache'
@@ -11,7 +17,7 @@ import { unstable_cache } from 'next/cache'
  * (una por oposición × 3 workers). Cachear evita saturar conexiones.
  */
 async function getTopicNamesMapInternal(positionType: string): Promise<Record<number, string>> {
-  const db = getDb()
+  const db = getTopicNamesDb()
   const rows = await db
     .select({ topicNumber: topics.topicNumber, title: topics.title })
     .from(topics)

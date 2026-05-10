@@ -1,5 +1,11 @@
 // lib/api/feedback/queries.ts - Queries tipadas para feedback de usuario
-import { getDb } from '@/db/client'
+// CANARY self-hosted pooler (Fase 4 oleada 4 — sweep masivo 2026-05-10):
+// feedback migrado al pooler propio para reducir presión Supavisor.
+import { getDb, getPoolerDb } from '@/db/client'
+
+function getFeedbackDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
 import { userFeedback, feedbackConversations } from '@/db/schema'
 import type {
   CreateFeedbackRequest,
@@ -15,7 +21,7 @@ export async function createFeedback(
   params: CreateFeedbackRequest
 ): Promise<CreateFeedbackResponse> {
   try {
-    const db = getDb()
+    const db = getFeedbackDb()
 
     // Insertar feedback
     const [feedback] = await db
@@ -92,7 +98,7 @@ export async function createFeedbackConversation(
   userId: string | null
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const db = getDb()
+    const db = getFeedbackDb()
 
     await db
       .insert(feedbackConversations)

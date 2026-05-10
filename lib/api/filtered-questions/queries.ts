@@ -677,10 +677,10 @@ export async function getFilteredQuestions(
   params: GetFilteredQuestionsRequest
 ): Promise<GetFilteredQuestionsResponse> {
   try {
-    // Read replica: queries de selección de preguntas para tests son read-only.
-    // Lag ≤1s aceptable (preguntas nuevas tardan ese tiempo en aparecer en
-    // tests recién creados — irrelevante UX-wise).
-    const db = getReadDb()
+    // Canary pooler propio (Fase 4 oleada 4 URGENTE) si flag ON, replica fallback.
+    // Hot path: 240 errors 5xx 24h en blip Supavisor 20:35 — migración crítica.
+    // Read-only puro, lag ≤1s aceptable (preguntas nuevas tardan ese tiempo).
+    const db = getFilteredCountDb()  // mismo helper que el count — read-only canary
     const {
       topicNumber,
       positionType,

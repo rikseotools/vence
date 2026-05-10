@@ -1,5 +1,11 @@
 // lib/api/exam/queries.ts - Queries tipadas para el módulo de exámenes
-import { getDb } from '@/db/client'
+// CANARY self-hosted pooler (Fase 4 oleada 4 — sweep masivo 2026-05-10):
+// exam (resume/discard/pending/etc.) migrado al pooler propio para reducir presión Supavisor.
+import { getDb, getPoolerDb } from '@/db/client'
+
+function getExamDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
 import { testQuestions, tests, questions, userProfiles } from '@/db/schema'
 import { eq, and, desc, sql, count, isNull, inArray } from 'drizzle-orm'
 import { resolveTemaByArticle, resolveTemasBatchByQuestionIds } from '@/lib/api/tema-resolver'
@@ -25,7 +31,7 @@ import { normalizeDifficulty } from '@/lib/api/shared/difficulty'
  */
 async function getUserOposicion(userId: string): Promise<OposicionId> {
   try {
-    const db = getDb()
+    const db = getExamDb()
 
     const result = await db
       .select({ targetOposicion: userProfiles.targetOposicion })
@@ -104,7 +110,7 @@ export type SaveAnswerParams = {
 
 export async function saveAnswer(params: SaveAnswerParams): Promise<SaveAnswerResponse> {
   try {
-    const db = getDb()
+    const db = getExamDb()
 
     // Verificar si ya existe una respuesta para esta pregunta en este test
     const existing = await db
@@ -271,7 +277,7 @@ export async function saveAnswer(params: SaveAnswerParams): Promise<SaveAnswerRe
 // ============================================
 
 export async function updateTestScore(testId: string): Promise<void> {
-  const db = getDb()
+  const db = getExamDb()
 
   // Contar respuestas correctas
   const result = await db
@@ -301,7 +307,7 @@ export async function updateTestScore(testId: string): Promise<void> {
 
 export async function getExamProgress(testId: string): Promise<GetExamProgressResponse> {
   try {
-    const db = getDb()
+    const db = getExamDb()
 
     // Obtener info del test
     const testResult = await db
@@ -373,7 +379,7 @@ export async function getPendingExams(
   limit: number = 10
 ): Promise<GetPendingExamsResponse> {
   try {
-    const db = getDb()
+    const db = getExamDb()
 
     // 🔴 FIX: Calcular fecha límite (7 días atrás)
     // Exámenes más antiguos se consideran "abandonados" y no se muestran
@@ -480,7 +486,7 @@ export async function completeExam(
   force: boolean = false
 ): Promise<CompleteExamResponse> {
   try {
-    const db = getDb()
+    const db = getExamDb()
 
     // Obtener info del test
     const testResult = await db
@@ -572,7 +578,7 @@ export async function verifyTestOwnership(
   userId: string
 ): Promise<boolean> {
   try {
-    const db = getDb()
+    const db = getExamDb()
 
     const result = await db
       .select({ id: tests.id })
@@ -596,7 +602,7 @@ export async function verifyTestOwnership(
 
 export async function getTestById(testId: string) {
   try {
-    const db = getDb()
+    const db = getExamDb()
 
     const result = await db
       .select()
@@ -638,7 +644,7 @@ export async function initExamQuestions(
   questionsData: InitExamQuestion[]
 ): Promise<InitExamResponse> {
   try {
-    const db = getDb()
+    const db = getExamDb()
 
     // Obtener userId del test para resolver temas
     const testInfo = await db
@@ -732,7 +738,7 @@ export type GetResumedExamResponse = {
 
 export async function getResumedExamData(testId: string): Promise<GetResumedExamResponse> {
   try {
-    const db = getDb()
+    const db = getExamDb()
 
     // Obtener info del test incluyendo questionsMetadata
     const testResult = await db
@@ -799,7 +805,7 @@ async function getResumedExamDataFromMetadata(
   test: { id: string; temaNumber: number | null; totalQuestions: number; isCompleted: boolean | null },
   questionIds: string[]
 ): Promise<GetResumedExamResponse> {
-  const db = getDb()
+  const db = getExamDb()
 
   // Obtener solo filas con respuestas reales de test_questions
   const answeredRows = await db
@@ -852,7 +858,7 @@ async function getResumedExamDataLegacy(
   testId: string,
   test: { id: string; temaNumber: number | null; totalQuestions: number; isCompleted: boolean | null }
 ): Promise<GetResumedExamResponse> {
-  const db = getDb()
+  const db = getExamDb()
 
   const questionsResult = await db
     .select({
@@ -898,7 +904,7 @@ export async function getQuestionsCorrectAnswers(
   questionIds: string[]
 ): Promise<Map<string, string>> {
   try {
-    const db = getDb()
+    const db = getExamDb()
 
     if (questionIds.length === 0) {
       return new Map()

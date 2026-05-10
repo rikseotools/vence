@@ -1,5 +1,11 @@
 // lib/api/random-test-data/queries.ts - Queries optimizadas para datos de test aleatorio
-import { getDb } from '@/db/client'
+// CANARY self-hosted pooler (Fase 4 oleada 4 — sweep masivo 2026-05-10):
+// random-test-data migrado al pooler propio para reducir presión Supavisor.
+import { getDb, getPoolerDb } from '@/db/client'
+
+function getRandomTestDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
 import { topics, topicScope, laws, questions, articles, tests, testQuestions } from '@/db/schema'
 import { eq, and, sql, inArray, gte } from 'drizzle-orm'
 import { unstable_cache } from 'next/cache'
@@ -43,7 +49,7 @@ export async function getRandomTestData(
       }
     }
 
-    const db = getDb()
+    const db = getRandomTestDb()
     const positionType = OPOSICION_TO_POSITION_TYPE[oposicion]
     const themeRange = VALID_THEME_IDS[oposicion]
 
@@ -92,7 +98,7 @@ async function getThemeQuestionCountsInternal(
   positionType: string,
   themeRange: { min: number; max: number }
 ): Promise<ThemeQuestionCounts> {
-  const db = getDb()
+  const db = getRandomTestDb()
   const counts: ThemeQuestionCounts = {}
 
   // 🏷️ Tag filter (NULL-safe: tags IS NULL no debe excluir preguntas)
@@ -183,7 +189,7 @@ async function getUserThemeStatsInternal(
   userId: string,
   oposicion: OposicionKey
 ): Promise<UserThemeStats> {
-  const db = getDb()
+  const db = getRandomTestDb()
   const stats: UserThemeStats = {}
 
   // Fecha de corte: 6 meses atrás
@@ -291,7 +297,7 @@ export async function getDetailedThemeStats(
   userId: string
 ): Promise<GetDetailedThemeStatsResponse> {
   try {
-    const db = getDb()
+    const db = getRandomTestDb()
     const positionType = OPOSICION_TO_POSITION_TYPE[oposicion]
     const topicNumber = getTopicNumberFromThemeId(themeId, oposicion)
 
@@ -454,7 +460,7 @@ export async function checkAvailableQuestions(
       return { ...cached.data, cached: true }
     }
 
-    const db = getDb()
+    const db = getRandomTestDb()
     const positionType = OPOSICION_TO_POSITION_TYPE[oposicion]
 
     // Convertir themeIds internos a topic_numbers de BD

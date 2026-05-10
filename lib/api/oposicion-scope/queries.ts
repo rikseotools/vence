@@ -7,7 +7,13 @@
 //
 // Ver project_oposicion_scope_refactor.md para contexto y fases.
 
-import { getDb } from '@/db/client'
+// CANARY self-hosted pooler (Fase 4 oleada 4 — sweep masivo 2026-05-10):
+// oposicion-scope (helper transversal) migrado al pooler propio para reducir presión Supavisor.
+import { getDb, getPoolerDb } from '@/db/client'
+
+function getOposicionScopeDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
 import { laws, questions, topicScope, topics, userProfiles, validationErrorLogs } from '@/db/schema'
 import { and, eq, gte, inArray, or, sql } from 'drizzle-orm'
 import { getValidExamPositions } from '@/lib/config/exam-positions'
@@ -27,7 +33,7 @@ function recordNoExamPositionMapping(positionType: string) {
   // Fire-and-forget: no bloquear la respuesta.
   ;(async () => {
     try {
-      const db = getDb()
+      const db = getOposicionScopeDb()
       const dayStart = new Date()
       dayStart.setUTCHours(0, 0, 0, 0)
       const existing = await db
@@ -88,7 +94,7 @@ const DEFAULT_FALLBACK = 'auxiliar_administrativo_estado'
 export async function getAllowedLawIds(
   params: Params = {}
 ): Promise<AllowedLawsResult> {
-  const db = getDb()
+  const db = getOposicionScopeDb()
   const fallback = params.fallbackPositionType || DEFAULT_FALLBACK
 
   let positionType = fallback
