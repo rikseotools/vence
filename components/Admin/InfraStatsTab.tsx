@@ -19,6 +19,16 @@ interface InfraStats {
     peakConcurrent: number
   }
   errors: { endpoint: string; message: string; date: string }[]
+  canary?: {
+    endpointsInPooler: string[]
+    statsByEndpoint: { endpoint: string; errors1h: number; errors24h: number; inCanary: boolean }[]
+    summary: {
+      canaryErrors24h: number
+      canaryErrors1h: number
+      nonCanaryErrors24h: number
+      nonCanaryErrors1h: number
+    }
+  }
   timestamp: string
 }
 
@@ -155,6 +165,81 @@ export default function InfraStatsTab() {
         </div>
       </div>
 
+      {/* Canary self-hosted pooler */}
+      {stats.canary && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+            Canary self-hosted pooler — comparativa 5xx por endpoint
+          </h3>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+            Endpoints en pooler propio (<code className="text-xs">pooler.vence.es</code>) vs los que siguen contra Supavisor regional.
+            Si la hipótesis del canary funciona, los del pooler deberían tener 0 errores mientras los del Supavisor pueden mostrar blips.
+          </p>
+
+          {/* Resumen comparativo */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+            <CanarySummaryCard
+              label="Pooler propio · 1h"
+              value={stats.canary.summary.canaryErrors1h}
+              isPooler
+            />
+            <CanarySummaryCard
+              label="Pooler propio · 24h"
+              value={stats.canary.summary.canaryErrors24h}
+              isPooler
+            />
+            <CanarySummaryCard
+              label="Supavisor · 1h"
+              value={stats.canary.summary.nonCanaryErrors1h}
+            />
+            <CanarySummaryCard
+              label="Supavisor · 24h"
+              value={stats.canary.summary.nonCanaryErrors24h}
+            />
+          </div>
+
+          {/* Tabla detallada */}
+          {stats.canary.statsByEndpoint.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="text-xs text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
+                  <tr>
+                    <th className="text-left py-2 font-normal">Endpoint</th>
+                    <th className="text-center py-2 font-normal">Pooler propio</th>
+                    <th className="text-right py-2 font-normal">5xx 1h</th>
+                    <th className="text-right py-2 font-normal">5xx 24h</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stats.canary.statsByEndpoint.map((r) => (
+                    <tr key={r.endpoint} className="border-b border-gray-100 dark:border-gray-800">
+                      <td className="py-2 font-mono text-xs text-gray-700 dark:text-gray-300">{r.endpoint}</td>
+                      <td className="py-2 text-center">
+                        {r.inCanary ? (
+                          <span className="inline-block px-2 py-0.5 text-xs rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">Sí</span>
+                        ) : (
+                          <span className="inline-block px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400">No (Supavisor)</span>
+                        )}
+                      </td>
+                      <td className="py-2 text-right">
+                        <ErrorBadge count={r.errors1h} />
+                      </td>
+                      <td className="py-2 text-right">
+                        <ErrorBadge count={r.errors24h} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="text-sm text-green-600 dark:text-green-400">
+              Sin errores 5xx en las últimas 24h en ningún endpoint. Todo limpio.
+            </p>
+          )}
+        </div>
+      )}
+
       {/* Errores recientes */}
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
         <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
@@ -196,4 +281,39 @@ function StateIndicator({ state }: { state: string }) {
     : state === 'idle' ? 'bg-gray-400'
     : 'bg-yellow-500'
   return <span className={`inline-block w-2 h-2 rounded-full ${color} mr-1`} />
+}
+
+function ErrorBadge({ count }: { count: number }) {
+  if (count === 0) {
+    return <span className="text-xs text-green-600 dark:text-green-400 font-mono">0</span>
+  }
+  const color = count > 10
+    ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+    : count > 3
+    ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+    : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+  return (
+    <span className={`inline-block px-2 py-0.5 text-xs rounded font-mono ${color}`}>
+      {count}
+    </span>
+  )
+}
+
+function CanarySummaryCard({ label, value, isPooler }: { label: string; value: number; isPooler?: boolean }) {
+  const valueColor = value === 0
+    ? 'text-green-600 dark:text-green-400'
+    : value > 10
+    ? 'text-red-600 dark:text-red-400'
+    : value > 3
+    ? 'text-orange-600 dark:text-orange-400'
+    : 'text-yellow-600 dark:text-yellow-400'
+  const borderColor = isPooler
+    ? 'border-blue-200 dark:border-blue-800 bg-blue-50/30 dark:bg-blue-900/10'
+    : 'border-gray-200 dark:border-gray-700'
+  return (
+    <div className={`rounded-lg border ${borderColor} p-3`}>
+      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{label}</p>
+      <p className={`text-xl font-bold ${valueColor}`}>{value}</p>
+    </div>
+  )
 }

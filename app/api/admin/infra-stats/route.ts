@@ -36,6 +36,8 @@ async function _GET(request: NextRequest) {
 
     const db = getDb()
     const today = new Date().toISOString().split('T')[0]
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
 
     // Queries en paralelo
     const [
@@ -46,6 +48,7 @@ async function _GET(request: NextRequest) {
       usageResult,
       errorsResult,
       peakResult,
+      canaryStatsResult,
     ] = await Promise.all([
       // 1. Max connections + total
       db.execute(sql`
@@ -99,6 +102,22 @@ async function _GET(request: NextRequest) {
         .gte('session_start', `${today}T00:00:00`)
         .not('session_end', 'is', null)
         .order('session_start'),
+
+      // 8. Canary stats — 5xx por endpoint (1h y 24h)
+      // Comparativa visual: endpoints en canary self-hosted pooler vs los que siguen
+      // contra Supavisor regional. Si la hipótesis del canary funciona, los del
+      // pooler propio deberían tener 0 (o muy pocos) 5xx mientras los otros sí
+      // sufren los blips intermitentes del Supavisor.
+      db.execute(sql`
+        SELECT endpoint,
+               count(*) FILTER (WHERE created_at >= ${oneHourAgo}::timestamptz)::int AS errors_1h,
+               count(*) FILTER (WHERE created_at >= ${twentyFourHoursAgo}::timestamptz)::int AS errors_24h
+        FROM public.validation_error_logs
+        WHERE http_status >= 500
+          AND created_at >= ${twentyFourHoursAgo}::timestamptz
+        GROUP BY endpoint
+        ORDER BY errors_24h DESC
+      `),
     ])
 
     // Parse results
@@ -145,6 +164,45 @@ async function _GET(request: NextRequest) {
       }
     }
 
+    // Canary endpoints: lista de endpoints migrados al self-hosted pooler.
+    // Cualquier endpoint NO listado aquí va contra Supavisor (path histórico).
+    // Mantener sincronizado con docs/roadmap/self-hosted-pooler.md.
+    const CANARY_ENDPOINTS = new Set([
+      '/api/ranking',
+      '/api/medals',
+      '/api/questions/law-stats',
+      '/api/v2/topic-progress/theme-stats',
+      '/api/notifications/problematic-articles',
+      '/api/v2/topic-progress/weak-articles',
+      '/api/topics/[numero]',  // route con param dinámico — nuestro logger usa el path canonical
+      '/api/questions/filtered',  // GET ?action=count migrado, POST aún no
+    ])
+
+    const canaryRows = Array.isArray(canaryStatsResult)
+      ? canaryStatsResult
+      : (canaryStatsResult as any).rows || []
+    const canaryStats = canaryRows.map((r: any) => ({
+      endpoint: r.endpoint,
+      errors1h: r.errors_1h ?? 0,
+      errors24h: r.errors_24h ?? 0,
+      inCanary: CANARY_ENDPOINTS.has(r.endpoint),
+    }))
+
+    // Resumen agregado: total 5xx canary vs total 5xx non-canary últimas 24h
+    const canarySummary = canaryStats.reduce(
+      (acc: { canaryErrors24h: number; canaryErrors1h: number; nonCanaryErrors24h: number; nonCanaryErrors1h: number }, r: any) => {
+        if (r.inCanary) {
+          acc.canaryErrors24h += r.errors24h
+          acc.canaryErrors1h += r.errors1h
+        } else {
+          acc.nonCanaryErrors24h += r.errors24h
+          acc.nonCanaryErrors1h += r.errors1h
+        }
+        return acc
+      },
+      { canaryErrors24h: 0, canaryErrors1h: 0, nonCanaryErrors24h: 0, nonCanaryErrors1h: 0 },
+    )
+
     return NextResponse.json({
       database: {
         maxConnections,
@@ -160,6 +218,11 @@ async function _GET(request: NextRequest) {
         peakConcurrent,
       },
       errors: recentErrors,
+      canary: {
+        endpointsInPooler: Array.from(CANARY_ENDPOINTS).sort(),
+        statsByEndpoint: canaryStats,
+        summary: canarySummary,
+      },
       timestamp: new Date().toISOString(),
     })
   } catch (error) {
