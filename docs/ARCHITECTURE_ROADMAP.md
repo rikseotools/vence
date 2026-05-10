@@ -398,7 +398,9 @@ getTraceDb()  → max:1, sin timeout   // ✅ HECHO — para after() background 
 
 **Bug encontrado y workaround**: PgBouncer no consigue computar SCRAM proof desde plaintext contra PostgreSQL 17 ("Wrong password" aunque el password sea matemáticamente correcto). Solución: **SCRAM passthrough auth** — cliente y upstream usan el mismo usuario `postgres`, PgBouncer almacena el SCRAM verifier en userlist.txt y reutiliza las keys del cliente para autenticar al upstream sin recomputar. Detalle completo en `docs/roadmap/self-hosted-pooler.md` § "Aprendizajes Fase 0" (incluye trampa de auto-ban Supabase).
 
-**Coste real**: $7/mes (gratis primeros 90 días). $40-50/mes con HA (Fase 6 opcional).
+**Coste real**: $7/mes (gratis primeros 90 días). **~$32/mes con HA (Fase 6 — necesaria antes de 5k DAU, no opcional)**.
+
+> **Decisión arquitectónica 2026-05-10**: HA dejó de ser "opcional". Single VM = SPOF inaceptable para usuarios de pago. Eventos predecibles (kernel updates, cert renewal hooks, OOM, mantenimiento Lightsail) causarían downtime sin HA. Activación: antes de 5k DAU o ante el primer incidente de single-VM. Ver `docs/roadmap/self-hosted-pooler.md` § "Fase 6".
 
 **Estado canary (2026-05-10 18:50 UTC)**: 8 endpoints read-only migrados + panel admin de monitorización.
 

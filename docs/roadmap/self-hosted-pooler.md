@@ -48,9 +48,10 @@ Detalle en `docs/ARCHITECTURE_ROADMAP.md` § "Incidente recurrente 2026-05-10".
 
 1. **Aislar nuestro tráfico** de los blips del Supavisor regional compartido
 2. **Mantener latencia ≤3ms** a Supabase (igual o mejor que actual)
-3. **Coste ≤$15/mes** en arranque, escalable a HA $50/mes después
+3. **Coste ≤$15/mes** en arranque, **escalable a HA ~$32/mes obligatorio antes de 5k DAU** (decisión 2026-05-10: HA no es opcional para usuarios de pago)
 4. **Rollback instantáneo** vía env var en Vercel en cada fase
 5. **Tests rigurosos** antes de tocar producción
+6. **HA antes de 5k DAU** — usuarios premium no pueden sufrir downtime por single VM (kernel updates, cert renewal, OOM, mantenimiento). Ver Fase 6.
 
 ---
 
@@ -287,17 +288,42 @@ function getRankingDb() {
 
 **Criterio de éxito**: 7 días sin incidentes en producción 100% con pooler propio.
 
-### Fase 6 — HA opcional (si necesario) ⏳ FUTURO
+### Fase 6 — HA (Alta Disponibilidad) ⏳ NECESARIA — no opcional
 
-**Cuándo**: si tras 1-2 meses con Fase 5 estable detectamos que la instancia única es punto de fallo problemático.
+> **Decisión arquitectónica (2026-05-10)**: dejar de tratar HA como "opcional si crecemos". Es **necesaria por compromiso con usuarios de pago**. Un usuario que paga no puede permitirse que el servicio esté caído por reinicio del kernel, OOM-killer, o un cert renew. Single VM = SPOF inaceptable a partir de cierta escala.
+
+**Por qué es no-opcional**:
+- Usuarios premium pagan por servicio fiable. Cada caída erosiona confianza.
+- Lightsail SLA 99.9% = ~45 min/mes potencial caída. Con 1k+ DAU eso son cientos de usuarios afectados.
+- Eventos predecibles que causarían downtime sin HA: kernel updates, certbot renewal hooks, OOM por memory leak, crash de pgbouncer, mantenimiento Lightsail.
+- A 10k DAU, una caída de 10 min puede generar tickets, churn, refunds. El coste de NO tener HA supera con creces los $33/mes extra.
+
+**Cuándo activar (umbral revisado)**:
+- ⚠️ **Antes de llegar a 5k DAU** (no a 20k como estaba)
+- O si vemos cualquier incidente de single-VM que afecte usuarios reales
+- O cuando facturación recurrente sea ≥10× el coste extra ($330/mes ARR ya justifica $33/mes infra)
 
 **Implementación**:
 - 2× Lightsail en distintas AZs (London tiene `eu-west-2a`, `eu-west-2b`, `eu-west-2c`)
-- Network Load Balancer AWS ($18/mes) que reparte conexiones
-- Coste total: $20 (2× Lightsail) + $18 (NLB) = ~$40/mes
-- Migración a EC2 + Terraform si la complejidad lo justifica
+- Network Load Balancer AWS ($18/mes) que reparte conexiones y hace healthchecks
+- Healthcheck activo: NLB hace TCP-ping a 6543 cada 5s; si falla 3 consecutivos saca esa VM del pool
+- Coste total: $14 (2× Lightsail $7) + $18 (NLB) = **~$32/mes** (vs $7 actual)
+- Migración a EC2 + Terraform si la complejidad lo justifica más adelante
 
-**Criterio para activar Fase 6**: incidente real causado por instancia única caída, o llegamos a >20k DAU.
+**Riesgos cubiertos por Fase 6**:
+- ✅ Reinicio de una VM (kernel update, cert renewal hook, manual reboot)
+- ✅ Crash de pgbouncer (OOM, bug)
+- ✅ Caída de una AZ entera de London
+- ✅ Mantenimiento programado de Lightsail
+- ❌ Caída total de eu-west-2 (mitigación: rollback feature flag a Supavisor)
+- ❌ Caída de Supabase Postgres (orthogonal — está separado)
+
+**Pendiente**:
+- [ ] Provisionar 2ª VM Lightsail en eu-west-2b (idéntica a la actual)
+- [ ] Crear NLB con healthcheck TCP:6543 (5s interval, 3 consecutive fails)
+- [ ] DNS `pooler.vence.es` → apunta al NLB en lugar de IP directa
+- [ ] Test failover: matar VM-A manualmente, verificar tráfico va a VM-B sin downtime
+- [ ] Documentar runbook de recuperación si NLB cae
 
 ---
 
@@ -494,7 +520,7 @@ Más simple, más estándar, menos servicios que mantener.
 
 - [ ] Setup CloudWatch básico para CPU/memoria de la VM Lightsail + alarms si pgbouncer cae
 - [ ] CI/CD para cambios de config pgbouncer (GitHub Actions) — opcional, baja prioridad
-- [ ] **Fase 6** (futuro) — HA con 2 instancias + NLB ($40-50/mes) si llegamos a >20k DAU
+- [ ] **Fase 6** ⚠️ **NECESARIA antes de 5k DAU** — HA con 2 instancias Lightsail + NLB (~$32/mes total). Decisión 2026-05-10: dejar de tratarla como opcional. Usuarios de pago no pueden sufrir downtime por single VM. Detalle en sección "Fase 6" más arriba.
 
 ## Referencias
 
