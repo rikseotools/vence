@@ -1,7 +1,6 @@
 // app/api/v2/complete-test/route.ts
 // Endpoint server-side para completar un test con analytics completos.
 // Reemplaza el completeDetailedTest client-side que bloqueaba processingAnswer.
-import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 import {
   safeParseCompleteTestRequest,
@@ -9,6 +8,7 @@ import {
   type CompleteTestResponse,
 } from '@/lib/api/v2/complete-test'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { verifyAuth } from '@/lib/api/auth/verifyAuth'
 
 // Margen generoso: incluye cálculo de analytics + múltiples queries BD + safety-net insert
 export const maxDuration = 30
@@ -17,29 +17,15 @@ async function _POST(request: NextRequest): Promise<NextResponse<CompleteTestRes
   const startTime = Date.now()
 
   try {
-    // 1. Auth: verificar Bearer token
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
+    // 1. Auth (wrapper Fase 0.7 — soporta off/shadow/on)
+    const auth = await verifyAuth(request, '/api/v2/complete-test')
+    if (!auth.success) {
       return NextResponse.json(
-        { success: false, error: 'No autorizado' } as const,
+        { success: false, error: auth.reason === 'no_bearer_token' ? 'No autorizado' : 'Usuario no autenticado' } as const,
         { status: 401 },
       )
     }
-
-    const token = authHeader.split(' ')[1]
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      { global: { headers: { Authorization: `Bearer ${token}` } } },
-    )
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json(
-        { success: false, error: 'Usuario no autenticado' } as const,
-        { status: 401 },
-      )
-    }
+    const user = { id: auth.userId, email: auth.email }
 
     // 2. Parse + validate body
     let body: unknown

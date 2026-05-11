@@ -3,26 +3,16 @@
 // DELETE: elimina un dispositivo del usuario autenticado
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { listUserDevices, removeUserDevice } from '@/lib/api/v2/devices/queries'
 import { removeDeviceRequestSchema } from '@/lib/api/v2/devices/schemas'
+import { verifyAuthOptional } from '@/lib/api/auth/verifyAuth'
 
-// ── Auth helper (same pattern as answer-and-save) ──
+// ── Auth helper (wrapper Fase 0.7 — soporta off/shadow/on) ──
 
 async function getUserId(request: NextRequest): Promise<string | null> {
-  const authHeader = request.headers.get('authorization')
-  if (!authHeader?.startsWith('Bearer ')) return null
-
-  const token = authHeader.split(' ')[1]
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { global: { headers: { Authorization: `Bearer ${token}` } } },
-  )
-
-  const { data: { user } } = await supabase.auth.getUser()
-  return user?.id ?? null
+  const auth = await verifyAuthOptional(request, '/api/v2/devices')
+  return auth?.userId ?? null
 }
 
 // ── GET: listar dispositivos ──

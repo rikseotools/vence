@@ -24,8 +24,8 @@
 // userId siempre del Bearer token (server-side). Body normalizado con orden
 // de claves fijo y arrays orden-insensibles ordenados.
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { createHash } from 'crypto'
+import { verifyAuthOptional } from '@/lib/api/auth/verifyAuth'
 import {
   getFilteredQuestions,
   countFilteredQuestions,
@@ -132,20 +132,12 @@ function hashKey(normalized: string): string {
   return createHash('sha256').update(normalized).digest('hex').slice(0, 16)
 }
 
-/** Extract userId from Bearer token (optional — returns null if not authenticated) */
+/** Extract userId from Bearer token (optional — returns null if not authenticated)
+ *  Wrapper Fase 0.7 — soporta off/shadow/on via env JWT_LOCAL_VERIFY_MODE. */
 async function getOptionalUserId(request: NextRequest): Promise<string | null> {
   try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader?.startsWith('Bearer ')) return null
-
-    const token = authHeader.split(' ')[1]
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      { global: { headers: { Authorization: `Bearer ${token}` } } },
-    )
-    const { data: { user } } = await supabase.auth.getUser()
-    return user?.id ?? null
+    const auth = await verifyAuthOptional(request, '/api/questions/filtered')
+    return auth?.userId ?? null
   } catch {
     return null
   }

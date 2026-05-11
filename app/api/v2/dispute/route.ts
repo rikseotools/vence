@@ -3,7 +3,6 @@
 // Usa Drizzle + Zod + Bearer auth
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import {
   createDisputeRequestSchema,
   getDisputeRequestSchema,
@@ -11,25 +10,15 @@ import {
   createDispute,
 } from '@/lib/api/v2/dispute'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { verifyAuthOptional } from '@/lib/api/auth/verifyAuth'
 
 export const dynamic = 'force-dynamic'
 
-const getSupabase = () =>
-  createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
-
-// Extraer y verificar usuario del Bearer token
+// Extraer y verificar usuario del Bearer token (wrapper Fase 0.7)
 async function getUserFromToken(request: NextRequest): Promise<{ id: string; email?: string } | null> {
-  const authHeader = request.headers.get('authorization')
-  if (!authHeader?.startsWith('Bearer ')) return null
-
-  const token = authHeader.split(' ')[1]
-  const { data: { user }, error } = await getSupabase().auth.getUser(token)
-  if (error || !user) return null
-
-  return { id: user.id, email: user.email }
+  const auth = await verifyAuthOptional(request, '/api/v2/dispute')
+  if (!auth) return null
+  return { id: auth.userId, email: auth.email ?? undefined }
 }
 
 // GET - Obtener impugnación existente

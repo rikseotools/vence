@@ -16,7 +16,7 @@
 // para impedir cross-user leakage en cache key.
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { verifyAuth } from '@/lib/api/auth/verifyAuth'
 import {
   getWeakArticlesForUser,
   safeParseGetWeakArticles,
@@ -39,32 +39,17 @@ const FRESH_WINDOW_MS = 5 * 60 * 1000   // 5 min: dentro de esta ventana es fres
 const STALE_TTL_S = 24 * 60 * 60        // 24h: cuánto retiene Redis (fallback timeout)
 const BD_TIMEOUT_MS = 15_000            // 15s: tope query BD; si excede, fallback a stale
 
-// Cliente Supabase solo para auth
-const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
-
 async function _GET(request: NextRequest) {
   try {
-    // Verificar autenticación
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
+    // Verificar autenticación (wrapper Fase 0.7 — soporta off/shadow/on)
+    const auth = await verifyAuth(request, '/api/v2/topic-progress/weak-articles')
+    if (!auth.success) {
       return NextResponse.json(
-        { success: false, error: 'No autorizado' },
+        { success: false, error: auth.reason === 'no_bearer_token' ? 'No autorizado' : 'Token inválido' },
         { status: 401 }
       )
     }
-
-    const token = authHeader.split(' ')[1]
-    const { data: { user }, error: authError } = await getSupabase().auth.getUser(token)
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { success: false, error: 'Token inválido' },
-        { status: 401 }
-      )
-    }
+    const user = { id: auth.userId, email: auth.email }
 
     // Parsear query params
     const { searchParams } = new URL(request.url)

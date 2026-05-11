@@ -1,7 +1,6 @@
 // app/api/v2/tests/failed-questions/route.ts
 // API v2 para test de repaso de fallos - Usa Drizzle + Zod
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import {
   getFailedQuestionsForUser,
   safeParseCreateFailedQuestionsTest,
@@ -9,36 +8,21 @@ import {
 } from '@/lib/api/tests'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
-// Cliente Supabase solo para auth
-const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+import { verifyAuth } from '@/lib/api/auth/verifyAuth'
 
 async function _POST(request: NextRequest) {
   console.log('🎯 [API/v2/failed-questions] Request received')
 
   try {
-    // Verificar autenticación
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
-      console.log('🎯 [API/v2/failed-questions] No auth header')
+    // Auth (wrapper Fase 0.7 — soporta off/shadow/on)
+    const auth = await verifyAuth(request, '/api/v2/tests/failed-questions')
+    if (!auth.success) {
       return NextResponse.json(
-        { success: false, error: 'No autorizado' },
+        { success: false, error: auth.reason === 'no_bearer_token' ? 'No autorizado' : 'Token inválido' },
         { status: 401 }
       )
     }
-
-    const token = authHeader.split(' ')[1]
-    const { data: { user }, error: authError } = await getSupabase().auth.getUser(token)
-
-    if (authError || !user) {
-      console.log('🎯 [API/v2/failed-questions] Auth error:', authError?.message)
-      return NextResponse.json(
-        { success: false, error: 'Token inválido' },
-        { status: 401 }
-      )
-    }
+    const user = { id: auth.userId, email: auth.email }
 
     console.log('🎯 [API/v2/failed-questions] User authenticated:', user.id)
 
