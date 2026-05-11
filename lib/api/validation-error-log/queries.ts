@@ -1,9 +1,19 @@
 // lib/api/validation-error-log/queries.ts
 // Insert fire-and-forget de errores de validación via Drizzle
+//
+// CANARY pooler (Fase 5 — sweep final 2026-05-11):
+// El audit logger usa el pooler propio cuando está activo. Si NO, cae a
+// getTraceDb (Supavisor, sin statement_timeout). Esto evita pérdidas de
+// audit log cuando Supavisor tiene blips (visto en logs 11 may: muchos
+// "No se pudo guardar error log: CONNECT_TIMEOUT aws-0-eu-west-2.pooler...").
 
-import { getTraceDb } from '@/db/client'
+import { getTraceDb, getPoolerDb } from '@/db/client'
 import { validationErrorLogs } from '@/db/schema'
 import type { ValidationErrorLogInput } from './schemas'
+
+function getAuditLogDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getTraceDb()
+}
 
 // Deploy version: Vercel inyecta VERCEL_GIT_COMMIT_SHA en build time
 const DEPLOY_VERSION = process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 8) || 'local'
@@ -63,7 +73,7 @@ export function logValidationError(input: ValidationErrorLogInput): void {
 }
 
 async function _insertLog(input: ValidationErrorLogInput): Promise<void> {
-  const db = getTraceDb()
+  const db = getAuditLogDb()  // canary pooler — evita pérdidas cuando Supavisor blip
 
   // Sanitizar requestBody: quitar campos sensibles
   const sanitizedBody = input.requestBody ? sanitizeRequestBody(input.requestBody) : {}
