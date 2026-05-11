@@ -2,13 +2,11 @@
 // API para obtener lista de traces del AI Chat (admin)
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { getTracesRequestSchema } from '@/lib/api/ai-traces/schemas'
 import { getTracesList } from '@/lib/api/ai-traces/queries'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+import { verifyAuth } from '@/lib/api/auth/verifyAuth'
 
 // Emails de administradores autorizados
 const ADMIN_EMAILS = [
@@ -17,37 +15,24 @@ const ADMIN_EMAILS = [
   'manueltrader@gmail.com',
 ]
 
-function isAdmin(email: string | undefined): boolean {
+function isAdmin(email: string | null | undefined): boolean {
   if (!email) return false
   return ADMIN_EMAILS.includes(email) || email.endsWith('@vencemitfg.es')
 }
 
 async function _GET(request: NextRequest) {
   try {
-    // Get auth token
-    const authHeader = request.headers.get('Authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
+    // Auth (wrapper Fase 0.7 — soporta off/shadow/on)
+    const auth = await verifyAuth(request, '/api/admin/ai-traces')
+    if (!auth.success) {
       return NextResponse.json(
-        { error: 'No autorizado' },
-        { status: 401 }
-      )
-    }
-
-    const token = authHeader.slice(7)
-
-    // Verificar autenticación
-    const supabase = createClient(supabaseUrl, supabaseServiceKey)
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'No autenticado' },
+        { error: auth.reason === 'no_bearer_token' ? 'No autorizado' : 'No autenticado' },
         { status: 401 }
       )
     }
 
     // Verificar que es admin
-    if (!isAdmin(user.email)) {
+    if (!isAdmin(auth.email)) {
       return NextResponse.json(
         { error: 'No autorizado' },
         { status: 403 }

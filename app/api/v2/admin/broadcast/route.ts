@@ -11,6 +11,7 @@ import { z } from 'zod'
 import { createClient } from '@supabase/supabase-js'
 import { sendEmailV2 } from '@/lib/api/emails'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { verifyAuth } from '@/lib/api/auth/verifyAuth'
 
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || 'rikseotools@gmail.com').split(',')
 
@@ -48,20 +49,18 @@ const BroadcastRequestSchema = z.object({
 })
 
 async function _POST(request: NextRequest) {
-  const supabase = getServiceClient()
-
-  // 1. Verificar admin
-  const authHeader = request.headers.get('authorization')
-  const token = authHeader?.replace('Bearer ', '')
-
-  if (!token) {
+  // 1. Auth + admin check (wrapper Fase 0.7 — soporta off/shadow/on)
+  const auth = await verifyAuth(request, '/api/v2/admin/broadcast')
+  if (!auth.success) {
     return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
   }
-
-  const { data: { user }, error: authError } = await supabase.auth.getUser(token)
-  if (authError || !user || !ADMIN_EMAILS.includes(user.email || '')) {
+  if (!ADMIN_EMAILS.includes(auth.email || '')) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
   }
+
+  // supabase client se mantiene para queries BD posteriores (user_profiles
+  // listing bypaseando RLS).
+  const supabase = getServiceClient()
 
   // 2. Validar request
   const body = await request.json()

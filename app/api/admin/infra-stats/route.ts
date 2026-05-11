@@ -5,6 +5,7 @@ import { Client as PgClient } from 'pg'
 import { getDb } from '@/db/client'
 import { sql } from 'drizzle-orm'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { verifyAuth } from '@/lib/api/auth/verifyAuth'
 
 // Timeout 30s para que Vercel no haga timeout antes de devolver al menos
 // resultados parciales si hay congestion en Supavisor.
@@ -118,25 +119,24 @@ const ADMIN_EMAILS = [
   'manueltrader@gmail.com',
 ]
 
-function isAdmin(email: string | undefined): boolean {
+function isAdmin(email: string | null | undefined): boolean {
   if (!email) return false
   return ADMIN_EMAILS.includes(email) || email.endsWith('@vencemitfg.es')
 }
 
 async function _GET(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('Authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
+    // Auth (wrapper Fase 0.7 — soporta off/shadow/on)
+    const auth = await verifyAuth(request, '/api/admin/infra-stats')
+    if (!auth.success) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
-
-    const token = authHeader.slice(7)
-    const supabase = createClient(supabaseUrl, supabaseServiceKey)
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
-
-    if (authError || !user || !isAdmin(user.email)) {
+    if (!isAdmin(auth.email)) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
     }
+    // supabase client se mantiene para queries BD posteriores (user_sessions,
+    // daily_question_usage, validation_error_logs) que bypaseando RLS.
+    const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
     const db = getDb()
     const today = new Date().toISOString().split('T')[0]
