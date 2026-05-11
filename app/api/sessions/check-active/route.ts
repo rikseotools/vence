@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { verifyAuth } from '@/lib/api/auth/verifyAuth'
 
 const CONTROLLED_EMAILS: string[] = [
   'edu77santoyo@gmail.com'
@@ -48,31 +49,16 @@ function getClientIp(request: NextRequest): string | null {
 
 async function _GET(request: NextRequest): Promise<NextResponse<CheckActiveResponse>> {
   try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
+    // Auth (wrapper Fase 0.7 — soporta off/shadow/on)
+    const auth = await verifyAuth(request, '/api/sessions/check-active')
+    if (!auth.success) {
       return NextResponse.json({
         isControlled: false,
         hasOtherSessions: false,
-        error: 'No autorizado'
+        error: auth.reason === 'no_bearer_token' ? 'No autorizado' : 'Usuario no autenticado'
       }, { status: 401 })
     }
-
-    const token = authHeader.split(' ')[1]
-
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      { global: { headers: { Authorization: `Bearer ${token}` } } }
-    )
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({
-        isControlled: false,
-        hasOtherSessions: false,
-        error: 'Usuario no autenticado'
-      }, { status: 401 })
-    }
+    const user = { id: auth.userId, email: auth.email }
 
     if (!user.email || !CONTROLLED_EMAILS.includes(user.email)) {
       return NextResponse.json({

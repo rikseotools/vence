@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { verifyAuth } from '@/lib/api/auth/verifyAuth'
 // Lista de emails bajo control de sesiones simultáneas
 const CONTROLLED_EMAILS: string[] = [
   'edu77santoyo@gmail.com'
@@ -22,36 +23,15 @@ interface CloseOthersResponse {
 
 async function _POST(request: NextRequest): Promise<NextResponse<CloseOthersResponse>> {
   try {
-    // Obtener el token de autenticación
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
+    // Auth (wrapper Fase 0.7 — soporta off/shadow/on)
+    const auth = await verifyAuth(request, '/api/sessions/close-others')
+    if (!auth.success) {
       return NextResponse.json({
         success: false,
-        error: 'No autorizado'
+        error: auth.reason === 'no_bearer_token' ? 'No autorizado' : 'Usuario no autenticado'
       }, { status: 401 })
     }
-
-    const token = authHeader.split(' ')[1]
-
-    // Crear cliente de Supabase con el token del usuario
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        global: {
-          headers: { Authorization: `Bearer ${token}` }
-        }
-      }
-    )
-
-    // Obtener usuario actual
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({
-        success: false,
-        error: 'Usuario no autenticado'
-      }, { status: 401 })
-    }
+    const user = { id: auth.userId, email: auth.email }
 
     // Verificar si el usuario está en la lista de control
     if (!user.email || !CONTROLLED_EMAILS.includes(user.email)) {
