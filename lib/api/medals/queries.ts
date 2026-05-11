@@ -17,6 +17,7 @@ function getMedalsReadDb() {
 }
 import { sql } from 'drizzle-orm'
 import { unstable_cache } from 'next/cache'
+import { getOrSet } from '@/lib/cache/redis'
 import {
   RANKING_MEDALS,
   type UserMedal,
@@ -41,6 +42,11 @@ interface PeriodConfig {
   startDate: Date
   endDate: Date
 }
+
+// Runtime ranking aggregation must never run from ordinary GET/page loads.
+// POST can still award newly earned medals, but can be disabled instantly with
+// MEDALS_RUNTIME_RECALC_ENABLED=false if the database is under pressure.
+const RUNTIME_MEDAL_RECALC_ENABLED = process.env.MEDALS_RUNTIME_RECALC_ENABLED !== 'false'
 
 // ============================================
 // LOGICA PURA: CALCULAR PERIODOS A EVALUAR
@@ -245,6 +251,7 @@ const getRankingForPeriodCached = unstable_cache(
 // con TTL corto se autorrecupera.
 let circuitOpenUntil = 0
 const CIRCUIT_BREAKER_DURATION_MS = 5 * 60 * 1000
+const RANKING_REDIS_TTL_S = 30 * 24 * 60 * 60
 
 function isStatementTimeoutError(error: unknown): boolean {
   if (typeof error !== 'object' || error === null) return false
@@ -261,7 +268,10 @@ async function getRankingForPeriod(
     return []
   }
   try {
-    return await getRankingForPeriodCached(startISO, endISO)
+    const cacheKey = `medals_ranking:${startISO}:${endISO}:v2`
+    return await getOrSet(cacheKey, RANKING_REDIS_TTL_S, () =>
+      getRankingForPeriodCached(startISO, endISO)
+    )
   } catch (error) {
     if (isStatementTimeoutError(error)) {
       circuitOpenUntil = Date.now() + CIRCUIT_BREAKER_DURATION_MS
@@ -281,10 +291,16 @@ async function getRankingForPeriod(
 // ============================================
 
 export async function getUserMedals(userId: string): Promise<GetMedalsResponse> {
+  const storedMedals = await getStoredUserMedals(userId)
+  return { success: true, medals: storedMedals }
+}
+
+async function calculateCurrentUserMedals(userId: string, storedMedals: UserMedal[]): Promise<UserMedal[]> {
   try {
     const now = new Date()
     const periods = getMedalPeriods(now)
-    const medals: UserMedal[] = []
+    const medals: UserMedal[] = [...storedMedals]
+    const existingIds = new Set(storedMedals.map((medal) => medal.id))
 
     for (const [, period] of Object.entries(periods)) {
       if (!period) continue
@@ -295,13 +311,17 @@ export async function getUserMedals(userId: string): Promise<GetMedalsResponse> 
       )
 
       const periodMedals = assignMedalsForPeriod(period.name, ranking, userId)
-      medals.push(...periodMedals)
+      for (const medal of periodMedals) {
+        if (existingIds.has(medal.id)) continue
+        existingIds.add(medal.id)
+        medals.push(medal)
+      }
     }
 
-    return { success: true, medals }
+    return medals
   } catch (error) {
     console.error('❌ [Medals] Error obteniendo medallas:', error)
-    return { success: true, medals: [] }
+    return storedMedals
   }
 }
 
@@ -310,18 +330,19 @@ export async function getUserMedals(userId: string): Promise<GetMedalsResponse> 
 // ============================================
 
 export async function checkAndSaveNewMedals(userId: string): Promise<CheckMedalsResponse> {
+  if (!RUNTIME_MEDAL_RECALC_ENABLED) {
+    return { success: true, newMedals: [] }
+  }
+
   try {
     const db = getDb()
+    const storedMedals = await getStoredUserMedals(userId)
 
     // Obtener medallas actuales basadas en rendimiento
-    const medalsResult = await getUserMedals(userId)
-    const currentMedals = medalsResult.medals || []
+    const currentMedals = await calculateCurrentUserMedals(userId, storedMedals)
 
     // Obtener medallas ya almacenadas
-    const storedResult = await db.execute(
-      sql`SELECT medal_id FROM user_medals WHERE user_id = ${userId}::uuid`
-    )
-    const storedMedalIds = new Set(((storedResult as any[]) || []).map((r: any) => r.medal_id))
+    const storedMedalIds = new Set(storedMedals.map((medal) => medal.id))
 
     // Encontrar medallas nuevas
     const newMedals = currentMedals.filter(medal => !storedMedalIds.has(medal.id))
@@ -361,6 +382,60 @@ export async function checkAndSaveNewMedals(userId: string): Promise<CheckMedals
 // ============================================
 // FUNCIONES AUXILIARES
 // ============================================
+
+async function getStoredUserMedals(userId: string): Promise<UserMedal[]> {
+  try {
+    const db = getMedalsReadDb()
+    const rows = await db.execute(
+      sql`SELECT medal_id, medal_data, unlocked_at
+          FROM user_medals
+          WHERE user_id = ${userId}::uuid
+          ORDER BY unlocked_at DESC`
+    )
+
+    return ((rows as any[]) || [])
+      .map((row: any) => normalizeStoredMedal(row, userId))
+      .filter((medal: UserMedal | null): medal is UserMedal => medal !== null)
+  } catch (error) {
+    console.error('❌ [Medals] Error leyendo medallas guardadas:', error)
+    return []
+  }
+}
+
+function normalizeStoredMedal(row: any, userId: string): UserMedal | null {
+  const medalData = row?.medal_data
+  const stored = typeof medalData === 'object' && medalData !== null ? medalData : {}
+  const medalId = typeof row?.medal_id === 'string' ? row.medal_id : stored.id
+  if (typeof medalId !== 'string') return null
+
+  const definition = Object.values(RANKING_MEDALS).find((medal) => medal.id === medalId)
+  const unlockedAt = row?.unlocked_at
+    ? new Date(row.unlocked_at).toISOString()
+    : typeof stored.unlockedAt === 'string'
+      ? stored.unlockedAt
+      : new Date().toISOString()
+
+  return {
+    id: medalId,
+    title: typeof stored.title === 'string' ? stored.title : definition?.title ?? medalId,
+    description: typeof stored.description === 'string' ? stored.description : definition?.description ?? '',
+    category: typeof stored.category === 'string' ? stored.category : definition?.category ?? 'Ranking',
+    emailTemplate: typeof stored.emailTemplate === 'string' ? stored.emailTemplate : definition?.emailTemplate ?? '',
+    unlocked: true,
+    progress: typeof stored.progress === 'string' ? stored.progress : 'Medalla conseguida',
+    unlockedAt,
+    rank: typeof stored.rank === 'number' ? stored.rank : 0,
+    period: typeof stored.period === 'string' ? stored.period : 'stored',
+    stats: typeof stored.stats === 'object' && stored.stats !== null
+      ? stored.stats
+      : {
+          userId,
+          totalQuestions: 0,
+          correctAnswers: 0,
+          accuracy: 0,
+        },
+  }
+}
 
 async function isUserRecentlyActive(db: ReturnType<typeof getDb>, userId: string): Promise<boolean> {
   try {

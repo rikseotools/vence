@@ -72,6 +72,44 @@ describe('/api/medals GET — stale-if-error', () => {
     })
   })
 
+  it('cache fresco Redis → 200 sin tocar BD', async () => {
+    const dbFn = jest.fn()
+    const setCachedFn = jest.fn()
+    const fresh = sampleMedalsResponse()
+    jest.doMock('@/lib/db/timeout', () => {
+      const actual = jest.requireActual('@/lib/db/timeout')
+      return {
+        ...actual,
+        withDbTimeout: dbFn,
+      }
+    })
+    jest.doMock('@/lib/cache/redis', () => ({
+      getCached: jest.fn().mockResolvedValue({
+        data: fresh,
+        ts: Date.now() - 60_000,
+      }),
+      setCached: setCachedFn,
+      invalidate: jest.fn(),
+    }))
+    jest.doMock('@/lib/api/medals', () => ({
+      safeParseGetMedalsRequest: (p: { userId: string }) => ({ success: true, data: { userId: p.userId } }),
+      safeParseCheckMedalsRequest: jest.fn(),
+      getUserMedals: jest.fn(),
+      checkAndSaveNewMedals: jest.fn(),
+    }))
+
+    const { GET } = require('@/app/api/medals/route')
+    const res = await GET(buildGetReq())
+
+    expect(res.status).toBe(200)
+    expect(res.headers.get('x-medals-cache')).toBe('hit')
+    const body = await res.json()
+    expect(body.success).toBe(true)
+    expect(body.medals).toHaveLength(2)
+    expect(dbFn).not.toHaveBeenCalled()
+    expect(setCachedFn).not.toHaveBeenCalled()
+  })
+
   it('éxito BD → cachea resultado y devuelve fresco', async () => {
     const setCachedFn = jest.fn()
     const fresh = sampleMedalsResponse()
