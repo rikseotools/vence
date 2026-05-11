@@ -1,19 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import {
   getOfficialExamQuestions,
   safeParseGetOfficialExamQuestions,
 } from '@/lib/api/official-exams'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { verifyAuthOptional } from '@/lib/api/auth/verifyAuth'
 // Force dynamic rendering - never cache this route
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
-
-const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
 
 /**
  * GET /api/v2/official-exams/questions
@@ -32,17 +27,10 @@ async function _GET(request: NextRequest) {
 
   try {
     // Auth verification (optional for now, but recommended)
-    const authHeader = request.headers.get('authorization')
-    let userId: string | null = null
-
-    if (authHeader?.startsWith('Bearer ')) {
-      const token = authHeader.split(' ')[1]
-      const { data: { user }, error: authError } = await getSupabase().auth.getUser(token)
-
-      if (!authError && user) {
-        userId = user.id
-        console.log(`🔒 [API/v2/official-exams/questions] Authenticated user: ${userId}`)
-      }
+    const auth = await verifyAuthOptional(request, '/api/v2/official-exams/questions')
+    const userId: string | null = auth?.userId ?? null
+    if (auth) {
+      console.log(`🔒 [API/v2/official-exams/questions] Authenticated user: ${userId}`)
     }
 
     // Parse query parameters

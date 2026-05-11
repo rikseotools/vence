@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { safeParseSaveOfficialExamResults } from '@/lib/api/official-exams'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { verifyAuth } from '@/lib/api/auth/verifyAuth'
 // Cliente con service role - bypasa RLS para operaciones de servidor
 const getSupabaseAdmin = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -32,25 +33,17 @@ async function _POST(request: NextRequest) {
   console.log('🎯 [API/v2/official-exams/save-results] Request received')
 
   try {
-    // 1. Verify authentication
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
+    // 1. Verify authentication (via wrapper Fase 0.7 — soporta off/shadow/on)
+    const auth = await verifyAuth(request, '/api/v2/official-exams/save-results')
+    if (!auth.success) {
       return NextResponse.json(
-        { success: false, error: 'No autorizado - Token requerido' },
+        { success: false, error: auth.reason === 'no_bearer_token' ? 'No autorizado - Token requerido' : 'No autorizado - Token inválido' },
         { status: 401 }
       )
     }
-
-    const token = authHeader.split(' ')[1]
-    const { data: { user }, error: authError } = await getSupabaseAdmin().auth.getUser(token)
-
-    if (authError || !user) {
-      console.error('❌ [API/v2/official-exams/save-results] Auth error:', authError?.message)
-      return NextResponse.json(
-        { success: false, error: 'No autorizado - Token inválido' },
-        { status: 401 }
-      )
-    }
+    // `user` se mantiene como objeto para compatibilidad con código posterior
+    // que usa user.id en múltiples inserts (user_id columns).
+    const user = { id: auth.userId, email: auth.email }
 
     console.log(`🔒 [API/v2/official-exams/save-results] User authenticated: ${user.id}`)
 

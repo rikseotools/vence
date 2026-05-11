@@ -2,37 +2,23 @@
 // API to get all questions from a completed official exam for review
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { getOfficialExamReview } from '@/lib/api/official-exams/queries'
 import { safeParseGetOfficialExamReview } from '@/lib/api/official-exams/schemas'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+import { verifyAuth } from '@/lib/api/auth/verifyAuth'
 
 async function _GET(request: NextRequest) {
   try {
-    // Get auth token
-    const authHeader = request.headers.get('Authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
+    // Verify authentication (wrapper Fase 0.7 — soporta off/shadow/on)
+    const auth = await verifyAuth(request, '/api/v2/official-exams/review')
+    if (!auth.success) {
       return NextResponse.json(
-        { success: false, error: 'No autorizado' },
+        { success: false, error: auth.reason === 'no_bearer_token' ? 'No autorizado' : 'Token inválido' },
         { status: 401 }
       )
     }
-
-    const token = authHeader.slice(7)
-
-    // Verify token with Supabase
-    const supabase = createClient(supabaseUrl, supabaseServiceKey)
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { success: false, error: 'Token inválido' },
-        { status: 401 }
-      )
-    }
+    const user = { id: auth.userId, email: auth.email }
 
     // Get query params
     const { searchParams } = new URL(request.url)

@@ -175,3 +175,20 @@ export async function verifyAuth(
     verifiedBy: 'shadow_remote',
   }
 }
+
+/**
+ * Variante para endpoints con auth OPCIONAL (anónimos permitidos).
+ * Devuelve userId/email si el token verifica, null si no hay token o falla.
+ * No devuelve error — el endpoint decide qué hacer con el null.
+ *
+ * Usa el mismo wrapper `verifyAuth` interno → respeta el mismo JWT_LOCAL_VERIFY_MODE
+ * (off/shadow/on) que los endpoints con auth obligatoria.
+ */
+export async function verifyAuthOptional(
+  request: NextRequest,
+  endpoint: string,
+): Promise<{ userId: string; email: string | null } | null> {
+  const result = await verifyAuth(request, endpoint)
+  if (!result.success) return null
+  return { userId: result.userId, email: result.email }
+}

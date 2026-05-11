@@ -1,16 +1,11 @@
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { getDb } from '@/db/client'
 import { tests, testQuestions, psychometricUserQuestionHistory, userQuestionHistory } from '@/db/schema'
 import { eq, and, sql } from 'drizzle-orm'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
-// Client with service role - bypasses RLS for server operations
-const getSupabaseAdmin = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+import { verifyAuth } from '@/lib/api/auth/verifyAuth'
 
 /**
  * POST /api/v2/official-exams/complete
@@ -50,25 +45,16 @@ async function _POST(request: NextRequest) {
   console.log('🎯 [API/v2/official-exams/complete] Request received')
 
   try {
-    // 1. Verify authentication
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
+    // 1. Verify authentication (wrapper Fase 0.7 — soporta off/shadow/on)
+    const auth = await verifyAuth(request, '/api/v2/official-exams/complete')
+    if (!auth.success) {
       return NextResponse.json(
-        { success: false, error: 'No autorizado - Token requerido' },
+        { success: false, error: auth.reason === 'no_bearer_token' ? 'No autorizado - Token requerido' : 'No autorizado - Token inválido' },
         { status: 401 }
       )
     }
-
-    const token = authHeader.split(' ')[1]
-    const { data: { user }, error: authError } = await getSupabaseAdmin().auth.getUser(token)
-
-    if (authError || !user) {
-      console.error('❌ [API/v2/official-exams/complete] Auth error:', authError?.message)
-      return NextResponse.json(
-        { success: false, error: 'No autorizado - Token inválido' },
-        { status: 401 }
-      )
-    }
+    // `user` para compatibilidad con los 11 usos de user.id en el resto del handler
+    const user = { id: auth.userId, email: auth.email }
 
     console.log(`🔒 [API/v2/official-exams/complete] User authenticated: ${user.id}`)
 
