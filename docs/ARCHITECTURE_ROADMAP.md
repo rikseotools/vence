@@ -623,6 +623,86 @@ Cuando crezcas a 10k+ DAU y Supabase deje de escalar / encarezca:
 
 ---
 
+## Tech debt CRÍTICO: queries no-escalables explotan a 10k DAU 🚨 PRIORIDAD ALTA
+
+**Detectado 2026-05-11 lunes pico mañanero** (10:43-10:49 CEST): 5 errores 5xx en 30 min con pooler propio sano (`maxwait=0`, `cl_waiting=0`, 162k queries servidas avg 0.8ms wait). No es problema de infra — son **queries inherentemente lentas** que el safety net `withDbTimeout(8s)` aborta a 503.
+
+### Por qué hoy son 5 errores y mañana explotará
+
+A nuestro tráfico actual (~150 DAU pico), una query que tarda 8s afecta a 1-2 usuarios. **A 10k DAU**:
+
+```
+Pool capacidad efectiva (queries/segundo) = 30 conn / avg_query_time_s
+  Con queries de 100ms:   30 / 0.1 = 300 q/s  → margen amplio
+  Con queries de 8000ms:  30 / 8.0 = 3.75 q/s → SATURACIÓN INMEDIATA
+```
+
+Con queries lentas en hot path + tráfico 10k DAU:
+- Cola en pgbouncer → `cl_waiting > 0`
+- `maxwait` sube → más timeouts en cascada
+- Lambdas Vercel se acumulan esperando → consume concurrencia
+- Cascade failure: queries rápidas también caen porque el pool está ocupado
+
+**Es exactamente el patrón del cascade del 8 may, pero esta vez SIN solución por pooler** — el pooler ya está optimizado.
+
+### Queries problemáticas identificadas (5xx 11 may)
+
+| Endpoint | Causa | Solución |
+|---|---|---|
+| `/api/medals` (8s+ → 503) | Recalcula medallas cada hit con agregación pesada sobre `test_questions` | Pre-computar en `user_medals_summary` (patrón ya usado con `user_stats_summary`) |
+| `/api/random-test/availability` (12s+ → 503) | `COUNT FILTER` con multi-JOIN sobre `questions × articles × laws × topic_scope` | Cache Redis 5min + materializar count por scope |
+| `/api/questions/law-stats` (8.2s para Ley 40/2015) | `COUNT FILTER (WHERE is_official_exam = true)` sobre miles de preguntas por ley | Cache Redis 1h (verificar TTL) + considerar `law_stats_cache` materializada |
+| `/api/v2/answer-and-save` (slow 6s ocasional) | Read-after-write pattern con varias queries serie | Refactor a single query / batch (más complejo) |
+
+### Soluciones priorizadas
+
+#### Quick wins (1-2h cada uno, alto impacto)
+
+1. **Cache Redis stale-if-error en `/api/medals`** — TTL 6h, fallback a empty si BD timeout. Las medallas no cambian frecuentemente.
+2. **Cache Redis en `/api/random-test/availability`** — TTL 5min. Disponibilidad de tests cambia despacio.
+3. **Verificar TTL de `/api/questions/law-stats`** — ya tiene `unstable_cache`. Si TTL bajo, subir a 1h+.
+
+#### Medium term (medio día cada uno)
+
+4. **Pre-computar `user_medals_summary`** — tabla auxiliar actualizada por trigger igual que `user_stats_summary`. Lookup PK <1ms en lugar de agregación pesada.
+5. **Materializar `law_stats_cache`** — tabla `(law_id, question_count, official_count, last_updated)` actualizada por trigger en `questions`.
+
+#### Long term (cuando llegue el dolor)
+
+6. **Refactor `answer-and-save`** a single transaction con menos queries.
+7. **Outbox pattern (Fase 2 del roadmap)** para mover agregaciones a worker async.
+8. **ClickHouse / data warehouse (Fase 5)** para analytics pesado (medals, stats).
+
+### Triggers para activar cada solución
+
+| Trigger | Acción |
+|---|---|
+| 5+ errores 503 day-over-day en `/api/medals` o `/api/random-test/availability` | Quick win #1 y #2 (cache Redis) — esta semana |
+| DAU supera 1000 | Quick win #3 (verificar caches existentes) — pre-emptive |
+| DAU supera 3000 | Medium term #4 y #5 (pre-computar) — proactivo |
+| DAU supera 5000 | Refactor `answer-and-save` (#6) + plan outbox |
+| DAU supera 10000 | Fase 2 outbox + considerar Fase 5 warehouse |
+
+### Por qué este tech debt es DIFERENTE del PostgREST→Drizzle
+
+| | PostgREST→Drizzle | Queries lentas |
+|---|---|---|
+| Urgencia | NO urgente (29 conexiones estables) | **ALTA — explota con crecimiento lineal** |
+| Trigger | BD >80% sostenido | Errores 5xx ya visibles hoy en pico |
+| Coste fix | 1-2 semanas | 1-2 horas por endpoint quick-win |
+| ROI | Marginal | Directo (evita cascade fail a 10k DAU) |
+
+**Este tech debt es PRIORIDAD sobre PostgREST→Drizzle**. El pooler propio compró tiempo pero NO resuelve queries lentas. Atacarlo antes que crezca el tráfico.
+
+### Pendiente concreto
+
+- [ ] **Esta semana**: cache Redis en `/api/medals` + `/api/random-test/availability` (quick-win #1 #2)
+- [ ] **Esta semana**: EXPLAIN ANALYZE de los 3 queries lentos en BD prod para confirmar planes
+- [ ] **Cuando llegue a 1k DAU**: pre-computar `user_medals_summary` (#4)
+- [ ] **Documentar nuevos slow queries** en este apartado cuando aparezcan en logs
+
+---
+
 ## Tech debt evaluable: refactor PostgREST → Drizzle ⏳ NO URGENTE
 
 **Contexto** (descubierto 2026-05-10 tras migración masiva al pooler propio): el panel `/admin/infraestructura` muestra que **29 de las 58 conexiones a Supabase Postgres** son de **postgrest** (la REST API auto-generada de Supabase). Las usa el frontend cuando llama `supabase.from('table').select(...)` directamente.
