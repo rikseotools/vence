@@ -1,6 +1,5 @@
 // app/api/dispute/route.ts - API para crear impugnaciones de preguntas normales
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import {
   safeParseCreateDisputeRequest,
   safeParseAppealDisputeRequest,
@@ -13,37 +12,21 @@ import {
 } from '@/lib/api/dispute'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
-const getSupabase = () =>
-  createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
+import { verifyAuth } from '@/lib/api/auth/verifyAuth'
 
 async function _POST(
   request: NextRequest
 ): Promise<NextResponse<CreateDisputeResponse>> {
   try {
-    // 1. Auth via Bearer token
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
+    // 1. Auth (wrapper Fase 0.7 — soporta off/shadow/on)
+    const auth = await verifyAuth(request, '/api/dispute')
+    if (!auth.success) {
       return NextResponse.json(
-        { success: false, error: 'No autorizado' },
+        { success: false, error: auth.reason === 'no_bearer_token' ? 'No autorizado' : 'Token inválido' },
         { status: 401 }
       )
     }
-
-    const token = authHeader.split(' ')[1]
-    const {
-      data: { user },
-      error: authError,
-    } = await getSupabase().auth.getUser(token)
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { success: false, error: 'Token inválido' },
-        { status: 401 }
-      )
-    }
+    const user = { id: auth.userId, email: auth.email }
 
     // 2. Parse + validate body
     const body = await request.json()
@@ -88,27 +71,15 @@ async function _GET(
   request: NextRequest
 ): Promise<NextResponse<GetExistingDisputeResponse>> {
   try {
-    // 1. Auth via Bearer token
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
+    // 1. Auth (wrapper Fase 0.7 — soporta off/shadow/on)
+    const auth = await verifyAuth(request, '/api/dispute')
+    if (!auth.success) {
       return NextResponse.json(
-        { success: false, data: null, error: 'No autorizado' },
+        { success: false, data: null, error: auth.reason === 'no_bearer_token' ? 'No autorizado' : 'Token inválido' },
         { status: 401 }
       )
     }
-
-    const token = authHeader.split(' ')[1]
-    const {
-      data: { user },
-      error: authError,
-    } = await getSupabase().auth.getUser(token)
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { success: false, data: null, error: 'Token inválido' },
-        { status: 401 }
-      )
-    }
+    const user = { id: auth.userId, email: auth.email }
 
     // 2. Parse questionId from query params
     const { searchParams } = new URL(request.url)
@@ -146,26 +117,15 @@ async function _PATCH(
   request: NextRequest
 ): Promise<NextResponse<AppealDisputeResponse>> {
   try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
+    // 1. Auth (wrapper Fase 0.7 — soporta off/shadow/on)
+    const auth = await verifyAuth(request, '/api/dispute')
+    if (!auth.success) {
       return NextResponse.json(
-        { success: false, error: 'No autorizado' },
+        { success: false, error: auth.reason === 'no_bearer_token' ? 'No autorizado' : 'Token inválido' },
         { status: 401 }
       )
     }
-
-    const token = authHeader.split(' ')[1]
-    const {
-      data: { user },
-      error: authError,
-    } = await getSupabase().auth.getUser(token)
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { success: false, error: 'Token inválido' },
-        { status: 401 }
-      )
-    }
+    const user = { id: auth.userId, email: auth.email }
 
     const body = await request.json()
     const validation = safeParseAppealDisputeRequest(body)

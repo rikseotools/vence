@@ -1,40 +1,26 @@
 // app/api/test/save-answer/route.ts - Guardar respuesta de test server-side
-import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 import { safeParseSaveAnswerRequest, type SaveAnswerResponse } from '@/lib/api/test-answers'
 import { insertTestAnswer } from '@/lib/api/test-answers'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { verifyAuth } from '@/lib/api/auth/verifyAuth'
+
 async function _POST(request: NextRequest): Promise<NextResponse<SaveAnswerResponse>> {
   try {
-    // 1. Auth: verificar Bearer token
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
+    // 1. Auth (wrapper Fase 0.7 — soporta off/shadow/on)
+    const auth = await verifyAuth(request, '/api/test/save-answer')
+    if (!auth.success) {
       return NextResponse.json(
-        { success: false, action: 'error' as const, error: 'No autorizado' },
+        {
+          success: false,
+          action: 'error' as const,
+          error: auth.reason === 'no_bearer_token' ? 'No autorizado' : 'Usuario no autenticado',
+        },
         { status: 401 },
       )
     }
-
-    const token = authHeader.split(' ')[1]
-
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      { global: { headers: { Authorization: `Bearer ${token}` } } },
-    )
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { success: false, action: 'error' as const, error: 'Usuario no autenticado' },
-        { status: 401 },
-      )
-    }
+    const user = { id: auth.userId, email: auth.email }
 
     // 2. Parse body
     let body: unknown

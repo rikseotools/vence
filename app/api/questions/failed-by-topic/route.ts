@@ -1,24 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { getFailedQuestionsByTopic } from '@/lib/api/user-failed-questions'
 import { getFailedByTopicRequestSchema } from '@/lib/api/user-failed-questions/schemas'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { verifyAuthOptional } from '@/lib/api/auth/verifyAuth'
 
 async function getOptionalUserId(request: NextRequest): Promise<string | null> {
-  try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader?.startsWith('Bearer ')) return null
-    const token = authHeader.split(' ')[1]
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      { global: { headers: { Authorization: `Bearer ${token}` } } },
-    )
-    const { data: { user } } = await supabase.auth.getUser()
-    return user?.id ?? null
-  } catch {
-    return null
-  }
+  const auth = await verifyAuthOptional(request, '/api/questions/failed-by-topic')
+  return auth?.userId ?? null
 }
 
 async function _GET(request: NextRequest) {

@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import {
   saveVideoProgress,
   getVideoProgress,
@@ -9,13 +8,9 @@ import {
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { withDbTimeout, isDbTimeoutError } from '@/lib/db/timeout'
+import { verifyAuth } from '@/lib/api/auth/verifyAuth'
 
 export const dynamic = 'force-dynamic'
-
-const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
 
 // Quick-fail timeouts (Phase 3): si el pooler parpadea, devolver 503 en
 // vez de mantener el lambda 30s. Reads más permisivos que writes.
@@ -40,24 +35,15 @@ function timeoutResponse() {
  */
 async function _POST(request: NextRequest) {
   try {
-    // Auth is required
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
+    // Auth required (wrapper Fase 0.7 — soporta off/shadow/on)
+    const auth = await verifyAuth(request, '/api/cursos/progress')
+    if (!auth.success) {
       return NextResponse.json(
-        { success: false, error: 'No autorizado' },
+        { success: false, error: auth.reason === 'no_bearer_token' ? 'No autorizado' : 'Token inválido' },
         { status: 401 }
       )
     }
-
-    const token = authHeader.split(' ')[1]
-    const { data: { user }, error: authError } = await getSupabase().auth.getUser(token)
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { success: false, error: 'Token inválido' },
-        { status: 401 }
-      )
-    }
+    const user = { id: auth.userId, email: auth.email }
 
     const body = await request.json()
 
@@ -104,24 +90,15 @@ async function _POST(request: NextRequest) {
  */
 async function _GET(request: NextRequest) {
   try {
-    // Auth is required
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
+    // Auth required (wrapper Fase 0.7 — soporta off/shadow/on)
+    const auth = await verifyAuth(request, '/api/cursos/progress')
+    if (!auth.success) {
       return NextResponse.json(
-        { success: false, error: 'No autorizado' },
+        { success: false, error: auth.reason === 'no_bearer_token' ? 'No autorizado' : 'Token inválido' },
         { status: 401 }
       )
     }
-
-    const token = authHeader.split(' ')[1]
-    const { data: { user }, error: authError } = await getSupabase().auth.getUser(token)
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { success: false, error: 'Token inválido' },
-        { status: 401 }
-      )
-    }
+    const user = { id: auth.userId, email: auth.email }
 
     const { searchParams } = new URL(request.url)
     const lessonId = searchParams.get('lessonId')

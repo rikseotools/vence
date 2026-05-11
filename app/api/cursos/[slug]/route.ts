@@ -1,14 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { getCourseBySlug, safeParseGetCourseBySlug } from '@/lib/api/video-courses'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { verifyAuthOptional } from '@/lib/api/auth/verifyAuth'
 export const dynamic = 'force-dynamic'
-
-const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
 
 /**
  * GET /api/cursos/[slug]
@@ -32,15 +27,9 @@ async function _GET(
       }, { status: 400 })
     }
 
-    // Get auth token if present
-    const authHeader = request.headers.get('authorization')
-    let userId: string | null = null
-
-    if (authHeader?.startsWith('Bearer ')) {
-      const token = authHeader.split(' ')[1]
-      const { data: { user } } = await getSupabase().auth.getUser(token)
-      userId = user?.id || null
-    }
+    // Auth opcional (wrapper Fase 0.7 — soporta off/shadow/on)
+    const auth = await verifyAuthOptional(request, '/api/cursos/[slug]')
+    const userId: string | null = auth?.userId ?? null
 
     // Get course with lessons and progress
     const result = await getCourseBySlug(slug, userId)

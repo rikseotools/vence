@@ -1,14 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { getVideoSignedUrl, safeParseGetVideoUrl } from '@/lib/api/video-courses'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { verifyAuth } from '@/lib/api/auth/verifyAuth'
 export const dynamic = 'force-dynamic'
-
-const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
 
 /**
  * POST /api/cursos/video-url
@@ -24,24 +19,15 @@ const getSupabase = () => createClient(
  */
 async function _POST(request: NextRequest) {
   try {
-    // Auth is required
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
+    // Auth required (wrapper Fase 0.7 — soporta off/shadow/on)
+    const auth = await verifyAuth(request, '/api/cursos/video-url')
+    if (!auth.success) {
       return NextResponse.json(
-        { success: false, error: 'No autorizado' },
+        { success: false, error: auth.reason === 'no_bearer_token' ? 'No autorizado' : 'Token inválido' },
         { status: 401 }
       )
     }
-
-    const token = authHeader.split(' ')[1]
-    const { data: { user }, error: authError } = await getSupabase().auth.getUser(token)
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { success: false, error: 'Token inválido' },
-        { status: 401 }
-      )
-    }
+    const user = { id: auth.userId, email: auth.email }
 
     const body = await request.json()
 
