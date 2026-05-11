@@ -503,6 +503,126 @@ getTraceDb()  → max:1, sin timeout   // ✅ HECHO — para after() background 
 
 ---
 
+## Estrategia: Reducir dependencia de Supabase (vendor lock-in)
+
+**Objetivo final**: que Vence pueda funcionar SIN Supabase. No es urgente ni obligatorio, pero **cada decisión de arquitectura que tomamos hoy debe preguntarse: ¿esto aumenta o reduce el lock-in?**.
+
+**Por qué importa**:
+- Si Supabase cambia precios, deprecate features, o cae fatalmente, Vence no debería tener que reescribir el 50% del código
+- Las apps "tier Stripe" minimizan vendor lock-in porque escalar requiere flexibilidad
+- A 10k+ DAU, Supabase puede no ser la mejor opción (BD dedicada self-hosted o Aurora pueden salir más baratas)
+- Migrar de proveedor con código acoplado cuesta meses; con código portable cuesta semanas
+
+### Estado actual del acoplamiento (cuántas piezas dependen de Supabase)
+
+| Pieza | Tipo de acoplamiento | Quién depende |
+|---|---|---|
+| **Postgres BD** | 🟡 Medio (estándar SQL) | Drizzle queries (transferibles a cualquier Postgres) |
+| **Pooler regional Supavisor** | 🟢 Bajo (ya mitigado) | Pooler propio en eu-west-2 (commit pooler.opt-c) lo aísla |
+| **`auth.users` table + RLS** | 🔴 Alto | RLS policies usan `auth.uid()` SQL fn. `user_profiles` FK a `auth.users(id)` |
+| **Supabase Auth API** | 🟡 Medio (post-Fase 0.7) | Wrapper `verifyAuth` abstrae endpoints API. OAuth flow + password reset siguen acoplados |
+| **PostgREST (auto REST API)** | 🔴 Alto | 29/58 conexiones del frontend (`supabase.from(...).select(...)`). Reemplazable por endpoints propios + Drizzle (ver sección siguiente) |
+| **Supabase Storage** | 🟢 Bajo | Solo se usa para alguna imagen — fácil swap a S3/R2 |
+| **Email Auth (reset password, confirm)** | 🟡 Medio | Templates en Supabase Dashboard. Swap a Resend/SendGrid es 1 día |
+| **Edge Functions** | 🟢 N/A | NO se usan (Vence usa Vercel Functions) |
+
+### Qué ya está desacoplado (post-trabajos 2026-05)
+
+✅ **Endpoint hot path auth** (post Fase 0.7): los 41 callers de auth pasan por `verifyAuth()`. Cambiar provider = modificar 1 archivo (`verifyJwtLocal.ts`), los endpoints ni se enteran.
+
+✅ **Cache layer** (Fase 1): Upstash Redis. Si Supabase no existiera, el cache sigue funcionando.
+
+✅ **Pool de conexiones** (Fase 3 + Self-hosted Pooler): pooler propio en AWS Lightsail London aísla del Supavisor regional. Si Supabase tiene blips, el pooler propio sigue dando latencia <5ms al primary.
+
+✅ **Drizzle como ORM**: todas las queries via Drizzle ORM funcionan contra cualquier Postgres (Supabase, Neon, RDS, self-hosted, etc.). Cero cambios en queries si swap de proveedor BD.
+
+### Plan de migración futura (NO urgente — cuando decidas)
+
+**Path A — Replace auth incremental (lo más realista, 1-3 meses)**:
+1. Terminar migración a `verifyAuth()` en los 41 callers (Fase 0.7 D)
+2. Setup new provider (Clerk/Auth.js) en paralelo con webhook sync a Supabase users
+3. New logins → new provider; old sessions → siguen Supabase hasta exp natural
+4. Tras 1-2 meses, todos los users tienen account en new provider
+5. Cortar Supabase Auth (RLS sigue funcionando porque IDs son los mismos UUIDs)
+
+**Path B — Big bang (apps pequeñas, riesgo medio)**:
+1. Export `auth.users` de Supabase
+2. Import a new provider manteniendo UUIDs
+3. Re-deploy con new provider — usuarios deben re-loguearse
+4. Drop `supabase.auth.*` calls
+
+**Path C — Hybrid: Supabase BD + Auth propio (más control, 2-3 sem)**:
+1. Crear tabla `app_users` (sustituye `auth.users`)
+2. Auth.js gestiona sesiones, persiste a `app_users`
+3. **Drop RLS entera** — todo authz a nivel app (Drizzle queries + verifyAuth)
+4. Service role conecta a BD sin RLS
+5. Mantiene Supabase como Postgres puro (sin Auth/PostgREST)
+
+### Path D — Salida completa de Supabase (cuando sea necesario)
+
+Cuando crezcas a 10k+ DAU y Supabase deje de escalar / encarezca:
+1. Provisionar Postgres en alternativa (Neon, AWS RDS, self-hosted Hetzner)
+2. `pg_dump` + restore en nuevo Postgres (1 noche downtime o blue/green sin downtime)
+3. Reemplazar `DATABASE_URL` env var
+4. Drop Supabase entero
+- **Esfuerzo**: 1-2 semanas planificación + 1 noche operación
+- **Pre-requisito**: haber hecho Path A/B/C antes (sin auth de Supabase) y eliminado PostgREST (sección siguiente)
+
+### Comparativa de providers de auth (si decides migrar)
+
+| Provider | Coste | Pros | Contras | Cuándo elegirlo |
+|---|---|---|---|---|
+| **Supabase Auth** (actual) | Gratis hasta 50k MAU | Integrado con BD, RLS, ya implementado | Lock-in con Supabase entero | Mientras no haya razón fuerte para cambiar |
+| **Auth.js (NextAuth)** | $0 (open source) | Máximo control, integrado con Next.js, no lock-in | Más código, sin UI prebuilt | Si quieres ahorrar y tener control total |
+| **Better Auth** | $0 (open source) | Moderno, type-safe, mejor DX que Auth.js | Joven (poco battle-test) | Para proyectos nuevos en TS estricto |
+| **Clerk** | $25/mes hasta 10k MAU | UI prebuilt, magic links, MFA, webhooks | Vendor lock-in. Caro a escala. | Si valoras UX prebuilt y time-to-market |
+| **Lucia** | $0 (open source) | Ligero, framework-agnostic | Más DIY | Si necesitas máxima flexibilidad |
+| **WorkOS** | $$$ | Enterprise SSO, SAML | Caro para B2C | Solo si target es enterprise |
+
+**Para Vence (B2C, 235 DAU)** la elección natural si migras: **Auth.js** (ahorras dinero, control total) o **Clerk** (UX prebuilt). Better Auth si quieres lo más moderno.
+
+### Comparativa de providers de Postgres (si decides salir de Supabase)
+
+| Provider | Coste mensual @ 10k DAU | Pros | Contras |
+|---|---|---|---|
+| **Supabase Pro** (actual) | $25 + $15 replica = $40 | Read replica gestionada, RLS, Auth integrado | Lock-in. Pooler regional compartido. |
+| **Neon** | $20-50 | Serverless, autoscale, branching gratis | Newer, soporte menos maduro |
+| **AWS RDS Postgres** | $50-100+ | Standard industria, multi-AZ | Más config, no serverless |
+| **Hetzner self-hosted** | $20-40 | Coste bajísimo, control total | Tú gestionas backups + HA + monitoring |
+| **PlanetScale (Postgres beta)** | $30-60 | Branching, schema migration tooling | Solo MySQL hasta hace poco |
+| **CockroachDB Cloud** | $50+ | Multi-region nativo | Sintaxis Postgres compatible no 100% |
+
+### Roadmap de pasos (orden de menor a mayor coste)
+
+1. ✅ **Wrapper `verifyAuth` deployed** (hoy, Fase 0.7) — endpoints son provider-agnostic
+2. ⏳ **Migrar 40 callers restantes al wrapper** (Fase 0.7 D, 1-2h) — cierra la abstracción
+3. ⏳ **Audit RLS policies que usan `auth.uid()`** (1-2 días) — listar todas, evaluar coste de reescribir cada una
+4. ⏳ **Crear endpoint /api/v2/internal/users que reemplace PostgREST** (1 sem) — frontend deja de hablar con `auth.users` directamente
+5. ⏳ **Drop PostgREST del frontend** (1-2 sem) — todo via Drizzle endpoints (ver sección siguiente)
+6. ⏳ **Cuando decidas swap auth**: Path A/B/C según contexto (1-3 meses)
+7. ⏳ **Cuando decidas salir de BD Supabase**: Path D (1-2 sem)
+
+### Decisión activa (2026-05-11)
+
+**Vence sigue con Supabase Auth + Supabase BD por ahora.** Razones:
+- 235 DAU — el lock-in actual no duele
+- Coste Supabase Pro = $40/mes es razonable
+- RLS funciona y la complejidad de quitarla no se justifica todavía
+
+**Re-evaluar swap de auth cuando**:
+- Pasamos 10k MAU (Supabase Auth empieza a cobrar más)
+- Necesitamos features que Supabase Auth no tiene (MFA fino, SSO enterprise, magic links UX)
+- Un fallo de Supabase Auth nos cuesta una jornada (riesgo de operación)
+
+**Re-evaluar swap de BD cuando**:
+- Coste Supabase >$200/mes consistente
+- Necesitamos features (multi-region, branching, etc.) que Supabase no ofrece
+- Hay 2+ incidentes/mes por limitaciones del tier compartido
+
+**Mientras tanto**: cada decisión de arquitectura debe preguntarse "¿esto aumenta lock-in con Supabase?" y, si la respuesta es sí, debe justificarse explícitamente.
+
+---
+
 ## Tech debt evaluable: refactor PostgREST → Drizzle ⏳ NO URGENTE
 
 **Contexto** (descubierto 2026-05-10 tras migración masiva al pooler propio): el panel `/admin/infraestructura` muestra que **29 de las 58 conexiones a Supabase Postgres** son de **postgrest** (la REST API auto-generada de Supabase). Las usa el frontend cuando llama `supabase.from('table').select(...)` directamente.
@@ -880,3 +1000,4 @@ Si solo pudieras hacer 3 cosas para escalar a 10k, en este orden:
 | 2026-05-09 (noche) | Upstash Redis quota agotada → migrar a Pay as You Go | Plan anterior tenía cap 500K commands. Llegado al máximo durante el día, todos los `getCached`/`setCached` fallaban silentes (degradación graceful en `lib/cache/redis.ts:raceTimeout` + 100ms timeout). Sin afectar funcionalidad (BD fallback) pero perdiendo TODOS los beneficios de cache. Migrado a Pay as You Go ($0.20/100K commands, sin tope) eu-west-2. Uso real medido: ~100K cmds/día estable = **~$6/mes**. Break-even con Fixed $20/mes = 10M cmds/mes (3.3x más usuarios). Pay as You Go es lo correcto para tier actual. |
 | 2026-05-09 (noche) | Lista actualizada de endpoints con stale-if-error como red de seguridad | Tras esta sesión: `theme-stats`, `problematic-articles`, `topics/[numero]`, `weak-articles`, `filtered-questions` (POST + count), `oposiciones-compatibles/progress`. **Pendiente**: `/api/medals` GET (2× 503 en último cascade, marginal), `/api/v2/hot-articles/check` (cacheado 24h pero verificar fallback en timeout), `/api/random-test/availability` (depende de freshness, marginal). Patrón establecido: read-only crítico → siempre `getReadDb` + `withDbTimeout` + stale-if-error con Redis cache key per-params. La replica protege contra primary-CPU/triggers; el cache stale protege contra blips del Shared Pooler regional (que afecta primary+replica simultáneamente). |
 | 2026-05-10 | Fase 0.7 JWT local verify — infraestructura desplegada, rollout en marcha (commit `8aaa9171`) | Hard Gap #1 del roadmap a 10k DAU. `getUser()` round-trip era el contribuyente único más grande del p99 4s en `answer-and-save` (250-1000ms × cada request). Decisión: **shadow mode > canary %** para código de seguridad. Canary expone N% a comportamiento nuevo; shadow expone 0%. Ambos detectan divergencia, pero shadow no tiene riesgo user-facing si bug. Implementación: helper `verifyJwtLocal` con whitelist HS256 explícita (anti algorithm confusion attack), audience `authenticated`, clockTolerance 5s, errores tipados. Wrapper `verifyAuth` con env `JWT_LOCAL_VERIFY_MODE`: off (default, comportamiento legacy) / shadow (ambos paralelo, log diff a Sentry+validation_error_logs, sirve remoto) / on (solo local, <5ms). Aplicado a piloto `/api/v2/answer-and-save`. **Investigación previa**: confirmado HS256 (JWKS endpoint vacío `{"keys":[]}`); 41 callers auditados — 0 usan app_metadata del resultado de getUser, todos cubiertos con `{userId, email}`; lib `jsonwebtoken@9.0.3` (no `jose@6` por ESM-only y config Jest no trivial). **Tests críticos**: 27 cubriendo algorithm confusion (none/HS384/HS512), payload tampering (impersonar otro user), firma rota, expiry, audience inválido, secret missing → no_secret_configured (NO false positive). 10 wrapper tests cubriendo shadow divergence detection. 79 tests existentes answer-flow sin regresión. **Hallazgo lateral**: Access token expiry actual = 604.800s (7 días) vs recomendación 3.600s (1h). Decisión pendiente: bajar expiry (invalida sesiones) vs añadir BD check banned_at (+10ms). Por ahora no se toca. **Plan rollout**: A=hoy MODE=off ✅, B=user activa MODE=shadow 24-48h, C=flip MODE=on (p50 1.5s→0.5s), D=migrar 40 callers restantes, E=eliminar getUser residual. Rollback en cada fase: env var → off + redeploy <2min. |
+| 2026-05-11 | Sección "Reducir dependencia de Supabase (vendor lock-in)" añadida al roadmap | Surgió de pregunta del usuario "¿está preparado para swap a Clerk/Auth.js si algún día quiero?". Constatación: el wrapper `verifyAuth()` (Fase 0.7) es **el primer paso real** hacia portabilidad — los 41 endpoints son provider-agnostic post-migración. **Estado actual del acoplamiento documentado**: BD Postgres 🟡 medio (Drizzle es portable), pooler regional 🟢 ya mitigado con pooler propio, `auth.users + RLS` 🔴 alto (RLS usa `auth.uid()`), `Supabase Auth API` 🟡 medio (wrapper abstrae endpoints, OAuth+password reset siguen acoplados), PostgREST 🔴 alto (29/58 conexiones), Storage 🟢 bajo, Email Auth 🟡 medio, Edge Functions 🟢 no usa. **4 paths de migración documentados**: A=replace auth incremental con dual-write (1-3 meses), B=big bang con re-login forzado (1-2 sem), C=hybrid Supabase BD + Auth.js (2-3 sem), D=salida completa con `pg_dump` a Neon/RDS/Hetzner (1-2 sem + 1 noche, pre-requisito A/B/C). **Comparativa de providers**: Auth.js (open source, 0€, control total) vs Clerk ($25/mo hasta 10k MAU, UX prebuilt) vs Better Auth (moderno, type-safe, joven) vs Lucia (DIY) vs WorkOS (enterprise SSO, caro). **Comparativa BD**: Supabase Pro $40 vs Neon $20-50 vs RDS $50-100 vs Hetzner self-hosted $20-40. **Decisión activa**: Vence sigue con Supabase ahora (235 DAU, $40/mes razonable). Re-evaluar swap auth cuando >10k MAU, fallos repetidos, features faltantes. Re-evaluar swap BD cuando >$200/mes consistente, 2+ incidentes/mes por tier compartido. **Regla nueva**: cada decisión de arquitectura debe preguntarse "¿esto aumenta lock-in con Supabase?" y justificarse si sí. |
