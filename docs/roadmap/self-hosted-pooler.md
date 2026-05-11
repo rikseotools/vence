@@ -521,18 +521,20 @@ Aplicado ya en `infra/pooler/provision-pooler.sh` (commit pendiente). Re-provisi
 
 **Fix aplicado** (sin esperar a Fase 6 HA):
 
-1. **Mover unattended-upgrades a madrugada** (sin tráfico):
+1. **Mover unattended-upgrades a madrugada profunda** (sin tráfico):
    ```bash
    sudo tee /etc/systemd/system/apt-daily-upgrade.timer.d/override.conf <<EOF
    [Timer]
    OnCalendar=
-   OnCalendar=*-*-* 23:00:00
+   OnCalendar=*-*-* 01:00:00
    RandomizedDelaySec=15min
    EOF
    sudo systemctl daemon-reload
    sudo systemctl restart apt-daily-upgrade.timer
    ```
-   23:00 UTC = 01:00 CEST = madrugada España, sin opositores online.
+   **01:00 UTC = 03:00 CEST (verano) / 02:00 CET (invierno)** = madrugada profunda España. Sin opositores online (los más nocturnos cierran sobre 01:00-02:00). También cambiamos `apt-daily.timer` (que checkea actualizaciones, no instala) a 00:30 UTC para que no choquen.
+
+   > Nota: probamos primero `23:00 UTC = 01:00 CEST` pero subimos a `01:00 UTC = 03:00 CEST` para dejar margen a usuarios nocturnos.
 
 2. **Blacklist pgbouncer en needrestart**:
    ```bash
