@@ -46,7 +46,7 @@ Este roadmap cambia la arquitectura **sin reescribir** el código, en 6 fases in
 
 | Fase | Estado | Duración | Coste mensual | Beneficio | Riesgo |
 |---|---|---|---|---|---|
-| **0 — Estabilizar** | 🟡 6/7 hechas (falta 0.5 verificación p95). Fase 0.7 (JWT local verify) en rollout — infraestructura deployed 2026-05-10 con flag OFF, pendiente activar shadow → on | 1 sem | $0 | Resuelve timeouts actuales | Cero |
+| **0 — Estabilizar** | 🟢 6/7 hechas (falta 0.5 verificación p95). Fase 0.7 (JWT local verify) prácticamente completa 2026-05-11 — MODE=on activo, 32/41 endpoints migrados, latencia auth 250-1000ms → <5ms confirmada. Pendientes 8 archivos lib + 1 page TSX (helpers, impacto menor) | 1 sem | $0 | Resuelve timeouts actuales | Cero |
 | **1 — Redis cache** | ✅ COMPLETA (2026-05-02) | 1-2 sem | $10 | -80% load BD | Bajo |
 | **2 — Outbox pattern** | ⏳ Pendiente | 2-3 sem | $0 | Estabilidad escrituras | Medio |
 | **3 — Pool split / replica** | ✅ **COMPLETA (2026-05-09)** — `getDb` max:1 + `getAdminDb` max:4 + `getReadDb` apunta a read replica eu-west-2 (provisionada Small ~$15/mes). 3 endpoints migrados (theme-stats, problematic-articles, ranking). Feature flag `USE_READ_REPLICA` permite rollback 30s | 2-3 sem | ~$15/mes | Aislamiento OLTP + descarga lecturas del primary | Bajo |
@@ -158,9 +158,40 @@ Tras hacer push de los 19 commits de Sprint 2, revisión de logs Vercel detectó
 
 ---
 
-## Fase 0.7 — JWT local verify (CRÍTICO seguridad) 🟡 EN ROLLOUT (2026-05-10)
+## Fase 0.7 — JWT local verify (CRÍTICO seguridad) 🟢 PRÁCTICAMENTE COMPLETA (2026-05-11)
 
-**Estado actual**: infraestructura desplegada con `JWT_LOCAL_VERIFY_MODE=off` por defecto. Aplicada al endpoint piloto `/api/v2/answer-and-save`. Pendiente: activar shadow mode en Vercel (env var change), observar 24-48h, flip a `on`, migrar resto de 40 callers.
+**Estado actual**: `MODE=on` activo en producción. 32/41 callers migrados al wrapper. Solo quedan 8 archivos lib + 1 page TSX (helpers internos, impacto menor en latencia).
+
+**Resumen del rollout**:
+- 2026-05-10: infraestructura deployed (`8aaa9171`), env vars añadidas, shadow mode 24h con 15.663 requests y 0 divergencias
+- 2026-05-10: flip a `MODE=on` validado por latencia (134-221ms vs 250-450ms anteriores)
+- 2026-05-11 mañana: migración progresiva en 6 batches con AI leyendo cada archivo individualmente. **-414 LOC netas** (eliminado código duplicado de auth).
+
+**Batches completados** (todos con TS check + tests verdes):
+| Batch | Endpoints | Commit |
+|---|---|---|
+| 1 | 8 `/api/v2/official-exams/*` | `c5296a11` |
+| 2 | 3 `/api/sessions/*` | `69877f1e` |
+| 3 | 7 core (filtered, weak-articles, complete-test, complete-onboarding, devices, dispute v2, tests/failed-questions) | `b9f637d6` |
+| 4 | 7 con email check (soporte, admin/engagement-stats, admin/infra-stats, admin/ai-traces × 2, admin/broadcast) | `89d0d922` |
+| 4.5 | 1 reparado tras error de proceso (ai/create-test) | `932c15d0` |
+| 5 | 6 (failed-by-topic, save-answer, dispute, cursos/* × 3) | `c1299a12` |
+
+**Lección importante aprendida (commit `932c15d0`)**: en `ai/create-test` eliminé el helper `getSupabase` asumiendo (por grep parcial) que solo se usaba para auth. TypeScript cazó el error: se usaba para 10+ queries BD. Ajusté proceso: Read del archivo COMPLETO, grep de TODAS las apariciones, mantener declaración si se usa fuera del bloque auth, TS check después de cada archivo individual (no acumulado).
+
+**Pendientes** (no urgentes, helpers internos):
+- `lib/api/dailyLimit.ts`
+- `lib/api/shared/auth.ts`
+- `lib/finance/auth.ts`
+- `lib/services/emailTracker.ts`
+- `lib/services/notificationTracker.ts`
+- `lib/testFetchers.ts`
+- `lib/supabase.ts`
+- `app/auxiliar-administrativo-estado/test/tema/[numero]/page.tsx`
+
+**Beneficio observado**: latencia auth bajó de 250-1000ms a <5ms en los 32 endpoints migrados. Los warnings `⚠️ [answer-and-save] Respuesta lenta` que aparecían 24/h prácticamente desaparecieron (verificado en logs Vercel).
+
+**Rollback**: env var `JWT_LOCAL_VERIFY_MODE=off` + redeploy → vuelve a `getUser()` remoto para los 41 callers simultáneamente. <2 min.
 
 **Origen:** Hard Gap #1 de la auditoría 10k DAU. Investigación a fondo del 3 may 2026 confirmó que era **el principal cuello del hot path**.
 
@@ -978,7 +1009,7 @@ Estimación honesta de qué REVENTARÍA a 10k DAU si no hacemos nada. Distinto d
 
 | # | Gap | Cuándo revienta | Esfuerzo | ROI |
 |---|---|---|---|---|
-| 1 | **JWT verify con round-trip a Supabase Auth** en cada request autenticada (~250ms × 5M/día = 350h latencia agregada). 🟡 **EN ROLLOUT 2026-05-10** — infraestructura deployed (commit `8aaa9171`): helper `verifyJwtLocal` con whitelist HS256 + wrapper `verifyAuth` con shadow mode + 37 tests + aplicado a `/api/v2/answer-and-save`. Flag `JWT_LOCAL_VERIFY_MODE=off` por defecto. Pendiente: user activa shadow 24-48h → flip a `on` → migrar 40 callers restantes. | 3-5k DAU | ~6h hechas + 1-2 sem rollout | **Brutal** — baja TODOS los endpoints autenticados |
+| 1 | **JWT verify con round-trip a Supabase Auth** en cada request autenticada (~250ms × 5M/día = 350h latencia agregada). 🟢 **PRÁCTICAMENTE CERRADO 2026-05-11** — MODE=on activo en producción. 32/41 callers migrados al wrapper en 6 batches (commits `8aaa9171` infra + `c5296a11` `69877f1e` `b9f637d6` `89d0d922` `932c15d0` `c1299a12`). Latencia auth 250-1000ms → <5ms confirmada. Pendientes 8 archivos lib + 1 page TSX (helpers internos). | Resuelto | ~10h + 1h cleanup lib | **Brutal** — baja TODOS los endpoints autenticados |
 | 2 | **Pool max:1 en endpoints/crons que deberían usar `getAdminDb` (max:4) o `getTraceDb`** — 3 crons migrados (commit 76dc3ffb) + 1 (avatar) + **markActiveStudentIfFirst en after() de answer-and-save migrado a getTraceDb** (Sprint 2.3, commit `a396580a`). Faltan auditar el resto. Cada cron lento con `getDb` monopoliza el pool de usuarios → cascada 504 | 3-5k DAU | 2-3h auditoría + N migraciones triviales | Alto |
 | 3 | **Cron batch LIMIT 100 vs tasa de inserción** — hoy 28k procesados/día sobra; a 10k DAU son 1M inserciones → 1M `stats_dirty` marks → backlog crece +972k/día. Subir LIMIT a 1000 o cron 1min, validar que no causa lock contention (incidente 2 may 17:14 fue por esto con LIMIT 500) | 5-7k DAU | 1h ajuste + monitorización | Medio |
 | 4 | **Tablas grandes sin partitioning ni TTL** — test_questions 2.2 GB → 30 GB/mes a 10k DAU. validation_error_logs / notification_events / email_events crecen sin parar. Quick wins: TTL >90 días en eventos. Estructural: partitioning declarativo de test_questions por mes (ya en Fase 3 roadmap) | 5-7k DAU para TTL, 7-10k para partitioning | TTL = 1h, partitioning = 4-8h | Alto a medio plazo |
@@ -1081,3 +1112,4 @@ Si solo pudieras hacer 3 cosas para escalar a 10k, en este orden:
 | 2026-05-09 (noche) | Lista actualizada de endpoints con stale-if-error como red de seguridad | Tras esta sesión: `theme-stats`, `problematic-articles`, `topics/[numero]`, `weak-articles`, `filtered-questions` (POST + count), `oposiciones-compatibles/progress`. **Pendiente**: `/api/medals` GET (2× 503 en último cascade, marginal), `/api/v2/hot-articles/check` (cacheado 24h pero verificar fallback en timeout), `/api/random-test/availability` (depende de freshness, marginal). Patrón establecido: read-only crítico → siempre `getReadDb` + `withDbTimeout` + stale-if-error con Redis cache key per-params. La replica protege contra primary-CPU/triggers; el cache stale protege contra blips del Shared Pooler regional (que afecta primary+replica simultáneamente). |
 | 2026-05-10 | Fase 0.7 JWT local verify — infraestructura desplegada, rollout en marcha (commit `8aaa9171`) | Hard Gap #1 del roadmap a 10k DAU. `getUser()` round-trip era el contribuyente único más grande del p99 4s en `answer-and-save` (250-1000ms × cada request). Decisión: **shadow mode > canary %** para código de seguridad. Canary expone N% a comportamiento nuevo; shadow expone 0%. Ambos detectan divergencia, pero shadow no tiene riesgo user-facing si bug. Implementación: helper `verifyJwtLocal` con whitelist HS256 explícita (anti algorithm confusion attack), audience `authenticated`, clockTolerance 5s, errores tipados. Wrapper `verifyAuth` con env `JWT_LOCAL_VERIFY_MODE`: off (default, comportamiento legacy) / shadow (ambos paralelo, log diff a Sentry+validation_error_logs, sirve remoto) / on (solo local, <5ms). Aplicado a piloto `/api/v2/answer-and-save`. **Investigación previa**: confirmado HS256 (JWKS endpoint vacío `{"keys":[]}`); 41 callers auditados — 0 usan app_metadata del resultado de getUser, todos cubiertos con `{userId, email}`; lib `jsonwebtoken@9.0.3` (no `jose@6` por ESM-only y config Jest no trivial). **Tests críticos**: 27 cubriendo algorithm confusion (none/HS384/HS512), payload tampering (impersonar otro user), firma rota, expiry, audience inválido, secret missing → no_secret_configured (NO false positive). 10 wrapper tests cubriendo shadow divergence detection. 79 tests existentes answer-flow sin regresión. **Hallazgo lateral**: Access token expiry actual = 604.800s (7 días) vs recomendación 3.600s (1h). Decisión pendiente: bajar expiry (invalida sesiones) vs añadir BD check banned_at (+10ms). Por ahora no se toca. **Plan rollout**: A=hoy MODE=off ✅, B=user activa MODE=shadow 24-48h, C=flip MODE=on (p50 1.5s→0.5s), D=migrar 40 callers restantes, E=eliminar getUser residual. Rollback en cada fase: env var → off + redeploy <2min. |
 | 2026-05-11 | Sección "Reducir dependencia de Supabase (vendor lock-in)" añadida al roadmap | Surgió de pregunta del usuario "¿está preparado para swap a Clerk/Auth.js si algún día quiero?". Constatación: el wrapper `verifyAuth()` (Fase 0.7) es **el primer paso real** hacia portabilidad — los 41 endpoints son provider-agnostic post-migración. **Estado actual del acoplamiento documentado**: BD Postgres 🟡 medio (Drizzle es portable), pooler regional 🟢 ya mitigado con pooler propio, `auth.users + RLS` 🔴 alto (RLS usa `auth.uid()`), `Supabase Auth API` 🟡 medio (wrapper abstrae endpoints, OAuth+password reset siguen acoplados), PostgREST 🔴 alto (29/58 conexiones), Storage 🟢 bajo, Email Auth 🟡 medio, Edge Functions 🟢 no usa. **4 paths de migración documentados**: A=replace auth incremental con dual-write (1-3 meses), B=big bang con re-login forzado (1-2 sem), C=hybrid Supabase BD + Auth.js (2-3 sem), D=salida completa con `pg_dump` a Neon/RDS/Hetzner (1-2 sem + 1 noche, pre-requisito A/B/C). **Comparativa de providers**: Auth.js (open source, 0€, control total) vs Clerk ($25/mo hasta 10k MAU, UX prebuilt) vs Better Auth (moderno, type-safe, joven) vs Lucia (DIY) vs WorkOS (enterprise SSO, caro). **Comparativa BD**: Supabase Pro $40 vs Neon $20-50 vs RDS $50-100 vs Hetzner self-hosted $20-40. **Decisión activa**: Vence sigue con Supabase ahora (235 DAU, $40/mes razonable). Re-evaluar swap auth cuando >10k MAU, fallos repetidos, features faltantes. Re-evaluar swap BD cuando >$200/mes consistente, 2+ incidentes/mes por tier compartido. **Regla nueva**: cada decisión de arquitectura debe preguntarse "¿esto aumenta lock-in con Supabase?" y justificarse si sí. |
+| 2026-05-11 | Fase 0.7 migración masiva: 32/41 endpoints al wrapper verifyAuth en 6 batches | Tras 24h con MODE=on en producción sin issues (15.663 requests, 0 divergencias en shadow previo), procedida la migración del resto de callers con AI leyendo cada archivo individualmente — NO script find/replace. **6 batches**: 1=8 official-exams (commit `c5296a11`), 2=3 sessions (`69877f1e`), 3=7 core (`b9f637d6`), 4=7 admin+email (`89d0d922`), 4.5=ai/create-test reparado (`932c15d0`), 5=6 endpoints app (`c1299a12`). **-414 LOC netas** de código duplicado eliminado. **Lección importante** (commit 932c15d0): en ai/create-test eliminé el helper getSupabase asumiendo que solo se usaba para auth (vi grep parcial). TypeScript cazó el error: se usaba en 10+ queries BD posteriores. Sin TS, habría llegado a producción rota. **Proceso ajustado**: 1) Read del archivo COMPLETO antes de modificar, 2) grep de TODAS las apariciones de la función/var a eliminar, 3) Si se usa fuera del bloque auth → MANTENER declaración, 4) TS check después de CADA archivo individual (no acumulado). **Verificación producción 2h post-migración**: 4248 calls answer-and-save, 0 errores 401 de usuarios reales (los 5 visibles eran mis curls de tests), 13× 503 son blip pooler regional ~45s (no auth-related). Latencia auth 250-1000ms → <5ms confirmada en los 32 endpoints. **Pendientes** (helpers internos, menor impacto): 8 archivos lib + 1 page TSX. |
