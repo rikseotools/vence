@@ -244,11 +244,16 @@ function processDifficultyStats(
   questionResults: Array<{
     difficulty: string | null
     globalDifficulty: string | null
-  }>
+  } | null | undefined>
 ): DifficultyStats {
   const stats: DifficultyStats = { easy: 0, medium: 0, hard: 0, extreme: 0, auto: 0 }
 
   for (const q of questionResults) {
+    if (!q) {
+      stats.auto += 1
+      continue
+    }
+
     let difficultyLevel: keyof DifficultyStats
 
     // Usar global_difficulty si existe, sino difficulty estática
@@ -264,13 +269,17 @@ function processDifficultyStats(
         difficultyLevel = 'extreme'
       }
     } else {
-      difficultyLevel = (q.difficulty as keyof DifficultyStats) || 'auto'
+      difficultyLevel = isDifficultyKey(q.difficulty) ? q.difficulty : 'auto'
     }
 
     stats[difficultyLevel] = (stats[difficultyLevel] || 0) + 1
   }
 
   return stats
+}
+
+function isDifficultyKey(value: string | null): value is keyof DifficultyStats {
+  return value === 'easy' || value === 'medium' || value === 'hard' || value === 'extreme' || value === 'auto'
 }
 
 /**

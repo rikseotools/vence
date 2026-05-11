@@ -10,7 +10,7 @@ import { getDb, getReadDb, getPoolerDb } from '@/db/client'
 function getFilteredCountDb() {
   return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getReadDb()
 }
-import { questions, articles, laws, topicScope, topics, tests, testQuestions, userQuestionHistory } from '@/db/schema'
+import { questions, articles, laws, topicScope, topics, testQuestions, userQuestionHistory } from '@/db/schema'
 import { eq, and, inArray, sql, notInArray, desc, or, lt } from 'drizzle-orm'
 import {
   getAllowedLawIds,
@@ -195,9 +195,8 @@ async function getRecentlyAnsweredQuestionIds(
   const recentAnswers = await db
     .select({ questionId: testQuestions.questionId })
     .from(testQuestions)
-    .innerJoin(tests, eq(testQuestions.testId, tests.id))
     .where(and(
-      eq(tests.userId, userId),
+      eq(testQuestions.userId, userId),
       sql`${testQuestions.createdAt} >= ${dateThreshold.toISOString()}`
     ))
 
@@ -214,22 +213,25 @@ async function getNeverSeenQuestionIds(
   userId: string,
   candidateQuestionIds: string[]
 ): Promise<string[]> {
-  if (candidateQuestionIds.length === 0) return []
+  const uniqueCandidateIds = [...new Set(candidateQuestionIds.filter(Boolean))]
+  if (uniqueCandidateIds.length === 0) return []
 
-  // Obtener preguntas que el usuario ya ha visto
+  // Obtener preguntas que el usuario ya ha visto. Usar user_question_history
+  // evita el JOIN test_questions×tests y aprovecha la unique key
+  // (user_id, question_id); en producción el IN contra test_questions con miles
+  // de IDs estaba agotando statement_timeout.
   const seenAnswers = await db
-    .select({ questionId: testQuestions.questionId })
-    .from(testQuestions)
-    .innerJoin(tests, eq(testQuestions.testId, tests.id))
+    .select({ questionId: userQuestionHistory.questionId })
+    .from(userQuestionHistory)
     .where(and(
-      eq(tests.userId, userId),
-      inArray(testQuestions.questionId, candidateQuestionIds)
+      eq(userQuestionHistory.userId, userId),
+      inArray(userQuestionHistory.questionId, uniqueCandidateIds)
     ))
 
   const seenIds = new Set((seenAnswers || []).map(r => r.questionId).filter(Boolean))
 
   // Devolver solo las que no ha visto
-  return candidateQuestionIds.filter(id => !seenIds.has(id))
+  return uniqueCandidateIds.filter(id => !seenIds.has(id))
 }
 
 // ============================================
@@ -427,6 +429,9 @@ export function selectProportionallyByArticle<T extends { id: string; articleNum
   numQuestions: number,
   options?: { maxPerArticle?: number; log?: boolean }
 ): T[] {
+  candidates = candidates.filter(Boolean)
+  fullPool = fullPool.filter(Boolean)
+
   if (candidates.length <= numQuestions && fullPool.length <= numQuestions) {
     return candidates // No hay margen para redistribuir
   }
@@ -505,7 +510,9 @@ export function selectProportionallyByArticle<T extends { id: string; articleNum
   }
 
   if (log) {
-    const diversityScore = (new Set(selected.map(articleKey)).size / selected.length).toFixed(2)
+    const diversityScore = selected.length > 0
+      ? (new Set(selected.map(articleKey)).size / selected.length).toFixed(2)
+      : '0.00'
     const topArticles = [...articleCounts.entries()]
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5)
@@ -1221,6 +1228,8 @@ export async function getFilteredQuestions(
       finalQuestions = sortedQuestions.sort(() => Math.random() - 0.5).slice(0, numQuestions)
     }
 
+    finalQuestions = finalQuestions.filter(Boolean)
+
     // 7b. Distribución proporcional por artículo (evita que artículos con muchas preguntas monopolicen)
     if (finalQuestions.length > 3) {
       finalQuestions = selectProportionallyByArticle(
@@ -1243,7 +1252,7 @@ export async function getFilteredQuestions(
     // Postgres no garantiza orden de WHERE id IN (...) → Map preserva orden
     // de selección JS. Si una pregunta fue desactivada entre Q1 y Q2 (race
     // muy poco probable, microsegundos), se loguea warn y se skippea.
-    const selectedIds = finalQuestions.map(q => q.id)
+    const selectedIds = finalQuestions.map(q => q.id).filter(Boolean)
     const hydrated = await hydrateSelectedQuestions(db, selectedIds)
 
     const orderedRows: QuestionRow[] = []

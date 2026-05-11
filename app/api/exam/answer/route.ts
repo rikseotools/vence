@@ -7,13 +7,13 @@ import {
 } from '@/lib/api/exam'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { checkRateLimit, getClientIp, RATE_LIMIT_ANON_ANSWER } from '@/lib/api/rateLimit'
-import { getDailyLimitStatus, incrementDailyCount, checkDeviceDailyUsage, getUserIdFromToken } from '@/lib/api/dailyLimit'
+import { getDailyLimitStatus, checkDeviceDailyUsage, getUserIdFromToken } from '@/lib/api/dailyLimit'
 import { registerAndCheckDevice, getDeviceIdFromRequest, getHwFingerprintFromRequest } from '@/lib/api/deviceLimit'
+import { withDbTimeout, isDbTimeoutError } from '@/lib/db/timeout'
 // Evitar 504 de Vercel (default 300s): fail fast
 export const maxDuration = 30
 
 async function _POST(request: NextRequest) {
-  const startTime = Date.now()
   let body: Record<string, unknown> | undefined
 
   try {
@@ -24,7 +24,7 @@ async function _POST(request: NextRequest) {
 
     if (!parseResult.success) {
       console.error('❌ [API/exam/answer] Validation error:', parseResult.error.issues)
-return NextResponse.json(
+      return NextResponse.json(
         {
           success: false,
           error: 'Datos de respuesta inválidos',
@@ -37,7 +37,10 @@ return NextResponse.json(
     const data = parseResult.data
 
     // Extract userId from Bearer token (trusted) instead of body (untrusted)
-    const tokenUserId = await getUserIdFromToken(request)
+    const tokenUserId = await withDbTimeout(
+      () => getUserIdFromToken(request),
+      5_000
+    )
 
     // Anonymous users: max 5 per IP per day
     if (!tokenUserId) {
@@ -54,7 +57,10 @@ return NextResponse.json(
     const deviceId = getDeviceIdFromRequest(request)
 
     const hwFingerprint = getHwFingerprintFromRequest(request)
-    const deviceCheck = await registerAndCheckDevice(tokenUserId, deviceId, request.headers.get('user-agent'), hwFingerprint)
+    const deviceCheck = await withDbTimeout(
+      () => registerAndCheckDevice(tokenUserId, deviceId, request.headers.get('user-agent'), hwFingerprint),
+      8_000
+    )
     if (!deviceCheck.allowed) {
       return NextResponse.json(
         {
@@ -69,11 +75,17 @@ return NextResponse.json(
       )
     }
 
-    const dailyLimit = await getDailyLimitStatus(tokenUserId)
+    const dailyLimit = await withDbTimeout(
+      () => getDailyLimitStatus(tokenUserId),
+      8_000
+    )
 
     // Shared device daily limit (solo free users — premium bypass)
     if (!dailyLimit.isPremium) {
-      const deviceUsage = await checkDeviceDailyUsage(deviceId)
+      const deviceUsage = await withDbTimeout(
+        () => checkDeviceDailyUsage(deviceId),
+        8_000
+      )
       if (deviceUsage && !deviceUsage.allowed) {
         return NextResponse.json(
           {
@@ -105,7 +117,11 @@ return NextResponse.json(
 
     // Si se proporciona userId, verificar propiedad del test
     if (body?.userId) {
-      const isOwner = await verifyTestOwnership(data.testId, body.userId as string)
+      const requestUserId = body.userId as string
+      const isOwner = await withDbTimeout(
+        () => verifyTestOwnership(data.testId, requestUserId),
+        8_000
+      )
       if (!isOwner) {
         return NextResponse.json(
           { success: false, error: 'No tienes acceso a este test' },
@@ -115,11 +131,14 @@ return NextResponse.json(
     }
 
     // Guardar la respuesta (usa UPSERT internamente)
-    const result = await saveAnswer(data)
+    const result = await withDbTimeout(
+      () => saveAnswer(data),
+      15_000
+    )
 
     if (!result.success) {
       console.error('❌ [API/exam/answer] Save failed:', result.error)
-return NextResponse.json(
+      return NextResponse.json(
         { success: false, error: result.error || 'Error guardando respuesta' },
         { status: 500 }
       )
@@ -135,7 +154,17 @@ return NextResponse.json(
     })
   } catch (error) {
     console.error('❌ [API/exam/answer] Error:', error)
-return NextResponse.json(
+    if (isDbTimeoutError(error)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Base de datos temporalmente lenta. Reintenta en unos segundos.',
+          retryable: true,
+        },
+        { status: 503, headers: { 'Retry-After': '5' } }
+      )
+    }
+    return NextResponse.json(
       {
         success: false,
         error: error instanceof Error ? error.message : 'Error interno del servidor',

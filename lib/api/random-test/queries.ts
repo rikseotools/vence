@@ -5,7 +5,7 @@ import { getDb, getPoolerDb } from '@/db/client'
 function getRandomTestQDb() {
   return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
 }
-import { topics, topicScope, laws, questions, articles, tests, testQuestions, userQuestionHistory } from '@/db/schema'
+import { topics, topicScope, laws, questions, articles, testQuestions, userQuestionHistory } from '@/db/schema'
 import { eq, and, sql, inArray, desc, gte, isNotNull } from 'drizzle-orm'
 import { getOposicionByPositionType, EXCLUSIVE_QUESTION_TAGS } from '@/lib/config/oposiciones'
 import { unstable_cache } from 'next/cache'
@@ -284,6 +284,9 @@ export async function getUserThemeStats(
   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
 
   // UNA SOLA QUERY: Estadísticas agrupadas por tema
+  // Usar test_questions.user_id denormalizado evita el JOIN con tests, que para
+  // heavy users estaba agotando statement_timeout en /api/random-test/user-stats.
+  // El índice idx_tq_user_tema_covering cubre user_id + tema_number.
   const statsResult = await db
     .select({
       themeId: testQuestions.temaNumber,
@@ -292,10 +295,9 @@ export async function getUserThemeStats(
       lastStudied: sql<string>`max(${testQuestions.createdAt})`,
     })
     .from(testQuestions)
-    .innerJoin(tests, eq(testQuestions.testId, tests.id))
     .where(and(
-      eq(tests.userId, userId),
-      gte(tests.createdAt, sixMonthsAgo.toISOString()),
+      eq(testQuestions.userId, userId),
+      gte(testQuestions.createdAt, sixMonthsAgo.toISOString()),
       isNotNull(testQuestions.temaNumber),
       isNotNull(testQuestions.userAnswer),
       inArray(testQuestions.temaNumber, allThemeIds)

@@ -1,7 +1,7 @@
 // lib/teoriaFetchers.ts - FETCHERS PARA SISTEMA DE TEORÍA
 import 'server-only'
 import { getSupabaseClient } from './supabase'
-import { getDb } from '@/db/client'
+import { getDb, getPoolerDb } from '@/db/client'
 import { articles, laws } from '@/db/schema'
 import { eq, and, isNotNull, ne, sql as dsql } from 'drizzle-orm'
 import { getShortNameBySlug, loadSlugMappingCache, generateSlugFromShortName } from './api/laws/queries'
@@ -196,6 +196,10 @@ interface FetchLawSectionsOptions {
 }
 
 const supabase: SupabaseClientAny = getSupabaseClient()
+
+function getTeoriaDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
 
 // ================================================================
 // 🏛️ FETCHER: Lista de leyes con contenido de teoría disponible
@@ -398,29 +402,56 @@ export async function fetchArticleContent(lawSlug: string, articleNumber: string
 
     let data: any = null
     let error: any = null
+    const db = getTeoriaDb()
     for (const candidate of candidates) {
-      const res = await supabase
-        .from('articles')
-        .select(`
-          id,
-          article_number,
-          title,
-          content,
-          is_active,
-          created_at,
-          updated_at,
-          laws!inner(
-            id, name, short_name, slug, description, is_virtual
-          )
-        `)
-        .eq('is_active', true)
-        .eq('laws.is_active', true)
-        .eq('laws.short_name', lawShortName)
-        .eq('article_number', candidate)
-        .single()
-      data = res.data
-      error = res.error
-      if (!error) break
+      const [row] = await db
+        .select({
+          id: articles.id,
+          article_number: articles.articleNumber,
+          title: articles.title,
+          content: articles.content,
+          is_active: articles.isActive,
+          created_at: articles.createdAt,
+          updated_at: articles.updatedAt,
+          law_id: laws.id,
+          law_name: laws.name,
+          law_short_name: laws.shortName,
+          law_slug: laws.slug,
+          law_description: laws.description,
+          law_is_virtual: laws.isVirtual,
+        })
+        .from(articles)
+        .innerJoin(laws, eq(articles.lawId, laws.id))
+        .where(and(
+          eq(articles.isActive, true),
+          eq(laws.isActive, true),
+          eq(laws.shortName, lawShortName),
+          eq(articles.articleNumber, candidate),
+        ))
+        .limit(1)
+
+      if (row) {
+        data = {
+          id: row.id,
+          article_number: row.article_number,
+          title: row.title,
+          content: row.content,
+          is_active: row.is_active,
+          created_at: row.created_at,
+          updated_at: row.updated_at,
+          laws: {
+            id: row.law_id,
+            name: row.law_name,
+            short_name: row.law_short_name,
+            slug: row.law_slug,
+            description: row.law_description,
+            is_virtual: row.law_is_virtual,
+          },
+        }
+        error = null
+        break
+      }
+      error = { code: 'PGRST116', message: 'No rows found' }
     }
 
     if (error) {
@@ -429,12 +460,15 @@ export async function fetchArticleContent(lawSlug: string, articleNumber: string
       // 🔍 Si el artículo no existe (error PGRST116)
       if (error.code === 'PGRST116') {
         // Buscar artículos disponibles para dar contexto
-        const { data: availableArticles } = await supabase
-          .from('articles')
-          .select('article_number, laws!inner(short_name)')
-          .eq('is_active', true)
-          .eq('laws.short_name', lawShortName)
-          .order('article_number')
+        const availableArticles = await db
+          .select({ article_number: articles.articleNumber })
+          .from(articles)
+          .innerJoin(laws, eq(articles.lawId, laws.id))
+          .where(and(
+            eq(articles.isActive, true),
+            eq(laws.shortName, lawShortName),
+          ))
+          .orderBy(articles.articleNumber)
           .limit(5)
 
         const suggestions = availableArticles && availableArticles.length > 0
