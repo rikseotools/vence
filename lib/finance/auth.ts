@@ -6,10 +6,15 @@
 //
 // Usado por /armando/page.tsx y /admin/cobros/page.tsx para llamar a las
 // mismas APIs server-side con service_role.
+//
+// REFACTOR 2026-05-11: vía 2 (Bearer) delegada a verifyAuth (Fase 0.7).
+// El check de admin sigue requiriendo client Supabase para llamar la
+// RPC `is_current_user_admin` que opera contra auth.uid() del JWT.
 
 import { createClient } from '@supabase/supabase-js'
 import type { NextRequest } from 'next/server'
 import { readSession } from '@/lib/armando/session'
+import { verifyAuth } from '@/lib/api/auth/verifyAuth'
 
 export type FinanceCaller =
   | { kind: 'armando' }
@@ -34,26 +39,29 @@ export async function authenticateFinanceRequest(req: NextRequest): Promise<Fina
     return { ok: true, caller: { kind: 'armando' } }
   }
 
-  // Vía 2: Bearer token + admin
-  const authHeader = req.headers.get('authorization')
-  if (!authHeader?.startsWith('Bearer ')) {
-    return { ok: false, status: 401, error: 'No autenticado' }
+  // Vía 2: Bearer token + admin (wrapper verifyAuth Fase 0.7)
+  const auth = await verifyAuth(req, '/lib/finance/auth')
+  if (!auth.success) {
+    return {
+      ok: false,
+      status: 401,
+      error: auth.reason === 'no_bearer_token' ? 'No autenticado' : 'Token inválido',
+    }
   }
-  const token = authHeader.slice('Bearer '.length)
 
+  // RPC `is_current_user_admin` requiere cliente Supabase con el token del
+  // user (no service_role) porque la función SQL usa auth.uid() del JWT.
+  // Reconstruimos cliente para esta llamada específica.
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   if (!url || !anon) {
     return { ok: false, status: 500, error: 'Supabase no configurado' }
   }
+  const authHeader = req.headers.get('authorization')
+  const token = authHeader!.slice('Bearer '.length)
   const supabase = createClient(url, anon, {
     global: { headers: { Authorization: `Bearer ${token}` } },
   })
-
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-  if (authError || !user) {
-    return { ok: false, status: 401, error: 'Token inválido' }
-  }
 
   const { data: isAdmin, error: roleError } = await supabase.rpc('is_current_user_admin')
   if (roleError) {
@@ -64,5 +72,5 @@ export async function authenticateFinanceRequest(req: NextRequest): Promise<Fina
     return { ok: false, status: 403, error: 'Solo admins' }
   }
 
-  return { ok: true, caller: { kind: 'admin', userId: user.id } }
+  return { ok: true, caller: { kind: 'admin', userId: auth.userId } }
 }

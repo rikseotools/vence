@@ -1,9 +1,21 @@
 // lib/api/shared/auth.ts
 // Centraliza el patrón de autenticación duplicado en 30+ rutas API.
-// Nada lo importa aún — se usará en futuras migraciones.
+// Usado por 27 endpoints (admin, finance, ai-config, lifecycle, etc.).
+//
+// **REFACTOR 2026-05-11**: internamente delegado a `verifyAuth()` para
+// portabilidad y latencia (Fase 0.7 — JWT local verify):
+// - Latencia auth: 250-1000ms → <5ms (cuando JWT_LOCAL_VERIFY_MODE=on)
+// - Portabilidad: cambiar provider auth = modificar 1 archivo (`verifyJwtLocal.ts`)
+// - API externa intacta — los 27 callers no cambian
+//
+// El objeto `user` devuelto incluye solo {id, email} (lo único que usan
+// los 27 callers según auditoría). Otros campos del User type de Supabase
+// (app_metadata, user_metadata, role, etc.) quedan undefined — NINGÚN
+// caller los lee actualmente.
 
 import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
+import { verifyAuth } from '@/lib/api/auth/verifyAuth'
 
 // ============================================
 // Tipos
@@ -31,40 +43,41 @@ export function getServiceClient(): SupabaseClient {
 // ============================================
 // Autenticación de usuario via Bearer token
 // ============================================
+// Delegado a verifyAuth (wrapper Fase 0.7). Mantiene API legacy para los
+// 27 callers existentes pero hereda los modos off/shadow/on del wrapper.
 
 export async function getAuthenticatedUser(
   request: NextRequest
 ): Promise<AuthResult> {
-  const authHeader = request.headers.get('authorization')
-  if (!authHeader?.startsWith('Bearer ')) {
+  const auth = await verifyAuth(request, '/lib/api/shared/auth')
+  if (!auth.success) {
     return {
       ok: false,
       response: NextResponse.json(
-        { error: 'No autorizado' },
+        {
+          error: auth.reason === 'no_bearer_token'
+            ? 'No autorizado'
+            : 'Usuario no autenticado',
+        },
         { status: 401 }
       ),
     }
   }
 
-  const token = authHeader.slice(7)
-  const supabase = getServiceClient()
+  // Construir objeto User-compatible. Los 27 callers solo leen .id y .email
+  // (verificado por auditoría 2026-05-11). Otros campos del User type quedan
+  // undefined — Cast necesario porque User es interface compleja de Supabase.
+  const user = {
+    id: auth.userId,
+    email: auth.email ?? undefined,
+    // Campos requeridos por el interface User pero no usados por callers
+    app_metadata: {},
+    user_metadata: {},
+    aud: 'authenticated',
+    created_at: '',
+  } as unknown as User
 
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser(token)
-
-  if (error || !user) {
-    return {
-      ok: false,
-      response: NextResponse.json(
-        { error: 'Usuario no autenticado' },
-        { status: 401 }
-      ),
-    }
-  }
-
-  return { ok: true, user, supabase }
+  return { ok: true, user, supabase: getServiceClient() }
 }
 
 // ============================================

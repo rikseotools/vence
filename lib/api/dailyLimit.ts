@@ -46,23 +46,14 @@ const DAILY_LIMIT_CACHE_TTL_MS = 60_000
 /**
  * Extract the authenticated userId from the Bearer token.
  * Returns null if no token or invalid — never throws.
+ *
+ * Refactor 2026-05-11: delegado a verifyAuthOptional (Fase 0.7).
+ * Hereda los modos off/shadow/on del wrapper.
  */
 export async function getUserIdFromToken(request: NextRequest): Promise<string | null> {
-  try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader?.startsWith('Bearer ')) return null
-
-    const token = authHeader.split(' ')[1]
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      { global: { headers: { Authorization: `Bearer ${token}` } } },
-    )
-    const { data: { user } } = await supabase.auth.getUser()
-    return user?.id ?? null
-  } catch {
-    return null
-  }
+  const { verifyAuthOptional } = await import('@/lib/api/auth/verifyAuth')
+  const auth = await verifyAuthOptional(request, '/lib/api/dailyLimit')
+  return auth?.userId ?? null
 }
 
 /**
