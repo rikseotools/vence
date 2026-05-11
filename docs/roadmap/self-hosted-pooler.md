@@ -513,6 +513,40 @@ ignore_startup_parameters = extra_float_digits,statement_timeout,idle_in_transac
 
 Aplicado ya en `infra/pooler/provision-pooler.sh` (commit pendiente). Re-provisión idempotente lo arregla.
 
+### Trampa: unattended-upgrades reinicia pgbouncer durante peak hours
+
+**Síntoma** (descubierto 2026-05-11 08:06 CEST, justo durante pico mañanero): blip de ~10s con 500s en endpoints user-facing (`/api/exam/pending`, `/api/v2/user-stats`, etc.) y warnings `tls_sbufio_recv: read failed: unexpected eof while reading` en logs pgbouncer.
+
+**Causa**: `unattended-upgrades` corría por defecto a las **06:04 UTC** (= **08:04 CEST**). Cuando había updates de librerías que pgbouncer enlaza dinámicamente (libssl, libpam-cap, etc.), `needrestart` reiniciaba pgbouncer automáticamente. El reinicio coincidía con el inicio del pico mañanero de tráfico → blip visible para usuarios.
+
+**Fix aplicado** (sin esperar a Fase 6 HA):
+
+1. **Mover unattended-upgrades a madrugada** (sin tráfico):
+   ```bash
+   sudo tee /etc/systemd/system/apt-daily-upgrade.timer.d/override.conf <<EOF
+   [Timer]
+   OnCalendar=
+   OnCalendar=*-*-* 23:00:00
+   RandomizedDelaySec=15min
+   EOF
+   sudo systemctl daemon-reload
+   sudo systemctl restart apt-daily-upgrade.timer
+   ```
+   23:00 UTC = 01:00 CEST = madrugada España, sin opositores online.
+
+2. **Blacklist pgbouncer en needrestart**:
+   ```bash
+   sudo tee /etc/needrestart/conf.d/vence-pgbouncer.conf <<EOF
+   $nrconf{blacklist} = [ qr(^pgbouncer$) ];
+   $nrconf{restart} = "l";
+   EOF
+   ```
+   Pgbouncer NO se reinicia automáticamente. Las libs viejas en memoria funcionan; las nuevas se cargan al próximo reinicio manual cuando convenga.
+
+**Solución definitiva**: HA Fase 6 (2 VMs + NLB con healthcheck). Un reinicio de una VM no afecta tráfico — la otra sirve.
+
+**Pendiente verificar**: que la próxima ejecución de unattended-upgrades el 11 may a las 23:00 UTC NO reinicie pgbouncer.
+
 ### Trampa: PgBouncer admin DB no soporta extended query protocol
 
 **Síntoma**: panel `/admin/infraestructura` muestra "Pooler propio: No disponible" aunque `DATABASE_URL_SELF_POOLER` esté configurada y la VM esté funcionando perfectamente. Logs server-side:
