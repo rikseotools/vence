@@ -5,6 +5,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { verifyAuth } from '@/lib/api/auth/verifyAuth'
+
+// supabase client se mantiene para 10+ queries BD posteriores (tests, questions,
+// articles, laws) que bypaseando RLS. Solo la auth se delega al wrapper.
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -36,26 +40,15 @@ async function _POST(request: NextRequest) {
   console.log('🎯 [API/create-test] Request received')
 
   try {
-    // Verificar autenticación
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
-      console.log('🎯 [API/create-test] No auth header')
+    // Auth (wrapper Fase 0.7 — soporta off/shadow/on)
+    const auth = await verifyAuth(request, '/api/ai/create-test')
+    if (!auth.success) {
       return NextResponse.json(
-        { success: false, error: 'No autorizado' },
+        { success: false, error: auth.reason === 'no_bearer_token' ? 'No autorizado' : 'Token inválido' },
         { status: 401 }
       )
     }
-
-    const token = authHeader.split(' ')[1]
-    const { data: { user }, error: authError } = await getSupabase().auth.getUser(token)
-
-    if (authError || !user) {
-      console.log('🎯 [API/create-test] Auth error:', authError?.message)
-      return NextResponse.json(
-        { success: false, error: 'Token inválido' },
-        { status: 401 }
-      )
-    }
+    const user = { id: auth.userId, email: auth.email }
 
     console.log('🎯 [API/create-test] User authenticated:', user.id)
     const body: CreateTestRequest = await request.json()
