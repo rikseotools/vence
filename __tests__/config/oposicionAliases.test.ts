@@ -28,6 +28,8 @@ describe('Aliases de búsqueda en OPOSICIONES', () => {
     'administrativo_galicia',
     'tramitacion_procesal',
     'auxilio_judicial',
+    'guardia_civil',
+    'policia_nacional',
   ]
 
   test.each(REQUIRES_ALIASES)('%s tiene al menos 3 aliases', (id) => {
