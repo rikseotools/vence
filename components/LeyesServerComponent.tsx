@@ -17,7 +17,7 @@ export default async function LeyesServerComponent() {
             No hay leyes disponibles
           </h3>
           <p className="text-gray-600">
-            {result.error || 'No se encontraron leyes con preguntas en la base de datos.'}
+            {'No se encontraron leyes con preguntas. Inténtalo de nuevo en unos minutos.'}
           </p>
         </div>
       )

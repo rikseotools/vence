@@ -39,9 +39,12 @@ async function _POST(request: NextRequest) {
   // También revalidar landings (oposiciones usan datos de BD)
   revalidateTag('landing', 'max')
 
+  // Leyes (getLawsWithQuestionCounts, 30 días de caché)
+  revalidateTag('laws', 'max')
+
   return NextResponse.json({
     success: true,
-    message: 'Cache temario + landing invalidada.',
+    message: 'Cache temario + landing + laws invalidada.',
     timestamp: new Date().toISOString(),
   })
 }

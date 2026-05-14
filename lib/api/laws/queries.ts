@@ -397,91 +397,91 @@ export function normalizeLawShortName(shortName: string): string {
 // OBTENER LEYES CON CONTEO DE PREGUNTAS (DRIZZLE)
 // ============================================
 
-async function getLawsWithQuestionCountsInternal(): Promise<GetLawsWithCountsResponse> {
-  try {
-    const db = getLawsDb()
-    console.log('🚀 Obteniendo leyes con conteo (Drizzle Query Builder)...')
-    console.time('⏱️ getLawsWithQuestionCounts')
+// Lanza error en caso de fallo — unstable_cache NO cachea excepciones,
+// solo valores de retorno. Así un timeout transitorio no envenena la caché 30 días.
+async function getLawsWithQuestionCountsInternal(): Promise<LawWithCounts[]> {
+  const db = getLawsDb()
+  console.log('🚀 Obteniendo leyes con conteo (Drizzle Query Builder)...')
+  console.time('⏱️ getLawsWithQuestionCounts')
 
-    // Timeout de 15s para no bloquear el build de Vercel (límite 60s por página).
-    // Si Supabase está saturado, mejor fallar rápido y usar el cache anterior.
-    const timeoutMs = 15_000
-    const queryPromise = db
-      .select({
-        id: laws.id,
-        name: laws.name,
-        short_name: laws.shortName,
-        description: laws.description,
-        year: laws.year,
-        type: laws.type,
-        questionCount: count(questions.id),
-        officialQuestions: sql<number>`COUNT(CASE WHEN ${questions.isOfficialExam} = true THEN 1 END)`,
-      })
-      .from(laws)
-      .leftJoin(articles, eq(articles.lawId, laws.id))
-      .leftJoin(
-        questions,
-        and(
-          eq(questions.primaryArticleId, articles.id),
-          eq(questions.isActive, true)
-        )
+  // Timeout de 15s para no bloquear el build de Vercel (límite 60s por página).
+  const timeoutMs = 15_000
+  const queryPromise = db
+    .select({
+      id: laws.id,
+      name: laws.name,
+      short_name: laws.shortName,
+      description: laws.description,
+      year: laws.year,
+      type: laws.type,
+      questionCount: count(questions.id),
+      officialQuestions: sql<number>`COUNT(CASE WHEN ${questions.isOfficialExam} = true THEN 1 END)`,
+    })
+    .from(laws)
+    .leftJoin(articles, eq(articles.lawId, laws.id))
+    .leftJoin(
+      questions,
+      and(
+        eq(questions.primaryArticleId, articles.id),
+        eq(questions.isActive, true)
       )
-      .where(eq(laws.isActive, true))
-      .groupBy(laws.id, laws.name, laws.shortName, laws.description, laws.year, laws.type)
-      .orderBy(sql`COUNT(${questions.id}) DESC`)
+    )
+    .where(eq(laws.isActive, true))
+    .groupBy(laws.id, laws.name, laws.shortName, laws.description, laws.year, laws.type)
+    .orderBy(sql`COUNT(${questions.id}) DESC`)
 
-    const result = await Promise.race([
-      queryPromise,
-      new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error(`getLawsWithQuestionCounts timeout after ${timeoutMs}ms`)), timeoutMs)
-      ),
-    ])
+  const result = await Promise.race([
+    queryPromise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`getLawsWithQuestionCounts timeout after ${timeoutMs}ms`)), timeoutMs)
+    ),
+  ])
 
-    console.timeEnd('⏱️ getLawsWithQuestionCounts')
+  console.timeEnd('⏱️ getLawsWithQuestionCounts')
 
-    const lawsWithCounts: LawWithCounts[] = result
-      .filter(law => Number(law.questionCount) >= 1)
-      .map(law => {
-        const parsed = LawWithCountsSchema.safeParse({
-          id: law.id,
-          name: law.name,
-          short_name: law.short_name,
-          description: law.description,
-          year: law.year,
-          type: law.type,
-          questionCount: Number(law.questionCount),
-          officialQuestions: Number(law.officialQuestions),
-        })
-
-        if (!parsed.success) {
-          console.warn('⚠️ Ley con datos inválidos:', law.short_name, parsed.error.flatten())
-          return null
-        }
-        return parsed.data
+  const lawsWithCounts: LawWithCounts[] = result
+    .filter(law => Number(law.questionCount) >= 1)
+    .map(law => {
+      const parsed = LawWithCountsSchema.safeParse({
+        id: law.id,
+        name: law.name,
+        short_name: law.short_name,
+        description: law.description,
+        year: law.year,
+        type: law.type,
+        questionCount: Number(law.questionCount),
+        officialQuestions: Number(law.officialQuestions),
       })
-      .filter((law): law is LawWithCounts => law !== null)
 
-    console.log(`✅ ${lawsWithCounts.length} leyes con preguntas obtenidas`)
+      if (!parsed.success) {
+        console.warn('⚠️ Ley con datos inválidos:', law.short_name, parsed.error.flatten())
+        return null
+      }
+      return parsed.data
+    })
+    .filter((law): law is LawWithCounts => law !== null)
 
-    return {
-      success: true,
-      laws: lawsWithCounts,
-    }
-  } catch (error) {
-    console.error('❌ Error obteniendo leyes con conteo:', error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Error desconocido',
-    }
-  }
+  console.log(`✅ ${lawsWithCounts.length} leyes con preguntas obtenidas`)
+  return lawsWithCounts
 }
 
-// 🚀 VERSIÓN CACHEADA (1 mes - las leyes cambian poco)
-export const getLawsWithQuestionCounts = unstable_cache(
+// Cacheado 30 días. Al lanzar errores la función interna, unstable_cache no los cachea.
+const getLawsWithQuestionCountsCached = unstable_cache(
   getLawsWithQuestionCountsInternal,
   ['laws-with-question-counts'],
-  { revalidate: 2592000, tags: ['laws'] }  // 30 días
+  { revalidate: 2592000, tags: ['laws'] }
 )
+
+// API pública — captura errores del caché/query y devuelve respuesta estructurada.
+export async function getLawsWithQuestionCounts(): Promise<GetLawsWithCountsResponse> {
+  try {
+    const laws = await getLawsWithQuestionCountsCached()
+    return { success: true, laws }
+  } catch (error) {
+    console.error('❌ Error obteniendo leyes con conteo:', error)
+    return { success: false, error: error instanceof Error ? error.message : 'Error desconocido' }
+  }
+}
 
 // ============================================
 // FALLBACK: RETORNA ARRAY VACÍO
