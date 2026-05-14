@@ -8,6 +8,8 @@ export const OposicionType = {
   AUXILIAR_ADMINISTRATIVO_CYL: 'auxiliar-administrativo-cyl',
   TRAMITACION_PROCESAL: 'tramitacion-procesal',
   AUXILIO_JUDICIAL: 'auxilio-judicial',
+  GUARDIA_CIVIL: 'guardia-civil',
+  POLICIA_NACIONAL: 'policia-nacional',
 } as const
 
 export type OposicionType = typeof OposicionType[keyof typeof OposicionType]
@@ -21,6 +23,8 @@ export const getOfficialExamQuestionsRequestSchema = z.object({
     OposicionType.AUXILIAR_ADMINISTRATIVO_CYL,
     OposicionType.TRAMITACION_PROCESAL,
     OposicionType.AUXILIO_JUDICIAL,
+    OposicionType.GUARDIA_CIVIL,
+    OposicionType.POLICIA_NACIONAL,
   ]),
   parte: z.enum(['primera', 'segunda', 'unica', 'completo', 'supuesto', 'tercer-ejercicio']).optional(),
   includeReservas: z.boolean().default(true),
@@ -123,6 +127,8 @@ export const saveOfficialExamResultsRequestSchema = z.object({
     OposicionType.AUXILIAR_ADMINISTRATIVO_CYL,
     OposicionType.TRAMITACION_PROCESAL,
     OposicionType.AUXILIO_JUDICIAL,
+    OposicionType.GUARDIA_CIVIL,
+    OposicionType.POLICIA_NACIONAL,
   ]),
   parte: z.enum(['primera', 'segunda', 'unica', 'completo', 'supuesto', 'tercer-ejercicio']).optional(),
   results: z.array(questionResultSchema).min(1, 'Debe haber al menos un resultado'),
@@ -174,6 +180,8 @@ export const initOfficialExamRequestSchema = z.object({
     OposicionType.AUXILIAR_ADMINISTRATIVO_CYL,
     OposicionType.TRAMITACION_PROCESAL,
     OposicionType.AUXILIO_JUDICIAL,
+    OposicionType.GUARDIA_CIVIL,
+    OposicionType.POLICIA_NACIONAL,
   ]),
   parte: z.enum(['primera', 'segunda', 'unica', 'completo', 'supuesto', 'tercer-ejercicio']).optional(),
   questions: z.array(initOfficialExamQuestionSchema).min(1, 'Debe haber al menos una pregunta'),
@@ -343,6 +351,8 @@ export const getOfficialExamFailedQuestionsRequestSchema = z.object({
     OposicionType.AUXILIAR_ADMINISTRATIVO_CYL,
     OposicionType.TRAMITACION_PROCESAL,
     OposicionType.AUXILIO_JUDICIAL,
+    OposicionType.GUARDIA_CIVIL,
+    OposicionType.POLICIA_NACIONAL,
   ]),
 })
 
@@ -400,6 +410,8 @@ export const getOfficialExamReviewRequestSchema = z.object({
     OposicionType.AUXILIAR_ADMINISTRATIVO_CYL,
     OposicionType.TRAMITACION_PROCESAL,
     OposicionType.AUXILIO_JUDICIAL,
+    OposicionType.GUARDIA_CIVIL,
+    OposicionType.POLICIA_NACIONAL,
   ]),
 })
 

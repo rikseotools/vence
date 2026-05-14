@@ -2844,7 +2844,7 @@ export const OPOSICIONES: Oposicion[] = [
         title: 'Convocatoria 6 de septiembre de 2025',
         oep: 'OEP 2024-2025',
         partes: [
-          { id: 'conocimientos', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo (25 temas)' },
+          { id: 'unica', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo (25 temas)' },
         ],
       },
       {
@@ -2852,7 +2852,7 @@ export const OPOSICIONES: Oposicion[] = [
         title: 'Convocatoria 13 de octubre de 2024 (llamamiento aplazado)',
         oep: 'OEP 2023-2024',
         partes: [
-          { id: 'conocimientos', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo (25 temas)' },
+          { id: 'unica', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo (25 temas)' },
         ],
         note: 'Llamamiento reprogramado tras suspensión del examen del 29/09/2024 por error logístico.',
       },
@@ -2861,7 +2861,7 @@ export const OPOSICIONES: Oposicion[] = [
         title: 'Convocatoria 29 de septiembre de 2024 (Domingo)',
         oep: 'OEP 2023-2024',
         partes: [
-          { id: 'conocimientos', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo (25 temas)' },
+          { id: 'unica', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo (25 temas)' },
         ],
       },
       {
@@ -2869,7 +2869,7 @@ export const OPOSICIONES: Oposicion[] = [
         title: 'Convocatoria 28 de septiembre de 2024 (Sábado)',
         oep: 'OEP 2023-2024',
         partes: [
-          { id: 'conocimientos', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo (25 temas)' },
+          { id: 'unica', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo (25 temas)' },
         ],
       },
       {
@@ -2877,7 +2877,7 @@ export const OPOSICIONES: Oposicion[] = [
         title: 'Convocatoria 29 de octubre de 2023 (Domingo)',
         oep: 'OEP 2022-2023',
         partes: [
-          { id: 'conocimientos', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo (25 temas)' },
+          { id: 'unica', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo (25 temas)' },
         ],
       },
       {
@@ -2885,7 +2885,7 @@ export const OPOSICIONES: Oposicion[] = [
         title: 'Convocatoria 28 de octubre de 2023 (Sábado)',
         oep: 'OEP 2022-2023',
         partes: [
-          { id: 'conocimientos', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo (25 temas)' },
+          { id: 'unica', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo (25 temas)' },
         ],
       },
       {
@@ -2893,7 +2893,7 @@ export const OPOSICIONES: Oposicion[] = [
         title: 'Convocatoria 15 de octubre de 2022 (Canarias)',
         oep: 'OEP 2021-2022',
         partes: [
-          { id: 'conocimientos', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo (25 temas)' },
+          { id: 'unica', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo (25 temas)' },
         ],
         note: 'Llamamiento aplazado para sede de Canarias.',
       },
@@ -2902,7 +2902,7 @@ export const OPOSICIONES: Oposicion[] = [
         title: 'Convocatoria 25 de septiembre de 2022 (Domingo)',
         oep: 'OEP 2021-2022',
         partes: [
-          { id: 'conocimientos', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo (25 temas)' },
+          { id: 'unica', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo (25 temas)' },
         ],
       },
       {
@@ -2910,7 +2910,7 @@ export const OPOSICIONES: Oposicion[] = [
         title: 'Convocatoria 24 de septiembre de 2022 (Sábado)',
         oep: 'OEP 2021-2022',
         partes: [
-          { id: 'conocimientos', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo (25 temas)' },
+          { id: 'unica', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo (25 temas)' },
         ],
       },
       {
@@ -2918,7 +2918,7 @@ export const OPOSICIONES: Oposicion[] = [
         title: 'Convocatoria 26 de septiembre de 2021 (Domingo)',
         oep: 'OEP 2020-2021',
         partes: [
-          { id: 'conocimientos', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo (25 temas)' },
+          { id: 'unica', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo (25 temas)' },
         ],
       },
       {
@@ -2926,7 +2926,7 @@ export const OPOSICIONES: Oposicion[] = [
         title: 'Convocatoria 25 de septiembre de 2021 (Sábado)',
         oep: 'OEP 2020-2021',
         partes: [
-          { id: 'conocimientos', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo (25 temas)' },
+          { id: 'unica', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo (25 temas)' },
         ],
       },
       {
@@ -2934,7 +2934,7 @@ export const OPOSICIONES: Oposicion[] = [
         title: 'Convocatoria 25 de octubre de 2020 (Domingo)',
         oep: 'OEP 2019-2020',
         partes: [
-          { id: 'conocimientos', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo (25 temas)' },
+          { id: 'unica', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo (25 temas)' },
         ],
         note: 'Aplazado por la pandemia COVID-19.',
       },
@@ -2943,7 +2943,7 @@ export const OPOSICIONES: Oposicion[] = [
         title: 'Convocatoria 24 de octubre de 2020 (Sábado)',
         oep: 'OEP 2019-2020',
         partes: [
-          { id: 'conocimientos', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo (25 temas)' },
+          { id: 'unica', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo (25 temas)' },
         ],
         note: 'Aplazado por la pandemia COVID-19.',
       },
@@ -2952,7 +2952,7 @@ export const OPOSICIONES: Oposicion[] = [
         title: 'Convocatoria 14 de julio de 2019 (Domingo)',
         oep: 'OEP 2018-2019',
         partes: [
-          { id: 'conocimientos', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo (25 temas)' },
+          { id: 'unica', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo (25 temas)' },
         ],
       },
       {
@@ -2960,7 +2960,7 @@ export const OPOSICIONES: Oposicion[] = [
         title: 'Convocatoria 13 de julio de 2019 (Sábado)',
         oep: 'OEP 2018-2019',
         partes: [
-          { id: 'conocimientos', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo (25 temas)' },
+          { id: 'unica', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo (25 temas)' },
         ],
       },
       {
@@ -2968,7 +2968,7 @@ export const OPOSICIONES: Oposicion[] = [
         title: 'Convocatoria 8 de julio de 2018 (Domingo)',
         oep: 'OEP 2017-2018',
         partes: [
-          { id: 'conocimientos', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo (25 temas)' },
+          { id: 'unica', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo (25 temas)' },
         ],
       },
       {
@@ -2976,7 +2976,7 @@ export const OPOSICIONES: Oposicion[] = [
         title: 'Convocatoria 7 de julio de 2018 (Sábado)',
         oep: 'OEP 2017-2018',
         partes: [
-          { id: 'conocimientos', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo (25 temas)' },
+          { id: 'unica', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo (25 temas)' },
         ],
       },
       {
@@ -2984,7 +2984,7 @@ export const OPOSICIONES: Oposicion[] = [
         title: 'Convocatoria 9 de julio de 2017 (Domingo)',
         oep: 'OEP 2016-2017',
         partes: [
-          { id: 'conocimientos', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo (25 temas)' },
+          { id: 'unica', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo (25 temas)' },
         ],
       },
       {
@@ -2992,7 +2992,7 @@ export const OPOSICIONES: Oposicion[] = [
         title: 'Convocatoria 8 de julio de 2017 (Sábado)',
         oep: 'OEP 2016-2017',
         partes: [
-          { id: 'conocimientos', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo (25 temas)' },
+          { id: 'unica', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo (25 temas)' },
         ],
       },
       {
@@ -3000,7 +3000,7 @@ export const OPOSICIONES: Oposicion[] = [
         title: 'Convocatoria 10 de julio de 2016 (Domingo)',
         oep: 'OEP 2015-2016',
         partes: [
-          { id: 'conocimientos', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo (25 temas)' },
+          { id: 'unica', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo (25 temas)' },
         ],
       },
       {
@@ -3008,7 +3008,7 @@ export const OPOSICIONES: Oposicion[] = [
         title: 'Convocatoria 9 de julio de 2016 (Sábado)',
         oep: 'OEP 2015-2016',
         partes: [
-          { id: 'conocimientos', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo (25 temas)' },
+          { id: 'unica', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo (25 temas)' },
         ],
       },
       {
@@ -3016,7 +3016,7 @@ export const OPOSICIONES: Oposicion[] = [
         title: 'Convocatoria 12 de septiembre de 2015',
         oep: 'OEP 2015',
         partes: [
-          { id: 'conocimientos', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo' },
+          { id: 'unica', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo' },
         ],
       },
       {
@@ -3024,7 +3024,7 @@ export const OPOSICIONES: Oposicion[] = [
         title: 'Convocatoria 6 de septiembre de 2014',
         oep: 'OEP 2014',
         partes: [
-          { id: 'conocimientos', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo' },
+          { id: 'unica', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo' },
         ],
       },
       {
@@ -3032,7 +3032,7 @@ export const OPOSICIONES: Oposicion[] = [
         title: 'Convocatoria 14 de septiembre de 2013',
         oep: 'OEP 2013',
         partes: [
-          { id: 'conocimientos', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo' },
+          { id: 'unica', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo' },
         ],
       },
       {
@@ -3040,7 +3040,7 @@ export const OPOSICIONES: Oposicion[] = [
         title: 'Convocatoria 12 de enero de 2013',
         oep: 'OEP 2012',
         partes: [
-          { id: 'conocimientos', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo' },
+          { id: 'unica', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo' },
         ],
         note: 'Convocatoria 2012, examen celebrado en enero 2013.',
       },
@@ -3049,7 +3049,7 @@ export const OPOSICIONES: Oposicion[] = [
         title: 'Convocatoria 25 de junio de 2011',
         oep: 'OEP 2011',
         partes: [
-          { id: 'conocimientos', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo' },
+          { id: 'unica', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo' },
         ],
       },
       {
@@ -3057,7 +3057,7 @@ export const OPOSICIONES: Oposicion[] = [
         title: 'Convocatoria 4 de septiembre de 2010',
         oep: 'OEP 2010',
         partes: [
-          { id: 'conocimientos', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo' },
+          { id: 'unica', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo' },
         ],
       },
       {
@@ -3065,7 +3065,7 @@ export const OPOSICIONES: Oposicion[] = [
         title: 'Convocatoria 11 de julio de 2009',
         oep: 'OEP 2009',
         partes: [
-          { id: 'conocimientos', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo' },
+          { id: 'unica', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo' },
         ],
       },
       {
@@ -3073,7 +3073,7 @@ export const OPOSICIONES: Oposicion[] = [
         title: 'Convocatoria 16 de noviembre de 2008 (2ª convocatoria)',
         oep: 'OEP 2008',
         partes: [
-          { id: 'conocimientos', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo' },
+          { id: 'unica', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo' },
         ],
       },
       {
@@ -3081,7 +3081,7 @@ export const OPOSICIONES: Oposicion[] = [
         title: 'Convocatoria 14 de junio de 2008 (1ª convocatoria)',
         oep: 'OEP 2008',
         partes: [
-          { id: 'conocimientos', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo' },
+          { id: 'unica', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo' },
         ],
       },
       {
@@ -3089,7 +3089,7 @@ export const OPOSICIONES: Oposicion[] = [
         title: 'Convocatoria 15 de diciembre de 2007',
         oep: 'OEP 2007',
         partes: [
-          { id: 'conocimientos', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo' },
+          { id: 'unica', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo' },
         ],
       },
       {
@@ -3097,7 +3097,7 @@ export const OPOSICIONES: Oposicion[] = [
         title: 'Convocatoria 10 de junio de 2006',
         oep: 'OEP 2006',
         partes: [
-          { id: 'conocimientos', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo' },
+          { id: 'unica', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo' },
         ],
       },
       {
@@ -3105,7 +3105,7 @@ export const OPOSICIONES: Oposicion[] = [
         title: 'Convocatoria 12 de noviembre de 2005 (2ª convocatoria)',
         oep: 'OEP 2005',
         partes: [
-          { id: 'conocimientos', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo' },
+          { id: 'unica', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo' },
         ],
       },
       {
@@ -3113,7 +3113,7 @@ export const OPOSICIONES: Oposicion[] = [
         title: 'Convocatoria 9 de julio de 2005 (1ª convocatoria)',
         oep: 'OEP 2005',
         partes: [
-          { id: 'conocimientos', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo' },
+          { id: 'unica', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo' },
         ],
       },
       {
@@ -3121,7 +3121,7 @@ export const OPOSICIONES: Oposicion[] = [
         title: 'Convocatoria 22 de junio de 2004',
         oep: 'OEP 2004',
         partes: [
-          { id: 'conocimientos', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo' },
+          { id: 'unica', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo' },
         ],
       },
       {
@@ -3129,7 +3129,7 @@ export const OPOSICIONES: Oposicion[] = [
         title: 'Convocatoria 23 de julio de 2003',
         oep: 'OEP 2003',
         partes: [
-          { id: 'conocimientos', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo' },
+          { id: 'unica', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo' },
         ],
       },
       {
@@ -3137,7 +3137,7 @@ export const OPOSICIONES: Oposicion[] = [
         title: 'Convocatoria 25 de junio de 2002',
         oep: 'OEP 2002',
         partes: [
-          { id: 'conocimientos', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo' },
+          { id: 'unica', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo' },
         ],
       },
       {
@@ -3145,7 +3145,7 @@ export const OPOSICIONES: Oposicion[] = [
         title: 'Convocatoria 26 de julio de 2001',
         oep: 'OEP 2001',
         partes: [
-          { id: 'conocimientos', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo' },
+          { id: 'unica', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo' },
         ],
       },
       {
@@ -3153,7 +3153,7 @@ export const OPOSICIONES: Oposicion[] = [
         title: 'Convocatoria 28 de junio de 2000',
         oep: 'OEP 2000',
         partes: [
-          { id: 'conocimientos', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo' },
+          { id: 'unica', icon: '📘', title: 'Conocimientos generales', description: 'Temario completo' },
         ],
       },
       // Convocatorias Colegio de Guardias Jóvenes
@@ -3162,7 +3162,7 @@ export const OPOSICIONES: Oposicion[] = [
         title: 'Guardias Jóvenes — Convocatoria 28 de agosto de 2025',
         oep: 'Colegio Guardias Jóvenes 2025',
         partes: [
-          { id: 'conocimientos', icon: '📘', title: 'Conocimientos generales', description: 'Acceso al Colegio de Guardias Jóvenes' },
+          { id: 'unica', icon: '📘', title: 'Conocimientos generales', description: 'Acceso al Colegio de Guardias Jóvenes' },
         ],
       },
       {
@@ -3170,7 +3170,7 @@ export const OPOSICIONES: Oposicion[] = [
         title: 'Guardias Jóvenes — Convocatoria 29 de agosto de 2024',
         oep: 'Colegio Guardias Jóvenes 2024',
         partes: [
-          { id: 'conocimientos', icon: '📘', title: 'Conocimientos generales', description: 'Acceso al Colegio de Guardias Jóvenes' },
+          { id: 'unica', icon: '📘', title: 'Conocimientos generales', description: 'Acceso al Colegio de Guardias Jóvenes' },
         ],
       },
       {
@@ -3178,7 +3178,7 @@ export const OPOSICIONES: Oposicion[] = [
         title: 'Guardias Jóvenes — Convocatoria de agosto de 2023',
         oep: 'Colegio Guardias Jóvenes 2023',
         partes: [
-          { id: 'conocimientos', icon: '📘', title: 'Conocimientos generales', description: 'Acceso al Colegio de Guardias Jóvenes' },
+          { id: 'unica', icon: '📘', title: 'Conocimientos generales', description: 'Acceso al Colegio de Guardias Jóvenes' },
         ],
         note: 'Fecha estimada por patrón histórico (último jueves agosto). Pendiente confirmación BOGC.',
       },
