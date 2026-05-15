@@ -94,6 +94,15 @@ export class ChatResponseBuilder {
   }
 
   /**
+   * Establece el modelo LLM usado (provider + id) para métricas por modelo
+   */
+  model(provider: string, id: string): this {
+    this.metadata.modelProvider = provider
+    this.metadata.modelId = id
+    return this
+  }
+
+  /**
    * Establece el tiempo de procesamiento
    */
   processingTime(ms: number): this {
@@ -178,6 +187,8 @@ export class StreamEncoder {
         searchMethod: metadata.domain,
         detectedPattern: null,
         tokensUsed: metadata.tokensUsed || null,
+        modelProvider: metadata.modelProvider || null,
+        modelId: metadata.modelId || null,
       })
     }
     return this.encode({ type: 'metadata', metadata })

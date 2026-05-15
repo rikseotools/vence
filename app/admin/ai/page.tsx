@@ -83,6 +83,16 @@ interface LogsData {
   }
   topSuggestions: { name: string; count: number }[]
   topLaws: { name: string; count: number }[]
+  byModel: {
+    provider: string
+    model: string
+    total: number
+    positive: number
+    negative: number
+    errors: number
+    avgResponseTime: number
+    satisfactionRate: number | null
+  }[]
   pagination: { page: number; limit: number; hasMore: boolean }
 }
 
@@ -1017,6 +1027,55 @@ export default function AdminAIPage() {
                         ))}
                       </div>
                     </div>
+                  )}
+                </div>
+
+                {/* Stats por modelo LLM */}
+                <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+                  <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">🤖 Rendimiento por modelo LLM</h4>
+                  {logs.byModel && logs.byModel.length > 0 ? (
+                    <>
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full text-sm">
+                          <thead>
+                            <tr className="text-left text-xs text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
+                              <th className="py-2 pr-4">Proveedor / Modelo</th>
+                              <th className="py-2 pr-4 text-right">Total</th>
+                              <th className="py-2 pr-4 text-right">👍</th>
+                              <th className="py-2 pr-4 text-right">👎</th>
+                              <th className="py-2 pr-4 text-right">Errores</th>
+                              <th className="py-2 pr-4 text-right">Satisfacción</th>
+                              <th className="py-2 pr-4 text-right">⏱ Latencia</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {logs.byModel.map((m, i) => (
+                              <tr key={i} className="border-b border-gray-100 dark:border-gray-700 last:border-0">
+                                <td className="py-2 pr-4">
+                                  <span className="text-gray-600 dark:text-gray-400">{m.provider}</span>
+                                  <span className="text-gray-900 dark:text-white font-medium ml-2">{m.model}</span>
+                                </td>
+                                <td className="py-2 pr-4 text-right text-gray-900 dark:text-white">{m.total}</td>
+                                <td className="py-2 pr-4 text-right text-green-600 dark:text-green-400">{m.positive}</td>
+                                <td className="py-2 pr-4 text-right text-red-600 dark:text-red-400">{m.negative}</td>
+                                <td className="py-2 pr-4 text-right text-amber-600 dark:text-amber-400">{m.errors}</td>
+                                <td className="py-2 pr-4 text-right font-medium text-gray-900 dark:text-white">
+                                  {m.satisfactionRate !== null ? `${m.satisfactionRate}%` : '-'}
+                                </td>
+                                <td className="py-2 pr-4 text-right text-gray-600 dark:text-gray-400">{m.avgResponseTime}ms</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                        Solo logs con modelo registrado. Satisfacción = positivos / (positivos + negativos).
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Sin datos: ningún log no revisado tiene modelo registrado todavía. Aparecerá cuando lleguen chats nuevos o tras hacer backfill desde traces.
+                    </p>
                   )}
                 </div>
 

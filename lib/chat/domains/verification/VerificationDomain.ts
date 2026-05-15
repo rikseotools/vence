@@ -43,19 +43,23 @@ export class VerificationDomain implements ChatDomain {
       return false
     }
 
+    // Si el contexto es psicotécnico, SIEMPRE delegar a PsychometricDomain:
+    // tiene prompt paso-a-paso, validación matemática determinista y enruta a
+    // Claude Sonnet (CLAUDE_SUBTYPES en modelRouter) para calculation/sequence/etc.
+    // VerificationDomain usa prompt legal + GPT-4o, lo que provoca shortcuts
+    // heurísticos en preguntas numéricas (caso real: "los que terminan en 0 no
+    // contienen 5" — falso, 150 cumple ambas).
+    const isPsico = qc?.isPsicotecnico || qc?.questionSubtype || qc?.contentData
+    if (isPsico) {
+      logger.info('VerificationDomain: Psychometric context, deferring to PsychometricDomain', { domain: 'verification' })
+      return false
+    }
+
     // Verificar si el mensaje es una solicitud de verificación
     const isVerification = isVerificationRequest(context.currentMessage)
 
     // También manejar si el usuario pregunta sobre la respuesta
     const asksAboutAnswer = this.asksAboutAnswer(context.currentMessage)
-
-    // Si el contexto es psicotécnico y NO es una petición explícita de verificación,
-    // ceder al PsychometricDomain que maneja follow-ups de psicotécnicos mejor
-    const isPsico = qc?.isPsicotecnico || qc?.questionSubtype || qc?.contentData
-    if (isPsico && !isVerification && !asksAboutAnswer) {
-      logger.info('VerificationDomain: Psychometric context, deferring to PsychometricDomain', { domain: 'verification' })
-      return false
-    }
 
     // INTELIGENTE: Si hay contexto de pregunta con respuesta correcta,
     // y el mensaje es corto/genérico (no menciona otra ley o tema),
@@ -185,6 +189,9 @@ export class VerificationDomain implements ChatDomain {
 
     if (result.tokensUsed) {
       builder.tokensUsed(result.tokensUsed)
+    }
+    if (result.modelProvider && result.modelId) {
+      builder.model(result.modelProvider, result.modelId)
     }
 
     // Añadir fuentes a metadata (sin mostrar al usuario)

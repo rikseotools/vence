@@ -33,6 +33,7 @@ export const questionContextSchema = z.object({
   source: z.string().nullable().optional(),
   isPsicotecnico: z.boolean().optional(),
   questionSubtype: z.string().nullable().optional(),
+  questionCategory: z.string().nullable().optional(),
   questionTypeName: z.string().nullable().optional(),
   contentData: z.any().nullable().optional(),
 })
@@ -73,6 +74,8 @@ export interface ChatResponseMetadata {
   verificationResult?: VerificationResult
   processingTime?: number
   tokensUsed?: number
+  modelProvider?: string  // 'openai' | 'anthropic'
+  modelId?: string        // 'gpt-4o' | 'claude-sonnet-4-6'
 }
 
 export interface ArticleSource {

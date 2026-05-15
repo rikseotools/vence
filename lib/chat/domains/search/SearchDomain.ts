@@ -350,7 +350,7 @@ export class SearchDomain implements ChatDomain {
     }
 
     // 3. Generar respuesta con OpenAI
-    const { content: responseText, tokensUsed } = await this.generateResponse(context, searchResult, tracer)
+    const { content: responseText, tokensUsed, modelProvider, modelId } = await this.generateResponse(context, searchResult, tracer)
 
     // 4. Construir respuesta final
     const builder = new ChatResponseBuilder()
@@ -360,6 +360,9 @@ export class SearchDomain implements ChatDomain {
 
     if (tokensUsed) {
       builder.tokensUsed(tokensUsed)
+    }
+    if (modelProvider && modelId) {
+      builder.model(modelProvider, modelId)
     }
 
     // Añadir fuentes
@@ -522,7 +525,7 @@ Puedo ayudarte con:
     context: ChatContext,
     searchResult: Awaited<ReturnType<typeof searchArticles>>,
     tracer?: AITracerInterface
-  ): Promise<{ content: string; tokensUsed?: number }> {
+  ): Promise<{ content: string; tokensUsed?: number; modelProvider?: string; modelId?: string }> {
     const openai = await getOpenAI()
     const model = context.isPremium ? CHAT_MODEL_PREMIUM : CHAT_MODEL
 
@@ -630,13 +633,13 @@ ${articlesContext}`
       llmSpan?.addMetadata('responseLength', content.length)
       llmSpan?.end()
 
-      return { content, tokensUsed: totalTokens }
+      return { content, tokensUsed: totalTokens, modelProvider: 'openai', modelId: model }
     } catch (error) {
       llmSpan?.setError(error instanceof Error ? error.message : 'Unknown error')
       llmSpan?.end()
 
       logger.error('Error generating response with OpenAI', error, { domain: 'search' })
-      return { content: 'Hubo un error al procesar tu consulta. Por favor, intenta de nuevo.' }
+      return { content: 'Hubo un error al procesar tu consulta. Por favor, intenta de nuevo.', modelProvider: 'openai', modelId: model }
     }
   }
 

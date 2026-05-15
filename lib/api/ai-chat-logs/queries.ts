@@ -29,6 +29,8 @@ export async function insertChatLog(input: InsertChatLogInput): Promise<string |
       hadError: data.hadError || false,
       errorMessage: data.errorMessage || null,
       userOposicion: data.userOposicion || null,
+      modelProvider: data.modelProvider || null,
+      modelId: data.modelId || null,
     }
 
     // Añadir ID pre-generado si existe

@@ -13,6 +13,16 @@ const CLAUDE_SUBTYPES = new Set([
   'calculation',              // Cálculos numéricos
 ])
 
+/**
+ * Categorías psicotécnicas que requieren Claude (independientemente del subtype).
+ * `text_question` es un cajón de sastre que mezcla razonamiento numérico (matemáticas
+ * complejas: fracciones, porcentajes, álgebra) con razonamiento verbal y ortografía.
+ * Para distinguir, miramos también la category_key de la pregunta.
+ */
+const CLAUDE_CATEGORIES = new Set([
+  'razonamiento-numerico',    // Problemas matemáticos verbales (herencias, repartos, etc.)
+])
+
 export type ModelProvider = 'openai' | 'anthropic'
 
 export interface ModelSelection {
@@ -25,20 +35,31 @@ export interface ModelSelection {
  *
  * Reglas:
  * - Psicotécnicos con cálculos/series → Claude Sonnet (mejor razonamiento)
+ * - Psicotécnicos con categoría razonamiento-numerico → Claude Sonnet
  * - Todo lo demás → OpenAI GPT-4o (rápido, barato, funciona bien)
  */
 export function selectModel(params: {
   domain?: string
   questionSubtype?: string | null
+  questionCategory?: string | null
   isPsicotecnico?: boolean
 }): ModelSelection {
-  const { domain, questionSubtype, isPsicotecnico } = params
+  const { domain, questionSubtype, questionCategory, isPsicotecnico } = params
 
-  // Psicotécnicos con subtypes que requieren razonamiento avanzado
-  if (isPsicotecnico && questionSubtype && CLAUDE_SUBTYPES.has(questionSubtype)) {
-    return {
-      provider: 'anthropic',
-      reason: `psychometric/${questionSubtype} requires advanced reasoning`,
+  if (isPsicotecnico) {
+    // Subtypes inequívocos: series, tablas, cálculos
+    if (questionSubtype && CLAUDE_SUBTYPES.has(questionSubtype)) {
+      return {
+        provider: 'anthropic',
+        reason: `psychometric/${questionSubtype} requires advanced reasoning`,
+      }
+    }
+    // Subtypes ambiguos (text_question): mirar categoría para detectar matemáticas
+    if (questionCategory && CLAUDE_CATEGORIES.has(questionCategory)) {
+      return {
+        provider: 'anthropic',
+        reason: `psychometric category/${questionCategory} requires advanced reasoning`,
+      }
     }
   }
 
@@ -51,8 +72,14 @@ export function selectModel(params: {
 }
 
 /**
- * Verifica si un subtype de psicotécnico usa Claude.
+ * Verifica si un contexto psicotécnico debe usar Claude.
+ * Considera tanto subtype como category (para text_question matemáticas).
  */
-export function usesClaude(questionSubtype: string | null | undefined): boolean {
-  return !!questionSubtype && CLAUDE_SUBTYPES.has(questionSubtype)
+export function usesClaude(
+  questionSubtype: string | null | undefined,
+  questionCategory?: string | null,
+): boolean {
+  if (questionSubtype && CLAUDE_SUBTYPES.has(questionSubtype)) return true
+  if (questionCategory && CLAUDE_CATEGORIES.has(questionCategory)) return true
+  return false
 }

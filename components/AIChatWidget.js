@@ -363,6 +363,7 @@ export default function AIChatWidget() {
             // Campos de psicotécnicos
             isPsicotecnico: effectiveQuestionContext.isPsicotecnico || false,
             questionSubtype: effectiveQuestionContext.questionSubtype || null,
+            questionCategory: effectiveQuestionContext.categoria || null,
             questionTypeName: effectiveQuestionContext.questionTypeName || null,
             contentData: effectiveQuestionContext.contentData || null
           }

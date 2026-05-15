@@ -49,6 +49,17 @@ const nameCountSchema = z.object({
   count: z.number()
 })
 
+const modelStatSchema = z.object({
+  provider: z.string(),
+  model: z.string(),
+  total: z.number(),
+  positive: z.number(),
+  negative: z.number(),
+  errors: z.number(),
+  avgResponseTime: z.number(),
+  satisfactionRate: z.number().nullable(),
+})
+
 export const aiChatLogsResponseSchema = z.object({
   success: z.boolean(),
   logs: z.array(logEntrySchema),
@@ -63,6 +74,7 @@ export const aiChatLogsResponseSchema = z.object({
   }),
   topSuggestions: z.array(nameCountSchema),
   topLaws: z.array(nameCountSchema),
+  byModel: z.array(modelStatSchema),
   pagination: z.object({
     page: z.number(),
     limit: z.number(),

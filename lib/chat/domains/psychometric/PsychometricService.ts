@@ -155,10 +155,12 @@ export async function processPsychometricQuestion(
     }
   }
 
-  // 4. Llamar al LLM - routing por subtype
+  // 4. Llamar al LLM - routing por subtype + categoría
+  // (text_question requiere mirar categoría para distinguir matemáticas de verbal/ortografía)
   const modelSelection = selectModel({
     domain: 'psychometric',
     questionSubtype: subtype,
+    questionCategory: context.questionContext?.questionCategory ?? null,
     isPsicotecnico: true,
   })
 
@@ -291,6 +293,7 @@ export async function processPsychometricQuestion(
     .domain('psychometric')
     .text(content)
     .processingTime(Date.now() - startTime)
+    .model(modelSelection.provider, model)
 
   if (totalTokens) {
     builder.tokensUsed(totalTokens)

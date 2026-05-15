@@ -69,6 +69,7 @@ const chatApiRequestSchema = z.object({
     source: z.string().nullable().optional(),
     isPsicotecnico: z.boolean().optional(),
     questionSubtype: z.string().nullable().optional(),
+    questionCategory: z.string().nullable().optional(),
     questionTypeName: z.string().nullable().optional(),
     contentData: z.any().nullable().optional(),
   }).nullable().optional(),
@@ -256,6 +257,7 @@ async function _POST(request: NextRequest) {
         // Campos de psicotécnicos
         isPsicotecnico: qc.isPsicotecnico || false,
         questionSubtype: qc.questionSubtype || undefined,
+        questionCategory: qc.questionCategory || undefined,
         questionTypeName: qc.questionTypeName || undefined,
         contentData: qc.contentData || undefined,
       }
@@ -311,9 +313,11 @@ async function _POST(request: NextRequest) {
       // Capturar el questionContext normalizado para usarlo en flush
       const qContext = normalizedQuestionContext
 
-      // Variables para capturar metadata del SSE (sources, tokens)
+      // Variables para capturar metadata del SSE (sources, tokens, modelo)
       let capturedSources: string[] = []
       let capturedTokensUsed: number | null = null
+      let capturedModelProvider: string | null = null
+      let capturedModelId: string | null = null
 
       const transformStream = new TransformStream({
         transform(chunk, controller) {
@@ -330,12 +334,16 @@ async function _POST(request: NextRequest) {
               if (parsed.content) {
                 fullResponse += parsed.content
               }
-              // Capturar metadata (sources, tokensUsed) del chunk tipo 'meta'
-              if (parsed.type === 'meta' && parsed.sources) {
-                capturedSources = parsed.sources.map((s: { law?: string; article?: string }) =>
-                  `${s.law || ''} Art. ${s.article || ''}`
-                )
-                capturedTokensUsed = parsed.tokensUsed || null
+              // Capturar metadata del chunk tipo 'meta'
+              if (parsed.type === 'meta') {
+                if (parsed.sources) {
+                  capturedSources = parsed.sources.map((s: { law?: string; article?: string }) =>
+                    `${s.law || ''} Art. ${s.article || ''}`
+                  )
+                }
+                capturedTokensUsed = parsed.tokensUsed || capturedTokensUsed
+                capturedModelProvider = parsed.modelProvider || capturedModelProvider
+                capturedModelId = parsed.modelId || capturedModelId
               }
             } catch {
               // Ignorar chunks que no son JSON válido
@@ -450,6 +458,9 @@ async function _POST(request: NextRequest) {
             aiSuggestedAnswer,
             dbAnswer,
             reanalysisResponse,
+            // Modelo LLM usado (para métricas)
+            modelProvider: capturedModelProvider,
+            modelId: capturedModelId,
           })
 
           // Enviar logId para feedback
@@ -493,6 +504,9 @@ async function _POST(request: NextRequest) {
         errorMessage: !data.userId && data.debugAuthState
           ? `DEBUG_AUTH: ${JSON.stringify(data.debugAuthState)}`
           : null,
+        // Modelo LLM usado (para métricas)
+        modelProvider: response.metadata?.modelProvider ?? null,
+        modelId: response.metadata?.modelId ?? null,
       })
 
       return NextResponse.json({

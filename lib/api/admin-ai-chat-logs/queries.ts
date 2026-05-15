@@ -43,8 +43,8 @@ export async function getAiChatLogs(
     ? Math.round((stats.positive / (stats.positive + stats.negative)) * 100)
     : null
 
-  // 2. Top sugerencias y top leyes en paralelo con SQL agregado
-  const [topSuggestionsRaw, topLawsRaw] = await Promise.all([
+  // 2. Top sugerencias, top leyes y stats por modelo en paralelo con SQL agregado
+  const [topSuggestionsRaw, topLawsRaw, modelStatsRaw] = await Promise.all([
     db.execute(sql`
       select suggestion_used as name, count(*)::int as count
       from ai_chat_logs
@@ -61,12 +61,49 @@ export async function getAiChatLogs(
       order by count desc
       limit 5
     `),
+    // Stats por modelo: agrupado por provider+id. Solo logs nuevos (con modelo registrado).
+    db.execute(sql`
+      select
+        coalesce(model_provider, 'unknown') as provider,
+        coalesce(model_id, 'unknown') as model,
+        count(*)::int as total,
+        count(*) filter (where feedback = 'positive')::int as positive,
+        count(*) filter (where feedback = 'negative')::int as negative,
+        count(*) filter (where had_error = true)::int as errors,
+        coalesce(avg(response_time_ms)::int, 0) as avg_response_time
+      from ai_chat_logs
+      where reviewed_at is null and model_provider is not null
+      group by model_provider, model_id
+      order by total desc
+    `),
   ])
 
   const topSuggestions = ((topSuggestionsRaw as { rows?: unknown[] }).rows as { name: string; count: number }[] ?? [])
     .map(r => ({ name: r.name, count: Number(r.count) }))
   const topLaws = ((topLawsRaw as { rows?: unknown[] }).rows as { law: string; count: number }[] ?? [])
     .map(r => ({ name: r.law, count: Number(r.count) }))
+
+  const byModel = ((modelStatsRaw as { rows?: unknown[] }).rows as Array<{
+    provider: string; model: string; total: number; positive: number; negative: number;
+    errors: number; avg_response_time: number;
+  }> ?? []).map(r => {
+    const total = Number(r.total)
+    const positive = Number(r.positive)
+    const negative = Number(r.negative)
+    return {
+      provider: r.provider,
+      model: r.model,
+      total,
+      positive,
+      negative,
+      errors: Number(r.errors),
+      avgResponseTime: Number(r.avg_response_time),
+      // % satisfacción solo cuenta logs con feedback explícito
+      satisfactionRate: positive + negative > 0
+        ? Math.round((positive / (positive + negative)) * 100)
+        : null,
+    }
+  })
 
   // 3. Query paginada con filtro
   const baseSelect = {
@@ -151,6 +188,7 @@ export async function getAiChatLogs(
     },
     topSuggestions,
     topLaws,
+    byModel,
     pagination: {
       page,
       limit,

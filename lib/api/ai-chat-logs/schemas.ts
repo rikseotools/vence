@@ -23,6 +23,9 @@ export const insertChatLogSchema = z.object({
   aiSuggestedAnswer: z.string().nullable().optional(),
   dbAnswer: z.string().nullable().optional(),
   reanalysisResponse: z.string().nullable().optional(),
+  // Modelo LLM usado en la respuesta (para métricas por proveedor/modelo)
+  modelProvider: z.string().nullable().optional(),
+  modelId: z.string().nullable().optional(),
 })
 
 // Use z.input for the function parameter type (before defaults are applied)

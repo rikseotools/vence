@@ -3194,12 +3194,16 @@ export const aiChatLogs = pgTable("ai_chat_logs", {
 	aiSuggestedAnswer: text("ai_suggested_answer"),
 	dbAnswer: text("db_answer"),
 	reanalysisResponse: text("reanalysis_response"),
+	modelProvider: text("model_provider"),
+	modelId: text("model_id"),
 }, (table) => [
 	index("idx_ai_chat_logs_created_at").using("btree", table.createdAt.desc().nullsFirst().op("timestamptz_ops")),
 	index("idx_ai_chat_logs_feedback").using("btree", table.feedback.asc().nullsLast().op("text_ops")),
 	index("idx_ai_chat_logs_had_error").using("btree", table.hadError.asc().nullsLast().op("bool_ops")),
 	index("idx_ai_chat_logs_suggestion").using("btree", table.suggestionUsed.asc().nullsLast().op("text_ops")),
 	index("idx_ai_chat_logs_user_id").using("btree", table.userId.asc().nullsLast().op("uuid_ops")),
+	index("idx_ai_chat_logs_model_provider").using("btree", table.modelProvider.asc().nullsLast().op("text_ops")),
+	index("idx_ai_chat_logs_model_id").using("btree", table.modelId.asc().nullsLast().op("text_ops")),
 	foreignKey({
 			columns: [table.userId],
 			foreignColumns: [users.id],

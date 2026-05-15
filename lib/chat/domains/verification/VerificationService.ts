@@ -77,6 +77,8 @@ export interface VerificationResult {
   sources: ArticleSource[]
   processingTime: number
   tokensUsed?: number
+  modelProvider?: string
+  modelId?: string
 }
 
 // Tipo para artículo detectado dinámicamente en la explicación
@@ -315,6 +317,8 @@ export async function verifyAnswer(
   )
   const response = verificationGenResult.content
   const tokensUsed = verificationGenResult.tokensUsed
+  const modelProvider = verificationGenResult.modelProvider
+  const modelId = verificationGenResult.modelId
 
   // 4. Detectar si hay error
   const errorResult = detectErrorInResponse(response)
@@ -423,6 +427,8 @@ export async function verifyAnswer(
     sources,
     processingTime: Date.now() - startTime,
     tokensUsed,
+    modelProvider,
+    modelId,
   }
 }
 
@@ -441,7 +447,7 @@ async function generateVerificationResponse(
   conversationHistory?: Array<{ role: string; content: string }>,
   tracer?: AITracerInterface,
   context?: { userDomain?: string | null }
-): Promise<{ content: string; tokensUsed?: number }> {
+): Promise<{ content: string; tokensUsed?: number; modelProvider?: string; modelId?: string }> {
   const openai = await getOpenAI()
   const model = isPremium ? CHAT_MODEL_PREMIUM : CHAT_MODEL
 
@@ -724,6 +730,8 @@ ${analysisInstructions}`
     return {
       content: responseContent,
       tokensUsed: totalTokens,
+      modelProvider: 'openai',
+      modelId: model,
     }
   } catch (error) {
     // Clasificar el error (quota, rate_limit, auth, etc.) para dar un mensaje
