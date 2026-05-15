@@ -292,6 +292,12 @@ export function detectMentionedLaws(message: string): string[] {
  * Extrae leyes específicas mencionadas en el texto (Real Decreto, Ley Orgánica, etc.)
  * Devuelve el short_name tal como aparece en el texto para buscar en BD
  */
+const SPANISH_MONTHS: Record<string, string> = {
+  enero: '01', febrero: '02', marzo: '03', abril: '04',
+  mayo: '05', junio: '06', julio: '07', agosto: '08',
+  septiembre: '09', setiembre: '09', octubre: '10', noviembre: '11', diciembre: '12',
+}
+
 export function extractSpecificLawMentions(message: string): string[] {
   const mentions: string[] = []
 
@@ -308,6 +314,24 @@ export function extractSpecificLawMentions(message: string): string[] {
     // Reglamento UE: "Reglamento (UE) 2016/679", "Reglamento UE 2016/679"
     /(?:reglamento\s*\(?ue\)?)\s*(\d{4})\/(\d+)/gi,
   ]
+
+  // Resolución por fecha en lenguaje natural: "Resolución de 7 de mayo de 2014"
+  // → "Resolución 7/05/2014" (formato del short_name en BD).
+  // findLawByName hará fuzzy match contra short_name/name.
+  const resolutionPattern = /resoluci[oó]n\s+(?:de(?:l)?\s+)?(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4})/gi
+  let resMatch: RegExpExecArray | null
+  while ((resMatch = resolutionPattern.exec(message)) !== null) {
+    const day = resMatch[1].padStart(2, '0')
+    const monthName = resMatch[2].toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+    const year = resMatch[3]
+    const monthNum = SPANISH_MONTHS[monthName]
+    if (monthNum) {
+      const lawRef = `Resolución ${parseInt(day, 10)}/${monthNum}/${year}`
+      if (!mentions.includes(lawRef)) {
+        mentions.push(lawRef)
+      }
+    }
+  }
 
   for (const pattern of patterns) {
     let match
