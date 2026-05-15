@@ -78,7 +78,13 @@ export function isUserStatsQuery(message: string): boolean {
 
   const patterns = [
     /mi[s]?\s*(progreso|estad[ií]stica|resultado|fallo|error|acierto|rendimiento|punto.*d[eé]bil|[aá]rea.*d[eé]bil)/i,
-    /qu[eé].*(he\s*fallado|fallos?\s*m[aá]s|me\s*cuesta)/i, // fallo/fallos más
+    /qu[eé].*(he\s*fallado|fallos?\s*m[aá]s)/i,
+    // "me cuesta" SOLO si va seguido o precedido de menciones de
+    // fallos/errores/áreas débiles (no "me cuesta aprender numeración",
+    // "me cuesta concentrarme", etc., que son motivacionales).
+    /me\s*cuesta\s+(\w+\s+){0,3}(fallar|fallos?|errores?|preguntas|temas|leyes|art[ií]culos|el\s+temario)/i,
+    /(en\s+qu[eé]|d[oó]nde)\s+me\s+cuesta/i,
+    /qu[eé]\s+(temas?|art[ií]culos?|leyes?|partes?)\s+(\w+\s+){0,3}(me\s+cuesta|me\s+sale|fallo)/i,
     /d[oó]?nde\s*(fallo|tengo.*problema)/i, // donde/dónde
     /c[oó]mo\s*voy/i, // Detecta "cómo voy" con o sin contexto adicional
     /en\s*qu[eé]\s*debo\s*(mejorar|estudiar|repasar)/i,
