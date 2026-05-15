@@ -88,6 +88,16 @@ interface ExamMetadata {
   legislativeCount?: number
   psychometricCount?: number
   reservaCount?: number
+  // Desglose por partes según las bases oficiales de la convocatoria.
+  // Cada string es una línea (ej: "Primera parte (60): 30 Bloque I + 30 psicotécnicas").
+  // Si está presente, se muestra como lista en lugar de "X legislativas, Y psicotécnicas".
+  breakdown?: string[]
+  durationMinutes?: number
+  // Segundos transcurridos del cronómetro previo (resume). Si está presente,
+  // el componente desplaza `startTime` para continuar la cuenta desde aquí.
+  totalTimeSeconds?: number
+  // Tipo de test ('exam' | 'simulacro') propagado en init/resume.
+  isSimulacro?: boolean
 }
 
 interface ExamConfig {
@@ -96,6 +106,11 @@ interface ExamConfig {
   backUrl?: string
   backText?: string
   testType?: string
+  // Si está definido, el cronómetro funciona como cuenta atrás desde
+  // `durationMinutes` minutos y al llegar a 0 se auto-envía el examen.
+  // Si es null/undefined, el cronómetro cuenta hacia arriba sin límite.
+  // Uso: simulacro de examen replica el tiempo oficial (90 min Aux Admin Estado).
+  durationMinutes?: number
 }
 
 interface OfficialExamLayoutProps {
@@ -231,6 +246,12 @@ function formatElapsedTime(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, '0')}`
 }
 
+// Formatear tiempo restante (cuenta atrás). Nunca negativo.
+function formatRemainingTime(seconds: number): string {
+  const s = Math.max(0, seconds)
+  return formatElapsedTime(s)
+}
+
 // =====================================================
 // COMPONENT
 // =====================================================
@@ -270,8 +291,13 @@ export default function OfficialExamLayout({
   const [userAnswers, setUserAnswers] = useState<Record<number, string>>(initialAnswers || {})
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [score, setScore] = useState(0)
-  const [startTime] = useState(Date.now())
-  const [elapsedTime, setElapsedTime] = useState(0)
+  // Si es resume y hay tiempo previo guardado, desplazamos `startTime` hacia
+  // atrás para que `elapsedTime = (now - startTime)` arranque ya en el valor
+  // que el usuario tenía cuando salió. Esto permite que la cuenta atrás
+  // (simulacros) continúe desde donde lo dejó.
+  const initialElapsedSeconds = (metadata as ExamMetadata & { totalTimeSeconds?: number } | undefined)?.totalTimeSeconds || 0
+  const [startTime] = useState(Date.now() - initialElapsedSeconds * 1000)
+  const [elapsedTime, setElapsedTime] = useState(initialElapsedSeconds)
   const [isSaving, setIsSaving] = useState(false)
 
   // Session state for resume functionality
@@ -303,6 +329,26 @@ export default function OfficialExamLayout({
 
     return () => clearInterval(interval)
   }, [isSubmitted, startTime])
+
+  // Cuenta atrás (solo si `config.durationMinutes` está definido — usado por
+  // simulacros con tiempo oficial). Cuando llega a 0, auto-envía el examen.
+  const durationMinutes = config?.durationMinutes
+  const isCountdown = typeof durationMinutes === 'number' && durationMinutes > 0
+  const totalSeconds = isCountdown ? durationMinutes * 60 : 0
+  const remainingSeconds = isCountdown ? totalSeconds - elapsedTime : 0
+  const timeUpFiredRef = React.useRef(false)
+
+  useEffect(() => {
+    if (!isCountdown) return
+    if (isSubmitted) return
+    if (timeUpFiredRef.current) return
+    if (remainingSeconds > 0) return
+
+    timeUpFiredRef.current = true
+    console.log('⏰ [OfficialExam] Tiempo agotado — enviando examen automáticamente')
+    handleSubmitExam()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCountdown, isSubmitted, remainingSeconds])
 
   // Actualizar contexto de pregunta para el chat AI cuando se selecciona una pregunta
   useEffect(() => {
@@ -424,6 +470,7 @@ export default function OfficialExamLayout({
         difficulty: q.difficulty || null,
       }))
 
+      const isSimulacro = config?.testType === 'simulacro'
       const response = await fetch('/api/v2/official-exams/init', {
         method: 'POST',
         headers: {
@@ -439,6 +486,10 @@ export default function OfficialExamLayout({
             legislativeCount: metadata?.legislativeCount || 0,
             psychometricCount: metadata?.psychometricCount || 0,
             reservaCount: metadata?.reservaCount || 0,
+            // Persistir flag + datos del simulacro para reanudación correcta
+            isSimulacro,
+            breakdown: metadata?.breakdown,
+            durationMinutes: metadata?.durationMinutes || config?.durationMinutes,
           }
         })
       })
@@ -498,6 +549,9 @@ export default function OfficialExamLayout({
   // Save answer to API (non-blocking)
   async function saveAnswerToApi(testId: string, questionIndex: number, answer: string): Promise<void> {
     try {
+      // elapsedSeconds: tiempo total transcurrido. Persiste en tests.totalTimeSeconds
+      // (con GREATEST) para que al reanudar el cronómetro continúe desde aquí.
+      const elapsedSeconds = Math.floor((Date.now() - startTime) / 1000)
       const response = await fetch('/api/v2/official-exams/answer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -505,6 +559,7 @@ export default function OfficialExamLayout({
           testId,
           questionOrder: questionIndex + 1, // 1-indexed
           userAnswer: answer,
+          elapsedSeconds,
         })
       })
 
@@ -1021,19 +1076,33 @@ export default function OfficialExamLayout({
           {/* Titulo */}
           <div className="mb-4">
             <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
-              🏛️ Examen Oficial
+              {config?.testType === 'simulacro' ? '🎯 Simulacro de Examen' : '🏛️ Examen Oficial'}
             </h1>
             <p className="text-sm text-gray-600">
               {metadata?.examDate && (
                 <>Convocatoria: {new Date(metadata.examDate).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}</>
               )}
+              {config?.testType === 'simulacro' && metadata?.durationMinutes && (
+                <>Formato oficial · {metadata.durationMinutes} min</>
+              )}
             </p>
             <p className="text-sm text-gray-600 mt-1">
               {totalQuestions} preguntas
-              {metadata?.legislativeCount != null && metadata.legislativeCount > 0 && metadata?.psychometricCount != null && metadata.psychometricCount > 0 && (
-                <> ({metadata.legislativeCount} legislativas, {metadata.psychometricCount} psicotecnicas)</>
-              )}
+              {/* Si NO hay breakdown (examen oficial real): muestra desglose compacto */}
+              {(!metadata?.breakdown || metadata.breakdown.length === 0) &&
+                metadata?.legislativeCount != null && metadata.legislativeCount > 0 &&
+                metadata?.psychometricCount != null && metadata.psychometricCount > 0 && (
+                  <> ({metadata.legislativeCount} legislativas, {metadata.psychometricCount} psicotécnicas)</>
+                )}
             </p>
+            {/* Desglose detallado por partes (bases oficiales) — usado por simulacros */}
+            {metadata?.breakdown && metadata.breakdown.length > 0 && (
+              <ul className="text-xs text-gray-600 mt-2 space-y-1 list-disc list-inside">
+                {metadata.breakdown.map((line, i) => (
+                  <li key={i}>{line}</li>
+                ))}
+              </ul>
+            )}
             {metadata?.reservaCount != null && metadata.reservaCount > 0 && (
               <p className="text-xs text-gray-500 mt-1">
                 <span>📋 {metadata.reservaCount} reservas</span>
@@ -1092,13 +1161,26 @@ export default function OfficialExamLayout({
 
           {/* Grid de metricas: Cronometro + Respondidas */}
           <div className="grid grid-cols-2 gap-3 mb-4">
-            {/* Cronometro */}
-            <div className="text-center px-3 py-3 bg-purple-50 border border-purple-200 rounded-lg">
-              <div className="text-xs text-purple-600 font-medium mb-1">⏱️ Tiempo</div>
-              <div className="text-xl sm:text-2xl font-bold text-purple-700 font-mono">
-                {formatElapsedTime(elapsedTime)}
-              </div>
-            </div>
+            {/* Cronometro: cuenta atrás si hay durationMinutes (simulacro), si no cuenta hacia arriba */}
+            {(() => {
+              const lowTime = isCountdown && remainingSeconds <= 300 && remainingSeconds > 60 // <=5min
+              const criticalTime = isCountdown && remainingSeconds <= 60 // <=1min
+              const colorClasses = criticalTime
+                ? { bg: 'bg-red-50', border: 'border-red-300', label: 'text-red-700', value: 'text-red-700 animate-pulse' }
+                : lowTime
+                ? { bg: 'bg-amber-50', border: 'border-amber-300', label: 'text-amber-700', value: 'text-amber-700' }
+                : { bg: 'bg-purple-50', border: 'border-purple-200', label: 'text-purple-600', value: 'text-purple-700' }
+              return (
+                <div className={`text-center px-3 py-3 ${colorClasses.bg} border ${colorClasses.border} rounded-lg`}>
+                  <div className={`text-xs ${colorClasses.label} font-medium mb-1`}>
+                    {isCountdown ? '⏳ Tiempo restante' : '⏱️ Tiempo'}
+                  </div>
+                  <div className={`text-xl sm:text-2xl font-bold font-mono ${colorClasses.value}`}>
+                    {isCountdown ? formatRemainingTime(remainingSeconds) : formatElapsedTime(elapsedTime)}
+                  </div>
+                </div>
+              )
+            })()}
 
             {/* Respondidas */}
             <div className="text-center px-3 py-3 bg-blue-50 border border-blue-200 rounded-lg">

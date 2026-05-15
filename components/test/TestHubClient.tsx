@@ -10,6 +10,13 @@ import OposicionChangeModal from '@/components/OposicionChangeModal'
 import ExamActionsDropdown from '@/components/ExamActionsDropdown'
 import type { OfficialExamConvocatoria } from '@/lib/config/oposiciones'
 
+// Oposiciones para las que el Simulacro de Examen está disponible.
+// Cada slug debe tener una entrada correspondiente en SIMULACRO_CONFIGS
+// (lib/api/simulacro/queries.ts) con su distribución y formato oficial.
+const SIMULACRO_AVAILABLE_OPOSICIONES: string[] = [
+  'auxiliar-administrativo-estado',
+]
+
 interface Topic {
   id: string
   topicNumber: number
@@ -128,6 +135,15 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
   const [examStats, setExamStats] = useState<Record<string, ExamStat>>({})
   const [expandedConvocatorias, setExpandedConvocatorias] = useState<Record<string, boolean>>({})
 
+  // Simulacro pendiente del usuario (si lo hay) — para mostrar "Continuar" en la card
+  const [pendingSimulacro, setPendingSimulacro] = useState<{
+    id: string
+    progress: number
+    answeredCount: number
+    totalQuestions: number
+    remainingMinutes: number | null
+  } | null>(null)
+
   // Estado de bloques expandidos (localStorage)
   const storageKey = `${oposicion}-expanded-blocks`
   const [expandedBlocks, setExpandedBlocks] = useState<Record<string, boolean>>(() => {
@@ -200,6 +216,58 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
       document.removeEventListener('visibilitychange', handleVisibility)
     }
   }, [user?.id, loading, loadUserThemeStats])
+
+  // Detectar simulacro pendiente (solo si la oposición soporta simulacro y hay user)
+  useEffect(() => {
+    if (!user?.id || loading) return
+    if (!SIMULACRO_AVAILABLE_OPOSICIONES.includes(oposicion)) return
+
+    let cancelled = false
+    async function checkPendingSimulacro() {
+      try {
+        const { getAuthHeaders } = await import('@/lib/api/authHeaders')
+        const headers = await getAuthHeaders()
+        if (!headers['Authorization']) return
+
+        const res = await fetch('/api/v2/official-exams/pending', { headers })
+        const data = await res.json()
+        if (cancelled) return
+        if (!data.success || !Array.isArray(data.exams)) return
+
+        const pending = data.exams.find(
+          (e: { testType?: string; oposicion?: string }) =>
+            e.testType === 'simulacro' && e.oposicion === oposicion,
+        ) as {
+          id: string
+          answeredCount: number
+          totalQuestions: number
+          progress: number
+          totalTimeSeconds?: number
+          durationMinutes?: number
+        } | undefined
+
+        if (pending) {
+          const remainingMinutes =
+            pending.durationMinutes && pending.totalTimeSeconds != null
+              ? Math.max(0, Math.ceil(pending.durationMinutes - pending.totalTimeSeconds / 60))
+              : null
+          setPendingSimulacro({
+            id: pending.id,
+            progress: pending.progress,
+            answeredCount: pending.answeredCount,
+            totalQuestions: pending.totalQuestions,
+            remainingMinutes,
+          })
+        } else {
+          setPendingSimulacro(null)
+        }
+      } catch (e) {
+        console.warn('No se pudo comprobar simulacro pendiente:', e)
+      }
+    }
+    checkPendingSimulacro()
+    return () => { cancelled = true }
+  }, [user?.id, loading, oposicion])
 
   // Cargar estadísticas de exámenes oficiales (lazy, al expandir)
   const loadExamStats = useCallback(async () => {
@@ -364,6 +432,47 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
                   </span>
                 </div>
               </Link>
+
+              {/* Simulacro de Examen (solo oposiciones con formato configurado) */}
+              {SIMULACRO_AVAILABLE_OPOSICIONES.includes(oposicion) && (
+                <Link
+                  href={
+                    pendingSimulacro
+                      ? `/${oposicion}/test/simulacro?resume=${pendingSimulacro.id}`
+                      : `/${oposicion}/test/simulacro`
+                  }
+                  className={`block py-4 px-8 rounded-lg font-semibold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-xl active:scale-95 focus:outline-none focus:ring-4 group ${
+                    pendingSimulacro
+                      ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white focus:ring-emerald-300'
+                      : 'bg-gradient-to-r from-amber-600 to-orange-600 text-white focus:ring-amber-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <span className="mr-3 text-2xl group-hover:animate-bounce">
+                        {pendingSimulacro ? '↻' : '🏆'}
+                      </span>
+                      <span>
+                        {pendingSimulacro ? (
+                          <>
+                            Continuar simulacro
+                            <span className="block text-sm font-normal opacity-90 mt-0.5">
+                              {pendingSimulacro.answeredCount}/{pendingSimulacro.totalQuestions} respondidas
+                              {pendingSimulacro.remainingMinutes != null &&
+                                ` · ${pendingSimulacro.remainingMinutes} min restantes`}
+                            </span>
+                          </>
+                        ) : (
+                          'Simulacro de Examen: 110 preguntas con el formato oficial'
+                        )}
+                      </span>
+                    </div>
+                    <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-medium">
+                      {pendingSimulacro ? 'Pendiente' : 'Nuevo'}
+                    </span>
+                  </div>
+                </Link>
+              )}
 
               {/* Exámenes Oficiales (si hay convocatorias) */}
               {officialExams && officialExams.length > 0 && (

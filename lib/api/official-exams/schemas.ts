@@ -183,12 +183,20 @@ export const initOfficialExamRequestSchema = z.object({
     OposicionType.GUARDIA_CIVIL,
     OposicionType.POLICIA_NACIONAL,
   ]),
-  parte: z.enum(['primera', 'segunda', 'unica', 'completo', 'supuesto', 'tercer-ejercicio']).optional(),
+  // `nullable()` permite que el componente OfficialExamLayout reutilizado por
+  // el simulacro envíe `parte: null` (no aplica). En examen oficial sigue
+  // siendo 'primera'|'segunda'|'unica'|etc. (válido como union de enum+null).
+  parte: z.enum(['primera', 'segunda', 'unica', 'completo', 'supuesto', 'tercer-ejercicio']).nullable().optional(),
   questions: z.array(initOfficialExamQuestionSchema).min(1, 'Debe haber al menos una pregunta'),
   metadata: z.object({
     legislativeCount: z.number().int().min(0).optional(),
     psychometricCount: z.number().int().min(0).optional(),
     reservaCount: z.number().int().min(0).optional(),
+    // Campos específicos del simulacro — se persisten en tests.detailed_analytics
+    // y los devuelve getOfficialExamResume para reanudar correctamente.
+    isSimulacro: z.boolean().optional(),
+    breakdown: z.array(z.string()).optional(),
+    durationMinutes: z.number().int().min(1).optional(),
   }).optional(),
 })
 
@@ -211,6 +219,11 @@ export const saveOfficialExamAnswerRequestSchema = z.object({
   testId: z.string().uuid(),
   questionOrder: z.number().int().min(1),
   userAnswer: z.enum(['a', 'b', 'c', 'd', 'e']),
+  // Tiempo total transcurrido desde el inicio del examen, en segundos.
+  // Se usa para persistir el cronómetro cuando el usuario sale y vuelve
+  // (resume). En cada autosave se actualiza tests.totalTimeSeconds tomando
+  // GREATEST(actual, anterior) para evitar retrocesos.
+  elapsedSeconds: z.number().int().min(0).optional(),
 })
 
 export type SaveOfficialExamAnswerRequest = z.infer<typeof saveOfficialExamAnswerRequestSchema>
@@ -271,6 +284,16 @@ export const resumeOfficialExamResponseSchema = z.object({
     psychometricCount: z.number(),
     reservaCount: z.number(),
     createdAt: z.string(),
+    // Segundos transcurridos del cronómetro cuando el usuario salió.
+    // Si está presente, el cliente lo usa como offset al reanudar para que
+    // el cronómetro continúe desde donde lo dejó (cuenta atrás simulacro).
+    totalTimeSeconds: z.number().int().min(0).optional(),
+    // Tipo de test: 'exam' (oficial) | 'simulacro' (replica formato oficial)
+    testType: z.string().optional(),
+    // Desglose por bloques/partes (simulacro)
+    breakdown: z.array(z.string()).optional(),
+    // Duración máxima si es simulacro con cuenta atrás (en minutos)
+    durationMinutes: z.number().int().min(1).optional(),
   }).optional(),
   error: z.string().optional(),
   errorType: z.enum(['not_found', 'forbidden', 'completed']).optional(),
@@ -296,6 +319,12 @@ export const pendingOfficialExamSchema = z.object({
   answeredCount: z.number(),
   progress: z.number(), // Percentage 0-100
   createdAt: z.string(),
+  // Distingue simulacro de examen oficial (ambos pendientes en el mismo listado)
+  testType: z.string().optional(),
+  // Tiempo ya transcurrido del cronómetro (cuenta atrás simulacros)
+  totalTimeSeconds: z.number().int().min(0).optional(),
+  // Duración máxima en minutos (simulacros con cuenta atrás)
+  durationMinutes: z.number().int().min(1).optional(),
 })
 
 export type PendingOfficialExam = z.infer<typeof pendingOfficialExamSchema>

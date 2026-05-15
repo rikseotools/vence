@@ -645,24 +645,30 @@ export async function initOfficialExam(
 
     // Create test session
     // totalQuestions = all questions (including unanswered, which count as failed)
+    const isSimulacro = metadata?.isSimulacro === true
     const [testSession] = await db.insert(tests).values({
       userId,
-      title: parte
-        ? `Examen Oficial ${examDate} (${parte} parte) - ${oposicion}`
-        : `Examen Oficial ${examDate} - ${oposicion}`,
-      testType: 'exam',
+      title: isSimulacro
+        ? `Simulacro de Examen - ${oposicion}`
+        : parte
+          ? `Examen Oficial ${examDate} (${parte} parte) - ${oposicion}`
+          : `Examen Oficial ${examDate} - ${oposicion}`,
+      testType: isSimulacro ? 'simulacro' : 'exam',
       totalQuestions: questionsData.length,
       score: '0',
       isCompleted: false,
       totalTimeSeconds: 0,
       detailedAnalytics: {
-        isOfficialExam: true,
+        isOfficialExam: !isSimulacro,
+        isSimulacro,
         examDate,
         oposicion,
         parte: parte ?? null,
         legislativeCount: metadata?.legislativeCount ?? legislativeIds.length,
         psychometricCount: metadata?.psychometricCount ?? psychometricIds.length,
         reservaCount: metadata?.reservaCount ?? 0,
+        breakdown: metadata?.breakdown,
+        durationMinutes: metadata?.durationMinutes,
       },
     }).returning({ id: tests.id })
 
@@ -732,7 +738,7 @@ export async function initOfficialExam(
 export async function saveOfficialExamAnswer(
   params: SaveOfficialExamAnswerRequest
 ): Promise<SaveOfficialExamAnswerResponse> {
-  const { testId, questionOrder, userAnswer } = params
+  const { testId, questionOrder, userAnswer, elapsedSeconds } = params
 
   try {
     const db = getOfficialExamsDb()  // canary pooler
@@ -776,6 +782,21 @@ export async function saveOfficialExamAnswer(
       })
       .where(eq(testQuestions.id, record.id))
 
+    // Persistir cronómetro acumulado (solo si nuevo elapsed > existente — protege
+    // contra retrocesos por bugs de cliente). Permite que al reanudar el examen
+    // el cronómetro continúe desde donde el usuario lo dejó.
+    if (typeof elapsedSeconds === 'number' && elapsedSeconds > 0) {
+      await db
+        .update(tests)
+        .set({ totalTimeSeconds: elapsedSeconds })
+        .where(
+          and(
+            eq(tests.id, testId),
+            sql`COALESCE(${tests.totalTimeSeconds}, 0) < ${elapsedSeconds}`,
+          ),
+        )
+    }
+
     return {
       success: true,
       answerId: record.id,
@@ -813,6 +834,8 @@ export async function getOfficialExamResume(
         isCompleted: tests.isCompleted,
         createdAt: tests.createdAt,
         detailedAnalytics: tests.detailedAnalytics,
+        totalTimeSeconds: tests.totalTimeSeconds,
+        testType: tests.testType,
       })
       .from(tests)
       .where(eq(tests.id, testId))
@@ -1015,11 +1038,15 @@ export async function getOfficialExamResume(
       legislativeCount?: number
       psychometricCount?: number
       reservaCount?: number
+      // Campos específicos de simulacro
+      isSimulacro?: boolean
+      breakdown?: string[]
+      durationMinutes?: number
     } | null
 
     const answeredCount = Object.keys(savedAnswers).length
 
-    console.log(`✅ [getOfficialExamResume] Loaded ${responseQuestions.length} questions, ${answeredCount} answered`)
+    console.log(`✅ [getOfficialExamResume] Loaded ${responseQuestions.length} questions, ${answeredCount} answered, ${test.totalTimeSeconds || 0}s elapsed`)
 
     return {
       success: true,
@@ -1035,6 +1062,10 @@ export async function getOfficialExamResume(
         psychometricCount: analytics?.psychometricCount || 0,
         reservaCount: analytics?.reservaCount || 0,
         createdAt: test.createdAt || new Date().toISOString(),
+        totalTimeSeconds: test.totalTimeSeconds || 0,
+        testType: analytics?.isSimulacro ? 'simulacro' : (test.testType || 'exam'),
+        breakdown: analytics?.breakdown,
+        durationMinutes: analytics?.durationMinutes,
       },
     }
   } catch (error) {
@@ -1060,11 +1091,14 @@ export async function getPendingOfficialExams(
   try {
     const db = getOfficialExamsDb()  // canary pooler
 
-    // Query tests with isOfficialExam flag in detailed_analytics
+    // Query tests con isOfficialExam=true O isSimulacro=true (ambos usan
+    // OfficialExamLayout y comparten el flujo de resume).
     const pendingTests = await db
       .select({
         id: tests.id,
         totalQuestions: tests.totalQuestions,
+        totalTimeSeconds: tests.totalTimeSeconds,
+        testType: tests.testType,
         createdAt: tests.createdAt,
         detailedAnalytics: tests.detailedAnalytics,
       })
@@ -1073,7 +1107,7 @@ export async function getPendingOfficialExams(
         and(
           eq(tests.userId, userId),
           eq(tests.isCompleted, false),
-          sql`${tests.detailedAnalytics}->>'isOfficialExam' = 'true'`
+          sql`(${tests.detailedAnalytics}->>'isOfficialExam' = 'true' OR ${tests.detailedAnalytics}->>'isSimulacro' = 'true')`
         )
       )
       .orderBy(desc(tests.createdAt))
@@ -1100,6 +1134,8 @@ export async function getPendingOfficialExams(
         const analytics = test.detailedAnalytics as {
           examDate?: string
           oposicion?: string
+          isSimulacro?: boolean
+          durationMinutes?: number
         } | null
 
         return {
@@ -1110,6 +1146,10 @@ export async function getPendingOfficialExams(
           answeredCount,
           progress,
           createdAt: test.createdAt || new Date().toISOString(),
+          // Campos extra para distinguir simulacro de examen oficial
+          testType: analytics?.isSimulacro ? 'simulacro' : (test.testType || 'exam'),
+          totalTimeSeconds: test.totalTimeSeconds || 0,
+          durationMinutes: analytics?.durationMinutes,
         }
       })
     )
