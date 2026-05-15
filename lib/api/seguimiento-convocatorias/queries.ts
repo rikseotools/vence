@@ -4,8 +4,15 @@
 import { getDb } from '@/db/client'
 import { sql } from 'drizzle-orm'
 import crypto from 'crypto'
+import https from 'https'
 import { insertSignal } from '@/lib/api/oep-signals/queries'
 import { baseScoreBySensor, buildDedupeKey } from '@/lib/api/oep-signals/schemas'
+
+// Hosts cuyo servidor no envía cadena intermedia y Node no puede validar.
+// Para estos solo hasheamos HTML público, así que aceptamos cert no verificado.
+const INSECURE_TLS_HOSTS = new Set<string>([
+  'www.dpz.es', // FNMT-RCM intermedio no servido (15-may-2026)
+])
 
 export interface OposicionToCheck {
   id: string
@@ -104,25 +111,76 @@ export function getContentPreview(html: string): string {
   return text.slice(0, 2000)
 }
 
+/**
+ * Fetch HTTPS sin validar TLS para servidores que no envían cadena intermedia
+ * (ej. www.dpz.es con FNMT-RCM). Sigue hasta 5 redirects.
+ */
+function fetchInsecureTls(
+  url: string,
+  headers: Record<string, string>,
+  redirectsLeft = 5
+): Promise<{ html: string; status: number }> {
+  return new Promise((resolve, reject) => {
+    const u = new URL(url)
+    const req = https.request(
+      {
+        host: u.host,
+        path: u.pathname + u.search,
+        method: 'GET',
+        headers,
+        rejectUnauthorized: false,
+        timeout: 30000,
+      },
+      (res) => {
+        const status = res.statusCode ?? 0
+        const loc = res.headers.location
+        if (loc && status >= 300 && status < 400 && redirectsLeft > 0) {
+          res.resume() // drenar
+          const nextUrl = new URL(loc, url).toString()
+          fetchInsecureTls(nextUrl, headers, redirectsLeft - 1).then(resolve, reject)
+          return
+        }
+        const chunks: Buffer[] = []
+        res.on('data', (c) => chunks.push(c))
+        res.on('end', () => resolve({ html: Buffer.concat(chunks).toString('utf-8'), status }))
+        res.on('error', reject)
+      }
+    )
+    req.on('timeout', () => req.destroy(new Error('timeout')))
+    req.on('error', reject)
+    req.end()
+  })
+}
+
 /** Verifica una URL de seguimiento y devuelve el resultado */
 export async function checkSeguimientoUrl(
   oposicion: OposicionToCheck
 ): Promise<CheckResult> {
   try {
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 30000) // 30s timeout
+    const headers = {
+      'User-Agent': 'Mozilla/5.0 (compatible; VenceBot/1.0; +https://www.vence.es)',
+      'Accept': 'text/html,application/xhtml+xml',
+      'Accept-Language': 'es-ES,es;q=0.9',
+    }
+    const host = new URL(oposicion.seguimientoUrl).host
+    let html: string
+    let httpStatus: number
 
-    const response = await fetch(oposicion.seguimientoUrl, {
-      signal: controller.signal,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; VenceBot/1.0; +https://www.vence.es)',
-        'Accept': 'text/html,application/xhtml+xml',
-        'Accept-Language': 'es-ES,es;q=0.9',
-      },
-    })
-    clearTimeout(timeout)
+    if (INSECURE_TLS_HOSTS.has(host)) {
+      // Host con cadena de cert incompleta — bypass validación TLS (solo hash HTML)
+      ;({ html, status: httpStatus } = await fetchInsecureTls(oposicion.seguimientoUrl, headers))
+    } else {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 30000)
+      const response = await fetch(oposicion.seguimientoUrl, {
+        signal: controller.signal,
+        headers,
+      })
+      clearTimeout(timeout)
+      html = await response.text()
+      httpStatus = response.status
+    }
 
-    const html = await response.text()
     const newHash = hashContent(html)
     const hasChanged = oposicion.seguimientoLastHash !== null && newHash !== oposicion.seguimientoLastHash
 
@@ -133,7 +191,7 @@ export async function checkSeguimientoUrl(
       hasChanged,
       newHash,
       oldHash: oposicion.seguimientoLastHash,
-      httpStatus: response.status,
+      httpStatus,
       contentLength: html.length,
       contentPreview: getContentPreview(html),
       error: null,
