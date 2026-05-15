@@ -69,6 +69,7 @@ const OposicionSchema = z.object({
   navLinks: z.array(NavLinkSchema),
   officialExams: z.array(OfficialExamConvocatoriaSchema).optional(),
   hasSpellingTest: z.boolean().optional(),
+  hasPsychometricTest: z.boolean().optional(),
   questionTag: z.string().optional(), // Si se define, solo se muestran preguntas con este tag (ej: 'PN' para Policía Nacional)
   // Aliases de búsqueda: términos alternativos que los usuarios escriben en
   // los buscadores (Onboarding, Cambio de oposición, Guard de tests). Vive
@@ -2837,6 +2838,7 @@ export const OPOSICIONES: Oposicion[] = [
       { href: '/guardia-civil/test', label: 'Tests', icon: '🎯' },
     ],
     hasSpellingTest: true,
+    hasPsychometricTest: true,
     officialExams: [
       // Convocatorias Cabos y Guardias — más recientes primero
       {

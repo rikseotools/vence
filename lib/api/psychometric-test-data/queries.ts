@@ -195,6 +195,7 @@ export async function getPsychometricCategories(userId?: string): Promise<GetPsy
             'auxilio_judicial': '%Auxilio Judicial%',
             'administrativo_estado': '%Administrativo Estado%',
             'policia_nacional': '%Policía Nacional%',
+            'guardia_civil': '%Guardia Civil%',
           }
           const examSourcePattern = examSourcePatterns[userProfile.oposicion]
           if (!examSourcePattern) {

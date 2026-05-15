@@ -64,6 +64,7 @@ interface Props {
   positionType: string
   officialExams?: OfficialExamConvocatoria[]
   hasSpellingTest?: boolean
+  hasPsychometricTest?: boolean
 }
 
 // Helpers de colores
@@ -107,7 +108,7 @@ function getExamStat(
   return examStats[parteKey] || examStats[examDate]
 }
 
-export default function TestHubClient({ oposicion, oposicionInfo, bloques, basePath, positionType, officialExams, hasSpellingTest }: Props) {
+export default function TestHubClient({ oposicion, oposicionInfo, bloques, basePath, positionType, officialExams, hasSpellingTest, hasPsychometricTest }: Props) {
   const { user, loading } = useAuth() as { user: { id: string } | null; loading: boolean }
   // Inicializar stats desde localStorage (instantáneo) y refrescar desde API
   const [userStats, setUserStats] = useState<Record<number, ThemeStats>>(() => {
@@ -410,6 +411,24 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
                     </div>
                     <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-medium">
                       Multi-respuesta
+                    </span>
+                  </div>
+                </Link>
+              )}
+
+              {/* Test Psicotécnico (config-driven) */}
+              {hasPsychometricTest && (
+                <Link
+                  href={`/psicotecnicos/test`}
+                  className="block bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-4 px-8 rounded-lg font-semibold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-xl active:scale-95 focus:outline-none focus:ring-4 focus:ring-purple-300 group"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <span className="mr-3 text-2xl group-hover:animate-bounce">🧠</span>
+                      <span>Tests Psicotécnicos</span>
+                    </div>
+                    <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-medium">
+                      Razonamiento + Series
                     </span>
                   </div>
                 </Link>

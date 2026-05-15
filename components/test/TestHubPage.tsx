@@ -127,6 +127,7 @@ export default async function TestHubPage({ oposicion }: Props) {
       positionType={positionType}
       officialExams={officialExams}
       hasSpellingTest={oposicionConfig?.hasSpellingTest}
+      hasPsychometricTest={oposicionConfig?.hasPsychometricTest}
     />
   )
 }
