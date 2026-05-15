@@ -17,9 +17,18 @@ import { findBestFeatureMatch, resolveRoute, type AppFeature } from './catalog'
  * indican que el usuario pregunta sobre la app (no sobre legislación).
  * Si la palabra aparece y el mensaje es ≤10 palabras, capturamos aunque
  * no matchee ningún patrón explícito. Cubre casos como solo "ranking"
- * o "me refiero al ranking".
+ * o "preguntas que he fallado".
+ *
+ * Estos términos son muy específicos del contexto app: no aparecen
+ * habitualmente en preguntas legales/temario.
  */
-const FAST_TRACK_KEYWORDS = ['ranking', 'simulacro']
+const FAST_TRACK_KEYWORDS = [
+  'ranking',
+  'simulacro',
+  // Variantes "preguntas falladas" (stems explícitos)
+  'fallado', 'fallada', 'falladas', 'fallados',
+  'fallido', 'fallida', 'fallidas', 'fallidos',
+]
 
 function matchesFastTrack(message: string): boolean {
   const wordCount = message.split(/\s+/).filter(w => w.length > 1).length
@@ -37,6 +46,8 @@ const APP_HELP_PATTERNS = [
   /c[oó]mo\s+(puedo\s+)?(ver|veo|consultar|consulto|revisar|reviso|repasar|repaso|acceder|accedo|hacer|hago|usar|uso|cambiar|cambio|editar|edito|borrar|filtrar|descargar|descargo|exportar|exporto|imprimir|imprimo|cancelar|cancelo)/i,
   /d[oó]nde\s+(est[aá]|encuentro|puedo|veo|aparece|se\s+ve|tengo)/i,
   /puedo\s+(ver|imprimir|descargar|exportar|cambiar|cancelar|filtrar|repetir|reintentar|configurar|elegir|seleccionar)/i,
+  // "puedes (X) + verbo informativo" — petición a la IA sobre la app
+  /puedes\s+(copiar|listar|mostrar|enviar|d[ae]rme|pasarme|ense[ñn]arme|indicarme|decirme)/i,
   // "qué es X" / "qué hace X"
   /qu[eé]\s+(es|hace|incluye|tiene)\s+(el|la|los|las)\s+(ranking|estad[ií]stica|temario|progreso|simulacro|premium|plan|repaso|chat|test|oficial)/i,
   /qu[eé]\s+es\s+vence/i,

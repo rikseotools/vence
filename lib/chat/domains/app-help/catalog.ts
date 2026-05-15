@@ -26,7 +26,15 @@ export interface AppFeature {
 export const FEATURES: AppFeature[] = [
   {
     id: 'repaso-fallos',
-    keywords: ['fallo', 'fallos', 'falladas', 'fallidas', 'erroné', 'incorrect', 'equivocad'],
+    // Variantes explícitas de fallar (sin usar 'fall' que es prefijo demasiado
+    // genérico y podría matchear otras palabras).
+    keywords: [
+      'fallo', 'fallos', 'fallido', 'fallidos', 'fallida', 'fallidas',
+      'fallado', 'fallada', 'falladas', 'fallados',
+      'fallar', 'fallé', 'fallaste', 'falló', 'fallaron',
+      'erroné', 'incorrect', 'equivocad',
+      'preguntas que he hecho mal', 'no he acertado',
+    ],
     title: 'Repasar preguntas falladas',
     description:
       'Reintenta las preguntas que has fallado para reforzar lo que peor llevas. Incluye la respuesta correcta y la explicación de cada una.',
