@@ -35,19 +35,22 @@ export function isExamStatsQuery(message: string): boolean {
   // - "qué suele caer de la ley X"
 
   const patterns = [
-    /art[ií]culos?.*(ca[ií]do|caen|aparec|pregunta|examen|oficial)/i,
+    // "aparec|aparezc" cubre aparecen/aparece/aparecer (indicativo) y aparezcan/aparezca (subjuntivo)
+    /art[ií]culos?.*(ca[ií]do|caen|caigan|aparec|aparezc|salen|salgan|pregunta|examen|oficial|frecuent)/i,
     /examen.*oficial.*(art|pregunta)/i,
-    /qu[eé].*preguntas?.*(cae|caen|aparec|suele)/i,
-    /qu[eé].*(cae|caen|suele).*examen/i,
+    /qu[eé].*preguntas?.*(cae|caen|caigan|aparec|aparezc|salgan|salen|suele)/i,
+    /qu[eé].*(cae|caen|caigan|suele|salen|salgan).*examen/i,
     /estad[ií]stica.*examen/i,
     /m[aá]s preguntad/i,
-    /preguntas?.*caen.*examen/i,
-    /(cae|caen).*en.*examen/i,
+    /preguntas?.*(caen|caigan).*examen/i,
+    /(cae|caen|caigan|salen|salgan).*en.*examen/i,
     /qu[eé]\s*(tipo|clase)\s*(de)?\s*preguntas/i,
     /preguntas?\s*suele|suele.*caer/i,
-    // "más importantes" sobre artículos/leyes/temas (frecuencia en exámenes)
-    /(art[ií]culos?|leyes?|temas?)\s+(\w+\s+){0,3}(m[aá]s\s+)?(importantes?|relevantes?|frecuentes?)/i,
-    /(m[aá]s\s+)?(importantes?|relevantes?)\s+(art[ií]culos?|leyes?|temas?)/i,
+    // "más importantes/frecuentes" sobre artículos/leyes/temas
+    /(art[ií]culos?|leyes?|temas?)\s+(\w+\s+){0,3}(m[aá]s\s+)?(importantes?|relevantes?|frecuentes?|habituales?|comunes?)/i,
+    /(m[aá]s\s+)?(importantes?|relevantes?|frecuentes?|habituales?|comunes?)\s+(art[ií]culos?|leyes?|temas?)/i,
+    // "qué/cuáles artículos ... clara diferencia/destacan/concentran"
+    /(qu[eé]|cu[aá]l(es)?|algun|algunos).*art[ií]culos?.*(clara\s*diferencia|destacan|concentran|repiten|salen\s+m[aá]s|caen\s+m[aá]s)/i,
     // "porcentaje de preguntas / temas"
     /porcentaje\s+de\s+(preguntas?|temas?|art)/i,
     /qu[eé]\s+porcentaje.*examen/i,
