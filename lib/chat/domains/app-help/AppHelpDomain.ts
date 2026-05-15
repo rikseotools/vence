@@ -25,6 +25,8 @@ import { findBestFeatureMatch, resolveRoute, type AppFeature } from './catalog'
 const FAST_TRACK_KEYWORDS = [
   'ranking',
   'simulacro',
+  'psicotécnico', 'psicotécnicos', 'psicotecnico', 'psicotecnicos',
+  'psicotec', 'psicotenico', 'psicotenicos',
   // Variantes "preguntas falladas" (stems explícitos)
   'fallado', 'fallada', 'falladas', 'fallados',
   'fallido', 'fallida', 'fallidas', 'fallidos',

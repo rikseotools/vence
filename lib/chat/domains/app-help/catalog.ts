@@ -101,6 +101,21 @@ export const FEATURES: AppFeature[] = [
     },
   },
   {
+    id: 'psicotecnicos',
+    keywords: [
+      'psicotécnico', 'psicotécnicos', 'psicotecnico', 'psicotecnicos',
+      'psicotec', 'psicotenico', 'psicotenicos', // typos comunes
+      'series numéricas', 'series alfabéticas',
+      'razonamiento numérico', 'razonamiento verbal',
+    ],
+    title: 'Tests psicotécnicos',
+    description:
+      'Practica series, analogías, razonamiento numérico, gráficos y todos los tipos de psicotécnicos que entran en tu oposición.',
+    routes: {
+      default: '/psicotecnicos/test',
+    },
+  },
+  {
     id: 'simulacro',
     keywords: [
       'simulacro', 'simulacros',
