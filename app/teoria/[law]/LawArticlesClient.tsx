@@ -356,8 +356,9 @@ export default function LawArticlesClient({ params, searchParams }: LawArticlesC
 
   const { articles, law } = lawData
 
-  // Detectar si es ley virtual
-  const isVirtual = isVirtualLaw(law)
+  // Detectar si es ley virtual: solo si no tiene artículos con contenido.
+  // Leyes como Excel tienen is_virtual=true pero sí tienen artículos estudiables.
+  const isVirtual = isVirtualLaw(law) && articles.length === 0
   // Usar video_url de BD o del mapeo temporal
   const videoUrl = law.video_url || VIRTUAL_LAW_VIDEOS[law.short_name]
   const videoId = getYouTubeVideoId(videoUrl)
