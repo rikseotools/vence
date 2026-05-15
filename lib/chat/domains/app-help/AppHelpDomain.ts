@@ -13,6 +13,21 @@ import { logger } from '../../shared/logger'
 import { findBestFeatureMatch, resolveRoute, type AppFeature } from './catalog'
 
 /**
+ * "Fast-track keywords" — términos que en mensajes cortos casi siempre
+ * indican que el usuario pregunta sobre la app (no sobre legislación).
+ * Si la palabra aparece y el mensaje es ≤10 palabras, capturamos aunque
+ * no matchee ningún patrón explícito. Cubre casos como solo "ranking"
+ * o "me refiero al ranking".
+ */
+const FAST_TRACK_KEYWORDS = ['ranking', 'simulacro']
+
+function matchesFastTrack(message: string): boolean {
+  const wordCount = message.split(/\s+/).filter(w => w.length > 1).length
+  if (wordCount > 10) return false
+  return FAST_TRACK_KEYWORDS.some(kw => new RegExp(`\\b${kw}\\b`, 'i').test(message))
+}
+
+/**
  * Patrones que indican que el usuario pregunta sobre cómo USAR la app
  * (no sobre temario legal). Combinados con el catálogo de features dan
  * matching de alta precisión.
@@ -59,10 +74,11 @@ export class AppHelpDomain implements ChatDomain {
     // Psychometric/Search deben manejarlo.
     if (context.questionContext?.questionId) return false
 
-    // Primera condición: el mensaje matchea uno de los patrones explícitos
-    // de "pregunta sobre app". Si no matchea, no es nuestro territorio.
+    // Primera condición: o matchea patrón explícito, o es "fast-track"
+    // (keyword muy específica en mensaje corto).
     const matchesPattern = APP_HELP_PATTERNS.some(p => p.test(msg))
-    if (!matchesPattern) return false
+    const fastTrack = matchesFastTrack(msg)
+    if (!matchesPattern && !fastTrack) return false
 
     // Segunda condición: alguna feature del catálogo tiene keywords que
     // aparecen en el mensaje. Sin keyword no podemos dar link útil.
