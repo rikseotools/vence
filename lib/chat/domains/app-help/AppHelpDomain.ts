@@ -44,7 +44,7 @@ function matchesFastTrack(message: string): boolean {
 const APP_HELP_PATTERNS = [
   // "cómo (puedo) X" / "cómo veo / cómo accedo / cómo hago"
   /c[oó]mo\s+(puedo\s+)?(ver|veo|consultar|consulto|revisar|reviso|repasar|repaso|acceder|accedo|hacer|hago|usar|uso|cambiar|cambio|editar|edito|borrar|filtrar|descargar|descargo|exportar|exporto|imprimir|imprimo|cancelar|cancelo)/i,
-  /d[oó]nde\s+(est[aá]|encuentro|puedo|veo|aparece|se\s+ve|tengo)/i,
+  /d[oó]nde\s+(est[aá]|encuentro|puedo|veo|aparece|se\s+ve|tengo|hago|hacer|practico)/i,
   /puedo\s+(ver|imprimir|descargar|exportar|cambiar|cancelar|filtrar|repetir|reintentar|configurar|elegir|seleccionar)/i,
   // "puedes (X) + verbo informativo" — petición a la IA sobre la app
   /puedes\s+(copiar|listar|mostrar|enviar|d[ae]rme|pasarme|ense[ñn]arme|indicarme|decirme)/i,

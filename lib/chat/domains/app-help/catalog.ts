@@ -102,7 +102,13 @@ export const FEATURES: AppFeature[] = [
   },
   {
     id: 'simulacro',
-    keywords: ['simulacro', 'examen oficial', 'examen real', 'oficiales'],
+    keywords: [
+      'simulacro', 'simulacros',
+      'examen oficial', 'examenes oficial', 'examen real', 'examenes reales',
+      'examenes oficiales', 'examenes oficial', // sin tilde, plurales
+      'preguntas oficiales', 'pregunta oficial',
+      'oficiales',
+    ],
     title: 'Simulacros oficiales',
     description:
       'Tests con las preguntas reales de exámenes oficiales anteriores. Para entrenar en condiciones reales.',
