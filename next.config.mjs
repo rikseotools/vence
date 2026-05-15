@@ -120,6 +120,29 @@ const nextConfig = {
         destination: '/administrativo-estado/temario',
         permanent: true,
       }))),
+      // 🔄 Estatuto de Galicia: slug 'virtual' (contenedor histórico de preguntas) → slug real (LO 1/1981)
+      // Las 171 preguntas se reasignaron a sus artículos correctos del Estatuto LO 1/1981 el 15/05/2026.
+      // La ley virtual queda is_active=false en BD; este redirect cubre los enlaces externos.
+      {
+        source: '/leyes/estatuto-autonomia-galicia-virtual',
+        destination: '/leyes/estatuto-autonomia-galicia',
+        permanent: true,
+      },
+      {
+        source: '/leyes/estatuto-autonomia-galicia-virtual/:path*',
+        destination: '/leyes/estatuto-autonomia-galicia/:path*',
+        permanent: true,
+      },
+      {
+        source: '/teoria/estatuto-autonomia-galicia-virtual',
+        destination: '/teoria/estatuto-autonomia-galicia',
+        permanent: true,
+      },
+      {
+        source: '/teoria/estatuto-autonomia-galicia-virtual/:path*',
+        destination: '/teoria/estatuto-autonomia-galicia/:path*',
+        permanent: true,
+      },
       // 🔄 Redirecciones de /teoria/ y /leyes/ con formato incorrecto (barras en slugs)
       // /teoria/ley-39/2015 → /teoria/ley-39-2015
       // /leyes/ley-39/2015 → /leyes/ley-39-2015
