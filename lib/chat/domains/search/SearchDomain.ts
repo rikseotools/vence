@@ -18,6 +18,7 @@ import { detectQueryPattern } from './PatternMatcher'
 import { detectLawsFromText, getHotArticlesByOposicion, formatHotArticlesResponse, hasQuestionsForArticle, extractArticleNumbers, getSupabaseForSearch } from './queries'
 import { isPsychometricSubtype } from '../../shared/constants'
 import { detectStatsQueryType } from '../stats/StatsService'
+import { detectQuestionComplaint, buildComplaintSuggestion } from '../../shared/complaintDetector'
 
 // ============================================
 // LEYES VIRTUALES (INFORMÁTICA/OFIMÁTICA)
@@ -352,10 +353,25 @@ export class SearchDomain implements ChatDomain {
     // 3. Generar respuesta con OpenAI
     const { content: responseText, tokensUsed, modelProvider, modelId } = await this.generateResponse(context, searchResult, tracer)
 
+    // 3.1 Si el usuario está quejándose de la pregunta del test (no pidiendo
+    // aclaración legal), añadir sugerencia de impugnación al final.
+    // Caso real: feedback negativo donde la IA respondía re-explicando el
+    // artículo en lugar de reconocer la crítica.
+    const complaint = detectQuestionComplaint(
+      context.currentMessage,
+      !!context.questionContext?.questionId,
+    )
+    const finalText = complaint.isComplaint
+      ? responseText + buildComplaintSuggestion()
+      : responseText
+    if (complaint.isComplaint) {
+      logger.info(`SearchDomain: detected question complaint (pattern: ${complaint.matchedPattern})`, { domain: 'search' })
+    }
+
     // 4. Construir respuesta final
     const builder = new ChatResponseBuilder()
       .domain('search')
-      .text(responseText)
+      .text(finalText)
       .processingTime(Date.now() - startTime)
 
     if (tokensUsed) {

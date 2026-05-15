@@ -12,6 +12,7 @@ import {
   hasCorrectAnswer,
   extractVerificationInput,
 } from './VerificationService'
+import { detectQuestionComplaint, buildComplaintSuggestion } from '../../shared/complaintDetector'
 
 // ============================================
 // DOMINIO DE VERIFICACIÓN
@@ -181,10 +182,23 @@ export class VerificationDomain implements ChatDomain {
     })
     verifySpan?.end()
 
+    // Si el usuario se queja de la pregunta (no pide aclaración legal),
+    // añadir sugerencia de impugnación al final.
+    const complaint = detectQuestionComplaint(
+      context.currentMessage,
+      !!context.questionContext?.questionId,
+    )
+    const finalResponseText = complaint.isComplaint
+      ? result.response + buildComplaintSuggestion()
+      : result.response
+    if (complaint.isComplaint) {
+      logger.info(`VerificationDomain: detected question complaint (pattern: ${complaint.matchedPattern})`, { domain: 'verification' })
+    }
+
     // Construir respuesta
     const builder = new ChatResponseBuilder()
       .domain('verification')
-      .text(result.response)
+      .text(finalResponseText)
       .processingTime(Date.now() - startTime)
 
     if (result.tokensUsed) {
