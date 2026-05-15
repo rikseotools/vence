@@ -76,6 +76,13 @@ export function isUserStatsQuery(message: string): boolean {
   // - "test de fallos/errores/repaso"
   // - "fallos/errores + período temporal"
 
+  // Excluir preguntas hipotéticas/condicionales: "si X podría/sería Y"
+  // o "X vale para Y". Estas son opinión, no consulta de stats.
+  const isHypothetical =
+    /\bsi\s+\w+\s+.*(podr[ií]a|valdr[ií]a|servir[ií]a|sirve|vale|llegar[ií]a|aprobar[ií]a)/i.test(msgLower) ||
+    /(me\s+)?(vale|sirve)\s+(para|de)\s+(aprobar|sacar|llegar)/i.test(msgLower)
+  if (isHypothetical) return false
+
   const patterns = [
     /mi[s]?\s*(progreso|estad[ií]stica|resultado|fallo|error|acierto|rendimiento|punto.*d[eé]bil|[aá]rea.*d[eé]bil)/i,
     /qu[eé].*(he\s*fallado|fallos?\s*m[aá]s)/i,
@@ -101,14 +108,15 @@ export function isUserStatsQuery(message: string): boolean {
     /(tasa|porcentaje|ratio)\s*(de\s*)?(aciertos?|fallos?|errores?)/i, // "tasa de aciertos", "porcentaje de fallos"
     /(aciertos?|fallos?)\s*(tengo|llevo|he\s*tenido)/i, // "cuantos fallos tengo", "aciertos que llevo"
     /c[oó]mo\s*me\s*(va|ha\s*ido|fue)/i, // "cómo me ha ido esta semana"
-    // Predicción / nota / aprobar
-    /qu[eé]\s*nota\s*(voy|crees|sacar[eé]?|tendr[eé]?)/i, // "qué nota voy a sacar"
-    /voy\s*a\s*(aprobar|suspender|sacar)/i, // "voy a aprobar?"
-    /aprobar.{0,10}(examen|oposici)/i, // "aprobaré el examen?", "aprobaré la oposición?"
-    /suspender.{0,10}(examen|oposici)/i, // "suspenderé el examen?"
-    /(probabilidad|posibilidad|chance).*aprobar/i, // "probabilidad de aprobar"
-    /predicci[oó]n|pron[oó]stico/i, // "predicción", "pronóstico"
-    /preparad[oa]\s*(para|estoy)/i, // "estoy preparado?"
+    // Predicción / nota / aprobar — solo cuando es claramente sobre el
+    // estado actual del usuario, no preguntas condicionales tipo "si X
+    // podría aprobar Y" (esas son opinión, no stats).
+    /qu[eé]\s*nota\s*(voy|crees|sacar[eé]?|tendr[eé]?)/i,
+    /\b(voy|ir[eé])\s*a\s*(aprobar|suspender|sacar)/i,
+    /(aprobar[eé]?|suspender[eé]?)\s*(el\s+)?(examen|oposici)/i, // "aprobaré el examen?" (tiempo futuro o verbo solo)
+    /(probabilidad|posibilidad|chance).*aprobar/i,
+    /predicci[oó]n|pron[oó]stico/i,
+    /preparad[oa]\s*(para|estoy)/i,
     /estoy\s*(preparad|list|listo)/i, // "estoy preparado/listo?"
   ]
 
