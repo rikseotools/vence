@@ -670,8 +670,17 @@ Si encuentras una pregunta con error, puedes impugnarla:
 - Puedes ver el estado (pendiente, resuelta, rechazada) en tu panel`
   }
 
-  // Convocatorias
-  if (/convocatoria|plazas?\s+(disponible|ofertada|publicada)/i.test(msgLower)) {
+  // Convocatorias — solo si el usuario pide CLARAMENTE consultar el catálogo,
+  // no como mención casual ("me cuesta ponerme con la convocatoria..." NO
+  // debe disparar respuesta de catálogo).
+  // Caso real: usuario pedía motivación, el regex genérico "convocatoria"
+  // disparaba el link al catálogo y rompía el flujo emocional.
+  const isConvocatoriaQuery =
+    /^\s*convocatorias?\b/i.test(msgLower) ||
+    /\b(cu[aá]l(es)?|qu[eé]|d[oó]nde|cómo)\s+(son\s+las?|hay\s+las?|veo\s+las?|consulto\s+las?|encuentro\s+las?)?\s*convocatorias?/i.test(msgLower) ||
+    /(ver|consultar|buscar|listar|filtrar|hay)\s+(las?\s+)?convocatorias?\b/i.test(msgLower) ||
+    /plazas?\s+(disponibles?|ofertadas?|publicadas?|hay)/i.test(msgLower)
+  if (isConvocatoriaQuery) {
     return `**Convocatorias de oposiciones**
 
 Consulta las convocatorias actualizadas del BOE:
