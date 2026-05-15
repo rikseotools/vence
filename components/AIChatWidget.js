@@ -373,16 +373,27 @@ export default function AIChatWidget() {
         }
       }
 
-      // Limpiar historial de mensajes - SOLO incluir mensajes de la pregunta actual
-      // Esto evita que el AI se confunda con contexto de preguntas anteriores
-      // Reusamos `currentQId` declarado arriba (línea 289) — derivado de
-      // effectiveQuestionContext, por lo que respeta el override del caller.
+      // Limpiar historial de mensajes - incluir contexto relevante:
+      // - Si HAY pregunta actual (currentQId): SOLO mensajes de esa pregunta,
+      //   sin chat libre del historial (que podría ser de otra conversación).
+      // - Si NO hay pregunta actual (chat libre): incluir chat libre previo
+      //   + mensajes de la última pregunta del historial reciente como
+      //   follow-up. Caso real: usuario pulsa "Explícame psicotécnica",
+      //   luego sigue chateando sobre esa misma pregunta sin question_context
+      //   activo — antes perdíamos el contexto y la IA respondía con datos
+      //   inventados.
+      // slice(-6) abajo limita a 6 mensajes recientes, así no arrastramos
+      // contexto de preguntas muy antiguas.
+      const lastQuestionIdInHistory = [...messages]
+        .reverse()
+        .find(m => m.questionId)?.questionId || null
       const relevantMessages = messages.filter(m => {
-        // Si no hay questionId en el mensaje, es un mensaje antiguo sin tracking
-        // Solo incluirlo si no tenemos contexto de pregunta actual
-        if (!m.questionId) return !currentQId
-        // Si hay questionId, solo incluir si coincide con la pregunta actual
-        return m.questionId === currentQId
+        if (currentQId) {
+          // Modo pregunta activa: solo mensajes con su mismo questionId
+          return m.questionId === currentQId
+        }
+        // Modo chat libre: chat libre + última pregunta del historial
+        return !m.questionId || m.questionId === lastQuestionIdInHistory
       })
 
       // Log para depuración: mostrar cuántos mensajes se filtraron
