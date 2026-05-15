@@ -17,6 +17,7 @@ import { getTemarioDomain } from '../domains/temario/TemarioDomain'
 import { getStatsDomain } from '../domains/stats'
 import { getOposicionCatalogDomain } from '../domains/oposicion-catalog'
 import { getPsychometricDomain } from '../domains/psychometric'
+import { getAppHelpDomain } from '../domains/app-help/AppHelpDomain'
 import { isPsychometricSubtype } from '../shared/constants'
 import { isPlatformQuery } from '../domains/knowledge-base/queries'
 import { generateEmbedding } from '../domains/search/EmbeddingService'
@@ -1045,6 +1046,7 @@ export function getOrchestrator(): ChatOrchestrator {
     // Registrar dominios (se ordenan automáticamente por prioridad)
     orchestratorInstance.registerDomain(getVerificationDomain())   // Prioridad 1
     orchestratorInstance.registerDomain(getPsychometricDomain())   // Prioridad 1.5
+    orchestratorInstance.registerDomain(getAppHelpDomain())        // Prioridad 1.7
     orchestratorInstance.registerDomain(getKnowledgeBaseDomain())  // Prioridad 2
     orchestratorInstance.registerDomain(getTemarioDomain())        // Prioridad 2.5
     orchestratorInstance.registerDomain(getSearchDomain())            // Prioridad 3
