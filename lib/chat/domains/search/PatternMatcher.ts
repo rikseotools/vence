@@ -217,8 +217,14 @@ function detectLawFromArticlePattern(message: string): string | null {
  * Detecta qué leyes se mencionan en el mensaje
  * Usa el mapeo centralizado de lawMappingUtils.ts + aliases específicos para chat
  */
+/** Quita tildes y diacríticos para matching tolerante a acentos */
+function stripAccents(s: string): string {
+  return s.normalize('NFD').replace(/[̀-ͯ]/g, '')
+}
+
 export function detectMentionedLaws(message: string): string[] {
   const msgLower = message.toLowerCase()
+  const msgNormalized = stripAccents(msgLower)
   const mentioned: string[] = []
 
   // 0. PRIORIDAD: Detectar ley asociada al número de artículo (art. X del TREBEP)
@@ -250,10 +256,13 @@ export function detectMentionedLaws(message: string): string[] {
     }
   }
 
-  // 2. Buscar en aliases específicos de chat
+  // 2. Buscar en aliases específicos de chat (tolerante a tildes)
+  // El usuario suele escribir sin tildes: "constitucion española" debe matchear
+  // el alias "constitución española".
   for (const [lawName, aliases] of Object.entries(CHAT_LAW_ALIASES)) {
     for (const alias of aliases) {
-      if (msgLower.includes(alias.toLowerCase())) {
+      const aliasNorm = stripAccents(alias.toLowerCase())
+      if (msgNormalized.includes(aliasNorm)) {
         if (!mentioned.includes(lawName)) {
           mentioned.push(lawName)
         }
