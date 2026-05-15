@@ -321,11 +321,13 @@ Vence usa tu cuenta de Google para entrar (no hay usuario ni contraseña propios
 Si el botón "Continuar con Google" da error, escríbenos desde **💬 Soporte** (mismo menú de tu avatar) con una captura.`
   }
 
-  // No puedo hacer test / no me deja / no me cuenta el progreso
+  // No puedo hacer test / no me deja / no me cuenta el progreso /
+  // no se carga / no carga / por qué no se cargan los tests
   if (
-    /no\s+(me\s+|se\s+)?(puedo|deja|sale)\s+.*(hacer|realizar|acceder\s+al?)\s+(\w+\s+){0,2}(test|examen|pregunta|sim[iu]lacro)/i.test(msgLower) ||
-    /por\s*qu[eé]\s+no\s+(me\s+|se\s+)?(puedo|deja|sale)\s+.*(test|pregunta|examen)/i.test(msgLower) ||
-    /no\s+(me\s+|se\s+)?(cuenta|registra|guarda|contabiliza)\s+.*(test|pregunta|progreso|resultado|respuest)/i.test(msgLower)
+    /no\s+(me\s+|se\s+)?(puedo|deja|sale|carga|cargan|funciona|funcionan|abre|abren)\s+.*(hacer|realizar|acceder\s+al?|los?|las?)?\s*(\w+\s+){0,2}(test|examen|pregunta|sim[iu]lacro)/i.test(msgLower) ||
+    /por\s*qu[eé]\s+no\s+(me\s+|se\s+)?(puedo|deja|sale|carga|cargan|funciona|funcionan|abre|abren)\s+.*(test|pregunta|examen|sim[iu]lacro)/i.test(msgLower) ||
+    /no\s+(me\s+|se\s+)?(cuenta|registra|guarda|contabiliza)\s+.*(test|pregunta|progreso|resultado|respuest)/i.test(msgLower) ||
+    /(test|pregunta|examen|sim[iu]lacro)s?\s+(no\s+(se\s+)?(carga|cargan|funciona|funcionan|abre|abren))/i.test(msgLower)
   ) {
     // Personalizar según plan: usuarios Free ven primero el límite diario;
     // usuarios Premium NO lo ven (ya tienen tests ilimitados).

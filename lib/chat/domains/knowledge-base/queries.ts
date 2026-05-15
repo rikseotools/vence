@@ -314,6 +314,11 @@ export function isPlatformQuery(message: string): boolean {
     /(plataforma|app|suscripci|plan\b|cuenta|contrase|perfil|configurar).*ayuda/i,
     /necesito\s+(soporte|ayuda\s+t[eé]cnica)/i,
     /funcionalidad|caracter[ií]stica/i,
+    // Problemas técnicos / bugs reportados por usuarios
+    /(no\s+se\s+(carga|cargan|abre|abren)|no\s+me\s+(deja|carga|aparece|sale|funciona)|no\s+funciona|no\s+puedo\s+(acceder|entrar))/i,
+    /(error|bug|fallo)\s+(en|al|del|de\s+la)/i,
+    /(porqu[eé]|por\s+qu[eé])\s+no\s+(se|me|puedo|funciona)/i,
+    /(pantalla\s+en\s+blanco|se\s+queda\s+colgad|se\s+ha\s+colgad)/i,
     /test(s)?\s+(personalizad|r[aá]pid|oficial)/i,
     // "estadísticas" de la PLATAFORMA (no estadísticas personales)
     /estad[ií]sticas\s+(de\s+la\s+)?(app|plataforma|vence)/i,
