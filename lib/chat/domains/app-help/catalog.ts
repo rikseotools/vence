@@ -38,10 +38,18 @@ export const FEATURES: AppFeature[] = [
   },
   {
     id: 'mi-progreso',
-    keywords: ['progreso', 'estadística', 'estadisticas', 'cómo voy', 'como voy', 'rendimiento', 'estoy avanzando'],
+    keywords: [
+      'progreso', 'estadística', 'estadisticas', 'cómo voy', 'como voy',
+      'rendimiento', 'estoy avanzando',
+      // Variantes "por dónde voy en el estudio"
+      'tema voy', 'tema llevo', 'tema estoy',
+      'artículo voy', 'articulo voy', 'artículo llevo', 'articulo llevo',
+      'por dónde voy', 'por donde voy', 'qué he estudiado', 'que he estudiado',
+      'qué llevo estudiado', 'que llevo estudiado', 'estudiado',
+    ],
     title: 'Tu progreso',
     description:
-      'Resumen de tus estadísticas: preguntas respondidas, % de acierto, evolución semanal, áreas más débiles.',
+      'Resumen de tus estadísticas: preguntas respondidas, % de acierto, evolución semanal, áreas más débiles. Nota: ahora mismo no guardamos automáticamente qué artículos has leído como "lectura del temario", pero sí registramos las preguntas que has hecho de cada artículo, así que puedes deducir tu progreso desde ahí.',
     routes: {
       auxiliar_administrativo_estado: '/auxiliar-administrativo-estado/mi-progreso',
       tramitacion_procesal: '/tramitacion-procesal/mi-progreso',

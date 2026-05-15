@@ -31,9 +31,14 @@ const APP_HELP_PATTERNS = [
   // "X es real?"
   /(ranking|estad[ií]sticas?|progreso|simulacros?|premium)\s+(es|son)\s+(real|reales|fiable|fiables)/i,
   /(es|son)\s+(real|reales|fiable|fiables)\s+(el|la|los|las)\s+(ranking|estad[ií]stica|progreso|simulacro)/i,
-  // "hay opción / existe forma / se puede"
-  /h?ay\s+(opci[oó]n\s+de|forma\s+de|manera\s+de|alguna\s+forma)/i,
-  /existe\s+(la\s+)?(opci[oó]n|forma|manera)/i,
+  // "hay (alguna) opción / forma / manera" + de/para/que
+  /h?ay\s+(alguna\s+)?(opci[oó]n|forma|manera)\s+(de|para|que|en)/i,
+  /existe\s+(alguna\s+|la\s+)?(opci[oó]n|forma|manera)/i,
+  // "(me) gustaría saber si hay" — pregunta indirecta sobre feature
+  /(me\s+)?gustar[ií]a\s+saber\s+si\s+(hay|existe|puedo)/i,
+  // "saber por qué/dónde/cómo voy" — usuario quiere status
+  /(saber|consultar|ver)\s+(por\s+)?(qu[eé]|d[oó]nde|c[oó]mo)\s+(voy|llevo|he|tema|art[ií]culo)/i,
+  /(qu[eé]|por\s+d[oó]nde)\s+(tema|art[ií]culo|lecci[oó]n|bloque)\s+(voy|llevo|estoy)/i,
   /se\s+puede\s+(ver|hacer|cancelar|imprimir|descargar|cambiar|filtrar|reintentar|repetir|configurar)/i,
 ]
 
