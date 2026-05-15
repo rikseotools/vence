@@ -106,16 +106,11 @@ export const FEATURES: AppFeature[] = [
       default: '/mis-impugnaciones',
     },
   },
-  {
-    id: 'premium',
-    keywords: ['premium', 'suscripción', 'precio', 'plan', 'pagar', 'cuánto cuesta'],
-    title: 'Premium',
-    description:
-      'Acceso a todas las funcionalidades: simulacros ilimitados, IA sin límite, estadísticas avanzadas.',
-    routes: {
-      default: '/precios',
-    },
-  },
+  // NOTA: 'premium' y 'soporte' los maneja KnowledgeBaseDomain con flujo
+  // específico (cancelaciones, problemas de pago, racha, etc.). No incluirlos
+  // aquí para evitar colisión de routing — KnowledgeBase tiene priority 2
+  // pero la lógica de cancelaciones/precios ahí es mucho más rica que un
+  // simple link.
   {
     id: 'soporte',
     keywords: ['soporte', 'ayuda', 'contactar', 'reportar bug', 'problema'],
