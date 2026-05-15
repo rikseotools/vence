@@ -3,7 +3,7 @@
 
 import type { DetectedPattern, PatternType } from '../../core/types'
 import { logger } from '../../shared/logger'
-import { mapSlugToShortName as mapLawSlugToShortName } from '@/lib/lawSlugSync'
+import { mapSlugToShortName as mapLawSlugToShortName, findShortNameByAbbreviation } from '@/lib/lawSlugSync'
 
 // ============================================
 // DEFINICIÓN DE PATRONES
@@ -228,15 +228,22 @@ export function detectMentionedLaws(message: string): string[] {
   }
 
   // 1. Detectar abreviaturas comunes directamente (ce, lotc, lpac, etc.)
+  // Lookup en dos pasos:
+  //   a) slug == abreviatura (cubre 'lotc' → LOTC porque su slug ES 'lotc')
+  //   b) short_name == abreviatura case-insensitive (cubre CE, LECrim, CP, LSP,
+  //      LOFCS que tienen short_name canónico = sigla en BD)
+  // Las abreviaturas que NO existen como slug NI short_name (LOPJ, LPAC, TREBEP,
+  // LEC, CC, RGPD...) se detectan vía CHAT_LAW_ALIASES más abajo (keywords del
+  // nombre completo). Si todo falla, complaintDetector/SearchDomain pedirá
+  // aclaración al usuario en lugar de inventar.
   const commonAbbreviations = [
     'ce', 'lotc', 'lopj', 'lpac', 'lrjsp', 'trebep', 'ebep', 'loreg', 'rgpd',
     'lofcs', 'lopd', 'lopdgdd', 'lec', 'lecrim', 'cp', 'cc', 'lsp'
   ]
   for (const abbr of commonAbbreviations) {
-    // Buscar como palabra completa (con límites de palabra)
     const regex = new RegExp(`\\b${abbr}\\b`, 'i')
     if (regex.test(msgLower)) {
-      const shortName = mapLawSlugToShortName(abbr)
+      const shortName = mapLawSlugToShortName(abbr) ?? findShortNameByAbbreviation(abbr)
       if (shortName && !mentioned.includes(shortName)) {
         mentioned.push(shortName)
       }

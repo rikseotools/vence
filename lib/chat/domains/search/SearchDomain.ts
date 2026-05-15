@@ -19,6 +19,7 @@ import { detectLawsFromText, getHotArticlesByOposicion, formatHotArticlesRespons
 import { isPsychometricSubtype } from '../../shared/constants'
 import { detectStatsQueryType } from '../stats/StatsService'
 import { detectQuestionComplaint, buildComplaintSuggestion } from '../../shared/complaintDetector'
+import { detectUnknownAbbreviations, buildClarificationRequest } from '../../shared/unknownAbbreviationDetector'
 
 // ============================================
 // LEYES VIRTUALES (INFORMÁTICA/OFIMÁTICA)
@@ -287,6 +288,27 @@ export class SearchDomain implements ChatDomain {
           })
           effectiveLawName = detectedLaws[0]
         }
+      }
+    }
+
+    // 1.5 Capa 2 de abreviaturas: si tras toda la detección NO hemos
+    // identificado ninguna ley (ni por contexto, ni por mention, ni por
+    // explanation) Y el usuario sí escribió siglas que no reconocemos,
+    // pedimos aclaración en vez de buscar a ciegas o inventar.
+    // Caso real: "Art 36 LOPJ" — la sigla LOPJ no es slug ni short_name
+    // canónico en BD (es 'LO 6/1985'), antes el sistema buscaba sin
+    // contexto y devolvía artículos irrelevantes.
+    if (!effectiveLawName) {
+      const abbrCheck = detectUnknownAbbreviations(effectiveMessage)
+      if (abbrCheck.unknown.length > 0) {
+        logger.info(`SearchDomain: Unknown abbreviations detected, asking for clarification: ${abbrCheck.unknown.join(',')}`, {
+          domain: 'search',
+        })
+        return new ChatResponseBuilder()
+          .domain('search')
+          .text(buildClarificationRequest(abbrCheck.unknown))
+          .processingTime(Date.now() - startTime)
+          .build()
       }
     }
 

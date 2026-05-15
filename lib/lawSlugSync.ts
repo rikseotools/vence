@@ -76,6 +76,21 @@ const NORMALIZATION_MAP: Record<string, string> = {
  *
  * Orden: cache BD → pattern fallback
  */
+/**
+ * Busca un short_name en cache por valor case-insensitive.
+ * Útil para reconocer abreviaturas (CE, LOTC, LECrim) cuando el slug no
+ * coincide con la abreviatura. Devuelve el short_name canónico (con su
+ * capitalización original) si existe en BD, null si no.
+ */
+export function findShortNameByAbbreviation(input: string): string | null {
+  if (!input || !shortNameToSlug) return null
+  const target = input.toLowerCase()
+  for (const shortName of shortNameToSlug.keys()) {
+    if (shortName.toLowerCase() === target) return shortName
+  }
+  return null
+}
+
 export function mapSlugToShortName(rawSlug: string): string | null {
   if (!rawSlug) return null
 
