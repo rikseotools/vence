@@ -8,7 +8,6 @@ import {
   searchArticlesByKeywords,
   searchArticlesForPattern,
   getOposicionLawIds,
-  extractSearchTerms,
   findLawByName,
   extractArticleNumbers,
   findArticleInLaw,
@@ -260,13 +259,11 @@ async function searchByContextLaw(
     }
   }
 
-  // Si no hay artículos específicos o no se encontraron, buscar por términos
-  const searchTerms = extractSearchTerms(message)
-
-  // Buscar directamente en la ley
+  // Si no hay artículos específicos o no se encontraron, buscar con FTS
+  // (ranking por relevancia ts_rank, no por número de artículo).
   const articles = await searchArticlesByLawDirect(law.shortName, {
     limit,
-    searchTerms,
+    query: message,
   })
 
   logger.info(`🔎 searchByContextLaw - direct search found ${articles.length} articles`, { domain: 'search' })
@@ -351,10 +348,9 @@ async function searchByMentionedLaws(
     const law = await findLawByName(lawName)
     if (!law) continue
 
-    const searchTerms = extractSearchTerms(message)
     const articles = await searchArticlesByLawDirect(law.shortName, {
       limit: Math.ceil(limit / mentionedLaws.length),
-      searchTerms,
+      query: message,
     })
 
     allArticles.push(...articles)

@@ -158,13 +158,141 @@ function prioritizeByLawIds(
 // ============================================
 
 /**
- * Busca artículos directamente por nombre de ley
+ * Stopwords interrogativas que el stemmer 'spanish' no filtra pero degradan
+ * la búsqueda AND en FTS (porque ningún artículo del BOE contiene "cuanto",
+ * "cuál", etc., así que el AND devuelve 0).
+ */
+const QUERY_STOPWORDS = new Set([
+  'cuanto', 'cuanta', 'cuantos', 'cuantas',
+  'cual', 'cuales', 'que', 'como',
+  'cuando', 'donde', 'quien', 'quienes',
+  'porque', 'sobre', 'segun',
+  'dice', 'dicen', 'decir', 'hay', 'tiene', 'tienen',
+  'seria', 'puede', 'puedo', 'funciona', 'funcionan',
+  'explicame', 'explica', 'explicar',
+])
+
+/** Normaliza un string a lowercase + sin tildes (para matching de stopwords) */
+function normalizeForStopwords(s: string): string {
+  return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+}
+
+/** Limpia la query del usuario: quita stopwords interrogativas */
+function cleanQueryForFTS(q: string): string {
+  return q
+    .split(/\s+/)
+    .filter(w => w.length >= 2)
+    .filter(w => !QUERY_STOPWORDS.has(normalizeForStopwords(w)))
+    .join(' ')
+}
+
+interface FTSRow extends Record<string, unknown> {
+  id: string
+  law_id: string
+  article_number: string
+  title: string | null
+  content: string | null
+  rank: number
+}
+
+/**
+ * Búsqueda Full-Text Search en una ley específica.
+ * Pipeline: AND search (preciso) → OR fallback (si AND devuelve 0).
+ * Ordena por ts_rank (relevancia), NO por número de artículo.
+ *
+ * Requiere migración 20260515_articles_fts.sql (columna content_tsv + índice GIN).
+ */
+async function searchArticlesByFTS(
+  law: { id: string; name: string; short_name: string },
+  userQuery: string,
+  limit: number,
+): Promise<ArticleMatch[]> {
+  const cleaned = cleanQueryForFTS(userQuery)
+  if (!cleaned) return []
+
+  const db = getDb()
+
+  // Stage 1: AND (plainto_tsquery requiere TODOS los términos)
+  const andRows = await db.execute<FTSRow>(sql`
+    SELECT a.id, a.law_id, a.article_number, a.title, a.content,
+      ts_rank(a.content_tsv, plainto_tsquery('spanish', ${cleaned})) AS rank
+    FROM articles a
+    WHERE a.law_id = ${law.id}::uuid
+      AND a.is_active = true
+      AND a.content_tsv @@ plainto_tsquery('spanish', ${cleaned})
+    ORDER BY rank DESC, a.article_number ASC
+    LIMIT ${limit}
+  `)
+  const andArray: FTSRow[] = Array.isArray(andRows) ? (andRows as FTSRow[]) : ((andRows as { rows?: FTSRow[] }).rows ?? [])
+
+  if (andArray.length > 0) {
+    logger.debug(`FTS AND: ${andArray.length} arts in ${law.short_name} for "${cleaned}"`, { domain: 'search' })
+    return andArray.map(r => ({
+      id: r.id,
+      lawId: r.law_id,
+      lawName: law.name,
+      lawShortName: law.short_name,
+      articleNumber: r.article_number,
+      title: r.title,
+      content: r.content ?? '',
+      similarity: Number(r.rank),
+    }))
+  }
+
+  // Stage 2: OR fallback con lexemas significativos (length >= 3)
+  const lexRows = await db.execute<{ lexemes: string[] | null }>(sql`
+    SELECT array_agg(lexeme) AS lexemes
+    FROM unnest(to_tsvector('spanish', ${cleaned}))
+    WHERE char_length(lexeme) >= 3
+  `)
+  const lexArray: Array<{ lexemes: string[] | null }> = Array.isArray(lexRows)
+    ? (lexRows as Array<{ lexemes: string[] | null }>)
+    : ((lexRows as { rows?: Array<{ lexemes: string[] | null }> }).rows ?? [])
+  const lexemes = lexArray[0]?.lexemes ?? []
+  if (lexemes.length === 0) return []
+
+  const orQuery = lexemes.join(' | ')
+  const orRows = await db.execute<FTSRow>(sql`
+    SELECT a.id, a.law_id, a.article_number, a.title, a.content,
+      ts_rank(a.content_tsv, to_tsquery('spanish', ${orQuery})) AS rank
+    FROM articles a
+    WHERE a.law_id = ${law.id}::uuid
+      AND a.is_active = true
+      AND a.content_tsv @@ to_tsquery('spanish', ${orQuery})
+    ORDER BY rank DESC, a.article_number ASC
+    LIMIT ${limit}
+  `)
+  const orArray: FTSRow[] = Array.isArray(orRows) ? (orRows as FTSRow[]) : ((orRows as { rows?: FTSRow[] }).rows ?? [])
+
+  logger.debug(`FTS OR fallback: ${orArray.length} arts in ${law.short_name} (lex: ${lexemes.join(',')})`, { domain: 'search' })
+  return orArray.map(r => ({
+    id: r.id,
+    lawId: r.law_id,
+    lawName: law.name,
+    lawShortName: law.short_name,
+    articleNumber: r.article_number,
+    title: r.title,
+    content: r.content ?? '',
+    similarity: Number(r.rank),
+  }))
+}
+
+/**
+ * Busca artículos directamente por nombre de ley.
+ *
+ * Si se pasa `query` (mensaje original del usuario), usa Full-Text Search con
+ * ts_rank — los artículos más relevantes salen primero. Es el camino preferido
+ * desde que existe la columna articles.content_tsv (migración 20260515).
+ *
+ * Si solo se pasa `searchTerms`, usa el camino legacy con ILIKE ordenado por
+ * número de artículo. Se mantiene por compatibilidad con callers antiguos,
+ * pero se considera obsoleto.
  */
 export async function searchArticlesByLawDirect(
   lawShortName: string,
-  options: { limit?: number; searchTerms?: string[] | null } = {}
+  options: { limit?: number; searchTerms?: string[] | null; query?: string | null } = {}
 ): Promise<ArticleMatch[]> {
-  const { limit = 15, searchTerms = null } = options
+  const { limit = 15, searchTerms = null, query = null } = options
 
   // Buscar la ley
   const { data: law, error: lawError } = await getSupabase()
@@ -183,22 +311,27 @@ export async function searchArticlesByLawDirect(
     return []
   }
 
-  let query = getSupabase()
+  // Camino preferido: FTS con ts_rank cuando recibimos la query original.
+  if (query) {
+    return searchArticlesByFTS(law, query, limit)
+  }
+
+  // Camino legacy: ILIKE con searchTerms, ordenado por número de artículo.
+  let supaQuery = getSupabase()
     .from('articles')
     .select('id, law_id, article_number, title, content')
     .eq('law_id', law.id)
     .eq('is_active', true)
 
-  // Filtrar por términos de búsqueda si hay
   if (searchTerms && searchTerms.length > 0) {
     const orConditions = searchTerms
       .map(term => `title.ilike.%${term}%,content.ilike.%${term}%`)
       .join(',')
-    query = query.or(orConditions)
-    logger.debug(`Searching in ${lawShortName} with terms: ${searchTerms.join(', ')}`, { domain: 'search' })
+    supaQuery = supaQuery.or(orConditions)
+    logger.debug(`Legacy ILIKE search in ${lawShortName}: ${searchTerms.join(', ')}`, { domain: 'search' })
   }
 
-  const { data: articlesData, error } = await query
+  const { data: articlesData, error } = await supaQuery
     .order('article_number', { ascending: true })
     .limit(limit)
 
@@ -215,7 +348,7 @@ export async function searchArticlesByLawDirect(
     articleNumber: a.article_number,
     title: a.title,
     content: a.content,
-    similarity: 1.0, // Máxima relevancia
+    similarity: 1.0,
   }))
 }
 
