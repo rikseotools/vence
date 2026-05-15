@@ -233,23 +233,46 @@ export function detectMentionedLaws(message: string): string[] {
     mentioned.push(articleLaw)
   }
 
-  // 1. Detectar abreviaturas comunes directamente (ce, lotc, lpac, etc.)
-  // Lookup en dos pasos:
-  //   a) slug == abreviatura (cubre 'lotc' → LOTC porque su slug ES 'lotc')
-  //   b) short_name == abreviatura case-insensitive (cubre CE, LECrim, CP, LSP,
+  // 1. Detectar abreviaturas comunes (siglas culturales del derecho español).
+  // Lookup en tres pasos:
+  //   a) ABBR_TO_SHORTNAME explícito (siglas cuyo short_name canónico NO es
+  //      la sigla, ej. LOPJ → "LO 6/1985", LBRL → "Ley 7/1985"). Lista finita
+  //      y estable: ~50 siglas culturales que el cuerpo jurídico español ha
+  //      consolidado en décadas. Añadir nuevas cuando aparezcan (raro).
+  //   b) slug == abreviatura (cubre 'lotc' → LOTC porque su slug ES 'lotc')
+  //   c) short_name == abreviatura case-insensitive (cubre CE, LECrim, CP, LSP,
   //      LOFCS que tienen short_name canónico = sigla en BD)
-  // Las abreviaturas que NO existen como slug NI short_name (LOPJ, LPAC, TREBEP,
-  // LEC, CC, RGPD...) se detectan vía CHAT_LAW_ALIASES más abajo (keywords del
-  // nombre completo). Si todo falla, complaintDetector/SearchDomain pedirá
-  // aclaración al usuario en lugar de inventar.
+  const ABBR_TO_SHORTNAME: Record<string, string> = {
+    lopj: 'LO 6/1985',
+    lpac: 'Ley 39/2015',
+    lrjsp: 'Ley 40/2015',
+    trebep: 'RDL 5/2015', ebep: 'RDL 5/2015',
+    loreg: 'LO 5/1985',
+    rgpd: 'Reglamento UE 2016/679',
+    lopdgdd: 'LO 3/2018', lopd: 'LO 3/2018',
+    lec: 'Ley 1/2000',
+    cc: 'Código Civil',
+    lbrl: 'Ley 7/1985',
+    lrjca: 'Ley 29/1998',
+    lgt: 'Ley 58/2003',
+    lgss: 'RDL 8/2015',
+    let: 'RDL 2/2015', // Estatuto de los Trabajadores
+    lgs: 'Ley 38/2003', // Subvenciones
+    lpag: 'Ley 50/1997',
+    ltbg: 'Ley 19/2013', // Transparencia
+  }
   const commonAbbreviations = [
     'ce', 'lotc', 'lopj', 'lpac', 'lrjsp', 'trebep', 'ebep', 'loreg', 'rgpd',
-    'lofcs', 'lopd', 'lopdgdd', 'lec', 'lecrim', 'cp', 'cc', 'lsp'
+    'lofcs', 'lopd', 'lopdgdd', 'lec', 'lecrim', 'cp', 'cc', 'lsp', 'lbrl',
+    'lrjca', 'lgt', 'lgss', 'let', 'lgs', 'lpag', 'ltbg',
   ]
   for (const abbr of commonAbbreviations) {
     const regex = new RegExp(`\\b${abbr}\\b`, 'i')
     if (regex.test(msgLower)) {
-      const shortName = mapLawSlugToShortName(abbr) ?? findShortNameByAbbreviation(abbr)
+      const shortName =
+        ABBR_TO_SHORTNAME[abbr] ??
+        mapLawSlugToShortName(abbr) ??
+        findShortNameByAbbreviation(abbr)
       if (shortName && !mentioned.includes(shortName)) {
         mentioned.push(shortName)
       }
