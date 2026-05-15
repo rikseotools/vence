@@ -131,6 +131,17 @@ export class SearchDomain implements ChatDomain {
       return false
     }
 
+    // Ceder a StatsDomain si el mensaje es claramente una consulta de stats
+    // personales o de exámenes. SearchDomain.canHandle es más laxo (matchea
+    // "donde" / "qué dice" / etc.) y se evalúa antes que Stats por prioridad,
+    // así que sin este guard captura preguntas como "Donde fallo más" que
+    // deberían ir a Stats.
+    const statsType = detectStatsQueryType(context.currentMessage)
+    if (statsType !== 'none') {
+      logger.debug(`SearchDomain: Deferring to StatsDomain (type=${statsType})`, { domain: 'search' })
+      return false
+    }
+
     const msg = context.currentMessage.toLowerCase()
 
     // Patrones que indican búsqueda de información legal
