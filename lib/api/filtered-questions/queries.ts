@@ -237,7 +237,7 @@ async function getNeverSeenQuestionIds(
 // ============================================
 // HELPER: Selección proporcional por tema
 // ============================================
-function selectProportionally<T extends { sourceTopic: number | null }>(
+export function selectProportionally<T extends { sourceTopic: number | null }>(
   questions: T[],
   topics: number[],
   numQuestions: number
@@ -1230,8 +1230,18 @@ export async function getFilteredQuestions(
 
     finalQuestions = finalQuestions.filter(Boolean)
 
-    // 7b. Distribución proporcional por artículo (evita que artículos con muchas preguntas monopolicen)
-    if (finalQuestions.length > 3) {
+    // 7b. Distribución proporcional por artículo (evita que artículos con muchas
+    // preguntas monopolicen).
+    //
+    // IMPORTANTE: si ya se aplicó `proportionalByTopic` (multi-topic), SKIPEAR
+    // este paso. selectProportionallyByArticle hace round-robin por artículo
+    // único usando el pool ENTERO, lo que rehace la selección y rompe el
+    // balance por topic. Caso real (bug Nila 15/05): test aleatorio "ambos
+    // bloques" devolvía 94% Bloque I / 6% Bloque II porque Bloque I tiene
+    // 1094 artículos únicos vs 172 de Bloque II — el round-robin por artículo
+    // mata el balance hecho por topic.
+    const skipArticleRedistribution = proportionalByTopic && topicsToQuery.length > 1
+    if (finalQuestions.length > 3 && !skipArticleRedistribution) {
       finalQuestions = selectProportionallyByArticle(
         finalQuestions,
         sortedQuestions,
