@@ -3264,6 +3264,7 @@ export const OPOSICIONES: Oposicion[] = [
       { href: '/policia-nacional/temario', label: 'Temario', icon: '📚' },
       { href: '/policia-nacional/test', label: 'Tests', icon: '🎯' },
     ],
+    hasPsychometricTest: true,
   },
   // ========================================
   // POLICÍA MUNICIPAL MADRID (C1)

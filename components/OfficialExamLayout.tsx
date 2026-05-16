@@ -253,6 +253,93 @@ function formatRemainingTime(seconds: number): string {
 }
 
 // =====================================================
+// PACING — feedback dinámico de ritmo (simulacro)
+// =====================================================
+// Compara el progreso REAL (respondidas/total) con el progreso ESPERADO
+// (tiempo_consumido/tiempo_total) para indicar si el usuario va sobrado,
+// en tiempo, justo o tarde. Solo usado en simulacros con `durationMinutes`.
+
+type PaceStatus = 'ahead' | 'onTime' | 'tight' | 'late' | 'critical' | 'idle'
+
+interface PaceFeedback {
+  status: PaceStatus
+  emoji: string
+  shortLabel: string  // Etiqueta compacta para el pill flotante
+  message: string      // Mensaje largo para el header
+  // Tailwind classes (calculadas estáticamente para no romper purge)
+  bg: string
+  border: string
+  text: string
+  ring: string
+}
+
+const PACE_FEEDBACK: Record<PaceStatus, PaceFeedback> = {
+  ahead: {
+    status: 'ahead', emoji: '🟢', shortLabel: 'Vas bien',
+    message: 'Vas bien de tiempo',
+    bg: 'bg-emerald-50', border: 'border-emerald-300', text: 'text-emerald-700', ring: 'ring-emerald-300',
+  },
+  onTime: {
+    status: 'onTime', emoji: '🔵', shortLabel: 'En tiempo',
+    message: 'Vas en tiempo',
+    bg: 'bg-blue-50', border: 'border-blue-300', text: 'text-blue-700', ring: 'ring-blue-300',
+  },
+  tight: {
+    status: 'tight', emoji: '🟠', shortLabel: 'Vas justo',
+    message: 'Vas justo de tiempo',
+    bg: 'bg-amber-50', border: 'border-amber-300', text: 'text-amber-700', ring: 'ring-amber-300',
+  },
+  late: {
+    status: 'late', emoji: '🔴', shortLabel: 'Acelera',
+    message: 'Acelera, vas con poco tiempo',
+    bg: 'bg-red-50', border: 'border-red-300', text: 'text-red-700', ring: 'ring-red-300',
+  },
+  critical: {
+    status: 'critical', emoji: '⚠️', shortLabel: '<1 min',
+    message: 'Queda menos de 1 minuto',
+    bg: 'bg-red-100', border: 'border-red-500', text: 'text-red-800', ring: 'ring-red-500',
+  },
+  idle: {
+    status: 'idle', emoji: '⏳', shortLabel: '',
+    message: '',
+    bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-700', ring: 'ring-purple-300',
+  },
+}
+
+/**
+ * Calcula el feedback de ritmo del simulacro.
+ *
+ * - elapsedSeconds: tiempo ya transcurrido
+ * - totalSeconds: tiempo total disponible (ej. 5400 para 90 min)
+ * - answeredCount: preguntas ya respondidas
+ * - totalQuestions: total preguntas del simulacro
+ *
+ * Edge cases:
+ * - Primer minuto sin datos suficientes → idle
+ * - <60s restantes → critical (forzar pill expanded)
+ */
+function computeTimePace(
+  elapsedSeconds: number,
+  totalSeconds: number,
+  answeredCount: number,
+  totalQuestions: number,
+): PaceFeedback {
+  const remaining = totalSeconds - elapsedSeconds
+  if (remaining <= 60) return PACE_FEEDBACK.critical
+  // Primer minuto: sin datos suficientes para evaluar ritmo
+  if (elapsedSeconds < 60 || totalQuestions === 0) return PACE_FEEDBACK.idle
+
+  const expectedProgress = elapsedSeconds / totalSeconds  // 0..1
+  const actualProgress = answeredCount / totalQuestions    // 0..1
+  const delta = actualProgress - expectedProgress           // + = sobrado, - = tarde
+
+  if (delta >= 0.10) return PACE_FEEDBACK.ahead
+  if (delta >= -0.05) return PACE_FEEDBACK.onTime
+  if (delta >= -0.15) return PACE_FEEDBACK.tight
+  return PACE_FEEDBACK.late
+}
+
+// =====================================================
 // COMPONENT
 // =====================================================
 
@@ -319,6 +406,29 @@ export default function OfficialExamLayout({
   const [selectedQuestionForModal, setSelectedQuestionForModal] = useState<OfficialExamQuestion | null>(null)
   const [selectedQuestionIndex, setSelectedQuestionIndex] = useState<number | null>(null)
 
+  // Pill flotante del cronómetro (solo simulacros con durationMinutes)
+  // - timerDisplay: preferencia del usuario (persistida en localStorage)
+  // - headerTimerVisible: si el cronómetro del header está en viewport (oculta el pill)
+  type TimerDisplay = 'expanded' | 'minimized' | 'hidden'
+  const [timerDisplay, setTimerDisplay] = useState<TimerDisplay>('expanded')
+  const [headerTimerVisible, setHeaderTimerVisible] = useState(true)
+  const headerTimerRef = React.useRef<HTMLDivElement | null>(null)
+
+  // Cargar preferencia persistida (localStorage)
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('simulacro-timer-display')
+      if (saved === 'expanded' || saved === 'minimized' || saved === 'hidden') {
+        setTimerDisplay(saved)
+      }
+    } catch { /* localStorage bloqueado */ }
+  }, [])
+
+  // Persistir preferencia al cambiar
+  useEffect(() => {
+    try { localStorage.setItem('simulacro-timer-display', timerDisplay) } catch { /* ignore */ }
+  }, [timerDisplay])
+
   // Cronometro
   useEffect(() => {
     if (isSubmitted) return
@@ -349,6 +459,36 @@ export default function OfficialExamLayout({
     handleSubmitExam()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isCountdown, isSubmitted, remainingSeconds])
+
+  // IntersectionObserver: detectar si el cronómetro del header está visible
+  // → si NO lo está, mostrar el pill flotante (evita duplicarlos)
+  useEffect(() => {
+    if (!isCountdown) return
+    const el = headerTimerRef.current
+    if (!el) return
+
+    const obs = new IntersectionObserver(
+      ([entry]) => setHeaderTimerVisible(entry.isIntersecting),
+      { threshold: 0.1 },
+    )
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [isCountdown])
+
+  // Failsafe: si quedan <5 min y el usuario tenía oculto/minimizado el pill,
+  // forzar a 'expanded'. La preferencia se respeta para próximos simulacros.
+  const failsafeTriggeredRef = React.useRef(false)
+  useEffect(() => {
+    if (!isCountdown) return
+    if (isSubmitted) return
+    if (failsafeTriggeredRef.current) return
+    if (remainingSeconds > 300 || remainingSeconds <= 0) return
+    if (timerDisplay === 'expanded') return
+
+    failsafeTriggeredRef.current = true
+    setTimerDisplay('expanded')
+    console.log('⚠️ [OfficialExam] Failsafe: <5 min restantes — pill forzado a expanded')
+  }, [isCountdown, isSubmitted, remainingSeconds, timerDisplay])
 
   // Actualizar contexto de pregunta para el chat AI cuando se selecciona una pregunta
   useEffect(() => {
@@ -1161,23 +1301,39 @@ export default function OfficialExamLayout({
 
           {/* Grid de metricas: Cronometro + Respondidas */}
           <div className="grid grid-cols-2 gap-3 mb-4">
-            {/* Cronometro: cuenta atrás si hay durationMinutes (simulacro), si no cuenta hacia arriba */}
+            {/* Cronometro: cuenta atrás si hay durationMinutes (simulacro), si no cuenta hacia arriba.
+                En simulacro: color + mensaje de ritmo basado en (respondidas vs tiempo consumido). */}
             {(() => {
-              const lowTime = isCountdown && remainingSeconds <= 300 && remainingSeconds > 60 // <=5min
-              const criticalTime = isCountdown && remainingSeconds <= 60 // <=1min
-              const colorClasses = criticalTime
-                ? { bg: 'bg-red-50', border: 'border-red-300', label: 'text-red-700', value: 'text-red-700 animate-pulse' }
-                : lowTime
-                ? { bg: 'bg-amber-50', border: 'border-amber-300', label: 'text-amber-700', value: 'text-amber-700' }
-                : { bg: 'bg-purple-50', border: 'border-purple-200', label: 'text-purple-600', value: 'text-purple-700' }
+              // Para examen oficial (sin durationMinutes): comportamiento legacy
+              if (!isCountdown) {
+                return (
+                  <div className="text-center px-3 py-3 bg-purple-50 border border-purple-200 rounded-lg">
+                    <div className="text-xs text-purple-600 font-medium mb-1">⏱️ Tiempo</div>
+                    <div className="text-xl sm:text-2xl font-bold font-mono text-purple-700">
+                      {formatElapsedTime(elapsedTime)}
+                    </div>
+                  </div>
+                )
+              }
+              // Simulacro: usar computeTimePace para color/mensaje dinámico
+              const pace = computeTimePace(elapsedTime, totalSeconds, answeredCount, totalQuestions)
+              const isCritical = pace.status === 'critical'
               return (
-                <div className={`text-center px-3 py-3 ${colorClasses.bg} border ${colorClasses.border} rounded-lg`}>
-                  <div className={`text-xs ${colorClasses.label} font-medium mb-1`}>
-                    {isCountdown ? '⏳ Tiempo restante' : '⏱️ Tiempo'}
+                <div
+                  ref={headerTimerRef}
+                  className={`text-center px-3 py-3 ${pace.bg} border ${pace.border} rounded-lg`}
+                >
+                  <div className={`text-xs ${pace.text} font-medium mb-1`}>
+                    ⏳ Tiempo restante
                   </div>
-                  <div className={`text-xl sm:text-2xl font-bold font-mono ${colorClasses.value}`}>
-                    {isCountdown ? formatRemainingTime(remainingSeconds) : formatElapsedTime(elapsedTime)}
+                  <div className={`text-xl sm:text-2xl font-bold font-mono ${pace.text} ${isCritical ? 'animate-pulse' : ''}`}>
+                    {formatRemainingTime(remainingSeconds)}
                   </div>
+                  {pace.message && (
+                    <div className={`text-[10px] sm:text-xs ${pace.text} mt-1 font-medium`}>
+                      {pace.emoji} {pace.message}
+                    </div>
+                  )}
                 </div>
               )
             })()}
@@ -1612,6 +1768,92 @@ export default function OfficialExamLayout({
         supabase={supabase}
         userId={user?.id}
       />
+
+      {/* Pill flotante del cronómetro (SOLO simulacros con cuenta atrás).
+          Aparece cuando el cronómetro del header NO está visible (scroll).
+          3 estados controlables: expanded / minimized / hidden.
+          Failsafe: <5 min restantes → forzado a expanded automáticamente. */}
+      {isCountdown && !isSubmitted && !headerTimerVisible && (() => {
+        const pace = computeTimePace(elapsedTime, totalSeconds, answeredCount, totalQuestions)
+        const isCritical = pace.status === 'critical'
+
+        // Estado HIDDEN — solo un icono fantasma
+        if (timerDisplay === 'hidden') {
+          return (
+            <button
+              type="button"
+              onClick={() => setTimerDisplay('expanded')}
+              aria-label="Mostrar cronómetro"
+              className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40 w-10 h-10 sm:w-9 sm:h-9 rounded-full bg-gray-800/30 hover:bg-gray-800/60 text-white flex items-center justify-center transition-all"
+            >
+              <span className="text-base">⏱</span>
+            </button>
+          )
+        }
+
+        // Estado MINIMIZED — círculo con color del ritmo
+        if (timerDisplay === 'minimized') {
+          return (
+            <button
+              type="button"
+              onClick={() => setTimerDisplay('expanded')}
+              aria-label={`Cronómetro: ${pace.message || 'mostrar'}. Click para ampliar.`}
+              className={`fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40 w-11 h-11 sm:w-10 sm:h-10 rounded-full border-2 ${pace.bg} ${pace.border} flex items-center justify-center shadow-lg hover:scale-110 transition-all ${isCritical ? 'animate-pulse' : ''}`}
+            >
+              <span className="text-base">{pace.emoji}</span>
+            </button>
+          )
+        }
+
+        // Estado EXPANDED — pill completo
+        return (
+          <div
+            role="status"
+            aria-live="polite"
+            className={`fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40 w-[150px] sm:w-[170px] rounded-xl border-2 ${pace.bg} ${pace.border} shadow-lg transition-all ${isCritical ? 'animate-pulse' : ''}`}
+          >
+            <div className="px-3 pt-2 pb-2">
+              <div className={`text-[10px] font-semibold ${pace.text} mb-0.5 flex items-center justify-between`}>
+                <span>⏳ Tiempo restante</span>
+              </div>
+              <div className={`text-xl sm:text-2xl font-bold font-mono ${pace.text} text-center leading-tight`}>
+                {formatRemainingTime(remainingSeconds)}
+              </div>
+              {pace.message && (
+                <div className={`text-[10px] ${pace.text} mt-0.5 text-center font-medium`}>
+                  {pace.emoji} {pace.shortLabel}
+                </div>
+              )}
+              <div className="text-[10px] text-gray-500 mt-1 text-center">
+                {answeredCount}/{totalQuestions}
+              </div>
+            </div>
+            {/* Botones minimizar/ocultar (no se muestran en critical para evitar accidente) */}
+            {!isCritical && (
+              <div className="flex border-t border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => setTimerDisplay('minimized')}
+                  aria-label="Minimizar cronómetro"
+                  className="flex-1 py-1 text-xs text-gray-600 hover:bg-gray-100 transition-colors rounded-bl-xl"
+                  title="Solo mostrar indicador de color"
+                >
+                  −
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTimerDisplay('hidden')}
+                  aria-label="Ocultar cronómetro"
+                  className="flex-1 py-1 text-xs text-gray-600 hover:bg-gray-100 transition-colors rounded-br-xl border-l border-gray-200"
+                  title="Ocultar completamente"
+                >
+                  ×
+                </button>
+              </div>
+            )}
+          </div>
+        )
+      })()}
     </div>
   )
 }

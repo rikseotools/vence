@@ -136,6 +136,99 @@ Tras hacer push de los 19 commits de Sprint 2, revisión de logs Vercel detectó
 
 ---
 
+## Incidente 2026-05-11 — Cascada de timeouts BD + medallas
+
+**Ventana observada:** 2026-05-11 18:58-19:13 Europe/Madrid, con sintomas ya visibles en la hora anterior.
+
+**Estado:** mitigacion principal desplegada en `26a73183` (`fix(medals): cache reads in Redis`). La causa principal de amplificacion por medallas queda cerrada; quedan riesgos arquitectonicos en crons, agregaciones cold-cache y triggers sincronos.
+
+### Sintomas
+
+- Bursts de `504 Vercel Runtime Timeout Error` en `/api/exam/answer`, `/api/answer/psychometric`, `/api/v2/user-stats`, `/api/v2/complete-test`, `/api/exam/pending`.
+- `ERROR 57014 canceling statement due to statement timeout` en queries agregadas sobre `test_questions`, `questions`, `topics/articles/questions` y crons de dificultad.
+- `25P02 current transaction is aborted, commands ignored until end of transaction block` en `DailyLimit`, `DeviceLimit`, `fetch topics`, `profile/avatar-settings`, `teoria/sections`.
+- Errores de medallas apareciendo en rutas no relacionadas (`/api/version`, paginas de test, notificaciones, `theme-stats`) por el badge global.
+
+### Causa raiz
+
+No fue un unico endpoint roto. Fue una cascada de saturacion de Postgres:
+
+1. Varias queries pesadas entraron a la vez, sobre todo ranking de medallas y agregaciones de tests.
+2. Postgres cancelo algunas por `statement_timeout` (`57014`).
+3. En rutas con transaccion/RPC/trigger, la transaccion quedo abortada.
+4. Las queries posteriores en la misma transaccion fallaron con `25P02`.
+5. Vercel corto lambdas al llegar a `maxDuration` y devolvio `504`.
+
+`25P02` es un sintoma secundario: indica que una sentencia anterior dentro de la transaccion ya habia fallado. No debe tratarse como causa primaria.
+
+### Causa de amplificacion: medallas
+
+Antes de `26a73183`, `GET /api/medals` podia recalcular ranking en caliente con:
+
+```sql
+SELECT tq.user_id,
+       COUNT(*)::bigint AS total_questions,
+       COUNT(*) FILTER (WHERE tq.is_correct)::bigint AS correct_answers,
+       ROUND((COUNT(*) FILTER (WHERE tq.is_correct)::numeric / COUNT(*)) * 100, 0) AS accuracy
+FROM test_questions tq
+WHERE tq.user_id IS NOT NULL
+  AND tq.created_at >= $1::timestamptz
+  AND tq.created_at <= $2::timestamptz
+GROUP BY tq.user_id
+HAVING COUNT(*) >= 5
+ORDER BY accuracy DESC, total_questions DESC
+LIMIT 100
+```
+
+Esa query se ejecutaba desde muchas paginas porque el header/badge de medallas se carga transversalmente. Resultado: una feature secundaria podia meter scans/agregaciones de `test_questions` en casi cualquier navegacion.
+
+### Mitigacion aplicada en `26a73183`
+
+- `GET /api/medals` pasa a ser cache-first en Redis.
+- Fresh cache 6h, stale fallback 24h.
+- En cache hit no toca BD y devuelve `x-medals-cache: hit`.
+- `GET /api/medals` ya no recalcula ranking: en miss/stale solo lee medallas almacenadas (`user_medals`) con quick-fail.
+- El ranking por periodo se cachea en Redis con key `medals_ranking:{start}:{end}:v2` y TTL 30 dias.
+- El recalculo runtime de medallas queda gobernado por `MEDALS_RUNTIME_RECALC_ENABLED`.
+
+Verificado tras deploy:
+
+- `/api/medals?userId=...` respondio con `x-medals-cache: hit`.
+- `/api/admin/health/cache-stats`: `medals_ranking` hit rate 94.1%.
+- `/api/admin/health/db-latency`: p50 ~2.5ms, p95 ~2.87ms desde `lhr1`.
+
+### Riesgos que siguen abiertos
+
+1. **Crons de dificultad** (`recalc-question-difficulty`, `recalc-global-difficulty`): usan Supabase RPC, no el pool Drizzle `getDb`, pero siguen ejecutando trabajo pesado en el mismo Postgres y sobre tablas calientes. Pueden competir por CPU/I/O/locks aunque no consuman el pool max:1 de la app. Estan definidos tanto en `vercel.json` como en GitHub Actions cada 5min; el advisory lock evita trabajo duplicado, pero no elimina invocaciones extra ni errores si una ejecucion queda lenta.
+2. **Theme counts** (`topics -> topic_scope -> articles -> questions`, `count(DISTINCT ...)`): cacheado con `unstable_cache`, pero un cold miss/deploy/revalidate puede volver a disparar queries pesadas.
+3. **Laws configurator**: agregacion `questions -> articles -> laws` con `count(distinct)`, sin Redis stale-if-error robusto.
+4. **User stats / exam pending**: tienen Redis, pero los hit rates observados fueron muy bajos (`user_stats` ~3.7%, `exam_pending` ~3.6%), asi que muchos requests siguen llegando a BD.
+5. **Triggers de `test_questions`**: `update_user_question_history` ejecuta trabajo por fila insertada. En inserts masivos (`official-exams/init`) puede convertir un batch grande en muchas operaciones sincronas y provocar `statement_timeout`.
+6. **Endpoints sin quick-fail suficiente**: `complete-test` y `answer/psychometric` aparecieron con 504; deben revisarse antes de otro pico.
+7. **Bugs no relacionados con saturacion**: `teoria/sections` (`slug undefined` / ley no encontrada), `soporte.feedbackId undefined`, `Ranking Map(undefined)`. No explican la cascada, pero generan ruido y deben corregirse.
+
+### Regla operativa aprendida
+
+Una feature visible globalmente (header, badge, notificaciones, medallas, ranking) no puede depender de una agregacion en caliente sobre `test_questions`. Tiene que cumplir una de estas condiciones:
+
+- Redis cache-first con stale-if-error.
+- Tabla resumen/materializada.
+- Job asincrono que precalcula.
+- Quick-fail que no mantenga la lambda viva hasta `maxDuration`.
+
+Si una ruta aparece en logs de muchas paginas no relacionadas, sospechar de componentes globales antes que de la pagina concreta.
+
+### Orden de trabajo recomendado
+
+1. Investigar y endurecer crons de dificultad: solapes Vercel/GitHub, `cron_runs` stale, duracion p95, backoff y batch size.
+2. Redis stale-if-error para `theme counts` y `laws-configurator`.
+3. Mejorar hit rate real de `user_stats` y `exam_pending`.
+4. Mover `update_user_question_history` a outbox/batch o resumen incremental.
+5. Quick-fail y cache defensiva en `complete-test` y `answer/psychometric`.
+6. Limpiar bugs defensivos de `teoria/sections`, soporte y ranking.
+
+---
+
 **Para 100k cómodo**: Fases 0-3 (3-6 semanas, ~$10-40/mes).
 **Para 1M+**: Fases 0-5 (3-6 meses, ~$50-150/mes).
 
