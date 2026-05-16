@@ -653,7 +653,10 @@ export async function initOfficialExam(
         : parte
           ? `Examen Oficial ${examDate} (${parte} parte) - ${oposicion}`
           : `Examen Oficial ${examDate} - ${oposicion}`,
-      testType: isSimulacro ? 'simulacro' : 'exam',
+      // BD acepta solo 'exam' | 'practice' en check constraint.
+      // Distinguimos simulacro de examen oficial por detailed_analytics.isSimulacro
+      // (no por testType). Resume/pending lo leen de ahí.
+      testType: 'exam',
       totalQuestions: questionsData.length,
       score: '0',
       isCompleted: false,
