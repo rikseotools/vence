@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react'
 import ChartQuestion from './ChartQuestion'
 import MarkdownExplanation from './MarkdownExplanation'
 import { type ChartBasedQuestionProps } from './psychometric-types'
+import { hasRenderableContentData } from './dataTableHasContent'
 
 export default function DataTableQuestion({
   question,
@@ -31,16 +32,14 @@ export default function DataTableQuestion({
                          question.content_data?.criteria ||
                          question.content_data?.classification_table
 
-    // Formato tabla1/tabla2 (flores alternativo)
-    const hasTabla1Tabla2 = tableData?.tabla1 && tableData?.tabla2
-
     const instruction = question.content_data?.instruction
     const instructions = question.content_data?.instructions
     const textPassage = question.content_data?.text_passage
 
-    if (!tableData && !tables && !hasDirectData && !hasTabla1Tabla2 && !instruction && !instructions && !textPassage) {
-      // Sin datos en content_data → null para que ChartQuestion use su fallback
-      // (ContentDataRenderer con imageUrl si existe, o nada)
+    // Decisión central: ¿tiene datos suficientes para renderizar tabla, o cae
+    // a fallback de imagen? hasRenderableContentData centraliza el predicado
+    // y permite testearlo aisladamente (components/dataTableHasContent.ts).
+    if (!hasRenderableContentData(question.content_data as Record<string, unknown> | null)) {
       setTableComponent(null)
       return
     }
