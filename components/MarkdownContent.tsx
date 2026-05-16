@@ -6,14 +6,14 @@ import type { Components } from 'react-markdown'
 const components: Components = {
   // H2 — sección principal con línea de acento azul
   h2: ({ children }) => (
-    <h2 className="flex items-center gap-2 text-base font-bold text-gray-900 dark:text-gray-100 mt-6 mb-3 pb-1.5 border-b-2 border-indigo-500 dark:border-indigo-400">
-      <span className="w-1 h-4 bg-indigo-500 dark:bg-indigo-400 rounded-full flex-shrink-0" />
+    <h2 className="flex items-center gap-2 text-base font-bold text-gray-900 dark:text-gray-100 mt-6 mb-3 pb-1.5 border-b-2 border-blue-500 dark:border-blue-400">
+      <span className="w-1 h-4 bg-blue-500 dark:bg-blue-400 rounded-full flex-shrink-0" />
       {children}
     </h2>
   ),
   // H3 — subsección con borde izquierdo
   h3: ({ children }) => (
-    <h3 className="text-sm font-semibold text-indigo-700 dark:text-indigo-300 mt-4 mb-2 pl-2 border-l-2 border-indigo-400 dark:border-indigo-500">
+    <h3 className="text-sm font-semibold text-blue-700 dark:text-blue-300 mt-4 mb-2 pl-2 border-l-2 border-blue-400 dark:border-blue-500">
       {children}
     </h3>
   ),
@@ -70,7 +70,7 @@ const components: Components = {
       )
     }
     return (
-      <code className="bg-gray-100 dark:bg-gray-800 text-indigo-700 dark:text-indigo-300 text-xs font-mono px-1.5 py-0.5 rounded">
+      <code className="bg-gray-100 dark:bg-gray-800 text-blue-700 dark:text-blue-300 text-xs font-mono px-1.5 py-0.5 rounded">
         {children}
       </code>
     )
@@ -85,7 +85,7 @@ const components: Components = {
   ),
   // Cabecera de tabla
   thead: ({ children }) => (
-    <thead className="bg-indigo-600 dark:bg-indigo-800">
+    <thead className="bg-blue-500 dark:bg-blue-700">
       {children}
     </thead>
   ),
@@ -97,7 +97,7 @@ const components: Components = {
   ),
   // Fila de tabla
   tr: ({ children }) => (
-    <tr className="even:bg-gray-50 dark:even:bg-gray-800/50">
+    <tr className="even:bg-gray-50 dark:even:bg-gray-800/50 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
       {children}
     </tr>
   ),
@@ -109,7 +109,7 @@ const components: Components = {
   ),
   // Celda de datos
   td: ({ children }) => (
-    <td className="px-3 py-1.5 text-xs text-gray-700 dark:text-gray-300 align-top">
+    <td className="px-3 py-2 text-sm text-gray-700 dark:text-gray-300 align-top">
       {children}
     </td>
   ),

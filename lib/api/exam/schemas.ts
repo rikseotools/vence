@@ -232,3 +232,35 @@ export const validatedResultsSchema = z.object({
 })
 
 export type ValidatedResults = z.infer<typeof validatedResultsSchema>
+
+// ============================================
+// VALIDACIÓN BATCH PSICOTÉCNICA (client-side)
+// ============================================
+// La diferencia con la legislativa es que `userAnswer` viene como índice
+// numérico (0-4) en vez de letra, porque internamente las psicotécnicas
+// trabajan con índices. La respuesta usa el mismo shape para reutilizar
+// los renderers (correctAnswer letra + correctIndex número).
+
+export const validatedPsychometricResultSchema = z.object({
+  questionId: z.string(),
+  userAnswer: z.number().nullable(),
+  correctAnswer: z.string(),
+  correctIndex: z.number(),
+  isCorrect: z.boolean(),
+  explanation: z.string().nullable().optional(),
+})
+
+export type ValidatedPsychometricResult = z.infer<typeof validatedPsychometricResultSchema>
+
+export const validatedPsychometricResultsSchema = z.object({
+  success: z.boolean(),
+  results: z.array(validatedPsychometricResultSchema),
+  summary: z.object({
+    totalQuestions: z.number(),
+    totalAnswered: z.number(),
+    totalCorrect: z.number(),
+    percentage: z.number(),
+  }),
+})
+
+export type ValidatedPsychometricResults = z.infer<typeof validatedPsychometricResultsSchema>

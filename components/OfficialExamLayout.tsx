@@ -35,8 +35,7 @@ import SequenceLetterQuestion from './SequenceLetterQuestion'
 import SequenceAlphanumericQuestion from './SequenceAlphanumericQuestion'
 import MarkdownExplanation from './MarkdownExplanation'
 import MarkdownQuestionText from './MarkdownQuestionText'
-import { validateExam } from '@/lib/api/exam/client'
-import { validatePsychometricAnswer } from '@/lib/api/psychometric-answer/client'
+import { validateExam, validateExamPsychometric } from '@/lib/api/exam/client'
 import ContentDataRenderer from './ContentDataRenderer'
 
 // =====================================================
@@ -806,42 +805,38 @@ export default function OfficialExamLayout({
         }
       }
 
-      // Validar preguntas psicotecnicas EN PARALELO via validatePsychometricAnswer (timeout 10s, retry x2)
+      // Validar preguntas psicotecnicas via batch /api/exam/validate/psychometric.
+      // Una sola llamada para TODAS (incluidas las que el usuario dejó en
+      // blanco) → siempre se muestra la respuesta correcta + explicación
+      // tras corregir, igual que en legislativas.
       if (psychometricQuestions.length > 0) {
-        console.log('🔒 Validando preguntas psicotecnicas en paralelo...')
+        console.log('🔒 Validando preguntas psicotecnicas (batch)...')
+        try {
+          const psyResult = await validateExamPsychometric(
+            psychometricQuestions.map(q => ({
+              questionId: q.questionId,
+              userAnswer: q.userAnswer,
+            }))
+          )
 
-        const psyPromises = psychometricQuestions.map(async (pq) => {
-          // Si no respondió, no llamar a la API
-          if (pq.userAnswer === null) return null
-
-          try {
-            const psyResult = await validatePsychometricAnswer(pq.questionId, pq.userAnswer)
-
-            return {
-              index: pq.index,
-              result: {
-                isCorrect: psyResult.isCorrect,
-                correctAnswer: answerToLetter(psyResult.correctAnswer).toLowerCase(),
-                correctIndex: psyResult.correctAnswer,
-                explanation: psyResult.explanation,
-                userAnswer: pq.userAnswer !== null ? answerToLetter(pq.userAnswer).toLowerCase() : null,
-                questionType: 'psychometric' as const
+          if (psyResult.success) {
+            psyResult.results.forEach((result, i: number) => {
+              const originalIndex = psychometricQuestions[i].index
+              const userAnswer = psychometricQuestions[i].userAnswer
+              allResults[originalIndex] = {
+                isCorrect: result.isCorrect,
+                correctAnswer: result.correctAnswer,
+                correctIndex: result.correctIndex,
+                explanation: result.explanation ?? null,
+                userAnswer: userAnswer !== null ? answerToLetter(userAnswer).toLowerCase() : null,
+                questionType: 'psychometric' as const,
               }
-            }
-          } catch (err) {
-            console.error('❌ Error validando psicotecnica:', pq.questionId, err)
-            return null
+              if (result.isCorrect) totalCorrect++
+            })
           }
-        })
-
-        const psyResults = await Promise.all(psyPromises)
-
-        psyResults.forEach(item => {
-          if (item) {
-            allResults[item.index] = item.result
-            if (item.result.isCorrect) totalCorrect++
-          }
-        })
+        } catch (psyError) {
+          console.error('❌ Error validando psicotécnicas (batch):', psyError)
+        }
       }
 
       // Calcular estadisticas

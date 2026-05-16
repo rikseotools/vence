@@ -1,8 +1,18 @@
 // lib/api/exam/client.ts — Client-side validateExam()
 import { apiFetch } from '../client'
-import { validatedResultsSchema, type ValidatedResults } from './schemas'
+import {
+  validatedResultsSchema,
+  validatedPsychometricResultsSchema,
+  type ValidatedResults,
+  type ValidatedPsychometricResults,
+} from './schemas'
 
-export type { ValidatedResults, ValidatedQuestionResult } from './schemas'
+export type {
+  ValidatedResults,
+  ValidatedQuestionResult,
+  ValidatedPsychometricResults,
+  ValidatedPsychometricResult,
+} from './schemas'
 
 /**
  * Valida un examen completo (batch) via /api/exam/validate.
@@ -30,6 +40,34 @@ export async function validateExam(
       retries: 2,
       retryDelayMs: 1000,
       responseSchema: validatedResultsSchema
+    }
+  )
+}
+
+/**
+ * Valida un examen psicotécnico completo (batch) via /api/exam/validate/psychometric.
+ *
+ * Espejo de validateExam() para preguntas psicotécnicas. Diferencias:
+ *   - userAnswer es número (índice 0-4) en vez de letra
+ *   - acepta null para preguntas en blanco (y aun así devuelve la respuesta correcta)
+ *
+ * Timeout: 30s, retries: 2.
+ */
+export async function validateExamPsychometric(
+  answers: Array<{ questionId: string; userAnswer: number | null }>
+): Promise<ValidatedPsychometricResults> {
+  if (!answers || answers.length === 0) {
+    throw new Error('Empty answers array')
+  }
+
+  return apiFetch<ValidatedPsychometricResults>(
+    '/api/exam/validate/psychometric',
+    { answers },
+    {
+      timeoutMs: 30000,
+      retries: 2,
+      retryDelayMs: 1000,
+      responseSchema: validatedPsychometricResultsSchema,
     }
   )
 }
