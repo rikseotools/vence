@@ -97,7 +97,7 @@ const components: Components = {
   ),
   // Fila de tabla
   tr: ({ children }) => (
-    <tr className="even:bg-gray-50 dark:even:bg-gray-800/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors">
+    <tr className="even:bg-gray-50 dark:even:bg-gray-800/50">
       {children}
     </tr>
   ),
