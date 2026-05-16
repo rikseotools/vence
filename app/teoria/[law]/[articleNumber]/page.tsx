@@ -10,6 +10,7 @@ import { getShortNameBySlug, getLawInfoBySlug } from '@/lib/api/laws'
 import Link from 'next/link'
 import { ArrowLeftIcon } from '@heroicons/react/24/outline'
 import type { Metadata } from 'next'
+import MarkdownArticleContent from './MarkdownArticleContent'
 
 type PageProps = {
   params: Promise<{ law: string; articleNumber: string }>
@@ -231,9 +232,7 @@ export default async function ArticleIndividualPage({ params }: PageProps) {
                 dangerouslySetInnerHTML={{ __html: article.cleanContent }}
               />
             ) : (
-              <div className="text-gray-800 leading-relaxed whitespace-pre-wrap">
-                {article.content}
-              </div>
+              <MarkdownArticleContent content={article.content ?? ''} />
             )}
           </div>
         </div>

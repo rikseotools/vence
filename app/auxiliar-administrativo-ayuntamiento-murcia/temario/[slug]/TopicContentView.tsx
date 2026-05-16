@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useLawSlugs } from '@/contexts/LawSlugContext'
 import { isVirtualLaw } from '@/lib/isVirtualLaw'
 import TopicNavFooter from '@/components/TopicNavFooter'
+import MarkdownContent from '@/components/MarkdownContent'
 
 interface TopicContentViewProps {
   content: TopicContent
@@ -486,7 +487,7 @@ function ArticleCard({ article, lawShortName }: { article: Article; lawShortName
       {/* Article content */}
       <div className="px-4 py-4 article-content text-gray-700 dark:text-gray-300 leading-relaxed">
         {article.content ? (
-          formatContent(article.content)
+          <MarkdownContent content={article.content} />
         ) : (
           <p className="text-gray-400 dark:text-gray-500 italic">
             Contenido no disponible

@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import { useAuth } from '../contexts/AuthContext'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 interface OfficialExamData {
   hasOfficialExams: boolean
@@ -512,15 +514,16 @@ export default function ArticleModal({
                         )
                       }}
                     />
+                  ) : articleData.cleanContent ? (
+                    <div
+                      className="text-gray-800 dark:text-gray-200 leading-relaxed text-base"
+                      dangerouslySetInnerHTML={{ __html: articleData.cleanContent }}
+                    />
                   ) : (
-                    <div className="text-gray-800 dark:text-gray-200 leading-relaxed text-base space-y-3">
-                      {(articleData.cleanContent || articleData.content)?.split('\n').map((paragraph, index) => (
-                        paragraph.trim() && (
-                          <p key={index} className="text-justify">
-                            {paragraph.trim()}
-                          </p>
-                        )
-                      ))}
+                    <div className="prose prose-sm dark:prose-invert max-w-none text-gray-800 dark:text-gray-200 leading-relaxed prose-headings:font-semibold prose-h2:text-base prose-h2:mt-4 prose-h2:mb-2 prose-h3:text-sm prose-table:text-sm prose-td:py-1 prose-th:py-1">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {articleData.content}
+                      </ReactMarkdown>
                     </div>
                   )}
                 </div>

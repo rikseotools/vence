@@ -3,8 +3,8 @@
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
-import ReactMarkdown from 'react-markdown'
 import ArticleTTS from '@/components/ArticleTTS'
+import MarkdownContent from '@/components/MarkdownContent'
 import type { TopicContent, LawWithArticles, Article } from '@/lib/api/temario/schemas'
 import { useTopicUnlock } from '@/hooks/useTopicUnlock'
 import { useAuth } from '@/contexts/AuthContext'
@@ -697,7 +697,7 @@ function ArticleCard({ article, weakInfo, lawShortName, lawName }: ArticleCardPr
       {/* Article content */}
       <div className="px-4 py-4 article-content text-gray-700 dark:text-gray-300 leading-relaxed prose prose-sm dark:prose-invert max-w-none prose-headings:text-gray-800 dark:prose-headings:text-gray-200 prose-headings:font-semibold prose-h2:text-base prose-h2:mt-4 prose-h2:mb-2 prose-h3:text-sm prose-strong:text-gray-900 dark:prose-strong:text-white prose-ul:my-2 prose-li:my-0.5">
         {article.content ? (
-          <ReactMarkdown>{article.content}</ReactMarkdown>
+          <MarkdownContent content={article.content} />
         ) : (
           <p className="text-gray-400 dark:text-gray-500 italic">
             Contenido no disponible
