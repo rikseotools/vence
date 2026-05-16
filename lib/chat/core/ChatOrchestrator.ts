@@ -960,6 +960,16 @@ ${articlesContext}`
       prompt = prompt.replace('{{OPOSICIONES_ACTIVAS}}', opoList)
     }
 
+    // Inyectar la oposición del usuario para que el LLM pueda contextualizar
+    // términos ambiguos a su área (ej. "tabulación" en aux admin estado se
+    // refiere a Word/Excel, no a tipografía general).
+    if (context.userDomain) {
+      const opoHuman = context.userDomain
+        .replace(/_/g, ' ')
+        .replace(/\b\w/g, c => c.toUpperCase())
+      prompt += `\n\n## Oposición del usuario\nEl usuario está preparándose para: **${opoHuman}**. Cuando un término sea ambiguo (ej. \"tabulación\" puede ser tipografía o función de Word/Excel), contextualízalo al temario habitual de esa oposición. Si la oposición incluye ofimática, prioriza la interpretación informática para palabras tecnológicas.`
+    }
+
     // Añadir contexto de pregunta si existe (solo para preguntas no-psicotécnicas;
     // las psicotécnicas son manejadas por PsychometricDomain antes de llegar aquí)
     if (context.questionContext) {
