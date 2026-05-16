@@ -33,10 +33,10 @@ export const SIMULACRO_PUBLIC_CONFIG: Record<string, SimulacroPublicConfig> = {
   'auxiliar-administrativo-estado': {
     totalQuestions: 110,
     durationMinutes: 90,
-    shortBreakdown: '30 programa + 30 psicotécnicas + 50 ofimática',
+    shortBreakdown: '30 programa + 30 psicotécnicas + 50 Bloque II',
     breakdownLines: [
       'Primera parte (60): 30 del Bloque I del programa + 30 psicotécnicas',
-      'Segunda parte (50): ejercicio práctico de ofimática',
+      'Segunda parte (50): Bloque II — actividad administrativa y ofimática (Windows 11 y Microsoft 365)',
     ],
   },
 }

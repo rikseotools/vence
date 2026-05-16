@@ -23,36 +23,48 @@ function getSimulacroDb() {
 // CONFIGURACIÓN POR OPOSICIÓN
 // ============================================
 //
-// distLegI / distPsicotecnico / distLegII: cuántas preguntas de cada tipo.
-// blockI / blockII: rangos de topic_number que componen cada bloque.
-// examSourcePattern: filtro para buscar psicotécnicas oficiales y derivar examFrequency.
+// blockI / blockII: lista EXPLÍCITA de topic_numbers que componen cada parte
+// del examen oficial (no rangos). Más robusto que minTopic/maxTopic: si en
+// el futuro se crean topics 200+ para esta o cualquier otra oposición, no
+// se cuelan por accidente en el simulacro de otra.
+// examSourcePattern: filtro para buscar psicotécnicas oficiales.
 
 interface SimulacroOpoConfig {
   positionType: string
   examSourcePattern: string
-  blockI: { minTopic: number; maxTopic: number; count: number }
+  blockI: { topicNumbers: number[]; count: number }
   psicotecnicaCount: number
-  blockII: { minTopic: number; maxTopic: number; count: number }
+  blockII: { topicNumbers: number[]; count: number }
   durationMinutes: number
   // Desglose en formato bases oficiales de la convocatoria (Primera/Segunda parte)
   breakdown: string[]
 }
 
-// Bases oficiales Aux Admin Estado (BOE convocatoria 9 julio 2024, OEP 2023-2024):
-//   Primera parte: 60 preguntas = 30 bloque I del programa + 30 psicotécnicas (50 pts)
-//   Segunda parte: 50 preguntas ejercicio práctico de ofimática (50 pts)
+// Bases oficiales Aux Admin Estado (BOE-A-2025-26262, convocatoria 22 dic 2025):
+//   Primera parte:  60 preguntas = 30 Bloque I del programa + 30 psicotécnicas (50 pts)
+//   Segunda parte:  50 preguntas sobre las materias del Bloque II del programa
+//                   (atención al ciudadano, administración electrónica, ofimática
+//                   Windows 11 + Microsoft 365 versión escritorio…) (50 pts)
 //   Duración total: 90 min · Penalización: 1/3 por respuesta incorrecta
 const SIMULACRO_CONFIGS: Record<string, SimulacroOpoConfig> = {
   'auxiliar-administrativo-estado': {
     positionType: 'auxiliar_administrativo_estado',
     examSourcePattern: '%Auxiliar Administrativo Estado%',
-    blockI: { minTopic: 1, maxTopic: 99, count: 30 },
+    // Bloque I: T1-T16 (Organización Pública)
+    blockI: {
+      topicNumbers: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
+      count: 30,
+    },
     psicotecnicaCount: 30,
-    blockII: { minTopic: 100, maxTopic: 999, count: 50 },
+    // Bloque II: T101-T112 (Actividad administrativa + Ofimática)
+    blockII: {
+      topicNumbers: [101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112],
+      count: 50,
+    },
     durationMinutes: 90,
     breakdown: [
       'Primera parte (60): 30 del Bloque I del programa + 30 psicotécnicas',
-      'Segunda parte (50): ejercicio práctico de ofimática (Windows + Microsoft 365)',
+      'Segunda parte (50): Bloque II — actividad administrativa + ofimática (Windows 11 y Microsoft 365)',
     ],
   },
 }
@@ -71,26 +83,25 @@ function shuffleArray<T>(arr: T[]): T[] {
 }
 
 /**
- * Sacar IDs de artículos que componen un bloque (rango de topic_number) de
- * una oposición. Devuelve el conjunto de article_ids para usar como filtro
- * en preguntas.
+ * Sacar IDs de artículos que componen un bloque de la oposición a partir de
+ * una lista EXPLÍCITA de topic_numbers (no un rango). Devuelve el conjunto
+ * de article_ids para usar como filtro en preguntas.
  */
 async function getArticleIdsForBlock(
   positionType: string,
-  minTopic: number,
-  maxTopic: number,
+  topicNumbers: number[],
 ): Promise<string[]> {
+  if (topicNumbers.length === 0) return []
   const db = getSimulacroDb()
 
-  // Topics de la oposición en el rango
+  // Topics de la oposición que coincidan con la lista declarada
   const topicsRows = await db
     .select({ id: topics.id })
     .from(topics)
     .where(
       and(
         eq(topics.positionType, positionType),
-        sql`${topics.topicNumber} >= ${minTopic}`,
-        sql`${topics.topicNumber} <= ${maxTopic}`,
+        inArray(topics.topicNumber, topicNumbers),
       ),
     )
 
@@ -193,8 +204,7 @@ export async function getSimulacroQuestions(
     // ---------------------------------------
     const blockIArticleIds = await getArticleIdsForBlock(
       config.positionType,
-      config.blockI.minTopic,
-      config.blockI.maxTopic,
+      config.blockI.topicNumbers,
     )
 
     if (blockIArticleIds.length === 0) {
@@ -278,8 +288,7 @@ export async function getSimulacroQuestions(
     // ---------------------------------------
     const blockIIArticleIds = await getArticleIdsForBlock(
       config.positionType,
-      config.blockII.minTopic,
-      config.blockII.maxTopic,
+      config.blockII.topicNumbers,
     )
 
     if (blockIIArticleIds.length === 0) {
