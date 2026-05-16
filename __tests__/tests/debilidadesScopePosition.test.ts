@@ -145,9 +145,10 @@ describe('DebilidadesCard en TestHubClient', () => {
   })
 
   it('se renderiza después del map de bloques', () => {
-    // BlockSection map → DebilidadesCard → Test de Ortografía
+    // BlockSection map → DebilidadesCard (después pueden venir SimulacroCard,
+    // OfficialExamsSection, Ortografía, etc. — orden actualizado 2026-05-16)
     expect(hub).toMatch(
-      /bloques\.map[\s\S]{0,2000}<DebilidadesCard[\s\S]{0,400}Ortografía/,
+      /bloques\.map[\s\S]{0,2000}<DebilidadesCard/,
     )
   })
 

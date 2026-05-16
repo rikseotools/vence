@@ -384,32 +384,7 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
                 </div>
               </Link>
 
-              {/* Simulacro de Examen (solo oposiciones con formato configurado).
-                  El hub siempre genera uno nuevo (?nuevo=1). FREE → paywall.
-                  Los simulacros pendientes se gestionan desde el dropdown
-                  del header (📝 Tests pendientes). */}
-              {SIMULACRO_AVAILABLE_OPOSICIONES.includes(oposicion) && (
-                <SimulacroCard
-                  oposicion={oposicion}
-                  hasLimit={hasLimit}
-                  onOpenPaywall={() => setShowSimulacroPaywall(true)}
-                />
-              )}
-
-              {/* Exámenes Oficiales (si hay convocatorias) */}
-              {officialExams && officialExams.length > 0 && (
-                <OfficialExamsSection
-                  oposicion={oposicion}
-                  convocatorias={officialExams}
-                  expanded={expandedBlocks.examenesOficiales ?? false}
-                  onToggle={() => toggleBlock('examenesOficiales')}
-                  examStats={examStats}
-                  expandedConvocatorias={expandedConvocatorias}
-                  onToggleConvocatoria={toggleConvocatoria}
-                />
-              )}
-
-              {/* Bloques dinámicos */}
+              {/* Bloques dinámicos (estudio por temas — flujo principal) */}
               {bloques.map((bloque, idx) => (
                 <BlockSection
                   key={bloque.id}
@@ -429,14 +404,38 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
                 />
               ))}
 
-              {/* Mis Debilidades — preguntas falladas de TODA la oposición.
-                  Al pulsar abre un selector inline con 4 modos de ordenación. */}
+              {/* Mis Debilidades — repaso cross-tema de preguntas falladas */}
               <DebilidadesCard
                 positionType={positionType}
                 hasLimit={hasLimit}
                 questionsRemaining={questionsRemaining}
                 dailyLimit={dailyLimit}
               />
+
+              {/* Simulacro de Examen — fase final, después del estudio.
+                  El hub siempre genera uno nuevo (?nuevo=1). FREE → paywall.
+                  Los simulacros pendientes se gestionan desde el dropdown
+                  del header (📝 Tests pendientes). */}
+              {SIMULACRO_AVAILABLE_OPOSICIONES.includes(oposicion) && (
+                <SimulacroCard
+                  oposicion={oposicion}
+                  hasLimit={hasLimit}
+                  onOpenPaywall={() => setShowSimulacroPaywall(true)}
+                />
+              )}
+
+              {/* Exámenes Oficiales — convocatorias reales pasadas */}
+              {officialExams && officialExams.length > 0 && (
+                <OfficialExamsSection
+                  oposicion={oposicion}
+                  convocatorias={officialExams}
+                  expanded={expandedBlocks.examenesOficiales ?? false}
+                  onToggle={() => toggleBlock('examenesOficiales')}
+                  examStats={examStats}
+                  expandedConvocatorias={expandedConvocatorias}
+                  onToggleConvocatoria={toggleConvocatoria}
+                />
+              )}
 
               {/* Test de Ortografía y Gramática (config-driven) */}
               {hasSpellingTest && (
