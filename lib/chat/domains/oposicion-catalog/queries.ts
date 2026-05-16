@@ -175,6 +175,12 @@ export function matchOposicion(message: string, cached: OposicionEntry[]): Match
   const messageMentionsLocal = /\b(ayuntamiento|ayto|municipal|diputaci|local)\b/i.test(message)
   const LOCAL_TOKENS = new Set(['ayuntamiento','ayto','diputacion','municipal','local'])
 
+  // Si el mensaje menciona "universidad", penalizamos fuertemente opciones que
+  // NO sean de universidad. Caso real: "Administrativo Universidad de Murcia"
+  // no debe matchear "Aux. Admin. CARM" (Comunidad Autónoma vs Universidad
+  // son entidades muy distintas con procesos selectivos independientes).
+  const messageMentionsUniversidad = /\b(universidad|univ\.?)\b/i.test(message)
+
   const scored = cached.map(entry => {
     // Regla dura: si el mensaje menciona tokens de rol, TODOS deben aparecer
     // en las keywords de la oposición. Esto evita que "enfermería" matchee
@@ -200,6 +206,12 @@ export function matchOposicion(message: string, cached: OposicionEntry[]): Match
     if (!messageMentionsLocal) {
       const hasLocalToken = entry.keywords.some(k => LOCAL_TOKENS.has(k))
       if (hasLocalToken) score *= 0.7
+    }
+    // Penalizar fuertemente si mensaje menciona "universidad" pero la opo NO
+    // tiene "universidad" en su nombre (son entidades distintas).
+    if (messageMentionsUniversidad) {
+      const isUniversity = entry.keywords.includes('universidad')
+      if (!isUniversity) score *= 0.2
     }
     return { entry, score, hits }
   }).filter(s => s.hits > 0).sort((a, b) => b.score - a.score)
