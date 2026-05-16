@@ -989,11 +989,23 @@ export default function HeaderES() {
                 const progress = exam.totalQuestions > 0
                   ? Math.round((exam.answeredQuestions / exam.totalQuestions) * 100)
                   : 0
-                const opoSlug = oposicionMenu?.navLinks?.find(l => l.featured)?.href?.replace('/', '') || ALL_OPOSICION_SLUGS[0]
+                const contextOpoSlug = oposicionMenu?.navLinks?.find(l => l.featured)?.href?.replace('/', '') || ALL_OPOSICION_SLUGS[0]
+                const titleLc = exam.title?.toLowerCase() || ''
+                // Para simulacro y examen oficial el slug está embebido en el title:
+                // "Simulacro de Examen - {slug}" / "Examen Oficial 2024-07-09 - {slug}".
+                // Extraerlo asegura que se navegue a la oposición correcta del test
+                // (no a la oposición activa del usuario, que puede diferir).
+                const slugFromTitle = exam.title?.match(/ - ([a-z0-9-]+)$/)?.[1]
+                const opoSlug = (slugFromTitle && ALL_OPOSICION_SLUGS.includes(slugFromTitle))
+                  ? slugFromTitle
+                  : contextOpoSlug
                 let resumeUrl
-                if (exam.title?.toLowerCase().includes('examen oficial')) {
+                if (titleLc.includes('simulacro')) {
+                  // Simulacro de examen: ruta dedicada con flujo de pacing + cuenta atrás
+                  resumeUrl = `/${opoSlug}/test/simulacro?resume=${exam.id}`
+                } else if (titleLc.includes('examen oficial')) {
                   resumeUrl = `/${opoSlug}/test/examen-oficial?resume=${exam.id}`
-                } else if (exam.title?.toLowerCase().includes('aleatorio') || exam.temaNumber === 0 || exam.temaNumber === null) {
+                } else if (titleLc.includes('aleatorio') || exam.temaNumber === 0 || exam.temaNumber === null) {
                   resumeUrl = `/test/aleatorio-examen?resume=${exam.id}`
                 } else {
                   resumeUrl = `/${opoSlug}/test/tema/${exam.temaNumber || 1}/test-examen?resume=${exam.id}`
