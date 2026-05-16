@@ -163,12 +163,20 @@ export default function HeaderES() {
 
   // 🆕 CARGAR EXÁMENES Y TESTS PENDIENTES
   useEffect(() => {
-    async function loadPendingExams() {
+    // Throttle de 3s: visibilitychange/focus pueden dispararse repetidamente
+    // al alternar pestañas; sin throttle haríamos N llamadas inútiles.
+    let lastLoadAt = 0
+    const THROTTLE_MS = 3000
+
+    async function loadPendingExams(force = false) {
       if (!user) {
         setPendingExams([])
         setPendingPsychometric([])
         return
       }
+      const now = Date.now()
+      if (!force && now - lastLoadAt < THROTTLE_MS) return
+      lastLoadAt = now
 
       try {
         const examRes = await fetch(`/api/exam/pending?userId=${user.id}&testType=exam&limit=10`)
@@ -186,19 +194,31 @@ export default function HeaderES() {
     }
 
     if (!authLoading && user) {
-      loadPendingExams()
+      loadPendingExams(true)
     }
 
-    // 🔄 Escuchar evento para refrescar cuando se completa un examen
+    // 🔄 Escuchar evento para refrescar cuando se completa o abandona un examen
     const handleExamCompleted = () => {
       console.log('🔄 Refrescando exámenes pendientes...')
-      loadPendingExams()
+      loadPendingExams(true)
     }
+    // 👁️ Refrescar al volver a la pestaña / ventana (cubre el caso de salir
+    // del examen sin que el cleanup de OfficialExamLayout llegue a disparar
+    // exam-completed, p.ej. navegación por gestos en móvil).
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') loadPendingExams()
+    }
+    const handleFocus = () => loadPendingExams()
+
     window.addEventListener('examCompleted', handleExamCompleted)
     window.addEventListener('exam-completed', handleExamCompleted)
+    document.addEventListener('visibilitychange', handleVisibility)
+    window.addEventListener('focus', handleFocus)
     return () => {
       window.removeEventListener('examCompleted', handleExamCompleted)
       window.removeEventListener('exam-completed', handleExamCompleted)
+      document.removeEventListener('visibilitychange', handleVisibility)
+      window.removeEventListener('focus', handleFocus)
     }
   }, [user, authLoading])
 

@@ -531,6 +531,37 @@ export default function OfficialExamLayout({
     }
   }, [clearQuestionContext])
 
+  // Refs vivos para usar en el cleanup de salida sin disparar re-renders
+  // ni re-suscripciones a cada respuesta del usuario.
+  const userAnswersRef = React.useRef(userAnswers)
+  const isSubmittedRef = React.useRef(isSubmitted)
+  useEffect(() => { userAnswersRef.current = userAnswers }, [userAnswers])
+  useEffect(() => { isSubmittedRef.current = isSubmitted }, [isSubmitted])
+
+  // 🔔 Avisar al Header cuando el usuario abandona el examen a medias.
+  // Sin este aviso, el icono amarillo de "pendiente" no aparece hasta que
+  // el usuario recarga la página (el Header solo escucha exam-completed,
+  // que se dispara al COMPLETAR, no al salir a medias).
+  // Disparamos también en visibilitychange→hidden para cubrir el caso de
+  // cerrar pestaña o volver al móvil al home.
+  useEffect(() => {
+    function notifyIfPending(): void {
+      if (isSubmittedRef.current) return
+      const testId = currentTestSessionRef.current?.id
+      if (!testId) return
+      if (Object.keys(userAnswersRef.current).length === 0) return
+      window.dispatchEvent(new Event('exam-completed'))
+    }
+    function onVisibility(): void {
+      if (document.visibilityState === 'hidden') notifyIfPending()
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility)
+      notifyIfPending()
+    }
+  }, [])
+
   // Initialize exam session (for resume functionality)
   useEffect(() => {
     if (!user || !questions?.length) return
