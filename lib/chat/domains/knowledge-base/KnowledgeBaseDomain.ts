@@ -39,6 +39,20 @@ export class KnowledgeBaseDomain implements ChatDomain {
       return false
     }
 
+    // Ceder si el mensaje es claramente una pregunta hipotética/motivacional.
+    // KB respondería con texto canned (ej. sobre "preguntas oficiales") ignorando
+    // la pregunta real ("me vale para aprobar?"). Mejor que pase al LLM.
+    if (isKBQuery) {
+      const m = context.currentMessage.toLowerCase()
+      const isHypothetical =
+        /\bsi\s+\w+\s+.*(podr[ií]a|valdr[ií]a|servir[ií]a|sirve|vale|llegar[ií]a|aprobar[ií]a)/i.test(m) ||
+        /(me\s+)?(vale|sirve)\s+(para|de)\s+(aprobar|sacar|llegar)/i.test(m)
+      if (isHypothetical) {
+        logger.debug('KnowledgeBaseDomain: skipping hypothetical/motivational query', { domain: 'knowledge-base' })
+        return false
+      }
+    }
+
     // Ceder a OposicionCatalogDomain si el mensaje claramente pregunta por
     // info de una oposición específica (fecha examen, plazas, convocatoria,
     // estado). KB tendría una respuesta canned genérica sobre convocatorias,
