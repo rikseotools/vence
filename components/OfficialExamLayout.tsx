@@ -1812,9 +1812,33 @@ export default function OfficialExamLayout({
             aria-live="polite"
             className={`fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40 w-[150px] sm:w-[170px] rounded-xl border-2 ${pace.bg} ${pace.border} shadow-lg transition-all ${isCritical ? 'animate-pulse' : ''}`}
           >
-            <div className="px-3 pt-2 pb-2">
-              <div className={`text-[10px] font-semibold ${pace.text} mb-0.5 flex items-center justify-between`}>
-                <span>⏳ Tiempo restante</span>
+            {/* Header bar con controles minimizar/ocultar (al estilo ventana).
+                No se muestran en critical para evitar accidente al final. */}
+            {!isCritical && (
+              <div className="flex justify-end gap-0.5 px-1.5 pt-1.5 -mb-1">
+                <button
+                  type="button"
+                  onClick={() => setTimerDisplay('minimized')}
+                  aria-label="Minimizar cronómetro"
+                  title="Solo mostrar indicador de color"
+                  className={`w-5 h-5 flex items-center justify-center text-sm leading-none rounded ${pace.text} hover:bg-black/10 transition-colors`}
+                >
+                  −
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTimerDisplay('hidden')}
+                  aria-label="Ocultar cronómetro"
+                  title="Ocultar completamente"
+                  className={`w-5 h-5 flex items-center justify-center text-sm leading-none rounded ${pace.text} hover:bg-black/10 transition-colors`}
+                >
+                  ×
+                </button>
+              </div>
+            )}
+            <div className={`px-3 ${isCritical ? 'pt-2' : 'pt-1'} pb-2`}>
+              <div className={`text-[10px] font-semibold ${pace.text} mb-0.5 text-center`}>
+                ⏳ Tiempo restante
               </div>
               <div className={`text-xl sm:text-2xl font-bold font-mono ${pace.text} text-center leading-tight`}>
                 {formatRemainingTime(remainingSeconds)}
@@ -1828,29 +1852,6 @@ export default function OfficialExamLayout({
                 {answeredCount}/{totalQuestions}
               </div>
             </div>
-            {/* Botones minimizar/ocultar (no se muestran en critical para evitar accidente) */}
-            {!isCritical && (
-              <div className="flex border-t border-gray-200">
-                <button
-                  type="button"
-                  onClick={() => setTimerDisplay('minimized')}
-                  aria-label="Minimizar cronómetro"
-                  className="flex-1 py-1 text-xs text-gray-600 hover:bg-gray-100 transition-colors rounded-bl-xl"
-                  title="Solo mostrar indicador de color"
-                >
-                  −
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTimerDisplay('hidden')}
-                  aria-label="Ocultar cronómetro"
-                  className="flex-1 py-1 text-xs text-gray-600 hover:bg-gray-100 transition-colors rounded-br-xl border-l border-gray-200"
-                  title="Ocultar completamente"
-                >
-                  ×
-                </button>
-              </div>
-            )}
           </div>
         )
       })()}
