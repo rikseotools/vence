@@ -22,6 +22,11 @@ import type {
 } from './schemas'
 import type { OfficialExamQuestion } from '../official-exams/schemas'
 import { distributeSlots, redistributeShortfall } from './proportionalSampling'
+import {
+  psychometricExamColumns,
+  toOfficialExamPsychometric,
+  type PsychometricExamRow,
+} from '../shared/psychometricExamProjection'
 
 function getSimulacroDb() {
   return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
@@ -318,21 +323,7 @@ async function sampleLegislativeByArticles(
     .limit(limit)
 }
 
-type PsyRow = {
-  id: string
-  questionText: string
-  optionA: string | null
-  optionB: string | null
-  optionC: string | null
-  optionD: string | null
-  optionE: string | null
-  explanation: string | null
-  difficulty: string | null
-  examSource: string | null
-  questionSubtype: string | null
-  contentData: unknown
-  timeLimitSeconds: number | null
-}
+type PsyRow = PsychometricExamRow
 
 async function samplePsychometricBySubtype(
   subtype: string,
@@ -341,21 +332,7 @@ async function samplePsychometricBySubtype(
   if (limit <= 0) return []
   const db = getSimulacroDb()
   return db
-    .select({
-      id: psychometricQuestions.id,
-      questionText: psychometricQuestions.questionText,
-      optionA: psychometricQuestions.optionA,
-      optionB: psychometricQuestions.optionB,
-      optionC: psychometricQuestions.optionC,
-      optionD: psychometricQuestions.optionD,
-      optionE: psychometricQuestions.optionE,
-      explanation: psychometricQuestions.explanation,
-      difficulty: psychometricQuestions.difficulty,
-      examSource: psychometricQuestions.examSource,
-      questionSubtype: psychometricQuestions.questionSubtype,
-      contentData: psychometricQuestions.contentData,
-      timeLimitSeconds: psychometricQuestions.timeLimitSeconds,
-    })
+    .select(psychometricExamColumns)
     .from(psychometricQuestions)
     .where(
       and(
@@ -472,21 +449,7 @@ async function samplePsychometricProportional(
     // Fallback: sin histórico, coger N aleatorias de cualquier subtype activo
     const db = getSimulacroDb()
     return db
-      .select({
-        id: psychometricQuestions.id,
-        questionText: psychometricQuestions.questionText,
-        optionA: psychometricQuestions.optionA,
-        optionB: psychometricQuestions.optionB,
-        optionC: psychometricQuestions.optionC,
-        optionD: psychometricQuestions.optionD,
-        optionE: psychometricQuestions.optionE,
-        explanation: psychometricQuestions.explanation,
-        difficulty: psychometricQuestions.difficulty,
-        examSource: psychometricQuestions.examSource,
-        questionSubtype: psychometricQuestions.questionSubtype,
-        contentData: psychometricQuestions.contentData,
-        timeLimitSeconds: psychometricQuestions.timeLimitSeconds,
-      })
+      .select(psychometricExamColumns)
       .from(psychometricQuestions)
       .where(eq(psychometricQuestions.isActive, true))
       .orderBy(sql`random()`)
@@ -509,21 +472,7 @@ async function samplePsychometricProportional(
     const excludeIds = results.map((r) => r.id)
     const db = getSimulacroDb()
     const filler = await db
-      .select({
-        id: psychometricQuestions.id,
-        questionText: psychometricQuestions.questionText,
-        optionA: psychometricQuestions.optionA,
-        optionB: psychometricQuestions.optionB,
-        optionC: psychometricQuestions.optionC,
-        optionD: psychometricQuestions.optionD,
-        optionE: psychometricQuestions.optionE,
-        explanation: psychometricQuestions.explanation,
-        difficulty: psychometricQuestions.difficulty,
-        examSource: psychometricQuestions.examSource,
-        questionSubtype: psychometricQuestions.questionSubtype,
-        contentData: psychometricQuestions.contentData,
-        timeLimitSeconds: psychometricQuestions.timeLimitSeconds,
-      })
+      .select(psychometricExamColumns)
       .from(psychometricQuestions)
       .where(
         and(
@@ -631,28 +580,7 @@ export async function getSimulacroQuestions(
       examCaseTitle: null,
     }))
 
-    const formattedPsico: OfficialExamQuestion[] = shuffleArray(psyRows).map((q) => ({
-      id: q.id,
-      questionText: q.questionText,
-      optionA: q.optionA || '',
-      optionB: q.optionB || '',
-      optionC: q.optionC || '',
-      optionD: q.optionD || '',
-      optionE: q.optionE || '',
-      explanation: q.explanation,
-      difficulty: q.difficulty,
-      questionType: 'psychometric' as const,
-      questionSubtype: q.questionSubtype,
-      examSource: q.examSource,
-      isReserva: false,
-      contentData: q.contentData as Record<string, unknown> | null,
-      timeLimitSeconds: q.timeLimitSeconds,
-      articleNumber: null,
-      lawName: null,
-      examCaseId: null,
-      examCaseText: null,
-      examCaseTitle: null,
-    }))
+    const formattedPsico: OfficialExamQuestion[] = shuffleArray(psyRows).map(toOfficialExamPsychometric)
 
     const formattedBlockII: OfficialExamQuestion[] = shuffleArray(blockIIRows).map((q) => ({
       id: q.id,

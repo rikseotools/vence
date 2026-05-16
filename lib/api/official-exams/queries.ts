@@ -8,6 +8,12 @@ function getOfficialExamsDb() {
 }
 import { questions, psychometricQuestions, articles, laws, tests, testQuestions, psychometricUserQuestionHistory, userFeedback, examCases } from '@/db/schema'
 import { eq, and, like, sql, inArray, desc, count } from 'drizzle-orm'
+import {
+  psychometricExamColumns,
+  toOfficialExamPsychometric,
+  toResumedPsychometric,
+  type PsychometricExamRow,
+} from '../shared/psychometricExamProjection'
 import fs from 'fs'
 import path from 'path'
 
@@ -222,21 +228,7 @@ export async function getOfficialExamQuestions(
 
     // Query 2: Psychometric questions from `psychometric_questions` table
     const psychometricQuestionsData = await db
-      .select({
-        id: psychometricQuestions.id,
-        questionText: psychometricQuestions.questionText,
-        optionA: psychometricQuestions.optionA,
-        optionB: psychometricQuestions.optionB,
-        optionC: psychometricQuestions.optionC,
-        optionD: psychometricQuestions.optionD,
-          optionE: psychometricQuestions.optionE,
-        explanation: psychometricQuestions.explanation,
-        difficulty: psychometricQuestions.difficulty,
-        examSource: psychometricQuestions.examSource,
-        questionSubtype: psychometricQuestions.questionSubtype,
-        contentData: psychometricQuestions.contentData,
-        timeLimitSeconds: psychometricQuestions.timeLimitSeconds,
-      })
+      .select(psychometricExamColumns)
       .from(psychometricQuestions)
       .where(
         and(
@@ -280,28 +272,7 @@ export async function getOfficialExamQuestions(
     // Transform psychometric questions
     const formattedPsychometric: OfficialExamQuestion[] = psychometricQuestionsData
       .filter(q => includeReservas || !q.examSource?.includes('Reserva'))
-      .map(q => ({
-        id: q.id,
-        questionText: q.questionText,
-        optionA: q.optionA || '',
-        optionB: q.optionB || '',
-        optionC: q.optionC || '',
-        optionD: q.optionD || '',
-        optionE: q.optionE || '',
-        explanation: q.explanation,
-        difficulty: q.difficulty,
-        questionType: 'psychometric' as const,
-        questionSubtype: q.questionSubtype,
-        examSource: q.examSource,
-        isReserva: q.examSource?.includes('Reserva') || false,
-        contentData: q.contentData as Record<string, unknown> | null,
-        timeLimitSeconds: q.timeLimitSeconds,
-        articleNumber: null,
-        lawName: null,
-        examCaseId: null,
-        examCaseText: null,
-        examCaseTitle: null,
-      }))
+      .map(toOfficialExamPsychometric)
 
     // Combine all questions
     let allQuestions = [...formattedLegislative, ...formattedPsychometric]
@@ -923,45 +894,16 @@ export async function getOfficialExamResume(
     }
 
     // Fetch full question data from psychometric_questions table (WITHOUT correct_option)
-    const psychometricQuestionsMap = new Map<string, {
-      id: string
-      questionText: string
-      optionA: string | null
-      optionB: string | null
-      optionC: string | null
-      optionD: string | null
-      optionE: string | null
-      explanation: string | null
-      difficulty: string | null
-      examSource: string | null
-      questionSubtype: string | null
-      contentData: Record<string, unknown> | null
-    }>()
+    const psychometricQuestionsMap = new Map<string, PsychometricExamRow>()
 
     if (psyIds.length > 0) {
       const psyResults = await db
-        .select({
-          id: psychometricQuestions.id,
-          questionText: psychometricQuestions.questionText,
-          optionA: psychometricQuestions.optionA,
-          optionB: psychometricQuestions.optionB,
-          optionC: psychometricQuestions.optionC,
-          optionD: psychometricQuestions.optionD,
-          optionE: psychometricQuestions.optionE,
-          explanation: psychometricQuestions.explanation,
-          difficulty: psychometricQuestions.difficulty,
-          examSource: psychometricQuestions.examSource,
-          questionSubtype: psychometricQuestions.questionSubtype,
-          contentData: psychometricQuestions.contentData,
-        })
+        .select(psychometricExamColumns)
         .from(psychometricQuestions)
         .where(inArray(psychometricQuestions.id, psyIds))
 
       for (const q of psyResults) {
-        psychometricQuestionsMap.set(q.id, {
-          ...q,
-          contentData: q.contentData as Record<string, unknown> | null,
-        })
+        psychometricQuestionsMap.set(q.id, q)
       }
     }
 
@@ -1002,25 +944,10 @@ export async function getOfficialExamResume(
         const psy = psychometricQuestionsMap.get(qId)
         if (!psy) continue
 
-        questionData = {
-          id: psy.id,
+        questionData = toResumedPsychometric(psy, {
           questionOrder: sq.questionOrder,
-          questionText: psy.questionText,
-          optionA: psy.optionA || '',
-          optionB: psy.optionB || '',
-          optionC: psy.optionC || '',
-          optionD: psy.optionD || '',
-          optionE: psy.optionE || '',
-          explanation: psy.explanation,
-          difficulty: psy.difficulty,
-          questionType: 'psychometric' as const,
-          questionSubtype: psy.questionSubtype,
-          contentData: psy.contentData,
-          isReserva: psy.examSource?.includes('Reserva') || false,
-          articleNumber: null,
-          lawName: null,
           savedAnswer: sq.userAnswer || null,
-        }
+        })
       }
 
       responseQuestions.push(questionData)
@@ -1336,32 +1263,18 @@ export async function getOfficialExamFailedQuestions(
       explanation: string | null
       difficulty: string | null
       questionSubtype: string | null
-      contentData: Record<string, unknown> | null
+      contentData: unknown
+      imageUrl: string | null
     }>()
 
     if (psychometricIds.length > 0) {
       const psyResults = await db
-        .select({
-          id: psychometricQuestions.id,
-          questionText: psychometricQuestions.questionText,
-          optionA: psychometricQuestions.optionA,
-          optionB: psychometricQuestions.optionB,
-          optionC: psychometricQuestions.optionC,
-          optionD: psychometricQuestions.optionD,
-          optionE: psychometricQuestions.optionE,
-          explanation: psychometricQuestions.explanation,
-          difficulty: psychometricQuestions.difficulty,
-          questionSubtype: psychometricQuestions.questionSubtype,
-          contentData: psychometricQuestions.contentData,
-        })
+        .select(psychometricExamColumns)
         .from(psychometricQuestions)
         .where(inArray(psychometricQuestions.id, psychometricIds))
 
       for (const q of psyResults) {
-        psychometricQuestionsMap.set(q.id, {
-          ...q,
-          contentData: q.contentData as Record<string, unknown> | null,
-        })
+        psychometricQuestionsMap.set(q.id, q)
       }
     }
 
@@ -1409,7 +1322,8 @@ export async function getOfficialExamFailedQuestions(
             explanation: psyQ.explanation,
             questionType: 'psychometric',
             questionSubtype: psyQ.questionSubtype,
-            contentData: psyQ.contentData,
+            contentData: psyQ.contentData as Record<string, unknown> | null,
+            imageUrl: psyQ.imageUrl ?? null,
             articleNumber: null,
             lawName: null,
             difficulty: psyQ.difficulty,

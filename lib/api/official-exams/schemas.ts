@@ -50,6 +50,10 @@ export const officialExamQuestionSchema = z.object({
   // For psychometric questions with tables/content
   contentData: z.record(z.string(), z.unknown()).nullable(),
   timeLimitSeconds: z.number().nullable(),
+  // Imagen embebida: usada por psicotécnicas tipo data_tables / pie_chart…
+  // cuando el dato visual viene como image_url en vez de content_data
+  // estructurado, y por legislativas con captura adjunta (ofimática práctica).
+  imageUrl: z.string().nullable().optional(),
   // Article info for legislative questions
   articleNumber: z.string().nullable(),
   lawName: z.string().nullable(),
@@ -261,6 +265,9 @@ export const resumedOfficialExamQuestionSchema = z.object({
   questionType: z.enum(['legislative', 'psychometric']),
   questionSubtype: z.string().nullable(),
   contentData: z.record(z.string(), z.unknown()).nullable(),
+  // Imagen embebida (psicotécnicas con data_tables/etc. cuando la BD guarda
+  // la tabla como imagen, o legislativas de ofimática con captura).
+  imageUrl: z.string().nullable().optional(),
   isReserva: z.boolean(),
   articleNumber: z.string().nullable(),
   lawName: z.string().nullable(),
@@ -401,6 +408,9 @@ export const officialExamFailedQuestionSchema = z.object({
   questionType: z.enum(['legislative', 'psychometric']),
   questionSubtype: z.string().nullable(),
   contentData: z.record(z.string(), z.unknown()).nullable(),
+  // Igual que en officialExamQuestionSchema: psicotécnicas con tabla embebida
+  // como imagen necesitan este fallback para renderizarse en la review.
+  imageUrl: z.string().nullable().optional(),
   articleNumber: z.string().nullable(),
   lawName: z.string().nullable(),
   difficulty: z.string().nullable(),

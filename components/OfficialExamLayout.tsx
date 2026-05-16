@@ -1101,6 +1101,12 @@ export default function OfficialExamLayout({
         option_d: question.options[3] ?? null,
         option_e: question.options[4] ?? null,
         content_data: question.contentData,
+        // image_url: fallback visual cuando la psicotécnica tiene tabla/figura
+        // como imagen en vez de content_data estructurado (data_tables migradas
+        // de Madrid sin extracción a content_data, p.ej.). Sin esto el
+        // componente del chart pintaba vacío y el usuario no podía responder
+        // (bug Mayte 16/05/2026).
+        image_url: question.imageUrl ?? null,
         explanation: question.explanation,
         question_subtype: question.questionSubtype
       },
