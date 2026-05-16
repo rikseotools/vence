@@ -395,6 +395,10 @@ export default function OfficialExamLayout({
   const currentTestSessionRef = React.useRef<{ id: string } | null>(
     resumeTestId ? { id: resumeTestId } : null
   )
+  // Cola de respuestas dadas antes de que /init terminara y tuviéramos testId.
+  // Sin esto, esas respuestas se perdían silenciosamente (saveAnswerToApi se
+  // saltaba por testId=null) y al reanudar la pregunta aparecía sin marcar.
+  const pendingAnswersRef = React.useRef<Map<number, string>>(new Map())
 
   // Resultados validados por API
   const [validatedResults, setValidatedResults] = useState<ValidatedResults | null>(null)
@@ -577,6 +581,19 @@ export default function OfficialExamLayout({
     }
   }, [currentTestSession?.id])
 
+  // Al crearse la sesión, vaciar respuestas encoladas durante /init
+  useEffect(() => {
+    const id = currentTestSession?.id
+    if (!id) return
+    if (pendingAnswersRef.current.size === 0) return
+    const pending = Array.from(pendingAnswersRef.current.entries())
+    pendingAnswersRef.current.clear()
+    for (const [questionIndex, answer] of pending) {
+      saveAnswerToApi(id, questionIndex, answer)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentTestSession?.id])
+
   // Initialize exam session (for resume functionality)
   useEffect(() => {
     if (!user || !questions?.length) return
@@ -729,6 +746,9 @@ export default function OfficialExamLayout({
     const testId = currentTestSession?.id || currentTestSessionRef.current?.id
     if (testId) {
       saveAnswerToApi(testId, questionIndex, normalizedOption)
+    } else {
+      // /init aún no terminó: encolar para vaciar en cuanto tengamos testId
+      pendingAnswersRef.current.set(questionIndex, normalizedOption)
     }
   }
 
