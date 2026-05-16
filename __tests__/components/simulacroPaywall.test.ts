@@ -111,17 +111,28 @@ describe('TestHubClient — gating simulacro Free', () => {
     expect(hub).toMatch(/hasLimit,\s*questionsRemaining,\s*dailyLimit/)
   })
 
-  it('renderiza badge "⭐ Premium" solo si isFreeNoPending (free sin pending)', () => {
-    expect(hub).toMatch(/isFreeNoPending\s*=\s*hasLimit\s*&&\s*!pendingSimulacro/)
-    expect(hub).toMatch(/isFreeNoPending\s*\?\s*'⭐ Premium'\s*:\s*'Nuevo'/)
+  it('badge "⭐ Premium" solo si hasLimit (free); resto ve "Nuevo"', () => {
+    expect(hub).toMatch(/hasLimit\s*\?\s*'⭐ Premium'\s*:\s*'Nuevo'/)
   })
 
-  it('user free sin pending: card es <button> que abre modal (no <Link>)', () => {
-    expect(hub).toMatch(/if \(isFreeNoPending\)\s*\{[\s\S]{0,300}<button[\s\S]{0,300}setShowSimulacroPaywall\(true\)/)
+  it('SimulacroCard FREE: <button> que abre paywall', () => {
+    expect(hub).toMatch(/if \(hasLimit\)\s*\{[\s\S]{0,400}<button[\s\S]{0,300}onClick=\{onOpenPaywall\}/)
   })
 
-  it('user free CON pending: card es <Link> que continúa con resume=ID', () => {
-    expect(hub).toMatch(/href=\{[\s\S]{0,200}pendingSimulacro[\s\S]{0,100}\?resume=\$\{pendingSimulacro\.id\}/)
+  it('SimulacroCard Premium: <Link> que SIEMPRE genera nuevo con ?nuevo=1', () => {
+    expect(hub).toMatch(/href=\{`\/\$\{oposicion\}\/test\/simulacro\?nuevo=1`\}/)
+  })
+
+  it('Hub NO gestiona pending simulacros (es responsabilidad solo del header dropdown)', () => {
+    // No debe haber detector de pending ni state pendingSimulacro en el hub
+    expect(hub).not.toMatch(/setPendingSimulacro\(/)
+    expect(hub).not.toContain('checkPendingSimulacro')
+    // No debe haber "Continuar simulacro" como card en el hub
+    expect(hub).not.toMatch(/SimulacroCard[\s\S]{0,500}Continuar simulacro/)
+  })
+
+  it('SimulacroCard recibe props mínimas (oposicion, hasLimit, onOpenPaywall)', () => {
+    expect(hub).toMatch(/interface SimulacroCardProps\s*\{[\s\S]{0,300}oposicion:\s*string[\s\S]{0,80}hasLimit:\s*boolean[\s\S]{0,80}onOpenPaywall:/)
   })
 
   it('renderiza SimulacroPaywallModal con config del slug actual', () => {

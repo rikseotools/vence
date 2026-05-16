@@ -14,8 +14,14 @@ export interface SimulacroPublicConfig {
   totalQuestions: number
   /** Duración máxima del cronómetro de cuenta atrás (en minutos). */
   durationMinutes: number
-  /** Resumen breve para mostrar en cards/paywalls (ej. "30 programa + 30 psico + 50 ofimática"). */
+  /** Resumen breve para mostrar en paywalls (ej. "30 programa + 30 psico + 50 ofimática"). */
   shortBreakdown: string
+  /**
+   * Desglose detallado en líneas (una por parte) según las bases oficiales
+   * de la convocatoria. Se muestra en la card del simulacro con letra pequeña
+   * para que el usuario sepa exactamente qué va a hacer antes de empezar.
+   */
+  breakdownLines: string[]
 }
 
 /**
@@ -28,6 +34,10 @@ export const SIMULACRO_PUBLIC_CONFIG: Record<string, SimulacroPublicConfig> = {
     totalQuestions: 110,
     durationMinutes: 90,
     shortBreakdown: '30 programa + 30 psicotécnicas + 50 ofimática',
+    breakdownLines: [
+      'Primera parte (60): 30 del Bloque I del programa + 30 psicotécnicas',
+      'Segunda parte (50): ejercicio práctico de ofimática',
+    ],
   },
 }
 

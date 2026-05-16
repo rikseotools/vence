@@ -143,14 +143,9 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
   const [examStats, setExamStats] = useState<Record<string, ExamStat>>({})
   const [expandedConvocatorias, setExpandedConvocatorias] = useState<Record<string, boolean>>({})
 
-  // Simulacro pendiente del usuario (si lo hay) — para mostrar "Continuar" en la card
-  const [pendingSimulacro, setPendingSimulacro] = useState<{
-    id: string
-    progress: number
-    answeredCount: number
-    totalQuestions: number
-    remainingMinutes: number | null
-  } | null>(null)
+  // Los simulacros pendientes se gestionan SOLO desde el dropdown del
+  // header (📝 Tests pendientes). El hub siempre genera uno nuevo para
+  // evitar tener dos puntos de entrada distintos al mismo recurso.
 
   // Estado de bloques expandidos (localStorage)
   const storageKey = `${oposicion}-expanded-blocks`
@@ -224,58 +219,6 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
       document.removeEventListener('visibilitychange', handleVisibility)
     }
   }, [user?.id, loading, loadUserThemeStats])
-
-  // Detectar simulacro pendiente (solo si la oposición soporta simulacro y hay user)
-  useEffect(() => {
-    if (!user?.id || loading) return
-    if (!SIMULACRO_AVAILABLE_OPOSICIONES.includes(oposicion)) return
-
-    let cancelled = false
-    async function checkPendingSimulacro() {
-      try {
-        const { getAuthHeaders } = await import('@/lib/api/authHeaders')
-        const headers = await getAuthHeaders()
-        if (!headers['Authorization']) return
-
-        const res = await fetch('/api/v2/official-exams/pending', { headers })
-        const data = await res.json()
-        if (cancelled) return
-        if (!data.success || !Array.isArray(data.exams)) return
-
-        const pending = data.exams.find(
-          (e: { testType?: string; oposicion?: string }) =>
-            e.testType === 'simulacro' && e.oposicion === oposicion,
-        ) as {
-          id: string
-          answeredCount: number
-          totalQuestions: number
-          progress: number
-          totalTimeSeconds?: number
-          durationMinutes?: number
-        } | undefined
-
-        if (pending) {
-          const remainingMinutes =
-            pending.durationMinutes && pending.totalTimeSeconds != null
-              ? Math.max(0, Math.ceil(pending.durationMinutes - pending.totalTimeSeconds / 60))
-              : null
-          setPendingSimulacro({
-            id: pending.id,
-            progress: pending.progress,
-            answeredCount: pending.answeredCount,
-            totalQuestions: pending.totalQuestions,
-            remainingMinutes,
-          })
-        } else {
-          setPendingSimulacro(null)
-        }
-      } catch (e) {
-        console.warn('No se pudo comprobar simulacro pendiente:', e)
-      }
-    }
-    checkPendingSimulacro()
-    return () => { cancelled = true }
-  }, [user?.id, loading, oposicion])
 
   // Cargar estadísticas de exámenes oficiales (lazy, al expandir)
   const loadExamStats = useCallback(async () => {
@@ -442,74 +385,16 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
               </Link>
 
               {/* Simulacro de Examen (solo oposiciones con formato configurado).
-                  Para usuarios FREE sin simulacro pendiente: NO entran al
-                  simulacro — se abre modal Premium. Si tienen pendiente, sí
-                  pueden continuar (el simulacro ya está en marcha). */}
-              {SIMULACRO_AVAILABLE_OPOSICIONES.includes(oposicion) && (() => {
-                const isFreeNoPending = hasLimit && !pendingSimulacro
-                const cardClasses = `block py-4 px-8 rounded-lg font-semibold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-xl active:scale-95 focus:outline-none focus:ring-4 group w-full text-left ${
-                  pendingSimulacro
-                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white focus:ring-emerald-300'
-                    : 'bg-gradient-to-r from-amber-600 to-orange-600 text-white focus:ring-amber-300'
-                }`
-                const inner = (
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <span className="mr-3 text-2xl group-hover:animate-bounce">
-                        {pendingSimulacro ? '↻' : '🏆'}
-                      </span>
-                      <span>
-                        {pendingSimulacro ? (
-                          <>
-                            Continuar simulacro
-                            <span className="block text-sm font-normal opacity-90 mt-0.5">
-                              {pendingSimulacro.answeredCount}/{pendingSimulacro.totalQuestions} respondidas
-                              {pendingSimulacro.remainingMinutes != null &&
-                                ` · ${pendingSimulacro.remainingMinutes} min restantes`}
-                            </span>
-                          </>
-                        ) : (
-                          <>
-                            Simulacro de Examen: 110 preguntas con el formato oficial
-                            {isFreeNoPending && (
-                              <span className="block text-sm font-normal opacity-90 mt-0.5">
-                                Premium · 110 preguntas / 90 min
-                              </span>
-                            )}
-                          </>
-                        )}
-                      </span>
-                    </div>
-                    <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-medium">
-                      {pendingSimulacro ? 'Pendiente' : isFreeNoPending ? '⭐ Premium' : 'Nuevo'}
-                    </span>
-                  </div>
-                )
-
-                if (isFreeNoPending) {
-                  return (
-                    <button
-                      type="button"
-                      onClick={() => setShowSimulacroPaywall(true)}
-                      className={cardClasses}
-                    >
-                      {inner}
-                    </button>
-                  )
-                }
-                return (
-                  <Link
-                    href={
-                      pendingSimulacro
-                        ? `/${oposicion}/test/simulacro?resume=${pendingSimulacro.id}`
-                        : `/${oposicion}/test/simulacro`
-                    }
-                    className={cardClasses}
-                  >
-                    {inner}
-                  </Link>
-                )
-              })()}
+                  El hub siempre genera uno nuevo (?nuevo=1). FREE → paywall.
+                  Los simulacros pendientes se gestionan desde el dropdown
+                  del header (📝 Tests pendientes). */}
+              {SIMULACRO_AVAILABLE_OPOSICIONES.includes(oposicion) && (
+                <SimulacroCard
+                  oposicion={oposicion}
+                  hasLimit={hasLimit}
+                  onOpenPaywall={() => setShowSimulacroPaywall(true)}
+                />
+              )}
 
               {/* Exámenes Oficiales (si hay convocatorias) */}
               {officialExams && officialExams.length > 0 && (
@@ -1006,6 +891,74 @@ function ThemeLink({ topic, basePath, stats, statsLoading, color, onInfoClick }:
           )}
         </div>
       </div>
+    </Link>
+  )
+}
+
+// ============================================================
+// Card del Simulacro de Examen
+//
+// Política UX clara: el hub SIEMPRE genera un simulacro nuevo (con `?nuevo=1`).
+// La gestión de simulacros pendientes (continuar/descartar) vive en el
+// dropdown del header — es el ÚNICO lugar donde se reanuda. Esto evita
+// la confusión de tener dos puntos de entrada distintos.
+//
+// 2 estados:
+//   - FREE → botón que abre modal Premium (paywall)
+//   - Premium → link directo a /simulacro?nuevo=1
+// ============================================================
+
+interface SimulacroCardProps {
+  oposicion: string
+  hasLimit: boolean
+  onOpenPaywall: () => void
+}
+
+function SimulacroCard({ oposicion, hasLimit, onOpenPaywall }: SimulacroCardProps) {
+  // Config compartida (totalQuestions, breakdownLines) — usada también por
+  // el paywall y el endpoint /api/v2/simulacro/questions. Single source of truth.
+  const config = getSimulacroConfig(oposicion)
+  const cardClasses =
+    'block py-4 px-8 rounded-lg font-semibold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-xl active:scale-95 focus:outline-none focus:ring-4 group w-full text-left bg-gradient-to-r from-amber-600 to-orange-600 text-white focus:ring-amber-300'
+
+  const inner = (
+    <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start min-w-0">
+        <span className="mr-3 text-2xl group-hover:animate-bounce flex-shrink-0">🏆</span>
+        <div className="min-w-0">
+          <div>
+            Simulacro de Examen: {config?.totalQuestions ?? 110} preguntas
+          </div>
+          {/* Desglose detallado por partes (bases oficiales) — letra pequeña */}
+          {config?.breakdownLines && config.breakdownLines.length > 0 && (
+            <ul className="mt-1 text-xs font-normal opacity-90 leading-snug list-none">
+              {config.breakdownLines.map((line, i) => (
+                <li key={i}>• {line}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+      <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-medium flex-shrink-0">
+        {hasLimit ? '⭐ Premium' : 'Nuevo'}
+      </span>
+    </div>
+  )
+
+  // FREE → paywall (no entra al simulacro)
+  if (hasLimit) {
+    return (
+      <button type="button" onClick={onOpenPaywall} className={cardClasses}>
+        {inner}
+      </button>
+    )
+  }
+
+  // Premium → SIEMPRE genera uno nuevo. La gestión de pendings se hace
+  // desde el dropdown del header (📝 Tests pendientes).
+  return (
+    <Link href={`/${oposicion}/test/simulacro?nuevo=1`} className={cardClasses}>
+      {inner}
     </Link>
   )
 }
