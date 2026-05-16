@@ -474,6 +474,21 @@ export default function ExamLayout({
     return () => clearInterval(interval)
   }, [isSubmitted, startTime])
 
+  // 🪪 Marcar este test como "activo en esta pestaña" para que el Header
+  // lo filtre del badge de pendientes mientras el usuario sigue dentro.
+  useEffect(() => {
+    const id = currentTestSession?.id
+    if (!id) return
+    sessionStorage.setItem('vence:active_test_id', id)
+    window.dispatchEvent(new Event('vence:active-test-changed'))
+    return () => {
+      if (sessionStorage.getItem('vence:active_test_id') === id) {
+        sessionStorage.removeItem('vence:active_test_id')
+        window.dispatchEvent(new Event('vence:active-test-changed'))
+      }
+    }
+  }, [currentTestSession?.id])
+
   // ✅ INICIALIZAR SESIÓN AL MONTAR
   useEffect(() => {
     if (authLoading || !questions?.length) return

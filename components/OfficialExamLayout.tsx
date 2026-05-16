@@ -561,6 +561,22 @@ export default function OfficialExamLayout({
     }
   }, [])
 
+  // 🪪 Marcar este test como "activo en esta pestaña" para que el Header
+  // lo filtre del badge de pendientes mientras el usuario sigue dentro.
+  // sessionStorage es por-pestaña y se limpia sólo al cerrarla.
+  useEffect(() => {
+    const id = currentTestSession?.id
+    if (!id) return
+    sessionStorage.setItem('vence:active_test_id', id)
+    window.dispatchEvent(new Event('vence:active-test-changed'))
+    return () => {
+      if (sessionStorage.getItem('vence:active_test_id') === id) {
+        sessionStorage.removeItem('vence:active_test_id')
+        window.dispatchEvent(new Event('vence:active-test-changed'))
+      }
+    }
+  }, [currentTestSession?.id])
+
   // Initialize exam session (for resume functionality)
   useEffect(() => {
     if (!user || !questions?.length) return
@@ -1552,9 +1568,15 @@ export default function OfficialExamLayout({
                   )}
                 </div>
 
-                {/* Imagen de la pregunta (Supabase Storage) — para legislativas con imágenes */}
-                {!isPsychometric && question.imageUrl && (
-                  <ContentDataRenderer contentData={null} imageUrl={question.imageUrl} />
+                {/* Imagen de la pregunta — para legislativas con imágenes.
+                    Aceptamos image_url (Supabase Storage) o content_data.image_base64
+                    (ofimática Word/Excel/LibreOffice viene con la imagen embebida).
+                    El renderer ya decide qué mostrar. */}
+                {!isPsychometric && (question.imageUrl || question.contentData) && (
+                  <ContentDataRenderer
+                    contentData={question.contentData as Record<string, unknown> | null}
+                    imageUrl={question.imageUrl}
+                  />
                 )}
 
                 {/* Texto de la pregunta - Solo para legislativas y psicotecnicas sin componente especializado */}

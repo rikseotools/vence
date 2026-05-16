@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { after } from 'next/server'
 import { safeParseInitOfficialExam, initOfficialExam } from '@/lib/api/official-exams'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
@@ -65,6 +66,21 @@ async function _POST(request: NextRequest) {
     }
 
     console.log(`✅ [API/v2/official-exams/init] Session created: ${result.testId}, ${result.savedCount} questions`)
+
+    // Invalidar cache de pending exams del user: acaba de aparecer un test nuevo
+    // pendiente, el Header tiene que verlo en su próxima consulta.
+    after(async () => {
+      try {
+        const { invalidateMany } = await import('@/lib/cache/redis')
+        await invalidateMany([
+          `exam_pending:${user.id}:all:10`,
+          `exam_pending:${user.id}:exam:10`,
+          `exam_pending:${user.id}:practice:10`,
+        ])
+      } catch {
+        // Si Redis falla, el TTL eventualmente refresca el valor stale
+      }
+    })
 
     return NextResponse.json({
       success: true,

@@ -7,7 +7,7 @@ function getOfficialExamsDb() {
   return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
 }
 import { questions, psychometricQuestions, articles, laws, tests, testQuestions, psychometricUserQuestionHistory, userFeedback, examCases } from '@/db/schema'
-import { eq, and, like, sql, inArray, desc, count } from 'drizzle-orm'
+import { eq, and, like, sql, inArray, desc, count, isNull } from 'drizzle-orm'
 import {
   psychometricExamColumns,
   toOfficialExamPsychometric,
@@ -1037,6 +1037,11 @@ export async function getPendingOfficialExams(
         and(
           eq(tests.userId, userId),
           eq(tests.isCompleted, false),
+          // completed_at != null + is_completed=false es el convenio de `/api/exam/discard`
+          // para marcar un test como descartado. Sin este filtro, /simulacro reanudaba
+          // simulacros descartados y escribía respuestas sobre un test "muerto"
+          // (caso Nila 16/05/2026: test 6331436e quedó en limbo con 110 respuestas).
+          isNull(tests.completedAt),
           sql`(${tests.detailedAnalytics}->>'isOfficialExam' = 'true' OR ${tests.detailedAnalytics}->>'isSimulacro' = 'true')`
         )
       )

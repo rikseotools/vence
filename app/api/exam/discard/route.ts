@@ -2,6 +2,7 @@
 // API para descartar exámenes abandonados (marca como completado sin puntuación)
 
 import { NextRequest, NextResponse } from 'next/server'
+import { after } from 'next/server'
 import { getDb } from '@/db/client'
 import { tests } from '@/db/schema'
 import { eq, and } from 'drizzle-orm'
@@ -74,6 +75,20 @@ async function _POST(request: NextRequest) {
       ))
 
     console.log('✅ [API/exam/discard] Examen descartado:', testId)
+
+    // Invalidar cache de pending exams: el test ya no debe aparecer como pendiente.
+    after(async () => {
+      try {
+        const { invalidateMany } = await import('@/lib/cache/redis')
+        await invalidateMany([
+          `exam_pending:${userId}:all:10`,
+          `exam_pending:${userId}:exam:10`,
+          `exam_pending:${userId}:practice:10`,
+        ])
+      } catch {
+        // Si Redis falla, el TTL eventualmente refresca el valor stale
+      }
+    })
 
     return NextResponse.json({
       success: true,

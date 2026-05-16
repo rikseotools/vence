@@ -57,6 +57,7 @@ export default function HeaderES() {
   const [pendingFeedbacks, setPendingFeedbacks] = useState(0)
   const [pendingExams, setPendingExams] = useState<PendingExam[]>([])
   const [pendingPsychometric, setPendingPsychometric] = useState<{ id: string; categoryName: string | null; totalQuestions: number; questionsAnswered: number }[]>([])
+  const [activeTestId, setActiveTestId] = useState<string | null>(null)
   const [showPendingExamsDropdown, setShowPendingExamsDropdown] = useState(false)
   const [discardingExamId, setDiscardingExamId] = useState<string | null>(null)
   const [confirmingDiscardId, setConfirmingDiscardId] = useState<string | null>(null)
@@ -221,6 +222,26 @@ export default function HeaderES() {
       window.removeEventListener('focus', handleFocus)
     }
   }, [user, authLoading])
+
+  // 🪪 Sincronizar el test activo en esta pestaña con sessionStorage.
+  // OfficialExamLayout/ExamLayout escriben aquí mientras están montados, y
+  // dispatchan 'vence:active-test-changed' para que filtremos el badge.
+  useEffect(() => {
+    function sync() {
+      if (typeof window === 'undefined') return
+      setActiveTestId(sessionStorage.getItem('vence:active_test_id'))
+    }
+    sync()
+    window.addEventListener('vence:active-test-changed', sync)
+    return () => window.removeEventListener('vence:active-test-changed', sync)
+  }, [])
+
+  // Tests pendientes excluyendo el que el usuario está haciendo ahora mismo
+  // en esta pestaña. Evita que el badge "tienes un examen pendiente" aparezca
+  // sobre el propio examen activo al cambiar de pestaña y volver.
+  const visiblePendingExams = activeTestId
+    ? pendingExams.filter(e => e.id !== activeTestId)
+    : pendingExams
 
   // Mostrar confirmacion inline para descartar
   function handleDiscardExam(examId: string, e?: MouseEvent) {
@@ -575,7 +596,7 @@ export default function HeaderES() {
                 <DailyGoalBanner />
 
                 {/* 📝 Exámenes pendientes - Móvil (oculto cuando se ve el desktop) */}
-                {(pendingExams.length + pendingPsychometric.length) > 0 && (
+                {(visiblePendingExams.length + pendingPsychometric.length) > 0 && (
                   <div className="relative lg:hidden">
                     <button
                       onClick={() => setShowPendingExamsDropdown(!showPendingExamsDropdown)}
@@ -583,7 +604,7 @@ export default function HeaderES() {
                       title="Tests pendientes"
                     >
                       <span>📝</span>
-                      <span>{pendingExams.length + pendingPsychometric.length}</span>
+                      <span>{visiblePendingExams.length + pendingPsychometric.length}</span>
                     </button>
                   </div>
                 )}
@@ -664,7 +685,7 @@ export default function HeaderES() {
               )}
 
               {/* 📝 Tests pendientes - Desktop */}
-              {user && (pendingExams.length + pendingPsychometric.length) > 0 && (
+              {user && (visiblePendingExams.length + pendingPsychometric.length) > 0 && (
                 <div className="relative hidden lg:block">
                   <button
                     onClick={() => setShowPendingExamsDropdown(!showPendingExamsDropdown)}
@@ -672,7 +693,7 @@ export default function HeaderES() {
                     title="Tests pendientes"
                   >
                     <span>📝</span>
-                    <span className="text-sm">{pendingExams.length + pendingPsychometric.length}</span>
+                    <span className="text-sm">{visiblePendingExams.length + pendingPsychometric.length}</span>
                   </button>
                 </div>
               )}
@@ -976,7 +997,7 @@ export default function HeaderES() {
       )}
 
       {/* Dropdown de tests pendientes */}
-      {showPendingExamsDropdown && (pendingExams.length + pendingPsychometric.length) > 0 && (
+      {showPendingExamsDropdown && (visiblePendingExams.length + pendingPsychometric.length) > 0 && (
         <>
           {/* Overlay para cerrar */}
           <div
@@ -990,7 +1011,7 @@ export default function HeaderES() {
                 <span className="text-lg">📝</span>
                 <span className="font-semibold text-amber-800 dark:text-amber-200">
                   {(() => {
-                    const total = pendingExams.length + pendingPsychometric.length
+                    const total = visiblePendingExams.length + pendingPsychometric.length
                     return total === 1 ? 'Test pendiente' : `${total} tests pendientes`
                   })()}
                 </span>
@@ -1005,7 +1026,7 @@ export default function HeaderES() {
               </button>
             </div>
             <div className="p-3 space-y-2 max-h-80 overflow-y-auto">
-              {pendingExams.map(exam => {
+              {visiblePendingExams.map(exam => {
                 const progress = exam.totalQuestions > 0
                   ? Math.round((exam.answeredQuestions / exam.totalQuestions) * 100)
                   : 0

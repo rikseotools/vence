@@ -1,5 +1,6 @@
 
 import { NextRequest, NextResponse } from 'next/server'
+import { after } from 'next/server'
 import { getDb } from '@/db/client'
 import { tests, testQuestions, psychometricUserQuestionHistory, userQuestionHistory } from '@/db/schema'
 import { eq, and, sql } from 'drizzle-orm'
@@ -386,6 +387,21 @@ async function _POST(request: NextRequest) {
     }
 
     console.log(`✅ [API/v2/official-exams/complete] History updated: ${legislativeAnswers.length} leg answered, ${psychometricAnswers.length} psy answered, ${unansweredLegislative.length} leg unanswered (as failed), ${unansweredPsychometric.length} psy unanswered (as failed)`)
+
+    // Invalidar cache de pending exams: el test acaba de completarse, ya no
+    // debe aparecer como pendiente en el Header.
+    after(async () => {
+      try {
+        const { invalidateMany } = await import('@/lib/cache/redis')
+        await invalidateMany([
+          `exam_pending:${user.id}:all:10`,
+          `exam_pending:${user.id}:exam:10`,
+          `exam_pending:${user.id}:practice:10`,
+        ])
+      } catch {
+        // Si Redis falla, el TTL eventualmente refresca el valor stale
+      }
+    })
 
     return NextResponse.json({
       success: true,

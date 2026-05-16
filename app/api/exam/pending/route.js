@@ -61,9 +61,11 @@ async function _GET(request) {
     }
 
     return NextResponse.json(result, {
-      // Cache navegador 30s para reducir repeat hits del dashboard. Tras Fase 1
-      // (Redis) este cache sera el L2. private = no CDN porque es por-usuario.
-      headers: { 'Cache-Control': 'private, max-age=30, stale-while-revalidate=60' },
+      // Sin cache HTTP: el navegador respetaba max-age=30 y devolvía respuesta
+      // cacheada vacía aunque acabaras de iniciar/abandonar un examen — el icono
+      // del header no aparecía hasta que expirara el TTL. El caching real lo hace
+      // Redis (30s) en el servidor, con invalidación targeted al mutar `tests`.
+      headers: { 'Cache-Control': 'private, no-store' },
     })
   } catch (error) {
     console.error('Error obteniendo exámenes pendientes:', error)
