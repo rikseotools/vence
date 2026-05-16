@@ -53,7 +53,7 @@ Crear una tabla analizando cada opción:
 
 ### 2.4 Preguntas clave a responder
 1. **¿La respuesta marcada es correcta?** - Verificar contra el artículo
-2. **¿El artículo vinculado es el correcto?** - ¿Responde la pregunta?
+2. **¿El artículo vinculado es el correcto?** - ¿Responde la pregunta literalmente? Aplica igual a preguntas legislativas y a preguntas de informática (el temario de informática ya tiene artículos reales — ver §5.1.2)
 3. **¿La explicación es didáctica?** - ¿Explica POR QUÉ cada opción es correcta/incorrecta?
 4. **¿La explicación solo transcribe?** - Si solo copia el artículo sin explicar, hay que mejorarla
 
@@ -225,15 +225,27 @@ Fuente: [Microsoft Support - Título descriptivo](https://support.microsoft.com/
 
 **IMPORTANTE:** No inventar URLs. Siempre buscar y verificar que la fuente existe antes de incluirla.
 
-### 5.1.2 Verificación de preguntas técnicas con leyes virtuales (post-14/04/2026)
+### 5.1.2 Verificación de preguntas técnicas con artículos de informática (post-16/05/2026)
 
-**Hueco detectado:** el flujo `revisar-temas-con-agente.md` está pensado para preguntas legales (verificar contra artículo). Las preguntas técnicas vinculadas a "leyes virtuales" (Word, Excel, Access, Outlook, Windows, Internet) **no se enrutan al agente Opus/Sonnet**; solo pasan por `gpt-4o-mini` ligero. Cuando éste marca `answer_ok=false` o `explanation_ok=false`, el flag queda sin acción y la pregunta sigue activa con la explicación errónea hasta que un usuario impugna.
+> **Actualización (16/05/2026):** el temario de informática ha sido completado con artículos reales en la BD (Word, Excel, Access, Outlook, Windows, Internet). Las preguntas técnicas **ya no son "virtuales"** en el sentido de carecer de artículo — cada pregunta debe tener un `primary_article_id` cuyo contenido responda literalmente a la pregunta, igual que cualquier pregunta legislativa.
 
-**Regla:**
+**Regla del artículo literal — aplica también a informática:**
 
-1. **Al resolver impugnaciones de preguntas técnicas**, comprobar siempre `ai_verification_results`. Si solo hay verificación de `gpt-4o-mini` con flag negativo no resuelto, ese flag suele ser correcto y conviene reescribir.
-2. **Para verificación masiva de técnicas**, usar agente Opus/Sonnet con prompt adaptado: en lugar de "compara con el artículo", usar "compara con la documentación oficial de Microsoft Support en español; busca con WebSearch y verifica con WebFetch que la URL existe; si no encuentras fuente fiable, marca `explanation_ok=false`".
-3. **Auditoría periódica:** sacar lista de técnicas con `gpt-4o-mini` `answer_ok=false` o `explanation_ok=false` no resueltos y procesarlas con Opus/Sonnet en oleadas.
+> El artículo vinculado (`primary_article_id`) debe contener la información que permite responder la pregunta directamente. Si el artículo habla de un concepto adyacente pero no dice explícitamente lo que la pregunta pregunta, hay que buscar y vincular el artículo correcto.
+
+Ejemplo de la sesión 16/05/2026: pregunta sobre `Win+D` estaba vinculada a Art. "Fundamentos del SO Windows 11" — correcto porque dicho artículo recoge el atajo. Pregunta sobre atajos de Outlook vinculada a Art. 3 "Atajos de teclado" — correcto porque el artículo lista `Ctrl+4 = Contactos` literalmente.
+
+**Flujo al resolver impugnaciones de preguntas técnicas:**
+
+1. **Verificar artículo vinculado:** ¿el contenido del artículo responde literalmente la pregunta? Si no, buscar artículo correcto en `articles` y cambiar `primary_article_id`.
+2. **Comprobar `ai_verification_results`:** si solo hay verificación de `gpt-4o-mini` con flag negativo no resuelto, ese flag suele ser correcto y conviene reescribir.
+3. **Añadir fuente MS Support** a la explicación (ver §5.1.1).
+
+**Para verificación masiva de técnicas:** usar agente Opus/Sonnet con prompt adaptado: "compara con el contenido del artículo vinculado Y con la documentación oficial de Microsoft Support en español; busca con WebSearch y verifica con WebFetch; si el artículo no responde la pregunta, marca `article_ok=false`".
+
+**Auditoría periódica:** sacar lista de técnicas con `gpt-4o-mini` `answer_ok=false` o `explanation_ok=false` no resueltos y procesarlas con Opus/Sonnet en oleadas.
+
+**Incidente que motivó la regla anterior (14/04/2026):** pregunta `7fc7f0b0...` Excel `=EXTRAE(A1;12;2)` tenía la explicación de OTRA pregunta (sobre concatenación con `&`), totalmente cruzada. `gpt-4o-mini` lo detectó hace meses pero la pregunta nunca fue revisada por agente Opus.
 
 **Incidente que motiva la regla (14/04/2026):** pregunta `7fc7f0b0...` Excel `=EXTRAE(A1;12;2)` tenía la explicación de OTRA pregunta (sobre concatenación con `&`), totalmente cruzada. `gpt-4o-mini` lo detectó (`answer_ok=false, explanation_ok=false`, descripción correcta) hace meses, pero la pregunta nunca fue revisada por agente Opus, así que siguió activa hasta que la impugnó la usuaria Farida.
 
