@@ -74,6 +74,7 @@ function RepasoFallosV2Content() {
         type Scope =
           | { type: 'block'; bloqueNumber: number; positionType: string }
           | { type: 'topic'; topicNumbers: number[]; positionType: string }
+          | { type: 'position'; positionType: string }
         const requestBody: {
           numQuestions: number
           orderBy: string
@@ -99,6 +100,13 @@ function RepasoFallosV2Content() {
               bloqueNumber,
               positionType: positionTypeParam,
             }
+          }
+        } else if (positionTypeParam) {
+          // Sin bloque pero con positionType: card "Debilidades" del hub.
+          // Trae fallos de TODA la oposición (cross-tema) sin cross-oposición.
+          requestBody.scope = {
+            type: 'position',
+            positionType: positionTypeParam,
           }
         }
 

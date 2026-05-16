@@ -507,6 +507,10 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
                 />
               ))}
 
+              {/* Mis Debilidades — preguntas falladas de TODA la oposición.
+                  Al pulsar abre un selector inline con 4 modos de ordenación. */}
+              <DebilidadesCard positionType={positionType} />
+
               {/* Test de Ortografía y Gramática (config-driven) */}
               {hasSpellingTest && (
                 <Link
@@ -945,5 +949,147 @@ function ThemeLink({ topic, basePath, stats, statsLoading, color, onInfoClick }:
         </div>
       </div>
     </Link>
+  )
+}
+
+// ============================================================
+// Card "Mis Debilidades" — preguntas falladas de TODA la oposición
+// Reusa /test/repaso-fallos-v2 enviando scope { type: 'position' }
+// al endpoint vía positionType sin bloque.
+// ============================================================
+
+function DebilidadesCard({ positionType }: { positionType: string }) {
+  const [open, setOpen] = useState(false)
+  // Defaults sensatos: todo el periodo (365d cubre cualquier usuario hasta 1 año)
+  // y 20 preguntas — formato cómodo para una sesión de repaso típica.
+  const [selectedDays, setSelectedDays] = useState<number>(365)
+  const [selectedCount, setSelectedCount] = useState<number>(20)
+
+  const PERIOD_OPTIONS: { days: number; label: string }[] = [
+    { days: 365, label: 'Todo' },
+    { days: 30,  label: 'Último mes' },
+    { days: 7,   label: 'Última semana' },
+  ]
+  const COUNT_OPTIONS: number[] = [10, 20, 30, 50]
+  const ORDER_OPTIONS: { id: string; icon: string; label: string; desc: string }[] = [
+    { id: 'most_failed', icon: '🔥', label: 'Más veces falladas primero', desc: 'Empieza por las que más te cuesta dominar' },
+    { id: 'recent',      icon: '⏰', label: 'Últimas falladas primero',    desc: 'Repasa tus errores más recientes' },
+    { id: 'oldest',      icon: '📅', label: 'Más antiguas primero',         desc: 'Refuerza conceptos que llevas tiempo sin repasar' },
+    { id: 'random',      icon: '🎲', label: 'Orden aleatorio',              desc: 'Mezcladas para variar el repaso' },
+  ]
+
+  function buildHref(order: string): string {
+    const params = new URLSearchParams({
+      positionType,
+      order,
+      n: String(selectedCount),
+      days: String(selectedDays),
+    })
+    return `/test/repaso-fallos-v2?${params.toString()}`
+  }
+
+  return (
+    <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full bg-gradient-to-r from-red-600 to-rose-700 text-white py-4 px-6 text-left font-bold text-lg transition-all duration-300 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-red-300"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center min-w-0">
+            <span className="mr-3 text-2xl">🎯</span>
+            <div className="flex flex-col min-w-0">
+              <span>Mis Debilidades</span>
+              <span className="text-sm font-normal opacity-90 mt-0.5">
+                Tus preguntas falladas de toda la oposición
+              </span>
+            </div>
+          </div>
+          <span className={`text-2xl transition-transform duration-300 ${open ? 'rotate-180' : ''}`}>
+            ▼
+          </span>
+        </div>
+      </button>
+
+      {open && (
+        <div className="p-4 bg-gray-50 space-y-4">
+          {/* Selector de periodo */}
+          <div>
+            <div className="text-xs font-semibold text-gray-700 mb-2 flex items-center">
+              <span className="mr-1">📅</span> Periodo
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {PERIOD_OPTIONS.map(opt => {
+                const active = selectedDays === opt.days
+                return (
+                  <button
+                    key={opt.days}
+                    type="button"
+                    onClick={() => setSelectedDays(opt.days)}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium border-2 transition-colors ${
+                      active
+                        ? 'bg-red-600 border-red-600 text-white'
+                        : 'bg-white border-gray-300 text-gray-700 hover:border-red-400'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Selector de cantidad */}
+          <div>
+            <div className="text-xs font-semibold text-gray-700 mb-2 flex items-center">
+              <span className="mr-1">🔢</span> Nº preguntas
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {COUNT_OPTIONS.map(n => {
+                const active = selectedCount === n
+                return (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setSelectedCount(n)}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium border-2 transition-colors min-w-[44px] ${
+                      active
+                        ? 'bg-red-600 border-red-600 text-white'
+                        : 'bg-white border-gray-300 text-gray-700 hover:border-red-400'
+                    }`}
+                  >
+                    {n}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Selector de orden — al click navega con los params elegidos arriba */}
+          <div>
+            <div className="text-xs font-semibold text-gray-700 mb-2">
+              ¿Cómo ordenamos?
+            </div>
+            <div className="space-y-2">
+              {ORDER_OPTIONS.map(opt => (
+                <Link
+                  key={opt.id}
+                  href={buildHref(opt.id)}
+                  className="flex items-center justify-between bg-white border border-gray-200 hover:border-red-400 hover:bg-red-50 rounded-lg p-3 transition-all group"
+                >
+                  <div className="flex items-center min-w-0">
+                    <span className="mr-3 text-xl flex-shrink-0">{opt.icon}</span>
+                    <div className="min-w-0">
+                      <div className="font-semibold text-gray-800 text-sm">{opt.label}</div>
+                      <div className="text-xs text-gray-500">{opt.desc}</div>
+                    </div>
+                  </div>
+                  <span className="text-gray-400 group-hover:text-red-500 transition-colors text-lg flex-shrink-0 ml-2">→</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }

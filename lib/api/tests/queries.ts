@@ -320,6 +320,19 @@ export async function getFailedQuestionsForUser(
       case 'worst_accuracy':
         sortedQuestions.sort((a, b) => b.failCount - a.failCount)
         break
+      case 'oldest':
+        // Más antiguas primero (refuerzo de conceptos olvidados)
+        sortedQuestions.sort((a, b) =>
+          new Date(a.lastFail).getTime() - new Date(b.lastFail).getTime()
+        )
+        break
+      case 'random':
+        // Fisher–Yates in-place
+        for (let i = sortedQuestions.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1))
+          ;[sortedQuestions[i], sortedQuestions[j]] = [sortedQuestions[j], sortedQuestions[i]]
+        }
+        break
       default: // 'recent'
         sortedQuestions.sort((a, b) =>
           new Date(b.lastFail).getTime() - new Date(a.lastFail).getTime()
@@ -356,42 +369,58 @@ export async function getFailedQuestionsForUser(
     // (mismo patrón que getAllowedLawIds / lib/api/oposicion-scope/queries.ts:117).
     let blockFilter = sql`true`
     if (params.scope) {
-      let topicNumbers: number[] = []
       const positionType = params.scope.positionType
 
-      if (params.scope.type === 'block') {
-        const topicRows = await db
-          .select({ topicNumber: topics.topicNumber })
-          .from(topics)
-          .where(and(
-            eq(topics.positionType, positionType),
-            sql`${topics.bloqueNumber} = ${params.scope.bloqueNumber}`,
-            eq(topics.isActive, true),
-          ))
-        topicNumbers = topicRows.map(r => r.topicNumber)
-
-        if (topicNumbers.length === 0) {
-          return {
-            success: true,
-            questions: [],
-            questionCount: 0,
-            message: `El Bloque ${params.scope.bloqueNumber} no tiene temas activos en esta oposición`,
-          }
-        }
+      if (params.scope.type === 'position') {
+        // Toda la oposición: cualquier pregunta cuyo artículo esté en algún
+        // topic_scope de un topic activo de esa posición. Card "Debilidades".
+        blockFilter = sql`EXISTS (
+          SELECT 1 FROM ${topicScope} ts
+          INNER JOIN ${topics} t ON t.id = ts.topic_id
+          WHERE ts.law_id = ${articles.lawId}
+            AND ${articles.articleNumber} = ANY(ts.article_numbers)
+            AND t.position_type = ${positionType}
+            AND t.is_active = true
+        )`
+        console.log(`🎯 [DRIZZLE] scope=position positionType=${positionType}`)
       } else {
-        topicNumbers = params.scope.topicNumbers
+        // 'block' o 'topic': resolver topic_numbers
+        let topicNumbers: number[] = []
+
+        if (params.scope.type === 'block') {
+          const topicRows = await db
+            .select({ topicNumber: topics.topicNumber })
+            .from(topics)
+            .where(and(
+              eq(topics.positionType, positionType),
+              sql`${topics.bloqueNumber} = ${params.scope.bloqueNumber}`,
+              eq(topics.isActive, true),
+            ))
+          topicNumbers = topicRows.map(r => r.topicNumber)
+
+          if (topicNumbers.length === 0) {
+            return {
+              success: true,
+              questions: [],
+              questionCount: 0,
+              message: `El Bloque ${params.scope.bloqueNumber} no tiene temas activos en esta oposición`,
+            }
+          }
+        } else {
+          topicNumbers = params.scope.topicNumbers
+        }
+
+        blockFilter = sql`EXISTS (
+          SELECT 1 FROM ${topicScope} ts
+          INNER JOIN ${topics} t ON t.id = ts.topic_id
+          WHERE ts.law_id = ${articles.lawId}
+            AND ${articles.articleNumber} = ANY(ts.article_numbers)
+            AND t.position_type = ${positionType}
+            AND t.topic_number IN (${sql.join(topicNumbers, sql`, `)})
+        )`
+
+        console.log(`🎯 [DRIZZLE] scope=${params.scope.type} positionType=${positionType} topics=${topicNumbers.length}`)
       }
-
-      blockFilter = sql`EXISTS (
-        SELECT 1 FROM ${topicScope} ts
-        INNER JOIN ${topics} t ON t.id = ts.topic_id
-        WHERE ts.law_id = ${articles.lawId}
-          AND ${articles.articleNumber} = ANY(ts.article_numbers)
-          AND t.position_type = ${positionType}
-          AND t.topic_number IN (${sql.join(topicNumbers, sql`, `)})
-      )`
-
-      console.log(`🎯 [DRIZZLE] scope=${params.scope.type} positionType=${positionType} topics=${topicNumbers.length}`)
     }
 
     const questionsWithDetails = await db

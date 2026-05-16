@@ -126,16 +126,23 @@ export function safeParsePendingTest(data: unknown) {
 export const failedQuestionsOrderSchema = z.enum([
   'recent',
   'most_failed',
-  'worst_accuracy'
+  'worst_accuracy',
+  // Modos adicionales usados por la card "Debilidades" (cross-tema).
+  // 'oldest': preguntas falladas hace más tiempo primero (refuerzo de conceptos olvidados).
+  // 'random': orden aleatorio (variedad).
+  'oldest',
+  'random',
 ])
 
 export type FailedQuestionsOrder = z.infer<typeof failedQuestionsOrderSchema>
 
-// Scope polimórfico: limita las preguntas falladas a un bloque o conjunto de temas
-// concretos. Sin scope = comportamiento actual (todos los fallos del usuario).
+// Scope polimórfico: limita las preguntas falladas a un bloque, conjunto de temas
+// concretos o TODA una oposición. Sin scope = todas las falladas cross-oposición.
 // 'block': el backend resuelve topic_numbers desde BD (oposicion_bloques + topics).
 // 'topic': el cliente pasa los topic_numbers directamente.
-// En ambos casos positionType acota a UNA oposición (anti cross-oposición).
+// 'position': filtra a TODA la oposición (todos los bloques). Usado por la card
+//             "Debilidades" del hub de tests para repasar fallos cross-tema.
+// En todos los casos positionType acota a UNA oposición (anti cross-oposición).
 export const failedQuestionsScopeSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('block'),
@@ -145,6 +152,10 @@ export const failedQuestionsScopeSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('topic'),
     topicNumbers: z.array(z.number().int().min(1)).min(1),
+    positionType: z.string().min(1),
+  }),
+  z.object({
+    type: z.literal('position'),
     positionType: z.string().min(1),
   }),
 ])
