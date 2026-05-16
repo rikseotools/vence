@@ -1,7 +1,7 @@
 // components/test/TestHubClient.tsx - Client Component para interactividad
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
 import { useDailyQuestionLimit } from '@/hooks/useDailyQuestionLimit'
@@ -64,7 +64,7 @@ interface ExamStat {
   lastAttempt: string
 }
 
-type SortOption = 'tema' | 'accuracy_asc' | 'accuracy_desc' | 'last_study_new' | 'last_study_old'
+import { sortTopics, type SortOption } from './hubSorting'
 
 interface Props {
   oposicion: string
@@ -104,6 +104,7 @@ const SORT_OPTIONS: { id: SortOption; label: string; icon: string }[] = [
   { id: 'last_study_new', label: 'Más Reciente', icon: '🕐' },
   { id: 'last_study_old', label: 'Más Antiguo', icon: '🕰️' },
 ]
+
 
 /**
  * Get exam stat with fallback to base key (backwards compatibility).
@@ -401,6 +402,7 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
                   statsLoading={statsLoading}
                   getThemeColor={getThemeColor}
                   onInfoClick={() => setShowStatsInfo(true)}
+                  sortBy={sortBy}
                 />
               ))}
 
@@ -704,6 +706,7 @@ interface BlockSectionProps {
   statsLoading: boolean
   getThemeColor: (topicNumber: number) => string
   onInfoClick: () => void
+  sortBy: SortOption
 }
 
 function BlockSection({
@@ -720,7 +723,14 @@ function BlockSection({
   statsLoading,
   getThemeColor,
   onInfoClick,
+  sortBy,
 }: BlockSectionProps) {
+  // Ordenar topics según el botón pulsado en el hub. Memo evita recomputar
+  // al cambiar expanded u otras props que no afectan al orden.
+  const sortedTopics = useMemo(
+    () => sortTopics(topics, sortBy, userStats),
+    [topics, sortBy, userStats],
+  )
   // Anchor para navegación
   const anchorMap: Record<string, string> = {
     bloque1: 'bloque-i',
@@ -754,7 +764,7 @@ function BlockSection({
 
       {expanded && (
         <div className="p-4 space-y-3 bg-gray-50">
-          {topics.map((topic) => (
+          {sortedTopics.map((topic) => (
             <ThemeLink
               key={topic.id}
               topic={topic}
