@@ -48,7 +48,8 @@ Este roadmap cambia la arquitectura **sin reescribir** el código, en 6 fases in
 |---|---|---|---|---|---|
 | **0 — Estabilizar** | ✅ 6/7 hechas (falta 0.5 verificación p95). Fase 0.7 (JWT local verify) **COMPLETA server-side 2026-05-11** — MODE=on activo, 63+ endpoints migrados (32 directos + 31 vía wrappers refactorizados), latencia auth 250-1000ms → <5ms confirmada. Pendientes 5 archivos client-side (no bloqueantes) | 1 sem | $0 | Resuelve timeouts actuales | Cero |
 | **1 — Redis cache** | ✅ COMPLETA (2026-05-02) | 1-2 sem | $10 | -80% load BD | Bajo |
-| **2 — Outbox pattern** | 🟡 Paso 0 (infra) hecho 2026-05-16 — tabla `outbox_events` + helper Drizzle `enqueueEvent(tx)` + worker `/api/cron/process-outbox` (advisory lock + dead-letter `attempts<10`) + GHA cron 5min. **Sin handlers todavía**: pendiente elegir y migrar primer trigger | 2-3 sem | $0 | Estabilidad escrituras | Medio |
+| **2 — Outbox pattern** | 🟡 Infra (paso 0) hecha 2026-05-16 — tabla `outbox_events` + helper Drizzle `enqueueEvent(tx)` + worker `/api/cron/process-outbox` (advisory lock + dead-letter `attempts<10`) + GHA cron 5min. **Sin handlers**: tras audit, los 11 triggers actuales de `test_questions` son ligeros y no necesitan outbox. Infra queda lista para próximos casos síncronos pesados | 2-3 sem | $0 | Estabilidad escrituras | Medio |
+| **2-bis — Materialización `global_difficulty`** | 🟡 Paso 1 hecho 2026-05-16, dual-write hasta 2026-05-23 — sums incrementales (`first_attempts_correct_sum/time_sum/confidence_sum`) en `questions` + trigger AFTER INSERT en `question_first_attempts` + función pura `compute_global_difficulty_from_sums`. Backfill 35.040 preguntas (paridad 100% con función vieja). Tras la semana: drop cron `recalc-global-difficulty` + `global_dirty` flag | 1 sem | $0 | Elimina deadlocks/statement timeouts del cron, latencia 5min→0 | Bajo (dual-write como red) |
 | **3 — Pool split / replica** | ✅ **COMPLETA (2026-05-09)** — `getDb` max:1 + `getAdminDb` max:4 + `getReadDb` apunta a read replica eu-west-2 (provisionada Small ~$15/mes). 3 endpoints migrados (theme-stats, problematic-articles, ranking). Feature flag `USE_READ_REPLICA` permite rollback 30s | 2-3 sem | ~$15/mes | Aislamiento OLTP + descarga lecturas del primary | Bajo |
 | **4 — Async queues** | ⏳ Pendiente | 1-2 sem | $0-20 | -50% writes BD principal | Medio |
 | **5 — Data warehouse** | ⏳ Pendiente | 3-6 sem | $30-100 | Analytics escalable | Bajo |
@@ -477,15 +478,18 @@ Construido el plumbing del outbox **sin migrar todavía ningún trigger**. Todo 
 - **Schedule** `.github/workflows/process-outbox.yml`: GHA cron `*/5 * * * *` (best-effort, suficiente para handlers que toleren lag de minutos). NO se añadió a `vercel.json` a propósito — el outbox queda desacoplado de Vercel para facilitar migración futura a AWS / Hetzner.
 - **Verificado en BD**: insert → select pendiente → UPDATE → 0 pendientes; dead-letter filter (`attempts >= 10`) deja la fila pero la oculta del worker.
 
-### Paso 1+ — Migración de triggers ⏳ PENDIENTE
+### Paso 1+ — Migración de triggers ⏳ PENDIENTE (sin candidatos urgentes)
 
-Plan de migración cuando se elija el primer trigger/cron:
+Tras el audit del 2026-05-16, **no hay triggers en `test_questions` que sean candidatos urgentes** a outbox. Los 11 triggers actuales son ligeros: UPSERTs incrementales, marcado de dirty flags atómico, lookups por PK. Ninguno hace JOINs caros ni agrega en el camino crítico.
 
-1. Identificar el handler concreto (p.ej. `recalc_question_difficulty`). El primer candidato natural es el bucle de `recalc-global-difficulty` que hoy procesa 100 preguntas dirty cada 5min — pasarlo a "1 evento por respuesta del usuario" elimina los statement timeouts y deadlocks observados en `cron_runs` (~1.5% error rate).
-2. Añadir variant al union `OutboxEvent` en `lib/outbox/types.ts` + handler en `dispatch` de `processBatch.ts`.
-3. Doble escritura (dual write) durante 1 semana: el trigger antiguo sigue activo + emitimos también un evento outbox. Comparar resultados.
-4. Si la paridad es 100% en la ventana de verificación, **el trigger antiguo se vuelve NO-OP** (`RETURN NEW;`) detrás de feature flag. Mantener el NO-OP unos días por si hay que rollback rápido.
-5. Tras estabilizar, drop del trigger antiguo.
+La infraestructura outbox queda preparada para **cuando aparezca un caso real**: una nueva feature que requiera trabajo síncrono pesado en el path del request (ej. badges complejos post-test, recálculo de `oposicion_compatibility` masivo, integración Stripe webhooks → email).
+
+Plan genérico cuando llegue el primer caso:
+
+1. Añadir variant al union `OutboxEvent` en `lib/outbox/types.ts` + handler en `dispatch` de `processBatch.ts`.
+2. Doble escritura (dual write) durante 1 semana: la implementación antigua (si existe) sigue activa + emitimos también un evento outbox. Comparar resultados.
+3. Si la paridad es 100% en la ventana de verificación, **la implementación antigua se desactiva** detrás de feature flag. Mantener flag unos días por si hay que rollback rápido.
+4. Tras estabilizar, drop del código antiguo.
 
 **Salvaguardas:**
 - Idempotencia (UPSERT, no INSERT) en lo que procesa el worker — los handlers son los responsables de tolerar reintento.
@@ -495,7 +499,63 @@ Plan de migración cuando se elija el primer trigger/cron:
 
 ### Nota: roadmap previo sobre `update_user_question_history` (línea ~1137) está desactualizado
 
-La revisión del 2026-05-16 confirmó que esa función YA fue optimizada a UPSERT incremental sin JOINs (su comentario interno lo dice: "INSERT incremental sin agregaciones (vs SELECT COUNT/SUM/AVG/MIN/MAX antes)"). No es candidato a outbox — es trigger ligero. Los **11 triggers actuales de `test_questions` son todos ligeros**. El dolor real ahora vive en los **crons batch** (`recalculate_dirty_global_difficulty` lee `question_first_attempts` con agregación → statement timeout 8s en picos) y en las queries de agregación pesadas detectadas por `pg_stat_statements` (33s mean en algunas, 14s mean en otras). El primer piloto de Fase 2 debería atacar ahí, no un trigger AFTER INSERT.
+La revisión del 2026-05-16 confirmó que esa función YA fue optimizada a UPSERT incremental sin JOINs (su comentario interno lo dice: "INSERT incremental sin agregaciones (vs SELECT COUNT/SUM/AVG/MIN/MAX antes)"). No es candidato a outbox — es trigger ligero. Los **11 triggers actuales de `test_questions` son todos ligeros**. El dolor real estaba en los **crons batch** (`recalculate_dirty_global_difficulty` lee `question_first_attempts` con agregación → statement timeout 8s en picos) — pero ESO se ataca con **materialización incremental**, no con outbox. Ver sección siguiente "Fase 2-bis".
+
+---
+
+## Fase 2-bis — Materialización incremental de `global_difficulty` 🟡 EN DUAL-WRITE 2026-05-16
+
+Ataca el cron `recalc-global-difficulty` con la solución arquitectónicamente correcta: **agregados incrementales en `questions`** en vez de outbox. Beneficio inmediato: eliminar los emails de fallo GHA, los statement timeouts y los deadlocks observados en `cron_runs` (~1.5% error rate, mayoría 8s timeouts).
+
+**Decisión de no usar outbox aquí (2026-05-16):** el outbox brilla cuando hay trabajo síncrono en el camino del usuario. El cron de `recalc-global-difficulty` ya es async — moverlo al outbox sólo cambia el orquestador. El problema real es que `calculate_question_global_difficulty` hace `AVG()` / `COUNT()` agregando `question_first_attempts` (~50-150ms por pregunta × 100 preguntas = 5-15s → timeout 8s). La solución correcta es mantener los agregados materializados.
+
+### Diseño
+
+`questions` ahora contiene 3 sums incrementales además del `difficulty_sample_size` que ya existía:
+
+- `first_attempts_correct_sum` (int) — Σ de `is_correct` (0/1).
+- `first_attempts_time_sum` (bigint) — Σ de `time_spent_seconds`.
+- `first_attempts_confidence_sum` (numeric) — Σ de `confidence_level` mapeado a 1.0-4.0.
+
+Con esos 4 escalares + la función pura `compute_global_difficulty_from_sums(n, correct, time, conf)` (sin SELECT), el cálculo es sub-ms, idéntico algebraicamente al anterior.
+
+### Implementación (paso 1) ✅ 2026-05-16
+
+`supabase/migrations/20260517_global_difficulty_incremental.sql`:
+
+1. ALTER TABLE `questions` añade las 3 nuevas columnas con DEFAULT 0.
+2. Función `compute_global_difficulty_from_sums(...)` — IMMUTABLE, pura aritmética.
+3. Función `confidence_text_to_score(text) → numeric` — mapeo NULL-safe.
+4. Función `apply_first_attempt_to_question_stats()` — trigger handler: UPDATE incremental + RETURNING + segundo UPDATE para campos derivados.
+5. Trigger `apply_first_attempt_to_question_stats_trigger` en `question_first_attempts` AFTER INSERT FOR EACH ROW.
+
+**Backfill ejecutado:** 35.040 preguntas con sums calculados desde `question_first_attempts` (14.5s), 25.360 con `global_difficulty` recomputado (4.1s).
+
+**Validación de paridad:** muestra aleatoria de 30 preguntas — la función nueva (sums incrementales) y la función vieja (`calculate_question_global_difficulty` agregando) coinciden **100%**. Test de INSERT real en transacción rollbackeada: trigger ejecuta correctamente, los 4 deltas suben, `global_difficulty` recalculado coincide con la vieja al céntimo.
+
+### Dual-write (paso 2) — ventana de 1 semana ⏳ EN CURSO 2026-05-16 → 2026-05-23
+
+El trigger nuevo Y el trigger viejo (`track_question_first_attempt` que marca `global_dirty=true`) Y el cron viejo (`recalc-global-difficulty`) **siguen los tres activos**. Cuando llega una respuesta:
+- Trigger viejo: marca `global_dirty=true`, sin recalcular en línea.
+- Trigger nuevo: incrementa sums y recalcula `global_difficulty` inmediato.
+- Cron viejo (cada 5min): procesa dirty y sobreescribe `global_difficulty` con el valor agregado.
+
+Como la fórmula es algebraicamente idéntica, ambos producen el mismo número — el cron sólo "confirma" lo que el trigger ya calculó. Si por alguna razón divergen, el cron viejo gana (es la red de seguridad).
+
+Monitor durante la semana:
+- Conteo de eventos `cron_name='recalc-global-difficulty'` en `cron_runs` con duración alta. Esperado: bajada gradual porque los dirty ya están al día y el batch tarda menos en cada run.
+- Spot-checks de paridad: `SELECT global_difficulty - calculate_question_global_difficulty(id) FROM questions WHERE difficulty_sample_size >= 3 ORDER BY random() LIMIT 50` — deben ser todos 0.
+
+### Paso 3 — Apagar el sistema viejo ⏳ PROGRAMADO ≥ 2026-05-23
+
+Tras la semana de paridad sin sorpresas:
+
+1. Modificar `track_question_first_attempt` para eliminar `UPDATE questions SET global_dirty = true`.
+2. Deshabilitar / eliminar workflow GHA `recalc-global-difficulty.yml` (la entrada Vercel cron ya no existe).
+3. DROP FUNCTION `recalculate_dirty_global_difficulty` (función SQL).
+4. DROP COLUMN `questions.global_dirty` (otro PR aparte, tras 48h sin código que la lea).
+
+Beneficio esperado tras el paso 3: 0 emails de fallo GHA por este cron, 0 deadlocks por contención del UPDATE batch contra `track_question_first_attempt`, latencia de `global_difficulty` actualizada de "hasta 5 min" a "inmediato tras la respuesta".
 
 ---
 

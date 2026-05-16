@@ -2262,6 +2262,13 @@ export const questions = pgTable("questions", {
 	difficultySampleSize: integer("difficulty_sample_size").default(0),
 	lastDifficultyUpdate: timestamp("last_difficulty_update", { withTimezone: true, mode: 'string' }),
 	globalDifficultyCategory: text("global_difficulty_category"),
+	// Agregados incrementales mantenidos por trigger
+	// apply_first_attempt_to_question_stats_trigger en question_first_attempts.
+	// Permiten recalcular global_difficulty sin re-agregar — ver
+	// supabase/migrations/20260517_global_difficulty_incremental.sql.
+	firstAttemptsCorrectSum: integer("first_attempts_correct_sum").default(0).notNull(),
+	firstAttemptsTimeSum: bigint("first_attempts_time_sum", { mode: 'number' }).default(0).notNull(),
+	firstAttemptsConfidenceSum: numeric("first_attempts_confidence_sum", { precision: 12, scale: 2 }).default('0').notNull(),
 	verifiedAt: timestamp("verified_at", { withTimezone: true, mode: 'string' }),
 	verificationStatus: text("verification_status"),
 	topicReviewStatus: text("topic_review_status"),
