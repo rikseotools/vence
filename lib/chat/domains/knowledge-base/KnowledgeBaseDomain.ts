@@ -39,6 +39,22 @@ export class KnowledgeBaseDomain implements ChatDomain {
       return false
     }
 
+    // Ceder a OposicionCatalogDomain si el mensaje claramente pregunta por
+    // info de una oposición específica (fecha examen, plazas, convocatoria,
+    // estado). KB tendría una respuesta canned genérica sobre convocatorias,
+    // pero OposicionCatalog puede dar datos concretos de BD.
+    if (isKBQuery) {
+      try {
+        const { detectOposicionIntent, detectInfoIntent } = await import('../oposicion-catalog/OposicionCatalogService')
+        if (detectOposicionIntent(context.currentMessage) && detectInfoIntent(context.currentMessage) !== null) {
+          logger.debug('KnowledgeBaseDomain: Deferring to OposicionCatalogDomain (info intent)', { domain: 'knowledge-base' })
+          return false
+        }
+      } catch {
+        // Si falla la import, seguir comportamiento normal
+      }
+    }
+
     if (isKBQuery) {
       logger.debug('KnowledgeBaseDomain will handle request', {
         domain: 'knowledge-base',

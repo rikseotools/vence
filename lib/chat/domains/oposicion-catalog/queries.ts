@@ -22,6 +22,15 @@ export interface OposicionEntry {
   grupo: string | null           // "A", "B", "C" (grupo funcionarial EBEP)
   subgrupo: string | null        // "A1", "A2", "B", "C1", "C2" (subgrupo EBEP)
   tituloRequerido: string | null // para mostrar requisitos al usuario
+  // Info de convocatoria (para responder "cuándo es el examen", "cuántas plazas")
+  examDate: string | null
+  examDateApproximate: boolean | null
+  convocatoriaFecha: string | null
+  plazasLibres: number | null
+  plazasDiscapacidad: number | null
+  plazasPromocionInterna: number | null
+  estadoProceso: string | null
+  boeReference: string | null
   keywords: string[] // tokens normalizados para matching
 }
 
@@ -104,7 +113,7 @@ export async function loadOposicionesCache(force = false): Promise<OposicionEntr
   const supabase = getSupabase()
   const { data, error } = await supabase
     .from('oposiciones')
-    .select('id,slug,nombre,short_name,categoria,administracion,is_convocatoria_activa,grupo,subgrupo,titulo_requerido')
+    .select('id,slug,nombre,short_name,categoria,administracion,is_convocatoria_activa,grupo,subgrupo,titulo_requerido,exam_date,exam_date_approximate,convocatoria_fecha,plazas_libres,plazas_discapacidad,plazas_promocion_interna,estado_proceso,boe_reference')
     .eq('is_active', true)
 
   if (error) {
@@ -123,6 +132,14 @@ export async function loadOposicionesCache(force = false): Promise<OposicionEntr
     grupo: r.grupo,
     subgrupo: r.subgrupo,
     tituloRequerido: r.titulo_requerido,
+    examDate: r.exam_date,
+    examDateApproximate: r.exam_date_approximate,
+    convocatoriaFecha: r.convocatoria_fecha,
+    plazasLibres: r.plazas_libres,
+    plazasDiscapacidad: r.plazas_discapacidad,
+    plazasPromocionInterna: r.plazas_promocion_interna,
+    estadoProceso: r.estado_proceso,
+    boeReference: r.boe_reference,
     keywords: extractKeywords({
       nombre: r.nombre,
       shortName: r.short_name,

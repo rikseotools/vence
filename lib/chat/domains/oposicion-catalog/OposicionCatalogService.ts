@@ -61,6 +61,11 @@ export function detectOposicionIntent(message: string): boolean {
   // Ej: "auxiliar administrativo madrid", "tcae murcia", "guardia civil"
   if (effectiveHasRole && isShortMessage) return true
 
+  // Caso 1c: rol + pregunta por info concreta (fecha examen, plazas, etc.)
+  // Ej: "cuándo es el examen de auxiliar administrativo SMS" — sin verbo de
+  // intención pero claramente busca datos de la oposición.
+  if (effectiveHasRole && detectInfoIntent(message) !== null) return true
+
   // Caso 2: temario + región (sin role explícito) — "temario de Andalucía"
   if (mentionsTemario && hasRegion) return true
 
@@ -130,6 +135,74 @@ export function isCatalogFollowUp(
     /mientras\s+estudi/i,
   ]
   return followUpPatterns.some(p => p.test(currentMessage))
+}
+
+// ============================================
+// DETECCIÓN DE INTENT DE INFO (fecha examen, plazas, convocatoria, estado)
+// ============================================
+
+export type InfoIntent = 'fecha_examen' | 'plazas' | 'convocatoria' | 'estado' | null
+
+/**
+ * Detecta si el usuario pregunta por info concreta de la oposición.
+ * Devuelve el tipo de info pedida o null si solo pregunta "preparáis X".
+ */
+export function detectInfoIntent(message: string): InfoIntent {
+  const m = message.toLowerCase()
+  if (/(cu[aá]ndo|fecha)\s+(es\s+el?\s+|del?\s+|tendr[eé]?|ser[aá]?\s+el?\s+|del?\s+)?(examen|prueba)/i.test(m)) return 'fecha_examen'
+  if (/fecha\s+de\s+(examen|prueba|convocatoria)/i.test(m)) return 'fecha_examen'
+  if (/(cu[aá]ntas?|n[uú]mero\s+de)\s+plazas?/i.test(m)) return 'plazas'
+  if (/plazas?\s+(hay|disponibles?|ofertad|libres|convocadas?|en\s+total)/i.test(m)) return 'plazas'
+  if (/cu[aá]ndo\s+(sali[oó]|sali[oó]\s|salieron|salir|sale|sali[eé]ndose|public[oó]\s|publicar|publicaron|publica)\s+(la\s+)?convocatoria/i.test(m)) return 'convocatoria'
+  if (/(en\s+qu[eé]\s+)?(estado|fase|momento)\s+(est[aá]|se\s+encuentra|va)/i.test(m)) return 'estado'
+  return null
+}
+
+function formatDate(d: string | null, approximate: boolean | null): string {
+  if (!d) return 'pendiente de publicar'
+  // YYYY-MM-DD → DD/MM/YYYY
+  const m = d.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  const formatted = m ? `${m[3]}/${m[2]}/${m[1]}` : d
+  return approximate ? `${formatted} (aproximada)` : formatted
+}
+
+function formatInfoResponse(entry: OposicionEntry, intent: InfoIntent): string {
+  const nombre = entry.shortName || entry.nombre
+  switch (intent) {
+    case 'fecha_examen':
+      if (entry.examDate) {
+        return `📅 **${nombre} — Fecha de examen**\n\nEl examen está previsto para el **${formatDate(entry.examDate, entry.examDateApproximate)}**.\n\nMás info: 🔗 /${entry.slug}\n\n[oposicion-catalog]`
+      }
+      return `📅 **${nombre}**\n\nLa fecha de examen aún no se ha publicado oficialmente. Lo actualizamos en cuanto salga.\n\nMás info: 🔗 /${entry.slug}\n\n[oposicion-catalog]`
+    case 'plazas': {
+      const libres = entry.plazasLibres ?? 0
+      const disc = entry.plazasDiscapacidad ?? 0
+      const interna = entry.plazasPromocionInterna ?? 0
+      const total = libres + disc + interna
+      if (total === 0) {
+        return `🪪 **${nombre} — Plazas**\n\nNo tenemos el número de plazas registrado todavía.\n\nMás info: 🔗 /${entry.slug}\n\n[oposicion-catalog]`
+      }
+      const parts: string[] = []
+      if (libres) parts.push(`**${libres}** turno libre`)
+      if (disc) parts.push(`**${disc}** discapacidad`)
+      if (interna) parts.push(`**${interna}** promoción interna`)
+      return `🪪 **${nombre} — Plazas convocadas**\n\nTotal: **${total} plazas** (${parts.join(', ')}).\n\nMás info: 🔗 /${entry.slug}\n\n[oposicion-catalog]`
+    }
+    case 'convocatoria': {
+      const ref = entry.boeReference ? ` (${entry.boeReference})` : ''
+      if (entry.convocatoriaFecha) {
+        return `📜 **${nombre} — Convocatoria**\n\nPublicada el **${formatDate(entry.convocatoriaFecha, false)}**${ref}.\n\nMás info: 🔗 /${entry.slug}\n\n[oposicion-catalog]`
+      }
+      return `📜 **${nombre}**\n\nLa convocatoria aún no se ha publicado o no la tenemos registrada.\n\nMás info: 🔗 /${entry.slug}\n\n[oposicion-catalog]`
+    }
+    case 'estado':
+      if (entry.estadoProceso) {
+        return `🚦 **${nombre} — Estado del proceso**\n\nEstado actual: **${entry.estadoProceso}**.\n\nMás info: 🔗 /${entry.slug}\n\n[oposicion-catalog]`
+      }
+      return `🚦 **${nombre}**\n\nNo tenemos el estado del proceso registrado.\n\nMás info: 🔗 /${entry.slug}\n\n[oposicion-catalog]`
+    default:
+      return formatMatchResponse(entry)
+  }
 }
 
 // ============================================
@@ -330,8 +403,15 @@ export async function processOposicionCatalog(input: {
     logger.info(`Oposición match: ${match.entry.slug} (score ${match.score.toFixed(2)})`, {
       domain: 'oposicion-catalog',
     })
+    // Si el usuario pregunta por info concreta (fecha examen, plazas,
+    // convocatoria, estado), responder con datos de BD en lugar del
+    // "sí preparamos X" genérico.
+    const infoIntent = detectInfoIntent(input.message)
+    const responseText = infoIntent
+      ? formatInfoResponse(match.entry, infoIntent)
+      : formatMatchResponse(match.entry)
     return {
-      responseText: formatMatchResponse(match.entry),
+      responseText,
       matched: true,
       matchedSlug: match.entry.slug,
       feedbackId: null,

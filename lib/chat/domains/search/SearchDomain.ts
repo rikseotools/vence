@@ -142,6 +142,20 @@ export class SearchDomain implements ChatDomain {
       return false
     }
 
+    // Ceder a OposicionCatalogDomain si el mensaje pregunta por info concreta
+    // de una oposición (fecha examen, plazas, convocatoria, estado del proceso).
+    // SearchDomain matchearía "fecha", "examen", "plazas" como conceptos legales
+    // pero el usuario quiere datos de la tabla `oposiciones`, no artículos.
+    try {
+      const { detectOposicionIntent, detectInfoIntent } = await import('../oposicion-catalog/OposicionCatalogService')
+      if (detectOposicionIntent(context.currentMessage) && detectInfoIntent(context.currentMessage) !== null) {
+        logger.debug('SearchDomain: Deferring to OposicionCatalogDomain (info intent)', { domain: 'search' })
+        return false
+      }
+    } catch {
+      // Si por algún motivo falla la import, seguir con search normal
+    }
+
     const msg = context.currentMessage.toLowerCase()
 
     // Patrones que indican búsqueda de información legal
