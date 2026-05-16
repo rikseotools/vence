@@ -357,23 +357,37 @@ export default function HeaderES() {
   // 🆕 ENLACES PARA MÓVIL (incluye Admin si es admin)
   const getMobileNavLinks = (): MobileNavLink[] => {
     const baseLinks: MobileNavLink[] = user ? getLoggedInNavLinks() : getGuestNavLinks()
+    const extraLinks: MobileNavLink[] = []
+
+    // "Oposiciones Compatibles": en desktop está como icono ↔ en la barra.
+    // En móvil ocultamos el icono (saturaba la barra y tapaba el avatar) y lo
+    // añadimos aquí para mantener el acceso.
+    if (user && oposicionContext?.oposicionId) {
+      const opoConfig = getOposicion(oposicionContext.oposicionId)
+      if (opoConfig) {
+        extraLinks.push({
+          href: `/${opoConfig.slug}/oposiciones-compatibles`,
+          label: 'Oposiciones compatibles',
+          icon: '🔄',
+          badge: null,
+          sentryBadge: null,
+        })
+      }
+    }
 
     // Agregar enlace de Admin si es admin
     if (user && isAdmin && !adminLoading) {
-      return [
-        ...baseLinks,
-        {
-          href: '/admin',
-          label: 'Panel Admin',
-          icon: '👨‍💼',
-          isAdmin: true,
-          badge: pendingFeedbacks > 0 ? pendingFeedbacks : null,
-          sentryBadge: null
-        }
-      ]
+      extraLinks.push({
+        href: '/admin',
+        label: 'Panel Admin',
+        icon: '👨‍💼',
+        isAdmin: true,
+        badge: pendingFeedbacks > 0 ? pendingFeedbacks : null,
+        sentryBadge: null,
+      })
     }
 
-    return baseLinks
+    return [...baseLinks, ...extraLinks]
   }
 
   // Cerrar menú cuando cambie la ruta
@@ -761,13 +775,16 @@ export default function HeaderES() {
                 {user && <DailyGoalBanner />}
               </div>
 
-              {/* 🔄 ICONO DE OPOSICIONES COMPATIBLES */}
+              {/* 🔄 ICONO DE OPOSICIONES COMPATIBLES — solo desktop.
+                  En móvil aparece como entrada del menú hamburguesa (ver
+                  getMobileNavLinks), para no saturar la barra y tapar el
+                  avatar del usuario. */}
               {user && oposicionContext?.oposicionId && (() => {
                 const opoConfig = getOposicion(oposicionContext.oposicionId!)
                 return opoConfig ? (
                   <Link
                     href={`/${opoConfig.slug}/oposiciones-compatibles`}
-                    className="flex p-2 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg transition-colors"
+                    className="hidden xl:flex p-2 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg transition-colors"
                     aria-label="Oposiciones compatibles"
                     title="Oposiciones compatibles con tu temario"
                   >

@@ -1157,8 +1157,18 @@ export async function getPendingOfficialExams(
       })
     )
 
-    // Filter only those with at least one answer (actually started)
-    const startedExams = pendingExams.filter(e => e.answeredCount > 0)
+    // Filter only those with at least one answer (actually started).
+    //
+    // EXCEPCIÓN simulacros: el simulacro de examen siempre cuenta como
+    // pendiente aunque el usuario no haya respondido ninguna pregunta.
+    // Razón: el simulacro arranca un cronómetro de 90 min y generar las 110
+    // preguntas tiene coste — si el usuario lo abrió y salió sin responder,
+    // tiene sentido ofrecerle retomarlo (o forzar uno nuevo con ?nuevo=1).
+    // Para exámenes oficiales reales mantenemos el filtro (se considera
+    // "empezado" solo si hay al menos 1 respuesta).
+    const startedExams = pendingExams.filter(
+      e => e.testType === 'simulacro' || e.answeredCount > 0,
+    )
 
     console.log(`✅ [getPendingOfficialExams] Found ${startedExams.length} pending official exams for user ${userId}`)
 
