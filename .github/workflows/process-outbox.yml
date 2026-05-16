@@ -1,0 +1,52 @@
+name: Process Outbox
+
+# Worker del patrón outbox (Fase 2). Llama al endpoint que procesa hasta 200
+# eventos pendientes de outbox_events. Implementación:
+#   - app/api/cron/process-outbox/route.ts
+#   - lib/outbox/processBatch.ts
+# Detalle: docs/ARCHITECTURE_ROADMAP.md sección "Fase 2 — Outbox pattern".
+#
+# Schedule: cada 5 minutos. Suficiente para el primer trigger que migremos
+# (recálculo de difficulty tolera lag de minutos). Si en el futuro necesitamos
+# granularidad <1 min, conviene migrar a un cron en el self-hosted pooler
+# (Lightsail London) en vez de a Vercel Cron, para no atarse al proveedor.
+#
+# El endpoint usa advisory lock en Postgres, así que dos invocaciones que se
+# solapen son seguras: la segunda devuelve { skipped: true } inmediatamente.
+
+on:
+  schedule:
+    - cron: '*/5 * * * *' # cada 5 minutos (best-effort; GHA puede retrasarse en picos)
+  workflow_dispatch: # ejecución manual desde GitHub UI
+
+# Evita acumular runs si uno se demora — sólo importa el más reciente.
+concurrency:
+  group: process-outbox
+  cancel-in-progress: false
+
+jobs:
+  process:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Trigger process-outbox endpoint
+        run: |
+          response=$(curl -s -w "\n%{http_code}" -X GET \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            --max-time 90 \
+            https://www.vence.es/api/cron/process-outbox)
+
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+
+          echo "Response: $body"
+          echo "HTTP Status: $http_code"
+
+          if [ "$http_code" != "200" ]; then
+            echo "❌ Error: HTTP $http_code"
+            exit 1
+          fi
+
+      - name: Log completion
+        run: echo "✅ Process outbox - $(date -u +%Y-%m-%dT%H:%M:%SZ)"

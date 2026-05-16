@@ -3883,3 +3883,21 @@ export const userDevices = pgTable("user_devices", {
 	index("idx_user_devices_device_id").using("btree", table.deviceId),
 	unique("user_devices_user_id_device_id_key").on(table.userId, table.deviceId),
 ]);
+
+// Fase 2 Outbox — cola in-database para descargar trabajo pesado del camino
+// crítico del usuario. Ver supabase/migrations/20260516_outbox_events.sql.
+export const outboxEvents = pgTable("outbox_events", {
+	id: uuid().default(sql`gen_random_uuid()`).primaryKey().notNull(),
+	eventType: text("event_type").notNull(),
+	payload: jsonb().default({}).notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	processedAt: timestamp("processed_at", { withTimezone: true, mode: 'string' }),
+	attempts: integer().default(0).notNull(),
+	lastError: text("last_error"),
+}, (table) => [
+	index("outbox_events_pending_idx")
+		.using("btree", table.createdAt)
+		.where(sql`processed_at IS NULL`),
+	index("outbox_events_type_idx").using("btree", table.eventType, table.createdAt),
+	check("outbox_events_attempts_nonneg", sql`attempts >= 0`),
+]);

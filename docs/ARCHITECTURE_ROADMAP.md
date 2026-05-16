@@ -1,6 +1,6 @@
 # Vence — Architecture Roadmap a 100k+ usuarios
 
-> **Última actualización:** 2026-05-06 (tarde)
+> **Última actualización:** 2026-05-16
 > **Estado:** Fase 0 casi completa (0.1-0.6 hechas) + **Fase 1 Redis ✅ COMPLETA y AMPLIADA** + **Sprint 1 seguridad ✅ COMPLETO** (5 sub-sprints) + **Sprint 2 hardening cascade ✅ COMPLETO** (18 sub-sprints, 19 commits, **deployed en producción**, validado en logs) + **Sprint 3 fallos post-deploy ✅ COMPLETO** (4 fallos detectados en logs Vercel tras Sprint 2 deploy y resueltos en sesión). Sprint 2: invalidación caches existentes saneada, singleflight anti-stampede, regions:lhr1 (validado 80ms→3.37ms), 5 endpoints más cacheados (test-config family + hot-articles + law-stats + verify-stats + estimate), quick-fail wrapper en 11 endpoints, observability (Sentry beforeSend + cache hit-rate counters). Sprint 3: TypeError streaming Next 16 (inlineCss disabled), userAnswer=-1 (schema fix), theme-stats timeout heavy users (covering index 12.5s→502ms = 24.9x), GeoIP timeout (Vercel headers sync, sin ip-api.com). Pendiente: 0.5 verificar p95 producción, **Fase 0.7 (JWT local verify)** documentada como next big win, **Fase 11 push (DROP TABLES BD)** esperar 24-48h.
 > **Objetivo:** preparar Vence para escalar a 100k+ usuarios sin perder features ni romper nada
 > **Coste extra estimado total (Fases 0-3):** $10-40/mes
@@ -48,7 +48,7 @@ Este roadmap cambia la arquitectura **sin reescribir** el código, en 6 fases in
 |---|---|---|---|---|---|
 | **0 — Estabilizar** | ✅ 6/7 hechas (falta 0.5 verificación p95). Fase 0.7 (JWT local verify) **COMPLETA server-side 2026-05-11** — MODE=on activo, 63+ endpoints migrados (32 directos + 31 vía wrappers refactorizados), latencia auth 250-1000ms → <5ms confirmada. Pendientes 5 archivos client-side (no bloqueantes) | 1 sem | $0 | Resuelve timeouts actuales | Cero |
 | **1 — Redis cache** | ✅ COMPLETA (2026-05-02) | 1-2 sem | $10 | -80% load BD | Bajo |
-| **2 — Outbox pattern** | ⏳ Pendiente | 2-3 sem | $0 | Estabilidad escrituras | Medio |
+| **2 — Outbox pattern** | 🟡 Paso 0 (infra) hecho 2026-05-16 — tabla `outbox_events` + helper Drizzle `enqueueEvent(tx)` + worker `/api/cron/process-outbox` (advisory lock + dead-letter `attempts<10`) + GHA cron 5min. **Sin handlers todavía**: pendiente elegir y migrar primer trigger | 2-3 sem | $0 | Estabilidad escrituras | Medio |
 | **3 — Pool split / replica** | ✅ **COMPLETA (2026-05-09)** — `getDb` max:1 + `getAdminDb` max:4 + `getReadDb` apunta a read replica eu-west-2 (provisionada Small ~$15/mes). 3 endpoints migrados (theme-stats, problematic-articles, ranking). Feature flag `USE_READ_REPLICA` permite rollback 30s | 2-3 sem | ~$15/mes | Aislamiento OLTP + descarga lecturas del primary | Bajo |
 | **4 — Async queues** | ⏳ Pendiente | 1-2 sem | $0-20 | -50% writes BD principal | Medio |
 | **5 — Data warehouse** | ⏳ Pendiente | 3-6 sem | $30-100 | Analytics escalable | Bajo |
@@ -453,7 +453,7 @@ Endpoints donde **el cache stale es la red de seguridad** contra blips del Share
 
 ---
 
-## Fase 2 — Outbox pattern (sustituir triggers pesados) ⏳ PENDIENTE
+## Fase 2 — Outbox pattern (sustituir triggers pesados) 🟡 PASO 0 HECHO
 
 **Objetivo:** eliminar lock contention de triggers manteniendo features intactas.
 
@@ -461,16 +461,41 @@ Endpoints donde **el cache stale es la red de seguridad** contra blips del Share
 - **Lo que el usuario ve en tiempo real → trigger ligero**: `user_stats_summary` (+1 atómico), `user_streak` (con guard 1x/día), `user_question_history` simple counter.
 - **Lo que es analítico/pesado → outbox + worker**: recálculo de `questions.difficulty/global_difficulty`, agregaciones complejas, eventos analytics.
 
-**Setup:**
-1. Tabla `outbox_events` con índices en (processed, created_at)
-2. Endpoint `/api/v2/answer-and-save` inserta en outbox + test_questions (atómico, mismo transaction)
-3. Worker `/api/cron/process-outbox` (GH Actions cron 1min) consume eventos
-4. Migración gradual trigger por trigger: worker procesa → verifica 1 semana → trigger a NO-OP
+### Paso 0 — Infraestructura ✅ 2026-05-16
+
+Construido el plumbing del outbox **sin migrar todavía ningún trigger**. Todo es reversible y no toca el flujo actual.
+
+- **Migración SQL** `supabase/migrations/20260516_outbox_events.sql`: tabla `outbox_events (id, event_type, payload jsonb, created_at, processed_at, attempts, last_error)` + índice parcial `WHERE processed_at IS NULL` (clave de rendimiento: aunque la tabla acumule millones de filas históricas, sólo las pendientes están en el índice) + índice secundario por `event_type` + RLS habilitada cerrada a anon/authenticated.
+- **Schema Drizzle**: `outboxEvents` en `db/schema.ts`.
+- **Helper transaccional** `lib/outbox/enqueue.ts:enqueueEvent(tx, event)`: exige una `tx` activa como primer argumento — no se permite encolar fuera de transacción. Esa firma garantiza atomicidad por construcción: si la transacción del request hace rollback, el evento desaparece.
+- **Worker** `lib/outbox/processBatch.ts:processOutboxBatch(db, limit)`:
+  - Advisory lock `pg_try_advisory_lock(7263847569)` para evitar dos workers simultáneos.
+  - SELECT con filtro `attempts < MAX_ATTEMPTS (10)` → eventos con 10 fallos quedan como dead-letter (conservados en BD para inspección, ignorados por el worker).
+  - Por evento: dispatch → UPDATE `processed_at`. Si el handler lanza, UPDATE `attempts++` + `last_error`. Try/catch defensivo alrededor de ambos UPDATEs para que un blip BD no mate el resto del lote.
+  - Sin handlers todavía: `dispatch` sólo conoce `__placeholder__` (sin efecto, usado en tests).
+- **Endpoint** `app/api/cron/process-outbox/route.ts`: GET con Bearer auth (`CRON_SECRET`), `runCronWithLogging` registra cada run en `cron_runs` con `cron_name = 'process-outbox'`. Usa `getAdminDb()` (Drizzle, max:4) — cero llamadas a `@supabase/supabase-js` para el outbox.
+- **Schedule** `.github/workflows/process-outbox.yml`: GHA cron `*/5 * * * *` (best-effort, suficiente para handlers que toleren lag de minutos). NO se añadió a `vercel.json` a propósito — el outbox queda desacoplado de Vercel para facilitar migración futura a AWS / Hetzner.
+- **Verificado en BD**: insert → select pendiente → UPDATE → 0 pendientes; dead-letter filter (`attempts >= 10`) deja la fila pero la oculta del worker.
+
+### Paso 1+ — Migración de triggers ⏳ PENDIENTE
+
+Plan de migración cuando se elija el primer trigger/cron:
+
+1. Identificar el handler concreto (p.ej. `recalc_question_difficulty`). El primer candidato natural es el bucle de `recalc-global-difficulty` que hoy procesa 100 preguntas dirty cada 5min — pasarlo a "1 evento por respuesta del usuario" elimina los statement timeouts y deadlocks observados en `cron_runs` (~1.5% error rate).
+2. Añadir variant al union `OutboxEvent` en `lib/outbox/types.ts` + handler en `dispatch` de `processBatch.ts`.
+3. Doble escritura (dual write) durante 1 semana: el trigger antiguo sigue activo + emitimos también un evento outbox. Comparar resultados.
+4. Si la paridad es 100% en la ventana de verificación, **el trigger antiguo se vuelve NO-OP** (`RETURN NEW;`) detrás de feature flag. Mantener el NO-OP unos días por si hay que rollback rápido.
+5. Tras estabilizar, drop del trigger antiguo.
 
 **Salvaguardas:**
-- Idempotencia (UPSERT, no INSERT) en lo que procesa el worker
-- Lock distribuido (advisory lock) en el cron para evitar dobles procesamientos
-- Si worker falla, eventos se acumulan, se procesan al recuperar (sin pérdida)
+- Idempotencia (UPSERT, no INSERT) en lo que procesa el worker — los handlers son los responsables de tolerar reintento.
+- Lock distribuido (advisory lock) en el cron para evitar dobles procesamientos.
+- Si worker falla, eventos se acumulan, se procesan al recuperar (sin pérdida).
+- Dead-letter (`MAX_ATTEMPTS = 10`) para que un handler con bug no se reintente infinitamente.
+
+### Nota: roadmap previo sobre `update_user_question_history` (línea ~1137) está desactualizado
+
+La revisión del 2026-05-16 confirmó que esa función YA fue optimizada a UPSERT incremental sin JOINs (su comentario interno lo dice: "INSERT incremental sin agregaciones (vs SELECT COUNT/SUM/AVG/MIN/MAX antes)"). No es candidato a outbox — es trigger ligero. Los **11 triggers actuales de `test_questions` son todos ligeros**. El dolor real ahora vive en los **crons batch** (`recalculate_dirty_global_difficulty` lee `question_first_attempts` con agregación → statement timeout 8s en picos) y en las queries de agregación pesadas detectadas por `pg_stat_statements` (33s mean en algunas, 14s mean en otras). El primer piloto de Fase 2 debería atacar ahí, no un trigger AFTER INSERT.
 
 ---
 
@@ -1134,7 +1159,7 @@ Estimación honesta de qué REVENTARÍA a 10k DAU si no hacemos nada. Distinto d
 |---|---|---|
 | 6 | **Cache invalidation rompe Redis para usuarios activos** — invalidamos `user_stats:{user}` tras cada answer → activos = cache miss permanente. Considerar **NO invalidar y solo TTL 30s** (datos hasta 30s viejos, aceptable para stats) | A 10k DAU activos hace que la inversión Redis sea inútil para ellos |
 | 7 | **Auditoría freemium** (`increment_daily_questions` vulnerable a bypass desde cliente — ya en MEMORY como pendiente) | A 10k DAU el impacto monetario crece linealmente |
-| 8 | **Triggers que aún escanean `tests`/`questions`** — `update_user_question_history` hace JOINs. A 1M INSERTs/día = 1M JOINs adicionales | Reducir, materializar agregados, o mover a outbox (Fase 2 roadmap) |
+| 8 | ~~**Triggers que aún escanean `tests`/`questions`** — `update_user_question_history` hace JOINs~~ — **OBSOLETO 2026-05-16**: la función YA fue refactorizada a UPSERT incremental sin JOINs. Los 11 triggers actuales de `test_questions` son todos ligeros. El dolor real ahora vive en los crons batch (`recalculate_dirty_*_difficulty`) y en queries de agregación de stats (33s mean en algunas según `pg_stat_statements`) — esos son los candidatos reales a Fase 2 outbox |
 | 9 | **`tests.detailed_analytics` + `performance_metrics` JSONB con índices GIN** — ya flagged en deuda técnica. Si nadie los lee, DROP INDEX | Cada UPDATE en tests recompone el GIN — coste puro |
 | 10 | **Daily-limit hace 2 queries secuenciales** (`getDynamicLimit` + RPC `get_daily_question_status`). Podría ser 1 RPC unificada | A 10k DAU = 10M queries/día evitables |
 
