@@ -4,18 +4,21 @@
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
+import { useDailyQuestionLimit } from '@/hooks/useDailyQuestionLimit'
 import InteractiveBreadcrumbs from '@/components/InteractiveBreadcrumbs'
 import CcaaFlag, { hasCcaaFlag } from '@/components/CcaaFlag'
 import OposicionChangeModal from '@/components/OposicionChangeModal'
 import ExamActionsDropdown from '@/components/ExamActionsDropdown'
+import SimulacroPaywallModal from '@/components/test/SimulacroPaywallModal'
+import {
+  SIMULACRO_AVAILABLE_OPOSICIONES,
+  getSimulacroConfig,
+} from '@/lib/api/simulacro/config'
 import type { OfficialExamConvocatoria } from '@/lib/config/oposiciones'
 
 // Oposiciones para las que el Simulacro de Examen está disponible.
-// Cada slug debe tener una entrada correspondiente en SIMULACRO_CONFIGS
-// (lib/api/simulacro/queries.ts) con su distribución y formato oficial.
-const SIMULACRO_AVAILABLE_OPOSICIONES: string[] = [
-  'auxiliar-administrativo-estado',
-]
+// SIMULACRO_AVAILABLE_OPOSICIONES y getSimulacroConfig se importan ahora desde
+// `@/lib/api/simulacro/config` (single source of truth).
 
 interface Topic {
   id: string
@@ -117,6 +120,11 @@ function getExamStat(
 
 export default function TestHubClient({ oposicion, oposicionInfo, bloques, basePath, positionType, officialExams, hasSpellingTest, hasPsychometricTest }: Props) {
   const { user, loading } = useAuth() as { user: { id: string } | null; loading: boolean }
+
+  // Límite diario para gating de simulacro/debilidades en usuarios FREE.
+  // hasLimit = true SOLO para free (no premium / legacy / trial / admin).
+  const { hasLimit, questionsRemaining, dailyLimit } = useDailyQuestionLimit()
+  const [showSimulacroPaywall, setShowSimulacroPaywall] = useState(false)
   // Inicializar stats desde localStorage (instantáneo) y refrescar desde API
   const [userStats, setUserStats] = useState<Record<number, ThemeStats>>(() => {
     if (typeof window === 'undefined') return {}
@@ -433,20 +441,18 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
                 </div>
               </Link>
 
-              {/* Simulacro de Examen (solo oposiciones con formato configurado) */}
-              {SIMULACRO_AVAILABLE_OPOSICIONES.includes(oposicion) && (
-                <Link
-                  href={
-                    pendingSimulacro
-                      ? `/${oposicion}/test/simulacro?resume=${pendingSimulacro.id}`
-                      : `/${oposicion}/test/simulacro`
-                  }
-                  className={`block py-4 px-8 rounded-lg font-semibold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-xl active:scale-95 focus:outline-none focus:ring-4 group ${
-                    pendingSimulacro
-                      ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white focus:ring-emerald-300'
-                      : 'bg-gradient-to-r from-amber-600 to-orange-600 text-white focus:ring-amber-300'
-                  }`}
-                >
+              {/* Simulacro de Examen (solo oposiciones con formato configurado).
+                  Para usuarios FREE sin simulacro pendiente: NO entran al
+                  simulacro — se abre modal Premium. Si tienen pendiente, sí
+                  pueden continuar (el simulacro ya está en marcha). */}
+              {SIMULACRO_AVAILABLE_OPOSICIONES.includes(oposicion) && (() => {
+                const isFreeNoPending = hasLimit && !pendingSimulacro
+                const cardClasses = `block py-4 px-8 rounded-lg font-semibold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-xl active:scale-95 focus:outline-none focus:ring-4 group w-full text-left ${
+                  pendingSimulacro
+                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white focus:ring-emerald-300'
+                    : 'bg-gradient-to-r from-amber-600 to-orange-600 text-white focus:ring-amber-300'
+                }`
+                const inner = (
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
                       <span className="mr-3 text-2xl group-hover:animate-bounce">
@@ -463,16 +469,47 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
                             </span>
                           </>
                         ) : (
-                          'Simulacro de Examen: 110 preguntas con el formato oficial'
+                          <>
+                            Simulacro de Examen: 110 preguntas con el formato oficial
+                            {isFreeNoPending && (
+                              <span className="block text-sm font-normal opacity-90 mt-0.5">
+                                Premium · 110 preguntas / 90 min
+                              </span>
+                            )}
+                          </>
                         )}
                       </span>
                     </div>
                     <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-medium">
-                      {pendingSimulacro ? 'Pendiente' : 'Nuevo'}
+                      {pendingSimulacro ? 'Pendiente' : isFreeNoPending ? '⭐ Premium' : 'Nuevo'}
                     </span>
                   </div>
-                </Link>
-              )}
+                )
+
+                if (isFreeNoPending) {
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => setShowSimulacroPaywall(true)}
+                      className={cardClasses}
+                    >
+                      {inner}
+                    </button>
+                  )
+                }
+                return (
+                  <Link
+                    href={
+                      pendingSimulacro
+                        ? `/${oposicion}/test/simulacro?resume=${pendingSimulacro.id}`
+                        : `/${oposicion}/test/simulacro`
+                    }
+                    className={cardClasses}
+                  >
+                    {inner}
+                  </Link>
+                )
+              })()}
 
               {/* Exámenes Oficiales (si hay convocatorias) */}
               {officialExams && officialExams.length > 0 && (
@@ -509,7 +546,12 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
 
               {/* Mis Debilidades — preguntas falladas de TODA la oposición.
                   Al pulsar abre un selector inline con 4 modos de ordenación. */}
-              <DebilidadesCard positionType={positionType} />
+              <DebilidadesCard
+                positionType={positionType}
+                hasLimit={hasLimit}
+                questionsRemaining={questionsRemaining}
+                dailyLimit={dailyLimit}
+              />
 
               {/* Test de Ortografía y Gramática (config-driven) */}
               {hasSpellingTest && (
@@ -576,6 +618,22 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
       </div>
 
       <OposicionChangeModal open={showOposicionModal} onClose={() => setShowOposicionModal(false)} />
+
+      {/* Paywall del simulacro para usuarios FREE (componente reutilizable).
+          Solo se renderiza si la oposición tiene config de simulacro. */}
+      {(() => {
+        const simulacroConfig = getSimulacroConfig(oposicion)
+        if (!simulacroConfig) return null
+        return (
+          <SimulacroPaywallModal
+            isOpen={showSimulacroPaywall}
+            onClose={() => setShowSimulacroPaywall(false)}
+            config={simulacroConfig}
+            dailyLimit={dailyLimit}
+            oposicionSlug={oposicion}
+          />
+        )
+      })()}
     </div>
   )
 }
@@ -958,7 +1016,17 @@ function ThemeLink({ topic, basePath, stats, statsLoading, color, onInfoClick }:
 // al endpoint vía positionType sin bloque.
 // ============================================================
 
-function DebilidadesCard({ positionType }: { positionType: string }) {
+function DebilidadesCard({
+  positionType,
+  hasLimit,
+  questionsRemaining,
+  dailyLimit,
+}: {
+  positionType: string
+  hasLimit: boolean
+  questionsRemaining: number
+  dailyLimit: number
+}) {
   const [open, setOpen] = useState(false)
   // Defaults sensatos: todo el periodo (365d cubre cualquier usuario hasta 1 año)
   // y 20 preguntas — formato cómodo para una sesión de repaso típica.
@@ -971,6 +1039,20 @@ function DebilidadesCard({ positionType }: { positionType: string }) {
     { days: 7,   label: 'Última semana' },
   ]
   const COUNT_OPTIONS: number[] = [10, 20, 30, 50]
+
+  // Para usuarios FREE: deshabilitar las cantidades que excedan su cuota
+  // diaria restante. Evita la frustración de seleccionar 50 y solo poder
+  // responder X antes del modal de upgrade.
+  const isCountAvailable = (n: number): boolean => !hasLimit || n <= questionsRemaining
+
+  // Si el default (20) excede la cuota, bajar al máximo viable disponible
+  useEffect(() => {
+    if (hasLimit && !isCountAvailable(selectedCount)) {
+      const fallback = COUNT_OPTIONS.filter(n => n <= questionsRemaining).pop()
+      if (fallback && fallback !== selectedCount) setSelectedCount(fallback)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasLimit, questionsRemaining])
   const ORDER_OPTIONS: { id: string; icon: string; label: string; desc: string }[] = [
     { id: 'most_failed', icon: '🔥', label: 'Más veces falladas primero', desc: 'Empieza por las que más te cuesta dominar' },
     { id: 'recent',      icon: '⏰', label: 'Últimas falladas primero',    desc: 'Repasa tus errores más recientes' },
@@ -1038,21 +1120,32 @@ function DebilidadesCard({ positionType }: { positionType: string }) {
             </div>
           </div>
 
-          {/* Selector de cantidad */}
+          {/* Selector de cantidad — para usuarios FREE deshabilita las
+              cantidades que excedan su cuota diaria restante. */}
           <div>
-            <div className="text-xs font-semibold text-gray-700 mb-2 flex items-center">
-              <span className="mr-1">🔢</span> Nº preguntas
+            <div className="text-xs font-semibold text-gray-700 mb-2 flex items-center justify-between">
+              <span className="flex items-center"><span className="mr-1">🔢</span> Nº preguntas</span>
+              {hasLimit && (
+                <span className="text-[10px] font-normal text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                  {questionsRemaining}/{dailyLimit} hoy
+                </span>
+              )}
             </div>
             <div className="flex flex-wrap gap-2">
               {COUNT_OPTIONS.map(n => {
                 const active = selectedCount === n
+                const available = isCountAvailable(n)
                 return (
                   <button
                     key={n}
                     type="button"
-                    onClick={() => setSelectedCount(n)}
+                    onClick={() => available && setSelectedCount(n)}
+                    disabled={!available}
+                    title={available ? undefined : `Hoy te quedan ${questionsRemaining} preguntas. Hazte Premium para más.`}
                     className={`px-3 py-1.5 rounded-full text-sm font-medium border-2 transition-colors min-w-[44px] ${
-                      active
+                      !available
+                        ? 'bg-gray-50 border-gray-200 text-gray-300 cursor-not-allowed line-through'
+                        : active
                         ? 'bg-red-600 border-red-600 text-white'
                         : 'bg-white border-gray-300 text-gray-700 hover:border-red-400'
                     }`}
@@ -1062,6 +1155,14 @@ function DebilidadesCard({ positionType }: { positionType: string }) {
                 )
               })}
             </div>
+            {hasLimit && questionsRemaining < COUNT_OPTIONS[COUNT_OPTIONS.length - 1] && (
+              <p className="text-[11px] text-gray-500 mt-2">
+                Cantidades en gris exceden tu cuota diaria.{' '}
+                <Link href="/premium" className="text-amber-700 hover:underline font-medium">
+                  Hazte Premium para sin límite
+                </Link>.
+              </p>
+            )}
           </div>
 
           {/* Selector de orden — al click navega con los params elegidos arriba */}
