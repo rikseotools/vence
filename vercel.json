@@ -4,10 +4,6 @@
     {
       "path": "/api/cron/recalc-question-difficulty",
       "schedule": "*/5 * * * *"
-    },
-    {
-      "path": "/api/cron/recalc-global-difficulty",
-      "schedule": "*/5 * * * *"
     }
   ]
 }
