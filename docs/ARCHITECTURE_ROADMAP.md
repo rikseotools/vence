@@ -49,7 +49,7 @@ Este roadmap cambia la arquitectura **sin reescribir** el código, en 6 fases in
 | **0 — Estabilizar** | ✅ 6/7 hechas (falta 0.5 verificación p95). Fase 0.7 (JWT local verify) **COMPLETA server-side 2026-05-11** — MODE=on activo, 63+ endpoints migrados (32 directos + 31 vía wrappers refactorizados), latencia auth 250-1000ms → <5ms confirmada. Pendientes 5 archivos client-side (no bloqueantes) | 1 sem | $0 | Resuelve timeouts actuales | Cero |
 | **1 — Redis cache** | ✅ COMPLETA (2026-05-02) | 1-2 sem | $10 | -80% load BD | Bajo |
 | **2 — Outbox pattern** | 🟡 Infra (paso 0) hecha 2026-05-16 — tabla `outbox_events` + helper Drizzle `enqueueEvent(tx)` + worker `/api/cron/process-outbox` (advisory lock + dead-letter `attempts<10`) + GHA cron 5min. **Sin handlers**: tras audit, los 11 triggers actuales de `test_questions` son ligeros y no necesitan outbox. Infra queda lista para próximos casos síncronos pesados | 2-3 sem | $0 | Estabilidad escrituras | Medio |
-| **2-bis — Materialización `global_difficulty`** | 🟡 Paso 1 hecho 2026-05-16, dual-write hasta 2026-05-23 — sums incrementales (`first_attempts_correct_sum/time_sum/confidence_sum`) en `questions` + trigger AFTER INSERT en `question_first_attempts` + función pura `compute_global_difficulty_from_sums`. Backfill 35.040 preguntas (paridad 100% con función vieja). Tras la semana: drop cron `recalc-global-difficulty` + `global_dirty` flag | 1 sem | $0 | Elimina deadlocks/statement timeouts del cron, latencia 5min→0 | Bajo (dual-write como red) |
+| **2-bis — Materialización `global_difficulty`** | 🟢 Paso 1 + hardening hechos 2026-05-16/17. Trigger AFTER INSERT en `question_first_attempts` re-agrega los 4 sums (self-healing — drift se corrige solo en el siguiente INSERT). Monitor 24h tras paso 1: cron viejo 0 errores (vs 7 baseline), avg -56%, max -56%, 0 emails GHA. Drift pre-existente de 75 preguntas detectado y arreglado. Apagado del cron viejo programado lun 2026-05-19 (acelerado desde 2026-05-23 gracias al hardening) | 1 sem | $0 | Elimina deadlocks/statement timeouts del cron, latencia 5min→0 | Bajo (trigger self-healing) |
 | **3 — Pool split / replica** | ✅ **COMPLETA (2026-05-09)** — `getDb` max:1 + `getAdminDb` max:4 + `getReadDb` apunta a read replica eu-west-2 (provisionada Small ~$15/mes). 3 endpoints migrados (theme-stats, problematic-articles, ranking). Feature flag `USE_READ_REPLICA` permite rollback 30s | 2-3 sem | ~$15/mes | Aislamiento OLTP + descarga lecturas del primary | Bajo |
 | **4 — Async queues** | ⏳ Pendiente | 1-2 sem | $0-20 | -50% writes BD principal | Medio |
 | **5 — Data warehouse** | ⏳ Pendiente | 3-6 sem | $30-100 | Analytics escalable | Bajo |
@@ -503,7 +503,7 @@ La revisión del 2026-05-16 confirmó que esa función YA fue optimizada a UPSER
 
 ---
 
-## Fase 2-bis — Materialización incremental de `global_difficulty` 🟡 EN DUAL-WRITE 2026-05-16
+## Fase 2-bis — Materialización incremental de `global_difficulty` 🟢 PASO 1 + HARDENING (apagado lun 2026-05-19)
 
 Ataca el cron `recalc-global-difficulty` con la solución arquitectónicamente correcta: **agregados incrementales en `questions`** en vez de outbox. Beneficio inmediato: eliminar los emails de fallo GHA, los statement timeouts y los deadlocks observados en `cron_runs` (~1.5% error rate, mayoría 8s timeouts).
 
@@ -526,36 +526,49 @@ Con esos 4 escalares + la función pura `compute_global_difficulty_from_sums(n, 
 1. ALTER TABLE `questions` añade las 3 nuevas columnas con DEFAULT 0.
 2. Función `compute_global_difficulty_from_sums(...)` — IMMUTABLE, pura aritmética.
 3. Función `confidence_text_to_score(text) → numeric` — mapeo NULL-safe.
-4. Función `apply_first_attempt_to_question_stats()` — trigger handler: UPDATE incremental + RETURNING + segundo UPDATE para campos derivados.
+4. Función `apply_first_attempt_to_question_stats()` — trigger handler (v1: incremental).
 5. Trigger `apply_first_attempt_to_question_stats_trigger` en `question_first_attempts` AFTER INSERT FOR EACH ROW.
 
 **Backfill ejecutado:** 35.040 preguntas con sums calculados desde `question_first_attempts` (14.5s), 25.360 con `global_difficulty` recomputado (4.1s).
 
-**Validación de paridad:** muestra aleatoria de 30 preguntas — la función nueva (sums incrementales) y la función vieja (`calculate_question_global_difficulty` agregando) coinciden **100%**. Test de INSERT real en transacción rollbackeada: trigger ejecuta correctamente, los 4 deltas suben, `global_difficulty` recalculado coincide con la vieja al céntimo.
+### Hardening del trigger ✅ 2026-05-17
 
-### Dual-write (paso 2) — ventana de 1 semana ⏳ EN CURSO 2026-05-16 → 2026-05-23
+Monitor 24h post-paso 1 destapó **75 preguntas con `difficulty_sample_size` inflado** (delta hasta +3) respecto al `count(*)` real de `question_first_attempts`. Drift **pre-existente** (no introducido por el paso 1) — probablemente acumulado a lo largo del tiempo por borrados manuales de filas en cleanup/GDPR-erase. El modelo "incremento ciego" (`= valor_anterior + 1`) lo perpetuaba indefinidamente.
 
-El trigger nuevo Y el trigger viejo (`track_question_first_attempt` que marca `global_dirty=true`) Y el cron viejo (`recalc-global-difficulty`) **siguen los tres activos**. Cuando llega una respuesta:
-- Trigger viejo: marca `global_dirty=true`, sin recalcular en línea.
-- Trigger nuevo: incrementa sums y recalcula `global_difficulty` inmediato.
-- Cron viejo (cada 5min): procesa dirty y sobreescribe `global_difficulty` con el valor agregado.
+`supabase/migrations/20260517_global_difficulty_robust_trigger.sql` cambia el trigger a **re-aggregate completo**: en cada INSERT, una `SELECT count/SUM` sobre `question_first_attempts WHERE question_id = NEW.question_id` (un PK lookup con índice, ~1-10ms). El trigger se vuelve **self-healing**: cualquier drift se corrige solo en el siguiente INSERT que toque la pregunta.
 
-Como la fórmula es algebraicamente idéntica, ambos producen el mismo número — el cron sólo "confirma" lo que el trigger ya calculó. Si por alguna razón divergen, el cron viejo gana (es la red de seguridad).
+Coste: una query agregada por INSERT (~0.09/s actuales → ~7/s a 10k DAU). Despreciable.
 
-Monitor durante la semana:
-- Conteo de eventos `cron_name='recalc-global-difficulty'` en `cron_runs` con duración alta. Esperado: bajada gradual porque los dirty ya están al día y el batch tarda menos en cada run.
-- Spot-checks de paridad: `SELECT global_difficulty - calculate_question_global_difficulty(id) FROM questions WHERE difficulty_sample_size >= 3 ORDER BY random() LIMIT 50` — deben ser todos 0.
+**Verificación post-hardening:**
+- Drift histórico de 75 preguntas reconciliado (sample_size = count real, recalc completo). Paridad post-fix 50/50.
+- Test de self-healing: drift simulado +10 → INSERT real → sample_size se restaura a count real en el mismo trigger.
+- Test de INSERT normal: deltas correctos, paridad con `calculate_question_global_difficulty` al céntimo.
 
-### Paso 3 — Apagar el sistema viejo ⏳ PROGRAMADO ≥ 2026-05-23
+### Monitor 24h tras paso 1 ✅
 
-Tras la semana de paridad sin sorpresas:
+Comparativa antes/después del trigger nuevo:
+
+| Métrica | Baseline 24h previas | Ventana 10.9h post-trigger |
+|---|---|---|
+| Runs cron viejo | 307 | 136 |
+| **Errores** | **7** (statement timeouts + deadlocks) | **0** |
+| Avg duration | 1117 ms | 493 ms (-56%) |
+| Max duration | 9000 ms | 4000 ms (-56%) |
+| Avg processed/run | 40 | 25 (-38%) |
+| Emails fallo GHA | sí | no |
+
+El cron viejo sigue corriendo como red de seguridad (sobreescribe `global_difficulty` con el mismo valor que el trigger ya calculó — fórmula idéntica algebraicamente).
+
+### Paso 3 — Apagar el sistema viejo ⏳ PROGRAMADO lun 2026-05-19 (acelerado)
+
+Plan original: esperar a 2026-05-23 (semana de dual-write como red). Acelerado a lun 2026-05-19 porque el hardening hace el trigger nuevo self-healing → ya no necesitamos al cron viejo para corregir drifts.
 
 1. Modificar `track_question_first_attempt` para eliminar `UPDATE questions SET global_dirty = true`.
-2. Deshabilitar / eliminar workflow GHA `recalc-global-difficulty.yml` (la entrada Vercel cron ya no existe).
-3. DROP FUNCTION `recalculate_dirty_global_difficulty` (función SQL).
-4. DROP COLUMN `questions.global_dirty` (otro PR aparte, tras 48h sin código que la lea).
+2. Deshabilitar / eliminar workflow GHA `recalc-global-difficulty.yml`.
+3. DROP FUNCTION `recalculate_dirty_global_difficulty`.
+4. DROP COLUMN `questions.global_dirty` (otro PR aparte, tras 48h sin código que la lea — mier 2026-05-21).
 
-Beneficio esperado tras el paso 3: 0 emails de fallo GHA por este cron, 0 deadlocks por contención del UPDATE batch contra `track_question_first_attempt`, latencia de `global_difficulty` actualizada de "hasta 5 min" a "inmediato tras la respuesta".
+Beneficio esperado tras el paso 3: 0 emails de fallo GHA por este cron, 0 deadlocks por contención del UPDATE batch, latencia de `global_difficulty` "hasta 5 min" → "inmediato tras la respuesta".
 
 ---
 
