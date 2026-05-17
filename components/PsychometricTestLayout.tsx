@@ -605,6 +605,8 @@ export default function PsychometricTestLayout({
       case 'alphabetical_order':
       case 'code_equivalence':
       case 'coding':
+      case 'agilidad_mental':
+      case 'silogismo':
         return (
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8">
             {/* Renderizar content_data con componente centralizado */}
