@@ -1,0 +1,45 @@
+name: Refresh Rankings
+
+# Refresca ranking_cache cada 5 min para los 4 timeFilters (today/yesterday/
+# week/month). Implementación:
+#   - app/api/cron/refresh-rankings/route.ts
+#   - supabase/migrations/20260517_ranking_cache.sql (refresh_ranking_cache())
+#
+# Sustituye el GROUP BY pesado de /api/ranking (9-12s) por un SELECT trivial
+# desde la tabla pre-agregada. El coste del agregado lo paga este cron en
+# background, no el usuario.
+#
+# Si el cron falla, ranking_cache mantiene los datos anteriores y el endpoint
+# sigue sirviendo el ranking previo hasta el siguiente run exitoso.
+
+on:
+  schedule:
+    - cron: '*/5 * * * *' # cada 5 minutos
+  workflow_dispatch: # ejecución manual desde GitHub UI
+
+concurrency:
+  group: refresh-rankings
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Trigger refresh-rankings endpoint
+        run: |
+          response=$(curl -s -w "\n%{http_code}" -X GET \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            --max-time 90 \
+            https://www.vence.es/api/cron/refresh-rankings)
+
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+
+          echo "Response: $body"
+          echo "HTTP Status: $http_code"
+
+          if [ "$http_code" != "200" ]; then
+            echo "❌ Error: HTTP $http_code"
+            exit 1
+          fi

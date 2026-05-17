@@ -260,23 +260,20 @@ export async function getRanking(params: GetRankingRequest): Promise<GetRankingR
     }
 
     const db = getRankingDb()
-    const { startDate, endDate } = computeDateRange(params.timeFilter)
 
-    // Usar tq.user_id directamente (sin JOIN tests) — misma optimización que
-    // el trigger update_user_question_history. El JOIN añadía 500ms+ innecesarios.
+    // Leer de la tabla pre-agregada `ranking_cache` (refrescada cada 5min
+    // por cron /api/cron/refresh-rankings). Sustituye al GROUP BY pesado
+    // sobre test_questions que tardaba 9-12s. Ahora <100ms.
     const result = await db.execute(
       sql`SELECT
-            tq.user_id,
-            COUNT(*)::bigint AS total_questions,
-            COUNT(*) FILTER (WHERE tq.is_correct)::bigint AS correct_answers,
-            ROUND((COUNT(*) FILTER (WHERE tq.is_correct)::numeric / COUNT(*)) * 100, 0) AS accuracy
-          FROM test_questions tq
-          WHERE tq.user_id IS NOT NULL
-            AND tq.created_at >= ${startDate}::timestamptz
-            ${endDate ? sql`AND tq.created_at <= ${endDate}::timestamptz` : sql``}
-          GROUP BY tq.user_id
-          HAVING COUNT(*) >= ${params.minQuestions ?? 5}
-          ORDER BY accuracy DESC, total_questions DESC
+            user_id,
+            total_questions::bigint AS total_questions,
+            correct_answers::bigint AS correct_answers,
+            accuracy
+          FROM ranking_cache
+          WHERE time_filter = ${params.timeFilter}
+            AND total_questions >= ${params.minQuestions ?? 5}
+          ORDER BY accuracy DESC, total_questions DESC, user_id ASC
           LIMIT ${limit}
           OFFSET ${offset}`
     )
@@ -343,25 +340,24 @@ export async function getUserPosition(
 ): Promise<UserPosition | null> {
   try {
     const db = getRankingDb()
-    const { startDate, endDate } = computeDateRange(timeFilter)
 
+    // Leer de ranking_cache (igual que getRanking) en vez de re-agregar
+    // test_questions. ROW_NUMBER asigna rank por accuracy DESC, total DESC,
+    // con tiebreak determinístico por user_id (mismo orden que getRanking
+    // para que la posición coincida con lo que ve el usuario en el listado).
     const result = await db.execute(
-      sql`WITH user_stats AS (
+      sql`WITH ranked AS (
             SELECT
-              tq.user_id,
-              COUNT(*)::bigint AS total_questions,
-              COUNT(*) FILTER (WHERE tq.is_correct)::bigint AS correct_answers,
-              ROUND((COUNT(*) FILTER (WHERE tq.is_correct)::numeric / COUNT(*)) * 100, 0) AS accuracy
-            FROM test_questions tq
-            WHERE tq.user_id IS NOT NULL
-              AND tq.created_at >= ${startDate}::timestamptz
-              ${endDate ? sql`AND tq.created_at <= ${endDate}::timestamptz` : sql``}
-            GROUP BY tq.user_id
-            HAVING COUNT(*) >= ${minQuestions}
-          ),
-          ranked AS (
-            SELECT *, ROW_NUMBER() OVER (ORDER BY accuracy DESC, total_questions DESC) AS rank
-            FROM user_stats
+              user_id,
+              total_questions::bigint AS total_questions,
+              correct_answers::bigint AS correct_answers,
+              accuracy,
+              ROW_NUMBER() OVER (
+                ORDER BY accuracy DESC, total_questions DESC, user_id ASC
+              ) AS rank
+            FROM ranking_cache
+            WHERE time_filter = ${timeFilter}
+              AND total_questions >= ${minQuestions}
           )
           SELECT
             r.rank::bigint AS user_rank,
