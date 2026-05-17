@@ -5,18 +5,23 @@
 // se añadirá el handler correspondiente al `dispatch` switch.
 //
 // Garantías:
-//  - Lock distribuido vía pg_try_advisory_lock para evitar dos workers
-//    procesando el mismo lote a la vez (típico con Vercel Cron + GH Actions
-//    apuntando al mismo endpoint, o dos invocaciones GHA solapadas).
+//  - Aislamiento entre workers vía `FOR UPDATE SKIP LOCKED` (row-level lock
+//    estándar Postgres). Si dos workers corren a la vez (Vercel Cron + GH
+//    Actions, dos GHA solapadas), cada uno reserva filas distintas y procesa
+//    su lote sin colisión. Antes usábamos `pg_try_advisory_lock` (lock de
+//    SESIÓN) que se rompe en pool mode transaction porque LOCK y UNLOCK
+//    pueden acabar en conexiones backend distintas (refactor 2026-05-17).
 //  - Cada evento se procesa de forma independiente. Un fallo NO aborta el
 //    lote: se incrementa `attempts` + se guarda `last_error`, el siguiente
 //    run reintenta. Si `attempts` llega a MAX_ATTEMPTS, queda como
 //    dead-letter (ignorado por el SELECT pero conservado para inspección).
-//  - El handler y el UPDATE no comparten transacción explícita: por eso los
-//    handlers DEBEN ser idempotentes (UPSERT, no INSERT; recalcular y
-//    sobreescribir, no acumular). Si el handler termina y el UPDATE de
-//    processed_at falla luego, el siguiente run re-ejecutará el handler —
-//    sin efectos duplicados si es idempotente.
+//  - El procesamiento ocurre dentro de una transacción que mantiene los
+//    locks adquiridos por FOR UPDATE hasta el COMMIT. Los handlers DEBEN
+//    ser idempotentes (UPSERT, no INSERT; recalcular y sobreescribir, no
+//    acumular) Y rápidos (sin I/O largo) — la transacción retiene row locks
+//    durante todo el batch; un handler de minutos saturaría el lote y podría
+//    chocar con `idle_in_transaction_session_timeout` (60s). Para handlers
+//    largos, mover a una columna `started_processing_at` con TTL.
 
 import { sql } from 'drizzle-orm'
 import { outboxEvents } from '@/db/schema'
@@ -31,16 +36,9 @@ export interface ProcessResult {
   processed: number
   /** Eventos cuyo handler lanzó error en este run. */
   failed: number
-  /** True si no se obtuvo el lock (otro worker activo). */
+  /** True si no se encontraron eventos pendientes (lote vacío). */
   skipped: boolean
 }
-
-// Clave fija para advisory lock — mismo número en todos los workers garantiza
-// que sólo uno corra. Elegida arbitrariamente, sin colisión conocida con
-// otros locks del sistema (recalculate_dirty_* usa hashtext de sus nombres).
-// Se pasa como string al SQL para que postgres lo convierta a bigint sin
-// requerir BigInt literals en TS (compat ES2018).
-const OUTBOX_LOCK_KEY = '7263847569'
 
 /**
  * Eventos con `attempts >= MAX_ATTEMPTS` se consideran dead-letter y dejan de
@@ -60,22 +58,11 @@ export async function processOutboxBatch(
 ): Promise<ProcessResult> {
   if (!db) throw new Error('processOutboxBatch: db client not available')
 
-  const lockResult = await db.execute(
-    sql`SELECT pg_try_advisory_lock(${OUTBOX_LOCK_KEY}::bigint) AS acquired`,
-  )
-  // postgres-js + Drizzle execute devuelve un array de filas plano.
-  const acquired = (lockResult as unknown as { acquired: boolean }[])[0]?.acquired === true
-  if (!acquired) {
-    return { fetched: 0, processed: 0, failed: 0, skipped: true }
-  }
-
-  try {
-    // Nota: no usamos `FOR UPDATE SKIP LOCKED` porque el advisory lock
-    // externo ya garantiza un solo worker activo. Si en el futuro se quiere
-    // particionar el outbox para workers paralelos, conviene reintroducirlo
-    // dentro de una transacción explícita por lote (sólo así retiene locks
-    // hasta el COMMIT — autocommit los libera al cerrar el SELECT).
-    const pending = await db.execute<{
+  // Todo el lote va dentro de una transacción para que los row locks
+  // adquiridos por FOR UPDATE SKIP LOCKED se mantengan hasta el COMMIT.
+  // Workers concurrentes verán filas distintas (SKIP LOCKED).
+  return await db.transaction(async (tx) => {
+    const pending = await tx.execute<{
       id: string
       event_type: string
       payload: Record<string, unknown>
@@ -87,6 +74,7 @@ export async function processOutboxBatch(
         WHERE processed_at IS NULL
           AND attempts < ${MAX_ATTEMPTS}
         ORDER BY created_at
+        FOR UPDATE SKIP LOCKED
         LIMIT ${limit}
       `,
     )
@@ -96,6 +84,10 @@ export async function processOutboxBatch(
       payload: Record<string, unknown>
       attempts: number
     }>
+
+    if (rows.length === 0) {
+      return { fetched: 0, processed: 0, failed: 0, skipped: true }
+    }
 
     let processed = 0
     let failed = 0
@@ -107,7 +99,7 @@ export async function processOutboxBatch(
         // capturamos para que el resto del lote siga adelante. El evento
         // quedará pendiente y se reprocesará en el siguiente run.
         try {
-          await db.execute(
+          await tx.execute(
             sql`UPDATE ${outboxEvents} SET processed_at = now() WHERE id = ${event.id}::uuid`,
           )
           processed++
@@ -128,7 +120,7 @@ export async function processOutboxBatch(
         // batch. Si falla, attempts no se incrementa este run pero la fila
         // sigue pendiente; el siguiente run reintenta.
         try {
-          await db.execute(
+          await tx.execute(
             sql`
               UPDATE ${outboxEvents}
               SET attempts = attempts + 1, last_error = ${msg.slice(0, 1000)}
@@ -145,15 +137,7 @@ export async function processOutboxBatch(
     }
 
     return { fetched: rows.length, processed, failed, skipped: false }
-  } finally {
-    // Liberar lock sí o sí. Si esto falla, el lock se libera solo al cerrar
-    // la sesión del pool (worst case unos segundos).
-    try {
-      await db.execute(sql`SELECT pg_advisory_unlock(${OUTBOX_LOCK_KEY}::bigint)`)
-    } catch {
-      // Silently ignored — el lock caduca con la sesión.
-    }
-  }
+  })
 }
 
 /**

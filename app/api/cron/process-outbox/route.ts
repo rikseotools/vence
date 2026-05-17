@@ -6,8 +6,9 @@
 // deben tolerar reintento.
 //
 // Schedule: una vez añadido a vercel.json y/o .github/workflows, se ejecutará
-// cada minuto. El advisory lock dentro de processOutboxBatch evita doble
-// procesamiento si dos invocaciones colisionan.
+// cada minuto. `FOR UPDATE SKIP LOCKED` dentro de processOutboxBatch evita
+// doble procesamiento si dos invocaciones colisionan — workers concurrentes
+// reservan filas distintas sin bloquearse entre sí.
 //
 // Observabilidad: cada ejecución se registra en tabla cron_runs.
 //
@@ -45,7 +46,7 @@ async function _GET(request: NextRequest): Promise<NextResponse> {
       const batch = await processOutboxBatch(db, 200)
 
       if (batch.skipped) {
-        return { status: 'skipped', metadata: { reason: 'another worker active' } }
+        return { status: 'skipped', metadata: { reason: 'no pending events' } }
       }
 
       // Si todos los eventos del lote fallaron y hay >0 eventos, lo marcamos
@@ -69,11 +70,11 @@ async function _GET(request: NextRequest): Promise<NextResponse> {
     })
 
     if (result.skipped) {
-      console.log(`⏭️  [cron/process-outbox] Skipped (${result.durationMs}ms)`)
+      console.log(`⏭️  [cron/process-outbox] Skipped — no pending events (${result.durationMs}ms)`)
       return NextResponse.json({
         success: true,
         skipped: true,
-        reason: 'another worker active',
+        reason: 'no pending events',
         durationMs: result.durationMs,
         runId: result.runId,
       })
