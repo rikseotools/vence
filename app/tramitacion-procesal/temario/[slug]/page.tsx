@@ -5,9 +5,9 @@ import { getTopicContent } from '@/lib/api/temario/queries'
 import TopicContentView from './TopicContentView'
 import InteractiveBreadcrumbs from '@/components/InteractiveBreadcrumbs'
 
-// force-dynamic: renderizar bajo demanda para no saturar BD en build
 
-export const dynamic = 'force-dynamic'
+
+export const revalidate = 3600 // Edge caching SWR (2026-05-17): HTML cacheado 1h en CDN, stale-while-revalidate elimina cold starts visibles
 
 interface PageProps {
   params: Promise<{
