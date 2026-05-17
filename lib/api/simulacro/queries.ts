@@ -15,7 +15,7 @@
 
 import { getDb, getPoolerDb } from '@/db/client'
 import { questions, psychometricQuestions, articles, laws, topics, topicScope } from '@/db/schema'
-import { eq, and, inArray, sql, ilike, gte } from 'drizzle-orm'
+import { eq, and, inArray, sql, ilike, gte, isNotNull } from 'drizzle-orm'
 import type {
   GetSimulacroQuestionsRequest,
   GetSimulacroQuestionsResponse,
@@ -317,6 +317,11 @@ async function sampleLegislativeByArticles(
       and(
         eq(questions.isActive, true),
         inArray(questions.primaryArticleId, articleIds),
+        // Solo preguntas con 4 opciones de respuesta (excluye el banco PN que
+        // usa formato 3 opciones A/B/C — el examen oficial PN es de 3 opciones
+        // pero el simulacro actual está pensado para oposiciones con 4 opciones
+        // como AAE. Si en el futuro hay simulacro PN se hace en otra función).
+        isNotNull(questions.optionD),
       ),
     )
     .orderBy(sql`random()`)
