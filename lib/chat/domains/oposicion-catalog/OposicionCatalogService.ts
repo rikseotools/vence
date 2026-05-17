@@ -51,7 +51,9 @@ export function detectOposicionIntent(message: string): boolean {
   // "procedimiento administrativo", "silencio administrativo", "recurso contencioso-administrativo"
   const roleInLegalContext = hasRole && /\b(procedimiento|silencio|acto|recurso|r[eé]gimen|derecho|contencioso|reclamaci[oó]n|potestad|jurisdicci[oó]n|v[ií]a|econ[oó]mico|regulaci[oó]n|regula)[\s-]+(administrativ)/i.test(message)
   // Descartar si es claramente una pregunta sobre contenido (no solicitud de oposición)
-  const isContentQuestion = hasRole && /\b(art[ií]culo|qu[eé]\s+(quiere|significa|dice|establece|regula)|este\s+art|esta\s+ley)\b/i.test(message)
+  // Plural "artículos" no matcheaba \bart[ií]culo\b porque \b no aplica entre 'o' y 's'.
+  // Bug Nila 17/05: "¿Qué artículos caen más en exámenes de Auxiliar?" → solicitud falsa.
+  const isContentQuestion = hasRole && /\b(art[ií]culos?|qu[eé]\s+(quiere|significa|dice|establece|regula)|este\s+art|esta\s+ley)\b/i.test(message)
   const effectiveHasRole = hasRole && !roleInLegalContext && !isContentQuestion
 
   // Caso 1: rol + verbo de intención o mención explícita de "oposición" — patrón clásico
