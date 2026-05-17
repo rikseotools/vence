@@ -28,6 +28,11 @@ export const reviewQuestionSchema = z.object({
   explanation: z.string().nullable(),
   article: z.string().nullable(), // article_full from context
   isPsychometric: z.boolean(),
+  // Imagen / contenido visual (figuras psicotécnicas, gráficos, tablas).
+  // El texto solo no basta cuando la pregunta hace referencia a un símbolo
+  // o figura (ej. "¿Cuántas ⬂ hay en total?" — bug Nila 17/05).
+  imageUrl: z.string().nullable(),
+  contentData: z.unknown().nullable(),
   // Datos de la respuesta del usuario
   userAnswer: z.string().nullable(), // 'A', 'B', 'C', 'D' o null (en blanco)
   correctAnswer: z.string(), // 'A', 'B', 'C', 'D'

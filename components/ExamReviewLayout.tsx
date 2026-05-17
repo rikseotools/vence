@@ -7,6 +7,7 @@ import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import QuestionDispute from './QuestionDispute'
 import MarkdownExplanation from './MarkdownExplanation'
+import ContentDataRenderer from './ContentDataRenderer'
 import { useAuth } from '@/contexts/AuthContext'
 import { useAIChat } from '@/contexts/AIChatContext'
 import type {
@@ -353,6 +354,28 @@ export default function ExamReviewLayout({
                       <p className="text-gray-800 dark:text-white font-medium">
                         {question.questionText}
                       </p>
+                      {/* Imagen / content_data: figuras psicotécnicas, gráficos,
+                          tablas. Sin esto, preguntas como "¿Cuántas ⬂ hay?" no
+                          se entienden (bug Nila 17/05). */}
+                      {typeof question.imageUrl === 'string' && question.imageUrl.length > 0 ? (
+                        <img
+                          src={question.imageUrl}
+                          alt="Figura de la pregunta"
+                          className="mt-3 max-w-full rounded border border-gray-200 dark:border-gray-700"
+                          loading="lazy"
+                        />
+                      ) : null}
+                      {(() => {
+                        const cd = question.contentData
+                        if (cd && typeof cd === 'object' && Object.keys(cd as Record<string, unknown>).length > 0) {
+                          return (
+                            <div className="mt-3">
+                              <ContentDataRenderer contentData={cd as Record<string, unknown>} />
+                            </div>
+                          )
+                        }
+                        return null
+                      })()}
                     </div>
                     <div className="text-gray-400">
                       {isExpanded ? '▼' : '▶'}

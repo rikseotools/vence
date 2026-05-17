@@ -5,7 +5,7 @@ import { getDb, getPoolerDb } from '@/db/client'
 function getTestReviewDb() {
   return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
 }
-import { tests, testQuestions, questions, examCases } from '@/db/schema'
+import { tests, testQuestions, questions, examCases, psychometricQuestions } from '@/db/schema'
 import { eq, asc, inArray } from 'drizzle-orm'
 import type {
   GetTestReviewRequest,
@@ -91,7 +91,12 @@ export async function getTestReview(
       .map(a => a.questionId)
       .filter((id): id is string => !!id)
 
-    const questionDataMap = new Map<string, { options: string[]; explanation: string | null }>()
+    const questionDataMap = new Map<string, {
+      options: string[]
+      explanation: string | null
+      imageUrl: string | null
+      contentData: unknown
+    }>()
 
     if (questionIdsNeedingContext.length > 0) {
       const questionRows = await db
@@ -103,6 +108,8 @@ export async function getTestReview(
           optionD: questions.optionD,
           optionE: questions.optionE,
           explanation: questions.explanation,
+          imageUrl: questions.imageUrl,
+          contentData: questions.contentData,
         })
         .from(questions)
         .where(inArray(questions.id, questionIdsNeedingContext))
@@ -111,10 +118,49 @@ export async function getTestReview(
         questionDataMap.set(q.id, {
           options: [q.optionA, q.optionB, q.optionC, q.optionD, q.optionE].filter((v): v is string => v != null && v !== ''),
           explanation: q.explanation,
+          imageUrl: q.imageUrl,
+          contentData: q.contentData,
         })
       }
 
       console.log(`🔄 [DRIZZLE] Loaded ${questionRows.length} questions as fallback for missing full_question_context`)
+    }
+
+    // 2b-bis. Cargar image_url + content_data + opciones de psychometric_questions
+    // para preguntas psicotécnicas. ExamReviewLayout las necesita para renderizar
+    // figuras (bug Nila 17/05: "¿Cuántas ⬂ hay en total?" sin imagen visible).
+    const psychometricIds = answers
+      .map(a => a.psychometricQuestionId)
+      .filter((id): id is string => !!id)
+    const psychometricDataMap = new Map<string, {
+      options: string[]
+      explanation: string | null
+      imageUrl: string | null
+      contentData: unknown
+    }>()
+    if (psychometricIds.length > 0) {
+      const psyRows = await db
+        .select({
+          id: psychometricQuestions.id,
+          optionA: psychometricQuestions.optionA,
+          optionB: psychometricQuestions.optionB,
+          optionC: psychometricQuestions.optionC,
+          optionD: psychometricQuestions.optionD,
+          optionE: psychometricQuestions.optionE,
+          explanation: psychometricQuestions.explanation,
+          imageUrl: psychometricQuestions.imageUrl,
+          contentData: psychometricQuestions.contentData,
+        })
+        .from(psychometricQuestions)
+        .where(inArray(psychometricQuestions.id, psychometricIds))
+      for (const q of psyRows) {
+        psychometricDataMap.set(q.id, {
+          options: [q.optionA, q.optionB, q.optionC, q.optionD, q.optionE].filter((v): v is string => v != null && v !== ''),
+          explanation: q.explanation,
+          imageUrl: q.imageUrl,
+          contentData: q.contentData,
+        })
+      }
     }
 
     // 2c. Check if any questions belong to an exam_case (supuesto práctico)
@@ -149,10 +195,15 @@ export async function getTestReview(
     // 3. Transformar datos para la respuesta
     const reviewQuestions: ReviewQuestion[] = answers.map((a, index) => {
       const context = (a.fullQuestionContext as Record<string, unknown>) || {}
-      const fallback = a.questionId ? questionDataMap.get(a.questionId) : undefined
+      const isPsychometric = !!a.psychometricQuestionId
+      const fallback = isPsychometric
+        ? (a.psychometricQuestionId ? psychometricDataMap.get(a.psychometricQuestionId) : undefined)
+        : (a.questionId ? questionDataMap.get(a.questionId) : undefined)
       const contextOptions = Array.isArray(context.options) && (context.options as string[]).length > 0
         ? (context.options as string[])
         : null
+      const ctxImageUrl = typeof context.image_url === 'string' ? context.image_url : null
+      const ctxContentData = context.content_data ?? null
 
       return {
         id: a.questionId || a.psychometricQuestionId || a.id,
@@ -167,7 +218,9 @@ export async function getTestReview(
         article: typeof context.article_full === 'string'
           ? context.article_full
           : (context.article_full as Record<string, unknown>)?.full_text as string || null,
-        isPsychometric: !!a.psychometricQuestionId,
+        isPsychometric,
+        imageUrl: ctxImageUrl ?? fallback?.imageUrl ?? null,
+        contentData: ctxContentData ?? fallback?.contentData ?? null,
         // Datos de la respuesta del usuario
         userAnswer: a.userAnswer || null, // 'A', 'B', 'C', 'D' o null
         correctAnswer: a.correctAnswer, // 'A', 'B', 'C', 'D'
