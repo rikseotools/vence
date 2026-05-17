@@ -395,6 +395,10 @@ export default function OfficialExamLayout({
   const currentTestSessionRef = React.useRef<{ id: string } | null>(
     resumeTestId ? { id: resumeTestId } : null
   )
+  // Timestamp de la PRIMERA respuesta de cada pregunta en esta sesión.
+  // Se usa para calcular time_spent_seconds por pregunta al enviar el simulacro.
+  // Sin esto, todas las preguntas del exam se guardaban con tiempo=0 (bug Nila 17/05).
+  const firstAnswerTimesRef = React.useRef<Map<number, number>>(new Map())
   // Cola de respuestas dadas antes de que /init terminara y tuviéramos testId.
   // Sin esto, esas respuestas se perdían silenciosamente (saveAnswerToApi se
   // saltaba por testId=null) y al reanudar la pregunta aparecía sin marcar.
@@ -730,6 +734,12 @@ export default function OfficialExamLayout({
     // Verificar si es una respuesta NUEVA (no un cambio)
     const isNewAnswer = !(questionIndex in userAnswers)
 
+    // Registrar timestamp de la primera vez que se contesta esta pregunta en
+    // esta sesión. Solo la primera vez — cambios posteriores no resetean.
+    if (!firstAnswerTimesRef.current.has(questionIndex)) {
+      firstAnswerTimesRef.current.set(questionIndex, Date.now())
+    }
+
     // Update local state immediately for responsive UI
     setUserAnswers(prev => ({
       ...prev,
@@ -779,6 +789,33 @@ export default function OfficialExamLayout({
     } catch (error) {
       console.error(`❌ [OfficialExam] Error saving answer ${questionIndex + 1}:`, error)
     }
+  }
+
+  // Calcular tiempo dedicado por pregunta.
+  //
+  // Modelo: ordenamos las preguntas por timestamp de PRIMERA respuesta en esta
+  // sesión. La diferencia entre cada respuesta y la anterior (o el inicio del
+  // simulacro para la primera) representa el tiempo que estuvo "decidiendo"
+  // esa pregunta. Es una aproximación honesta — no captura el detalle de
+  // saltar entre preguntas sin responder, pero la SUMA total coincide con el
+  // tiempo total del simulacro y los promedios son útiles.
+  //
+  // Preguntas que no se contestaron en esta sesión (e.g. resumed from previous
+  // session) quedan con 0; el endpoint /complete usa GREATEST(u, tq) en SQL
+  // para no machacar valores reales guardados previamente.
+  function computeTimeSpentMap(): Record<number, number> {
+    const entries = Array.from(firstAnswerTimesRef.current.entries())
+    if (entries.length === 0) return {}
+    entries.sort((a, b) => a[1] - b[1]) // ascendente por timestamp
+
+    const out: Record<number, number> = {}
+    let prevTs = startTime
+    for (const [questionIndex, ts] of entries) {
+      const delta = Math.max(0, Math.round((ts - prevTs) / 1000))
+      out[questionIndex] = delta
+      prevTs = ts
+    }
+    return out
   }
 
   // Corregir examen
@@ -915,6 +952,9 @@ export default function OfficialExamLayout({
           if (currentTestSession?.id) {
             console.log('🔄 [OfficialExam] Completando sesión existente:', currentTestSession.id)
 
+            // Calcular tiempo por pregunta (ver computeTimeSpentMap arriba)
+            const timeSpentMap = computeTimeSpentMap()
+
             // Preparar resultados para /complete
             const resultsForComplete = questions.map((q, index) => {
               const result = allResults[index]
@@ -925,6 +965,7 @@ export default function OfficialExamLayout({
                 correctAnswer: result?.correctAnswer || '',
                 userAnswer: answer,
                 questionType: q.questionType || 'legislative',
+                timeSpentSeconds: timeSpentMap[index] ?? 0,
               }
             })
 
@@ -954,6 +995,9 @@ export default function OfficialExamLayout({
             // Flujo antiguo: crear nuevo test via /save-results
             console.log('📝 [OfficialExam] Creando nueva sesión via save-results')
 
+            // Calcular tiempo por pregunta (ver computeTimeSpentMap arriba)
+            const timeSpentMap = computeTimeSpentMap()
+
             // Preparar datos para la API v2
             const resultsForApi = questions.map((q, index) => {
               const result = allResults[index]
@@ -967,7 +1011,8 @@ export default function OfficialExamLayout({
                 questionText: q.questionText || q.question || 'Pregunta sin texto',
                 articleNumber: q.articleNumber || null,
                 lawName: q.lawName || null,
-                difficulty: q.difficulty || 'medium'
+                difficulty: q.difficulty || 'medium',
+                timeSpentSeconds: timeSpentMap[index] ?? 0,
               }
             })
 

@@ -118,6 +118,7 @@ export const questionResultSchema = z.object({
   articleNumber: z.string().nullable().optional(),
   lawName: z.string().nullable().optional(),
   difficulty: z.string().default('medium'),
+  timeSpentSeconds: z.number().int().min(0).default(0),
 })
 
 export type QuestionResult = z.infer<typeof questionResultSchema>

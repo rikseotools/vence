@@ -137,8 +137,8 @@ async function _POST(request: NextRequest) {
       const chunk = results.slice(offset, offset + CHUNK_SIZE)
 
       const valuesSql = sql.join(
-        chunk.map((r: { questionOrder: number; isCorrect?: boolean; correctAnswer?: string; userAnswer?: string }) =>
-          sql`(${r.questionOrder}::int, ${r.isCorrect || false}::boolean, ${r.correctAnswer || ''}::text, ${r.userAnswer || ''}::text)`
+        chunk.map((r: { questionOrder: number; isCorrect?: boolean; correctAnswer?: string; userAnswer?: string; timeSpentSeconds?: number }) =>
+          sql`(${r.questionOrder}::int, ${r.isCorrect || false}::boolean, ${r.correctAnswer || ''}::text, ${r.userAnswer || ''}::text, ${Math.max(0, Math.floor(r.timeSpentSeconds ?? 0))}::int)`
         ),
         sql`, `
       )
@@ -151,6 +151,14 @@ async function _POST(request: NextRequest) {
       // la letra original. Además recalculamos is_correct server-side con la letra
       // FINAL (post-COALESCE) para no confiar en lo que dice el cliente.
       // Bug original: 17/19 psicotécnicas de Iván Bueno (06-may) marcadas mal.
+      //
+      // FIX (17-may-2026): añadir time_spent_seconds. Antes el insert en /init
+      // ponía 0 hardcoded y /complete nunca lo actualizaba, así que 100% de los
+      // simulacros oficiales tenían time_spent_seconds=0 (bug Nila). El cliente
+      // ahora envía el tiempo real medido en su sesión. Usamos GREATEST para no
+      // machacar valores reales guardados en sesiones previas (resume): si el
+      // usuario respondió Q5 en sesión 1 (tracked 18s) y reanuda en sesión 2
+      // sin volver a tocar Q5, el cliente envía 0 para Q5 y mantenemos los 18s.
       await db.execute(sql`
         UPDATE test_questions AS tq SET
           user_answer = u.user_answer,
@@ -170,8 +178,9 @@ async function _POST(request: NextRequest) {
               NULLIF(NULLIF(NULLIF(u.correct_answer, ''), '?'), 'x'),
               tq.correct_answer
             ))
-          )
-        FROM (VALUES ${valuesSql}) AS u(question_order, is_correct, correct_answer, user_answer)
+          ),
+          time_spent_seconds = GREATEST(u.time_spent_seconds, COALESCE(tq.time_spent_seconds, 0))
+        FROM (VALUES ${valuesSql}) AS u(question_order, is_correct, correct_answer, user_answer, time_spent_seconds)
         WHERE tq.test_id = ${testId}::uuid
           AND tq.question_order = u.question_order
       `)

@@ -423,7 +423,7 @@ export async function saveOfficialExamResults(
         userAnswer: result.userAnswer,
         correctAnswer: result.correctAnswer || 'unknown',
         isCorrect: result.isCorrect,
-        timeSpentSeconds: 0,
+        timeSpentSeconds: result.timeSpentSeconds ?? 0,
         articleNumber: isLegislative ? (result.articleNumber ?? null) : null,
         lawName: isLegislative ? (result.lawName ?? null) : null,
         difficulty: normalizeDifficulty(result.difficulty),
