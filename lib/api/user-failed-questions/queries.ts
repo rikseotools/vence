@@ -56,7 +56,11 @@ export async function getUserFailedQuestions(
       }
     }
 
-    // Query principal: obtener todas las respuestas incorrectas
+    // Query principal: obtener respuestas incorrectas recientes.
+    // LIMIT 2000 corta el barrido para heavy users (61k+ test_questions causaban
+    // statement_timeout 30s — bug 17/05 user 8201a5d2). El uso UI agrupa por
+    // question_id en JS para "repaso de fallos"; >2000 fallos del mismo user
+    // produce conteos suficientemente representativos sin barrer años.
     const failedAnswers = await db
       .select({
         questionId: testQuestions.questionId,
@@ -74,6 +78,7 @@ export async function getUserFailedQuestions(
       .innerJoin(laws, eq(articles.lawId, laws.id))
       .where(and(...conditions))
       .orderBy(desc(testQuestions.createdAt))
+      .limit(2000)
 
     if (!failedAnswers || failedAnswers.length === 0) {
       return {

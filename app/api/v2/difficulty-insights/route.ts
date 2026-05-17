@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getDifficultyInsights } from '@/lib/api/difficulty-insights/queries'
 import { getDifficultyInsightsRequestSchema } from '@/lib/api/difficulty-insights/schemas'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { withDbTimeout, isDbTimeoutError } from '@/lib/db/timeout'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -19,7 +20,24 @@ async function _GET(request: NextRequest) {
     )
   }
 
-  const result = await getDifficultyInsights(parseResult.data.userId)
+  // Quick-fail 12s. Observado 504 Vercel Runtime Timeout 300s con la query
+  // pesada en blips de pool: mejor responder 503 retryable a los 12s que
+  // dejar la lambda colgada los 300s del maxDuration de Vercel.
+  let result
+  try {
+    result = await withDbTimeout(
+      () => getDifficultyInsights(parseResult.data.userId),
+      12000,
+    )
+  } catch (err) {
+    if (isDbTimeoutError(err)) {
+      return NextResponse.json(
+        { success: false, error: 'Servicio saturado momentáneamente. Reintenta en 5 minutos.', retryable: true },
+        { status: 503, headers: { 'Retry-After': '60' } }
+      )
+    }
+    throw err
+  }
 
   if (!result.success) {
     return NextResponse.json(result, { status: 500 })

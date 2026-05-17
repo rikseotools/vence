@@ -7,6 +7,7 @@ import {
 } from '@/lib/api/user-failed-questions'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { withDbTimeout, isDbTimeoutError } from '@/lib/db/timeout'
 // ============================================
 // POST /api/questions/user-failed
 // Obtener preguntas que el usuario ha fallado
@@ -39,8 +40,24 @@ async function _POST(request: Request) {
       )
     }
 
-    // Obtener preguntas falladas via Drizzle
-    const result = await getUserFailedQuestions(validation.data)
+    // Quick-fail 12s. Sin esto, la query 5-way JOIN sobre test_questions
+    // para users heavy (61k+ filas) caía en statement_timeout=30s del DSN,
+    // y la lambda esperaba hasta agotar maxDuration de Vercel.
+    let result
+    try {
+      result = await withDbTimeout(
+        () => getUserFailedQuestions(validation.data),
+        12000,
+      )
+    } catch (err) {
+      if (isDbTimeoutError(err)) {
+        return NextResponse.json(
+          { success: false, error: 'Servicio saturado momentáneamente. Reintenta en 5 minutos.', retryable: true },
+          { status: 503, headers: { 'Retry-After': '60' } }
+        )
+      }
+      throw err
+    }
 
     if (!result.success) {
       return NextResponse.json(
