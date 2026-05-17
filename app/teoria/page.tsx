@@ -1,6 +1,19 @@
 // app/teoria/page.tsx - PÁGINA PRINCIPAL DE TEORÍA CON SEO
-// force-dynamic: fetchLawsList timeout en build (57014 statement timeout con 3600 páginas)
-export const dynamic = 'force-dynamic'
+//
+// Edge caching con stale-while-revalidate (2026-05-17):
+// - revalidate=3600: la página se cachea 1h en CDN edge de Vercel (y en
+//   cualquier CDN si migráramos a otro hosting — `Cache-Control` es
+//   estándar HTTP).
+// - Cuando expira, Vercel sirve la versión stale al usuario instantáneo
+//   y regenera en background. Si la regeneración falla (statement
+//   timeout, BD saturada), sigue sirviendo stale.
+// - Resultado: el usuario nunca paga los ~4s de fetchLawsList ni ve
+//   "Error cargando leyes", independientemente de a qué lambda Fluid
+//   le toque la regeneración.
+//
+// El unstable_cache interno con revalidate:false se mantiene como capa
+// adicional de Data Cache, complementaria al edge cache.
+export const revalidate = 3600
 
 import { unstable_cache } from 'next/cache'
 import { fetchLawsList } from '@/lib/teoriaFetchers'
