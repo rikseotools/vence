@@ -1,7 +1,7 @@
 # Vence — Architecture Roadmap a 100k+ usuarios
 
-> **Última actualización:** 2026-05-16
-> **Estado:** Fase 0 casi completa (0.1-0.6 hechas) + **Fase 1 Redis ✅ COMPLETA y AMPLIADA** + **Sprint 1 seguridad ✅ COMPLETO** (5 sub-sprints) + **Sprint 2 hardening cascade ✅ COMPLETO** (18 sub-sprints, 19 commits, **deployed en producción**, validado en logs) + **Sprint 3 fallos post-deploy ✅ COMPLETO** (4 fallos detectados en logs Vercel tras Sprint 2 deploy y resueltos en sesión). Sprint 2: invalidación caches existentes saneada, singleflight anti-stampede, regions:lhr1 (validado 80ms→3.37ms), 5 endpoints más cacheados (test-config family + hot-articles + law-stats + verify-stats + estimate), quick-fail wrapper en 11 endpoints, observability (Sentry beforeSend + cache hit-rate counters). Sprint 3: TypeError streaming Next 16 (inlineCss disabled), userAnswer=-1 (schema fix), theme-stats timeout heavy users (covering index 12.5s→502ms = 24.9x), GeoIP timeout (Vercel headers sync, sin ip-api.com). Pendiente: 0.5 verificar p95 producción, **Fase 0.7 (JWT local verify)** documentada como next big win, **Fase 11 push (DROP TABLES BD)** esperar 24-48h.
+> **Última actualización:** 2026-05-17
+> **Estado:** Fase 0 casi completa (0.1-0.6 hechas) + **Fase 1 Redis ✅ COMPLETA y AMPLIADA** + **Sprint 1 seguridad ✅ COMPLETO** (5 sub-sprints) + **Sprint 2 hardening cascade ✅ COMPLETO** (18 sub-sprints, 19 commits, **deployed en producción**, validado en logs) + **Sprint 3 fallos post-deploy ✅ COMPLETO** (4 fallos detectados en logs Vercel tras Sprint 2 deploy y resueltos en sesión) + **Sprint 4 audit pool mode + outbox blindado ✅ COMPLETO 2026-05-17** (3 commits — refactor advisory_lock→SKIP LOCKED, quick-fail user-failed+difficulty-insights, audit pool mode revela ya transaction). Sprint 2: invalidación caches existentes saneada, singleflight anti-stampede, regions:lhr1 (validado 80ms→3.37ms), 5 endpoints más cacheados (test-config family + hot-articles + law-stats + verify-stats + estimate), quick-fail wrapper en 11 endpoints, observability (Sentry beforeSend + cache hit-rate counters). Sprint 3: TypeError streaming Next 16 (inlineCss disabled), userAnswer=-1 (schema fix), theme-stats timeout heavy users (covering index 12.5s→502ms = 24.9x), GeoIP timeout (Vercel headers sync, sin ip-api.com). Pendiente: 0.5 verificar p95 producción, **Fase 0.7 (JWT local verify)** documentada como next big win, **Fase 11 push (DROP TABLES BD)** esperar 24-48h.
 > **Objetivo:** preparar Vence para escalar a 100k+ usuarios sin perder features ni romper nada
 > **Coste extra estimado total (Fases 0-3):** $10-40/mes
 > **Coste extra estimado total (Fases 0-5):** $50-150/mes
@@ -135,6 +135,30 @@ Tras hacer push de los 19 commits de Sprint 2, revisión de logs Vercel detectó
 - Materializar `user_theme_stats` summary table (para escalar theme-stats a 100k DAU)
 - Discriminated union para `userAnswer` (-1 vs null+isBlank) — deuda técnica heredada
 - Deprecar `/api/answer` con flag `dryRun` en `/api/v2/answer-and-save`
+
+## Sprint 4 audit pool mode + outbox blindado ✅ COMPLETO (2026-05-17)
+
+Gatillado por logs Vercel 17/05 19:01-19:12: cascada de 503/504 en `/api/medals`, `/api/daily-limit`, `/api/questions/filtered`, `SSR temarios`, `/api/admin/infra-stats`, `/api/v2/difficulty-insights` y `/api/questions/user-failed`. Investigación: BD a 68/90 conexiones (76%) durante el blip → no margen para nuevas requests.
+
+| Sprint | Acción | Estado | Commit |
+|---|---|---|---|
+| **4.1** | Audit a fondo de las 65-68 conexiones simultáneas. Breakdown: **26 inmovibles** (postgrest 22 + storage 3 + supabase_auth_admin 2 + supabase_admin 1 + pg_cron 1 + pg_net 1 + postgres_exporter 1 + realtime 12 + Supavisor 4 = en realidad 47 sumadas todas las del servicio Supabase) + **6-17 postgres.js (Drizzle)** según pico. Las 22 postgrest del servicio Supabase REST mantienen pool propio con conexiones idle de **hasta 55 días** (LISTEN "pgrst" para schema reload) — comportamiento interno del servicio, no migrables desde código aplicación | ✅ Documentado |
+| **4.2** | Audit features incompatibles con transaction mode: `LISTEN/NOTIFY` ❌ no usado, `TEMP TABLE` ❌ no usado en código, `SET search_path` ✅ solo dentro de `CREATE FUNCTION` (contexto propio), `prepare: false` ✅ activo, `Realtime postgres_changes` ✅ WebSocket interno Supabase (no LISTEN cliente). **Único punto incompatible encontrado**: advisory locks de sesión en `lib/outbox/processBatch.ts` | ✅ Documentado |
+| **4.3** | Refactor `processBatch.ts`: `pg_try_advisory_lock` (session-level) → `FOR UPDATE SKIP LOCKED` dentro de `db.transaction()`. Estándar Postgres, portable a cualquier modo de pool (Supavisor session/transaction, PgBouncer self-hosted, AWS RDS Proxy). Outbox actualmente con 0 eventos en BD → cero riesgo funcional. Test funcional verificado contra BD producción: dos conexiones paralelas confirman que SKIP LOCKED oculta la fila a la segunda mientras la primera la procesa | ✅ | `c003ce0f` |
+| **4.4** | Quick-fail en endpoints que aparecieron en logs sin protección: `/api/v2/difficulty-insights` (504 Vercel Runtime 300s observado) + `/api/questions/user-failed` (statement_timeout 30s con 5-way JOIN sobre 61k+ test_questions de user heavy). Ambos withDbTimeout(12s) → 503 retryable con Retry-After 60s | ✅ | `20bd7d6a` |
+| **4.5** | `lib/api/user-failed-questions/queries.ts`: añadido `.limit(2000)` a la query principal. Heavy users con 2553+ test_questions incorrectas saturaban el plan. 2000 fallos recientes muestra suficiente para el agregado por question_id que hace la UI de "repaso de fallos" | ✅ | `20bd7d6a` (mismo commit) |
+| **4.6** | Detección de pool mode actual via test de comportamiento (2 conexiones TCP cliente → mismo backend PID = multiplexing): **YA estamos en transaction mode** (puerto 6543 Supavisor). El falso positivo del test inicial fue por sticky session dentro de una sola conexión TCP — con poco tráfico el pooler reusa el backend disponible. Es decir: no hay nada que cambiar en pool mode | ✅ Documentado |
+
+**Conclusiones del Sprint 4:**
+
+1. **Ya estamos en transaction mode**. Las 17 postgres.js que veíamos no son lambdas independientes, son los backends reales multiplexados por Supavisor para todo el tráfico Drizzle.
+2. **Los blips del 17/05 NO son de nuestro pool mode** — son blips del Supavisor compartido (servicio Supabase). Cuando ese servicio tiene latencia, todos los clientes de la región eu-west-2 sufren.
+3. **Camino para evitar blips compartidos**: activar `USE_SELF_HOSTED_POOLER=true` con `DATABASE_URL_SELF_POOLER=pooler.vence.es:6543` (PgBouncer dedicado en Lightsail London, ya provisionado, Patrón A canary del Fase 3.x). Pendiente decidir rollout.
+4. **El refactor del outbox era una bomba latente**: los advisory locks "funcionaban por suerte" porque caían en el mismo backend con poco tráfico, pero con pico de tráfico Supavisor rotaría backends y dejaría locks huérfanos. Ahora blindado.
+
+**Pendiente flagged en Sprint 4:**
+- Decisión: activar `USE_SELF_HOSTED_POOLER=true` para aislar Vence del Supavisor compartido — eliminaría los blips por contención de otros clientes Supabase.
+- Considerar upgrade Supabase Pro → Team si el headroom de 42 slots para nuestras lambdas (90 max - 48 fijas de Supabase) se queda corto.
 
 ---
 
@@ -471,9 +495,10 @@ Construido el plumbing del outbox **sin migrar todavía ningún trigger**. Todo 
 - **Schema Drizzle**: `outboxEvents` en `db/schema.ts`.
 - **Helper transaccional** `lib/outbox/enqueue.ts:enqueueEvent(tx, event)`: exige una `tx` activa como primer argumento — no se permite encolar fuera de transacción. Esa firma garantiza atomicidad por construcción: si la transacción del request hace rollback, el evento desaparece.
 - **Worker** `lib/outbox/processBatch.ts:processOutboxBatch(db, limit)`:
-  - Advisory lock `pg_try_advisory_lock(7263847569)` para evitar dos workers simultáneos.
+  - **Aislamiento entre workers vía `FOR UPDATE SKIP LOCKED`** dentro de `db.transaction()` — row-level lock estándar Postgres, portable a cualquier modo de pool (Supavisor session/transaction, PgBouncer self-hosted, AWS RDS Proxy, Postgres directo). Workers concurrentes reservan filas distintas sin bloquearse entre sí. **Refactor 2026-05-17 commit `c003ce0f`**: el patrón anterior usaba `pg_try_advisory_lock` (lock de sesión) que se rompía silenciosamente en pool transaction mode — LOCK y UNLOCK podían acabar en conexiones backend distintas dejando el lock huérfano y permitiendo dos workers paralelos pisándose. SKIP LOCKED elimina la dependencia de session-level state.
   - SELECT con filtro `attempts < MAX_ATTEMPTS (10)` → eventos con 10 fallos quedan como dead-letter (conservados en BD para inspección, ignorados por el worker).
   - Por evento: dispatch → UPDATE `processed_at`. Si el handler lanza, UPDATE `attempts++` + `last_error`. Try/catch defensivo alrededor de ambos UPDATEs para que un blip BD no mate el resto del lote.
+  - **Trade-off documentado** (post-refactor): la transacción se mantiene abierta durante todo el batch para que los row locks de SKIP LOCKED se mantengan hasta el COMMIT. Los handlers DEBEN ser idempotentes Y rápidos — sin I/O largo (>60s chocaría con `idle_in_transaction_session_timeout`). Para handlers largos en el futuro habrá que añadir columna `started_processing_at` con TTL en vez de retener el lock todo el batch.
   - Sin handlers todavía: `dispatch` sólo conoce `__placeholder__` (sin efecto, usado en tests).
 - **Endpoint** `app/api/cron/process-outbox/route.ts`: GET con Bearer auth (`CRON_SECRET`), `runCronWithLogging` registra cada run en `cron_runs` con `cron_name = 'process-outbox'`. Usa `getAdminDb()` (Drizzle, max:4) — cero llamadas a `@supabase/supabase-js` para el outbox.
 - **Schedule** `.github/workflows/process-outbox.yml`: GHA cron `*/5 * * * *` (best-effort, suficiente para handlers que toleren lag de minutos). NO se añadió a `vercel.json` a propósito — el outbox queda desacoplado de Vercel para facilitar migración futura a AWS / Hetzner.
@@ -494,7 +519,7 @@ Plan genérico cuando llegue el primer caso:
 
 **Salvaguardas:**
 - Idempotencia (UPSERT, no INSERT) en lo que procesa el worker — los handlers son los responsables de tolerar reintento.
-- Lock distribuido (advisory lock) en el cron para evitar dobles procesamientos.
+- Aislamiento entre workers vía `FOR UPDATE SKIP LOCKED` (estándar Postgres, no depende de session). Workers concurrentes ven filas distintas.
 - Si worker falla, eventos se acumulan, se procesan al recuperar (sin pérdida).
 - Dead-letter (`MAX_ATTEMPTS = 10`) para que un handler con bug no se reintente infinitamente.
 
