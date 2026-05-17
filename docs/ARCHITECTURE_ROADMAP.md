@@ -50,6 +50,7 @@ Este roadmap cambia la arquitectura **sin reescribir** el código, en 6 fases in
 | **1 — Redis cache** | ✅ COMPLETA (2026-05-02) | 1-2 sem | $10 | -80% load BD | Bajo |
 | **2 — Outbox pattern** | 🟡 Infra (paso 0) hecha 2026-05-16 — tabla `outbox_events` + helper Drizzle `enqueueEvent(tx)` + worker `/api/cron/process-outbox` (advisory lock + dead-letter `attempts<10`) + GHA cron 5min. **Sin handlers**: tras audit, los 11 triggers actuales de `test_questions` son ligeros y no necesitan outbox. Infra queda lista para próximos casos síncronos pesados | 2-3 sem | $0 | Estabilidad escrituras | Medio |
 | **2-bis — Materialización `global_difficulty`** | ✅ **COMPLETA 2026-05-17**. Trigger AFTER INSERT en `question_first_attempts` re-agrega los 4 sums (self-healing). Cron viejo `recalc-global-difficulty` apagado: trigger viejo ya no marca `global_dirty`, función SQL droppeada, endpoint eliminado, entrada vercel.json removida, workflow GHA borrado. Resultado medido: 7 errores → 0, avg 1117ms → 493ms, 0 emails de fallo. Pendiente: DROP COLUMN `global_dirty` tras 48h (mié 2026-05-21) | 1 día | $0 | Elimina deadlocks/statement timeouts del cron, latencia 5min→inmediato | Cero (verificado) |
+| **2-ter — Hot path páginas/endpoints semi-estáticos** | ✅ **COMPLETA 2026-05-17**. `/teoria` migrado a `revalidate=3600` con Cache-Control SWR servido por CDN edge — 8 visitas post-deploy 100% HIT, max 11s→1.1s. `/api/ranking` materializado en tabla `ranking_cache` poblada por cron GHA `*/5min`, endpoint pasa de GROUP BY 9-12s a SELECT <100ms — simulación 10 visitas/10 lambdas 50-349ms, max 11s→349ms (32×). Cero dependencia Vercel (Cache-Control + tabla SQL son portables a CloudFront/Cloudflare/Hetzner) | 1 día | $0 | Elimina cold starts visibles + 503 saturación, libera pool BD | Cero (verificado) |
 | **3 — Pool split / replica** | ✅ **COMPLETA (2026-05-09)** — `getDb` max:1 + `getAdminDb` max:4 + `getReadDb` apunta a read replica eu-west-2 (provisionada Small ~$15/mes). 3 endpoints migrados (theme-stats, problematic-articles, ranking). Feature flag `USE_READ_REPLICA` permite rollback 30s | 2-3 sem | ~$15/mes | Aislamiento OLTP + descarga lecturas del primary | Bajo |
 | **4 — Async queues** | ⏳ Pendiente | 1-2 sem | $0-20 | -50% writes BD principal | Medio |
 | **5 — Data warehouse** | ⏳ Pendiente | 3-6 sem | $30-100 | Analytics escalable | Bajo |
@@ -598,6 +599,38 @@ Eliminados en el mismo commit:
 Pendiente para mié 2026-05-21 (48h después): `DROP COLUMN questions.global_dirty` en PR aparte, tras confirmar que ningún código residual la lee.
 
 **Beneficio medido tras el apagado:** 0 emails de fallo GHA por este cron, 0 deadlocks por contención del UPDATE batch contra `track_question_first_attempt`, latencia de `global_difficulty` "hasta 5 min" → inmediato tras la respuesta. Migración SQL aplicada sin incidentes.
+
+---
+
+## Fase 2-ter — Optimización hot path de páginas/endpoints semi-estáticos ✅ 2026-05-17
+
+Tras cerrar Fase 2-bis (crones de difficulty apagados), se atacaron dos endpoints visibles que provocaban timeouts en producción: `/teoria` (SSR "Error cargando leyes") y `/api/ranking` (saturación 503, ~30/día). Misma filosofía: mover el coste lejos del camino del usuario.
+
+### `/teoria` — Edge caching SWR
+
+**Antes:** `fetchLawsList()` ejecutaba JOIN `laws` + `articles` que devolvía 40.501 filas (~4.2s en caliente). El cache `unstable_cache` era permanente (`revalidate: false`) pero NO se comparte entre lambdas Vercel Fluid — cada lambda nueva regeneraba con cold start de 4-20s. Combinado con saturación BD → `statement_timeout 8s` → renderiza error.
+
+**Diagnóstico empírico:** 6 visitas consecutivas a `/teoria` → 6 lambdas Fluid distintas, 5/6 con cold start de 3-20s (la primera 20.158ms). El cache local por lambda no escalaba.
+
+**Solución (commit `94805e4b`):** una línea — `export const dynamic = 'force-dynamic'` → `export const revalidate = 3600`. Next.js emite `Cache-Control: public, s-maxage=3600, stale-while-revalidate=...`. Vercel CDN edge cachea el HTML pre-rendered, **todas las lambdas ven el mismo cache compartido**. Cuando expira, una sola lambda regenera (coalescing); si falla, sirve stale.
+
+**Resultado medido 8 visitas post-deploy:** `x-vercel-cache: HIT` en las 8. Latencia 141-1168ms (incluye RTT). 0/8 cold. Max 11.118ms → 1.168ms = **10× speedup en el peor caso**.
+
+**Portabilidad:** `Cache-Control` es estándar HTTP (RFC 7234) + SWR es RFC 5861. CloudFront, Cloudflare, Fastly y cualquier CDN lo respetan idénticamente. Migración futura fuera de Vercel sin cambios.
+
+### `/api/ranking` — Tabla pre-agregada `ranking_cache`
+
+**Antes:** `GROUP BY user_id` sobre `test_questions` (1M filas) en cada cache miss. Tiempo medido: 9-12s consistentes. Con `RANKING_TIMEOUT_MS=12s` + saturación → 503 visible (~30/día). El Redis cache (Upstash, fresh window 60s) tapaba la mayoría pero el cold post-invalidación seguía exponiendo el problema.
+
+**Diagnóstico:** EXPLAIN ANALYZE confirma 160k buffer reads + agregación CPU-bound. No es optimizable más sin materializar.
+
+**Solución (commit `cd483bfd`):** materializar `ranking_cache(time_filter, user_id, total_questions, correct_answers, accuracy, refreshed_at)` con índice cubriente. Función SQL `refresh_ranking_cache()` que regenera los 4 timeFilters (today/yesterday/week/month) en operaciones independientes. Cron GHA cada 5min (`refresh-rankings.yml` → `/api/cron/refresh-rankings`). El endpoint pasa de GROUP BY pesado a SELECT trivial. `getRanking` y `getUserPosition` migrados.
+
+**Resultado medido 10 visitas post-deploy** (10 lambdas distintas, `minQuestions=157` para forzar Redis miss): 50-349ms, 0 errores. Max 11.118ms → 349ms = **32× speedup en cold start.** Avg 89ms.
+
+**Coste del cron:** `month` agrega ~700k filas → 17s. Aceptable porque está en background fuera del camino del usuario. A 100k DAU monitorizar; si roza statement_timeout 60s, particionar o usar covering index.
+
+**Tiebreak añadido:** `ORDER BY accuracy DESC, total_questions DESC, user_id ASC` (paridad determinista entre `getRanking` listado y `getUserPosition`).
 
 ---
 
