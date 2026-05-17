@@ -559,6 +559,25 @@ Comparativa antes/después del trigger nuevo:
 
 El cron viejo sigue corriendo como red de seguridad (sobreescribe `global_difficulty` con el mismo valor que el trigger ya calculó — fórmula idéntica algebraicamente).
 
+### Apagado del cron recalc-question-difficulty ✅ 2026-05-17
+
+Tras analizar el sentido del campo `difficulty` (text) en `questions`, se concluyó que el cron `recalc-question-difficulty` recalculaba un valor sesgado: agregaba TODAS las respuestas de `test_questions` (incluidos retests donde los mismos usuarios repasan y aciertan más), bajando artificialmente la dificultad real de la pregunta.
+
+`global_difficulty_category` (basado solo en primer intento de cada usuario, mantenido incremental por el trigger de Fase 2-bis) ya es la categoría real sin sesgo. El campo `difficulty` queda como categoría estática de importación ('medium' por default), sirviendo de fallback honesto cuando una pregunta no tiene primer intento todavía.
+
+`supabase/migrations/20260517_drop_question_difficulty_cron_system.sql`:
+1. `update_question_difficulty_immediate` ahora es NO-OP (deja de marcar `stats_dirty=true` en cada INSERT a test_questions).
+2. DROP FUNCTION `recalculate_dirty_question_difficulty`.
+
+Eliminados:
+- `app/api/cron/recalc-question-difficulty/route.ts`.
+- `.github/workflows/recalc-question-difficulty.yml`.
+- Entrada `recalc-question-difficulty` en `vercel.json`. **vercel.json queda sin crons** — Vence ya no depende de Vercel Cron para nada (desacoplo total del proveedor).
+
+Pendientes posteriores (PRs aparte tras margen 48h):
+- DROP COLUMN `questions.stats_dirty` (mié 2026-05-21).
+- Evaluar si la columna `questions.difficulty` (text) sigue aportando valor a medio plazo o se puede eliminar también.
+
 ### Bajada del umbral ≥3 → ≥1 ✅ 2026-05-17
 
 `supabase/migrations/20260517_global_difficulty_lower_threshold.sql`: el umbral mínimo de first_attempts para calcular `global_difficulty_category` baja de ≥3 a ≥1. Antes mezclaba dos conceptos: confianza estadística (sistema adaptativo) y umbral para categorizar (filtros UX). Ahora separados: la categoría se calcula con ≥1 first_attempt; el sistema adaptativo sigue exigiendo ≥3/≥5 en sus propias funciones (`get_effective_psychometric_difficulty`, `get_effective_law_question_difficulty`) — sin cambios ahí.
