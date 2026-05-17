@@ -559,6 +559,12 @@ Comparativa antes/después del trigger nuevo:
 
 El cron viejo sigue corriendo como red de seguridad (sobreescribe `global_difficulty` con el mismo valor que el trigger ya calculó — fórmula idéntica algebraicamente).
 
+### Bajada del umbral ≥3 → ≥1 ✅ 2026-05-17
+
+`supabase/migrations/20260517_global_difficulty_lower_threshold.sql`: el umbral mínimo de first_attempts para calcular `global_difficulty_category` baja de ≥3 a ≥1. Antes mezclaba dos conceptos: confianza estadística (sistema adaptativo) y umbral para categorizar (filtros UX). Ahora separados: la categoría se calcula con ≥1 first_attempt; el sistema adaptativo sigue exigiendo ≥3/≥5 en sus propias funciones (`get_effective_psychometric_difficulty`, `get_effective_law_question_difficulty`) — sin cambios ahí.
+
+Impacto: 47 preguntas con 1-2 first_attempts pasaron de NULL a tener categoría (35 hard, 8 medium, 5 easy, 1 extreme). Los filtros las usan ahora con su valor real en vez del fallback a `difficulty`. Resto del sistema sin cambios.
+
 ### Paso 3 — Apagar el sistema viejo ✅ HECHO 2026-05-17
 
 `supabase/migrations/20260517_drop_global_dirty_cron_system.sql`:
