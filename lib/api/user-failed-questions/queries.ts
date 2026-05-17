@@ -1,9 +1,16 @@
 // lib/api/user-failed-questions/queries.ts - Queries Drizzle para preguntas falladas del usuario
 // CANARY pooler (sweep masivo oleada 5 — todos user-facing 2026-05-10):
-import { getDb, getPoolerDb } from '@/db/client'
+// READ REPLICA (2026-05-17): migrado a getReadDb() — aísla la query de 5-way
+// JOIN sobre test_questions del primary. Antes podía colgar el pool max:1 y
+// arrastrar en cascada a daily-limit/topics/medals (cascade reproducido en
+// logs 20:58-21:00 UTC del 17/05, user 8201a5d2 con Ley 39/2015). Same
+// pattern as notifications/queries.ts, ranking/queries.ts, etc.
+// Reversible con env USE_READ_REPLICA=false (fallback automático a primary
+// vía getReadDb()).
+import { getDb, getReadDb, getPoolerDb } from '@/db/client'
 
 function getUserFailedDb() {
-  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getReadDb()
 }
 import { questions, articles, laws, tests, testQuestions, topics } from '@/db/schema'
 import { eq, and, inArray, desc, gte, gt, isNotNull } from 'drizzle-orm'
