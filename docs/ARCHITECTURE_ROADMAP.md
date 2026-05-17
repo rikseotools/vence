@@ -50,7 +50,7 @@ Este roadmap cambia la arquitectura **sin reescribir** el código, en 6 fases in
 | **1 — Redis cache** | ✅ COMPLETA (2026-05-02) | 1-2 sem | $10 | -80% load BD | Bajo |
 | **2 — Outbox pattern** | 🟡 Infra (paso 0) hecha 2026-05-16 — tabla `outbox_events` + helper Drizzle `enqueueEvent(tx)` + worker `/api/cron/process-outbox` (advisory lock + dead-letter `attempts<10`) + GHA cron 5min. **Sin handlers**: tras audit, los 11 triggers actuales de `test_questions` son ligeros y no necesitan outbox. Infra queda lista para próximos casos síncronos pesados | 2-3 sem | $0 | Estabilidad escrituras | Medio |
 | **2-bis — Materialización `global_difficulty`** | ✅ **COMPLETA 2026-05-17**. Trigger AFTER INSERT en `question_first_attempts` re-agrega los 4 sums (self-healing). Cron viejo `recalc-global-difficulty` apagado: trigger viejo ya no marca `global_dirty`, función SQL droppeada, endpoint eliminado, entrada vercel.json removida, workflow GHA borrado. Resultado medido: 7 errores → 0, avg 1117ms → 493ms, 0 emails de fallo. Pendiente: DROP COLUMN `global_dirty` tras 48h (mié 2026-05-21) | 1 día | $0 | Elimina deadlocks/statement timeouts del cron, latencia 5min→inmediato | Cero (verificado) |
-| **2-ter — Hot path páginas/endpoints semi-estáticos** | ✅ **COMPLETA 2026-05-17**. `/teoria` migrado a `revalidate=3600` con Cache-Control SWR servido por CDN edge — 8 visitas post-deploy 100% HIT, max 11s→1.1s. `/api/ranking` materializado en tabla `ranking_cache` poblada por cron GHA `*/5min`, endpoint pasa de GROUP BY 9-12s a SELECT <100ms — simulación 10 visitas/10 lambdas 50-349ms, max 11s→349ms (32×). Cero dependencia Vercel (Cache-Control + tabla SQL son portables a CloudFront/Cloudflare/Hetzner) | 1 día | $0 | Elimina cold starts visibles + 503 saturación, libera pool BD | Cero (verificado) |
+| **2-ter — Hot path páginas/endpoints semi-estáticos** | ✅ **COMPLETA 2026-05-17**. `/teoria` migrado a `revalidate=3600` con Cache-Control SWR servido por CDN edge — 8 visitas post-deploy 100% HIT, max 11s→1.1s. `/api/ranking` materializado en tabla `ranking_cache` poblada por cron GHA `*/5min`, endpoint pasa de GROUP BY 9-12s a SELECT <100ms — simulación 10 visitas/10 lambdas 50-349ms, max 11s→349ms (32×). 38 SSR temarios `/[oposicion]/temario/[slug]` migrados a `revalidate=3600` — 30 visitas post-deploy, 0 timeouts ≥15s, p50 490ms, max 3s. Admin dashboard con Cache-Control privado 300s+SWR 600s — mitiga 504 sin sobre-ingeniería. Cero dependencia Vercel (Cache-Control + tabla SQL son portables a CloudFront/Cloudflare/Hetzner) | 1 día | $0 | Elimina cold starts visibles + 503 saturación, libera pool BD | Cero (verificado) |
 | **3 — Pool split / replica** | ✅ **COMPLETA (2026-05-09)** — `getDb` max:1 + `getAdminDb` max:4 + `getReadDb` apunta a read replica eu-west-2 (provisionada Small ~$15/mes). 3 endpoints migrados (theme-stats, problematic-articles, ranking). Feature flag `USE_READ_REPLICA` permite rollback 30s | 2-3 sem | ~$15/mes | Aislamiento OLTP + descarga lecturas del primary | Bajo |
 | **4 — Async queues** | ⏳ Pendiente | 1-2 sem | $0-20 | -50% writes BD principal | Medio |
 | **5 — Data warehouse** | ⏳ Pendiente | 3-6 sem | $30-100 | Analytics escalable | Bajo |
@@ -662,6 +662,16 @@ A diferencia de `/teoria` (ruta sin parámetros, `x-vercel-cache: HIT` confirmad
 **Coste del cron:** `month` agrega ~700k filas → 17s. Aceptable porque está en background fuera del camino del usuario. A 100k DAU monitorizar; si roza statement_timeout 60s, particionar o usar covering index.
 
 **Tiebreak añadido:** `ORDER BY accuracy DESC, total_questions DESC, user_id ASC` (paridad determinista entre `getRanking` listado y `getUserPosition`).
+
+### `/api/v2/admin/dashboard` — Cache HTTP privado
+
+**Antes:** endpoint admin-only que ejecuta 11 queries en `Promise.all` sobre pool `getDb()` (max:1). Aunque conceptualmente paralelas, se serializan por el pool. En cascada BD las queries acumulan tiempo hasta tocar Vercel `maxDuration=300s` → 504. Observado 4 veces el 16/05 entre 15:08-15:24.
+
+**Solución (commit `03a71c04`):** una sola línea — añadir `Cache-Control: private, max-age=300, stale-while-revalidate=600` al response. El navegador cachea por 5 min y mantiene stale hasta 10 min. Cuando el admin abre el panel varias veces seguidas, sólo la primera visita ejecuta queries; las siguientes son instantáneas desde el browser cache.
+
+**Por qué no más elaborado:** es admin-only (1-10 visitas/día). Redis cache cross-instance o materialización en tabla serían sobre-ingeniería. El cache HTTP del navegador resuelve el 90% del caso de uso real (el admin abre el panel, navega, vuelve).
+
+**Cuando se vuelva relevante:** si en el futuro se permite acceso multi-admin o el endpoint se llama desde un dashboard que refresca cada N segundos, migrar a Redis cache compartido siguiendo el patrón de `/api/ranking`.
 
 ---
 
