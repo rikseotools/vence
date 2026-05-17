@@ -6,6 +6,7 @@ export const getUserStatsRequestSchema = z.object({
 })
 
 export const userPublicStatsSchema = z.object({
+  // Core (user_stats_summary, <1ms)
   totalQuestions: z.number(),
   globalAccuracy: z.number(),
   currentStreak: z.number(),
@@ -19,6 +20,21 @@ export const userPublicStatsSchema = z.object({
   correctAnswers: z.number(),
   incorrectAnswers: z.number(),
   blankAnswers: z.number(),
+
+  // Perfil (user_profiles, PK lookup)
+  targetOposicion: z.string().nullable(),
+  userCreatedAt: z.string().nullable(),
+
+  // Racha (user_streaks, PK lookup)
+  longestStreak: z.number(),
+
+  // Tests (agregados con índice idx_tests_user_completed)
+  totalTestsCompleted: z.number(),
+
+  // Hoy (zona Madrid, agregados con índice user+created_at)
+  todayTests: z.number(),
+  todayQuestions: z.number(),
+  todayCorrect: z.number(),
 })
 
 export type UserPublicStats = z.infer<typeof userPublicStatsSchema>

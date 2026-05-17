@@ -84,15 +84,18 @@ export default function UserProfileModal({ isOpen, onClose, userId, userName }) 
         .gte('created_at', today.toISOString())
         .lt('created_at', tomorrow.toISOString())
 
-      // 3.5. Analizar método de estudio basado en mastered_topics
-      const masteredTopics = stats?.[0]?.mastered_topics || 0
+      // 3.5. Método de estudio: derivado de tests completados.
+      // La API ya no devuelve mastered_topics (era cálculo on-the-fly de
+      // 8s+ para heavy users). Si el usuario tiene tests completados,
+      // asumimos que estudia activamente.
+      const totalTestsCompleted = stats?.[0]?.totalTestsCompleted || 0
 
       let studyMethodData = {
-        studyMethod: masteredTopics > 1 ? 'by_topics' : 'random'
+        studyMethod: 'random'  // placeholder hasta que precomputemos mastered_topics
       }
 
-      // 4. Calcular tiempo en Vence
-      const createdAt = new Date(stats?.[0]?.user_created_at)
+      // 4. Calcular tiempo en Vence (userCreatedAt viene de user_profiles)
+      const createdAt = stats?.[0]?.userCreatedAt ? new Date(stats[0].userCreatedAt) : null
       const timeInVence = calculateTimeInVence(createdAt)
 
       // 5. Extraer leyes únicas estudiadas hoy
@@ -137,33 +140,57 @@ export default function UserProfileModal({ isOpen, onClose, userId, userName }) 
         avatarColor = 'from-indigo-500 to-purple-500'
       }
 
-      // Combinar todos los datos (la nueva RPC trae todo)
+      // Combinar todos los datos. La API user-stats devuelve campos en
+      // camelCase; aquí los normalizamos a snake_case para el resto del
+      // componente sin tocar el JSX.
+      const s = stats?.[0] || {}
       const finalData = {
-        ...stats?.[0],
         display_name: displayName,
         ciudad: publicProfile?.ciudad,
         avatar_type: avatarType,
         avatar_emoji: avatarEmoji,
         avatar_color: avatarColor,
         avatar_url: avatarUrl,
-        streak: stats?.[0]?.current_streak || 0,
+
+        // Stats globales (camelCase desde API → snake_case interno)
+        total_questions: s.totalQuestions || 0,
+        global_accuracy: s.globalAccuracy || 0,
+        correct_answers: s.correctAnswers || 0,
+        incorrect_answers: s.incorrectAnswers || 0,
+        blank_answers: s.blankAnswers || 0,
+        questions_this_week: s.questionsThisWeek || 0,
+
+        // Perfil
+        target_oposicion: s.targetOposicion || null,
         time_in_vence: timeInVence,
-        mastered_topics: stats?.[0]?.mastered_topics || 0,
-        study_method: studyMethodData.studyMethod
+
+        // Racha
+        current_streak: s.currentStreak || 0,
+        longest_streak: s.longestStreak || 0,
+        streak: s.currentStreak || 0,
+
+        // Tests
+        total_tests_completed: s.totalTestsCompleted || 0,
+        today_tests: s.todayTests || 0,
+        today_questions: s.todayQuestions || 0,
+        today_correct: s.todayCorrect || 0,
+
+        study_method: studyMethodData.studyMethod,
       }
 
       console.log('✅ ProfileData establecido:', {
         display_name: displayName,
-        mastered_topics: finalData.mastered_topics,
-        time_in_vence: finalData.time_in_vence
+        target_oposicion: finalData.target_oposicion,
+        time_in_vence: finalData.time_in_vence,
+        total_questions: finalData.total_questions,
       })
 
       setProfileData(finalData)
 
       setTodayActivity({
         tests: todayTests || [],
-        total_questions: stats?.[0]?.today_questions || 0,
-        correct_answers: stats?.[0]?.today_correct || 0,
+        total_questions: s.todayQuestions || 0,
+        correct_answers: s.todayCorrect || 0,
         laws_studied: lawsToday,
         practiceStats,
         examStats
@@ -179,8 +206,9 @@ export default function UserProfileModal({ isOpen, onClose, userId, userName }) 
   const calculateTimeInVence = (createdAt) => {
     if (!createdAt) return 'Nuevo usuario'
 
+    const created = createdAt instanceof Date ? createdAt : new Date(createdAt)
+    if (Number.isNaN(created.getTime())) return 'Nuevo usuario'
     const now = new Date()
-    const created = new Date(createdAt)
     const diffMs = now - created
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
 
@@ -317,20 +345,15 @@ export default function UserProfileModal({ isOpen, onClose, userId, userName }) 
                     </div>
                   </div>
 
-                  {/* Indicador descriptivo de método de estudio */}
+                  {/* Resumen de actividad. La distinción por método de estudio
+                      (by_topics vs random) dependía de mastered_topics, que era
+                      cálculo de 8s+ para heavy users; vuelve cuando precomputemos. */}
                   <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
                     <div className="text-center">
-                      {profileData.study_method === 'by_topics' ? (
-                        <p className="text-sm text-gray-700 dark:text-gray-300">
-                          <span className="font-medium text-purple-600 dark:text-purple-400">📚 {profileData.display_name || 'Usuario'} estudia por temas</span>
-                          <span className="text-gray-500 dark:text-gray-400"> ({profileData.mastered_topics} temas dominados)</span>
-                        </p>
-                      ) : (
-                        <p className="text-sm text-gray-700 dark:text-gray-300">
-                          <span className="font-medium text-blue-600 dark:text-blue-400">🎲 {profileData.display_name || 'Usuario'} hace tests aleatorios principalmente</span>
-                          <span className="text-gray-500 dark:text-gray-400"> ({profileData.total_tests_completed || 0} tests completados)</span>
-                        </p>
-                      )}
+                      <p className="text-sm text-gray-700 dark:text-gray-300">
+                        <span className="font-medium text-blue-600 dark:text-blue-400">📚 {profileData.display_name || 'Usuario'}</span>
+                        <span className="text-gray-500 dark:text-gray-400"> ha completado {profileData.total_tests_completed || 0} tests</span>
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -359,107 +382,15 @@ export default function UserProfileModal({ isOpen, onClose, userId, userName }) 
                       </p>
                       <p className="text-xs text-gray-500">Mejor racha</p>
                     </div>
-                    {/* Solo mostrar temas dominados si tiene oposición auxiliar_administrativo_estado
-                        Y si realmente estudia por temas (más de 1 tema dominado).
-                        Si solo tiene 0-1 temas, probablemente hace tests aleatorios */}
-                    {(() => {
-                      const normalizedOposicion = profileData.target_oposicion?.replace(/-/g, '_')
-                      const isAuxiliar = normalizedOposicion === 'auxiliar_administrativo_estado'
-                      console.log('🔍 Evaluando condición temas dominados:', {
-                        target_oposicion: profileData.target_oposicion,
-                        normalized: normalizedOposicion,
-                        mastered_topics: profileData.mastered_topics,
-                        isAuxiliar,
-                        condition: isAuxiliar && (profileData.mastered_topics || 0) > 1
-                      })
-                      return null
-                    })()}
-                    {profileData.target_oposicion ? (
-                      <div className="text-center">
-                        <p className="text-2xl font-bold text-purple-600">
-                          {profileData.mastered_topics || 0}
-                          <span className="text-base text-gray-500 ml-1">/{profileData.total_topics || 28}</span>
-                          <span className="text-xs text-gray-400 block">
-                            ({Math.round(((profileData.mastered_topics || 0) / (profileData.total_topics || 28)) * 100)}%)
-                          </span>
-                        </p>
-                        <p className="text-xs text-gray-500 mt-1">Temas dominados</p>
-                        {(() => {
-                          const temasDominados = profileData.mastered_topics || 0
-                          const totalTemas = profileData.total_topics || 28
-                          const temasPendientes = totalTemas - temasDominados
-
-                          // Calcular ritmo de progreso basado en tiempo en Vence
-                          const diasEnVence = profileData.time_in_vence ? (() => {
-                            const timeStr = profileData.time_in_vence
-                            if (timeStr.includes('año')) {
-                              const years = parseInt(timeStr.match(/(\d+)\s+año/)?.[1] || 0)
-                              const months = parseInt(timeStr.match(/(\d+)\s+mes/)?.[1] || 0)
-                              return years * 365 + months * 30
-                            } else if (timeStr.includes('mes')) {
-                              const months = parseInt(timeStr.match(/(\d+)\s+mes/)?.[1] || 0)
-                              return months * 30
-                            } else if (timeStr.includes('día')) {
-                              return parseInt(timeStr.match(/(\d+)\s+día/)?.[1] || 1)
-                            }
-                            return 1
-                          })() : 30
-
-                          // Si no hay temas dominados, mostrar mensaje de ayuda
-                          if (temasDominados === 0) {
-                            return (
-                              <p className="text-xs text-amber-600 mt-2">
-                                💡 Domina tu primer tema (≥70% precisión + 10 preguntas) para ver tu proyección
-                              </p>
-                            )
-                          }
-
-                          // Si todos los temas están dominados
-                          if (temasDominados >= totalTemas) {
-                            return (
-                              <p className="text-xs text-green-600 mt-2">
-                                ✅ ¡Felicidades! Has dominado todo el temario
-                              </p>
-                            )
-                          }
-
-                          // Calcular ritmo si hay temas dominados
-                          const temasPoSemana = (temasDominados / diasEnVence) * 7
-                          const semanasNecesarias = Math.ceil(temasPendientes / temasPoSemana)
-
-                          // Calcular fecha proyectada
-                          const fechaProyectada = new Date()
-                          fechaProyectada.setDate(fechaProyectada.getDate() + (semanasNecesarias * 7))
-
-                          // Formatear fecha
-                          const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-                                         'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
-                          const fechaFormateada = `${fechaProyectada.getDate()} ${meses[fechaProyectada.getMonth()]} ${fechaProyectada.getFullYear()}`
-
-                          // Solo mostrar si es una proyección razonable (menos de 2 años)
-                          if (semanasNecesarias < 104) {
-                            return (
-                              <p className="text-xs text-green-600 mt-2">
-                                📅 A este ritmo, {profileData.display_name ? `${profileData.display_name} dominará` : 'dominarás'} todo el temario para el <span className="font-bold">{fechaFormateada}</span>
-                              </p>
-                            )
-                          }
-
-                          return (
-                            <p className="text-xs text-gray-500 mt-2">
-                              📊 Sigue practicando para calcular una proyección
-                            </p>
-                          )
-                        })()}
-                      </div>
-                    ) : (
-                      <div className="text-center">
-                        <p className="text-2xl font-bold text-indigo-600">
-                          {profileData.total_tests_completed || 0}
-                        </p>
-                        <p className="text-xs text-gray-500">Tests completados</p>
-                      </div>
-                    )}
+                    {/* Tests completados (sustituye la antigua "Temas dominados"
+                        que requería cálculo de 8s+ para heavy users. Pendiente
+                        precompute en user_topic_stats para reintroducirlo). */}
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-indigo-600">
+                        {profileData.total_tests_completed || 0}
+                      </p>
+                      <p className="text-xs text-gray-500">Tests completados</p>
+                    </div>
                   </div>
                 </div>
 

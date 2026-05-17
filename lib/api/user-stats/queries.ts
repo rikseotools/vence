@@ -5,27 +5,102 @@
 // CANARY self-hosted pooler (Fase 4 oleada 4 — URGENTE 2026-05-10 20:35 UTC):
 // Migrado tras blip activo de Supavisor causando 504s en user-stats.
 // Read-only puro (PK lookups + reads). Cero riesgo, alto impacto.
+//
+// Ampliación 2026-05-17: añadido targetOposicion, userCreatedAt, longestStreak,
+// totalTestsCompleted, today*. Todo en Drizzle con queries paralelas
+// (Promise.all). Sin RPCs Supabase ni triggers SQL — portable a AWS.
 import { getDb, getPoolerDb } from '@/db/client'
 
 function getUserStatsDb() {
   return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
 }
-import { userStreaks } from '@/db/schema'
-import { eq, sql } from 'drizzle-orm'
+import { userStreaks, userProfiles, tests, testQuestions } from '@/db/schema'
+import { and, eq, gte, lt, sql } from 'drizzle-orm'
 import type { UserPublicStats } from './schemas'
 
 export async function getUserPublicStats(userId: string): Promise<UserPublicStats> {
   const db = getUserStatsDb()  // canary pooler
 
-  // Query 1: stats desde tabla pre-computada (PK lookup, <1ms)
-  // El trigger update_user_stats_summary_trigger actualiza estos contadores
-  // incrementalmente en cada INSERT en test_questions.
-  const summaryResult = await db.execute(
-    sql`SELECT total_questions, correct_answers, blank_answers,
-               questions_this_week, week_start
-        FROM user_stats_summary
-        WHERE user_id = ${userId}`
-  )
+  // Madrid timezone day bounds (today_* siempre en hora peninsular)
+  const madridNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Madrid' }))
+  const madridTodayStart = new Date(madridNow); madridTodayStart.setHours(0,0,0,0)
+  const madridTomorrowStart = new Date(madridTodayStart); madridTomorrowStart.setDate(madridTomorrowStart.getDate() + 1)
+  const todayStartIso = madridTodayStart.toISOString()
+  const tomorrowStartIso = madridTomorrowStart.toISOString()
+
+  // Lanzar todas las queries en paralelo (Promise.all)
+  // El tiempo total = max(individuales), no la suma.
+  const [
+    summaryResult,
+    streakRows,
+    profileRows,
+    testsCompletedRows,
+    todayTestsRows,
+    todayAnswersRows,
+  ] = await Promise.all([
+    // 1. Stats agregadas (PK lookup en user_stats_summary, <1ms)
+    db.execute(
+      sql`SELECT total_questions, correct_answers, blank_answers,
+                 questions_this_week, week_start
+          FROM user_stats_summary
+          WHERE user_id = ${userId}`
+    ),
+
+    // 2. Streak (PK lookup, <1ms)
+    db
+      .select({
+        currentStreak: userStreaks.currentStreak,
+        longestStreak: userStreaks.longestStreak,
+      })
+      .from(userStreaks)
+      .where(eq(userStreaks.userId, userId))
+      .limit(1),
+
+    // 3. Perfil (PK lookup, <1ms)
+    db
+      .select({
+        targetOposicion: userProfiles.targetOposicion,
+        createdAt: userProfiles.createdAt,
+      })
+      .from(userProfiles)
+      .where(eq(userProfiles.id, userId))
+      .limit(1),
+
+    // 4. Tests completados totales (índice idx_tests_user_completed)
+    db
+      .select({ c: sql<number>`count(*)::int` })
+      .from(tests)
+      .where(and(eq(tests.userId, userId), eq(tests.isCompleted, true))),
+
+    // 5. Tests hoy (índice idx_tests_user_created)
+    db
+      .select({ c: sql<number>`count(*)::int` })
+      .from(tests)
+      .where(
+        and(
+          eq(tests.userId, userId),
+          gte(tests.createdAt, todayStartIso),
+          lt(tests.createdAt, tomorrowStartIso),
+        )
+      ),
+
+    // 6. Preguntas y correctas hoy (test_questions tiene user_id directo
+    //    + created_at; con índice por user_id se filtra rápido para usuarios
+    //    no-heavy. Si surge problema con heavy users, mover a tabla agregada.)
+    db
+      .select({
+        total: sql<number>`count(*)::int`,
+        correct: sql<number>`count(*) filter (where ${testQuestions.isCorrect})::int`,
+      })
+      .from(testQuestions)
+      .where(
+        and(
+          eq(testQuestions.userId, userId),
+          gte(testQuestions.createdAt, todayStartIso),
+          lt(testQuestions.createdAt, tomorrowStartIso),
+        )
+      ),
+  ])
 
   const summary = (summaryResult as any)?.[0] as {
     total_questions: number
@@ -34,6 +109,11 @@ export async function getUserPublicStats(userId: string): Promise<UserPublicStat
     questions_this_week: number
     week_start: string
   } | undefined
+  const streak = (streakRows as Array<{ currentStreak: number | null; longestStreak: number | null }>)?.[0]
+  const profile = (profileRows as Array<{ targetOposicion: string | null; createdAt: string | null }>)?.[0]
+  const testsCompletedRow = (testsCompletedRows as Array<{ c: number }>)?.[0]
+  const todayTestsRow = (todayTestsRows as Array<{ c: number }>)?.[0]
+  const todayAnswersRow = (todayAnswersRows as Array<{ total: number; correct: number }>)?.[0]
 
   let total: number
   let correct: number
@@ -100,23 +180,27 @@ export async function getUserPublicStats(userId: string): Promise<UserPublicStat
     }
   }
 
-  // Query 2: streak (lookup directo por PK, instantáneo)
-  const [streakResult] = await db
-    .select({ currentStreak: userStreaks.currentStreak })
-    .from(userStreaks)
-    .where(eq(userStreaks.userId, userId))
-    .limit(1)
-
   const incorrect = total - correct - blank
 
   return {
     totalQuestions: total,
     globalAccuracy: total > 0 ? Math.round((correct / total) * 1000) / 10 : 0,
-    currentStreak: streakResult?.currentStreak ?? 0,
+    currentStreak: streak?.currentStreak ?? 0,
     questionsThisWeek: thisWeek,
     correctAnswers: correct,
     incorrectAnswers: Math.max(0, incorrect),
     blankAnswers: blank,
+
+    targetOposicion: profile?.targetOposicion ?? null,
+    userCreatedAt: profile?.createdAt ?? null,
+
+    longestStreak: streak?.longestStreak ?? 0,
+
+    totalTestsCompleted: Number(testsCompletedRow?.c ?? 0),
+
+    todayTests: Number(todayTestsRow?.c ?? 0),
+    todayQuestions: Number(todayAnswersRow?.total ?? 0),
+    todayCorrect: Number(todayAnswersRow?.correct ?? 0),
   }
 }
 
