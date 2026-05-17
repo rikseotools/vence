@@ -21,6 +21,7 @@ describe('ContentDataRenderer', () => {
               '**Categoría B:** Documentos normales.',
             ]
           }}
+          imageUrl={null}
         />
       )
 
@@ -36,6 +37,7 @@ describe('ContentDataRenderer', () => {
           contentData={{
             instructions: ['Regla simple sin formato.']
           }}
+          imageUrl={null}
         />
       )
 
@@ -48,6 +50,7 @@ describe('ContentDataRenderer', () => {
           contentData={{
             instructions: ['**Categoría A:** Texto descriptivo.']
           }}
+          imageUrl={null}
         />
       )
 
@@ -65,6 +68,7 @@ describe('ContentDataRenderer', () => {
           contentData={{
             text_passage: 'El **Estado** tiene 542.125 empleados.'
           }}
+          imageUrl={null}
         />
       )
 
@@ -79,6 +83,7 @@ describe('ContentDataRenderer', () => {
           contentData={{
             text_passage: '**Importante:** Este es el dato clave.'
           }}
+          imageUrl={null}
         />
       )
 
@@ -90,14 +95,14 @@ describe('ContentDataRenderer', () => {
   describe('empty/null content_data', () => {
     test('returns null for empty content_data', () => {
       const { container } = render(
-        <ContentDataRenderer contentData={{}} />
+        <ContentDataRenderer contentData={{}} imageUrl={null} />
       )
       expect(container.innerHTML).toBe('')
     })
 
     test('returns null for null content_data', () => {
       const { container } = render(
-        <ContentDataRenderer contentData={null} />
+        <ContentDataRenderer contentData={null} imageUrl={null} />
       )
       expect(container.innerHTML).toBe('')
     })
@@ -109,7 +114,7 @@ describe('ContentDataRenderer', () => {
 
     test('renders <img> with image_base64 src when only image_base64 is set', () => {
       const { container } = render(
-        <ContentDataRenderer contentData={{ image_base64: TINY_PNG_B64 }} />
+        <ContentDataRenderer contentData={{ image_base64: TINY_PNG_B64 }} imageUrl={null} />
       )
       const img = container.querySelector('img')
       expect(img).not.toBeNull()
@@ -148,6 +153,7 @@ describe('ContentDataRenderer', () => {
             image_base64: TINY_PNG_B64,
             instructions: ['**Categoría A:** Texto.'],
           }}
+          imageUrl={null}
         />
       )
       expect(container.querySelector('img')).not.toBeNull()
@@ -155,7 +161,7 @@ describe('ContentDataRenderer', () => {
     })
 
     test('regresión: pregunta legislativa pura (sin content_data ni image) no renderiza nada', () => {
-      const { container } = render(<ContentDataRenderer contentData={null} />)
+      const { container } = render(<ContentDataRenderer contentData={null} imageUrl={null} />)
       expect(container.querySelector('img')).toBeNull()
       expect(container.innerHTML).toBe('')
     })

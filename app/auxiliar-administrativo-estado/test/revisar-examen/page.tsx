@@ -33,6 +33,8 @@ function RevisarExamenContent() {
       articleNumber: string | null
       lawName: string | null
       explanation: string | null
+      imageUrl: string | null
+      contentData?: unknown
       article: string | null
       isPsychometric: boolean
       userAnswer: string | null

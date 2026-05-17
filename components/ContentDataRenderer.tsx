@@ -12,7 +12,12 @@ import MarkdownExplanation from './MarkdownExplanation'
 
 interface ContentDataRendererProps {
   contentData: Record<string, unknown> | null | undefined
-  imageUrl?: string | null
+  // OBLIGATORIO (no opcional): si la pregunta no tiene imagen, pasar null o undefined
+  // explícitamente. Antes era opcional y los callers lo omitían, lo que provocó
+  // que 361 preguntas psicotécnicas con imagen en BD aparecieran sin tabla
+  // (bug Miau 17/05/2026). Mantener required para forzar a TS a recordárselo a
+  // cualquier futuro caller.
+  imageUrl: string | null | undefined
 }
 
 interface TableData {

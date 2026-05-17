@@ -1197,7 +1197,10 @@ export default function OfficialExamLayout({
   ): React.ReactElement {
     return (
       <div className="space-y-3">
-        <ContentDataRenderer contentData={question.contentData as Record<string, unknown> | null} />
+        <ContentDataRenderer
+          contentData={question.contentData as Record<string, unknown> | null}
+          imageUrl={question.imageUrl}
+        />
         {(['A', 'B', 'C', 'D', 'E'] as const).slice(0, question.options.length).map((letter, optIndex) => {
           const optionText = question.options[optIndex]
           const isSelected = selectedIndex === optIndex
