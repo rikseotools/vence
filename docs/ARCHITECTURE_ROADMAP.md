@@ -618,6 +618,14 @@ Tras cerrar Fase 2-bis (crones de difficulty apagados), se atacaron dos endpoint
 
 **Portabilidad:** `Cache-Control` es estándar HTTP (RFC 7234) + SWR es RFC 5861. CloudFront, Cloudflare, Fastly y cualquier CDN lo respetan idénticamente. Migración futura fuera de Vercel sin cambios.
 
+### SSR `/[oposicion]/temario/tema-X` — Edge caching SWR (38 páginas)
+
+**Antes:** todas las páginas de temario por oposición tenían `dynamic = 'force-dynamic'` (legado del refactor del 30/04/2026 para no saturar BD en build). Eso forzaba SSR en cada visita. Cuando la BD se saturaba (ej. cascada del 12:48 UTC del 17/05), `getTopicContent()` superaba el quick-fail 15s → página rota visible al usuario.
+
+**Solución (commit `fbb0cc09`):** mismo patrón que `/teoria` aplicado por sed bulk a las 38 `page.tsx` (una por oposición). `dynamic = 'force-dynamic'` → `revalidate = 3600`. Next.js emite Cache-Control con SWR; Vercel CDN cachea por ruta (cada `/[oposicion]/temario/tema-N` es cache key independiente). Visitas repetidas se sirven desde edge global. Cuando expira, una sola lambda regenera; stale-if-error sirve la versión vieja si la regeneración falla.
+
+**Cobertura:** ~16 oposiciones × ~16 temas = ~256 páginas cacheables. El warmup post-deploy (`warm-cache-post-deploy.js`) ya las visita, así que el cache se calienta automáticamente al desplegar.
+
 ### `/api/ranking` — Tabla pre-agregada `ranking_cache`
 
 **Antes:** `GROUP BY user_id` sobre `test_questions` (1M filas) en cada cache miss. Tiempo medido: 9-12s consistentes. Con `RANKING_TIMEOUT_MS=12s` + saturación → 503 visible (~30/día). El Redis cache (Upstash, fresh window 60s) tapaba la mayoría pero el cold post-invalidación seguía exponiendo el problema.
