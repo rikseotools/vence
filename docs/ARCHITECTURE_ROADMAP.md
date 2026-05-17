@@ -622,9 +622,32 @@ Tras cerrar Fase 2-bis (crones de difficulty apagados), se atacaron dos endpoint
 
 **Antes:** todas las páginas de temario por oposición tenían `dynamic = 'force-dynamic'` (legado del refactor del 30/04/2026 para no saturar BD en build). Eso forzaba SSR en cada visita. Cuando la BD se saturaba (ej. cascada del 12:48 UTC del 17/05), `getTopicContent()` superaba el quick-fail 15s → página rota visible al usuario.
 
-**Solución (commit `fbb0cc09`):** mismo patrón que `/teoria` aplicado por sed bulk a las 38 `page.tsx` (una por oposición). `dynamic = 'force-dynamic'` → `revalidate = 3600`. Next.js emite Cache-Control con SWR; Vercel CDN cachea por ruta (cada `/[oposicion]/temario/tema-N` es cache key independiente). Visitas repetidas se sirven desde edge global. Cuando expira, una sola lambda regenera; stale-if-error sirve la versión vieja si la regeneración falla.
+**Solución (commit `fbb0cc09`):** mismo patrón que `/teoria` aplicado por sed bulk a las 38 `page.tsx` (una por oposición). `dynamic = 'force-dynamic'` → `revalidate = 3600`. Next.js emite Cache-Control con SWR.
 
-**Cobertura:** ~16 oposiciones × ~16 temas = ~256 páginas cacheables. El warmup post-deploy (`warm-cache-post-deploy.js`) ya las visita, así que el cache se calienta automáticamente al desplegar.
+**Resultado medido (simulación 30 visitas a 6 URLs distintas post-deploy):**
+- 0 timeouts ≥15s (vs 5/5 durante la cascada baseline).
+- Latencia: min 169ms, p50 490ms, p95 1991ms, max 3046ms.
+- Pool BD: 2 active / 55 idle (limpio).
+
+### Limitación conocida — `x-vercel-cache: MISS` en temarios
+
+A diferencia de `/teoria` (ruta sin parámetros, `x-vercel-cache: HIT` confirmado en 8/8 visitas), las páginas `/[oposicion]/temario/[slug]` son **rutas dinámicas sin `generateStaticParams`**. Sin esa función, Vercel CDN no pre-genera HTML para cada URL — cada visita pasa por una lambda Fluid que sí se beneficia del Next.js Data Cache interno (de ahí las latencias 200-2000ms), pero el HTML completo no se cachea en edge.
+
+**Implicación a 10k DAU:** ~25k invocaciones de lambda/hora solo para temarios cuando todas podrían servirse desde CDN edge global con HIT real (sub-100ms). Es óptimo: el problema crítico (timeouts) está resuelto pero la solución no escala al máximo.
+
+**Por qué no se hizo ya:** el refactor del 30/04/2026 (commit que migró a `force-dynamic`) descartó `generateStaticParams` porque "intentar generar ~3600 páginas estáticas con 3 workers + 90 connections max de Supabase saturaba la BD en build". El warm-cache-post-deploy se creó como alternativa.
+
+**Por qué se puede revisitar ahora:** tras Fase 2-bis (apagar crones difficulty) y Fase 2-ter (edge caching), la BD respira mejor. Probablemente generateStaticParams en build vuelva a ser viable. **Hay que probarlo.**
+
+**Plan recomendado cuando se decida atacar:**
+1. Empezar conservador: `generateStaticParams` que devuelva solo top 5 temas más visitados × top 3 oposiciones (~15 páginas pre-rendered). Con `dynamicParams = true` el resto sigue siendo on-demand con revalidate=3600.
+2. Verificar que el build no se rompe.
+3. Si OK, ampliar progresivamente hasta cubrir todas las combinaciones.
+4. Alternativa: build con 1 worker en lugar de 3 para no saturar BD, aceptando build de 15-30 min.
+
+**Coste de no hacerlo:** mientras esto no se haga, los temarios siguen funcionando bien (sin timeouts) pero pagan cómputo de lambda en cada visita. A 10k DAU el impacto es manejable; a 100k DAU empezaría a notarse.
+
+**Cobertura actual:** ~16 oposiciones × ~16 temas = ~256 páginas. El warmup post-deploy (`warm-cache-post-deploy.js`) ya las visita, lo que mantiene el Next.js Data Cache interno caliente entre lambdas.
 
 ### `/api/ranking` — Tabla pre-agregada `ranking_cache`
 
