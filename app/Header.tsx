@@ -452,10 +452,15 @@ export default function HeaderES() {
   }
 
   // Enlace a tests de la oposición del usuario (desde OposicionContext)
+  // Si el contexto aún no tiene opoId (ej. carga inicial), derivamos el slug del
+  // pathname actual para evitar enviar al usuario a home cuando está dentro de
+  // una oposición. Último fallback: primer slug de la lista.
   const getTestsLink = (): string => {
     const opoId = oposicionContext?.oposicionId
-    if (!opoId) return '/'
-    return configGetTestsLink(opoId)
+    if (opoId) return configGetTestsLink(opoId)
+    const segments = pathname?.split('/').filter(Boolean) ?? []
+    const slugFromPath = segments.find(seg => ALL_OPOSICION_SLUGS.includes(seg))
+    return `/${slugFromPath || ALL_OPOSICION_SLUGS[0]}/test`
   }
 
   // Obtener color dinamico
@@ -787,10 +792,7 @@ export default function HeaderES() {
               {/* 📚 ICONO DE TEMARIO - Solo en móvil */}
               {user && (
                 <Link
-                  href={(() => {
-                    const testsLink = getTestsLink()
-                    return testsLink === '/' ? `/${ALL_OPOSICION_SLUGS[0]}/temario` : testsLink.replace('/test', '/temario')
-                  })()}
+                  href={getTestsLink().replace('/test', '/temario')}
                   className="xl:hidden p-1.5 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg transition-colors"
                   aria-label="Ir a Temario"
                   title="Ver Temario"
