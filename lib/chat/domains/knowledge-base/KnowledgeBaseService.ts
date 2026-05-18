@@ -477,16 +477,16 @@ Ahi encontraras todos tus tests completados con fecha, nota y desglose por ley.
 👉 **[Ir directamente a Mis Estadisticas](/mis-estadisticas)**`
   }
 
-  // Preparar / crear test personalizado (incluye variantes "preguntas" e inversiones)
+  // Preparar / crear test personalizado (incluye variantes "preguntas", "cuestionario", "quiz")
   if (
-    /prep[aá]ra(me|nos)?\s+(un\s+)?(test|preguntas?)/i.test(msgLower) ||
-    /hazme\s+(un\s+)?(test|preguntas?)/i.test(msgLower) ||
-    /me\s+(haces|creas|generas|preparas)\s+(un\s+)?(test|preguntas?)/i.test(msgLower) ||
-    /puedes\s+(hacer|crear|generar|preparar)(me)?\s+(un\s+)?(test|preguntas?)/i.test(msgLower) ||
-    /cr[eé]a(me)?\s+(un\s+)?(test|preguntas?)/i.test(msgLower) ||
-    /gen[eé]ra(me)?\s+(un\s+)?(test|preguntas?)/i.test(msgLower) ||
-    /quiero\s+(un\s+)?(test|practicar)\b/i.test(msgLower) ||
-    /necesito\s+(un\s+)?test\b/i.test(msgLower)
+    /prep[aá]ra(me|nos)?\s+(un\s+)?(test|quiz|cuestionario|preguntas?)/i.test(msgLower) ||
+    /hazme\s+(un\s+)?(test|quiz|cuestionario|preguntas?)/i.test(msgLower) ||
+    /me\s+(haces|creas|generas|preparas)\s+(un\s+)?(test|quiz|cuestionario|preguntas?)/i.test(msgLower) ||
+    /puedes\s+(hacer|crear|generar|preparar)(me)?\s+(un\s+)?(test|quiz|cuestionario|preguntas?)/i.test(msgLower) ||
+    /cr[eé]a(me)?\s+(un\s+)?(test|quiz|cuestionario|preguntas?)/i.test(msgLower) ||
+    /gen[eé]ra(me)?\s+(un\s+)?(test|quiz|cuestionario|preguntas?)/i.test(msgLower) ||
+    /quiero\s+(un\s+)?(test|quiz|cuestionario|practicar)\b/i.test(msgLower) ||
+    /necesito\s+(un\s+)?(test|quiz|cuestionario)\b/i.test(msgLower)
   ) {
     return `**Crear un test personalizado**
 

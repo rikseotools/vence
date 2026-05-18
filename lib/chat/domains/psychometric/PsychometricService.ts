@@ -7,6 +7,7 @@ import { getOpenAI, CHAT_MODEL, CHAT_MODEL_PREMIUM } from '../../shared/openai'
 import { getAnthropic, ANTHROPIC_MODEL } from '../../shared/anthropic'
 import { selectModel } from '../../shared/modelRouter'
 import { logger } from '../../shared/logger'
+import { stripLatex } from '../../shared/formatting'
 import { isPsychometricSubtype } from '../../shared/constants'
 import { buildPsychometricPrompt, normalizeOptions, getCorrectLetter } from './prompts'
 import { validateLetterSequence, validateNumericSequence } from './validators/sequenceValidator'
@@ -288,7 +289,11 @@ export async function processPsychometricQuestion(
     llmSpan?.end()
   }
 
-  // 5. Construir respuesta
+  // 5. Post-procesar: limpiar LaTeX que la UI no renderiza (defensa adicional
+  // al system prompt — el LLM lo usa a veces aunque se le pida no usarlo).
+  content = stripLatex(content) || content
+
+  // 6. Construir respuesta
   const builder = new ChatResponseBuilder()
     .domain('psychometric')
     .text(content)
