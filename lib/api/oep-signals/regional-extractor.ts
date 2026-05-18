@@ -99,7 +99,18 @@ export async function extractRegionalOeps(
     let raw = textBlock.text.trim()
     raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '')
 
-    const parsed = JSON.parse(raw)
+    // Extraer SOLO el primer objeto JSON. Haiku a veces incluye texto
+    // explicativo antes o después del JSON (ej. "Aquí tienes el resultado:
+    // {...}" o "{...} Espero que ayude"), lo que rompe JSON.parse(raw).
+    // El regex {[\s\S]*} es greedy desde el primer `{` hasta el último `}`,
+    // suficiente para JSON anidado de cualquier profundidad.
+    const jsonMatch = raw.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) {
+      console.warn('⚠️ [RegionalExtractor] No se encontró JSON en la respuesta')
+      return null
+    }
+
+    const parsed = JSON.parse(jsonMatch[0])
     const validation = regionalExtractionSchema.safeParse(parsed)
     if (!validation.success) {
       console.warn('⚠️ [RegionalExtractor] Validación fallida:', validation.error.issues)
