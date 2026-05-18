@@ -1141,6 +1141,171 @@ Distribuir en sesiones cortas, monitorizando el cupo del Max. La ROI del fix mas
 
 ---
 
+## 15. Lecciones del piloto masivo 18/05/2026 (1.131 transiciones, 45% falsos positivos)
+
+Esta sección documenta una sesión real donde el flujo §14 falló por saltarse la auditoría intermedia. Auditoría posterior detectó **45% falsos positivos en una muestra aleatoria de 200** (109 PERFECT / 91 FAIL). El problema NO fue de los agentes Sonnet — fue del orquestador humano (yo) que aplicó fixes sin segundo control.
+
+### 15.1 El ciclo correcto es verifica → AUDITA → aplica
+
+**Lo que NO debe hacerse** (lo que hicimos en el piloto fallido):
+```
+agente_procesamiento (Sonnet) INSERT en AVR
+   ↓
+orquestador APLICA con heurística regex débil
+   ↓
+cache invalidate (preguntas ya visibles a usuarios)
+   ↓
+auditoría a posteriori detecta 45% falsos positivos → revertir masivamente
+```
+
+**Lo que SÍ debe hacerse** (ciclo correcto post-piloto):
+```
+agente_procesamiento (Sonnet) INSERT en AVR con ai_provider='claude_code'
+   ↓
+agente_auditor INDEPENDIENTE (Sonnet) re-valida desde cero con criterio §3.1+§8.1 ESTRICTO
+   INSERT en AVR con ai_provider='claude_code_audit'
+   ↓
+orquestador SOLO aplica las que pasan AMBAS verificaciones independientes
+   ↓
+cache invalidate (preguntas visibles solo tras doble validación)
+```
+
+**Coste**: duplica cupo IA (2 verificaciones por pregunta). **Beneficio**: pasa de 54% PERFECT a ~95% PERFECT esperado.
+
+### 15.2 Función `isDidactic` como gate OBLIGATORIO
+
+Antes de cualquier `transition_question_state` a `approved`/`tech_approved`, ejecutar **automáticamente**:
+
+```javascript
+function isDidactic(explanation) {
+  if (!explanation) return false;
+  const hasMarkdown   = /\*\*[^*]+\*\*/.test(explanation);
+  const hasBlockquote = /^>\s|\n>\s/.test(explanation);
+  const hasPorQue     = /Por qué [A-D]\)?\s+es correcta/i.test(explanation);
+  const hasDemas      = /Por qué las demás son incorrectas/i.test(explanation);
+  return hasMarkdown && hasBlockquote && hasPorQue && hasDemas;
+}
+
+if (!isDidactic(newExplanation)) {
+  // NO transitionar — la explicación no cumple §8.1
+  // Dejar en needs_review esperando reescritura
+  return;
+}
+```
+
+**Hallazgo del piloto**: pasada regex sobre 591 aprobadas no auditadas detectó 163 (28%) que no cumplían §8.1 — el problema dominante (147 casos) fue ausencia del encabezado literal `"Por qué las demás son incorrectas"`. Los agentes Sonnet a veces generan bullets sin el encabezado explícito. La regex lo detecta sin coste IA.
+
+### 15.3 Check `laws.is_virtual` antes de elegir destino
+
+La columna `laws.is_virtual` (boolean) distingue leyes jurídicas normales (`false`) de leyes virtuales/técnicas (`true` — Word 365, Access 365, Outlook, Windows, Informática Básica, Supuestos CyL Excel/Word, etc. — actualmente 159 leyes).
+
+```javascript
+const { data: art } = await sb.from('articles')
+  .select('law_id, laws!inner(is_virtual)')
+  .eq('id', primary_article_id).single();
+const targetState = art.laws.is_virtual ? 'tech_approved' : 'approved';
+```
+
+**Incidente**: 70 preguntas técnicas (Word/Access/Outlook) transicionadas a `approved` por omitir este check. Corrección requirió 2 hops (`approved → needs_review → tech_approved`) porque `LEGAL_TRANSITIONS` no permite `approved → tech_approved` directo.
+
+### 15.4 Bug recurrente del filtro de confidence
+
+```javascript
+// MAL — deja pasar 'baja', 'media' como si fueran altas
+if (parseFloat(c) < 0.85) continue;  // parseFloat('baja') = NaN, NaN < 0.85 = false ❌
+
+// BIEN
+const isHigh = c === 'alta' || c === 'high' || (parseFloat(c) >= 0.85);
+if (!isHigh) continue;
+```
+
+**Incidente**: 18 preguntas con `confidence='baja'` se aprobaron por este bug y hubo que revertirlas.
+
+### 15.5 Re-vinculación de artículo (cambio `primary_article_id`) requiere también `explanation_fix`
+
+Si un agente propone `correct_article_suggestion`, el orquestador NO puede aplicar el cambio sin actualizar también la `explanation`. La explicación previa cita el artículo viejo (en blockquote literal §8.1) y queda inconsistente con el artículo nuevo.
+
+```javascript
+// ❌ MAL — re-vincula sin tocar explanation
+await sb.from('questions').update({
+  primary_article_id: newArtId,
+  updated_at: new Date().toISOString(),
+}).eq('id', q.id);
+
+// ✅ BIEN — solo aplicar si el agente también dio explanation_fix consistente
+if (!v.explanation_fix || v.explanation_fix.length < 100) continue;  // skip
+const explLower = v.explanation_fix.toLowerCase();
+const lawLower = nuevoLaw.short_name.toLowerCase();
+const artLower = nuevoArt.toLowerCase();
+if (!explLower.includes(lawLower) || !explLower.includes(`art. ${artLower}`)) continue;
+// Solo entonces:
+await sb.from('questions').update({
+  primary_article_id: newArtId,
+  explanation: v.explanation_fix,
+  updated_at: new Date().toISOString(),
+}).eq('id', q.id);
+```
+
+**Incidente**: 289 re-vinculaciones aplicadas sin actualizar `explanation` → 226 hubo que revertir a `needs_review`.
+
+### 15.6 Patrón sistémico: "Art X de LEY_A linkada a Art X de LEY_B"
+
+Patrones reales detectados en el piloto, todos por coincidencia de número de artículo entre leyes distintas:
+
+| Pregunta sobre | Vinculada (mal) a | Artículo correcto |
+|---|---|---|
+| RD 1451/2005 (rehabilitación funcionarios Justicia) | LOPJ (Audiencias) | Mismo número en RD 1451/2005 |
+| LO 4/2015 (Seguridad Ciudadana) | CE (libertad ideológica/expresión/etc) | Mismo número en LO 4/2015 |
+| Ley 50/1997 (Gobierno) | Ley 40/2015 (Régimen Jurídico AAPP) | Mismo número en Ley 50/1997 |
+| Orden JUS/615/2012 (jornada) | LOPJ | Mismo número en Orden JUS |
+| LOTC (TC) | CE Art.159 (composición TC) | Art. 16.3 LOTC |
+
+**Regla**: NO re-vincular a "Art. X de OTRA_LEY" sin verificar que el contenido del artículo destino contiene LITERALMENTE las palabras clave del enunciado. El agente que sugiere debe leer el `article_content` candidato, no solo confiar en el número.
+
+### 15.7 No confiar en `correct_article_suggestion` sin segundo control
+
+El piloto demostró que cuando el agente de procesamiento (`claude_code`) confidence alta, igual el agente auditor (`claude_code_audit`) detecta el error en ~40% de casos. La confianza del agente de procesamiento NO basta — necesita segundo agente independiente que re-valide.
+
+**Excepción**: cuando el patrón es claramente sistémico (todas las preguntas de "RD 1451/2005 art X" linkadas a "LOPJ art X" con análisis textual evidente), un script mecánico con detección por keyword en `article_content` ES seguro. Pero cuando el agente sugiere artículos heterogéneos por pregunta, hay que auditar.
+
+### 15.8 Estadísticas reales del piloto fallido vs. lo que se espera
+
+| Métrica | Piloto 18/05 sin audit intermedio | Esperado con audit intermedio |
+|---|---|---|
+| Tasa PERFECT en muestra aleatoria | 54.5% (109/200) | ≥95% |
+| Falsos positivos en aplicación | 45% | <5% |
+| Reversiones post-hoc | 249 (de 692 aplicadas) | <50 |
+| Tiempo wall-clock | ~6 h | ~9-10 h (más auditoría) |
+| Confianza en lo aprobado | Baja | Alta |
+
+**Conclusión**: ahorrar el coste del agente auditor sale carísimo. Mejor 2× cupo IA con confianza, que 1× cupo IA + 40% reversiones + auditoría manual.
+
+### 15.9 Pipeline de aplicación correcto (template)
+
+```javascript
+// Para cada pregunta candidata a aprobar:
+const verifyAvr = await getLatest(sb, qid, 'claude_code');       // procesamiento
+const auditAvr  = await getLatest(sb, qid, 'claude_code_audit'); // segundo control independiente
+
+// AMBAS deben confirmar los 3 controles
+if (!verifyAvr || !auditAvr) continue;  // falta alguno
+if (!(verifyAvr.article_ok && verifyAvr.answer_ok && verifyAvr.explanation_ok)) continue;
+if (!(auditAvr.article_ok && auditAvr.answer_ok && auditAvr.explanation_ok)) continue;
+if (!isHighConf(verifyAvr.confidence) || !isHighConf(auditAvr.confidence)) continue;
+
+// Gate regex isDidactic obligatorio
+if (!isDidactic(verifyAvr.explanation_fix || q.explanation)) continue;
+
+// Check is_virtual
+const isVirtual = q.articles.laws.is_virtual === true;
+const target = isVirtual ? 'tech_approved' : 'approved';
+
+// Solo entonces aplicar fix y transition
+// ...
+```
+
+---
+
 ## Verificación de Preguntas Psicotécnicas y Ortografía
 
 Las psicotécnicas y ortografía NO tienen artículo vinculado. El flujo de verificación es diferente.
