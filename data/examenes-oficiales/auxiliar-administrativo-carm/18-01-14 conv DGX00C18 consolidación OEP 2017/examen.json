@@ -1,0 +1,1082 @@
+{
+  "metadatos": {
+    "examen": "Auxiliar Administrativo Comunidad Autónoma Región de Murcia",
+    "convocatoria": "Código DGX00C18 - Consolidación empleo temporal",
+    "oep": "OEP 2017",
+    "plazas": 41,
+    "tipo_acceso": "Consolidación",
+    "modelo": "TIPO 1",
+    "fecha_examen": "2020-02-23",
+    "nota_fecha": "La convocatoria es de 14/01/2018 (DGX00C18), pero el examen se celebró el 23/02/2020 según los PDFs",
+    "fuente_pdf_cuestionario": "https://empleopublico.carm.es/publicaciones/24224.pdf",
+    "fuente_pdf_plantilla": "https://empleopublico.carm.es/publicaciones/24225.pdf"
+  },
+  "primera_parte": {
+    "descripcion": "Ejercicio único. 75 preguntas tipo test. Incluye 2 supuestos prácticos (Q51-63 y Q64-75).",
+    "preguntas": [
+      {
+        "numero": 1,
+        "tipo": "legislativa",
+        "ley_ref": "CE Art. 21",
+        "pregunta": "Según el art. 21 de la Constitución Española el derecho a la reunión pacífica y sin armas:",
+        "opciones": {
+          "a": "Necesitará autorización del Ayuntamiento donde se vaya a celebrar.",
+          "b": "No necesitará autorización previa.",
+          "c": "Necesitará autorización previa.",
+          "d": "Necesitará autorización de la autoridad competente en esa materia."
+        },
+        "respuesta_correcta": "b",
+        "anulada": false
+      },
+      {
+        "numero": 2,
+        "tipo": "legislativa",
+        "ley_ref": "LOPD Art. (LO 3/2018)",
+        "pregunta": "Según la Ley Orgánica 3/2018, de Protección de Datos Personales y garantía de los derechos digitales, ¿cuándo puede ejercerse el derecho de oposición?",
+        "opciones": {
+          "a": "Al mes.",
+          "b": "En cualquier momento.",
+          "c": "A los tres meses.",
+          "d": "A los 15 días."
+        },
+        "respuesta_correcta": "b",
+        "anulada": false
+      },
+      {
+        "numero": 3,
+        "tipo": "legislativa",
+        "ley_ref": "EARM Art. 55",
+        "pregunta": "Según el art. 55 del Estatuto de Autonomía, ¿qué mayoría de la Asamblea Regional es necesaria para aprobar el proyecto de reforma del estatuto, cuando se trate de asumir nuevas competencias?",
+        "opciones": {
+          "a": "Mayoría simple.",
+          "b": "Mayoría de 3/5 de sus miembros, ya que se trata de una reforma del estatuto.",
+          "c": "Mayoría absoluta.",
+          "d": "No es necesaria mayoría alguna de la Asamblea, debe ser aprobado por mayoría absoluta de las cortes Generales."
+        },
+        "respuesta_correcta": "c",
+        "anulada": false
+      },
+      {
+        "numero": 4,
+        "tipo": "legislativa",
+        "ley_ref": "Ley 6/2004 CARM Art. 21",
+        "pregunta": "Según el artículo 21 de la Ley 6/2004, del Estatuto del Presidente y del Consejo de Gobierno de la Región de Murcia, el Consejo de Gobierno:",
+        "opciones": {
+          "a": "Dirige la política regional y coordina la Administración Pública de la Región de Murcia.",
+          "b": "Ejerce la iniciativa ejecutiva.",
+          "c": "Se compone del Presidente, del Vicepresidente y de los consejeros, en su caso.",
+          "d": "El Presidente nombra y separa libremente al Vicepresidente, pero no a los consejeros."
+        },
+        "respuesta_correcta": "a",
+        "anulada": false
+      },
+      {
+        "numero": 5,
+        "tipo": "legislativa",
+        "ley_ref": "Ley 40/2015 Art. 3",
+        "pregunta": "De acuerdo con el art. 3 de la Ley 40/2015, ¿qué principios deberán respetar las Administraciones Públicas en su actuación y relaciones?",
+        "opciones": {
+          "a": "Eficiencia en el cumplimiento de los objetivos fijados.",
+          "b": "Participación, objetividad y transparencia de la actuación administrativa.",
+          "c": "Eficacia en la asignación y utilización de los recursos públicos.",
+          "d": "Todas son correctas."
+        },
+        "respuesta_correcta": "b",
+        "anulada": false
+      },
+      {
+        "numero": 6,
+        "tipo": "legislativa",
+        "ley_ref": "LO 3/2018 Art. 7",
+        "pregunta": "Según el art. 7 de la Ley 3/2018, de Protección de Datos Personales y garantía de los derechos digitales, el tratamiento de los datos personales de un menor de edad únicamente podrá fundarse en su consentimiento cuando sea mayor:",
+        "opciones": {
+          "a": "De 16 años.",
+          "b": "De 14 años.",
+          "c": "De 13 años.",
+          "d": "De 15 años."
+        },
+        "respuesta_correcta": "b",
+        "anulada": false
+      },
+      {
+        "numero": 7,
+        "tipo": "legislativa",
+        "ley_ref": "Ley 39/2015 Art. 13",
+        "pregunta": "Según el art. 13 de la Ley 39/2015, ¿cuál no es un derecho de las personas en sus relaciones con las Administraciones Públicas?",
+        "opciones": {
+          "a": "A comunicarse con las Administraciones Públicas a través de un Punto de Acceso General electrónico de la Administración.",
+          "b": "A ser asistidos en el uso de medios electrónicos en sus relaciones con las Administraciones Públicas.",
+          "c": "A identificar a las autoridades y al personal al servicio de las Administraciones Públicas bajo cuya responsabilidad se tramiten los procedimientos.",
+          "d": "A ser tratados con respeto y deferencia por las autoridades y empleados públicos, que habrán de facilitarles el ejercicio de sus derechos y el cumplimiento de sus obligaciones."
+        },
+        "respuesta_correcta": "c",
+        "anulada": false
+      },
+      {
+        "numero": 8,
+        "tipo": "legislativa",
+        "ley_ref": "LO 3/2007 (Igualdad)",
+        "pregunta": "¿Qué norma regula la igualdad entre hombres y mujeres a nivel nacional?",
+        "opciones": {
+          "a": "Ley Orgánica 3/2007, de 22 de marzo, para la igualdad efectiva entre hombres y mujeres.",
+          "b": "Ley 3/2007, de 22 de marzo, para la igualdad efectiva entre hombres y mujeres.",
+          "c": "Decreto 3/2007, de 22 de marzo, para la igualdad efectiva entre hombres y mujeres.",
+          "d": "Ley 7/2007, de 4 de abril, para la igualdad entre Mujeres y Hombres, y Protección contra la Violencia de Género."
+        },
+        "respuesta_correcta": "a",
+        "anulada": false
+      },
+      {
+        "numero": 9,
+        "tipo": "legislativa",
+        "ley_ref": "Ley 39/2015 Art. 41",
+        "pregunta": "Según el art. 41 de la Ley 39/2015, cuando un interesado haya sido notificado por distintos cauces, ¿qué fecha se tomará como la de notificación?",
+        "opciones": {
+          "a": "La del aviso por sms de la información de la puesta a disposición de la notificación.",
+          "b": "La de aquella que se hubiera producido en primer lugar.",
+          "c": "La de aquella que se hubiera producido en último lugar.",
+          "d": "La del aviso por correo electrónico de la información de la puesta a disposición de la notificación."
+        },
+        "respuesta_correcta": "b",
+        "anulada": false
+      },
+      {
+        "numero": 10,
+        "tipo": "legislativa",
+        "ley_ref": "CE Art. 8",
+        "pregunta": "Según el artículo 8 de la Constitución española de 1978, la regulación de las bases de la organización militar será por:",
+        "opciones": {
+          "a": "Se regirá por su propia ley.",
+          "b": "Reglamento.",
+          "c": "Ley orgánica.",
+          "d": "Ninguna es correcta."
+        },
+        "respuesta_correcta": "c",
+        "anulada": false
+      },
+      {
+        "numero": 11,
+        "tipo": "legislativa",
+        "ley_ref": "Ley 40/2015 Art. 2",
+        "pregunta": "Según el artículo 2 de la Ley 40/2015, las Universidades públicas:",
+        "opciones": {
+          "a": "Se regirán por su normativa específica siempre.",
+          "b": "Se regirán por Ley 40/2015.",
+          "c": "Se regirán por su normativa específica y supletoriamente por las previsiones de la Ley 40/2015.",
+          "d": "Se regirán por su normativa específica y supletoriamente por la Ley 39/2015."
+        },
+        "respuesta_correcta": "c",
+        "anulada": false
+      },
+      {
+        "numero": 12,
+        "tipo": "legislativa",
+        "ley_ref": "Ley 39/2015 Art. 40",
+        "pregunta": "Según el artículo 40 de la Ley 39/2015, en relación con la notificación, señale la correcta:",
+        "opciones": {
+          "a": "Toda notificación deberá ser cursada dentro del plazo de quince días a partir de la fecha en que el acto haya sido dictado.",
+          "b": "Podrá contener el texto íntegro de la resolución.",
+          "c": "Deberá indicar si pone fin o no a la vía administrativa.",
+          "d": "Deberá indicar la expresión de los recursos, en su caso, en vía administrativa y penal."
+        },
+        "respuesta_correcta": "c",
+        "anulada": false
+      },
+      {
+        "numero": 13,
+        "tipo": "legislativa",
+        "ley_ref": "Ley 39/2015 Art. 116",
+        "pregunta": "De conformidad con el art. 116 de la Ley 39/2015, serán causas de inadmisión del recurso:",
+        "opciones": {
+          "a": "Carecer de legitimación el recurrente.",
+          "b": "Tratarse de un acto susceptible de recurso ante el órgano superior.",
+          "c": "Tratarse de un acto susceptible de recurso.",
+          "d": "No haber transcurrido el plazo para la interposición del recurso."
+        },
+        "respuesta_correcta": "a",
+        "anulada": false
+      },
+      {
+        "numero": 14,
+        "tipo": "legislativa",
+        "ley_ref": "Documentos administrativos",
+        "pregunta": "¿A qué tipo de documentos se corresponden los dictámenes?",
+        "opciones": {
+          "a": "Documentos de instrucción.",
+          "b": "Documentos de juicio.",
+          "c": "Documentos de terminación.",
+          "d": "Documentos de decisión."
+        },
+        "respuesta_correcta": "b",
+        "anulada": false
+      },
+      {
+        "numero": 15,
+        "tipo": "legislativa",
+        "ley_ref": "Ley 39/2015 Art. 35",
+        "pregunta": "Según el art. 35 de la Ley 39/2015, serán motivados, con sucinta referencia de hechos y fundamentos de derecho:",
+        "opciones": {
+          "a": "Los actos que se separen del criterio seguido en actuaciones precedentes o del dictamen de órganos informativos.",
+          "b": "Los actos que limiten derechos legítimos o intereses subjetivos.",
+          "c": "Los acuerdos de aplicación de la tramitación de urgencia.",
+          "d": "Todas son correctas."
+        },
+        "respuesta_correcta": "c",
+        "anulada": false,
+        "notas": "Confianza media: el art. 35 LPAC incluye varias causas de motivación. La opción D podría ser correcta si el examen es de 2020 con art. 35 LPAC vigente. Verificar con fuente oficial."
+      },
+      {
+        "numero": 16,
+        "tipo": "legislativa",
+        "ley_ref": "TREBEP Art. 12",
+        "pregunta": "Según el artículo 12 del Estatuto Básico del Empleado Público, una de las características del personal eventual es:",
+        "opciones": {
+          "a": "Sólo realiza funciones expresamente calificadas como de confianza o asesoramiento general.",
+          "b": "Está retribuido con cargo a los créditos presupuestarios consignados para este fin.",
+          "c": "Al personal eventual le será aplicable, en lo que sea adecuado a la naturaleza de su condición, el régimen general de los funcionarios laborales.",
+          "d": "La condición de personal eventual si podrá constituir mérito para el acceso a la Función Pública o para la promoción interna."
+        },
+        "respuesta_correcta": "b",
+        "anulada": false
+      },
+      {
+        "numero": 17,
+        "tipo": "legislativa",
+        "ley_ref": "Ley FP CARM Art. 60",
+        "pregunta": "Según el art. 60 de la Ley de la Función Pública de la Región de Murcia, los excedentes forzosos:",
+        "opciones": {
+          "a": "No tendrán derecho a la percepción de las retribuciones básicas.",
+          "b": "Computará a efectos de consolidación del grado personal.",
+          "c": "No computará a efectos de trienios.",
+          "d": "Tendrán derecho a la percepción de las retribuciones básicas."
+        },
+        "respuesta_correcta": "d",
+        "anulada": false
+      },
+      {
+        "numero": 18,
+        "tipo": "legislativa",
+        "ley_ref": "Ley 39/2015 Art. 95",
+        "pregunta": "Según el art. 95 de la Ley 39/2015, en los procedimientos iniciados a solicitud del interesado, y cuando se produzca su paralización por causa imputable al mismo, ¿cuándo se producirá la caducidad del procedimiento?",
+        "opciones": {
+          "a": "Transcurridos 2 meses.",
+          "b": "Transcurridos 6 meses.",
+          "c": "Transcurridos 3 meses.",
+          "d": "Transcurridos 12 meses."
+        },
+        "respuesta_correcta": "c",
+        "anulada": false
+      },
+      {
+        "numero": 19,
+        "tipo": "legislativa",
+        "ley_ref": "LCSP Art. 29",
+        "pregunta": "Según el art. 29 de la Ley de Contratos del Sector Público, los contratos menores no podrán tener una duración superior a:",
+        "opciones": {
+          "a": "Un año, pudiendo prorrogarse.",
+          "b": "Dos años, incluida la prórroga.",
+          "c": "Un año y no podrán prorrogarse.",
+          "d": "Seis meses."
+        },
+        "respuesta_correcta": "c",
+        "anulada": false
+      },
+      {
+        "numero": 20,
+        "tipo": "legislativa",
+        "ley_ref": "Ley Hacienda CARM Art. 4",
+        "pregunta": "Según el art. 4 de la Ley de Hacienda de la Región de Murcia, la administración de la Hacienda Pública Regional está sometida a los siguientes principios:",
+        "opciones": {
+          "a": "De unidad de caja, para lo cual se integrarán y custodiarán en la Hacienda Pública Regional todos los fondos y valores del Tesoro Público Regional.",
+          "b": "De control de todas las operaciones de contenido financiero, según las normas contenidas en esta Ley para cada ente.",
+          "c": "De contabilidad pública, tanto para reflejar toda clase de operaciones y de resultados de su actividad, como para facilitar datos e información, en general, que sean necesarios para el desarrollo de sus funciones.",
+          "d": "De presupuesto único anual, el cual se elaborará considerando los objetivos y prioridades establecidos por la ordenación y planificación de la actividad económica nacional."
+        },
+        "respuesta_correcta": "c",
+        "anulada": false
+      },
+      {
+        "numero": 21,
+        "tipo": "legislativa",
+        "ley_ref": "Ley 39/2015 Art. 62",
+        "pregunta": "De acuerdo con el art. 62 de la Ley 39/2015, ¿la presentación de una denuncia confiere, por sí sola, la condición de interesado en el procedimiento?",
+        "opciones": {
+          "a": "Sí, siempre.",
+          "b": "No.",
+          "c": "Sí, en los procedimientos de naturaleza sancionadora.",
+          "d": "Sí, en los procedimientos de responsabilidad patrimonial."
+        },
+        "respuesta_correcta": "b",
+        "anulada": false
+      },
+      {
+        "numero": 22,
+        "tipo": "legislativa",
+        "ley_ref": "LCSP Art. 3",
+        "pregunta": "Según el artículo 3 de la de Ley de Contratos del Sector Público, a los efectos de esta Ley, se entenderá por fundaciones públicas aquellas que reúnan alguno de los siguientes requisitos:",
+        "opciones": {
+          "a": "Que el patrimonio de la fundación esté integrado en menos de un 50 por ciento por bienes o derechos aportados o cedidos por sujetos integrantes del sector público con carácter permanente.",
+          "b": "Que el patrimonio de la fundación esté integrado en más de un 50 por ciento por bienes o derechos aportados o cedidos por sujetos integrantes del sector público con carácter transitorio.",
+          "c": "Que el patrimonio de la fundación esté integrado en más de un 50 por ciento por bienes o derechos aportados o cedidos por sujetos integrantes del sector público con carácter permanente.",
+          "d": "Que el patrimonio de la fundación esté integrado en más de un 25 por ciento por bienes o derechos aportados o cedidos por sujetos integrantes del sector público con carácter permanente."
+        },
+        "respuesta_correcta": "c",
+        "anulada": false
+      },
+      {
+        "numero": 23,
+        "tipo": "legislativa",
+        "ley_ref": "Ley 31/1995 PRL Art. 19",
+        "pregunta": "Según el art. 19 de la Ley 31/1995, de Prevención de Riesgos Laborales, en cuanto a la formación de los trabajadores:",
+        "opciones": {
+          "a": "El empresario deberá garantizar que cada trabajador reciba una formación teórica y práctica, suficiente y adecuada, en materia preventiva en el momento de su contratación, salvo que se trate de un contrato temporal.",
+          "b": "Su coste recaerá sobre los trabajadores.",
+          "c": "Deberá impartirse siempre dentro de la jornada de trabajo.",
+          "d": "Se podrá impartir por la empresa mediante medios propios o concertándola con servicios ajenos."
+        },
+        "respuesta_correcta": "d",
+        "anulada": false
+      },
+      {
+        "numero": 24,
+        "tipo": "legislativa",
+        "ley_ref": "Decreto CARM 302/2011 Art. 46",
+        "pregunta": "Según el art. 46 del Decreto 302/2011, de Régimen Jurídico de la Gestión Electrónica, ¿a quién corresponde la formación del expediente electrónico?",
+        "opciones": {
+          "a": "Al órgano administrativo encargado de su resolución.",
+          "b": "Al órgano administrativo encargado de su iniciación.",
+          "c": "Al órgano administrativo encargado de su tramitación.",
+          "d": "Al órgano administrativo encargado de su ordenación."
+        },
+        "respuesta_correcta": "c",
+        "anulada": false
+      },
+      {
+        "numero": 25,
+        "tipo": "legislativa",
+        "ley_ref": "LCSP (contratos de programas de ordenador)",
+        "pregunta": "Según la Ley de Contratos del Sector Público, ¿cómo se consideran los contratos de adquisición de programas de ordenador desarrollados a medida?",
+        "opciones": {
+          "a": "Contratos de suministro.",
+          "b": "Contratos de mixtos.",
+          "c": "Contratos de servicios.",
+          "d": "Contratos de gestión de servicios públicos."
+        },
+        "respuesta_correcta": "c",
+        "anulada": false
+      },
+      {
+        "numero": 26,
+        "tipo": "legislativa",
+        "ley_ref": "Decreto CARM 236/2010 Art. 7",
+        "pregunta": "Conforme al art. 7 del Decreto 236/2010, de Atención al Ciudadano, la información que se facilite al ciudadano deberá ser:",
+        "opciones": {
+          "a": "Clara y sencilla.",
+          "b": "Simplificada y de fácil compresión.",
+          "c": "Firme y escrita.",
+          "d": "Clara y de fácil compresión."
+        },
+        "respuesta_correcta": "d",
+        "anulada": false
+      },
+      {
+        "numero": 27,
+        "tipo": "legislativa",
+        "ley_ref": "Ley 39/2015 Art. 119",
+        "pregunta": "Según el artículo 119 de la Ley 39/2015, en relación a la resolución, podemos afirmar:",
+        "opciones": {
+          "a": "La resolución del recurso estimará en todo o en parte o desestimará las pretensiones formuladas en el mismo o declarará su admisión.",
+          "b": "La resolución del recurso estimará en todo o en parte o estimará las pretensiones formuladas en el mismo o declarará su inadmisión.",
+          "c": "La resolución del recurso estimará en todo o desestimará las pretensiones formuladas en el mismo o declarará su inadmisión.",
+          "d": "La resolución del recurso estimará en todo o en parte o desestimará las pretensiones formuladas en el mismo o declarará su inadmisión."
+        },
+        "respuesta_correcta": "d",
+        "anulada": false
+      },
+      {
+        "numero": 28,
+        "tipo": "legislativa",
+        "ley_ref": "Ley Hacienda CARM Art. 30",
+        "pregunta": "Según el artículo 30 de la Ley de Hacienda de la Región de Murcia, la estructura de los Presupuestos Generales de la Comunidad Autónoma se determinará por:",
+        "opciones": {
+          "a": "Consejo de Gobierno.",
+          "b": "Consejería de Economía y Hacienda.",
+          "c": "Asamblea Regional.",
+          "d": "Presidente de la Asamblea Regional."
+        },
+        "respuesta_correcta": "b",
+        "anulada": false
+      },
+      {
+        "numero": 29,
+        "tipo": "legislativa",
+        "ley_ref": "Sede electrónica CARM",
+        "pregunta": "¿Cuál es la sede electrónica de la CARM?",
+        "opciones": {
+          "a": "https://sede.carm.es.",
+          "b": "https://www.carm.es.",
+          "c": "https://carm.sede.es.",
+          "d": "https://gps.sede.es."
+        },
+        "respuesta_correcta": "a",
+        "anulada": false
+      },
+      {
+        "numero": 30,
+        "tipo": "legislativa",
+        "ley_ref": "Ley 39/2015 Art. 122",
+        "pregunta": "Según el artículo 122 de la Ley 39/2015, el plazo para la interposición del recurso de alzada será:",
+        "opciones": {
+          "a": "Un mes, si el acto fuera presunto.",
+          "b": "En cualquier momento, si el acto fuera expreso.",
+          "c": "Un mes, si el acto fuera expreso.",
+          "d": "Ninguna respuesta es correcta."
+        },
+        "respuesta_correcta": "c",
+        "anulada": false
+      },
+      {
+        "numero": 31,
+        "tipo": "legislativa",
+        "ley_ref": "Ley 6/1990 CARM Art. 1",
+        "pregunta": "Según el art. 1 de la Ley 6/1990 de Archivos y Patrimonio Documental, toda expresión en lenguaje natural o convencional con exclusión de los que por su índole forman parte del patrimonio bibliográfico y cualquier otra expresión gráfica, sonora o en imagen, recogida en cualquier tipo de soporte material, incluso el informático, constituye un:",
+        "opciones": {
+          "a": "Patrimonio documental.",
+          "b": "Archivo.",
+          "c": "Registro.",
+          "d": "Documento."
+        },
+        "respuesta_correcta": "d",
+        "anulada": false
+      },
+      {
+        "numero": 32,
+        "tipo": "legislativa",
+        "ley_ref": "Ley 40/2015 Art. 38",
+        "pregunta": "El artículo 38 de la Ley 40/2015, define la sede electrónica como:",
+        "opciones": {
+          "a": "Aquella página web, disponible para los ciudadanos a través de redes de telecomunicaciones, cuya titularidad corresponde a una Administración Pública, o bien a una o varios organismos públicos o entidades de Derecho Público en el ejercicio de sus competencias.",
+          "b": "Aquella dirección electrónica, disponible para los ciudadanos a través de redes de telecomunicaciones, cuya titularidad corresponde a una Administración Pública, o bien a una o varios organismos públicos o entidades de Derecho Público en el ejercicio de sus competencias.",
+          "c": "Aquella dirección electrónica, disponible para los ciudadanos a través de redes de electrónicas, cuya titularidad corresponde a una Administración Pública, o bien a una o varios organismos públicos o entidades de Derecho Público en el ejercicio de sus competencias.",
+          "d": "Aquella página web, disponible para los ciudadanos a través de redes de electrónicas, cuya titularidad corresponde a una Administración Pública, o bien a una o varios organismos públicos o entidades de Derecho Público en el ejercicio de sus competencias."
+        },
+        "respuesta_correcta": "b",
+        "anulada": false
+      },
+      {
+        "numero": 33,
+        "tipo": "legislativa",
+        "ley_ref": "EARM (Presupuestos)",
+        "pregunta": "Según el Estatuto de Autonomía, ¿a quién le corresponde aprobar los Presupuestos?",
+        "opciones": {
+          "a": "El Presidente.",
+          "b": "El Consejo de Gobierno.",
+          "c": "La Asamblea Regional.",
+          "d": "El Tribunal Superior de Justicia."
+        },
+        "respuesta_correcta": "c",
+        "anulada": false
+      },
+      {
+        "numero": 34,
+        "tipo": "legislativa",
+        "ley_ref": "Decreto CARM 236/2010 Art. 8",
+        "pregunta": "Según el art. 8 del Decreto 236/2010, de Atención al Ciudadano, ¿cómo se clasifica la información administrativa, según su contenido?",
+        "opciones": {
+          "a": "General, especial y particular.",
+          "b": "Particular, general y externa.",
+          "c": "General, especializada y particular.",
+          "d": "General, especializada y privada."
+        },
+        "respuesta_correcta": "c",
+        "anulada": false
+      },
+      {
+        "numero": 35,
+        "tipo": "legislativa",
+        "ley_ref": "Ley 12/2014 CARM Art. 9",
+        "pregunta": "Según el artículo 9 de Ley 12/2014, de Transparencia y Participación Ciudadana de la Comunidad Autónoma de la Región de Murcia, es cierto que:",
+        "opciones": {
+          "a": "La información sujeta a las obligaciones de publicidad activa deberá presentarse de una manera clara, sencilla y entendible para los ciudadanos.",
+          "b": "La información sujeta a las obligaciones de publicidad activa deberá presentarse de una manera clara, estructurada y entendible para los ciudadanos.",
+          "c": "La información sujeta a las obligaciones de publicidad activa deberá presentarse de una manera precisa, estructurada y entendible para los ciudadanos.",
+          "d": "La información sujeta a las obligaciones de publicidad activa deberá presentarse de una manera clara, precisa y entendible para los ciudadanos."
+        },
+        "respuesta_correcta": "b",
+        "anulada": false
+      },
+      {
+        "numero": 36,
+        "tipo": "legislativa",
+        "ley_ref": "Ley 6/1990 CARM Art. 4",
+        "pregunta": "Según el art. 4 de la Ley 6/1990 de Archivos y Patrimonio Documental, ¿cómo se puede iniciar el expediente para la declaración de archivo o documento histórico de la Región de Murcia?",
+        "opciones": {
+          "a": "Sólo a instancia de parte.",
+          "b": "De oficio o a instancia de parte.",
+          "c": "Sólo de oficio.",
+          "d": "Ninguna es correcta."
+        },
+        "respuesta_correcta": "b",
+        "anulada": false
+      },
+      {
+        "numero": 37,
+        "tipo": "legislativa",
+        "ley_ref": "Ley 39/2015 Art. 56",
+        "pregunta": "Según el artículo 56 de la Ley 39/2015, en relación a las medidas provisionales, señale la correcta:",
+        "opciones": {
+          "a": "Iniciado el procedimiento, el órgano administrativo competente para tramitar, podrá adoptar, de oficio o a instancia de parte y de forma motivada, las medidas provisionales que estime oportunas para asegurar la eficacia de la resolución que pudiera recaer, si existiesen elementos de juicio suficientes para ello, de acuerdo con los principios de proporcionalidad, efectividad y menor onerosidad.",
+          "b": "Después de la iniciación del procedimiento administrativo, el órgano competente para iniciar o instruir el procedimiento, de oficio o a instancia de parte, en los casos de urgencia inaplazable y para la protección provisional de los intereses implicados, podrá adoptar de forma motivada las medidas provisionales que resulten necesarias y proporcionadas.",
+          "c": "Las medidas provisionales deberán ser confirmadas, modificadas o levantadas en el acuerdo de iniciación del procedimiento, que deberá efectuarse dentro de los quince días siguientes a su adopción, el cual podrá ser objeto del recurso que proceda.",
+          "d": "Las medidas provisionales podrán ser confirmadas, modificadas o levantadas en el acuerdo de iniciación del procedimiento, que deberá efectuarse dentro de los quince días siguientes a su adopción, el cual podrá ser objeto del recurso que proceda."
+        },
+        "respuesta_correcta": "c",
+        "anulada": false,
+        "notas": "Confianza media en la distinción entre opciones c y d (deberán vs podrán). Verificar con texto oficial art. 56 LPAC."
+      },
+      {
+        "numero": 38,
+        "tipo": "legislativa",
+        "ley_ref": "Decreto CARM 236/2010 Art. 6",
+        "pregunta": "Según el artículo 6 del Decreto 236/2010, de Atención al Ciudadano, en relación a los canales de atención, señale la correcta:",
+        "opciones": {
+          "a": "La atención electrónica es la que se ofrece a través de la sede electrónica de la Comunidad Autónoma de la Región de Murcia.",
+          "b": "La atención electrónica es la que se ofrece a través del punto de acceso de la Comunidad Autónoma de la Región de Murcia.",
+          "c": "La atención electrónica es la que se ofrece a través del portal de la CARM de la Comunidad Autónoma de la Región de Murcia.",
+          "d": "La atención electrónica es la que se ofrece a través del Registro electrónico de la Comunidad Autónoma de la Región de Murcia."
+        },
+        "respuesta_correcta": "a",
+        "anulada": false
+      },
+      {
+        "numero": 39,
+        "tipo": "legislativa",
+        "ley_ref": "Documentos administrativos (clasificación)",
+        "pregunta": "Según en la fase del procedimiento en que se produce, podemos clasificar los documentos en:",
+        "opciones": {
+          "a": "Documentos de los ciudadanos y documentos de la Administración.",
+          "b": "Documentos de decisión o de constancia.",
+          "c": "Iniciación, instrucción y terminación.",
+          "d": "Documentos de decisión, transmisión, constancia o de juicio."
+        },
+        "respuesta_correcta": "c",
+        "anulada": false
+      },
+      {
+        "numero": 40,
+        "tipo": "legislativa",
+        "ley_ref": "Ley 39/2015 Art. 39.3",
+        "pregunta": "Según el artículo 39.3 de la Ley 39/2015, cuando un acto administrativo produzca efectos favorables al interesado, ¿se podrá conceder efecto retroactivo?",
+        "opciones": {
+          "a": "No.",
+          "b": "Sí excepcionalmente, cuando no lesione derechos o intereses legítimos de otra persona, aunque los supuestos de hecho necesarios no existieran en la fecha a la que se retrotraiga la eficacia del acto.",
+          "c": "Sí excepcionalmente, siempre que los supuestos de hecho necesarios existieran ya en la fecha a que se retrotraiga la eficacia del acto y ésta no lesione derechos o intereses legítimos de otras personas.",
+          "d": "Ninguna es correcta."
+        },
+        "respuesta_correcta": "c",
+        "anulada": false
+      },
+      {
+        "numero": 41,
+        "tipo": "legislativa",
+        "ley_ref": "Decreto CARM 236/2010 Art. 28",
+        "pregunta": "Según el art. 28 del Decreto 236/2010, de Atención al Ciudadano, tendrán la consideración de oficinas corporativas de atención al ciudadano:",
+        "opciones": {
+          "a": "Las unidades constituidas con la finalidad de prestar el servicio de forma telefónica.",
+          "b": "Las unidades constituidas con la finalidad de prestar el servicio de forma presencial.",
+          "c": "Las unidades constituidas con la finalidad de prestar el servicio de forma electrónica.",
+          "d": "Ninguna es correcta."
+        },
+        "respuesta_correcta": "b",
+        "anulada": false
+      },
+      {
+        "numero": 42,
+        "tipo": "legislativa",
+        "ley_ref": "Ley 31/1995 PRL Art. 15",
+        "pregunta": "En base al art. 15 de la Ley 31/1995, de Prevención de Riesgos Laborales, ¿cuál de los siguientes principios de la acción preventiva son correctos?",
+        "opciones": {
+          "a": "Tener en cuenta la evolución de la ciencia.",
+          "b": "Evaluar los riesgos que se puedan evitar.",
+          "c": "Adoptar medidas que antepongan la protección individual a la colectiva.",
+          "d": "Combatir los riesgos en su origen."
+        },
+        "respuesta_correcta": "d",
+        "anulada": false
+      },
+      {
+        "numero": 43,
+        "tipo": "legislativa",
+        "ley_ref": "Ley 7/2007 CARM Art. 3",
+        "pregunta": "Según el art. 3 de la Ley 7/2007, para la Igualdad entre Mujeres y Hombres, y de Protección contra la Violencia de Género en la Región de Murcia, la discriminación que se produce cuando una disposición, criterio o práctica pueda ocasionar una desventaja particular a una persona por razón de sexo, se entiende por:",
+        "opciones": {
+          "a": "Discriminación indirecta.",
+          "b": "Discriminación directa.",
+          "c": "Discriminación positiva.",
+          "d": "Discriminación real."
+        },
+        "respuesta_correcta": "a",
+        "anulada": false
+      },
+      {
+        "numero": 44,
+        "tipo": "legislativa",
+        "ley_ref": "Portal CARM (dirección electrónica)",
+        "pregunta": "La dirección electrónica, disponible a través de redes de telecomunicaciones, que tiene por objeto poner a disposición de los ciudadanos toda clase de servicios e informaciones relacionadas con la Comunidad Autónoma de manera totalmente gratuita, se configura como:",
+        "opciones": {
+          "a": "La Guía de Procedimientos y Servicios.",
+          "b": "El Portal de Transparencia.",
+          "c": "La Sede Electrónica.",
+          "d": "La Dirección Electrónica habilitada."
+        },
+        "respuesta_correcta": "b",
+        "anulada": false,
+        "notas": "Confianza media: podría referirse al portal general de la CARM o a la Guía de Procedimientos. Verificar con el Decreto 236/2010."
+      },
+      {
+        "numero": 45,
+        "tipo": "legislativa",
+        "ley_ref": "Ley 7/2004 CARM Art. 3",
+        "pregunta": "Según el art. 3 de la Ley 7/2004, ¿cuál de estos NO es un principio de organización de la Administración Pública de la Región de Murcia?",
+        "opciones": {
+          "a": "Coordinación.",
+          "b": "Descentralización funcional y territorial.",
+          "c": "Jerarquía.",
+          "d": "Descentralización funcional."
+        },
+        "respuesta_correcta": "b",
+        "anulada": false
+      },
+      {
+        "numero": 46,
+        "tipo": "legislativa",
+        "ley_ref": "CE Art. 3",
+        "pregunta": "Según la Constitución Española, además de la lengua oficial del Estado español, ¿son también oficiales las otras lenguas españolas?",
+        "opciones": {
+          "a": "No, tendrán la consideración de dialectos.",
+          "b": "Sí, en todo el territorio español.",
+          "c": "Sí, en las respectivas Comunidades Autónomas de acuerdo con sus Estatutos.",
+          "d": "Sí, en los respectivos territorios históricos."
+        },
+        "respuesta_correcta": "c",
+        "anulada": false
+      },
+      {
+        "numero": 47,
+        "tipo": "legislativa",
+        "ley_ref": "Ley 39/2015 Art. 96",
+        "pregunta": "Según el art. 96 de la Ley 39/2015, en los procedimientos administrativos tramitados de forma simplificada deberán constar únicamente los siguientes trámites:",
+        "opciones": {
+          "a": "Resolución.",
+          "b": "Subsanación de la solicitud presentada, en todo caso.",
+          "c": "Alegaciones formuladas al inicio del procedimiento durante el plazo de 10 días.",
+          "d": "Trámite de audiencia, únicamente cuando la resolución vaya a ser favorable para el interesado."
+        },
+        "respuesta_correcta": "a",
+        "anulada": false
+      },
+      {
+        "numero": 48,
+        "tipo": "legislativa",
+        "ley_ref": "LCSP Art. 118",
+        "pregunta": "Según el art. 118 de la Ley de Contratos del Sector Público, se considerarán contratos menores aquellos cuyo valor estimado sea:",
+        "opciones": {
+          "a": "Igual o inferior a 30.000 € si es contrato de obras.",
+          "b": "Igual o inferior a 15.000 € si es contrato de servicios o suministros.",
+          "c": "Inferior a 40.000 € si es contrato de obras.",
+          "d": "Inferior a 12.000 € si es contrato de servicios o suministros."
+        },
+        "respuesta_correcta": "c",
+        "anulada": false
+      },
+      {
+        "numero": 49,
+        "tipo": "legislativa",
+        "ley_ref": "Ley 39/2015 Art. 82",
+        "pregunta": "Según el art. 82 de la Ley 39/2015, si antes de la finalización del plazo del trámite de audiencia los interesados manifiestan su decisión de no efectuar alegaciones ni aportar nuevos documentos o justificaciones:",
+        "opciones": {
+          "a": "El trámite se tendrá por realizado a los tres días de la manifestación del interesado.",
+          "b": "El trámite se tendrá por realizado a los cinco días de la manifestación del interesado.",
+          "c": "El trámite se tendrá por realizado cuando finalice el plazo.",
+          "d": "Se tendrá por realizado el trámite."
+        },
+        "respuesta_correcta": "d",
+        "anulada": false
+      },
+      {
+        "numero": 50,
+        "tipo": "legislativa",
+        "ley_ref": "Decreto CARM 302/2011 Art. 39",
+        "pregunta": "Según el artículo 39 del Decreto 302/2011, de Régimen Jurídico de la Gestión Electrónica, los documentos administrativos de la Administración Pública de la Región de Murcia que consten en soporte electrónico, deberán:",
+        "opciones": {
+          "a": "Incorporar, como máximo, una firma electrónica.",
+          "b": "Incorporar, al menos, una firma electrónica.",
+          "c": "Incluir una referencia normativa.",
+          "d": "Disponer de los datos de identificación que permitan su colectivización."
+        },
+        "respuesta_correcta": "b",
+        "anulada": false
+      },
+      {
+        "numero": 51,
+        "tipo": "legislativa",
+        "ley_ref": "EARM (convocatoria Asamblea electa)",
+        "pregunta": "SUPUESTO PRÁCTICO 1: Siendo Presidenta de la Asamblea Regional Dña. Matilde Hernández García y Presidente de la Comunidad Autónoma D. Antonio Pérez López, este último convocó elecciones autonómicas en la Región de Murcia. Tras la celebración de las mismas, que tuvieron lugar el día 27 de mayo de 2018, se eligió nuevo Presidente de la Comunidad Autónoma. ¿Cuándo y por quién será convocada la Asamblea electa?",
+        "opciones": {
+          "a": "Dentro de los sesenta días siguientes al de celebración de elecciones, por Dña. Matilde Hernández García.",
+          "b": "Dentro de los treinta días siguientes al de celebración de elecciones, por D. Antonio Pérez López.",
+          "c": "Dentro de los sesenta días siguientes al de celebración de elecciones, por D. Antonio Pérez López.",
+          "d": "Dentro de los treinta días siguientes al de celebración de elecciones, por Dña. Matilde Hernández García."
+        },
+        "respuesta_correcta": "b",
+        "anulada": false
+      },
+      {
+        "numero": 52,
+        "tipo": "legislativa",
+        "ley_ref": "EARM (elección Presidente CA)",
+        "pregunta": "¿Por quién es elegido el Presidente de la Comunidad Autónoma?",
+        "opciones": {
+          "a": "Por la Asamblea Regional, sin que sea necesario ser miembro de la misma y nombrado por el Rey.",
+          "b": "Por la Asamblea Regional de entre sus miembros y nombrado por el Rey, mediante Ley Orgánica.",
+          "c": "Por la Asamblea Regional de entre sus miembros y nombrado por el Rey, mediante Real Decreto.",
+          "d": "Por la Asamblea Regional de entre sus miembros y nombrado por el Rey, mediante Decreto."
+        },
+        "respuesta_correcta": "c",
+        "anulada": false
+      },
+      {
+        "numero": 53,
+        "tipo": "legislativa",
+        "ley_ref": "EARM / Ley 6/2004 CARM (cese Presidente)",
+        "pregunta": "¿En cuál de los siguientes casos cesará el Presidente de la Comunidad Autónoma?",
+        "opciones": {
+          "a": "Al finalizar el periodo para el que fue elegido el Consejo de Gobierno.",
+          "b": "Pérdida de la confianza otorgada o por censura de la Asamblea Regional.",
+          "c": "Dimisión, fallecimiento y condena disciplinaria, que lleve aparejada la inhabilitación para cargos públicos.",
+          "d": "Todas son correctas."
+        },
+        "respuesta_correcta": "b",
+        "anulada": false
+      },
+      {
+        "numero": 54,
+        "tipo": "legislativa",
+        "ley_ref": "Ley 7/2004 CARM (creación unidades administrativas)",
+        "pregunta": "¿Cómo se crearán las unidades administrativas, de la Consejería de Servicios Sociales, inferiores a nivel sección?",
+        "opciones": {
+          "a": "Mediante Decreto del Consejo de Gobierno, a iniciativa de su Consejero, previo informe de la Consejería de Hacienda, y a propuesta del Consejero competente en materia de organización administrativa.",
+          "b": "Mediante Orden de la Consejería de Servicios Sociales, previo informe preceptivo y favorable de la Consejería competente en materia de organización administrativa.",
+          "c": "Mediante Decreto del Presidente de la Comunidad Autónoma.",
+          "d": "Mediante Orden del Consejo de Gobierno, a propuesta de sus órganos directivos."
+        },
+        "respuesta_correcta": "b",
+        "anulada": false
+      },
+      {
+        "numero": 55,
+        "tipo": "legislativa",
+        "ley_ref": "Ley 7/2004 CARM (conflicto competencias)",
+        "pregunta": "En caso de conflicto de competencias entre los órganos de la Consejería de Servicios Sociales, ¿a quién corresponde resolverlo?",
+        "opciones": {
+          "a": "Al Consejero competente en materia de organización administrativa.",
+          "b": "Al Secretario General de la Consejería de Servicios Sociales, como jefe superior de la Consejería.",
+          "c": "Al Consejero de Servicios Sociales, como titular de su Consejería, pudiendo delegar esta competencia.",
+          "d": "Al Consejero de Servicios Sociales, como titular de su Consejería, no pudiendo delegar esta competencia."
+        },
+        "respuesta_correcta": "d",
+        "anulada": false
+      },
+      {
+        "numero": 56,
+        "tipo": "legislativa",
+        "ley_ref": "Ley 6/2004 CARM (incapacidad transitoria Presidente)",
+        "pregunta": "Repentinamente el Presidente de la CARM se encuentra incapacitado mentalmente, de forma transitoria, para el desempeño de sus funciones, ¿quién acordará la situación de suspensión temporal de funciones?",
+        "opciones": {
+          "a": "El Consejo de Gobierno por acuerdo de las tres quintas partes de sus miembros, excluido el Presidente.",
+          "b": "El Consejo de Gobierno por acuerdo de las cuatro quintas partes de sus miembros, excluido el Presidente.",
+          "c": "El Consejo de Gobierno por acuerdo de las cuatro quintas partes de sus miembros, incluido el Presidente.",
+          "d": "El Consejo de Gobierno por acuerdo de las tres quintas partes de sus miembros, incluido el Presidente."
+        },
+        "respuesta_correcta": "b",
+        "anulada": false
+      },
+      {
+        "numero": 57,
+        "tipo": "legislativa",
+        "ley_ref": "Decreto CARM 236/2010 (oficinas corporativas)",
+        "pregunta": "En la Consejería de Servicios Sociales existirá, al menos, una Oficina corporativa de Atención al Ciudadano de carácter:",
+        "opciones": {
+          "a": "General.",
+          "b": "Especializada.",
+          "c": "General y especializada.",
+          "d": "General, especializada y particular."
+        },
+        "respuesta_correcta": "a",
+        "anulada": false
+      },
+      {
+        "numero": 58,
+        "tipo": "legislativa",
+        "ley_ref": "Ley Hacienda CARM (proyecto ley presupuestos)",
+        "pregunta": "El proyecto de ley de Presupuestos Generales de la Comunidad Autónoma deberá ser acompañado: (SEÑALE LA INCORRECTA)",
+        "opciones": {
+          "a": "La cuenta consolidada de los Presupuestos Generales.",
+          "b": "Las memorias explicativas de los contenidos de cada uno de ellos y de las principales modificaciones que presenten en relación con los Presupuestos Generales del ejercicio anterior.",
+          "c": "Un informe económico y financiero.",
+          "d": "La liquidación de los Presupuestos Generales del año anterior y un avance de la del ejercicio corriente."
+        },
+        "respuesta_correcta": "b",
+        "anulada": false,
+        "notas": "Respuesta b marcada como incorrecta en la plantilla (pregunta pide señalar la INCORRECTA). Confianza media: verificar cuál de las opciones NO aparece en la ley."
+      },
+      {
+        "numero": 59,
+        "tipo": "legislativa",
+        "ley_ref": "Ley Hacienda CARM (imputación ejercicio)",
+        "pregunta": "Durante el ejercicio en que estén en vigor los presupuestos, ¿qué se imputarán a ellos?",
+        "opciones": {
+          "a": "Las obligaciones liquidadas durante el mismo, cualquiera que sea el período de que deriven.",
+          "b": "Los derechos reconocidos hasta el 31 de diciembre del correspondiente ejercicio, siempre que correspondan a adquisiciones, obras, servicios, prestaciones o gastos en general realizados dentro del mismo y con cargo a los respectivos créditos.",
+          "c": "Los derechos liquidados durante el mismo, cualquiera que sea el período de que deriven.",
+          "d": "a y b son correctas."
+        },
+        "respuesta_correcta": "c",
+        "anulada": false,
+        "notas": "Confianza media: pregunta sobre imputación presupuestaria (principio de devengo). Verificar con Ley Hacienda CARM."
+      },
+      {
+        "numero": 60,
+        "tipo": "legislativa",
+        "ley_ref": "Ley Hacienda CARM (partida presupuestaria 17.05.00.543D.220.00)",
+        "pregunta": "Respecto a la partida presupuestaria de la Consejería de Servicios Sociales (17.05.00.543D.220.00), podemos afirmar:",
+        "opciones": {
+          "a": "Corresponde a una partida presupuestaria de ingresos.",
+          "b": "543D es el subconcepto.",
+          "c": "220.00 es el programa.",
+          "d": "Corresponde a una partida presupuestaria de gastos."
+        },
+        "respuesta_correcta": "d",
+        "anulada": false
+      },
+      {
+        "numero": 61,
+        "tipo": "legislativa",
+        "ley_ref": "Ley Hacienda CARM (clasificación orgánica)",
+        "pregunta": "¿A qué corresponden los dos últimos dígitos de la clasificación orgánica en la partida presupuestaria de la Consejería de Servicios Sociales?",
+        "opciones": {
+          "a": "A la Sección.",
+          "b": "Al Servicio.",
+          "c": "Al Centro.",
+          "d": "Al Subconcepto."
+        },
+        "respuesta_correcta": "c",
+        "anulada": false
+      },
+      {
+        "numero": 62,
+        "tipo": "legislativa",
+        "ley_ref": "Ley Hacienda CARM (capítulos gasto)",
+        "pregunta": "Si tuviéramos que comprar material de oficina, ¿a qué capítulo lo imputaríamos?",
+        "opciones": {
+          "a": "2.",
+          "b": "3.",
+          "c": "6.",
+          "d": "4."
+        },
+        "respuesta_correcta": "a",
+        "anulada": false
+      },
+      {
+        "numero": 63,
+        "tipo": "legislativa",
+        "ley_ref": "CE Art. 17 (habeas corpus)",
+        "pregunta": "Si Josefa hubiera sido detenida ilegalmente, la ley que regule el procedimiento de 'habeas corpus', producirá:",
+        "opciones": {
+          "a": "La inmediata puesta a disposición policial.",
+          "b": "La inmediata puesta a disposición judicial.",
+          "c": "La inmediata puesta en libertad.",
+          "d": "b y c son correctas."
+        },
+        "respuesta_correcta": "b",
+        "anulada": false
+      },
+      {
+        "numero": 64,
+        "tipo": "legislativa",
+        "ley_ref": "Ley 39/2015 (cómputo plazos)",
+        "pregunta": "SUPUESTO PRÁCTICO 2: Tras ser aprobada y publicada la oferta de empleo público del año 2018, con fecha 1 de junio de 2018 se publica en el BORM la Orden de convocatoria para participar en las pruebas selectivas para el ingreso en el cuerpo administrativo. ¿Qué día comenzará el cómputo del plazo para presentar la solicitud a las pruebas selectivas?",
+        "opciones": {
+          "a": "El 1 de junio de 2018.",
+          "b": "El 2 de junio de 2018.",
+          "c": "El 1 de julio de 2018.",
+          "d": "El 2 de julio de 2018."
+        },
+        "respuesta_correcta": "b",
+        "anulada": false
+      },
+      {
+        "numero": 65,
+        "tipo": "legislativa",
+        "ley_ref": "Ley 39/2015 (presentación solicitudes)",
+        "pregunta": "¿Estará dentro de plazo la solicitud presentada por Pedro en el registro electrónico del Ayuntamiento de Ceutí con fecha 11 de junio de 2018?",
+        "opciones": {
+          "a": "Sí.",
+          "b": "No, puesto que para ello el Ayuntamiento de Ceutí debería haber firmado un convenio con la Comunidad Autónoma de la Región de Murcia.",
+          "c": "No, puesto que tuvo entrada en el órgano competente para su tramitación pasados los 20 días hábiles.",
+          "d": "Ninguna es correcta."
+        },
+        "respuesta_correcta": "a",
+        "anulada": false
+      },
+      {
+        "numero": 66,
+        "tipo": "legislativa",
+        "ley_ref": "Ley 39/2015 Art. 68 (subsanación)",
+        "pregunta": "Pedro debe subsanar la solicitud presentada el 11 de junio de 2018, ¿podría la Administración ampliar este plazo si él lo solicitara?",
+        "opciones": {
+          "a": "Sí, de hasta 10 días.",
+          "b": "Sí, de hasta 5 días.",
+          "c": "No.",
+          "d": "Sí, en el caso de que la documentación requerida presentara dificultades especiales."
+        },
+        "respuesta_correcta": "c",
+        "anulada": false
+      },
+      {
+        "numero": 67,
+        "tipo": "legislativa",
+        "ley_ref": "Ley 39/2015 (recursos convocatoria)",
+        "pregunta": "¿Qué recurso administrativo podría presentar Pedro contra la Orden de convocatoria de las pruebas selectivas?",
+        "opciones": {
+          "a": "Recurso de Alzada.",
+          "b": "Recurso potestativo de reposición.",
+          "c": "Recurso extraordinario de revisión.",
+          "d": "Recurso contencioso-administrativo."
+        },
+        "respuesta_correcta": "b",
+        "anulada": false
+      },
+      {
+        "numero": 68,
+        "tipo": "legislativa",
+        "ley_ref": "Ley 39/2015 Art. 123 (plazo reposición)",
+        "pregunta": "¿De qué plazo dispondrá Pedro para interponer el recurso administrativo contra la Orden de convocatoria de las pruebas selectivas?",
+        "opciones": {
+          "a": "Un mes.",
+          "b": "Dos meses.",
+          "c": "Tres meses.",
+          "d": "Seis meses."
+        },
+        "respuesta_correcta": "a",
+        "anulada": false
+      },
+      {
+        "numero": 69,
+        "tipo": "legislativa",
+        "ley_ref": "TREBEP Art. 10 (personal interino)",
+        "pregunta": "¿Cómo podrían cubrirse las plazas necesarias en la D.G. del Cambio Climático?",
+        "opciones": {
+          "a": "Con personal interino para la ejecución de programas de carácter temporal, por plazo máximo de seis meses, dentro de un periodo de doce meses.",
+          "b": "Con personal interino por exceso o acumulación de tareas por plazo de doce meses, dentro de un periodo de tres años.",
+          "c": "Con personal interino por exceso o acumulación de tareas por un plazo que no podrá tener una duración superior a tres años, ampliable hasta doce meses.",
+          "d": "Con personal interino por exceso o acumulación de tareas por plazo máximo de seis meses, dentro de un periodo de doce meses."
+        },
+        "respuesta_correcta": "d",
+        "anulada": false
+      },
+      {
+        "numero": 70,
+        "tipo": "legislativa",
+        "ley_ref": "Ley 39/2015 Art. 41 (notificaciones electrónicas)",
+        "pregunta": "¿Debería la D.G. del Cambio Climático practicar electrónicamente las notificaciones de los procedimientos que gestiona?",
+        "opciones": {
+          "a": "Sí, si así lo hubiera establecido reglamentariamente la Administración.",
+          "b": "No.",
+          "c": "Sí, si así lo hubiera establecido por Ley la Administración.",
+          "d": "Sí, si así lo hubiera establecido discrecionalmente la Administración."
+        },
+        "respuesta_correcta": "a",
+        "anulada": false
+      },
+      {
+        "numero": 71,
+        "tipo": "legislativa",
+        "ley_ref": "Ley FP CARM / TREBEP (compatibilidad)",
+        "pregunta": "Si Pedro solicitara autorización para compatibilizar su puesto de trabajo con un puesto en la empresa privada, ¿en qué plazo debería resolverse dicha solicitud?",
+        "opciones": {
+          "a": "Un mes.",
+          "b": "Dos meses.",
+          "c": "Tres meses.",
+          "d": "Tres meses, pudiendo prorrogarse por un periodo no superior a un mes."
+        },
+        "respuesta_correcta": "b",
+        "anulada": false
+      },
+      {
+        "numero": 72,
+        "tipo": "legislativa",
+        "ley_ref": "TREBEP Art. 49 (permiso nacimiento)",
+        "pregunta": "¿A cuántas semanas ininterrumpidas e inmediatamente posteriores a la fecha del nacimiento de su hijo tendrá derecho Pedro?",
+        "opciones": {
+          "a": "A las primeras 2 semanas.",
+          "b": "A las primeras 6 semanas.",
+          "c": "A las primeras 4 semanas.",
+          "d": "A 12 semanas."
+        },
+        "respuesta_correcta": "c",
+        "anulada": false,
+        "notas": "Confianza media: el permiso de nacimiento ha variado con reformas del TREBEP (RD-L 6/2019). En 2020 eran 12 semanas totales pero las primeras 6 debían disfrutarse ininterrumpidamente. Verificar la redacción vigente en feb/2020."
+      },
+      {
+        "numero": 73,
+        "tipo": "legislativa",
+        "ley_ref": "TREBEP Art. 89 (excedencia voluntaria)",
+        "pregunta": "Transcurridos 5 años desde su nombramiento como funcionario de carrera, Pedro solicita una excedencia voluntaria por interés particular por plazo de 1 año, ¿deben concedérsela?",
+        "opciones": {
+          "a": "No, puesto que el permiso del que disfrutó cuando nació su hijo no computa a efectos de servicios efectivos.",
+          "b": "Sí, puesto que ha prestado servicios efectivos durante los 5 años inmediatamente anteriores.",
+          "c": "Sí, puesto que el permiso del que disfrutó cuando nació su hijo computa a efectos de servicios efectivos.",
+          "d": "No, puesto que la permanencia en esta situación no puede ser inferior a dos años continuados."
+        },
+        "respuesta_correcta": "d",
+        "anulada": false
+      },
+      {
+        "numero": 74,
+        "tipo": "legislativa",
+        "ley_ref": "TREBEP Art. 89 (reserva puesto excedencia voluntaria)",
+        "pregunta": "En el caso de que le fuera concedida la excedencia voluntaria por interés particular, ¿durante qué plazo se le reservará el puesto de trabajo?",
+        "opciones": {
+          "a": "Durante el primero año.",
+          "b": "Durante los dos primeros años.",
+          "c": "No tiene derecho a reserva de plaza.",
+          "d": "Durante todo el tiempo que dure la excedencia, si tuviera el puesto con carácter definitivo conseguido en un concurso de méritos."
+        },
+        "respuesta_correcta": "c",
+        "anulada": false
+      },
+      {
+        "numero": 75,
+        "tipo": "legislativa",
+        "ley_ref": "CE Art. 11 / TREBEP Art. 63 (pérdida nacionalidad)",
+        "pregunta": "¿Qué pasaría si Pedro perdiera la nacionalidad española?",
+        "opciones": {
+          "a": "No podría perder la nacionalidad española, puesto que ningún español puede ser privado de su nacionalidad.",
+          "b": "Determinaría la pérdida de la condición de funcionario, salvo que simultáneamente se adquiriera la nacionalidad de otro Estado miembro de la Unión Europea o la de aquellos Estados a los que, en virtud de tratados internacionales celebrados por la Unión Europea y ratificados por España, les sea de aplicación la libre circulación de trabajadores, que haya sido tenida en cuenta para el nombramiento.",
+          "c": "Perdería la condición de funcionario.",
+          "d": "No podría perder la condición de funcionario, puesto que no se encuentra dentro de las causas establecidas en el art. 63 del Estatuto Básico del Empleado Público."
+        },
+        "respuesta_correcta": "b",
+        "anulada": false
+      }
+    ]
+  },
+  "resumen": {
+    "total": 75,
+    "anuladas": [],
+    "confianza_baja": [],
+    "confianza_media": [15, 37, 44, 58, 59, 72],
+    "nota_plantilla": "Plantilla escaneada sin texto. Respuestas extraídas por visión de imagen PNG renderizado a 300dpi. Confianza general ALTA para la mayoría de preguntas; confianza MEDIA anotada en preguntas donde la burbuja marcada era más tenue o las opciones muy similares."
+  }
+}

@@ -1,0 +1,1078 @@
+{
+  "metadatos": {
+    "examen": "Auxiliar Administrativo Comunidad Autónoma Región de Murcia",
+    "convocatoria": "Orden 6/10/2022 - Código DGX00C22 - Estabilización empleo temporal",
+    "oep": "OEP 2021",
+    "plazas": 111,
+    "tipo_acceso": "Estabilización (Ley 20/2021)",
+    "modelo": "TIPO 1",
+    "fecha_examen": "2023-10-01",
+    "fuente_pdf_cuestionario": "https://empleopublico.carm.es/publicaciones/31303.pdf",
+    "fuente_pdf_plantilla": "https://empleopublico.carm.es/publicaciones/31304.pdf"
+  },
+  "primera_parte": {
+    "descripcion": "Ejercicio único. 75 preguntas tipo test. Pregunta 63 anulada.",
+    "preguntas": [
+      {
+        "numero": 1,
+        "tipo": "legislativa",
+        "ley_ref": "CE Art. 18.3",
+        "pregunta": "En virtud del art. 18.3 de la Constitución Española (en adelante CE), se garantiza el secreto de las comunicaciones:",
+        "opciones": {
+          "a": "Salvo en caso de delitos de terrorismo.",
+          "b": "Salvo en caso de flagrante delito.",
+          "c": "Salvo resolución judicial.",
+          "d": "En todo caso."
+        },
+        "respuesta_correcta": "c",
+        "anulada": false
+      },
+      {
+        "numero": 2,
+        "tipo": "legislativa",
+        "ley_ref": "CE Art. 106.1",
+        "pregunta": "El art. 106.1 de la CE establece que los Tribunales controlan: (Indique la respuesta INCORRECTA)",
+        "opciones": {
+          "a": "El sometimiento de la actividad administrativa a los fines que la justifican.",
+          "b": "La legalidad de la actuación administrativa.",
+          "c": "La potestad reglamentaria.",
+          "d": "El funcionamiento de los servicios públicos."
+        },
+        "respuesta_correcta": "d",
+        "anulada": false
+      },
+      {
+        "numero": 3,
+        "tipo": "legislativa",
+        "ley_ref": "CE Art. 55.2",
+        "pregunta": "De acuerdo con el art. 55.2 de la CE, en relación con las investigaciones correspondientes a la actuación de bandas armadas o elementos terroristas puede ser suspendido para personas determinadas: (Indique la respuesta INCORRECTA)",
+        "opciones": {
+          "a": "El secreto de las comunicaciones.",
+          "b": "La inviolabilidad del domicilio.",
+          "c": "La duración máxima de la detención preventiva.",
+          "d": "La libertad de circulación por el territorio nacional."
+        },
+        "respuesta_correcta": "d",
+        "anulada": false
+      },
+      {
+        "numero": 4,
+        "tipo": "legislativa",
+        "ley_ref": "EARM Art. 55.2",
+        "pregunta": "De conformidad con el art. 55.2 del Estatuto de Autonomía de la Región de Murcia (en adelante EARM), una vez aprobado el proyecto de reforma del Estatuto por la Asamblea, se someterá a la aprobación de:",
+        "opciones": {
+          "a": "Las Cortes Generales.",
+          "b": "El Consejo de Gobierno.",
+          "c": "El Gobierno de la Nación.",
+          "d": "La mayoría del censo electoral de la Región."
+        },
+        "respuesta_correcta": "a",
+        "anulada": false
+      },
+      {
+        "numero": 5,
+        "tipo": "legislativa",
+        "ley_ref": "EARM Art. 33",
+        "pregunta": "En virtud del art. 33 del EARM, compete al Presidente del Consejo de Gobierno:",
+        "opciones": {
+          "a": "Aprobar el Reglamento de la Asamblea Regional.",
+          "b": "Aprobar el programa del Consejo de Gobierno.",
+          "c": "Plantear la cuestión de confianza ante la Asamblea Regional.",
+          "d": "Autorizar la prestación del consentimiento para obligarse por los convenios en que la Comunidad Autónoma sea parte."
+        },
+        "respuesta_correcta": "c",
+        "anulada": false
+      },
+      {
+        "numero": 6,
+        "tipo": "legislativa",
+        "ley_ref": "Ley 6/2004 CARM Art. 3",
+        "pregunta": "De acuerdo con el art. 3 de la Ley 6/2004, de 28 de diciembre, del Estatuto del Presidente y del Consejo de Gobierno de la Región de Murcia (en adelante Ley 6/2004), entre las atribuciones del Presidente como representante supremo de la Región de Murcia se incluye:",
+        "opciones": {
+          "a": "Crear y suprimir las Consejerías.",
+          "b": "Mantener relaciones con el Gobierno de la Nación.",
+          "c": "Convocar elecciones a la Asamblea Regional.",
+          "d": "Firmar los decretos aprobados por el Consejo de Gobierno."
+        },
+        "respuesta_correcta": "c",
+        "anulada": false
+      },
+      {
+        "numero": 7,
+        "tipo": "legislativa",
+        "ley_ref": "Ley 6/2004 CARM Art. 17",
+        "pregunta": "Según el art. 17 de la Ley 6/2004, la situación de suspensión provisional de funciones del Presidente no podrá tener una duración superior a:",
+        "opciones": {
+          "a": "Tres meses.",
+          "b": "Cuatro meses.",
+          "c": "Cinco meses.",
+          "d": "Seis meses."
+        },
+        "respuesta_correcta": "c",
+        "anulada": false
+      },
+      {
+        "numero": 8,
+        "tipo": "legislativa",
+        "ley_ref": "Ley 7/2004 CARM Art. 14.3",
+        "pregunta": "Según el art. 14.3 de la Ley 7/2004, de 28 de diciembre, de Organización y Régimen Jurídico de la Administración Pública de la Comunidad Autónoma de la Región de Murcia (en adelante Ley 7/2004), la creación de las unidades administrativas inferiores al nivel de sección se aprobará:",
+        "opciones": {
+          "a": "Por orden de cada Consejería, previo informe preceptivo y favorable de la Consejería competente en materia de organización administrativa.",
+          "b": "Mediante decreto acordado en Consejo de Gobierno.",
+          "c": "Por orden de la Consejería competente en materia de organización administrativa, previo informe preceptivo y favorable de la competente en materia de hacienda",
+          "d": "Por orden de cada Consejería, previo informe preceptivo y favorable de la Consejería competente en materia de hacienda."
+        },
+        "respuesta_correcta": "a",
+        "anulada": false
+      },
+      {
+        "numero": 9,
+        "tipo": "legislativa",
+        "ley_ref": "RD 203/2021 Art. 2",
+        "pregunta": "En virtud del art. 2 del Reglamento de actuación y funcionamiento del sector público por medios electrónicos, aprobado por Real Decreto 203/2021, de 30 de marzo (en adelante RD 203/2021), el sector público deberá respetar en sus actuaciones y relaciones electrónicas el principio de:",
+        "opciones": {
+          "a": "Simplicidad de los sistemas.",
+          "b": "Generalización y proactividad.",
+          "c": "Proporcionalidad.",
+          "d": "Agilidad tecnológica."
+        },
+        "respuesta_correcta": "c",
+        "anulada": false
+      },
+      {
+        "numero": 10,
+        "tipo": "legislativa",
+        "ley_ref": null,
+        "pregunta": "La desconcentración consiste en:",
+        "opciones": {
+          "a": "La transferencia temporal de competencia entre entes públicos u organismos.",
+          "b": "La transferencia temporal de competencia dentro de un mismo ente público u organismo.",
+          "c": "La transferencia permanente de competencia entre entes públicos u organismos.",
+          "d": "La transferencia permanente de competencia dentro de un mismo ente público u organismo."
+        },
+        "respuesta_correcta": "d",
+        "anulada": false
+      },
+      {
+        "numero": 11,
+        "tipo": "legislativa",
+        "ley_ref": "Ley 7/2004 CARM Art. 4",
+        "pregunta": "Según el art. 4 de la Ley 7/2004, las relaciones de la Administración pública de la Comunidad Autónoma de la Región de Murcia con los ciudadanos se ajustarán a los principios de: (Indique la respuesta INCORRECTA)",
+        "opciones": {
+          "a": "Efectividad de sus derechos.",
+          "b": "Objetividad y transparencia.",
+          "c": "Participación.",
+          "d": "Buena fe y confianza legítima."
+        },
+        "respuesta_correcta": "b",
+        "anulada": false
+      },
+      {
+        "numero": 12,
+        "tipo": "legislativa",
+        "ley_ref": "RD 203/2021 Art. 2",
+        "pregunta": "Según el art. 2 del RD 203/2021, el sector público deberá respetar el siguiente principio en sus actuaciones y relaciones electrónicas:",
+        "opciones": {
+          "a": "De personalización y proactividad.",
+          "b": "De Racionalización y agilidad.",
+          "c": "De Sencillez, claridad y proximidad a los ciudadanos.",
+          "d": "De cooperación."
+        },
+        "respuesta_correcta": "a",
+        "anulada": false
+      },
+      {
+        "numero": 13,
+        "tipo": "legislativa",
+        "ley_ref": "LPAC Art. 39.5",
+        "pregunta": "Según el art. 39.5 de la Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas (en adelante LPAC), en el supuesto de requerimiento previo de una Administración Pública a otra distinta para que anule o revise un acto, de rechazarse el requerimiento, se podrá interponer:",
+        "opciones": {
+          "a": "El recurso de alzada.",
+          "b": "El recurso potestativo de reposición.",
+          "c": "El recurso extraordinario de revisión.",
+          "d": "El recurso contencioso-administrativo."
+        },
+        "respuesta_correcta": "d",
+        "anulada": false
+      },
+      {
+        "numero": 14,
+        "tipo": "legislativa",
+        "ley_ref": "LPAC Art. 34",
+        "pregunta": "Según el art. 34 de la LPAC, el contenido de los actos se ajustará:",
+        "opciones": {
+          "a": "A lo dispuesto por el ordenamiento jurídico y será determinado y adecuado a los fines de aquéllos.",
+          "b": "A lo dispuesto por la presente ley y será determinado y adecuado a los fines del ordenamiento jurídico.",
+          "c": "A lo dispuesto por el ordenamiento jurídico y será determinado y adecuado a los fines de la presente ley.",
+          "d": "A lo dispuesto por la presente ley y será determinado y adecuado a los fines de las Administraciones Públicas."
+        },
+        "respuesta_correcta": "a",
+        "anulada": false
+      },
+      {
+        "numero": 15,
+        "tipo": "legislativa",
+        "ley_ref": "LPAC Art. 59",
+        "pregunta": "De acuerdo con el art. 59 de la LPAC, en relación con el inicio del procedimiento a propia iniciativa, se entiende por propia iniciativa, la actuación derivada del conocimiento:",
+        "opciones": {
+          "a": "Directo o indirecto de las circunstancias, conductas o hechos objeto del procedimiento por el órgano que tiene atribuida la competencia de iniciación.",
+          "b": "Siempre directo de las circunstancias, conductas o hechos objeto del procedimiento por el órgano que tiene atribuida la competencia de iniciación.",
+          "c": "Siempre directo de las circunstancias, conductas o hechos objeto del procedimiento por el órgano superior al que tiene atribuida la competencia de iniciación.",
+          "d": "Directo o indirecto de las circunstancias, conductas o hechos objeto del procedimiento por el órgano que tiene atribuida la competencia de resolución."
+        },
+        "respuesta_correcta": "a",
+        "anulada": false
+      },
+      {
+        "numero": 16,
+        "tipo": "legislativa",
+        "ley_ref": "LPAC Art. 62",
+        "pregunta": "Según el art. 62 de la LPAC, en la iniciación del procedimiento administrativo por denuncia, se entiende por denuncia:",
+        "opciones": {
+          "a": "El acto por el cual cualquier persona mayor de edad, en cumplimiento siempre de una obligación legal, pone en conocimiento de un órgano administrativo la existencia de un determinado hecho que pudiera justificar la iniciación de oficio de un procedimiento administrativo.",
+          "b": "El acto por el que cualquier persona, en cumplimiento siempre de una obligación legal, pone en conocimiento de un órgano administrativo la existencia de un determinado hecho que pudiera justificar la iniciación de oficio de un procedimiento administrativo.",
+          "c": "El acto por el que cualquier persona o administración, en cumplimiento siempre de acción legal, pone en conocimiento de un órgano administrativo la existencia de un determinado hecho que pudiera justificar la iniciación de oficio de un procedimiento administrativo.",
+          "d": "El acto por el que cualquier persona, en cumplimiento o no de una obligación legal, pone en conocimiento de un órgano administrativo la existencia de un determinado hecho que pudiera justificar la iniciación de oficio de un procedimiento administrativo."
+        },
+        "respuesta_correcta": "d",
+        "anulada": false
+      },
+      {
+        "numero": 17,
+        "tipo": "legislativa",
+        "ley_ref": "LPAC Art. 77.2",
+        "pregunta": "Según el art. 77.2 de la LPAC, cuando la naturaleza del procedimiento lo exija, el instructor acordará la apertura de un periodo de prueba por un plazo:",
+        "opciones": {
+          "a": "No superior a treinta días, ni inferior a quince, a fin de que puedan practicarse cuantas juzgue pertinentes.",
+          "b": "No superior a veinte días ni inferior a diez, a fin de que puedan practicarse cuantas juzgue pertinentes.",
+          "c": "No superior a veinte días ni inferior a quince, a fin de que puedan practicarse cuantas juzgue pertinentes.",
+          "d": "No superior a treinta días ni inferior a diez, a fin de que puedan practicarse cuantas juzgue pertinentes."
+        },
+        "respuesta_correcta": "d",
+        "anulada": false
+      },
+      {
+        "numero": 18,
+        "tipo": "legislativa",
+        "ley_ref": "LPAC Art. 95.1",
+        "pregunta": "En virtud del art. 95.1 de la LPAC, contra la resolución que declare la caducidad en los procedimientos iniciados a solicitud del interesado:",
+        "opciones": {
+          "a": "Únicamente procederá el recurso contencioso-administrativo.",
+          "b": "No cabrá recurso alguno.",
+          "c": "Procederán los recursos pertinentes.",
+          "d": "Únicamente procederá el recurso extraordinario de revisión."
+        },
+        "respuesta_correcta": "c",
+        "anulada": false
+      },
+      {
+        "numero": 19,
+        "tipo": "legislativa",
+        "ley_ref": "LPAC Art. 107.2",
+        "pregunta": "De acuerdo con el art. 107.2 de la LPAC, la declaración de lesividad de actos anulables no podrá adoptarse una vez transcurridos:",
+        "opciones": {
+          "a": "Cuatro años desde que se notificó el acto administrativo.",
+          "b": "Cuatro años desde que se dictó el acto administrativo.",
+          "c": "Seis meses desde que se dictó el acto administrativo.",
+          "d": "Seis meses desde que se notificó el acto administrativo."
+        },
+        "respuesta_correcta": "b",
+        "anulada": false
+      },
+      {
+        "numero": 20,
+        "tipo": "legislativa",
+        "ley_ref": "LPAC Art. 109.1",
+        "pregunta": "Según el art. 109.1 de la LPAC, ¿en qué plazo podrán las Administraciones Públicas revocar sus actos de gravamen o desfavorables?",
+        "opciones": {
+          "a": "En el plazo de seis meses desde que se dictaron.",
+          "b": "En el plazo de tres meses desde que se dictaron.",
+          "c": "Mientras no haya transcurrido el plazo de prescripción.",
+          "d": "Mientras no haya transcurrido el plazo de caducidad."
+        },
+        "respuesta_correcta": "c",
+        "anulada": false
+      },
+      {
+        "numero": 21,
+        "tipo": "legislativa",
+        "ley_ref": "LPAC Art. 112.1",
+        "pregunta": "En virtud del art. 112.1 de la LPAC, contra los actos de trámite que deciden directa o indirectamente el fondo del asunto, el interesado:",
+        "opciones": {
+          "a": "Podrá interponer los recursos de alzada y potestativo de reposición.",
+          "b": "Podrá interponer los recursos de alzada y extraordinario de revisión.",
+          "c": "Podrá interponer los recursos potestativo de reposición y extraordinario de revisión.",
+          "d": "No podrá interponer recurso alguno, si bien la oposición a los mismos podrá alegarse en el recurso contra la resolución del procedimiento."
+        },
+        "respuesta_correcta": "a",
+        "anulada": false
+      },
+      {
+        "numero": 22,
+        "tipo": "legislativa",
+        "ley_ref": "TREBEP Art. 89.4",
+        "pregunta": "Según el art. 89.4 del texto refundido de la Ley del Estatuto Básico del Empleado Público, aprobado por Real Decreto Legislativo 5/2015, 30 de octubre (en adelante TREBEP), en la excedencia para el cuidado de un familiar a su cargo, se tendrá derecho cuando el grado de parentesco sea de hasta:",
+        "opciones": {
+          "a": "El segundo grado inclusive de consanguinidad o cuarto de afinidad.",
+          "b": "El cuarto grado inclusive de consanguinidad o afinidad.",
+          "c": "El cuarto grado inclusive de consanguinidad o segundo de afinidad.",
+          "d": "El segundo grado inclusive de consanguinidad o afinidad."
+        },
+        "respuesta_correcta": "d",
+        "anulada": false
+      },
+      {
+        "numero": 23,
+        "tipo": "legislativa",
+        "ley_ref": "TREBEP Art. 87.1",
+        "pregunta": "Según el art. 87.1 del TREBEP, los funcionarios de carrera se encuentran en la situación de servicios especiales, cuando:",
+        "opciones": {
+          "a": "Accedan a la condición de miembros de las asambleas legislativas de las comunidades autónomas si perciben cualquier tipo de retribución por la realización de la función.",
+          "b": "Sean autorizados para realizar una misión por periodo determinado superior a seis meses en otras Administraciones Públicas.",
+          "c": "Sean designados asesores de los grupos parlamentarios de las asambleas legislativas de las comunidades autónomas.",
+          "d": "Sean adscritos a los servicios del Tribunal Constitucional y no opten por permanecer en la situación de servicio activo."
+        },
+        "respuesta_correcta": "c",
+        "anulada": false
+      },
+      {
+        "numero": 24,
+        "tipo": "legislativa",
+        "ley_ref": "TRLFP CARM Art. 80",
+        "pregunta": "Según el art. 80 del texto refundido de la Ley de la Función Pública de la Región de Murcia, aprobado por Decreto Legislativo 1/2001, de 26 de enero (en adelante TRLFP), los funcionarios serán responsables de la buena gestión de los servicios que tengan encomendados:",
+        "opciones": {
+          "a": "Procurando resolver por propia iniciativa las dificultades que encuentren en el ejercicio de su función.",
+          "b": "Procurando resolver las dificultades que encuentren en el ejercicio de su función solicitando instrucciones a sus superiores jerárquicos y no por propia iniciativa.",
+          "c": "Y la Administración Pública de la Región de Murcia podrá dirigirse contra el funcionario causante de daños por dolo, culpa o negligencia graves.",
+          "d": "Y la Administración Pública de la Región de Murcia se dirigirá de oficio contra el funcionario causante de daños, haya intervenido o no dolo, culpa o negligencia graves."
+        },
+        "respuesta_correcta": "a",
+        "anulada": false
+      },
+      {
+        "numero": 25,
+        "tipo": "legislativa",
+        "ley_ref": "LCSP Art. 3",
+        "pregunta": "Según el art. 3 de la Ley 9/2017, de 8 de noviembre, de Contratos del Sector Público (en adelante LCSP), ¿cuál de las siguientes entidades se considera Administración Pública?",
+        "opciones": {
+          "a": "Las Mutuas colaboradoras con la Seguridad Social.",
+          "b": "Los consorcios y otras entidades de derecho público, siempre que puedan ser considerados poder adjudicador, estén vinculados o sean dependientes de una o varias Administraciones Públicas y que se financien mayoritariamente con ingresos de mercado.",
+          "c": "Las fundaciones públicas.",
+          "d": "Ninguna de las opciones anteriores es correcta."
+        },
+        "respuesta_correcta": "d",
+        "anulada": false
+      },
+      {
+        "numero": 26,
+        "tipo": "legislativa",
+        "ley_ref": "LCSP Art. 35",
+        "pregunta": "Según el art. 35 de la LCSP, los documentos en que se formalicen los contratos que celebren las entidades del sector público, salvo que ya se encuentren recogidas en los pliegos, deberán incluir necesariamente y en todo caso:",
+        "opciones": {
+          "a": "El precio cierto.",
+          "b": "Las condiciones de pago.",
+          "c": "Los supuestos en que proceda la modificación.",
+          "d": "El crédito presupuestario con cargo al que se abonará el precio."
+        },
+        "respuesta_correcta": "b",
+        "anulada": false
+      },
+      {
+        "numero": 27,
+        "tipo": "legislativa",
+        "ley_ref": "LCSP",
+        "pregunta": "De acuerdo con la LCSP, indique la opción correcta:",
+        "opciones": {
+          "a": "Todos los contratos que celebren los poderes adjudicadores se perfeccionan con su formalización.",
+          "b": "Las entidades del sector público no podrán contratar verbalmente, salvo que el contrato tenga carácter de urgencia.",
+          "c": "Los órganos de contratación difundirán exclusivamente a través de internet su perfil de contratante.",
+          "d": "Ninguna de las opciones anteriores es correcta."
+        },
+        "respuesta_correcta": "c",
+        "anulada": false
+      },
+      {
+        "numero": 28,
+        "tipo": "legislativa",
+        "ley_ref": "LCSP Art. 71",
+        "pregunta": "¿Cuál de las siguientes circunstancias es una prohibición para contratar, según el art. 71 de la LCSP?",
+        "opciones": {
+          "a": "Hallarse al corriente en el cumplimiento de las obligaciones tributarias o de Seguridad Social.",
+          "b": "Haber solicitado la declaración de concurso voluntario.",
+          "c": "Haber sido sancionada con carácter firme por infracción grave en materia medioambiental.",
+          "d": "Haber sido sancionada con carácter firme por infracción muy grave en materia de integración laboral y de igualdad de oportunidades."
+        },
+        "respuesta_correcta": "b",
+        "anulada": false
+      },
+      {
+        "numero": 29,
+        "tipo": "legislativa",
+        "ley_ref": "TRLHRM Art. 1",
+        "pregunta": "Conforme al art. 1 del Texto Refundido de la Ley de Hacienda de la Región de Murcia, aprobado por Decreto Legislativo 1/1999, de 2 de diciembre (en adelante TRLHRM), la Hacienda Pública Regional está constituida por:",
+        "opciones": {
+          "a": "El conjunto de recursos y dotaciones de contenido económico cuya titularidad corresponde a la Administración Pública Regional y a sus organismos autónomos.",
+          "b": "El conjunto de recursos y dotaciones de contenido económico cuya titularidad corresponde a la Administración Pública Regional.",
+          "c": "El conjunto de derechos y obligaciones de contenido económico cuya titularidad corresponde a la Administración Pública Regional y a sus organismos autónomos.",
+          "d": "El conjunto de derechos y obligaciones de contenido económico cuya titularidad corresponde a la Administración Pública Regional, a sus organismos autónomos, entidades públicas empresariales, otras entidades de derecho público de la Comunidad Autónoma, sociedades mercantiles regionales, fundaciones del sector público autonómico y consorcios adscritos a ella."
+        },
+        "respuesta_correcta": "c",
+        "anulada": false
+      },
+      {
+        "numero": 30,
+        "tipo": "legislativa",
+        "ley_ref": "TRLHRM Art. 29.2",
+        "pregunta": "Según el art. 29.2 del TRLHRM, los Presupuestos Generales de la Comunidad Autónoma contendrán:",
+        "opciones": {
+          "a": "Los estados de gastos en los que se incluirán, debidamente especificados, los ingresos necesarios para atender al cumplimiento de las obligaciones.",
+          "b": "Los estados de ingresos en los que figuren las estimaciones de los distintos derechos económicos a liquidar en el ejercicio.",
+          "c": "Los estados de gastos en los que se incluirán, debidamente separados, los gastos necesarios para atender al cumplimiento de las obligaciones.",
+          "d": "Los presupuestos administrativos, de explotación y de capital de los organismos autónomos, entidades públicas empresariales, otras entidades de derecho público de la Comunidad Autónoma, sociedades mercantiles regionales, fundaciones del sector público autonómico y consorcios adscritos a ella."
+        },
+        "respuesta_correcta": "b",
+        "anulada": false
+      },
+      {
+        "numero": 31,
+        "tipo": "legislativa",
+        "ley_ref": "TRLHRM Art. 31",
+        "pregunta": "Según el art. 31 del TRLHRM, el Proyecto de Ley de Presupuestos Generales de la Comunidad Autónoma deberá ser acompañado de la siguiente documentación: (Indique la opción INCORRECTA)",
+        "opciones": {
+          "a": "La cuenta consolidada de los Presupuestos Generales.",
+          "b": "Las memorias explicativas de los contenidos de cada uno de ellos y de las principales modificaciones que presenten en relación con los Presupuestos Generales del año anterior.",
+          "c": "La liquidación de los Presupuestos Generales del año anterior y un avance de la del ejercicio corriente.",
+          "d": "Un informe económico y financiero."
+        },
+        "respuesta_correcta": "b",
+        "anulada": false
+      },
+      {
+        "numero": 32,
+        "tipo": "legislativa",
+        "ley_ref": "Decreto 302/2011 CARM Art. 28.4",
+        "pregunta": "Según el art. 28.4 del Decreto n.º 302/2011, de 25 de noviembre, de Régimen Jurídico de la Gestión Electrónica de la Administración Pública de la Comunidad Autónoma de la Región de Murcia (en adelante Decreto 302/2011), en la sede electrónica de la Administración Pública de la CARM deberá estar accesible, en todo caso, la siguiente información: (Indique la opción INCORRECTA)",
+        "opciones": {
+          "a": "El ámbito subjetivo de la sede.",
+          "b": "El BORM y el BOE.",
+          "c": "La estructura organizativa de cada Consejería, organismo público y entidad de derecho público hasta el nivel de negociado, incluyendo la dirección postal de cada órgano o unidad administrativa y un instrumento de contacto por medios electrónicos.",
+          "d": "Los Presupuestos Generales de la Comunidad Autónoma."
+        },
+        "respuesta_correcta": "b",
+        "anulada": false
+      },
+      {
+        "numero": 33,
+        "tipo": "legislativa",
+        "ley_ref": "LPAC Art. 26.3",
+        "pregunta": "Según el art. 26.3 de la LPAC, los documentos electrónicos emitidos por las Administraciones Públicas:",
+        "opciones": {
+          "a": "Requerirán de firma electrónica, en cualquier caso.",
+          "b": "No requerirán de firma electrónica si no forman parte de un expediente administrativo, siendo necesario, en todo caso, identificar el origen de los documentos.",
+          "c": "Requerirán de firma electrónica, aunque no formen parte de un expediente administrativo.",
+          "d": "No requerirán de firma electrónica si no forman parte de un expediente administrativo, sin que sea necesario identificar el origen de los documentos."
+        },
+        "respuesta_correcta": "b",
+        "anulada": false
+      },
+      {
+        "numero": 34,
+        "tipo": "legislativa",
+        "ley_ref": "LPAC Art. 26.2",
+        "pregunta": "Según el art. 26.2 de la LPAC, para ser considerados válidos, los documentos administrativos electrónicos deberán:",
+        "opciones": {
+          "a": "Incorporar una referencia normativa del momento en que han sido emitidos.",
+          "b": "Incorporar los metadatos mínimos exigidos.",
+          "c": "Contener información de naturaleza administrativa archivada en cualquier tipo de soporte susceptible de identificación.",
+          "d": "Todas las opciones anteriores son correctas."
+        },
+        "respuesta_correcta": "b",
+        "anulada": false
+      },
+      {
+        "numero": 35,
+        "tipo": "legislativa",
+        "ley_ref": "LPAC Art. 70",
+        "pregunta": "Según el art. 70 de la LPAC, respecto al expediente administrativo electrónico: (Indique la opción INCORRECTA)",
+        "opciones": {
+          "a": "Contendrá un índice numerado de todos los documentos que contenga, salvo que en virtud de una norma no sea precisa su remisión.",
+          "b": "Deberá constar en el expediente copia electrónica certificada de la resolución adoptada.",
+          "c": "No formará parte del expediente administrativo la información que tenga carácter auxiliar o de apoyo.",
+          "d": "La autenticación del índice garantizará la integridad e inmutabilidad del expediente electrónico generado desde el momento de su firma."
+        },
+        "respuesta_correcta": "a",
+        "anulada": false
+      },
+      {
+        "numero": 36,
+        "tipo": "legislativa",
+        "ley_ref": "Decreto 236/2010 CARM Art. 3",
+        "pregunta": "Según el art. 3 del Decreto 236/2010, de 3 de septiembre, de Atención al Ciudadano en la Administración Pública de la Región de Murcia (en adelante Decreto 236/2010), con carácter general, la actividad de atención al ciudadano se regirá, entre otros, por el principio de:",
+        "opciones": {
+          "a": "Libertad en la elección del canal de atención para relacionarse con la Administración Pública.",
+          "b": "Deferencia, esmero y máximo respeto en la prestación de los servicios de atención y, en general, en el trato con los ciudadanos.",
+          "c": "Presentación de escritos, solicitudes y comunicaciones, en los términos de la legislación básica en la materia y en el presente Decreto.",
+          "d": "Igualdad y discriminación en el acceso a los servicios de atención al ciudadano."
+        },
+        "respuesta_correcta": "b",
+        "anulada": false
+      },
+      {
+        "numero": 37,
+        "tipo": "legislativa",
+        "ley_ref": "Decreto 236/2010 CARM Art. 28.1",
+        "pregunta": "El art. 28.1 del Decreto 236/2010, otorga la consideración de Oficinas Corporativas de Atención al Ciudadano a:",
+        "opciones": {
+          "a": "Las unidades constituidas con la finalidad de prestar el servicio de atención presencial, telefónica y electrónica a los ciudadanos.",
+          "b": "Las unidades constituidas con la finalidad de prestar el servicio de atención presencial y telefónica a los ciudadanos.",
+          "c": "Las unidades constituidas con la finalidad de prestar el servicio de atención presencial a los ciudadanos.",
+          "d": "Ninguna de las opciones anteriores es correcta."
+        },
+        "respuesta_correcta": "c",
+        "anulada": false
+      },
+      {
+        "numero": 38,
+        "tipo": "legislativa",
+        "ley_ref": "Decreto 236/2010 CARM Art. 22",
+        "pregunta": "De acuerdo con el art. 22 del Decreto 236/2010, las quejas presentadas por los ciudadanos:",
+        "opciones": {
+          "a": "Solo podrán ser formuladas por personas físicas, nunca por personas jurídicas.",
+          "b": "Podrán ser anónimas.",
+          "c": "Tendrán la calificación de recursos administrativos.",
+          "d": "Serán presentadas por los ciudadanos acreditando obligatoriamente su identidad."
+        },
+        "respuesta_correcta": "b",
+        "anulada": false
+      },
+      {
+        "numero": 39,
+        "tipo": "legislativa",
+        "ley_ref": "Ley 6/1990 CARM Art. 3.2",
+        "pregunta": "¿Cuál de los siguientes documentos tendrá la consideración de documento privado histórico según el art. 3.2 de la Ley 6/1990, de 11 de abril, de Archivos y Patrimonio Documental de la Región de Murcia (en adelante Ley 6/1990)?",
+        "opciones": {
+          "a": "Aquellos cuya antigüedad sea superior a 60 años.",
+          "b": "Los generados conservados o reunidos en el ejercicio de sus actividades por las entidades y asociaciones de carácter político, sindical o religioso de antigüedad superior a 20 años.",
+          "c": "Los generados, conservados o reunidos en el ejercicio de sus actividades por las entidades, fundaciones y asociaciones culturales y educativas de carácter privado de antigüedad superior a 40 años.",
+          "d": "Aquellos sobre los que recaiga tal declaración en relación a su importancia e interés comunitario de antigüedad superior a 20 años."
+        },
+        "respuesta_correcta": "c",
+        "anulada": false
+      },
+      {
+        "numero": 40,
+        "tipo": "legislativa",
+        "ley_ref": "Ley 6/1990 CARM Art. 7.8",
+        "pregunta": "Según el art. 7.8 de la Ley 6/1990, se depositará en el archivo histórico que se determine, la documentación existente en el Archivo de la Administración Regional que tenga:",
+        "opciones": {
+          "a": "Más de quince años de antigüedad y un interés para la investigación que justifique su conservación definitiva.",
+          "b": "Más de veinticinco años de antigüedad y un interés para la investigación que justifique su conservación definitiva.",
+          "c": "Más de diez años de antigüedad y un interés para la investigación que justifique su conservación definitiva.",
+          "d": "Más de cinco años de antigüedad y un interés para la investigación que justifique su conservación definitiva."
+        },
+        "respuesta_correcta": "b",
+        "anulada": false
+      },
+      {
+        "numero": 41,
+        "tipo": "legislativa",
+        "ley_ref": "Ley 6/1990 CARM Art. 7.1",
+        "pregunta": "Según el art. 7.1 de la Ley 6/1990, el Archivo de la Administración Regional tiene carácter de:",
+        "opciones": {
+          "a": "Archivo de Gestión.",
+          "b": "Archivo Histórico.",
+          "c": "Archivo Intermedio.",
+          "d": "Archivo Central."
+        },
+        "respuesta_correcta": "c",
+        "anulada": false
+      },
+      {
+        "numero": 42,
+        "tipo": "legislativa",
+        "ley_ref": "Manual documentos administrativos MAP",
+        "pregunta": "El Manual de documentos administrativos del Ministerio de Administraciones Públicas (MAP), clasifica los documentos administrativos como:",
+        "opciones": {
+          "a": "Documentos de constancia, de juicio, de transmisión y de decisión o resolutivos.",
+          "b": "Documentos de juicio, de transmisión y de decisión o resolutivos.",
+          "c": "Documentos de constancia, de juicio y de decisión o resolutivos.",
+          "d": "Documentos de juicio y de constancia."
+        },
+        "respuesta_correcta": "a",
+        "anulada": false
+      },
+      {
+        "numero": 43,
+        "tipo": "legislativa",
+        "ley_ref": "Manual documentos administrativos MAP",
+        "pregunta": "Los documentos que contienen una declaración de voluntad de un órgano administrativo sobre materias de su competencia son:",
+        "opciones": {
+          "a": "El certificado y el acuerdo.",
+          "b": "El acta y el certificado.",
+          "c": "El acta y la resolución.",
+          "d": "El acuerdo y la resolución."
+        },
+        "respuesta_correcta": "d",
+        "anulada": false
+      },
+      {
+        "numero": 44,
+        "tipo": "legislativa",
+        "ley_ref": "Manual documentos administrativos MAP",
+        "pregunta": "Conforme al Manual de documentos administrativos del MAP, el estilo administrativo recomendado en la redacción de documentos administrativos que se caracteriza por la naturalidad en la expresión, sin pretensiones retóricas, literarias o artificialmente elegantes es:",
+        "opciones": {
+          "a": "La claridad.",
+          "b": "La sencillez.",
+          "c": "La concisión.",
+          "d": "Sin pretensiones literarias."
+        },
+        "respuesta_correcta": "b",
+        "anulada": false
+      },
+      {
+        "numero": 45,
+        "tipo": "legislativa",
+        "ley_ref": "LPRL Art. 22.1",
+        "pregunta": "Según el art. 22.1 de la Ley 31/1995, de 8 de noviembre, de prevención de Riesgos Laborales (en adelante LPRL), los reconocimientos médicos son obligatorios para el trabajador:",
+        "opciones": {
+          "a": "Cuando sea imprescindible para evaluar los efectos de las condiciones de trabajo sobre su salud.",
+          "b": "Para trabajos peligrosos, nocivos, insalubres o penosos.",
+          "c": "Para los trabajadores menores de edad y discapacitados físicos y psíquicos.",
+          "d": "En ningún caso, ya que los reconocimientos médicos son voluntarios para el trabajador."
+        },
+        "respuesta_correcta": "a",
+        "anulada": false
+      },
+      {
+        "numero": 46,
+        "tipo": "legislativa",
+        "ley_ref": "LPRL Art. 30.5",
+        "pregunta": "Según el art. 30.5 LPRL, y cumpliendo los requisitos establecidos en ese apartado, el empresario podrá asumir personalmente la actividad preventiva en empresas que cuenten con un máximo de:",
+        "opciones": {
+          "a": "6 trabajadores.",
+          "b": "9 trabajadores.",
+          "c": "10 trabajadores.",
+          "d": "50 trabajadores."
+        },
+        "respuesta_correcta": "c",
+        "anulada": false
+      },
+      {
+        "numero": 47,
+        "tipo": "legislativa",
+        "ley_ref": "LPRL Art. 21.3",
+        "pregunta": "Según el art. 21.3 de la LPRL, cuando los trabajadores puedan estar expuestos a un riesgo grave e inminente con ocasión de su trabajo y el empresario no adopte las medidas necesarias para garantizar la seguridad y la salud de los mismos:",
+        "opciones": {
+          "a": "Los trabajadores podrán acordar por mayoría paralizar la actividad de la empresa.",
+          "b": "Los representantes legales de los trabajadores podrán acordar, por mayoría de sus miembros, la paralización de la actividad de los trabajadores afectados por dicho riesgo.",
+          "c": "Los Delegados de Prevención podrán paralizar la actividad de la empresa.",
+          "d": "Todas las opciones anteriores son correctas."
+        },
+        "respuesta_correcta": "b",
+        "anulada": false
+      },
+      {
+        "numero": 48,
+        "tipo": "legislativa",
+        "ley_ref": "LO 3/2007 Art. 7",
+        "pregunta": "En virtud del art. 7 de la Ley Orgánica 3/2007, de 22 de marzo, para la igualdad efectiva de mujeres y hombres, sin perjuicio de lo establecido en el Código Penal, a los efectos de esta Ley constituye acoso sexual:",
+        "opciones": {
+          "a": "Cualquier comportamiento realizado en función del sexo de una persona, con el propósito o el efecto de atentar contra su dignidad.",
+          "b": "Cualquier comportamiento, verbal o físico, de naturaleza sexual que tenga el propósito o produzca el efecto de atentar contra la dignidad de una persona, en particular cuando se crea un entorno intimidatorio, degradante u ofensivo.",
+          "c": "Cualquier comportamiento realizado en función del sexo de una persona, con el propósito o el efecto de atentar contra su dignidad y de crear un entorno intimidatorio, degradante u ofensivo.",
+          "d": "Cualquier comportamiento, verbal o físico, de naturaleza sexual que tenga el propósito o produzca el efecto de atentar contra la dignidad de una persona, siempre que se cree un entorno intimidatorio, degradante u ofensivo."
+        },
+        "respuesta_correcta": "b",
+        "anulada": false
+      },
+      {
+        "numero": 49,
+        "tipo": "legislativa",
+        "ley_ref": "Ley 19/2013 Art. 1",
+        "pregunta": "Según su art. 1, la Ley 19/2013, de 9 de diciembre, de Transparencia, acceso a la información pública y buen gobierno tiene por objeto: (Indique la respuesta INCORRECTA)",
+        "opciones": {
+          "a": "Establecer las obligaciones de buen gobierno que deben cumplir los responsables públicos.",
+          "b": "Garantizar el derecho de acceso a la información relativa a la actividad pública.",
+          "c": "Ampliar y reforzar la transparencia de la actividad pública.",
+          "d": "Fomentar la participación en las políticas públicas como un derecho de los ciudadanos."
+        },
+        "respuesta_correcta": "d",
+        "anulada": false
+      },
+      {
+        "numero": 50,
+        "tipo": "legislativa",
+        "ley_ref": "RGPD Arts. 15-22",
+        "pregunta": "Según los artículos 15 a 22 del Reglamento (UE) 2016/679 del Parlamento Europeo y del Consejo de 27 de abril de 2016 (Reglamento General de Protección de Datos, en adelante RGPD), entre los derechos del interesado se incluye el derecho de:",
+        "opciones": {
+          "a": "Rectificación de los datos personales sin necesidad de que se trate de datos incompletos o inexactos.",
+          "b": "Acceso a la información pública.",
+          "c": "Supresión de los datos personales sin necesidad de que concurran determinadas circunstancias.",
+          "d": "A la limitación del tratamiento cuando se cumplan determinadas condiciones."
+        },
+        "respuesta_correcta": "d",
+        "anulada": false
+      },
+      {
+        "numero": 51,
+        "tipo": "legislativa",
+        "ley_ref": "TRLFP CARM",
+        "pregunta": "¿A cuántos auxiliares de enfermería, de los mencionados en el supuesto, se les podría hacer un nuevo nombramiento por exceso o acumulación de tareas para el mes de octubre?",
+        "opciones": {
+          "a": "1.",
+          "b": "2.",
+          "c": "3.",
+          "d": "A ninguno de ellos."
+        },
+        "respuesta_correcta": "b",
+        "anulada": false
+      },
+      {
+        "numero": 52,
+        "tipo": "legislativa",
+        "ley_ref": "TREBEP Art. 10",
+        "pregunta": "Según el art. 10 del TREBEP, en caso de que el puesto de D. Domingo no pudiera cubrirse por funcionario de carrera, ¿podría ser provisto por personal funcionario interino?",
+        "opciones": {
+          "a": "Sí, mediante nombramiento de personal funcionario interino por la existencia de plazas vacantes.",
+          "b": "Sí, mediante nombramiento de personal funcionario interino por sustitución transitoria del titular.",
+          "c": "Sí, mediante nombramiento de personal funcionario interino por ejecución de programas de carácter temporal.",
+          "d": "No, porque al tratarse de un puesto de carácter definitivo y de nivel superior al base no es posible su cobertura por personal funcionario interino."
+        },
+        "respuesta_correcta": "b",
+        "anulada": false
+      },
+      {
+        "numero": 53,
+        "tipo": "legislativa",
+        "ley_ref": "TREBEP Art. 10",
+        "pregunta": "Y en caso de que pudiera ser provisto por personal funcionario interino, ¿cuánto tiempo podría permanecer en el puesto?",
+        "opciones": {
+          "a": "Un máximo de 3 años.",
+          "b": "Durante el tiempo estrictamente necesario.",
+          "c": "Un máximo de 3 años, ampliable hasta 12 meses más.",
+          "d": "Un máximo de 3 años, salvo en el caso de la excepcionalidad prevista en el art. 10.4 del TREBEP."
+        },
+        "respuesta_correcta": "b",
+        "anulada": false
+      },
+      {
+        "numero": 54,
+        "tipo": "legislativa",
+        "ley_ref": "LCSP",
+        "pregunta": "Respecto al contrato, indique la afirmación correcta:",
+        "opciones": {
+          "a": "El presupuesto base de licitación es el límite máximo de gasto que en virtud del contrato puede comprometer el órgano de contratación, excluido el IVA, salvo disposición en contrario.",
+          "b": "El presupuesto base de licitación es el precio máximo que puede alcanzar la adjudicación del contrato, excluido el IVA, salvo disposición en contrario.",
+          "c": "En el precio del contrato no se incluye el IVA, indicándose en una partida independiente.",
+          "d": "Ninguna de las opciones anteriores es correcta."
+        },
+        "respuesta_correcta": "d",
+        "anulada": false
+      },
+      {
+        "numero": 55,
+        "tipo": "legislativa",
+        "ley_ref": null,
+        "pregunta": "Ordene alfabéticamente las proposiciones presentadas por las empresas:",
+        "opciones": {
+          "a": "A.R.P., S.A; AQUA, S.L; Juan Martínez e hijos, S.L.; 1000 Piscinas, S.L.; PISCIS, S.A.",
+          "b": "1000 Piscinas, S.L.; A.R.P., S.A.; AQUA, S.L.; Juan Martínez e hijos, S.L.; PISCIS, S.A.",
+          "c": "A.R.P., S.A.; AQUA, S.L.; Juan Martínez e hijos, S.L.; PISCIS, S.A.; 1000 Piscinas, S.A.",
+          "d": "1000 Piscinas, S.L.; AQUA, S.L.; A.R.P., S.A.; Juan Martínez e hijos, S.L.; PISCIS, S.A."
+        },
+        "respuesta_correcta": "b",
+        "anulada": false
+      },
+      {
+        "numero": 56,
+        "tipo": "legislativa",
+        "ley_ref": "TRLHRM",
+        "pregunta": "¿A qué capítulo del presupuesto se imputará la aportación recibida con la que se va a financiar la construcción de la piscina?",
+        "opciones": {
+          "a": "Capítulo 6 del presupuesto de ingresos.",
+          "b": "Capítulo 7 del presupuesto de ingresos.",
+          "c": "Capítulo 6 del presupuesto de gastos.",
+          "d": "Capítulo 7 del presupuesto de gastos."
+        },
+        "respuesta_correcta": "b",
+        "anulada": false
+      },
+      {
+        "numero": 57,
+        "tipo": "legislativa",
+        "ley_ref": "TRLHRM",
+        "pregunta": "¿A qué capítulo del presupuesto de ingresos se imputará la recaudación del canon establecido por la cesión del servicio de cafetería prestado en el C.O. Churra?",
+        "opciones": {
+          "a": "Capítulo 2.",
+          "b": "Capítulo 3.",
+          "c": "Capítulo 5.",
+          "d": "Capítulo 8."
+        },
+        "respuesta_correcta": "c",
+        "anulada": false
+      },
+      {
+        "numero": 58,
+        "tipo": "legislativa",
+        "ley_ref": "TRLHRM",
+        "pregunta": "Domingo solicita un anticipo de nómina ¿A qué capítulo del presupuesto de gastos se imputará su concesión?",
+        "opciones": {
+          "a": "Capítulo 1.",
+          "b": "Capítulo 2.",
+          "c": "Capítulo 4.",
+          "d": "Capítulo 8."
+        },
+        "respuesta_correcta": "d",
+        "anulada": false
+      },
+      {
+        "numero": 59,
+        "tipo": "legislativa",
+        "ley_ref": "TRLHRM",
+        "pregunta": "¿A qué capítulo del presupuesto de ingresos se imputará la garantía exigida a PISCIS, S.A. cuando la constituya?",
+        "opciones": {
+          "a": "Capítulo 3.",
+          "b": "Capítulo 5.",
+          "c": "Capítulo 8.",
+          "d": "Capítulo 9."
+        },
+        "respuesta_correcta": "d",
+        "anulada": false
+      },
+      {
+        "numero": 60,
+        "tipo": "legislativa",
+        "ley_ref": "TRLHRM Art. 27.1",
+        "pregunta": "Conforme al art. 27.1 del TRLHRM, ¿qué característica presentan los presupuestos del IMAS respecto a los gastos e ingresos?",
+        "opciones": {
+          "a": "Los ingresos tienen carácter estimativo, pero los gastos tienen carácter limitativo.",
+          "b": "Los gastos tienen carácter estimativo, pero los ingresos tienen carácter limitativo.",
+          "c": "Tanto los ingresos como los gastos tienen carácter estimativo.",
+          "d": "Tanto los ingresos como los gastos tienen carácter limitativo."
+        },
+        "respuesta_correcta": "a",
+        "anulada": false
+      },
+      {
+        "numero": 61,
+        "tipo": "legislativa",
+        "ley_ref": "TRLHRM",
+        "pregunta": "Indique la respuesta correcta en relación a la partida presupuestaria 51.02.00.313F.621.01:",
+        "opciones": {
+          "a": "La función son los tres primeros dígitos de la clasificación funcional.",
+          "b": "El subconcepto es 621.01.",
+          "c": "La sección se corresponde con los dígitos 0.2 de la clasificación orgánica.",
+          "d": "Ninguna de las opciones anteriores es correcta."
+        },
+        "respuesta_correcta": "b",
+        "anulada": false
+      },
+      {
+        "numero": 62,
+        "tipo": "legislativa",
+        "ley_ref": "TRLHRM",
+        "pregunta": "¿A quién le corresponde la elaboración del anteproyecto del presupuesto del IMAS?",
+        "opciones": {
+          "a": "Al titular del IMAS.",
+          "b": "El anteproyecto del estado de gastos al titular del IMAS y el estado de ingresos al titular de la Consejería a la que está adscrito.",
+          "c": "El anteproyecto del estado de gastos al titular del IMAS y el estado de ingresos al titular de la Consejería competente en materia de hacienda.",
+          "d": "Al titular de la Consejería a la que está adscrito."
+        },
+        "respuesta_correcta": "a",
+        "anulada": false
+      },
+      {
+        "numero": 63,
+        "tipo": "legislativa",
+        "ley_ref": "Manual documentos administrativos MAP",
+        "pregunta": "Indique en cuál de los siguientes pies de firma, del documento de nombramiento de personal funcionario interino, están correctamente puestas la antefirma y firma conforme al Manual de documentos administrativos del MAP, teniendo en cuenta que va a ser firmado electrónicamente:",
+        "opciones": {
+          "a": "LA DIRECTORA GERENTE DEL INSTITUTO MURCIANO DE ACCIÓN SOCIAL (Orden de la Directora Gerente del Instituto Murciano de Acción Social de 29/09/2023) P.D. LA SECRETARIA GENERAL TÉCNICA DEL INSTITUTO MURCIANO DE ACCIÓN SOCIAL Josefa Martínez Muñoz",
+          "b": "LA DIRECTORA GERENTE DEL INSTITUTO MURCIANO DE ACCIÓN SOCIAL P.D. LA SECRETARIA GENERAL TÉCNICA DEL INSTITUTO MURCIANO DE ACCIÓN SOCIAL (Resolución de la Directora Gerente del Instituto Murciano de Acción Social de 29/09/2023) Josefa Martínez Muñoz",
+          "c": "LA SECRETARIA GENERAL TÉCNICA DEL INSTITUTO MURCIANO DE ACCIÓN SOCIAL P.D. LA DIRECTORA GERENTE DEL INSTITUTO MURCIANO DE ACCIÓN SOCIAL (Orden de la Directora Gerente del Instituto Murciano de Acción Social de 29/09/2023) Josefa Martínez Muñoz",
+          "d": "LA DIRECTORA GERENTE DEL INSTITUTO MURCIANO DE ACCIÓN SOCIAL P.D. LA SECRETARIA GENERAL TÉCNICA DEL INSTITUTO MURCIANO DE ACCIÓN SOCIAL (Resolución de la Directora Gerente del Instituto Murciano de Acción Social de 29/09/2023) Josefa Martínez Muñoz"
+        },
+        "respuesta_correcta": null,
+        "anulada": true
+      },
+      {
+        "numero": 64,
+        "tipo": "legislativa",
+        "ley_ref": "LPAC Art. 68",
+        "pregunta": "Según el art. 68 de la LPAC y teniendo en cuenta que el 12 de septiembre es festivo sólo en la Ciudad de Murcia, el plazo de subsanación finalizará:",
+        "opciones": {
+          "a": "El día 14 de septiembre de 2023.",
+          "b": "El día 15 de septiembre de 2023.",
+          "c": "El día 18 de septiembre de 2023.",
+          "d": "El día 19 de septiembre de 2023."
+        },
+        "respuesta_correcta": "c",
+        "anulada": false
+      },
+      {
+        "numero": 65,
+        "tipo": "legislativa",
+        "ley_ref": "LPAC Art. 52",
+        "pregunta": "Según el art. 52 de la LPAC, si la resolución de un procedimiento en cuya tramitación ha intervenido D. Arturo incurre en un vicio de invalidez, podrá convalidarse, siempre que:",
+        "opciones": {
+          "a": "El vicio no consista en la falta de alguna autorización.",
+          "b": "El vicio no consista en incompetencia.",
+          "c": "No sea nula de pleno derecho.",
+          "d": "No incurra en desviación de poder."
+        },
+        "respuesta_correcta": "c",
+        "anulada": false
+      },
+      {
+        "numero": 66,
+        "tipo": "legislativa",
+        "ley_ref": "LPAC Art. 80",
+        "pregunta": "Según el art. 80 de la LPAC, si en un procedimiento tramitado por la Dirección General se solicita un informe y éste no se emite en el plazo señalado:",
+        "opciones": {
+          "a": "La Dirección General señalará nuevo plazo improrrogable, sin perjuicio de la responsabilidad en que incurra el responsable de la demora.",
+          "b": "Se podrán proseguir las actuaciones salvo que el informe sea preceptivo, en el que se podrá suspender el transcurso del plazo máximo legal para resolver el procedimiento.",
+          "c": "En ningún caso se podrá suspender el transcurso del plazo máximo legal para resolver el procedimiento.",
+          "d": "Siempre se podrá suspender el transcurso del plazo máximo legal para resolver el procedimiento."
+        },
+        "respuesta_correcta": "b",
+        "anulada": false
+      },
+      {
+        "numero": 67,
+        "tipo": "legislativa",
+        "ley_ref": "TREBEP Art. 48",
+        "pregunta": "Una hermana de D. Arturo, se va a someter en la misma localidad a una intervención quirúrgica sin hospitalización que requerirá de reposo domiciliario. Por ello, conforme al art. 48 del TREBEP, D. Arturo:",
+        "opciones": {
+          "a": "Tendrá derecho a un permiso de cinco días hábiles, si no convive en su domicilio pero requiere de su cuidado efectivo.",
+          "b": "Tendrá derecho a un permiso de dos días hábiles.",
+          "c": "Tendrá derecho a un permiso de cuatro días hábiles, si no convive en el mismo domicilio.",
+          "d": "Ninguna de las opciones anteriores es correcta."
+        },
+        "respuesta_correcta": "c",
+        "anulada": false
+      },
+      {
+        "numero": 68,
+        "tipo": "legislativa",
+        "ley_ref": "Ley 7/2004 CARM Art. 14",
+        "pregunta": "Tras la elección del nuevo Presidente de la Comunidad Autónoma, D. Arturo está pendiente de que se produzca la reorganización de la Administración Regional. Según el art. 14 de la Ley 7/2004, la aprobación del decreto que establezca los órganos directivos de su Consejería se realizará:",
+        "opciones": {
+          "a": "Por el Presidente de la Comunidad Autónoma.",
+          "b": "Por el Presidente de la Comunidad Autónoma, a propuesta del Consejero.",
+          "c": "Por el Consejo de Gobierno, a propuesta del Consejero.",
+          "d": "Por el Consejo de Gobierno, a propuesta del Presidente."
+        },
+        "respuesta_correcta": "d",
+        "anulada": false
+      },
+      {
+        "numero": 69,
+        "tipo": "legislativa",
+        "ley_ref": "LPAC Art. 14",
+        "pregunta": "En cuanto a la presentación de la solicitud por la empresa “Gómez S.A.”, de acuerdo con el art. 14 LPAC:",
+        "opciones": {
+          "a": "Podrá hacerlo en papel en una Oficina de asistencia en materia de registros, que deberá digitalizar la solicitud.",
+          "b": "Podrá optar entre la presentación por medios electrónicos o en papel, salvo que reglamentariamente esté obligada a la presentación electrónica.",
+          "c": "Deberá hacerlo por medios electrónicos, en todo caso.",
+          "d": "Ninguna de las opciones anteriores es correcta."
+        },
+        "respuesta_correcta": "c",
+        "anulada": false
+      },
+      {
+        "numero": 70,
+        "tipo": "legislativa",
+        "ley_ref": "LPAC",
+        "pregunta": "Según los artículos 30 y 40 de la LPAC, la resolución que resuelve la solicitud presentada por “Gómez S.A.” debe ser notificada:",
+        "opciones": {
+          "a": "Dentro del plazo de quince días hábiles a partir de la fecha en que se haya dictado, siempre que por Ley o disposición reglamentaria no se exprese otro cómputo.",
+          "b": "Dentro del plazo de diez días hábiles a partir de la fecha en que se haya dictado siempre que por Ley o disposición reglamentaria no se exprese otro cómputo.",
+          "c": "Dentro del plazo de quince días hábiles a partir de la fecha en que se haya dictado, siempre que por Ley o en el Derecho de la Unión Europea no se exprese otro cómputo.",
+          "d": "Dentro del plazo de diez días hábiles a partir de la fecha en que se haya dictado, siempre que por Ley o en el Derecho de la Unión Europea no se exprese otro cómputo."
+        },
+        "respuesta_correcta": "d",
+        "anulada": false
+      },
+      {
+        "numero": 71,
+        "tipo": "legislativa",
+        "ley_ref": "LPAC",
+        "pregunta": "De acuerdo con los artículos 47, 48 y 52 de la LPAC, si la resolución se dictara por la persona titular de la Dirección General sin tener delegada la competencia, dicha resolución sería:",
+        "opciones": {
+          "a": "Nula de pleno derecho, pero podría ser convalidada por el titular de la Consejería.",
+          "b": "Anulable, pero podría ser convalidada por la persona titular de la Consejería.",
+          "c": "Nula de pleno derecho y no podría ser convalidada por el titular de la Consejería.",
+          "d": "Anulable y no podría ser convalidada por la persona titular de la Consejería."
+        },
+        "respuesta_correcta": "b",
+        "anulada": false
+      },
+      {
+        "numero": 72,
+        "tipo": "legislativa",
+        "ley_ref": "Ley 7/2004 CARM",
+        "pregunta": "De acuerdo con los artículos 114, 121 y 123 de la LPAC y 28 de la Ley 7/2004, si la resolución se dicta, en virtud de delegación de la persona titular de la Consejería, por la persona titular de la Dirección General, contra la misma podrá interponerse:",
+        "opciones": {
+          "a": "El recurso de alzada en el plazo de un mes.",
+          "b": "El recurso de alzada en el plazo de tres meses.",
+          "c": "El recurso potestativo de reposición, en el plazo de un mes, o directamente el recurso contencioso-administrativo.",
+          "d": "El recurso potestativo de reposición, en el plazo de tres meses, o directamente el recurso contencioso-administrativo."
+        },
+        "respuesta_correcta": "c",
+        "anulada": false
+      },
+      {
+        "numero": 73,
+        "tipo": "legislativa",
+        "ley_ref": "Ley 53/1984 Art. 16",
+        "pregunta": "Don Arturo va a solicitar la autorización de compatibilidad para trabajar por las tardes en una autoescuela. Para ello, según el art. 16 de la Ley 53/1984, de 26 de diciembre, de Incompatibilidades del personal al servicio de las Administraciones Públicas, deberá cumplir, entre otros, el siguiente requisito:",
+        "opciones": {
+          "a": "Que la actividad en la autoescuela no requiera su presencia efectiva durante un horario superior a la mitad de la jornada semanal ordinaria de trabajo en las Administraciones Públicas.",
+          "b": "Que la cantidad total percibida por ambas actividades no supere la remuneración prevista para el cargo de Director General en los Presupuestos Generales del Estado.",
+          "c": "Que el complemento específico del puesto que desempeñe sea inferior al 30% de su retribución básica, incluidos los conceptos que tengan su origen en la antigüedad.",
+          "d": "Que el complemento específico del puesto que desempeñe no supere el 30% de su retribución básica, excluidos los conceptos que tengan su origen en la antigüedad."
+        },
+        "respuesta_correcta": "d",
+        "anulada": false
+      },
+      {
+        "numero": 74,
+        "tipo": "legislativa",
+        "ley_ref": "LCSP Art. 29",
+        "pregunta": "La solicitud presentada por la empresa se refiere a un contrato menor, el cual, según el art. 29 de la Ley 9/2017, de 8 de noviembre, de Contratos del Sector Público (en adelante LCSP), no puede tener una duración superior a:",
+        "opciones": {
+          "a": "Tres años, incluidas las prórrogas.",
+          "b": "Dos años, sin posibilidad de prórroga.",
+          "c": "Un año, sin posibilidad de prórroga.",
+          "d": "Seis meses, con posibilidad de prórroga hasta los dos años."
+        },
+        "respuesta_correcta": "c",
+        "anulada": false
+      },
+      {
+        "numero": 75,
+        "tipo": "legislativa",
+        "ley_ref": "TREBEP",
+        "pregunta": "sistema de libre designación de otra Administración Pública. Si obtiene puesto en dicho procedimiento, quedará en la Administración Regional en la situación administrativa de:",
+        "opciones": {
+          "a": "Servicios en otras Administraciones Públicas.",
+          "b": "Excedencia voluntaria por prestación de servicios en el sector público.",
+          "c": "Servicio activo.",
+          "d": "Servicios especiales."
+        },
+        "respuesta_correcta": "a",
+        "anulada": false
+      }
+    ]
+  },
+  "resumen": {
+    "total": 75,
+    "anuladas": [
+      63
+    ],
+    "por_tipo": {
+      "legislativa": 75,
+      "ofimatica": 0
+    }
+  }
+}
