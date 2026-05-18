@@ -158,7 +158,11 @@ export default async function OposicionPage({ params }: { params: Promise<{ opos
     salarioMin: data?.salarioMin ? formatNumber(data.salarioMin) : '—',
     salarioMax: data?.salarioMax ? formatNumber(data.salarioMax) : '—',
   }
-  function resolveVars(text: string): string {
+  // Defensivo: si llega undefined/null/no-string, devolver string vacío en vez
+  // de propagar TypeError. Una entry malformada en JSONB de BD (ej. snapshot de
+  // cache antiguo con esquema previo) no debe tumbar la página entera.
+  function resolveVars(text: unknown): string {
+    if (typeof text !== 'string') return ''
     return text.replace(/\{(\w+)\}/g, (_, key) => {
       const val = varsMap[key]
       if (val === undefined) {
@@ -168,10 +172,23 @@ export default async function OposicionPage({ params }: { params: Promise<{ opos
     })
   }
 
-  // Estadísticas hero (de BD con variables resueltas, o generadas)
-  const rawStats = data?.landingEstadisticas as Array<{ numero: string; texto: string; color: string }> | null
-  const estadisticas = rawStats
-    ? rawStats.map(s => ({ ...s, numero: resolveVars(s.numero) }))
+  // Estadísticas hero (de BD con variables resueltas, o generadas).
+  // Filtramos entries que no respeten el esquema {numero,texto,color} —
+  // pueden venir snapshots viejos con {label,value} u otros campos.
+  const rawStats = data?.landingEstadisticas as Array<{ numero?: unknown; texto?: unknown; color?: unknown }> | null
+  const estadisticas = rawStats && rawStats.length > 0
+    ? rawStats
+        .filter((s) => s && typeof s.numero === 'string')
+        .map((s) => ({
+          numero: resolveVars(s.numero),
+          texto: typeof s.texto === 'string' ? s.texto : '',
+          color: typeof s.color === 'string' ? s.color : 'text-blue-600',
+        }))
+    : []
+
+  // Si tras el filtro quedó vacío, generamos las stats por defecto.
+  const estadisticasSafe = estadisticas.length > 0
+    ? estadisticas
     : [
         { numero: plazasLibres ? formatNumber(plazasLibres) : '—', texto: 'Plazas', color: `text-blue-600` },
         { numero: String(temasCount), texto: 'Temas', color: 'text-green-600' },
@@ -179,10 +196,12 @@ export default async function OposicionPage({ params }: { params: Promise<{ opos
         { numero: config.badge, texto: 'Grupo', color: 'text-orange-600' },
       ]
 
-  // FAQs (de BD con variables resueltas, o genéricas)
-  const rawFaqs = data?.landingFaqs as Array<{ pregunta: string; respuesta: string }> | null
-  const faqs = rawFaqs
-    ? rawFaqs.map(f => ({ pregunta: resolveVars(f.pregunta), respuesta: resolveVars(f.respuesta) }))
+  // FAQs (de BD con variables resueltas, o genéricas). Mismo filtro defensivo.
+  const rawFaqs = data?.landingFaqs as Array<{ pregunta?: unknown; respuesta?: unknown }> | null
+  const faqs = rawFaqs && rawFaqs.length > 0
+    ? rawFaqs
+        .filter((f) => f && typeof f.pregunta === 'string' && typeof f.respuesta === 'string')
+        .map((f) => ({ pregunta: resolveVars(f.pregunta), respuesta: resolveVars(f.respuesta) }))
     :
     [
       {
@@ -266,8 +285,8 @@ export default async function OposicionPage({ params }: { params: Promise<{ opos
             </div>
 
             {/* Estadísticas hero */}
-            <div className={`grid grid-cols-2 md:grid-cols-${Math.min(estadisticas.length, 4)} gap-4 max-w-2xl mx-auto`}>
-              {estadisticas.map((stat, i) => (
+            <div className={`grid grid-cols-2 md:grid-cols-${Math.min(estadisticasSafe.length, 4)} gap-4 max-w-2xl mx-auto`}>
+              {estadisticasSafe.map((stat, i) => (
                 <div key={i} className="bg-white rounded-lg p-4 shadow-md">
                   <div className={`text-2xl font-bold ${stat.color}`}>{stat.numero}</div>
                   <div className="text-sm text-gray-600">{stat.texto}</div>
