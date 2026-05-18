@@ -1355,6 +1355,40 @@ export const OPOSICIONES: Oposicion[] = [
       { href: '/auxiliar-administrativo-valencia/temario', label: 'Temario', icon: '📚' },
       { href: '/auxiliar-administrativo-valencia/test', label: 'Tests', icon: '🎯' },
     ],
+    officialExams: [
+      {
+        date: '2018-09-22',
+        title: 'Convocatoria 9/16 (OEP 2016)',
+        oep: 'OEP 2016',
+        partes: [
+          { id: 'unica', icon: '📘', title: 'Ejercicio', description: '50 preguntas (turno libre, conv. 9/16)' },
+        ],
+      },
+      {
+        date: '2022-02-12',
+        title: 'Convocatoria 9/18 (OEP 2017-2018)',
+        oep: 'OEP 2017-2018',
+        partes: [
+          { id: 'unica', icon: '📘', title: 'Ejercicio', description: '66 preguntas (turno libre, conv. 9/18)' },
+        ],
+      },
+      {
+        date: '2023-02-25',
+        title: 'Convocatoria 9/22 (OEP 2022)',
+        oep: 'OEP 2022',
+        partes: [
+          { id: 'unica', icon: '📘', title: 'Ejercicio', description: '73 preguntas (turno libre, conv. 9/22)' },
+        ],
+      },
+      {
+        date: '2023-11-18',
+        title: 'Convocatoria 14/23 (OEP 2023)',
+        oep: 'OEP 2023',
+        partes: [
+          { id: 'unica', icon: '📘', title: 'Ejercicio', description: '73 preguntas (turno libre, conv. 14/23)' },
+        ],
+      },
+    ],
   },
 
   // ========================================
@@ -1835,6 +1869,27 @@ export const OPOSICIONES: Oposicion[] = [
       { href: '/auxilio-judicial', label: 'Mi Oposición', icon: '⚖️', featured: true },
       { href: '/auxilio-judicial/temario', label: 'Temario', icon: '📚' },
       { href: '/auxilio-judicial/test', label: 'Tests', icon: '🎯' },
+    ],
+    officialExams: [
+      {
+        date: '2024-09-28',
+        title: 'Convocatoria 28 septiembre 2024',
+        oep: 'OEP 2023',
+        partes: [
+          { id: 'primera', icon: '📘', title: 'Primer ejercicio', description: 'Test teórico — 85 preguntas (de 100 oficiales BOE)' },
+          { id: 'segunda', icon: '📗', title: 'Segundo ejercicio', description: 'Supuesto práctico — 35 preguntas (de 40 oficiales BOE)' },
+        ],
+        note: 'Preguntas importadas de repasandosinpapeles.com (Modelo A, sin reservas/anuladas).',
+      },
+      {
+        date: '2025-09-27',
+        title: 'Convocatoria 27 septiembre 2025',
+        oep: 'OEP 2024',
+        partes: [
+          { id: 'primera', icon: '📘', title: 'Primer ejercicio', description: 'Test teórico — 85 preguntas (de 100 oficiales BOE)' },
+        ],
+        note: 'Preguntas importadas de mjusticia.gob.es. Falta importar el supuesto práctico (40 preguntas).',
+      },
     ],
   },
   // ========================================

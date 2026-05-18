@@ -50,3 +50,6 @@ preguntas-para-subir/
 
 # TrustMRR scraper
 scripts/.trustmrr-cookie
+
+# Examen GVA OEP 2016 cuestionario escaneado pesado (12MB, sin OCR usable)
+data/examenes-oficiales/auxiliar-administrativo-valencia/18-09-22 conv 9-16 OEP 2016/cuestionario_csif_scan.pdf
