@@ -160,6 +160,9 @@ async function runCountsOnly(): Promise<number> {
         AND a.article_number NOT IN ('0', '00', 'preámbulo', 'Preámbulo', 'General', 'Retos', 'I', 'II', 'III', 'IV')
     ),
     similarity_count AS (
+      -- Optimización: si las longitudes difieren >25% no puede haber similarity >=0.9,
+      -- y comparar solo primeros 500 chars baja el coste de similarity (que es O(n*m) en pg_trgm).
+      -- Sin estos dos filtros la query timeout-ea (~40s); con ambos baja a ~12s.
       SELECT count(*)::int as copied
       FROM questions q
       JOIN articles a ON q.primary_article_id = a.id
@@ -167,7 +170,9 @@ async function runCountsOnly(): Promise<number> {
         AND a.content IS NOT NULL
         AND LENGTH(a.content) > 50
         AND LENGTH(q.explanation) > 50
-        AND similarity(q.explanation, a.content) >= ${SIMILARITY_THRESHOLD}
+        AND LEAST(LENGTH(a.content), LENGTH(q.explanation))::float
+            / GREATEST(LENGTH(a.content), LENGTH(q.explanation)) >= 0.75
+        AND similarity(LEFT(q.explanation, 500), LEFT(a.content, 500)) >= ${SIMILARITY_THRESHOLD}
     ),
     -- Preguntas duplicadas: mismo texto + mismas opciones (barajadas) + mismo artículo.
     -- Preguntas con mismo texto pero opciones o artículos diferentes son legítimas
@@ -467,9 +472,11 @@ async function runChecks(): Promise<QualityResponse> {
     `),
 
     // 8. Copied explanation (similarity)
+    // Optimización: pre-filtro de longitudes + comparación sobre primeros 500 chars
+    // para evitar timeout (similarity de pg_trgm es O(n*m) sobre textos completos).
     db.execute(sql`
       SELECT q.id, LEFT(q.question_text, ${TEXT_LIMIT}) as question_text,
-             ROUND(similarity(q.explanation, a.content)::numeric, 2) as sim,
+             ROUND(similarity(LEFT(q.explanation, 500), LEFT(a.content, 500))::numeric, 2) as sim,
              count(*) OVER()::int as total_count
       FROM questions q
       JOIN articles a ON q.primary_article_id = a.id
@@ -477,8 +484,10 @@ async function runChecks(): Promise<QualityResponse> {
         AND a.content IS NOT NULL
         AND LENGTH(a.content) > 50
         AND LENGTH(q.explanation) > 50
-        AND similarity(q.explanation, a.content) >= ${SIMILARITY_THRESHOLD}
-      ORDER BY similarity(q.explanation, a.content) DESC
+        AND LEAST(LENGTH(a.content), LENGTH(q.explanation))::float
+            / GREATEST(LENGTH(a.content), LENGTH(q.explanation)) >= 0.75
+        AND similarity(LEFT(q.explanation, 500), LEFT(a.content, 500)) >= ${SIMILARITY_THRESHOLD}
+      ORDER BY similarity(LEFT(q.explanation, 500), LEFT(a.content, 500)) DESC
       LIMIT ${MAX_ITEMS}
     `),
 
