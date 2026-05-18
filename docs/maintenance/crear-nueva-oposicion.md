@@ -386,6 +386,11 @@ Variables disponibles: `{plazasLibres}`, `{temasCount}`, `{bloquesCount}`, `{tit
 
 Si no se conocen las plazas, usar `"—"` como numero.
 
+> ⚠️ **CRITICO — esquema exacto** (incidente 18/05/2026, 500 en producción):
+> Las tres claves son **literalmente** `numero`, `texto`, `color`. NO usar `label`/`value` ni otro alias. El template `app/[oposicion]/page.tsx:174` llama `resolveVars(s.numero)` que invoca `.replace(...)` — si `numero` es `undefined`, **toda la landing tira 500 SSR**. Caso real: el script `_tmp_create_<slug>_oposicion.cjs` insertó `{label, value}`, la cache `unstable_cache` con `revalidate: false` retuvo el snapshot, y la URL devolvió 500 hasta que la lambda se recicló. El template ahora filtra defensivamente entries sin `numero`, pero **NO confíes en el fallback** — escribe el esquema bien.
+>
+> Idéntico para `landing_faqs`: claves `pregunta` y `respuesta` (no `q`/`a` ni `question`/`answer`).
+
 #### `requisitos_especiales` (si aplica)
 
 ```json
@@ -698,6 +703,71 @@ Anadir nueva entrada al array `OPOSICIONES`:
 - Incluye siglas comunes (CAM, GVA, JCYL, JCCM, DGA, CAIB, etc.) y nombres usuales en español/lengua cooficial.
 - Si la oposición es popular (Estado, autonomías grandes, justicia), añadir mínimo 5-8 aliases.
 - Para añadir un alias después: editar el campo `aliases` aquí, propaga automáticamente a los 3 buscadores.
+
+#### `officialExams[]` (exámenes oficiales pasados — opcional)
+
+Si la oposición tiene exámenes oficiales importados en BD, añadir el array
+`officialExams` a la entrada para que aparezcan en el TestHubClient
+(`/<slug>/test` → tarjeta "Convocatoria 20XX"). Cada convocatoria con sus
+partes:
+
+```typescript
+officialExams: [
+  {
+    date: '2026-04-12',
+    title: 'Convocatoria 2026 (551 plazas)',
+    oep: 'OEP 2023-2024',
+    partes: [
+      {
+        id: 'primera',
+        icon: '📘',
+        title: 'Primer ejercicio',
+        // FORMATO PREFERIDO — estructurado (validado por test de coherencia):
+        ordinaryCount: 60,            // preguntas ordinarias (sin reserva)
+        reserveCount: 5,              // preguntas de reserva
+        durationMin: 65,              // minutos del ejercicio
+        breakdown: [                  // suma debe ser ordinaryCount
+          { label: 'psicotécnicas', count: 30 },
+          { label: 'Bloque I', count: 30 },
+        ],
+        // notes: '(1 anulada en plantilla)'  ← opcional, texto libre
+      },
+      {
+        id: 'segunda',
+        icon: '📗',
+        title: 'Segundo ejercicio',
+        ordinaryCount: 30,
+        reserveCount: 5,
+        durationMin: 35,
+        breakdown: [{ label: 'Bloque II Ofimática', count: 30 }],
+      },
+    ],
+  },
+]
+```
+
+**Reglas:**
+- El helper `formatParteDescription(parte)` (en el mismo `oposiciones.ts`) genera el string mostrado al usuario desde los campos estructurados. Fuente única → imposible que dos vistas diverjan.
+- `breakdown` libre: usa los labels que tengan sentido para la oposición (`'psicotécnicas'`, `'Bloque I'`, `'supuesto práctico'`, `'Bloque II Ofimática'`…). El test `__tests__/config/officialExamsCoherence.test.ts` exige que la suma cuadre con `questions + psychometric_questions` activas en BD por `exam_date + exam_position`. Si CI falla aquí, audita BD antes de tocar los números.
+- Las entries antiguas tienen `description: string` literal — se acepta como **legacy fallback**, pero toda convocatoria nueva debe usar el formato estructurado.
+
+**Workflow completo de importar un examen oficial** (PDFs → preguntas en BD → entry en `officialExams`): ver `docs/maintenance/importar-examen-oficial-completo.md`. Incluye lifecycle inicial `draft`, verificación con agentes Sonnet, formato exacto de `exam_source` (parseado por `getExamPart()`), reservas, psicotécnicas con figura, supuestos prácticos compartidos, y el §9.4 sobre el schema estructurado de partes.
+
+### 4a.bis Patrones de matching en queries (OBLIGATORIO si hay `officialExams`)
+
+Sin esto, los exámenes oficiales **no aparecen** aunque la entry esté en
+`oposiciones.ts` y las preguntas estén en BD:
+
+| Archivo | Constante | Qué añadir |
+|---|---|---|
+| `lib/api/official-exams/queries.ts` | `oposicionToExamPosition` | `'<slug>': '<positionType>'` |
+| `lib/api/official-exams/queries.ts` | `oposicionToExamSourcePattern` | `'<slug>': '%<patrón ILIKE>%'` (más específico mejor) |
+| `lib/api/psychometric-test-data/queries.ts` | `examSourcePatterns` (línea ~189) | `'<positionType>': '%<patrón ILIKE>%'` solo si tiene psicotécnicas oficiales |
+
+⚠️ **Especificidad del patrón:** si la oposición se llama "Madrid", el patrón
+`%Madrid%` colisionará con "Ayuntamiento de Madrid". Usar siempre el nombre
+oficial discriminante (`%Comunidad de Madrid%`, `%CARM Murcia%`,
+`%Auxiliar Administrativo Estado%`…). Incidente 18/05/2026.
 
 ### 4b. Archivos que se actualizan AUTOMATICAMENTE (no tocar)
 
