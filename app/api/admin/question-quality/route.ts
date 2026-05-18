@@ -77,6 +77,15 @@ const OUTDATED_PLAN_REVIEWED_IDS = [
   '815dd117-c237-4d36-bda3-e6bf774c537f', // "¿En qué año se presentó el I Plan?" — dato factual
 ]
 
+// Preguntas que matchean MISSING_IMAGE_REGEX pero son autocontenidas o usan "imagen"
+// en sentido figurado (identidad corporativa, derecho a la propia imagen, etc.)
+const MISSING_IMAGE_REVIEWED_IDS = [
+  '2732d586-8515-430a-ac2f-1ea835c7a67e', // Excel B3 "supuesto Excel" — datos embebidos inline
+  '34fff735-72e5-4c88-aae3-7770537820e7', // Guardia Civil — "protección de la imagen de la ciudadanía" (derecho)
+  'ded77b53-287f-4fa7-ae44-58c1bbc2b87e', // Policía Nacional — "imagen" = identidad corporativa
+  'e2dce240-ca2a-4689-b246-7d44187d9ba8', // CALC fórmula — opción correcta deducible del enunciado
+]
+
 // Explanation says "La respuesta correcta es **X" but correct_option doesn't match
 // \M = end-of-word boundary: prevents matching "correcta es correcta" (C not at word end)
 const MISMATCHED_ANSWER_REGEX = '(?i)(?:respuesta|opci[oó]n) correcta es (?:la )?\\*?\\*?([A-D])\\M'
@@ -105,7 +114,7 @@ async function runCountsOnly(): Promise<number> {
           explanation ILIKE '%pendiente de explicación%' OR explanation ILIKE '%pendiente de explicacion%'
         ) as pending_explanation,
         count(*) FILTER (WHERE primary_article_id IS NULL) as missing_article,
-        count(*) FILTER (WHERE question_text ~* ${MISSING_IMAGE_REGEX} AND question_text NOT ILIKE '%Observatorio de la Imagen%' AND image_url IS NULL AND (content_data IS NULL OR content_data::text = '{}')) as missing_image,
+        count(*) FILTER (WHERE question_text ~* ${MISSING_IMAGE_REGEX} AND question_text NOT ILIKE '%Observatorio de la Imagen%' AND image_url IS NULL AND (content_data IS NULL OR content_data::text = '{}') AND id NOT IN (${sql.join(MISSING_IMAGE_REVIEWED_IDS.map(id => sql`${id}::uuid`), sql`, `)})) as missing_image,
         count(*) FILTER (WHERE
           CONCAT_WS(' ', question_text, option_a, option_b, option_c, option_d) ~* ${EXCEL_TYPO_REGEX}
           AND question_text NOT ILIKE '%Calc%'
@@ -179,21 +188,33 @@ async function runCountsOnly(): Promise<number> {
       JOIN articles a ON q.primary_article_id = a.id
       JOIN laws l ON a.law_id = l.id
       WHERE q.is_active = true AND (
-        -- Excluir leyes técnicas/informáticas que comparten menciones entre apps
+        -- Excluir leyes técnicas/informáticas, apps Office (que cruzan menciones entre sí) e idiomas
         l.short_name NOT ILIKE '%Informática%'
         AND l.short_name NOT ILIKE '%Windows%'
         AND l.short_name NOT ILIKE '%Explorador%'
         AND l.short_name NOT ILIKE '%Red Internet%'
         AND l.short_name NOT ILIKE '%Correo%'
         AND l.short_name NOT ILIKE '%Microsoft 365%'
+        AND l.short_name NOT ILIKE '%Word%'
+        AND l.short_name NOT ILIKE '%Excel%'
+        AND l.short_name NOT ILIKE '%Access%'
+        AND l.short_name NOT ILIKE '%Outlook%'
+        AND l.short_name NOT ILIKE '%OneDrive%'
+        AND l.short_name NOT ILIKE '%Teams%'
+        AND l.short_name NOT ILIKE '%SharePoint%'
+        AND l.short_name NOT ILIKE '%hoja%'
+        AND l.short_name NOT ILIKE '%procesador%'
+        AND l.short_name NOT ILIKE '%Inglés%'
+        AND l.short_name NOT ILIKE '%Ingles%'
+        AND l.short_name NOT ILIKE '%English%'
         AND (
-          (q.question_text ~* '\\mAccess\\M' AND l.short_name NOT ILIKE '%Access%' AND l.short_name NOT ILIKE '%Excel%' AND l.short_name NOT ILIKE '%hoja%')
-          OR (q.question_text ~* '\\mExcel\\M' AND q.question_text !~* '\\mexcelencia\\M' AND l.short_name NOT ILIKE '%Excel%' AND l.short_name NOT ILIKE '%hoja%' AND l.short_name NOT ILIKE '%Access%' AND l.short_name NOT ILIKE '%procesador%')
-          OR (q.question_text ~* '\\mWord\\M' AND q.question_text !~* '\\mWordPress\\M' AND l.short_name NOT ILIKE '%Word%' AND l.short_name NOT ILIKE '%procesador%' AND l.short_name NOT ILIKE '%Excel%' AND l.short_name NOT ILIKE '%hoja%')
-          OR (q.question_text ~* '\\mOutlook\\M' AND l.short_name NOT ILIKE '%Outlook%' AND l.short_name NOT ILIKE '%Correo%')
-          OR (q.question_text ~* '\\mOneDrive\\M' AND l.short_name NOT ILIKE '%OneDrive%' AND l.short_name NOT ILIKE '%procesador%')
-          OR (q.question_text ~* '\\mTeams\\M' AND l.short_name NOT ILIKE '%Teams%')
-          OR (q.question_text ~* '\\mSharePoint\\M' AND l.short_name NOT ILIKE '%SharePoint%')
+          q.question_text ~* '\\mAccess\\M'
+          OR (q.question_text ~* '\\mExcel\\M' AND q.question_text !~* '\\mexcelencia\\M')
+          OR (q.question_text ~* '\\mWord\\M' AND q.question_text !~* '\\mWordPress\\M')
+          OR q.question_text ~* '\\mOutlook\\M'
+          OR q.question_text ~* '\\mOneDrive\\M'
+          OR q.question_text ~* '\\mTeams\\M'
+          OR q.question_text ~* '\\mSharePoint\\M'
         )
       )
     ),
@@ -300,6 +321,7 @@ async function runChecks(): Promise<QualityResponse> {
         AND question_text NOT ILIKE '%Observatorio de la Imagen%'
         AND image_url IS NULL
         AND (content_data IS NULL OR content_data::text = '{}')
+        AND id NOT IN (${sql.join(MISSING_IMAGE_REVIEWED_IDS.map(id => sql`${id}::uuid`), sql`, `)})
       LIMIT ${MAX_ITEMS}
     `),
 
@@ -345,14 +367,26 @@ async function runChecks(): Promise<QualityResponse> {
         AND l.short_name NOT ILIKE '%Red Internet%'
         AND l.short_name NOT ILIKE '%Correo%'
         AND l.short_name NOT ILIKE '%Microsoft 365%'
+        AND l.short_name NOT ILIKE '%Word%'
+        AND l.short_name NOT ILIKE '%Excel%'
+        AND l.short_name NOT ILIKE '%Access%'
+        AND l.short_name NOT ILIKE '%Outlook%'
+        AND l.short_name NOT ILIKE '%OneDrive%'
+        AND l.short_name NOT ILIKE '%Teams%'
+        AND l.short_name NOT ILIKE '%SharePoint%'
+        AND l.short_name NOT ILIKE '%hoja%'
+        AND l.short_name NOT ILIKE '%procesador%'
+        AND l.short_name NOT ILIKE '%Inglés%'
+        AND l.short_name NOT ILIKE '%Ingles%'
+        AND l.short_name NOT ILIKE '%English%'
         AND (
-          (q.question_text ~* '\\mAccess\\M' AND l.short_name NOT ILIKE '%Access%' AND l.short_name NOT ILIKE '%Excel%' AND l.short_name NOT ILIKE '%hoja%')
-          OR (q.question_text ~* '\\mExcel\\M' AND q.question_text !~* '\\mexcelencia\\M' AND l.short_name NOT ILIKE '%Excel%' AND l.short_name NOT ILIKE '%hoja%' AND l.short_name NOT ILIKE '%Access%' AND l.short_name NOT ILIKE '%procesador%')
-          OR (q.question_text ~* '\\mWord\\M' AND q.question_text !~* '\\mWordPress\\M' AND l.short_name NOT ILIKE '%Word%' AND l.short_name NOT ILIKE '%procesador%' AND l.short_name NOT ILIKE '%Excel%' AND l.short_name NOT ILIKE '%hoja%')
-          OR (q.question_text ~* '\\mOutlook\\M' AND l.short_name NOT ILIKE '%Outlook%' AND l.short_name NOT ILIKE '%Correo%')
-          OR (q.question_text ~* '\\mOneDrive\\M' AND l.short_name NOT ILIKE '%OneDrive%' AND l.short_name NOT ILIKE '%procesador%')
-          OR (q.question_text ~* '\\mTeams\\M' AND l.short_name NOT ILIKE '%Teams%')
-          OR (q.question_text ~* '\\mSharePoint\\M' AND l.short_name NOT ILIKE '%SharePoint%')
+          q.question_text ~* '\\mAccess\\M'
+          OR (q.question_text ~* '\\mExcel\\M' AND q.question_text !~* '\\mexcelencia\\M')
+          OR (q.question_text ~* '\\mWord\\M' AND q.question_text !~* '\\mWordPress\\M')
+          OR q.question_text ~* '\\mOutlook\\M'
+          OR q.question_text ~* '\\mOneDrive\\M'
+          OR q.question_text ~* '\\mTeams\\M'
+          OR q.question_text ~* '\\mSharePoint\\M'
         )
       )
       LIMIT ${MAX_ITEMS}
