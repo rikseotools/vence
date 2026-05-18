@@ -45,6 +45,12 @@ export const EXAM_POSITION_MAP: Record<string, string[]> = {
     'auxiliar administrativo castilla y leon',
     'auxiliar administrativo cyl',
   ],
+  'auxiliar_administrativo_extremadura': [
+    'auxiliar_administrativo_extremadura',
+    'auxiliar administrativo extremadura',
+    'auxiliar administrativo junta de extremadura',
+    'cuerpo auxiliar administracion comunidad autonoma extremadura',
+  ],
   'auxilio_judicial': [
     'auxilio_judicial',
     'auxilio judicial',
@@ -117,6 +123,8 @@ export const HOT_ARTICLE_TARGET_MAP: Record<string, string[]> = {
   'gestion_procesal': ['gestion-estado'],
   'auxiliar-administrativo-carm': ['auxiliar-administrativo-carm'],
   'auxiliar_administrativo_carm': ['auxiliar-administrativo-carm'],
+  'auxiliar-administrativo-extremadura': ['auxiliar-administrativo-extremadura'],
+  'auxiliar_administrativo_extremadura': ['auxiliar-administrativo-extremadura'],
   'auxiliar-administrativo-valencia': ['auxiliar-administrativo-valencia'],
   'auxiliar_administrativo_valencia': ['auxiliar-administrativo-valencia'],
   'auxiliar-administrativo-ayuntamiento-valencia': ['auxiliar-administrativo-ayuntamiento-valencia'],
