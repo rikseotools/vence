@@ -411,9 +411,86 @@ export async function saveOfficialExamResults(
 
     console.log(`✅ [OfficialExams] Test session created: ${testSession.id}`)
 
-    // 2. Insert individual question results (ONLY answered questions)
+    // 2a. Snapshot del contenido autoritativo de cada pregunta — igual que en
+    // initOfficialExam (ver comentario allí). Para que `getTestReview` no
+    // dependa de un JOIN a la tabla viva. Bug Nila 17/05/2026.
+    type QuestionContext = {
+      options: string[]
+      image_url: string | null
+      content_data: unknown
+      explanation: string | null
+      question_text: string
+    }
+    const legIdsForSnapshot = answeredResults
+      .filter(r => r.questionType === 'legislative')
+      .map(r => r.questionId)
+    const psyIdsForSnapshot = answeredResults
+      .filter(r => r.questionType === 'psychometric')
+      .map(r => r.questionId)
+
+    const legContextMap = new Map<string, QuestionContext>()
+    if (legIdsForSnapshot.length > 0) {
+      const legRows = await db
+        .select({
+          id: questions.id,
+          questionText: questions.questionText,
+          optionA: questions.optionA,
+          optionB: questions.optionB,
+          optionC: questions.optionC,
+          optionD: questions.optionD,
+          optionE: questions.optionE,
+          explanation: questions.explanation,
+          imageUrl: questions.imageUrl,
+          contentData: questions.contentData,
+        })
+        .from(questions)
+        .where(inArray(questions.id, legIdsForSnapshot))
+      for (const q of legRows) {
+        legContextMap.set(q.id, {
+          options: [q.optionA, q.optionB, q.optionC, q.optionD, q.optionE].filter((v): v is string => v != null && v !== ''),
+          image_url: q.imageUrl,
+          content_data: q.contentData,
+          explanation: q.explanation,
+          question_text: q.questionText,
+        })
+      }
+    }
+
+    const psyContextMap = new Map<string, QuestionContext>()
+    if (psyIdsForSnapshot.length > 0) {
+      const psyRows = await db
+        .select({
+          id: psychometricQuestions.id,
+          questionText: psychometricQuestions.questionText,
+          optionA: psychometricQuestions.optionA,
+          optionB: psychometricQuestions.optionB,
+          optionC: psychometricQuestions.optionC,
+          optionD: psychometricQuestions.optionD,
+          optionE: psychometricQuestions.optionE,
+          explanation: psychometricQuestions.explanation,
+          imageUrl: psychometricQuestions.imageUrl,
+          contentData: psychometricQuestions.contentData,
+        })
+        .from(psychometricQuestions)
+        .where(inArray(psychometricQuestions.id, psyIdsForSnapshot))
+      for (const q of psyRows) {
+        psyContextMap.set(q.id, {
+          options: [q.optionA, q.optionB, q.optionC, q.optionD, q.optionE].filter((v): v is string => v != null && v !== ''),
+          image_url: q.imageUrl,
+          content_data: q.contentData,
+          explanation: q.explanation,
+          question_text: q.questionText,
+        })
+      }
+    }
+    console.log(`✅ [OfficialExams] Snapshots cargados: ${legContextMap.size} legislativas + ${psyContextMap.size} psicotécnicas`)
+
+    // 2b. Insert individual question results (ONLY answered questions)
     const testQuestionsData = answeredResults.map((result, index) => {
       const isLegislative = result.questionType === 'legislative'
+      const ctx = isLegislative
+        ? legContextMap.get(result.questionId)
+        : psyContextMap.get(result.questionId)
       return {
         testId: testSession.id,
         questionId: isLegislative ? result.questionId : null,
@@ -429,6 +506,7 @@ export async function saveOfficialExamResults(
         difficulty: normalizeDifficulty(result.difficulty),
         questionType: result.questionType,
         userId,
+        fullQuestionContext: ctx ?? {},
       }
     })
 
@@ -578,30 +656,71 @@ export async function initOfficialExam(
       .filter(q => q.questionType === 'psychometric')
       .map(q => q.id)
 
-    // Fetch correct_option from questions table for legislative
+    // Snapshot estructurado por pregunta. Lo guardamos en
+    // test_questions.full_question_context para que `getTestReview` no
+    // dependa de un JOIN a las tablas vivas (que pueden cambiar o
+    // desactivarse entre el examen y la revisión). Bug Nila 17/05/2026:
+    // sin snapshot, opciones de psicotécnicas salían vacías cuando la
+    // query de review no encontraba la pregunta en su mapa.
+    type QuestionContext = {
+      options: string[]
+      image_url: string | null
+      content_data: unknown
+      explanation: string | null
+      question_text: string
+    }
+
+    // Fetch full data from questions table for legislative
     const legislativeCorrectMap = new Map<string, number>()
+    const legislativeContextMap = new Map<string, QuestionContext>()
     if (legislativeIds.length > 0) {
       const legResults = await db
         .select({
           id: questions.id,
           correctOption: questions.correctOption,
+          questionText: questions.questionText,
+          optionA: questions.optionA,
+          optionB: questions.optionB,
+          optionC: questions.optionC,
+          optionD: questions.optionD,
+          optionE: questions.optionE,
+          explanation: questions.explanation,
+          imageUrl: questions.imageUrl,
+          contentData: questions.contentData,
         })
         .from(questions)
         .where(inArray(questions.id, legislativeIds))
 
       for (const q of legResults) {
         legislativeCorrectMap.set(q.id, q.correctOption)
+        legislativeContextMap.set(q.id, {
+          options: [q.optionA, q.optionB, q.optionC, q.optionD, q.optionE].filter((v): v is string => v != null && v !== ''),
+          image_url: q.imageUrl,
+          content_data: q.contentData,
+          explanation: q.explanation,
+          question_text: q.questionText,
+        })
       }
-      console.log(`✅ [initOfficialExam] Got ${legislativeCorrectMap.size} legislative correct_options`)
+      console.log(`✅ [initOfficialExam] Got ${legislativeCorrectMap.size} legislative correct_options + contexts`)
     }
 
-    // Fetch correct_option from psychometric_questions table
+    // Fetch full data from psychometric_questions table
     const psychometricCorrectMap = new Map<string, number>()
+    const psychometricContextMap = new Map<string, QuestionContext>()
     if (psychometricIds.length > 0) {
       const psyResults = await db
         .select({
           id: psychometricQuestions.id,
           correctOption: psychometricQuestions.correctOption,
+          questionText: psychometricQuestions.questionText,
+          optionA: psychometricQuestions.optionA,
+          optionB: psychometricQuestions.optionB,
+          optionC: psychometricQuestions.optionC,
+          optionD: psychometricQuestions.optionD,
+          optionE: psychometricQuestions.optionE,
+          explanation: psychometricQuestions.explanation,
+          imageUrl: psychometricQuestions.imageUrl,
+          contentData: psychometricQuestions.contentData,
         })
         .from(psychometricQuestions)
         .where(inArray(psychometricQuestions.id, psychometricIds))
@@ -610,8 +729,15 @@ export async function initOfficialExam(
         if (q.correctOption !== null) {
           psychometricCorrectMap.set(q.id, q.correctOption)
         }
+        psychometricContextMap.set(q.id, {
+          options: [q.optionA, q.optionB, q.optionC, q.optionD, q.optionE].filter((v): v is string => v != null && v !== ''),
+          image_url: q.imageUrl,
+          content_data: q.contentData,
+          explanation: q.explanation,
+          question_text: q.questionText,
+        })
       }
-      console.log(`✅ [initOfficialExam] Got ${psychometricCorrectMap.size} psychometric correct_options`)
+      console.log(`✅ [initOfficialExam] Got ${psychometricCorrectMap.size} psychometric correct_options + ${psychometricContextMap.size} contexts`)
     }
 
     // Create test session
@@ -664,6 +790,13 @@ export async function initOfficialExam(
         ? String.fromCharCode(97 + correctOption)
         : 'x' // Error flag
 
+      // Snapshot del contenido autoritativo de la pregunta. La revisión lee
+      // de aquí en vez de hacer JOIN a la tabla viva, así no pierde datos
+      // si la pregunta se desactiva o renombra después.
+      const ctx = isLegislative
+        ? legislativeContextMap.get(q.id)
+        : psychometricContextMap.get(q.id)
+
       return {
         testId: testSession.id,
         questionId: isLegislative ? q.id : null,
@@ -679,6 +812,7 @@ export async function initOfficialExam(
         questionType: q.questionType,
         timeSpentSeconds: 0,
         userId,
+        fullQuestionContext: ctx ?? {},
       }
     })
 
