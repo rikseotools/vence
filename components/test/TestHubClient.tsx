@@ -14,7 +14,10 @@ import {
   SIMULACRO_AVAILABLE_OPOSICIONES,
   getSimulacroConfig,
 } from '@/lib/api/simulacro/config'
-import type { OfficialExamConvocatoria } from '@/lib/config/oposiciones'
+import {
+  formatParteDescription,
+  type OfficialExamConvocatoria,
+} from '@/lib/config/oposiciones'
 
 // Oposiciones para las que el Simulacro de Examen está disponible.
 // SIMULACRO_AVAILABLE_OPOSICIONES y getSimulacroConfig se importan ahora desde
@@ -648,7 +651,7 @@ function ConvocatoriaCard({ convocatoria, oposicion, examStats, expanded, onTogg
                       <span className="mr-2 text-lg">{parte.icon}</span>
                       <div>
                         <div className="font-bold">{parte.title}</div>
-                        <div className="text-xs text-white/80">{parte.description}</div>
+                        <div className="text-xs text-white/80">{formatParteDescription(parte)}</div>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">

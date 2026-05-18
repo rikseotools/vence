@@ -528,13 +528,64 @@ Ver `docs/manual-preguntas-oficiales.md` §7 para el patrón completo.
 
 El simulacro las muestra al final con badge "Reserva".
 
+### 9.4 Schema estructurado de `officialExams[].partes[]` (OBLIGATORIO en convocatorias nuevas)
+
+**Contexto** — antes de 18/05/2026 cada entry tenía `description` como string libre:
+
+```ts
+{ id: 'primera', icon: '📘', title: 'Primer ejercicio',
+  description: '60 preguntas (30 psicotécnicas + 30 Bloque I) + 5 reserva — 65 min' }
+```
+
+El string era decorativo: nada garantizaba que los números coincidieran con las
+preguntas reales en BD. La card "Examen Oficial" (`OfficialExamLayout`) cuenta
+de BD, el banner "Primer ejercicio" (`ConvocatoriaCard`) leía el string crudo.
+Bug detectable solo a ojo.
+
+**Formato preferido — campos estructurados:**
+
+```ts
+{
+  id: 'primera',
+  icon: '📘',
+  title: 'Primer ejercicio',
+  ordinaryCount: 60,          // preguntas ordinarias (sin reserva)
+  reserveCount: 5,            // preguntas de reserva
+  durationMin: 65,            // minutos del ejercicio
+  breakdown: [                // desglose libre, debe sumar ordinaryCount
+    { label: 'psicotécnicas', count: 30 },
+    { label: 'Bloque I', count: 30 },
+  ],
+  // notes: '(1 anulada en plantilla)'  ← opcional, texto libre no-numérico
+}
+```
+
+El helper `formatParteDescription(parte)` en `lib/config/oposiciones.ts`
+construye el string mostrado al usuario desde estos campos. Un único lugar
+genera el render → no hay forma de que dos vistas diverjan.
+
+**Reglas:**
+
+- `breakdown[].count` debe sumar exactamente `ordinaryCount` (zod `.refine` lo valida en build).
+- Si la parte tiene un único sub-bloque (ej. "30 preguntas Bloque II Ofimática"), usa `breakdown: [{ label: 'Bloque II Ofimática', count: 30 }]` — el helper omite paréntesis cuando hay un solo item.
+- `description` (string legacy) sigue aceptándose para entries antiguas no migradas, pero **toda convocatoria nueva debe usar el formato estructurado**.
+
+**Test de coherencia:**
+
+`__tests__/config/officialExamsCoherence.test.ts` ejecuta en CI:
+
+1. Para cada `parte` con `breakdown`: suma debe ser `ordinaryCount` (también lo refuerza zod).
+2. Para cada convocatoria 100% estructurada: `sum(ordinaryCount + reserveCount)` de todas las partes **= preguntas activas reales en BD** (suma de `questions` + `psychometric_questions` filtrando `exam_date + exam_position + is_official_exam + is_active`).
+
+Si el test falla, no toques los números del config a ciegas: hay un desajuste entre lo que documentas y lo que importaste. Audita primero con un script directo a BD.
+
 ---
 
 ## 10. Checklist final
 
 Antes de cerrar la importación:
 
-- [ ] Convocatoria añadida a `lib/config/oposiciones.ts` (entrada en `officialExams`)
+- [ ] Convocatoria añadida a `lib/config/oposiciones.ts` (entrada en `officialExams` con **schema estructurado §9.4**)
 - [ ] Conteo correcto: `parte=primera` devuelve psico + leg + reserva-1ª; `parte=segunda` devuelve ofi + reserva-2ª
 - [ ] `exam_position` mapeado en `lib/config/exam-positions.ts` (si oposición nueva)
 - [ ] Mapeo de pattern en `lib/api/official-exams/queries.ts` y `lib/api/psychometric-test-data/queries.ts`

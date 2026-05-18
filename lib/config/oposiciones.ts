@@ -31,12 +31,49 @@ const BlockSchema = z.object({
   themes: z.array(ThemeSchema),
 })
 
-const OfficialExamParteSchema = z.object({
-  id: z.string(),
-  icon: z.string(),
-  title: z.string(),
-  description: z.string(),
+const OfficialExamBreakdownItemSchema = z.object({
+  label: z.string(),
+  count: z.number().int().nonnegative(),
 })
+
+const OfficialExamParteSchema = z
+  .object({
+    id: z.string(),
+    icon: z.string(),
+    title: z.string(),
+
+    // Campos estructurados (opcionales). Cuando se rellenan, son fuente de
+    // verdad y el helper formatParteDescription genera el string al usuario.
+    // El test de coherencia (__tests__/config/officialExamsCoherence.test.ts)
+    // exige que la suma cuadre con las questions reales en BD.
+    ordinaryCount: z.number().int().nonnegative().optional(),
+    reserveCount: z.number().int().nonnegative().optional(),
+    durationMin: z.number().int().positive().optional(),
+    // breakdown libre: cada oposición rellena lo que tenga sentido
+    // ("psicotécnicas", "Bloque I", "supuesto práctico"…). No se fuerza patrón.
+    breakdown: z.array(OfficialExamBreakdownItemSchema).optional(),
+    // Texto libre no-numérico para matices ("(1 anulada en plantilla)"…).
+    notes: z.string().optional(),
+
+    // DEPRECATED: solo para entries legacy aún sin migrar. Las nuevas
+    // convocatorias deben usar los campos estructurados. Ver el manual
+    // docs/maintenance/crear-nueva-oposicion.md.
+    description: z.string().optional(),
+  })
+  .refine((p) => p.description !== undefined || p.ordinaryCount !== undefined, {
+    message:
+      'OfficialExamParte: cada parte requiere `ordinaryCount` (preferido) o `description` (legacy)',
+  })
+  .refine(
+    (p) =>
+      !p.breakdown ||
+      p.breakdown.length === 0 ||
+      p.breakdown.reduce((s, b) => s + b.count, 0) === (p.ordinaryCount ?? 0),
+    {
+      message:
+        'OfficialExamParte: la suma de `breakdown[].count` debe coincidir con `ordinaryCount`',
+    }
+  )
 
 const OfficialExamConvocatoriaSchema = z.object({
   date: z.string(),
@@ -1102,8 +1139,27 @@ export const OPOSICIONES: Oposicion[] = [
         title: 'Convocatoria 2026 (551 plazas)',
         oep: 'OEP 2023-2024',
         partes: [
-          { id: 'primera', icon: '📘', title: 'Primer ejercicio', description: '60 preguntas (30 psicotécnicas + 30 Bloque I) + 5 reserva — 65 min' },
-          { id: 'segunda', icon: '📗', title: 'Segundo ejercicio', description: '30 preguntas Bloque II Ofimática + 5 reserva — 35 min' },
+          {
+            id: 'primera',
+            icon: '📘',
+            title: 'Primer ejercicio',
+            ordinaryCount: 60,
+            reserveCount: 5,
+            durationMin: 65,
+            breakdown: [
+              { label: 'psicotécnicas', count: 30 },
+              { label: 'Bloque I', count: 30 },
+            ],
+          },
+          {
+            id: 'segunda',
+            icon: '📗',
+            title: 'Segundo ejercicio',
+            ordinaryCount: 30,
+            reserveCount: 5,
+            durationMin: 35,
+            breakdown: [{ label: 'Bloque II Ofimática', count: 30 }],
+          },
         ],
       },
     ],
@@ -3660,6 +3716,48 @@ export function getTemarioLink(identifier: string): string {
 export function getHomeLink(identifier: string): string {
   const oposicion = getOposicion(identifier)
   return oposicion ? `/${oposicion.slug}` : '/'
+}
+
+/**
+ * Genera el string mostrado al usuario para una parte de examen oficial.
+ *
+ * Prefiere los campos estructurados (ordinaryCount/reserveCount/breakdown/
+ * durationMin/notes). Si la entry sigue en formato legacy, devuelve
+ * `description` literal. Fuente única para evitar que dos vistas diverjan.
+ */
+export function formatParteDescription(parte: OfficialExamParte): string {
+  const hasStructured =
+    parte.ordinaryCount !== undefined ||
+    (parte.breakdown && parte.breakdown.length > 0)
+
+  if (!hasStructured) return parte.description ?? ''
+
+  const pieces: string[] = []
+
+  if (parte.breakdown && parte.breakdown.length > 1) {
+    // Varios sub-bloques → "60 preguntas (30 psicotécnicas + 30 Bloque I)"
+    const total = parte.breakdown.reduce((s, b) => s + b.count, 0)
+    const inner = parte.breakdown.map((b) => `${b.count} ${b.label}`).join(' + ')
+    pieces.push(`${total} preguntas (${inner})`)
+  } else if (parte.breakdown && parte.breakdown.length === 1) {
+    // Un único sub-bloque → "30 preguntas Bloque II Ofimática"
+    const only = parte.breakdown[0]
+    pieces.push(`${only.count} preguntas ${only.label}`)
+  } else if (parte.ordinaryCount !== undefined) {
+    pieces.push(`${parte.ordinaryCount} preguntas`)
+  }
+
+  if (parte.reserveCount && parte.reserveCount > 0) {
+    pieces.push(`+ ${parte.reserveCount} reserva`)
+  }
+  if (parte.notes) {
+    pieces.push(parte.notes)
+  }
+  if (parte.durationMin) {
+    pieces.push(`— ${parte.durationMin} min`)
+  }
+
+  return pieces.join(' ')
 }
 
 const ROMAN_NUMERALS = ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii']
