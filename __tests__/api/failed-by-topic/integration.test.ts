@@ -22,28 +22,33 @@ process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-anon'
 const capturedConditions: unknown[] = []
 let mockRows: Array<{ temaNumber: number; topicTitle: string | null; questionId: string }> = []
 
-jest.mock('@/db/client', () => ({
-  getDb: () => ({
+jest.mock('@/db/client', () => {
+  // Cadena: select().from(testQuestions).innerJoin(questions).leftJoin(topics).where()
+  // (eliminado innerJoin con tests porque test_questions.user_id es directo)
+  const chain = {
     select: () => ({
       from: () => ({
         innerJoin: () => ({
-          innerJoin: () => ({
-            leftJoin: (_topics: unknown, joinCond: unknown) => {
-              capturedConditions.push({ joinCond })
-              return {
-                where: (whereCond: unknown) => {
-                  capturedConditions.push({ whereCond })
-                  return Promise.resolve(mockRows)
-                },
-              }
-            },
-          }),
+          leftJoin: (_topics: unknown, joinCond: unknown) => {
+            capturedConditions.push({ joinCond })
+            return {
+              where: (whereCond: unknown) => {
+                capturedConditions.push({ whereCond })
+                return Promise.resolve(mockRows)
+              },
+            }
+          },
         }),
       }),
     }),
-  }),
-  getAdminDb: () => ({}),
-}))
+  }
+  return {
+    getDb: () => chain,
+    getReadDb: () => chain,
+    getPoolerDb: () => chain,
+    getAdminDb: () => ({}),
+  }
+})
 
 // Mock del createClient auth
 jest.mock('@supabase/supabase-js', () => ({

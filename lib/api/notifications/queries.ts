@@ -14,7 +14,7 @@ import { getReadDb, getPoolerDb } from '@/db/client'
 function getProblematicArticlesDb() {
   return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getReadDb()
 }
-import { articles, laws, testQuestions, tests } from '@/db/schema'
+import { testQuestions, tests, articles } from '@/db/schema'
 import { and, eq, gte, inArray, isNotNull, sql } from 'drizzle-orm'
 import { getAllowedLawIds } from '@/lib/api/oposicion-scope/queries'
 
@@ -65,11 +65,31 @@ export async function getUserProblematicArticlesWeekly(
 
   const sinceExpr = sql`CURRENT_DATE - make_interval(days => ${windowDays})`
 
+  // Pre-resolver article_ids del scope una vez. Filtramos en la query
+  // principal por `tq.article_id IN (...)` en lugar de JOIN con articles/laws.
+  // Esto preserva la semántica original (ley vigente, no `tq.law_name`
+  // histórico que puede tener drift) y permite que el planner use índice
+  // por article_id sin romperse al ordenar/agrupar.
+  const allowedArticles = await db
+    .select({ id: articles.id })
+    .from(articles)
+    .where(inArray(articles.lawId, scope.lawIds))
+  const allowedArticleIds = allowedArticles.map((a) => a.id)
+
+  if (allowedArticleIds.length === 0) {
+    return []
+  }
+
+  // Mantenemos el INNER JOIN con `tests` para preservar el filtro
+  // `is_completed = true` (mismo comportamiento que la RPC baseline:
+  // respuestas de tests abandonados no cuentan para "problematic").
+  // El resto de datos (user_id, article_id, article_number, law_name)
+  // viene denormalizado de test_questions.
   const rows = await db
     .select({
       articleId: testQuestions.articleId,
-      articleNumber: articles.articleNumber,
-      lawName: laws.shortName,
+      articleNumber: testQuestions.articleNumber,
+      lawName: testQuestions.lawName,
       totalAttempts: sql<number>`COUNT(*)::int`,
       correctAttempts: sql<number>`SUM(CASE WHEN ${testQuestions.isCorrect} THEN 1 ELSE 0 END)::int`,
       accuracyPct: sql<string>`ROUND((SUM(CASE WHEN ${testQuestions.isCorrect} THEN 1 ELSE 0 END)::numeric / COUNT(*)) * 100, 1)`,
@@ -77,18 +97,16 @@ export async function getUserProblematicArticlesWeekly(
     })
     .from(testQuestions)
     .innerJoin(tests, eq(testQuestions.testId, tests.id))
-    .innerJoin(articles, eq(testQuestions.articleId, articles.id))
-    .innerJoin(laws, eq(articles.lawId, laws.id))
     .where(
       and(
         eq(testQuestions.userId, params.userId),
         eq(tests.isCompleted, true),
         gte(testQuestions.createdAt, sinceExpr),
         isNotNull(testQuestions.articleId),
-        inArray(laws.id, scope.lawIds)
+        inArray(testQuestions.articleId, allowedArticleIds)
       )
     )
-    .groupBy(testQuestions.articleId, articles.articleNumber, laws.shortName)
+    .groupBy(testQuestions.articleId, testQuestions.articleNumber, testQuestions.lawName)
     .having(
       sql`COUNT(*) >= 1 AND ROUND((SUM(CASE WHEN ${testQuestions.isCorrect} THEN 1 ELSE 0 END)::numeric / COUNT(*)) * 100, 1) < ${accuracyMax}`
     )

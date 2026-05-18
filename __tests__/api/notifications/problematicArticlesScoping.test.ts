@@ -11,7 +11,7 @@
 // getReadDb es alias rollback-safe del read replica; en tests apunta al mismo mock
 jest.mock('@/db/client', () => {
   const mock = jest.fn()
-  return { getDb: mock, getReadDb: mock }
+  return { getDb: mock, getReadDb: mock, getPoolerDb: mock }
 })
 
 jest.mock('@/lib/api/oposicion-scope/queries', () => ({
@@ -22,17 +22,37 @@ import { getDb } from '@/db/client'
 import { getAllowedLawIds } from '@/lib/api/oposicion-scope/queries'
 import { getUserProblematicArticlesWeekly } from '@/lib/api/notifications/queries'
 
-function makeDbReturning(rows: any[]) {
-  const chain: any = {
-    from: jest.fn().mockReturnThis(),
-    innerJoin: jest.fn().mockReturnThis(),
-    where: jest.fn().mockReturnThis(),
-    groupBy: jest.fn().mockReturnThis(),
-    having: jest.fn().mockReturnThis(),
-    orderBy: jest.fn().mockReturnThis(),
-    limit: jest.fn().mockResolvedValue(rows),
+// Mock que soporta DOS selects en secuencia:
+//  1) Pre-resolve de allowedArticleIds: select().from(articles).where() → [{id}, ...]
+//  2) Query principal: select().from(testQuestions).innerJoin(tests).where()
+//     .groupBy().having().orderBy().limit() → rows finales
+function makeDbReturning(rows: any[], allowedArticleIds: string[] = ['a-1', 'a-2']) {
+  let callCount = 0
+  return {
+    select: jest.fn(() => {
+      callCount++
+      if (callCount === 1) {
+        // Pre-resolve articles
+        return {
+          from: jest.fn().mockReturnThis(),
+          where: jest.fn().mockResolvedValue(
+            allowedArticleIds.map((id) => ({ id })),
+          ),
+        }
+      }
+      // Query principal
+      const chain: any = {
+        from: jest.fn().mockReturnThis(),
+        innerJoin: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        having: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockResolvedValue(rows),
+      }
+      return chain
+    }),
   }
-  return { select: jest.fn(() => chain) }
 }
 
 describe('getUserProblematicArticlesWeekly', () => {

@@ -7,13 +7,13 @@
 // pattern as notifications/queries.ts, ranking/queries.ts, etc.
 // Reversible con env USE_READ_REPLICA=false (fallback automático a primary
 // vía getReadDb()).
-import { getDb, getReadDb, getPoolerDb } from '@/db/client'
+import { getReadDb, getPoolerDb } from '@/db/client'
 
 function getUserFailedDb() {
   return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getReadDb()
 }
-import { questions, articles, laws, tests, testQuestions, topics } from '@/db/schema'
-import { eq, and, inArray, desc, gte, gt, isNotNull } from 'drizzle-orm'
+import { questions, articles, laws, testQuestions, topics } from '@/db/schema'
+import { eq, and, inArray, desc, gte, gt } from 'drizzle-orm'
 import type {
   GetUserFailedQuestionsRequest,
   GetUserFailedQuestionsResponse,
@@ -33,29 +33,7 @@ export async function getUserFailedQuestions(
 
     console.log(`🔍 [v2] Cargando preguntas falladas para usuario ${userId.substring(0, 8)}...`)
 
-    // Construir condiciones de filtro
-    const conditions = [
-      eq(tests.userId, userId),
-      eq(testQuestions.isCorrect, false),
-      eq(questions.isActive, true),
-    ]
-
-    // Filtrar por tema si se especifica
-    if (topicNumber) {
-      conditions.push(eq(testQuestions.temaNumber, topicNumber))
-    }
-
-    // Filtrar por leyes si se especifican
-    if (selectedLaws && selectedLaws.length > 0) {
-      conditions.push(inArray(laws.shortName, selectedLaws))
-    }
-
-    // Filtrar por fecha si se especifica
-    if (since) {
-      conditions.push(gte(testQuestions.createdAt, since))
-    }
-
-    // Si no hay ni tema ni leyes, no podemos filtrar
+    // Si no hay ni tema ni leyes, no podemos filtrar (validación previa al pre-resolver)
     if (!topicNumber && (!selectedLaws || selectedLaws.length === 0)) {
       return {
         success: false,
@@ -63,26 +41,61 @@ export async function getUserFailedQuestions(
       }
     }
 
-    // Query principal: obtener respuestas incorrectas recientes.
-    // LIMIT 2000 corta el barrido para heavy users (61k+ test_questions causaban
-    // statement_timeout 30s — bug 17/05 user 8201a5d2). El uso UI agrupa por
-    // question_id en JS para "repaso de fallos"; >2000 fallos del mismo user
-    // produce conteos suficientemente representativos sin barrer años.
+    // Pre-resolver article_ids de las leyes seleccionadas — preserva la
+    // semántica original (filtrar por ley vigente, no por `tq.law_name`
+    // denormalizado que puede tener drift histórico). El `WHERE article_id IN
+    // (...)` en la query principal es índice-friendly y evita los 3 JOINs
+    // que rompían al planner con LIMIT + ORDER BY.
+    let allowedArticleIds: string[] | null = null
+    if (selectedLaws && selectedLaws.length > 0) {
+      const articleRows = await db
+        .select({ id: articles.id })
+        .from(articles)
+        .innerJoin(laws, eq(articles.lawId, laws.id))
+        .where(inArray(laws.shortName, selectedLaws))
+      allowedArticleIds = articleRows.map((r) => r.id)
+      if (allowedArticleIds.length === 0) {
+        return { success: true, totalQuestions: 0, totalFailures: 0, questions: [] }
+      }
+    }
+
+    // Construir condiciones de filtro sobre test_questions (user_id, law_name,
+    // article_number, question_text, difficulty vienen denormalizados).
+    const conditions = [
+      eq(testQuestions.userId, userId),
+      eq(testQuestions.isCorrect, false),
+      eq(questions.isActive, true),
+    ]
+
+    if (topicNumber) {
+      conditions.push(eq(testQuestions.temaNumber, topicNumber))
+    }
+
+    if (allowedArticleIds) {
+      conditions.push(inArray(testQuestions.articleId, allowedArticleIds))
+    }
+
+    if (since) {
+      conditions.push(gte(testQuestions.createdAt, since))
+    }
+
+    // Query principal: solo INNER JOIN con `questions` (filtro is_active).
+    // El JOIN con `tests` se elimina (tq.user_id está 100% denormalizado).
+    // Los JOINs con `articles`/`laws` se sustituyen por el pre-resolve de
+    // arriba. LIMIT 2000 protege heavy users. Pre-fix (4 JOINs): >30s
+    // statement_timeout. Post: ~800ms para user con 2.730 fallos.
     const failedAnswers = await db
       .select({
         questionId: testQuestions.questionId,
         createdAt: testQuestions.createdAt,
         timeSpentSeconds: testQuestions.timeSpentSeconds,
-        questionText: questions.questionText,
-        difficulty: questions.difficulty,
-        articleNumber: articles.articleNumber,
-        lawShortName: laws.shortName,
+        questionText: testQuestions.questionText,
+        difficulty: testQuestions.difficulty,
+        articleNumber: testQuestions.articleNumber,
+        lawShortName: testQuestions.lawName,
       })
       .from(testQuestions)
-      .innerJoin(tests, eq(testQuestions.testId, tests.id))
       .innerJoin(questions, eq(testQuestions.questionId, questions.id))
-      .innerJoin(articles, eq(questions.primaryArticleId, articles.id))
-      .innerJoin(laws, eq(articles.lawId, laws.id))
       .where(and(...conditions))
       .orderBy(desc(testQuestions.createdAt))
       .limit(2000)
@@ -170,6 +183,8 @@ export async function getFailedQuestionsByTopic(
     // topic_number existe en 30+ oposiciones. Sin este filtro, el título devuelto
     // podía ser el de otra oposición (bug detectado abr 2026 con Tatiana Madrid
     // viendo temas de Galicia/Policía).
+    // user_id viene denormalizado en test_questions — evitamos JOIN con tests.
+    // Mantenemos JOIN con questions para el filtro is_active (preguntas retiradas).
     const rows = await db
       .select({
         temaNumber: testQuestions.temaNumber,
@@ -177,14 +192,13 @@ export async function getFailedQuestionsByTopic(
         questionId: testQuestions.questionId,
       })
       .from(testQuestions)
-      .innerJoin(tests, eq(testQuestions.testId, tests.id))
       .innerJoin(questions, eq(testQuestions.questionId, questions.id))
       .leftJoin(topics, and(
         eq(topics.topicNumber, testQuestions.temaNumber),
         eq(topics.positionType, positionType)
       ))
       .where(and(
-        eq(tests.userId, userId),
+        eq(testQuestions.userId, userId),
         eq(testQuestions.isCorrect, false),
         eq(questions.isActive, true),
         gt(testQuestions.temaNumber, 0),
