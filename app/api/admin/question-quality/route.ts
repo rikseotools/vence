@@ -37,6 +37,9 @@ interface QualityResponse {
     outdated_plan: CheckResult
     psy_missing_figures: CheckResult
     psy_html_explanation: CheckResult
+    psy_duplicate_questions: CheckResult
+    psy_implicit_table: CheckResult
+    psy_auto_classified_unverified: CheckResult
     regional_wrong_law: CheckResult
     mismatched_answer: CheckResult
   }
@@ -231,9 +234,65 @@ async function runCountsOnly(): Promise<number> {
         ) as psy_figures,
         count(*) FILTER (WHERE
           explanation ~* ${HTML_EXPLANATION_REGEX}
-        ) as psy_html
+        ) as psy_html,
+        -- Auto-clasificadas pero no verificadas (importadas por un clasificador automático
+        -- y nunca revisadas por humano — riesgo de mal clasificadas como detectó la
+        -- auditoría 2026-05-18 del batch innotest_guardia_civil).
+        count(*) FILTER (WHERE
+          (content_data->>'auto_classified_to') IS NOT NULL
+          AND is_verified = false
+        ) as psy_auto_classified
       FROM psychometric_questions
       WHERE is_active = true
+    ),
+    -- Psicotécnicas duplicadas: mismo texto + opciones (barajadas) + correct_option + image_url.
+    -- Importante incluir image_url para evitar falsos positivos donde el enunciado y opciones
+    -- son genéricas ("Observa la secuencia...", "Figura A/B/C/D") pero la imagen es distinta.
+    psy_duplicate_count AS (
+      SELECT COALESCE(SUM(cnt)::int, 0) as duplicates
+      FROM (
+        SELECT count(*) - 1 as cnt
+        FROM psychometric_questions
+        WHERE is_active = true
+        GROUP BY question_text, correct_option, COALESCE(image_url, ''),
+          (SELECT string_agg(opt, '|||' ORDER BY opt) FROM unnest(ARRAY[option_a, option_b, option_c, option_d]) AS opt)
+        HAVING count(*) > 1
+      ) d
+    ),
+    -- Psicotécnicas con tabla implícita: enunciados que asumen una tabla/gráfico pero
+    -- el content_data está vacío. Heurística post-2026-05-18 para frases que no
+    -- contienen frases delatoras directas (ya cubiertas por psy_figures).
+    psy_implicit_table_count AS (
+      SELECT count(*)::int as implicit_table
+      FROM psychometric_questions
+      WHERE is_active = true
+        AND (
+          question_text ILIKE '%entre las mujeres%'
+          OR question_text ILIKE '%entre los hombres%'
+          OR question_text ILIKE '%según la tabla%'
+          OR question_text ILIKE '%según el gráfico%'
+          OR question_text ILIKE '%según los datos%'
+          OR question_text ILIKE '%según las tablas%'
+          OR question_text ILIKE '%de la tabla%'
+          OR question_text ILIKE '%del gráfico%'
+          OR question_text ILIKE '%tabla adjunta%'
+          OR question_text ILIKE '%gráfico adjunto%'
+          OR question_text ILIKE '%de lunes a viernes%se recaud%'
+          OR question_text ILIKE '%de lunes a%miércoles%se recaud%'
+          OR question_text ILIKE '%se recaudó, entre%'
+        )
+        AND (
+          content_data IS NULL
+          OR content_data::text = '{}'
+          OR (
+            content_data->'table_data' IS NULL
+            AND content_data->'tables' IS NULL
+            AND content_data->'chart_data' IS NULL
+            AND content_data->'categories' IS NULL
+            AND content_data->'age_groups' IS NULL
+          )
+        )
+        AND image_url IS NULL
     ),
     regional_wrong AS (
       SELECT count(*)::int as regional_mismatch
@@ -256,8 +315,8 @@ async function runCountsOnly(): Promise<number> {
           OR q.question_text ILIKE '%Ley%Illes Balears%'
         )
     )
-    SELECT (b.empty_options + b.banned_words + b.pending_explanation + b.missing_article + b.missing_image + b.excel_typo + b.html_explanation + b.cramped_explanation + b.outdated_plan + b.mismatched_answer + s.copied + dup.duplicates + wl.wrong_law + uc.uncited + pb.psy_empty + pb.psy_figures + pb.psy_html + rw.regional_mismatch)::int as total
-    FROM base b, similarity_count s, duplicate_count dup, wrong_law_count wl, uncited_count uc, psy_base pb, regional_wrong rw
+    SELECT (b.empty_options + b.banned_words + b.pending_explanation + b.missing_article + b.missing_image + b.excel_typo + b.html_explanation + b.cramped_explanation + b.outdated_plan + b.mismatched_answer + s.copied + dup.duplicates + wl.wrong_law + uc.uncited + pb.psy_empty + pb.psy_figures + pb.psy_html + pb.psy_auto_classified + psy_dup.duplicates + psy_imp.implicit_table + rw.regional_mismatch)::int as total
+    FROM base b, similarity_count s, duplicate_count dup, wrong_law_count wl, uncited_count uc, psy_base pb, psy_duplicate_count psy_dup, psy_implicit_table_count psy_imp, regional_wrong rw
   `)
 
   const rows = (result as any).rows ?? result ?? []
@@ -554,11 +613,89 @@ async function runChecks(): Promise<QualityResponse> {
         )
       LIMIT ${MAX_ITEMS}
     `),
+
+    // 16. Psicotécnicas duplicadas: mismo texto + opciones + correct_option + image_url.
+    // Incluir image_url evita falsos positivos para preguntas con enunciado genérico
+    // ("Observa la secuencia...", "Figura A/B/C/D") cuya imagen es distinta.
+    db.execute(sql`
+      WITH psy_dupe_groups AS (
+        SELECT question_text, correct_option, COALESCE(image_url, '') as img,
+               (SELECT string_agg(opt, '|||' ORDER BY opt) FROM unnest(ARRAY[option_a, option_b, option_c, option_d]) AS opt) as options_sorted,
+               count(*) as cnt
+        FROM psychometric_questions
+        WHERE is_active = true
+        GROUP BY question_text, correct_option, COALESCE(image_url, ''),
+          (SELECT string_agg(opt, '|||' ORDER BY opt) FROM unnest(ARRAY[option_a, option_b, option_c, option_d]) AS opt)
+        HAVING count(*) > 1
+      )
+      SELECT DISTINCT ON (d.question_text, d.options_sorted, d.correct_option, d.img)
+             q.id, LEFT(q.question_text, ${TEXT_LIMIT}) as question_text,
+             d.cnt,
+             (SELECT COALESCE(SUM(cnt - 1)::int, 0) FROM psy_dupe_groups) as total_count
+      FROM psychometric_questions q
+      JOIN psy_dupe_groups d ON q.question_text = d.question_text
+        AND q.correct_option = d.correct_option
+        AND COALESCE(q.image_url, '') = d.img
+        AND (SELECT string_agg(opt, '|||' ORDER BY opt) FROM unnest(ARRAY[q.option_a, q.option_b, q.option_c, q.option_d]) AS opt) = d.options_sorted
+      WHERE q.is_active = true
+      ORDER BY d.question_text, d.options_sorted, d.correct_option, d.img, q.created_at ASC
+      LIMIT ${MAX_ITEMS}
+    `),
+
+    // 17. Psicotécnicas con tabla implícita (enunciados que asumen tabla/gráfico
+    // pero content_data está vacío, sin frase delatora — auditoría 2026-05-18).
+    db.execute(sql`
+      SELECT id, LEFT(question_text, ${TEXT_LIMIT}) as question_text,
+             count(*) OVER()::int as total_count
+      FROM psychometric_questions
+      WHERE is_active = true
+        AND (
+          question_text ILIKE '%entre las mujeres%'
+          OR question_text ILIKE '%entre los hombres%'
+          OR question_text ILIKE '%según la tabla%'
+          OR question_text ILIKE '%según el gráfico%'
+          OR question_text ILIKE '%según los datos%'
+          OR question_text ILIKE '%según las tablas%'
+          OR question_text ILIKE '%de la tabla%'
+          OR question_text ILIKE '%del gráfico%'
+          OR question_text ILIKE '%tabla adjunta%'
+          OR question_text ILIKE '%gráfico adjunto%'
+          OR question_text ILIKE '%de lunes a viernes%se recaud%'
+          OR question_text ILIKE '%de lunes a%miércoles%se recaud%'
+          OR question_text ILIKE '%se recaudó, entre%'
+        )
+        AND (
+          content_data IS NULL
+          OR content_data::text = '{}'
+          OR (
+            content_data->'table_data' IS NULL
+            AND content_data->'tables' IS NULL
+            AND content_data->'chart_data' IS NULL
+            AND content_data->'categories' IS NULL
+            AND content_data->'age_groups' IS NULL
+          )
+        )
+        AND image_url IS NULL
+      LIMIT ${MAX_ITEMS}
+    `),
+
+    // 18. Psicotécnicas auto-clasificadas no verificadas humanamente
+    // (riesgo de mala clasificación — caso batch innotest_guardia_civil).
+    db.execute(sql`
+      SELECT id, LEFT(question_text, ${TEXT_LIMIT}) as question_text,
+             (content_data->>'auto_classified_to') as auto_to,
+             count(*) OVER()::int as total_count
+      FROM psychometric_questions
+      WHERE is_active = true
+        AND (content_data->>'auto_classified_to') IS NOT NULL
+        AND is_verified = false
+      LIMIT ${MAX_ITEMS}
+    `),
   ])
 
   const toRows = (r: any) => (r as any).rows ?? r ?? []
 
-  const [emptyOpts, bannedRaw, pendingExpl, missingArt, missingImg, excelTypoRaw, htmlExplRaw, wrongLawRaw, crampedExplRaw, copiedExplRaw, duplicateRaw, uncitedRaw, outdatedPlanRaw, mismatchedRaw, psyEmptyRaw, psyFiguresRaw, psyHtmlRaw, regionalWrongRaw] = results
+  const [emptyOpts, bannedRaw, pendingExpl, missingArt, missingImg, excelTypoRaw, htmlExplRaw, wrongLawRaw, crampedExplRaw, copiedExplRaw, duplicateRaw, uncitedRaw, outdatedPlanRaw, mismatchedRaw, psyEmptyRaw, psyFiguresRaw, psyHtmlRaw, regionalWrongRaw, psyDuplicateRaw, psyImplicitTableRaw, psyAutoClassifiedRaw] = results
 
   const emptyRows = toRows(emptyOpts)
   const bannedRows = toRows(bannedRaw)
@@ -578,6 +715,9 @@ async function runChecks(): Promise<QualityResponse> {
   const psyFiguresRows = toRows(psyFiguresRaw)
   const psyHtmlRows = toRows(psyHtmlRaw)
   const regionalWrongRows = toRows(regionalWrongRaw)
+  const psyDuplicateRows = toRows(psyDuplicateRaw)
+  const psyImplicitTableRows = toRows(psyImplicitTableRaw)
+  const psyAutoClassifiedRows = toRows(psyAutoClassifiedRaw)
 
   // Detect which field has banned word
   const bannedRegexJs = new RegExp(BANNED_REGEX.replace('(?i)', ''), 'i')
@@ -701,6 +841,24 @@ async function runChecks(): Promise<QualityResponse> {
         id: q.id, question_text: q.question_text, field: 'explanation',
       })),
     },
+    psy_duplicate_questions: {
+      count: getCount(psyDuplicateRows),
+      questions: psyDuplicateRows.map((q: any) => ({
+        id: q.id, question_text: q.question_text, field: `${q.cnt} copias`,
+      })),
+    },
+    psy_implicit_table: {
+      count: getCount(psyImplicitTableRows),
+      questions: psyImplicitTableRows.map((q: any) => ({
+        id: q.id, question_text: q.question_text, field: 'tabla implícita',
+      })),
+    },
+    psy_auto_classified_unverified: {
+      count: getCount(psyAutoClassifiedRows),
+      questions: psyAutoClassifiedRows.map((q: any) => ({
+        id: q.id, question_text: q.question_text, field: q.auto_to || 'auto-clasificada',
+      })),
+    },
     regional_wrong_law: {
       count: getCount(regionalWrongRows),
       questions: regionalWrongRows.map((q: any) => ({
@@ -737,6 +895,9 @@ async function runChecks(): Promise<QualityResponse> {
     checks.psy_empty_options.count +
     checks.psy_missing_figures.count +
     checks.psy_html_explanation.count +
+    checks.psy_duplicate_questions.count +
+    checks.psy_implicit_table.count +
+    checks.psy_auto_classified_unverified.count +
     checks.regional_wrong_law.count +
     checks.mismatched_answer.count
 

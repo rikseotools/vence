@@ -34,6 +34,9 @@ interface QualityData {
     psy_empty_options: CheckResult
     psy_missing_figures: CheckResult
     psy_html_explanation: CheckResult
+    psy_duplicate_questions: CheckResult
+    psy_implicit_table: CheckResult
+    psy_auto_classified_unverified: CheckResult
     regional_wrong_law: CheckResult
     mismatched_answer: CheckResult
   }
@@ -119,6 +122,21 @@ const CHECK_CONFIG = {
     title: '[PSY] Explicación con HTML',
     description: 'Psicotécnicas con HTML en la explicación en vez de markdown',
     icon: '🏷️',
+  },
+  psy_duplicate_questions: {
+    title: '[PSY] Preguntas duplicadas',
+    description: 'Psicotécnicas con mismo texto + opciones + respuesta + image_url (incluir image_url evita falsos positivos por enunciado genérico)',
+    icon: '👯',
+  },
+  psy_implicit_table: {
+    title: '[PSY] Tabla implícita sin datos',
+    description: 'Enunciados que asumen tabla/gráfico ("entre las mujeres", "según la tabla", "se recaudó...") pero content_data está vacío',
+    icon: '📊',
+  },
+  psy_auto_classified_unverified: {
+    title: '[PSY] Auto-clasificadas sin verificar',
+    description: 'Psicotécnicas importadas con auto_classified_to y is_verified=false (riesgo de mala clasificación)',
+    icon: '🤖',
   },
   regional_wrong_law: {
     title: 'Norma autonómica → ley estatal',
