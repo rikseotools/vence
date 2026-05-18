@@ -1,7 +1,7 @@
 # Vence — Architecture Roadmap a 100k+ usuarios
 
-> **Última actualización:** 2026-05-17
-> **Estado:** Fase 0 casi completa (0.1-0.6 hechas) + **Fase 1 Redis ✅ COMPLETA y AMPLIADA** + **Sprint 1 seguridad ✅ COMPLETO** (5 sub-sprints) + **Sprint 2 hardening cascade ✅ COMPLETO** (18 sub-sprints, 19 commits, **deployed en producción**, validado en logs) + **Sprint 3 fallos post-deploy ✅ COMPLETO** (4 fallos detectados en logs Vercel tras Sprint 2 deploy y resueltos en sesión) + **Sprint 4 audit pool mode + outbox blindado ✅ COMPLETO 2026-05-17** (3 commits — refactor advisory_lock→SKIP LOCKED, quick-fail user-failed+difficulty-insights, audit pool mode revela ya transaction). Sprint 2: invalidación caches existentes saneada, singleflight anti-stampede, regions:lhr1 (validado 80ms→3.37ms), 5 endpoints más cacheados (test-config family + hot-articles + law-stats + verify-stats + estimate), quick-fail wrapper en 11 endpoints, observability (Sentry beforeSend + cache hit-rate counters). Sprint 3: TypeError streaming Next 16 (inlineCss disabled), userAnswer=-1 (schema fix), theme-stats timeout heavy users (covering index 12.5s→502ms = 24.9x), GeoIP timeout (Vercel headers sync, sin ip-api.com). Pendiente: 0.5 verificar p95 producción, **Fase 0.7 (JWT local verify)** documentada como next big win, **Fase 11 push (DROP TABLES BD)** esperar 24-48h.
+> **Última actualización:** 2026-05-18
+> **Estado:** Fase 0 casi completa (0.1-0.6 hechas) + **Fase 1 Redis ✅ COMPLETA y AMPLIADA** + **Sprint 1 seguridad ✅ COMPLETO** (5 sub-sprints) + **Sprint 2 hardening cascade ✅ COMPLETO** (18 sub-sprints, 19 commits, **deployed en producción**, validado en logs) + **Sprint 3 fallos post-deploy ✅ COMPLETO** (4 fallos detectados en logs Vercel tras Sprint 2 deploy y resueltos en sesión) + **Sprint 4 audit pool mode + outbox blindado ✅ COMPLETO 2026-05-17** (3 commits — refactor advisory_lock→SKIP LOCKED, quick-fail user-failed+difficulty-insights, audit pool mode revela ya transaction) + **Sprint 5 cascade 18/05 ✅ COMPLETO 2026-05-18** (2 commits — user-failed-questions migrado a read replica, daily-limit con cache stale-if-error fresh 30s + stale 24h). Sprint 2: invalidación caches existentes saneada, singleflight anti-stampede, regions:lhr1 (validado 80ms→3.37ms), 5 endpoints más cacheados (test-config family + hot-articles + law-stats + verify-stats + estimate), quick-fail wrapper en 11 endpoints, observability (Sentry beforeSend + cache hit-rate counters). Sprint 3: TypeError streaming Next 16 (inlineCss disabled), userAnswer=-1 (schema fix), theme-stats timeout heavy users (covering index 12.5s→502ms = 24.9x), GeoIP timeout (Vercel headers sync, sin ip-api.com). Pendiente: 0.5 verificar p95 producción, **Fase 0.7 (JWT local verify)** documentada como next big win, **Fase 11 push (DROP TABLES BD)** esperar 24-48h.
 > **Objetivo:** preparar Vence para escalar a 100k+ usuarios sin perder features ni romper nada
 > **Coste extra estimado total (Fases 0-3):** $10-40/mes
 > **Coste extra estimado total (Fases 0-5):** $50-150/mes
@@ -159,6 +159,44 @@ Gatillado por logs Vercel 17/05 19:01-19:12: cascada de 503/504 en `/api/medals`
 **Pendiente flagged en Sprint 4:**
 - Decisión: activar `USE_SELF_HOSTED_POOLER=true` para aislar Vence del Supavisor compartido — eliminaría los blips por contención de otros clientes Supabase.
 - Considerar upgrade Supabase Pro → Team si el headroom de 42 slots para nuestras lambdas (90 max - 48 fijas de Supabase) se queda corto.
+
+---
+
+## Sprint 5 cascade 2026-05-18 ✅ COMPLETO (2026-05-18)
+
+Gatillado por dos cascades observadas en logs Vercel:
+
+**Cascade #1 — 17/05 20:58-21:00 UTC**
+Cadena de 503 detonada por query lenta de failed-questions del user heavy `8201a5d2` (498 tests, 2.591 fallos, Ley 39/2015). La query (5-way JOIN sobre `test_questions` con `ORDER BY created_at DESC LIMIT 2000`) timeout a 8s+ en el primary `getDb()` (pool max:1), saturando la única conexión Drizzle. Arrastró en cascada:
+- `/api/daily-limit` 503 × 6
+- `/api/topics/6` y `/api/topics/13` 503 × 2
+- `/api/medals` POST 503 × 1
+- `/api/notifications/problematic-articles` timeout (devolvió stale OK, no 503)
+- `/teoria` SSR `canceling statement due to statement timeout` × 5
+- `/auxiliar-administrativo-valencia/temario/tema-2` SSR timeout 15s
+
+**Cascade #2 — 18/05 09:46 UTC**
+Spike de 16 requests `answer-and-save` en 30s — 8 con 503 quick-fail (5× 10s anti-fraud, 3× 15s validateAndSave) + 8 con 200 lentas (2.5-11.3s). Solo 56 inserts en la ventana vs 188 ayer en misma hora → **no fue pico de tráfico**. Probable blip Supavisor regional o lock contention puntual.
+
+Diagnóstico raíz: ambos cascades comparten el mismo cuello — pool primary max:1 + endpoints user-facing que aún consultaban BD sin protección stale.
+
+| Sprint | Acción | Estado | Commit |
+|---|---|---|---|
+| **5.1** | `lib/api/user-failed-questions/queries.ts`: migrado de `getDb()` a `getReadDb()` (replica eu-west-2). Aísla la query lenta de 5-way JOIN del pool primary. Mismo patrón ya aplicado a `notifications/queries.ts`, `ranking/queries.ts`, `filtered-questions/queries.ts`, `topic-progress/queries.ts`. Reversible con `USE_READ_REPLICA=false` (fallback automático a primary integrado en `getReadDb()`) | ✅ | `eeb687e2` |
+| **5.2** | `/api/daily-limit`: cache stale-if-error (mismo patrón que `/api/medals` y `/api/notifications/problematic-articles`). Fresh window 30s + stale TTL 24h + BD timeout bajado de 8s→5s. El anti-fraud sigue estricto porque `/api/v2/answer-and-save` llama a `getDailyLimitStatus()` directamente sin pasar por este cache; aquí solo cacheamos el GET informativo del cliente. Trade-off aceptado: user free con 24/25 que recarga puede ver "24" durante 30s aunque haya respondido 1 más en otra pestaña — el contador real lo decide BD al hacer answer-and-save | ✅ | `9012f76e` |
+| **5.3** | Test de regresión `__tests__/integration/simulacroOptionCountInvariant.test.ts` (separado, commit `790fa123` del 17/05): verifica que el simulacro AAE NO devuelve preguntas legislativas con 3 opciones (formato PN). Cubre commit `c99573e6` que añadió `isNotNull(questions.optionD)` en `sampleLegislativeByArticles` tras detectar 611 preguntas PN coladas en simulacros AAE | ✅ | `790fa123` |
+
+**Conclusiones del Sprint 5:**
+
+1. **Read replica funciona como aislante de cascadas**. Los endpoints read-only críticos no deben tocar el primary `max:1` — la query lenta de un user heavy no debe poder tumbar a daily-limit/medals/topics.
+2. **Cache stale-if-error es el patrón estándar** para endpoints user-facing que se llaman en cada page load. Aplicado ya a 9 endpoints (theme-stats, problematic-articles, topics/[numero], weak-articles, filtered-questions, oposiciones-compatibles, medals, random-test/availability, **daily-limit**).
+3. **El anti-fraud puede vivir con un cache informativo** mientras la escritura (insert + validación) siga sin cache. El truco es separar el path de lectura (cacheable) del de escritura (BD directa).
+4. **El pool max:1 sigue siendo el cuello arquitectónico**. Cada parche reduce la superficie de impacto, pero la única solución definitiva es Fase 4 (async queues) o subir max con Dedicated Pooler.
+
+**Pendiente flagged en Sprint 5:**
+- Migrar más endpoints read-only a `getReadDb()`: `/api/medals` queries, `/api/teoria` (statement_timeout SSR), `/api/topics/[numero]`. Cada uno reduce presión en primary.
+- Investigar `pg_stat_statements` + `pg_locks` durante próximo cascade para identificar si hay lock contention específico en `test_questions`/`tests` tables.
+- Decisión Fase 4 (async queues) sigue pendiente como única solución arquitectónica para el cuello del path `answer-and-save`.
 
 ---
 
