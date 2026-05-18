@@ -1,0 +1,628 @@
+A continuación se te presentan dos matrices (Matriz A y Matriz B), cada una formada por una
+cuadrícula de grupos de 3 números. En principio, ambas matrices deberían ser idénticas, pero es
+posible que en algunas posiciones haya una o más diferencias.
+Tu tarea consiste en comparar ambas matrices celda por celda, es decir, revisando cada posición
+correspondiente (misma fila y misma columna) en la Matriz A y en la Matriz B, y determinar cuántos
+grupos de 3 números son diferentes entre ellas. Considera como “diferente” cualquier caso en el que
+el grupo no sea exactamente el mismo.
+Además de identificar las diferencias entre ambas matrices, también deberás responder a varias
+preguntas sobre las características de los grupos de números que aparecen en la Matriz A.
+                                Matriz A                                                                    Matriz B
+
+
+
+
+ 1.                              AT_3102_1                                                                              A       B        C       D
+          ¿Cuántos grupos de 3 números son diferentes entre la Matriz A y la
+                                                                                                                        8      10        6           7
+          Matriz B?
+ 2.                                AT_3102_2                                                                            A       B        C       D
+          ¿Cuántos grupos de tres números en la Matriz A empiezan por un
+                                                                                                                       34      31       29       27
+          número par?
+
+
+
+
+AAUX_L1 - 1
+© Copyright. Laboratorio de Sistemas y Análisis S.L. Queda prohibida la reproducción total o parcial de este cuestionario y su transformación, así
+como su distribución, difusión o comunicación pública por cualquier medio o en cualquier forma, salvo persona o entidad autorizada a tal efecto.
+A continuación, se presenta un texto con información sobre varios proveedores de material de oficina.
+En el texto se describen diferentes relaciones entre los proveedores (por ejemplo, comparaciones de
+precios, plazos de entrega o capacidad de suministro).
+Lee el texto con atención y responde a las preguntas que aparecen a continuación, seleccionando la
+alternativa (A, B, C o D) que consideres correcta entre las opciones propuestas.
+
+                                                                    ENUNCIADO
+ Una empresa está evaluando cuatro proveedores de material de oficina: Alfa, Beta, Gamma y Delta,
+ teniendo en cuenta tres aspectos: precio, plazo de entrega y volumen máximo de suministro mensual. En
+ cuanto a los precios, Alfa vende sus productos más baratos que Beta, pero más caros que Delta, mientras
+ que Gamma tiene los precios más altos de todos los proveedores. Respecto al plazo de entrega, Beta tarda
+ más que Alfa, pero menos que Gamma, y Delta tarda menos que cualquiera de los otros tres. En relación
+ con el volumen máximo de suministro, Gamma puede suministrar más unidades que Alfa, mientras que
+ Alfa puede suministrar más que Beta, y Beta puede suministrar más que Delta. Además, se sabe que el
+ proveedor con mayor capacidad de suministro no es el que tiene los precios más bajos, y que el proveedor
+ con el plazo de entrega más corto tampoco es el que tiene mayor capacidad de suministro. La empresa
+ también ha observado que dos proveedores tienen precios consecutivos en la escala de precios y además
+ plazos de entrega consecutivos, concretamente Alfa y Beta.
+
+
+ 3.       RV_2002_1
+          ¿Qué proveedor tiene los precios más bajos?
+                             A                                B                                 C                                D
+                           Alfa                              Beta                           Gamma                              Delta
+
+ 4.       RV_2002_2
+          ¿Qué proveedor tiene el plazo de entrega más corto?
+                             A                                B                                 C                                D
+                           Alfa                              Beta                           Gamma                              Delta
+ 5.       RV_2002_3
+          ¿Qué proveedor puede suministrar mayor volumen mensual?
+                             A                                B                                 C                                D
+                           Alfa                              Beta                           Gamma                              Delta
+
+ 6.       RV_2002_4
+          ¿Qué proveedor tiene precios más altos que Alfa pero más bajos que Gamma?
+                             A                                B                                 C                                D
+                           Alfa                              Beta                           Gamma                    No se puede determinar
+
+ 7.       RV_2002_5
+          ¿Qué proveedor cumple que tiene mayor capacidad de suministro que Beta pero menor que
+          Gamma?
+                             A                                B                                 C                                D
+                           Alfa                              Beta                           Gamma                              Delta
+
+
+
+
+                                                                                                                                     AAUX_L1 - 2
+© Copyright. Laboratorio de Sistemas y Análisis S.L. Queda prohibida la reproducción total o parcial de este cuestionario y su transformación, así
+como su distribución, difusión o comunicación pública por cualquier medio o en cualquier forma, salvo persona o entidad autorizada a tal efecto.
+A continuación se presentan varios problemas de razonamiento numérico en contexto administrativo.
+Cada problema describe una situación relacionada con tareas habituales de gestión, como
+presupuestos, facturación, productividad, inventarios o planificación.
+Tu tarea consiste en leer atentamente cada enunciado, analizar la información numérica y seleccionar
+la respuesta correcta entre las cuatro alternativas propuestas (A, B, C o D).
+ 8.       RN_2006
+          En un archivo se digitalizan expedientes. El equipo A digitaliza 180 expedientes/día y el equipo B
+          digitaliza 120 expedientes/día. Si A trabaja 3 días y B trabaja 5 días, ¿cuántos expedientes se digitalizan
+          en total?
+                            A                                 B                                C                                 D
+                           900                               960                             1.140                             1.200
+ 9.       RN_2003
+          Doce gestores de cobro recaudan 2.448.000 € al año (todos recaudan lo mismo). ¿Cuánto recaudarán
+          3 gestores en 2 meses?
+                           A                                B                                 C                              D
+                       102.000 €                        122.400 €                         153.000 €                  Ninguna es correcta
+ 10. RN_2005
+          El departamento de compras necesita repartir 1.250 unidades en paquetes iguales. Si se quiere que
+          el número de paquetes sea el doble del número de unidades por paquete, ¿cuántas unidades
+          contiene cada paquete?
+                            A                                 B                                C                                 D
+                            18                                25                               30                                42
+ 11. RN_2009
+          Un ayuntamiento tramita licencias. El tiempo medio por licencia se reduce de 25 min a 20 min
+          gracias a un nuevo procedimiento. Si se tramitan 180 licencias, ¿cuánto tiempo total se ahorra?
+                           A                                B                                 C                                 D
+                        12 horas                         15 horas                          18 horas                          20 horas
+
+
+
+
+AAUX_L1 - 3
+© Copyright. Laboratorio de Sistemas y Análisis S.L. Queda prohibida la reproducción total o parcial de este cuestionario y su transformación, así
+como su distribución, difusión o comunicación pública por cualquier medio o en cualquier forma, salvo persona o entidad autorizada a tal efecto.
+A continuación encontrarás una serie de preguntas relacionadas con números y operaciones
+matemáticas. Cada pregunta plantea un problema o una relación numérica que debes analizar para
+encontrar la respuesta correcta.
+Lee cada enunciado con atención y selecciona la alternativa que consideres correcta entre las
+opciones propuestas (A, B, C o D).
+
+ 12.      RN_1003                                                                                A              B              C               D
+             Si 5 cuadernos cuestan 12 €, ¿cuánto costarán 8
+                   cuadernos al mismo precio unitario?                                         16 €           18 €          19,2 €           21 €
+
+ 13.      RN_1007                                                                                A              B              C               D
+                   Un coche recorre 180 km en 3 horas.
+           ¿Cuántos kilómetros recorrerá en 5 horas manteniendo
+                                                                                            250 km          270 km         300 km          320 km
+                           la misma velocidad?
+
+ 14.      RN_1011                                                                                A              B              C               D
+                           ¿Qué número continúa la serie?
+                                                                                                32             56              58             60
+                            4  6 12 14 28 30 
+
+ 15.      RN_1014                                                                                A              B              C               D
+                                  ¿Qué número falta?
+
+                                           (3, 9) → 12
+                                                                                                25             28              30             32
+                                           (4, 16) → 20
+                                           (5, 25) →
+
+
+
+
+                                                                                                                                    AAUX_L1 - 4
+© Copyright. Laboratorio de Sistemas y Análisis S.L. Queda prohibida la reproducción total o parcial de este cuestionario y su transformación, así
+como su distribución, difusión o comunicación pública por cualquier medio o en cualquier forma, salvo persona o entidad autorizada a tal efecto.
+Observa cada fila con atención. A la izquierda encontrarás una serie de figuras que siguen un patrón
+o secuencia lógica. A la derecha, hay cuatro alternativas etiquetadas con las letras A, B, C y D.
+
+Tu tarea es analizar cuidadosamente la secuencia presentada y elegir la alternativa que continúa
+correctamente la serie entre las opciones propuestas. Solo existe una respuesta correcta en cada
+ejercicio.
+
+ 16.                               RZ_1112                                       A                   B                  C                  D
+
+
+
+
+ 17.                               RZ_1005                                       A                   B                  C                  D
+
+
+
+
+ 18.                               RZ_1107                                       A                   B                  C                  D
+
+
+
+
+ 19.                               RZ_1109                                       A                   B                  C                  D
+
+
+
+
+ 20.                               RZ_1113                                       A                   B                  C                  D
+
+
+
+
+AAUX_L1 - 5
+© Copyright. Laboratorio de Sistemas y Análisis S.L. Queda prohibida la reproducción total o parcial de este cuestionario y su transformación, así
+como su distribución, difusión o comunicación pública por cualquier medio o en cualquier forma, salvo persona o entidad autorizada a tal efecto.
+A continuación se presenta una relación de personas y los servicios municipales que han solicitado durante el
+año. La información aparece distribuida en dos listados. Cada fila indica una persona y uno de los servicios que
+ha solicitado, por lo que una misma persona puede aparecer varias veces si ha solicitado más de un servicio.
+Utilizando la información de ambos listados, deberá calcular el importe que debe abonar de acuerdo con las
+tablas de tarifas anuales y descuentos aplicables según el número total de servicios.
+Tenga en cuenta que:
+     •      El importe base depende del número total de servicios solicitados por cada persona.
+     •      El descuento correspondiente se aplica sobre el importe total indicado en la tabla.
+     •      Para responder a las preguntas deberá localizar la información en los listados, agrupar las solicitudes
+            por persona y realizar los cálculos necesarios.
+A partir de estos datos, responda a las preguntas siguientes seleccionando la alternativa correcta (A, B, C o D)
+en cada caso.
+                         Solicitudes de servicios I                                               Solicitudes de servicios II
+         Apellidos, nombre a                Servicio                              Apellidos, nombre a              Servicio
+         García López, Marta                Escuela de música                     Ruiz Pérez, Antonio              Escuela de música
+         Ruiz Pérez, Antonio                Piscina municipal                     Torres Sánchez, Laura            Piscina municipal
+         Torres Sánchez, Laura              Biblioteca premium                    Martín Díaz, Carlos              Escuela de idiomas
+         Martín Díaz, Carlos                Gimnasio municipal                    García López, Marta              Taller de empleo
+         García López, Marta                Piscina municipal                     Pérez Molina, Raúl               Gimnasio municipal
+         Pérez Molina, Raúl                 Escuela de música                     Sánchez Romero, Eva              Biblioteca premium
+         Sánchez Romero, Eva                Taller de empleo                      López Gómez, Ana                 Piscina municipal
+         Ruiz Pérez, Antonio                Gimnasio municipal                    Ruiz Pérez, Antonio              Taller de empleo
+         Torres Sánchez, Laura              Escuela de idiomas                    Torres Sánchez, Laura            Gimnasio municipal
+         Martín Díaz, Carlos                Piscina municipal                     Martín Díaz, Carlos              Biblioteca premium
+         López Gómez, Ana                   Biblioteca premium                    Pérez Molina, Raúl               Escuela de idiomas
+         Pérez Molina, Raúl                 Piscina municipal                     Sánchez Romero, Eva              Piscina municipal
+         Sánchez Romero, Eva                Escuela de música                     López Gómez, Ana                 Gimnasio municipal
+         García López, Marta                Gimnasio municipal                    Ruiz Pérez, Antonio              Escuela de música
+         López Gómez, Ana                   Escuela de idiomas                    Torres Sánchez, Laura            Piscina municipal
+         a Nota: Los nombres y apellidos que aparecen en los listados han sido generados de forma aleatoria con fines exclusivamente
+
+         ilustrativos para la elaboración de este ejercicio. Cualquier coincidencia con personas reales es puramente casual y no implica
+         referencia alguna a individuos concretos.
+
+
+                                  Tarifas anuales                                             Descuentos aplicables
+                    Número de servicios               Importe                     Número de servicios                Descuento b
+                    1 servicio                         120 €                      2 servicios                           10 €
+                    2 servicios                        210 €                      3 servicios                           20 €
+                    3 servicios                        300 €                      4 servicios                           35 €
+                    4 servicios                        380 €                      5 servicios                           60 €
+                                                                                  b Nota: El descuento se aplica sobre el importe
+                    5 servicios                        450 €
+                                                                                  total correspondiente al número de servicios
+                                                                                  contratados.
+
+
+ 21. RCA_1003.1
+           ¿Cuántos servicios ha solicitado en total García López, Marta?
+                              A                                 B                                 C                                 D
+                              3                                 4                                 5                                 6
+
+
+
+
+                                                                                                                                        AAUX_L1 - 6
+© Copyright. Laboratorio de Sistemas y Análisis S.L. Queda prohibida la reproducción total o parcial de este cuestionario y su transformación, así
+como su distribución, difusión o comunicación pública por cualquier medio o en cualquier forma, salvo persona o entidad autorizada a tal efecto.
+ 22. RCA_1003.2
+          ¿Cuál es el importe final que debe abonar Ruiz Pérez, Antonio?
+                             A                                B                                 C                                D
+                           280 €                            290 €                             300 €                            390 €
+
+ 23. RCA_1003.3
+          ¿Qué ciudadano/a debe abonar exactamente 280 € tras aplicar el descuento correspondiente?
+                             A                                B                                 C                                D
+                   Martín Díaz, Carlos             Torres Sánchez, Laura               Ningún ciudadano                Sánchez Romero, Eva
+
+ 24. RCA_1003.4
+          ¿Cuántos ciudadanos han solicitado exactamente cuatro servicios?
+                             A                                B                                 C                                D
+                             1                                 2                                5                                 8
+
+ 25. RCA_1003.5
+          ¿Cuál es la diferencia entre el importe final abonado por López Gómez, Ana y Pérez Molina, Raúl?
+                             A                                B                                 C                                D
+                            0€                               10 €                             20 €                              35 €
+
+
+
+A continuación se presentan varios grupos de cuatro palabras. En cada grupo, tres de ellas guardan
+una relación entre sí (por ejemplo, pertenecen a la misma categoría, tienen un significado similar o
+comparten alguna característica común), mientras que una palabra no guarda esa misma relación.
+Su tarea consiste en identificar la palabra (A, B, C o D) que no pertenece al grupo o que no comparte
+la relación principal con las demás.
+Lea atentamente las cuatro palabras de cada pregunta antes de responder. En algunos casos, varias
+palabras pueden parecer relacionadas, pero solo una de ellas se diferencia claramente de las otras
+tres.
+
+26.                                        RV_1101
+        A) Prudente                B) Cauto        C) Sensato                            D) Temerario
+27.                                        RV_1108
+        A) Clarinete               B) Trompeta     C) Violín                             D) Saxofón
+28.                                        RV_1103
+        A) Novela                  B) Ensayo       C) Diccionario                        D) Poema
+29.                                        RV_1104
+        A) Democracia              B) Monarquía    C) República                          D) Parlamento
+30.                                        RV_1114
+        A) Brújula                 B) Sextante     C) Telescopio                         D) Astrolabio
+
+
+
+
+AAUX_L1 - 7
+© Copyright. Laboratorio de Sistemas y Análisis S.L. Queda prohibida la reproducción total o parcial de este cuestionario y su transformación, así
+como su distribución, difusión o comunicación pública por cualquier medio o en cualquier forma, salvo persona o entidad autorizada a tal efecto.
+31. De conformidad con lo dispuesto en el artículo 1 de la Constitución Española, son valores
+    superiores del ordenamiento jurídico:
+    A) La libertad, la justicia, la solidaridad y el pluralismo político.
+    B) La libertad, la igualdad, la solidaridad y el pluralismo político.
+    C) La libertad, la justicia, la igualdad y el pluralismo político.
+    D) la libertad, la justicia, la igualdad y la unidad.
+
+32. Los derechos fundamentales y libertades públicas se regulan en:
+    A) La Sección segunda, Capítulo II, Título III de la Constitución Española.
+    B) La Sección primera, Capítulo I, Título IV de la Constitución Española.
+    C) La Sección segunda, Capítulo II, Título II de la Constitución Española.
+    D) La Sección primera, Capítulo II, Título I de la Constitución Española.
+
+33. Según lo dispuesto en el artículo 9 del Estatuto de Autonomía de la Comunidad de Madrid,
+    aprobado mediante Ley Orgánica 3/1983, de 25 de febrero:
+    A) La Asamblea ejerce la potestad ejecutiva de la Comunidad.
+    B) La Asamblea ejecuta el presupuesto de la Comunidad.
+    C) La Asamblea impulsa, orienta y controla la acción del Gobierno.
+    D) La Asamblea designa a los Vicepresidentes y Consejeros.
+
+34. De acuerdo con lo establecido en el artículo 13 del Estatuto de Autonomía de la Comunidad de
+    Madrid, aprobado mediante Ley Orgánica 3/1983, de 25 de febrero:
+    A) La Asamblea funcionará en Pleno y por Secciones.
+    B) Los Diputados de la Asamblea se constituirán en Grupos Parlamentarios, cuyos portavoces
+       integrarán la Junta de Portavoces.
+    C) La Asamblea funcionará solo por Comisiones.
+    D) La Diputados de la Asamblea se constituirán en Grupos Parlamentarios, cuyos portavoces
+       integrarán la Junta Administrativa.
+
+35. De acuerdo con lo dispuesto en el Decreto 38/2023, de 23 de junio, de la Presidenta de la
+    Comunidad de Madrid, por el que se establece el número y denominación de las Consejerías de
+    la Comunidad de Madrid, forma parte de la Administración de la Comunidad de Madrid:
+    A) La Consejería de Transportes y Medio Ambiente.
+    B) La Consejería de Digitalización.
+    C) La Consejería de Empleo.
+    D) La Consejería de Servicios Sociales.
+
+36. De conformidad con lo dispuesto en la Ley 1/1984, de 19 de enero, reguladora de la
+    Administración institucional de la Comunidad de Madrid, los organismos autónomos se crearán
+    por:
+    A) Ley.
+    B) Real Decreto.
+    C) Decreto.
+    D) Orden.
+
+
+
+
+                                                                                   AAUX_L1 - 8
+37. Las Cortes Generales podrán delegar en el Gobierno la potestad de dictar normas con rango de
+    ley sobre materias determinadas. De conformidad con lo dispuesto en el artículo 82 de la
+    Constitución Española, la delegación legislativa deberá otorgarse mediante:
+    A) Una ley orgánica cuando su objeto sea la formación de textos articulados o por una ley de
+        bases cuando se trate de refundir varios textos legales en uno solo.
+    B) Una ley ordinaria cuando su objeto sea la formación de textos articulados o por una ley
+        orgánica cuando se trate de refundir varios textos legales en uno solo.
+    C) Una ley de bases cuando su objeto sea la formación de textos articulados y una ley orgánica
+        cuando se trate de refundir varios textos legales en uno solo.
+    D) Una ley de bases cuando su objeto sea la formación de textos articulados o por una ley
+        ordinaria cuando se trate de refundir varios textos legales en uno solo.
+
+38. Con respecto a la potestad reglamentaria, el artículo 97 de la Constitución Española establece lo
+    siguiente:
+    A) El Congreso de los Diputados ejerce la potestad reglamentaria.
+    B) El Presidente ejerce la potestad reglamentaria.
+    C) El Gobierno ejerce la potestad reglamentaria.
+    D) El Senado ejerce la potestad reglamentaria.
+
+39. Según lo establecido en el artículo 35 de la Ley 39/2015, de 1 de octubre, del Procedimiento
+    Administrativo Común de las Administraciones Públicas, los actos que se separen del criterio
+    seguido en actuaciones precedentes:
+    A) Serán motivados, con sucinta referencia de hechos y fundamentos de derecho.
+    B) Sólo serán motivados, con sucinta referencia de hechos y fundamentos de derecho, si son
+       dictados por un órgano incompetente.
+    C) Serán motivados, pero no se exige exponer los fundamentos de derecho.
+    D) No necesitan ser motivados.
+
+40. Conforme a lo dispuesto en el artículo 39 de la Ley 39/2015, de 1 de octubre, del Procedimiento
+    Administrativo Común de las Administraciones Públicas, los actos de las Administraciones Públicas
+    sujetos al Derecho Administrativo se presumirán válidos y producirán efectos, salvo que en ellos
+    se disponga otra cosa, desde:
+    A) El día después de la fecha en que se dicten.
+    B) La fecha en que se dicten.
+    C) Que el interesado lo reciba.
+    D) Que se publiquen.
+
+41. Según lo establecido en el artículo 71 de la Ley 39/2015, 1 de octubre, del Procedimiento
+    Administrativo Común de las Administraciones Públicas, el procedimiento sometido al principio
+    de celeridad, se impulsará de oficio en los siguientes trámites:
+    A) Solo en la fase de instrucción.
+    B) Solo en la fase de finalización.
+    C) En todos sus trámites.
+    D) En todos sus trámites, menos en la fase de ordenación.
+
+
+
+
+AAUX_L1 - 9
+42. De acuerdo con lo dispuesto en el artículo 73 de la Ley 39/2015, de 1 de octubre, del
+    Procedimiento Administrativo Común de las Administraciones Públicas, los trámites que deban
+    ser cumplimentados por los interesados deberán realizarse en el plazo de:
+    A) Diez días a partir del siguiente al de la notificación del correspondiente acto, salvo en el caso
+        de que en la norma correspondiente se fije plazo distinto.
+    B) Quince días a partir del siguiente al de la notificación del correspondiente acto, salvo en el
+        caso de que en la norma correspondiente se fije plazo distinto.
+    C) Veinte días a partir del siguiente al de la notificación del correspondiente acto, salvo en el caso
+        de que en la norma correspondiente se fije plazo distinto.
+    D) Cinco días a partir del siguiente al de la notificación del correspondiente acto, salvo en el caso
+        de que en la norma correspondiente se fije plazo distinto.
+
+43. Según lo establecido en el artículo 12 de la Ley 29/1998, de 13 de julio, reguladora de la
+    Jurisdicción Contencioso-administrativa, conocerá de los recursos de casación en cualquiera de
+    sus modalidades:
+    A) La Sala de lo Contencioso-administrativo de la Audiencia Nacional.
+    B) La Sala de lo Contencioso-administrativo de los Tribunales Superiores de Justicia.
+    C) La Sala de lo Contencioso-administrativo del Tribunal Supremo.
+    D) El Tribunal Constitucional.
+
+44. En virtud de lo establecido en el artículo 46 de la Ley 29/1998, de 13 de julio, reguladora de la
+    Jurisdicción Contencioso-administrativa, el plazo para interponer el recurso contencioso-
+    administrativo, contado desde el día siguiente al de la publicación de la disposición impugnada o
+    al de la notificación o publicación del acto que ponga fin a la vía administrativa, si fuera expreso,
+    será de:
+    A) 10 días.
+    B) 15 días.
+    C) 2 meses.
+    D) 6 meses.
+
+45. Según el artículo 12 de la Ley 19/2013, de 9 de diciembre, de transparencia, acceso a la
+    información pública y buen gobierno, tienen derecho al acceso a la información pública:
+    A) Únicamente los ciudadanos españoles autorizados.
+    B) Exclusivamente las personas mayores de 21 años.
+    C) Solo los ciudadanos españoles mayores de 21 años.
+    D) Todas las personas, en los términos previstos en artículo 105.b) de la Constitución Española.
+
+46. De acuerdo con el artículo 9 del Decreto 229/2023, de 6 de septiembre, del Consejo de Gobierno,
+    por el que se establece la estructura orgánica de la Consejería de Presidencia, Justicia y
+    Administración Local, la Dirección General que tiene atribuidas las competencias en materia de
+    Atención al Ciudadano y Transparencia es:
+    A) Dirección General de Coordinación de la Transparencia, dependiente de la Consejería de
+       Presidencia, Justicia y Administración Local.
+    B) Dirección General de Atención al Ciudadano y Transparencia, dependiente de la Consejería de
+       Economía, Hacienda y Empleo.
+    C) Dirección General de Atención al Ciudadano y Transparencia, dependiente de la Consejería de
+       Presidencia, Justicia y Administración Local.
+    D) Dirección General de Coordinación de la Transparencia, dependiente de la Consejería de
+       Digitalización.
+
+                                                                                           AAUX_L1 - 10
+47. De conformidad con lo establecido en el artículo 34 de la Ley 9/2017, de 8 de noviembre, de
+    Contratos del Sector Público, en los contratos del sector público podrán incluirse cualesquiera
+    pactos, cláusulas y condiciones:
+    A) Siempre que no sean contrarios a la constitución española y a la buena fe.
+    B) Siempre que no sean contrarios al interés público, al ordenamiento jurídico y a los principios
+       de buena administración.
+    C) Siempre que no sean contrarios al interés público, al ordenamiento jurídico y a la buena fe.
+    D) Siempre que no sean contrarios al interés privado y al ordenamiento jurídico.
+
+48. Según lo indicado en el artículo 37 de la Ley 9/2017, de 8 de noviembre, de Contratos del Sector
+    Público, las entidades del Sector Público no podrán contratar verbalmente, salvo:
+    A) Que lo autorice el Consejo de Ministros.
+    B) Que el contrato tenga carácter de excepcionalidad.
+    C) Que el contrato tenga carácter de emergencia.
+    D) Que se establezca de forma reglamentaria.
+
+49. Si atendemos a lo dispuesto en el artículo 8 del Real Decreto Legislativo 5/2015, de 30 de octubre,
+    por el que se aprueba el texto refundido de la Ley del Estatuto Básico del Empleado Público, los
+    empleados públicos se clasifican en:
+    A) Funcionarios de carrera; funcionarios de empleo; estatutarios; personal laboral, ya sea fijo,
+        por tiempo indefinido o temporal y personal eventual.
+    B) Funcionarios de carrera; funcionarios interinos; personal laboral temporal y personal eventual
+        por circunstancias de la producción.
+    C) Funcionarios de carrera; funcionarios interinos; personal laboral, ya sea fijo, por tiempo
+        indefinido o temporal y personal eventual.
+    D) Funcionarios de carrera; funcionarios interinos; personal laboral contratado por circunstancias
+        de la producción y personal directivo profesional.
+
+50. La condición de funcionario de la Comunidad de Madrid se perderá, según lo establecido en el
+    artículo 29 de la Ley 1/1986, de 10 de abril, de la Función Pública de la Comunidad de Madrid, por
+    alguna de las causas siguientes:
+    A) Renuncia escrita del interesado.
+    B) Pérdida de la nacionalidad española.
+    C) Imposición de sanción disciplinaria que suponga la separación del servicio, cuando aquélla
+        adquiera firmeza.
+    D) Todas las respuestas anteriores son correctas.
+
+51. Según el artículo 2 apartado 1 del Real Decreto Legislativo 8/2015, de 30 de octubre, por el que
+    se aprueba el texto refundido de la Ley General de la Seguridad Social, NO es un principio
+    fundamental del sistema de la Seguridad Social:
+    A) Universalidad.
+    B) Subsidiariedad.
+    C) Unidad.
+    D) Solidaridad.
+
+
+
+
+AAUX_L1 - 11
+52. De acuerdo al artículo 9 apartado 1 del Real Decreto Legislativo 8/2015, de 30 de octubre, por el
+    que se aprueba el texto refundido de la Ley General de la Seguridad Social, el sistema de la
+    Seguridad Social está integrado por los siguientes regímenes:
+    A) Régimen Único y Régimen Complementario.
+    B) Régimen Contributivo y Régimen Asistencial.
+    C) Régimen General y regímenes especiales.
+    D) Régimen General, los Servicios Comunes y las Entidades Gestoras.
+
+53. Si la Ley de Presupuestos Generales de la Comunidad no se aprobara antes del primer día del
+    ejercicio económico correspondiente:
+    A) Se considerarán automáticamente prorrogados los presupuestos del ejercicio anterior hasta
+         la publicación de los nuevos en el «Boletín Oficial de la Comunidad de Madrid» y su entrada
+         en vigor.
+    B) Se considerarán automáticamente prorrogados los presupuestos del ejercicio anterior hasta
+         la publicación de los nuevos en el «Boletín Oficial del Estado».
+    C) Se considerarán automáticamente prorrogados los presupuestos del ejercicio anterior hasta
+         la aprobación de los nuevos en el Pleno de la Asamblea.
+    D) Se considerarán automáticamente prorrogados los presupuestos del ejercicio anterior hasta
+         la aprobación de los nuevos en la Mesa de la Asamblea.
+
+54. De conformidad con lo dispuesto en la Constitución Española:
+    A) El Estado tiene competencia exclusiva en materia de Hacienda general y Deuda del Estado.
+    B) El Estado solo tiene competencia para dictar la legislación básica en materia de Hacienda
+       general y Deuda del Estado.
+    C) La Hacienda general será competencia exclusiva de las Comunidades Autónomas.
+    D) La Hacienda general será competencia compartida entre Comunidades Autónomas y las
+       Haciendas Locales.
+
+55. De acuerdo a lo dispuesto en la Constitución Española, el principio de igualdad entre hombres y
+    mujeres está recogido en:
+    A) El artículo 8.
+    B) El artículo 7.2.
+    C) El artículo 14.
+    D) El artículo 15.
+
+56. Según el artículo 3 de la Ley Orgánica 3/2007, de 22 de marzo, para la igualdad efectiva de mujeres
+    y hombres, el principio de igualdad de trato entre mujeres y hombres supone:
+    A) Ausencia de toda discriminación, directa o indirecta, por razones de sexo, especialmente las
+        derivadas de la maternidad, la asunción de obligaciones familiares y el estado civil.
+    B) Ausencia de represalias laborales.
+    C) Ausencia de igualdad de oportunidades.
+    D) Ausencia de Indemnidad frente a represalias.
+
+
+
+
+                                                                                        AAUX_L1 - 12
+57. De acuerdo con el artículo 6 apartado 2 del Decreto 127/2022, de 7 de diciembre, del Consejo de
+    Gobierno, por el que se regulan aspectos relativos a los servicios electrónicos y a la comisión de
+    redacción, coordinación y seguimiento del portal de internet de la Comunidad de Madrid, la
+    disponibilidad del Registro Electrónico General de la Comunidad de Madrid para cualquier
+    ciudadano es:
+    A) De lunes a viernes, en horario ininterrumpido.
+    B) Coincidiendo con el horario de apertura de las oficinas de registro presenciales.
+    C) Todos los días laborables del año, durante 12 horas.
+    D) Todos los días del año durante las veinticuatro horas.
+
+58. Conforme al artículo 43 apartado 2 de la Ley 39/2015, de 1 de octubre, del Procedimiento
+    Administrativo Común de las Administraciones Públicas, cuando la notificación por medios
+    electrónicos haya sido expresamente elegida por el interesado se entenderá rechazada cuando:
+    A) Hayan transcurrido 15 días hábiles desde la puesta a disposición de la notificación sin que se
+        acceda a su contenido.
+    B) Hayan transcurrido 10 días naturales desde la puesta a disposición de la notificación sin que
+        se acceda a su contenido.
+    C) Hayan transcurrido 15 días naturales desde la puesta a disposición de la notificación sin que
+        se acceda a su contenido.
+    D) Hayan transcurrido 10 días hábiles desde disposición de la notificación sin que se acceda a su
+        contenido.
+
+59. Conforme al artículo 31 de la de la Ley 39/2015, de 1 de octubre, del Procedimiento
+    Administrativo Común de las Administraciones Públicas, a efectos de cómputo de plazos en los
+    registros electrónicos el calendario de días inhábiles que se aplica es:
+    A) El calendario laboral general de la Organización Internacional del Trabajo (OIT).
+    B) Exclusivamente el calendario del Municipio donde resida el interesado.
+    C) El determinado por la sede electrónica del registro de cada Administración Pública u
+        Organismo, atendiendo al ámbito territorial en el que ejerza sus competencias y al calendario
+        previsto en el artículo 30.7 del la citada Ley.
+    D) El calendario administrativo establecido por la Unión Europea.
+
+60. Conforme al artículo 16 de la de la Ley 39/2015, de 1 de octubre, del Procedimiento
+    Administrativo Común de las Administraciones Públicas, cuando los documentos se presenten de
+    manera presencial ante las Administraciones Públicas, la oficina de asistencia en materia de
+    registros debe:
+    A) Devolver el original al interesado y digitalizarlo para su incorporación al expediente
+        administrativo electrónico.
+    B) Conservar el original en soporte papel para su custodia permanente.
+    C) Remitir copia compulsada al Archivo intermedio.
+    D) Remitir el documento original al Archivo Central para su posterior digitalización.
+
+
+
+
+AAUX_L1 - 13
+                                     PREGUNTAS DE RESERVA
+
+
+61. De acuerdo con lo establecido en el artículo 10 de la Constitución española, son fundamentos del
+    orden político y de la paz social (Señale la respuesta INCORRECTA):
+    A) La dignidad de la persona.
+    B) El libre desarrollo de la empresa privada.
+    C) El respeto a la ley.
+    D) El respeto a los derechos de los demás.
+
+62. Según lo establecido en el artículo 47 de la Ley 39/2015, del Procedimiento Administrativo Común
+    de las Administraciones Públicas, serán nulos de pleno derecho, entre otros:
+    A) Los actos con defecto de forma.
+    B) Los actos dictados por órgano manifiestamente incompetente por razón de la materia o del
+        territorio.
+    C) La realización de actuaciones fuera de plazo.
+    D) Los actos con defecto de forma y tiempo.
+
+63. De conformidad con lo dispuesto en el Real Decreto Legislativo 5/2015, de 30 de octubre, por el
+    que se aprueba el texto refundido de la Ley del Estatuto Básico del Empleado Público, las
+    retribuciones básicas, que se fijan en la Ley de Presupuestos Generales del Estado, estarán
+    integradas única y exclusivamente por:
+    A) El salario y los trienios.
+    B) El salario, los trienios y la productividad.
+    C) El salario y el complemento específico.
+    D) El salario y el complemento de destino.
+
+64. Conforme al artículo 19 del Real Decreto 8/2015, de 30 de octubre, por el que se aprueba el texto
+    refundido de la Ley General de la Seguridad Social, las bases de cotización:
+    A) Tienen un tope máximo fijado cada año por la Ley de Presupuestos Generales del estado y
+        como tope mínimo las cuantías del salario mínimo interprofesional.
+    B) Tienen un tope inferior equivalente al 15% del salario mínimo interprofesional.
+    C) No tienen ningún tope inferior ni superior.
+    D) Tienen un tope superior equivalente al 80% del salario mínimo interprofesional.
+
+65. El tratamiento de los datos personales de un menor de edad únicamente podrá fundarse en su
+    consentimiento cuando sea mayor de:
+    A) Catorce años.
+    B) Doce años.
+    C) Diez años.
+    D) Tres años.
+
+
+
+
+                                                                                       AAUX_L1 - 14
+

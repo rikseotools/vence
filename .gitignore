@@ -47,3 +47,6 @@ debug-opositatest.*
 debug-scraper.*
 opositatest-*.json
 preguntas-para-subir/
+
+# TrustMRR scraper
+scripts/.trustmrr-cookie

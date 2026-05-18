@@ -189,7 +189,7 @@ export async function getPsychometricCategories(userId?: string): Promise<GetPsy
           const examSourcePatterns: Record<string, string> = {
             'auxiliar_administrativo': '%Auxiliar Administrativo Estado%',
             'auxiliar_administrativo_estado': '%Auxiliar Administrativo Estado%',
-            'auxiliar_administrativo_madrid': '%Auxiliar Administrativo Madrid%',
+            'auxiliar_administrativo_madrid': '%Auxiliar Administrativo Comunidad de Madrid%',
             'auxiliar_administrativo_cyl': '%Auxiliar Administrativo CyL%',
             'tramitacion_procesal': '%Tramitación Procesal%',
             'auxilio_judicial': '%Auxilio Judicial%',

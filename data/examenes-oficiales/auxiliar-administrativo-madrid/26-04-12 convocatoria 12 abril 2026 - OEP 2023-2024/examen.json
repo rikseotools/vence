@@ -1,0 +1,1166 @@
+{
+  "metadatos": {
+    "examen": "Auxiliar Administrativo Comunidad de Madrid",
+    "convocatoria": "Orden 1081/2025, de 24 de abril (BOCM de 13 de mayo)",
+    "oep": "OEP 2023-2024",
+    "plazas": 551,
+    "tipo_acceso": "Turno Libre",
+    "modelo": "AAUX_L1 / CMFP-AXAD-L2 V1",
+    "fecha_examen": "2026-04-12",
+    "fuente_pdf_cuestionario_1": "https://www.comunidad.madrid/docs/assets/2026/04/14/1081-2025_l_1_cuestionario.pdf",
+    "fuente_pdf_plantilla_1": "https://www.comunidad.madrid/docs/assets/2026/04/14/1081-2025_l_1_plantilla_correctora.pdf",
+    "fuente_pdf_cuestionario_2": "https://www.comunidad.madrid/docs/assets/2026/04/14/1081-2025_l_2_cuestionario.pdf",
+    "fuente_pdf_plantilla_2": "https://www.comunidad.madrid/docs/assets/2026/04/14/1081-2025_l_2_plantilla_correctora.pdf"
+  },
+  "primera_parte": {
+    "descripcion": "Primer ejercicio - 60 preguntas (30 psicotécnicas + 30 Bloque I) + 5 reserva. Tiempo: 65 minutos.",
+    "preguntas": [
+      {
+        "numero": 1,
+        "tipo": "psicotecnica",
+        "subtipo": "atencion_matrices",
+        "codigo_oficial": "AT_3102_1",
+        "pregunta": "¿Cuántos grupos de 3 números son diferentes entre la Matriz A y la Matriz B?",
+        "opciones": { "a": "8", "b": "10", "c": "6", "d": "7" },
+        "respuesta_correcta": "a",
+        "requiere_imagen": true,
+        "notas": "Matriz A vs Matriz B (página 1 PDF). Imagen extraíble del PDF."
+      },
+      {
+        "numero": 2,
+        "tipo": "psicotecnica",
+        "subtipo": "atencion_matrices",
+        "codigo_oficial": "AT_3102_2",
+        "pregunta": "¿Cuántos grupos de tres números en la Matriz A empiezan por un número par?",
+        "opciones": { "a": "34", "b": "31", "c": "29", "d": "27" },
+        "respuesta_correcta": "b",
+        "requiere_imagen": true,
+        "notas": "Misma imagen que pregunta 1"
+      },
+      {
+        "numero": 3,
+        "tipo": "psicotecnica",
+        "subtipo": "razonamiento_verbal",
+        "codigo_oficial": "RV_2002_1",
+        "enunciado_compartido": "Una empresa está evaluando cuatro proveedores de material de oficina: Alfa, Beta, Gamma y Delta, teniendo en cuenta tres aspectos: precio, plazo de entrega y volumen máximo de suministro mensual. En cuanto a los precios, Alfa vende sus productos más baratos que Beta, pero más caros que Delta, mientras que Gamma tiene los precios más altos de todos los proveedores. Respecto al plazo de entrega, Beta tarda más que Alfa, pero menos que Gamma, y Delta tarda menos que cualquiera de los otros tres. En relación con el volumen máximo de suministro, Gamma puede suministrar más unidades que Alfa, mientras que Alfa puede suministrar más que Beta, y Beta puede suministrar más que Delta. Además, se sabe que el proveedor con mayor capacidad de suministro no es el que tiene los precios más bajos, y que el proveedor con el plazo de entrega más corto tampoco es el que tiene mayor capacidad de suministro. La empresa también ha observado que dos proveedores tienen precios consecutivos en la escala de precios y además plazos de entrega consecutivos, concretamente Alfa y Beta.",
+        "pregunta": "¿Qué proveedor tiene los precios más bajos?",
+        "opciones": { "a": "Alfa", "b": "Beta", "c": "Gamma", "d": "Delta" },
+        "respuesta_correcta": "d"
+      },
+      {
+        "numero": 4,
+        "tipo": "psicotecnica",
+        "subtipo": "razonamiento_verbal",
+        "codigo_oficial": "RV_2002_2",
+        "enunciado_compartido_ref": 3,
+        "pregunta": "¿Qué proveedor tiene el plazo de entrega más corto?",
+        "opciones": { "a": "Alfa", "b": "Beta", "c": "Gamma", "d": "Delta" },
+        "respuesta_correcta": "d"
+      },
+      {
+        "numero": 5,
+        "tipo": "psicotecnica",
+        "subtipo": "razonamiento_verbal",
+        "codigo_oficial": "RV_2002_3",
+        "enunciado_compartido_ref": 3,
+        "pregunta": "¿Qué proveedor puede suministrar mayor volumen mensual?",
+        "opciones": { "a": "Alfa", "b": "Beta", "c": "Gamma", "d": "Delta" },
+        "respuesta_correcta": "c"
+      },
+      {
+        "numero": 6,
+        "tipo": "psicotecnica",
+        "subtipo": "razonamiento_verbal",
+        "codigo_oficial": "RV_2002_4",
+        "enunciado_compartido_ref": 3,
+        "pregunta": "¿Qué proveedor tiene precios más altos que Alfa pero más bajos que Gamma?",
+        "opciones": { "a": "Alfa", "b": "Beta", "c": "Gamma", "d": "No se puede determinar" },
+        "respuesta_correcta": "b"
+      },
+      {
+        "numero": 7,
+        "tipo": "psicotecnica",
+        "subtipo": "razonamiento_verbal",
+        "codigo_oficial": "RV_2002_5",
+        "enunciado_compartido_ref": 3,
+        "pregunta": "¿Qué proveedor cumple que tiene mayor capacidad de suministro que Beta pero menor que Gamma?",
+        "opciones": { "a": "Alfa", "b": "Beta", "c": "Gamma", "d": "Delta" },
+        "respuesta_correcta": "a"
+      },
+      {
+        "numero": 8,
+        "tipo": "psicotecnica",
+        "subtipo": "razonamiento_numerico",
+        "codigo_oficial": "RN_2006",
+        "pregunta": "En un archivo se digitalizan expedientes. El equipo A digitaliza 180 expedientes/día y el equipo B digitaliza 120 expedientes/día. Si A trabaja 3 días y B trabaja 5 días, ¿cuántos expedientes se digitalizan en total?",
+        "opciones": { "a": "900", "b": "960", "c": "1.140", "d": "1.200" },
+        "respuesta_correcta": "c"
+      },
+      {
+        "numero": 9,
+        "tipo": "psicotecnica",
+        "subtipo": "razonamiento_numerico",
+        "codigo_oficial": "RN_2003",
+        "pregunta": "Doce gestores de cobro recaudan 2.448.000 € al año (todos recaudan lo mismo). ¿Cuánto recaudarán 3 gestores en 2 meses?",
+        "opciones": { "a": "102.000 €", "b": "122.400 €", "c": "153.000 €", "d": "Ninguna es correcta" },
+        "respuesta_correcta": "a"
+      },
+      {
+        "numero": 10,
+        "tipo": "psicotecnica",
+        "subtipo": "razonamiento_numerico",
+        "codigo_oficial": "RN_2005",
+        "pregunta": "El departamento de compras necesita repartir 1.250 unidades en paquetes iguales. Si se quiere que el número de paquetes sea el doble del número de unidades por paquete, ¿cuántas unidades contiene cada paquete?",
+        "opciones": { "a": "18", "b": "25", "c": "30", "d": "42" },
+        "respuesta_correcta": "b"
+      },
+      {
+        "numero": 11,
+        "tipo": "psicotecnica",
+        "subtipo": "razonamiento_numerico",
+        "codigo_oficial": "RN_2009",
+        "pregunta": "Un ayuntamiento tramita licencias. El tiempo medio por licencia se reduce de 25 min a 20 min gracias a un nuevo procedimiento. Si se tramitan 180 licencias, ¿cuánto tiempo total se ahorra?",
+        "opciones": { "a": "12 horas", "b": "15 horas", "c": "18 horas", "d": "20 horas" },
+        "respuesta_correcta": "b"
+      },
+      {
+        "numero": 12,
+        "tipo": "psicotecnica",
+        "subtipo": "razonamiento_numerico",
+        "codigo_oficial": "RN_1003",
+        "pregunta": "Si 5 cuadernos cuestan 12 €, ¿cuánto costarán 8 cuadernos al mismo precio unitario?",
+        "opciones": { "a": "16 €", "b": "18 €", "c": "19,2 €", "d": "21 €" },
+        "respuesta_correcta": "c"
+      },
+      {
+        "numero": 13,
+        "tipo": "psicotecnica",
+        "subtipo": "razonamiento_numerico",
+        "codigo_oficial": "RN_1007",
+        "pregunta": "Un coche recorre 180 km en 3 horas. ¿Cuántos kilómetros recorrerá en 5 horas manteniendo la misma velocidad?",
+        "opciones": { "a": "250 km", "b": "270 km", "c": "300 km", "d": "320 km" },
+        "respuesta_correcta": "c"
+      },
+      {
+        "numero": 14,
+        "tipo": "psicotecnica",
+        "subtipo": "serie_numerica",
+        "codigo_oficial": "RN_1011",
+        "pregunta": "¿Qué número continúa la serie? 4  6  12  14  28  30  ___",
+        "opciones": { "a": "32", "b": "56", "c": "58", "d": "60" },
+        "respuesta_correcta": "d"
+      },
+      {
+        "numero": 15,
+        "tipo": "psicotecnica",
+        "subtipo": "razonamiento_numerico",
+        "codigo_oficial": "RN_1014",
+        "pregunta": "¿Qué número falta? (3, 9) → 12 ; (4, 16) → 20 ; (5, 25) → ___",
+        "opciones": { "a": "25", "b": "28", "c": "30", "d": "32" },
+        "respuesta_correcta": "c"
+      },
+      {
+        "numero": 16,
+        "tipo": "psicotecnica",
+        "subtipo": "serie_figuras",
+        "codigo_oficial": "RZ_1112",
+        "pregunta": "Analiza la secuencia de figuras y elige la alternativa que continúa correctamente la serie.",
+        "opciones": { "a": "Figura A", "b": "Figura B", "c": "Figura C", "d": "Figura D" },
+        "respuesta_correcta": "a",
+        "requiere_imagen": true,
+        "notas": "Series de figuras geométricas (página 5 PDF, 10 imágenes extraídas)"
+      },
+      {
+        "numero": 17,
+        "tipo": "psicotecnica",
+        "subtipo": "serie_figuras",
+        "codigo_oficial": "RZ_1005",
+        "pregunta": "Analiza la secuencia de figuras y elige la alternativa que continúa correctamente la serie.",
+        "opciones": { "a": "Figura A", "b": "Figura B", "c": "Figura C", "d": "Figura D" },
+        "respuesta_correcta": "d",
+        "requiere_imagen": true
+      },
+      {
+        "numero": 18,
+        "tipo": "psicotecnica",
+        "subtipo": "serie_figuras",
+        "codigo_oficial": "RZ_1107",
+        "pregunta": "Analiza la secuencia de figuras y elige la alternativa que continúa correctamente la serie.",
+        "opciones": { "a": "Figura A", "b": "Figura B", "c": "Figura C", "d": "Figura D" },
+        "respuesta_correcta": "d",
+        "requiere_imagen": true
+      },
+      {
+        "numero": 19,
+        "tipo": "psicotecnica",
+        "subtipo": "serie_figuras",
+        "codigo_oficial": "RZ_1109",
+        "pregunta": "Analiza la secuencia de figuras y elige la alternativa que continúa correctamente la serie.",
+        "opciones": { "a": "Figura A", "b": "Figura B", "c": "Figura C", "d": "Figura D" },
+        "respuesta_correcta": "b",
+        "requiere_imagen": true
+      },
+      {
+        "numero": 20,
+        "tipo": "psicotecnica",
+        "subtipo": "serie_figuras",
+        "codigo_oficial": "RZ_1113",
+        "pregunta": "Analiza la secuencia de figuras y elige la alternativa que continúa correctamente la serie.",
+        "opciones": { "a": "Figura A", "b": "Figura B", "c": "Figura C", "d": "Figura D" },
+        "respuesta_correcta": "c",
+        "requiere_imagen": true
+      },
+      {
+        "numero": 21,
+        "tipo": "psicotecnica",
+        "subtipo": "tabla_datos",
+        "codigo_oficial": "RCA_1003.1",
+        "pregunta": "¿Cuántos servicios ha solicitado en total García López, Marta?",
+        "opciones": { "a": "3", "b": "4", "c": "5", "d": "6" },
+        "respuesta_correcta": "b",
+        "requiere_tabla": true
+      },
+      {
+        "numero": 22,
+        "tipo": "psicotecnica",
+        "subtipo": "tabla_datos",
+        "codigo_oficial": "RCA_1003.2",
+        "pregunta": "¿Cuál es el importe final que debe abonar Ruiz Pérez, Antonio?",
+        "opciones": { "a": "280 €", "b": "290 €", "c": "300 €", "d": "390 €" },
+        "respuesta_correcta": "d",
+        "requiere_tabla": true
+      },
+      {
+        "numero": 23,
+        "tipo": "psicotecnica",
+        "subtipo": "tabla_datos",
+        "codigo_oficial": "RCA_1003.3",
+        "pregunta": "¿Qué ciudadano/a debe abonar exactamente 280 € tras aplicar el descuento correspondiente?",
+        "opciones": { "a": "Martín Díaz, Carlos", "b": "Torres Sánchez, Laura", "c": "Ningún ciudadano", "d": "Sánchez Romero, Eva" },
+        "respuesta_correcta": "c",
+        "requiere_tabla": true
+      },
+      {
+        "numero": 24,
+        "tipo": "psicotecnica",
+        "subtipo": "tabla_datos",
+        "codigo_oficial": "RCA_1003.4",
+        "pregunta": "¿Cuántos ciudadanos han solicitado exactamente cuatro servicios?",
+        "opciones": { "a": "1", "b": "2", "c": "5", "d": "8" },
+        "respuesta_correcta": "c",
+        "requiere_tabla": true
+      },
+      {
+        "numero": 25,
+        "tipo": "psicotecnica",
+        "subtipo": "tabla_datos",
+        "codigo_oficial": "RCA_1003.5",
+        "pregunta": "¿Cuál es la diferencia entre el importe final abonado por López Gómez, Ana y Pérez Molina, Raúl?",
+        "opciones": { "a": "0 €", "b": "10 €", "c": "20 €", "d": "35 €" },
+        "respuesta_correcta": "a",
+        "requiere_tabla": true
+      },
+      {
+        "numero": 26,
+        "tipo": "psicotecnica",
+        "subtipo": "intruso_verbal",
+        "codigo_oficial": "RV_1101",
+        "pregunta": "Identifica la palabra que NO pertenece al grupo.",
+        "opciones": { "a": "Prudente", "b": "Cauto", "c": "Sensato", "d": "Temerario" },
+        "respuesta_correcta": "d"
+      },
+      {
+        "numero": 27,
+        "tipo": "psicotecnica",
+        "subtipo": "intruso_verbal",
+        "codigo_oficial": "RV_1108",
+        "pregunta": "Identifica la palabra que NO pertenece al grupo.",
+        "opciones": { "a": "Clarinete", "b": "Trompeta", "c": "Violín", "d": "Saxofón" },
+        "respuesta_correcta": "c"
+      },
+      {
+        "numero": 28,
+        "tipo": "psicotecnica",
+        "subtipo": "intruso_verbal",
+        "codigo_oficial": "RV_1103",
+        "pregunta": "Identifica la palabra que NO pertenece al grupo.",
+        "opciones": { "a": "Novela", "b": "Ensayo", "c": "Diccionario", "d": "Poema" },
+        "respuesta_correcta": "c"
+      },
+      {
+        "numero": 29,
+        "tipo": "psicotecnica",
+        "subtipo": "intruso_verbal",
+        "codigo_oficial": "RV_1104",
+        "pregunta": "Identifica la palabra que NO pertenece al grupo.",
+        "opciones": { "a": "Democracia", "b": "Monarquía", "c": "República", "d": "Parlamento" },
+        "respuesta_correcta": "d"
+      },
+      {
+        "numero": 30,
+        "tipo": "psicotecnica",
+        "subtipo": "intruso_verbal",
+        "codigo_oficial": "RV_1114",
+        "pregunta": "Identifica la palabra que NO pertenece al grupo.",
+        "opciones": { "a": "Brújula", "b": "Sextante", "c": "Telescopio", "d": "Astrolabio" },
+        "respuesta_correcta": "c"
+      },
+      {
+        "numero": 31,
+        "tipo": "legislativa",
+        "tema": 1,
+        "ley_ref": "CE Art. 1",
+        "pregunta": "De conformidad con lo dispuesto en el artículo 1 de la Constitución Española, son valores superiores del ordenamiento jurídico:",
+        "opciones": {
+          "a": "La libertad, la justicia, la solidaridad y el pluralismo político.",
+          "b": "La libertad, la igualdad, la solidaridad y el pluralismo político.",
+          "c": "La libertad, la justicia, la igualdad y el pluralismo político.",
+          "d": "La libertad, la justicia, la igualdad y la unidad."
+        },
+        "respuesta_correcta": "c"
+      },
+      {
+        "numero": 32,
+        "tipo": "legislativa",
+        "tema": 1,
+        "ley_ref": "CE Sección/Capítulo/Título",
+        "pregunta": "Los derechos fundamentales y libertades públicas se regulan en:",
+        "opciones": {
+          "a": "La Sección segunda, Capítulo II, Título III de la Constitución Española.",
+          "b": "La Sección primera, Capítulo I, Título IV de la Constitución Española.",
+          "c": "La Sección segunda, Capítulo II, Título II de la Constitución Española.",
+          "d": "La Sección primera, Capítulo II, Título I de la Constitución Española."
+        },
+        "respuesta_correcta": "d"
+      },
+      {
+        "numero": 33,
+        "tipo": "legislativa",
+        "tema": 2,
+        "ley_ref": "Estatuto Madrid Art. 9 (LO 3/1983)",
+        "pregunta": "Según lo dispuesto en el artículo 9 del Estatuto de Autonomía de la Comunidad de Madrid, aprobado mediante Ley Orgánica 3/1983, de 25 de febrero:",
+        "opciones": {
+          "a": "La Asamblea ejerce la potestad ejecutiva de la Comunidad.",
+          "b": "La Asamblea ejecuta el presupuesto de la Comunidad.",
+          "c": "La Asamblea impulsa, orienta y controla la acción del Gobierno.",
+          "d": "La Asamblea designa a los Vicepresidentes y Consejeros."
+        },
+        "respuesta_correcta": "c"
+      },
+      {
+        "numero": 34,
+        "tipo": "legislativa",
+        "tema": 2,
+        "ley_ref": "Estatuto Madrid Art. 13 (LO 3/1983)",
+        "pregunta": "De acuerdo con lo establecido en el artículo 13 del Estatuto de Autonomía de la Comunidad de Madrid, aprobado mediante Ley Orgánica 3/1983, de 25 de febrero:",
+        "opciones": {
+          "a": "La Asamblea funcionará en Pleno y por Secciones.",
+          "b": "Los Diputados de la Asamblea se constituirán en Grupos Parlamentarios, cuyos portavoces integrarán la Junta de Portavoces.",
+          "c": "La Asamblea funcionará solo por Comisiones.",
+          "d": "La Diputados de la Asamblea se constituirán en Grupos Parlamentarios, cuyos portavoces integrarán la Junta Administrativa."
+        },
+        "respuesta_correcta": "b"
+      },
+      {
+        "numero": 35,
+        "tipo": "legislativa",
+        "tema": 3,
+        "ley_ref": "Decreto 38/2023 (Consejerías Madrid)",
+        "pregunta": "De acuerdo con lo dispuesto en el Decreto 38/2023, de 23 de junio, de la Presidenta de la Comunidad de Madrid, por el que se establece el número y denominación de las Consejerías de la Comunidad de Madrid, forma parte de la Administración de la Comunidad de Madrid:",
+        "opciones": {
+          "a": "La Consejería de Transportes y Medio Ambiente.",
+          "b": "La Consejería de Digitalización.",
+          "c": "La Consejería de Empleo.",
+          "d": "La Consejería de Servicios Sociales."
+        },
+        "respuesta_correcta": "b"
+      },
+      {
+        "numero": 36,
+        "tipo": "legislativa",
+        "tema": 3,
+        "ley_ref": "Ley 1/1984 Administración Institucional Madrid",
+        "pregunta": "De conformidad con lo dispuesto en la Ley 1/1984, de 19 de enero, reguladora de la Administración institucional de la Comunidad de Madrid, los organismos autónomos se crearán por:",
+        "opciones": { "a": "Ley.", "b": "Real Decreto.", "c": "Decreto.", "d": "Orden." },
+        "respuesta_correcta": "a"
+      },
+      {
+        "numero": 37,
+        "tipo": "legislativa",
+        "tema": 4,
+        "ley_ref": "CE Art. 82",
+        "pregunta": "Las Cortes Generales podrán delegar en el Gobierno la potestad de dictar normas con rango de ley sobre materias determinadas. De conformidad con lo dispuesto en el artículo 82 de la Constitución Española, la delegación legislativa deberá otorgarse mediante:",
+        "opciones": {
+          "a": "Una ley orgánica cuando su objeto sea la formación de textos articulados o por una ley de bases cuando se trate de refundir varios textos legales en uno solo.",
+          "b": "Una ley ordinaria cuando su objeto sea la formación de textos articulados o por una ley orgánica cuando se trate de refundir varios textos legales en uno solo.",
+          "c": "Una ley de bases cuando su objeto sea la formación de textos articulados y una ley orgánica cuando se trate de refundir varios textos legales en uno solo.",
+          "d": "Una ley de bases cuando su objeto sea la formación de textos articulados o por una ley ordinaria cuando se trate de refundir varios textos legales en uno solo."
+        },
+        "respuesta_correcta": "d"
+      },
+      {
+        "numero": 38,
+        "tipo": "legislativa",
+        "tema": 4,
+        "ley_ref": "CE Art. 97",
+        "pregunta": "Con respecto a la potestad reglamentaria, el artículo 97 de la Constitución Española establece lo siguiente:",
+        "opciones": {
+          "a": "El Congreso de los Diputados ejerce la potestad reglamentaria.",
+          "b": "El Presidente ejerce la potestad reglamentaria.",
+          "c": "El Gobierno ejerce la potestad reglamentaria.",
+          "d": "El Senado ejerce la potestad reglamentaria."
+        },
+        "respuesta_correcta": "c"
+      },
+      {
+        "numero": 39,
+        "tipo": "legislativa",
+        "tema": 5,
+        "ley_ref": "Ley 39/2015 Art. 35",
+        "pregunta": "Según lo establecido en el artículo 35 de la Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas, los actos que se separen del criterio seguido en actuaciones precedentes:",
+        "opciones": {
+          "a": "Serán motivados, con sucinta referencia de hechos y fundamentos de derecho.",
+          "b": "Sólo serán motivados, con sucinta referencia de hechos y fundamentos de derecho, si son dictados por un órgano incompetente.",
+          "c": "Serán motivados, pero no se exige exponer los fundamentos de derecho.",
+          "d": "No necesitan ser motivados."
+        },
+        "respuesta_correcta": "a"
+      },
+      {
+        "numero": 40,
+        "tipo": "legislativa",
+        "tema": 5,
+        "ley_ref": "Ley 39/2015 Art. 39",
+        "pregunta": "Conforme a lo dispuesto en el artículo 39 de la Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas, los actos de las Administraciones Públicas sujetos al Derecho Administrativo se presumirán válidos y producirán efectos, salvo que en ellos se disponga otra cosa, desde:",
+        "opciones": {
+          "a": "El día después de la fecha en que se dicten.",
+          "b": "La fecha en que se dicten.",
+          "c": "Que el interesado lo reciba.",
+          "d": "Que se publiquen."
+        },
+        "respuesta_correcta": "b"
+      },
+      {
+        "numero": 41,
+        "tipo": "legislativa",
+        "tema": 6,
+        "ley_ref": "Ley 39/2015 Art. 71",
+        "pregunta": "Según lo establecido en el artículo 71 de la Ley 39/2015, 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas, el procedimiento sometido al principio de celeridad, se impulsará de oficio en los siguientes trámites:",
+        "opciones": {
+          "a": "Solo en la fase de instrucción.",
+          "b": "Solo en la fase de finalización.",
+          "c": "En todos sus trámites.",
+          "d": "En todos sus trámites, menos en la fase de ordenación."
+        },
+        "respuesta_correcta": "c"
+      },
+      {
+        "numero": 42,
+        "tipo": "legislativa",
+        "tema": 6,
+        "ley_ref": "Ley 39/2015 Art. 73",
+        "pregunta": "De acuerdo con lo dispuesto en el artículo 73 de la Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas, los trámites que deban ser cumplimentados por los interesados deberán realizarse en el plazo de:",
+        "opciones": {
+          "a": "Diez días a partir del siguiente al de la notificación del correspondiente acto, salvo en el caso de que en la norma correspondiente se fije plazo distinto.",
+          "b": "Quince días a partir del siguiente al de la notificación del correspondiente acto, salvo en el caso de que en la norma correspondiente se fije plazo distinto.",
+          "c": "Veinte días a partir del siguiente al de la notificación del correspondiente acto, salvo en el caso de que en la norma correspondiente se fije plazo distinto.",
+          "d": "Cinco días a partir del siguiente al de la notificación del correspondiente acto, salvo en el caso de que en la norma correspondiente se fije plazo distinto."
+        },
+        "respuesta_correcta": "a"
+      },
+      {
+        "numero": 43,
+        "tipo": "legislativa",
+        "tema": 7,
+        "ley_ref": "Ley 29/1998 Art. 12",
+        "pregunta": "Según lo establecido en el artículo 12 de la Ley 29/1998, de 13 de julio, reguladora de la Jurisdicción Contencioso-administrativa, conocerá de los recursos de casación en cualquiera de sus modalidades:",
+        "opciones": {
+          "a": "La Sala de lo Contencioso-administrativo de la Audiencia Nacional.",
+          "b": "La Sala de lo Contencioso-administrativo de los Tribunales Superiores de Justicia.",
+          "c": "La Sala de lo Contencioso-administrativo del Tribunal Supremo.",
+          "d": "El Tribunal Constitucional."
+        },
+        "respuesta_correcta": "c"
+      },
+      {
+        "numero": 44,
+        "tipo": "legislativa",
+        "tema": 7,
+        "ley_ref": "Ley 29/1998 Art. 46",
+        "pregunta": "En virtud de lo establecido en el artículo 46 de la Ley 29/1998, de 13 de julio, reguladora de la Jurisdicción Contencioso-administrativa, el plazo para interponer el recurso contencioso-administrativo, contado desde el día siguiente al de la publicación de la disposición impugnada o al de la notificación o publicación del acto que ponga fin a la vía administrativa, si fuera expreso, será de:",
+        "opciones": { "a": "10 días.", "b": "15 días.", "c": "2 meses.", "d": "6 meses." },
+        "respuesta_correcta": "c"
+      },
+      {
+        "numero": 45,
+        "tipo": "legislativa",
+        "tema": 8,
+        "ley_ref": "Ley 19/2013 Art. 12",
+        "pregunta": "Según el artículo 12 de la Ley 19/2013, de 9 de diciembre, de transparencia, acceso a la información pública y buen gobierno, tienen derecho al acceso a la información pública:",
+        "opciones": {
+          "a": "Únicamente los ciudadanos españoles autorizados.",
+          "b": "Exclusivamente las personas mayores de 21 años.",
+          "c": "Solo los ciudadanos españoles mayores de 21 años.",
+          "d": "Todas las personas, en los términos previstos en artículo 105.b) de la Constitución Española."
+        },
+        "respuesta_correcta": "d"
+      },
+      {
+        "numero": 46,
+        "tipo": "legislativa",
+        "tema": 14,
+        "ley_ref": "Decreto 229/2023 Art. 9",
+        "pregunta": "De acuerdo con el artículo 9 del Decreto 229/2023, de 6 de septiembre, del Consejo de Gobierno, por el que se establece la estructura orgánica de la Consejería de Presidencia, Justicia y Administración Local, la Dirección General que tiene atribuidas las competencias en materia de Atención al Ciudadano y Transparencia es:",
+        "opciones": {
+          "a": "Dirección General de Coordinación de la Transparencia, dependiente de la Consejería de Presidencia, Justicia y Administración Local.",
+          "b": "Dirección General de Atención al Ciudadano y Transparencia, dependiente de la Consejería de Economía, Hacienda y Empleo.",
+          "c": "Dirección General de Atención al Ciudadano y Transparencia, dependiente de la Consejería de Presidencia, Justicia y Administración Local.",
+          "d": "Dirección General de Coordinación de la Transparencia, dependiente de la Consejería de Digitalización."
+        },
+        "respuesta_correcta": "c"
+      },
+      {
+        "numero": 47,
+        "tipo": "legislativa",
+        "tema": 9,
+        "ley_ref": "Ley 9/2017 Art. 34",
+        "pregunta": "De conformidad con lo establecido en el artículo 34 de la Ley 9/2017, de 8 de noviembre, de Contratos del Sector Público, en los contratos del sector público podrán incluirse cualesquiera pactos, cláusulas y condiciones:",
+        "opciones": {
+          "a": "Siempre que no sean contrarios a la constitución española y a la buena fe.",
+          "b": "Siempre que no sean contrarios al interés público, al ordenamiento jurídico y a los principios de buena administración.",
+          "c": "Siempre que no sean contrarios al interés público, al ordenamiento jurídico y a la buena fe.",
+          "d": "Siempre que no sean contrarios al interés privado y al ordenamiento jurídico."
+        },
+        "respuesta_correcta": "c"
+      },
+      {
+        "numero": 48,
+        "tipo": "legislativa",
+        "tema": 9,
+        "ley_ref": "Ley 9/2017 Art. 37",
+        "pregunta": "Según lo indicado en el artículo 37 de la Ley 9/2017, de 8 de noviembre, de Contratos del Sector Público, las entidades del Sector Público no podrán contratar verbalmente, salvo:",
+        "opciones": {
+          "a": "Que lo autorice el Consejo de Ministros.",
+          "b": "Que el contrato tenga carácter de excepcionalidad.",
+          "c": "Que el contrato tenga carácter de emergencia.",
+          "d": "Que se establezca de forma reglamentaria."
+        },
+        "respuesta_correcta": "c"
+      },
+      {
+        "numero": 49,
+        "tipo": "legislativa",
+        "tema": 10,
+        "ley_ref": "TREBEP Art. 8 (RDL 5/2015)",
+        "pregunta": "Si atendemos a lo dispuesto en el artículo 8 del Real Decreto Legislativo 5/2015, de 30 de octubre, por el que se aprueba el texto refundido de la Ley del Estatuto Básico del Empleado Público, los empleados públicos se clasifican en:",
+        "opciones": {
+          "a": "Funcionarios de carrera; funcionarios de empleo; estatutarios; personal laboral, ya sea fijo, por tiempo indefinido o temporal y personal eventual.",
+          "b": "Funcionarios de carrera; funcionarios interinos; personal laboral temporal y personal eventual por circunstancias de la producción.",
+          "c": "Funcionarios de carrera; funcionarios interinos; personal laboral, ya sea fijo, por tiempo indefinido o temporal y personal eventual.",
+          "d": "Funcionarios de carrera; funcionarios interinos; personal laboral contratado por circunstancias de la producción y personal directivo profesional."
+        },
+        "respuesta_correcta": "c"
+      },
+      {
+        "numero": 50,
+        "tipo": "legislativa",
+        "tema": 10,
+        "ley_ref": "Ley 1/1986 Función Pública Madrid Art. 29",
+        "pregunta": "La condición de funcionario de la Comunidad de Madrid se perderá, según lo establecido en el artículo 29 de la Ley 1/1986, de 10 de abril, de la Función Pública de la Comunidad de Madrid, por alguna de las causas siguientes:",
+        "opciones": {
+          "a": "Renuncia escrita del interesado.",
+          "b": "Pérdida de la nacionalidad española.",
+          "c": "Imposición de sanción disciplinaria que suponga la separación del servicio, cuando aquélla adquiera firmeza.",
+          "d": "Todas las respuestas anteriores son correctas."
+        },
+        "respuesta_correcta": "d"
+      },
+      {
+        "numero": 51,
+        "tipo": "legislativa",
+        "tema": 11,
+        "ley_ref": "RDL 8/2015 LGSS Art. 2",
+        "pregunta": "Según el artículo 2 apartado 1 del Real Decreto Legislativo 8/2015, de 30 de octubre, por el que se aprueba el texto refundido de la Ley General de la Seguridad Social, NO es un principio fundamental del sistema de la Seguridad Social:",
+        "opciones": { "a": "Universalidad.", "b": "Subsidiariedad.", "c": "Unidad.", "d": "Solidaridad." },
+        "respuesta_correcta": "b"
+      },
+      {
+        "numero": 52,
+        "tipo": "legislativa",
+        "tema": 11,
+        "ley_ref": "RDL 8/2015 LGSS Art. 9",
+        "pregunta": "De acuerdo al artículo 9 apartado 1 del Real Decreto Legislativo 8/2015, de 30 de octubre, por el que se aprueba el texto refundido de la Ley General de la Seguridad Social, el sistema de la Seguridad Social está integrado por los siguientes regímenes:",
+        "opciones": {
+          "a": "Régimen Único y Régimen Complementario.",
+          "b": "Régimen Contributivo y Régimen Asistencial.",
+          "c": "Régimen General y regímenes especiales.",
+          "d": "Régimen General, los Servicios Comunes y las Entidades Gestoras."
+        },
+        "respuesta_correcta": "c"
+      },
+      {
+        "numero": 53,
+        "tipo": "legislativa",
+        "tema": 12,
+        "ley_ref": "Hacienda Madrid - prórroga presupuestos",
+        "pregunta": "Si la Ley de Presupuestos Generales de la Comunidad no se aprobara antes del primer día del ejercicio económico correspondiente:",
+        "opciones": {
+          "a": "Se considerarán automáticamente prorrogados los presupuestos del ejercicio anterior hasta la publicación de los nuevos en el «Boletín Oficial de la Comunidad de Madrid» y su entrada en vigor.",
+          "b": "Se considerarán automáticamente prorrogados los presupuestos del ejercicio anterior hasta la publicación de los nuevos en el «Boletín Oficial del Estado».",
+          "c": "Se considerarán automáticamente prorrogados los presupuestos del ejercicio anterior hasta la aprobación de los nuevos en el Pleno de la Asamblea.",
+          "d": "Se considerarán automáticamente prorrogados los presupuestos del ejercicio anterior hasta la aprobación de los nuevos en la Mesa de la Asamblea."
+        },
+        "respuesta_correcta": "a"
+      },
+      {
+        "numero": 54,
+        "tipo": "legislativa",
+        "tema": 12,
+        "ley_ref": "CE Hacienda general (Art. 149.1.14)",
+        "pregunta": "De conformidad con lo dispuesto en la Constitución Española:",
+        "opciones": {
+          "a": "El Estado tiene competencia exclusiva en materia de Hacienda general y Deuda del Estado.",
+          "b": "El Estado solo tiene competencia para dictar la legislación básica en materia de Hacienda general y Deuda del Estado.",
+          "c": "La Hacienda general será competencia exclusiva de las Comunidades Autónomas.",
+          "d": "La Hacienda general será competencia compartida entre Comunidades Autónomas y las Haciendas Locales."
+        },
+        "respuesta_correcta": "a"
+      },
+      {
+        "numero": 55,
+        "tipo": "legislativa",
+        "tema": 13,
+        "ley_ref": "CE Art. 14",
+        "pregunta": "De acuerdo a lo dispuesto en la Constitución Española, el principio de igualdad entre hombres y mujeres está recogido en:",
+        "opciones": { "a": "El artículo 8.", "b": "El artículo 7.2.", "c": "El artículo 14.", "d": "El artículo 15." },
+        "respuesta_correcta": "c"
+      },
+      {
+        "numero": 56,
+        "tipo": "legislativa",
+        "tema": 13,
+        "ley_ref": "LO 3/2007 Art. 3",
+        "pregunta": "Según el artículo 3 de la Ley Orgánica 3/2007, de 22 de marzo, para la igualdad efectiva de mujeres y hombres, el principio de igualdad de trato entre mujeres y hombres supone:",
+        "opciones": {
+          "a": "Ausencia de toda discriminación, directa o indirecta, por razones de sexo, especialmente las derivadas de la maternidad, la asunción de obligaciones familiares y el estado civil.",
+          "b": "Ausencia de represalias laborales.",
+          "c": "Ausencia de igualdad de oportunidades.",
+          "d": "Ausencia de Indemnidad frente a represalias."
+        },
+        "respuesta_correcta": "a"
+      },
+      {
+        "numero": 57,
+        "tipo": "legislativa",
+        "tema": 14,
+        "ley_ref": "Decreto 127/2022 Art. 6 (Madrid - Servicios electrónicos)",
+        "pregunta": "De acuerdo con el artículo 6 apartado 2 del Decreto 127/2022, de 7 de diciembre, del Consejo de Gobierno, por el que se regulan aspectos relativos a los servicios electrónicos y a la comisión de redacción, coordinación y seguimiento del portal de internet de la Comunidad de Madrid, la disponibilidad del Registro Electrónico General de la Comunidad de Madrid para cualquier ciudadano es:",
+        "opciones": {
+          "a": "De lunes a viernes, en horario ininterrumpido.",
+          "b": "Coincidiendo con el horario de apertura de las oficinas de registro presenciales.",
+          "c": "Todos los días laborables del año, durante 12 horas.",
+          "d": "Todos los días del año durante las veinticuatro horas."
+        },
+        "respuesta_correcta": "d"
+      },
+      {
+        "numero": 58,
+        "tipo": "legislativa",
+        "tema": 14,
+        "ley_ref": "Ley 39/2015 Art. 43",
+        "pregunta": "Conforme al artículo 43 apartado 2 de la Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas, cuando la notificación por medios electrónicos haya sido expresamente elegida por el interesado se entenderá rechazada cuando:",
+        "opciones": {
+          "a": "Hayan transcurrido 15 días hábiles desde la puesta a disposición de la notificación sin que se acceda a su contenido.",
+          "b": "Hayan transcurrido 10 días naturales desde la puesta a disposición de la notificación sin que se acceda a su contenido.",
+          "c": "Hayan transcurrido 15 días naturales desde la puesta a disposición de la notificación sin que se acceda a su contenido.",
+          "d": "Hayan transcurrido 10 días hábiles desde disposición de la notificación sin que se acceda a su contenido."
+        },
+        "respuesta_correcta": "b"
+      },
+      {
+        "numero": 59,
+        "tipo": "legislativa",
+        "tema": 14,
+        "ley_ref": "Ley 39/2015 Art. 31",
+        "pregunta": "Conforme al artículo 31 de la Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas, a efectos de cómputo de plazos en los registros electrónicos el calendario de días inhábiles que se aplica es:",
+        "opciones": {
+          "a": "El calendario laboral general de la Organización Internacional del Trabajo (OIT).",
+          "b": "Exclusivamente el calendario del Municipio donde resida el interesado.",
+          "c": "El determinado por la sede electrónica del registro de cada Administración Pública u Organismo, atendiendo al ámbito territorial en el que ejerza sus competencias y al calendario previsto en el artículo 30.7 del la citada Ley.",
+          "d": "El calendario administrativo establecido por la Unión Europea."
+        },
+        "respuesta_correcta": "c"
+      },
+      {
+        "numero": 60,
+        "tipo": "legislativa",
+        "tema": 15,
+        "ley_ref": "Ley 39/2015 Art. 16",
+        "pregunta": "Conforme al artículo 16 de la Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas, cuando los documentos se presenten de manera presencial ante las Administraciones Públicas, la oficina de asistencia en materia de registros debe:",
+        "opciones": {
+          "a": "Devolver el original al interesado y digitalizarlo para su incorporación al expediente administrativo electrónico.",
+          "b": "Conservar el original en soporte papel para su custodia permanente.",
+          "c": "Remitir copia compulsada al Archivo intermedio.",
+          "d": "Remitir el documento original al Archivo Central para su posterior digitalización."
+        },
+        "respuesta_correcta": "a"
+      }
+    ],
+    "reserva": [
+      {
+        "numero": 61,
+        "tipo": "legislativa",
+        "tema": 1,
+        "ley_ref": "CE Art. 10",
+        "pregunta": "De acuerdo con lo establecido en el artículo 10 de la Constitución española, son fundamentos del orden político y de la paz social (Señale la respuesta INCORRECTA):",
+        "opciones": {
+          "a": "La dignidad de la persona.",
+          "b": "El libre desarrollo de la empresa privada.",
+          "c": "El respeto a la ley.",
+          "d": "El respeto a los derechos de los demás."
+        },
+        "respuesta_correcta": "b"
+      },
+      {
+        "numero": 62,
+        "tipo": "legislativa",
+        "tema": 5,
+        "ley_ref": "Ley 39/2015 Art. 47",
+        "pregunta": "Según lo establecido en el artículo 47 de la Ley 39/2015, del Procedimiento Administrativo Común de las Administraciones Públicas, serán nulos de pleno derecho, entre otros:",
+        "opciones": {
+          "a": "Los actos con defecto de forma.",
+          "b": "Los actos dictados por órgano manifiestamente incompetente por razón de la materia o del territorio.",
+          "c": "La realización de actuaciones fuera de plazo.",
+          "d": "Los actos con defecto de forma y tiempo."
+        },
+        "respuesta_correcta": "b"
+      },
+      {
+        "numero": 63,
+        "tipo": "legislativa",
+        "tema": 10,
+        "ley_ref": "TREBEP retribuciones básicas",
+        "pregunta": "De conformidad con lo dispuesto en el Real Decreto Legislativo 5/2015, de 30 de octubre, por el que se aprueba el texto refundido de la Ley del Estatuto Básico del Empleado Público, las retribuciones básicas, que se fijan en la Ley de Presupuestos Generales del Estado, estarán integradas única y exclusivamente por:",
+        "opciones": {
+          "a": "El salario y los trienios.",
+          "b": "El salario, los trienios y la productividad.",
+          "c": "El salario y el complemento específico.",
+          "d": "El salario y el complemento de destino."
+        },
+        "respuesta_correcta": "a"
+      },
+      {
+        "numero": 64,
+        "tipo": "legislativa",
+        "tema": 11,
+        "ley_ref": "RDL 8/2015 LGSS Art. 19",
+        "pregunta": "Conforme al artículo 19 del Real Decreto 8/2015, de 30 de octubre, por el que se aprueba el texto refundido de la Ley General de la Seguridad Social, las bases de cotización:",
+        "opciones": {
+          "a": "Tienen un tope máximo fijado cada año por la Ley de Presupuestos Generales del estado y como tope mínimo las cuantías del salario mínimo interprofesional.",
+          "b": "Tienen un tope inferior equivalente al 15% del salario mínimo interprofesional.",
+          "c": "No tienen ningún tope inferior ni superior.",
+          "d": "Tienen un tope superior equivalente al 80% del salario mínimo interprofesional."
+        },
+        "respuesta_correcta": "a"
+      },
+      {
+        "numero": 65,
+        "tipo": "legislativa",
+        "tema": 8,
+        "ley_ref": "LOPD-GDD Art. 7 (menor de edad)",
+        "pregunta": "El tratamiento de los datos personales de un menor de edad únicamente podrá fundarse en su consentimiento cuando sea mayor de:",
+        "opciones": { "a": "Catorce años.", "b": "Doce años.", "c": "Diez años.", "d": "Tres años." },
+        "respuesta_correcta": "a"
+      }
+    ]
+  },
+  "segunda_parte": {
+    "descripcion": "Segundo ejercicio - 30 preguntas + 5 reserva. Tiempo: 35 minutos. Bloque II (Ofimática). NOTA: el PDF dice Windows 10, pero el programa vigente exige Windows 11 — al importar se actualizan a Windows 11 según política del proyecto.",
+    "preguntas": [
+      {
+        "numero": 1,
+        "tipo": "ofimatica",
+        "tema": 16,
+        "tema_ref": "Explorador de Windows",
+        "pregunta_pdf_win10": "En Windows 10, ¿qué combinación de teclas abre el Explorador de archivos?",
+        "pregunta": "En Windows 11, ¿qué combinación de teclas abre el Explorador de archivos?",
+        "opciones": { "a": "Alt+Tab", "b": "Alt+E", "c": "Windows+E", "d": "Ctrl+E" },
+        "respuesta_correcta": "c"
+      },
+      {
+        "numero": 2,
+        "tipo": "ofimatica",
+        "tema": 16,
+        "pregunta_pdf_win10": "En Windows 10, ¿hay alguna manera de ver en tiempo real los procesos activos?",
+        "pregunta": "En Windows 11, ¿hay alguna manera de ver en tiempo real los procesos activos?",
+        "opciones": {
+          "a": "No, Windows 11 solo permite generar informes de los procesos una vez que ya han terminado de ejecutarse.",
+          "b": "Sí, desde el Administrador de tareas.",
+          "c": "Sí, con el comando taskserviceswin.msc.",
+          "d": "No, Windows 11 no tiene la posibilidad de ver los procesos activos."
+        },
+        "respuesta_correcta": "b"
+      },
+      {
+        "numero": 3,
+        "tipo": "ofimatica",
+        "tema": 16,
+        "pregunta": "En Windows 11, ¿cuál de los siguientes métodos permite ver el espacio libre de una unidad de disco?",
+        "opciones": {
+          "a": "Desde el Explorador de archivos, colocando el ratón sobre un archivo que cuelgue de la unidad y con el botón derecho hacer clic en Propiedades.",
+          "b": "Desde el Explorador de archivos, colocando el ratón sobre una carpeta que cuelgue de la unidad y con el botón derecho hacer clic en Propiedades.",
+          "c": "En el desplegable \"Este equipo\", colocando el ratón sobre la unidad y con el botón derecho hacer clic en Propiedades.",
+          "d": "Windows 11 no permite ver el espacio libre de una unidad en concreto. Muestra la suma del espacio libre de todas las unidades existentes en el sistema."
+        },
+        "respuesta_correcta": "c"
+      },
+      {
+        "numero": 4,
+        "tipo": "ofimatica",
+        "tema": 16,
+        "pregunta": "En el Explorador de archivos de Windows 11, en la vista del contenido de una carpeta, ¿dónde se puede ver la ruta completa a la citada carpeta?",
+        "opciones": { "a": "Barra de direcciones.", "b": "Panel de vista previa.", "c": "Cinta de opciones.", "d": "Barra de estado." },
+        "respuesta_correcta": "a"
+      },
+      {
+        "numero": 5,
+        "tipo": "ofimatica",
+        "tema": 16,
+        "pregunta": "En Windows 11, de aquellos archivos que lo permitan y aunque sea de forma parcial, ¿se puede ver su contenido sin abrirlo?",
+        "opciones": {
+          "a": "Sí, desde el Panel de vista previa.",
+          "b": "Sí, pero únicamente se puede hacer con archivos de imagen jpg y png.",
+          "c": "Sí, desde Propiedades del archivo.",
+          "d": "No, Windows 11 no tiene una funcionalidad parecida a esa."
+        },
+        "respuesta_correcta": "a"
+      },
+      {
+        "numero": 6,
+        "tipo": "ofimatica",
+        "tema": 17,
+        "pregunta": "En la versión de escritorio de Word 365, ¿qué función permite localizar palabras dentro de un documento abierto?",
+        "opciones": { "a": "Imprimir.", "b": "Formato.", "c": "Disposición.", "d": "Buscar." },
+        "respuesta_correcta": "d"
+      },
+      {
+        "numero": 7,
+        "tipo": "ofimatica",
+        "tema": 17,
+        "pregunta": "En la versión de escritorio de Word 365, ¿qué es el interlineado?",
+        "opciones": {
+          "a": "Es el color del texto.",
+          "b": "Es el espacio vertical entre las líneas de un párrafo.",
+          "c": "Es el encabezado del documento.",
+          "d": "El interlineado establece la dimensión del margen superior del documento."
+        },
+        "respuesta_correcta": "b"
+      },
+      {
+        "numero": 8,
+        "tipo": "ofimatica",
+        "tema": 17,
+        "pregunta": "En la versión de escritorio de Word 365, con un documento ya abierto, ¿qué opción, de las siguientes, permite guardarlo con un nombre distinto al actual?",
+        "opciones": { "a": "Cerrar.", "b": "Compartir.", "c": "Guardar como.", "d": "Guardar." },
+        "respuesta_correcta": "c"
+      },
+      {
+        "numero": 9,
+        "tipo": "ofimatica",
+        "tema": 21,
+        "pregunta": "Sobre Microsoft 365, ¿cuál de los siguientes programas se utiliza principalmente para crear, editar y dar formato a documentos de texto?",
+        "opciones": { "a": "Excel.", "b": "Word.", "c": "PowerPoint.", "d": "Access." },
+        "respuesta_correcta": "b"
+      },
+      {
+        "numero": 10,
+        "tipo": "ofimatica",
+        "tema": 17,
+        "pregunta": "En la versión de escritorio de Word 365, ¿qué se entiende por una sangría izquierda?",
+        "opciones": {
+          "a": "Es el desplazamiento del párrafo hacia la derecha respecto al margen izquierdo.",
+          "b": "Es un tipo de subrayado especial.",
+          "c": "Es un estilo de título.",
+          "d": "Es un efecto de fuente de texto."
+        },
+        "respuesta_correcta": "a"
+      },
+      {
+        "numero": 11,
+        "tipo": "ofimatica",
+        "tema": 18,
+        "pregunta": "En la versión de escritorio de Excel 365, ¿qué símbolo se utiliza para iniciar una fórmula?",
+        "opciones": { "a": "= (Igual).", "b": "# (almohadilla).", "c": "@ (Arroba).", "d": "$ (Dólar)." },
+        "respuesta_correcta": "a"
+      },
+      {
+        "numero": 12,
+        "tipo": "ofimatica",
+        "tema": 18,
+        "pregunta": "En la versión de escritorio de Excel 365, ¿cómo se denomina al conjunto de Hojas almacenadas en un archivo Excel?",
+        "opciones": { "a": "Celdas.", "b": "Libro.", "c": "Filas.", "d": "Tabla." },
+        "respuesta_correcta": "b"
+      },
+      {
+        "numero": 13,
+        "tipo": "ofimatica",
+        "tema": 18,
+        "pregunta": "En la versión de escritorio de Excel 365, de las siguientes opciones, ¿dónde se visualiza el contenido de la celda activa?",
+        "opciones": {
+          "a": "En la Barra de herramientas.",
+          "b": "En el desplegable de Estilos.",
+          "c": "En el Cuadro de nombres.",
+          "d": "En la Barra de fórmulas."
+        },
+        "respuesta_correcta": "d"
+      },
+      {
+        "numero": 14,
+        "tipo": "ofimatica",
+        "tema": 18,
+        "pregunta": "En la versión de escritorio de Excel 365, ¿cuántas Hojas puede contener un Libro de Excel?",
+        "opciones": {
+          "a": "1",
+          "b": "255",
+          "c": "Sin límite definido, salvo lo que dicte la memoria del sistema donde se ejecuta el Excel",
+          "d": "16"
+        },
+        "respuesta_correcta": "c"
+      },
+      {
+        "numero": 15,
+        "tipo": "ofimatica",
+        "tema": 18,
+        "pregunta": "En la versión de escritorio de Excel 365, ¿qué misión tiene una Tabla dinámica?",
+        "opciones": {
+          "a": "Una tabla dinámica convierte automáticamente los datos en gráficos actualizados en tiempo real.",
+          "b": "Una tabla dinámica permite resumir, analizar y reorganizar grandes conjuntos de datos de manera interactiva.",
+          "c": "Una tabla dinámica es una tabla que edita y reescribe los datos del origen para mantenerlos siempre ordenados.",
+          "d": "Una tabla dinámica solo puede mostrar datos tal cual están, sin permitir agrupar, filtrar ni cambiar campos."
+        },
+        "respuesta_correcta": "b"
+      },
+      {
+        "numero": 16,
+        "tipo": "ofimatica",
+        "tema": 19,
+        "pregunta": "En la versión de escritorio de Access 365, ¿qué se entiende por Importar datos?",
+        "opciones": {
+          "a": "En Access ese término no tiene significado alguno.",
+          "b": "Es la opción que permite guardar los datos de Access en formato texto, Excel, etc.",
+          "c": "Hace referencia a un tipo de datos de cierta importancia que deben ser protegidos contra escritura.",
+          "d": "Es la opción que permite traer datos externos e incorporarlos a Access."
+        },
+        "respuesta_correcta": "d"
+      },
+      {
+        "numero": 17,
+        "tipo": "ofimatica",
+        "tema": 19,
+        "pregunta": "En la versión de escritorio de Access 365, ¿qué permite hacer una Consulta?",
+        "opciones": {
+          "a": "Es un formulario que sirve para introducir datos en las tablas mediante un diseño más visual.",
+          "b": "Es un objeto de Access que permite obtener, filtrar, combinar o calcular datos almacenados en una o varias tablas.",
+          "c": "Es un objeto que almacena directamente los registros que coinciden con un criterio específico.",
+          "d": "Es un tipo de campo para almacenar dígitos y números indistintamente."
+        },
+        "respuesta_correcta": "b"
+      },
+      {
+        "numero": 18,
+        "tipo": "ofimatica",
+        "tema": 19,
+        "pregunta": "En la versión de escritorio de Access 365, ¿cuál es la Vista que permite crear y definir los campos que conforman una Tabla?",
+        "opciones": { "a": "Vista Administración.", "b": "Vista Hoja edición.", "c": "Vista Diseño.", "d": "Vista Preimpresión." },
+        "respuesta_correcta": "c"
+      },
+      {
+        "numero": 19,
+        "tipo": "ofimatica",
+        "tema": 19,
+        "pregunta": "En la versión de escritorio de Access 365, ¿qué identifica de forma única e inequívoca a un Registro?",
+        "opciones": {
+          "a": "El campo numérico.",
+          "b": "El campo de texto.",
+          "c": "Un campo de Clave Principal.",
+          "d": "Un campo que recordemos y no se nos olvide que existe."
+        },
+        "respuesta_correcta": "c"
+      },
+      {
+        "numero": 20,
+        "tipo": "ofimatica",
+        "tema": 19,
+        "pregunta": "En la versión de escritorio de Access 365, ¿qué es una Tabla?",
+        "opciones": {
+          "a": "Es un informe que muestra los datos de forma resumida sin permitir la edición directa.",
+          "b": "Es un objeto de la base de datos que permite diseñar consultas y establecer relaciones, pero no almacena datos propios.",
+          "c": "Es un objeto de la base de datos que almacena datos en un formato estructurado compuesto por filas y columnas.",
+          "d": "El concepto Tabla no existe en Access, es un elemento utilizado en bases de datos estructuradas."
+        },
+        "respuesta_correcta": "c"
+      },
+      {
+        "numero": 21,
+        "tipo": "ofimatica",
+        "tema": 20,
+        "pregunta": "En la versión de escritorio de Outlook 365, y considerando únicamente las acciones propias del módulo Calendario sin abandonar dicho módulo, de las siguientes acciones, ¿cuál NO puede realizarse?",
+        "opciones": {
+          "a": "Gestionar contactos o crear listas de distribución.",
+          "b": "Crear citas o reuniones.",
+          "c": "Enviar invitaciones y gestionar respuestas.",
+          "d": "Eliminar citas o reuniones."
+        },
+        "respuesta_correcta": "a"
+      },
+      {
+        "numero": 22,
+        "tipo": "ofimatica",
+        "tema": 20,
+        "pregunta": "En la versión de escritorio de Outlook 365, ¿qué es una Regla?",
+        "opciones": {
+          "a": "En Outlook no existen las Reglas.",
+          "b": "Es un programa externo que se instala en Outlook para automatizar el envío de mensajes.",
+          "c": "Es un formato de mensaje predefinido que Outlook aplica automáticamente a los correos nuevos.",
+          "d": "Es una acción automática configurada por el usuario que permite procesar correos entrantes o salientes según condiciones establecidas."
+        },
+        "respuesta_correcta": "d"
+      },
+      {
+        "numero": 23,
+        "tipo": "ofimatica",
+        "tema": 20,
+        "pregunta": "En la versión de escritorio de Outlook 365, ¿en qué campo se pueden incluir direcciones a las que enviar una copia visible del correo electrónico?",
+        "opciones": { "a": "Asunto.", "b": "Para.", "c": "CC.", "d": "CCO." },
+        "respuesta_correcta": "c"
+      },
+      {
+        "numero": 24,
+        "tipo": "ofimatica",
+        "tema": 20,
+        "pregunta": "En la versión de escritorio de Outlook 365, ¿qué prefijo añade Outlook al Asunto para indicar que el correo recibido es en realidad un Reenvío?",
+        "opciones": { "a": "REE:", "b": "FW:", "c": "RE:", "d": "REV:" },
+        "respuesta_correcta": "b"
+      },
+      {
+        "numero": 25,
+        "tipo": "ofimatica",
+        "tema": 20,
+        "pregunta": "En la versión de escritorio de Outlook 365, ¿en qué campo se escribe el destinatario o destinatarios principales?",
+        "opciones": {
+          "a": "Para.",
+          "b": "CC.",
+          "c": "CCO.",
+          "d": "Outlook solo permite un destinatario principal no admite destinatarios."
+        },
+        "respuesta_correcta": "a"
+      },
+      {
+        "numero": 26,
+        "tipo": "ofimatica",
+        "tema": 21,
+        "pregunta": "¿Cómo se llama a la plataforma de Microsoft que permite organizar, compartir y colaborar con información y documentos de forma segura dentro de una organización?",
+        "opciones": { "a": "SharePoint.", "b": "Visual Studio.", "c": "PowerPoint.", "d": "Publisher." },
+        "respuesta_correcta": "a"
+      },
+      {
+        "numero": 27,
+        "tipo": "ofimatica",
+        "tema": 21,
+        "pregunta": "¿Qué es un Equipo en Microsoft Teams?",
+        "opciones": {
+          "a": "Es una carpeta de archivos compartidos que no admite conversaciones ni reuniones.",
+          "b": "Es un conjunto de personas, contenido y herramientas que se organizan para colaborar de forma conjunta.",
+          "c": "Es una lista de contactos que permite enviar mensajes masivos sin necesidad de crear canales.",
+          "d": "Es un chat grupal temporal que se elimina automáticamente cuando finaliza una conversación para facilitar la colaboración entre contactos."
+        },
+        "respuesta_correcta": "b"
+      },
+      {
+        "numero": 28,
+        "tipo": "ofimatica",
+        "tema": 21,
+        "pregunta": "En relación con los archivos almacenados en SharePoint, ¿qué permite la sincronización de archivos mediante OneDrive?",
+        "opciones": {
+          "a": "OneDrive no permite la sincronización de Archivos.",
+          "b": "Permite trabajar con los archivos únicamente desde el navegador web.",
+          "c": "Impide que los archivos se modifiquen cuando no hay conexión a Internet.",
+          "d": "Permite acceder y trabajar con los archivos desde el equipo local, sincronizando automáticamente los cambios con SharePoint."
+        },
+        "respuesta_correcta": "d"
+      },
+      {
+        "numero": 29,
+        "tipo": "ofimatica",
+        "tema": 21,
+        "pregunta": "De las siguientes afirmaciones sobre Reuniones en Microsoft Teams, ¿cuál de ellas es falsa?",
+        "opciones": {
+          "a": "Las reuniones de Teams permiten audio, vídeo y uso compartido de pantalla.",
+          "b": "Es posible programar reuniones de Teams o iniciarlas de forma inmediata mediante \"Reunirse ahora\".",
+          "c": "Las reuniones de Teams solo pueden celebrarse si todos los participantes pertenecen a la misma organización.",
+          "d": "Las reuniones de Teams pueden grabarse para su posterior visualización, incluyendo audio y vídeo."
+        },
+        "respuesta_correcta": "c"
+      },
+      {
+        "numero": 30,
+        "tipo": "ofimatica",
+        "tema": 21,
+        "pregunta": "En una reunión de Microsoft Teams, ¿qué Rol es el que tiene el mayor nivel de control sobre la reunión, incluida la configuración y la gestión de los participantes?",
+        "opciones": { "a": "Organizador.", "b": "Invitado.", "c": "Asistente.", "d": "Presentador." },
+        "respuesta_correcta": "a"
+      }
+    ],
+    "reserva": [
+      {
+        "numero": 31,
+        "tipo": "ofimatica",
+        "tema": 16,
+        "pregunta": "En Windows 11 disponiendo de privilegios suficientes, ¿qué comando directo, de los siguientes, abre el Administrador de discos del sistema?",
+        "opciones": { "a": "taskschd.msc", "b": "services.msc", "c": "devmgmt.msc", "d": "diskmgmt.msc" },
+        "respuesta_correcta": "d"
+      },
+      {
+        "numero": 32,
+        "tipo": "ofimatica",
+        "tema": 17,
+        "pregunta": "En la versión de escritorio de Word 365, ¿qué Comando, de los presentados en el Grupo Vistas, permite ver el aspecto que tendrá un documento cuando se imprima?",
+        "opciones": { "a": "Modo lectura.", "b": "Esquema.", "c": "Diseño de impresión.", "d": "Vista preimpresión." },
+        "respuesta_correcta": "c"
+      },
+      {
+        "numero": 33,
+        "tipo": "ofimatica",
+        "tema": 18,
+        "pregunta": "¿A qué se llama Celda en la versión de escritorio de Excel 365?",
+        "opciones": { "a": "A un archivo.", "b": "A un formato.", "c": "La intersección entre fila y columna.", "d": "A una hoja." },
+        "respuesta_correcta": "c"
+      },
+      {
+        "numero": 34,
+        "tipo": "ofimatica",
+        "tema": 19,
+        "pregunta": "En la versión de escritorio de Access 365, ¿qué nombre recibe la asociación lógica que se establece entre campos comunes de dos tablas para vincular sus datos?",
+        "opciones": { "a": "Relación.", "b": "Informe.", "c": "Registro.", "d": "Formulario." },
+        "respuesta_correcta": "a"
+      },
+      {
+        "numero": 35,
+        "tipo": "ofimatica",
+        "tema": 20,
+        "pregunta": "¿Qué aplicación de Microsoft 365 se utiliza para gestionar el correo electrónico?",
+        "opciones": { "a": "Word.", "b": "Excel.", "c": "Outlook.", "d": "Access." },
+        "respuesta_correcta": "c"
+      }
+    ]
+  },
+  "resumen": {
+    "total_primera_parte": 60,
+    "total_primera_parte_reserva": 5,
+    "total_segunda_parte": 30,
+    "total_segunda_parte_reserva": 5,
+    "psicotecnicas": 30,
+    "legislativas": 35,
+    "ofimatica": 35
+  }
+}

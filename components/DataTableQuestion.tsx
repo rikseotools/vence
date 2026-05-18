@@ -285,21 +285,23 @@ export default function DataTableQuestion({
         {/* Formato nuevo: múltiples tablas */}
         {tables && tables.map((table: any, tableIndex: number) => (
           <div key={tableIndex} className="mb-6">
-            <h3 className="font-bold text-gray-900 dark:text-white mb-3">📋 {table.title}</h3>
+            {table.title && <h3 className="font-bold text-gray-900 dark:text-white mb-3">📋 {table.title}</h3>}
             <div className="bg-orange-50 dark:bg-orange-900/20 border-2 border-orange-200 dark:border-orange-700 rounded-lg p-4">
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse border border-orange-300 dark:border-orange-600">
-                  <thead>
-                    <tr className="bg-orange-100 dark:bg-orange-800/40">
-                      {table.headers.map((header: string, index: number) => (
-                        <th key={index} className="border border-orange-300 dark:border-orange-600 px-3 py-2 text-orange-800 dark:text-orange-300 font-semibold text-sm">
-                          {header}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
+                  {Array.isArray(table.headers) && table.headers.length > 0 && (
+                    <thead>
+                      <tr className="bg-orange-100 dark:bg-orange-800/40">
+                        {table.headers.map((header: string, index: number) => (
+                          <th key={index} className="border border-orange-300 dark:border-orange-600 px-3 py-2 text-orange-800 dark:text-orange-300 font-semibold text-sm">
+                            {header}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                  )}
                   <tbody>
-                    {table.rows.map((row: any[], rowIndex: number) => (
+                    {(table.rows || []).map((row: any[], rowIndex: number) => (
                       <tr key={rowIndex} className="hover:bg-orange-25 dark:hover:bg-orange-900/10">
                         {row.map((cell: any, cellIndex: number) => (
                           <td key={cellIndex} className="border border-orange-300 dark:border-orange-600 px-3 py-2 text-center text-gray-700 dark:text-gray-300 text-sm">

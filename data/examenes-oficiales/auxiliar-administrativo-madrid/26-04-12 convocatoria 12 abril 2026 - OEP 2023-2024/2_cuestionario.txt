@@ -1,0 +1,283 @@
+1.-     En Windows 10, ¿qué combinación de teclas abre el Explorador de archivos?
+            A) Alt+Tab
+            B) Alt+E
+            C) Windows+E
+            D) Ctrl+E
+
+2.-     En Windows 10, ¿hay alguna manera de ver en tiempo real los procesos activos?
+            A) No, Windows 10 solo permite generar informes de los procesos una vez que ya han
+               terminado de ejecutarse.
+            B) Sí, desde el Administrador tareas.
+            C) Sí, con el comando taskserviceswin.msc.
+            D) No, Windows 10 no tiene la posibilidad de ver los procesos activos.
+
+3.-     En Windows 10, ¿cuál de los siguientes métodos permite ver el espacio libre de una unidad de
+        disco?
+             A) Desde el Explorador de archivos, colocando el ratón sobre un archivo que cuelgue de la
+                unidad y con el botón derecho hacer clic en Propiedades.
+             B) Desde el Explorador de archivos, colocando el ratón sobre una carpeta que cuelgue de
+                la unidad y con el botón derecho hacer clic en Propiedades.
+             C) En el desplegable "Este equipo", colocando el ratón sobre la unidad y con el botón
+                derecho hacer clic en Propiedades.
+             D) Windows 10 no permite ver el espacio libre de una unidad en concreto. Muestra la suma
+                del espacio libre de todas las unidades existentes en el sistema.
+
+4.-     En el Explorador de archivos de Windows 10, en la vista del contenido de una carpeta, ¿dónde
+        se puede ver la ruta completa a la citada carpeta?
+            A) Barra de direcciones.
+            B) Panel de vista previa.
+            C) Cinta de opciones.
+            D) Barra de estado.
+
+5.-     En Windows 10, de aquellos archivos que lo permitan y aunque sea de forma parcial, ¿se puede
+        ver su contenido sin abrirlo?
+             A) Sí, desde el Panel de vista previa.
+             B) Sí, pero únicamente se puede hacer con archivos de imagen jpg y png.
+             C) Sí, desde Propiedades del archivo.
+             D) No, Windows 10 no tiene una funcialidad parecida a esa.
+
+6.-     En la versión de escritorio de Word 365, ¿qué función permite localizar palabras dentro de un
+        documento abierto?
+            A) Imprimir.
+            B) Formato.
+            C) Disposición.
+            D) Buscar.
+
+7.-     En la versión de escritorio de Word 365, ¿qué es el interlineado?
+             A) Es el color del texto.
+             B) Es el espacio vertical entre las líneas de un párrafo.
+             C) Es el encabezado del documento.
+             D) El interlineado establece la dimensión del margen superior del documento.
+
+
+
+      CMFP-AXAD-L2 V1                                                                               1
+8.-     En la versión de escritorio de Word 365, con un documento ya abierto, ¿qué opción, de las
+        siguientes, permite guardarlo con un nombre distinto al actual?
+             A) Cerrar.
+             B) Compartir.
+             C) Guardar como.
+             D) Guardar.
+
+9.-     Sobre Microsoft 365, ¿cuál de los siguientes programas se utiliza principalmente para crear,
+        editar y dar formato a documentos de texto?
+             A) Excel.
+             B) Word.
+             C) PowerPoint.
+             D) Access.
+
+10.- En la versión de escritorio de Word 365, ¿qué se entiende por una sangría izquierda?
+          A) Es el desplazamiento del párrafo hacia la derecha respecto al margen izquierdo.
+          B) Es un tipo de subrayado especial.
+          C) Es un estilo de título.
+          D) Es un efecto de fuente de texto.
+
+11.- En la versión de escritorio de Excel 365, ¿qué símbolo se utiliza para iniciar una fórmula?
+          A) = (Igual).
+          B) # (almohadilla).
+          C) @ (Arroba).
+          D) $ (Dólar).
+
+12.- En la versión de escritorio de Excel 365, ¿cómo se denomina al conjunto de Hojas almacenadas
+     en un archivo Excel?
+          A) Celdas.
+          B) Libro.
+          C) Filas.
+          D) Tabla.
+
+13.- En la versión de escritorio de Excel 365, de las siguientes opciones, ¿dónde se visualiza el
+     contenido de la celda activa?
+         A) En la Barra de herramientas.
+         B) En el desplegable de Estilos.
+         C) En el Cuadro de nombres.
+         D) En la Barra de fórmulas.
+
+14.- En la versión de escritorio de Excel 365, ¿cuántas Hojas puede contener un Libro de Excel?
+          A) 1
+          B) 255
+          C) Sin límite definido, salvo lo que dicte la memoria del sistema donde se ejecuta el Excel
+          D) 16
+
+
+
+
+      CMFP-AXAD-L2 V1                                                                               2
+15.- En la versión de escritorio de Excel 365, ¿qué misión tiene una Tabla dinámica?
+          A) Una tabla dinámica convierte automáticamente los datos en gráficos actualizados en
+              tiempo real.
+          B) Una tabla dinámica permite resumir, analizar y reorganizar grandes conjuntos de datos
+              de manera interactiva.
+          C) Una tabla dinámica es una tabla que edita y reescribe los datos del origen para
+              mantenerlos siempre ordenados.
+          D) Una tabla dinámica solo puede mostrar datos tal cual están, sin permitir agrupar, filtrar
+              ni cambiar campos.
+
+16.- En la versión de escritorio de Access 365, ¿qué se entiende por Importar datos?
+          A) En Access ese término no tiene significado alguno.
+          B) Es la opción que permite guardar los datos de Access en formato texto, Excel, etc.
+          C) Hace referencia a un tipo de datos de cierta importancia que deben ser protegidos contra
+              escritura.
+          D) Es la opción que permite traer datos externos e incorporarlos a Access.
+
+17.- En la versión de escritorio de Access 365, ¿qué permite hacer una Consulta?
+          A) Es un formulario que sirve para introducir datos en las tablas mediante un diseño más
+              visual.
+          B) Es un objeto de Access que permite obtener, filtrar, combinar o calcular datos
+              almacenados en una o varias tablas.
+          C) Es un objeto que almacena directamente los registros que coinciden con un criterio
+              específico.
+          D) Es un tipo de campo para almacenar dígitos y números indistintamente.
+
+18.- En la versión de escritorio de Access 365, ¿cuál es la Vista que permite crear y definir los campos
+     que conforman una Tabla?
+          A) Vista Administración.
+          B) Vista Hoja edición.
+          C) Vista Diseño.
+          D) Vista Preimpresión.
+
+19.- En la versión de escritorio de Access 365, ¿qué identifica de forma única e inequívoca a un
+     Registro?
+         A) El campo numérico.
+         B) El campo de texto.
+         C) Un campo de Clave Principal.
+         D) Un campo que recordemos y no se nos olvide que existe.
+
+20.- En la versión de escritorio de Access 365, ¿qué es una Tabla?
+          A) Es un informe que muestra los datos de forma resumida sin permitir la edición directa.
+          B) Es un objeto de la base de datos que permite diseñar consultas y establecer relaciones,
+              pero no almacena datos propios.
+          C) Es un objeto de la base de datos que almacena datos en un formato estructurado
+              compuesto por filas y columnas.
+          D) El concepto Tabla no existe en Access, es un elemento utilizado en bases de datos
+              estructuradas.
+
+
+
+
+  CMFP-AXAD-L2 V1                                                                                     3
+21.- En la versión de escritorio de Outlook 365, y considerando únicamente las acciones propias del
+     módulo Calendario sin abandonar dicho módulo, de las siguientes acciones, ¿cuál NO puede
+     realizarse?
+          A) Gestionar contactos o crear listas de distribución.
+          B) Crear citas o reuniones.
+          C) Enviar invitaciones y gestionar respuestas.
+          D) Eliminar citas o reuniones.
+
+22.- En la versión de escritorio de Outlook 365, ¿qué es una Regla?
+          A) En Outlook no existen las Reglas.
+          B) Es un programa externo que se instala en Outlook para automatizar el envío de
+              mensajes.
+          C) Es un formato de mensaje predefinido que Outlook aplica automáticamente a los correos
+              nuevos.
+          D) Es una acción automática configurada por el usuario que permite procesar correos
+              entrantes o salientes según condiciones establecidas.
+
+23.- En la versión de escritorio de Outlook 365, ¿en qué campo se pueden incluir direcciones a las
+     que enviar una copia visible del correo electrónico?
+          A) Asunto.
+          B) Para.
+          C) CC.
+          D) CCO.
+
+24.- En la versión de escritorio de Outlook 365, ¿qué prefijo añade Outlook al Asunto para indicar que
+     el correo recibido es en realidad un Reenvío?
+          A) REE:
+          B) FW:
+          C) RE:
+          D) REV:
+
+25.- En la versión de escritorio de Outlook 365, ¿en qué campo se escribe el destinatario o
+     destinatarios principales?
+          A) Para.
+          B) CC.
+          C) CCO.
+          D) Outlook solo permite un destinatario principal no admite destinatarios.
+
+26.- ¿Cómo se llama a la plataforma de Microsoft que permite organizar, compartir y colaborar con
+     información y documentos de forma segura dentro de una organización?
+          A) SharePoint.
+          B) Visual Studio.
+          C) PowerPoint.
+          D) Publisher.
+
+
+
+
+  CMFP-AXAD-L2 V1                                                                                   4
+27.- ¿Qué es un Equipo en Microsoft Teams?
+        A) Es una carpeta de archivos compartidos que no admite conversaciones ni reuniones.
+        B) Es un conjunto de personas, contenido y herramientas que se organizan para colaborar
+            de forma conjunta.
+        C) Es una lista de contactos que permite enviar mensajes masivos sin necesidad de crear
+            canales.
+        D) Es un chat grupal temporal que se elimina automáticamente cuando finaliza una
+            conversación para facilitar la colaboración entre contactos.
+
+28.- En relación con los archivos almacenados en SharePoint, ¿qué permite la sincronización de
+     archivos mediante OneDrive?
+          A) OneDrive no permite la sincronización de Archivos.
+          B) Permite trabajar con los archivos únicamente desde el navegador web.
+          C) Impide que los archivos se modifiquen cuando no hay conexión a Internet.
+          D) Permite acceder y trabajar con los archivos desde el equipo local, sincronizando
+             automáticamente los cambios con SharePoint.
+
+29.- De las siguientes afirmaciones sobre Reuniones en Microsoft Teams, ¿cuál de ellas es falsa?
+          A) Las reuniones de Teams permiten audio, vídeo y uso compartido de pantalla.
+          B) Es posible programar reuniones de Teams o iniciarlas de forma inmediata mediante
+              “Reunirse ahora”.
+          C) Las reuniones de Teams solo pueden celebrarse si todos los participantes pertenecen a
+              la misma organización.
+          D) Las reuniones de Teams pueden grabarse para su posterior visualización, incluyendo
+              audio y vídeo.
+
+30.- En una reunión de Microsoft Teams, ¿qué Rol es el que tiene el mayor nivel de control sobre la
+     reunión, incluida la configuración y la gestión de los participantes?
+         A) Organizador.
+         B) Invitado.
+         C) Asistente.
+         D) Presentador.
+
+
+                                PREGUNTAS DE RESERVA
+31.- En Windows 10 disponiendo de privilegios suficientes, ¿qué comando directo, de los siguentes,
+     abre el Administrador de discos del sistema?
+         A) taskschd.msc
+         B) services.msc
+         C) devmgmt.msc
+         D) diskmgmt.msc
+
+32.- En la versión de escritorio de Word 365, ¿qué Comando, de los presentados en el Grupo Vistas,
+     permite ver el aspecto que tendrá un documento cuando se imprima?
+          A) Modo lectura.
+          B) Esquema.
+          C) Diseño de impresión.
+          D) Vista preimpresión.
+
+
+
+
+  CMFP-AXAD-L2 V1                                                                                5
+33.- ¿A qué se llama Celda en la versión de escritorio de Excel 365?
+         A) A un archivo.
+         B) A un formato.
+         C) La intersección entre fila y columna.
+         D) A una hoja.
+
+34.- En la versión de escritorio de Access 365, ¿qué nombre recibe la asociación lógica que se
+     establece entre campos comunes de dos tablas para vincular sus datos?
+         A) Relación.
+         B) Informe.
+         C) Registro.
+         D) Formulario.
+
+35.- ¿Qué aplicación de Microsoft 365 se utiliza para gestionar el correo electrónico?
+        A) Word.
+        B) Excel.
+        C) Outlook.
+        D) Access.
+
+
+
+
+  CMFP-AXAD-L2 V1                                                                           6
+

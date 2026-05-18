@@ -120,7 +120,7 @@ const oposicionToExamPosition: Record<string, string> = {
 // Fallback: exam_source LIKE pattern for psychometric_questions (which lacks exam_position column)
 const oposicionToExamSourcePattern: Record<string, string> = {
   'auxiliar-administrativo-estado': '%Auxiliar Administrativo Estado%',
-  'auxiliar-administrativo-madrid': '%Auxiliar Administrativo Madrid%',
+  'auxiliar-administrativo-madrid': '%Auxiliar Administrativo Comunidad de Madrid%',
   'auxiliar-administrativo-cyl': '%Auxiliar Administrativo CyL%',
   'auxiliar-administrativo-andalucia': '%Auxiliar Administrativo Andalucía%',
   'tramitacion-procesal': '%Tramitación Procesal%',

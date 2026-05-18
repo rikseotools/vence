@@ -1068,6 +1068,15 @@ export const OPOSICIONES: Oposicion[] = [
         ],
         note: 'Incluye preguntas psicotécnicas (pendientes de importar)',
       },
+      {
+        date: '2026-04-12',
+        title: 'Convocatoria 2026 (551 plazas)',
+        oep: 'OEP 2023-2024',
+        partes: [
+          { id: 'primera', icon: '📘', title: 'Primer ejercicio', description: '60 preguntas (30 psicotécnicas + 30 Bloque I) + 5 reserva — 65 min' },
+          { id: 'segunda', icon: '📗', title: 'Segundo ejercicio', description: '30 preguntas Bloque II Ofimática + 5 reserva — 35 min' },
+        ],
+      },
     ],
   },
 

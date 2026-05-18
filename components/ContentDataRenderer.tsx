@@ -32,12 +32,16 @@ export default function ContentDataRenderer({ contentData, imageUrl }: ContentDa
   const hasContentData = contentData && Object.keys(contentData).length > 0
 
   const tdData = hasContentData ? contentData.table_data as TableData | undefined : undefined
+  // tables[] (plural): array de TableData para preguntas con varias tablas (ej. listados + tarifas + descuentos)
+  // Se renderiza cada una en su propia caja naranja, en orden.
+  const tablesArr = hasContentData ? contentData.tables as TableData[] | undefined : undefined
+  const hasTablesArr = Array.isArray(tablesArr) && tablesArr.length > 0
   const instruction = hasContentData ? contentData.instruction as string | undefined : undefined
   const instructions = hasContentData ? contentData.instructions as string[] | undefined : undefined
   const textPassage = hasContentData ? contentData.text_passage as string | undefined : undefined
   const imageBase64 = hasContentData ? contentData.image_base64 as string | undefined : undefined
 
-  if (!tdData && !instruction && !instructions && !textPassage && !imageBase64 && !imageUrl) return null
+  if (!tdData && !hasTablesArr && !instruction && !instructions && !textPassage && !imageBase64 && !imageUrl) return null
 
   return (
     <>
@@ -121,6 +125,35 @@ export default function ContentDataRenderer({ contentData, imageUrl }: ContentDa
             </div>
           </div>
         )}
+
+        {/* Array de tablas (varias TableData en content_data.tables) */}
+        {hasTablesArr && tablesArr!.map((t, idx) => (
+          <div key={idx} className="bg-orange-50 dark:bg-orange-900/20 border-2 border-orange-200 dark:border-orange-700 rounded-lg p-4 mb-4">
+            {t.title && <h4 className="font-bold text-gray-900 dark:text-white mb-2 text-sm">{t.title}</h4>}
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse border border-orange-300 dark:border-orange-600 text-xs">
+                {t.headers && (
+                  <thead>
+                    <tr className="bg-orange-100 dark:bg-orange-800/40">
+                      {t.headers.map((h, i) => (
+                        <th key={i} className="border border-orange-300 dark:border-orange-600 px-2 py-1 text-orange-800 dark:text-orange-300 font-semibold">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                )}
+                <tbody>
+                  {(t.rows || []).map((row, ri) => (
+                    <tr key={ri}>
+                      {row.map((cell, ci) => (
+                        <td key={ci} className="border border-orange-300 dark:border-orange-600 px-2 py-1 text-center text-gray-700 dark:text-gray-300 font-medium">{cell}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ))}
 
         {/* Tabla sin headers (solo rows, ej: sinónimos) */}
         {tdData && !tdData.headers && tdData.rows && (
