@@ -55,6 +55,26 @@ Pipeline de transición automática:
 
 ## 1. Localizar PDFs oficiales
 
+> 🚫 **REGLA CRÍTICA — solo TURNO LIBRE / INGRESO LIBRE.**
+>
+> **NUNCA importar exámenes de procesos de estabilización** (Ley 20/2021),
+> consolidación, ni ningún proceso extraordinario. SOLO convocatorias de
+> ingreso libre ordinarias.
+>
+> **Razón** (Manuel, 18/05/2026): los exámenes de estabilización valoran
+> experiencia previa, suelen ser más fáciles y tienen temario reducido o
+> distinto. El público real de Vence prepara turno libre — importar
+> estabilización **contamina la preparación** del aspirante real.
+>
+> **Antes de descargar PDFs, mira el título del proceso.** Descartar si
+> contiene: "estabilización", "Ley 20/2021", "consolidación", "extraordinario".
+> Buscar: "turno libre", "ingreso libre", "concurso-oposición ordinario",
+> "OEP ordinaria".
+>
+> Si la única opción disponible es estabilización (caso CARM DGX00C18 /
+> DGX00C22 que entraron antes de fijar esta regla), **confirmar con Manuel
+> antes** de proceder.
+
 Cada CCAA publica `cuestionario` + `plantilla correctora` por ejercicio. Buscar con:
 - `site:comunidad.madrid` o `sede.<ccaa>.es` + año + número de orden BOCM
 - Páginas privadas (adams, opositatest, mad.es) suelen tener los enlaces
