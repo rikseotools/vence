@@ -545,6 +545,35 @@ export const OPOSICIONES: Oposicion[] = [
       { href: '/auxiliar-administrativo-carm/temario', label: 'Temario', icon: '📚' },
       { href: '/auxiliar-administrativo-carm/test', label: 'Tests', icon: '🎯' },
     ],
+    officialExams: [
+      {
+        date: '2020-02-23',
+        title: 'Convocatoria DGX00C18 (consolidación)',
+        oep: 'OEP 2017',
+        partes: [
+          { id: 'primera', icon: '📘', title: 'Ejercicio único', description: '74 preguntas test (incluye supuestos prácticos)' },
+        ],
+        note: '41 plazas — proceso de consolidación de empleo temporal.',
+      },
+      {
+        date: '2023-10-01',
+        title: 'Convocatoria DGX00C22 (estabilización)',
+        oep: 'OEP 2021',
+        partes: [
+          { id: 'primera', icon: '📘', title: 'Ejercicio único', description: '74 preguntas test (1 anulada en plantilla oficial)' },
+        ],
+        note: '111 plazas — estabilización Ley 20/2021.',
+      },
+      {
+        date: '2024-10-06',
+        title: 'Convocatoria DGX00L19 ej.1 (turno libre)',
+        oep: 'OEP 2018-2019',
+        partes: [
+          { id: 'primera', icon: '📘', title: 'Primer ejercicio', description: '75 preguntas test (incluye 2 supuestos prácticos)' },
+        ],
+        note: '10 plazas — turno libre. Pendiente importar 2º ejercicio.',
+      },
+    ],
   },
 
   // ========================================

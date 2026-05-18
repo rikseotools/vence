@@ -190,6 +190,7 @@ export async function getPsychometricCategories(userId?: string): Promise<GetPsy
             'auxiliar_administrativo': '%Auxiliar Administrativo Estado%',
             'auxiliar_administrativo_estado': '%Auxiliar Administrativo Estado%',
             'auxiliar_administrativo_madrid': '%Auxiliar Administrativo Comunidad de Madrid%',
+            'auxiliar_administrativo_carm': '%Auxiliar Administrativo CARM Murcia%',
             'auxiliar_administrativo_cyl': '%Auxiliar Administrativo CyL%',
             'tramitacion_procesal': '%Tramitación Procesal%',
             'auxilio_judicial': '%Auxilio Judicial%',
