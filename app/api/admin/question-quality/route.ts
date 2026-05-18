@@ -290,6 +290,7 @@ async function runCountsOnly(): Promise<number> {
             AND content_data->'chart_data' IS NULL
             AND content_data->'categories' IS NULL
             AND content_data->'age_groups' IS NULL
+            AND content_data->'instructions' IS NULL
           )
         )
         AND image_url IS NULL
@@ -673,6 +674,7 @@ async function runChecks(): Promise<QualityResponse> {
             AND content_data->'chart_data' IS NULL
             AND content_data->'categories' IS NULL
             AND content_data->'age_groups' IS NULL
+            AND content_data->'instructions' IS NULL
           )
         )
         AND image_url IS NULL
