@@ -1375,6 +1375,42 @@ export const OPOSICIONES: Oposicion[] = [
       { href: '/auxiliar-administrativo-extremadura/temario', label: 'Temario', icon: '📚' },
       { href: '/auxiliar-administrativo-extremadura/test', label: 'Tests', icon: '🎯' },
     ],
+    officialExams: [
+      {
+        date: '2019-07-07',
+        title: 'Convocatoria OEP 2018 - Turno libre/discapacidad (Test 1, original)',
+        oep: 'OEP 2018',
+        note: 'Fecha exacta del examen original (test tipo 1) pendiente de confirmar — registrada como julio 2019 (la convocatoria se aplazó después).',
+        partes: [
+          {
+            id: 'primera',
+            icon: '📘',
+            title: '1ª Prueba',
+            ordinaryCount: 76,
+            reserveCount: 10,
+            durationMin: 100,
+            breakdown: [{ label: 'tipo test (legislativa + ofimática)', count: 76 }],
+          },
+        ],
+      },
+      {
+        date: '2020-01-23',
+        title: 'Convocatoria OEP 2018 - Turno libre/discapacidad (Aplazado)',
+        oep: 'OEP 2018',
+        note: 'Examen aplazado del proceso de OEP 2018 (146 plazas). Contenido distinto al test 1 original (julio 2019).',
+        partes: [
+          {
+            id: 'primera',
+            icon: '📘',
+            title: '1ª Prueba',
+            ordinaryCount: 76,
+            reserveCount: 10,
+            durationMin: 100,
+            breakdown: [{ label: 'tipo test (legislativa + ofimática)', count: 76 }],
+          },
+        ],
+      },
+    ],
   },
 
   // ========================================
