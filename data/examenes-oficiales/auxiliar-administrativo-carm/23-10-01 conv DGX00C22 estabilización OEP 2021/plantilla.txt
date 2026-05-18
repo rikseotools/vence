@@ -1,0 +1,41 @@
+PLANTILLAS DE RESPUESTAS EXAMEN AUXILIAR ADMINISTRATIVO
+           TIPO 1                          TIPO 2
+1      C        39      C      1       C        39      B
+2      D        40      B      2       D        40      B
+3      D        41      C      3       B        41     D
+4      A        42      A      4       A        42     D
+5      C        43     D       5       D        43      C
+6      C        44      B      6       A        44     D
+7      C        45      A      7       A        45     D
+8      A        46      C      8       D        46      A
+9      C        47      B      9       D        47      C
+10     D        48      B      10      C        48      C
+11     B        49     D       11      B        49      C
+12     A        50     D       12      C        50      A
+13     D        51      B      13      A        51      C
+14     A        52      B      14      D        52      C
+15     A        53      B      15      C        53      B
+16     D        54     D       16      A        54      C
+17     D        55      B      17      D        55     D
+18     C        56      B      18      B        56      C
+19     B        57      C      19      C        57     D
+20     C        58     D       20      B        58      B
+21     A        59     D       21      C        59      C
+22     D        60      A      22      B        60     D
+23     C        61      B      23      B        61      C
+24     A        62      A      24      B        62      A
+25     D        63   Anulada   25      B        63      B
+26     B        64      C      26      B        64      B
+27     C        65      C      27      A        65      B
+28     B        66      B      28      B        66     D
+29     C        67      C      29      C        67      B
+30     B        68     D       30      B        68      B
+31     B        69      C      31      C        69      C
+32     B        70     D       32      B        70     D
+33     B        71      B      33      C        71     D
+34     B        72      C      34      A        72      A
+35     A        73     D       35      D        73      B
+36     B        74      C      36      B        74      A
+37     C        75      A      37      A        75   Anulada
+38     B                       38      C
+
