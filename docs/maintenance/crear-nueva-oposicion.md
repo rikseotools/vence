@@ -758,16 +758,65 @@ officialExams: [
 Sin esto, los exámenes oficiales **no aparecen** aunque la entry esté en
 `oposiciones.ts` y las preguntas estén en BD:
 
-| Archivo | Constante | Qué añadir |
-|---|---|---|
-| `lib/api/official-exams/queries.ts` | `oposicionToExamPosition` | `'<slug>': '<positionType>'` |
-| `lib/api/official-exams/queries.ts` | `oposicionToExamSourcePattern` | `'<slug>': '%<patrón ILIKE>%'` (más específico mejor) |
-| `lib/api/psychometric-test-data/queries.ts` | `examSourcePatterns` (línea ~189) | `'<positionType>': '%<patrón ILIKE>%'` solo si tiene psicotécnicas oficiales |
+| Archivo | Constante | Qué añadir | Cuándo |
+|---|---|---|---|
+| `lib/api/official-exams/queries.ts` | `oposicionToExamPosition` | `'<slug>': '<positionType>'` | Siempre que haya legi/ofi oficiales |
+| `lib/api/official-exams/queries.ts` | `oposicionToExamSourcePattern` | `'<slug>': '%<patrón ILIKE>%'` (más específico mejor) | Siempre |
+| `lib/api/psychometric-test-data/queries.ts` | `examSourcePatterns` (línea ~189) | `'<positionType>': '%<patrón ILIKE>%'` | **SOLO si hay psicotécnicas OFICIALES en BD** (ver §4a.ter abajo) |
+| `lib/config/exam-positions.ts` | `EXAM_POSITION_MAP` + `HOT_ARTICLE_TARGET_MAP` | Ambos mapas con el positionType | Siempre (sin esto, el filtro cross-oposición bloquea todas las oficiales) |
 
 ⚠️ **Especificidad del patrón:** si la oposición se llama "Madrid", el patrón
 `%Madrid%` colisionará con "Ayuntamiento de Madrid". Usar siempre el nombre
 oficial discriminante (`%Comunidad de Madrid%`, `%CARM Murcia%`,
 `%Auxiliar Administrativo Estado%`…). Incidente 18/05/2026.
+
+### 4a.ter Botón "Seleccionar lo más importante para [oposición]" en psicotécnicos
+
+El botón aparece en `/psicotecnicos/test` y permite al usuario seleccionar solo
+las categorías psicotécnicas que **han caído ≥3 veces en exámenes oficiales**
+de su oposición (badge ⭐ Frecuente). Componente:
+`app/psicotecnicos/test/PsicotecnicosTestClient.tsx:211-250`.
+
+**El botón es opt-in por oposición** — no se activa automáticamente al crear
+una oposición. Para activarlo correctamente:
+
+**Pre-requisito (verificar ANTES de tocar config):**
+1. El examen oficial de esa oposición **¿incluye parte psicotécnica?** Lee las bases de la convocatoria.
+2. **¿Hay preguntas psicotécnicas con `is_official_exam=true` y `exam_source` específico de la oposición en `psychometric_questions`?**
+   ```bash
+   node -e "
+   require('dotenv').config({path: '.env.local'});
+   const { createClient } = require('@supabase/supabase-js');
+   const s = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+   s.from('psychometric_questions').select('exam_source', { count:'exact' })
+     .ilike('exam_source', '%<patrón oposición>%')
+     .eq('is_official_exam', true).then(r => console.log(r.count));
+   "
+   ```
+3. **¿Hay ≥3 convocatorias distintas?** Con menos de 3, no aparecerá ningún badge `'frequent'` (solo `'appears'`).
+
+**Decisión:**
+
+| Resultado | Acción |
+|---|---|
+| Examen oficial SÍ tiene psicotécnicas + ≥3 convocatorias en BD | Añadir el patrón a `examSourcePatterns` |
+| Examen oficial SÍ tiene psicotécnicas pero solo 1-2 convocatorias | Añadir el patrón igual (los usuarios verán `📋 Aparece en examen`, no ⭐ Frecuente) |
+| Examen oficial **NO tiene parte psicotécnica** (ej: Extremadura, Estatuto auxiliar) | **NO añadir el patrón.** Añadirlo da falsa expectativa que el sistema no puede cumplir (no hay datos que filtrar). |
+| BD no tiene aún las psicotécnicas oficiales importadas | NO añadir hasta importar — el botón se activaría con 0 datos y la UX sería confusa |
+
+**Reglas de cálculo del `examFrequency`** (lib/api/psychometric-test-data/queries.ts:177-282):
+- Agrupa por `questionSubtype` y cuenta exámenes distintos.
+- `examCount >= 3` → `examFrequency = 'frequent'` (⭐ badge)
+- `examCount in {1,2}` → `examFrequency = 'appears'` (📋 badge)
+- Sin datos → categoría sin badge (botón "más importante" no se renderiza para ella)
+
+**Caso real Extremadura (verificado 19/05/2026):** el examen oficial Auxiliar
+Administrativo Junta Extremadura OEP 2018 **no incluye parte psicotécnica** —
+solo 30 teóricas + 20 prácticas ofimática. Confirmado por query:
+`psychometric_questions WHERE exam_source ILIKE '%Extremadura%' AND is_official_exam=true` → 0 filas.
+Por tanto **NO se añadió Extremadura a `examSourcePatterns`** porque no hay
+datos que filtrar. Si se añadiera, el botón seguiría sin activarse y daría
+una falsa expectativa.
 
 ### 4b. Archivos que se actualizan AUTOMATICAMENTE (no tocar)
 
