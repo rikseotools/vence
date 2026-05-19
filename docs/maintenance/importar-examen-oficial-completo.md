@@ -471,7 +471,31 @@ s.from('questions').select('exam_case_id', {count:'exact', head:true})
 **Reglas finales:**
 - ⚠️ NUNCA importes preguntas de 2º ejercicio AJ / TP / cualquier "caso práctico" **sin crear primero los `exam_cases`**.
 - ⚠️ NUNCA dupliques el caso en cada `question_text`. Confía en la tabla.
-- ⚠️ Si una pregunta del caso aparece aislada (test por ley), **NO debe mostrarse al usuario** porque carece de contexto. El filtro `parte === 'supuesto'` en queries ya lo evita en exámenes oficiales; verificar que tests adaptive también lo respeten.
+- ⚠️ Si una pregunta del caso aparece aislada (test por ley), **NO debe mostrarse al usuario** porque carece de contexto. El filtro está aplicado por construcción en los 6 endpoints de tests aislados (§7.4.bis abajo).
+
+### 7.4.bis Filtro `isNull(exam_case_id)` en endpoints de tests aislados (consolidado 19/05/2026)
+
+**Aprendizaje 19/05/2026** — al importar los primeros casos prácticos (AJ 2025 + AJ 2024 + TP 2025) descubrimos que las 86+ preguntas con `exam_case_id` aparecían sin contexto en TODOS los modos de test isolado (aleatorio, por tema, por leyes, falladas, simulacro generado). Solo `OfficialExamLayout`/`ExamReviewLayout` cargan el caso y lo renderizan.
+
+**Solución desplegada** (commit `4850285e`) — añadido `isNull(questions.examCaseId)` al WHERE de **6 endpoints**:
+
+| Archivo | Función | Uso |
+|---|---|---|
+| `lib/api/random-test/queries.ts` | `getRandomTestQuestions` | Test aleatorio por temas |
+| `lib/api/random-test-data/queries.ts` | conteo por tema | Sidebar UI |
+| `lib/api/topic-data/queries.ts` | preguntas por tema | Test por tema |
+| `lib/api/user-failed-questions/queries.ts` | `getUserFailedQuestions` + `getFailedQuestionsByTopic` | Repasar falladas |
+| `lib/api/filtered-questions/queries.ts` | 5 ramas (por leyes, oficial, dificultad…) | Test por leyes |
+| `lib/api/simulacro/queries.ts` | distribución 110 preg | Simulacro generado |
+
+**NO modificar:** `getOfficialExamQuestions()` (sigue mostrando con contexto), `test-review` (revisión post-test ya tiene el case del simulacro original), `law-stats` (no devuelve preguntas).
+
+**Test anti-regresión:** `__tests__/integration/examCaseExclusion.test.ts` — 11 tests (5 contra BD real + 6 estáticos que leen cada archivo y verifican que contiene `isNull(questions.examCaseId)`). Si alguien añade un endpoint nuevo y olvida el filtro, o lo elimina por refactor accidental, el test falla.
+
+**Al añadir un endpoint nuevo que cargue preguntas para tests aislados:**
+1. Importar `isNull` de `drizzle-orm`.
+2. Añadir `isNull(questions.examCaseId)` al WHERE.
+3. Añadir el archivo al array `endpoints` de la suite de tests.
 
 ---
 
