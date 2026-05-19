@@ -9,12 +9,46 @@ import type {
   ProgressTrends,
   Recommendation,
 } from './schemas'
+import {
+  getMetricsV2,
+  getStrugglingQuestionsV2,
+  getMasteredQuestionsV2,
+  getPersonalBreakdownV2,
+  getProgressTrendsV2,
+} from './queriesV2'
+
+// Feature flag: % de usuarios que leen de user_question_history_v2 (lookup PK)
+// en lugar de las RPCs viejas (que escanean test_questions y timeoutean para
+// heavy users como Nila 33k+ filas). Hash determinístico de userId → cada
+// usuario siempre cae en el mismo bucket dentro de la misma config.
+//
+// Rollout: 0 (default) → todos en v1. Subir progresivamente 1 → 10 → 50 → 100.
+// Si v2 falla en alguna query, automáticamente cae al fallback v1.
+//
+// Validación previa: shadow comparation 1h tráfico real, v2 = ground truth
+// EXACTAMENTE en 10/10 heavy users. Documentado ARCHITECTURE_ROADMAP §"Memo
+// user_question_stats — caso Nila".
+function shouldUseV2(userId: string): boolean {
+  const pct = parseInt(process.env.USE_UQH_V2_PCT || '0', 10)
+  if (pct <= 0) return false
+  if (pct >= 100) return true
+  // Hash simple del userId → bucket 0-99
+  let hash = 0
+  for (let i = 0; i < userId.length; i++) {
+    hash = ((hash << 5) - hash) + userId.charCodeAt(i)
+    hash |= 0
+  }
+  return Math.abs(hash) % 100 < pct
+}
 
 export async function getDifficultyInsights(userId: string): Promise<GetDifficultyInsightsResponse> {
   try {
     const db = getDb()
+    const useV2 = shouldUseV2(userId)
 
-    // Ejecutar las 6 queries en paralelo
+    // Ejecutar las 6 queries en paralelo. v2 usa user_question_history_v2
+    // (lookup PK, <50ms incluso para heavy users 33k+ filas). v1 usa RPCs
+    // antiguas que escanean test_questions (5-8s para heavy users → timeout).
     const [
       metricsResult,
       personalBreakdownResult,
@@ -23,12 +57,12 @@ export async function getDifficultyInsights(userId: string): Promise<GetDifficul
       trendsResult,
       recommendationsResult,
     ] = await Promise.all([
-      getMetrics(db, userId),
-      getPersonalBreakdown(db, userId),
-      getStrugglingQuestions(db, userId, 5),
-      getMasteredQuestions(db, userId, 5),
-      getProgressTrends(db, userId),
-      getRecommendations(db, userId),
+      useV2 ? getMetricsV2(db, userId).catch(() => getMetrics(db, userId)) : getMetrics(db, userId),
+      useV2 ? getPersonalBreakdownV2(db, userId).catch(() => getPersonalBreakdown(db, userId)) : getPersonalBreakdown(db, userId),
+      useV2 ? getStrugglingQuestionsV2(db, userId, 5).catch(() => getStrugglingQuestions(db, userId, 5)) : getStrugglingQuestions(db, userId, 5),
+      useV2 ? getMasteredQuestionsV2(db, userId, 5).catch(() => getMasteredQuestions(db, userId, 5)) : getMasteredQuestions(db, userId, 5),
+      useV2 ? getProgressTrendsV2(db, userId).catch(() => getProgressTrends(db, userId)) : getProgressTrends(db, userId),
+      getRecommendations(db, userId), // sin v2 (RPC distinta no relacionada con user_question_history)
     ])
 
     // Enriquecer preguntas con datos de ley/artículo para hacerlas accionables
