@@ -79,8 +79,8 @@
       "option_b": "Diez días a contar desde la publicación de su nombramiento en el Boletín Oficial del Estado.",
       "option_c": "Quince días a contar desde la publicación de su nombramiento en el Boletín Oficial del Estado.",
       "option_d": "Treinta días a contar desde la publicación de su nombramiento en el Boletín Oficial del Estado.",
-      "correct_letter": "B",
-      "correct_option": 1
+      "correct_letter": "A",
+      "correct_option": 0
     },
     {
       "number": 7,
@@ -131,8 +131,8 @@
       "option_b": "Servicio en otras Administraciones Públicas.",
       "option_c": "Comisión de Servicios.",
       "option_d": "Servicios Especiales.",
-      "correct_letter": "C",
-      "correct_option": 2
+      "correct_letter": "D",
+      "correct_option": 3
     },
     {
       "number": 11,
