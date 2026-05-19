@@ -122,6 +122,10 @@ describe('Admin AI Chat Logs - Schemas', () => {
         topLaws: [
           { name: 'TREBEP', count: 30 }
         ],
+        // Añadido en commit 9a5fa516 (15/05/2026): tracking por modelo IA.
+        byModel: [
+          { provider: 'anthropic', model: 'claude-opus-4-7', total: 80, positive: 18, negative: 4, errors: 1, avgResponseTime: 1300, satisfactionRate: 81.8 }
+        ],
         pagination: {
           page: 1,
           limit: 20,
@@ -146,6 +150,7 @@ describe('Admin AI Chat Logs - Schemas', () => {
         },
         topSuggestions: [],
         topLaws: [],
+        byModel: [],
         pagination: { page: 1, limit: 20, hasMore: false }
       })
       expect(result.success).toBe(true)

@@ -63,6 +63,9 @@ const KNOWN_SUBTYPES = new Set([
   'sequence_numeric', 'sequence_letter', 'sequence_alphanumeric',
   'pie_chart', 'bar_chart', 'line_chart', 'mixed_chart',
   'data_tables', 'error_detection', 'word_analysis',
+  // Importados de Guardia Civil (mayo 2026) — el frontend ya los maneja
+  // en PsychometricTestLayout.tsx (cases en línea 608-609).
+  'silogismo', 'agilidad_mental',
 ])
 
 const describeIfDb = hasRealDb ? describe : describe.skip

@@ -17,6 +17,43 @@ export interface ContentComparison {
   similarity: number
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// DECODE de entidades HTML
+// ─────────────────────────────────────────────────────────────────────────────
+// El HTML del BOE contiene entidades crudas (&Uacute;, &gt;, &minus;, etc.)
+// que el pipeline de limpieza (regex de tags + whitespace) NO decodifica.
+// Sin este paso, llegan a la BD literales y rompen el render.
+//
+// Tabla cerrada (no decoder genérico) para mantener auditabilidad: si el BOE
+// empieza a usar una entidad nueva, queremos que el test
+// `__tests__/integration/articleContentIntegrity.test.ts` lo detecte y la
+// añadamos explícitamente aquí.
+//
+// Detectado el 2026-05-19: 192 artículos importados con entidades sin decodificar
+// (limpieza one-off + este fix preventivo).
+const HTML_ENTITIES: Record<string, string> = {
+  '&aacute;': 'á', '&Aacute;': 'Á',
+  '&eacute;': 'é', '&Eacute;': 'É',
+  '&iacute;': 'í', '&Iacute;': 'Í',
+  '&oacute;': 'ó', '&Oacute;': 'Ó',
+  '&uacute;': 'ú', '&Uacute;': 'Ú',
+  '&ntilde;': 'ñ', '&Ntilde;': 'Ñ',
+  '&gt;': '>',     '&lt;': '<',
+  '&amp;': '&',    '&quot;': '"',     '&apos;': "'",
+  '&minus;': '−',  '&nbsp;': ' ',
+  '&laquo;': '«',  '&raquo;': '»',
+  '&iexcl;': '¡',  '&iquest;': '¿',
+  '&hellip;': '…', '&mdash;': '—',   '&ndash;': '–',
+}
+
+function decodeHtmlEntities(s: string): string {
+  let out = s
+  for (const [from, to] of Object.entries(HTML_ENTITIES)) {
+    if (out.includes(from)) out = out.split(from).join(to)
+  }
+  return out
+}
+
 /**
  * Convierte texto de número español a dígito
  * Soporta desde "primero" hasta "trescientos y pico"
@@ -151,7 +188,7 @@ export function extractArticlesFromBOE(html: string, options: ExtractionOptions 
     // Patrón Preámbulo: id="preambulo" → article_number = "Preámbulo"
     const isPreambulo = /^pre[aá]mbulo$/i.test(blockId)
     if (isPreambulo) {
-      const content = blockContent
+      const content = decodeHtmlEntities(blockContent
         .replace(/<p[^>]*class="bloque"[^>]*>.*?<\/p>/gi, '')
         .replace(/<form[^>]*>[\s\S]*?<\/form>/gi, '')
         .replace(/<\/p>/gi, '\n\n')
@@ -159,7 +196,7 @@ export function extractArticlesFromBOE(html: string, options: ExtractionOptions 
         .replace(/<[^>]*>/g, '')
         .replace(/\n{3,}/g, '\n\n')
         .replace(/[ \t]+/g, ' ')
-        .replace(/^ +| +$/gm, '')
+        .replace(/^ +| +$/gm, ''))
         .trim()
       if (content.length > 10) {
         articles.push({
@@ -274,7 +311,7 @@ export function extractArticlesFromBOE(html: string, options: ExtractionOptions 
     if (!articleNumber) continue
 
     // Extraer y limpiar contenido
-    const content = blockContent
+    const content = decodeHtmlEntities(blockContent
       .replace(/<h5[^>]*class="articulo"[^>]*>[\s\S]*?<\/h5>/gi, '')
       .replace(/<p[^>]*class="bloque"[^>]*>.*?<\/p>/gi, '')
       .replace(/<p[^>]*class="nota_pie"[^>]*>[\s\S]*?<\/p>/gi, '')
@@ -294,7 +331,7 @@ export function extractArticlesFromBOE(html: string, options: ExtractionOptions 
       .replace(/\n{3,}/g, '\n\n')
       .replace(/[ \t]+/g, ' ')
       .replace(/^ +| +$/gm, '')
-      .trim()
+      .trim())
 
     // Filtrar artículos suprimidos
     if (content.includes('(Suprimido)') || content.includes('(SUPRIMIDO)')) {

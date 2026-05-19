@@ -209,8 +209,10 @@ describeIf('Integridad de slugs en BD (integración)', () => {
       ['Reglamento del Congreso', 'reglamento-del-congreso'],
       ['Reglamento del Senado', 'reglamento-del-senado'],
       ['Informática Básica', 'informatica-basica'],
-      ['Hojas de cálculo. Excel', 'hojas-de-calculo-excel'],
-      ['Correo electrónico', 'correo-electronico'],
+      // Renombrados a "Excel 365" / "Outlook 365" manteniendo el slug original
+      // (los slugs son los que aparecen en URLs públicas; el short_name puede cambiar).
+      ['Excel 365', 'hojas-de-calculo-excel'],
+      ['Outlook 365', 'correo-electronico'],
       ['Ley Tráfico', 'ley-trafico'],
       ['RI Comisión', 'ri-comision'],
       ['Administración electrónica y servicios al ciudadano (CSL)', 'administracion-electronica-csl'],
@@ -218,8 +220,12 @@ describeIf('Integridad de slugs en BD (integración)', () => {
 
     it.each(criticalMappings)(
       '%s → "%s"',
-      (shortName, expectedSlug) => {
-        const law = activeLaws.find(l => l.short_name === shortName)
+      (_shortName, expectedSlug) => {
+        // Buscar por SLUG, no por short_name: el slug es lo que aparece en URLs
+        // y lo que protege contra 404s. El short_name puede renombrarse
+        // libremente (ej.: "Hojas de cálculo. Excel" → "Excel 365") sin
+        // afectar a las URLs públicas, así que no debe romper este test.
+        const law = activeLaws.find(l => l.slug === expectedSlug)
         expect(law).toBeDefined()
         expect(law!.slug).toBe(expectedSlug)
       }

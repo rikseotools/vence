@@ -16,6 +16,7 @@ export default {
     // Mock de módulos ESM que Jest no puede importar
     '^react-markdown$': '<rootDir>/__mocks__/react-markdown.js',
     '^@supabase/realtime-js$': '<rootDir>/__mocks__/@supabase/realtime-js.js',
+    '^@upstash/redis$': '<rootDir>/__mocks__/@upstash/redis.js',
   },
   setupFiles: ['<rootDir>/jest.setup.js'],
   setupFilesAfterEnv: ['<rootDir>/jest.afterEnv.js'],

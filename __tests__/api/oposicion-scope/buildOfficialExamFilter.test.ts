@@ -5,8 +5,8 @@
 // onlyOfficialQuestions=true. Este helper centraliza el filtro y se aplica
 // SIEMPRE en filtered-questions/queries.ts.
 
-// Mock getDb para poder capturar inserts/selects sin tocar BD real
-// NOTA: factory de jest.mock debe ser autocontenida (no referencias externas)
+// Mock getDb / getPoolerDb para capturar inserts/selects sin tocar BD real.
+// NOTA: factory de jest.mock debe ser autocontenida (no referencias externas).
 jest.mock('@/db/client', () => {
   const insertValues = jest.fn().mockResolvedValue(undefined)
   const selectLimit = jest.fn().mockResolvedValue([])
@@ -20,8 +20,52 @@ jest.mock('@/db/client', () => {
         }),
       }),
     }),
+    // getPoolerDb se usa cuando USE_SELF_HOSTED_POOLER=true (no en tests).
+    getPoolerDb: () => ({
+      insert: () => ({ values: jest.fn().mockResolvedValue(undefined) }),
+      select: () => ({
+        from: () => ({
+          where: () => ({ limit: jest.fn().mockResolvedValue([]) }),
+        }),
+      }),
+    }),
   }
 })
+
+// Mock de la config de exam-positions y oposiciones para desacoplar el test
+// del estado real de EXAM_POSITION_MAP / ALL_POSITION_TYPES. Cuando se añaden
+// mapeos legítimos (ej.: canarias en mayo 2026), el test no debe romperse:
+// éste prueba la LÓGICA del dedupe, no la cobertura de la config.
+//
+// Convenciones de los positionTypes de test:
+//   - 'TEST_MAPPED_OPOSICION'  → tiene mapeo válido (no dispara log).
+//   - 'TEST_UNMAPPED_*'        → conocidas pero sin mapeo (sí disparan log info).
+//   - Cualquier otra string    → no reconocida (console.warn inmediato).
+//
+// Cada test usa su propia posición TEST_UNMAPPED_* porque el Set module-level
+// `loggedNoMappingToday` en lib/api/oposicion-scope/queries.ts persiste entre
+// tests dentro del mismo run. Para verificar invariantes que requieren
+// "primera llamada para esa posición" hace falta una posición fresh.
+jest.mock('@/lib/config/exam-positions', () => ({
+  getValidExamPositions: jest.fn((positionType: string) => {
+    if (positionType === 'TEST_MAPPED_OPOSICION') return ['exam-position-mapped']
+    return null
+  }),
+}))
+
+jest.mock('@/lib/config/oposiciones', () => ({
+  ALL_POSITION_TYPES: [
+    'TEST_MAPPED_OPOSICION',
+    // Una posición fresh por test que la necesite (Set persiste entre tests).
+    'TEST_UNMAPPED_NO_WARN',      // test "no emite console.warn"
+    'TEST_UNMAPPED_DEDUPE_SET',   // test "dedupe intra-proceso (Set)"
+    'TEST_UNMAPPED_DISTINCT_A',   // test "dedupe por oposición" (1ª)
+    'TEST_UNMAPPED_DISTINCT_B',   // test "dedupe por oposición" (2ª)
+    'TEST_UNMAPPED_DB_PREEXISTS', // test "query previa indica existente"
+    'TEST_UNMAPPED_TELEMETRY_ERR',// test "fallo telemetry"
+    'TEST_UNMAPPED_BLOCK_CHECK',  // test "bloquea oficiales igual"
+  ],
+}))
 
 import { buildOfficialExamFilter } from '@/lib/api/oposicion-scope/queries'
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -44,17 +88,17 @@ describe('buildOfficialExamFilter', () => {
     warnSpy.mockRestore()
   })
 
-  // Helper para esperar a que el fire-and-forget se resuelva
+  // Helper para esperar a que el fire-and-forget se resuelva (IIFE async con
+  // 2 awaits internos: select + insert).
   const flush = async () => {
-    // Dos microtask ticks: 1 para el async IIFE, 1 para el await interno
     await Promise.resolve()
     await Promise.resolve()
     await Promise.resolve()
   }
 
   test('positionType con mapeo válido devuelve cláusula que filtra oficiales por exam_position', () => {
-    const filter = buildOfficialExamFilter('auxiliar_administrativo_estado')
-    // No es sql\`true\`: es una cláusula or() de drizzle
+    const filter = buildOfficialExamFilter('TEST_MAPPED_OPOSICION')
+    // No es sql`true`: es una cláusula or() de drizzle
     expect(filter).toBeDefined()
     expect(typeof filter).toBe('object')
     // No emite warning
@@ -75,18 +119,18 @@ describe('buildOfficialExamFilter', () => {
     expect(warnSpy).toHaveBeenCalled()
   })
 
-  test('positionType auxiliar_administrativo_estado tiene mapeo', () => {
-    buildOfficialExamFilter('auxiliar_administrativo_estado')
+  test('positionType TEST_MAPPED_OPOSICION tiene mapeo', () => {
+    buildOfficialExamFilter('TEST_MAPPED_OPOSICION')
     expect(warnSpy).not.toHaveBeenCalled()
   })
 
-  test('oposición conocida SIN mapeo (CARM) no emite console.warn — se registra como info en validation_error_logs', async () => {
+  test('oposición conocida SIN mapeo no emite console.warn — se registra como info en validation_error_logs', async () => {
     // Post-15/04/2026: para reducir ruido de logs en Vercel, las oposiciones
     // conocidas sin mapeo (CARM, Aragón, Baleares, etc.) no emiten warn en
     // console; se registran 1 vez al día en validation_error_logs con
     // severity='info' y errorType='no_exam_position_mapping'. El warn de
     // console se reserva para positionTypes DESCONOCIDOS (bug real).
-    buildOfficialExamFilter('auxiliar_administrativo_aragon')
+    buildOfficialExamFilter('TEST_UNMAPPED_NO_WARN')
     expect(warnSpy).not.toHaveBeenCalled()
     await flush()
     // Se inserta en validation_error_logs con severity=info
@@ -96,26 +140,26 @@ describe('buildOfficialExamFilter', () => {
       endpoint: 'lib/oposicion-scope',
       errorType: 'no_exam_position_mapping',
       severity: 'info',
-      requestBody: { positionType: 'auxiliar_administrativo_aragon' },
+      requestBody: { positionType: 'TEST_UNMAPPED_NO_WARN' },
     })
   })
 
   test('dedupe intra-proceso: múltiples llamadas a la misma oposición en el mismo día → solo 1 insert', async () => {
-    buildOfficialExamFilter('auxiliar_administrativo_canarias')
-    buildOfficialExamFilter('auxiliar_administrativo_canarias')
-    buildOfficialExamFilter('auxiliar_administrativo_canarias')
+    buildOfficialExamFilter('TEST_UNMAPPED_DEDUPE_SET')
+    buildOfficialExamFilter('TEST_UNMAPPED_DEDUPE_SET')
+    buildOfficialExamFilter('TEST_UNMAPPED_DEDUPE_SET')
     await flush()
     expect(insertValuesSpy).toHaveBeenCalledTimes(1)
   })
 
   test('dedupe por oposición: oposiciones distintas generan inserts separados', async () => {
-    buildOfficialExamFilter('auxiliar_administrativo_extremadura')
-    buildOfficialExamFilter('auxiliar_administrativo_galicia')
+    buildOfficialExamFilter('TEST_UNMAPPED_DISTINCT_A')
+    buildOfficialExamFilter('TEST_UNMAPPED_DISTINCT_B')
     await flush()
     expect(insertValuesSpy).toHaveBeenCalledTimes(2)
     const positions = insertValuesSpy.mock.calls.map((c) => c[0].requestBody.positionType)
     expect(positions).toEqual(
-      expect.arrayContaining(['auxiliar_administrativo_extremadura', 'auxiliar_administrativo_galicia']),
+      expect.arrayContaining(['TEST_UNMAPPED_DISTINCT_A', 'TEST_UNMAPPED_DISTINCT_B']),
     )
   })
 
@@ -128,14 +172,16 @@ describe('buildOfficialExamFilter', () => {
 
   test('si la query previa indica que ya existe un registro del día, NO inserta', async () => {
     selectLimitSpy.mockResolvedValueOnce([{ id: 'existing-id' }])
-    buildOfficialExamFilter('auxiliar_administrativo_ayuntamiento_valencia')
+    buildOfficialExamFilter('TEST_UNMAPPED_DB_PREEXISTS')
     await flush()
+    // El Set añade la entry y dispara la IIFE; la IIFE consulta BD, ve
+    // `existing.length > 0`, hace early return → no se llama insert.
     expect(insertValuesSpy).not.toHaveBeenCalled()
   })
 
   test('fallo del telemetry (ej. BD caída) no propaga excepción ni afecta al filtro', async () => {
     selectLimitSpy.mockRejectedValueOnce(new Error('BD caída simulada'))
-    const filter = buildOfficialExamFilter('auxiliar_administrativo_ayuntamiento_murcia')
+    const filter = buildOfficialExamFilter('TEST_UNMAPPED_TELEMETRY_ERR')
     // El filtro se devuelve igual
     expect(filter).toBeDefined()
     await flush()
@@ -144,7 +190,7 @@ describe('buildOfficialExamFilter', () => {
 
   test('oposición conocida SIN mapeo bloquea oficiales igual (misma cláusula que antes)', () => {
     // Regresión: el cambio de política de logging no cambia el filtro SQL devuelto.
-    const filter = buildOfficialExamFilter('auxiliar_administrativo_aragon')
+    const filter = buildOfficialExamFilter('TEST_UNMAPPED_BLOCK_CHECK')
     expect(filter).toBeDefined()
     expect(typeof filter).toBe('object')
   })

@@ -85,9 +85,9 @@ describe('devices route — source code', () => {
   })
 
   it('verifica autenticación via Bearer token', () => {
-    expect(routeSrc).toMatch(/authorization/)
-    expect(routeSrc).toMatch(/Bearer/)
-    expect(routeSrc).toMatch(/getUser/)
+    // Migrado en commit b9f637d6 (11/05/2026) al wrapper verifyAuthOptional.
+    // El header Bearer/authorization ya no aparece literal: lo gestiona el wrapper.
+    expect(routeSrc).toMatch(/verifyAuthOptional/)
   })
 
   it('usa Zod para validar DELETE', () => {

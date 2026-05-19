@@ -44,8 +44,9 @@ describe('Onboarding — flujo v2 end-to-end', () => {
 
   describe('API route /api/v2/complete-onboarding', () => {
     it('verifica auth con Bearer token', () => {
-      expect(routeContent).toContain("authorization")
-      expect(routeContent).toContain("Bearer")
+      // Migrado en commit b9f637d6 (11/05/2026) al wrapper verifyAuth.
+      // El header Bearer/authorization ya no aparece literal: lo gestiona el wrapper.
+      expect(routeContent).toContain("verifyAuth")
     })
 
     it('usa safeParseCompleteOnboardingRequest para validar', () => {

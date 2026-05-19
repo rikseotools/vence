@@ -188,8 +188,11 @@ describe('Suggestions query in teoriaFetchers', () => {
     const pgrst116Index = content.indexOf('PGRST116')
     expect(pgrst116Index).toBeGreaterThan(-1)
 
-    // The query after PGRST116 should use laws!inner, not just laws
+    // Migrado a Drizzle en commit e8d08529 (01/05/2026): la suggestions query
+    // ahora usa .innerJoin(laws, ...) en lugar de la sintaxis PostgREST
+    // "laws!inner". El invariante se mantiene: la query debe hacer inner join
+    // con laws para filtrar artículos por ley.
     const querySection = content.substring(pgrst116Index, pgrst116Index + 500)
-    expect(querySection).toContain('laws!inner')
+    expect(querySection).toContain('innerJoin(laws')
   })
 })

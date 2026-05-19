@@ -184,7 +184,9 @@ describe('/api/topics/[numero] — stale-while-error', () => {
     const res = await GET(buildReq(), buildParams())
 
     expect(res.status).toBe(503)
-    expect(res.headers.get('Retry-After')).toBe('5')
+    // 300s decidido en commit b09961b4 (10/05/2026): 5s era engañoso; 5 min
+    // cubre la mayoría de blips de pool degradado.
+    expect(res.headers.get('Retry-After')).toBe('300')
     const body = await res.json()
     expect(body.success).toBe(false)
     expect(body.retryable).toBe(true)

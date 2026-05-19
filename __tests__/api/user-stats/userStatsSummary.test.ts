@@ -104,7 +104,7 @@ describeIfDb('data accuracy', () => {
     expect(heaviest.total_questions).toBe(real.total)
     expect(heaviest.correct_answers).toBe(real.correct)
     expect(heaviest.blank_answers).toBe(real.blank)
-  })
+  }, 30000) // 30s: el JOIN sobre test_questions del usuario pesado (62k+ filas) tarda ~13s
 
   it('all users with test_questions have a summary row', async () => {
     const { rows: [check] } = await pool.query(`
