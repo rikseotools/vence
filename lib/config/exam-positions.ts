@@ -51,6 +51,12 @@ export const EXAM_POSITION_MAP: Record<string, string[]> = {
     'auxiliar administrativo junta de extremadura',
     'cuerpo auxiliar administracion comunidad autonoma extremadura',
   ],
+  'auxiliar_administrativo_canarias': [
+    'auxiliar_administrativo_canarias',
+    'auxiliar administrativo canarias',
+    'auxiliar administrativo gobierno de canarias',
+    'cuerpo auxiliar administracion publica comunidad autonoma canarias',
+  ],
   'auxilio_judicial': [
     'auxilio_judicial',
     'auxilio judicial',
@@ -125,6 +131,8 @@ export const HOT_ARTICLE_TARGET_MAP: Record<string, string[]> = {
   'auxiliar_administrativo_carm': ['auxiliar-administrativo-carm'],
   'auxiliar-administrativo-extremadura': ['auxiliar-administrativo-extremadura'],
   'auxiliar_administrativo_extremadura': ['auxiliar-administrativo-extremadura'],
+  'auxiliar-administrativo-canarias': ['auxiliar-administrativo-canarias'],
+  'auxiliar_administrativo_canarias': ['auxiliar-administrativo-canarias'],
   'auxiliar-administrativo-valencia': ['auxiliar-administrativo-valencia'],
   'auxiliar_administrativo_valencia': ['auxiliar-administrativo-valencia'],
   'auxiliar-administrativo-ayuntamiento-valencia': ['auxiliar-administrativo-ayuntamiento-valencia'],

@@ -1244,6 +1244,25 @@ export const OPOSICIONES: Oposicion[] = [
       { href: '/auxiliar-administrativo-canarias/temario', label: 'Temario', icon: '📚' },
       { href: '/auxiliar-administrativo-canarias/test', label: 'Tests', icon: '🎯' },
     ],
+    officialExams: [
+      {
+        date: '2024-03-09',
+        title: 'Convocatoria OEP 2022 - Turno libre/discapacidad (103 plazas)',
+        oep: 'OEP 2022',
+        note: 'Resolución 2/12/2022, DG Función Pública (BOC 245, 15/12/2022). Cuestionario 2 (modelo aplicado).',
+        partes: [
+          {
+            id: 'primera',
+            icon: '📘',
+            title: '1er ejercicio',
+            ordinaryCount: 50,
+            reserveCount: 4,
+            durationMin: 75,
+            breakdown: [{ label: 'tipo test', count: 50 }],
+          },
+        ],
+      },
+    ],
   },
 
   // ========================================
