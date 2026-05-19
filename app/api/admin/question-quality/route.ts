@@ -40,6 +40,9 @@ interface QualityResponse {
     psy_duplicate_questions: CheckResult
     psy_implicit_table: CheckResult
     psy_auto_classified_unverified: CheckResult
+    psy_empty_explanation: CheckResult
+    psy_cramped_explanation: CheckResult
+    psy_latex_in_explanation: CheckResult
     regional_wrong_law: CheckResult
     mismatched_answer: CheckResult
   }
@@ -233,8 +236,22 @@ async function runCountsOnly(): Promise<number> {
           option_a = '' OR option_b = '' OR option_c = '' OR option_d = ''
         ) as psy_empty,
         count(*) FILTER (WHERE
-          (question_text ILIKE '%serie de figuras%' OR question_text ILIKE '%siguiente imagen%' OR question_text ILIKE '%siguiente gráfico%' OR question_text ILIKE '%tabla I y marcar%' OR question_text ILIKE '%observe la figura%' OR question_text ILIKE '%sustituya a la interrogaci%' OR question_text ILIKE '%sustituya al interrogante%' OR question_text ILIKE '%ocupe el lugar%')
-          AND (content_data IS NULL OR content_data::text = '{}')
+          (question_text ILIKE '%serie de figuras%' OR question_text ILIKE '%siguiente imagen%' OR question_text ILIKE '%siguiente gráfico%' OR question_text ILIKE '%tabla I y marcar%' OR question_text ILIKE '%observe la figura%' OR question_text ILIKE '%sustituya a la interrogaci%' OR question_text ILIKE '%sustituya al interrogante%' OR question_text ILIKE '%ocupe el lugar%' OR question_text ILIKE '%lugar de la interrogante%' OR question_text ILIKE '%lugar de la interrogación%' OR question_text ILIKE '%estructura lógica de la serie%')
+          AND (
+            content_data IS NULL
+            OR content_data::text = '{}'
+            OR (
+              content_data->'table_data' IS NULL
+              AND content_data->'tables' IS NULL
+              AND content_data->'chart_data' IS NULL
+              AND content_data->'categories' IS NULL
+              AND content_data->'age_groups' IS NULL
+              AND content_data->'instructions' IS NULL
+              AND content_data->'sequence' IS NULL
+              AND content_data->'pairs' IS NULL
+              AND content_data->'image_base64' IS NULL
+            )
+          )
           AND image_url IS NULL
         ) as psy_figures,
         count(*) FILTER (WHERE
@@ -246,7 +263,24 @@ async function runCountsOnly(): Promise<number> {
         count(*) FILTER (WHERE
           (content_data->>'auto_classified_to') IS NOT NULL
           AND is_verified = false
-        ) as psy_auto_classified
+        ) as psy_auto_classified,
+        count(*) FILTER (WHERE
+          explanation IS NULL OR TRIM(explanation) = ''
+        ) as psy_empty_expl,
+        count(*) FILTER (WHERE
+          explanation IS NOT NULL AND LENGTH(explanation) > 400
+          AND explanation NOT LIKE '%' || chr(10) || '%'
+        ) as psy_cramped_expl,
+        count(*) FILTER (WHERE
+          strpos(explanation, ${'$$'}) > 0
+          OR strpos(explanation, ${'\\frac{'}) > 0
+          OR strpos(explanation, ${'\\sqrt{'}) > 0
+          OR strpos(explanation, ${'\\sum_'}) > 0
+          OR strpos(explanation, ${'\\int_'}) > 0
+          OR strpos(explanation, ${'\\cdot '}) > 0
+          OR strpos(explanation, ${'\\times '}) > 0
+          OR strpos(explanation, ${'\\pm '}) > 0
+        ) as psy_latex_expl
       FROM psychometric_questions
       WHERE is_active = true
     ),
@@ -321,7 +355,7 @@ async function runCountsOnly(): Promise<number> {
           OR q.question_text ILIKE '%Ley%Illes Balears%'
         )
     )
-    SELECT (b.empty_options + b.banned_words + b.pending_explanation + b.missing_article + b.missing_image + b.excel_typo + b.html_explanation + b.cramped_explanation + b.outdated_plan + b.mismatched_answer + s.copied + dup.duplicates + wl.wrong_law + uc.uncited + pb.psy_empty + pb.psy_figures + pb.psy_html + pb.psy_auto_classified + psy_dup.duplicates + psy_imp.implicit_table + rw.regional_mismatch)::int as total
+    SELECT (b.empty_options + b.banned_words + b.pending_explanation + b.missing_article + b.missing_image + b.excel_typo + b.html_explanation + b.cramped_explanation + b.outdated_plan + b.mismatched_answer + s.copied + dup.duplicates + wl.wrong_law + uc.uncited + pb.psy_empty + pb.psy_figures + pb.psy_html + pb.psy_auto_classified + pb.psy_empty_expl + pb.psy_cramped_expl + pb.psy_latex_expl + psy_dup.duplicates + psy_imp.implicit_table + rw.regional_mismatch)::int as total
     FROM base b, similarity_count s, duplicate_count dup, wrong_law_count wl, uncited_count uc, psy_base pb, psy_duplicate_count psy_dup, psy_implicit_table_count psy_imp, regional_wrong rw
   `)
 
@@ -582,8 +616,22 @@ async function runChecks(): Promise<QualityResponse> {
              count(*) OVER()::int as total_count
       FROM psychometric_questions
       WHERE is_active = true
-        AND (question_text ILIKE '%serie de figuras%' OR question_text ILIKE '%siguiente imagen%' OR question_text ILIKE '%siguiente gráfico%' OR question_text ILIKE '%tabla I y marcar%' OR question_text ILIKE '%observe la figura%' OR question_text ILIKE '%sustituya a la interrogaci%' OR question_text ILIKE '%sustituya al interrogante%' OR question_text ILIKE '%ocupe el lugar%')
-        AND (content_data IS NULL OR content_data::text = '{}')
+        AND (question_text ILIKE '%serie de figuras%' OR question_text ILIKE '%siguiente imagen%' OR question_text ILIKE '%siguiente gráfico%' OR question_text ILIKE '%tabla I y marcar%' OR question_text ILIKE '%observe la figura%' OR question_text ILIKE '%sustituya a la interrogaci%' OR question_text ILIKE '%sustituya al interrogante%' OR question_text ILIKE '%ocupe el lugar%' OR question_text ILIKE '%lugar de la interrogante%' OR question_text ILIKE '%lugar de la interrogación%' OR question_text ILIKE '%estructura lógica de la serie%')
+        AND (
+          content_data IS NULL
+          OR content_data::text = '{}'
+          OR (
+            content_data->'table_data' IS NULL
+            AND content_data->'tables' IS NULL
+            AND content_data->'chart_data' IS NULL
+            AND content_data->'categories' IS NULL
+            AND content_data->'age_groups' IS NULL
+            AND content_data->'instructions' IS NULL
+            AND content_data->'sequence' IS NULL
+            AND content_data->'pairs' IS NULL
+            AND content_data->'image_base64' IS NULL
+          )
+        )
         AND image_url IS NULL
       LIMIT ${MAX_ITEMS}
     `),
@@ -702,11 +750,53 @@ async function runChecks(): Promise<QualityResponse> {
         AND is_verified = false
       LIMIT ${MAX_ITEMS}
     `),
+
+    // 19. [PSY] Explicación vacía
+    db.execute(sql`
+      SELECT id, LEFT(question_text, ${TEXT_LIMIT}) as question_text,
+             count(*) OVER()::int as total_count
+      FROM psychometric_questions
+      WHERE is_active = true
+        AND (explanation IS NULL OR TRIM(explanation) = '')
+      LIMIT ${MAX_ITEMS}
+    `),
+
+    // 20. [PSY] Explicación monolínea (>400 chars sin saltos de línea)
+    db.execute(sql`
+      SELECT id, LEFT(question_text, ${TEXT_LIMIT}) as question_text,
+             LENGTH(explanation)::int as expl_len,
+             count(*) OVER()::int as total_count
+      FROM psychometric_questions
+      WHERE is_active = true
+        AND explanation IS NOT NULL
+        AND LENGTH(explanation) > 400
+        AND explanation NOT LIKE '%' || chr(10) || '%'
+      LIMIT ${MAX_ITEMS}
+    `),
+
+    // 21. [PSY] LaTeX crudo en explicación (no soportado por el renderer)
+    db.execute(sql`
+      SELECT id, LEFT(question_text, ${TEXT_LIMIT}) as question_text,
+             count(*) OVER()::int as total_count
+      FROM psychometric_questions
+      WHERE is_active = true
+        AND (
+          strpos(explanation, ${'$$'}) > 0
+          OR strpos(explanation, ${'\\frac{'}) > 0
+          OR strpos(explanation, ${'\\sqrt{'}) > 0
+          OR strpos(explanation, ${'\\sum_'}) > 0
+          OR strpos(explanation, ${'\\int_'}) > 0
+          OR strpos(explanation, ${'\\cdot '}) > 0
+          OR strpos(explanation, ${'\\times '}) > 0
+          OR strpos(explanation, ${'\\pm '}) > 0
+        )
+      LIMIT ${MAX_ITEMS}
+    `),
   ])
 
   const toRows = (r: any) => (r as any).rows ?? r ?? []
 
-  const [emptyOpts, bannedRaw, pendingExpl, missingArt, missingImg, excelTypoRaw, htmlExplRaw, wrongLawRaw, crampedExplRaw, copiedExplRaw, duplicateRaw, uncitedRaw, outdatedPlanRaw, mismatchedRaw, psyEmptyRaw, psyFiguresRaw, psyHtmlRaw, regionalWrongRaw, psyDuplicateRaw, psyImplicitTableRaw, psyAutoClassifiedRaw] = results
+  const [emptyOpts, bannedRaw, pendingExpl, missingArt, missingImg, excelTypoRaw, htmlExplRaw, wrongLawRaw, crampedExplRaw, copiedExplRaw, duplicateRaw, uncitedRaw, outdatedPlanRaw, mismatchedRaw, psyEmptyRaw, psyFiguresRaw, psyHtmlRaw, regionalWrongRaw, psyDuplicateRaw, psyImplicitTableRaw, psyAutoClassifiedRaw, psyEmptyExplRaw, psyCrampedExplRaw, psyLatexExplRaw] = results
 
   const emptyRows = toRows(emptyOpts)
   const bannedRows = toRows(bannedRaw)
@@ -729,6 +819,9 @@ async function runChecks(): Promise<QualityResponse> {
   const psyDuplicateRows = toRows(psyDuplicateRaw)
   const psyImplicitTableRows = toRows(psyImplicitTableRaw)
   const psyAutoClassifiedRows = toRows(psyAutoClassifiedRaw)
+  const psyEmptyExplRows = toRows(psyEmptyExplRaw)
+  const psyCrampedExplRows = toRows(psyCrampedExplRaw)
+  const psyLatexExplRows = toRows(psyLatexExplRaw)
 
   // Detect which field has banned word
   const bannedRegexJs = new RegExp(BANNED_REGEX.replace('(?i)', ''), 'i')
@@ -870,6 +963,24 @@ async function runChecks(): Promise<QualityResponse> {
         id: q.id, question_text: q.question_text, field: q.auto_to || 'auto-clasificada',
       })),
     },
+    psy_empty_explanation: {
+      count: getCount(psyEmptyExplRows),
+      questions: psyEmptyExplRows.map((q: any) => ({
+        id: q.id, question_text: q.question_text, field: 'explanation',
+      })),
+    },
+    psy_cramped_explanation: {
+      count: getCount(psyCrampedExplRows),
+      questions: psyCrampedExplRows.map((q: any) => ({
+        id: q.id, question_text: q.question_text, field: `${q.expl_len} chars`,
+      })),
+    },
+    psy_latex_in_explanation: {
+      count: getCount(psyLatexExplRows),
+      questions: psyLatexExplRows.map((q: any) => ({
+        id: q.id, question_text: q.question_text, field: 'latex crudo',
+      })),
+    },
     regional_wrong_law: {
       count: getCount(regionalWrongRows),
       questions: regionalWrongRows.map((q: any) => ({
@@ -909,6 +1020,9 @@ async function runChecks(): Promise<QualityResponse> {
     checks.psy_duplicate_questions.count +
     checks.psy_implicit_table.count +
     checks.psy_auto_classified_unverified.count +
+    checks.psy_empty_explanation.count +
+    checks.psy_cramped_explanation.count +
+    checks.psy_latex_in_explanation.count +
     checks.regional_wrong_law.count +
     checks.mismatched_answer.count
 

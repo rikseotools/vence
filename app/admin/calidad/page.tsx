@@ -138,6 +138,21 @@ const CHECK_CONFIG = {
     description: 'Psicotécnicas importadas con auto_classified_to y is_verified=false (riesgo de mala clasificación)',
     icon: '🤖',
   },
+  psy_empty_explanation: {
+    title: '[PSY] Explicación vacía',
+    description: 'Psicotécnicas activas cuya explicación es NULL o cadena vacía (importadas sin explicación)',
+    icon: '📭',
+  },
+  psy_cramped_explanation: {
+    title: '[PSY] Explicación monolínea',
+    description: 'Psicotécnicas con explicación >400 chars en una sola línea, sin saltos ni formato markdown (poco didáctica)',
+    icon: '📜',
+  },
+  psy_latex_in_explanation: {
+    title: '[PSY] LaTeX crudo en explicación',
+    description: 'Psicotécnicas con LaTeX ($$, \\frac, \\sqrt, \\sum, \\int, \\cdot, \\times, \\pm) que el renderer markdown actual no procesa',
+    icon: '🧮',
+  },
   regional_wrong_law: {
     title: 'Norma autonómica → ley estatal',
     description: 'Preguntas que mencionan normas autonómicas pero están vinculadas a leyes estatales (aparecen en oposiciones incorrectas)',

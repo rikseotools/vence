@@ -52,8 +52,66 @@ export default function SequenceNumericQuestion({
   }
 
   const renderSequence = () => {
-    // No renderizar recuadro azul para secuencias numéricas
-    // Las secuencias van integradas en el texto de la pregunta
+    // Series con disposición visual (p.ej. circular): se renderiza un SVG inline
+    // alimentado por content_data.pairs. El resto de series llevan los datos en
+    // question_text, por lo que aquí solo cubrimos los patrones visuales.
+    const cd = (question.content_data || {}) as {
+      pattern_type?: string
+      pairs?: Array<[number | string | null, number | string | null]>
+    }
+
+    if (cd.pattern_type === 'visual_circular' && Array.isArray(cd.pairs) && cd.pairs.length > 0) {
+      const pairs = cd.pairs
+      const cx = 200, cy = 200, R = 130, nodeR = 32
+      const nodes: Array<{ x: number; y: number; value: number | string | null }> = []
+      pairs.forEach((p, i) => {
+        const a1 = -Math.PI / 2 + (i / pairs.length) * Math.PI
+        const a2 = a1 + Math.PI
+        nodes.push({ x: cx + R * Math.cos(a1), y: cy + R * Math.sin(a1), value: p[0] })
+        nodes.push({ x: cx + R * Math.cos(a2), y: cy + R * Math.sin(a2), value: p[1] })
+      })
+
+      return (
+        <div className="my-6 flex justify-center">
+          <svg viewBox="0 0 400 400" width="320" height="320" className="rounded-lg">
+            {pairs.map((_, i) => {
+              const a = nodes[i * 2], b = nodes[i * 2 + 1]
+              return (
+                <line
+                  key={`line-${i}`}
+                  x1={a.x} y1={a.y} x2={b.x} y2={b.y}
+                  className="stroke-gray-300 dark:stroke-gray-600"
+                  strokeWidth={1}
+                  strokeDasharray="4 4"
+                />
+              )
+            })}
+            <circle cx={cx} cy={cy} r={R}
+              className="fill-none stroke-gray-200 dark:stroke-gray-700" strokeWidth={1} />
+            {nodes.map((n, i) => {
+              const isUnknown = n.value === null || n.value === undefined || n.value === '?'
+              return (
+                <g key={`node-${i}`}>
+                  <circle cx={n.x} cy={n.y} r={nodeR}
+                    className={isUnknown
+                      ? 'fill-amber-100 dark:fill-amber-900 stroke-gray-700 dark:stroke-gray-300'
+                      : 'fill-white dark:fill-gray-700 stroke-gray-700 dark:stroke-gray-300'}
+                    strokeWidth={2} />
+                  <text x={n.x} y={n.y + 7} textAnchor="middle"
+                    className="fill-gray-900 dark:fill-gray-100"
+                    fontSize={22} fontWeight={700}
+                    style={{ fontFamily: 'ui-sans-serif, system-ui, -apple-system, sans-serif' }}>
+                    {isUnknown ? '?' : String(n.value)}
+                  </text>
+                </g>
+              )
+            })}
+          </svg>
+        </div>
+      )
+    }
+
+    // Otras series numéricas: la serie va integrada en el texto de la pregunta
     return null
   }
 
