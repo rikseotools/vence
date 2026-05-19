@@ -180,8 +180,18 @@ export default function UserAvatar() {
         .catch(() => {})
     }
 
+    // Hay dos eventos en uso por mismatch histórico (bug detectado 19/05/2026
+    // feedback Nila — el icono no se refrescaba tras tests exam normales):
+    //   - 'exam-completed' (con guion) → dispatchado por OfficialExamLayout
+    //   - 'examCompleted'  (camelCase) → dispatchado por ExamLayout
+    // Header.tsx ya escucha ambos; aquí los unificamos en este listener para
+    // que el icono también se refresque tras cualquier tipo de test.
     window.addEventListener('exam-completed', handleExamCompleted)
-    return () => window.removeEventListener('exam-completed', handleExamCompleted)
+    window.addEventListener('examCompleted', handleExamCompleted)
+    return () => {
+      window.removeEventListener('exam-completed', handleExamCompleted)
+      window.removeEventListener('examCompleted', handleExamCompleted)
+    }
   }, [user?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Admin check ──
