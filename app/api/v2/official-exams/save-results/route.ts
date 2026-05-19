@@ -174,51 +174,13 @@ async function _POST(request: NextRequest) {
       }
     }
 
-    // 3c. Update user_question_history for legislative questions (needed for stats)
-    // Note: answeredResults already excludes 'sin_respuesta' questions
-    const legislativeResults = answeredResults.filter(r => r.questionType === 'legislative')
-    if (legislativeResults.length > 0) {
-      for (const result of legislativeResults) {
-        // Check if history exists
-        const { data: existing } = await getSupabaseAdmin()
-          .from('user_question_history')
-          .select('id, total_attempts, correct_attempts')
-          .eq('user_id', user.id)
-          .eq('question_id', result.questionId)
-          .maybeSingle()
-
-        if (existing) {
-          // Update existing
-          const newTotal = existing.total_attempts + 1
-          const newCorrect = result.isCorrect ? existing.correct_attempts + 1 : existing.correct_attempts
-          const successRate = newTotal > 0 ? (newCorrect / newTotal).toFixed(2) : '0.00'
-
-          await getSupabaseAdmin()
-            .from('user_question_history')
-            .update({
-              total_attempts: newTotal,
-              correct_attempts: newCorrect,
-              success_rate: successRate,
-              last_attempt_at: new Date().toISOString(),
-            })
-            .eq('id', existing.id)
-        } else {
-          // Insert new
-          await getSupabaseAdmin()
-            .from('user_question_history')
-            .insert({
-              user_id: user.id,
-              question_id: result.questionId,
-              total_attempts: 1,
-              correct_attempts: result.isCorrect ? 1 : 0,
-              success_rate: result.isCorrect ? '1.00' : '0.00',
-              first_attempt_at: new Date().toISOString(),
-              last_attempt_at: new Date().toISOString(),
-            })
-        }
-      }
-      console.log(`✅ [API/v2/save] ${legislativeResults.length} legislative history records updated (answered only)`)
-    }
+    // NOTA 2026-05-19: el upsert manual de user_question_history para legislativas se
+    // eliminó porque el trigger BD `trigger_update_user_question_history` (AFTER INSERT
+    // OR UPDATE en test_questions) ya mantiene la tabla. Causaba doble contabilización:
+    // +74.812 attempts inflados globalmente (medido shadow validation). Las legislativas
+    // ahora las mantiene exclusivamente el trigger BD.
+    // psychometric_user_question_history sigue requiriendo upsert manual (no tiene
+    // trigger BD análogo).
 
     // 3d. Update psychometric history
     // Note: answeredResults already excludes 'sin_respuesta' questions

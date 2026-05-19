@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { after } from 'next/server'
 import { getDb } from '@/db/client'
-import { tests, testQuestions, psychometricUserQuestionHistory, userQuestionHistory } from '@/db/schema'
+import { tests, testQuestions, psychometricUserQuestionHistory } from '@/db/schema'
 import { eq, and, sql } from 'drizzle-orm'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
@@ -234,48 +234,11 @@ async function _POST(request: NextRequest) {
       .from(testQuestions)
       .where(eq(testQuestions.testId, testId))
 
-    // Update legislative question history
-    const legislativeAnswers = savedQuestions.filter(
-      q => q.questionId && q.userAnswer && q.userAnswer.trim() !== ''
-    )
-
-    for (const answer of legislativeAnswers) {
-      const existing = await db
-        .select({ id: userQuestionHistory.id, totalAttempts: userQuestionHistory.totalAttempts, correctAttempts: userQuestionHistory.correctAttempts })
-        .from(userQuestionHistory)
-        .where(
-          and(
-            eq(userQuestionHistory.userId, user.id),
-            eq(userQuestionHistory.questionId, answer.questionId!)
-          )
-        )
-        .limit(1)
-
-      if (existing.length > 0) {
-        const record = existing[0]!
-        const newTotal = (record.totalAttempts ?? 0) + 1
-        const newCorrect = answer.isCorrect ? (record.correctAttempts ?? 0) + 1 : (record.correctAttempts ?? 0)
-        await db
-          .update(userQuestionHistory)
-          .set({
-            totalAttempts: newTotal,
-            correctAttempts: newCorrect,
-            successRate: (newCorrect / newTotal).toFixed(2),
-            lastAttemptAt: new Date().toISOString(),
-          })
-          .where(eq(userQuestionHistory.id, record.id))
-      } else {
-        await db.insert(userQuestionHistory).values({
-          userId: user.id,
-          questionId: answer.questionId!,
-          totalAttempts: 1,
-          correctAttempts: answer.isCorrect ? 1 : 0,
-          successRate: answer.isCorrect ? '1.00' : '0.00',
-          firstAttemptAt: new Date().toISOString(),
-          lastAttemptAt: new Date().toISOString(),
-        })
-      }
-    }
+    // NOTA 2026-05-19: el UPSERT manual de userQuestionHistory para preguntas legislativas
+    // se eliminó porque el trigger BD `trigger_update_user_question_history` (AFTER INSERT
+    // OR UPDATE en test_questions) ya mantiene la tabla. Mantener ambos causaba doble
+    // contabilización: +74.812 attempts inflados globalmente (medido shadow validation v2).
+    // psychometric_user_question_history SÍ requiere upsert manual: no tiene trigger BD.
 
     // Update psychometric question history
     const psychometricAnswers = savedQuestions.filter(
@@ -317,46 +280,11 @@ async function _POST(request: NextRequest) {
 
     // 8. Register UNANSWERED questions as FAILED in user history
     // This helps users identify questions they need to study
-    const unansweredLegislative = savedQuestions.filter(
-      q => q.questionId && (!q.userAnswer || q.userAnswer.trim() === '')
-    )
-
-    for (const answer of unansweredLegislative) {
-      const existing = await db
-        .select({ id: userQuestionHistory.id, totalAttempts: userQuestionHistory.totalAttempts, correctAttempts: userQuestionHistory.correctAttempts })
-        .from(userQuestionHistory)
-        .where(
-          and(
-            eq(userQuestionHistory.userId, user.id),
-            eq(userQuestionHistory.questionId, answer.questionId!)
-          )
-        )
-        .limit(1)
-
-      if (existing.length > 0) {
-        const record = existing[0]!
-        const newTotal = (record.totalAttempts ?? 0) + 1
-        // Unanswered = incorrect, so correctAttempts stays the same
-        await db
-          .update(userQuestionHistory)
-          .set({
-            totalAttempts: newTotal,
-            successRate: ((record.correctAttempts ?? 0) / newTotal).toFixed(2),
-            lastAttemptAt: new Date().toISOString(),
-          })
-          .where(eq(userQuestionHistory.id, record.id))
-      } else {
-        await db.insert(userQuestionHistory).values({
-          userId: user.id,
-          questionId: answer.questionId!,
-          totalAttempts: 1,
-          correctAttempts: 0, // Unanswered = failed
-          successRate: '0.00',
-          firstAttemptAt: new Date().toISOString(),
-          lastAttemptAt: new Date().toISOString(),
-        })
-      }
-    }
+    // NOTA 2026-05-19: el upsert legislativo de blanks también se eliminó. Las preguntas
+    // sin responder en simulacro oficial fueron INSERTed en /init con is_correct=false (ver
+    // initOfficialExam línea 814). El trigger BD ya las cuenta como attempts con correct=0,
+    // que es exactamente lo que hacía este bloque manualmente. Eliminar = sin pérdida de
+    // funcionalidad + fix doble contabilización.
 
     const unansweredPsychometric = savedQuestions.filter(
       q => q.psychometricQuestionId && (!q.userAnswer || q.userAnswer.trim() === '')
@@ -395,7 +323,7 @@ async function _POST(request: NextRequest) {
       }
     }
 
-    console.log(`✅ [API/v2/official-exams/complete] History updated: ${legislativeAnswers.length} leg answered, ${psychometricAnswers.length} psy answered, ${unansweredLegislative.length} leg unanswered (as failed), ${unansweredPsychometric.length} psy unanswered (as failed)`)
+    console.log(`✅ [API/v2/official-exams/complete] History updated: ${psychometricAnswers.length} psy answered, ${unansweredPsychometric.length} psy unanswered (as failed). Legislativas las mantiene trigger BD.`)
 
     // Invalidar cache de pending exams: el test acaba de completarse, ya no
     // debe aparecer como pendiente en el Header.
