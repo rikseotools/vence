@@ -29,7 +29,10 @@ import {
 // EXACTAMENTE en 10/10 heavy users. Documentado ARCHITECTURE_ROADMAP §"Memo
 // user_question_stats — caso Nila".
 function shouldUseV2(userId: string): boolean {
-  const pct = parseInt(process.env.USE_UQH_V2_PCT || '0', 10)
+  // Default 100: v2 validado shadow contra ground truth (10/10 heavy users
+  // exactos). Fallback automático a v1 vía .catch() en cada sub-query si v2
+  // fallara en runtime. Para rollback total: USE_UQH_V2_PCT=0 sin redeploy.
+  const pct = parseInt(process.env.USE_UQH_V2_PCT || '100', 10)
   if (pct <= 0) return false
   if (pct >= 100) return true
   // Hash simple del userId → bucket 0-99
