@@ -13,8 +13,8 @@ describe('ALL_OPOSICION_IDS — configuración', () => {
     expect(ALL_OPOSICION_IDS).toContain('auxiliar_administrativo_estado')
   })
 
-  it('incluye explorador', () => {
-    expect(ALL_OPOSICION_IDS).toContain('explorador')
+  it('NO incluye explorador (placeholder retirado; ahora target_oposicion=null)', () => {
+    expect(ALL_OPOSICION_IDS).not.toContain('explorador')
   })
 
   it('no incluye UUIDs (solo string IDs)', () => {

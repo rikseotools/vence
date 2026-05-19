@@ -359,7 +359,13 @@ export default function HeaderES() {
 
     try {
       const featuredLink = oposicionMenu?.navLinks?.find(link => link?.featured)
-      const basePath = featuredLink?.href || `/${defaultSlug}`
+      let basePath = featuredLink?.href || `/${defaultSlug}`
+      // Si el basePath no resuelve a un slug de oposición real (p.ej. 'explorador'
+      // usa DEFAULT_MENU con featured='/oposiciones'), Test/Temario darían 404.
+      const basePathSlug = basePath.replace(/^\//, '').split('/')[0]
+      if (!ALL_OPOSICION_SLUGS.includes(basePathSlug)) {
+        basePath = `/${defaultSlug}`
+      }
 
       return [
         { href: `${basePath}/test`, label: 'Test', icon: '🎯' },
@@ -1032,7 +1038,10 @@ export default function HeaderES() {
                 const progress = exam.totalQuestions > 0
                   ? Math.round((exam.answeredQuestions / exam.totalQuestions) * 100)
                   : 0
-                const contextOpoSlug = oposicionMenu?.navLinks?.find(l => l.featured)?.href?.replace('/', '') || ALL_OPOSICION_SLUGS[0]
+                const featuredSlug = oposicionMenu?.navLinks?.find(l => l.featured)?.href?.replace('/', '')
+                const contextOpoSlug = (featuredSlug && ALL_OPOSICION_SLUGS.includes(featuredSlug))
+                  ? featuredSlug
+                  : ALL_OPOSICION_SLUGS[0]
                 const titleLc = exam.title?.toLowerCase() || ''
                 // Para simulacro y examen oficial el slug está embebido en el title:
                 // "Simulacro de Examen - {slug}" / "Examen Oficial 2024-07-09 - {slug}".

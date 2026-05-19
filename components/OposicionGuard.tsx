@@ -73,7 +73,7 @@ export default function OposicionGuard() {
     return sorted
   }, [search, aliasesById])
 
-  const handleSelect = async (oposicionId: string) => {
+  const handleSelect = async (oposicionId: string | null) => {
     setSaving(true)
     try {
       await changeOposicion(oposicionId, false)
@@ -83,7 +83,9 @@ export default function OposicionGuard() {
     }
   }
 
-  const handleExplorador = () => handleSelect('explorador')
+  // "Solo estoy explorando" → target_oposicion=null (modo sin oposición elegida).
+  // Antes se usaba el placeholder 'explorador' que rompía construcciones de URL.
+  const handleExplorador = () => handleSelect(null)
 
   if (saving) {
     return (

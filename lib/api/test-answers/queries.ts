@@ -113,7 +113,7 @@ async function computeTema(
     try {
       let oposicionId = req.oposicionId || ''
 
-      if (!oposicionId || !ALL_OPOSICION_IDS.includes(oposicionId) || oposicionId === 'explorador') {
+      if (!oposicionId || !ALL_OPOSICION_IDS.includes(oposicionId)) {
         // Usar caché si se pasó (batch) para evitar N queries al userProfiles
         if (resolvedOposicionCache && resolvedOposicionCache.current) {
           oposicionId = resolvedOposicionCache.current
@@ -128,7 +128,7 @@ async function computeTema(
           if (!userOposicion) {
             console.warn(`⚠️ [insertTestAnswer] Fallback a auxiliar: userId=${userId} sin target_oposicion`)
           }
-          oposicionId = (userOposicion && ALL_OPOSICION_IDS.includes(userOposicion) && userOposicion !== 'explorador')
+          oposicionId = (userOposicion && ALL_OPOSICION_IDS.includes(userOposicion))
             ? userOposicion
             : 'auxiliar_administrativo_estado'
           if (resolvedOposicionCache) resolvedOposicionCache.current = oposicionId

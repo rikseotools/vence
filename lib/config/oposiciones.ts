@@ -3701,8 +3701,11 @@ export const OPOSICIONES: Oposicion[] = [
 // VALORES DERIVADOS (para Zod enums y mapas)
 // ============================================
 
-/** Todos los IDs de oposición (para BD target_oposicion) */
-export const ALL_OPOSICION_IDS = [...OPOSICIONES.map(o => o.id), 'explorador']
+/** Todos los IDs de oposición (para BD target_oposicion).
+ *  `target_oposicion` puede ser uno de estos ids o `null` (usuario sin oposición elegida —
+ *  antes se modelaba como el placeholder `'explorador'`, retirado por inducir construcciones
+ *  de URL incorrectas. Ver memory `feedback_explorador_to_null.md` si existe). */
+export const ALL_OPOSICION_IDS = OPOSICIONES.map(o => o.id)
 
 /** Todos los slugs de oposición (para URLs) */
 export const ALL_OPOSICION_SLUGS = OPOSICIONES.map(o => o.slug)

@@ -6,7 +6,7 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from '
 import { usePathname } from 'next/navigation'
 import { getSupabaseClient } from '../lib/supabase'
 import { useAuth } from './AuthContext'
-import { OPOSICIONES, ALL_OPOSICION_IDS, type NavLink } from '@/lib/config/oposiciones'
+import { OPOSICIONES, ALL_OPOSICION_IDS, ALL_OPOSICION_SLUGS, type NavLink } from '@/lib/config/oposiciones'
 
 const supabase = getSupabaseClient()
 
@@ -43,7 +43,7 @@ export interface OposicionContextValue {
   showNotification: boolean
   notificationData: NotificationData | null
   dismissNotification: () => void
-  changeOposicion: (newOposicionId: string, showNotificationFlag?: boolean) => Promise<boolean>
+  changeOposicion: (newOposicionId: string | null, showNotificationFlag?: boolean) => Promise<boolean>
   showOposicionChangeNotification: (oposicionName: string) => void
   needsOposicionFix: boolean
 }
@@ -63,6 +63,11 @@ const OPOSICION_MENUS: Record<string, OposicionMenu> = Object.fromEntries(
   }])
 )
 
+// Para usuarios sin oposición elegida (target_oposicion = null), el menú destacado
+// (featured) debe apuntar a un slug de oposición REAL — no a /oposiciones (página de
+// listado). Si apuntara a /oposiciones, el Header construiría '/oposiciones/test' →
+// 404. Usar el primer slug oficial garantiza que Test/Temario carguen siempre.
+const DEFAULT_FEATURED_SLUG = ALL_OPOSICION_SLUGS[0]
 const DEFAULT_MENU: OposicionMenu = {
   name: 'Explorar Oposiciones',
   shortName: 'Explorar',
@@ -71,7 +76,7 @@ const DEFAULT_MENU: OposicionMenu = {
   icon: '🔍',
   navLinks: [
     { href: '/es', label: 'Inicio', icon: '🏠' },
-    { href: '/oposiciones', label: 'Oposiciones', icon: '🏛️', featured: true },
+    { href: `/${DEFAULT_FEATURED_SLUG}`, label: 'Oposiciones', icon: '🏛️', featured: true },
     { href: '/leyes', label: 'Leyes', icon: '📚' },
     { href: '/guardia-civil', label: 'Guardia Civil', icon: '🚔' },
     { href: '/policia-nacional', label: 'Policía Nacional', icon: '👮‍♂️' }
@@ -280,25 +285,24 @@ export function OposicionProvider({ children }: { children: ReactNode }) {
     }
   }, [pathname])
 
-  const changeOposicion = async (newOposicionId: string, showNotificationFlag = true): Promise<boolean> => {
+  const changeOposicion = async (newOposicionId: string | null, showNotificationFlag = true): Promise<boolean> => {
     if (!user) {
       return false
     }
 
     try {
-      const menuConfig = OPOSICION_MENUS[newOposicionId]
-      const oposicionName = menuConfig?.name || 'Nueva Oposición'
+      const menuConfig = newOposicionId ? OPOSICION_MENUS[newOposicionId] : null
+      const oposicionName = menuConfig?.name || (newOposicionId ? 'Nueva Oposición' : null)
 
-      const newOposicionData: OposicionData = {
-        id: newOposicionId,
-        name: oposicionName
-      }
+      const newOposicionData: OposicionData | null = newOposicionId
+        ? { id: newOposicionId, name: oposicionName! }
+        : null
 
       const { error } = await supabase
         .from('user_profiles')
         .update({
           target_oposicion: newOposicionId,
-          target_oposicion_data: JSON.stringify(newOposicionData),
+          target_oposicion_data: newOposicionData ? JSON.stringify(newOposicionData) : null,
           updated_at: new Date().toISOString()
         })
         .eq('id', user.id)
@@ -310,7 +314,7 @@ export function OposicionProvider({ children }: { children: ReactNode }) {
       setOposicionMenu(menuConfig || DEFAULT_MENU)
       setNeedsOposicionFix(false)
 
-      if (showNotificationFlag) {
+      if (showNotificationFlag && oposicionName) {
         localStorage.setItem('oposicionChanged', JSON.stringify({
           name: oposicionName,
           timestamp: Date.now()

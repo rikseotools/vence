@@ -42,12 +42,12 @@ async function getUserOposicion(userId: string): Promise<OposicionId> {
     const oposicion = result[0]?.targetOposicion
 
     // Validar que sea una oposición conocida (desde config central)
-    if (oposicion && ALL_OPOSICION_IDS.includes(oposicion) && oposicion !== 'explorador') {
+    if (oposicion && ALL_OPOSICION_IDS.includes(oposicion)) {
       return oposicion as OposicionId
     }
 
-    // Solo logear warning si la oposición es desconocida (no explorador ni null)
-    if (oposicion && oposicion !== 'explorador' && !ALL_OPOSICION_IDS.includes(oposicion)) {
+    // Solo logear warning si la oposición es desconocida (no null)
+    if (oposicion && !ALL_OPOSICION_IDS.includes(oposicion)) {
       console.warn(`⚠️ [getUserOposicion] Fallback a auxiliar para userId=${userId}, oposicionId=${oposicion}`)
     }
 
