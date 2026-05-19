@@ -1,5 +1,5 @@
 // lib/api/difficulty-insights/queries.ts
-import { getDb } from '@/db/client'
+import { getDb, getReadDb } from '@/db/client'
 import { sql } from 'drizzle-orm'
 import type {
   GetDifficultyInsightsResponse,
@@ -46,8 +46,12 @@ function shouldUseV2(userId: string): boolean {
 
 export async function getDifficultyInsights(userId: string): Promise<GetDifficultyInsightsResponse> {
   try {
-    const db = getDb()
     const useV2 = shouldUseV2(userId)
+    // v2 usa read replica para evitar serialización por max:1 del primary pool.
+    // Las 6 queries en Promise.all SÍ se paralelizan en la replica (pool propio).
+    // v1 sigue usando primary (legacy) — esa ruta no se mejoró, solo se mantiene
+    // como fallback.
+    const db = useV2 ? getReadDb() : getDb()
 
     // Ejecutar las 6 queries en paralelo. v2 usa user_question_history_v2
     // (lookup PK, <50ms incluso para heavy users 33k+ filas). v1 usa RPCs
