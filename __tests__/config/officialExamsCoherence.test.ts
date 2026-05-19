@@ -157,11 +157,13 @@ describe('Official Exams Coherence', () => {
 
         // `questions` filtra por exam_position; `psychometric_questions` no
         // tiene esa columna y se filtra por exam_source ILIKE patrón.
+        // NO filtramos por is_active: la config representa el examen oficial
+        // completo (todas las preguntas que cayeron), incluyendo las
+        // retired_irreparable por errata oficial documentada.
         const questionsFilters =
           `exam_date=eq.${conv.date}` +
           `&exam_position=eq.${conv.positionType}` +
-          `&is_official_exam=eq.true` +
-          `&is_active=eq.true`
+          `&is_official_exam=eq.true`
 
         const psyPattern = PSYCHOMETRIC_EXAM_SOURCE_PATTERNS[conv.positionType]
         const psyFilters =
@@ -169,8 +171,7 @@ describe('Official Exams Coherence', () => {
           (psyPattern
             ? `&exam_source=ilike.${encodeURIComponent(psyPattern)}`
             : '') +
-          `&is_official_exam=eq.true` +
-          `&is_active=eq.true`
+          `&is_official_exam=eq.true`
 
         const [legCount, psyCount] = await Promise.all([
           supabaseCount('questions', questionsFilters),
