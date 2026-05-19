@@ -18,3 +18,5 @@ export function GET() {
     }
   )
 }
+
+// Touch 2026-05-19 17:25 UTC — forzar redeploy tras Vercel atascado en 4ee9ed74
