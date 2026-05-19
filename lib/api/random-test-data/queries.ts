@@ -7,7 +7,7 @@ function getRandomTestDb() {
   return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
 }
 import { topics, topicScope, laws, questions, articles, tests, testQuestions } from '@/db/schema'
-import { eq, and, sql, inArray, gte } from 'drizzle-orm'
+import { eq, and, sql, inArray, gte, isNull } from 'drizzle-orm'
 import { unstable_cache } from 'next/cache'
 import { getOposicionByPositionType, EXCLUSIVE_QUESTION_TAGS } from '@/lib/config/oposiciones'
 import type {
@@ -132,6 +132,9 @@ async function getThemeQuestionCountsInternal(
     .innerJoin(questions, and(
       eq(questions.primaryArticleId, articles.id),
       eq(questions.isActive, true),
+      // Excluir preguntas con exam_case_id (casos prácticos: requieren contexto
+      // narrativo del exam_case que solo se renderiza en OfficialExamLayout).
+      isNull(questions.examCaseId),
       tagFilter,
     ))
     .where(eq(topics.positionType, positionType))

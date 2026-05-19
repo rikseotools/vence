@@ -341,6 +341,35 @@ Recortar limpio. Sin anotaciones manuales.
 
 ## 7. Enunciados o tablas compartidas entre preguntas
 
+> 🚨 **FLUJO DE DECISIÓN OBLIGATORIO ANTES DE IMPORTAR** (incidente 19/05/2026:
+> Auxilio Judicial 2º ejercicio 2025 importado SIN vincular casos → 42 preguntas
+> sin contexto cuando aparecen en tests aislados.)
+>
+> **Antes de escribir el script de import, lee el cuadernillo PDF y responde:**
+>
+> 1. ¿Las preguntas son INDEPENDIENTES entre sí (cada una con su enunciado completo)?
+>    → No requieren tecnología compartida. Importar normal.
+>
+> 2. ¿Hay un TEXTO LARGO al inicio del PDF/ejercicio seguido de N preguntas que lo referencian (Sra. X demanda a Y... → "¿Es preceptiva la intervención de abogado?", "¿Quién es competente?"...)?
+>    → **SÍ son casos prácticos.** Usa tabla `exam_cases` (§7.4 abajo).
+>
+> 3. ¿Las preguntas tienen un pequeño contexto compartido tipo psicotécnico ("Una empresa evalúa 4 proveedores: A=10€, B=12€...") + Q3-Q7?
+>    → Usa `content_data.text_passage` (§7.1 abajo).
+>
+> 4. ¿Hay tablas de datos compartidas entre varias preguntas (listados + tarifas + descuentos)?
+>    → Usa `content_data.tables[]` (§7.2 abajo).
+>
+> **Cómo detectar casos prácticos rápido en el texto extraído:**
+> ```bash
+> grep -nE "CASO PRÁCTICO|CASO PRACTICO|SUPUESTO PRÁCTICO|caso práctico" examen.txt
+> ```
+> Si devuelve líneas, **párate y usa el flujo §7.4**.
+>
+> **Patrones típicos por oposición:**
+> - Auxilio Judicial 2º ejercicio: 2-3 casos prácticos × 10-15 preg cada uno
+> - Tramitación Procesal 2º ejercicio: 1 caso práctico × 9-10 preg
+> - Auxiliar Administrativo estatal y autonómicos: NO suelen tener casos prácticos (test puro)
+
 Cuando varias preguntas (típicamente psicotécnicas Q3-Q7 estilo "supuesto verbal" o Q21-Q25 estilo "tabla de datos") **comparten un enunciado largo**:
 
 ### 7.1 `content_data.text_passage`
@@ -389,6 +418,60 @@ Para preguntas tipo "comparar matriz A vs matriz B" con números (no figuras), *
 - Menos peso que un PNG
 
 Usar `content_data.tables` con dos entradas (Matriz A, Matriz B). Reservar `image_url` solo para figuras geométricas irreducibles a texto.
+
+### 7.4 Casos prácticos (tabla `exam_cases`) — OBLIGATORIO para Auxilio Judicial / Tramitación Procesal 2º ej
+
+**Tecnología:** tabla `exam_cases` + columna `questions.exam_case_id` (FK).
+
+**Schema `exam_cases`** (`db/schema.ts:2217`):
+- `id` UUID
+- `case_title` TEXT (ej. "Caso práctico 1: Filtraciones vivienda")
+- `case_text` TEXT — el ENUNCIADO COMPLETO del caso narrativo
+- `exam_date` DATE
+- `oposicion_type` TEXT (`'auxilio_judicial'`, `'tramitacion_procesal'`, ...)
+- `is_active` BOOLEAN
+
+**Renderizado automático:**
+- `OfficialExamLayout.tsx:1578-1600` detecta cuando una pregunta es **la primera de un grupo de `exam_case_id`** y muestra el enunciado en caja ámbar al inicio del grupo. Las siguientes preguntas del mismo `exam_case_id` NO repiten el enunciado.
+- `ExamReviewLayout.tsx:294-306` lo muestra al inicio de la revisión.
+- En tests aislados (TestLayout aleatorio, por ley, por tema) **NO se carga `exam_case_id`** — para evitar mostrar preguntas sin contexto, **`getOfficialExamQuestions()` filtra:** preguntas con `exam_case_id` solo aparecen cuando `parte === 'supuesto'`. Otros endpoints adaptive deben aplicar el mismo filtro.
+
+**Workflow al importar 2º ejercicio caso práctico:**
+
+1. **Identificar los N casos** del PDF (`grep "CASO PRÁCTICO"` o leer manualmente).
+2. **Para cada caso**, INSERT en `exam_cases`:
+   ```js
+   const { data: ec } = await supabase.from('exam_cases').insert({
+     case_title: 'Caso práctico 1: Filtraciones y conciliación',
+     case_text: 'Dª Sonia Sánchez García con domicilio en...',  // todo el texto del caso
+     exam_date: '2025-09-27',
+     oposicion_type: 'auxilio_judicial',
+     is_active: true,
+   }).select('id').single();
+   ```
+3. **Mapear cada pregunta a su `exam_case_id`** según el número:
+   - Caso 1: preguntas 105-119
+   - Caso 2: preguntas 120-134
+   - Caso 3: preguntas 135-144
+4. **INSERT preguntas** con `exam_case_id` apuntando al `id` correcto del `exam_case` creado.
+5. El `question_text` de cada pregunta puede ser CORTO (solo la pregunta concreta, sin repetir el caso). Si es largo (incluye el contexto duplicado), no pasa nada pero ocupa más espacio.
+
+**Verificación post-import:**
+```bash
+node -e "
+require('dotenv').config({path:'.env.local'});
+const s = require('@supabase/supabase-js').createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+s.from('questions').select('exam_case_id', {count:'exact', head:true})
+  .eq('exam_position', 'auxilio_judicial').eq('exam_date', '2025-09-27')
+  .ilike('exam_source', '%Segunda parte%')
+  .not('exam_case_id', 'is', null).then(r => console.log('Con exam_case_id:', r.count));
+"
+```
+
+**Reglas finales:**
+- ⚠️ NUNCA importes preguntas de 2º ejercicio AJ / TP / cualquier "caso práctico" **sin crear primero los `exam_cases`**.
+- ⚠️ NUNCA dupliques el caso en cada `question_text`. Confía en la tabla.
+- ⚠️ Si una pregunta del caso aparece aislada (test por ley), **NO debe mostrarse al usuario** porque carece de contexto. El filtro `parte === 'supuesto'` en queries ya lo evita en exámenes oficiales; verificar que tests adaptive también lo respeten.
 
 ---
 

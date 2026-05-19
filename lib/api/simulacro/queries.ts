@@ -15,7 +15,7 @@
 
 import { getDb, getPoolerDb } from '@/db/client'
 import { questions, psychometricQuestions, articles, laws, topics, topicScope } from '@/db/schema'
-import { eq, and, inArray, sql, ilike, gte, isNotNull } from 'drizzle-orm'
+import { eq, and, inArray, sql, ilike, gte, isNotNull, isNull } from 'drizzle-orm'
 import type {
   GetSimulacroQuestionsRequest,
   GetSimulacroQuestionsResponse,
@@ -219,6 +219,10 @@ async function getTopicWeights(
     .where(
       and(
         eq(questions.isOfficialExam, true),
+        // Excluir casos prácticos: el simulacro genera tests a partir del pool
+        // de preguntas oficiales pero las muestra como preguntas independientes.
+        // Las preguntas con exam_case_id requieren el caso narrativo encima.
+        isNull(questions.examCaseId),
         ilike(questions.examSource, parteFilter),
         gte(questions.examDate, sinceDate),
         eq(topics.positionType, positionType),
@@ -316,6 +320,8 @@ async function sampleLegislativeByArticles(
     .where(
       and(
         eq(questions.isActive, true),
+        // Excluir casos prácticos (ver comentario en getThemeQuestionCounts).
+        isNull(questions.examCaseId),
         inArray(questions.primaryArticleId, articleIds),
         // Solo preguntas con 4 opciones de respuesta (excluye el banco PN que
         // usa formato 3 opciones A/B/C — el examen oficial PN es de 3 opciones

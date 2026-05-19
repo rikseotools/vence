@@ -6,7 +6,7 @@ function getRandomTestQDb() {
   return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
 }
 import { topics, topicScope, laws, questions, articles, testQuestions, userQuestionHistory } from '@/db/schema'
-import { eq, and, sql, inArray, desc, gte, isNotNull } from 'drizzle-orm'
+import { eq, and, sql, inArray, desc, gte, isNotNull, isNull } from 'drizzle-orm'
 import { getOposicionByPositionType, EXCLUSIVE_QUESTION_TAGS } from '@/lib/config/oposiciones'
 import { unstable_cache } from 'next/cache'
 import type {
@@ -58,7 +58,11 @@ async function getThemeQuestionCountsInternal(
     ))
     .innerJoin(questions, and(
       eq(questions.primaryArticleId, articles.id),
-      eq(questions.isActive, true)
+      eq(questions.isActive, true),
+      // Excluir preguntas de casos prácticos: requieren el contexto narrativo
+      // del exam_case que solo se renderiza en OfficialExamLayout/ExamReview.
+      // En tests aislados aparecerían sin contexto → incomprensibles.
+      isNull(questions.examCaseId)
     ))
     .where(and(
       eq(topics.positionType, positionType),
@@ -128,6 +132,7 @@ async function getQuestionCountForTopic(
       .innerJoin(articles, eq(questions.primaryArticleId, articles.id))
       .where(and(
         eq(questions.isActive, true),
+        isNull(questions.examCaseId), // excluir casos prácticos (requieren contexto narrativo)
         eq(articles.lawId, mapping.lawId),
         ...(hasSpecificArticles ? [inArray(articles.articleNumber, mapping.articleNumbers!)] : [])
       ))
@@ -143,6 +148,7 @@ async function getQuestionCountForTopic(
       .where(and(
         eq(questions.isActive, true),
         eq(questions.isOfficialExam, true),
+        isNull(questions.examCaseId), // excluir casos prácticos
         eq(articles.lawId, mapping.lawId),
         ...(hasSpecificArticles ? [inArray(articles.articleNumber, mapping.articleNumbers!)] : [])
       ))
@@ -173,6 +179,10 @@ export async function checkQuestionAvailability(
     eq(topics.positionType, positionType),
     eq(topics.isActive, true),
     eq(questions.isActive, true),
+    // Excluir preguntas de casos prácticos (exam_case_id): requieren contexto
+    // narrativo que solo se renderiza en OfficialExamLayout/ExamReview.
+    // En tests aislados (aleatorio, por tema, por ley) aparecerían sin contexto.
+    isNull(questions.examCaseId),
     inArray(topics.topicNumber, request.selectedThemes),
   ]
 

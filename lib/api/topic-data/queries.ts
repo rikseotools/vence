@@ -9,7 +9,7 @@ function getTopicDataDb() {
   return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
 }
 import { topics, topicScope, laws, questions, articles, tests, testQuestions } from '@/db/schema'
-import { eq, and, sql, inArray, isNotNull } from 'drizzle-orm'
+import { eq, and, sql, inArray, isNotNull, isNull } from 'drizzle-orm'
 import type {
   GetTopicDataResponse,
   TopicInfo,
@@ -226,6 +226,10 @@ async function getQuestionsForTopic(
       .innerJoin(laws, eq(articles.lawId, laws.id))
       .where(and(
         eq(questions.isActive, true),
+        // Excluir preguntas de casos prácticos: el contexto narrativo (exam_case)
+        // solo se renderiza en OfficialExamLayout. En tests por tema aparecerían
+        // sin contexto y serían incomprensibles.
+        isNull(questions.examCaseId),
         eq(laws.id, mapping.lawId),
         // Solo filtrar por artículos específicos si se proporcionan
         ...(hasSpecificArticles ? [inArray(articles.articleNumber, mapping.articleNumbers!)] : [])

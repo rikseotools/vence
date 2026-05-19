@@ -11,7 +11,7 @@ function getFilteredCountDb() {
   return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getReadDb()
 }
 import { questions, articles, laws, topicScope, topics, testQuestions, userQuestionHistory } from '@/db/schema'
-import { eq, and, inArray, sql, notInArray, desc, or, lt } from 'drizzle-orm'
+import { eq, and, inArray, sql, notInArray, desc, or, lt, isNull } from 'drizzle-orm'
 import {
   getAllowedLawIds,
   type AllowedLawsResult,
@@ -605,6 +605,8 @@ async function queryQuestionsForMappingsLightweight(
       .innerJoin(laws, eq(articles.lawId, laws.id))
       .where(and(
         eq(questions.isActive, true),
+        // Excluir casos prácticos (ver comentario consolidado en este archivo).
+        isNull(questions.examCaseId),
         eq(laws.id, mapping.lawId!),
         ...(hasSpecificArticles ? [inArray(articles.articleNumber, mapping.articleNumbers!)] : []),
         // 🏛️ Filtro por exam_position SOLO en only-oficial (mismo comportamiento que legacy)
@@ -733,6 +735,7 @@ export async function getFilteredQuestions(
         .innerJoin(laws, eq(articles.lawId, laws.id))
         .where(and(
           eq(questions.isActive, true),
+          isNull(questions.examCaseId), // casos prácticos solo en exam oficial
           inArray(questions.primaryArticleId, primaryArticleIds),
           tagFilter,
         ))
@@ -891,6 +894,7 @@ export async function getFilteredQuestions(
         .innerJoin(laws, eq(articles.lawId, laws.id))
         .where(and(
           eq(questions.isActive, true),
+          isNull(questions.examCaseId), // casos prácticos solo en exam oficial
           inArray(questions.id, failedQuestionIds),
         ))
 
@@ -968,6 +972,7 @@ export async function getFilteredQuestions(
         .innerJoin(laws, eq(articles.lawId, laws.id))
         .where(and(
           eq(questions.isActive, true),
+          isNull(questions.examCaseId), // casos prácticos solo en exam oficial
           inArray(laws.id, validLawIds),
           onlyOfficialQuestions && !includeSharedOfficials ? buildOfficialExamFilter(positionType) : sql`true`,
           onlyOfficialQuestions ? eq(questions.isOfficialExam, true) : sql`true`,
@@ -1401,6 +1406,7 @@ export async function countFilteredQuestions(
         .innerJoin(articles, eq(questions.primaryArticleId, articles.id))
         .where(and(
           eq(questions.isActive, true),
+          isNull(questions.examCaseId), // casos prácticos solo en exam oficial
           eq(articles.lawId, mapping.lawId!),
           ...(hasSpecificArticles ? [inArray(articles.articleNumber, mapping.articleNumbers!)] : []),
           // 🏛️ Filtro por exam_position SOLO en modo only-oficial (ver comentario en getFilteredQuestions).

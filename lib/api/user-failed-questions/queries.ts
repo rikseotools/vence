@@ -13,7 +13,7 @@ function getUserFailedDb() {
   return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getReadDb()
 }
 import { questions, articles, laws, testQuestions, topics } from '@/db/schema'
-import { eq, and, inArray, desc, gte, gt } from 'drizzle-orm'
+import { eq, and, inArray, desc, gte, gt, isNull } from 'drizzle-orm'
 import type {
   GetUserFailedQuestionsRequest,
   GetUserFailedQuestionsResponse,
@@ -65,6 +65,11 @@ export async function getUserFailedQuestions(
       eq(testQuestions.userId, userId),
       eq(testQuestions.isCorrect, false),
       eq(questions.isActive, true),
+      // Excluir preguntas de casos prácticos (exam_case_id): el contexto narrativo
+      // solo se renderiza en OfficialExamLayout. Si el usuario falló una pregunta
+      // de caso práctico en el examen oficial, debe repasarla en ese contexto, no
+      // como pregunta aislada sin el caso narrativo.
+      isNull(questions.examCaseId),
     ]
 
     if (topicNumber) {
@@ -201,6 +206,8 @@ export async function getFailedQuestionsByTopic(
         eq(testQuestions.userId, userId),
         eq(testQuestions.isCorrect, false),
         eq(questions.isActive, true),
+        // Excluir preguntas de casos prácticos (ver comentario en query principal)
+        isNull(questions.examCaseId),
         gt(testQuestions.temaNumber, 0),
       ))
 
