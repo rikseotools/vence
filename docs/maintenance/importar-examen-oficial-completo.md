@@ -288,10 +288,53 @@ await supabase.from('question_official_exams').insert({
   exam_source: 'Examen ... - Primera parte',
   exam_part: 'primera',                             // 'primera' | 'segunda' | 'reserva' | ...
   question_number: N,
-  oposicion_type: 'auxiliar-administrativo-madrid',
+  oposicion_type: 'auxiliar-administrativo-madrid', // ⚠️ SLUG (guion), NO underscore
   is_reserve: false,
 });
 ```
+
+⚠️ **`oposicion_type` usa guion (slug), no underscore.** Convención:
+- `questions.exam_position` → underscore (`auxilio_judicial`)
+- `question_official_exams.oposicion_type` y `exam_cases.oposicion_type` → guion (`auxilio-judicial`)
+- Si copias desde `exam_position`, transforma: `.replaceAll('_', '-')`.
+
+### 5.6 Dedup cross-oposición — antes de cualquier INSERT en `questions`
+
+**⚠️ CRÍTICO:** una pregunta puede aparecer en EL MISMO EXAMEN reimportado varias veces (raro pero posible) o, más común, **la MISMA pregunta legislativa aparece en distintas oposiciones** que comparten temario (AJ y TP comparten LOPJ/LEC/LECrim; Estado y CCAA comparten Ley 39/2015, 40/2015, CE…).
+
+**Regla:** si una pregunta a importar ya existe en `questions` (otra oposición, otra fecha) — NUNCA insertar duplicado en `questions`. Solo insertar en `question_official_exams` con la nueva aparición.
+
+**Flujo recomendado antes del INSERT:**
+
+1. **Normalizar texto** de cada pregunta candidata (lowercase + sin acentos + sin puntuación + espacios colapsados + primeros ~120 chars significativos).
+2. **Cargar de BD** preguntas con potencial match: misma `primary_article_id` o misma ley/artículo, cualquier `exam_position`.
+3. **Comparar** con Levenshtein/Jaccard sobre texto normalizado + las 4 opciones. Match con similarity > 0.85 → duplicado.
+4. **Si duplicado:**
+   - NO insertar en `questions`.
+   - SÍ insertar fila adicional en `question_official_exams` con la nueva `exam_date`/`exam_source`/`question_number`/`oposicion_type`.
+   - El UNIQUE `(question_id, exam_date, exam_source)` previene duplicar la MISMA aparición.
+5. **Si nueva:** INSERT en `questions` + INSERT en `question_official_exams` (1 fila inicial).
+
+**Reporte final mínimo (al terminar import):**
+```
+Examen X — Y preg totales:
+  Nuevas insertadas: A
+  Duplicadas (registradas como aparición cruzada): B
+  Dudosas (similarity 0.70-0.85, requieren revisión manual): C
+```
+
+**Verificación post-import:**
+```sql
+-- Preguntas con apariciones en >1 examen (cross-oposición confirmadas)
+SELECT q.id, q.question_text, count(qoe.id) as apariciones
+FROM questions q
+JOIN question_official_exams qoe ON qoe.question_id = q.id
+GROUP BY q.id, q.question_text
+HAVING count(qoe.id) > 1
+LIMIT 20;
+```
+
+Estas preguntas son material **cross-oposición de oro**: aparecieron en exámenes oficiales de ≥2 oposiciones, son las más confiables para el simulacro.
 
 ---
 
