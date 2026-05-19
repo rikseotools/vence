@@ -137,22 +137,19 @@ const KNOWN_CONVOCATORIA_MISMATCHES = new Set<string>([
 // Slugs cuyo seo_description menciona una cifra de plazas heredada/OEP-total
 // que no cuadra con plazas_libres+disc+interna actuales. Pendientes de
 // revisar uno a uno (ver project_seo_description_plazas_audit.md).
-const KNOWN_SEO_PLAZAS_MISMATCHES = new Set<string>([
-  'auxiliar-administrativo-cantabria',
-  'administrativo-navarra',
-  'auxiliar-administrativo-andalucia',
-  'policia-nacional',
-  'celador-sescam-clm',
-  'guardia-civil',
-])
+// Vaciado 19/05/2026 tras saneamiento masivo: los 6 slugs anteriores
+// (cantabria, navarra, andalucia, policia-nacional, celador-sescam-clm,
+// guardia-civil) tenían cifras heredadas/OEP-total que no cuadraban con
+// la BD actual. Se actualizaron uno a uno con datos vigentes y se
+// añadió contexto (ingreso libre, más X discapacidad, etc.).
+const KNOWN_SEO_PLAZAS_MISMATCHES = new Set<string>([])
 
-// Slugs cuyo hito #1 descripción menciona una cifra de plazas distinta a la
-// suma actual. Pendientes de revisar (ver project_hito_plazas_audit.md).
-const KNOWN_HITO_PLAZAS_MISMATCHES = new Set<string>([
-  'administrativo-navarra',
-  'auxiliar-administrativo-baleares',
-  'celador-sescam-clm',
-])
+// Vaciado 19/05/2026 tras saneamiento masivo: navarra y baleares ya tenían
+// descripcion=null en hito #1 (sin texto para contradecir BD). En SESCAM se
+// reformuló la descripción para conservar el dato histórico (537 plazas del
+// DOCM 123 original) y añadir el total actual (579 = 542 + 37 disc), que es
+// lo que valida el test.
+const KNOWN_HITO_PLAZAS_MISMATCHES = new Set<string>([])
 
 // Slugs donde programa_url y hito #1 url apuntan a recursos legítimamente
 // distintos (uno al portal/temario, otro al BOE de convocatoria). El test
