@@ -661,6 +661,27 @@ for (const kw of keywords) {
 }
 ```
 
+## 7.4.ter Supuestos prácticos huérfanos (`exam_case_id IS NULL` en preguntas marcadas como "Supuesto práctico") — post-19/05/2026
+
+**Síntoma típico:** usuario impugna `mal_formulada` o `respuesta_incorrecta` sobre una pregunta cuyo enunciado dice "de los mencionados en el supuesto", "según los datos del supuesto", etc., pero al verla la pregunta NO muestra ningún texto de supuesto encima. La pregunta es irresoluble sin ese contexto.
+
+**Diagnóstico:** la pregunta tiene `exam_case_id = NULL` y `exam_source` contiene "Supuesto práctico". O bien (a) el texto narrativo nunca se importó a `exam_cases`, o bien (b) se importó pero no se vinculó.
+
+**Resolución:**
+
+1. Buscar el texto del supuesto en los PDFs locales (`data/examenes-oficiales/<oposicion>/<carpeta>/cuestionario.txt`).
+2. INSERT en `exam_cases` con `case_text`, `case_title`, `exam_date`, `exam_source`, `oposicion_type=<slug-con-guion>`.
+3. UPDATE `questions.exam_case_id` para todas las preguntas del bloque del supuesto.
+4. Lifecycle: si las preguntas están en `needs_human` por este motivo, transicionarlas a `approved` (`reasonCode=admin_marked_perfect`).
+5. Invalidar cache `'questions'`.
+
+**Defensas activas tras el incidente CARM 19/05/2026** (ver detalle en `importar-examen-oficial-completo.md` §7.4.ter):
+
+- **Trigger BD** `tg_questions_require_exam_case_for_supuesto`: impide INSERT/UPDATE que dejaría una pregunta con `exam_source ILIKE '%Supuesto práctico%'` en `approved`/`tech_approved` sin `exam_case_id`. Si lo intentas, falla con `ERRCODE = check_violation`.
+- **Tests de integración** `__tests__/integration/supuestoPracticoOrphans.test.ts`: auditan periódicamente (CI) que no haya huérfanas, por etiqueta y por heurística de texto.
+
+Si al resolver una dispute te aparece error del trigger al intentar transicionar a `approved`, es porque la pregunta sigue sin `exam_case_id`. Crear primero el `exam_case` y vincular, luego transicionar.
+
 ## 7.5 Same-user clustering: red flag de fallo sistémico (post-14/04/2026)
 
 **Regla:** si un mismo usuario (mismo `user_id`) abre **3+ impugnaciones** seguidas en poco tiempo, antes de tratarlas como casos independientes, buscar el **denominador común**. Casi siempre revela un fallo sistémico (de scope, de pipeline, de versión de programa, etc.) en lugar de N preguntas malas independientes.

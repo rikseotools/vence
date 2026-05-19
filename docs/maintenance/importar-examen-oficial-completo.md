@@ -545,6 +545,44 @@ s.from('questions').select('exam_case_id', {count:'exact', head:true})
 2. Añadir `isNull(questions.examCaseId)` al WHERE.
 3. Añadir el archivo al array `endpoints` de la suite de tests.
 
+### 7.4.ter Defense in depth: huérfanas marcadas como "Supuesto práctico" (19/05/2026)
+
+**Bug detectado 19/05/2026** — 74 preguntas de 3 convocatorias CARM (DGX00C18 2020, DGX00C22 2023, DGX00L19 2024) habían sido importadas con `exam_source` que contenía "Supuesto práctico" pero **sin** crear las filas correspondientes en `exam_cases` ni vincular `exam_case_id`. Como `exam_case_id` era NULL, el filtro del §7.4.bis las dejaba pasar a tests aislados — donde aparecían sin contexto narrativo, irresolubles para el opositor. Detectado por dispute de usuaria (`a831b79a`, Marta), resuelto importando los 6 supuestos y vinculando (ver memoria `project_carm_supuestos_pendientes`).
+
+**Tres capas de defensa añadidas tras el incidente:**
+
+**1. Test de integración (observabilidad)** — `__tests__/integration/supuestoPracticoOrphans.test.ts`:
+
+- Test por etiqueta: query `exam_source ILIKE '%Supuesto práctico%' AND exam_case_id IS NULL AND lifecycle_state IN ('approved','tech_approved')` debe devolver 0 filas. Si devuelve ≥1, imprime IDs y falla.
+- Test heurístico por texto: busca preguntas visibles cuyo `question_text` contenga frases que requieren contexto (`"mencionados en el supuesto"`, `"del supuesto anterior"`, `"según los datos del supuesto"`, etc.) y `exam_case_id IS NULL`. Si encuentra alguna, falla con listado.
+- Sanity check: al menos 1 pregunta vinculada a exam_cases existe (control positivo).
+
+**2. Trigger BD (prevención por construcción)** — migration `database/migrations/2026-05-19-supuesto-practico-require-exam-case.sql`:
+
+`BEFORE INSERT OR UPDATE` en `public.questions`. Rechaza con `RAISE EXCEPTION` (ERRCODE `check_violation`) cualquier fila que cumpla:
+
+```
+NEW.exam_source ILIKE '%Supuesto práctico%'
+AND NEW.exam_case_id IS NULL
+AND NEW.lifecycle_state IN ('approved', 'tech_approved')
+```
+
+El mensaje del error incluye `id`, `exam_source` y un HINT con la solución. Smoke tests aplicados al desplegar: UPDATE prohibido bloqueado ✅, UPDATE inocuo pasa ✅, INSERT prohibido bloqueado ✅.
+
+**3. Filtro en endpoints (ya existente §7.4.bis)** — sigue evitando que las que sí tienen `exam_case_id` aparezcan en tests aislados sin contexto.
+
+**Implicación para importaciones nuevas:**
+
+- **Crear primero la fila en `exam_cases`** con el texto narrativo del supuesto.
+- **Importar las preguntas con `exam_case_id` ya seteado**. Si se importa primero como `draft` con `exam_case_id NULL`, está bien (el trigger solo bloquea visibilidad → approved/tech_approved sin vincular). Pero el paso de activación debe ir DESPUÉS del UPDATE de `exam_case_id`.
+- **Patrón canónico (orden):**
+  1. INSERT exam_case → obtener id.
+  2. INSERT questions con `exam_case_id = <nuevoId>` y `lifecycle_state = 'draft'`.
+  3. Verificación IA (no toca lifecycle).
+  4. Transición a `approved` vía `transition_question_state`. El trigger valida que `exam_case_id` esté seteado.
+
+Si el trigger rechaza una transición legítima (falso positivo: `exam_source` contiene literalmente "Supuesto práctico" pero la pregunta NO depende de contexto), la solución es **cambiar el `exam_source`** para que no contenga ese literal — no relajar el trigger. La etiqueta es la fuente de verdad del criterio.
+
 ---
 
 ## 8. Verificación con agentes Sonnet (workflow §14.3)

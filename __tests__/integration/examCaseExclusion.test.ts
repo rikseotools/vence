@@ -77,13 +77,19 @@ describe('exam_case_id exclusion in isolated tests', () => {
     expect(rows.length).toBeGreaterThan(0)
   }, 15000)
 
-  test('Las preguntas con exam_case_id pertenecen a casos prácticos (exam_position auxilio_judicial o tramitacion_procesal)', async () => {
+  test('Las preguntas con exam_case_id pertenecen a oposiciones con supuestos prácticos importados', async () => {
+    // Añadir aquí nuevas oposiciones cuando se importen sus supuestos prácticos.
+    // Última actualización: 19/05/2026 — CARM (74 preg de 3 convocatorias 2020/2023/2024).
+    const validPositions = new Set([
+      'auxilio_judicial',
+      'tramitacion_procesal',
+      'auxiliar_administrativo_carm',
+    ])
     const rows = await supabaseGet<{ exam_position: string }>(
       'questions',
-      'select=exam_position&exam_case_id=not.is.null&limit=200'
+      'select=exam_position&exam_case_id=not.is.null&limit=500'
     )
     expect(rows.length).toBeGreaterThan(0)
-    const validPositions = new Set(['auxilio_judicial', 'tramitacion_procesal'])
     const invalid = rows.filter((r) => !validPositions.has(r.exam_position))
     expect(invalid).toEqual([])
   }, 15000)
