@@ -74,6 +74,11 @@ Pipeline de transición automática:
 > Si la única opción disponible es estabilización (caso CARM DGX00C18 /
 > DGX00C22 que entraron antes de fijar esta regla), **confirmar con Manuel
 > antes** de proceder.
+>
+> **Material ya activo en BD se queda** (decisión 19/05/2026): no retirar
+> retroactivamente exámenes de estabilización ya en producción (ej: TP
+> 2024-03-02 OEP 2022 estabilización, 84 preg activas; CARM DGX00C18 /
+> DGX00C22). La regla solo bloquea **futuras importaciones**.
 
 Cada CCAA publica `cuestionario` + `plantilla correctora` por ejercicio. Buscar con:
 - `site:comunidad.madrid` o `sede.<ccaa>.es` + año + número de orden BOCM
