@@ -28,6 +28,10 @@
 # debug
 npm-debug.log*
 yarn-debug.log*
+
+# temporary scripts and import workdirs (never commit)
+_tmp_*
+_tmp_*/
 yarn-error.log*
 .pnpm-debug.log*
 
