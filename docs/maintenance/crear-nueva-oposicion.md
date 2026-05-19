@@ -775,10 +775,21 @@ oficial discriminante (`%Comunidad de Madrid%`, `%CARM Murcia%`,
 El botón aparece en `/psicotecnicos/test` y permite al usuario seleccionar solo
 las categorías psicotécnicas que **han caído ≥3 veces en exámenes oficiales**
 de su oposición (badge ⭐ Frecuente). Componente:
-`app/psicotecnicos/test/PsicotecnicosTestClient.tsx:211-250`.
+`app/psicotecnicos/test/PsicotecnicosTestClient.tsx:211-260`.
 
-**El botón es opt-in por oposición** — no se activa automáticamente al crear
-una oposición. Para activarlo correctamente:
+**UX (post-19/05/2026):** El botón se renderiza **siempre que haya
+`target_oposicion` en el perfil del usuario**, en una de dos variantes:
+
+| Hay psicotécnicos oficiales en BD | Variante mostrada |
+|---|---|
+| Sí (≥1 pregunta `is_official_exam=true` con `exam_source` matcheando) | Botón activo "Seleccionar lo más importante para [oposición]" |
+| No (0 preguntas) | Botón deshabilitado en gris: **"[oposición]: sin psicotécnicos en exámenes pasados"** + tooltip explicativo |
+
+La variante deshabilitada existe porque ocultar el botón confunde al usuario
+(se pregunta por qué no está). El mensaje explícito es mejor UX.
+
+**Para activar la variante con datos** (función `getCategoryExamFrequency` en
+`lib/api/psychometric-test-data/queries.ts:177-282`):
 
 **Pre-requisito (verificar ANTES de tocar config):**
 1. El examen oficial de esa oposición **¿incluye parte psicotécnica?** Lee las bases de la convocatoria.

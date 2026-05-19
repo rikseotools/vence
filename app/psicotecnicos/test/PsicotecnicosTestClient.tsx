@@ -200,16 +200,21 @@ export default function PsicotecnicosTestClient() {
               return (<>
                 {(() => {
                   const hasExamData = categories.some(cat => cat.examFrequency)
-                  const opoName = hasExamData
-                    ? OPOSICIONES.find(o => o.positionType === (userProfile as any)?.target_oposicion)?.name || 'mi oposición'
-                    : ''
+                  const targetOpo = (userProfile as any)?.target_oposicion
+                  const opoConfig = OPOSICIONES.find(o => o.positionType === targetOpo)
+                  const opoName = opoConfig?.name || 'mi oposición'
+                  // Mostrar el botón SIEMPRE que haya oposición seleccionada.
+                  // Si no hay datos psicotécnicos oficiales para esa oposición,
+                  // se muestra deshabilitado con mensaje claro (mejor UX que
+                  // ocultarlo: el usuario entiende por qué no aparece).
+                  const showButton = !!targetOpo
                   const examOnlySelected = hasExamData && categories
                     .filter(cat => cat.questionCount > 0)
                     .every(cat => cat.examFrequency ? selectedCategories[cat.key] : !selectedCategories[cat.key])
 
                   return (
                     <div className="flex gap-3 mb-4">
-                      {hasExamData && (
+                      {showButton && hasExamData && (
                         <button
                           onClick={() => {
                             if (examOnlySelected) {
@@ -246,6 +251,16 @@ export default function PsicotecnicosTestClient() {
                           }`}
                         >
                           Seleccionar lo más importante para {opoName}
+                        </button>
+                      )}
+                      {showButton && !hasExamData && (
+                        <button
+                          disabled
+                          title={`Los exámenes oficiales pasados de ${opoName} no incluyen parte psicotécnica`}
+                          className="flex-1 py-3 px-4 rounded-lg border-2 border-gray-200 bg-gray-50 text-gray-400 text-sm font-medium cursor-not-allowed"
+                          aria-label={`No hay psicotécnicos oficiales para ${opoName}`}
+                        >
+                          {opoName}: sin psicotécnicos en exámenes pasados
                         </button>
                       )}
                       <button
