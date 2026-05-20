@@ -157,8 +157,12 @@ function OfficialExamContent() {
           questionSubtype: q.questionSubtype,
           isReserva: q.isReserva,
           contentData: q.contentData,
+          imageUrl: q.imageUrl,
           articleNumber: q.articleNumber,
           lawName: q.lawName,
+          examCaseId: q.examCaseId,
+          examCaseText: q.examCaseText,
+          examCaseTitle: q.examCaseTitle,
           questionNumber: index + 1,
         }))
 

@@ -473,6 +473,8 @@ export const officialExamReviewQuestionSchema = z.object({
   correctAnswer: z.string(),
   isCorrect: z.boolean(),
   timeSpent: z.number(),
+  imageUrl: z.string().nullable(),
+  contentData: z.unknown().nullable(),
 })
 
 export type OfficialExamReviewQuestion = z.infer<typeof officialExamReviewQuestionSchema>

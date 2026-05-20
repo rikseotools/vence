@@ -1606,6 +1606,8 @@ export async function getOfficialExamReview(
       articleNumber: string | null
       lawName: string | null
       articleContent: string | null
+      imageUrl: string | null
+      contentData: unknown
     }>()
 
     if (legislativeIds.length > 0) {
@@ -1623,6 +1625,8 @@ export async function getOfficialExamReview(
           articleNumber: articles.articleNumber,
           lawName: laws.shortName,
           articleContent: articles.content,
+          imageUrl: questions.imageUrl,
+          contentData: questions.contentData,
         })
         .from(questions)
         .leftJoin(articles, eq(questions.primaryArticleId, articles.id))
@@ -1645,6 +1649,8 @@ export async function getOfficialExamReview(
       optionE: string | null
       explanation: string | null
       difficulty: string | null
+      imageUrl: string | null
+      contentData: unknown
     }>()
 
     if (psychometricIds.length > 0) {
@@ -1659,6 +1665,8 @@ export async function getOfficialExamReview(
           optionE: psychometricQuestions.optionE,
           explanation: psychometricQuestions.explanation,
           difficulty: psychometricQuestions.difficulty,
+          imageUrl: psychometricQuestions.imageUrl,
+          contentData: psychometricQuestions.contentData,
         })
         .from(psychometricQuestions)
         .where(inArray(psychometricQuestions.id, psychometricIds))
@@ -1704,6 +1712,8 @@ export async function getOfficialExamReview(
             correctAnswer: tq.correctAnswer,
             isCorrect: tq.isCorrect,
             timeSpent: tq.timeSpentSeconds || 0,
+            imageUrl: legQ.imageUrl,
+            contentData: legQ.contentData ?? null,
           }
           // Note: tema stats not available as tema is not in questions table
         }
@@ -1731,6 +1741,8 @@ export async function getOfficialExamReview(
             correctAnswer: tq.correctAnswer,
             isCorrect: tq.isCorrect,
             timeSpent: tq.timeSpentSeconds || 0,
+            imageUrl: psyQ.imageUrl,
+            contentData: psyQ.contentData ?? null,
           }
         }
       }
