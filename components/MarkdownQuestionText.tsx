@@ -17,7 +17,7 @@ export default function MarkdownQuestionText({ text, className = '' }: MarkdownQ
 
   // Only render markdown if text actually contains markdown syntax
   if (!text.includes('*') && !text.includes('~~')) {
-    return <>{text}</>
+    return <span className="whitespace-pre-line">{text}</span>
   }
 
   return (
