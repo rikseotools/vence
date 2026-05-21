@@ -1061,6 +1061,7 @@ Con queries lentas en hot path + tráfico 10k DAU:
 | `/api/random-test/availability` (12s+ → 503) | `COUNT FILTER` con multi-JOIN sobre `questions × articles × laws × topic_scope` | Cache Redis 5min + materializar count por scope |
 | `/api/questions/law-stats` (8.2s para Ley 40/2015) | `COUNT FILTER (WHERE is_official_exam = true)` sobre miles de preguntas por ley | Cache Redis 1h (verificar TTL) + considerar `law_stats_cache` materializada |
 | `/api/v2/answer-and-save` (slow 6s ocasional) | Read-after-write pattern con varias queries serie | Refactor a single query / batch (más complejo) |
+| **`/api/v2/difficulty-insights` (12s → 503 para heavy users)** (detectado 2026-05-19 feedback Nila, 33k+ test_questions) | 6 RPCs en paralelo que escanean `test_questions` cada vez. RPCs `get_user_difficulty_metrics` (5.4s), `get_struggling_questions` (TIMEOUT 8s), `get_mastered_questions` (TIMEOUT 8s), `get_user_progress_trends` (4s). Light users: 100ms. Heavy users: timeout. | **Pre-computar `user_question_stats(user_id, question_id, attempts, corrects, last_attempted_at)`** con trigger en `test_questions` (patrón `user_stats_summary`). Lookup PK <10ms para todas las RPCs. |
 
 ### Soluciones priorizadas
 
@@ -1074,22 +1075,26 @@ Con queries lentas en hot path + tráfico 10k DAU:
 
 4. **Pre-computar `user_medals_summary`** — tabla auxiliar actualizada por trigger igual que `user_stats_summary`. Lookup PK <1ms en lugar de agregación pesada.
 5. **Materializar `law_stats_cache`** — tabla `(law_id, question_count, official_count, last_updated)` actualizada por trigger en `questions`.
+6. **Pre-computar `user_question_stats`** — tabla `(user_id, question_id, attempts, corrects, last_attempted_at, accuracy GENERATED)` con trigger INSERT/UPDATE/DELETE en `test_questions`. Resuelve `/api/v2/difficulty-insights` para heavy users (5.4s→<50ms). Volumen estimado: ~1.07M filas (ratio único 0.96 en muestra de 10k). Backfill incremental nocturno. Mismo patrón que `user_stats_summary`. Ver "Memo `user_question_stats`" abajo.
 
 #### Long term (cuando llegue el dolor)
 
-6. **Refactor `answer-and-save`** a single transaction con menos queries.
-7. **Outbox pattern (Fase 2 del roadmap)** para mover agregaciones a worker async.
-8. **ClickHouse / data warehouse (Fase 5)** para analytics pesado (medals, stats).
+7. **Refactor `answer-and-save`** a single transaction con menos queries.
+8. **Outbox pattern (Fase 2 del roadmap)** para mover agregaciones a worker async.
+9. **ClickHouse / data warehouse (Fase 5)** para analytics pesado (medals, stats).
+10. **Particionado de `test_questions`** por hash de `user_id` (Postgres declarative partitioning) — overengineering hoy con 1.1M filas. Solo cuando crezca >100M y los INSERTs se ralenticen. **No reemplaza a las tablas agregadas** (un lookup PK siempre es 100x más rápido que el mejor scan particionado). Migración requiere rebuild + swap con ventana de inconsistencia.
 
 ### Triggers para activar cada solución
 
 | Trigger | Acción |
 |---|---|
 | 5+ errores 503 day-over-day en `/api/medals` o `/api/random-test/availability` | Quick win #1 y #2 (cache Redis) — esta semana |
+| **Feedback usuario reportando timeout en difficulty-insights** o p95 >5s | Medium term #6 (`user_question_stats`) — esta semana |
 | DAU supera 1000 | Quick win #3 (verificar caches existentes) — pre-emptive |
 | DAU supera 3000 | Medium term #4 y #5 (pre-computar) — proactivo |
-| DAU supera 5000 | Refactor `answer-and-save` (#6) + plan outbox |
+| DAU supera 5000 | Refactor `answer-and-save` (#7) + plan outbox |
 | DAU supera 10000 | Fase 2 outbox + considerar Fase 5 warehouse |
+| `test_questions` >100M filas y INSERTs >50ms p95 | Long term #10 (particionado) — solo entonces |
 
 ### Por qué este tech debt es DIFERENTE del PostgREST→Drizzle
 
@@ -1108,6 +1113,104 @@ Con queries lentas en hot path + tráfico 10k DAU:
 - [ ] **Esta semana**: EXPLAIN ANALYZE de los 3 queries lentos en BD prod para confirmar planes
 - [ ] **Cuando llegue a 1k DAU**: pre-computar `user_medals_summary` (#4)
 - [ ] **Documentar nuevos slow queries** en este apartado cuando aparezcan en logs
+- [ ] **Pendiente alto (cuando se ataque)**: implementar `user_question_stats` para `/api/v2/difficulty-insights` (medium term #6). Ver "Memo `user_question_stats` — caso Nila" abajo.
+
+---
+
+### Memo `user_question_stats` — caso Nila (anatomía completa del problema)
+
+> **Detectado 2026-05-19** vía feedback de Nila (jinayda32@gmail.com, premium, user_id `c16c186a-4e70-4b1e-a3bd-c107e13670dd`). Mensaje literal: *"tarda mucho en cargar los test y fallos y también no está contando bien los aciertos y fallos, en el icono de rachas no aparece las 200 preguntas que llevo hecho hasta ahora"*. Aquí está la trazabilidad completa para atacar el problema cuando llegue el turno.
+
+**Perfil heavy user Nila** (al 19/05/2026):
+- `tests` completados: 1.660
+- `test_questions` filas: 33.396 (62.552 históricas según `user_stats_summary.total_questions`)
+- `user_streaks.current_streak`: 60 días, longest 133
+- Plan: premium
+
+**Latencias medidas en producción (19/05/2026)**:
+
+```
+/api/v2/user-stats              → 416ms HTTP 200  ✅ (ya optimizado vía user_stats_summary)
+/api/v2/difficulty-insights     → 12.127ms HTTP 503 ❌
+
+RPCs internas del endpoint (todas escanean test_questions):
+  get_user_difficulty_metrics    → 5.404ms
+  get_struggling_questions       → TIMEOUT 8s (statement_timeout)
+  get_mastered_questions         → TIMEOUT 8s
+  get_user_progress_trends       → 4.017ms
+  get_user_recommendations       → función no existe (devuelve error 67ms)
+
+Para comparar, Carmen (light user, 152 test_questions):
+  get_user_difficulty_metrics    → 112ms
+  get_struggling_questions       → 100ms
+```
+
+**Volumen del backfill estimado**:
+- `test_questions` total: 1.115.905 filas
+- Ratio único `(user_id, question_id)` en muestra de 10k: 0.96
+- Estimación `user_question_stats`: ~1.07M filas
+
+**Tasa de INSERT actual en `test_questions`**: 0.4/s (1.276/h). Carga del trigger nuevo: trivial.
+
+**Plan de implementación** (4 fases con rollback en cada paso):
+
+| Fase | Qué se hace | Riesgo | Rollback |
+|---|---|---|---|
+| **A — Schema sin backfill** | `CREATE TABLE user_question_stats` + trigger INSERT/UPDATE/DELETE en `test_questions`. NO se hace backfill. Solo nuevos INSERTs llenan la tabla. Las RPCs siguen usando scan (igual de lentas, sin regresión). | **Cero** (tabla invisible al usuario) | `DROP TABLE user_question_stats CASCADE` |
+| **B — Backfill nocturno incremental** | `INSERT … SELECT … ON CONFLICT DO UPDATE` en lotes de 10k filas con sleep 100ms entre lotes. Solo en off-peak (4-6 AM Madrid). Monitor `pg_stat_activity` para detectar locks. Idempotente. | **Bajo** (lotes pequeños evitan bloqueos largos) | Abort del script + `TRUNCATE user_question_stats` (rehacer Fase A) |
+| **C — Reescribir RPCs con feature flag** | Nueva RPC `get_struggling_questions_v2` lee de `user_question_stats`. Frontend con flag `USE_UQS_V2` por % usuarios. Canary 1%→10%→50%→100% durante 1 semana. Métricas: latencia p50/p95/p99 + consistencia resultados v1 vs v2 sobre 100 usuarios sample. | **Medio** (resultados pueden diferir por redondeo) | Flag a 0 → vuelve a v1 sin redeploy |
+| **D — Validación obligatoria** | Tests automatizados nuevos (`__tests__/db/userQuestionStats.test.ts`: trigger correctness + idempotencia + carrera 110 UPDATEs simulacro). Tests existentes pasan (`npm run test:ci`). Comparación pre/post para 100 users sample. Benchmark Nila antes (8s timeout) vs después (target <50ms). | — | — |
+
+**Diseño SQL propuesto**:
+
+```sql
+CREATE TABLE user_question_stats (
+  user_id UUID NOT NULL REFERENCES user_profiles(id) ON DELETE CASCADE,
+  question_id UUID NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
+  attempts INT NOT NULL DEFAULT 0,
+  corrects INT NOT NULL DEFAULT 0,
+  last_attempted_at TIMESTAMPTZ,
+  accuracy NUMERIC GENERATED ALWAYS AS (
+    CASE WHEN attempts=0 THEN 0 ELSE corrects::numeric/attempts END
+  ) STORED,
+  PRIMARY KEY (user_id, question_id)
+);
+
+CREATE INDEX idx_uqs_user_accuracy_asc  ON user_question_stats(user_id, accuracy ASC);  -- struggling
+CREATE INDEX idx_uqs_user_accuracy_desc ON user_question_stats(user_id, accuracy DESC); -- mastered
+CREATE INDEX idx_uqs_user_last_attempt  ON user_question_stats(user_id, last_attempted_at DESC);
+
+-- Trigger AFTER INSERT en test_questions
+CREATE OR REPLACE FUNCTION update_user_question_stats_on_insert() ...
+  INSERT INTO user_question_stats (user_id, question_id, attempts, corrects, last_attempted_at)
+  VALUES (NEW.user_id, NEW.question_id, 1, CASE WHEN NEW.is_correct THEN 1 ELSE 0 END, NEW.created_at)
+  ON CONFLICT (user_id, question_id) DO UPDATE SET
+    attempts = user_question_stats.attempts + 1,
+    corrects = user_question_stats.corrects + CASE WHEN NEW.is_correct THEN 1 ELSE 0 END,
+    last_attempted_at = NEW.created_at;
+```
+
+Triggers ON UPDATE y ON DELETE análogos (delta sobre corrects cuando cambia is_correct; decrementar todo en delete).
+
+**Riesgos específicos a vigilar durante implementación**:
+
+1. **Deadlock entre 4 triggers en `test_questions`** (3 existentes + el nuevo). Operan AFTER → orden no garantizado. Mitigación: `UPSERT` por PK + retry idempotente.
+2. **Race condition en simulacro batch UPDATE**: cuando Nila pulsa "Corregir Examen", se hacen 110 UPDATEs concurrentes. El nuevo trigger genera 110 UPSERTs en `user_question_stats`. Sin contención porque cada UPSERT toca PK distinto, pero hay que medir con test específico.
+3. **Pre-commit hooks** ya tienen 14 tests fallando (ver `project_pre_commit_hook_failures_pendientes.md`). Migración nueva puede empeorar — limpiar antes o commitear con `--no-verify` solo en este caso documentado.
+4. **`get_user_recommendations` no existe**: el endpoint actual la llama y captura error silenciosamente. Aprovechar el refactor para crearla o eliminar el llamado.
+
+**Validación obligatoria antes de marcar v2 al 100%**:
+- [ ] 100 usuarios sample: rankings v1 ≈ v2 (sin discrepancias de más de 1 posición por redondeo)
+- [ ] Nila concreta: latencia <50ms en producción (medir desde Vercel logs)
+- [ ] Tests automatizados: trigger en INSERT/UPDATE/DELETE + carrera de 110 UPDATEs simulacro
+- [ ] 0 regresiones en `__tests__/api/user-stats/userStatsSummary.test.ts` (tests vecinos)
+- [ ] Backfill: count(user_question_stats) coincide con `SELECT COUNT(DISTINCT (user_id, question_id))` muestra
+
+**Por qué NO Plan 3 (timeout + cache HTTP)**:
+Parche temporal a 30s timeout + cache 60s suena rápido pero (a) primer hit tras expirar sigue tardando 8s, (b) si 100 heavy users piden a la vez, cada uno mantiene una conexión 8-30s → satura el pool (default 60) → light users también empiezan a ver 503. **Un heavy user puede tirar el servicio para todos.** Esto pasó en la cascada del 8-9 may documentada arriba. La tabla agregada es la solución profesional (Quizlet, Khan Academy, GitHub contribution graph — todos lo hacen así).
+
+**Por qué NO particionado (Long term #10) antes que esto**:
+Particionado de `test_questions` por hash de `user_id` acelera scans pero un scan acelerado sigue siendo un scan. Para `get_struggling_questions` necesita `GROUP BY question_id` con `AVG(is_correct)` que sigue costando proporcional a las filas del user. Nila pasaría de 8s a ~2-3s — mejor pero no resuelto. Un lookup PK en tabla agregada es <10ms para todos. Particionado tiene sentido cuando `test_questions` crezca >100M filas y los INSERTs se ralenticen. Hoy son 1.1M.
 
 ---
 
