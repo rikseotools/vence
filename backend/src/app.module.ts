@@ -12,6 +12,11 @@ import { UpdateStreaksModule } from './update-streaks/update-streaks.module';
 import { AvatarRotationModule } from './avatar-rotation/avatar-rotation.module';
 import { CheckSeguimientoModule } from './check-seguimiento/check-seguimiento.module';
 import { ProcessOutboxModule } from './process-outbox/process-outbox.module';
+import { AnthropicModule } from './anthropic/anthropic.module';
+import { DetectTimelineSilenceModule } from './detect-timeline-silence/detect-timeline-silence.module';
+import { DetectOepLlmModule } from './detect-oep-llm/detect-oep-llm.module';
+import { DetectRegionalOepsModule } from './detect-regional-oeps/detect-regional-oeps.module';
+import { DetectGenericSourcesModule } from './detect-generic-sources/detect-generic-sources.module';
 
 @Module({
   imports: [
@@ -35,6 +40,12 @@ import { ProcessOutboxModule } from './process-outbox/process-outbox.module';
     CheckSeguimientoModule,
     ProcessOutboxModule,
     AvatarRotationModule,
+    // Crons — sub-etapa 1b tanda 3 (sensores OEP)
+    AnthropicModule,
+    DetectTimelineSilenceModule,
+    DetectOepLlmModule,
+    DetectRegionalOepsModule,
+    DetectGenericSourcesModule,
   ],
 })
 export class AppModule {}
