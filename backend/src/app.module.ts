@@ -9,6 +9,9 @@ import { HealthModule } from './health/health.module';
 import { RefreshRankingsModule } from './refresh-rankings/refresh-rankings.module';
 import { RefreshThemeCacheModule } from './refresh-theme-cache/refresh-theme-cache.module';
 import { UpdateStreaksModule } from './update-streaks/update-streaks.module';
+import { AvatarRotationModule } from './avatar-rotation/avatar-rotation.module';
+import { CheckSeguimientoModule } from './check-seguimiento/check-seguimiento.module';
+import { ProcessOutboxModule } from './process-outbox/process-outbox.module';
 
 @Module({
   imports: [
@@ -28,6 +31,10 @@ import { UpdateStreaksModule } from './update-streaks/update-streaks.module';
     RefreshThemeCacheModule,
     RefreshRankingsModule,
     UpdateStreaksModule,
+    // Crons — sub-etapa 1b tanda 2 (monitoreo + colas)
+    CheckSeguimientoModule,
+    ProcessOutboxModule,
+    AvatarRotationModule,
   ],
 })
 export class AppModule {}

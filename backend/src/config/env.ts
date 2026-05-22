@@ -36,6 +36,8 @@ const envSchema = z.object({
     .enum(['true', 'false'])
     .default('false')
     .transform((v) => v === 'true'),
+  // Token Bearer para llamar a endpoints internos protegidos de la app Next.js.
+  CRON_SECRET: z.string().default(''),
 });
 
 export type Env = z.infer<typeof envSchema>;
