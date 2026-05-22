@@ -1,0 +1,8 @@
+# Copiar a terraform.tfvars y ajustar. terraform.tfvars NO se commitea.
+
+aws_region  = "eu-west-2"
+project     = "vence-backend"
+github_repo = "rikseotools/vence"
+
+# Mantener "false" mientras el cron corre en shadow (en paralelo al de Vercel).
+boe_notify_enabled = "false"

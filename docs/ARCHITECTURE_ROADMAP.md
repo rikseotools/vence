@@ -1,7 +1,7 @@
 # Vence — Architecture Roadmap a 100k+ usuarios
 
 > **Última actualización:** 2026-05-18
-> **Estado:** Fase 0 casi completa (0.1-0.6 hechas) + **Fase 1 Redis ✅ COMPLETA y AMPLIADA** + **Sprint 1 seguridad ✅ COMPLETO** (5 sub-sprints) + **Sprint 2 hardening cascade ✅ COMPLETO** (18 sub-sprints, 19 commits, **deployed en producción**, validado en logs) + **Sprint 3 fallos post-deploy ✅ COMPLETO** (4 fallos detectados en logs Vercel tras Sprint 2 deploy y resueltos en sesión) + **Sprint 4 audit pool mode + outbox blindado ✅ COMPLETO 2026-05-17** (3 commits — refactor advisory_lock→SKIP LOCKED, quick-fail user-failed+difficulty-insights, audit pool mode revela ya transaction) + **Sprint 5 cascade 18/05 ✅ COMPLETO 2026-05-18** (2 commits — user-failed-questions migrado a read replica, daily-limit con cache stale-if-error fresh 30s + stale 24h). Sprint 2: invalidación caches existentes saneada, singleflight anti-stampede, regions:lhr1 (validado 80ms→3.37ms), 5 endpoints más cacheados (test-config family + hot-articles + law-stats + verify-stats + estimate), quick-fail wrapper en 11 endpoints, observability (Sentry beforeSend + cache hit-rate counters). Sprint 3: TypeError streaming Next 16 (inlineCss disabled), userAnswer=-1 (schema fix), theme-stats timeout heavy users (covering index 12.5s→502ms = 24.9x), GeoIP timeout (Vercel headers sync, sin ip-api.com). Pendiente: 0.5 verificar p95 producción, **Fase 0.7 (JWT local verify)** documentada como next big win, **Fase 11 push (DROP TABLES BD)** esperar 24-48h.
+> **Estado:** Fase 0 casi completa (0.1-0.6 hechas) + **Fase 1 Redis ✅ COMPLETA y AMPLIADA** + **Sprint 1 seguridad ✅ COMPLETO** (5 sub-sprints) + **Sprint 2 hardening cascade ✅ COMPLETO** (18 sub-sprints, 19 commits, **deployed en producción**, validado en logs) + **Sprint 3 fallos post-deploy ✅ COMPLETO** (4 fallos detectados en logs Vercel tras Sprint 2 deploy y resueltos en sesión) + **Sprint 4 audit pool mode + outbox blindado ✅ COMPLETO 2026-05-17** (3 commits — refactor advisory_lock→SKIP LOCKED, quick-fail user-failed+difficulty-insights, audit pool mode revela ya transaction) + **Sprint 5 cascade 18/05 ✅ COMPLETO 2026-05-18** (2 commits — user-failed-questions migrado a read replica, daily-limit con cache stale-if-error fresh 30s + stale 24h). Sprint 2: invalidación caches existentes saneada, singleflight anti-stampede, regions:lhr1 (validado 80ms→3.37ms), 5 endpoints más cacheados (test-config family + hot-articles + law-stats + verify-stats + estimate), quick-fail wrapper en 11 endpoints, observability (Sentry beforeSend + cache hit-rate counters). Sprint 3: TypeError streaming Next 16 (inlineCss disabled), userAnswer=-1 (schema fix), theme-stats timeout heavy users (covering index 12.5s→502ms = 24.9x), GeoIP timeout (Vercel headers sync, sin ip-api.com). Pendiente: 0.5 verificar p95 producción, **Fase 0.7 (JWT local verify)** documentada como next big win, **Fase 11 push (DROP TABLES BD)** esperar 24-48h. **DECISIÓN 2026-05-22:** migración a backend dedicado de proceso largo (ver sección «Backend dedicado de proceso largo») — se empieza moviendo los crons (Etapa 1).
 > **Objetivo:** preparar Vence para escalar a 100k+ usuarios sin perder features ni romper nada
 > **Coste extra estimado total (Fases 0-3):** $10-40/mes
 > **Coste extra estimado total (Fases 0-5):** $50-150/mes
@@ -908,6 +908,110 @@ getTraceDb()  → max:1, sin timeout   // ✅ HECHO — para after() background 
 - Cada dashboard admin: comparar warehouse vs Postgres 1 semana
 - Si los números coinciden → migrar al warehouse
 - Postgres OLTP descargado, admin instantáneo
+
+---
+
+## Estrategia: Backend dedicado de proceso largo (DECISIÓN 2026-05-22)
+
+**Decisión:** Vence migrará progresivamente a un **backend de proceso largo** (un servicio Node persistente — NestJS o Fastify, **monolito modular, NO microservicios**), separado del frontend Next.js. No se espera a "ser crítico": se hace ahora, a 235 DAU, donde un error afecta a 235 personas y no a 50.000. Migrar bajo fuego, con miles de usuarios, es el peor momento posible.
+
+**Por qué.** Buena parte de los Sprints 2-5 de este roadmap son **parches contra limitaciones del serverless**, no contra Postgres:
+- `pool max:1` (y las cascadas que provoca) existe porque cada lambda Vercel es un proceso aislado: N lambdas × pool propio agotan las 90 conexiones de Postgres. Un proceso largo tiene **un** pool compartido (max 20-50) — el modelo para el que Postgres está diseñado.
+- Cold starts, caché que no se comparte entre lambdas, `maxDuration` 60s, los 11 wrappers `quick-fail`... todo es peaje del serverless.
+- **Incidente que lo detona (2026-05-22):** el cron `check-boe-changes` se perdió la reforma constitucional del art. 69.3 (senador propio de Formentera, BOE 20/05/2026) porque su presupuesto de 50s —impuesto por el `maxDuration` de Vercel— solo le da para revisar ~150 de 475 leyes por ejecución. 323 leyes quedan sin revisar 2+ días; 27 nunca. Es un fallo de profesionalidad *hoy*, no a los 10k DAU.
+
+**Qué resuelve y qué no:**
+
+| Sí lo resuelve (problemas del serverless) | NO lo resuelve (tier de datos) |
+|---|---|
+| `pool max:1`, cascadas 503/504, head-of-line blocking | Triggers en `test_questions` (hay que migrarlos a colas igual) |
+| Cold starts, caché no compartida entre lambdas | Agregaciones pesadas en hot path (sigue haciendo falta materializar) |
+| `maxDuration` 60s, crons que no terminan | Supabase como tier de datos en sí |
+| Blips del Supavisor compartido (conexión directa con pool propio) | |
+
+Esta estrategia **absorbe la Fase 2 (Outbox) y la Fase 4 (Async queues)** del cuadro de 6 fases: el backend largo es el hogar natural de las colas.
+
+### Estado final objetivo (pensar en grande)
+
+El destino no es "parchear hasta los 100k", es una arquitectura que a 100k DAU sea **aburrida**:
+- **Frontend**: Next.js (SSR, landings, temario) servido por CDN.
+- **Backend**: un servicio NestJS — monolito modular — con API + workers + scheduler, proceso largo, pool de conexiones real, autoescalable.
+- **Datos**: Postgres primary + réplica de lectura; triggers de `test_questions` sustituidos por modelo de eventos/colas; read models materializados; warehouse para analítica pesada (Fase 5). Partición de `test_questions` cuando toque.
+- **Infra**: IaC, staging con paridad a prod, CI/CD con tests verdes **como gate** (se acaba el `--no-verify`), observabilidad (Sentry + métricas + logs + alertas), HA sin SPOF, backups automáticos con drills de restore, runbooks.
+
+### Regla anti-deuda técnica
+
+Pensar en grande **NO es un big-bang rewrite** — un rewrite a medias es la peor deuda posible. Es lo contrario: cada etapa se entrega **COMPLETA** antes de empezar la siguiente. La "Definition of Done" de cada etapa incluye, sin excepción:
+1. Tests del código nuevo + CI verde.
+2. Observabilidad (logs, métricas, alertas) del componente movido.
+3. **Borrar el código viejo que reemplaza** — no dejar el cron de Vercel y el del backend conviviendo "por si acaso".
+4. Documentación + runbook actualizado.
+5. No arrastrar deuda vieja al backend nuevo (columnas legacy como `topic_review_status`, `TestLayoutV2`, etc. se migran limpias o se quedan fuera — nunca se copian tal cual).
+
+Si una etapa no cumple su Definition of Done, no está hecha. Mejor 4 etapas terminadas que 8 a medias.
+
+### Principio transversal: agnóstico al proveedor
+
+**Requisito de diseño para todo lo que se construya a partir de ahora:** Vence debe poder cambiar de proveedor de BD, de hosting (AWS, Vercel, lo que sea) sin reescribir código. El proveedor es **una decisión de configuración, no una dependencia de código**.
+
+Enfoque: **ports & adapters** (arquitectura hexagonal) + **12-factor** (config 100% por env vars). La app habla con *capacidades* a través de protocolos estándar y un adapter fino por dependencia externa; el proveedor concreto vive detrás de ese adapter.
+
+| Capacidad | Cómo se mantiene agnóstico | Proveedor = config |
+|---|---|---|
+| **Base de datos** | Postgres + SQL estándar vía Drizzle. SIN RLS como única autz, SIN PostgREST, SIN SQL específico de Supabase | Supabase / Neon / RDS / Hetzner / cualquier Postgres |
+| **Compute backend** | Contenedor **Docker** 12-factor, sin primitivas propietarias | ECS / Fly / Railway / Render / Hetzner / bare metal |
+| **Frontend** | Next.js self-hostable (`next start` en Docker). Evitar features solo-Vercel: Vercel KV, Vercel Cron, headers `x-vercel-ip-*` | Vercel / contenedor propio |
+| **Auth** | Wrapper `verifyAuth` — único sitio que conoce el proveedor | Supabase Auth / Auth.js / Clerk / Cognito |
+| **Caché / colas** | Protocolo Redis estándar (NO la REST API propietaria de Upstash) + BullMQ | Upstash / Redis gestionado / Redis propio |
+| **Object storage** | API **S3-compatible** con endpoint configurable | S3 / R2 / MinIO / Supabase Storage |
+| **Email** | SMTP o interfaz fina de envío | Resend / SendGrid / SES / SMTP |
+| **Scheduler** | Scheduler in-app del backend (no Vercel Cron / GHA como fuente de verdad) | — |
+| **Observabilidad** | OpenTelemetry (traces/métricas neutrales) + Sentry | cualquier backend OTLP |
+
+**Dónde NO pasarse:** agnóstico **vía estándares** (protocolo Postgres, API S3, Redis, SMTP, Docker) cuesta ~0 y se hace siempre. Agnóstico **vía capas de abstracción pesadas "por si acaso"** es sobre-ingeniería — y por tanto deuda técnica. El objetivo es **portable** (migrar a otro proveedor en días/semanas, limpio) — NO *swap en caliente con un flag*. Regla práctica: un archivo adapter por dependencia externa, cero features propietarias, y la migración se prueba (al menos una vez) levantando el stack contra un proveedor alternativo.
+
+**Caso concreto — independencia de Supabase.** Supabase es el lock-in más profundo porque no es un proveedor de BD: es un *bundle* (Postgres + Auth + PostgREST + Storage + Realtime). Salir requiere desacoplar cada pieza — y **la migración a backend dedicado es justamente el vehículo, no un proyecto aparte**:
+- **PostgREST** (`supabase.from(...)` llamado directo desde el frontend — 29/58 conexiones) → se sustituye por endpoints propios del backend + Drizzle. Ocurre en la **Etapa 2**.
+- **Auth + RLS** → `verifyAuth` ya abstrae el server; la autorización pasa a la capa de app (Drizzle + `verifyAuth`), no a RLS. Ver paths A-D en «Reducir dependencia de Supabase».
+- **Storage** → API S3-compatible (ya agnóstico). **Email Auth** → SMTP/Resend.
+- **BD** → `pg_dump` a cualquier Postgres cuando se quiera.
+
+Es decir: **cada etapa del backend dedicado reduce el acoplamiento a Supabase**. Al terminar la Etapa 2, Supabase queda reducido a "un Postgres más" — intercambiable con un `DATABASE_URL`. La sección «Reducir dependencia de Supabase» (más abajo) detalla el estado del acoplamiento pieza por pieza y los paths de salida.
+
+### Gate de adopción de dependencias nuevas
+
+**Regla:** no se añade NADA difícil de migrar después. Antes de adoptar cualquier dependencia externa nueva (SaaS, primitiva de plataforma, SDK propietario, feature específica de un proveedor), pasa este gate:
+
+1. **¿Hay un estándar detrás?** Protocolo Postgres, API S3, Redis, SMTP, OAuth/OIDC, OTLP, Docker. Si lo hay, se usa el estándar — el proveedor se vuelve intercambiable.
+2. **Test de salida:** *"si este proveedor desaparece mañana, ¿cuánto cuesta migrar?"* Si la respuesta es semanas/meses → es 🔴 y necesita justificación explícita.
+3. **¿Encierra los datos en formato propietario?** Si sí → 🔴.
+4. **Consumo SIEMPRE vía un único adapter.** Lo que hace difícil migrar una dependencia NO es la dependencia — es **cuántos sitios la llaman directo**. `supabase.from()` en 29 archivos = pesadilla; `verifyAuth()` en 1 archivo = swap trivial. Regla dura: **ninguna dependencia externa se llama directa desde más de un módulo.** Si ya está esparcida, se envuelve antes de seguir creciendo.
+
+Clasificación de cada dependencia: ✅ estándar bien aislado · 🟡 propietario pero tras un adapter fino · 🔴 propietario y esparcido, o formato cerrado. **Las 🔴 requieren decisión consciente registrada en el log de decisiones** — no entran por inercia.
+
+**Plan por etapas** (cada una desplegable y reversible; el contenido —preguntas, temarios, monitoreo— NO se congela):
+
+| Etapa | Qué | Estado |
+|---|---|---|
+| **1 — Crons/workers** | Backend largo haciendo SOLO crons + colas (BOE, seguimiento, sensores OEP, outbox, recalc). Scheduler real + BullMQ, sin límite de duración. | **← EMPEZAMOS AQUÍ** |
+| 2 — API hot path | Endpoints Next.js → backend, detrás de `verifyAuth`+Drizzle (ya portables). Pool compartido real mata `max:1`, cascadas y cold starts. Incremental, con feature flag. | Pendiente |
+| 3 — Tier de datos | Triggers→eventos, read models materializados, réplica. | Pendiente |
+| 4 — HA + IaC | Quitar SPOF, infra como código, backups, runbooks. | Pendiente |
+
+En paralelo, recomendable: **higiene de repo/CI** (pre-commit hook roto → commits con `--no-verify`, tests en rojo en `main`, ~100 archivos basura en la raíz, sin staging). "Profesional" empieza por ahí, no por el cloud.
+
+### Etapa 1 — Empezamos moviendo los crons (los que Vercel no aguanta)
+
+**Por qué primero:** es la etapa de **menor riesgo** — los crons son trabajo de fondo, no tocan ni un endpoint de usuario. Estrena el backend nuevo en producción sin exponer a nadie, arregla de raíz el fallo del BOE de hoy, y deja montada la cola que necesita la Etapa 2.
+
+**Crons a mover** (los `/api/cron/*` que hoy corren como funciones Vercel con `maxDuration`): `check-boe-changes`, `check-seguimiento`, sensores OEP (`detect-oep-llm`, `detect-regional-oeps`, `detect-timeline-silence`, `detect-generic-sources`), `process-outbox`, recalc/refresh varios. En el backend largo corren **hasta terminar** — `check-boe-changes` procesa las 475 leyes sin el truco del presupuesto de 50s.
+
+**Criterio de validación Etapa 1:** el backend lleva 2-3 semanas estable en producción ejecutando todos los crons y `check-boe-changes` revisa el 100% de las leyes a diario (0 leyes con `last_checked` > 48h). Solo entonces se aborda la Etapa 2.
+
+**Decisiones pendientes de Etapa 1:**
+- **NestJS vs Fastify** — NestJS trae `@nestjs/schedule` + BullMQ de fábrica y estructura para crecer; Fastify es más ligero. El beneficio real es "proceso largo", no el framework.
+- **Hosting** — Railway / Render / Fly.io o una VM Hetzner con Docker. AWS ECS/Fargate solo si se quiere el ecosistema completo (RDS, etc.); para un servicio es la opción de más ops. Evitar el culto a AWS: "profesional" está en la disciplina (CI, staging, observabilidad, IaC, HA), no en el logo del cloud.
+- **Portabilidad** — el servicio nace como **contenedor Docker 12-factor** desde el primer commit, sin primitivas propietarias. La agnosticidad al proveedor es condición de partida, no una fase posterior (ver «Principio transversal: agnóstico al proveedor»).
 
 ---
 
