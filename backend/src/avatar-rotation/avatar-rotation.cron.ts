@@ -5,12 +5,12 @@ import { AvatarRotationService } from './avatar-rotation.service';
 /**
  * Disparador del cron `avatar-rotation`.
  *
- * Sustituye el endpoint `POST /api/cron/avatar-rotation` (Next.js) invocado
- * cada lunes a las 8:00 (UTC) desde Vercel o GitHub Actions.
+ * Sustituye el endpoint `POST /api/cron/avatar-rotation` (Next.js) que el
+ * workflow de GitHub Actions invocaba los domingos a las 04:00 UTC.
  * Aquí el scheduler es in-app y el job corre sin límite de duración
  * (el original requería maxDuration=300s en Vercel Pro).
  *
- * Schedule: domingos a las 04:00 UTC (antes del lunes europeo).
+ * Schedule: domingos a las 04:00 UTC.
  */
 @Injectable()
 export class AvatarRotationCron {

@@ -328,6 +328,7 @@ const GENERIC_SYSTEM_PROMPT = `Eres auditor de fuentes normativas del Estado (Di
 Qué ES relevante:
 - Aprobación de OEP anual GENERAL (Real Decreto OEP, ej. RD 387/2026 OEP 2026)
 - Resoluciones / instrucciones de JORNADA, horarios, teletrabajo, permisos del personal AGE
+  (incluye reducciones de jornada: 35h, 37,5h, etc. — ej. BOE-A-2026-8287)
 - Instrucciones de DGFP (carrera profesional, evaluación del desempeño...)
 - Circulares Subsecretaría Función Pública
 - Acuerdos Mesa General Negociación Empleados Públicos
@@ -336,10 +337,13 @@ Qué ES relevante:
 - Pactos / resoluciones sobre retribuciones del sector público
 
 Qué NO es relevante (ignorar):
-- Noticias y notas de prensa sobre eventos genéricos
+- Noticias y notas de prensa sobre eventos genéricos (cooperación internacional, premios,
+  jornadas técnicas, inauguraciones, visitas)
 - CONVOCATORIAS individuales de un cuerpo concreto con BOE-A propio
+  (ej. "Cuerpo Auxiliar AGE convocatoria 2025" — ya se monitorizan por su URL específica)
 - Fechas de "última actualización" de la web sin contenido normativo nuevo
-- Banners, pop-ups, tooltips de navegación, menús, pie de página, cookies
+- Banners, pop-ups, tooltips de navegación
+- Menús, pie de página, cookies
 - Contenido antiguo (>1 año) que lleva ahí siempre
 
 Si no detectas NADA claramente normativo y reciente → hasRelevantChange=false.

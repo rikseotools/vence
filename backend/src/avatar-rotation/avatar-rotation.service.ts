@@ -245,34 +245,40 @@ export class AvatarRotationService {
   // ── Obtener usuarios activos en modo automático ───────────────────────────
 
   private async getUsersWithAutomaticAvatar(daysBack = 7): Promise<string[]> {
-    // Intentar con la función RPC optimizada
+    // Intentar con la función RPC optimizada.
     try {
       const result = await this.db.execute<{ user_id: string }>(
         sql`SELECT user_id FROM get_active_users_with_automatic_avatar(${daysBack})`,
       );
       const rows = result as unknown as Array<{ user_id: string }>;
-      if (rows.length >= 0) {
-        this.logger.log(`Usuarios activos en modo automático (RPC): ${rows.length}`);
-        return rows.map((r) => r.user_id);
-      }
+      this.logger.log(`Usuarios activos en modo automático (RPC): ${rows.length}`);
+      return rows.map((r) => r.user_id);
     } catch (rpcErr) {
       this.logger.warn(
         `RPC get_active_users_with_automatic_avatar no disponible, usando fallback: ${rpcErr instanceof Error ? rpcErr.message : String(rpcErr)}`,
       );
     }
 
-    // Fallback: todos los usuarios en modo automático
-    const rows = await this.db
-      .select({ userId: userAvatarSettings.userId })
-      .from(userAvatarSettings)
-      .where(eq(userAvatarSettings.mode, 'automatic'));
+    // Fallback: todos los usuarios en modo automático. Si también falla,
+    // devolver [] — el original nunca hace fallar el cron por este paso.
+    try {
+      const rows = await this.db
+        .select({ userId: userAvatarSettings.userId })
+        .from(userAvatarSettings)
+        .where(eq(userAvatarSettings.mode, 'automatic'));
 
-    const ids = rows
-      .filter((r): r is typeof r & { userId: string } => r.userId !== null)
-      .map((r) => r.userId);
+      const ids = rows
+        .filter((r): r is typeof r & { userId: string } => r.userId !== null)
+        .map((r) => r.userId);
 
-    this.logger.warn(`Fallback: ${ids.length} usuarios en modo automático`);
-    return ids;
+      this.logger.warn(`Fallback: ${ids.length} usuarios en modo automático`);
+      return ids;
+    } catch (fallbackErr) {
+      this.logger.error(
+        `Fallback también falló: ${fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr)} — 0 usuarios`,
+      );
+      return [];
+    }
   }
 
   // ── Cálculo bulk de métricas ──────────────────────────────────────────────

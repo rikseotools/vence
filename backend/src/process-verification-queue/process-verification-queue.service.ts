@@ -150,6 +150,16 @@ export class ProcessVerificationQueueService {
         break;
       }
 
+      // Error genérico (red, timeout, 5xx): NO contar el batch como procesado
+      // ni marcar la tarea completada. Se deja en 'processing' para que el
+      // próximo run reintente — el original abortaba el run ante un error así.
+      if (!verifyResult.success) {
+        this.logger.error(
+          `Batch falló (${verifyResult.error ?? 'error desconocido'}) — tarea ${task.id} queda en 'processing' para reintentar`,
+        );
+        break;
+      }
+
       const batchSuccessful = verifyResult.results?.length ?? 0;
       const batchFailed = verifyResult.errors?.length ?? 0;
 
@@ -346,25 +356,17 @@ export class ProcessVerificationQueueService {
 
   /**
    * Llama al endpoint Next.js `/api/topic-review/verify` con un batch de IDs.
-   *
-   * La llave `CRON_SECRET` del config se usa como Bearer token para que el
-   * endpoint reconozca la llamada como autorizada (misma validación que el
-   * cron original de Vercel).
+   * El cron original de Vercel no envía cabecera de autorización — se replica igual.
    */
   private async callVerifyApi(
     baseUrl: string,
     questionIds: string[],
     task: QueueTask,
   ): Promise<VerifyApiResponse> {
-    const cronSecret = this.config.get<string>('CRON_SECRET') ?? '';
-
     try {
       const response = await fetch(`${baseUrl}/api/topic-review/verify`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${cronSecret}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           questionIds,
           provider: task.aiProvider,
@@ -377,9 +379,9 @@ export class ProcessVerificationQueueService {
       const message =
         error instanceof Error ? error.message : String(error);
       this.logger.error(`Error llamando a /api/topic-review/verify: ${message}`);
-      // Devolver una respuesta de fallo sin interrumpir el loop — el batch
-      // se contará como fallido pero el proceso continúa con el siguiente.
-      return { success: false, errors: [{ error: message }] };
+      // Devolver fallo: el loop de run() lo detecta (!success) y deja la
+      // tarea en 'processing' para reintentar en el próximo run.
+      return { success: false, error: message, errors: [{ error: message }] };
     }
   }
 }
