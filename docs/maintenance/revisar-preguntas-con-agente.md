@@ -1447,6 +1447,12 @@ if (NEEDS_VISUAL.test(text) && !hasData && !hasImage) {
 }
 ```
 
+> ⚠️ **El regex `NEEDS_VISUAL` NO basta — incidente 22/05/2026.** La pregunta `e1f919e1` («¿qué porcentaje representa la cantidad de coches Nissan… respecto de BMW…?») necesita una tabla de datos, pero su texto **no contiene ninguna** de las frases del regex (la dependencia de datos es implícita). Pasó el gate, se activó, y la verificación IA la selló. Una usuaria la impugnó.
+>
+> **Regla correcta — no es un regex, es una prueba de resolubilidad:** una pregunta numérica/lógica está rota si **no se puede resolver con `question_text` + `content_data`**. El agente verificador DEBE intentar resolverla de verdad (hacer el cálculo paso a paso); si necesita un dato que no está → `answerOk=false`, `questionOk=false`, motivo «irresoluble: faltan datos». El regex de keywords solo sirve como pre-aviso, nunca como gate único.
+>
+> **Rubber-stamp masivo detectado:** la auditoría del 22/05/2026 encontró que **2.945 de 3.126** verificaciones de psicotécnicas en `ai_verification_results` tenían el veredicto literal «Verified OK» — sello en bloque sin resolver de verdad (de ahí que `e1f919e1`, irresoluble, saliera `answer_ok=true`). Una verificación válida deja constancia del cálculo/razonamiento concreto, nunca un «OK» lacónico. Si aparece «Verified OK» en masa, esa verificación no vale: hay que re-verificar resolviendo.
+
 ### Ejemplo real (Abril 2026 — InnoTest GC)
 
 Importación de 3.027 preguntas psicotécnicas texto puro:

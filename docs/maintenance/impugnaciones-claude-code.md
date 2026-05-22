@@ -4,6 +4,43 @@
 
 Este manual documenta cómo resolver impugnaciones de preguntas usando Claude Code como agente. Es más rápido que el proceso manual y permite verificar artículos directamente en la base de datos.
 
+---
+
+## ▶ Procedimiento operativo — el flujo a seguir
+
+> **Empieza por aquí.** Secuencia canónica para resolver una impugnación. Las secciones §1-§16 son el detalle.
+
+**Reglas que NO se saltan nunca:**
+- NUNCA cerrar / rechazar / modificar sin **borrador del mensaje + aprobación explícita** de Manuel.
+- SIEMPRE obtener el **nombre real** del usuario antes de redactar (§11). Nombre claramente ficticio → "Hola," sin nombre.
+- Cerrar SIEMPRE vía endpoint `/api/v2/dispute/resolve` — nunca UPDATE directo (§6, §15).
+- Listar impugnaciones requiere **SERVICE_ROLE_KEY** (con ANON devuelve `[]` silencioso por RLS).
+
+**Pasos:**
+
+1. **Listar** las pendientes — tablas `question_disputes` Y `psychometric_question_disputes`, estados `pending` + `appealed` (§1, §7.0).
+
+2. **Analizar a fondo** (§2): enunciado, opciones, respuesta marcada, explicación, artículo vinculado, `ai_verification_results`. Tabla por opción con su fundamento legal.
+
+3. **Clasificar el tipo** — decide la rama:
+   - **Informática** (Word/Excel/Access/Outlook/Windows/Internet) → la fuente es el ARTÍCULO; verifícalo y, si hace falta, corrígelo contra Microsoft Support (§5.1.1, §5.1.2, §5.1.3, §7.6). NO parchear solo la explicación.
+   - **`tema_incorrecto`** → es un problema de `topic_scope`, no de la pregunta (§7.2).
+   - **Supuesto práctico huérfano** (cita "el supuesto" pero no se ve) → `exam_case_id` NULL (§7.4.ter).
+   - **Mismo usuario con 3+ impugnaciones** → buscar el denominador común; suele ser un fallo sistémico (§7.5).
+   - **Estructural / metadatos de la ley** → vincular al "Art. 0" (§7.1.1).
+
+4. **Diagnóstico** (§2.6): ¿respuesta correcta? ¿artículo responde literalmente? ¿explicación didáctica? ¿impugnación válida o falso positivo?
+
+5. **Corregir** lo que esté mal (§5): no oficial + mejorable = se mejora aunque la queja sea parcial (§7.3); oficial = no se toca enunciado/opciones. Re-vincular artículo exige explicación nueva coherente. Si la pregunta estaba oculta, transicionar lifecycle (§5.2).
+
+6. **Redactar el mensaje** (§6): conciso, aireado, reconocer si el usuario tenía razón, firmar "Equipo de Vence". Mostrar el borrador y ESPERAR aprobación.
+
+7. **Cerrar** vía `/api/v2/dispute/resolve` (`resolved` / `rejected`) — comprobar `emailSent` y `bellSent` en la respuesta.
+
+8. **Continuar** con la siguiente sin preguntar "¿seguimos?" hasta terminarlas todas.
+
+---
+
 ## 1. Ver Impugnaciones Pendientes
 
 ```
@@ -248,6 +285,24 @@ Ejemplo de la sesión 16/05/2026: pregunta sobre `Win+D` estaba vinculada a Art.
 **Incidente que motivó la regla anterior (14/04/2026):** pregunta `7fc7f0b0...` Excel `=EXTRAE(A1;12;2)` tenía la explicación de OTRA pregunta (sobre concatenación con `&`), totalmente cruzada. `gpt-4o-mini` lo detectó hace meses pero la pregunta nunca fue revisada por agente Opus.
 
 **Incidente que motiva la regla (14/04/2026):** pregunta `7fc7f0b0...` Excel `=EXTRAE(A1;12;2)` tenía la explicación de OTRA pregunta (sobre concatenación con `&`), totalmente cruzada. `gpt-4o-mini` lo detectó (`answer_ok=false, explanation_ok=false`, descripción correcta) hace meses, pero la pregunta nunca fue revisada por agente Opus, así que siguió activa hasta que la impugnó la usuaria Farida.
+
+### 5.1.3 Impugnaciones de informática: verifica y arregla el ARTÍCULO, no solo la pregunta (post-22/05/2026)
+
+Al resolver una impugnación de informática (Word, Excel, Outlook, Windows…), el artículo vinculado (`primary_article_id`) **puede estar mal él mismo**. Arreglar solo la explicación de la pregunta es un parche que NO escala:
+
+- El artículo es la **teoría** que estudia el opositor — si está mal, le enseña el error igualmente.
+- La explicación "corregida" **contradice** a su propio artículo vinculado.
+- Cualquier **otra pregunta** vinculada al mismo artículo hereda el error.
+
+**Regla:** verifica el contenido del artículo vinculado contra Microsoft Support. Si el artículo está mal, **corrige el artículo** (`articles.content`) — es la fuente única. Así se arreglan de golpe todas las preguntas que dependen de él, y la explicación de la pregunta solo tiene que ser coherente con el artículo.
+
+**Dos trampas propias de informática:**
+
+1. **El contenido es volátil entre versiones.** Microsoft remapea atajos y renombra funciones entre versiones (p. ej. Outlook clásico vs. Nuevo Outlook). Un atajo correcto hace años puede haber cambiado. Verifica siempre contra la página VIGENTE de Microsoft Support; la respuesta puede depender de versión.
+
+2. **El mismo término nombra funciones distintas.** Ej.: Outlook tiene a la vez "Tareas" (módulo clásico, Ctrl+8) y "To Do" (Ctrl+5) — son cosas diferentes. Una pregunta que dice "la lista de tareas" es ambigua. Si Microsoft usa un nombre parecido para dos funciones, reformula el enunciado para que sea inequívoco.
+
+**Incidente que motiva la regla (22/05/2026 — Alex Diaz, atajo Outlook):** impugnación `respuesta_incorrecta` sobre "¿atajo para la lista de tareas?", marcada Ctrl+5. El artículo vinculado decía "Ctrl+5 = Tareas (To Do)" y omitía Ctrl+8. Microsoft Support: **Ctrl+5 = To Do, Ctrl+8 = Tareas**. Se corrigió el **artículo** (tabla de navegación Ctrl+1–8 completa) y luego se reformuló el enunciado para que preguntara inequívocamente por "To Do".
 
 ### 5.2 Explicación + transición lifecycle (post-03/05/2026)
 
@@ -745,6 +800,8 @@ const { data } = await s.from('question_disputes')
 | `ai_chat_log_id` | UUID del `ai_chat_logs` que generó la disputa (solo `ai_auto`) |
 
 ## 9. Flujo Completo
+
+> El flujo canónico es el **"Procedimiento operativo"** del inicio del manual. El esquema de abajo es un ejemplo conversacional más detallado, paso a paso.
 
 ```
 1. "mira si hay impugnaciones abiertas"
