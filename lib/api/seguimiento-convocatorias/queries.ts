@@ -112,6 +112,19 @@ export function getContentPreview(html: string): string {
 }
 
 /**
+ * Detecta páginas de bloqueo de WAF que devuelven HTTP 200 con un cuerpo de
+ * error. Su hash cambia en cada check por tokens dinámicos ("Reference 18...",
+ * captcha IDs, timestamps) → generarían señales hash_change infinitas.
+ * Solo se consideran bloqueo si el texto es corto: una ficha real de
+ * convocatoria tiene miles de caracteres.
+ */
+export function isBlockedPage(html: string): boolean {
+  const text = extractRelevantText(html).toLowerCase()
+  if (text.length > 1500) return false
+  return /access denied|forbidden|you don't have permission|request blocked|captcha|are you a robot/.test(text)
+}
+
+/**
  * Fetch HTTPS sin validar TLS para servidores que no envían cadena intermedia
  * (ej. www.dpz.es con FNMT-RCM). Sigue hasta 5 redirects.
  */
@@ -179,6 +192,25 @@ export async function checkSeguimientoUrl(
       clearTimeout(timeout)
       html = await response.text()
       httpStatus = response.status
+    }
+
+    // Respuesta no-2xx o página de bloqueo de WAF: no es contenido real.
+    // Su hash cambia en cada check (tokens dinámicos) → ruido infinito.
+    // Tratarlo como error: saveSeguimientoCheck lo marca 'error' sin señal.
+    const httpOk = httpStatus >= 200 && httpStatus < 300
+    if (!httpOk || isBlockedPage(html)) {
+      return {
+        oposicionId: oposicion.id,
+        nombre: oposicion.nombre,
+        slug: oposicion.slug,
+        hasChanged: false,
+        newHash: '',
+        oldHash: oposicion.seguimientoLastHash,
+        httpStatus,
+        contentLength: html.length,
+        contentPreview: getContentPreview(html),
+        error: httpOk ? 'Página de bloqueo (WAF/Access Denied)' : `HTTP ${httpStatus}`,
+      }
     }
 
     const newHash = hashContent(html)

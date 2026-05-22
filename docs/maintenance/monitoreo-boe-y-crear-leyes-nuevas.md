@@ -51,6 +51,23 @@ const supabase = createClient(
 SCRIPT
 ```
 
+## 1bis. Antes de sincronizar: ¿la ley está derogada? ¿es un falso positivo?
+
+Dos comprobaciones **obligatorias** antes de tratar un `change_status='changed'` como un cambio real que haya que sincronizar.
+
+### ¿La ley está derogada?
+
+El cron `check-boe-changes` detecta que cambió la fecha de "Última actualización" del BOE, pero **no distingue una modificación de una derogación**. Una ley puede llevar años derogada y seguir con `is_active=true` en BD. Antes de sincronizar, abrir la `boe_url` y mirar la cabecera del texto consolidado:
+
+- `"Norma derogada, con efectos de DD/MM/YYYY, por ..."` → la ley está **derogada**. NO sincronizar. Si la sustituye un texto refundido con preguntas vinculadas, seguir "Migrar una ley derogada a su texto refundido" (más abajo). Si solo es derogación sin sustituta con preguntas, marcar `is_derogated=true` + `is_active=false` + `change_status='reviewed'`.
+- `"Norma derogada, excepto las disposiciones finales X, Y..."` → derogación parcial; mismo tratamiento.
+
+### ¿Es un falso positivo del detector?
+
+El detector produce **falsos positivos**: la fecha `last_update_boe` en BD a veces se "corrige" sola (deriva del `date_byte_offset` cacheado, extracción inconsistente) y dispara un `changed` sin que la ley haya cambiado. Señal típica: la fecha del BOE **coincide** con la que ya tienes y **no hay ninguna modificación de los años recientes** en el listado de modificaciones del texto consolidado. Si es falso positivo → `change_status='reviewed'` sin sincronizar.
+
+> **Los falsos positivos no son tiempo perdido.** Revisar cada `changed` es de facto una auditoría del catálogo de leyes. El 22/05/2026, 5 falsos positivos destaparon 2 leyes derogadas que llevaban años marcadas como activas (Ley 2/2009 Aragón con 55 preguntas vivas; Ley 29/2006 Medicamentos). Trata cada `changed` como una oportunidad de auditar, no como una molestia.
+
 ## 2. Verificar Artículos de una Ley
 
 Compara artículo por artículo el contenido del BOE con nuestra BD.
@@ -620,6 +637,43 @@ Y revalidar `temario` de nuevo.
   4. 3 preguntas (grupos de cotización art. 3) migradas: `primary_article_id` al art. 3 de la 297/2026, referencias textuales actualizadas, base mínima Grupo 3 corregida 1.391,70 → 1.435,20 €/mes.
   5. Revalidación: tags `temario`, `teoria`, `laws` + ISR `/leyes`, `/leyes/orden-pjc-297-2026`, `/leyes/orden-pjc-178-2025`.
 - **Lección:** las órdenes anuales (cotización SS, IPREM, presupuestos) tienen este patrón cada año. Mantener la antigua como histórica permite que las preguntas referenciadas a hechos del ejercicio anterior sigan siendo válidas.
+
+## Migrar una ley derogada a su texto refundido (con renumeración)
+
+Caso distinto de la "sustitución anual" (Orden PJC) descrita arriba. Aquí una ley se **deroga** y se sustituye por su **texto refundido**, que **renumera los artículos**. El refundido tiene el mismo contenido sustantivo (solo puede "regularizar, aclarar y armonizar"), pero el articulado se reordena. NO sirve cambiar el `law_id` de las preguntas: hay que mapear artículo a artículo.
+
+**Caso real (22/05/2026):** Ley 2/2009 Pte y Gob Aragón (derogada 21/04/2022) → Decreto Legislativo 1/2022. El refundido inlineó los arts. "21 bis/ter/quater" como 22/23/24 y desplazó todo lo posterior. 55 preguntas migradas.
+
+### Paso 1 — Crear el texto refundido como ley nueva
+
+INSERT en `laws` + `sync-all` desde su `boe_url` (ver "Crear ley nueva desde URL del BOE").
+
+### Paso 2 — Construir el mapa artículo viejo → artículo nuevo
+
+Obtener el índice del refundido (WebFetch al BOE: "lista todos los artículos con su número y rúbrica"). Construir el mapa explícito old→new.
+
+**Verificar el mapa por contenido, no por aritmética de numeración.** Para cada artículo viejo, comparar su contenido con el del artículo nuevo mapeado mediante similitud (Jaccard de palabras u otra). Una similitud de 75-100% confirma el emparejamiento (el <100% se debe al lenguaje inclusivo que suele introducir el refundido). Cualquier par por debajo de ~70% → revisar a mano.
+
+### Paso 3 — Migrar las preguntas (re-vincular + renumerar citas)
+
+Para cada pregunta vinculada a un artículo de la ley vieja:
+
+1. `primary_article_id` → artículo equivalente del refundido (vía el mapa del Paso 2).
+2. **Reescribir el texto** en `question_text`, `option_*` y `explanation`:
+   - Nombre de la ley vieja → nombre del texto refundido.
+   - **Renumerar TODAS las citas de artículo** de esa ley, incluidas las referencias cruzadas abreviadas en la explicación ("art. 38.2" → "art. 34.2"). Conservar el apartado tras el punto.
+   - NO tocar citas a otras normas (Constitución, Estatuto de Autonomía, LOPJ, etc.).
+3. Hacerlo con agentes (rewrite a JSON) + **auditoría determinista antes de aplicar**: un script que verifica que no quedan residuales del nombre viejo, que el nº de citas de artículo coincide antes/después, que cada renumeración respeta el mapa y que los marcadores de otras leyes se conservan.
+
+> ⚠️ **Concordancia de género al reemplazar nombres de norma.** "de la Ley X" → "del texto refundido…" / "del Decreto Legislativo…": cambia el artículo (`la`→`el`, `de la`→`del`) porque *texto* y *decreto* son masculinos y *ley/orden* femeninos. La auditoría debe chequear explícitamente artefactos como "la texto", "la Decreto", "el Ley" — no basta con buscar residuales del nombre viejo.
+
+### Paso 4 — Derogar la ley vieja
+
+`is_derogated=true`, `derogated_by=<id refundido>`, `derogated_at`, `is_active=false`, `change_status='reviewed'`. A diferencia de la sustitución anual, aquí la ley vieja **SÍ se desactiva** (fue derogada expresamente).
+
+### Paso 5 — Mover el topic_scope y revalidar
+
+`UPDATE topic_scope SET law_id=<refundido> WHERE law_id=<vieja>`. Revalidar `temario`/`teoria`/`laws` + rutas ISR. Después, verificar que las preguntas migradas son correctas respecto al artículo nuevo (ver `revisar-temas-con-agente.md`, flujo verifica → audita).
 
 ## Sincronización de Disposiciones
 

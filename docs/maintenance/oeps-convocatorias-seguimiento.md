@@ -294,18 +294,21 @@ test antes de commitear para detectar desajustes.
 
 ### 4h. Detección de hitos con fechas estimadas (deuda §4e)
 
-Los hitos **upcoming** con descripción `"estimada" | "aproximada" | "prevista" | "tentativa"` violan §4e — ningún hito debe existir sin fecha oficial publicada. Detectar y limpiar periódicamente:
+Los hitos **upcoming** cuya descripción contiene `estimada | aproximada | prevista | tentativa | pendiente` violan §4e — ningún hito debe existir sin fecha oficial publicada. Detectar y limpiar periódicamente:
 
 ```js
 const { data } = await supabase
   .from('convocatoria_hitos')
   .select('id, oposicion_id, titulo, fecha, status, descripcion, oposiciones(slug)')
-  .or('descripcion.ilike.%estimad%,descripcion.ilike.%aproximad%,descripcion.ilike.%previsto%,descripcion.ilike.%previsi%,descripcion.ilike.%tentativ%')
+  .eq('status', 'upcoming')
+  .or('descripcion.ilike.%estimad%,descripcion.ilike.%aproximad%,descripcion.ilike.%previsto%,descripcion.ilike.%previsi%,descripcion.ilike.%tentativ%,descripcion.ilike.%pendiente%')
 
 for (const h of data) {
   console.log(`[${h.oposiciones.slug}] ${h.status} ${h.fecha} — ${h.titulo}`)
 }
 ```
+
+**Fechas-centinela.** Además de la descripción, sospechar de hitos `upcoming` con fecha **placeholder**: `31/12` de cualquier año, o día `01`/`15` (primero o mitad de mes). No es prueba automática — un examen real puede caer un día 1 — pero todo hito con esas fechas debe verificarse contra el boletín oficial; si no hay fecha oficial publicada, se borra (§4e).
 
 Para cada hito detectado:
 1. Borrarlo del timeline (`DELETE FROM convocatoria_hitos WHERE id = '<uuid>'`).
@@ -673,6 +676,47 @@ Solo archivar si hay **nueva convocatoria/OEP** que reemplaza a la anterior:
 
 Si NO hay nueva OEP → mantener la fila actual con estado actualizado. No archivar.
 
+### 11.1 Convocatorias en paralelo (activa + nueva sin terminar la anterior)
+
+**Caso típico:** la convocatoria en curso aún no ha llegado a nombramientos (ej. examen pendiente o resultados sin publicar) y la administración publica una **segunda convocatoria** de la misma oposición (nueva OEP, nuevas plazas, nuevo BOE). Hay dos audiencias simultáneas:
+- Quienes están inscritos en la convocatoria activa → necesitan info del examen, listas, temario
+- Quienes quieren prepararse para la nueva convocatoria → necesitan saber plazas, plazo previsto, temario
+
+**Regla: una sola landing canónica.** No crear `slug-YYYY` para la segunda convocatoria mientras la primera siga viva. Razones:
+- Canibalización SEO entre dos páginas casi idénticas compitiendo por la misma keyword
+- Doble gestión de hitos, riesgo de inconsistencias
+- Es la **misma oposición** desde el punto de vista del temario y los tests (el estudiante usa los mismos recursos para ambas)
+
+**Qué hacer en la fila activa:**
+1. Mantener `oposiciones.boe_reference`, `oep_decreto`, `exam_date` etc. enfocados en la **convocatoria activa** (la que tiene examen próximo)
+2. Mencionar la nueva convocatoria en `landing_description` para SEO:
+   > "33 plazas... examen 6 junio 2026. Próxima convocatoria de 44 plazas (OEP 2023-2025) recién publicada en BOE."
+3. NO mezclar plazas en los campos numéricos (`plazas_libres` debe reflejar solo la convocatoria activa). Si se mezclan los hitos cuentan números distintos y queda incoherente.
+4. NO crear hitos de la convocatoria nueva en `convocatoria_hitos` de esta fila — sus hitos son de otro proceso
+
+**Cuándo SÍ crear fila nueva (transición):**
+Cuando la convocatoria activa llega a `nombramientos` (o `resultados` sin más actividad pendiente):
+1. Renombrar la fila activa a `slug-YYYY` con `is_active=false` (manteniendo SEO histórico)
+2. Crear nueva fila con slug canónico apuntando a la nueva convocatoria
+3. Redirect 301 en next.config.mjs
+
+**Pendiente técnico (renderizado):**
+La landing pública aún no tiene una sección visible "Próxima convocatoria" que destaque la futura OEP — solo lo refleja en el meta description. Tarea: añadir sección condicional en el componente de landing cuando exista una próxima convocatoria documentada (ver issue de UX, sin abrir aún). Por ahora basta con `landing_description` actualizado para captar búsquedas SEO de ambas audiencias.
+
+**Caso real 1 (Cádiz, 21/05/2026):** sensor `llm_semantic` detectó OEP 2023-2025 (44 plazas, BOE-A-2025-3221, BOP 11/02/2026) mientras la convocatoria activa (33 plazas, OEP 2021/2022, examen 06/06/2026) seguía en curso. Decisión: mantener la fila enfocada en la activa + mencionar la nueva en `landing_description`. Reauditar tras nombramientos para transicionar.
+
+**Caso real 2 (Estado, 22/05/2026):** 3 señales `generic_source` (notas de prensa Moncloa/MTDFP) detectaron la aprobación de la OEP 2026 (RD 387/2026, BOE 07/05/2026) — Cuerpo General Auxiliar C2: 1.450 plazas turno libre + 120 promoción interna — mientras la convocatoria activa (1.700 plazas, RD 1052/2025, examen 23/05/2026) seguía en curso. Decisión: mantener campos numéricos de la convocatoria activa intactos + mencionar la OEP 2026 en `landing_description`. La convocatoria derivada debe publicarse antes de fin de 2026; reauditar entonces.
+
+### 11.2 Falso positivo: convocatoria ya en BD detectada como novedad
+
+Un sensor (`regional_scan`, `llm_semantic`) puede marcar como **novedad** una convocatoria que **ya existe en BD** porque lee un anuncio antiguo o un dato parcial. Antes de tratar una señal como convocatoria nueva, **cruzar contra los hitos existentes**:
+
+1. Buscar la oposición candidata en `oposiciones` por nombre/región
+2. Leer sus `convocatoria_hitos` y comparar fechas/referencias BOP con las de la señal
+3. Si la fecha de la señal coincide con un hito existente → es la misma convocatoria, **descartar**
+
+**Caso real (Valencia, 21-22/05/2026):** `regional_scan` (80) + `llm_semantic` (75) marcaron "Auxiliar Administrativo Estabilización 176 plazas C2" como novedad. La diferencia de plazas (176 ≠ 274 en BD) disparó la alerta. Pero al cruzar con los hitos de `auxiliar-administrativo-ayuntamiento-valencia` se vio que era la **misma** convocatoria: empezó con 176 plazas (BOP 12/07/2024 = hito 1) y se amplió a 274 mediante ampliaciones posteriores (BOP 206 28/10/2025 = hito 2, BOP 228 = hito 3). El LLM había leído el anuncio original. Ambas señales descartadas como falso positivo. Lección: una discrepancia de plazas NO implica convocatoria nueva — puede ser una ampliación ya registrada en hitos.
+
 ## 12. Referencia rápida: nombres de columnas
 
 Las tablas usan nombres en español (no en inglés). Referencia para evitar errores:
@@ -791,6 +835,14 @@ const { data: ops } = await supabase
 ```
 
 Si `last_checked_at` es muy antiguo: el workflow `check-seguimiento.yml` puede estar fallando. Revisar runs en GitHub Actions.
+
+**Fuentes bloqueadas por WAF (anti-bot):** algunos portales oficiales (notablemente `sede.madrid.es` del Ayuntamiento de Madrid) devuelven una página de "Access Denied" a peticiones automatizadas. Esa página de error incluye un token dinámico (`Reference 18 3a6b0117...`) que cambia en cada check → el hash cambia siempre → señales `hash_change` infinitas (ruido diario).
+
+Desde 22/05/2026 `checkSeguimientoUrl` (`lib/api/seguimiento-convocatorias/queries.ts`) detecta esto y lo trata como **error**, no como cambio:
+- Respuesta HTTP no-2xx → `error`
+- Página de bloqueo aunque devuelva HTTP 200 (función `isBlockedPage`: texto corto + marcadores "access denied", "forbidden", "captcha", etc.) → `error`
+
+Resultado: la oposición aparece con `seguimiento_change_status='error'` en `/admin/seguimiento-convocatorias` pero **no genera señal** en `/admin/oep-signals`. El sensor `hash_change` simplemente no puede monitorear esa fuente; hay que seguirla manualmente o buscar una URL alternativa accesible (no toda fuente tiene una — el Ayto. de Madrid no la tiene). No cambiar la `seguimiento_url` por una no oficial solo para silenciar el sensor; es preferible que un humano pueda abrir la URL oficial en el navegador.
 
 ### 14.4 regional_scan
 

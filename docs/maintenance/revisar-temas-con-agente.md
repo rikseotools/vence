@@ -669,6 +669,8 @@ Una explicación que cumpla solo el contenido pero NO el formato sigue siendo `b
 
 **Regla dura:** Si el estado de la pregunta es `perfect` en BD pero `isDidactic()` devuelve `false`, el orquestador de verificación debe **re-marcarla como `bad_explanation`** y devolverla al flujo de reescritura. El `perfect` es aspiracional.
 
+**Excepción — preguntas tipo "señale la INCORRECTA":** en estas preguntas el encabezado correcto de la sección final es *"Por qué las demás opciones son **correctas** en su contenido"* (semántica invertida: las otras opciones SÍ son correctas y la que se señala es la falsa). El check `hasDemas` busca el literal `"...son incorrectas"` y devolverá `false` aunque la explicación sea perfectamente didáctica. NO aplicar la "regla dura" a ciegas sobre estas: si el enunciado pide señalar la opción incorrecta/falsa, verificar a mano antes de re-marcar como `bad_explanation`. Incidente: `12b568bd` (22/05/2026), explicación correcta re-flagueada por el regex.
+
 ### 8.2 Incidente (11/04/2026 — C1 T18 ET)
 
 Durante la verificación inicial del T18 (Estatuto de los Trabajadores), los agentes marcaron 31 de 34 preguntas como `perfect` porque `article_ok`, `answer_ok` y `explanation_ok` eran `true` según el criterio laxo (contenido correcto). Pero el 88% de esas explicaciones eran **copia literal del artículo** sin análisis por opción.
