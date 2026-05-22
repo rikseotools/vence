@@ -17,6 +17,7 @@ import { DetectTimelineSilenceModule } from './detect-timeline-silence/detect-ti
 import { DetectOepLlmModule } from './detect-oep-llm/detect-oep-llm.module';
 import { DetectRegionalOepsModule } from './detect-regional-oeps/detect-regional-oeps.module';
 import { DetectGenericSourcesModule } from './detect-generic-sources/detect-generic-sources.module';
+import { ProcessVerificationQueueModule } from './process-verification-queue/process-verification-queue.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { DetectGenericSourcesModule } from './detect-generic-sources/detect-gene
     // Crons — sub-etapa 1b tanda 2 (monitoreo + colas)
     CheckSeguimientoModule,
     ProcessOutboxModule,
+    ProcessVerificationQueueModule,
     AvatarRotationModule,
     // Crons — sub-etapa 1b tanda 3 (sensores OEP)
     AnthropicModule,

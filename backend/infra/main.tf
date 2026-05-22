@@ -13,9 +13,10 @@ data "aws_subnets" "default" {
 
 locals {
   name = var.project
-  # ARN del parámetro SSM con la DATABASE_URL (se crea fuera de Terraform —
+  # ARNs de los parámetros SSM con los secretos (se crean fuera de Terraform —
   # ver infra/README.md — para que el secreto NO entre en el estado de TF).
   database_url_ssm_arn = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.database_url_ssm_name}"
+  cron_secret_ssm_arn  = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.cron_secret_ssm_name}"
 }
 
 # ============================================================
@@ -89,7 +90,7 @@ resource "aws_iam_role_policy" "task_execution_secrets" {
       {
         Effect   = "Allow"
         Action   = ["ssm:GetParameters"]
-        Resource = [local.database_url_ssm_arn]
+        Resource = [local.database_url_ssm_arn, local.cron_secret_ssm_arn]
       },
       {
         Effect   = "Allow"
@@ -172,6 +173,7 @@ resource "aws_ecs_task_definition" "backend" {
       ]
       secrets = [
         { name = "DATABASE_URL", valueFrom = local.database_url_ssm_arn },
+        { name = "CRON_SECRET", valueFrom = local.cron_secret_ssm_arn },
       ]
       portMappings = [{ containerPort = 3000, protocol = "tcp" }]
       logConfiguration = {

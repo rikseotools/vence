@@ -15,14 +15,15 @@ Footprint mínimo: ECR + 1 task Fargate + SSM + CloudWatch. Sin balanceador
 
 ### 1. Crear el secreto DATABASE_URL en SSM
 
-El secreto NO entra en Terraform. Se crea aparte:
+Los secretos NO entran en Terraform. Se crean aparte:
 
 ```bash
-aws ssm put-parameter \
-  --name /vence-backend/DATABASE_URL \
-  --type SecureString \
-  --value 'postgresql://...' \
-  --region eu-west-2
+aws ssm put-parameter --name /vence-backend/DATABASE_URL \
+  --type SecureString --value 'postgresql://...' --region eu-west-2
+
+# Token Bearer para que process-verification-queue llame a la app Next.js.
+aws ssm put-parameter --name /vence-backend/CRON_SECRET \
+  --type SecureString --value '...' --region eu-west-2
 ```
 
 ### 2. Aplicar Terraform

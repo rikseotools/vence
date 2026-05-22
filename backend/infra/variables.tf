@@ -64,6 +64,12 @@ variable "database_url_ssm_name" {
   default     = "/vence-backend/DATABASE_URL"
 }
 
+variable "cron_secret_ssm_name" {
+  description = "Nombre del parámetro SSM (SecureString) con el CRON_SECRET (token Bearer para endpoints internos de la app). Se crea fuera de Terraform."
+  type        = string
+  default     = "/vence-backend/CRON_SECRET"
+}
+
 variable "github_repo" {
   description = "Repo GitHub (owner/name) autorizado a desplegar vía OIDC."
   type        = string
