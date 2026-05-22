@@ -1,4 +1,6 @@
-# Manual: Revisar Temas con Agente de Claude Code
+# Manual: Revisar Preguntas con Agente de Claude Code
+
+> **Nota de nomenclatura (22/05/2026):** este manual se llamaba "Revisar Temas". La unidad de revisión es la **pregunta** (cada pregunta se verifica contra su artículo); el *tema* es solo el criterio para agrupar lotes. Renombrado a "Revisar Preguntas" — fichero `revisar-preguntas-con-agente.md`.
 
 ## ⚠️ NOTA POST-LIFECYCLE (2026-05-03)
 
@@ -31,6 +33,32 @@ Este manual documenta cómo usar el agente de Claude Code para verificar pregunt
 - La explicación es correcta
 
 **Ventaja principal:** Usa tu suscripción de Claude Code (gratis), en lugar de la API de Anthropic (de pago).
+
+---
+
+## ▶ Procedimiento operativo v2.1 — el flujo a seguir
+
+> **Empieza por aquí.** Esta es la secuencia canónica para revisar preguntas. Las secciones §1-§18 son el detalle; esto es el índice de ejecución. Versión del método: **v2.1** (§17.2).
+>
+> **Modelo:** agentes `sonnet` (Opus cuesta 5×; Haiku falla). Lotes de ~20-50 preguntas por agente, en paralelo.
+
+1. **Extraer** las preguntas del tema/lote → JSON en `/tmp` con enunciado + opciones + `correct_option` + artículo vinculado **completo, sin truncar** (§16.4, hallazgo 5). Script base: §4.
+
+2. **Verificar** — N agentes Sonnet en paralelo con el prompt v2.1 del §4: identificar primero el artículo que responde literalmente, `article_ok` con **test inverso** (§3.1), `answer_ok` contra la LEY (no contra el artículo vinculado), `options_ok` (§3.2), `explanation_ok` (§8.1). Los agentes escriben resultados (JSON o INSERT en `ai_verification_results`); **no** modifican `questions`. Estampar `review_method_version` (§17).
+
+3. **Auditar** — 2ª pasada independiente y **ciega** (otro agente, sin ver la 1ª) sobre las preguntas marcadas como defectuosas (§15.1).
+
+4. **Adjudicar** — donde verificación y auditoría discrepen, decide Opus o un humano: la auditoría sola tuvo ~17% de falsos negativos (§18.1). No tomar el veredicto de la auditoría por defecto.
+
+5. **Reparar** las defectuosas confirmadas — agentes Sonnet. El diagnóstico debe recoger **TODOS** los defectos (enunciado, opciones, artículo, explicación), no solo el titular (§18.3 pto 1). La cita en blockquote debe ser copia **literal** del artículo — verificar con `quoteIsLiteral` (§18.3 pto 2).
+
+6. **Aplicar** — UPDATE de los campos editables + transición lifecycle si la pregunta estaba oculta (§11) + invalidar cache (`tag: 'questions'`).
+
+7. **Re-verificar DESPUÉS de aplicar**, sobre la pregunta viva en BD, con agente independiente (§18.3 pto 3). Si encuentra defectos → volver al paso 5. **Iterar hasta una pasada completamente limpia** (§18.3 pto 4). El lote no se cierra hasta entonces.
+
+**Una pregunta está perfecta cuando:** la respuesta correcta lo es de verdad + el artículo vinculado es el que regula la pregunta + las opciones dicen lo que dice la ley + la explicación es exacta y no afirma nada falso. **NO se exige cita byte-perfecta:** una condensación que dice lo mismo es válida (§3.2). Lo que se corrige es el error real (texto inventado, derogado, de otro artículo, verbo/plazo cambiado), no la coma de menos.
+
+---
 
 ## 1. Mapeo de Oposiciones y Topics
 
@@ -297,7 +325,34 @@ El agente determina uno de estos 12 estados:
 
 **Test rápido obligatorio:** *"¿Puedo justificar por qué cada opción A/B/C/D es correcta o incorrecta citando exclusivamente este artículo?"* Si la respuesta es no → `article_ok = false` y proponer `correct_article_suggestion` con el artículo que sí contiene el supuesto.
 
+**Test inverso obligatorio (post-22/05/2026):** el test anterior es **necesario pero no suficiente**. Un artículo equivocado que comparte palabras clave con la respuesta marcada lo pasa igualmente. Añadir SIEMPRE el test inverso:
+
+> *"¿El supuesto EXACTO que pregunta el enunciado está literalmente en este artículo? ¿La respuesta marcada es la correcta según la LEY — no según el artículo que casualmente está vinculado?"*
+
+Si el enunciado pregunta por un derecho, regla, lista o plazo concreto y ese contenido vive en OTRO artículo, `article_ok = false` **aunque** el artículo vinculado "encaje" superficialmente con la respuesta marcada. Para poder responder a este test el agente necesita poder leer otros artículos de la ley, no solo el vinculado (ver §4, prompt actualizado). Ver incidente §16.
+
 **Incidente que motiva la regla (14/04/2026):** la pregunta `a41b8cf6...` (Ley 1/1998 CyL, causas de supresión de municipios) tenía `primary_article_id` apuntando al Preámbulo. El agente leyó la EM, no encontró contradicción con la respuesta marcada y validó `article_ok=true, answer_ok=true, explanation_ok=true` con confianza **alta**. Resultado: la opción "Falta de candidatos" parecía la falsa, pero el art. 13.d) sí contempla "falta reiterada de candidatos" como causa de supresión — fallo detectado por una impugnación de usuaria, no por la verificación.
+
+### 3.2 Criterio para `options_ok` — literalidad de las opciones presentadas como correctas (post-22/05/2026, calibrado con simulación)
+
+La matriz de 8 estados (`articleOk × answerOk × explanationOk`) **no tiene ninguna dimensión para "una opción está mal redactada"**. Una pregunta con respuesta correcta, artículo correcto y explicación didáctica sale `perfect` aunque una opción esté distorsionada respecto al texto legal.
+
+**Regla (calibrada):** comprobar la literalidad **solo de las opciones que la pregunta presenta como correctas** — NUNCA de los distractores:
+- La **opción marcada como correcta**.
+- En preguntas tipo **"todas las anteriores son correctas"**: además, **cada sub-opción** (A, B, C), porque la pregunta las presenta a todas como afirmaciones correctas. Compararla **token a token** con el artículo — las distorsiones sutiles (un sujeto estrechado, una preposición cambiada) se escapan "a ojo" (ver §16.4, hallazgo 4).
+- Los **distractores** (opciones diseñadas para ser falsas) NO se comprueban: que no reproduzcan el texto legal es precisamente su función. Flaggear un distractor por "no estar en el artículo" genera falsos positivos.
+
+Para esas opciones-presentadas-como-correctas, verificar que reproducen fielmente el texto legal — no una paráfrasis que cambie el sentido.
+
+**Modos de fallo típicos (todos vistos en el incidente §16):**
+- Cambiar un verbo: "garantizar" ↔ "defender", "deberá" ↔ "podrá".
+- Estrechar o ampliar un sujeto: "en unos y otros" → "entre las personas responsables".
+- Añadir texto que no existe en la norma: "...o desde que deviniesen ejecutivas".
+- Cambiar un plazo o su anclaje: "quince días desde la adopción" → "quince días desde la iniciación".
+
+**Por qué la calibración:** la primera versión de esta regla decía "cada opción A/B/C/D". La simulación §16.4 demostró que eso genera ~37% de falsos positivos — el agente flaggeaba distractores legítimos por no aparecer en el artículo. Un verificador que oculta preguntas buenas es peor que inútil (ver §15.8).
+
+**Cómo reportarlo:** mientras `ai_verification_results` no tenga columna propia `options_ok` (mejora de esquema **pendiente**), si una opción-presentada-como-correcta falla, la pregunta **NO es `perfect`**: el agente la enruta a `needs_review` y detalla en el campo `explanation` del INSERT qué opción y qué palabra concreta falla. En preguntas no oficiales se corrige la opción; en oficiales NO se toca el enunciado (ver manual de impugnaciones §7.3).
 
 ## 4. Cómo Usar el Agente
 
@@ -443,18 +498,43 @@ main().catch(console.error);
 ```
 Revisa las siguientes preguntas y determina si son FALSOS POSITIVOS o necesitan CORRECCIÓN.
 
-Para cada pregunta:
-1. Lee el artículo vinculado
-2. Compara con la respuesta marcada
-3. Determina: FALSO_POSITIVO (está bien) o NECESITA_CORRECCIÓN
+NO te limites a comparar contra el artículo vinculado: el vínculo puede ser el equivocado.
+
+Para CADA pregunta, en este orden:
+1. IDENTIFICA por el enunciado qué artículo responde LITERALMENTE la pregunta.
+   Si necesitas leer otros artículos de la ley, consúltalos en la BD con el snippet de abajo.
+2. article_ok — ¿el artículo VINCULADO es ese? Aplica el test del §3.1 Y el test inverso:
+   "¿el supuesto exacto del enunciado está literalmente en este artículo?"
+3. answer_ok — ¿la respuesta marcada es la correcta SEGÚN LA LEY? (no según el artículo vinculado)
+4. options_ok (§3.2) — comprueba la literalidad SOLO de las opciones presentadas como
+   correctas: la opción marcada y, si la pregunta es tipo "todas las anteriores son
+   correctas", cada sub-opción A/B/C. NO compruebes los distractores. ¿reproducen
+   fielmente el texto legal, sin verbos / sujetos / plazos cambiados ni texto inventado?
+5. explanation_ok (§8.1) — ¿cumple isDidactic?
+6. Veredicto: FALSO_POSITIVO solo si los 4 checks pasan; si no, NECESITA_CORRECCIÓN.
+
+Snippet para consultar cualquier artículo de una ley:
+node -e "
+const B='/home/manuel/Documentos/github/vence/node_modules/';
+require(B+'dotenv').config({path:'/home/manuel/Documentos/github/vence/.env.local'});
+const {createClient}=require(B+'@supabase/supabase-js');
+const s=createClient(process.env.NEXT_PUBLIC_SUPABASE_URL,process.env.SUPABASE_SERVICE_ROLE_KEY);
+(async()=>{
+  const {data:l}=await s.from('laws').select('id').eq('short_name','Ley 39/2015').single();
+  const {data}=await s.from('articles').select('article_number,title,content')
+    .eq('law_id',l.id).eq('article_number','53');
+  console.log(JSON.stringify(data,null,2));
+})();
+"
 
 PREGUNTAS A REVISAR:
-[lista de preguntas con contexto del artículo]
+[lista de preguntas con contexto del artículo vinculado + topic_scope]
 
 Responde con formato:
 PREGUNTA [ID]: [FALSO_POSITIVO / NECESITA_CORRECCIÓN]
+- article_ok / answer_ok / options_ok / explanation_ok: [✅/❌ cada uno]
 - Motivo: [explicación]
-- Si corrección: nueva respuesta correcta (A/B/C/D) y por qué
+- Si corrección: artículo correcto, nueva respuesta (A/B/C/D), opción a corregir, y por qué
 ```
 
 ### Helper canónico para cambiar estado (post-lifecycle 2026-05-03)
@@ -623,17 +703,19 @@ Los estados se muestran con colores:
 
 ## 7. Flujo Completo
 
+> **El flujo canónico vigente es el "Procedimiento operativo v2.1"** del principio del manual (extraer → verificar → auditar → adjudicar → reparar → aplicar → re-verificar → iterar). El esquema de abajo es el flujo histórico simplificado (pre-v2.1) — se mantiene solo como referencia; **no es completo** (le falta la auditoría independiente y la iteración hasta pasada limpia).
+
 ```
+[HISTÓRICO pre-v2.1 — usar el Procedimiento operativo v2.1 del inicio]
 1. Importar preguntas (ver importar-preguntas-scrapeadas.md)
    ↓
-2. Verificar con agente:
-   "Verifica las preguntas del tema 204 de administrativo C1"
+2. Verificar con agente
    ↓
-3. Revisar en web: /admin/revision-temas/45b9727b-...
+3. Revisar en web: /admin/revision-temas/[topicId]
    ↓
-4. Corregir problemas manualmente si hay
+4. Corregir problemas
    ↓
-5. Re-verificar si es necesario
+5. Re-verificar
 ```
 
 ## 8. Niveles de Calidad de las Explicaciones
@@ -1044,7 +1126,8 @@ ni llames a transition_question_state.
 ```sql
 INSERT INTO public.ai_verification_results (
   question_id, article_id, ai_provider, ai_model,
-  answer_ok, explanation_ok, article_ok,
+  review_method_version,          -- p.ej. 'v2.0' — versión del método (§17)
+  answer_ok, explanation_ok, article_ok, options_ok,
   explanation,                    -- análisis breve agente (≤300 chars)
   explanation_fix,                -- reescritura propuesta si bad_explanation
   correct_option_should_be,       -- 'A'/'B'/'C'/'D' si bad_answer
@@ -1373,3 +1456,154 @@ Importación de 3.027 preguntas psicotécnicas texto puro:
 - Re-verificación de las 51 corregidas: 47/51 OK, 4 corregidas manualmente
 - 59 preguntas reconstruidas con content_data (tablas extraídas de explicaciones)
 - 3.027 registros en `ai_verification_results` con `psychometric_question_id`
+
+---
+
+## 16. Incidente lote "Tema 7/Andalucía" (22/05/2026) — puntos ciegos del verificador
+
+### 16.1 Cómo se detectó
+
+5 impugnaciones de usuarios en un día. Una era falso positivo; las otras 4 (`c017d6fd`, `bd4979f5`, `174eba77`, `e27d2bd4`) tenían errores reales — y las 4 estaban `approved`/`is_active`, es decir, **habían pasado la verificación**. `c017d6fd`, `174eba77` y `e27d2bd4` tenían `ai_verification_results` de agentes Sonnet (`ai_provider='claude_code'`, `claude-sonnet-4-6`) con `answer_ok=true` y `article_ok=true`. El procedimiento de este manual, ejecutado tal cual por Sonnet, produjo "perfect" falsos.
+
+Dos de ellas (`c017d6fd`, `174eba77`) venían del mismo lote de importación: 85 preguntas de la Ley 39/2015 (tags `["Tema 7","Andalucía"]`) importadas en bloque el 31/03/2026 11:00. Un muestreo ciego de 10 del lote encontró 2 más con el artículo mal vinculado (`0fdc2ac8` → debía ser art. 7, no art. 66; `f698ae69` → debía ser art. 73, no art. 71). Tasa de defecto estimada ~20%.
+
+### 16.2 Los tres puntos ciegos
+
+1. **`answer_ok` se evalúa contra el artículo vinculado, no contra la ley.** La tabla del §3 lo define como "Respuesta según artículo" y el prompt §4 decía "Lee el artículo vinculado y compara". Si el vínculo es erróneo, la comparación parte de una premisa falsa. En `c017d6fd` el Art. 13 (vinculado, erróneo) compartía la expresión "capacidad de obrar" con la opción marcada → el agente la dio por buena. El supuesto real ("información y orientación sobre requisitos de proyectos") está en el Art. 53.1.f.
+
+2. **No había check de literalidad de los distractores.** La matriz de 8 estados no tiene dimensión para "una opción está distorsionada". `bd4979f5` (opción C: "entre las personas" en vez de "en unos y otros", art. 55.2) y `e27d2bd4` (opciones B/C con los verbos "garantizar"/"defender" intercambiados respecto al art. 8.1 CE) salieron `perfect`.
+
+3. **El flujo §4 solo re-revisa preguntas ya marcadas con error** (`.in('topic_review_status', errorStates)`). Las 4 estaban `approved` — nunca habrían entrado en el pipeline. El catálogo aprobado no se audita salvo proyecto explícito (§14).
+
+**Por qué el doble agente del §15 no lo hubiera evitado:** el agente auditor recibe las mismas instrucciones ("compara contra el artículo vinculado"). Dos agentes con el mismo punto ciego fallan los dos. El §15 corrige el error **aleatorio** (agente descuidado), no el **sistemático** (método con venda). Para corregir un punto ciego sistemático hay que cambiar el método, no repetirlo.
+
+### 16.3 Las cuatro mejoras (incorporadas a §3.1, §3.2 y §4)
+
+1. El agente debe poder consultar otros artículos de la ley (no solo el vinculado) e **identificar primero** cuál responde literalmente la pregunta — §4 prompt actualizado, con snippet de consulta a BD.
+2. **Test inverso** obligatorio en `article_ok` — §3.1.
+3. Nuevo check **`options_ok`** de literalidad de los 4 distractores — §3.2.
+4. **Auditar también el catálogo `approved`** por muestreo, no solo los estados de error.
+
+### 16.4 Validación: simulación A/B/C (22/05/2026)
+
+Conjunto de prueba: 14 preguntas de la Ley 39/2015 / CE con ground truth conocido — 7 defectuosas (artículo mal vinculado, respuesta incorrecta u opción no literal) y 7 correctas, mezcladas. Verificadas en ciego por agentes Sonnet 4.6.
+
+| Método | Defectos detectados | Falsos positivos | Accuracy |
+|---|---|---|---|
+| **Antiguo** (solo artículo vinculado) | 4/7 | 0/7 | 11/14 (79%) |
+| **Nuevo v1** (`options_ok` = "cada opción A/B/C/D") | 6/7 | 2/7 | 11/14 (79%) |
+| **Nuevo v2** (`options_ok` calibrado, §3.2) | 6/7 | 1/7 | **13/14 (93%)** |
+
+**Hallazgos:**
+
+1. **El método nuevo capta lo que el antiguo no puede.** El antiguo es estructuralmente ciego a opciones no literales: falló las preguntas tipo "todas las anteriores" con una sub-opción distorsionada (verbo cambiado, sujeto estrechado) y la pregunta cuya opción marcada añadía texto inexistente. El nuevo las cazó.
+
+2. **El antiguo SÍ caza el artículo equivocado — si el agente es cuidadoso.** Con un prompt enfocado y solo 14 preguntas, el agente antiguo aplicó bien el §3.1 estricto y detectó los 3 casos de artículo mal vinculado. El fallo de producción (la pregunta `c017d6fd` quedó `approved`) fue por un agente menos riguroso, no por incapacidad del método. Conclusión: el §3.1 estricto es la pieza clave y ya existía; el problema es que no siempre se aplica con rigor — el prompt actualizado del §4 lo hace obligatorio.
+
+3. **La primera versión de `options_ok` estaba mal calibrada.** Decir "comprueba cada opción A/B/C/D" provocó que el agente flaggeara distractores legítimos (2 falsos positivos: marcaba opciones diseñadas para ser falsas por "no estar en el artículo"). La regla calibrada del §3.2 — comprobar solo las opciones presentadas como correctas — eliminó esos falsos positivos sin perder ninguna detección.
+
+4. **Punto débil que persiste:** la distorsión más sutil (`"en unos y otros"` → `"entre las personas responsables"` en una sub-opción de pregunta "todas correctas") se le escapó a las tres pasadas. Mitigación incorporada al §3.2: en preguntas "todas las anteriores son correctas", comparar cada sub-opción **token a token** contra el artículo, no "a ojo".
+
+5. **La verificación necesita el artículo COMPLETO.** Una de las defectuosas (`23258acb`) se detectó solo al leer el art. 16.2 entero — con el contenido truncado pasaba por buena (de hecho, la auditoría ciega manual previa la dio por correcta por leer contenido truncado). El script de extracción (§4) NO debe truncar `articles.content`.
+
+---
+
+## 17. Versionado del método de revisión
+
+El **modelo** y el **agente** que verifica una pregunta ya se registran (`ai_model`, `ai_provider`). Falta registrar la **versión del método** — el conjunto de criterios y prompt con el que se hizo esa verificación. Sin ese dato no se puede saber qué preguntas se verificaron con criterios viejos, ni medir si una versión nueva del método realmente mejora.
+
+### 17.1 Tres ejes de trazabilidad
+
+Cada fila de `ai_verification_results` debe poder responder a tres preguntas independientes:
+
+| Eje | Columna | Ejemplo |
+|---|---|---|
+| ¿Qué LLM lo verificó? | `ai_model` | `claude-sonnet-4-6` |
+| ¿En qué fase? | `ai_provider` | `claude_code` / `claude_code_recheck` / `claude_code_audit` (§5.1) |
+| ¿Con qué criterios? | `review_method_version` *(columna nueva — ver §17.4)* | `v2.0` |
+
+### 17.2 Changelog del método
+
+La versión es un número; este changelog es su definición. Cada cambio de criterios o de prompt **bumpa la versión**.
+
+| Versión | Fecha | Qué incorpora |
+|---|---|---|
+| `v1.0` | inicial | Leer artículo vinculado, comparar respuesta marcada. Checks `article_ok` / `answer_ok` / `explanation_ok`. |
+| `v1.1` | 11/04/2026 | + §8.1: `explanation_ok` estricto con `isDidactic()` (markdown + blockquote + análisis A/B/C/D). |
+| `v1.2` | 14/04/2026 | + §3.1: `article_ok` estricto (no vale Preámbulo / EM / disposición; test "¿puedo justificar citando este artículo?"). |
+| `v2.0` | 22/05/2026 | + §3.1 test inverso; + §3.2 check `options_ok` (literalidad de las opciones presentadas como correctas); + §4 prompt: identificar primero el artículo correcto, con consulta a BD. Validado en simulación §16.4 (93% vs 79% del método previo). |
+| `v2.1` | 22/05/2026 | + ciclo de reparación con re-verificación post-aplicación obligatoria e iteración hasta cero defectos; + check programático `quoteIsLiteral()` de literalidad de citas; + el reparador re-escanea la pregunta completa; + adjudicación de discrepancias verificación↔auditoría. Lecciones en §18. |
+
+**Versión actual: `v2.1`.**
+
+### 17.3 Convención de uso
+
+1. Todo agente verificador recibe en su prompt **qué versión está aplicando** y la estampa en el INSERT: `review_method_version: 'v2.0'`.
+2. Para **re-verificar lo hecho con criterios viejos**: `WHERE review_method_version IS NULL OR review_method_version < 'v2.0'`.
+3. Para **medir una versión nueva** (p. ej. `v2.1`): tomar una muestra con ground truth conocido, verificar con la versión vigente y con la nueva, comparar accuracy — exactamente el A/B/C del §16.4, pero ahora reproducible y consultable por SQL.
+4. **Convivencia de versiones:** el constraint único actual es `(question_id, ai_provider)`. Mientras no se amplíe (ver §17.4), una re-verificación con método nuevo sobre el mismo `(question_id, ai_provider)` **sobrescribe** la fila anterior. Para preservar la traza v1→v2, una campaña de re-verificación debe usar un `ai_provider` distinto (p. ej. `claude_code_v2`), igual que el §5.1 distingue las fases con sufijos.
+
+### 17.4 Cambio de esquema
+
+**Aplicado (22/05/2026):** las dos columnas ya existen en producción.
+
+```sql
+ALTER TABLE public.ai_verification_results
+  ADD COLUMN review_method_version text,    -- versión del método (§17.2)
+  ADD COLUMN options_ok boolean;            -- 4º check del §3.2
+```
+
+**Pendiente (cambio coordinado con código):** ampliar el constraint único de `(question_id, ai_provider)` a `(question_id, ai_provider, review_method_version)` para que convivan filas de distinta versión. Requiere actualizar **a la vez** `app/api/topic-review/verify/route.js`, que hace `upsert` con `onConflict: 'question_id,ai_provider'` — ese `onConflict` dejaría de resolver si se cambia el constraint sin tocar el código. Hasta entonces, usar un `ai_provider` distinto por campaña de re-verificación (§17.3 punto 4).
+
+---
+
+## 18. Lecciones del ciclo de reparación completo (22/05/2026)
+
+El 22/05/2026 se ejecutó el ciclo completo **verificar → auditar → reparar → re-verificar** sobre las 18 preguntas defectuosas del lote "Tema 7/Andalucía" (§16). Convergió en 2 rondas (18/18 perfectas), pero el camino dejó lecciones que cambian el procedimiento.
+
+### 18.1 Secuencia real y dónde falló cada capa
+
+| Capa | Resultado | Fallo detectado |
+|---|---|---|
+| Verificación (4 agentes Sonnet) | 18 flagged de 79 | — |
+| Auditoría ciega (1 agente) | 14 confirmadas, 4 "perfectas" | **3 de esas 4 eran defectos reales** — la auditoría tuvo ~17% de falsos negativos |
+| Adjudicación (Opus) de las 4 discrepancias | 3 reconfirmadas como defecto, 1 borderline reparada | recupera los 3 que la auditoría perdió |
+| Reparación (3 agentes Sonnet) | 18 reparaciones propuestas | — |
+| Auditoría de reparaciones (2 agentes) | 18/18 aprobadas | **2 defectos NO detectados** (ver 18.2) |
+| Re-verificación post-aplicación (1 agente) | 16/18 perfectas | caza los 2 que sobrevivieron |
+| Ronda 2: reparar + re-verificar los 2 | 2/2 perfectas | convergido |
+
+**Conclusión dura:** ninguna capa individual es suficiente, y la auditoría tampoco es infalible. Hicieron falta 2 rondas y la re-verificación *después* de aplicar para llegar a cero defectos.
+
+### 18.2 Los 2 defectos que sobrevivieron a 4 capas
+
+- **`c42bf977`** — el enunciado contenía texto inventado ("menos gravosa", "habrán de evitarse las coincidencias con los días y horas"…) que no figura en el art. 75.3. La verificación inicial SÍ lo mencionó de pasada, pero el diagnóstico consolidado solo recogió "corregir la opción B". El reparador arregló la opción y dejó el enunciado intacto. **Lección: el diagnóstico de reparación debe recoger TODOS los defectos que menciona la verificación, no solo el titular; y el reparador debe re-escanear la pregunta entera.**
+- **`9907db36`** — el blockquote de la explicación reparada cerraba la cita con un punto donde el art. 96.6 tiene una coma y la frase continúa. Un solo carácter. Lo pasaron por alto el reparador y los DOS agentes de auditoría de reparaciones. **Lección: la verificación de literalidad de citas no puede depender solo de ojos de agente — necesita un check programático.**
+
+### 18.3 Cambios de procedimiento (incorporados — método v2.1)
+
+1. **Diagnóstico completo.** Al consolidar los hallazgos de verificación en un diagnóstico de reparación, incluir CADA defecto mencionado (enunciado, cada opción, artículo, explicación) — no solo el titular. El reparador, además, re-verifica la pregunta entera antes de dar la reparación por buena.
+2. **Check programático de literalidad de citas — como SEÑAL de priorización, no como puerta.** Extraer las citas y compararlas con el `content` del artículo por código. Coste IA cero. Calibración (aprendida probándolo sobre 61 preguntas el 22/05/2026):
+   - La primera versión (substring exacto, sensible a puntuación, sobre toda la línea `>`) marcó **42/61** — casi todo falsos positivos por comas, líneas de atribución ("— Art. X") y prefijos "**Art. X Ley:**".
+   - Versión correcta: extraer solo el texto entre `«»` (la cita literal real), y comparar **secuencia de palabras ignorando TODA la puntuación** — el defecto real es cambio de palabra (verbo, plazo, sujeto), no de coma. Permitir truncamiento `[...]`.
+
+```javascript
+function quoteIsLiteral(explanation, articleContent) {
+  const words = t => (t || '').toLowerCase()
+    .replace(/[«»"*_]/g, '')
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')   // fuera TODA la puntuación
+    .replace(/\s+/g, ' ').trim();
+  const article = words(articleContent);
+  const spans = [...explanation.matchAll(/«([^»]+)»/g)].map(m => m[1]);
+  if (spans.length === 0) return true;   // sin cita «» — nada que comprobar aquí
+  return spans.every(sp =>
+    sp.split('[...]').map(words).filter(f => f.split(' ').length >= 4)
+      .every(frag => article.includes(frag)));
+}
+```
+
+   Aun la versión correcta marca **~30/61** — porque **muchas explicaciones del catálogo usan citas cuasi-literales** (condensadas, con conectores reescritos, sintetizadas). El check NO decide: marca candidatos. Un agente (o humano) juzga si la desviación es cosmética (condensar una elisión) o sustantiva (verbo/plazo cambiado que tergiversa la norma). El check es un **pre-filtro de priorización**, no un veredicto.
+
+3. **La re-verificación es DESPUÉS de aplicar, sobre la pregunta viva.** Auditar la reparación *propuesta* (antes de aplicar) NO sustituye a verificar el resultado *aplicado*. El ciclo termina solo cuando una re-verificación independiente de la pregunta en BD devuelve cero defectos.
+4. **Iterar hasta cero.** Si la re-verificación encuentra defectos, se repara y se re-verifica otra vez. Un lote no se cierra hasta una pasada limpia completa.
+5. **Adjudicar las discrepancias.** Cuando verificación y auditoría discrepan sobre una pregunta, la decide un modelo más fuerte (Opus) o un humano — no se toma el veredicto de la auditoría por defecto (tuvo 17% de falsos negativos en este ciclo).

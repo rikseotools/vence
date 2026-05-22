@@ -6,7 +6,7 @@
 
 Manuales complementarios:
 - `docs/manual-preguntas-oficiales.md` — formato de pregunta oficial, lifecycle, question_official_exams
-- `docs/maintenance/revisar-temas-con-agente.md` — verificación Sonnet §14
+- `docs/maintenance/revisar-preguntas-con-agente.md` — verificación Sonnet §14
 - `docs/maintenance/importar-preguntas-scrapeadas.md` — patrones generales de import
 
 ---

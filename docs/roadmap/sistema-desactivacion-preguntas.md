@@ -360,7 +360,7 @@ No se usa `draft` porque estas filas ya tienen `verified_at` ≠ NULL. `draft` e
 
 | Manual | Cambio | Fase |
 |--------|--------|------|
-| `docs/maintenance/revisar-temas-con-agente.md` | §3 (mapeo 12 estados → 8 lifecycle), §11 (lifecycle, no auto-deactivation) | D |
+| `docs/maintenance/revisar-preguntas-con-agente.md` | §3 (mapeo 12 estados → 8 lifecycle), §11 (lifecycle, no auto-deactivation) | D |
 | `docs/maintenance/preguntas-con-problemas.md` | Reescribir queries SQL con `lifecycle_state` | D |
 | `docs/maintenance/importar-preguntas-scrapeadas.md` | "insertar con `lifecycle_state='draft'`" | D |
 | `CLAUDE.md` | Sección breve sobre lifecycle | F |

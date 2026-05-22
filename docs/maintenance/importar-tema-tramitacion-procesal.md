@@ -56,7 +56,7 @@ Cada JSON tiene estructura:
 │  Fase 3: Importar directo a BD + actualizar topic_scope         │
 │     ↓                                                           │
 │  Fase 4: Revisar preguntas importadas con agentes               │
-│     ↓    (ver: revisar-temas-con-agente.md)                     │
+│     ↓    (ver: revisar-preguntas-con-agente.md)                     │
 │  Fase 5: Verificar topic_scope vs epígrafe oficial              │
 │          (ver: verificar-epigrafe-topic-scope.md)               │
 │                                                                 │
@@ -352,7 +352,7 @@ for (const [lawId, artNumbers] of Object.entries(articlesByLaw)) {
 
 **IMPORTANTE:** Después de importar, revisar las preguntas importadas usando el manual de revisión con agentes.
 
-Ver: **[revisar-temas-con-agente.md](./revisar-temas-con-agente.md)**
+Ver: **[revisar-preguntas-con-agente.md](./revisar-preguntas-con-agente.md)**
 
 Esta fase verifica que:
 - Las preguntas importadas tengan respuestas correctas según el artículo vinculado
@@ -491,7 +491,7 @@ if (existing) {
 - [ ] **Fase 2**: Fusionar JSONs verificados
 - [ ] **Fase 3**: Importar a BD
 - [ ] **Fase 3**: Actualizar topic_scope con artículos nuevos
-- [ ] **Fase 4**: Revisar preguntas importadas con agentes (ver revisar-temas-con-agente.md)
+- [ ] **Fase 4**: Revisar preguntas importadas con agentes (ver revisar-preguntas-con-agente.md)
 - [ ] **Fase 4**: Si hay `wrong_article`, crear leyes faltantes con BOE y reasignar (ver 4.1)
 - [ ] **Fase 5**: Verificar topic_scope vs epígrafe (ver verificar-epigrafe-topic-scope.md)
 - [ ] **Fase 5**: Añadir leyes/artículos faltantes que el epígrafe requiera

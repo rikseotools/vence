@@ -834,7 +834,7 @@ Primera aplicación completa del pipeline con los 3 pasos. Dos bugs adicionales 
 
 2. **Fallback silencioso**: cuando la pregunta del source NO empieza con "Según el artículo N", `ensureLawContext` prependía ciegamente `"el Real Decreto Legislativo 2/2015, del Estatuto de los Trabajadores. <cuerpo>"` al principio — agramatical y sin mencionar el artículo. Afectó a 7 preguntas del T18. Fix: devolver `needs_manual_rewrite: true` y que el pipeline reformule usando el número de artículo vinculado.
 
-3. **Bonus — explicaciones copia del artículo**: 30 de 34 preguntas "perfect" tenían explicaciones que solo transcribían el texto del artículo sin análisis por opción. Los verificadores anteriores las marcaron como `perfect` porque `explanation_ok` era demasiado laxo. Ver `docs/maintenance/revisar-temas-con-agente.md §8.1` para el criterio estricto post-11/04/2026.
+3. **Bonus — explicaciones copia del artículo**: 30 de 34 preguntas "perfect" tenían explicaciones que solo transcribían el texto del artículo sin análisis por opción. Los verificadores anteriores las marcaron como `perfect` porque `explanation_ok` era demasiado laxo. Ver `docs/maintenance/revisar-preguntas-con-agente.md §8.1` para el criterio estricto post-11/04/2026.
 
 ---
 

@@ -8,11 +8,11 @@ Este README mapea qué manual usar según el caso de uso. Todos los manuales rel
 |-----------------------|--------|
 | Usuario reporta "título no coincide con contenido" en un tema | [verificar-epigrafe-topic-scope.md](./verificar-epigrafe-topic-scope.md) |
 | Usuario reporta "falta la ley X en el tema" | [verificar-epigrafe-topic-scope.md](./verificar-epigrafe-topic-scope.md) |
-| Usuario reporta "respuesta incorrecta en pregunta X" | [revisar-temas-con-agente.md](./revisar-temas-con-agente.md) + [impugnaciones-claude-code.md](./impugnaciones-claude-code.md) |
+| Usuario reporta "respuesta incorrecta en pregunta X" | [revisar-preguntas-con-agente.md](./revisar-preguntas-con-agente.md) + [impugnaciones-claude-code.md](./impugnaciones-claude-code.md) |
 | Crear una oposición nueva desde cero | [crear-nueva-oposicion.md](./crear-nueva-oposicion.md) |
 | Añadir un tema a oposición existente (1 tema manual) | [agregar-tema.md](./agregar-tema.md) |
 | Importar preguntas scrapeadas (OpositaTest, etc.) | [importar-preguntas-scrapeadas.md](./importar-preguntas-scrapeadas.md) |
-| Verificar calidad de preguntas con IA (bulk) | [revisar-temas-con-agente.md](./revisar-temas-con-agente.md) |
+| Verificar calidad de preguntas con IA (bulk) | [revisar-preguntas-con-agente.md](./revisar-preguntas-con-agente.md) |
 | El cron de seguimiento detectó cambios en BOE/BOP | [oeps-convocatorias-seguimiento.md](./oeps-convocatorias-seguimiento.md) |
 | El cron de BOE detectó cambios en una ley | [monitoreo-boe-y-crear-leyes-nuevas.md](./monitoreo-boe-y-crear-leyes-nuevas.md) |
 | Hay que crear una ley nueva (orden anual, ley nueva publicada) desde URL del BOE | [monitoreo-boe-y-crear-leyes-nuevas.md](./monitoreo-boe-y-crear-leyes-nuevas.md) — sección "Crear ley nueva" |
@@ -57,7 +57,7 @@ Desde 05/04/2026 el temario es dinámico: no hay datos hardcoded en `page.tsx`. 
    ↓
 5. importar-preguntas-scrapeadas.md (si tienes preguntas scrapeadas)
    ↓
-6. revisar-temas-con-agente.md — validar preguntas con IA
+6. revisar-preguntas-con-agente.md — validar preguntas con IA
    ↓
 7. Activar oposición (is_active=true)
 ```
@@ -69,7 +69,7 @@ Desde 05/04/2026 el temario es dinámico: no hay datos hardcoded en `page.tsx`. 
    ↓
 2. Si es "título no coincide": verificar-epigrafe-topic-scope.md
    ↓
-3. Si es "respuesta errónea": revisar-temas-con-agente.md
+3. Si es "respuesta errónea": revisar-preguntas-con-agente.md
    ↓
 4. Aplicar fix + invalidar cache: POST /api/admin/revalidate-temario
    ↓

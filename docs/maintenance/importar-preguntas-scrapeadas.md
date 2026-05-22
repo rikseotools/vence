@@ -749,7 +749,7 @@ El agente compara cada pregunta contra su artículo vinculado y verifica:
 
 Las preguntas que fallen se corrigen antes de dar el tema por bueno.
 
-**Ver:** [revisar-temas-con-agente.md](./revisar-temas-con-agente.md)
+**Ver:** [revisar-preguntas-con-agente.md](./revisar-preguntas-con-agente.md)
 
 ### 10.1 Patrón "ciclo completo con contexto completo" (post-16/04/2026, RECOMENDADO)
 
