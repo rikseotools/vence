@@ -1237,11 +1237,20 @@ Con queries lentas en hot path + tráfico 10k DAU:
 - [ ] **Esta semana**: EXPLAIN ANALYZE de los 3 queries lentos en BD prod para confirmar planes
 - [ ] **Cuando llegue a 1k DAU**: pre-computar `user_medals_summary` (#4)
 - [ ] **Documentar nuevos slow queries** en este apartado cuando aparezcan en logs
-- [ ] **Pendiente alto (cuando se ataque)**: implementar `user_question_stats` para `/api/v2/difficulty-insights` (medium term #6). Ver "Memo `user_question_stats` — caso Nila" abajo.
+- [x] **RESUELTO 2026-05-22** — `/api/v2/difficulty-insights`: las 4 RPCs migradas a `user_question_history_v2` (tabla materializada que YA existía; `user_question_stats` era redundante y NO se creó). Nila 12s/503 → ~200ms. Ver memo abajo.
 
 ---
 
 ### Memo `user_question_stats` — caso Nila (anatomía completa del problema)
+
+> **✅ RESUELTO 2026-05-22 — el plan de este memo resultó equivocado.** NO se creó `user_question_stats`: ya existía `user_question_history_v2` (tabla materializada por triggers, 744k filas, agregados `(user_id, question_id)` verificados exactos contra `test_questions`). Las 4 RPCs de difficulty-insights se reescribieron para leerla; `trend` y `last_attempt` se calculan frescos para las filas del resultado. Nila 12s/503 → ~200ms. Migración: `supabase/migrations/20260522_difficulty_insights_rpc_uqh_v2.sql`.
+>
+> **Deuda detectada en `user_question_history_v2` (NO corregida — las RPCs la esquivan calculando fresco):**
+> - `last_attempt_at`: ~5-20% de filas desviadas (guarda el `created_at` del último INSERT, no el `MAX`) — hasta ~199 días de desviación en Nila.
+> - `trend`: 100% `'stable'` en las 745k filas — el trigger nunca calcula improving/declining. Columna muerta.
+> - `user_question_history` (v1) es casi idéntica a v2 — 2 tablas + 4 triggers redundantes sobre `test_questions` (tabla caliente).
+>
+> Arreglar los triggers de v2 / consolidar v1+v2 es trabajo aparte. El texto de abajo queda como **contexto histórico** — su plan de crear `user_question_stats` ya no aplica.
 
 > **Detectado 2026-05-19** vía feedback de Nila (jinayda32@gmail.com, premium, user_id `c16c186a-4e70-4b1e-a3bd-c107e13670dd`). Mensaje literal: *"tarda mucho en cargar los test y fallos y también no está contando bien los aciertos y fallos, en el icono de rachas no aparece las 200 preguntas que llevo hecho hasta ahora"*. Aquí está la trazabilidad completa para atacar el problema cuando llegue el turno.
 
