@@ -267,8 +267,8 @@ export default function TestLeyesEspana() {
           </h1>
           <p className="text-xl text-gray-600 mb-8 max-w-4xl mx-auto leading-relaxed">
             Practica con los <strong>tests de leyes</strong> más completos de España en <strong>Vence</strong>. 
-            Prepárate para oposiciones o estudia legislación española con nuestros 
-            <strong> tests gratuitos actualizados</strong> de todas las leyes disponibles.
+            Prepárate para oposiciones o estudia legislación española con nuestros
+            <strong> tests gratuitos actualizados</strong> de todas las leyes disponibles en nuestra base de datos.
           </p>
         </section>
 
