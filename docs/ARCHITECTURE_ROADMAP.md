@@ -1,7 +1,7 @@
 # Vence — Architecture Roadmap a 100k+ usuarios
 
 > **Última actualización:** 2026-05-18
-> **Estado:** Fase 0 casi completa (0.1-0.6 hechas) + **Fase 1 Redis ✅ COMPLETA y AMPLIADA** + **Sprint 1 seguridad ✅ COMPLETO** (5 sub-sprints) + **Sprint 2 hardening cascade ✅ COMPLETO** (18 sub-sprints, 19 commits, **deployed en producción**, validado en logs) + **Sprint 3 fallos post-deploy ✅ COMPLETO** (4 fallos detectados en logs Vercel tras Sprint 2 deploy y resueltos en sesión) + **Sprint 4 audit pool mode + outbox blindado ✅ COMPLETO 2026-05-17** (3 commits — refactor advisory_lock→SKIP LOCKED, quick-fail user-failed+difficulty-insights, audit pool mode revela ya transaction) + **Sprint 5 cascade 18/05 ✅ COMPLETO 2026-05-18** (2 commits — user-failed-questions migrado a read replica, daily-limit con cache stale-if-error fresh 30s + stale 24h). Sprint 2: invalidación caches existentes saneada, singleflight anti-stampede, regions:lhr1 (validado 80ms→3.37ms), 5 endpoints más cacheados (test-config family + hot-articles + law-stats + verify-stats + estimate), quick-fail wrapper en 11 endpoints, observability (Sentry beforeSend + cache hit-rate counters). Sprint 3: TypeError streaming Next 16 (inlineCss disabled), userAnswer=-1 (schema fix), theme-stats timeout heavy users (covering index 12.5s→502ms = 24.9x), GeoIP timeout (Vercel headers sync, sin ip-api.com). Pendiente: 0.5 verificar p95 producción, **Fase 0.7 (JWT local verify)** documentada como next big win, **Fase 11 push (DROP TABLES BD)** esperar 24-48h. **DECISIÓN 2026-05-22:** migración a backend dedicado de proceso largo (ver sección «Backend dedicado de proceso largo») — se empieza moviendo los crons (Etapa 1).
+> **Estado:** Fase 0 casi completa (0.1-0.6 hechas) + **Fase 1 Redis ✅ COMPLETA y AMPLIADA** + **Sprint 1 seguridad ✅ COMPLETO** (5 sub-sprints) + **Sprint 2 hardening cascade ✅ COMPLETO** (18 sub-sprints, 19 commits, **deployed en producción**, validado en logs) + **Sprint 3 fallos post-deploy ✅ COMPLETO** (4 fallos detectados en logs Vercel tras Sprint 2 deploy y resueltos en sesión) + **Sprint 4 audit pool mode + outbox blindado ✅ COMPLETO 2026-05-17** (3 commits — refactor advisory_lock→SKIP LOCKED, quick-fail user-failed+difficulty-insights, audit pool mode revela ya transaction) + **Sprint 5 cascade 18/05 ✅ COMPLETO 2026-05-18** (2 commits — user-failed-questions migrado a read replica, daily-limit con cache stale-if-error fresh 30s + stale 24h). Sprint 2: invalidación caches existentes saneada, singleflight anti-stampede, regions:lhr1 (validado 80ms→3.37ms), 5 endpoints más cacheados (test-config family + hot-articles + law-stats + verify-stats + estimate), quick-fail wrapper en 11 endpoints, observability (Sentry beforeSend + cache hit-rate counters). Sprint 3: TypeError streaming Next 16 (inlineCss disabled), userAnswer=-1 (schema fix), theme-stats timeout heavy users (covering index 12.5s→502ms = 24.9x), GeoIP timeout (Vercel headers sync, sin ip-api.com). Pendiente: 0.5 verificar p95 producción, **Fase 0.7 (JWT local verify)** documentada como next big win, **Fase 11 push (DROP TABLES BD)** esperar 24-48h. **DECISIÓN 2026-05-22:** backend dedicado de proceso largo — **Etapa 1 ✅ los 12 crons del Grupo A migrados a NestJS/AWS Fargate, auditados, en shadow** (ver sección «Backend dedicado de proceso largo»).
 > **Objetivo:** preparar Vence para escalar a 100k+ usuarios sin perder features ni romper nada
 > **Coste extra estimado total (Fases 0-3):** $10-40/mes
 > **Coste extra estimado total (Fases 0-5):** $50-150/mes
@@ -993,25 +993,34 @@ Clasificación de cada dependencia: ✅ estándar bien aislado · 🟡 propietar
 
 | Etapa | Qué | Estado |
 |---|---|---|
-| **1 — Crons/workers** | Backend largo haciendo SOLO crons + colas (BOE, seguimiento, sensores OEP, outbox, recalc). Scheduler real + BullMQ, sin límite de duración. | **← EMPEZAMOS AQUÍ** |
+| **1 — Crons/workers** | Backend largo haciendo SOLO crons + colas (BOE, seguimiento, sensores OEP, outbox, recalc). Scheduler real (`@nestjs/schedule`), sin límite de duración. | **✅ 12/12 crons en Fargate, en shadow (2026-05-22)** |
 | 2 — API hot path | Endpoints Next.js → backend, detrás de `verifyAuth`+Drizzle (ya portables). Pool compartido real mata `max:1`, cascadas y cold starts. Incremental, con feature flag. | Pendiente |
 | 3 — Tier de datos | Triggers→eventos, read models materializados, réplica. | Pendiente |
 | 4 — HA + IaC | Quitar SPOF, infra como código, backups, runbooks. | Pendiente |
 
 En paralelo, recomendable: **higiene de repo/CI** (pre-commit hook roto → commits con `--no-verify`, tests en rojo en `main`, ~100 archivos basura en la raíz, sin staging). "Profesional" empieza por ahí, no por el cloud.
 
-### Etapa 1 — Empezamos moviendo los crons (los que Vercel no aguanta)
+### Etapa 1 — Crons migrados ✅ (en shadow desde 2026-05-22)
 
-**Por qué primero:** es la etapa de **menor riesgo** — los crons son trabajo de fondo, no tocan ni un endpoint de usuario. Estrena el backend nuevo en producción sin exponer a nadie, arregla de raíz el fallo del BOE de hoy, y deja montada la cola que necesita la Etapa 2.
+**Por qué primero:** es la etapa de **menor riesgo** — los crons son trabajo de fondo, no tocan ni un endpoint de usuario. Estrenó el backend nuevo en producción sin exponer a nadie y arregló de raíz el fallo del BOE.
 
-**Crons a mover** (los `/api/cron/*` que hoy corren como funciones Vercel con `maxDuration`): `check-boe-changes`, `check-seguimiento`, sensores OEP (`detect-oep-llm`, `detect-regional-oeps`, `detect-timeline-silence`, `detect-generic-sources`), `process-outbox`, recalc/refresh varios. En el backend largo corren **hasta terminar** — `check-boe-changes` procesa las 475 leyes sin el truco del presupuesto de 50s.
+**Hecho (2026-05-22):** los **12 crons del Grupo A** portados a un backend NestJS y desplegados en **AWS ECS Fargate** (cuenta VENCE, `eu-west-2`):
+- **1a:** `check-boe-changes` — con el fix de causa raíz: sin presupuesto de 50s (procesa las 475 leyes hasta el final) y un fallo de extracción avanza `last_checked` para no atascar la cola. Validado: 462/462 leyes, cazó la reforma de la CE del 20/05/2026.
+- **1b:** `archive-interactions`, `refresh-theme-cache`, `refresh-rankings`, `update-streaks`, `check-seguimiento`, `process-outbox`, `avatar-rotation`, `process-verification-queue`, `detect-timeline-silence`, `detect-oep-llm`, `detect-regional-oeps`, `detect-generic-sources`.
 
-**Criterio de validación Etapa 1:** el backend lleva 2-3 semanas estable en producción ejecutando todos los crons y `check-boe-changes` revisa el 100% de las leyes a diario (0 leyes con `last_checked` > 48h). Solo entonces se aborda la Etapa 2.
+Cada cron = módulo NestJS + `@Cron` in-app, sin `maxDuration`. Código en `backend/`; infra Terraform en `backend/infra/` (ECR, Fargate, IAM, OIDC); CI en `.github/workflows/backend-deploy.yml`. Auditados por 6 agentes independientes (verifica→audita→aplica): 3 discrepancias reales detectadas y corregidas.
 
-**Decisiones pendientes de Etapa 1:**
-- **NestJS vs Fastify** — NestJS trae `@nestjs/schedule` + BullMQ de fábrica y estructura para crecer; Fastify es más ligero. El beneficio real es "proceso largo", no el framework.
-- **Hosting** — Railway / Render / Fly.io o una VM Hetzner con Docker. AWS ECS/Fargate solo si se quiere el ecosistema completo (RDS, etc.); para un servicio es la opción de más ops. Evitar el culto a AWS: "profesional" está en la disciplina (CI, staging, observabilidad, IaC, HA), no en el logo del cloud.
-- **Portabilidad** — el servicio nace como **contenedor Docker 12-factor** desde el primer commit, sin primitivas propietarias. La agnosticidad al proveedor es condición de partida, no una fase posterior (ver «Principio transversal: agnóstico al proveedor»).
+El **Grupo B** (`close-inactive-feedback`, `renewal-reminders`, `daily-registration-summary`, `detect-fraud`/`fraud-detection`) se queda en Vercel a propósito — trabajo trivial, moverlo sería make-work.
+
+**En shadow:** los crons nuevos corren en paralelo a los de Vercel (idempotentes / señales con dedupe → no se pisan). `BOE_NOTIFY_ENABLED=false` para no duplicar emails al admin.
+
+**Criterio de validación / cutover:** tras 2-3 semanas estable revisando el 100% de las leyes a diario (0 leyes con `last_checked` > 48h), por cada cron: desactivar su workflow de Vercel + borrar `app/api/cron/<x>/`, y `BOE_NOTIFY_ENABLED=true`. Solo entonces se aborda la Etapa 2.
+
+**Decisiones tomadas:**
+- **NestJS** (vs Fastify) — `@nestjs/schedule` y la estructura modular para crecer.
+- **AWS ECS Fargate** (vs Railway/Fly/VM) — se eligió el ecosistema AWS; la cuenta VENCE ya existía con Lightsail.
+- **Sin BullMQ por ahora** — `process-outbox` se portó con su patrón `FOR UPDATE SKIP LOCKED` existente; BullMQ se añadirá si la Etapa 2 lo necesita.
+- **Portabilidad** — contenedor Docker 12-factor, Postgres estándar vía Drizzle, config 100% por variables de entorno. Agnóstico al proveedor desde el primer commit (ver «Principio transversal: agnóstico al proveedor»).
 
 ---
 
