@@ -16,6 +16,17 @@ Este roadmap cambia la arquitectura **sin reescribir** el código, en 6 fases in
 
 ---
 
+## Prioridades
+
+Todo el trabajo de este roadmap se ordena por dos prioridades, **en este orden**:
+
+1. **Que no falle y escale a 10k usuarios/día.** Arreglar lo que rompe hoy y eliminar los cuellos de botella de escala. Es lo primero, siempre.
+2. **Agnóstico de proveedor.** Poder cambiar de base de datos (Supabase → Neon / RDS / …) y de cloud (Vercel → AWS → Azure → …) fácilmente, sin reescribir código.
+
+**No son objetivos en conflicto — se refuerzan.** Cada fix de escala se hace con **interfaces estándar** (Postgres y triggers estándar, Redis estándar, Docker, IaC), nunca con primitivas propietarias de un proveedor. Así, hacer bien la prioridad 1 *es* avanzar la prioridad 2: cada mejora de rendimiento es también un paso de portabilidad. Acelerar atándose más a un proveedor está **prohibido** — es deuda técnica disfrazada de progreso. El «cómo» de la agnosticidad está detallado en «Principio transversal: agnóstico al proveedor».
+
+---
+
 ## Principios
 
 1. **Equivalencia funcional**: cada cambio preserva el comportamiento visible al usuario, o documenta la diferencia (ej. caché de 30s) y la justifica.
