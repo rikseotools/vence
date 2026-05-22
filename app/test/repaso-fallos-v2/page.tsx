@@ -69,12 +69,16 @@ function RepasoFallosV2Content() {
         // /test/repaso-fallos-v2?bloque=2&positionType=auxiliar_administrativo_estado
         const bloqueParam = searchParams.get('bloque')
         const positionTypeParam = searchParams.get('positionType')
+        // Filtro opcional por ley: repaso de fallos desde /leyes/[law].
+        // /test/repaso-fallos-v2?law=Ley 9/2017
+        const lawParam = searchParams.get('law')
 
         // Construir body del request
         type Scope =
           | { type: 'block'; bloqueNumber: number; positionType: string }
           | { type: 'topic'; topicNumbers: number[]; positionType: string }
           | { type: 'position'; positionType: string }
+          | { type: 'law'; lawShortName: string }
         const requestBody: {
           numQuestions: number
           orderBy: string
@@ -92,7 +96,9 @@ function RepasoFallosV2Content() {
           requestBody.days = parseInt(days)
         }
 
-        if (bloqueParam && positionTypeParam) {
+        if (lawParam) {
+          requestBody.scope = { type: 'law', lawShortName: lawParam }
+        } else if (bloqueParam && positionTypeParam) {
           const bloqueNumber = parseInt(bloqueParam, 10)
           if (Number.isInteger(bloqueNumber) && bloqueNumber > 0) {
             requestBody.scope = {
@@ -211,9 +217,16 @@ function RepasoFallosV2Content() {
     )
   }
 
-  // Config del test (con título adaptado si hay filtro por bloque)
+  // Config del test (con título adaptado si hay filtro por bloque o por ley)
   const bloqueLabel = searchParams.get('bloque')
-  const config = bloqueLabel ? {
+  const lawLabel = searchParams.get('law')
+  const config = lawLabel ? {
+    name: `Repaso de Fallos: ${lawLabel}`,
+    description: `Practicando ${questions.length} preguntas falladas de ${lawLabel}`,
+    subtitle: "Refuerza los artículos que más te cuestan",
+    icon: "🎯",
+    color: "from-red-500 to-orange-600",
+  } : bloqueLabel ? {
     name: `Repaso de Fallos del Bloque ${bloqueLabel}`,
     description: `Practicando ${questions.length} preguntas falladas del Bloque ${bloqueLabel}`,
     subtitle: "Refuerza los temas de este bloque",

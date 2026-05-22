@@ -358,7 +358,15 @@ export async function getFailedQuestionsForUser(
     }
 
     // Paso 3: Cargar preguntas completas con artículos y leyes (filtradas por scope)
-    const allowed = await getAllowedLawIds({ userId })
+    // scope=law: el usuario eligió la ley explícitamente desde /leyes/[law]; el
+    // blockFilter ya restringe a esa única ley y las falladas son de sus propios
+    // test_questions (sin riesgo cross-oposición). NO aplicar getAllowedLawIds:
+    // excluiría leyes que el usuario estudia fuera del temario oficial de su
+    // oposición (ej. Ley 9/2017 no está en el scope de auxiliar_administrativo_cantabria).
+    const isLawScope = params.scope?.type === 'law'
+    const allowed = isLawScope
+      ? { lawIds: [] as string[] }
+      : await getAllowedLawIds({ userId })
     const scopeFilter = allowed.lawIds.length > 0
       ? inArray(laws.id, allowed.lawIds)
       : sql`true`
@@ -369,9 +377,14 @@ export async function getFailedQuestionsForUser(
     // (mismo patrón que getAllowedLawIds / lib/api/oposicion-scope/queries.ts:117).
     let blockFilter = sql`true`
     if (params.scope) {
-      const positionType = params.scope.positionType
-
-      if (params.scope.type === 'position') {
+      if (params.scope.type === 'law') {
+        // Una ley concreta: repaso de fallos desde /leyes/[law]. No necesita
+        // positionType — getAllowedLawIds (scopeFilter) ya acota a la oposición
+        // del usuario; aquí solo restringimos a la ley elegida.
+        blockFilter = sql`${laws.shortName} = ${params.scope.lawShortName}`
+        console.log(`🎯 [DRIZZLE] scope=law lawShortName=${params.scope.lawShortName}`)
+      } else if (params.scope.type === 'position') {
+        const positionType = params.scope.positionType
         // Toda la oposición: cualquier pregunta cuyo artículo esté en algún
         // topic_scope de un topic activo de esa posición. Card "Debilidades".
         blockFilter = sql`EXISTS (
@@ -385,6 +398,7 @@ export async function getFailedQuestionsForUser(
         console.log(`🎯 [DRIZZLE] scope=position positionType=${positionType}`)
       } else {
         // 'block' o 'topic': resolver topic_numbers
+        const positionType = params.scope.positionType
         let topicNumbers: number[] = []
 
         if (params.scope.type === 'block') {
@@ -468,7 +482,7 @@ export async function getFailedQuestionsForUser(
           success: true,
           questions: [],
           questionCount: 0,
-          message: `¡Enhorabuena! No tienes preguntas falladas en este bloque en ${periodLabel}`,
+          message: `¡Enhorabuena! No tienes preguntas falladas con este filtro en ${periodLabel}`,
         }
       }
       return {
@@ -478,9 +492,11 @@ export async function getFailedQuestionsForUser(
     }
 
     // Si hay scope, respetar el orderBy original y limitar a numQuestions
-    // (en paso 2 trajimos todas las falladas, no las primeras N).
+    // (en paso 2 trajimos todas las falladas, no las primeras N). Se re-ordena
+    // SIEMPRE que hay scope —no solo al exceder numQuestions— porque el SELECT
+    // con `id IN (...)` no garantiza el orden del array y perdería el orderBy.
     let finalResults = questionsWithDetails
-    if (hasScope && questionsWithDetails.length > numQuestions) {
+    if (hasScope) {
       const idOrder = new Map(sortedQuestions.map((q, i) => [q.questionId, i]))
       finalResults = [...questionsWithDetails].sort((a, b) =>
         (idOrder.get(a.id) ?? Infinity) - (idOrder.get(b.id) ?? Infinity)

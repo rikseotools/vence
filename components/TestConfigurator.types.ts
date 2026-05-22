@@ -75,6 +75,7 @@ export interface TestStartConfig {
   onlyFailedQuestions: boolean
   failedQuestionIds?: string[]
   failedQuestionsOrder?: FailedQuestionsOrder
+  failedPeriod?: 'all' | '7d' | '30d'
   selectedLaws: string[]
   selectedArticlesByLaw: Record<string, (string | number)[]>
   selectedSectionFilters: SectionFilter[]

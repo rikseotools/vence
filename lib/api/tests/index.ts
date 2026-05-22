@@ -17,6 +17,7 @@ export {
   type RecoverTestResponse,
   // Test de repaso de fallos
   failedQuestionsOrderSchema,
+  failedQuestionsScopeSchema,
   createFailedQuestionsTestRequestSchema,
   testLayoutQuestionSchema,
   createFailedQuestionsTestResponseSchema,
@@ -24,6 +25,7 @@ export {
   safeParseCreateFailedQuestionsTest,
   safeParseTestLayoutQuestions,
   type FailedQuestionsOrder,
+  type FailedQuestionsScope,
   type CreateFailedQuestionsTestRequest,
   type TestLayoutQuestion,
   type CreateFailedQuestionsTestResponse,

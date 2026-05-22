@@ -868,6 +868,7 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
       onlyFailedQuestions: true,
       failedQuestionIds: sortedQuestionIds, // 🆕 Lista específica de preguntas falladas ordenadas
       failedQuestionsOrder: sortOrder, // 🆕 Tipo de ordenación aplicada
+      failedPeriod: failedPeriod, // 🆕 Periodo elegido (all/7d/30d) — lo usa el repaso por ley
       // 🆕 FILTRO DE LEYES (mantener si estaban seleccionadas)
       selectedLaws: Array.from(selectedLaws),
       selectedArticlesByLaw: Object.fromEntries(

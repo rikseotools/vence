@@ -5,6 +5,7 @@ import TestConfigurator from '@/components/TestConfigurator'
 import { getLawStats, type LawStats } from '@/lib/lawFetchers'
 import { useAuth } from '@/contexts/AuthContext'
 import { useLawSlugs } from '@/contexts/LawSlugContext'
+import { buildLawRepasoFallosUrl } from '@/lib/test-url/lawRepasoFallosUrl'
 
 interface LawTestConfiguratorProps {
   lawShortName: string
@@ -147,7 +148,24 @@ export default function LawTestConfigurator({ lawShortName, lawDisplayName }: La
           hideEssentialArticles={true}
           onStartTest={(config) => {
             console.log('Starting law test with config:', config)
-            
+
+            // 🔄 Modo repaso de falladas → ruta dedicada server-side.
+            // El test normal (/avanzado → LawTestPageWrapper) NO sabe filtrar
+            // por preguntas falladas; mezclarlo ahí devolvía la ley entera
+            // (bug María 21/05/2026). /test/repaso-fallos-v2 calcula las
+            // falladas en el servidor (scope=law) sin pasar listas de IDs.
+            if (config.onlyFailedQuestions) {
+              const failedUrl = buildLawRepasoFallosUrl({
+                lawShortName,
+                numQuestions: config.numQuestions,
+                failedQuestionsOrder: config.failedQuestionsOrder,
+                failedPeriod: config.failedPeriod,
+              })
+              console.log('🎯 Navegando a repaso de falladas:', failedUrl)
+              window.location.href = failedUrl
+              return
+            }
+
             // Construir parámetros para el test de ley
             const params = new URLSearchParams({
               n: config.numQuestions.toString(),
@@ -156,9 +174,6 @@ export default function LawTestConfigurator({ lawShortName, lawDisplayName }: La
               difficulty_mode: config.difficultyMode,
               ...(config.adaptiveMode && { adaptive: 'true' }),
               ...(config.timeLimit && { time_limit: config.timeLimit.toString() }),
-              ...(config.onlyFailedQuestions && { only_failed: 'true' }),
-              ...(config.failedQuestionIds && { failed_ids: config.failedQuestionIds.join(',') }),
-              ...(config.failedQuestionsOrder && { failed_order: config.failedQuestionsOrder }),
               // 🆕 FILTRO DE SECCIONES/TÍTULOS (MULTI-SELECT)
               ...(config.selectedSectionFilters && config.selectedSectionFilters.length > 0 && {
                 section_filters: JSON.stringify(config.selectedSectionFilters)

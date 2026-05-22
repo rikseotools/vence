@@ -137,12 +137,14 @@ export const failedQuestionsOrderSchema = z.enum([
 export type FailedQuestionsOrder = z.infer<typeof failedQuestionsOrderSchema>
 
 // Scope polimórfico: limita las preguntas falladas a un bloque, conjunto de temas
-// concretos o TODA una oposición. Sin scope = todas las falladas cross-oposición.
+// concretos, TODA una oposición o UNA ley. Sin scope = todas las falladas cross-oposición.
 // 'block': el backend resuelve topic_numbers desde BD (oposicion_bloques + topics).
 // 'topic': el cliente pasa los topic_numbers directamente.
 // 'position': filtra a TODA la oposición (todos los bloques). Usado por la card
 //             "Debilidades" del hub de tests para repasar fallos cross-tema.
-// En todos los casos positionType acota a UNA oposición (anti cross-oposición).
+// 'law': filtra a UNA ley concreta. Usado por el repaso de fallos desde /leyes/[law].
+//        No necesita positionType: getAllowedLawIds ya acota a la oposición del user.
+// En block/topic/position positionType acota a UNA oposición (anti cross-oposición).
 export const failedQuestionsScopeSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('block'),
@@ -158,16 +160,21 @@ export const failedQuestionsScopeSchema = z.discriminatedUnion('type', [
     type: z.literal('position'),
     positionType: z.string().min(1),
   }),
+  z.object({
+    type: z.literal('law'),
+    lawShortName: z.string().min(1),
+  }),
 ])
 
 export type FailedQuestionsScope = z.infer<typeof failedQuestionsScopeSchema>
 
 export const createFailedQuestionsTestRequestSchema = z.object({
   userId: z.string().uuid('ID de usuario inválido'),
-  numQuestions: z.number().int().min(1).max(100).default(10),
+  numQuestions: z.number().int().min(1).max(300).default(10),
   orderBy: failedQuestionsOrderSchema.default('recent'),
   fromDate: z.string().datetime().optional(),
-  days: z.number().int().min(1).max(365).optional(),
+  // max alto (≈100 años) para permitir "todas las falladas" sin un sentinel aparte.
+  days: z.number().int().min(1).max(36500).optional(),
   scope: failedQuestionsScopeSchema.optional(),
 })
 
