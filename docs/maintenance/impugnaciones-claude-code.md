@@ -598,6 +598,16 @@ await supabase
   .eq('id', questionId);
 ```
 
+### 7.1.1 Preguntas estructurales → vincular al "Artículo 0" de la ley
+
+Las preguntas que **no versan sobre el contenido de un artículo concreto**, sino sobre la **estructura o los metadatos de la ley** (número de artículos, títulos, capítulos, disposiciones; cuándo se aprobó; cuántas reformas ha tenido y cuáles; etc.) **NO deben vincularse al artículo concreto** al que se refieran de pasada, sino al **"Artículo 0"** de esa ley.
+
+El **Art. 0** es un artículo especial (`article_number = '0'`, p. ej. titulado "Estructura de la Constitución CE") que recopila la estructura completa de la norma y sus datos meta. Es el único `primary_article_id` cuyo contenido responde literalmente este tipo de preguntas.
+
+**Ejemplo (sesión 22/05/2026):** las preguntas "¿cuándo se produjo la X reforma de la Constitución?" estaban vinculadas cada una al artículo que esa reforma modificó (13, 135, 49). Es incorrecto: la pregunta no va del contenido del art. 13, va de la *historia de reformas*. Todas se re-vincularon al Art. 0 de la CE, cuya sección "Reformas constitucionales" sí responde la pregunta. Si el Art. 0 no recoge aún el dato (p. ej. una reforma nueva), **hay que actualizar el Art. 0** además de re-vincular.
+
+**Cómo detectarlo:** si al aplicar la regla del artículo literal (el artículo vinculado debe responder la pregunta literalmente) ningún artículo de contenido responde la pregunta porque ésta es de tipo "estructura/historia/metadatos" → el destino correcto es el Art. 0.
+
 ## 7.2 Impugnaciones de `tema_incorrecto` o "esta pregunta es de otro tema"
 
 Cuando la queja del usuario no es sobre el contenido de la pregunta sino sobre el **tema** en el que aparece, **no es un problema de la pregunta sino del `topic_scope`**. Antes de tocar nada:
