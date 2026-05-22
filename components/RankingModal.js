@@ -323,7 +323,8 @@ export default function RankingModal({ isOpen, onClose }) {
 
           {/* Filtros de tiempo - solo en tab ranking */}
           {activeTab === 'ranking' && (
-            <div className="flex justify-center space-x-2 mb-6">
+            <>
+            <div className="flex justify-center space-x-2 mb-2">
             <button
               onClick={() => setTimeFilter('today')}
               className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
@@ -365,6 +366,10 @@ export default function RankingModal({ isOpen, onClose }) {
               Este mes
             </button>
           </div>
+          <p className="text-center text-xs text-gray-400 dark:text-gray-500 mb-6">
+            El ranking se actualiza cada 5 minutos
+          </p>
+          </>
           )}
 
           {loading ? (
