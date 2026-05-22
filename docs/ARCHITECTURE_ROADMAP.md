@@ -973,7 +973,7 @@ Enfoque: **ports & adapters** (arquitectura hexagonal) + **12-factor** (config 1
 | **Compute backend** | Contenedor **Docker** 12-factor, sin primitivas propietarias | ECS / Fly / Railway / Render / Hetzner / bare metal |
 | **Frontend** | Next.js self-hostable (`next start` en Docker). Evitar features solo-Vercel: Vercel KV, Vercel Cron, headers `x-vercel-ip-*` | Vercel / contenedor propio |
 | **Auth** | Wrapper `verifyAuth` — único sitio que conoce el proveedor | Supabase Auth / Auth.js / Clerk / Cognito |
-| **Caché / colas** | Protocolo Redis estándar (NO la REST API propietaria de Upstash) + BullMQ | Upstash / Redis gestionado / Redis propio |
+| **Caché / colas** | Protocolo Redis estándar + BullMQ. ⚠️ **Hoy incumplido** — `lib/cache/redis.ts` usa `@upstash/redis` (REST propietaria); ver «Caso concreto — la caché» abajo | Upstash / Redis gestionado / Redis propio |
 | **Object storage** | API **S3-compatible** con endpoint configurable | S3 / R2 / MinIO / Supabase Storage |
 | **Email** | SMTP o interfaz fina de envío | Resend / SendGrid / SES / SMTP |
 | **Scheduler** | Scheduler in-app del backend (no Vercel Cron / GHA como fuente de verdad) | — |
@@ -988,6 +988,10 @@ Enfoque: **ports & adapters** (arquitectura hexagonal) + **12-factor** (config 1
 - **BD** → `pg_dump` a cualquier Postgres cuando se quiera.
 
 Es decir: **cada etapa del backend dedicado reduce el acoplamiento a Supabase**. Al terminar la Etapa 2, Supabase queda reducido a "un Postgres más" — intercambiable con un `DATABASE_URL`. La sección «Reducir dependencia de Supabase» (más abajo) detalla el estado del acoplamiento pieza por pieza y los paths de salida.
+
+**Caso concreto — la caché (Upstash).** Hoy `lib/cache/redis.ts` usa `@upstash/redis`, que habla con Redis por la **API REST propietaria de Upstash** (`UPSTASH_REDIS_REST_URL/TOKEN`). Ese protocolo REST **solo lo entiende Upstash** — ni ElastiCache, ni Memorystore, ni un Redis self-hosted. Mientras se use, la caché está atada a Upstash. *Por qué se eligió:* la REST evita abrir conexiones TCP por invocación en serverless (lambdas efímeras → churn de conexiones, agotar el límite de Redis); para Vercel fue razonable — no es chapuza.
+
+Pasar a estándar **NO es un find-replace** `@upstash/redis`→`ioredis`: un swap ingenuo en lambdas de Vercel reintroduce el problema serverless de conexiones TCP (la misma clase de fallo que el agotamiento del pool de Postgres que este proyecto ya sufrió). La forma profesional: `lib/cache/redis.ts` como **adapter con transporte elegido por runtime** — cliente apto-serverless en Vercel, `ioredis` + pool en el backend dedicado (proceso largo → TCP+pool es lo óptimo y 100% estándar). El proveedor pasa a ser `CACHE_URL`; ningún endpoint cambia. Se vuelve casi gratis cuando el cómputo migra al backend. **Prioridad 2, no urgente** — no causa incidentes.
 
 ### Gate de adopción de dependencias nuevas
 
@@ -1233,11 +1237,12 @@ Con queries lentas en hot path + tráfico 10k DAU:
 
 ### Pendiente concreto
 
-- [ ] **Esta semana**: cache Redis en `/api/medals` + `/api/random-test/availability` (quick-win #1 #2)
+- [x] **YA HECHO (2026-05-11, sprint stale-if-error)** — `/api/medals` y `/api/random-test/availability`: cache Redis fresh + stale-if-error. Confirmado 22/05: `/api/medals` GET es cache-first + lookup de `user_medals` (147 filas) y la query pesada (POST) está con `unstable_cache` permanente + Redis 30d + circuit breaker; `/api/random-test/availability` cache fresh 60s + stale-if-error, query base ~600ms. Ningún endpoint conocido da 503 ya.
 - [ ] **Esta semana**: EXPLAIN ANALYZE de los 3 queries lentos en BD prod para confirmar planes
 - [ ] **Cuando llegue a 1k DAU**: pre-computar `user_medals_summary` (#4)
 - [ ] **Documentar nuevos slow queries** en este apartado cuando aparezcan en logs
 - [x] **RESUELTO 2026-05-22** — `/api/v2/difficulty-insights`: las 4 RPCs migradas a `user_question_history_v2` (tabla materializada que YA existía; `user_question_stats` era redundante y NO se creó). Nila 12s/503 → ~200ms. Ver memo abajo.
+- [ ] **`/api/stats` — incidente 22/05 ~18:2x (cascada `statement_timeout`).** No tenía caché ni quick-fail; 10 queries en paralelo, 4 full-scan de `test_questions` → 500 para heavy users + presión de pool que cascadea. **(1) Mitigado** — caché Redis fresh 5min + stale-if-error + `withDbTimeout` (commit `7d721791`, desplegado). **(2) Fix de fondo PENDIENTE** — materializar las 4 agregaciones (`getMainStats`, `getDifficultyBreakdown`, `getTimePatterns`, `getArticleStats`) → el endpoint solo lee tablas pre-agregadas (patrón difficulty-insights). Esa materialización debe vivir en el **backend dedicado** (cómputo agnóstico), no en lambdas de Vercel.
 
 ---
 
