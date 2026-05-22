@@ -749,6 +749,11 @@ export default function ExamLayout({
 
       setScore(correctCount)
       setIsSubmitted(true)
+      // El examen ya está corregido y visible: soltamos la UI AQUÍ. El guardado
+      // en BD continúa en segundo plano y NO debe mantener isSaving bloqueado;
+      // si un await de saveExamInBackground se colgaba (red caída, pestaña en
+      // background → timers throttled), la UI quedaba congelada hasta el watchdog.
+      setIsSaving(false)
       window.scrollTo({ top: 0, behavior: 'smooth' })
 
       saveExamInBackground(correctCount, totalTimeSeconds, apiResult).then(async () => {
@@ -926,9 +931,10 @@ export default function ExamLayout({
     } catch (error) {
       console.error('❌ ERROR CRÍTICO EN GUARDADO:', error)
       setSaveStatus('error')
-    } finally {
-      setIsSaving(false)
     }
+    // NOTA: saveExamInBackground NO toca isSaving. El flag se libera en
+    // handleSubmitExam en cuanto el examen se muestra corregido — esta función
+    // es de fondo de verdad y no debe poder bloquear la UI.
   }
 
   // ✅ FUNCIÓN: Abrir modal de artículo

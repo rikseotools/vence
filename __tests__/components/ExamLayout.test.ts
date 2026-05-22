@@ -924,4 +924,76 @@ describe('ExamLayout - Prevención de Regresiones', () => {
       expect(answeredCount).toBe(totalQuestions) // ✅ 10/10, no 10/5
     })
   })
+
+  // ============================================
+  // BUG: UI congelada — isSaving atado al guardado en background
+  // El watchdog (useAnswerWatchdog) registraba "UI congelada Nms en ExamLayout.
+  // processingAnswer no se reseteó" porque isSaving solo se liberaba en el
+  // finally de saveExamInBackground; si un await de esa función se colgaba
+  // (red caída / pestaña en background → timers throttled) el finally nunca
+  // corría e isSaving quedaba en true. Detectado vía feedback 21bcb89d.
+  // ============================================
+  describe('Bug Fix: isSaving no debe depender del guardado en background (watchdog)', () => {
+
+    // SIMULACIÓN — estado de isSaving al terminar handleSubmitExam (camino éxito).
+    // Tras validateExam OK el examen YA está corregido y visible (setIsSubmitted).
+    function isSavingAfterSubmit({
+      fixApplied,
+      backgroundCompletes,
+    }: {
+      fixApplied: boolean        // true = isSaving se libera en handleSubmitExam
+      backgroundCompletes: boolean // true = saveExamInBackground llega a su finally
+    }): boolean {
+      let isSaving = true // setIsSaving(true) al iniciar handleSubmitExam
+      if (fixApplied) {
+        // POST-FIX: se libera al mostrar resultados, antes del guardado en BD
+        isSaving = false
+      } else {
+        // PRE-FIX: solo se libera si saveExamInBackground termina su finally
+        if (backgroundCompletes) isSaving = false
+      }
+      return isSaving
+    }
+
+    test('REGRESIÓN: pre-fix, si el guardado en background se cuelga, isSaving queda atascado', () => {
+      expect(isSavingAfterSubmit({ fixApplied: false, backgroundCompletes: false })).toBe(true)
+    })
+
+    test('pre-fix solo funcionaba en el caso feliz (el background termina)', () => {
+      expect(isSavingAfterSubmit({ fixApplied: false, backgroundCompletes: true })).toBe(false)
+    })
+
+    test('FIX: isSaving se libera aunque el guardado en background se cuelgue', () => {
+      expect(isSavingAfterSubmit({ fixApplied: true, backgroundCompletes: false })).toBe(false)
+    })
+
+    test('FIX: isSaving también queda libre en el caso feliz', () => {
+      expect(isSavingAfterSubmit({ fixApplied: true, backgroundCompletes: true })).toBe(false)
+    })
+
+    // ESTÁTICO — el código real de ExamLayout.tsx tiene el fix aplicado.
+    const fs = require('fs')
+    const src: string = fs.readFileSync('components/ExamLayout.tsx', 'utf-8')
+
+    test('handleSubmitExam libera isSaving ANTES de llamar a saveExamInBackground', () => {
+      const iBackgroundCall = src.indexOf('saveExamInBackground(correctCount')
+      expect(iBackgroundCall).toBeGreaterThan(-1)
+      const before = src.slice(0, iBackgroundCall)
+      const iLastReset = before.lastIndexOf('setIsSaving(false)')
+      const iLastSubmitted = before.lastIndexOf('setIsSubmitted(true)')
+      // Justo antes de lanzar el guardado en background, el camino de éxito ya
+      // hizo setIsSubmitted(true) y luego setIsSaving(false).
+      expect(iLastSubmitted).toBeGreaterThan(-1)
+      expect(iLastReset).toBeGreaterThan(iLastSubmitted)
+    })
+
+    test('saveExamInBackground ya NO toca isSaving (no puede bloquear la UI)', () => {
+      const fnStart = src.indexOf('async function saveExamInBackground')
+      const fnEnd = src.indexOf('function openArticleModal', fnStart)
+      expect(fnStart).toBeGreaterThan(-1)
+      expect(fnEnd).toBeGreaterThan(fnStart)
+      const body = src.slice(fnStart, fnEnd)
+      expect(body).not.toContain('setIsSaving')
+    })
+  })
 })
