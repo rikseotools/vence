@@ -53,7 +53,16 @@ SCRIPT
 
 ## 1bis. Antes de sincronizar: ¿la ley está derogada? ¿es un falso positivo?
 
-Dos comprobaciones **obligatorias** antes de tratar un `change_status='changed'` como un cambio real que haya que sincronizar.
+Antes de tratar un `change_status='changed'` como un cambio real, **clasifica de qué tipo es**. Los `changed` que dispara el cron son de cuatro tipos:
+
+| Tipo | Qué es | Acción |
+|---|---|---|
+| **Reforma real** | El BOE modificó uno o más artículos | Sincronizar (§2–§3) y revisar preguntas (§4) |
+| **Derogación** | La ley fue derogada por otra norma | Ver «¿La ley está derogada?» abajo |
+| **Falso positivo de fecha** | La fecha cambió pero la ley no | Ver «¿Es un falso positivo?» abajo |
+| **Derogada ya conocida** | Ley con `is_derogated=true`; el BOE solo refleja una derogación vieja | `change_status='reviewed'` y nada más |
+
+Las dos comprobaciones siguientes son **obligatorias** para descartar los tres últimos tipos antes de sincronizar.
 
 ### ¿La ley está derogada?
 
@@ -65,6 +74,8 @@ El cron `check-boe-changes` detecta que cambió la fecha de "Última actualizaci
 ### ¿Es un falso positivo del detector?
 
 El detector produce **falsos positivos**: la fecha `last_update_boe` en BD a veces se "corrige" sola (deriva del `date_byte_offset` cacheado, extracción inconsistente) y dispara un `changed` sin que la ley haya cambiado. Señal típica: la fecha del BOE **coincide** con la que ya tienes y **no hay ninguna modificación de los años recientes** en el listado de modificaciones del texto consolidado. Si es falso positivo → `change_status='reviewed'` sin sincronizar.
+
+**Patrón de fecha obsoleta.** Otra fuente de falso positivo: en BD se guardó como `last_update_boe` la **fecha propia de la ley** (la de su promulgación — «Ley 2/2011, de 11 de marzo» → `11/03/2011`) en lugar de la fecha de «Última actualización publicada el» del consolidado del BOE (`18/03/2011`, la de publicación). El cron ve `11/03 → 18/03` y marca `changed`, pero la ley no se ha tocado. Señal: la fecha BOE nueva está a pocos días de la promulgación y el consolidado no lista ninguna modificación posterior. → `change_status='reviewed'`.
 
 > **Los falsos positivos no son tiempo perdido.** Revisar cada `changed` es de facto una auditoría del catálogo de leyes. El 22/05/2026, 5 falsos positivos destaparon 2 leyes derogadas que llevaban años marcadas como activas (Ley 2/2009 Aragón con 55 preguntas vivas; Ley 29/2006 Medicamentos). Trata cada `changed` como una oportunidad de auditar, no como una molestia.
 
@@ -187,10 +198,39 @@ const supabase = createClient(
 SCRIPT
 ```
 
-### Si hay preguntas afectadas:
-1. Revisar si el cambio invalida la pregunta
-2. Actualizar la explicación si es necesario
-3. Desactivar la pregunta si ya no es válida (`is_active: false`)
+### Si hay preguntas afectadas — workflow
+
+No todas las preguntas vinculadas a la ley están afectadas, ni todas se tratan igual.
+
+**Paso 1 — Acota a la parte reformada.** Una reforma toca artículos o apartados concretos. La CE art. 69 tenía 63 preguntas vinculadas, pero la reforma de 2026 solo cambió el apartado 69.3 → solo 5 necesitaban arreglo. Haz un keyword-scan de enunciados/opciones/explicaciones por la frase o el concepto que cambió, y revisa solo los aciertos.
+
+**Paso 2 — ¿Cambio de redacción o de fondo?**
+- **Solo redacción** (la reforma reescribe palabras sin cambiar la regla — la CE quitó «o agrupación de ellas»): **ninguna respuesta cambia**; solo hay que actualizar el texto citado en enunciados, opciones y explicaciones que reproduzcan literalmente el artículo antiguo.
+- **Cambio de fondo** (cambia la regla, un número, un plazo): las **respuestas correctas pueden cambiar**. Mucho más grave — verifica cada pregunta contra el texto nuevo.
+
+**Paso 3 — ¿Oficial o no oficial?** Mirar `question_official_exams`.
+- **No oficial:** se puede editar enunciado/opciones para hacerla literal al artículo vigente.
+- **Oficial:** es un registro histórico de un examen real — **nunca se modifica su texto**. Su corrección se juzga contra la **fecha del examen**, no contra hoy (una pregunta del examen del 17/04/2021 sobre una ley derogada el 30/04/2021 era correcta ese día).
+
+**Revincular una pregunta a la ley vigente** (cuando la ley vieja se derogó y la sustituye otra) es un cambio de **4 partes**, no solo el `primary_article_id`:
+1. `primary_article_id` → el artículo equivalente de la ley vigente.
+2. El **enunciado**, si nombra la ley/artículo viejos («Según el art. 34 de la Ley 18/2011…»).
+3. La **opción correcta**, si cita el texto literal viejo — la ley nueva puede haber **reformulado** el precepto (RD-ley 6/2023 art. 50 cambió «el documento acreditativo» → «la información acreditativa»); hay que reescribir la opción al texto nuevo.
+4. La **explicación**, citando el artículo nuevo.
+
+Antes de revincular, descarga el contenido del artículo nuevo y compáralo palabra por palabra — solo revincula si responde la pregunta de forma fiel. *(Para migrar de golpe todas las preguntas de una ley a su texto refundido, ver «Migrar una ley derogada a su texto refundido».)*
+
+**Pregunta oficial sobre una ley derogada** → no se puede actualizar (falsearía el examen real) ni dejar activa (enseña contenido derogado) → **desactivar** por el lifecycle (no toques `is_active`, es columna GENERATED):
+
+```
+transition_question_state(
+  p_question_id, p_expected_state, p_new_state='retired_irreparable',
+  p_reason_code='admin_law_derogated', p_changed_by, p_ai_verification_id, p_notes)
+```
+
+El registro en `question_official_exams` se conserva como dato histórico.
+
+> **Hueco sistémico conocido (22/05/2026):** hoy **nada automático** detecta «una ley pasó a derogada → revisar sus preguntas». Se caza a mano en este flujo. Hasta que el cron lo haga, conviene un barrido periódico: preguntas activas cuyo `primary_article_id` pertenece a una ley con `is_derogated=true`.
 
 ## 5. Marcar Ley como Revisada
 
@@ -673,7 +713,7 @@ Para cada pregunta vinculada a un artículo de la ley vieja:
 
 ### Paso 5 — Mover el topic_scope y revalidar
 
-`UPDATE topic_scope SET law_id=<refundido> WHERE law_id=<vieja>`. Revalidar `temario`/`teoria`/`laws` + rutas ISR. Después, verificar que las preguntas migradas son correctas respecto al artículo nuevo (ver `revisar-temas-con-agente.md`, flujo verifica → audita).
+`UPDATE topic_scope SET law_id=<refundido> WHERE law_id=<vieja>`. Revalidar `temario`/`teoria`/`laws` + rutas ISR. Después, verificar que las preguntas migradas son correctas respecto al artículo nuevo (ver `revisar-preguntas-con-agente.md`, flujo verifica → audita).
 
 ## Sincronización de Disposiciones
 
