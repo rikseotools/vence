@@ -1288,6 +1288,75 @@ El cron de drift, en su último run manual de 12:13 CEST, marcó `backfill_activ
 
 **Próxima revisión programada: ~16:30 CEST (en 30 min)** — el usuario va a pedir "busca errores" para evaluar si hay reparaciones pendientes. Claude debe seguir el runbook `docs/runbooks/health-check.md` sección 1 y reportar verdict 🟢/🟡/🔴.
 
+### Incidente menor + deuda de observabilidad detectada (2026-05-23 ~16:45 CEST)
+
+Tres workflows `Cache Warmup Post-Deploy` consecutivos fallaron tras mis pushes del 23/05:
+- `f1128501` → cancelled (canceló al siguiente por `concurrency: cancel-in-progress`)
+- `36febddc` → failure en `actions/checkout@v4` (5 retries, 30s)
+- `7015feb0` → failure en step `Warm cache` por **timeout de 15 minutos** (el `timeout-minutes` del workflow)
+
+**Diagnóstico (corrigiendo hipótesis inicial):** NO es glitch transitorio. El último fallo es reproducible — el warmup tarda más de 15 minutos. El sitio en producción responde rápido (<1.3s todas las páginas críticas medidas manualmente), pero al visitar las 963 URLs del set con concurrencia 3, **alguna URL específica está timeoutando** o tardando lo suficiente para que el total supere 15 minutos. Sin acceso a los logs detallados del runner (requiere token GitHub) no puedo identificar la URL exacta sin más investigación.
+
+Tres hipótesis de qué cambió respecto a los warmups exitosos previos (commit `7d721791` del 22/05):
+1. Una URL nueva en el set (¿el script genera URLs nuevas para mis migraciones/tablas?) — improbable, el script lee oposiciones y topics de BD, no se afecta por las tablas materializadas nuevas.
+2. Una URL existente empezó a tardar más por código mío — posible aunque mi cambio no toca código en read path crítico.
+3. El timeout de 30s por página dispara con frecuencia ahora — posible si el pool de BD está más saturado por los 15 triggers nuevos (improbable: medido +0.9ms p95 sobre 100 INSERTs, despreciable).
+
+**No bloquea el fix de fondo de `/api/stats`.** El cache warmup es un workflow auxiliar (visita URLs para calentar cache); su fallo significa que el primer usuario que carga una página tras un deploy la ve fría (~1-3 segundos extra una vez por página). Molestia menor, no incidente.
+
+**Lo importante: este fallo no fue detectado por el runbook health-check.** Solo se supo por email de GitHub al maintainer. La observabilidad construida hoy mira tres fuentes (`validation_error_logs`, `stats_drift_log`, `pg_stat_statements`) — todas internas a BD/Next.js. **No cubre GitHub Actions ni la pipeline CI/CD.**
+
+#### Diagnóstico del gap
+
+Cuando se complete el cutover del backend dedicado NestJS/Fargate en 2-3 semanas, el sistema tendrá **cinco canales distintos donde algo puede fallar**:
+
+1. Endpoints Next.js en Vercel (cubierto hoy: `validation_error_logs`)
+2. Crons + servicios del backend NestJS en Fargate (sin canal unificado)
+3. Workflows de GitHub Actions (no cubierto)
+4. Deploys de Vercel (no cubierto)
+5. Servicios externos (Supabase, Upstash, BOE, etc — no cubierto)
+
+Construir indicadores ad-hoc para cada canal en el panel admin es trabajo desechable: queda fragmentado, requiere mantener N queries distintas, y los crons de Fargate aún no existen como código de producción que escriba a algún sitio observable.
+
+#### Solución correcta: tabla unificada `observable_events`
+
+Una sola tabla agnóstica del origen del error, con esquema:
+
+```sql
+CREATE TABLE observable_events (
+  id BIGSERIAL PRIMARY KEY,
+  occurred_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  source TEXT NOT NULL,    -- 'vercel'|'fargate'|'gha'|'cron'|'manual'|'external'
+  severity TEXT NOT NULL,  -- 'info'|'warning'|'critical'
+  component TEXT,          -- endpoint, job_name, workflow_name, etc
+  error_type TEXT,
+  error_message TEXT,
+  error_stack TEXT,
+  deploy_version TEXT,
+  metadata JSONB           -- payload específico de cada source
+);
+```
+
+Regla operativa: **todo componente que falla escribe aquí, sin importar dónde corre**.
+
+- `withErrorLogging` (Next.js) migra de `validation_error_logs` a esta tabla con `source='vercel'`.
+- Backend NestJS usa un wrapper equivalente con `source='fargate'`.
+- GitHub Actions workflows: añadir step `on: failure` que envía POST a `/api/observability/ingest` con `source='gha'`. O cron propio nocturno que consulta GitHub API y vuelca eventos.
+- Vercel: webhook de deploys → endpoint → tabla.
+
+Con esto, el runbook hace UN query a UNA tabla. El panel admin agrupa por `source`. **Cumple las dos prioridades del proyecto**: escala (sin importar cuántos canales se añadan, el sistema observador no cambia) y es agnóstico de proveedor (cambiar de GitHub a GitLab o de Vercel a Cloudflare no rompe nada).
+
+#### Decisión 23/05/2026: NO parchear ahora, diseñar en bloque con el cutover NestJS
+
+Razones:
+- Construir el indicador "GitHub Actions" ahora es trabajo desechable — va a ser superado por el sistema unificado en 2-3 semanas
+- El backend NestJS/Fargate ya está en shadow; el momento natural de instrumentarlo con observabilidad unificada es justo antes del cutover
+- El incidente concreto que disparó esto (fallo de checkout transitorio) NO se va a repetir cada push; ignorarlo manualmente esta vez tiene coste cero
+
+**Acción inmediata:** task #28 creada en el board. Se atacará en bloque junto al cutover del backend NestJS/Fargate, NO como parche aislado del runbook actual.
+
+**Manejo del incidente concreto:** ignorar el fallo de `36febddc` (transitorio). Verificar que el run actual de `7015feb0` termina con `success`. Si falla también, investigar reproducibilidad.
+
 ---
 
 
