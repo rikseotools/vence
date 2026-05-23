@@ -1,6 +1,6 @@
 # Vence — Architecture Roadmap a 100k+ usuarios
 
-> **Última actualización:** 2026-05-23 22:30 CEST (sesión cierre: bloque 2 test pyramid + CI workflow + bloque 1 runbook cutover + shadow verificado día +1 + hardening AWS completo + **Fase 2-bis CERRADA al 100% — DROP COLUMN global_dirty aplicado el mismo día tras validación activa del paso 1**)
+> **Última actualización:** 2026-05-23 23:15 CEST (sesión cierre: bloque 2 test pyramid + CI workflow + bloque 1 runbook cutover + shadow verificado día +1 + hardening AWS completo + **Fase 2-bis CERRADA al 100% — DROP COLUMN global_dirty** aplicado el mismo día tras validación activa del paso 1 + **audit técnico pre-Bloque 3 con datos reales 7d** + **EXPLAIN ANALYZE descarta /api/stats como candidato urgente del Bloque 3**)
 > **Estado:** Fase 0 casi completa (0.1-0.6 hechas) + **Fase 1 Redis ✅ COMPLETA y AMPLIADA** + **Sprint 1 seguridad ✅ COMPLETO** (5 sub-sprints) + **Sprint 2 hardening cascade ✅ COMPLETO** (18 sub-sprints, 19 commits, **deployed en producción**, validado en logs) + **Sprint 3 fallos post-deploy ✅ COMPLETO** (4 fallos detectados en logs Vercel tras Sprint 2 deploy y resueltos en sesión) + **Sprint 4 audit pool mode + outbox blindado ✅ COMPLETO 2026-05-17** (3 commits — refactor advisory_lock→SKIP LOCKED, quick-fail user-failed+difficulty-insights, audit pool mode revela ya transaction) + **Sprint 5 cascade 18/05 ✅ COMPLETO 2026-05-18** (2 commits — user-failed-questions migrado a read replica, daily-limit con cache stale-if-error fresh 30s + stale 24h). Sprint 2: invalidación caches existentes saneada, singleflight anti-stampede, regions:lhr1 (validado 80ms→3.37ms), 5 endpoints más cacheados (test-config family + hot-articles + law-stats + verify-stats + estimate), quick-fail wrapper en 11 endpoints, observability (Sentry beforeSend + cache hit-rate counters). Sprint 3: TypeError streaming Next 16 (inlineCss disabled), userAnswer=-1 (schema fix), theme-stats timeout heavy users (covering index 12.5s→502ms = 24.9x), GeoIP timeout (Vercel headers sync, sin ip-api.com). Pendiente: 0.5 verificar p95 producción, **Fase 0.7 (JWT local verify)** documentada como next big win, **Fase 11 push (DROP TABLES BD)** esperar 24-48h. **DECISIÓN 2026-05-22:** backend dedicado de proceso largo — **Etapa 1 ✅ los 12 crons del Grupo A migrados a NestJS/AWS Fargate, auditados, en shadow** (ver sección «Backend dedicado de proceso largo»).
 > **Objetivo:** preparar Vence para escalar a 100k+ usuarios sin perder features ni romper nada
 > **Coste extra estimado total (Fases 0-3):** $10-40/mes
@@ -134,7 +134,7 @@ No urgen y no arreglan ningún bug. Hacerlos antes es trabajo prematuro:
 
 ## Sesión 2026-05-23 — cierre (snapshot para handoff)
 
-Sesión densa con avances en bloques 1+2 simultáneos. 5 commits, todos pasando pre-commit limpio (sin `--no-verify`). Estado actualizado de cada bloque al final.
+Sesión densa con avances en bloques 1+2+3 simultáneos. 9 commits, todos pasando pre-commit limpio (sin `--no-verify`). Estado actualizado de cada bloque al final.
 
 ### Commits de la sesión
 
@@ -143,8 +143,11 @@ Sesión densa con avances en bloques 1+2 simultáneos. 5 commits, todos pasando 
 | `6e83aea5` | B2 | Partición test pyramid (`test:unit` 9.297 verdes / `test:integration` para CI) + workflow `.github/workflows/test.yml` con 4 jobs + medals/queries.test reescrito al refactor v2 + roadmap actualizado con bloques 1-5 |
 | `cc6513ae` | B1 | Runbook `docs/runbooks/cron-cutover-fargate.md` (criterio + procedimiento + rollback + checklist por cron) |
 | `f204f5ea` | B1 | Primera verificación del shadow vía CLI: 13/13 crons disparan según schedule, 0 errores reales, BOE 97% leyes |
-| `b1696f74` | B1 | Paso 1/2 del DROP COLUMN `global_dirty`: quitada lectura del endpoint `/api/admin/health` (bloqueante detectado en auditoría) |
-| _(post-push)_ | B1 | Paso 2/2 del DROP COLUMN `global_dirty`: tras validación activa (curl prod 200 OK sin `global_dirty_pending` en response a los 62s del push), migración `20260523_drop_global_dirty_column.sql` aplicada en 383ms con smoke verify dentro de la transacción. Fase 2-bis **cerrada al 100%** |
+| `b1696f74` | B1/B2 | Paso 1/2 del DROP COLUMN `global_dirty`: quitada lectura del endpoint `/api/admin/health` (bloqueante detectado en auditoría) |
+| `1e8ea696` | docs | Snapshot intermedio de cierre — superseded por este mismo update |
+| `ef0913e9` | B1 | Paso 2/2 del DROP COLUMN `global_dirty`: tras validación activa (curl prod 200 OK sin `global_dirty_pending` a los 62s del push), migración `20260523_drop_global_dirty_column.sql` aplicada en 383ms con smoke verify intra-transacción. **Fase 2-bis cerrada al 100%** |
+| `0de93e6c` | B3 | Audit técnico pre-Bloque 3 con datos reales 7d: métricas (errores, cascade frequency, co-ocurrencia), catálogo técnico de los 5 candidatos hot path, orden de migración recomendado. Doc en [`docs/architecture/bloque3-audit-hot-path.md`](architecture/bloque3-audit-hot-path.md) |
+| `e0366d74` | B3 | EXPLAIN ANALYZE del p95 153s de `/api/stats` con el user más heavy del sistema (2.730 tests). Hallazgo: el p95 era **deuda histórica del 29/04** (pre-refactor `getRecentTests` a LEFT JOIN LATERAL); las 10 queries paralelas suman <200ms hoy. **`/api/stats` baja de MEDIA a BAJA prioridad** en Bloque 3 |
 
 ### Bloque 2 (higiene) — **cerrado al 95 %**
 
