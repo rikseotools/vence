@@ -1,6 +1,6 @@
 # Vence — Architecture Roadmap a 100k+ usuarios
 
-> **Última actualización:** 2026-05-23 (decisión de orden: plan de bloques agnóstico+arquitectura como un solo trabajo — ver sección «Plan de ejecución activo»)
+> **Última actualización:** 2026-05-23 21:30 CEST (sesión cierre: bloque 2 test pyramid + CI workflow + bloque 1 runbook cutover + shadow verificado día +1 + hardening AWS completo + paso 1/2 DROP COLUMN global_dirty — ver sección «Sesión 2026-05-23 — cierre»)
 > **Estado:** Fase 0 casi completa (0.1-0.6 hechas) + **Fase 1 Redis ✅ COMPLETA y AMPLIADA** + **Sprint 1 seguridad ✅ COMPLETO** (5 sub-sprints) + **Sprint 2 hardening cascade ✅ COMPLETO** (18 sub-sprints, 19 commits, **deployed en producción**, validado en logs) + **Sprint 3 fallos post-deploy ✅ COMPLETO** (4 fallos detectados en logs Vercel tras Sprint 2 deploy y resueltos en sesión) + **Sprint 4 audit pool mode + outbox blindado ✅ COMPLETO 2026-05-17** (3 commits — refactor advisory_lock→SKIP LOCKED, quick-fail user-failed+difficulty-insights, audit pool mode revela ya transaction) + **Sprint 5 cascade 18/05 ✅ COMPLETO 2026-05-18** (2 commits — user-failed-questions migrado a read replica, daily-limit con cache stale-if-error fresh 30s + stale 24h). Sprint 2: invalidación caches existentes saneada, singleflight anti-stampede, regions:lhr1 (validado 80ms→3.37ms), 5 endpoints más cacheados (test-config family + hot-articles + law-stats + verify-stats + estimate), quick-fail wrapper en 11 endpoints, observability (Sentry beforeSend + cache hit-rate counters). Sprint 3: TypeError streaming Next 16 (inlineCss disabled), userAnswer=-1 (schema fix), theme-stats timeout heavy users (covering index 12.5s→502ms = 24.9x), GeoIP timeout (Vercel headers sync, sin ip-api.com). Pendiente: 0.5 verificar p95 producción, **Fase 0.7 (JWT local verify)** documentada como next big win, **Fase 11 push (DROP TABLES BD)** esperar 24-48h. **DECISIÓN 2026-05-22:** backend dedicado de proceso largo — **Etapa 1 ✅ los 12 crons del Grupo A migrados a NestJS/AWS Fargate, auditados, en shadow** (ver sección «Backend dedicado de proceso largo»).
 > **Objetivo:** preparar Vence para escalar a 100k+ usuarios sin perder features ni romper nada
 > **Coste extra estimado total (Fases 0-3):** $10-40/mes
@@ -127,6 +127,67 @@ No urgen y no arreglan ningún bug. Hacerlos antes es trabajo prematuro:
 - El **Bloque 3 es el keystone**: cualquier otra cosa (Upstash REST → ioredis, observable_events, agnóstico real de hosting) se vuelve **gratis** cuando termina, y **dos veces más cara** si se intenta antes.
 
 **Las 6 fases originales** del cuadro siguen siendo válidas como referencia técnica — los bloques 1-5 son el **orden de ejecución** que las absorbe y ordena.
+
+---
+
+## Sesión 2026-05-23 — cierre (snapshot para handoff)
+
+Sesión densa con avances en bloques 1+2 simultáneos. 5 commits, todos pasando pre-commit limpio (sin `--no-verify`). Estado actualizado de cada bloque al final.
+
+### Commits de la sesión
+
+| Commit | Bloque | Qué |
+|---|---|---|
+| `6e83aea5` | B2 | Partición test pyramid (`test:unit` 9.297 verdes / `test:integration` para CI) + workflow `.github/workflows/test.yml` con 4 jobs + medals/queries.test reescrito al refactor v2 + roadmap actualizado con bloques 1-5 |
+| `cc6513ae` | B1 | Runbook `docs/runbooks/cron-cutover-fargate.md` (criterio + procedimiento + rollback + checklist por cron) |
+| `f204f5ea` | B1 | Primera verificación del shadow vía CLI: 13/13 crons disparan según schedule, 0 errores reales, BOE 97% leyes |
+| `b1696f74` | B1 | Paso 1/2 del DROP COLUMN `global_dirty`: quitada lectura del endpoint `/api/admin/health` (bloqueante detectado en auditoría) |
+
+### Bloque 2 (higiene) — **cerrado al 95 %**
+
+- ✅ Pre-commit corre `test:precommit + test:unit` (sin `--no-verify`). **Por primera vez** el repo puede commitear sin saltar el hook.
+- ✅ CI workflow `test.yml` (unit + integration + lint + typecheck) — integration con `continue-on-error: true` hasta arreglar los 10 fallos conocidos uno a uno.
+- ⏳ Pendiente único: limpiar ~100 archivos basura de la raíz del repo (baja prioridad, mecánico).
+
+### Bloque 1 (Etapa 1 backend) — **listo para cutover, soak en curso**
+
+- ✅ Runbook completo de cutover de los 13 crons Vercel → Fargate.
+- ✅ Shadow verificado día +1 (24h+): ECS service ACTIVE 1/1 sin reinicios, 13/13 crons disparan exacto según schedule, 0 errores reales.
+- ✅ Profile `[vence]` configurado localmente con user IAM `claude-cli` (PowerUserAccess) → cualquier verificación futura es directa por CLI.
+- ⏳ Cutover físico: **no se ejecuta hasta ~05-12/06** (2-3 sem de soak desde 22/05).
+
+### Hardening AWS (extra de la sesión, no estaba planificado)
+
+Trabajo no contemplado al principio pero que cierra el flanco de seguridad antes de meter más carga al backend.
+
+| Acción | Estado | Detalle |
+|---|---|---|
+| IAM user `claude-cli` con `PowerUserAccess` | ✅ | Operacional pero sin poder crear IAM users (no escala privilegios) |
+| Profile `[vence]` local | ✅ | `aws ... --profile vence` apunta a la cuenta correcta |
+| **CloudTrail** `vence-audit-trail` | ✅ | Multi-region + file validation + bucket S3 cifrado SSE-S3 + versionado + bloqueo público + lifecycle (Glacier 90d → expire 365d) |
+| **Budget** $50 USD/mes | ✅ | 3 alertas a `venceoposiciones@gmail.com`: 85% real, 100% real, 100% forecast |
+| **MFA root** | ✅ | Ya estaba activo |
+
+**Coste mensual añadido:** ~$2 (CloudTrail S3 storage). Budget es gratis.
+
+**Multi-cuenta AWS confirmada (a propósito separada):**
+- Cuenta Vence: `349744179687`, region principal `eu-west-2` (Londres).
+- Cuenta Vicohr (otro proyecto): `801945368851`, default local actual.
+- CI deploy del backend usa OIDC role `vence-backend-ci-deploy` (no necesita credenciales locales).
+
+### Fase 2-bis (DROP COLUMN `global_dirty`) — paso 1 de 2 completado
+
+Tras auditoría de bloqueantes (no era "1 comando trivial" como yo presupuse — el usuario me paró a tiempo, ver memoria asociada):
+
+**Paso 1/2 ✅ hecho hoy (commit `b1696f74`):**
+- Endpoint `/api/admin/health` ya no lee `global_dirty` (5 referencias quitadas + comentario explicando el deprecation).
+- Bloqueante eliminado.
+
+**Paso 2/2 ⏳ pendiente próxima sesión (≥48h después del deploy de `b1696f74`, idealmente lun 26/05):**
+1. Verificar deploy a Vercel del paso 1 (endpoint health responde 200 sin errores en CloudWatch / Sentry).
+2. Verificar que las **50 filas con `global_dirty=true`** tienen su `global_difficulty` correctamente actualizado por el trigger nuevo (`apply_first_attempt_to_question_stats`). Si alguna no → recompute manual SQL one-shot ANTES del DROP.
+3. Aplicar migración `ALTER TABLE questions DROP COLUMN global_dirty CASCADE` (también dropea el índice parcial `idx_questions_global_dirty`).
+4. Smoke test post-drop: health endpoint OK + queries normales OK.
 
 ---
 
