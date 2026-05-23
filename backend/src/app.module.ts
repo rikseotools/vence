@@ -18,6 +18,8 @@ import { DetectOepLlmModule } from './detect-oep-llm/detect-oep-llm.module';
 import { DetectRegionalOepsModule } from './detect-regional-oeps/detect-regional-oeps.module';
 import { DetectGenericSourcesModule } from './detect-generic-sources/detect-generic-sources.module';
 import { ProcessVerificationQueueModule } from './process-verification-queue/process-verification-queue.module';
+import { CacheModule } from './cache/cache.module';
+import { MedalsModule } from './medals/medals.module';
 
 @Module({
   imports: [
@@ -30,6 +32,8 @@ import { ProcessVerificationQueueModule } from './process-verification-queue/pro
     ScheduleModule.forRoot(),
     DatabaseModule,
     HealthModule,
+    // Cache compartido con Vercel (Bloque 3) — Global, exporta CacheService.
+    CacheModule,
     // Crons — sub-etapa 1a
     BoeChangesModule,
     // Crons — sub-etapa 1b tanda 1 (mantenimiento)
@@ -48,6 +52,8 @@ import { ProcessVerificationQueueModule } from './process-verification-queue/pro
     DetectOepLlmModule,
     DetectRegionalOepsModule,
     DetectGenericSourcesModule,
+    // HTTP endpoints — Bloque 3 canary (Etapa 2)
+    MedalsModule,
   ],
 })
 export class AppModule {}

@@ -38,6 +38,10 @@ const envSchema = z.object({
     .transform((v) => v === 'true'),
   // Token Bearer para llamar a endpoints internos protegidos de la app Next.js.
   CRON_SECRET: z.string().default(''),
+  // Redis (Upstash REST) — compartido con la app Next.js para coherencia
+  // de invalidación cross-runtime. Ver docs/architecture/bloque3-redis-cross-runtime.md
+  UPSTASH_REDIS_REST_URL: z.string().default(''),
+  UPSTASH_REDIS_REST_TOKEN: z.string().default(''),
 });
 
 export type Env = z.infer<typeof envSchema>;
