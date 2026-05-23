@@ -214,12 +214,13 @@ Ejecutado con el user más heavy del sistema (`3260627f-2018-4a5e-8234-e6f07015a
 
 ## 5. Lo que falta antes de arrancar Bloque 3
 
-Para no entrar en código sin contexto, completar estas dos tareas (cada una <1h):
+Las tres pre-tareas originales están **cerradas** o documentadas:
 
-1. **Decisión BACKEND_URL**: cómo apunta el frontend al backend. Env var simple + feature flag por endpoint, o gateway intermedio. Definir patrón antes del primer endpoint para no inventar dos.
-2. **Adapter Redis**: el backend NestJS necesita un cliente Redis que respete los mismos tags que `lib/cache/redis.ts` actual (para que invalidaciones cross-runtime funcionen). Definir interface antes del primer endpoint.
+1. ~~**Decisión BACKEND_URL**~~ — **HECHO 23/05 noche**: doc completo en [`bloque3-backend-url-pattern.md`](bloque3-backend-url-pattern.md). Decisión: ALB público + Route53 (`api.vence.es`) + ACM. Coste ~$17-22/mes. Helper de routing con env var `BACKEND_URL` + flags `NEXT_PUBLIC_USE_BACKEND_*` por endpoint.
+2. ~~**Adapter Redis**~~ — **HECHO 23/05 noche**: doc completo en [`bloque3-redis-cross-runtime.md`](bloque3-redis-cross-runtime.md). Decisión: backend NestJS usa el MISMO `@upstash/redis` REST. Cero divergencia semántica, cero pub/sub, invalidación coherente porque ambos leen del mismo store.
+3. ~~Reproducir p95 153s `/api/stats`~~ — **HECHO 23/05 noche**: el endpoint está sano (ver §4-bis arriba). El p95 era deuda histórica del refactor pre-LATERAL Memoize.
 
-~~Reproducir p95 153s `/api/stats`~~ — **HECHO 23/05 noche**: el endpoint está sano (ver §4-bis arriba). El p95 era deuda histórica del refactor pre-LATERAL Memoize.
+**Próximo paso real**: aplicar Terraform de §4 en [`bloque3-backend-url-pattern.md`](bloque3-backend-url-pattern.md) (ALB + Route53 + ACM, ~10 min, 0 impacto en tráfico actual) y arrancar la migración del canary `/api/medals` siguiendo el orden de §7 del mismo doc.
 
 ---
 
