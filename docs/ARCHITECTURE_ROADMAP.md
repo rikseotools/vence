@@ -85,6 +85,8 @@ Sin esto, el resto se desordena. "Profesional" empieza por la disciplina, no por
 
 ### Bloque 3 — Etapa 2 del backend (4-6 sem) ← **KEYSTONE**
 
+> **Audit técnico previo (2026-05-23):** ver [`docs/architecture/bloque3-audit-hot-path.md`](architecture/bloque3-audit-hot-path.md) — métricas reales 7d (errores, cascade frequency, co-ocurrencia), catálogo técnico de los 5 candidatos y orden de migración recomendado. Resumen: `medals` primero (canary, BAJA complejidad), `answer-and-save` segundo (KEYSTONE real, arrastra 8 endpoints en cascade), después `stats` (p95 153s), `test-config` family, y `daily-limit` último (0 errores 7d, baja urgencia).
+
 Mover los endpoints hot path (no todos — sólo los que cascadean) al backend NestJS detrás de feature flag. Lista candidata: `answer-and-save`, `daily-limit`, `medals`, `stats`, `test-config` family. **Es el bloque que más arregla y más libera a la vez:**
 
 | Bug que mata | Lock-in que libera |
