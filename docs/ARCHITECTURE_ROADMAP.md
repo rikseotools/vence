@@ -1,6 +1,6 @@
 # Vence — Architecture Roadmap a 100k+ usuarios
 
-> **Última actualización:** 2026-05-18
+> **Última actualización:** 2026-05-23 (validación activa pre-canary `/api/stats` v2)
 > **Estado:** Fase 0 casi completa (0.1-0.6 hechas) + **Fase 1 Redis ✅ COMPLETA y AMPLIADA** + **Sprint 1 seguridad ✅ COMPLETO** (5 sub-sprints) + **Sprint 2 hardening cascade ✅ COMPLETO** (18 sub-sprints, 19 commits, **deployed en producción**, validado en logs) + **Sprint 3 fallos post-deploy ✅ COMPLETO** (4 fallos detectados en logs Vercel tras Sprint 2 deploy y resueltos en sesión) + **Sprint 4 audit pool mode + outbox blindado ✅ COMPLETO 2026-05-17** (3 commits — refactor advisory_lock→SKIP LOCKED, quick-fail user-failed+difficulty-insights, audit pool mode revela ya transaction) + **Sprint 5 cascade 18/05 ✅ COMPLETO 2026-05-18** (2 commits — user-failed-questions migrado a read replica, daily-limit con cache stale-if-error fresh 30s + stale 24h). Sprint 2: invalidación caches existentes saneada, singleflight anti-stampede, regions:lhr1 (validado 80ms→3.37ms), 5 endpoints más cacheados (test-config family + hot-articles + law-stats + verify-stats + estimate), quick-fail wrapper en 11 endpoints, observability (Sentry beforeSend + cache hit-rate counters). Sprint 3: TypeError streaming Next 16 (inlineCss disabled), userAnswer=-1 (schema fix), theme-stats timeout heavy users (covering index 12.5s→502ms = 24.9x), GeoIP timeout (Vercel headers sync, sin ip-api.com). Pendiente: 0.5 verificar p95 producción, **Fase 0.7 (JWT local verify)** documentada como next big win, **Fase 11 push (DROP TABLES BD)** esperar 24-48h. **DECISIÓN 2026-05-22:** backend dedicado de proceso largo — **Etapa 1 ✅ los 12 crons del Grupo A migrados a NestJS/AWS Fargate, auditados, en shadow** (ver sección «Backend dedicado de proceso largo»).
 > **Objetivo:** preparar Vence para escalar a 100k+ usuarios sin perder features ni romper nada
 > **Coste extra estimado total (Fases 0-3):** $10-40/mes
@@ -1378,34 +1378,31 @@ Razones:
 - `USE_MATERIALIZED_STATS` (default: not set → v1)
 - `USE_MATERIALIZED_STATS_PCT` (default: not set → v1)
 
-**Próxima sesión — checklist de soak validation (en este orden):**
+**Checklist de validación pre-canary — ESTADO ACTUALIZADO 2026-05-23 ~17:40 CEST:**
 
-1. **Abrir `/admin/salud-sistema` en el navegador.** Los 4 semáforos deben estar verde:
-   - Errores 5xx 24h: 0 (umbral ámbar ≥1, rojo ≥5)
-   - Drift contadores 24h: 0 (umbral ámbar ≥1, rojo ≥5)
-   - Latencia INSERT test_questions: <80ms (mean histórico, baseline esperado ~44ms)
-   - Cron de drift: <26h sin correr (la primera ejecución es 04:00 UTC del 24/05)
+1. ✅ **Health check vía runbook** — 🟢 verde (0 errores 5xx en deploy actual, 0 drifts reales, INSERT 43.7ms, cron vivo).
 
-2. **Verificar que el cron de drift corrió.** Si es 24/05 o posterior:
-   - GitHub Actions → workflow "Check Stats Drift" → ver última run
-   - Debe haber corrido exitosamente, devolviendo `significant_drifts: 0` o muy pocos
-   - El marker `__cron_run__` en `stats_drift_log` debe tener `last_run` reciente
+2. ✅ **Cron de drift corrido 2x manualmente vía endpoint** (saltándose la espera al 04:00 UTC).
+   - **Primera pasada detectó 1 drift real** (`user_stats_summary.total_tests`, 6 users off-by-one) → la observabilidad demostró su valor en su primer uso real. Bug del trigger original: solo cubría `AFTER UPDATE OF is_completed`, no INSERT directo ni DELETE.
+   - **Fix aplicado**: migración `20260523_fix_total_tests_insert_delete.sql` — 1 función para 3 TG_OPs (INSERT/UPDATE/DELETE) + 3 triggers con WHEN guards + UPSERT resistente a orden de eventos + reconciliación idempotente + smoke verify que aborta TX si quedan drifts. Dry-run en TX con ROLLBACK previo verificó sintaxis sin tocar producción.
+   - **Segunda pasada (post-fix)**: `drifts_found: 0` ✅.
 
-3. **Si todo lo anterior está verde** → activar cutover canary:
+3. ✅ **Paridad v1 vs v2 sobre 30 users muestreados** — `scripts/paridad-stats-v1-v2.mjs`. Resultado: difficulty/hourly/article/main/weekly → **30/30 PASS** en las 5 queries. Las divergencias documentadas (v1 filtra `is_completed=true`, bug TZ de `getWeeklyProgress` v1) cumplen la regla `v2 >= v1` en todos los users de la muestra.
+
+4. ⏳ **PENDIENTE — activar cutover canary** (el único paso que requiere intervención humana):
    - Vercel → Settings → Environment Variables → producción
-   - Añadir `USE_MATERIALIZED_STATS_PCT=1` (1% de users)
-   - Redeploy (o esperar al próximo deploy)
-   - Observar `/admin/salud-sistema` durante 24h
+   - Añadir `USE_MATERIALIZED_STATS_PCT=1` (1% de users ≈ 2-3 users sobre 235 DAU)
+   - Redeploy (o esperar al próximo push)
+   - Observar `/admin/salud-sistema` durante 1-2h
 
-4. **Plan de escalado del canary:**
-   - Día 1: `USE_MATERIALIZED_STATS_PCT=1` (1%)
-   - Día 2: `USE_MATERIALIZED_STATS_PCT=10` (10%)
-   - Día 3: `USE_MATERIALIZED_STATS_PCT=50` (50%)
-   - Día 4: `USE_MATERIALIZED_STATS_PCT=100` o `USE_MATERIALIZED_STATS=true` (100%)
-   - Días 5-7: observar al 100%
-   - Si OK toda la semana → eliminar v1 + feature flag en un nuevo commit
+5. **Plan de escalado del canary** (acelerado — la paridad ya está validada, el soak por mediciones sustituye al soak por calendario):
+   - T+0: `PCT=1` (observar 1-2h)
+   - T+1d: `PCT=10` si métricas verdes
+   - T+2d: `PCT=50`
+   - T+3d: `PCT=100` o `USE_MATERIALIZED_STATS=true`
+   - T+5d: si OK toda la ventana → eliminar v1 + feature flag en un commit
 
-5. **Rollback inmediato si algo se pone rojo:**
+6. **Rollback inmediato si algo se pone rojo:**
    - Vercel → Environment Variables → cambiar PCT a 0 o `USE_MATERIALIZED_STATS=false`
    - Los usuarios vuelven a v1 sin redeploy
 
@@ -1435,6 +1432,54 @@ Tras desplegar la observabilidad de salud del sistema (panel `/admin/salud-siste
 **El incidente del 22/05 no fue puntual sino sostenido.** Las 30 errores 5xx que detectó la observabilidad estaban distribuidos a lo largo de 6 horas (12:28 → 18:46), no concentrados en el pico de las 18:2x. Significa que la degradación venía cocinándose toda la tarde antes de hacerse visible.
 
 **Cascadas recurrentes — la causa raíz no es eventual.** Mirando `validation_error_logs` los últimos 7 días, hay degradaciones críticas en 5 deploys distintos: `7d721791` (0 criticals, fix activo), `e74f0eee` (29 criticals, 22/05), `6e419bda` (22 criticals, 21/05), `1240140b` (18 criticals, 19-21/05), `b47376f9` (25 criticals, 19/05), `29c35297` (9 criticals, 19/05). **Una cascada cada 1-2 días** durante la semana previa al fix. Esto confirma que materializar las agregaciones no es prevención especulativa — es deshacer una deuda que ya está cobrándose tributo diario.
+
+---
+
+### Validación activa pre-canary (2026-05-23 ~17:40 CEST)
+
+Sustituido el plan original de "esperar 1+ día de soak silencioso + primera ejecución automática del cron" (24/05 04:00 UTC) por **validación activa** que reduce riesgo de forma medible en lugar de calendárica.
+
+**Pasos ejecutados en ~1h:**
+
+1. **Cron drift forzado vía endpoint** (`curl /api/cron/check-stats-drift` con `CRON_SECRET`) → no hay que esperar al schedule de GHA. Detecta divergencias estructurales con la misma lógica que el run automático.
+
+2. **Primera pasada detectó un bug real** que el calendario habría dejado correr 1+ día:
+   - 6 users con `user_stats_summary.total_tests` off-by-one (1 detectado por sample=50, los demás encontrados con scan completo).
+   - Causa raíz: trigger original (migración base) solo cubría `AFTER UPDATE OF is_completed` sobre `tests`. No disparaba para:
+     - **INSERT directo con `is_completed=true`** (flujo del modo examen / simulacro — el test se persiste finalizado en un único INSERT, no hay UPDATE posterior). Censo histórico: 3.237 tests así, 14 hoy.
+     - **DELETE de tests completados** (admin / GDPR delete cascada). Raro pero posible y deja contador inflado sin reconciliación.
+   - Síntoma latente: si activamos canary v2 sin arreglar, esos users ven `totalTests=0` cuando v1 mostraba el valor correcto → regresión visible.
+
+3. **Migración fix robusta** (`20260523_fix_total_tests_insert_delete.sql`):
+   - **1 función única para los 3 TG_OPs** — patrón consistente con los demás triggers de la migración base (`update_user_stats_total_time`, `update_user_difficulty_stats`, etc).
+   - **3 triggers separados** (INSERT / UPDATE OF is_completed / DELETE) con `WHEN` guards que filtran disparos irrelevantes en el motor antes de invocar la función.
+   - **UPSERT** (`INSERT … ON CONFLICT DO UPDATE`) en lugar de `UPDATE` simple → resistente al orden de eventos (INSERT en `tests` puede llegar antes del primer `test_question` del user).
+   - **Reconciliación one-shot** idempotente (`WHERE total_tests IS DISTINCT FROM …`) — solo toca filas divergentes, re-aplicar es no-op.
+   - **Smoke verify** con `DO $$ … RAISE EXCEPTION` que ABORTA la transacción si la reconciliación deja drifts. Sin esto, una migración rota podría haber dejado bug parchado a medias.
+
+4. **Dry-run en transacción con ROLLBACK** antes de tocar producción — validó sintaxis + smoke verify pasaría + dejó BD intacta. Aplicación posterior con `BEGIN/COMMIT` real: 0 drifts post-aplicación, 3 triggers vivos, user que detonó el detect con `total_tests=1` correcto.
+
+5. **Cron drift end-to-end re-ejecutado** (independiente del proceso de aplicación, llama al endpoint de producción): `drifts_found: 0`.
+
+6. **Paridad v1 vs v2 sobre 30 users muestreados** (`scripts/paridad-stats-v1-v2.mjs`):
+   - **difficulty / hourly / article / main / weekly** → 30/30 PASS en las 5 queries.
+   - Divergencias documentadas (v1 filtra `is_completed=true`, bug TZ de `getWeeklyProgress` v1) cumplen la regla `v2 >= v1` en todos los users.
+   - Esto cierra el item pendiente del roadmap *"test de paridad sobre 30-50 users muestreados (cuando termine backfill)"*.
+
+**Por qué este enfoque vence al soak por calendario:**
+
+- El soak por calendario habría dejado el bug del trigger viviendo 1+ día más, propagándose a más users con cada test insertado ya-completado.
+- La validación activa **demostró su valor en su primer uso real** — la observabilidad no es decoración, atrapa bugs que el desarrollo cuidadoso no había visto.
+- Reduce el ciclo "deploy → confianza" de días a horas sin perder rigor — porque el rigor está en las verificaciones, no en la espera.
+
+**Estado post-sesión:** todo listo para activar `USE_MATERIALIZED_STATS_PCT=1`. Es la única acción que requiere intervención humana (config en Vercel). Tras el deploy, observar `/admin/salud-sistema` 1-2h antes de escalar a PCT=10.
+
+**Lecciones documentadas (no re-aprender):**
+
+- **Triggers sobre tablas mutables: cubrir SIEMPRE los 3 TG_OPs** (INSERT/UPDATE/DELETE). El patrón "AFTER UPDATE OF X" es trampa si la columna puede tener su valor objetivo desde el INSERT inicial. Convención del proyecto: copiar el patrón de `update_user_stats_total_time` (3 triggers, función única con `TG_OP`).
+- **UPSERT > UPDATE en triggers materializadores**: nunca asumas que la fila padre ya existe en el momento de tu trigger. Si dos triggers compiten por crear la misma fila en orden no determinista, UPDATE-simple genera drift silencioso.
+- **Smoke verify dentro de la migración**: una migración que repara state DEBE verificar al final que el state quedó coherente. Si no, una migración a medias deja bug latente sin señal.
+- **Dry-run en TX con ROLLBACK antes de COMMIT**: barato, atrapa errores de sintaxis y de smoke verify sin tocar producción.
 
 ---
 

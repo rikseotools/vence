@@ -37,21 +37,39 @@ const sql = postgres(process.env.DATABASE_URL, { max: 1, prepare: false });
 (async () => {
   const since = new Date(Date.now() - 24*3600*1000).toISOString();
 
-  // 1) Errores 5xx 24h
+  // Identificar el deploy actual: el más frecuente entre eventos recientes.
+  // Sirve para distinguir 'errores del deploy actual' vs 'errores históricos
+  // de incidentes ya resueltos pero que aún caen en la ventana de 24h'.
+  const deployRow = await sql\`
+    SELECT deploy_version FROM validation_error_logs
+    WHERE created_at >= NOW() - INTERVAL '2 hours' AND deploy_version IS NOT NULL
+    GROUP BY deploy_version ORDER BY COUNT(*) DESC LIMIT 1
+  \`;
+  const currentDeploy = deployRow[0]?.deploy_version ?? null;
+
+  // 1) Errores 5xx 24h — separa por deploy_version
+  // - 'current' = ocurridos en el deploy actual (fuego activo)
+  // - 'legacy'  = ocurridos en deploys anteriores (histórico)
   const errs = await sql\`
-    SELECT endpoint, error_type, COUNT(*)::int AS n
+    SELECT endpoint, error_type, deploy_version, COUNT(*)::int AS n
     FROM validation_error_logs
     WHERE severity = 'critical' AND created_at >= \${since}
-    GROUP BY endpoint, error_type
-    ORDER BY n DESC LIMIT 10
+    GROUP BY endpoint, error_type, deploy_version
+    ORDER BY n DESC LIMIT 30
   \`;
-  const totalErrs = errs.reduce((a,r) => a + Number(r.n), 0);
+  const errsCurrent = errs.filter(e => e.deploy_version === currentDeploy);
+  const errsLegacy = errs.filter(e => e.deploy_version !== currentDeploy);
+  const totalCurrent = errsCurrent.reduce((a,r) => a + Number(r.n), 0);
+  const totalLegacy = errsLegacy.reduce((a,r) => a + Number(r.n), 0);
 
-  // 2) Drift 24h con drift_pct > 5
+  // 2) Drift 24h con drift_pct > 5 — excluye markers técnicos
+  // (__cron_run__ tiene stored/fresh con semántica distinta y produce
+  // drift_pct artificialmente alto que NO es bug — es ruido del filtro)
   const drifts = await sql\`
     SELECT target_table, field_name, COUNT(*)::int AS n, MAX(drift_pct) AS max_pct
     FROM stats_drift_log
     WHERE checked_at >= \${since} AND drift_pct > 5
+      AND target_table NOT IN ('__cron_run__', '__exception__')
     GROUP BY target_table, field_name
     ORDER BY n DESC LIMIT 10
   \`;
@@ -59,27 +77,36 @@ const sql = postgres(process.env.DATABASE_URL, { max: 1, prepare: false });
   // 3) Latencia INSERT (top variante por calls)
   const lat = await sql\`SELECT * FROM v_insert_test_questions_latency ORDER BY calls DESC LIMIT 1\`;
 
-  // 4) Último run del cron de drift
-  const cron = await sql\`SELECT MAX(checked_at) AS last_run FROM stats_drift_log\`;
+  // 4) Último run del cron de drift — usa el marker '__cron_run__' (la
+  // función SQL lo inserta al final de cada ejecución, garantiza
+  // liveness check incluso si no hay drift real detectado).
+  const cron = await sql\`SELECT MAX(checked_at) AS last_run FROM stats_drift_log WHERE target_table='__cron_run__'\`;
   const lastRun = cron[0].last_run;
   const staleH = lastRun ? (Date.now() - new Date(lastRun).getTime()) / 3600000 : null;
 
-  console.log('1) Errores 5xx 24h total:', totalErrs);
-  if (totalErrs > 0) for (const e of errs) console.log('   -', e.endpoint, e.error_type, '×', e.n);
+  console.log('Deploy actual:', currentDeploy ?? '(desconocido)');
+  console.log();
+  console.log('1) Errores 5xx 24h en deploy actual:', totalCurrent);
+  if (errsCurrent.length) for (const e of errsCurrent) console.log('   -', e.endpoint, e.error_type, '×', e.n);
+  console.log('   (informativo) Errores 5xx 24h en deploys anteriores:', totalLegacy);
+  if (errsLegacy.length) for (const e of errsLegacy.slice(0,5)) console.log('     -', e.endpoint, e.error_type, '×', e.n, '[' + (e.deploy_version || '?') + ']');
 
-  console.log('\\n2) Drift >5% (24h):', drifts.reduce((a,r) => a + Number(r.n), 0));
+  console.log('\\n2) Drift >5% real (24h, excluyendo markers):', drifts.reduce((a,r) => a + Number(r.n), 0));
   if (drifts.length) for (const d of drifts) console.log('   -', d.target_table, d.field_name, '×', d.n, 'max', d.max_pct, '%');
 
   console.log('\\n3) INSERT test_questions:');
   if (lat[0]) console.log('   mean=' + lat[0].mean_ms + 'ms proxy_p95=' + lat[0].proxy_p95_ms + 'ms max=' + lat[0].max_ms + 'ms calls=' + lat[0].calls);
 
-  console.log('\\n4) Cron drift último run:', lastRun, staleH ? '(hace ' + staleH.toFixed(1) + 'h)' : '');
+  console.log('\\n4) Cron drift último run:', lastRun, staleH != null ? '(hace ' + staleH.toFixed(1) + 'h)' : '');
 
-  // Verdict
+  // Verdict — basado en errores del deploy actual, no del histórico
   const stale = staleH === null || staleH > 36;
-  const fire = totalErrs >= 5 || drifts.length >= 5 || (lat[0] && Number(lat[0].mean_ms) >= 250) || stale;
-  const warn = totalErrs >= 1 || drifts.length >= 1 || (lat[0] && Number(lat[0].mean_ms) >= 80) || (staleH > 26);
+  const fire = totalCurrent >= 5 || drifts.length >= 5 || (lat[0] && Number(lat[0].mean_ms) >= 250) || stale;
+  const warn = totalCurrent >= 1 || drifts.length >= 1 || (lat[0] && Number(lat[0].mean_ms) >= 80) || (staleH != null && staleH > 26);
   console.log('\\nVeredicto:', fire ? '🔴 ROJO — atender ya' : warn ? '🟡 ÁMBAR — investigar' : '🟢 VERDE — todo OK');
+  if (totalLegacy > 0 && !fire && !warn) {
+    console.log('(Hay', totalLegacy, 'errores legacy de deploys anteriores en ventana 24h — informativo, no cuenta para verdict)');
+  }
 
   await sql.end();
 })();
@@ -87,6 +114,12 @@ const sql = postgres(process.env.DATABASE_URL, { max: 1, prepare: false });
 ```
 
 Reportar el output al usuario. Si veredicto es rojo o ámbar, ir a sección 2.
+
+**Notas sobre los filtros del verdict** (introducidos 2026-05-23 tras detectar dos falsos positivos):
+
+- Los **errores 5xx** se separan por `deploy_version`. Solo los del deploy actual cuentan para el verdict; los de deploys anteriores son informativos. Sin esto, un incidente histórico (ej. cascada 22/05) infla el indicador durante 24h aunque ya esté resuelto.
+- El **drift** excluye explícitamente `target_table IN ('__cron_run__', '__exception__')`. Esos son markers técnicos (la función `check_stats_drift` los inserta al final de cada ejecución para liveness check); su columna generated `drift_pct` puede salir alta por la semántica de stored/fresh values pero NO indica drift real.
+- El **cron** se mide por `MAX(checked_at) WHERE target_table='__cron_run__'`, no por el `MAX` general — sin esto, un cron sano sin drift detectado parecería muerto.
 
 ---
 
@@ -103,12 +136,14 @@ const sql = postgres(process.env.DATABASE_URL, { max: 1, prepare: false });
 (async () => {
   const rows = await sql\`
     SELECT endpoint, error_type, error_message, http_status, duration_ms,
-           user_id, created_at
+           user_id, deploy_version, created_at
     FROM validation_error_logs
     WHERE severity = 'critical'
       AND created_at > NOW() - INTERVAL '24 hours'
     ORDER BY created_at DESC LIMIT 30
   \`;
+  // Nota: incluye deploy_version para distinguir 'errores nuevos' vs
+  // 'errores de incidentes ya resueltos pero aún en ventana 24h'.
   for (const r of rows) console.log(r.created_at, r.endpoint, r.http_status, r.error_type, '—', (r.error_message||'').slice(0,80));
   await sql.end();
 })();
