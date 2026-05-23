@@ -201,6 +201,15 @@ export const OPOSICIONES: Oposicion[] = [
     ],
     officialExams: [
       {
+        date: '2026-05-23',
+        title: 'Convocatoria 23 de mayo de 2026',
+        oep: 'OEP 2024-2025',
+        partes: [
+          { id: 'primera', icon: '📘', title: 'Primera parte', description: 'Legislativas + Psicotécnicas (60 preguntas + 5 reservas)' },
+          { id: 'segunda', icon: '📗', title: 'Segunda parte', description: 'Actividad Administrativa y Ofimática (50 preguntas + 5 reservas)' },
+        ],
+      },
+      {
         date: '2024-07-09',
         title: 'Convocatoria 9 de julio de 2024',
         oep: 'OEP 2023-2024',
@@ -1755,11 +1764,11 @@ export const OPOSICIONES: Oposicion[] = [
           { id: 8, name: 'Eficacia y validez de los actos administrativos' },
           { id: 9, name: 'La protección de datos personales' },
           { id: 10, name: 'Igualdad efectiva de mujeres y hombres' },
-          { id: 11, name: 'Información y atención al público' },
-          { id: 12, name: 'Los documentos administrativos' },
-          { id: 13, name: 'El Gobierno Abierto' },
-          { id: 14, name: 'Prevención de Riesgos Laborales' },
-          { id: 15, name: 'La Administración electrónica' },
+          { id: 11, name: 'Prevención de Riesgos Laborales' },
+          { id: 12, name: 'EBEP. Personal al servicio de las Administraciones Públicas' },
+          { id: 13, name: 'Derechos, deberes y código de conducta de los funcionarios' },
+          { id: 14, name: 'Negociación laboral, conflictos y convenios colectivos' },
+          { id: 15, name: 'El Gobierno Abierto. Transparencia. Información ciudadana. Gestión documental' },
         ],
       },
       {
