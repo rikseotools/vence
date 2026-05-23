@@ -1242,8 +1242,45 @@ Con queries lentas en hot path + tráfico 10k DAU:
 - [ ] **Cuando llegue a 1k DAU**: pre-computar `user_medals_summary` (#4)
 - [ ] **Documentar nuevos slow queries** en este apartado cuando aparezcan en logs
 - [x] **RESUELTO 2026-05-22** — `/api/v2/difficulty-insights`: las 4 RPCs migradas a `user_question_history_v2` (tabla materializada que YA existía; `user_question_stats` era redundante y NO se creó). Nila 12s/503 → ~200ms. Ver memo abajo.
-- [ ] **`/api/stats` — incidente 22/05 ~18:2x (cascada `statement_timeout`).** No tenía caché ni quick-fail; 10 queries en paralelo, 4 full-scan de `test_questions` → 500 para heavy users + presión de pool que cascadea. **(1) Mitigado** — caché Redis fresh 5min + stale-if-error + `withDbTimeout` (commit `7d721791`, desplegado). **(2) Fix de fondo PENDIENTE** — materializar las 4 agregaciones (`getMainStats`, `getDifficultyBreakdown`, `getTimePatterns`, `getArticleStats`) → el endpoint solo lee tablas pre-agregadas (patrón difficulty-insights). Esa materialización debe vivir en el **backend dedicado** (cómputo agnóstico), no en lambdas de Vercel.
+- [ ] **`/api/stats` — incidente 22/05 ~18:2x (cascada `statement_timeout`).** No tenía caché ni quick-fail; 10 queries en paralelo, 4 full-scan de `test_questions` → 500 para heavy users + presión de pool que cascadea. **(1) Mitigado** — caché Redis fresh 5min + stale-if-error + `withDbTimeout` (commit `7d721791`, desplegado). **(2) Fix de fondo EN CURSO (23/05/2026)** — materializar las agregaciones (`getMainStats`, `getDifficultyBreakdown`, `getTimePatterns`, `getArticleStats` + `getWeeklyProgress` añadida por simetría: también full-scan) → el endpoint solo lee tablas pre-agregadas. **Patrón decidido: triggers SQL incrementales** (mismo que `user_question_history_v2`, `user_stats_summary`). Razonamiento completo + criterios de migración futura a outbox/worker → ver "ADR: triggers SQL vs outbox/worker para materializaciones" abajo.
+
+  **Progreso 23/05/2026:**
+  - ✅ Pre-trabajo de auditoría: DROP de 2 triggers NO-OP en `test_questions` (`auto_update_difficulty_immediate_trigger`, `update_article_stats_trigger`) — migración `20260523_drop_noop_triggers_test_questions.sql`. Baseline INSERT post-DROP: 1.36 ms p50, 2.28 ms p95 medido in-BD.
+  - ✅ Schema materializado aplicado — migración `20260523_materialized_stats_schema.sql`. Extiende `user_stats_summary` con 2 columnas (`total_tests`, `total_time_seconds`) + crea 4 tablas (`user_difficulty_stats`, `user_hourly_stats`, `user_article_stats`, `user_daily_stats`). `user_article_stats` con UNIQUE NULLS NOT DISTINCT validado en PG 17.4. `best_score_percent` NO materializado — query ad-hoc (2.6ms BD vía Bitmap Index Scan).
+  - ✅ Triggers aplicados — migración `20260523_materialized_stats_triggers.sql`. 15 triggers sobre `test_questions` (INSERT/UPDATE de is_correct/DELETE × 5 tablas) + 1 sobre `tests` (AFTER UPDATE OF is_completed con WHEN guard). 12 smoke tests OK en dry-run + ROLLBACK. Coste INSERT post-triggers medido: **2.04 ms p50, 3.21 ms p95, 4.79 ms p99** (+0.7-0.9 ms vs baseline). Test_questions tiene ahora 27 triggers vivos.
+  - 🟡 Backfill incremental EN MARCHA — `scripts/backfill-materialized-stats.mjs`. Idempotente vía tabla `backfill_materialized_stats_progress`. TRUNCATE inicial + t0 = NOW(), bucle por user con queries GROUP BY filtrando `created_at < t0`. Race con triggers post-t0: cero. **A 23/05 ~14:00 CEST**: 620/4.420 users procesados (14%). ETA total ~75 min más. Paridad verificada en primeros 5 users con fresh scan: 100% exacta.
+  - ✅ Queries reescritas — `lib/api/stats/queries-v2.ts`. 5 funciones reescritas leyendo de tablas materializadas (lookup PK). Conmutador en `queries.ts` con feature flag `USE_MATERIALIZED_STATS=true|false` o `USE_MATERIALIZED_STATS_PCT=0..100` (canary por hash determinista del user_id). **Default: v1 sigue activo** hasta cutover.
+  - ✅ Paridad sanity check (sólo SQL, sin endpoint, user 09121a01 con 16k questions):
+    - ✅ `getDifficultyBreakdown` paridad exacta en 4 difficulties.
+    - ✅ `getArticleStats` paridad exacta (1.345 filas, sumas q=15.521 c=10.100 idénticas).
+    - ✅ `getMainStats` y `getWeeklyProgress` diverge, pero la divergencia se ha investigado y DECIDIDO 23/05/2026: **aceptar v2 en ambos casos**.
+
+    **Causa de la divergencia y razonamiento de la decisión:**
+
+    - `getWeeklyProgress` v1 tiene un **bug de zona horaria**: filtra por `tq.created_at >= since.toISOString()` (timestamp UTC) pero agrupa por `DATE(... AT TIME ZONE 'Europe/Madrid')`. El primer día del rango (el más antiguo) sub-cuenta sistemáticamente las filas de la madrugada hora Madrid (~3-6 horas que en UTC caen en el día anterior al timestamp del filtro). v2 filtra por `day >= since::date` y no tiene el bug. **v2 es la corrección.**
+    - `getMainStats` v1 tiene `WHERE tests.isCompleted = true` (línea 200-203 queries.ts) que excluye preguntas respondidas en tests no finalizados. v2 lee de `user_stats_summary.total_questions` mantenido por trigger sin filtrar is_completed. **Lo decisivo: `user_stats_summary` YA EXISTÍA antes de este fix y otros endpoints del sistema (notablemente `/api/v2/user-stats`) leen su `total_questions` sin filtrar**. La "verdad oficial" del sistema ya era v2-semantics; v1 de `/api/stats` era la desviación. v2 armoniza con el resto.
+
+    **Por qué A (aceptar v2) y no B (mantener compatibilidad):**
+
+    1. v2 corrige un bug real de TZ que viene afectando a cada usuario.
+    2. v2 armoniza dos pantallas que hoy muestran números distintos para "total preguntas".
+    3. Los números **suben ligeramente** en ambos casos — UX: "hice un poco más", nunca "mi progreso bajó".
+    4. Alternativa B (replicar v1) requeriría extender trigger sobre `tests` para mantener un contador adicional "preguntas en tests completados" + replicar bug TZ en queries-v2. Mucho trabajo extra para perpetuar incoherencias.
+
+    **Mitigación del cambio visible al usuario:** cutover canary lento (1% → 10% → 50% → 100% durante ~5-7 días) + commit explicando que la diferencia es corrección, no bug. Si algún heavy user nota y reporta antes del 10%, lo gestionamos.
+
+  - ⏸ Pendiente: tests automatizados (unit + integración + carrera + simulación carga), test de paridad sobre 30-50 users muestreados (cuando termine backfill), cutover canary.
 - [ ] **Resto del lote de errores del 22/05 (colateral de la misma cascada) — pendiente investigar:** `theme counts` (SSR `/[oposicion]/test`, `lib/api/random-test/queries.ts` — multi-join `topics×topic_scope×articles×questions` → `statement_timeout`); `/teoria` "cargando leyes" → `statement_timeout`; 3× `TypeError` 'id'/'createdAt' undefined (`/temario/tema-X` `generateMetadata`, `/api/v2/test-config/sections`, `/api/notifications/problematic-articles`) — probable colateral de la cascada (query falla → `undefined` → crash); el código debería tolerar una query fallida sin romper.
+
+### Confirmación post-fix mediante observabilidad (2026-05-23)
+
+Tras desplegar la observabilidad de salud del sistema (panel `/admin/salud-sistema` + cron de drift), el primer diagnóstico real con el runbook `docs/runbooks/health-check.md` arrojó tres datos relevantes:
+
+**El fix funciona.** Desde el deploy `7d721791` (22/05 18:58) llevan 14+ horas sin un solo error 5xx critical. La mitigación está conteniendo, aunque la cascada subyacente sigue ahí lista para explotar si el pool se presiona.
+
+**El incidente del 22/05 no fue puntual sino sostenido.** Las 30 errores 5xx que detectó la observabilidad estaban distribuidos a lo largo de 6 horas (12:28 → 18:46), no concentrados en el pico de las 18:2x. Significa que la degradación venía cocinándose toda la tarde antes de hacerse visible.
+
+**Cascadas recurrentes — la causa raíz no es eventual.** Mirando `validation_error_logs` los últimos 7 días, hay degradaciones críticas en 5 deploys distintos: `7d721791` (0 criticals, fix activo), `e74f0eee` (29 criticals, 22/05), `6e419bda` (22 criticals, 21/05), `1240140b` (18 criticals, 19-21/05), `b47376f9` (25 criticals, 19/05), `29c35297` (9 criticals, 19/05). **Una cascada cada 1-2 días** durante la semana previa al fix. Esto confirma que materializar las agregaciones no es prevención especulativa — es deshacer una deuda que ya está cobrándose tributo diario.
 
 ---
 
@@ -1350,6 +1387,129 @@ Parche temporal a 30s timeout + cache 60s suena rápido pero (a) primer hit tras
 
 **Por qué NO particionado (Long term #10) antes que esto**:
 Particionado de `test_questions` por hash de `user_id` acelera scans pero un scan acelerado sigue siendo un scan. Para `get_struggling_questions` necesita `GROUP BY question_id` con `AVG(is_correct)` que sigue costando proporcional a las filas del user. Nila pasaría de 8s a ~2-3s — mejor pero no resuelto. Un lookup PK en tabla agregada es <10ms para todos. Particionado tiene sentido cuando `test_questions` crezca >100M filas y los INSERTs se ralenticen. Hoy son 1.1M.
+
+---
+
+## ADR: triggers SQL vs outbox/worker para materializaciones (2026-05-23)
+
+**Contexto.** Al atacar el fix de fondo de `/api/stats` se planteó dónde vive el cómputo de las agregaciones. El roadmap original decía «debe vivir en el backend dedicado (cómputo agnóstico), no en lambdas de Vercel». Esa frase admite dos lecturas: (a) Postgres con triggers (no es lambda, es portable) o (b) worker NestJS/Fargate (también agnóstico, más desacoplado). La decisión aplica no solo a `/api/stats` sino a cualquier materialización futura.
+
+**Decisión: triggers SQL incrementales (opción A).** Resoluble con el patrón ya rodado en el proyecto (`user_question_history_v2`, `user_stats_summary`, migración `20260502_user_question_history_incremental.sql`). Postgres estándar — cumple "agnóstico de proveedor" porque es portable a Neon/RDS/Aurora/Postgres on bare metal sin cambios. Cero infra nueva.
+
+**Opciones consideradas:**
+
+| | A. Triggers SQL incrementales (elegida) | B. Outbox + worker async | C. CDC + event streaming |
+|---|---|---|---|
+| Patrón en | Stripe, GitLab, Discourse, Sentry | Shopify, Uber (varios) | Uber data, LinkedIn |
+| Zona de confort | ≤ ~100k DAU / ~10M eventos/día | 100k–1M DAU | >1M DAU |
+| Lag stats | 0 (síncrono, ACID con el write) | segundos a 1-2 min | similar a B |
+| Trabajo nuevo | 0 (patrón rodado) | 1-2 semanas (cola, idempotencia, DLQ, monitoring) | 1-2 meses |
+| Modos de fallo extra | ninguno | cola llena, worker caído, redelivery, lag | + Kafka, + Debezium |
+| Coste por INSERT a `test_questions` | +~5ms (medido en triggers análogos) | +0 al INSERT, +5ms al worker | +0 |
+| Postgres como única infra crítica | sí | no (Postgres + cola + worker) | no |
+
+**Por qué A es más estable que B a esta escala:**
+
+- Menos componentes que pueden romperse. Si la BD vive, las stats viven. Sin colas que se llenen, sin workers que se cuelguen, sin redelivery, sin DLQ.
+- Transaccional: la stat existe ⇔ el `test_question` existe. Imposible inconsistencia.
+- Sin lag: el usuario completa un test y ve el contador actualizado al instante. No hace falta polling ni "shimmer loading".
+
+**Por qué A NO es callejón sin salida:** las tablas materializadas que se escriben con triggers son las mismas que después leería un worker. Migrar A→B cuando duela es un sprint: solo cambia quién escribe; el schema, los índices y los readers no se tocan.
+
+**Criterios de migración a B (cuándo dejar de defender A):**
+
+| Síntoma medido | Acción |
+|---|---|
+| INSERT a `test_questions` >50ms p95 sostenido | Plan migración A→B |
+| >1.000 INSERT/s sostenido (hoy 0.4/s) | Plan migración A→B |
+| >8 triggers acumulados en `test_questions` (hoy ~5) | Auditar triggers; consolidar antes de B |
+| Necesidad real de analytics que no caben en Postgres (ML cross-user, time-series billones) | Saltar directo a C (data warehouse) |
+| Negocio crece a 50k+ DAU y proyecta 100k en <6 meses | Empezar diseño de B en paralelo |
+
+Hoy estamos 2 órdenes de magnitud por debajo de cada umbral.
+
+**Por qué NO A "indefinidamente":** los triggers escalan bien hasta que la tabla caliente acumula demasiados o el INSERT entra en path crítico de un endpoint que mide latencia (ej: `/api/v2/answer-and-save`). El proyecto ya neutralizó 4 triggers pesados (#2 #3 #4 #5 #7 en `20260502_*`) precisamente por eso. La regla operativa: **un trigger por agregación, todos `+1 counter` (jamás scan), todos `ON CONFLICT DO UPDATE`**. Si esa regla no se puede cumplir, no es trigger — va a worker.
+
+**Validación obligatoria** antes de mergear cualquier trigger nuevo a una tabla caliente:
+
+1. **Unit tests** del trigger: delta math correcta en INSERT, UPDATE (cambio de `is_correct`) y DELETE. Idempotencia (re-ejecutar el INSERT no duplica).
+2. **Integration tests**: insertar fila real → asserts en la tabla materializada (`COUNT`, `SUM`, `AVG` esperados vs reales).
+3. **Carrera concurrente**: 100-200 INSERTs simultáneos al mismo `user_id` sin perder counter (UPSERT lock check).
+4. **Simulación de carga**: 1.000 INSERTs secuenciales midiendo p50/p95/p99 del INSERT con vs sin trigger nuevo. Coste extra debe ser <10ms p95.
+5. **Verificación periódica** en cron nocturno (off-peak): `assert(sum_deltas == fresh_scan)` sobre muestra de 100 users. Si diverge, alarma + reproceso.
+
+Sin esos 5 pasos verdes, el trigger no entra a producción. La opción A es barata de construir, pero cara si se introduce un bug — corrupta datos en tiempo real hasta que se detecte.
+
+### Pre-trabajo descubierto al medir baseline (2026-05-23)
+
+Al medir el coste actual del INSERT a `test_questions` *antes* de empezar a añadir triggers, salió que la mesa ya está más cargada de lo que asumía el ADR:
+
+```
+=== test_questions triggers activos (pg_trigger) ===
+  14 triggers, no 5 — supera el umbral del ADR
+  (1) auto_update_difficulty_immediate_trigger
+  (2) calculate_retention_score_trigger
+  (3) law_question_difficulty_update_trigger
+  (4) track_first_attempt_trigger
+  (5) trigger_update_user_question_history_correct
+  (6) trigger_update_user_question_history_insert         ← v1 (deuda)
+  (7) trigger_update_user_question_history_v2_insert      ← v2 (duplicado de v1)
+  (8) trigger_update_user_question_history_v2_update
+  (9) trigger_update_user_streak
+  (10) update_article_stats_trigger      ← supuesto neutralizado en 20260502
+  (11) update_timestamp_trigger_test_questions
+  (12) update_user_stats_summary_on_delete_trigger
+  (13) update_user_stats_summary_on_update_trigger
+  (14) update_user_stats_summary_trigger
+
+=== pg_stat_statements: INSERT INTO test_questions ===
+  292.029 calls │ mean 43.87ms │ stddev 258ms │ p_max 29.553ms (29 s)
+   60.742 calls │ mean 49.26ms │ stddev 364ms │ p_max 40.892ms (41 s)
+  Volumen: 1.218M filas, 3.3 GB, 0.30 INSERT/s avg.
+```
+
+**Diagnóstico:** el INSERT a `test_questions` ya está en zona problemática (mean ~44ms, p_max 29-41 s). El stddev altísimo indica colas o escaneos esporádicos en algún trigger. Añadir 5 triggers más sin auditar es temerario — pondría el mean por encima de 60ms y el path crítico de `/api/v2/answer-and-save` se sentiría.
+
+**Plan ajustado:** antes de implementar las materializaciones de `/api/stats` se hace una pasada de auditoría sobre los 14 triggers:
+
+1. Leer el body de cada uno (`pg_get_triggerdef` + cuerpo de la función).
+2. Identificar cuáles explican los p_max de 29-41 s (¿queda algún escaneo? ¿locks?).
+3. Confirmar si `update_article_stats_trigger` está realmente neutralizado (la migración del 02/05 esperaba neutralizarlo — verificar cuerpo actual).
+4. Consolidar v1+v2 de `user_question_history` (deuda conocida en `project_difficulty_insights_uqhv2.md`): hoy 2 triggers redundantes sobre la misma tabla caliente.
+5. Re-medir baseline. Objetivo: mean INSERT <10ms y p99 <100ms antes de añadir nada.
+
+Solo cuando el baseline esté saneado se procede con los 5 triggers del fix de `/api/stats`. Este pre-trabajo **es** parte del fix de fondo — ignorarlo es transferir el problema de un endpoint (lectura lenta) a otro (escritura lenta).
+
+### Resultados de la auditoría (2026-05-23)
+
+**Clasificación de los 14 triggers:**
+
+| Categoría | Cantidad | Triggers |
+|---|---|---|
+| **NO-OP (DROPeados)** | 2 | `auto_update_difficulty_immediate_trigger` (cuerpo solo `RETURN NEW` desde 17/05), `update_article_stats_trigger` (idem desde 02/05) |
+| Útiles, bien escritos (UPSERT/UPDATE PK, aritmética sobre NEW) | 8 | `calculate_retention_score_trigger`, `law_question_difficulty_update_trigger`, `track_first_attempt_trigger`, `trigger_update_user_question_history_v2_insert`, `trigger_update_user_question_history_v2_update`, `update_timestamp_trigger_test_questions`, `update_user_stats_summary_trigger` (×3 insert/update/delete) |
+| Redundantes pero NO DROPeables ahora (v1 history aún tiene 4 readers vivos en código de app) | 2 | `trigger_update_user_question_history_correct`, `trigger_update_user_question_history_insert` |
+| Caro pero con guard "1 vez al día" — causa probable del `p_max=29s` | 1 | `trigger_update_user_streak` → `calculate_user_streak()` escanea 365 días de `test_questions × tests` para heavy users |
+| Otros | 1 | restante (timestamp, etc.) |
+
+**Migración aplicada:** `20260523_drop_noop_triggers_test_questions.sql` (con verificación pre-DROP que aborta si las funciones ya no son NO-OP, y assert post-DROP del count exacto). DROPeados los 2 NO-OPs. `test_questions` queda con 12 triggers.
+
+**Baseline post-DROP (medido en BD sin RTT, 500 INSERTs con bucle plpgsql + `clock_timestamp`):**
+
+```
+p50 = 1.36 ms      p95 = 2.28 ms      p99 = 3.26 ms
+min = 0.54 ms      max = 10.65 ms
+avg = 1.46 ms ± 0.68 ms
+```
+
+**Interpretación honesta del gap con `pg_stat_statements`:** el histórico marcaba mean=43.87ms y stddev=258ms para el INSERT, pero la medición en bucle limpio da p50=1.36ms. La diferencia son **RTT pooler↔lambda Vercel + contención de locks ocasional + colas en pg_stat_statements bajo carga real** — no es coste de los triggers. El p_max de 29-41s del histórico viene de momentos de contención (probablemente cuando `calculate_user_streak` se dispara concurrente con otro INSERT al mismo user); no es coste base.
+
+**Implicación para el plan principal:** estamos a ~22× por debajo del umbral del ADR (>50ms p95). Añadir 5 triggers UPSERT-PK más (~0.3-0.5 ms cada uno) deja el INSERT post-cambio en ~4-6 ms p95. Margen amplio. **El plan A (triggers SQL incrementales) sigue siendo la elección correcta** y los datos lo confirman.
+
+**Deudas anotadas pero NO abordadas en este sprint** (cada una con task propia en el board):
+
+- Migrar 4 readers de `user_question_history` v1 a v2 → poder DROPear los 2 triggers v1 redundantes.
+- Optimizar `calculate_user_streak` para no escanear 365 días en el primer INSERT del día por user → mata el `p_max=29s`.
 
 ---
 

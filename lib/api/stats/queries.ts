@@ -18,6 +18,17 @@ import type {
   ArticlePerformance,
   UserOposicion,
 } from './schemas'
+// Reescritura v2 detrás de feature flag — fix de fondo de /api/stats
+// (incidente 22/05). Default: v1 sigue activo. Ver
+// docs/ARCHITECTURE_ROADMAP.md sección ADR triggers SQL vs outbox/worker.
+import {
+  getMainStatsV2,
+  getDifficultyBreakdownV2,
+  getTimePatternsV2,
+  getArticleStatsV2,
+  getWeeklyProgressV2,
+  shouldUseMaterializedStatsFor,
+} from './queries-v2'
 
 // Cache en memoria — desactivado para UX inmediata (el usuario espera ver su test recién completado)
 // Las 10 queries paralelas tardan ~200ms, no necesita caché
@@ -126,6 +137,13 @@ async function getUserStatsWithDrizzle(userId: string): Promise<GetUserStatsResp
   const now = new Date()
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
 
+  // Conmutador v1/v2. shouldUseMaterializedStatsFor lee:
+  //   - USE_MATERIALIZED_STATS=true|false (override global)
+  //   - USE_MATERIALIZED_STATS_PCT=0..100 (canary por hash determinista
+  //     del user_id)
+  // Default: false → v1 sigue activo hasta confirmación.
+  const useMaterialized = shouldUseMaterializedStatsFor(userId)
+
   // Ejecutar todas las queries en paralelo
   const [
     mainStats,
@@ -139,13 +157,13 @@ async function getUserStatsWithDrizzle(userId: string): Promise<GetUserStatsResp
     userOposicion,
     userSessionsData,
   ] = await Promise.all([
-    getMainStats(db, userId),
-    getWeeklyProgress(db, userId, thirtyDaysAgo),
+    useMaterialized ? getMainStatsV2(db, userId) : getMainStats(db, userId),
+    useMaterialized ? getWeeklyProgressV2(db, userId, thirtyDaysAgo) : getWeeklyProgress(db, userId, thirtyDaysAgo),
     getRecentTests(db, userId),
     getThemePerformance(db, userId),
-    getDifficultyBreakdown(db, userId),
-    getTimePatterns(db, userId),
-    getArticleStats(db, userId),
+    useMaterialized ? getDifficultyBreakdownV2(db, userId) : getDifficultyBreakdown(db, userId),
+    useMaterialized ? getTimePatternsV2(db, userId) : getTimePatterns(db, userId),
+    useMaterialized ? getArticleStatsV2(db, userId) : getArticleStats(db, userId),
     getStreakData(db, userId),
     getUserOposicion(db, userId),
     getUserSessionsData(db, userId),
