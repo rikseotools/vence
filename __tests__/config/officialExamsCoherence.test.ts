@@ -188,4 +188,123 @@ describe('Official Exams Coherence', () => {
       30_000
     )
   })
+
+  /**
+   * Smoke test: cubre TODAS las convocatorias (estructurada o legacy) de
+   * oposiciones que tienen mapeo en `oposicionToExamPosition` (i.e. han sido
+   * confirmadas como expuestas por el endpoint /api/v2/official-exams/questions).
+   *
+   * Bug detectado 23/05/2026: al importar el examen 23 mayo 2026 se usó
+   * `exam_position='auxiliar-administrativo-estado'` (guión) cuando el código
+   * espera `'auxiliar_administrativo_estado'` (underscore). Las preguntas
+   * existían en BD pero el endpoint devolvía 0 — bug invisible.
+   *
+   * Este smoke test detecta exactamente ese patrón: para cada convocatoria
+   * listada en `oposiciones.ts`, el conteo BD debe ser > 0. No verifica
+   * conteo exacto (eso lo hace el bloque estructurado de arriba), solo que
+   * el endpoint sea capaz de servir alguna pregunta. Útil para entries
+   * legacy que aún no se han migrado al formato estructurado.
+   *
+   * Mapeo de slug → positionType replica `oposicionToExamPosition` de
+   * `lib/api/official-exams/queries.ts`. Mantener sincronizado.
+   */
+  describe('Smoke: cada convocatoria expuesta devuelve > 0 preguntas en BD', () => {
+    if (!hasRealDb) {
+      test.skip('Saltado: NEXT_PUBLIC_SUPABASE_URL no configurado', () => {})
+      return
+    }
+
+    // Replica de oposicionToExamPosition en queries.ts.
+    // Solo las oposiciones aquí listadas se exponen via /api/v2/official-exams.
+    const slugToExamPosition: Record<string, string> = {
+      'auxiliar-administrativo-estado': 'auxiliar_administrativo_estado',
+      'auxiliar-administrativo-madrid': 'auxiliar_administrativo_madrid',
+      'auxiliar-administrativo-cyl': 'auxiliar_administrativo_cyl',
+      'auxiliar-administrativo-carm': 'auxiliar_administrativo_carm',
+      'auxiliar-administrativo-extremadura': 'auxiliar_administrativo_extremadura',
+      'auxiliar-administrativo-canarias': 'auxiliar_administrativo_canarias',
+      'tramitacion-procesal': 'tramitacion_procesal',
+      'auxilio-judicial': 'auxilio_judicial',
+      'administrativo-estado': 'administrativo_estado',
+      'gestion-procesal': 'cuerpo_gestion_administracion_civil',
+      'auxiliar-administrativo-andalucia': 'auxiliar_administrativo_andalucia',
+      'auxiliar-administrativo-valencia': 'auxiliar_administrativo_valencia',
+      'auxiliar-administrativo-ayuntamiento-valencia':
+        'auxiliar_administrativo_ayuntamiento_valencia',
+      'policia-nacional': 'policia_nacional',
+      'guardia-civil': 'guardia_civil',
+    }
+
+    type SmokeCase = {
+      slug: string
+      positionType: string
+      date: string
+      title: string
+    }
+
+    const SMOKE_CASES: SmokeCase[] = []
+    for (const op of OPOSICIONES) {
+      if (!op.officialExams) continue
+      const examPosition = slugToExamPosition[op.slug]
+      if (!examPosition) continue // oposición no expuesta vía /api/v2/official-exams
+      for (const conv of op.officialExams) {
+        SMOKE_CASES.push({
+          slug: op.slug,
+          positionType: examPosition,
+          date: conv.date,
+          title: conv.title,
+        })
+      }
+    }
+
+    if (SMOKE_CASES.length === 0) {
+      test('No hay convocatorias expuestas — nada que validar', () => {
+        expect(true).toBe(true)
+      })
+      return
+    }
+
+    test.each(SMOKE_CASES.map((c) => [c.slug, c.date, c.title, c] as const))(
+      '%s %s (%s): BD devuelve > 0 preguntas (legi+psico)',
+      async (_slug, _date, _title, sc) => {
+        const questionsFilters =
+          `exam_date=eq.${sc.date}` +
+          `&exam_position=eq.${sc.positionType}` +
+          `&is_official_exam=eq.true`
+
+        const psyPattern = PSYCHOMETRIC_EXAM_SOURCE_PATTERNS[sc.positionType]
+        const psyFilters =
+          `exam_date=eq.${sc.date}` +
+          (psyPattern
+            ? `&exam_source=ilike.${encodeURIComponent(psyPattern)}`
+            : '') +
+          `&is_official_exam=eq.true`
+
+        const [legCount, psyCount] = await Promise.all([
+          supabaseCount('questions', questionsFilters),
+          psyPattern ? supabaseCount('psychometric_questions', psyFilters) : 0,
+        ])
+        const bdTotal = legCount + psyCount
+
+        // Diagnóstico claro: si esto falla, casi seguro es:
+        //  - exam_position con guión en lugar de underscore
+        //  - exam_date con formato/zona incorrecto
+        //  - is_official_exam = false
+        //  - oposicion no añadida a oposicionToExamPosition en queries.ts
+        expect({
+          slug: sc.slug,
+          date: sc.date,
+          legCount,
+          psyCount,
+          bdTotal,
+        }).toMatchObject({
+          slug: sc.slug,
+          date: sc.date,
+          bdTotal: expect.any(Number),
+        })
+        expect(bdTotal).toBeGreaterThan(0)
+      },
+      30_000
+    )
+  })
 })

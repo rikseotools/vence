@@ -205,8 +205,30 @@ export const OPOSICIONES: Oposicion[] = [
         title: 'Convocatoria 23 de mayo de 2026',
         oep: 'OEP 2024-2025',
         partes: [
-          { id: 'primera', icon: '📘', title: 'Primera parte', description: 'Legislativas + Psicotécnicas (60 preguntas + 5 reservas)' },
-          { id: 'segunda', icon: '📗', title: 'Segunda parte', description: 'Actividad Administrativa y Ofimática (50 preguntas + 5 reservas)' },
+          {
+            id: 'primera',
+            icon: '📘',
+            title: 'Primera parte',
+            ordinaryCount: 60,
+            reserveCount: 5,
+            durationMin: 90,
+            breakdown: [
+              { label: 'Legislativas (Bloque I)', count: 30 },
+              { label: 'Psicotécnicas', count: 30 },
+            ],
+          },
+          {
+            id: 'segunda',
+            icon: '📗',
+            title: 'Segunda parte',
+            ordinaryCount: 50,
+            reserveCount: 5,
+            durationMin: 90,
+            breakdown: [
+              { label: 'Actividad Administrativa', count: 10 },
+              { label: 'Ofimática', count: 40 },
+            ],
+          },
         ],
       },
       {
