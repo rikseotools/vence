@@ -85,7 +85,7 @@ Sin esto, el resto se desordena. "Profesional" empieza por la disciplina, no por
 
 ### Bloque 3 — Etapa 2 del backend (4-6 sem) ← **KEYSTONE**
 
-> **Audit técnico previo (2026-05-23):** ver [`docs/architecture/bloque3-audit-hot-path.md`](architecture/bloque3-audit-hot-path.md) — métricas reales 7d (errores, cascade frequency, co-ocurrencia), catálogo técnico de los 5 candidatos y orden de migración recomendado. Resumen: `medals` primero (canary, BAJA complejidad), `answer-and-save` segundo (KEYSTONE real, arrastra 8 endpoints en cascade), después `stats` (p95 153s), `test-config` family, y `daily-limit` último (0 errores 7d, baja urgencia).
+> **Audit técnico previo (2026-05-23):** ver [`docs/architecture/bloque3-audit-hot-path.md`](architecture/bloque3-audit-hot-path.md) — métricas reales 7d (errores, cascade frequency, co-ocurrencia), catálogo técnico de los 5 candidatos y orden de migración recomendado. Resumen: `medals` primero (canary, BAJA complejidad), `answer-and-save` segundo (KEYSTONE real, arrastra 8 endpoints en cascade), después `test-config` family, y `stats`+`daily-limit` últimos (ambos sanos, baja urgencia). El `/api/stats` p95 de 153s del audit inicial resultó ser **deuda histórica del 29/04 ya arreglada** (EXPLAIN ANALYZE 23/05 noche: 10 queries paralelas suman <200ms con user más heavy).
 
 Mover los endpoints hot path (no todos — sólo los que cascadean) al backend NestJS detrás de feature flag. Lista candidata: `answer-and-save`, `daily-limit`, `medals`, `stats`, `test-config` family. **Es el bloque que más arregla y más libera a la vez:**
 

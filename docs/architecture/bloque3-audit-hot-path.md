@@ -36,7 +36,7 @@ Fuente: `validation_error_logs` + agregados en `tests` / `test_questions`.
 **Lecturas clave:**
 - `answer-and-save` lidera por volumen (222 errors, 32 son 503 quick-fail de timeout 15s).
 - `medals` 100% son 503: cuando falla, falla por timeout, no por validación.
-- `stats` con bajo volumen pero **p95 = 153s** (¡Vercel Runtime Timeout!). Ya post-cutover v1→v2, pero el patrón sigue: 10 queries paralelas que pueden saturar BD.
+- `stats` con bajo volumen y **p95 = 153s** que **resultó ser deuda histórica del 29/04** — pre-refactor `getRecentTests` a `LEFT JOIN LATERAL`. Hoy las 10 queries paralelas suman <200ms con el user más heavy. Detalle en §4-bis. **Falsa alarma del audit.**
 - `daily-limit` **0 errores 7d** — actualmente sano tras el Sprint 5 (cache stale-if-error). **No urge migrarlo.**
 - `test-config` 3 errores 7d pero p95 ~44s = cuando falla, falla con Vercel Timeout.
 
@@ -154,7 +154,7 @@ Fuente: `validation_error_logs` + agregados en `tests` / `test_questions`.
 |---|---:|---:|---:|---:|---|---|---|
 | `answer-and-save` | 1.061 (peak 5.704) | 222 (32 ✕503) | **3 (peak 11)** | 15.056 | quick-fail, after(), singleflight | MEDIA | **MÁXIMA** — arrastra 8 endpoints en cascade |
 | `medals` | — | 34 (todo 503) | 2 (peak 3) | 15.038 | stale-if-error, circuit-breaker | **BAJA** | ALTA — segundo en frecuencia de cascade |
-| `stats` | — | 3 (3 ✕500) | 0 | **153.427** | quick-fail 10s, stale-if-error | MEDIA | MEDIA — p95 demoledor pero bajo volumen |
+| `stats` | — | 3 (3 ✕500) | 0 | **<200 ms real** (153 ms era deuda 29/04 pre-refactor) | quick-fail 10s, stale-if-error | BAJA | **BAJA** — endpoint sano (ver §4-bis) |
 | `test-config/*` (4) | — | 3 (artic+sec) | 0 | ~44.000 | unstable_cache + flags | MEDIA-ALTA | BAJA-MEDIA — cache ya mitiga |
 | `daily-limit` | 57 | **0** | 0 | — | quick-fail 5s, stale-if-error | BAJA (pero RPC) | **BAJA** — sano, no urge |
 
@@ -172,10 +172,8 @@ Criterio: **palanca real (cascade arrastre) × inverso de complejidad × resilie
 2. **`/api/v2/answer-and-save` — KEYSTONE real**
     Una vez templado el camino con medals, migrar el endpoint que arrastra 8 endpoints en cada cascade. ROI máximo del proyecto entero. Reto técnico: replicar el split de pool (`getDb` + `getTraceDb`) en NestJS. Resultado esperado: las 3 ventanas/semana de cascade desaparecen.
 
-3. **`/api/stats` — eliminar el p95 de 153s**
-    Post-cutover v1→v2 ya cerrado, pero el p95 grita por:
-    - Investigar qué query de las 10 paralelas se va a 153s (probable índice faltante en alguna materializada — preguntar a `pg_stat_statements` antes de migrar).
-    - Migrar a NestJS con DataLoader → conexión persistente sin Vercel `maxDuration: 15s`.
+3. ~~**`/api/stats` — eliminar el p95 de 153s**~~ **DESCARTADO — endpoint sano**
+    EXPLAIN ANALYZE 2026-05-23 noche con el user más heavy (2730 tests, 29.558 test_questions): las 10 queries paralelas suman <200ms peor caso cold-cache, <50ms cache caliente. Los 153s del audit son **deuda histórica del 29/04** (pre-refactor `getRecentTests` a `LEFT JOIN LATERAL` Memoize). Los 3 errores 500 de los últimos 7d son blips puntuales del pooler Supabase que arrastraron este endpoint junto con otros — no es problema endémico. Plan completo en sección 4-bis abajo. **Baja a prioridad MEDIA-BAJA** (mismo nivel que daily-limit).
 
 4. **`/api/v2/test-config/*` — bundle de 4**
     Migrar la familia entera, replicar `unstable_cache` con Redis tags propios. Empezar por `estimate/` que es el más complejo y el que más se beneficia (full traverse `topicScope`).
@@ -191,13 +189,37 @@ Criterio: **palanca real (cascade arrastre) × inverso de complejidad × resilie
 
 ---
 
+## 4-bis. EXPLAIN ANALYZE `/api/stats` (resuelto 2026-05-23 noche)
+
+Ejecutado con el user más heavy del sistema (`3260627f-2018-4a5e-8234-e6f07015abb9`, 2.730 tests completados, 29.558 test_questions):
+
+| Función | Tabla principal | Execution time | Plan dominante |
+|---|---|---:|---|
+| `getMainStats` (summary) | user_stats_summary | 0.045 ms | Index Scan PK |
+| `getMainStats` (bestScore) | tests | 4.48 ms hot / ~134 ms cold | Bitmap Heap Scan `idx_tests_user_completed` |
+| `getDifficultyBreakdown` | user_difficulty_stats | 1.97 ms | Index Scan PK |
+| `getTimePatterns` (hourly) | user_hourly_stats | 1.59 ms | Index Scan PK |
+| `getTimePatterns` (avg session) | tests | 30.23 ms | Bitmap Heap Scan `idx_tests_user_completed` |
+| `getArticleStats` | user_article_stats | 18.93 ms | Index Scan + Limit 1000 |
+| `getWeeklyProgress` | user_daily_stats | 3.15 ms | Index Scan Backward `user_day_desc` |
+| `getRecentTests` | tests + LATERAL topics + LATERAL test_questions | 14.95 ms | Limit + LATERAL Memoize |
+| `getThemePerformance` | user_theme_performance_cache | 1.92 ms | Nested Loop Left Join |
+| `getStreakData` | user_streaks | 0.034 ms | Index Scan PK |
+
+**Conclusión**: suma paralela esperada **<200 ms peor caso cold-cache** (la única "alta" es bestScore 134 ms cold → 4.48 ms cache caliente). Con el cache Redis 5 min fresh + 24 h stale-if-error vigente, hit ratio ≈95% → endpoint sano en producción.
+
+**Optimización marginal disponible (no aplicada)**: `idx_tests_user_completed_covering` `(user_id, is_completed) INCLUDE (score, total_questions, total_time_seconds) WHERE is_completed=true` permitiría Index Only Scan para `bestScore` y `avgSession` — ahorro 134 ms cold → ~15-25 ms cold. **No urge** (cache absorbe el caso cold) y se aplica cuando vuelva a aparecer en logs de cascade. Reversal: `DROP INDEX` (0.1 s, no hay code references).
+
+---
+
 ## 5. Lo que falta antes de arrancar Bloque 3
 
-Para no entrar en código sin contexto, completar estas tres tareas (cada una <1h):
+Para no entrar en código sin contexto, completar estas dos tareas (cada una <1h):
 
-1. **Reproducir el p95 153s de `/api/stats`**: ejecutar la query con un user heavy real y `EXPLAIN ANALYZE` para identificar qué materializada falla. Quizá se arregla con un índice y se cae del top de prioridad.
-2. **Decisión BACKEND_URL**: cómo apunta el frontend al backend. Env var simple + feature flag por endpoint, o gateway intermedio. Definir patrón antes del primer endpoint para no inventar dos.
-3. **Adapter Redis**: el backend NestJS necesita un cliente Redis que respete los mismos tags que `lib/cache/redis.ts` actual (para que invalidaciones cross-runtime funcionen). Definir interface antes del primer endpoint.
+1. **Decisión BACKEND_URL**: cómo apunta el frontend al backend. Env var simple + feature flag por endpoint, o gateway intermedio. Definir patrón antes del primer endpoint para no inventar dos.
+2. **Adapter Redis**: el backend NestJS necesita un cliente Redis que respete los mismos tags que `lib/cache/redis.ts` actual (para que invalidaciones cross-runtime funcionen). Definir interface antes del primer endpoint.
+
+~~Reproducir p95 153s `/api/stats`~~ — **HECHO 23/05 noche**: el endpoint está sano (ver §4-bis arriba). El p95 era deuda histórica del refactor pre-LATERAL Memoize.
 
 ---
 
