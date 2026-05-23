@@ -168,28 +168,33 @@ git commit -m "revert(cron): restaurar <cron> Vercel — rollback de cutover"
 
 ## Estado actual (checklist por cron)
 
-| Cron | Shadow OK | Soak ≥ 2 sem | Paridad verificada | Cutover ejecutado | Notas |
+| Cron | Shadow OK 23/05 | Soak ≥ 2 sem | Paridad verificada | Cutover ejecutado | Notas |
 |---|:-:|:-:|:-:|:-:|---|
-| `check-boe-changes` | ⏳ | ⏳ 2026-06-05 | ⏳ | ⏳ | Era el detonante (BOE 20/05 perdido) |
-| `archive-interactions` | ⏳ | ⏳ | ⏳ | ⏳ | |
-| `refresh-theme-cache` | ⏳ | ⏳ | ⏳ | ⏳ | |
-| `refresh-rankings` | ⏳ | ⏳ | ⏳ | ⏳ | `*/5min` — fácil de verificar pronto |
-| `update-streaks` | ⏳ | ⏳ | ⏳ | ⏳ | |
-| `check-seguimiento` | ⏳ | ⏳ | ⏳ | ⏳ | Solo L-V |
-| `process-outbox` | ⏳ | ⏳ | ⏳ | ⏳ | `*/5min` — fácil de verificar |
-| `avatar-rotation` | ⏳ | ⏳ | ⏳ | ⏳ | Semanal (domingo). Necesita 2 ciclos = 2 sem |
-| `process-verification-queue` | ⏳ | ⏳ | ⏳ | ⏳ | 4x diario |
-| `detect-timeline-silence` | ⏳ | ⏳ | ⏳ | ⏳ | |
-| `detect-oep-llm` | ⏳ | ⏳ | ⏳ | ⏳ | L-V |
-| `detect-regional-oeps` | ⏳ | ⏳ | ⏳ | ⏳ | Solo lunes. Necesita 2-3 ciclos para muestra |
-| `detect-generic-sources` | ⏳ | ⏳ | ⏳ | ⏳ | L-V |
+| `check-boe-changes` | 🟡 463/475 | ⏳ 2026-06-05 | ⏳ | ⏳ | Era el detonante (BOE 20/05 perdido). Hoy 97% leyes (72 fetch errors transitorios). Vigilar evolución |
+| `archive-interactions` | ✅ 1/24h | ⏳ | ⏳ | ⏳ | |
+| `refresh-theme-cache` | ✅ 1/24h | ⏳ | ⏳ | ⏳ | |
+| `refresh-rankings` | ✅ 288/24h | ⏳ | ⏳ | ⏳ | `*/5min` ejecución exacta. 341 filas yesterday + 988 week insertadas/ejecución |
+| `update-streaks` | ✅ 1/24h | ⏳ | ⏳ | ⏳ | 295 resets/día |
+| `check-seguimiento` | ⏳ esperado 0 hoy (sáb) | ⏳ | ⏳ | ⏳ | Solo L-V. Verificar lunes 25/05 |
+| `process-outbox` | ✅ 288/24h | ⏳ | ⏳ | ⏳ | `*/5min` ejecución exacta |
+| `avatar-rotation` | ⏳ esperado 0 hoy (sáb) | ⏳ | ⏳ | ⏳ | Semanal (domingo). Verificar dom 24/05 |
+| `process-verification-queue` | ✅ 4/24h | ⏳ | ⏳ | ⏳ | 4x diario exacto |
+| `detect-timeline-silence` | ✅ 1/24h | ⏳ | ⏳ | ⏳ | |
+| `detect-oep-llm` | ⏳ esperado 0 hoy (sáb) | ⏳ | ⏳ | ⏳ | L-V. Verificar lunes 25/05 |
+| `detect-regional-oeps` | ⏳ esperado 0 hoy (sáb) | ⏳ | ⏳ | ⏳ | Solo lunes. Verificar 25/05 |
+| `detect-generic-sources` | ⏳ esperado 0 hoy (sáb) | ⏳ | ⏳ | ⏳ | L-V. Verificar lunes 25/05 |
 
 > Actualizar este checklist cuando se vaya verificando cada cron y cuando se ejecute cada cutover.
 
 ## Histórico
 
 - **2026-05-22**: deploy inicial Fargate del Grupo A (13 crons). Shadow comienza. `BOE_NOTIFY_ENABLED=false`.
-- **2026-05-23**: runbook creado. AWS account de Fargate confirmado (`349744179687`, region `eu-west-2`). Verificación local requiere añadir profile `[vence]` (ver sección «Cómo verificar el shadow»); el deploy CI funciona vía OIDC sin tocar credenciales locales.
+- **2026-05-23**: runbook creado. AWS account de Fargate confirmado (`349744179687`, region `eu-west-2`). Profile `[vence]` configurado localmente con user IAM `claude-cli` (PowerUserAccess). Primera verificación del shadow (24h+):
+  - **ECS service**: ACTIVE, 1/1 task RUNNING desde 22/05 12:25 (33h uptime, 0 reinicios).
+  - **Schedule respetado en 13/13 crons**: `refresh-rankings` y `process-outbox` 288/288 ejecuciones/24h (exacto); diarios 1/24h; `process-verification-queue` 4/24h; los 5 crons "L-V"/"lunes"/"domingo" correctamente a 0 (hoy es sábado).
+  - **0 errores reales, 0 reinicios.** 4 warnings esperados de BOE (`fetch_error` puntual en decretos CyL/CM, el sistema avanza `last_checked` para no atascar la cola — comportamiento del fix de causa raíz del 22/05).
+  - **BOE revisó 463/475 leyes** (97%) — 72 errores de red transitorios contra páginas oficiales (no es regresión, es ruido de red contra BOE/BOJA/BOC). A vigilar durante el soak.
+  - **Veredicto**: 🟢 verde. Reloj de las 2-3 semanas corre.
 
 ## Referencias
 
