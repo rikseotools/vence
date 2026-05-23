@@ -65,13 +65,13 @@ Tras la sesión 23/05 (cierre del cutover `/api/stats` v2 + investigación a fon
 
 ### Bloque 1 — Cerrar Etapa 1 del backend (en marcha, 1-2 sem)
 
-Los 12 crons del Grupo A llevan en shadow desde 22/05 en AWS Fargate. Falta:
+Los 13 crons del Grupo A llevan en shadow desde 22/05 en AWS Fargate (cuenta `349744179687`, region `eu-west-2`, cluster `vence-backend`). Falta:
 
 - **DROP COLUMN `global_dirty`** (Fase 2-bis, plazo cumplido desde 21/05).
-- **Cutover de los 12 crons** cuando se cumplan las 2-3 semanas estables del criterio (~05/06). Por cada cron: desactivar workflow Vercel + borrar `app/api/cron/<x>/` + `BOE_NOTIFY_ENABLED=true`. No conviven con el viejo "por si acaso".
+- **Cutover de los 13 crons** cuando se cumplan las 2-3 semanas estables del criterio (~05-12/06). Plan + checklist por cron + procedimiento + rollback en [`docs/runbooks/cron-cutover-fargate.md`](runbooks/cron-cutover-fargate.md).
 - **Grupo B** (`close-inactive-feedback`, `renewal-reminders`, `daily-registration-summary`, `detect-fraud`) revisar caso a caso si vale la pena moverlos.
 
-Reduce código y workflows en Vercel **hoy** sin riesgo (los nuevos llevan días corriendo en paralelo).
+Reduce código y workflows en Vercel **hoy** sin riesgo (los nuevos llevan días corriendo en paralelo). El cutover físico no se hace todavía — la ventana de soak está activa.
 
 ### Bloque 2 — Higiene profesional (1 sem, gate para todo lo demás)
 
