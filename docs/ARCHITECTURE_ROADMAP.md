@@ -1271,7 +1271,25 @@ Con queries lentas en hot path + tráfico 10k DAU:
 
   - ⏸ Pendiente: tests automatizados (unit + integración + carrera + simulación carga), test de paridad sobre 30-50 users muestreados (cuando termine backfill), cutover canary.
 
-### Estado para la próxima sesión (snapshot 2026-05-23 ~15:00 CEST)
+### Estado para la próxima sesión (snapshot 2026-05-23 ~16:00 CEST)
+
+**Health check post-deploy (verificado 16:00 CEST tras push de los 4 commits):**
+
+- Vercel desplegó OK — `https://www.vence.es` responde 200 con ttfb 220ms
+- Endpoint admin nuevo `/api/admin/system-health` activo (devuelve 401 sin auth — correcto)
+- `/api/stats` sigue funcionando — feature flag OFF, usuarios siguen viendo v1
+- 27 triggers vivos en `test_questions` + 1 en `tests` (todos los esperados)
+- **Triggers funcionando en tiempo real**: último INSERT a las 14:37:12 propagó a las 4 tablas materializadas en el mismo milisegundo. Crecimiento desde el fin del backfill: +5 difficulty, +6 hourly, +188 article, +10 daily, +2 users con `total_tests > 0`. Confirmación de que cada respuesta de usuario hoy está poblando las tablas correctamente.
+- Estado actual de las materializadas: 9.973 difficulty + 14.441 hourly + 300.279 article + 21.302 daily + 3.663 users con `total_tests > 0`
+
+**Edge case anotado (no bloqueante):**
+
+El cron de drift, en su último run manual de 12:13 CEST, marcó `backfill_active=yes` aunque el backfill ya terminó. Causa: la función `check_stats_drift` cuenta como "pendientes" a users que tienen filas en `tests` pero NO en `user_stats_summary` (probablemente users que se registraron sin completar test). El cutoff queda en `t0` del backfill, que es conservador — no produce falsos positivos. La detección de "backfill terminado" se puede afinar después del cutover; no afecta la funcionalidad del fix.
+
+**Próxima revisión programada: ~16:30 CEST (en 30 min)** — el usuario va a pedir "busca errores" para evaluar si hay reparaciones pendientes. Claude debe seguir el runbook `docs/runbooks/health-check.md` sección 1 y reportar verdict 🟢/🟡/🔴.
+
+---
+
 
 **Pushed a `main` (3 commits, deploy a Vercel en curso):**
 - `65cf247a feat(db): tablas materializadas para /api/stats + triggers + backfill`
