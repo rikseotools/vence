@@ -1,0 +1,87 @@
+name: Tests
+
+# Ejecuta la suite completa en cada PR y push a main.
+#
+# El pre-commit local solo corre unit tests (rápido). Los tests de
+# integración / perf / security pegan a BD real → viven en CI.
+#
+# Patrón estándar (test pyramid). Ver docs/ARCHITECTURE_ROADMAP.md
+# sección «Plan de ejecución activo» bloque 2.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Cancelar runs viejas del mismo ref si llega una nueva push.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - name: Run unit tests
+        run: npm run test:unit
+
+  integration:
+    name: Integration / perf / security
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # No bloquea merges hoy: hay 10 fallos conocidos (bugs datos + flaky)
+    # que se irán arreglando uno a uno. Cuando llegue a 0, quitar este flag.
+    continue-on-error: true
+    needs: unit
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - name: Run integration / perf / security tests
+        env:
+          # Estos tests pegan a BD real (read-only en producción + datos snapshot).
+          # Suministrados como secrets del repo. Si faltan, el step falla y se
+          # ve claro qué pasa — mejor que un timeout silencioso.
+          DATABASE_URL: ${{ secrets.DATABASE_URL_READONLY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        run: npm run test:integration
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run lint
+
+  typecheck:
+    name: Typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run typecheck

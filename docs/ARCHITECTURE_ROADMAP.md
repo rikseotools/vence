@@ -1,6 +1,6 @@
 # Vence — Architecture Roadmap a 100k+ usuarios
 
-> **Última actualización:** 2026-05-23 (cutover `/api/stats` v1→v2 completado al 100% + cleanup de código)
+> **Última actualización:** 2026-05-23 (decisión de orden: plan de bloques agnóstico+arquitectura como un solo trabajo — ver sección «Plan de ejecución activo»)
 > **Estado:** Fase 0 casi completa (0.1-0.6 hechas) + **Fase 1 Redis ✅ COMPLETA y AMPLIADA** + **Sprint 1 seguridad ✅ COMPLETO** (5 sub-sprints) + **Sprint 2 hardening cascade ✅ COMPLETO** (18 sub-sprints, 19 commits, **deployed en producción**, validado en logs) + **Sprint 3 fallos post-deploy ✅ COMPLETO** (4 fallos detectados en logs Vercel tras Sprint 2 deploy y resueltos en sesión) + **Sprint 4 audit pool mode + outbox blindado ✅ COMPLETO 2026-05-17** (3 commits — refactor advisory_lock→SKIP LOCKED, quick-fail user-failed+difficulty-insights, audit pool mode revela ya transaction) + **Sprint 5 cascade 18/05 ✅ COMPLETO 2026-05-18** (2 commits — user-failed-questions migrado a read replica, daily-limit con cache stale-if-error fresh 30s + stale 24h). Sprint 2: invalidación caches existentes saneada, singleflight anti-stampede, regions:lhr1 (validado 80ms→3.37ms), 5 endpoints más cacheados (test-config family + hot-articles + law-stats + verify-stats + estimate), quick-fail wrapper en 11 endpoints, observability (Sentry beforeSend + cache hit-rate counters). Sprint 3: TypeError streaming Next 16 (inlineCss disabled), userAnswer=-1 (schema fix), theme-stats timeout heavy users (covering index 12.5s→502ms = 24.9x), GeoIP timeout (Vercel headers sync, sin ip-api.com). Pendiente: 0.5 verificar p95 producción, **Fase 0.7 (JWT local verify)** documentada como next big win, **Fase 11 push (DROP TABLES BD)** esperar 24-48h. **DECISIÓN 2026-05-22:** backend dedicado de proceso largo — **Etapa 1 ✅ los 12 crons del Grupo A migrados a NestJS/AWS Fargate, auditados, en shadow** (ver sección «Backend dedicado de proceso largo»).
 > **Objetivo:** preparar Vence para escalar a 100k+ usuarios sin perder features ni romper nada
 > **Coste extra estimado total (Fases 0-3):** $10-40/mes
@@ -50,6 +50,83 @@ Todo el trabajo de este roadmap se ordena por dos prioridades, **en este orden**
 | Caché edge | Solo en `/api/teoria/*` y `/api/ranking` | Falta en `/api/v2/user-stats`, `/api/v2/profile`, etc. |
 | Caché Redis | ❌ no existe | Imprescindible para escala |
 | Queue async | ❌ no existe (todo es triggers SQL síncronos) | Triggers son anti-pattern de escala |
+
+---
+
+## Plan de ejecución activo (decidido 2026-05-23) — agnóstico y arquitectura como un solo trabajo
+
+Tras la sesión 23/05 (cierre del cutover `/api/stats` v2 + investigación a fondo del estado del proyecto), se constata que el roadmap mezcla dos tipos de trabajo:
+
+1. **Bugs de arquitectura causados por el proveedor**: pool `max:1`, cascadas 503/504, cold starts, `maxDuration` de Vercel, caché REST atada a Upstash, fragmentación de errores en `validation_error_logs` (que no ve GHA / Fargate / Supabase). **Resolverlos pasa, en muchos casos, por dejar de depender del proveedor que los causa**. Es trabajo 2-en-1.
+
+2. **Lock-in puro sin bug detrás**: `supabase.from()` esparcido en 96 archivos (PostgREST), 7 RLS policies con `auth.uid()`, sesión cliente con `supabase.auth.*`, sin Dockerfile del frontend. Funciona — sólo dificulta migrar. **No urge.**
+
+**Regla de orden:** primero el trabajo 2-en-1 (arregla bugs y libera proveedor a la vez), después el lock-in puro (sólo cuando duela). Cada bloque entrega valor por sí solo, no congela features, y no se empieza el siguiente hasta que el anterior cumple su Definition of Done.
+
+### Bloque 1 — Cerrar Etapa 1 del backend (en marcha, 1-2 sem)
+
+Los 12 crons del Grupo A llevan en shadow desde 22/05 en AWS Fargate. Falta:
+
+- **DROP COLUMN `global_dirty`** (Fase 2-bis, plazo cumplido desde 21/05).
+- **Cutover de los 12 crons** cuando se cumplan las 2-3 semanas estables del criterio (~05/06). Por cada cron: desactivar workflow Vercel + borrar `app/api/cron/<x>/` + `BOE_NOTIFY_ENABLED=true`. No conviven con el viejo "por si acaso".
+- **Grupo B** (`close-inactive-feedback`, `renewal-reminders`, `daily-registration-summary`, `detect-fraud`) revisar caso a caso si vale la pena moverlos.
+
+Reduce código y workflows en Vercel **hoy** sin riesgo (los nuevos llevan días corriendo en paralelo).
+
+### Bloque 2 — Higiene profesional (1 sem, gate para todo lo demás)
+
+Sin esto, el resto se desordena. "Profesional" empieza por la disciplina, no por el cloud:
+
+- **Pre-commit hook verde**: arreglar / retirar los 14 tests obsoletos + el bug Cádiz `seo_description`. Eliminar el `--no-verify` sistémico (memoria `project_pre_commit_hook_failures_pendientes`).
+- **CI como gate**: tests verdes obligatorios para merge a `main`.
+- **Limpiar la raíz del repo** (~100 archivos sin trackear con nombres raros tipo `Art.`, `Artículo`, etc).
+- **`.env.example` único** validado por zod (paridad con `backend/src/config/env.ts`).
+- **Branch `staging`** + entorno paralelo en Vercel (preview, sin coste).
+
+### Bloque 3 — Etapa 2 del backend (4-6 sem) ← **KEYSTONE**
+
+Mover los endpoints hot path (no todos — sólo los que cascadean) al backend NestJS detrás de feature flag. Lista candidata: `answer-and-save`, `daily-limit`, `medals`, `stats`, `test-config` family. **Es el bloque que más arregla y más libera a la vez:**
+
+| Bug que mata | Lock-in que libera |
+|---|---|
+| Pool `max:1` y cascadas 503/504 | Hot path deja de vivir en Vercel |
+| Cold starts + caché no compartida entre lambdas | Caché en memoria del proceso largo |
+| Workaround `@upstash/redis` REST (necesario por serverless) | Habilita `ioredis` + pool TCP estándar — adapter `lib/cache/redis.ts` con transporte por runtime |
+| Parches `quick-fail`, `withDbTimeout`, 11 wrappers | Se vuelven innecesarios |
+| `validation_error_logs` ciega a Fargate/GHA | Sitio natural para `observable_events` unificada (decisión 23/05) |
+
+**Frontend ↔ backend:** un `BACKEND_URL` env var. Vercel queda para lo que hace bien (SSR, landings, ISR del temario). Migración endpoint a endpoint con feature flag — reversible en segundos.
+
+### Bloque 4 — Materializar pendientes + resiliencia (3-4 sem)
+
+Resuelve el "Tech debt CRÍTICO" del roadmap **con el mismo patrón ya validado por `/api/stats` v2** (que también es 100% agnóstico — sólo tablas + triggers Postgres estándar):
+
+- `user_medals_summary` (gatillo: pico de errores en `/api/medals` o DAU > 1k).
+- `law_stats_cache` (mismo gatillo).
+- Tabla `observable_events` unificada — migrar `withErrorLogging` + endpoint ingest `/api/observability/ingest` para GHA, Vercel deploys, Fargate logs.
+- **Storage → S3** (cuenta AWS ya existe en `eu-west-2`) vía adapter `lib/storage/`. Pocos callers — migración rápida.
+- **Backups con drill de restore** real, RTO/RPO declarados.
+
+### Bloque 5 — Lock-in puro (diferido, sólo si duele)
+
+No urgen y no arreglan ningún bug. Hacerlos antes es trabajo prematuro:
+
+- Eliminar `supabase.from()` PostgREST (96 archivos) → endpoints propios + Drizzle + cliente tipado.
+- RLS → autz en capa de app.
+- Swap de Supabase Auth (Auth.js / Better Auth).
+- Dockerizar Next.js para salir de Vercel.
+- Salida completa de Supabase (`pg_dump` a Neon/RDS/Aurora).
+
+**Cuándo:** cuando Supabase deje de servir (precio, feature, incidente) o cuando se necesite multi-cloud real. Mientras tanto, cada decisión nueva pasa por el «Gate de adopción de dependencias nuevas».
+
+### Por qué este orden y no otro
+
+- Hacer **Bloque 5 antes que Bloque 3** = trabajar en código que va a moverse → trabajo doble.
+- Hacer **Bloque 3 antes que Bloque 2** = sin CI verde, los cambios grandes se pisan unos a otros sin red de seguridad.
+- Hacer **Bloque 1 después** = mantener código muerto en Vercel "por si acaso" = la deuda técnica que el roadmap se ha jurado no aceptar.
+- El **Bloque 3 es el keystone**: cualquier otra cosa (Upstash REST → ioredis, observable_events, agnóstico real de hosting) se vuelve **gratis** cuando termina, y **dos veces más cara** si se intenta antes.
+
+**Las 6 fases originales** del cuadro siguen siendo válidas como referencia técnica — los bloques 1-5 son el **orden de ejecución** que las absorbe y ordena.
 
 ---
 

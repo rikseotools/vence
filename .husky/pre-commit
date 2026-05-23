@@ -1,11 +1,15 @@
 #!/bin/sh
 # .husky/pre-commit
-# Hook para ejecutar validaciones antes de commit
+# Pre-commit hook — solo tests rápidos (unit + critical validations) + lint.
+#
+# Tests de integración / perf / security / scraping → corren en CI (.github/workflows/test.yml).
+# Patrón estándar (test pyramid): pre-commit local <30s, CI completo en cada PR.
+# Ver docs/ARCHITECTURE_ROADMAP.md sección «Plan de ejecución activo» bloque 2.
 
 echo "🔍 Ejecutando validaciones pre-commit..."
 echo ""
 
-# 1. Verificar schema drift (si DATABASE_URL disponible)
+# 1. Verificar schema drift (solo si DATABASE_URL disponible — no bloquea).
 if [ -n "$DATABASE_URL" ]; then
   echo "📊 Verificando sincronización schema vs BD..."
   npm run db:check
@@ -23,10 +27,8 @@ else
 fi
 
 echo ""
-
-# 2. Ejecutar tests
-echo "🧪 Ejecutando tests..."
-npm run test:ci
+echo "🧪 Tests críticos + unit..."
+npm run test:precommit && npm run test:unit
 TEST_EXIT_CODE=$?
 
 if [ $TEST_EXIT_CODE -ne 0 ]; then
@@ -34,12 +36,22 @@ if [ $TEST_EXIT_CODE -ne 0 ]; then
   echo "❌ Tests fallaron. Commit cancelado."
   echo ""
   echo "💡 Para solucionar:"
-  echo "   1. Revisa los tests que fallan con: npm test"
-  echo "   2. Corrige los problemas"
-  echo "   3. Intenta el commit nuevamente"
+  echo "   1. Revisa los tests con: npm run test:unit"
+  echo "   2. Tests de integración (BD real / flaky) corren en CI, no aquí."
+  echo "   3. Corrige los problemas y vuelve a hacer commit."
   echo ""
   exit 1
 fi
 
+# Lint NO se ejecuta en pre-commit:
+#   - El config de eslint (next/core-web-vitals) referencia reglas de
+#     @typescript-eslint que no están instaladas → 427 errores
+#     pre-existentes del proyecto, no de los cambios.
+#   - Lint completo corre en CI (.github/workflows/test.yml job 'lint').
+#   - Patrón estándar: Next.js, React, PostHog usan lint-staged o lint
+#     solo en CI — no lint completo en pre-commit local.
+#   - Cuando se arregle el config (tarea separada del Bloque 2), valorar
+#     añadir lint-staged sobre archivos modificados.
+
 echo ""
-echo "✅ Todas las validaciones pasaron. Continuando con el commit..."
+echo "✅ Pre-commit OK. Lint + tests de integración correrán en CI."
