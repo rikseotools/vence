@@ -1270,6 +1270,73 @@ Con queries lentas en hot path + tráfico 10k DAU:
     **Mitigación del cambio visible al usuario:** cutover canary lento (1% → 10% → 50% → 100% durante ~5-7 días) + commit explicando que la diferencia es corrección, no bug. Si algún heavy user nota y reporta antes del 10%, lo gestionamos.
 
   - ⏸ Pendiente: tests automatizados (unit + integración + carrera + simulación carga), test de paridad sobre 30-50 users muestreados (cuando termine backfill), cutover canary.
+
+### Estado para la próxima sesión (snapshot 2026-05-23 ~15:00 CEST)
+
+**Pushed a `main` (3 commits, deploy a Vercel en curso):**
+- `65cf247a feat(db): tablas materializadas para /api/stats + triggers + backfill`
+- `82c5db87 feat(observability): cron drift + panel salud + runbook health-check`
+- `f1128501 feat(api/stats): queries-v2 detrás feature flag + roadmap`
+
+**En producción AHORA mismo:**
+- 7 migraciones SQL aplicadas a la BD
+- 4.415 users con datos materializados completos
+- 16 triggers vivos manteniendo las tablas en tiempo real
+- Cron de drift programado para 04:00 UTC diario (mañana domingo será su primera ejecución)
+- Panel `/admin/salud-sistema` accesible
+- Código `queries-v2.ts` desplegado PERO **feature flag OFF** — los usuarios siguen viendo v1
+- Soak time: 1+ días con triggers + cron de drift verificando sin exponer a usuarios
+
+**Variables de entorno NO seteadas todavía** (configurar en Vercel cuando se decida el cutover):
+- `USE_MATERIALIZED_STATS` (default: not set → v1)
+- `USE_MATERIALIZED_STATS_PCT` (default: not set → v1)
+
+**Próxima sesión — checklist de soak validation (en este orden):**
+
+1. **Abrir `/admin/salud-sistema` en el navegador.** Los 4 semáforos deben estar verde:
+   - Errores 5xx 24h: 0 (umbral ámbar ≥1, rojo ≥5)
+   - Drift contadores 24h: 0 (umbral ámbar ≥1, rojo ≥5)
+   - Latencia INSERT test_questions: <80ms (mean histórico, baseline esperado ~44ms)
+   - Cron de drift: <26h sin correr (la primera ejecución es 04:00 UTC del 24/05)
+
+2. **Verificar que el cron de drift corrió.** Si es 24/05 o posterior:
+   - GitHub Actions → workflow "Check Stats Drift" → ver última run
+   - Debe haber corrido exitosamente, devolviendo `significant_drifts: 0` o muy pocos
+   - El marker `__cron_run__` en `stats_drift_log` debe tener `last_run` reciente
+
+3. **Si todo lo anterior está verde** → activar cutover canary:
+   - Vercel → Settings → Environment Variables → producción
+   - Añadir `USE_MATERIALIZED_STATS_PCT=1` (1% de users)
+   - Redeploy (o esperar al próximo deploy)
+   - Observar `/admin/salud-sistema` durante 24h
+
+4. **Plan de escalado del canary:**
+   - Día 1: `USE_MATERIALIZED_STATS_PCT=1` (1%)
+   - Día 2: `USE_MATERIALIZED_STATS_PCT=10` (10%)
+   - Día 3: `USE_MATERIALIZED_STATS_PCT=50` (50%)
+   - Día 4: `USE_MATERIALIZED_STATS_PCT=100` o `USE_MATERIALIZED_STATS=true` (100%)
+   - Días 5-7: observar al 100%
+   - Si OK toda la semana → eliminar v1 + feature flag en un nuevo commit
+
+5. **Rollback inmediato si algo se pone rojo:**
+   - Vercel → Environment Variables → cambiar PCT a 0 o `USE_MATERIALIZED_STATS=false`
+   - Los usuarios vuelven a v1 sin redeploy
+
+**Comando rápido CLI para Claude en próxima sesión:**
+
+```bash
+# Ejecutar la comprobación rápida del runbook (sección 1)
+# Reporta verdict 🟢/🟡/🔴 en 5 segundos
+# Ver docs/runbooks/health-check.md
+```
+
+Cualquier disparador verbal (*"busca errores"*, *"qué tal va"*, *"estado del sistema"*, *"salud"*) hace que Claude consulte `docs/runbooks/health-check.md` automáticamente (referenciado en `CLAUDE.md` sección Mantenimiento).
+
+**Deuda anotada NO bloqueante:**
+- Task #16: migrar 4 readers de `user_question_history` v1 a v2 → poder DROPear 2 triggers v1 redundantes en `test_questions`
+- Task #17: optimizar `calculate_user_streak` (escanea 365 días, causa probable del `p_max=29s` histórico de pg_stat_statements)
+- Task #26: defensa colateral TypeError (deuda arquitectónica, reabrir si vuelve a aparecer post-fix)
+- Tests automatizados Jest (no bloquean cutover; smoke tests in-BD + scripts validan funcionalmente)
 - [ ] **Resto del lote de errores del 22/05 (colateral de la misma cascada) — pendiente investigar:** `theme counts` (SSR `/[oposicion]/test`, `lib/api/random-test/queries.ts` — multi-join `topics×topic_scope×articles×questions` → `statement_timeout`); `/teoria` "cargando leyes" → `statement_timeout`; 3× `TypeError` 'id'/'createdAt' undefined (`/temario/tema-X` `generateMetadata`, `/api/v2/test-config/sections`, `/api/notifications/problematic-articles`) — probable colateral de la cascada (query falla → `undefined` → crash); el código debería tolerar una query fallida sin romper.
 
 ### Confirmación post-fix mediante observabilidad (2026-05-23)
