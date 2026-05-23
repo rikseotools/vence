@@ -1,6 +1,6 @@
 # Vence — Architecture Roadmap a 100k+ usuarios
 
-> **Última actualización:** 2026-05-23 21:30 CEST (sesión cierre: bloque 2 test pyramid + CI workflow + bloque 1 runbook cutover + shadow verificado día +1 + hardening AWS completo + paso 1/2 DROP COLUMN global_dirty — ver sección «Sesión 2026-05-23 — cierre»)
+> **Última actualización:** 2026-05-23 22:30 CEST (sesión cierre: bloque 2 test pyramid + CI workflow + bloque 1 runbook cutover + shadow verificado día +1 + hardening AWS completo + **Fase 2-bis CERRADA al 100% — DROP COLUMN global_dirty aplicado el mismo día tras validación activa del paso 1**)
 > **Estado:** Fase 0 casi completa (0.1-0.6 hechas) + **Fase 1 Redis ✅ COMPLETA y AMPLIADA** + **Sprint 1 seguridad ✅ COMPLETO** (5 sub-sprints) + **Sprint 2 hardening cascade ✅ COMPLETO** (18 sub-sprints, 19 commits, **deployed en producción**, validado en logs) + **Sprint 3 fallos post-deploy ✅ COMPLETO** (4 fallos detectados en logs Vercel tras Sprint 2 deploy y resueltos en sesión) + **Sprint 4 audit pool mode + outbox blindado ✅ COMPLETO 2026-05-17** (3 commits — refactor advisory_lock→SKIP LOCKED, quick-fail user-failed+difficulty-insights, audit pool mode revela ya transaction) + **Sprint 5 cascade 18/05 ✅ COMPLETO 2026-05-18** (2 commits — user-failed-questions migrado a read replica, daily-limit con cache stale-if-error fresh 30s + stale 24h). Sprint 2: invalidación caches existentes saneada, singleflight anti-stampede, regions:lhr1 (validado 80ms→3.37ms), 5 endpoints más cacheados (test-config family + hot-articles + law-stats + verify-stats + estimate), quick-fail wrapper en 11 endpoints, observability (Sentry beforeSend + cache hit-rate counters). Sprint 3: TypeError streaming Next 16 (inlineCss disabled), userAnswer=-1 (schema fix), theme-stats timeout heavy users (covering index 12.5s→502ms = 24.9x), GeoIP timeout (Vercel headers sync, sin ip-api.com). Pendiente: 0.5 verificar p95 producción, **Fase 0.7 (JWT local verify)** documentada como next big win, **Fase 11 push (DROP TABLES BD)** esperar 24-48h. **DECISIÓN 2026-05-22:** backend dedicado de proceso largo — **Etapa 1 ✅ los 12 crons del Grupo A migrados a NestJS/AWS Fargate, auditados, en shadow** (ver sección «Backend dedicado de proceso largo»).
 > **Objetivo:** preparar Vence para escalar a 100k+ usuarios sin perder features ni romper nada
 > **Coste extra estimado total (Fases 0-3):** $10-40/mes
@@ -142,6 +142,7 @@ Sesión densa con avances en bloques 1+2 simultáneos. 5 commits, todos pasando 
 | `cc6513ae` | B1 | Runbook `docs/runbooks/cron-cutover-fargate.md` (criterio + procedimiento + rollback + checklist por cron) |
 | `f204f5ea` | B1 | Primera verificación del shadow vía CLI: 13/13 crons disparan según schedule, 0 errores reales, BOE 97% leyes |
 | `b1696f74` | B1 | Paso 1/2 del DROP COLUMN `global_dirty`: quitada lectura del endpoint `/api/admin/health` (bloqueante detectado en auditoría) |
+| _(post-push)_ | B1 | Paso 2/2 del DROP COLUMN `global_dirty`: tras validación activa (curl prod 200 OK sin `global_dirty_pending` en response a los 62s del push), migración `20260523_drop_global_dirty_column.sql` aplicada en 383ms con smoke verify dentro de la transacción. Fase 2-bis **cerrada al 100%** |
 
 ### Bloque 2 (higiene) — **cerrado al 95 %**
 
@@ -175,19 +176,24 @@ Trabajo no contemplado al principio pero que cierra el flanco de seguridad antes
 - Cuenta Vicohr (otro proyecto): `801945368851`, default local actual.
 - CI deploy del backend usa OIDC role `vence-backend-ci-deploy` (no necesita credenciales locales).
 
-### Fase 2-bis (DROP COLUMN `global_dirty`) — paso 1 de 2 completado
+### Fase 2-bis (DROP COLUMN `global_dirty`) — ✅ CERRADA 2026-05-23
 
 Tras auditoría de bloqueantes (no era "1 comando trivial" como yo presupuse — el usuario me paró a tiempo, ver memoria asociada):
 
-**Paso 1/2 ✅ hecho hoy (commit `b1696f74`):**
+**Paso 1/2 ✅ hecho (commit `b1696f74`):**
 - Endpoint `/api/admin/health` ya no lee `global_dirty` (5 referencias quitadas + comentario explicando el deprecation).
 - Bloqueante eliminado.
 
-**Paso 2/2 ⏳ pendiente próxima sesión (≥48h después del deploy de `b1696f74`, idealmente lun 26/05):**
-1. Verificar deploy a Vercel del paso 1 (endpoint health responde 200 sin errores en CloudWatch / Sentry).
-2. Verificar que las **50 filas con `global_dirty=true`** tienen su `global_difficulty` correctamente actualizado por el trigger nuevo (`apply_first_attempt_to_question_stats`). Si alguna no → recompute manual SQL one-shot ANTES del DROP.
-3. Aplicar migración `ALTER TABLE questions DROP COLUMN global_dirty CASCADE` (también dropea el índice parcial `idx_questions_global_dirty`).
-4. Smoke test post-drop: health endpoint OK + queries normales OK.
+**Paso 2/2 ✅ hecho mismo día tras validación activa (migración `20260523_drop_global_dirty_column.sql`):**
+1. ✅ Push de los 5 commits locales (incluido paso 1) → Vercel deployó en 62s.
+2. ✅ Validación activa en producción: `curl /api/admin/health` confirmó que el response ya no incluye `global_dirty_pending` ni `global_oldest_age_minutes`. Reemplaza al soak de 48h por calendario (memoria `feedback_validacion_activa_pre_canary`).
+3. ✅ 50 filas con `global_dirty=true` → las 50 con `global_difficulty` no-NULL (trigger nuevo apply_first_attempt_to_question_stats las cubre).
+4. ✅ Auditoría catálogo: la columna sólo cuelga de su `DEFAULT false` y del índice parcial `idx_questions_global_dirty`. CASCADE se los lleva.
+5. ✅ `ALTER TABLE questions DROP COLUMN global_dirty CASCADE` aplicado en 383ms. Smoke verify dentro de la transacción (DO block) confirmó columna + índice fuera.
+6. ✅ Comentario muerto en `track_question_first_attempt` limpiado en la misma migración (CREATE OR REPLACE).
+7. ✅ Smoke test post-drop: health endpoint 200 OK, `SELECT count(*) FROM questions WHERE is_active=true` = 89.912 OK, índice fuera, función sin referencias residuales a `global_dirty`.
+
+Tiempo total Paso 2: ~5 min (deploy 62s + drop 383ms + verificaciones).
 
 ---
 
@@ -198,7 +204,7 @@ Tras auditoría de bloqueantes (no era "1 comando trivial" como yo presupuse —
 | **0 — Estabilizar** | ✅ 6/7 hechas (falta 0.5 verificación p95). Fase 0.7 (JWT local verify) **COMPLETA server-side 2026-05-11** — MODE=on activo, 63+ endpoints migrados (32 directos + 31 vía wrappers refactorizados), latencia auth 250-1000ms → <5ms confirmada. Pendientes 5 archivos client-side (no bloqueantes) | 1 sem | $0 | Resuelve timeouts actuales | Cero |
 | **1 — Redis cache** | ✅ COMPLETA (2026-05-02) | 1-2 sem | $10 | -80% load BD | Bajo |
 | **2 — Outbox pattern** | 🟡 Infra (paso 0) hecha 2026-05-16 — tabla `outbox_events` + helper Drizzle `enqueueEvent(tx)` + worker `/api/cron/process-outbox` (advisory lock + dead-letter `attempts<10`) + GHA cron 5min. **Sin handlers**: tras audit, los 11 triggers actuales de `test_questions` son ligeros y no necesitan outbox. Infra queda lista para próximos casos síncronos pesados | 2-3 sem | $0 | Estabilidad escrituras | Medio |
-| **2-bis — Materialización `global_difficulty`** | ✅ **COMPLETA 2026-05-17**. Trigger AFTER INSERT en `question_first_attempts` re-agrega los 4 sums (self-healing). Cron viejo `recalc-global-difficulty` apagado: trigger viejo ya no marca `global_dirty`, función SQL droppeada, endpoint eliminado, entrada vercel.json removida, workflow GHA borrado. Resultado medido: 7 errores → 0, avg 1117ms → 493ms, 0 emails de fallo. Pendiente: DROP COLUMN `global_dirty` tras 48h (mié 2026-05-21) | 1 día | $0 | Elimina deadlocks/statement timeouts del cron, latencia 5min→inmediato | Cero (verificado) |
+| **2-bis — Materialización `global_difficulty`** | ✅ **COMPLETA 2026-05-23**. Trigger AFTER INSERT en `question_first_attempts` re-agrega los 4 sums (self-healing). Cron viejo `recalc-global-difficulty` apagado el 17/05, columna `global_dirty` + índice parcial dropeados el 23/05 (migración `20260523_drop_global_dirty_column.sql`) tras validación activa del paso 1 deployado. Resultado medido: 7 errores → 0, avg 1117ms → 493ms, 0 emails de fallo | 1 día | $0 | Elimina deadlocks/statement timeouts del cron, latencia 5min→inmediato | Cero (verificado) |
 | **2-ter — Hot path páginas/endpoints semi-estáticos** | ✅ **COMPLETA 2026-05-17**. `/teoria` migrado a `revalidate=3600` con Cache-Control SWR servido por CDN edge — 8 visitas post-deploy 100% HIT, max 11s→1.1s. `/api/ranking` materializado en tabla `ranking_cache` poblada por cron GHA `*/5min`, endpoint pasa de GROUP BY 9-12s a SELECT <100ms — simulación 10 visitas/10 lambdas 50-349ms, max 11s→349ms (32×). 38 SSR temarios `/[oposicion]/temario/[slug]` migrados a `revalidate=3600` — 30 visitas post-deploy, 0 timeouts ≥15s, p50 490ms, max 3s. Admin dashboard con Cache-Control privado 300s+SWR 600s — mitiga 504 sin sobre-ingeniería. Cero dependencia Vercel (Cache-Control + tabla SQL son portables a CloudFront/Cloudflare/Hetzner) | 1 día | $0 | Elimina cold starts visibles + 503 saturación, libera pool BD | Cero (verificado) |
 | **3 — Pool split / replica** | ✅ **COMPLETA (2026-05-09)** — `getDb` max:1 + `getAdminDb` max:4 + `getReadDb` apunta a read replica eu-west-2 (provisionada Small ~$15/mes). 3 endpoints migrados (theme-stats, problematic-articles, ranking). Feature flag `USE_READ_REPLICA` permite rollback 30s | 2-3 sem | ~$15/mes | Aislamiento OLTP + descarga lecturas del primary | Bajo |
 | **4 — Async queues** | ⏳ Pendiente | 1-2 sem | $0-20 | -50% writes BD principal | Medio |
