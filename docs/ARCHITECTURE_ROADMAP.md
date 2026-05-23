@@ -88,7 +88,7 @@ Sin esto, el resto se desordena. "Profesional" empieza por la disciplina, no por
 > **Audit técnico previo (2026-05-23):** ver [`docs/architecture/bloque3-audit-hot-path.md`](architecture/bloque3-audit-hot-path.md) — métricas reales 7d (errores, cascade frequency, co-ocurrencia), catálogo técnico de los 5 candidatos y orden de migración recomendado. Resumen: `medals` primero (canary, BAJA complejidad), `answer-and-save` segundo (KEYSTONE real, arrastra 8 endpoints en cascade), después `test-config` family, y `stats`+`daily-limit` últimos (ambos sanos, baja urgencia). El `/api/stats` p95 de 153s del audit inicial resultó ser **deuda histórica del 29/04 ya arreglada** (EXPLAIN ANALYZE 23/05 noche: 10 queries paralelas suman <200ms con user más heavy).
 >
 > **Decisiones de diseño cerradas (2026-05-23 noche):**
-> - **Exposición HTTP del backend**: ALB público + Route53 (`api.vence.es`) + ACM. Doc en [`bloque3-backend-url-pattern.md`](architecture/bloque3-backend-url-pattern.md). Coste ~$17-22/mes. Frontend consume con env `BACKEND_URL` + flags `NEXT_PUBLIC_USE_BACKEND_*` por endpoint (patrón validado de feature flag con fallback, igual que `USE_READ_REPLICA`).
+> - **Exposición HTTP del backend**: ALB público + DNS DonDominio (`api.vence.es`) + ACM. Doc en [`bloque3-backend-url-pattern.md`](architecture/bloque3-backend-url-pattern.md). Coste ~$17-22/mes. Frontend consume con env `BACKEND_URL` + flags `NEXT_PUBLIC_USE_BACKEND_*` por endpoint (patrón validado de feature flag con fallback, igual que `USE_READ_REPLICA`). **🟢 APLICADO 2026-05-23 noche** (commit `3c7624fe`): ALB + ACM + TG + listeners HTTPS/HTTP-redirect + SG rules creados. `https://api.vence.es/health` responde HTTPS/2 503 (TG vacío, esperado — se conecta al ECS service en sesión canary medals). Cert válido hasta dic 2026 con renovación automática ACM.
 > - **Adapter Redis cross-runtime**: backend NestJS usa el MISMO `@upstash/redis` REST que la app. Doc en [`bloque3-redis-cross-runtime.md`](architecture/bloque3-redis-cross-runtime.md). Cero divergencia semántica, cero pub/sub, invalidación coherente porque ambos leen del mismo Upstash. YAGNI: `ioredis` + in-memory cache si más adelante medimos que el round-trip REST es cuello.
 
 Mover los endpoints hot path (no todos — sólo los que cascadean) al backend NestJS detrás de feature flag. Lista candidata: `answer-and-save`, `daily-limit`, `medals`, `stats`, `test-config` family. **Es el bloque que más arregla y más libera a la vez:**
@@ -138,7 +138,7 @@ No urgen y no arreglan ningún bug. Hacerlos antes es trabajo prematuro:
 
 ## Sesión 2026-05-23 — cierre (snapshot para handoff)
 
-Sesión densa con avances en bloques 1+2+3 simultáneos. 9 commits, todos pasando pre-commit limpio (sin `--no-verify`). Estado actualizado de cada bloque al final.
+Sesión densa con avances en bloques 1+2+3 simultáneos. 11 commits, todos pasando pre-commit limpio (sin `--no-verify`). Estado actualizado de cada bloque al final. **Infra HTTP del Bloque 3 desplegada en producción** (ALB+ACM+DNS api.vence.es 🟢).
 
 ### Commits de la sesión
 
@@ -153,7 +153,8 @@ Sesión densa con avances en bloques 1+2+3 simultáneos. 9 commits, todos pasand
 | `0de93e6c` | B3 | Audit técnico pre-Bloque 3 con datos reales 7d: métricas (errores, cascade frequency, co-ocurrencia), catálogo técnico de los 5 candidatos hot path, orden de migración recomendado. Doc en [`docs/architecture/bloque3-audit-hot-path.md`](architecture/bloque3-audit-hot-path.md) |
 | `e0366d74` | B3 | EXPLAIN ANALYZE del p95 153s de `/api/stats` con el user más heavy del sistema (2.730 tests). Hallazgo: el p95 era **deuda histórica del 29/04** (pre-refactor `getRecentTests` a LEFT JOIN LATERAL); las 10 queries paralelas suman <200ms hoy. **`/api/stats` baja de MEDIA a BAJA prioridad** en Bloque 3 |
 | `7c5df454` | docs | Completar tabla commits sesión + header con audit B3 |
-| _(este commit)_ | B3 | **Pre-tareas Bloque 3 cerradas**: decisión BACKEND_URL (ALB + Route53 + ACM, `api.vence.es`, ~$17-22/mes) + adapter Redis cross-runtime (mismo `@upstash/redis` REST, sin pub/sub). Dos docs nuevos en `docs/architecture/`. Próximo paso real cuando arranque Bloque 3: Terraform apply (10 min, 0 impacto) → canary `/api/medals` |
+| `92a505f8` | B3 | **Pre-tareas Bloque 3 cerradas**: decisión BACKEND_URL (ALB + DonDominio + ACM, `api.vence.es`, ~$17-22/mes) + adapter Redis cross-runtime (mismo `@upstash/redis` REST, sin pub/sub). Dos docs nuevos en `docs/architecture/` |
+| `3c7624fe` | B3 | **Infra HTTP del backend LIVE**: `backend/infra/alb.tf` con ALB + ACM (DNS validation manual DonDominio) + TG (health `/health`) + listeners HTTPS:443 (TLS 1.3/1.2) + HTTP:80→301 + SG rules. ACM validado en 22s tras añadir CNAMEs. Smoke `https://api.vence.es/health` → HTTP/2 503 (TG vacío esperado) + cert válido `CN=api.vence.es` Amazon RSA 2048 M01 hasta dic 2026. Coste ~$17-22/mes ya activo. Próximo paso: conectar ECS service al TG + Nest /api/medals = sesión canary medals |
 
 ### Bloque 2 (higiene) — **cerrado al 95 %**
 
