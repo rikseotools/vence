@@ -15,8 +15,10 @@ locals {
   name = var.project
   # ARNs de los parámetros SSM con los secretos (se crean fuera de Terraform —
   # ver infra/README.md — para que el secreto NO entre en el estado de TF).
-  database_url_ssm_arn = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.database_url_ssm_name}"
-  cron_secret_ssm_arn  = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.cron_secret_ssm_name}"
+  database_url_ssm_arn         = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.database_url_ssm_name}"
+  cron_secret_ssm_arn          = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.cron_secret_ssm_name}"
+  upstash_url_ssm_arn          = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/UPSTASH_REDIS_REST_URL"
+  upstash_token_ssm_arn        = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/UPSTASH_REDIS_REST_TOKEN"
 }
 
 # ============================================================
@@ -91,6 +93,12 @@ resource "aws_iam_role_policy" "task_execution_secrets" {
         Effect   = "Allow"
         Action   = ["ssm:GetParameters"]
         Resource = [local.database_url_ssm_arn, local.cron_secret_ssm_arn]
+        # NOTA (2026-05-23): los SSM params UPSTASH_REDIS_REST_URL/TOKEN existen
+        # pero NO se referencian aquí porque el user claude-cli (PowerUserAccess)
+        # no tiene iam:PutRolePolicy. Cuando se resuelva, añadir
+        # upstash_url_ssm_arn + upstash_token_ssm_arn aquí y en el secrets block
+        # de la task definition de abajo. Mientras tanto el backend opera SIN
+        # cache (CacheService detecta env vars vacías y bypass total).
       },
       {
         Effect   = "Allow"
@@ -174,6 +182,8 @@ resource "aws_ecs_task_definition" "backend" {
       secrets = [
         { name = "DATABASE_URL", valueFrom = local.database_url_ssm_arn },
         { name = "CRON_SECRET", valueFrom = local.cron_secret_ssm_arn },
+        # UPSTASH_REDIS_REST_URL/TOKEN: pendientes — ver comentario en
+        # aws_iam_role_policy.task_execution_secrets arriba.
       ]
       portMappings = [{ containerPort = 3000, protocol = "tcp" }]
       logConfiguration = {
@@ -200,6 +210,19 @@ resource "aws_ecs_service" "backend" {
     security_groups  = [aws_security_group.backend.id]
     assign_public_ip = true # subred pública por defecto, sin NAT gateway
   }
+
+  # ─── Bloque 3 canary — PENDIENTE ───────────────────────────
+  # El load_balancer block (conexión al TG del ALB) está pendiente porque
+  # cualquier cambio del aws_ecs_task_definition exige iam:PassRole que
+  # claude-cli (PowerUserAccess) no tiene. Ver issue infra-iam-passrole.
+  # Cuando se resuelva el permiso, descomentar este bloque + apply.
+  #
+  # load_balancer {
+  #   target_group_arn = aws_lb_target_group.backend.arn
+  #   container_name   = "backend"
+  #   container_port   = 3000
+  # }
+  # health_check_grace_period_seconds = 60
 
   # El CI actualiza la imagen vía `update-service --force-new-deployment`;
   # no dejar que Terraform revierta el tag desplegado.
