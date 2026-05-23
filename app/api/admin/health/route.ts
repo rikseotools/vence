@@ -32,9 +32,7 @@ interface HealthMetrics {
     }
     queues: {
       stats_dirty_pending: number
-      global_dirty_pending: number
       stats_oldest_age_minutes: number | null
-      global_oldest_age_minutes: number | null
     }
     crons: Array<{
       cron_name: string
@@ -99,13 +97,16 @@ async function _GET(request: NextRequest): Promise<NextResponse<HealthMetrics | 
         FROM pg_stat_activity WHERE datname = current_database()
       `),
       // Dirty queues
+      // NOTA (2026-05-23): la columna global_dirty quedó obsoleta tras la
+      // Fase 2-bis (trigger nuevo apply_first_attempt_to_question_stats
+      // recalcula global_difficulty incremental). El DROP COLUMN está
+      // pendiente — esta query ya no la lee para no romper cuando se
+      // dropee. Ver docs/ARCHITECTURE_ROADMAP.md sección Fase 2-bis.
       db.execute(sql`
         SELECT
           count(*) FILTER (WHERE stats_dirty = true) AS stats_pending,
-          count(*) FILTER (WHERE global_dirty = true) AS global_pending,
-          EXTRACT(EPOCH FROM (now() - min(updated_at) FILTER (WHERE stats_dirty = true)))::int / 60 AS stats_oldest_min,
-          EXTRACT(EPOCH FROM (now() - min(updated_at) FILTER (WHERE global_dirty = true)))::int / 60 AS global_oldest_min
-        FROM questions WHERE stats_dirty = true OR global_dirty = true
+          EXTRACT(EPOCH FROM (now() - min(updated_at) FILTER (WHERE stats_dirty = true)))::int / 60 AS stats_oldest_min
+        FROM questions WHERE stats_dirty = true
       `),
       // Crons: último run + agregados última hora por cron
       db.execute(sql`
@@ -168,8 +169,7 @@ async function _GET(request: NextRequest): Promise<NextResponse<HealthMetrics | 
 
     const dbLatency = Date.now() - t0
     const statsPending = Number(dirtyRow?.stats_pending ?? 0)
-    const globalPending = Number(dirtyRow?.global_pending ?? 0)
-    const totalDirty = statsPending + globalPending
+    const totalDirty = statsPending
 
     // Determinar status global
     let status: 'ok' | 'degraded' | 'critical' = 'ok'
@@ -198,9 +198,7 @@ async function _GET(request: NextRequest): Promise<NextResponse<HealthMetrics | 
         },
         queues: {
           stats_dirty_pending: statsPending,
-          global_dirty_pending: globalPending,
           stats_oldest_age_minutes: dirtyRow?.stats_oldest_min != null ? Number(dirtyRow.stats_oldest_min) : null,
-          global_oldest_age_minutes: dirtyRow?.global_oldest_min != null ? Number(dirtyRow.global_oldest_min) : null,
         },
         crons: cronsRows.map(r => ({
           cron_name: String(r.cron_name),
