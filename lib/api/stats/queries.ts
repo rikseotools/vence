@@ -1,12 +1,28 @@
-// lib/api/stats/queries.ts - Queries optimizadas para estadísticas de usuario
-// CANARY pooler (sweep masivo oleada 5 — todos user-facing 2026-05-10):
-import { getDb, getPoolerDb } from '@/db/client'
+// lib/api/stats/queries.ts
+//
+// Queries para /api/stats. Lee de tablas materializadas mantenidas por
+// triggers sobre test_questions/tests — lookup PK <10ms en lugar de
+// scan. Tablas materializadas:
+//   - user_stats_summary       (main stats + total_time + total_tests)
+//   - user_difficulty_stats    (por difficulty)
+//   - user_hourly_stats        (por hora)
+//   - user_article_stats       (por artículo)
+//   - user_daily_stats         (por día)
+//
+// Cutover v1→v2 completado 2026-05-23 — ver docs/ARCHITECTURE_ROADMAP.md
+// sección "Validación activa pre-canary" para la story del canary y el
+// bug del trigger que detectó el cron de drift.
+//
+// Lo que NO está materializado y se calcula ad-hoc:
+//   - bestScore             (MAX query, Bitmap Index Scan ~3ms)
+//   - averageSessionMinutes (AVG sobre tests, ~3ms)
+//   - getRecentTests, getThemePerformance, getStreakData,
+//     getUserOposicion, getUserSessionsData (cada una tiene su patrón:
+//     lookup PK, cache write-through, o tabla pequeña).
 
-function getStatsDb() {
-  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
-}
-import { tests, testQuestions, userStreaks, userProfiles, oposiciones, userSessions, topics } from '@/db/schema'
-import { eq, and, desc, sql, gte, isNotNull } from 'drizzle-orm'
+import { getDb, getPoolerDb } from '@/db/client'
+import { tests, testQuestions, userStreaks, userProfiles, oposiciones, userSessions } from '@/db/schema'
+import { eq, and, desc, sql, isNotNull } from 'drizzle-orm'
 import type {
   GetUserStatsResponse,
   MainStats,
@@ -18,22 +34,14 @@ import type {
   ArticlePerformance,
   UserOposicion,
 } from './schemas'
-// Reescritura v2 detrás de feature flag — fix de fondo de /api/stats
-// (incidente 22/05). Default: v1 sigue activo. Ver
-// docs/ARCHITECTURE_ROADMAP.md sección ADR triggers SQL vs outbox/worker.
-import {
-  getMainStatsV2,
-  getDifficultyBreakdownV2,
-  getTimePatternsV2,
-  getArticleStatsV2,
-  getWeeklyProgressV2,
-  shouldUseMaterializedStatsFor,
-} from './queries-v2'
 
-// Cache en memoria — desactivado para UX inmediata (el usuario espera ver su test recién completado)
-// Las 10 queries paralelas tardan ~200ms, no necesita caché
+function getStatsDb() {
+  return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
+}
+
+// Cache en memoria — desactivado para UX inmediata (el usuario espera ver su test recién completado).
 const statsCache = new Map<string, { data: GetUserStatsResponse; timestamp: number }>()
-const CACHE_TTL = 0 // Sin caché — datos siempre frescos
+const CACHE_TTL = 0
 
 /**
  * Write-through cache: guarda el resultado calculado en tiempo real
@@ -87,16 +95,13 @@ async function writeThemePerformanceToCache(
 
 export async function getUserStats(userId: string): Promise<GetUserStatsResponse> {
   try {
-    // Verificar cache
     const cached = statsCache.get(userId)
     if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
       return { ...cached.data, cached: true }
     }
 
-    // Ejecutar queries Drizzle en paralelo (8 stats + userOposicion)
     const response = await getUserStatsWithDrizzle(userId)
 
-    // Guardar en cache
     statsCache.set(userId, { data: response, timestamp: Date.now() })
 
     return response
@@ -109,42 +114,12 @@ export async function getUserStats(userId: string): Promise<GetUserStatsResponse
   }
 }
 
-// Helper functions
-function getDayName(date: Date): string {
-  const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
-  return dayNames[date.getDay()]
-}
-
-function getBestHours(hourlyData: Array<{hour: number, questions: number, accuracy: number}>): number[] {
-  return hourlyData
-    .filter(h => h.questions >= 10)
-    .sort((a, b) => b.accuracy - a.accuracy)
-    .slice(0, 3)
-    .map(h => h.hour)
-}
-
-function getWorstHours(hourlyData: Array<{hour: number, questions: number, accuracy: number}>): number[] {
-  return hourlyData
-    .filter(h => h.questions >= 10)
-    .sort((a, b) => a.accuracy - b.accuracy)
-    .slice(0, 3)
-    .map(h => h.hour)
-}
-
-// Queries Drizzle en paralelo (9 queries: 8 stats + userOposicion)
+// Queries Drizzle en paralelo (10 queries: 8 stats + userOposicion + userSessions)
 async function getUserStatsWithDrizzle(userId: string): Promise<GetUserStatsResponse> {
   const db = getStatsDb()
   const now = new Date()
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
 
-  // Conmutador v1/v2. shouldUseMaterializedStatsFor lee:
-  //   - USE_MATERIALIZED_STATS=true|false (override global)
-  //   - USE_MATERIALIZED_STATS_PCT=0..100 (canary por hash determinista
-  //     del user_id)
-  // Default: false → v1 sigue activo hasta confirmación.
-  const useMaterialized = shouldUseMaterializedStatsFor(userId)
-
-  // Ejecutar todas las queries en paralelo
   const [
     mainStats,
     weeklyProgress,
@@ -157,26 +132,24 @@ async function getUserStatsWithDrizzle(userId: string): Promise<GetUserStatsResp
     userOposicion,
     userSessionsData,
   ] = await Promise.all([
-    useMaterialized ? getMainStatsV2(db, userId) : getMainStats(db, userId),
-    useMaterialized ? getWeeklyProgressV2(db, userId, thirtyDaysAgo) : getWeeklyProgress(db, userId, thirtyDaysAgo),
+    getMainStats(db, userId),
+    getWeeklyProgress(db, userId, thirtyDaysAgo),
     getRecentTests(db, userId),
     getThemePerformance(db, userId),
-    useMaterialized ? getDifficultyBreakdownV2(db, userId) : getDifficultyBreakdown(db, userId),
-    useMaterialized ? getTimePatternsV2(db, userId) : getTimePatterns(db, userId),
-    useMaterialized ? getArticleStatsV2(db, userId) : getArticleStats(db, userId),
+    getDifficultyBreakdown(db, userId),
+    getTimePatterns(db, userId),
+    getArticleStats(db, userId),
     getStreakData(db, userId),
     getUserOposicion(db, userId),
     getUserSessionsData(db, userId),
   ])
 
-  // Combinar streak data con main stats
   const combinedMainStats: MainStats = {
     ...mainStats,
     currentStreak: streakData?.currentStreak ?? 0,
     longestStreak: streakData?.longestStreak ?? 0,
   }
 
-  // Separar artículos fuertes y débiles
   const weakArticles = articleStats.filter(a => a.accuracy < 60).slice(0, 10)
   const strongArticles = articleStats.filter(a => a.accuracy >= 80).slice(0, 10)
 
@@ -199,101 +172,254 @@ async function getUserStatsWithDrizzle(userId: string): Promise<GetUserStatsResp
   }
 }
 
-// ============================================
-// QUERIES INDIVIDUALES OPTIMIZADAS
-// ============================================
+// ════════════════════════════════════════════════════════════════════
+// QUERIES DE STATS MATERIALIZADAS
+// ════════════════════════════════════════════════════════════════════
 
-async function getMainStats(db: ReturnType<typeof getDb>, userId: string): Promise<Omit<MainStats, 'currentStreak' | 'longestStreak'>> {
-  // Una sola query con agregaciones SQL
-  const result = await db
-    .select({
-      totalTests: sql<number>`COUNT(DISTINCT ${tests.id})::int`,
-      totalQuestions: sql<number>`COUNT(${testQuestions.id})::int`,
-      correctAnswers: sql<number>`SUM(CASE WHEN ${testQuestions.isCorrect} THEN 1 ELSE 0 END)::int`,
-      totalTimeSeconds: sql<number>`COALESCE(SUM(${testQuestions.timeSpentSeconds}), 0)::int`,
-      avgTimePerQuestion: sql<number>`COALESCE(AVG(${testQuestions.timeSpentSeconds}), 0)::float`,
-    })
-    .from(testQuestions)
-    .innerJoin(tests, eq(testQuestions.testId, tests.id))
-    .where(and(
-      eq(tests.userId, userId),
-      eq(tests.isCompleted, true)
-    ))
+// ─── getMainStats ───
+// Lee user_stats_summary (lookup PK) + bestScore ad-hoc sobre tests.
 
-  const stats = result[0] || {
-    totalTests: 0,
-    totalQuestions: 0,
-    correctAnswers: 0,
-    totalTimeSeconds: 0,
-    avgTimePerQuestion: 0,
-  }
+async function getMainStats(
+  db: ReturnType<typeof getDb>,
+  userId: string,
+): Promise<Omit<MainStats, 'currentStreak' | 'longestStreak'>> {
+  // user_stats_summary aún no está en db/schema.ts (drizzle-kit
+  // introspect pendiente); SQL raw mientras tanto.
+  const summary = await db.execute(sql`
+    SELECT
+      COALESCE(total_questions, 0)::int      AS total_questions,
+      COALESCE(correct_answers, 0)::int      AS correct_answers,
+      COALESCE(total_tests, 0)::int          AS total_tests,
+      COALESCE(total_time_seconds, 0)        AS total_time_seconds
+    FROM user_stats_summary
+    WHERE user_id = ${userId}::uuid
+    LIMIT 1
+  `) as unknown as Array<{
+    total_questions: number
+    correct_answers: number
+    total_tests: number
+    total_time_seconds: string | number
+  }>
 
-  // Obtener mejor puntuación
+  const row = summary[0]
+  const totalQuestions = row?.total_questions ?? 0
+  const correctAnswers = row?.correct_answers ?? 0
+  const totalTests = row?.total_tests ?? 0
+  const totalTimeSeconds = Number(row?.total_time_seconds ?? 0)
+
+  // bestScore: query ad-hoc (Bitmap Index Scan, ~3ms). No se
+  // materializa porque MAX no es incrementalmente mantenible (un test
+  // que se "des-completa" requeriría recalcular el MAX).
   const bestScoreResult = await db
     .select({
-      bestScore: sql<number>`MAX(CASE WHEN ${tests.totalQuestions} > 0
+      bestScore: sql<number>`COALESCE(MAX(CASE WHEN ${tests.totalQuestions} > 0
         THEN (${tests.score}::float / ${tests.totalQuestions} * 100)
-        ELSE 0 END)::int`,
+        ELSE 0 END), 0)::int`,
     })
     .from(tests)
     .where(and(
       eq(tests.userId, userId),
-      eq(tests.isCompleted, true)
+      eq(tests.isCompleted, true),
     ))
 
-  const accuracy = stats.totalQuestions > 0
-    ? Math.round((stats.correctAnswers / stats.totalQuestions) * 100)
+  const accuracy = totalQuestions > 0
+    ? Math.round((correctAnswers / totalQuestions) * 100)
+    : 0
+
+  const averageTimePerQuestion = totalQuestions > 0
+    ? Math.round(totalTimeSeconds / totalQuestions)
     : 0
 
   return {
-    totalTests: stats.totalTests,
-    totalQuestions: stats.totalQuestions,
-    correctAnswers: stats.correctAnswers,
+    totalTests,
+    totalQuestions,
+    correctAnswers,
     accuracy,
-    totalStudyTimeSeconds: stats.totalTimeSeconds,
-    averageTimePerQuestion: Math.round(stats.avgTimePerQuestion),
+    totalStudyTimeSeconds: totalTimeSeconds,
+    averageTimePerQuestion,
     bestScore: bestScoreResult[0]?.bestScore || 0,
   }
 }
 
+// ─── getDifficultyBreakdown ───
+// Lee user_difficulty_stats (PK lookup). Max 4 filas por user. <1ms.
+
+async function getDifficultyBreakdown(
+  db: ReturnType<typeof getDb>,
+  userId: string,
+): Promise<DifficultyBreakdown[]> {
+  const result = await db.execute(sql`
+    SELECT
+      difficulty,
+      total_questions::int   AS total_questions,
+      correct_answers::int   AS correct_answers,
+      total_time_seconds     AS total_time_seconds
+    FROM user_difficulty_stats
+    WHERE user_id = ${userId}::uuid
+  `) as unknown as Array<{
+    difficulty: string
+    total_questions: number
+    correct_answers: number
+    total_time_seconds: string | number
+  }>
+
+  return result.map(row => {
+    const total = row.total_questions
+    const correct = row.correct_answers
+    const totalTime = Number(row.total_time_seconds)
+    return {
+      difficulty: row.difficulty,
+      totalQuestions: total,
+      correctAnswers: correct,
+      accuracy: total > 0 ? Math.round((correct / total) * 100) : 0,
+      // averageTime ≈ AVG(time_spent_seconds) porque
+      // test_questions.time_spent_seconds tiene 0 NULLs en producción
+      // (verificado 23/05/2026: 1.220.927 filas, 0 NULLs).
+      averageTime: total > 0 ? Math.round(totalTime / total) : 0,
+    }
+  })
+}
+
+// ─── getTimePatterns ───
+// hourlyDistribution: lee user_hourly_stats (lookup PK, max 24 filas).
+// averageSessionMinutes: ad-hoc sobre tests — NO se materializa porque
+// tests.total_time_seconds diverge 200% de SUM(tq.time_spent_seconds) en
+// producción. Mantener ad-hoc preserva compatibilidad exacta con UX
+// previa.
+
+async function getTimePatterns(
+  db: ReturnType<typeof getDb>,
+  userId: string,
+): Promise<TimePatterns> {
+  const hourlyResult = await db.execute(sql`
+    SELECT
+      hour::int               AS hour,
+      total_questions::int    AS questions,
+      correct_answers::int    AS correct
+    FROM user_hourly_stats
+    WHERE user_id = ${userId}::uuid
+    ORDER BY hour
+  `) as unknown as Array<{ hour: number; questions: number; correct: number }>
+
+  const hourlyDistribution = hourlyResult.map(row => ({
+    hour: row.hour,
+    questions: row.questions,
+    accuracy: row.questions > 0 ? Math.round((row.correct / row.questions) * 100) : 0,
+  }))
+
+  const significantHours = hourlyDistribution.filter(h => h.questions >= 10)
+  const sortedByAccuracy = [...significantHours].sort((a, b) => b.accuracy - a.accuracy)
+
+  const bestHours = sortedByAccuracy.slice(0, 3).map(h => h.hour)
+  const worstHours = sortedByAccuracy.slice(-3).map(h => h.hour)
+
+  const sessionResult = await db
+    .select({
+      avgMinutes: sql<number>`COALESCE(AVG(${tests.totalTimeSeconds}) / 60, 0)::float`,
+    })
+    .from(tests)
+    .where(and(
+      eq(tests.userId, userId),
+      eq(tests.isCompleted, true),
+    ))
+
+  return {
+    hourlyDistribution,
+    bestHours,
+    worstHours,
+    averageSessionMinutes: Math.round(sessionResult[0]?.avgMinutes || 0),
+  }
+}
+
+// ─── getArticleStats ───
+// Lee user_article_stats con filtro total_questions >= 2 (igual que v1).
+
+async function getArticleStats(
+  db: ReturnType<typeof getDb>,
+  userId: string,
+): Promise<ArticlePerformance[]> {
+  const result = await db.execute(sql`
+    SELECT
+      article_id            AS "articleId",
+      article_number        AS "articleNumber",
+      law_name              AS "lawName",
+      tema_number           AS "temaNumber",
+      total_questions::int  AS "totalQuestions",
+      correct_answers::int  AS "correctAnswers"
+    FROM user_article_stats
+    WHERE user_id = ${userId}::uuid
+      AND total_questions >= 2
+    ORDER BY (correct_answers::float / total_questions) ASC
+  `) as unknown as Array<{
+    articleId: string | null
+    articleNumber: string | null
+    lawName: string | null
+    temaNumber: number | null
+    totalQuestions: number
+    correctAnswers: number
+  }>
+
+  return result.map(row => ({
+    articleId: row.articleId,
+    articleNumber: row.articleNumber,
+    lawName: row.lawName,
+    temaNumber: row.temaNumber,
+    totalQuestions: row.totalQuestions,
+    correctAnswers: row.correctAnswers,
+    accuracy: row.totalQuestions > 0
+      ? Math.round((row.correctAnswers / row.totalQuestions) * 100)
+      : 0,
+  }))
+}
+
+// ─── getWeeklyProgress ───
+// Lee user_daily_stats con filtro day >= since::date. Índice
+// (user_id, day DESC) sirve sin sort.
+
 async function getWeeklyProgress(
   db: ReturnType<typeof getDb>,
   userId: string,
-  since: Date
+  since: Date,
 ): Promise<WeeklyProgress[]> {
-  const result = await db
-    .select({
-      date: sql<string>`DATE(${testQuestions.createdAt} AT TIME ZONE 'Europe/Madrid')::text`,
-      questions: sql<number>`COUNT(*)::int`,
-      correct: sql<number>`SUM(CASE WHEN ${testQuestions.isCorrect} THEN 1 ELSE 0 END)::int`,
-      studySeconds: sql<number>`COALESCE(SUM(${testQuestions.timeSpentSeconds}), 0)::int`,
-    })
-    .from(testQuestions)
-    .innerJoin(tests, eq(testQuestions.testId, tests.id))
-    .where(and(
-      eq(tests.userId, userId),
-      gte(testQuestions.createdAt, since.toISOString())
-    ))
-    .groupBy(sql`DATE(${testQuestions.createdAt} AT TIME ZONE 'Europe/Madrid')`)
-    .orderBy(sql`DATE(${testQuestions.createdAt} AT TIME ZONE 'Europe/Madrid')`)
+  const sinceDate = since.toISOString().slice(0, 10)
+  const result = await db.execute(sql`
+    SELECT
+      to_char(day, 'YYYY-MM-DD')   AS date,
+      total_questions::int          AS questions,
+      correct_answers::int          AS correct,
+      total_time_seconds            AS study_seconds
+    FROM user_daily_stats
+    WHERE user_id = ${userId}::uuid
+      AND day >= ${sinceDate}::date
+    ORDER BY day
+  `) as unknown as Array<{
+    date: string
+    questions: number
+    correct: number
+    study_seconds: string | number
+  }>
 
   const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 
   return result.map(row => {
     const date = new Date(row.date)
+    const studySeconds = Number(row.study_seconds)
     return {
-      day: dayNames[date.getDay()],
+      day: dayNames[date.getUTCDay()],
       date: row.date,
       questions: row.questions,
       correct: row.correct,
       accuracy: row.questions > 0 ? Math.round((row.correct / row.questions) * 100) : 0,
-      studyMinutes: Math.round(row.studySeconds / 60),
+      studyMinutes: Math.round(studySeconds / 60),
     }
   })
 }
 
+// ════════════════════════════════════════════════════════════════════
+// QUERIES NO MATERIALIZADAS (lookup PK directo o cache write-through)
+// ════════════════════════════════════════════════════════════════════
+
 async function getRecentTests(db: ReturnType<typeof getDb>, userId: string): Promise<RecentTest[]> {
-  // Obtener positionType del usuario para resolver el título del tema
   const profileRow = await db
     .select({ targetOposicion: userProfiles.targetOposicion })
     .from(userProfiles)
@@ -301,12 +427,8 @@ async function getRecentTests(db: ReturnType<typeof getDb>, userId: string): Pro
     .limit(1)
   const positionType = profileRow[0]?.targetOposicion?.replace(/-/g, '_') || 'auxiliar_administrativo_estado'
 
-  // Query principal con LEFT JOIN LATERAL a topics y test_questions
-  // Antes: 3 subqueries correladas (8.4s media por user con 55k filas).
-  // Ahora: LEFT JOIN LATERAL con Memoize de PostgreSQL (1.8ms). Misma lógica:
-  // - Prioriza el position_type del usuario para el título del tema
-  // - Fallback a otra oposición si el tema no existe en la del usuario
-  // - law_name de la primera test_question del test
+  // Query con LEFT JOIN LATERAL a topics y test_questions (Memoize de
+  // PostgreSQL — 1.8ms vs 8.4s de subqueries correladas).
   const result = await db.execute(
     sql`SELECT
       tests.id, tests.title, tests.tema_number as "temaNumber",
@@ -355,7 +477,6 @@ async function getRecentTests(db: ReturnType<typeof getDb>, userId: string): Pro
 }
 
 async function getThemePerformance(db: ReturnType<typeof getDb>, userId: string): Promise<ThemePerformance[]> {
-  // Obtener positionType del usuario para resolver títulos de temas
   const profileRow = await db
     .select({ targetOposicion: userProfiles.targetOposicion })
     .from(userProfiles)
@@ -363,8 +484,8 @@ async function getThemePerformance(db: ReturnType<typeof getDb>, userId: string)
     .limit(1)
   const positionType = profileRow[0]?.targetOposicion?.replace(/-/g, '_') || 'auxiliar_administrativo_estado'
 
-  // Leer de caché con LEFT JOIN LATERAL a topics para obtener título y position_type reales
-  // Antes: 2 subqueries correladas por fila. Ahora: LEFT JOIN LATERAL con Memoize.
+  // Leer de caché con LEFT JOIN LATERAL a topics (Memoize) para
+  // resolver título y position_type reales.
   try {
     const cacheResult = await db.execute(
       sql`SELECT
@@ -395,13 +516,11 @@ async function getThemePerformance(db: ReturnType<typeof getDb>, userId: string)
         lastPracticed: row.last_practiced,
       }))
     }
-
-    // Si no hay caché, caer al fallback Drizzle directamente
   } catch (error) {
     console.warn('⚠️ Error leyendo caché de theme performance:', error)
   }
 
-  // Fallback al método antiguo si la función no existe
+  // Fallback Drizzle si la caché está vacía
   const result = await db
     .select({
       temaNumber: testQuestions.temaNumber,
@@ -431,110 +550,6 @@ async function getThemePerformance(db: ReturnType<typeof getDb>, userId: string)
     }))
 }
 
-async function getDifficultyBreakdown(db: ReturnType<typeof getDb>, userId: string): Promise<DifficultyBreakdown[]> {
-  const result = await db
-    .select({
-      difficulty: testQuestions.difficulty,
-      totalQuestions: sql<number>`COUNT(*)::int`,
-      correctAnswers: sql<number>`SUM(CASE WHEN ${testQuestions.isCorrect} THEN 1 ELSE 0 END)::int`,
-      averageTime: sql<number>`COALESCE(AVG(${testQuestions.timeSpentSeconds}), 0)::float`,
-    })
-    .from(testQuestions)
-    .innerJoin(tests, eq(testQuestions.testId, tests.id))
-    .where(and(
-      eq(tests.userId, userId),
-      isNotNull(testQuestions.difficulty)
-    ))
-    .groupBy(testQuestions.difficulty)
-
-  return result
-    .filter(row => row.difficulty !== null)
-    .map(row => ({
-      difficulty: row.difficulty!,
-      totalQuestions: row.totalQuestions,
-      correctAnswers: row.correctAnswers,
-      accuracy: row.totalQuestions > 0 ? Math.round((row.correctAnswers / row.totalQuestions) * 100) : 0,
-      averageTime: Math.round(row.averageTime),
-    }))
-}
-
-async function getTimePatterns(db: ReturnType<typeof getDb>, userId: string): Promise<TimePatterns> {
-  // Distribución por hora
-  const hourlyResult = await db
-    .select({
-      hour: sql<number>`EXTRACT(HOUR FROM ${testQuestions.createdAt} AT TIME ZONE 'Europe/Madrid')::int`,
-      questions: sql<number>`COUNT(*)::int`,
-      correct: sql<number>`SUM(CASE WHEN ${testQuestions.isCorrect} THEN 1 ELSE 0 END)::int`,
-    })
-    .from(testQuestions)
-    .innerJoin(tests, eq(testQuestions.testId, tests.id))
-    .where(eq(tests.userId, userId))
-    .groupBy(sql`EXTRACT(HOUR FROM ${testQuestions.createdAt} AT TIME ZONE 'Europe/Madrid')`)
-    .orderBy(sql`EXTRACT(HOUR FROM ${testQuestions.createdAt} AT TIME ZONE 'Europe/Madrid')`)
-
-  const hourlyDistribution = hourlyResult.map(row => ({
-    hour: row.hour,
-    questions: row.questions,
-    accuracy: row.questions > 0 ? Math.round((row.correct / row.questions) * 100) : 0,
-  }))
-
-  // Identificar mejores y peores horas (mínimo 10 preguntas para ser significativo)
-  const significantHours = hourlyDistribution.filter(h => h.questions >= 10)
-  const sortedByAccuracy = [...significantHours].sort((a, b) => b.accuracy - a.accuracy)
-
-  const bestHours = sortedByAccuracy.slice(0, 3).map(h => h.hour)
-  const worstHours = sortedByAccuracy.slice(-3).map(h => h.hour)
-
-  // Duración promedio de sesión (aproximada)
-  const sessionResult = await db
-    .select({
-      avgMinutes: sql<number>`COALESCE(AVG(${tests.totalTimeSeconds}) / 60, 0)::float`,
-    })
-    .from(tests)
-    .where(and(
-      eq(tests.userId, userId),
-      eq(tests.isCompleted, true)
-    ))
-
-  return {
-    hourlyDistribution,
-    bestHours,
-    worstHours,
-    averageSessionMinutes: Math.round(sessionResult[0]?.avgMinutes || 0),
-  }
-}
-
-async function getArticleStats(db: ReturnType<typeof getDb>, userId: string): Promise<ArticlePerformance[]> {
-  const result = await db
-    .select({
-      articleId: testQuestions.articleId,
-      articleNumber: testQuestions.articleNumber,
-      lawName: testQuestions.lawName,
-      temaNumber: testQuestions.temaNumber,
-      totalQuestions: sql<number>`COUNT(*)::int`,
-      correctAnswers: sql<number>`SUM(CASE WHEN ${testQuestions.isCorrect} THEN 1 ELSE 0 END)::int`,
-    })
-    .from(testQuestions)
-    .innerJoin(tests, eq(testQuestions.testId, tests.id))
-    .where(and(
-      eq(tests.userId, userId),
-      isNotNull(testQuestions.articleNumber)
-    ))
-    .groupBy(testQuestions.articleId, testQuestions.articleNumber, testQuestions.lawName, testQuestions.temaNumber)
-    .having(sql`COUNT(*) >= 2`) // Mínimo 2 preguntas para ser significativo
-    .orderBy(sql`SUM(CASE WHEN ${testQuestions.isCorrect} THEN 1 ELSE 0 END)::float / COUNT(*)`)
-
-  return result.map(row => ({
-    articleId: row.articleId,
-    articleNumber: row.articleNumber,
-    lawName: row.lawName,
-    temaNumber: row.temaNumber,
-    totalQuestions: row.totalQuestions,
-    correctAnswers: row.correctAnswers,
-    accuracy: row.totalQuestions > 0 ? Math.round((row.correctAnswers / row.totalQuestions) * 100) : 0,
-  }))
-}
-
 async function getStreakData(db: ReturnType<typeof getDb>, userId: string) {
   const result = await db
     .select({
@@ -548,13 +563,8 @@ async function getStreakData(db: ReturnType<typeof getDb>, userId: string) {
   return result[0] || null
 }
 
-// ============================================
-// OBTENER OPOSICIÓN DEL USUARIO
-// ============================================
-
 async function getUserOposicion(db: ReturnType<typeof getDb>, userId: string): Promise<UserOposicion | null> {
   try {
-    // Obtener el perfil del usuario con su nombre, oposición objetivo y fecha de registro
     const profileResult = await db
       .select({
         fullName: userProfiles.fullName,
@@ -567,16 +577,13 @@ async function getUserOposicion(db: ReturnType<typeof getDb>, userId: string): P
       .limit(1)
 
     const profile = profileResult[0]
-    // Normalizar slug: convertir guiones bajos a guiones normales
     const targetOposicion = profile?.targetOposicion?.replace(/_/g, '-') || null
 
-    // Calcular días desde registro (para predicciones de estudio)
     const daysSinceJoin = profile?.createdAt
       ? Math.max(1, Math.ceil((Date.now() - new Date(profile.createdAt).getTime()) / (1000 * 60 * 60 * 24)))
-      : 30 // Default 30 días si no hay fecha
+      : 30
 
     if (!targetOposicion) {
-      // Devolver al menos el nombre del usuario y días desde registro
       return {
         userName: profile?.fullName || null,
         gender: (profile?.gender as 'male' | 'female' | 'other' | 'prefer_not_say' | null) || null,
@@ -597,7 +604,6 @@ async function getUserOposicion(db: ReturnType<typeof getDb>, userId: string): P
       }
     }
 
-    // Buscar la oposición por slug
     const oposicionResult = await db
       .select({
         slug: oposiciones.slug,
@@ -650,7 +656,7 @@ async function getUserOposicion(db: ReturnType<typeof getDb>, userId: string): P
       examDate: oposicion.examDate,
       examDateApproximate: oposicion.examDateApproximate ?? false,
       inscriptionDeadline: oposicion.inscriptionDeadline,
-      plazas: (oposicion.plazasLibres || 0) + (oposicion.plazasPromocionInterna || 0), // Total
+      plazas: (oposicion.plazasLibres || 0) + (oposicion.plazasPromocionInterna || 0),
       plazasLibres: oposicion.plazasLibres || 0,
       plazasPromocionInterna: oposicion.plazasPromocionInterna || 0,
       temasCount: oposicion.temasCount,
@@ -665,10 +671,6 @@ async function getUserOposicion(db: ReturnType<typeof getDb>, userId: string): P
     return null
   }
 }
-
-// ============================================
-// SESIONES DE USUARIO
-// ============================================
 
 async function getUserSessionsData(db: ReturnType<typeof getDb>, userId: string) {
   try {

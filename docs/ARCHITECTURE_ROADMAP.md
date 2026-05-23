@@ -1474,6 +1474,22 @@ Sustituido el plan original de "esperar 1+ día de soak silencioso + primera eje
 
 **Estado post-sesión:** todo listo para activar `USE_MATERIALIZED_STATS_PCT=1`. Es la única acción que requiere intervención humana (config en Vercel). Tras el deploy, observar `/admin/salud-sistema` 1-2h antes de escalar a PCT=10.
 
+**Cutover ejecutado 2026-05-23 ~19:30 CEST** (mismo día que la validación, plan acelerado):
+
+| Hora | Hito | Métricas |
+|---|---|---|
+| 17:09 CEST | PCT=10 desplegado | T+15: 0 errores, 234 hits v2/30min |
+| 17:14 CEST | PCT=50 desplegado | T+15: 0 errores, 192 hits v2/16min |
+| 18:18 CEST | PCT=100 desplegado | T+15: 0 errores, 138 hits v2/16min |
+
+**Total del canary**: 2.256 lecturas v2 reales (PCT=10+50+100 × 4 tablas) sin un solo error 5xx. Latencia INSERT plana en 43.7ms durante todo el canary (idéntica al baseline pre-canary).
+
+**Cleanup ejecutado en la misma sesión** (2026-05-23 ~19:45 CEST):
+- `lib/api/stats/queries-v2.ts` → eliminado.
+- `lib/api/stats/queries.ts` → reescrito sin conmutador v1/v2, sin `shouldUseMaterializedStatsFor`, sin las 5 funciones v1 obsoletas. Las 5 funciones que leen tablas materializadas están integradas con el resto.
+- Env var `USE_MATERIALIZED_STATS_PCT` → eliminar en Vercel (paso pendiente humano).
+- TypeScript check OK, sin referencias huérfanas.
+
 **Lecciones documentadas (no re-aprender):**
 
 - **Triggers sobre tablas mutables: cubrir SIEMPRE los 3 TG_OPs** (INSERT/UPDATE/DELETE). El patrón "AFTER UPDATE OF X" es trampa si la columna puede tener su valor objetivo desde el INSERT inicial. Convención del proyecto: copiar el patrón de `update_user_stats_total_time` (3 triggers, función única con `TG_OP`).
