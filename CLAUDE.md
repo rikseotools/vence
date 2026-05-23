@@ -257,6 +257,13 @@ git push origin main
 
 ## Mantenimiento
 
+### 🚨 Salud del sistema (runbook obligatorio)
+- **Runbook:** `docs/runbooks/health-check.md`
+- **Cuándo consultarlo:** cuando el usuario diga *"busca errores"*, *"qué tal va"*, *"estado del sistema"*, *"salud"*, *"hay fuego"*, o similar, Claude DEBE seguir el runbook ANTES de improvisar.
+- **Panel admin:** `/admin/salud-sistema` (4 indicadores con semáforo verde/ámbar/rojo, auto-refresh 60s)
+- **Indicadores:** errores 5xx 24h, drift de contadores materializados, latencia INSERT a test_questions, salud del cron de drift.
+- **Comando CLI rápido** (30s para veredicto verde/ámbar/rojo) en la sección 1 del runbook.
+
 ### Logs Importantes
 - Prefijo `🔍` para debug de renderizado
 - Prefijo `💾` para operaciones de guardado

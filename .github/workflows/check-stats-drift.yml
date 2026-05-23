@@ -1,0 +1,77 @@
+name: Check Stats Drift
+
+# Detecta divergencias entre contadores materializados
+# (user_stats_summary, user_question_history_v2, y las nuevas tablas
+# del fix de /api/stats) vs fresh scan de test_questions.
+#
+# Sin esto, un bug en cualquier trigger de materialización corrompe los
+# contadores en silencio — Sentry no lo ve porque no es excepción.
+#
+# Runbook: docs/runbooks/health-check.md
+
+on:
+  schedule:
+    # 04:00 UTC diario = 05:00 Madrid (verano) / 06:00 Madrid (invierno).
+    # Off-peak en ambos casos. Día de la semana indiferente — la deuda
+    # de drift puede aparecer cualquier día.
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+    inputs:
+      sample_size:
+        description: 'Tamaño muestra (default 50)'
+        required: false
+        default: '50'
+
+jobs:
+  check-drift:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Call drift check endpoint
+        id: check
+        run: |
+          SAMPLE="${{ github.event.inputs.sample_size || '50' }}"
+          URL="https://www.vence.es/api/cron/check-stats-drift?sample=${SAMPLE}"
+
+          RESPONSE=$(curl -s -X GET \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            "${URL}")
+
+          echo "Response: $RESPONSE"
+
+          # Extraer stats
+          CHECKED=$(echo "$RESPONSE" | jq -r '.stats.checked // 0')
+          DRIFTS=$(echo "$RESPONSE" | jq -r '.stats.drifts_found // 0')
+          SIGNIFICANT=$(echo "$RESPONSE" | jq -r '.stats.significant_drifts // 0')
+          ERRORS=$(echo "$RESPONSE" | jq -r '.stats.errors // 0')
+          DURATION=$(echo "$RESPONSE" | jq -r '.duration // "?"')
+          SUCCESS=$(echo "$RESPONSE" | jq -r '.success // false')
+
+          echo "checked=$CHECKED" >> $GITHUB_OUTPUT
+          echo "drifts=$DRIFTS" >> $GITHUB_OUTPUT
+          echo "significant=$SIGNIFICANT" >> $GITHUB_OUTPUT
+          echo "errors=$ERRORS" >> $GITHUB_OUTPUT
+          echo "duration=$DURATION" >> $GITHUB_OUTPUT
+          echo "success=$SUCCESS" >> $GITHUB_OUTPUT
+
+          # Fallar el step solo si el endpoint en sí falló (no si detectó
+          # drift — eso es trabajo del cron, no error)
+          if [ "$SUCCESS" != "true" ]; then
+            echo "❌ Cron endpoint failed"
+            exit 1
+          fi
+
+      - name: Log summary
+        run: |
+          echo "🔍 Stats drift check completado - $(date)"
+          echo "   Users muestreados: ${{ steps.check.outputs.checked }}"
+          echo "   Divergencias totales: ${{ steps.check.outputs.drifts }}"
+          echo "   Significativas (>5%): ${{ steps.check.outputs.significant }}"
+          echo "   Errores: ${{ steps.check.outputs.errors }}"
+          echo "   Duración: ${{ steps.check.outputs.duration }}"
+
+          # Warning visual en el log de GHA si hay drift significativo
+          if [ "${{ steps.check.outputs.significant }}" != "0" ]; then
+            echo "::warning::Stats drift detectado: ${{ steps.check.outputs.significant }} divergencias >5% — ver Sentry + /admin/infraestructura"
+          fi
