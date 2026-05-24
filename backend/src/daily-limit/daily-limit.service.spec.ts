@@ -96,7 +96,7 @@ describe('DailyLimitService — cache invalidation', () => {
   });
 });
 
-describe('DailyLimitService.getDailyLimitStatus (Fase 2 stub)', () => {
+describe('DailyLimitService.getDailyLimitStatus', () => {
   let service: DailyLimitService;
 
   beforeEach(() => {
@@ -109,13 +109,16 @@ describe('DailyLimitService.getDailyLimitStatus (Fase 2 stub)', () => {
     expect(r.dailyLimit).toBe(GRADUATED_LIMIT_CONFIG.defaultLimit);
   });
 
-  it('Fase 2 stub: devuelve FAIL_OPEN (será reemplazado en Fase 3)', async () => {
+  it('BD inaccesible (test sin db) → FAIL_OPEN documentado', async () => {
+    // Sin db real, la query lanza error → catch → FAIL_OPEN.
+    // Comportamiento por diseño: nunca bloquear a un user por fallo de infra.
     const r = await service.getDailyLimitStatus('user-123');
     expect(r.allowed).toBe(true);
+    expect(r.isPremium).toBe(false);
   });
 });
 
-describe('DailyLimitService.checkDeviceDailyUsage (Fase 2 stub)', () => {
+describe('DailyLimitService.checkDeviceDailyUsage', () => {
   let service: DailyLimitService;
 
   beforeEach(() => {
@@ -126,8 +129,22 @@ describe('DailyLimitService.checkDeviceDailyUsage (Fase 2 stub)', () => {
     expect(await service.checkDeviceDailyUsage(null)).toBeNull();
   });
 
-  it('Fase 2 stub: devuelve allowed=true (Fase 3 lo reemplaza)', async () => {
+  it('BD inaccesible (test sin db) → null (fail-open)', async () => {
+    // Sin db real, la query lanza error → catch → null.
+    // Devuelve null para que el caller no aplique el límite por device.
     const r = await service.checkDeviceDailyUsage('device-xyz');
-    expect(r).toEqual({ allowed: true, deviceTotal: 0 });
+    expect(r).toBeNull();
+  });
+});
+
+describe('DailyLimitService.invalidateStatusPremiumCache', () => {
+  let service: DailyLimitService;
+
+  beforeEach(() => {
+    service = new DailyLimitService(undefined as never);
+  });
+
+  it('idempotente con user inexistente', () => {
+    expect(() => service.invalidateStatusPremiumCache('any')).not.toThrow();
   });
 });
