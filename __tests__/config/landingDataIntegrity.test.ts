@@ -156,16 +156,11 @@ describe('Landing Data Integrity', () => {
   })
 
   describe('Monitoreo seguimiento', () => {
-    test('cron endpoint existe', () => {
-      const filePath = path.join(process.cwd(), 'app/api/cron/check-seguimiento/route.ts')
+    // El cron de check-seguimiento se migró de Vercel a AWS Fargate (cutover 2026-05-24).
+    // Ahora vive en backend/src/check-seguimiento/ y corre vía @nestjs/schedule.
+    test('cron NestJS module existe en backend', () => {
+      const filePath = path.join(process.cwd(), 'backend/src/check-seguimiento')
       expect(fs.existsSync(filePath)).toBe(true)
-    })
-
-    test('cron usa withErrorLogging', () => {
-      const filePath = path.join(process.cwd(), 'app/api/cron/check-seguimiento/route.ts')
-      const content = fs.readFileSync(filePath, 'utf-8')
-      expect(content).toContain('withErrorLogging')
-      expect(content).not.toMatch(/^export async function/m)
     })
 
     test('admin page existe', () => {
@@ -177,11 +172,6 @@ describe('Landing Data Integrity', () => {
       const filePath = path.join(process.cwd(), 'app/api/admin/seguimiento-convocatorias/route.ts')
       const content = fs.readFileSync(filePath, 'utf-8')
       expect(content).toContain('withErrorLogging')
-    })
-
-    test('GitHub workflow existe', () => {
-      const filePath = path.join(process.cwd(), '.github/workflows/check-seguimiento.yml')
-      expect(fs.existsSync(filePath)).toBe(true)
     })
   })
 
