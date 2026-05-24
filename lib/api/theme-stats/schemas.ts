@@ -41,6 +41,13 @@ export const themeStatSchema = z.object({
   accuracy: z.number().min(0).max(100),
   lastStudy: z.string().nullable(),
   lastStudyFormatted: z.string(),
+  // 30d (opcionales — solo presentes cuando el caller usa la lógica V2 que los calcula)
+  total30d: z.number().optional(),
+  correct30d: z.number().optional(),
+  accuracy30d: z.number().min(0).max(100).nullable().optional(),
+  // Promedio de segundos por respuesta (V2). Opcional para no romper consumers
+  // legacy que aún consumen el response sin este campo.
+  averageTimeSeconds: z.number().optional(),
 })
 
 export type ThemeStat = z.infer<typeof themeStatSchema>

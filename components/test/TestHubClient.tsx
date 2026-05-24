@@ -173,9 +173,13 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
     setStatsLoading(true)
     console.log('📊 [TestHubClient] Cargando theme-stats para', userId.slice(0, 8))
     try {
-      // Usa /api/v2/topic-progress/theme-stats (con timeout + cache + accuracy_30d)
-      // Antes usaba /api/user/theme-stats que tardaba 16s para heavy users
-      const response = await fetch(`/api/v2/topic-progress/theme-stats?userId=${userId}`)
+      // Usa /api/v2/topic-progress/theme-stats (con timeout + cache + accuracy_30d).
+      // Pasamos oposicionId para que el endpoint derive el tema dinámicamente desde
+      // article_id + topic_scope de ESTA oposición (V3, 2026-05-24). Sin oposicionId
+      // caía en la rama legacy que mezclaba B2 de oposiciones distintas (T101 AAE
+      // "Atención al ciudadano" se confundía con T101 SS "SS en la CE" porque
+      // tema_number es solo un int sin contexto).
+      const response = await fetch(`/api/v2/topic-progress/theme-stats?userId=${userId}&oposicionId=${encodeURIComponent(oposicion)}`)
       const data = await response.json()
 
       if (data.success && data.stats) {

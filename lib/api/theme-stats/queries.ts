@@ -127,6 +127,8 @@ export async function getUserThemeStatsByOposicion(
     const rawStats = aggregateStatsByTopic(answers, mapping)
 
     // 4️⃣ Convertir al formato esperado por la API
+    // Incluye campos 30d (total30d, correct30d, accuracy30d) y averageTimeSeconds
+    // calculados por aggregateStatsByTopic.
     const stats: Record<string, ThemeStat> = {}
     for (const [topicNumStr, stat] of Object.entries(rawStats)) {
       stats[topicNumStr] = {
@@ -136,6 +138,10 @@ export async function getUserThemeStatsByOposicion(
         accuracy: stat.accuracy,
         lastStudy: stat.lastStudy,
         lastStudyFormatted: stat.lastStudyFormatted,
+        total30d: stat.total30d,
+        correct30d: stat.correct30d,
+        accuracy30d: stat.accuracy30d,
+        averageTimeSeconds: stat.averageTimeSeconds,
       }
     }
 

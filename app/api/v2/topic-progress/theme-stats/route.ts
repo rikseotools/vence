@@ -10,14 +10,27 @@
 //
 // Antes era Map in-memory (TTL 5min) que fragmentaba entre instancias Vercel
 // Fluid: cada cold start pagaba la query lenta. Redis comparte entre todas.
+//
+// V3 (2026-05-24): si llega `oposicionId` derivamos el tema dinámicamente
+// desde article_id + topic_scope de esa oposición (módulo topic-progress),
+// en lugar de agrupar por test_questions.tema_number. tema_number se rellena
+// con la oposición activa del user en el momento del INSERT y NO se reasigna
+// si después cambia de target_oposicion. La query legacy mezclaba B2 de
+// oposiciones distintas (T101 AAE "Atención al ciudadano" colisionaba con
+// T101 SS "SS en la CE"). La rama V3 es backward compatible: si el caller
+// no manda `oposicionId`, se mantiene la query legacy.
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getReadDb } from '@/db/client'
 import { sql } from 'drizzle-orm'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { getCached, setCached } from '@/lib/cache/redis'
+import { getUserThemeStatsByOposicion } from '@/lib/api/theme-stats/queries'
+import { ALL_OPOSICION_SLUGS } from '@/lib/config/oposiciones'
+import type { OposicionSlug } from '@/lib/api/theme-stats/schemas'
 
 const userIdSchema = z.string().uuid()
+const oposicionSlugSet = new Set<string>(ALL_OPOSICION_SLUGS)
 
 interface ThemeStat {
   tema_number: number
@@ -45,7 +58,21 @@ async function _GET(request: NextRequest) {
     return NextResponse.json({ success: false, error: 'userId inválido o faltante (debe ser UUID)' }, { status: 400 })
   }
 
-  const cacheKey = `theme_stats:${userId}`
+  const oposicionIdRaw = request.nextUrl.searchParams.get('oposicionId')
+  // Validar contra el enum de oposiciones conocidas. Si llega un valor que no
+  // existe, devolver 400 (mejor fallar pronto que devolver datos vacíos sin
+  // explicación). Si no llega → undefined → rama legacy.
+  if (oposicionIdRaw !== null && !oposicionSlugSet.has(oposicionIdRaw)) {
+    return NextResponse.json({ success: false, error: `oposicionId no válido: ${oposicionIdRaw}` }, { status: 400 })
+  }
+  const oposicionId = (oposicionIdRaw as OposicionSlug | null) ?? undefined
+
+  // Cache key incluye oposicionId para no mezclar entre oposiciones.
+  // Las claves antiguas (`theme_stats:${userId}`) coexisten para clientes
+  // que aún no envían oposicionId (backward compat).
+  const cacheKey = oposicionId
+    ? `theme_stats:${userId}:${oposicionId}`
+    : `theme_stats:${userId}`
   const cached = await getCached<CachedThemeStats>(cacheKey)
 
   // Fast path: cache fresco (< 5min) → devolver sin tocar BD
@@ -53,6 +80,54 @@ async function _GET(request: NextRequest) {
     return NextResponse.json({ success: true, stats: cached.data })
   }
 
+  // === RAMA V3: derivación dinámica desde article_id + topic_scope ===
+  if (oposicionId) {
+    try {
+      const v3Result = await Promise.race([
+        getUserThemeStatsByOposicion(userId, oposicionId),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('theme-stats v3 timeout')), BD_TIMEOUT_MS)
+        ),
+      ])
+
+      if (!v3Result.success || !v3Result.stats) {
+        // V3 reportó error semántico. Si tenemos cache stale, servirlo.
+        if (cached) {
+          const ageS = Math.floor((Date.now() - cached.ts) / 1000)
+          console.warn(`⚠️ [theme-stats v3] error for ${userId.slice(0, 8)}/${oposicionId}, stale cache (${ageS}s)`)
+          return NextResponse.json({ success: true, stats: cached.data })
+        }
+        return NextResponse.json({ success: false, error: v3Result.error || 'Error al calcular stats' }, { status: 500 })
+      }
+
+      // Transformar object → array con el shape estable que espera el cliente.
+      // (TestHubClient hace `data.stats.forEach`, así que mantenemos array.)
+      const stats: ThemeStat[] = Object.values(v3Result.stats).map(s => ({
+        tema_number: s.temaNumber,
+        total: s.total,
+        correct: s.correct,
+        accuracy: s.accuracy,
+        total_30d: s.total30d ?? 0,
+        correct_30d: s.correct30d ?? 0,
+        accuracy_30d: s.accuracy30d ?? null,
+        last_study: s.lastStudy,
+      })).sort((a, b) => a.tema_number - b.tema_number)
+
+      setCached(cacheKey, { data: stats, ts: Date.now() }, STALE_TTL_S)
+      return NextResponse.json({ success: true, stats })
+    } catch (err) {
+      // Timeout o error BD: devolver cache stale si existe
+      if (cached) {
+        const ageS = Math.floor((Date.now() - cached.ts) / 1000)
+        console.warn(`⏱️ [theme-stats v3] timeout for ${userId.slice(0, 8)}/${oposicionId}, stale (${ageS}s)`)
+        return NextResponse.json({ success: true, stats: cached.data })
+      }
+      console.warn(`⏱️ [theme-stats v3] timeout for ${userId.slice(0, 8)}/${oposicionId}, empty`)
+      return NextResponse.json({ success: true, stats: [] })
+    }
+  }
+
+  // === RAMA LEGACY: query SQL por tema_number (sin contexto de oposición) ===
   try {
     // getReadDb apunta al replica si USE_READ_REPLICA=true, fallback primary.
     // theme-stats es read-only y tolerable a stale (lag típico 0.4s).

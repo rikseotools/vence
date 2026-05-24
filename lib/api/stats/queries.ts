@@ -21,7 +21,7 @@
 //     lookup PK, cache write-through, o tabla pequeña).
 
 import { getDb, getPoolerDb } from '@/db/client'
-import { tests, testQuestions, userStreaks, userProfiles, oposiciones, userSessions } from '@/db/schema'
+import { tests, testQuestions, userStreaks, userProfiles, oposiciones, userSessions, topics } from '@/db/schema'
 import { eq, and, desc, sql, isNotNull } from 'drizzle-orm'
 import type {
   GetUserStatsResponse,
@@ -34,6 +34,11 @@ import type {
   ArticlePerformance,
   UserOposicion,
 } from './schemas'
+import { getUserThemeStatsByOposicion } from '@/lib/api/theme-stats/queries'
+import { ALL_OPOSICION_SLUGS, SLUG_TO_POSITION_TYPE } from '@/lib/config/oposiciones'
+import type { OposicionSlug } from '@/lib/api/theme-stats/schemas'
+
+const oposicionSlugSet = new Set<string>(ALL_OPOSICION_SLUGS)
 
 function getStatsDb() {
   return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
@@ -482,10 +487,69 @@ async function getThemePerformance(db: ReturnType<typeof getDb>, userId: string)
     .from(userProfiles)
     .where(eq(userProfiles.id, userId))
     .limit(1)
-  const positionType = profileRow[0]?.targetOposicion?.replace(/-/g, '_') || 'auxiliar_administrativo_estado'
+  const targetOposicion = profileRow[0]?.targetOposicion
 
-  // Leer de caché con LEFT JOIN LATERAL a topics (Memoize) para
-  // resolver título y position_type reales.
+  // user_profiles.target_oposicion se guarda en formato position_type
+  // (underscore), p. ej. "administrativo_seguridad_social". Para usar el
+  // módulo topic-progress lo convertimos a slug (guiones).
+  const oposicionSlug = targetOposicion ? targetOposicion.replace(/_/g, '-') : null
+
+  // V3 (2026-05-24): si el user tiene target_oposicion conocido, derivar stats
+  // dinámicamente desde article_id + topic_scope de esa oposición (módulo
+  // topic-progress). Esto evita la trampa de agrupar por tema_number, que es
+  // solo un int sin contexto y colisiona entre B2 de oposiciones distintas
+  // (p.ej. T101 AAE "Atención al ciudadano" vs T101 SS "SS en la CE").
+  //
+  // Si la oposición no es reconocida o la V3 falla, caemos al comportamiento
+  // legacy. Esto preserva backward compat para usuarios con target_oposicion
+  // null o slug obsoleto.
+  if (oposicionSlug && oposicionSlugSet.has(oposicionSlug)) {
+    try {
+      const v3 = await getUserThemeStatsByOposicion(userId, oposicionSlug as OposicionSlug)
+      if (v3.success && v3.stats) {
+        const positionType = SLUG_TO_POSITION_TYPE[oposicionSlug as OposicionSlug]
+
+        // Resolver títulos de topics de esta oposición (una sola query).
+        const topicsRows = await db
+          .select({
+            topicNumber: topics.topicNumber,
+            title: topics.title,
+            positionType: topics.positionType,
+          })
+          .from(topics)
+          .where(and(eq(topics.positionType, positionType), eq(topics.isActive, true)))
+
+        const titleByNum: Record<number, { title: string | null; positionType: string | null }> = {}
+        for (const t of topicsRows) {
+          if (t.topicNumber != null) {
+            titleByNum[t.topicNumber] = { title: t.title ?? null, positionType: t.positionType ?? null }
+          }
+        }
+
+        return Object.values(v3.stats)
+          .map(s => ({
+            temaNumber: s.temaNumber,
+            title: titleByNum[s.temaNumber]?.title ?? null,
+            topicPositionType: titleByNum[s.temaNumber]?.positionType ?? null,
+            totalQuestions: s.total,
+            correctAnswers: s.correct,
+            accuracy: s.accuracy,
+            averageTime: s.averageTimeSeconds ?? 0,
+            lastPracticed: s.lastStudy,
+          }))
+          .sort((a, b) => a.temaNumber - b.temaNumber)
+      }
+    } catch (error) {
+      console.warn('⚠️ [getThemePerformance] V3 falló, cae a legacy:', error)
+    }
+  }
+
+  // === RAMA LEGACY: agrupa por tema_number guardado ===
+  // Solo se usa cuando target_oposicion del user es null o no reconocido.
+  // Mantiene el comportamiento anterior (con el bug cross-oposición conocido
+  // — mejor que romper, ya que ese user no tiene contexto de oposición claro).
+  const positionTypeForLegacy = targetOposicion?.replace(/-/g, '_') || 'auxiliar_administrativo_estado'
+
   try {
     const cacheResult = await db.execute(
       sql`SELECT
@@ -497,7 +561,7 @@ async function getThemePerformance(db: ReturnType<typeof getDb>, userId: string)
         LEFT JOIN LATERAL (
           SELECT t.title, t.position_type FROM topics t
           WHERE t.topic_number = c.topic_number AND t.is_active = true
-          ORDER BY CASE WHEN t.position_type = ${positionType} THEN 0 ELSE 1 END
+          ORDER BY CASE WHEN t.position_type = ${positionTypeForLegacy} THEN 0 ELSE 1 END
           LIMIT 1
         ) topic_info ON true
         WHERE c.user_id = ${userId}::uuid

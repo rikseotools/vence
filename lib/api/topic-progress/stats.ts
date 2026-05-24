@@ -15,6 +15,15 @@ export interface TopicStat {
   accuracy: number
   lastStudy: string | null
   lastStudyFormatted: string
+  // Métricas últimos 30 días (mismo cómputo que el endpoint legacy v2 SQL).
+  // Necesarias para que clientes como TestHubClient pinten precisión 30d.
+  total30d: number
+  correct30d: number
+  accuracy30d: number | null
+  // Tiempo medio por respuesta (segundos). Usado por /api/stats getThemePerformance
+  // para mostrar "Tiempo medio: Xs" por tema en /mis-estadisticas.
+  // Promedio aritmético ignorando nulls (answers sin time_spent_seconds).
+  averageTimeSeconds: number
 }
 
 export interface TopicStats {
@@ -62,7 +71,15 @@ export function aggregateStatsByTopic(
     total: number
     correct: number
     lastStudy: Date | null
+    total30d: number
+    correct30d: number
+    // Acumuladores para tiempo medio. Solo cuentan answers con time_spent_seconds != null.
+    timeSum: number
+    timeCount: number
   }> = {}
+
+  // Ventana 30d coherente con la query SQL legacy (now() - interval '30 days').
+  const thirtyDaysAgoMs = Date.now() - 30 * 24 * 60 * 60 * 1000
 
   for (const answer of answers) {
     const key = `${answer.lawId}_${answer.articleNumber}`
@@ -71,12 +88,22 @@ export function aggregateStatsByTopic(
     if (topicNumber === undefined) continue // Artículo no está en ningún tema
 
     if (!statsByTopic[topicNumber]) {
-      statsByTopic[topicNumber] = { total: 0, correct: 0, lastStudy: null }
+      statsByTopic[topicNumber] = { total: 0, correct: 0, lastStudy: null, total30d: 0, correct30d: 0, timeSum: 0, timeCount: 0 }
     }
 
     statsByTopic[topicNumber].total++
     if (answer.isCorrect) {
       statsByTopic[topicNumber].correct++
+    }
+
+    if (answer.createdAt.getTime() >= thirtyDaysAgoMs) {
+      statsByTopic[topicNumber].total30d++
+      if (answer.isCorrect) statsByTopic[topicNumber].correct30d++
+    }
+
+    if (answer.timeSpentSeconds != null && answer.timeSpentSeconds >= 0) {
+      statsByTopic[topicNumber].timeSum += answer.timeSpentSeconds
+      statsByTopic[topicNumber].timeCount++
     }
 
     if (!statsByTopic[topicNumber].lastStudy || answer.createdAt > statsByTopic[topicNumber].lastStudy) {
@@ -90,6 +117,8 @@ export function aggregateStatsByTopic(
   for (const [topicNumStr, data] of Object.entries(statsByTopic)) {
     const topicNumber = parseInt(topicNumStr, 10)
     const accuracy = data.total > 0 ? Math.round((data.correct / data.total) * 100) : 0
+    const accuracy30d = data.total30d > 0 ? Math.round((data.correct30d / data.total30d) * 100) : null
+    const averageTimeSeconds = data.timeCount > 0 ? Math.round(data.timeSum / data.timeCount) : 0
 
     stats[topicNumStr] = {
       temaNumber: topicNumber,
@@ -102,7 +131,11 @@ export function aggregateStatsByTopic(
             day: 'numeric',
             month: 'short'
           })
-        : 'Nunca'
+        : 'Nunca',
+      total30d: data.total30d,
+      correct30d: data.correct30d,
+      accuracy30d,
+      averageTimeSeconds,
     }
   }
 
