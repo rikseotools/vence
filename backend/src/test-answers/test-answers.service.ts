@@ -1,5 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { DRIZZLE, type DrizzleDB } from '../db/database.module';
+import { testQuestions } from '../db/schema';
 import {
   normalizeDifficulty,
   type DeviceInfo,
@@ -242,14 +243,58 @@ export class TestAnswersService {
   }
 
   /**
-   * Insert real en test_questions — Fase 3.
-   * Fase 2: stub que devuelve placeholder para que la firma esté lista.
+   * INSERT en test_questions con manejo idempotente del constraint
+   * único `(test_id, question_order)`. Si la fila ya existía → 23505 →
+   * `action='already_saved'` (NO es error, es comportamiento esperado
+   * cuando el cliente reintenta tras timeout de red, por ejemplo).
+   *
+   * El `row` se construye vía `buildTestAnswerRow` (helper puro). El
+   * `resolvedTema` opcional viene del orquestador (AnswerSaveService)
+   * que ya ejecutó `TemaResolverService.resolveTemaByQuestionIdFast`
+   * en paralelo con la validación de la pregunta.
    */
   async insertTestAnswer(
-    _req: SaveAnswerRequest,
-    _userId: string,
+    req: SaveAnswerRequest,
+    userId: string,
+    options: { resolvedTema?: number } = {},
   ): Promise<SaveAnswerResponse> {
-    // TODO Fase 3: implementación real con buildTestAnswerRow + INSERT.
-    return { success: false, action: 'save_failed', error: 'not_implemented' };
+    try {
+      const { questionId, row } = this.buildTestAnswerRow(
+        req,
+        userId,
+        options,
+      );
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await this.db.insert(testQuestions).values(row as any);
+
+      return {
+        success: true,
+        question_id: questionId,
+        action: 'saved_new',
+      };
+    } catch (err) {
+      // El código 23505 puede estar en err.code (postgres directo) o
+      // err.cause.code (wrapping de Drizzle). Cubrimos ambos.
+      const pgCode =
+        (err as { code?: string }).code ??
+        (err as { cause?: { code?: string } }).cause?.code;
+
+      if (pgCode === '23505') {
+        // Constraint único = ya estaba guardada (idempotencia OK).
+        return {
+          success: true,
+          question_id: req.questionData.id ?? null,
+          action: 'already_saved',
+        };
+      }
+
+      this.logger.error('insertTestAnswer error:', err);
+      return {
+        success: false,
+        action: 'save_failed',
+        error: err instanceof Error ? err.message : 'Error desconocido',
+      };
+    }
   }
 }

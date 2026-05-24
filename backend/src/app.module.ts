@@ -21,6 +21,7 @@ import { ProcessVerificationQueueModule } from './process-verification-queue/pro
 import { AnswerSaveModule } from './answer-save/answer-save.module';
 import { AntifraudModule } from './antifraud/antifraud.module';
 import { AuthModule } from './auth/auth.module';
+import { BackgroundModule } from './background/background.module';
 import { CacheModule } from './cache/cache.module';
 import { DailyLimitModule } from './daily-limit/daily-limit.module';
 import { EmailModule } from './email/email.module';
@@ -43,6 +44,8 @@ import { TestAnswersModule } from './test-answers/test-answers.module';
     CacheModule,
     // Auth agnóstica con JwtGuard — Global, exporta JwtVerifier + JwtGuard.
     AuthModule,
+    // Background tasks (fire-and-forget tras response) — Global, runAfter().
+    BackgroundModule,
     // Email transaccional Resend SDK directo — Global, exporta MedalEmailService.
     EmailModule,
     // Crons — sub-etapa 1a

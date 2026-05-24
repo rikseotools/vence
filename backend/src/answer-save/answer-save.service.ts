@@ -2,13 +2,26 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 import { CacheService } from '../cache/cache.service';
 import { DRIZZLE, type DrizzleDB } from '../db/database.module';
-import { articles, laws, psychometricQuestions, questions } from '../db/schema';
+import {
+  articles,
+  laws,
+  psychometricQuestions,
+  questions,
+  tests,
+  userProfiles,
+} from '../db/schema';
+import { TemaResolverService } from '../tema-resolver/tema-resolver.service';
+import { TestAnswersService } from '../test-answers/test-answers.service';
+import type {
+  QuestionMetadata,
+  SaveAnswerRequest,
+} from '../test-answers/test-answers.types';
+import {
+  normalizePositionType,
+  type AnswerSaveRequest,
+  type AnswerSaveResponse,
+} from './answer-save.types';
 
-/**
- * Resultado de validación de una pregunta: respuesta correcta + metadata
- * adicional (explanation, article, law) que el cliente necesita mostrar
- * tras responder.
- */
 export interface QuestionValidation {
   correctOption: number | null;
   explanation: string | null;
@@ -18,73 +31,49 @@ export interface QuestionValidation {
 }
 
 /**
- * Servicio AnswerSave — Fase 3 (validation cache implementada).
+ * Servicio AnswerSave — Fase 4 (orquestador completo).
  *
- * Fase 4 añadirá validateAndSaveAnswer (orquestador completo) y
- * markActiveStudentIfFirst (background).
+ * Port literal de `validateAndSaveAnswer` de
+ * lib/api/v2/answer-and-save/queries.ts. Orquesta:
+ *  - getQuestionValidation (cache Upstash + JOIN articles+laws)
+ *  - TemaResolverService.resolveTemaByQuestionIdFast (en paralelo)
+ *  - TestAnswersService.insertTestAnswer (INSERT + 23505)
+ *  - UPDATE tests.score (no crítico)
+ *
+ * También expone `markActiveStudentIfFirst` para llamar desde background
+ * tras devolver response al cliente (via BackgroundService).
  */
 @Injectable()
 export class AnswerSaveService {
   private readonly logger = new Logger(AnswerSaveService.name);
 
-  /** TTL del cache de validation (1h — pregunta cambia raramente). */
   private static readonly VALIDATION_CACHE_TTL_S = 60 * 60;
-
-  /** Key prefix idéntico al de Vercel para coherencia cross-runtime. */
   private static readonly VALIDATION_CACHE_KEY_PREFIX = 'question-validation-v1';
 
   constructor(
     @Inject(DRIZZLE) private readonly db: DrizzleDB,
     private readonly cache: CacheService,
+    private readonly temaResolver: TemaResolverService,
+    private readonly testAnswers: TestAnswersService,
   ) {}
 
-  /**
-   * Lee la validación de una pregunta (correct_option + explanation +
-   * artículo + ley). Cache-first.
-   *
-   * Estrategia:
-   *  1. Cache hit (TTL 1h) → devuelve sin tocar BD.
-   *  2. Miss → SELECT questions con JOIN articles+laws.
-   *  3. Si no encontrado → fallback SELECT psychometric_questions.
-   *  4. Cache fire-and-forget.
-   *
-   * Hit ratio altísimo (verificado empíricamente en Vercel: ~95%): una
-   * pregunta popular se valida miles de veces (N users × M tests).
-   *
-   * Cache key idéntica al de Vercel — invalidación cross-runtime
-   * coherente automática vía Upstash compartido.
-   *
-   * Si admin edita una pregunta (correct_option, explanation), debe
-   * invalidar: `revalidateTag('questions')` desde Vercel (esto NO se
-   * propaga al backend Nest hoy — `revalidateTag` es Next.js-only). Para
-   * que el backend reciba la invalidación, el endpoint admin debe
-   * adicionalmente llamar `cache.invalidate('question-validation-v1:{id}')`.
-   *
-   * Devuelve null si la pregunta no existe en ninguna tabla.
-   */
+  // ─── Validation cache (Fase 3) ─────────────────────────────
+
   async getQuestionValidation(questionId: string): Promise<QuestionValidation | null> {
     const cacheKey = `${AnswerSaveService.VALIDATION_CACHE_KEY_PREFIX}:${questionId}`;
     const cached = await this.cache.getCached<QuestionValidation>(cacheKey);
     if (cached !== null) return cached;
 
-    // Miss: leer de BD.
     const result = await this.fetchValidationFromDb(questionId);
     if (result) {
-      // Fire-and-forget — no bloquea respuesta si Upstash tarda.
       this.cache.setCached(cacheKey, result, AnswerSaveService.VALIDATION_CACHE_TTL_S);
     }
     return result;
   }
 
-  /**
-   * Lectura BD directa: probar `questions` con JOIN, fallback
-   * `psychometric_questions`. Sin cache — usar getQuestionValidation()
-   * desde callers para beneficiarse del cache.
-   */
   private async fetchValidationFromDb(
     questionId: string,
   ): Promise<QuestionValidation | null> {
-    // 1) Tabla questions con JOIN articles + laws (preguntas legislativas).
     const legislativeRows = await this.db
       .select({
         correctOption: questions.correctOption,
@@ -101,7 +90,6 @@ export class AnswerSaveService {
 
     if (legislativeRows[0]) return legislativeRows[0];
 
-    // 2) Fallback: psychometric_questions (sin metadata de artículo/ley).
     const psyRows = await this.db
       .select({
         correctOption: psychometricQuestions.correctOption,
@@ -124,13 +112,211 @@ export class AnswerSaveService {
     return null;
   }
 
-  /**
-   * Invalida el cache de validation de una pregunta concreta. Llamar
-   * cuando el admin edita (correct_option, explanation). Para invalidar
-   * TODAS las preguntas, hay que iterar las keys (cuidado con coste).
-   */
   async invalidateValidationCache(questionId: string): Promise<void> {
     const cacheKey = `${AnswerSaveService.VALIDATION_CACHE_KEY_PREFIX}:${questionId}`;
     await this.cache.invalidate(cacheKey);
+  }
+
+  // ─── Orquestador POST principal (Fase 4) ───────────────────
+
+  /**
+   * Valida una respuesta + guarda en test_questions + actualiza score
+   * del test. Port literal de validateAndSaveAnswer de Vercel.
+   *
+   * Flow:
+   *   1. PARALELO: validation cache (correct_option + metadata) +
+   *      resolver de tema (solo si tema=0 y es legislativa).
+   *   2. Si correctOption=null → return {success:false, saveAction:'save_failed'}
+   *      (el Controller mapea a 404).
+   *   3. Calcular isCorrect (con guard wasBlank) + newScore.
+   *   4. INSERT en test_questions vía TestAnswersService.
+   *   5. Si OK → UPDATE tests.score (no crítico — log warn si falla).
+   *   6. Return AnswerSaveResponse con todos los campos.
+   */
+  async validateAndSaveAnswer(
+    req: AnswerSaveRequest,
+    userId: string,
+  ): Promise<AnswerSaveResponse> {
+    const positionType = normalizePositionType(req.oposicionId);
+    const shouldResolveTema = this.shouldResolveTema(req);
+
+    // 1. PARALELO: validation + resolveTema
+    const [validation, preResolvedTema] = await Promise.all([
+      this.getQuestionValidation(req.questionId),
+      shouldResolveTema
+        ? this.temaResolver.resolveTemaByQuestionIdFast(
+            req.questionId,
+            positionType,
+          )
+        : Promise.resolve<number | null>(null),
+    ]);
+
+    const currentScore = req.currentScore ?? 0;
+
+    // 2. Sin correctOption → 404
+    if (!validation || validation.correctOption === null) {
+      return {
+        success: false,
+        isCorrect: false,
+        correctAnswer: 0,
+        explanation: null,
+        newScore: currentScore,
+        saveAction: 'save_failed',
+      };
+    }
+
+    const correctOption = validation.correctOption;
+    const isBlank = req.isBlank === true;
+    const isCorrect = !isBlank && req.userAnswer === correctOption;
+    const newScore = isCorrect ? currentScore + 1 : currentScore;
+
+    // Si el resolver encontró tema, lo usamos. Si no, queda req.tema (puede ser 0).
+    const effectiveTema =
+      preResolvedTema !== null && preResolvedTema > 0
+        ? preResolvedTema
+        : (req.tema ?? 0);
+
+    // 3. INSERT en test_questions vía TestAnswersService
+    const saveRequest = this.toSaveAnswerRequest(req, correctOption, isCorrect);
+    const saveResult = await this.testAnswers.insertTestAnswer(
+      saveRequest,
+      userId,
+      { resolvedTema: effectiveTema },
+    );
+
+    // 4. Si OK → UPDATE tests.score (no crítico)
+    if (saveResult.success) {
+      try {
+        await this.db
+          .update(tests)
+          .set({ score: String(newScore) })
+          .where(eq(tests.id, req.sessionId));
+      } catch (err) {
+        this.logger.warn(
+          `Error actualizando score del test ${req.sessionId} — la respuesta SÍ se guardó:`,
+          err,
+        );
+      }
+    }
+
+    const saveAction = saveResult.success
+      ? (saveResult.action as 'saved_new' | 'already_saved')
+      : 'save_failed';
+
+    if (!saveResult.success) {
+      this.logger.error(
+        `save_failed questionId=${req.questionId} sessionId=${req.sessionId}: ${saveResult.error}`,
+      );
+    }
+
+    return {
+      success: saveResult.success,
+      isCorrect,
+      correctAnswer: correctOption,
+      explanation: validation.explanation,
+      articleNumber: validation.articleNumber,
+      lawShortName: validation.lawShortName,
+      lawName: validation.lawName,
+      newScore,
+      saveAction,
+      questionDbId: saveResult.question_id ?? null,
+    };
+  }
+
+  /**
+   * Marca user_profiles.is_active_student=true (con first_test_completed_at
+   * = NOW()) si todavía era false. Idempotente. Llamar desde background
+   * (no bloquea la response).
+   *
+   * Try/catch: no crítico. Si falla, el siguiente answer-and-save vuelve
+   * a intentarlo.
+   */
+  async markActiveStudentIfFirst(userId: string): Promise<void> {
+    try {
+      const rows = await this.db
+        .select({ isActiveStudent: userProfiles.isActiveStudent })
+        .from(userProfiles)
+        .where(eq(userProfiles.id, userId))
+        .limit(1);
+
+      if (rows[0] && !rows[0].isActiveStudent) {
+        await this.db
+          .update(userProfiles)
+          .set({
+            isActiveStudent: true,
+            firstTestCompletedAt: new Date().toISOString(),
+          })
+          .where(eq(userProfiles.id, userId));
+        this.logger.log(`Usuario marcado como ACTIVO: ${userId.slice(0, 8)}`);
+      }
+    } catch (err) {
+      this.logger.warn('Error marcando is_active_student:', err);
+    }
+  }
+
+  // ─── Helpers privados ──────────────────────────────────────
+
+  /**
+   * Decide si lanzar el fast-path del resolver de tema. Mismo criterio
+   * que el frontend (Vercel):
+   *   - cliente mandó tema=0 (test personalizado, etc.)
+   *   - pregunta NO psicotécnica
+   *   - questionId parece UUID (no ID sintético tipo "tema-1-art-X-...")
+   */
+  private shouldResolveTema(req: AnswerSaveRequest): boolean {
+    if ((req.tema ?? 0) !== 0) return false;
+    if (req.questionType === 'psychometric') return false;
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      req.questionId,
+    );
+  }
+
+  /**
+   * Convierte AnswerSaveRequest (shape del endpoint) a SaveAnswerRequest
+   * (shape que entiende TestAnswersService). Centraliza la conversión.
+   */
+  private toSaveAnswerRequest(
+    req: AnswerSaveRequest,
+    correctOption: number,
+    isCorrect: boolean,
+  ): SaveAnswerRequest {
+    const isBlank = req.isBlank === true;
+    return {
+      sessionId: req.sessionId,
+      questionData: {
+        id: req.questionId,
+        question: req.questionText,
+        options: req.options,
+        tema: req.tema,
+        questionType: req.questionType ?? 'legislative',
+        article: req.article,
+        // El Controller ya valida que difficulty está en VALID_DIFFICULTIES
+        // con Zod (Fase 5), por lo que el cast aquí es seguro. El tipo
+        // amplio (string) en AnswerSaveMetadata es por ergonomía del
+        // contrato externo del endpoint.
+        metadata: req.metadata as QuestionMetadata | null | undefined,
+        explanation: req.explanation,
+      },
+      answerData: {
+        questionIndex: req.questionIndex,
+        // Blancas: -1 para que insertTestAnswer lo interprete como "sin
+        // selección" y lo traduzca al marcador BLANK en BD.
+        selectedAnswer: isBlank ? -1 : (req.userAnswer as number),
+        correctAnswer: correctOption,
+        isCorrect,
+        timeSpent: req.timeSpent ?? 0,
+        wasBlank: isBlank,
+      },
+      tema: req.tema,
+      confidenceLevel: req.confidenceLevel ?? 'unknown',
+      interactionCount: req.interactionCount ?? 1,
+      questionStartTime: req.questionStartTime ?? 0,
+      firstInteractionTime: req.firstInteractionTime ?? 0,
+      interactionEvents: req.interactionEvents,
+      mouseEvents: req.mouseEvents,
+      scrollEvents: req.scrollEvents,
+      deviceInfo: req.deviceInfo,
+      oposicionId: req.oposicionId,
+    };
   }
 }
