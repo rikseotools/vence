@@ -7,6 +7,30 @@ import { z } from 'zod'
 import { getSupabaseClient } from '../lib/supabase'
 import { getClientVersion } from '@/hooks/useVersionCheck'
 import { logClientError } from '@/lib/logClientError'
+import { ALL_OPOSICION_SLUGS } from '@/lib/config/oposiciones'
+
+// Set para validación O(1) en el INSERT — evita escribir position_type
+// con slugs que no son oposiciones (p. ej. 'test', 'leyes').
+const KNOWN_OPOSICION_SLUGS = new Set<string>(ALL_OPOSICION_SLUGS)
+
+/**
+ * Deriva el position_type (con underscores) a partir de un pathname tipo
+ * '/<slug>/test/tema/X/...'. Devuelve null si:
+ *   - El pathname es null o vacío.
+ *   - No empieza por '/<slug>/...' (p. ej. '/test/rapido', '/leyes/...').
+ *   - El slug no está en ALL_OPOSICION_SLUGS (oposición desconocida).
+ *
+ * Mantiene posibilidad de mover position_type a un SOT (única fuente de verdad)
+ * sin depender de regex sobre URL en cada query downstream.
+ */
+function derivePositionTypeFromPathname(pathname: string | null): string | null {
+  if (!pathname) return null
+  const match = pathname.match(/^\/([a-z][a-z0-9-]*)\//)
+  if (!match) return null
+  const slug = match[1]
+  if (!KNOWN_OPOSICION_SLUGS.has(slug)) return null
+  return slug.replace(/-/g, '_')
+}
 
 const supabase = getSupabaseClient()
 
@@ -499,11 +523,23 @@ export async function createDetailedTestSession(
       estimated_duration: validatedParams.questions.length * 60,
     }
 
+    const testUrl = typeof window !== 'undefined' ? window.location.pathname : null
+    // position_type del test = oposición en cuya URL se está creando.
+    // Capturarlo AQUÍ (al INSERT) es la única forma robusta de anclarlo:
+    // tema_number es un int sin contexto y colisiona entre B2 de distintas
+    // oposiciones (T101 AAE "Atención al ciudadano" vs T101 SS "SS en CE").
+    // Si el user después cambia su target_oposicion, este test sigue
+    // sabiendo de dónde vino.
+    // Null para tests globales (/test/rapido, /leyes/...) o cuando el SSR
+    // no tiene window.
+    const positionType = derivePositionTypeFromPathname(testUrl)
+
     const insertData = {
       user_id: validatedParams.userId,
       title: safeTitle,
       test_type: validatedParams.testType,
-      test_url: typeof window !== 'undefined' ? window.location.pathname : null,
+      test_url: testUrl,
+      position_type: positionType,
       total_questions: validatedParams.questions.length,
       score: 0,
       tema_number: validatedParams.tema,

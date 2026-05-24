@@ -34,7 +34,6 @@ import type {
   ArticlePerformance,
   UserOposicion,
 } from './schemas'
-import { getUserThemeStatsByOposicion } from '@/lib/api/theme-stats/queries'
 import { ALL_OPOSICION_SLUGS, SLUG_TO_POSITION_TYPE } from '@/lib/config/oposiciones'
 import type { OposicionSlug } from '@/lib/api/theme-stats/schemas'
 
@@ -432,8 +431,21 @@ async function getRecentTests(db: ReturnType<typeof getDb>, userId: string): Pro
     .limit(1)
   const positionType = profileRow[0]?.targetOposicion?.replace(/-/g, '_') || 'auxiliar_administrativo_estado'
 
-  // Query con LEFT JOIN LATERAL a topics y test_questions (Memoize de
-  // PostgreSQL — 1.8ms vs 8.4s de subqueries correladas).
+  // El bug cosmético cross-oposición: tests.tema_number=105 podía pertenecer
+  // a "Word" (AAE) o a "Gestión recaudatoria" (SS) según la oposición en la
+  // que se hizo el test, pero la query anterior siempre resolvía el título
+  // usando el position_type ACTUAL del user → tras cambiar de oposición
+  // aparecían títulos engañosos.
+  //
+  // Estrategia (V3, 2026-05-24):
+  //   1) Si tests.position_type está rellenado (backfill 2026-05-24 o INSERT
+  //      moderno), usarlo: es la fuente más fiel y robusta (no depende de
+  //      parsear test_url ni del target del user).
+  //   2) Fallback: regex sobre test_url para tests legacy sin position_type.
+  //      Se conserva por si quedaran tests sin backfillear o el INSERT
+  //      moderno fallara silenciosamente.
+  //   3) Último fallback: position_type ACTUAL del user (comportamiento
+  //      legacy, conserva regression-free para clientes/datos antiguos).
   const result = await db.execute(
     sql`SELECT
       tests.id, tests.title, tests.tema_number as "temaNumber",
@@ -448,7 +460,17 @@ async function getRecentTests(db: ReturnType<typeof getDb>, userId: string): Pro
     LEFT JOIN LATERAL (
       SELECT t.title, t.position_type FROM topics t
       WHERE t.topic_number = tests.tema_number AND t.is_active = true
-      ORDER BY CASE WHEN t.position_type = ${positionType} THEN 0 ELSE 1 END
+      ORDER BY
+        -- 1) Prioridad máxima: tests.position_type (columna persistida 2026-05-24).
+        --    Si NULL (tests globales /test/rapido, /leyes, o legacy pre-backfill),
+        --    este CASE no matchea y se evalúa el siguiente.
+        CASE WHEN tests.position_type IS NOT NULL AND t.position_type = tests.position_type
+             THEN 0 ELSE 1 END,
+        -- 2) Fallback: derivar position_type del URL del test (legacy compat).
+        CASE WHEN t.position_type = replace(substring(tests.test_url from '^/([a-z][a-z0-9-]*)/'), '-', '_')
+             THEN 0 ELSE 1 END,
+        -- 3) Último fallback: position_type actual del user.
+        CASE WHEN t.position_type = ${positionType} THEN 0 ELSE 1 END
       LIMIT 1
     ) topic_info ON true
     LEFT JOIN LATERAL (
@@ -494,53 +516,90 @@ async function getThemePerformance(db: ReturnType<typeof getDb>, userId: string)
   // módulo topic-progress lo convertimos a slug (guiones).
   const oposicionSlug = targetOposicion ? targetOposicion.replace(/_/g, '-') : null
 
-  // V3 (2026-05-24): si el user tiene target_oposicion conocido, derivar stats
-  // dinámicamente desde article_id + topic_scope de esa oposición (módulo
-  // topic-progress). Esto evita la trampa de agrupar por tema_number, que es
-  // solo un int sin contexto y colisiona entre B2 de oposiciones distintas
-  // (p.ej. T101 AAE "Atención al ciudadano" vs T101 SS "SS en la CE").
+  // V4 (2026-05-24): si el user tiene target_oposicion conocido, agrupa
+  // por tema_number filtrando por tests.position_type. Esto:
+  //   - Evita el JOIN test_questions → questions → articles caro de V3
+  //     (medido: 12s para users con 64k test_questions, agotaba timeout).
+  //   - Aprovecha el índice parcial idx_tests_user_position_completed
+  //     (migración 2026-05-24-tests-position-type.sql).
+  //   - Solo cuenta lo hecho EN la oposición del dashboard, sin atribuir
+  //     respuestas de tests AAE al dashboard SS por solapamiento de scope.
   //
-  // Si la oposición no es reconocida o la V3 falla, caemos al comportamiento
-  // legacy. Esto preserva backward compat para usuarios con target_oposicion
-  // null o slug obsoleto.
+  // Si la oposición no es reconocida o la query falla, caemos al
+  // comportamiento legacy (cache `user_theme_performance_cache` o GROUP BY
+  // crudo). Esto preserva backward compat para usuarios con
+  // target_oposicion null o slug obsoleto.
   if (oposicionSlug && oposicionSlugSet.has(oposicionSlug)) {
     try {
-      const v3 = await getUserThemeStatsByOposicion(userId, oposicionSlug as OposicionSlug)
-      if (v3.success && v3.stats) {
-        const positionType = SLUG_TO_POSITION_TYPE[oposicionSlug as OposicionSlug]
+      const positionType = SLUG_TO_POSITION_TYPE[oposicionSlug as OposicionSlug]
 
-        // Resolver títulos de topics de esta oposición (una sola query).
-        const topicsRows = await db
-          .select({
-            topicNumber: topics.topicNumber,
-            title: topics.title,
-            positionType: topics.positionType,
-          })
-          .from(topics)
-          .where(and(eq(topics.positionType, positionType), eq(topics.isActive, true)))
+      // 1) Stats por tema filtradas por position_type del test.
+      //    CTE MATERIALIZED para forzar plan: primero materializar test_ids
+      //    de esta oposición (índice parcial idx_tests_user_position_completed),
+      //    luego JOIN por test_id sobre test_questions (idx_test_questions_test_id).
+      //    Sin CTE el plan caía a Bitmap Scan(tq.user_id) → 64k rows heap
+      //    (~3s) antes del filtro por position_type → timeout para heavy users.
+      const statsRows = await db.execute<{
+        tema_number: number | null
+        total: number
+        correct: number
+        average_time: number
+        last_practiced: string | null
+      }>(sql`
+        WITH user_tests AS MATERIALIZED (
+          SELECT id FROM tests
+          WHERE user_id = ${userId} AND position_type = ${positionType}
+        )
+        SELECT
+          tq.tema_number,
+          COUNT(*)::int as total,
+          SUM(CASE WHEN tq.is_correct = true THEN 1 ELSE 0 END)::int as correct,
+          COALESCE(AVG(tq.time_spent_seconds), 0)::float as average_time,
+          MAX(tq.created_at)::text as last_practiced
+        FROM user_tests ut
+        INNER JOIN test_questions tq ON tq.test_id = ut.id
+        WHERE tq.tema_number IS NOT NULL
+        GROUP BY tq.tema_number
+        ORDER BY tq.tema_number
+      `)
 
-        const titleByNum: Record<number, { title: string | null; positionType: string | null }> = {}
-        for (const t of topicsRows) {
-          if (t.topicNumber != null) {
-            titleByNum[t.topicNumber] = { title: t.title ?? null, positionType: t.positionType ?? null }
-          }
+      const statsRowsArr = Array.isArray(statsRows) ? statsRows : (statsRows as any).rows || []
+
+      // 2) Resolver títulos de topics de esta oposición (una sola query).
+      const topicsRows = await db
+        .select({
+          topicNumber: topics.topicNumber,
+          title: topics.title,
+          positionType: topics.positionType,
+        })
+        .from(topics)
+        .where(and(eq(topics.positionType, positionType), eq(topics.isActive, true)))
+
+      const titleByNum: Record<number, { title: string | null; positionType: string | null }> = {}
+      for (const t of topicsRows) {
+        if (t.topicNumber != null) {
+          titleByNum[t.topicNumber] = { title: t.title ?? null, positionType: t.positionType ?? null }
         }
-
-        return Object.values(v3.stats)
-          .map(s => ({
-            temaNumber: s.temaNumber,
-            title: titleByNum[s.temaNumber]?.title ?? null,
-            topicPositionType: titleByNum[s.temaNumber]?.positionType ?? null,
-            totalQuestions: s.total,
-            correctAnswers: s.correct,
-            accuracy: s.accuracy,
-            averageTime: s.averageTimeSeconds ?? 0,
-            lastPracticed: s.lastStudy,
-          }))
-          .sort((a, b) => a.temaNumber - b.temaNumber)
       }
+
+      return statsRowsArr
+        .filter((r: any) => r.tema_number !== null)
+        .map((r: any) => {
+          const total = Number(r.total) || 0
+          const correct = Number(r.correct) || 0
+          return {
+            temaNumber: r.tema_number as number,
+            title: titleByNum[r.tema_number as number]?.title ?? null,
+            topicPositionType: titleByNum[r.tema_number as number]?.positionType ?? null,
+            totalQuestions: total,
+            correctAnswers: correct,
+            accuracy: total > 0 ? Math.round((correct / total) * 100) : 0,
+            averageTime: Math.round(Number(r.average_time) || 0),
+            lastPracticed: r.last_practiced,
+          }
+        })
     } catch (error) {
-      console.warn('⚠️ [getThemePerformance] V3 falló, cae a legacy:', error)
+      console.warn('⚠️ [getThemePerformance] V4 falló, cae a legacy:', error)
     }
   }
 

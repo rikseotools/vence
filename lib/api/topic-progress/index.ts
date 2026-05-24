@@ -8,6 +8,36 @@
 // - theme-stats: Estadísticas de todos los temas
 // - topic-data: Progreso en un tema específico
 // - weak-articles: Artículos débiles por tema
+//
+// ⚠️  REGLA CRUCIAL para evitar regresiones del bug cross-oposición
+// (caso María Lorenzo, feedback 0f4734c0, 24/05/2026):
+//
+//     test_questions.tema_number y tests.tema_number SON INTS SIN
+//     CONTEXTO DE OPOSICIÓN. Distintas oposiciones reutilizan los mismos
+//     topic_number con CONTENIDOS DISTINTOS (T101 AAE = "Atención al
+//     ciudadano" vs T101 SS = "La SS en la CE").
+//
+//     CUALQUIER cómputo "por tema dentro de una oposición" debe filtrar
+//     PRIMERO por la oposición. Hay dos formas legítimas:
+//
+//     (A) Filtrar por `tests.position_type` (columna persistida desde
+//         2026-05-24-tests-position-type.sql) — rápida, usa el índice
+//         parcial idx_tests_user_position_completed. Patrón recomendado
+//         para agregaciones masivas (theme-stats, weak-articles).
+//
+//     (B) Derivar el tema desde primary_article_id + topic_scope para
+//         la oposición concreta (este módulo: getArticleTopicMapping +
+//         aggregateStatsByTopic). Atribuye actividad pedagógicamente
+//         "compartida" entre oposiciones que comparten temario. Más
+//         caro de calcular; usar cuando la (A) no sirva.
+//
+//     NUNCA agrupar `tema_number` directamente sin filtrar por la
+//     oposición. Hacerlo mezcla B2 entre oposiciones y produce
+//     dashboards engañosos.
+//
+// Ver COMMENT ON COLUMN en test_questions.tema_number y tests.tema_number
+// para la misma advertencia en la BD (migración
+// 2026-05-24-tema-number-warning-comments.sql).
 
 // ============================================
 // EXPORTS: MAPPING (caché 30 días)

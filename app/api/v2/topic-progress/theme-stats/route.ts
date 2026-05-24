@@ -80,49 +80,88 @@ async function _GET(request: NextRequest) {
     return NextResponse.json({ success: true, stats: cached.data })
   }
 
-  // === RAMA V3: derivación dinámica desde article_id + topic_scope ===
+  // === RAMA V4 (2026-05-24): agrupa tema_number filtrando por tests.position_type ===
+  //
+  // Por qué V4 (y no la V3 con derivación article→topic):
+  //   - V3 hacía JOIN test_questions → questions → articles + lookup mapping
+  //     por oposición. Para users heavy (>50k test_questions) el JOIN agotaba
+  //     el timeout de 10s (medido: 12s para user con 64k). Fallback a stale
+  //     servía [] en cold start → user veía dashboard vacío.
+  //   - V4 aprovecha tests.position_type (columna persistida + índice parcial
+  //     idx_tests_user_position_completed, migración 2026-05-24). El filtro
+  //     por (user_id, position_type) reduce el set ANTES del GROUP BY.
+  //   - Semánticamente más correcto: solo cuenta lo hecho EN la oposición
+  //     del dashboard, sin atribuir respuestas de tests AAE al dashboard SS
+  //     por solapamiento de scope. Es justo lo que pidió el usuario que
+  //     motivó este refactor (María Lorenzo, feedback 0f4734c0).
+  //   - Si el user no ha hecho NINGÚN test en esa oposición pero tiene tests
+  //     antiguos sin position_type (NULL) que podrían encajar, NO los
+  //     contamos. Esos son tests globales (/test/rapido, /leyes/...). El
+  //     fallback "todos los tests" pertenece a la rama LEGACY sin oposicionId.
   if (oposicionId) {
+    const positionType = oposicionId.replace(/-/g, '_')
+
     try {
-      const v3Result = await Promise.race([
-        getUserThemeStatsByOposicion(userId, oposicionId),
+      const db = getReadDb()
+      // CTE MATERIALIZED para forzar el orden del plan: primero materializar
+      // los test_ids de esta oposición (índice parcial idx_tests_user_position_completed
+      // cubre user_id+position_type+completed_at), después join sobre
+      // test_questions por test_id (índice idx_test_questions_test_id).
+      // Sin CTE Postgres elegía Bitmap Scan(tq.user_id) → 64k filas heap
+      // (~3s) ANTES de filtrar por tests.position_type, agotando timeout.
+      const queryPromise = db.execute(sql`
+        WITH user_tests AS MATERIALIZED (
+          SELECT id FROM tests
+          WHERE user_id = ${userId} AND position_type = ${positionType}
+        )
+        SELECT
+          tq.tema_number,
+          COUNT(*)::int as total,
+          SUM(CASE WHEN tq.is_correct = true THEN 1 ELSE 0 END)::int as correct,
+          ROUND((SUM(CASE WHEN tq.is_correct = true THEN 1 ELSE 0 END)::numeric
+            / NULLIF(COUNT(*), 0)) * 100, 0)::int as accuracy,
+          SUM(CASE WHEN tq.created_at >= now() - interval '30 days' THEN 1 ELSE 0 END)::int as total_30d,
+          SUM(CASE WHEN tq.created_at >= now() - interval '30 days' AND tq.is_correct = true THEN 1 ELSE 0 END)::int as correct_30d,
+          CASE WHEN SUM(CASE WHEN tq.created_at >= now() - interval '30 days' THEN 1 ELSE 0 END) > 0
+            THEN ROUND((SUM(CASE WHEN tq.created_at >= now() - interval '30 days' AND tq.is_correct = true THEN 1 ELSE 0 END)::numeric
+              / SUM(CASE WHEN tq.created_at >= now() - interval '30 days' THEN 1 ELSE 0 END)) * 100, 0)::int
+            ELSE NULL END as accuracy_30d,
+          MAX(tq.created_at)::text as last_study
+        FROM user_tests ut
+        INNER JOIN test_questions tq ON tq.test_id = ut.id
+        WHERE tq.tema_number IS NOT NULL
+        GROUP BY tq.tema_number
+        ORDER BY tq.tema_number
+      `)
+
+      const result = await Promise.race([
+        queryPromise,
         new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('theme-stats v3 timeout')), BD_TIMEOUT_MS)
+          setTimeout(() => reject(new Error('theme-stats v4 timeout')), BD_TIMEOUT_MS)
         ),
       ])
 
-      if (!v3Result.success || !v3Result.stats) {
-        // V3 reportó error semántico. Si tenemos cache stale, servirlo.
-        if (cached) {
-          const ageS = Math.floor((Date.now() - cached.ts) / 1000)
-          console.warn(`⚠️ [theme-stats v3] error for ${userId.slice(0, 8)}/${oposicionId}, stale cache (${ageS}s)`)
-          return NextResponse.json({ success: true, stats: cached.data })
-        }
-        return NextResponse.json({ success: false, error: v3Result.error || 'Error al calcular stats' }, { status: 500 })
-      }
-
-      // Transformar object → array con el shape estable que espera el cliente.
-      // (TestHubClient hace `data.stats.forEach`, así que mantenemos array.)
-      const stats: ThemeStat[] = Object.values(v3Result.stats).map(s => ({
-        tema_number: s.temaNumber,
-        total: s.total,
-        correct: s.correct,
-        accuracy: s.accuracy,
-        total_30d: s.total30d ?? 0,
-        correct_30d: s.correct30d ?? 0,
-        accuracy_30d: s.accuracy30d ?? null,
-        last_study: s.lastStudy,
-      })).sort((a, b) => a.tema_number - b.tema_number)
+      const stats: ThemeStat[] = (result as any[]).map((r: any) => ({
+        tema_number: r.tema_number,
+        total: Number(r.total),
+        correct: Number(r.correct),
+        accuracy: Number(r.accuracy),
+        total_30d: Number(r.total_30d || 0),
+        correct_30d: Number(r.correct_30d || 0),
+        accuracy_30d: r.accuracy_30d != null ? Number(r.accuracy_30d) : null,
+        last_study: r.last_study,
+      }))
 
       setCached(cacheKey, { data: stats, ts: Date.now() }, STALE_TTL_S)
       return NextResponse.json({ success: true, stats })
     } catch (err) {
-      // Timeout o error BD: devolver cache stale si existe
+      // Timeout o error BD: cache stale si existe
       if (cached) {
         const ageS = Math.floor((Date.now() - cached.ts) / 1000)
-        console.warn(`⏱️ [theme-stats v3] timeout for ${userId.slice(0, 8)}/${oposicionId}, stale (${ageS}s)`)
+        console.warn(`⏱️ [theme-stats v4] timeout for ${userId.slice(0, 8)}/${oposicionId}, stale (${ageS}s)`)
         return NextResponse.json({ success: true, stats: cached.data })
       }
-      console.warn(`⏱️ [theme-stats v3] timeout for ${userId.slice(0, 8)}/${oposicionId}, empty`)
+      console.warn(`⏱️ [theme-stats v4] timeout for ${userId.slice(0, 8)}/${oposicionId}, empty`)
       return NextResponse.json({ success: true, stats: [] })
     }
   }
