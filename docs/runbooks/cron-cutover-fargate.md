@@ -1,6 +1,6 @@
 # Runbook — Cutover de crons Vercel → AWS Fargate (Etapa 1)
 
-> **Estado:** shadow desde 2026-05-22. Cutover fijado tentativamente para **~2026-06-05** (2 sem) o **2026-06-12** (3 sem, conservador) tras verificación. Ver «Criterio de cutover» abajo.
+> **Estado:** shadow desde 2026-05-22. Cutover parcial **24/05/2026: 2 crons */5min cerrados** (`refresh-rankings`, `process-outbox`) bajo excepción documentada por sample size. Los 11 restantes esperan al **2026-06-05** (criterio original 2 sem) o **2026-06-12** (conservador). Ver «Criterio de cutover» y «Histórico» abajo.
 > **Bloque:** 1 del plan de ejecución activo del [ARCHITECTURE_ROADMAP](../ARCHITECTURE_ROADMAP.md).
 > **Decisión origen:** roadmap sección «Backend dedicado de proceso largo (DECISIÓN 2026-05-22)».
 
@@ -173,10 +173,10 @@ git commit -m "revert(cron): restaurar <cron> Vercel — rollback de cutover"
 | `check-boe-changes` | 🟡 463/475 | ⏳ 2026-06-05 | ⏳ | ⏳ | Era el detonante (BOE 20/05 perdido). Hoy 97% leyes (72 fetch errors transitorios). Vigilar evolución |
 | `archive-interactions` | ✅ 1/24h | ⏳ | ⏳ | ⏳ | |
 | `refresh-theme-cache` | ✅ 1/24h | ⏳ | ⏳ | ⏳ | |
-| `refresh-rankings` | ✅ 288/24h | ⏳ | ⏳ | ⏳ | `*/5min` ejecución exacta. 341 filas yesterday + 988 week insertadas/ejecución |
+| `refresh-rankings` | ✅ 288/24h | ⚠️ excepción documentada | ✅ 24/05 | ✅ **24/05** (commit `d5e14b0a`) | `*/5min`. ~576 runs en shadow = sample size enorme aunque calendario corto. Paridad: mismo `SELECT * FROM refresh_ranking_cache()`, UPSERT idempotente sobre `ranking_cache` |
 | `update-streaks` | ✅ 1/24h | ⏳ | ⏳ | ⏳ | 295 resets/día |
 | `check-seguimiento` | ⏳ esperado 0 hoy (sáb) | ⏳ | ⏳ | ⏳ | Solo L-V. Verificar lunes 25/05 |
-| `process-outbox` | ✅ 288/24h | ⏳ | ⏳ | ⏳ | `*/5min` ejecución exacta |
+| `process-outbox` | ✅ 288/24h | ⚠️ excepción documentada | ✅ 24/05 | ✅ **24/05** (commit `6fed8b84`) | `*/5min`. ~576 runs en shadow. Paridad: mismo `processOutboxBatch(db, 200)` con `FOR UPDATE SKIP LOCKED` — workers concurrentes no se pisan por diseño. Outbox vacía la mayoría del tiempo |
 | `avatar-rotation` | ⏳ esperado 0 hoy (sáb) | ⏳ | ⏳ | ⏳ | Semanal (domingo). Verificar dom 24/05 |
 | `process-verification-queue` | ✅ 4/24h | ⏳ | ⏳ | ⏳ | 4x diario exacto |
 | `detect-timeline-silence` | ✅ 1/24h | ⏳ | ⏳ | ⏳ | |
@@ -195,6 +195,14 @@ git commit -m "revert(cron): restaurar <cron> Vercel — rollback de cutover"
   - **0 errores reales, 0 reinicios.** 4 warnings esperados de BOE (`fetch_error` puntual en decretos CyL/CM, el sistema avanza `last_checked` para no atascar la cola — comportamiento del fix de causa raíz del 22/05).
   - **BOE revisó 463/475 leyes** (97%) — 72 errores de red transitorios contra páginas oficiales (no es regresión, es ruido de red contra BOE/BOJA/BOC). A vigilar durante el soak.
   - **Veredicto**: 🟢 verde. Reloj de las 2-3 semanas corre.
+- **2026-05-24**: cutover parcial de los 2 crons `*/5min`: `refresh-rankings` (commit `d5e14b0a`) y `process-outbox` (commit `6fed8b84`).
+  - **Excepción documentada al criterio "Soak ≥ 2 sem"**: estos 2 crons acumularon ~576 ejecuciones cada uno en 2 días (288/24h × 2). Para crons frecuentes el sample size matters más que el calendario — 576 runs idénticos con 0 errores reales es señal mucho más fuerte que 14 runs de un cron diario.
+  - **Paridad funcional verificada code-a-code**:
+    - `refresh-rankings`: ambos llaman `SELECT * FROM refresh_ranking_cache()` directo. UPSERT idempotente sobre `ranking_cache`, imposible que se pisen aunque hayan convivido.
+    - `process-outbox`: ambos llaman `processOutboxBatch(db, 200)` con `FOR UPDATE SKIP LOCKED`. Outbox empty most of the time (0 stuck, 0 pending) → riesgo de regresión bajo incluso si paridad imperfecta.
+  - **Pre-cutover BD verificado**: `ranking_cache` 3.297 filas con runs cada 5 min insertando 3.300+ filas; `outbox_events.attempts >= 5` = 0; `outbox_events.processed_at IS NULL` = 0.
+  - Los **11 crons restantes esperan al 2026-06-05** (criterio original del runbook). Esto es defensa en profundidad: si hoy se rompe algún cron común que afecte a Fargate como cluster, los crons no migrados siguen sirviendo desde Vercel.
+  - **Veredicto**: 🟢 2/13 cerrados, 11 pendientes. Próxima ventana: 2026-06-05.
 
 ## Referencias
 
