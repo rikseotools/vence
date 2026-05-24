@@ -18,10 +18,15 @@ import { DetectOepLlmModule } from './detect-oep-llm/detect-oep-llm.module';
 import { DetectRegionalOepsModule } from './detect-regional-oeps/detect-regional-oeps.module';
 import { DetectGenericSourcesModule } from './detect-generic-sources/detect-generic-sources.module';
 import { ProcessVerificationQueueModule } from './process-verification-queue/process-verification-queue.module';
+import { AnswerSaveModule } from './answer-save/answer-save.module';
+import { AntifraudModule } from './antifraud/antifraud.module';
 import { AuthModule } from './auth/auth.module';
 import { CacheModule } from './cache/cache.module';
+import { DailyLimitModule } from './daily-limit/daily-limit.module';
 import { EmailModule } from './email/email.module';
 import { MedalsModule } from './medals/medals.module';
+import { TemaResolverModule } from './tema-resolver/tema-resolver.module';
+import { TestAnswersModule } from './test-answers/test-answers.module';
 
 @Module({
   imports: [
@@ -60,6 +65,13 @@ import { MedalsModule } from './medals/medals.module';
     DetectGenericSourcesModule,
     // HTTP endpoints — Bloque 3 canary (Etapa 2)
     MedalsModule,
+    // answer-and-save (Fase 1 foundational, esqueletos sin lógica todavía).
+    // Ver docs/architecture/bloque3-answer-save-plan.md
+    AntifraudModule,
+    DailyLimitModule,
+    TestAnswersModule,
+    TemaResolverModule,
+    AnswerSaveModule,
   ],
 })
 export class AppModule {}

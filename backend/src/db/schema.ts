@@ -36,11 +36,20 @@ export const userMedals = pgTable('user_medals', {
   viewed: boolean('viewed').default(false),
 });
 
-/** Tabla `user_profiles` — fuente agnóstica del email del user (no Supabase Auth API). */
+/** Tabla `user_profiles` — fuente agnóstica del email del user (no Supabase Auth API).
+ *  Ampliada para answer-and-save (markActiveStudentIfFirst toca is_active_student
+ *  + first_test_completed_at). target_oposicion lo usa el cálculo de score.
+ */
 export const userProfiles = pgTable('user_profiles', {
   id: uuid('id').primaryKey().notNull(),
   email: text('email'),
   fullName: text('full_name'),
+  isActiveStudent: boolean('is_active_student'),
+  firstTestCompletedAt: timestamp('first_test_completed_at', {
+    withTimezone: true,
+    mode: 'string',
+  }),
+  targetOposicion: text('target_oposicion'),
 });
 
 /** Tabla `email_preferences` — opt-out global de emails por user. */
@@ -55,3 +64,100 @@ export const publicUserProfiles = pgTable('public_user_profiles', {
   id: uuid('id').primaryKey().notNull(),
   displayName: text('display_name'),
 });
+
+// ════════════════════════════════════════════════════════════════
+// Tablas para answer-and-save (Bloque 3 — port en curso).
+// Ver docs/architecture/bloque3-answer-save-plan.md §3.
+// Solo se declaran columnas que el código del backend toca.
+// ════════════════════════════════════════════════════════════════
+
+/** Tabla `questions` — preguntas legislativas. Source of truth de correct_option. */
+export const questions = pgTable('questions', {
+  id: uuid('id').primaryKey().notNull(),
+  correctOption: integer('correct_option'),
+  explanation: text('explanation'),
+  primaryArticleId: uuid('primary_article_id'),
+  isActive: boolean('is_active'),
+});
+
+/** Tabla `articles` — artículos de leyes, JOIN target desde questions. */
+export const articles = pgTable('articles', {
+  id: uuid('id').primaryKey().notNull(),
+  lawId: uuid('law_id'),
+  articleNumber: text('article_number'),
+});
+
+/** Tabla `psychometric_questions` — preguntas psicotécnicas, fallback de validation. */
+export const psychometricQuestions = pgTable('psychometric_questions', {
+  id: uuid('id').primaryKey().notNull(),
+  correctOption: integer('correct_option'),
+  explanation: text('explanation'),
+});
+
+/** Tabla `tests` — sesiones de test. answer-and-save UPDATE el score. */
+export const tests = pgTable('tests', {
+  id: uuid('id').primaryKey().notNull(),
+  userId: uuid('user_id'),
+  totalQuestions: integer('total_questions').notNull(),
+  isCompleted: boolean('is_completed'),
+  completedAt: timestamp('completed_at', { withTimezone: true, mode: 'string' }),
+  // numeric en BD; Drizzle expone como string para no perder precisión.
+  score: text('score'),
+  totalTimeSeconds: integer('total_time_seconds'),
+});
+
+/** Tabla `test_questions` — respuestas individuales. answer-and-save INSERT row. */
+export const testQuestions = pgTable('test_questions', {
+  id: uuid('id').defaultRandom().primaryKey().notNull(),
+  testId: uuid('test_id'),
+  userId: uuid('user_id'),
+  questionId: uuid('question_id'),
+  psychometricQuestionId: uuid('psychometric_question_id'),
+  articleId: uuid('article_id'),
+  questionOrder: integer('question_order'),
+  questionText: text('question_text'),
+  userAnswer: text('user_answer'),
+  correctAnswer: text('correct_answer'),
+  isCorrect: boolean('is_correct'),
+  wasBlank: boolean('was_blank'),
+  confidenceLevel: text('confidence_level'),
+  timeSpentSeconds: integer('time_spent_seconds'),
+  timeToFirstInteraction: integer('time_to_first_interaction'),
+  timeHesitation: integer('time_hesitation'),
+  interactionCount: integer('interaction_count'),
+  articleNumber: text('article_number'),
+  lawName: text('law_name'),
+  temaNumber: integer('tema_number'),
+  difficulty: text('difficulty'),
+  questionType: text('question_type'),
+  tags: text('tags').array(),
+  previousAttemptsThisArticle: integer('previous_attempts_this_article'),
+  historicalAccuracyThisArticle: text('historical_accuracy_this_article'),
+  userAgent: text('user_agent'),
+  screenResolution: text('screen_resolution'),
+  deviceType: text('device_type'),
+  browserLanguage: text('browser_language'),
+  timezone: text('timezone'),
+  fullQuestionContext: jsonb('full_question_context'),
+  userBehaviorData: jsonb('user_behavior_data'),
+  learningAnalytics: jsonb('learning_analytics'),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).defaultNow(),
+});
+
+/** Tabla `topic_scope` — qué artículos cubren cada topic. Usado por resolveTemaByQuestionIdFast. */
+export const topicScope = pgTable('topic_scope', {
+  id: uuid('id').defaultRandom().primaryKey().notNull(),
+  topicId: uuid('topic_id'),
+  lawId: uuid('law_id'),
+  articleNumbers: text('article_numbers').array(),
+});
+
+/** Tabla `topics` — topics por oposición. position_type discrimina entre oposiciones. */
+export const topics = pgTable('topics', {
+  id: uuid('id').primaryKey().notNull(),
+  positionType: text('position_type').notNull(),
+  topicNumber: integer('topic_number').notNull(),
+  title: text('title').notNull(),
+  isActive: boolean('is_active'),
+});
+
