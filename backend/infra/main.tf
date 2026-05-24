@@ -19,6 +19,9 @@ locals {
   cron_secret_ssm_arn          = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.cron_secret_ssm_name}"
   upstash_url_ssm_arn          = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/UPSTASH_REDIS_REST_URL"
   upstash_token_ssm_arn        = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/UPSTASH_REDIS_REST_TOKEN"
+  resend_api_key_ssm_arn       = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/RESEND_API_KEY"
+  email_from_name_ssm_arn      = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/EMAIL_FROM_NAME"
+  email_from_address_ssm_arn   = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/EMAIL_FROM_ADDRESS"
 }
 
 # ============================================================
@@ -97,6 +100,9 @@ resource "aws_iam_role_policy" "task_execution_secrets" {
           local.cron_secret_ssm_arn,
           local.upstash_url_ssm_arn,
           local.upstash_token_ssm_arn,
+          local.resend_api_key_ssm_arn,
+          local.email_from_name_ssm_arn,
+          local.email_from_address_ssm_arn,
         ]
       },
       {
@@ -183,6 +189,9 @@ resource "aws_ecs_task_definition" "backend" {
         { name = "CRON_SECRET", valueFrom = local.cron_secret_ssm_arn },
         { name = "UPSTASH_REDIS_REST_URL", valueFrom = local.upstash_url_ssm_arn },
         { name = "UPSTASH_REDIS_REST_TOKEN", valueFrom = local.upstash_token_ssm_arn },
+        { name = "RESEND_API_KEY", valueFrom = local.resend_api_key_ssm_arn },
+        { name = "EMAIL_FROM_NAME", valueFrom = local.email_from_name_ssm_arn },
+        { name = "EMAIL_FROM_ADDRESS", valueFrom = local.email_from_address_ssm_arn },
       ]
       portMappings = [{ containerPort = 3000, protocol = "tcp" }]
       logConfiguration = {

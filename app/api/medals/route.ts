@@ -193,6 +193,52 @@ async function _POST(request: NextRequest) {
       )
     }
 
+    // ─── Bloque 3 canary: proxy del POST al backend NestJS/Fargate ──
+    // Si flag ON, reenvía body al backend. El backend ejecuta TODO el
+    // cálculo (ranking + INSERT + emails Resend) en proceso largo, sin
+    // depender de Vercel ni Supabase Auth. Si backend falla, fallback
+    // graceful al path Vercel local (idéntico al patrón del GET).
+    if (shouldRouteToBackend('medals')) {
+      try {
+        const backendUrl = backendUrlFor('api/medals')
+        const controller = new AbortController()
+        const timer = setTimeout(() => controller.abort(), 20000) // 20s — POST hace cálculo pesado
+        try {
+          const backendRes = await fetch(backendUrl, {
+            method: 'POST',
+            signal: controller.signal,
+            headers: {
+              'Content-Type': 'application/json',
+              'x-forwarded-by': 'vercel-proxy',
+            },
+            body: JSON.stringify({ userId: parseResult.data.userId }),
+          })
+          clearTimeout(timer)
+          // Invalidación local también (defensa en profundidad — backend
+          // ya invalida cross-runtime via Upstash compartido, pero por si
+          // acaso el Vercel tenía cache propio in-memory).
+          if (backendRes.ok) {
+            invalidate(`medals:${parseResult.data.userId}`).catch(() => {})
+          }
+          const respBody = await backendRes.text()
+          return new NextResponse(respBody, {
+            status: backendRes.status,
+            headers: {
+              'Content-Type': backendRes.headers.get('content-type') ?? 'application/json',
+              'x-served-by': backendRes.headers.get('x-served-by') ?? 'vence-backend-proxy',
+            },
+          })
+        } finally {
+          clearTimeout(timer)
+        }
+      } catch (backendError) {
+        console.warn(
+          `⚠️ [medals proxy POST] backend canary falló (${(backendError as Error).message ?? 'unknown'}), fallback a Vercel local`,
+        )
+        // Caemos al código local de abajo
+      }
+    }
+
     const result = await withDbTimeout(
       () => checkAndSaveNewMedals(parseResult.data.userId),
       WRITE_TIMEOUT_MS,

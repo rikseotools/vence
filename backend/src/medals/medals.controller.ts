@@ -1,8 +1,10 @@
 import {
   BadRequestException,
+  Body,
   Controller,
   Get,
   Logger,
+  Post,
   Query,
   Res,
 } from '@nestjs/common';
@@ -42,5 +44,28 @@ export class MedalsController {
     res.setHeader('x-served-by', 'vence-backend');
 
     return response;
+  }
+
+  /**
+   * POST /api/medals — verifica medallas nuevas + INSERT + email.
+   * Body: { userId: uuid }. Idempotente vía ON CONFLICT DO NOTHING.
+   * Port 1:1 del POST de Vercel app/api/medals/route.ts.
+   */
+  @Post()
+  async post(
+    @Body() body: { userId?: string } | undefined,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<{ success: boolean; newMedals?: unknown; error?: string }> {
+    const userId = body?.userId;
+    if (!userId || !MedalsController.UUID_REGEX.test(userId)) {
+      throw new BadRequestException('userId invalido o faltante');
+    }
+
+    const result = await this.medals.checkAndSaveNewMedals(userId);
+
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+    res.setHeader('x-served-by', 'vence-backend');
+
+    return result;
   }
 }

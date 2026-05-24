@@ -42,6 +42,17 @@ const envSchema = z.object({
   // de invalidación cross-runtime. Ver docs/architecture/bloque3-redis-cross-runtime.md
   UPSTASH_REDIS_REST_URL: z.string().default(''),
   UPSTASH_REDIS_REST_TOKEN: z.string().default(''),
+  // Email (Resend SDK directo — agnóstico, idéntico al usado por la app).
+  // Si vacío, el envío de emails se desactiva (operación degradada).
+  // Flag MEDALS_RUNTIME_RECALC_ENABLED='false' desactiva todo el cálculo
+  // runtime del POST (gate igual que la app).
+  RESEND_API_KEY: z.string().default(''),
+  EMAIL_FROM_NAME: z.string().default('Vence'),
+  EMAIL_FROM_ADDRESS: z.string().default('info@vence.es'),
+  MEDALS_RUNTIME_RECALC_ENABLED: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((v) => v === 'true'),
 });
 
 export type Env = z.infer<typeof envSchema>;

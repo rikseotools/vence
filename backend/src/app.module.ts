@@ -19,6 +19,7 @@ import { DetectRegionalOepsModule } from './detect-regional-oeps/detect-regional
 import { DetectGenericSourcesModule } from './detect-generic-sources/detect-generic-sources.module';
 import { ProcessVerificationQueueModule } from './process-verification-queue/process-verification-queue.module';
 import { CacheModule } from './cache/cache.module';
+import { EmailModule } from './email/email.module';
 import { MedalsModule } from './medals/medals.module';
 
 @Module({
@@ -34,6 +35,8 @@ import { MedalsModule } from './medals/medals.module';
     HealthModule,
     // Cache compartido con Vercel (Bloque 3) — Global, exporta CacheService.
     CacheModule,
+    // Email transaccional Resend SDK directo — Global, exporta MedalEmailService.
+    EmailModule,
     // Crons — sub-etapa 1a
     BoeChangesModule,
     // Crons — sub-etapa 1b tanda 1 (mantenimiento)

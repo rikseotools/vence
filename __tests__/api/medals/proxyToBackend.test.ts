@@ -20,7 +20,7 @@ jest.mock('../../../lib/api/medals', () => ({
 jest.mock('../../../lib/cache/redis', () => ({
   getCached: jest.fn(),
   setCached: jest.fn(),
-  invalidate: jest.fn(),
+  invalidate: jest.fn(() => Promise.resolve()),
 }))
 
 jest.mock('../../../lib/db/timeout', () => ({
@@ -34,8 +34,13 @@ jest.mock('../../../lib/api/backend-router', () => ({
   backendUrlFor: (path: string) => `https://api.vence.es/${path.replace(/^\/+/, '')}`,
 }))
 
-import { GET } from '../../../app/api/medals/route'
-import { safeParseGetMedalsRequest, getUserMedals } from '../../../lib/api/medals'
+import { GET, POST } from '../../../app/api/medals/route'
+import {
+  safeParseGetMedalsRequest,
+  safeParseCheckMedalsRequest,
+  getUserMedals,
+  checkAndSaveNewMedals,
+} from '../../../lib/api/medals'
 import { getCached } from '../../../lib/cache/redis'
 import { NextRequest } from 'next/server'
 
@@ -193,5 +198,94 @@ describe('GET /api/medals — proxy canary al backend', () => {
       expect(fetchSpy).not.toHaveBeenCalled()
       expect(getUserMedals).not.toHaveBeenCalled()
     })
+  })
+})
+
+// ════════════════════════════════════════════════════════════════
+// POST canary — mismo patrón que GET con timeout más amplio (20s)
+// ════════════════════════════════════════════════════════════════
+
+function makePostReq(): NextRequest {
+  return new NextRequest('http://localhost/api/medals', {
+    method: 'POST',
+    body: JSON.stringify({ userId: USER_ID }),
+    headers: { 'Content-Type': 'application/json' },
+  })
+}
+
+describe('POST /api/medals — proxy canary al backend', () => {
+  let fetchSpy: jest.SpyInstance
+
+  beforeEach(() => {
+    jest.clearAllMocks()
+    ;(safeParseCheckMedalsRequest as jest.Mock).mockReturnValue({
+      success: true,
+      data: { userId: USER_ID },
+    })
+    fetchSpy = jest.spyOn(global, 'fetch')
+  })
+
+  afterEach(() => {
+    fetchSpy.mockRestore()
+  })
+
+  it('flag OFF: ejecuta checkAndSaveNewMedals local, NO toca backend', async () => {
+    mockShouldRoute.mockReturnValue(false)
+    ;(checkAndSaveNewMedals as jest.Mock).mockResolvedValue({
+      success: true,
+      newMedals: [],
+    })
+
+    const res = await POST(makePostReq())
+
+    expect(fetchSpy).not.toHaveBeenCalled()
+    expect(checkAndSaveNewMedals).toHaveBeenCalledWith(USER_ID)
+    expect(res.status).toBe(200)
+  })
+
+  it('flag ON: proxiea POST al backend con body JSON y reenvía respuesta', async () => {
+    mockShouldRoute.mockReturnValue(true)
+    const backendBody = JSON.stringify({
+      success: true,
+      newMedals: [{ id: 'first_place_today', title: 'Test' }],
+    })
+    fetchSpy.mockResolvedValue(
+      new Response(backendBody, {
+        status: 200,
+        headers: {
+          'content-type': 'application/json',
+          'x-served-by': 'vence-backend',
+        },
+      }),
+    )
+
+    const res = await POST(makePostReq())
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+    const [url, opts] = fetchSpy.mock.calls[0]
+    expect(url).toBe('https://api.vence.es/api/medals')
+    expect(opts.method).toBe('POST')
+    expect(opts.body).toBe(JSON.stringify({ userId: USER_ID }))
+    expect(res.status).toBe(200)
+    expect(res.headers.get('x-served-by')).toBe('vence-backend')
+    const body = await res.text()
+    expect(body).toBe(backendBody)
+    // No tocó checkAndSaveNewMedals local (proxy OK)
+    expect(checkAndSaveNewMedals).not.toHaveBeenCalled()
+  })
+
+  it('flag ON con backend caído: fallback a path local', async () => {
+    mockShouldRoute.mockReturnValue(true)
+    fetchSpy.mockRejectedValue(new Error('ECONNREFUSED'))
+    ;(checkAndSaveNewMedals as jest.Mock).mockResolvedValue({
+      success: true,
+      newMedals: [],
+    })
+
+    const res = await POST(makePostReq())
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+    expect(checkAndSaveNewMedals).toHaveBeenCalledWith(USER_ID)
+    expect(res.status).toBe(200)
   })
 })

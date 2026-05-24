@@ -35,3 +35,23 @@ export const userMedals = pgTable('user_medals', {
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).defaultNow(),
   viewed: boolean('viewed').default(false),
 });
+
+/** Tabla `user_profiles` — fuente agnóstica del email del user (no Supabase Auth API). */
+export const userProfiles = pgTable('user_profiles', {
+  id: uuid('id').primaryKey().notNull(),
+  email: text('email'),
+  fullName: text('full_name'),
+});
+
+/** Tabla `email_preferences` — opt-out global de emails por user. */
+export const emailPreferences = pgTable('email_preferences', {
+  id: uuid('id').defaultRandom().primaryKey().notNull(),
+  userId: uuid('user_id'),
+  unsubscribedAll: boolean('unsubscribed_all').default(false),
+});
+
+/** Tabla `public_user_profiles` — display_name público (para personalizar emails). */
+export const publicUserProfiles = pgTable('public_user_profiles', {
+  id: uuid('id').primaryKey().notNull(),
+  displayName: text('display_name'),
+});

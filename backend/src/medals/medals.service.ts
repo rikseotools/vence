@@ -1,11 +1,17 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { sql } from 'drizzle-orm';
 import { CacheService } from '../cache/cache.service';
 import { DRIZZLE, type DrizzleDB } from '../db/database.module';
+import { MedalEmailService } from '../email/medal-email.service';
 import {
   RANKING_MEDALS,
   type CachedMedals,
+  type CheckMedalsResponse,
   type GetMedalsResponse,
+  type MedalDefinition,
+  type PeriodConfig,
+  type RankingUser,
   type UserMedal,
 } from './medals.constants';
 
@@ -38,10 +44,33 @@ export class MedalsService {
   // Stale TTL: 24h. Igual que en Vercel.
   private static readonly STALE_TTL_S = 24 * 60 * 60;
 
+  // Circuit breaker para getRankingForPeriod. Si la query agota
+  // statement_timeout, abrimos el circuit 5min — los siguientes hits
+  // devuelven [] sin tocar BD (evita cascada cuando BD está saturada).
+  // Estado por instancia singleton — al ser proceso largo se mantiene
+  // entre requests (a diferencia de Vercel donde cada lambda lo tiene
+  // efímero). Eso es UNA mejora vs el comportamiento Vercel.
+  private circuitOpenUntil = 0;
+  private static readonly CIRCUIT_BREAKER_DURATION_MS = 5 * 60 * 1000;
+  // TTL del cache Redis del ranking: 30 días (períodos cerrados, no cambian).
+  private static readonly RANKING_REDIS_TTL_S = 30 * 24 * 60 * 60;
+
+  // Flag para desactivar el cálculo runtime si BD está bajo presión.
+  // Lectura en constructor (no en cada request) — cambio requiere reinicio.
+  private readonly runtimeRecalcEnabled: boolean;
+
   constructor(
     @Inject(DRIZZLE) private readonly db: DrizzleDB,
     private readonly cache: CacheService,
-  ) {}
+    private readonly emailService: MedalEmailService,
+    config: ConfigService,
+  ) {
+    // env validado por Zod → ya viene como boolean en config.
+    this.runtimeRecalcEnabled = config.get<boolean>(
+      'MEDALS_RUNTIME_RECALC_ENABLED',
+      true,
+    );
+  }
 
   /**
    * GET de medallas con cache-first. Devuelve `cacheStatus` para que el
@@ -225,5 +254,399 @@ export class MedalsService {
     } finally {
       if (timer) clearTimeout(timer);
     }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // POST /api/medals — verifica medallas nuevas y las guarda
+  // Port 1:1 de checkAndSaveNewMedals de lib/api/medals/queries.ts.
+  // Cero dependencia a Vercel ni a Supabase Auth.
+  // ═══════════════════════════════════════════════════════════════════
+
+  /**
+   * Verifica si el usuario tiene medallas nuevas (cálculo runtime de
+   * ranking) e INSERTa las nuevas en user_medals. Invalida cache.
+   * Envía emails de felicitación (best-effort) para las nuevas.
+   *
+   * Flag MEDALS_RUNTIME_RECALC_ENABLED=false desactiva todo el cálculo
+   * sin tocar BD (devuelve newMedals: []). Útil bajo presión.
+   */
+  async checkAndSaveNewMedals(userId: string): Promise<CheckMedalsResponse> {
+    if (!this.runtimeRecalcEnabled) {
+      return { success: true, newMedals: [] };
+    }
+
+    try {
+      const storedMedals = await this.getStoredUserMedals(userId);
+      const currentMedals = await this.calculateCurrentUserMedals(
+        userId,
+        storedMedals,
+      );
+      const storedMedalIds = new Set(storedMedals.map((m) => m.id));
+      const newMedals = currentMedals.filter((m) => !storedMedalIds.has(m.id));
+
+      if (newMedals.length === 0) {
+        return { success: true, newMedals: [] };
+      }
+
+      // INSERT idempotente — ON CONFLICT por (user_id, medal_id) DO NOTHING.
+      for (const medal of newMedals) {
+        await this.db.execute(
+          sql`INSERT INTO user_medals (user_id, medal_id, medal_data, unlocked_at, viewed)
+              VALUES (${userId}::uuid, ${medal.id}, ${JSON.stringify(medal)}::jsonb, NOW(), false)
+              ON CONFLICT (user_id, medal_id) DO NOTHING`,
+        );
+      }
+
+      this.logger.log(
+        `${newMedals.length} medalla(s) guardada(s) para user ${userId.slice(0, 8)}`,
+      );
+
+      // Invalidar cache para que el próximo GET vea las medallas nuevas
+      // (vs servir stale durante ≤6h). Cross-runtime coherente — Vercel
+      // también lo verá fresh porque comparten Upstash.
+      await this.cache.invalidate(`medals:${userId}`);
+
+      // Emails best-effort solo si el user NO está activo ahora mismo
+      // (evita interrumpir su sesión actual con notificaciones email).
+      const isActive = await this.isUserRecentlyActive(userId);
+      if (!isActive) {
+        // Secuencial intencional: si Resend rate-limita, no spammeamos.
+        for (const medal of newMedals) {
+          await this.emailService.sendMedalCongratulation(userId, medal);
+        }
+      }
+
+      return { success: true, newMedals };
+    } catch (err) {
+      this.logger.error('Error en checkAndSaveNewMedals:', err);
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'Error desconocido',
+      };
+    }
+  }
+
+  /**
+   * Determina qué períodos evaluar para asignar medallas.
+   * Medallas se otorgan AL DÍA SIGUIENTE del período cerrado:
+   *   - Diarias: siempre (evalúa ayer)
+   *   - Semanales: solo lunes (evalúa semana anterior completa)
+   *   - Mensuales: solo día 1 (evalúa mes anterior completo)
+   * Port literal de getMedalPeriods de la app.
+   */
+  private getMedalPeriods(now: Date): {
+    today?: PeriodConfig;
+    week?: PeriodConfig;
+    month?: PeriodConfig;
+  } {
+    const isMonday = now.getUTCDay() === 1;
+    const isFirstDayOfMonth = now.getUTCDate() === 1;
+    const periods: {
+      today?: PeriodConfig;
+      week?: PeriodConfig;
+      month?: PeriodConfig;
+    } = {};
+
+    // Diarias: evaluar ayer
+    const yesterday = new Date(now);
+    yesterday.setUTCDate(now.getUTCDate() - 1);
+    const yesterdayStart = new Date(
+      Date.UTC(
+        yesterday.getUTCFullYear(),
+        yesterday.getUTCMonth(),
+        yesterday.getUTCDate(),
+        0,
+        0,
+        0,
+        0,
+      ),
+    );
+    const yesterdayEnd = new Date(
+      Date.UTC(
+        yesterday.getUTCFullYear(),
+        yesterday.getUTCMonth(),
+        yesterday.getUTCDate(),
+        23,
+        59,
+        59,
+        999,
+      ),
+    );
+    periods.today = {
+      name: 'today',
+      startDate: yesterdayStart,
+      endDate: yesterdayEnd,
+    };
+
+    // Semanales: lunes anterior a domingo (solo si hoy es lunes)
+    if (isMonday) {
+      const weekStart = new Date(now);
+      weekStart.setUTCDate(now.getUTCDate() - 8);
+      weekStart.setUTCHours(0, 0, 0, 0);
+      const weekEnd = new Date(now);
+      weekEnd.setUTCDate(now.getUTCDate() - 2);
+      weekEnd.setUTCHours(23, 59, 59, 999);
+      periods.week = { name: 'week', startDate: weekStart, endDate: weekEnd };
+    }
+
+    // Mensuales: mes anterior completo (solo si hoy es día 1)
+    if (isFirstDayOfMonth) {
+      const lastMonthStart = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1, 0, 0, 0, 0),
+      );
+      const lastMonthEnd = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 0, 23, 59, 59, 999),
+      );
+      periods.month = {
+        name: 'month',
+        startDate: lastMonthStart,
+        endDate: lastMonthEnd,
+      };
+    }
+
+    return periods;
+  }
+
+  /**
+   * Calcula qué medallas tiene el user actualmente basado en su ranking
+   * en cada período evaluable. Solo añade las que no estén ya almacenadas.
+   */
+  private async calculateCurrentUserMedals(
+    userId: string,
+    storedMedals: UserMedal[],
+  ): Promise<UserMedal[]> {
+    try {
+      const now = new Date();
+      const periods = this.getMedalPeriods(now);
+      const medals: UserMedal[] = [...storedMedals];
+      const existingIds = new Set(storedMedals.map((m) => m.id));
+
+      for (const [, period] of Object.entries(periods)) {
+        if (!period) continue;
+        const ranking = await this.getRankingForPeriod(
+          period.startDate.toISOString(),
+          period.endDate.toISOString(),
+        );
+        const periodMedals = this.assignMedalsForPeriod(
+          period.name,
+          ranking,
+          userId,
+        );
+        for (const medal of periodMedals) {
+          if (existingIds.has(medal.id)) continue;
+          existingIds.add(medal.id);
+          medals.push(medal);
+        }
+      }
+
+      return medals;
+    } catch (err) {
+      this.logger.error('Error en calculateCurrentUserMedals:', err);
+      return storedMedals;
+    }
+  }
+
+  /**
+   * Ranking por período con cache Redis permanente + circuit breaker.
+   * Períodos cerrados (ayer, sem pasada, mes pasado) → ranking nunca
+   * cambia → cache permanente (TTL 30d, invalidar manual si hace falta).
+   * Si BD agota statement_timeout → abre circuit 5min y devuelve [].
+   */
+  private async getRankingForPeriod(
+    startISO: string,
+    endISO: string,
+  ): Promise<RankingUser[]> {
+    if (Date.now() < this.circuitOpenUntil) {
+      this.logger.warn(
+        'Circuit breaker abierto — devolviendo [] sin tocar BD',
+      );
+      return [];
+    }
+
+    const cacheKey = `medals_ranking:${startISO}:${endISO}:v2`;
+    try {
+      // Cache-first: si Upstash tiene la key, devuélvela. Si no, ejecuta
+      // la query pesada y cachea. Mismo cache key que Vercel — coherente.
+      const cached = await this.cache.getCached<RankingUser[]>(cacheKey);
+      if (cached !== null) return cached;
+
+      const ranking = await this.getRankingForPeriodInternal(startISO, endISO);
+      this.cache.setCached(
+        cacheKey,
+        ranking,
+        MedalsService.RANKING_REDIS_TTL_S,
+      );
+      return ranking;
+    } catch (err) {
+      if (this.isStatementTimeoutError(err)) {
+        this.circuitOpenUntil =
+          Date.now() + MedalsService.CIRCUIT_BREAKER_DURATION_MS;
+        this.logger.warn(
+          `Statement timeout en ranking ${startISO}..${endISO}. Circuit abierto 5min.`,
+        );
+      } else {
+        this.logger.error('Error en getRankingForPeriod:', err);
+      }
+      return [];
+    }
+  }
+
+  /**
+   * Query estructuralmente cara: GROUP BY user_id sobre test_questions
+   * (~192k filas en peor caso "month"). Devuelve top 100 por accuracy
+   * desempate por volumen, filtrando users con <5 preguntas.
+   */
+  private async getRankingForPeriodInternal(
+    startISO: string,
+    endISO: string,
+  ): Promise<RankingUser[]> {
+    const rows = (await this.db.execute(
+      sql`SELECT
+            tq.user_id,
+            COUNT(*)::bigint                                  AS total_questions,
+            COUNT(*) FILTER (WHERE tq.is_correct)::bigint     AS correct_answers,
+            ROUND((COUNT(*) FILTER (WHERE tq.is_correct)::numeric / COUNT(*)) * 100, 0) AS accuracy
+          FROM test_questions tq
+          WHERE tq.user_id IS NOT NULL
+            AND tq.created_at >= ${startISO}::timestamptz
+            AND tq.created_at <= ${endISO}::timestamptz
+          GROUP BY tq.user_id
+          HAVING COUNT(*) >= 5
+          ORDER BY accuracy DESC, total_questions DESC
+          LIMIT 100`,
+    )) as unknown as Array<{
+      user_id: string;
+      total_questions: bigint | number;
+      correct_answers: bigint | number;
+      accuracy: bigint | number;
+    }>;
+
+    return rows.map((row) => ({
+      userId: row.user_id,
+      totalQuestions: Number(row.total_questions),
+      correctAnswers: Number(row.correct_answers),
+      accuracy: Number(row.accuracy),
+    }));
+  }
+
+  /**
+   * Función pura: dado un ranking y un userId, devuelve qué medallas
+   * merece. Port literal de assignMedalsForPeriod.
+   */
+  private assignMedalsForPeriod(
+    periodName: string,
+    ranking: RankingUser[],
+    userId: string,
+  ): UserMedal[] {
+    const medals: UserMedal[] = [];
+    const userRank = ranking.findIndex((u) => u.userId === userId) + 1;
+    if (userRank === 0) return medals;
+
+    const userStats = ranking[userRank - 1];
+    const now = new Date().toISOString();
+
+    // Primer lugar
+    if (userRank === 1 && ranking.length >= 1) {
+      const def = RANKING_MEDALS[`FIRST_PLACE_${periodName.toUpperCase()}`];
+      if (def) {
+        medals.push(
+          this.buildMedal(def, userRank, ranking.length, periodName, userStats, now),
+        );
+      }
+    }
+
+    // Top 3 (posiciones 2 y 3)
+    if (userRank >= 2 && userRank <= 3 && ranking.length >= 2) {
+      const def = RANKING_MEDALS[`TOP_3_${periodName.toUpperCase()}`];
+      if (def) {
+        medals.push(
+          this.buildMedal(def, userRank, ranking.length, periodName, userStats, now),
+        );
+      }
+    }
+
+    // Medallas de rendimiento y volumen (solo semanales)
+    if (periodName === 'week') {
+      // Alta precisión: ≥90% con ≥20 preguntas
+      if (userStats.accuracy >= 90 && userStats.totalQuestions >= 20) {
+        medals.push(
+          this.buildMedal(
+            RANKING_MEDALS.HIGH_ACCURACY,
+            userRank,
+            ranking.length,
+            periodName,
+            userStats,
+            now,
+            `${userStats.accuracy}% de aciertos en ${userStats.totalQuestions} preguntas`,
+          ),
+        );
+      }
+      // Volumen: ≥100 preguntas
+      if (userStats.totalQuestions >= 100) {
+        medals.push(
+          this.buildMedal(
+            RANKING_MEDALS.VOLUME_LEADER,
+            userRank,
+            ranking.length,
+            periodName,
+            userStats,
+            now,
+            `${userStats.totalQuestions} preguntas respondidas esta semana`,
+          ),
+        );
+      }
+    }
+
+    return medals;
+  }
+
+  /** Helper puro: construye UserMedal desde MedalDefinition + stats. */
+  private buildMedal(
+    def: MedalDefinition,
+    rank: number,
+    totalUsers: number,
+    period: string,
+    stats: RankingUser,
+    unlockedAt: string,
+    customProgress?: string,
+  ): UserMedal {
+    return {
+      ...def,
+      unlocked: true,
+      progress: customProgress ?? `Posicion #${rank} de ${totalUsers} usuarios`,
+      unlockedAt,
+      rank,
+      period,
+      stats: {
+        userId: stats.userId,
+        totalQuestions: stats.totalQuestions,
+        correctAnswers: stats.correctAnswers,
+        accuracy: stats.accuracy,
+      },
+    };
+  }
+
+  /** True si el user respondió alguna pregunta en los últimos 5 min. */
+  private async isUserRecentlyActive(userId: string): Promise<boolean> {
+    try {
+      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+      const rows = (await this.db.execute(
+        sql`SELECT 1
+            FROM test_questions tq
+            WHERE tq.user_id = ${userId}::uuid
+              AND tq.created_at >= ${fiveMinutesAgo.toISOString()}::timestamptz
+            LIMIT 1`,
+      )) as unknown as Array<unknown>;
+      return rows.length > 0;
+    } catch {
+      return false;
+    }
+  }
+
+  /** Detecta error Postgres 57014 (statement timeout). */
+  private isStatementTimeoutError(err: unknown): boolean {
+    if (typeof err !== 'object' || err === null) return false;
+    const e = err as { code?: string; message?: string };
+    return e.code === '57014' || /statement timeout/i.test(e.message ?? '');
   }
 }

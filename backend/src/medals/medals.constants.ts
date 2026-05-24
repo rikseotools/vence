@@ -101,3 +101,24 @@ export interface CachedMedals {
   data: GetMedalsResponse;
   ts: number;
 }
+
+export interface CheckMedalsResponse {
+  success: boolean;
+  newMedals?: UserMedal[];
+  error?: string;
+}
+
+/** Tipo interno usado por el cálculo de ranking. */
+export interface RankingUser {
+  userId: string;
+  totalQuestions: number;
+  correctAnswers: number;
+  accuracy: number;
+}
+
+/** Período evaluado para asignar medallas (always cerrado en el pasado). */
+export interface PeriodConfig {
+  name: string;
+  startDate: Date;
+  endDate: Date;
+}
