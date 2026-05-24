@@ -32,9 +32,10 @@ const FLAGS = {
   medals: true,
   // answer-and-save — KEYSTONE del Bloque 3 (audit: 222 errors/7d, 3
   // cascades, arrastra 8 endpoints). Backend NestJS deployado y
-  // smoke-tested 2026-05-24. Flag OFF inicial = cero impacto productivo
-  // (proxy NO se ejecuta). Activar = cambiar a true + push.
-  'answer-and-save': false,
+  // smoke-tested 2026-05-24. ACTIVADO mismo día tras paridad verificada
+  // (JwtGuard + Zod + antifraud RPC register_device funcional + mapeo
+  // status). Rollback = cambiar a false y push.
+  'answer-and-save': true,
   // Próximos candidatos según docs/architecture/bloque3-audit-hot-path.md:
   // 'test-config':     false,
   // 'stats':           false,
