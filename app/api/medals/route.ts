@@ -32,6 +32,7 @@ import {
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { withDbTimeout, isDbTimeoutError } from '@/lib/db/timeout'
 import { getCached, setCached, invalidate } from '@/lib/cache/redis'
+import { shouldRouteToBackend, backendUrlFor } from '@/lib/api/backend-router'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -74,6 +75,50 @@ async function _GET(request: NextRequest) {
         { success: false, error: 'userId invalido o faltante' },
         { status: 400 }
       )
+    }
+
+    // ─── Bloque 3 canary: proxy condicional al backend NestJS/Fargate ──
+    // Si el flag está ON, reenviamos al backend (api.vence.es) y
+    // devolvemos su respuesta tal cual (status + headers + body).
+    // Rollback = cambiar el flag a false en lib/api/backend-router.ts.
+    // El backend ya tiene MISMO cache key Redis + mismo JSON shape +
+    // misma semántica que esta ruta (port verificado por paridad
+    // 24/05/2026). Si el backend falla por cualquier motivo (timeout,
+    // 503, network), caemos al path local original como fallback.
+    if (shouldRouteToBackend('medals')) {
+      try {
+        const backendUrl = backendUrlFor(`api/medals?userId=${parseResult.data.userId}`)
+        const controller = new AbortController()
+        const timer = setTimeout(() => controller.abort(), 5000) // 5s timeout
+        try {
+          const backendRes = await fetch(backendUrl, {
+            signal: controller.signal,
+            headers: { 'x-forwarded-by': 'vercel-proxy' },
+          })
+          clearTimeout(timer)
+          // Reenviar status, headers relevantes y body sin tocar
+          const body = await backendRes.text()
+          return new NextResponse(body, {
+            status: backendRes.status,
+            headers: {
+              'Cache-Control': 'no-store, no-cache, must-revalidate',
+              'Content-Type': backendRes.headers.get('content-type') ?? 'application/json',
+              'x-medals-cache': backendRes.headers.get('x-medals-cache') ?? 'unknown',
+              'x-served-by': backendRes.headers.get('x-served-by') ?? 'vence-backend-proxy',
+            },
+          })
+        } finally {
+          clearTimeout(timer)
+        }
+      } catch (backendError) {
+        // Fallback graceful al path local: si el backend canary falla,
+        // servimos desde Vercel como si el flag estuviera OFF. Log para
+        // que se detecte en validation_error_logs sin romper UX.
+        console.warn(
+          `⚠️ [medals proxy] backend canary falló (${(backendError as Error).message ?? 'unknown'}), fallback a Vercel local`,
+        )
+        // Caemos al código local de abajo
+      }
     }
 
     cacheKey = `medals:${parseResult.data.userId}`
