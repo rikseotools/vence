@@ -1,6 +1,6 @@
 # Runbook — Cutover de crons Vercel → AWS Fargate (Etapa 1)
 
-> **Estado:** shadow desde 2026-05-22. Cutover parcial **24/05/2026: 2 crons */5min cerrados** (`refresh-rankings`, `process-outbox`) bajo excepción documentada por sample size. Los 11 restantes esperan al **2026-06-05** (criterio original 2 sem) o **2026-06-12** (conservador). Ver «Criterio de cutover» y «Histórico» abajo.
+> **Estado:** 🟢 **CUTOVER 13/13 COMPLETADO 2026-05-24** — Bloque 1 al 100%. Vercel ya no ejecuta crons del Grupo A; todos corren en `vence-backend` ECS Fargate vía `@nestjs/schedule`. La decisión de adelantar al 24/05 (vs. el 6 jun planificado) se tomó tras validar paridad code-a-code de los 13 crons + observar 2 días de shadow sin errores reales. Los 5 crons L-V/lunes tienen su primer run real solo-Fargate el lunes 25/05 — vigilar.
 > **Bloque:** 1 del plan de ejecución activo del [ARCHITECTURE_ROADMAP](../ARCHITECTURE_ROADMAP.md).
 > **Decisión origen:** roadmap sección «Backend dedicado de proceso largo (DECISIÓN 2026-05-22)».
 
@@ -166,25 +166,29 @@ git commit -m "revert(cron): restaurar <cron> Vercel — rollback de cutover"
 - **`refresh-rankings`** y **`refresh-theme-cache`** son upserts idempotentes a `ranking_cache` / `theme_cache` → re-correr es no-op.
 - **`check-boe-changes`** usa `last_checked` como cursor; convivir produce queries duplicadas pero ningún efecto observable en BD.
 
-## Estado actual (checklist por cron)
+## Estado actual (checklist por cron) — **🟢 13/13 cerrados 2026-05-24**
 
-| Cron | Shadow OK 23/05 | Soak ≥ 2 sem | Paridad verificada | Cutover ejecutado | Notas |
-|---|:-:|:-:|:-:|:-:|---|
-| `check-boe-changes` | 🟡 463/475 | ⏳ 2026-06-05 | ⏳ | ⏳ | Era el detonante (BOE 20/05 perdido). Hoy 97% leyes (72 fetch errors transitorios). Vigilar evolución |
-| `archive-interactions` | ✅ 1/24h | ⏳ | ⏳ | ⏳ | |
-| `refresh-theme-cache` | ✅ 1/24h | ⏳ | ⏳ | ⏳ | |
-| `refresh-rankings` | ✅ 288/24h | ⚠️ excepción documentada | ✅ 24/05 | ✅ **24/05** (commit `d5e14b0a`) | `*/5min`. ~576 runs en shadow = sample size enorme aunque calendario corto. Paridad: mismo `SELECT * FROM refresh_ranking_cache()`, UPSERT idempotente sobre `ranking_cache` |
-| `update-streaks` | ✅ 1/24h | ⏳ | ⏳ | ⏳ | 295 resets/día |
-| `check-seguimiento` | ⏳ esperado 0 hoy (sáb) | ⏳ | ⏳ | ⏳ | Solo L-V. Verificar lunes 25/05 |
-| `process-outbox` | ✅ 288/24h | ⚠️ excepción documentada | ✅ 24/05 | ✅ **24/05** (commit `6fed8b84`) | `*/5min`. ~576 runs en shadow. Paridad: mismo `processOutboxBatch(db, 200)` con `FOR UPDATE SKIP LOCKED` — workers concurrentes no se pisan por diseño. Outbox vacía la mayoría del tiempo |
-| `avatar-rotation` | ⏳ esperado 0 hoy (sáb) | ⏳ | ⏳ | ⏳ | Semanal (domingo). Verificar dom 24/05 |
-| `process-verification-queue` | ✅ 4/24h | ⏳ | ⏳ | ⏳ | 4x diario exacto |
-| `detect-timeline-silence` | ✅ 1/24h | ⏳ | ⏳ | ⏳ | |
-| `detect-oep-llm` | ⏳ esperado 0 hoy (sáb) | ⏳ | ⏳ | ⏳ | L-V. Verificar lunes 25/05 |
-| `detect-regional-oeps` | ⏳ esperado 0 hoy (sáb) | ⏳ | ⏳ | ⏳ | Solo lunes. Verificar 25/05 |
-| `detect-generic-sources` | ⏳ esperado 0 hoy (sáb) | ⏳ | ⏳ | ⏳ | L-V. Verificar lunes 25/05 |
+| Cron | Shadow OK | Paridad verificada | Cutover ejecutado | Notas |
+|---|:-:|:-:|:-:|---|
+| `check-boe-changes` | 🟡 95.1% leyes reales <48h | ✅ 24/05 | ✅ **24/05** (commit `956d92e8`) | Detonante de la migración. Terraform: `BOE_NOTIFY_ENABLED` cambiado a `"true"` + task def `:6` ACTIVE. **Vigilar**: primer run post-cutover mañana lunes 08:00 UTC con BOE_NOTIFY=true |
+| `archive-interactions` | ✅ diario | ✅ 24/05 | ✅ **24/05** (commit `56824dd3`) | Batches 10k, máx 20/run. Limpieza colateral: entrada stale en `withErrorLogging.test.ts` excluded |
+| `refresh-theme-cache` | ✅ diario | ✅ 24/05 | ✅ **24/05** (commit `caa3a63f`) | RPC `refresh_user_theme_performance_cache` batch 5 paralelos |
+| `refresh-rankings` | ✅ 288/24h | ✅ 24/05 | ✅ **24/05** (commit `d5e14b0a`) | `*/5min`, ~576 runs en shadow. `SELECT * FROM refresh_ranking_cache()` UPSERT idempotente |
+| `update-streaks` | ✅ diario | ✅ 24/05 | ✅ **24/05** (commit `5a3696c6`) | 163 resets/día. Workflow real era `update-streaks-daily.yml` (no `update-streaks.yml`) |
+| `check-seguimiento` | ⚠️ schedule L-V (no corrió en shadow finde) | ✅ 24/05 (code-a-code) | ✅ **24/05** (commit `586d7b26`) | **Primer run real solo-Fargate lunes 25/05 09:00 UTC**. Limpieza: 3 tests en `landingDataIntegrity.test.ts` apuntan al módulo NestJS |
+| `process-outbox` | ✅ 288/24h | ✅ 24/05 | ✅ **24/05** (commit `6fed8b84`) | `*/5min`. `processOutboxBatch(db, 200)` con `FOR UPDATE SKIP LOCKED`. Outbox vacía la mayoría del tiempo |
+| `avatar-rotation` | ✅ run real HOY 24/05 (dom) | ✅ 24/05 | ✅ **24/05** (commit `90e066e1`) | Semanal domingo. Run de hoy: 854 rotados, 187 sin cambio, 0 errores en 19s |
+| `process-verification-queue` | ✅ 4/24h | ✅ 24/05 | ✅ **24/05** (commit `990bc5f2`) | 4 runs/día exactos. Timeout 50s + batch 5 + detect billing error |
+| `detect-timeline-silence` | ✅ diario | ✅ 24/05 | ✅ **24/05** (commit `c8b375f9`) | Grace 3 días + score + insert signal en `oep_signals` |
+| `detect-oep-llm` | ⚠️ schedule L-V | ✅ 24/05 (code-a-code) | ✅ **24/05** (commit `cfd4b178`) | **Primer run real lunes 25/05 10:00 UTC**. Claude Haiku 4.5 + insert oep_detection_signals |
+| `detect-regional-oeps` | ⚠️ schedule solo-lunes | ✅ 24/05 (code-a-code) | ✅ **24/05** (commit `62047e0e`) | **Primer run real lunes 25/05 08:00 UTC**. Claude Haiku + matchDetectedOepToOposicion |
+| `detect-generic-sources` | ⚠️ schedule L-V | ✅ 24/05 (code-a-code) | ✅ **24/05** (commit `c658628f`) | **Primer run real lunes 25/05 08:00 UTC**. Hash + Claude Haiku + insert generic_source signal |
 
-> Actualizar este checklist cuando se vaya verificando cada cron y cuando se ejecute cada cutover.
+**Vigilancia post-cutover lunes 25/05:**
+- 08:00 UTC: `check-boe-changes` (con BOE_NOTIFY=true), `detect-regional-oeps`, `detect-generic-sources`
+- 09:00 UTC: `check-seguimiento`
+- 10:00 UTC: `detect-oep-llm`
+- Si alguno falla: `git revert <commit>` + `git mv .DISABLED → .yml` + push → workflow Vercel se reactiva en segundos.
 
 ## Histórico
 
@@ -201,6 +205,22 @@ git commit -m "revert(cron): restaurar <cron> Vercel — rollback de cutover"
     - `refresh-rankings`: ambos llaman `SELECT * FROM refresh_ranking_cache()` directo. UPSERT idempotente sobre `ranking_cache`, imposible que se pisen aunque hayan convivido.
     - `process-outbox`: ambos llaman `processOutboxBatch(db, 200)` con `FOR UPDATE SKIP LOCKED`. Outbox empty most of the time (0 stuck, 0 pending) → riesgo de regresión bajo incluso si paridad imperfecta.
   - **Pre-cutover BD verificado**: `ranking_cache` 3.297 filas con runs cada 5 min insertando 3.300+ filas; `outbox_events.attempts >= 5` = 0; `outbox_events.processed_at IS NULL` = 0.
+- **2026-05-24 (tarde)**: cutover de los **11 crons restantes** del Grupo A. Decisión de adelantar (vs. el 6 jun planificado): audit code-a-code de los 11 confirmó paridad funcional exacta (queries, RPCs, modelos LLM, scoring, tablas, dedupes idénticos en ambos lados), 8 ya con runs Fargate validados en shadow (incluido `avatar-rotation` corrido hoy domingo a las 04:00 UTC: 854 rotados en 19s sin errores).
+  - **Grupo A — 7 crons con runs Fargate validados**:
+    - `archive-interactions` (commit `56824dd3`)
+    - `refresh-theme-cache` (`caa3a63f`)
+    - `update-streaks` (`5a3696c6`)
+    - `process-verification-queue` (`990bc5f2`)
+    - `detect-timeline-silence` (`c8b375f9`)
+    - `avatar-rotation` (`90e066e1`)
+    - `check-boe-changes` (`956d92e8`) + **Terraform apply** previo: `BOE_NOTIFY_ENABLED="false"→"true"` + task def `:6` rolloutCOMPLETED antes del push del cutover (orden defensivo: enable email Fargate antes de remove email Vercel, evita gap sin notificaciones)
+  - **Grupo B — 4 crons L-V sin runs Fargate este finde**, cubiertos solo por paridad code-a-code:
+    - `check-seguimiento` (`586d7b26`) — limpieza colateral en `landingDataIntegrity.test.ts`
+    - `detect-oep-llm` (`cfd4b178`)
+    - `detect-regional-oeps` (`62047e0e`)
+    - `detect-generic-sources` (`c658628f`)
+  - **Riesgo asumido**: si mañana lunes 25/05 alguno del Grupo B falla, rollback es 1 commit individual (no afecta a los otros 12). Las primeras ventanas a vigilar son 08:00, 09:00 y 10:00 UTC.
+  - **Veredicto cierre Bloque 1**: 🟢 13/13 cerrados, Vercel limpio de crons del Grupo A.
   - Los **11 crons restantes esperan al 2026-06-05** (criterio original del runbook). Esto es defensa en profundidad: si hoy se rompe algún cron común que afecte a Fargate como cluster, los crons no migrados siguen sirviendo desde Vercel.
   - **Veredicto**: 🟢 2/13 cerrados, 11 pendientes. Próxima ventana: 2026-06-05.
 
