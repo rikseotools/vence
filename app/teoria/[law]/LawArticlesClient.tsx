@@ -691,14 +691,25 @@ export default function LawArticlesClient({ params, searchParams }: LawArticlesC
                         </div>
 
                         {/* Contenido truncado para SEO - solo en primeros artículos */}
-                        {showTruncatedContent && article.content && (
-                          <p className="mt-2 text-sm text-gray-500 line-clamp-2">
-                            {article.content.length > CONTENT_TRUNCATE_LENGTH
-                              ? article.content.substring(0, CONTENT_TRUNCATE_LENGTH) + '...'
-                              : article.content
-                            }
-                          </p>
-                        )}
+                        {showTruncatedContent && article.content && (() => {
+                          // Quitar el prefijo "N. " del primer apartado del BOE.
+                          // En artículos del BOE la mayoría empieza por "1. " (su apartado
+                          // uno), y como el preview se trunca a 150 chars y line-clamp-2
+                          // restringe la altura, normalmente nunca llega a "2.". El usuario
+                          // ve la lista de artículos todos empezando por "1." y piensa que
+                          // "todos están numerados 1" (feedback Loli Mateos 36cb02d4,
+                          // 24/05/2026). El número de apartado en el preview es ruido —
+                          // el título del artículo ("Suplencia", "Avocación"…) ya describe.
+                          const stripped = article.content.replace(/^\d+\.\s+/, '')
+                          const preview = stripped.length > CONTENT_TRUNCATE_LENGTH
+                            ? stripped.substring(0, CONTENT_TRUNCATE_LENGTH) + '...'
+                            : stripped
+                          return (
+                            <p className="mt-2 text-sm text-gray-500 line-clamp-2">
+                              {preview}
+                            </p>
+                          )
+                        })()}
                       </div>
 
                       {/* Flecha sutil */}
