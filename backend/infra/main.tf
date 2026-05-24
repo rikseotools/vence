@@ -90,15 +90,14 @@ resource "aws_iam_role_policy" "task_execution_secrets" {
     Version = "2012-10-17"
     Statement = [
       {
-        Effect   = "Allow"
-        Action   = ["ssm:GetParameters"]
-        Resource = [local.database_url_ssm_arn, local.cron_secret_ssm_arn]
-        # NOTA (2026-05-23): los SSM params UPSTASH_REDIS_REST_URL/TOKEN existen
-        # pero NO se referencian aquí porque el user claude-cli (PowerUserAccess)
-        # no tiene iam:PutRolePolicy. Cuando se resuelva, añadir
-        # upstash_url_ssm_arn + upstash_token_ssm_arn aquí y en el secrets block
-        # de la task definition de abajo. Mientras tanto el backend opera SIN
-        # cache (CacheService detecta env vars vacías y bypass total).
+        Effect = "Allow"
+        Action = ["ssm:GetParameters"]
+        Resource = [
+          local.database_url_ssm_arn,
+          local.cron_secret_ssm_arn,
+          local.upstash_url_ssm_arn,
+          local.upstash_token_ssm_arn,
+        ]
       },
       {
         Effect   = "Allow"
@@ -182,8 +181,8 @@ resource "aws_ecs_task_definition" "backend" {
       secrets = [
         { name = "DATABASE_URL", valueFrom = local.database_url_ssm_arn },
         { name = "CRON_SECRET", valueFrom = local.cron_secret_ssm_arn },
-        # UPSTASH_REDIS_REST_URL/TOKEN: pendientes — ver comentario en
-        # aws_iam_role_policy.task_execution_secrets arriba.
+        { name = "UPSTASH_REDIS_REST_URL", valueFrom = local.upstash_url_ssm_arn },
+        { name = "UPSTASH_REDIS_REST_TOKEN", valueFrom = local.upstash_token_ssm_arn },
       ]
       portMappings = [{ containerPort = 3000, protocol = "tcp" }]
       logConfiguration = {
@@ -211,18 +210,20 @@ resource "aws_ecs_service" "backend" {
     assign_public_ip = true # subred pública por defecto, sin NAT gateway
   }
 
-  # ─── Bloque 3 canary — PENDIENTE ───────────────────────────
-  # El load_balancer block (conexión al TG del ALB) está pendiente porque
-  # cualquier cambio del aws_ecs_task_definition exige iam:PassRole que
-  # claude-cli (PowerUserAccess) no tiene. Ver issue infra-iam-passrole.
-  # Cuando se resuelva el permiso, descomentar este bloque + apply.
-  #
-  # load_balancer {
-  #   target_group_arn = aws_lb_target_group.backend.arn
-  #   container_name   = "backend"
-  #   container_port   = 3000
-  # }
-  # health_check_grace_period_seconds = 60
+  # Bloque 3 canary — conectar el service al TG del ALB. El healthcheck
+  # del TG llama a /health del Nest cada 30s. Si la task pasa 2 chequeos
+  # consecutivos OK, queda registrada como target sano y empieza a recibir
+  # tráfico HTTP del ALB.
+  load_balancer {
+    target_group_arn = aws_lb_target_group.backend.arn
+    container_name   = "backend"
+    container_port   = 3000
+  }
+
+  # Grace period para que la task arranque y el healthcheck pase antes de
+  # que el deployment controller la marque como unhealthy. NestJS arranca
+  # en ~5-10s, damos 60s de margen.
+  health_check_grace_period_seconds = 60
 
   # El CI actualiza la imagen vía `update-service --force-new-deployment`;
   # no dejar que Terraform revierta el tag desplegado.
