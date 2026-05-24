@@ -30,8 +30,12 @@ const FLAGS = {
   // verificado funcionando con paridad JSON 100% vs Vercel + latencia
   // mejor (178ms vs 251ms). Rollback = cambiar a false y push.
   medals: true,
+  // answer-and-save — KEYSTONE del Bloque 3 (audit: 222 errors/7d, 3
+  // cascades, arrastra 8 endpoints). Backend NestJS deployado y
+  // smoke-tested 2026-05-24. Flag OFF inicial = cero impacto productivo
+  // (proxy NO se ejecuta). Activar = cambiar a true + push.
+  'answer-and-save': false,
   // Próximos candidatos según docs/architecture/bloque3-audit-hot-path.md:
-  // 'answer-and-save': false,
   // 'test-config':     false,
   // 'stats':           false,
   // 'daily-limit':     false,

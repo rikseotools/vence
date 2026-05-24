@@ -14,6 +14,7 @@ import { withDbTimeout, isDbTimeoutError } from '@/lib/db/timeout'
 import { getDailyLimitStatus, incrementDailyCount, checkDeviceDailyUsage } from '@/lib/api/dailyLimit'
 import { registerAndCheckDevice, getDeviceIdFromRequest, getHwFingerprintFromRequest } from '@/lib/api/deviceLimit'
 import { verifyAuth } from '@/lib/api/auth/verifyAuth'
+import { shouldRouteToBackend, backendUrlFor } from '@/lib/api/backend-router'
 
 // Margen para cold start + conexión BD
 export const maxDuration = 30
@@ -67,6 +68,54 @@ async function _POST(request: NextRequest): Promise<NextResponse<AnswerAndSaveRe
         { success: false, error: `Validación: ${firstError?.path.join('.')} - ${firstError?.message}` } as const,
         { status: 400 },
       )
+    }
+
+    // ─── Bloque 3 canary: proxy condicional al backend NestJS/Fargate ──
+    // Si flag ON, reenviamos al backend (api.vence.es) que ejecuta TODO
+    // (auth + Zod + antifraud + validate + save + background) en proceso
+    // largo, sin pool max:1. Fallback graceful al path Vercel local si
+    // falla — el frontend nunca ve 5xx por el proxy.
+    if (shouldRouteToBackend('answer-and-save')) {
+      try {
+        const backendUrl = backendUrlFor('api/v2/answer-and-save')
+        const controller = new AbortController()
+        const timer = setTimeout(() => controller.abort(), 25000) // 25s — POST puede ser lento bajo carga
+        try {
+          const backendRes = await fetch(backendUrl, {
+            method: 'POST',
+            signal: controller.signal,
+            headers: {
+              'Content-Type': 'application/json',
+              // Reenviar headers críticos del cliente al backend.
+              authorization: request.headers.get('authorization') ?? '',
+              'x-device-id': request.headers.get('x-device-id') ?? '',
+              'x-hw-fingerprint': request.headers.get('x-hw-fingerprint') ?? '',
+              'user-agent': request.headers.get('user-agent') ?? '',
+              'x-forwarded-by': 'vercel-proxy',
+            },
+            body: JSON.stringify(parsed.data),
+          })
+          clearTimeout(timer)
+          const respBody = await backendRes.text()
+          return new NextResponse(respBody, {
+            status: backendRes.status,
+            headers: {
+              'Content-Type': backendRes.headers.get('content-type') ?? 'application/json',
+              'x-served-by': backendRes.headers.get('x-served-by') ?? 'vence-backend-proxy',
+              ...(backendRes.headers.get('retry-after')
+                ? { 'Retry-After': backendRes.headers.get('retry-after') ?? '' }
+                : {}),
+            },
+          })
+        } finally {
+          clearTimeout(timer)
+        }
+      } catch (backendError) {
+        console.warn(
+          `⚠️ [answer-and-save proxy] backend canary falló (${(backendError as Error).message ?? 'unknown'}), fallback a Vercel local`,
+        )
+        // Caemos al código local de abajo (antifraud + validate + save)
+      }
     }
 
     // 3. Anti-fraud checks in parallel (device limit + daily limits)
