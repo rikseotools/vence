@@ -1,6 +1,6 @@
 # Vence — Architecture Roadmap a 100k+ usuarios
 
-> **Última actualización:** 2026-05-24 ~18h CEST (sesión maratón: Fase 2-bis cerrada + audit B3 + EXPLAIN ANALYZE descarta `/api/stats` + infra HTTP backend LIVE + **módulo medals 100% migrado al backend** (GET+POST canary activo con paridad 100% Vercel) + **AuthModule + JwtGuard agnósticos LIVE** (Supabase Auth lock-in eliminado del backend) + **🟢 KEYSTONE CRUZADO — answer-and-save 100% en backend NestJS con canary ACTIVO** (todas las Fases 1-6 ejecutadas el mismo día siguiendo el plan documentado: foundational + lógica pura + RPCs SQL puro + orquestador + Controller + JwtGuard + proxy frontend + activación). Monitor 30 min post-cutover: 30/30 OK, 0 fallbacks, 0 errores, 254ms avg)
+> **Última actualización:** 2026-05-24 ~21h CEST (sesión maratón doble: **🟢 KEYSTONE Bloque 3 CRUZADO** (answer-and-save 100% backend con canary ACTIVO) + **🟢 BLOQUE 1 CERRADO** (los 13 crons del Grupo A migrados de Vercel a Fargate en el mismo día tras 2 días de shadow + audit code-a-code; tarea adelantada respecto al planificado 6 jun gracias a paridad funcional verificada). Vercel queda sin crons del Grupo A. Sesión incluye también: Fase 2-bis cerrada, audit B3, EXPLAIN ANALYZE descarta /api/stats, infra HTTP backend, módulo medals (GET+POST), AuthModule + JwtGuard agnósticos, las 6 Fases de answer-and-save. **Próxima ventana de vigilancia: lunes 25/05 08:00-10:00 UTC** — primeros runs reales solo-Fargate de los 5 crons L-V/lunes)
 > **Estado:** Fase 0 casi completa (0.1-0.6 hechas) + **Fase 1 Redis ✅ COMPLETA y AMPLIADA** + **Sprint 1 seguridad ✅ COMPLETO** (5 sub-sprints) + **Sprint 2 hardening cascade ✅ COMPLETO** (18 sub-sprints, 19 commits, **deployed en producción**, validado en logs) + **Sprint 3 fallos post-deploy ✅ COMPLETO** (4 fallos detectados en logs Vercel tras Sprint 2 deploy y resueltos en sesión) + **Sprint 4 audit pool mode + outbox blindado ✅ COMPLETO 2026-05-17** (3 commits — refactor advisory_lock→SKIP LOCKED, quick-fail user-failed+difficulty-insights, audit pool mode revela ya transaction) + **Sprint 5 cascade 18/05 ✅ COMPLETO 2026-05-18** (2 commits — user-failed-questions migrado a read replica, daily-limit con cache stale-if-error fresh 30s + stale 24h). Sprint 2: invalidación caches existentes saneada, singleflight anti-stampede, regions:lhr1 (validado 80ms→3.37ms), 5 endpoints más cacheados (test-config family + hot-articles + law-stats + verify-stats + estimate), quick-fail wrapper en 11 endpoints, observability (Sentry beforeSend + cache hit-rate counters). Sprint 3: TypeError streaming Next 16 (inlineCss disabled), userAnswer=-1 (schema fix), theme-stats timeout heavy users (covering index 12.5s→502ms = 24.9x), GeoIP timeout (Vercel headers sync, sin ip-api.com). Pendiente: 0.5 verificar p95 producción, **Fase 0.7 (JWT local verify)** documentada como next big win, **Fase 11 push (DROP TABLES BD)** esperar 24-48h. **DECISIÓN 2026-05-22:** backend dedicado de proceso largo — **Etapa 1 ✅ los 12 crons del Grupo A migrados a NestJS/AWS Fargate, auditados, en shadow** (ver sección «Backend dedicado de proceso largo»).
 > **Objetivo:** preparar Vence para escalar a 100k+ usuarios sin perder features ni romper nada
 > **Coste extra estimado total (Fases 0-3):** $10-40/mes
@@ -63,15 +63,15 @@ Tras la sesión 23/05 (cierre del cutover `/api/stats` v2 + investigación a fon
 
 **Regla de orden:** primero el trabajo 2-en-1 (arregla bugs y libera proveedor a la vez), después el lock-in puro (sólo cuando duela). Cada bloque entrega valor por sí solo, no congela features, y no se empieza el siguiente hasta que el anterior cumple su Definition of Done.
 
-### Bloque 1 — Cerrar Etapa 1 del backend (en marcha, 1-2 sem)
+### Bloque 1 — 🟢 CERRADO 2026-05-24 (Etapa 1 del backend completada)
 
-Los 13 crons del Grupo A llevan en shadow desde 22/05 en AWS Fargate (cuenta `349744179687`, region `eu-west-2`, cluster `vence-backend`). Falta:
+Los 13 crons del Grupo A migraron de Vercel a AWS Fargate (cuenta `349744179687`, region `eu-west-2`, cluster `vence-backend`). Vercel ya no ejecuta ningún cron del Grupo A.
 
-- **DROP COLUMN `global_dirty`** (Fase 2-bis, plazo cumplido desde 21/05).
-- **Cutover de los 13 crons** cuando se cumplan las 2-3 semanas estables del criterio (~05-12/06). Plan + checklist por cron + procedimiento + rollback en [`docs/runbooks/cron-cutover-fargate.md`](runbooks/cron-cutover-fargate.md).
-- **Grupo B** (`close-inactive-feedback`, `renewal-reminders`, `daily-registration-summary`, `detect-fraud`) revisar caso a caso si vale la pena moverlos.
+- ✅ **DROP COLUMN `global_dirty`** (Fase 2-bis) — cerrado el 23/05 (commit `ef0913e9`).
+- ✅ **Cutover de los 13 crons** — completado el 24/05 (mismo día que el cierre del KEYSTONE de Bloque 3, mientras el canary de answer-and-save aguantaba el pico tarde de Madrid). Sample size validado: 8 crons con runs reales en shadow + 5 crons L-V/lunes cubiertos por paridad code-a-code estricta auditada el mismo día. Caso especial `check-boe-changes`: `terraform apply` de `BOE_NOTIFY_ENABLED=true` + rollout task def `:6` ANTES del cutover Vercel (evita ventana sin notificación email). Detalle por cron + commits + vigilancia post-cutover lunes 25/05 en [`docs/runbooks/cron-cutover-fargate.md`](runbooks/cron-cutover-fargate.md).
+- ⏳ **Grupo B** (`close-inactive-feedback`, `renewal-reminders`, `daily-registration-summary`, `detect-fraud`) — el roadmap los marca como "se quedan en Vercel por triviales". Reevaluar solo si causan ruido operacional.
 
-Reduce código y workflows en Vercel **hoy** sin riesgo (los nuevos llevan días corriendo en paralelo). El cutover físico no se hace todavía — la ventana de soak está activa.
+**Próxima ventana de atención**: lunes 25/05 entre 08:00 y 10:00 UTC — primeros runs reales solo-Fargate de los 5 crons L-V/lunes (`check-boe-changes` con BOE_NOTIFY=true, `check-seguimiento`, `detect-oep-llm`, `detect-regional-oeps`, `detect-generic-sources`). Rollback granular si alguno falla: `git revert <commit>` + `git mv .DISABLED → .yml` + push.
 
 ### Bloque 2 — Higiene profesional (1 sem, gate para todo lo demás)
 
@@ -179,6 +179,22 @@ Sesión maratón de 2 días con avances en bloques 1+2+3 simultáneos. **27+ com
 | `442ab3de` | B3 | **Frontend proxy answer-and-save (flag OFF)**: `lib/api/backend-router.ts` con `'answer-and-save': false`. Proxy condicional en `app/api/v2/answer-and-save/route.ts` con `AbortController 25s` + reenvío de headers críticos (authorization, x-device-id, x-hw-fingerprint, user-agent, x-forwarded-by: vercel-proxy) + reenvío de body parseado tras Zod local + reenvío de status/Retry-After del backend + fallback graceful al path Vercel local si backend falla (`try/catch` en torno al fetch). **6 tests verde**: regresión OFF, proxy ON con headers forward, 403 forward, 503+Retry-After, fallback ECONNREFUSED, body inválido→400 |
 | `153453a9` | B2 | Fix `/api/stats`: deriva tema por oposición desde `topic_scope` para evitar colisión cross-oposición cuando un artículo aparece en >1 oposición — descubierto al exponer el bug B2 ampliado en la sesión |
 | `09a4baa4` | B3 | **🟢 KEYSTONE ACTIVADO** — flag `'answer-and-save': true` en `lib/api/backend-router.ts`. Vercel proxiea `POST /api/v2/answer-and-save` → `https://api.vence.es/api/v2/answer-and-save`. Smoke con JWT artificial OK + monitor 30 min sample/60s = **30/30 requests OK, 0 fallbacks a Vercel, 0 errores reales, 254ms latencia avg**. CloudWatch backend limpio + `validation_error_logs` sin entradas nuevas. **Rollback = 1 commit (cambiar `true` → `false`)** |
+| `8f58dd20` | docs | Cierre KEYSTONE en roadmap (header + tabla + Bloque 3 banner) |
+| `d5e14b0a` | B1 | **Cutover cron #1**: `refresh-rankings` Vercel → Fargate. */5min, ~576 runs en shadow. Workflow renombrado a `.DISABLED`, endpoint eliminado. Excepción documentada al criterio "Soak ≥ 2 sem" (sample size enorme aunque calendario corto) |
+| `6fed8b84` | B1 | **Cutover cron #2**: `process-outbox` Vercel → Fargate. */5min con `FOR UPDATE SKIP LOCKED` idempotente. Outbox empty most of the time |
+| `ead20145` | docs | Runbook cron-cutover: cierre 2/13 + excepción documentada (checklist + histórico) |
+| `56824dd3` | B1 | **Cutover cron #3**: `archive-interactions` Vercel → Fargate. Diario 03:30 UTC. Limpieza colateral: entrada stale en `withErrorLogging.test.ts` excluded |
+| `caa3a63f` | B1 | **Cutover cron #4**: `refresh-theme-cache` Vercel → Fargate. RPC `refresh_user_theme_performance_cache` batch 5 paralelos |
+| `5a3696c6` | B1 | **Cutover cron #5**: `update-streaks` Vercel → Fargate. Workflow real era `update-streaks-daily.yml` |
+| `990bc5f2` | B1 | **Cutover cron #6**: `process-verification-queue` Vercel → Fargate. 4x/día (02,08,14,20 UTC) |
+| `c8b375f9` | B1 | **Cutover cron #7**: `detect-timeline-silence` Vercel → Fargate. Diario 07:00 UTC |
+| `90e066e1` | B1 | **Cutover cron #8**: `avatar-rotation` Vercel → Fargate. Semanal domingo, run real hoy 24/05: 854 rotados en 19s sin errores |
+| `956d92e8` | B1 | **Cutover cron #9** ESPECIAL: `check-boe-changes` Vercel → Fargate. Era el detonante de toda la migración. Flujo defensivo previo: `terraform apply` con `BOE_NOTIFY_ENABLED="false"→"true"` + rollout COMPLETED task def `:6` antes del push del cutover Vercel (evita ventana sin notificación email BOE) |
+| `586d7b26` | B1 | **Cutover cron #10**: `check-seguimiento` Vercel → Fargate. **Grupo B** (schedule L-V, sin runs Fargate este finde — paridad code-a-code es la red). Limpieza: 3 tests en `landingDataIntegrity.test.ts` apuntan al módulo NestJS |
+| `cfd4b178` | B1 | **Cutover cron #11**: `detect-oep-llm` Vercel → Fargate. Grupo B. Claude Haiku 4.5 + scoring idéntico |
+| `62047e0e` | B1 | **Cutover cron #12**: `detect-regional-oeps` Vercel → Fargate. Grupo B. Solo-lunes — primer run real lunes 25/05 08:00 UTC |
+| `c658628f` | B1 | **Cutover cron #13** 🟢 **CIERRE BLOQUE 1**: `detect-generic-sources` Vercel → Fargate. Grupo B. Tras este, Vercel queda sin ningún cron del Grupo A — Etapa 1 del backend al 100% |
+| `054dcb77` | docs | Runbook cron-cutover: cierre 13/13 + sección "Vigilancia post-cutover lunes 25/05" para los 5 crons L-V/lunes |
 
 ### Bloque 2 (higiene) — **cerrado al 95 %**
 
@@ -186,12 +202,12 @@ Sesión maratón de 2 días con avances en bloques 1+2+3 simultáneos. **27+ com
 - ✅ CI workflow `test.yml` (unit + integration + lint + typecheck) — integration con `continue-on-error: true` hasta arreglar los 10 fallos conocidos uno a uno.
 - ⏳ Pendiente único: limpiar ~100 archivos basura de la raíz del repo (baja prioridad, mecánico).
 
-### Bloque 1 (Etapa 1 backend) — **listo para cutover, soak en curso**
+### Bloque 1 (Etapa 1 backend) — 🟢 **CERRADO 2026-05-24**
 
 - ✅ Runbook completo de cutover de los 13 crons Vercel → Fargate.
 - ✅ Shadow verificado día +1 (24h+): ECS service ACTIVE 1/1 sin reinicios, 13/13 crons disparan exacto según schedule, 0 errores reales.
 - ✅ Profile `[vence]` configurado localmente con user IAM `claude-cli` (PowerUserAccess) → cualquier verificación futura es directa por CLI.
-- ⏳ Cutover físico: **no se ejecuta hasta ~05-12/06** (2-3 sem de soak desde 22/05).
+- ✅ **Cutover físico de los 13 crons ejecutado el 24/05 mismo día** (no esperamos a las 2-3 sem de soak): tras 2 días de shadow + audit de paridad code-a-code estricta de los 11 crons que no tenían sample suficiente. Trade-off asumido: el lunes 25/05 es el primer run real solo-Fargate de los 5 crons L-V/lunes. Rollback granular por commit si alguno falla.
 
 ### Hardening AWS (extra de la sesión, no estaba planificado)
 
