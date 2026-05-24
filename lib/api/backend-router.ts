@@ -26,7 +26,10 @@ const BACKEND_URL = 'https://api.vence.es'
  * para activación independiente. Empezar todos en `false`.
  */
 const FLAGS = {
-  medals: false,
+  // Activado 2026-05-24 — canary medals. Backend api.vence.es/api/medals
+  // verificado funcionando con paridad JSON 100% vs Vercel + latencia
+  // mejor (178ms vs 251ms). Rollback = cambiar a false y push.
+  medals: true,
   // Próximos candidatos según docs/architecture/bloque3-audit-hot-path.md:
   // 'answer-and-save': false,
   // 'test-config':     false,

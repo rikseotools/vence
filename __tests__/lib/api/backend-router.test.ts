@@ -7,12 +7,13 @@ import {
 
 describe('lib/api/backend-router', () => {
   describe('shouldRouteToBackend', () => {
-    it('devuelve false para medals cuando el flag está OFF', () => {
-      // Estado inicial del canary: flag OFF. Cuando se active a true, este
-      // test debe actualizarse para reflejar el cambio explícitamente —
-      // así el activador deja huella en el diff de tests.
-      expect(_isFlagEnabledForTests('medals')).toBe(false)
-      expect(shouldRouteToBackend('medals')).toBe(false)
+    it('devuelve true para medals (canary activo desde 2026-05-24)', () => {
+      // El test deja huella explícita del estado del flag — cualquier
+      // rollback (cambio a false en lib/api/backend-router.ts) requiere
+      // actualizar este test en el mismo commit, marcando intencionalmente
+      // el rollback en el diff.
+      expect(_isFlagEnabledForTests('medals')).toBe(true)
+      expect(shouldRouteToBackend('medals')).toBe(true)
     })
   })
 
