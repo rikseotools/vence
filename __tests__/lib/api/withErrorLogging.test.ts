@@ -206,7 +206,6 @@ describe('withErrorLogging — cobertura de endpoints', () => {
       'app/api/version/route.ts',
       'app/api/daily-limit/route.ts',            // TODO: añadir withErrorLogging
       'app/api/admin/graduated-limits/route.ts',  // TODO: añadir withErrorLogging
-      'app/api/cron/archive-interactions/route.ts', // Cron interno, no endpoint de usuario
     ]
     let wrappedCount = 0
     for (const relPath of routeFiles) {
