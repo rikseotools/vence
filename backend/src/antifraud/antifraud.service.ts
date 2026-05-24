@@ -58,6 +58,34 @@ export class AntifraudService {
   }
 
   /**
+   * Helper puro estático — parsea User-Agent a label legible.
+   * Mismo algoritmo que el frontend (port literal de `parseDeviceLabel`).
+   *
+   * Devuelve un string `"Browser / OS"` con detección rudimentaria pero
+   * suficiente para mostrar al usuario qué dispositivos tiene conectados:
+   *   - Browser: Chrome / Firefox / Safari / Edge / Unknown
+   *   - OS: iOS / Android / Windows / Mac / Linux / Unknown
+   *
+   * Cuidado con el orden de los `if`: 'Edg' contiene 'Chrome' en algunos UAs.
+   */
+  static parseDeviceLabel(ua: string): string {
+    let browser = 'Unknown';
+    if (ua.includes('Edg')) browser = 'Edge';
+    else if (ua.includes('Chrome')) browser = 'Chrome';
+    else if (ua.includes('Firefox')) browser = 'Firefox';
+    else if (ua.includes('Safari')) browser = 'Safari';
+
+    let os = 'Unknown';
+    if (ua.includes('iPhone') || ua.includes('iPad')) os = 'iOS';
+    else if (ua.includes('Android')) os = 'Android';
+    else if (ua.includes('Windows')) os = 'Windows';
+    else if (ua.includes('Mac OS') || ua.includes('Macintosh')) os = 'Mac';
+    else if (ua.includes('Linux')) os = 'Linux';
+
+    return `${browser} / ${os}`;
+  }
+
+  /**
    * Registra device + verifica límite. Fase 1: stub que devuelve FAIL_OPEN.
    * Fase 3 implementará la lógica real vía SQL puro.
    */

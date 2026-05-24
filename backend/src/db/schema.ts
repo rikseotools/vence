@@ -39,6 +39,7 @@ export const userMedals = pgTable('user_medals', {
 /** Tabla `user_profiles` — fuente agnóstica del email del user (no Supabase Auth API).
  *  Ampliada para answer-and-save (markActiveStudentIfFirst toca is_active_student
  *  + first_test_completed_at). target_oposicion lo usa el cálculo de score.
+ *  planType + createdAt los usa DailyLimitService.getUserLimitProfile.
  */
 export const userProfiles = pgTable('user_profiles', {
   id: uuid('id').primaryKey().notNull(),
@@ -50,6 +51,19 @@ export const userProfiles = pgTable('user_profiles', {
     mode: 'string',
   }),
   targetOposicion: text('target_oposicion'),
+  planType: text('plan_type'),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }),
+});
+
+/** Tabla `conversion_events` — log de eventos de conversión (limit_reached, etc.).
+ *  Usada por DailyLimitService.getUserLimitProfile para contar cuántas veces
+ *  un user ha tocado el límite (input al cálculo del límite graduado).
+ */
+export const conversionEvents = pgTable('conversion_events', {
+  id: uuid('id').defaultRandom().primaryKey().notNull(),
+  userId: uuid('user_id'),
+  eventType: text('event_type'),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).defaultNow(),
 });
 
 /** Tabla `email_preferences` — opt-out global de emails por user. */
