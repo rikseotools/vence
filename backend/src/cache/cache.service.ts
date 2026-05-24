@@ -102,4 +102,24 @@ export class CacheService {
       // Si falla la invalidación, el TTL eventualmente limpiará el valor stale
     }
   }
+
+  /**
+   * Invalidar múltiples claves de un patrón en una sola llamada.
+   * Best-effort. Usar tras UPDATE para invalidar caches relacionadas
+   * (ej. tras answer-and-save: user_stats + exam_pending + theme_stats).
+   *
+   * Upstash REST no soporta SCAN, así que pasamos las claves explícitas.
+   */
+  async invalidateMany(keys: string[]): Promise<void> {
+    if (!this.redis || keys.length === 0) return;
+    try {
+      await this.raceTimeout(
+        // @upstash/redis acepta del(...spread) o del([array]) — usar spread
+        this.redis.del(...keys),
+        CacheService.REDIS_TIMEOUT_MS,
+      );
+    } catch {
+      // Si falla, los TTL eventualmente limpian
+    }
+  }
 }
