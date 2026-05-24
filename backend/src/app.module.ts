@@ -18,6 +18,7 @@ import { DetectOepLlmModule } from './detect-oep-llm/detect-oep-llm.module';
 import { DetectRegionalOepsModule } from './detect-regional-oeps/detect-regional-oeps.module';
 import { DetectGenericSourcesModule } from './detect-generic-sources/detect-generic-sources.module';
 import { ProcessVerificationQueueModule } from './process-verification-queue/process-verification-queue.module';
+import { AuthModule } from './auth/auth.module';
 import { CacheModule } from './cache/cache.module';
 import { EmailModule } from './email/email.module';
 import { MedalsModule } from './medals/medals.module';
@@ -35,6 +36,8 @@ import { MedalsModule } from './medals/medals.module';
     HealthModule,
     // Cache compartido con Vercel (Bloque 3) — Global, exporta CacheService.
     CacheModule,
+    // Auth agnóstica con JwtGuard — Global, exporta JwtVerifier + JwtGuard.
+    AuthModule,
     // Email transaccional Resend SDK directo — Global, exporta MedalEmailService.
     EmailModule,
     // Crons — sub-etapa 1a

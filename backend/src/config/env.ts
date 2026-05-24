@@ -53,6 +53,12 @@ const envSchema = z.object({
     .enum(['true', 'false'])
     .default('true')
     .transform((v) => v === 'true'),
+  // JWT secret HS256 con el que se firman los access tokens de los users.
+  // HOY emitidos por Supabase Auth; el día que migremos a Auth.js / Better
+  // Auth / Cognito (Bloque 5), cambia el secret y el issuer aquí — el
+  // JwtGuard NO se entera (valida JWT estándar RFC 7519 con jose).
+  // Si vacío, los endpoints con @UseGuards(JwtGuard) devuelven 401.
+  SUPABASE_JWT_SECRET: z.string().default(''),
 });
 
 export type Env = z.infer<typeof envSchema>;
