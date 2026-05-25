@@ -264,6 +264,14 @@ git push origin main
 - **Indicadores:** errores 5xx 24h, drift de contadores materializados, latencia INSERT a test_questions, salud del cron de drift.
 - **Comando CLI rápido** (30s para veredicto verde/ámbar/rojo) en la sección 1 del runbook.
 
+### 📡 Observabilidad (manual completo)
+- **Manual:** `docs/runbooks/observability.md`
+- **Cuándo consultarlo:** al añadir un nuevo writer (cron, endpoint, handler), al diseñar dashboards/alertas, al investigar incidente, o cuando se pregunte sobre client-side errors / SLOs / tracing.
+- **Estado actual (2026-05-25):** MVP — tabla `observable_events` + writers Vercel/Fargate + 1 cron + espejo `validation_error_logs`. Falta capa 1 (más writers), 2 (métricas éxito), 3 (poda + dashboard + alertas), 4 (tracing + SLOs).
+- **Filosofía:** observabilidad activa (no esperar feedback). Capturar **client-side** (consolas de usuarios) es crítico — la mayoría de bugs visibles al usuario NUNCA llegan al servidor sin captura activa.
+- **Convención event_type:** ver §5 del manual (categorías: HTTP/Crons/Auth/Cache/Deploys/Cliente/Negocio).
+- **Roadmap priorizado:** §11 del manual — siguiente paso recomendado es endpoint `/api/observability/ingest` (gateway universal).
+
 ### Logs Importantes
 - Prefijo `🔍` para debug de renderizado
 - Prefijo `💾` para operaciones de guardado
