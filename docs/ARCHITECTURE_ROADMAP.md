@@ -254,11 +254,23 @@ Resuelve el "Tech debt CRÍTICO" del roadmap **con el mismo patrón ya validado 
 
 **Criterio fase cerrada:** 7 días RDS sin incidentes. Supabase BD apagada.
 
-#### Fase E — Frontend Vercel → Lambda + CloudFront vía SST + OpenNext (3-4 sem, riesgo 🟠) — 🟡 EN PLANIFICACIÓN 2026-05-25
+#### Fase E — Frontend Vercel → ECS Fargate (3-4 sem, riesgo 🟠) — 🟡 EN CURSO 2026-05-25
 
-##### Decisión arquitectónica 2026-05-25 — PIVOT a Lambda/SST/OpenNext (no ECS Fargate)
+##### Cronología de decisión arquitectónica
 
-Tras evaluar las 3 alternativas (ECS Fargate, App Runner, Lambda + OpenNext) desde el ángulo de **robustez, fiabilidad y escala a 10k+ DAU para una plataforma de oposiciones** (sin sesgo por "lo que ya tenemos"), se elige **Lambda + CloudFront orquestado por SST + OpenNext**.
+**Primera evaluación**: ECS Fargate (consistencia con backend, patrón validado, mismo cluster).
+
+**Pivot 2026-05-25**: Tras analizar robustez/escala/coste a 10k+ DAU, se eligió Lambda + CloudFront vía SST + OpenNext (mejor para tráfico bursty de oposiciones).
+
+**Retroceso 2026-05-25 (mismo día)**: Tras intentar deploy E.1-SST descubrimos que **OpenNext 3.x y 4.x ambos fallan** durante build con el patrón de Vence (client providers en root layout + ~500 páginas SSG via `generateStaticParams`). Errores `useState null` (4.0.2) y `useContext null` (3.10.4) durante prerender. Vercel maneja el mismo código sin problemas porque su builder propietario es de los autores de Next.js; OpenNext es OSS clone que no es 1-a-1.
+
+**Decisión final**: **ECS Fargate** — el camino original. No requiere OpenNext (corres Next.js como server normal en container). El bug de OpenNext desaparece. Sigue siendo correcto el análisis de tráfico bursty, pero **Lambda+OpenNext no está listo HOY para Vence**; cuando OpenNext madure (próximas versiones) podemos reconsiderar la migración a Lambda.
+
+ECS Fargate costes a 10k DAU: ~$50/mes (2 tasks HA + share ALB). Razón aceptable vs ~$20/mes de Lambda + bloqueo OpenNext actual. Vence puede crecer a 30-50k DAU en ECS sin problema; en ese rango Lambda empata o gana — momento natural para revisitar pivot.
+
+App Runner descartado (vendor-lock excesivo, sin VPC peering directo, límite 120s, sin ARM).
+
+##### Anteriormente evaluado pero NO aplicable hoy (Lambda+OpenNext):
 
 Razones específicas a Vence:
 
@@ -274,8 +286,20 @@ ECS Fargate sería mejor si Vence fuera SaaS B2B con carga constante 24/7. No es
 
 ##### Sub-pasos atómicos (replan)
 
+##### Sub-pasos atómicos (camino ECS Fargate, decisión final)
+
+- **E.1** ✅ Dockerfile multi-stage + GHA `frontend-deploy.yml` + ECR `vence-frontend` (recreado 2026-05-25 tras retroceso desde SST). Imagen final ~180MB con server.js standalone. Zero downtime.
+- **E.2** ⏳ Task definition + ECS service `vence-frontend` con `desired=0` (sin tráfico aún).
+- **E.3** ⏳ ALB rule en host `preview.vence.es` → target group frontend. `desired=1`. Canary del frontend en AWS, prod sin tocar.
+- **E.4** ⏳ Soak 3-7 días en preview. Validar Web Vitals (Sentry browserTracing), Sentry Issues, observable_events. Comparar latencias contra Vercel baseline.
+- **E.5** ⏳ CloudFront delante del ALB. Cache estáticos + ISR pages.
+- **E.6** ⏳ DNS DonDominio `www.vence.es A` → CloudFront. **Cutover real.** Reversible <5 min revertiendo DNS.
+- **E.7** ⏳ Tras 7 días estable: apagar proyecto Vercel.
+
+##### Intento previo SST (descartado 2026-05-25, archivado para referencia)
+
 - **E.0** ✅ Rollback del intento ECS previo. Revert del commit Dockerfile + cleanup AWS (ECR `vence-frontend` borrado, IAM grant retirado del `ci-deploy`).
-- **E.1-SST** 🟡 EN CURSO 2026-05-25:
+- **E.1-SST** 🔴 INTENTADO Y DESCARTADO 2026-05-25:
   - Upgrade `next` 16.2.1 → 16.2.6 (requisito de OpenNext 4.0.2 peerDep `>=16.2.6`). Patch update, sin breaking changes. TypeCheck + tests críticos (storage, security, adaptive-difficulty) verdes.
   - `npx sst@latest init --yes` ejecutado. Generó `sst.config.ts` mínimo, modificó `tsconfig.json` para excluir el config de TS check, añadió `sst` como dep.
   - `sst.config.ts` reescrito con: provider AWS perfil `vence` región `eu-west-2`, removal `retain` solo en production, protect production, construct `sst.aws.Nextjs("VenceFrontend")` con `environment` mapeando todos los secrets desde `process.env` (compatibles con runtime Lambda), `warm: 20` en production (mitiga cold starts).
