@@ -116,6 +116,7 @@ Resuelve el "Tech debt CRÍTICO" del roadmap **con el mismo patrón ya validado 
 - Tabla `observable_events` unificada — migrar `withErrorLogging` + endpoint ingest `/api/observability/ingest` para GHA, Vercel deploys, Fargate logs.
 - **Storage → S3** (cuenta AWS ya existe en `eu-west-2`) vía adapter `lib/storage/`. Pocos callers — migración rápida.
 - **Backups con drill de restore** real, RTO/RPO declarados.
+- **Registry centralizado de tags cross-runtime** (gatillo: 3+ tags cross-runtime). Hoy solo `test-config` tiene counterpart backend (commit `3980cf87` añadió el mapping `TAG_INVALIDATORS` en `/api/admin/revalidate` + test de regresión en `__tests__/api/admin/revalidateDispatch.test.ts`). Cuando lleguen 3+ tags, refactorizar a una sola fuente de verdad `lib/cache/cross-runtime-registry.ts` que exporte `{tag → {invalidate, backendKey, description}}`. Hoy escala bien con duplicación en 3 sitios (route + lib/cache/<tag>.ts + manual); a 5+ tags empieza a oler. Documentado en `docs/maintenance/cache-revalidation.md` §«Cross-runtime cache».
 
 ### Bloque 5 — Lock-in puro (diferido, sólo si duele)
 
