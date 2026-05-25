@@ -292,7 +292,7 @@ ECS Fargate sería mejor si Vence fuera SaaS B2B con carga constante 24/7. No es
 - **E.2** ✅ Terraform (`backend/infra/frontend.tf`): task definition + ECS service `vence-frontend` con `desired=0`. 20 secrets desde SSM `/vence-frontend/*` + 14 env vars planas. IAM execution role (lee SSM) + task role (acceso S3 vence-uploads). Security group solo egress. Smoke verificado: task arranca, Next.js 16.2.6 Ready, Supabase client OK con secrets de SSM. Coste $0/mes (sin tasks corriendo).
 - **E.3** ✅ ALB rule en host `preview-aws.vence.es` → target group frontend. `desired=1`. **Smoke prod-like OK 2026-05-25 20:37**: home 332KB/415ms, /oposiciones BD-dependent 200/374KB, página de test SSG 200/226KB. ACM cert ISSUED en 90s (validación DNS). DNS resuelve correctamente. Target healthy. Coste estimado: ~$15/mes (1 task 0.5vCPU/1GB 24/7).
 - **E.4** ⏳ Soak 3-7 días en preview. Validar Web Vitals (Sentry browserTracing), Sentry Issues, observable_events. Comparar latencias contra Vercel baseline.
-- **E.5** ⏳ CloudFront delante del ALB. Cache estáticos + ISR pages.
+- **E.5** ✅ CloudFront LIVE 2026-05-25 20:53. Distribution `E1EH4WF1H7ZGLA` con origin ALB, alias preview-aws.vence.es, cert ACM us-east-1, 4 behaviors (default ISR-aware, /_next/static/* 1y, /_next/image* 24h, /api/* no-cache). Edge Madrid (MAD53). **Resultado smoke: AWS 88ms vs Vercel 218ms (-60% total page) y TTFB AWS 50ms vs Vercel 154ms (-67%).** Coste estimado: $0-1/mes durante preview.
 - **E.6** ⏳ DNS DonDominio `www.vence.es A` → CloudFront. **Cutover real.** Reversible <5 min revertiendo DNS.
 - **E.7** ⏳ Tras 7 días estable: apagar proyecto Vercel.
 

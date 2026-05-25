@@ -298,6 +298,160 @@ data "aws_security_group" "alb" {
 }
 
 # ============================================================
+# CloudFront distribution (Fase E.5)
+# ============================================================
+# Edge cache global delante del ALB. Hace dos cosas críticas:
+#   1. Cache de estáticos /_next/static/* en edge → first paint <100ms.
+#   2. Cache de páginas con Cache-Control de Next.js (ISR) → reduce carga ECS.
+#
+# Cert ACM en us-east-1 (CloudFront NO acepta otra región).
+# Provider explícito para us-east-1.
+# ============================================================
+
+# Provider us-east-1 solo para resolver el cert de CloudFront.
+# El profile lo toma del entorno (AWS_PROFILE=vence cuando se ejecuta terraform).
+provider "aws" {
+  alias  = "us_east_1"
+  region = "us-east-1"
+}
+
+data "aws_acm_certificate" "cloudfront_preview" {
+  provider    = aws.us_east_1
+  domain      = "preview-aws.vence.es"
+  statuses    = ["ISSUED"]
+  most_recent = true
+}
+
+# Cache policies. Reusamos las managed por AWS donde aplica.
+# - Managed-CachingOptimized:      cache forever respetando ETag (estáticos)
+# - Managed-CachingDisabled:       no cache (APIs)
+# - Custom para SSG/ISR (mira Cache-Control del origin)
+data "aws_cloudfront_cache_policy" "caching_optimized" {
+  name = "Managed-CachingOptimized"
+}
+
+data "aws_cloudfront_cache_policy" "caching_disabled" {
+  name = "Managed-CachingDisabled"
+}
+
+# Para el default (SSR/ISR): respect Cache-Control del origin, TTL razonable.
+resource "aws_cloudfront_cache_policy" "frontend_default" {
+  name        = "vence-frontend-default"
+  default_ttl = 60      # 1 min si origin no devuelve Cache-Control
+  min_ttl     = 0
+  max_ttl     = 86400   # 1 día si origin pide más
+  parameters_in_cache_key_and_forwarded_to_origin {
+    cookies_config {
+      cookie_behavior = "all" # cookies de sesión pueden afectar render
+    }
+    headers_config {
+      header_behavior = "whitelist"
+      headers {
+        items = ["host", "accept", "accept-language", "user-agent"]
+      }
+    }
+    query_strings_config {
+      query_string_behavior = "all"
+    }
+    enable_accept_encoding_brotli = true
+    enable_accept_encoding_gzip   = true
+  }
+}
+
+# Origin request policy: pasar host header al ALB (necesario para que el
+# listener rule matchee preview-aws.vence.es y vaya al TG correcto).
+data "aws_cloudfront_origin_request_policy" "all_viewer" {
+  name = "Managed-AllViewer"
+}
+
+resource "aws_cloudfront_distribution" "frontend" {
+  enabled         = true
+  is_ipv6_enabled = true
+  http_version    = "http2and3"
+  comment         = "Vence frontend preview (Fase E.5)"
+  price_class     = "PriceClass_100" # USA + EU. Suficiente para España.
+
+  aliases = ["preview-aws.vence.es"]
+
+  origin {
+    domain_name = data.aws_lb.main.dns_name
+    origin_id   = "vence-alb-origin"
+
+    custom_origin_config {
+      http_port              = 80
+      https_port             = 443
+      origin_protocol_policy = "https-only"
+      origin_ssl_protocols   = ["TLSv1.2"]
+      origin_read_timeout    = 60 # SSR Next puede tardar en cold
+    }
+  }
+
+  # Default behavior: SSR/ISR. TTL corto, respect Cache-Control.
+  default_cache_behavior {
+    allowed_methods            = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
+    cached_methods             = ["GET", "HEAD"]
+    target_origin_id           = "vence-alb-origin"
+    viewer_protocol_policy     = "redirect-to-https"
+    compress                   = true
+    cache_policy_id            = aws_cloudfront_cache_policy.frontend_default.id
+    origin_request_policy_id   = data.aws_cloudfront_origin_request_policy.all_viewer.id
+  }
+
+  # /_next/static/* — assets versionados, cache forever.
+  ordered_cache_behavior {
+    path_pattern               = "/_next/static/*"
+    allowed_methods            = ["GET", "HEAD", "OPTIONS"]
+    cached_methods             = ["GET", "HEAD"]
+    target_origin_id           = "vence-alb-origin"
+    viewer_protocol_policy     = "redirect-to-https"
+    compress                   = true
+    cache_policy_id            = data.aws_cloudfront_cache_policy.caching_optimized.id
+    origin_request_policy_id   = data.aws_cloudfront_origin_request_policy.all_viewer.id
+  }
+
+  # /_next/image/* — Next.js Image Optimization. Cache 24h (key con qs).
+  ordered_cache_behavior {
+    path_pattern               = "/_next/image*"
+    allowed_methods            = ["GET", "HEAD", "OPTIONS"]
+    cached_methods             = ["GET", "HEAD"]
+    target_origin_id           = "vence-alb-origin"
+    viewer_protocol_policy     = "redirect-to-https"
+    compress                   = true
+    cache_policy_id            = data.aws_cloudfront_cache_policy.caching_optimized.id
+    origin_request_policy_id   = data.aws_cloudfront_origin_request_policy.all_viewer.id
+  }
+
+  # /api/* — sin cache, passthrough.
+  ordered_cache_behavior {
+    path_pattern               = "/api/*"
+    allowed_methods            = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
+    cached_methods             = ["GET", "HEAD"]
+    target_origin_id           = "vence-alb-origin"
+    viewer_protocol_policy     = "redirect-to-https"
+    compress                   = true
+    cache_policy_id            = data.aws_cloudfront_cache_policy.caching_disabled.id
+    origin_request_policy_id   = data.aws_cloudfront_origin_request_policy.all_viewer.id
+  }
+
+  viewer_certificate {
+    acm_certificate_arn      = data.aws_acm_certificate.cloudfront_preview.arn
+    ssl_support_method       = "sni-only"
+    minimum_protocol_version = "TLSv1.2_2021"
+  }
+
+  restrictions {
+    geo_restriction {
+      restriction_type = "none"
+    }
+  }
+
+  tags = {
+    Project = "vence-frontend"
+    Stage   = "preview"
+  }
+}
+
+# ============================================================
 # ECS service — Fase E.3: desired=1 + load_balancer
 # ============================================================
 
