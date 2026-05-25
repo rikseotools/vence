@@ -28,9 +28,14 @@ Sentry.init({
   // Enable in all environments for now to test, then restrict to production
   enabled: true,
 
-  // Session Replay configuration
+  // Session Replay configuration.
+  // 2026-05-25: bajado replaysSessionSampleRate 0.1 → 0.02 tras "Replay
+  // Quota Exceeded" en Sentry dashboard. El free tier tiene cuota mensual
+  // limitada; con 10% de sesiones grabadas se agota rápido. El 2% sigue
+  // dando muestra estadística útil sin agotar la cuota. replaysOnErrorSampleRate
+  // se mantiene 100% — cuando hay error queremos el replay sí o sí.
   replaysOnErrorSampleRate: 1.0,
-  replaysSessionSampleRate: isProduction ? 0.1 : 0,
+  replaysSessionSampleRate: isProduction ? 0.02 : 0,
 
   integrations: [
     Sentry.replayIntegration({
