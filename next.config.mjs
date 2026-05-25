@@ -2,6 +2,12 @@ import { withSentryConfig } from '@sentry/nextjs';
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Bloque 5 Fase E.1 (2026-05-25): build standalone para Docker/ECS.
+  // Genera .next/standalone con server.js + minimal node_modules, ~10x más
+  // ligero que el build normal. No afecta a Vercel — Vercel ignora este
+  // output y usa su propio runtime.
+  output: 'standalone',
+
   // ✅ Optimizaciones de rendimiento (estables en Next.js 16)
   experimental: {
     optimizeCss: true,

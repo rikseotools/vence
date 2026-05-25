@@ -254,7 +254,30 @@ Resuelve el "Tech debt CRÍTICO" del roadmap **con el mismo patrón ya validado 
 
 **Criterio fase cerrada:** 7 días RDS sin incidentes. Supabase BD apagada.
 
-#### Fase E — Frontend Vercel → AWS (3-4 sem, riesgo 🔴)
+#### Fase E — Frontend Vercel → AWS (3-4 sem, riesgo 🔴) — 🟡 E.1 EN CURSO 2026-05-25
+
+##### Sub-pasos atómicos
+
+- **E.1** 🟡 Dockerfile multi-stage + GHA `frontend-deploy.yml` + ECR `vence-frontend`. **Zero downtime, sin tráfico real.** Estado: imagen en ECR tras primer push a main. Reversible al 100%.
+- **E.2** ⏳ Task definition + ECS service `vence-frontend` con `desired=0`. Sin ALB rule todavía.
+- **E.3** ⏳ ALB rule en host `preview.vence.es` → target group frontend. `desired=1`. Canary del frontend en AWS, prod sin tocar.
+- **E.4** ⏳ Soak 3-7 días en preview. Validar Web Vitals (Sentry browserTracing), Sentry Issues, observable_events. Comparar latencias contra Vercel baseline.
+- **E.5** ⏳ CloudFront delante del ALB. Cache estáticos + ISR pages.
+- **E.6** ⏳ DNS DonDominio `www.vence.es A` → CloudFront. **Cutover real.** Reversible <5 min revertiendo DNS.
+- **E.7** ⏳ Tras 7 días estable: apagar proyecto Vercel.
+
+##### Progreso E.1 (sesión 2026-05-25)
+
+- `next.config.mjs`: `output: 'standalone'` activado (no rompe Vercel — Vercel ignora este output).
+- `Dockerfile` multi-stage: deps → builder → runner. Imagen final ~180-250MB con server.js standalone. Usuario non-root nextjs:nodejs.
+- `.dockerignore` excluye `backend/`, `data/`, `docs/`, scripts internos, `node_modules` y `__tests__`.
+- ECR repo `vence-frontend` en eu-west-2 con lifecycle policy 10-imágenes y scan-on-push.
+- IAM role `vence-backend-ci-deploy` ampliado con acceso a ECR `vence-frontend` (sin Terraform aún — cambio puntual via API).
+- GHA workflow `.github/workflows/frontend-deploy.yml`: trigger push a main con `paths-ignore` para backend/docs/scripts/data. Build con `docker/build-push-action@v6`, cache GHA, 2 tags (`:latest` + `:SHA7`).
+- GitHub Secrets sincronizados: 6 `NEXT_PUBLIC_*` para que el builder Next.js los inline en el bundle del cliente.
+- **Pendiente:** primer run del workflow (se dispara al pushear el commit). Si falla, fix forward antes de E.2.
+
+**Resto Fase E (E.2 a E.7) — referencia técnica original**
 
 **Objetivo:** la más grande. Dockerizar Next.js + CloudFront + ECS o Lambda.
 
