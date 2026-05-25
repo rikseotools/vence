@@ -43,7 +43,40 @@ const TABLES_WITH_LEGAL_RETENTION: Array<{ table: string; column: string }> = [
 // Incluye únicamente las columnas donde el usuario es el SUJETO, no las
 // que son admin/granter (que requieren SET NULL separado si el usuario
 // eliminado fuera admin).
+//
+// IMPORTANTE — orden de borrado (relevante desde 2026-05-23):
+//
+// La migración `20260523_materialized_stats_triggers.sql` introdujo
+// 15 triggers AFTER INSERT/UPDATE/DELETE sobre `test_questions` que
+// hacen UPSERT en 5 stats tables con FK CASCADE a user_profiles.id.
+// Si se confía sólo en la cascada de user_profiles, PG ejecuta las
+// cascadas en orden no determinista: las stats pueden borrarse ANTES
+// que test_questions, y el trigger del DELETE de test_questions
+// re-puebla las stats con un user_id que ya está siendo borrado en
+// la misma transacción → FK violation → ROLLBACK silencioso.
+//
+// Solución: borrar explícitamente en el orden:
+//   1. test_questions y tests   → dispara triggers, repuebla stats
+//   2. 5 stats tables           → limpia los repueblos
+//   3. (resto de tablas)
+//   4. user_profiles (CASCADE de las ~11 restantes, sin re-pueblos)
+//
+// La defensa final está en los triggers (guard `EXISTS user_profiles`
+// — ver migración 20260525_*) para cubrir cualquier flujo futuro de
+// DELETE que no pase por este endpoint.
 const TABLES_TO_CLEAN_NO_CASCADE: Array<{ table: string; column: string }> = [
+  // 1. test_questions primero — dispara los triggers materializadores
+  //    una sola vez aquí, en vez de durante la cascada de user_profiles.
+  { table: 'test_questions', column: 'user_id' },
+  // 2. tests después — su FK CASCADE a test_questions ya está vacía.
+  { table: 'tests', column: 'user_id' },
+  // 3. Stats tables — limpian los repueblos del paso 1.
+  { table: 'user_stats_summary', column: 'user_id' },
+  { table: 'user_article_stats', column: 'user_id' },
+  { table: 'user_daily_stats', column: 'user_id' },
+  { table: 'user_difficulty_stats', column: 'user_id' },
+  { table: 'user_hourly_stats', column: 'user_id' },
+  // 4. Resto de tablas NO CASCADE habituales.
   { table: 'feedback_conversations', column: 'user_id' },
   { table: 'feedback_messages', column: 'sender_id' },
   // payment_settlements se limpia en la fase de archivado (arriba)

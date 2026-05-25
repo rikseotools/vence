@@ -87,13 +87,50 @@ async function _DELETE(request: Request) {
       })
     }
 
-    console.log('🗑️ Eliminación completada para usuario:', userId)
+    // Verificación final: el éxito se determina por el estado REAL en BD,
+    // no por la ausencia de excepciones. Los triggers materializadores
+    // (`20260523_materialized_stats_triggers.sql`) pueden re-poblar stats
+    // tables durante la cascada del DELETE de user_profiles, causando
+    // FK violation silenciosa que safeDelete captura como `status: 'error'`.
+    // Sin esta verificación el endpoint reportaba success=true aunque
+    // user_profiles y auth.users siguieran existiendo.
+    let profileStillExists = false
+    try {
+      const { data: profileAfter } = await supabase
+        .from('user_profiles')
+        .select('id')
+        .eq('id', userId)
+        .maybeSingle()
+      profileStillExists = !!profileAfter
+    } catch (err) {
+      console.error('❌ Error verificando user_profiles post-delete:', err)
+    }
 
-    return NextResponse.json({
-      success: true,
-      message: 'Usuario eliminado correctamente',
-      details: deletionResults
-    })
+    const criticalErrors = deletionResults.filter(
+      r => r.status === 'error' || r.status === 'exception'
+    )
+    const success = !profileStillExists && authDeleted && criticalErrors.length === 0
+    const httpStatus = success ? 200 : 500
+
+    console.log(
+      success
+        ? `🗑️ Eliminación completada para usuario: ${userId}`
+        : `❌ Eliminación incompleta para ${userId} — profile=${profileStillExists ? 'EXISTE' : 'borrado'} auth=${authDeleted ? 'borrado' : 'EXISTE'} errors=${criticalErrors.length}`
+    )
+
+    return NextResponse.json(
+      {
+        success,
+        message: success
+          ? 'Usuario eliminado correctamente'
+          : 'Eliminación incompleta: revisa details y aplica fallback manual',
+        profileDeleted: !profileStillExists,
+        authDeleted,
+        criticalErrors: criticalErrors.length,
+        details: deletionResults,
+      },
+      { status: httpStatus }
+    )
 
   } catch (error) {
     console.error('❌ Error inesperado eliminando usuario:', error)

@@ -133,10 +133,34 @@ Las 59 tablas con columna `user_id` se clasifican en:
 
 | Categoría | Qué hacer | Dónde está la lista | Por qué |
 |---|---|---|---|
-| **CASCADE con user_profiles.id** (11 tablas) | **Nada** — se limpian solas | FK constraint en BD | `ON DELETE CASCADE` ya hace el trabajo |
+| **CASCADE con user_profiles.id** (11 tablas) | **Nada** — se limpian solas, EXCEPTO si tienen triggers materializadores que las repueblen (ver siguiente sección) | FK constraint en BD | `ON DELETE CASCADE` ya hace el trabajo |
 | **Con obligación legal de retención** | **Archivar** + delete | `TABLES_WITH_LEGAL_RETENTION` en queries.ts | Art. 17.3.b RGPD: no se pueden borrar del todo |
 | **NO CASCADE + no legal** | **DELETE explícito** | `TABLES_TO_CLEAN_NO_CASCADE` en queries.ts | Bloquearían el DELETE de user_profiles |
 | **Sin FK pero con user_id** | **DELETE explícito** | `TABLES_TO_CLEAN_GDPR` en queries.ts | No bloquean, pero cumplen derecho al olvido |
+| **Stats materializadas** (5 tablas + tests + test_questions) | **DELETE explícito ANTES de user_profiles, en orden** | `TABLES_TO_CLEAN_NO_CASCADE` en queries.ts | Triggers AFTER DELETE las repueblan vía UPSERT durante la cascada (ver sección «Triggers materializadores» abajo) |
+
+### Triggers materializadores — invariante crítico
+
+Desde la migración `20260523_materialized_stats_triggers.sql`, 15 triggers `AFTER INSERT/UPDATE/DELETE` sobre `test_questions` hacen UPSERT en estas 5 tablas:
+
+- `user_stats_summary`
+- `user_article_stats`
+- `user_daily_stats`
+- `user_difficulty_stats`
+- `user_hourly_stats`
+
+Todas tienen FK `CASCADE` a `user_profiles.id`. Si dependes sólo de la cascada de `user_profiles`, PG procesa las cascadas en orden no determinista. Cuando llega a `DELETE FROM test_questions`, los triggers AFTER DELETE repueblan las stats con un `user_id` que ya está siendo borrado en la misma transacción → **FK violation → ROLLBACK silencioso del DELETE entero**. La API reporta `success: true` pero `user_profiles` y `auth.users` siguen vivos.
+
+**Defensa en dos capas** (ambas activas desde 2026-05-25):
+
+1. **En `queries.ts`** (`TABLES_TO_CLEAN_NO_CASCADE`): `test_questions` + `tests` se borran ANTES (disparan triggers, repueblan stats una vez), luego las 5 stats tables (limpian repueblos), después `user_profiles`. Orden documentado en el comentario de `TABLES_TO_CLEAN_NO_CASCADE`.
+2. **En los triggers** (`20260525_triggers_guard_user_exists.sql`): guard `IF NOT EXISTS (SELECT 1 FROM user_profiles WHERE id = v_user_id) RETURN` antes del UPSERT. Cubre cualquier flujo futuro de DELETE de tests/test_questions que no pase por este endpoint (SQL manual, crons de cleanup, otros endpoints).
+
+**Cuando añadas una nueva tabla materializada con trigger AFTER en `test_questions` o `tests`:**
+
+1. Añade la tabla a `TABLES_TO_CLEAN_NO_CASCADE` en `queries.ts` (en la sección de stats).
+2. Añade el guard `EXISTS user_profiles` al cuerpo de la función de trigger.
+3. El test `__tests__/api/admin/delete-user.test.ts` («RGPD regression») verificará el orden — actualízalo si añades stats nuevas.
 
 ### Mantener la lista de tablas actualizada
 

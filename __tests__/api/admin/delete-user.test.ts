@@ -183,6 +183,79 @@ describe('Admin Delete User - Queries', () => {
     }
   })
 
+  // ============================================
+  // REGRESSION: triggers materializadores RGPD
+  // ============================================
+  //
+  // 2026-05-25: la migración `20260523_materialized_stats_triggers.sql`
+  // introdujo 15 triggers AFTER DELETE en test_questions que UPSERT en
+  // 5 stats tables con FK CASCADE a user_profiles. Sin borrado explícito
+  // de esas tablas ANTES de user_profiles, la cascade re-pueblan los
+  // stats vía trigger y provocan FK violation → DELETE de user_profiles
+  // hace ROLLBACK silencioso. Casos B y C de RGPD fallaron así.
+  //
+  // Invariante de este test:
+  //   1) test_questions, tests y las 5 stats tables se borran ANTES
+  //      de user_profiles.
+  //   2) test_questions y tests se borran ANTES de las 5 stats tables
+  //      (los triggers AFTER DELETE en test_questions repueblan stats,
+  //      así que limpiar test_questions primero deja las stats sin
+  //      tocar al final).
+  //
+  // Si alguien añade una nueva tabla materializada sin actualizar
+  // TABLES_TO_CLEAN_NO_CASCADE, este test falla.
+  it('should delete test_questions, tests, and 5 stats tables before user_profiles (RGPD regression)', async () => {
+    const executeMock = jest.fn().mockResolvedValue({ rows: [] })
+    mockDrizzle(executeMock)
+
+    const { deleteUserData } = require('@/lib/api/admin-delete-user/queries')
+    const result = await deleteUserData('550e8400-e29b-41d4-a716-446655440000')
+
+    const profilesIdx = result.findIndex((r: any) => r.table === 'user_profiles')
+    expect(profilesIdx).toBeGreaterThan(-1)
+
+    const mustBeBeforeProfiles = [
+      'test_questions',
+      'tests',
+      'user_stats_summary',
+      'user_article_stats',
+      'user_daily_stats',
+      'user_difficulty_stats',
+      'user_hourly_stats',
+    ]
+    for (const table of mustBeBeforeProfiles) {
+      const idx = result.findIndex((r: any) => r.table === table)
+      expect(idx).toBeGreaterThan(-1)
+      expect(idx).toBeLessThan(profilesIdx)
+    }
+  })
+
+  it('should delete test_questions and tests before the 5 stats tables (trigger order)', async () => {
+    const executeMock = jest.fn().mockResolvedValue({ rows: [] })
+    mockDrizzle(executeMock)
+
+    const { deleteUserData } = require('@/lib/api/admin-delete-user/queries')
+    const result = await deleteUserData('550e8400-e29b-41d4-a716-446655440000')
+
+    const tqIdx = result.findIndex((r: any) => r.table === 'test_questions')
+    const testsIdx = result.findIndex((r: any) => r.table === 'tests')
+    const statsTables = [
+      'user_stats_summary',
+      'user_article_stats',
+      'user_daily_stats',
+      'user_difficulty_stats',
+      'user_hourly_stats',
+    ]
+    const minStatsIdx = Math.min(
+      ...statsTables.map(t => result.findIndex((r: any) => r.table === t))
+    )
+
+    expect(tqIdx).toBeGreaterThan(-1)
+    expect(testsIdx).toBeGreaterThan(-1)
+    expect(tqIdx).toBeLessThan(minStatsIdx)
+    expect(testsIdx).toBeLessThan(minStatsIdx)
+  })
+
   it('should handle table not found errors gracefully', async () => {
     const executeMock = jest.fn()
       .mockResolvedValueOnce({ rows: [] })  // SELECT archive
