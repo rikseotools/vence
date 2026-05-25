@@ -74,7 +74,12 @@ jobs:
             ${{ steps.meta.outputs.tag_sha }}
             ${{ steps.meta.outputs.tag_latest }}
           # NEXT_PUBLIC_* van como build-args (Next.js los inlinea en el bundle).
-          # No-NEXT_PUBLIC vienen del entorno ECS via SSM en runtime.
+          # Server-side build-args (DATABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+          # son necesarios porque Vence consulta BD durante prerender SSG
+          # (~500 páginas). Vercel inyecta TODAS las env vars al build; con
+          # Docker hermético los pasamos explícitos. La imagen final
+          # (multi-stage stage 3) NO incluye estas envs — solo el builder.
+          # Resto de envs runtime las recibe ECS via SSM.
           build-args: |
             NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
             NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
@@ -86,6 +91,9 @@ jobs:
             NEXT_PUBLIC_APP_NAME=Vence
             NEXT_PUBLIC_SUPPORT_EMAIL=info@vence.es
             NEXT_PUBLIC_USE_CHAT_V2=true
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
+            DATABASE_URL_REPLICA=${{ secrets.DATABASE_URL_REPLICA }}
+            SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
 
       - name: Summary
         run: |

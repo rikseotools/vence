@@ -36,8 +36,6 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # Build args que el cliente Next.js incrusta en el bundle (NEXT_PUBLIC_*).
-# Los pasa la CI/CD a `docker build --build-arg ...` o usa el default vacío.
-# Las variables no-NEXT_PUBLIC_* las recibe el runtime via ECS env vars.
 ARG NEXT_PUBLIC_SUPABASE_URL
 ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
 ARG NEXT_PUBLIC_SENTRY_DSN
@@ -49,6 +47,20 @@ ARG NEXT_PUBLIC_APP_NAME
 ARG NEXT_PUBLIC_SUPPORT_EMAIL
 ARG NEXT_PUBLIC_USE_CHAT_V2
 
+# Build args server-side: Next.js Vence ejecuta queries a Postgres en
+# `generateStaticParams` y durante prerender de ~500 páginas SSG (Vercel
+# inyecta TODAS las env vars al build; Docker hermético no). La alternativa
+# "refactorizar todas las páginas para no consultar BD en build" son semanas
+# de trabajo + degrada SEO/Web Vitals.
+#
+# Compromiso de seguridad aceptado: la imagen vive en ECR PRIVADO de la
+# cuenta AWS 349744179687, accesible solo por IAM role del cluster ECS y
+# el ci-deploy role. NO se publica fuera. Son las MISMAS credenciales que
+# Vercel ya tiene en su build env.
+ARG DATABASE_URL
+ARG DATABASE_URL_REPLICA
+ARG SUPABASE_SERVICE_ROLE_KEY
+
 ENV NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
 ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
 ENV NEXT_PUBLIC_SENTRY_DSN=${NEXT_PUBLIC_SENTRY_DSN}
@@ -59,6 +71,9 @@ ENV NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL}
 ENV NEXT_PUBLIC_APP_NAME=${NEXT_PUBLIC_APP_NAME}
 ENV NEXT_PUBLIC_SUPPORT_EMAIL=${NEXT_PUBLIC_SUPPORT_EMAIL}
 ENV NEXT_PUBLIC_USE_CHAT_V2=${NEXT_PUBLIC_USE_CHAT_V2}
+ENV DATABASE_URL=${DATABASE_URL}
+ENV DATABASE_URL_REPLICA=${DATABASE_URL_REPLICA}
+ENV SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
 
 RUN npm run build
 
