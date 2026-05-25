@@ -120,17 +120,150 @@ Resuelve el "Tech debt CRÍTICO" del roadmap **con el mismo patrón ya validado 
 - **Backups con drill de restore** real, RTO/RPO declarados.
 - **Registry centralizado de tags cross-runtime** (gatillo: 3+ tags cross-runtime). Hoy solo `test-config` tiene counterpart backend (commit `3980cf87` añadió el mapping `TAG_INVALIDATORS` en `/api/admin/revalidate` + test de regresión en `__tests__/api/admin/revalidateDispatch.test.ts`). Cuando lleguen 3+ tags, refactorizar a una sola fuente de verdad `lib/cache/cross-runtime-registry.ts` que exporte `{tag → {invalidate, backendKey, description}}`. Hoy escala bien con duplicación en 3 sitios (route + lib/cache/<tag>.ts + manual); a 5+ tags empieza a oler. Documentado en `docs/maintenance/cache-revalidation.md` §«Cross-runtime cache».
 
-### Bloque 5 — Lock-in puro (diferido, sólo si duele)
+### Bloque 5 — Salir de Vercel + Supabase (AWS migration completa)
 
-No urgen y no arreglan ningún bug. Hacerlos antes es trabajo prematuro:
+> **🟡 Estado 2026-05-25:** decisión tomada — la intención es salir de Vercel y Supabase y consolidar todo en AWS. La justificación: a la escala que tendremos en 6-12 meses (10k+ DAU), Vercel Pro+ + Supabase Pro+ Upstash escalan peor en coste/control que ECS + RDS + ElastiCache en la cuenta `349744179687` (eu-west-2). El backend NestJS ya está en Fargate (Bloque 1), la mitad del camino está hecha.
+>
+> **Tiempo total estimado:** 10-12 semanas. Coste mensual final: ~$80-150/mes (vs ~$50-80 actuales).
 
-- Eliminar `supabase.from()` PostgREST (96 archivos) → endpoints propios + Drizzle + cliente tipado.
-- RLS → autz en capa de app.
-- Swap de Supabase Auth (Auth.js / Better Auth).
-- Dockerizar Next.js para salir de Vercel.
-- Salida completa de Supabase (`pg_dump` a Neon/RDS/Aurora).
+#### Estado de dependencias hoy
 
-**Cuándo:** cuando Supabase deje de servir (precio, feature, incidente) o cuando se necesite multi-cloud real. Mientras tanto, cada decisión nueva pasa por el «Gate de adopción de dependencias nuevas».
+| Componente | Proveedor actual | Destino | Estado |
+|---|---|---|---|
+| Backend NestJS + crons | AWS Fargate ECS | mantener | ✅ Hecho (Bloques 1+3) |
+| ALB + ACM + DNS api.vence.es | AWS | mantener | ✅ Hecho |
+| Pooler BD | PgBouncer Lightsail AWS | mantener / migrar a RDS Proxy | ✅ Hecho (self-hosted-pooler.md) |
+| Secrets | AWS SSM Parameter Store | mantener | ✅ Hecho |
+| Storage | Vercel Blob + Supabase Storage | **S3** | ❌ Fase A |
+| Email | Resend SDK directo (agnóstico) | mantener o swap a SES | 🟢 Ya agnóstico |
+| Cache | Upstash Redis REST | **ElastiCache Redis (TCP)** | ❌ Fase E |
+| Frontend Next.js | Vercel | **ECS / OpenNext Lambda + CloudFront** | ❌ Fase E |
+| API routes Next.js | Vercel functions | mover lógica al backend NestJS (parcial — ya hecho en Bloque 3) | 🟡 4/5 endpoints hot path en backend |
+| Postgres BD | Supabase Pro | **RDS Postgres** | ❌ Fase D |
+| Auth | Supabase Auth | **Auth.js self-hosted / AWS Cognito** | ❌ Fase C |
+| `supabase.from()` queries (PostgREST) | Supabase | endpoints propios + Drizzle | ❌ Fase B (96 archivos) |
+| ISR cache | Vercel Data Cache | CloudFront + S3 + `observable_events` versioned cache | ❌ Fase E |
+| Crons | AWS Fargate ECS | mantener | ✅ Hecho |
+| CI/CD | GitHub Actions → Vercel deploy hooks + ECS deploy via OIDC | OIDC ECS solo | 🟡 Parcial (backend ya con OIDC) |
+
+#### Fase A — Independencias (1 sem, riesgo 🟢)
+
+**Objetivo:** migrar lo que NO depende de nada más. Validar el patrón "adapter agnóstico → AWS native" con bajo riesgo.
+
+- **Storage → S3:** crear adapter `lib/storage/` con interfaz `StorageAdapter { upload, download, delete, getUrl }`. Implementación `S3StorageAdapter` usa `@aws-sdk/client-s3` con bucket en `eu-west-2`. Migrar los pocos callers actuales (Vercel Blob + Supabase Storage). Esfuerzo ~3h. Coste +$1-5/mes según volumen.
+- **Email Resend → SES (opcional):** Resend ya es agnóstico vía SDK, podemos mantenerlo o migrar a SES si queremos consolidar facturación AWS. SES requiere verificación dominio (24-48h DNS). No urge.
+- **Cache Upstash:** mantener como está hasta Fase E. Es REST → agnóstico salvo coste.
+
+**Criterio fase cerrada:** S3 sirviendo todos los uploads/downloads. Vercel Blob deprecated en código (mantener tokens API hasta confirmar 0 referencias en logs durante 7 días).
+
+#### Fase B — Liberar Supabase como cliente principal (2-3 sem, riesgo 🟡)
+
+**Objetivo:** eliminar `supabase.from()` PostgREST de los 96 archivos del frontend. Pre-requisito de Fases C y D.
+
+**Por qué se hace antes de C/D:** mientras `supabase.from()` siga vivo, las queries van directo a PostgREST de Supabase. Si swappemos Postgres a RDS, esos 96 archivos ROMPEN. Hay que matarlos primero.
+
+- **Reemplazos:**
+  - Server-side queries → endpoints propios `/api/v2/*` + Drizzle (ya patrón validado con Bloque 3: medals, daily-limit, test-config, answer-and-save).
+  - Client-side queries (`useEffect` + `supabase.from()`) → fetch a endpoints propios. Patrón hooks React puro.
+- **Estrategia:** migración por feature/dominio (auth-pages, tests, perfil, admin, etc.). 1 batch/semana. Cada batch viene con test de regresión y monitoreo de errores 24h.
+- **RLS** se sustituye por autz en capa de aplicación (middleware Next + JwtGuard del backend). Ya tenemos `verifyAuth` patrón validado.
+
+**Criterio fase cerrada:** `grep -r "supabase.from(" --include="*.ts" --include="*.tsx" app/ components/ lib/` devuelve 0 resultados.
+
+#### Fase C — Swap Supabase Auth (1-2 sem, riesgo 🟡)
+
+**Objetivo:** Supabase Auth → Auth.js self-hosted o AWS Cognito.
+
+**Opciones evaluadas:**
+- **Auth.js (NextAuth)**: self-hosted, OSS, cero coste extra. Más control. Más mantenimiento.
+- **AWS Cognito**: managed AWS native. ~$0.0055/MAU. Cero mantenimiento. Vendor lock-in AWS.
+- **WorkOS / Clerk**: SaaS pago. Lock-in mayor. Descartado para Vence.
+
+**Recomendación: Auth.js** por ser OSS + cero coste + cero lock-in extra. (Cognito reconsiderable si Auth.js da problemas operacionales).
+
+**JwtGuard del backend YA está preparado:** verifica cualquier JWT HS256 con `audience='authenticated'`. Swap = cambiar `SUPABASE_JWT_SECRET` por el secret de Auth.js. **0 cambios en código del backend.**
+
+**Migración graceful:**
+1. Deploy Auth.js en paralelo (nuevos signups van a Auth.js)
+2. Frontend lee dual: si hay cookie Supabase válida usar esa, si hay cookie Auth.js usar esa
+3. Tras 2-4 semanas con dual: deprecate Supabase Auth, fuerza relogin para los pocos restantes
+4. Borrar Supabase Auth del proyecto
+
+**Criterio fase cerrada:** 100% sesiones nuevas vía Auth.js. 0 tokens Supabase Auth válidos en producción.
+
+#### Fase D — Postgres Supabase → RDS (1 sem, riesgo 🟠)
+
+**Objetivo:** el swap más impactante. Lleva consigo el final efectivo de Supabase.
+
+**Pre-requisitos:**
+- Fase B completa (cero `supabase.from()`)
+- Fase C completa o casi (Auth ya migrado, sino los tokens fallarán al cambiar BD)
+- PgBouncer Lightsail ya operativo (lo está)
+
+**Pasos:**
+1. Crear RDS Postgres 17 en VPC vence (eu-west-2), MultiAZ para resiliencia
+2. Aplicar el schema vía Drizzle migrate (mismo schema, mismo orden)
+3. `pg_dump --no-owner` de Supabase + `pg_restore` a RDS (downtime de 5-15 min según volumen — coordinar en ventana baja, sábado madrugada)
+4. Cambiar `DATABASE_URL` en SSM (parameter store) — apunta a RDS
+5. PgBouncer cambia destino (cambio config nginx + restart)
+6. Verificar drift con queries diff: count por tabla, MD5 sampling
+7. Tras 7 días estable: borrar BD Supabase (después de backup final a S3)
+
+**Coste:** RDS db.t4g.medium MultiAZ ~$60/mes vs Supabase Pro $25/mes. Diferencia justificada por control + escala.
+
+**Rollback:** PgBouncer apunta de nuevo a Supabase. RDS queda como sandbox.
+
+**Criterio fase cerrada:** 7 días RDS sin incidentes. Supabase BD apagada.
+
+#### Fase E — Frontend Vercel → AWS (3-4 sem, riesgo 🔴)
+
+**Objetivo:** la más grande. Dockerizar Next.js + CloudFront + ECS o Lambda.
+
+**Opciones:**
+- **ECS Fargate (mismo cluster que backend):** sencillo, mismo runtime. ALB ruta `/` al frontend, `/api/v2/*` al backend NestJS (ya está). Cold starts manejables con `desired=2`.
+- **OpenNext + Lambda + CloudFront:** AWS native, escala mejor para tráfico bursty, más complejo de setup.
+
+**Recomendación: ECS Fargate** por consistencia con backend y simplicidad. Cuando volumen lo justifique (10k+ DAU sostenido), reconsiderar OpenNext.
+
+**Pasos:**
+1. `Dockerfile` para Next.js (multi-stage build)
+2. Pipeline GHA construye imagen + push ECR (mismo patrón que backend)
+3. Nueva task definition `vence-frontend` en ECS cluster `vence-backend`
+4. ALB rule: `Host: www.vence.es OR vence.es` → target group frontend
+5. CloudFront delante del ALB con cache de estáticos + ISR pages
+6. DNS DonDominio: A `www.vence.es` → CloudFront
+7. Verificar SSL via ACM (cert ya existe)
+8. Tras 7 días estable: borrar proyecto Vercel
+
+**Migración ISR:** las páginas con `revalidate` se sirven con cache en CloudFront. La invalidación por tag (`revalidateTag`) requiere hook propio (CloudFront no soporta tags nativos → usar `observable_events` versioned cache pattern ya validado).
+
+**Coste:** ECS Fargate 2 tasks 0.5 vCPU/1GB ≈ $25/mes. CloudFront según volumen, estimo ~$10-20/mes. Total ~$35-45/mes vs Vercel Pro $20/mes. Diferencia justificada por control + sin límites de duration/connection.
+
+**Criterio fase cerrada:** vence.es servido desde CloudFront. Proyecto Vercel apagado.
+
+#### Orden de ejecución racional
+
+```
+Fase A (1 sem)
+   ↓
+Fase B (2-3 sem)  ←── pre-requisito de C y D
+   ↓
+Fase C (1-2 sem) ↘
+                  → Fase D (1 sem)
+Auth migrado     ↗
+   ↓
+Fase E (3-4 sem)
+```
+
+**Cuándo:** la decisión es continuar progresivamente. **Cada fase es 1-2 sesiones de trabajo.** Entre fases dejamos 1-2 semanas de soak para detectar regresiones antes de abrir la siguiente.
+
+**Salida de cada fase requiere:**
+1. Funcionalidad validada en prod (smoke tests + métricas observable_events)
+2. Backups de la fuente antigua antes de apagar
+3. Documentación: este roadmap actualizado con commit refs
+4. Rollback path probado
+
+**Salida del Bloque 5 completo:** 0 dependencias a Vercel + 0 dependencias a Supabase. Toda la app corre en AWS bajo la cuenta `349744179687`. Migración a otro cloud (GCP/Azure) es trabajo de adapter swap, no rewrite.
 
 ### Por qué este orden y no otro
 
