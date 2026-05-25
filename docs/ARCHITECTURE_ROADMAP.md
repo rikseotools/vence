@@ -290,7 +290,7 @@ ECS Fargate sería mejor si Vence fuera SaaS B2B con carga constante 24/7. No es
 
 - **E.1** ✅ Dockerfile multi-stage + GHA `frontend-deploy.yml` + ECR `vence-frontend`. Imagen final ~340MB con server.js standalone. Build args server-side (DATABASE_URL, SUPABASE_SERVICE_ROLE_KEY) pasados desde GH Secrets — necesarios porque Vence consulta BD durante prerender SSG. Workflow corriendo 7-8 min en GHA, SUCCESS en sha 0d5ca941.
 - **E.2** ✅ Terraform (`backend/infra/frontend.tf`): task definition + ECS service `vence-frontend` con `desired=0`. 20 secrets desde SSM `/vence-frontend/*` + 14 env vars planas. IAM execution role (lee SSM) + task role (acceso S3 vence-uploads). Security group solo egress. Smoke verificado: task arranca, Next.js 16.2.6 Ready, Supabase client OK con secrets de SSM. Coste $0/mes (sin tasks corriendo).
-- **E.3** ⏳ ALB rule en host `preview.vence.es` → target group frontend. `desired=1`. Canary del frontend en AWS, prod sin tocar.
+- **E.3** ✅ ALB rule en host `preview-aws.vence.es` → target group frontend. `desired=1`. **Smoke prod-like OK 2026-05-25 20:37**: home 332KB/415ms, /oposiciones BD-dependent 200/374KB, página de test SSG 200/226KB. ACM cert ISSUED en 90s (validación DNS). DNS resuelve correctamente. Target healthy. Coste estimado: ~$15/mes (1 task 0.5vCPU/1GB 24/7).
 - **E.4** ⏳ Soak 3-7 días en preview. Validar Web Vitals (Sentry browserTracing), Sentry Issues, observable_events. Comparar latencias contra Vercel baseline.
 - **E.5** ⏳ CloudFront delante del ALB. Cache estáticos + ISR pages.
 - **E.6** ⏳ DNS DonDominio `www.vence.es A` → CloudFront. **Cutover real.** Reversible <5 min revertiendo DNS.
