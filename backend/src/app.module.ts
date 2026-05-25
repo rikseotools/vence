@@ -23,6 +23,7 @@ import { AnswerSaveModule } from './answer-save/answer-save.module';
 import { TestConfigModule } from './test-config/test-config.module';
 import { ObservabilityModule } from './observability/observability.module';
 import { AllExceptionsFilter } from './observability/all-exceptions.filter';
+import { AlertsModule } from './alerts/alerts.module';
 import { AntifraudModule } from './antifraud/antifraud.module';
 import { AuthModule } from './auth/auth.module';
 import { BackgroundModule } from './background/background.module';
@@ -84,6 +85,10 @@ import { TestAnswersModule } from './test-answers/test-answers.module';
     TestConfigModule,
     // Bloque 4: tabla observable_events unificada (Vercel+Fargate+GHA).
     ObservabilityModule,
+    // Bloque 4 Gap 8: rules engine de alertas activas (cron 5min sobre
+    // observable_events) + NotificationAdapter swappable (Email Resend
+    // hoy → SNS post-AWS).
+    AlertsModule,
   ],
   providers: [
     // Gap 3 — ExceptionFilter GLOBAL: cualquier error ≥500 de cualquier
