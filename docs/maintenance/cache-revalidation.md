@@ -136,6 +136,69 @@ El contenido de leyes y artículos **casi nunca cambia**, así que no tiene sent
 
 ---
 
+## ⚠️ Cross-runtime cache (Bloque 3 — backend NestJS/Fargate)
+
+**Desde 2026-05-24** algunos endpoints viven en el backend NestJS dedicado (`api.vence.es`) — concretamente la familia `test-config` (canary activo desde commit `93fedcf5`). Estos endpoints **NO usan `unstable_cache` de Next.js** (Next no corre en Fargate); usan un patrón propio llamado **versioned cache keys**:
+
+- Cada "tag" tiene un contador en Upstash: `cache_version:${tag}` (ej. `cache_version:test-config`).
+- Las cache keys del backend incluyen esa versión: `test-config:v${currentVersion}:articles:lawA:t5`.
+- Invalidar = `INCR cache_version:${tag}` (atómico, O(1)). Las keys con versión vieja dejan de ser pedidas y expiran solas por TTL.
+
+**Implicación crítica:** `revalidateTag('test-config')` de Next.js **NO invalida** el backend NestJS — solo afecta al `unstable_cache` de Vercel. Si llamas a `revalidateTag` directo, el backend canary seguirá sirviendo cache versionado viejo hasta que expire por TTL natural (6-24h dependiendo del endpoint).
+
+**Para invalidar correctamente tags cross-runtime hay que usar el invalidador específico**:
+
+```typescript
+import { invalidateTestConfigCache } from '@/lib/cache/test-config'
+
+invalidateTestConfigCache() // ✅ Invalida AMBOS planos (Next + Upstash INCR)
+```
+
+Esa función llama internamente a `revalidateTag('test-config', 'max')` Y a `incrementCounter('cache_version:test-config')` — cross-runtime coherente.
+
+### Tags con counterpart cross-runtime hoy
+
+| Tag | Backend canary | Invalidador específico | Riesgo si usas `revalidateTag()` directo |
+|---|---|---|---|
+| `test-config` | ✅ Activo (commit `93fedcf5`) | `invalidateTestConfigCache()` en `lib/cache/test-config.ts` | Backend sirve datos viejos 6-24h |
+
+Tags sin entrada arriba siguen siendo solo-Vercel — `revalidateTag()` basta.
+
+### El endpoint `/api/admin/revalidate` ya lo cubre automáticamente
+
+Tras el fix de `2026-05-25` (commit `3980cf87`), el endpoint genérico **detecta tags cross-runtime y llama al invalidador específico**. La respuesta incluye `crossRuntime: true/false` para confirmación:
+
+```bash
+curl -X POST https://www.vence.es/api/admin/revalidate \
+  -H "Content-Type: application/json" \
+  -H "x-cron-secret: <CRON_SECRET>" \
+  -d '{"tag": "test-config"}'
+# → { success: true, revalidated: "test-config", crossRuntime: true, ... }
+
+curl ... -d '{"tag": "temario"}'
+# → { success: true, revalidated: "temario", crossRuntime: false, ... }
+```
+
+### Patrón canónico: versioned cache keys (agnóstico a proveedor)
+
+Implementación reusable en `backend/src/cache/cache-versioning.service.ts` (commit `9133eef8`). Diseño:
+
+- Solo usa primitivas estándar `GET` y `INCR` → portable a cualquier KV moderno (Upstash, ElastiCache, KeyDB, DragonflyDB, Memcached, DynamoDB con UpdateExpression ADD, etcd con CAS).
+- O(1) en invalidación (vs SCAN+DEL que es O(N) bloqueante).
+- Versiones viejas expiran solas → cero memory leak.
+- Cache local de 1s del version key evita 1 GET extra por request.
+
+**Para añadir un nuevo endpoint backend con tag-like invalidation:**
+
+1. Inyectar `CacheVersioningService` + `CacheService` en el controller.
+2. Construir keys con `await versioning.buildKey('mi-tag', subKey)`.
+3. Cachear normal con `cache.setCached` / `cache.getCached`.
+4. En el frontend, en `lib/cache/mi-tag.ts` añadir `invalidateMiTagCache()` que haga `revalidateTag('mi-tag', 'max')` + `incrementCounter('cache_version:mi-tag')`.
+5. Añadir entrada en `TAG_INVALIDATORS` de `/api/admin/revalidate/route.ts`.
+6. Documentar la entrada en la tabla "Tags con counterpart cross-runtime hoy" de este manual.
+
+---
+
 ## Cache server-side compartido (Redis Upstash) — Fase 1 escalabilidad
 
 Capa adicional al `unstable_cache` de Next.js. **Diferencias clave:**
@@ -253,6 +316,17 @@ revalidateTag('teoria')   // Invalida toda la teoría
 revalidateTag('laws')     // Invalida lista de leyes
 ```
 
+> ⚠️ **Tags cross-runtime (test-config y futuros):** NO uses `revalidateTag()` directo desde código para tags con counterpart en backend. Usa el invalidador específico de `lib/cache/<tag>.ts` para que ambos planos (Next + Upstash INCR) queden coherentes. Ver sección «Cross-runtime cache» arriba.
+>
+> ```typescript
+> // ❌ MAL — solo invalida Vercel, backend NestJS sigue con cache viejo
+> revalidateTag('test-config', 'max')
+>
+> // ✅ BIEN — invalida ambos planos
+> import { invalidateTestConfigCache } from '@/lib/cache/test-config'
+> invalidateTestConfigCache()
+> ```
+
 ### Opción 2: Endpoint genérico `/api/admin/revalidate`
 
 Acepta cualquier tag de la allowlist en `app/api/admin/revalidate/route.ts`. Requiere `x-cron-secret`.
@@ -270,7 +344,7 @@ Acepta cualquier tag de la allowlist en `app/api/admin/revalidate/route.ts`. Req
 | `profile` | Perfil de usuario (60s TTL, tag-invalidate fuerza refresco) | Manualmente raro — auto via webhook Stripe + onboarding |
 | `questions` | Validación de preguntas en `getQuestionValidationCached` | Tras editar `correct_option` o `explanation` (auto via lib/cache/questions.ts) |
 | `user-theme-stats` | Stats por tema (Phase 1 Redis) | Tras INSERT en test_questions |
-| `test-config` | sections + articles + essential-articles + estimate del configurador | Auto via lifecycle transition; manual tras scripts mutación |
+| `test-config` ⚠️ **cross-runtime** | sections + articles + essential-articles + estimate. **Backend NestJS canary activo** — invalidar via endpoint o `invalidateTestConfigCache()`, NO con `revalidateTag()` directo. Ver sección «Cross-runtime cache» | Auto via lifecycle transition; manual tras scripts mutación |
 | `hot-articles` | Hot articles per oposición | Manual tras `scripts/sync-hot-articles.cjs` |
 | `law-stats` | Counts de preguntas activas por ley | Auto via lifecycle transition |
 | `verify-stats` | Estado de verificación BOE por ley | Auto via `updateLawVerification`; manual raro |
@@ -495,6 +569,9 @@ curl -X POST "https://www.vence.es/api/purge-cache" \
 
 | Fecha | Cambio |
 |-------|--------|
+| 2026-05-25 | **Fix bug `/api/admin/revalidate` cross-runtime** (commit `3980cf87`). Antes del fix: invocar el endpoint con `{tag:'test-config'}` solo invalidaba `unstable_cache` de Next.js — el backend NestJS canary `test-config` (activo desde commit `93fedcf5`) seguía sirviendo cache versionado viejo 6-24h. Fix: mapping `TAG_INVALIDATORS` que llama el invalidador específico (`invalidateTestConfigCache()`) cuando el tag tiene counterpart cross-runtime. Response añade `crossRuntime: true/false` para confirmación. Nueva sección «Cross-runtime cache (Bloque 3)» añadida al manual documentando el patrón versioned cache keys + warning explícito en «Opción 1: revalidateTag desde código» para no caer otra vez en el mismo bug. |
+| 2026-05-25 | **Patrón versioned cache keys agnóstico a proveedor** (commit `9133eef8`). `CacheVersioningService` en backend usa solo GET+INCR estándar (portable a Redis/Memcached/DynamoDB/etcd/KeyDB/DragonflyDB). Cross-runtime coherente con Vercel via misma key `cache_version:${tag}` en Upstash compartido. |
+| 2026-05-24 | **Familia test-config migrada al backend NestJS** (commit `06c9c2be` + `93fedcf5`). Primer endpoint canary con cache versionado tag-like. |
 | 2026-05-02 | **Sección "Cache server-side compartido (Redis Upstash)"** añadida. Documenta los 3 endpoints con Redis (user-stats, exam/pending, theme-stats), el patrón "fresh con stale fallback" para queries pesadas, y cómo invalidar manualmente. Antes el manual solo cubría Next.js `unstable_cache` + ISR, no Redis. |
 | 2026-05-02 | **theme-stats promovido de Map in-memory a Redis** con stale fallback. Resuelve fragmentación del cache entre instancias Vercel Fluid en query de 16s. Invalidación añadida en `answer-and-save`. |
 | 2026-04-30 | **Todas las páginas de temario, test y landings migradas a `force-dynamic`** para evitar saturar Supabase en build (~3600 páginas SSG → 0). Script `warm-cache-post-deploy.js` creado para calentar ~963 URLs tras deploy. Workflow automático en GitHub Actions. Script legacy `warm-temario-cache.sh` sustituido. |
