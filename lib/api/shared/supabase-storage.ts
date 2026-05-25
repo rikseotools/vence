@@ -1,12 +1,13 @@
 // lib/api/shared/supabase-storage.ts
-// Wrapper tipado para Supabase Storage.
-// Nada lo importa aún — se usará en futuras migraciones.
+//
+// **DEPRECATED** — usar `lib/storage` directamente. Este archivo se mantiene
+// solo para no romper imports existentes durante la migración del Bloque 5
+// Fase A. Bajo el capó delega en el adapter agnóstico (S3 o Supabase según
+// `STORAGE_PROVIDER`).
+//
+// Cuando todos los callers usen `lib/storage`, este archivo se borrará.
 
-import { getServiceClient } from './auth'
-
-// ============================================
-// Tipos
-// ============================================
+import { getStorage } from '../../storage'
 
 export interface UploadOptions {
   bucket: string
@@ -33,54 +34,18 @@ export interface DeleteOptions {
   paths: string[]
 }
 
-// ============================================
-// Operaciones
-// ============================================
-
 export async function uploadFile(
   options: UploadOptions
 ): Promise<UploadResult | StorageError> {
-  const supabase = getServiceClient()
-
-  const { error: uploadError } = await supabase.storage
-    .from(options.bucket)
-    .upload(options.path, options.data, {
-      cacheControl: options.cacheControl ?? '3600',
-      upsert: options.upsert ?? false,
-      contentType: options.contentType,
-    })
-
-  if (uploadError) {
-    return { success: false, error: uploadError.message }
-  }
-
-  const {
-    data: { publicUrl },
-  } = supabase.storage.from(options.bucket).getPublicUrl(options.path)
-
-  return { success: true, publicUrl, path: options.path }
+  return getStorage().upload(options)
 }
 
 export async function deleteFiles(
   options: DeleteOptions
 ): Promise<{ success: true } | StorageError> {
-  const supabase = getServiceClient()
-
-  const { error } = await supabase.storage
-    .from(options.bucket)
-    .remove(options.paths)
-
-  if (error) {
-    return { success: false, error: error.message }
-  }
-
-  return { success: true }
+  return getStorage().remove(options)
 }
 
 export function getPublicUrl(bucket: string, path: string): string {
-  const supabase = getServiceClient()
-  const {
-    data: { publicUrl },
-  } = supabase.storage.from(bucket).getPublicUrl(path)
-  return publicUrl
+  return getStorage().getPublicUrl(bucket, path)
 }

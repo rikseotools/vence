@@ -146,15 +146,54 @@ Resuelve el "Tech debt CRÍTICO" del roadmap **con el mismo patrón ya validado 
 | Crons | AWS Fargate ECS | mantener | ✅ Hecho |
 | CI/CD | GitHub Actions → Vercel deploy hooks + ECS deploy via OIDC | OIDC ECS solo | 🟡 Parcial (backend ya con OIDC) |
 
-#### Fase A — Independencias (1 sem, riesgo 🟢)
+#### Fase A — Independencias (1 sem, riesgo 🟢) — 🟢 STORAGE→S3 LIVE 2026-05-25
 
 **Objetivo:** migrar lo que NO depende de nada más. Validar el patrón "adapter agnóstico → AWS native" con bajo riesgo.
 
-- **Storage → S3:** crear adapter `lib/storage/` con interfaz `StorageAdapter { upload, download, delete, getUrl }`. Implementación `S3StorageAdapter` usa `@aws-sdk/client-s3` con bucket en `eu-west-2`. Migrar los pocos callers actuales (Vercel Blob + Supabase Storage). Esfuerzo ~3h. Coste +$1-5/mes según volumen.
-- **Email Resend → SES (opcional):** Resend ya es agnóstico vía SDK, podemos mantenerlo o migrar a SES si queremos consolidar facturación AWS. SES requiere verificación dominio (24-48h DNS). No urge.
-- **Cache Upstash:** mantener como está hasta Fase E. Es REST → agnóstico salvo coste.
+##### Storage → S3 — CUTOVER COMPLETO (2026-05-25)
 
-**Criterio fase cerrada:** S3 sirviendo todos los uploads/downloads. Vercel Blob deprecated en código (mantener tokens API hasta confirmar 0 referencias en logs durante 7 días).
+**Infra AWS** (creada y verificada):
+- Bucket `vence-uploads` en `eu-west-2` con block-public-access OFF + bucket policy `s3:GetObject` Allow `*` + CORS para www.vence.es / vence.es / *.vercel.app / localhost:3000.
+- IAM user `vence-storage-writer` con policy inline `vence-uploads-rw` (`PutObject`/`GetObject`/`DeleteObject`/`ListBucket`). Credentials sincronizadas a Vercel (env vars production+preview+development) y SSM (`/vence-backend/AWS_S3_BUCKET` + `/vence-backend/STORAGE_PROVIDER`).
+- Task role `vence-backend-task` (Fargate) con policy inline `vence-uploads-rw` — usa IAM role, no AKID.
+- Vercel Blob: **0 callers** detectados, dependencia no añadida. ✅
+
+**Código agnóstico:**
+- `lib/storage/types.ts` — interfaz `StorageAdapter { provider, upload, remove, getPublicUrl }`.
+- `lib/storage/supabase-adapter.ts` — implementación con `@supabase/supabase-js`.
+- `lib/storage/s3-adapter.ts` — implementación con `@aws-sdk/client-s3`. Mapea buckets lógicos a prefijos del bucket único `vence-uploads`.
+- `lib/storage/index.ts` — `getStorage()` factory que decide adapter según `STORAGE_PROVIDER` ('s3' | 'supabase').
+- `lib/api/shared/supabase-storage.ts` — reescrito como wrapper delgado sobre `getStorage()`.
+- `scripts/smoke-s3-storage.ts` — script local que valida upload → fetch → delete contra S3 real. **PASSED**.
+
+**Callers migrados (3/3):**
+- ✅ `app/api/upload-feedback-image/route.js` — usa `getStorage().upload()` / `.remove()`.
+- ✅ `components/AvatarChanger.js` — el navegador YA no habla con `supabase.storage`. POSTea FormData a `/api/upload-avatar` (server-side, con `verifyAuth`). El upload pasa por el adapter agnóstico.
+- ✅ `components/ChatInterface.js` — POSTea a `/api/upload-chat-attachment` (POST + DELETE), también server-side y autenticado. DELETE valida prefijo `chat-images/` para impedir borrar otros prefijos.
+
+**Endpoints API nuevos:**
+- `POST /api/upload-avatar` (auth requerida, bucket lógico `user-avatars`, 2MB max).
+- `POST /api/upload-chat-attachment` y `DELETE /api/upload-chat-attachment?path=` (auth requerida, bucket `support`, 5MB max, restringido a prefijo `chat-images/`).
+
+**Backfill ejecutado:**
+- `scripts/backfill-supabase-to-s3.ts` — idempotente (HEAD check con size), paginado, soporta `--dry-run`.
+- **88 objetos transferidos**: 79 `feedback-images` + 9 `user-avatars` + 0 `support` (vacío en Supabase).
+- 2ª ejecución idempotente OK: `Copied:0 Skipped:88`. ✅
+
+**Cutover ejecutado:**
+- `STORAGE_PROVIDER=s3` en Vercel (production+preview+development) y SSM `/vence-backend/STORAGE_PROVIDER`. Tras redeploy: todo nuevo upload va a S3.
+- **URLs viejas (Supabase) siguen funcionando**: los buckets Supabase quedan vivos como readers de URLs históricas guardadas en BD (no se borran).
+
+**Pendiente (no bloqueante, sesión siguiente):**
+1. Soak ≥7 días. Verificar zero error en endpoints `/api/upload-*` desde `observable_events`.
+2. Auditar buckets Supabase sin caller activo (`avatars`, `videos-premium`, `question-images`) — confirmar que no hay readers, decidir backfill o dejar como readonly.
+3. A los 30 días sin escrituras nuevas en Supabase Storage: marcar buckets como readonly + plan de apagado (cuando 0 reads / 30 días según Supabase logs).
+
+**Email Resend → SES (opcional):** Resend ya es agnóstico vía SDK, mantenemos. Migración a SES no urge.
+
+**Cache Upstash:** mantener hasta Fase E (es REST → agnóstico salvo coste).
+
+**Criterio fase cerrada:** S3 sirviendo todos los uploads nuevos. ✅ Buckets Supabase como readonly durante el período de soak. Vercel Blob 0 callers — no aplica.
 
 #### Fase B — Liberar Supabase como cliente principal (2-3 sem, riesgo 🟡)
 

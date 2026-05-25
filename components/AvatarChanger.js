@@ -238,25 +238,27 @@ export default function AvatarChanger({ user, currentAvatar, onAvatarChange }) {
 
     setUploadingImage(true)
     try {
-      // Generar nombre único para el archivo
-      const fileExt = file.name.split('.').pop()
-      const fileName = `${user.id}-${Date.now()}.${fileExt}`
-      const filePath = `avatars/${fileName}`
+      // Bloque 5 Fase A: el upload pasa por /api/upload-avatar (server-side),
+      // que usa el adapter agnóstico `lib/storage` (S3 o Supabase según
+      // STORAGE_PROVIDER). El navegador ya NO habla con supabase.storage.
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error('No hay sesión activa')
 
-      // Subir imagen a Supabase Storage
-      const { error: uploadError } = await supabase.storage
-        .from('user-avatars')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: true
-        })
+      const formData = new FormData()
+      formData.append('file', file)
 
-      if (uploadError) throw uploadError
+      const uploadResponse = await fetch('/api/upload-avatar', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}` },
+        body: formData,
+      })
 
-      // Obtener URL pública
-      const { data: { publicUrl } } = supabase.storage
-        .from('user-avatars')
-        .getPublicUrl(filePath)
+      if (!uploadResponse.ok) {
+        const err = await uploadResponse.json().catch(() => ({ error: 'upload failed' }))
+        throw new Error(err.error || `upload failed (${uploadResponse.status})`)
+      }
+
+      const { url: publicUrl } = await uploadResponse.json()
 
       // Actualizar metadata del usuario
       const { error: updateError } = await supabase.auth.updateUser({

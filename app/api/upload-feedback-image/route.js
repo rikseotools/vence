@@ -1,19 +1,19 @@
 // app/api/upload-feedback-image/route.js
-// API endpoint para subir imágenes de feedback desde el lado del usuario
+// API endpoint para subir imágenes de feedback desde el lado del usuario.
+//
+// Bloque 5 Fase A (2026-05-25): migrado de supabase.storage directo al
+// adapter agnóstico `lib/storage`. Provider se decide por env
+// STORAGE_PROVIDER ('s3' | 'supabase'). El nombre lógico del bucket
+// (feedback-images) lo entiende cualquier provider.
 
-import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { getStorage } from '@/lib/storage'
+
 async function _POST(request) {
   try {
     console.log('📤 [API] Iniciando subida de imagen de feedback...')
-    
-    // Crear cliente con service role para garantizar permisos
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    )
 
     // Obtener datos del FormData
     const formData = await request.formData()
@@ -53,45 +53,38 @@ async function _POST(request) {
     const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
     const filePath = `${userPath}/${fileName}`
 
-    console.log('📤 [API] Subiendo a Supabase Storage:', filePath)
+    const storage = getStorage()
+    console.log(`📤 [API] Subiendo (provider=${storage.provider}):`, filePath)
 
-    // Convertir file a ArrayBuffer para Supabase
+    // Convertir file a ArrayBuffer para el adapter
     const arrayBuffer = await file.arrayBuffer()
 
-    // Subir a Supabase Storage
-    const { data, error: uploadError } = await supabase.storage
-      .from('feedback-images')
-      .upload(filePath, arrayBuffer, {
-        cacheControl: '3600',
-        upsert: true,
-        contentType: file.type
-      })
+    const result = await storage.upload({
+      bucket: 'feedback-images',
+      path: filePath,
+      data: arrayBuffer,
+      contentType: file.type,
+      cacheControl: '3600',
+      upsert: true,
+    })
 
-    if (uploadError) {
-      console.error('❌ [API] Error de Supabase Storage:', uploadError)
+    if (!result.success) {
+      console.error('❌ [API] Error storage adapter:', result.error)
       return NextResponse.json(
-        { error: `Error subiendo archivo: ${uploadError.message}` },
+        { error: `Error subiendo archivo: ${result.error}` },
         { status: 500 }
       )
     }
 
     console.log('✅ [API] Archivo subido exitosamente')
+    console.log('🔗 [API] URL pública generada:', result.publicUrl)
 
-    // Obtener URL pública
-    const { data: { publicUrl } } = supabase.storage
-      .from('feedback-images')
-      .getPublicUrl(filePath)
-
-    console.log('🔗 [API] URL pública generada:', publicUrl)
-
-    // Responder con éxito
     return NextResponse.json({
       success: true,
-      url: publicUrl,
+      url: result.publicUrl,
       path: filePath,
-      fileName: file.name
+      fileName: file.name,
     })
-
   } catch (error) {
     console.error('❌ [API] Error general:', error)
     return NextResponse.json(
@@ -104,7 +97,7 @@ async function _POST(request) {
 async function _DELETE(request) {
   try {
     console.log('🗑️ [API] Iniciando eliminación de imagen de feedback...')
-    
+
     const { searchParams } = new URL(request.url)
     const imagePath = searchParams.get('path')
 
@@ -115,31 +108,24 @@ async function _DELETE(request) {
       )
     }
 
-    // Crear cliente con service role
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    )
+    const storage = getStorage()
+    console.log(`🗑️ [API] Eliminando (provider=${storage.provider}):`, imagePath)
 
-    console.log('🗑️ [API] Eliminando imagen:', imagePath)
+    const result = await storage.remove({
+      bucket: 'feedback-images',
+      paths: [imagePath],
+    })
 
-    // Eliminar de Supabase Storage
-    const { error } = await supabase.storage
-      .from('feedback-images')
-      .remove([imagePath])
-
-    if (error) {
-      console.error('❌ [API] Error eliminando de storage:', error)
+    if (!result.success) {
+      console.error('❌ [API] Error eliminando de storage:', result.error)
       return NextResponse.json(
-        { error: `Error eliminando archivo: ${error.message}` },
+        { error: `Error eliminando archivo: ${result.error}` },
         { status: 500 }
       )
     }
 
     console.log('✅ [API] Imagen eliminada exitosamente')
-
     return NextResponse.json({ success: true })
-
   } catch (error) {
     console.error('❌ [API] Error general eliminando:', error)
     return NextResponse.json(

@@ -285,22 +285,28 @@ export default function ChatInterface({ conversationId, onClose, feedbackData })
     setUploadingImage(true)
 
     try {
-      // Crear nombre único para el archivo
-      const fileExt = file.name.split('.').pop()
-      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
-      const filePath = `chat-images/${fileName}`
+      // Bloque 5 Fase A: el upload pasa por /api/upload-chat-attachment
+      // (server-side), que usa el adapter `lib/storage` (S3 o Supabase
+      // según STORAGE_PROVIDER). Antes el navegador hablaba directamente
+      // con supabase.storage — no agnóstico.
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error('No hay sesión activa')
 
-      // Subir a Supabase Storage
-      const { data, error: uploadError } = await supabase.storage
-        .from('support')
-        .upload(filePath, file)
+      const formData = new FormData()
+      formData.append('file', file)
 
-      if (uploadError) throw uploadError
+      const uploadResponse = await fetch('/api/upload-chat-attachment', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}` },
+        body: formData,
+      })
 
-      // Obtener URL pública
-      const { data: { publicUrl } } = supabase.storage
-        .from('support')
-        .getPublicUrl(filePath)
+      if (!uploadResponse.ok) {
+        const err = await uploadResponse.json().catch(() => ({ error: 'upload failed' }))
+        throw new Error(err.error || `upload failed (${uploadResponse.status})`)
+      }
+
+      const { url: publicUrl, path: filePath } = await uploadResponse.json()
 
       // Añadir imagen a la lista
       setUploadedImages(prev => [...prev, {
@@ -320,15 +326,19 @@ export default function ChatInterface({ conversationId, onClose, feedbackData })
     }
   }
 
-  // Función para eliminar imagen subida
+  // Función para eliminar imagen subida (server-side via adapter agnóstico)
   const removeImage = async (imageId, imagePath) => {
     try {
-      // Eliminar de Supabase Storage
-      await supabase.storage
-        .from('support')
-        .remove([imagePath])
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error('No hay sesión activa')
 
-      // Eliminar de la lista local
+      await fetch(`/api/upload-chat-attachment?path=${encodeURIComponent(imagePath)}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
+
+      // Eliminar de la lista local independientemente del resultado del DELETE:
+      // si el objeto ya no existe, la UI debe reflejarlo igual.
       setUploadedImages(prev => prev.filter(img => img.id !== imageId))
     } catch (error) {
       console.error('Error eliminando imagen:', error)
