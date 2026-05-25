@@ -303,12 +303,21 @@ resource "aws_iam_role_policy" "ci_deploy" {
           "ecr:BatchGetImage",
           "ecr:GetDownloadUrlForLayer"
         ]
-        Resource = [aws_ecr_repository.backend.arn]
+        Resource = [
+          aws_ecr_repository.backend.arn,
+          # vence-frontend ECR (gestionado fuera de Terraform vía AWS CLI,
+          # ver frontend.tf). El ci-deploy workflow lo necesita para pushear
+          # imágenes Docker del frontend.
+          "arn:aws:ecr:${var.aws_region}:${data.aws_caller_identity.current.account_id}:repository/vence-frontend",
+        ]
       },
       {
-        Effect   = "Allow"
-        Action   = ["ecs:UpdateService", "ecs:DescribeServices"]
-        Resource = [aws_ecs_service.backend.id]
+        Effect = "Allow"
+        Action = ["ecs:UpdateService", "ecs:DescribeServices"]
+        Resource = [
+          aws_ecs_service.backend.id,
+          aws_ecs_service.frontend.id,
+        ]
       }
     ]
   })
