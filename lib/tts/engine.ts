@@ -316,9 +316,16 @@ export class TTSEngine {
    * Cambia rate en caliente. Si está reproduciendo, cancela + reinicia el
    * chunk actual con el nuevo rate. Si está pausado, queda registrado
    * para aplicarse en resume.
+   *
+   * NO-OP si el valor es idéntico al actual — esto es CRÍTICO: ArticleTTS
+   * llama setRate(rate) desde un useEffect cuyas deps incluyen rate, y
+   * React puede disparar el efecto en mounts/re-renders con el mismo valor.
+   * Sin esta guard, cada setRate(1)+setVoice(null) cancela el chunk
+   * recién iniciado → no se oye nada.
    */
   setRate(rate: number): void {
     if (this.destroyed) return
+    if (rate === this.rate) return
     const oldRate = this.rate
     this.rate = rate
     if (this.sessionId) {
@@ -338,8 +345,9 @@ export class TTSEngine {
 
   setVoice(voiceURI: string | null): void {
     if (this.destroyed) return
+    if ((voiceURI ?? null) === this.voiceURI) return
     const oldVoice = this.voiceURI
-    this.voiceURI = voiceURI
+    this.voiceURI = voiceURI ?? null
     if (this.sessionId) {
       ttsTelemetry.userAction({
         sessionId: this.sessionId,

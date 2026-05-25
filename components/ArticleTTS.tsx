@@ -63,17 +63,25 @@ export default function ArticleTTS({ text, articleNumber, lawName }: ArticleTTSP
   })
 
   // Aplicar cambio de rate / voz al engine cuando el state local cambia.
-  useEffect(() => {
-    tts.setRate(rate)
-  }, [rate, tts])
+  // Destructuramos para que el dep array sea estable (setRate/setVoice son
+  // useCallback con deps [] en useTTS). Si dependemos del objeto `tts`
+  // entero, el efecto se dispara en cada render del hook → spam de
+  // setRate(mismo) / setVoice(mismo) que en producción cancelaba el chunk
+  // recién lanzado. El engine también tiene short-circuit, pero esto evita
+  // la llamada de raíz.
+  const { setRate: ttsSetRate, setVoice: ttsSetVoice, play: ttsPlay } = tts
 
   useEffect(() => {
-    tts.setVoice(voiceURI)
-  }, [voiceURI, tts])
+    ttsSetRate(rate)
+  }, [rate, ttsSetRate])
+
+  useEffect(() => {
+    ttsSetVoice(voiceURI)
+  }, [voiceURI, ttsSetVoice])
 
   const play = useCallback(() => {
-    tts.play({ text, rate, voiceURI, lawName, articleNumber })
-  }, [tts, text, rate, voiceURI, lawName, articleNumber])
+    ttsPlay({ text, rate, voiceURI, lawName, articleNumber })
+  }, [ttsPlay, text, rate, voiceURI, lawName, articleNumber])
 
   // Registrar esta instancia con el chain — el chain llamará a playRef.current
   // cuando la ley anterior termine natural en modo "todo el tema".

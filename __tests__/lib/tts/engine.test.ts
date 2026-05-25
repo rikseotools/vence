@@ -278,6 +278,28 @@ describe('TTSEngine', () => {
     eng.destroy()
   })
 
+  it('FIX SILENCIO: setRate con el MISMO valor es no-op (no cancela el chunk vivo)', () => {
+    const eng = new TTSEngine()
+    eng.play({ text: 'Frase uno. Frase dos.', rate: 1 })
+    const callsBefore = synth.speak.mock.calls.length
+    const cancelsBefore = synth.cancel.mock.calls.length
+    eng.setRate(1) // mismo valor que ya tenía
+    expect(synth.cancel.mock.calls.length).toBe(cancelsBefore)
+    expect(synth.speak.mock.calls.length).toBe(callsBefore)
+    eng.destroy()
+  })
+
+  it('FIX SILENCIO: setVoice con el MISMO valor es no-op', () => {
+    const eng = new TTSEngine()
+    eng.play({ text: 'Frase uno. Frase dos.', rate: 1, voiceURI: null })
+    const callsBefore = synth.speak.mock.calls.length
+    const cancelsBefore = synth.cancel.mock.calls.length
+    eng.setVoice(null) // mismo valor
+    expect(synth.cancel.mock.calls.length).toBe(cancelsBefore)
+    expect(synth.speak.mock.calls.length).toBe(callsBefore)
+    eng.destroy()
+  })
+
   it('destroy() libera recursos y bloquea callbacks futuros', () => {
     const onNaturalEnd = jest.fn()
     const eng = new TTSEngine({ onNaturalEnd })
