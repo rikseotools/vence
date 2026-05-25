@@ -38,6 +38,7 @@ const SAMPLE_RATES: Record<string, number> = {
   tts_unsupported: 1.0,
   tts_watchdog_retry: 0.1, // alto volumen — muestreo 10%
   tts_user_action: 0.2, // alto volumen — muestreo 20%
+  tts_seek: 1.0, // bajo volumen — drag/skip por sección
 }
 
 const BUFFER_FLUSH_MS = 5000
@@ -49,6 +50,11 @@ const MAX_STACK_LEN = 2000
 
 export type ClientEventType =
   | 'pre_hydration_error'
+  // Sub-clasificaciones de errores pre-hydration. Reducen el ruido en el
+  // contador de 'pre_hydration_error' severity:'error' (que disparaba alertas
+  // por errores manejados automáticamente por React).
+  | 'react_hydration_mismatch'
+  | 'browser_extension_error'
   | 'intent_unfulfilled'
   | 'web_vital_degraded'
   | 'custom'
@@ -63,6 +69,7 @@ export type ClientEventType =
   | 'tts_error'
   | 'tts_unsupported'
   | 'tts_user_action'
+  | 'tts_seek'
 
 interface ClientEvent {
   ts: string
@@ -104,6 +111,17 @@ export function installClientObservability(options?: {
 
   // Procesar errores pre-hydration que EarlyErrorsBridge capturó.
   // Sentry NO los pilla porque corre tras hydration.
+  //
+  // Clasificación 2026-05-25 — Investigando spike de React #418 (hydration
+  // mismatch). Antes todo iba con severity:'error' y eventType genérico
+  // 'pre_hydration_error', lo que inflaba el contador de errores reales con
+  // ruido handled-by-React. Ahora clasificamos:
+  //   - React #418-423 (hydration / minified errors handled-by-React)
+  //     → severity:'warn', eventType:'react_hydration_mismatch'.
+  //     React hace fallback CSR re-render automáticamente; no es bug crítico.
+  //   - chrome-extension:// o moz-extension:// en stack
+  //     → severity:'debug', eventType:'browser_extension_error'.
+  //   - resto → mantener severity:'error', eventType:'pre_hydration_error'.
   const earlyErrors = (
     window as Window & {
       __earlyErrors?: { msg: string; stack?: string; ts: number }[]
@@ -111,11 +129,17 @@ export function installClientObservability(options?: {
   ).__earlyErrors
   if (Array.isArray(earlyErrors) && earlyErrors.length > 0) {
     for (const e of earlyErrors) {
+      const classified = classifyEarlyError(e.msg, e.stack)
       pushEvent({
-        severity: 'error',
-        eventType: 'pre_hydration_error',
+        severity: classified.severity,
+        eventType: classified.eventType,
         errorMessage: e.msg,
-        metadata: { stack: e.stack, originalTs: e.ts },
+        metadata: {
+          stack: e.stack,
+          originalTs: e.ts,
+          pageUrl: typeof window !== 'undefined' ? window.location.pathname : null,
+          userAgent: typeof navigator !== 'undefined' ? navigator.userAgent.slice(0, 200) : null,
+        },
       })
     }
     earlyErrors.length = 0
@@ -182,6 +206,36 @@ export function emitClientEvent(event: {
 
 export function flushClientObservability(useBeacon = false): void {
   flush(useBeacon)
+}
+
+/**
+ * Clasifica un error pre-hydration capturado por EarlyErrorsBridge según su
+ * forma. Reduce ruido en el contador de errores reales rebajando severity
+ * de los errores conocidos handled-by-React o causados por extensiones.
+ *
+ * Patrones:
+ *   - React #418-423 = errores minified de hydration mismatch.
+ *     React hace fallback CSR re-render → no degrada UX → severity:'warn'.
+ *     Ver https://react.dev/errors/418 — relacionados: 419, 421, 422, 423.
+ *   - chrome-extension:// o moz-extension:// en el stack
+ *     → causa #1 de errores client en producción (Translate, Grammarly,
+ *     password managers que mutan el DOM antes de hydration). severity:'debug'.
+ *   - resto → comportamiento previo: severity:'error', eventType original.
+ */
+function classifyEarlyError(
+  msg: string,
+  stack?: string,
+): { severity: EventSeverity; eventType: ClientEventType } {
+  // React errors minified — todos handled-by-React con CSR fallback.
+  if (/Minified React error #(418|419|421|422|423)\b/.test(msg)) {
+    return { severity: 'warn', eventType: 'react_hydration_mismatch' }
+  }
+  // Browser extensions tocando el DOM.
+  if (stack && /chrome-extension:\/\/|moz-extension:\/\/|safari-extension:\/\//.test(stack)) {
+    return { severity: 'debug', eventType: 'browser_extension_error' }
+  }
+  // Resto: error real, severity max.
+  return { severity: 'error', eventType: 'pre_hydration_error' }
 }
 
 function pushEvent(partial: {
