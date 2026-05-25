@@ -122,4 +122,52 @@ export class CacheService {
       // Si falla, los TTL eventualmente limpian
     }
   }
+
+  /**
+   * INCR atómico. Devuelve el nuevo valor tras incrementar (1 si no existía).
+   * Operación nativa de Redis/Memcached/DynamoDB/etcd — agnóstica a proveedor.
+   *
+   * Usado por CacheVersioningService para invalidación tag-like (cada
+   * INCR invalida atómicamente todas las cache keys que incluyan la
+   * versión anterior). Ver cache-versioning.service.ts.
+   */
+  async increment(key: string): Promise<number> {
+    if (!this.redis) return 0;
+    try {
+      const result = await this.raceTimeout(
+        this.redis.incr(key),
+        CacheService.REDIS_TIMEOUT_MS,
+      );
+      if (result === CacheService.TIMEOUT_SYMBOL) return 0;
+      return typeof result === 'number' ? result : Number(result) || 0;
+    } catch (err) {
+      this.logger.warn(
+        `increment(${key}) falló: ${(err as Error).message ?? 'unknown'}`,
+      );
+      return 0;
+    }
+  }
+
+  /**
+   * GET que parsea a number. Devuelve 0 si miss/error/parse fail.
+   * Combinado con `increment` permite implementar el patrón de cache
+   * versioned-keys: cliente almacena version como número, lee con
+   * getNumber, invalida con increment.
+   */
+  async getNumber(key: string): Promise<number> {
+    if (!this.redis) return 0;
+    try {
+      const raw = await this.raceTimeout(
+        this.redis.get<number | string>(key),
+        CacheService.REDIS_TIMEOUT_MS,
+      );
+      if (raw === CacheService.TIMEOUT_SYMBOL || raw === null || raw === undefined) {
+        return 0;
+      }
+      const n = typeof raw === 'number' ? raw : Number(raw);
+      return Number.isFinite(n) ? n : 0;
+    } catch {
+      return 0;
+    }
+  }
 }
