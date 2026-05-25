@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { HttpAdapterHost } from '@nestjs/core';
 import { Request } from 'express';
+import * as Sentry from '@sentry/nestjs';
 import { ObservabilityService } from './observability.service';
 
 /**
@@ -61,6 +62,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     // Emitir SOLO si es 5xx (errores del servidor). 4xx son
     // comportamiento esperado del cliente y no nos aportan señal.
     if (httpStatus >= 500) {
+      // 1. Emit a observable_events (queryable SQL)
       this.observability.emitFireAndForget({
         source: 'fargate',
         severity: httpStatus >= 503 ? 'critical' : 'error',
@@ -71,13 +73,33 @@ export class AllExceptionsFilter implements ExceptionFilter {
         metadata: {
           method: request?.method ?? null,
           userAgent: request?.headers?.['user-agent']?.toString().slice(0, 200) ?? null,
-          // stack truncado a 2000 chars para no inflar la fila
           stack:
             exception instanceof Error && exception.stack
               ? exception.stack.slice(0, 2000)
               : null,
         },
       });
+
+      // 2. Capturar en Sentry para Issue Alerts, Session Replay
+      //    correlation, grouping y dashboard.
+      try {
+        Sentry.withScope((scope) => {
+          scope.setTag('endpoint', request?.url ?? 'unknown');
+          scope.setTag('http_status', String(httpStatus));
+          scope.setTag('method', request?.method ?? 'unknown');
+          if (request?.headers?.['x-forwarded-by']) {
+            scope.setTag(
+              'x-forwarded-by',
+              String(request.headers['x-forwarded-by']),
+            );
+          }
+          Sentry.captureException(
+            exception instanceof Error ? exception : new Error(errorMessage),
+          );
+        });
+      } catch {
+        // Sentry NUNCA debe romper el flujo de respuesta
+      }
 
       // También log a stdout — los logs CloudWatch siguen siendo el
       // "audit trail" canónico para forensic deep dive (más rico que

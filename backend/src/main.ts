@@ -1,3 +1,9 @@
+// CRÍTICO: import Sentry instrument ANTES que cualquier otro código.
+// La auto-instrumentación se aplica al required-tree del proceso, así
+// que importar Sentry después NO captura todo (Drizzle, HTTP, etc.).
+// Bloque 4 audit Gap b.
+import './instrument';
+
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';

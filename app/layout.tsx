@@ -10,7 +10,6 @@ import { LawSlugProvider } from '../contexts/LawSlugContext'
 import { getSlugMappingForApi } from '@/lib/api/laws'
 import AIChatWidget from '../components/AIChatWidget'
 import GoogleOneTapWrapper from '../components/GoogleOneTapWrapper'
-import SentryInit from '../components/SentryInit'
 import FraudTracker from '../components/FraudTracker'
 import { GlobalClickTracker, PageViewTracker } from '../components/tracking'
 import CookieBanner, { CookieConsentProvider } from '../components/CookieConsent'
@@ -36,7 +35,6 @@ export default async function SpanishLayout({ children }: { children: React.Reac
         <EarlyErrorsBridge />
       </head>
       <body className="min-h-screen">
-        <SentryInit />
         <CookieConsentProvider>
           <AuthProvider initialUser={null}>
             {/* Bloque 4 Gap 1 — instala hooks observability cliente.

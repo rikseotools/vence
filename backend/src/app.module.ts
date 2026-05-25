@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
+import { SentryModule } from '@sentry/nestjs/setup';
 import { ArchiveInteractionsModule } from './archive-interactions/archive-interactions.module';
 import { BoeChangesModule } from './boe-changes/boe-changes.module';
 import { validateEnv } from './config/env';
@@ -36,6 +37,11 @@ import { TestAnswersModule } from './test-answers/test-answers.module';
 
 @Module({
   imports: [
+    // Sentry NestJS auto-instrumentation (debe ir PRIMERO en imports).
+    // El SDK se inicializa en instrument.ts (importado al top de main.ts).
+    // Este módulo añade interceptors para enriquecer eventos con scope
+    // de la request (route, method, etc.) automáticamente.
+    SentryModule.forRoot(),
     // Config global con validación estricta del entorno al arrancar (fail-fast).
     ConfigModule.forRoot({
       isGlobal: true,
