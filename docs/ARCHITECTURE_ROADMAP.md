@@ -254,32 +254,48 @@ Resuelve el "Tech debt CRÍTICO" del roadmap **con el mismo patrón ya validado 
 
 **Criterio fase cerrada:** 7 días RDS sin incidentes. Supabase BD apagada.
 
-#### Fase E — Frontend Vercel → AWS (3-4 sem, riesgo 🔴) — 🟡 E.1 EN CURSO 2026-05-25
+#### Fase E — Frontend Vercel → Lambda + CloudFront vía SST + OpenNext (3-4 sem, riesgo 🟠) — 🟡 EN PLANIFICACIÓN 2026-05-25
 
-##### Sub-pasos atómicos
+##### Decisión arquitectónica 2026-05-25 — PIVOT a Lambda/SST/OpenNext (no ECS Fargate)
 
-- **E.1** 🟡 Dockerfile multi-stage + GHA `frontend-deploy.yml` + ECR `vence-frontend`. **Zero downtime, sin tráfico real.** Estado: imagen en ECR tras primer push a main. Reversible al 100%.
-- **E.2** ⏳ Task definition + ECS service `vence-frontend` con `desired=0`. Sin ALB rule todavía.
-- **E.3** ⏳ ALB rule en host `preview.vence.es` → target group frontend. `desired=1`. Canary del frontend en AWS, prod sin tocar.
-- **E.4** ⏳ Soak 3-7 días en preview. Validar Web Vitals (Sentry browserTracing), Sentry Issues, observable_events. Comparar latencias contra Vercel baseline.
-- **E.5** ⏳ CloudFront delante del ALB. Cache estáticos + ISR pages.
-- **E.6** ⏳ DNS DonDominio `www.vence.es A` → CloudFront. **Cutover real.** Reversible <5 min revertiendo DNS.
-- **E.7** ⏳ Tras 7 días estable: apagar proyecto Vercel.
+Tras evaluar las 3 alternativas (ECS Fargate, App Runner, Lambda + OpenNext) desde el ángulo de **robustez, fiabilidad y escala a 10k+ DAU para una plataforma de oposiciones** (sin sesgo por "lo que ya tenemos"), se elige **Lambda + CloudFront orquestado por SST + OpenNext**.
 
-##### Progreso E.1 (sesión 2026-05-25)
+Razones específicas a Vence:
 
-- `next.config.mjs`: `output: 'standalone'` activado (no rompe Vercel — Vercel ignora este output).
-- `Dockerfile` multi-stage: deps → builder → runner. Imagen final ~180-250MB con server.js standalone. Usuario non-root nextjs:nodejs.
-- `.dockerignore` excluye `backend/`, `data/`, `docs/`, scripts internos, `node_modules` y `__tests__`.
-- ECR repo `vence-frontend` en eu-west-2 con lifecycle policy 10-imágenes y scan-on-push.
-- IAM role `vence-backend-ci-deploy` ampliado con acceso a ECR `vence-frontend` (sin Terraform aún — cambio puntual via API).
-- GHA workflow `.github/workflows/frontend-deploy.yml`: trigger push a main con `paths-ignore` para backend/docs/scripts/data. Build con `docker/build-push-action@v6`, cache GHA, 2 tags (`:latest` + `:SHA7`).
-- GitHub Secrets sincronizados: 6 `NEXT_PUBLIC_*` para que el builder Next.js los inline en el bundle del cliente.
-- **Pendiente:** primer run del workflow (se dispara al pushear el commit). Si falla, fix forward antes de E.2.
+1. **Tráfico bursty estacional**: estudiantes en franjas horarias (mañana/noche) + picos pre-examen (simulacros con 1.000+ usuarios concurrentes la víspera). Lambda escala a 10k ejecuciones concurrentes sin reaccionar; ECS Auto Scaling tarda 1-2 min en arrancar tasks y los primeros usuarios del pico ven 503/lentitud. **Es la diferencia entre un simulacro pre-examen que funciona y uno que se cae.**
+2. **Coste real a tu volumen actual y proyectado**:
+   - 10k DAU (~1.5M reqs/mes): Lambda ~$16-20/mes vs ECS Fargate 2 tasks HA ~$50/mes. Lambda gana.
+   - Crossover ~30-50k DAU; por encima ECS ganaría — pero hasta llegar ahí pasan meses/años, y SST permite migrar progresivamente.
+3. **Operaciones cero**: single dev. Sin parches de SO, sin security scans Alpine, sin CVE-runtime que perseguir.
+4. **Es el mismo modelo de Vercel**: salida sin reaprender. Mismo bagaje mental (edge, ISR, RSC streaming, Server Actions).
+5. **State-of-the-art moderno**: OpenNext v3 y SST v3 estables (GA 2025). Patrón usado por startups bien arquitectadas (anatomic.health, midday.ai, etc.) al salir de Vercel.
 
-**Resto Fase E (E.2 a E.7) — referencia técnica original**
+ECS Fargate sería mejor si Vence fuera SaaS B2B con carga constante 24/7. No es el caso. App Runner se descarta (vendor-lock excesivo, límite 120s duration, sin VPC peering directo, sin ARM).
 
-**Objetivo:** la más grande. Dockerizar Next.js + CloudFront + ECS o Lambda.
+##### Sub-pasos atómicos (replan)
+
+- **E.0** ✅ Rollback del intento ECS previo. Revert del commit Dockerfile + cleanup AWS (ECR `vence-frontend` borrado, IAM grant retirado del `ci-deploy`).
+- **E.1-SST** ⏳ `npx sst@latest init` en raíz del repo → `sst.config.ts` mínimo. AWS provider perfil `vence` cuenta `349744179687` región `eu-west-2`. OpenNext preset Next.js 16.
+- **E.2-SST** ⏳ `sst deploy --stage preview` → primer deploy a un subdominio `preview-aws.vence.es`. Sin tráfico real. Validar build local + smoke.
+- **E.3-SST** ⏳ Soak preview 3-7 días. Validar Web Vitals (Sentry browserTracing), Sentry Issues, observable_events. Comparar p50/p95/p99 vs Vercel baseline. Cold starts <300ms con SnapStart o ARM. **Activar `warm: 20` o similar en el `Nextjs` construct de SST** (mantiene N Lambdas calientes con ping periódico cada 5min, coste ~$1-3/mes, elimina cold starts en horas valle — recomendado en foros SST para apps con tráfico desigual como oposiciones).
+- **E.4-SST** ⏳ Configurar CloudFront: cache estáticos largo, ISR tag-based invalidation, behaviors para `/api/*` (sin cache).
+- **E.5-SST** ⏳ `sst deploy --stage production` apuntando a `www.vence.es`. Cambio DNS DonDominio. **Cutover real, reversible <5 min** revertiendo DNS.
+- **E.6-SST** ⏳ Soak prod 7 días.
+- **E.7-SST** ⏳ Apagar proyecto Vercel.
+
+##### Caveats SST + OpenNext
+
+- OpenNext suele ir 1-2 meses por detrás de las features bleeding-edge de Next.js (Server Actions streaming, partial pre-rendering). Verificar compat Next.js 16 antes de E.1-SST.
+- ISR cache se monta sobre S3 + CloudFront tag invalidation (más complejidad que `next/cache` en Vercel, pero ya tenemos el patrón "versioned cache via observable_events" como referencia mental).
+- Background tasks/cron NO van en Lambda — el backend NestJS Fargate ya los cubre. Compatible.
+- Debugging sin SSH: depende de CloudWatch + X-Ray. La observabilidad del Bloque 4 cubre el grueso.
+- **Warming**: opción `warm` del construct `Nextjs` (o `OpenNextV3`) en `sst.config.ts` mantiene N Lambdas pre-calentadas con un EventBridge schedule cada 5 min. Recomendado en los foros SST para apps con tráfico desigual (foros: github.com/sst/sst/issues SST-Warm, Discord SST). Coste ~$1-3/mes para `warm: 20`. Sin warming los cold starts llegarían al primer usuario que entre tras una hora valle.
+
+##### Por qué Lambda al frontend pero Fargate al backend
+
+El backend NestJS tiene carga constante (crons cada 5/15/60 min 24/7, queue processors, jobs de minutos). Fargate óptimo. El frontend tiene carga estacional/bursty + picos. Lambda óptimo. **Dos paradigmas distintos para dos perfiles de carga distintos — es lo correcto, no incoherencia.**
+
+**Objetivo (sin cambios):** Dockerizar Next.js + CloudFront + ECS o Lambda — se elige Lambda + CloudFront vía OpenNext + SST.
 
 **Opciones:**
 - **ECS Fargate (mismo cluster que backend):** sencillo, mismo runtime. ALB ruta `/` al frontend, `/api/v2/*` al backend NestJS (ya está). Cold starts manejables con `desired=2`.
