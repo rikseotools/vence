@@ -537,7 +537,7 @@ export default function HeaderES() {
                       rachaBtnElement?.click()
                     }, 100)
                   }}
-                  className={`flex items-center justify-center hover:opacity-80 transition-opacity ${userStreak === 0 ? 'opacity-60' : ''}`}
+                  className={`flex items-center justify-center hover:opacity-80 transition-all duration-150 touch-manipulation select-none active:scale-90 rounded-md ${userStreak === 0 ? 'opacity-60' : ''}`}
                   title={userStreak === 0 ? 'Comienza tu racha estudiando hoy' : `Tu racha: ${userStreak} días consecutivos`}
                 >
                   <span className={`text-sm ${userStreak === 0 ? 'grayscale' : ''}`}>🔥</span>
@@ -547,7 +547,7 @@ export default function HeaderES() {
                 {/* ⚖️ ICONO DE LEYES */}
                 <Link
                   href="/leyes"
-                  className="flex items-center justify-center p-1.5 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg transition-colors"
+                  className="tap-feedback flex items-center justify-center p-1.5 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg"
                   aria-label="Ir a Leyes"
                   title="Estudiar Leyes"
                 >
@@ -557,7 +557,7 @@ export default function HeaderES() {
                 {/* 💬 ICONO DE SOPORTE */}
                 <Link
                   href="/soporte"
-                  className="flex items-center justify-center p-1.5 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg transition-colors"
+                  className="tap-feedback flex items-center justify-center p-1.5 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg"
                   aria-label="Contactar soporte"
                   title="Contactar soporte"
                 >
@@ -569,7 +569,7 @@ export default function HeaderES() {
                   <Link
                     href="/premium"
                     onClick={() => trackClick('Header', 'premium_button_click', { location: 'mobile' })}
-                    className="flex items-center gap-1 px-2 py-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-lg text-xs font-semibold shadow-sm"
+                    className="flex items-center gap-1 px-2 py-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-lg text-xs font-semibold shadow-sm transition-all duration-150 touch-manipulation select-none active:scale-95 active:brightness-90"
                   >
                     <span>👑</span>
                     <span>Hazte Premium</span>
@@ -579,7 +579,7 @@ export default function HeaderES() {
                 {/* Botón de Vence AI - Móvil */}
                 <button
                   onClick={() => openChat()}
-                  className="flex items-center gap-1 px-2 py-1 bg-blue-900 text-white rounded-lg text-xs font-semibold shadow-sm"
+                  className="flex items-center gap-1 px-2 py-1 bg-blue-900 text-white rounded-lg text-xs font-semibold shadow-sm transition-all duration-150 touch-manipulation select-none active:scale-95 active:brightness-90"
                   title="Abrir Vence AI"
                 >
                   <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
@@ -593,7 +593,7 @@ export default function HeaderES() {
                 {/* 📖 Por Leyes - Móvil */}
                 <Link
                   href="/test/por-leyes"
-                  className="flex items-center"
+                  className="tap-feedback flex items-center p-1.5 rounded-lg"
                   title="Test Por Leyes"
                 >
                   <svg className="w-5 h-5 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -611,7 +611,7 @@ export default function HeaderES() {
                   <div className="relative lg:hidden">
                     <button
                       onClick={() => setShowPendingExamsDropdown(!showPendingExamsDropdown)}
-                      className="flex items-center gap-1 px-2 py-1 bg-amber-500 text-white rounded-lg text-xs font-semibold shadow-sm"
+                      className="flex items-center gap-1 px-2 py-1 bg-amber-500 text-white rounded-lg text-xs font-semibold shadow-sm transition-all duration-150 touch-manipulation select-none active:scale-95 active:brightness-90"
                       title="Tests pendientes"
                     >
                       <span>📝</span>
@@ -787,7 +787,7 @@ export default function HeaderES() {
               {user && (
                 <Link
                   href={getTestsLink()}
-                  className="xl:hidden p-1.5 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg transition-colors"
+                  className="tap-feedback xl:hidden p-1.5 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg"
                   aria-label="Ir a Tests"
                   title="Tests de Práctica"
                 >
@@ -799,7 +799,7 @@ export default function HeaderES() {
               {user && (
                 <Link
                   href={getTestsLink().replace('/test', '/temario')}
-                  className="xl:hidden p-1.5 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg transition-colors"
+                  className="tap-feedback xl:hidden p-1.5 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg"
                   aria-label="Ir a Temario"
                   title="Ver Temario"
                 >
@@ -811,7 +811,7 @@ export default function HeaderES() {
               {user && (
                 <Link
                   href="/psicotecnicos/test"
-                  className="xl:hidden p-1.5 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg transition-colors"
+                  className="tap-feedback xl:hidden p-1.5 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg"
                   aria-label="Ir a Psicotécnicos"
                   title="Tests Psicotécnicos"
                 >
@@ -851,7 +851,7 @@ export default function HeaderES() {
               <button
                 type="button"
                 onClick={toggleMobileMenu}
-                className="xl:hidden flex items-center space-x-1 px-2 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+                className="xl:hidden flex items-center space-x-1 px-2 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-all duration-150 touch-manipulation select-none active:scale-95 active:bg-gray-300 dark:active:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
                 aria-label={isMobileMenuOpen ? "Cerrar menú" : "Abrir menú"}
                 aria-expanded={isMobileMenuOpen}
               >

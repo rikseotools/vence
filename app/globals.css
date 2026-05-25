@@ -24,6 +24,32 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* ─── Mobile UX: feedback táctil "como app nativa" ───────────────────────
+ * Sin esto, Chrome Android pinta un highlight gris feo y los iconos no
+ * dan feedback inmediato de "te he leído el dedo". Las clases hover:/focus:
+ * no se disparan en touch hasta DESPUÉS de soltar.
+ *
+ * 1. Eliminar tap highlight gris en TODOS los elementos clicables.
+ * 2. Utility `.tap-feedback` aplica una micro-animación al pulsar:
+ *    - scale 0.92 (presión)
+ *    - bg flash (touch ripple ligero)
+ *    - sin delay 300ms (touch-action: manipulation)
+ *    - sin selección al mantener (user-select: none)
+ */
+@layer base {
+  a, button, [role="button"], input[type="button"], input[type="submit"], select {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+@layer components {
+  .tap-feedback {
+    @apply transition-all duration-150 touch-manipulation select-none
+           active:scale-[0.92]
+           active:bg-gray-100 dark:active:bg-gray-700;
+  }
+}
+
 /* Lazy load animations for admin features */
 @layer utilities {
   @keyframes admin-urgent-pulse {
