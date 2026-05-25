@@ -9,6 +9,7 @@
 
 import { getTraceDb, getPoolerDb } from '@/db/client'
 import { validationErrorLogs } from '@/db/schema'
+import { emitFireAndForget } from '@/lib/observability/emit'
 import type { ValidationErrorLogInput } from './schemas'
 
 function getAuditLogDb() {
@@ -77,6 +78,28 @@ async function _insertLog(input: ValidationErrorLogInput): Promise<void> {
 
   // Sanitizar requestBody: quitar campos sensibles
   const sanitizedBody = input.requestBody ? sanitizeRequestBody(input.requestBody) : {}
+
+  // Bloque 4: emitir a observable_events en PARALELO (no bloquea). Cuando
+  // el dashboard nuevo lea solo de observable_events, podremos deprecar
+  // validation_error_logs en una segunda fase. Por ahora ambos coexisten
+  // para no romper queries existentes (admin/salud-sistema, runbooks, etc).
+  emitFireAndForget({
+    source: 'vercel',
+    severity: (input.severity || 'critical') as 'critical' | 'error' | 'warn' | 'info' | 'debug',
+    eventType: input.errorType === 'unknown' ? 'http_5xx' : input.errorType,
+    endpoint: input.endpoint,
+    userId: input.userId || null,
+    deployVersion: DEPLOY_VERSION,
+    durationMs: input.durationMs || null,
+    httpStatus: input.httpStatus || null,
+    errorMessage: input.errorMessage.slice(0, 2000),
+    metadata: {
+      vercelRegion: VERCEL_REGION,
+      questionId: input.questionId || null,
+      testId: input.testId || null,
+      userAgent: input.userAgent?.slice(0, 200) || null,
+    },
+  })
 
   await db.insert(validationErrorLogs).values({
     ...(input.id ? { id: input.id } : {}),
