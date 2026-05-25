@@ -36,13 +36,14 @@ const FLAGS = {
   // (JwtGuard + Zod + antifraud RPC register_device funcional + mapeo
   // status). Rollback = cambiar a false y push.
   'answer-and-save': true,
-  // daily-limit — Bloque 3 endpoint #3 (2026-05-25). Las 3 RPCs ya
-  // estaban portadas como SQL puro en el módulo de answer-and-save
-  // (commit 65868583). Solo añadimos Controller GET con JwtGuard +
-  // cache stale-while-error (misma key Upstash `daily_limit:${userId}`
-  // que Vercel, cross-runtime coherente). Flag OFF inicial → activar
-  // tras smoke verde. Rollback = cambiar a false y push.
-  'daily-limit': false,
+  // daily-limit — Bloque 3 endpoint #3. Las 3 RPCs ya estaban portadas
+  // como SQL puro en el módulo de answer-and-save (commit 65868583).
+  // Solo añadimos Controller GET con JwtGuard + cache stale-while-error
+  // (misma key Upstash `daily_limit:${userId}` que Vercel, cross-runtime
+  // coherente). Activado 2026-05-25 tras smoke verde: backend responde
+  // 401 sin token (JwtGuard funciona), imagen ECR pushed 06:31 UTC,
+  // task corriendo desde 06:31 UTC. Rollback = cambiar a false y push.
+  'daily-limit': true,
   // Próximos candidatos según docs/architecture/bloque3-audit-hot-path.md:
   // 'test-config':     false,
   // 'stats':           false,
