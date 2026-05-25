@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
+import { ObservabilityService } from '../observability/observability.service';
 import { UpdateStreaksService } from './update-streaks.service';
 
 /**
@@ -13,21 +14,48 @@ import { UpdateStreaksService } from './update-streaks.service';
 export class UpdateStreaksCron {
   private readonly logger = new Logger(UpdateStreaksCron.name);
 
-  constructor(private readonly service: UpdateStreaksService) {}
+  constructor(
+    private readonly service: UpdateStreaksService,
+    private readonly observability: ObservabilityService,
+  ) {}
 
   @Cron('0 3 * * *', { name: 'update-streaks', timeZone: 'UTC' })
   async handle(): Promise<void> {
     this.logger.log('Cron update-streaks disparado');
+    const startedAt = Date.now();
     try {
       const result = await this.service.run();
       this.logger.log(
         `Cron update-streaks completado: ${result.updated} actualizados, ` +
           `${result.errors} errores, ${result.resetCount} resets`,
       );
+      this.observability.emitFireAndForget({
+        source: 'fargate',
+        severity: 'info',
+        eventType: 'cron_run',
+        endpoint: 'update-streaks',
+        durationMs: Date.now() - startedAt,
+        metadata: {
+          status: 'success',
+          activeUsers: result.activeUsers,
+          updated: result.updated,
+          errors: result.errors,
+          resetCount: result.resetCount,
+        },
+      });
     } catch (error) {
-      this.logger.error(
-        `Cron update-streaks falló: ${error instanceof Error ? error.stack : String(error)}`,
-      );
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.logger.error(`Cron update-streaks falló: ${errorMessage}`);
+      this.observability.emitFireAndForget({
+        source: 'fargate',
+        severity: 'error',
+        eventType: 'cron_run',
+        endpoint: 'update-streaks',
+        durationMs: Date.now() - startedAt,
+        errorMessage,
+        metadata: { status: 'failure' },
+      });
     }
   }
 }

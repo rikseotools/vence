@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
+import { ObservabilityService } from '../observability/observability.service';
 import { ProcessVerificationQueueService } from './process-verification-queue.service';
 
 /**
@@ -19,6 +20,7 @@ export class ProcessVerificationQueueCron {
 
   constructor(
     private readonly service: ProcessVerificationQueueService,
+    private readonly observability: ObservabilityService,
   ) {}
 
   @Cron('0 2,8,14,20 * * *', {
@@ -27,6 +29,7 @@ export class ProcessVerificationQueueCron {
   })
   async handle(): Promise<void> {
     this.logger.log('Cron process-verification-queue disparado');
+    const startedAt = Date.now();
     try {
       const result = await this.service.run();
       this.logger.log(
@@ -38,12 +41,42 @@ export class ProcessVerificationQueueCron {
           `billingError=${result.billingError}, ` +
           `${result.executionTimeMs}ms`,
       );
+      this.observability.emitFireAndForget({
+        source: 'fargate',
+        severity: 'info',
+        eventType: 'cron_run',
+        endpoint: 'process-verification-queue',
+        durationMs: Date.now() - startedAt,
+        metadata: {
+          status: 'success',
+          taskId: result.taskId,
+          topicId: result.topicId,
+          batchesProcessed: result.batchesProcessed,
+          processedThisRun: result.processedThisRun,
+          processedTotal: result.processedTotal,
+          total: result.total,
+          successful: result.successful,
+          failed: result.failed,
+          isComplete: result.isComplete,
+          billingError: result.billingError,
+          executionTimeMs: result.executionTimeMs,
+        },
+      });
     } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       this.logger.error(
-        `Cron process-verification-queue falló: ${
-          error instanceof Error ? error.stack : String(error)
-        }`,
+        `Cron process-verification-queue falló: ${errorMessage}`,
       );
+      this.observability.emitFireAndForget({
+        source: 'fargate',
+        severity: 'error',
+        eventType: 'cron_run',
+        endpoint: 'process-verification-queue',
+        durationMs: Date.now() - startedAt,
+        errorMessage,
+        metadata: { status: 'failure' },
+      });
     }
   }
 }

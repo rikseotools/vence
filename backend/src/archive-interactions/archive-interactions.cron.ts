@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
+import { ObservabilityService } from '../observability/observability.service';
 import { ArchiveInteractionsService } from './archive-interactions.service';
 
 /**
@@ -14,17 +15,43 @@ import { ArchiveInteractionsService } from './archive-interactions.service';
 export class ArchiveInteractionsCron {
   private readonly logger = new Logger(ArchiveInteractionsCron.name);
 
-  constructor(private readonly service: ArchiveInteractionsService) {}
+  constructor(
+    private readonly service: ArchiveInteractionsService,
+    private readonly observability: ObservabilityService,
+  ) {}
 
   @Cron('30 3 * * *', { name: 'archive-interactions', timeZone: 'UTC' })
   async handle(): Promise<void> {
     this.logger.log('Cron archive-interactions disparado');
+    const startedAt = Date.now();
     try {
-      await this.service.run();
+      const result = await this.service.run();
+      this.observability.emitFireAndForget({
+        source: 'fargate',
+        severity: 'info',
+        eventType: 'cron_run',
+        endpoint: 'archive-interactions',
+        durationMs: Date.now() - startedAt,
+        metadata: {
+          status: 'success',
+          archived: result.archived,
+          deleted: result.deleted,
+          batches: result.batches,
+        },
+      });
     } catch (error) {
-      this.logger.error(
-        `Cron archive-interactions falló: ${error instanceof Error ? error.stack : String(error)}`,
-      );
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.logger.error(`Cron archive-interactions falló: ${errorMessage}`);
+      this.observability.emitFireAndForget({
+        source: 'fargate',
+        severity: 'error',
+        eventType: 'cron_run',
+        endpoint: 'archive-interactions',
+        durationMs: Date.now() - startedAt,
+        errorMessage,
+        metadata: { status: 'failure' },
+      });
     }
   }
 }

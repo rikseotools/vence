@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { APP_FILTER } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ArchiveInteractionsModule } from './archive-interactions/archive-interactions.module';
@@ -21,6 +22,7 @@ import { ProcessVerificationQueueModule } from './process-verification-queue/pro
 import { AnswerSaveModule } from './answer-save/answer-save.module';
 import { TestConfigModule } from './test-config/test-config.module';
 import { ObservabilityModule } from './observability/observability.module';
+import { AllExceptionsFilter } from './observability/all-exceptions.filter';
 import { AntifraudModule } from './antifraud/antifraud.module';
 import { AuthModule } from './auth/auth.module';
 import { BackgroundModule } from './background/background.module';
@@ -82,6 +84,15 @@ import { TestAnswersModule } from './test-answers/test-answers.module';
     TestConfigModule,
     // Bloque 4: tabla observable_events unificada (Vercel+Fargate+GHA).
     ObservabilityModule,
+  ],
+  providers: [
+    // Gap 3 — ExceptionFilter GLOBAL: cualquier error ≥500 de cualquier
+    // controller emite a observable_events automáticamente. Errores 4xx
+    // NO se emiten (son comportamiento esperado del cliente).
+    {
+      provide: APP_FILTER,
+      useClass: AllExceptionsFilter,
+    },
   ],
 })
 export class AppModule {}

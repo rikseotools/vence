@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
+import { ObservabilityService } from '../observability/observability.service';
 import { AvatarRotationService } from './avatar-rotation.service';
 
 /**
@@ -16,17 +17,44 @@ import { AvatarRotationService } from './avatar-rotation.service';
 export class AvatarRotationCron {
   private readonly logger = new Logger(AvatarRotationCron.name);
 
-  constructor(private readonly service: AvatarRotationService) {}
+  constructor(
+    private readonly service: AvatarRotationService,
+    private readonly observability: ObservabilityService,
+  ) {}
 
   @Cron('0 4 * * 0', { name: 'avatar-rotation', timeZone: 'UTC' })
   async handle(): Promise<void> {
     this.logger.log('Cron avatar-rotation disparado');
+    const startedAt = Date.now();
     try {
-      await this.service.run();
+      const result = await this.service.run();
+      this.observability.emitFireAndForget({
+        source: 'fargate',
+        severity: 'info',
+        eventType: 'cron_run',
+        endpoint: 'avatar-rotation',
+        durationMs: Date.now() - startedAt,
+        metadata: {
+          status: 'success',
+          totalUsers: result.totalUsers,
+          rotated: result.rotated,
+          unchanged: result.unchanged,
+          errors: result.errors,
+        },
+      });
     } catch (error) {
-      this.logger.error(
-        `Cron avatar-rotation falló: ${error instanceof Error ? error.stack : String(error)}`,
-      );
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.logger.error(`Cron avatar-rotation falló: ${errorMessage}`);
+      this.observability.emitFireAndForget({
+        source: 'fargate',
+        severity: 'error',
+        eventType: 'cron_run',
+        endpoint: 'avatar-rotation',
+        durationMs: Date.now() - startedAt,
+        errorMessage,
+        metadata: { status: 'failure' },
+      });
     }
   }
 }

@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
+import { ObservabilityService } from '../observability/observability.service';
 import { CheckSeguimientoService } from './check-seguimiento.service';
 
 /**
@@ -15,17 +16,45 @@ import { CheckSeguimientoService } from './check-seguimiento.service';
 export class CheckSeguimientoCron {
   private readonly logger = new Logger(CheckSeguimientoCron.name);
 
-  constructor(private readonly service: CheckSeguimientoService) {}
+  constructor(
+    private readonly service: CheckSeguimientoService,
+    private readonly observability: ObservabilityService,
+  ) {}
 
   @Cron('0 9 * * 1-5', { name: 'check-seguimiento', timeZone: 'UTC' })
   async handle(): Promise<void> {
     this.logger.log('Cron check-seguimiento disparado');
+    const startedAt = Date.now();
     try {
-      await this.service.run();
+      const result = await this.service.run();
+      this.observability.emitFireAndForget({
+        source: 'fargate',
+        severity: 'info',
+        eventType: 'cron_run',
+        endpoint: 'check-seguimiento',
+        durationMs: Date.now() - startedAt,
+        metadata: {
+          status: 'success',
+          total: result.total,
+          checked: result.checked,
+          changed: result.changed,
+          errors: result.errors,
+          unchanged: result.unchanged,
+        },
+      });
     } catch (error) {
-      this.logger.error(
-        `Cron check-seguimiento falló: ${error instanceof Error ? error.stack : String(error)}`,
-      );
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.logger.error(`Cron check-seguimiento falló: ${errorMessage}`);
+      this.observability.emitFireAndForget({
+        source: 'fargate',
+        severity: 'error',
+        eventType: 'cron_run',
+        endpoint: 'check-seguimiento',
+        durationMs: Date.now() - startedAt,
+        errorMessage,
+        metadata: { status: 'failure' },
+      });
     }
   }
 }

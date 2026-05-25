@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
+import { ObservabilityService } from '../observability/observability.service';
 import { ProcessOutboxService } from './process-outbox.service';
 
 /**
@@ -20,17 +21,44 @@ import { ProcessOutboxService } from './process-outbox.service';
 export class ProcessOutboxCron {
   private readonly logger = new Logger(ProcessOutboxCron.name);
 
-  constructor(private readonly service: ProcessOutboxService) {}
+  constructor(
+    private readonly service: ProcessOutboxService,
+    private readonly observability: ObservabilityService,
+  ) {}
 
   @Cron('*/5 * * * *', { name: 'process-outbox', timeZone: 'UTC' })
   async handle(): Promise<void> {
     this.logger.log('Cron process-outbox disparado');
+    const startedAt = Date.now();
     try {
-      await this.service.run();
+      const result = await this.service.run();
+      this.observability.emitFireAndForget({
+        source: 'fargate',
+        severity: 'info',
+        eventType: 'cron_run',
+        endpoint: 'process-outbox',
+        durationMs: Date.now() - startedAt,
+        metadata: {
+          status: 'success',
+          fetched: result.fetched,
+          processed: result.processed,
+          failed: result.failed,
+          skipped: result.skipped,
+        },
+      });
     } catch (error) {
-      this.logger.error(
-        `Cron process-outbox falló: ${error instanceof Error ? error.stack : String(error)}`,
-      );
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.logger.error(`Cron process-outbox falló: ${errorMessage}`);
+      this.observability.emitFireAndForget({
+        source: 'fargate',
+        severity: 'error',
+        eventType: 'cron_run',
+        endpoint: 'process-outbox',
+        durationMs: Date.now() - startedAt,
+        errorMessage,
+        metadata: { status: 'failure' },
+      });
     }
   }
 }
