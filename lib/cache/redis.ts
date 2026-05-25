@@ -272,3 +272,27 @@ export async function invalidateMany(keys: string[]): Promise<void> {
     // Idem
   }
 }
+
+/**
+ * INCR atómico — devuelve el nuevo valor tras incrementar (1 si no existía).
+ *
+ * Operación nativa de Redis/Memcached/DynamoDB/etcd → agnóstica a proveedor.
+ * Usada para implementar el patrón de cache versionado tag-like: cada INCR
+ * de `cache_version:${tag}` invalida atómicamente todas las cache keys que
+ * incluyan la versión anterior. Sin SCAN, sin Lua scripts.
+ *
+ * Cross-runtime coherente: la misma key en Upstash es vista igual por
+ * Vercel (esta función) y por el backend NestJS (`CacheVersioningService`).
+ */
+export async function incrementCounter(key: string): Promise<number> {
+  const redis = getRedis()
+  if (!redis) return 0
+  try {
+    const result = await raceTimeout(redis.incr(key), REDIS_TIMEOUT_MS)
+    if (result === TIMEOUT_SYMBOL) return 0
+    return typeof result === 'number' ? result : Number(result) || 0
+  } catch (err) {
+    console.warn(`[incrementCounter] INCR ${key} failed:`, err)
+    return 0
+  }
+}

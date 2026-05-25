@@ -44,8 +44,15 @@ const FLAGS = {
   // 401 sin token (JwtGuard funciona), imagen ECR pushed 06:31 UTC,
   // task corriendo desde 06:31 UTC. Rollback = cambiar a false y push.
   'daily-limit': true,
+  // test-config family — Bloque 3 endpoints #4-7 (Bundle de 4 endpoints
+  // públicos: articles/sections/essential-articles/estimate). Cache
+  // versionado tag-like vía CacheVersioningService (commit 9133eef8) +
+  // invalidación cross-runtime desde lib/cache/test-config.ts (INCR a
+  // cache_version:test-config en Upstash compartido). Flag único para
+  // los 4 — comparten el mismo backend module. Rollback = cambiar a
+  // false y push (el 4-en-1 cae junto al path Vercel original).
+  'test-config': false,
   // Próximos candidatos según docs/architecture/bloque3-audit-hot-path.md:
-  // 'test-config':     false,
   // 'stats':           false,
 } as const
 

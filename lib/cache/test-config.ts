@@ -28,13 +28,41 @@
 //     porque BOE cron corre diariamente y la diferencia es menor que el TTL.
 
 import { revalidateTag } from 'next/cache'
+import { incrementCounter } from '@/lib/cache/redis'
 
+/**
+ * Invalida el cache de los endpoints test-config en DOS planos:
+ *
+ * 1. `revalidateTag('test-config')` — invalida el `unstable_cache` de
+ *    Next.js (afecta solo a procesos Vercel que sirven aún el endpoint
+ *    Vercel local del flag canary).
+ *
+ * 2. **INCR `cache_version:test-config` en Upstash** — invalida la
+ *    cache versionada del backend NestJS/Fargate (Bloque 3 canary).
+ *    Patrón "versioned cache keys": el backend construye sus cache
+ *    keys como `test-config:v${currentVersion}:...`. Al INCR, las
+ *    keys viejas dejan de ser leídas (ningún request las pide). El
+ *    backend ve la nueva versión en ≤1s (TTL local del version cache).
+ *
+ * Cross-runtime coherente: ambos planos se invalidan a la vez, da
+ * igual si el endpoint vive en Vercel o Fargate en ese momento.
+ *
+ * Función sync (no `async`) para mantener compatible con los 3 callers
+ * existentes que la invocan sin `await`. El INCR de Redis se lanza como
+ * fire-and-forget interno — la latencia añadida al caller es cero.
+ */
 export function invalidateTestConfigCache(): void {
+  // Plano 1: Vercel unstable_cache (sync)
   try {
-    // Segundo arg 'max' incluye SWR variants. Coherente con
-    // lib/cache/questions.ts y lib/api/profile/queries.ts.
     ;(revalidateTag as (tag: string, mode?: string) => void)('test-config', 'max')
   } catch (err) {
     console.warn('[invalidateTestConfigCache] revalidateTag failed (non-critical):', err)
   }
+
+  // Plano 2: backend NestJS versioned cache. Misma instancia Upstash que
+  // usa el backend (cross-runtime coherente). Fire-and-forget — incrementCounter
+  // maneja fallback graceful si Redis cae (devuelve 0 sin throw).
+  incrementCounter('cache_version:test-config').catch(() => {
+    // Ya logueado en incrementCounter; mantener fire-and-forget
+  })
 }

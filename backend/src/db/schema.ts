@@ -9,13 +9,14 @@ import { boolean, integer, jsonb, pgTable, text, timestamp, uuid } from 'drizzle
  * mapea el subconjunto sin problema.
  */
 
-/** Tabla `laws` — usada por el cron `check-boe-changes`. */
+/** Tabla `laws` — usada por el cron `check-boe-changes` y test-config queries. */
 export const laws = pgTable('laws', {
   id: uuid('id').primaryKey().notNull(),
   name: text('name').notNull(),
   shortName: text('short_name').notNull(),
   slug: text('slug'),
   scope: text('scope').default('national'),
+  isActive: boolean('is_active').default(true),
   boeUrl: text('boe_url'),
   lastChecked: timestamp('last_checked', { mode: 'string' }),
   changeStatus: text('change_status'),
@@ -92,6 +93,11 @@ export const questions = pgTable('questions', {
   explanation: text('explanation'),
   primaryArticleId: uuid('primary_article_id'),
   isActive: boolean('is_active'),
+  // Campos usados por test-config queries (port desde Next.js).
+  isOfficialExam: boolean('is_official_exam').default(false),
+  examPosition: text('exam_position'),
+  difficulty: text('difficulty'),
+  globalDifficultyCategory: text('global_difficulty_category'),
 });
 
 /** Tabla `articles` — artículos de leyes, JOIN target desde questions. */
@@ -99,6 +105,8 @@ export const articles = pgTable('articles', {
   id: uuid('id').primaryKey().notNull(),
   lawId: uuid('law_id'),
   articleNumber: text('article_number'),
+  title: text('title'),
+  isActive: boolean('is_active').default(true),
 });
 
 /** Tabla `psychometric_questions` — preguntas psicotécnicas, fallback de validation. */
@@ -172,6 +180,27 @@ export const topics = pgTable('topics', {
   positionType: text('position_type').notNull(),
   topicNumber: integer('topic_number').notNull(),
   title: text('title').notNull(),
+  isActive: boolean('is_active'),
+});
+
+/**
+ * Tabla `law_sections` — títulos/capítulos/secciones de las leyes.
+ * Usada por el endpoint test-config/sections para enriquecer respuesta
+ * con metadatos de intersección con topic_scope.
+ *
+ * `section_type` ∈ {'titulo','capitulo','seccion','libro','parte','anexo'}
+ */
+export const lawSections = pgTable('law_sections', {
+  id: uuid('id').primaryKey().notNull(),
+  lawId: uuid('law_id').notNull(),
+  sectionType: text('section_type').notNull(),
+  sectionNumber: text('section_number').notNull(),
+  title: text('title').notNull(),
+  description: text('description'),
+  articleRangeStart: integer('article_range_start'),
+  articleRangeEnd: integer('article_range_end'),
+  slug: text('slug').notNull(),
+  orderPosition: integer('order_position').default(0).notNull(),
   isActive: boolean('is_active'),
 });
 

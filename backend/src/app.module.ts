@@ -19,6 +19,7 @@ import { DetectRegionalOepsModule } from './detect-regional-oeps/detect-regional
 import { DetectGenericSourcesModule } from './detect-generic-sources/detect-generic-sources.module';
 import { ProcessVerificationQueueModule } from './process-verification-queue/process-verification-queue.module';
 import { AnswerSaveModule } from './answer-save/answer-save.module';
+import { TestConfigModule } from './test-config/test-config.module';
 import { AntifraudModule } from './antifraud/antifraud.module';
 import { AuthModule } from './auth/auth.module';
 import { BackgroundModule } from './background/background.module';
@@ -75,6 +76,9 @@ import { TestAnswersModule } from './test-answers/test-answers.module';
     TestAnswersModule,
     TemaResolverModule,
     AnswerSaveModule,
+    // test-config family — 4 endpoints públicos (articles/sections/
+    // essential-articles/estimate) con cache versionado cross-runtime.
+    TestConfigModule,
   ],
 })
 export class AppModule {}
