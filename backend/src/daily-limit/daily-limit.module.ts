@@ -1,9 +1,13 @@
 import { Global, Module } from '@nestjs/common';
+import { AuthModule } from '../auth/auth.module';
+import { CacheModule } from '../cache/cache.module';
+import { DailyLimitController } from './daily-limit.controller';
 import { DailyLimitService } from './daily-limit.service';
 
 /**
  * Módulo Global de daily limit: enforcement de preguntas/día por user y
- * por device (anti-fraud compartido).
+ * por device (anti-fraud compartido) + endpoint GET /api/daily-limit
+ * (Bloque 3 canary).
  *
  * Port de `lib/api/dailyLimit.ts` + `lib/api/daily-limit.ts` del frontend.
  * Las funciones SQL Postgres (`get_daily_question_status`,
@@ -16,6 +20,8 @@ import { DailyLimitService } from './daily-limit.service';
  */
 @Global()
 @Module({
+  imports: [AuthModule, CacheModule],
+  controllers: [DailyLimitController],
   providers: [DailyLimitService],
   exports: [DailyLimitService],
 })

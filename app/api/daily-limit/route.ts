@@ -19,6 +19,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getUserIdFromToken, getDailyLimitStatus } from '@/lib/api/dailyLimit'
 import { withDbTimeout, isDbTimeoutError } from '@/lib/db/timeout'
 import { getCached, setCached } from '@/lib/cache/redis'
+import { shouldRouteToBackend, backendUrlFor } from '@/lib/api/backend-router'
 
 interface DailyLimitResponse {
   questionsToday: number
@@ -54,6 +55,48 @@ export async function GET(request: NextRequest) {
 
     if (!userId) {
       return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+    }
+
+    // ─── Bloque 3 canary: proxy condicional al backend NestJS/Fargate ──
+    // Backend usa la MISMA key Upstash `daily_limit:${userId}` con el
+    // mismo TTL — cross-runtime coherente, no hay caché doble.
+    // Fallback graceful al path Vercel local si backend falla.
+    if (shouldRouteToBackend('daily-limit')) {
+      try {
+        const backendUrl = backendUrlFor('api/daily-limit')
+        const controller = new AbortController()
+        const timer = setTimeout(() => controller.abort(), 5000) // 5s — GET ligero
+        try {
+          const backendRes = await fetch(backendUrl, {
+            signal: controller.signal,
+            headers: {
+              authorization: request.headers.get('authorization') ?? '',
+              'x-forwarded-by': 'vercel-proxy',
+            },
+          })
+          clearTimeout(timer)
+          const body = await backendRes.text()
+          return new NextResponse(body, {
+            status: backendRes.status,
+            headers: {
+              'Content-Type': backendRes.headers.get('content-type') ?? 'application/json',
+              'Cache-Control': 'no-store, no-cache, must-revalidate',
+              'x-daily-limit-cache': backendRes.headers.get('x-daily-limit-cache') ?? 'unknown',
+              'x-served-by': backendRes.headers.get('x-served-by') ?? 'vence-backend-proxy',
+              ...(backendRes.headers.get('retry-after')
+                ? { 'Retry-After': backendRes.headers.get('retry-after') ?? '' }
+                : {}),
+            },
+          })
+        } finally {
+          clearTimeout(timer)
+        }
+      } catch (backendError) {
+        console.warn(
+          `⚠️ [daily-limit proxy] backend canary falló (${(backendError as Error).message ?? 'unknown'}), fallback a Vercel local`,
+        )
+        // Cae al path local de abajo
+      }
     }
 
     const cacheKey = `daily_limit:${userId}`
