@@ -49,9 +49,12 @@ const FLAGS = {
   // versionado tag-like vía CacheVersioningService (commit 9133eef8) +
   // invalidación cross-runtime desde lib/cache/test-config.ts (INCR a
   // cache_version:test-config en Upstash compartido). Flag único para
-  // los 4 — comparten el mismo backend module. Rollback = cambiar a
-  // false y push (el 4-en-1 cae junto al path Vercel original).
-  'test-config': false,
+  // los 4 — comparten el mismo backend module. Activado 2026-05-25 tras
+  // smoke verde: los 4 endpoints responden 200 con datos reales,
+  // x-served-by: vence-backend, cache versionado funcionando (hit).
+  // Rollback = cambiar a false y push (el 4-en-1 cae junto al path
+  // Vercel original).
+  'test-config': true,
   // Próximos candidatos según docs/architecture/bloque3-audit-hot-path.md:
   // 'stats':           false,
 } as const
