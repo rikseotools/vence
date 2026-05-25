@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
+import { ObservabilityService } from '../observability/observability.service';
 import { RefreshRankingsService } from './refresh-rankings.service';
 
 /**
@@ -9,24 +10,50 @@ import { RefreshRankingsService } from './refresh-rankings.service';
  * `/api/cron/refresh-rankings` cada 5 minutos. Aquí el scheduler es in-app
  * y el job corre sin límite de duración (vs `maxDuration = 60` en Vercel).
  *
- * El filtro `month` puede tardar 15-20s con el dataset actual; con el backend
- * NestJS esto ya no es un problema.
+ * Emite a `observable_events` (Bloque 4): un evento por cada run con
+ * éxito/error + duración + filas insertadas. Es el primer cron que emite
+ * — validar el patrón antes de propagar a los otros 12.
  */
 @Injectable()
 export class RefreshRankingsCron {
   private readonly logger = new Logger(RefreshRankingsCron.name);
 
-  constructor(private readonly service: RefreshRankingsService) {}
+  constructor(
+    private readonly service: RefreshRankingsService,
+    private readonly observability: ObservabilityService,
+  ) {}
 
   @Cron('*/5 * * * *', { name: 'refresh-rankings', timeZone: 'UTC' })
   async handle(): Promise<void> {
     this.logger.log('Cron refresh-rankings disparado');
+    const startedAt = Date.now();
     try {
-      await this.service.run();
+      const result = await this.service.run();
+      this.observability.emitFireAndForget({
+        source: 'fargate',
+        severity: 'info',
+        eventType: 'cron_run',
+        endpoint: 'refresh-rankings',
+        durationMs: Date.now() - startedAt,
+        metadata: {
+          status: 'success',
+          totalInserted: result.totalInserted,
+          slowestMs: result.slowestMs,
+        },
+      });
     } catch (error) {
-      this.logger.error(
-        `Cron refresh-rankings falló: ${error instanceof Error ? error.stack : String(error)}`,
-      );
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.logger.error(`Cron refresh-rankings falló: ${errorMessage}`);
+      this.observability.emitFireAndForget({
+        source: 'fargate',
+        severity: 'error',
+        eventType: 'cron_run',
+        endpoint: 'refresh-rankings',
+        durationMs: Date.now() - startedAt,
+        errorMessage,
+        metadata: { status: 'failure' },
+      });
     }
   }
 }

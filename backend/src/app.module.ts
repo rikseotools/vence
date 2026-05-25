@@ -20,6 +20,7 @@ import { DetectGenericSourcesModule } from './detect-generic-sources/detect-gene
 import { ProcessVerificationQueueModule } from './process-verification-queue/process-verification-queue.module';
 import { AnswerSaveModule } from './answer-save/answer-save.module';
 import { TestConfigModule } from './test-config/test-config.module';
+import { ObservabilityModule } from './observability/observability.module';
 import { AntifraudModule } from './antifraud/antifraud.module';
 import { AuthModule } from './auth/auth.module';
 import { BackgroundModule } from './background/background.module';
@@ -79,6 +80,8 @@ import { TestAnswersModule } from './test-answers/test-answers.module';
     // test-config family — 4 endpoints públicos (articles/sections/
     // essential-articles/estimate) con cache versionado cross-runtime.
     TestConfigModule,
+    // Bloque 4: tabla observable_events unificada (Vercel+Fargate+GHA).
+    ObservabilityModule,
   ],
 })
 export class AppModule {}
