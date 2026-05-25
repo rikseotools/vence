@@ -1,0 +1,121 @@
+name: Load test (k6)
+
+# Suite k6 profesional — Bloque 5 Fase E.4.2.
+# Trigger manual ÚNICO — los load tests cuestan tiempo + CPU + bandwidth y
+# tienen impacto en producción si se apuntan ahí. NO se corren en cada PR.
+#
+# Cuándo lanzarlo:
+#   - Pre-cutover (E.6 DNS switch): TYPE=load contra preview-aws.vence.es.
+#   - Tras cambios mayores backend/frontend que puedan afectar performance.
+#   - Después de cambios en CloudFront cache config (validar efectividad).
+#
+# Ejemplo desde local:
+#   gh workflow run loadtest.yml -f type=load -f target=https://preview-aws.vence.es
+
+on:
+  workflow_dispatch:
+    inputs:
+      type:
+        type: choice
+        options:
+          - smoke
+          - load
+          - stress
+          - spike
+          - soak
+        default: smoke
+        description: 'Tipo de test. smoke = 2 min sanity. load = 18 min pre-examen pre-cutover. stress = 20 min encontrar techo.'
+      target:
+        type: string
+        default: 'https://preview-aws.vence.es'
+        description: 'URL base. preview-aws.vence.es (AWS) o www.vence.es (Vercel baseline).'
+
+permissions:
+  contents: read
+
+jobs:
+  k6:
+    runs-on: ubuntu-latest
+    # Soak es 1h, stress 20 min, load 18 min. Damos margen.
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install k6
+        run: |
+          curl -fsSL https://dl.k6.io/key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/k6-archive-keyring.gpg
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install -y k6
+
+      - name: Show config
+        run: |
+          echo "TYPE:   ${{ inputs.type }}"
+          echo "TARGET: ${{ inputs.target }}"
+          k6 version
+
+      - name: Run k6
+        env:
+          TYPE: ${{ inputs.type }}
+          TARGET: ${{ inputs.target }}
+          POST_TO_OBSERVABILITY: '1'
+          INGEST_SECRET: ${{ secrets.OBSERVABILITY_INGEST_SECRET }}
+        run: |
+          mkdir -p loadtest
+          k6 run -e TYPE="$TYPE" -e TARGET="$TARGET" \
+                 -e POST_TO_OBSERVABILITY="$POST_TO_OBSERVABILITY" \
+                 -e INGEST_SECRET="$INGEST_SECRET" \
+                 loadtest/k6-vence.js
+
+      - name: Upload results (JSON + summary)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-${{ inputs.type }}-results
+          path: |
+            loadtest/k6-results.json
+            loadtest/k6-${{ inputs.type }}-summary.txt
+          retention-days: 14
+
+      - name: Show summary in step output
+        if: always()
+        run: |
+          echo "## 🎯 k6 ${{ inputs.type }} — ${{ inputs.target }}" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          cat loadtest/k6-${{ inputs.type }}-summary.txt 2>/dev/null || echo "(summary no generado)" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+  # Notificación de fallo a observability (mismo patrón que otros workflows).
+  notify-failure:
+    needs: k6
+    if: failure() && !cancelled()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Emit failure to observable_events
+        env:
+          INGEST_URL: https://www.vence.es/api/observability/ingest
+          INGEST_SECRET: ${{ secrets.OBSERVABILITY_INGEST_SECRET }}
+        run: |
+          if [ -z "${INGEST_SECRET}" ]; then exit 0; fi
+          curl -sS -X POST "${INGEST_URL}" \
+            -H "Content-Type: application/json" \
+            -H "x-ingest-secret: ${INGEST_SECRET}" \
+            -d "$(cat <<JSON
+          {
+            "events": [{
+              "ts": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+              "source": "gha",
+              "severity": "error",
+              "eventType": "workflow_failure",
+              "errorMessage": "loadtest ${{ inputs.type }} failed against ${{ inputs.target }}",
+              "metadata": {
+                "repo": "${{ github.repository }}",
+                "workflow": "loadtest",
+                "run_id": "${{ github.run_id }}",
+                "type": "${{ inputs.type }}",
+                "target": "${{ inputs.target }}"
+              }
+            }]
+          }
+          JSON
+          )" || true
