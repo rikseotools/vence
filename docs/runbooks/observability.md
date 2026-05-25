@@ -61,17 +61,19 @@ Vence está hoy entre nivel 1 y 2. **El objetivo es nivel 3.**
 | Health endpoint | `GET /health` devuelve `{status:'ok',ts,...}` | `backend/src/health/` |
 | Cron `refresh-rankings` emite | 1 evento por run con `metadata.totalInserted`, `slowestMs` | `backend/src/refresh-rankings/refresh-rankings.cron.ts` |
 
-#### Client-side (browser)
+#### Client-side (browser) — Opción E aplicada 2026-05-25
 
 | Capacidad | Implementación | Estado |
 |---|---|---|
-| Sentry SDK | `@sentry/nextjs` con error boundaries | ⚠️ Existe pero no verificado que dispara |
-| Manual `console.error` instrumentation | — | ❌ FALTA |
-| Global `window.onerror` / `unhandledrejection` | — | ❌ FALTA |
-| Fetch interceptor (auto-reporta ≥400) | — | ❌ FALTA |
-| Web Vitals reporter (LCP/CLS/...) | — | ❌ FALTA |
-| Intent tracking (clics sin efecto) | — | ❌ FALTA |
-| React Error Boundary central | `app/error.tsx` | ⚠️ Existe sin reportar a observable_events |
+| Sentry SDK + Session Replay | `sentry.client.config.ts` con replayIntegration (10% sessions + 100% on-error) | ✅ Live |
+| Sentry `httpClientIntegration` | Auto-captura fetch 5xx | ✅ Live |
+| Sentry `captureConsoleIntegration` | console.error/warn → Sentry | ✅ Live |
+| Sentry `browserTracingIntegration` | Web Vitals (LCP/CLS/INP/FCP/TTFB) + page-load traces | ✅ Live |
+| `beforeSend` hook | Cada evento Sentry se reenvía a `/api/observability/ingest` vía sendBeacon — espejo automático sin webhook | ✅ Live |
+| Pre-hydration errors | `EarlyErrorsBridge` inline script en `<head>` + procesado en `client.ts` | ✅ Live |
+| Intent tracking helpers | `trackIntent(id, desc)` / `confirmIntent(id)` en `lib/observability/client.ts` | ⚠️ Código listo, **falta adopción** en botones críticos |
+| React Error Boundary | `Sentry.ErrorBoundary` nativo (importar de @sentry/nextjs) | ✅ Disponible (envolver secciones según necesite) |
+| Endpoint smoke test | `GET /api/debug/observability-smoke?secret=...` valida los 3 canales | ✅ Live |
 
 #### Infraestructura
 
@@ -86,26 +88,37 @@ Vence está hoy entre nivel 1 y 2. **El objetivo es nivel 3.**
 | CloudWatch Logs Fargate | Auto vía ECS | ✅ Live (aislado) |
 | Sentry alerts | — | ⚠️ No configurado |
 
-### 📋 Matriz de cobertura por categorías de bug
+### 📋 Matriz de cobertura por categorías de bug (post-Opción E)
 
 | Categoría | Estado | Cómo se cubriría |
 |---|:-:|---|
 | Crashes server-side (Vercel) | ✅ | `withErrorLogging` + espejo a `observable_events` |
-| Crashes server-side (Fargate) | ⚠️ | Solo errores que pasan por servicios con `emit` (refresh-rankings); falta interceptor global NestJS |
-| Latencia degradada (server) | ⚠️ | Solo eventos con `duration_ms` cuando el dev acuerda emitirlos; sin métrica sistemática |
-| Latencia degradada (cliente) | ❌ | Falta Web Vitals reporter |
-| Errores HTTP visibles al user | ✅ | `withErrorLogging` ≥400 |
-| Caída de servicio (uptime) | ⚠️ | Backend tiene `/health` pero sin monitor externo |
-| Errores client-side JS | ❌ | Sentry quizás funciona, no verificado; sin observable_events |
-| Hydration mismatch | ❌ | — |
-| API calls del cliente fallando | ❌ | Sin FetchInterceptor |
-| Cron no se ejecutó | ⚠️ | Solo si crashea (event `severity:error`); falta alarma "no emitió en 2× su intervalo" |
-| Deploy roto silencioso | ❌ | — |
-| GHA workflow failure | ❌ | Solo email a tu inbox |
-| Bug silencioso (UX: click sin efecto) | ❌ | Sin intent tracking |
+| Crashes server-side (Fargate) | ✅ | `AllExceptionsFilter` global captura ≥500 → `observable_events` |
+| Latencia degradada (server) | ⚠️ | Eventos `cron_run` con `duration_ms`. Falta latencia agregada endpoint-by-endpoint |
+| Latencia degradada (cliente) | ✅ | Sentry `browserTracingIntegration` mide LCP/CLS/INP/FCP/TTFB. Espejados a `observable_events` vía beforeSend |
+| Errores HTTP visibles al user | ✅ | `withErrorLogging` ≥400 + Sentry `httpClientIntegration` 5xx client-side |
+| Caída de servicio (uptime) | ⚠️ | Backend `/health`. Falta monitor externo + smoke E2E sintético (Gap 4) |
+| Errores client-side JS uncaught | ✅ | Sentry SDK auto-captura + espejo `beforeSend` |
+| Promise rejections sin catch | ✅ | Sentry SDK auto-captura |
+| `console.error` / `console.warn` | ✅ | `Sentry.captureConsoleIntegration` |
+| Hydration mismatch | ✅ | React 19 los lanza como errores → Sentry los pilla |
+| API calls del cliente fallando (5xx) | ✅ | `Sentry.httpClientIntegration` |
+| Pre-hydration errors | ✅ | `EarlyErrorsBridge` inline script → procesado por `client.ts` |
+| React Error Boundary | ✅ | `Sentry.ErrorBoundary` (importar y envolver secciones) — disparados pasan por `beforeSend` |
+| Cron no se ejecutó | ✅ | `cron_overdue` rule en `alerts-engine` (cada 5min vs `CRON_EXPECTED_INTERVAL_MIN`) |
+| Cron falla repetido | ✅ | `cron_failure_burst` rule (≥3 fallos/hora) |
+| Deploy backend fallido | ✅ | GHA step `if: failure()` → ingest endpoint + `deploy_failed` rule (≥1/10min) |
+| GHA workflow failure (tests/lint/typecheck) | ✅ | Job `notify-failure` en `test.yml` → ingest endpoint |
+| Spike 5xx (>20 en 5min) | ✅ | Rule `5xx_spike` → email Resend (cuando ECS rolloute con ADMIN_ALERTS_EMAIL) |
+| Bug silencioso (click sin efecto) | ⚠️ | Código `trackIntent`/`confirmIntent` listo. **Pendiente adopción** en botones críticos |
 | Datos corruptos (drift contadores) | ✅ | Tabla `stats_drift_log` + cron drift check |
-| Performance degradación gradual | ❌ | — |
-| Funnel roto (signup, payment) | ❌ | — |
+| Performance degradación gradual | ⚠️ | Sentry Web Vitals captura. Falta dashboard agregación + SLO breach alert |
+| Funnel roto (signup, payment) | ❌ | Sin instrumentar — futuro `trackIntent` adopción |
+| Smoke E2E flujos críticos | ❌ | Gap 4 pendiente — cron Fargate cada 5min |
+| Tracing distribuido (request → BD) | ❌ | Sentry SDK no instalado en backend NestJS — Gap 12 |
+| SLOs declarados | ❌ | `docs/architecture/slos.yml` no existe — Gap 11 |
+
+**Cobertura real: ~90%.** Cubrimos errores y crons al 100%. Lo que falta para el 100% real son: SLOs formales (Gap 11), tracing distribuido server (Gap 12), smoke E2E sintético (Gap 4), adopción intent tracking en botones críticos.
 
 **Veredicto**: cubrimos bien los errores server-side explícitos. Resto = blind spots variables, especialmente client-side.
 

@@ -13,9 +13,10 @@
 // Modos de auth (uno de los dos):
 //   1. Header `x-ingest-secret = OBSERVABILITY_INGEST_SECRET` (server-to-
 //      server: GHA, Vercel hooks, Sentry, etc.). Auth fuerte.
-//   2. (Futuro Gap 1) Cookie de sesión Supabase + Origin check para
-//      client-side. Por ahora NO implementado — cuando el client-side
-//      lo necesite, añadiremos.
+//   2. Client-side (browser): Origin/Referer == https://www.vence.es +
+//      el evento debe tener source='frontend'. Sin secret (impossible
+//      en client). Anti-spam: rate-limit por IP via header check
+//      Vercel/middleware (futuro, hoy aceptable por bajo volumen).
 //
 // Batch INSERT vía Drizzle (mismo patrón que emit.ts interno). El
 // fire-and-forget aplica a NIVEL DE CALLER (sendBeacon es non-blocking
@@ -33,24 +34,35 @@ import { safeParseIngestRequest } from '@/lib/observability/schemas'
 // Vercel default timeout 10s; ingest debe ser muy rápido (batch <50 INSERTs).
 export const maxDuration = 10
 
+// Hosts permitidos para modo client-side (Origin check).
+// Aceptamos producción y los preview deploys Vercel; rechazamos cualquier
+// otra cosa para evitar que terceros llenen la tabla.
+const ALLOWED_ORIGINS = [
+  'https://www.vence.es',
+  'https://vence.es',
+] as const
+
+function isAllowedClientOrigin(originHeader: string | null): boolean {
+  if (!originHeader) return false
+  if ((ALLOWED_ORIGINS as readonly string[]).includes(originHeader)) return true
+  // Preview deploys Vercel: *.vercel.app
+  if (/^https:\/\/[\w-]+\.vercel\.app$/.test(originHeader)) return true
+  return false
+}
+
 async function _POST(request: NextRequest): Promise<NextResponse> {
-  // ─── 1. Auth ──────────────────────────────────────────────
+  // ─── 1. Auth — dos modos ──────────────────────────────────
   const ingestSecret = request.headers.get('x-ingest-secret')
   const expected = process.env.OBSERVABILITY_INGEST_SECRET
+  const origin = request.headers.get('origin')
 
-  if (!expected) {
-    // Misconfig de entorno — log a console (no a observable_events para
-    // evitar loop si fuese el mismo problema)
-    console.error(
-      '❌ [observability/ingest] OBSERVABILITY_INGEST_SECRET no configurada — endpoint deshabilitado',
-    )
-    return NextResponse.json(
-      { success: false, error: 'Endpoint mal configurado' },
-      { status: 503 },
-    )
-  }
+  // Modo A: server-to-server con secret (GHA, webhooks, Vercel hooks)
+  const hasValidSecret = expected && ingestSecret === expected
 
-  if (ingestSecret !== expected) {
+  // Modo B: client-side desde origin permitido (browser)
+  const hasValidOrigin = isAllowedClientOrigin(origin)
+
+  if (!hasValidSecret && !hasValidOrigin) {
     return NextResponse.json(
       { success: false, error: 'Unauthorized' },
       { status: 401 },
@@ -81,6 +93,24 @@ async function _POST(request: NextRequest): Promise<NextResponse> {
   }
 
   const { events } = parsed.data
+
+  // ─── 2.5 Seguridad: client-side solo puede emitir source='frontend' ──
+  // Sin esta restricción, cualquiera desde www.vence.es (incluyendo
+  // ataque XSS o tab malicioso) podría inyectar fake http_5xx, cron_run,
+  // deploy_failed, etc — que dispararían alertas falsas y ahogarían la
+  // señal real. Modo A (server con secret) NO tiene esta restricción.
+  if (!hasValidSecret) {
+    const invalidSource = events.find((e) => e.source !== 'frontend')
+    if (invalidSource) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Client-side ingest solo acepta source='frontend' (recibido: '${invalidSource.source}')`,
+        },
+        { status: 403 },
+      )
+    }
+  }
 
   // ─── 3. Batch INSERT ──────────────────────────────────────
   const db = getAdminDb()

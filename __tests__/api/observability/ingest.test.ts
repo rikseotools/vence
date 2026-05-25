@@ -66,17 +66,17 @@ describe('POST /api/observability/ingest', () => {
   // ────────────────────────────────────────────────────────────────
   // AUTH
   // ────────────────────────────────────────────────────────────────
-  describe('auth', () => {
-    it('rechaza sin header con 401', async () => {
+  describe('auth — modo A (server-to-server con secret)', () => {
+    it('rechaza secret incorrecto con 401', async () => {
       const res = await POST(makeRequest({ events: [VALID_EVENT] }, 'wrong'))
       expect(res.status).toBe(401)
       expect(mockExecute).not.toHaveBeenCalled()
     })
 
-    it('rechaza con header vacío con 401', async () => {
+    it('rechaza sin headers (ni secret ni origin válido) con 401', async () => {
       const req = new NextRequest('http://localhost/api/observability/ingest', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }, // sin x-ingest-secret
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ events: [VALID_EVENT] }),
       })
       const res = await POST(req)
@@ -84,10 +84,83 @@ describe('POST /api/observability/ingest', () => {
       expect(mockExecute).not.toHaveBeenCalled()
     })
 
-    it('rechaza con 503 si env var no configurada', async () => {
-      delete process.env.OBSERVABILITY_INGEST_SECRET
-      const res = await POST(makeRequest({ events: [VALID_EVENT] }))
-      expect(res.status).toBe(503)
+    it('secret válido acepta CUALQUIER source (server confianza alta)', async () => {
+      const res = await POST(makeRequest({ events: [VALID_EVENT] })) // source='gha'
+      expect(res.status).toBe(200)
+      expect(mockExecute).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe('auth — modo B (client-side con Origin)', () => {
+    function makeClientRequest(events: unknown[], origin: string): NextRequest {
+      return new NextRequest('http://localhost/api/observability/ingest', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          origin,
+        },
+        body: JSON.stringify({ events }),
+      })
+    }
+
+    it.each([
+      ['https://www.vence.es'],
+      ['https://vence.es'],
+      ['https://preview-123.vercel.app'],
+    ])('acepta Origin "%s" con source=frontend', async (origin) => {
+      const frontendEvent = {
+        source: 'frontend' as const,
+        severity: 'error' as const,
+        eventType: 'js_uncaught',
+        errorMessage: 'TypeError: x is undefined',
+      }
+      const res = await POST(makeClientRequest([frontendEvent], origin))
+      expect(res.status).toBe(200)
+      expect(mockExecute).toHaveBeenCalledTimes(1)
+    })
+
+    it.each([
+      ['https://evil.com'],
+      ['http://www.vence.es'], // http, no https
+      ['https://www.vence.com'], // .com, no .es
+    ])('rechaza Origin "%s" con 401', async (origin) => {
+      const res = await POST(
+        makeClientRequest(
+          [
+            {
+              source: 'frontend',
+              severity: 'error',
+              eventType: 'js_uncaught',
+            },
+          ],
+          origin,
+        ),
+      )
+      expect(res.status).toBe(401)
+      expect(mockExecute).not.toHaveBeenCalled()
+    })
+
+    it('Origin válido pero source NO frontend → 403 (anti-spam alertas)', async () => {
+      const fakeServerEvent = {
+        source: 'fargate', // ¡intento de fake!
+        severity: 'critical',
+        eventType: 'http_5xx',
+        errorMessage: 'spam attempt',
+      }
+      const res = await POST(
+        makeClientRequest([fakeServerEvent], 'https://www.vence.es'),
+      )
+      expect(res.status).toBe(403)
+      expect(mockExecute).not.toHaveBeenCalled()
+    })
+
+    it('Origin válido con mix frontend + fake fargate → 403 (rechaza todo el batch)', async () => {
+      const events = [
+        { source: 'frontend', severity: 'error', eventType: 'js_uncaught' },
+        { source: 'fargate', severity: 'critical', eventType: 'http_5xx' }, // fake
+      ]
+      const res = await POST(makeClientRequest(events, 'https://www.vence.es'))
+      expect(res.status).toBe(403)
       expect(mockExecute).not.toHaveBeenCalled()
     })
   })

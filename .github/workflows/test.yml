@@ -96,3 +96,66 @@ jobs:
           cache: 'npm'
       - run: npm ci
       - run: npm run typecheck
+
+  # ════════════════════════════════════════════════════════════════
+  # Bloque 4 Gap 6 — notificación de fallos a observable_events
+  # ════════════════════════════════════════════════════════════════
+  # Reporta cualquier fallo de los jobs anteriores como evento
+  # `workflow_failed` en observable_events. Permite que el cron
+  # `alerts-engine` del backend dispare alerta automática (regla
+  # deploy_failed o cron_failure_burst si hay varios).
+  #
+  # `needs` con `if: failure() && !cancelled()` garantiza que SOLO
+  # corre cuando algún job anterior falló (no en éxito ni en cancel
+  # por concurrency.cancel-in-progress).
+  notify-failure:
+    name: Notify failure to observable_events
+    if: ${{ failure() && !cancelled() }}
+    needs: [unit, integration, lint, typecheck]
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: POST to /api/observability/ingest
+        env:
+          INGEST_SECRET: ${{ secrets.OBSERVABILITY_INGEST_SECRET }}
+        run: |
+          # Construir payload con metadata del run.
+          # `jq` ya disponible en runners ubuntu-latest.
+          PAYLOAD=$(jq -n \
+            --arg workflow "${{ github.workflow }}" \
+            --arg job_url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --arg sha "${{ github.sha }}" \
+            --arg event "${{ github.event_name }}" \
+            --arg actor "${{ github.actor }}" \
+            --arg ref "${{ github.ref }}" \
+            '{events:[{
+              source:"gha",
+              severity:"error",
+              eventType:"workflow_failed",
+              endpoint:$workflow,
+              deployVersion:($sha|.[0:8]),
+              errorMessage:("Workflow " + $workflow + " falló en " + $event),
+              metadata:{
+                runId:"${{ github.run_id }}",
+                runUrl:$job_url,
+                actor:$actor,
+                ref:$ref,
+                attempt:"${{ github.run_attempt }}"
+              }
+            }]}')
+
+          # Best-effort: si INGEST_SECRET no está configurado o el
+          # endpoint cae, NO fallar el step (no queremos amplificar
+          # un fallo de CI con un fallo de observability).
+          if [ -z "$INGEST_SECRET" ]; then
+            echo "⚠️ OBSERVABILITY_INGEST_SECRET no configurado — skipping ingest"
+            exit 0
+          fi
+
+          curl -sS -X POST 'https://www.vence.es/api/observability/ingest' \
+            -H "Content-Type: application/json" \
+            -H "x-ingest-secret: $INGEST_SECRET" \
+            -d "$PAYLOAD" \
+            -o /tmp/ingest.txt \
+            -w "HTTP=%{http_code}\n" || echo "curl falló"
+          cat /tmp/ingest.txt 2>/dev/null || true

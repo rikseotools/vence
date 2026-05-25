@@ -72,3 +72,43 @@ jobs:
             --cluster "$ECS_CLUSTER" \
             --services "$ECS_SERVICE" \
             --region "$AWS_REGION"
+
+      # ════════════════════════════════════════════════════════════
+      # Bloque 4 Gap 6 — emitir deploy_failed si algún step falló.
+      # `if: failure()` se evalúa contra steps anteriores DE ESTE JOB.
+      # Best-effort: si INGEST_SECRET falta o curl falla, no rompe nada.
+      # ════════════════════════════════════════════════════════════
+      - name: Notify deploy failure to observable_events
+        if: ${{ failure() }}
+        env:
+          INGEST_SECRET: ${{ secrets.OBSERVABILITY_INGEST_SECRET }}
+        run: |
+          PAYLOAD=$(jq -n \
+            --arg job_url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --arg sha "${{ github.sha }}" \
+            --arg actor "${{ github.actor }}" \
+            '{events:[{
+              source:"gha",
+              severity:"critical",
+              eventType:"deploy_failed",
+              endpoint:"backend-deploy",
+              deployVersion:($sha|.[0:8]),
+              errorMessage:"Deploy backend falló",
+              metadata:{
+                runId:"${{ github.run_id }}",
+                runUrl:$job_url,
+                actor:$actor,
+                attempt:"${{ github.run_attempt }}"
+              }
+            }]}')
+
+          if [ -z "$INGEST_SECRET" ]; then
+            echo "⚠️ OBSERVABILITY_INGEST_SECRET no configurado — skipping ingest"
+            exit 0
+          fi
+
+          curl -sS -X POST 'https://www.vence.es/api/observability/ingest' \
+            -H "Content-Type: application/json" \
+            -H "x-ingest-secret: $INGEST_SECRET" \
+            -d "$PAYLOAD" \
+            -w "HTTP=%{http_code}\n" || echo "curl falló (best-effort)"

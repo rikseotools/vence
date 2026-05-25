@@ -15,6 +15,8 @@ import FraudTracker from '../components/FraudTracker'
 import { GlobalClickTracker, PageViewTracker } from '../components/tracking'
 import CookieBanner, { CookieConsentProvider } from '../components/CookieConsent'
 import { TTSChainProvider } from '../components/tts/TTSChainContext'
+import { ClientObservabilityInstaller } from '../components/observability/ClientObservabilityInstaller'
+import { EarlyErrorsBridge } from '../components/observability/EarlyErrorsBridge'
 
 export default async function SpanishLayout({ children }: { children: React.ReactNode }) {
   // Precargar mapping slug↔shortName para client components (cacheado en memoria 1h)
@@ -27,11 +29,21 @@ export default async function SpanishLayout({ children }: { children: React.Reac
 
   return (
     <html lang="es">
-      <head />
+      <head>
+        {/* Bloque 4 Gap 1 — captura errores ANTES de hydration. Debe
+            ir lo más arriba posible en <head> para que pille errores
+            de otros scripts inline (GTM, polyfills, Sentry init, ...). */}
+        <EarlyErrorsBridge />
+      </head>
       <body className="min-h-screen">
         <SentryInit />
         <CookieConsentProvider>
           <AuthProvider initialUser={null}>
+            {/* Bloque 4 Gap 1 — instala hooks observability cliente.
+                Sentry (sentry.client.config.ts) cubre window.onerror,
+                console.error, fetch 5xx via integrations. Este componente
+                solo procesa errores pre-hydration + intent tracking. */}
+            <ClientObservabilityInstaller />
             <OposicionProvider>
               <LawSlugProvider initialMappings={lawMappings}>
               <QuestionProvider>
