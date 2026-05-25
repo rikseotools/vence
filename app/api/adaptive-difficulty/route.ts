@@ -7,12 +7,20 @@ import { AdaptiveDifficultyService } from '@/lib/services/adaptiveDifficulty'
 
 const userIdSchema = z.string().uuid()
 
+// Lazy-init: instanciar al primer GET y NO al importar el módulo. Sin esto
+// `next build` (Vercel/Docker) revienta porque `SUPABASE_SERVICE_ROLE_KEY`
+// no está disponible durante la fase de "collect page data". Es además mejor
+// runtime — no abre conexión hasta que llega la primera petición.
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-const service = new AdaptiveDifficultyService(getSupabase())
+let cachedService: AdaptiveDifficultyService | null = null
+function getService(): AdaptiveDifficultyService {
+  if (!cachedService) cachedService = new AdaptiveDifficultyService(getSupabase())
+  return cachedService
+}
 
 async function _GET(request: NextRequest) {
   try {
@@ -30,17 +38,17 @@ async function _GET(request: NextRequest) {
         if (!questionId) {
           return NextResponse.json({ error: 'questionId is required for personal_difficulty' }, { status: 400 })
         }
-        const personalDifficulty = await service.getPersonalDifficulty(userId, questionId)
+        const personalDifficulty = await getService().getPersonalDifficulty(userId, questionId)
         return NextResponse.json(personalDifficulty)
       }
 
       case 'metrics': {
-        const metrics = await service.getUserDifficultyMetrics(userId)
+        const metrics = await getService().getUserDifficultyMetrics(userId)
         return NextResponse.json(metrics)
       }
 
       case 'breakdown': {
-        const breakdown = await service.getPersonalDifficultyBreakdown(userId)
+        const breakdown = await getService().getPersonalDifficultyBreakdown(userId)
         return NextResponse.json(breakdown)
       }
 
@@ -49,7 +57,7 @@ async function _GET(request: NextRequest) {
         const trend = searchParams.get('trend')
         const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : undefined
 
-        const history = await service.getUserDifficultyHistory(userId, {
+        const history = await getService().getUserDifficultyHistory(userId, {
           difficulty,
           trend,
           limit
@@ -59,23 +67,23 @@ async function _GET(request: NextRequest) {
 
       case 'struggling': {
         const limitStruggling = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 10
-        const struggling = await service.getStrugglingQuestions(userId, limitStruggling)
+        const struggling = await getService().getStrugglingQuestions(userId, limitStruggling)
         return NextResponse.json(struggling)
       }
 
       case 'mastered': {
         const limitMastered = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 10
-        const mastered = await service.getMasteredQuestions(userId, limitMastered)
+        const mastered = await getService().getMasteredQuestions(userId, limitMastered)
         return NextResponse.json(mastered)
       }
 
       case 'trends': {
-        const trends = await service.getUserProgressTrends(userId)
+        const trends = await getService().getUserProgressTrends(userId)
         return NextResponse.json(trends)
       }
 
       case 'recommendations': {
-        const recommendations = await service.getPersonalizedRecommendations(userId)
+        const recommendations = await getService().getPersonalizedRecommendations(userId)
         return NextResponse.json(recommendations)
       }
 
@@ -88,7 +96,7 @@ async function _GET(request: NextRequest) {
           return NextResponse.json({ error: 'difficulty parameter is required' }, { status: 400 })
         }
 
-        const questions = await service.getQuestionsByPersonalDifficulty(userId, targetDifficulty, {
+        const questions = await getService().getQuestionsByPersonalDifficulty(userId, targetDifficulty, {
           trend: targetTrend,
           limit: limitQuestions
         })
@@ -119,12 +127,12 @@ async function _POST(request: NextRequest) {
 
     switch (action) {
       case 'migrate_data': {
-        const migrationResult = await service.runDataMigration()
+        const migrationResult = await getService().runDataMigration()
         return NextResponse.json(migrationResult)
       }
 
       case 'create_initial_metrics': {
-        const metrics = await service.createInitialUserMetrics(userId)
+        const metrics = await getService().createInitialUserMetrics(userId)
         return NextResponse.json(metrics)
       }
 
