@@ -23,6 +23,7 @@ locals {
   email_from_name_ssm_arn      = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/EMAIL_FROM_NAME"
   email_from_address_ssm_arn   = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/EMAIL_FROM_ADDRESS"
   supabase_jwt_secret_ssm_arn  = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/SUPABASE_JWT_SECRET"
+  admin_alerts_email_ssm_arn   = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/vence-backend/ADMIN_ALERTS_EMAIL"
 }
 
 # ============================================================
@@ -104,6 +105,7 @@ resource "aws_iam_role_policy" "task_execution_secrets" {
           local.resend_api_key_ssm_arn,
           local.email_from_name_ssm_arn,
           local.email_from_address_ssm_arn,
+          local.admin_alerts_email_ssm_arn,
           local.supabase_jwt_secret_ssm_arn,
         ]
       },
@@ -195,6 +197,7 @@ resource "aws_ecs_task_definition" "backend" {
         { name = "EMAIL_FROM_NAME", valueFrom = local.email_from_name_ssm_arn },
         { name = "EMAIL_FROM_ADDRESS", valueFrom = local.email_from_address_ssm_arn },
         { name = "SUPABASE_JWT_SECRET", valueFrom = local.supabase_jwt_secret_ssm_arn },
+        { name = "ADMIN_ALERTS_EMAIL", valueFrom = local.admin_alerts_email_ssm_arn },
       ]
       portMappings = [{ containerPort = 3000, protocol = "tcp" }]
       logConfiguration = {
