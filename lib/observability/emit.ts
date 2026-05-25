@@ -19,6 +19,24 @@ export type EventSeverity = 'debug' | 'info' | 'warn' | 'error' | 'critical'
 
 export type EventSource = 'vercel' | 'fargate' | 'gha' | 'frontend'
 
+/**
+ * Normaliza severity. validation_error_logs usa 'warning' (con -ing),
+ * observable_events estandariza en 'warn'. Acepta también variantes
+ * obvias para que callers diversos no rompan el CHECK constraint.
+ */
+function normalizeSeverity(s: string): EventSeverity {
+  const lower = String(s).toLowerCase()
+  if (lower === 'warning') return 'warn'
+  if (lower === 'fatal' || lower === 'crit') return 'critical'
+  if (lower === 'err') return 'error'
+  if (['debug', 'info', 'warn', 'error', 'critical'].includes(lower)) {
+    return lower as EventSeverity
+  }
+  // Default conservador: si no reconocemos, tratamos como warn para no
+  // perder el evento pero no inflar las críticas.
+  return 'warn'
+}
+
 export interface ObservableEvent {
   /** Origen del evento. Para Vercel functions = 'vercel'. */
   source: EventSource
@@ -62,6 +80,7 @@ export async function emit(event: ObservableEvent): Promise<void> {
       return
     }
 
+    const severity = normalizeSeverity(event.severity)
     await db.execute(sql`
       INSERT INTO public.observable_events (
         ts, source, severity, event_type, endpoint, user_id,
@@ -69,7 +88,7 @@ export async function emit(event: ObservableEvent): Promise<void> {
       ) VALUES (
         COALESCE(${event.ts ?? null}, NOW()),
         ${event.source},
-        ${event.severity},
+        ${severity},
         ${event.eventType},
         ${event.endpoint ?? null},
         ${event.userId ?? null}::uuid,

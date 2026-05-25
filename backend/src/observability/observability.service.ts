@@ -6,6 +6,23 @@ export type EventSeverity = 'debug' | 'info' | 'warn' | 'error' | 'critical';
 
 export type EventSource = 'vercel' | 'fargate' | 'gha' | 'frontend';
 
+/**
+ * Normaliza severity para CHECK constraint. Acepta variantes obvias
+ * (warning→warn, fatal→critical, err→error). Cualquier valor no
+ * reconocido se trata como 'warn' (conservador — no inflar críticas
+ * accidentalmente).
+ */
+function normalizeSeverity(s: string): EventSeverity {
+  const lower = String(s).toLowerCase();
+  if (lower === 'warning') return 'warn';
+  if (lower === 'fatal' || lower === 'crit') return 'critical';
+  if (lower === 'err') return 'error';
+  if (['debug', 'info', 'warn', 'error', 'critical'].includes(lower)) {
+    return lower as EventSeverity;
+  }
+  return 'warn';
+}
+
 export interface ObservableEvent {
   /** Origen del evento. Para Fargate NestJS = 'fargate'. */
   source: EventSource;
@@ -59,6 +76,7 @@ export class ObservabilityService {
    */
   async emit(event: ObservableEvent): Promise<void> {
     try {
+      const severity = normalizeSeverity(event.severity);
       await this.db.execute(sql`
         INSERT INTO public.observable_events (
           ts, source, severity, event_type, endpoint, user_id,
@@ -66,7 +84,7 @@ export class ObservabilityService {
         ) VALUES (
           COALESCE(${event.ts ?? null}, NOW()),
           ${event.source},
-          ${event.severity},
+          ${severity},
           ${event.eventType},
           ${event.endpoint ?? null},
           ${event.userId ?? null}::uuid,
