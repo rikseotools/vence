@@ -18,7 +18,11 @@
 
 'use client'
 
-import { prepareForSpeech } from './chunker'
+import {
+  firstChunkOfSection,
+  prepareForSpeech,
+  prepareSectionsForSpeech,
+} from './chunker'
 import {
   canTransition,
   isActive,
@@ -29,10 +33,13 @@ import {
 } from './stateMachine'
 import { newSessionId, ttsTelemetry } from './telemetry'
 import type {
+  TTSChunkMeta,
+  TTSCurrentSection,
   TTSEndReason,
   TTSEvent,
   TTSPlayOptions,
   TTSProgress,
+  TTSSection,
   TTSState,
 } from './types'
 
@@ -51,6 +58,16 @@ export interface TTSEngineSnapshot {
    * El UI puede usarlo para mostrar "Continuar" en vez de "Escuchar".
    */
   canResume: boolean
+  /**
+   * Sección actual (artículo en contexto temario). Null si no hay sesión
+   * activa o si el caller usó el modo `text` legacy sin sections.
+   */
+  currentSection: TTSCurrentSection | null
+  /**
+   * Nombre de la ley en curso (para que el floating player la muestre).
+   * Null cuando no hay sesión activa.
+   */
+  lawName: string | null
 }
 
 export type TTSListener = (snapshot: TTSEngineSnapshot) => void
@@ -71,13 +88,17 @@ export interface TTSEngineCallbacks {
  */
 export class TTSEngine {
   private state: TTSState = 'idle'
-  private chunks: string[] = []
+  private chunks: TTSChunkMeta[] = []
+  private sections: TTSSection[] = []
   private currentChunkIdx = 0
   private chunksCompleted = 0
   private chunksSkipped = 0
   private sessionId: string | null = null
   private sessionStartTime = 0
   private lastPlayOptions: TTSPlayOptions | null = null
+  /** Hash estable del contenido — se usa para detectar si el caller pidió
+   *  reanudar la misma lectura (mismo texto/sections) vs arrancar limpio. */
+  private contentKey = ''
 
   /** Utterance vivo. Null cuando no hay nada en curso. */
   private currentUtterance: SpeechSynthesisUtterance | null = null
@@ -115,6 +136,8 @@ export class TTSEngine {
       state: this.state,
       progress: this.computeProgress(),
       canResume: this.computeCanResume(),
+      currentSection: this.computeCurrentSection(),
+      lawName: this.lastPlayOptions?.lawName ?? null,
     }
   }
 
@@ -129,6 +152,23 @@ export class TTSEngine {
       return true
     }
     return false
+  }
+
+  private computeCurrentSection(): TTSCurrentSection | null {
+    if (this.sections.length === 0) return null
+    if (this.chunks.length === 0) return null
+    const clampedIdx = Math.min(
+      Math.max(this.currentChunkIdx, 0),
+      this.chunks.length - 1,
+    )
+    const chunk = this.chunks[clampedIdx]
+    const section = this.sections[chunk.sectionIdx]
+    if (!section) return null
+    return {
+      idx: chunk.sectionIdx,
+      label: section.label,
+      total: this.sections.length,
+    }
   }
 
   subscribe(listener: TTSListener): () => void {
@@ -164,6 +204,10 @@ export class TTSEngine {
       return
     }
 
+    const incomingKey = computeContentKey(options)
+    const incomingChunks = buildChunks(options)
+    const incomingSections = buildSections(options)
+
     // ─── Caso 1: reanudar desde pausa ──────────────────────────────────
     if (isPaused(this.state)) {
       this.rate = options.rate
@@ -185,10 +229,10 @@ export class TTSEngine {
       return
     }
 
-    // ─── Caso 2: reanudar desde estado terminal con MISMO texto ────────
-    const sameText =
-      this.lastPlayOptions?.text === options.text && this.chunks.length > 0
-    if (isTerminal(this.state) && sameText) {
+    // ─── Caso 2: reanudar desde estado terminal con MISMO contenido ────
+    const sameContent =
+      this.contentKey === incomingKey && this.chunks.length > 0
+    if (isTerminal(this.state) && sameContent) {
       // Si ya rebasamos el final (natural end), reiniciar desde 0.
       // Si paramos a mitad, retomar.
       const resumeIdx =
@@ -225,7 +269,9 @@ export class TTSEngine {
     this.rate = options.rate
     this.voiceURI = options.voiceURI ?? null
     this.lastPlayOptions = options
-    this.chunks = prepareForSpeech(options.text)
+    this.chunks = incomingChunks
+    this.sections = incomingSections
+    this.contentKey = incomingKey
     this.currentChunkIdx = 0
     this.chunksCompleted = 0
     this.chunksSkipped = 0
@@ -244,6 +290,97 @@ export class TTSEngine {
     this.speakChunk(0)
     this.startWatchdog()
     this.notify()
+  }
+
+  // ─── Navegación por sección + seek ────────────────────────────────────
+
+  /** Salta al primer chunk de la siguiente sección. No-op si ya está en la última. */
+  nextSection(): void {
+    if (this.destroyed) return
+    if (!isActive(this.state)) return
+    const cur = this.chunks[this.currentChunkIdx]
+    if (!cur) return
+    const targetSectionIdx = cur.sectionIdx + 1
+    if (targetSectionIdx >= this.sections.length) return
+    const toChunk = firstChunkOfSection(this.chunks, targetSectionIdx)
+    if (toChunk < 0) return
+    this.seekInternal(toChunk, 'next_section')
+  }
+
+  /** Salta al primer chunk de la sección anterior (o reinicia la actual si está dentro). */
+  previousSection(): void {
+    if (this.destroyed) return
+    if (!isActive(this.state)) return
+    const cur = this.chunks[this.currentChunkIdx]
+    if (!cur) return
+    const firstOfCurrent = firstChunkOfSection(this.chunks, cur.sectionIdx)
+    // Si estamos avanzados dentro de la sección actual, volvemos al inicio
+    // de ESTA sección. Si ya estamos en el inicio, retrocedemos una sección.
+    const targetSectionIdx =
+      this.currentChunkIdx > firstOfCurrent
+        ? cur.sectionIdx
+        : Math.max(0, cur.sectionIdx - 1)
+    const toChunk = firstChunkOfSection(this.chunks, targetSectionIdx)
+    if (toChunk < 0) return
+    this.seekInternal(toChunk, 'prev_section')
+  }
+
+  /** Reinicia la sección actual desde su primer chunk. */
+  restartSection(): void {
+    if (this.destroyed) return
+    if (!isActive(this.state)) return
+    const cur = this.chunks[this.currentChunkIdx]
+    if (!cur) return
+    const toChunk = firstChunkOfSection(this.chunks, cur.sectionIdx)
+    if (toChunk < 0 || toChunk === this.currentChunkIdx) return
+    this.seekInternal(toChunk, 'restart_section')
+  }
+
+  /** Reinicia la ley entera desde el chunk 0. */
+  restartLaw(): void {
+    if (this.destroyed) return
+    if (!isActive(this.state)) return
+    if (this.currentChunkIdx === 0) return
+    this.seekInternal(0, 'restart_law')
+  }
+
+  /** Seek a un porcentaje (0..1) sobre el total de chunks. */
+  seekPercent(pct: number): void {
+    if (this.destroyed) return
+    if (!isActive(this.state)) return
+    if (this.chunks.length === 0) return
+    const clamped = Math.min(1, Math.max(0, pct))
+    const toChunk = Math.min(
+      this.chunks.length - 1,
+      Math.floor(clamped * this.chunks.length),
+    )
+    if (toChunk === this.currentChunkIdx) return
+    this.seekInternal(toChunk, 'drag')
+  }
+
+  private seekInternal(
+    toChunk: number,
+    method: 'next_section' | 'prev_section' | 'restart_section' | 'restart_law' | 'drag',
+  ): void {
+    const fromChunk = this.currentChunkIdx
+    const fromSection = this.chunks[fromChunk]?.sectionIdx ?? 0
+    const toSection = this.chunks[toChunk]?.sectionIdx ?? 0
+
+    if (this.sessionId) {
+      ttsTelemetry.seek({
+        sessionId: this.sessionId,
+        method,
+        fromChunkIdx: fromChunk,
+        toChunkIdx: toChunk,
+        fromSectionIdx: fromSection,
+        toSectionIdx: toSection,
+      })
+    }
+    this.cancelCurrent()
+    // Si estábamos pausados, transicionamos a playing antes de hablar.
+    // (Aunque nextSection/etc. solo aplican en `playing`, queda preparado
+    // para futuros casos.)
+    this.speakChunk(toChunk)
   }
 
   private handleNoVoicesAtPlay(voicesAreEmpty: boolean): void {
@@ -406,7 +543,7 @@ export class TTSEngine {
     this.chunkStartTime = Date.now()
     this.watchdogRetries = 0
 
-    const utterance = new SpeechSynthesisUtterance(this.chunks[index])
+    const utterance = new SpeechSynthesisUtterance(this.chunks[index].text)
     utterance.lang = 'es-ES'
     utterance.rate = this.rate
 
@@ -652,6 +789,17 @@ export class TTSEngine {
 
   // ─── Private: telemetry helpers ───────────────────────────────────────
 
+  private computeTotalTextLen(): number {
+    if (!this.lastPlayOptions) return 0
+    if (this.lastPlayOptions.sections?.length) {
+      return this.lastPlayOptions.sections.reduce(
+        (acc, s) => acc + s.text.length,
+        0,
+      )
+    }
+    return this.lastPlayOptions.text?.length ?? 0
+  }
+
   private emitSessionStart(spanishVoices: SpeechSynthesisVoice[]): void {
     if (!this.sessionId || !this.lastPlayOptions) return
     const chosen = this.pickVoice()
@@ -660,7 +808,7 @@ export class TTSEngine {
       lawName: this.lastPlayOptions.lawName,
       articleNumber: this.lastPlayOptions.articleNumber,
       chunksTotal: this.chunks.length,
-      textLen: this.lastPlayOptions.text.length,
+      textLen: this.computeTotalTextLen(),
       voiceURI: chosen?.voiceURI ?? null,
       voiceName: chosen?.name ?? null,
       rate: this.rate,
@@ -719,4 +867,55 @@ export class TTSEngine {
   _debugTickWatchdog() {
     this.tickWatchdog()
   }
+}
+
+// ─── Helpers internos (puros) ─────────────────────────────────────────────
+
+/**
+ * Convierte las opciones del caller en sections normalizadas. Si vino solo
+ * `text` (modo legacy), creamos una única sección sin label.
+ */
+function buildSections(options: TTSPlayOptions): TTSSection[] {
+  if (options.sections && options.sections.length > 0) {
+    return options.sections
+  }
+  if (options.text) {
+    return [
+      {
+        id: options.articleNumber ?? '0',
+        label: options.articleNumber
+          ? `Artículo ${options.articleNumber}`
+          : options.lawName ?? 'Texto',
+        text: options.text,
+      },
+    ]
+  }
+  return []
+}
+
+function buildChunks(options: TTSPlayOptions): TTSChunkMeta[] {
+  if (options.sections && options.sections.length > 0) {
+    return prepareSectionsForSpeech(options.sections)
+  }
+  if (options.text) {
+    return prepareForSpeech(options.text).map((text) => ({
+      text,
+      sectionIdx: 0,
+    }))
+  }
+  return [{ text: '', sectionIdx: 0 }]
+}
+
+/**
+ * Clave estable del contenido. Para sections: concatenación de section ids
+ * + length de textos. Para text: el text directamente. Permite detectar
+ * "mismo contenido" para reanudar sin tener que comparar el texto entero.
+ */
+function computeContentKey(options: TTSPlayOptions): string {
+  if (options.sections && options.sections.length > 0) {
+    return options.sections
+      .map((s) => `${s.id}:${s.text.length}`)
+      .join('|')
+  }
+  return options.text ?? ''
 }

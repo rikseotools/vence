@@ -10,13 +10,22 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { TTSEngine, type TTSEngineCallbacks } from './engine'
-import type { TTSPlayOptions, TTSProgress, TTSState } from './types'
+import type {
+  TTSCurrentSection,
+  TTSPlayOptions,
+  TTSProgress,
+  TTSState,
+} from './types'
 
 interface UseTTSReturn {
   state: TTSState
   progress: TTSProgress
   /** True si el próximo play() reanuda desde la posición guardada. */
   canResume: boolean
+  /** Sección actual (artículo) — null si no hay sesión o el caller no pasó sections. */
+  currentSection: TTSCurrentSection | null
+  /** Nombre de la ley en curso. */
+  lawName: string | null
   /** Voces ES disponibles en el dispositivo. */
   voices: SpeechSynthesisVoice[]
   /** Voces totales (para diagnóstico). */
@@ -29,6 +38,13 @@ interface UseTTSReturn {
   stop: () => void
   setRate: (rate: number) => void
   setVoice: (voiceURI: string | null) => void
+  /** Navegación por sección/artículo. */
+  nextSection: () => void
+  previousSection: () => void
+  restartSection: () => void
+  restartLaw: () => void
+  /** Seek arrastrable: pct entre 0 y 1. */
+  seekPercent: (pct: number) => void
 }
 
 export function useTTS(callbacks: TTSEngineCallbacks = {}): UseTTSReturn {
@@ -48,6 +64,8 @@ export function useTTS(callbacks: TTSEngineCallbacks = {}): UseTTSReturn {
       state: 'idle' as TTSState,
       progress: { currentChunk: 0, totalChunks: 0, percent: 0 },
       canResume: false,
+      currentSection: null,
+      lawName: null,
     },
   )
 
@@ -111,10 +129,32 @@ export function useTTS(callbacks: TTSEngineCallbacks = {}): UseTTSReturn {
     engineRef.current?.setVoice(voiceURI)
   }, [])
 
+  const nextSection = useCallback(() => {
+    engineRef.current?.nextSection()
+  }, [])
+
+  const previousSection = useCallback(() => {
+    engineRef.current?.previousSection()
+  }, [])
+
+  const restartSection = useCallback(() => {
+    engineRef.current?.restartSection()
+  }, [])
+
+  const restartLaw = useCallback(() => {
+    engineRef.current?.restartLaw()
+  }, [])
+
+  const seekPercent = useCallback((pct: number) => {
+    engineRef.current?.seekPercent(pct)
+  }, [])
+
   return {
     state: snapshot.state,
     progress: snapshot.progress,
     canResume: snapshot.canResume,
+    currentSection: snapshot.currentSection,
+    lawName: snapshot.lawName,
     voices,
     voicesTotal,
     supported,
@@ -124,5 +164,10 @@ export function useTTS(callbacks: TTSEngineCallbacks = {}): UseTTSReturn {
     stop,
     setRate,
     setVoice,
+    nextSection,
+    previousSection,
+    restartSection,
+    restartLaw,
+    seekPercent,
   }
 }

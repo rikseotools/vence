@@ -130,6 +130,15 @@ export interface TTSUserActionMeta {
   toValue?: number | string | null
 }
 
+export interface TTSSeekMeta {
+  sessionId: string
+  method: 'next_section' | 'prev_section' | 'restart_section' | 'restart_law' | 'drag'
+  fromChunkIdx: number
+  toChunkIdx: number
+  fromSectionIdx: number
+  toSectionIdx: number
+}
+
 // Atajo: enriquecer metadata con browser context (siempre presente para
 // segmentar luego en SQL).
 function enrichMeta(
@@ -227,6 +236,14 @@ export const ttsTelemetry = {
     emitClientEvent({
       severity: 'debug',
       eventType: 'tts_user_action',
+      metadata: enrichMeta({ ...meta }),
+    })
+  },
+
+  seek(meta: TTSSeekMeta): void {
+    emitClientEvent({
+      severity: 'info',
+      eventType: 'tts_seek',
       metadata: enrichMeta({ ...meta }),
     })
   },

@@ -48,12 +48,16 @@ describe('ArticleTTS — UI pura sobre useTTS', () => {
     expect(SRC).not.toMatch(/function cleanText/)
   })
 
-  it('expone botones Escuchar/Continuar/Pausar/Parar + select de rate', () => {
+  it('expone botón inline Escuchar/Continuar (Pausar/Parar viven en el player flotante)', () => {
     expect(SRC).toMatch(/Escuchar/)
     expect(SRC).toMatch(/Continuar/)
-    expect(SRC).toMatch(/Pausar/)
-    expect(SRC).toMatch(/Parar/)
-    expect(SRC).toMatch(/<select/)
+    // El select de rate y los controles Pausar/Parar viven en
+    // TTSFloatingPlayer — ArticleTTS solo dispara el play inline.
+  })
+
+  it('integra TTSFloatingPlayer (controles flotantes)', () => {
+    expect(SRC).toMatch(/TTSFloatingPlayer/)
+    expect(SRC).toMatch(/from '@\/components\/tts\/TTSFloatingPlayer'/)
   })
 
   it('usa canResume para etiquetar el botón principal', () => {
@@ -152,16 +156,19 @@ describe('ArticleTTS — integración con temarios', () => {
     expect(missing).toEqual([])
   })
 
-  it('TTS recibe el texto concatenado de artículos', () => {
-    let found = false
+  it('TopicContentView pasa el array `articles` (no string concatenado)', () => {
+    // El refactor 2026-05-25 migró todos los TopicContentView a pasar
+    // el array rico de articles para que ArticleTTS pueda construir
+    // sections y mostrar "Artículo X / N" en el player flotante.
+    let foundLegacy = false
+    let foundNew = false
     for (const f of topicViews) {
       const content = fs.readFileSync(path.join(ROOT, f), 'utf-8')
-      if (content.includes('.map(a =>') && content.includes('.join(')) {
-        found = true
-        break
-      }
+      if (/ArticleTTS\s+text=/.test(content)) foundLegacy = true
+      if (/ArticleTTS\s+articles=/.test(content)) foundNew = true
     }
-    expect(found).toBe(true)
+    expect(foundLegacy).toBe(false)
+    expect(foundNew).toBe(true)
   })
 })
 

@@ -59,3 +59,47 @@ export function splitIntoChunks(text: string): string[] {
 export function prepareForSpeech(raw: string): string[] {
   return splitIntoChunks(cleanText(raw))
 }
+
+import type { TTSChunkMeta, TTSSection } from './types'
+
+/**
+ * Pipeline para secciones estructuradas. Cada sección se trocea por
+ * separado y los chunks resultantes se concatenan en una lista plana
+ * donde cada chunk lleva la sectionIdx a la que pertenece.
+ *
+ * Esto permite al engine navegar (next/prev section) sin perder la
+ * granularidad de chunk necesaria para evitar el bug de Chrome con
+ * utterances largos.
+ */
+export function prepareSectionsForSpeech(
+  sections: TTSSection[],
+): TTSChunkMeta[] {
+  const out: TTSChunkMeta[] = []
+  for (let i = 0; i < sections.length; i++) {
+    const chunks = splitIntoChunks(cleanText(sections[i].text))
+    for (const text of chunks) {
+      // Skip chunks vacíos para no quemar utterances que no dicen nada
+      if (text.trim().length === 0) continue
+      out.push({ text, sectionIdx: i })
+    }
+  }
+  // Garantía: al menos un chunk vacío si todo el input estaba vacío,
+  // así el engine no se cuelga en ciclo `0 >= 0`.
+  if (out.length === 0) {
+    out.push({ text: '', sectionIdx: 0 })
+  }
+  return out
+}
+
+/**
+ * Encuentra el índice del PRIMER chunk de una sección. Útil para seek
+ * a "next/prev section" / "restart section".
+ *
+ * @returns chunk index, o -1 si no existe esa sección.
+ */
+export function firstChunkOfSection(
+  chunks: TTSChunkMeta[],
+  sectionIdx: number,
+): number {
+  return chunks.findIndex((c) => c.sectionIdx === sectionIdx)
+}

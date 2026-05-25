@@ -120,3 +120,75 @@ describe('prepareForSpeech (pipeline)', () => {
     expect(chunks.join(' ')).not.toContain('#')
   })
 })
+
+import {
+  firstChunkOfSection,
+  prepareSectionsForSpeech,
+} from '@/lib/tts/chunker'
+
+describe('prepareSectionsForSpeech', () => {
+  it('chunkea cada sección y conserva sectionIdx en cada chunk', () => {
+    const sections = [
+      { id: '1', label: 'Art 1', text: 'Frase uno. Frase dos.' },
+      { id: '2', label: 'Art 2', text: 'Otra frase. Y otra más.' },
+    ]
+    const chunks = prepareSectionsForSpeech(sections)
+    expect(chunks.length).toBeGreaterThanOrEqual(2)
+    // El primer chunk debe pertenecer a la sección 0
+    expect(chunks[0].sectionIdx).toBe(0)
+    // Algún chunk debe pertenecer a la sección 1
+    expect(chunks.some((c) => c.sectionIdx === 1)).toBe(true)
+  })
+
+  it('cada chunk pertenece a exactamente una sección (no hay solape)', () => {
+    const sections = [
+      { id: '1', label: 'Art 1', text: 'Primera ley larga con mucho texto. Más frases para forzar chunks.' },
+      { id: '2', label: 'Art 2', text: 'Segunda ley. Otra frase. Final.' },
+    ]
+    const chunks = prepareSectionsForSpeech(sections)
+    // Las sectionIdx deben ser monótonas (porque cada sección se procesa entera antes de la siguiente)
+    let prev = -1
+    for (const c of chunks) {
+      expect(c.sectionIdx).toBeGreaterThanOrEqual(prev)
+      prev = c.sectionIdx
+    }
+  })
+
+  it('secciones vacías no producen chunks vacíos', () => {
+    const sections = [
+      { id: '1', label: 'Art 1', text: 'Contenido real.' },
+      { id: '2', label: 'Art 2 vacío', text: '' },
+      { id: '3', label: 'Art 3', text: 'Más contenido.' },
+    ]
+    const chunks = prepareSectionsForSpeech(sections)
+    for (const c of chunks) {
+      expect(c.text.length).toBeGreaterThan(0)
+    }
+  })
+
+  it('input completamente vacío devuelve un chunk vacío (no rompe)', () => {
+    const chunks = prepareSectionsForSpeech([])
+    expect(chunks.length).toBe(1)
+    expect(chunks[0].text).toBe('')
+  })
+})
+
+describe('firstChunkOfSection', () => {
+  it('encuentra el primer chunk de cada sección', () => {
+    const chunks = [
+      { text: 'a', sectionIdx: 0 },
+      { text: 'b', sectionIdx: 0 },
+      { text: 'c', sectionIdx: 1 },
+      { text: 'd', sectionIdx: 2 },
+      { text: 'e', sectionIdx: 2 },
+    ]
+    expect(firstChunkOfSection(chunks, 0)).toBe(0)
+    expect(firstChunkOfSection(chunks, 1)).toBe(2)
+    expect(firstChunkOfSection(chunks, 2)).toBe(3)
+  })
+
+  it('devuelve -1 si la sección no existe', () => {
+    const chunks = [{ text: 'a', sectionIdx: 0 }]
+    expect(firstChunkOfSection(chunks, 99)).toBe(-1)
+  })
+})

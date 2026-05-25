@@ -1,19 +1,30 @@
 'use client'
 // components/ArticleTTS.tsx — Botón "Escuchar" para leyes del temario.
 //
-// Capa de UI sobre `lib/tts/useTTS`. Toda la lógica (state machine, watchdog,
-// chain, telemetría) vive en `lib/tts/*` — aquí sólo renderizamos botones,
-// dropdowns y el panel de diagnóstico, y notificamos al chain context.
+// Recibe el array de artículos crudo y construye internamente sections para
+// el engine TTS. Cuando arranca la reproducción se monta un
+// TTSFloatingPlayer global (portal a <body>) con todos los controles
+// (prev/next artículo, restart, drag-seek, X cierra).
 //
-// Persistencia local: rate + voiceURI en localStorage.
+// La capa de UI es delgada: toda la lógica vive en `lib/tts/*`.
+// La sesión TTS persiste localStorage de rate + voiceURI.
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTTS } from '@/lib/tts/useTTS'
 import { ChainModeToggle, useTTSChain } from '@/components/tts/TTSChainContext'
+import { TTSFloatingPlayer } from '@/components/tts/TTSFloatingPlayer'
+import type { TTSSection } from '@/lib/tts/types'
+
+interface ArticleLike {
+  articleNumber: string
+  title?: string | null
+  content: string | null
+}
 
 interface ArticleTTSProps {
-  text: string
-  articleNumber?: string
+  /** Array de artículos. Cada artículo con `content` se convierte en una sección. */
+  articles: ArticleLike[]
+  /** Nombre de la ley para mostrar al usuario y para telemetría. */
   lawName?: string
 }
 
@@ -21,7 +32,7 @@ const RATE_OPTIONS = [0.25, 0.5, 0.75, 1.0, 1.25, 1.5]
 const TTS_RATE_STORAGE_KEY = 'vence_tts_rate'
 const TTS_VOICE_STORAGE_KEY = 'vence_tts_voice_uri'
 
-export default function ArticleTTS({ text, articleNumber, lawName }: ArticleTTSProps) {
+export default function ArticleTTS({ articles, lawName }: ArticleTTSProps) {
   const chain = useTTSChain()
   const componentIdRef = useRef<string>('')
   if (componentIdRef.current === '') {
@@ -30,6 +41,20 @@ export default function ArticleTTS({ text, articleNumber, lawName }: ArticleTTSP
         ? crypto.randomUUID()
         : `tts-${Math.random().toString(36).slice(2)}-${Date.now()}`
   }
+
+  // Construir sections desde articles. Filtramos los sin contenido para no
+  // generar utterances vacíos que disparan natural_end inmediato.
+  const sections: TTSSection[] = useMemo(() => {
+    return articles
+      .filter((a) => a.content && a.content.trim().length > 0)
+      .map((a) => ({
+        id: a.articleNumber,
+        label: a.title
+          ? `Artículo ${a.articleNumber} — ${a.title}`
+          : `Artículo ${a.articleNumber}`,
+        text: `Artículo ${a.articleNumber}. ${a.content}`,
+      }))
+  }, [articles])
 
   const [rate, setRate] = useState(1.0)
   const [voiceURI, setVoiceURI] = useState<string | null>(null)
@@ -50,7 +75,6 @@ export default function ArticleTTS({ text, articleNumber, lawName }: ArticleTTSP
     }
   }, [])
 
-  // chainNotifyRef para que el callback onNaturalEnd no caduque.
   const chainNotifyRef = useRef<((id: string) => void) | null>(null)
   useEffect(() => {
     chainNotifyRef.current = chain?.notifyEnded ?? null
@@ -62,14 +86,19 @@ export default function ArticleTTS({ text, articleNumber, lawName }: ArticleTTSP
     },
   })
 
-  // Aplicar cambio de rate / voz al engine cuando el state local cambia.
-  // Destructuramos para que el dep array sea estable (setRate/setVoice son
-  // useCallback con deps [] en useTTS). Si dependemos del objeto `tts`
-  // entero, el efecto se dispara en cada render del hook → spam de
-  // setRate(mismo) / setVoice(mismo) que en producción cancelaba el chunk
-  // recién lanzado. El engine también tiene short-circuit, pero esto evita
-  // la llamada de raíz.
-  const { setRate: ttsSetRate, setVoice: ttsSetVoice, play: ttsPlay } = tts
+  // Destructuramos para deps estables (cada función es useCallback con deps []).
+  const {
+    setRate: ttsSetRate,
+    setVoice: ttsSetVoice,
+    play: ttsPlay,
+    pause: ttsPause,
+    resume: ttsResume,
+    stop: ttsStop,
+    nextSection,
+    previousSection,
+    restartLaw,
+    seekPercent,
+  } = tts
 
   useEffect(() => {
     ttsSetRate(rate)
@@ -80,36 +109,43 @@ export default function ArticleTTS({ text, articleNumber, lawName }: ArticleTTSP
   }, [voiceURI, ttsSetVoice])
 
   const play = useCallback(() => {
-    ttsPlay({ text, rate, voiceURI, lawName, articleNumber })
-  }, [ttsPlay, text, rate, voiceURI, lawName, articleNumber])
+    ttsPlay({ sections, rate, voiceURI, lawName })
+  }, [ttsPlay, sections, rate, voiceURI, lawName])
 
-  // Registrar esta instancia con el chain — el chain llamará a playRef.current
-  // cuando la ley anterior termine natural en modo "todo el tema".
   const playRef = useRef(play)
   useEffect(() => {
     playRef.current = play
   }, [play])
 
+  // Registrar la instancia con el chain.
   useEffect(() => {
     if (!chain) return
     return chain.register(componentIdRef.current, () => playRef.current())
   }, [chain])
 
-  if (!tts.supported || !text) return null
+  if (!tts.supported || sections.length === 0) return null
 
-  const { state, progress, canResume, voices, voicesTotal } = tts
-  const isPlayingNow = state === 'playing' || state === 'loading_voices'
+  const { state, canResume, voices, voicesTotal } = tts
+  const isActivelyPlaying = state === 'playing' || state === 'loading_voices'
   const isPausedNow = state === 'paused'
+  const showInline = !isActivelyPlaying && !isPausedNow
   const isFirstInChain = chain?.firstId === componentIdRef.current
 
   const handlePlayClick = () => {
-    // Verificar voces ANTES de llamar al engine. Si no hay, abrir diagnóstico.
     if (voices.length === 0) {
       setShowDiag(true)
       return
     }
     setShowDiag(false)
     play()
+  }
+
+  const handlePlayPauseFloating = () => {
+    if (isPausedNow) {
+      ttsResume()
+    } else {
+      ttsPause()
+    }
   }
 
   const handleRateChange = (newRate: number) => {
@@ -134,7 +170,7 @@ export default function ArticleTTS({ text, articleNumber, lawName }: ArticleTTSP
     }
   }
 
-  const primaryButtonLabel = canResume ? 'Continuar' : 'Escuchar'
+  const primaryLabel = canResume ? 'Continuar' : 'Escuchar'
 
   return (
     <div className="no-print">
@@ -143,92 +179,56 @@ export default function ArticleTTS({ text, articleNumber, lawName }: ArticleTTSP
           <ChainModeToggle />
         </div>
       )}
-      <div className="inline-flex items-center gap-1">
-        {!isPlayingNow && !isPausedNow && (
-          <>
-            <button
-              onClick={handlePlayClick}
-              className="inline-flex items-center px-2 py-1 text-xs font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded transition-colors"
-              title={`${primaryButtonLabel} ${lawName || ''}`}
-            >
-              <svg className="w-3.5 h-3.5 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" />
-              </svg>
-              {primaryButtonLabel}
-            </button>
-            <button
-              onClick={() => setShowDiag((v) => !v)}
-              className="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-gray-200 rounded border border-transparent hover:border-gray-300 dark:hover:border-gray-600 transition-all"
-              title="Configurar voz"
-            >
-              <svg className="w-3.5 h-3.5 sm:mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              <span className="hidden sm:inline">Configurar</span>
-            </button>
-            {!showDiag && (
-              <span className="text-xs text-gray-500 dark:text-gray-400 ml-1 hidden sm:inline">
-                🔊 Aprovecha el transporte, conducción, gimnasio, paseos, deporte y rutinas diarias para escuchar las leyes — todo suma
-              </span>
-            )}
-          </>
-        )}
-
-        {(isPlayingNow || isPausedNow) && (
-          <>
-            {isPlayingNow ? (
-              <button
-                onClick={tts.pause}
-                className="inline-flex items-center px-2 py-1 text-xs font-medium text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-900/50 rounded transition-colors"
-                title="Pausar"
-              >
-                <svg className="w-3.5 h-3.5 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                </svg>
-                Pausar
-              </button>
-            ) : (
-              <button
-                onClick={tts.resume}
-                className="inline-flex items-center px-2 py-1 text-xs font-medium text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-900/30 hover:bg-green-100 dark:hover:bg-green-900/50 rounded transition-colors"
-                title="Continuar"
-              >
-                <svg className="w-3.5 h-3.5 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" />
-                </svg>
-                Continuar
-              </button>
-            )}
-            <button
-              onClick={tts.stop}
-              className="inline-flex items-center px-2 py-1 text-xs font-medium text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 rounded transition-colors"
-              title="Parar"
-            >
-              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clipRule="evenodd" />
-              </svg>
-            </button>
-            <select
-              value={rate}
-              onChange={(e) => handleRateChange(parseFloat(e.target.value))}
-              className="px-1.5 py-1 text-xs font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors border-0 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              title="Velocidad de lectura"
-            >
-              {RATE_OPTIONS.map((r) => (
-                <option key={r} value={r}>
-                  {r}x
-                </option>
-              ))}
-            </select>
-            <span className="text-xs text-gray-500 dark:text-gray-400 ml-1 tabular-nums">
-              {progress.percent}%
+      {showInline && (
+        <div className="inline-flex items-center gap-1">
+          <button
+            onClick={handlePlayClick}
+            className="inline-flex items-center px-2 py-1 text-xs font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded transition-colors"
+            title={`${primaryLabel} ${lawName || ''}`}
+          >
+            <svg className="w-3.5 h-3.5 mr-1" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" />
+            </svg>
+            {primaryLabel}
+          </button>
+          <button
+            onClick={() => setShowDiag((v) => !v)}
+            className="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-gray-200 rounded border border-transparent hover:border-gray-300 dark:hover:border-gray-600 transition-all"
+            title="Configurar voz"
+          >
+            <svg className="w-3.5 h-3.5 sm:mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <span className="hidden sm:inline">Configurar</span>
+          </button>
+          {!showDiag && (
+            <span className="text-xs text-gray-500 dark:text-gray-400 ml-1 hidden sm:inline">
+              🔊 Aprovecha el transporte, conducción, gimnasio, paseos, deporte y rutinas diarias para escuchar las leyes — todo suma
             </span>
-          </>
-        )}
-      </div>
+          )}
+        </div>
+      )}
 
-      {showDiag && (
+      {/* Player flotante en portal — solo el componente activo lo renderiza,
+          porque visibilidad depende del state de su propio engine. */}
+      <TTSFloatingPlayer
+        state={state}
+        progress={tts.progress}
+        currentSection={tts.currentSection}
+        lawName={tts.lawName}
+        rate={rate}
+        rateOptions={RATE_OPTIONS}
+        onRateChange={handleRateChange}
+        onPlayPause={handlePlayPauseFloating}
+        onStop={ttsStop}
+        onNextSection={nextSection}
+        onPreviousSection={previousSection}
+        onRestartLaw={restartLaw}
+        onSeek={seekPercent}
+      />
+
+      {showDiag && showInline && (
         <div className="mt-2 p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-xs space-y-2">
           <div className="font-semibold text-gray-700 dark:text-gray-300">Configuración de voz</div>
 

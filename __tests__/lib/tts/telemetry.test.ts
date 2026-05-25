@@ -206,6 +206,25 @@ describe('ttsTelemetry', () => {
     expect(call.metadata?.toValue).toBe(1.5)
   })
 
+  it('seek emite info con método y from/to (chunk + section)', () => {
+    ttsTelemetry.seek({
+      sessionId: 'sess-1',
+      method: 'next_section',
+      fromChunkIdx: 2,
+      toChunkIdx: 5,
+      fromSectionIdx: 0,
+      toSectionIdx: 1,
+    })
+    const call = mockEmit.mock.calls[0][0]
+    expect(call.severity).toBe('info')
+    expect(call.eventType).toBe('tts_seek')
+    expect(call.metadata?.method).toBe('next_section')
+    expect(call.metadata?.fromChunkIdx).toBe(2)
+    expect(call.metadata?.toChunkIdx).toBe(5)
+    expect(call.metadata?.fromSectionIdx).toBe(0)
+    expect(call.metadata?.toSectionIdx).toBe(1)
+  })
+
   it('todos los eventos incluyen browser e isMobile en metadata', () => {
     ttsTelemetry.unsupported()
     ttsTelemetry.chunkSkip({

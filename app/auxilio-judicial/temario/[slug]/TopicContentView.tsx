@@ -382,7 +382,7 @@ function LawSection({ lawData, isExpanded, onToggle, isFirst }: LawSectionProps)
 
       {/* Enlace a test - siempre visible */}
       <div className="no-print flex items-center justify-between mt-1 -mb-1 px-1">
-        <ArticleTTS text={articles.filter(a => a.content).map(a => "Artículo " + a.articleNumber + ". " + (a.content || "")).join("\n\n")} articleNumber="" lawName={law.shortName} />
+        <ArticleTTS articles={articles} lawName={law.shortName} />
         <Link
           href={`/leyes/${getSlug(law.shortName)}`}
           className="text-sm text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 hover:underline"

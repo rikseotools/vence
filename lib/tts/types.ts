@@ -43,12 +43,55 @@ export interface TTSProgress {
   percent: number // 0-100, redondeado
 }
 
-export interface TTSPlayOptions {
+/**
+ * Sección reproducible. En el contexto del temario, cada artículo es una
+ * sección. El engine usa esto para soportar navegación (next/prev/restart
+ * por artículo) y mostrar al usuario por dónde va.
+ */
+export interface TTSSection {
+  /** Identificador estable — típicamente articleNumber. */
+  id: string
+  /** Etiqueta para mostrar al usuario: "Artículo 5", "Disposición Adicional 2ª", etc. */
+  label: string
+  /** Texto a sintetizar. Suele incluir el prefijo "Artículo X." para que se oiga. */
   text: string
+}
+
+/** Metadata de un chunk procesable por el motor. */
+export interface TTSChunkMeta {
+  /** Texto del chunk (≤ MAX_CHUNK_LENGTH chars). */
+  text: string
+  /** Índice de la sección a la que pertenece este chunk. */
+  sectionIdx: number
+}
+
+/** Estado de la sección actualmente reproducida — derivado de currentChunkIdx. */
+export interface TTSCurrentSection {
+  /** Índice de la sección actual (0-indexed). */
+  idx: number
+  /** Label visible al usuario. */
+  label: string
+  /** Total de secciones. */
+  total: number
+}
+
+export interface TTSPlayOptions {
+  /**
+   * Texto plano. Para back-compat con el uso antiguo donde la ley
+   * llegaba como string concatenado. Si se pasa `sections`, este campo
+   * se ignora. Si se pasa solo `text`, el motor crea una única sección.
+   */
+  text?: string
+  /**
+   * Secciones estructuradas (preferido). Cada artículo = una sección.
+   * Habilita navegación next/prev y display "Artículo X / N".
+   */
+  sections?: TTSSection[]
   rate: number
   voiceURI?: string | null
-  /** Para telemetría — identificación de la ley/artículo siendo leído. */
+  /** Para telemetría — identificación de la ley siendo leída. */
   lawName?: string
+  /** Para telemetría — sólo tiene sentido en el modo legacy `text`. */
   articleNumber?: string
 }
 

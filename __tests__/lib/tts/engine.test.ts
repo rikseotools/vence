@@ -309,4 +309,78 @@ describe('TTSEngine', () => {
     eng.play({ text: 'Otra frase.', rate: 1 })
     expect(eng._debugState().destroyed).toBe(true)
   })
+
+  describe('Navegación por sections (artículos)', () => {
+    const SECTIONS = [
+      { id: '1', label: 'Artículo 1', text: 'Frase uno. Frase dos. Frase tres.' },
+      { id: '2', label: 'Artículo 2', text: 'Otra frase larga. Y otra más para forzar varios chunks aquí.' },
+      { id: '3', label: 'Artículo 3', text: 'Tercer artículo bien sencillo. Final.' },
+    ]
+
+    it('snapshot expone currentSection cuando se reproduce con sections', () => {
+      const eng = new TTSEngine()
+      eng.play({ sections: SECTIONS, rate: 1, lawName: 'Test Law' })
+      const snap = eng.getSnapshot()
+      expect(snap.currentSection).not.toBeNull()
+      expect(snap.currentSection?.idx).toBe(0)
+      expect(snap.currentSection?.label).toBe('Artículo 1')
+      expect(snap.currentSection?.total).toBe(3)
+      expect(snap.lawName).toBe('Test Law')
+      eng.destroy()
+    })
+
+    it('nextSection() salta al primer chunk de la siguiente sección', () => {
+      const eng = new TTSEngine()
+      eng.play({ sections: SECTIONS, rate: 1 })
+      expect(eng.getSnapshot().currentSection?.idx).toBe(0)
+      eng.nextSection()
+      expect(eng.getSnapshot().currentSection?.idx).toBe(1)
+      eng.nextSection()
+      expect(eng.getSnapshot().currentSection?.idx).toBe(2)
+      // En la última no avanza
+      eng.nextSection()
+      expect(eng.getSnapshot().currentSection?.idx).toBe(2)
+      eng.destroy()
+    })
+
+    it('previousSection() retrocede a la sección anterior', () => {
+      const eng = new TTSEngine()
+      eng.play({ sections: SECTIONS, rate: 1 })
+      eng.nextSection()
+      eng.nextSection()
+      expect(eng.getSnapshot().currentSection?.idx).toBe(2)
+      eng.previousSection()
+      expect(eng.getSnapshot().currentSection?.idx).toBe(1)
+      eng.destroy()
+    })
+
+    it('restartLaw() vuelve al chunk 0', () => {
+      const eng = new TTSEngine()
+      eng.play({ sections: SECTIONS, rate: 1 })
+      eng.nextSection()
+      eng.nextSection()
+      expect(eng._debugState().currentChunkIdx).toBeGreaterThan(0)
+      eng.restartLaw()
+      expect(eng._debugState().currentChunkIdx).toBe(0)
+      eng.destroy()
+    })
+
+    it('seekPercent(0.5) salta a ~mitad de chunks', () => {
+      const eng = new TTSEngine()
+      eng.play({ sections: SECTIONS, rate: 1 })
+      const totalChunks = (eng.getSnapshot().progress.totalChunks)
+      eng.seekPercent(0.5)
+      const after = eng._debugState().currentChunkIdx
+      expect(after).toBe(Math.floor(0.5 * totalChunks))
+      eng.destroy()
+    })
+
+    it('back-compat: play({text}) crea una única sección', () => {
+      const eng = new TTSEngine()
+      eng.play({ text: 'Hola mundo. Frase dos.', rate: 1 })
+      const snap = eng.getSnapshot()
+      expect(snap.currentSection?.total).toBe(1)
+      eng.destroy()
+    })
+  })
 })
