@@ -275,7 +275,13 @@ ECS Fargate sería mejor si Vence fuera SaaS B2B con carga constante 24/7. No es
 ##### Sub-pasos atómicos (replan)
 
 - **E.0** ✅ Rollback del intento ECS previo. Revert del commit Dockerfile + cleanup AWS (ECR `vence-frontend` borrado, IAM grant retirado del `ci-deploy`).
-- **E.1-SST** ⏳ `npx sst@latest init` en raíz del repo → `sst.config.ts` mínimo. AWS provider perfil `vence` cuenta `349744179687` región `eu-west-2`. OpenNext preset Next.js 16.
+- **E.1-SST** 🟡 EN CURSO 2026-05-25:
+  - Upgrade `next` 16.2.1 → 16.2.6 (requisito de OpenNext 4.0.2 peerDep `>=16.2.6`). Patch update, sin breaking changes. TypeCheck + tests críticos (storage, security, adaptive-difficulty) verdes.
+  - `npx sst@latest init --yes` ejecutado. Generó `sst.config.ts` mínimo, modificó `tsconfig.json` para excluir el config de TS check, añadió `sst` como dep.
+  - `sst.config.ts` reescrito con: provider AWS perfil `vence` región `eu-west-2`, removal `retain` solo en production, protect production, construct `sst.aws.Nextjs("VenceFrontend")` con `environment` mapeando todos los secrets desde `process.env` (compatibles con runtime Lambda), `warm: 20` en production (mitiga cold starts).
+  - Domain `preview-aws.vence.es` comentado — se activará en E.2/E.3 cuando se valide el primer deploy.
+  - `sst install` OK (providers descargados).
+  - **Pendiente:** primer `sst deploy --stage preview` (crea CloudFront + Lambda + S3 ISR cache, ~5-10 min, ~$0 hasta tráfico). Requiere confirmación del user porque crea recursos AWS reales.
 - **E.2-SST** ⏳ `sst deploy --stage preview` → primer deploy a un subdominio `preview-aws.vence.es`. Sin tráfico real. Validar build local + smoke.
 - **E.3-SST** ⏳ Soak preview 3-7 días. Validar Web Vitals (Sentry browserTracing), Sentry Issues, observable_events. Comparar p50/p95/p99 vs Vercel baseline. Cold starts <300ms con SnapStart o ARM. **Activar `warm: 20` o similar en el `Nextjs` construct de SST** (mantiene N Lambdas calientes con ping periódico cada 5min, coste ~$1-3/mes, elimina cold starts en horas valle — recomendado en foros SST para apps con tráfico desigual como oposiciones).
 - **E.4-SST** ⏳ Configurar CloudFront: cache estáticos largo, ISR tag-based invalidation, behaviors para `/api/*` (sin cache).
