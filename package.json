@@ -30,7 +30,15 @@
     "test:system": "node scripts/check-system.js",
     "test:unit": "jest --watchAll=false --passWithNoTests --testPathIgnorePatterns='/node_modules/' --testPathIgnorePatterns='__tests__/integration' --testPathIgnorePatterns='__tests__/perf' --testPathIgnorePatterns='__tests__/security' --testPathIgnorePatterns='__tests__/scraping' --testPathIgnorePatterns='__tests__/api/user-stats'",
     "test:watch": "jest --watch",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:e2e": "playwright test",
+    "test:e2e:preview": "playwright test --project=preview-aws",
+    "test:e2e:prod": "playwright test --project=prod-vercel",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:debug": "playwright test --debug",
+    "test:e2e:report": "playwright show-report",
+    "test:e2e:install": "playwright install chromium"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
@@ -76,6 +84,7 @@
     "@babel/preset-typescript": "^7.28.5",
     "@eslint/eslintrc": "^3",
     "@jest/globals": "^29.7.0",
+    "@playwright/test": "^1.60.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",

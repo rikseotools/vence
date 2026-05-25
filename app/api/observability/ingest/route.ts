@@ -40,6 +40,9 @@ export const maxDuration = 10
 const ALLOWED_ORIGINS = [
   'https://www.vence.es',
   'https://vence.es',
+  // Bloque 5 Fase E.3 — preview en AWS (cutover en curso). Cuando E.7
+  // apague Vercel, este origin será el único.
+  'https://preview-aws.vence.es',
 ] as const
 
 function isAllowedClientOrigin(originHeader: string | null): boolean {
