@@ -48,19 +48,50 @@ export function classifyError(error: unknown): 'timeout' | 'network' | 'db_conne
 /**
  * Persiste un error de validación en la BD.
  * Fire-and-forget: NUNCA lanza excepciones, NUNCA bloquea al caller.
+ *
+ * Usar para 4xx (volumen alto, pérdida ocasional aceptable).
+ * Para 5xx preferir [logValidationErrorAwait] — el caller debe awaitar
+ * para garantizar persistencia antes de que Vercel suspenda la lambda
+ * al `return response`.
  */
 export function logValidationError(input: ValidationErrorLogInput): void {
   // No loguear errores en desarrollo local — solo ruido
   if (DEPLOY_VERSION === 'local') return
 
   // Ejecutar async sin await — fire-and-forget
-  _insertLog(input).catch((err) => {
+  _insertLog(input).catch(_logInsertFailure(input))
+}
+
+/**
+ * Variante AWAITABLE para 5xx: garantiza que el INSERT completa antes
+ * de que Vercel suspenda la lambda al `return response`. Sin esto, los
+ * logs de 500/503/504 capturados por el handler (try/catch que devuelve
+ * NextResponse con status>=500) se pierden si el INSERT no termina antes
+ * del fin de la lambda — observado 2026-05-25 con statement_timeout en
+ * /api/v2/admin/unread-sales que NO llegó a validation_error_logs.
+ *
+ * Nunca lanza: errores del propio logger solo van a console.error.
+ * Coste: +5-20ms en el response del 5xx (aceptable, ya estás devolviendo
+ * error al cliente).
+ */
+export async function logValidationErrorAwait(input: ValidationErrorLogInput): Promise<void> {
+  if (DEPLOY_VERSION === 'local') return
+  try {
+    await _insertLog(input)
+  } catch (err) {
+    _logInsertFailure(input)(err)
+  }
+}
+
+function _logInsertFailure(input: ValidationErrorLogInput) {
+  return (err: unknown) => {
     // Si falla el logging mismo, solo console (no queremos loops).
     // Drizzle wrappea el error postgres-js, así que message es genérico
     // ("Failed query: insert..."); el detalle real está en err.cause.
-    const cause = err?.cause
+    const e = err as { message?: string; cause?: { message?: string; code?: string; detail?: string; column?: string; constraint?: string } }
+    const cause = e?.cause
     console.error('⚠️ [validation-error-log] No se pudo guardar error log:', {
-      message: err?.message?.slice(0, 200),
+      message: e?.message?.slice(0, 200),
       causeMessage: cause?.message,
       causeCode: cause?.code,
       causeDetail: cause?.detail,
@@ -70,7 +101,7 @@ export function logValidationError(input: ValidationErrorLogInput): void {
       errorType: input.errorType,
       severity: input.severity,
     })
-  })
+  }
 }
 
 async function _insertLog(input: ValidationErrorLogInput): Promise<void> {

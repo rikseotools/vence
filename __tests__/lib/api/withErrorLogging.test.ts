@@ -52,8 +52,12 @@ describe('withErrorLogging — source code', () => {
     expect(content).toMatch(/body\?\.userId/)
   })
 
-  it('no usa await con logValidationError (fire-and-forget)', () => {
-    expect(content).not.toMatch(/await logValidationError/)
+  it('4xx fire-and-forget, 5xx awaitable (política 2026-05-25)', () => {
+    // 4xx: logValidationError sin await (volumen alto, pérdida aceptable).
+    // 5xx: logValidationErrorAwait con await (garantiza persistencia antes
+    // de que Vercel suspenda la lambda — sin esto perdimos logs 500 reales).
+    expect(content).not.toMatch(/await logValidationError\(/)
+    expect(content).toMatch(/await logValidationErrorAwait\(/)
   })
 
   it('devuelve 500 genérico en errores no manejados', () => {

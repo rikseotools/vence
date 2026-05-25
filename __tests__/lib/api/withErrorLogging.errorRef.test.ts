@@ -9,17 +9,22 @@
 
 process.env.VERCEL_GIT_COMMIT_SHA = 'abcdef12' // force non-local so logValidationError no-ops check passes
 
-// Mock fire-and-forget logger
+// Mock loggers. Política 2026-05-25:
+//   - logValidationError      → fire-and-forget para 4xx
+//   - logValidationErrorAwait → awaitable para 5xx (garantiza persistencia
+//     antes del fin de la lambda)
 jest.mock('@/lib/api/validation-error-log', () => ({
   logValidationError: jest.fn(),
+  logValidationErrorAwait: jest.fn(async () => {}),
   classifyError: jest.fn(() => 'unknown'),
 }))
 
 import { NextResponse } from 'next/server'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
-import { logValidationError } from '@/lib/api/validation-error-log'
+import { logValidationError, logValidationErrorAwait } from '@/lib/api/validation-error-log'
 
 const mockLog = logValidationError as jest.Mock
+const mockLogAwait = logValidationErrorAwait as jest.Mock
 
 function makeRequest(method = 'POST', body: unknown = {}): Request {
   return new Request('https://www.vence.es/api/test', {
@@ -34,6 +39,7 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 describe('withErrorLogging — errorRef injection', () => {
   beforeEach(() => {
     mockLog.mockClear()
+    mockLogAwait.mockClear()
   })
 
   test('5xx desde handler: inyecta errorRef en body y en log', async () => {
@@ -51,8 +57,9 @@ describe('withErrorLogging — errorRef injection', () => {
     expect(body.errorCode).toBe('db_error')
     expect(body.errorRef).toMatch(UUID_REGEX)
 
-    expect(mockLog).toHaveBeenCalledTimes(1)
-    const logged = mockLog.mock.calls[0][0]
+    expect(mockLogAwait).toHaveBeenCalledTimes(1)
+    expect(mockLog).not.toHaveBeenCalled()
+    const logged = mockLogAwait.mock.calls[0][0]
     expect(logged.id).toBe(body.errorRef)
     expect(logged.severity).toBe('critical')
     expect(logged.httpStatus).toBe(500)
@@ -104,8 +111,9 @@ describe('withErrorLogging — errorRef injection', () => {
     expect(body.error).toBe('Error interno del servidor')
     expect(body.errorRef).toMatch(UUID_REGEX)
 
-    expect(mockLog).toHaveBeenCalledTimes(1)
-    const logged = mockLog.mock.calls[0][0]
+    expect(mockLogAwait).toHaveBeenCalledTimes(1)
+    expect(mockLog).not.toHaveBeenCalled()
+    const logged = mockLogAwait.mock.calls[0][0]
     expect(logged.id).toBe(body.errorRef)
     expect(logged.severity).toBe('critical')
     expect(logged.errorMessage).toBe('unexpected boom')

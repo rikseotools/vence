@@ -70,9 +70,13 @@ describe('withErrorLogging wrapper — source code', () => {
     expect(content).toMatch(/request\.clone\(\)\.json\(\)/)
   })
 
-  it('es fire-and-forget (no await logValidationError)', () => {
-    // logValidationError ya es fire-and-forget por diseño
-    expect(content).not.toMatch(/await logValidationError/)
+  it('4xx fire-and-forget, 5xx awaitable', () => {
+    // Política 2026-05-25: para 4xx (volumen alto) seguimos fire-and-forget,
+    // pero para 5xx usamos logValidationErrorAwait para garantizar persistencia
+    // antes de que Vercel suspenda la lambda al `return response`. Sin esto se
+    // perdieron logs de 500 en /api/v2/admin/unread-sales el 2026-05-25.
+    expect(content).not.toMatch(/await logValidationError\(/)  // sin "Await" prohibido
+    expect(content).toMatch(/await logValidationErrorAwait\(/)  // variante 5xx obligatoria
   })
 })
 

@@ -7,7 +7,7 @@
 import { NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
 import * as Sentry from '@sentry/nextjs'
-import { logValidationError, classifyError } from '@/lib/api/validation-error-log'
+import { logValidationError, logValidationErrorAwait, classifyError } from '@/lib/api/validation-error-log'
 
 const DEPLOY_VERSION = process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 8) || 'local'
 
@@ -158,7 +158,7 @@ export function withErrorLogging(endpoint: string, handler: RouteHandler): Route
           || (responseBody?.userId as string)
           || undefined
 
-        logValidationError({
+        const logInput = {
           id: errorRef,
           endpoint,
           errorType: response.status >= 500 ? 'unknown' : classifyHttpStatus(response.status),
@@ -170,7 +170,17 @@ export function withErrorLogging(endpoint: string, handler: RouteHandler): Route
           httpStatus: response.status,
           durationMs: Date.now() - startTime,
           userAgent,
-        })
+        }
+        // 5xx: awaitar para garantizar persistencia antes de que Vercel
+        // suspenda la lambda al `return response`. Sin esto se pierden los
+        // logs de 500/503 capturados por try/catch del handler — observado
+        // 2026-05-25 con statement_timeout en /api/v2/admin/unread-sales.
+        // 4xx: fire-and-forget — volumen alto, pérdida ocasional aceptable.
+        if (response.status >= 500) {
+          await logValidationErrorAwait(logInput)
+        } else {
+          logValidationError(logInput)
+        }
 
         // Bloque 4 — enriquecer Sentry con tags + userId. Solo para 5xx
         // (4xx típicamente son comportamiento esperado: 401/403/404/429).
@@ -203,7 +213,8 @@ export function withErrorLogging(endpoint: string, handler: RouteHandler): Route
       const throwUserId = (body?.userId as string) || undefined
       const throwErrorMessage = error instanceof Error ? error.message : String(error)
 
-      logValidationError({
+      // 5xx por throw: awaitar (ver justificación arriba en bloque 4xx/5xx).
+      await logValidationErrorAwait({
         id: errorRef,
         endpoint,
         errorType: classifyError(error),
