@@ -267,10 +267,11 @@ git push origin main
 ### 📡 Observabilidad (manual completo)
 - **Manual:** `docs/runbooks/observability.md`
 - **Cuándo consultarlo:** al añadir un nuevo writer (cron, endpoint, handler), al diseñar dashboards/alertas, al investigar incidente, o cuando se pregunte sobre client-side errors / SLOs / tracing.
-- **Estado actual (2026-05-25):** MVP — tabla `observable_events` + writers Vercel/Fargate + 1 cron + espejo `validation_error_logs`. Falta capa 1 (más writers), 2 (métricas éxito), 3 (poda + dashboard + alertas), 4 (tracing + SLOs).
-- **Filosofía:** observabilidad activa (no esperar feedback). Capturar **client-side** (consolas de usuarios) es crítico — la mayoría de bugs visibles al usuario NUNCA llegan al servidor sin captura activa.
-- **Convención event_type:** ver §5 del manual (categorías: HTTP/Crons/Auth/Cache/Deploys/Cliente/Negocio).
-- **Roadmap priorizado:** §11 del manual — siguiente paso recomendado es endpoint `/api/observability/ingest` (gateway universal).
+- **Filosofía martillo:** *"Si un usuario nos reporta un bug que la observabilidad podía haber capturado, hemos fallado."*
+- **Principio rector arquitectural:** **AWS-native by default, agnóstico by contract.** La intención futura es migrar a AWS (escala mejor que Vercel/Supabase) pero el código de app habla con interfaces estándar — swap de sink ≠ rewrite.
+- **Estado actual (2026-05-25):** MVP — tabla `observable_events` + writers Vercel/Fargate + 1 cron + espejo `validation_error_logs`. Falta Fase 1 (client-side observability + interceptor backend + endpoint ingest + más crons), Fase 2 (alertas + dashboard), Fase 3 (smoke E2E), Fase 4 (SLOs), Fase 5 (tracing OpenTelemetry).
+- **Roadmap priorizado:** §13 del manual — siguiente paso recomendado es **endpoint `/api/observability/ingest`** (gateway universal, desbloquea client-side + GHA + Sentry webhook).
+- **Migración a AWS:** §11 del manual explica qué cambia (sinks, alertas) y qué NO (todo el código de app, queries SQL, dashboards, SLOs). Diseño Sink intercambiable en §4.
 
 ### Logs Importantes
 - Prefijo `🔍` para debug de renderizado

@@ -1,21 +1,26 @@
 # Manual de Observabilidad — Vence
 
-> **Estado:** MVP funcional desde 2026-05-25 (tabla `observable_events`, 2 escritores activos). Este manual documenta filosofía + estado actual + roadmap. Vivo — actualizar cada vez que se añada una capa.
+> **Documento vivo.** Plan para que Vence detecte problemas **antes que el usuario**, sin depender de feedback humano.
+>
+> **Última actualización:** 2026-05-25 (refactor incorporando aprendizajes de VicoHR + filosofía AWS-ready/agnóstica).
 
-## 1. Por qué observabilidad es CRÍTICO (no un nice-to-have)
+---
 
-**Sin observabilidad activa:** te enteras de los bugs por feedback de usuarios. Tarde — el usuario ya se frustró, abandonó la sesión, dejó review mala. El % de usuarios que reporta un bug es <5% del total que lo sufre. El resto se va en silencio.
+## 1. 🎯 Filosofía
 
-**Con observabilidad activa:** te enteras del bug en minutos. Antes de que la mayoría de usuarios lo vea. Antes del primer review malo.
+> **Si un usuario nos reporta un bug que la observabilidad podía haber capturado, hemos fallado.**
 
-La observabilidad **multiplica el rendimiento del equipo de producto**:
-- Detección proactiva de regresiones tras deploy
-- Priorización basada en impacto real (no en quién grita más)
-- Validación de hipótesis técnicas con datos
-- Reducción del MTTR (mean time to recovery) de horas a minutos
-- Confianza para mover rápido (rollback automático si SLO se rompe)
+La observabilidad bien hecha es el sistema nervioso de la app: te dice qué pasa, dónde, con qué frecuencia, y te despierta cuando algo se rompe. Sin ella, el equipo trabaja a ciegas y aprende de los problemas tarde (PR de cliente, churn silencioso, incidencias en horas punta).
 
-**Tres niveles de madurez:**
+### 5 Principios
+
+1. **Todo error server-side llega a `observable_events`** con contexto suficiente para reproducirlo (`endpoint`, `userId`, `deploy_version`, `error_message`, `metadata`).
+2. **Todo error client-side relevante llega también a `observable_events`** vía `/api/observability/ingest` (errors JS, promise rejections, fetches fallidos, Web Vitals degradados). Sentry queda como UI de deep-dive opcional, no como source of truth.
+3. **Todo cambio en producción se verifica con observabilidad** ANTES de declarar OK. No esperar al primer ticket.
+4. **Toda alarma debe ser accionable.** Si dispara y no haces nada → ruido, eliminarla.
+5. **Cero blind spots.** Si una funcionalidad crítica (login, pago, test answer, exam validation) no tiene métrica de éxito, es deuda 🔴.
+
+### Tres niveles de madurez
 
 | Nivel | Qué cubre | Cuándo te enteras del bug |
 |---|---|---|
@@ -25,171 +30,316 @@ La observabilidad **multiplica el rendimiento del equipo de producto**:
 
 Vence está hoy entre nivel 1 y 2. **El objetivo es nivel 3.**
 
+### Principio rector arquitectural
+
+> **AWS-native by default. Agnóstico by contract.**
+
+- Las decisiones se toman pensando en "esto correrá en AWS en 6-12 meses" — porque escala mejor que Vercel/Supabase para nuestro patrón de carga (mediado por backend Fargate ya migrado en Bloque 3).
+- **Pero el CÓDIGO de la app habla con interfaces estándar**, no con SDKs específicos de AWS. Cuando hagamos el swap completo a AWS, el código no se entera — solo cambia el adapter del sink. Ver §6 «Diseño Sink intercambiable» y §12 «Migración a AWS — qué cambia, qué NO».
+
 ---
 
-## 2. Arquitectura — visión general
+## 2. 📊 Estado actual (2026-05-25)
 
-### Capas físicas
+### Lo que YA tenemos
 
-```
-┌──────────────────────────────────────────────────────┐
-│  CLIENT (browser)                                    │
-│  console.error, JS exceptions, hydration, API fails  │
-└────────┬─────────────────────────────────────────────┘
-         │ POST /api/observability/ingest (con sampling)
-         ▼
-┌──────────────────────────────────────────────────────┐
-│  VERCEL (Next.js lambdas)                            │
-│  lib/observability/emit.ts → INSERT directo BD       │
-└────────┬─────────────────────────────────────────────┘
-         │
-         │  ┌────────────────────────────────────────┐
-         │  │  FARGATE (NestJS)                      │
-         │  │  ObservabilityService → INSERT directo │
-         │  └─────────────┬──────────────────────────┘
-         │                │
-         │                │  ┌──────────────────────┐
-         │                │  │ GHA workflows        │
-         │                │  │ curl → ingest        │
-         │                │  └──────┬───────────────┘
-         ▼                ▼         ▼
-┌──────────────────────────────────────────────────────┐
-│  Postgres — public.observable_events                 │
-│  Una sola tabla, 4 índices, retención 30d            │
-└────────┬─────────────────────────────────────────────┘
-         │
-         ▼
-┌──────────────────────────────────────────────────────┐
-│  Dashboard admin /admin/observability  (futuro)      │
-│  Filtros: source / severity / event_type / time      │
-└──────────────────────────────────────────────────────┘
-```
+#### Server-side (Vercel functions)
 
-### Shape de un evento
+| Capacidad | Implementación | Ubicación |
+|---|---|---|
+| `withErrorLogging` wrapper auto-loguea ≥400 | Tabla `validation_error_logs` | `lib/api/withErrorLogging.ts` |
+| Espejo a tabla unificada | Cada write a `validation_error_logs` también emite a `observable_events` (commit `7a4fa472`) | `lib/api/validation-error-log/queries.ts:_insertLog` |
+| Emit directo | `emit()` / `emitFireAndForget()` | `lib/observability/emit.ts` |
+| Severity normalization | `'warning'→'warn'`, `'fatal'→'critical'` | Helper interno en `emit.ts` |
+
+#### Server-side (Backend NestJS/Fargate)
+
+| Capacidad | Implementación | Ubicación |
+|---|---|---|
+| `ObservabilityService` con DI | INSERT directo vía Drizzle (mismo schema que frontend) | `backend/src/observability/observability.service.ts` |
+| Logger NestJS contextual | `Logger` por servicio con prefix | Estándar NestJS |
+| Health endpoint | `GET /health` devuelve `{status:'ok',ts,...}` | `backend/src/health/` |
+| Cron `refresh-rankings` emite | 1 evento por run con `metadata.totalInserted`, `slowestMs` | `backend/src/refresh-rankings/refresh-rankings.cron.ts` |
+
+#### Client-side (browser)
+
+| Capacidad | Implementación | Estado |
+|---|---|---|
+| Sentry SDK | `@sentry/nextjs` con error boundaries | ⚠️ Existe pero no verificado que dispara |
+| Manual `console.error` instrumentation | — | ❌ FALTA |
+| Global `window.onerror` / `unhandledrejection` | — | ❌ FALTA |
+| Fetch interceptor (auto-reporta ≥400) | — | ❌ FALTA |
+| Web Vitals reporter (LCP/CLS/...) | — | ❌ FALTA |
+| Intent tracking (clics sin efecto) | — | ❌ FALTA |
+| React Error Boundary central | `app/error.tsx` | ⚠️ Existe sin reportar a observable_events |
+
+#### Infraestructura
+
+| Capacidad | Implementación | Estado |
+|---|---|---|
+| Tabla `observable_events` + 4 índices | Migración `2026-05-25-observable-events.sql` aplicada | ✅ Live |
+| Endpoint ingest HTTP | `/api/observability/ingest` (auth: shared secret) | ❌ FALTA |
+| Cron poda 30d | — | ❌ FALTA |
+| Dashboard admin `/admin/observability` | — | ❌ FALTA |
+| Alertas activas (cron rules engine) | — | ❌ FALTA |
+| SLOs declarados + medidos | — | ❌ FALTA |
+| CloudWatch Logs Fargate | Auto vía ECS | ✅ Live (aislado) |
+| Sentry alerts | — | ⚠️ No configurado |
+
+### 📋 Matriz de cobertura por categorías de bug
+
+| Categoría | Estado | Cómo se cubriría |
+|---|:-:|---|
+| Crashes server-side (Vercel) | ✅ | `withErrorLogging` + espejo a `observable_events` |
+| Crashes server-side (Fargate) | ⚠️ | Solo errores que pasan por servicios con `emit` (refresh-rankings); falta interceptor global NestJS |
+| Latencia degradada (server) | ⚠️ | Solo eventos con `duration_ms` cuando el dev acuerda emitirlos; sin métrica sistemática |
+| Latencia degradada (cliente) | ❌ | Falta Web Vitals reporter |
+| Errores HTTP visibles al user | ✅ | `withErrorLogging` ≥400 |
+| Caída de servicio (uptime) | ⚠️ | Backend tiene `/health` pero sin monitor externo |
+| Errores client-side JS | ❌ | Sentry quizás funciona, no verificado; sin observable_events |
+| Hydration mismatch | ❌ | — |
+| API calls del cliente fallando | ❌ | Sin FetchInterceptor |
+| Cron no se ejecutó | ⚠️ | Solo si crashea (event `severity:error`); falta alarma "no emitió en 2× su intervalo" |
+| Deploy roto silencioso | ❌ | — |
+| GHA workflow failure | ❌ | Solo email a tu inbox |
+| Bug silencioso (UX: click sin efecto) | ❌ | Sin intent tracking |
+| Datos corruptos (drift contadores) | ✅ | Tabla `stats_drift_log` + cron drift check |
+| Performance degradación gradual | ❌ | — |
+| Funnel roto (signup, payment) | ❌ | — |
+
+**Veredicto**: cubrimos bien los errores server-side explícitos. Resto = blind spots variables, especialmente client-side.
+
+---
+
+## 3. 🔴 Gaps detectados (con caso real)
+
+Cada gap viene con un **caso real** que justifica la prioridad. No se mete un gap "por completitud" — solo cuando ha dolido.
+
+### 🔴 Gap 1 — Errores client-side desaparecen en silencio
+
+**Caso real (frecuente)**: usuarios reportan vía email que "no funciona el botón X" o "la página queda en blanco". Cuando vamos a buscar, no hay nada en `validation_error_logs` ni en CloudWatch. El error vivió y murió en la consola del navegador del usuario. **Tasa real de reporte de bugs: <5%**. El otro 95% se va a la competencia en silencio.
+
+**Lo que tenemos**: Sentry SDK quizás funciona; no verificado.
+
+**Lo que falta**: ver §5 «Client-side observability» — bloque completo de scripts (`window.onerror`, `unhandledrejection`, `console.error` patch, React Error Boundary, FetchInterceptor) que reportan a `/api/observability/ingest`.
+
+**Esfuerzo**: 1-2h.
+
+### 🔴 Gap 2 — Endpoint `/api/observability/ingest` no existe
+
+**Caso real (presente)**: sin este endpoint, NO se puede:
+- Enviar eventos desde el navegador del cliente
+- Notificar fallos de GitHub Actions a la tabla
+- Espejar webhooks de Sentry / Vercel deploy hooks
+- Que GHA crons (Grupo B) emitan eventos
+
+**Lo que tenemos**: writers desde Vercel y Fargate escriben directo a BD vía Drizzle (no necesitan ingest), pero el resto del ecosistema queda fuera.
+
+**Lo que falta**: `app/api/observability/ingest/route.ts` con auth shared secret + Zod validation + batch INSERT.
+
+**Esfuerzo**: 45 min.
+
+### 🔴 Gap 3 — Interceptor global NestJS para errores backend
+
+**Caso real (silencioso)**: cuando el backend NestJS lanza 500 en `/api/v2/test-config/articles`, hoy SOLO queda registro en CloudWatch Logs del Fargate. No llega a `observable_events`. El admin Vercel queries pierde visibilidad.
+
+**Lo que tenemos**: cada cron emite manualmente con `obs.emitFireAndForget()`. Los controllers NO.
+
+**Lo que falta**: `ExceptionFilter` global NestJS (`@Catch()`) que para todo error ≥500 emita evento `http_5xx` con contexto.
+
+**Esfuerzo**: 30 min.
+
+### 🟠 Gap 4 — Sin smoke E2E sintético automatizado
+
+**Caso real**: validar el cutover de Bloque 3 KEYSTONE (answer-and-save al backend) requirió hacer curl manual con JWT artificial. Si rompiéramos algo el viernes a las 22h, nadie se enteraría hasta el primer login del lunes.
+
+**Lo que tenemos**: smoke scripts en `/tmp/` ejecutados manualmente durante deploys.
+
+**Lo que falta**:
+- **Hoy (cron Fargate gratis)**: nuevo cron `@Cron('*/5 * * * *')` en backend que ejecute flujo crítico (registro de respuesta artificial con user de prueba dedicado) y emita `event_type='smoke_e2e'` con `severity:error` si falla.
+- **Cuando migremos a AWS**: CloudWatch Synthetics canary (~$15/mes) con script Puppeteer haciendo login + flujo + logout. **No implementar hoy** para evitar lock-in prematuro.
+
+**Esfuerzo**: 1-2h hoy (cron Fargate).
+
+### 🟠 Gap 5 — Cron "no se ejecutó" no dispara alarma
+
+**Caso real (potencial)**: tras los 13 cutovers de crons Fargate del 24/05, NADIE detectaría si `check-boe-changes` deja de ejecutarse a las 08:00 UTC. Solo el `cron drift` lo detectaría días después si los datos llegan stale.
+
+**Lo que tenemos**: alarma "cron crasheó" via `severity:error` en eventos `cron_run`. NADA si simplemente no emite.
+
+**Lo que falta**: regla de alertas cron-rules engine: `SELECT cron_name, MAX(ts) FROM observable_events WHERE event_type='cron_run' GROUP BY cron_name HAVING NOW() - MAX(ts) > expected_interval(cron_name) * 2`.
+
+**Esfuerzo**: 1h (parte del Gap 8 «alertas activas»).
+
+### 🟠 Gap 6 — GHA workflow failures sin notificación estructurada
+
+**Caso real (24/05)**: el workflow `Tests` rojo desde el 23/05 nos mandaba 1 email por push. **17 emails ese día** = ruido que ahoga la señal. Tampoco los failures de `Deploy backend` paran nada — hoy he visto el workflow `in_progress` con timeout 30 min, sin alarma.
+
+**Lo que tenemos**: emails sueltos de GitHub a tu inbox.
+
+**Lo que falta**: step en cada workflow `if: failure() && always()` → curl POST a `/api/observability/ingest` con metadata del run (commit, conclusión, run URL). Después dashboard agrupa eventos por workflow + alarma "X failures en último Y min".
+
+**Esfuerzo**: 30 min cuando exista el endpoint ingest (Gap 2 prerequisito).
+
+### 🟠 Gap 7 — Verificar que Sentry funciona
+
+**Caso real (sospecha)**: Sentry SDK configurado en `sentry.client.config.ts` desde hace meses. ¿Cuántos eventos hemos visto en Sentry esta semana? No los he revisado. Si Sentry no está disparando, es coste mensual sin valor.
+
+**Lo que tenemos**: configuración Sentry en repo.
+
+**Lo que falta**: trigger error de prueba (`throw new Error('sentry-smoke-test')` desde una ruta admin temporal), verificar que aparece en dashboard Sentry, anotar URL del proyecto en el manual.
+
+**Esfuerzo**: 15 min.
+
+### 🟡 Gap 8 — Cero alertas activas
+
+**Caso real**: hoy si llegan 200 errores en 5 min, NADIE se entera hasta que un user manda email. El veredicto VERDE/ÁMBAR/ROJO del `/admin/salud-sistema` está sin auto-refresh push.
+
+**Lo que tenemos**: dashboard `/admin/salud-sistema` que requiere abrirlo activamente.
+
+**Lo que falta**: cron Fargate cada 5 min que ejecute reglas SQL sobre `observable_events`. Cada regla que dispara → email/Telegram al admin. Adapter para notificación (hoy email, mañana SNS cuando migremos AWS). Ver §9.
+
+**Esfuerzo**: 1-2h.
+
+### 🟡 Gap 9 — Dashboard `/admin/observability` no existe
+
+**Caso real**: para responder "¿cómo va producción?" hoy hago 5 queries SQL distintas en CLI o abro `/admin/salud-sistema` que lee de 4 fuentes diferentes. Sin vista unificada queryable visualmente.
+
+**Lo que tenemos**: queries SQL ad-hoc.
+
+**Lo que falta**: página admin con filtros (source, severity, event_type, time range), sparkline de volumen, top error messages agrupados, stream auto-refresh. Ver §10 mockup.
+
+**Esfuerzo**: 2-3h.
+
+### 🟡 Gap 10 — Sin retención automática
+
+**Caso real (futuro)**: a 10k DAU con ~50 eventos/día/user = 15M filas/mes. Sin poda, la tabla crece sin parar → queries lentas → costes Postgres innecesarios.
+
+**Lo que tenemos**: nada (acabamos de crear la tabla).
+
+**Lo que falta**: cron Fargate diario `@Cron('0 4 * * *')` que ejecute `DELETE FROM observable_events WHERE ts < NOW() - INTERVAL '30 days'`.
+
+**Esfuerzo**: 15 min.
+
+### 🟡 Gap 11 — Sin SLOs declarados
+
+**Caso real**: cuando alguien pregunta "¿cuánto tarda answer-and-save?", la respuesta es "depende". Sin SLO no hay umbral. Sin umbral no hay error budget. Sin error budget las decisiones de "rollback o no" son políticas, no datos.
+
+**Lo que tenemos**: 0 SLOs.
+
+**Lo que falta**: 3-5 SLOs explícitos en `docs/architecture/slos.yml` (answer-and-save p95<500ms, medals avail 99.5%, etc.). Cron que mide vs SLO desde `observable_events` y emite `event_type='slo_breach'`. Quema error budget → freeze deploys automático cuando sobrepase. Ver §11.
+
+**Esfuerzo**: 1h por SLO + 1h infra cron.
+
+### 🟢 Gap 12 — Tracing distribuido (OpenTelemetry)
+
+**Caso real (futuro)**: cuando un request falla en answer-and-save y se pasa por Vercel → ALB → Fargate → Postgres + Redis + Resend → background tasks, hoy NO podemos seguir el trace por las capas. Cada log es isla.
+
+**Lo que tenemos**: nada.
+
+**Lo que falta**: instrumentación OpenTelemetry en frontend + backend, propagación de `traceId` por headers, integración con Jaeger / Tempo / X-Ray. **Solo cuando los otros gaps estén cubiertos** — añadir tracing a un sistema sin alertas es overengineering.
+
+**Esfuerzo**: 1-2 días.
+
+---
+
+## 4. 🏗️ Diseño Sink intercambiable (agnóstico)
+
+### Contrato
 
 ```typescript
-{
-  id: uuid,              // gen_random_uuid() automático
-  ts: timestamptz,       // default NOW()
-  source: 'vercel' | 'fargate' | 'gha' | 'frontend',
-  severity: 'debug' | 'info' | 'warn' | 'error' | 'critical',
-  event_type: string,    // 'http_5xx', 'cron_run', 'deploy', ...
-  endpoint?: string,
-  user_id?: uuid,
-  deploy_version?: string,
-  duration_ms?: integer,
-  http_status?: integer,
-  error_message?: text,
-  metadata?: jsonb,      // libre — campos específicos del event_type
+// lib/observability/sink.ts (futuro)
+export interface ObservableSink {
+  emit(event: ObservableEvent): Promise<void>
+  emitBatch(events: ObservableEvent[]): Promise<void>
 }
 ```
 
-### Decisiones de diseño
+El **shape `ObservableEvent`** se diseña compatible con [OpenTelemetry semantic conventions](https://opentelemetry.io/docs/specs/semconv/) — estándar industria, no AWS-specific. Eso garantiza que mañana podemos exportar a cualquier OTLP collector (Jaeger, Tempo, Honeycomb, NewRelic, X-Ray) sin reescribir la app.
 
-| Decisión | Por qué |
-|---|---|
-| **Tabla Postgres única** (no Elasticsearch / CloudWatch propietario) | Standard SQL. Portable. Las queries time-series rinden bien con índices BTREE básicos hasta 100M filas |
-| **Writers escriben directo vía Drizzle** (no via HTTP) | 0 latencia añadida. 0 nuevo servicio. Cross-runtime coherente — frontend y backend usan misma BD |
-| **`event_type` texto libre** (no enum) | Añadir nuevo tipo no requiere migración. Cuando estabilice, migrar a enum |
-| **`metadata jsonb`** | Campos específicos del event_type sin migración constante |
-| **Fire-and-forget** (no bloquea respuesta) | Observabilidad NUNCA debe romper requests reales |
-| **Retención 30d** | Suficiente para investigación postmortem. Más allá → archivo a S3 (futuro) |
+### Implementaciones (intercambiables)
 
----
+| Etapa | Sink primario | Sink secundario | Cambio en código de app |
+|---|---|---|---|
+| **Hoy** (Vercel + Supabase + Fargate) | `PostgresSink` (tabla `observable_events`) | — | — |
+| **Migración a AWS RDS** | `PostgresSink` (mismo schema en RDS) | `CloudWatchLogsSink` (paralelo) | **0 cambios** — solo cambia `sink.ts:createSink()` |
+| **Si dejamos AWS** | `PostgresSink` (cualquier Postgres) | sin sink secundario | 0 cambios |
+| **Hipotético GCP/Azure** | `PostgresSink` (Cloud SQL / Azure DB) | OTLP collector estándar | 0 cambios |
 
-## 3. Estado actual (2026-05-25)
+### Por qué tabla Postgres como primario (no CloudWatch nativo)
 
-### ✅ Implementado
+| Razón |
+|---|
+| **Queries SQL flexibles**: agrupaciones, percentiles, joins con `users`/`tests`/etc. CloudWatch Logs Insights es más limitado. |
+| **Portable**: cualquier Postgres (Supabase, RDS, Neon, self-hosted) sirve. CloudWatch ata a AWS. |
+| **Una sola fuente**: dashboard admin lee de Postgres como cualquier otra query. CloudWatch sería 2ª UI separada. |
+| **Coste**: Postgres ya está pagado (Supabase Pro). CloudWatch Logs ingest cuesta extra. |
 
-| Pieza | Ubicación | Estado |
-|---|---|---|
-| Tabla `observable_events` + índices | Migración `database/migrations/2026-05-25-observable-events.sql` | Aplicada en prod |
-| Frontend emit | `lib/observability/emit.ts` (`emit`, `emitFireAndForget`) | Live |
-| Backend emit | `backend/src/observability/observability.service.ts` | Live |
-| Helper severity normalization | `normalizeSeverity()` en ambos lados | Live |
-| Cron `refresh-rankings` emite | `backend/src/refresh-rankings/refresh-rankings.cron.ts` | Live, 288 eventos/día |
-| Espejo `validation_error_logs` → `observable_events` | `lib/api/validation-error-log/queries.ts:_insertLog` | Live |
-| `incrementCounter()` para versioned cache | `lib/cache/redis.ts` | Live |
+### Cuándo añadir `CloudWatchLogsSink` secundario
 
-### ⏳ Pendiente (gaps)
+Cuando migremos a AWS, mantener **AMBOS sinks en paralelo**:
+- `PostgresSink` → queries SQL, dashboard `/admin/observability`, alertas custom
+- `CloudWatchLogsSink` → integración con CloudWatch Alarms nativo, X-Ray tracing, Synthetics
 
-**Capa 1 — más writers (fácil/medio)**
-
-| Falta | Esfuerzo |
-|---|---|
-| 12 crons Fargate restantes con `obs.emitFireAndForget` (archive-interactions, check-boe-changes, update-streaks, process-outbox, avatar-rotation, etc.) | 5-10 min × 12 con helper común |
-| **Interceptor global NestJS** que emita errores ≥500 del backend | 30 min |
-| **Endpoint `/api/observability/ingest`** (gateway HTTP — GHA, deploy hooks, client-side) | 45 min |
-| **Client-side observability** (ver §4) | 1-2h |
-| 4 crons Vercel Grupo B (close-inactive-feedback, renewal-reminders, etc.) emitiendo via ingest | 10 min × 4 |
-
-**Capa 2 — métricas de éxito (no solo errores)**
-
-| Falta | Esfuerzo |
-|---|---|
-| Latencia p50/p95 por endpoint (success requests) | 1h (decorator) |
-| Cache hit/miss ratio agregado | 30 min |
-| ALB target metrics → observable_events | 1h |
-
-**Capa 3 — operacional**
-
-| Falta | Esfuerzo |
-|---|---|
-| Cron poda 30d (`DELETE WHERE ts < NOW() - 30 days`) | 15 min |
-| Dashboard admin `/admin/observability` | 2-3h |
-| Vistas materializadas (`observable_events_hourly_summary`) | 30 min |
-| Alertas activas (cron que detecte anomalías y notifique) | 1-2h |
-
-**Capa 4 — siguiente nivel**
-
-| Falta | Esfuerzo |
-|---|---|
-| Tracing distribuido (OpenTelemetry) | 1-2 días |
-| SLOs declarados + medidos | 1h × SLO |
-| Correlation IDs request → background tasks | 1 día |
+Es "best of both worlds" sin perder portabilidad — el día que dejemos AWS, basta con quitar el sink secundario.
 
 ---
 
-## 4. ⭐ Client-side observability (consolas de usuarios)
+## 5. ⭐ Client-side observability (consolas de usuarios)
 
-> **Sección crítica:** la mayoría de bugs visibles para el usuario NUNCA llegan al servidor. Errores JS en el navegador, hydration mismatches, API failures con `fetch()`, errores de React boundaries — todo eso muere en la consola del usuario. **Sin captura activa, el bug se silencia.**
+> **Sección crítica.** La mayoría de bugs visibles para el usuario NUNCA llegan al servidor. Sin captura activa, el bug se silencia.
 
-### Lo que queremos capturar
+### Qué queremos capturar
 
 | Tipo | Ejemplo | Cómo capturarlo |
 |---|---|---|
 | **JS uncaught errors** | `TypeError: Cannot read 'x' of undefined` | `window.onerror` / `window.addEventListener('error')` |
 | **Unhandled promise rejections** | `fetch().then()` sin `.catch()` | `window.addEventListener('unhandledrejection')` |
 | **React component errors** | render() lanza | `<ErrorBoundary>` componente envolvente |
-| **Hydration mismatches** | server HTML ≠ client | React 19 logs, capturar via console patch |
-| **API call failures** | fetch a /api/foo devuelve 5xx | wrapper sobre `fetch()` que reporta |
+| **Hydration mismatches** | server HTML ≠ client | React 19 logs → console patch captura |
+| **API call failures** | fetch a `/api/foo` devuelve 5xx | wrapper sobre `fetch()` que reporta |
+| **Pre-hydration errors** | errores en scripts inline antes de React | `EarlyErrorsBridge` inline script |
 | **Manual `console.error`** | código que loguea explícitamente | patch sobre `console.error` |
+| **Web Vitals degradados** | LCP > 4s, CLS > 0.25 | `web-vitals` library + `sendBeacon` |
+| **Intent tracking (bug silencioso)** | usuario clica botón, no pasa nada | `trackIntent('save-answer')` + `confirmIntent(...)` |
+| **Third-party console noise** | warnings Recharts / Sentry SDK | `ConsoleNoiseFilter` inline script |
 
-### Diseño propuesto (no implementado todavía)
+### Diseño completo (no implementado todavía — Gap 1)
 
 **Archivo: `lib/observability/client.ts`** — instalación única en `app/layout.tsx`:
 
 ```typescript
-// lib/observability/client.ts
 'use client'
 
-const SAMPLE_RATE = 1.0 // 100% en MVP — bajar a 0.1 si volumen
+const SAMPLE_RATES = {
+  js_uncaught: 1.0,           // 100% - bajo volumen, alta señal
+  unhandled_rejection: 1.0,
+  react_error_boundary: 1.0,
+  console_error: 0.1,         // 10% - puede ser noisy
+  fetch_failure: 1.0,
+  hydration_mismatch: 1.0,
+  intent_unfulfilled: 1.0,
+  web_vital_degraded: 0.1,    // 10% - alto volumen, valor agregado
+}
+
 const BUFFER_FLUSH_MS = 5000
 const buffer: ClientEvent[] = []
 
 interface ClientEvent {
   ts: string
   severity: 'error' | 'warn'
-  eventType: 'js_uncaught' | 'unhandled_rejection' | 'react_error_boundary'
-              | 'console_error' | 'fetch_failure' | 'hydration_mismatch'
+  eventType: keyof typeof SAMPLE_RATES
   errorMessage: string
   metadata: {
-    url: string         // URL actual (path solo, no querystring con PII)
+    url: string         // location.pathname (NO querystring — puede tener PII)
     userAgent: string
     stack?: string      // truncado a 2000 chars
-    componentStack?: string  // para React Error Boundary
-    httpStatus?: number      // para fetch_failure
+    componentStack?: string  // React Error Boundary
+    httpStatus?: number      // fetch_failure
+    intent?: string          // intent_unfulfilled
+    vital?: { name: string; value: number; rating: 'good'|'needs-improvement'|'poor' }
   }
+  userId?: string  // si hay user logueado
 }
 
 export function installClientObservability(userId?: string) {
@@ -197,64 +347,62 @@ export function installClientObservability(userId?: string) {
 
   // 1) Uncaught errors globales
   window.addEventListener('error', (event) => {
-    pushEvent({
-      severity: 'error',
-      eventType: 'js_uncaught',
-      errorMessage: event.message.slice(0, 500),
-      metadata: {
-        stack: event.error?.stack?.slice(0, 2000),
-        filename: event.filename,
-        line: event.lineno,
-        col: event.colno,
-      },
+    pushEvent('js_uncaught', 'error', event.message, {
+      stack: event.error?.stack,
+      filename: event.filename,
+      line: event.lineno,
+      col: event.colno,
     }, userId)
   })
 
   // 2) Promise rejections sin catch
   window.addEventListener('unhandledrejection', (event) => {
-    pushEvent({
-      severity: 'error',
-      eventType: 'unhandled_rejection',
-      errorMessage: String(event.reason).slice(0, 500),
-      metadata: { stack: event.reason?.stack?.slice(0, 2000) },
+    pushEvent('unhandled_rejection', 'error', String(event.reason), {
+      stack: (event.reason as Error)?.stack,
     }, userId)
   })
 
-  // 3) console.error patch (capturar logs explícitos)
+  // 3) console.error patch (sampling alto — puede ser noisy)
   const origConsoleError = console.error
   console.error = (...args: unknown[]) => {
     origConsoleError(...args)
-    pushEvent({
-      severity: 'warn',
-      eventType: 'console_error',
-      errorMessage: args.map((a) => String(a)).join(' ').slice(0, 500),
-      metadata: {},
-    }, userId)
+    pushEvent('console_error', 'warn', args.map(String).join(' '), {}, userId)
   }
 
-  // 4) Flush on unload — el navegador puede cerrar antes del próximo flush
+  // 4) Flush on unload (sendBeacon — supervive navigation)
   window.addEventListener('beforeunload', () => flush(true))
 
   // 5) Flush periódico
   setInterval(() => flush(false), BUFFER_FLUSH_MS)
+
+  // 6) Web Vitals
+  installWebVitalsReporter(userId)
 }
 
-function pushEvent(partial: Omit<ClientEvent, 'ts' | 'metadata'> & {
-  metadata: Partial<ClientEvent['metadata']>
-}, userId?: string) {
-  if (Math.random() > SAMPLE_RATE) return // sampling
+function pushEvent(
+  eventType: keyof typeof SAMPLE_RATES,
+  severity: 'error' | 'warn',
+  message: string,
+  metadata: ClientEvent['metadata'],
+  userId?: string,
+) {
+  if (Math.random() > SAMPLE_RATES[eventType]) return // sampling
 
   buffer.push({
     ts: new Date().toISOString(),
-    ...partial,
+    severity,
+    eventType,
+    errorMessage: scrubPII(message).slice(0, 500),
     metadata: {
       url: location.pathname,
       userAgent: navigator.userAgent.slice(0, 200),
-      ...partial.metadata,
+      ...metadata,
+      stack: metadata.stack?.slice(0, 2000),
     },
+    userId,
   })
 
-  if (buffer.length >= 10) flush(false) // flush si lleno
+  if (buffer.length >= 10) flush(false)
 }
 
 function flush(useBeacon: boolean) {
@@ -262,7 +410,6 @@ function flush(useBeacon: boolean) {
   const events = buffer.splice(0, buffer.length)
   const body = JSON.stringify({ events })
 
-  // navigator.sendBeacon SIGUE funcionando en beforeunload (fetch no garantiza)
   if (useBeacon && navigator.sendBeacon) {
     navigator.sendBeacon('/api/observability/ingest', body)
   } else {
@@ -271,16 +418,30 @@ function flush(useBeacon: boolean) {
       headers: { 'Content-Type': 'application/json' },
       body,
       keepalive: true,
-    }).catch(() => {
-      // si falla, NO retry para no spam — el evento se pierde (aceptable)
-    })
+    }).catch(() => {})
   }
+}
+
+function scrubPII(s: string): string {
+  return s
+    .replace(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi, '[email]')
+    .replace(/\b\d{9,}\b/g, '[number]') // DNI, phone
+    .replace(/\beyJ[a-z0-9_-]+\.[a-z0-9_-]+\.[a-z0-9_-]+/gi, '[jwt]')
 }
 ```
 
-**React Error Boundary** (`components/ObservabilityBoundary.tsx`):
+### Componente FetchInterceptor
 
-```typescript
+Patch `window.fetch` para reportar TODO fetch ≥400 automáticamente. Inspirado en VicoHR (`components/observability/FetchInterceptor.tsx`).
+
+### Componente IntentTracking
+
+`trackIntent('save-answer')` antes del click, `confirmIntent('save-answer', success)` tras la respuesta. Si el tracking dice "intent disparado pero NO confirmado en N segundos" → reporte automático. Detecta bugs silenciosos donde el click "no hace nada".
+
+### React Error Boundary central
+
+```tsx
+// components/observability/ObservabilityBoundary.tsx
 'use client'
 import { Component, type ReactNode } from 'react'
 
@@ -309,20 +470,40 @@ export class ObservabilityBoundary extends Component<{ children: ReactNode }> {
 }
 ```
 
-**Instalación en `app/layout.tsx`:**
+### EarlyErrorsBridge (errores pre-hidratación)
+
+Inline script en `app/layout.tsx` antes de React. Captura errores antes de que React monte:
+
+```html
+<script dangerouslySetInnerHTML={{ __html: `
+  (function() {
+    window.__earlyErrors = [];
+    window.addEventListener('error', function(e) {
+      window.__earlyErrors.push({
+        msg: String(e.message), stack: e.error && e.error.stack,
+        ts: Date.now()
+      });
+    });
+  })();
+`}} />
+```
+
+Y en `installClientObservability` leer `window.__earlyErrors` al inicializar y emitirlos.
+
+### ConsoleNoiseFilter (anti-ruido)
+
+Silencia warnings third-party que no son nuestros bugs. Pattern matching sobre el primer arg del console.error:
 
 ```typescript
-'use client'
-import { useEffect } from 'react'
-import { installClientObservability } from '@/lib/observability/client'
-
-export default function RootLayout({ children }) {
-  useEffect(() => {
-    installClientObservability(/* userId si está logueado */)
-  }, [])
-  // ...
-}
+const NOISE_PATTERNS = [
+  /Warning: validateDOMNesting/,
+  /Recharts:/,
+  /\[Sentry\]/,
+  // añadir más según ruido real
+]
 ```
+
+Aplicado ANTES del patch que emite a `observable_events` para no ahogar la señal.
 
 ### Privacy & PII
 
@@ -331,40 +512,35 @@ export default function RootLayout({ children }) {
 | Permitido | Prohibido |
 |---|---|
 | `location.pathname` (`/test/aleatorio`) | `location.search` (puede tener `?email=...`) |
-| `userAgent` | Cookies, tokens, headers |
+| `userAgent` truncado | Cookies, tokens, headers |
 | Error stack (código, no datos) | Contenido de inputs (`<input value="...">`) |
 | `userId` (UUID anónimo) | Email, nombre, DNI |
-| Mensaje de error truncado a 500 chars | localStorage / sessionStorage completos |
+| Mensaje truncado a 500 chars + `scrubPII()` | localStorage / sessionStorage completos |
 
-Si capturas algo que pueda tener PII (ej. argumentos pasados a `console.error`), **trunca a 500 chars Y censura patrones obvios** (regex sobre emails, números largos, JWT tokens).
+`scrubPII()` aplica regex sobre emails, números largos (DNI/phone), JWT tokens.
 
-### Sampling
+### Sampling estratégico
 
-A 10k DAU con `SAMPLE_RATE=1.0` → potencialmente **millones de eventos/día** si hay un bug viral. Insostenible.
+A 10k DAU con `SAMPLE_RATES = 1.0` puede explotar a millones de eventos/día.
 
-Estrategia:
-- **MVP**: `SAMPLE_RATE = 1.0` (100%) — necesario hasta validar volumen real
-- **Tras 1 semana**: medir volumen y ajustar:
-  - `js_uncaught` / `unhandled_rejection`: 100% (bajo volumen, alta señal)
-  - `console_error`: 10% (alto volumen, ruido medio)
-  - `fetch_failure`: 100% (alta señal)
-- **Si un único error explota** (ej. bug en deploy): rate-limit por `errorMessage` hash (ej. máx 100 eventos del mismo mensaje en 1h)
+- **`js_uncaught` / `unhandled_rejection`**: 100% (bajo volumen, alta señal)
+- **`console_error`**: 10% (alto volumen, ruido medio)
+- **`fetch_failure`**: 100% (alta señal)
+- **`web_vital_degraded`**: 10% (alto volumen, valor agregado estadístico)
+
+**Rate-limit por error_message hash**: máx 100 eventos del mismo mensaje en 1h. Si un único bug explota tras deploy, no nos ahoga.
 
 ### Coexistencia con Sentry
 
-Vence ya tiene Sentry. **No reemplazar — espejar.** Sentry tiene UI buena para client-side stacks; `observable_events` tiene queries SQL flexibles.
+Sentry sigue, pero deja de ser source of truth → pasa a ser **UI de deep-dive opcional**. La fuente única es `observable_events`. Si Sentry está caído o se cancela, no perdemos nada.
 
-Dos opciones:
-1. **Mantener Sentry para client + observable_events solo server** (status quo + capas separadas)
-2. **Webhook Sentry → `/api/observability/ingest`** que espeje todos los eventos de Sentry a la tabla (unifica)
-
-Recomendación: **(2)** cuando esté el endpoint ingest. Sentry retiene 30 días gratis; `observable_events` retiene 30 días también; la unión gives best of both.
+Cuando esté el endpoint ingest (Gap 2), considerar **webhook Sentry → ingest** que espeje eventos de Sentry a la tabla. Best of both worlds.
 
 ---
 
-## 5. Cómo emitir desde código
+## 6. 📡 Cómo emitir desde código
 
-### Frontend (Next.js / Vercel)
+### Frontend (Vercel functions)
 
 ```typescript
 import { emit, emitFireAndForget } from '@/lib/observability/emit'
@@ -416,23 +592,24 @@ this.obs.emitFireAndForget({
 
 ### Convención `event_type`
 
+Categorías estables. Si necesitas una nueva: añadirla aquí Y al manual antes de usarla.
+
 | Categoría | Eventos válidos |
 |---|---|
 | HTTP | `http_4xx`, `http_5xx`, `http_timeout`, `http_aborted` |
-| Crons | `cron_run` (con `metadata.status: success/failure`) |
+| Crons | `cron_run` (metadata.status: success/failure), `cron_overdue` |
 | Auth | `auth_failed`, `rate_limit_exceeded`, `device_limit_exceeded` |
-| Cache | `cache_invalidation`, `cache_miss_storm` |
+| Cache | `cache_invalidation`, `cache_miss_storm`, `cache_hit_low` |
 | Deploys | `deploy_started`, `deploy_completed`, `deploy_failed` |
-| Cliente | `js_uncaught`, `unhandled_rejection`, `react_error_boundary`, `console_error`, `fetch_failure`, `hydration_mismatch` |
-| Negocio | `payment_failed`, `signup_completed`, `daily_limit_reached` |
-
-Si necesitas uno nuevo: añádelo aquí + úsalo. Cuando estabilice (todos los callers usan el mismo string), considerar migrar a enum.
+| Cliente | `js_uncaught`, `unhandled_rejection`, `react_error_boundary`, `console_error`, `fetch_failure`, `hydration_mismatch`, `intent_unfulfilled`, `web_vital_degraded` |
+| Negocio | `payment_failed`, `signup_completed`, `daily_limit_reached`, `slo_breach` |
+| Sintético | `smoke_e2e` |
 
 ---
 
-## 6. Cómo consultar eventos
+## 7. 📊 Cómo consultar eventos
 
-### Queries básicas (psql / Drizzle)
+### Queries básicas
 
 ```sql
 -- Errores 5xx última hora
@@ -441,8 +618,8 @@ FROM observable_events
 WHERE source = 'vercel' AND event_type = 'http_5xx' AND ts > NOW() - INTERVAL '1 hour'
 ORDER BY ts DESC;
 
--- Eventos por minuto última hora (sparkline)
-SELECT DATE_TRUNC('minute', ts) AS minuto, COUNT(*) AS n
+-- Eventos por minuto (sparkline última hora)
+SELECT DATE_TRUNC('minute', ts) AS m, COUNT(*) AS n
 FROM observable_events
 WHERE ts > NOW() - INTERVAL '1 hour'
 GROUP BY 1 ORDER BY 1;
@@ -453,21 +630,29 @@ FROM observable_events
 WHERE severity IN ('error', 'critical') AND ts >= CURRENT_DATE
 GROUP BY endpoint ORDER BY n DESC LIMIT 10;
 
--- Crons que fallaron hoy
-SELECT endpoint AS cron, ts, error_message
-FROM observable_events
-WHERE event_type = 'cron_run'
-  AND severity = 'error'
-  AND ts >= CURRENT_DATE;
-
--- Latency p95 por endpoint últimas 24h
+-- Latency p50/p95/p99 por endpoint últimas 24h
 SELECT endpoint,
        PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY duration_ms) AS p50,
        PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY duration_ms) AS p95,
+       PERCENTILE_CONT(0.99) WITHIN GROUP (ORDER BY duration_ms) AS p99,
        COUNT(*) AS n
 FROM observable_events
 WHERE ts > NOW() - INTERVAL '24 hours' AND duration_ms IS NOT NULL
 GROUP BY endpoint ORDER BY p95 DESC LIMIT 20;
+
+-- Crons que NO emitieron en última hora (cron_overdue check)
+WITH expected AS (
+  SELECT 'refresh-rankings' AS cron, 5 AS interval_min UNION ALL
+  SELECT 'process-outbox', 5 UNION ALL
+  SELECT 'check-boe-changes', 1440 -- 24h
+  -- ...
+)
+SELECT e.cron, MAX(o.ts) AS last_run, e.interval_min,
+       EXTRACT(EPOCH FROM (NOW() - MAX(o.ts)))/60 AS minutes_since_last
+FROM expected e
+LEFT JOIN observable_events o ON o.endpoint = e.cron AND o.event_type = 'cron_run'
+GROUP BY e.cron, e.interval_min
+HAVING EXTRACT(EPOCH FROM (NOW() - MAX(o.ts)))/60 > e.interval_min * 2;
 ```
 
 ### Desde el CLI (durante incident response)
@@ -484,7 +669,7 @@ const sql = postgres(process.env.DATABASE_URL, { max: 1, prepare: false });
                        WHERE ts > NOW() - INTERVAL '30 minutes'
                          AND severity IN ('error', 'critical')
                        ORDER BY ts DESC LIMIT 30\`;
-  for (const x of r) console.log(x.ts.toISOString(), x.source, x.severity, x.event_type, x.endpoint, '|', x.error_message?.slice(0,80));
+  for (const x of r) console.log(x.ts.toISOString(), x.source, x.severity, x.event_type, x.endpoint, '|', (x.error_message||'').slice(0,80));
   await sql.end();
 })();
 "
@@ -492,42 +677,68 @@ const sql = postgres(process.env.DATABASE_URL, { max: 1, prepare: false });
 
 ---
 
-## 7. Alertas activas (futuro — Capa 3)
+## 8. 🔔 Alertas activas (futuro — Gap 8)
 
-Diseño propuesto: un cron Fargate `@Cron('*/5 * * * *')` que ejecute reglas:
+Cron Fargate `@Cron('*/5 * * * *')` que ejecuta reglas SQL sobre `observable_events`. Cada regla que dispara → `NotificationAdapter.send()`.
+
+### Reglas iniciales
 
 ```typescript
-// backend/src/observability-alerts/alerts.cron.ts
-const RULES = [
+const RULES: AlertRule[] = [
   {
     name: '5xx_spike',
     severity: 'critical',
-    sql: `SELECT COUNT(*) FROM observable_events
+    sql: `SELECT COUNT(*)::int AS n FROM observable_events
           WHERE event_type IN ('http_5xx', 'http_timeout')
             AND ts > NOW() - INTERVAL '5 minutes'`,
     threshold: (n: number) => n > 20,
-    cooldownMin: 30, // no spam-alertar
+    cooldownMin: 30,
   },
   {
     name: 'cron_overdue',
     severity: 'critical',
-    sql: `SELECT endpoint, EXTRACT(EPOCH FROM (NOW() - MAX(ts))) AS staleness_s
-          FROM observable_events
-          WHERE event_type = 'cron_run'
-          GROUP BY endpoint`,
-    check: (rows) => rows.filter((r) => r.staleness_s > expectedInterval(r.endpoint) * 2),
+    // ver query "Crons que NO emitieron" en §7
+    sql: `...`,
+    cooldownMin: 60,
   },
-  // más reglas...
+  {
+    name: 'deploy_failed',
+    severity: 'critical',
+    sql: `SELECT COUNT(*)::int AS n FROM observable_events
+          WHERE event_type = 'deploy_failed' AND ts > NOW() - INTERVAL '10 minutes'`,
+    threshold: (n: number) => n > 0,
+    cooldownMin: 5,
+  },
+  {
+    name: 'slo_breach',
+    severity: 'warn',
+    sql: `SELECT COUNT(*)::int AS n FROM observable_events
+          WHERE event_type = 'slo_breach' AND ts > NOW() - INTERVAL '1 hour'`,
+    threshold: (n: number) => n > 0,
+    cooldownMin: 60,
+  },
 ]
 ```
 
-Cada regla que dispara → email/Telegram al admin (notification_events table).
+### NotificationAdapter (agnóstico)
+
+```typescript
+interface NotificationAdapter {
+  send(alert: { rule: string; severity: string; message: string }): Promise<void>
+}
+
+// Hoy: EmailAdapter via Resend (ya configurado)
+// Mañana en AWS: SNSAdapter via @aws-sdk/client-sns
+// Hipotético: SlackAdapter, TelegramAdapter
+```
+
+El cron rules engine usa `NotificationAdapter` por interfaz — la implementación concreta se decide por env var o config. Swap futuro = 0 cambios en código de reglas.
 
 ---
 
-## 8. Dashboard admin (futuro — Capa 3)
+## 9. 🖥️ Dashboard admin (futuro — Gap 9)
 
-Path: `/admin/observability`. UI:
+Path: `/admin/observability`.
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
@@ -549,24 +760,27 @@ Path: `/admin/observability`. UI:
 │ 10:42:13 [vercel/error] http_5xx /api/answer-and-save       │
 │ 10:42:08 [fargate/info] cron_run refresh-rankings 1542ms    │
 │ ...                                                          │
+├──────────────────────────────────────────────────────────────┤
+│ SLO status                                                   │
+│   /api/v2/answer-and-save p95: 423ms (target 500ms) ✅      │
+│   /api/medals availability:  99.7% (target 99.5%) ✅        │
+│   Error budget month:        67% spent — 9d left            │
 └──────────────────────────────────────────────────────────────┘
 ```
 
-Inspiración: Sentry Issues + Grafana Loki + CloudWatch Logs Insights combinados.
-
 ---
 
-## 9. SLOs (futuro — Capa 4)
+## 10. 🎯 SLOs (futuro — Gap 11)
 
-Declarar SLOs explícitos para cada endpoint crítico. Ejemplo:
+Declarar explícitos en `docs/architecture/slos.yml`:
 
 ```yaml
-# docs/architecture/slos.yml
 endpoints:
   /api/v2/answer-and-save:
     availability: 99.9%
     latency_p95_ms: 500
     error_budget_window: 30d
+    auto_freeze_at: 80  # % budget consumido → freeze deploys
 
   /api/v2/test-config/articles:
     availability: 99.5%
@@ -574,87 +788,186 @@ endpoints:
     cache_hit_ratio_min: 0.85
 ```
 
-Cron diario que mide vs SLO desde `observable_events` y emite **otro evento** `slo_breach` si se incumple.
+Cron diario mide vs SLO desde `observable_events` y emite `event_type='slo_breach'`. Si error budget >80% consumido → `event_type='deploy_freeze_requested'`. El equipo decide si saltarlo o esperar.
 
-**Error budget:** "podemos romper hasta X errores este mes". Si ya rompimos el 80%, **freezar deploys** hasta el siguiente periodo. Quita el tema político de "rollback sí o no" — el dato lo decide.
-
----
-
-## 10. Migración Sentry → observable_events (futuro)
-
-Webhook de Sentry → `POST /api/observability/ingest` con shared secret. Cada Sentry issue/event se espeja a la tabla.
-
-Ventajas:
-- UI de Sentry para deep-dive (stacks, contextual breadcrumbs)
-- SQL queries flexibles sobre `observable_events` para reportes / dashboards / alertas
-- Una sola fuente para correlacionar Sentry con eventos backend
-
-Implementación: 1-2h (Sentry webhook config + endpoint ingest que normalice el payload Sentry a shape de `observable_events`).
+**Beneficio:** quita la política del rollback. El dato decide.
 
 ---
 
-## 11. Roadmap priorizado
+## 11. 🚀 Migración a AWS — qué cambia, qué NO
 
-Orden recomendado (impacto descendente):
+### Lo que NO cambia (todo el código de app)
 
-1. **Endpoint `/api/observability/ingest`** (gateway HTTP universal) — 45 min
-   - Desbloquea: client-side, GHA, Vercel deploy hooks, futuro Sentry webhook
-2. **Interceptor global NestJS** errores ≥500 backend — 30 min
-   - Cierra agujero de errores backend ausentes en BD
-3. **Client-side observability** (consolas usuarios) — 1-2h
-   - Lo que el usuario quiere — bugs JS detectados sin esperar feedback
-4. **Migración batch 12 crons Fargate a emit** — 1h (con helper común)
-5. **Cron poda 30d** — 15 min
-6. **Dashboard admin `/admin/observability`** — 2-3h
-   - El ROI más visible
-7. **Alertas activas** (cron rules engine) — 1-2h
-8. **Migración Sentry → observable_events via webhook** — 1-2h
-9. **SLOs declarados + medidos** — 1h × SLO
-10. **Tracing distribuido (OpenTelemetry)** — 1-2 días
-   - Solo cuando los otros estén cubiertos
+- `lib/observability/emit.ts` (frontend Vercel) — sigue llamando `emit(event)`
+- `ObservabilityService.emit()` (backend NestJS) — idéntico
+- `event_type` convention — estable
+- Queries SQL sobre `observable_events` — siguen funcionando
+- Dashboard `/admin/observability` — sigue leyendo de la misma tabla
+- Reglas de alertas (cron rules engine) — siguen funcionando
+- SLOs declarados — siguen midiendo igual
 
----
+### Lo que SÍ cambia (solo capa de infraestructura)
 
-## 12. Notas técnicas adicionales
+| Componente | Hoy | Tras migración AWS |
+|---|---|---|
+| BD primaria | Supabase Postgres | RDS Postgres (mismo schema) |
+| Sink primario | `PostgresSink` (Supabase) | `PostgresSink` (RDS) |
+| Sink secundario | — | `CloudWatchLogsSink` (paralelo, para X-Ray + Synthetics) |
+| Alertas | Email via Resend | SNS → email (más fiable) |
+| Smoke E2E | Cron Fargate custom | CloudWatch Synthetics canary |
+| Tracing | — (opcional) | X-Ray nativo |
+| Logs Fargate | CloudWatch (aislado hoy) | CloudWatch (integrado con sink secundario) |
+| Métricas custom | Tabla queriable | CloudWatch Metrics + tabla |
 
-### Por qué NO usamos un servicio dedicado (Datadog, New Relic, etc.)
+### Hoja de ruta de la migración
+
+1. **Hoy → AWS-ready by contract**: implementar `ObservableSink` interfaz. Hoy solo `PostgresSink`. (1h)
+2. **Cuando migremos BD**: cambiar `DATABASE_URL` a RDS. Sink no cambia.
+3. **Cuando migremos compute (Vercel → ECS/Lambda)**: añadir `CloudWatchLogsSink` secundario. Código sigue llamando `emit()`.
+4. **Activar Synthetics + X-Ray**: añadir como capas adicionales. El observable_events sigue siendo source of truth.
+
+### Por qué AWS escala mejor
 
 | Razón |
 |---|
-| Coste: empiezan en $30-100+/mes y escalan con volumen. Hoy gastamos ~$30/mes total en infra. |
-| Lock-in: salir es trabajo grande. Postgres es portable a cualquier proveedor. |
-| Latency: enviar eventos a SaaS añade 100-500ms vs INSERT local (<5ms). |
-| Soberanía de datos: PII en proveedor externo = compliance complicada. |
+| **Backend dedicado proceso largo** — ya hecho con Fargate. Vercel lambdas son OK hasta ~5k DAU. |
+| **Pool de conexiones BD** — Supabase Supavisor tiene limitaciones documentadas. RDS Proxy o pgBouncer en EC2 son superiores a 100k DAU. |
+| **CDN global** — Vercel Edge es bueno. CloudFront con caching agresivo + S3 Origin escala más barato. |
+| **Storage** — S3 ya es la solución obvia. Vercel Blob es wrapper sobre S3 con margen. |
+| **Tracing/Monitoring nativos** — CloudWatch + X-Ray vs herramientas dispersas en Vercel + Supabase. |
+| **Coste a escala** — Vercel Pro a 100k DAU = $$$ vs ECS Fargate spot + RDS reserved. |
 
-Cuando lleguemos a 100k+ DAU consideramos. Por ahora, una tabla Postgres con buenos índices basta.
+### Por qué seguir agnóstico a pesar de AWS-native
+
+| Razón |
+|---|
+| **Si AWS sube precios** o cambia política, podemos salir sin reescribir. |
+| **Multi-cloud** (resiliencia) un día puede tener sentido. |
+| **Talento**: ingenieros conocen estándares antes que SDKs específicos. |
+| **Open source self-hosting**: si la empresa pivota, podemos correr en hardware propio. |
+
+---
+
+## 12. ✅ Definition of Done por gap
+
+Cada gap se considera cerrado cuando los **5 puntos** se cumplen:
+
+1. **Cambio mergeado en `main`.** Tests verde.
+2. **Deploy aplicado a producción.**
+3. **Smoke test del propio gap: deliberadamente provocar el problema** y verificar que la observabilidad lo detecta. Ej:
+   - Gap 1: throw `throw new Error('smoke-client-side')` en una ruta admin temporal. Verificar que aparece en `observable_events` con `source='frontend'` en <1 min.
+   - Gap 3: forzar 500 en un endpoint backend dummy. Verificar evento `http_5xx` en BD.
+   - Gap 5: parar manualmente un cron en task ECS. Esperar 2× su intervalo. Verificar alarma dispara.
+4. **Documentado en este manual** con la query/alarma/URL de dashboard correspondiente.
+5. **Memoria de Claude actualizada** si requiere acción nueva post-deploy.
+
+---
+
+## 13. 🗺️ Roadmap priorizado
+
+### Cobertura esperada por fase
+
+| Categoría | Hoy | Tras Fase 1 | Tras Fase 2 | Tras Fase 4 | Tras migración AWS |
+|---|:-:|:-:|:-:|:-:|:-:|
+| Crashes server-side Vercel | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Crashes server-side Fargate | ⚠️ | ✅ interceptor | ✅ | ✅ | ✅ |
+| Errores client-side JS | ❌ | ✅ | ✅ | ✅ | ✅ |
+| API client fails | ❌ | ✅ FetchInterceptor | ✅ | ✅ | ✅ |
+| Bug silencioso (intent) | ❌ | ⚠️ | ✅ | ✅ | ✅ |
+| Cron no se ejecutó | ⚠️ | ⚠️ | ✅ alarma | ✅ | ✅ + Synthetics |
+| Deploy roto silencioso | ❌ | ⚠️ | ✅ GHA hook | ✅ | ✅ + CloudFormation events |
+| Regresión funcional post-deploy | ❌ | ❌ | ❌ | ✅ smoke E2E | ✅ Synthetics + X-Ray |
+| SLO breach | ❌ | ❌ | ❌ | ✅ | ✅ |
+| Tracing distribuido | ❌ | ❌ | ❌ | ❌ | ✅ X-Ray |
+
+### Fases
+
+**Fase 1 — Cerrar agujeros críticos (~4-5h, $0/mes)**
+- [ ] **Gap 2**: Endpoint `/api/observability/ingest` (45 min) ← prerequisito de varios
+- [ ] **Gap 3**: Interceptor global NestJS errores ≥500 (30 min)
+- [ ] **Gap 1**: Client-side observability — `client.ts` + ObservabilityBoundary + EarlyErrorsBridge (1-2h)
+- [ ] **Gap 7**: Verificar Sentry, anotar dashboard URL (15 min)
+- [ ] **Gap 10**: Cron poda 30d (15 min)
+- [ ] **Migración batch de los 12 crons Fargate restantes** a emitir (~1h con helper común)
+
+**Fase 2 — Alertas + dashboard (~3-4h, $0/mes)**
+- [ ] **Gap 8**: Cron rules engine con `NotificationAdapter` (1-2h)
+- [ ] **Gap 9**: Dashboard `/admin/observability` (2-3h)
+- [ ] **Gap 6**: GHA workflows con `if: failure()` → ingest (30 min)
+
+**Fase 3 — Smoke E2E + más visibilidad (~2-3h, $0/mes hoy)**
+- [ ] **Gap 4**: Cron Fargate smoke E2E cada 5 min (1-2h)
+- [ ] **Gap 5**: Regla `cron_overdue` en rules engine (parte del Gap 8, ya activa al añadir la rule)
+- [ ] Web Vitals reporter + FetchInterceptor del cliente
+
+**Fase 4 — SLOs (~3-5h, $0/mes)**
+- [ ] **Gap 11**: 3-5 SLOs declarados en `docs/architecture/slos.yml`
+- [ ] Cron diario que mide y emite `slo_breach`
+- [ ] Auto-freeze deploys cuando error budget >80%
+
+**Fase 5 — Tracing (~1-2 días, $0/mes hoy)**
+- [ ] **Gap 12**: Instrumentación OpenTelemetry (frontend + backend)
+- [ ] Propagación de `traceId` en headers
+- [ ] (Cuando migremos AWS) → X-Ray como visualizador
+
+**Post-migración AWS**
+- [ ] `CloudWatchLogsSink` secundario en paralelo
+- [ ] CloudWatch Synthetics canary (reemplaza cron smoke E2E)
+- [ ] CloudWatch Alarms nativas (paralelo a rules engine custom)
+- [ ] X-Ray como visualizador de traces
+
+### Coste mensual estimado
+
+| Item | Hoy | Tras AWS |
+|---|---|---|
+| Postgres extra storage (observable_events 30d retención) | ~$0 (incluido Supabase Pro) | ~$0 (RDS marginal) |
+| Endpoint ingest (Vercel function) | ~$0 (incluido Vercel) | ~$0 (Lambda) |
+| Cron Fargate smoke E2E | $0 (incluido cluster actual) | $0 |
+| Email alertas via Resend | $0 (free tier) | $0 (free tier) o SNS $0.50/1M |
+| CloudWatch Synthetics canary | — | ~$15/mes |
+| X-Ray | — | ~$5/mes |
+| **Total observabilidad** | **~$0** | **~$20/mes** |
+
+Pago por nivel pro: $20/mes total. Aceptable.
+
+---
+
+## 14. 📚 Notas técnicas
+
+### Por qué tabla Postgres en vez de SaaS dedicado (Datadog/NewRelic)
+
+| Razón |
+|---|
+| **Coste**: SaaS dedicados empiezan en $30-100+/mes y escalan con volumen. Postgres ya pagado. |
+| **Lock-in**: salir de Datadog es trabajo grande. Postgres es portable. |
+| **Latencia**: emitir a SaaS añade 100-500ms vs INSERT local (<5ms). |
+| **Soberanía de datos**: PII en proveedor externo = compliance complicada. |
+| **Cuando llegar a 100k+ DAU**: reconsiderar. Hoy YAGNI. |
 
 ### Por qué retención solo 30 días
 
-| Razón |
-|---|
-| El 95% de la utilidad operativa es <24h (alertas, debugging activo). |
-| Investigación postmortem necesita hasta ~1 semana. 30d cubre con margen. |
-| Beyond 30d: si necesitas histórico → archivar a S3 (cuenta AWS ya existe). |
-| Coste: a 10k DAU + 50 eventos/día/user = 15M filas/mes. 30d × 15M = 450M filas en BD. Manejable con índices. Más allá → particionado por día. |
+- 95% de la utilidad operativa es <24h (alertas, debugging activo).
+- Investigación postmortem necesita hasta ~1 semana. 30d cubre con margen.
+- Beyond 30d: archivar a S3 (cuenta AWS ya existe) si compliance/análisis lo requiere.
+- A 10k DAU × 50 eventos/día/user = 15M filas/mes. 30d × 15M = 450M filas. Manejable con índices BTREE.
 
 ### Por qué fire-and-forget
 
-| Razón |
-|---|
-| Observabilidad NUNCA debe romper requests reales. Es lo opuesto al business goal. |
-| INSERT a observable_events tarda <5ms en caso normal, pero si BD lenta no queremos bloquear. |
-| Si se pierde un evento por timeout: aceptable. La señal es estadística. |
+- Observabilidad NUNCA debe romper requests reales. Es lo opuesto al business goal.
+- INSERT tarda <5ms en caso normal, pero si BD lenta no queremos bloquear.
+- Pérdida ocasional de evento por timeout: aceptable. La señal es estadística.
 
-### Buffer / sampling para client-side
+### Por qué buffer + sendBeacon en client
 
-Sin sampling y a 10k DAU:
-- 50 navegaciones/día/user × 1 console.error por página rotas = 500k eventos/día
-- Con sampling 10% en `console_error` y 100% en errores reales: ~50k eventos/día (manejable)
+- Sin buffer: 1 fetch HTTP por evento → cliente se ahoga.
+- Sin `sendBeacon` para unload: eventos en buffer se pierden al cerrar pestaña.
+- `keepalive: true` en fetch: equivalente a sendBeacon en navegadores modernos.
 
 ---
 
-## 13. Historial
+## 15. 📋 Historial
 
 | Fecha | Cambio |
 |-------|--------|
-| 2026-05-25 | Manual creado. MVP funcional: tabla + writers Vercel/Fargate + 1 cron + espejo `validation_error_logs`. |
+| 2026-05-25 | Manual creado (MVP funcional: tabla + writers Vercel/Fargate + 1 cron + espejo `validation_error_logs`). |
+| 2026-05-25 (tarde) | **Refactor con filosofía "AWS-ready by default, agnóstico by contract"**. Incorporados aprendizajes de VicoHR: frase martillo, 5 principios numerados, matriz cobertura por categorías, gaps con CASO REAL, diseño Sink intercambiable, smoke E2E como cron Fargate (sin lock-in hoy, plan AWS Synthetics futuro), Definition of Done por gap, sección «Migración a AWS — qué cambia, qué NO», coste mensual estimado. |
