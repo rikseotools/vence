@@ -27,6 +27,17 @@ import type { EventSeverity, EventSource } from './emit'
 const SAMPLE_RATES: Record<string, number> = {
   intent_unfulfilled: 1.0,
   pre_hydration_error: 1.0,
+  // TTS — bajo volumen (1 por sesión) al 100%, alto volumen muestreado.
+  tts_session_start: 1.0,
+  tts_session_end: 1.0,
+  tts_chunk_skip: 1.0, // señal — watchdog skipped chunk, importante
+  tts_no_voices: 1.0,
+  tts_voices_load_timeout: 1.0,
+  tts_chain_advance: 1.0,
+  tts_error: 1.0,
+  tts_unsupported: 1.0,
+  tts_watchdog_retry: 0.1, // alto volumen — muestreo 10%
+  tts_user_action: 0.2, // alto volumen — muestreo 20%
 }
 
 const BUFFER_FLUSH_MS = 5000
@@ -41,6 +52,17 @@ export type ClientEventType =
   | 'intent_unfulfilled'
   | 'web_vital_degraded'
   | 'custom'
+  // TTS — taxonomía completa documentada en docs/runbooks/observability.md §TTS
+  | 'tts_session_start'
+  | 'tts_session_end'
+  | 'tts_chunk_skip'
+  | 'tts_watchdog_retry'
+  | 'tts_no_voices'
+  | 'tts_voices_load_timeout'
+  | 'tts_chain_advance'
+  | 'tts_error'
+  | 'tts_unsupported'
+  | 'tts_user_action'
 
 interface ClientEvent {
   ts: string

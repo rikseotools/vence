@@ -945,6 +945,150 @@ Pago por nivel pro: $20/mes total. Aceptable.
 
 ---
 
+## 13bis. 🔊 Taxonomía TTS (Bloque 4 — 2026-05-25)
+
+Eventos del lector de temario (Web Speech robusto). Catálogo completo definido en `lib/tts/telemetry.ts`. Todos van a `observable_events.source='frontend'` vía `/api/observability/ingest`.
+
+### Catálogo de eventos
+
+| eventType | severity | volumen | sample rate | metadata clave |
+|---|---|---|---|---|
+| `tts_session_start` | info | bajo (1/play) | 100% | `sessionId`, `lawName`, `chunksTotal`, `textLen`, `voiceURI`, `voiceName`, `rate`, `browser`, `isMobile` |
+| `tts_session_end` | info / warn(*) | bajo | 100% | `sessionId`, `endReason: natural\|user_stop\|unmount\|error\|chain_advance`, `durationMs`, `chunksCompleted`, `chunksTotal`, `chunksSkipped` |
+| `tts_chunk_skip` | warn | medio | 100% | `sessionId`, `chunkIdx`, `chunksTotal`, `reason: dead\|zombie`, `retriesAttempted` |
+| `tts_watchdog_retry` | debug | alto | 10% | `sessionId`, `chunkIdx`, `retryNum`, `reason` |
+| `tts_no_voices` | warn | bajo | 100% | `totalVoices`, `spanishVoices`, `voicesLoaded` |
+| `tts_voices_load_timeout` | warn | muy bajo | 100% | `waitedMs` |
+| `tts_chain_advance` | info | medio | 100% | `fromSessionId`, `fromLaw`, `toLaw` |
+| `tts_error` | error | bajo | 100% | `sessionId`, `atChunkIdx`, `errorType`, `message` |
+| `tts_unsupported` | warn | muy bajo | 100% | (solo browser/isMobile en enriched meta) |
+| `tts_user_action` | debug | medio | 20% | `sessionId`, `action: pause\|resume\|stop\|rate_change\|voice_change`, `atChunkIdx`, `fromValue`, `toValue` |
+
+(*) severity es `warn` solo cuando `endReason='error'`.
+
+### Correlación de eventos por sesión
+
+Una "sesión TTS" = un `play()`. Generada con `crypto.randomUUID()`. Lifecycle:
+
+```
+tts_session_start
+  ↓ (chunks reproducen)
+tts_watchdog_retry × N (muestreado 10%)
+  ↓
+tts_chunk_skip × M (si pasa retries)
+  ↓
+tts_session_end (endReason=natural)
+  ↓
+tts_chain_advance (si modo=topic) → arranca nueva sessionId
+```
+
+Toda la query se hace JOIN por `metadata->>'sessionId'`.
+
+### Queries de funnel
+
+**Tasa de finalización natural (SLO candidate ≥95%):**
+
+```sql
+WITH sessions AS (
+  SELECT
+    metadata->>'sessionId' AS session_id,
+    MAX(CASE WHEN event_type='tts_session_end' THEN metadata->>'endReason' END) AS end_reason
+  FROM observable_events
+  WHERE event_type IN ('tts_session_start','tts_session_end')
+    AND ts > NOW() - INTERVAL '24 hours'
+  GROUP BY 1
+  HAVING MAX(CASE WHEN event_type='tts_session_start' THEN 1 END) = 1
+)
+SELECT
+  COUNT(*) AS total,
+  SUM(CASE WHEN end_reason='natural' THEN 1 ELSE 0 END) AS naturales,
+  ROUND(100.0 * SUM(CASE WHEN end_reason='natural' THEN 1 ELSE 0 END) / NULLIF(COUNT(*),0), 2) AS pct_natural,
+  COUNT(*) FILTER (WHERE end_reason IS NULL) AS abandonadas_sin_end
+FROM sessions;
+```
+
+**Tasa de chunk_skip por browser/device:**
+
+```sql
+SELECT
+  metadata->>'browser' AS browser,
+  metadata->>'isMobile' AS is_mobile,
+  COUNT(*) FILTER (WHERE event_type='tts_chunk_skip') AS skips,
+  COUNT(DISTINCT metadata->>'sessionId') FILTER (WHERE event_type='tts_session_start') AS sessions,
+  ROUND(
+    100.0 * COUNT(*) FILTER (WHERE event_type='tts_chunk_skip')
+    / NULLIF(COUNT(DISTINCT metadata->>'sessionId') FILTER (WHERE event_type='tts_session_start'),0),
+    2
+  ) AS skips_per_100_sessions
+FROM observable_events
+WHERE event_type IN ('tts_session_start','tts_chunk_skip')
+  AND ts > NOW() - INTERVAL '7 days'
+GROUP BY 1, 2
+ORDER BY skips_per_100_sessions DESC NULLS LAST;
+```
+
+**Sesiones donde el watchdog tuvo que skip ≥2 chunks (señal fuerte de problema en device):**
+
+```sql
+SELECT
+  metadata->>'sessionId' AS session_id,
+  metadata->>'browser' AS browser,
+  COUNT(*) AS chunks_skipped
+FROM observable_events
+WHERE event_type='tts_chunk_skip'
+  AND ts > NOW() - INTERVAL '24 hours'
+GROUP BY 1, 2
+HAVING COUNT(*) >= 2
+ORDER BY chunks_skipped DESC
+LIMIT 50;
+```
+
+**Distribución de duración de sesiones natural-ended (percentiles):**
+
+```sql
+SELECT
+  metadata->>'browser' AS browser,
+  PERCENTILE_DISC(0.5) WITHIN GROUP (ORDER BY duration_ms) AS p50_ms,
+  PERCENTILE_DISC(0.95) WITHIN GROUP (ORDER BY duration_ms) AS p95_ms,
+  PERCENTILE_DISC(0.99) WITHIN GROUP (ORDER BY duration_ms) AS p99_ms,
+  COUNT(*) AS n
+FROM observable_events
+WHERE event_type='tts_session_end'
+  AND metadata->>'endReason' = 'natural'
+  AND ts > NOW() - INTERVAL '7 days'
+GROUP BY 1
+ORDER BY n DESC;
+```
+
+### SLO candidato
+
+| SLO | Umbral | Cuándo dispara |
+|---|---|---|
+| % sesiones que terminan natural | ≥ 95% | Si baja → bug en Chrome/dispositivo |
+| chunk_skip por sesión | ≤ 0.5 promedio (≈ 1 cada 2 sesiones) | Si sube → watchdog peleando bug Chrome |
+| `tts_no_voices` por mes | < 0.5% de visitas únicas a temario | Si sube → cohort de devices sin voces |
+
+### Alertas (cuando exista el rules engine — Gap 8)
+
+```yaml
+- name: tts_unhealthy_natural_end_rate
+  query: |
+    SELECT 100.0 * COUNT(*) FILTER (WHERE metadata->>'endReason'='natural')
+      / NULLIF(COUNT(*) FILTER (WHERE event_type='tts_session_start'),0)
+    FROM observable_events
+    WHERE event_type IN ('tts_session_start','tts_session_end')
+      AND ts > NOW() - INTERVAL '1 hour'
+  threshold: '< 80'
+  severity: warn
+
+- name: tts_chunk_skip_burst
+  query: SELECT COUNT(*) FROM observable_events WHERE event_type='tts_chunk_skip' AND ts > NOW() - INTERVAL '15 minutes'
+  threshold: '> 20'
+  severity: warn
+```
+
+---
+
 ## 14. 📚 Notas técnicas
 
 ### Por qué tabla Postgres en vez de SaaS dedicado (Datadog/NewRelic)
@@ -984,3 +1128,4 @@ Pago por nivel pro: $20/mes total. Aceptable.
 |-------|--------|
 | 2026-05-25 | Manual creado (MVP funcional: tabla + writers Vercel/Fargate + 1 cron + espejo `validation_error_logs`). |
 | 2026-05-25 (tarde) | **Refactor con filosofía "AWS-ready by default, agnóstico by contract"**. Incorporados aprendizajes de VicoHR: frase martillo, 5 principios numerados, matriz cobertura por categorías, gaps con CASO REAL, diseño Sink intercambiable, smoke E2E como cron Fargate (sin lock-in hoy, plan AWS Synthetics futuro), Definition of Done por gap, sección «Migración a AWS — qué cambia, qué NO», coste mensual estimado. |
+| 2026-05-25 (noche) | **Refactor TTS robusto + taxonomía completa**. Web Speech reescrito con state machine (`lib/tts/stateMachine.ts`), motor encapsulado (`lib/tts/engine.ts`), hook React (`lib/tts/useTTS.ts`). ArticleTTS pasa de 599 líneas a 265 (UI pura). Fixes: (a) bucle al final de ley — NATURAL_END es idempotente vía SM; (b) resume desde la posición guardada tras pause o stop, no desde 0. Taxonomía de 10 eventTypes en §13bis con queries de funnel + SLOs candidatos. 104 tests TTS pasando. |

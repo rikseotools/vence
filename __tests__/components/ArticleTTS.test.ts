@@ -1,187 +1,125 @@
 // __tests__/components/ArticleTTS.test.ts
-// Tests de la lógica de ArticleTTS (chunking, robustez)
+//
+// Tests de la capa UI ArticleTTS + checks de integración con temarios.
+// La lógica de TTS está en `lib/tts/*` — sus tests viven en
+// `__tests__/lib/tts/*.test.ts`. Aquí verificamos:
+//
+//   - El componente se monta sin lógica duplicada (ya no tiene watchdog,
+//     state machine, chunker — todo eso se delega a useTTS).
+//   - Sigue habiendo TTS en TODOS los TopicContentView del temario.
 
 import * as fs from 'fs'
 import * as path from 'path'
 
 const ROOT = path.resolve(__dirname, '../..')
-const SRC = fs.readFileSync(path.join(ROOT, 'components/ArticleTTS.tsx'), 'utf-8')
-
-// Extraer splitIntoChunks para testear directamente
-// (es función pura fuera del componente, la reimplementamos idéntica)
-const MAX_CHUNK_LENGTH = 250
-
-function splitIntoChunks(text: string): string[] {
-  const sentences = text.split(/(?<=[.!?;])\s+/)
-  const chunks: string[] = []
-  let current = ''
-
-  for (const sentence of sentences) {
-    if (current.length + sentence.length > MAX_CHUNK_LENGTH && current.length > 0) {
-      chunks.push(current.trim())
-      current = sentence
-    } else {
-      current += (current ? ' ' : '') + sentence
-    }
-  }
-  if (current.trim()) chunks.push(current.trim())
-
-  return chunks.length > 0 ? chunks : [text]
-}
+const SRC = fs.readFileSync(
+  path.join(ROOT, 'components/ArticleTTS.tsx'),
+  'utf-8',
+)
+const ENGINE_SRC = fs.readFileSync(
+  path.join(ROOT, 'lib/tts/engine.ts'),
+  'utf-8',
+)
 
 // ============================================
-// 1. SPLITTING
+// 1. ArticleTTS es UI pura sobre useTTS
 // ============================================
-describe('splitIntoChunks', () => {
-  it('texto corto → 1 chunk', () => {
-    const result = splitIntoChunks('Hola mundo.')
-    expect(result).toEqual(['Hola mundo.'])
+describe('ArticleTTS — UI pura sobre useTTS', () => {
+  it('importa useTTS de lib/tts', () => {
+    expect(SRC).toMatch(/from '@\/lib\/tts\/useTTS'/)
   })
 
-  it('texto vacío → 1 chunk con texto original', () => {
-    const result = splitIntoChunks('')
-    expect(result).toEqual([''])
+  it('NO contiene state machine ni watchdog (delegado al engine)', () => {
+    expect(SRC).not.toMatch(/watchdogRef/)
+    expect(SRC).not.toMatch(/startWatchdog/)
+    expect(SRC).not.toMatch(/playingRef/)
+    expect(SRC).not.toMatch(/stoppedRef/)
+    expect(SRC).not.toMatch(/pausedRef/)
+    expect(SRC).not.toMatch(/MAX_WATCHDOG_RETRIES/)
   })
 
-  it('respeta MAX_CHUNK_LENGTH', () => {
-    const chunks = splitIntoChunks(
-      'Artículo 1. La Constitución se fundamenta en la indisoluble unidad de la Nación española. ' +
-      'Artículo 2. Reconoce y garantiza el derecho a la autonomía de las nacionalidades y regiones. ' +
-      'Artículo 3. El castellano es la lengua española oficial del Estado. ' +
-      'Artículo 4. La bandera de España está formada por tres franjas horizontales, roja, amarilla y roja. ' +
-      'Artículo 5. La capital del Estado es la villa de Madrid.'
-    )
-    for (const chunk of chunks) {
-      // Puede exceder ligeramente si una frase individual es > 250
-      expect(chunk.length).toBeLessThan(MAX_CHUNK_LENGTH + 100)
-    }
-    expect(chunks.length).toBeGreaterThan(1)
+  it('NO contiene splitIntoChunks (delegado a lib/tts/chunker)', () => {
+    expect(SRC).not.toMatch(/function splitIntoChunks/)
+    expect(SRC).not.toMatch(/MAX_CHUNK_LENGTH/)
   })
 
-  it('no corta a mitad de frase', () => {
-    const text = 'Primera frase completa. Segunda frase completa. Tercera frase completa.'
-    const chunks = splitIntoChunks(text)
-    for (const chunk of chunks) {
-      // Cada chunk termina en punto, exclamación, interrogación o punto y coma
-      expect(chunk).toMatch(/[.!?;]$/)
-    }
+  it('NO contiene cleanText inline (delegado al engine)', () => {
+    // El cleanText vive en lib/tts/chunker
+    expect(SRC).not.toMatch(/function cleanText/)
   })
 
-  it('maneja frase única más larga que MAX', () => {
-    const longSentence = 'A'.repeat(300) + '.'
-    const result = splitIntoChunks(longSentence)
-    // No puede dividirla (no hay separador), devuelve como un chunk
-    expect(result.length).toBe(1)
-    expect(result[0]).toBe(longSentence)
+  it('expone botones Escuchar/Continuar/Pausar/Parar + select de rate', () => {
+    expect(SRC).toMatch(/Escuchar/)
+    expect(SRC).toMatch(/Continuar/)
+    expect(SRC).toMatch(/Pausar/)
+    expect(SRC).toMatch(/Parar/)
+    expect(SRC).toMatch(/<select/)
   })
 
-  it('simula CE completa: muchos chunks sin perder texto', () => {
-    // Generar texto similar a la CE: ~1000 artículos cortos
-    const articles = Array.from({ length: 100 }, (_, i) =>
-      `Artículo ${i + 1}. Este es el contenido del artículo número ${i + 1} que establece disposiciones importantes.`
-    ).join(' ')
+  it('usa canResume para etiquetar el botón principal', () => {
+    expect(SRC).toMatch(/canResume/)
+  })
 
-    const chunks = splitIntoChunks(articles)
-    const reconstructed = chunks.join(' ')
+  it('persiste rate y voiceURI en localStorage', () => {
+    expect(SRC).toMatch(/TTS_RATE_STORAGE_KEY/)
+    expect(SRC).toMatch(/TTS_VOICE_STORAGE_KEY/)
+    expect(SRC).toMatch(/localStorage\.setItem/)
+  })
 
-    // Verificar que no se pierde texto
-    expect(reconstructed.length).toBeGreaterThanOrEqual(articles.length - 10) // tolerancia espacios
-    expect(chunks.length).toBeGreaterThan(10)
+  it('registra la instancia con TTSChain para encadenar leyes', () => {
+    expect(SRC).toMatch(/chain\.register/)
+    expect(SRC).toMatch(/onNaturalEnd/)
+  })
 
-    // Verificar que ningún chunk excede límite razonable
-    for (const chunk of chunks) {
-      expect(chunk.length).toBeLessThan(MAX_CHUNK_LENGTH + 150)
-    }
+  it('renderiza ChainModeToggle solo en la primera ley del tema', () => {
+    expect(SRC).toMatch(/isFirstInChain/)
+    expect(SRC).toMatch(/<ChainModeToggle/)
   })
 })
 
 // ============================================
-// 2. SOURCE CODE — mecanismos de robustez
+// 2. Engine de lib/tts/engine.ts contiene la lógica robusta
 // ============================================
-describe('ArticleTTS — mecanismos de robustez', () => {
-  it('NO usa keepAlive pause+resume (causa pérdida de onend en Chrome 147)', () => {
-    // El keepalive con pause()+resume() corrompe el estado de Chrome
-    // y hace que chunks mueran sin disparar onend tras ~3 min
-    expect(SRC).not.toMatch(/startKeepAlive/)
-    expect(SRC).not.toMatch(/keepAliveRef/)
+describe('lib/tts/engine — robustez heredada', () => {
+  it('NO usa keepalive pause+resume (causa pérdida de onend en Chrome)', () => {
+    expect(ENGINE_SRC).not.toMatch(/startKeepAlive/)
+    expect(ENGINE_SRC).not.toMatch(/keepAliveRef/)
   })
 
-  it('tiene watchdog timer (detecta muerte silenciosa cada 2s)', () => {
-    expect(SRC).toMatch(/watchdogRef/)
-    expect(SRC).toMatch(/startWatchdog/)
-    expect(SRC).toMatch(/stopWatchdog/)
-    expect(SRC).toMatch(/2[_,]?000/)
+  it('watchdog con interval 2s', () => {
+    expect(ENGINE_SRC).toMatch(/WATCHDOG_INTERVAL_MS\s*=\s*2[_,]?000/)
   })
 
-  it('watchdog detecta caso 1: speech murió (speaking=false)', () => {
-    expect(SRC).toMatch(/!window\.speechSynthesis\.speaking/)
-    expect(SRC).toMatch(/!window\.speechSynthesis\.pending/)
+  it('detecta speech muerto (speaking=false, pending=false)', () => {
+    expect(ENGINE_SRC).toMatch(/!synth\.speaking/)
+    expect(ENGINE_SRC).toMatch(/!synth\.pending/)
   })
 
-  it('watchdog detecta caso 2: chunk zombie (speaking=true >30s)', () => {
-    expect(SRC).toMatch(/CHUNK_TIMEOUT_MS/)
-    expect(SRC).toMatch(/30[_,]?000/)
-    expect(SRC).toMatch(/chunkAge > CHUNK_TIMEOUT_MS/)
-    expect(SRC).toMatch(/chunk.*zombie/)
+  it('detecta chunk zombie (>30s)', () => {
+    expect(ENGINE_SRC).toMatch(/CHUNK_ZOMBIE_TIMEOUT_MS\s*=\s*30[_,]?000/)
   })
 
-  it('watchdog hace cancel() antes de re-lanzar', () => {
-    // Importante: cancel() limpia el estado de Chrome antes de re-intentar.
-    // cancel() debe aparecer ANTES de speakChunkRef.current en el watchdog.
-    // (entre ambos hay lógica de retries con MAX_WATCHDOG_RETRIES)
-    const watchdogSection = SRC.slice(SRC.indexOf('Caso 1: speech murió silenciosamente'))
-    const cancelIdx = watchdogSection.indexOf('speechSynthesis.cancel()')
-    const speakIdx = watchdogSection.indexOf('speakChunkRef.current(currentChunkRef.current')
-    expect(cancelIdx).toBeGreaterThan(0)
-    expect(speakIdx).toBeGreaterThan(cancelIdx)
+  it('idempotencia natural end vía state machine (fix bucle)', () => {
+    expect(ENGINE_SRC).toMatch(/handleNaturalEnd/)
+    expect(ENGINE_SRC).toMatch(/transitionTo\(\{ type: 'NATURAL_END' \}\)/)
   })
 
-  it('watchdog re-lanza desde el chunk actual (no desde 0)', () => {
-    expect(SRC).toMatch(/speakChunkRef\.current\(currentChunkRef\.current\)/)
+  it('cancela handlers de utterance ANTES de cancel() para evitar races', () => {
+    expect(ENGINE_SRC).toMatch(/this\.currentUtterance\.onend = null/)
+    expect(ENGINE_SRC).toMatch(/this\.currentUtterance\.onerror = null/)
   })
 
-  it('registra timestamp de inicio de cada chunk', () => {
-    expect(SRC).toMatch(/chunkStartTimeRef\.current = Date\.now\(\)/)
+  it('resume cancela + relanza chunk (Chrome móvil resume nativo flaky)', () => {
+    expect(ENGINE_SRC).toMatch(
+      /resume\(\)[\s\S]*?cancelCurrent\(\)[\s\S]*?speakChunk/,
+    )
   })
 
-  it('limpia todos los timers al parar', () => {
-    expect(SRC).toMatch(/stopAllTimers/)
-    expect(SRC).toMatch(/const stop = useCallback\(\(\) =>[\s\S]*?stopAllTimers/)
-  })
-
-  it('limpia watchdog al desmontar componente', () => {
-    expect(SRC).toMatch(/watchdogRef\.current\) clearInterval\(watchdogRef\.current\)/)
-  })
-
-  it('muestra progreso visual', () => {
-    expect(SRC).toMatch(/progressPercent/)
-    expect(SRC).toMatch(/progress\.current/)
-    expect(SRC).toMatch(/progress\.total/)
-  })
-
-  it('play() inicia watchdog (no keepalive)', () => {
-    const playFn = SRC.match(/const play = useCallback\(\(\) =>[\s\S]*?\}, \[/)?.[0] || ''
-    expect(playFn).toContain('startWatchdog()')
-    expect(playFn).not.toContain('startKeepAlive()')
-  })
-
-  it('pause() para timers', () => {
-    const pauseFn = SRC.match(/const pause = useCallback\(\(\) =>[\s\S]*?\}, \[/)?.[0] || ''
-    expect(pauseFn).toContain('stopAllTimers()')
-  })
-
-  it('speakChunk actualiza progreso', () => {
-    expect(SRC).toMatch(/setProgress\(\{ current: index \+ 1, total: chunksRef\.current\.length \}\)/)
-  })
-
-  it('onerror con interrupted se ignora', () => {
-    expect(SRC).toMatch(/e\.error !== 'interrupted'/)
-  })
-
-  it('usa refs para estado en timers (no state stale)', () => {
-    expect(SRC).toMatch(/playingRef\.current/)
-    expect(SRC).toMatch(/pausedRef\.current/)
-    expect(SRC).toMatch(/stoppedRef\.current/)
+  it('emite telemetría a observable_events vía ttsTelemetry', () => {
+    expect(ENGINE_SRC).toMatch(/ttsTelemetry\.sessionStart/)
+    expect(ENGINE_SRC).toMatch(/ttsTelemetry\.sessionEnd/)
+    expect(ENGINE_SRC).toMatch(/ttsTelemetry\.chunkSkip/)
+    expect(ENGINE_SRC).toMatch(/ttsTelemetry\.watchdogRetry/)
   })
 })
 
@@ -190,10 +128,13 @@ describe('ArticleTTS — mecanismos de robustez', () => {
 // ============================================
 describe('ArticleTTS — integración con temarios', () => {
   const glob = require('glob')
-  const topicViews: string[] = glob.sync('app/**/temario/*/TopicContentView.tsx', { cwd: ROOT })
+  const topicViews: string[] = glob.sync(
+    'app/**/temario/*/TopicContentView.tsx',
+    { cwd: ROOT },
+  )
 
   it('hay al menos 20 TopicContentView con TTS', () => {
-    const withTTS = topicViews.filter(f => {
+    const withTTS = topicViews.filter((f) => {
       const content = fs.readFileSync(path.join(ROOT, f), 'utf-8')
       return content.includes('ArticleTTS')
     })
@@ -211,8 +152,7 @@ describe('ArticleTTS — integración con temarios', () => {
     expect(missing).toEqual([])
   })
 
-  it('TTS recibe el texto concatenado de artículos (no individual)', () => {
-    // Verificar que al menos uno usa el patrón de concatenación
+  it('TTS recibe el texto concatenado de artículos', () => {
     let found = false
     for (const f of topicViews) {
       const content = fs.readFileSync(path.join(ROOT, f), 'utf-8')
@@ -226,63 +166,24 @@ describe('ArticleTTS — integración con temarios', () => {
 })
 
 // ============================================
-// 4. CONFIGURACIÓN Y DIAGNÓSTICO
+// 4. Configuración + diagnóstico (en UI)
 // ============================================
-describe('ArticleTTS — configuración y diagnóstico', () => {
-  it('tiene panel de diagnóstico con info del dispositivo', () => {
-    expect(SRC).toMatch(/getDiagnostic/)
+describe('ArticleTTS — diagnóstico de voces', () => {
+  it('botón Configurar abre panel de voces', () => {
+    expect(SRC).toMatch(/Configurar voz/)
     expect(SRC).toMatch(/showDiag/)
-    expect(SRC).toMatch(/diagInfo/)
   })
 
-  it('detecta navegador (Chrome, Firefox, Safari)', () => {
-    expect(SRC).toMatch(/isChrome/)
-    expect(SRC).toMatch(/isFirefox/)
-    expect(SRC).toMatch(/isSafari/)
-  })
-
-  it('detecta dispositivo (móvil vs escritorio)', () => {
-    expect(SRC).toMatch(/isMobile/)
-    expect(SRC).toMatch(/Android|iPhone|iPad/)
-  })
-
-  it('muestra número de voces disponibles', () => {
+  it('muestra conteo total y filtrado por español', () => {
     expect(SRC).toMatch(/Voces totales/)
-    expect(SRC).toMatch(/Voces en español/)
+    expect(SRC).toMatch(/voicesTotal/)
   })
 
-  it('tiene selector de voz si hay varias opciones', () => {
-    expect(SRC).toMatch(/selectedVoiceURI/)
-    expect(SRC).toMatch(/availableVoices/)
-    expect(SRC).toMatch(/<select/)
-    expect(SRC).toMatch(/<option/)
-  })
-
-  it('getSpanishVoice respeta la selección del usuario', () => {
-    expect(SRC).toMatch(/selectedVoiceURI/)
-    expect(SRC).toMatch(/v\.voiceURI === selectedVoiceURI/)
-  })
-
-  it('muestra aviso si no hay voces en español', () => {
+  it('mensaje claro si no hay voces ES en el dispositivo', () => {
     expect(SRC).toMatch(/No se detectan voces en español/)
   })
 
-  it('play() verifica voces antes de reproducir', () => {
-    const playFn = SRC.match(/const play = useCallback\(\(\) =>[\s\S]*?\}, \[/)?.[0] || ''
-    expect(playFn).toContain('voices.length === 0')
-    expect(playFn).toContain('esVoices.length === 0')
-    expect(playFn).toContain('setShowDiag(true)')
-  })
-
-  it('tiene botón de configuración con icono engranaje y texto responsive', () => {
-    expect(SRC).toMatch(/Configurar voz/) // title
-    expect(SRC).toMatch(/hidden sm:inline.*Configurar/) // texto solo en desktop
-    expect(SRC).toMatch(/hover:bg-gray-200/) // hover visible
-    expect(SRC).toMatch(/hover:border-gray-300/) // borde en hover
-  })
-
-  it('tiene botón cerrar en el panel', () => {
-    expect(SRC).toMatch(/Cerrar/)
-    expect(SRC).toMatch(/setShowDiag\(false\)/)
+  it('selector de voz tipo automática | específica', () => {
+    expect(SRC).toMatch(/Automática \(mejor disponible\)/)
   })
 })
