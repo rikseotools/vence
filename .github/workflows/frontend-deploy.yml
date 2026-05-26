@@ -95,15 +95,86 @@ jobs:
             DATABASE_URL_REPLICA=${{ secrets.DATABASE_URL_REPLICA }}
             SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
 
+      # Registra nueva task definition revision con el digest específico
+      # del SHA recién pusheado, y actualiza el service para que use esa
+      # revision. Esto resuelve el anti-patrón del incidente 2026-05-26
+      # (postmortem #115):
+      #
+      # - ANTES: terraform creaba task def con `:latest` tag y el service
+      #   pineaba el SHA al arrancar. Si lifecycle policy de ECR purgaba
+      #   ese SHA (porque un push posterior sobrescribió :latest), los
+      #   restarts post-OOM fallaban con CannotPullContainerError.
+      #
+      # - AHORA: cada deploy registra task def con `repo@sha256:<digest>`
+      #   específico (inmutable). ECS pula exactamente esa imagen, que
+      #   SIEMPRE existe en ECR porque acabamos de pushearla.
+      #
+      # Rolling deploy: ECS arranca task nuevo con la nueva revision,
+      # espera healthcheck del ALB, drena el viejo (30s), lo mata.
+      # Zero downtime garantizado por el deployment circuit breaker.
+      - name: Registrar nueva task definition + update-service
+        env:
+          IMAGE_URI: ${{ steps.meta.outputs.tag_sha }}
+        run: |
+          # 1. Obtener el digest real del :sha que acabamos de pushear.
+          #    El push de docker/build-push-action no devuelve digest, lo
+          #    leemos de ECR (más fiable que confiar en el tag mutable).
+          SHA_SHORT=$(echo "${{ github.sha }}" | cut -c1-7)
+          DIGEST=$(aws ecr describe-images \
+            --repository-name "${{ env.ECR_REPOSITORY }}" \
+            --image-ids imageTag="$SHA_SHORT" \
+            --region "${{ env.AWS_REGION }}" \
+            --query 'imageDetails[0].imageDigest' \
+            --output text)
+          REGISTRY="${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}"
+          IMAGE_PINNED="${REGISTRY}@${DIGEST}"
+          echo "Image pin: $IMAGE_PINNED"
+
+          # 2. Obtener la task def más reciente (terraform-base + cualquier
+          #    cambio aplicado). Limpia campos read-only.
+          aws ecs describe-task-definition \
+            --task-definition vence-frontend \
+            --region "${{ env.AWS_REGION }}" \
+            --query 'taskDefinition' \
+          | jq --arg IMAGE "$IMAGE_PINNED" '
+              .containerDefinitions[0].image = $IMAGE
+              | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)
+            ' > new-task-def.json
+
+          # 3. Registrar nueva revision con image pineado.
+          NEW_TASK_DEF_ARN=$(aws ecs register-task-definition \
+            --cli-input-json file://new-task-def.json \
+            --region "${{ env.AWS_REGION }}" \
+            --query 'taskDefinition.taskDefinitionArn' \
+            --output text)
+          echo "Nueva revision: $NEW_TASK_DEF_ARN"
+
+          # 4. Apuntar el service a la nueva revision (rolling deploy).
+          aws ecs update-service \
+            --cluster vence-backend \
+            --service vence-frontend \
+            --task-definition "$NEW_TASK_DEF_ARN" \
+            --region "${{ env.AWS_REGION }}" \
+            --query 'service.[serviceName,deployments[0].rolloutState]' \
+            --output text
+          echo "NEW_TASK_DEF_ARN=$NEW_TASK_DEF_ARN" >> "$GITHUB_ENV"
+
+      # Esperar a que el rollout termine. Si el task nuevo falla healthcheck,
+      # ECS lo revierte automáticamente (circuit breaker) y este step falla.
+      - name: Esperar rollout estable
+        run: |
+          aws ecs wait services-stable \
+            --cluster vence-backend \
+            --services vence-frontend \
+            --region "${{ env.AWS_REGION }}"
+          echo "✅ Rollout estable — task nuevo healthy en ALB."
+
       - name: Summary
         run: |
-          echo "## Imagen publicada" >> "$GITHUB_STEP_SUMMARY"
-          echo "- \`${{ steps.meta.outputs.tag_sha }}\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "- \`${{ steps.meta.outputs.tag_latest }}\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "Para crear/actualizar el service ECS (Fase E.2):" >> "$GITHUB_STEP_SUMMARY"
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
-          echo "AWS_PROFILE=vence terraform apply -var=\"frontend_image_tag=$(echo "${{ github.sha }}" | cut -c1-7)\"" >> "$GITHUB_STEP_SUMMARY"
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "## Frontend deployed a AWS ECS" >> "$GITHUB_STEP_SUMMARY"
+          echo "- imagen pineada por digest: \`${{ steps.meta.outputs.tag_sha }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- task def revision: \`${NEW_TASK_DEF_ARN}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- service: \`vence-frontend\` en cluster \`vence-backend\` (eu-west-2)" >> "$GITHUB_STEP_SUMMARY"
 
   # Notificación de fallo a observabilidad (mismo patrón que el resto de workflows).
   notify-failure:

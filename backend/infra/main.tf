@@ -318,6 +318,36 @@ resource "aws_iam_role_policy" "ci_deploy" {
           aws_ecs_service.backend.id,
           aws_ecs_service.frontend.id,
         ]
+      },
+      # Frontend deploy completo (registra task def + actualiza service +
+      # query ECR images por tag). Resource = * porque RegisterTaskDefinition
+      # no soporta resource-level scoping (AWS limitation).
+      {
+        Effect = "Allow"
+        Action = [
+          "ecs:RegisterTaskDefinition",
+          "ecs:DescribeTaskDefinition",
+          "ecr:DescribeImages",
+        ]
+        Resource = ["*"]
+      },
+      # PassRole para que ECS pueda asumir los roles que la task def
+      # define (executionRoleArn + taskRoleArn). Sin esto, register-task-
+      # definition falla con "User is not authorized to perform: iam:PassRole".
+      {
+        Effect = "Allow"
+        Action = ["iam:PassRole"]
+        Resource = [
+          aws_iam_role.frontend_task_execution.arn,
+          aws_iam_role.frontend_task.arn,
+          aws_iam_role.task_execution.arn,
+          aws_iam_role.task.arn,
+        ]
+        Condition = {
+          StringEquals = {
+            "iam:PassedToService" = "ecs-tasks.amazonaws.com"
+          }
+        }
       }
     ]
   })

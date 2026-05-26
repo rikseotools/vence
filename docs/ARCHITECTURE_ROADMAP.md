@@ -441,7 +441,81 @@ ECS Fargate sería mejor si Vence fuera SaaS B2B con carga constante 24/7. No es
   - 0 errores 5xx.
 
   **Rollback disponible** <2 min: cambiar el `records` del CNAME `www` en `backend/infra/route53.tf` a `vercel-dns-017.com` y `terraform apply`. TTL 60s propaga el revert.
-- **E.7** ⏳ Tras 7 días estable: apagar proyecto Vercel — cancelar plan, borrar deploys, limpiar `VERCEL_*` env vars del repo, eliminar workflows GHA exclusivos de Vercel.
+- **E.7** ⏳ Tras 7 días estable: apagar proyecto Vercel — cancelar plan, borrar deploys, limpiar `VERCEL_*` env vars del repo, eliminar workflows GHA exclusivos de Vercel. **Vercel integración GitHub ya desconectada 2026-05-26 (post-incidente)** — ya no auto-deploya en push a main.
+
+- **E.8** 🔥 **Incidente post-cutover 2026-05-26 14:50-15:10 + hardening** (postmortem detallado en #115, #116, #117):
+
+  **Qué pasó (resumen 1 línea):** task ECS (0.5 vCPU + 1 GB) sufrió OOM por memory leak en SSR; tras OOM ECS no pudo relanzar porque la deployment tenía pineado un SHA huérfano que el lifecycle policy de ECR había purgado → crash loop CannotPullContainerError durante 20 min hasta force-new-deployment manual.
+
+  **Dos fallos en cascada:**
+  1. **Memory leak vivo en código.** Logs ECS muestran `🔄 [LawsAPI] Cargando cache de slugs desde BD...` recurriendo decenas de veces por minuto a pesar del TTL 1h. Sospecha: Next.js bundle del módulo `lib/api/laws/queries.ts` varias veces (RSC + API route + middleware) → cada bundle tiene su propio `let slugMappingCache = null` → cache no se comparte → cada request inicia su propia carga, mantiene strong refs en memoria, no se libera. Memoria subía 71%→99.8% en 30 min bajo carga normal de ~10 usuarios. **Pendiente investigar y arreglar** (#117 parte B).
+  2. **Anti-patrón infraestructural (resuelto en este apply).** Task def usaba tag mutable `:latest`. ECS pinea el SHA al arrancar el servicio. Si entre arranque y restart de un task: (a) el GHA hace push de nueva imagen sobrescribiendo `:latest` con SHA nuevo, (b) lifecycle policy ECR purga el SHA viejo (ya untagged), entonces el restart falla con CannotPull. Esto NO se detecta hasta el primer OOM/restart, cuando ya es tarde.
+
+  **Fix aplicado (2026-05-26 tras el incidente):**
+  - **CPU/memoria subido** 0.5→1 vCPU, 1→2 GB en `aws_ecs_task_definition.frontend`.
+  - **Imagen pineada por digest** (`@sha256:<digest>`) en lugar de tag mutable. Terraform usa `data "aws_ecr_image" "frontend_latest"` que resuelve `:latest` al SHA actual en cada `terraform apply`.
+  - **GHA `frontend-deploy.yml`** ahora hace `aws ecs describe-task-definition` → modifica image al digest del SHA recién pusheado → `register-task-definition` → `update-service --task-definition <new-revision>` → `wait services-stable`. Cada deploy crea revision inmutable con SHA específico.
+  - **Quitado** `task_definition` de `ignore_changes` del service (terraform es dueño; GHA hace lo mismo en push, ambos convergen al digest actual de `:latest`).
+  - **Deployment circuit breaker** `enable + rollback = true` — ECS auto-revierte si el task nuevo no pasa healthcheck del ALB.
+  - **Autoscaling 1→3 tasks** por CPU>70% o memoria>75%, scale-out cooldown 60s, scale-in 300s.
+  - **`iam:PassRole`** + `ecs:RegisterTaskDefinition` + `ecr:DescribeImages` añadidos al `ci_deploy` role.
+  - **Vercel desconectado del repo** (vía dashboard Vercel → Settings → Git → Disconnect). Ya no hay auto-deploys a Vercel en push a main.
+  - **Memoria del agente:** `feedback_incident_mitigation_act_fast.md` — en incidente PROD activo, ejecutar mitigaciones reversibles (`force-new-deployment`, CloudFront invalidation, scale-out) SIN esperar autorización; pedir permiso solo para irreversibles (DNS rollback, DROP, push --force). Esperé 25 min permisos durante este incidente, error que no se repite.
+
+  **Lección arquitectónica más fuerte (#117 parte B pendiente):**
+  ECS Fargate **no es la arquitectura adecuada para Vence**. Un único proceso Node atendiendo ~337 páginas (algunas SSG con queries BD durante prerender) con caches en memoria del proceso es la receta perfecta para memory leaks bajo carga. En Vercel cada request era una lambda aislada de 200ms que moría — leak imposible. La elección de ECS fue forzada porque OpenNext rompía con `useState null` durante build SSG de Vence (Fase E.0/E.1-SST descartado el 25/05). El siguiente paso correcto es **reintentar SST/Lambda** con las lecciones aprendidas (ver E.9).
+
+- **E.9** ⏳ **Reintento SST/Lambda — investigación previa antes de decidir** (driver: incidente E.8 + comparativa VicoHR + investigación web 2026-05-26):
+
+  **VicoHR (otro proyecto del mismo dueño) SÍ corre en SST/Lambda en producción** — ver `/home/manuel/Documentos/github/VicoHR/sst.config.ts`. Mismo stack base (Next.js + React 19 + SST + AWS) que el que intentamos en Fase E.1-SST y descartamos para Vence. Diferencia clave detectada al comparar versiones:
+
+  **Comparativa Vence vs VicoHR (medida 2026-05-26 post-incidente):**
+
+  | | Vence | VicoHR |
+  |---|---|---|
+  | Stack hosting | ECS Fargate + ALB + CloudFront | **SST/Lambda + CloudFront** |
+  | **Next.js** | **^16.2.6** | **16.1** (pinned) |
+  | React | ^19.2.4 | ^19.2.0 |
+  | SST version | — | 4.14.3 |
+  | Páginas `page.tsx/ts/js` | 337 | 102 |
+  | Archivos con `generateStaticParams` | 12 | 14 (i18n landings) |
+  | Client providers en root layout | Auth, Theme, Query, Notifications, Onboarding | Auth, Theme, simple |
+  | Modelo de ejecución | un proceso Node 24/7 | lambda-per-request 200ms |
+  | Memory leak posible | SÍ | NO (proceso muere) |
+  | Coste a 10k DAU | ~$100-150/mes (multiple tasks ECS) | ~$50-100/mes (lambda + RDS) |
+
+  **Causa raíz real del fallo SST en E.1-SST (investigación web 2026-05-26):** NO es código específico de Vence — **es un bug conocido de Next.js 16 que afecta a CUALQUIER build con SSG masivo + client providers en root layout**, no solo OpenNext. Issues GitHub:
+  - [#85668](https://github.com/vercel/next.js/issues/85668): "Build fails with 'Cannot read properties of null (reading useState/useContext)' during static generation in Next.js 16.0.1". Mismo error que vimos en E.1-SST.
+  - [#84994](https://github.com/vercel/next.js/issues/84994): "Next.js 16 canary.7: useContext null during /_global-error SSR prerender (build fails)".
+  - [#86178](https://github.com/vercel/next.js/issues/86178): "Build fails with 'useContext null' error during /_global-error prerendering (v16.0.2, v16.0.3)".
+  - [#91642](https://github.com/vercel/next.js/issues/91642): "Build failing after 16.1.2 to 16.2 upgrade" — nuevo bug en 16.2 distinto del de 16.0.
+
+  **Cronología versiones de Next.js 16:**
+  - **16.0.x** (nov 2025): bug useState/useContext null en prerender SSG. No resuelto en estable.
+  - **16.1.x**: parece sweet spot — sin el bug de 16.0, sin el bug nuevo de 16.2. **Es donde está VicoHR.**
+  - **16.2.x**: bug nuevo de upgrade. **Es donde está Vence.**
+
+  ¿Por qué Vence en ECS funciona aunque también esté en 16.2? El builder de **Next.js standalone (multi-stage Dockerfile)** es ligeramente distinto al de OpenNext y NO expone los mismos paths de prerender problemáticos. Por eso `docker build` pasa pero `next build` vía OpenNext crashea.
+
+  **Plan E.9 revisado (en 2 fases):**
+
+  **Fase 9.A — Spike de validación (1 día):**
+  1. Branch `aws/sst-lambda-retry`.
+  2. **Downgrade `next` 16.2.6 → 16.1.x** (versión de VicoHR, sabemos que funciona en SST).
+  3. Copiar `sst.config.ts` de VicoHR como base, ajustar a Vence (DATABASE_URL, RESEND, etc.).
+  4. `sst deploy --stage preview-sst` a un subdominio nuevo `preview-sst.vence.es`.
+  5. **Veredicto binario:** build pasa o no.
+
+  **Fase 9.B — Si 9.A passes, migración completa (3-5 semanas):**
+  - E.9.B.1 Soak preview 3-7d, comparar Web Vitals + latencia + memoria + coste vs ECS actual.
+  - E.9.B.2 Identificar si algún client provider concreto (Notifications/Onboarding más sospechosos) tiene `useEffect` que rompe prerender; migrar a server component o lazy-load tras hidratación.
+  - E.9.B.3 Convertir páginas SSG con queries BD a ISR puro (`revalidate = 86400`) — `/teoria/[law]/[articleNumber]` (ya retorna `[]`), `/leyes/[law]/avanzado`, `/leyes/[law]/test-rapido`.
+  - E.9.B.4 Cutover DNS `www.vence.es` a CloudFront del stack SST (rollback <5min revirtiendo DNS, igual que el de E.6).
+  - E.9.B.5 Apagar ECS frontend tras 7d estable.
+
+  **Fase 9.C — Si 9.A falla:**
+  - Quedarse en ECS con #117 parte B (fix memory leak LawsAPI) + autoscaling (#117 parte A ya aplicado en E.8).
+  - Re-evaluar SST cuando Next.js 16.3+ salga con fix oficial.
 
 ##### Intento previo SST (descartado 2026-05-25, archivado para referencia)
 

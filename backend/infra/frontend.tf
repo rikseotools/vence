@@ -18,6 +18,19 @@ data "aws_ecr_repository" "frontend" {
   name = "vence-frontend"
 }
 
+# Resuelve el SHA actual del tag `:latest` en ECR. Usado para pinear el
+# image digest en la task definition al hacer terraform apply — evita el
+# anti-patrón "service pinea SHA al arrancar y crashloop si lifecycle policy
+# purga ese SHA cacheado mientras :latest avanza". Postmortem #115.
+#
+# Cada terraform apply re-resuelve :latest y registra nueva task def
+# revision con ese digest específico. El GHA frontend-deploy.yml hace lo
+# mismo en cada push para mantener consistencia.
+data "aws_ecr_image" "frontend_latest" {
+  repository_name = data.aws_ecr_repository.frontend.name
+  image_tag       = "latest"
+}
+
 # ============================================================
 # CloudWatch Logs separados del backend (canal propio para grep)
 # ============================================================
@@ -138,10 +151,14 @@ resource "aws_ecs_task_definition" "frontend" {
   family                   = "vence-frontend"
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
-  # 0.5 vCPU / 1 GB es suficiente para preview (sin tráfico real).
-  # En E.4 si métricas demandan más, se sube a 1 vCPU / 2 GB.
-  cpu                      = "512"
-  memory                   = "1024"
+  # Postmortem incidente 2026-05-26 14:50-15:10 (task #117): 0.5 vCPU + 1 GB
+  # no aguanta SSR concurrente real. Memoria subía 71%→99.8% en 30 min bajo
+  # carga normal (Vencé sirve ~500 rutas SSG + queries Supabase desde un único
+  # proceso Node; en Vercel cada request era una lambda aislada).
+  # Subido a 1 vCPU / 2 GB. Combinado con autoscaling (más abajo) y fix del
+  # leak en LawsAPI (pendiente, task #117) cubre el rango objetivo a 10k DAU.
+  cpu                      = "1024"
+  memory                   = "2048"
   execution_role_arn       = aws_iam_role.frontend_task_execution.arn
   task_role_arn            = aws_iam_role.frontend_task.arn
 
@@ -152,8 +169,16 @@ resource "aws_ecs_task_definition" "frontend" {
 
   container_definitions = jsonencode([
     {
-      name      = "frontend"
-      image     = "${data.aws_ecr_repository.frontend.repository_url}:latest"
+      name = "frontend"
+      # Pinear por DIGEST (no tag mutable `:latest`). Causa raíz del incidente
+      # 2026-05-26 14:50: ECS había pineado el SHA cacheado al arrancar el
+      # servicio; cuando lifecycle policy de ECR purgó ese SHA, los restarts
+      # post-OOM caían en CannotPullContainerError loop.
+      #
+      # Tanto terraform apply como GHA frontend-deploy.yml pinean por digest
+      # explícito. Cualquier task que arranque SIEMPRE encuentra su imagen
+      # en ECR porque el digest se resolvió en el deploy más reciente.
+      image     = "${data.aws_ecr_repository.frontend.repository_url}@${data.aws_ecr_image.frontend_latest.image_digest}"
       essential = true
       environment = [
         { name = "NODE_ENV", value = "production" },
@@ -493,11 +518,22 @@ resource "aws_ecs_service" "frontend" {
 
   health_check_grace_period_seconds = 90 # Next.js arranca en ~5-10s, margen amplio
 
-  # El CI actualiza la imagen vía `update-service --force-new-deployment`;
-  # no dejar que Terraform revierta el tag desplegado ni el desired_count
-  # (admin puede escalar manualmente sin que TF lo machaque).
+  # Permitir que ECS revierta automáticamente si el task nuevo no pasa el
+  # healthcheck del ALB. Evita downtime por bad deploys (img mal compilada,
+  # env var roto, OOM en arranque, etc.).
+  deployment_circuit_breaker {
+    enable   = true
+    rollback = true
+  }
+
+  # Terraform es dueño del task_definition (pinea por digest en cada apply).
+  # El GHA en cada push también registra nueva revision; el drift es
+  # menor (revision number) y converge en el siguiente apply porque ambos
+  # resuelven al digest actual de `:latest`.
+  #
+  # `desired_count` SÍ se ignora — autoscaling lo controla (1→3 por CPU/mem).
   lifecycle {
-    ignore_changes = [task_definition, desired_count]
+    ignore_changes = [desired_count]
   }
 
   # No arrancar el service hasta que la rule del ALB exista — si no, la task
@@ -512,3 +548,61 @@ resource "aws_ecs_service" "frontend" {
 # ECR; aquí declaramos también la dependencia desde Terraform para que
 # `terraform plan` sea consciente del estado real.
 # ============================================================
+
+# ============================================================
+# Autoscaling — Bloque 5 Fase E post-incidente OOM 2026-05-26 (#117)
+#
+# Un solo task con 1 vCPU + 2 GB no aguanta picos de tráfico SSR si hay
+# memory leak en código (LawsAPI cache reinicializa por request, leak
+# vivo a fecha 26/05). Autoscale 1→3 por CPU o memoria:
+#  - target_value=70 CPU/75 mem: ECS lanza task adicional cuando uno
+#    supera el umbral 3 min sostenido. Drena en 5 min cuando baja.
+#  - max 3 tasks: capacidad para ~30k DAU con holgura. Si llegamos a 3
+#    sostenidos, hay que investigar (no autoscalar más sin diagnóstico).
+#
+# Coste: ~$15/task/mes × 0-2 tasks extra. Promedio ~$10-20/mes adicional.
+# ============================================================
+
+resource "aws_appautoscaling_target" "frontend" {
+  max_capacity       = 3
+  min_capacity       = 1
+  resource_id        = "service/${aws_ecs_cluster.main.name}/${aws_ecs_service.frontend.name}"
+  scalable_dimension = "ecs:service:DesiredCount"
+  service_namespace  = "ecs"
+}
+
+# Scale-out por CPU.
+resource "aws_appautoscaling_policy" "frontend_cpu" {
+  name               = "vence-frontend-cpu-tracking"
+  policy_type        = "TargetTrackingScaling"
+  resource_id        = aws_appautoscaling_target.frontend.resource_id
+  scalable_dimension = aws_appautoscaling_target.frontend.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.frontend.service_namespace
+
+  target_tracking_scaling_policy_configuration {
+    target_value       = 70.0
+    scale_in_cooldown  = 300
+    scale_out_cooldown = 60
+    predefined_metric_specification {
+      predefined_metric_type = "ECSServiceAverageCPUUtilization"
+    }
+  }
+}
+
+# Scale-out por memoria (más crítico hoy por el leak).
+resource "aws_appautoscaling_policy" "frontend_memory" {
+  name               = "vence-frontend-memory-tracking"
+  policy_type        = "TargetTrackingScaling"
+  resource_id        = aws_appautoscaling_target.frontend.resource_id
+  scalable_dimension = aws_appautoscaling_target.frontend.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.frontend.service_namespace
+
+  target_tracking_scaling_policy_configuration {
+    target_value       = 75.0
+    scale_in_cooldown  = 300
+    scale_out_cooldown = 60
+    predefined_metric_specification {
+      predefined_metric_type = "ECSServiceAverageMemoryUtilization"
+    }
+  }
+}
