@@ -6,13 +6,12 @@
 
 import { classifyOpenAIError, logOpenAIError, __testing } from '@/lib/chat/utils/openai-error-handler'
 
-// Mock de la BD para que logOpenAIError no toque Supabase real
-jest.mock('@/db/client', () => ({
-  getAdminDb: jest.fn(() => ({
-    insert: jest.fn().mockReturnValue({
-      values: jest.fn().mockResolvedValue(undefined),
-    }),
-  })),
+// Mock del helper validation-error-log que `logOpenAIError` usa desde
+// 2026-05-26 (Bloque 4 Fase 1). Antes hacía `db.insert(...)` directo;
+// ahora delega en `logValidationErrorAwait` para que el espejo a
+// observable_events también se cubra.
+jest.mock('@/lib/api/validation-error-log', () => ({
+  logValidationErrorAwait: jest.fn().mockResolvedValue(undefined),
 }))
 
 describe('classifyOpenAIError', () => {
@@ -133,13 +132,13 @@ describe('logOpenAIError — rate-limit anti-spam', () => {
     expect(r2).toBe(true)
   })
 
-  test('si la BD falla, no lanza excepción', async () => {
-    const { getAdminDb } = jest.requireMock('@/db/client')
-    getAdminDb.mockImplementationOnce(() => {
-      throw new Error('DB connection failed')
-    })
+  test('si el logger interno lanza (contrato roto), no propaga excepción y devuelve false', async () => {
+    // logValidationErrorAwait NO debería lanzar nunca por contrato (try/catch
+    // interno). Este test verifica el catch defensivo de `logOpenAIError` por
+    // si alguien rompiera ese contrato en el futuro.
+    const { logValidationErrorAwait } = jest.requireMock('@/lib/api/validation-error-log')
+    logValidationErrorAwait.mockRejectedValueOnce(new Error('contract broken'))
     const c = classifyOpenAIError(new Error('429 quota'))
-    // No lanza, solo devuelve false
     await expect(logOpenAIError(c, { endpoint: 'chat/verification' })).resolves.toBe(false)
   })
 })

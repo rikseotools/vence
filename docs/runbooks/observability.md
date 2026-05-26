@@ -39,6 +39,46 @@ Vence está hoy entre nivel 1 y 2. **El objetivo es nivel 3.**
 
 ---
 
+## 1bis. 🧭 Dos tablas, dos propósitos (Issues vs Events)
+
+> Sección añadida 2026-05-26 tras el audit de Bloque 4 Fase 1. Lo que parecía
+> un «dual-write antipatrón» resultó ser **dos responsabilidades distintas**
+> mal documentadas. Aclaración para futuras incorporaciones.
+
+El sistema tiene **dos tablas observables** que NO son espejos redundantes
+sino **responsabilidades complementarias**. La separación es deliberada y
+sigue el patrón industria-estándar (Sentry: Issues vs Events; Datadog:
+Monitors+Incidents vs Logs/Metrics; AWS: CloudWatch Alarms vs Logs).
+
+| Tabla | Propósito | Volumen | Workflow humano |
+|---|---|---|---|
+| `validation_error_logs` | **Issues accionables** que requieren revisión humana | bajo (errores HTTP 4xx/5xx clasificados) | sí — columna `reviewed_at`, panel `/admin/fraudes`, mark-as-reviewed |
+| `observable_events` | **Censo de eventos** para dashboards / SLOs / alertas | alto (request_completed, cron_run, tts_*, hydration, etc.) | no — solo lectura agregada |
+
+### Regla operativa para developers
+
+1. **Si necesitas que alguien revise el error manualmente** (errores HTTP del wrapper, OpenAI quota, oposición sin mapeo) → usa `logValidationError()` o `logValidationErrorAwait()` del módulo `lib/api/validation-error-log`. Va a `validation_error_logs` Y espeja automáticamente a `observable_events` vía `_insertLog`.
+
+2. **Si solo necesitas registrar un evento operacional para dashboards/SLOs** (cron run, web vital, smoke test, request timing) → usa `emit()` / `emitFireAndForget()` del módulo `lib/observability/emit`. Va solo a `observable_events`.
+
+3. **NUNCA hagas `db.insert(validationErrorLogs).values(...)` directo**. Bypassa el espejo y deja al evento fuera del censo. El audit del 2026-05-26 encontró 2 writers haciéndolo (corregidos en Bloque 4 Fase 1).
+
+### Garantía de sincronización (Bloque 4 Fase 0 — 2026-05-26)
+
+`_insertLog` ahora hace `await emit({...})` ANTES del `await db.insert(vle)`,
+garantizando que cuando una entrada de `validation_error_logs` persiste,
+su par en `observable_events` también persistió (o ambos fallan juntos,
+nunca uno solo). Antes del fix había un race del 47% pérdida en el espejo.
+
+### Arquitectura del sink (`lib/observability/sink.ts`)
+
+El código de la app no escribe directo a Postgres — habla con la interfaz
+`ObservableSink`. Hoy: `PostgresSink`. Mañana en AWS: `KinesisSink` con
+fan-out via Firehose a S3 Parquet + OpenSearch + Aurora. El swap es UNA
+línea en `getSink()` — cero cambios en callers.
+
+---
+
 ## 2. 📊 Estado actual (2026-05-25)
 
 ### Lo que YA tenemos

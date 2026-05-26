@@ -67,13 +67,23 @@ jest.mock('@/lib/config/oposiciones', () => ({
   ],
 }))
 
+// Mock del helper del módulo validation-error-log — desde 2026-05-26 (Bloque 4
+// Fase 1) `recordNoExamPositionMapping` delega aquí en vez de hacer
+// `db.insert(validationErrorLogs)` directo. Capturamos las llamadas para
+// asertar los argumentos (en lugar de inspeccionar la BD mock).
+jest.mock('@/lib/api/validation-error-log', () => ({
+  logValidationError: jest.fn(),
+}))
+
 import { buildOfficialExamFilter } from '@/lib/api/oposicion-scope/queries'
+import { logValidationError } from '@/lib/api/validation-error-log'
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { __mockSpies } = require('@/db/client') as {
   __mockSpies: { insertValues: jest.Mock; selectLimit: jest.Mock }
 }
 const insertValuesSpy = __mockSpies.insertValues
 const selectLimitSpy = __mockSpies.selectLimit
+const logValidationErrorSpy = logValidationError as jest.Mock
 
 describe('buildOfficialExamFilter', () => {
   let warnSpy: jest.SpyInstance
@@ -83,6 +93,7 @@ describe('buildOfficialExamFilter', () => {
     insertValuesSpy.mockClear()
     selectLimitSpy.mockClear()
     selectLimitSpy.mockResolvedValue([])
+    logValidationErrorSpy.mockClear()
   })
   afterEach(() => {
     warnSpy.mockRestore()
@@ -133,9 +144,11 @@ describe('buildOfficialExamFilter', () => {
     buildOfficialExamFilter('TEST_UNMAPPED_NO_WARN')
     expect(warnSpy).not.toHaveBeenCalled()
     await flush()
-    // Se inserta en validation_error_logs con severity=info
-    expect(insertValuesSpy).toHaveBeenCalledTimes(1)
-    const inserted = insertValuesSpy.mock.calls[0][0]
+    // Se delega en logValidationError con severity=info. La persistencia
+    // a validation_error_logs + espejo a observable_events es
+    // responsabilidad del módulo validation-error-log (testado allí).
+    expect(logValidationErrorSpy).toHaveBeenCalledTimes(1)
+    const inserted = logValidationErrorSpy.mock.calls[0][0]
     expect(inserted).toMatchObject({
       endpoint: 'lib/oposicion-scope',
       errorType: 'no_exam_position_mapping',
@@ -149,15 +162,15 @@ describe('buildOfficialExamFilter', () => {
     buildOfficialExamFilter('TEST_UNMAPPED_DEDUPE_SET')
     buildOfficialExamFilter('TEST_UNMAPPED_DEDUPE_SET')
     await flush()
-    expect(insertValuesSpy).toHaveBeenCalledTimes(1)
+    expect(logValidationErrorSpy).toHaveBeenCalledTimes(1)
   })
 
   test('dedupe por oposición: oposiciones distintas generan inserts separados', async () => {
     buildOfficialExamFilter('TEST_UNMAPPED_DISTINCT_A')
     buildOfficialExamFilter('TEST_UNMAPPED_DISTINCT_B')
     await flush()
-    expect(insertValuesSpy).toHaveBeenCalledTimes(2)
-    const positions = insertValuesSpy.mock.calls.map((c) => c[0].requestBody.positionType)
+    expect(logValidationErrorSpy).toHaveBeenCalledTimes(2)
+    const positions = logValidationErrorSpy.mock.calls.map((c) => c[0].requestBody.positionType)
     expect(positions).toEqual(
       expect.arrayContaining(['TEST_UNMAPPED_DISTINCT_A', 'TEST_UNMAPPED_DISTINCT_B']),
     )
@@ -167,7 +180,7 @@ describe('buildOfficialExamFilter', () => {
     buildOfficialExamFilter('foo_bar_inexistente')
     expect(warnSpy).toHaveBeenCalled()
     await flush()
-    expect(insertValuesSpy).not.toHaveBeenCalled()
+    expect(logValidationErrorSpy).not.toHaveBeenCalled()
   })
 
   test('si la query previa indica que ya existe un registro del día, NO inserta', async () => {
@@ -175,8 +188,8 @@ describe('buildOfficialExamFilter', () => {
     buildOfficialExamFilter('TEST_UNMAPPED_DB_PREEXISTS')
     await flush()
     // El Set añade la entry y dispara la IIFE; la IIFE consulta BD, ve
-    // `existing.length > 0`, hace early return → no se llama insert.
-    expect(insertValuesSpy).not.toHaveBeenCalled()
+    // `existing.length > 0`, hace early return → no se llama logValidationError.
+    expect(logValidationErrorSpy).not.toHaveBeenCalled()
   })
 
   test('fallo del telemetry (ej. BD caída) no propaga excepción ni afecta al filtro', async () => {

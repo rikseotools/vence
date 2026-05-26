@@ -18,6 +18,7 @@ import { laws, questions, topicScope, topics, userProfiles, validationErrorLogs 
 import { and, eq, gte, inArray, or, sql } from 'drizzle-orm'
 import { getValidExamPositions } from '@/lib/config/exam-positions'
 import { ALL_POSITION_TYPES } from '@/lib/config/oposiciones'
+import { logValidationError } from '@/lib/api/validation-error-log'
 
 // Dedupe intra-proceso del aviso "oposición sin mapeo de exam_position":
 // 1 entrada por (positionType, YYYY-MM-DD). Evita spam en Vercel y en la
@@ -30,7 +31,9 @@ function recordNoExamPositionMapping(positionType: string) {
   if (loggedNoMappingToday.has(cacheKey)) return
   loggedNoMappingToday.add(cacheKey)
 
-  // Fire-and-forget: no bloquear la respuesta.
+  // Fire-and-forget: no bloquear la respuesta. Dedupe en BD por día +
+  // positionType (el dedupe intra-proceso de arriba evita N inserts por
+  // request; el SELECT siguiente evita duplicar entre lambdas/dev/prod).
   ;(async () => {
     try {
       const db = getOposicionScopeDb()
@@ -51,7 +54,11 @@ function recordNoExamPositionMapping(positionType: string) {
         .limit(1)
       if (existing.length > 0) return
 
-      await db.insert(validationErrorLogs).values({
+      // Migrado 2026-05-26 a `logValidationError` (Bloque 4 Fase 1) para
+      // garantizar espejo a observable_events via _insertLog. Antes este
+      // writer escribía directo a validationErrorLogs y NO llegaba al
+      // censo de eventos — blind spot detectado en audit.
+      logValidationError({
         endpoint: 'lib/oposicion-scope',
         errorType: 'no_exam_position_mapping',
         severity: 'info',

@@ -19,9 +19,7 @@
 // - Rate-limit del log (1 vez por minuto por endpoint) para no saturar la BD
 //   cuando todos los usuarios dispararon el mismo error en cascada
 
-import { getAdminDb as getDb } from '@/db/client'
-import { validationErrorLogs } from '@/db/schema'
-import { sql } from 'drizzle-orm'
+import { logValidationErrorAwait } from '@/lib/api/validation-error-log'
 
 export type OpenAIErrorCategory =
   | 'quota_exceeded'      // 429 "You exceeded your current quota" — facturación
@@ -170,20 +168,28 @@ export async function logOpenAIError(
   }
   lastLoggedAt.set(key, now)
 
+  // Migrado 2026-05-26 a `logValidationErrorAwait` (Bloque 4 Fase 1) para
+  // garantizar el espejo a observable_events vía _insertLog. Antes este
+  // writer escribía directo a validationErrorLogs y NO llegaba al censo
+  // de eventos — blind spot detectado en audit.
+  //
+  // logValidationErrorAwait nunca lanza (try/catch interno) — devolver
+  // true tras el await es seguro. El rate-limit `lastLoggedAt` ya nos
+  // protege de spam aunque hubiera fallo silencioso en el sink.
   try {
-    const db = getDb()
-    await db.insert(validationErrorLogs).values({
+    await logValidationErrorAwait({
       endpoint: context.endpoint,
       errorType: `openai_${classified.category}`,
       errorMessage: `[OpenAI ${classified.category}] ${classified.message}`,
       userId: context.userId || null,
-      deployVersion: context.deployVersion || null,
-      httpStatus: classified.status,
+      httpStatus: classified.status ?? undefined,
       severity: classified.severity,
     })
     return true
   } catch (err) {
-    // Nunca reventar la request por fallos de logging
+    // Nunca reventar la request por fallos de logging.
+    // logValidationErrorAwait NO debería lanzar, pero defendemos por si
+    // alguien cambiase el contrato en el futuro.
     console.error('⚠️ [openai-error-handler] Error guardando log:', err)
     return false
   }

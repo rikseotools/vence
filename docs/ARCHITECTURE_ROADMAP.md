@@ -2515,7 +2515,7 @@ Si solo pudieras hacer 3 cosas para escalar a 10k, en este orden:
 
 ---
 
-## Bloque 4 cont. — Eliminar dual-write observability (Patrón 1 → AWS-ready)
+## Bloque 4 cont. — Sincronización dual-write + separación Issues/Events (AWS-ready)
 
 Sección añadida 2026-05-26 tras detectar vía observabilidad propia que el
 espejo de eventos de `validation_error_logs` a `observable_events` perdía
@@ -2524,9 +2524,31 @@ device-limit `/api/v2/answer-and-save`). Causa raíz: race entre 2 INSERTs
 en el lifecycle de la lambda Vercel cuando `_insertLog` invocaba
 `emitFireAndForget` (huérfana) antes del `await db.insert(vle)`.
 
+**Tesis inicial (Patrón 1 — una tabla)**: ENMENDADA tras audit profundo
+(ver § siguiente).
+
+### Aclaración tras audit (2026-05-26): NO es Patrón 1, son dos propósitos distintos
+
+La intuición inicial era «eliminar `validation_error_logs` y dejar solo
+`observable_events`» (Patrón 1 estilo Datadog/Sentry). El audit profundo
+de los 20+ callers reveló que **las dos tablas tienen responsabilidades
+diferentes** que en sistemas profesionales se separan deliberadamente:
+
+| Tabla | Propósito | Equivalente en Sentry/Datadog |
+|---|---|---|
+| `validation_error_logs` | Issues accionables con workflow humano (`reviewed_at`, mark-as-reviewed desde panel `/admin/fraudes`) | Sentry **Issues** |
+| `observable_events` | Censo de TODO lo que pasa, alta volumen, dashboards / SLOs / alertas | Sentry **Performance Events** / Datadog **Logs** |
+
+Aplicar Patrón 1 borraría funcionalidad real (workflow de revisión). La
+solución correcta es:
+1. **Mantener las dos tablas**.
+2. **Garantizar atomicidad del espejo** (Fase 0 completa).
+3. **Asegurar que TODOS los writers pasan por el flujo correcto** (Fase 1).
+4. **Preparar la arquitectura para AWS swap** (interfaz `ObservableSink`, ya hecho).
+
 La decisión 2026-05-23 («diseñar en bloque con cutover NestJS») queda
-**superada** — el bug es activo en producción y la solución correcta no
-requiere esperar al cutover.
+**superada** — el bug era activo en producción y la solución es la
+descrita aquí, no esperar al cutover.
 
 ### Filosofía
 
@@ -2540,8 +2562,8 @@ swap del sink en una sola línea de la fábrica.
 
 | Fase | Cuándo | Esfuerzo | Estado |
 |---|---|---|---|
-| **Fase 0** — Sink interface + race fix | 2026-05-26 (HOY) | 2-3 h | ✅ COMPLETA |
-| **Fase 1** — Eliminar dual-write (Patrón 1 «una tabla») | Sprint dedicado | 2-3 días | ⏸️ pendiente |
+| **Fase 0** — Sink interface + race fix | 2026-05-26 mañana | 2-3 h | ✅ COMPLETA |
+| **Fase 1** — Migrar writers huérfanos + documentar Issues vs Events | 2026-05-26 tarde | ~2 h | ✅ COMPLETA |
 | **Fase 2** — Migración AWS (PostgresSink → KinesisSink) | Cuando >30k DAU | 1-2 semanas | ⏸️ pendiente |
 
 #### Fase 0 — Sink interface + race fix ✅ COMPLETA 2026-05-26
@@ -2554,27 +2576,27 @@ swap del sink en una sola línea de la fábrica.
 
 **Garantía conseguida**: en path 5xx (que ya awaita externamente vía `logValidationErrorAwait`), ambos INSERTs completan atómicamente. En path 4xx fire-and-forget, si la lambda muere ambos se pierden juntos pero NUNCA desincronizados — el race deja de existir.
 
-#### Fase 1 — Patrón 1 (una tabla) ⏸️ pendiente
+#### Fase 1 — Writers huérfanos + Issues/Events docs ✅ COMPLETA 2026-05-26 tarde
 
-Migrar todos los lectores de `validation_error_logs` a `observable_events`
-para poder eliminar la duplicación entera.
+Audit profundo de 20+ callers reveló **2 writers que escribían directo a
+`validation_error_logs` sin pasar por `_insertLog`** — eventos perdidos
+en `observable_events` además del race del 47%:
 
-Auditoría 2026-05-26 identificó **20+ lectores** TS/TSX:
-- Admin pages: `/admin/fraudes/page.tsx`, `components/Admin/InfraStatsTab.tsx`.
-- Endpoints admin: `/api/admin/infra-stats`, `/api/admin/system-health`, `/api/v2/admin/dashboard`, `/api/medals`.
-- Hooks: `useAdminNotifications`.
-- Libs: `lib/api/admin-validation-errors/queries.ts`, `lib/api/oposicion-scope/queries.ts`, `lib/api/auth/verifyAuth.ts`, `lib/api/withErrorLogging.ts`, `lib/api/validation-error-log/*`, `lib/chat/utils/openai-error-handler.ts`, `lib/chat/domains/verification/VerificationService.ts`, `lib/logClientError.ts`.
-- Backend: `backend/src/observability/observability.service.ts`.
-- Tests (varios).
+- `lib/api/oposicion-scope/queries.ts::recordNoExamPositionMapping` — log diario de oposición sin mapeo.
+- `lib/chat/utils/openai-error-handler.ts::logOpenAIError` — log de errores OpenAI con rate limit.
 
-Pasos:
-1. Migrar cada lector a queries equivalentes sobre `observable_events` (`WHERE source='vercel'` para isolation).
-2. Backfill 1 vez: copiar histórico vle (últimos 30 días) a obs_events.
-3. Test de arquitectura que prohíba nuevas referencias a `validationErrorLogs` (Drizzle table) fuera del directorio `lib/api/validation-error-log/` (que queda como módulo deprecated hasta el DROP).
-4. Marcar tabla DEPRECATED en código + runbook `docs/runbooks/health-check.md` reescrito para leer `observable_events`.
-5. Soak 2 semanas con `validation_error_logs` aún escribiéndose (canary).
-6. Commit separado: eliminar `_insertLog` que escribe a vle, dejar solo el `emit()` directo.
-7. Commit separado: `DROP TABLE validation_error_logs`.
+Cambios aplicados:
+1. **`recordNoExamPositionMapping`** migrado a `logValidationError()` del módulo `validation-error-log`. El dedupe diario en BD (1 fila por positionType por día) se mantiene; la persistencia delega al helper que garantiza el espejo.
+2. **`logOpenAIError`** migrado a `await logValidationErrorAwait()`. Mantiene el rate-limit propio + el `try/catch` defensivo. El boolean de retorno indica éxito tras delegar (no inspecciona BD).
+3. **Tests actualizados** (`buildOfficialExamFilter.test.ts` + `openai-error-handler.test.ts`): mocks ahora apuntan al helper en lugar del INSERT raw. Verifican el contrato de delegación.
+4. **`docs/runbooks/observability.md` § 1bis** nuevo — explica la separación Issues vs Events con tabla comparativa + regla operativa para developers («usa `logValidationError*` si necesita workflow humano; usa `emit*` si es solo censo»).
+
+Lo que se descartó conscientemente del plan original:
+- **NO eliminar `validation_error_logs`** — borraría workflow de revisión (`reviewed_at`, panel `/admin/fraudes`).
+- **NO migrar 20+ lectores** — leen una tabla con propósito legítimo y distinto.
+- **NO Patrón 1 puro** — confundía dos conceptos que la industria separa deliberadamente.
+
+Validación: tsc limpio, 567/567 tests pass en suite observability+writers.
 
 #### Fase 2 — Migración AWS ⏸️ pendiente (cuando >30k DAU)
 
