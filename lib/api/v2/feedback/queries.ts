@@ -167,11 +167,18 @@ export async function respondFeedback(
           })
           .where(eq(feedbackConversations.id, conversationId))
       } else if (conversationId && finalStatus) {
-        // Cierre sin mensaje: UPDATE status + closedAt
+        // Cierre sin mensaje (silent close): la conversación va a 'closed'.
+        // La intención del estado final ('resolved' vs 'dismissed') vive en
+        // user_feedback.status (paso 2.4 más abajo). El status de la
+        // conversación es ortogonal: solo indica si necesita atención del
+        // admin, y el badge useAdminNotifications descarta 'closed'.
+        // Bug 22/04/2026 reapareció el 26/05: la rama "con mensaje" sí
+        // ponía 'closed', pero esta dejaba 'resolved'/'dismissed' literal
+        // → 25 conversaciones huérfanas inflaban el badge falsamente.
         await tx
           .update(feedbackConversations)
           .set({
-            status: finalStatus,
+            status: 'closed',
             adminUserId,
             closedAt: now,
           })

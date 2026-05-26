@@ -17,6 +17,9 @@ jest.mock('@/lib/api/emails', () => ({
 type Op = 'select' | 'update' | 'insert'
 const dbResponses: Record<Op, unknown[][]> = { select: [], update: [], insert: [] }
 const dbIdx: Record<Op, number> = { select: 0, update: 0, insert: 0 }
+// Capture de args de .set() — observabilidad para tests que asertan sobre el
+// payload del UPDATE (p.ej. status='closed' al cerrar conversación).
+const setCalls: Array<{ op: Op; payload: Record<string, unknown> }> = []
 let activeBrowsing = false // flag controlado por tests
 
 function makeChain(op: Op) {
@@ -29,7 +32,10 @@ function makeChain(op: Op) {
   chain.where = ret
   chain.orderBy = ret
   chain.limit = ret
-  chain.set = ret
+  chain.set = (payload: Record<string, unknown>) => {
+    setCalls.push({ op, payload })
+    return chain
+  }
   chain.values = ret
   chain.returning = ret
   chain.then = (resolve: (v: unknown) => void) => {
@@ -155,6 +161,7 @@ beforeEach(() => {
   dbIdx.select = 0
   dbIdx.update = 0
   dbIdx.insert = 0
+  setCalls.length = 0
   activeBrowsing = false
   mockSendEmailV2.mockReset()
   mockDb.transaction.mockClear()
@@ -220,6 +227,34 @@ describe('respondFeedback — cierre silencioso (sin mensaje)', () => {
     const r = await respondFeedback(baseReq({ message: undefined }))
     expect(r.success).toBe(true)
     if (r.success) expect(r.finalStatus).toBeNull()
+  })
+
+  // Regresión: el cierre silencioso debe poner feedback_conversations.status='closed'
+  // (no 'dismissed'/'resolved' literal). El badge useAdminNotifications cuenta como
+  // pendientes todas las conversations con status != 'closed' AND user_feedback.status='resolved',
+  // así que un literal 'resolved' inflaba el contador hasta el siguiente UPDATE.
+  // Bug 22/04/2026 (rama con-mensaje) reapareció 26/05/2026 en rama sin-mensaje.
+  it('finalStatus=dismissed sin mensaje → conversation queda en status="closed", NO "dismissed"', async () => {
+    setupFeedback({})
+    await respondFeedback(baseReq({ message: undefined, finalStatus: 'dismissed' }))
+    // Primer UPDATE en la transacción es sobre feedback_conversations.
+    const convUpdate = setCalls[0]
+    expect(convUpdate).toBeDefined()
+    expect(convUpdate.op).toBe('update')
+    expect(convUpdate.payload.status).toBe('closed')
+    expect(convUpdate.payload.status).not.toBe('dismissed')
+    // El intent final ('dismissed') vive en user_feedback (último UPDATE).
+    const ufUpdate = setCalls[setCalls.length - 1]
+    expect(ufUpdate.payload.status).toBe('dismissed')
+  })
+
+  it('finalStatus=resolved sin mensaje → mismo patrón: conv="closed", user_feedback="resolved"', async () => {
+    setupFeedback({})
+    await respondFeedback(baseReq({ message: undefined, finalStatus: 'resolved' }))
+    const convUpdate = setCalls[0]
+    expect(convUpdate.payload.status).toBe('closed')
+    const ufUpdate = setCalls[setCalls.length - 1]
+    expect(ufUpdate.payload.status).toBe('resolved')
   })
 })
 
