@@ -28,7 +28,12 @@ export const dynamic = 'force-dynamic'
 // 60s holgado: 50 users × ~200ms/user = ~10s real. Margen amplio.
 export const maxDuration = 60
 
-const DEFAULT_SAMPLE_SIZE = 50
+// AUDIT 2026-05-26: la RPC check_stats_drift escala superlineal
+// (sample=10: 1.4s; sample=20: 6s; sample=50: timeout >8s). Bajado de 50
+// a 20 mientras se optimiza la RPC (N+1 queries probables — ver postmortem #113).
+// Con sample=20 cabe en el statement_timeout y el cron vuelve a verde.
+// Cuando la RPC esté optimizada, revertir a 50 o subir más.
+const DEFAULT_SAMPLE_SIZE = 20
 const ALERT_DRIFT_PCT_THRESHOLD = 5
 
 interface CheckStatsDriftResponse {
