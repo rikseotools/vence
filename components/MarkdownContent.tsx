@@ -46,8 +46,8 @@ const components: Components = {
     </ul>
   ),
   // Lista ordenada
-  ol: ({ children }) => (
-    <ol className="my-2 pl-4 space-y-1 list-decimal text-sm text-gray-700 dark:text-gray-300">
+  ol: ({ children, start }) => (
+    <ol start={start} className="my-2 pl-4 space-y-1 list-decimal text-sm text-gray-700 dark:text-gray-300">
       {children}
     </ol>
   ),

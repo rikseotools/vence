@@ -95,8 +95,19 @@ export async function queryLawStats(lawShortName: string): Promise<LawStatsResul
 
 const TTL_LAW_STATS = 21600 // 6h
 
+// Variante que lanza si falla, para que unstable_cache NO cachee errores
+// transitorios (un timeout de BD de 2min envenenaba el cache 6h y producía
+// el bucle de feedbacks "no cargan los test" desde 27/04).
+async function queryLawStatsOrThrow(lawShortName: string): Promise<LawStatsResult> {
+  const result = await queryLawStats(lawShortName)
+  if (!result.success) {
+    throw new Error(result.error || `law-stats query failed for ${lawShortName}`)
+  }
+  return result
+}
+
 const _cachedQueryLawStats = unstable_cache(
-  queryLawStats,
+  queryLawStatsOrThrow,
   ['law-stats-v1'],
   { revalidate: TTL_LAW_STATS, tags: ['law-stats'] },
 )
@@ -105,5 +116,18 @@ export async function queryLawStatsCached(lawShortName: string): Promise<LawStat
   if (process.env.CACHE_LAW_STATS === 'false') {
     return queryLawStats(lawShortName)
   }
-  return _cachedQueryLawStats(lawShortName)
+  try {
+    return await _cachedQueryLawStats(lawShortName)
+  } catch (error) {
+    return {
+      success: false,
+      lawShortName,
+      totalQuestions: 0,
+      officialQuestions: 0,
+      regularQuestions: 0,
+      hasQuestions: false,
+      hasOfficialQuestions: false,
+      error: (error as Error).message,
+    }
+  }
 }
