@@ -6,6 +6,7 @@ import { getDb } from '@/db/client'
 import { articles, laws } from '@/db/schema'
 import { eq, and, or, ilike, inArray, sql } from 'drizzle-orm'
 import { logger } from '../../shared/logger'
+import { createGlobalCache } from '@/lib/cache/globalCache'
 import { getChatCache, CACHE_KEYS, CACHE_TTL } from '../../shared/cache'
 import type { ArticleMatch, SearchOptions } from '../../core/types'
 import { getOposicion } from '@/lib/config/oposiciones'
@@ -687,72 +688,68 @@ export function extractSearchTerms(message: string): string[] | null {
 // DETECCIÓN DINÁMICA DE LEYES (desde BD)
 // ============================================
 
-// Cache de leyes para detección (TTL: 1 hora)
-let lawsDetectionCache: Array<{ id: string; shortName: string; name: string; searchPatterns: string[] }> | null = null
-let lawsDetectionCacheTime = 0
-const LAWS_DETECTION_CACHE_TTL = 60 * 60 * 1000 // 1 hora
+// Cache de leyes para detección — TTL 1h, cross-bundle via createGlobalCache (#118)
+type _LawDetectionEntry = { id: string; shortName: string; name: string; searchPatterns: string[] }
+
+const _lawsDetectionCache = createGlobalCache<_LawDetectionEntry[]>(
+  'chat-search-laws-detection-v1',
+  60 * 60 * 1000, // 1 hora
+)
 
 /**
- * Carga todas las leyes de la BD con patrones de búsqueda generados
+ * Carga todas las leyes de la BD con patrones de búsqueda generados.
  */
-async function loadLawsForDetection() {
-  const now = Date.now()
-  if (lawsDetectionCache && (now - lawsDetectionCacheTime) < LAWS_DETECTION_CACHE_TTL) {
-    return lawsDetectionCache
-  }
+async function loadLawsForDetection(): Promise<_LawDetectionEntry[]> {
+  return _lawsDetectionCache.getOrLoad(async () => {
+    const { data } = await getSupabase()
+      .from('laws')
+      .select('id, short_name, name')
+      .eq('is_active', true)
 
-  const { data } = await getSupabase()
-    .from('laws')
-    .select('id, short_name, name')
-    .eq('is_active', true)
-
-  if (!data || data.length === 0) {
-    lawsDetectionCache = []
-    lawsDetectionCacheTime = now
-    return []
-  }
-
-  // Generar patrones de búsqueda para cada ley
-  lawsDetectionCache = data.map(law => {
-    const patterns: string[] = []
-
-    // short_name siempre es un patrón (ej: "LOTC", "CE", "Ley 39/2015")
-    if (law.short_name) {
-      patterns.push(law.short_name.toLowerCase())
+    if (!data || data.length === 0) {
+      return []
     }
 
-    // Extraer partes del nombre completo para patrones
-    if (law.name) {
-      const nameLower = law.name.toLowerCase()
+    // Generar patrones de búsqueda para cada ley
+    const entries: _LawDetectionEntry[] = data.map(law => {
+      const patterns: string[] = []
 
-      // El nombre completo como patrón
-      patterns.push(nameLower)
-
-      // Si contiene "tribunal constitucional", "poder judicial", etc., extraer esos términos
-      const institutionMatches = nameLower.match(/tribunal\s+constitucional|poder\s+judicial|consejo\s+de\s+estado|defensor\s+del\s+pueblo|tribunal\s+de\s+cuentas/gi)
-      if (institutionMatches) {
-        institutionMatches.forEach((m: string) => patterns.push(m.toLowerCase()))
+      // short_name siempre es un patrón (ej: "LOTC", "CE", "Ley 39/2015")
+      if (law.short_name) {
+        patterns.push(law.short_name.toLowerCase())
       }
 
-      // Extraer "Ley Orgánica del XXX" -> "XXX"
-      const orgMatch = nameLower.match(/ley\s+orgánica\s+(?:del?\s+)?(.+)/i)
-      if (orgMatch && orgMatch[1] && orgMatch[1].length > 5) {
-        patterns.push(orgMatch[1].trim())
-      }
-    }
+      // Extraer partes del nombre completo para patrones
+      if (law.name) {
+        const nameLower = law.name.toLowerCase()
 
-    return {
-      id: law.id,
-      shortName: law.short_name,
-      name: law.name || '',
-      searchPatterns: [...new Set(patterns)],
-    }
+        // El nombre completo como patrón
+        patterns.push(nameLower)
+
+        // Si contiene "tribunal constitucional", "poder judicial", etc., extraer esos términos
+        const institutionMatches = nameLower.match(/tribunal\s+constitucional|poder\s+judicial|consejo\s+de\s+estado|defensor\s+del\s+pueblo|tribunal\s+de\s+cuentas/gi)
+        if (institutionMatches) {
+          institutionMatches.forEach((m: string) => patterns.push(m.toLowerCase()))
+        }
+
+        // Extraer "Ley Orgánica del XXX" -> "XXX"
+        const orgMatch = nameLower.match(/ley\s+orgánica\s+(?:del?\s+)?(.+)/i)
+        if (orgMatch && orgMatch[1] && orgMatch[1].length > 5) {
+          patterns.push(orgMatch[1].trim())
+        }
+      }
+
+      return {
+        id: law.id,
+        shortName: law.short_name,
+        name: law.name || '',
+        searchPatterns: [...new Set(patterns)],
+      }
+    })
+
+    logger.debug(`📚 Laws detection cache loaded: ${entries.length} laws`, { domain: 'search' })
+    return entries
   })
-
-  lawsDetectionCacheTime = now
-  logger.debug(`📚 Laws detection cache updated: ${lawsDetectionCache.length} laws`, { domain: 'search' })
-
-  return lawsDetectionCache
 }
 
 /**

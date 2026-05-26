@@ -2,6 +2,7 @@
 // Queries Drizzle server-side para categorías y preguntas psicotécnicas
 
 // CANARY pooler (sweep masivo oleada 5 — todos user-facing 2026-05-10):
+import { createGlobalCache } from '@/lib/cache/globalCache'
 import { getDb, getPoolerDb } from '@/db/client'
 
 function getPsychTestDataDb() {
@@ -21,9 +22,13 @@ import type {
   PsychometricCategory,
 } from './schemas'
 
-// Cache simple en memoria (60 segundos para categorías, cambian poco)
-let _categoriesCache: { data: GetPsychometricCategoriesResponse; timestamp: number } | null = null
-const CATEGORIES_CACHE_TTL = 60 * 1000
+// Cache compartido cross-bundle (#118 cleanup). TTL 60s — los datos base sin
+// userId cambian poco. El cache solo aplica al path !userId; con userId
+// siempre se hace fetch completo (datos enriquecidos por usuario).
+const categoriesCache = createGlobalCache<GetPsychometricCategoriesResponse>(
+  'psychometric-categories-v1',
+  60 * 1000
+)
 
 /**
  * Obtiene todas las categorías activas con sus secciones y conteos de preguntas.
@@ -33,8 +38,9 @@ const CATEGORIES_CACHE_TTL = 60 * 1000
 export async function getPsychometricCategories(userId?: string): Promise<GetPsychometricCategoriesResponse> {
   try {
     // Check cache (solo para datos base sin userId)
-    if (!userId && _categoriesCache && Date.now() - _categoriesCache.timestamp < CATEGORIES_CACHE_TTL) {
-      return _categoriesCache.data
+    if (!userId && categoriesCache.isFresh()) {
+      const cached = categoriesCache.peek()
+      if (cached) return cached
     }
 
     const db = getPsychTestDataDb()
@@ -295,7 +301,7 @@ export async function getPsychometricCategories(userId?: string): Promise<GetPsy
 
     // Solo cachear datos base (sin userId)
     if (!userId) {
-      _categoriesCache = { data: response, timestamp: Date.now() }
+      categoriesCache.set(response)
     }
 
     return response

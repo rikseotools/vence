@@ -3,10 +3,15 @@
 // Carga aliases desde la tabla law_slug_aliases y los cachea en memoria.
 // Usado por middleware.ts para redirects 301 SEO-friendly.
 // Escalable: añadir alias = solo INSERT en BD, sin tocar código.
+//
+// Cache cross-bundle via createGlobalCache (ver lib/cache/globalCache.ts).
+// Migrado desde `let aliasCache + let cacheLoadedAt` el 2026-05-26 como
+// parte del cleanup #118 — el patrón anterior causó el incidente OOM en
+// LawsAPI (#117). globalThis es válido también en Edge Runtime.
 
-let aliasCache: Map<string, string> | null = null
-let cacheLoadedAt = 0
-const CACHE_TTL_MS = 60 * 60 * 1000 // 1 hora
+import { createGlobalCache } from '@/lib/cache/globalCache'
+
+const aliasCache = createGlobalCache<Map<string, string>>('law-slug-aliases-v1', 60 * 60 * 1000)
 
 /**
  * Carga aliases desde BD via Supabase REST API (no necesita SDK).
@@ -47,11 +52,6 @@ async function loadAliases(): Promise<Map<string, string>> {
  * Devuelve null si no es un alias (es un slug válido o desconocido).
  */
 export async function resolveAlias(slug: string): Promise<string | null> {
-  // Refresh cache si expirado
-  if (!aliasCache || Date.now() - cacheLoadedAt > CACHE_TTL_MS) {
-    aliasCache = await loadAliases()
-    cacheLoadedAt = Date.now()
-  }
-
-  return aliasCache.get(slug) ?? aliasCache.get(slug.toLowerCase()) ?? null
+  const map = await aliasCache.getOrLoad(loadAliases)
+  return map.get(slug) ?? map.get(slug.toLowerCase()) ?? null
 }

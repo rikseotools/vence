@@ -48,6 +48,15 @@ export interface GlobalCache<T> {
   peek(): T | null
   /** Devuelve true si hay un valor cacheado válido (no expirado). */
   isFresh(): boolean
+  /**
+   * Setea el valor cacheado manualmente. Útil cuando el control del cache
+   * está fuera del flujo `getOrLoad` — por ejemplo, cuando una función
+   * recibe el valor desde otra fuente y solo quiere cachearlo bajo cierta
+   * condición. La mayoría de casos no lo necesitan; preferir `getOrLoad`.
+   */
+  set(value: T): void
+  /** Versión sync de getOrLoad para factories no-async (ej. singletons de clases). */
+  getOrCreate(factory: () => T): T
 }
 
 interface CacheEntry<T> {
@@ -100,6 +109,23 @@ export function createGlobalCache<T>(key: string, ttlMs: number): GlobalCache<T>
       const entry = read()
       if (!entry) return false
       return Date.now() - entry.loadedAt < ttlMs
+    },
+    set(value: T): void {
+      write({ value, loadedAt: Date.now() })
+    },
+    /**
+     * Versión sync de getOrLoad — útil para singletons inicializados de
+     * forma síncrona (ej. instancia de una clase). Si el factory tarda,
+     * usar getOrLoad (async). Respeta TTL igual que getOrLoad.
+     */
+    getOrCreate(factory: () => T): T {
+      const entry = read()
+      if (entry && Date.now() - entry.loadedAt < ttlMs) {
+        return entry.value
+      }
+      const value = factory()
+      write({ value, loadedAt: Date.now() })
+      return value
     },
   }
 }

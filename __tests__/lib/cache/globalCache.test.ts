@@ -106,4 +106,16 @@ describe('createGlobalCache', () => {
     expect(cacheV1.peek()).toBe(100)
     expect(cacheV2.peek()).toBe(200)
   })
+
+  it('set() guarda el valor para próximas lecturas', async () => {
+    const cache = createGlobalCache<number>('test-10-v1', 60_000)
+    cache.set(99)
+    expect(cache.peek()).toBe(99)
+    expect(cache.isFresh()).toBe(true)
+    // Próximo getOrLoad reutiliza sin disparar loader
+    const loader = jest.fn(async () => 0)
+    const value = await cache.getOrLoad(loader)
+    expect(value).toBe(99)
+    expect(loader).toHaveBeenCalledTimes(0)
+  })
 })

@@ -163,9 +163,6 @@ export function getAllPatterns(): QueryPattern[] {
 // DETECCIÓN DE LEYES MENCIONADAS
 // ============================================
 
-// Cache de leyes para detección rápida
-let lawsCache: Array<{ shortName: string; aliases: string[] }> | null = null
-
 // Aliases adicionales para detección en mensajes de chat (no URLs)
 // Estos complementan el mapeo centralizado de lawMappingUtils.ts
 const CHAT_LAW_ALIASES: Record<string, string[]> = {

@@ -64,15 +64,22 @@ class MemoryCache {
   }
 }
 
-// Singleton - cache compartido por todo el sistema de chat
-let cacheInstance: MemoryCache | null = null
+// Singleton - cache compartido cross-bundle via createGlobalCache (#118).
+// TTL gigante (~100 años) porque la instancia MemoryCache vive todo el
+// runtime; el TTL real de las ENTRADAS dentro de la MemoryCache lo gestiona
+// la propia clase (30 min, ver constructor abajo).
+import { createGlobalCache } from '@/lib/cache/globalCache'
+
+const chatCacheSingleton = createGlobalCache<MemoryCache>(
+  'chat-memory-cache-v1',
+  Number.MAX_SAFE_INTEGER,
+)
 
 export function getChatCache(): MemoryCache {
-  if (!cacheInstance) {
-    cacheInstance = new MemoryCache(1000 * 60 * 30) // 30 min TTL
+  return chatCacheSingleton.getOrCreate(() => {
     logger.debug('Chat cache initialized', { domain: 'cache' })
-  }
-  return cacheInstance
+    return new MemoryCache(1000 * 60 * 30) // 30 min TTL por entrada
+  })
 }
 
 // ============================================

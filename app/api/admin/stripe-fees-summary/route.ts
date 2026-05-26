@@ -10,11 +10,12 @@ import { eq } from 'drizzle-orm'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { authenticateFinanceRequest } from '@/lib/finance/auth'
+import { createGlobalCache } from '@/lib/cache/globalCache'
 const getStripe = () => new Stripe(process.env.STRIPE_SECRET_KEY!)
 
 // Caché in-memory para netVolume4w (cambia poco, evita polling Stripe Reporting que tarda 10-30s)
-const NET_VOLUME_CACHE_TTL_MS = 60 * 60 * 1000 // 1h
-let netVolumeCache: { value: number; expiresAt: number } | null = null
+// Cross-bundle via createGlobalCache (#118).
+const netVolumeCache = createGlobalCache<number>('admin-stripe-net-volume-4w-v1', 60 * 60 * 1000)
 
 /**
  * Calcula volumen neto de últimas 4 semanas via Stripe Reporting API.
@@ -242,13 +243,9 @@ async function _GET(request: NextRequest) {
     const reportEnd = new Date()
     reportEnd.setUTCHours(0, 0, 0, 0) // midnight UTC today
 
-    let netVolume4w: number
-    if (netVolumeCache && netVolumeCache.expiresAt > Date.now()) {
-      netVolume4w = netVolumeCache.value
-    } else {
-      netVolume4w = await computeNetVolume4w(fourWeeksAgo, reportEnd)
-      netVolumeCache = { value: netVolume4w, expiresAt: Date.now() + NET_VOLUME_CACHE_TTL_MS }
-    }
+    const netVolume4w = await netVolumeCache.getOrLoad(() =>
+      computeNetVolume4w(fourWeeksAgo, reportEnd),
+    )
 
     // Comisión Stripe escalonada según volumen neto (en céntimos)
     // >= 6000€ → 5%, >= 5000€ → 6%, >= 4000€ → 7%, >= 3000€ → 8%, >= 2000€ → 9%, < 2000€ → 10%
