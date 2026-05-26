@@ -462,15 +462,34 @@ ECS Fargate sería mejor si Vence fuera SaaS B2B con carga constante 24/7. No es
   - **Vercel desconectado del repo** (vía dashboard Vercel → Settings → Git → Disconnect). Ya no hay auto-deploys a Vercel en push a main.
   - **Memoria del agente:** `feedback_incident_mitigation_act_fast.md` — en incidente PROD activo, ejecutar mitigaciones reversibles (`force-new-deployment`, CloudFront invalidation, scale-out) SIN esperar autorización; pedir permiso solo para irreversibles (DNS rollback, DROP, push --force). Esperé 25 min permisos durante este incidente, error que no se repite.
 
-  **#117 parte B — fix del memory leak `LawsAPI` (resuelto 2026-05-26):**
+  **#117 parte B — fix del memory leak `LawsAPI` (resuelto 2026-05-26, commit `6c7f91cc`):**
   Identificada causa raíz del leak: el cache `let slugMappingCache: SlugMappingCache | null = null` a nivel de módulo en `lib/api/laws/queries.ts` se reinstanciaba POR CADA bundle que Next.js genera del mismo archivo (Server Component bundle + API Route bundle + Middleware bundle + RSC fragments). Cada bundle tenía su propia copia → no se compartía → cada request bajo carga inicializaba SU PROPIO cache, mantenía ~50 Maps con strong refs vivos por bundle, y el GC no podía liberar. De ahí los logs "🔄 [LawsAPI] Cargando cache de slugs desde BD..." decenas/min en lugar de 1 vez/h.
 
-  Fix: refactor a `globalThis['__vence_slug_mapping_cache_v1']`. `globalThis` es UNA sola instancia compartida por todo el runtime Node — todos los bundles referencian el mismo slot. Una sola carga real cada 1h, GC libera correctamente, memoria estable. 41 tests del cache (`__tests__/lib/laws/lawSlugQueries.test.ts`) pasan post-fix.
+  Fix: refactor a `globalThis['__vence_slug_mapping_cache_v1']`. `globalThis` es UNA sola instancia compartida por todo el runtime Node — todos los bundles referencian el mismo slot. Una sola carga real cada 1h, GC libera correctamente, memoria estable.
+
+  **Validación post-deploy (revision 5 ECS, 2026-05-26 17:30):** memoria estable 21-27% bajo carga (antes subía 26→42% en 20 min). Canary 100%. Fix vivo.
+
+  **#118 — Eliminación completa del bug familia (resuelto 2026-05-26):**
+  Tras el fix de LawsAPI, una auditoría con `grep "^let .*Cache"` detectó **7 archivos más** con el mismo anti-patrón. Bug latente que podía reproducir el incidente en otros endpoints bajo carga. Cierre en 3 commits coordinados:
+
+  - **`0a18d6f5`** — Extraer helper `createGlobalCache` en `lib/cache/globalCache.ts` (API tipada: `getOrLoad`, `getOrCreate`, `set`, `peek`, `invalidate`, `isFresh`) + 10 tests del helper. Refactor LawsAPI para usar el helper en lugar de manipular `globalThis` manualmente.
+  - **`7a2e3aa9`** — Regla ESLint `no-restricted-syntax` en `lib/**` y `app/**` que detecta `let xxxCache` a nivel módulo y recomienda el helper. Severidad `warn` (no rompe build) — los 7 archivos pendientes salían como warnings.
+  - **`3873926b`** — Migración de los 7 archivos al helper: `lib/lawSlugAliases.ts`, `lib/api/psychometric-test-data/queries.ts`, `lib/chat/shared/cache.ts`, `lib/chat/domains/search/PatternMatcher.ts` (variable muerta, eliminada), `lib/chat/domains/stats/StatsService.ts` (4 vars agrupadas en 1 objeto), `lib/chat/domains/search/queries.ts` (2 vars relacionadas en 1 cache), `app/api/admin/stripe-fees-summary/route.ts`.
+
+  Resultado verificado:
+  - **0 caches** con el anti-patrón en `lib/` + `app/` (grep + ESLint sin warnings).
+  - **51 tests passing** (41 LawsAPI + 10 helper).
+  - **Regla ESLint protege futuros developers** — cualquier `let xCache: T | null = null` nuevo en `lib/` o `app/` saldrá como warning en CI.
+  - **Bug familia físicamente eliminado del codebase.**
 
   **Conclusión arquitectónica + Plan B disponible:**
   Tras el fix, ECS Fargate es **robusto indefinidamente para Vence al volumen actual** (~10-100 DAU). El autoscaling 1→3 tasks + circuit breaker + pin SHA por digest + 1vCPU/2GB cubren picos sin intervención. NO hay urgencia de migrar.
 
   **Pero SST/Lambda queda como plan B validado**, no como vaporware: el spike E.9.A del 26/05 demostró que **el build OpenNext sí pasa** con Next.js 16.1 + `@opennextjs/aws@4` + `output:'standalone'` y `optimizeCss` desactivados + tsconfig excluyendo `.sst/`. Es viable cuando se necesite, por ejemplo si: (a) el coste a 10k+ DAU haga que Lambda gane económicamente vs múltiples tasks ECS, (b) aparezca otro síntoma estructural que ECS no pueda cubrir, o (c) decidamos aprovechar el modelo "request-aislado" para ganar reducción de blast radius. La rama experimental `aws/sst-lambda-retry` queda preservada con el `sst.config.ts` listo para reintentar — ver E.9 para los pasos exactos.
+
+  **Cabos sueltos pendientes (no urgentes):**
+  - **#113 + #115 — Postmortems formales** de los 2 incidentes de hoy. Documentados en este roadmap pero no en formato estructurado (5-whys, timeline, action items). Próxima sesión.
+  - **CloudWatch Alarms reales** (SNS+email) para los 3 indicadores del monitor (mem, latency, canary). Hoy el monitoreo depende de que una sesión de Claude esté activa. Próxima sesión.
 
 - **E.9** ⏳ **Reintento SST/Lambda — investigación previa antes de decidir** (driver: incidente E.8 + comparativa VicoHR + investigación web 2026-05-26):
 
