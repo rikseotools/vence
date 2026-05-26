@@ -150,15 +150,24 @@ export function withErrorLogging(
       //
       // 2xx/3xx: sampling 10% (alto volumen → mantenemos ~5k samples/24h
       //   suficiente para p99 sólido sin inflar la tabla).
-      // 4xx/5xx: 100% (todos los errores, ya están abajo en otro bloque,
-      //   incluyen duration_ms; aquí solo emit para los 2xx/3xx).
+      // 4xx/5xx: 100% (todos los errores, independiente del path VLE de
+      //   abajo). Garantiza visibilidad en observable_events aunque
+      //   _insertLog falle silenciosamente (incidente 2026-05-26: webhook
+      //   Stripe respondía 400 y NADA aparecía en VLE ni obs_events,
+      //   nos enteramos solo porque una usuaria pagó y se quejó).
       //
       // metadata.host distingue preview-aws.vence.es de www.vence.es,
       // crítico para comparativa apples-to-apples del cutover.
       // ============================================================
-      if (response.status < 400 && Math.random() < SUCCESS_TIMING_SAMPLE_RATE) {
+      const isError = response.status >= 400
+      const shouldEmitTiming = isError || Math.random() < SUCCESS_TIMING_SAMPLE_RATE
+      if (shouldEmitTiming) {
         const durationMs = Date.now() - startTime
         const host = request?.headers?.get?.('host') ?? null
+        const timingSeverity: 'critical' | 'error' | 'warn' | 'info' =
+          response.status >= 500 ? 'error' :
+          response.status >= 400 ? 'warn' :
+          'info'
         // CRÍTICO: usar `after()` de Next.js, NO `emitFireAndForget` directo.
         //
         // Sin `after()`, la promise `void emit()` queda HUÉRFANA cuando la
@@ -179,7 +188,7 @@ export function withErrorLogging(
         after(async () => {
           await emit({
             source: 'vercel',
-            severity: 'info',
+            severity: timingSeverity,
             eventType: 'request_completed',
             endpoint,
             httpStatus: response.status,
@@ -187,7 +196,7 @@ export function withErrorLogging(
             metadata: {
               host,
               method: request?.method ?? 'GET',
-              sampled: 'true',
+              sampled: isError ? 'false' : 'true',
             },
           })
         })

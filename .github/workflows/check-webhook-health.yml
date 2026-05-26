@@ -1,0 +1,45 @@
+name: Check Webhook Health
+
+# Cada 15min verifica que el webhook Stripe esté procesando eventos.
+# Si >10% de eventos en última hora siguen "pending", emite evento
+# webhook_unhealthy → la regla RULE_WEBHOOK_UNHEALTHY dispara notificación.
+#
+# Detecta el incidente 2026-05-26 (webhook respondía 400, eventos
+# acumulados pending) en <15min en vez de "cuando un usuario escriba".
+
+on:
+  schedule:
+    # Cada 15 min. 96 ejecuciones/día × ~10s = ~16 min/día = ~480 min/mes
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Call webhook health endpoint
+        run: |
+          URL="https://www.vence.es/api/cron/check-webhook-health"
+
+          RESPONSE=$(curl -s -X GET \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            "${URL}")
+
+          echo "Response: $RESPONSE"
+
+          HEALTHY=$(echo "$RESPONSE" | jq -r '.healthy // false')
+          TOTAL=$(echo "$RESPONSE" | jq -r '.totalEvents // 0')
+          PENDING=$(echo "$RESPONSE" | jq -r '.pendingEvents // 0')
+          PCT=$(echo "$RESPONSE" | jq -r '.pendingPct // 0')
+
+          echo "## Stripe Webhook Health" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Eventos en última hora: $TOTAL" >> $GITHUB_STEP_SUMMARY
+          echo "- Pending: $PENDING ($PCT%)" >> $GITHUB_STEP_SUMMARY
+          echo "- Healthy: $HEALTHY" >> $GITHUB_STEP_SUMMARY
+
+          if [ "$HEALTHY" != "true" ]; then
+            echo "::warning::Stripe webhook unhealthy: $PCT% pending"
+          fi

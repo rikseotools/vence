@@ -5,6 +5,7 @@ import { useState, useEffect, useRef, Suspense } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSearchParams } from 'next/navigation'
 import { trackPremiumPageView, trackCheckoutStarted } from '@/lib/services/conversionTracker'
+import { trackIntent, confirmIntent } from '@/lib/observability/client'
 
 type PlanType = 'monthly' | 'quarterly' | 'semester'
 
@@ -110,6 +111,13 @@ function PremiumPageContent() {
     setLoading(true)
     setError('')
 
+    // Intent tracking: si tras 10s NO confirmamos, queda como bug silencioso
+    // en observable_events (intent_unfulfilled). Caso real Lidia 2026-05-26:
+    // pulsó "Hacerse premium" pero el flow se rompió antes del redirect a
+    // Stripe y NO había forma de detectarlo sin que ella escribiera al chat.
+    const intentId = `checkout-${selectedPlan}-${Date.now()}`
+    trackIntent(intentId, `Premium checkout ${selectedPlan}`, 10000)
+
     try {
       console.log('🔄 Creando checkout para usuario:', user.email, 'Plan:', selectedPlan)
 
@@ -153,6 +161,7 @@ function PremiumPageContent() {
       // Redirigir usando la URL directa de Stripe (más confiable)
       if (data.checkoutUrl) {
         console.log('🔗 Usando URL directa de Stripe checkout')
+        confirmIntent(intentId)
         window.location.href = data.checkoutUrl
         return
       }
@@ -178,9 +187,14 @@ function PremiumPageContent() {
 
       if (stripeError) throw new Error(stripeError.message)
 
+      confirmIntent(intentId)
+
     } catch (err) {
       console.error('Error en checkout:', err)
       setError(err instanceof Error ? err.message : 'Error desconocido')
+      // NO confirmamos: el timeout de trackIntent emitirá intent_unfulfilled
+      // a observable_events — visibilidad de fallos de checkout sin esperar
+      // a que el usuario escriba al soporte (caso Lidia 2026-05-26).
     } finally {
       setLoading(false)
     }
@@ -217,6 +231,10 @@ function PremiumPageContent() {
     setLoading(true)
     setError('')
 
+    // Intent tracking idem handleCheckout — visibilidad de "click sin redirect".
+    const intentId = `checkout-${plan}-${Date.now()}`
+    trackIntent(intentId, `Premium checkout ${plan} (direct)`, 10000)
+
     try {
       console.log('🔄 Creando checkout para usuario:', user.email, 'Plan:', plan)
 
@@ -252,6 +270,7 @@ function PremiumPageContent() {
       }
 
       if (data.checkoutUrl) {
+        confirmIntent(intentId)
         window.location.href = data.checkoutUrl
         return
       }
@@ -269,9 +288,12 @@ function PremiumPageContent() {
 
       if (stripeError) throw new Error(stripeError.message)
 
+      confirmIntent(intentId)
+
     } catch (err) {
       console.error('Error en checkout:', err)
       setError(err instanceof Error ? err.message : 'Error desconocido')
+      // NO confirmamos — trackIntent timeout emite intent_unfulfilled
     } finally {
       setLoading(false)
     }

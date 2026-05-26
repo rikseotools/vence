@@ -350,6 +350,98 @@ export const RULE_WORKFLOW_FAILURE_BURST: AlertRule<{
 };
 
 /**
+ * Subscription drift — si el cron de reconciliación detecta usuarios con
+ * subscription activa pero plan_type != premium, alertar.
+ *
+ * Origen: incidente 2026-05-26 — webhook Stripe roto durante horas, Andrea
+ * pagó 20€ sin activarse, NADIE se enteró hasta que ella escribió al
+ * soporte. El cron de reconciliación (.github/workflows/subscription-
+ * reconciliation.yml, cada hora) detecta y corrige automáticamente, pero
+ * queremos saberlo aunque corrija — si dispara seguido es señal de webhook
+ * roto sostenidamente.
+ *
+ * Esta regla mira event_type='subscription_drift' emitido por el GHA wf
+ * con metadata.detected = nº de inconsistencias. Si en última hora hubo
+ * cualquier detection > 0, alertar.
+ *
+ * Limitación: no cubre el caso "Stripe tiene sub pero BD no tiene fila"
+ * (caso Andrea exacto). Requiere ampliar el endpoint de reconciliación
+ * para consultar Stripe API — pendiente como mejora futura.
+ */
+export const RULE_SUBSCRIPTION_DRIFT: AlertRule<{
+  detected: number;
+  fixed: number;
+  lastRun: Date;
+}> = {
+  name: 'subscription_drift',
+  severity: 'warn',
+  query: sql`
+    SELECT
+      COALESCE((metadata->>'detected')::int, 0) AS detected,
+      COALESCE((metadata->>'fixed')::int, 0) AS fixed,
+      ts AS "lastRun"
+    FROM observable_events
+    WHERE event_type = 'subscription_drift'
+      AND ts > NOW() - INTERVAL '1 hour'
+    ORDER BY ts DESC
+    LIMIT 1
+  `,
+  shouldFire: (rows) => rows.length > 0 && rows[0].detected > 0,
+  buildNotification: (rows) => {
+    const r = rows[0];
+    return {
+      title: `Subscription drift detectado: ${r.detected} inconsistencias (${r.fixed} corregidas auto)`,
+      body: `El cron de reconciliación detectó ${r.detected} usuarios con subscription activa pero plan_type != premium. ${r.fixed} se corrigieron automáticamente.\n\nSi esto se repite cada hora, el webhook Stripe puede estar fallando — investigar Stripe Dashboard → Webhooks → /api/stripe/webhook.\n\nIncidente origen: 2026-05-26 (webhook roto silenciosamente, Andrea pagó sin activarse).`,
+      metadata: { detected: r.detected, fixed: r.fixed, lastRun: r.lastRun },
+    };
+  },
+  cooldownMin: 60,
+};
+
+/**
+ * Webhook Stripe unhealthy — disparada por el cron check-webhook-health
+ * (/api/cron/check-webhook-health, cada 15min). Emite evento
+ * 'webhook_unhealthy' cuando >10% de eventos Stripe en última hora siguen
+ * pending → indica que el webhook responde non-2xx sostenidamente.
+ *
+ * Origen: incidente 2026-05-26 (Andrea pagó 20€ sin activarse). Detecta
+ * en <15min en vez de "cuando un usuario escriba al soporte".
+ */
+export const RULE_WEBHOOK_UNHEALTHY: AlertRule<{
+  pendingPct: number;
+  pending: number;
+  total: number;
+  oldestType: string | null;
+  oldestAgeS: number | null;
+}> = {
+  name: 'webhook_unhealthy',
+  severity: 'error',
+  query: sql`
+    SELECT
+      (metadata->>'pending_pct')::numeric AS "pendingPct",
+      (metadata->>'pending_events_1h')::int AS pending,
+      (metadata->>'total_events_1h')::int AS total,
+      metadata->>'oldest_pending_type' AS "oldestType",
+      (metadata->>'oldest_pending_age_s')::int AS "oldestAgeS"
+    FROM observable_events
+    WHERE event_type = 'webhook_unhealthy'
+      AND ts > NOW() - INTERVAL '30 minutes'
+    ORDER BY ts DESC
+    LIMIT 1
+  `,
+  shouldFire: (rows) => rows.length > 0,
+  buildNotification: (rows) => {
+    const r = rows[0];
+    return {
+      title: `Webhook Stripe unhealthy: ${r.pending}/${r.total} eventos pending (${r.pendingPct}%)`,
+      body: `El cron check-webhook-health detectó que ${r.pendingPct}% de los eventos Stripe en la última hora siguen pending. Investigar inmediatamente:\n\n  - Evento más antiguo pending: ${r.oldestType ?? 'unknown'} (${r.oldestAgeS ?? '?'}s)\n  - Stripe Dashboard → Webhooks → /api/stripe/webhook → tab "Webhook attempts"\n\nIncidente origen 2026-05-26: webhook respondía 400 a todos los eventos por un bug en withErrorLogging consumiendo el raw body. Andrea pagó 20€ sin activarse.`,
+      metadata: { pendingPct: r.pendingPct, pending: r.pending, total: r.total },
+    };
+  },
+  cooldownMin: 15,
+};
+
+/**
  * Lista canónica de reglas activas. Añadir nuevas reglas aquí.
  * El cron las ejecuta TODAS cada 5 min.
  */
@@ -363,4 +455,7 @@ export const ALERT_RULES: AlertRule[] = [
   RULE_TTS_ERROR_BURST as AlertRule,
   RULE_HYDRATION_MISMATCH_SPIKE as AlertRule,
   RULE_WORKFLOW_FAILURE_BURST as AlertRule,
+  // Subscription health (2026-05-26 post-incidente Andrea/Lidia)
+  RULE_SUBSCRIPTION_DRIFT as AlertRule,
+  RULE_WEBHOOK_UNHEALTHY as AlertRule,
 ];
