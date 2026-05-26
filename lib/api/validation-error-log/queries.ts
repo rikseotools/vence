@@ -12,6 +12,13 @@ import { validationErrorLogs } from '@/db/schema'
 import { emit } from '@/lib/observability/emit'
 import type { ValidationErrorLogInput } from './schemas'
 
+// after() de Next.js 15+ — registra una callback para ejecutarse tras
+// enviar response pero antes de suspender la lambda. Garantiza que el
+// INSERT completa con el runtime aún vivo → cierra conexión PG limpiamente.
+// Fallback a void si estamos fuera de request context (cron Fargate,
+// scripts standalone).
+import { after } from 'next/server'
+
 function getAuditLogDb() {
   return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getTraceDb()
 }
@@ -47,19 +54,41 @@ export function classifyError(error: unknown): 'timeout' | 'network' | 'db_conne
 
 /**
  * Persiste un error de validación en la BD.
- * Fire-and-forget: NUNCA lanza excepciones, NUNCA bloquea al caller.
+ * NUNCA lanza excepciones, NUNCA bloquea al caller.
  *
- * Usar para 4xx (volumen alto, pérdida ocasional aceptable).
- * Para 5xx preferir [logValidationErrorAwait] — el caller debe awaitar
- * para garantizar persistencia antes de que Vercel suspenda la lambda
- * al `return response`.
+ * Usar para 4xx (volumen alto). Internamente usa `after()` de Next.js
+ * 15+ para que la promesa NO quede huérfana al terminar la lambda Vercel.
+ *
+ * INCIDENT 2026-05-26: la implementación anterior usaba
+ * `_insertLog(input).catch(...)` sin await. La promise quedaba huérfana
+ * cuando la lambda terminaba, dejando la conexión PG en wait_event=ClientRead
+ * durante minutos → pool leak → spiral de 5xx en otros endpoints. Causó
+ * ~110 errores user-facing en 3h. Ver postmortem #113.
+ *
+ * Para 5xx seguir usando [logValidationErrorAwait] porque queremos esperar
+ * antes de devolver la response (errorRef inyectado al cliente).
  */
 export function logValidationError(input: ValidationErrorLogInput): void {
   // No loguear errores en desarrollo local — solo ruido
   if (DEPLOY_VERSION === 'local') return
 
-  // Ejecutar async sin await — fire-and-forget
-  _insertLog(input).catch(_logInsertFailure(input))
+  // `after()` mantiene la lambda viva tras response, garantiza que el
+  // INSERT y su cleanup de conexión TCP terminen. Fallback a void si no
+  // estamos en request context (cron, script CLI).
+  try {
+    after(async () => {
+      try {
+        await _insertLog(input)
+      } catch (err) {
+        _logInsertFailure(input)(err)
+      }
+    })
+  } catch {
+    // after() solo funciona dentro de un request handler. Fuera de él
+    // (raras llamadas desde lib utility, tests, etc.) caemos al patrón
+    // anterior — riesgo de huérfano pero ya es contexto sin lambda.
+    _insertLog(input).catch(_logInsertFailure(input))
+  }
 }
 
 /**
