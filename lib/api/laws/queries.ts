@@ -76,21 +76,53 @@ function normalizeSlug(rawSlug: string): string {
 // ============================================
 // CACHE DE MAPEO SLUG ↔ SHORT_NAME (DRIZZLE)
 // ============================================
+//
+// IMPORTANTE — fix incidente OOM 2026-05-26 (task #117 parte B):
+//
+// Antes: `let slugMappingCache: SlugMappingCache | null = null` a nivel
+// módulo. PROBLEMA: Next.js bundlea este módulo varias veces (Server
+// Component bundle, API Route bundle, Middleware bundle, etc.). Cada bundle
+// tiene SU PROPIA copia del `let` → no se comparte → cada bundle recarga
+// el cache de ~30-50 leyes desde BD, mantiene ~50 Maps con strong refs
+// vivos por bundle, y el GC no puede liberar.
+//
+// Síntoma observado en producción ECS bajo carga: logs mostraban
+// "🔄 [LawsAPI] Cargando cache de slugs desde BD..." decenas de veces por
+// minuto con TTL de 1h (debería ser 1 vez/h). Memoria del task subía
+// 71% → 99.8% en 30 min y disparaba OOM kill.
+//
+// Fix: storage en `globalThis` con key versionada. globalThis es UNA SOLA
+// instancia compartida por TODO el runtime Node — todos los bundles
+// referencian el mismo slot. Una sola carga real, GC libera correctamente.
+//
+// Si en el futuro cambia la forma del SlugMappingCache (campo nuevo), subir
+// la versión en CACHE_KEY (`_v2`, `_v3`...) para invalidar caches viejos
+// que sobrevivan a un hot reload.
 
-let slugMappingCache: SlugMappingCache | null = null
+const CACHE_KEY = '__vence_slug_mapping_cache_v1'
+
+function getCachedSlugMapping(): SlugMappingCache | null {
+  return (globalThis as unknown as Record<string, SlugMappingCache | null | undefined>)[CACHE_KEY] ?? null
+}
+
+function setCachedSlugMapping(value: SlugMappingCache | null): void {
+  (globalThis as unknown as Record<string, SlugMappingCache | null>)[CACHE_KEY] = value
+}
 
 function isCacheValid(): boolean {
-  if (!slugMappingCache) return false
-  return Date.now() - slugMappingCache.loadedAt.getTime() < SLUG_CACHE_MAX_AGE_MS
+  const cached = getCachedSlugMapping()
+  if (!cached) return false
+  return Date.now() - cached.loadedAt.getTime() < SLUG_CACHE_MAX_AGE_MS
 }
 
 /**
  * Carga el mapeo completo slug ↔ short_name + datos de ley desde BD.
- * Se cachea en memoria del proceso (serverless-safe).
+ * Cache compartido cross-bundle via `globalThis` (ver comentario arriba).
  */
 export async function loadSlugMappingCache(): Promise<SlugMappingCache> {
-  if (isCacheValid() && slugMappingCache) {
-    return slugMappingCache
+  const cached = getCachedSlugMapping()
+  if (isCacheValid() && cached) {
+    return cached
   }
 
   console.log('🔄 [LawsAPI] Cargando cache de slugs desde BD...')
@@ -124,20 +156,21 @@ export async function loadSlugMappingCache(): Promise<SlugMappingCache> {
     }
   }
 
-  slugMappingCache = {
+  const newCache: SlugMappingCache = {
     slugToShortName,
     shortNameToSlug,
     lawsBySlug,
     loadedAt: new Date(),
   }
+  setCachedSlugMapping(newCache)
 
   console.log(`✅ [LawsAPI] Cache cargado: ${slugToShortName.size} leyes`)
-  return slugMappingCache
+  return newCache
 }
 
 /** Invalida el cache (llamar después de actualizar leyes) */
 export function invalidateSlugCache(): void {
-  slugMappingCache = null
+  setCachedSlugMapping(null)
   console.log('🗑️ [LawsAPI] Cache de slugs invalidado')
 }
 

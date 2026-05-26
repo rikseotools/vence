@@ -462,8 +462,15 @@ ECS Fargate sería mejor si Vence fuera SaaS B2B con carga constante 24/7. No es
   - **Vercel desconectado del repo** (vía dashboard Vercel → Settings → Git → Disconnect). Ya no hay auto-deploys a Vercel en push a main.
   - **Memoria del agente:** `feedback_incident_mitigation_act_fast.md` — en incidente PROD activo, ejecutar mitigaciones reversibles (`force-new-deployment`, CloudFront invalidation, scale-out) SIN esperar autorización; pedir permiso solo para irreversibles (DNS rollback, DROP, push --force). Esperé 25 min permisos durante este incidente, error que no se repite.
 
-  **Lección arquitectónica más fuerte (#117 parte B pendiente):**
-  ECS Fargate **no es la arquitectura adecuada para Vence**. Un único proceso Node atendiendo ~337 páginas (algunas SSG con queries BD durante prerender) con caches en memoria del proceso es la receta perfecta para memory leaks bajo carga. En Vercel cada request era una lambda aislada de 200ms que moría — leak imposible. La elección de ECS fue forzada porque OpenNext rompía con `useState null` durante build SSG de Vence (Fase E.0/E.1-SST descartado el 25/05). El siguiente paso correcto es **reintentar SST/Lambda** con las lecciones aprendidas (ver E.9).
+  **#117 parte B — fix del memory leak `LawsAPI` (resuelto 2026-05-26):**
+  Identificada causa raíz del leak: el cache `let slugMappingCache: SlugMappingCache | null = null` a nivel de módulo en `lib/api/laws/queries.ts` se reinstanciaba POR CADA bundle que Next.js genera del mismo archivo (Server Component bundle + API Route bundle + Middleware bundle + RSC fragments). Cada bundle tenía su propia copia → no se compartía → cada request bajo carga inicializaba SU PROPIO cache, mantenía ~50 Maps con strong refs vivos por bundle, y el GC no podía liberar. De ahí los logs "🔄 [LawsAPI] Cargando cache de slugs desde BD..." decenas/min en lugar de 1 vez/h.
+
+  Fix: refactor a `globalThis['__vence_slug_mapping_cache_v1']`. `globalThis` es UNA sola instancia compartida por todo el runtime Node — todos los bundles referencian el mismo slot. Una sola carga real cada 1h, GC libera correctamente, memoria estable. 41 tests del cache (`__tests__/lib/laws/lawSlugQueries.test.ts`) pasan post-fix.
+
+  **Conclusión arquitectónica + Plan B disponible:**
+  Tras el fix, ECS Fargate es **robusto indefinidamente para Vence al volumen actual** (~10-100 DAU). El autoscaling 1→3 tasks + circuit breaker + pin SHA por digest + 1vCPU/2GB cubren picos sin intervención. NO hay urgencia de migrar.
+
+  **Pero SST/Lambda queda como plan B validado**, no como vaporware: el spike E.9.A del 26/05 demostró que **el build OpenNext sí pasa** con Next.js 16.1 + `@opennextjs/aws@4` + `output:'standalone'` y `optimizeCss` desactivados + tsconfig excluyendo `.sst/`. Es viable cuando se necesite, por ejemplo si: (a) el coste a 10k+ DAU haga que Lambda gane económicamente vs múltiples tasks ECS, (b) aparezca otro síntoma estructural que ECS no pueda cubrir, o (c) decidamos aprovechar el modelo "request-aislado" para ganar reducción de blast radius. La rama experimental `aws/sst-lambda-retry` queda preservada con el `sst.config.ts` listo para reintentar — ver E.9 para los pasos exactos.
 
 - **E.9** ⏳ **Reintento SST/Lambda — investigación previa antes de decidir** (driver: incidente E.8 + comparativa VicoHR + investigación web 2026-05-26):
 
