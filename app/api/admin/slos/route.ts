@@ -250,20 +250,56 @@ async function _GET(request: NextRequest) {
     slo: '<5% verde, <10% ámbar',
   })
 
-  // 5. Errores 5xx (24h)
-  const { data: errs5xx } = await supabase
+  // 5. Errores 5xx (24h) — SEPARADO en user-facing vs internal/debug.
+  //
+  // Razón (2026-05-26 audit): los smoke tests `/api/debug/*` deliberados
+  // con throw y los timeouts de crons `/api/cron/*` contaminaban el SLO
+  // como falsos positivos ámbar. El cutover real depende SOLO de los
+  // 5xx que ven usuarios — los crons fallidos son problema operativo
+  // pero no rompen la UX.
+  const INTERNAL_PREFIXES = ['/api/cron/', '/api/debug/', '/api/admin/']
+
+  const { data: all5xx } = await supabase
     .from('observable_events')
-    .select('id', { count: 'exact', head: true })
+    .select('endpoint, error_message')
     .gte('ts', SINCE)
     .gte('http_status', 500)
-  const total5xxCount = (errs5xx as unknown as { count?: number })?.count ?? 0
-  const rate5xx = totalCount > 0 ? total5xxCount / totalCount : 0
-  rawData.errors5xx = { count: total5xxCount, rate: rate5xx }
+    .limit(200)
+
+  let userFacing5xx = 0
+  let loadShedding = 0 // 503 con mensaje "reintenta" — deliberado
+  let internal5xx = 0
+  let real5xx = 0
+
+  for (const e of all5xx ?? []) {
+    const ep = e.endpoint ?? ''
+    const isInternal = INTERNAL_PREFIXES.some((p) => ep.startsWith(p))
+    if (isInternal) {
+      internal5xx++
+      continue
+    }
+    const msg = (e.error_message ?? '').toLowerCase()
+    if (msg.includes('reintenta') || msg.includes('saturad') || msg.includes('temporalmente')) {
+      loadShedding++
+      continue
+    }
+    userFacing5xx++
+    real5xx++
+  }
+
+  const rateReal = totalCount > 0 ? real5xx / totalCount : 0
+  rawData.errors5xx = {
+    total: all5xx?.length ?? 0,
+    real: real5xx,
+    loadShedding,
+    internal: internal5xx,
+    rate: rateReal,
+  }
   indicators.push({
-    label: 'Errores 5xx (24h)',
-    status: gradeErrorRate5xx(rate5xx),
-    value: fmtPct(rate5xx),
-    detail: `${total5xxCount} eventos http_5xx`,
+    label: '5xx user-facing reales (24h)',
+    status: gradeErrorRate5xx(rateReal),
+    value: fmtPct(rateReal),
+    detail: `${real5xx} reales · ${loadShedding} load-shedding (503 reintenta) · ${internal5xx} crons/debug`,
     slo: '<0.1% verde, <1% ámbar',
   })
 
