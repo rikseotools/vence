@@ -73,11 +73,6 @@ export const recentUserSchema = z.object({
   registration_source: z.string().nullable(),
   user_created_at: z.string().nullable(),
   is_active_student: z.boolean().nullable(),
-  total_tests_30d: z.number().nullable(),
-  completed_tests_30d: z.number().nullable(),
-  abandoned_tests_30d: z.number().nullable(),
-  last_test_date: z.string().nullable(),
-  avg_score_30d: z.string().nullable(),
 })
 
 export const dashboardResponseSchema = z.object({

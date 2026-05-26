@@ -1,7 +1,7 @@
 // lib/api/admin-dashboard/queries.ts - Drizzle queries para Admin Dashboard v2
 // Consolida 13 queries secuenciales del cliente en ~6 queries paralelas en servidor
 import { getAdminDb as getDb } from '@/db/client'
-import { userProfiles, tests, testQuestions, emailLogs, adminUsersWithRoles, conversionEvents } from '@/db/schema'
+import { userProfiles, tests, testQuestions, emailLogs, conversionEvents } from '@/db/schema'
 import { eq, sql, gte, lt, lte, and, isNotNull, desc } from 'drizzle-orm'
 import type { DashboardResponse } from './schemas'
 
@@ -349,16 +349,24 @@ async function queryDauHistory(dates: ReturnType<typeof getMadridDates>) {
   return dauByDay
 }
 
-// -- Query 8: Top 10 recent users (from admin view, already optimized with limit) --
-
+// -- Query 8: Top 5 usuarios recientes para tabla "Últimos registros" (UI muestra 5) --
+// Antes leía la vista admin_users_with_roles → HashAggregate sobre 6k usuarios + 34k tests = ~5s en frío.
+// El dashboard solo muestra nombre + email + plan + fecha → un SELECT directo sobre user_profiles basta.
 async function queryRecentUsers() {
   const db = getDb()
 
   return db
-    .select()
-    .from(adminUsersWithRoles)
-    .orderBy(desc(adminUsersWithRoles.userCreatedAt))
-    .limit(10)
+    .select({
+      userId: userProfiles.id,
+      email: userProfiles.email,
+      fullName: userProfiles.fullName,
+      planType: userProfiles.planType,
+      registrationSource: userProfiles.registrationSource,
+      userCreatedAt: userProfiles.createdAt,
+    })
+    .from(userProfiles)
+    .orderBy(desc(userProfiles.createdAt))
+    .limit(5)
 }
 
 // -- Query 9: Engagement (total users with completed tests ever) --
@@ -667,12 +675,9 @@ export async function getDashboardData(): Promise<DashboardResponse> {
       plan_type: u.planType,
       registration_source: u.registrationSource,
       user_created_at: u.userCreatedAt,
-      is_active_student: u.isActiveStudent,
-      total_tests_30d: u.totalTests30D,
-      completed_tests_30d: u.completedTests30D,
-      abandoned_tests_30d: u.abandonedTests30D,
-      last_test_date: u.lastTestDate,
-      avg_score_30d: u.avgScore30D,
+      is_active_student: u.planType
+        ? ['legacy_free', 'free', 'trial', 'premium'].includes(u.planType)
+        : false,
     })),
     recentActivity: todayActivity,
     activeUsersLastWeekAtThisHour: activeComparison.activeLastWeekAtThisHour,
