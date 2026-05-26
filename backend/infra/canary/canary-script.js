@@ -25,7 +25,7 @@ const TARGET = process.env.TARGET_URL || 'https://preview-aws.vence.es'
 const apiCanary = async function () {
   log.info(`[vence-canary] target = ${TARGET}`)
 
-  const page = await synthetics.getDefaultPage()
+  const page = await synthetics.getPage()
 
   await page.setExtraHTTPHeaders({ 'X-Vence-Canary': 'cloudwatch-synthetics' })
 
@@ -34,8 +34,11 @@ const apiCanary = async function () {
   // ============================================================
   await synthetics.executeStep('home', async () => {
     const startedAt = Date.now()
+    // waitUntil:'domcontentloaded' = HTML llegó + parseado.
+    // Más rápido que networkidle0 (que espera scripts 3rd party como GA,
+    // Sentry, Stripe). Para un canary de "está la web up" es suficiente.
     const resp = await page.goto(TARGET + '/', {
-      waitUntil: 'networkidle0',
+      waitUntil: 'domcontentloaded',
       timeout: 30_000,
     })
     if (!resp) throw new Error('home: no response')
@@ -43,10 +46,11 @@ const apiCanary = async function () {
       throw new Error(`home: status ${resp.status()}`)
     }
     const duration = Date.now() - startedAt
-    if (duration > 5000) {
-      throw new Error(`home: too slow ${duration}ms (umbral 5000ms)`)
+    // Umbral 8s: incluye DNS lookup + SSL + CloudFront miss (cold) + SSR.
+    // Si tarda más, hay problema real (ECS sin tasks, CloudFront down, etc.).
+    if (duration > 8000) {
+      throw new Error(`home: too slow ${duration}ms (umbral 8000ms)`)
     }
-    // Verificar contenido real (no shell vacío de error)
     const title = await page.title()
     if (!/vence/i.test(title)) {
       throw new Error(`home: title sin 'vence' — ${title}`)
@@ -59,7 +63,7 @@ const apiCanary = async function () {
   // ============================================================
   await synthetics.executeStep('oposicion-landing', async () => {
     const resp = await page.goto(TARGET + '/auxiliar-administrativo-estado', {
-      waitUntil: 'networkidle0',
+      waitUntil: 'domcontentloaded',
       timeout: 30_000,
     })
     if (!resp || resp.status() >= 400) {
