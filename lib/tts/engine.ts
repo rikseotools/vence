@@ -48,6 +48,28 @@ const CHUNK_ZOMBIE_TIMEOUT_MS = 30_000
 const MAX_WATCHDOG_RETRIES = 2
 const VOICES_LOAD_TIMEOUT_MS = 3_000
 
+/**
+ * Circuit breaker: cuando la voz del browser muere mid-session (Chrome
+ * móvil tras background, voz desconectada, etc.), `onerror` dispara
+ * `synthesis-failed` por cada chunk en cadena en milisegundos. Sin
+ * cortocircuito, una sola sesión emite cientos de eventos `tts_error`
+ * a observable_events e intenta sintetizar chunks que jamás sonarán.
+ *
+ * Observado 2026-05-25 21:32–22:39 UTC: 6 sesiones Chrome móvil
+ * dispararon 1.084 errores totales (100-240 cada una en <1s). Detalle
+ * en docs/runbooks/observability.md §13bis si se documenta.
+ *
+ * Umbral: 5 errores consecutivos sin un onend exitoso intermedio →
+ * declara la sesión perdida, emite UN tts_session_end con
+ * endReason='error' y deja al UI mostrar mensaje.
+ */
+const MAX_CONSECUTIVE_CHUNK_ERRORS = 5
+
+export interface TTSLastError {
+  errorType: string
+  atChunkIdx: number
+}
+
 export interface TTSEngineSnapshot {
   state: TTSState
   progress: TTSProgress
@@ -68,6 +90,13 @@ export interface TTSEngineSnapshot {
    * Null cuando no hay sesión activa.
    */
   lawName: string | null
+  /**
+   * Último error fatal del motor — null cuando no hay error o tras un
+   * play() exitoso. Se setea cuando el circuit breaker corta la sesión
+   * por errores en cascada. El UI puede usarlo para mostrar mensaje
+   * específico ("Tu navegador no tiene voces disponibles…").
+   */
+  lastError: TTSLastError | null
 }
 
 export type TTSListener = (snapshot: TTSEngineSnapshot) => void
@@ -113,6 +142,12 @@ export class TTSEngine {
   private watchdogInterval: ReturnType<typeof setInterval> | null = null
   private watchdogRetries = 0
 
+  /** Errores consecutivos sin un onend exitoso intermedio — alimenta
+   *  el circuit breaker. Reset en cada onend OK y en cada play() limpio. */
+  private consecutiveChunkErrors = 0
+  /** Último error fatal expuesto al UI. Null si no hay error en curso. */
+  private lastError: TTSLastError | null = null
+
   private voicesLoadTimeoutHandle: ReturnType<typeof setTimeout> | null = null
 
   private listeners = new Set<TTSListener>()
@@ -138,6 +173,7 @@ export class TTSEngine {
       canResume: this.computeCanResume(),
       currentSection: this.computeCurrentSection(),
       lawName: this.lastPlayOptions?.lawName ?? null,
+      lastError: this.lastError,
     }
   }
 
@@ -203,6 +239,11 @@ export class TTSEngine {
       ttsTelemetry.unsupported()
       return
     }
+
+    // Un play() del usuario limpia el error visible y rearma el circuit
+    // breaker. Si la sesión vuelve a fallar, lastError se reescribirá.
+    this.lastError = null
+    this.consecutiveChunkErrors = 0
 
     const incomingKey = computeContentKey(options)
     const incomingChunks = buildChunks(options)
@@ -556,6 +597,8 @@ export class TTSEngine {
       if (utterance !== this.currentUtterance) return
       if (!isPlaying(this.state)) return
       this.chunksCompleted++
+      // Chunk OK → resetear contador del circuit breaker.
+      this.consecutiveChunkErrors = 0
       this.speakChunk(index + 1)
     }
 
@@ -564,12 +607,23 @@ export class TTSEngine {
       // 'interrupted'/'canceled' es esperado tras cancel() — ignorar.
       if (e.error === 'interrupted' || e.error === 'canceled') return
       if (!isPlaying(this.state)) return
-      // Otro error → telemetría + intentar siguiente chunk
+
+      const errorType = e.error || 'unknown'
+      this.consecutiveChunkErrors++
+
+      // Circuit breaker: si la voz murió mid-session (caso típico Chrome
+      // móvil tras background), `onerror` dispara en cascada para cada
+      // chunk en milisegundos. Cortar tras N consecutivos sin onend OK.
+      if (this.consecutiveChunkErrors >= MAX_CONSECUTIVE_CHUNK_ERRORS) {
+        this.handleFatalChunkErrors(index, errorType)
+        return
+      }
+
       if (this.sessionId) {
         ttsTelemetry.error({
           sessionId: this.sessionId,
           atChunkIdx: index,
-          errorType: e.error || 'unknown',
+          errorType,
         })
       }
       this.speakChunk(index + 1)
@@ -599,6 +653,27 @@ export class TTSEngine {
     if (!this.transitionTo({ type: 'NATURAL_END' })) return
     this.endSession('natural')
     this.callbacks.onNaturalEnd?.()
+  }
+
+  /**
+   * Circuit breaker: corta la sesión cuando ha habido N errores
+   * consecutivos sin un onend exitoso. Emite UN tts_error final + un
+   * tts_session_end con endReason='error', y expone lastError al UI.
+   */
+  private handleFatalChunkErrors(atChunkIdx: number, errorType: string): void {
+    // Emitimos un único tts_error final con metadata del circuit breaker —
+    // es el evento accionable: el resto fueron ruido en cascada.
+    if (this.sessionId) {
+      ttsTelemetry.error({
+        sessionId: this.sessionId,
+        atChunkIdx,
+        errorType,
+        message: `Circuit breaker: ${this.consecutiveChunkErrors} errores consecutivos (${errorType}) — abortando sesión`,
+      })
+    }
+    this.lastError = { errorType, atChunkIdx }
+    if (!this.transitionTo({ type: 'FATAL_ERROR', error: errorType })) return
+    this.endSession('error')
   }
 
   private endSession(reason: TTSEndReason): void {

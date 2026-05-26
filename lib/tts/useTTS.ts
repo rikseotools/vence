@@ -9,7 +9,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { TTSEngine, type TTSEngineCallbacks } from './engine'
+import { TTSEngine, type TTSEngineCallbacks, type TTSLastError } from './engine'
 import type {
   TTSCurrentSection,
   TTSPlayOptions,
@@ -26,6 +26,10 @@ interface UseTTSReturn {
   currentSection: TTSCurrentSection | null
   /** Nombre de la ley en curso. */
   lawName: string | null
+  /** Último error fatal del motor — el UI puede mostrar mensaje (p.ej.
+   *  "Tu navegador no tiene voces disponibles" cuando errorType apunta a
+   *  fallo de síntesis). Null si no hay error en curso. */
+  lastError: TTSLastError | null
   /** Voces ES disponibles en el dispositivo. */
   voices: SpeechSynthesisVoice[]
   /** Voces totales (para diagnóstico). */
@@ -66,6 +70,7 @@ export function useTTS(callbacks: TTSEngineCallbacks = {}): UseTTSReturn {
       canResume: false,
       currentSection: null,
       lawName: null,
+      lastError: null,
     },
   )
 
@@ -155,6 +160,7 @@ export function useTTS(callbacks: TTSEngineCallbacks = {}): UseTTSReturn {
     canResume: snapshot.canResume,
     currentSection: snapshot.currentSection,
     lawName: snapshot.lawName,
+    lastError: snapshot.lastError,
     voices,
     voicesTotal,
     supported,

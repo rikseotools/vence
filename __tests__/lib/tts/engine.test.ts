@@ -108,6 +108,14 @@ class FakeSynth {
     u.onend?.({} as Event)
     u.onend?.({} as Event)
   }
+
+  /** Simula synthesis-failed (voz se cae mid-session, típico Chrome móvil). */
+  failFirst(errorType = 'synthesis-failed'): void {
+    const u = this.queue.shift()
+    if (!u) return
+    if (this.queue.length === 0) this.speaking = false
+    u.onerror?.({ error: errorType })
+  }
 }
 
 function setupSynth(): FakeSynth {
@@ -380,6 +388,73 @@ describe('TTSEngine', () => {
       eng.play({ text: 'Hola mundo. Frase dos.', rate: 1 })
       const snap = eng.getSnapshot()
       expect(snap.currentSection?.total).toBe(1)
+      eng.destroy()
+    })
+  })
+
+  // Texto suficientemente largo para forzar muchos chunks — el circuit
+  // breaker se valida disparando onerror seguidos.
+  const LONG_TEXT = Array.from({ length: 20 }, (_, i) =>
+    `Frase número ${i + 1} con texto bastante extenso para llegar al límite del chunk MAX para que se parta en varios trozos diferentes.`,
+  ).join(' ')
+
+  describe('circuit breaker (synthesis-failed cascade)', () => {
+    it('tras 5 errores consecutivos sin onend OK, aborta la sesión con state=error', () => {
+      const eng = new TTSEngine()
+      eng.play({ text: LONG_TEXT, rate: 1 })
+      expect(eng.getState()).toBe('playing')
+
+      // Disparar 5 errores consecutivos — el 5o debe activar el breaker.
+      for (let i = 0; i < 5; i++) {
+        synth.failFirst('synthesis-failed')
+      }
+
+      expect(eng.getState()).toBe('error')
+      const snap = eng.getSnapshot()
+      expect(snap.lastError).not.toBeNull()
+      expect(snap.lastError?.errorType).toBe('synthesis-failed')
+      eng.destroy()
+    })
+
+    it('un onend OK entre errores resetea el contador (no aborta a 5 con interleave)', () => {
+      const eng = new TTSEngine()
+      eng.play({ text: LONG_TEXT, rate: 1 })
+
+      // 4 errores → un OK → 4 errores. Total 8 errores pero ninguna
+      // racha llega a 5 consecutivos → la sesión sigue viva.
+      for (let i = 0; i < 4; i++) synth.failFirst('synthesis-failed')
+      synth.completeFirst()
+      for (let i = 0; i < 4; i++) synth.failFirst('synthesis-failed')
+
+      expect(eng.getState()).toBe('playing')
+      expect(eng.getSnapshot().lastError).toBeNull()
+      eng.destroy()
+    })
+
+    it('play() de nuevo limpia lastError tras circuit breaker', () => {
+      const eng = new TTSEngine()
+      eng.play({ text: LONG_TEXT, rate: 1 })
+      for (let i = 0; i < 5; i++) synth.failFirst('synthesis-failed')
+      expect(eng.getState()).toBe('error')
+      expect(eng.getSnapshot().lastError).not.toBeNull()
+
+      // Usuario pulsa play de nuevo (mismo texto → resume desde terminal).
+      eng.play({ text: LONG_TEXT, rate: 1 })
+      expect(eng.getSnapshot().lastError).toBeNull()
+      eng.destroy()
+    })
+
+    it('errorType "interrupted"/"canceled" NUNCA cuenta para el breaker', () => {
+      const eng = new TTSEngine()
+      eng.play({ text: LONG_TEXT, rate: 1 })
+
+      // 10 "interrupted" → engine los ignora (son normales tras cancel).
+      // No deberían activar el breaker.
+      for (let i = 0; i < 10; i++) synth.failFirst('interrupted')
+
+      // El primer error 'interrupted' saca el utterance de la cola pero
+      // el engine no avanza (return early) → la sesión sigue en playing.
+      expect(eng.getState()).toBe('playing')
       eng.destroy()
     })
   })
