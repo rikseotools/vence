@@ -2565,6 +2565,7 @@ swap del sink en una sola línea de la fábrica.
 | **Fase 0** — Sink interface + race fix | 2026-05-26 mañana | 2-3 h | ✅ COMPLETA |
 | **Fase 1** — Migrar writers huérfanos + documentar Issues vs Events | 2026-05-26 tarde | ~2 h | ✅ COMPLETA |
 | **Fase 1.5** — Vercel Log Drain (Gap 14 del manual) | 2026-05-26 | 1.5-2 h | ✅ ENDPOINT LIVE (activación UI Vercel pendiente, 5 min) |
+| **Fase 1.6** — Reglas de alerta para eventos nuevos | 2026-05-26 | ~1 h | ✅ COMPLETA |
 | **Fase 2** — Migración AWS (PostgresSink → KinesisSink) | Cuando >30k DAU | 1-2 semanas | ⏸️ pendiente |
 
 #### Fase 0 — Sink interface + race fix ✅ COMPLETA 2026-05-26
@@ -2627,12 +2628,36 @@ Implementación:
 
 Verificación post-activación: query SQL en `observability.md` filtra eventos con `metadata->>'drain' = 'true'` — si no aparecen tras 1h con tráfico, revisar Vercel UI → Log Drain → Recent Deliveries.
 
+#### Fase 1.6 — Reglas de alerta para eventos nuevos ✅ COMPLETA 2026-05-26
+
+Audit revelo que el motor `alerts-engine` (`backend/src/alerts/`) YA EXISTE
+con 4 reglas (`5xx_spike`, `cron_overdue`, `deploy_failed`,
+`cron_failure_burst`). Pero NO cubre los eventos nuevos que hemos añadido
+en esta sesión — los capturamos en `observable_events` pero quedaban
+silenciosos sin disparar notificaciones. Defeats the purpose.
+
+Añadidas 4 reglas más (commit pendiente):
+
+| Regla | Trigger | Severity | Cooldown |
+|---|---|---|---|
+| `runtime_kill` | Cualquier `runtime_kill` en 5 min (Vercel Log Drain) | critical | 10 min |
+| `tts_error_burst` | Sesión con ≥10 `tts_error` en 5 min (circuit breaker eludido) | warn | 60 min |
+| `hydration_mismatch_spike` | (endpoint, deploy) con ≥5 `react_hydration_mismatch` en 15 min | error | 60 min |
+| `workflow_failure_burst` | Workflow GHA con ≥2 fallos en 30 min | error | 30 min |
+
+Tests en `backend/src/alerts/alert-rules.spec.ts` (25 tests cubren
+predicado shouldFire + buildNotification + cooldown + integridad del
+registro). El motor ya existente las ejecuta cada 5 min sin más config.
+
+Cierre del loop: ahora los eventos que capturamos disparan email vía
+Resend (`email-notification.adapter.ts`).
+
 #### Gaps 13/15 — agujeros menores (documentados, no implementados hoy)
 
 - **Gap 13** (405 framework-level invisible, 2026-05-25 caso bot Google-Read-Aloud): middleware Next.js. ~30 min. Bajo impacto (bots scanner).
 - **Gap 15** (shadow `console.log` no persiste, 2026-05-25 caso `🔍 [shadow] /api/profile sin Bearer`): auditar y migrar a `emit*`. ~1-2h. Importante antes del cutover phase 3→5 del JWT enforcement.
 
-Quedan en Fase 2 del manual (alertas + dashboard).
+Quedan en Fase 2 del manual (queda dashboard /admin/observability).
 
 #### Fase 2 — Migración AWS ⏸️ pendiente (cuando >30k DAU)
 

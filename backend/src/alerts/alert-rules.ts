@@ -190,6 +190,165 @@ export const RULE_CRON_FAILURE_BURST: AlertRule<{
   cooldownMin: 30,
 };
 
+// ────────────────────────────────────────────────────────────────
+// Reglas añadidas 2026-05-26 (Bloque 4 Fase 1.6 del roadmap):
+// cubren los eventos nuevos capturados en esta sesión (runtime_kill
+// del Gap 14, tts_error cascade, hydration mismatch tras deploy,
+// workflow_failure GHA). Sin estas reglas, los eventos quedan en BD
+// sin disparar alertas → defeats the purpose de la captura.
+// ────────────────────────────────────────────────────────────────
+
+/**
+ * Runtime kill (504 SIGTERM) — disparo INMEDIATO. Llega vía Vercel Log
+ * Drain (Gap 14). Cualquier ocurrencia merece atención: significa que
+ * un endpoint excedió maxDuration y Vercel mató la lambda. Hay un user
+ * mirando un 504. Sin esta regla, el evento queda silencioso en obs_events.
+ */
+export const RULE_RUNTIME_KILL: AlertRule<{
+  n: number;
+  topEndpoint: string | null;
+}> = {
+  name: 'runtime_kill',
+  severity: 'critical',
+  query: sql`
+    SELECT COUNT(*)::int AS n,
+           MODE() WITHIN GROUP (ORDER BY endpoint) AS "topEndpoint"
+    FROM observable_events
+    WHERE event_type = 'runtime_kill'
+      AND ts > NOW() - INTERVAL '5 minutes'
+  `,
+  shouldFire: (rows) => (rows[0]?.n ?? 0) > 0,
+  buildNotification: (rows) => {
+    const n = rows[0]?.n ?? 0;
+    const top = rows[0]?.topEndpoint ?? '(varios)';
+    return {
+      title: `${n} runtime kill(s) últimos 5 min — endpoint principal: ${top}`,
+      body: `Vercel mató ${n} lambda(s) por SIGTERM (excedieron maxDuration). Cada runtime_kill = un usuario vio 504 sin posibilidad de retry.\n\nAcciones:\n  1. Inspeccionar el endpoint en /admin/salud-sistema.\n  2. Añadir maxDuration corto + withDbTimeout si aún no lo tiene.\n  3. Si es BD lenta, mirar pg_stat_statements del último 1h.\n\n  SELECT endpoint, COUNT(*), MAX(error_message)\n  FROM observable_events\n  WHERE event_type='runtime_kill' AND ts > NOW() - INTERVAL '15 minutes'\n  GROUP BY endpoint ORDER BY COUNT(*) DESC;`,
+      metadata: { count: n, topEndpoint: top, windowMin: 5 },
+      fingerprint: `runtime_kill_${top}`,
+    };
+  },
+  cooldownMin: 10,
+};
+
+/**
+ * TTS cascade — si una sola sesión emite ≥10 tts_error en 5 min, el
+ * circuit breaker (lib/tts/engine.ts MAX_CONSECUTIVE_CHUNK_ERRORS=5)
+ * está roto o eludido. Pre-fix (25/05) había sesiones con 100-240
+ * errores; el fix corta a 5. Si vuelve a haber ≥10, hay regresión.
+ */
+export const RULE_TTS_ERROR_BURST: AlertRule<{
+  sessionId: string;
+  browser: string | null;
+  isMobile: string | null;
+  errors: number;
+}> = {
+  name: 'tts_error_burst',
+  severity: 'warn',
+  query: sql`
+    SELECT
+      metadata->>'sessionId' AS "sessionId",
+      metadata->>'browser' AS browser,
+      metadata->>'isMobile' AS "isMobile",
+      COUNT(*)::int AS errors
+    FROM observable_events
+    WHERE event_type = 'tts_error'
+      AND ts > NOW() - INTERVAL '5 minutes'
+    GROUP BY 1, 2, 3
+    HAVING COUNT(*) >= 10
+  `,
+  shouldFire: (rows) => rows.length > 0,
+  buildNotification: (rows) => {
+    const lines = rows
+      .slice(0, 10)
+      .map(
+        (r) =>
+          `  - ${r.errors} errors / sesión ${(r.sessionId ?? '?').slice(0, 8)} (${r.browser ?? '?'}, mobile=${r.isMobile ?? '?'})`,
+      );
+    return {
+      title: `${rows.length} sesión(es) TTS con ≥10 errores en 5 min — circuit breaker eludido`,
+      body: `El fix del 26/05 (lib/tts/engine.ts MAX_CONSECUTIVE_CHUNK_ERRORS=5) debería cortar tras 5 errores consecutivos. Si una sesión llega a 10+ errores, el breaker no funcionó:\n\n${lines.join('\n')}\n\nInvestigar:\n  - ¿onend OK entre errores está reseteando el contador indebidamente?\n  - ¿Hay un retry path nuevo que bypaseó el handler?\n  - ¿Cambió el shape del evento error tras refactor?`,
+      metadata: { sessionsAffected: rows.length, topBrowsers: rows.map((r) => r.browser).filter(Boolean) },
+    };
+  },
+  cooldownMin: 60,
+};
+
+/**
+ * Hydration mismatch spike — si tras un deploy nuevo aparecen ≥5
+ * hydration mismatches en 15 min agrupados por (endpoint, deploy_version),
+ * hay regresión real. El test arquitectural
+ * (__tests__/architecture/no-date-in-temario-client.test.ts) cubre
+ * /temario/[slug]; esta regla detecta el resto del repo donde no llega
+ * el guardarraíl.
+ */
+export const RULE_HYDRATION_MISMATCH_SPIKE: AlertRule<{
+  endpoint: string | null;
+  deployVersion: string | null;
+  n: number;
+}> = {
+  name: 'hydration_mismatch_spike',
+  severity: 'error',
+  query: sql`
+    SELECT endpoint,
+           deploy_version AS "deployVersion",
+           COUNT(*)::int AS n
+    FROM observable_events
+    WHERE event_type = 'react_hydration_mismatch'
+      AND ts > NOW() - INTERVAL '15 minutes'
+    GROUP BY endpoint, deploy_version
+    HAVING COUNT(*) >= 5
+  `,
+  shouldFire: (rows) => rows.length > 0,
+  buildNotification: (rows) => {
+    const lines = rows.map(
+      (r) => `  - ${r.endpoint ?? '(unknown)'} [${r.deployVersion ?? '?'}]: ${r.n} mismatches`,
+    );
+    return {
+      title: `${rows.length} ruta(s) con spike de hydration mismatch`,
+      body: `React #418 / text content mismatch en producción. Suele ser un componente client que renderiza diferente en SSR vs CSR (timestamps, Date.now, Math.random, valores de localStorage sin guard SSR):\n\n${lines.join('\n')}\n\nInvestigar:\n  - grep "new Date()" en los componentes client de las rutas afectadas.\n  - Verificar que el último deploy no introdujo no-determinismo.\n  - Si es ruta /temario/[slug], el test arquitectural debería haber bloqueado; revisar coverage.`,
+      metadata: { routesAffected: rows.length },
+    };
+  },
+  cooldownMin: 60,
+};
+
+/**
+ * Workflow failure burst (GHA) — ≥2 fallos del MISMO workflow en 30 min.
+ * El 25/05 hubo 4 fallos seguidos de `frontend-deploy` (Bloque 5 Fase E.1)
+ * que solo se vieron por email — esta regla los habría notificado
+ * inmediatamente y de forma estructurada.
+ */
+export const RULE_WORKFLOW_FAILURE_BURST: AlertRule<{
+  workflow: string | null;
+  failures: number;
+}> = {
+  name: 'workflow_failure_burst',
+  severity: 'error',
+  query: sql`
+    SELECT
+      metadata->>'workflow' AS workflow,
+      COUNT(*)::int AS failures
+    FROM observable_events
+    WHERE event_type = 'workflow_failure'
+      AND ts > NOW() - INTERVAL '30 minutes'
+    GROUP BY 1
+    HAVING COUNT(*) >= 2
+  `,
+  shouldFire: (rows) => rows.length > 0,
+  buildNotification: (rows) => {
+    const lines = rows.map(
+      (r) => `  - ${r.workflow ?? '(unknown)'}: ${r.failures} fallos`,
+    );
+    return {
+      title: `${rows.length} workflow(s) GHA con fallos repetidos en 30 min`,
+      body: `Probable problema persistente (no transitorio). Caso real del 25/05: 4 fallos de frontend-deploy por error en Docker build, solo nos enteramos por email:\n\n${lines.join('\n')}\n\nInvestigar en GitHub Actions o:\n\n  SELECT created_at, metadata->>'run_id' AS run, metadata->>'sha' AS sha, error_message\n  FROM observable_events\n  WHERE event_type='workflow_failure' AND ts > NOW() - INTERVAL '1 hour'\n  ORDER BY created_at DESC;`,
+      metadata: { workflowsAffected: rows.length },
+    };
+  },
+  cooldownMin: 30,
+};
+
 /**
  * Lista canónica de reglas activas. Añadir nuevas reglas aquí.
  * El cron las ejecuta TODAS cada 5 min.
@@ -199,4 +358,9 @@ export const ALERT_RULES: AlertRule[] = [
   RULE_CRON_OVERDUE as AlertRule,
   RULE_DEPLOY_FAILED as AlertRule,
   RULE_CRON_FAILURE_BURST as AlertRule,
+  // Reglas Fase 1.6 (2026-05-26) — cierran loop de eventos nuevos
+  RULE_RUNTIME_KILL as AlertRule,
+  RULE_TTS_ERROR_BURST as AlertRule,
+  RULE_HYDRATION_MISMATCH_SPIKE as AlertRule,
+  RULE_WORKFLOW_FAILURE_BURST as AlertRule,
 ];

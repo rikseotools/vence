@@ -1008,9 +1008,11 @@ Cada gap se considera cerrado cuando los **5 puntos** se cumplen:
 - [x] **Gap 14**: Vercel Log Drain ✅ ENDPOINT LIVE (2026-05-26) — pendiente activación operativa en Vercel UI (5 min)
 
 **Fase 2 — Alertas + dashboard (~3-4h, $0/mes)**
-- [ ] **Gap 8**: Cron rules engine con `NotificationAdapter` (1-2h)
+- [x] **Gap 8**: Cron rules engine con `NotificationAdapter` ✅ COMPLETO (backend/src/alerts/)
+  - Reglas iniciales (2026-05-25): `5xx_spike`, `cron_overdue`, `deploy_failed`, `cron_failure_burst`.
+  - Reglas Fase 1.6 (2026-05-26): `runtime_kill`, `tts_error_burst`, `hydration_mismatch_spike`, `workflow_failure_burst`.
 - [ ] **Gap 9**: Dashboard `/admin/observability` (2-3h)
-- [ ] **Gap 6**: GHA workflows con `if: failure()` → ingest (30 min)
+- [ ] **Gap 6**: GHA workflows con `if: failure()` → ingest (30 min) — emisor existe, falta wiring en cada workflow YAML
 - [ ] **Gap 13**: middleware Next.js para 405 framework-level (30 min)
 - [ ] **Gap 15**: migrar shadow `console.log` a `emit*` (1-2h)
 
