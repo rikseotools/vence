@@ -72,12 +72,19 @@ jest.mock('next/server', () => {
 
     async json() { return JSON.parse(this._body) }
 
+    clone() {
+      const headers: Record<string, string> = {}
+      // @ts-expect-error privado en mock controlado
+      for (const [k, v] of Object.entries(this.headers._headers ?? {})) headers[k] = v as string
+      return new MockNextResponse(this._body, { status: this.status, headers })
+    }
+
     static json(data: unknown, init?: { status?: number }) {
       return new MockNextResponse(JSON.stringify(data), init)
     }
   }
 
-  return { NextRequest: MockNextRequest, NextResponse: MockNextResponse }
+  return { NextRequest: MockNextRequest, NextResponse: MockNextResponse, after: jest.fn() }
 })
 
 import { POST, GET } from '@/app/api/test/save-answer/route'

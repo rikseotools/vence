@@ -15,6 +15,14 @@ jest.mock('next/cache', () => ({
   unstable_noStore: jest.fn(),
 }))
 
+// Stub global de `after` en next/server: en runtime ejecuta la callback tras
+// devolver la response, pero fuera de un request scope (jest) tira. Stub no-op
+// previene el throw sin afectar la lógica observable del handler.
+jest.mock('next/server', () => {
+  const actual = jest.requireActual('next/server')
+  return { ...actual, after: jest.fn() }
+})
+
 // Limpiar mocks después de cada test
 afterEach(() => {
   jest.clearAllMocks()

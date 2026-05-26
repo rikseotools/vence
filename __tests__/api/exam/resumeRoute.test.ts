@@ -66,12 +66,13 @@ jest.mock('next/server', () => {
       this.headers = new MockHeaders({ 'content-type': 'application/json' })
     }
     async json() { return JSON.parse(this._body) }
+    clone() { return new MockNextResponse(this._body, { status: this.status }) }
     static json(data: unknown, init?: { status?: number }) {
       return new MockNextResponse(JSON.stringify(data), init)
     }
   }
 
-  return { NextRequest: MockNextRequest, NextResponse: MockNextResponse }
+  return { NextRequest: MockNextRequest, NextResponse: MockNextResponse, after: jest.fn() }
 })
 
 import { GET } from '@/app/api/exam/resume/route'
