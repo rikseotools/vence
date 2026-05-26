@@ -504,6 +504,52 @@ Una vez aprobado el test, enviar con `selectedUserIds` de todos los elegibles.
 | Listas provisionales | Opcional |
 | Nuevo hito menor | No |
 
+## 7c. Importar las preguntas del examen (ampliar banco de preguntas)
+
+Cuando un examen ya se ha celebrado y se publican los cuestionarios (modelos A/B) con sus plantillas correctoras provisionales, es el mejor momento para **importar las preguntas oficiales a Vence** y ampliar el banco de la oposición. Es uno de los momentos de mayor valor de la operativa de seguimiento — no quedarse solo en actualizar el timeline.
+
+**Cuándo importar:**
+
+- `estado_proceso = 'examen_realizado'` (o más adelante: `resultados`, `nombramientos`)
+- Cuestionarios oficiales + plantilla provisional/definitiva ya publicados en la web oficial
+- **Solo turno libre / ingreso libre** (regla §1 del manual de importación — NUNCA estabilización ni consolidación)
+
+**⚠️ Si hay varios modelos (A, B, C...), descargar e importar SOLO UNO.**
+
+Las administraciones publican habitualmente 2-4 modelos del mismo examen para evitar copias. **Las preguntas son las mismas barajadas en distinto orden** (y a veces con las opciones también barajadas). Importar varios modelos genera duplicados masivos en el banco y degrada la experiencia del usuario (la misma pregunta aparece N veces en simulacros).
+
+Regla:
+- Descargar **solo el modelo A** (o el primero disponible)
+- Documentar en `exam_source` que es el modelo importado (ej: `Examen Aux Admin Estado - OEP 2024-2025 - Convocatoria 23/05/2026 (Modelo A)`)
+- Conservar los PDFs de los demás modelos en `data/examenes-oficiales/<oposicion>/<fecha>/` por si surge una duda, pero **no importar sus preguntas**
+
+**Cómo importar — flujo completo (legislativas + ofimáticas + psicotécnicas):**
+
+Ver `docs/maintenance/importar-examen-oficial-completo.md`. Cubre:
+1. Localizar PDFs oficiales (cuestionario + plantilla)
+2. Extraer texto con `pdftotext`
+3. Construir JSON estructurado
+4. Verificar leyes / artículos (crear faltantes, ampliar `topic_scope`)
+5. Importar EN `lifecycle_state='draft'` (oculto a estudiantes)
+6. Manejar figuras psicotécnicas (`pdftoppm` + `magick crop` + Storage)
+7. Verificar con 5 agentes Sonnet (`ai_verification_results`)
+8. Pipeline de activación automática vía `transition_question_state`
+9. Cache invalidate
+
+**Variante rápida** (solo legislativas, sin imágenes ni psicotécnicas): `docs/manual-preguntas-oficiales.md`.
+
+**🚫 Anti-patrón crítico:** importar con `lifecycle_state='approved'` o `'tech_approved'` directamente, saltándose la verificación IA. **NUNCA hacerlo** (§0 del manual de importación). Siempre `draft` → verificación → transición automática.
+
+**Por qué importar tras cada examen:**
+- Cada examen oficial añade ~100 preguntas verificadas al banco de la oposición
+- Los aspirantes esperan tener los exámenes recientes disponibles en el simulador
+- Tener exámenes recientes es un diferenciador frente a otros portales
+
+**Cuándo NO importar (todavía):**
+- Solo está la plantilla pero NO el cuestionario en PDF descargable
+- El proceso es de estabilización / consolidación / extraordinario (descartar)
+- Aún no hay plantilla provisional (esperar a que se publique)
+
 ## 8. Oposiciones sin hitos (pendientes de crear)
 
 Verificar periodicamente que todas las oposiciones activas con `seguimiento_url` tengan al menos los hitos basicos:
@@ -596,6 +642,18 @@ await supabase.from('convocatoria_hitos').insert([
 - En `/admin/oep-signals`: pulsar Aplicar o Descartar en cada señal procesada
 - Si había checks hash_change: marcar revisados en `convocatoria_seguimiento_checks`
 - Resetear `seguimiento_change_status = 'ok'` en oposiciones afectadas
+
+### Paso 4.5: Importar las preguntas del examen (si procede)
+
+Si el cambio detectado es que **el examen ya se ha celebrado y se han publicado cuestionario + plantilla**, el siguiente paso de la operativa es importar las preguntas al banco de Vence (no se hace solo con actualizar el timeline).
+
+Ver §7c "Importar las preguntas del examen" — incluye:
+- Cuándo importar (estado, modelo único A, solo turno libre)
+- Manual completo: `docs/maintenance/importar-examen-oficial-completo.md`
+- Variante rápida: `docs/manual-preguntas-oficiales.md`
+- Anti-patrón: nunca insertar como `approved` directamente
+
+Este paso suele ocupar varias horas (descarga, extracción, verificación IA con 5 agentes) y conviene planificarlo de forma independiente al resto del flujo de seguimiento. Marcar la señal como revisada en Paso 4 no implica haber importado las preguntas — son acciones separadas que conviven.
 
 ### Paso 5: Revalidar landing
 
@@ -862,6 +920,8 @@ Si el número es mucho menor que el total en `detection_sources`, algunas URLs p
 
 ## 15. Ver también
 
+- `docs/maintenance/importar-examen-oficial-completo.md` — flujo end-to-end para importar exámenes oficiales (PDFs → preguntas verificadas activas). Imprescindible tras §7c.
+- `docs/manual-preguntas-oficiales.md` — variante rápida: formato de pregunta oficial, lifecycle, `question_official_exams`, sin imágenes ni psicotécnicas.
 - `lib/api/oposicion-scope/queries.ts` — helper que decide qué oposición ve cada usuario (fix cross-oposición del 14/04/2026). Si un usuario reporta ver preguntas fuera de su oposición, revisar ese módulo.
 - `docs/maintenance/impugnaciones-claude-code.md` — manual de impugnaciones: muchas relacionadas con contenido de oposiciones.
 - `docs/maintenance/verificar-epigrafe-topic-scope.md` — mapeo de leyes a temas por oposición.
