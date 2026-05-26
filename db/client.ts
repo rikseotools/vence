@@ -66,25 +66,32 @@ export function getDb() {
 // ============================================
 // Pool para admin/dashboard (queries paralelas)
 // ============================================
-// max: 4 → Permite queries paralelas del dashboard sin saturar pooler
-// Solo usar en rutas /admin/* o /api/v2/admin/*
+// Prefiere el self-hosted PgBouncer (pooler.vence.es) si está disponible —
+// el Supavisor regional de Supabase cuelga indefinidamente con queries
+// paralelas (medido: 11 queries con max:4 → 2 se quedan sin resolver y
+// dejan slots muertos en el pool → 503 en /admin). Con el pooler propio
+// las 11 queries pasan en ~520ms con max:12.
+// Fallback al DATABASE_URL normal si DATABASE_URL_SELF_POOLER no está set.
 
 const globalForAdminDb = globalThis as unknown as {
   adminDb: ReturnType<typeof drizzle<typeof schema>> | undefined
 }
 
 function createAdminDbClient() {
-  const connectionString = process.env.DATABASE_URL
+  const connectionString = process.env.DATABASE_URL_SELF_POOLER || process.env.DATABASE_URL
   if (!connectionString) return null
 
   const urlWithTimeout = connectionString.includes('?')
     ? `${connectionString}&options=-c statement_timeout=30000 -c idle_in_transaction_session_timeout=60000`
     : `${connectionString}?options=-c statement_timeout=30000 -c idle_in_transaction_session_timeout=60000`
 
+  // max:12 = 1 conexión por query del dashboard (11) + 1 de margen.
+  // Seguro porque PgBouncer multiplexa transacciones: cada query libera
+  // su slot upstream al terminar (~200ms cada una), no por toda la sesión.
   const conn = postgres(urlWithTimeout, {
-    max: 4,
+    max: 12,
     idle_timeout: 20,
-    connect_timeout: 3,
+    connect_timeout: 5,
     prepare: false,
   })
 
