@@ -278,6 +278,42 @@ describe('TTSEngine — escenarios de fallo realista', () => {
       eng.destroy()
     })
 
+    it('CHAIN: ley con un chunk skipped llega a natural_end y onNaturalEnd dispara una vez', () => {
+      // Verificación específica para el chain context: aunque haya skips
+      // por watchdog en medio de la ley, la sesión debe alcanzar el
+      // natural_end y disparar onNaturalEnd exactamente UNA vez. Si esto
+      // no ocurriera, TTSChainContext nunca encadenaría a la siguiente ley.
+      const onNaturalEnd = jest.fn()
+      const eng = new TTSEngine({ onNaturalEnd })
+
+      // Ley pequeña: 2 secciones de ~1 chunk cada una.
+      eng.play({
+        sections: [
+          { id: '1', label: 'Art 1', text: 'Frase única corta.' },
+          { id: '2', label: 'Art 2', text: 'Otra frase corta única.' },
+        ],
+        rate: 1,
+      })
+
+      // Saltar el chunk 0 vía watchdog (retry x2 + skip)
+      synth.kill()
+      eng._debugTickWatchdog()
+      synth.kill()
+      eng._debugTickWatchdog()
+      synth.kill()
+      eng._debugTickWatchdog()
+
+      // Tras el skip estamos en chunk 1 — speakChunk ya disparó speak().
+      // Completar el chunk 1 → natural_end
+      synth.completeFirst()
+
+      expect(eng.getState()).toBe('ended')
+      expect(onNaturalEnd).toHaveBeenCalledTimes(1)
+      expect(eng._debugState().chunksSkipped).toBe(1)
+
+      eng.destroy()
+    })
+
     it('restartLaw → vuelve a chunk 0 y resetea contador watchdog', () => {
       const eng = new TTSEngine()
       eng.play({ sections: SECTIONS, rate: 1, lawName: 'Test Law' })
@@ -302,12 +338,9 @@ describe('TTSEngine — escenarios de fallo realista', () => {
   })
 
   describe('Escenario F: zombie chunk (synth.speaking=true pero nunca termina)', () => {
-    it('synth dice speaking pero pasa el timeout → mismo flujo retry x2 + skip', () => {
-      // Para simular zombie, dejamos speaking=true y manipulamos el reloj
-      // implícito vía chunkStartTime. El engine usa Date.now() - chunkStartTime.
-      // No podemos mockear Date.now globalmente en este test simple, así
-      // que verificamos al menos el camino 'dead' (synth.speaking=false)
-      // que tiene la misma lógica de retries → skip.
+    it('camino dead (synth no habla) → retry x2 + skip — equivalente al zombie', () => {
+      // El camino 'dead' (synth.speaking=false) usa idéntica handleDeadOrZombie
+      // que el camino 'zombie'. Verificado aquí.
       const eng = new TTSEngine()
       eng.play({ text: TEXT_30_CHUNKS, rate: 1 })
 
@@ -320,6 +353,71 @@ describe('TTSEngine — escenarios de fallo realista', () => {
 
       expect(eng._debugState().chunksSkipped).toBe(1)
       eng.destroy()
+    })
+
+    it('zombie REAL: synth.speaking=true + Date.now avanza >30s → retry x2 + skip', () => {
+      // Mockeamos Date.now() para simular el paso del tiempo sin esperarlo.
+      const realDateNow = Date.now
+      let fakeNow = 1_000_000_000
+      Date.now = () => fakeNow
+
+      try {
+        const eng = new TTSEngine()
+        eng.play({ text: TEXT_30_CHUNKS, rate: 1 })
+        // El engine arranca el chunk 0: chunkStartTime = fakeNow.
+
+        // Avanzamos el reloj 31s sin que el utterance dispare onend.
+        // synth.speaking sigue en true (no llamamos a kill ni completeFirst).
+        fakeNow += 31_000
+
+        // 1er tick: detecta zombie (chunkAge > 30s) → retry chunk 0
+        eng._debugTickWatchdog()
+        expect(eng._debugState().currentChunkIdx).toBe(0)
+        expect(eng._debugState().watchdogRetries).toBe(1)
+
+        // 2o tick: el retry "reinició" el chunkStartTime → tenemos que
+        // avanzar el reloj otra vez para que sea zombie de nuevo.
+        fakeNow += 31_000
+        eng._debugTickWatchdog()
+        expect(eng._debugState().watchdogRetries).toBe(2)
+
+        // 3er tick: SKIP → chunk 1
+        fakeNow += 31_000
+        eng._debugTickWatchdog()
+        expect(eng._debugState().currentChunkIdx).toBe(1)
+        expect(eng._debugState().chunksSkipped).toBe(1)
+        // Al avanzar de chunk, el contador se resetea
+        expect(eng._debugState().watchdogRetries).toBe(0)
+
+        eng.destroy()
+      } finally {
+        Date.now = realDateNow
+      }
+    })
+
+    it('zombie NO dispara si chunkAge ≤ 30s aunque synth.speaking=true', () => {
+      // Verificamos el límite: 29s NO debe disparar el watchdog zombie.
+      const realDateNow = Date.now
+      let fakeNow = 2_000_000_000
+      Date.now = () => fakeNow
+
+      try {
+        const eng = new TTSEngine()
+        eng.play({ text: TEXT_30_CHUNKS, rate: 1 })
+
+        // Avanzar solo 29s — bajo el umbral CHUNK_ZOMBIE_TIMEOUT_MS=30s.
+        fakeNow += 29_000
+        eng._debugTickWatchdog()
+
+        // No debe haber retry ni skip
+        expect(eng._debugState().currentChunkIdx).toBe(0)
+        expect(eng._debugState().watchdogRetries).toBe(0)
+        expect(eng._debugState().chunksSkipped).toBe(0)
+
+        eng.destroy()
+      } finally {
+        Date.now = realDateNow
+      }
     })
   })
 })
