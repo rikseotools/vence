@@ -888,9 +888,52 @@ export async function getFilteredQuestions(
     }
 
     // 🔄 CASO: Preguntas falladas con IDs específicos (del sessionStorage)
-    // Sin scope filter — el usuario ya falló estas preguntas concretas.
+    //
+    // Post-26/05/2026 (caso Cristina, dispute cluster c7196843 — 9 disputes):
+    // ANTES no aplicaba scope filter "el usuario ya falló estas preguntas
+    // concretas". Premisa rota cuando el usuario CAMBIA de oposición: las
+    // IDs en sessionStorage / cliente vienen del histórico de la oposición
+    // anterior y se sirven en la nueva. Cristina (Estado→CyL el 25/05) pidió
+    // "falladas T5 CyL" y recibió Ley 50/1997/CE 98 (T5 Estado).
+    //
+    // Fix: aplicar scope filter (EXISTS topic_scope) igual que el path 3.
+    // Si todas las IDs son in-scope (caso normal), comportamiento idéntico.
+    // Si hay out-of-scope (cambio de oposición), se filtran silenciosamente.
+    // Si la oposición no tiene scopes configurados (caso Lidia 18/04 —
+    // celador_sescam_clm, etc.), fallback legacy sin scope.
     if (onlyFailedQuestions && failedQuestionIds && failedQuestionIds.length > 0) {
       console.log(`🔄 [failed-questions-ids] ${failedQuestionIds.length} IDs específicas`)
+
+      // Pre-check: ¿la oposición tiene scopes configurados? (idéntico path 3)
+      const scopeAvailable = await db
+        .select({ n: sql<number>`count(*)::int` })
+        .from(topicScope)
+        .innerJoin(topics, eq(topics.id, topicScope.topicId))
+        .where(eq(topics.positionType, positionType))
+        .limit(1)
+      const hasScopes = (scopeAvailable[0]?.n ?? 0) > 0
+
+      const hasTopicFilter = !!topicNumber && topicNumber > 0
+      const scopeFilter = hasScopes
+        ? (hasTopicFilter
+            ? sql`EXISTS (
+                SELECT 1 FROM ${topicScope} ts
+                INNER JOIN ${topics} t ON t.id = ts.topic_id
+                CROSS JOIN LATERAL unnest(ts.article_numbers) AS an(num)
+                WHERE ts.law_id = ${articles.lawId}
+                  AND t.position_type = ${positionType}
+                  AND t.topic_number = ${topicNumber}
+                  AND an.num = ${articles.articleNumber}::text
+              )`
+            : sql`EXISTS (
+                SELECT 1 FROM ${topicScope} ts
+                INNER JOIN ${topics} t ON t.id = ts.topic_id
+                CROSS JOIN LATERAL unnest(ts.article_numbers) AS an(num)
+                WHERE ts.law_id = ${articles.lawId}
+                  AND t.position_type = ${positionType}
+                  AND an.num = ${articles.articleNumber}::text
+              )`)
+        : sql`true`
 
       const failedQuestions = await db
         .select({ ...questionColumns, ...articleColumns })
@@ -901,6 +944,7 @@ export async function getFilteredQuestions(
           eq(questions.isActive, true),
           isNull(questions.examCaseId), // casos prácticos solo en exam oficial
           inArray(questions.id, failedQuestionIds),
+          scopeFilter,
         ))
 
       // Ordenar según el orden de failedQuestionIds (mantener orden original)
@@ -911,7 +955,18 @@ export async function getFilteredQuestions(
 
       const missing = failedQuestionIds.length - orderedQuestions.length
       if (missing > 0) {
-        console.warn(`⚠️ [failed-questions-ids] ${missing} preguntas no encontradas o inactivas (de ${failedQuestionIds.length})`)
+        console.warn(`⚠️ [failed-questions-ids] ${missing} preguntas no encontradas, inactivas u out-of-scope para ${positionType}${hasTopicFilter ? `/T${topicNumber}` : ''} (de ${failedQuestionIds.length})`)
+        // Telemetría: detectar cambio de oposición (failedQuestionIds del histórico
+        // anterior). Severity=info — no es bug, es síntoma de UX (caso Cristina).
+        if (hasScopes && missing >= failedQuestionIds.length / 2 && userId) {
+          logValidationError({
+            endpoint: '/api/questions/filtered',
+            errorType: 'failed_ids_out_of_scope',
+            errorMessage: `${missing}/${failedQuestionIds.length} IDs out-of-scope para ${positionType}${hasTopicFilter ? `/T${topicNumber}` : ''}. Posible cambio de oposición.`,
+            severity: 'info',
+            userId,
+          })
+        }
       }
 
       const finalQuestions = orderedQuestions.slice(0, numQuestions)

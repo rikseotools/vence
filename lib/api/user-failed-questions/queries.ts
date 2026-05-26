@@ -12,8 +12,8 @@ import { getReadDb, getPoolerDb } from '@/db/client'
 function getUserFailedDb() {
   return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getReadDb()
 }
-import { questions, articles, laws, testQuestions, topics } from '@/db/schema'
-import { eq, and, inArray, desc, gte, gt, isNull } from 'drizzle-orm'
+import { questions, articles, laws, testQuestions, topics, topicScope, userProfiles } from '@/db/schema'
+import { eq, and, inArray, desc, gte, gt, isNull, sql } from 'drizzle-orm'
 import type {
   GetUserFailedQuestionsRequest,
   GetUserFailedQuestionsResponse,
@@ -57,6 +57,66 @@ export async function getUserFailedQuestions(
       if (allowedArticleIds.length === 0) {
         return { success: true, totalQuestions: 0, totalFailures: 0, questions: [] }
       }
+    }
+
+    // 🎯 Pre-resolver article_ids dentro del scope del usuario (caso Cristina
+    // 26/05/2026, dispute cluster c7196843). ANTES: este endpoint solo
+    // filtraba por tq.user_id + isCorrect=false + tema_number. Tras un cambio
+    // de oposición (Cristina: Estado→CyL el 25/05), el histórico mantiene
+    // tema_number del scope anterior y se servían IDs out-of-scope.
+    //
+    // Fix: resolver positionType desde user_profiles.target_oposicion y
+    // computar la intersección (law_id, article_number) ∈ topic_scope del
+    // positionType (filtrada por topic_number si se solicita). Si la
+    // oposición no tiene scopes (celador_sescam_clm — caso Lidia 18/04),
+    // fallback legacy sin filtro de scope.
+    const profile = await db
+      .select({ targetOposicion: userProfiles.targetOposicion })
+      .from(userProfiles)
+      .where(eq(userProfiles.id, userId))
+      .limit(1)
+    const positionType = profile[0]?.targetOposicion?.trim() || null
+
+    let scopeArticleIds: string[] | null = null
+    if (positionType) {
+      const scopeConditions = [eq(topics.positionType, positionType)]
+      if (topicNumber) {
+        scopeConditions.push(eq(topics.topicNumber, topicNumber))
+      }
+      // article_number en topic_scope es text[]; en articles es text. Cross-join
+      // LATERAL unnest evita el ANY() que rompía el planner (incidente
+      // 2026-05-04 con Seq Scan de articles 41k rows).
+      const inScope = await db
+        .select({ id: articles.id })
+        .from(articles)
+        .innerJoin(
+          topicScope,
+          and(
+            eq(topicScope.lawId, articles.lawId),
+            sql`${articles.articleNumber} = ANY(${topicScope.articleNumbers})`,
+          ),
+        )
+        .innerJoin(topics, eq(topics.id, topicScope.topicId))
+        .where(and(...scopeConditions))
+      const ids = [...new Set(inScope.map((r) => r.id))]
+      // hasScopes=false (oposición sin topic_scope configurado, p.ej. celador_sescam_clm)
+      // → no filtramos por scope; preservamos comportamiento legacy.
+      if (ids.length > 0) {
+        scopeArticleIds = ids
+      } else {
+        console.warn(`⚠️ [user-failed] positionType="${positionType}"${topicNumber ? ` topic=${topicNumber}` : ''} sin topic_scope — fallback sin scope`)
+      }
+    }
+
+    // Intersección selectedLaws × scope si ambos están presentes.
+    if (allowedArticleIds && scopeArticleIds) {
+      const scopeSet = new Set(scopeArticleIds)
+      allowedArticleIds = allowedArticleIds.filter((id) => scopeSet.has(id))
+      if (allowedArticleIds.length === 0) {
+        return { success: true, totalQuestions: 0, totalFailures: 0, questions: [] }
+      }
+    } else if (!allowedArticleIds && scopeArticleIds) {
+      allowedArticleIds = scopeArticleIds
     }
 
     // Construir condiciones de filtro sobre test_questions (user_id, law_name,
