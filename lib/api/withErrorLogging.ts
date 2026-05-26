@@ -4,11 +4,11 @@
 // Para respuestas 5xx: genera un errorRef (UUID) que queda loggeado en BD y se inyecta
 // en el body de la respuesta para que el usuario lo pueda citar al soporte.
 
-import { NextResponse } from 'next/server'
+import { NextResponse, after } from 'next/server'
 import { randomUUID } from 'crypto'
 import * as Sentry from '@sentry/nextjs'
 import { logValidationError, logValidationErrorAwait, classifyError } from '@/lib/api/validation-error-log'
-import { emitFireAndForget } from '@/lib/observability/emit'
+import { emit } from '@/lib/observability/emit'
 
 /**
  * Sampling rate para eventos `request_completed` 2xx/3xx (Bloque 5
@@ -148,18 +148,37 @@ export function withErrorLogging(endpoint: string, handler: RouteHandler): Route
       if (response.status < 400 && Math.random() < SUCCESS_TIMING_SAMPLE_RATE) {
         const durationMs = Date.now() - startTime
         const host = request?.headers?.get?.('host') ?? null
-        emitFireAndForget({
-          source: 'vercel',
-          severity: 'info',
-          eventType: 'request_completed',
-          endpoint,
-          httpStatus: response.status,
-          durationMs,
-          metadata: {
-            host,
-            method: request?.method ?? 'GET',
-            sampled: 'true', // marca que este evento es sample, no censo
-          },
+        // CRÍTICO: usar `after()` de Next.js, NO `emitFireAndForget` directo.
+        //
+        // Sin `after()`, la promise `void emit()` queda HUÉRFANA cuando la
+        // Vercel function termina. El INSERT PG arranca pero el cliente
+        // muere antes de cerrar la conexión → conexión queda en
+        // `wait_event=ClientRead` durante minutos/horas hasta TCP timeout.
+        // Pool leak, cada slot perdido reduce capacidad, spiral.
+        //
+        // Incidente 2026-05-26: ~85 errores 5xx en /api/exam/pending por
+        // pool agotado tras desplegar E.4.5.b (introdujo este emit en cada
+        // 2xx). Detectado por audit `pg_stat_activity` + diagnóstico
+        // documentado en `lib/observability/emit.ts:48-51`.
+        //
+        // `after()` registra la callback para ejecutarse DESPUÉS de enviar
+        // la response pero ANTES de suspender la lambda — Vercel mantiene
+        // el runtime vivo hasta que termine. Esto cierra correctamente la
+        // conexión PG.
+        after(async () => {
+          await emit({
+            source: 'vercel',
+            severity: 'info',
+            eventType: 'request_completed',
+            endpoint,
+            httpStatus: response.status,
+            durationMs,
+            metadata: {
+              host,
+              method: request?.method ?? 'GET',
+              sampled: 'true',
+            },
+          })
         })
       }
 
