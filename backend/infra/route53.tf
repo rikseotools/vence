@@ -39,29 +39,40 @@ resource "aws_route53_record" "apex_a" {
 }
 
 # Apex TXT — SPF + Google Search Console verification.
-# Mantenido tal cual (incluye legacy Zoho que NO se usa pero no hace daño).
-# Limpieza pendiente: sesión aparte tras confirmar Route 53 estable.
+#
+# AUDIT 2026-05-26: el SPF original era
+#   "v=spf1 include:zohomail.eu include:amazonses.com ~all"
+# Pero:
+#   - Zoho: 0 referencias en código de Vence. Confirmado legacy abandonado.
+#   - amazonses: SES no tiene identidad vence.es verificada ni rule set
+#     activo (audit 2026-05-26). Pero Resend (que es lo que SÍ se usa para
+#     enviar email) puede internamente usar SES como infraestructura, así
+#     que conservamos amazonses para no romper deliverability accidentalmente.
+# Cambio aplicado: quitar Zoho, mantener amazonses (defensive).
 resource "aws_route53_record" "apex_txt" {
   zone_id = aws_route53_zone.vence.zone_id
   name    = "vence.es"
   type    = "TXT"
   ttl     = 300
   records = [
-    "v=spf1 include:zohomail.eu include:amazonses.com ~all",
+    "v=spf1 include:amazonses.com ~all",
     "google-site-verification=LSUX7g3QportpivZYokN6Kw2lZ4eODXlqmLocRAmEuE",
   ]
 }
 
-# MX — AWS SES (eu-west-1) recibe email entrante. Replicado tal cual.
-# AUDIT 2026-05-26: SES no tiene rule set activo ni identidad verificada,
-# por lo que emails entrantes se pierden. Limpieza pendiente fase aparte.
-resource "aws_route53_record" "apex_mx" {
-  zone_id = aws_route53_zone.vence.zone_id
-  name    = "vence.es"
-  type    = "MX"
-  ttl     = 300
-  records = ["20 inbound-smtp.eu-west-1.amazonaws.com."]
-}
+# MX — ELIMINADO 2026-05-26.
+#
+# Audit confirmó que el MX 20 inbound-smtp.eu-west-1.amazonaws.com era
+# basura: SES no tenía rule sets activos ni identidad verificada. Emails
+# enviados a info@vence.es y similares CAÍAN EN SILENCIO (rebote interno
+# Amazon sin notificación al emisor).
+#
+# Decisión: borrar el MX. Sin MX, los emails entrantes generan NXDOMAIN/
+# rebote LIMPIO al emisor — el emisor SE ENTERA de que no se entregó. Mucho
+# mejor que el agujero negro silencioso anterior.
+#
+# Si en el futuro Vence necesita recibir email en @vence.es, configurar
+# Resend Inbound (incluido en plan free) o AWS SES con rule sets activos.
 
 # ============================================================
 # WWW (www.vence.es)
@@ -69,8 +80,11 @@ resource "aws_route53_record" "apex_mx" {
 # AHORA: 100% Vercel (CNAME al deploy de Vercel — apex de Vercel da
 # 216.150.16.1 + 216.150.1.1 que son IPs estables de Vercel).
 #
-# TRAS PROPAGACIÓN: descomentar el bloque WEIGHTED CANARY más abajo y
-# COMENTAR este resource. Ahí weighted (10% AWS, 90% Vercel).
+# El weighted canary 10/90 requiere ANTES:
+#   1. ACM cert us-east-1 que cubra www.vence.es
+#   2. CloudFront distribution con alias www.vence.es añadido
+#      (de lo contrario CloudFront devuelve 403 al recibir Host: www.vence.es)
+# Una vez listo, sustituir este record por dos weighted (vercel/aws).
 # ============================================================
 
 resource "aws_route53_record" "www" {
@@ -123,6 +137,50 @@ resource "aws_route53_record" "acm_preview_validation" {
   type    = "CNAME"
   ttl     = 300
   records = ["_0846183dac1109541bb8c4b780579982.jkddzztszm.acm-validations.aws."]
+}
+
+# ACM validation para cert us-east-1 que cubre www.vence.es + vence.es
+# (apex). Pre-requisito de añadir www como alias en CloudFront E.4.3
+# fase 2 (weighted canary 10/90).
+resource "aws_route53_record" "acm_www_validation" {
+  zone_id = aws_route53_zone.vence.zone_id
+  name    = "_c51e0f236155f1672b6e4cc696cba027.www.vence.es"
+  type    = "CNAME"
+  ttl     = 300
+  records = ["_cf4d869a68eee1ef012aa9af47e8f53f.jkddzztszm.acm-validations.aws."]
+}
+
+resource "aws_route53_record" "acm_apex_validation" {
+  zone_id = aws_route53_zone.vence.zone_id
+  name    = "_6286d57c2b634bfee7cb9dacdaad70e6.vence.es"
+  type    = "CNAME"
+  ttl     = 300
+  records = ["_dedf6b6112300102c7fe133119a2693a.jkddzztszm.acm-validations.aws."]
+}
+
+# ============================================================
+# INFRA INTERNA (self-hosted PgBouncer)
+# ============================================================
+
+# pooler.vence.es → AWS Lightsail London (eu-west-2a), IP estática 16.60.146.159.
+#
+# Self-hosted PgBouncer 1.25.2 que aísla nuestro tráfico del Supavisor regional
+# compartido de Supabase. Provisión y arquitectura completas en
+# infra/pooler/README.md y docs/roadmap/self-hosted-pooler.md.
+#
+# AUDIT 2026-05-26: este record se quedó FUERA de la migración inicial
+# DonDominio → Route 53 (Bloque 5 Fase E.4.3, commit dd63e0e9). Al cambiar
+# los NS a AWS, `pooler.vence.es` dejó de resolver → el build de Vercel
+# rompió porque DATABASE_URL apunta aquí. Restaurado en sesión 26/05.
+#
+# Regla para evitar regresiones: TODO subdominio activo en producción
+# (Vercel build env, backend, observabilidad...) DEBE estar en este archivo.
+resource "aws_route53_record" "pooler" {
+  zone_id = aws_route53_zone.vence.zone_id
+  name    = "pooler.vence.es"
+  type    = "A"
+  ttl     = 300
+  records = ["16.60.146.159"]
 }
 
 # ============================================================
