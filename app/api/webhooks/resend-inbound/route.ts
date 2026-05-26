@@ -438,5 +438,5 @@ async function _GET() {
   return NextResponse.json({ status: 'ok', service: 'resend-inbound' })
 }
 
-export const POST = withErrorLogging('/api/webhooks/resend-inbound', _POST)
+export const POST = withErrorLogging('/api/webhooks/resend-inbound', _POST, { skipBodyParse: true })
 export const GET = withErrorLogging('/api/webhooks/resend-inbound', _GET)

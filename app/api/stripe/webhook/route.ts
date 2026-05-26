@@ -1169,4 +1169,4 @@ async function recordPaymentSettlement(data: SettlementData): Promise<void> {
 }
 
 
-export const POST = withErrorLogging('/api/stripe/webhook', _POST)
+export const POST = withErrorLogging('/api/stripe/webhook', _POST, { skipBodyParse: true })

@@ -112,7 +112,11 @@ function getSeverity(status: number): 'critical' | 'warning' | 'info' {
  *     // handler normal...
  *   })
  */
-export function withErrorLogging(endpoint: string, handler: RouteHandler): RouteHandler {
+export function withErrorLogging(
+  endpoint: string,
+  handler: RouteHandler,
+  opts?: { skipBodyParse?: boolean },
+): RouteHandler {
   return async (...args: unknown[]) => {
     const request = args[0] as Request
     const startTime = Date.now()
@@ -121,7 +125,14 @@ export function withErrorLogging(endpoint: string, handler: RouteHandler): Route
     const userAgent = request?.headers?.get?.('user-agent') ?? null
 
     // Parsear body para POST/PUT/PATCH (contexto para logs)
-    if (request?.method && ['POST', 'PUT', 'PATCH'].includes(request.method)) {
+    //
+    // skipBodyParse: para endpoints que consumen RAW body (webhooks Stripe,
+    // Resend, log drains Vercel). En Next.js 15 + Turbopack el `clone().json()`
+    // consume el stream subyacente → el handler hace `request.text()` y
+    // obtiene `""` → la firma del webhook falla → 400. Incidente 2026-05-26:
+    // Andrea pagó 20€ y no se activó premium porque los webhooks de Stripe
+    // llevaban horas respondiendo 400 a TODOS los eventos.
+    if (!opts?.skipBodyParse && request?.method && ['POST', 'PUT', 'PATCH'].includes(request.method)) {
       try {
         body = await request.clone().json()
       } catch {

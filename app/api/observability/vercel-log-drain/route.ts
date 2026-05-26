@@ -93,4 +93,4 @@ async function _POST(request: NextRequest): Promise<NextResponse> {
   })
 }
 
-export const POST = withErrorLogging('/api/observability/vercel-log-drain', _POST)
+export const POST = withErrorLogging('/api/observability/vercel-log-drain', _POST, { skipBodyParse: true })
